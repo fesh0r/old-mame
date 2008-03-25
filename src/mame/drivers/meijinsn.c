@@ -69,7 +69,7 @@ static unsigned deposits1=0, deposits2=0, credits=0;
 static WRITE16_HANDLER( sound_w )
 {
 	if(ACCESSING_LSB)
-		soundlatch_w(0, data&0xff);
+		soundlatch_w(machine, 0, data&0xff);
 }
 
 static READ16_HANDLER( alpha_mcu_r )
@@ -145,7 +145,7 @@ static READ16_HANDLER( alpha_mcu_r )
 static ADDRESS_MAP_START( meijinsn_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x080e00, 0x080fff) AM_READ(alpha_mcu_r) AM_WRITENOP
-	AM_RANGE(0x100000, 0x107fff) AM_READ(MRA16_RAM) AM_WRITE(MWA16_RAM) AM_BASE(&videoram16)
+	AM_RANGE(0x100000, 0x107fff) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) AM_BASE(&videoram16)
 	AM_RANGE(0x180000, 0x180dff) AM_RAM
 	AM_RANGE(0x180e00, 0x180fff) AM_RAM AM_BASE(&shared_ram)
 	AM_RANGE(0x181000, 0x181fff) AM_RAM
@@ -159,11 +159,11 @@ static ADDRESS_MAP_START( meijinsn_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( meijinsn_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(soundlatch_clear_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( meijinsn )
@@ -230,7 +230,7 @@ static PALETTE_INIT( meijinsn )
 			3,	resistances_rg,	weights_g,	0,	1000+1000,
 			2,	resistances_b,	weights_b,	0,	1000+1000);
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -305,23 +305,23 @@ static MACHINE_RESET( meijinsn )
 static MACHINE_DRIVER_START( meijinsn )
 	MDRV_CPU_ADD_TAG("main", M68000, 9000000 )
 	MDRV_CPU_PROGRAM_MAP(meijinsn_map, 0)
-	MDRV_CPU_VBLANK_INT(meijinsn_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(meijinsn_interrupt,2)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(meijinsn_sound_map,0)
 	MDRV_CPU_IO_MAP(meijinsn_sound_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 160)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 160)
 
 	MDRV_MACHINE_RESET(meijinsn)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(12, 243, 2*8, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_PALETTE_INIT(meijinsn)
 

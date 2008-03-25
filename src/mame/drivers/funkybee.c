@@ -93,8 +93,8 @@ extern VIDEO_UPDATE( funkybee );
 
 static READ8_HANDLER( funkybee_input_port_0_r )
 {
-	watchdog_reset_r(0);
-	return input_port_0_r(offset);
+	watchdog_reset_r(machine,0);
+	return input_port_0_r(machine,offset);
 }
 
 static WRITE8_HANDLER( funkybee_coin_counter_w )
@@ -103,18 +103,18 @@ static WRITE8_HANDLER( funkybee_coin_counter_w )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x4fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa000, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf000, 0xf000) AM_READ(MRA8_NOP)	/* IRQ Ack */
+	AM_RANGE(0x0000, 0x4fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xa000, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf000, 0xf000) AM_READ(SMH_NOP)	/* IRQ Ack */
 	AM_RANGE(0xf800, 0xf800) AM_READ(funkybee_input_port_0_r)
 	AM_RANGE(0xf801, 0xf801) AM_READ(input_port_1_r)
 	AM_RANGE(0xf802, 0xf802) AM_READ(input_port_2_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x4fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x4fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xbfff) AM_WRITE(funkybee_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(funkybee_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(funkybee_scroll_w)
@@ -126,12 +126,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -187,6 +187,7 @@ static INPUT_PORTS_START( funkybee )
 	PORT_DIPSETTING(	0x80, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( funkbeeb )
 	PORT_INCLUDE(funkybee)
 
@@ -197,6 +198,7 @@ static INPUT_PORTS_START( funkbeeb )
 	PORT_DIPSETTING(	0x10, "3" )
 	PORT_DIPSETTING(	0x00, "4" )
 INPUT_PORTS_END
+#endif
 
 static INPUT_PORTS_START( skylancr )
 	PORT_START_TAG("IN0")
@@ -306,16 +308,16 @@ static MACHINE_DRIVER_START( funkybee )
 	MDRV_CPU_ADD(Z80, 3072000)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(12, 32*8-1-12, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(funkybee)
 	MDRV_PALETTE_LENGTH(32)
 

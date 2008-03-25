@@ -268,15 +268,15 @@ WRITE16_HANDLER( rocknms_sub_vram_rot_w )
 VIDEO_START( tetrisp2 )
 {
 	tilemap_bg = tilemap_create(	get_tile_info_bg,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,
+
 								16,16,NX_0,NY_0);
 
 	tilemap_fg = tilemap_create(	get_tile_info_fg,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,
+
 								8,8,NX_1,NY_1);
 
 	tilemap_rot = tilemap_create(	get_tile_info_rot,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,
+
 								16,16,NX_0*2,NY_0*2);
 
 	tilemap_set_transparent_pen(tilemap_bg,0);
@@ -287,15 +287,15 @@ VIDEO_START( tetrisp2 )
 VIDEO_START( rockntread )
 {
 	tilemap_bg = tilemap_create(	get_tile_info_bg,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,
+
 								16, 16, 256, 16);	// rockn ms(main),1,2,3,4
 
 	tilemap_fg = tilemap_create(	get_tile_info_fg,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,
+
 								8, 8, 64, 64);
 
 	tilemap_rot = tilemap_create(	get_tile_info_rot,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,
+
 								16, 16, 128, 128);
 
 	tilemap_set_transparent_pen(tilemap_bg, 0);
@@ -307,27 +307,27 @@ VIDEO_START( rockntread )
 VIDEO_START( rocknms )
 {
 	tilemap_bg = tilemap_create(get_tile_info_bg,tilemap_scan_rows,
-					TILEMAP_TYPE_PEN,
+
 					16, 16, 256, 16);	// rockn ms(main),1,2,3,4
 
 	tilemap_fg = tilemap_create(get_tile_info_fg,tilemap_scan_rows,
-					TILEMAP_TYPE_PEN,
+
 					8, 8, 64, 64);
 
 	tilemap_rot = tilemap_create(get_tile_info_rot,tilemap_scan_rows,
-					TILEMAP_TYPE_PEN,
+
 					16, 16, 128, 128);
 
 	tilemap_sub_bg = tilemap_create(get_tile_info_rocknms_sub_bg,tilemap_scan_rows,
-					TILEMAP_TYPE_PEN,
+
 					16, 16, 32, 256);	// rockn ms(sub)
 
 	tilemap_sub_fg = tilemap_create(get_tile_info_rocknms_sub_fg,tilemap_scan_rows,
-					TILEMAP_TYPE_PEN,
+
 					8, 8, 64, 64);
 
 	tilemap_sub_rot = tilemap_create( get_tile_info_rocknms_sub_rot,tilemap_scan_rows,
-					TILEMAP_TYPE_PEN,
+
 					16, 16, 128, 128);
 
 	tilemap_set_transparent_pen(tilemap_bg, 0);
@@ -379,7 +379,7 @@ VIDEO_START( rocknms )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT16 *sprram_top, size_t sprram_size, int gfxnum)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT16 *sprram_top, size_t sprram_size, int gfxnum)
 {
 	int x, y, tx, ty, sx, sy, flipx, flipy;
 	int xsize, ysize, xnum, ynum;
@@ -519,7 +519,7 @@ VIDEO_UPDATE( tetrisp2 )
 	flipscreen = (tetrisp2_systemregs[0x00] & 0x02);
 
 	/* Black background color */
-	fillbitmap(bitmap, machine->pens[0x0000], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 	fillbitmap(priority_bitmap, 0, NULL);
 
 	/* Flip Screen */
@@ -588,7 +588,7 @@ VIDEO_UPDATE( tetrisp2 )
 	else if (asc_pri == 2)
 		tilemap_draw(bitmap,cliprect, tilemap_fg,  0, 1 << 2);
 
-	draw_sprites(machine, bitmap,cliprect, spriteram16, spriteram_size, 0);
+	draw_sprites(screen->machine, bitmap,cliprect, spriteram16, spriteram_size, 0);
 	return 0;
 }
 
@@ -604,7 +604,7 @@ VIDEO_UPDATE( rockntread )
 	flipscreen = (tetrisp2_systemregs[0x00] & 0x02);
 
 	/* Black background color */
-	fillbitmap(bitmap, machine->pens[0x0000], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 	fillbitmap(priority_bitmap, 0, NULL);
 
 	/* Flip Screen */
@@ -673,7 +673,7 @@ VIDEO_UPDATE( rockntread )
 	else if (asc_pri == 2)
 		tilemap_draw(bitmap,cliprect, tilemap_fg,  0, 1 << 2);
 
-	draw_sprites(machine, bitmap,cliprect, spriteram16, spriteram_size, 0);
+	draw_sprites(screen->machine, bitmap,cliprect, spriteram16, spriteram_size, 0);
 	return 0;
 }
 
@@ -686,9 +686,11 @@ VIDEO_UPDATE( rocknms )
 	int scr_pri;
 	int rot_pri;
 
+	const device_config *left_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
 
 	/* Black background color */
-	if (screen==0)
+	if (screen == left_screen)
 	{
 		tilemap_set_scrollx(tilemap_sub_bg, 0, rocknms_sub_scroll_bg[ 2 ] + 0x000);
 		tilemap_set_scrolly(tilemap_sub_bg, 0, rocknms_sub_scroll_bg[ 5 ] + 0x000);
@@ -697,7 +699,7 @@ VIDEO_UPDATE( rocknms )
 		tilemap_set_scrollx(tilemap_sub_rot, 0, rocknms_sub_rotregs[ 0 ] + 0x400);
 		tilemap_set_scrolly(tilemap_sub_rot, 0, rocknms_sub_rotregs[ 2 ] + 0x400);
 
-		fillbitmap(bitmap, machine->pens[0x0000], cliprect);
+		fillbitmap(bitmap, screen->machine->pens[0x0000], cliprect);
 		fillbitmap(priority_bitmap, 0, cliprect);
 
 		asc_pri = scr_pri = rot_pri = 0;
@@ -738,9 +740,9 @@ VIDEO_UPDATE( rocknms )
 		else if (asc_pri == 2)
 			tilemap_draw(bitmap,cliprect, tilemap_sub_fg,  0, 1 << 2);
 
-		draw_sprites(machine, bitmap,cliprect, spriteram16_2, spriteram_2_size, 4);
+		draw_sprites(screen->machine, bitmap,cliprect, spriteram16_2, spriteram_2_size, 4);
 	}
-	else if (screen==1) /* game screen */
+	else if (screen == right_screen) /* game screen */
 	{
 		tilemap_set_scrollx(tilemap_bg, 0, tetrisp2_scroll_bg[ 2 ] + 0x000);
 		tilemap_set_scrolly(tilemap_bg, 0, tetrisp2_scroll_bg[ 5 ] + 0x000);
@@ -750,7 +752,7 @@ VIDEO_UPDATE( rocknms )
 		tilemap_set_scrolly(tilemap_rot, 0, tetrisp2_rotregs[ 2 ] + 0x400);
 
 		/* Black background color */
-		fillbitmap(bitmap, machine->pens[0x0000], cliprect);
+		fillbitmap(bitmap, screen->machine->pens[0x0000], cliprect);
 		fillbitmap(priority_bitmap, 0, cliprect);
 
 		asc_pri = scr_pri = rot_pri = 0;
@@ -791,7 +793,7 @@ VIDEO_UPDATE( rocknms )
 		else if (asc_pri == 2)
 			tilemap_draw(bitmap,cliprect, tilemap_fg,  0, 1 << 2);
 
-		draw_sprites(machine, bitmap,cliprect, spriteram16, spriteram_size, 0);
+		draw_sprites(screen->machine, bitmap,cliprect, spriteram16, spriteram_size, 0);
 	}
 
 	return 0;

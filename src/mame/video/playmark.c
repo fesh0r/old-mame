@@ -112,8 +112,8 @@ static TILE_GET_INFO( hrdtimes_get_bg_tile_info )
 
 VIDEO_START( bigtwin )
 {
-	tx_tilemap = tilemap_create(bigtwin_get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	fg_tilemap = tilemap_create(bigtwin_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,32);
+	tx_tilemap = tilemap_create(bigtwin_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	fg_tilemap = tilemap_create(bigtwin_get_fg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 
@@ -125,9 +125,9 @@ VIDEO_START( bigtwin )
 
 VIDEO_START( wbeachvl )
 {
-	tx_tilemap = tilemap_create(wbeachvl_get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	fg_tilemap = tilemap_create(wbeachvl_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
-	bg_tilemap = tilemap_create(wbeachvl_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,64,32);
+	tx_tilemap = tilemap_create(wbeachvl_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	fg_tilemap = tilemap_create(wbeachvl_get_fg_tile_info,tilemap_scan_rows,16,16,64,32);
+	bg_tilemap = tilemap_create(wbeachvl_get_bg_tile_info,tilemap_scan_rows,     16,16,64,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -139,8 +139,8 @@ VIDEO_START( wbeachvl )
 
 VIDEO_START( excelsr )
 {
-	tx_tilemap = tilemap_create(bigtwin_get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	fg_tilemap = tilemap_create(bigtwin_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,32);
+	tx_tilemap = tilemap_create(bigtwin_get_tx_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap = tilemap_create(bigtwin_get_fg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 
@@ -151,9 +151,9 @@ VIDEO_START( excelsr )
 
 VIDEO_START( hotmind )
 {
-	tx_tilemap = tilemap_create(hrdtimes_get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
-	fg_tilemap = tilemap_create(hrdtimes_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap = tilemap_create(hrdtimes_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,32);
+	tx_tilemap = tilemap_create(hrdtimes_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,64);
+	fg_tilemap = tilemap_create(hrdtimes_get_fg_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap = tilemap_create(hrdtimes_get_bg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -173,9 +173,9 @@ VIDEO_START( hotmind )
 
 VIDEO_START( hrdtimes )
 {
-	tx_tilemap = tilemap_create(hrdtimes_get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
-	fg_tilemap = tilemap_create(hrdtimes_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap = tilemap_create(hrdtimes_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,32);
+	tx_tilemap = tilemap_create(hrdtimes_get_tx_tile_info,tilemap_scan_rows, 8, 8,64,64);
+	fg_tilemap = tilemap_create(hrdtimes_get_fg_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap = tilemap_create(hrdtimes_get_bg_tile_info,tilemap_scan_rows,     16,16,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -328,7 +328,7 @@ WRITE16_HANDLER( hrdtimes_scroll_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int codeshift)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int codeshift)
 {
 	int offs, start_offset = spriteram_size/2 - 4;
 	int height = machine->gfx[0]->height;
@@ -369,7 +369,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 	}
 }
 
-static void draw_bitmap(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_bitmap(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int x,y,count;
 	int color;
@@ -386,7 +386,7 @@ static void draw_bitmap(running_machine *machine, mame_bitmap *bitmap, const rec
 			{
 				if(bg_full_size)
 				{
-					*BITMAP_ADDR16(bitmap, (y + bgscrolly) & 0x1ff, (x + bgscrollx) & 0x1ff) = machine->pens[0x100 + color];
+					*BITMAP_ADDR16(bitmap, (y + bgscrolly) & 0x1ff, (x + bgscrollx) & 0x1ff) = 0x100 + color;
 
 					pri = BITMAP_ADDR8(priority_bitmap, (y + bgscrolly) & 0x1ff, 0);
 					pri[(x + bgscrollx) & 0x1ff] |= 2;
@@ -396,7 +396,7 @@ static void draw_bitmap(running_machine *machine, mame_bitmap *bitmap, const rec
 					/* 50% size */
 					if(!(x % 2) && !(y % 2))
 					{
-						*BITMAP_ADDR16(bitmap, (y / 2 + bgscrolly) & 0x1ff, (x / 2 + bgscrollx) & 0x1ff) = machine->pens[0x100 + color];
+						*BITMAP_ADDR16(bitmap, (y / 2 + bgscrolly) & 0x1ff, (x / 2 + bgscrollx) & 0x1ff) = 0x100 + color;
 
 						pri = BITMAP_ADDR8(priority_bitmap, (y / 2 + bgscrolly) & 0x1ff, 0);
 						pri[(x / 2 + bgscrollx) & 0x1ff] |= 2;
@@ -415,8 +415,8 @@ VIDEO_UPDATE( bigtwin )
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	if (bg_enable)
-		draw_bitmap(machine, bitmap, cliprect);
-	draw_sprites(machine, bitmap,cliprect,4);
+		draw_bitmap(bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect,4);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
@@ -427,9 +427,9 @@ VIDEO_UPDATE( excelsr )
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
 	if (bg_enable)
-		draw_bitmap(machine, bitmap, cliprect);
+		draw_bitmap(bitmap, cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,4);
-	draw_sprites(machine,bitmap,cliprect,2);
+	draw_sprites(screen->machine,bitmap,cliprect,2);
 	return 0;
 }
 
@@ -453,7 +453,7 @@ VIDEO_UPDATE( wbeachvl )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,1);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,2);
-	draw_sprites(machine,bitmap,cliprect,0);
+	draw_sprites(screen->machine,bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
@@ -467,12 +467,10 @@ VIDEO_UPDATE( hrdtimes )
 	{
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,1);
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,2);
-		draw_sprites(machine,bitmap,cliprect,2);
+		draw_sprites(screen->machine,bitmap,cliprect,2);
 		tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	}
 	else
-	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
-	}
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	return 0;
 }

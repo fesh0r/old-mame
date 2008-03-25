@@ -88,13 +88,13 @@ static TILE_GET_INFO( get_bg_tile_info )
 static VIDEO_START(vroulet)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		8, 8, 32, 32);
 }
 
 static VIDEO_UPDATE(vroulet)
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	drawgfx(bitmap, machine->gfx[0], 0x320, 1, 0, 0,
+	drawgfx(bitmap, screen->machine->gfx[0], 0x320, 1, 0, 0,
 		vroulet_ball[1], vroulet_ball[0] - 12, cliprect, TRANSPARENCY_PEN, 0);
 	return 0;
 }
@@ -113,7 +113,7 @@ static ADDRESS_MAP_START( vroulet_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vroulet_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x10, 0x13) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
@@ -258,16 +258,17 @@ static MACHINE_DRIVER_START( vroulet )
 	MDRV_CPU_ADD(Z80, 4000000)	//???
 	MDRV_CPU_PROGRAM_MAP(vroulet_map, 0)
 	MDRV_CPU_IO_MAP(vroulet_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(vroulet)
 
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)

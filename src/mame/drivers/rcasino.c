@@ -44,7 +44,7 @@ static PALETTE_INIT( rcasino )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -103,7 +103,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 static VIDEO_START(rcasino)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		8, 8, 32, 32);
 }
 
 static VIDEO_UPDATE(rcasino)
@@ -176,7 +176,7 @@ static ADDRESS_MAP_START( rcasino_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rcasino_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(AY8910_control_port_0_w)
@@ -296,20 +296,19 @@ static MACHINE_DRIVER_START( rcasino )
 	MDRV_CPU_ADD(Z80, 8000000/2)	// ???
 	MDRV_CPU_PROGRAM_MAP(rcasino_map, 0)
 	MDRV_CPU_IO_MAP(rcasino_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 
 	MDRV_GFXDECODE(rcasino)
 	MDRV_PALETTE_LENGTH(64)
-	MDRV_COLORTABLE_LENGTH(64)
 
 	MDRV_PALETTE_INIT(rcasino)
 	MDRV_VIDEO_START(rcasino)

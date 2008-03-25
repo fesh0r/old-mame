@@ -8,7 +8,7 @@ static int scanline=0;
 INTERRUPT_GEN( beezer_interrupt )
 {
 	scanline = (scanline + 1) % 0x80;
-	via_0_ca2_w (0, scanline & 0x10);
+	via_0_ca2_w (machine, 0, scanline & 0x10);
 	if ((scanline & 0x78) == 0x78)
 		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
@@ -19,14 +19,12 @@ VIDEO_UPDATE( beezer )
 {
 	int x,y;
 
-	for (y = machine->screen[0].visarea.min_y; y <= machine->screen[0].visarea.max_y; y+=2)
-	{
-		for (x = machine->screen[0].visarea.min_x; x <= machine->screen[0].visarea.max_x; x++)
+	for (y = cliprect->min_y; y <= cliprect->max_y; y+=2)
+		for (x = cliprect->min_x; x <= cliprect->max_x; x++)
 		{
-			*BITMAP_ADDR16(bitmap, y+1, x) = machine->pens[videoram[0x80*y+x] & 0x0f];
-			*BITMAP_ADDR16(bitmap, y,   x) = machine->pens[(videoram[0x80*y+x] >> 4)& 0x0f];
+			*BITMAP_ADDR16(bitmap, y+1, x) = videoram[0x80*y+x] & 0x0f;
+			*BITMAP_ADDR16(bitmap, y,   x) = videoram[0x80*y+x] >> 4;
 		}
-	}
 
 	return 0;
 }

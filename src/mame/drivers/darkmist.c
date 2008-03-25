@@ -28,14 +28,12 @@ TODO:
 #include "audio/t5182.h"
 
 
-READ8_HANDLER(darkmist_palette_r);
-WRITE8_HANDLER(darkmist_palette_w);
-WRITE8_HANDLER(darkmist_spritebank_w);
 VIDEO_START(darkmist);
 VIDEO_UPDATE(darkmist);
 PALETTE_INIT(darkmist);
 
-UINT8 * darkmist_scroll;
+extern UINT8 *darkmist_scroll;
+extern UINT8 *darkmist_spritebank;
 static UINT8 * darkmist_workram;
 
 int darkmist_hw;
@@ -61,16 +59,16 @@ static WRITE8_HANDLER(t5182shared_w)
 
 static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc801, 0xc801) AM_READ(input_port_0_r)
 	AM_RANGE(0xc802, 0xc802) AM_READ(input_port_1_r)
 	AM_RANGE(0xc803, 0xc803) AM_READ(input_port_2_r)
 	AM_RANGE(0xc804, 0xc804) AM_WRITE(darkmist_hw_w)
-	AM_RANGE(0xc805, 0xc805) AM_WRITE(darkmist_spritebank_w)
+	AM_RANGE(0xc805, 0xc805) AM_WRITE(SMH_RAM) AM_BASE(&darkmist_spritebank)
 	AM_RANGE(0xc806, 0xc806) AM_READ(input_port_3_r)
 	AM_RANGE(0xc807, 0xc807) AM_READ(input_port_4_r)
 	AM_RANGE(0xc808, 0xc808) AM_READ(input_port_5_r)
-	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(darkmist_palette_w) AM_READ(darkmist_palette_r) AM_BASE(&paletteram)
+	AM_RANGE(0xd000, 0xd3ff) AM_RAM AM_BASE(&paletteram)
 	AM_RANGE(0xd400, 0xd41f) AM_RAM AM_BASE(&darkmist_scroll)
 	AM_RANGE(0xd600, 0xd67f) AM_READWRITE(t5182shared_r, t5182shared_w)
 	AM_RANGE(0xd680, 0xd680) AM_WRITE(t5182_sound_irq_w)
@@ -251,24 +249,23 @@ static MACHINE_DRIVER_START( darkmist )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,4000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
-	MDRV_CPU_VBLANK_INT(darkmist_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(darkmist_interrupt,2)
 
 	MDRV_CPU_ADD_TAG(CPUTAG_T5182,Z80,14318180/4)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(t5182_map, 0)
 	MDRV_CPU_IO_MAP(t5182_io, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-16-1)
+
 	MDRV_GFXDECODE(darkmist)
-	MDRV_PALETTE_LENGTH(0x100+1)
 	MDRV_PALETTE_INIT(darkmist)
-	MDRV_COLORTABLE_LENGTH(0x100*4)
+	MDRV_PALETTE_LENGTH(0x100*4)
 	MDRV_VIDEO_START(darkmist)
 	MDRV_VIDEO_UPDATE(darkmist)
 

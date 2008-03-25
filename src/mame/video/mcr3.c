@@ -109,24 +109,24 @@ PALETTE_INIT( spyhunt )
 VIDEO_START( mcr3 )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,30);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  16,16, 32,30);
 }
 
 
 VIDEO_START( mcrmono )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(mcrmono_get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,30);
+	bg_tilemap = tilemap_create(mcrmono_get_bg_tile_info, tilemap_scan_rows,  16,16, 32,30);
 }
 
 
 VIDEO_START( spyhunt )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(spyhunt_get_bg_tile_info, spyhunt_bg_scan, TILEMAP_TYPE_PEN, 64,32, 64,32);
+	bg_tilemap = tilemap_create(spyhunt_get_bg_tile_info, spyhunt_bg_scan,  64,32, 64,32);
 
 	/* initialize the text tilemap */
-	alpha_tilemap = tilemap_create(spyhunt_get_alpha_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 16,16, 32,32);
+	alpha_tilemap = tilemap_create(spyhunt_get_alpha_tile_info, tilemap_scan_cols,  16,16, 32,32);
 	tilemap_set_transparent_pen(alpha_tilemap, 0);
 	tilemap_set_scrollx(alpha_tilemap, 0, 16);
 
@@ -189,7 +189,7 @@ WRITE8_HANDLER( spyhunt_alpharam_w )
  *
  *************************************/
 
-static void mcr3_update_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int color_mask, int code_xor, int dx, int dy)
+static void mcr3_update_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int color_mask, int code_xor, int dx, int dy)
 {
 	int offs;
 
@@ -271,7 +271,7 @@ VIDEO_UPDATE( mcr3 )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	/* draw the sprites */
-	mcr3_update_sprites(machine, bitmap, cliprect, 0x03, 0, 0, 0);
+	mcr3_update_sprites(screen->machine, bitmap, cliprect, 0x03, 0, 0, 0);
 	return 0;
 }
 
@@ -285,7 +285,7 @@ VIDEO_UPDATE( spyhunt )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	/* draw the sprites */
-	mcr3_update_sprites(machine, bitmap, cliprect, spyhunt_sprite_color_mask, 0, -12, 0);
+	mcr3_update_sprites(screen->machine, bitmap, cliprect, spyhunt_sprite_color_mask, 0, -12, 0);
 
 	/* render any characters on top */
 	tilemap_draw(bitmap, cliprect, alpha_tilemap, 0, 0);

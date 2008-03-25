@@ -20,7 +20,7 @@ PALETTE_INIT( blueprnt )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		UINT8 pen;
 		int r, g, b;
@@ -79,13 +79,13 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( blueprnt )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_x,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -97,7 +97,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int flipx = spriteram[offs + 2] & 0x40;
 		int flipy = spriteram[offs + 2 - 4] & 0x80;	// -4? Awkward, isn't it?
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 248 - sx;
 			sy = 240 - sy;
@@ -115,16 +115,16 @@ VIDEO_UPDATE( blueprnt )
 {
 	int i;
 
-	if (flip_screen)
+	if (flip_screen_get())
 		for (i = 0; i < 32; i++)
 			tilemap_set_scrolly(bg_tilemap, i, blueprnt_scrollram[32 - i]);
 	else
 		for (i = 0; i < 32; i++)
 			tilemap_set_scrolly(bg_tilemap, i, blueprnt_scrollram[30 - i]);
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine,bitmap, cliprect);
+	draw_sprites(screen->machine,bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 1, 0);
 	return 0;
 }

@@ -50,8 +50,8 @@ static WRITE8_HANDLER( hcastle_coin_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0020, 0x003f) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0220, 0x023f) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0020, 0x003f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0220, 0x023f) AM_READ(SMH_RAM)
 	AM_RANGE(0x0410, 0x0410) AM_READ(input_port_0_r)
 	AM_RANGE(0x0411, 0x0411) AM_READ(input_port_1_r)
 	AM_RANGE(0x0412, 0x0412) AM_READ(input_port_2_r)
@@ -59,30 +59,30 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0414, 0x0414) AM_READ(input_port_4_r) /* Dip 2 */
 	AM_RANGE(0x0415, 0x0415) AM_READ(input_port_3_r) /* Dip 1 */
 	AM_RANGE(0x0418, 0x0418) AM_READ(hcastle_gfxbank_r)
-	AM_RANGE(0x0600, 0x06ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0700, 0x5fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0600, 0x06ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0700, 0x5fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0007) AM_WRITE(hcastle_pf1_control_w)
-	AM_RANGE(0x0020, 0x003f) AM_WRITE(MWA8_RAM)	/* rowscroll? */
+	AM_RANGE(0x0020, 0x003f) AM_WRITE(SMH_RAM)	/* rowscroll? */
 	AM_RANGE(0x0200, 0x0207) AM_WRITE(hcastle_pf2_control_w)
-	AM_RANGE(0x0220, 0x023f) AM_WRITE(MWA8_RAM)	/* rowscroll? */
+	AM_RANGE(0x0220, 0x023f) AM_WRITE(SMH_RAM)	/* rowscroll? */
 	AM_RANGE(0x0400, 0x0400) AM_WRITE(hcastle_bankswitch_w)
 	AM_RANGE(0x0404, 0x0404) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(hcastle_soundirq_w)
 	AM_RANGE(0x040c, 0x040c) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(hcastle_coin_w)
 	AM_RANGE(0x0418, 0x0418) AM_WRITE(hcastle_gfxbank_w)
-	AM_RANGE(0x0600, 0x06ff) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
-	AM_RANGE(0x0700, 0x1fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0600, 0x06ff) AM_WRITE(SMH_RAM) AM_BASE(&paletteram)
+	AM_RANGE(0x0700, 0x1fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x2000, 0x2fff) AM_WRITE(hcastle_pf1_video_w) AM_BASE(&hcastle_pf1_videoram)
-	AM_RANGE(0x3000, 0x3fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x3000, 0x3fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x4000, 0x4fff) AM_WRITE(hcastle_pf2_video_w) AM_BASE(&hcastle_pf2_videoram)
-	AM_RANGE(0x5000, 0x5fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2) AM_SIZE(&spriteram_2_size)
- 	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x5000, 0x5fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2) AM_SIZE(&spriteram_2_size)
+ 	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 /*****************************************************************************/
@@ -95,16 +95,16 @@ static WRITE8_HANDLER( sound_bank_w )
 }
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(YM3812_status_port_0_r)
 	AM_RANGE(0xb000, 0xb00d) AM_READ(K007232_read_port_0_r)
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9800, 0x987f) AM_WRITE(K051649_waveform_w)
 	AM_RANGE(0x9880, 0x9889) AM_WRITE(K051649_frequency_w)
 	AM_RANGE(0x988a, 0x988e) AM_WRITE(K051649_volume_w)
@@ -269,20 +269,22 @@ static MACHINE_DRIVER_START( hcastle )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(KONAMI, 3000000)	/* Derived from 24 MHz clock */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3579545)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(59)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION	/* frames per second verified by comparison with real board */)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)	/* frames per second verified by comparison with real board */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(hcastle)
 	MDRV_PALETTE_LENGTH(2*8*16*16)
 

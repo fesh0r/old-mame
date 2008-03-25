@@ -34,12 +34,12 @@ WRITE8_HANDLER( mrflea_spriteram_w ){
 	spriteram[offset] = data;
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[0];
 	const UINT8 *source = spriteram;
 	const UINT8 *finish = source+0x100;
-	rectangle clip = machine->screen[0].visarea;
+	rectangle clip = *video_screen_get_visible_area(machine->primary_screen);
 	clip.max_x -= 24;
 	clip.min_x += 16;
 	while( source<finish ){
@@ -63,7 +63,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const UINT8 *source = videoram;
 	const gfx_element *gfx = machine->gfx[1];
@@ -91,7 +91,7 @@ VIDEO_START( mrflea ){
 
 VIDEO_UPDATE( mrflea )
 {
-	draw_background(machine, bitmap, cliprect);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_background(screen->machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

@@ -49,6 +49,7 @@ Sound :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 
@@ -70,34 +71,24 @@ static WRITE8_HANDLER( sound_control_w )
 	if ((last & 0x04) == 0x04 && (data & 0x4) == 0x00)
 	{
 		if (last & 0x01)
-			AY8910_control_port_0_w(0,soundlatch);
+			AY8910_control_port_0_w(machine,0,soundlatch);
 		else
-			AY8910_write_port_0_w(0,soundlatch);
+			AY8910_write_port_0_w(machine,0,soundlatch);
 	}
 	last=data;
 }
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xffff) AM_READ(MRA8_NOP)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0xbfff) AM_ROM
+	AM_RANGE(0xc000, 0xcfff) AM_RAM
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(fenraya_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
 	AM_RANGE(0x23, 0x23) AM_WRITE(sound_data_w)
 	AM_RANGE(0x33, 0x33) AM_WRITE(sound_control_w)
 ADDRESS_MAP_END
@@ -169,15 +160,14 @@ static MACHINE_DRIVER_START( 4enraya )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,8000000/2)
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)

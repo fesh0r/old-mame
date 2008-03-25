@@ -566,7 +566,7 @@ const rsp_config n64_rsp_config =
 
 
 // Video Interface
-UINT32 n64_vi_width;
+static UINT32 n64_vi_width;
 UINT32 n64_vi_origin;
 UINT32 n64_vi_control;
 static UINT32 n64_vi_burst, n64_vi_vsync,  n64_vi_hsync,  n64_vi_leap,  n64_vi_hstart, n64_vi_vstart;
@@ -586,7 +586,7 @@ READ32_HANDLER( n64_vi_reg_r )
             return n64_vi_intr;
 
 		case 0x10/4:		// VI_CURRENT_REG
-			return video_screen_get_vpos(0);
+			return video_screen_get_vpos(machine->primary_screen);
 
 		case 0x14/4:		// VI_BURST_REG
             return n64_vi_burst;
@@ -629,10 +629,12 @@ WRITE32_HANDLER( n64_vi_reg_w )
 		case 0x00/4:		// VI_CONTROL_REG
             if ((n64_vi_control & 0x40) != (data & 0x40))
 			{
-				screen_state *state = &Machine->screen[0];
-				rectangle visarea = state->visarea;
+				int width = video_screen_get_width(machine->primary_screen);
+				rectangle visarea = *video_screen_get_visible_area(machine->primary_screen);
+				attoseconds_t period = video_screen_get_frame_period(machine->primary_screen).attoseconds;
+
 				visarea.max_y = (data & 0x40) ? 479 : 239;
-				video_screen_configure(0, state->width, visarea.max_y + 1, &visarea, Machine->screen[0].refresh);
+				video_screen_configure(machine->primary_screen, width, visarea.max_y + 1, &visarea, period);
 			}
             n64_vi_control = data;
 			break;
@@ -644,10 +646,12 @@ WRITE32_HANDLER( n64_vi_reg_w )
 		case 0x08/4:		// VI_WIDTH_REG
             if (n64_vi_width != data && data > 0)
 			{
-				screen_state *state = &Machine->screen[0];
-				rectangle visarea = state->visarea;
+				int height = video_screen_get_height(machine->primary_screen);
+				rectangle visarea = *video_screen_get_visible_area(machine->primary_screen);
+				attoseconds_t period = video_screen_get_frame_period(machine->primary_screen).attoseconds;
+
 				visarea.max_x = data-1;
-				video_screen_configure(0, visarea.max_x + 1, state->height, &visarea, Machine->screen[0].refresh);
+				video_screen_configure(machine->primary_screen, visarea.max_x + 1, height, &visarea, period);
 			}
             n64_vi_width = data;
 		    fb_width = data;
@@ -766,7 +770,7 @@ static void audio_fifo_push(UINT32 address, UINT32 length)
 
 	// adjust the timer
 	period = attotime_mul(ATTOTIME_IN_HZ(DACRATE_NTSC), (ai_dacrate + 1) * (current->length / 4));
-	timer_adjust(audio_timer, period, 0, attotime_zero);
+	timer_adjust_oneshot(audio_timer, period, 0);
 }
 
 static void audio_fifo_pop(void)
@@ -1549,6 +1553,55 @@ void n64_machine_reset(void)
 	UINT32 *cart = (UINT32*)memory_region(REGION_USER2);
 	UINT64 boot_checksum;
 
+	mi_version = 0;
+	mi_interrupt = 0;
+	mi_intr_mask = 0;
+
+	sp_mem_addr = 0;
+	sp_dram_addr = 0;
+	sp_dma_length = 0;
+	sp_dma_count = 0;
+	sp_dma_skip = 0;
+	sp_semaphore = 0;
+
+	dp_start = 0;
+	dp_end = 0;
+	dp_current = 0;
+	dp_status = 0;
+
+	n64_vi_width = 0;
+	n64_vi_origin = 0;
+	n64_vi_control = 0;
+	n64_vi_burst = n64_vi_vsync = n64_vi_hsync = n64_vi_leap = n64_vi_hstart = n64_vi_vstart = 0;
+	n64_vi_intr = n64_vi_vburst = n64_vi_xscale = n64_vi_yscale = 0;
+
+	ai_dram_addr = 0;
+	ai_len = 0 ;
+	ai_control = 0;
+	ai_dacrate = 0;
+	ai_bitrate = 0;
+	ai_status = 0;
+
+	memset(audio_fifo, 0, sizeof(audio_fifo));
+	audio_fifo_wpos = 0;
+	audio_fifo_rpos = 0;
+	audio_fifo_num = 0;
+
+	pi_dram_addr = 0;
+	pi_cart_addr = 0;
+	pi_first_dma = 1;
+
+	memset(pif_ram, 0, sizeof(pif_ram));
+	memset(pif_cmd, 0, sizeof(pif_cmd));
+	si_dram_addr = 0;
+	si_pif_addr = 0;
+	si_status = 0;
+
+	memset(eeprom, 0, sizeof(eeprom));
+	memset(mempack, 0, sizeof(mempack));
+
+	cic_status = 0;
+
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
 
 		/* configure fast RAM regions for DRC */
@@ -1559,7 +1612,7 @@ void n64_machine_reset(void)
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_READONLY, 0);
 
 	audio_timer = timer_alloc(audio_timer_callback, NULL);
-	timer_adjust(audio_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(audio_timer, attotime_never, 0);
 
 	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 

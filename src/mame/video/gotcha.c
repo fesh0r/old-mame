@@ -39,8 +39,8 @@ static TILE_GET_INFO( bg_get_tile_info ) { get_tile_info(machine,tileinfo,tile_i
 
 VIDEO_START( gotcha )
 {
-	fg_tilemap = tilemap_create(fg_get_tile_info,gotcha_tilemap_scan,TILEMAP_TYPE_PEN,16,16,64,32);
-	bg_tilemap = tilemap_create(bg_get_tile_info,gotcha_tilemap_scan,TILEMAP_TYPE_PEN,     16,16,64,32);
+	fg_tilemap = tilemap_create(fg_get_tile_info,gotcha_tilemap_scan,16,16,64,32);
+	bg_tilemap = tilemap_create(bg_get_tile_info,gotcha_tilemap_scan,     16,16,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
@@ -96,7 +96,7 @@ WRITE16_HANDLER( gotcha_scroll_w )
 
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -129,7 +129,6 @@ VIDEO_UPDATE( gotcha )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

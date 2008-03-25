@@ -3,7 +3,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "deco16ic.h"
 
 /*
@@ -36,11 +35,12 @@ x = xpos
 
 /* spriteram is really 16-bit.. this can be changed to use 16-bit ram like the tilemaps
  its the same sprite chip Data East used on many, many 16-bit era titles */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
-	flip_screen = 1;
+	//FIXME: flip_screen_x should not be written!
+	flip_screen_set_no_update(1);
 
 	for (offs = (0x1400/4)-4;offs >= 0;offs -= 4) // 0x1400 for charlien
 	{
@@ -50,7 +50,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		y = spriteram32[offs]&0xffff;
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram32[offs+2]&0xffff;
 		colour = (x >>9) & 0x1f;
@@ -86,7 +86,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			inc = 1;
 		}
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			y=240-y;
 			x=304-x;
@@ -117,12 +117,12 @@ VIDEO_UPDATE( simpl156 )
 
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	fillbitmap(bitmap,machine->pens[256],cliprect);
+	fillbitmap(bitmap,256,cliprect);
 
 	deco16_tilemap_2_draw(bitmap,cliprect,0,2);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,4);
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }
 

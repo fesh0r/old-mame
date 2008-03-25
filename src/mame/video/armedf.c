@@ -107,10 +107,10 @@ VIDEO_START( armedf )
 		sprite_offy = 128;
 	}
 
-	//bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,64,32);
-	armedf_tx_tilemap = tilemap_create(get_tx_tile_info,armedf_scan,TILEMAP_TYPE_PEN,8,8,64,32);
+	//bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,64,32);
+	armedf_tx_tilemap = tilemap_create(get_tx_tile_info,armedf_scan,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
 	tilemap_set_transparent_pen(armedf_tx_tilemap,0xf);
@@ -228,7 +228,7 @@ WRITE16_HANDLER( armedf_mcu_cmd )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority )
 {
 	int offs;
 
@@ -241,7 +241,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sx = buffered_spriteram16[offs+3];
 		int sy = sprite_offy+240-(buffered_spriteram16[offs+0]&0x1ff);
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			sx = 320 - sx + 176;	/* don't ask where 176 comes from, just tried it out */
 			sy = 240 - sy + 1;		/* don't ask where 1 comes from, just tried it out */
 			flipx = !flipx;			/* the values seem to result in pixel-correct placement */
@@ -334,22 +334,22 @@ VIDEO_UPDATE( armedf )
     }
     else
     {
-        fillbitmap( bitmap, get_black_pen(machine)&0x0f, cliprect );
+        fillbitmap( bitmap, get_black_pen(screen->machine)&0x0f, cliprect );
     }*/
 
 	if ((mcu_mode&0x0030)==0x0030) tilemap_draw( bitmap, cliprect, armedf_tx_tilemap, 0, 0);
-	if( sprite_enable ) draw_sprites(machine, bitmap, cliprect, 2 );
+	if( sprite_enable ) draw_sprites(screen->machine, bitmap, cliprect, 2 );
 	if ((mcu_mode&0x0030)==0x0020) tilemap_draw( bitmap, cliprect, armedf_tx_tilemap, 0, 0);
 	tilemap_draw( bitmap, cliprect, fg_tilemap, 0, 0);
 	if ((mcu_mode&0x0030)==0x0010) tilemap_draw( bitmap, cliprect, armedf_tx_tilemap, 0, 0);
-	if( sprite_enable ) draw_sprites(machine, bitmap, cliprect, 1 );
+	if( sprite_enable ) draw_sprites(screen->machine, bitmap, cliprect, 1 );
 	if ((mcu_mode&0x0030)==0x0000) tilemap_draw( bitmap, cliprect, armedf_tx_tilemap, 0, 0);
-	if( sprite_enable ) draw_sprites(machine, bitmap, cliprect, 0 );
+	if( sprite_enable ) draw_sprites(screen->machine, bitmap, cliprect, 0 );
 
 	return 0;
 }
 
 VIDEO_EOF( armedf )
 {
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }

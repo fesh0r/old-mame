@@ -145,9 +145,9 @@ static READ16_HANDLER( dual539_16_r )
 	UINT16 ret = 0;
 
 	if (ACCESSING_LSB16)
-		ret |= K054539_1_r(offset);
+		ret |= K054539_1_r(machine, offset);
 	if (ACCESSING_MSB16)
-		ret |= K054539_0_r(offset)<<8;
+		ret |= K054539_0_r(machine, offset)<<8;
 
 	return ret;
 }
@@ -155,9 +155,9 @@ static READ16_HANDLER( dual539_16_r )
 static WRITE16_HANDLER( dual539_16_w )
 {
 	if (ACCESSING_LSB16)
-		K054539_1_w(offset, data);
+		K054539_1_w(machine, offset, data);
 	if (ACCESSING_MSB16)
-		K054539_0_w(offset, data>>8);
+		K054539_0_w(machine, offset, data>>8);
 }
 
 static READ32_HANDLER( dual539_r )
@@ -165,9 +165,9 @@ static READ32_HANDLER( dual539_r )
 	UINT32 data = 0;
 
 	if (~mem_mask & 0xffff0000)
-		data |= dual539_16_r(offset * 2, mem_mask >> 16) << 16;
+		data |= dual539_16_r(machine, offset * 2, mem_mask >> 16) << 16;
 	if (~mem_mask & 0x0000ffff)
-		data |= dual539_16_r(offset * 2 + 1, mem_mask);
+		data |= dual539_16_r(machine, offset * 2 + 1, mem_mask);
 
 	return data;
 }
@@ -175,9 +175,9 @@ static READ32_HANDLER( dual539_r )
 static WRITE32_HANDLER( dual539_w )
 {
 	if (~mem_mask & 0xffff0000)
-		dual539_16_w(offset * 2, data >> 16, mem_mask >> 16);
+		dual539_16_w(machine, offset * 2, data >> 16, mem_mask >> 16);
 	if (~mem_mask & 0x0000ffff)
-		dual539_16_w(offset * 2 + 1, data, mem_mask);
+		dual539_16_w(machine, offset * 2 + 1, data, mem_mask);
 }
 
 
@@ -237,7 +237,7 @@ static WRITE32_HANDLER( v_ctrl_w )
 static READ32_HANDLER( v_rom_r )
 {
 	UINT8 *mem8 = memory_region(REGION_GFX2);
-	int bank = K056832_word_r(0x34/2, 0xffff);
+	int bank = K056832_word_r(machine, 0x34/2, 0xffff);
 
 	offset *= 2;
 
@@ -307,24 +307,24 @@ static WRITE32_HANDLER( turntable_select_w )
 static READ32_HANDLER( ide_std_r )
 {
 	if (ACCESSING_LSB32)
-		return ide_controller16_0_r(IDE_STD_OFFSET + offset, 0x00ff) >> 8;
+		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset, 0x00ff) >> 8;
 	else
-		return ide_controller16_0_r(IDE_STD_OFFSET + offset, 0x0000) << 16;
+		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset, 0x0000) << 16;
 }
 
 static WRITE32_HANDLER( ide_std_w )
 {
 	if (ACCESSING_LSB32)
-		ide_controller16_0_w(IDE_STD_OFFSET + offset, data << 8, 0x00ff);
+		ide_controller16_0_w(machine, IDE_STD_OFFSET + offset, data << 8, 0x00ff);
 	else
-		ide_controller16_0_w(IDE_STD_OFFSET + offset, data >> 16, 0x0000);
+		ide_controller16_0_w(machine, IDE_STD_OFFSET + offset, data >> 16, 0x0000);
 }
 
 
 static READ32_HANDLER( ide_alt_r )
 {
 	if (offset == 0)
-		return ide_controller16_0_r(IDE_ALT_OFFSET, 0xff00) << 24;
+		return ide_controller16_0_r(machine, IDE_ALT_OFFSET, 0xff00) << 24;
 
 	return 0;
 }
@@ -332,7 +332,7 @@ static READ32_HANDLER( ide_alt_r )
 static WRITE32_HANDLER( ide_alt_w )
 {
 	if (offset == 0 && !(mem_mask & 0x00ff0000))
-		ide_controller16_0_w(IDE_ALT_OFFSET, data >> 24, 0xff00);
+		ide_controller16_0_w(machine, IDE_ALT_OFFSET, data >> 24, 0xff00);
 }
 
 
@@ -461,7 +461,7 @@ static void ide_interrupt(int state)
 static ADDRESS_MAP_START( memory_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM							// PRG ROM
 	AM_RANGE(0x400000, 0x40ffff) AM_RAM							// WORK RAM
-	AM_RANGE(0x480000, 0x48443f) AM_READWRITE(MRA32_RAM, paletteram32_w)		// COLOR RAM
+	AM_RANGE(0x480000, 0x48443f) AM_READWRITE(SMH_RAM, paletteram32_w)		// COLOR RAM
 	                             AM_BASE(&paletteram32)
 	AM_RANGE(0x500000, 0x57ffff) AM_READWRITE(sndram_r, sndram_w)				// SOUND RAM
 	AM_RANGE(0x580000, 0x58003f) AM_READWRITE(K056832_long_r, K056832_long_w)		// VIDEO REG (tilemap)
@@ -1013,20 +1013,23 @@ INPUT_PORTS_END
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( popnmusic )
 	POPN_INPUT			/* IN 0-2 */
 	POPN_DSW1			/* IN 3 */
 	POPN_DSW2			/* IN 4 */
 	POPN_DSW3			/* IN 5 */
 INPUT_PORTS_END
+#endif
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( popn1 )
 	POPN_INPUT			/* IN 0-2 */
 	POPN1_DSW1			/* IN 3 */
 	POPN1_DSW2			/* IN 4 */
 	POPN1_DSW3			/* IN 5 */
 INPUT_PORTS_END
-
+#endif
 
 #define POPNST_INPUT \
 	PORT_START      /* IN 0 */ \
@@ -1114,13 +1117,14 @@ INPUT_PORTS_END
 	PORT_DIPSETTING(    0x2a, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( popnstage )
 	POPNST_INPUT			/* IN 0-2 */
 	POPNST_DSW1			/* IN 3 */
 	POPNST_DSW2			/* IN 4 */
 	POPNST_DSW3			/* IN 5 */
 INPUT_PORTS_END
-
+#endif
 
 /*************************************
  *
@@ -1223,19 +1227,19 @@ static MACHINE_DRIVER_START( djmain )
 	//MDRV_CPU_ADD(M68EC020, 18432000/2)    /*  9.216 MHz!? */
 	MDRV_CPU_ADD(M68EC020, 32000000/4)	/*  8.000 MHz!? */
 	MDRV_CPU_PROGRAM_MAP(memory_map, 0)
-	MDRV_CPU_VBLANK_INT(vb_interrupt, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", vb_interrupt)
 
 	MDRV_MACHINE_START(djmain)
 	MDRV_MACHINE_RESET(djmain)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(12, 512-12-1, 0, 384-1)
+
 	MDRV_PALETTE_LENGTH(0x4440/4)
 	MDRV_GFXDECODE(djmain)
 	MDRV_VIDEO_START(djmain)

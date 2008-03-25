@@ -146,10 +146,10 @@ static WRITE8_HANDLER( tubep_LS259_w )
 				//screen_flip_w(offset,data&1); /* bit 0 = screen flip, active high */
 				break;
 		case 6:
-				tubep_background_romselect_w(offset,data);	/* bit0 = 0->select roms: B1,B3,B5; bit0 = 1->select roms: B2,B4,B6 */
+				tubep_background_romselect_w(machine,offset,data);	/* bit0 = 0->select roms: B1,B3,B5; bit0 = 1->select roms: B2,B4,B6 */
 				break;
 		case 7:
-				tubep_colorproms_A4_line_w(offset,data);	/* bit0 = line A4 (color proms address) state */
+				tubep_colorproms_A4_line_w(machine,offset,data);	/* bit0 = line A4 (color proms address) state */
 				break;
 		default:
 				break;
@@ -161,8 +161,8 @@ static ADDRESS_MAP_START( tubep_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xa000, 0xa7ff) AM_RAM
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(tubep_textram_w) AM_BASE(&tubep_textram)	/* RAM on GFX PCB @B13 */
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM) AM_SHARE(1)
-	AM_RANGE(0xe800, 0xebff) AM_WRITE(MWA8_RAM) AM_SHARE(4)				/* row of 8 x 2147 RAMs on main PCB */
+	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM) AM_SHARE(1)
+	AM_RANGE(0xe800, 0xebff) AM_WRITE(SMH_RAM) AM_SHARE(4)				/* row of 8 x 2147 RAMs on main PCB */
 ADDRESS_MAP_END
 
 
@@ -180,7 +180,7 @@ static WRITE8_HANDLER( tubep_soundlatch_w )
 }
 
 static ADDRESS_MAP_START( tubep_main_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_READ(input_port_3_r)
 	AM_RANGE(0x90, 0x90) AM_READ(input_port_4_r)
 	AM_RANGE(0xa0, 0xa0) AM_READ(input_port_5_r)
@@ -215,14 +215,14 @@ static ADDRESS_MAP_START( tubep_second_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(tubep_background_a000_w)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(tubep_background_c000_w)
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_SHARE(1) 								/* 6116 #1 */
-	AM_RANGE(0xe800, 0xebff) AM_WRITE(MWA8_RAM) AM_SHARE(4) AM_BASE(&tubep_backgroundram)	/* row of 8 x 2147 RAMs on main PCB */
-	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(MWA8_RAM) AM_SHARE(3)						/* sprites color lookup table */
+	AM_RANGE(0xe800, 0xebff) AM_WRITE(SMH_RAM) AM_SHARE(4) AM_BASE(&tubep_backgroundram)	/* row of 8 x 2147 RAMs on main PCB */
+	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(SMH_RAM) AM_SHARE(3)						/* sprites color lookup table */
 	AM_RANGE(0xf800, 0xffff) AM_RAM AM_SHARE(2)									/* program copies here part of shared ram ?? */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( tubep_second_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(second_cpu_irq_line_clear_w)
 ADDRESS_MAP_END
 
@@ -258,7 +258,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( tubep_sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_control_port_1_w)
@@ -320,16 +320,16 @@ curr_scanline = scanline;//for debugging
 	}
 
 
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 
 //debug
-logerror("scanline=%3i scrgetvpos(0)=%3i\n",scanline,video_screen_get_vpos(0));
+logerror("scanline=%3i scrgetvpos(0)=%3i\n",scanline,video_screen_get_vpos(machine->primary_screen));
 
 	scanline ++;
 	if (scanline>=264)
 		scanline=0;
 
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -361,7 +361,7 @@ static MACHINE_START( tubep )
 
 static MACHINE_RESET( tubep )
 {
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 
@@ -377,7 +377,7 @@ static ADDRESS_MAP_START( nsc_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM AM_SHARE(3) AM_BASE(&tubep_sprite_colorsharedram)
 	AM_RANGE(0x0800, 0x0fff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0x2000, 0x2009) AM_WRITE(tubep_sprite_control_w)
-	AM_RANGE(0x200a, 0x200b) AM_WRITE(MWA8_NOP) /* not used by the games - perhaps designed for debugging */
+	AM_RANGE(0x200a, 0x200b) AM_WRITE(SMH_NOP) /* not used by the games - perhaps designed for debugging */
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -422,7 +422,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( rjammer_main_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_2_r)	/* a bug in game code (during attract mode) */
 	AM_RANGE(0x80, 0x80) AM_READ(input_port_2_r)
 	AM_RANGE(0x90, 0x90) AM_READ(input_port_3_r)
@@ -446,7 +446,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( rjammer_second_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(rjammer_background_page_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(rjammer_background_LS377_w)
 ADDRESS_MAP_END
@@ -502,15 +502,15 @@ curr_scanline = scanline;//for debugging
 	}
 
 
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 
-logerror("scanline=%3i scrgetvpos(0)=%3i\n",scanline,video_screen_get_vpos(0));
+logerror("scanline=%3i scrgetvpos(0)=%3i\n",scanline,video_screen_get_vpos(machine->primary_screen));
 
 	scanline ++;
 	if (scanline>=264)
 		scanline=0;
 
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -524,7 +524,7 @@ static MACHINE_START( rjammer )
 
 static MACHINE_RESET( rjammer )
 {
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 
@@ -614,7 +614,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( rjammer_sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(rjammer_soundlatch_r)
 	AM_RANGE(0x10, 0x10) AM_WRITE(rjammer_voice_startstop_w)
 	AM_RANGE(0x18, 0x18) AM_WRITE(rjammer_voice_frequency_select_w)
@@ -852,33 +852,6 @@ INPUT_PORTS_END
 
 /*************************************
  *
- *  Graphics definitions
- *
- *************************************/
-
-static const gfx_layout charlayout =
-{
-	8, 8,	/* 8*8 characters */
-	512,	/* 512 characters */
-	1,		/* 1 bit per pixel */
-	{ 0 },
-	{ 0, 1, 2, 3, 4, 5, 6, 7 },
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8 /* every char takes 8 consecutive bytes */
-};
-
-static GFXDECODE_START( tubep )
-	GFXDECODE_ENTRY( REGION_GFX1,      0, charlayout,       0, 32 )	/* 32 color codes */
-GFXDECODE_END
-
-static GFXDECODE_START( rjammer )
-	GFXDECODE_ENTRY( REGION_GFX1,      0, charlayout,       0, 16 )	/* 16 color codes */
-GFXDECODE_END
-
-
-
-/*************************************
- *
  *  Sound definitions
  *
  *************************************/
@@ -940,20 +913,19 @@ static MACHINE_DRIVER_START( tubep )
 	MDRV_CPU_ADD_TAG("nsc",NSC8105,6000000)	/* 6 MHz Xtal - divided internally ??? */
 	MDRV_CPU_PROGRAM_MAP(nsc_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_MACHINE_START(tubep)
 	MDRV_MACHINE_RESET(tubep)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 264)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(tubep)
+
 	MDRV_PALETTE_LENGTH(32 + 256*64)
-	MDRV_COLORTABLE_LENGTH(32*2)
 
 	MDRV_PALETTE_INIT(tubep)
 	MDRV_VIDEO_START(tubep)
@@ -983,7 +955,7 @@ static MACHINE_DRIVER_START( tubepb )
 
 	MDRV_CPU_ADD(M6802,6000000) /* ? MHz Xtal */
 	MDRV_CPU_PROGRAM_MAP(nsc_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 MACHINE_DRIVER_END
 
 
@@ -1006,20 +978,18 @@ static MACHINE_DRIVER_START( rjammer )
 	MDRV_CPU_ADD_TAG("nsc",NSC8105,6000000)	/* 6 MHz Xtal - divided internally ??? */
 	MDRV_CPU_PROGRAM_MAP(nsc_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_START(rjammer)
 	MDRV_MACHINE_RESET(rjammer)
 
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 264)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
-	MDRV_GFXDECODE(rjammer)
+
 	MDRV_PALETTE_LENGTH(64)
-	MDRV_COLORTABLE_LENGTH(2*16 + 16*2)
 
 	MDRV_PALETTE_INIT(rjammer)
 	MDRV_VIDEO_START(tubep)

@@ -479,10 +479,10 @@ static void update_interrupts(int fast)
 static TIMER_CALLBACK( scanline_interrupt )
 {
 	/* set timer for next frame */
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, VIDEO_INTSCANLINE, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, VIDEO_INTSCANLINE, 0), 0);
 
 	/* set the interrupt bit in the status reg */
-	logerror("-------------- (DISPLAY INT @ %d) ----------------\n", video_screen_get_vpos(0));
+	logerror("-------------- (DISPLAY INT @ %d) ----------------\n", video_screen_get_vpos(machine->primary_screen));
 	VIDEO_INTSTATE |= VIDEOINT_SCANLINE;
 
 	/* update the interrupt state */
@@ -1347,7 +1347,7 @@ WRITE16_HANDLER( itech32_video_w )
 			break;
 
 		case 0x2c/2:	/* VIDEO_INTSCANLINE */
-			timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, VIDEO_INTSCANLINE, 0), 0, attotime_zero);
+			timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, VIDEO_INTSCANLINE, 0), 0);
 			break;
 
 		case 0x32/2:	/* VIDEO_VTOTAL */
@@ -1379,7 +1379,7 @@ WRITE16_HANDLER( itech32_video_w )
 
 				logerror("Configure Screen: HTOTAL: %x  HBSTART: %x  HBEND: %x  VTOTAL: %x  VBSTART: %x  VBEND: %x\n",
 					VIDEO_HTOTAL, VIDEO_HBLANK_START, VIDEO_HBLANK_END, VIDEO_VTOTAL, VIDEO_VBLANK_START, VIDEO_VBLANK_END);
-				video_screen_configure(0, VIDEO_HTOTAL, VIDEO_VTOTAL, &visarea, HZ_TO_ATTOSECONDS(VIDEO_CLOCK) * VIDEO_HTOTAL * VIDEO_VTOTAL);
+				video_screen_configure(machine->primary_screen, VIDEO_HTOTAL, VIDEO_VTOTAL, &visarea, HZ_TO_ATTOSECONDS(VIDEO_CLOCK) * VIDEO_HTOTAL * VIDEO_VTOTAL);
 			}
 			break;
 	}
@@ -1394,7 +1394,7 @@ READ16_HANDLER( itech32_video_r )
 	}
 	else if (offset == 3)
 	{
-		return 0xef;/*video_screen_get_vpos(0) - 1;*/
+		return 0xef;/*video_screen_get_vpos(machine->primary_screen) - 1;*/
 	}
 
 	return itech32_video[offset];
@@ -1410,22 +1410,22 @@ READ16_HANDLER( itech32_video_r )
 
 WRITE16_HANDLER( bloodstm_video_w )
 {
-	itech32_video_w(offset / 2, data, mem_mask);
+	itech32_video_w(machine, offset / 2, data, mem_mask);
 }
 
 
 READ16_HANDLER( bloodstm_video_r )
 {
-	return itech32_video_r(offset / 2,0);
+	return itech32_video_r(machine, offset / 2,0);
 }
 
 
 WRITE32_HANDLER( itech020_video_w )
 {
 	if (ACCESSING_MSW32)
-		itech32_video_w(offset, data >> 16, mem_mask >> 16);
+		itech32_video_w(machine, offset, data >> 16, mem_mask >> 16);
 	else
-		itech32_video_w(offset, data, mem_mask);
+		itech32_video_w(machine, offset, data, mem_mask);
 }
 
 
@@ -1438,7 +1438,7 @@ WRITE32_HANDLER( drivedge_zbuf_control_w )
 
 READ32_HANDLER( itech020_video_r )
 {
-	int result = itech32_video_r(offset,0);
+	int result = itech32_video_r(machine,offset,0);
 	return (result << 16) | result;
 }
 
@@ -1476,12 +1476,12 @@ VIDEO_UPDATE( itech32 )
 			}
 
 			/* draw from the buffer */
-			draw_scanline16(bitmap, cliprect->min_x, y, cliprect->max_x - cliprect->min_x + 1, &scanline[cliprect->min_x], machine->pens, -1);
+			draw_scanline16(bitmap, cliprect->min_x, y, cliprect->max_x - cliprect->min_x + 1, &scanline[cliprect->min_x], NULL, -1);
 		}
 
 		/* otherwise, draw directly from VRAM */
 		else
-			draw_scanline16(bitmap, cliprect->min_x, y, cliprect->max_x - cliprect->min_x + 1, &src1[cliprect->min_x], machine->pens, -1);
+			draw_scanline16(bitmap, cliprect->min_x, y, cliprect->max_x - cliprect->min_x + 1, &src1[cliprect->min_x], NULL, -1);
 	}
 	return 0;
 }

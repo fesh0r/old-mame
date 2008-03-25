@@ -31,8 +31,8 @@ UINT32 gaelco3d_texmask_size;
 #define IS_POLYEND(x)		(((x) ^ ((x) >> 1)) & 0x4000)
 
 
-static mame_bitmap *screenbits;
-static mame_bitmap *zbuffer;
+static bitmap_t *screenbits;
+static bitmap_t *zbuffer;
 static rgb_t *palette;
 static UINT32 *polydata_buffer;
 static UINT32 polydata_count;
@@ -75,12 +75,16 @@ static void gaelco3d_exit(running_machine *machine)
 
 VIDEO_START( gaelco3d )
 {
+	int width, height;
+
 	poly = poly_alloc(2000, sizeof(poly_extra_data), 0);
 	add_exit_callback(machine, gaelco3d_exit);
 
-	screenbits = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	screenbits = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	zbuffer = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	width = video_screen_get_width(machine->primary_screen);
+	height = video_screen_get_height(machine->primary_screen);
+	zbuffer = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
 	palette = auto_malloc(32768 * sizeof(palette[0]));
 	polydata_buffer = auto_malloc(MAX_POLYDATA * sizeof(polydata_buffer[0]));
@@ -127,10 +131,10 @@ VIDEO_START( gaelco3d )
     (repeat these two for each additional point in the fan)
 */
 
-static void render_poly(UINT32 *polydata)
+static void render_poly(const device_config *screen, UINT32 *polydata)
 {
-	float midx = Machine->screen[0].width / 2;
-	float midy = Machine->screen[0].height / 2;
+	float midx = video_screen_get_width(screen) / 2;
+	float midy = video_screen_get_height(screen) / 2;
 	float z0 = convert_tms3203x_fp_to_float(polydata[0]);
 	float voz_dy = convert_tms3203x_fp_to_float(polydata[1]) * 256.0f;
 	float voz_dx = convert_tms3203x_fp_to_float(polydata[2]) * 256.0f;
@@ -198,17 +202,19 @@ static void render_poly(UINT32 *polydata)
 	/* if we have a valid number of verts, render them */
 	if (vertnum >= 3)
 	{
+		const rectangle *visarea = video_screen_get_visible_area(screen);
+
 		/* special case: no Z buffering and no perspective correction */
 		if (color != 0x7f00 && z0 < 0 && ooz_dx == 0 && ooz_dy == 0)
-			poly_render_triangle_fan(poly, screenbits, &Machine->screen[0].visarea, render_noz_noperspective, 0, vertnum, &vert[0]);
+			poly_render_triangle_fan(poly, screenbits, visarea, render_noz_noperspective, 0, vertnum, &vert[0]);
 
 		/* general case: non-alpha blended */
 		else if (color != 0x7f00)
-			poly_render_triangle_fan(poly, screenbits, &Machine->screen[0].visarea, render_normal, 0, vertnum, &vert[0]);
+			poly_render_triangle_fan(poly, screenbits, visarea, render_normal, 0, vertnum, &vert[0]);
 
 		/* color 0x7f seems to be hard-coded as a 50% alpha blend */
 		else
-			poly_render_triangle_fan(poly, screenbits, &Machine->screen[0].visarea, render_alphablend, 0, vertnum, &vert[0]);
+			poly_render_triangle_fan(poly, screenbits, visarea, render_alphablend, 0, vertnum, &vert[0]);
 
 		polygons += vertnum - 2;
 	}
@@ -219,7 +225,7 @@ static void render_poly(UINT32 *polydata)
 static void render_noz_noperspective(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
 	const poly_extra_data *extra = extradata;
-	mame_bitmap *bitmap = destbase;
+	bitmap_t *bitmap = destbase;
 	float zbase = recip_approx(extra->ooz_base);
 	float uoz_step = extra->uoz_dx * zbase;
 	float voz_step = extra->voz_dx * zbase;
@@ -260,7 +266,7 @@ static void render_noz_noperspective(void *destbase, INT32 scanline, const poly_
 static void render_normal(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
 	const poly_extra_data *extra = extradata;
-	mame_bitmap *bitmap = destbase;
+	bitmap_t *bitmap = destbase;
 	float ooz_dx = extra->ooz_dx;
 	float uoz_dx = extra->uoz_dx;
 	float voz_dx = extra->voz_dx;
@@ -312,7 +318,7 @@ static void render_normal(void *destbase, INT32 scanline, const poly_extent *ext
 static void render_alphablend(void *destbase, INT32 scanline, const poly_extent *extent, const void *extradata, int threadid)
 {
 	const poly_extra_data *extra = extradata;
-	mame_bitmap *bitmap = destbase;
+	bitmap_t *bitmap = destbase;
 	float ooz_dx = extra->ooz_dx;
 	float uoz_dx = extra->uoz_dx;
 	float voz_dx = extra->voz_dx;
@@ -374,8 +380,8 @@ void gaelco3d_render(void)
 
 #if DISPLAY_STATS
 {
-	int scan = video_screen_get_vpos(0);
-	popmessage("Polys = %4d  Timeleft = %3d", polygons, (lastscan < scan) ? (scan - lastscan) : (scan + (lastscan - Machine->screen[0].visarea.max_y)));
+	int scan = video_screen_get_vpos(machine->primary_screen);
+	popmessage("Polys = %4d  Timeleft = %3d", polygons, (lastscan < scan) ? (scan - lastscan) : (scan + (lastscan - video_screen_get_visible_area(Machine->primary_screen)->max_y)));
 }
 #endif
 
@@ -404,14 +410,14 @@ WRITE32_HANDLER( gaelco3d_render_w )
 	{
 		if (polydata_count >= 18 && (polydata_count % 2) == 1 && IS_POLYEND(polydata_buffer[polydata_count - 2]))
 		{
-			render_poly(&polydata_buffer[0]);
+			render_poly(machine->primary_screen, &polydata_buffer[0]);
 			polydata_count = 0;
 		}
 		video_changed = TRUE;
 	}
 
 #if DISPLAY_STATS
-	lastscan = video_screen_get_vpos(0);
+	lastscan = video_screen_get_vpos(machine->primary_screen);
 #endif
 }
 

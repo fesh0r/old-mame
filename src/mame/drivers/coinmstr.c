@@ -24,7 +24,7 @@
 
 #include "driver.h"
 #include "machine/6821pia.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "sound/ay8910.h"
 
 
@@ -129,7 +129,8 @@ ADDRESS_MAP_END
 // Different I/O mappping for every game
 
 static ADDRESS_MAP_START( quizmstr_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(question_r)
 	AM_RANGE(0x00, 0x03) AM_WRITE(question_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_control_port_0_w)
@@ -138,18 +139,18 @@ static ADDRESS_MAP_START( quizmstr_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x50, 0x53) AM_READNOP
 	AM_RANGE(0x50, 0x53) AM_WRITENOP
 	AM_RANGE(0x58, 0x5b) AM_READWRITE(pia_2_r, pia_2_w)
-	AM_RANGE(0x70, 0x70) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x71, 0x71) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x70, 0x70) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x71, 0x71) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xc0, 0xc3) AM_READNOP
 	AM_RANGE(0xc0, 0xc3) AM_WRITENOP
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( trailblz_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(question_r)
 	AM_RANGE(0x00, 0x03) AM_WRITE(question_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x41, 0x41) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x40, 0x40) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x41, 0x41) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x48, 0x48) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x49, 0x49) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0x50, 0x53) AM_READWRITE(pia_0_r, pia_0_w) //?
@@ -159,14 +160,15 @@ static ADDRESS_MAP_START( trailblz_io_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( supnudg2_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(question_r)
 	AM_RANGE(0x00, 0x03) AM_WRITE(question_w)
 	AM_RANGE(0x40, 0x41) AM_READNOP
 	AM_RANGE(0x40, 0x43) AM_WRITENOP
 	AM_RANGE(0x43, 0x43) AM_READNOP
-	AM_RANGE(0x48, 0x48) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x49, 0x49) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x48, 0x48) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x49, 0x49) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x50, 0x51) AM_READNOP
 	AM_RANGE(0x50, 0x53) AM_WRITENOP
 	AM_RANGE(0x53, 0x53) AM_READNOP
@@ -533,7 +535,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( coinmstr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8, 46, 64);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows, 8, 8, 46, 64);
 }
 
 static VIDEO_UPDATE( coinmstr )
@@ -625,21 +627,23 @@ static const struct AY8910interface ay8912_interface =
 static MACHINE_DRIVER_START( coinmstr )
 	MDRV_CPU_ADD_TAG("cpu",Z80,8000000) // ?
 	MDRV_CPU_PROGRAM_MAP(coinmstr_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 46*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(coinmstr)
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(coinmstr)
 	MDRV_VIDEO_UPDATE(coinmstr)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

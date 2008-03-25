@@ -17,7 +17,7 @@ PALETTE_INIT( spdodgeb )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -35,10 +35,10 @@ PALETTE_INIT( spdodgeb )
 		bit3 = (color_prom[0] >> 7) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 		/* blue component */
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -79,7 +79,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( spdodgeb )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,8,8,64,32);
 }
 
 
@@ -99,12 +99,12 @@ INTERRUPT_GEN( spdodgeb_interrupt )
 	if (iloop > 1 && iloop < 32)
 	{
 		cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, HOLD_LINE);
-		video_screen_update_partial(0, scanline+7);
+		video_screen_update_partial(machine->primary_screen, scanline+7);
 	}
 	else if (!iloop)
 	{
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
-		video_screen_update_partial(0, 256);
+		video_screen_update_partial(machine->primary_screen, 256);
 	}
 }
 
@@ -155,7 +155,7 @@ WRITE8_HANDLER( spdodgeb_videoram_w )
 					(which+order),color+ 8 * sprite_palbank,flipx,flipy,sx,sy, \
 					cliprect,TRANSPARENCY_PEN,0);
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const gfx_element *gfx = machine->gfx[1];
 	UINT8 *src;
@@ -179,7 +179,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int dy = -16;
 		int cy;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -198,7 +198,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			break;
 
 			case 1: /* double y */
-			if (flip_screen) { if (sy > 240) sy -= 256; } else { if (sy < 0) sy += 256; }
+			if (flip_screen_get()) { if (sy > 240) sy -= 256; } else { if (sy < 0) sy += 256; }
 			cy = sy + dy;
 			which &= ~1;
 			DRAW_SPRITE(0,sx,cy);
@@ -213,10 +213,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( spdodgeb )
 {
-
 	tilemap_set_scrollx(bg_tilemap,0,lastscroll+5);
-
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

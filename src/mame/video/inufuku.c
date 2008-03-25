@@ -68,7 +68,7 @@ WRITE16_HANDLER( inufuku_scrollreg_w )
 
 ******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -222,8 +222,8 @@ WRITE16_HANDLER( inufuku_text_videoram_w )
 
 VIDEO_START( inufuku )
 {
-	inufuku_bg_tilemap = tilemap_create(get_inufuku_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
-	inufuku_text_tilemap = tilemap_create(get_inufuku_text_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
+	inufuku_bg_tilemap = tilemap_create(get_inufuku_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
+	inufuku_text_tilemap = tilemap_create(get_inufuku_text_tile_info, tilemap_scan_rows,  8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(inufuku_bg_tilemap, 255);
 	tilemap_set_transparent_pen(inufuku_text_tilemap, 255);
@@ -240,7 +240,7 @@ VIDEO_UPDATE( inufuku )
 {
 	int i;
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	fillbitmap(priority_bitmap, 0, NULL);
 
 	if (inufuku_bg_raster) {
@@ -258,6 +258,6 @@ VIDEO_UPDATE( inufuku )
 	tilemap_set_scrolly(inufuku_text_tilemap, 0, inufuku_text_scrolly);
 	tilemap_draw(bitmap, cliprect, inufuku_text_tilemap, 0, 4);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

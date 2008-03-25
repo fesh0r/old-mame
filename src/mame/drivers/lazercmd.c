@@ -221,6 +221,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "lazercmd.h"
 #include "cpu/s2650/s2650.h"
 #include "sound/dac.h"
@@ -285,7 +286,7 @@ static WRITE8_HANDLER( lazercmd_data_port_w )
 static READ8_HANDLER( lazercmd_data_port_r )
 {
 	int data;
-	data = input_port_2_r(0) & 0x0f;
+	data = input_port_2_r(machine,0) & 0x0f;
 	return data;
 }
 
@@ -380,16 +381,16 @@ static READ8_HANDLER( lazercmd_hardware_r )
 	switch (offset)
 	{
 		case 0: 			   /* player 1 joysticks */
-			data = input_port_0_r(0);
+			data = input_port_0_r(machine,0);
 			break;
 		case 1: 			   /* player 2 joysticks */
-			data = input_port_1_r(0);
+			data = input_port_1_r(machine,0);
 			break;
 		case 2: 			   /* player 1 + 2 buttons */
-			data = input_port_4_r(0);
+			data = input_port_4_r(machine,0);
 			break;
 		case 3: 			   /* coin slot + start buttons */
-			data = input_port_3_r(0);
+			data = input_port_3_r(machine,0);
 			break;
 		case 4: 			   /* vertical scan counter */
 			data = ((timer_count&0x10)>>1)|((timer_count&0x20)>>3)|((timer_count&0x40)>>5)|((timer_count&0x80)>>7);
@@ -620,17 +621,17 @@ static MACHINE_DRIVER_START( lazercmd )
             thus requiring an extra loading of approx 3-5 */
 	MDRV_CPU_PROGRAM_MAP(lazercmd_map,0)
 	MDRV_CPU_IO_MAP(lazercmd_portmap,0)
-	MDRV_CPU_VBLANK_INT(lazercmd_timer, 128) 	/* 7680 Hz */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(lazercmd_timer, 128) 	/* 7680 Hz */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(HORZ_RES * HORZ_CHR, VERT_RES * VERT_CHR)
 	MDRV_SCREEN_VISIBLE_AREA(0 * HORZ_CHR, HORZ_RES * HORZ_CHR - 1,
 						0 * VERT_CHR, (VERT_RES - 1) * VERT_CHR - 1)
+
 	MDRV_GFXDECODE(lazercmd)
 	MDRV_PALETTE_LENGTH(5)
 
@@ -655,17 +656,17 @@ static MACHINE_DRIVER_START( medlanes )
             thus requiring an extra loading of approx 3-5 */
 	MDRV_CPU_PROGRAM_MAP(medlanes_map,0)
 	MDRV_CPU_IO_MAP(lazercmd_portmap,0)
-	MDRV_CPU_VBLANK_INT(lazercmd_timer, 128) 	/* 7680 Hz */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(lazercmd_timer, 128) 	/* 7680 Hz */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(HORZ_RES * HORZ_CHR, VERT_RES * VERT_CHR)
 	MDRV_SCREEN_VISIBLE_AREA(0 * HORZ_CHR, HORZ_RES * HORZ_CHR - 1,
 						 0 * VERT_CHR, VERT_RES * VERT_CHR - 1)
+
 	MDRV_GFXDECODE(lazercmd)
 	MDRV_PALETTE_LENGTH(5)
 
@@ -690,17 +691,17 @@ static MACHINE_DRIVER_START( bbonk )
             thus requiring an extra loading of approx 3-5 */
 	MDRV_CPU_PROGRAM_MAP(bbonk_map,0)
 	MDRV_CPU_IO_MAP(lazercmd_portmap,0)
-	MDRV_CPU_VBLANK_INT(bbonk_timer, 128) 	/* 7680 Hz */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(bbonk_timer, 128) 	/* 7680 Hz */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(HORZ_RES * HORZ_CHR, VERT_RES * VERT_CHR)
 	MDRV_SCREEN_VISIBLE_AREA(0 * HORZ_CHR, HORZ_RES * HORZ_CHR - 1,
 						0 * VERT_CHR, (VERT_RES - 1) * VERT_CHR - 1)
+
 	MDRV_GFXDECODE(lazercmd)
 	MDRV_PALETTE_LENGTH(5)
 

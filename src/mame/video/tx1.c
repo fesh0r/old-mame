@@ -88,7 +88,7 @@ UINT16 *tx1_rcram;
 size_t tx1_objram_size;
 
 static tilemap *tx1_tilemap;
-static mame_bitmap *tx1_bitmap;
+static bitmap_t *tx1_bitmap;
 static render_texture *tx1_texture;
 
 WRITE16_HANDLER( tx1_vram_w )
@@ -123,36 +123,27 @@ PALETTE_INIT( tx1 )
 {
 	int i;
 
-	for (i = 0; i < 256; ++i)
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x100);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x100; i++)
 	{
-		int bit0, bit1, bit2, bit3;
-		int r, g, b;
+		int r = pal4bit(color_prom[i + 0x000]);
+		int g = pal4bit(color_prom[i + 0x100]);
+		int b = pal4bit(color_prom[i + 0x200]);
 
-		bit0 = BIT(color_prom[i], 0);
-		bit1 = BIT(color_prom[i], 1);
-		bit2 = BIT(color_prom[i], 2);
-		bit3 = BIT(color_prom[i], 3);
-		r = 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
-
-		bit0 = BIT(color_prom[i + 0x100], 0);
-		bit1 = BIT(color_prom[i + 0x100], 1);
-		bit2 = BIT(color_prom[i + 0x100], 2);
-		bit3 = BIT(color_prom[i + 0x100], 3);
-		g = 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
-
-		bit0 = BIT(color_prom[i + 0x200], 0);
-		bit1 = BIT(color_prom[i + 0x200], 1);
-		bit2 = BIT(color_prom[i + 0x200], 2);
-		bit3 = BIT(color_prom[i + 0x200], 3);
-		b = 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
-
-		palette_set_color(machine, i, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
+	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x300;
+
 	/* TODO */
-	for (i = 0; i < 256; ++i)
+	for (i = 0; i < 0x100; i++)
 	{
-		colortable[i] = (color_prom[i + 0x900] & 0xf) + 0x00;
+		UINT8 ctabentry = (color_prom[i + 0x600] & 0x0f) | 0x00;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 }
 
@@ -231,7 +222,7 @@ WRITE16_HANDLER( tx1_flgcs_w )
 
 
 /* Preliminary */
-static void tx1_draw_objects(mame_bitmap *bitmap, const rectangle *cliprect)
+static void tx1_draw_objects(bitmap_t *bitmap, const rectangle *cliprect)
 {
 #define FRAC	16
 
@@ -451,7 +442,7 @@ static void tx1_draw_objects(mame_bitmap *bitmap, const rectangle *cliprect)
 							else
 								color = ~ic162[prom_addr] & 0x3f;
 
-							*BITMAP_ADDR16(bitmap, y, x) = Machine->pens[TX1_COLORS_OBJ + color];
+							*BITMAP_ADDR16(bitmap, y, x) = TX1_COLORS_OBJ + color;
 						}
 					}
 
@@ -477,7 +468,7 @@ static void tx1_draw_objects(mame_bitmap *bitmap, const rectangle *cliprect)
 
 VIDEO_START( tx1 )
 {
-	tx1_tilemap = tilemap_create(get_tx1_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 128, 64);
+	tx1_tilemap = tilemap_create(get_tx1_tile_info, tilemap_scan_rows,  8, 8, 128, 64);
 	tilemap_set_transparent_pen(tx1_tilemap, 0xff);
 
 	/* Allocate a large bitmap that covers the three screens */
@@ -497,7 +488,11 @@ VIDEO_UPDATE( tx1 )
 {
 	int y;
 
-	if ( screen == 0 )
+	const device_config *left_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *center_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "center");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
+
+	if ( screen == left_screen )
 	{
 		rectangle rect = { 0, 768 - 1, 0, 240 - 1 };
 
@@ -505,10 +500,17 @@ VIDEO_UPDATE( tx1 )
 		tilemap_draw(tx1_bitmap, &rect, tx1_tilemap, 0, 0);
 //      tx1_draw_road(tx1_bitmap, &rect);
 		tx1_draw_objects(tx1_bitmap, &rect);
-	}
 
-	for (y = 0; y < 240; ++y)
-		memcpy(BITMAP_ADDR16(bitmap, y, 0), BITMAP_ADDR16(tx1_bitmap, y, screen * 256), sizeof(UINT16) * 256);
+		for (y = 0; y < 240; ++y)
+			memcpy(BITMAP_ADDR16(bitmap, y, 0), BITMAP_ADDR16(tx1_bitmap, y, 0 * 256), sizeof(UINT16) * 256);
+	}
+	else if ( screen == center_screen )
+		for (y = 0; y < 240; ++y)
+			memcpy(BITMAP_ADDR16(bitmap, y, 0), BITMAP_ADDR16(tx1_bitmap, y, 1 * 256), sizeof(UINT16) * 256);
+	else if ( screen == right_screen )
+		for (y = 0; y < 240; ++y)
+			memcpy(BITMAP_ADDR16(bitmap, y, 0), BITMAP_ADDR16(tx1_bitmap, y, 2 * 256), sizeof(UINT16) * 256);
+
 
 	return 0;
 }
@@ -590,19 +592,19 @@ static UINT8 *rod_bmp;
   bit 2 -- 4.7kohm resistor  -- RED
 
 ***************************************************************************/
-PALETTE_INIT( buggyboy )
+PALETTE_INIT( buggybjr )
 {
 	int i;
 
-	for (i = 0; i < 256; ++i)
+	for (i = 0; i < 0x100; i++)
 	{
 		int bit0, bit1, bit2, bit3, bit4;
 		int r, g, b;
 
-		bit0 = BIT(color_prom[i], 0);
-		bit1 = BIT(color_prom[i], 1);
-		bit2 = BIT(color_prom[i], 2);
-		bit3 = BIT(color_prom[i], 3);
+		bit0 = BIT(color_prom[i + 0x000], 0);
+		bit1 = BIT(color_prom[i + 0x000], 1);
+		bit2 = BIT(color_prom[i + 0x000], 2);
+		bit3 = BIT(color_prom[i + 0x000], 3);
 		bit4 = BIT(color_prom[i + 0x300], 2);
 		r = 0x06 * bit4 + 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
 
@@ -620,13 +622,55 @@ PALETTE_INIT( buggyboy )
 		bit4 = BIT(color_prom[i + 0x300], 0);
 		b = 0x06 * bit4 + 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
 
-		palette_set_color(machine, i, MAKE_RGB(r,g,b));
+		palette_set_color(machine, i, MAKE_RGB(r, g, b));
+	}
+}
+
+PALETTE_INIT( buggyboy )
+{
+	int i;
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x100);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x100; i++)
+	{
+		int bit0, bit1, bit2, bit3, bit4;
+		int r, g, b;
+
+		bit0 = BIT(color_prom[i + 0x000], 0);
+		bit1 = BIT(color_prom[i + 0x000], 1);
+		bit2 = BIT(color_prom[i + 0x000], 2);
+		bit3 = BIT(color_prom[i + 0x000], 3);
+		bit4 = BIT(color_prom[i + 0x300], 2);
+		r = 0x06 * bit4 + 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
+
+		bit0 = BIT(color_prom[i + 0x100], 0);
+		bit1 = BIT(color_prom[i + 0x100], 1);
+		bit2 = BIT(color_prom[i + 0x100], 2);
+		bit3 = BIT(color_prom[i + 0x100], 3);
+		bit4 = BIT(color_prom[i + 0x300], 1);
+		g = 0x06 * bit4 + 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
+
+		bit0 = BIT(color_prom[i + 0x200], 0);
+		bit1 = BIT(color_prom[i + 0x200], 1);
+		bit2 = BIT(color_prom[i + 0x200], 2);
+		bit3 = BIT(color_prom[i + 0x200], 3);
+		bit4 = BIT(color_prom[i + 0x300], 0);
+		b = 0x06 * bit4 + 0x0d * bit0 + 0x1e * bit1 + 0x41 * bit2 + 0x8a * bit3;
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
+	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x400;
+
 	/* Characters use colours 192-255 */
-	for (i = 0; i < 256; ++i)
+	for (i = 0; i < 0x100; i++)
 	{
-		colortable[i] = 192 + color_prom[i + 0x400] + ((i & 0xc0) >> 2);
+		UINT8 ctabentry = 0xc0 | (((i & 0xc0) >> 2)) | (color_prom[i] & 0x0f);
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 }
 
@@ -1566,7 +1610,7 @@ WRITE16_HANDLER( buggyboy_scolst_w )
 
 VIDEO_START( buggyboy )
 {
-	buggyboy_tilemap = tilemap_create(get_buggyboy_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 128, 64);
+	buggyboy_tilemap = tilemap_create(get_buggyboy_tile_info, tilemap_scan_rows,  8, 8, 128, 64);
 	tilemap_set_transparent_pen(buggyboy_tilemap, 0);
 }
 
@@ -1574,10 +1618,21 @@ VIDEO_START( buggyboy )
 
 VIDEO_UPDATE( buggyboy )
 {
-	/* The video hardware seems to use one large tilemap, scroll it to the right position for each screen */
-	int xscrollamount = screen * 256;
-	tilemap_set_scrollx(buggyboy_tilemap, 0, xscrollamount);
+	int xscrollamount = 0;
 
+	const device_config *left_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *center_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "center");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
+
+	/* The video hardware seems to use one large tilemap, scroll it to the right position for each screen */
+	if ( screen == left_screen )
+		xscrollamount = 0 * 256;
+	else if ( screen == center_screen )
+		xscrollamount = 1 * 256;
+	else if ( screen == right_screen )
+		xscrollamount = 2 * 256;
+
+	tilemap_set_scrollx(buggyboy_tilemap, 0, xscrollamount);
 	tilemap_draw(bitmap, cliprect, buggyboy_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 	return 0;
 }

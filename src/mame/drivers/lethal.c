@@ -230,7 +230,7 @@ static NVRAM_HANDLER( lethalen )
 
 static READ8_HANDLER( control2_r )
 {
-	return 0x02 | EEPROM_read_bit() | (input_port_1_r(0) & 0xf0);
+	return 0x02 | EEPROM_read_bit() | (input_port_1_r(machine,0) & 0xf0);
 }
 
 static WRITE8_HANDLER( control2_w )
@@ -257,7 +257,7 @@ static INTERRUPT_GEN(lethalen_interrupt)
 
 static WRITE8_HANDLER( sound_cmd_w )
 {
-	soundlatch_w(0, data);
+	soundlatch_w(machine, 0, data);
 }
 
 static WRITE8_HANDLER( sound_irq_w )
@@ -301,7 +301,7 @@ static READ8_HANDLER( le_4800_r )
 				case 0x44:
 				case 0x45:
 				case 0x46:
-					return K053244_r(offset-0x40);
+					return K053244_r(machine,offset-0x40);
 					break;
 
 				case 0x80:
@@ -336,24 +336,24 @@ static READ8_HANDLER( le_4800_r )
 				case 0x9d:
 				case 0x9e:
 				case 0x9f:
-					return K054000_r(offset-0x80);
+					return K054000_r(machine,offset-0x80);
 					break;
 
 				case 0xca:
-					return sound_status_r(0);
+					return sound_status_r(machine,0);
 					break;
 			}
 		}
 		else if (offset < 0x1800)
-			return K053245_r((offset - 0x0800) & 0x07ff);
+			return K053245_r(machine,(offset - 0x0800) & 0x07ff);
 		else if (offset < 0x2000)
-			return K056832_ram_code_lo_r(offset - 0x1800);
+			return K056832_ram_code_lo_r(machine,offset - 0x1800);
 		else if (offset < 0x2800)
-			return K056832_ram_code_hi_r(offset - 0x2000);
+			return K056832_ram_code_hi_r(machine,offset - 0x2000);
 		else if (offset < 0x3000)
-			return K056832_ram_attr_lo_r(offset - 0x2800);
+			return K056832_ram_attr_lo_r(machine,offset - 0x2800);
 		else // (offset < 0x3800)
-			return K056832_ram_attr_hi_r(offset - 0x3000);
+			return K056832_ram_attr_hi_r(machine,offset - 0x3000);
 	}
 
 	return 0;
@@ -363,7 +363,7 @@ static WRITE8_HANDLER( le_4800_w )
 {
 	if (cur_control2 & 0x10)	// RAM enable
 	{
-		paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
+		paletteram_xBBBBBGGGGGRRRRR_be_w(machine,offset,data);
 	}
 	else
 	{
@@ -372,11 +372,11 @@ static WRITE8_HANDLER( le_4800_w )
 			switch (offset)
 			{
 				case 0xc6:
-					sound_cmd_w(0, data);
+					sound_cmd_w(machine, 0, data);
 					break;
 
 				case 0xc7:
-					sound_irq_w(0, data);
+					sound_irq_w(machine, 0, data);
 					break;
 
 				case 0x40:
@@ -386,7 +386,7 @@ static WRITE8_HANDLER( le_4800_w )
 				case 0x44:
 				case 0x45:
 				case 0x46:
-					K053244_w(offset-0x40, data);
+					K053244_w(machine, offset-0x40, data);
 					break;
 
 				case 0x80:
@@ -421,7 +421,7 @@ static WRITE8_HANDLER( le_4800_w )
 				case 0x9d:
 				case 0x9e:
 				case 0x9f:
-					K054000_w(offset-0x80, data);
+					K054000_w(machine, offset-0x80, data);
 					break;
 
 				default:
@@ -431,24 +431,24 @@ static WRITE8_HANDLER( le_4800_w )
 		}
 		else if (offset < 0x1800)
 		{
-			K053245_w((offset - 0x0800) & 0x07ff, data);
+			K053245_w(machine, (offset - 0x0800) & 0x07ff, data);
 
 		}
 		else if (offset < 0x2000)
-			K056832_ram_code_lo_w(offset - 0x1800, data);
+			K056832_ram_code_lo_w(machine, offset - 0x1800, data);
 		else if (offset < 0x2800)
-			K056832_ram_code_hi_w(offset - 0x2000, data);
+			K056832_ram_code_hi_w(machine, offset - 0x2000, data);
 		else if (offset < 0x3000)
-			K056832_ram_attr_lo_w(offset - 0x2800, data);
+			K056832_ram_attr_lo_w(machine, offset - 0x2800, data);
 		else // (offset < 0x3800)
-			K056832_ram_attr_hi_w(offset - 0x3000, data);
+			K056832_ram_attr_hi_w(machine, offset - 0x3000, data);
 	}
 }
 
 // use one more palette entry for the BG color
 static WRITE8_HANDLER(le_bgcolor_w)
 {
-	paletteram_xBBBBBGGGGGRRRRR_be_w(0x3800+offset, data);
+	paletteram_xBBBBBGGGGGRRRRR_be_w(machine,0x3800+offset, data);
 }
 
 static READ8_HANDLER(guns_r)
@@ -489,11 +489,11 @@ static READ8_HANDLER(gunsaux_r)
 }
 
 static ADDRESS_MAP_START( le_main, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_BANK1) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_BANK1) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x2000, 0x3fff) AM_RAM				// work RAM
 	AM_RANGE(0x4000, 0x403f) AM_WRITE(K056832_w)
 	AM_RANGE(0x4040, 0x404f) AM_WRITE(K056832_b_w)
-	AM_RANGE(0x4080, 0x4080) AM_READ(MRA8_NOP)		// watchdog
+	AM_RANGE(0x4080, 0x4080) AM_READ(SMH_NOP)		// watchdog
 	AM_RANGE(0x4090, 0x4090) AM_READNOP
 	AM_RANGE(0x40a0, 0x40a0) AM_READNOP
 	AM_RANGE(0x40c4, 0x40c4) AM_WRITE(control2_w)
@@ -505,7 +505,7 @@ static ADDRESS_MAP_START( le_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x40dc, 0x40dc) AM_WRITE(le_bankswitch_w)
 	AM_RANGE(0x47fe, 0x47ff) AM_WRITE(le_bgcolor_w)		// BG color
 	AM_RANGE(0x4800, 0x7fff) AM_READWRITE(le_4800_r, le_4800_w)	AM_BASE(&paletteram) // bankswitched: RAM and registers
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK2) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK2) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( le_sound, ADDRESS_SPACE_PROGRAM, 8 )
@@ -656,13 +656,10 @@ static MACHINE_DRIVER_START( lethalen )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", HD6309, MAIN_CLOCK/2)	// ???
 	MDRV_CPU_PROGRAM_MAP(le_main, 0)
-	MDRV_CPU_VBLANK_INT(lethalen_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", lethalen_interrupt)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 8000000)
 	MDRV_CPU_PROGRAM_MAP(le_sound, 0)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_START(lethalen)
 	MDRV_MACHINE_RESET(lethalen)
@@ -672,7 +669,11 @@ static MACHINE_DRIVER_START( lethalen )
 	MDRV_GFXDECODE(lethal)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(216, 504-1, 16, 240-1)
@@ -694,6 +695,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( lethalej )
 	MDRV_IMPORT_FROM(lethalen)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(224, 512-1, 16, 240-1)
 MACHINE_DRIVER_END
 

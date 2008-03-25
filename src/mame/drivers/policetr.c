@@ -128,7 +128,7 @@ static TIMER_CALLBACK( irq5_gen )
 static INTERRUPT_GEN( irq4_gen )
 {
 	cpunum_set_input_line(machine, 0, R3000_IRQ4, ASSERT_LINE);
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, irq5_gen);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, irq5_gen);
 }
 
 
@@ -188,7 +188,7 @@ static WRITE32_HANDLER( control_w )
 	/* toggling BSMT off then on causes a reset */
 	if (!(old & 0x80000000) && (control_data & 0x80000000))
 	{
-		BSMT2000_data_0_w(bsmt_data_bank, 0, 0);
+		BSMT2000_data_0_w(machine, bsmt_data_bank, 0, 0);
 		sndti_reset(SOUND_BSMT2000, 0);
 	}
 
@@ -208,7 +208,7 @@ static WRITE32_HANDLER( control_w )
 static WRITE32_HANDLER( bsmt2000_reg_w )
 {
 	if (control_data & 0x80000000)
-		BSMT2000_data_0_w(bsmt_reg, data & 0xffff, mem_mask | 0xffff0000);
+		BSMT2000_data_0_w(machine, bsmt_reg, data & 0xffff, mem_mask | 0xffff0000);
 	else
 		COMBINE_DATA(&bsmt_data_offset);
 }
@@ -383,28 +383,16 @@ static INPUT_PORTS_START( policetr )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ))
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
-	PORT_DIPSETTING(    0x01, DEF_STR( On ))
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ))
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
-	PORT_DIPSETTING(    0x02, DEF_STR( On ))
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ))
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
-	PORT_DIPSETTING(    0x04, DEF_STR( On ))
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ))
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
-	PORT_DIPSETTING(    0x08, DEF_STR( On ))
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unknown ))
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
-	PORT_DIPSETTING(    0x10, DEF_STR( On ))
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown )) /* Manuals show dips 1 through 6 as unused */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
-	PORT_DIPSETTING(    0x20, DEF_STR( On ))
-	PORT_DIPNAME( 0x40, 0x40, "Monitor Sync")
+	PORT_DIPUNUSED_DIPLOC( 0x01, 0x01, "SW1:1" )
+	PORT_DIPUNUSED_DIPLOC( 0x02, 0x02, "SW1:2" )
+	PORT_DIPUNUSED_DIPLOC( 0x04, 0x04, "SW1:3" )
+	PORT_DIPUNUSED_DIPLOC( 0x08, 0x08, "SW1:4" )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x10, "SW1:5" )
+	PORT_DIPUNUSED_DIPLOC( 0x20, 0x20, "SW1:6" )
+	PORT_DIPNAME( 0x40, 0x40, "Monitor Sync") PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(    0x00, "+")
 	PORT_DIPSETTING(    0x40, "-")
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen )) /* For use with mirrored CRTs - Not supported */
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen )) PORT_DIPLOCATION("SW1:8") /* For use with mirrored CRTs - Not supported */
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x80, DEF_STR( On ))	/* Will invert the Y axis of guns */
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -478,17 +466,19 @@ static MACHINE_DRIVER_START( policetr )
 	MDRV_CPU_ADD_TAG("main", R3000BE, MASTER_CLOCK/2)
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(policetr_map,0)
-	MDRV_CPU_VBLANK_INT(irq4_gen,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", irq4_gen)
 
 	MDRV_NVRAM_HANDLER(policetr)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400, 262)	/* needs to be verified */
 	MDRV_SCREEN_VISIBLE_AREA(0, 393, 0, 239)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(policetr)

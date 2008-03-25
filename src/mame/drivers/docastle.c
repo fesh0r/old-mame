@@ -126,6 +126,7 @@ more sprite tiles, it also has a MSM5205 chip for sample playback.
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/msm5205.h"
 #include "sound/sn76496.h"
 #include "includes/docastle.h"
@@ -187,8 +188,8 @@ static ADDRESS_MAP_START( docastle_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9800, 0x99ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xa000, 0xa008) AM_READWRITE(docastle_shared0_r, docastle_shared1_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_READWRITE(MRA8_RAM, docastle_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_READWRITE(MRA8_RAM, docastle_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(docastle_nmitrigger_w)
 ADDRESS_MAP_END
 
@@ -218,7 +219,7 @@ static ADDRESS_MAP_START( docastle_map3, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( docastle_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_NOP // goes to CRT 46505S
 	AM_RANGE(0x02, 0x02) AM_NOP // goes to CRT 46505S
 ADDRESS_MAP_END
@@ -231,8 +232,8 @@ static ADDRESS_MAP_START( dorunrun_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x9fff) AM_ROM
 	AM_RANGE(0xa000, 0xa008) AM_READWRITE(docastle_shared0_r, docastle_shared1_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xb000, 0xb3ff) AM_READWRITE(MRA8_RAM, docastle_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xb400, 0xb7ff) AM_READWRITE(MRA8_RAM, docastle_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb000, 0xb3ff) AM_READWRITE(SMH_RAM, docastle_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xb400, 0xb7ff) AM_READWRITE(SMH_RAM, docastle_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xb800, 0xb800) AM_WRITE(docastle_nmitrigger_w)
 ADDRESS_MAP_END
 
@@ -261,8 +262,8 @@ static ADDRESS_MAP_START( idsoccer_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x9fff) AM_ROM
 	AM_RANGE(0xa000, 0xa008) AM_READWRITE(docastle_shared0_r, docastle_shared1_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_READWRITE(MRA8_RAM, docastle_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_READWRITE(MRA8_RAM, docastle_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xc000, 0xc000) AM_READWRITE(idsoccer_adpcm_status_r, idsoccer_adpcm_w)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(docastle_nmitrigger_w)
 ADDRESS_MAP_END
@@ -630,24 +631,25 @@ static MACHINE_DRIVER_START( docastle )
 	MDRV_CPU_ADD_TAG("main", Z80, 3900000)	// make dip switches work in docastle and dorunrun
 	MDRV_CPU_PROGRAM_MAP(docastle_map, 0)
 	MDRV_CPU_IO_MAP(docastle_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD_TAG("slave", Z80, 4000000)	// 4 MHz
 	MDRV_CPU_PROGRAM_MAP(docastle_map2, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 8)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 8)
 
 	MDRV_CPU_ADD(Z80, 4000000)	// 4 MHz
 	MDRV_CPU_PROGRAM_MAP(docastle_map3, 0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 28*8-1)
+
 	MDRV_GFXDECODE(docastle)
 	MDRV_PALETTE_LENGTH(512)
 

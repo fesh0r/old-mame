@@ -85,9 +85,9 @@ static INTERRUPT_GEN( pingpong_interrupt )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x9000, 0x97ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x9000, 0x97ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa800, 0xa800) AM_READ(input_port_0_r)
 	AM_RANGE(0xa880, 0xa880) AM_READ(input_port_1_r)
 	AM_RANGE(0xa900, 0xa900) AM_READ(input_port_2_r)
@@ -95,14 +95,14 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x83ff) AM_WRITE(pingpong_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x8400, 0x87ff) AM_WRITE(pingpong_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x9000, 0x9002) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x9003, 0x9052) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x9053, 0x97ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x9000, 0x9002) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x9003, 0x9052) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x9053, 0x97ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(coin_w)	/* coin counters + irq enables */
-	AM_RANGE(0xa200, 0xa200) AM_WRITE(MWA8_NOP)		/* SN76496 data latch */
+	AM_RANGE(0xa200, 0xa200) AM_WRITE(SMH_NOP)		/* SN76496 data latch */
 	AM_RANGE(0xa400, 0xa400) AM_WRITE(SN76496_0_w)	/* trigger read */
 	AM_RANGE(0xa600, 0xa600) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
@@ -123,7 +123,7 @@ static ADDRESS_MAP_START( merlinmm_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa080, 0xa080) AM_READ(input_port_1_r)
 	AM_RANGE(0xa100, 0xa100) AM_READ(input_port_2_r)
 	AM_RANGE(0xa180, 0xa180) AM_READ(input_port_3_r)
-	AM_RANGE(0xa200, 0xa200) AM_WRITE(MWA8_NOP)		/* SN76496 data latch */
+	AM_RANGE(0xa200, 0xa200) AM_WRITE(SMH_NOP)		/* SN76496 data latch */
 	AM_RANGE(0xa400, 0xa400) AM_WRITE(SN76496_0_w)	/* trigger read */
 	AM_RANGE(0xa600, 0xa600) AM_WRITE(watchdog_reset_w)
 ADDRESS_MAP_END
@@ -457,19 +457,18 @@ static MACHINE_DRIVER_START( pingpong )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("cpu",Z80,18432000/6)		/* 3.072 MHz (probably) */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(pingpong_interrupt,16)	/* 1 IRQ + 8 NMI */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(pingpong_interrupt,16)	/* 1 IRQ + 8 NMI */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(pingpong)
-	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(64*4+64*4)
+	MDRV_PALETTE_LENGTH(64*4+64*4)
 
 	MDRV_PALETTE_INIT(pingpong)
 	MDRV_VIDEO_START(pingpong)
@@ -487,7 +486,7 @@ static MACHINE_DRIVER_START( merlinmm )
 	MDRV_IMPORT_FROM( pingpong )
 	MDRV_CPU_MODIFY("cpu")
 	MDRV_CPU_PROGRAM_MAP(merlinmm_map,0)
-	MDRV_CPU_VBLANK_INT(pingpong_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(pingpong_interrupt,2)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 MACHINE_DRIVER_END
@@ -512,8 +511,8 @@ ROM_START( pingpong )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "pingpong.3j",  0x0000, 0x0020, CRC(3e04f06e) SHA1(a642c350f148e062d56eb2a2fc53c470603000e3) ) /* palette (this might be bad) */
-	ROM_LOAD( "pingpong.11j", 0x0020, 0x0100, CRC(09d96b08) SHA1(81405e33eacc47f91ea4c7221d122f7e6f5b1e5d) ) /* sprites */
-	ROM_LOAD( "pingpong.5h",  0x0120, 0x0100, CRC(8456046a) SHA1(8226f1325c14eb8aed5cd3c3d6bad9f9fd88c5fa) ) /* characters */
+	ROM_LOAD( "pingpong.5h",  0x0020, 0x0100, CRC(8456046a) SHA1(8226f1325c14eb8aed5cd3c3d6bad9f9fd88c5fa) ) /* characters */
+	ROM_LOAD( "pingpong.11j", 0x0120, 0x0100, CRC(09d96b08) SHA1(81405e33eacc47f91ea4c7221d122f7e6f5b1e5d) ) /* sprites */
 ROM_END
 
 ROM_START( merlinmm )
@@ -528,8 +527,8 @@ ROM_START( merlinmm )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "merlinmm.3j",  0x0000, 0x0020, CRC(d56e91f4) SHA1(152d88e4d168f697030d96c02ab9aeb220cc765d) ) /* palette */
-	ROM_LOAD( "pingpong.11j", 0x0020, 0x0100, CRC(09d96b08) SHA1(81405e33eacc47f91ea4c7221d122f7e6f5b1e5d) ) /* sprites */
-	ROM_LOAD( "pingpong.5h",  0x0120, 0x0100, CRC(8456046a) SHA1(8226f1325c14eb8aed5cd3c3d6bad9f9fd88c5fa) ) /* characters */
+	ROM_LOAD( "pingpong.5h",  0x0020, 0x0100, CRC(8456046a) SHA1(8226f1325c14eb8aed5cd3c3d6bad9f9fd88c5fa) ) /* characters */
+	ROM_LOAD( "pingpong.11j", 0x0120, 0x0100, CRC(09d96b08) SHA1(81405e33eacc47f91ea4c7221d122f7e6f5b1e5d) ) /* sprites */
 ROM_END
 
 ROM_START( cashquiz )
@@ -564,8 +563,8 @@ ROM_START( cashquiz )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "cashquiz.3j",  0x0000, 0x0020, CRC(dc70e23b) SHA1(90948f76d5c61eb57838e013aa93d733913a2d92) ) /* palette */
-	ROM_LOAD( "pingpong.11j", 0x0020, 0x0100, CRC(09d96b08) SHA1(81405e33eacc47f91ea4c7221d122f7e6f5b1e5d) ) /* sprites */
-	ROM_LOAD( "pingpong.5h",  0x0120, 0x0100, CRC(8456046a) SHA1(8226f1325c14eb8aed5cd3c3d6bad9f9fd88c5fa) ) /* characters */
+	ROM_LOAD( "pingpong.5h",  0x0020, 0x0100, CRC(8456046a) SHA1(8226f1325c14eb8aed5cd3c3d6bad9f9fd88c5fa) ) /* characters */
+	ROM_LOAD( "pingpong.11j", 0x0120, 0x0100, CRC(09d96b08) SHA1(81405e33eacc47f91ea4c7221d122f7e6f5b1e5d) ) /* sprites */
 ROM_END
 
 static DRIVER_INIT( merlinmm )
@@ -598,14 +597,14 @@ static DRIVER_INIT( cashquiz )
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4001, 0x4001, 0, 0, cashquiz_question_bank_low_w);
 
 	// 8 independents banks for questions
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x50ff, 0, 0, MRA8_BANK1);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5100, 0x51ff, 0, 0, MRA8_BANK2);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5200, 0x52ff, 0, 0, MRA8_BANK3);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5300, 0x53ff, 0, 0, MRA8_BANK4);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5400, 0x54ff, 0, 0, MRA8_BANK5);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5500, 0x55ff, 0, 0, MRA8_BANK6);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5600, 0x56ff, 0, 0, MRA8_BANK7);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5700, 0x57ff, 0, 0, MRA8_BANK8);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x50ff, 0, 0, SMH_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5100, 0x51ff, 0, 0, SMH_BANK2);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5200, 0x52ff, 0, 0, SMH_BANK3);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5300, 0x53ff, 0, 0, SMH_BANK4);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5400, 0x54ff, 0, 0, SMH_BANK5);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5500, 0x55ff, 0, 0, SMH_BANK6);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5600, 0x56ff, 0, 0, SMH_BANK7);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5700, 0x57ff, 0, 0, SMH_BANK8);
 
 	// setup default banks
 	for(i = 0; i < 8; i++)
@@ -613,6 +612,6 @@ static DRIVER_INIT( cashquiz )
 }
 
 
-GAME( 1985, pingpong, 0, pingpong, pingpong, 0,		   ROT0, "Konami", "Ping Pong", 0 )
+GAME( 1985, pingpong, 0, pingpong, pingpong, 0,		   ROT0, "Konami", "Konami's Ping-Pong", 0 )
 GAME( 1986, merlinmm, 0, merlinmm, merlinmm, merlinmm, ROT90,"Zilec - Zenitone", "Merlins Money Maze", 0 )
 GAME( 1986, cashquiz, 0, merlinmm, cashquiz, cashquiz, ROT0, "Zilec - Zenitone", "Cash Quiz (Type B, Version 5)", GAME_IMPERFECT_GRAPHICS )

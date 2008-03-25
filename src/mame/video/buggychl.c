@@ -9,7 +9,7 @@ UINT8 *buggychl_character_ram;
 
 static int *dirtychar;
 
-static mame_bitmap *tmpbitmap1,*tmpbitmap2;
+static bitmap_t *tmpbitmap1,*tmpbitmap2;
 static int sl_bank,bg_on,sky_on,sprite_color_base,bg_scrollx;
 
 
@@ -29,8 +29,8 @@ PALETTE_INIT( buggychl )
 VIDEO_START( buggychl )
 {
 	dirtychar = auto_malloc(256 * sizeof(*dirtychar));
-	tmpbitmap1 = auto_bitmap_alloc(256,256,machine->screen[0].format);
-	tmpbitmap2 = auto_bitmap_alloc(256,256,machine->screen[0].format);
+	tmpbitmap1 = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmpbitmap2 = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	memset(dirtychar,0xff,256 * sizeof(*dirtychar));
 }
@@ -89,21 +89,17 @@ WRITE8_HANDLER( buggychl_bg_scrollx_w )
 
 
 
-static void draw_sky(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sky(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int x,y;
 
 	for (y = 0;y < 256;y++)
-	{
 		for (x = 0;x < 256;x++)
-		{
-			*BITMAP_ADDR16(bitmap, y, x) = machine->pens[128 + x/2];
-		}
-	}
+			*BITMAP_ADDR16(bitmap, y, x) = 128 + x/2;
 }
 
 
-static void draw_bg(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_bg(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 	int scroll[256];
@@ -115,13 +111,13 @@ static void draw_bg(running_machine *machine, mame_bitmap *bitmap, const rectang
 		int sx = offs % 32;
 		int sy = offs / 32;
 
-		if (flip_screen_x) sx = 31 - sx;
-		if (flip_screen_y) sy = 31 - sy;
+		if (flip_screen_x_get()) sx = 31 - sx;
+		if (flip_screen_y_get()) sy = 31 - sy;
 
 		drawgfx(tmpbitmap1,machine->gfx[0],
 				code,
 				2,
-				flip_screen_x,flip_screen_y,
+				flip_screen_x_get(),flip_screen_y_get(),
 				8*sx,8*sy,
 				NULL,TRANSPARENCY_NONE,0);
 	}
@@ -136,11 +132,11 @@ static void draw_bg(running_machine *machine, mame_bitmap *bitmap, const rectang
 	for (offs = 0;offs < 256;offs++)
 		scroll[offs] = -buggychl_scrollh[offs];
 
-	copyscrollbitmap_trans(bitmap,tmpbitmap2,256,scroll,0,0,cliprect,machine->pens[32]);
+	copyscrollbitmap_trans(bitmap,tmpbitmap2,256,scroll,0,0,cliprect,32);
 }
 
 
-static void draw_fg(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_fg(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -154,20 +150,20 @@ static void draw_fg(running_machine *machine, mame_bitmap *bitmap, const rectang
 
 		int code = videoram[offs];
 
-		if (flip_screen_x) sx = 31 - sx;
-		if (flip_screen_y) sy = 31 - sy;
+		if (flip_screen_x_get()) sx = 31 - sx;
+		if (flip_screen_y_get()) sy = 31 - sy;
 
 		drawgfx(bitmap,machine->gfx[0],
 				code,
 				0,
-				flip_screen_x,flip_screen_y,
+				flip_screen_x_get(),flip_screen_y_get(),
 				8*sx,8*sy,
 				cliprect,transp,0);
 	}
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -191,7 +187,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		for (y = 0;y < 64;y++)
 		{
-			int dy = flip_screen_y ? (255 - sy - y) : (sy + y);
+			int dy = flip_screen_y_get() ? (255 - sy - y) : (sy + y);
 
 			if ((dy & ~0xff) == 0)
 			{
@@ -220,9 +216,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 						col = pendata[x];
 						if (col)
 						{
-							int dx = flip_screen_x ? (255 - sx - px) : (sx + px);
+							int dx = flip_screen_x_get() ? (255 - sx - px) : (sx + px);
 							if ((dx & ~0xff) == 0)
-								*BITMAP_ADDR16(bitmap, dy, dx) = machine->pens[sprite_color_base+col];
+								*BITMAP_ADDR16(bitmap, dy, dx) = sprite_color_base + col;
 						}
 
 						/* the following line is almost certainly wrong */
@@ -244,23 +240,21 @@ VIDEO_UPDATE( buggychl )
 
 
 	if (sky_on)
-		draw_sky(machine, bitmap, cliprect);
+		draw_sky(bitmap, cliprect);
 	else
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 
 	/* decode modified characters */
 	for (code = 0;code < 256;code++)
-	{
 		if (dirtychar[code])
-			decodechar(machine->gfx[0],code,buggychl_character_ram);
-	}
+			decodechar(screen->machine->gfx[0],code,buggychl_character_ram);
 
 	if (bg_on)
-		draw_bg(machine, bitmap, cliprect);
+		draw_bg(screen->machine, bitmap, cliprect);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
-	draw_fg(machine, bitmap, cliprect);
+	draw_fg(screen->machine, bitmap, cliprect);
 
 	for (code = 0;code < 256;code++)
 		dirtychar[code] = 0;

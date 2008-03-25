@@ -18,7 +18,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START(igs_180)
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
 }
 
 static VIDEO_UPDATE(igs_180)
@@ -129,17 +129,17 @@ static MACHINE_DRIVER_START( igs_180 )
 	MDRV_CPU_ADD(Z180,16000000)	/* 16 MHz? */
 	MDRV_CPU_PROGRAM_MAP(igs_180_map,0)
 	MDRV_CPU_IO_MAP(igs_180_portmap,0)
-	MDRV_CPU_VBLANK_INT(igs_180_interrupt,2)
-	//MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(igs_180_interrupt,2)
+	//MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(igs_180)
 	MDRV_PALETTE_LENGTH(1024)
 

@@ -189,7 +189,7 @@ static TIMER_CALLBACK( sh2_timer_callback );
 INLINE UINT8 RB(offs_t A)
 {
 	if (A >= 0xe0000000)
-		return sh2_internal_r((A & 0x1fc)>>2, ~(0xff << (((~A) & 3)*8))) >> (((~A) & 3)*8);
+		return sh2_internal_r(Machine, (A & 0x1fc)>>2, ~(0xff << (((~A) & 3)*8))) >> (((~A) & 3)*8);
 
 	if (A >= 0xc0000000)
 		return program_read_byte_32be(A);
@@ -203,7 +203,7 @@ INLINE UINT8 RB(offs_t A)
 INLINE UINT16 RW(offs_t A)
 {
 	if (A >= 0xe0000000)
-		return sh2_internal_r((A & 0x1fc)>>2, ~(0xffff << (((~A) & 2)*8))) >> (((~A) & 2)*8);
+		return sh2_internal_r(Machine, (A & 0x1fc)>>2, ~(0xffff << (((~A) & 2)*8))) >> (((~A) & 2)*8);
 
 	if (A >= 0xc0000000)
 		return program_read_word_32be(A);
@@ -217,7 +217,7 @@ INLINE UINT16 RW(offs_t A)
 INLINE UINT32 RL(offs_t A)
 {
 	if (A >= 0xe0000000)
-		return sh2_internal_r((A & 0x1fc)>>2, 0);
+		return sh2_internal_r(Machine, (A & 0x1fc)>>2, 0);
 
 	if (A >= 0xc0000000)
 		return program_read_dword_32be(A);
@@ -233,7 +233,7 @@ INLINE void WB(offs_t A, UINT8 V)
 
 	if (A >= 0xe0000000)
 	{
-		sh2_internal_w((A & 0x1fc)>>2, V << (((~A) & 3)*8), ~(0xff << (((~A) & 3)*8)));
+		sh2_internal_w(Machine, (A & 0x1fc)>>2, V << (((~A) & 3)*8), ~(0xff << (((~A) & 3)*8)));
 		return;
 	}
 
@@ -253,7 +253,7 @@ INLINE void WW(offs_t A, UINT16 V)
 {
 	if (A >= 0xe0000000)
 	{
-		sh2_internal_w((A & 0x1fc)>>2, V << (((~A) & 2)*8), ~(0xffff << (((~A) & 2)*8)));
+		sh2_internal_w(Machine, (A & 0x1fc)>>2, V << (((~A) & 2)*8), ~(0xffff << (((~A) & 2)*8)));
 		return;
 	}
 
@@ -273,7 +273,7 @@ INLINE void WL(offs_t A, UINT32 V)
 {
 	if (A >= 0xe0000000)
 	{
-		sh2_internal_w((A & 0x1fc)>>2, V, 0);
+		sh2_internal_w(Machine, (A & 0x1fc)>>2, V, 0);
 		return;
 	}
 
@@ -2408,7 +2408,7 @@ static void sh2_timer_activate(void)
 	int max_delta = 0xfffff;
 	UINT16 frc;
 
-	timer_adjust(sh2.timer, attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh2.timer, attotime_never, 0);
 
 	frc = sh2.frc;
 	if(!(sh2.m[4] & OCFA)) {
@@ -2434,7 +2434,7 @@ static void sh2_timer_activate(void)
 		if(divider) {
 			max_delta <<= divider;
 			sh2.frc_base = cpunum_gettotalcycles(sh2.cpu_number);
-			timer_adjust(sh2.timer, ATTOTIME_IN_CYCLES(max_delta, sh2.cpu_number), sh2.cpu_number, attotime_zero);
+			timer_adjust_oneshot(sh2.timer, ATTOTIME_IN_CYCLES(max_delta, sh2.cpu_number), sh2.cpu_number);
 		} else {
 			logerror("SH2.%d: Timer event in %d cycles of external clock", sh2.cpu_number, max_delta);
 		}
@@ -2554,7 +2554,7 @@ static void sh2_dmac_check(int dma)
 			LOG(("SH2: DMA %d start %x, %x, %x, %04x, %d, %d, %d\n", dma, src, dst, count, sh2.m[0x63+4*dma], incs, incd, size));
 
 			sh2.dma_timer_active[dma] = 1;
-			timer_adjust(sh2.dma_timer[dma], ATTOTIME_IN_CYCLES(2*count+1, sh2.cpu_number), (sh2.cpu_number<<1)|dma, attotime_zero);
+			timer_adjust_oneshot(sh2.dma_timer[dma], ATTOTIME_IN_CYCLES(2*count+1, sh2.cpu_number), (sh2.cpu_number<<1)|dma);
 
 			src &= AM;
 			dst &= AM;
@@ -2633,7 +2633,7 @@ static void sh2_dmac_check(int dma)
 		if(sh2.dma_timer_active[dma])
 		{
 			logerror("SH2: DMA %d cancelled in-flight", dma);
-			timer_adjust(sh2.dma_timer[dma], attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh2.dma_timer[dma], attotime_never, 0);
 			sh2.dma_timer_active[dma] = 0;
 		}
 	}
@@ -2933,13 +2933,13 @@ static void sh2_init(int index, int clock, const void *config, int (*irqcallback
 	const struct sh2_config *conf = config;
 
 	sh2.timer = timer_alloc(sh2_timer_callback, NULL);
-	timer_adjust(sh2.timer, attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh2.timer, attotime_never, 0);
 
 	sh2.dma_timer[0] = timer_alloc(sh2_dmac_callback, NULL);
-	timer_adjust(sh2.dma_timer[0], attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh2.dma_timer[0], attotime_never, 0);
 
 	sh2.dma_timer[1] = timer_alloc(sh2_dmac_callback, NULL);
-	timer_adjust(sh2.dma_timer[1], attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh2.dma_timer[1], attotime_never, 0);
 
 	sh2.m = auto_malloc(0x200);
 

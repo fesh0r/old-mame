@@ -108,6 +108,12 @@ PALETTE_INIT( m57 )
 }
 
 
+/*************************************
+ *
+ *  Tilemap info callback
+ *
+ *************************************/
+
 static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 attr = videoram[tile_index*2 + 0];
@@ -117,6 +123,12 @@ static TILE_GET_INFO( get_tile_info )
 }
 
 
+/*************************************
+ *
+ *  Video RAM access
+ *
+ *************************************/
+
 WRITE8_HANDLER( m57_videoram_w )
 {
 	videoram[offset] = data;
@@ -124,19 +136,29 @@ WRITE8_HANDLER( m57_videoram_w )
 }
 
 
+/*************************************
+ *
+ *  Video startup
+ *
+ *************************************/
+
 VIDEO_START( m57 )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 	tilemap_set_scroll_rows(bg_tilemap, 256);
 }
 
 
+/*************************************
+ *
+ *  Outputs
+ *
+ *************************************/
+
 WRITE8_HANDLER( m57_flipscreen_w )
 {
 	/* screen flip is handled both by software and hardware */
-	data ^= ~readinputport(4) & 1;
-
-	flipscreen = data & 1;
+	flipscreen = (data & 0x01) ^ (~readinputportbytag("DSW2") & 0x01);
 	tilemap_set_flip(bg_tilemap, flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 	coin_counter_w(0,data & 0x02);
@@ -144,9 +166,13 @@ WRITE8_HANDLER( m57_flipscreen_w )
 }
 
 
+/*************************************
+ *
+ *  Background rendering
+ *
+ *************************************/
 
-
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int y;
 
@@ -155,7 +181,13 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+/*************************************
+ *
+ *  Sprite rendering
+ *
+ *************************************/
+
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -192,9 +224,15 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 
 
+/*************************************
+ *
+ *  Video update
+ *
+ *************************************/
+
 VIDEO_UPDATE( m57 )
 {
-	draw_background(machine, bitmap, cliprect);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_background(screen->machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

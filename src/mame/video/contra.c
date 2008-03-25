@@ -60,7 +60,7 @@ PALETTE_INIT( contra )
 }
 
 
-static void set_pens(running_machine *machine)
+static void set_pens(colortable_t *colortable)
 {
 	int i;
 
@@ -70,7 +70,7 @@ static void set_pens(running_machine *machine)
 
 		rgb_t color = MAKE_RGB(pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
 
-		colortable_palette_set_color(machine->colortable, i >> 1, color);
+		colortable_palette_set_color(colortable, i >> 1, color);
 	}
 }
 
@@ -158,19 +158,19 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( contra )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,     8,8,32,32);
 
 	private_spriteram = auto_malloc(0x800);
 	private_spriteram_2 = auto_malloc(0x800);
 
-	bg_clip = machine->screen[0].visarea;
+	bg_clip = *video_screen_get_visible_area(machine->primary_screen);
 	bg_clip.min_x += 40;
 
 	fg_clip = bg_clip;
 
-	tx_clip = machine->screen[0].visarea;
+	tx_clip = *video_screen_get_visible_area(machine->primary_screen);
 	tx_clip.max_x = 39;
 	tx_clip.min_x = 0;
 
@@ -236,7 +236,7 @@ WRITE8_HANDLER( contra_K007121_ctrl_0_w )
 	if (offset == 7)
 		tilemap_set_flip(fg_tilemap,(data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	K007121_ctrl_0_w(offset,data);
+	K007121_ctrl_0_w(machine,offset,data);
 }
 
 WRITE8_HANDLER( contra_K007121_ctrl_1_w )
@@ -256,7 +256,7 @@ WRITE8_HANDLER( contra_K007121_ctrl_1_w )
 	if (offset == 7)
 		tilemap_set_flip(bg_tilemap,(data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
-	K007121_ctrl_1_w(offset,data);
+	K007121_ctrl_1_w(machine,offset,data);
 }
 
 
@@ -267,7 +267,7 @@ WRITE8_HANDLER( contra_K007121_ctrl_1_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int bank )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int bank )
 {
 	const UINT8 *source;
 	int base_color = (K007121_ctrlram[bank][6]&0x30)*2;
@@ -288,7 +288,7 @@ VIDEO_UPDATE( contra )
 	sect_rect(&fg_finalclip, cliprect);
 	sect_rect(&tx_finalclip, cliprect);
 
-	set_pens(machine);
+	set_pens(screen->machine->colortable);
 
 	tilemap_set_scrollx( fg_tilemap,0, K007121_ctrlram[0][0x00] - 40 );
 	tilemap_set_scrolly( fg_tilemap,0, K007121_ctrlram[0][0x02] );
@@ -297,8 +297,8 @@ VIDEO_UPDATE( contra )
 
 	tilemap_draw( bitmap,&bg_finalclip, bg_tilemap, 0 ,0);
 	tilemap_draw( bitmap,&fg_finalclip, fg_tilemap, 0 ,0);
-	draw_sprites( machine,bitmap,cliprect, 0 );
-	draw_sprites( machine,bitmap,cliprect, 1 );
+	draw_sprites( screen->machine,bitmap,cliprect, 0 );
+	draw_sprites( screen->machine,bitmap,cliprect, 1 );
 	tilemap_draw( bitmap,&tx_finalclip, tx_tilemap, 0 ,0);
 	return 0;
 }

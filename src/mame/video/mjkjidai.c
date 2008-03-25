@@ -32,7 +32,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( mjkjidai )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,64,32);
 }
 
 
@@ -56,7 +56,7 @@ WRITE8_HANDLER( mjkjidai_ctrl_w )
 //  logerror("%04x: port c0 = %02x\n",activecpu_get_pc(),data);
 
 	/* bit 0 = NMI enable */
-	interrupt_enable_w(0,data & 1);
+	interrupt_enable_w(machine,0,data & 1);
 
 	/* bit 1 = flip screen */
 	flip_screen_set(data & 0x02);
@@ -87,7 +87,7 @@ WRITE8_HANDLER( mjkjidai_ctrl_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -104,7 +104,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		sx += (spriteram_2[offs] & 0x20) >> 5;	// not sure about this
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 496 - sx;
 			sy = 240 - sy;
@@ -129,13 +129,11 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( mjkjidai )
 {
 	if (!display_enable)
-	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
-	}
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	else
 	{
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 	}
 	return 0;
 }

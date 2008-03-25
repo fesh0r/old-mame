@@ -79,15 +79,15 @@ static TIMER_CALLBACK( crtc_interrupt_gen )
 {
 	cpunum_set_input_line(machine, 0, 1, HOLD_LINE);
 	if (param != 0)
-		timer_adjust(crtc_timer, attotime_make(0, machine->screen[0].refresh / param), 0, attotime_make(0, machine->screen[0].refresh / param));
+		timer_adjust_periodic(crtc_timer, attotime_div(video_screen_get_frame_period(machine->primary_screen), param), 0, attotime_div(video_screen_get_frame_period(machine->primary_screen), param));
 }
 
 
 VIDEO_START( rpunch )
 {
 	/* allocate tilemaps for the backgrounds */
-	background[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,     8,8,64,64);
-	background[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,64,64);
+	background[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_cols,     8,8,64,64);
+	background[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_cols,8,8,64,64);
 
 	/* configure the tilemaps */
 	tilemap_set_transparent_pen(background[1],15);
@@ -165,7 +165,7 @@ WRITE16_HANDLER( rpunch_crtc_data_w )
 		{
 			/* only register we know about.... */
 			case 0x0b:
-				timer_adjust(crtc_timer, video_screen_get_time_until_pos(0, Machine->screen[0].visarea.max_y + 1, 0), (data == 0xc0) ? 2 : 1, attotime_zero);
+				timer_adjust_oneshot(crtc_timer, video_screen_get_time_until_vblank_start(machine->primary_screen), (data == 0xc0) ? 2 : 1);
 				break;
 
 			default:
@@ -207,7 +207,7 @@ WRITE16_HANDLER( rpunch_ins_w )
  *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int start, int stop)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int start, int stop)
 {
 	int offs;
 
@@ -243,7 +243,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
  *
  *************************************/
 
-static void draw_bitmap(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_bitmap(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int colourbase;
 	int xxx=512/4;
@@ -283,9 +283,9 @@ VIDEO_UPDATE( rpunch )
 	effbins = (bins > gins) ? gins : bins;
 
 	tilemap_draw(bitmap,cliprect, background[0], 0,0);
-	draw_sprites(machine, bitmap,cliprect, 0, effbins);
+	draw_sprites(screen->machine, bitmap,cliprect, 0, effbins);
 	tilemap_draw(bitmap,cliprect, background[1], 0,0);
-	draw_sprites(machine, bitmap,cliprect, effbins, gins);
+	draw_sprites(screen->machine, bitmap,cliprect, effbins, gins);
 	if (rpunch_bitmapram)
 		draw_bitmap(bitmap,cliprect);
 	return 0;

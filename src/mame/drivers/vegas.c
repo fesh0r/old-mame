@@ -484,8 +484,8 @@ static struct dynamic_address
 {
 	offs_t			start;
 	offs_t			end;
-	read32_handler	read;
-	write32_handler	write;
+	read32_machine_func	read;
+	write32_machine_func	write;
 	const char *	rdname;
 	const char *	wrname;
 } dynamic[MAX_DYNAMIC_ADDRESSES];
@@ -522,7 +522,7 @@ static VIDEO_START( vegas_voodoo2 )
 {
 	add_exit_callback(machine, vegas_exit);
 
-	voodoo_start(0, 0, VOODOO_2, 2, 4, 4);
+	voodoo_start(0, machine->primary_screen, VOODOO_2, 2, 4, 4);
 	voodoo_set_vblank_callback(0, vblank_assert);
 }
 
@@ -531,7 +531,7 @@ static VIDEO_START( vegas_voodoo_banshee )
 {
 	add_exit_callback(machine, vegas_exit);
 
-	voodoo_start(0, 0, VOODOO_BANSHEE, 16, 16, 0);
+	voodoo_start(0, machine->primary_screen, VOODOO_BANSHEE, 16, 16, 0);
 	voodoo_set_vblank_callback(0, vblank_assert);
 }
 
@@ -540,7 +540,7 @@ static VIDEO_START( vegas_voodoo3 )
 {
 	add_exit_callback(machine, vegas_exit);
 
-	voodoo_start(0, 0, VOODOO_3, 16, 16, 16);
+	voodoo_start(0, machine->primary_screen, VOODOO_3, 16, 16, 16);
 	voodoo_set_vblank_callback(0, vblank_assert);
 }
 
@@ -965,7 +965,7 @@ static TIMER_CALLBACK( nile_timer_callback )
 		if (regs[1] & 2)
 			logerror("Unexpected value: timer %d is prescaled\n", which);
 		if (scale != 0)
-			timer_adjust(timer[which], attotime_mul(TIMER_PERIOD, scale), which, attotime_never);
+			timer_adjust_oneshot(timer[which], attotime_mul(TIMER_PERIOD, scale), which);
 	}
 
 	/* trigger the interrupt */
@@ -1086,7 +1086,7 @@ static READ32_HANDLER( nile_r )
 		case NREG_BAR7:
 		case NREG_BAR8:
 		case NREG_BARB:
-			result = pci_bridge_r(offset & 0x3f, mem_mask);
+			result = pci_bridge_r(machine, offset & 0x3f, mem_mask);
 			break;
 
 	}
@@ -1178,7 +1178,7 @@ static WRITE32_HANDLER( nile_w )
 				if (nile_regs[offset] & 2)
 					logerror("Unexpected value: timer %d is prescaled\n", which);
 				if (scale != 0)
-					timer_adjust(timer[which], attotime_mul(TIMER_PERIOD, scale), which, attotime_never);
+					timer_adjust_oneshot(timer[which], attotime_mul(TIMER_PERIOD, scale), which);
 				if (LOG_TIMERS) logerror("Starting timer %d at a rate of %d Hz\n", which, (int)ATTOSECONDS_TO_HZ(attotime_mul(TIMER_PERIOD, nile_regs[offset + 1] + 1).attoseconds));
 			}
 
@@ -1188,7 +1188,7 @@ static WRITE32_HANDLER( nile_w )
 				if (nile_regs[offset] & 2)
 					logerror("Unexpected value: timer %d is prescaled\n", which);
 				nile_regs[offset + 1] = attotime_to_double(timer_timeleft(timer[which])) * SYSTEM_CLOCK;
-				timer_adjust(timer[which], attotime_never, which, attotime_never);
+				timer_adjust_oneshot(timer[which], attotime_never, which);
 			}
 			break;
 
@@ -1204,7 +1204,7 @@ static WRITE32_HANDLER( nile_w )
 			{
 				if (nile_regs[offset - 1] & 2)
 					logerror("Unexpected value: timer %d is prescaled\n", which);
-				timer_adjust(timer[which], attotime_mul(TIMER_PERIOD, nile_regs[offset]), which, attotime_never);
+				timer_adjust_oneshot(timer[which], attotime_mul(TIMER_PERIOD, nile_regs[offset]), which);
 			}
 			break;
 
@@ -1235,7 +1235,7 @@ static WRITE32_HANDLER( nile_w )
 		case NREG_BAR7:
 		case NREG_BAR8:
 		case NREG_BARB:
-			pci_bridge_w(offset & 0x3f, data, mem_mask);
+			pci_bridge_w(machine, offset & 0x3f, data, mem_mask);
 			break;
 
 		case NREG_DCS2:
@@ -1482,25 +1482,25 @@ static WRITE32_HANDLER( asic_fifo_w )
 
 static READ32_HANDLER( ide_main_r )
 {
-	return ide_controller32_0_r(0x1f0/4 + offset, mem_mask);
+	return ide_controller32_0_r(machine, 0x1f0/4 + offset, mem_mask);
 }
 
 
 static WRITE32_HANDLER( ide_main_w )
 {
-	ide_controller32_0_w(0x1f0/4 + offset, data, mem_mask);
+	ide_controller32_0_w(machine, 0x1f0/4 + offset, data, mem_mask);
 }
 
 
 static READ32_HANDLER( ide_alt_r )
 {
-	return ide_controller32_0_r(0x3f4/4 + offset, mem_mask);
+	return ide_controller32_0_r(machine, 0x3f4/4 + offset, mem_mask);
 }
 
 
 static WRITE32_HANDLER( ide_alt_w )
 {
-	ide_controller32_0_w(0x3f4/4 + offset, data, mem_mask);
+	ide_controller32_0_w(machine, 0x3f4/4 + offset, data, mem_mask);
 }
 
 
@@ -1508,9 +1508,9 @@ static READ32_HANDLER( ethernet_r )
 {
 	UINT32 result = 0;
 	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= smc91c94_r(offset * 2 + 0, mem_mask);
+		result |= smc91c94_r(machine, offset * 2 + 0, mem_mask);
 	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= smc91c94_r(offset * 2 + 1, mem_mask >> 16) << 16;
+		result |= smc91c94_r(machine, offset * 2 + 1, mem_mask >> 16) << 16;
 	return result;
 }
 
@@ -1518,9 +1518,9 @@ static READ32_HANDLER( ethernet_r )
 static WRITE32_HANDLER( ethernet_w )
 {
 	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		smc91c94_w(offset * 2 + 0, data, mem_mask);
+		smc91c94_w(machine, offset * 2 + 0, data, mem_mask);
 	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		smc91c94_w(offset * 2 + 1, data >> 16, mem_mask >> 16);
+		smc91c94_w(machine, offset * 2 + 1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -1539,7 +1539,7 @@ static WRITE32_HANDLER( dcs3_fifo_full_w )
 
 #define add_dynamic_address(s,e,r,w)	_add_dynamic_address(s,e,r,w,#r,#w)
 
-INLINE void _add_dynamic_address(offs_t start, offs_t end, read32_handler read, write32_handler write, const char *rdname, const char *wrname)
+INLINE void _add_dynamic_address(offs_t start, offs_t end, read32_machine_func read, write32_machine_func write, const char *rdname, const char *wrname)
 {
 	dynamic[dynamic_count].start = start;
 	dynamic[dynamic_count].end = end;
@@ -1559,8 +1559,8 @@ static void remap_dynamic_addresses(void)
 	/* unmap everything we know about */
 	for (addr = 0; addr < dynamic_count; addr++)
 	{
-		memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, MRA32_NOP);
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, MWA32_NOP);
+		memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, SMH_NOP);
+		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, dynamic[addr].start, dynamic[addr].end, 0, 0, SMH_NOP);
 	}
 
 	/* the build the list of stuff */
@@ -1575,7 +1575,7 @@ static void remap_dynamic_addresses(void)
 		add_dynamic_address(base + 0x2000, base + 0x2003, sio_irq_cause_r, NULL);
 		add_dynamic_address(base + 0x3000, base + 0x3003, sio_irq_status_r, NULL);
 		add_dynamic_address(base + 0x4000, base + 0x4003, sio_led_r, sio_led_w);
-		add_dynamic_address(base + 0x5000, base + 0x5007, MRA32_NOP, NULL);
+		add_dynamic_address(base + 0x5000, base + 0x5007, SMH_NOP, NULL);
 		add_dynamic_address(base + 0x6000, base + 0x6003, NULL, cmos_unlock_w);
 		add_dynamic_address(base + 0x7000, base + 0x7003, NULL, vegas_watchdog_w);
 	}
@@ -1703,7 +1703,7 @@ static void remap_dynamic_addresses(void)
  *************************************/
 
 static ADDRESS_MAP_START( vegas_map_8mb, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x007fffff) AM_RAM AM_BASE(&rambase) AM_SIZE(&ramsize)
 	AM_RANGE(0x1fa00000, 0x1fa00fff) AM_READWRITE(nile_r, nile_w) AM_BASE(&nile_regs)
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
@@ -1711,7 +1711,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( vegas_map_32mb, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x01ffffff) AM_RAM AM_BASE(&rambase) AM_SIZE(&ramsize)
 	AM_RANGE(0x1fa00000, 0x1fa00fff) AM_READWRITE(nile_r, nile_w) AM_BASE(&nile_regs)
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
@@ -1781,7 +1781,7 @@ static INPUT_PORTS_START( vegas_common )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT )
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test switch */
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -2218,13 +2218,12 @@ static MACHINE_DRIVER_START( vegascore )
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(vegas_map_8mb,0)
 
-	MDRV_SCREEN_REFRESH_RATE(57)
-
 	MDRV_MACHINE_RESET(vegas)
 	MDRV_NVRAM_HANDLER(timekeeper_save)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 479)

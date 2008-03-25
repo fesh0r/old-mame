@@ -2,8 +2,9 @@
 
 Formation Z / Aeroboto
 
-Driver by Carlos A. Lozano
+PCB ID: JALECO FZ-8420
 
+Driver by Carlos A. Lozano
 
 TODO:
 - star field
@@ -72,57 +73,38 @@ static WRITE8_HANDLER ( aeroboto_1a2_w )
 	if (data) disable_irq = 1;
 }
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM) // main RAM
-	AM_RANGE(0x0800, 0x08ff) AM_READ(MRA8_RAM) // tile color buffer; copied to 0x2000
-	AM_RANGE(0x1000, 0x17ff) AM_READ(MRA8_RAM) // tile RAM
-	AM_RANGE(0x1800, 0x183f) AM_READ(MRA8_RAM) // horizontal scroll regs
-	AM_RANGE(0x2000, 0x20ff) AM_READ(MRA8_RAM) // tile color RAM
-	AM_RANGE(0x2800, 0x28ff) AM_READ(MRA8_RAM) // sprite RAM
-	AM_RANGE(0x2973, 0x2973) AM_READ(aeroboto_2973_r) // protection read
-	AM_RANGE(0x3000, 0x3000) AM_READ(aeroboto_in0_r)
-	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_2_r)
-	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_3_r)
-	AM_RANGE(0x3004, 0x3004) AM_READ(aeroboto_201_r) // protection read
-	AM_RANGE(0x3800, 0x3800) AM_READ(MRA8_NOP) // watchdog or IRQ ack
-	AM_RANGE(0x4000, 0xffff) AM_READ(MRA8_ROM) // main ROM
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x01a2, 0x01a2) AM_WRITE(aeroboto_1a2_w) // affects IRQ line (more protection?)
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_RAM) AM_BASE(&aeroboto_mainram)
-	AM_RANGE(0x0800, 0x08ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x0900, 0x09ff) AM_WRITE(MWA8_RAM) // a backup of default tile colors
-	AM_RANGE(0x1000, 0x17ff) AM_WRITE(aeroboto_videoram_w) AM_BASE(&aeroboto_videoram)
-	AM_RANGE(0x1800, 0x183f) AM_WRITE(MWA8_RAM) AM_BASE(&aeroboto_hscroll)
-	AM_RANGE(0x2000, 0x20ff) AM_WRITE(aeroboto_tilecolor_w) AM_BASE(&aeroboto_tilecolor)
-	AM_RANGE(0x1840, 0x27ff) AM_WRITE(MWA8_NOP) // cleared during custom LSI test
-	AM_RANGE(0x2800, 0x28ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x2900, 0x2fff) AM_WRITE(MWA8_NOP) // cleared along with sprite RAM
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(aeroboto_3000_w)
-	AM_RANGE(0x3001, 0x3001) AM_WRITE(soundlatch_w)
-	AM_RANGE(0x3002, 0x3002) AM_WRITE(soundlatch2_w)
-	AM_RANGE(0x3003, 0x3003) AM_WRITE(MWA8_RAM) AM_BASE(&aeroboto_vscroll)
-	AM_RANGE(0x3004, 0x3004) AM_WRITE(MWA8_RAM) AM_BASE(&aeroboto_starx)
-	AM_RANGE(0x3005, 0x3005) AM_WRITE(MWA8_RAM) AM_BASE(&aeroboto_stary) // usable but probably wrong
-	AM_RANGE(0x3006, 0x3006) AM_WRITE(MWA8_RAM) AM_BASE(&aeroboto_bgcolor)
-	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&aeroboto_mainram) // main  RAM
+	AM_RANGE(0x0800, 0x08ff) AM_RAM // tile color buffer; copied to 0x2000
+	AM_RANGE(0x0900, 0x09ff) AM_WRITE(SMH_RAM) // a backup of default tile colors
+	AM_RANGE(0x1000, 0x17ff) AM_READWRITE(SMH_RAM, aeroboto_videoram_w) AM_BASE(&aeroboto_videoram) // tile RAM
+	AM_RANGE(0x1800, 0x183f) AM_RAM AM_BASE(&aeroboto_hscroll) // horizontal scroll regs
+	AM_RANGE(0x2000, 0x20ff) AM_READWRITE(SMH_RAM, aeroboto_tilecolor_w) AM_BASE(&aeroboto_tilecolor) // tile color RAM
+	AM_RANGE(0x1840, 0x27ff) AM_WRITE(SMH_NOP) // cleared during custom LSI test
+	AM_RANGE(0x2800, 0x28ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size) // sprite RAM
+	AM_RANGE(0x2900, 0x2fff) AM_WRITE(SMH_NOP) // cleared along with sprite RAM
+	AM_RANGE(0x2973, 0x2973) AM_READ(aeroboto_2973_r) // protection read
+	AM_RANGE(0x3000, 0x3000) AM_READWRITE(aeroboto_in0_r, aeroboto_3000_w)
+	AM_RANGE(0x3001, 0x3001) AM_READWRITE(input_port_2_r, soundlatch_w)
+	AM_RANGE(0x3002, 0x3002) AM_READWRITE(input_port_3_r, soundlatch2_w)
+	AM_RANGE(0x3003, 0x3003) AM_WRITEONLY AM_BASE(&aeroboto_vscroll)
+	AM_RANGE(0x3004, 0x3004) AM_READWRITE(aeroboto_201_r, SMH_RAM) AM_BASE(&aeroboto_starx)
+	AM_RANGE(0x3005, 0x3005) AM_WRITEONLY AM_BASE(&aeroboto_stary) // usable but probably wrong
+	AM_RANGE(0x3006, 0x3006) AM_WRITEONLY AM_BASE(&aeroboto_bgcolor)
+	AM_RANGE(0x3800, 0x3800) AM_READNOP // watchdog or IRQ ack
+	AM_RANGE(0x4000, 0xffff) AM_ROM // main ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x9002, 0x9002) AM_READ(AY8910_read_port_0_r)
-	AM_RANGE(0xa002, 0xa002) AM_READ(AY8910_read_port_1_r)
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)
+static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x0fff) AM_RAM
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x9001, 0x9001) AM_WRITE(AY8910_write_port_0_w)
+	AM_RANGE(0x9002, 0x9002) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xa002, 0xa002) AM_READ(AY8910_read_port_1_r)
+	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 
@@ -159,9 +141,7 @@ static INPUT_PORTS_START( formatz )
 	PORT_DIPSETTING(    0x08, "40000" )
 	PORT_DIPSETTING(    0x04, "70000" )
 	PORT_DIPSETTING(    0x00, "100000" )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW1:5")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x00, "SW1:5" )		/* Listed as "Unused" */
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
@@ -171,7 +151,7 @@ static INPUT_PORTS_START( formatz )
 	/* The last dip switch is directly connected to the video hardware and
        flips the screen. The program instead sees the coin input, which must
        stay low for exactly 2 frames to be consistently recognized. */
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2) PORT_DIPLOCATION("SW1:8") /* "Screen Inversion" */
 
 	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coinage ) )		PORT_DIPLOCATION("SW2:1,2,3")
@@ -184,19 +164,13 @@ static INPUT_PORTS_START( formatz )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_4C ) )
 	PORT_DIPNAME( 0x18, 0x08, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:4,5")
-	PORT_DIPSETTING(    0x00, "0(Easy)" )
-	PORT_DIPSETTING(    0x08, "1(Medium)" )
-	PORT_DIPSETTING(    0x10, "2(Hard)" )
-	PORT_DIPSETTING(    0x18, "3(Hardest)" )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:6")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:7")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:8")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Medium ) )
+	PORT_DIPSETTING(    0x18, DEF_STR( Hard ) )
+	PORT_DIPUNUSED_DIPLOC( 0x20, 0x00, "SW2:6" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "SW2:7" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "SW2:8" )		/* Listed as "Unused" */
 INPUT_PORTS_END
 
 
@@ -253,25 +227,24 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( formatz )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M6809, 1250000) // 1.25MHz
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(aeroboto_interrupt,1)
+	MDRV_CPU_ADD(M6809, XTAL_10MHz/8) /* verified on pcb */
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_VBLANK_INT("main", aeroboto_interrupt)
 
-	MDRV_CPU_ADD(M6809, 640000)
-	/* audio CPU */
-	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_ADD(M6809, XTAL_10MHz/16) /* verified on pcb */
+	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_GFXDECODE(aeroboto)
-
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 2*8, 30*8-1)
+
+	MDRV_GFXDECODE(aeroboto)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_PALETTE_INIT(RRRR_GGGG_BBBB)
@@ -281,11 +254,11 @@ static MACHINE_DRIVER_START( formatz )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_10MHz/8) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_10MHz/16) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 

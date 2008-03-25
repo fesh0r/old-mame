@@ -258,13 +258,12 @@ static UINT32 hit_check_x,hit_check_y;
 
 #define CRT_MODE(_x_,_y_,_flip_) \
 	{ \
-	screen_state *state = &Machine->screen[0]; \
-	rectangle visarea = state->visarea; \
+	rectangle visarea = *video_screen_get_visible_area(machine->primary_screen); \
 	visarea.min_x = 0; \
 	visarea.max_x = _x_-1; \
 	visarea.min_y = 0; \
 	visarea.max_y = _y_-1; \
-	video_screen_configure(0, _x_, _y_, &visarea, state->refresh ); \
+	video_screen_configure(machine->primary_screen, _x_, _y_, &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds ); \
 	flip_screen_set(_flip_); \
 	} \
 
@@ -543,27 +542,27 @@ static READ16_HANDLER( mcu_r )
 		/* Non-protection reads */
 
 		case (0x708/2):	/* seibu sound: these three around $b10 on */
-			return seibu_main_word_r(2,0);
+			return seibu_main_word_r(machine,2,0);
 
 		case (0x70c/2):
-			return seibu_main_word_r(3,0);
+			return seibu_main_word_r(machine,3,0);
 
 		case (0x714/2):
-			return seibu_main_word_r(5,0);
+			return seibu_main_word_r(machine,5,0);
 
 		/* Inputs */
 
 		case (0x740/2):	/* code at $b00 sticks waiting for bit 6 hi */
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 
 		case (0x744/2):
-			return input_port_2_word_r(0,0);
+			return input_port_2_word_r(machine,0,0);
 
 		case (0x748/2):	/* code at $f4a reads this 4 times in _weird_ fashion */
-			return input_port_0_word_r(0,0);
+			return input_port_0_word_r(machine,0,0);
 
 		case (0x74c/2):
-			return input_port_3_word_r(0,0);
+			return input_port_3_word_r(machine,0,0);
 
 	}
 //logerror("CPU0 PC %06x unknown MCU read offset: %04x\n",activecpu_get_previouspc(),offset);
@@ -699,22 +698,22 @@ static WRITE16_HANDLER( mcu_w )
 		}
 		case (0x700/2):	/* seibu(0) */
 		{
-			seibu_main_word_w(0,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,0,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x704/2):	/* seibu(1) */
 		{
-			seibu_main_word_w(1,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,1,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x710/2):	/* seibu(4) */
 		{
-			seibu_main_word_w(4,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,4,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x718/2):	/* seibu(6) */
 		{
-			seibu_main_word_w(6,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,6,mcu_ram[offset],0xff00);
 			break;
 		}
 //      default:
@@ -1129,27 +1128,27 @@ static READ16_HANDLER( cop2_mcu_r )
 		/* Non-protection reads */
 
 		case (0x7c8/2):	/* seibu sound */
-			return seibu_main_word_r(2,0);
+			return seibu_main_word_r(machine,2,0);
 
 		case (0x7cc/2):
-			return seibu_main_word_r(3,0);
+			return seibu_main_word_r(machine,3,0);
 
 		case (0x7d4/2):
-			return seibu_main_word_r(5,0);
+			return seibu_main_word_r(machine,5,0);
 
 		/* Inputs */
 
 		case (0x740/2):
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 
 		case (0x744/2):
-			return input_port_2_word_r(0,0);
+			return input_port_2_word_r(machine,0,0);
 
 		case (0x748/2):
-			return input_port_4_word_r(0,0);
+			return input_port_4_word_r(machine,0,0);
 
 		case (0x74c/2):
-			return input_port_3_word_r(0,0);
+			return input_port_3_word_r(machine,0,0);
 
 	}
 //logerror("CPU0 PC %06x unknown MCU read offset: %04x\n",activecpu_get_previouspc(),offset);
@@ -1359,22 +1358,22 @@ static WRITE16_HANDLER( cop2_mcu_w )
 		}
 		case (0x7c0/2):	/* seibu(0) */
 		{
-			seibu_main_word_w(0,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,0,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x7c4/2):	/* seibu(1) */
 		{
-			seibu_main_word_w(1,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,1,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x7d0/2):	/* seibu(4) */
 		{
-			seibu_main_word_w(4,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,4,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x7d8/2):	/* seibu(6) */
 		{
-			seibu_main_word_w(6,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,6,mcu_ram[offset],0xff00);
 			break;
 		}
 		default:
@@ -1443,30 +1442,30 @@ static READ16_HANDLER( sdgndmrb_cop_mcu_r )
 
 		/* Non-protection reads */
 		case (0x708/2):	/* seibu sound */
-			return seibu_main_word_r(2,0);
+			return seibu_main_word_r(machine,2,0);
 
 		case (0x70c/2):
-			return seibu_main_word_r(3,0);
+			return seibu_main_word_r(machine,3,0);
 
 		case (0x714/2):
-			return seibu_main_word_r(5,0);
+			return seibu_main_word_r(machine,5,0);
 
 		/* Inputs */
 
 		case (0x740/2):
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 
 		case (0x744/2):
-			return input_port_2_word_r(0,0);
+			return input_port_2_word_r(machine,0,0);
 
 		case (0x748/2):
-			return input_port_4_word_r(0,0);
+			return input_port_4_word_r(machine,0,0);
 
 		case (0x74c/2):
-			return input_port_3_word_r(0,0);
+			return input_port_3_word_r(machine,0,0);
 
 		case (0x75c/2):
-			return input_port_5_word_r(0,0);
+			return input_port_5_word_r(machine,0,0);
 	}
 //  return mame_rand(Machine);
   	if(offset > (0x500/2) && offset < (0x600/2))
@@ -1822,22 +1821,22 @@ static WRITE16_HANDLER( sdgndmrb_cop_mcu_w )
 
 		case (0x700/2):	/* seibu(0) */
 		{
-			seibu_main_word_w(0,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,0,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x704/2):	/* seibu(1) */
 		{
-			seibu_main_word_w(1,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,1,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x710/2):	/* seibu(4) */
 		{
-			seibu_main_word_w(4,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,4,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x718/2):	/* seibu(6) */
 		{
-			seibu_main_word_w(6,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,6,mcu_ram[offset],0xff00);
 			break;
 		}
 
@@ -1885,27 +1884,27 @@ static READ16_HANDLER( denjinmk_cop_mcu_r )
 		/* Non-protection reads */
 
 		case (0x708/2):	/* seibu sound */
-			return seibu_main_word_r(2,0);
+			return seibu_main_word_r(machine,2,0);
 
 		case (0x70c/2):
-			return seibu_main_word_r(3,0);
+			return seibu_main_word_r(machine,3,0);
 
 		case (0x714/2):
-			return seibu_main_word_r(5,0);
+			return seibu_main_word_r(machine,5,0);
 
 		/* Inputs */
 
 		case (0x740/2):
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 
 		case (0x744/2):
-			return input_port_2_word_r(0,0);
+			return input_port_2_word_r(machine,0,0);
 
 		case (0x748/2):
-			return input_port_4_word_r(0,0);
+			return input_port_4_word_r(machine,0,0);
 
 		case (0x74c/2):
-			return input_port_3_word_r(0,0);
+			return input_port_3_word_r(machine,0,0);
 
 	}
 //logerror("CPU0 PC %06x unknown MCU read offset: %04x\n",activecpu_get_previouspc(),offset);
@@ -1967,22 +1966,22 @@ static WRITE16_HANDLER( denjinmk_cop_mcu_w )
 		}
 		case (0x700/2):	/* seibu(0) */
 		{
-			seibu_main_word_w(0,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,0,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x704/2):	/* seibu(1) */
 		{
-			seibu_main_word_w(1,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,1,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x710/2):	/* seibu(4) */
 		{
-			seibu_main_word_w(4,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,4,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x718/2):	/* seibu(6) */
 		{
-			seibu_main_word_w(6,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,6,mcu_ram[offset],0xff00);
 			break;
 		}
 	    //  default:
@@ -2029,27 +2028,27 @@ static READ16_HANDLER( godzilla_cop_mcu_r )
 		/* Non-protection reads */
 
 		case (0x7c8/2):	/* seibu sound */
-			return seibu_main_word_r(2,0);
+			return seibu_main_word_r(machine,2,0);
 
 		case (0x7cc/2):
-			return seibu_main_word_r(3,0);
+			return seibu_main_word_r(machine,3,0);
 
 		case (0x7d4/2):
-			return seibu_main_word_r(5,0);
+			return seibu_main_word_r(machine,5,0);
 
 		/* Inputs */
 
 		case (0x740/2):
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 
 		case (0x744/2):
-			return input_port_2_word_r(0,0);
+			return input_port_2_word_r(machine,0,0);
 
 		case (0x748/2):
-			return input_port_4_word_r(0,0);
+			return input_port_4_word_r(machine,0,0);
 
 		case (0x74c/2):
-			return input_port_3_word_r(0,0);
+			return input_port_3_word_r(machine,0,0);
 
 	}
 //  if(offset >= (0x400/2) && offset < (0x600/2) && offset != (0x5a4/2))
@@ -2129,22 +2128,22 @@ static WRITE16_HANDLER( godzilla_cop_mcu_w )
 
 		case (0x7c0/2):	/* seibu(0) */
 		{
-			seibu_main_word_w(0,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,0,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x7c4/2):	/* seibu(1) */
 		{
-			seibu_main_word_w(1,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,1,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x7d0/2):	/* seibu(4) */
 		{
-			seibu_main_word_w(4,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,4,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x7d8/2):	/* seibu(6) */
 		{
-			seibu_main_word_w(6,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,6,mcu_ram[offset],0xff00);
 			break;
 		}
 //      default:
@@ -2162,26 +2161,26 @@ static READ16_HANDLER( copdx_0_r )
 		//  return mcu_ram[offset];
 
 		case (0x700/2):
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 
 		case (0x704/2):
-			return input_port_2_word_r(0,0);
+			return input_port_2_word_r(machine,0,0);
 
 		case (0x708/2):
-			return input_port_4_word_r(0,0);
+			return input_port_4_word_r(machine,0,0);
 
 		case (0x70c/2):
-			return input_port_3_word_r(0,0);
+			return input_port_3_word_r(machine,0,0);
 
 		case (0x71c/2):
-			return input_port_5_word_r(0,0);
+			return input_port_5_word_r(machine,0,0);
 
 		case (0x748/2):	/* seibu sound */
-			return seibu_main_word_r(2,0);
+			return seibu_main_word_r(machine,2,0);
 		case (0x74c/2):
-			return seibu_main_word_r(3,0);
+			return seibu_main_word_r(machine,3,0);
 		case (0x754/2):
-			return seibu_main_word_r(5,0);
+			return seibu_main_word_r(machine,5,0);
 
 	}
 
@@ -2287,10 +2286,10 @@ static WRITE16_HANDLER( copdx_0_w )
 		case (0x478/2):
 		{
 			/*
-    AM_RANGE(0x100800, 0x100fff) AM_READWRITE(MRA16_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
-    AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(MRA16_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
-    AM_RANGE(0x101800, 0x101fff) AM_READWRITE(MRA16_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
-    AM_RANGE(0x102000, 0x102fff) AM_READWRITE(MRA16_RAM,legionna_text_w) AM_BASE(&legionna_textram)
+    AM_RANGE(0x100800, 0x100fff) AM_READWRITE(SMH_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
+    AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(SMH_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
+    AM_RANGE(0x101800, 0x101fff) AM_READWRITE(SMH_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
+    AM_RANGE(0x102000, 0x102fff) AM_READWRITE(SMH_RAM,legionna_text_w) AM_BASE(&legionna_textram)
             */
 			break;
 		}
@@ -2386,22 +2385,22 @@ static WRITE16_HANDLER( copdx_0_w )
 
 		case (0x740/2):	/* seibu(0) */
 		{
-			seibu_main_word_w(0,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,0,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x744/2):	/* seibu(1) */
 		{
-			seibu_main_word_w(1,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,1,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x750/2):	/* seibu(4) */
 		{
-			seibu_main_word_w(4,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,4,mcu_ram[offset],0xff00);
 			break;
 		}
 		case (0x758/2):	/* seibu(6) */
 		{
-			seibu_main_word_w(6,mcu_ram[offset],0xff00);
+			seibu_main_word_w(machine,6,mcu_ram[offset],0xff00);
 			break;
 		}
 	}
@@ -2418,19 +2417,19 @@ static READ16_HANDLER( copdxbl_0_r )
 		//  return mcu_ram[offset];
 
 		case (0x700/2):
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 
 		case (0x704/2):
-			return input_port_2_word_r(0,0);
+			return input_port_2_word_r(machine,0,0);
 
 		case (0x708/2):
-			return input_port_4_word_r(0,0);
+			return input_port_4_word_r(machine,0,0);
 
 		case (0x70c/2):
-			return input_port_3_word_r(0,0);
+			return input_port_3_word_r(machine,0,0);
 
 		case (0x71c/2):
-			return input_port_5_word_r(0,0);
+			return input_port_5_word_r(machine,0,0);
 #if 0
 		case (0x748/2):	/* seibu sound */
 			return seibu_main_word_r(2,0);
@@ -2476,10 +2475,10 @@ static WRITE16_HANDLER( copdxbl_0_w )
 		case (0x478/2):
 		{
 			/*
-    AM_RANGE(0x100800, 0x100fff) AM_READWRITE(MRA16_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
-    AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(MRA16_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
-    AM_RANGE(0x101800, 0x101fff) AM_READWRITE(MRA16_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
-    AM_RANGE(0x102000, 0x102fff) AM_READWRITE(MRA16_RAM,legionna_text_w) AM_BASE(&legionna_textram)
+    AM_RANGE(0x100800, 0x100fff) AM_READWRITE(SMH_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
+    AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(SMH_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
+    AM_RANGE(0x101800, 0x101fff) AM_READWRITE(SMH_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
+    AM_RANGE(0x102000, 0x102fff) AM_READWRITE(SMH_RAM,legionna_text_w) AM_BASE(&legionna_textram)
             */
 			break;
 		}
@@ -2564,8 +2563,8 @@ static WRITE16_HANDLER( copdxbl_0_w )
 		/*WRONG*/
 		case (0x65c/2):
 		{
-			soundlatch_w(1,data&0xff);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
+			soundlatch_w(machine,1,data&0xff);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE );
 			break;
 		}
 		/*video regs (not scrollram,something else)*/
@@ -2614,28 +2613,28 @@ static WRITE16_HANDLER( copdxbl_0_w )
 /*****************************************************************************/
 
 static ADDRESS_MAP_START( legionna_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_READ(mcu_r)	/* COP mcu */
-	AM_RANGE(0x101000, 0x1017ff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x101800, 0x101fff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x102000, 0x1027ff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x102800, 0x1037ff) AM_READ(MRA16_RAM)	/* 64x32 text/front layer, 8x8 tiles */
+	AM_RANGE(0x101000, 0x1017ff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x101800, 0x101fff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x102000, 0x1027ff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x102800, 0x1037ff) AM_READ(SMH_RAM)	/* 64x32 text/front layer, 8x8 tiles */
 
 	/* The 4000-4fff area contains PALETTE words and may be extra paletteram? */
-	AM_RANGE(0x104000, 0x104fff) AM_READ(MRA16_RAM)	/* palette mirror ? */
-//  AM_RANGE(0x104000, 0x10401f) AM_READ(MRA16_RAM) /* debugging... */
-//  AM_RANGE(0x104200, 0x1043ff) AM_READ(MRA16_RAM) /* ??? */
-//  AM_RANGE(0x104600, 0x1047ff) AM_READ(MRA16_RAM) /* ??? */
-//  AM_RANGE(0x104800, 0x10481f) AM_READ(MRA16_RAM) /* ??? */
+	AM_RANGE(0x104000, 0x104fff) AM_READ(SMH_RAM)	/* palette mirror ? */
+//  AM_RANGE(0x104000, 0x10401f) AM_READ(SMH_RAM) /* debugging... */
+//  AM_RANGE(0x104200, 0x1043ff) AM_READ(SMH_RAM) /* ??? */
+//  AM_RANGE(0x104600, 0x1047ff) AM_READ(SMH_RAM) /* ??? */
+//  AM_RANGE(0x104800, 0x10481f) AM_READ(SMH_RAM) /* ??? */
 
-	AM_RANGE(0x105000, 0x105fff) AM_READ(MRA16_RAM)	/* spriteram */
-	AM_RANGE(0x106000, 0x106fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x107000, 0x107fff) AM_READ(MRA16_RAM)	/* palette */
-	AM_RANGE(0x108000, 0x11ffff) AM_READ(MRA16_RAM)	/* main ram */
+	AM_RANGE(0x105000, 0x105fff) AM_READ(SMH_RAM)	/* spriteram */
+	AM_RANGE(0x106000, 0x106fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x107000, 0x107fff) AM_READ(SMH_RAM)	/* palette */
+	AM_RANGE(0x108000, 0x11ffff) AM_READ(SMH_RAM)	/* main ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( legionna_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(mcu_w) AM_BASE(&mcu_ram)	/* COP mcu */
 	AM_RANGE(0x101000, 0x1017ff) AM_WRITE(legionna_background_w) AM_BASE(&legionna_back_data)
 	AM_RANGE(0x101800, 0x101fff) AM_WRITE(legionna_foreground_w) AM_BASE(&legionna_fore_data)
@@ -2643,119 +2642,119 @@ static ADDRESS_MAP_START( legionna_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x102800, 0x1037ff) AM_WRITE(legionna_text_w) AM_BASE(&legionna_textram)
 
 	/* The 4000-4fff area contains PALETTE words and may be extra paletteram? */
-	AM_RANGE(0x104000, 0x104fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x104000, 0x104fff) AM_WRITE(SMH_RAM)
 //  AM_RANGE(0x104000, 0x104fff) AM_WRITE(legionna_paletteram16_w)
-//  AM_RANGE(0x104000, 0x10401f) AM_WRITE(MWA16_RAM)
-//  AM_RANGE(0x104200, 0x1043ff) AM_WRITE(MWA16_RAM)
-//  AM_RANGE(0x104600, 0x1047ff) AM_WRITE(MWA16_RAM)
-//  AM_RANGE(0x104800, 0x10481f) AM_WRITE(MWA16_RAM)
+//  AM_RANGE(0x104000, 0x10401f) AM_WRITE(SMH_RAM)
+//  AM_RANGE(0x104200, 0x1043ff) AM_WRITE(SMH_RAM)
+//  AM_RANGE(0x104600, 0x1047ff) AM_WRITE(SMH_RAM)
+//  AM_RANGE(0x104800, 0x10481f) AM_WRITE(SMH_RAM)
 
-	AM_RANGE(0x105000, 0x105fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x106000, 0x106fff) AM_WRITE(MWA16_RAM)	/* is this used outside inits ?? */
+	AM_RANGE(0x105000, 0x105fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x106000, 0x106fff) AM_WRITE(SMH_RAM)	/* is this used outside inits ?? */
 	AM_RANGE(0x107000, 0x107fff) AM_WRITE(legionna_paletteram16_w) AM_BASE(&paletteram16)	/* palette xRRRRxGGGGxBBBBx ? */
-	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( heatbrl_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_READ(cop2_mcu_r)	/* COP mcu */
-	AM_RANGE(0x100800, 0x100fff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x101000, 0x1017ff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x101800, 0x101fff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x102000, 0x102fff) AM_READ(MRA16_RAM)	/* 64x32 text/front layer, 8x8 tiles */
-	AM_RANGE(0x103000, 0x103fff) AM_READ(MRA16_RAM)	/* spriteram */
-	AM_RANGE(0x104000, 0x104fff) AM_READ(MRA16_RAM)	/* palette */
-	AM_RANGE(0x108000, 0x11ffff) AM_READ(MRA16_RAM)	/* main ram */
+	AM_RANGE(0x100800, 0x100fff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x101000, 0x1017ff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x101800, 0x101fff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x102000, 0x102fff) AM_READ(SMH_RAM)	/* 64x32 text/front layer, 8x8 tiles */
+	AM_RANGE(0x103000, 0x103fff) AM_READ(SMH_RAM)	/* spriteram */
+	AM_RANGE(0x104000, 0x104fff) AM_READ(SMH_RAM)	/* palette */
+	AM_RANGE(0x108000, 0x11ffff) AM_READ(SMH_RAM)	/* main ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( heatbrl_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(cop2_mcu_w) AM_BASE(&mcu_ram)	/* COP mcu */
 	AM_RANGE(0x100800, 0x100fff) AM_WRITE(legionna_background_w) AM_BASE(&legionna_back_data)
 	AM_RANGE(0x101000, 0x1017ff) AM_WRITE(legionna_foreground_w) AM_BASE(&legionna_fore_data)
 	AM_RANGE(0x101800, 0x101fff) AM_WRITE(legionna_midground_w) AM_BASE(&legionna_mid_data)
 	AM_RANGE(0x102000, 0x102fff) AM_WRITE(legionna_text_w) AM_BASE(&legionna_textram)
-	AM_RANGE(0x103000, 0x103fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x103000, 0x103fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x104000, 0x104fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( godzilla_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_READ(godzilla_cop_mcu_r)	/* COP mcu */
-	AM_RANGE(0x100800, 0x100fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x101000, 0x101fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x102000, 0x102fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x103000, 0x103fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x104000, 0x104fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x105000, 0x106fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x107000, 0x107fff) AM_READ(MRA16_RAM) /*Ani-DSP ram*/
-	AM_RANGE(0x108000, 0x11ffff) AM_READ(MRA16_RAM)	/* main ram */
+	AM_RANGE(0x100800, 0x100fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x101000, 0x101fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x102000, 0x102fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x103000, 0x103fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x104000, 0x104fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x105000, 0x106fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x107000, 0x107fff) AM_READ(SMH_RAM) /*Ani-DSP ram*/
+	AM_RANGE(0x108000, 0x11ffff) AM_READ(SMH_RAM)	/* main ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( godzilla_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(godzilla_cop_mcu_w) AM_BASE(&mcu_ram)	/* COP mcu */
-	AM_RANGE(0x100800, 0x100fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x100800, 0x100fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x101000, 0x101fff) AM_WRITE(legionna_background_w) AM_BASE(&legionna_back_data)
 	AM_RANGE(0x102000, 0x1027ff) AM_WRITE(legionna_midground_w) AM_BASE(&legionna_mid_data)
 	AM_RANGE(0x102800, 0x1037ff) AM_WRITE(legionna_text_w) AM_BASE(&legionna_textram)
 	AM_RANGE(0x103800, 0x103fff) AM_WRITE(legionna_foreground_w) AM_BASE(&legionna_fore_data)
 	AM_RANGE(0x104000, 0x104fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x105000, 0x105fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x106000, 0x1067ff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x106800, 0x106fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x107000, 0x107fff) AM_WRITE(MWA16_RAM) /*Ani-DSP ram*/
-	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x105000, 0x105fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x106000, 0x1067ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x106800, 0x106fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x107000, 0x107fff) AM_WRITE(SMH_RAM) /*Ani-DSP ram*/
+	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( denjinmk_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_READ(denjinmk_cop_mcu_r)	/* COP mcu */
-	AM_RANGE(0x100800, 0x100fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x101000, 0x101fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x102000, 0x103fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x104000, 0x104fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x105000, 0x105fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x106000, 0x106fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x107000, 0x107fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x108000, 0x11dfff) AM_READ(MRA16_RAM)	/* main ram */
-	AM_RANGE(0x11e000, 0x11efff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x11f000, 0x11ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x100800, 0x100fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x101000, 0x101fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x102000, 0x103fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x104000, 0x104fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x105000, 0x105fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x106000, 0x106fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x107000, 0x107fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x108000, 0x11dfff) AM_READ(SMH_RAM)	/* main ram */
+	AM_RANGE(0x11e000, 0x11efff) AM_READ(SMH_RAM)
+	AM_RANGE(0x11f000, 0x11ffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( denjinmk_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(denjinmk_cop_mcu_w) AM_BASE(&mcu_ram)	/* COP mcu */
-	AM_RANGE(0x100800, 0x100fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x100800, 0x100fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x101000, 0x1017ff) AM_WRITE(legionna_background_w) AM_BASE(&legionna_back_data)
 	AM_RANGE(0x101800, 0x101fff) AM_WRITE(legionna_foreground_w) AM_BASE(&legionna_fore_data)
 	AM_RANGE(0x102000, 0x1027ff) AM_WRITE(legionna_midground_w) AM_BASE(&legionna_mid_data)
 	AM_RANGE(0x102800, 0x103fff) AM_WRITE(legionna_text_w) AM_BASE(&legionna_textram)
-	AM_RANGE(0x104000, 0x104fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x105000, 0x105fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x106000, 0x107fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x108000, 0x11dfff) AM_WRITE(MWA16_RAM)	/* main ram */
+	AM_RANGE(0x104000, 0x104fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x105000, 0x105fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x106000, 0x107fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x108000, 0x11dfff) AM_WRITE(SMH_RAM)	/* main ram */
 	AM_RANGE(0x11e000, 0x11efff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x11f000, 0x11ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x11f000, 0x11ffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sdgndmrb_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_READ(sdgndmrb_cop_mcu_r)	/* COP mcu */
-	AM_RANGE(0x100800, 0x100fff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x101000, 0x1017ff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x101800, 0x101fff) AM_READ(MRA16_RAM)	/* 32x16 bg layer, 16x16 tiles */
-	AM_RANGE(0x102000, 0x102fff) AM_READ(MRA16_RAM)	/* 64x32 text/front layer, 8x8 tiles */
-	AM_RANGE(0x103000, 0x103fff) AM_READ(MRA16_RAM)	/* palette */
-	AM_RANGE(0x104000, 0x104fff) AM_READ(MRA16_RAM)	/* palette mirror */
-	AM_RANGE(0x105000, 0x105fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x107000, 0x107fff) AM_READ(MRA16_RAM)	/* extra spriteram? */
-	AM_RANGE(0x108000, 0x11ffff) AM_READ(MRA16_RAM)	/* main ram */
+	AM_RANGE(0x100800, 0x100fff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x101000, 0x1017ff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x101800, 0x101fff) AM_READ(SMH_RAM)	/* 32x16 bg layer, 16x16 tiles */
+	AM_RANGE(0x102000, 0x102fff) AM_READ(SMH_RAM)	/* 64x32 text/front layer, 8x8 tiles */
+	AM_RANGE(0x103000, 0x103fff) AM_READ(SMH_RAM)	/* palette */
+	AM_RANGE(0x104000, 0x104fff) AM_READ(SMH_RAM)	/* palette mirror */
+	AM_RANGE(0x105000, 0x105fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x107000, 0x107fff) AM_READ(SMH_RAM)	/* extra spriteram? */
+	AM_RANGE(0x108000, 0x11ffff) AM_READ(SMH_RAM)	/* main ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sdgndmrb_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(sdgndmrb_cop_mcu_w) AM_BASE(&mcu_ram)	/* COP mcu */
 	AM_RANGE(0x100800, 0x100fff) AM_WRITE(legionna_background_w) AM_BASE(&legionna_back_data)
 	AM_RANGE(0x101000, 0x1017ff) AM_WRITE(legionna_foreground_w) AM_BASE(&legionna_fore_data)
@@ -2763,21 +2762,21 @@ static ADDRESS_MAP_START( sdgndmrb_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x102000, 0x102fff) AM_WRITE(legionna_text_w) AM_BASE(&legionna_textram)
 	AM_RANGE(0x103000, 0x103fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x104000, 0x104fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w)
-	AM_RANGE(0x105000, 0x105fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x106000, 0x106fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x107000, 0x107fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x105000, 0x105fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x106000, 0x106fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x107000, 0x107fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x108000, 0x11ffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cupsoc_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x100000, 0x1007ff) AM_READWRITE(copdx_0_r,copdx_0_w) AM_BASE(&mcu_ram)
-	AM_RANGE(0x100800, 0x100fff) AM_READWRITE(MRA16_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
-	AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(MRA16_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
-	AM_RANGE(0x101800, 0x101fff) AM_READWRITE(MRA16_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
-	AM_RANGE(0x102000, 0x102fff) AM_READWRITE(MRA16_RAM,legionna_text_w) AM_BASE(&legionna_textram)
-	AM_RANGE(0x103000, 0x103fff) AM_READWRITE(MRA16_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x104000, 0x104fff) AM_READWRITE(MRA16_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) /*<according to the debug mode,there is a DMA that copies from here to the paletteram>*/
+	AM_RANGE(0x100800, 0x100fff) AM_READWRITE(SMH_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
+	AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(SMH_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
+	AM_RANGE(0x101800, 0x101fff) AM_READWRITE(SMH_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
+	AM_RANGE(0x102000, 0x102fff) AM_READWRITE(SMH_RAM,legionna_text_w) AM_BASE(&legionna_textram)
+	AM_RANGE(0x103000, 0x103fff) AM_READWRITE(SMH_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x104000, 0x104fff) AM_READWRITE(SMH_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) /*<according to the debug mode,there is a DMA that copies from here to the paletteram>*/
 	AM_RANGE(0x105000, 0x106fff) AM_RAM
 	AM_RANGE(0x107000, 0x1077ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x107800, 0x107fff) AM_RAM /*Ani Dsp(?) Ram*/
@@ -2790,12 +2789,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( cupsocbl_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x100000, 0x1007ff) AM_READWRITE(copdxbl_0_r,copdxbl_0_w) AM_BASE(&mcu_ram)
-	AM_RANGE(0x100800, 0x100fff) AM_READWRITE(MRA16_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
-	AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(MRA16_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
-	AM_RANGE(0x101800, 0x101fff) AM_READWRITE(MRA16_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
-	AM_RANGE(0x102000, 0x102fff) AM_READWRITE(MRA16_RAM,legionna_text_w) AM_BASE(&legionna_textram)
-	AM_RANGE(0x103000, 0x103fff) AM_READWRITE(MRA16_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x104000, 0x104fff) AM_READWRITE(MRA16_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) /*<according to the debug mode,there is a DMA that copies from here to the paletteram>*/
+	AM_RANGE(0x100800, 0x100fff) AM_READWRITE(SMH_RAM,legionna_background_w) AM_BASE(&legionna_back_data)
+	AM_RANGE(0x101000, 0x1017ff) AM_READWRITE(SMH_RAM,legionna_foreground_w) AM_BASE(&legionna_fore_data)
+	AM_RANGE(0x101800, 0x101fff) AM_READWRITE(SMH_RAM,legionna_midground_w) AM_BASE(&legionna_mid_data)
+	AM_RANGE(0x102000, 0x102fff) AM_READWRITE(SMH_RAM,legionna_text_w) AM_BASE(&legionna_textram)
+	AM_RANGE(0x103000, 0x103fff) AM_READWRITE(SMH_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x104000, 0x104fff) AM_READWRITE(SMH_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) /*<according to the debug mode,there is a DMA that copies from here to the paletteram>*/
 	AM_RANGE(0x105000, 0x106fff) AM_RAM
 	AM_RANGE(0x107000, 0x1077ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x107800, 0x107fff) AM_RAM /*Ani Dsp(?) Ram*/
@@ -3465,19 +3464,22 @@ static MACHINE_DRIVER_START( legionna )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,20000000/2) 	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(legionna_readmem,legionna_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)/* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)/* VBL */
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
 	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(legionna)
 	MDRV_PALETTE_LENGTH(128*16)
 
@@ -3494,19 +3496,22 @@ static MACHINE_DRIVER_START( heatbrl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,20000000/2) 	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(heatbrl_readmem,heatbrl_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)/* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)/* VBL */
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
 	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
@@ -3522,19 +3527,22 @@ static MACHINE_DRIVER_START( godzilla )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 20000000/2)
 	MDRV_CPU_PROGRAM_MAP(godzilla_readmem,godzilla_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	SEIBU2_SOUND_SYSTEM_CPU(14318180/4)
 
 	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
@@ -3550,19 +3558,22 @@ static MACHINE_DRIVER_START( denjinmk )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 20000000/2)
 	MDRV_CPU_PROGRAM_MAP(denjinmk_readmem,denjinmk_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	SEIBU2_SOUND_SYSTEM_CPU(14318180/4)
 
 	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
@@ -3578,19 +3589,22 @@ static MACHINE_DRIVER_START( sdgndmrb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 20000000/2)
 	MDRV_CPU_PROGRAM_MAP(sdgndmrb_readmem,sdgndmrb_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	SEIBU2_SOUND_SYSTEM_CPU(14318180/4)
 
 	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(sdgndmrb)
 	MDRV_PALETTE_LENGTH(128*16)
 
@@ -3607,19 +3621,22 @@ static MACHINE_DRIVER_START( cupsoc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,20000000/2)
 	MDRV_CPU_PROGRAM_MAP(cupsoc_mem,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)/* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)/* VBL */
 
 	SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 
 	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 
@@ -3636,23 +3653,26 @@ static MACHINE_DRIVER_START( cupsocbl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,12000000)
 	MDRV_CPU_PROGRAM_MAP(cupsocbl_mem,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1) /* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold) /* VBL */
 
 	/*Different Sound hardware*/
 	//SEIBU_SOUND_SYSTEM_CPU(14318180/4)
 	MDRV_CPU_ADD(Z80,14318180/4)
 	MDRV_CPU_PROGRAM_MAP(cupsocbl_sound_mem,0)
-	//MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	//MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	//MDRV_MACHINE_INIT(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(heatbrl)
 	MDRV_PALETTE_LENGTH(128*16)
 

@@ -64,7 +64,7 @@ WRITE16_HANDLER( sderby_fg_videoram_w )
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int codeshift)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int codeshift)
 {
 	int offs;
 	int height = machine->gfx[0]->height;
@@ -95,19 +95,19 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 VIDEO_START( sderby )
 {
-	sderby_tilemap = tilemap_create(get_sderby_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
-	sderby_md_tilemap = tilemap_create(get_sderby_md_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
+	sderby_tilemap = tilemap_create(get_sderby_tile_info,tilemap_scan_rows, 16, 16,32,32);
+	sderby_md_tilemap = tilemap_create(get_sderby_md_tile_info,tilemap_scan_rows, 16, 16,32,32);
 
 	tilemap_set_transparent_pen(sderby_md_tilemap,0);
 
-	sderby_fg_tilemap = tilemap_create(get_sderby_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	sderby_fg_tilemap = tilemap_create(get_sderby_fg_tile_info,tilemap_scan_rows, 8, 8,64,32);
 	tilemap_set_transparent_pen(sderby_fg_tilemap,0);
 }
 
 VIDEO_UPDATE( sderby )
 {
 	tilemap_draw(bitmap,cliprect,sderby_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,0);
+	draw_sprites(screen->machine, bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,sderby_md_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,sderby_fg_tilemap,0,0);
 	return 0;
@@ -117,7 +117,7 @@ VIDEO_UPDATE( pmroulet )
 {
 	tilemap_draw(bitmap,cliprect,sderby_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,sderby_md_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,0);
+	draw_sprites(screen->machine, bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,sderby_fg_tilemap,0,0);
 	return 0;
 }

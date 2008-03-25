@@ -69,17 +69,17 @@ GFXDECODE_END
 
 
 static ADDRESS_MAP_START( glass_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)				/* ROM */
-	AM_RANGE(0x100000, 0x101fff) AM_READ(MRA16_RAM)				/* Video RAM */
-	AM_RANGE(0x102000, 0x102fff) AM_READ(MRA16_RAM)				/* Extra Video RAM */
-	AM_RANGE(0x200000, 0x2007ff) AM_READ(MRA16_RAM)				/* Palette */
-	AM_RANGE(0x440000, 0x440fff) AM_READ(MRA16_RAM)				/* Sprite RAM */
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)				/* ROM */
+	AM_RANGE(0x100000, 0x101fff) AM_READ(SMH_RAM)				/* Video RAM */
+	AM_RANGE(0x102000, 0x102fff) AM_READ(SMH_RAM)				/* Extra Video RAM */
+	AM_RANGE(0x200000, 0x2007ff) AM_READ(SMH_RAM)				/* Palette */
+	AM_RANGE(0x440000, 0x440fff) AM_READ(SMH_RAM)				/* Sprite RAM */
 	AM_RANGE(0x700000, 0x700001) AM_READ(input_port_0_word_r)	/* DIPSW #2 */
 	AM_RANGE(0x700002, 0x700003) AM_READ(input_port_1_word_r)	/* DIPSW #1 */
 	AM_RANGE(0x700004, 0x700005) AM_READ(input_port_2_word_r)	/* 1P Inputs */
 	AM_RANGE(0x700006, 0x700007) AM_READ(input_port_3_word_r)	/* 2P Inputs + Button 3 */
 	AM_RANGE(0x70000e, 0x70000f) AM_READ(OKIM6295_status_0_lsb_r)/* OKI6295 status register */
-	AM_RANGE(0xfec000, 0xfeffff) AM_READ(MRA16_RAM)				/* Work RAM (partially shared with DS5002FP) */
+	AM_RANGE(0xfec000, 0xfeffff) AM_READ(SMH_RAM)				/* Work RAM (partially shared with DS5002FP) */
 ADDRESS_MAP_END
 
 
@@ -109,18 +109,18 @@ static WRITE16_HANDLER( glass_coin_w )
 }
 
 static ADDRESS_MAP_START( glass_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)								/* ROM */
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)								/* ROM */
 	AM_RANGE(0x100000, 0x101fff) AM_WRITE(glass_vram_w) AM_BASE(&glass_videoram)			/* Video RAM */
-	AM_RANGE(0x102000, 0x102fff) AM_WRITE(MWA16_RAM)								/* Extra Video RAM */
-	AM_RANGE(0x108000, 0x108007) AM_WRITE(MWA16_RAM) AM_BASE(&glass_vregs)				/* Video Registers */
+	AM_RANGE(0x102000, 0x102fff) AM_WRITE(SMH_RAM)								/* Extra Video RAM */
+	AM_RANGE(0x108000, 0x108007) AM_WRITE(SMH_RAM) AM_BASE(&glass_vregs)				/* Video Registers */
 	AM_RANGE(0x108008, 0x108009) AM_WRITE(clr_int_w)								/* CLR INT Video */
 	AM_RANGE(0x200000, 0x2007ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)/*  Palette */
-	AM_RANGE(0x440000, 0x440fff) AM_WRITE(MWA16_RAM) AM_BASE(&glass_spriteram)			/* Sprite RAM */
+	AM_RANGE(0x440000, 0x440fff) AM_WRITE(SMH_RAM) AM_BASE(&glass_spriteram)			/* Sprite RAM */
 	AM_RANGE(0x700008, 0x700009) AM_WRITE(glass_blitter_w)						/* serial blitter */
 	AM_RANGE(0x70000c, 0x70000d) AM_WRITE(OKIM6295_bankswitch_w)					/* OKI6295 bankswitch */
 	AM_RANGE(0x70000e, 0x70000f) AM_WRITE(OKIM6295_data_0_lsb_w)					/* OKI6295 data register */
 	AM_RANGE(0x70000a, 0x70004b) AM_WRITE(glass_coin_w)							/* Coin Counters/Lockout */
-	AM_RANGE(0xfec000, 0xfeffff) AM_WRITE(MWA16_RAM)								/* Work RAM (partially shared with DS5002FP) */
+	AM_RANGE(0xfec000, 0xfeffff) AM_WRITE(SMH_RAM)								/* Work RAM (partially shared with DS5002FP) */
 ADDRESS_MAP_END
 
 
@@ -204,18 +204,18 @@ static MACHINE_DRIVER_START( glass )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,24000000/2)		/* 12 MHz (M680000 P12) */
 	MDRV_CPU_PROGRAM_MAP(glass_readmem,glass_writemem)
-	MDRV_CPU_VBLANK_INT(glass_interrupt, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", glass_interrupt)
 
 	MDRV_MACHINE_RESET(glass)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 32*16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 368-1, 16, 256-1)
+
 	MDRV_GFXDECODE(glass)
 	MDRV_PALETTE_LENGTH(1024)
 

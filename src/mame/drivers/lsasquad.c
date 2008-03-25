@@ -202,9 +202,9 @@ static WRITE8_HANDLER( lsasquad_bankswitch_w )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xa000, 0xe5ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xa000, 0xe5ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe800, 0xe800) AM_READ(input_port_0_r)	/* DSWA */
 	AM_RANGE(0xe801, 0xe801) AM_READ(input_port_1_r)	/* DSWB */
 	AM_RANGE(0xe802, 0xe802) AM_READ(input_port_2_r)	/* DSWC */
@@ -219,29 +219,29 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x9fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xa000, 0xbfff) AM_WRITE(MWA8_RAM)	/* SRAM */
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)	/* SCREEN RAM */
-	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(MWA8_RAM) AM_BASE(&lsasquad_scrollram)	/* SCROLL RAM */
-	AM_RANGE(0xe400, 0xe5ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)	/* OBJECT RAM */
+	AM_RANGE(0x0000, 0x9fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xa000, 0xbfff) AM_WRITE(SMH_RAM)	/* SRAM */
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)	/* SCREEN RAM */
+	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(SMH_RAM) AM_BASE(&lsasquad_scrollram)	/* SCROLL RAM */
+	AM_RANGE(0xe400, 0xe5ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)	/* OBJECT RAM */
 	AM_RANGE(0xea00, 0xea00) AM_WRITE(lsasquad_bankswitch_w)
 	AM_RANGE(0xec00, 0xec00) AM_WRITE(lsasquad_sound_command_w)
 	AM_RANGE(0xee00, 0xee00) AM_WRITE(lsasquad_mcu_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0xa001, 0xa001) AM_READ(YM2203_read_port_0_r)
 	AM_RANGE(0xd000, 0xd000) AM_READ(lsasquad_sh_sound_command_r)
 	AM_RANGE(0xd800, 0xd800) AM_READ(lsasquad_sound_status_r)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_ROM)	/* space for diagnostic ROM? */
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_ROM)	/* space for diagnostic ROM? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(AY8910_control_port_0_w)
@@ -249,26 +249,26 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(lsasquad_sh_result_w)
 	AM_RANGE(0xd400, 0xd400) AM_WRITE(lsasquad_sh_nmi_disable_w)
 	AM_RANGE(0xd800, 0xd800) AM_WRITE(lsasquad_sh_nmi_enable_w)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_ROM)	/* space for diagnostic ROM? */
+	AM_RANGE(0xe000, 0xefff) AM_WRITE(SMH_ROM)	/* space for diagnostic ROM? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m68705_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_READ(lsasquad_68705_portA_r)
 	AM_RANGE(0x0001, 0x0001) AM_READ(lsasquad_68705_portB_r)
 	AM_RANGE(0x0002, 0x0002) AM_READ(lsasquad_mcu_status_r)
-	AM_RANGE(0x0010, 0x007f) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m68705_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(lsasquad_68705_portA_w)
 	AM_RANGE(0x0001, 0x0001) AM_WRITE(lsasquad_68705_portB_w)
 	AM_RANGE(0x0004, 0x0004) AM_WRITE(lsasquad_68705_ddrA_w)
 	AM_RANGE(0x0005, 0x0005) AM_WRITE(lsasquad_68705_ddrB_w)
-	AM_RANGE(0x0010, 0x007f) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -400,7 +400,7 @@ INPUT_PORTS_END
 
 static ADDRESS_MAP_START( mem_daikaiju, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x9fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xa000, 0xbfff) AM_RAM	/* SRAM */
 	AM_RANGE(0xc000, 0xdfff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)	/* SCREEN RAM */
 	AM_RANGE(0xe000, 0xe3ff) AM_RAM AM_BASE(&lsasquad_scrollram)	/* SCROLL RAM */
@@ -591,7 +591,7 @@ static MACHINE_DRIVER_START( lsasquad )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 6000000)	/* 6 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */	/* 4 MHz? */
@@ -600,17 +600,18 @@ static MACHINE_DRIVER_START( lsasquad )
 	MDRV_CPU_ADD(M68705,4000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(500)	/* 500 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 							/* main<->sound synchronization depends on this */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(lsasquad)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -621,14 +622,14 @@ static MACHINE_DRIVER_START( lsasquad )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD(AY8910, 3000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.12)
 
 	MDRV_SOUND_ADD(YM2203, 3000000)
 	MDRV_SOUND_CONFIG(ym2203_interface)
-	MDRV_SOUND_ROUTE(0, "mono", 0.20)
-	MDRV_SOUND_ROUTE(1, "mono", 0.20)
-	MDRV_SOUND_ROUTE(2, "mono", 0.20)
-	MDRV_SOUND_ROUTE(3, "mono", 1.0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.12)
+	MDRV_SOUND_ROUTE(1, "mono", 0.12)
+	MDRV_SOUND_ROUTE(2, "mono", 0.12)
+	MDRV_SOUND_ROUTE(3, "mono", 0.63)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( daikaiju )
@@ -636,15 +637,13 @@ static MACHINE_DRIVER_START( daikaiju )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(mem_daikaiju, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_mem_daikaiju, 0)
 	/* IRQs are triggered by the YM2203 */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(500)	/* 500 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 							/* main<->sound synchronization depends on this */
@@ -652,10 +651,13 @@ static MACHINE_DRIVER_START( daikaiju )
 	MDRV_MACHINE_RESET(daikaiju)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(lsasquad)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -666,14 +668,14 @@ static MACHINE_DRIVER_START( daikaiju )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD(AY8910, 3000000)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.12)
 
 	MDRV_SOUND_ADD(YM2203, 3000000)
 	MDRV_SOUND_CONFIG(ym2203_interface)
-	MDRV_SOUND_ROUTE(0, "mono", 0.20)
-	MDRV_SOUND_ROUTE(1, "mono", 0.20)
-	MDRV_SOUND_ROUTE(2, "mono", 0.20)
-	MDRV_SOUND_ROUTE(3, "mono", 1.0)
+	MDRV_SOUND_ROUTE(0, "mono", 0.12)
+	MDRV_SOUND_ROUTE(1, "mono", 0.12)
+	MDRV_SOUND_ROUTE(2, "mono", 0.12)
+	MDRV_SOUND_ROUTE(3, "mono", 0.63)
 MACHINE_DRIVER_END
 
 

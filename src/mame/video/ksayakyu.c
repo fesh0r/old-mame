@@ -63,7 +63,7 @@ static TILE_GET_INFO( get_text_tile_info )
 	SET_TILE_INFO(0,code,((attr>>2)&7),flags);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const UINT8 *source = spriteram+spriteram_size-4;
 	const UINT8 *finish = spriteram;
@@ -100,17 +100,17 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_START(ksayakyu)
 {
-	ksayakyu_tilemap = tilemap_create(get_ksayakyu_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32*8);
-	ksayakyu_textmap = tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	ksayakyu_tilemap = tilemap_create(get_ksayakyu_tile_info,tilemap_scan_rows, 8, 8,32,32*8);
+	ksayakyu_textmap = tilemap_create(get_text_tile_info,tilemap_scan_rows, 8, 8,32,32);
 	tilemap_set_transparent_pen(ksayakyu_textmap,0);
 }
 
 VIDEO_UPDATE(ksayakyu)
 {
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 	if(video_ctrl&1)
 		tilemap_draw(bitmap,cliprect,ksayakyu_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,ksayakyu_textmap, 0,0);
 	return 0;
 }

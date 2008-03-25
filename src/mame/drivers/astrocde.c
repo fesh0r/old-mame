@@ -4,26 +4,26 @@
     driver by Nicola Salmoria, Mike Coates, Frank Palazzolo, Aaron Giles
 
     Games supported:
-        * Sea Wolf II
+        * Seawolf II
         * Extra Bases
         * Space Zap
         * Wizard of Wor
         * Gorf
         * Robby Roto
         * Professor Pac-Man
-        * Demons and Dragons
+        * Demons & Dragons
         * Ten Pix Deluxe
 
     Known bugs:
-        * no audio board for Demons and Dragons
-        * Demons and Dragons doesn't work with RAM protection enabled
+        * No audio board for Demons & Dragons
+        * Demons & Dragons doesn't work with RAM protection enabled
         * Professor Pac-Man fails screen RAM test
 
 ****************************************************************************
 
     Game boards:
-        90002 = Sea Wolf II Motherboard (seawolf2)
-        90700 = Sea Wolf II Logic Board (seawolf2, ebases)
+        90002 = Seawolf II Motherboard (seawolf2)
+        90700 = Seawolf II Logic Board (seawolf2, ebases)
         91312 = Characterization Card (seawolf2)
         91354 = CPU Board (ebases, spacezap, wow, gorf, robby)
         91355 = Pattern Board (spacezap, wow, gorf, robby)
@@ -39,9 +39,9 @@
         91699 = Sound I/O Board (tenpindx)
         91846 = 640K EPROM board (profpac)
 
-    Sea Wolf II:
-        90002 = Sea Wolf II Motherboard
-        90700 = Sea Wolf II Logic Board
+    Seawolf II:
+        90002 = Seawolf II Motherboard
+        90700 = Seawolf II Logic Board
         91312 = Characterization Card
 
     Extra Bases:
@@ -98,6 +98,15 @@
       2 pressed to get to an input check screen, reset with 1+2 pressed to
       get to a convergence test screen.
 
+****************************************************************************
+
+    DIP locations verified for:
+    - seawolf2 (manual)
+    - wow (manual)
+    - gorf (manual)
+    - robby (manual)
+    - profpac (manual)
+
 ****************************************************************************/
 
 #include "driver.h"
@@ -109,6 +118,7 @@
 #include "sound/astrocde.h"
 #include "sound/ay8910.h"
 #include "tenpindx.lh"
+#include "gorf.lh"
 
 
 static UINT8 *protected_ram;
@@ -170,7 +180,7 @@ static WRITE8_HANDLER( protected_ram_w )
 
 /*************************************
  *
- *  Sea Wolf II specific input/output
+ *  Seawolf II specific input/output
  *
  *************************************/
 
@@ -412,7 +422,7 @@ static WRITE8_HANDLER( profpac_banksw_w )
 	profpac_bank = data;
 
 	/* set the main banking */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xbfff, 0, 0, MRA8_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xbfff, 0, 0, SMH_BANK1);
 	memory_set_bankptr(1, memory_region(REGION_USER1) + 0x8000 * bank);
 
 	/* bank 0 reads video RAM in the 4000-7FFF range */
@@ -428,25 +438,25 @@ static WRITE8_HANDLER( profpac_banksw_w )
 		/* if the bank is in range, map the appropriate bank */
 		if (bank < 0x28)
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MRA8_BANK2);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK2);
 			memory_set_bankptr(2, memory_region(REGION_USER2) + 0x4000 * bank);
 		}
 		else
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MRA8_UNMAP);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_UNMAP);
 	}
 }
 
 
 static void profbank_banksw_restore(void)
 {
-	profpac_banksw_w(0, profpac_bank);
+	profpac_banksw_w(Machine, 0, profpac_bank);
 }
 
 
 
 /*************************************
  *
- *  Demons and Dragons specific input/output
+ *  Demons & Dragons specific input/output
  *
  *************************************/
 
@@ -515,8 +525,8 @@ static MACHINE_START( tenpindx )
 
 static WRITE8_HANDLER( tenpindx_sound_w )
 {
-	soundlatch_w(offset, data);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine, offset, data);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -699,7 +709,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( tenpin_sub_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x90, 0x93) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 	AM_RANGE(0x97, 0x97) AM_READ(soundlatch_r)
 	AM_RANGE(0x98, 0x98) AM_WRITE(AY8910_control_port_0_w)
@@ -730,7 +740,7 @@ static const UINT32 controller_table[64] =
 static INPUT_PORTS_START( seawolf2 )
 	PORT_START_TAG("P1HANDLE")
 	PORT_BIT( 0x3f, 0x1f, IPT_POSITIONAL ) PORT_PLAYER(2) PORT_POSITIONS(64) PORT_REMAP_TABLE(controller_table) PORT_SENSITIVITY(20) PORT_KEYDELTA(4) PORT_CENTERDELTA(0) PORT_CROSSHAIR(X, 2.0, -0.40, 34.0 / 240.0)
-	PORT_DIPNAME( 0x40, 0x00, "Language 1" )
+	PORT_DIPNAME( 0x40, 0x00, "Language 1" )		PORT_DIPLOCATION("S2:!1")
 	PORT_DIPSETTING(    0x00, "Language 2" )
 	PORT_DIPSETTING(    0x40, DEF_STR( French ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -744,32 +754,32 @@ static INPUT_PORTS_START( seawolf2 )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START2 )
-	PORT_DIPNAME( 0x08, 0x00, "Language 2" )
+	PORT_DIPNAME( 0x08, 0x00, "Language 2" )		PORT_DIPLOCATION("S2:!2")
 	PORT_DIPSETTING(    0x00, DEF_STR( English ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( German ) )
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("P4HANDLE")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coinage ) ) PORT_DIPLOCATION("S1:2")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coinage ) )	PORT_DIPLOCATION("S1:!2")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0x06, 0x00, "Play Time" ) PORT_DIPLOCATION("S1:3,4")
-	PORT_DIPSETTING(    0x06, "40" )
-	PORT_DIPSETTING(    0x04, "50" )
-	PORT_DIPSETTING(    0x02, "60" )
-	PORT_DIPSETTING(    0x00, "70" )
-	PORT_DIPNAME( 0x08, 0x08, "2 Players Game" ) PORT_DIPLOCATION("S1:1")
+	PORT_DIPNAME( 0x06, 0x00, "Play Time" )			PORT_DIPLOCATION("S1:!3,!4")
+	PORT_DIPSETTING(    0x06, "1P 40s/2P 45s" )		/* Extended play: 1P 20s/2P 20s */
+	PORT_DIPSETTING(    0x04, "1P 50s/2P 60s" )		/* Extended play: 1P 25s/2P 30s */
+	PORT_DIPSETTING(    0x02, "1P 60s/2P 75s" )		/* Extended play: 1P 30s/2P 35s */
+	PORT_DIPSETTING(    0x00, "1P 70s/2P 90s" )		/* Extended play: 1P 35s/2P 45s */
+	PORT_DIPNAME( 0x08, 0x08, "2 Players Game" )	PORT_DIPLOCATION("S1:!1")
 	PORT_DIPSETTING(    0x00, "1 Credit" )
 	PORT_DIPSETTING(    0x08, "2 Credits" )
-	PORT_DIPNAME( 0x30, 0x00, "Extended Play" ) PORT_DIPLOCATION("S1:5,6")
+	PORT_DIPNAME( 0x30, 0x00, "Extended Play" )		PORT_DIPLOCATION("S1:!5,!6")
 	PORT_DIPSETTING(    0x10, "5000" )
 	PORT_DIPSETTING(    0x20, "6000" )
 	PORT_DIPSETTING(    0x30, "7000" )
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0x40, 0x40, "Monitor" ) PORT_DIPLOCATION("S1:7")
+	PORT_DIPNAME( 0x40, 0x40, "Monitor" )			PORT_DIPLOCATION("S1:!7")
 	PORT_DIPSETTING(    0x40, "Color" )
 	PORT_DIPSETTING(    0x00, "B/W" )
-	PORT_SERVICE_DIPLOC( 0x80, IP_ACTIVE_LOW, "S1:8")
+	PORT_SERVICE_DIPLOC( 0x80, IP_ACTIVE_LOW, "S1:!8")
 INPUT_PORTS_END
 
 
@@ -787,11 +797,11 @@ static INPUT_PORTS_START( ebases )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_DIPNAME( 0x10, 0x00, "Monitor" )
+	PORT_DIPNAME( 0x10, 0x00, "Monitor" )			PORT_DIPLOCATION( "JU:1" )
 	PORT_DIPSETTING(    0x00, "Color" )
 	PORT_DIPSETTING(    0x10, "B/W" )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Cabinet ) )	PORT_DIPLOCATION( "JU:2" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -800,7 +810,7 @@ static INPUT_PORTS_START( ebases )
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(ebases_trackball_r, 0)
 
 	PORT_START_TAG("P4HANDLE")
-	PORT_DIPNAME( 0x01, 0x00, "2 Players Game" ) PORT_DIPLOCATION( "S1:1" )
+	PORT_DIPNAME( 0x01, 0x00, "2 Players Game" )	PORT_DIPLOCATION( "S1:1" )
 	PORT_DIPSETTING(    0x00, "1 Credit" )
 	PORT_DIPSETTING(    0x01, "2 Credits" )
 	PORT_DIPUNUSED_DIPLOC( 0x02, 0x00, "S1:2" )
@@ -841,7 +851,7 @@ static INPUT_PORTS_START( spacezap )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_DIPUNUSED_DIPLOC( 0x20, 0x20, "S1:7" )
+	PORT_DIPUNUSED_DIPLOC( 0x20, 0x20, "JU:1" )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("P3HANDLE")
@@ -850,16 +860,16 @@ static INPUT_PORTS_START( spacezap )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Cabinet ) )	PORT_DIPLOCATION("JU:2")
 	PORT_DIPSETTING(    0x20, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("P4HANDLE")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coin_A ) ) PORT_DIPLOCATION( "S1:1" )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coin_A ) )	PORT_DIPLOCATION( "S1:1" )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coin_B ) ) PORT_DIPLOCATION( "S1:2,3" )
+	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coin_B ) )	PORT_DIPLOCATION( "S1:2,3" )
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
@@ -867,7 +877,8 @@ static INPUT_PORTS_START( spacezap )
 	PORT_DIPUNUSED_DIPLOC( 0x08, 0x00, "S1:4" )
 	PORT_DIPUNUSED_DIPLOC( 0x10, 0x00, "S1:5" )
 	PORT_DIPUNUSED_DIPLOC( 0x20, 0x00, "S1:6" )
-	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "S1:7" )
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "S1:8" )
 INPUT_PORTS_END
 
 
@@ -880,7 +891,7 @@ static INPUT_PORTS_START( wow )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("JU:1") /* Undocumented, jumper? */
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
@@ -904,28 +915,29 @@ static INPUT_PORTS_START( wow )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(wow_speech_status_r, 0)
 
 	PORT_START_TAG("P4HANDLE")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("S1:1")
+	/* "If S1:1,2,3 are all ON or all OFF, only coin meter number 1 will count." */
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("S1:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("S1:2,3")
+	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coin_B ) )		PORT_DIPLOCATION("S1:2,3")
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_5C ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Language ) ) PORT_DIPLOCATION("S1:4")
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Language ) )		PORT_DIPLOCATION("S1:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( English ) )
-	PORT_DIPSETTING(    0x00, "Foreign (NEED ROM)" )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Lives ) ) PORT_DIPLOCATION("S1:5")
+	PORT_DIPSETTING(    0x00, "Foreign (NEED ROM)" )	/* "Requires A082-91374-A000" */
+	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Lives ) )		PORT_DIPLOCATION("S1:5")
  	PORT_DIPSETTING(    0x10, "2 for 1 Credit / 5 for 2 Credits" )
  	PORT_DIPSETTING(    0x00, "3 for 1 Credit / 7 for 2 Credits" )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("S1:6")
-	PORT_DIPSETTING(    0x20, "3rd Level" )
-	PORT_DIPSETTING(    0x00, "4th Level" )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("S1:7")
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("S1:6")
+	PORT_DIPSETTING(    0x20, "After 3rd Level" )
+	PORT_DIPSETTING(    0x00, "After 4th Level" )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) )	PORT_DIPLOCATION("S1:7")
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("S1:8")
-	PORT_DIPSETTING(    0x00, "On only when controls are touched" )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("S1:8")
+	PORT_DIPSETTING(    0x00, "On only when controls are touched" )	/* "Touching controls will enable attract sound for 1 cycle." */
 	PORT_DIPSETTING(    0x80, "Always On"  )
 INPUT_PORTS_END
 
@@ -938,10 +950,10 @@ static INPUT_PORTS_START( gorf )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("JU:1")	/* Jumper */
 	PORT_DIPSETTING(    0x40, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x80, 0x80, "Speech" )
+	PORT_DIPNAME( 0x80, 0x80, "Speech" )				PORT_DIPLOCATION("JU:2")	/* Jumper */
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
@@ -963,27 +975,27 @@ static INPUT_PORTS_START( gorf )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(gorf_speech_status_r, 0)
 
 	PORT_START_TAG("P4HANDLE")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coin_A ) ) PORT_DIPLOCATION("S1:1")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("S1:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
-	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coin_B ) ) PORT_DIPLOCATION("S1:2,3")
+	PORT_DIPNAME( 0x06, 0x06, DEF_STR( Coin_B ) )		PORT_DIPLOCATION("S1:2,3")
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_5C ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Language ) ) PORT_DIPLOCATION("S1:4")
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Language ) )		PORT_DIPLOCATION("S1:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( English ) )
-	PORT_DIPSETTING(    0x00, "Foreign (NEED ROM)" )
-	PORT_DIPNAME( 0x10, 0x00, "Lives per Credit" ) PORT_DIPLOCATION("S1:5")
+	PORT_DIPSETTING(    0x00, "Foreign (NEED ROM)" )	/* "Requires A082-91374-A000" */
+	PORT_DIPNAME( 0x10, 0x00, "Lives per Credit" )		PORT_DIPLOCATION("S1:5")
 	PORT_DIPSETTING(    0x10, "2" )
 	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("S1:6")
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("S1:6")
 	PORT_DIPSETTING(    0x00, "Mission 5" )
 	PORT_DIPSETTING(    0x20, DEF_STR( None ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("S1:7")
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) )	PORT_DIPLOCATION("S1:7")
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("S1:8")
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("S1:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -1019,22 +1031,22 @@ static INPUT_PORTS_START( robby )
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("P4HANDLE")
-	PORT_DIPNAME( 0x01, 0x01, "Use NVRAM" ) PORT_DIPLOCATION("S1:1")
+	PORT_DIPNAME( 0x01, 0x01, "Use NVRAM" )				PORT_DIPLOCATION("S1:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x02, 0x02, "Use Service Mode Settings" ) PORT_DIPLOCATION("S1:2")
 	PORT_DIPSETTING(    0x00, "Reset" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Free_Play ) ) PORT_DIPLOCATION("S1:3")
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Free_Play ) )	PORT_DIPLOCATION("S1:3")
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("S1:4")
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("S1:4")	/* Listed as "Unused". */
 	PORT_DIPSETTING(    0x08, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_DIPUNUSED_DIPLOC( 0x10, 0x00, "S1:5" )
 	PORT_DIPUNUSED_DIPLOC( 0x20, 0x00, "S1:6" )
 	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "S1:7" )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("S1:8")
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("S1:8")	/* Listed as "Unused". */
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 INPUT_PORTS_END
@@ -1064,21 +1076,21 @@ static INPUT_PORTS_START( profpac )
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("P4HANDLE")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("S1:1")
-	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )	PORT_DIPLOCATION("S1:1")
+	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )	/* Upright or Mini */
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x02, "Reset on powerup" ) PORT_DIPLOCATION("S1:2")
+	PORT_DIPNAME( 0x02, 0x02, "Reset on powerup" )	PORT_DIPLOCATION("S1:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x00, "Halt on error" ) PORT_DIPLOCATION("S1:3")
+	PORT_DIPNAME( 0x04, 0x00, "Halt on error" )		PORT_DIPLOCATION("S1:3")
 	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x08, 0x00, "Beep" ) PORT_DIPLOCATION("S1:4")
+	PORT_DIPNAME( 0x08, 0x00, "Beep" )				PORT_DIPLOCATION("S1:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x10, 0x10, "ROM" ) PORT_DIPLOCATION("S1:5")
-	PORT_DIPSETTING(    0x10, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x10, 0x00, "ROM's Used" )		PORT_DIPLOCATION("S1:5")
+	PORT_DIPSETTING(    0x10, "8K & 16K ROM's" )
+	PORT_DIPSETTING(    0x00, "32K ROM's" )
 	PORT_DIPUNUSED_DIPLOC( 0x20, 0x00, "S1:6" )
 	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "S1:7" )
 	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "S1:8" )
@@ -1138,25 +1150,25 @@ static INPUT_PORTS_START( tenpindx )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START_TAG("P61")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) ) PORT_DIPLOCATION("S1:1")
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )	PORT_DIPLOCATION("S1:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x02, "Lockup" ) PORT_DIPLOCATION("S1:2")
+	PORT_DIPNAME( 0x02, 0x02, "Lockup" )			PORT_DIPLOCATION("S1:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x04, 0x00, "Reset" ) PORT_DIPLOCATION("S1:3")
+	PORT_DIPNAME( 0x04, 0x00, "Reset" )				PORT_DIPLOCATION("S1:3")
 	PORT_DIPSETTING(    0x04, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x08, 0x00, "Beep" ) PORT_DIPLOCATION("S1:4")
+	PORT_DIPNAME( 0x08, 0x00, "Beep" )				PORT_DIPLOCATION("S1:4")
 	PORT_DIPSETTING(    0x08, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x10, 0x10, "Regulation" ) PORT_DIPLOCATION("S1:5")
+	PORT_DIPNAME( 0x10, 0x10, "Regulation" )		PORT_DIPLOCATION("S1:5")
 	PORT_DIPSETTING(    0x10, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x20, 0x20, "Ticket Dispenser" ) PORT_DIPLOCATION("S1:6")
+	PORT_DIPNAME( 0x20, 0x20, "Ticket Dispenser" )	PORT_DIPLOCATION("S1:6")
 	PORT_DIPSETTING(    0x20, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x40, 0x40, "Bill Acceptor" ) PORT_DIPLOCATION("S1:7")
+	PORT_DIPNAME( 0x40, 0x40, "Bill Acceptor" )		PORT_DIPLOCATION("S1:7")
 	PORT_DIPSETTING(    0x40, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "S1:8" )
@@ -1250,10 +1262,9 @@ static MACHINE_DRIVER_START( astrocade_base )
 	MDRV_MACHINE_START(astrocde)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_PALETTE_LENGTH(512)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(ASTROCADE_CLOCK, 455, 0, 352, 262, 0, 240)
 	MDRV_SCREEN_DEFAULT_POSITION(1.1, 0.0, 1.18, -0.018)	/* clip out borders */
@@ -1715,7 +1726,7 @@ static DRIVER_INIT( profpac )
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x15, 0x15, 0x77ff, 0xff00, profpac_io_2_r);
 
 	/* reset banking */
-	profpac_banksw_w(0, 0);
+	profpac_banksw_w(machine, 0, 0);
 	state_save_register_func_postload(profbank_banksw_restore);
 }
 
@@ -1729,7 +1740,7 @@ static DRIVER_INIT( demndrgn )
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x97, 0x97, 0x0000, 0xff00, demndrgn_sound_w);
 
 	/* reset banking */
-	profpac_banksw_w(0, 0);
+	profpac_banksw_w(machine, 0, 0);
 	state_save_register_func_postload(profbank_banksw_restore);
 }
 
@@ -1748,7 +1759,7 @@ static DRIVER_INIT( tenpindx )
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x97, 0x97, 0x0000, 0xff00, tenpindx_sound_w);
 
 	/* reset banking */
-	profpac_banksw_w(0, 0);
+	profpac_banksw_w(machine, 0, 0);
 	state_save_register_func_postload(profbank_banksw_restore);
 }
 
@@ -1761,7 +1772,7 @@ static DRIVER_INIT( tenpindx )
  *************************************/
 
 /* 90002 CPU board + 90700 game board + 91312 "characterization card" */
-GAME( 1978, seawolf2, 0,    seawolf2, seawolf2, seawolf2, ROT0,   "Midway", "Sea Wolf II", GAME_SUPPORTS_SAVE )
+GAME( 1978, seawolf2, 0,    seawolf2, seawolf2, seawolf2, ROT0,   "Midway", "Seawolf II", GAME_SUPPORTS_SAVE )
 
 /* 91354 CPU board + 90700 game board + 91356 RAM board */
 GAME( 1980, ebases,   0,    ebases,   ebases,   ebases,   ROT0,   "Midway", "Extra Bases", GAME_SUPPORTS_SAVE )
@@ -1773,15 +1784,15 @@ GAME( 1980, spacezap, 0,    spacezap, spacezap, spacezap, ROT0,   "Midway", "Spa
 GAME( 1980, wow,      0,    wow,      wow,      wow,      ROT0,   "Midway", "Wizard of Wor", GAME_SUPPORTS_SAVE )
 
 /* 91354 CPU board + 90708 game board + 91356 RAM board + 91355 pattern board + 91364 ROM/RAM board */
-GAME( 1981, gorf,     0,    gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf", GAME_SUPPORTS_SAVE )
-GAME( 1981, gorfpgm1, gorf, gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf (Program 1)", GAME_SUPPORTS_SAVE )
+GAMEL(1981, gorf,     0,    gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf", GAME_SUPPORTS_SAVE, layout_gorf  )
+GAMEL(1981, gorfpgm1, gorf, gorf,     gorf,     gorf,     ROT270, "Midway", "Gorf (program 1)", GAME_SUPPORTS_SAVE, layout_gorf )
 
 /* 91354 CPU board + 90708 game board + 91356 RAM board + 91355 pattern board + 91423 memory board */
 GAME( 1981, robby,    0,    robby,    robby,    robby,    ROT0,   "Bally Midway", "Robby Roto", GAME_SUPPORTS_SAVE )
 
 /* 91465 CPU board + 91469 game board + 91466 RAM board + 91488 pattern board + 91467 memory board + 91846 EPROM board */
-GAME( 1983, profpac,  0,    profpac,  profpac,  profpac,  ROT0,   "Bally Midway", "Professor PacMan", GAME_SUPPORTS_SAVE )
+GAME( 1983, profpac,  0,    profpac,  profpac,  profpac,  ROT0,   "Bally Midway", "Professor Pac-Man", GAME_SUPPORTS_SAVE )
 
 /* 91465 CPU board + 91699 game board + 91466 RAM board + 91488 pattern board + 91467 memory board */
-GAME( 1982, demndrgn, 0,    demndrgn, demndrgn, demndrgn, ROT0,   "Bally Midway", "Demons and Dragons (prototype)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1982, demndrgn, 0,    demndrgn, demndrgn, demndrgn, ROT0,   "Bally Midway", "Demons & Dragons (prototype)", GAME_NO_SOUND | GAME_SUPPORTS_SAVE )
 GAMEL(1983, tenpindx, 0,    tenpindx, tenpindx, tenpindx, ROT0,   "Bally Midway", "Ten Pin Deluxe", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE, layout_tenpindx )

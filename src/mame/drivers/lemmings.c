@@ -74,8 +74,8 @@ static WRITE16_HANDLER( lemmings_palette_24bit_w )
 
 static WRITE16_HANDLER( lemmings_sound_w )
 {
-	soundlatch_w(0,data&0xff);
-	cpunum_set_input_line(Machine, 1,1,HOLD_LINE);
+	soundlatch_w(machine,0,data&0xff);
+	cpunum_set_input_line(machine, 1,1,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( lemmings_sound_ack_w )
@@ -86,23 +86,23 @@ static WRITE8_HANDLER( lemmings_sound_ack_w )
 /******************************************************************************/
 
 static ADDRESS_MAP_START( lemmings_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x120000, 0x1207ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x140000, 0x1407ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x160000, 0x160fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x120000, 0x1207ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x140000, 0x1407ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x160000, 0x160fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1a0000, 0x1a07ff) AM_READ(lemmings_prot_r)
 	AM_RANGE(0x190000, 0x19000f) AM_READ(lemmings_trackball_r)
-	AM_RANGE(0x200000, 0x202fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x300000, 0x37ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x380000, 0x39ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x200000, 0x202fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x300000, 0x37ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x380000, 0x39ffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( lemmings_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x140000, 0x1407ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x140000, 0x1407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
 	AM_RANGE(0x160000, 0x160fff) AM_WRITE(lemmings_palette_24bit_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x170000, 0x17000f) AM_WRITE(lemmings_control_w) AM_BASE(&lemmings_control_data)
 	AM_RANGE(0x1a0064, 0x1a0065) AM_WRITE(lemmings_sound_w)
@@ -116,20 +116,20 @@ ADDRESS_MAP_END
 /******************************************************************************/
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0801, 0x0801) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x1000, 0x1000) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0x1800, 0x1800) AM_READ(soundlatch_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x0800, 0x0800) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x0801, 0x0801) AM_WRITE(YM2151_data_port_0_w)
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(lemmings_sound_ack_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -275,20 +275,22 @@ static MACHINE_DRIVER_START( lemmings )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 14000000)
 	MDRV_CPU_PROGRAM_MAP(lemmings_readmem,lemmings_writemem)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD(M6809,32220000/8)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(lemmings)
 	MDRV_PALETTE_LENGTH(1024)
 

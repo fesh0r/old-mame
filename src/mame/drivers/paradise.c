@@ -30,6 +30,7 @@ paradise: I'm not sure it's working correctly:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "paradise.h"
 #include "sound/okim6295.h"
 
@@ -96,7 +97,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( paradise_readport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x17ff) AM_READ(MRA8_RAM			)	// Palette
+	AM_RANGE(0x0000, 0x17ff) AM_READ(SMH_RAM			)	// Palette
 	AM_RANGE(0x2010, 0x2010) AM_READ(OKIM6295_status_0_r	)	// OKI 0
 	AM_RANGE(0x2030, 0x2030) AM_READ(OKIM6295_status_1_r	)	// OKI 1
 	AM_RANGE(0x2020, 0x2020) AM_READ(input_port_0_r		)	// DSW 1
@@ -104,7 +105,7 @@ static ADDRESS_MAP_START( paradise_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x2022, 0x2022) AM_READ(input_port_2_r		)	// P1
 	AM_RANGE(0x2023, 0x2023) AM_READ(input_port_3_r		)	// P2
 	AM_RANGE(0x2024, 0x2024) AM_READ(input_port_4_r		)	// Coins
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_RAM			)	// Pixmap
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_RAM			)	// Pixmap
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( paradise_writeport, ADDRESS_SPACE_IO, 8 )
@@ -539,16 +540,16 @@ static MACHINE_DRIVER_START( paradise )
 	MDRV_CPU_ADD_TAG("main", Z80, XTAL_12MHz/2)			/* Z8400B - 6mhz Verified */
 	MDRV_CPU_PROGRAM_MAP(paradise_map,0)
 	MDRV_CPU_IO_MAP(paradise_readport,paradise_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)	/* No nmi routine */
-
-	MDRV_SCREEN_REFRESH_RATE(54) /* 54 verified */
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION	/* we're using IPT_VBLANK */)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)	/* No nmi routine */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(54) /* 54 verified */
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */	/* we're using IPT_VBLANK */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-1-16)
+
 	MDRV_GFXDECODE(paradise)
 	MDRV_PALETTE_LENGTH(0x800 + 16)
 

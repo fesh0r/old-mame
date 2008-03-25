@@ -96,7 +96,7 @@ p2 ink doesn't always light up in test mode
 
 #include "driver.h"
 
-static mame_bitmap *tile, *obj1, *obj2;
+static bitmap_t *tile, *obj1, *obj2;
 static tilemap *tx_tilemap;
 
 static UINT8 *tx_tileram;
@@ -115,17 +115,17 @@ static WRITE8_HANDLER( tx_tileram_w )
 }
 
 static ADDRESS_MAP_START( marinedt_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x37ff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4400, 0x47ff) AM_READ(MRA8_RAM)	//unused, vram mirror?
-	AM_RANGE(0x4000, 0x4bff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x37ff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4400, 0x47ff) AM_READ(SMH_RAM)	//unused, vram mirror?
+	AM_RANGE(0x4000, 0x4bff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( marinedt_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x37ff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x37ff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x47ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x4800, 0x4bff) AM_WRITE(tx_tileram_w) AM_BASE(&tx_tileram)
-	AM_RANGE(0x4c00, 0x4c00) AM_WRITE(MWA8_NOP)	//?? maybe off by one error
+	AM_RANGE(0x4c00, 0x4c00) AM_WRITE(SMH_NOP)	//?? maybe off by one error
 ADDRESS_MAP_END
 
 static READ8_HANDLER( marinedt_port1_r )
@@ -187,7 +187,7 @@ static READ8_HANDLER( marinedt_obj1_yq_r )
 
 
 static ADDRESS_MAP_START( marinedt_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)		//dips coinage
 	AM_RANGE(0x01, 0x01) AM_READ(marinedt_port1_r)		//trackball xy muxed
 	AM_RANGE(0x02, 0x02) AM_READ(marinedt_obj1_x_r)
@@ -278,12 +278,12 @@ static WRITE8_HANDLER( marinedt_pf_w )
 
 //if(data&0xf0)
 //  logerror("pf:%02x %d\n",marinedt_pf);
-//logerror("pd:%02x %d\n",marinedt_pd, cpu_getcurrentframe());
+//logerror("pd:%02x %d\n",marinedt_pd, video_screen_get_frame_number(machine->primary_screen));
 
 }
 
 static ADDRESS_MAP_START( marinedt_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_WRITE(marinedt_obj1_a_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(marinedt_obj1_x_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(marinedt_obj1_y_w)
@@ -354,7 +354,7 @@ static INPUT_PORTS_START( marinedt )
 	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
 //freezes the game before the reset
 //doesn't seem to be done as a dip, but what about mixing with diops like this?
-	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_TOGGLE PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE( 0x04, IP_ACTIVE_HIGH )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
@@ -410,7 +410,7 @@ static PALETTE_INIT( marinedt )
 {
 	int i,r,b,g;
 
-	for (i = 0;i < machine->drv->total_colors; i++)
+	for (i = 0;i < machine->config->total_colors; i++)
 	{
 		int bit0,bit1,bit2;
 
@@ -450,15 +450,15 @@ static TILE_GET_INFO( get_tile_info )
 
 static VIDEO_START( marinedt )
 {
-	tx_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8,32,32);
+	tx_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap, 0);
 	tilemap_set_scrolldx(tx_tilemap, 0, 4*8);
 	tilemap_set_scrolldy(tx_tilemap, 0, -4*8);
 
-	tile = auto_bitmap_alloc(32 * 8, 32 * 8, machine->screen[0].format);
-	obj1 = auto_bitmap_alloc(32,32,machine->screen[0].format);
-	obj2 = auto_bitmap_alloc(32,32,machine->screen[0].format);
+	tile = auto_bitmap_alloc(32 * 8, 32 * 8, video_screen_get_format(machine->primary_screen));
+	obj1 = auto_bitmap_alloc(32,32,video_screen_get_format(machine->primary_screen));
+	obj2 = auto_bitmap_alloc(32,32,video_screen_get_format(machine->primary_screen));
 }
 
 
@@ -479,34 +479,34 @@ static VIDEO_UPDATE( marinedt )
 {
 	int sx, sy;
 
-	fillbitmap(tile, machine->pens[0], NULL);
+	fillbitmap(tile, 0, NULL);
 	tilemap_draw(tile, cliprect, tx_tilemap, 0, 0);
 
-	fillbitmap(obj1, machine->pens[0], NULL);
-	drawgfx(obj1, machine->gfx[1],
+	fillbitmap(obj1, 0, NULL);
+	drawgfx(obj1, screen->machine->gfx[1],
 			OBJ_CODE(marinedt_obj1_a),
 			OBJ_COLOR(marinedt_obj1_a),
 			OBJ_FLIPX(marinedt_obj1_a), OBJ_FLIPY(marinedt_obj1_a),
 			0, 0,
 			NULL, TRANSPARENCY_PEN, 0);
 
-	fillbitmap(obj2, machine->pens[0], NULL);
-	drawgfx(obj2, machine->gfx[2],
+	fillbitmap(obj2, 0, NULL);
+	drawgfx(obj2, screen->machine->gfx[2],
 			OBJ_CODE(marinedt_obj2_a),
 			OBJ_COLOR(marinedt_obj2_a),
 			OBJ_FLIPX(marinedt_obj2_a), OBJ_FLIPY(marinedt_obj2_a),
 			0, 0,
 			NULL, TRANSPARENCY_PEN, 0);
 
-	fillbitmap(bitmap, machine->pens[0], NULL);
+	fillbitmap(bitmap, 0, NULL);
 
 	if (marinedt_pd & 0x02)
-		copybitmap_trans(bitmap, obj2, 0, 0, OBJ_X(marinedt_obj2_x), OBJ_Y(marinedt_obj2_y), cliprect, machine->pens[0]);
+		copybitmap_trans(bitmap, obj2, 0, 0, OBJ_X(marinedt_obj2_x), OBJ_Y(marinedt_obj2_y), cliprect, 0);
 
 	if (marinedt_pd & 0x01)
-		copybitmap_trans(bitmap, obj1, 0, 0, OBJ_X(marinedt_obj1_x), OBJ_Y(marinedt_obj1_y), cliprect, machine->pens[0]);
+		copybitmap_trans(bitmap, obj1, 0, 0, OBJ_X(marinedt_obj1_x), OBJ_Y(marinedt_obj1_y), cliprect, 0);
 
-	copybitmap_trans(bitmap, tile, 0, 0, 0, 0, cliprect, machine->pens[0]);
+	copybitmap_trans(bitmap, tile, 0, 0, 0, 0, cliprect, 0);
 
 	coll = cx = cyr = cyq = 0;
 	if (marinedt_pd & 0x01)
@@ -521,10 +521,10 @@ static VIDEO_UPDATE( marinedt )
 				 || y < cliprect->min_y || y > cliprect->max_y)
 					continue;
 
-				if (*BITMAP_ADDR16(obj1, sy, sx) == machine->pens[0])
+				if (*BITMAP_ADDR16(obj1, sy, sx) == 0)
 					continue;
 
-				if (*BITMAP_ADDR16(tile, y, x) != machine->pens[0])
+				if (*BITMAP_ADDR16(tile, y, x) != 0)
 				{
 					coll = 0x08;
 
@@ -558,10 +558,10 @@ static VIDEO_UPDATE( marinedt )
 				 || yy < 0 || yy >= 32)
 					continue;
 
-				if (*BITMAP_ADDR16(obj1, sy, sx) == machine->pens[0])
+				if (*BITMAP_ADDR16(obj1, sy, sx) == 0)
 					continue;
 
-				if (*BITMAP_ADDR16(obj2, yy, xx) != machine->pens[0])
+				if (*BITMAP_ADDR16(obj2, yy, xx) != 0)
 				{
 					collh = 0x80;
 
@@ -587,16 +587,16 @@ static MACHINE_DRIVER_START( marinedt )
 	MDRV_CPU_ADD(Z80,10000000/4)
 	MDRV_CPU_PROGRAM_MAP(marinedt_readmem,marinedt_writemem)
 	MDRV_CPU_IO_MAP(marinedt_readport,marinedt_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(4*8+32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 32*8-1)
+
 	MDRV_GFXDECODE(marinedt)
 	MDRV_PALETTE_LENGTH(64)
 

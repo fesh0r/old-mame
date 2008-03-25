@@ -6,6 +6,7 @@
 
 #include "driver.h"
 #include "deprecat.h"
+#include "exidy.h"
 
 
 UINT8 *exidy_videoram;
@@ -23,10 +24,10 @@ static UINT8 collision_invert;
 static int is_2bpp;
 static UINT8 int_condition;
 
-static mame_bitmap *background_bitmap;
-static mame_bitmap *motion_object_1_vid;
-static mame_bitmap *motion_object_2_vid;
-static mame_bitmap *motion_object_2_clip;
+static bitmap_t *background_bitmap;
+static bitmap_t *motion_object_1_vid;
+static bitmap_t *motion_object_2_vid;
+static bitmap_t *motion_object_2_clip;
 
 
 
@@ -53,10 +54,12 @@ void exidy_video_config(UINT8 _collision_mask, UINT8 _collision_invert, int _is_
 
 VIDEO_START( exidy )
 {
-	background_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
-	motion_object_1_vid = auto_bitmap_alloc(16, 16, machine->screen[0].format);
-	motion_object_2_vid = auto_bitmap_alloc(16, 16, machine->screen[0].format);
-	motion_object_2_clip = auto_bitmap_alloc(16, 16, machine->screen[0].format);
+	bitmap_format format = video_screen_get_format(machine->primary_screen);
+
+	background_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	motion_object_1_vid = auto_bitmap_alloc(16, 16, format);
+	motion_object_2_vid = auto_bitmap_alloc(16, 16, format);
+	motion_object_2_clip = auto_bitmap_alloc(16, 16, format);
 }
 
 
@@ -228,7 +231,7 @@ INLINE int sprite_1_enabled(void)
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* draw sprite 2 first */
 	int sprite_set_2 = ((*exidy_sprite_enable & 0x40) != 0);
@@ -349,7 +352,7 @@ static void check_collision(running_machine *machine)
 
 				/* if we got one, trigger an interrupt */
 				if ((current_collision_mask & collision_mask) && (count++ < 128))
-					timer_set(video_screen_get_time_until_pos(0, org_1_x + sx, org_1_y + sy), NULL, current_collision_mask, collision_irq_callback);
+					timer_set(video_screen_get_time_until_pos(machine->primary_screen, org_1_x + sx, org_1_y + sy), NULL, current_collision_mask, collision_irq_callback);
 			}
 
 			if (*BITMAP_ADDR16(motion_object_2_vid, sy, sx) != 0xff)
@@ -357,7 +360,7 @@ static void check_collision(running_machine *machine)
 				/* check for background collision (M2CHAR) */
 				if (*BITMAP_ADDR16(background_bitmap, org_2_y + sy, org_2_x + sx) != 0)
 					if ((collision_mask & 0x08) && (count++ < 128))
-						timer_set(video_screen_get_time_until_pos(0, org_2_x + sx, org_2_y + sy), NULL, 0x08, collision_irq_callback);
+						timer_set(video_screen_get_time_until_pos(machine->primary_screen, org_2_x + sx, org_2_y + sy), NULL, 0x08, collision_irq_callback);
 			}
 		}
 }
@@ -373,17 +376,17 @@ static void check_collision(running_machine *machine)
 VIDEO_UPDATE( exidy )
 {
 	/* refresh the colors from the palette (static or dynamic) */
-	set_colors(machine);
+	set_colors(screen->machine);
 
 	/* update the background and draw it */
 	draw_background();
 	copybitmap(bitmap, background_bitmap, 0, 0, 0, 0, cliprect);
 
 	/* draw the sprites */
-	draw_sprites(machine, bitmap, NULL);
+	draw_sprites(screen->machine, bitmap, NULL);
 
 	/* check for collision, this will set the appropriate bits in collision_mask */
-	check_collision(machine);
+	check_collision(screen->machine);
 
 	return 0;
 }

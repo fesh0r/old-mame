@@ -225,7 +225,7 @@ READ16_HANDLER( bigrun_vregs_r )
 		case 0x0004/2 : return readinputport(3);	// Motor Limit Switches
 		case 0x0006/2 : return readinputport(4);	// DSW 1 & 2
 
-		case 0x0008/2 :	return soundlatch2_word_r(0,0);	// From sound cpu
+		case 0x0008/2 :	return soundlatch2_word_r(machine,0,0);	// From sound cpu
 
 		case 0x0010/2 :
 			switch (cischeat_ip_select & 0x3)
@@ -274,7 +274,7 @@ WRITE16_HANDLER( bigrun_vregs_w )
 			break;
 
 		case 0x000a/2   :	// to sound cpu
-			soundlatch_word_w(0,new_data,0);
+			soundlatch_word_w(machine,0,new_data,0);
 			break;
 
 		case 0x000c/2   :	break;	// ??
@@ -332,7 +332,7 @@ READ16_HANDLER( cischeat_vregs_r )
 			}
 
 		case 0x2200/2 : return readinputport(5);	// DSW 3 (4 bits)
-		case 0x2300/2 : return soundlatch2_r(0);	// From sound cpu
+		case 0x2300/2 : return soundlatch2_r(machine,0);	// From sound cpu
 
 		default:	SHOW_READ_ERROR("vreg %04X read!",offset*2);
 					return megasys1_vregs[offset];
@@ -386,14 +386,14 @@ WRITE16_HANDLER( cischeat_vregs_w )
 		case 0x2208/2   : break;	// watchdog reset
 
 		case 0x2300/2   :	/* Sound CPU: reads latch during int 4, and stores command */
-							soundlatch_word_w(0,new_data,0);
-							cpunum_set_input_line(Machine, 3,4,HOLD_LINE);
+							soundlatch_word_w(machine,0,new_data,0);
+							cpunum_set_input_line(machine, 3,4,HOLD_LINE);
 							break;
 
 		/* Not sure about this one.. */
-		case 0x2308/2   :	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
-							cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
-							cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, (new_data & 1) ? ASSERT_LINE : CLEAR_LINE );
+		case 0x2308/2   :	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
+							cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
+							cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, (new_data & 1) ? ASSERT_LINE : CLEAR_LINE );
 							break;
 
 		default: SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
@@ -422,7 +422,7 @@ READ16_HANDLER( f1gpstar_vregs_r )
 						       (read_shift()<<5);	// Buttons
 
 		case 0x0006/2 :	return readinputport(3);	// ? Read at boot only
-		case 0x0008/2 :	return soundlatch2_r(0);	// From sound cpu
+		case 0x0008/2 :	return soundlatch2_r(machine,0);	// From sound cpu
 
 		case 0x000c/2 :	return readinputport(4);	// DSW 3
 
@@ -445,7 +445,7 @@ READ16_HANDLER( f1gpstr2_vregs_r )
 			return (f1gpstr2_ioready[0]&1) ? 0xff : 0xf0;
 
 		default:
-			return f1gpstar_vregs_r(offset,mem_mask);
+			return f1gpstar_vregs_r(machine,offset,mem_mask);
 	}
 }
 
@@ -464,7 +464,7 @@ READ16_HANDLER( wildplt_vregs_r )
 
 		case 0x0004/2 :	return readinputport(1); // Buttons
 
-		case 0x0008/2 :	return soundlatch2_r(0); // From sound cpu
+		case 0x0008/2 :	return soundlatch2_r(machine,0); // From sound cpu
 
 		case 0x0010/2 :	// X, Y
 			return readinputport(2) | (readinputport(3)<<8);
@@ -505,8 +505,8 @@ CPU #0 PC 00235C : Warning, vreg 0006 <- 0000
 		case 0x0014/2   :	break;
 
 		/* Usually written in sequence, but not always */
-		case 0x0008/2   :	soundlatch_word_w(0,new_data,0);	break;
-		case 0x0018/2   :	cpunum_set_input_line(Machine, 3,4,HOLD_LINE);	break;
+		case 0x0008/2   :	soundlatch_word_w(machine,0,new_data,0);	break;
+		case 0x0018/2   :	cpunum_set_input_line(machine, 3,4,HOLD_LINE);	break;
 
 		case 0x0010/2   :	break;
 
@@ -526,9 +526,9 @@ CPU #0 PC 00235C : Warning, vreg 0006 <- 0000
 		case 0x2208/2   : break;	// watchdog reset
 
 		/* Not sure about this one. Values: $10 then 0, $7 then 0 */
-		case 0x2308/2   :	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (new_data & 1) ? ASSERT_LINE : CLEAR_LINE );
-							cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
-							cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, (new_data & 4) ? ASSERT_LINE : CLEAR_LINE );
+		case 0x2308/2   :	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (new_data & 1) ? ASSERT_LINE : CLEAR_LINE );
+							cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
+							cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, (new_data & 4) ? ASSERT_LINE : CLEAR_LINE );
 							break;
 
 		default:		SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
@@ -548,13 +548,14 @@ WRITE16_HANDLER( f1gpstr2_vregs_w )
 		case 0x0000/2   :
 			if (ACCESSING_LSB)
 			{
-				cpunum_set_input_line(Machine, 4,4,(new_data & 4)?ASSERT_LINE:CLEAR_LINE);
-				cpunum_set_input_line(Machine, 4,2,(new_data & 2)?ASSERT_LINE:CLEAR_LINE);
+				cpunum_set_input_line(machine, 4,4,(new_data & 4)?ASSERT_LINE:CLEAR_LINE);
+				cpunum_set_input_line(machine, 4,2,(new_data & 2)?ASSERT_LINE:CLEAR_LINE);
 			}
 			break;
 
 		default:
-			f1gpstar_vregs_w(offset,data,mem_mask);
+			f1gpstar_vregs_w(machine,offset,data,mem_mask);
+			break;
 	}
 }
 
@@ -583,7 +584,7 @@ WRITE16_HANDLER( scudhamm_vregs_w )
 		case 0x100/2+1 : MEGASYS1_VREG_SCROLL(2,y)		break;
 		case 0x100/2+2 : megasys1_set_vreg_flag(2,new_data);break;
 
-		case 0x208/2   : watchdog_reset_w(0,0);	break;
+		case 0x208/2   : watchdog_reset_w(machine,0,0);	break;
 
 		default: SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
 	}
@@ -628,7 +629,7 @@ WRITE16_HANDLER( scudhamm_vregs_w )
 /*  Draw the road in the given bitmap. The priority1 and priority2 parameters
     specify the range of lines to draw  */
 
-static void cischeat_draw_road(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
+static void cischeat_draw_road(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
 {
 	int curr_code,sx,sy;
 	int min_priority, max_priority;
@@ -718,7 +719,7 @@ static void cischeat_draw_road(running_machine *machine, mame_bitmap *bitmap, co
 /*  Draw the road in the given bitmap. The priority1 and priority2 parameters
     specify the range of lines to draw  */
 
-static void f1gpstar_draw_road(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
+static void f1gpstar_draw_road(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int road_num, int priority1, int priority2, int transparency)
 {
 	int sx,sy;
 	int xstart;
@@ -834,7 +835,7 @@ static void f1gpstar_draw_road(running_machine *machine, mame_bitmap *bitmap, co
     sprites whose priority nibble is between 0 and 15 and whose
     colour code's high bit is set.  */
 
-static void cischeat_draw_sprites(running_machine *machine, mame_bitmap *bitmap , const rectangle *cliprect, int priority1, int priority2)
+static void cischeat_draw_sprites(running_machine *machine, bitmap_t *bitmap , const rectangle *cliprect, int priority1, int priority2)
 {
 	int x, sx, flipx, xzoom, xscale, xdim, xnum, xstart, xend, xinc;
 	int y, sy, flipy, yzoom, yscale, ydim, ynum, ystart, yend, yinc;
@@ -989,7 +990,7 @@ if (input_code_pressed(KEYCODE_X))
 
 ***************************************************************************/
 
-static void bigrun_draw_sprites(running_machine *machine, mame_bitmap *bitmap , const rectangle *cliprect, int priority1, int priority2)
+static void bigrun_draw_sprites(running_machine *machine, bitmap_t *bitmap , const rectangle *cliprect, int priority1, int priority2)
 {
 	int x, sx, flipx, xzoom, xscale, xdim, xnum, xstart, xend, xinc;
 	int y, sy, flipy, yzoom, yscale, ydim, ynum, ystart, yend, yinc;
@@ -1173,12 +1174,12 @@ VIDEO_UPDATE( bigrun )
 	cischeat_tmap_SET_SCROLL(1)
 	cischeat_tmap_SET_SCROLL(2)
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	for (i = 7; i >= 4; i--)
 	{											/* bitmap, road, min_priority, max_priority, transparency */
-		if (megasys1_active_layers & 0x10)	cischeat_draw_road(machine,bitmap,cliprect,0,i,i,TRANSPARENCY_NONE);
-		if (megasys1_active_layers & 0x20)	cischeat_draw_road(machine,bitmap,cliprect,1,i,i,TRANSPARENCY_PEN);
+		if (megasys1_active_layers & 0x10)	cischeat_draw_road(screen->machine,bitmap,cliprect,0,i,i,TRANSPARENCY_NONE);
+		if (megasys1_active_layers & 0x20)	cischeat_draw_road(screen->machine,bitmap,cliprect,1,i,i,TRANSPARENCY_PEN);
 	}
 
 	flag = 0;
@@ -1187,11 +1188,11 @@ VIDEO_UPDATE( bigrun )
 
 	for (i = 3; i >= 0; i--)
 	{											/* bitmap, road, min_priority, max_priority, transparency */
-		if (megasys1_active_layers & 0x10)	cischeat_draw_road(machine,bitmap,cliprect,0,i,i,TRANSPARENCY_PEN);
-		if (megasys1_active_layers & 0x20)	cischeat_draw_road(machine,bitmap,cliprect,1,i,i,TRANSPARENCY_PEN);
+		if (megasys1_active_layers & 0x10)	cischeat_draw_road(screen->machine,bitmap,cliprect,0,i,i,TRANSPARENCY_PEN);
+		if (megasys1_active_layers & 0x20)	cischeat_draw_road(screen->machine,bitmap,cliprect,1,i,i,TRANSPARENCY_PEN);
 	}
 
-	if (megasys1_active_layers & 0x08)	bigrun_draw_sprites(machine,bitmap,cliprect,15,0);
+	if (megasys1_active_layers & 0x08)	bigrun_draw_sprites(screen->machine,bitmap,cliprect,15,0);
 
 	cischeat_tmap_DRAW(2)
 
@@ -1226,28 +1227,28 @@ VIDEO_UPDATE( cischeat )
 	cischeat_tmap_SET_SCROLL(1)
 	cischeat_tmap_SET_SCROLL(2)
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 										/* bitmap, road, priority, transparency */
-	if (megasys1_active_layers & 0x10)	cischeat_draw_road(machine,bitmap,cliprect,0,7,5,TRANSPARENCY_NONE);
-	if (megasys1_active_layers & 0x20)	cischeat_draw_road(machine,bitmap,cliprect,1,7,5,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x10)	cischeat_draw_road(screen->machine,bitmap,cliprect,0,7,5,TRANSPARENCY_NONE);
+	if (megasys1_active_layers & 0x20)	cischeat_draw_road(screen->machine,bitmap,cliprect,1,7,5,TRANSPARENCY_PEN);
 
 	flag = 0;
 	cischeat_tmap_DRAW(0)
-//  else fillbitmap(bitmap,machine->pens[0],cliprect);
+//  else fillbitmap(bitmap,0,cliprect);
 	cischeat_tmap_DRAW(1)
 
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,15,3);
-	if (megasys1_active_layers & 0x10)	cischeat_draw_road(machine,bitmap,cliprect,0,4,1,TRANSPARENCY_PEN);
-	if (megasys1_active_layers & 0x20)	cischeat_draw_road(machine,bitmap,cliprect,1,4,1,TRANSPARENCY_PEN);
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,2,2);
-	if (megasys1_active_layers & 0x10)	cischeat_draw_road(machine,bitmap,cliprect,0,0,0,TRANSPARENCY_PEN);
-	if (megasys1_active_layers & 0x20)	cischeat_draw_road(machine,bitmap,cliprect,1,0,0,TRANSPARENCY_PEN);
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,1,0);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,15,3);
+	if (megasys1_active_layers & 0x10)	cischeat_draw_road(screen->machine,bitmap,cliprect,0,4,1,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x20)	cischeat_draw_road(screen->machine,bitmap,cliprect,1,4,1,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,2,2);
+	if (megasys1_active_layers & 0x10)	cischeat_draw_road(screen->machine,bitmap,cliprect,0,0,0,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x20)	cischeat_draw_road(screen->machine,bitmap,cliprect,1,0,0,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,1,0);
 	cischeat_tmap_DRAW(2)
 
 	/* for the map screen */
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,0+16,0+16);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,0+16,0+16);
 
 
 	megasys1_active_layers = megasys1_active_layers1;
@@ -1282,32 +1283,32 @@ VIDEO_UPDATE( f1gpstar )
 	cischeat_tmap_SET_SCROLL(1)
 	cischeat_tmap_SET_SCROLL(2)
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 /*  1: clouds 5, grad 7, road 0     2: clouds 5, grad 7, road 0, tunnel roof 0 */
 
 	/* road 1!! 0!! */					/* bitmap, road, min_priority, max_priority, transparency */
-	if (megasys1_active_layers & 0x20)	f1gpstar_draw_road(machine,bitmap,cliprect,1,6,7,TRANSPARENCY_PEN);
-	if (megasys1_active_layers & 0x10)	f1gpstar_draw_road(machine,bitmap,cliprect,0,6,7,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x20)	f1gpstar_draw_road(screen->machine,bitmap,cliprect,1,6,7,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x10)	f1gpstar_draw_road(screen->machine,bitmap,cliprect,0,6,7,TRANSPARENCY_PEN);
 
 	flag = 0;
 	cischeat_tmap_DRAW(0)
-//  else fillbitmap(bitmap,machine->pens[0],cliprect);
+//  else fillbitmap(bitmap,0,cliprect);
 	cischeat_tmap_DRAW(1)
 
 	/* road 1!! 0!! */					/* bitmap, road, min_priority, max_priority, transparency */
-	if (megasys1_active_layers & 0x20)	f1gpstar_draw_road(machine,bitmap,cliprect,1,1,5,TRANSPARENCY_PEN);
-	if (megasys1_active_layers & 0x10)	f1gpstar_draw_road(machine,bitmap,cliprect,0,1,5,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x20)	f1gpstar_draw_road(screen->machine,bitmap,cliprect,1,1,5,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x10)	f1gpstar_draw_road(screen->machine,bitmap,cliprect,0,1,5,TRANSPARENCY_PEN);
 
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,15,2);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,15,2);
 
 	/* road 1!! 0!! */					/* bitmap, road, min_priority, max_priority, transparency */
-	if (megasys1_active_layers & 0x20)	f1gpstar_draw_road(machine,bitmap,cliprect,1,0,0,TRANSPARENCY_PEN);
-	if (megasys1_active_layers & 0x10)	f1gpstar_draw_road(machine,bitmap,cliprect,0,0,0,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x20)	f1gpstar_draw_road(screen->machine,bitmap,cliprect,1,0,0,TRANSPARENCY_PEN);
+	if (megasys1_active_layers & 0x10)	f1gpstar_draw_road(screen->machine,bitmap,cliprect,0,0,0,TRANSPARENCY_PEN);
 
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,1,1);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,1,1);
 	cischeat_tmap_DRAW(2)
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,0,0);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,0,0);
 
 
 	megasys1_active_layers = megasys1_active_layers1;
@@ -1349,9 +1350,9 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 #if 1
 	popmessage("Cmd: %04X Pos:%04X Lim:%04X Inp:%04X",
 						scudhamm_motor_command,
-						scudhamm_motor_pos_r(0,0),
-						scudhamm_motor_status_r(0,0),
-						scudhamm_analog_r(0,0) );
+						scudhamm_motor_pos_r(screen->machine,0,0),
+						scudhamm_motor_status_r(screen->machine,0,0),
+						scudhamm_analog_r(screen->machine,0,0) );
 #endif
 
 }
@@ -1361,13 +1362,13 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 //  cischeat_tmap_SET_SCROLL(1)
 	cischeat_tmap_SET_SCROLL(2)
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	flag = 0;
 	cischeat_tmap_DRAW(0)
-//  else fillbitmap(bitmap,machine->pens[0],cliprect);
+//  else fillbitmap(bitmap,0,cliprect);
 //  cischeat_tmap_DRAW(1)
-	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(machine,bitmap,cliprect,0,15);
+	if (megasys1_active_layers & 0x08)	cischeat_draw_sprites(screen->machine,bitmap,cliprect,0,15);
 	cischeat_tmap_DRAW(2)
 
 	megasys1_active_layers = megasys1_active_layers1;

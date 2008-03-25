@@ -19,7 +19,7 @@ WRITE16_HANDLER( tigeroad_videoctrl_w )
 
 		/* bit 1 flips screen */
 
-		if (flip_screen != (data & 0x02))
+		if (flip_screen_get() != (data & 0x02))
 		{
 			flip_screen_set(data & 0x02);
 			tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -64,7 +64,7 @@ WRITE16_HANDLER( tigeroad_scroll_w )
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority )
 {
 	UINT16 *source = &buffered_spriteram16[spriteram_size/2] - 4;
 	UINT16 *finish = buffered_spriteram16;
@@ -88,7 +88,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			if (sx > 0x100) sx -= 0x200;
 			if (sy > 0x100) sy -= 0x200;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -143,10 +143,10 @@ static TILEMAP_MAPPER( tigeroad_tilemap_scan )
 VIDEO_START( tigeroad )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tigeroad_tilemap_scan,
-		TILEMAP_TYPE_PEN, 32, 32, 128, 128);
+		 32, 32, 128, 128);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transmask(bg_tilemap, 0, 0xffff, 0);
 	tilemap_set_transmask(bg_tilemap, 1, 0x1ff, 0xfe00);
@@ -157,14 +157,14 @@ VIDEO_START( tigeroad )
 VIDEO_UPDATE( tigeroad )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_LAYER1, 0);
-	draw_sprites(machine, bitmap, cliprect, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, 0);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_LAYER0, 1);
-	//draw_sprites(machine, bitmap, cliprect, 1); draw priority sprites?
+	//draw_sprites(screen->machine, bitmap, cliprect, 1); draw priority sprites?
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 2);
 	return 0;
 }
 
 VIDEO_EOF( tigeroad )
 {
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }

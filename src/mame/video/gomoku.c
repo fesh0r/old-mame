@@ -14,7 +14,7 @@
 static int gomoku_flipscreen;
 static int gomoku_bg_dispsw;
 static tilemap *fg_tilemap;
-static mame_bitmap *gomoku_bg_bitmap;
+static bitmap_t *gomoku_bg_bitmap;
 
 UINT8 *gomoku_videoram;
 UINT8 *gomoku_colorram;
@@ -32,7 +32,7 @@ PALETTE_INIT( gomoku )
 	int i;
 	int bit0, bit1, bit2, r, g, b;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		/* red component */
 		bit0 = (*color_prom >> 0) & 0x01;
@@ -119,9 +119,9 @@ VIDEO_START( gomoku )
 	int bgdata;
 	int color;
 
-	gomoku_bg_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	gomoku_bg_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32, 32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 

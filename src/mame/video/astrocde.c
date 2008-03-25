@@ -5,12 +5,9 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/astrocde.h"
 #include "sound/astrocde.h"
-#include <math.h> /* for sin() and cos() */
-#include "osd_cpu.h"
 #include "video/resnet.h"
 
 
@@ -226,7 +223,7 @@ VIDEO_START( astrocde )
 {
 	/* allocate a per-scanline timer */
 	scanline_timer = timer_alloc(scanline_callback, NULL);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 1, 0), 1, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, 0), 1);
 
 	/* register for save states */
 	init_savestate();
@@ -241,7 +238,7 @@ VIDEO_START( profpac )
 {
 	/* allocate a per-scanline timer */
 	scanline_timer = timer_alloc(scanline_callback, NULL);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 1, 0), 1, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, 0), 1);
 
 	/* allocate videoram */
 	profpac_videoram = auto_malloc(0x4000 * 4 * sizeof(*profpac_videoram));
@@ -311,8 +308,11 @@ VIDEO_UPDATE( astrocde )
 	int y;
 
 	/* compute the starting point of sparkle for the current frame */
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
+
 	if (astrocade_video_config & AC_STARS)
-		sparklebase = ((UINT64)cpu_getcurrentframe() * (UINT64)(machine->screen[0].width * machine->screen[0].height)) % RNG_PERIOD;
+		sparklebase = (video_screen_get_frame_number(screen) * (UINT64)(width * height)) % RNG_PERIOD;
 
 	/* iterate over scanlines */
 	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
@@ -326,8 +326,8 @@ VIDEO_UPDATE( astrocde )
 		/* compute the star and sparkle offset at the start of this line */
 		if (astrocade_video_config & AC_STARS)
 		{
-			staroffs = ((effy < 0) ? (effy + 262) : effy) * machine->screen[0].width;
-			sparkleoffs = sparklebase + y * machine->screen[0].width;
+			staroffs = ((effy < 0) ? (effy + 262) : effy) * width;
+			sparkleoffs = sparklebase + y * width;
 			if (sparkleoffs >= RNG_PERIOD)
 				sparkleoffs -= RNG_PERIOD;
 		}
@@ -468,7 +468,8 @@ static TIMER_CALLBACK( scanline_callback )
 	int astrocade_scanline = mame_vpos_to_astrocade_vpos(scanline);
 
 	/* force an update against the current scanline */
-	video_screen_update_partial(0, scanline - 1);
+	if (scanline > 0)
+		video_screen_update_partial(machine->primary_screen, scanline - 1);
 
 	/* generate a scanline interrupt if it's time */
 	if (astrocade_scanline == interrupt_scanline && (interrupt_enable & 0x08) != 0)
@@ -491,9 +492,9 @@ static TIMER_CALLBACK( scanline_callback )
 
 	/* advance to the next scanline */
 	scanline++;
-	if (scanline >= machine->screen[0].height)
+	if (scanline >= video_screen_get_height(machine->primary_screen))
 		scanline = 0;
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -623,7 +624,7 @@ WRITE8_HANDLER( astrocade_data_chip_register_w )
 		case 0x17:	/* noise volume register */
 		case 0x18:	/* sound block transfer */
 			if (astrocade_video_config & AC_SOUND_PRESENT)
-				astrocade_sound1_w(offset, data);
+				astrocade_sound1_w(machine, offset, data);
 			break;
 
 		case 0x19:	/* expand register */

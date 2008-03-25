@@ -16,9 +16,78 @@ T.Slanina 20040530 :
 
 /*
 
-Deroon DeroDero
-(c)1996 Tecmo
-Tecmo System Board
+Deroon Dero Dero
+Tecmo, 1996
+
+This game is a Puyo Puyo rip-off.
+
+PCB Layout
+----------
+
+TECMO SYSTEM BOARD A
+|-------------------------------------------------------------------------|
+|  LM324  UPC452C      16.9MHz        |--------|    |--------|  6264  |
+| TA8205 LM324  YAC513  YMF262 YMZ280B  |TECMO  |    |TECMO  |  6264  |
+|        LM324  M6295  UPC452C          |AA03-8431    |AA02-1927        |
+|                      YAC512          |        |    |        |        |
+|                                        |--------|    |--------|        |
+|        Z80  6264 28MHz 14.31818MHz                  |--------|        |
+|                    16MHz              62256          |TECMO  |        |
+|            TA8030                    62256          |AA02-1927  6264  |
+|                                                      |        |  6264  |
+|J  93C46                              |--------|    |--------|        |
+|A                                      |TECMO  |    |--------|        |
+|M                                      |AA03-8431    |TECMO  |        |
+|M          68000                        |        |    |AA02-1927        |
+|A                                      |--------|    |        |  6264  |
+|                  PAL              6116              |--------|  6264  |
+|                                    6116              |--------|        |
+|  |--------|                                          |TECMO  |        |
+|  |TECMO  |                      PAL                |AA02-1927        |
+|  |AA03-8431  62256                                  |        |  6264  |
+|  |        |  62256                                  |--------|  6264  |
+|  |--------|                                |---------|                |
+|                                              |TECMO    |                |
+|                                              |AA03-8431|                |
+|                                              |        |                |
+|                                              |---------|          424260|
+|                                              62256 62256          424260|
+|-------------------------------------------------------------------------|
+Notes:
+68000 @ 16MHz
+Z80 @ 8MHz [16/2]
+YMZ280B @ 16.9MHz
+YMF262 @ 14.31818MHz
+OKI M6295 @ 2MHz [16/8]. Pin 7 HIGH
+
+Game Board
+----------
+
+TECMO SYSTEM BOARD B2
+|-------------------------------------------------------------------------|
+|    T201_DIP42_MASK.UBB1                                                |
+| |----|                                              T202_DIP42_MASK.UBC1|
+| |*  |                                                                  |
+| |----|                                                                  |
+|                                                                        |
+|  T003_2M_EPROM.UZ1                        T101_SOP44.UAH1            |
+|                                                                        |
+|                                            T301_DIP42_MASK.UBD1        |
+|                                                                        |
+|                                                                        |
+|                                                                        |
+|  T401_DIP42_MASK.UYA1      T104_SOP44.UCL1    T001_4M_EPROM.UPAU1    |
+|                              T103_SOP44.UBL1                            |
+|  T501_DIP32_MASK.UAD1      T102_SOP44.UAL1                            |
+|                                                  T002_4M_EPROM.UPAL1    |
+|-------------------------------------------------------------------------|
+Notes:
+      * - Unknown QFP64 microcontroller marked 'TECMO SC432146FU E23D 185 SSAB9540B'
+          Clocks: pin 33 - 8MHz, pin 31: 8MHz, pin 29 - 2MHz
+          GND on pins 49, 23, 24, 27
+          Power on pins 55, 25
+          Note - Pins 25 and 27 are tied to some jumpers, so these
+          appear to be some kind of configuration setting.
 
 CPU  : TMP68HC000P-16
 Sound: TMPZ84C00AP-8 YMF262 YMZ280B M6295
@@ -248,21 +317,21 @@ static READ16_HANDLER( eeprom_r )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x200000, 0x20ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x210000, 0x210001) AM_READ(MRA16_RAM)
-	AM_RANGE(0x300000, 0x3013ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x400000, 0x4013ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x500000, 0x5013ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x700000, 0x703fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x210000, 0x210001) AM_READ(SMH_RAM)
+	AM_RANGE(0x300000, 0x3013ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x400000, 0x4013ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x500000, 0x5013ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x700000, 0x703fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x880000, 0x880001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x880002, 0x880007) AM_READ(input_port_1_word_r) /* test */
-	AM_RANGE(0x900000, 0x907fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x980000, 0x980fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x900000, 0x907fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x980000, 0x980fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xb80000, 0xb80001) AM_READ(reg_b80000_r)
-	AM_RANGE(0xd00000, 0xd80003) AM_READ(MRA16_RAM)
+	AM_RANGE(0xd00000, 0xd80003) AM_READ(SMH_RAM)
 	AM_RANGE(0xd80000, 0xd80001) AM_READ(eeprom_r)
-	AM_RANGE(0xf00000, 0xf00001) AM_READ(MRA16_RAM)
+	AM_RANGE(0xf00000, 0xf00001) AM_READ(SMH_RAM)
 	AM_RANGE(0xf80000, 0xf80001) AM_READ(reg_f80000_r)
 
 ADDRESS_MAP_END
@@ -278,24 +347,24 @@ static WRITE16_HANDLER( eeprom_w )
 }
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(MWA16_RAM) AM_BASE(&protram)
-	AM_RANGE(0x300000, 0x3013ff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x400000, 0x4013ff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x500000, 0x5013ff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x700000, 0x703fff) AM_WRITE(MWA16_RAM) AM_BASE(&videoram16)
-	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x900000, 0x907fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(SMH_RAM) AM_BASE(&protram)
+	AM_RANGE(0x300000, 0x3013ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x400000, 0x4013ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x500000, 0x5013ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x700000, 0x703fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram16)
+	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x900000, 0x907fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x980000, 0x980fff) AM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)
 
-	AM_RANGE(0x880000, 0x88002f) AM_WRITE(MWA16_RAM )
+	AM_RANGE(0x880000, 0x88002f) AM_WRITE(SMH_RAM )
 	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(eeprom_w	)
-	AM_RANGE(0xa80000, 0xa80005) AM_WRITE(MWA16_RAM	)
-	AM_RANGE(0xb00000, 0xb00005) AM_WRITE(MWA16_RAM	)
-	AM_RANGE(0xb80000, 0xb80005) AM_WRITE(MWA16_RAM	)
-	AM_RANGE(0xc00000, 0xc00005) AM_WRITE(MWA16_RAM	)
-	AM_RANGE(0xc80000, 0xc80005) AM_WRITE(MWA16_RAM	)
-	AM_RANGE(0xe00000, 0xe00001) AM_WRITE(MWA16_RAM )
+	AM_RANGE(0xa80000, 0xa80005) AM_WRITE(SMH_RAM	)
+	AM_RANGE(0xb00000, 0xb00005) AM_WRITE(SMH_RAM	)
+	AM_RANGE(0xb80000, 0xb80005) AM_WRITE(SMH_RAM	)
+	AM_RANGE(0xc00000, 0xc00005) AM_WRITE(SMH_RAM	)
+	AM_RANGE(0xc80000, 0xc80005) AM_WRITE(SMH_RAM	)
+	AM_RANGE(0xe00000, 0xe00001) AM_WRITE(SMH_RAM )
 	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(reg_e80000_w)
 ADDRESS_MAP_END
 
@@ -358,28 +427,28 @@ static WRITE8_HANDLER( deroon_bankswitch_w )
 }
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xe000, 0xf7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xe000, 0xf7ff) AM_READ(SMH_RAM)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xe000, 0xf7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xe000, 0xf7ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(YMF262_status_0_r)
 	AM_RANGE(0x40, 0x40) AM_READ(soundlatch_r)
 	//AM_RANGE(0x60, 0x60) AM_READ(YMZ280B_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YMF262_register_A_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YMF262_data_A_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YMF262_register_B_0_w)
@@ -391,7 +460,7 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x30, 0x30) AM_WRITE(deroon_bankswitch_w)
 
 	//AM_RANGE(0x50, 0x50) AM_WRITE(to_main_cpu_latch_w)
-	AM_RANGE(0x50, 0x50) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x50, 0x50) AM_WRITE(SMH_NOP)
 
 	AM_RANGE(0x60, 0x60) AM_WRITE(YMZ280B_register_0_w)
 	AM_RANGE(0x61, 0x61) AM_WRITE(YMZ280B_data_0_w)
@@ -401,7 +470,7 @@ ADDRESS_MAP_END
 
 static VIDEO_START(deroon)
 {
-	txt_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32*2,32*2);
+	txt_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32*2,32*2);
 	tilemap_set_transparent_pen(txt_tilemap,0);
 }
 
@@ -445,9 +514,9 @@ static VIDEO_UPDATE(deroon)
 
 	// bg color , to see text in deroon
 	if(!gametype)
-			palette_set_color(machine,0x800,MAKE_RGB(0x80,0x80,0x80));
+			palette_set_color(screen->machine,0x800,MAKE_RGB(0x80,0x80,0x80));
 	else
-			palette_set_color(machine,0x800,MAKE_RGB(0x0,0x0,0x0));
+			palette_set_color(screen->machine,0x800,MAKE_RGB(0x0,0x0,0x0));
 
 	fillbitmap(bitmap,0x800,cliprect);
 
@@ -537,23 +606,26 @@ static const struct YMZ280Binterface ymz280b_interface =
 static MACHINE_DRIVER_START( deroon )
 	MDRV_CPU_ADD(M68000, 16000000/8) /* the /8 divider is here only for OPL3 testing */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_CPU_ADD(Z80, 16000000/2 )	/* 8 MHz ??? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_GFXDECODE(tecmosys)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 42*8-1, 0*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(0x800+1)
 
 	MDRV_VIDEO_START(deroon)

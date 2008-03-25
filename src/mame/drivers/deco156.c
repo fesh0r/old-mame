@@ -60,11 +60,11 @@ static VIDEO_START( wcvol95 )
 
 /* spriteram is really 16-bit.. this can be changed to use 16-bit ram like the tilemaps
  its the same sprite chip Data East used on many, many 16-bit era titles */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
-	flip_screen = 1;
+	flip_screen_set_no_update(1);
 
 	for (offs = (0x1400/4)-4;offs >= 0;offs -= 4) // 0x1400 for charlien
 	{
@@ -74,7 +74,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		y = spriteram32[offs]&0xffff;
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram32[offs+2]&0xffff;
 		colour = (x >>9) & 0x1f;
@@ -110,7 +110,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			inc = 1;
 		}
 
-		if (flip_screen)
+		if (flip_screen_x_get())
 		{
 			y=240-y;
 			x=304-x;
@@ -144,7 +144,7 @@ static VIDEO_UPDATE( wcvol95 )
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
 	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }
@@ -175,23 +175,23 @@ static WRITE32_HANDLER( hvysmsh_oki_0_bank_w )
 
 static READ32_HANDLER(hvysmsh_oki_0_r)
 {
-	return OKIM6295_status_0_r(0);
+	return OKIM6295_status_0_r(machine, 0);
 }
 
 static WRITE32_HANDLER(hvysmsh_oki_0_w)
 {
 //  data & 0xff00 is written sometimes too. game bug or needed data?
-	OKIM6295_data_0_w(0,data&0xff);
+	OKIM6295_data_0_w(machine,0,data&0xff);
 }
 
 static READ32_HANDLER(hvysmsh_oki_1_r)
 {
-	return OKIM6295_status_1_r(0);
+	return OKIM6295_status_1_r(machine, 0);
 }
 
 static WRITE32_HANDLER(hvysmsh_oki_1_w)
 {
-	OKIM6295_data_1_w(0,data&0xff);
+	OKIM6295_data_1_w(machine,0,data&0xff);
 }
 
 static READ32_HANDLER(wcvol95_eeprom_r)
@@ -211,21 +211,21 @@ static WRITE32_HANDLER(wcvol95_eeprom_w)
 static WRITE32_HANDLER(wcvol95_nonbuffered_palette_w)
 {
 	COMBINE_DATA(&paletteram32[offset]);
-	palette_set_color_rgb(Machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
+	palette_set_color_rgb(machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
 }
 
 
 static READ32_HANDLER( deco156_snd_r )
 {
-	return YMZ280B_status_0_r(0);
+	return YMZ280B_status_0_r(machine, 0);
 }
 
 static WRITE32_HANDLER( deco156_snd_w )
 {
 	if (offset)
-		YMZ280B_data_0_w(0, data);
+		YMZ280B_data_0_w(machine, 0, data);
 	else
-		YMZ280B_register_0_w(0, data);
+		YMZ280B_register_0_w(machine, 0, data);
 }
 
 /***************************************************************************/
@@ -237,17 +237,17 @@ static READ32_HANDLER ( wcvol95_pf12_control_r ) { return deco16_pf12_control[of
 static WRITE32_HANDLER( wcvol95_pf12_control_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; COMBINE_DATA(&deco16_pf12_control[offset]); }
 static READ32_HANDLER( wcvol95_pf1_data_r ) {	return deco16_pf1_data[offset]^0xffff0000; }
 static READ32_HANDLER( wcvol95_pf2_data_r ) {	return deco16_pf2_data[offset]^0xffff0000; }
-static WRITE32_HANDLER( wcvol95_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(offset,data,mem_mask); }
-static WRITE32_HANDLER( wcvol95_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(offset,data,mem_mask); }
+static WRITE32_HANDLER( wcvol95_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(machine,offset,data,mem_mask); }
+static WRITE32_HANDLER( wcvol95_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(machine,offset,data,mem_mask); }
 
 
 static ADDRESS_MAP_START( hvysmsh_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x100000, 0x107fff) AM_RAM
 	AM_RANGE(0x120000, 0x120003) AM_READ(hvysmsh_eeprom_r)
-	AM_RANGE(0x120000, 0x120003) AM_WRITE(MWA32_NOP) // Volume control in low byte
+	AM_RANGE(0x120000, 0x120003) AM_WRITE(SMH_NOP) // Volume control in low byte
 	AM_RANGE(0x120004, 0x120007) AM_WRITE(hvysmsh_eeprom_w)
-	AM_RANGE(0x120008, 0x12000b) AM_WRITE(MWA32_NOP) // IRQ ack?
+	AM_RANGE(0x120008, 0x12000b) AM_WRITE(SMH_NOP) // IRQ ack?
 	AM_RANGE(0x12000c, 0x12000f) AM_WRITE(hvysmsh_oki_0_bank_w)
 	AM_RANGE(0x140000, 0x140003) AM_READ(hvysmsh_oki_0_r) AM_WRITE(hvysmsh_oki_0_w)
 	AM_RANGE(0x160000, 0x160003) AM_READ(hvysmsh_oki_1_r) AM_WRITE(hvysmsh_oki_1_w)
@@ -256,8 +256,8 @@ static ADDRESS_MAP_START( hvysmsh_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x194000, 0x195fff) AM_READWRITE( wcvol95_pf2_data_r, wcvol95_pf2_data_w )
 	AM_RANGE(0x1a0000, 0x1a0fff) AM_READWRITE( wcvol95_pf1_rowscroll_r, wcvol95_pf1_rowscroll_w )
 	AM_RANGE(0x1a4000, 0x1a4fff) AM_READWRITE( wcvol95_pf2_rowscroll_r, wcvol95_pf2_rowscroll_w )
-	AM_RANGE(0x1c0000, 0x1c0fff) AM_READ(MRA32_RAM) AM_WRITE(deco32_nonbuffered_palette_w) AM_BASE(&paletteram32)
-	AM_RANGE(0x1d0010, 0x1d002f) AM_READ(MRA32_NOP) // Check for DMA complete?
+	AM_RANGE(0x1c0000, 0x1c0fff) AM_READ(SMH_RAM) AM_WRITE(deco32_nonbuffered_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x1d0010, 0x1d002f) AM_READ(SMH_NOP) // Check for DMA complete?
 	AM_RANGE(0x1e0000, 0x1e1fff) AM_RAM AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 ADDRESS_MAP_END
 
@@ -273,7 +273,7 @@ static ADDRESS_MAP_START( wcvol95_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x150000, 0x150003) AM_WRITE(wcvol95_eeprom_w)
 	AM_RANGE(0x160000, 0x161fff) AM_RAM AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x170000, 0x170003) AM_NOP // Irq ack?
-	AM_RANGE(0x180000, 0x180fff) AM_READ(MRA32_RAM) AM_WRITE(wcvol95_nonbuffered_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x180000, 0x180fff) AM_READ(SMH_RAM) AM_WRITE(wcvol95_nonbuffered_palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x1a0000, 0x1a0007) AM_READ(deco156_snd_r) AM_WRITE(deco156_snd_w)
 ADDRESS_MAP_END
 
@@ -303,7 +303,7 @@ static INPUT_PORTS_START( hvysmsh )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0008, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -341,7 +341,7 @@ static INPUT_PORTS_START( wcvol95 )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0008, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNUSED ) /* 'soundmask' */
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -426,17 +426,20 @@ static MACHINE_DRIVER_START( hvysmsh )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(ARM, 28000000) /* Unconfirmed */
 	MDRV_CPU_PROGRAM_MAP(hvysmsh_map,0)
-	MDRV_CPU_VBLANK_INT(deco32_vbl_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", deco32_vbl_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(hvysmsh)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -462,17 +465,20 @@ static MACHINE_DRIVER_START( wcvol95 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(ARM, 28000000) /* Unconfirmed */
 	MDRV_CPU_PROGRAM_MAP(wcvol95_map,0)
-	MDRV_CPU_VBLANK_INT(deco32_vbl_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", deco32_vbl_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(hvysmsh)
 	MDRV_PALETTE_LENGTH(1024)
 

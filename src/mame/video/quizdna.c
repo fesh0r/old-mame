@@ -60,8 +60,8 @@ VIDEO_START( quizdna )
 	quizdna_bg_ram = auto_malloc(0x2000);
 	quizdna_fg_ram = auto_malloc(0x1000);
 
-	quizdna_bg_tilemap = tilemap_create( get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32 );
-	quizdna_fg_tilemap = tilemap_create( get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,8,32,32 );
+	quizdna_bg_tilemap = tilemap_create( get_bg_tile_info,tilemap_scan_rows,8,8,64,32 );
+	quizdna_fg_tilemap = tilemap_create( get_fg_tile_info,tilemap_scan_rows,16,8,32,32 );
 
 	tilemap_set_transparent_pen( quizdna_fg_tilemap,0 );
 }
@@ -136,7 +136,7 @@ WRITE8_HANDLER( paletteram_xBGR_RRRR_GGGG_BBBB_w )
 	palette_set_color_rgb(Machine,offs/2,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -194,10 +194,10 @@ VIDEO_UPDATE( quizdna )
 	if (quizdna_video_enable)
 	{
 		tilemap_draw(bitmap, cliprect, quizdna_bg_tilemap, 0, 0);
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 		tilemap_draw(bitmap, cliprect, quizdna_fg_tilemap, 0, 0);
 	}
 	else
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	return 0;
 }

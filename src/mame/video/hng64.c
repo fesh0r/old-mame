@@ -33,8 +33,8 @@ static float uToF(UINT16 input) ;
 static void SetIdentity(float *matrix) ;
 
 
-//static void plot(INT32 x, INT32 y, INT32 color, mame_bitmap *bitmap) ;
-//static void drawline2d(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 color, mame_bitmap *bitmap) ;
+//static void plot(INT32 x, INT32 y, INT32 color, bitmap_t *bitmap) ;
+//static void drawline2d(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 color, bitmap_t *bitmap) ;
 
 static float *depthBuffer ;
 static struct polygon *polys ;
@@ -74,7 +74,7 @@ static struct polygon *polys ;
 /* xxxx---- | I think this part of UINT32 2 is interesting as more than just a list end marker (AJG)
  */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx;
 	UINT32 *source = hng64_spriteram;
@@ -225,7 +225,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
  *  Or maybe it switches from fading by scaling to fading using absolute addition and subtraction...
  *  Or maybe they set transition type (there seems to be a cute scaling-squares transition in there somewhere)...
  */
-static void transition_control(running_machine *machine, mame_bitmap *bitmap)
+static void transition_control(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i, j ;
 
@@ -247,9 +247,9 @@ static void transition_control(running_machine *machine, mame_bitmap *bitmap)
 		brigG = (INT32)((hng64_tcram[0x0000000a] >> 8)  & 0xff) ;
 		brigB = (INT32)((hng64_tcram[0x0000000a] >> 16) & 0xff) ;
 
-		for (i = machine->screen[0].visarea.min_x; i < machine->screen[0].visarea.max_x; i++)
+		for (i = cliprect->min_x; i < cliprect->max_x; i++)
 		{
-			for (j = machine->screen[0].visarea.min_y; j < machine->screen[0].visarea.max_y; j++)
+			for (j = cliprect->min_y; j < cliprect->max_y; j++)
 			{
 				UINT32* thePixel = BITMAP_ADDR32(bitmap, j, i);
 
@@ -356,11 +356,11 @@ struct polygon
 
 static void PerformFrustumClip(struct polygon *p) ;
 
-//static void DrawWireframe(struct polygon *p, mame_bitmap *bitmap) ;
-static void DrawShaded(running_machine *machine, struct polygon *p, mame_bitmap *bitmap) ;
+//static void DrawWireframe(struct polygon *p, bitmap_t *bitmap) ;
+static void DrawShaded(running_machine *machine, struct polygon *p, bitmap_t *bitmap) ;
 
 
-static void draw3d(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw3d(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int i,j,k,l,m ;
 
@@ -374,6 +374,7 @@ static void draw3d(running_machine *machine, mame_bitmap *bitmap, const rectangl
 	UINT32 numPolys = 0 ;
 
 	struct polygon lastPoly = { 0 } ;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 	// Set some matrices to the identity...
 	SetIdentity(projectionMatrix) ;
@@ -860,11 +861,11 @@ static void draw3d(running_machine *machine, mame_bitmap *bitmap, const rectangl
 									ndCoords[3] = polys[numPolys].vert[m].clipCoords[3] ;
 
 									// Final pixel values are garnered here :
-									windowCoords[0] = (ndCoords[0]+1.0f) * ((float)(machine->screen[0].visarea.max_x) / 2.0f) + 0.0f ;
-									windowCoords[1] = (ndCoords[1]+1.0f) * ((float)(machine->screen[0].visarea.max_y) / 2.0f) + 0.0f ;
+									windowCoords[0] = (ndCoords[0]+1.0f) * ((float)(visarea->max_x) / 2.0f) + 0.0f ;
+									windowCoords[1] = (ndCoords[1]+1.0f) * ((float)(visarea->max_y) / 2.0f) + 0.0f ;
 									windowCoords[2] = (ndCoords[2]+1.0f) * 0.5f ;
 
-									windowCoords[1] = (float)machine->screen[0].visarea.max_y - windowCoords[1] ;		// Flip Y
+									windowCoords[1] = (float)visarea->max_y - windowCoords[1] ;		// Flip Y
 
 									// Store the points in a list for later use...
 									polys[numPolys].vert[m].clipCoords[0] = windowCoords[0] ;
@@ -913,7 +914,7 @@ static void draw3d(running_machine *machine, mame_bitmap *bitmap, const rectangl
 	/////////////////////////////////////////////////
 
 	// Reset the depth buffer...
-	for (i = 0; i < (machine->screen[0].visarea.max_x)*(machine->screen[0].visarea.max_y); i++)
+	for (i = 0; i < (visarea->max_x)*(visarea->max_y); i++)
 		depthBuffer[i] = 100.0f ;
 
 	for (i = 0; i < numPolys; i++)
@@ -979,7 +980,7 @@ static TILE_GET_INFO( get_hng64_tile3_info )
 looks like the zoom center can move too..
 not sure how these features are enabled up yet */
 
-static int gatherPixelsForLine(mame_bitmap *tilemapBitmap,
+static int gatherPixelsForLine(bitmap_t *tilemapBitmap,
 							   INT32 startX, INT32 startY, INT32 endX, INT32 endY,
 							   UINT16 *penList)
 {
@@ -1047,9 +1048,9 @@ static int gatherPixelsForLine(mame_bitmap *tilemapBitmap,
 }
 
 static void plotTilemap3Line(running_machine *machine,
-							 mame_bitmap *tilemapBitmap,
+							 bitmap_t *tilemapBitmap,
 							 INT32 startX, INT32 startY, INT32 endX, INT32 endY,
-							 INT32 screenY, mame_bitmap *bitmap)
+							 INT32 screenY, bitmap_t *bitmap)
 {
 	int i ;
 
@@ -1057,6 +1058,8 @@ static void plotTilemap3Line(running_machine *machine,
 	UINT16 penList[0x1000] ;			// 4k of pixels to be safe
 
 	float pixStride, pixOffset ;
+
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 //  mame_printf_debug("(%d,%d) (%d,%d)\n", startX, startY, endX, endY) ;
 
@@ -1068,7 +1071,7 @@ static void plotTilemap3Line(running_machine *machine,
 
 	numPix = gatherPixelsForLine(tilemapBitmap, startX, startY, endX, endY, penList) ;
 
-	pixStride = (float)numPix / (float)(machine->screen[0].visarea.max_x-1) ;
+	pixStride = (float)numPix / (float)(visarea->max_x-1) ;
 	pixOffset = 0 ;
 
 	if (numPix == 0)
@@ -1077,7 +1080,7 @@ static void plotTilemap3Line(running_machine *machine,
 //  mame_printf_debug("numpix %d ps %f po %f s(%d,%d) e(%d,%d)\n", numPix, pixStride, pixOffset, startX, startY, endX, endY) ;
 
 	// Draw out the screen's line...
-	for (i = machine->screen[0].visarea.min_x; i < machine->screen[0].visarea.max_x; i++)
+	for (i = visarea->min_x; i < visarea->max_x; i++)
 	{
 		// Nearest-neighbor interpolation for now (but i doubt it does linear)
 		UINT16 tmPen = penList[(int)pixOffset] ;
@@ -1088,15 +1091,16 @@ static void plotTilemap3Line(running_machine *machine,
 	}
 }
 
-static void hng64_drawtilemap3(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void hng64_drawtilemap3(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int i ;
 
-	mame_bitmap *srcbitmap = tilemap_get_pixmap( hng64_tilemap3 );
+	bitmap_t *srcbitmap = tilemap_get_pixmap( hng64_tilemap3 );
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 //  usrintf_showmessage("%d", hng64_hackTm3Count) ;
 
-	if (hng64_hackTm3Count/4 < machine->screen[0].visarea.max_y)
+	if (hng64_hackTm3Count/4 < visarea->max_y)
 	{
 		for (i = 0; i < hng64_hackTm3Count/4; i++)
 		{
@@ -1113,7 +1117,7 @@ static void hng64_drawtilemap3(running_machine *machine, mame_bitmap *bitmap, co
 							 (INT16)((hng64_videoram[address+0x2]&0xffff0000) >> 16),
 							 (INT16)((hng64_videoram[address+0x1]&0xffff0000) >> 16),
 							 (INT16)((hng64_videoram[address+0x3]&0xffff0000) >> 16),
-							 (machine->screen[0].visarea.max_y-1)-i,
+							 (visarea->max_y-1)-i,
 							 bitmap) ;
 		}
 	}
@@ -1146,7 +1150,7 @@ static void hng64_drawtilemap3(running_machine *machine, mame_bitmap *bitmap, co
 //          0,0);
 }
 
-static void hng64_drawtilemap2( mame_bitmap *bitmap, const rectangle *cliprect )
+static void hng64_drawtilemap2( bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int scrollbase,xscroll,yscroll,xzoom,yzoom;
 
@@ -1175,7 +1179,7 @@ static void hng64_drawtilemap2( mame_bitmap *bitmap, const rectangle *cliprect )
 			0,0);
 }
 
-static void hng64_drawtilemap1( mame_bitmap *bitmap, const rectangle *cliprect )
+static void hng64_drawtilemap1( bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int scrollbase,xscroll,yscroll,xzoom,yzoom;
 
@@ -1237,7 +1241,7 @@ static void hng64_drawtilemap1( mame_bitmap *bitmap, const rectangle *cliprect )
 
 VIDEO_UPDATE( hng64 )
 {
-	fillbitmap(bitmap, get_black_pen(machine), 0);
+	fillbitmap(bitmap, get_black_pen(screen->machine), 0);
 
 	// Debug
 //  for (int iii = 0; iii < 0x0f; iii++)
@@ -1253,7 +1257,7 @@ VIDEO_UPDATE( hng64 )
         tilemap2Offset = hng64_videoregs[0xc] ;
 
         tilemap_dispose(hng64_tilemap1) ;
-        hng64_tilemap1 = tilemap_create(get_hng64_tile2_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16, 128,128); // 128x128x4 = 0x10000
+        hng64_tilemap1 = tilemap_create(get_hng64_tile2_info,tilemap_scan_rows, 16, 16, 128,128); // 128x128x4 = 0x10000
     }
     */
 
@@ -1264,16 +1268,16 @@ VIDEO_UPDATE( hng64 )
 	//   (there are neato alpha effects on a real board, etc)
 	hng64_drawtilemap2(bitmap,cliprect);
 	hng64_drawtilemap1(bitmap,cliprect);
-	hng64_drawtilemap3(machine, bitmap,cliprect);						// Draw the ground last...
+	hng64_drawtilemap3(screen->machine, bitmap,cliprect);						// Draw the ground last...
 
 	// !!! This tilemap has the same flags as the 'previous' three, but they're not used in fatfurwa !!!
 	//     (in other words, we should make a similar hng64_drawtilemap0() function for this tilemap)
 	tilemap_draw(bitmap,cliprect,hng64_tilemap0,0,0);
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 
 	// 3d really shouldn't be last, but you don't see some cool stuff right now if it's put before sprites :)...
-	draw3d(machine, bitmap, cliprect);
+	draw3d(screen->machine, bitmap, cliprect);
 
 	/* hack to enable 2nd cpu when key is pressed */
 //  if ( input_code_pressed_once(KEYCODE_L) )
@@ -1285,7 +1289,7 @@ VIDEO_UPDATE( hng64 )
 	/* AJG */
 	// if(input_code_pressed(KEYCODE_D))
 
-	transition_control(machine, bitmap) ;
+	transition_control(bitmap, cliprect) ;
 
 //  mame_printf_debug("FRAME DONE %d\n", frameCount) ;
 	frameCount++ ;
@@ -1296,17 +1300,19 @@ VIDEO_UPDATE( hng64 )
 
 VIDEO_START( hng64 )
 {
-	hng64_tilemap0 = tilemap_create(get_hng64_tile0_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,   8, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap1 = tilemap_create(get_hng64_tile1_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap2 = tilemap_create(get_hng64_tile2_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
-	hng64_tilemap3 = tilemap_create(get_hng64_tile3_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+
+	hng64_tilemap0 = tilemap_create(get_hng64_tile0_info, tilemap_scan_rows,  8,   8, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap1 = tilemap_create(get_hng64_tile1_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap2 = tilemap_create(get_hng64_tile2_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
+	hng64_tilemap3 = tilemap_create(get_hng64_tile3_info, tilemap_scan_rows,  16, 16, 128,128); /* 128x128x4 = 0x10000 */
 	tilemap_set_transparent_pen(hng64_tilemap0,0);
 	tilemap_set_transparent_pen(hng64_tilemap1,0);
 	tilemap_set_transparent_pen(hng64_tilemap2,0);
 	tilemap_set_transparent_pen(hng64_tilemap3,0);
 
 	// 3d Buffer Allocation
-	depthBuffer = (float*)auto_malloc((machine->screen[0].visarea.max_x)*(machine->screen[0].visarea.max_y)*sizeof(float)) ;
+	depthBuffer = (float*)auto_malloc((visarea->max_x)*(visarea->max_y)*sizeof(float)) ;
 
 	// The general display list of polygons in the scene...
 	// !! This really should be a dynamic array !!
@@ -1435,10 +1441,10 @@ static int Inside(struct polyVert *v, int plane)
 
 	case HNG64_NEAR:
 		return (v->clipCoords[2] <=  v->clipCoords[3]) ? 1 : 0;
-		return 1 ;
+
 	case HNG64_FAR:
 		return (v->clipCoords[2] >= -v->clipCoords[3]) ? 1 : 0;
-		return 1 ;
+
 	}
 
 	return 0 ;
@@ -1569,13 +1575,13 @@ static void PerformFrustumClip(struct polygon *p)
 /////////////////////////
 
 #ifdef UNUSED_FUNCTION
-static void plot(INT32 x, INT32 y, INT32 color, mame_bitmap *bitmap)
+static void plot(INT32 x, INT32 y, INT32 color, bitmap_t *bitmap)
 {
 	*BITMAP_ADDR32(bitmap, y, x) = MAKE_ARGB((UINT8)255, (UINT8)color, (UINT8)color, (UINT8)color) ;
 }
 
 // Stolen from http://en.wikipedia.org/wiki/Bresenham's_line_algorithm (no copyright denoted) - the non-optimized version
-static void drawline2d(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 color, mame_bitmap *bitmap)
+static void drawline2d(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 color, bitmap_t *bitmap)
 {
 #define SWAP(a,b) tmpswap = a; a = b; b = tmpswap;
 
@@ -1632,7 +1638,7 @@ static void drawline2d(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 color, mame
 }
 
 
-static void DrawWireframe(struct polygon *p, mame_bitmap *bitmap)
+static void DrawWireframe(struct polygon *p, bitmap_t *bitmap)
 {
 	int j;
 	for (j = 0; j < p->n; j++)
@@ -1659,13 +1665,13 @@ static void DrawWireframe(struct polygon *p, mame_bitmap *bitmap)
 // polygon rendering //
 ///////////////////////
 
-static void RasterizeTriangle_SMOOTH_TEX_PC(running_machine *machine, mame_bitmap *Color,
+static void RasterizeTriangle_SMOOTH_TEX_PC(running_machine *machine, bitmap_t *Color,
                                      float A[4], float B[4], float C[4],
                                      float Ca[3], float Cb[3], float Cc[3], // PER-VERTEX RGB COLORS
                                      float Ta[2], float Tb[2], float Tc[2], // PER-VERTEX (S,T) TEX-COORDS
                                      int Wrapping, int Filtering, int Function) ;
 
-static void DrawShaded(running_machine *machine, struct polygon *p, mame_bitmap *bitmap)
+static void DrawShaded(running_machine *machine, struct polygon *p, bitmap_t *bitmap)
 {
 	// The perspective-correct texture divide...
 	// !!! There is a very good chance the HNG64 hardware does not do perspective-correct texture-mapping !!!
@@ -1701,14 +1707,14 @@ static void DrawShaded(running_machine *machine, struct polygon *p, mame_bitmap 
 /**                                                                 **/
 /**     Output: none                                                **/
 /*********************************************************************/
-INLINE void FillSmoothTexPCHorizontalLine(running_machine *machine, mame_bitmap *Color,
+INLINE void FillSmoothTexPCHorizontalLine(running_machine *machine, bitmap_t *Color,
 					  int Wrapping, int Filtering, int Function,
 					  int x_start, int x_end, int y, float z_start, float z_delta,
 					  float w_start, float w_delta, float r_start, float r_delta,
 					  float g_start, float g_delta, float b_start, float b_delta,
 					  float s_start, float s_delta, float t_start, float t_delta)
 {
-	float *dp = &(depthBuffer[y*machine->screen[0].visarea.max_x+x_start]);
+	float *dp = &(depthBuffer[y*video_screen_get_visible_area(machine->primary_screen)->max_x+x_start]);
 
 	const UINT8 *gfx = memory_region(REGION_GFX3);
 	const UINT8 *textureOffset ;
@@ -1792,7 +1798,7 @@ INLINE void FillSmoothTexPCHorizontalLine(running_machine *machine, mame_bitmap 
 //   nearest and bilinear filtering: Filtering={0,1}
 //   replace and modulate application modes: Function={0,1}
 //---------------------------------------------------------------------------
-static void RasterizeTriangle_SMOOTH_TEX_PC(running_machine *machine, mame_bitmap *Color,
+static void RasterizeTriangle_SMOOTH_TEX_PC(running_machine *machine, bitmap_t *Color,
                                      float A[4], float B[4], float C[4],
                                      float Ca[3], float Cb[3], float Cc[3], // PER-VERTEX RGB COLORS
                                      float Ta[2], float Tb[2], float Tc[2], // PER-VERTEX (S,T) TEX-COORDS

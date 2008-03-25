@@ -27,8 +27,8 @@
 
     - CPU  1x R6502P
     - CRTC 1x MC6845P
-    - RAMs 1x MK48Z02B-20  (2K*8)  (near prg ROM)
-           2x HM6116LP-4   (2K*8)  (near GFX ROMs)
+    - RAMs 1x MK48Z02B-20  CMOS 2K*8 zeropower SRAM (near prg ROM)
+           2x HM6116LP-4   2K*8 SRAM (near GFX ROMs)
     - CLK  1x oscillator 10.000 MHz
 
     - ROMs 1x AM27128      (NS3.1)
@@ -36,10 +36,12 @@
            1x SGS M2764    (NS1)
     - PLDs 1x PAL16R4A     (read protected)
 
+    - 1x TDA 2002      (8W. car radio audio amplifier)
+    - 3x OUAZ SS-112D  (relay 1 pole 12v)
     - 1x 4 DIP switches
     - 1x 30x2 edge connector
     - 1x 10 pins male connector
-    - 1x trimmer (volume)
+    - 2x trimmer (audio?)
 
 
     PCB Layout:
@@ -76,22 +78,22 @@
     | | HM6116       |    ________       _________                ____|
     | | o MSM2128    |   | 74LS08 |     | 74LS174 |               ____|
     | |______________|   |________|     |_________|               ____|
-    |  ________________   __________                              ____|
-    | |                | | PAL16R4A |                             ____|
-    | |     2764       | |__________|                             ____|
-    | |________________|  __________                              ____|
+    |  ________________   __________           ______             ____|
+    | |                | | PAL16R4A |         | TDA  |-           ____|
+    | |     2764       | |__________|         | 2002 |-           ____|
+    | |________________|  __________          |______|-           ____|
     |  ________________  | 74LS166  |                             ____|
-    | |                | |__________|                            |
-    | |     2764       |  __________                             |
-    | |________________| | 74LS166  |                            |____
-    |  ________________  |__________|                               __|
-    | |                |  __________       _________               |  |
-    | |     2764       | | 74LS166  |     | 74LS05  |              |8 |  10
-    | |________________| |__________|     |_________|              |8 |  pins
-    |  ________  ______   __________       _________               |8 |  male
-    | | 74LS04 || osc. | | 74LS193  |     | 74LS86  |              |8 |  connector
-    | |________||10 MHz| |__________|     |_________|              |8 |
-    |           |______|                                           |__|
+    | |                | |__________|      _                     |
+    | |     2764       |  __________     /   \                   |
+    | |________________| | 74LS166  |   | pot |                  |____
+    |  ________________  |__________|    \ _ /                      __|
+    | |                |  __________       _________         ______|  |
+    | |     2764       | | 74LS166  |     | 74LS05  |   _   |ss112d|8 |  10
+    | |________________| |__________|     |_________| /   \ |______|8 |  pins
+    |  ________  ______   __________       _________ | pot ||ss112d|8 |  male
+    | | 74LS04 || osc. | | 74LS193  |     | 74LS86  | \ _ / |______|8 |  connector
+    | |________||10 MHz| |__________|     |_________|       |ss112d|8 |
+    |           |______|                                    |______|__|
     |_________________________________________________________________|
 
 
@@ -182,6 +184,7 @@
         ($56 - $58)      ; Store credits value (shown in the game under "Secondi").
         ($5A - $5C)      ; Store bonus value (shown in the game under "Credits").
         ($5E - $5F)      ; Store values to be written in video and color ram, respectively.
+        ($63 - $63)      ; Store position of marker/cursor (0-4).
         ($66 - $66)      ; Store number of baloon to be risen.
         ($67 - $67)      ; Program compare the content with 0x02, 0x03, 0x04, 0x05 and 0xE1.
                          ; If 0xE1 is found here, the machine hangs showing "I/O ERROR" (see code at $C1A2).
@@ -217,7 +220,7 @@
     $3000 - $3000    Input selector  ; Only writes. NMI write 0x01, 0x02, 0x04, 0x08.
                                      ; Main code at $C152 do a complex loop with boolean operations and write 0x00/0x80 here.
 
-    $C000 - $FFFF    ROM        ; Program ROMs.
+    $C000 - $FFFF    ROM space       ; Program ROMs.
 
 
 *******************************************************************************
@@ -300,6 +303,11 @@
     - Cleaned up and optimized the driver.
     - Reworked/updated technical notes.
 
+    [2008-03-14]
+    - Completed the component list & PCB layout.
+    - Added technical references to register $63 (magicfly).
+    - Switched crystal to new predefined format.
+
 
     TODO:
 
@@ -311,10 +319,10 @@
 *******************************************************************************/
 
 
-#define MASTER_CLOCK	10000000	/* 10MHz */
+#define MASTER_CLOCK	XTAL_10MHz
 
 #include "driver.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 
 
 /*************************
@@ -363,8 +371,7 @@ static TILE_GET_INFO( get_magicfly_tile_info )
 
 static VIDEO_START(magicfly)
 {
-	bg_tilemap = tilemap_create(get_magicfly_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 29);
+	bg_tilemap = tilemap_create(get_magicfly_tile_info, tilemap_scan_rows, 8, 8, 32, 29);
 }
 
 static TILE_GET_INFO( get_7mezzo_tile_info )
@@ -395,8 +402,7 @@ static TILE_GET_INFO( get_7mezzo_tile_info )
 
 static VIDEO_START( 7mezzo )
 {
-	bg_tilemap = tilemap_create(get_7mezzo_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 29);
+	bg_tilemap = tilemap_create(get_7mezzo_tile_info, tilemap_scan_rows, 8, 8, 32, 29);
 }
 
 static VIDEO_UPDATE( magicfly )
@@ -407,19 +413,24 @@ static VIDEO_UPDATE( magicfly )
 
 static PALETTE_INIT( magicfly )
 {
-    /* 1st gfx bank */
-	palette_set_color(machine, 0, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 2, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 4, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 6, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 10, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 11, MAKE_RGB(0x00, 0xff, 0x00));
-	palette_set_color(machine, 12, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 14, MAKE_RGB(0x00, 0x00, 0x00));
+	int i;
 
-	/* 2nd gfx bank */
-	palette_set_color(machine, 22, MAKE_RGB(0xe0, 0xe0, 0xe0));
-	palette_set_color(machine, 23, MAKE_RGB(0xff, 0xff, 0xff));
+	for (i = 0; i < 0x100; i += 0x20)
+	{
+		/* 1st gfx bank */
+		palette_set_color(machine, i + 0, MAKE_RGB(0x00, 0x00, 0x00));
+		palette_set_color(machine, i + 2, MAKE_RGB(0x00, 0x00, 0x00));
+		palette_set_color(machine, i + 4, MAKE_RGB(0x00, 0x00, 0x00));
+		palette_set_color(machine, i + 6, MAKE_RGB(0x00, 0x00, 0x00));
+		palette_set_color(machine, i + 10, MAKE_RGB(0x00, 0x00, 0x00));
+		palette_set_color(machine, i + 11, MAKE_RGB(0x00, 0xff, 0x00));
+		palette_set_color(machine, i + 12, MAKE_RGB(0x00, 0x00, 0x00));
+		palette_set_color(machine, i + 14, MAKE_RGB(0x00, 0x00, 0x00));
+
+		/* 2nd gfx bank */
+		palette_set_color(machine, i + 22, MAKE_RGB(0xe0, 0xe0, 0xe0));
+		palette_set_color(machine, i + 23, MAKE_RGB(0xff, 0xff, 0xff));
+	}
 }
 
 
@@ -433,11 +444,11 @@ static READ8_HANDLER( mux_port_r )
 {
 	switch( mux_data & 0x0f )	/* bits 0-3 */
 	{
-		case 0x01: return input_port_0_r(0);
-		case 0x02: return input_port_1_r(0);
-		case 0x04: return input_port_2_r(0);
-		case 0x08: return input_port_3_r(0);
-		case 0x00: return input_port_4_r(0);
+		case 0x01: return input_port_0_r(machine,0);
+		case 0x02: return input_port_1_r(machine,0);
+		case 0x04: return input_port_2_r(machine,0);
+		case 0x08: return input_port_3_r(machine,0);
+		case 0x00: return input_port_4_r(machine,0);
 	}
 	return 0xff;
 }
@@ -454,8 +465,8 @@ static WRITE8_HANDLER( mux_w )
 
 static ADDRESS_MAP_START( magicfly_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)    /* MK48Z02B NVRAM */
-	AM_RANGE(0x0800, 0x0800) AM_WRITE(crtc6845_address_w)                                   /* MC6845P register addressing */
-	AM_RANGE(0x0801, 0x0801) AM_READWRITE(crtc6845_register_r, crtc6845_register_w)         /* MC6845P register values */
+	AM_RANGE(0x0800, 0x0800) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0x1000, 0x13ff) AM_RAM AM_WRITE(magicfly_videoram_w) AM_BASE(&videoram)        /* HM6116LP #1 (2K x 8) RAM (only 1st half used) */
 	AM_RANGE(0x1800, 0x1bff) AM_RAM AM_WRITE(magicfly_colorram_w) AM_BASE(&colorram)        /* HM6116LP #2 (2K x 8) RAM (only 1st half used) */
 	AM_RANGE(0x2800, 0x2800) AM_READ(mux_port_r)  /* multiplexed input port */
@@ -639,27 +650,26 @@ static MACHINE_DRIVER_START( magicfly )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, MASTER_CLOCK/12)	/* guess */
 	MDRV_CPU_PROGRAM_MAP(magicfly_map, 0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((39+1)*8, (31+1)*8)				/* Taken from MC6845 init, registers 00 & 04. Normally programmed with (value-1). */
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 29*8-1)	/* Taken from MC6845 init, registers 01 & 06. */
 
 	MDRV_GFXDECODE(magicfly)
-	MDRV_PALETTE_LENGTH(32)
+	MDRV_PALETTE_LENGTH(256)
 	MDRV_PALETTE_INIT(magicfly)
-	MDRV_COLORTABLE_LENGTH(256)
 
 	MDRV_VIDEO_START(magicfly)
 	MDRV_VIDEO_UPDATE(magicfly)
 
+	MDRV_DEVICE_ADD("crtc", MC6845)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( 7mezzo )

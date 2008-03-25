@@ -853,14 +853,14 @@ static READ32_HANDLER( spi_unknown_r )
 static WRITE32_HANDLER( ds2404_reset_w )
 {
 	if( ACCESSING_LSB32 ) {
-		DS2404_1W_reset_w(offset, data);
+		DS2404_1W_reset_w(machine, offset, data);
 	}
 }
 
 static READ32_HANDLER( ds2404_data_r )
 {
 	if( ACCESSING_LSB32 ) {
-		return DS2404_data_r(offset);
+		return DS2404_data_r(machine, offset);
 	}
 	return 0;
 }
@@ -868,14 +868,14 @@ static READ32_HANDLER( ds2404_data_r )
 static WRITE32_HANDLER( ds2404_data_w )
 {
 	if( ACCESSING_LSB32 ) {
-		DS2404_data_w(offset, data);
+		DS2404_data_w(machine, offset, data);
 	}
 }
 
 static WRITE32_HANDLER( ds2404_clk_w )
 {
 	if( ACCESSING_LSB32 ) {
-		DS2404_clk_w(offset, data);
+		DS2404_clk_w(machine, offset, data);
 	}
 }
 
@@ -938,25 +938,25 @@ static READ32_HANDLER( spi_controls2_r )
 
 static READ32_HANDLER( spi_6295_0_r )
 {
-	return OKIM6295_status_0_r(0);
+	return OKIM6295_status_0_r(machine, 0);
 }
 
 static READ32_HANDLER( spi_6295_1_r )
 {
-	return OKIM6295_status_1_r(0);
+	return OKIM6295_status_1_r(machine, 0);
 }
 
 static WRITE32_HANDLER( spi_6295_0_w )
 {
 	if( ACCESSING_LSB32 ) {
-		OKIM6295_data_0_w(0, data & 0xff);
+		OKIM6295_data_0_w(machine, 0, data & 0xff);
 	}
 }
 
 static WRITE32_HANDLER( spi_6295_1_w )
 {
 	if( ACCESSING_LSB32 ) {
-		OKIM6295_data_1_w(0, data & 0xff);
+		OKIM6295_data_1_w(machine, 0, data & 0xff);
 	}
 }
 
@@ -1211,7 +1211,7 @@ static INPUT_PORTS_START( spi_3button )
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test Button */
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Coin") PORT_CODE(KEYCODE_7)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
@@ -1315,7 +1315,7 @@ static INPUT_PORTS_START( spi_ejanhs )
 	PORT_BIT( 0x06, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Ron") PORT_CODE(KEYCODE_Z)
 
 	PORT_START_TAG("IN2")
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test Button */
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Coin") PORT_CODE(KEYCODE_7)
 	PORT_BIT( 0xf3, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -1780,24 +1780,25 @@ static MACHINE_DRIVER_START( spi )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main",I386, 50000000/2)	/* Intel 386DX, 25MHz */
 	MDRV_CPU_PROGRAM_MAP(spi_map, 0)
-	MDRV_CPU_VBLANK_INT(spi_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", spi_interrupt)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 28636360/4)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(spisound_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(54)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_INTERLEAVE(200)
 
 	MDRV_MACHINE_RESET(spi)
 	MDRV_NVRAM_HANDLER(spi)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(54)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(spi)
 	MDRV_PALETTE_LENGTH(6144)
 
@@ -2098,19 +2099,19 @@ static MACHINE_DRIVER_START( seibu386 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(I386, 40000000)	/* AMD 386DX, 40MHz */
 	MDRV_CPU_PROGRAM_MAP(seibu386_map, 0)
-	MDRV_CPU_VBLANK_INT(spi_interrupt, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(54)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_CPU_VBLANK_INT("main", spi_interrupt)
 
 	MDRV_NVRAM_HANDLER(sxx2f)
 	MDRV_MACHINE_RESET(seibu386)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(54)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(spi)
 	MDRV_PALETTE_LENGTH(6144)
 
@@ -2662,6 +2663,36 @@ ROM_START(rdftit)
 	ROM_LOAD("gd_8.216",   0x200000, 0x080000, CRC(f88cb6e4) SHA1(fb35b41307b490d5d08e4b8a70f8ff4ce2ca8105) )
 ROM_END
 
+ROM_START(rdfta)
+	ROM_REGION32_LE(0x200000, REGION_USER1, 0)	/* i386 program */
+	ROM_LOAD32_BYTE("seibu1a",  0x000000, 0x80000, CRC(c3bb2e58) SHA1(399ac4b387ba38f5fdad5c4172b2d3baeafd8773) )
+	ROM_LOAD32_BYTE("u212.bin", 0x000001, 0x80000, CRC(58ccb10c) SHA1(0cce4057bfada78121d9586574b98d46cdd7dd46) )
+	ROM_LOAD32_BYTE("u210.bin", 0x000002, 0x80000, CRC(47fc3c96) SHA1(7378f8caa847f89f235b5be6779118721076873b) )
+	ROM_LOAD32_BYTE("u29.bin",  0x000003, 0x80000, CRC(271bdd4b) SHA1(0a805568cbd6a9c18bdb755a41972ff6bba9e6eb) )
+
+	ROM_REGION( 0x30000, REGION_GFX1, 0)	/* text layer roms */
+	ROM_LOAD24_BYTE("gd_5.423", 0x000000, 0x10000, CRC(8f8d4e14) SHA1(06c803975767ae98f40ba7ac5764a5bc8baa3a30) )
+	ROM_LOAD24_BYTE("gd_6.424", 0x000001, 0x10000, CRC(6ac64968) SHA1(ec395205c24c4f864a1f805bb0d4641562d4faa9) )
+	ROM_LOAD24_BYTE("gd_7.48",  0x000002, 0x10000, CRC(4d87e1ea) SHA1(3230e9b643fad773e61ab8ce09c0cd7d4d0558e3) )
+
+	ROM_REGION( 0x600000, REGION_GFX2, 0)	/* background layer roms */
+	ROM_LOAD24_WORD("gd_bg1-d.415", 0x000000, 0x200000, CRC(6a68054c) SHA1(5cbfc4ac90045f1401c2dda7a51936558c9de07e) )
+	ROM_LOAD24_BYTE("gd_bg1-p.410", 0x000002, 0x100000, CRC(3400794a) SHA1(719808f7442bac612cefd7b7fffcd665e6337ad0) )
+	ROM_LOAD24_WORD("gd_bg2-d.416", 0x300000, 0x200000, CRC(61cd2991) SHA1(bb608e3948bf9ea35b5e1615d2ba6858d029dcbe) )
+	ROM_LOAD24_BYTE("gd_bg2-p.49",  0x300002, 0x100000, CRC(502d5799) SHA1(c3a0e1a4f5a7b35572ae1ff31315da4ed08aa2fe) )
+
+	ROM_REGION( 0xc00000, REGION_GFX3, 0)	/* sprites */
+	ROM_LOAD("gd_obj-1.322", 0x000000, 0x400000, CRC(59d86c99) SHA1(d3c9241e7b51fe21f8351051b063f91dc69bf905) )
+	ROM_LOAD("gd_obj-2.324", 0x400000, 0x400000, CRC(1ceb0b6f) SHA1(97225a9b3e7be18080aa52f6570af2cce8f25c06) )
+	ROM_LOAD("gd_obj-3.323", 0x800000, 0x400000, CRC(36e93234) SHA1(51917a80b7da5c32a9434a1076fc2916d62e6a3e) )
+
+	ROM_REGION(0x200000, REGION_SOUND1, ROMREGION_ERASE00)
+
+	ROM_REGION(0x280000, REGION_USER2, ROMREGION_ERASE00)	/* sound roms */
+	ROM_LOAD("gd_pcm.217", 0x000000, 0x200000, CRC(31253ad7) SHA1(c81c8d50f8f287f5cbfaec77b30d969b01ce11a9) )
+	ROM_LOAD("gd_8.216",   0x200000, 0x080000, CRC(f88cb6e4) SHA1(fb35b41307b490d5d08e4b8a70f8ff4ce2ca8105) )
+ROM_END
+
 ROM_START(rdft2us)	/* Single board version SXX2F */
 	ROM_REGION32_LE(0x200000, REGION_USER1, 0)	/* i386 program */
 	ROM_LOAD32_BYTE("prg0.u0259", 0x000000, 0x80000, CRC(ff3eeec1) SHA1(88c1741e4936db9a5b13e562061b0f1cc6fa6b36) )
@@ -3042,6 +3073,7 @@ GAME( 1996, rdftau,    rdft,    spi,      spi_3button, rdft,     ROT270, "Seibu 
 GAME( 1996, rdftj,     rdft,    spi,      spi_3button, rdft,     ROT270, "Seibu Kaihatsu", "Raiden Fighters (Japan set 2)", GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
 GAME( 1996, rdftdi,    rdft,    spi,      spi_3button, rdft,     ROT270, "Seibu Kaihatsu (Dream Island license)", "Raiden Fighters (Dream Island Co. license)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
 GAME( 1996, rdftit,    rdft,    spi,      spi_3button, rdft,     ROT270, "Seibu Kaihatsu", "Raiden Fighters (Italy)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
+GAME( 1996, rdfta,    rdft,    spi,      spi_3button, rdft,     ROT270, "Seibu Kaihatsu", "Raiden Fighters (Austria)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
 
 GAME( 1997, rdft2,     0,       spi,      spi_2button, rdft2,  ROT270, "Seibu Kaihatsu (Tuning license)", "Raiden Fighters 2",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
 GAME( 1997, rdft2a2,   rdft2,   spi,      spi_2button, rdft2,  ROT270, "Seibu Kaihatsu (Dream Island license)", "Raiden Fighters 2 (Asia, Dream Island license, SPI)",  GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )

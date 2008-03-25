@@ -67,7 +67,7 @@ static void VS920A_init(int numchips)
 
 	for (i=0;i<numchips;i++)
 	{
-		VS920A[i].tmap = tilemap_create(VS920A_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+		VS920A[i].tmap = tilemap_create(VS920A_get_tile_info,tilemap_scan_rows,8,8,64,32);
 
 		tilemap_set_transparent_pen(VS920A[i].tmap, 0);
 	}
@@ -88,7 +88,7 @@ static void VS920A_set_gfx_region(int numchip, int gfx_region)
 	VS920A[numchip].gfx_region = gfx_region;
 }
 
-static void VS920A_draw(int numchip, mame_bitmap* screen, const rectangle* cliprect, int priority)
+static void VS920A_draw(int numchip, bitmap_t* screen, const rectangle* cliprect, int priority)
 {
 	VS920A_cur_chip = &VS920A[numchip];
 
@@ -225,7 +225,7 @@ static void MB60553_init(int numchips)
 
 	for (i=0;i<numchips;i++)
 	{
-		MB60553[i].tmap = tilemap_create(MB60553_get_tile_info,twc94_scan,TILEMAP_TYPE_PEN, 16,16,128,64);
+		MB60553[i].tmap = tilemap_create(MB60553_get_tile_info,twc94_scan, 16,16,128,64);
 
 		tilemap_set_transparent_pen(MB60553[i].tmap, 0);
 	}
@@ -242,19 +242,14 @@ static void MB60553_set_gfx_region(int numchip, int gfx_region)
 }
 
 /* THIS IS STILL WRONG! */
-static void MB60553_draw(running_machine *machine, int numchip, mame_bitmap* screen, const rectangle* cliprect, int priority)
+static void MB60553_draw(running_machine *machine, int numchip, bitmap_t* screen, const rectangle* cliprect, int priority)
 {
 	int line;
 	rectangle clip;
 	MB60553_cur_chip = &MB60553[numchip];
 
-
-
-
-	clip.min_x = machine->screen[0].visarea.min_x;
-	clip.max_x = machine->screen[0].visarea.max_x;
-	clip.min_y = machine->screen[0].visarea.min_y;
-	clip.max_y = machine->screen[0].visarea.max_y;
+	clip.min_x = video_screen_get_visible_area(machine->primary_screen)->min_x;
+	clip.max_x = video_screen_get_visible_area(machine->primary_screen)->max_x;
 
 	for (line = 0; line < 224;line++)
 	{
@@ -389,7 +384,7 @@ Abstracts the VS9210
 tCG10103 CG10103[MAX_CG10103];
 static tCG10103* CG10103_cur_chip;
 
-static void CG10103_draw_sprite(running_machine *machine, mame_bitmap* screen, const rectangle* cliprect, UINT16* spr, int drawpri)
+static void CG10103_draw_sprite(running_machine *machine, bitmap_t* screen, const rectangle* cliprect, UINT16* spr, int drawpri)
 {
 	int ypos = spr[0] & 0x1FF;
 	int xpos = (spr[1] & 0x1FF);
@@ -465,7 +460,7 @@ static void CG10103_draw_sprite(running_machine *machine, mame_bitmap* screen, c
 }
 
 
-static void CG10103_draw(running_machine *machine, int numchip, mame_bitmap* screen, const rectangle* cliprect, int priority)
+static void CG10103_draw(running_machine *machine, int numchip, bitmap_t* screen, const rectangle* cliprect, int priority)
 {
 	UINT16* splist;
 	int i;
@@ -535,17 +530,17 @@ WRITE16_HANDLER( gsx_videoram3_w )
 
 VIDEO_UPDATE(gstriker)
 {
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	// Sandwitched screen/sprite0/score/sprite1. Surely wrong, probably
 	//  needs sprite orthogonality
-	MB60553_draw(machine, 0, bitmap,cliprect, 0);
+	MB60553_draw(screen->machine, 0, bitmap,cliprect, 0);
 
-	CG10103_draw(machine, 0, bitmap, cliprect, 0);
+	CG10103_draw(screen->machine, 0, bitmap, cliprect, 0);
 
 	VS920A_draw(0, bitmap, cliprect, 0);
 
-	CG10103_draw(machine, 0, bitmap, cliprect, 1);
+	CG10103_draw(screen->machine, 0, bitmap, cliprect, 1);
 
 #if 0
 	popmessage("%04x %04x %04x %04x %04x %04x %04x %04x",

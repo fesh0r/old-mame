@@ -52,7 +52,7 @@ static void zoom_callback(int *code,int *color,int *flags)
 
 VIDEO_START( tail2nos )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	K051316_vh_start_0(machine,REGION_GFX3,-4,TRUE,0,zoom_callback);
 
@@ -135,7 +135,7 @@ WRITE16_HANDLER( tail2nos_gfxbank_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -175,7 +175,7 @@ VIDEO_UPDATE( tail2nos )
 			if (dirtychar[i])
 			{
 				dirtychar[i] = 0;
-				decodechar(machine->gfx[2],i,(UINT8 *)zoomdata);
+				decodechar(screen->machine->gfx[2],i,(UINT8 *)zoomdata);
 			}
 		}
 
@@ -186,10 +186,10 @@ VIDEO_UPDATE( tail2nos )
 	if (video_enable)
 	{
 		K051316_zoom_draw_0(bitmap,cliprect,0,0);
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	}
 	else
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 	return 0;
 }

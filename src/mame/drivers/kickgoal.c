@@ -50,6 +50,7 @@ lev 7 : 0x7c : 0000 0000 - x
    Ditto for samples 65, 66, 67 and 68.
 */
 
+#ifdef UNUSED_DEFINITION
 static const UINT8 kickgoal_cmd_snd[128] =
 {
 /*00*/	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -61,6 +62,7 @@ static const UINT8 kickgoal_cmd_snd[128] =
 /*30*/	0x00, 0x00, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
 /*38*/	0x29, 0x2a, 0x2b, 0x00, 0x6b, 0x00, 0x00, 0x00
 };
+#endif
 
 /* Sound numbers in the sample ROM
 01 Melody A     Bank 0
@@ -224,7 +226,7 @@ static WRITE16_HANDLER( actionhw_snd_w )
 		case 0xfd:	OKIM6295_set_bank_base(0, (2 * 0x40000)); break;
 		case 0xfe:	OKIM6295_set_bank_base(0, (1 * 0x40000)); break;
 		case 0xff:	OKIM6295_set_bank_base(0, (3 * 0x40000)); break;
-		case 0x78:	OKIM6295_data_0_w(0,data);
+		case 0x78:	OKIM6295_data_0_w(machine,0,data);
 					snd_sam[0]=00; snd_sam[1]=00; snd_sam[2]=00; snd_sam[3]=00;
 					break;
 		default:	if (snd_new) /* Play new sample */
@@ -232,44 +234,44 @@ static WRITE16_HANDLER( actionhw_snd_w )
 						if ((data & 0x80) && (snd_sam[3] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(0) & 0x08) != 0x08)
+							if ((OKIM6295_status_0_r(machine,0) & 0x08) != 0x08)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(0,snd_new);
-								OKIM6295_data_0_w(0,data);
+								OKIM6295_data_0_w(machine,0,snd_new);
+								OKIM6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
 						if ((data & 0x40) && (snd_sam[2] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(0) & 0x04) != 0x04)
+							if ((OKIM6295_status_0_r(machine,0) & 0x04) != 0x04)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(0,snd_new);
-								OKIM6295_data_0_w(0,data);
+								OKIM6295_data_0_w(machine,0,snd_new);
+								OKIM6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
 						if ((data & 0x20) && (snd_sam[1] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(0) & 0x02) != 0x02)
+							if ((OKIM6295_status_0_r(machine,0) & 0x02) != 0x02)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(0,snd_new);
-								OKIM6295_data_0_w(0,data);
+								OKIM6295_data_0_w(machine,0,snd_new);
+								OKIM6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
 						if ((data & 0x10) && (snd_sam[0] != snd_new))
 						{
 							logerror("About to play sample %02x at vol %02x\n",snd_new,data);
-							if ((OKIM6295_status_0_r(0) & 0x01) != 0x01)
+							if ((OKIM6295_status_0_r(machine,0) & 0x01) != 0x01)
 							{
 							logerror("Playing sample %02x at vol %02x\n",snd_new,data);
-								OKIM6295_data_0_w(0,snd_new);
-								OKIM6295_data_0_w(0,data);
+								OKIM6295_data_0_w(machine,0,snd_new);
+								OKIM6295_data_0_w(machine,0,data);
 							}
 							snd_new = 00;
 						}
@@ -284,7 +286,7 @@ static WRITE16_HANDLER( actionhw_snd_w )
 					else /* Turn a channel off */
 					{
 						logerror("Turning channel %02x off\n",data);
-						OKIM6295_data_0_w(0,data);
+						OKIM6295_data_0_w(machine,0,data);
 						if (data & 0x40) snd_sam[3] = 00;
 						if (data & 0x20) snd_sam[2] = 00;
 						if (data & 0x10) snd_sam[1] = 00;
@@ -303,7 +305,7 @@ static int m6295_bank;
 static UINT16 m6295_key_delay;
 static INTERRUPT_GEN( kickgoal_interrupt )
 {
-	if ((OKIM6295_status_0_r(0) & 0x08) == 0)
+	if ((OKIM6295_status_0_r(machine,0) & 0x08) == 0)
 	{
 		switch(kickgoal_melody_loop)
 		{
@@ -332,8 +334,8 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 		if (kickgoal_melody_loop)
 		{
 //          logerror("Changing to sample %02x\n",kickgoal_melody_loop);
-			OKIM6295_data_0_w(0,((0x80 | kickgoal_melody_loop) & 0xff));
-			OKIM6295_data_0_w(0,0x81);
+			OKIM6295_data_0_w(machine,0,((0x80 | kickgoal_melody_loop) & 0xff));
+			OKIM6295_data_0_w(machine,0,0x81);
 		}
 	}
 	if ( input_code_pressed_once(KEYCODE_PGUP) )
@@ -410,9 +412,9 @@ static INTERRUPT_GEN( kickgoal_interrupt )
 	{
 		if (m6295_key_delay >= (0x80 * oki_time_base))
 		{
-			OKIM6295_data_0_w(0,0x78);
-			OKIM6295_data_0_w(0,(0x80 | m6295_comm));
-			OKIM6295_data_0_w(0,0x11);
+			OKIM6295_data_0_w(machine,0,0x78);
+			OKIM6295_data_0_w(machine,0,(0x80 | m6295_comm));
+			OKIM6295_data_0_w(machine,0,0x11);
 
 			popmessage("Playing sound %02x on Bank %02x",m6295_comm,m6295_bank);
 
@@ -502,13 +504,13 @@ static ADDRESS_MAP_START( kickgoal_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800004, 0x800005) AM_WRITE(actionhw_snd_w)
 	AM_RANGE(0x900000, 0x900005) AM_WRITE(kickgoal_eeprom_w)
 	AM_RANGE(0x900006, 0x900007) AM_READ(kickgoal_eeprom_r)
-	AM_RANGE(0xa00000, 0xa03fff) AM_READWRITE(MRA16_RAM, kickgoal_fgram_w) AM_BASE(&kickgoal_fgram) /* FG Layer */
-	AM_RANGE(0xa04000, 0xa07fff) AM_READWRITE(MRA16_RAM, kickgoal_bgram_w) AM_BASE(&kickgoal_bgram) /* Higher BG Layer */
-	AM_RANGE(0xa08000, 0xa0bfff) AM_READWRITE(MRA16_RAM, kickgoal_bg2ram_w) AM_BASE(&kickgoal_bg2ram) /* Lower BG Layer */
-	AM_RANGE(0xa0c000, 0xa0ffff) AM_READWRITE(MRA16_RAM, MWA16_RAM) // more tilemap?
-	AM_RANGE(0xa10000, 0xa1000f) AM_WRITE(MWA16_RAM) AM_BASE(&kickgoal_scrram) /* Scroll Registers */
-	AM_RANGE(0xb00000, 0xb007ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size) /* Sprites */
-	AM_RANGE(0xc00000, 0xc007ff) AM_READWRITE(MRA16_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16) /* Palette */ // actionhw reads this
+	AM_RANGE(0xa00000, 0xa03fff) AM_READWRITE(SMH_RAM, kickgoal_fgram_w) AM_BASE(&kickgoal_fgram) /* FG Layer */
+	AM_RANGE(0xa04000, 0xa07fff) AM_READWRITE(SMH_RAM, kickgoal_bgram_w) AM_BASE(&kickgoal_bgram) /* Higher BG Layer */
+	AM_RANGE(0xa08000, 0xa0bfff) AM_READWRITE(SMH_RAM, kickgoal_bg2ram_w) AM_BASE(&kickgoal_bg2ram) /* Lower BG Layer */
+	AM_RANGE(0xa0c000, 0xa0ffff) AM_READWRITE(SMH_RAM, SMH_RAM) // more tilemap?
+	AM_RANGE(0xa10000, 0xa1000f) AM_WRITE(SMH_RAM) AM_BASE(&kickgoal_scrram) /* Scroll Registers */
+	AM_RANGE(0xb00000, 0xb007ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size) /* Sprites */
+	AM_RANGE(0xc00000, 0xc007ff) AM_READWRITE(SMH_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16) /* Palette */ // actionhw reads this
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -665,7 +667,7 @@ static MACHINE_DRIVER_START( kickgoal )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(kickgoal_program_map, 0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 	MDRV_CPU_PERIODIC_INT(kickgoal_interrupt, 240)
 
 	MDRV_CPU_ADD(PIC16C57, 12000000/4)	/* 3MHz ? */
@@ -673,16 +675,16 @@ static MACHINE_DRIVER_START( kickgoal )
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(kickgoal_sound_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(kickgoal)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(9*8, 55*8-1, 4*8, 60*8-1)
+
 	MDRV_GFXDECODE(kickgoal)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -699,25 +701,25 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( actionhw )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD(M68000, XTAL_12MHz)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(kickgoal_program_map, 0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-	MDRV_CPU_ADD(PIC16C57, 12000000/4)	/* 3MHz ? */
+	MDRV_CPU_ADD(PIC16C57, XTAL_12MHz/3)	/* verified on pcb */
 	MDRV_CPU_FLAGS(CPU_DISABLE) /* Disables since the internal rom isn't dumped */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(actionhw_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(kickgoal) // 93C46 really
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(10*8+2, 54*8-1+2, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(actionhw)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -726,8 +728,8 @@ static MACHINE_DRIVER_START( actionhw )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(OKIM6295, 12000000/8)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)
+	MDRV_SOUND_ADD(OKIM6295, XTAL_12MHz/12) /* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 

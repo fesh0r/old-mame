@@ -127,7 +127,7 @@ static VIDEO_START(srmp6)
 {
 	/* create the char set (gfx will then be updated dynamically from RAM) */
 	machine->gfx[0] = allocgfx(&tiles8x8_layout);
-	machine->gfx[0]->total_colors = machine->drv->total_colors / 256;
+	machine->gfx[0]->total_colors = machine->config->total_colors / 256;
 	machine->gfx[0]->color_granularity=256;
 
 	tileram = auto_malloc(0x100000*16);
@@ -177,7 +177,7 @@ static VIDEO_UPDATE(srmp6)
 		UINT16 b;
 	} temp;
 
-	fillbitmap(bitmap,0,&machine->screen[0].visarea);
+	fillbitmap(bitmap,0,cliprect);
 
 #if 0
 	/* debug */
@@ -273,11 +273,11 @@ static VIDEO_UPDATE(srmp6)
 
 						if (dirty_tileram[tileno])
 						{
-							decodechar(machine->gfx[0], tileno, (UINT8*)tileram);
+							decodechar(screen->machine->gfx[0], tileno, (UINT8*)tileram);
 							dirty_tileram[tileno] = 0;
 						}
 
-						drawgfx(bitmap,machine->gfx[0],tileno,global_pal,flip_x,flip_y,xb,yb,cliprect,trans,0);
+						drawgfx(bitmap,screen->machine->gfx[0],tileno,global_pal,flip_x,flip_y,xb,yb,cliprect,trans,0);
 						tileno++;
 		 			}
 				}
@@ -535,7 +535,7 @@ static WRITE16_HANDLER(tileram_w)
 	if (offset >= 0xfff00/2 && offset <= 0xfff1a/2 )
 	{
 		offset &=0x1f;
-		srmp6_dma_w(offset,data,mem_mask);
+		srmp6_dma_w(machine,offset,data,mem_mask);
 	}
 }
 
@@ -544,7 +544,7 @@ static WRITE16_HANDLER(paletteram_w)
 	INT8 r, g, b;
 	int brg = brightness - 0x60;
 
-	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset, data, mem_mask);
+	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset, data, mem_mask);
 
 	if(brg)
 	{
@@ -576,11 +576,11 @@ static WRITE16_HANDLER(paletteram_w)
 static ADDRESS_MAP_START( srmp6, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x200000, 0x23ffff) AM_RAM					// work RAM
-	AM_RANGE(0x600000, 0x7fffff) AM_READ(MRA16_BANK1)	// banked ROM (used by ROM check)
+	AM_RANGE(0x600000, 0x7fffff) AM_READ(SMH_BANK1)	// banked ROM (used by ROM check)
 	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION(REGION_USER1, 0)
 
 	AM_RANGE(0x300000, 0x300005) AM_READWRITE(srmp6_inputs_r, srmp6_input_select_w)		// inputs
-	AM_RANGE(0x480000, 0x480fff) AM_READWRITE(MRA16_RAM, paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x480000, 0x480fff) AM_READWRITE(SMH_RAM, paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x4d0000, 0x4d0001) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)	// watchdog
 
 	// OBJ RAM: checked [$400000-$47dfff]
@@ -617,7 +617,7 @@ static INPUT_PORTS_START( srmp6 )
 	PORT_BIT ( 0x0020, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )
 	PORT_BIT ( 0x0040, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT ( 0x0080, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
-	PORT_BIT ( 0x0100, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0100, IP_ACTIVE_LOW )
 
 	PORT_START
 	PORT_BIT ( 0xfe41, IP_ACTIVE_LOW, IPT_UNUSED ) // explicitely discarded
@@ -709,15 +709,16 @@ static INTERRUPT_GEN(srmp6_interrupt)
 static MACHINE_DRIVER_START( srmp6 )
 	MDRV_CPU_ADD(M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(srmp6,0)
-	MDRV_CPU_VBLANK_INT(srmp6_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(srmp6_interrupt,2)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 42*8-1, 0*8, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(0x800)
 
 	MDRV_VIDEO_START(srmp6)

@@ -1603,7 +1603,7 @@ typedef struct _raster_info raster_info;
 struct _raster_info
 {
 	struct _raster_info *next;			/* pointer to next entry with the same hash */
-	poly_draw_scanline callback;		/* callback pointer */
+	poly_draw_scanline_func callback;		/* callback pointer */
 	UINT8		is_generic;				/* TRUE if this is one of the generic rasterizers */
 	UINT8		display;				/* display index */
 	UINT32		hits;					/* how many hits (pixels) we've used this for */
@@ -1671,7 +1671,7 @@ struct _banshee_info
 struct _voodoo_state
 {
 	UINT8		index;					/* index of board */
-	UINT8		scrnum;					/* the screen we are acting on */
+	const device_config *screen;		/* the screen we are acting on */
 	UINT8		type;					/* type of system */
 	UINT8		chipmask;				/* mask for which chips are available */
 	UINT32		freq;					/* operating frequency */

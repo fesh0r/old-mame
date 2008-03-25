@@ -142,13 +142,13 @@ static int sprites_scrolldx, sprites_scrolldy;
 VIDEO_START( unico )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	16,16,	0x40, 0x40);
+									16,16,	0x40, 0x40);
 
 	tilemap_1 = tilemap_create(	get_tile_info_1,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	16,16,	0x40, 0x40);
+									16,16,	0x40, 0x40);
 
 	tilemap_2 = tilemap_create(	get_tile_info_2,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	16,16,	0x40, 0x40);
+									16,16,	0x40, 0x40);
 
 	sprites_scrolldx = -0x3f;
 	sprites_scrolldy = -0x0e;
@@ -169,13 +169,13 @@ VIDEO_START( unico )
 VIDEO_START( zeropnt2 )
 {
 	tilemap_0 = tilemap_create(	get_tile_info32_0,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	16,16,	0x40, 0x40);
+									16,16,	0x40, 0x40);
 
 	tilemap_1 = tilemap_create(	get_tile_info32_1,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	16,16,	0x40, 0x40);
+									16,16,	0x40, 0x40);
 
 	tilemap_2 = tilemap_create(	get_tile_info32_2,tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	16,16,	0x40, 0x40);
+									16,16,	0x40, 0x40);
 
 	sprites_scrolldx = -0x3f;
 	sprites_scrolldy = -0x0e;
@@ -217,7 +217,7 @@ VIDEO_START( zeropnt2 )
 
 ***************************************************************************/
 
-static void unico_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void unico_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -270,7 +270,7 @@ static void unico_draw_sprites(running_machine *machine, mame_bitmap *bitmap,con
 	}
 }
 
-static void zeropnt2_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void zeropnt2_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -359,7 +359,7 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 #endif
 
 	/* The background color is the first of the last palette */
-	fillbitmap(bitmap,machine->pens[0x1f00],cliprect);
+	fillbitmap(bitmap,0x1f00,cliprect);
 	fillbitmap(priority_bitmap,0,cliprect);
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,tilemap_0,0,1);
@@ -367,7 +367,7 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 	if (layers_ctrl & 4)	tilemap_draw(bitmap,cliprect,tilemap_2,0,4);
 
 	/* Sprites are drawn last, using pdrawgfx */
-	if (layers_ctrl & 8)	unico_draw_sprites(machine, bitmap,cliprect);
+	if (layers_ctrl & 8)	unico_draw_sprites(screen->machine, bitmap,cliprect);
 
 	return 0;
 }
@@ -398,7 +398,7 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 #endif
 
 	/* The background color is the first of the last palette */
-	fillbitmap(bitmap,machine->pens[0x1f00],cliprect);
+	fillbitmap(bitmap,0x1f00,cliprect);
 	fillbitmap(priority_bitmap,0,cliprect);
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,tilemap_0,0,1);
@@ -406,7 +406,7 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 	if (layers_ctrl & 4)	tilemap_draw(bitmap,cliprect,tilemap_2,0,4);
 
 	/* Sprites are drawn last, using pdrawgfx */
-	if (layers_ctrl & 8)	zeropnt2_draw_sprites(machine, bitmap,cliprect);
+	if (layers_ctrl & 8)	zeropnt2_draw_sprites(screen->machine, bitmap,cliprect);
 
 	return 0;
 }

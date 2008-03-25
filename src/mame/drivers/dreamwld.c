@@ -51,7 +51,7 @@ static int dreamwld_tilebank[2], dreamwld_tilebankold[2];
 static tilemap *dreamwld_bg_tilemap;
 static tilemap *dreamwld_bg2_tilemap;
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const gfx_element *gfx = machine->gfx[0];
 	UINT32 *source = spriteram32;
@@ -143,8 +143,8 @@ static TILE_GET_INFO( get_dreamwld_bg2_tile_info )
 
 static VIDEO_START(dreamwld)
 {
-	dreamwld_bg_tilemap = tilemap_create(get_dreamwld_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      16, 16, 64,32);
-	dreamwld_bg2_tilemap = tilemap_create(get_dreamwld_bg2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      16, 16, 64,32);
+	dreamwld_bg_tilemap = tilemap_create(get_dreamwld_bg_tile_info,tilemap_scan_rows, 16, 16, 64,32);
+	dreamwld_bg2_tilemap = tilemap_create(get_dreamwld_bg2_tile_info,tilemap_scan_rows, 16, 16, 64,32);
 	tilemap_set_transparent_pen(dreamwld_bg2_tilemap,0);
 	dreamwld_tilebankold[0] = dreamwld_tilebankold[1] = -1;
 	dreamwld_tilebank[0] = dreamwld_tilebank[1] = 0;
@@ -175,7 +175,7 @@ static VIDEO_UPDATE(dreamwld)
 	tilemap_draw(bitmap,cliprect,dreamwld_bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,dreamwld_bg2_tilemap,0,0);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 
 	return 0;
 }
@@ -221,14 +221,14 @@ static WRITE32_HANDLER( dreamwld_palette_w )
 
 static READ32_HANDLER(dreamwld_6295_0_r)
 {
-	return OKIM6295_status_0_r(0)<<24;
+	return OKIM6295_status_0_r(machine, 0)<<24;
 }
 
 static WRITE32_HANDLER(dreamwld_6295_0_w)
 {
 	if (!(mem_mask & 0xff000000))
 	{
-		OKIM6295_data_0_w(0, (data>>24) & 0xff);
+		OKIM6295_data_0_w(machine, 0, (data>>24) & 0xff);
 	}
 	else
 	{
@@ -260,14 +260,14 @@ static WRITE32_HANDLER( dreamwld_6295_0_bank_w )
 
 static READ32_HANDLER(dreamwld_6295_1_r)
 {
-	return OKIM6295_status_1_r(0)<<24;
+	return OKIM6295_status_1_r(machine, 0)<<24;
 }
 
 static WRITE32_HANDLER(dreamwld_6295_1_w)
 {
 	if (!(mem_mask & 0xff000000))
 	{
-		OKIM6295_data_1_w(0, (data>>24) & 0xff);
+		OKIM6295_data_1_w(machine, 0, (data>>24) & 0xff);
 	}
 	else
 	{
@@ -288,12 +288,12 @@ static WRITE32_HANDLER( dreamwld_6295_1_bank_w )
 }
 
 static ADDRESS_MAP_START( dreamwld_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_ROM  AM_WRITE(MWA32_NOP)
+	AM_RANGE(0x000000, 0x0fffff) AM_ROM  AM_WRITE(SMH_NOP)
 
 	AM_RANGE(0x400000, 0x401fff) AM_RAM AM_BASE( &spriteram32 )
 	AM_RANGE(0x600000, 0x601fff) AM_RAM AM_WRITE(dreamwld_palette_w) AM_BASE(&paletteram32)  // real palette?
-	AM_RANGE(0x800000, 0x801fff) AM_READWRITE(MRA32_RAM, dreamwld_bg_videoram_w ) AM_BASE( &dreamwld_bg_videoram )
-	AM_RANGE(0x802000, 0x803fff) AM_READWRITE(MRA32_RAM, dreamwld_bg2_videoram_w ) AM_BASE( &dreamwld_bg2_videoram )
+	AM_RANGE(0x800000, 0x801fff) AM_READWRITE(SMH_RAM, dreamwld_bg_videoram_w ) AM_BASE( &dreamwld_bg_videoram )
+	AM_RANGE(0x802000, 0x803fff) AM_READWRITE(SMH_RAM, dreamwld_bg2_videoram_w ) AM_BASE( &dreamwld_bg2_videoram )
 	AM_RANGE(0x804000, 0x805fff) AM_RAM AM_BASE( &dreamwld_bg_scroll )  // scroll regs etc.
 
 	AM_RANGE(0xc00000, 0xc00003) AM_READ(dreamwld_inputs_r)
@@ -448,13 +448,12 @@ static MACHINE_DRIVER_START( dreamwld )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(dreamwld_map, 0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1) // 4, 5, or 6, all point to the same place
-
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold) // 4, 5, or 6, all point to the same place
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512,256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 304-1, 0, 224-1)

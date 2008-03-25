@@ -10,38 +10,41 @@ Video hardware driver by Uki
 
 #include "driver.h"
 
+
+UINT8 *strnskil_xscroll;
 static UINT8 strnskil_scrl_ctrl;
-static UINT8 strnskil_xscroll[2];
 
 static tilemap *bg_tilemap;
+
 
 PALETTE_INIT( strnskil )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
-	{
-		int r = color_prom[0];
-		int g = color_prom[machine->drv->total_colors];
-		int b = color_prom[2*machine->drv->total_colors];
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x100);
 
-		palette_set_color_rgb(machine,i,pal4bit(r),pal4bit(g),pal4bit(b));
-		color_prom++;
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x100; i++)
+	{
+		int r = pal4bit(color_prom[i + 0x000]);
+		int g = pal4bit(color_prom[i + 0x100]);
+		int b = pal4bit(color_prom[i + 0x200]);
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 2*machine->drv->total_colors;
-
 	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x300;
 
 	/* sprites lookup table */
-	for (i=0; i<512; i++)
-		*(colortable++) = *(color_prom++);
-
-	/* bg lookup table */
-	for (i=0; i<512; i++)
-		*(colortable++) = *(color_prom++);
-
+	for (i = 0; i < 0x400; i++)
+	{
+		UINT8 ctabentry = color_prom[i];
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 }
+
 
 WRITE8_HANDLER( strnskil_videoram_w )
 {
@@ -49,16 +52,11 @@ WRITE8_HANDLER( strnskil_videoram_w )
 	tilemap_mark_tile_dirty(bg_tilemap, offset / 2);
 }
 
-WRITE8_HANDLER( strnskil_scroll_x_w )
-{
-	strnskil_xscroll[offset] = data;
-}
-
 WRITE8_HANDLER( strnskil_scrl_ctrl_w )
 {
 	strnskil_scrl_ctrl = data >> 5;
 
-	if (flip_screen != (data & 0x08))
+	if (flip_screen_get() != (data & 0x08))
 	{
 		flip_screen_set(data & 0x08);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -77,12 +75,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( strnskil )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_scroll_rows(bg_tilemap, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -90,14 +88,14 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	{
 		int code = spriteram[offs + 1];
 		int color = spriteram[offs + 2] & 0x3f;
-		int flipx = flip_screen_x;
-		int flipy = flip_screen_y;
+		int flipx = flip_screen_x_get();
+		int flipy = flip_screen_y_get();
 
 		int sx = spriteram[offs + 3];
 		int sy = spriteram[offs];
 		int px, py;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			px = 240 - sx + 0; /* +2 or +0 ? */
 			py = sy;
@@ -118,7 +116,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			flipx, flipy,
 			px, py,
 			cliprect,
-			TRANSPARENCY_COLOR, 0);
+			TRANSPARENCY_PENS,
+			colortable_get_transpen_mask(machine->colortable, machine->gfx[1], color, 0));
 	}
 }
 
@@ -143,6 +142,6 @@ VIDEO_UPDATE( strnskil )
 	}
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

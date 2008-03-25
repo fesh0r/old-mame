@@ -27,17 +27,17 @@ static WRITE8_HANDLER( dambustr_noise_enable_w )
 {
 	if (data != noise_data) {
 		noise_data = data;
-		galaxian_noise_enable_w(offset, data);
-	};
+		galaxian_noise_enable_w(machine, offset, data);
+	}
 }
 
 
 static ADDRESS_MAP_START( dambustr_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xd3ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xd3ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd400, 0xd7ff) AM_READ(galaxian_videoram_r)
-	AM_RANGE(0xd800, 0xd8ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xd800, 0xd8ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_0_r)
 	AM_RANGE(0xe800, 0xefff) AM_READ(input_port_1_r)
 	AM_RANGE(0xf000, 0xf7ff) AM_READ(input_port_2_r)
@@ -46,15 +46,15 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( dambustr_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(dambustr_bg_color_w)
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(dambustr_bg_split_line_w)
 	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(galaxian_videoram_w) AM_BASE(&galaxian_videoram)
 	AM_RANGE(0xd800, 0xd83f) AM_WRITE(galaxian_attributesram_w) AM_BASE(&galaxian_attributesram)
-	AM_RANGE(0xd840, 0xd85f) AM_WRITE(MWA8_RAM) AM_BASE(&galaxian_spriteram) AM_SIZE(&galaxian_spriteram_size)
-	AM_RANGE(0xd860, 0xd87f) AM_WRITE(MWA8_RAM) AM_BASE(&galaxian_bulletsram) AM_SIZE(&galaxian_bulletsram_size)
-	AM_RANGE(0xd880, 0xd8ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xd840, 0xd85f) AM_WRITE(SMH_RAM) AM_BASE(&galaxian_spriteram) AM_SIZE(&galaxian_spriteram_size)
+	AM_RANGE(0xd860, 0xd87f) AM_WRITE(SMH_RAM) AM_BASE(&galaxian_bulletsram) AM_SIZE(&galaxian_bulletsram_size)
+	AM_RANGE(0xd880, 0xd8ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe002, 0xe003) AM_WRITE(galaxian_coin_counter_w)
 	AM_RANGE(0xe004, 0xe007) AM_WRITE(galaxian_lfo_freq_w)
 	AM_RANGE(0xe800, 0xe802) AM_WRITE(galaxian_background_enable_w)
@@ -190,18 +190,17 @@ static MACHINE_DRIVER_START( dambustr )
 	MDRV_CPU_ADD_TAG("main", Z80, 18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(dambustr_readmem, dambustr_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(16000.0/132/2)
-
 	MDRV_MACHINE_RESET(galaxian)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(16000.0/132/2)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(dambustr)
 	MDRV_PALETTE_LENGTH(32+2+64+8)		/* 32 for the characters, 2 for the bullets, 64 for the stars, 8 for the background */
-	MDRV_COLORTABLE_LENGTH(8*4)
 
 	MDRV_PALETTE_INIT(dambustr)
 	MDRV_VIDEO_START(dambustr)

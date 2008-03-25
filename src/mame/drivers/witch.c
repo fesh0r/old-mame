@@ -321,7 +321,7 @@ static READ8_HANDLER(read_a00x)
 	case 0x02: return reg_a002;
 	case 0x04: return readinputportbytag("A004");
   case 0x05: return readinputportbytag("A005");
-  case 0x0c: return input_port_0_r(0); // stats / reset
+  case 0x0c: return input_port_0_r(machine,0); // stats / reset
 	case 0x0e: return readinputportbytag("A00E");// coin/reset
  }
 
@@ -331,11 +331,11 @@ static READ8_HANDLER(read_a00x)
     switch(reg_a002&0x3f)
     {
       case 0x3b:
-        return input_port_2_r(0);//bet10 / pay out
+        return input_port_2_r(machine,0);//bet10 / pay out
       case 0x3e:
-        return input_port_3_r(0);//TODO : trace f564
+        return input_port_3_r(machine,0);//TODO : trace f564
       case 0x3d:
-      	return input_port_4_r(0);
+      	return input_port_4_r(machine,0);
       default:
         logerror("A000 read with mux=0x%02x\n",reg_a002&0x3f);
     }
@@ -432,7 +432,7 @@ static const struct YM2203interface ym2203_interface_1 =
 
 static ADDRESS_MAP_START( map_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, UNBANKED_SIZE-1) AM_ROM
-	AM_RANGE(UNBANKED_SIZE, 0x7fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(UNBANKED_SIZE, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x8000, 0x8000) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
 	AM_RANGE(0x8001, 0x8001) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
 	AM_RANGE(0x8008, 0x8008) AM_READWRITE(YM2203_status_port_1_r, YM2203_control_port_1_w)
@@ -443,8 +443,8 @@ static ADDRESS_MAP_START( map_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc800, 0xcbff) AM_READWRITE(gfx1_vram_r, gfx1_vram_w) AM_BASE(&gfx1_vram)
 	AM_RANGE(0xcc00, 0xcfff) AM_READWRITE(gfx1_cram_r, gfx1_cram_w) AM_BASE(&gfx1_cram)
 	AM_RANGE(0xd000, 0xdfff) AM_RAM AM_BASE(&sprite_ram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(MRA8_RAM, paletteram_xBBBBBGGGGGRRRRR_split1_w) AM_BASE(&paletteram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, paletteram_xBBBBBGGGGGRRRRR_split2_w) AM_BASE(&paletteram_2)
+	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, paletteram_xBBBBBGGGGGRRRRR_split1_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, paletteram_xBBBBBGGGGGRRRRR_split2_w) AM_BASE(&paletteram_2)
 	AM_RANGE(0xf000, 0xf0ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xf100, 0xf17f) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xf180, 0xffff) AM_RAM AM_SHARE(2)
@@ -680,9 +680,9 @@ GFXDECODE_END
 
 static VIDEO_START(witch)
 {
-	gfx0a_tilemap = tilemap_create(get_gfx0a_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	gfx0b_tilemap = tilemap_create(get_gfx0b_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	gfx1_tilemap = tilemap_create(get_gfx1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	gfx0a_tilemap = tilemap_create(get_gfx0a_tile_info,tilemap_scan_rows,8,8,32,32);
+	gfx0b_tilemap = tilemap_create(get_gfx0b_tile_info,tilemap_scan_rows,8,8,32,32);
+	gfx1_tilemap = tilemap_create(get_gfx1_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(gfx0a_tilemap,0);
 	tilemap_set_transparent_pen(gfx0b_tilemap,0);
@@ -691,7 +691,7 @@ static VIDEO_START(witch)
   tilemap_set_palette_offset(gfx1_tilemap,0x200);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i,sx,sy,tileno,flags,color;
 	int flipx=0;
@@ -751,7 +751,7 @@ static VIDEO_UPDATE(witch)
 
 	tilemap_draw(bitmap,cliprect,gfx1_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,gfx0a_tilemap,0,0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap,cliprect,gfx0b_tilemap,0,0);
 	return 0;
 }
@@ -770,23 +770,23 @@ static MACHINE_DRIVER_START( witch )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(map_main, 0)
-	MDRV_CPU_VBLANK_INT(witch_main_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", witch_main_interrupt)
 
 	/* 2nd z80 */
 	MDRV_CPU_ADD(Z80,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(map_sub, 0)
-	MDRV_CPU_VBLANK_INT(witch_sub_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", witch_sub_interrupt)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(8, 256-1-8, 8*4, 256-8*4-1)
+
 	MDRV_GFXDECODE(witch)
 	MDRV_PALETTE_LENGTH(0x800)
 

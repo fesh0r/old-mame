@@ -198,7 +198,7 @@ static ADDRESS_MAP_START( champbwl_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe000, 0xe1ff) AM_RAM AM_BASE(&tnzs_vdcram)
 	AM_RANGE(0xe200, 0xe2ff) AM_RAM AM_BASE(&tnzs_scrollram) /* scrolling info */
 	AM_RANGE(0xe300, 0xe303) AM_MIRROR(0xfc) AM_WRITE(champbwl_objctrl_w) AM_BASE(&tnzs_objctrl) /* control registers (0x80 mirror used by Arkanoid 2) */
-	AM_RANGE(0xe800, 0xe800) AM_WRITE(MWA8_RAM) AM_BASE(&tnzs_bg_flag)	/* enable / disable background transparency */
+	AM_RANGE(0xe800, 0xe800) AM_WRITE(SMH_RAM) AM_BASE(&tnzs_bg_flag)	/* enable / disable background transparency */
 
 	AM_RANGE(0xf000, 0xf000) AM_READ(trackball_r)
 	AM_RANGE(0xf002, 0xf002) AM_READ(input_port_0_r)
@@ -333,18 +333,18 @@ static MACHINE_DRIVER_START( champbwl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 16000000/4) /* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(champbwl_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(57.5)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57.5)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(champbwl)
 	MDRV_PALETTE_LENGTH(512)
 

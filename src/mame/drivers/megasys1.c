@@ -102,14 +102,6 @@ RAM         RW      0f0000-0f3fff       0e0000-0effff?      <
   bootleg version of rodlandj has one instruction patched out to do exactly
   the same thing that we are doing (ignoring the 6295 status).
 
-- Iganinju doesn't work properly: I have to patch lev3 irq and it severely
-  slows down at times. Strangely, it gets *better* by lowering the main CPU
-  clock from 12 to 7 MHz.
-  This is likely an interrupt timing issue: changing the order in
-  interrupt_A() from 3 2 1 to 1 2 3 makes it work reasonably well for a very
-  short while.
-  ( Fixed by Kale 21 May 2002 )
-
 - VERY bad sprite lag in iganinju and plusalph and generally others.
   Is this a sprites buffer issue ?
 
@@ -117,6 +109,13 @@ RAM         RW      0f0000-0f3fff       0e0000-0effff?      <
 
 
 ***************************************************************************/
+
+#define SYS_A_CPU_CLOCK		(XTAL_12MHz / 2)	/* clock for main 68000 */
+#define SYS_B_CPU_CLOCK		XTAL_8MHz		/* clock for main 68000 */
+#define SYS_C_CPU_CLOCK		(XTAL_24MHz / 2)	/* clock for main 68000 */
+#define SYS_D_CPU_CLOCK		XTAL_8MHz		/* clock for main 68000 */
+#define SOUND_CPU_CLOCK		XTAL_7MHz		/* clock for sound 68000 */
+#define OKI4_SOUND_CLOCK	XTAL_4MHz
 
 #include "driver.h"
 #include "deprecat.h"
@@ -197,46 +196,34 @@ static INTERRUPT_GEN( interrupt_A )
 	}
 }
 
-static INTERRUPT_GEN( interrupt_A_iganinju )
-{
-	switch ( cpu_getiloops() )
-	{
-		case 0:		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);	break;
-		case 1:		cpunum_set_input_line(machine, 0, 1, HOLD_LINE);	break;
-	//  case 2:     cpunum_set_input_line(machine, 0, 1, HOLD_LINE); break;
-	}
-}
-
-
-
 
 static ADDRESS_MAP_START( readmem_A, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(20) )
-	AM_RANGE(0x000000, 0x05ffff) AM_READ(MRA16_ROM)
+	ADDRESS_MAP_GLOBAL_MASK(0xfffff)
+	AM_RANGE(0x000000, 0x05ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x080000, 0x080001) AM_READ(coins_r)
 	AM_RANGE(0x080002, 0x080003) AM_READ(player1_r)
 	AM_RANGE(0x080004, 0x080005) AM_READ(player2_r)
 	AM_RANGE(0x080006, 0x080007) AM_READ(dsw_r)
 	AM_RANGE(0x080008, 0x080009) AM_READ(soundlatch2_word_r)	/* from sound cpu */
-	AM_RANGE(0x084000, 0x084fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x088000, 0x0887ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x08e000, 0x08ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x090000, 0x093fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x094000, 0x097fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x098000, 0x09bfff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0f0000, 0x0fffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x084000, 0x084fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x088000, 0x0887ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x08e000, 0x08ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x090000, 0x093fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x094000, 0x097fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x098000, 0x09bfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0f0000, 0x0fffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_A, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(20) )
- 	AM_RANGE(0x000000, 0x05ffff) AM_WRITE(MWA16_ROM)
+	ADDRESS_MAP_GLOBAL_MASK(0xfffff)
+ 	AM_RANGE(0x000000, 0x05ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x084000, 0x0843ff) AM_WRITE(megasys1_vregs_A_w) AM_BASE(&megasys1_vregs)
 	AM_RANGE(0x088000, 0x0887ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x08e000, 0x08ffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
+	AM_RANGE(0x08e000, 0x08ffff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_objectram)
 	AM_RANGE(0x090000, 0x093fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
 	AM_RANGE(0x094000, 0x097fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
 	AM_RANGE(0x098000, 0x09bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
-	AM_RANGE(0x0f0000, 0x0fffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
+	AM_RANGE(0x0f0000, 0x0fffff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_ram)
 ADDRESS_MAP_END
 
 
@@ -287,11 +274,11 @@ static READ16_HANDLER( ip_select_r )
 
 	switch (i)
 	{
-			case 0 :	return coins_r(0,0);	break;
-			case 1 :	return player1_r(0,0);	break;
-			case 2 :	return player2_r(0,0);	break;
-			case 3 :	return dsw1_r(0,0);		break;
-			case 4 :	return dsw2_r(0,0);		break;
+			case 0 :	return coins_r(machine,0,0);	break;
+			case 1 :	return player1_r(machine,0,0);	break;
+			case 2 :	return player2_r(machine,0,0);	break;
+			case 3 :	return dsw1_r(machine,0,0);		break;
+			case 4 :	return dsw2_r(machine,0,0);		break;
 			default	 :	return 0x0006;
 	}
 }
@@ -304,30 +291,30 @@ static WRITE16_HANDLER( ip_select_w )
 
 
 static ADDRESS_MAP_START( readmem_B, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(20) )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x044000, 0x044fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x048000, 0x0487ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x04e000, 0x04ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x050000, 0x053fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x054000, 0x057fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x058000, 0x05bfff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x060000, 0x07ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x080000, 0x0bffff) AM_READ(MRA16_ROM)
+	ADDRESS_MAP_GLOBAL_MASK(0xfffff)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x044000, 0x044fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x048000, 0x0487ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x04e000, 0x04ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x050000, 0x053fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x054000, 0x057fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x058000, 0x05bfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x060000, 0x07ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x080000, 0x0bffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x0e0000, 0x0e0001) AM_READ(ip_select_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_B, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(20) )
- 	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
+	ADDRESS_MAP_GLOBAL_MASK(0xfffff)
+ 	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x044000, 0x0443ff) AM_WRITE(megasys1_vregs_A_w) AM_BASE(&megasys1_vregs)
 	AM_RANGE(0x048000, 0x0487ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x04e000, 0x04ffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
+	AM_RANGE(0x04e000, 0x04ffff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_objectram)
 	AM_RANGE(0x050000, 0x053fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
 	AM_RANGE(0x054000, 0x057fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
 	AM_RANGE(0x058000, 0x05bfff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
-	AM_RANGE(0x060000, 0x07ffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
-	AM_RANGE(0x080000, 0x0bffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x060000, 0x07ffff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_ram)
+	AM_RANGE(0x080000, 0x0bffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x0e0000, 0x0e0001) AM_WRITE(ip_select_w)
 ADDRESS_MAP_END
 
@@ -342,29 +329,29 @@ ADDRESS_MAP_END
 #define interrupt_C		interrupt_B
 
 static ADDRESS_MAP_START( readmem_C, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(21) )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
+	ADDRESS_MAP_GLOBAL_MASK(0x1fffff)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x0c0000, 0x0cffff) AM_READ(megasys1_vregs_C_r)
-	AM_RANGE(0x0d2000, 0x0d3fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0e0000, 0x0e3fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0e8000, 0x0ebfff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0f0000, 0x0f3fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0f8000, 0x0f87ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0d2000, 0x0d3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0e0000, 0x0e3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0e8000, 0x0ebfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0f0000, 0x0f3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0f8000, 0x0f87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0d8000, 0x0d8001) AM_READ(ip_select_r)
-	AM_RANGE(0x1f0000, 0x1fffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x1f0000, 0x1fffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_C, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(21) )
- 	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
+	ADDRESS_MAP_GLOBAL_MASK(0x1fffff)
+ 	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x0c0000, 0x0cffff) AM_WRITE(megasys1_vregs_C_w) AM_BASE(&megasys1_vregs)
-	AM_RANGE(0x0d2000, 0x0d3fff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
+	AM_RANGE(0x0d2000, 0x0d3fff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_objectram)
 	AM_RANGE(0x0e0000, 0x0e3fff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
 	AM_RANGE(0x0e8000, 0x0ebfff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
 	AM_RANGE(0x0f0000, 0x0f3fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
 	AM_RANGE(0x0f8000, 0x0f87ff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0d8000, 0x0d8001) AM_WRITE(ip_select_w)
-	AM_RANGE(0x1f0000, 0x1fffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
+	AM_RANGE(0x1f0000, 0x1fffff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_ram)
 ADDRESS_MAP_END
 
 
@@ -374,38 +361,37 @@ ADDRESS_MAP_END
                             [ Main CPU - System D ]
 ***************************************************************************/
 
-#define INTERRUPT_NUM_D		1
 static INTERRUPT_GEN( interrupt_D )
 {
 	cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( readmem_D, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x0c0000, 0x0c9fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0ca000, 0x0cbfff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0d0000, 0x0d3fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0d4000, 0x0d7fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0d8000, 0x0d87ff) AM_MIRROR(0x3000) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x0c0000, 0x0c9fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0ca000, 0x0cbfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0d0000, 0x0d3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0d4000, 0x0d7fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0d8000, 0x0d87ff) AM_MIRROR(0x3000) AM_READ(SMH_RAM)
 	AM_RANGE(0x0e0000, 0x0e0001) AM_READ(dsw_r)
-	AM_RANGE(0x0e8000, 0x0ebfff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0e8000, 0x0ebfff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0f0000, 0x0f0001) AM_READ(coins_r) /* Coins + P1&P2 Buttons */
 	AM_RANGE(0x0f8000, 0x0f8001) AM_READ(OKIM6295_status_0_lsb_r)
 //  { 0x100000, 0x100001  protection
-	AM_RANGE(0x1f0000, 0x1fffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x1f0000, 0x1fffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_D, ADDRESS_SPACE_PROGRAM, 16 )
- 	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
+ 	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x0c0000, 0x0c9fff) AM_WRITE(megasys1_vregs_D_w) AM_BASE(&megasys1_vregs)
-	AM_RANGE(0x0ca000, 0x0cbfff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_objectram)
+	AM_RANGE(0x0ca000, 0x0cbfff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_objectram)
 	AM_RANGE(0x0d0000, 0x0d3fff) AM_WRITE(megasys1_scrollram_1_w) AM_BASE(&megasys1_scrollram[1])
 	AM_RANGE(0x0d4000, 0x0d7fff) AM_WRITE(megasys1_scrollram_2_w) AM_BASE(&megasys1_scrollram[2])
 	AM_RANGE(0x0d8000, 0x0d87ff) AM_MIRROR(0x3000) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0e8000, 0x0ebfff) AM_WRITE(megasys1_scrollram_0_w) AM_BASE(&megasys1_scrollram[0])
 	AM_RANGE(0x0f8000, 0x0f8001) AM_WRITE(OKIM6295_data_0_lsb_w)
 //  { 0x100000, 0x100001  protection
-	AM_RANGE(0x1f0000, 0x1fffff) AM_WRITE(MWA16_RAM) AM_BASE(&megasys1_ram)
+	AM_RANGE(0x1f0000, 0x1fffff) AM_WRITE(SMH_RAM) AM_BASE(&megasys1_ram)
 ADDRESS_MAP_END
 
 
@@ -481,7 +467,7 @@ static READ16_HANDLER( oki_status_0_r )
 	if (megasys1_ignore_oki_status == 1)
 		return 0;
 	else
-		return OKIM6295_status_0_lsb_r(offset,mem_mask);
+		return OKIM6295_status_0_lsb_r(machine,offset,mem_mask);
 }
 
 static READ16_HANDLER( oki_status_1_r )
@@ -489,7 +475,7 @@ static READ16_HANDLER( oki_status_1_r )
 	if (megasys1_ignore_oki_status == 1)
 		return 0;
 	else
-		return OKIM6295_status_1_lsb_r(offset,mem_mask);
+		return OKIM6295_status_1_lsb_r(machine,offset,mem_mask);
 }
 
 /***************************************************************************
@@ -498,22 +484,22 @@ static READ16_HANDLER( oki_status_1_r )
 
 
 static ADDRESS_MAP_START( sound_readmem_A, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x01ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x040000, 0x040001) AM_READ(soundlatch_word_r)
 	AM_RANGE(0x080002, 0x080003) AM_READ(YM2151_status_port_0_lsb_r)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_READ(oki_status_0_r)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_READ(oki_status_1_r)
-	AM_RANGE(0x0e0000, 0x0fffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0e0000, 0x0fffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem_A, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x01ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x060000, 0x060001) AM_WRITE(soundlatch2_word_w)	// to main cpu
 	AM_RANGE(0x080000, 0x080001) AM_WRITE(YM2151_register_port_0_lsb_w)
 	AM_RANGE(0x080002, 0x080003) AM_WRITE(YM2151_data_port_0_lsb_w)
 	AM_RANGE(0x0a0000, 0x0a0003) AM_WRITE(OKIM6295_data_0_lsb_w)
 	AM_RANGE(0x0c0000, 0x0c0003) AM_WRITE(OKIM6295_data_1_lsb_w)
-	AM_RANGE(0x0e0000, 0x0fffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x0e0000, 0x0fffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -527,24 +513,24 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem_B, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x01ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x040000, 0x040001) AM_READ(soundlatch_word_r)	/* from main cpu */
 	AM_RANGE(0x060000, 0x060001) AM_READ(soundlatch_word_r)	/* from main cpu */
 	AM_RANGE(0x080002, 0x080003) AM_READ(YM2151_status_port_0_lsb_r)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_READ(oki_status_0_r)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_READ(oki_status_1_r)
-	AM_RANGE(0x0e0000, 0x0effff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0e0000, 0x0effff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem_B, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x01ffff) AM_WRITE(MWA16_ROM	)
+	AM_RANGE(0x000000, 0x01ffff) AM_WRITE(SMH_ROM	)
 	AM_RANGE(0x040000, 0x040001) AM_WRITE(soundlatch2_word_w)	/* to main cpu */
 	AM_RANGE(0x060000, 0x060001) AM_WRITE(soundlatch2_word_w)	/* to main cpu */
 	AM_RANGE(0x080000, 0x080001) AM_WRITE(YM2151_register_port_0_lsb_w)
 	AM_RANGE(0x080002, 0x080003) AM_WRITE(YM2151_data_port_0_lsb_w)
 	AM_RANGE(0x0a0000, 0x0a0003) AM_WRITE(OKIM6295_data_0_lsb_w)
 	AM_RANGE(0x0c0000, 0x0c0003) AM_WRITE(OKIM6295_data_1_lsb_w)
-	AM_RANGE(0x0e0000, 0x0effff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x0e0000, 0x0effff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -559,25 +545,25 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem_z80, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem_z80, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(MWA8_NOP) /* ?? */
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP) /* ?? */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(YM2203_status_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
 ADDRESS_MAP_END
@@ -648,26 +634,26 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( system_A )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M68000, 12000000)
+	MDRV_CPU_ADD_TAG("main", M68000, SYS_A_CPU_CLOCK) /* 6MHz verified */
 	MDRV_CPU_PROGRAM_MAP(readmem_A,writemem_A)
-	MDRV_CPU_VBLANK_INT(interrupt_A,INTERRUPT_NUM_A)
+	MDRV_CPU_VBLANK_INT_HACK(interrupt_A,INTERRUPT_NUM_A)
 
-	MDRV_CPU_ADD_TAG("sound", M68000, 7000000)
+	MDRV_CPU_ADD_TAG("sound", M68000, SOUND_CPU_CLOCK) /* 7MHz verified */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem_A,sound_writemem_A)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_INTERLEAVE(2000)
 
 	MDRV_MACHINE_RESET(megasys1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(ABC)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -678,28 +664,20 @@ static MACHINE_DRIVER_START( system_A )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YM2151, 7000000/2)
+	MDRV_SOUND_ADD(YM2151, SOUND_CPU_CLOCK/2) /* 3.5MHz (7MHz / 2) verified */
 	MDRV_SOUND_CONFIG(ym2151_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.80)
 	MDRV_SOUND_ROUTE(1, "right", 0.80)
 
-	MDRV_SOUND_ADD_TAG("OKI1",OKIM6295, 4000000)
+	MDRV_SOUND_ADD_TAG("OKI1",OKIM6295, OKI4_SOUND_CLOCK) /* 4MHz verified */
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
 
-	MDRV_SOUND_ADD_TAG("OKI2",OKIM6295, 4000000)
+	MDRV_SOUND_ADD_TAG("OKI2",OKIM6295, OKI4_SOUND_CLOCK) /* 4MHz verified */
 	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
-MACHINE_DRIVER_END
-
-static MACHINE_DRIVER_START( system_A_iganinju )
-
-	/* basic machine hardware */
-	MDRV_IMPORT_FROM(system_A)
-	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(interrupt_A_iganinju,INTERRUPT_NUM_A)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( system_A_hachoo )
@@ -711,9 +689,11 @@ static MACHINE_DRIVER_START( system_B )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(system_A)
+
+	MDRV_CPU_REPLACE("main", M68000, SYS_B_CPU_CLOCK) /* 8MHz */
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(readmem_B,writemem_B)
-	MDRV_CPU_VBLANK_INT(interrupt_B,INTERRUPT_NUM_B)
+	MDRV_CPU_VBLANK_INT_HACK(interrupt_B,INTERRUPT_NUM_B)
 
 	MDRV_CPU_MODIFY("sound")
 	MDRV_CPU_PROGRAM_MAP(sound_readmem_B,sound_writemem_B)
@@ -723,14 +703,13 @@ static MACHINE_DRIVER_START( system_B_hayaosi1 )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(system_B)
-	MDRV_CPU_REPLACE("main", M68000, 8000000)
 
-	MDRV_SOUND_REPLACE("OKI1",OKIM6295, 2000000)
+	MDRV_SOUND_REPLACE("OKI1",OKIM6295, 2000000) /* correct speed, but unknown OSC + divider combo */
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
 
-	MDRV_SOUND_REPLACE("OKI2",OKIM6295, 2000000)
+	MDRV_SOUND_REPLACE("OKI2",OKIM6295, 2000000) /* correct speed, but unknown OSC + divider combo */
 	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "left", 0.30)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "right", 0.30)
@@ -741,9 +720,10 @@ static MACHINE_DRIVER_START( system_C )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(system_A)
+	MDRV_CPU_REPLACE("main", M68000, SYS_C_CPU_CLOCK) /* 12MHz */
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(readmem_C,writemem_C)
-	MDRV_CPU_VBLANK_INT(interrupt_C,INTERRUPT_NUM_C)
+	MDRV_CPU_VBLANK_INT_HACK(interrupt_C,INTERRUPT_NUM_C)
 
 	MDRV_CPU_MODIFY("sound")
 	MDRV_CPU_PROGRAM_MAP(sound_readmem_B,sound_writemem_B)
@@ -756,7 +736,7 @@ MACHINE_DRIVER_END
 
                               1x68000 1xM6295
 
-KLOV entry for peekaboo: Jaleco board no. PB-92127A. Main CPU: Motorola 68000P10
+                                OSC: 8MHz
 
 ***************************************************************************/
 
@@ -764,20 +744,20 @@ KLOV entry for peekaboo: Jaleco board no. PB-92127A. Main CPU: Motorola 68000P10
 static MACHINE_DRIVER_START( system_D )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 10000000)	/* ? */
+	MDRV_CPU_ADD(M68000, SYS_D_CPU_CLOCK)	/* 8MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_D,writemem_D)
-	MDRV_CPU_VBLANK_INT(interrupt_D,INTERRUPT_NUM_D)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", interrupt_D)
 
 	MDRV_MACHINE_RESET(megasys1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(ABC)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -788,8 +768,8 @@ static MACHINE_DRIVER_START( system_D )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD_TAG("OKI1",OKIM6295, 1980000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD_TAG("OKI1",OKIM6295, SYS_D_CPU_CLOCK/4)	/* 2MHz (8MHz / 4) */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
@@ -825,23 +805,23 @@ static const struct YM2203interface ym2203_interface =
 static MACHINE_DRIVER_START( system_Z )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 6000000) /* ??? */
+	MDRV_CPU_ADD(M68000, SYS_A_CPU_CLOCK) /* 6MHz (12MHz / 2) */
 	MDRV_CPU_PROGRAM_MAP(readmem_A,writemem_A)
-	MDRV_CPU_VBLANK_INT(interrupt_A,INTERRUPT_NUM_A)
+	MDRV_CPU_VBLANK_INT_HACK(interrupt_A,INTERRUPT_NUM_A)
 
-	MDRV_CPU_ADD(Z80, 3000000)
-	/* audio CPU */ /* ??? */
+	MDRV_CPU_ADD(Z80, 3000000) /* OSC 12MHz divided by 4 ??? */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem_z80,sound_writemem_z80)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(Z)
 	MDRV_PALETTE_LENGTH(768)
 
@@ -2762,6 +2742,13 @@ INPUT_PORTS_END
 
                             [ Peek-a-Boo! ]
 
+Jaleco board no. PB-92127A
+
+  CPU: Motorola 68000P10
+Sound: OKI M6295
+  OSC: 8Mhz
+  MCU: MO-90233 (unknown type with internal rom)
+
 interrupts:
     1]      506>    rte
     2]      50a>    move.w  #$ffff, $1f0006.l
@@ -2848,7 +2835,7 @@ ROM_START( peekaboo )
 	ROM_LOAD16_BYTE( "j2", 0x000001, 0x020000, CRC(7b3d430d) SHA1(8b48101929da4938a61dfd0eda845368c4184831) )
 
 	ROM_REGION( 0x40000, REGION_CPU2, 0 ) /* MCU Internal Code */
-	ROM_LOAD( "peekaboo.mcu", 0x000000, 0x40000, NO_DUMP )
+	ROM_LOAD( "mo-90233.mcu", 0x000000, 0x40000, NO_DUMP )
 
 	ROM_REGION( 0x080000, REGION_GFX1, ROMREGION_DISPOSE ) /* Scroll 0 */
 	ROM_LOAD( "5",       0x000000, 0x080000, CRC(34fa07bb) SHA1(0f688acf302fd56701ee4fcc1d692adb7bf86ce4) )
@@ -2944,8 +2931,8 @@ static READ16_HANDLER( protection_peekaboo_r )
 	switch (protection_val)
 	{
 		case 0x02:	return 0x03;
-		case 0x51:	return player1_r(0,0);
-		case 0x52:	return player2_r(0,0);
+		case 0x51:	return player1_r(machine,0,0);
+		case 0x52:	return player2_r(machine,0,0);
 		default:	return protection_val;
 	}
 }
@@ -3872,13 +3859,13 @@ static DRIVER_INIT( iganinju )
 
 static WRITE16_HANDLER( OKIM6295_data_0_both_w )
 {
-	if (ACCESSING_LSB)	OKIM6295_data_0_w(0, (data >> 0) & 0xff );
-	else				OKIM6295_data_0_w(0, (data >> 8) & 0xff );
+	if (ACCESSING_LSB)	OKIM6295_data_0_w(machine, 0, (data >> 0) & 0xff );
+	else				OKIM6295_data_0_w(machine, 0, (data >> 8) & 0xff );
 }
 static WRITE16_HANDLER( OKIM6295_data_1_both_w )
 {
-	if (ACCESSING_LSB)	OKIM6295_data_1_w(0, (data >> 0) & 0xff );
-	else				OKIM6295_data_1_w(0, (data >> 8) & 0xff );
+	if (ACCESSING_LSB)	OKIM6295_data_1_w(machine, 0, (data >> 0) & 0xff );
+	else				OKIM6295_data_1_w(machine, 0, (data >> 8) & 0xff );
 }
 
 static DRIVER_INIT( jitsupro )
@@ -3960,8 +3947,8 @@ GAME( 1988, p47j,     p47,      system_A,          p47,      0,        ROT0,   "
 GAME( 1988, kickoff,  0,        system_A,          kickoff,  0,        ROT0,   "Jaleco", "Kick Off (Japan)", 0 )
 GAME( 1988, tshingen, 0,        system_A,          tshingen, phantasm, ROT0,   "Jaleco", "Takeda Shingen (Japan, Japanese)", 0 )
 GAME( 1988, tshingna, tshingen, system_A,          tshingen, phantasm, ROT0,   "Jaleco", "Shingen Samurai-Fighter (Japan, English)", 0 )
-GAME( 1988, kazan,    0,        system_A_iganinju, kazan,    iganinju, ROT0,   "Jaleco", "Ninja Kazan (World)", 0 )
-GAME( 1988, iganinju, kazan,    system_A_iganinju, kazan,    iganinju, ROT0,   "Jaleco", "Iga Ninjyutsuden (Japan)", 0 )
+GAME( 1988, kazan,    0,        system_A,          kazan,    iganinju, ROT0,   "Jaleco", "Ninja Kazan (World)", 0 )
+GAME( 1988, iganinju, kazan,    system_A,          kazan,    iganinju, ROT0,   "Jaleco", "Iga Ninjyutsuden (Japan)", 0 )
 GAME( 1989, astyanax, 0,        system_A,          astyanax, astyanax, ROT0,   "Jaleco", "The Astyanax", 0 )
 GAME( 1989, lordofk,  astyanax, system_A,          astyanax, astyanax, ROT0,   "Jaleco", "The Lord of King (Japan)", 0 )
 GAME( 1989, hachoo,   0,        system_A_hachoo,   hachoo,   hachoo,   ROT0,   "Jaleco", "Hachoo!", 0 )

@@ -66,7 +66,7 @@
 #include "deprecat.h"
 #include "machine/6821pia.h"
 #include "machine/74123.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
@@ -138,13 +138,13 @@ static INTERRUPT_GEN( update_pia_1 )
 	/* update the different PIA pins from the input ports */
 
 	/* CA1 - copy of PA0 (COIN1) */
-	pia_1_ca1_w(0, input_port_0_r(0) & 0x01);
+	pia_1_ca1_w(machine, 0, input_port_0_r(machine, 0) & 0x01);
 
 	/* CA2 - copy of PA1 (SERVICE1) */
-	pia_1_ca2_w(0, input_port_0_r(0) & 0x02);
+	pia_1_ca2_w(machine, 0, input_port_0_r(machine, 0) & 0x02);
 
 	/* CB1 - (crosshatch) */
-	pia_1_cb1_w(0, input_port_5_r(0));
+	pia_1_cb1_w(machine, 0, input_port_5_r(machine, 0));
 
 	/* CB2 - NOT CONNECTED */
 }
@@ -180,7 +180,7 @@ static WRITE8_HANDLER( pia_2_port_b_w )
 	star_enable = data & 0x10;
 
 	/* bits 5-7 go to the music board connector */
-	audio_2_command_w(0, data & 0xe0);
+	audio_2_command_w(machine, 0, data & 0xe0);
 }
 
 
@@ -207,7 +207,7 @@ static const pia6821_interface pia_2_intf =
 
 static void ic48_1_74123_output_changed(int output)
 {
-	pia_2_ca1_w(0, output);
+	pia_2_ca1_w(Machine, 0, output);
 }
 
 
@@ -275,8 +275,7 @@ static WRITE8_HANDLER( flipscreen_w )
 }
 
 
-static void *nyny_begin_update(running_machine *machine, int screen,
-							   mame_bitmap *bitmap, const rectangle *cliprect)
+static MC6845_BEGIN_UPDATE( begin_update )
 {
 	/* create the pens */
 	offs_t i;
@@ -291,8 +290,7 @@ static void *nyny_begin_update(running_machine *machine, int screen,
 }
 
 
-static void nyny_update_row(mame_bitmap *bitmap, const rectangle *cliprect,
-							UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, void *param)
+static MC6845_UPDATE_ROW( update_row )
 {
 	UINT8 cx;
 
@@ -361,9 +359,9 @@ INLINE void shift_star_generator(void)
 }
 
 
-static void nyny_end_update(mame_bitmap *bitmap, const rectangle *cliprect, void *param)
+static MC6845_END_UPDATE( end_update )
 {
-	/* the the star field into the bitmap */
+	/* draw the star field into the bitmap */
 	int y;
 
 	pen_t *pens = (pen_t *)param;
@@ -397,28 +395,32 @@ static void nyny_end_update(mame_bitmap *bitmap, const rectangle *cliprect, void
 }
 
 
-static void nyny_display_enable_changed(int display_enabled)
+static MC6845_ON_DE_CHANGED( display_enable_changed )
 {
 	TTL74123_A_w(0, display_enabled);
 }
 
 
-static const crtc6845_interface crtc6845_intf =
+static const mc6845_interface mc6845_intf =
 {
-	0,							/* screen we are acting on */
-	CRTC_CLOCK, 				/* the clock (pin 21) of the chip */
-	8,							/* number of pixels per video memory address */
-	nyny_begin_update,			/* before pixel update callback */
-	nyny_update_row,			/* row update callback */
-	nyny_end_update,			/* after pixel update callback */
-	nyny_display_enable_changed	/* call back for display state changes */
+	"main",					/* screen we are acting on */
+	CRTC_CLOCK, 			/* the clock (pin 21) of the chip */
+	8,						/* number of pixels per video memory address */
+	begin_update,			/* before pixel update callback */
+	update_row,				/* row update callback */
+	end_update,				/* after pixel update callback */
+	display_enable_changed,	/* callback for display state changes */
+	NULL,					/* HSYNC callback */
+	NULL					/* VSYNC callback */
 };
 
 
-static VIDEO_START( nyny )
+static VIDEO_UPDATE( nyny )
 {
-	/* configure the CRT controller */
-	crtc6845_config(0, &crtc6845_intf);
+	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	mc6845_update(mc6845, bitmap, cliprect);
+
+	return 0;
 }
 
 
@@ -431,15 +433,15 @@ static VIDEO_START( nyny )
 
 static WRITE8_HANDLER( audio_1_command_w )
 {
-	soundlatch_w(0, data);
-	cpunum_set_input_line(Machine, 1, M6802_IRQ_LINE, HOLD_LINE);
+	soundlatch_w(machine, 0, data);
+	cpunum_set_input_line(machine, 1, M6802_IRQ_LINE, HOLD_LINE);
 }
 
 
 static WRITE8_HANDLER( audio_1_answer_w )
 {
-	soundlatch3_w(0, data);
-	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, HOLD_LINE);
+	soundlatch3_w(machine, 0, data);
+	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, HOLD_LINE);
 }
 
 
@@ -447,7 +449,7 @@ static WRITE8_HANDLER( nyny_ay8910_37_port_a_w )
 {
 	/* not sure what this does */
 
-	/*logerror("%x PORT A write %x at  Y=%x X=%x\n", safe_activecpu_get_pc(), data, video_screen_get_vpos(0),  video_screen_get_hpos(0));*/
+	/*logerror("%x PORT A write %x at  Y=%x X=%x\n", safe_activecpu_get_pc(), data, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));*/
 }
 
 
@@ -482,8 +484,8 @@ static const struct AY8910interface ay8910_64_interface =
 
 static WRITE8_HANDLER( audio_2_command_w )
 {
-	soundlatch2_w(0, (data & 0x60) >> 5);
-	cpunum_set_input_line(Machine, 2, M6802_IRQ_LINE, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	soundlatch2_w(machine, 0, (data & 0x60) >> 5);
+	cpunum_set_input_line(machine, 2, M6802_IRQ_LINE, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -499,8 +501,8 @@ static READ8_HANDLER( nyny_pia_1_2_r )
 	UINT8 ret = 0;
 
 	/* the address bits are directly connected to the chip selects */
-	if (offset & 0x04)  ret = pia_1_r(offset & 0x03);
-	if (offset & 0x08)  ret = pia_2_alt_r(offset & 0x03);
+	if (offset & 0x04)  ret = pia_1_r(machine, offset & 0x03);
+	if (offset & 0x08)  ret = pia_2_alt_r(machine, offset & 0x03);
 
 	return ret;
 }
@@ -509,8 +511,8 @@ static READ8_HANDLER( nyny_pia_1_2_r )
 static WRITE8_HANDLER( nyny_pia_1_2_w )
 {
 	/* the address bits are directly connected to the chip selects */
-	if (offset & 0x04)  pia_1_w(offset & 0x03, data);
-	if (offset & 0x08)  pia_2_alt_w(offset & 0x03, data);
+	if (offset & 0x04)  pia_1_w(machine, offset & 0x03, data);
+	if (offset & 0x08)  pia_2_alt_w(machine, offset & 0x03, data);
 }
 
 
@@ -521,8 +523,8 @@ static ADDRESS_MAP_START( nyny_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x7fff) AM_RAM AM_BASE(&nyny_colorram_2)
 	AM_RANGE(0x8000, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xa0ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* SRAM (coin counter, shown when holding F2) */
-	AM_RANGE(0xa100, 0xa100) AM_MIRROR(0x00fe) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0xa101, 0xa101) AM_MIRROR(0x00fe) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0xa100, 0xa100) AM_MIRROR(0x00fe) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xa101, 0xa101) AM_MIRROR(0x00fe) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xa200, 0xa20f) AM_MIRROR(0x00f0) AM_READWRITE(nyny_pia_1_2_r, nyny_pia_1_2_w)
 	AM_RANGE(0xa300, 0xa300) AM_MIRROR(0x00ff) AM_READWRITE(soundlatch3_r, audio_1_command_w)
 	AM_RANGE(0xa400, 0xa7ff) AM_NOP
@@ -533,7 +535,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( nyny_audio_1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x007f) AM_RAM		/* internal RAM */
 	AM_RANGE(0x0080, 0x0fff) AM_NOP
 	AM_RANGE(0x1000, 0x1000) AM_MIRROR(0x0fff) AM_READWRITE(soundlatch_r, audio_1_answer_w)
@@ -550,7 +552,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( nyny_audio_2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x007f) AM_RAM		/* internal RAM */
 	AM_RANGE(0x0080, 0x0fff) AM_NOP
 	AM_RANGE(0x1000, 0x1000) AM_MIRROR(0x0fff) AM_READ(soundlatch2_r)
@@ -672,13 +674,14 @@ static MACHINE_DRIVER_START( nyny )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_VIDEO_START(nyny)
-	MDRV_VIDEO_UPDATE(crtc6845)
+	MDRV_VIDEO_UPDATE(nyny)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG(mc6845_intf)
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

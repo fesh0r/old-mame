@@ -29,8 +29,6 @@
 
 /* speed up delay loops, bail out of tight loops */
 #define BUSY_LOOP_HACKS 	0
-/* work only as described in the datasheet */
-#define DATASHEET_STRICT	0
 
 #define VERBOSE 0
 
@@ -97,6 +95,8 @@ typedef struct
 	int     is_slave, cpu_number;
 	int		cpu_clock, bus_clock, pm_clock;
 	int		fpu_sz, fpu_pr;
+	int		ioport16_pullup, ioport16_direction;
+	int		ioport4_pullup, ioport4_direction;
 
 	void	(*ftcsr_read_callback)(UINT32 data);
 } SH4;
@@ -158,10 +158,88 @@ static void TODO(void)
 {
 }
 
+#if 0
+int sign_of(int n)
+{
+	return(sh4.fr[n]>>31);
+}
+
+void zero(int n,int sign)
+{
+if (sign == 0)
+	sh4.fr[n] = 0x00000000;
+else
+	sh4.fr[n] = 0x80000000;
+if ((sh4.fpscr & PR) == 1)
+	sh4.fr[n+1] = 0x00000000;
+}
+
+int data_type_of(int n)
+{
+UINT32 abs;
+
+	abs = sh4.fr[n] & 0x7fffffff;
+	if ((sh4.fpscr & PR) == 0) { /* Single-precision */
+		if (abs < 0x00800000) {
+			if (((sh4.fpscr & DN) == 1) || (abs == 0x00000000)) {
+				if (sign_of(n) == 0) {
+					zero(n, 0);
+					return(SH4_FPU_PZERO);
+				} else {
+					zero(n, 1);
+					return(SH4_FPU_NZERO);
+				}
+			} else
+				return(SH4_FPU_DENORM);
+		} else
+			if (abs < 0x7f800000)
+				return(SH4_FPU_NORM);
+			else
+				if (abs == 0x7f800000) {
+					if (sign_of(n) == 0)
+						return(SH4_FPU_PINF);
+					else
+						return(SH4_FPU_NINF);
+				} else
+					if (abs < 0x7fc00000)
+						return(SH4_FPU_qNaN);
+					else
+						return(SH4_FPU_sNaN);
+	} else { /* Double-precision */
+		if (abs < 0x00100000) {
+			if (((sh4.fpscr & DN) == 1) || ((abs == 0x00000000) && (sh4.fr[n+1] == 0x00000000))) {
+				if(sign_of(n) == 0) {
+					zero(n, 0);
+					return(SH4_FPU_PZERO);
+				} else {
+					zero(n, 1);
+					return(SH4_FPU_NZERO);
+				}
+			} else
+				return(SH4_FPU_DENORM);
+		} else
+			if (abs < 0x7ff00000)
+				return(SH4_FPU_NORM);
+			else
+				if ((abs == 0x7ff00000) && (sh4.fr[n+1] == 0x00000000)) {
+					if (sign_of(n) == 0)
+						return(SH4_FPU_PINF);
+					else
+						return(SH4_FPU_NINF);
+				} else
+					if (abs < 0x7ff80000)
+						return(SH4_FPU_qNaN);
+					else
+						return(SH4_FPU_sNaN);
+	}
+	return(SH4_FPU_NORM);
+}
+#endif
+
 INLINE UINT8 RB(offs_t A)
 {
 	if (A >= 0xfe000000)
-		return sh4_internal_r(((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), ~(0xff << ((A & 3)*8))) >> ((A & 3)*8);
+		return sh4_internal_r(Machine, ((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), ~(0xff << ((A & 3)*8))) >> ((A & 3)*8);
 
 	if (A >= 0xe0000000)
 		return program_read_byte_64le(A);
@@ -175,7 +253,7 @@ INLINE UINT8 RB(offs_t A)
 INLINE UINT16 RW(offs_t A)
 {
 	if (A >= 0xfe000000)
-		return sh4_internal_r(((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), ~(0xffff << ((A & 2)*8))) >> ((A & 2)*8);
+		return sh4_internal_r(Machine, ((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), ~(0xffff << ((A & 2)*8))) >> ((A & 2)*8);
 
 	if (A >= 0xe0000000)
 		return program_read_word_64le(A);
@@ -189,7 +267,7 @@ INLINE UINT16 RW(offs_t A)
 INLINE UINT32 RL(offs_t A)
 {
 	if (A >= 0xfe000000)
-		return sh4_internal_r(((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), 0);
+		return sh4_internal_r(Machine, ((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), 0);
 
 	if (A >= 0xe0000000)
 		return program_read_dword_64le(A);
@@ -205,7 +283,7 @@ INLINE void WB(offs_t A, UINT8 V)
 
 	if (A >= 0xfe000000)
 	{
-		sh4_internal_w(((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), V << ((A & 3)*8), ~(0xff << ((A & 3)*8)));
+		sh4_internal_w(Machine, ((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), V << ((A & 3)*8), ~(0xff << ((A & 3)*8)));
 		return;
 	}
 
@@ -225,7 +303,7 @@ INLINE void WW(offs_t A, UINT16 V)
 {
 	if (A >= 0xfe000000)
 	{
-		sh4_internal_w(((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), V << ((A & 2)*8), ~(0xffff << ((A & 2)*8)));
+		sh4_internal_w(Machine, ((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), V << ((A & 2)*8), ~(0xffff << ((A & 2)*8)));
 		return;
 	}
 
@@ -245,7 +323,7 @@ INLINE void WL(offs_t A, UINT32 V)
 {
 	if (A >= 0xfe000000)
 	{
-		sh4_internal_w(((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), V, 0);
+		sh4_internal_w(Machine, ((A & 0x0fc) >> 2) | ((A & 0x1fe0000) >> 11), V, 0);
 		return;
 	}
 
@@ -2835,12 +2913,20 @@ INLINE void FMOVMRIFR(UINT32 m,UINT32 n)
 #endif
 	} else {              /* PR = 0 */
 		if (sh4.fpu_sz) { /* SZ = 1 */
-			n = n & 14;
-			sh4.ea = sh4.r[m];
-			sh4.fr[n] = RL( sh4.ea );
-			sh4.r[m] += 4;
-			sh4.fr[n+1] = RL( sh4.r[m] );
-			sh4.r[m] += 4;
+			if (n & 1) {
+				n = n & 14;
+				sh4.ea = sh4.r[m];
+				sh4.xf[n] = RL( sh4.ea );
+				sh4.r[m] += 4;
+				sh4.xf[n+1] = RL( sh4.ea+4 );
+				sh4.r[m] += 4;
+			} else {
+				sh4.ea = sh4.r[m];
+				sh4.fr[n] = RL( sh4.ea );
+				sh4.r[m] += 4;
+				sh4.fr[n+1] = RL( sh4.ea+4 );
+				sh4.r[m] += 4;
+			}
 		} else {              /* SZ = 0 */
 			sh4.ea = sh4.r[m];
 			sh4.fr[n] = RL( sh4.ea );
@@ -2895,11 +2981,18 @@ INLINE void FMOVFRMDR(UINT32 m,UINT32 n)
 #endif
 	} else {              /* PR = 0 */
 		if (sh4.fpu_sz) { /* SZ = 1 */
-			m= m & 14;
-			sh4.r[n] -= 8;
-			sh4.ea = sh4.r[n];
-			WL( sh4.ea,sh4.fr[m] );
-			WL( sh4.ea+4,sh4.fr[m+1] );
+			if (m & 1) {
+				m= m & 14;
+				sh4.r[n] -= 8;
+				sh4.ea = sh4.r[n];
+				WL( sh4.ea,sh4.xf[m] );
+				WL( sh4.ea+4,sh4.xf[m+1] );
+			} else {
+				sh4.r[n] -= 8;
+				sh4.ea = sh4.r[n];
+				WL( sh4.ea,sh4.fr[m] );
+				WL( sh4.ea+4,sh4.fr[m+1] );
+			}
 		} else {              /* SZ = 0 */
 			sh4.r[n] -= 4;
 			sh4.ea = sh4.r[n];
@@ -2971,29 +3064,6 @@ INLINE void FMOVS0FR(UINT32 m,UINT32 n)
 /*  FMOV    @Rm,DRn PR=1      1111nnn0mmmm1000 */
 INLINE void FMOVMRFR(UINT32 m,UINT32 n)
 {
-#if DATASHEET_STRICT
-	if (sh4.fpu_pr) { /* PR = 1 */
-		n= n & 14;
-		sh4.ea = sh4.r[m];
-#ifdef LSB_FIRST
-		sh4.xf[n+1] = RL( sh4.ea );
-		sh4.xf[n] = RL( sh4.ea+4 );
-#else
-		sh4.xf[n] = RL( sh4.ea );
-		sh4.xf[n+1] = RL( sh4.ea+4 );
-#endif
-	} else {              /* PR = 0 */
-		if (sh4.fpu_sz) { /* SZ = 1 */
-			n= n & 14;
-			sh4.ea = sh4.r[m];
-			sh4.fr[n] = RL( sh4.ea );
-			sh4.fr[n+1] = RL( sh4.ea+4 );
-		} else {              /* SZ = 0 */
-			sh4.ea = sh4.r[m];
-			sh4.fr[n] = RL( sh4.ea );
-		}
-	}
-#else
 	if (sh4.fpu_pr) { /* PR = 1 */
 		if (n & 1) {
 			n= n & 14;
@@ -3034,7 +3104,6 @@ INLINE void FMOVMRFR(UINT32 m,UINT32 n)
 			sh4.fr[n] = RL( sh4.ea );
 		}
 	}
-#endif
 }
 
 /*  FMOV    FRm,FRn PR=0 SZ=0 FRm -> FRn 1111nnnnmmmm1100 */
@@ -3044,33 +3113,10 @@ INLINE void FMOVMRFR(UINT32 m,UINT32 n)
 /*  FMOV    XDm,XDn PR=1      XDm -> XDn 1111nnn1mmm11100 */
 INLINE void FMOVFR(UINT32 m,UINT32 n)
 {
-#if DATASHEET_STRICT
-	if (sh4.fpu_pr) { /* PR = 1 */
-		if (m & 1)
-			if (n & 1) {
-				sh4.xf[n & 14] = sh4.xf[m & 14];
-				sh4.xf[n | 1] = sh4.xf[m | 1];
-			} else {
-				sh4.fr[n] = sh4.xf[m & 14];
-				sh4.fr[n | 1] = sh4.xf[m | 1];
-			}
-		else {
-			sh4.xf[n & 14] = sh4.fr[m];
-			sh4.xf[n | 1] = sh4.fr[m|1]; // (a&14)+1 -> a|1
-		}
-	} else {              /* PR = 0 */
-		if (sh4.fpu_sz) { /* SZ = 1 */
-			sh4.fr[n] = sh4.fr[m];
-			sh4.fr[n+1] = sh4.fr[m+1];
-		} else {              /* SZ = 0 */
-			sh4.fr[n] = sh4.fr[m];
-		}
-	}
-#else
-	if (sh4.fpu_sz == 0) /* SZ = 0 */
+	if ((sh4.fpu_sz == 0) && (sh4.fpu_pr == 0)) /* SZ = 0 */
 		sh4.fr[n] = sh4.fr[m];
 	else { /* SZ = 1 or PR = 1 */
-		if (m & 1)
+		if (m & 1) {
 			if (n & 1) {
 				sh4.xf[n & 14] = sh4.xf[m & 14];
 				sh4.xf[n | 1] = sh4.xf[m | 1];
@@ -3078,17 +3124,16 @@ INLINE void FMOVFR(UINT32 m,UINT32 n)
 				sh4.fr[n] = sh4.xf[m & 14];
 				sh4.fr[n | 1] = sh4.xf[m | 1];
 			}
-		else {
+		} else {
 			if (n & 1) {
 				sh4.xf[n & 14] = sh4.fr[m];
 				sh4.xf[n | 1] = sh4.fr[m | 1]; // (a&14)+1 -> a|1
 			} else {
-				sh4.fr[n] = sh4.fr[m & 14];
+				sh4.fr[n] = sh4.fr[m];
 				sh4.fr[n | 1] = sh4.fr[m | 1];
 			}
 		}
 	}
-#endif
 }
 
 /*  FLDI1  FRn 1111nnnn10011101 */
@@ -3135,10 +3180,10 @@ INLINE void FTRC(UINT32 n)
 {
 	if (sh4.fpu_pr) { /* PR = 1 */
 		n = n & 14;
-		sh4.fpul = (INT32)FP_RFD(n);
+		*((INT32 *)&sh4.fpul) = (INT32)FP_RFD(n);
 	} else {              /* PR = 0 */
 		/* read sh4.fr[n] as float -> truncate -> fpul(32) */
-		sh4.fpul = (INT32)FP_RFS(n);
+		*((INT32 *)&sh4.fpul) = (INT32)FP_RFS(n);
 	}
 }
 
@@ -3148,9 +3193,9 @@ INLINE void FLOAT(UINT32 n)
 {
 	if (sh4.fpu_pr) { /* PR = 1 */
 		n = n & 14;
-		FP_RFD(n) = (double)(INT32)sh4.fpul;
+		FP_RFD(n) = (double)*((INT32 *)&sh4.fpul);
 	} else {              /* PR = 0 */
-		FP_RFS(n) = (float)(INT32)sh4.fpul;
+		FP_RFS(n) = (float)*((INT32 *)&sh4.fpul);
 	}
 }
 
@@ -3159,18 +3204,11 @@ INLINE void FLOAT(UINT32 n)
 INLINE void FNEG(UINT32 n)
 {
 	if (sh4.fpu_pr) { /* PR = 1 */
-#ifdef LSB_FIRST
-		n = n | 1; // n & 14 + 1
-		sh4.fr[n] = sh4.fr[n] ^ 0x80000000;
-#else
-		n = n & 14;
-		sh4.fr[n] = sh4.fr[n] ^ 0x80000000;
-#endif
+		FP_RFD(n) = -FP_RFD(n);
 	} else {              /* PR = 0 */
-		sh4.fr[n] = sh4.fr[n] ^ 0x80000000;
+		FP_RFS(n) = -FP_RFS(n);
 	}
 }
-
 
 /* FABS FRn PR=0 1111nnnn01011101 */
 /* FABS DRn PR=1 1111nnn001011101 */
@@ -3248,7 +3286,7 @@ INLINE void FCNVSD(UINT32 n)
 {
 	if (sh4.fpu_pr) { /* PR = 1 */
 		n = n & 14;
-		FP_RFD(n) = *((float *)&sh4.fpul);
+		FP_RFD(n) = (double)*((float *)&sh4.fpul);
 	}
 }
 
@@ -3329,8 +3367,26 @@ INLINE void FSQRT(UINT32 n)
 	} else {              /* PR = 0 */
 		if (FP_RFS(n) < 0)
 			return;
-		FP_RFS(n) = sqrt(FP_RFS(n));
+		FP_RFS(n) = sqrtf(FP_RFS(n));
 	}
+}
+
+/* FSRRA FRn PR=0 1111nnnn01111101 */
+INLINE void FSRRA(UINT32 n)
+{
+	if (FP_RFS(n) < 0)
+		return;
+	FP_RFS(n) = 1.0 / sqrtf(FP_RFS(n));
+}
+
+/*  FSSCA FPUL,FRn PR=0 1111nnn011111101 */
+INLINE void FSSCA(UINT32 n)
+{
+float angle;
+
+	angle = (((float)(sh4.fpul & 0xFFFF)) / 65536.0) * 2.0 * M_PI;
+	FP_RFS(n) = sinf(angle);
+	FP_RFS(n+1) = cosf(angle);
 }
 
 /* FIPR FVm,FVn PR=0 1111nnmm11101101 */
@@ -3357,7 +3413,7 @@ float sum[4];
 	for (i = 0;i < 4;i++) {
 		sum[i] = 0;
 		for (j=0;j < 4;j++)
-			sum[i] += FP_XFS((j << 2) + i)*FP_RFS(n + i);
+			sum[i] += FP_XFS((j << 2) + i)*FP_RFS(n + j);
 		FP_RFS(n + i) = sum[i];
 	}
 }
@@ -3429,6 +3485,9 @@ INLINE void op1111(UINT16 opcode)
 				case 0x60:
 					FSQRT(Rn);
 					break;
+				case 0x70:
+					FSRRA(Rn);
+					break;
 				case 0x80:
 					FLDI0(Rn);
 					break;
@@ -3445,18 +3504,44 @@ INLINE void op1111(UINT16 opcode)
 					FIPR(Rn);
 					break;
 				case 0xF0:
-					if (opcode == 0xF3FD)
-						FSCHG();
-					else if (opcode == 0xFBFD)
-						FRCHG();
-					else if ((opcode & 0x300) == 0x100)
-						FTRV(Rn);
+					if (opcode & 0x100) {
+						if (opcode & 0x200) {
+							switch (opcode & 0xC00)
+							{
+								case 0x000:
+									FSCHG();
+									break;
+								case 0x800:
+									FRCHG();
+									break;
+#ifdef ENABLE_DEBUGGER
+								default:
+									mame_debug_break();
+									break;
+#endif
+							}
+						} else {
+							FTRV(Rn);
+						}
+					} else {
+						FSSCA(Rn);
+					}
 					break;
+#ifdef ENABLE_DEBUGGER
+				default:
+					mame_debug_break();
+					break;
+#endif
 			}
 			break;
 		case 14:
 			FMAC(Rm,Rn);
 			break;
+#ifdef ENABLE_DEBUGGER
+		default:
+			mame_debug_break();
+			break;
+#endif
 	}
 }
 
@@ -3517,7 +3602,7 @@ static void sh4_reset(void)
 	sh4_default_exception_priorities();
 	memset(sh4.exception_requesting, 0, sizeof(sh4.exception_requesting));
 
-	timer_adjust(sh4.rtc_timer, ATTOTIME_IN_HZ(128), cpunum, attotime_zero);
+	timer_adjust_oneshot(sh4.rtc_timer, ATTOTIME_IN_HZ(128), cpunum);
 	sh4.m[RCR2] = 0x09;
 	sh4.m[TCOR0] = 0xffffffff;
 	sh4.m[TCNT0] = 0xffffffff;
@@ -3626,10 +3711,9 @@ UINT32 ticks;
 	//if rtcnt < rtcor then rtcor-rtcnt
 	//if rtcnt >= rtcor then 256-rtcnt+rtcor=256+rtcor-rtcnt
 	ticks = sh4.m[RTCOR]-sh4.m[RTCNT];
-	if (ticks < 0)
+	if (ticks <= 0)
 		ticks = 256 + ticks;
-	//((double)rtcnt_div[(sh4.m[RTCSR] >> 3) & 7] / (double)100000000)*ticks
-	timer_adjust(sh4.refresh_timer, attotime_mul(attotime_mul(ATTOTIME_IN_HZ(sh4.bus_clock), rtcnt_div[(sh4.m[RTCSR] >> 3) & 7]), ticks), sh4.cpu_number, attotime_zero);
+	timer_adjust_oneshot(sh4.refresh_timer, attotime_mul(attotime_mul(ATTOTIME_IN_HZ(sh4.bus_clock), rtcnt_div[(sh4.m[RTCSR] >> 3) & 7]), ticks), sh4.cpu_number);
 	sh4.refresh_timer_base = sh4.m[RTCNT];
 }
 
@@ -3656,7 +3740,7 @@ static void sh4_timer0_recompute(void)
 	double ticks;
 
 	ticks = sh4.m[TCNT0];
-	timer_adjust(sh4.timer0, sh4_scale_up_mame_time(attotime_mul(ATTOTIME_IN_HZ(sh4.pm_clock), tcnt_div[sh4.m[TCR0] & 7]), ticks), sh4.cpu_number, attotime_zero);
+	timer_adjust_oneshot(sh4.timer0, sh4_scale_up_mame_time(attotime_mul(ATTOTIME_IN_HZ(sh4.pm_clock), tcnt_div[sh4.m[TCR0] & 7]), ticks), sh4.cpu_number);
 }
 
 static void sh4_timer1_recompute(void)
@@ -3664,7 +3748,7 @@ static void sh4_timer1_recompute(void)
 	double ticks;
 
 	ticks = sh4.m[TCNT1];
-	timer_adjust(sh4.timer1, sh4_scale_up_mame_time(attotime_mul(ATTOTIME_IN_HZ(sh4.pm_clock), tcnt_div[sh4.m[TCR1] & 7]), ticks), sh4.cpu_number, attotime_zero);
+	timer_adjust_oneshot(sh4.timer1, sh4_scale_up_mame_time(attotime_mul(ATTOTIME_IN_HZ(sh4.pm_clock), tcnt_div[sh4.m[TCR1] & 7]), ticks), sh4.cpu_number);
 }
 
 static void sh4_timer2_recompute(void)
@@ -3672,7 +3756,7 @@ static void sh4_timer2_recompute(void)
 	double ticks;
 
 	ticks = sh4.m[TCNT2];
-	timer_adjust(sh4.timer2, sh4_scale_up_mame_time(attotime_mul(ATTOTIME_IN_HZ(sh4.pm_clock), tcnt_div[sh4.m[TCR2] & 7]), ticks), sh4.cpu_number, attotime_zero);
+	timer_adjust_oneshot(sh4.timer2, sh4_scale_up_mame_time(attotime_mul(ATTOTIME_IN_HZ(sh4.pm_clock), tcnt_div[sh4.m[TCR2] & 7]), ticks), sh4.cpu_number);
 }
 
 static TIMER_CALLBACK( sh4_refresh_timer_callback )
@@ -3742,6 +3826,7 @@ static void increment_rtc_time(int mode)
 		sh4.m[RWKCNT] = 0;
 	}
 
+	days = 0;
 	year = (sh4.m[RYRCNT] & 0xf) + ((sh4.m[RYRCNT] & 0xf0) >> 4)*10 + ((sh4.m[RYRCNT] & 0xf00) >> 8)*100 + ((sh4.m[RYRCNT] & 0xf000) >> 12)*1000;
 	leap = 0;
 	if (!(year%100))
@@ -3753,7 +3838,8 @@ static void increment_rtc_time(int mode)
 		leap = 1;
 	if (sh4.m[RMONCNT] != 2)
 		leap = 0;
-	days = daysmonth[(sh4.m[RMONCNT] & 0xf) + ((sh4.m[RMONCNT] & 0xf0) >> 4)*10 - 1];
+	if (sh4.m[RMONCNT])
+		days = daysmonth[(sh4.m[RMONCNT] & 0xf) + ((sh4.m[RMONCNT] & 0xf0) >> 4)*10 - 1];
 
 	sh4.m[RDAYCNT] = sh4.m[RDAYCNT] + carry;
 	if ((sh4.m[RDAYCNT] & 0xf) == 0xa)
@@ -3791,7 +3877,7 @@ static TIMER_CALLBACK( sh4_rtc_timer_callback )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(sh4.rtc_timer, ATTOTIME_IN_HZ(128), cpunum, attotime_zero);
+	timer_adjust_oneshot(sh4.rtc_timer, ATTOTIME_IN_HZ(128), cpunum);
 	sh4.m[R64CNT] = (sh4.m[R64CNT]+1) & 0x7f;
 	if (sh4.m[R64CNT] == 64)
 	{
@@ -3903,12 +3989,12 @@ static int sh4_dma_transfer(int channel, int timermode, UINT32 chcr, UINT32 *sar
 	if (timermode == 1)
 	{
 		sh4.dma_timer_active[channel] = 1;
-		timer_adjust(sh4.dma_timer[channel], ATTOTIME_IN_CYCLES(2*count+1, sh4.cpu_number), (sh4.cpu_number << 8) | channel, attotime_zero);
+		timer_adjust_oneshot(sh4.dma_timer[channel], ATTOTIME_IN_CYCLES(2*count+1, sh4.cpu_number), (sh4.cpu_number << 8) | channel);
 	}
 	else if (timermode == 2)
 	{
 		sh4.dma_timer_active[channel] = 1;
-		timer_adjust(sh4.dma_timer[channel], attotime_zero, (sh4.cpu_number << 8) | channel, attotime_zero);
+		timer_adjust_oneshot(sh4.dma_timer[channel], attotime_zero, (sh4.cpu_number << 8) | channel);
 	}
 
 	src &= AM;
@@ -4051,7 +4137,7 @@ UINT32 dmatcr,chcr,sar,dar;
 		if (sh4.dma_timer_active[channel])
 		{
 			logerror("SH4: DMA %d cancelled in-flight but all data transferred", channel);
-			timer_adjust(sh4.dma_timer[channel], attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh4.dma_timer[channel], attotime_never, 0);
 			sh4.dma_timer_active[channel] = 0;
 		}
 	}
@@ -4067,7 +4153,7 @@ int s;
 		if (sh4.dma_timer_active[s])
 		{
 			logerror("SH4: DMA %d cancelled due to NMI but all data transferred", s);
-			timer_adjust(sh4.dma_timer[s], attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh4.dma_timer[s], attotime_never, 0);
 			sh4.dma_timer_active[s] = 0;
 		}
 	}
@@ -4075,6 +4161,7 @@ int s;
 
 WRITE32_HANDLER( sh4_internal_w )
 {
+	int a;
 	UINT32 old = sh4.m[offset];
 	COMBINE_DATA(sh4.m+offset);
 
@@ -4093,7 +4180,7 @@ WRITE32_HANDLER( sh4_internal_w )
 		}
 		else
 		{
-			timer_adjust(sh4.refresh_timer, attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh4.refresh_timer, attotime_never, 0);
 		}
 		break;
 
@@ -4139,11 +4226,11 @@ WRITE32_HANDLER( sh4_internal_w )
 		}
 		if ((sh4.m[RCR2] & 8) && (~old & 8))
 		{ // 0 -> 1
-			timer_adjust(sh4.rtc_timer, ATTOTIME_IN_HZ(128), sh4.cpu_number, attotime_zero);
+			timer_adjust_oneshot(sh4.rtc_timer, ATTOTIME_IN_HZ(128), sh4.cpu_number);
 		}
 		else if (~(sh4.m[RCR2]) & 8)
 		{ // 0
-			timer_adjust(sh4.rtc_timer, attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh4.rtc_timer, attotime_never, 0);
 		}
 		break;
 
@@ -4152,21 +4239,21 @@ WRITE32_HANDLER( sh4_internal_w )
 		if (old & 1)
 			sh4.m[TCNT0] = compute_ticks_timer(sh4.timer0, sh4.pm_clock, tcnt_div[sh4.m[TCR0] & 7]);
 		if ((sh4.m[TSTR] & 1) == 0) {
-			timer_adjust(sh4.timer0, attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh4.timer0, attotime_never, 0);
 		} else
 			sh4_timer0_recompute();
 
 		if (old & 2)
 			sh4.m[TCNT1] = compute_ticks_timer(sh4.timer1, sh4.pm_clock, tcnt_div[sh4.m[TCR1] & 7]);
 		if ((sh4.m[TSTR] & 2) == 0) {
-			timer_adjust(sh4.timer1, attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh4.timer1, attotime_never, 0);
 		} else
 			sh4_timer1_recompute();
 
 		if (old & 4)
 			sh4.m[TCNT2] = compute_ticks_timer(sh4.timer2, sh4.pm_clock, tcnt_div[sh4.m[TCR2] & 7]);
 		if ((sh4.m[TSTR] & 4) == 0) {
-			timer_adjust(sh4.timer2, attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(sh4.timer2, attotime_never, 0);
 		} else
 			sh4_timer2_recompute();
 		break;
@@ -4272,7 +4359,7 @@ WRITE32_HANDLER( sh4_internal_w )
 		sh4_exception_recompute();
 		break;
 
-	// DMA
+		// DMA
 	case SAR0:
 	case SAR1:
 	case SAR2:
@@ -4312,6 +4399,40 @@ WRITE32_HANDLER( sh4_internal_w )
 		// Store Queues
 	case QACR0:
 	case QACR1:
+		break;
+
+		// I/O ports
+	case PCTRA:
+		sh4.ioport16_pullup = 0;
+		sh4.ioport16_direction = 0;
+		for (a=0;a < 16;a++) {
+			sh4.ioport16_direction |= (sh4.m[PCTRA] & (1 << (a*2))) >> a;
+			sh4.ioport16_pullup |= (sh4.m[PCTRA] & (1 << (a*2+1))) >> (a+1);
+		}
+		sh4.ioport16_direction &= 0xffff;
+		sh4.ioport16_pullup = (sh4.ioport16_pullup | sh4.ioport16_direction) ^ 0xffff;
+		if (sh4.m[BCR2] & 1)
+			io_write_dword_64le(SH4_IOPORT_16, sh4.m[PDTRA] & sh4.ioport16_direction);
+		break;
+	case PDTRA:
+		if (sh4.m[BCR2] & 1)
+			io_write_dword_64le(SH4_IOPORT_16, sh4.m[PDTRA] & sh4.ioport16_direction);
+		break;
+	case PCTRB:
+		sh4.ioport4_pullup = 0;
+		sh4.ioport4_direction = 0;
+		for (a=0;a < 4;a++) {
+			sh4.ioport4_direction |= (sh4.m[PCTRB] & (1 << (a*2))) >> a;
+			sh4.ioport4_pullup |= (sh4.m[PCTRB] & (1 << (a*2+1))) >> (a+1);
+		}
+		sh4.ioport4_direction &= 0xf;
+		sh4.ioport4_pullup = (sh4.ioport4_pullup | sh4.ioport4_direction) ^ 0xf;
+		if (sh4.m[BCR2] & 1)
+			io_write_dword_64le(SH4_IOPORT_4, sh4.m[PDTRB] & sh4.ioport4_direction);
+		break;
+	case PDTRB:
+		if (sh4.m[BCR2] & 1)
+			io_write_dword_64le(SH4_IOPORT_4, sh4.m[PDTRB] & sh4.ioport4_direction);
 		break;
 
 	case SCBRR2:
@@ -4356,6 +4477,16 @@ READ32_HANDLER( sh4_internal_r )
 			return compute_ticks_timer(sh4.timer2, sh4.pm_clock, tcnt_div[sh4.m[TCR2] & 7]);
 		else
 			return sh4.m[TCNT2];
+		break;
+
+		// I/O ports
+	case PDTRA:
+		if (sh4.m[BCR2] & 1)
+			return (io_read_dword_64le(SH4_IOPORT_16) & ~sh4.ioport16_direction) | (sh4.m[PDTRA] & sh4.ioport16_direction);
+		break;
+	case PDTRB:
+		if (sh4.m[BCR2] & 1)
+			return (io_read_dword_64le(SH4_IOPORT_4) & ~sh4.ioport4_direction) | (sh4.m[PDTRB] & sh4.ioport4_direction);
 		break;
 	}
 	return sh4.m[offset];
@@ -4539,27 +4670,27 @@ static void sh4_init(int index, int clock, const void *config, int (*irqcallback
 	const struct sh4_config *conf = config;
 
 	sh4.timer0 = timer_alloc(sh4_timer0_callback, NULL);
-	timer_adjust(sh4.timer0, attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.timer0, attotime_never, 0);
 	sh4.timer1 = timer_alloc(sh4_timer1_callback, NULL);
-	timer_adjust(sh4.timer1, attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.timer1, attotime_never, 0);
 	sh4.timer2 = timer_alloc(sh4_timer2_callback, NULL);
-	timer_adjust(sh4.timer2, attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.timer2, attotime_never, 0);
 
 	sh4.dma_timer[0] = timer_alloc(sh4_dmac_callback, NULL);
-	timer_adjust(sh4.dma_timer[0], attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.dma_timer[0], attotime_never, 0);
 	sh4.dma_timer[1] = timer_alloc(sh4_dmac_callback, NULL);
-	timer_adjust(sh4.dma_timer[1], attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.dma_timer[1], attotime_never, 0);
 	sh4.dma_timer[2] = timer_alloc(sh4_dmac_callback, NULL);
-	timer_adjust(sh4.dma_timer[2], attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.dma_timer[2], attotime_never, 0);
 	sh4.dma_timer[3] = timer_alloc(sh4_dmac_callback, NULL);
-	timer_adjust(sh4.dma_timer[3], attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.dma_timer[3], attotime_never, 0);
 
 	sh4.refresh_timer = timer_alloc(sh4_refresh_timer_callback, NULL);
-	timer_adjust(sh4.refresh_timer, attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.refresh_timer, attotime_never, 0);
 	sh4.refresh_timer_base = 0;
 
 	sh4.rtc_timer = timer_alloc(sh4_rtc_timer_callback, NULL);
-	timer_adjust(sh4.rtc_timer, attotime_never, 0, attotime_zero);
+	timer_adjust_oneshot(sh4.rtc_timer, attotime_never, 0);
 
 	sh4.m = auto_malloc(16384*4);
 
@@ -4642,6 +4773,7 @@ static void sh4_dma_ddt(struct sh4_ddt_dma *s)
 {
 UINT32 chcr;
 UINT32 *p32bits;
+UINT64 *p32bytes;
 UINT32 pos,len,siz;
 
 	if (sh4.dma_timer_active[s->channel])
@@ -4722,21 +4854,50 @@ UINT32 pos,len,siz;
 				return;
 		sh4_dma_transfer(s->channel, 0, chcr, &s->source, &s->destination, &len);
 	} else {
-		if ((s->direction) == 0) {
-			len = s->length;
-			p32bits = (UINT32 *)(s->buffer);
-			for (pos = 0;pos < len;pos++) {
-				*p32bits = program_read_dword_64le(s->source);
-				p32bits++;
-				s->source = s->source + 4;
+		if (s->size == 4) {
+			if ((s->direction) == 0) {
+				len = s->length;
+				p32bits = (UINT32 *)(s->buffer);
+				for (pos = 0;pos < len;pos++) {
+					*p32bits = program_read_dword_64le(s->source);
+					p32bits++;
+					s->source = s->source + 4;
+				}
+			} else {
+				len = s->length;
+				p32bits = (UINT32 *)(s->buffer);
+				for (pos = 0;pos < len;pos++) {
+					program_write_dword_64le(s->destination, *p32bits);
+					p32bits++;
+					s->destination = s->destination + 4;
+				}
 			}
-		} else {
-			len = s->length;
-			p32bits = (UINT32 *)(s->buffer);
-			for (pos = 0;pos < len;pos++) {
-				program_write_dword_64le(s->destination, *p32bits);
-				p32bits++;
-				s->destination = s->destination + 4;
+		}
+		if (s->size == 32) {
+			if ((s->direction) == 0) {
+				len = s->length * 4;
+				p32bytes = (UINT64 *)(s->buffer);
+				for (pos = 0;pos < len;pos++) {
+#ifdef LSB_FIRST
+					*p32bytes = program_read_qword_64le(s->source);
+#else
+					*p32bytes = program_read_qword_64be(s->source);
+#endif
+					p32bytes++;
+					s->destination = s->destination + 8;
+				}
+			} else {
+				len = s->length * 4;
+				p32bytes = (UINT64 *)(s->buffer);
+				for (pos = 0;pos < len;pos++) {
+#ifdef LSB_FIRST
+					program_write_qword_64le(s->destination, *p32bytes);
+#else
+					program_write_qword_64be(s->destination, *p32bytes);
+#endif
+					p32bytes++;
+					s->destination = s->destination + 8;
+				}
 			}
 		}
 	}
@@ -4931,11 +5092,11 @@ void sh4_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_DATA:		info->i = 0;				break;
 		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_DATA: 		info->i = 0;				break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_DATA: 		info->i = 0;				break;
-		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 0;					break;
-		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 0;					break;
+		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 64;					break;
+		case CPUINFO_INT_ADDRBUS_WIDTH + ADDRESS_SPACE_IO: 		info->i = 8;					break;
 		case CPUINFO_INT_ADDRBUS_SHIFT + ADDRESS_SPACE_IO: 		info->i = 0;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_sh4_internal_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map64 = address_map_sh4_internal_map; break;
 
 		case CPUINFO_INT_INPUT_STATE + SH4_IRL0:		info->i = sh4.irq_line_state[SH4_IRL0]; break;
 		case CPUINFO_INT_INPUT_STATE + SH4_IRL1:		info->i = sh4.irq_line_state[SH4_IRL1]; break;
@@ -5053,7 +5214,7 @@ void sh4_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + SH4_FPSCR:			sprintf(info->s, "FPSCR :%08X", sh4.fpscr); break;
 		case CPUINFO_STR_REGISTER + SH4_FPUL:			sprintf(info->s, "FPUL :%08X", sh4.fpul); break;
 #ifdef LSB_FIRST
-		case CPUINFO_STR_REGISTER + SH4_FR0:			sprintf(info->s, "FR0  :%08X %01.4e", FP_RS2( 0),(double)FP_RFS2( 0)); break;
+		case CPUINFO_STR_REGISTER + SH4_FR0:			sprintf(info->s, "FR0  :%08X %01.2e", FP_RS2( 0),(double)FP_RFS2( 0)); break;
 		case CPUINFO_STR_REGISTER + SH4_FR1:			sprintf(info->s, "FR1  :%08X %01.2e", FP_RS2( 1),(double)FP_RFS2( 1)); break;
 		case CPUINFO_STR_REGISTER + SH4_FR2:			sprintf(info->s, "FR2  :%08X %01.2e", FP_RS2( 2),(double)FP_RFS2( 2)); break;
 		case CPUINFO_STR_REGISTER + SH4_FR3:			sprintf(info->s, "FR3  :%08X %01.2e", FP_RS2( 3),(double)FP_RFS2( 3)); break;
@@ -5086,7 +5247,7 @@ void sh4_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_STR_REGISTER + SH4_XF14:			sprintf(info->s, "XF14 :%08X %01.2e", FP_XS2(14),(double)FP_XFS2(14)); break;
 		case CPUINFO_STR_REGISTER + SH4_XF15:			sprintf(info->s, "XF15 :%08X %01.2e", FP_XS2(15),(double)FP_XFS2(15)); break;
 #else
-		case CPUINFO_STR_REGISTER + SH4_FR0:			sprintf(info->s, "FR0  :%08X %01.4e", FP_RS( 0),(double)FP_RFS( 0)); break;
+		case CPUINFO_STR_REGISTER + SH4_FR0:			sprintf(info->s, "FR0  :%08X %01.2e", FP_RS( 0),(double)FP_RFS( 0)); break;
 		case CPUINFO_STR_REGISTER + SH4_FR1:			sprintf(info->s, "FR1  :%08X %01.2e", FP_RS( 1),(double)FP_RFS( 1)); break;
 		case CPUINFO_STR_REGISTER + SH4_FR2:			sprintf(info->s, "FR2  :%08X %01.2e", FP_RS( 2),(double)FP_RFS( 2)); break;
 		case CPUINFO_STR_REGISTER + SH4_FR3:			sprintf(info->s, "FR3  :%08X %01.2e", FP_RS( 3),(double)FP_RFS( 3)); break;

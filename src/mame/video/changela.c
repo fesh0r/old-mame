@@ -32,7 +32,7 @@ static UINT8* memory_devices;
 static UINT8* tree_ram;
 static UINT32  mem_dev_selected; /* an offset within memory_devices area */
 
-static mame_bitmap *obj0_bitmap, *river_bitmap, *tree0_bitmap, *tree1_bitmap;
+static bitmap_t *obj0_bitmap, *river_bitmap, *tree0_bitmap, *tree1_bitmap;
 
 static emu_timer* changela_scanline_timer;
 static TIMER_CALLBACK( changela_scanline_callback );
@@ -42,13 +42,13 @@ VIDEO_START( changela )
 	memory_devices = auto_malloc(4 * 0x800); /* 0 - not connected, 1,2,3 - RAMs*/
 	tree_ram = auto_malloc(2 * 0x20);
 
-	obj0_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
-	river_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
-	tree0_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
-	tree1_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	obj0_bitmap  = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	river_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tree0_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tree1_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	changela_scanline_timer = timer_alloc(changela_scanline_callback, NULL);
-	timer_adjust(changela_scanline_timer, video_screen_get_time_until_pos(0, 30, 0), 30, attotime_zero);
+	timer_adjust_oneshot(changela_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 30, 0), 30);
 
 	state_save_register_global(slopeROM_bank);
 	state_save_register_global(tree_en);
@@ -64,7 +64,7 @@ VIDEO_START( changela )
     Obj 0 - Sprite Layer
 
 ***************************************************************************/
-static void draw_obj0(mame_bitmap *bitmap, int sy)
+static void draw_obj0(bitmap_t *bitmap, int sy)
 {
 	int sx, i;
 
@@ -103,7 +103,7 @@ static void draw_obj0(mame_bitmap *bitmap, int sy)
 					data = (ROM[rom_addr] & 0xf0) >> 4;
 
 				if((data != 0x0f) && (data != 0))
-					*BITMAP_ADDR16(bitmap, sy, xpos+i) = Machine->pens[data | 0x10];
+					*BITMAP_ADDR16(bitmap, sy, xpos+i) = data | 0x10;
 
 				if(hs)
 				{
@@ -113,7 +113,7 @@ static void draw_obj0(mame_bitmap *bitmap, int sy)
 						data = (ROM[rom_addr ^ 0x100] & 0xf0) >> 4;
 
 					if((data != 0x0f) && (data != 0))
-						*BITMAP_ADDR16(bitmap, sy, xpos+i+16) = Machine->pens[data | 0x10];
+						*BITMAP_ADDR16(bitmap, sy, xpos+i+16) = data | 0x10;
 				}
 			}
 		}
@@ -125,7 +125,7 @@ static void draw_obj0(mame_bitmap *bitmap, int sy)
     Obj 1 - Text Layer
 
 ***************************************************************************/
-static void draw_obj1(running_machine *machine, mame_bitmap *bitmap)
+static void draw_obj1(bitmap_t *bitmap)
 {
 	int sx, sy;
 
@@ -178,7 +178,7 @@ static void draw_obj1(running_machine *machine, mame_bitmap *bitmap)
 
 			col = c0 | (c1 << 1) | ((attrib & 0xc0) >> 4);
 			if((col & 0x07) != 0x07)
-				*BITMAP_ADDR16(bitmap, sy, sx) = machine->pens[col | 0x20];
+				*BITMAP_ADDR16(bitmap, sy, sx) = col | 0x20;
 		}
 	}
 }
@@ -188,7 +188,7 @@ static void draw_obj1(running_machine *machine, mame_bitmap *bitmap)
     River Video Generator
 
 ***************************************************************************/
-static void draw_river(mame_bitmap *bitmap, int sy)
+static void draw_river(bitmap_t *bitmap, int sy)
 {
 	int sx, i, j;
 
@@ -326,7 +326,7 @@ static void draw_river(mame_bitmap *bitmap, int sy)
 			else
 				col = (TILE_ROM[rom_addr] & 0xf0) >> 4;
 
-			*BITMAP_ADDR16(bitmap, sy, sx) = Machine->pens[col];
+			*BITMAP_ADDR16(bitmap, sy, sx) = col;
 		}
 
 		for(sx = 16; sx < 256; sx++)
@@ -357,7 +357,7 @@ static void draw_river(mame_bitmap *bitmap, int sy)
 			else
 				col = (TILE_ROM[rom_addr] & 0xf0) >> 4;
 
-			*BITMAP_ADDR16(bitmap, sy, sx) = Machine->pens[col];
+			*BITMAP_ADDR16(bitmap, sy, sx) = col;
 		}
 	}
 }
@@ -367,7 +367,7 @@ static void draw_river(mame_bitmap *bitmap, int sy)
     Tree Generators
 
 ***************************************************************************/
-static void draw_tree(mame_bitmap *bitmap, int sy, int tree_num)
+static void draw_tree(bitmap_t *bitmap, int sy, int tree_num)
 {
 	int sx, i, j;
 
@@ -567,7 +567,7 @@ static void draw_tree(mame_bitmap *bitmap, int sy, int tree_num)
 				all_ff = 0;
 
 			if(col != 0x0f && col != 0x00)
-				*BITMAP_ADDR16(bitmap, sy, sx) = Machine->pens[col | 0x30];
+				*BITMAP_ADDR16(bitmap, sy, sx) = col | 0x30;
 		}
 	}
 
@@ -607,7 +607,7 @@ static void draw_tree(mame_bitmap *bitmap, int sy, int tree_num)
 				all_ff = 0;
 
 			if(col != 0x0f && col != 0x00)
-				*BITMAP_ADDR16(bitmap, sy, sx) = Machine->pens[col | 0x30];
+				*BITMAP_ADDR16(bitmap, sy, sx) = col | 0x30;
 		}
 	}
 
@@ -687,21 +687,21 @@ static TIMER_CALLBACK( changela_scanline_callback )
 	{
 		int riv_col, prev_col;
 
-		if((*BITMAP_ADDR16(river_bitmap, sy, sx) == machine->pens[0x08])
-		|| (*BITMAP_ADDR16(river_bitmap, sy, sx) == machine->pens[0x09])
-		|| (*BITMAP_ADDR16(river_bitmap, sy, sx) == machine->pens[0x0a]))
+		if((*BITMAP_ADDR16(river_bitmap, sy, sx) == 0x08)
+		|| (*BITMAP_ADDR16(river_bitmap, sy, sx) == 0x09)
+		|| (*BITMAP_ADDR16(river_bitmap, sy, sx) == 0x0a))
 			riv_col = 1;
 		else
 			riv_col = 0;
 
-		if((*BITMAP_ADDR16(river_bitmap, sy, sx-1) == machine->pens[0x08])
-		|| (*BITMAP_ADDR16(river_bitmap, sy, sx-1) == machine->pens[0x09])
-		|| (*BITMAP_ADDR16(river_bitmap, sy, sx-1) == machine->pens[0x0a]))
+		if((*BITMAP_ADDR16(river_bitmap, sy, sx-1) == 0x08)
+		|| (*BITMAP_ADDR16(river_bitmap, sy, sx-1) == 0x09)
+		|| (*BITMAP_ADDR16(river_bitmap, sy, sx-1) == 0x0a))
 			prev_col = 1;
 		else
 			prev_col = 0;
 
-		if(*BITMAP_ADDR16(obj0_bitmap, sy, sx) == machine->pens[0x14]) /* Car Outline Color */
+		if(*BITMAP_ADDR16(obj0_bitmap, sy, sx) == 0x14) /* Car Outline Color */
 		{
 			/* Tree 0 Collision */
 			if(*BITMAP_ADDR16(tree0_bitmap, sy, sx) != 0)
@@ -738,7 +738,7 @@ static TIMER_CALLBACK( changela_scanline_callback )
 
 	sy++;
 	if(sy > 256) sy = 30;
-	timer_adjust(changela_scanline_timer, video_screen_get_time_until_pos(0, sy, 0), sy, attotime_zero);
+	timer_adjust_oneshot(changela_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, sy, 0), sy);
 }
 
 VIDEO_UPDATE( changela )
@@ -747,7 +747,7 @@ VIDEO_UPDATE( changela )
 	copybitmap_trans(bitmap, obj0_bitmap,  0, 0, 0, 0, cliprect, 0);
 	copybitmap_trans(bitmap, tree0_bitmap, 0, 0, 0, 0, cliprect, 0);
 	copybitmap_trans(bitmap, tree1_bitmap, 0, 0, 0, 0, cliprect, 0);
-	draw_obj1(machine, bitmap);
+	draw_obj1(bitmap);
 
 	return 0;
 }

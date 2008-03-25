@@ -12,7 +12,7 @@ PALETTE_INIT( truco )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int	r = ( i & 0x8 ) ? 0xff : 0x00;
 		int g = ( i & 0x4 ) ? 0xff : 0x00;
@@ -35,17 +35,18 @@ VIDEO_UPDATE( truco )
 	UINT8		*vid = videoram;
 	int x, y;
 
-	for( y = 0; y < 192; y++ ) {
-		for( x = 0; x < 256; x++ ) {
+	for( y = 0; y < 192; y++ )
+	{
+		for( x = 0; x < 256; x++ )
+		{
 			int		pixel;
 
-			if ( x & 1 ) {
+			if ( x & 1 )
 				pixel = vid[x>>1] & 0x0f;
-			} else {
+			else
 				pixel = ( vid[x>>1] >> 4 ) & 0x0f;
-			}
 
-			*BITMAP_ADDR16(bitmap, y, x) = machine->pens[pixel];
+			*BITMAP_ADDR16(bitmap, y, x) = pixel;
 		}
 
 		vid += 0x80;

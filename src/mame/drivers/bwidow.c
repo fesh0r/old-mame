@@ -353,7 +353,7 @@ static ADDRESS_MAP_START( bwidow_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x88c0, 0x88c0) AM_WRITE(irq_ack_w) /* interrupt acknowledge */
 	AM_RANGE(0x8900, 0x8900) AM_WRITE(atari_vg_earom_ctrl_w)
 	AM_RANGE(0x8940, 0x897f) AM_WRITE(atari_vg_earom_w)
-	AM_RANGE(0x8980, 0x89ed) AM_WRITE(MWA8_NOP) /* watchdog clear */
+	AM_RANGE(0x8980, 0x89ed) AM_WRITE(SMH_NOP) /* watchdog clear */
 	AM_RANGE(0x9000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -362,11 +362,11 @@ static ADDRESS_MAP_START( spacduel_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0800, 0x0800) AM_READ(bzone_IN0_r)	/* IN0 */
 	AM_RANGE(0x0900, 0x0907) AM_READ(spacduel_IN3_r)	/* IN1 */
-	AM_RANGE(0x0905, 0x0906) AM_WRITE(MWA8_NOP) /* ignore? */
+	AM_RANGE(0x0905, 0x0906) AM_WRITE(SMH_NOP) /* ignore? */
 	AM_RANGE(0x0a00, 0x0a00) AM_READ(atari_vg_earom_r)
 //  AM_RANGE(0x0c00, 0x0c00) AM_WRITE(coin_counter_w) /* coin out */
 	AM_RANGE(0x0c80, 0x0c80) AM_WRITE(avgdvg_go_w)
-	AM_RANGE(0x0d00, 0x0d00) AM_WRITE(MWA8_NOP) /* watchdog clear */
+	AM_RANGE(0x0d00, 0x0d00) AM_WRITE(SMH_NOP) /* watchdog clear */
 	AM_RANGE(0x0d80, 0x0d80) AM_WRITE(avgdvg_reset_w)
 	AM_RANGE(0x0e00, 0x0e00) AM_WRITE(irq_ack_w) /* interrupt acknowledge */
 	AM_RANGE(0x0e80, 0x0e80) AM_WRITE(atari_vg_earom_ctrl_w)
@@ -688,17 +688,13 @@ static MACHINE_DRIVER_START( bwidow )
 	MDRV_CPU_PROGRAM_MAP(bwidow_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_assert, (double)MASTER_CLOCK / 4096 / 12)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(atari_vg)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(0, 480, 0, 440)
-	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(avg)
 	MDRV_VIDEO_UPDATE(vector)
@@ -722,6 +718,7 @@ static MACHINE_DRIVER_START( gravitar )
 	MDRV_IMPORT_FROM(bwidow)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 420, 0, 400)
 MACHINE_DRIVER_END
 
@@ -733,9 +730,9 @@ static MACHINE_DRIVER_START( lunarbat )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(spacduel_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(45)
-
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(45)
 	MDRV_SCREEN_VISIBLE_AREA(0, 500, 0, 440)
 MACHINE_DRIVER_END
 
@@ -747,9 +744,9 @@ static MACHINE_DRIVER_START( spacduel )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(spacduel_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(45)
-
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(45)
 	MDRV_SCREEN_VISIBLE_AREA(0, 540, 0, 400)
 MACHINE_DRIVER_END
 

@@ -21,7 +21,6 @@ VIDEO_UPDATE( drmicro );
 WRITE8_HANDLER( drmicro_flipscreen_w );
 WRITE8_HANDLER( drmicro_priority_w );
 
-READ8_HANDLER( drmicro_videoram_r );
 WRITE8_HANDLER( drmicro_videoram_w );
 
 extern void drmicro_flip_w( int flip );
@@ -75,36 +74,36 @@ static WRITE8_HANDLER( pcm_set_w )
 /****************************************************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xefff) AM_READ(drmicro_videoram_r)
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(drmicro_videoram_w)
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x03, 0x03) AM_READ(input_port_2_r)
 	AM_RANGE(0x04, 0x04) AM_READ(input_port_3_r)
-	AM_RANGE(0x05, 0x05) AM_READ(MRA8_NOP) // unused?
+	AM_RANGE(0x05, 0x05) AM_READ(SMH_NOP) // unused?
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(SN76496_1_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(SN76496_2_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(pcm_set_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(nmi_enable_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(MWA8_NOP) // watchdog?
+	AM_RANGE(0x05, 0x05) AM_WRITE(SMH_NOP) // watchdog?
 ADDRESS_MAP_END
 
 /****************************************************************************/
@@ -233,20 +232,20 @@ static MACHINE_DRIVER_START( drmicro )
 	MDRV_CPU_ADD(Z80,MCLK/6)	/* 3.072MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(drmicro_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", drmicro_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(drmicro)
-	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(512)
+	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(drmicro)
 	MDRV_VIDEO_START(drmicro)

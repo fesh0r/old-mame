@@ -20,55 +20,6 @@ void tank8_set_collision(int index)
 }
 
 
-static void fill_palette(running_machine *machine, int team)
-{
-	if (team)
-	{
-		palette_set_color(machine,0, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-		palette_set_color(machine,2, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-		palette_set_color(machine,4, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-		palette_set_color(machine,6, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-		palette_set_color(machine,1, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-		palette_set_color(machine,3, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-		palette_set_color(machine,5, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-		palette_set_color(machine,7, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-	}
-	else
-	{
-		palette_set_color(machine,0, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-		palette_set_color(machine,1, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-		palette_set_color(machine,2, MAKE_RGB(0xff, 0xff, 0x00)); /* yellow  */
-		palette_set_color(machine,3, MAKE_RGB(0x00, 0xff, 0x00)); /* green   */
-		palette_set_color(machine,4, MAKE_RGB(0xff, 0x00, 0xff)); /* magenta */
-		palette_set_color(machine,5, MAKE_RGB(0xe0, 0xc0, 0x70)); /* puce    */
-		palette_set_color(machine,6, MAKE_RGB(0x00, 0xff, 0xff)); /* cyan    */
-		palette_set_color(machine,7, MAKE_RGB(0xff, 0xaa, 0xaa)); /* pink    */
-	}
-}
-
-
-static PALETTE_INIT( tank8 )
-{
-	int i;
-
-	fill_palette(machine,0);
-
-	palette_set_color(machine, 8, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 9, MAKE_RGB(0xff, 0xff, 0xff));
-
-	for (i = 0; i < 8; i++)
-	{
-		colortable[2 * i + 0] = 8;
-		colortable[2 * i + 1] = i;
-	}
-
-	colortable[16] = 8;
-	colortable[17] = 8;
-	colortable[18] = 8;
-	colortable[19] = 9;
-}
-
-
 static MACHINE_RESET( tank8 )
 {
 	collision_index = 0;
@@ -86,32 +37,26 @@ static WRITE8_HANDLER( tank8_lockout_w )
 }
 
 
-static WRITE8_HANDLER( tank8_team_w )
-{
-	fill_palette(Machine,~data & 1);
-}
-
-
 static WRITE8_HANDLER( tank8_int_reset_w )
 {
 	collision_index &= ~0x3f;
 
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( tank8_crash_w )
 {
-	discrete_sound_w(TANK8_CRASH_EN, data);
+	discrete_sound_w(machine, TANK8_CRASH_EN, data);
 }
 
 static WRITE8_HANDLER( tank8_explosion_w )
 {
-	discrete_sound_w(TANK8_EXPLOSION_EN, data);
+	discrete_sound_w(machine, TANK8_EXPLOSION_EN, data);
 }
 
 static WRITE8_HANDLER( tank8_bugle_w )
 {
-	discrete_sound_w(TANK8_BUGLE_EN, data);
+	discrete_sound_w(machine, TANK8_BUGLE_EN, data);
 }
 
 static WRITE8_HANDLER( tank8_bug_w )
@@ -119,20 +64,20 @@ static WRITE8_HANDLER( tank8_bug_w )
 	/* D0 and D1 determine the on/off time off the square wave */
 	switch(data & 3) {
 		case 0:
-			discrete_sound_w(TANK8_BUGLE_DATA1,8.0);
-			discrete_sound_w(TANK8_BUGLE_DATA2,4.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA1,8.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA2,4.0);
 			break;
 		case 1:
-			discrete_sound_w(TANK8_BUGLE_DATA1,8.0);
-			discrete_sound_w(TANK8_BUGLE_DATA2,7.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA1,8.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA2,7.0);
 			break;
 		case 2:
-			discrete_sound_w(TANK8_BUGLE_DATA1,8.0);
-			discrete_sound_w(TANK8_BUGLE_DATA2,2.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA1,8.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA2,2.0);
 			break;
 		case 3:
-			discrete_sound_w(TANK8_BUGLE_DATA1,16.0);
-			discrete_sound_w(TANK8_BUGLE_DATA2,4.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA1,16.0);
+			discrete_sound_w(machine, TANK8_BUGLE_DATA2,4.0);
 			break;
 	}
 
@@ -140,12 +85,12 @@ static WRITE8_HANDLER( tank8_bug_w )
 
 static WRITE8_HANDLER( tank8_attract_w )
 {
-	discrete_sound_w(TANK8_ATTRACT_EN, data);
+	discrete_sound_w(machine, TANK8_ATTRACT_EN, data);
 }
 
 static WRITE8_HANDLER( tank8_motor_w )
 {
-	discrete_sound_w(TANK8_MOTOR1_EN+offset, data);
+	discrete_sound_w(machine, TANK8_MOTOR1_EN+offset, data);
 }
 
 static ADDRESS_MAP_START( tank8_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -169,9 +114,9 @@ static ADDRESS_MAP_START( tank8_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1c0f, 0x1c0f) AM_READ(input_port_11_r)
 
 	AM_RANGE(0x1800, 0x1bff) AM_WRITE(tank8_video_ram_w) AM_BASE(&tank8_video_ram)
-	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE(MWA8_RAM) AM_BASE(&tank8_pos_h_ram)
-	AM_RANGE(0x1c10, 0x1c1f) AM_WRITE(MWA8_RAM) AM_BASE(&tank8_pos_v_ram)
-	AM_RANGE(0x1c20, 0x1c2f) AM_WRITE(MWA8_RAM) AM_BASE(&tank8_pos_d_ram)
+	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE(SMH_RAM) AM_BASE(&tank8_pos_h_ram)
+	AM_RANGE(0x1c10, 0x1c1f) AM_WRITE(SMH_RAM) AM_BASE(&tank8_pos_v_ram)
+	AM_RANGE(0x1c20, 0x1c2f) AM_WRITE(SMH_RAM) AM_BASE(&tank8_pos_d_ram)
 
 	AM_RANGE(0x1c30, 0x1c37) AM_WRITE(tank8_lockout_w)
 	AM_RANGE(0x1d00, 0x1d00) AM_WRITE(tank8_int_reset_w)
@@ -179,7 +124,7 @@ static ADDRESS_MAP_START( tank8_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1d02, 0x1d02) AM_WRITE(tank8_explosion_w)
 	AM_RANGE(0x1d03, 0x1d03) AM_WRITE(tank8_bugle_w)
 	AM_RANGE(0x1d04, 0x1d04) AM_WRITE(tank8_bug_w)
-	AM_RANGE(0x1d05, 0x1d05) AM_WRITE(tank8_team_w)
+	AM_RANGE(0x1d05, 0x1d05) AM_WRITE(SMH_RAM) AM_BASE(&tank8_team)
 	AM_RANGE(0x1d06, 0x1d06) AM_WRITE(tank8_attract_w)
 	AM_RANGE(0x1e00, 0x1e07) AM_WRITE(tank8_motor_w)
 
@@ -377,8 +322,8 @@ static const gfx_layout tank_layout =
 static GFXDECODE_START( tank8 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_layout_1, 0, 10 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, tile_layout_2, 0, 10 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tank_layout, 0, 8 )
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tank_layout, 0, 8 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, tank_layout,   0, 8 )
+	GFXDECODE_ENTRY( REGION_GFX3, 0, tank_layout,   0, 8 )
 GFXDECODE_END
 
 
@@ -388,18 +333,20 @@ static MACHINE_DRIVER_START( tank8 )
 	MDRV_CPU_ADD(M6800, 11055000 / 10) /* ? */
 	MDRV_CPU_PROGRAM_MAP(tank8_cpu_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(30 * 1000000 / 15681))
 	MDRV_MACHINE_RESET(tank8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(30 * 1000000 / 15681))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 524)
 	MDRV_SCREEN_VISIBLE_AREA(16, 495, 0, 463)
+
 	MDRV_GFXDECODE(tank8)
-	MDRV_PALETTE_LENGTH(10)
-	MDRV_COLORTABLE_LENGTH(20)
+	MDRV_PALETTE_LENGTH(20)
 
 	MDRV_PALETTE_INIT(tank8)
 	MDRV_VIDEO_START(tank8)
@@ -411,7 +358,7 @@ static MACHINE_DRIVER_START( tank8 )
 
 	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(tank8)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
 

@@ -92,13 +92,13 @@ static READ32_HANDLER( gunbustr_input_r )
 	{
 		case 0x00:
 		{
-			return (input_port_0_word_r(0,0) << 16) | input_port_1_word_r(0,0) |
+			return (input_port_0_word_r(machine,0,0) << 16) | input_port_1_word_r(machine,0,0) |
 				  (EEPROM_read_bit() << 7);
 		}
 
 		case 0x01:
 		{
-			return input_port_2_word_r(0,0) | (coin_word << 16);
+			return input_port_2_word_r(machine,0,0) | (coin_word << 16);
 		}
  	}
 logerror("CPU #0 PC %06x: read input %06x\n",activecpu_get_pc(),offset);
@@ -126,7 +126,7 @@ popmessage(t);
 		{
 			if (ACCESSING_MSB32)	/* $400000 is watchdog */
 			{
-				watchdog_reset_w(0,data >> 24);
+				watchdog_reset(machine);
 			}
 
 			if (ACCESSING_LSB32)
@@ -175,8 +175,8 @@ static WRITE32_HANDLER( motor_control_w )
 
 static READ32_HANDLER( gunbustr_gun_r )
 {
-	return ( input_port_3_word_r(0,0) << 24) | (input_port_4_word_r(0,0) << 16) |
-		 ( input_port_5_word_r(0,0) << 8)  |  input_port_6_word_r(0,0);
+	return ( input_port_3_word_r(machine,0,0) << 24) | (input_port_4_word_r(machine,0,0) << 16) |
+		 ( input_port_5_word_r(machine,0,0) << 8)  |  input_port_6_word_r(machine,0,0);
 }
 
 static WRITE32_HANDLER( gunbustr_gun_w )
@@ -191,30 +191,30 @@ static WRITE32_HANDLER( gunbustr_gun_w )
 ***********************************************************/
 
 static ADDRESS_MAP_START( gunbustr_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA32_ROM)
-	AM_RANGE(0x200000, 0x21ffff) AM_READ(MRA32_RAM)	/* main CPUA ram */
-	AM_RANGE(0x300000, 0x301fff) AM_READ(MRA32_RAM)	/* Sprite ram */
-	AM_RANGE(0x390000, 0x3907ff) AM_READ(MRA32_RAM)	/* Sound shared ram */
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x200000, 0x21ffff) AM_READ(SMH_RAM)	/* main CPUA ram */
+	AM_RANGE(0x300000, 0x301fff) AM_READ(SMH_RAM)	/* Sprite ram */
+	AM_RANGE(0x390000, 0x3907ff) AM_READ(SMH_RAM)	/* Sound shared ram */
 	AM_RANGE(0x400000, 0x400007) AM_READ(gunbustr_input_r)
 	AM_RANGE(0x500000, 0x500003) AM_READ(gunbustr_gun_r)	/* gun coord read */
 	AM_RANGE(0x800000, 0x80ffff) AM_READ(TC0480SCP_long_r)
 	AM_RANGE(0x830000, 0x83002f) AM_READ(TC0480SCP_ctrl_long_r)
-	AM_RANGE(0x900000, 0x901fff) AM_READ(MRA32_RAM)	/* Palette ram */
-	AM_RANGE(0xc00000, 0xc03fff) AM_READ(MRA32_RAM)	/* network ram ?? */
+	AM_RANGE(0x900000, 0x901fff) AM_READ(SMH_RAM)	/* Palette ram */
+	AM_RANGE(0xc00000, 0xc03fff) AM_READ(SMH_RAM)	/* network ram ?? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gunbustr_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA32_ROM)
-	AM_RANGE(0x200000, 0x21ffff) AM_WRITE(MWA32_RAM) AM_BASE(&gunbustr_ram)
-	AM_RANGE(0x300000, 0x301fff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x200000, 0x21ffff) AM_WRITE(SMH_RAM) AM_BASE(&gunbustr_ram)
+	AM_RANGE(0x300000, 0x301fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x380000, 0x380003) AM_WRITE(motor_control_w)	/* motor, lamps etc. */
-	AM_RANGE(0x390000, 0x3907ff) AM_WRITE(MWA32_RAM) AM_BASE(&f3_shared_ram)
+	AM_RANGE(0x390000, 0x3907ff) AM_WRITE(SMH_RAM) AM_BASE(&f3_shared_ram)
 	AM_RANGE(0x400000, 0x400007) AM_WRITE(gunbustr_input_w)	/* eerom etc. */
 	AM_RANGE(0x500000, 0x500003) AM_WRITE(gunbustr_gun_w)	/* gun int request */
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(TC0480SCP_long_w)
 	AM_RANGE(0x830000, 0x83002f) AM_WRITE(TC0480SCP_ctrl_long_w)
 	AM_RANGE(0x900000, 0x901fff) AM_WRITE(gunbustr_palette_w) AM_BASE(&paletteram32)
-	AM_RANGE(0xc00000, 0xc03fff) AM_WRITE(MWA32_RAM)	/* network ram ?? */
+	AM_RANGE(0xc00000, 0xc03fff) AM_WRITE(SMH_RAM)	/* network ram ?? */
 ADDRESS_MAP_END
 
 /***********************************************************
@@ -259,7 +259,7 @@ static INPUT_PORTS_START( gunbustr )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_PLAYER(2)
 
 	PORT_START      /* IN2 */
-	PORT_BIT(0x0001, IP_ACTIVE_LOW,  IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0001, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_SERVICE1 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_COIN1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW,  IPT_COIN2 )
@@ -377,21 +377,21 @@ static MACHINE_DRIVER_START( gunbustr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(gunbustr_readmem,gunbustr_writemem)
-	MDRV_CPU_VBLANK_INT(gunbustr_interrupt,1) /* VBL */
+	MDRV_CPU_VBLANK_INT("main", gunbustr_interrupt) /* VBL */
 
 	TAITO_F3_SOUND_SYSTEM_CPU(16000000)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(gunbustr)
 	MDRV_NVRAM_HANDLER(gunbustr)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(gunbustr)
 	MDRV_PALETTE_LENGTH(8192)
 

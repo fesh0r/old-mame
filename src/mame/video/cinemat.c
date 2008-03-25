@@ -49,13 +49,14 @@ static UINT8 last_control;
 
 void cinemat_vector_callback(INT16 sx, INT16 sy, INT16 ex, INT16 ey, UINT8 shift)
 {
+	const rectangle *visarea = video_screen_get_visible_area(Machine->primary_screen);
 	int intensity = 0xff;
 
 	/* adjust for slop */
-	sx = sx - Machine->screen[0].visarea.min_x;
-	ex = ex - Machine->screen[0].visarea.min_x;
-	sy = sy - Machine->screen[0].visarea.min_y;
-	ey = ey - Machine->screen[0].visarea.min_y;
+	sx = sx - visarea->min_x;
+	ex = ex - visarea->min_x;
+	sy = sy - visarea->min_y;
+	ey = ey - visarea->min_y;
 
 	/* point intensity is determined by the shift value */
 	if (sx == ex && sy == ey)
@@ -220,9 +221,16 @@ VIDEO_START( cinemat_qb3color )
  *
  *************************************/
 
-VIDEO_EOF( cinemat )
+VIDEO_UPDATE( cinemat )
 {
+	VIDEO_UPDATE_CALL(vector);
 	vector_clear_list();
+
+	cpuintrf_push_context(0);
+	ccpu_wdt_timer_trigger();
+	cpuintrf_pop_context();
+
+	return 0;
 }
 
 
@@ -237,7 +245,7 @@ VIDEO_UPDATE( spacewar )
 {
 	int sw_option = readinputportbytag("INPUTS");
 
-	VIDEO_UPDATE_CALL(vector);
+	VIDEO_UPDATE_CALL(cinemat);
 
 	/* set the state of the artwork */
 	output_set_value("pressed3", (~sw_option >> 0) & 1);

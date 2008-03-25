@@ -16,7 +16,7 @@
  *
  *************************************/
 
-static mame_bitmap *yboard_bitmap;
+static bitmap_t *yboard_bitmap;
 
 
 
@@ -57,7 +57,7 @@ VIDEO_UPDATE( yboard )
 	/* if no drawing is happening, fill with black and get out */
 	if (!segaic16_display_enable)
 	{
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 		return 0;
 	}
 

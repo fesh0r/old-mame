@@ -69,25 +69,24 @@ size_t shangha3_ram_size;
 int shangha3_do_shadows;
 
 static UINT16 gfxlist_addr;
-static mame_bitmap *rawbitmap;
+static bitmap_t *rawbitmap;
 
 
 
 VIDEO_START( shangha3 )
 {
-	rawbitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	rawbitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	if (shangha3_do_shadows)
 	{
 		int i;
 
 		/* Prepare the shadow table */
-		/* We draw in a raw bitmap so we don't have to remap pens through machine->pens */
 		for (i = 0;i < 14;i++)
 			gfx_drawmode_table[i] = DRAWMODE_SOURCE;
 		gfx_drawmode_table[14] = DRAWMODE_SHADOW;
 		for (i = 0;i < 128;i++)
-			machine->shadow_table[machine->pens[i]] = machine->pens[i+128];
+			machine->shadow_table[i] = i+128;
 	}
 }
 
@@ -135,7 +134,7 @@ WRITE16_HANDLER( shangha3_blitter_go_w )
 		zoomx = shangha3_ram[offs+10];
 		zoomy = shangha3_ram[offs+13];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 383 - sx - sizex;
 			sy = 255 - sy - sizey;

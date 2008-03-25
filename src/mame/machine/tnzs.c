@@ -78,9 +78,9 @@ READ8_HANDLER( tnzs_port1_r )
 
 	switch (tnzs_input_select & 0x0f)
 	{
-		case 0x0a:	data = input_port_4_r(0); break;
-		case 0x0c:	data = input_port_2_r(0); break;
-		case 0x0d:	data = input_port_3_r(0); break;
+		case 0x0a:	data = input_port_4_r(machine,0); break;
+		case 0x0c:	data = input_port_2_r(machine,0); break;
+		case 0x0d:	data = input_port_3_r(machine,0); break;
 		default:	data = 0xff; break;
 	}
 
@@ -91,7 +91,7 @@ READ8_HANDLER( tnzs_port1_r )
 
 READ8_HANDLER( tnzs_port2_r )
 {
-	int data = input_port_4_r(0);
+	int data = input_port_4_r(machine,0);
 
 //  logerror("I8742:%04x  Read %02x from port 2\n", activecpu_get_previouspc(), data);
 
@@ -552,7 +552,7 @@ DRIVER_INIT( drtoppel )
 	memcpy(&RAM[0x08000],&RAM[0x18000],0x4000);
 
 	/* drtoppel writes to the palette RAM area even if it has PROMs! We have to patch it out. */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xfbff, 0, 0, MWA8_NOP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xfbff, 0, 0, SMH_NOP);
 }
 
 DRIVER_INIT( chukatai )
@@ -613,15 +613,15 @@ READ8_HANDLER( tnzs_mcu_r )
 	{
 		case MCU_TNZS:
 		case MCU_CHUKATAI:
-			return mcu_tnzs_r(offset);
+			return mcu_tnzs_r(machine,offset);
 			break;
 		case MCU_ARKANOID:
-			return mcu_arknoid2_r(offset);
+			return mcu_arknoid2_r(machine,offset);
 			break;
 		case MCU_EXTRMATN:
 		case MCU_DRTOPPEL:
 		case MCU_PLUMPOP:
-			return mcu_extrmatn_r(offset);
+			return mcu_extrmatn_r(machine,offset);
 			break;
 		default:
 			return 0xff;
@@ -635,15 +635,15 @@ WRITE8_HANDLER( tnzs_mcu_w )
 	{
 		case MCU_TNZS:
 		case MCU_CHUKATAI:
-			mcu_tnzs_w(offset,data);
+			mcu_tnzs_w(machine,offset,data);
 			break;
 		case MCU_ARKANOID:
-			mcu_arknoid2_w(offset,data);
+			mcu_arknoid2_w(machine,offset,data);
 			break;
 		case MCU_EXTRMATN:
 		case MCU_DRTOPPEL:
 		case MCU_PLUMPOP:
-			mcu_extrmatn_w(offset,data);
+			mcu_extrmatn_w(machine,offset,data);
 			break;
 		default:
 			break;
@@ -743,7 +743,7 @@ WRITE8_HANDLER( tnzs_bankswitch1_w )
 				/* bit 2 resets the mcu */
 				if (data & 0x04)
 				{
-					if (Machine->drv->cpu[2].type == CPU_I8X41)
+					if (Machine->config->cpu[2].type == CPU_I8X41)
 						cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, PULSE_LINE);
 				}
 				/* Coin count and lockout is handled by the i8742 */

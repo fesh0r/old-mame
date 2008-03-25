@@ -41,7 +41,7 @@ PALETTE_INIT( ddrible )
 }
 
 
-static void set_pens(running_machine *machine)
+static void set_pens(colortable_t *colortable)
 {
 	int i;
 
@@ -51,7 +51,7 @@ static void set_pens(running_machine *machine)
 
 		rgb_t color = MAKE_RGB(pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
 
-		colortable_palette_set_color(machine->colortable, i >> 1, color);
+		colortable_palette_set_color(colortable, i >> 1, color);
 	}
 }
 
@@ -134,8 +134,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( ddrible )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,     8,8,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan,     8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -180,7 +180,7 @@ byte #4:    attributes
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT8* source, int lenght, int gfxset, int flipscreen )
+static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect, UINT8* source, int lenght, int gfxset, int flipscreen )
 {
 	gfx_element *gfx = machine->gfx[gfxset];
 	const UINT8 *finish = source + lenght;
@@ -252,7 +252,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( ddrible )
 {
-	set_pens(machine);
+	set_pens(screen->machine->colortable);
 
 	tilemap_set_flip(fg_tilemap, (ddribble_vregs[0][4] & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 	tilemap_set_flip(bg_tilemap, (ddribble_vregs[1][4] & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
@@ -264,8 +264,8 @@ VIDEO_UPDATE( ddrible )
 	tilemap_set_scrolly(bg_tilemap,0,ddribble_vregs[1][0]);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect,ddrible_spriteram_1,0x07d,2,ddribble_vregs[0][4] & 0x08);
-	draw_sprites(machine,bitmap,cliprect,ddrible_spriteram_2,0x140,3,ddribble_vregs[1][4] & 0x08);
+	draw_sprites(screen->machine,bitmap,cliprect,ddrible_spriteram_1,0x07d,2,ddribble_vregs[0][4] & 0x08);
+	draw_sprites(screen->machine,bitmap,cliprect,ddrible_spriteram_2,0x140,3,ddribble_vregs[1][4] & 0x08);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;
 }

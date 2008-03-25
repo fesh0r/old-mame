@@ -97,14 +97,13 @@ static VIDEO_START(galpani3)
 	skns_spc_regs = auto_malloc (0x40);
 }
 
-extern void skns_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect );
+extern void skns_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect );
 
 
 static VIDEO_UPDATE(galpani3)
 {
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
-
-	skns_draw_sprites(machine,bitmap,cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	skns_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -136,7 +135,7 @@ static INPUT_PORTS_START( galpani3 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1  ) PORT_IMPULSE(2)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2  ) PORT_IMPULSE(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE  ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT     )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED	)
@@ -373,15 +372,16 @@ static const struct YMZ280Binterface ymz280b_intf =
 static MACHINE_DRIVER_START( galpani3 )
 	MDRV_CPU_ADD_TAG("main", M68000, 16000000)	 // ? (from which clock?)
 	MDRV_CPU_PROGRAM_MAP(galpani3_map,0)
-	MDRV_CPU_VBLANK_INT(galpani3_vblank, 3)
+	MDRV_CPU_VBLANK_INT_HACK(galpani3_vblank, 3)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(0x4000)
 
 	MDRV_VIDEO_START(galpani3)

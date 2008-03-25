@@ -118,7 +118,7 @@ static INTERRUPT_GEN( grchamp_cpu1_interrupt )
 
 static WRITE8_HANDLER( cpu0_outputs_w )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	UINT8 diff = data ^ state->cpu0_out[offset];
 	state->cpu0_out[offset] = data;
 
@@ -133,7 +133,7 @@ static WRITE8_HANDLER( cpu0_outputs_w )
 			/* bit 6: FOG OUT */
 			/* bit 7: RADARON */
 			if ((diff & 0x01) && !(data & 0x01))
-				cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 			if ((diff & 0x02) && !(data & 0x02))
 				state->collide = state->collmode = 0;
 			break;
@@ -186,13 +186,13 @@ static WRITE8_HANDLER( cpu0_outputs_w )
 			break;
 
 		case 0x0d:	/* OUT13 */
-			watchdog_reset(Machine);
+			watchdog_reset(machine);
 			break;
 
 		case 0x0e:	/* OUT14 */
 			/* O-21 connector */
-			soundlatch_w(0, data);
-			cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+			soundlatch_w(machine, 0, data);
+			cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 			break;
 	}
 }
@@ -245,7 +245,7 @@ static WRITE8_HANDLER( led_board_w )
 
 static WRITE8_HANDLER( cpu1_outputs_w )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	UINT8 diff = data ^ state->cpu1_out[offset];
 	state->cpu1_out[offset] = data;
 
@@ -272,7 +272,7 @@ static WRITE8_HANDLER( cpu1_outputs_w )
 		case 0x04:	/* OUT4 */
 			/* bit 0:   interrupt enable for CPU 1 */
 			if ((diff & 0x01) && !(data & 0x01))
-				cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 			break;
 
 		case 0x05:	/* OUT5 - unused */
@@ -308,18 +308,18 @@ static WRITE8_HANDLER( cpu1_outputs_w )
 			/* bit 2-4: ATTACK UP 1-3 */
 			/* bit 5-6: SIFT 1-2 */
 			/* bit 7:   ENGINE CS */
-			discrete_sound_w(GRCHAMP_ENGINE_CS_EN, data & 0x80);
-			discrete_sound_w(GRCHAMP_SIFT_DATA, (data >> 5) & 0x03);
-			discrete_sound_w(GRCHAMP_ATTACK_UP_DATA, (data >> 2) & 0x07);
-			discrete_sound_w(GRCHAMP_IDLING_EN, data & 0x02);
-			discrete_sound_w(GRCHAMP_FOG_EN, data & 0x01);
+			discrete_sound_w(machine, GRCHAMP_ENGINE_CS_EN, data & 0x80);
+			discrete_sound_w(machine, GRCHAMP_SIFT_DATA, (data >> 5) & 0x03);
+			discrete_sound_w(machine, GRCHAMP_ATTACK_UP_DATA, (data >> 2) & 0x07);
+			discrete_sound_w(machine, GRCHAMP_IDLING_EN, data & 0x02);
+			discrete_sound_w(machine, GRCHAMP_FOG_EN, data & 0x01);
 			break;
 
 		case 0x0d: /* OUTD */
 			/* bit 0-3: ATTACK SPEED 1-4 */
 			/* bit 4-7: PLAYER SPEED 1-4 */
-			discrete_sound_w(GRCHAMP_PLAYER_SPEED_DATA, (data >> 4) & 0x0f);
-			discrete_sound_w(GRCHAMP_ATTACK_SPEED_DATA,  data & 0x0f);
+			discrete_sound_w(machine, GRCHAMP_PLAYER_SPEED_DATA, (data >> 4) & 0x0f);
+			discrete_sound_w(machine, GRCHAMP_ATTACK_SPEED_DATA,  data & 0x0f);
 			break;
 
 		default:
@@ -342,7 +342,7 @@ INLINE UINT8 get_pc3259_bits(grchamp_state *state, int offs)
 	int bits;
 
 	/* force a partial update to the current position */
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(Machine->primary_screen, video_screen_get_vpos(Machine->primary_screen));
 
 	/* get the relevant 4 bits */
 	bits = (state->collide >> (offs*4)) & 0x0f;
@@ -424,12 +424,12 @@ static READ8_HANDLER( main_to_sub_comm_r )
 
 static WRITE8_HANDLER( grchamp_portA_0_w )
 {
-	discrete_sound_w(GRCHAMP_A_DATA, data);
+	discrete_sound_w(machine, GRCHAMP_A_DATA, data);
 }
 
 static WRITE8_HANDLER( grchamp_portB_0_w )
 {
-	discrete_sound_w(GRCHAMP_B_DATA, 255-data);
+	discrete_sound_w(machine, GRCHAMP_B_DATA, 255-data);
 }
 
 static WRITE8_HANDLER( grchamp_portA_2_w )
@@ -523,7 +523,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x78) AM_READ_PORT("ACCEL")
 	AM_RANGE(0x02, 0x02) AM_MIRROR(0x78) AM_READ(sub_to_main_comm_r)
 	AM_RANGE(0x03, 0x03) AM_MIRROR(0x78) AM_READ_PORT("WHEEL")
@@ -543,16 +543,16 @@ ADDRESS_MAP_END
 /* complete memory map derived from schematics */
 static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(MRA8_RAM, grchamp_left_w) AM_BASE_MEMBER(grchamp_state, leftram)
-	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(MRA8_RAM, grchamp_right_w) AM_BASE_MEMBER(grchamp_state, rightram)
-	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(MRA8_RAM, grchamp_center_w) AM_BASE_MEMBER(grchamp_state, centerram)
+	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(SMH_RAM, grchamp_left_w) AM_BASE_MEMBER(grchamp_state, leftram)
+	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(SMH_RAM, grchamp_right_w) AM_BASE_MEMBER(grchamp_state, rightram)
+	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(SMH_RAM, grchamp_center_w) AM_BASE_MEMBER(grchamp_state, centerram)
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0400) AM_RAM
 	AM_RANGE(0x5000, 0x6fff) AM_ROM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sub_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_READ(main_to_sub_comm_r)
 	AM_RANGE(0x00, 0x0f) AM_MIRROR(0x70) AM_WRITE(cpu1_outputs_w)
 ADDRESS_MAP_END
@@ -675,13 +675,13 @@ static MACHINE_DRIVER_START( grchamp )
 	MDRV_CPU_ADD(Z80, PIXEL_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT(grchamp_cpu0_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", grchamp_cpu0_interrupt)
 
 	/* GAME BOARD */
 	MDRV_CPU_ADD(Z80, PIXEL_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
 	MDRV_CPU_IO_MAP(sub_portmap,0)
-	MDRV_CPU_VBLANK_INT(grchamp_cpu1_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", grchamp_cpu1_interrupt)
 
 	/* SOUND BOARD */
 	MDRV_CPU_ADD(Z80, SOUND_CLOCK/2)
@@ -693,10 +693,10 @@ static MACHINE_DRIVER_START( grchamp )
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_ALWAYS_UPDATE)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 	MDRV_GFXDECODE(grchamp)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 

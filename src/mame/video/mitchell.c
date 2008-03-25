@@ -52,7 +52,7 @@ VIDEO_START( pang )
 	paletteram=NULL;
 
 
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(bg_tilemap,15);
 
@@ -65,8 +65,8 @@ VIDEO_START( pang )
 	/*
         Palette RAM
     */
-	paletteram = auto_malloc(2*machine->drv->total_colors);
-	memset(paletteram, 0, 2*machine->drv->total_colors);
+	paletteram = auto_malloc(2*machine->config->total_colors);
+	memset(paletteram, 0, 2*machine->config->total_colors);
 }
 
 
@@ -119,14 +119,14 @@ READ8_HANDLER( mgakuen_objram_r )
 
 WRITE8_HANDLER( pang_videoram_w )
 {
-	if (video_bank) mgakuen_objram_w(offset,data);
-	else mgakuen_videoram_w(offset,data);
+	if (video_bank) mgakuen_objram_w(machine,offset,data);
+	else mgakuen_videoram_w(machine,offset,data);
 }
 
 READ8_HANDLER( pang_videoram_r )
 {
-	if (video_bank) return mgakuen_objram_r(offset);
-	else return mgakuen_videoram_r(offset);
+	if (video_bank) return mgakuen_objram_r(machine,offset);
+	else return mgakuen_videoram_r(machine,offset);
 }
 
 /***************************************************************************
@@ -223,8 +223,8 @@ logerror("PC %04x: pang_gfxctrl_w %02x\n",activecpu_get_pc(),data);
 
 WRITE8_HANDLER( pang_paletteram_w )
 {
-	if (paletteram_bank) paletteram_xxxxRRRRGGGGBBBB_le_w(offset + 0x800,data);
-	else paletteram_xxxxRRRRGGGGBBBB_le_w(offset,data);
+	if (paletteram_bank) paletteram_xxxxRRRRGGGGBBBB_le_w(machine,offset + 0x800,data);
+	else paletteram_xxxxRRRRGGGGBBBB_le_w(machine,offset,data);
 }
 
 READ8_HANDLER( pang_paletteram_r )
@@ -235,7 +235,7 @@ READ8_HANDLER( pang_paletteram_r )
 
 WRITE8_HANDLER( mgakuen_paletteram_w )
 {
-	paletteram_xxxxRRRRGGGGBBBB_le_w(offset,data);
+	paletteram_xxxxRRRRGGGGBBBB_le_w(machine,offset,data);
 }
 
 READ8_HANDLER( mgakuen_paletteram_r )
@@ -251,7 +251,7 @@ READ8_HANDLER( mgakuen_paletteram_r )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,sx,sy;
 
@@ -281,8 +281,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 VIDEO_UPDATE( pang )
 {
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

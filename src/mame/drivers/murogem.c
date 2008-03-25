@@ -95,17 +95,18 @@ val (hex):  27  20  22  04  26  00  20  20  00  07  00  00  80  00  00  00  ns  
 */
 
 #include "driver.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 
 static UINT8 *murogem_videoram;
 
+
 static ADDRESS_MAP_START( murogem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x007f) AM_RAM
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x4001, 0x4001) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x4000, 0x4000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x4001, 0x4001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x5000, 0x5000) AM_READ(input_port_0_r)
 	AM_RANGE(0x5800, 0x5800) AM_READ(input_port_1_r)
-	AM_RANGE(0x7000, 0x7000) AM_WRITE(MWA8_NOP) // sound? payout?
+	AM_RANGE(0x7000, 0x7000) AM_WRITE(SMH_NOP) // sound? payout?
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_BASE(&murogem_videoram)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -165,10 +166,6 @@ GFXDECODE_END
 static PALETTE_INIT(murogem)
 {}
 
-static VIDEO_START(murogem)
-{
-}
-
 static VIDEO_UPDATE(murogem)
 {
 	int xx,yy,count;
@@ -183,7 +180,7 @@ static VIDEO_UPDATE(murogem)
 			int tileno = murogem_videoram[count]&0x3f;
 			int attr = murogem_videoram[count+0x400]&0x0f;
 
-			drawgfx(bitmap,machine->gfx[0],tileno,attr,0,0,xx*8,yy*8,cliprect,TRANSPARENCY_PEN,0);
+			drawgfx(bitmap,screen->machine->gfx[0],tileno,attr,0,0,xx*8,yy*8,cliprect,TRANSPARENCY_PEN,0);
 
 			count++;
 
@@ -199,22 +196,23 @@ static MACHINE_DRIVER_START( murogem )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6802,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(murogem_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((39+1)*8, (38+1)*8)           // Taken from MC6845 init, registers 00 & 04. Normally programmed with (value-1).
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)    // Taken from MC6845 init, registers 01 & 06.
+
 	MDRV_GFXDECODE(murogem)
 	MDRV_PALETTE_LENGTH(0x100)
 
 	MDRV_PALETTE_INIT(murogem)
-	MDRV_VIDEO_START(murogem)
 	MDRV_VIDEO_UPDATE(murogem)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
 MACHINE_DRIVER_END
 
 

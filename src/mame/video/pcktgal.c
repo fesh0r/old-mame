@@ -6,7 +6,7 @@ PALETTE_INIT( pcktgal )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -20,10 +20,10 @@ PALETTE_INIT( pcktgal )
 		bit2 = (color_prom[i] >> 6) & 0x01;
 		bit3 = (color_prom[i] >> 7) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[i + machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[i + machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[i + machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[i + machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[i + machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[i + machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[i + machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[i + machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -38,7 +38,7 @@ WRITE8_HANDLER( pcktgal_videoram_w )
 
 WRITE8_HANDLER( pcktgal_flipscreen_w )
 {
-	if (flip_screen != (data & 0x80))
+	if (flip_screen_get() != (data & 0x80))
 	{
 		flip_screen_set(data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -56,10 +56,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( pcktgal )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -75,7 +75,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 			flipx = spriteram[offs+1] & 0x04;
 			flipy = spriteram[offs+1] & 0x02;
-			if (flip_screen) {
+			if (flip_screen_get()) {
 				sx=240-sx;
 				sy=240-sy;
 				if (flipx) flipx=0; else flipx=1;
@@ -95,6 +95,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( pcktgal )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

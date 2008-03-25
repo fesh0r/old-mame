@@ -81,17 +81,17 @@ static READ16_HANDLER( ioc_r )
 	switch (offset)
 	{
 		case 0x80/2:
-			return input_port_0_word_r(0,mem_mask);	/* DSW */
+			return input_port_0_word_r(machine,0,mem_mask);	/* DSW */
 
 		case 0x84/2:
-			return input_port_1_word_r(0,mem_mask);	/* IN0 */
+			return input_port_1_word_r(machine,0,mem_mask);	/* IN0 */
 
 		case 0x86/2:
-			return input_port_2_word_r(0,mem_mask);	/* IN1 */
+			return input_port_2_word_r(machine,0,mem_mask);	/* IN1 */
 
 		case 0x50:
 		case 0x51:
-			return OKIM6295_status_0_r(0)<<8;
+			return OKIM6295_status_0_r(machine,0)<<8;
 			break;
 
 	}
@@ -149,7 +149,7 @@ static WRITE16_HANDLER( ioc_w )
 		// OKIM6295
 		case 0x50:
 		case 0x51:
-			OKIM6295_data_0_w(0, data>>8);
+			OKIM6295_data_0_w(machine, 0, data>>8);
 			break;
 
 		// MSM6585 ADPCM - mini emulation
@@ -207,21 +207,21 @@ static WRITE16_HANDLER( ioc_w )
 ***********************************************************/
 
 static ADDRESS_MAP_START( gcpinbal_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0xc00000, 0xc03fff) AM_READ(gcpinbal_tilemaps_word_r)
-	AM_RANGE(0xc80000, 0xc80fff) AM_READ(MRA16_RAM)	/* sprite ram */
-	AM_RANGE(0xd00000, 0xd00fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0xc80000, 0xc80fff) AM_READ(SMH_RAM)	/* sprite ram */
+	AM_RANGE(0xd00000, 0xd00fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd80000, 0xd800ff) AM_READ(ioc_r)
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(MRA16_RAM)	/* RAM */
+	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)	/* RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gcpinbal_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc00000, 0xc03fff) AM_WRITE(gcpinbal_tilemaps_word_w) AM_BASE(&gcpinbal_tilemapram)
-	AM_RANGE(0xc80000, 0xc80fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xc80000, 0xc80fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd00000, 0xd00fff) AM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xd80000, 0xd800ff) AM_WRITE(ioc_w) AM_BASE(&gcpinbal_ioc_ram)
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -381,16 +381,16 @@ static MACHINE_DRIVER_START( gcpinbal )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 32000000/2)	/* 16 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(gcpinbal_readmem,gcpinbal_writemem)
-	MDRV_CPU_VBLANK_INT(gcpinbal_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION	/* frames per second, vblank duration */)
+	MDRV_CPU_VBLANK_INT("main", gcpinbal_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)	/* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(gcpinbal)
 	MDRV_PALETTE_LENGTH(4096)
 

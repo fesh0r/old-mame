@@ -324,13 +324,13 @@ static int K037122_vh_start(running_machine *machine, int chip)
 
 	if (chip == 0)
 	{
-		K037122_layer[chip][0] = tilemap_create(K037122_0_tile_info_layer0, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 256, 64);
-		K037122_layer[chip][1] = tilemap_create(K037122_0_tile_info_layer1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 128, 64);
+		K037122_layer[chip][0] = tilemap_create(K037122_0_tile_info_layer0, tilemap_scan_rows, 8, 8, 256, 64);
+		K037122_layer[chip][1] = tilemap_create(K037122_0_tile_info_layer1, tilemap_scan_rows, 8, 8, 128, 64);
 	}
 	else
 	{
-		K037122_layer[chip][0] = tilemap_create(K037122_1_tile_info_layer0, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 256, 64);
-		K037122_layer[chip][1] = tilemap_create(K037122_1_tile_info_layer1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 128, 64);
+		K037122_layer[chip][0] = tilemap_create(K037122_1_tile_info_layer0, tilemap_scan_rows, 8, 8, 256, 64);
+		K037122_layer[chip][1] = tilemap_create(K037122_1_tile_info_layer1, tilemap_scan_rows, 8, 8, 128, 64);
 	}
 
 	tilemap_set_transparent_pen(K037122_layer[chip][0], 0);
@@ -343,10 +343,7 @@ static int K037122_vh_start(running_machine *machine, int chip)
 	machine->gfx[K037122_gfx_index[chip]] = allocgfx(&K037122_char_layout);
 	decodegfx(machine->gfx[K037122_gfx_index[chip]], (UINT8*)K037122_char_ram[chip], 0, machine->gfx[K037122_gfx_index[chip]]->total_elements);
 
-	if (machine->drv->color_table_len)
-		machine->gfx[K037122_gfx_index[chip]]->total_colors = machine->drv->color_table_len / 16;
-	else
-		machine->gfx[K037122_gfx_index[chip]]->total_colors = machine->drv->total_colors / 16;
+	machine->gfx[K037122_gfx_index[chip]]->total_colors = machine->config->total_colors / 16;
 
 	return 0;
 }
@@ -370,18 +367,20 @@ static void K037122_tile_update(running_machine *machine, int chip)
 	}
 }
 
-static void K037122_tile_draw(int chip, mame_bitmap *bitmap, const rectangle *cliprect)
+static void K037122_tile_draw(int chip, bitmap_t *bitmap, const rectangle *cliprect)
 {
+	const rectangle *visarea = video_screen_get_visible_area(Machine->primary_screen);
+
 	if (K037122_reg[chip][0xc] & 0x10000)
 	{
-		tilemap_set_scrolldx(K037122_layer[chip][1], Machine->screen[0].visarea.min_x, Machine->screen[0].visarea.min_x);
-		tilemap_set_scrolldy(K037122_layer[chip][1], Machine->screen[0].visarea.min_y, Machine->screen[0].visarea.min_y);
+		tilemap_set_scrolldx(K037122_layer[chip][1], visarea->min_x, visarea->min_x);
+		tilemap_set_scrolldy(K037122_layer[chip][1], visarea->min_y, visarea->min_y);
 		tilemap_draw(bitmap, cliprect, K037122_layer[chip][1], 0,0);
 	}
 	else
 	{
-		tilemap_set_scrolldx(K037122_layer[chip][0], Machine->screen[0].visarea.min_x, Machine->screen[0].visarea.min_x);
-		tilemap_set_scrolldy(K037122_layer[chip][0], Machine->screen[0].visarea.min_y, Machine->screen[0].visarea.min_y);
+		tilemap_set_scrolldx(K037122_layer[chip][0], visarea->min_x, visarea->min_x);
+		tilemap_set_scrolldy(K037122_layer[chip][0], visarea->min_y, visarea->min_y);
 		tilemap_draw(bitmap, cliprect, K037122_layer[chip][0], 0,0);
 	}
 }
@@ -513,9 +512,9 @@ static VIDEO_START( hornet )
 	add_exit_callback(machine, hornet_exit);
 
 	if (voodoo_version == 0)
-		voodoo_start(0, 0, VOODOO_1, 2, 4, 0);
+		voodoo_start(0, machine->primary_screen, VOODOO_1, 2, 4, 0);
 	else
-		voodoo_start(0, 0, VOODOO_2, 2, 4, 0);
+		voodoo_start(0, machine->primary_screen, VOODOO_2, 2, 4, 0);
 
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
 
@@ -524,17 +523,20 @@ static VIDEO_START( hornet )
 
 static VIDEO_START( hornet_2board )
 {
+	const device_config *left_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "right");
+
 	add_exit_callback(machine, hornet_2board_exit);
 
 	if (voodoo_version == 0)
 	{
-		voodoo_start(0, 0, VOODOO_1, 2, 4, 0);
-		voodoo_start(1, 1, VOODOO_1, 2, 4, 0);
+		voodoo_start(0, left_screen,  VOODOO_1, 2, 4, 0);
+		voodoo_start(1, right_screen, VOODOO_1, 2, 4, 0);
 	}
 	else
 	{
-		voodoo_start(0, 0, VOODOO_2, 2, 4, 0);
-		voodoo_start(1, 1, VOODOO_2, 2, 4, 0);
+		voodoo_start(0, left_screen,  VOODOO_2, 2, 4, 0);
+		voodoo_start(1, right_screen, VOODOO_2, 2, 4, 0);
 	}
 
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
@@ -549,7 +551,7 @@ static VIDEO_UPDATE( hornet )
 {
 	voodoo_update(0, bitmap, cliprect);
 
-	K037122_tile_update(machine, 0);
+	K037122_tile_update(screen->machine, 0);
 	K037122_tile_draw(0, bitmap, cliprect);
 
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
@@ -559,11 +561,25 @@ static VIDEO_UPDATE( hornet )
 
 static VIDEO_UPDATE( hornet_2board )
 {
-	voodoo_update(screen, bitmap, cliprect);
+	const device_config *left_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
 
-	/* TODO: tilemaps per screen */
-	K037122_tile_update(machine, screen);
-	K037122_tile_draw(screen, bitmap, cliprect);
+	if (screen == left_screen)
+	{
+		voodoo_update(0, bitmap, cliprect);
+
+		/* TODO: tilemaps per screen */
+		K037122_tile_update(screen->machine, 0);
+		K037122_tile_draw(0, bitmap, cliprect);
+	}
+	else if (screen == right_screen)
+	{
+		voodoo_update(1, bitmap, cliprect);
+
+		/* TODO: tilemaps per screen */
+		K037122_tile_update(screen->machine, 1);
+		K037122_tile_draw(1, bitmap, cliprect);
+	}
 
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
 	draw_7segment_led(bitmap, 9, 3, led_reg1);
@@ -767,7 +783,7 @@ static INPUT_PORTS_START( hornet )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START
@@ -815,7 +831,7 @@ static INPUT_PORTS_START( sscope )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START
@@ -895,7 +911,6 @@ static MACHINE_DRIVER_START( hornet )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc0_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_MACHINE_RESET( hornet )
@@ -903,10 +918,12 @@ static MACHINE_DRIVER_START( hornet )
 	MDRV_NVRAM_HANDLER( timekeeper_0 )
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(hornet)
@@ -946,16 +963,17 @@ static MACHINE_DRIVER_START( hornet_2board )
 	MDRV_VIDEO_UPDATE(hornet_2board)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_PALETTE_LENGTH(65536)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_REMOVE("main")
+
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(512, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 383)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(512, 384)

@@ -84,33 +84,33 @@ static int nmi_enable = 0;
 static int sound_nmi_enable = 0;
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xd3ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd400, 0xd7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd800, 0xd8ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd900, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xd3ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd400, 0xd7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd800, 0xd8ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd900, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(kchamp_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(kchamp_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xd800, 0xd8ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xd900, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xd800, 0xd8ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xd900, 0xdfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x5fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x5fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static WRITE8_HANDLER( control_w ) {
@@ -128,8 +128,8 @@ static WRITE8_HANDLER( sound_control_w ) {
 }
 
 static WRITE8_HANDLER( sound_command_w ) {
-	soundlatch_w( 0, data );
-	cpunum_set_input_line_and_vector(Machine, 1, 0, HOLD_LINE, 0xff );
+	soundlatch_w( machine, 0, data );
+	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff );
 }
 
 static int msm_data = 0;
@@ -141,7 +141,7 @@ static WRITE8_HANDLER( sound_msm_w ) {
 }
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r) /* Player 1 controls - ACTIVE LOW */
 	AM_RANGE(0x40, 0x40) AM_READ(input_port_1_r) /* Player 2 controls - ACTIVE LOW */
 	AM_RANGE(0x80, 0x80) AM_READ(input_port_2_r) /* Coins & Start - ACTIVE LOW */
@@ -149,7 +149,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(kchamp_flipscreen_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(control_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(sound_reset_w)
@@ -157,12 +157,12 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_1_w)
@@ -176,31 +176,31 @@ ADDRESS_MAP_END
 ********************/
 
 static ADDRESS_MAP_START( kc_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xe3ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe400, 0xe7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xea00, 0xeaff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xeb00, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xe3ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe400, 0xe7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xea00, 0xeaff) AM_READ(SMH_RAM)
+	AM_RANGE(0xeb00, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(kchamp_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xe400, 0xe7ff) AM_WRITE(kchamp_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xea00, 0xeaff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xeb00, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xea00, 0xeaff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xeb00, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kc_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xe000, 0xe2ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xdfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xe000, 0xe2ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kc_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xe000, 0xe2ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xdfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xe000, 0xe2ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static READ8_HANDLER( sound_reset_r ) {
@@ -216,7 +216,7 @@ static WRITE8_HANDLER( kc_sound_control_w ) {
 }
 
 static ADDRESS_MAP_START( kc_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x90, 0x90) AM_READ(input_port_0_r) /* Player 1 controls - ACTIVE LOW */
 	AM_RANGE(0x98, 0x98) AM_READ(input_port_1_r) /* Player 2 controls - ACTIVE LOW */
 	AM_RANGE(0xa0, 0xa0) AM_READ(input_port_2_r) /* Coins & Start - ACTIVE LOW */
@@ -225,19 +225,19 @@ static ADDRESS_MAP_START( kc_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kc_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_WRITE(kchamp_flipscreen_w)
 	AM_RANGE(0x81, 0x81) AM_WRITE(control_w)
 	AM_RANGE(0xa8, 0xa8) AM_WRITE(sound_command_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kc_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x06, 0x06) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( kc_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_1_w)
@@ -444,7 +444,7 @@ static MACHINE_DRIVER_START( kchampvs )
 	MDRV_CPU_ADD(Z80, 3000000)	/* 12MHz / 4 = 3.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(kc_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kc_interrupt)
 
 	MDRV_CPU_ADD(Z80, 3000000)
 	/* audio CPU */	/* 12MHz / 4 = 3.0 MHz */
@@ -452,17 +452,17 @@ static MACHINE_DRIVER_START( kchampvs )
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 			/* irq's triggered from main cpu */
 			/* nmi's from msm5205 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(kchamp)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(256)
 
 	MDRV_PALETTE_INIT(kchamp)
 	MDRV_VIDEO_START(kchamp)
@@ -492,7 +492,7 @@ static MACHINE_DRIVER_START( kchamp )
 	MDRV_CPU_ADD(Z80, 3000000)	/* 12MHz / 4 = 3.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(kc_readmem,kc_writemem)
 	MDRV_CPU_IO_MAP(kc_readport,kc_writeport)
-	MDRV_CPU_VBLANK_INT(kc_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kc_interrupt)
 
 	MDRV_CPU_ADD(Z80, 3000000)
 	/* audio CPU */	/* 12MHz / 4 = 3.0 MHz */
@@ -501,17 +501,17 @@ static MACHINE_DRIVER_START( kchamp )
 	MDRV_CPU_PERIODIC_INT(sound_int, 125) /* Hz */
 			/* irq's triggered from main cpu */
 			/* nmi's from 125 Hz clock */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(kchamp)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(256)
 
 	MDRV_PALETTE_INIT(kchamp)
 	MDRV_VIDEO_START(kchamp)

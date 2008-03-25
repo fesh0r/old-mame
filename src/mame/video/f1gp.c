@@ -1,6 +1,7 @@
 #include "driver.h"
 #include "deprecat.h"
 #include "video/konamiic.h"
+#include "f1gp.h"
 
 
 UINT16 *f1gp_spr1vram,*f1gp_spr2vram,*f1gp_spr1cgram,*f1gp_spr2cgram;
@@ -55,8 +56,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( f1gp )
 {
-	roz_tilemap = tilemap_create(f1gp_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	fg_tilemap =  tilemap_create(get_fg_tile_info,      tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	roz_tilemap = tilemap_create(f1gp_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap =  tilemap_create(get_fg_tile_info,      tilemap_scan_rows, 8, 8,64,32);
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, -58, -2);
@@ -71,8 +72,8 @@ VIDEO_START( f1gp )
 
 VIDEO_START( f1gpb )
 {
-	roz_tilemap = tilemap_create(f1gp_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	fg_tilemap =  tilemap_create(get_fg_tile_info,      tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	roz_tilemap = tilemap_create(f1gp_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap =  tilemap_create(get_fg_tile_info,      tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0xff);
 
@@ -84,8 +85,8 @@ VIDEO_START( f1gpb )
 
 VIDEO_START( f1gp2 )
 {
-	roz_tilemap = tilemap_create(f1gp2_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	fg_tilemap =  tilemap_create(get_fg_tile_info,       tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	roz_tilemap = tilemap_create(f1gp2_get_roz_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap =  tilemap_create(get_fg_tile_info,       tilemap_scan_rows, 8, 8,64,32);
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, -48, -21);
@@ -190,7 +191,7 @@ WRITE16_HANDLER( f1gp2_gfxctrl_w )
 
 ***************************************************************************/
 
-static void f1gp_draw_sprites(running_machine *machine,mame_bitmap *bitmap,const rectangle *cliprect,int chip,int primask)
+static void f1gp_draw_sprites(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect,int chip,int primask)
 {
 	int attr_start,first;
 	UINT16 *spram = chip ? f1gp_spr2vram : f1gp_spr1vram;
@@ -261,7 +262,7 @@ static void f1gp_draw_sprites(running_machine *machine,mame_bitmap *bitmap,const
 	}
 }
 
-static void f1gpb_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void f1gpb_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int attr_start, start_offset = spriteram_size/2 - 4;
 
@@ -341,7 +342,7 @@ VIDEO_UPDATE( f1gp )
 			if (dirtychar[i])
 			{
 				dirtychar[i] = 0;
-				decodechar(machine->gfx[3],i,(UINT8 *)zoomdata);
+				decodechar(screen->machine->gfx[3],i,(UINT8 *)zoomdata);
 			}
 		}
 
@@ -359,13 +360,13 @@ VIDEO_UPDATE( f1gp )
 	/* quick kludge for "continue" screen priority */
 	if (gfxctrl == 0x00)
 	{
-		f1gp_draw_sprites(machine,bitmap,cliprect,0,0x02);
-		f1gp_draw_sprites(machine,bitmap,cliprect,1,0x02);
+		f1gp_draw_sprites(screen->machine,bitmap,cliprect,0,0x02);
+		f1gp_draw_sprites(screen->machine,bitmap,cliprect,1,0x02);
 	}
 	else
 	{
-		f1gp_draw_sprites(machine,bitmap,cliprect,0,0x00);
-		f1gp_draw_sprites(machine,bitmap,cliprect,1,0x02);
+		f1gp_draw_sprites(screen->machine,bitmap,cliprect,0,0x00);
+		f1gp_draw_sprites(screen->machine,bitmap,cliprect,1,0x02);
 	}
 	return 0;
 }
@@ -386,7 +387,7 @@ VIDEO_UPDATE( f1gpb )
 			if (dirtychar[i])
 			{
 				dirtychar[i] = 0;
-				decodechar(machine->gfx[3],i,(UINT8 *)zoomdata);
+				decodechar(screen->machine->gfx[3],i,(UINT8 *)zoomdata);
 			}
 		}
 
@@ -410,13 +411,13 @@ VIDEO_UPDATE( f1gpb )
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
 
-	f1gpb_draw_sprites(machine,bitmap,cliprect);
+	f1gpb_draw_sprites(screen->machine,bitmap,cliprect);
 
 	return 0;
 }
 
 
-static void f1gp2_draw_sprites(running_machine *machine,mame_bitmap *bitmap,const rectangle *cliprect)
+static void f1gp2_draw_sprites(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -492,27 +493,25 @@ static void f1gp2_draw_sprites(running_machine *machine,mame_bitmap *bitmap,cons
 VIDEO_UPDATE( f1gp2 )
 {
 	if (gfxctrl & 4)	/* blank screen */
-	{
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
-	}
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	else
 	{
 		switch (gfxctrl & 3)
 		{
 			case 0:
 				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,TILEMAP_DRAW_OPAQUE,0);
-				f1gp2_draw_sprites(machine,bitmap,cliprect);
+				f1gp2_draw_sprites(screen->machine,bitmap,cliprect);
 				tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 				break;
 			case 1:
 				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,TILEMAP_DRAW_OPAQUE,0);
 				tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-				f1gp2_draw_sprites(machine,bitmap,cliprect);
+				f1gp2_draw_sprites(screen->machine,bitmap,cliprect);
 				break;
 			case 2:
 				tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_OPAQUE,0);
 				K053936_0_zoom_draw(bitmap,cliprect,roz_tilemap,0,0);
-				f1gp2_draw_sprites(machine,bitmap,cliprect);
+				f1gp2_draw_sprites(screen->machine,bitmap,cliprect);
 				break;
 #ifdef MAME_DEBUG
 			case 3:

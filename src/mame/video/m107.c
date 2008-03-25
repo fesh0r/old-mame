@@ -133,7 +133,7 @@ VIDEO_START( m107 )
 		pf_layer_info *layer = &pf_layer[laynum];
 
 		/* allocate a tilemaps per layer */
-		layer->tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,64);
+		layer->tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows,  8,8, 64,64);
 
 		/* set the user data to point to the layer */
 		tilemap_set_user_data(layer->tmap, &pf_layer[laynum]);
@@ -153,7 +153,7 @@ VIDEO_START( m107 )
 
 /*****************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
 {
 	int offs;
 
@@ -273,7 +273,7 @@ static void m107_update_scroll_positions(void)
 
 /*****************************************************************************/
 
-static void m107_screenrefresh(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void m107_screenrefresh(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if ((~m107_control[0x0b] >> 7) & 1)
 	{
@@ -281,7 +281,7 @@ static void m107_screenrefresh(running_machine *machine, mame_bitmap *bitmap, co
 		tilemap_draw(bitmap, cliprect, pf_layer[3].tmap, 1, 0);
 	}
 	else
-		fillbitmap(bitmap, machine->pens[0], cliprect);
+		fillbitmap(bitmap, 0, cliprect);
 
 	tilemap_draw(bitmap, cliprect, pf_layer[2].tmap, 0, 0);
 	tilemap_draw(bitmap, cliprect, pf_layer[2].tmap, 1, 0);
@@ -314,7 +314,7 @@ WRITE16_HANDLER( m107_spritebuffer_w )
 VIDEO_UPDATE( m107 )
 {
 	m107_update_scroll_positions();
-	m107_screenrefresh(machine, bitmap, cliprect);
+	m107_screenrefresh(screen->machine, bitmap, cliprect);
 	return 0;
 }
 

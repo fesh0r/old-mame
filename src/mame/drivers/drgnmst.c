@@ -70,8 +70,8 @@ static READ8_HANDLER( drgnmst_snd_command_r )
 
 	switch (drgnmst_oki_control & 0x1f)
 	{
-		case 0x12:	data = (OKIM6295_status_1_r(0) & 0x0f); break;
-		case 0x16:	data = (OKIM6295_status_0_r(0) & 0x0f); break;
+		case 0x12:	data = (OKIM6295_status_1_r(machine, 0) & 0x0f); break;
+		case 0x16:	data = (OKIM6295_status_0_r(machine, 0) & 0x0f); break;
 		case 0x0b:
 		case 0x0f:	data = drgnmst_snd_command; break;
 		default:	break;
@@ -151,12 +151,12 @@ static WRITE8_HANDLER( drgnmst_snd_control_w )
 		case 0x11:
 //                  logerror("Writing %02x to OKI1",drgnmst_oki_command);
 //                  logerror(", PortC=%02x, Code=%02x, Bank0=%01x, Bank1=%01x\n",drgnmst_oki_control,drgnmst_snd_command,drgnmst_oki0_bank,drgnmst_oki1_bank);
-					OKIM6295_data_1_w(0, drgnmst_oki_command);
+					OKIM6295_data_1_w(machine, 0, drgnmst_oki_command);
 					break;
 		case 0x15:
 //                  logerror("Writing %02x to OKI0",drgnmst_oki_command);
 //                  logerror(", PortC=%02x, Code=%02x, Bank0=%01x, Bank1=%01x\n",drgnmst_oki_control,drgnmst_snd_command,drgnmst_oki0_bank,drgnmst_oki1_bank);
-					OKIM6295_data_0_w(0, drgnmst_oki_command);
+					OKIM6295_data_0_w(machine, 0, drgnmst_oki_command);
 					break;
 		default:	break;
 	}
@@ -178,18 +178,18 @@ static ADDRESS_MAP_START( drgnmst_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x80001a, 0x80001b) AM_READ(input_port_2_word_r)
 	AM_RANGE(0x80001c, 0x80001d) AM_READ(input_port_3_word_r)
 	AM_RANGE(0x800030, 0x800031) AM_WRITE(drgnmst_coin_w)
-	AM_RANGE(0x800100, 0x80011f) AM_WRITE(MWA16_RAM) AM_BASE(&drgnmst_vidregs)
+	AM_RANGE(0x800100, 0x80011f) AM_WRITE(SMH_RAM) AM_BASE(&drgnmst_vidregs)
 	AM_RANGE(0x800120, 0x800121) AM_WRITENOP
 	AM_RANGE(0x80014a, 0x80014b) AM_WRITENOP
-	AM_RANGE(0x800154, 0x800155) AM_WRITE(MWA16_RAM) AM_BASE(&drgnmst_vidregs2) // seems to be priority control
+	AM_RANGE(0x800154, 0x800155) AM_WRITE(SMH_RAM) AM_BASE(&drgnmst_vidregs2) // seems to be priority control
 	AM_RANGE(0x800176, 0x800177) AM_READ(input_port_4_word_r)
 	AM_RANGE(0x800180, 0x800181) AM_WRITE(drgnmst_snd_command_w)
 	AM_RANGE(0x800188, 0x800189) AM_WRITE(drgnmst_snd_flag_w)
 	AM_RANGE(0x8001e0, 0x8001e1) AM_WRITENOP
-	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(MRA16_RAM, paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x904000, 0x907fff) AM_READWRITE(MRA16_RAM, drgnmst_md_videoram_w) AM_BASE(&drgnmst_md_videoram)
-	AM_RANGE(0x908000, 0x90bfff) AM_READWRITE(MRA16_RAM, drgnmst_bg_videoram_w) AM_BASE(&drgnmst_bg_videoram)
-	AM_RANGE(0x90c000, 0x90ffff) AM_READWRITE(MRA16_RAM, drgnmst_fg_videoram_w) AM_BASE(&drgnmst_fg_videoram)
+	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(SMH_RAM, paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x904000, 0x907fff) AM_READWRITE(SMH_RAM, drgnmst_md_videoram_w) AM_BASE(&drgnmst_md_videoram)
+	AM_RANGE(0x908000, 0x90bfff) AM_READWRITE(SMH_RAM, drgnmst_bg_videoram_w) AM_BASE(&drgnmst_bg_videoram)
+	AM_RANGE(0x90c000, 0x90ffff) AM_READWRITE(SMH_RAM, drgnmst_fg_videoram_w) AM_BASE(&drgnmst_fg_videoram)
 	AM_RANGE(0x920000, 0x923fff) AM_RAM AM_BASE(&drgnmst_rowscrollram) // rowscroll ram
 	AM_RANGE(0x930000, 0x9307ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
@@ -360,21 +360,22 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( drgnmst )
 	MDRV_CPU_ADD(M68000, 12000000) /* Confirmed */
 	MDRV_CPU_PROGRAM_MAP(drgnmst_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_CPU_ADD(PIC16C55, 32000000/8)	/* Confirmed */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(drgnmst_sound_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_GFXDECODE(drgnmst)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, 56*8-1, 2*8, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(0x2000)
 
 	MDRV_VIDEO_START(drgnmst)

@@ -120,7 +120,7 @@ static WRITE8_HANDLER( jrpacman_interrupt_vector_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x47ff) AM_READWRITE(MRA8_RAM, jrpacman_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x4000, 0x47ff) AM_READWRITE(SMH_RAM, jrpacman_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4800, 0x4fef) AM_RAM
 	AM_RANGE(0x4ff0, 0x4fff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x5000, 0x503f) AM_READ(input_port_0_r)	/* IN0 */
@@ -129,7 +129,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5003, 0x5003) AM_WRITE(pacman_flipscreen_w)
 	AM_RANGE(0x5040, 0x507f) AM_READ(input_port_1_r)	/* IN1 */
 	AM_RANGE(0x5040, 0x505f) AM_WRITE(pacman_sound_w) AM_BASE(&pacman_soundregs)
-	AM_RANGE(0x5060, 0x506f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)
+	AM_RANGE(0x5060, 0x506f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)
 	AM_RANGE(0x5070, 0x5070) AM_WRITE(pengo_palettebank_w)
 	AM_RANGE(0x5071, 0x5071) AM_WRITE(pengo_colortablebank_w)
 	AM_RANGE(0x5073, 0x5073) AM_WRITE(jrpacman_bgpriority_w)
@@ -137,13 +137,13 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5075, 0x5075) AM_WRITE(jrpacman_spritebank_w)
 	AM_RANGE(0x5080, 0x50bf) AM_READ(input_port_2_r)	/* DSW1 */
 	AM_RANGE(0x5080, 0x5080) AM_WRITE(jrpacman_scroll_w)
-	AM_RANGE(0x50c0, 0x50c0) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x50c0, 0x50c0) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x8000, 0xdfff) AM_ROM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0, 0) AM_WRITE(jrpacman_interrupt_vector_w)
 ADDRESS_MAP_END
 
@@ -269,16 +269,16 @@ static MACHINE_DRIVER_START( jrpacman )
 	MDRV_CPU_ADD(Z80, 18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(jrpacman)
 	MDRV_PALETTE_LENGTH(128*4)
 

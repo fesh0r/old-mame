@@ -364,7 +364,7 @@ static ADDRESS_MAP_START( mem_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(AY8910_control_port_0_w)
@@ -462,7 +462,7 @@ static VIDEO_START(dwarfd)
 {
 }
 
-static void drawCrt(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void drawCrt(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int x,y;
 	for (y=0;y<maxy;y++)
@@ -530,8 +530,8 @@ static void drawCrt(running_machine *machine, mame_bitmap *bitmap,const rectangl
 
 static VIDEO_UPDATE( dwarfd )
 {
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
-	drawCrt(machine,bitmap,cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	drawCrt(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -690,15 +690,16 @@ static MACHINE_DRIVER_START( dwarfd )
 	MDRV_CPU_PROGRAM_MAP(mem_map, 0)
 	MDRV_CPU_IO_MAP(io_map, 0)
 
-	MDRV_CPU_VBLANK_INT(dwarfd_interrupt,NUM_LINES+4) //16 +vblank + 1 unused
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(dwarfd_interrupt,NUM_LINES+4) //16 +vblank + 1 unused
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(272*2, 200)
 	MDRV_SCREEN_VISIBLE_AREA(0, 272*2-1, 0, 200-1)
+
 	MDRV_GFXDECODE(dwarfd)
 	MDRV_PALETTE_LENGTH(0x100)
 	MDRV_PALETTE_INIT(dwarfd)

@@ -117,7 +117,7 @@ static READ8_HANDLER( sound_ack_r )
 
 static READ8_HANDLER( mainsnk_port_0_r )
 {
-	int result = input_port_0_r( 0 );
+	int result = input_port_0_r( machine, 0 );
 	if( !sound_cpu_ready ) result |= 0x20;
 	return result;
 }
@@ -132,10 +132,10 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc500, 0xc500) AM_READ(input_port_4_r)
 	AM_RANGE(0xc600, 0xc600) AM_WRITE(mainsnk_c600_w)
 	AM_RANGE(0xc700, 0xc700) AM_WRITE(sound_command_w)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_RAM, mainsnk_bgram_w) AM_BASE(&mainsnk_bgram)
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, mainsnk_bgram_w) AM_BASE(&mainsnk_bgram)
 	AM_RANGE(0xdc00, 0xe7ff) AM_RAM
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&spriteram)
-	AM_RANGE(0xf000, 0xf3ff) AM_READWRITE(MRA8_RAM, mainsnk_fgram_w) AM_BASE(&mainsnk_fgram)
+	AM_RANGE(0xf000, 0xf3ff) AM_READWRITE(SMH_RAM, mainsnk_fgram_w) AM_BASE(&mainsnk_fgram)
 	AM_RANGE(0xf400, 0xf7ff) AM_RAM
 ADDRESS_MAP_END
 
@@ -152,7 +152,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READNOP
 ADDRESS_MAP_END
 
@@ -374,7 +374,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( mainsnk )
 	MDRV_CPU_ADD(Z80, 3360000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,4000000)
 	/* audio CPU */
@@ -382,13 +382,15 @@ static MACHINE_DRIVER_START( mainsnk )
  	MDRV_CPU_IO_MAP(sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 244)
 
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_GFXDECODE(mainsnk)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(34*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 0*8, 27*8-1)
+
 	MDRV_PALETTE_LENGTH((16+2)*16)
 
 	MDRV_VIDEO_START(mainsnk)
@@ -412,6 +414,7 @@ static MACHINE_DRIVER_START( canvas )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(mainsnk)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 32*8-1, 0*8, 27*8-1)
 
 	MDRV_VIDEO_UPDATE(canvas)

@@ -164,7 +164,7 @@ WRITE16_HANDLER( darkseal_palette_24bit_b_w )
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -179,7 +179,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 		x = buffered_spriteram16[offs+2];
 
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		colour = (x >> 9) &0x1f;
 
@@ -251,7 +251,7 @@ WRITE16_HANDLER( darkseal_pf3_data_w )
 
 WRITE16_HANDLER( darkseal_pf3b_data_w ) /* Mirror */
 {
-	darkseal_pf3_data_w(offset+0x800,data,mem_mask);
+	darkseal_pf3_data_w(machine,offset+0x800,data,mem_mask);
 }
 
 WRITE16_HANDLER( darkseal_control_0_w )
@@ -268,9 +268,9 @@ WRITE16_HANDLER( darkseal_control_1_w )
 
 VIDEO_START( darkseal )
 {
-	pf1_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
-	pf2_tilemap = tilemap_create(get_bg_tile_info2,darkseal_scan,    TILEMAP_TYPE_PEN,16,16,64,64);
-	pf3_tilemap = tilemap_create(get_bg_tile_info3,darkseal_scan,    TILEMAP_TYPE_PEN,     16,16,64,64);
+	pf1_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8,64,64);
+	pf2_tilemap = tilemap_create(get_bg_tile_info2,darkseal_scan,    16,16,64,64);
+	pf3_tilemap = tilemap_create(get_bg_tile_info3,darkseal_scan,         16,16,64,64);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf2_tilemap,0);
@@ -304,7 +304,7 @@ VIDEO_UPDATE( darkseal )
 
 	tilemap_draw(bitmap,cliprect,pf3_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	return 0;
 }

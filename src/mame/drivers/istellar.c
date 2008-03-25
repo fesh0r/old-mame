@@ -70,7 +70,7 @@ static VIDEO_UPDATE( istellar )
 		{
 			int current_screen_character = (chary*32) + charx;
 
-			drawgfx(bitmap, machine->gfx[0],
+			drawgfx(bitmap, screen->machine->gfx[0],
 					tile_ram[current_screen_character],
 					(tile_control_ram[current_screen_character] & 0x0f),
 					0, 0, charx*8, chary*8, cliprect, TRANSPARENCY_PEN, 0);
@@ -175,7 +175,7 @@ ADDRESS_MAP_END
 
 /* IO MAPS */
 static ADDRESS_MAP_START( z80_0_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00,0x00) AM_READ_PORT("IN0")
 	AM_RANGE(0x02,0x02) AM_READ_PORT("DSW1")
 	AM_RANGE(0x03,0x03) AM_READ_PORT("DSW2")
@@ -184,14 +184,14 @@ static ADDRESS_MAP_START( z80_0_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_1_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00,0x00) AM_NOP /*AM_READWRITE(z80_1_slatch_read,z80_1_slatch_write)*/
 	AM_RANGE(0x01,0x01) AM_NOP /*AM_READWRITE(z80_1_nmienable,z80_1_soundwrite_front)*/
 	AM_RANGE(0x02,0x02) AM_NOP /*AM_WRITE(z80_1_soundwrite_rear)*/
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_2_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00,0x00) AM_READWRITE(z80_2_ldp_read,z80_2_ldp_write)
 	AM_RANGE(0x01,0x01) AM_READWRITE(z80_2_latch2_read,z80_2_latch1_write)
 	AM_RANGE(0x02,0x02) AM_READ(z80_2_nmienable)
@@ -260,7 +260,7 @@ static PALETTE_INIT( istellar )
 	int i;
 
 	/* Oddly enough, the top 4 bits of each byte is 0 */
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int r,g,b;
 		int bit0,bit1,bit2,bit3;
@@ -333,7 +333,7 @@ static MACHINE_DRIVER_START( istellar )
 	MDRV_CPU_ADD(Z80, GUESSED_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(z80_0_mem,0)
 	MDRV_CPU_IO_MAP(z80_0_io,0)
-	MDRV_CPU_VBLANK_INT(vblank_callback_istellar, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_callback_istellar)
 
 /*  sound cpu */
 	MDRV_CPU_ADD(Z80, GUESSED_CLOCK)
@@ -348,11 +348,11 @@ static MACHINE_DRIVER_START( istellar )
 	MDRV_MACHINE_START(istellar)
 
 /*  video */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 

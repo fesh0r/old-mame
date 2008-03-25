@@ -147,8 +147,8 @@ static WRITE8_HANDLER( chinagat_sub_IRQ_w )
 
 static WRITE8_HANDLER( chinagat_cpu_sound_cmd_w )
 {
-	soundlatch_w( offset, data );
-	cpunum_set_input_line(Machine, 2, sound_irq, (sound_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
+	soundlatch_w( machine, offset, data );
+	cpunum_set_input_line(machine, 2, sound_irq, (sound_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 }
 
 static READ8_HANDLER( saiyugb1_mcu_command_r )
@@ -264,18 +264,18 @@ static void saiyugb1_m5205_irq_w(int num)
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(MRA8_RAM, ddragon_fgvideoram_w) AM_BASE(&ddragon_fgvideoram)
-	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(MRA8_RAM, ddragon_bgvideoram_w) AM_BASE(&ddragon_bgvideoram)
+	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(SMH_RAM, ddragon_fgvideoram_w) AM_BASE(&ddragon_fgvideoram)
+	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(SMH_RAM, ddragon_bgvideoram_w) AM_BASE(&ddragon_bgvideoram)
 	AM_RANGE(0x3000, 0x317f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split1_w) AM_BASE(&paletteram)
 	AM_RANGE(0x3400, 0x357f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split2_w) AM_BASE(&paletteram_2)
-	AM_RANGE(0x3800, 0x397f) AM_WRITE(MWA8_BANK3) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x3800, 0x397f) AM_WRITE(SMH_BANK3) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x3e00, 0x3e00) AM_WRITE(chinagat_cpu_sound_cmd_w)
-//  AM_RANGE(0x3e01, 0x3e01) AM_WRITE(MWA8_NOP)
-//  AM_RANGE(0x3e02, 0x3e02) AM_WRITE(MWA8_NOP)
-//  AM_RANGE(0x3e03, 0x3e03) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0x3e01, 0x3e01) AM_WRITE(SMH_NOP)
+//  AM_RANGE(0x3e02, 0x3e02) AM_WRITE(SMH_NOP)
+//  AM_RANGE(0x3e03, 0x3e03) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x3e04, 0x3e04) AM_WRITE(chinagat_sub_IRQ_w)
-	AM_RANGE(0x3e06, 0x3e06) AM_WRITE(MWA8_RAM) AM_BASE(&ddragon_scrolly_lo)
-	AM_RANGE(0x3e07, 0x3e07) AM_WRITE(MWA8_RAM) AM_BASE(&ddragon_scrollx_lo)
+	AM_RANGE(0x3e06, 0x3e06) AM_WRITE(SMH_RAM) AM_BASE(&ddragon_scrolly_lo)
+	AM_RANGE(0x3e07, 0x3e07) AM_WRITE(SMH_RAM) AM_BASE(&ddragon_scrollx_lo)
 	AM_RANGE(0x3f00, 0x3f00) AM_WRITE(chinagat_video_ctrl_w)
 	AM_RANGE(0x3f01, 0x3f01) AM_WRITE(chinagat_bankswitch_w)
 	AM_RANGE(0x3f00, 0x3f00) AM_READ(input_port_0_r)
@@ -290,9 +290,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(chinagat_sub_bankswitch_w)
-	AM_RANGE(0x2800, 0x2800) AM_WRITE(MWA8_RAM) /* Called on CPU start and after return from jump table */
-//  AM_RANGE(0x2a2b, 0x2a2b) AM_READ(MRA8_NOP) /* What lives here? */
-//  AM_RANGE(0x2a30, 0x2a30) AM_READ(MRA8_NOP) /* What lives here? */
+	AM_RANGE(0x2800, 0x2800) AM_WRITE(SMH_RAM) /* Called on CPU start and after return from jump table */
+//  AM_RANGE(0x2a2b, 0x2a2b) AM_READ(SMH_NOP) /* What lives here? */
+//  AM_RANGE(0x2a30, 0x2a30) AM_READ(SMH_NOP) /* What lives here? */
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(4)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -318,8 +318,8 @@ static ADDRESS_MAP_START( ym2203c_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0x8803, 0x8803) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0x8804, 0x8804) AM_READWRITE(YM2203_status_port_1_r,  YM2203_control_port_1_w)
 	AM_RANGE(0x8805, 0x8805) AM_WRITE(YM2203_write_port_1_w)
-//  AM_RANGE(0x8804, 0x8804) AM_WRITE(MWA8_RAM)
-//  AM_RANGE(0x8805, 0x8805) AM_WRITE(MWA8_RAM)
+//  AM_RANGE(0x8804, 0x8804) AM_WRITE(SMH_RAM)
+//  AM_RANGE(0x8805, 0x8805) AM_WRITE(SMH_RAM)
 
 //  AM_RANGE(0x8800, 0x8800) AM_WRITE(YM2151_register_port_0_w)
 //  AM_RANGE(0x8801, 0x8801) AM_WRITE(YM2151_data_port_0_w)
@@ -495,7 +495,7 @@ static MACHINE_DRIVER_START( chinagat )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(HD6309,12000000/2)		/* 1.5 MHz (12MHz oscillator ???) */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(chinagat_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", chinagat_interrupt)
 
 	MDRV_CPU_ADD(HD6309,12000000/2)		/* 1.5 MHz (12MHz oscillator ???) */
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
@@ -503,17 +503,18 @@ static MACHINE_DRIVER_START( chinagat )
 	MDRV_CPU_ADD(Z80, 3579545)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(56)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100) /* heavy interleaving to sync up sprite<->main cpu's */
 
 	MDRV_MACHINE_RESET(chinagat)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 1*8, 29*8-1)
+
 	MDRV_GFXDECODE(chinagat)
 	MDRV_PALETTE_LENGTH(384)
 
@@ -538,7 +539,7 @@ static MACHINE_DRIVER_START( saiyugb1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809,12000000/8)		/* 68B09EP 1.5 MHz (12MHz oscillator) */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(chinagat_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", chinagat_interrupt)
 
 	MDRV_CPU_ADD(M6809,12000000/8)		/* 68B09EP 1.5 MHz (12MHz oscillator) */
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
@@ -550,17 +551,18 @@ static MACHINE_DRIVER_START( saiyugb1 )
 	MDRV_CPU_PROGRAM_MAP(i8748_map,0)
 	MDRV_CPU_IO_MAP(i8748_portmap,0)
 
-	MDRV_SCREEN_REFRESH_RATE(56)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* heavy interleaving to sync up sprite<->main cpu's */
 
 	MDRV_MACHINE_RESET(chinagat)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 1*8, 29*8-1)
+
 	MDRV_GFXDECODE(chinagat)
 	MDRV_PALETTE_LENGTH(384)
 
@@ -585,7 +587,7 @@ static MACHINE_DRIVER_START( saiyugb2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809,12000000/8)		/* 1.5 MHz (12MHz oscillator) */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(chinagat_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", chinagat_interrupt)
 
 	MDRV_CPU_ADD(M6809,12000000/8)		/* 1.5 MHz (12MHz oscillator) */
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
@@ -593,17 +595,18 @@ static MACHINE_DRIVER_START( saiyugb2 )
 	MDRV_CPU_ADD(Z80, 3579545)		/* 3.579545 MHz oscillator */
 	MDRV_CPU_PROGRAM_MAP(ym2203c_sound_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(56)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100) /* heavy interleaving to sync up sprite<->main cpu's */
 
 	MDRV_MACHINE_RESET(chinagat)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 1*8, 29*8-1)
+
 	MDRV_GFXDECODE(chinagat)
 	MDRV_PALETTE_LENGTH(384)
 

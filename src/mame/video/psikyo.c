@@ -170,48 +170,48 @@ VIDEO_START( psikyo )
 
 	tilemap_0_size0	=	tilemap_create(	get_tile_info_0,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x20, 0x80 );
 	tilemap_0_size1	=	tilemap_create(	get_tile_info_0,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x40, 0x40 );
 
 	tilemap_0_size2	=	tilemap_create(	get_tile_info_0,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x80, 0x20 );
 
 	tilemap_0_size3	=	tilemap_create(	get_tile_info_0,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x100, 0x10 );
 
 	tilemap_1_size0	=	tilemap_create(	get_tile_info_1,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x20, 0x80 );
 
 	tilemap_1_size1	=	tilemap_create(	get_tile_info_1,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x40, 0x40 );
 
 	tilemap_1_size2	=	tilemap_create(	get_tile_info_1,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x80, 0x20 );
 
 	tilemap_1_size3	=	tilemap_create(	get_tile_info_1,
 									tilemap_scan_rows,
-									TILEMAP_TYPE_PEN,
+
 									16,16,
 									0x100, 0x10 );
 
@@ -289,7 +289,7 @@ Note:   Not all sprites are displayed: in the top part of spriteram
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int trans_pen)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int trans_pen)
 {
 	/* tile layers 0 & 1 have priorities 1 & 2 */
 	static const int pri[] = { 0, 0xfc, 0xff, 0xff };
@@ -301,8 +301,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	UINT8 *TILES	=	memory_region(REGION_USER1);	// Sprites LUT
 	int TILES_LEN			=	memory_region_length(REGION_USER1);
 
-	int width	=	machine->screen[0].width;
-	int height	=	machine->screen[0].height;
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
 	/* Exit if sprites are disabled */
 	if ( spritelist[ BYTE_XOR_BE((0x800-2)/2) ] & 1 )	return;
@@ -359,7 +359,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		zoomy = 32 - zoomy;
 
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			x = width  - x - (nx * zoomx)/2;
 			y = height - y - (ny * zoomy)/2;
@@ -576,7 +576,7 @@ VIDEO_UPDATE( psikyo )
 	tilemap_set_transparent_pen(tilemap_1_size2,(layer1_ctrl & 8 ?0:15));
 	tilemap_set_transparent_pen(tilemap_1_size3,(layer1_ctrl & 8 ?0:15));
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	fillbitmap(priority_bitmap,0,cliprect);
 
@@ -587,7 +587,7 @@ VIDEO_UPDATE( psikyo )
 		tilemap_draw(bitmap,cliprect,tmptilemap1, layer1_ctrl & 2 ? TILEMAP_DRAW_OPAQUE : 0, 2);
 
 	if (layers_ctrl & 4)
-		draw_sprites(machine, bitmap,cliprect,(spr_ctrl & 4 ? 0 : 15));
+		draw_sprites(screen->machine, bitmap,cliprect,(spr_ctrl & 4 ? 0 : 15));
 
 	return 0;
 }

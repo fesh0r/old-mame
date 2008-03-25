@@ -99,7 +99,7 @@ static VIDEO_UPDATE( lgp )
 
 			/* Somewhere there's a flag that offsets the tilemap by 0x100*x */
 			/* Palette is likely set somewhere as well (tile_control_ram?) */
-			drawgfx(bitmap, machine->gfx[0],
+			drawgfx(bitmap, screen->machine->gfx[0],
 					tile_ram[current_screen_character],
 					0,
 					0, 0, charx*8, chary*8, cliprect, TRANSPARENCY_PEN, 0);
@@ -153,13 +153,13 @@ ADDRESS_MAP_END
 
 /* IO MAPS */
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0xfd,0xfd) AM_READ_PORT("IN_TEST")
 //  AM_RANGE(0xfe,0xfe) AM_READ_PORT("IN_TEST")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
 
 
@@ -345,7 +345,7 @@ static MACHINE_DRIVER_START( lgp )
 	MDRV_CPU_ADD(Z80, CPU_PCB_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_program_map,0)
 	MDRV_CPU_IO_MAP(main_io_map,0)
-	MDRV_CPU_VBLANK_INT(vblank_callback_lgp, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_callback_lgp)
 
 /*  sound cpu */
 	MDRV_CPU_ADD(Z80, SOUND_PCB_CLOCK)
@@ -355,10 +355,11 @@ static MACHINE_DRIVER_START( lgp )
 	MDRV_MACHINE_START(lgp)
 
 /*  video */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 

@@ -61,9 +61,9 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( msisaac )
 {
-	background  = tilemap_create(get_bg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
-	background2 = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	foreground  = tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	background  = tilemap_create(get_bg_tile_info, tilemap_scan_rows,     8,8,32,32);
+	background2 = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,8,8,32,32);
+	foreground  = tilemap_create(get_fg_tile_info, tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(background2,0);
 	tilemap_set_transparent_pen(foreground,0);
@@ -157,7 +157,7 @@ WRITE8_HANDLER( msisaac_fg_videoram_w )
   Display refresh
 
 ***************************************************************************/
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const UINT8 *source = spriteram+32*4-4;
 	const UINT8 *finish = spriteram; /* ? */
@@ -244,7 +244,7 @@ VIDEO_UPDATE( msisaac )
 {
 	tilemap_draw(bitmap,cliprect,background, 0,0);
 	tilemap_draw(bitmap,cliprect,background2,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,foreground, 0,0);
 	return 0;
 }

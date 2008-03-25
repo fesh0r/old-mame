@@ -9,7 +9,7 @@ extern UINT16 *sslam_spriteram, *sslam_regs;
 
 static int sprites_x_offset;
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[0];
 	UINT16 *source = sslam_spriteram;
@@ -142,9 +142,9 @@ WRITE16_HANDLER( powerbls_bg_tileram_w )
 
 VIDEO_START(sslam)
 {
-	sslam_bg_tilemap = tilemap_create(get_sslam_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	sslam_md_tilemap = tilemap_create(get_sslam_md_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	sslam_tx_tilemap = tilemap_create(get_sslam_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	sslam_bg_tilemap = tilemap_create(get_sslam_bg_tile_info,tilemap_scan_rows,16,16,32,32);
+	sslam_md_tilemap = tilemap_create(get_sslam_md_tile_info,tilemap_scan_rows,16,16,32,32);
+	sslam_tx_tilemap = tilemap_create(get_sslam_tx_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(sslam_md_tilemap,0);
 	tilemap_set_transparent_pen(sslam_tx_tilemap,0);
@@ -155,7 +155,7 @@ VIDEO_START(sslam)
 
 VIDEO_START(powerbls)
 {
-	sslam_bg_tilemap = tilemap_create(get_powerbls_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	sslam_bg_tilemap = tilemap_create(get_powerbls_bg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	sprites_x_offset = -21;
 	state_save_register_global(sprites_x_offset);
@@ -165,7 +165,7 @@ VIDEO_UPDATE(sslam)
 {
 	if(!(sslam_regs[6] & 1))
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -194,7 +194,7 @@ VIDEO_UPDATE(sslam)
 		tilemap_draw(bitmap,cliprect,sslam_md_tilemap,0,0);
 	}
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,sslam_tx_tilemap,0,0);
 	return 0;
 }
@@ -203,7 +203,7 @@ VIDEO_UPDATE(powerbls)
 {
 	if(!(sslam_regs[6] & 1))
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -211,6 +211,6 @@ VIDEO_UPDATE(powerbls)
 	tilemap_set_scrolly(sslam_bg_tilemap,0, sslam_regs[1]-240);
 
 	tilemap_draw(bitmap,cliprect,sslam_bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

@@ -144,7 +144,7 @@ Note: press Z to show some info on each sprite (debug builds only)
 
 static int shadow_pen_mask, shadow_pen_shift;
 
-static void ssv_drawgfx(	mame_bitmap *bitmap, const gfx_element *gfx,
+static void ssv_drawgfx(	bitmap_t *bitmap, const gfx_element *gfx,
 					UINT32 code,UINT32 color,int flipx,int flipy,int x0,int y0,
 					const rectangle *cliprect, int shadow	)
 {
@@ -230,7 +230,7 @@ VIDEO_START( gdfs )
 	eaglshot_dirty_tile	=	(char*)auto_malloc(4 * 0x100000 / (16*8));
 
 	gdfs_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-											TILEMAP_TYPE_PEN, 16,16, 0x100,0x100	);
+											 16,16, 0x100,0x100	);
 
 	tilemap_set_transparent_pen(gdfs_tmap, 0);
 }
@@ -370,7 +370,7 @@ char eaglshot_dirty, *eaglshot_dirty_tile;
 
 READ16_HANDLER( ssv_vblank_r )
 {
-	if (video_screen_get_vblank(0))
+	if (video_screen_get_vblank(machine->primary_screen))
 		return 0x2000 | 0x1000;
 	else
 		return 0x0000;
@@ -591,7 +591,7 @@ From the above some noteworthy cases are:
 
 /* Draw a tilemap sprite */
 
-static void draw_row(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int sx, int sy, int scroll)
+static void draw_row(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int sx, int sy, int scroll)
 {
 	rectangle clip;
 	int attr, code, color, mode, size, page, shadow;
@@ -716,16 +716,16 @@ static void draw_row(running_machine *machine, mame_bitmap *bitmap, const rectan
 
 /* Draw the "background layer" using multiple tilemap sprites */
 
-static void draw_layer(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int  nr)
+static void draw_layer(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int  nr)
 {
 	int sy;
-	for ( sy = 0; sy <= machine->screen[0].visarea.max_y; sy += 0x40 )
+	for ( sy = 0; sy <= video_screen_get_visible_area(machine->primary_screen)->max_y; sy += 0x40 )
 		draw_row(machine, bitmap, cliprect, 0, sy, nr);
 }
 
 /* Draw sprites in the sprites list */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* Sprites list */
 
@@ -931,8 +931,8 @@ VIDEO_UPDATE( eaglshot )
 			{
 				eaglshot_dirty_tile[tile] = 0;
 
-				decodechar(machine->gfx[0], tile, (UINT8 *)eaglshot_gfxram);
-				decodechar(machine->gfx[1], tile, (UINT8 *)eaglshot_gfxram);
+				decodechar(screen->machine->gfx[0], tile, (UINT8 *)eaglshot_gfxram);
+				decodechar(screen->machine->gfx[1], tile, (UINT8 *)eaglshot_gfxram);
 			}
 		}
 	}
@@ -994,7 +994,7 @@ VIDEO_UPDATE( eaglshot )
         E.h                             Unused
 
 */
-static void gdfs_draw_zooming_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void gdfs_draw_zooming_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	/* Sprites list */
 
@@ -1121,13 +1121,13 @@ VIDEO_UPDATE( gdfs )
 			{
 				eaglshot_dirty_tile[tile] = 0;
 
-				decodechar(machine->gfx[2], tile, (UINT8 *)eaglshot_gfxram);
+				decodechar(screen->machine->gfx[2], tile, (UINT8 *)eaglshot_gfxram);
 			}
 		}
 	}
 
 	for (pri = 0; pri <= 0xf; pri++)
-		gdfs_draw_zooming_sprites(machine, bitmap, cliprect, pri);
+		gdfs_draw_zooming_sprites(screen->machine, bitmap, cliprect, pri);
 
 	tilemap_set_scrollx(gdfs_tmap,0,gdfs_tmapscroll[0x0c/2]);
 	tilemap_set_scrolly(gdfs_tmap,0,gdfs_tmapscroll[0x10/2]);
@@ -1159,12 +1159,12 @@ VIDEO_UPDATE( ssv )
 	}
 
 	/* The background color is the first one in the palette */
-	fillbitmap(bitmap,machine->pens[0], cliprect);
+	fillbitmap(bitmap,0, cliprect);
 
 	if (!enable_video)	return 0;
 
-	draw_layer(machine, bitmap, cliprect, 0);	// "background layer"
+	draw_layer(screen->machine, bitmap, cliprect, 0);	// "background layer"
 
-	draw_sprites(machine, bitmap, cliprect);	// sprites list
+	draw_sprites(screen->machine, bitmap, cliprect);	// sprites list
 	return 0;
 }

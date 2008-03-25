@@ -75,15 +75,15 @@ static TILE_GET_INFO( get_fix_tile_info )
 
 VIDEO_START( perfrman )
 {
-	pf1_tilemap = tilemap_create(get_pf_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	pf1_tilemap = tilemap_create(get_pf_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 }
 
 VIDEO_START( slapfight )
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	fix_tilemap = tilemap_create(get_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,8,8,64,32);
+	fix_tilemap = tilemap_create(get_fix_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
@@ -150,7 +150,7 @@ static void slapfght_log_vram(void)
   Render the Sprites
 
 ***************************************************************************/
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority_to_display )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority_to_display )
 {
 	int offs;
 
@@ -195,9 +195,9 @@ VIDEO_UPDATE( perfrman )
 	}
 
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE,0);
-	draw_sprites(machine, bitmap,cliprect,0);
+	draw_sprites(screen->machine, bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,0x80);
+	draw_sprites(screen->machine, bitmap,cliprect,0x80);
 
 #ifdef MAME_DEBUG
 	slapfght_log_vram();
@@ -230,14 +230,14 @@ VIDEO_UPDATE( slapfight )
 	for (offs = 0;offs < spriteram_size;offs += 4)
 	{
 		if (flipscreen)
-			drawgfx(bitmap,machine->gfx[2],
+			drawgfx(bitmap,screen->machine->gfx[2],
 				buffered_spriteram[offs] + ((buffered_spriteram[offs+2] & 0xc0) << 2),
 				(buffered_spriteram[offs+2] & 0x1e) >> 1,
 				1,1,
 				288-(buffered_spriteram[offs+1] + ((buffered_spriteram[offs+2] & 0x01) << 8)) +18,240-buffered_spriteram[offs+3],
 				cliprect,TRANSPARENCY_PEN,0);
 		else
-			drawgfx(bitmap,machine->gfx[2],
+			drawgfx(bitmap,screen->machine->gfx[2],
 				buffered_spriteram[offs] + ((buffered_spriteram[offs+2] & 0xc0) << 2),
 				(buffered_spriteram[offs+2] & 0x1e) >> 1,
 				0,0,

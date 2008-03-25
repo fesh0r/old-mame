@@ -36,7 +36,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( meadows )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,30);
+	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,  8,8, 32,30);
 }
 
 
@@ -63,8 +63,7 @@ WRITE8_HANDLER( meadows_videoram_w )
 
 WRITE8_HANDLER( meadows_spriteram_w )
 {
-	if (spriteram[offset] != data)
-		video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_now(machine->primary_screen);
 	spriteram[offset] = data;
 }
 
@@ -76,7 +75,7 @@ WRITE8_HANDLER( meadows_spriteram_w )
  *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *clip)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *clip)
 {
 	int i;
 
@@ -107,7 +106,7 @@ VIDEO_UPDATE( meadows )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	/* draw the sprites */
-	if (machine->gfx[1])
-		draw_sprites(machine, bitmap, cliprect);
+	if (screen->machine->gfx[1])
+		draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

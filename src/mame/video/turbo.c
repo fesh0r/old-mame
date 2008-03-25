@@ -179,7 +179,7 @@ VIDEO_START( turbo )
 	turbo_state *state = machine->driver_data;
 
 	/* initialize the foreground tilemap */
-	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
 }
 
 
@@ -188,7 +188,7 @@ VIDEO_START( buckrog )
 	turbo_state *state = machine->driver_data;
 
 	/* initialize the foreground tilemap */
-	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	state->fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	/* allocate the bitmap RAM */
 	state->buckrog_bitmap_ram = auto_malloc(0xe000);
@@ -209,7 +209,7 @@ WRITE8_HANDLER( turbo_videoram_w )
 	state->videoram[offset] = data;
 	if (offset < 0x400)
 	{
-		video_screen_update_partial(0, video_screen_get_vpos(0));
+		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 		tilemap_mark_tile_dirty(state->fg_tilemap, offset);
 	}
 }
@@ -397,8 +397,8 @@ static UINT32 turbo_get_sprite_bits(UINT8 road, sprite_info *sprinfo)
 
 VIDEO_UPDATE( turbo )
 {
-	turbo_state *state = machine->driver_data;
-	mame_bitmap *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
+	turbo_state *state = screen->machine->driver_data;
+	bitmap_t *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
 	const UINT8 *road_gfxdata = memory_region(REGION_GFX3);
 	const UINT8 *prom_base = memory_region(REGION_PROMS);
 	const UINT8 *pr1114 = prom_base + 0x000;
@@ -752,8 +752,8 @@ static UINT32 subroc3d_get_sprite_bits(sprite_info *sprinfo, UINT8 *plb)
 
 VIDEO_UPDATE( subroc3d )
 {
-	turbo_state *state = machine->driver_data;
-	mame_bitmap *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
+	turbo_state *state = screen->machine->driver_data;
+	bitmap_t *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
 	const UINT8 *prom_base = memory_region(REGION_PROMS);
 	const UINT8 *pr1419 = prom_base + 0x000;
 	const UINT8 *pr1620 = prom_base + 0x200;
@@ -971,8 +971,8 @@ static UINT32 buckrog_get_sprite_bits(sprite_info *sprinfo, UINT8 *plb)
 
 VIDEO_UPDATE( buckrog )
 {
-	turbo_state *state = machine->driver_data;
-	mame_bitmap *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
+	turbo_state *state = screen->machine->driver_data;
+	bitmap_t *fgpixmap = tilemap_get_pixmap(state->fg_tilemap);
 	const UINT8 *bgcolor = memory_region(REGION_GFX3);
 	const UINT8 *prom_base = memory_region(REGION_PROMS);
 	const UINT8 *pr5194 = prom_base + 0x000;

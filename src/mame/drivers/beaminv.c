@@ -87,7 +87,7 @@ static TIMER_CALLBACK( interrupt_callback )
 	next_interrupt_number = (interrupt_number + 1) % INTERRUPTS_PER_FRAME;
 	next_vpos = interrupt_lines[next_interrupt_number];
 
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, next_vpos, 0), next_interrupt_number, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, next_vpos, 0), next_interrupt_number);
 }
 
 
@@ -97,10 +97,10 @@ static void create_interrupt_timer(void)
 }
 
 
-static void start_interrupt_timer(void)
+static void start_interrupt_timer(running_machine *machine)
 {
 	int vpos = interrupt_lines[0];
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, vpos, 0), 0, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, vpos, 0), 0);
 }
 
 
@@ -129,7 +129,7 @@ static MACHINE_START( beaminv )
 
 static MACHINE_RESET( beaminv )
 {
-	start_interrupt_timer();
+	start_interrupt_timer(machine);
 }
 
 
@@ -168,7 +168,7 @@ static VIDEO_UPDATE( beaminv )
 
 static READ8_HANDLER( v128_r )
 {
-	return (video_screen_get_vpos(0) >> 7) & 0x01;
+	return (video_screen_get_vpos(machine->primary_screen) >> 7) & 0x01;
 }
 
 
@@ -222,7 +222,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(controller_select_w) /* to be confirmed */
 ADDRESS_MAP_END
 
@@ -324,10 +324,9 @@ static MACHINE_DRIVER_START( beaminv )
 	MDRV_MACHINE_RESET(beaminv)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(beaminv)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 247, 16, 231)

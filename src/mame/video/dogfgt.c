@@ -6,7 +6,7 @@ UINT8 *dogfgt_bgvideoram;
 
 static UINT8 *bitmapram;
 static int bm_plane;
-static mame_bitmap *pixbitmap;
+static bitmap_t *pixbitmap;
 static int pixcolor;
 static tilemap *bg_tilemap;
 
@@ -81,11 +81,11 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( dogfgt )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	bitmapram = auto_malloc(BITMAPRAM_SIZE);
 
-	pixbitmap = auto_bitmap_alloc(256,256,machine->screen[0].format);
+	pixbitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 }
 
 
@@ -128,7 +128,7 @@ static WRITE8_HANDLER( internal_bitmapram_w )
 
 		for (i = 0;i < 3;i++)
 			color |= ((bitmapram[offset + BITMAPRAM_SIZE/3 * i] >> subx) & 1) << i;
-		if (flip_screen)
+		if (flip_screen_get())
 			*BITMAP_ADDR16(pixbitmap, y^0xff, (x+subx)^0xff) = PIXMAP_COLOR_BASE + 8*pixcolor + color;
 		else
 			*BITMAP_ADDR16(pixbitmap, y, x+subx) = PIXMAP_COLOR_BASE + 8*pixcolor + color;
@@ -143,7 +143,7 @@ WRITE8_HANDLER( dogfgt_bitmapram_w )
 		return;
 	}
 
-	internal_bitmapram_w(offset + BITMAPRAM_SIZE/3 * bm_plane,data);
+	internal_bitmapram_w(machine,offset + BITMAPRAM_SIZE/3 * bm_plane,data);
 }
 
 WRITE8_HANDLER( dogfgt_bgvideoram_w )
@@ -185,7 +185,7 @@ WRITE8_HANDLER( dogfgt_1800_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -199,7 +199,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			sy = (240 - spriteram[offs+2]) & 0xff;
 			flipx = spriteram[offs] & 0x04;
 			flipy = spriteram[offs] & 0x02;
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -224,20 +224,20 @@ VIDEO_UPDATE( dogfgt )
 	int offs;
 
 
-	if (lastflip != flip_screen || lastpixcolor != pixcolor)
+	if (lastflip != flip_screen_get() || lastpixcolor != pixcolor)
 	{
-		lastflip = flip_screen;
+		lastflip = flip_screen_get();
 		lastpixcolor = pixcolor;
 
 		for (offs = 0;offs < BITMAPRAM_SIZE;offs++)
-			internal_bitmapram_w(offs,bitmapram[offs]);
+			internal_bitmapram_w(screen->machine,offs,bitmapram[offs]);
 	}
 
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
-	copybitmap_trans(bitmap,pixbitmap,0,0,0,0,cliprect,machine->pens[PIXMAP_COLOR_BASE + 8*pixcolor]);
+	copybitmap_trans(bitmap,pixbitmap,0,0,0,0,cliprect,PIXMAP_COLOR_BASE + 8*pixcolor);
 	return 0;
 }

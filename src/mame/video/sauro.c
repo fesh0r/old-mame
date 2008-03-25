@@ -78,7 +78,7 @@ WRITE8_HANDLER( sauro_palette_bank_w )
 
 WRITE8_HANDLER( sauro_scroll_fg_w )
 {
-	const int *map = (flip_screen ? scroll2_map_flip : scroll2_map);
+	const int *map = (flip_screen_get() ? scroll2_map_flip : scroll2_map);
 	int scroll = (data & 0xf8) | map[data & 7];
 
 	tilemap_set_scrollx(fg_tilemap, 0, scroll);
@@ -87,16 +87,16 @@ WRITE8_HANDLER( sauro_scroll_fg_w )
 VIDEO_START( sauro )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	fg_tilemap = tilemap_create(get_tile_info_fg, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	palette_bank = 0;
 }
 
-static void sauro_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void sauro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs,code,sx,sy,color,flipx;
 
@@ -126,7 +126,7 @@ static void sauro_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 
 		flipx = spriteram[offs+3] & 0x04;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx = !flipx;
 			sx = (235 - sx) & 0xff;  // The &0xff is not 100% percent correct
@@ -136,7 +136,7 @@ static void sauro_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 		drawgfx(bitmap, machine->gfx[2],
 				code,
 				color,
-				flipx,flip_screen,
+				flipx,flip_screen_get(),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}
@@ -146,7 +146,7 @@ VIDEO_UPDATE( sauro )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
-	sauro_draw_sprites(machine, bitmap, cliprect);
+	sauro_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -160,10 +160,10 @@ WRITE8_HANDLER ( trckydoc_spriteram_mirror_w )
 VIDEO_START( trckydoc )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
-static void trckydoc_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void trckydoc_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs,code,sy,color,flipx,sx;
 
@@ -201,7 +201,7 @@ static void trckydoc_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 		flipx = spriteram[offs+3] & 0x04;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx = !flipx;
 			sx = (235 - sx) & 0xff;  /* The &0xff is not 100% percent correct */
@@ -211,7 +211,7 @@ static void trckydoc_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 		drawgfx(bitmap, machine->gfx[1],
 				code,
 				color,
-				flipx,flip_screen,
+				flipx,flip_screen_get(),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}
@@ -220,6 +220,6 @@ static void trckydoc_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 VIDEO_UPDATE( trckydoc )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	trckydoc_draw_sprites(machine, bitmap, cliprect);
+	trckydoc_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

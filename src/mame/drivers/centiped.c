@@ -431,8 +431,6 @@ static UINT8 sign[4];
 static UINT8 dsw_select, control_select;
 static UINT8 *rambase;
 
-static emu_timer *interrupt_timer;
-
 
 /*************************************
  *
@@ -440,23 +438,16 @@ static emu_timer *interrupt_timer;
  *
  *************************************/
 
-static TIMER_CALLBACK( generate_interrupt )
+static TIMER_DEVICE_CALLBACK( generate_interrupt )
 {
 	int scanline = param;
 
 	/* IRQ is clocked on the rising edge of 16V, equal to the previous 32V */
 	if (scanline & 16)
-		cpunum_set_input_line(machine, 0, 0, ((scanline - 1) & 32) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(timer->machine, 0, 0, ((scanline - 1) & 32) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* do a partial update now to handle sprite multiplexing (Maze Invaders) */
-	video_screen_update_partial(0, scanline);
-
-	/* call back again after 16 scanlines */
-	scanline += 16;
-	if (scanline >= 256)
-		scanline = 0;
-
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	video_screen_update_partial(timer->machine->primary_screen, scanline);
 }
 
 
@@ -470,8 +461,6 @@ static MACHINE_START( centiped )
 
 static MACHINE_RESET( centiped )
 {
-	interrupt_timer = timer_alloc(generate_interrupt, NULL);
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
 	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	dsw_select = 0;
 	control_select = 0;
@@ -657,15 +646,15 @@ static WRITE8_HANDLER( bullsdrt_coin_count_w )
 
 static WRITE8_HANDLER( caterplr_AY8910_w )
 {
-	AY8910_control_port_0_w(0, offset);
-	AY8910_write_port_0_w(0, data);
+	AY8910_control_port_0_w(machine, 0, offset);
+	AY8910_write_port_0_w(machine, 0, data);
 }
 
 
 static READ8_HANDLER( caterplr_AY8910_r )
 {
-	AY8910_control_port_0_w(0, offset);
-	return AY8910_read_port_0_r(0);
+	AY8910_control_port_0_w(machine, 0, offset);
+	return AY8910_read_port_0_r(machine, 0);
 }
 
 
@@ -677,9 +666,9 @@ static READ8_HANDLER( caterplr_AY8910_r )
  *************************************/
 
 static ADDRESS_MAP_START( centiped_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM AM_BASE(&rambase)
-	AM_RANGE(0x0400, 0x07bf) AM_READWRITE(MRA8_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0400, 0x07bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x07c0, 0x07ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x0800, 0x0800) AM_READ(input_port_4_r)	/* DSW1 */
 	AM_RANGE(0x0801, 0x0801) AM_READ(input_port_5_r)	/* DSW2 */
@@ -702,9 +691,9 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( centipdb_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x4000) AM_RAM
-	AM_RANGE(0x0400, 0x07bf) AM_MIRROR(0x4000) AM_READWRITE(MRA8_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0400, 0x07bf) AM_MIRROR(0x4000) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x07c0, 0x07ff) AM_MIRROR(0x4000) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x0800, 0x0800) AM_MIRROR(0x4000) AM_READ(input_port_4_r)	/* DSW1 */
 	AM_RANGE(0x0801, 0x0801) AM_MIRROR(0x4000) AM_READ(input_port_5_r)	/* DSW2 */
@@ -736,11 +725,11 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( milliped_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0400, 0x040f) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x0800, 0x080f) AM_READWRITE(pokey2_r, pokey2_w)
-	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(MRA8_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x13c0, 0x13ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x2000, 0x2000) AM_READ(centiped_IN0_r)
 	AM_RANGE(0x2001, 0x2001) AM_READ(milliped_IN1_r)
@@ -769,9 +758,9 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( warlords_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x0400, 0x07bf) AM_READWRITE(MRA8_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0400, 0x07bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x07c0, 0x07ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x0800, 0x0800) AM_READ(input_port_2_r) /* DSW1 */
 	AM_RANGE(0x0801, 0x0801) AM_READ(input_port_3_r) /* DSW2 */
@@ -794,11 +783,11 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( mazeinv_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0400, 0x040f) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x0800, 0x080f) AM_READWRITE(pokey2_r, pokey2_w)
-	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(MRA8_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x13c0, 0x13ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x2000, 0x2000) AM_READ(input_port_0_r)
 	AM_RANGE(0x2001, 0x2001) AM_READ(input_port_1_r)
@@ -810,7 +799,7 @@ static ADDRESS_MAP_START( mazeinv_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2500, 0x2502) AM_WRITE(coin_count_w)
 	AM_RANGE(0x2503, 0x2504) AM_WRITE(led_w)
 	AM_RANGE(0x2505, 0x2505) AM_WRITE(input_select_w)
-//  AM_RANGE(0x2506, 0x2507) AM_WRITE(MWA8_NOP) /* ? */
+//  AM_RANGE(0x2506, 0x2507) AM_WRITE(SMH_NOP) /* ? */
 	AM_RANGE(0x2580, 0x2583) AM_WRITE(mazeinv_input_select_w)
 	AM_RANGE(0x2600, 0x2600) AM_WRITE(irq_ack_w)
 	AM_RANGE(0x2680, 0x2680) AM_WRITE(watchdog_reset_w)
@@ -1631,17 +1620,20 @@ static MACHINE_DRIVER_START( centiped )
 	MDRV_CPU_ADD_TAG("main", M6502, 12096000/8)	/* 1.512 MHz (slows down to 0.75MHz while accessing playfield RAM) */
 	MDRV_CPU_PROGRAM_MAP(centiped_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_START(centiped)
 	MDRV_MACHINE_RESET(centiped)
 	MDRV_NVRAM_HANDLER(atari_vg)
 
+	/* timer */
+	MDRV_TIMER_ADD_SCANLINE("32V", generate_interrupt, "main", 0, 16)
+
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(centiped)
 	MDRV_PALETTE_LENGTH(4+4*4*4*4)
 
@@ -1758,15 +1750,15 @@ static MACHINE_DRIVER_START( bullsdrt )
 	MDRV_CPU_PROGRAM_MAP(bullsdrt_map,0)
 	MDRV_CPU_IO_MAP(bullsdrt_port_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_NVRAM_HANDLER(atari_vg)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(centiped)
 	MDRV_PALETTE_LENGTH(4+4*4*4*4)
 

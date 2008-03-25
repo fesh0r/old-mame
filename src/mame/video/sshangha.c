@@ -30,10 +30,10 @@ WRITE16_HANDLER( sshangha_palette_24bit_w )
 	palette_set_color(Machine,offset/2,MAKE_RGB(r,g,b));
 }
 
-static void sshangha_tilemap_draw(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void sshangha_tilemap_draw(bitmap_t *bitmap, const rectangle *cliprect)
 {
-	const mame_bitmap *bitmap0 = tilemap_get_pixmap(pf1_16x16_tilemap);
-	const mame_bitmap *bitmap1 = tilemap_get_pixmap(pf2_tilemap);
+	const bitmap_t *bitmap0 = tilemap_get_pixmap(pf1_16x16_tilemap);
+	const bitmap_t *bitmap1 = tilemap_get_pixmap(pf2_tilemap);
 	int x,y,p;
 
 	for (y=0; y<240; y++) {
@@ -41,7 +41,7 @@ static void sshangha_tilemap_draw(running_machine *machine, mame_bitmap *bitmap,
 			p=*BITMAP_ADDR16(bitmap0, y, x)&0xf;
 			p|=(*BITMAP_ADDR16(bitmap1, y, x)&0xf)<<4;
 
-			*BITMAP_ADDR16(bitmap, y, x) = machine->pens[p|0x300];
+			*BITMAP_ADDR16(bitmap, y, x) = p|0x300;
 		}
 	}
 }
@@ -55,7 +55,7 @@ WRITE16_HANDLER (sshangha_video_w)
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT16 *spritesrc, UINT16 pmask, UINT16 pval)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT16 *spritesrc, UINT16 pmask, UINT16 pval)
 {
 	int offs;
 
@@ -71,7 +71,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		y = spritesrc[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spritesrc[offs+2];
 		colour = (x >>9) & 0x1f;
@@ -87,7 +87,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		sprite &= ~multi;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			y=240-y;
 			x=304-x;
@@ -173,9 +173,9 @@ static TILE_GET_INFO( get_pf1_8x8_tile_info )
 
 VIDEO_START( sshangha )
 {
-	pf1_8x8_tilemap   = tilemap_create(get_pf1_8x8_tile_info,  tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	pf1_16x16_tilemap = tilemap_create(get_pf1_16x16_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,    TILEMAP_TYPE_PEN,     16,16,32,32);
+	pf1_8x8_tilemap   = tilemap_create(get_pf1_8x8_tile_info,  tilemap_scan_rows, 8, 8,64,32);
+	pf1_16x16_tilemap = tilemap_create(get_pf1_16x16_tile_info,tilemap_scan_rows,16,16,32,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,         16,16,32,32);
 
 	tilemap_set_transparent_pen(pf1_8x8_tilemap,0);
 	tilemap_set_transparent_pen(pf1_16x16_tilemap,0);
@@ -188,8 +188,8 @@ VIDEO_UPDATE( sshangha )
 	static int last_pf1_bank,last_pf2_bank;
 	int offs;
 
-	flip_screen=sshangha_control_0[0]&0x80;
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	flip_screen_set_no_update(sshangha_control_0[0]&0x80);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_x_get() ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 	tilemap_set_enable( pf2_tilemap, sshangha_control_0[5]&0x8000);
 	tilemap_set_enable( pf1_8x8_tilemap, sshangha_control_0[5]&0x0080);
@@ -234,18 +234,18 @@ VIDEO_UPDATE( sshangha )
 	tilemap_set_scrolly( pf1_16x16_tilemap,0, sshangha_control_0[2] );
 
 	if ((sshangha_control_0[5]&0x8000)==0)
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	/* Super Shanghai has a mode where the two tilemaps are combined to
     produce a 6bpp tilemap.  We can't precompute this as any tiles can be
     used in any tilemap, so we plot it on the fly */
 	if ((sshangha_video_control&4)==0) {
-		sshangha_tilemap_draw(machine, bitmap, cliprect);
-		draw_sprites(machine, bitmap, cliprect, spriteram16,0x4000,0x4000);
+		sshangha_tilemap_draw(bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect, spriteram16,0x4000,0x4000);
 	}
 	else {
 		tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
-		draw_sprites(machine, bitmap, cliprect, spriteram16,0x4000,0x4000);
+		draw_sprites(screen->machine, bitmap, cliprect, spriteram16,0x4000,0x4000);
 
 		if (sshangha_control_0[6]&0x80)
 			tilemap_draw(bitmap,cliprect,pf1_8x8_tilemap,0,0);
@@ -253,7 +253,7 @@ VIDEO_UPDATE( sshangha )
 			tilemap_draw(bitmap,cliprect,pf1_16x16_tilemap,0,0);
 	}
 
-	draw_sprites(machine, bitmap, cliprect, spriteram16_2,0x0000,0x0000);
-	draw_sprites(machine, bitmap, cliprect, spriteram16,0x4000,0x0000);
+	draw_sprites(screen->machine, bitmap, cliprect, spriteram16_2,0x0000,0x0000);
+	draw_sprites(screen->machine, bitmap, cliprect, spriteram16,0x4000,0x0000);
 	return 0;
 }

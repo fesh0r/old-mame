@@ -141,7 +141,7 @@ static TIMER_CALLBACK( scanline_callback )
 	int scanline = param;
 
 	/* update the video */
-	beathead_scanline_update(scanline);
+	video_screen_update_now(machine->primary_screen);
 
 	/* on scanline zero, clear any halt condition */
 	if (scanline == 0)
@@ -157,7 +157,7 @@ static TIMER_CALLBACK( scanline_callback )
 	update_interrupts(machine);
 
 	/* set the timer for the next one */
-	timer_set(double_to_attotime(attotime_to_double(video_screen_get_time_until_pos(0, scanline, 0)) - hblank_offset), NULL, scanline, scanline_callback);
+	timer_set(double_to_attotime(attotime_to_double(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0)) - hblank_offset), NULL, scanline, scanline_callback);
 }
 
 
@@ -173,8 +173,8 @@ static MACHINE_RESET( beathead )
 	memcpy(ram_base, rom_base, 0x40);
 
 	/* compute the timing of the HBLANK interrupt and set the first timer */
-	hblank_offset = attotime_to_double(video_screen_get_scan_period(0)) * ((455. - 336. - 25.) / 455.);
-	timer_set(double_to_attotime(attotime_to_double(video_screen_get_time_until_pos(0, 0, 0)) - hblank_offset), NULL, 0, scanline_callback);
+	hblank_offset = attotime_to_double(video_screen_get_scan_period(machine->primary_screen)) * ((455. - 336. - 25.) / 455.);
+	timer_set(double_to_attotime(attotime_to_double(video_screen_get_time_until_pos(machine->primary_screen, 0, 0)) - hblank_offset), NULL, 0, scanline_callback);
 
 	/* reset IRQs */
 	irq_line_state = CLEAR_LINE;
@@ -304,21 +304,21 @@ static READ32_HANDLER( input_3_r )
 
 static READ32_HANDLER( sound_data_r )
 {
-	return atarigen_sound_r(offset,0);
+	return atarigen_sound_r(machine,offset,0);
 }
 
 
 static WRITE32_HANDLER( sound_data_w )
 {
 	if (ACCESSING_LSB32)
-		atarigen_sound_w(offset, data, mem_mask);
+		atarigen_sound_w(machine,offset, data, mem_mask);
 }
 
 
 static WRITE32_HANDLER( sound_reset_w )
 {
 	logerror("Sound reset = %d\n", !offset);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, offset ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, offset ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -345,7 +345,7 @@ static WRITE32_HANDLER( coin_count_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0001ffff) AM_RAM AM_BASE(&ram_base)
 	AM_RANGE(0x01800000, 0x01bfffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rom_base)
-	AM_RANGE(0x40000000, 0x400007ff) AM_READWRITE(MRA32_RAM, eeprom_data_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x40000000, 0x400007ff) AM_READWRITE(SMH_RAM, eeprom_data_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x41000000, 0x41000003) AM_READWRITE(sound_data_r, sound_data_w)
 	AM_RANGE(0x41000100, 0x41000103) AM_READ(interrupt_control_r)
 	AM_RANGE(0x41000100, 0x4100011f) AM_WRITE(interrupt_control_w)
@@ -355,18 +355,18 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x41000220, 0x41000227) AM_WRITE(coin_count_w)
 	AM_RANGE(0x41000300, 0x41000303) AM_READ(input_2_r)
 	AM_RANGE(0x41000304, 0x41000307) AM_READ(input_3_r)
-	AM_RANGE(0x41000400, 0x41000403) AM_WRITE(MWA32_RAM) AM_BASE(&beathead_palette_select)
+	AM_RANGE(0x41000400, 0x41000403) AM_WRITE(SMH_RAM) AM_BASE(&beathead_palette_select)
 	AM_RANGE(0x41000500, 0x41000503) AM_WRITE(eeprom_enable_w)
 	AM_RANGE(0x41000600, 0x41000603) AM_WRITE(beathead_finescroll_w)
 	AM_RANGE(0x41000700, 0x41000703) AM_WRITE(watchdog_reset32_w)
-	AM_RANGE(0x42000000, 0x4201ffff) AM_READWRITE(MRA32_RAM, beathead_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x42000000, 0x4201ffff) AM_READWRITE(SMH_RAM, beathead_palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x43000000, 0x43000007) AM_READWRITE(beathead_hsync_ram_r, beathead_hsync_ram_w)
-	AM_RANGE(0x8df80000, 0x8df80003) AM_READ(MRA32_NOP)	/* noisy x4 during scanline int */
+	AM_RANGE(0x8df80000, 0x8df80003) AM_READ(SMH_NOP)	/* noisy x4 during scanline int */
 	AM_RANGE(0x8f380000, 0x8f3fffff) AM_WRITE(beathead_vram_latch_w)
 	AM_RANGE(0x8f900000, 0x8f97ffff) AM_WRITE(beathead_vram_transparent_w)
 	AM_RANGE(0x8f980000, 0x8f9fffff) AM_RAM AM_BASE(&videoram32)
 	AM_RANGE(0x8fb80000, 0x8fbfffff) AM_WRITE(beathead_vram_bulk_w)
-	AM_RANGE(0x8fff8000, 0x8fff8003) AM_WRITE(MWA32_RAM) AM_BASE(&beathead_vram_bulk_latch)
+	AM_RANGE(0x8fff8000, 0x8fff8003) AM_WRITE(SMH_RAM) AM_BASE(&beathead_vram_bulk_latch)
 	AM_RANGE(0x9e280000, 0x9e2fffff) AM_WRITE(beathead_vram_copy_w)
 ADDRESS_MAP_END
 
@@ -433,13 +433,14 @@ static MACHINE_DRIVER_START( beathead )
 	MDRV_CPU_ADD(ASAP, ATARI_CLOCK_14MHz)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_RESET(beathead)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(42*8, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 42*8-1, 0*8, 30*8-1)

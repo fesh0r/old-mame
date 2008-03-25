@@ -206,9 +206,9 @@ static READ8_HANDLER( dual_pokey_r )
 	int pokey_reg = (offset % 8) | control;
 
 	if (pokey_num == 0)
-		return pokey1_r(pokey_reg);
+		return pokey1_r(machine, pokey_reg);
 	else
-		return pokey2_r(pokey_reg);
+		return pokey2_r(machine, pokey_reg);
 }
 
 
@@ -219,9 +219,9 @@ static WRITE8_HANDLER( dual_pokey_w )
 	int pokey_reg = (offset % 8) | control;
 
 	if (pokey_num == 0)
-		pokey1_w(pokey_reg, data);
+		pokey1_w(machine, pokey_reg, data);
 	else
-		pokey2_w(pokey_reg, data);
+		pokey2_w(machine, pokey_reg, data);
 }
 
 
@@ -239,7 +239,7 @@ static WRITE8_HANDLER( speech_data_w )
 
 static WRITE8_HANDLER( speech_strobe_w )
 {
-	tms5220_data_w(0, speech_write_buffer);
+	tms5220_data_w(machine, 0, speech_write_buffer);
 }
 
 /*************************************
@@ -254,7 +254,7 @@ static ADDRESS_MAP_START( alpha_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x09ff) AM_RAM
 	AM_RANGE(0x0a00, 0x0fff) AM_RAMBANK(1) AM_BASE(&mhavoc_zram1)
 	AM_RANGE(0x1000, 0x1000) AM_READ(mhavoc_gamma_r)          /* Gamma Read Port */
-	AM_RANGE(0x1200, 0x1200) AM_READWRITE(mhavoc_port_0_r, MWA8_NOP) /* Alpha Input Port 0 */
+	AM_RANGE(0x1200, 0x1200) AM_READWRITE(mhavoc_port_0_r, SMH_NOP) /* Alpha Input Port 0 */
 	AM_RANGE(0x1400, 0x141f) AM_RAM AM_BASE(&mhavoc_colorram)        /* ColorRAM */
 	AM_RANGE(0x1600, 0x1600) AM_WRITE(mhavoc_out_0_w)         /* Control Signals */
 	AM_RANGE(0x1640, 0x1640) AM_WRITE(avgdvg_go_w)		      /* Vector Generator GO */
@@ -268,7 +268,7 @@ static ADDRESS_MAP_START( alpha_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK(2)			          /* Paged Program ROM (32K) */
 	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION(REGION_CPU1, 0x4000)/* Vector Generator RAM */
 	AM_RANGE(0x5000, 0x7fff) AM_ROM			                  /* Vector ROM */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)			      /* Program ROM (32K) */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)			      /* Program ROM (32K) */
 ADDRESS_MAP_END
 
 
@@ -290,7 +290,7 @@ static ADDRESS_MAP_START( gamma_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4800, 0x4800) AM_WRITE(mhavoc_out_1_w)         /* Coin Counters    */
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(mhavoc_alpha_w)         /* Alpha Comm. Write Port */
 	AM_RANGE(0x6000, 0x61ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* EEROM        */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)                /* Program ROM (16K)    */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)                /* Program ROM (16K)    */
 ADDRESS_MAP_END
 
 
@@ -308,7 +308,7 @@ static ADDRESS_MAP_START( alphaone_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x09ff) AM_RAM
 	AM_RANGE(0x0a00, 0x0fff) AM_RAMBANK(1) AM_BASE(&mhavoc_zram1)
 	AM_RANGE(0x1020, 0x103f) AM_READWRITE(dual_pokey_r, dual_pokey_w)
-	AM_RANGE(0x1040, 0x1040) AM_READWRITE(alphaone_port_0_r, MWA8_NOP) /* Alpha Input Port 0 */
+	AM_RANGE(0x1040, 0x1040) AM_READWRITE(alphaone_port_0_r, SMH_NOP) /* Alpha Input Port 0 */
 	AM_RANGE(0x1060, 0x1060) AM_READ(input_port_1_r)          /* Gamma Input Port */
 	AM_RANGE(0x1080, 0x1080) AM_READ(input_port_2_r)          /* Roller Controller Input*/
 	AM_RANGE(0x10a0, 0x10a0) AM_WRITE(alphaone_out_0_w)       /* Control Signals */
@@ -318,7 +318,7 @@ static ADDRESS_MAP_START( alphaone_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x10b0, 0x10b0) AM_WRITE(mhavoc_alpha_irq_ack_w) /* IRQ ack */
 	AM_RANGE(0x10b4, 0x10b4) AM_WRITE(mhavoc_rom_banksel_w)
 	AM_RANGE(0x10b8, 0x10b8) AM_WRITE(mhavoc_ram_banksel_w)
-	AM_RANGE(0x10e0, 0x10ff) AM_WRITE(MWA8_RAM) AM_BASE(&mhavoc_colorram) /* ColorRAM */
+	AM_RANGE(0x10e0, 0x10ff) AM_WRITE(SMH_RAM) AM_BASE(&mhavoc_colorram) /* ColorRAM */
 	AM_RANGE(0x1800, 0x18ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* EEROM        */
 	AM_RANGE(0x2000, 0x3fff) AM_ROMBANK(2)                    /* Paged Program ROM (32K) */
 	AM_RANGE(0x4000, 0x4fff) AM_RAM AM_BASE(&vectorram) AM_SIZE(&vectorram_size) AM_REGION(REGION_CPU1, 0x4000) /* Vector Generator RAM */
@@ -524,18 +524,14 @@ static MACHINE_DRIVER_START( mhavoc )
 	MDRV_CPU_ADD_TAG("gamma", M6502, MHAVOC_CLOCK_1_25M)	/* 1.25 MHz */
 	MDRV_CPU_PROGRAM_MAP(gamma_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(mhavoc)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(0, 300, 0, 260)
-	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(avg_mhavoc)
 	MDRV_VIDEO_UPDATE(vector)
@@ -574,6 +570,7 @@ static MACHINE_DRIVER_START( alphaone )
 	MDRV_CPU_PROGRAM_MAP(alphaone_map, 0)
 	MDRV_CPU_REMOVE("gamma")
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 580, 0, 500)
 
 	/* sound hardware */

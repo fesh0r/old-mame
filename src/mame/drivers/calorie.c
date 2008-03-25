@@ -109,8 +109,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( calorie )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,16,16);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,16,16,16,16);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -141,7 +141,7 @@ static VIDEO_UPDATE( calorie )
 		ypos = 0xff - calorie_sprites[x+2];
 		xpos = calorie_sprites[x+3];
 
-		if(flip_screen)
+		if(flip_screen_get())
 		{
 			if( calorie_sprites[x+1] & 0x10 )
 				ypos = 0xff - ypos + 32;
@@ -156,12 +156,12 @@ static VIDEO_UPDATE( calorie )
 		if( calorie_sprites[x+1] & 0x10 )
 		{
 			 /* 32x32 sprites */
-			drawgfx(bitmap,machine->gfx[3],tileno | 0x40,color,flipx,flipy,xpos,ypos - 31,cliprect,TRANSPARENCY_PEN,0);
+			drawgfx(bitmap,screen->machine->gfx[3],tileno | 0x40,color,flipx,flipy,xpos,ypos - 31,cliprect,TRANSPARENCY_PEN,0);
 		}
 		else
 		{
 			/* 16x16 sprites */
-			drawgfx(bitmap,machine->gfx[2],tileno,color,flipx,flipy,xpos,ypos - 15,cliprect,TRANSPARENCY_PEN,0);
+			drawgfx(bitmap,screen->machine->gfx[2],tileno,color,flipx,flipy,xpos,ypos - 15,cliprect,TRANSPARENCY_PEN,0);
 		}
 	}
 	return 0;
@@ -190,8 +190,8 @@ static WRITE8_HANDLER( calorie_flipscreen_w )
 
 static READ8_HANDLER( calorie_soundlatch_r )
 {
-	UINT8 latch = soundlatch_r(0);
-	soundlatch_clear_w(0,0);
+	UINT8 latch = soundlatch_r(machine,0);
+	soundlatch_clear_w(machine,0,0);
 	return latch;
 }
 
@@ -224,7 +224,7 @@ static ADDRESS_MAP_START( calorie_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( calorie_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_1_w)
@@ -362,21 +362,21 @@ static MACHINE_DRIVER_START( calorie )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,4000000)		 /* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(calorie_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,3000000)		 /* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(calorie_sound_map,0)
 	MDRV_CPU_IO_MAP(calorie_sound_io_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 64)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-16-1)
+
 	MDRV_GFXDECODE(calorie)
 	MDRV_PALETTE_LENGTH(0x100)
 

@@ -116,16 +116,15 @@ WRITE8_HANDLER( leland_80186_command_lo_w );
 WRITE8_HANDLER( leland_80186_command_hi_w );
 WRITE8_HANDLER( ataxx_80186_control_w );
 
-ADDRESS_MAP_EXTERN(leland_80186_map_program);
-ADDRESS_MAP_EXTERN(leland_80186_map_io);
-ADDRESS_MAP_EXTERN(redline_80186_map_io);
-ADDRESS_MAP_EXTERN(ataxx_80186_map_io);
+ADDRESS_MAP_EXTERN(leland_80186_map_program, 16);
+ADDRESS_MAP_EXTERN(leland_80186_map_io, 16);
+ADDRESS_MAP_EXTERN(redline_80186_map_io, 16);
+ADDRESS_MAP_EXTERN(ataxx_80186_map_io, 16);
 
 
 /*----------- defined in video/leland.c -----------*/
 
 extern UINT8 *ataxx_qram;
-extern UINT8 leland_last_scanline_int;
 
 WRITE8_HANDLER( leland_scroll_w );
 WRITE8_HANDLER( leland_gfx_port_w );

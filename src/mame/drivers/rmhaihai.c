@@ -59,12 +59,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 static VIDEO_START( rmhaihai )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		8, 8, 64, 32);
 }
 
 static VIDEO_UPDATE( rmhaihai )
 {
-	tilemap_draw(bitmap, &machine->screen[0].visarea, bg_tilemap, 0, 0);
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	return 0;
 }
 
@@ -163,70 +163,70 @@ logerror("banksw %d\n",bank);
 
 static MACHINE_RESET( themj )
 {
-	themj_rombank_w(0,0);
+	themj_rombank_w(machine,0,0);
 }
 
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x9fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xa000, 0xa7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa800, 0xb7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)	/* rmhaisei only */
+	AM_RANGE(0x0000, 0x9fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xa000, 0xa7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xa800, 0xb7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)	/* rmhaisei only */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( themj_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xa000, 0xa7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa800, 0xb7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_BANK2)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xa000, 0xa7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xa800, 0xb7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_BANK2)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x9fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x9fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa800, 0xafff) AM_WRITE(rmhaihai_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(rmhaihai_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xb83c, 0xb83c) AM_WRITE(MWA8_NOP)	// ??
-	AM_RANGE(0xbc00, 0xbc00) AM_WRITE(MWA8_NOP)	// ??
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)	/* rmhaisei only */
+	AM_RANGE(0xb83c, 0xb83c) AM_WRITE(SMH_NOP)	// ??
+	AM_RANGE(0xbc00, 0xbc00) AM_WRITE(SMH_NOP)	// ??
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)	/* rmhaisei only */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(samples_r)
 	AM_RANGE(0x8000, 0x8000) AM_READ(keyboard_r)
-	AM_RANGE(0x8001, 0x8001) AM_READ(MRA8_NOP)	// ??
+	AM_RANGE(0x8001, 0x8001) AM_READ(SMH_NOP)	// ??
 	AM_RANGE(0x8020, 0x8020) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(MWA8_NOP)	// ??
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(SMH_NOP)	// ??
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(keyboard_w)
 	AM_RANGE(0x8020, 0x8020) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x8021, 0x8021) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x8040, 0x8040) AM_WRITE(adpcm_w)
 	AM_RANGE(0x8060, 0x8060) AM_WRITE(ctrl_w)
-	AM_RANGE(0x8080, 0x8080) AM_WRITE(MWA8_NOP)	// ??
-	AM_RANGE(0xbc04, 0xbc04) AM_WRITE(MWA8_NOP)	// ??
-	AM_RANGE(0xbc0c, 0xbc0c) AM_WRITE(MWA8_NOP)	// ??
+	AM_RANGE(0x8080, 0x8080) AM_WRITE(SMH_NOP)	// ??
+	AM_RANGE(0xbc04, 0xbc04) AM_WRITE(SMH_NOP)	// ??
+	AM_RANGE(0xbc0c, 0xbc0c) AM_WRITE(SMH_NOP)	// ??
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( themj_writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x8000, 0x8000) AM_WRITE(MWA8_NOP)	// ??
+	AM_RANGE(0x8000, 0x8000) AM_WRITE(SMH_NOP)	// ??
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(keyboard_w)
 	AM_RANGE(0x8020, 0x8020) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x8021, 0x8021) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x8040, 0x8040) AM_WRITE(adpcm_w)
 	AM_RANGE(0x8060, 0x8060) AM_WRITE(ctrl_w)
-	AM_RANGE(0x8080, 0x8080) AM_WRITE(MWA8_NOP)	// ??
+	AM_RANGE(0x8080, 0x8080) AM_WRITE(SMH_NOP)	// ??
 	AM_RANGE(0x80a0, 0x80a0) AM_WRITE(themj_rombank_w)
-	AM_RANGE(0xbc04, 0xbc04) AM_WRITE(MWA8_NOP)	// ??
-	AM_RANGE(0xbc0c, 0xbc0c) AM_WRITE(MWA8_NOP)	// ??
+	AM_RANGE(0xbc04, 0xbc04) AM_WRITE(SMH_NOP)	// ??
+	AM_RANGE(0xbc0c, 0xbc0c) AM_WRITE(SMH_NOP)	// ??
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( rmhaihai )
@@ -514,16 +514,16 @@ static MACHINE_DRIVER_START( rmhaihai )
 	MDRV_CPU_ADD_TAG("main",Z80,20000000/4)	/* 5 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(4*8, 60*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(1)
 	MDRV_PALETTE_LENGTH(0x100)
 

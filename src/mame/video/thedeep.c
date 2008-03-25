@@ -108,8 +108,8 @@ PALETTE_INIT( thedeep )
 
 VIDEO_START( thedeep )
 {
-	tilemap_0  = tilemap_create(get_tile_info_0,tilemap_scan_rows_back,TILEMAP_TYPE_PEN,16,16,0x20,0x20);
-	tilemap_1  = tilemap_create(get_tile_info_1,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,0x20,0x20);
+	tilemap_0  = tilemap_create(get_tile_info_0,tilemap_scan_rows_back,16,16,0x20,0x20);
+	tilemap_1  = tilemap_create(get_tile_info_1,tilemap_scan_rows,8,8,0x20,0x20);
 
 	tilemap_set_transparent_pen( tilemap_0,  0 );
 	tilemap_set_transparent_pen( tilemap_1,  0 );
@@ -151,7 +151,7 @@ Offset:     Bits:       Value:
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT8 *s = spriteram, *end = s + spriteram_size;
 
@@ -176,7 +176,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		if (color & 1)	sx -= 256;
 		if (attr  & 1)	sy -= 256;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -227,10 +227,10 @@ VIDEO_UPDATE( thedeep )
 		tilemap_set_scrolly(tilemap_0, x, y + scrolly);
 	}
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	tilemap_draw(bitmap,cliprect,tilemap_0,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tilemap_1,0,0);
 	return 0;
 }

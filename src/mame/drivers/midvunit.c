@@ -5,8 +5,8 @@
     driver by Aaron Giles
 
     Games supported:
-        * Cruis'n USA (1994) [3 sets]
-        * Cruis'n World (1996) [4 sets]
+        * Cruis'n USA (1994)       [3 sets]
+        * Cruis'n World (1996)     [4 sets]
         * War Gods (1996)
         * Off Road Challenge (1997)
 
@@ -219,7 +219,7 @@ static WRITE32_HANDLER( midvunit_control_w )
 
 	/* bit 3 is the watchdog */
 	if ((olddata ^ control_data) & 0x0008)
-		watchdog_reset_w(0, 0);
+		watchdog_reset_w(machine, 0, 0);
 
 	/* bit 1 is the DCS sound reset */
 	dcs_reset_w((~control_data >> 1) & 1);
@@ -240,7 +240,7 @@ static WRITE32_HANDLER( crusnwld_control_w )
 
 	/* bit 9 is the watchdog */
 	if ((olddata ^ control_data) & 0x0200)
-		watchdog_reset_w(0, 0);
+		watchdog_reset_w(machine, 0, 0);
 
 	/* bit 8 is the LED */
 
@@ -298,7 +298,7 @@ static WRITE32_HANDLER( tms32031_control_w )
 		int which = (offset >> 4) & 1;
 //  logerror("%06X:tms32031_control_w(%02X) = %08X\n", activecpu_get_pc(), offset, data);
 		if (data & 0x40)
-			timer_adjust(timer[which], attotime_never, 0, attotime_never);
+			timer_adjust_oneshot(timer[which], attotime_never, 0);
 
 		/* bit 0x200 selects internal clocking, which is 1/2 the main CPU clock rate */
 		if (data & 0x200)
@@ -386,7 +386,7 @@ static WRITE32_HANDLER( bit_reset_w )
 static READ32_HANDLER( offroadc_serial_status_r )
 {
 	int status = midway_serial_pic2_status_r();
-	return (port1_r(offset, mem_mask) & 0x7fff7fff) | (status << 31) | (status << 15);
+	return (port1_r(machine, offset, mem_mask) & 0x7fff7fff) | (status << 31) | (status << 15);
 }
 
 
@@ -447,7 +447,7 @@ static WRITE32_HANDLER( midvplus_misc_w )
 			/* bit 0x10 resets watchdog */
 			if ((olddata ^ midvplus_misc[offset]) & 0x0010)
 			{
-				watchdog_reset_w(0, 0);
+				watchdog_reset_w(machine, 0, 0);
 				logit = 0;
 			}
 			break;
@@ -501,19 +501,19 @@ static ADDRESS_MAP_START( midvunit_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x980040, 0x980040) AM_READWRITE(midvunit_page_control_r, midvunit_page_control_w)
 	AM_RANGE(0x980080, 0x980080) AM_NOP
 	AM_RANGE(0x980082, 0x980083) AM_READ(midvunit_dma_trigger_r)
-	AM_RANGE(0x990000, 0x990000) AM_READ(MRA32_NOP)	// link PAL (low 4 bits must == 4)
+	AM_RANGE(0x990000, 0x990000) AM_READ(SMH_NOP)	// link PAL (low 4 bits must == 4)
 	AM_RANGE(0x991030, 0x991030) AM_READ(port1_r)
-//  AM_RANGE(0x991050, 0x991050) AM_READ(MRA32_RAM) // seems to be another port
+//  AM_RANGE(0x991050, 0x991050) AM_READ(SMH_RAM) // seems to be another port
 	AM_RANGE(0x991060, 0x991060) AM_READ(port0_r)
 	AM_RANGE(0x992000, 0x992000) AM_READ(port2_r)
 	AM_RANGE(0x993000, 0x993000) AM_READWRITE(midvunit_adc_r, midvunit_adc_w)
 	AM_RANGE(0x994000, 0x994000) AM_WRITE(midvunit_control_w)
-	AM_RANGE(0x995000, 0x995000) AM_WRITE(MWA32_NOP)	// force feedback?
+	AM_RANGE(0x995000, 0x995000) AM_WRITE(SMH_NOP)	// force feedback?
 	AM_RANGE(0x995020, 0x995020) AM_WRITE(midvunit_cmos_protect_w)
 	AM_RANGE(0x997000, 0x997000) AM_NOP	// communications
 	AM_RANGE(0x9a0000, 0x9a0000) AM_WRITE(midvunit_sound_w)
 	AM_RANGE(0x9c0000, 0x9c1fff) AM_READWRITE(midvunit_cmos_r, midvunit_cmos_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x9e0000, 0x9e7fff) AM_READWRITE(MRA32_RAM, midvunit_paletteram_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x9e0000, 0x9e7fff) AM_READWRITE(SMH_RAM, midvunit_paletteram_w) AM_BASE(&paletteram32)
 	AM_RANGE(0xa00000, 0xbfffff) AM_READWRITE(midvunit_textureram_r, midvunit_textureram_w) AM_BASE(&midvunit_textureram)
 	AM_RANGE(0xc00000, 0xffffff) AM_ROM AM_REGION(REGION_USER1, 0)
 ADDRESS_MAP_END
@@ -538,7 +538,7 @@ static ADDRESS_MAP_START( midvplus_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x994000, 0x994000) AM_WRITE(midvunit_control_w)
 	AM_RANGE(0x995020, 0x995020) AM_WRITE(midvunit_cmos_protect_w)
 	AM_RANGE(0x9a0000, 0x9a0007) AM_READWRITE(midway_ide_asic_r, midway_ide_asic_w)
-	AM_RANGE(0x9c0000, 0x9c7fff) AM_READWRITE(MRA32_RAM, midvunit_paletteram_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x9c0000, 0x9c7fff) AM_READWRITE(SMH_RAM, midvunit_paletteram_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x9d0000, 0x9d000f) AM_READWRITE(midvplus_misc_r, midvplus_misc_w) AM_BASE(&midvplus_misc)
 	AM_RANGE(0xa00000, 0xbfffff) AM_READWRITE(midvunit_textureram_r, midvunit_textureram_w) AM_BASE(&midvunit_textureram)
 	AM_RANGE(0xc00000, 0xcfffff) AM_RAM
@@ -682,7 +682,7 @@ static INPUT_PORTS_START( crusnwld )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT ) /* Slam Switch */
-	PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Enter") PORT_CODE(KEYCODE_F2) /* Test switch */
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Enter") PORT_CODE(KEYCODE_F2) /* Test switch */
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -803,7 +803,7 @@ static INPUT_PORTS_START( offroadc )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT ) /* Slam Switch */
-	PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Enter") PORT_CODE(KEYCODE_F2) /* Test switch */
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Enter") PORT_CODE(KEYCODE_F2) /* Test switch */
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -955,7 +955,7 @@ static INPUT_PORTS_START( wargods )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT ) /* Slam Switch */
-	PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -1015,10 +1015,9 @@ static MACHINE_DRIVER_START( midvcommon )
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_PALETTE_LENGTH(32768)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MIDVUNIT_VIDEO_CLOCK/2, 666, 0, 512, 432, 0, 400)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 

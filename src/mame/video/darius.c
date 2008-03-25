@@ -45,7 +45,7 @@ static void dirty_fg_tilemap(void)
 
 VIDEO_START( darius )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,128,64);
 
 	spritelist = auto_malloc(0x800 * sizeof(*spritelist));
 
@@ -69,7 +69,7 @@ WRITE16_HANDLER( darius_fg_layer_w )
 
 /***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int primask, int x_offs, int y_offs)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int primask, int x_offs, int y_offs)
 {
 	int offs,curx,cury;
 	UINT16 code,data,sx,sy;
@@ -127,7 +127,17 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 VIDEO_UPDATE( darius )
 {
-	int xoffs = 36*8*screen;
+	int xoffs = 0;
+	const device_config *left_screen   = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *middle_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "middle");
+	const device_config *right_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
+
+	if (screen == left_screen)
+		xoffs = 36*8*0;
+	else if (screen == middle_screen)
+		xoffs = 36*8*1;
+	else if (screen == right_screen)
+		xoffs = 36*8*2;
 
 	PC080SN_tilemap_update();
 
@@ -135,12 +145,12 @@ VIDEO_UPDATE( darius )
  	PC080SN_tilemap_draw_offset(bitmap,cliprect,0,0,TILEMAP_DRAW_OPAQUE,0,-xoffs,0);
 
 	/* Sprites can be under/over the layer below text layer */
-	draw_sprites(machine,bitmap,cliprect,0,xoffs,-8); // draw sprites with priority 0 which are under the mid layer
+	draw_sprites(screen->machine,bitmap,cliprect,0,xoffs,-8); // draw sprites with priority 0 which are under the mid layer
 
 	// draw middle layer
 	PC080SN_tilemap_draw_offset(bitmap,cliprect,0,1,0,0,-xoffs,0);
 
-	draw_sprites(machine,bitmap,cliprect,1,xoffs,-8); // draw sprites with priority 1 which are over the mid layer
+	draw_sprites(screen->machine,bitmap,cliprect,1,xoffs,-8); // draw sprites with priority 1 which are over the mid layer
 
 	/* top(text) layer is in fixed position */
 	tilemap_set_scrollx(fg_tilemap,0,0+xoffs);

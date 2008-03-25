@@ -137,7 +137,7 @@ static READ16_HANDLER( wbeachvl_port0_r )
 
 	bit = EEPROM_read_bit() << 7;
 
-	return (input_port_0_r(0) & 0x7f) | bit;
+	return (input_port_0_r(machine,0) & 0x7f) | bit;
 }
 
 static READ16_HANDLER( hotmind_port2_r )
@@ -146,7 +146,7 @@ static READ16_HANDLER( hotmind_port2_r )
 
 	bit = EEPROM_read_bit() << 7;
 
-	return (input_port_2_r(0) & 0x7f) | bit;
+	return (input_port_2_r(machine,0) & 0x7f) | bit;
 }
 
 static WRITE16_HANDLER( wbeachvl_coin_eeprom_w )
@@ -202,7 +202,7 @@ static READ8_HANDLER( playmark_snd_command_r )
 //      logerror("PortB reading %02x from the 68K\n",data);
 	}
 	else if ((playmark_oki_control & 0x38) == 0x28) {
-		data = (OKIM6295_status_0_r(0) & 0x0f);
+		data = (OKIM6295_status_0_r(machine,0) & 0x0f);
 //      logerror("PortB reading %02x from the OKI status port\n",data);
 	}
 
@@ -255,13 +255,12 @@ static WRITE8_HANDLER( playmark_snd_control_w )
         1   Not used
         0   Not used
     */
-
 	playmark_oki_control = data;
 
 	if ((data & 0x38) == 0x18)
 	{
 //      logerror("Writing %02x to OKI1, PortC=%02x, Code=%02x\n",playmark_oki_command,playmark_oki_control,playmark_snd_command);
-		OKIM6295_data_0_w(0, playmark_oki_command);
+		OKIM6295_data_0_w(machine, 0, playmark_oki_command);
 	}
 }
 
@@ -279,9 +278,9 @@ static ADDRESS_MAP_START( bigtwin_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x304000, 0x304001) AM_NOP				/* watchdog? irq ack? */
 	AM_RANGE(0x440000, 0x4403ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x500000, 0x500fff) AM_WRITE(wbeachvl_fgvideoram_w) AM_BASE(&wbeachvl_videoram2)
-	AM_RANGE(0x501000, 0x501fff) AM_WRITE(MWA16_NOP)	/* unused RAM? */
+	AM_RANGE(0x501000, 0x501fff) AM_WRITE(SMH_NOP)	/* unused RAM? */
 	AM_RANGE(0x502000, 0x503fff) AM_WRITE(wbeachvl_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
-	AM_RANGE(0x504000, 0x50ffff) AM_WRITE(MWA16_NOP)	/* unused RAM? */
+	AM_RANGE(0x504000, 0x50ffff) AM_WRITE(SMH_NOP)	/* unused RAM? */
 	AM_RANGE(0x510000, 0x51000b) AM_WRITE(bigtwin_scroll_w)
 	AM_RANGE(0x51000c, 0x51000d) AM_WRITENOP	/* always 3? */
 	AM_RANGE(0x600000, 0x67ffff) AM_RAM AM_BASE(&bigtwin_bgvideoram)
@@ -300,9 +299,9 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( wbeachvl_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x440000, 0x440fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x500000, 0x501fff) AM_READWRITE(MRA16_RAM, wbeachvl_bgvideoram_w) AM_BASE(&wbeachvl_videoram3)
-	AM_RANGE(0x504000, 0x505fff) AM_READWRITE(MRA16_RAM, wbeachvl_fgvideoram_w) AM_BASE(&wbeachvl_videoram2)
-	AM_RANGE(0x508000, 0x509fff) AM_READWRITE(MRA16_RAM, wbeachvl_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
+	AM_RANGE(0x500000, 0x501fff) AM_READWRITE(SMH_RAM, wbeachvl_bgvideoram_w) AM_BASE(&wbeachvl_videoram3)
+	AM_RANGE(0x504000, 0x505fff) AM_READWRITE(SMH_RAM, wbeachvl_fgvideoram_w) AM_BASE(&wbeachvl_videoram2)
+	AM_RANGE(0x508000, 0x509fff) AM_READWRITE(SMH_RAM, wbeachvl_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
 	AM_RANGE(0x50f000, 0x50ffff) AM_RAM AM_BASE(&wbeachvl_rowscroll)
 	AM_RANGE(0x510000, 0x51000b) AM_WRITE(wbeachvl_scroll_w)
 	AM_RANGE(0x51000c, 0x51000d) AM_WRITENOP	/* 2 and 3 */
@@ -314,7 +313,7 @@ static ADDRESS_MAP_START( wbeachvl_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x710018, 0x710019) AM_READ(input_port_3_word_r)
 	AM_RANGE(0x71001a, 0x71001b) AM_READ(input_port_4_word_r)
 //  AM_RANGE(0x71001c, 0x71001d) AM_READ(playmark_snd_status???)
-//  AM_RANGE(0x71001e, 0x71001f) AM_WRITE(MWA16_NOP)//playmark_snd_command_w },
+//  AM_RANGE(0x71001e, 0x71001f) AM_WRITE(SMH_NOP)//playmark_snd_command_w },
 	AM_RANGE(0x780000, 0x780fff) AM_WRITE(paletteram16_RRRRRGGGGGBBBBBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM
 ADDRESS_MAP_END
@@ -341,9 +340,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hotmind_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
-	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(MRA16_RAM, hrdtimes_bgvideoram_w) AM_BASE(&wbeachvl_videoram3)
-	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(MRA16_RAM, hrdtimes_fgvideoram_w) AM_BASE(&wbeachvl_videoram2)
-	AM_RANGE(0x108000, 0x10ffff) AM_READWRITE(MRA16_RAM, hrdtimes_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
+	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(SMH_RAM, hrdtimes_bgvideoram_w) AM_BASE(&wbeachvl_videoram3)
+	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(SMH_RAM, hrdtimes_fgvideoram_w) AM_BASE(&wbeachvl_videoram2)
+	AM_RANGE(0x108000, 0x10ffff) AM_READWRITE(SMH_RAM, hrdtimes_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
 	AM_RANGE(0x110000, 0x11000d) AM_WRITE(hrdtimes_scroll_w)
 	AM_RANGE(0x200000, 0x200fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x280000, 0x2807ff) AM_RAM AM_WRITE(bigtwin_paletteram_w) AM_BASE(&paletteram16)
@@ -361,9 +360,9 @@ static ADDRESS_MAP_START( hrdtimes_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x080000, 0x0bffff) AM_RAM
 	AM_RANGE(0x0c0000, 0x0fffff) AM_ROM AM_REGION(REGION_CPU1, 0x0c0000)
-	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(MRA16_RAM, hrdtimes_bgvideoram_w) AM_BASE(&wbeachvl_videoram3)
-	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(MRA16_RAM, hrdtimes_fgvideoram_w) AM_BASE(&wbeachvl_videoram2)
-	AM_RANGE(0x108000, 0x10ffff) AM_READWRITE(MRA16_RAM, hrdtimes_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
+	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(SMH_RAM, hrdtimes_bgvideoram_w) AM_BASE(&wbeachvl_videoram3)
+	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(SMH_RAM, hrdtimes_fgvideoram_w) AM_BASE(&wbeachvl_videoram2)
+	AM_RANGE(0x108000, 0x10ffff) AM_READWRITE(SMH_RAM, hrdtimes_txvideoram_w) AM_BASE(&wbeachvl_videoram1)
 	AM_RANGE(0x110000, 0x11000d) AM_WRITE(hrdtimes_scroll_w)
 	AM_RANGE(0x200000, 0x200fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x280000, 0x2807ff) AM_RAM AM_WRITE(bigtwin_paletteram_w) AM_BASE(&paletteram16)
@@ -970,20 +969,20 @@ static MACHINE_DRIVER_START( bigtwin )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(bigtwin_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_CPU_ADD(PIC16C57, 12000000)	/* 3MHz */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(playmark_sound_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(playmark)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1004,22 +1003,22 @@ static MACHINE_DRIVER_START( wbeachvl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(wbeachvl_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 //  MDRV_CPU_ADD(PIC16C57, 12000000)   /* 3MHz */
 	/* Program and Data Maps are internal to the MCU */
 //  MDRV_CPU_IO_MAP(playmark_sound_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(wbeachvl)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(wbeachvl)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -1039,20 +1038,20 @@ static MACHINE_DRIVER_START( excelsr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(excelsr_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_CPU_ADD(PIC16C57, 12000000)	/* 3MHz */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(playmark_sound_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(excelsr)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1070,24 +1069,24 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( hotmind )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD(M68000, XTAL_24MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(hotmind_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
-	MDRV_CPU_ADD(PIC16C57, 12000000)	/* 3MHz */
+	MDRV_CPU_ADD(PIC16C57, XTAL_24MHz/2)	/* verified on pcb */
 	/* Program and Data Maps are internal to the MCU */
 	MDRV_CPU_IO_MAP(playmark_sound_io_map, 0)
-
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(wbeachvl)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(hrdtimes)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1097,30 +1096,30 @@ static MACHINE_DRIVER_START( hotmind )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD(OKIM6295, XTAL_1MHz) /* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( hrdtimes )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
+	MDRV_CPU_ADD(M68000, XTAL_24MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(hrdtimes_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
-//  MDRV_CPU_ADD(PIC16C57, 12000000)   /* 3MHz */
+//  MDRV_CPU_ADD(PIC16C57, XTAL_24MHz/2)    /* verified on pcb */
 	/* Program and Data Maps are internal to the MCU */
 //  MDRV_CPU_IO_MAP(playmark_sound_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(hrdtimes)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1130,8 +1129,8 @@ static MACHINE_DRIVER_START( hrdtimes )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1000000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
+	MDRV_SOUND_ADD(OKIM6295, XTAL_1MHz) /* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 

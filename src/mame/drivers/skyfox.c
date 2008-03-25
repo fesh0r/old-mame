@@ -45,8 +45,8 @@ VIDEO_UPDATE( skyfox );
 ***************************************************************************/
 
 static ADDRESS_MAP_START( skyfox_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM				)	// ROM
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM				)	// RAM
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM				)	// ROM
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM				)	// RAM
 	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_0_r		)	// Input Ports
 	AM_RANGE(0xe001, 0xe001) AM_READ(input_port_1_r		)	//
 	AM_RANGE(0xe002, 0xe002) AM_READ(input_port_2_r		)	//
@@ -55,10 +55,10 @@ static ADDRESS_MAP_START( skyfox_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( skyfox_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM								)	// ROM
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM								)	// RAM
-	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0xd400, 0xdfff) AM_WRITE(MWA8_RAM								)	// RAM?
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM								)	// ROM
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM								)	// RAM
+	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size	)	// Sprites
+	AM_RANGE(0xd400, 0xdfff) AM_WRITE(SMH_RAM								)	// RAM?
 	AM_RANGE(0xe008, 0xe00f) AM_WRITE(skyfox_vregs_w						)	// Video Regs
 ADDRESS_MAP_END
 
@@ -82,20 +82,20 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( skyfox_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM				)	// ROM
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM				)	// RAM
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM				)	// ROM
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM				)	// RAM
 	AM_RANGE(0xa001, 0xa001) AM_READ(YM2203_read_port_0_r 	)	// YM2203 #1
 //  AM_RANGE(0xc001, 0xc001) AM_READ(YM2203_read_port_1_r   )   // YM2203 #2
 	AM_RANGE(0xb000, 0xb000) AM_READ(soundlatch_r			)	// From Main CPU
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( skyfox_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM					)	// ROM
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM					)	// RAM
-//  AM_RANGE(0x9000, 0x9001) AM_WRITE(MWA8_NOP                  )   // ??
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM					)	// ROM
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM					)	// RAM
+//  AM_RANGE(0x9000, 0x9001) AM_WRITE(SMH_NOP                  )   // ??
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(YM2203_control_port_0_w 	)	// YM2203 #1
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(YM2203_write_port_0_w 	)	//
-//  AM_RANGE(0xb000, 0xb001) AM_WRITE(MWA8_NOP                  )   // ??
+//  AM_RANGE(0xb000, 0xb001) AM_WRITE(SMH_NOP                  )   // ??
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2203_control_port_1_w 	)	// YM2203 #2
 	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2203_write_port_1_w 	)	//
 ADDRESS_MAP_END
@@ -256,20 +256,20 @@ static MACHINE_DRIVER_START( skyfox )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(skyfox_readmem,skyfox_writemem)
-	MDRV_CPU_VBLANK_INT(skyfox_interrupt,1)		/* NMI caused by coin insertion */
+	MDRV_CPU_VBLANK_INT("main", skyfox_interrupt)		/* NMI caused by coin insertion */
 
 	MDRV_CPU_ADD(Z80, 1748000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(skyfox_sound_readmem,skyfox_sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)	// we're using IPT_VBLANK
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)	// we're using IPT_VBLANK
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0+0x60, 320-1+0x60, 0+16, 256-1-16)	// from $30*2 to $CC*2+8
+
 	MDRV_GFXDECODE(skyfox)
 	MDRV_PALETTE_LENGTH(256+256)	/* 256 static colors (+256 for the background??) */
 

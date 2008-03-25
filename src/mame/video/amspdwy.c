@@ -21,7 +21,7 @@ static tilemap *bg_tilemap;
 WRITE8_HANDLER( amspdwy_paletteram_w )
 {
 	data ^= 0xff;
-	paletteram_BBGGGRRR_w(offset,data);
+	paletteram_BBGGGRRR_w(machine,offset,data);
 //  paletteram_RRRGGGBB_w(offset,data);
 }
 
@@ -79,7 +79,7 @@ static TILEMAP_MAPPER( tilemap_scan_cols_back )
 VIDEO_START( amspdwy )
 {
 	bg_tilemap	=	tilemap_create(	get_tile_info,	tilemap_scan_cols_back,
-								TILEMAP_TYPE_PEN,	8,8,	0x20, 0x20 );
+									8,8,	0x20, 0x20 );
 }
 
 
@@ -102,11 +102,11 @@ Offset:     Format:     Value:
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int i;
-	int max_x = machine->screen[0].width  - 1;
-	int max_y = machine->screen[0].height - 1;
+	int max_x = video_screen_get_width(machine->primary_screen)  - 1;
+	int max_y = video_screen_get_height(machine->primary_screen) - 1;
 
 	for (i = 0; i < spriteram_size ; i += 4)
 	{
@@ -117,7 +117,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		int flipx	=	attr & 0x80;
 		int flipy	=	attr & 0x40;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			x = max_x - x - 8;	y = max_y - y - 8;
 			flipx = !flipx;	flipy = !flipy;
@@ -145,6 +145,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( amspdwy )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

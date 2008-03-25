@@ -36,7 +36,7 @@ void triplhnt_set_collision(int code)
 }
 
 
-static void triplhnt_update_misc(int offset)
+static void triplhnt_update_misc(running_machine *machine, int offset)
 {
 	UINT8 is_witch_hunt;
 	UINT8 bit = offset >> 1;
@@ -72,9 +72,9 @@ static void triplhnt_update_misc(int offset)
 	coin_lockout_w(0, !(triplhnt_misc_flags & 0x08));
 	coin_lockout_w(1, !(triplhnt_misc_flags & 0x08));
 
-	discrete_sound_w(TRIPLHNT_SCREECH_EN, triplhnt_misc_flags & 0x04);	// screech
-	discrete_sound_w(TRIPLHNT_LAMP_EN, triplhnt_misc_flags & 0x02);	// Lamp is used to reset noise
-	discrete_sound_w(TRIPLHNT_BEAR_EN, triplhnt_misc_flags & 0x80);	// bear
+	discrete_sound_w(machine, TRIPLHNT_SCREECH_EN, triplhnt_misc_flags & 0x04);	// screech
+	discrete_sound_w(machine, TRIPLHNT_LAMP_EN, triplhnt_misc_flags & 0x02);	// Lamp is used to reset noise
+	discrete_sound_w(machine, TRIPLHNT_BEAR_EN, triplhnt_misc_flags & 0x80);	// bear
 
 	is_witch_hunt = readinputport(2) == 0x40;
 	bit = ~triplhnt_misc_flags & 0x40;
@@ -93,7 +93,7 @@ static void triplhnt_update_misc(int offset)
 
 static WRITE8_HANDLER( triplhnt_misc_w )
 {
-	triplhnt_update_misc(offset);
+	triplhnt_update_misc(machine, offset);
 }
 
 
@@ -107,16 +107,14 @@ static READ8_HANDLER( triplhnt_cmos_r )
 
 static READ8_HANDLER( triplhnt_input_port_4_r )
 {
-	watchdog_reset_w(0, 0);
-
+	watchdog_reset_w(machine, 0, 0);
 	return readinputport(4);
 }
 
 
 static READ8_HANDLER( triplhnt_misc_r )
 {
-	triplhnt_update_misc(offset);
-
+	triplhnt_update_misc(machine, offset);
 	return readinputport(7) | triplhnt_hit_code;
 }
 
@@ -135,7 +133,7 @@ static READ8_HANDLER( triplhnt_da_latch_r )
 
 
 static ADDRESS_MAP_START( triplhnt_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_READ(MRA8_RAM) AM_MIRROR(0x300)
+	AM_RANGE(0x0000, 0x00ff) AM_READ(SMH_RAM) AM_MIRROR(0x300)
 	AM_RANGE(0x0c00, 0x0c00) AM_READ(input_port_0_r)
 	AM_RANGE(0x0c08, 0x0c08) AM_READ(input_port_1_r)
 	AM_RANGE(0x0c09, 0x0c09) AM_READ(input_port_2_r)
@@ -146,20 +144,20 @@ static ADDRESS_MAP_START( triplhnt_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c30, 0x0c3f) AM_READ(triplhnt_misc_r)
 	AM_RANGE(0x0c40, 0x0c40) AM_READ(input_port_5_r)
 	AM_RANGE(0x0c48, 0x0c48) AM_READ(input_port_6_r)
-	AM_RANGE(0x7000, 0x7fff) AM_READ(MRA8_ROM) /* program */
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_ROM) /* program mirror */
+	AM_RANGE(0x7000, 0x7fff) AM_READ(SMH_ROM) /* program */
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_ROM) /* program mirror */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( triplhnt_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_WRITE(MWA8_RAM) AM_MIRROR(0x300)
-	AM_RANGE(0x0400, 0x04ff) AM_WRITE(MWA8_RAM) AM_BASE(&triplhnt_playfield_ram)
-	AM_RANGE(0x0800, 0x080f) AM_WRITE(MWA8_RAM) AM_BASE(&triplhnt_vpos_ram)
-	AM_RANGE(0x0810, 0x081f) AM_WRITE(MWA8_RAM) AM_BASE(&triplhnt_hpos_ram)
-	AM_RANGE(0x0820, 0x082f) AM_WRITE(MWA8_RAM) AM_BASE(&triplhnt_orga_ram)
-	AM_RANGE(0x0830, 0x083f) AM_WRITE(MWA8_RAM) AM_BASE(&triplhnt_code_ram)
+	AM_RANGE(0x0000, 0x00ff) AM_WRITE(SMH_RAM) AM_MIRROR(0x300)
+	AM_RANGE(0x0400, 0x04ff) AM_WRITE(SMH_RAM) AM_BASE(&triplhnt_playfield_ram)
+	AM_RANGE(0x0800, 0x080f) AM_WRITE(SMH_RAM) AM_BASE(&triplhnt_vpos_ram)
+	AM_RANGE(0x0810, 0x081f) AM_WRITE(SMH_RAM) AM_BASE(&triplhnt_hpos_ram)
+	AM_RANGE(0x0820, 0x082f) AM_WRITE(SMH_RAM) AM_BASE(&triplhnt_orga_ram)
+	AM_RANGE(0x0830, 0x083f) AM_WRITE(SMH_RAM) AM_BASE(&triplhnt_code_ram)
 	AM_RANGE(0x0c30, 0x0c3f) AM_WRITE(triplhnt_misc_w)
-	AM_RANGE(0x7000, 0x7fff) AM_WRITE(MWA8_ROM) /* program */
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_ROM) /* program mirror */
+	AM_RANGE(0x7000, 0x7fff) AM_WRITE(SMH_ROM) /* program */
+	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_ROM) /* program mirror */
 ADDRESS_MAP_END
 
 
@@ -321,17 +319,17 @@ static MACHINE_DRIVER_START( triplhnt )
 /* basic machine hardware */
 	MDRV_CPU_ADD(M6800, 800000)
 	MDRV_CPU_PROGRAM_MAP(triplhnt_readmem, triplhnt_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
+
 	MDRV_GFXDECODE(triplhnt)
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(triplhnt)

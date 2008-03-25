@@ -268,32 +268,32 @@ static TIMER_CALLBACK( williams_va11_callback )
 	int scanline = param;
 
 	/* the IRQ signal comes into CB1, and is set to VA11 */
-	pia_1_cb1_w(0, scanline & 0x20);
+	pia_1_cb1_w(machine, 0, scanline & 0x20);
 
 	/* set a timer for the next update */
 	scanline += 0x20;
 	if (scanline >= 256) scanline = 0;
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
 static TIMER_CALLBACK( williams_count240_off_callback )
 {
 	/* the COUNT240 signal comes into CA1, and is set to the logical AND of VA10-VA13 */
-	pia_1_ca1_w(0, 0);
+	pia_1_ca1_w(machine, 0, 0);
 }
 
 
 static TIMER_CALLBACK( williams_count240_callback )
 {
 	/* the COUNT240 signal comes into CA1, and is set to the logical AND of VA10-VA13 */
-	pia_1_ca1_w(0, 1);
+	pia_1_ca1_w(machine, 0, 1);
 
 	/* set a timer to turn it off once the scanline counter resets */
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, williams_count240_off_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, williams_count240_off_callback);
 
 	/* set a timer for next frame */
-	timer_adjust(scan240_timer, video_screen_get_time_until_pos(0, 240, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scan240_timer, video_screen_get_time_until_pos(machine->primary_screen, 240, 0), 0);
 }
 
 
@@ -354,7 +354,7 @@ static void tshoot_main_irq(int state)
  *
  *************************************/
 
-static void williams_common_init(void)
+static MACHINE_RESET( williams_common )
 {
 	/* reset the PIAs */
 	pia_reset();
@@ -364,11 +364,11 @@ static void williams_common_init(void)
 
 	/* set a timer to go off every 16 scanlines, to toggle the VA11 line and update the screen */
 	scanline_timer = timer_alloc(williams_va11_callback, NULL);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 
 	/* also set a timer to go off on scanline 240 */
 	scan240_timer = timer_alloc(williams_count240_callback, NULL);
-	timer_adjust(scan240_timer, video_screen_get_time_until_pos(0, 240, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scan240_timer, video_screen_get_time_until_pos(machine->primary_screen, 240, 0), 0);
 
 	state_save_register_global(vram_bank);
 }
@@ -376,7 +376,7 @@ static void williams_common_init(void)
 
 MACHINE_RESET( williams )
 {
-	williams_common_init();
+	MACHINE_RESET_CALL(williams_common);
 
 	/* configure the memory bank */
 	memory_configure_bank(1, 0, 1, williams_videoram, 0);
@@ -396,33 +396,33 @@ static TIMER_CALLBACK( williams2_va11_callback )
 	int scanline = param;
 
 	/* the IRQ signal comes into CB1, and is set to VA11 */
-	pia_0_cb1_w(0, scanline & 0x20);
-	pia_1_ca1_w(0, scanline & 0x20);
+	pia_0_cb1_w(machine, 0, scanline & 0x20);
+	pia_1_ca1_w(machine, 0, scanline & 0x20);
 
 	/* set a timer for the next update */
 	scanline += 0x20;
 	if (scanline >= 256) scanline = 0;
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
 static TIMER_CALLBACK( williams2_endscreen_off_callback )
 {
 	/* the /ENDSCREEN signal comes into CA1 */
-	pia_0_ca1_w(0, 1);
+	pia_0_ca1_w(machine, 0, 1);
 }
 
 
 static TIMER_CALLBACK( williams2_endscreen_callback )
 {
 	/* the /ENDSCREEN signal comes into CA1 */
-	pia_0_ca1_w(0, 0);
+	pia_0_ca1_w(machine, 0, 0);
 
 	/* set a timer to turn it off once the scanline counter resets */
-	timer_set(video_screen_get_time_until_pos(0, 8, 0), NULL, 0, williams2_endscreen_off_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 8, 0), NULL, 0, williams2_endscreen_off_callback);
 
 	/* set a timer for next frame */
-	timer_adjust(scan254_timer, video_screen_get_time_until_pos(0, 254, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scan254_timer, video_screen_get_time_until_pos(machine->primary_screen, 254, 0), 0);
 }
 
 
@@ -435,7 +435,7 @@ static TIMER_CALLBACK( williams2_endscreen_callback )
 
 static void williams2_postload(void)
 {
-	williams2_bank_select_w(0, vram_bank);
+	williams2_bank_select_w(Machine, 0, vram_bank);
 }
 
 
@@ -449,15 +449,15 @@ MACHINE_RESET( williams2 )
 	memory_configure_bank(1, 1, 4, memory_region(REGION_CPU1) + 0x10000, 0x10000);
 
 	/* make sure our banking is reset */
-	williams2_bank_select_w(0, 0);
+	williams2_bank_select_w(machine, 0, 0);
 
 	/* set a timer to go off every 16 scanlines, to toggle the VA11 line and update the screen */
 	scanline_timer = timer_alloc(williams2_va11_callback, NULL);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 
 	/* also set a timer to go off on scanline 254 */
 	scan254_timer = timer_alloc(williams2_endscreen_callback, NULL);
-	timer_adjust(scan254_timer, video_screen_get_time_until_pos(0, 254, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scan254_timer, video_screen_get_time_until_pos(machine->primary_screen, 254, 0), 0);
 
 	state_save_register_global(vram_bank);
 	state_save_register_func_postload(williams2_postload);
@@ -491,8 +491,8 @@ WRITE8_HANDLER( williams2_bank_select_w )
 	{
 		/* page 0 is video ram */
 		case 0:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, MRA8_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, MWA8_BANK4);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
 			memory_set_bank(1, 0);
 			memory_set_bankptr(4, &williams_videoram[0x8000]);
 			break;
@@ -500,15 +500,15 @@ WRITE8_HANDLER( williams2_bank_select_w )
 		/* pages 1 and 2 are ROM */
 		case 1:
 		case 2:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, MRA8_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, MWA8_BANK4);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
 			memory_set_bank(1, 1 + ((vram_bank & 6) >> 1));
 			memory_set_bankptr(4, &williams_videoram[0x8000]);
 			break;
 
 		/* page 3 accesses palette RAM; the remaining areas are as if page 1 ROM was selected */
 		case 3:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, MRA8_BANK4);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
 			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, williams2_paletteram_w);
 			memory_set_bank(1, 1 + ((vram_bank & 4) >> 1));
 			memory_set_bankptr(4, paletteram);
@@ -526,8 +526,8 @@ WRITE8_HANDLER( williams2_bank_select_w )
 
 static TIMER_CALLBACK( williams_deferred_snd_cmd_w )
 {
-	pia_2_portb_w(0, param);
-	pia_2_cb1_w(0, (param == 0xff) ? 0 : 1);
+	pia_2_portb_w(machine, 0, param);
+	pia_2_cb1_w(machine, 0, (param == 0xff) ? 0 : 1);
 }
 
 WRITE8_HANDLER( williams_snd_cmd_w )
@@ -544,7 +544,7 @@ WRITE8_HANDLER( playball_snd_cmd_w )
 
 static TIMER_CALLBACK( williams2_deferred_snd_cmd_w )
 {
-	pia_2_porta_w(0, param);
+	pia_2_porta_w(machine, 0, param);
 }
 
 static WRITE8_HANDLER( williams2_snd_cmd_w )
@@ -613,7 +613,7 @@ READ8_HANDLER( williams_49way_port_0_r )
 READ8_HANDLER( williams_input_port_49way_0_5_r )
 {
 	if (port_select)
-		return williams_49way_port_0_r(0);
+		return williams_49way_port_0_r(machine,0);
 	else
 		return readinputport(5);
 }
@@ -651,7 +651,7 @@ WRITE8_HANDLER( williams_watchdog_reset_w )
 {
 	/* yes, the data bits are checked for this specific value */
 	if (data == 0x39)
-		watchdog_reset_w(0,0);
+		watchdog_reset_w(machine,0,0);
 }
 
 
@@ -659,7 +659,7 @@ WRITE8_HANDLER( williams2_watchdog_reset_w )
 {
 	/* yes, the data bits are checked for this specific value */
 	if ((data & 0x3f) == 0x14)
-		watchdog_reset_w(0,0);
+		watchdog_reset_w(machine,0,0);
 }
 
 
@@ -713,17 +713,17 @@ WRITE8_HANDLER( williams2_7segment_w )
 
 static void defender_postload(void)
 {
-	defender_bank_select_w(0, vram_bank);
+	defender_bank_select_w(Machine, 0, vram_bank);
 }
 
 
 MACHINE_RESET( defender )
 {
-	williams_common_init();
+	MACHINE_RESET_CALL(williams_common);
 
 	/* configure the banking and make sure it is reset to 0 */
 	memory_configure_bank(1, 0, 9, &memory_region(REGION_CPU1)[0x10000], 0x1000);
-	defender_bank_select_w(0, 0);
+	defender_bank_select_w(machine, 0, 0);
 
 	state_save_register_func_postload(defender_postload);
 }
@@ -757,15 +757,15 @@ WRITE8_HANDLER( defender_bank_select_w )
 		case 7:
 		case 8:
 		case 9:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, MRA8_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, MWA8_UNMAP);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_UNMAP);
 			memory_set_bank(1, vram_bank - 1);
 			break;
 
 		/* pages A-F are not connected */
 		default:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, MWA8_NOP);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_NOP);
 			break;
 	}
 }
@@ -799,7 +799,7 @@ READ8_HANDLER( mayday_protection_r )
 WRITE8_HANDLER( sinistar_vram_select_w )
 {
 	/* low two bits are standard */
-	williams_vram_select_w(offset, data);
+	williams_vram_select_w(machine, offset, data);
 
 	/* window enable from bit 2 (clips to 0x7400) */
 	williams_blitter_window_enable = data & 0x04;
@@ -815,7 +815,7 @@ WRITE8_HANDLER( sinistar_vram_select_w )
 
 MACHINE_RESET( blaster )
 {
-	williams_common_init();
+	MACHINE_RESET_CALL(williams_common);
 
 	/* banking is different for blaster */
 	memory_configure_bank(1, 0, 1, williams_videoram, 0);
@@ -866,7 +866,7 @@ WRITE8_HANDLER( blaster_bank_select_w )
 static READ8_HANDLER( lottofun_input_port_0_r )
 {
 	/* merge in the ticket dispenser status */
-	return input_port_0_r(offset) | ticket_dispenser_r(offset);
+	return input_port_0_r(machine,offset) | ticket_dispenser_r(machine,offset);
 }
 
 
@@ -880,7 +880,7 @@ static READ8_HANDLER( lottofun_input_port_0_r )
 static READ8_HANDLER( tshoot_input_port_0_3_r )
 {
 	/* merge in the gun inputs with the standard data */
-	int data = williams_input_port_0_3_r(offset);
+	int data = williams_input_port_0_3_r(machine, offset);
 	int gun = (data & 0x3f) ^ ((data & 0x3f) >> 1);
 	return (data & 0xc0) | gun;
 }
@@ -943,14 +943,14 @@ MACHINE_RESET( joust2 )
 
 static TIMER_CALLBACK( joust2_deferred_snd_cmd_w )
 {
-	pia_2_porta_w(0, param & 0xff);
+	pia_2_porta_w(machine, 0, param & 0xff);
 }
 
 
 static WRITE8_HANDLER( joust2_pia_3_cb1_w )
 {
 	joust2_current_sound_data = (joust2_current_sound_data & ~0x100) | ((data << 8) & 0x100);
-	pia_3_cb1_w(offset, data);
+	pia_3_cb1_w(machine, offset, data);
 }
 
 

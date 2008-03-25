@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/n8080.h"
 
 int spacefev_red_screen;
@@ -29,7 +28,7 @@ WRITE8_HANDLER( n8080_video_control_w )
 	sheriff_color_mode = (data >> 3) & 3;
 	sheriff_color_data = (data >> 0) & 7;
 
-	flip_screen = data & 0x20;
+	flip_screen_set_no_update(data & 0x20);
 }
 
 
@@ -65,7 +64,7 @@ void spacefev_start_red_cannon(void)
 {
 	spacefev_red_cannon = 1;
 
-	timer_adjust(cannon_timer, ATTOTIME_IN_USEC(550 * 68 * 10), 0, attotime_zero);
+	timer_adjust_oneshot(cannon_timer, ATTOTIME_IN_USEC(550 * 68 * 10), 0);
 }
 
 
@@ -73,7 +72,7 @@ static TIMER_CALLBACK( spacefev_stop_red_cannon )
 {
 	spacefev_red_cannon = 0;
 
-	timer_adjust(cannon_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(cannon_timer, attotime_never, 0);
 }
 
 
@@ -87,7 +86,7 @@ static void helifire_next_line(void)
 	}
 	else
 	{
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			helifire_mv %= 255;
 		}
@@ -108,7 +107,7 @@ VIDEO_START( spacefev )
 {
 	cannon_timer = timer_alloc(spacefev_stop_red_cannon, NULL);
 
-	flip_screen = 0;
+	flip_screen_set_no_update(0);
 
 	spacefev_red_screen = 0;
 	spacefev_red_cannon = 0;
@@ -117,7 +116,7 @@ VIDEO_START( spacefev )
 
 VIDEO_START( sheriff )
 {
-	flip_screen = 0;
+	flip_screen_set_no_update(0);
 
 	sheriff_color_mode = 0;
 	sheriff_color_data = 0;
@@ -144,7 +143,7 @@ VIDEO_START( helifire )
 		helifire_LSFR[i] = data;
 	}
 
-	flip_screen = 0;
+	flip_screen_set_no_update(0);
 
 	helifire_flash = 0;
 }
@@ -152,7 +151,7 @@ VIDEO_START( helifire )
 
 VIDEO_UPDATE( spacefev )
 {
-	UINT8 mask = flip_screen ? 0xff : 0x00;
+	UINT8 mask = flip_screen_get() ? 0xff : 0x00;
 
 	int x;
 	int y;
@@ -194,7 +193,7 @@ VIDEO_UPDATE( spacefev )
 						6, /* cyan    */
 					};
 
-					int cycle = cpu_getcurrentframe() / 32;
+					int cycle = video_screen_get_frame_number(screen) / 32;
 
 					color = ufo_color[cycle % 6];
 				}
@@ -222,7 +221,7 @@ VIDEO_UPDATE( spacefev )
 
 VIDEO_UPDATE( sheriff )
 {
-	UINT8 mask = flip_screen ? 0xff : 0x00;
+	UINT8 mask = flip_screen_get() ? 0xff : 0x00;
 
 	const UINT8* pPROM = memory_region(REGION_PROMS);
 
@@ -339,7 +338,7 @@ VIDEO_UPDATE( helifire )
 
 			for (n = 0; n < 8; n++)
 			{
-				if (flip_screen)
+				if (flip_screen_get())
 				{
 					if ((videoram[offset ^ 0x1fff] << n) & 0x80)
 					{
@@ -369,7 +368,7 @@ VIDEO_UPDATE( helifire )
 
 VIDEO_EOF( helifire )
 {
-	int n = (cpu_getcurrentframe() >> 1) % sizeof helifire_LSFR;
+	int n = (video_screen_get_frame_number(machine->primary_screen) >> 1) % sizeof helifire_LSFR;
 
 	int i;
 
@@ -386,7 +385,7 @@ VIDEO_EOF( helifire )
 				G |= B;
 			}
 
-			if (cpu_getcurrentframe() & 0x04)
+			if (video_screen_get_frame_number(machine->primary_screen) & 0x04)
 			{
 				R |= G;
 			}

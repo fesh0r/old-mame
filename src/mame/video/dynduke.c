@@ -81,9 +81,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( dynduke )
 {
-	bg_layer = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,      16,16,32,32);
-	fg_layer = tilemap_create(get_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,32,32);
-	tx_layer = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	bg_layer = tilemap_create(get_bg_tile_info,tilemap_scan_cols,      16,16,32,32);
+	fg_layer = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,32,32);
+	tx_layer = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_layer,15);
 	tilemap_set_transparent_pen(tx_layer,15);
@@ -132,7 +132,7 @@ WRITE16_HANDLER( dynduke_control_w )
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int pri)
 {
 	int offs,fx,fy,x,y,color,sprite;
 
@@ -155,7 +155,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		sprite = buffered_spriteram16[offs+1];
 		sprite &= 0x3fff;
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			x=240-x;
 			y=240-y;
 			if (fx) fx=0; else fx=1;
@@ -169,10 +169,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 	}
 }
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri )
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri )
 {
 	/* The transparency / palette handling on the background layer is very strange */
-	mame_bitmap *bm = tilemap_get_pixmap(bg_layer);
+	bitmap_t *bm = tilemap_get_pixmap(bg_layer);
 	int scrolly, scrollx;
 	int x,y;
 
@@ -230,14 +230,14 @@ VIDEO_UPDATE( dynduke )
 	tilemap_set_enable( tx_layer,txt_enable);
 
 
-	draw_background(machine, bitmap, cliprect,0x00);
-	draw_sprites(machine,bitmap,cliprect,0); // Untested: does anything use it? Could be behind background
-	draw_sprites(machine,bitmap,cliprect,1);
-	draw_background(machine, bitmap, cliprect,0x20);
+	draw_background(screen->machine, bitmap, cliprect,0x00);
+	draw_sprites(screen->machine,bitmap,cliprect,0); // Untested: does anything use it? Could be behind background
+	draw_sprites(screen->machine,bitmap,cliprect,1);
+	draw_background(screen->machine, bitmap, cliprect,0x20);
 
-	draw_sprites(machine,bitmap,cliprect,2);
+	draw_sprites(screen->machine,bitmap,cliprect,2);
 	tilemap_draw(bitmap,cliprect,fg_layer,0,0);
-	draw_sprites(machine,bitmap,cliprect,3);
+	draw_sprites(screen->machine,bitmap,cliprect,3);
 	tilemap_draw(bitmap,cliprect,tx_layer,0,0);
 
 	return 0;
@@ -245,5 +245,5 @@ VIDEO_UPDATE( dynduke )
 
 VIDEO_EOF( dynduke )
 {
-	buffer_spriteram16_w(0,0,0); // Could be a memory location instead
+	buffer_spriteram16_w(machine,0,0,0); // Could be a memory location instead
 }

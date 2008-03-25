@@ -56,8 +56,8 @@ UINT16 *kaneko16_sprites_regs;
 
 
 UINT16 *kaneko16_bg15_select, *kaneko16_bg15_reg;
-static mame_bitmap *kaneko16_bg15_bitmap;
-static mame_bitmap *sprites_bitmap; /* bitmap used for to keep sprites on screen (mgcrystl 1st boss) */
+static bitmap_t *kaneko16_bg15_bitmap;
+static bitmap_t *sprites_bitmap; /* bitmap used for to keep sprites on screen (mgcrystl 1st boss) */
 
 struct tempsprite
 {
@@ -133,19 +133,21 @@ VIDEO_START( kaneko16_1xVIEW2 )
 	VIDEO_START_CALL(kaneko16_sprites);
 
 	kaneko16_tmap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-										TILEMAP_TYPE_PEN, 16,16, 0x20,0x20	);
+										 16,16, 0x20,0x20	);
 	kaneko16_tmap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-										TILEMAP_TYPE_PEN, 16,16, 0x20,0x20	);
+										 16,16, 0x20,0x20	);
 
 	kaneko16_tmap_2 = 0;
 
 	kaneko16_tmap_3 = 0;
 
-	sprites_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	sprites_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	{
-		int dx, xdim = machine->screen[0].width;
-		int dy, ydim = machine->screen[0].height;
+		int dx, dy;
+
+		int xdim = video_screen_get_width(machine->primary_screen);
+		int ydim = video_screen_get_height(machine->primary_screen);
 
 		switch (xdim)
 		{
@@ -153,7 +155,7 @@ VIDEO_START( kaneko16_1xVIEW2 )
 			case 256:	dx = 0x5b;	break;
 			default:	dx = 0;
 		}
-		switch (machine->screen[0].visarea.max_y - machine->screen[0].visarea.min_y + 1)
+		switch (video_screen_get_visible_area(machine->primary_screen)->max_y - video_screen_get_visible_area(machine->primary_screen)->min_y + 1)
 		{
 			case 240- 8:	dy = +0x08;	break;	/* blazeon */
 			case 240-16:	dy = -0x08;	break;	/* berlwall, bakubrk */
@@ -179,13 +181,15 @@ VIDEO_START( kaneko16_2xVIEW2 )
 	VIDEO_START_CALL(kaneko16_1xVIEW2);
 
 	kaneko16_tmap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-										TILEMAP_TYPE_PEN, 16,16, 0x20,0x20	);
+										 16,16, 0x20,0x20	);
 	kaneko16_tmap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-										TILEMAP_TYPE_PEN, 16,16, 0x20,0x20	);
+										 16,16, 0x20,0x20	);
 
 	{
-		int dx, xdim = machine->screen[0].width;
-		int dy, ydim = machine->screen[0].height;
+		int dx, dy;
+
+		int xdim = video_screen_get_width(machine->primary_screen);
+		int ydim = video_screen_get_height(machine->primary_screen);
 
 		switch (xdim)
 		{
@@ -193,7 +197,7 @@ VIDEO_START( kaneko16_2xVIEW2 )
 			case 256:	dx = 0x5b;	break;
 			default:	dx = 0;
 		}
-		switch (machine->screen[0].visarea.max_y - machine->screen[0].visarea.min_y + 1)
+		switch (video_screen_get_visible_area(machine->primary_screen)->max_y - video_screen_get_visible_area(machine->primary_screen)->min_y + 1)
 		{
 			case 240- 8:	dy = +0x08;	break;
 			case 240-16:	dy = -0x08;	break;
@@ -278,7 +282,7 @@ VIDEO_START( berlwall )
 			if ((r & 0x10) && (b & 0x10))
 				g = (g - 1) & 0x1f;		/* decrease with wraparound */
 
-			*BITMAP_ADDR16(kaneko16_bg15_bitmap, y, sx * 256 + x) = machine->pens[2048 + ((g << 10) | (r << 5) | b)];
+			*BITMAP_ADDR16(kaneko16_bg15_bitmap, y, sx * 256 + x) = 2048 + ((g << 10) | (r << 5) | b);
 	  }
 
 	VIDEO_START_CALL(kaneko16_1xVIEW2);
@@ -377,12 +381,12 @@ static int kaneko16_parse_sprite_type012(running_machine *machine, int i, struct
 if (kaneko16_sprite_flipy)
 {
 	s->yoffs		-=		kaneko16_sprites_regs[0x2/2];
-	s->yoffs		-=		machine->screen[0].visarea.min_y<<6;
+	s->yoffs		-=		video_screen_get_visible_area(machine->primary_screen)->min_y<<6;
 }
 else
 {
 	s->yoffs		-=		kaneko16_sprites_regs[0x2/2];
-	s->yoffs		+=		machine->screen[0].visarea.min_y<<6;
+	s->yoffs		+=		video_screen_get_visible_area(machine->primary_screen)->min_y<<6;
 }
 
 	return 					( (attr & 0x2000) ? USE_LATCHED_XY    : 0 ) |
@@ -391,11 +395,11 @@ else
 }
 
 // custom function to draw a single sprite. needed to keep correct sprites - sprites and sprites - tilemaps priorities
-static void kaneko16_draw_sprites_custom(running_machine *machine, mame_bitmap *dest_bmp,const gfx_element *gfx,
+static void kaneko16_draw_sprites_custom(running_machine *machine, bitmap_t *dest_bmp,const gfx_element *gfx,
 		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int priority)
 {
-	const pen_t *pal = &machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
+	pen_t pen_base = gfx->color_base + gfx->color_granularity * (color % gfx->total_colors);
 	UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
 
 	int sprite_screen_height = ((1<<16)*gfx->height+0x8000)>>16;
@@ -477,7 +481,7 @@ static void kaneko16_draw_sprites_custom(running_machine *machine, mame_bitmap *
 					if( c != 0 )
 					{
 						if (pri[x] < priority)
-							dest[x] = pal[c];
+							dest[x] = pen_base + c;
 						pri[x] = 0xff; // mark it "already drawn"
 					}
 					x_index += dx;
@@ -491,7 +495,7 @@ static void kaneko16_draw_sprites_custom(running_machine *machine, mame_bitmap *
 
 /* Build a list of sprites to display & draw them */
 
-void kaneko16_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+void kaneko16_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* Sprites *must* be parsed from the first in RAM to the last,
        because of the multisprite feature. But they *must* be drawn
@@ -502,7 +506,7 @@ void kaneko16_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const 
        in a temp buffer, then draw the buffer's contents from last
        to first. */
 
-	int max	=	(machine->screen[0].width > 0x100) ? (0x200<<6) : (0x100<<6);
+	int max	=	(video_screen_get_width(machine->primary_screen) > 0x100) ? (0x200<<6) : (0x100<<6);
 
 	int i = 0;
 	struct tempsprite *s = spritelist.first_sprite;
@@ -802,7 +806,7 @@ WRITE16_HANDLER( kaneko16_bg15_reg_w )
 
 ***************************************************************************/
 
-static void kaneko16_prepare_first_tilemap_chip(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void kaneko16_prepare_first_tilemap_chip(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* Set Up FIRST Tilemap chip */
 	int layers_flip_0;
@@ -842,7 +846,7 @@ static void kaneko16_prepare_first_tilemap_chip(running_machine *machine, mame_b
 
 }
 
-static void kaneko16_prepare_second_tilemap_chip(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void kaneko16_prepare_second_tilemap_chip(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* Set Up SECOND Tilemap chip */
 	int layers_flip_1 = 0;
@@ -881,13 +885,13 @@ static void kaneko16_prepare_second_tilemap_chip(running_machine *machine, mame_
 	}
 }
 
-static void kaneko16_render_first_tilemap_chip(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void kaneko16_render_first_tilemap_chip(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
 {
 	tilemap_draw_primask(bitmap,cliprect, kaneko16_tmap_0, pri, pri, 0);
 	tilemap_draw_primask(bitmap,cliprect, kaneko16_tmap_1, pri, pri, 0);
 }
 
-static void kaneko16_render_second_tilemap_chip(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void kaneko16_render_second_tilemap_chip(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
 {
 	if (kaneko16_tmap_2)
 	{
@@ -896,7 +900,7 @@ static void kaneko16_render_second_tilemap_chip(running_machine *machine, mame_b
 	}
 }
 
-static void kaneko16_render_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void kaneko16_render_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* Sprites last (rendered with pdrawgfx, so they can slip
        in between the layers) */
@@ -909,12 +913,12 @@ static void kaneko16_render_sprites(running_machine *machine, mame_bitmap *bitma
 	}
 	else
 	{
-		fillbitmap(sprites_bitmap,machine->pens[0],cliprect);
+		fillbitmap(sprites_bitmap,0,cliprect);
 		kaneko16_draw_sprites(machine,bitmap,cliprect);
 	}
 }
 
-static void kaneko16_render_15bpp_bitmap(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void kaneko16_render_15bpp_bitmap(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if (kaneko16_bg15_bitmap)
 	{
@@ -934,15 +938,15 @@ static void kaneko16_render_15bpp_bitmap(running_machine *machine, mame_bitmap *
 	}
 }
 
-static void kaneko16_fill_bitmap(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void kaneko16_fill_bitmap(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if(kaneko16_sprite_type == 1)
-		fillbitmap(bitmap,machine->pens[0x7f00],cliprect);
+		fillbitmap(bitmap,0x7f00,cliprect);
 	else
 		/* Fill the bitmap with pen 0. This is wrong, but will work most of
            the times. To do it right, each pixel should be drawn with pen 0
            of the bottomost tile that covers it (which is pretty tricky to do) */
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 }
 
 static VIDEO_UPDATE( common )
@@ -951,13 +955,13 @@ static VIDEO_UPDATE( common )
 
 	fillbitmap(priority_bitmap,0,cliprect);
 
-	kaneko16_prepare_first_tilemap_chip(machine, bitmap, cliprect);
-	kaneko16_prepare_second_tilemap_chip(machine, bitmap, cliprect);
+	kaneko16_prepare_first_tilemap_chip(screen->machine, bitmap, cliprect);
+	kaneko16_prepare_second_tilemap_chip(screen->machine, bitmap, cliprect);
 
 	for ( i = 0; i < 8; i++ )
 	{
-		kaneko16_render_first_tilemap_chip(machine,bitmap,cliprect,i);
-		kaneko16_render_second_tilemap_chip(machine,bitmap,cliprect,i);
+		kaneko16_render_first_tilemap_chip(screen->machine,bitmap,cliprect,i);
+		kaneko16_render_second_tilemap_chip(screen->machine,bitmap,cliprect,i);
 	}
 
 	return 0;
@@ -966,13 +970,13 @@ static VIDEO_UPDATE( common )
 VIDEO_UPDATE(berlwall)
 {
 	// berlwall uses a 15bpp bitmap as a bg, not a solid fill
-	kaneko16_render_15bpp_bitmap(machine,bitmap,cliprect);
+	kaneko16_render_15bpp_bitmap(screen->machine,bitmap,cliprect);
 
 	// if the display is disabled, do nothing?
 	if (!kaneko16_disp_enable) return 0;
 
 	VIDEO_UPDATE_CALL(common);
-	kaneko16_render_sprites(machine,bitmap,cliprect);
+	kaneko16_render_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -980,19 +984,19 @@ VIDEO_UPDATE(berlwall)
 
 VIDEO_UPDATE( kaneko16 )
 {
-	kaneko16_fill_bitmap(machine,bitmap,cliprect);
+	kaneko16_fill_bitmap(screen->machine,bitmap,cliprect);
 
 	// if the display is disabled, do nothing?
 	if (!kaneko16_disp_enable) return 0;
 
 	VIDEO_UPDATE_CALL(common);
-	kaneko16_render_sprites(machine,bitmap,cliprect);
+	kaneko16_render_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
 VIDEO_UPDATE( galsnew )
 {
-//  kaneko16_fill_bitmap(machine,bitmap,cliprect);
+//  kaneko16_fill_bitmap(screen->machine,bitmap,cliprect);
 	int y,x;
 	int count;
 
@@ -1006,7 +1010,7 @@ VIDEO_UPDATE( galsnew )
 		{
 			UINT16 dat = (galsnew_fg_pixram[count] & 0xfffe)>>1;
 			dat+=2048;
-			dest[x] = machine->pens[dat];
+			dest[x] = dat;
 			count++;
 		}
 	}
@@ -1021,9 +1025,8 @@ VIDEO_UPDATE( galsnew )
 			UINT16 dat = (galsnew_bg_pixram[count]);
 			//dat &=0x3ff;
 			if (dat)
-			{
-				dest[x] = machine->pens[dat];
-			}
+				dest[x] = dat;
+
 			count++;
 		}
 	}
@@ -1034,14 +1037,14 @@ VIDEO_UPDATE( galsnew )
 
 	VIDEO_UPDATE_CALL(common);
 
-	kaneko16_render_sprites(machine,bitmap,cliprect);
+	kaneko16_render_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
 
 VIDEO_UPDATE( sandscrp )
 {
-	kaneko16_fill_bitmap(machine,bitmap,cliprect);
+	kaneko16_fill_bitmap(screen->machine,bitmap,cliprect);
 
 	// if the display is disabled, do nothing?
 	if (!kaneko16_disp_enable) return 0;
@@ -1049,7 +1052,7 @@ VIDEO_UPDATE( sandscrp )
 	VIDEO_UPDATE_CALL(common);
 
 	// copy sprite bitmap to screen
-	pandora_update(machine,bitmap,cliprect);
+	pandora_update(screen->machine,bitmap,cliprect);
 	return 0;
 }
 

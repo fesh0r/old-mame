@@ -43,7 +43,7 @@ VIDEO_START( foodf )
 	static const int resistances[3] = { 1000, 470, 220 };
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 32,32);
 	tilemap_set_transparent_pen(atarigen_playfield_tilemap, 0);
 
 	/* adjust the playfield for the 8 pixel offset */
@@ -144,11 +144,11 @@ VIDEO_UPDATE( foodf )
 		int vflip = (data1 >> 14) & 1;
 		int pri = (data1 >> 13) & 1;
 
-		pdrawgfx(bitmap, machine->gfx[1], pict, color, hflip, vflip,
+		pdrawgfx(bitmap, screen->machine->gfx[1], pict, color, hflip, vflip,
 				xpos, ypos, cliprect, TRANSPARENCY_PEN, 0, pri * 2);
 
 		/* draw again with wraparound (needed to get the end of level animation right) */
-		pdrawgfx(bitmap, machine->gfx[1], pict, color, hflip, vflip,
+		pdrawgfx(bitmap, screen->machine->gfx[1], pict, color, hflip, vflip,
 				xpos - 256, ypos, cliprect, TRANSPARENCY_PEN, 0, pri * 2);
 	}
 

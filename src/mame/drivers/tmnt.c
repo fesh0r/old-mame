@@ -119,7 +119,7 @@ static READ16_HANDLER( K052109_word_noA12_r )
 	/* some games have the A12 line not connected, so the chip spans */
 	/* twice the memory range, with mirroring */
 	offset = ((offset & 0x3000) >> 1) | (offset & 0x07ff);
-	return K052109_word_r(offset,mem_mask);
+	return K052109_word_r(machine,offset,mem_mask);
 }
 
 static WRITE16_HANDLER( K052109_word_noA12_w )
@@ -127,7 +127,7 @@ static WRITE16_HANDLER( K052109_word_noA12_w )
 	/* some games have the A12 line not connected, so the chip spans */
 	/* twice the memory range, with mirroring */
 	offset = ((offset & 0x3000) >> 1) | (offset & 0x07ff);
-	K052109_word_w(offset,data,mem_mask);
+	K052109_word_w(machine,offset,data,mem_mask);
 }
 
 static WRITE16_HANDLER( punkshot_K052109_word_w )
@@ -135,9 +135,9 @@ static WRITE16_HANDLER( punkshot_K052109_word_w )
 	/* it seems that a word write is supposed to affect only the MSB. The */
 	/* "ROUND 1" text in punkshtj goes lost otherwise. */
 	if (ACCESSING_MSB)
-		K052109_w(offset,(data >> 8) & 0xff);
+		K052109_w(machine,offset,(data >> 8) & 0xff);
 	else if (ACCESSING_LSB)
-		K052109_w(offset + 0x2000,data & 0xff);
+		K052109_w(machine,offset + 0x2000,data & 0xff);
 }
 
 static WRITE16_HANDLER( punkshot_K052109_word_noA12_w )
@@ -145,7 +145,7 @@ static WRITE16_HANDLER( punkshot_K052109_word_noA12_w )
 	/* some games have the A12 line not connected, so the chip spans */
 	/* twice the memory range, with mirroring */
 	offset = ((offset & 0x3000) >> 1) | (offset & 0x07ff);
-	punkshot_K052109_word_w(offset,data,mem_mask);
+	punkshot_K052109_word_w(machine,offset,data,mem_mask);
 }
 
 
@@ -159,7 +159,7 @@ static READ16_HANDLER( K053245_scattered_word_r )
 	else
 	{
 		offset = ((offset & 0x000e) >> 1) | ((offset & 0x1fc0) >> 3);
-		return K053245_word_r(offset,mem_mask);
+		return K053245_word_r(machine,offset,mem_mask);
 	}
 }
 
@@ -170,7 +170,7 @@ static WRITE16_HANDLER( K053245_scattered_word_w )
 	if (!(offset & 0x0031))
 	{
 		offset = ((offset & 0x000e) >> 1) | ((offset & 0x1fc0) >> 3);
-		K053245_word_w(offset,data,mem_mask);
+		K053245_word_w(machine,offset,data,mem_mask);
 	}
 }
 
@@ -178,7 +178,7 @@ static READ16_HANDLER( K053244_word_noA1_r )
 {
 	offset &= ~1;	/* handle mirror address */
 
-	return K053244_r(offset + 1) | (K053244_r(offset) << 8);
+	return K053244_r(machine,offset + 1) | (K053244_r(machine,offset) << 8);
 }
 
 static WRITE16_HANDLER( K053244_word_noA1_w )
@@ -186,9 +186,9 @@ static WRITE16_HANDLER( K053244_word_noA1_w )
 	offset &= ~1;	/* handle mirror address */
 
 	if (ACCESSING_MSB)
-		K053244_w(offset,(data >> 8) & 0xff);
+		K053244_w(machine,offset,(data >> 8) & 0xff);
 	if (ACCESSING_LSB)
-		K053244_w(offset + 1,data & 0xff);
+		K053244_w(machine,offset + 1,data & 0xff);
 }
 
 static INTERRUPT_GEN(cuebrick_interrupt)
@@ -224,42 +224,42 @@ static INTERRUPT_GEN( lgtnfght_interrupt )
 static WRITE16_HANDLER( tmnt_sound_command_w )
 {
 	if (ACCESSING_LSB)
-		soundlatch_w(0,data & 0xff);
+		soundlatch_w(machine,0,data & 0xff);
 }
 
 static READ16_HANDLER( punkshot_sound_r )
 {
 	/* If the sound CPU is running, read the status, otherwise
        just make it pass the test */
-	return K053260_0_r(2 + offset);
+	return K053260_0_r(machine,2 + offset);
 }
 
 static READ16_HANDLER( blswhstl_sound_r )
 {
 	/* If the sound CPU is running, read the status, otherwise
        just make it pass the test */
-	return K053260_0_r(2 + offset);
+	return K053260_0_r(machine,2 + offset);
 }
 
 static READ16_HANDLER( glfgreat_sound_r )
 {
 	/* If the sound CPU is running, read the status, otherwise
        just make it pass the test */
-	return K053260_0_r(2 + offset) << 8;
+	return K053260_0_r(machine,2 + offset) << 8;
 }
 
 static WRITE16_HANDLER( glfgreat_sound_w )
 {
 	if (ACCESSING_MSB)
-		K053260_0_w(offset, (data >> 8) & 0xff);
+		K053260_0_w(machine, offset, (data >> 8) & 0xff);
 
 	if (offset)
-		cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+		cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 }
 
 static READ16_HANDLER( prmrsocr_sound_r )
 {
-	return soundlatch3_r(0);
+	return soundlatch3_r(machine,0);
 }
 
 static WRITE16_HANDLER( prmrsocr_sound_cmd_w )
@@ -267,14 +267,14 @@ static WRITE16_HANDLER( prmrsocr_sound_cmd_w )
 	if (ACCESSING_LSB)
 	{
 		data &= 0xff;
-		if (offset == 0) soundlatch_w(0,data);
-		else soundlatch2_w(0,data);
+		if (offset == 0) soundlatch_w(machine,0,data);
+		else soundlatch2_w(machine,0,data);
 	}
 }
 
 static WRITE16_HANDLER( prmrsocr_sound_irq_w )
 {
-	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( prmrsocr_audio_bankswitch_w )
@@ -287,7 +287,7 @@ static WRITE8_HANDLER( prmrsocr_audio_bankswitch_w )
 
 static READ16_HANDLER( tmnt2_sound_r )
 {
-	return K053260_0_r(2 + offset);
+	return K053260_0_r(machine, 2 + offset);
 }
 
 static READ8_HANDLER( tmnt_sres_r )
@@ -410,7 +410,7 @@ static READ16_HANDLER( ssriders_protection_r )
 			data = -program_read_word(0x105818);
 			data = ((data / 8 - 4) & 0x1f) * 0x40;
 			data += ((program_read_word(0x105cb0) +
-						256*K052109_r(0x1a01) + K052109_r(0x1a00) - 6) / 8 + 12) & 0x3f;
+						256*K052109_r(machine,0x1a01) + K052109_r(machine,0x1a00) - 6) / 8 + 12) & 0x3f;
 			return data;
 
 		default:
@@ -436,7 +436,7 @@ static WRITE16_HANDLER( ssriders_protection_w )
 			{
 				if ((program_read_word(0x180006 + 128*i) >> 8) == logical_pri)
 				{
-					K053245_word_w(8*i,hardware_pri,0xff00);
+					K053245_word_w(machine,8*i,hardware_pri,0xff00);
 					hardware_pri++;
 				}
 			}
@@ -491,7 +491,7 @@ static READ16_HANDLER( blswhstl_coin_r )
 
 	/* bit 3 is service button */
 	/* bit 6 is ??? VBLANK? OBJMPX? */
-	res = input_port_2_word_r(0,0);
+	res = input_port_2_word_r(machine,0,0);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -507,7 +507,7 @@ static READ16_HANDLER( blswhstl_eeprom_r )
 
 	/* bit 0 is EEPROM data */
 	/* bit 1 is EEPROM ready */
-	res = EEPROM_read_bit() | input_port_3_word_r(0,0);
+	res = EEPROM_read_bit() | input_port_3_word_r(machine,0,0);
 	return res;
 }
 
@@ -520,7 +520,7 @@ static READ16_HANDLER( ssriders_eeprom_r )
 	/* bit 1 is EEPROM ready */
 	/* bit 2 is VBLANK (???) */
 	/* bit 7 is service button */
-	res = EEPROM_read_bit() | input_port_3_word_r(0,0);
+	res = EEPROM_read_bit() | input_port_3_word_r(machine,0,0);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -539,7 +539,7 @@ static READ16_HANDLER( sunsetbl_eeprom_r )
 	/* bit 1 is EEPROM ready */
 	/* bit 2 is VBLANK (???) */
 	/* bit 3 is service button */
-	res = EEPROM_read_bit() | input_port_3_word_r(0,0);
+	res = EEPROM_read_bit() | input_port_3_word_r(machine,0,0);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -598,7 +598,7 @@ static READ16_HANDLER( thndrx2_in0_r )
 {
 	int res;
 
-	res = input_port_0_word_r(0,0);
+	res = input_port_0_word_r(machine,0,0);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -616,7 +616,7 @@ static READ16_HANDLER( thndrx2_eeprom_r )
 	/* bit 1 is EEPROM ready */
 	/* bit 3 is VBLANK (???) */
 	/* bit 7 is service button */
-	res = (EEPROM_read_bit() << 8) | input_port_1_word_r(0,0);
+	res = (EEPROM_read_bit() << 8) | input_port_1_word_r(machine,0,0);
 	toggle ^= 0x0800;
 	return (res ^ toggle);
 }
@@ -650,7 +650,7 @@ static READ16_HANDLER( prmrsocr_IN0_r )
 	/* bit 9 is service button */
 	int res;
 
-	res = input_port_0_word_r(0,0);
+	res = input_port_0_word_r(machine,0,0);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -663,14 +663,14 @@ static READ16_HANDLER( prmrsocr_eeprom_r )
 {
 	/* bit 8 is EEPROM data */
 	/* bit 9 is EEPROM ready */
-	return (EEPROM_read_bit() << 8) | input_port_1_word_r(0,0);
+	return (EEPROM_read_bit() << 8) | input_port_1_word_r(machine,0,0);
 }
 
 static WRITE16_HANDLER( prmrsocr_eeprom_w )
 {
 	if (ACCESSING_LSB)
 	{
-		prmrsocr_122000_w(offset,data,mem_mask);
+		prmrsocr_122000_w(machine,offset,data,mem_mask);
 	}
 
 	if (ACCESSING_MSB)
@@ -686,18 +686,18 @@ static WRITE16_HANDLER( prmrsocr_eeprom_w )
 
 static READ16_HANDLER( cuebrick_snd_r )
 {
-	return YM2151_status_port_0_r(0)<<8;
+	return YM2151_status_port_0_r(machine,0)<<8;
 }
 
 static WRITE16_HANDLER( cuebrick_snd_w )
 {
 	if (offset)
 	{
-		YM2151_data_port_0_w(0, data>>8);
+		YM2151_data_port_0_w(machine, 0, data>>8);
 	}
 	else
 	{
-		YM2151_register_port_0_w(0, data>>8);
+		YM2151_register_port_0_w(machine, 0, data>>8);
 	}
 }
 
@@ -720,7 +720,7 @@ static ADDRESS_MAP_START( cuebrick_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x01ffff) AM_ROM
 	AM_RANGE(0x040000, 0x043fff) AM_RAM	/* main RAM */
 	AM_RANGE(0x060000, 0x063fff) AM_RAM	/* main RAM */
-	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(MRA16_RAM, tmnt_paletteram_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(SMH_RAM, tmnt_paletteram_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_READWRITE(input_port_0_word_r, tmnt_0a0000_w)
 	AM_RANGE(0x0a0002, 0x0a0003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x0a0004, 0x0a0005) AM_READ(input_port_2_word_r)
@@ -741,7 +741,7 @@ static ADDRESS_MAP_START( mia_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x040000, 0x043fff) AM_RAM	/* main RAM */
 	AM_RANGE(0x060000, 0x063fff) AM_RAM	/* main RAM */
-	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(MRA16_RAM, tmnt_paletteram_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(SMH_RAM, tmnt_paletteram_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_READWRITE(input_port_0_word_r, tmnt_0a0000_w)
 	AM_RANGE(0x0a0002, 0x0a0003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x0a0004, 0x0a0005) AM_READ(input_port_2_word_r)
@@ -753,7 +753,7 @@ static ADDRESS_MAP_START( mia_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0c0000, 0x0c0001) AM_WRITE(tmnt_priority_w)
 #endif
 	AM_RANGE(0x100000, 0x107fff) AM_READWRITE(K052109_word_noA12_r, K052109_word_noA12_w)
-//  AM_RANGE(0x10e800, 0x10e801) AM_WRITE(MWA16_NOP) ???
+//  AM_RANGE(0x10e800, 0x10e801) AM_WRITE(SMH_NOP) ???
 	AM_RANGE(0x140000, 0x140007) AM_READWRITE(K051937_word_r, K051937_word_w)
 	AM_RANGE(0x140400, 0x1407ff) AM_READWRITE(K051960_word_r, K051960_word_w)
 ADDRESS_MAP_END
@@ -762,7 +762,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( tmnt_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x05ffff) AM_ROM
 	AM_RANGE(0x060000, 0x063fff) AM_RAM	/* main RAM */
-	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(MRA16_RAM, tmnt_paletteram_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(SMH_RAM, tmnt_paletteram_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_READWRITE(input_port_0_word_r, tmnt_0a0000_w)
 	AM_RANGE(0x0a0002, 0x0a0003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x0a0004, 0x0a0005) AM_READ(input_port_2_word_r)
@@ -774,7 +774,7 @@ static ADDRESS_MAP_START( tmnt_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0a0018, 0x0a0019) AM_READ(input_port_7_word_r)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_WRITE(tmnt_priority_w)
 	AM_RANGE(0x100000, 0x107fff) AM_READWRITE(K052109_word_noA12_r, K052109_word_noA12_w)
-//  AM_RANGE(0x10e800, 0x10e801) AM_WRITE(MWA16_NOP) ???
+//  AM_RANGE(0x10e800, 0x10e801) AM_WRITE(SMH_NOP) ???
 	AM_RANGE(0x140000, 0x140007) AM_READWRITE(K051937_word_r, K051937_word_w)
 	AM_RANGE(0x140400, 0x1407ff) AM_READWRITE(K051960_word_r, K051960_word_w)
 ADDRESS_MAP_END
@@ -783,7 +783,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( punkshot_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x080000, 0x083fff) AM_RAM /* main RAM */
-	AM_RANGE(0x090000, 0x090fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x090000, 0x090fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x0a0002, 0x0a0003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x0a0004, 0x0a0005) AM_READ(input_port_3_word_r)
@@ -802,7 +802,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( lgtnfght_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
-	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x090000, 0x093fff) AM_RAM	/*main RAM */
 	AM_RANGE(0x0a0000, 0x0a0001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x0a0002, 0x0a0003) AM_READ(input_port_1_word_r)
@@ -832,7 +832,7 @@ static ADDRESS_MAP_START( blswhstl_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x183fff) AM_READWRITE(K052109_word_r, K052109_word_w)
 	AM_RANGE(0x204000, 0x207fff) AM_RAM	/* main RAM */
 	AM_RANGE(0x300000, 0x303fff) AM_READWRITE(K053245_scattered_word_r, K053245_scattered_word_w) AM_BASE(&spriteram16)
-	AM_RANGE(0x400000, 0x400fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x400000, 0x400fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x500000, 0x50003f) AM_READWRITE(K054000_lsb_r, K054000_lsb_w)
 	AM_RANGE(0x680000, 0x68001f) AM_READWRITE(K053244_word_noA1_r, K053244_word_noA1_w)
 	AM_RANGE(0x700000, 0x700001) AM_READ(input_port_0_word_r)
@@ -853,11 +853,11 @@ static ADDRESS_MAP_START( glfgreat_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x100000, 0x103fff) AM_RAM	/* main RAM */
 	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(K053245_scattered_word_r, K053245_scattered_word_w) AM_BASE(&spriteram16)
-	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x10c000, 0x10cfff) AM_RAM	 AM_BASE(&K053936_0_linectrl)	/* 053936? */
 	AM_RANGE(0x110000, 0x11001f) AM_WRITE(K053244_word_noA1_w)				/* duplicate! */
 	AM_RANGE(0x114000, 0x11401f) AM_READWRITE(K053244_lsb_r, K053244_lsb_w)	/* duplicate! */
-	AM_RANGE(0x118000, 0x11801f) AM_WRITE(MWA16_RAM) AM_BASE(&K053936_0_ctrl)
+	AM_RANGE(0x118000, 0x11801f) AM_WRITE(SMH_RAM) AM_BASE(&K053936_0_ctrl)
 	AM_RANGE(0x11c000, 0x11c01f) AM_WRITE(K053251_msb_w)
 	AM_RANGE(0x120000, 0x120001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x120002, 0x120003) AM_READ(input_port_1_word_r)
@@ -876,11 +876,11 @@ static ADDRESS_MAP_START( prmrsocr_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x100000, 0x103fff) AM_RAM	/* main RAM */
 	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(K053245_scattered_word_r, K053245_scattered_word_w) AM_BASE(&spriteram16)
-	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x10c000, 0x10cfff) AM_RAM AM_BASE(&K053936_0_linectrl)
 	AM_RANGE(0x110000, 0x11001f) AM_WRITE(K053244_word_noA1_w)				/* duplicate! */
 	AM_RANGE(0x114000, 0x11401f) AM_READWRITE(K053244_lsb_r, K053244_lsb_w)	/* duplicate! */
-	AM_RANGE(0x118000, 0x11801f) AM_WRITE(MWA16_RAM) AM_BASE(&K053936_0_ctrl)
+	AM_RANGE(0x118000, 0x11801f) AM_WRITE(SMH_RAM) AM_BASE(&K053936_0_ctrl)
 	AM_RANGE(0x11c000, 0x11c01f) AM_WRITE(K053251_msb_w)
 	AM_RANGE(0x120000, 0x120001) AM_READ(prmrsocr_IN0_r)
 	AM_RANGE(0x120002, 0x120003) AM_READ(prmrsocr_eeprom_r)
@@ -906,7 +906,7 @@ INLINE UINT32 tmnt2_get_word(UINT32 addr)
 	return(0);
 }
 
-static void tmnt2_put_word(UINT32 addr, UINT16 data)
+static void tmnt2_put_word(running_machine *machine, UINT32 addr, UINT16 data)
 {
 	UINT32 offs;
 	if (addr >= 0x180000/2 && addr <= 0x183fff/2)
@@ -916,7 +916,7 @@ static void tmnt2_put_word(UINT32 addr, UINT16 data)
 		if (!(offs & 0x0031))
 		{
 			offs = ((offs & 0x000e) >> 1) | ((offs & 0x1fc0) >> 3);
-			K053245_word_w(offs, data, 0);
+			K053245_word_w(machine, offs, data, 0);
 		}
 	}
 	else if (addr >= 0x104000/2 && addr <= 0x107fff/2) sunset_104000[addr-0x104000/2] = data;
@@ -1031,11 +1031,11 @@ static WRITE16_HANDLER( tmnt2_1c0800_w )
 	xoffs += xmod;
 	yoffs += ymod;
 
-	tmnt2_put_word(dst_addr +  0, attr1);
-	tmnt2_put_word(dst_addr +  2, code);
-	tmnt2_put_word(dst_addr +  4, (UINT32)yoffs);
-	tmnt2_put_word(dst_addr +  6, (UINT32)xoffs);
-	tmnt2_put_word(dst_addr + 12, attr2 | color);
+	tmnt2_put_word(machine, dst_addr +  0, attr1);
+	tmnt2_put_word(machine, dst_addr +  2, code);
+	tmnt2_put_word(machine, dst_addr +  4, (UINT32)yoffs);
+	tmnt2_put_word(machine, dst_addr +  6, (UINT32)xoffs);
+	tmnt2_put_word(machine, dst_addr + 12, attr2 | color);
 }
 #else // for reference; do not remove
 static WRITE16_HANDLER( tmnt2_1c0800_w )
@@ -1128,8 +1128,8 @@ logerror("copy command %04x sprite %08x data %08x: %04x%04x %04x%04x  modifiers 
 static ADDRESS_MAP_START( tmnt2_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM AM_BASE(&tmnt2_rom)
 	AM_RANGE(0x104000, 0x107fff) AM_RAM AM_BASE(&sunset_104000)	/* main RAM */
-	AM_RANGE(0x140000, 0x140fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x180000, 0x183fff) AM_READWRITE(MRA16_RAM, K053245_scattered_word_w) AM_BASE(&spriteram16)	// K053245_scattered_word_r
+	AM_RANGE(0x140000, 0x140fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x180000, 0x183fff) AM_READWRITE(SMH_RAM, K053245_scattered_word_w) AM_BASE(&spriteram16)	// K053245_scattered_word_r
 	AM_RANGE(0x1c0000, 0x1c0001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x1c0002, 0x1c0003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x1c0004, 0x1c0005) AM_READ(input_port_4_word_r)
@@ -1154,7 +1154,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( ssriders_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0bffff) AM_ROM
 	AM_RANGE(0x104000, 0x107fff) AM_RAM	/* main RAM */
-	AM_RANGE(0x140000, 0x140fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x140000, 0x140fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x180000, 0x183fff) AM_READWRITE(K053245_scattered_word_r, K053245_scattered_word_w) AM_BASE(&spriteram16)
 	AM_RANGE(0x1c0000, 0x1c0001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x1c0002, 0x1c0003) AM_READ(input_port_1_word_r)
@@ -1180,17 +1180,17 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sunsetbl_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0bffff) AM_ROM
 	AM_RANGE(0x104000, 0x107fff) AM_RAM	/* main RAM */
-	AM_RANGE(0x14c000, 0x14cfff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x14c000, 0x14cfff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x14e700, 0x14e71f) AM_WRITE(K053251_lsb_w)
 	AM_RANGE(0x180000, 0x183fff) AM_READWRITE(K053245_scattered_word_r, K053245_scattered_word_w) AM_BASE(&spriteram16)
 	AM_RANGE(0x184000, 0x18ffff) AM_RAM
 	AM_RANGE(0x1c0300, 0x1c0301) AM_WRITE(ssriders_1c0300_w)
-	AM_RANGE(0x1c0400, 0x1c0401) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x1c0400, 0x1c0401) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5a0000, 0x5a001f) AM_READWRITE(K053244_word_noA1_r, K053244_word_noA1_w)
 	AM_RANGE(0x600000, 0x603fff) AM_READWRITE(K052109_word_r, K052109_word_w)
-	AM_RANGE(0x604020, 0x60402f) AM_WRITE(MWA16_NOP)	/* written every frame */
-	AM_RANGE(0x604200, 0x604201) AM_WRITE(MWA16_NOP)	/* watchdog */
-	AM_RANGE(0x6119e2, 0x6119e3) AM_WRITE(MWA16_NOP)	/* written a lot in some test menus (PC=18204) */
+	AM_RANGE(0x604020, 0x60402f) AM_WRITE(SMH_NOP)	/* written every frame */
+	AM_RANGE(0x604200, 0x604201) AM_WRITE(SMH_NOP)	/* watchdog */
+	AM_RANGE(0x6119e2, 0x6119e3) AM_WRITE(SMH_NOP)	/* written a lot in some test menus (PC=18204) */
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0xc00002, 0xc00003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0xc00004, 0xc00005) AM_READ(input_port_4_word_r)
@@ -1199,14 +1199,14 @@ static ADDRESS_MAP_START( sunsetbl_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc00404, 0xc00405) AM_READ(input_port_2_word_r)
 	AM_RANGE(0xc00406, 0xc00407) AM_READ(sunsetbl_eeprom_r)
 	AM_RANGE(0xc00600, 0xc00601) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
-	AM_RANGE(0x75d288, 0x75d289) AM_READ(MRA16_NOP)	// read repeatedly in some test menus (PC=181f2)
+	AM_RANGE(0x75d288, 0x75d289) AM_READ(SMH_NOP)	// read repeatedly in some test menus (PC=181f2)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( thndrx2_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x100000, 0x103fff) AM_RAM	/* main RAM */
-	AM_RANGE(0x200000, 0x200fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x200000, 0x200fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x300000, 0x30001f) AM_WRITE(K053251_lsb_w)
 	AM_RANGE(0x400000, 0x400003) AM_READ(punkshot_sound_r)	/* K053260 */
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(K053260_0_lsb_w)
@@ -1214,7 +1214,7 @@ static ADDRESS_MAP_START( thndrx2_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x500100, 0x500101) AM_WRITE(thndrx2_eeprom_w)
 	AM_RANGE(0x500200, 0x500201) AM_READ(thndrx2_in0_r)
 	AM_RANGE(0x500202, 0x500203) AM_READ(thndrx2_eeprom_r)
-	AM_RANGE(0x500300, 0x500301) AM_WRITE(MWA16_NOP)	/* watchdog reset? irq enable? */
+	AM_RANGE(0x500300, 0x500301) AM_WRITE(SMH_NOP)	/* watchdog reset? irq enable? */
 	AM_RANGE(0x600000, 0x607fff) AM_READWRITE(K052109_word_noA12_r, K052109_word_noA12_w)
 	AM_RANGE(0x700000, 0x700007) AM_READWRITE(K051937_word_r, K051937_word_w)
 	AM_RANGE(0x700400, 0x7007ff) AM_READWRITE(K051960_word_r, K051960_word_w)
@@ -1295,16 +1295,16 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( K054539_0_ctrl_r )
 {
-	return K054539_0_r(0x200+offset);
+	return K054539_0_r(machine,0x200+offset);
 }
 static WRITE8_HANDLER( K054539_0_ctrl_w )
 {
-	K054539_0_w(0x200+offset,data);
+	K054539_0_w(machine,0x200+offset,data);
 }
 
 static ADDRESS_MAP_START( prmrsocr_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xe0ff) AM_READWRITE(K054539_0_r, K054539_0_w)
 	AM_RANGE(0xe100, 0xe12f) AM_READWRITE(K054539_0_ctrl_r, K054539_0_ctrl_w)
@@ -1952,7 +1952,7 @@ static INPUT_PORTS_START( blswhstl )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* VBLANK? OBJMPX? */
@@ -2041,7 +2041,7 @@ static INPUT_PORTS_START( glfgreat )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT(0x0400, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0400, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x8000, 0x0000, "Freeze" )	/* ?? VBLANK ?? */
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x8000, DEF_STR( On ) )
@@ -2082,7 +2082,7 @@ static INPUT_PORTS_START( ssriders )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )	/* ?? TMNT2: NVBLK */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* ?? TMNT2: IPL0 */
 	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( ssridr4p )
@@ -2109,7 +2109,7 @@ static INPUT_PORTS_START( ssridr4p )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )	/* ?? TMNT2: NVBLK */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* ?? TMNT2: IPL0 */
 	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
 	PORT_START	/* IN2 */
 	KONAMI_PLAYERS_INPUT_LSB( 3, IPT_UNKNOWN, IPT_UNKNOWN )
@@ -2144,7 +2144,7 @@ static INPUT_PORTS_START( ssrid4ps )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )	/* ?? TMNT2: NVBLK */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* ?? TMNT2: IPL0 */
 	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
 	PORT_START	/* IN2 */
 	KONAMI_PLAYERS_INPUT_LSB( 3, IPT_UNKNOWN, IPT_START3 )
@@ -2175,10 +2175,10 @@ static INPUT_PORTS_START( sunsetbl )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* EEPROM data */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL )	/* EEPROM status? - always 1 */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
 	PORT_START	/* IN2 */
 	KONAMI_PLAYERS_INPUT_LSB( 3, IPT_UNKNOWN, IPT_START3 )
@@ -2225,7 +2225,7 @@ static INPUT_PORTS_START( qgakumon )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )	/* ?? TMNT2: NVBLK (needs to be ACTIVE_HIGH to avoid problems) */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* ?? TMNT2: IPL0 */
 	PORT_BIT( 0x60, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( thndrx2 )
@@ -2234,7 +2234,7 @@ static INPUT_PORTS_START( thndrx2 )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT(0x0800, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0800, IP_ACTIVE_LOW )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -2256,7 +2256,7 @@ static INPUT_PORTS_START( prmrsocr )
 	PORT_START
 	KONAMI_PLAYERS_INPUT_LSB( 1, IPT_UNKNOWN, IPT_START1 )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0200, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x1000, 0x0000, "Sound" )
@@ -2329,16 +2329,18 @@ static MACHINE_DRIVER_START( cuebrick )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 8000000)	/* 8 MHz */
 	MDRV_CPU_PROGRAM_MAP(cuebrick_main_map,0)
-	MDRV_CPU_VBLANK_INT(cuebrick_interrupt,10)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(cuebrick_interrupt,10)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(1024)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
@@ -2360,19 +2362,21 @@ static MACHINE_DRIVER_START( mia )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_24MHz/3)
 	MDRV_CPU_PROGRAM_MAP(mia_main_map,0)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(mia_audio_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(1024)
 
 	MDRV_VIDEO_START(mia)
@@ -2395,8 +2399,8 @@ MACHINE_DRIVER_END
 static MACHINE_RESET( tmnt )
 {
 	/* the UPD7759 control flip-flops are cleared: /ST is 1, /RESET is 0 */
-	upd7759_0_start_w(0, 0);
-	upd7759_0_reset_w(0, 1);
+	upd7759_0_start_w(machine, 0, 0);
+	upd7759_0_reset_w(machine, 0, 1);
 }
 
 static MACHINE_DRIVER_START( tmnt )
@@ -2404,21 +2408,23 @@ static MACHINE_DRIVER_START( tmnt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_24MHz/3)
 	MDRV_CPU_PROGRAM_MAP(tmnt_main_map,0)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(tmnt_audio_map,0)
 
-	MDRV_MACHINE_RESET(tmnt);
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_MACHINE_RESET(tmnt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(1024)
 
 	MDRV_VIDEO_START(tmnt)
@@ -2451,19 +2457,22 @@ static MACHINE_DRIVER_START( punkshot )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_24MHz/2)
 	MDRV_CPU_PROGRAM_MAP(punkshot_main_map,0)
-	MDRV_CPU_VBLANK_INT(punkshot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", punkshot_interrupt)
 
 	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(punkshot_audio_map,0)
 								/* NMIs are generated by the 053260 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(punkshot)
@@ -2487,19 +2496,21 @@ static MACHINE_DRIVER_START( lgtnfght )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_24MHz/2)
 	MDRV_CPU_PROGRAM_MAP(lgtnfght_main_map,0)
-	MDRV_CPU_VBLANK_INT(lgtnfght_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", lgtnfght_interrupt)
 
 	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(lgtnfght_audio_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(lgtnfght)
@@ -2524,21 +2535,24 @@ static MACHINE_DRIVER_START( blswhstl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(blswhstl_main_map,0)
-	MDRV_CPU_VBLANK_INT(punkshot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", punkshot_interrupt)
 
 	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map,0)
 								/* NMIs are generated by the 053260 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(eeprom)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(blswhstl)
@@ -2581,19 +2595,22 @@ static MACHINE_DRIVER_START( glfgreat )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(glfgreat_main_map,0)
-	MDRV_CPU_VBLANK_INT(lgtnfght_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", lgtnfght_interrupt)
 
 	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(glfgreat_audio_map,0)
 								/* NMIs are generated by the 053260 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_GFXDECODE(glfgreat)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -2627,22 +2644,25 @@ static MACHINE_DRIVER_START( prmrsocr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(prmrsocr_main_map,0)
-	MDRV_CPU_VBLANK_INT(lgtnfght_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", lgtnfght_interrupt)
 
 	MDRV_CPU_ADD(Z80, 8000000)
 	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(prmrsocr_audio_map,0)
 								/* NMIs are generated by the 054539 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(thndrx2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_GFXDECODE(glfgreat)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -2664,7 +2684,7 @@ static MACHINE_DRIVER_START( tmnt2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_32MHz/2)
 	MDRV_CPU_PROGRAM_MAP(tmnt2_main_map,0)
-	MDRV_CPU_VBLANK_INT(punkshot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", punkshot_interrupt)
 
 	MDRV_CPU_ADD(Z80, 8000000)
 	/* audio CPU */	/* 8 MHz; clock is correct, but there's 1 cycle wait for ROM/RAM */
@@ -2674,16 +2694,19 @@ static MACHINE_DRIVER_START( tmnt2 )
 						/* 02 instead of 00. */
 	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map,0)
 								/* NMIs are generated by the 053260 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(eeprom)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(lgtnfght)
@@ -2708,22 +2731,25 @@ static MACHINE_DRIVER_START( ssriders )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_32MHz/2)
 	MDRV_CPU_PROGRAM_MAP(ssriders_main_map,0)
-	MDRV_CPU_VBLANK_INT(punkshot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", punkshot_interrupt)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */	/* ????? makes the ROM test sync */
 	MDRV_CPU_PROGRAM_MAP(ssriders_audio_map,0)
 								/* NMIs are generated by the 053260 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(eeprom)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(lgtnfght)
@@ -2748,18 +2774,20 @@ static MACHINE_DRIVER_START( sunsetbl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(sunsetbl_main_map,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_NVRAM_HANDLER(eeprom)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(sunsetbl)
@@ -2779,21 +2807,24 @@ static MACHINE_DRIVER_START( thndrx2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(thndrx2_main_map,0)
-	MDRV_CPU_VBLANK_INT(punkshot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", punkshot_interrupt)
 
 	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz)
 	MDRV_CPU_PROGRAM_MAP(thndrx2_audio_map,0)
 								/* NMIs are generated by the 053260 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(thndrx2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(thndrx2)

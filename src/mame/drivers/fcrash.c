@@ -65,7 +65,7 @@ static void fcrash_update_transmasks(void)
 	}
 }
 
-static void fcrash_render_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void fcrash_render_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int pos;
 	int base=0x50c8/2; // and 10c8/2 for the buffer?
@@ -92,7 +92,7 @@ static void fcrash_render_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 }
 
-static void fcrash_render_layer(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int layer,int primask)
+static void fcrash_render_layer(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int layer,int primask)
 {
 	switch (layer)
 	{
@@ -107,7 +107,7 @@ static void fcrash_render_layer(running_machine *machine, mame_bitmap *bitmap,co
 	}
 }
 
-static void fcrash_render_high_layer(mame_bitmap *bitmap, const rectangle *cliprect, int layer)
+static void fcrash_render_high_layer(bitmap_t *bitmap, const rectangle *cliprect, int layer)
 {
 	switch (layer)
 	{
@@ -136,7 +136,7 @@ static VIDEO_UPDATE( fcrash )
 	cps1_get_video_base();
 
 	/* Build palette */
-	cps1_build_palette(machine);
+	cps1_build_palette(screen->machine);
 
 	fcrash_update_transmasks();
 
@@ -172,7 +172,7 @@ static VIDEO_UPDATE( fcrash )
 	tilemap_set_enable(cps1_bg_tilemap[2],1);
 
 	/* Blank screen */
-	fillbitmap(bitmap,machine->pens[4095],cliprect);
+	fillbitmap(bitmap,4095,cliprect);
 
 	fillbitmap(priority_bitmap,0,cliprect);
 	l0 = (layercontrol >> 0x06) & 03;
@@ -180,13 +180,13 @@ static VIDEO_UPDATE( fcrash )
 	l2 = (layercontrol >> 0x0a) & 03;
 	l3 = (layercontrol >> 0x0c) & 03;
 
-	fcrash_render_layer(machine,bitmap,cliprect,l0,0);
+	fcrash_render_layer(screen->machine,bitmap,cliprect,l0,0);
 	if (l1 == 0) fcrash_render_high_layer(bitmap,cliprect,l0);
-	fcrash_render_layer(machine,bitmap,cliprect,l1,0);
+	fcrash_render_layer(screen->machine,bitmap,cliprect,l1,0);
 	if (l2 == 0) fcrash_render_high_layer(bitmap,cliprect,l1);
-	fcrash_render_layer(machine,bitmap,cliprect,l2,0);
+	fcrash_render_layer(screen->machine,bitmap,cliprect,l2,0);
 	if (l3 == 0) fcrash_render_high_layer(bitmap,cliprect,l2);
-	fcrash_render_layer(machine,bitmap,cliprect,l3,0);
+	fcrash_render_layer(screen->machine,bitmap,cliprect,l3,0);
 
 
 	return 0;
@@ -194,23 +194,23 @@ static VIDEO_UPDATE( fcrash )
 
 
 static ADDRESS_MAP_START( fcrash_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA16_ROM)             /* 68000 ROM */
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)             /* 68000 ROM */
 	AM_RANGE(0x880000, 0x880001) AM_READ(cps1_in1_r)            /* Player input ports */
 	AM_RANGE(0x880008, 0x880009) AM_READ(cps1_in0_r)            /* System input ports */
 	AM_RANGE(0x88000a, 0x88000f) AM_READ(cps1_dsw_r)            /* Dip Switches */
 	AM_RANGE(0x800100, 0x8001ff) AM_READ(cps1_output_r)         /* Output ports */
-	AM_RANGE(0x900000, 0x92ffff) AM_READ(MRA16_RAM)	            /* SF2CE executes code from here */
+	AM_RANGE(0x900000, 0x92ffff) AM_READ(SMH_RAM)	            /* SF2CE executes code from here */
 	AM_RANGE(0xf1c000, 0xf1c001) AM_READ(cps1_in2_r)
 	AM_RANGE(0xf1c002, 0xf1c003) AM_READ(cps1_in3_r)
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(MRA16_RAM)             /* RAM */
+	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)             /* RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fcrash_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA16_ROM)            /* ROM */
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)            /* ROM */
 	AM_RANGE(0x800030, 0x800031) AM_WRITE(cps1_coinctrl_w)
 	AM_RANGE(0x800100, 0x8001ff) AM_WRITE(cps1_output_w) AM_BASE(&cps1_output) AM_SIZE(&cps1_output_size)  /* Output ports */
 	AM_RANGE(0x900000, 0x92ffff) AM_WRITE(cps1_gfxram_w) AM_BASE(&cps1_gfxram) AM_SIZE(&cps1_gfxram_size)
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA16_RAM)            /* RAM */
+	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM)            /* RAM */
 ADDRESS_MAP_END
 
 
@@ -324,20 +324,20 @@ static MACHINE_DRIVER_START( fcrash )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(fcrash_readmem,fcrash_writemem)
-	MDRV_CPU_VBLANK_INT(cps1_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", cps1_interrupt)
 
 //  MDRV_CPU_ADD_TAG("sound", Z80, 4000000) /* ???? */
 //  /* audio CPU */
 //  MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 2*8, 30*8-1 )
+
 	MDRV_GFXDECODE(cps1)
 	MDRV_PALETTE_LENGTH(4096)
 

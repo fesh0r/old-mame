@@ -87,7 +87,7 @@ static const int f1dream_2450_lookup[32] = {
 0x0003, 0x0080, 0x0006, 0x0060, 0x0000, 0x00e0, 0x000a, 0x00c0, 0x0003, 0x0080, 0x0006, 0x0060, 0x0000, 0x00e0, 0x000a, 0x00c0,
 0x0003, 0x0080, 0x0006, 0x0060, 0x0000, 0x00e0, 0x000a, 0x00c0, 0x0003, 0x0080, 0x0006, 0x0060, 0x0000, 0x00e0, 0x000a, 0x00c0 };
 
-static void f1dream_protection_w(void)
+static void f1dream_protection_w(running_machine *machine)
 {
 	int indx;
 	int value = 255;
@@ -146,20 +146,20 @@ static void f1dream_protection_w(void)
 	else if ((prevpc == 0x27f8) || (prevpc == 0x511a) || (prevpc == 0x5142) || (prevpc == 0x516a))
 	{
 		/* The main CPU stuffs the byte for the soundlatch into 0xfffffd.*/
-		soundlatch_w(2,ram16[0x3ffc/2]);
+		soundlatch_w(machine,2,ram16[0x3ffc/2]);
 	}
 }
 
 static WRITE16_HANDLER( f1dream_control_w )
 {
 	logerror("protection write, PC: %04x  FFE1 Value:%01x\n",activecpu_get_pc(), ram16[0x3fe0/2]);
-	f1dream_protection_w();
+	f1dream_protection_w(machine);
 }
 
 static WRITE16_HANDLER( tigeroad_soundcmd_w )
 {
 	if (ACCESSING_MSB)
-		soundlatch_w(offset,data >> 8);
+		soundlatch_w(machine,offset,data >> 8);
 }
 
 static WRITE8_HANDLER( msm5205_w )
@@ -174,68 +174,68 @@ static WRITE8_HANDLER( msm5205_w )
 /***************************************************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0xfe0800, 0xfe0cff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xfe0d00, 0xfe1807) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0xfe0800, 0xfe0cff) AM_READ(SMH_RAM)
+	AM_RANGE(0xfe0d00, 0xfe1807) AM_READ(SMH_RAM)
 	AM_RANGE(0xfe4000, 0xfe4001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0xfe4002, 0xfe4003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0xfe4004, 0xfe4005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0xfec000, 0xfec7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xff8200, 0xff867f) AM_READ(MRA16_RAM)
-	AM_RANGE(0xffc000, 0xffffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0xfec000, 0xfec7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xff8200, 0xff867f) AM_READ(SMH_RAM)
+	AM_RANGE(0xffc000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0xfe0800, 0xfe0cff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xfe0d00, 0xfe1807) AM_WRITE(MWA16_RAM)  /* still part of OBJ RAM */
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xfe0800, 0xfe0cff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xfe0d00, 0xfe1807) AM_WRITE(SMH_RAM)  /* still part of OBJ RAM */
 	AM_RANGE(0xfe4000, 0xfe4001) AM_WRITE(tigeroad_videoctrl_w)	/* char bank, coin counters, + ? */
 	/*AM_RANGE(0xfe4002, 0xfe4003) AM_WRITE(tigeroad_soundcmd_w) added by init_tigeroad() */
 	AM_RANGE(0xfec000, 0xfec7ff) AM_WRITE(tigeroad_videoram_w) AM_BASE(&videoram16)
 	AM_RANGE(0xfe8000, 0xfe8003) AM_WRITE(tigeroad_scroll_w)
-	AM_RANGE(0xfe800e, 0xfe800f) AM_WRITE(MWA16_RAM)    /* fe800e = watchdog or IRQ acknowledge */
+	AM_RANGE(0xfe800e, 0xfe800f) AM_WRITE(SMH_RAM)    /* fe800e = watchdog or IRQ acknowledge */
 	AM_RANGE(0xff8200, 0xff867f) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xffc000, 0xffffff) AM_WRITE(MWA16_RAM) AM_BASE(&ram16)
+	AM_RANGE(0xffc000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&ram16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x8000) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(YM2203_status_port_1_r)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(YM2203_control_port_1_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(YM2203_write_port_1_w)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(soundlatch2_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sample_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 /* yes, no RAM */
 static ADDRESS_MAP_START( sample_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sample_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch2_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sample_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_WRITE(msm5205_w)
 ADDRESS_MAP_END
 
@@ -547,23 +547,25 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( tigeroad )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 6000000) /* ? Main clock is 24MHz */
+	MDRV_CPU_ADD(M68000, XTAL_10MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)
-	/* audio CPU */    /* 4 MHz ??? */
+	MDRV_CPU_ADD(Z80, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 								/* IRQs are triggered by the YM2203 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(tigeroad)
 	MDRV_PALETTE_LENGTH(576)
 
@@ -574,11 +576,11 @@ static MACHINE_DRIVER_START( tigeroad )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 3579545)
+	MDRV_SOUND_ADD(YM2203, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ym2203_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(YM2203, 3579545)
+	MDRV_SOUND_ADD(YM2203, XTAL_3_579545MHz) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
 

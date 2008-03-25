@@ -85,15 +85,15 @@ VIDEO_START( tecmo )
 {
 	if (tecmo_video_type == 2)	/* gemini */
 	{
-		bg_tilemap = tilemap_create(gemini_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
-		fg_tilemap = tilemap_create(gemini_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
+		bg_tilemap = tilemap_create(gemini_get_bg_tile_info,tilemap_scan_rows,16,16,32,16);
+		fg_tilemap = tilemap_create(gemini_get_fg_tile_info,tilemap_scan_rows,16,16,32,16);
 	}
 	else	/* rygar, silkworm */
 	{
-		bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
-		fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
+		bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,16,16,32,16);
+		fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,32,16);
 	}
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(bg_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -162,7 +162,7 @@ WRITE8_HANDLER( tecmo_flipscreen_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 	static const UINT8 layout[8][8] =
@@ -201,7 +201,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			flipx = bank & 1;
 			flipy = bank & 2;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				xpos = 256 - (8 * size) - xpos;
 				ypos = 256 - (8 * size) - ypos;
@@ -242,11 +242,11 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( tecmo )
 {
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0x100],cliprect);
+	fillbitmap(bitmap,0x100,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,1);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,2);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,4);
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

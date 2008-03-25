@@ -41,33 +41,33 @@ static WRITE8_HANDLER( gekiretu_rombank_w )
 /****************************************************************************/
 
 static ADDRESS_MAP_START( quizdna_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( quizdna_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x9fff) AM_WRITE(quizdna_fg_ram_w)
 	AM_RANGE(0xa000, 0xbfff) AM_WRITE(quizdna_bg_ram_w)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe000, 0xe1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe200, 0xefff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xe000, 0xe1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe200, 0xefff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(paletteram_xBGR_RRRR_GGGG_BBBB_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gekiretu_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x9fff) AM_WRITE(quizdna_fg_ram_w)
 	AM_RANGE(0xa000, 0xbfff) AM_WRITE(quizdna_bg_ram_w)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(paletteram_xBGR_RRRR_GGGG_BBBB_w) AM_BASE(&paletteram)
-	AM_RANGE(0xf000, 0xf1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xf200, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xf000, 0xf1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xf200, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( quizdna_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_READ(input_port_2_r)
 	AM_RANGE(0x81, 0x81) AM_READ(input_port_3_r)
 	AM_RANGE(0x90, 0x90) AM_READ(input_port_4_r)
@@ -79,10 +79,10 @@ static ADDRESS_MAP_START( quizdna_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( quizdna_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x03) AM_WRITE(quizdna_bg_xscroll_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(quizdna_bg_yscroll_w)
-	AM_RANGE(0x05, 0x06) AM_WRITE(MWA8_NOP) /* unknown */
+	AM_RANGE(0x05, 0x06) AM_WRITE(SMH_NOP) /* unknown */
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(quizdna_rombank_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(quizdna_screen_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(YM2203_control_port_0_w)
@@ -91,10 +91,10 @@ static ADDRESS_MAP_START( quizdna_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gakupara_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x01) AM_WRITE(quizdna_bg_xscroll_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(quizdna_bg_yscroll_w)
-	AM_RANGE(0x03, 0x04) AM_WRITE(MWA8_NOP) /* unknown */
+	AM_RANGE(0x03, 0x04) AM_WRITE(SMH_NOP) /* unknown */
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(quizdna_rombank_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(quizdna_screen_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(YM2203_control_port_0_w)
@@ -103,10 +103,10 @@ static ADDRESS_MAP_START( gakupara_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gekiretu_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x03) AM_WRITE(quizdna_bg_xscroll_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(quizdna_bg_yscroll_w)
-	AM_RANGE(0x05, 0x06) AM_WRITE(MWA8_NOP) /* unknown */
+	AM_RANGE(0x05, 0x06) AM_WRITE(SMH_NOP) /* unknown */
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(gekiretu_rombank_w)
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(quizdna_screen_ctrl_w)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(YM2203_control_port_0_w)
@@ -456,16 +456,16 @@ static MACHINE_DRIVER_START( quizdna )
 	MDRV_CPU_ADD_TAG("main", Z80, MCLK/2) /* 8.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(quizdna_readmem,quizdna_writemem)
 	MDRV_CPU_IO_MAP(quizdna_readport,quizdna_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, 56*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(quizdna)
 	MDRV_PALETTE_LENGTH(2048)
 

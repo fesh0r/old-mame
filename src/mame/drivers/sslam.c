@@ -243,7 +243,7 @@ static TIMER_CALLBACK( music_playback )
 {
 	int pattern = 0;
 
-	if ((OKIM6295_status_0_r(0) & 0x08) == 0)
+	if ((OKIM6295_status_0_r(machine,0) & 0x08) == 0)
 	{
 		if (sslam_bar != 0) {
 			sslam_bar += 1;
@@ -264,8 +264,8 @@ static TIMER_CALLBACK( music_playback )
 		}
 		if (pattern) {
 			logerror("Changing bar in music track to pattern %02x\n",pattern);
-			OKIM6295_data_0_w(0,(0x80 | pattern));
-			OKIM6295_data_0_w(0,0x81);
+			OKIM6295_data_0_w(machine,0,(0x80 | pattern));
+			OKIM6295_data_0_w(machine,0,0x81);
 		}
 	}
 //  {
@@ -275,9 +275,9 @@ static TIMER_CALLBACK( music_playback )
 }
 
 
-static void sslam_play(int track, int data)
+static void sslam_play(running_machine *machine, int track, int data)
 {
-	int status = OKIM6295_status_0_r(0);
+	int status = OKIM6295_status_0_r(machine,0);
 
 	if (data < 0x80) {
 		if (track) {
@@ -285,24 +285,24 @@ static void sslam_play(int track, int data)
 				sslam_track  = data;
 				sslam_bar = 1;
 				if (status & 0x08)
-					OKIM6295_data_0_w(0,0x40);
-				OKIM6295_data_0_w(0,(0x80 | data));
-				OKIM6295_data_0_w(0,0x81);
-				timer_adjust(music_timer, ATTOTIME_IN_MSEC(4), 0, ATTOTIME_IN_HZ(250));	/* 250Hz for smooth sequencing */
+					OKIM6295_data_0_w(machine,0,0x40);
+				OKIM6295_data_0_w(machine,0,(0x80 | data));
+				OKIM6295_data_0_w(machine,0,0x81);
+				timer_adjust_periodic(music_timer, ATTOTIME_IN_MSEC(4), 0, ATTOTIME_IN_HZ(250));	/* 250Hz for smooth sequencing */
 			}
 		}
 		else {
 			if ((status & 0x01) == 0) {
-				OKIM6295_data_0_w(0,(0x80 | data));
-				OKIM6295_data_0_w(0,0x11);
+				OKIM6295_data_0_w(machine,0,(0x80 | data));
+				OKIM6295_data_0_w(machine,0,0x11);
 			}
 			else if ((status & 0x02) == 0) {
-				OKIM6295_data_0_w(0,(0x80 | data));
-				OKIM6295_data_0_w(0,0x21);
+				OKIM6295_data_0_w(machine,0,(0x80 | data));
+				OKIM6295_data_0_w(machine,0,0x21);
 			}
 			else if ((status & 0x04) == 0) {
-				OKIM6295_data_0_w(0,(0x80 | data));
-				OKIM6295_data_0_w(0,0x41);
+				OKIM6295_data_0_w(machine,0,(0x80 | data));
+				OKIM6295_data_0_w(machine,0,0x41);
 			}
 		}
 	}
@@ -314,7 +314,7 @@ static void sslam_play(int track, int data)
 			sslam_bar = 0;
 		}
 		data &= 0x7f;
-		OKIM6295_data_0_w(0,data);
+		OKIM6295_data_0_w(machine,0,data);
 	}
 }
 
@@ -327,7 +327,7 @@ static WRITE16_HANDLER( sslam_snd_w )
 			if (data == 0xfe) {
 				/* This should reset the sound MCU and stop audio playback, but here, it */
 				/* chops the first coin insert. So let's only stop any playing melodies. */
-				sslam_play(1, (0x80 | 0x40));		/* Stop playing the melody */
+				sslam_play(machine, 1, (0x80 | 0x40));		/* Stop playing the melody */
 			}
 			else {
 				logerror("Unknown command (%02x) sent to the Sound controller\n",data);
@@ -349,7 +349,7 @@ static WRITE16_HANDLER( sslam_snd_w )
 //              if (sslam_snd_bank != 1)
 //                  OKIM6295_set_bank_base(0, (1 * 0x40000));
 //              sslam_snd_bank = 1;
-				sslam_play(0, sslam_sound);
+				sslam_play(machine, 0, sslam_sound);
 			}
 			else if (sslam_sound >= 0x69) {
 				if (sslam_snd_bank != 2)
@@ -362,14 +362,14 @@ static WRITE16_HANDLER( sslam_snd_w )
 					case 0x6c:	sslam_melody = 7; break;
 					default:	sslam_melody = 0; sslam_bar = 0; break;	/* Invalid */
 				}
-				sslam_play(sslam_melody, sslam_sound);
+				sslam_play(machine, sslam_melody, sslam_sound);
 			}
 			else if (sslam_sound >= 0x65) {
 				if (sslam_snd_bank != 1)
 					OKIM6295_set_bank_base(0, (1 * 0x40000));
 				sslam_snd_bank = 1;
 				sslam_melody = 4;
-				sslam_play(sslam_melody, sslam_sound);
+				sslam_play(machine, sslam_melody, sslam_sound);
 			}
 			else if (sslam_sound >= 0x60) {
 				if (sslam_snd_bank != 0)
@@ -382,10 +382,10 @@ static WRITE16_HANDLER( sslam_snd_w )
 					case 0x64:	sslam_melody = 3; break;
 					default:	sslam_melody = 0; sslam_bar = 0; break;	/* Invalid */
 				}
-				sslam_play(sslam_melody, sslam_sound);
+				sslam_play(machine, sslam_melody, sslam_sound);
 			}
 			else {
-				sslam_play(0, sslam_sound);
+				sslam_play(machine, 0, sslam_sound);
 			}
 		}
 	}
@@ -395,8 +395,8 @@ static WRITE16_HANDLER( sslam_snd_w )
 
 static WRITE16_HANDLER( powerbls_sound_w )
 {
-	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line(Machine, 1,I8051_INT1_LINE,PULSE_LINE);
+	soundlatch_w(machine,0,data & 0xff);
+	cpunum_set_input_line(machine, 1,I8051_INT1_LINE,PULSE_LINE);
 }
 
 /* Memory Maps */
@@ -405,12 +405,12 @@ static WRITE16_HANDLER( powerbls_sound_w )
 
 static ADDRESS_MAP_START( sslam_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000400, 0x07ffff) AM_RAM
-	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(MRA16_RAM, sslam_bg_tileram_w) AM_BASE(&sslam_bg_tileram)
-	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(MRA16_RAM, sslam_md_tileram_w) AM_BASE(&sslam_md_tileram)
-	AM_RANGE(0x108000, 0x10ffff) AM_READWRITE(MRA16_RAM, sslam_tx_tileram_w) AM_BASE(&sslam_tx_tileram)
+	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(SMH_RAM, sslam_bg_tileram_w) AM_BASE(&sslam_bg_tileram)
+	AM_RANGE(0x104000, 0x107fff) AM_READWRITE(SMH_RAM, sslam_md_tileram_w) AM_BASE(&sslam_md_tileram)
+	AM_RANGE(0x108000, 0x10ffff) AM_READWRITE(SMH_RAM, sslam_tx_tileram_w) AM_BASE(&sslam_tx_tileram)
 	AM_RANGE(0x110000, 0x11000d) AM_RAM AM_BASE(&sslam_regs)
 	AM_RANGE(0x200000, 0x200001) AM_WRITENOP
-	AM_RANGE(0x280000, 0x280fff) AM_READWRITE(MRA16_RAM, bigtwin_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x280000, 0x280fff) AM_READWRITE(SMH_RAM, bigtwin_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x201000, 0x201fff) AM_RAM AM_BASE(&sslam_spriteram)
 	AM_RANGE(0x304000, 0x304001) AM_WRITENOP
 	AM_RANGE(0x300010, 0x300011) AM_READ_PORT("IN0")
@@ -428,12 +428,12 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( powerbls_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
-	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(MRA16_RAM, powerbls_bg_tileram_w) AM_BASE(&sslam_bg_tileram)
+	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(SMH_RAM, powerbls_bg_tileram_w) AM_BASE(&sslam_bg_tileram)
 	AM_RANGE(0x104000, 0x107fff) AM_RAM // not used
 	AM_RANGE(0x110000, 0x11000d) AM_RAM AM_BASE(&sslam_regs)
 	AM_RANGE(0x200000, 0x200001) AM_WRITENOP
 	AM_RANGE(0x201000, 0x201fff) AM_RAM AM_BASE(&sslam_spriteram)
-	AM_RANGE(0x280000, 0x2803ff) AM_READWRITE(MRA16_RAM, bigtwin_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x280000, 0x2803ff) AM_READWRITE(SMH_RAM, bigtwin_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x300010, 0x300011) AM_READ_PORT("IN0")
 	AM_RANGE(0x300012, 0x300013) AM_READ_PORT("IN1")
 	AM_RANGE(0x300014, 0x300015) AM_READ_PORT("IN2")
@@ -454,10 +454,10 @@ static READ8_HANDLER( playmark_snd_command_r )
 	UINT8 data = 0;
 
 	if ((playmark_oki_control & 0x38) == 0x30) {
-		data = soundlatch_r(0);
+		data = soundlatch_r(machine,0);
 	}
 	else if ((playmark_oki_control & 0x38) == 0x28) {
-		data = (OKIM6295_status_0_r(0) & 0x0f);
+		data = (OKIM6295_status_0_r(machine,0) & 0x0f);
 	}
 
 	return data;
@@ -483,7 +483,7 @@ static WRITE8_HANDLER( playmark_snd_control_w )
 
 	if ((data & 0x38) == 0x18)
 	{
-		OKIM6295_data_0_w(0, playmark_oki_command);
+		OKIM6295_data_0_w(machine, 0, playmark_oki_command);
 	}
 
 //  !(data & 0x80) -> sound enable
@@ -731,21 +731,21 @@ static MACHINE_DRIVER_START( sslam )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(sslam_program_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_CPU_ADD(I8051, 12000000)
 	MDRV_CPU_FLAGS(CPU_DISABLE)		/* Internal code is not dumped - 2 boards were protected */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(0,0)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 39*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(sslam)
 	MDRV_PALETTE_LENGTH(0x800)
 
@@ -765,20 +765,20 @@ static MACHINE_DRIVER_START( powerbls )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(powerbls_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_CPU_ADD(I8051, 12000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(powerbls)
 	MDRV_PALETTE_LENGTH(0x200)
 

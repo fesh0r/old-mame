@@ -70,7 +70,7 @@ Notes:
                                 Video Hardware
 ***************************************************************************/
 
-static mame_bitmap *lastfght_bitmap[2];
+static bitmap_t *lastfght_bitmap[2];
 static int clr_offset;
 static int lastfght_dest;
 
@@ -78,7 +78,7 @@ static VIDEO_START( lastfght )
 {
 	int i;
 	for (i = 0; i < 2; i++)
-		lastfght_bitmap[i] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+		lastfght_bitmap[i] = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	colorram = auto_malloc(256*3);
 }
@@ -104,7 +104,7 @@ static VIDEO_UPDATE( lastfght )
 
 		count = base;
 
-		fillbitmap( bitmap, get_black_pen(machine), cliprect );
+		fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
 		for ( y = 0 ; y < 256; y++ )
 		{
 			for ( x = 0; x < 512; x++ )
@@ -258,7 +258,7 @@ static WRITE16_HANDLER( lastfght_blit_w )
 	{
 		int x,y, addr;
 		UINT8 *gfxdata = memory_region( REGION_GFX1 );
-		mame_bitmap *dest = lastfght_bitmap[lastfght_dest];
+		bitmap_t *dest = lastfght_bitmap[lastfght_dest];
 
 #if 0
 		logerror("%06x: blit x %03x, y %03x, w %03x, h %03x, sx %03x.%02x, sx1 %03x.%02x, dsx %03x.%02x, sy %03x.%02x, sy1 %03x.%02x, dsy %03x.%02x, sp %02x, sr %02x, data %02x\n", activecpu_get_pc(),
@@ -347,7 +347,7 @@ static WRITE16_HANDLER( lastfght_sound_w )
 ***************************************************************************/
 
 static ADDRESS_MAP_START( lastfght_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(24) )
+	ADDRESS_MAP_GLOBAL_MASK(0xffffff)
 
 	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM AM_REGION(REGION_CPU1, 0)
 	AM_RANGE( 0x080000, 0x0fffff ) AM_ROM AM_REGION(REGION_CPU1, 0)
@@ -358,7 +358,7 @@ static ADDRESS_MAP_START( lastfght_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x600002, 0x600003 ) AM_READWRITE( lastfght_sound_r, lastfght_sound_w )
 	AM_RANGE( 0x600006, 0x600007 ) AM_WRITE( lastfght_blit_w )
 	AM_RANGE( 0x600008, 0x600009 ) AM_WRITE( colordac_w )
-	AM_RANGE( 0x60000a, 0x60000b ) AM_WRITE( MWA16_NOP )	// colordac?
+	AM_RANGE( 0x60000a, 0x60000b ) AM_WRITE( SMH_NOP )	// colordac?
 
 	AM_RANGE( 0x800000, 0x800001 ) AM_WRITE( lastfght_sx_w )
 	AM_RANGE( 0x800002, 0x800003 ) AM_WRITE( lastfght_sd_w )
@@ -463,16 +463,17 @@ static INTERRUPT_GEN( unknown_interrupt )
 static MACHINE_DRIVER_START( lastfght )
 	MDRV_CPU_ADD(H83044, 32000000/2)
 	MDRV_CPU_PROGRAM_MAP( lastfght_map, 0 )
-	MDRV_CPU_VBLANK_INT(unknown_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(unknown_interrupt,2)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_PALETTE_LENGTH( 256 )
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 512, 256 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 512-1, 0, 256-16-1 )
-	MDRV_PALETTE_LENGTH( 256 )
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 
 	MDRV_VIDEO_START( lastfght )

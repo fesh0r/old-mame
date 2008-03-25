@@ -14,7 +14,7 @@ PALETTE_INIT( mnchmobl )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -59,10 +59,10 @@ WRITE8_HANDLER( mnchmobl_sprite_tile_w ){ mnchmobl_sprite_tile[offset] = data; }
 
 VIDEO_START( mnchmobl )
 {
-	tmpbitmap = auto_bitmap_alloc(512,512,machine->screen[0].format);
+	tmpbitmap = auto_bitmap_alloc(512,512,video_screen_get_format(machine->primary_screen));
 }
 
-static void draw_status(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_status(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[0];
 	int row;
@@ -89,7 +89,7 @@ static void draw_status(running_machine *machine, mame_bitmap *bitmap, const rec
 	}
 }
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 /*
     ROM B1.2C contains 256 tilemaps defining 4x4 configurations of
@@ -128,7 +128,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int scroll = mnchmobl_vreg[6];
 	int flags = mnchmobl_vreg[7];					/*   XB?????? */
@@ -160,8 +160,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( mnchmobl )
 {
-	draw_background(machine, bitmap, cliprect);
-	draw_sprites(machine, bitmap, cliprect);
-	draw_status(machine, bitmap, cliprect);
+	draw_background(screen->machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
+	draw_status(screen->machine, bitmap, cliprect);
 	return 0;
 }

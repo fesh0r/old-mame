@@ -51,63 +51,63 @@ static INTERRUPT_GEN( ssozumo_interrupt )
 
 static WRITE8_HANDLER( ssozumo_sh_command_w )
 {
-	soundlatch_w(offset, data);
-	cpunum_set_input_line(Machine, 1, M6502_IRQ_LINE, HOLD_LINE);
+	soundlatch_w(machine, offset, data);
+	cpunum_set_input_line(machine, 1, M6502_IRQ_LINE, HOLD_LINE);
 }
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x077f) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x077f) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x2000, 0x27ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3000, 0x31ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x2000, 0x27ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x3000, 0x31ff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x4000, 0x4000) AM_READ(input_port_0_r)
 	AM_RANGE(0x4010, 0x4010) AM_READ(input_port_1_r)
 	AM_RANGE(0x4020, 0x4020) AM_READ(input_port_2_r)
 	AM_RANGE(0x4030, 0x4030) AM_READ(input_port_3_r)
 
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x077f) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x077f) AM_WRITE(SMH_RAM)
 
-	AM_RANGE(0x0780, 0x07ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0780, 0x07ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x2000, 0x23ff) AM_WRITE(ssozumo_videoram2_w) AM_BASE(&ssozumo_videoram2)
 	AM_RANGE(0x2400, 0x27ff) AM_WRITE(ssozumo_colorram2_w) AM_BASE(&ssozumo_colorram2)
 	AM_RANGE(0x3000, 0x31ff) AM_WRITE(ssozumo_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x3200, 0x33ff) AM_WRITE(ssozumo_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x3400, 0x35ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x3600, 0x37ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x3400, 0x35ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x3600, 0x37ff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(ssozumo_flipscreen_w)
 	AM_RANGE(0x4010, 0x4010) AM_WRITE(ssozumo_sh_command_w)
 	AM_RANGE(0x4020, 0x4020) AM_WRITE(ssozumo_scroll_w)
-//  AM_RANGE(0x4030, 0x4030) AM_WRITE(MWA8_RAM)
+//  AM_RANGE(0x4030, 0x4030) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x4050, 0x407f) AM_WRITE(ssozumo_paletteram_w) AM_BASE(&paletteram)
 
-	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x01ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x2007, 0x2007) AM_READ(soundlatch_r)
-	AM_RANGE(0x4000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(AY8910_write_port_1_w)
 	AM_RANGE(0x2003, 0x2003) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0x2004, 0x2004) AM_WRITE(DAC_0_signed_data_w)
 	AM_RANGE(0x2005, 0x2005) AM_WRITE(interrupt_enable_w)
-	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -235,21 +235,21 @@ static MACHINE_DRIVER_START( ssozumo )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 1200000)	/* 1.2 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(ssozumo_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", ssozumo_interrupt)
 
 	MDRV_CPU_ADD(M6502, 975000)
 	/* audio CPU */ 		/* 975 kHz ?? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,16)	/* IRQs are triggered by the main CPU */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)	/* IRQs are triggered by the main CPU */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8 - 1, 1*8, 31*8 - 1)
+
 	MDRV_GFXDECODE(ssozumo)
 	MDRV_PALETTE_LENGTH(64 + 16)
 

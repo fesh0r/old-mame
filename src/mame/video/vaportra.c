@@ -78,7 +78,7 @@ WRITE16_HANDLER( vaportra_palette_24bit_b_w )
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
 {
 	int offs,priority_value;
 
@@ -98,7 +98,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		if (!pri && !(colour>=priority_value)) continue;
 
 		flash=x&0x800;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		fx = y & 0x2000;
 		fy = y & 0x4000;
@@ -122,7 +122,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			inc = 1;
 		}
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			y=240-y;
 			x=240-x;
@@ -160,29 +160,29 @@ VIDEO_UPDATE( vaportra )
 	if (pri==0) {
 		deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 		deco16_tilemap_3_draw(bitmap,cliprect,0,0);
-		draw_sprites(machine, bitmap,cliprect,0);
+		draw_sprites(screen->machine, bitmap,cliprect,0);
 		deco16_tilemap_2_draw(bitmap,cliprect,0,0);
 	}
 	else if (pri==1) {
 		deco16_tilemap_3_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 		deco16_tilemap_4_draw(bitmap,cliprect,0,0);
-		draw_sprites(machine, bitmap,cliprect,0);
+		draw_sprites(screen->machine, bitmap,cliprect,0);
 		deco16_tilemap_2_draw(bitmap,cliprect,0,0);
 	}
 	else if (pri==2) {
 		deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 		deco16_tilemap_2_draw(bitmap,cliprect,0,0);
-		draw_sprites(machine, bitmap,cliprect,0);
+		draw_sprites(screen->machine, bitmap,cliprect,0);
 		deco16_tilemap_3_draw(bitmap,cliprect,0,0);
 	}
 	else {
 		deco16_tilemap_3_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 		deco16_tilemap_2_draw(bitmap,cliprect,0,0);
-		draw_sprites(machine, bitmap,cliprect,0);
+		draw_sprites(screen->machine, bitmap,cliprect,0);
 		deco16_tilemap_4_draw(bitmap,cliprect,0,0);
 	}
 
-	draw_sprites(machine,bitmap,cliprect,1);
+	draw_sprites(screen->machine,bitmap,cliprect,1);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }

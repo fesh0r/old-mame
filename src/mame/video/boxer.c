@@ -10,7 +10,7 @@ UINT8* boxer_tile_ram;
 UINT8* boxer_sprite_ram;
 
 
-static void draw_boxer(running_machine *machine, mame_bitmap* bitmap, const rectangle* cliprect)
+static void draw_boxer(running_machine *machine, bitmap_t* bitmap, const rectangle* cliprect)
 {
 	int n;
 
@@ -73,7 +73,7 @@ VIDEO_UPDATE( boxer )
 		{
 			UINT8 code = boxer_tile_ram[32 * i + j];
 
-			drawgfx(bitmap, machine->gfx[2],
+			drawgfx(bitmap, screen->machine->gfx[2],
 				code,
 				0,
 				code & 0x40, code & 0x40,
@@ -84,6 +84,6 @@ VIDEO_UPDATE( boxer )
 		}
 	}
 
-	draw_boxer(machine, bitmap, cliprect);
+	draw_boxer(screen->machine, bitmap, cliprect);
 	return 0;
 }

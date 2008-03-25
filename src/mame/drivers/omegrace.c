@@ -235,7 +235,7 @@
 static MACHINE_RESET( omegrace )
 {
 	/* Omega Race expects the vector processor to be ready. */
-	avgdvg_reset_w (0, 0);
+	avgdvg_reset_w (machine,0, 0);
 }
 
 
@@ -248,7 +248,7 @@ static MACHINE_RESET( omegrace )
 
 static READ8_HANDLER( omegrace_vg_go_r )
 {
-	avgdvg_go_w(0,0);
+	avgdvg_go_w(machine,0,0);
 	return 0;
 }
 
@@ -322,8 +322,8 @@ static WRITE8_HANDLER( omegrace_leds_w )
 
 static WRITE8_HANDLER( omegrace_soundlatch_w )
 {
-	soundlatch_w (offset, data);
-	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
+	soundlatch_w (machine, offset, data);
+	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 }
 
 
@@ -344,7 +344,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x08, 0x08) AM_READ(omegrace_vg_go_r)
 	AM_RANGE(0x09, 0x09) AM_READ(watchdog_reset_r)
 	AM_RANGE(0x0a, 0x0a) AM_WRITE(avgdvg_reset_w)
@@ -373,7 +373,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_port, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(soundlatch_r, AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_control_port_1_w)
@@ -494,18 +494,14 @@ static MACHINE_DRIVER_START( omegrace )
 	MDRV_CPU_IO_MAP(sound_port, 0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse,250)
 
-	MDRV_SCREEN_REFRESH_RATE(40)
-	MDRV_SCREEN_VBLANK_TIME(0)
-
 	MDRV_MACHINE_RESET(omegrace)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_REFRESH_RATE(40)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(522, 1566, 522, 1566)
-	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(dvg)
 	MDRV_VIDEO_UPDATE(vector)
@@ -544,7 +540,7 @@ ROM_START( omegrace )
 
 	/* DVG PROM */
 	ROM_REGION( 0x100, REGION_USER1, 0 )
-	ROM_LOAD( "01-34602.bin",	0x0000, 0x0100, BAD_DUMP CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "dvgprom.bin",	0x0000, 0x0100, CRC(d481e958) SHA1(d8790547dc539e25984807573097b61ec3ffe614) )
 ROM_END
 
 ROM_START( deltrace )
@@ -561,9 +557,29 @@ ROM_START( deltrace )
 
 	/* DVG PROM */
 	ROM_REGION( 0x100, REGION_USER1, 0 )
-	ROM_LOAD( "01-34602.bin",	0x0000, 0x0100, BAD_DUMP CRC(97953db8) SHA1(8cbded64d1dd35b18c4d5cece00f77e7b2cab2ad) )
+	ROM_LOAD( "dvgprom.bin",	0x0000, 0x0100, CRC(d481e958) SHA1(d8790547dc539e25984807573097b61ec3ffe614) )
 ROM_END
 
+
+/*************************************
+ *
+ *  Game specific initalization
+ *
+ *************************************/
+
+static DRIVER_INIT( omegrace )
+{
+	int i;
+	UINT8 *prom = memory_region(REGION_USER1);
+
+	/* Omega Race has two pairs of the state PROM output
+     * lines swapped before going into the decoder.
+     * Since all other avg/dvg games connect the PROM
+     * in a consistent way to the decoder, we swap the bits
+     * here. */
+	for (i=0; i<memory_region_length(REGION_USER1); i++)
+		prom[i] = BITSWAP8(prom[i],7,6,5,4,1,0,3,2);
+}
 
 
 /*************************************
@@ -572,5 +588,5 @@ ROM_END
  *
  *************************************/
 
-GAMEL(1981, omegrace, 0,        omegrace, omegrace, 0, ROT0, "Midway",         "Omega Race", GAME_NO_COCKTAIL, layout_hoffe457 )
-GAMEL(1981, deltrace, omegrace, omegrace, omegrace, 0, ROT0, "Allied Leisure", "Delta Race", GAME_NO_COCKTAIL, layout_hoffe457 )
+GAMEL(1981, omegrace, 0,        omegrace, omegrace, omegrace, ROT0, "Midway",         "Omega Race", GAME_NO_COCKTAIL, layout_hoffe457 )
+GAMEL(1981, deltrace, omegrace, omegrace, omegrace, omegrace, ROT0, "Allied Leisure", "Delta Race", GAME_NO_COCKTAIL, layout_hoffe457 )

@@ -68,7 +68,7 @@ static TILE_GET_INFO( get_playfield2_tile_info )
 
 VIDEO_START( batman )
 {
-	static const struct atarimo_desc modesc =
+	static const atarimo_desc modesc =
 	{
 		1,					/* index to which gfx system */
 		1,					/* number of motion object banks */
@@ -106,17 +106,17 @@ VIDEO_START( batman )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
 
 	/* initialize the second playfield */
-	atarigen_playfield2_tilemap = tilemap_create(get_playfield2_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8, 64,64);
+	atarigen_playfield2_tilemap = tilemap_create(get_playfield2_tile_info, tilemap_scan_cols,  8,8, 64,64);
 	tilemap_set_transparent_pen(atarigen_playfield2_tilemap, 0);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 }
 
@@ -128,10 +128,10 @@ VIDEO_START( batman )
  *
  *************************************/
 
-void batman_scanline_update(running_machine *machine, int scrnum, int scanline)
+void batman_scanline_update(const device_config *screen, int scanline)
 {
 	/* update the scanline parameters */
-	if (scanline <= machine->screen[scrnum].visarea.max_y && atarivc_state.rowscroll_enable)
+	if (scanline <= video_screen_get_visible_area(screen)->max_y && atarivc_state.rowscroll_enable)
 	{
 		UINT16 *base = &atarigen_alpha[scanline / 8 * 64 + 48];
 		int scan, i;
@@ -143,13 +143,15 @@ void batman_scanline_update(running_machine *machine, int scrnum, int scanline)
 				switch (data & 15)
 				{
 					case 9:
-						video_screen_update_partial(0, scanline - 1);
+						if (scanline > 0)
+							video_screen_update_partial(screen, scanline - 1);
 						atarivc_state.mo_xscroll = (data >> 7) & 0x1ff;
 						atarimo_set_xscroll(0, atarivc_state.mo_xscroll);
 						break;
 
 					case 10:
-						video_screen_update_partial(0, scanline - 1);
+						if (scanline > 0)
+							video_screen_update_partial(screen, scanline - 1);
 						atarivc_state.pf1_xscroll_raw = (data >> 7) & 0x1ff;
 						atarivc_update_pf_xscrolls();
 						tilemap_set_scrollx(atarigen_playfield_tilemap, 0, atarivc_state.pf0_xscroll);
@@ -157,26 +159,30 @@ void batman_scanline_update(running_machine *machine, int scrnum, int scanline)
 						break;
 
 					case 11:
-						video_screen_update_partial(0, scanline - 1);
+						if (scanline > 0)
+							video_screen_update_partial(screen, scanline - 1);
 						atarivc_state.pf0_xscroll_raw = (data >> 7) & 0x1ff;
 						atarivc_update_pf_xscrolls();
 						tilemap_set_scrollx(atarigen_playfield_tilemap, 0, atarivc_state.pf0_xscroll);
 						break;
 
 					case 13:
-						video_screen_update_partial(0, scanline - 1);
+						if (scanline > 0)
+							video_screen_update_partial(screen, scanline - 1);
 						atarivc_state.mo_yscroll = (data >> 7) & 0x1ff;
 						atarimo_set_yscroll(0, atarivc_state.mo_yscroll);
 						break;
 
 					case 14:
-						video_screen_update_partial(0, scanline - 1);
+						if (scanline > 0)
+							video_screen_update_partial(screen, scanline - 1);
 						atarivc_state.pf1_yscroll = (data >> 7) & 0x1ff;
 						tilemap_set_scrolly(atarigen_playfield2_tilemap, 0, atarivc_state.pf1_yscroll);
 						break;
 
 					case 15:
-						video_screen_update_partial(0, scanline - 1);
+						if (scanline > 0)
+							video_screen_update_partial(screen, scanline - 1);
 						atarivc_state.pf0_yscroll = (data >> 7) & 0x1ff;
 						tilemap_set_scrolly(atarigen_playfield_tilemap, 0, atarivc_state.pf0_yscroll);
 						break;
@@ -195,8 +201,8 @@ void batman_scanline_update(running_machine *machine, int scrnum, int scanline)
 
 VIDEO_UPDATE( batman )
 {
-	struct atarimo_rect_list rectlist;
-	mame_bitmap *mobitmap;
+	atarimo_rect_list rectlist;
+	bitmap_t *mobitmap;
 	int x, y, r;
 
 	/* draw the playfield */
@@ -211,7 +217,7 @@ VIDEO_UPDATE( batman )
 	tilemap_draw(bitmap, cliprect, atarigen_playfield2_tilemap, 3, 0x8c);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
+	mobitmap = atarimo_render(0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{

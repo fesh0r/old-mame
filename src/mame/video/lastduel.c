@@ -87,9 +87,9 @@ static TILE_GET_INFO( get_fix_info )
 
 VIDEO_START( lastduel )
 {
-	bg_tilemap = tilemap_create(ld_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	fg_tilemap = tilemap_create(ld_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	tx_tilemap = tilemap_create(get_fix_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(ld_get_bg_tile_info,tilemap_scan_rows,16,16,64,64);
+	fg_tilemap = tilemap_create(ld_get_fg_tile_info,tilemap_scan_rows,16,16,64,64);
+	tx_tilemap = tilemap_create(get_fix_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transmask(fg_tilemap,0,0xffff,0x0001);
 	tilemap_set_transmask(fg_tilemap,1,0xf07f,0x0f81);
@@ -101,9 +101,9 @@ VIDEO_START( lastduel )
 
 VIDEO_START( madgear )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,64,32);
-	tx_tilemap = tilemap_create(get_fix_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,64,32);
+	tx_tilemap = tilemap_create(get_fix_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transmask(fg_tilemap,0,0xffff,0x8000);
 	tilemap_set_transmask(fg_tilemap,1,0x80ff,0xff00);
@@ -186,7 +186,7 @@ WRITE16_HANDLER( madgear_scroll2_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
 {
 	int offs;
 
@@ -214,7 +214,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		flipy = attr & sprite_flipy_mask;	/* 0x40 for lastduel, 0x80 for madgear */
 		color = attr & 0x0f;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 496 - sx;
 			sy = 240 - sy;
@@ -236,9 +236,9 @@ VIDEO_UPDATE( lastduel )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	draw_sprites(machine,bitmap,cliprect,0);
+	draw_sprites(screen->machine,bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER0,0);
-	draw_sprites(machine,bitmap,cliprect,1);
+	draw_sprites(screen->machine,bitmap,cliprect,1);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
@@ -249,5 +249,5 @@ VIDEO_EOF( lastduel )
 	/* Spriteram is always 1 frame ahead, suggesting buffering.  I can't find
         a register to control this so I assume it happens automatically
         every frame at the end of vblank */
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }

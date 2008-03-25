@@ -45,7 +45,7 @@ static MACHINE_RESET( xtheball )
  *
  *************************************/
 
-static void xtheball_scanline_update(running_machine *machine, int screen, mame_bitmap *bitmap, int scanline, const tms34010_display_params *params)
+static void xtheball_scanline_update(const device_config *screen, bitmap_t *bitmap, int scanline, const tms34010_display_params *params)
 {
 	UINT16 *srcbg = &vram_bg[(params->rowaddr << 8) & 0xff00];
 	UINT32 *dest = BITMAP_ADDR32(bitmap, scanline, 0);
@@ -148,7 +148,7 @@ static WRITE16_HANDLER( bit_controls_w )
 			switch (offset)
 			{
 				case 7:
-					ticket_dispenser_w(0, data << 7);
+					ticket_dispenser_w(machine, 0, data << 7);
 					break;
 
 				case 8:
@@ -208,7 +208,7 @@ static WRITE16_HANDLER( bit_controls_w )
 static READ16_HANDLER( port0_r )
 {
 	int result = readinputport(0);
-	result ^= ticket_dispenser_r(0) >> 3;
+	result ^= ticket_dispenser_r(machine,0) >> 3;
 	return result;
 }
 
@@ -222,7 +222,7 @@ static READ16_HANDLER( analogx_r )
 static READ16_HANDLER( analogy_watchdog_r )
 {
 	/* doubles as a watchdog address */
-	watchdog_reset_w(0,0);
+	watchdog_reset_w(machine,0,0);
 	return (readinputportbytag("ANALOGY") << 8) | 0x00ff;
 }
 
@@ -337,9 +337,9 @@ INPUT_PORTS_END
 static const tms34010_config tms_config =
 {
 	FALSE,							/* halt on reset */
-	0,								/* the screen operated on */
-	5000000,						/* pixel clock */
-	2,								/* pixels per clock */
+	"main",							/* the screen operated on */
+	10000000,						/* pixel clock */
+	1,								/* pixels per clock */
 	xtheball_scanline_update,		/* scanline callback */
 	NULL,							/* generate interrupt */
 	xtheball_to_shiftreg,			/* write to shiftreg function */
@@ -359,20 +359,17 @@ static MACHINE_DRIVER_START( xtheball )
 	MDRV_CPU_ADD(TMS34010, 40000000)
 	MDRV_CPU_CONFIG(tms_config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_PERIODIC_INT(irq1_line_pulse,15000)
+	MDRV_CPU_PERIODIC_INT(irq1_line_hold,15000)
 
 	MDRV_MACHINE_RESET(xtheball)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(tms340x0)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_SIZE(512,256)
-	MDRV_SCREEN_VISIBLE_AREA(0,511, 24,247)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_RAW_PARAMS(10000000, 640, 114, 626, 257, 24, 248)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

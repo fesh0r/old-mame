@@ -166,10 +166,10 @@ static ADDRESS_MAP_START( gstream_32bit_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xFFF80000, 0xFFFFFFFF) AM_ROM AM_REGION(REGION_USER1,0) // boot rom
 ADDRESS_MAP_END
 
-static READ32_HANDLER( gstream_oki_0_r ) { return OKIM6295_status_0_r(0); }
-static READ32_HANDLER( gstream_oki_1_r ) { return OKIM6295_status_1_r(0); }
-static WRITE32_HANDLER( gstream_oki_0_w ) { OKIM6295_data_0_w(0, data & 0xff); }
-static WRITE32_HANDLER( gstream_oki_1_w ) { OKIM6295_data_1_w(0, data & 0xff); }
+static READ32_HANDLER( gstream_oki_0_r ) { return OKIM6295_status_0_r(machine, 0); }
+static READ32_HANDLER( gstream_oki_1_r ) { return OKIM6295_status_1_r(machine, 0); }
+static WRITE32_HANDLER( gstream_oki_0_w ) { OKIM6295_data_0_w(machine, 0, data & 0xff); }
+static WRITE32_HANDLER( gstream_oki_1_w ) { OKIM6295_data_1_w(machine, 0, data & 0xff); }
 
 static WRITE32_HANDLER( gstream_oki_4030_w )
 {
@@ -326,9 +326,9 @@ static TILE_GET_INFO( get_gs3_tile_info )
 
 static VIDEO_START(gstream)
 {
-	gstream_tilemap1 = tilemap_create(get_gs1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 32, 32,16,16);
-	gstream_tilemap2 = tilemap_create(get_gs2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 32, 32,16,16);
-	gstream_tilemap3 = tilemap_create(get_gs3_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 32, 32,16,16);
+	gstream_tilemap1 = tilemap_create(get_gs1_tile_info,tilemap_scan_rows, 32, 32,16,16);
+	gstream_tilemap2 = tilemap_create(get_gs2_tile_info,tilemap_scan_rows, 32, 32,16,16);
+	gstream_tilemap3 = tilemap_create(get_gs3_tile_info,tilemap_scan_rows, 32, 32,16,16);
 
 	tilemap_set_transparent_pen(gstream_tilemap1,0);
 	tilemap_set_transparent_pen(gstream_tilemap2,0);
@@ -379,7 +379,7 @@ static VIDEO_UPDATE(gstream)
 		if (x & 0x8000) x-=0x10000;
 		if (y & 0x8000) y-=0x10000;
 
-		drawgfx(bitmap,machine->gfx[1],code,col,0,0,x-2,y,cliprect,TRANSPARENCY_PEN,0);
+		drawgfx(bitmap,screen->machine->gfx[1],code,col,0,0,x-2,y,cliprect,TRANSPARENCY_PEN,0);
 	}
 
 	return 0;
@@ -389,13 +389,12 @@ static MACHINE_DRIVER_START( gstream )
 	MDRV_CPU_ADD_TAG("main", E132XT, 16000000*4)	/* 4x internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(gstream_32bit_map,0)
 	MDRV_CPU_IO_MAP(gstream_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)

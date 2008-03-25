@@ -216,7 +216,7 @@ static READ32_HANDLER( lcd_control_r )
 	{
 		case 0x00/4:
 		{
-			int line_val = video_screen_get_vpos(0) & 0x3ff;
+			int line_val = video_screen_get_vpos(machine->primary_screen) & 0x3ff;
 			return (lcd_control[offset] & ~(0x3ff << 18)) | ((lcd.line_val - line_val) << 18);
 		}
 
@@ -245,7 +245,7 @@ static WRITE32_HANDLER( lcd_control_w )
 	{
 		case 0x00/4:
 		{
-			int line_val = video_screen_get_vpos(0) & 0x3ff;
+			int line_val = video_screen_get_vpos(machine->primary_screen) & 0x3ff;
 			int bpp_mode = (lcd_control[offset] & 0x1e) >> 1;
 			int screen_type = (lcd_control[offset] & 0x60) >> 5;
 
@@ -484,15 +484,16 @@ static MACHINE_DRIVER_START( bballoon )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(ARM7, 24000000)
 	MDRV_CPU_PROGRAM_MAP(bballoon_map,0)
-	MDRV_CPU_VBLANK_INT(bballoon_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", bballoon_interrupt)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(1024, 1024)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(bballoon)

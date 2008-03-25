@@ -105,8 +105,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( cop01 )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      8,8,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,      8,8,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 
@@ -166,7 +166,7 @@ WRITE8_HANDLER( cop01_vreg_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs,code,attr,sx,sy,flipx,flipy,color;
 
@@ -185,7 +185,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx = (spriteram[offs+3] - 0x80) + 256 * (attr & 0x01);
 		sy = 240 - spriteram[offs];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -212,7 +212,7 @@ VIDEO_UPDATE( cop01 )
 	tilemap_set_scrolly(bg_tilemap,0,mightguy_vreg[3]);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0 );
 	return 0;

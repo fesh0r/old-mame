@@ -20,7 +20,7 @@ Tilemap flip flags were reversed
 #define SUPRNOVA_DECODE_BUFFER_SIZE 0x2000
 
 extern UINT32 *skns_tilemapA_ram, *skns_tilemapB_ram, *skns_v3slc_ram;
-extern UINT32 *skns_palette_ram, *skns_v3t_ram, *skns_main_ram, *skns_cache_ram;
+extern UINT32 *skns_palette_ram;
 extern UINT32 *skns_pal_regs, *skns_v3_regs, *skns_spc_regs;
 extern UINT32 skns_v3t_dirty[0x4000]; // allocate this elsewhere?
 extern UINT32 skns_v3t_4bppdirty[0x8000]; // allocate this elsewhere?
@@ -325,7 +325,7 @@ void skns_sprite_kludge(int x, int y)
 		old2 += 0x40;				\
 	}
 
-static void blit_nf_z(mame_bitmap *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
+static void blit_nf_z(bitmap_t *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
 {
 	z_decls(sx);
 	z_clamp_x_min();
@@ -339,7 +339,7 @@ static void blit_nf_z(mame_bitmap *bitmap, const rectangle *cliprect, const UINT
 	}
 }
 
-static void blit_fy_z(mame_bitmap *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
+static void blit_fy_z(bitmap_t *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
 {
 	z_decls(sx);
 	z_clamp_x_min();
@@ -353,7 +353,7 @@ static void blit_fy_z(mame_bitmap *bitmap, const rectangle *cliprect, const UINT
 	}
 }
 
-static void blit_fx_z(mame_bitmap *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
+static void blit_fx_z(bitmap_t *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
 {
 	z_decls(sx);
 	z_clamp_x_max();
@@ -367,7 +367,7 @@ static void blit_fx_z(mame_bitmap *bitmap, const rectangle *cliprect, const UINT
 	}
 }
 
-static void blit_fxy_z(mame_bitmap *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
+static void blit_fxy_z(bitmap_t *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour)
 {
 	z_decls(sx);
 	z_clamp_x_max();
@@ -381,14 +381,14 @@ static void blit_fxy_z(mame_bitmap *bitmap, const rectangle *cliprect, const UIN
 	}
 }
 
-static void (*const blit_z[4])(mame_bitmap *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour) = {
+static void (*const blit_z[4])(bitmap_t *bitmap, const rectangle *cliprect, const UINT8 *src, int x, int y, int sx, int sy, UINT16 zx, UINT16 zy, int colour) = {
 	blit_nf_z,
 	blit_fy_z,
 	blit_fx_z,
 	blit_fxy_z,
 };
 
-void skns_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+void skns_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/*- SPR RAM Format -**
 
@@ -550,12 +550,12 @@ void skns_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rect
 			if (sprite_flip&2)
 			{
 				xflip ^= 1;
-				sx = machine->screen[0].visarea.max_x+1 - sx;
+				sx = video_screen_get_visible_area(machine->primary_screen)->max_x+1 - sx;
 			}
 			if (sprite_flip&1)
 			{
 				yflip ^= 1;
-				sy = machine->screen[0].visarea.max_y+1 - sy;
+				sy = video_screen_get_visible_area(machine->primary_screen)->max_y+1 - sy;
 			}
 
 			/* Palette linking */
@@ -756,17 +756,17 @@ WRITE32_HANDLER ( skns_v3_regs_w )
 
 VIDEO_START(skns)
 {
-	skns_tilemap_A = tilemap_create(get_tilemap_A_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64, 64);
+	skns_tilemap_A = tilemap_create(get_tilemap_A_tile_info,tilemap_scan_rows,16,16,64, 64);
 		tilemap_set_transparent_pen(skns_tilemap_A,0);
 
-	skns_tilemap_B = tilemap_create(get_tilemap_B_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64, 64);
+	skns_tilemap_B = tilemap_create(get_tilemap_B_tile_info,tilemap_scan_rows,16,16,64, 64);
 		tilemap_set_transparent_pen(skns_tilemap_B,0);
 
 	machine->gfx[2]->color_granularity=256;
 	machine->gfx[3]->color_granularity=256;
 }
 
-static void supernova_draw_a( mame_bitmap *bitmap, const rectangle *cliprect, int tran )
+static void supernova_draw_a( bitmap_t *bitmap, const rectangle *cliprect, int tran )
 {
 		int enable_a  = (skns_v3_regs[0x10/4] >> 0) & 0x0001;
 	UINT32 startx,starty;
@@ -818,7 +818,7 @@ static void supernova_draw_a( mame_bitmap *bitmap, const rectangle *cliprect, in
 	}
 }
 
-static void supernova_draw_b( mame_bitmap *bitmap, const rectangle *cliprect, int tran )
+static void supernova_draw_b( bitmap_t *bitmap, const rectangle *cliprect, int tran )
 {
 		int enable_b  = (skns_v3_regs[0x34/4] >> 0) & 0x0001;
 	UINT32 startx,starty;
@@ -877,7 +877,7 @@ VIDEO_UPDATE(skns)
 	UINT8 *btiles;
 
 
-	palette_update(machine);
+	palette_update(screen->machine);
 
 	btiles = memory_region (REGION_GFX3);
 
@@ -899,7 +899,7 @@ VIDEO_UPDATE(skns)
 			{
 				if (skns_v3t_dirty[i] == 1)
 				{
-					decodechar(machine->gfx[1], i, (UINT8*)btiles);
+					decodechar(screen->machine->gfx[1], i, (UINT8*)btiles);
 
 					skns_v3t_dirty[i] = 0;
 				}
@@ -925,7 +925,7 @@ VIDEO_UPDATE(skns)
 			{
 				if (skns_v3t_4bppdirty[i] == 1)
 				{
-					decodechar(machine->gfx[3], i, (UINT8*)btiles);
+					decodechar(screen->machine->gfx[3], i, (UINT8*)btiles);
 
 					skns_v3t_4bppdirty[i] = 0;
 				}
@@ -933,7 +933,7 @@ VIDEO_UPDATE(skns)
 		}
 	}
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	{
 		int supernova_pri_a;
@@ -945,10 +945,10 @@ VIDEO_UPDATE(skns)
 
 
 		/* needed until we have the per tile priorities sorted out */
-		if (!strcmp(machine->gamedrv->name,"vblokbrk") ||
-			!strcmp(machine->gamedrv->name,"sarukani") ||
-			!strcmp(machine->gamedrv->name,"sengekis") ||
-			!strcmp(machine->gamedrv->name,"sengekij"))
+		if (!strcmp(screen->machine->gamedrv->name,"vblokbrk") ||
+			!strcmp(screen->machine->gamedrv->name,"sarukani") ||
+			!strcmp(screen->machine->gamedrv->name,"sengekis") ||
+			!strcmp(screen->machine->gamedrv->name,"sengekij"))
 		{
 			supernova_pri_b = 0;
 			supernova_pri_a = 1;
@@ -964,11 +964,11 @@ VIDEO_UPDATE(skns)
 	}
 
 
-	skns_draw_sprites(machine, bitmap, cliprect);
+	skns_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
 VIDEO_EOF(skns)
 {
-	buffer_spriteram32_w(0,0,0);
+	buffer_spriteram32_w(machine,0,0,0);
 }

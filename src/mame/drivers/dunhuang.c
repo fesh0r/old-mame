@@ -95,10 +95,10 @@ static TILE_GET_INFO( get_tile_info2 )
 static VIDEO_START(dunhuang)
 {
 	tmap = tilemap_create(	get_tile_info, tilemap_scan_rows,
-							TILEMAP_TYPE_PEN, 8,8, 0x40,0x20	);
+							8,8, 0x40,0x20	);
 
 	tmap2 = tilemap_create(	get_tile_info2, tilemap_scan_rows,
-							TILEMAP_TYPE_PEN, 8,32, 0x40,0x8	);
+							8,32, 0x40,0x8	);
 
 	tilemap_set_transparent_pen(tmap,   0);
 	tilemap_set_transparent_pen(tmap2,  0);
@@ -126,7 +126,7 @@ if (input_code_pressed(KEYCODE_Z))
 }
 #endif
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	switch (dunhuang_layers)
 	{
@@ -334,7 +334,7 @@ static WRITE8_HANDLER( dunhuang_layers_w )
 static ADDRESS_MAP_START( dunhuang_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x5fff ) AM_ROM
 	AM_RANGE( 0x6000, 0x7fff ) AM_RAM
-	AM_RANGE( 0x8000, 0xffff ) AM_READ( MRA8_BANK1 )
+	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK1 )
 ADDRESS_MAP_END
 
 // Inputs
@@ -346,7 +346,7 @@ static WRITE8_HANDLER( dunhuang_input_w )	{	dunhuang_input = data;	}
 static READ8_HANDLER( dunhuang_service_r )
 {
 	return readinputport(5)
-	 | ((dunhuang_hopper && !(cpu_getcurrentframe()%10)) ? 0x00 : 0x08)	// bit 3: hopper sensor
+	 | ((dunhuang_hopper && !(video_screen_get_frame_number(machine->primary_screen)%10)) ? 0x00 : 0x08)	// bit 3: hopper sensor
 	 | 0x80																// bit 7 low -> tiles block transferrer busy
 	;
 }
@@ -676,17 +676,18 @@ static MACHINE_DRIVER_START( dunhuang )
 	MDRV_CPU_ADD(Z80,12000000/2)
 	MDRV_CPU_PROGRAM_MAP(dunhuang_map,0)
 	MDRV_CPU_IO_MAP(dunhuang_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_WATCHDOG_TIME_INIT(ATTOTIME_IN_SEC(5))
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(5))
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0+8, 512-8-1, 0+16, 256-16-1)
+
 	MDRV_GFXDECODE(dunhuang)
 	MDRV_PALETTE_LENGTH(0x100)
 

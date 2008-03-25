@@ -165,8 +165,8 @@ static WRITE8_HANDLER( tehkanwc_track_1_reset_w )
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(offset,data);
-	cpunum_set_input_line(Machine, 2,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(machine,offset,data);
+	cpunum_set_input_line(machine, 2,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static TIMER_CALLBACK( reset_callback )
@@ -176,7 +176,7 @@ static TIMER_CALLBACK( reset_callback )
 
 static WRITE8_HANDLER( sound_answer_w )
 {
-	soundlatch2_w(0,data);
+	soundlatch2_w(machine,0,data);
 
 	/* in Gridiron, the sound CPU goes in a tight loop after the self test, */
 	/* probably waiting to be reset by a watchdog */
@@ -256,7 +256,7 @@ static ADDRESS_MAP_START( main_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf813, 0xf813) AM_READ(input_port_8_r) /* joy1 - button */
 	AM_RANGE(0xf820, 0xf820) AM_READWRITE(soundlatch2_r, sound_command_w)	/* answer from the sound CPU */
 	AM_RANGE(0xf840, 0xf840) AM_READWRITE(input_port_0_r, sub_cpu_halt_w) /* DSW1 */
-	AM_RANGE(0xf850, 0xf850) AM_READWRITE(input_port_1_r, MWA8_NOP)	/* DSW2, ?? writes 0x00 or 0xff */
+	AM_RANGE(0xf850, 0xf850) AM_READWRITE(input_port_1_r, SMH_NOP)	/* DSW2, ?? writes 0x00 or 0xff */
 	AM_RANGE(0xf860, 0xf860) AM_READWRITE(watchdog_reset_r, tehkanwc_flipscreen_x_w)
 	AM_RANGE(0xf870, 0xf870) AM_READWRITE(input_port_2_r, tehkanwc_flipscreen_y_w) /* DSW3 */
 ADDRESS_MAP_END
@@ -271,8 +271,8 @@ static ADDRESS_MAP_START( sub_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xde00, 0xdfff) AM_RAM AM_SHARE(5) /* unused part of the palette RAM, I think? Gridiron uses it */
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_SHARE(6) AM_WRITE(tehkanwc_videoram2_w)
 	AM_RANGE(0xe800, 0xebff) AM_RAM AM_SHARE(7) /* sprites */
-	AM_RANGE(0xec00, 0xec01) AM_READ(MRA8_RAM) AM_WRITE(tehkanwc_scroll_x_w)
-	AM_RANGE(0xec02, 0xec02) AM_READ(MRA8_RAM) AM_WRITE(tehkanwc_scroll_y_w)
+	AM_RANGE(0xec00, 0xec01) AM_READ(SMH_RAM) AM_WRITE(tehkanwc_scroll_x_w)
+	AM_RANGE(0xec02, 0xec02) AM_READ(SMH_RAM) AM_WRITE(tehkanwc_scroll_y_w)
 	AM_RANGE(0xf860, 0xf860) AM_READ(watchdog_reset_r)
 ADDRESS_MAP_END
 
@@ -280,13 +280,13 @@ static ADDRESS_MAP_START( sound_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(msm_reset_w)/* MSM51xx reset */
-	AM_RANGE(0x8002, 0x8002) AM_WRITE(MWA8_NOP)	/* ?? written in the IRQ handler */
-	AM_RANGE(0x8003, 0x8003) AM_WRITE(MWA8_NOP)	/* ?? written in the NMI handler */
+	AM_RANGE(0x8002, 0x8002) AM_WRITE(SMH_NOP)	/* ?? written in the IRQ handler */
+	AM_RANGE(0x8003, 0x8003) AM_WRITE(SMH_NOP)	/* ?? written in the NMI handler */
 	AM_RANGE(0xc000, 0xc000) AM_READWRITE(soundlatch_r, sound_answer_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(AY8910_read_port_1_r, AY8910_write_port_1_w)
@@ -661,26 +661,27 @@ static MACHINE_DRIVER_START( tehkanwc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, 18432000/4)	/* 18.432000 / 4 */
 	MDRV_CPU_PROGRAM_MAP(main_mem,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 18432000/4)
 	MDRV_CPU_PROGRAM_MAP(sub_mem,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 18432000/4)
 	MDRV_CPU_PROGRAM_MAP(sound_mem,0)
 	MDRV_CPU_IO_MAP(sound_port,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - seems enough to keep the CPUs in sync */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(tehkanwc)
 	MDRV_PALETTE_LENGTH(768)
 

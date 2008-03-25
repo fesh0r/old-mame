@@ -60,7 +60,7 @@ PALETTE_INIT( bagman )
 			2,	resistances_b,	weights_b,	470,	0);
 
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -85,7 +85,7 @@ PALETTE_INIT( bagman )
 
 WRITE8_HANDLER( bagman_flipscreen_w )
 {
-	if (flip_screen != (data & 0x01))
+	if (flip_screen_get() != (data & 0x01))
 	{
 		flip_screen_set(data & 0x01);
 		tilemap_mark_all_tiles_dirty(bg_tilemap);
@@ -104,10 +104,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( bagman )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -120,12 +120,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sy = 240 - spriteram[offs + 2];
 		flipx = spriteram[offs] & 0x40;
 		flipy = spriteram[offs] & 0x80;
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 240 - sx +1;	/* compensate misplacement */
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -148,6 +148,6 @@ VIDEO_UPDATE( bagman )
 		return 0;
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

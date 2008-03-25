@@ -21,7 +21,7 @@
     $0000-$1bff Video Memory (bit0)
     $4000-$5bff Video Memory (bit1)
     $8000-$9bff Video Memory (bit2)
-    $c000-$c001 6845 CRT Controller (crtc6845)
+    $c000-$c001 6845 CRT Controller (mc6845)
     $c020-$c027 NVRAM
     $c044-$c047 MC6821 PIA 1 (Control input port - all input)
     $c048-$c04b MC6821 PIA 2 (Sprite data port - see machine/spiders.c)
@@ -36,7 +36,7 @@
     $0000-$1bff Video Memory (bit0)
     $4000-$5bff Video Memory (bit1)
     $8000-$9bff Video Memory (bit2)
-    $c000-$c001 6845 CRT Controller (crtc6845)
+    $c000-$c001 6845 CRT Controller (mc6845)
     $c044-$c047 MC6821 PIA 1
     $c048-$c04b MC6821 PIA 2 (Video port)
     $c050-$c053 MC6821 PIA 3
@@ -192,7 +192,7 @@
 #include "deprecat.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "machine/6821pia.h"
 #include "machine/74123.h"
 #include "spiders.h"
@@ -272,13 +272,13 @@ static INTERRUPT_GEN( update_pia_1 )
 	/* update the different PIA pins from the input ports */
 
 	/* CA1 - copy of PA1 (COIN1) */
-	pia_1_ca1_w(0, input_port_0_r(0) & 0x02);
+	pia_1_ca1_w(machine, 0, input_port_0_r(machine, 0) & 0x02);
 
 	/* CA2 - copy of PA0 (SERVICE1) */
-	pia_1_ca2_w(0, input_port_0_r(0) & 0x01);
+	pia_1_ca2_w(machine, 0, input_port_0_r(machine, 0) & 0x01);
 
 	/* CB1 - (crosshatch) */
-	pia_1_cb1_w(0, input_port_5_r(0));
+	pia_1_cb1_w(machine, 0, input_port_5_r(machine, 0));
 
 	/* CB2 - NOT CONNECTED */
 }
@@ -344,7 +344,7 @@ static const pia6821_interface pia_4_intf =
 
 static void ic60_74123_output_changed(int output)
 {
-	pia_2_ca1_w(0, output);
+	pia_2_ca1_w(Machine, 0, output);
 }
 
 
@@ -415,8 +415,7 @@ static WRITE8_HANDLER( flipscreen_w )
 }
 
 
-static void *begin_update(running_machine *machine, int screen,
-						  mame_bitmap *bitmap, const rectangle *cliprect)
+static MC6845_BEGIN_UPDATE( begin_update )
 {
 	/* create the pens */
 	offs_t i;
@@ -431,8 +430,7 @@ static void *begin_update(running_machine *machine, int screen,
 }
 
 
-static void update_row(mame_bitmap *bitmap, const rectangle *cliprect,
-					   UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, void *param)
+static MC6845_UPDATE_ROW( update_row )
 {
 	UINT8 cx;
 
@@ -491,28 +489,32 @@ static void update_row(mame_bitmap *bitmap, const rectangle *cliprect,
 }
 
 
-static void display_enable_changed(int display_enabled)
+static MC6845_ON_DE_CHANGED( display_enable_changed )
 {
 	TTL74123_A_w(0, display_enabled);
 }
 
 
-static const crtc6845_interface crtc6845_intf =
+static const mc6845_interface mc6845_intf =
 {
-	0,						/* screen we are acting on */
+	"main",					/* screen we are acting on */
 	CRTC_CLOCK, 			/* the clock (pin 21) of the chip */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
 	0,						/* after pixel update callback */
-	display_enable_changed	/* call back for display state changes */
+	display_enable_changed,	/* callback for display state changes */
+	NULL,					/* HSYNC callback */
+	NULL					/* VSYNC callback */
 };
 
 
-static VIDEO_START( spiders )
+static VIDEO_UPDATE( spiders )
 {
-	/* configure the CRT controller */
-	crtc6845_config(0, &crtc6845_intf);
+	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	mc6845_update(mc6845, bitmap, cliprect);
+
+	return 0;
 }
 
 
@@ -565,8 +567,8 @@ static READ8_HANDLER( gfx_rom_r )
 
 static ADDRESS_MAP_START( spiders_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_RAM AM_BASE(&spiders_ram)
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0xc001, 0xc001) AM_READWRITE(crtc6845_register_r, crtc6845_register_w)
+	AM_RANGE(0xc000, 0xc000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xc001, 0xc001) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xc020, 0xc027) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xc044, 0xc047) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE(0xc048, 0xc04b) AM_READWRITE(pia_2_alt_r, pia_2_alt_w)
@@ -597,7 +599,7 @@ static INPUT_PORTS_START( spiders )
     PORT_START      /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_HIGH )
     PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
     PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
@@ -700,13 +702,14 @@ static MACHINE_DRIVER_START( spiders )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_VIDEO_START(spiders)
-	MDRV_VIDEO_UPDATE(crtc6845)
+	MDRV_VIDEO_UPDATE(spiders)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG(mc6845_intf)
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(spiders_audio)

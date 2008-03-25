@@ -10,7 +10,6 @@ the most protected of the DE102 games?
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "decocrpt.h"
 #include "deco16ic.h"
@@ -50,7 +49,7 @@ x = xpos
 
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -63,7 +62,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		y = spriteram16[offs];
 		flash=y&0x1000;
 		xsize = y&0x0800;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0x1f;
@@ -99,7 +98,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			inc = 1;
 		}
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			y=240-y;
 			x=304-x;
@@ -153,12 +152,12 @@ static VIDEO_UPDATE(dblewing)
 	flip_screen_set( deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	fillbitmap(bitmap,machine->pens[0x0],cliprect); /* not Confirmed */
+	fillbitmap(bitmap,0,cliprect); /* not Confirmed */
 	fillbitmap(priority_bitmap,0,NULL);
 
 	deco16_tilemap_2_draw(bitmap,cliprect,0,2);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,4);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -283,7 +282,7 @@ static WRITE16_HANDLER( dblewing_prot_w )
 	if ((offset*2)==0x104) { dblwings_104_data = data; return; } // p1 inputs select screen  OK
 	if ((offset*2)==0x200) { dblwings_200_data = data; return; }
 	if ((offset*2)==0x28c) { dblwings_28c_data = data; return; }
-	if ((offset*2)==0x380) { soundlatch_w(0,data&0xff);	/*cpunum_set_input_line(Machine, 1,0,HOLD_LINE);*/ return; } // sound write
+	if ((offset*2)==0x380) { soundlatch_w(machine,0,data&0xff);	/*cpunum_set_input_line(Machine, 1,0,HOLD_LINE);*/ return; } // sound write
 	if ((offset*2)==0x38e) { dblwings_38e_data = data; return; }
 	if ((offset*2)==0x406) { dblwings_406_data = data; return; } // p2 inputs select screen  OK
 	if ((offset*2)==0x408) { dblwings_408_data = data; return; } // 3rd player 1st level?
@@ -302,28 +301,28 @@ static WRITE16_HANDLER( dblewing_prot_w )
 static ADDRESS_MAP_START( dblewing_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 
-	AM_RANGE(0x100000, 0x100fff) AM_READ(MRA16_RAM) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
-	AM_RANGE(0x102000, 0x102fff) AM_READ(MRA16_RAM) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x104000, 0x104fff) AM_READ(MRA16_RAM) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x106000, 0x106fff) AM_READ(MRA16_RAM) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x100000, 0x100fff) AM_READ(SMH_RAM) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
+	AM_RANGE(0x102000, 0x102fff) AM_READ(SMH_RAM) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
+	AM_RANGE(0x104000, 0x104fff) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x106000, 0x106fff) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
 	/* protection */
-//  AM_RANGE(0x280104, 0x280105) AM_WRITE(MWA16_NOP) // ??
+//  AM_RANGE(0x280104, 0x280105) AM_WRITE(SMH_NOP) // ??
 	AM_RANGE(0x2800ac, 0x2800ad) AM_READ(input_port_2_word_r) // dips
 	AM_RANGE(0x280298, 0x280299) AM_READ(input_port_1_word_r) // vbl
 	AM_RANGE(0x280506, 0x280507) AM_READ(input_port_3_word_r)
 	AM_RANGE(0x2802B4, 0x2802B5) AM_READ(input_port_0_word_r) // inverted?
-//  AM_RANGE(0x280330, 0x280331) AM_READ(MRA16_NOP) // sound?
-//  AM_RANGE(0x280380, 0x280381) AM_WRITE(MWA16_NOP) // sound
+//  AM_RANGE(0x280330, 0x280331) AM_READ(SMH_NOP) // sound?
+//  AM_RANGE(0x280380, 0x280381) AM_WRITE(SMH_NOP) // sound
 
 	AM_RANGE(0x280000, 0x2807ff) AM_READWRITE(dlbewing_prot_r,dblewing_prot_w)
 
 
 	AM_RANGE(0x284000, 0x284001) AM_RAM
 	AM_RANGE(0x288000, 0x288001) AM_RAM
-	AM_RANGE(0x28C000, 0x28C00f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x28C000, 0x28C00f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x300000, 0x3007ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x320000, 0x3207ff) AM_READWRITE(MRA16_RAM,paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x320000, 0x3207ff) AM_READWRITE(SMH_RAM,paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xff3fff) AM_MIRROR(0xc000) AM_RAM
 ADDRESS_MAP_END
 
@@ -543,20 +542,20 @@ static MACHINE_DRIVER_START( dblewing )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 14000000)	/* DE102 */
 	MDRV_CPU_PROGRAM_MAP(dblewing_map,0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_PALETTE_LENGTH(4096)
 	MDRV_GFXDECODE(dblewing)
 

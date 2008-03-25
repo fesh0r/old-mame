@@ -8,16 +8,18 @@
 
 #include "driver.h"
 #include "deprecat.h"
+#include "video/resnet.h"
 #include "fastfred.h"
 
 extern UINT8 galaxian_stars_on;
 void galaxian_init_stars(running_machine *machine, int colors_offset);
-void galaxian_draw_stars(running_machine *machine, mame_bitmap *bitmap);
+void galaxian_draw_stars(running_machine *machine, bitmap_t *bitmap);
 
 UINT8 *fastfred_videoram;
 UINT8 *fastfred_spriteram;
 size_t fastfred_spriteram_size;
 UINT8 *fastfred_attributesram;
+UINT8 *fastfred_background_color;
 UINT8 *imago_fg_videoram;
 
 
@@ -36,7 +38,6 @@ static const rectangle spritevisibleareaflipx =
 static UINT16 charbank;
 static UINT8 colorbank;
 int fastfred_hardware_type;
-static const UINT8 *fastfred_color_prom;
 static tilemap *bg_tilemap, *fg_tilemap, *web_tilemap;
 
 /***************************************************************************
@@ -50,57 +51,54 @@ static tilemap *bg_tilemap, *fg_tilemap, *web_tilemap;
 
 ***************************************************************************/
 
-static void set_color(pen_t pen, int i)
-{
-	UINT8 r,g,b;
-	int bit0, bit1, bit2, bit3;
-
-	bit0 = (fastfred_color_prom[i] >> 0) & 0x01;
-	bit1 = (fastfred_color_prom[i] >> 1) & 0x01;
-	bit2 = (fastfred_color_prom[i] >> 2) & 0x01;
-	bit3 = (fastfred_color_prom[i] >> 3) & 0x01;
-	r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-	bit0 = (fastfred_color_prom[i + 0x100] >> 0) & 0x01;
-	bit1 = (fastfred_color_prom[i + 0x100] >> 1) & 0x01;
-	bit2 = (fastfred_color_prom[i + 0x100] >> 2) & 0x01;
-	bit3 = (fastfred_color_prom[i + 0x100] >> 3) & 0x01;
-	g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-	bit0 = (fastfred_color_prom[i + 0x200] >> 0) & 0x01;
-	bit1 = (fastfred_color_prom[i + 0x200] >> 1) & 0x01;
-	bit2 = (fastfred_color_prom[i + 0x200] >> 2) & 0x01;
-	bit3 = (fastfred_color_prom[i + 0x200] >> 3) & 0x01;
-	b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-	palette_set_color_rgb(Machine,pen,r,g,b);
-}
-
 PALETTE_INIT( fastfred )
 {
-	pen_t i;
-	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
+	static const int resistances[4] = { 1000, 470, 220, 100 };
+	double rweights[4], gweights[4], bweights[4];
+	int i;
 
+	/* compute the color output resistor weights */
+	compute_resistor_weights(0,	255, -1.0,
+			4, resistances, rweights, 470, 0,
+			4, resistances, gweights, 470, 0,
+			4, resistances, bweights, 470, 0);
 
-	fastfred_color_prom = color_prom;	/* we'll need this later */
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x100);
 
-	for (i = 0;i < 256;i++)
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x100; i++)
 	{
-		set_color(i, i);
-	}
+		int bit0, bit1, bit2, bit3;
+		int r, g, b;
 
+		/* red component */
+		bit0 = (color_prom[i + 0x000] >> 0) & 0x01;
+		bit1 = (color_prom[i + 0x000] >> 1) & 0x01;
+		bit2 = (color_prom[i + 0x000] >> 2) & 0x01;
+		bit3 = (color_prom[i + 0x000] >> 3) & 0x01;
+		r = combine_4_weights(rweights, bit0, bit1, bit2, bit3);
+
+		/* green component */
+		bit0 = (color_prom[i + 0x100] >> 0) & 0x01;
+		bit1 = (color_prom[i + 0x100] >> 1) & 0x01;
+		bit2 = (color_prom[i + 0x100] >> 2) & 0x01;
+		bit3 = (color_prom[i + 0x100] >> 3) & 0x01;
+		g = combine_4_weights(gweights, bit0, bit1, bit2, bit3);
+
+		/* blue component */
+		bit0 = (color_prom[i + 0x200] >> 0) & 0x01;
+		bit1 = (color_prom[i + 0x200] >> 1) & 0x01;
+		bit2 = (color_prom[i + 0x200] >> 2) & 0x01;
+		bit3 = (color_prom[i + 0x200] >> 3) & 0x01;
+		b = combine_4_weights(bweights, bit0, bit1, bit2, bit3);
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
+	}
 
 	/* characters and sprites use the same palette */
-	for (i = 0; i < TOTAL_COLORS(0); i++)
-	{
-		pen_t color;
-
-		if ((i & 0x07) == 0)
-			color = 0;
-		else
-			color = i;
-
-		COLOR(0,i) = COLOR(1,i) = color;
-	}
+	for (i = 0; i < 0x100; i++)
+		colortable_entry_set_value(machine->colortable, i, i);
 }
 
 /***************************************************************************
@@ -129,8 +127,9 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( fastfred )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 
+	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 }
 
@@ -221,29 +220,24 @@ WRITE8_HANDLER( fastfred_colorbank2_w )
 }
 
 
-WRITE8_HANDLER( fastfred_background_color_w )
-{
-	set_color(0, data);
-}
-
 
 WRITE8_HANDLER( fastfred_flip_screen_x_w )
 {
-	if (flip_screen_x != (data & 0x01))
+	if (flip_screen_x_get() != (data & 0x01))
 	{
-		flip_screen_x = data & 0x01;
+		flip_screen_x_set(data & 0x01);
 
-		tilemap_set_flip(bg_tilemap, (flip_screen_x ? TILEMAP_FLIPX : 0) | (flip_screen_y ? TILEMAP_FLIPY : 0));
+		tilemap_set_flip(bg_tilemap, (flip_screen_x_get() ? TILEMAP_FLIPX : 0) | (flip_screen_y_get() ? TILEMAP_FLIPY : 0));
 	}
 }
 
 WRITE8_HANDLER( fastfred_flip_screen_y_w )
 {
-	if (flip_screen_y != (data & 0x01))
+	if (flip_screen_y_get() != (data & 0x01))
 	{
-		flip_screen_y = data & 0x01;
+		flip_screen_y_set(data & 0x01);
 
-		tilemap_set_flip(bg_tilemap, (flip_screen_x ? TILEMAP_FLIPX : 0) | (flip_screen_y ? TILEMAP_FLIPY : 0));
+		tilemap_set_flip(bg_tilemap, (flip_screen_x_get() ? TILEMAP_FLIPX : 0) | (flip_screen_y_get() ? TILEMAP_FLIPY : 0));
 	}
 }
 
@@ -255,7 +249,7 @@ WRITE8_HANDLER( fastfred_flip_screen_y_w )
  *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -309,12 +303,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		}
 
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 240 - sx;
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -325,16 +319,17 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				colorbank | (fastfred_spriteram[offs + 2] & 0x07),
 				flipx,flipy,
 				sx,sy,
-				flip_screen_x ? &spritevisibleareaflipx : &spritevisiblearea,TRANSPARENCY_PEN,0);
+				flip_screen_x_get() ? &spritevisibleareaflipx : &spritevisiblearea,TRANSPARENCY_PEN,0);
 	}
 }
 
 
 VIDEO_UPDATE( fastfred )
 {
+	fillbitmap(bitmap, *fastfred_background_color, cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
-	draw_sprites(machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -377,9 +372,9 @@ WRITE8_HANDLER( imago_charbank_w )
 
 VIDEO_START( imago )
 {
-	web_tilemap = tilemap_create(imago_get_tile_info_web,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
-	bg_tilemap   = tilemap_create(imago_get_tile_info_bg, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	fg_tilemap   = tilemap_create(imago_get_tile_info_fg, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	web_tilemap = tilemap_create(imago_get_tile_info_web,tilemap_scan_rows,     8,8,32,32);
+	bg_tilemap   = tilemap_create(imago_get_tile_info_bg, tilemap_scan_rows,8,8,32,32);
+	fg_tilemap   = tilemap_create(imago_get_tile_info_fg, tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -396,13 +391,10 @@ VIDEO_START( imago )
 VIDEO_UPDATE( imago )
 {
 	tilemap_draw(bitmap,cliprect,web_tilemap,0,0);
-
-	galaxian_draw_stars(machine, bitmap);
-
+	galaxian_draw_stars(screen->machine, bitmap);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-
-	draw_sprites(machine, bitmap, cliprect);
-
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
+
 	return 0;
 }

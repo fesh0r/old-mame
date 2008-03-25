@@ -146,7 +146,9 @@ static int              echo_ptr;
 
 /* Original SPC DSP took samples 32000 times a second, which is once every
    (1024000/32000 = 32) cycles. */
+#ifdef UNUSED_DEFINITION
 static const int               TS_CYC = CPU_RATE / SAMP_FREQ;
+#endif
 
 /* Ptrs to Gaussian table */
 static const int *const G1 = &gauss[ 256 ];
@@ -1154,13 +1156,13 @@ void *snes_sh_start(int clock, const struct CustomSound_interface *config)
 
 	/* Initialize the timers */
 	timers[0].timer = timer_alloc( snes_spc_timer , NULL);
-	timer_adjust( timers[0].timer, ATTOTIME_IN_HZ(8000), 0, ATTOTIME_IN_HZ(8000) );
+	timer_adjust_periodic( timers[0].timer, ATTOTIME_IN_HZ(8000), 0, ATTOTIME_IN_HZ(8000) );
 	timer_enable( timers[0].timer, 0 );
 	timers[1].timer = timer_alloc( snes_spc_timer , NULL);
-	timer_adjust( timers[1].timer, ATTOTIME_IN_HZ(8000), 1, ATTOTIME_IN_HZ(8000) );
+	timer_adjust_periodic( timers[1].timer, ATTOTIME_IN_HZ(8000), 1, ATTOTIME_IN_HZ(8000) );
 	timer_enable( timers[1].timer, 0 );
 	timers[2].timer = timer_alloc( snes_spc_timer , NULL);
-	timer_adjust( timers[2].timer, ATTOTIME_IN_HZ(64000), 2, ATTOTIME_IN_HZ(64000) );
+	timer_adjust_periodic( timers[2].timer, ATTOTIME_IN_HZ(64000), 2, ATTOTIME_IN_HZ(64000) );
 	timer_enable( timers[2].timer, 0 );
 
 	DSP_Reset();
@@ -1226,7 +1228,7 @@ READ8_HANDLER( spc_io_r )
 		case 0x2:		/* Register address */
 			return spc_ram[0xf2];
 		case 0x3:		/* Register data */
-			return snes_dsp_io_r( spc_ram[0xf2] );
+			return snes_dsp_io_r( machine, spc_ram[0xf2] );
 		case 0x4:		/* Port 0 */
 		case 0x5:		/* Port 1 */
 		case 0x6:		/* Port 2 */
@@ -1301,7 +1303,7 @@ WRITE8_HANDLER( spc_io_w )
 		case 0x2:		/* Register address */
 			break;
 		case 0x3:		/* Register data */
-			snes_dsp_io_w( spc_ram[0xf2], data );
+			snes_dsp_io_w( machine, spc_ram[0xf2], data );
 			break;
 		case 0x4:		/* Port 0 */
 		case 0x5:		/* Port 1 */

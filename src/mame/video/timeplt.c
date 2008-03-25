@@ -113,7 +113,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( timeplt )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 }
 
 
@@ -146,7 +146,7 @@ WRITE8_HANDLER( timeplt_flipscreen_w )
 
 READ8_HANDLER( timeplt_scanline_r )
 {
-	return video_screen_get_vpos(0);
+	return video_screen_get_vpos(machine->primary_screen);
 }
 
 
@@ -157,7 +157,7 @@ READ8_HANDLER( timeplt_scanline_r )
  *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -191,7 +191,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( timeplt )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1,0);
 	return 0;
 }

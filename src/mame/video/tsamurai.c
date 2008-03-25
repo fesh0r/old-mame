@@ -55,8 +55,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( tsamurai )
 {
-	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	foreground = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
+	foreground = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(background,0);
 	tilemap_set_transparent_pen(foreground,0);
@@ -135,7 +135,7 @@ WRITE8_HANDLER( tsamurai_fg_colorram_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	gfx_element *gfx = machine->gfx[2];
 	const UINT8 *source = spriteram+32*4-4;
@@ -173,7 +173,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		/* So I'm using this specific check. -kal 11 jul 2002 */
 //      if(sprite_type == 1) sy=sy+2;
 
-		if( flip_screen )
+		if( flip_screen_get() )
 		{
 			drawgfx( bitmap,gfx,
 				sprite_number&0x7f,
@@ -216,9 +216,9 @@ VIDEO_UPDATE( tsamurai )
         Note that the background color register isn't well understood
         (screenshots would be helpful)
     */
-	fillbitmap(bitmap,machine->pens[bgcolor],cliprect);
+	fillbitmap(bitmap,bgcolor,cliprect);
 	tilemap_draw(bitmap,cliprect,background,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,foreground,0,0);
 	return 0;
 }
@@ -255,7 +255,7 @@ static TILE_GET_INFO( get_vsgongf_tile_info )
 
 VIDEO_START( vsgongf )
 {
-	foreground = tilemap_create(get_vsgongf_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	foreground = tilemap_create(get_vsgongf_tile_info,tilemap_scan_rows,8,8,32,32);
 }
 
 VIDEO_UPDATE( vsgongf )
@@ -272,6 +272,6 @@ VIDEO_UPDATE( vsgongf )
 	#endif
 
 	tilemap_draw(bitmap,cliprect,foreground,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

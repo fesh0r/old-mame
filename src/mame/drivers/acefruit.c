@@ -36,14 +36,14 @@ static emu_timer *acefruit_refresh_timer;
 
 static TIMER_CALLBACK( acefruit_refresh )
 {
-	int vpos = video_screen_get_vpos( 0 );
+	int vpos = video_screen_get_vpos(machine->primary_screen);
 
-	video_screen_update_partial( 0, vpos );
+	video_screen_update_partial(machine->primary_screen, vpos );
 	acefruit_update_irq(machine, vpos );
 
 	vpos = ( ( vpos / 8 ) + 1 ) * 8;
 
-	timer_adjust( acefruit_refresh_timer, video_screen_get_time_until_pos( 0, vpos, 0 ), 0, attotime_never );
+	timer_adjust_oneshot( acefruit_refresh_timer, video_screen_get_time_until_pos(machine->primary_screen, vpos, 0 ), 0 );
 }
 
 static VIDEO_START( acefruit )
@@ -54,7 +54,7 @@ static VIDEO_START( acefruit )
 static INTERRUPT_GEN( acefruit_vblank )
 {
 	cpunum_set_input_line(machine, 0, 0, HOLD_LINE );
-	timer_adjust( acefruit_refresh_timer, attotime_zero, 0, attotime_never );
+	timer_adjust_oneshot( acefruit_refresh_timer, attotime_zero, 0 );
 }
 
 static VIDEO_UPDATE( acefruit )
@@ -78,7 +78,7 @@ static VIDEO_UPDATE( acefruit )
 
 			if( color < 0x4 )
 			{
-				drawgfx( bitmap, machine->gfx[ 1 ], code, color, 0, 0, col * 16, row * 8, cliprect, TRANSPARENCY_NONE, 0 );
+				drawgfx( bitmap, screen->machine->gfx[ 1 ], code, color, 0, 0, col * 16, row * 8, cliprect, TRANSPARENCY_NONE, 0 );
 			}
 			else if( color >= 0x5 && color <= 0x7 )
 			{
@@ -86,7 +86,7 @@ static VIDEO_UPDATE( acefruit )
 				int x;
 				static const int spriteskip[] = { 1, 2, 4 };
 				int spritesize = spriteskip[ color - 5 ];
-				const gfx_element *gfx = machine->gfx[ 0 ];
+				const gfx_element *gfx = screen->machine->gfx[ 0 ];
 
 				for( x = 0; x < 16; x++ )
 				{
@@ -255,7 +255,7 @@ static ADDRESS_MAP_START( acefruit_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x20ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x4000, 0x43ff) AM_RAM AM_BASE(&videoram)
-	AM_RANGE(0x4400, 0x47ff) AM_READWRITE(MRA8_RAM, acefruit_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x4400, 0x47ff) AM_READWRITE(SMH_RAM, acefruit_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x8000, 0x8000) AM_READ(input_port_0_r)
 	AM_RANGE(0x8001, 0x8001) AM_READ(input_port_1_r)
 	AM_RANGE(0x8002, 0x8002) AM_READ(input_port_2_r)
@@ -274,7 +274,7 @@ static ADDRESS_MAP_START( acefruit_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( acefruit_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS(AMEF_ABITS(8))
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_NOP /* ? */
 ADDRESS_MAP_END
 
@@ -299,14 +299,14 @@ static INPUT_PORTS_START( sidewndr )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME( "Cancel/Clear" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME( "Refill" ) PORT_TOGGLE
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )              /* "Token in" - also "Refill" when "Refill" mode ON */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(sidewndr_payout_r, 0x01)
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(sidewndr_payout_r, (void *)0x01)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START_TAG("IN3")	// 3
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME( "Hold/Nudge 1" )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME( "Accountancy System" ) PORT_TOGGLE
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN4 )              /* "50P in" */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(sidewndr_payout_r, 0x02)
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(sidewndr_payout_r, (void *)0x02)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START_TAG("IN4")	// 4
@@ -413,7 +413,7 @@ static INPUT_PORTS_START( starspnr )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME( "Collect/Cancel" )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	/* tested at 0xeed7 with IN1 bit 3 - before coins are tested - table at 0xef55 (4 * 3 bytes) */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, 0x08) /* to be confirmed */
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, (void *)0x08) /* to be confirmed */
 
 	PORT_START_TAG("IN2")	// 2
 	/* tested at 0xe83c */
@@ -423,7 +423,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xef82 after IN5 bit 1 and after IN1 bit 3 - after coins are tested - table at 0xefa8 (3 bytes) */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	/* tested at 0xeeba with IN3 bit 3 - before coins are tested - table at 0xef55 (4 * 3 bytes) */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, 0x02) /* to be confirmed */
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, (void *)0x02) /* to be confirmed */
 	/* tested at 0x1b0f */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -432,7 +432,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xe8ea and 0xecbe */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	/* tested at 0xeeba with IN2 bit 3 - before coins are tested - table at 0xef55 (4 * 3 bytes) */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, 0x01) /* to be confirmed */
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, (void *)0x01) /* to be confirmed */
 	/* tested at 0x0178 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -443,7 +443,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xed86 */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	/* tested at 0xeed7 with IN1 bit 3 - before coins are tested - table at 0xef55 (4 * 3 bytes) */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, 0x04) /* to be confirmed */
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_coinage_r, (void *)0x04) /* to be confirmed */
 
 	PORT_START_TAG("IN5")	// 5
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON9 ) PORT_NAME( "Hold 3" )
@@ -452,7 +452,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xec6f */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	/* tested at 0x1d60 with IN6 bit 3 and IN7 bit 3 - table at 0x1d90 (8 * 3 bytes) */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_payout_r, 0x01) /* to be confirmed */
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_payout_r, (void *)0x01) /* to be confirmed */
 	/* tested at 0xe312 and 0xe377 */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -461,7 +461,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xee42, 0xee5e and 0xeff5 before IN1 bit 0 - invalid code after 0xf000 */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	/* tested at 0x1d60 with IN5 bit 3 and IN7 bit 3 - table at 0x1d90 (8 * 3 bytes) */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_payout_r, 0x02) /* to be confirmed */
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_payout_r, (void *)0x02) /* to be confirmed */
 	/* tested at 0xe8dd and 0xec1c */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -473,7 +473,7 @@ static INPUT_PORTS_START( starspnr )
 	/* tested at 0xedcb */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	/* tested at 0x1d60 with IN5 bit 3 and IN6 bit 3 - table at 0x1d90 (8 * 3 bytes) */
-	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_payout_r, 0x04) /* to be confirmed */
+	PORT_BIT( 0x08, 0x00, IPT_SPECIAL) PORT_CUSTOM(starspnr_payout_r, (void *)0x04) /* to be confirmed */
 	/* tested at 0xec2a */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
@@ -549,13 +549,12 @@ static MACHINE_DRIVER_START( acefruit )
 	MDRV_CPU_PROGRAM_MAP(acefruit_map,0)
 	MDRV_CPU_IO_MAP(acefruit_io,0)
 	MDRV_GFXDECODE(acefruit)
-	MDRV_CPU_VBLANK_INT(acefruit_vblank,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", acefruit_vblank)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 255)

@@ -95,7 +95,7 @@ WRITE16_HANDLER( stlforce_tx_videoram_w )
 
 /* sprites - quite a bit still needs doing .. */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 
 	const UINT16 *source = stlforce_spriteram+0x0;
@@ -174,17 +174,17 @@ VIDEO_UPDATE( stlforce )
 	tilemap_draw(bitmap,cliprect,stlforce_bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,stlforce_mlow_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,stlforce_mhigh_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,stlforce_tx_tilemap,0,0);
 	return 0;
 }
 
 VIDEO_START( stlforce )
 {
-	stlforce_bg_tilemap    = tilemap_create(get_stlforce_bg_tile_info,   tilemap_scan_cols,TILEMAP_TYPE_PEN,      16,16,64,16);
-	stlforce_mlow_tilemap  = tilemap_create(get_stlforce_mlow_tile_info, tilemap_scan_cols,TILEMAP_TYPE_PEN, 16,16,64,16);
-	stlforce_mhigh_tilemap = tilemap_create(get_stlforce_mhigh_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN, 16,16,64,16);
-	stlforce_tx_tilemap    = tilemap_create(get_stlforce_tx_tile_info,   tilemap_scan_rows,TILEMAP_TYPE_PEN,  8, 8,64,32);
+	stlforce_bg_tilemap    = tilemap_create(get_stlforce_bg_tile_info,   tilemap_scan_cols,      16,16,64,16);
+	stlforce_mlow_tilemap  = tilemap_create(get_stlforce_mlow_tile_info, tilemap_scan_cols, 16,16,64,16);
+	stlforce_mhigh_tilemap = tilemap_create(get_stlforce_mhigh_tile_info,tilemap_scan_cols, 16,16,64,16);
+	stlforce_tx_tilemap    = tilemap_create(get_stlforce_tx_tile_info,   tilemap_scan_rows,  8, 8,64,32);
 
 	tilemap_set_transparent_pen(stlforce_mlow_tilemap,0);
 	tilemap_set_transparent_pen(stlforce_mhigh_tilemap,0);

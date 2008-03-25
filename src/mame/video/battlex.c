@@ -61,7 +61,7 @@ WRITE8_HANDLER( battlex_flipscreen_w )
 
 	/* bit 7 is flip screen */
 
-	if (flip_screen != (data & 0x80))
+	if (flip_screen_get() != (data & 0x80))
 	{
 		flip_screen_set(data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -79,10 +79,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( battlex )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		 8, 8, 64, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const gfx_element *gfx = machine->gfx[1];
 	UINT8 *source = spriteram;
@@ -97,7 +97,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int flipy = source[1] & 0x80;
 		int flipx = source[1] & 0x40;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -116,6 +116,6 @@ VIDEO_UPDATE(battlex)
 {
 	tilemap_set_scrollx(bg_tilemap, 0, battlex_scroll_lsb | (battlex_scroll_msb << 8));
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

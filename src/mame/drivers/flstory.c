@@ -89,7 +89,7 @@ static TIMER_CALLBACK( nmi_callback )
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(0,data);
+	soundlatch_w(machine,0,data);
 	timer_call_after_resynch(NULL, data,nmi_callback);
 }
 
@@ -126,7 +126,7 @@ static ADDRESS_MAP_START( flstory_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd804, 0xd804) AM_READ(input_port_4_r)
 	AM_RANGE(0xd805, 0xd805) AM_READ(flstory_mcu_status_r)
 	AM_RANGE(0xd806, 0xd806) AM_READ(input_port_5_r)
-//  AM_RANGE(0xda00, 0xda00) AM_WRITE(MWA8_RAM)
+//  AM_RANGE(0xda00, 0xda00) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xdc00, 0xdc9f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xdca0, 0xdcbf) AM_RAM AM_WRITE(flstory_scrlram_w) AM_BASE(&flstory_scrlram)
 	AM_RANGE(0xdcc0, 0xdcff) AM_RAM /* unknown */
@@ -152,7 +152,7 @@ static ADDRESS_MAP_START( onna34ro_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd804, 0xd804) AM_READ(input_port_4_r)
 	AM_RANGE(0xd805, 0xd805) AM_READ(onna34ro_mcu_status_r)
 	AM_RANGE(0xd806, 0xd806) AM_READ(input_port_5_r)
-//  AM_RANGE(0xda00, 0xda00) AM_WRITE(MWA8_RAM)
+//  AM_RANGE(0xda00, 0xda00) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xdc00, 0xdc9f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xdca0, 0xdcbf) AM_RAM AM_WRITE(flstory_scrlram_w) AM_BASE(&flstory_scrlram)
 	AM_RANGE(0xdcc0, 0xdcff) AM_RAM /* unknown */
@@ -163,7 +163,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( victnine_port_5_r )
 {
-	return (victnine_mcu_status_r(0) & 3) | (readinputport(5) & ~3);
+	return (victnine_mcu_status_r(machine,0) & 3) | (readinputport(5) & ~3);
 }
 
 static ADDRESS_MAP_START( victnine_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -172,7 +172,7 @@ static ADDRESS_MAP_START( victnine_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc800, 0xcfff) AM_RAM	/* unknown */
 	AM_RANGE(0xd000, 0xd000) AM_READWRITE(victnine_mcu_r, victnine_mcu_w)
 	AM_RANGE(0xd001, 0xd001) AM_WRITENOP	/* watchdog? */
-	AM_RANGE(0xd002, 0xd002) AM_READWRITE(MRA8_NOP, MWA8_NOP)	/* unknown read & coin lock out? */
+	AM_RANGE(0xd002, 0xd002) AM_READWRITE(SMH_NOP, SMH_NOP)	/* unknown read & coin lock out? */
 	AM_RANGE(0xd400, 0xd400) AM_READWRITE(from_snd_r, sound_command_w)
 	AM_RANGE(0xd401, 0xd401) AM_READ(snd_flag_r)
 	AM_RANGE(0xd403, 0xd403) AM_READNOP /* unknown */
@@ -184,7 +184,7 @@ static ADDRESS_MAP_START( victnine_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd805, 0xd805) AM_READ(victnine_port_5_r)
 	AM_RANGE(0xd806, 0xd806) AM_READ(input_port_6_r)
 	AM_RANGE(0xd807, 0xd807) AM_READ(input_port_7_r)
-//  AM_RANGE(0xda00, 0xda00) AM_WRITE(MWA8_RAM)
+//  AM_RANGE(0xda00, 0xda00) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xdc00, 0xdc9f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xdca0, 0xdcbf) AM_RAM AM_WRITE(flstory_scrlram_w) AM_BASE(&flstory_scrlram)
 	AM_RANGE(0xdce0, 0xdce0) AM_READWRITE(victnine_gfxctrl_r, victnine_gfxctrl_w)
@@ -231,13 +231,19 @@ static WRITE8_HANDLER( sound_control_0_w )
 
 	/* this definitely controls main melody voice on 2'-1 and 4'-1 outputs */
 	sndti_set_output_gain(SOUND_MSM5232, 0, 0, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group1 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 1, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group1 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 2, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group1 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 3, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group1 from msm5232 */
 
 }
 static WRITE8_HANDLER( sound_control_1_w )
 {
 	snd_ctrl1 = data & 0xff;
 //  popmessage("SND1 0=%02x 1=%02x 2=%02x 3=%02x", snd_ctrl0, snd_ctrl1, snd_ctrl2, snd_ctrl3);
-	sndti_set_output_gain(SOUND_MSM5232, 0, 1, vol_ctrl[ (snd_ctrl1>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 4, vol_ctrl[ (snd_ctrl1>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 5, vol_ctrl[ (snd_ctrl1>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 6, vol_ctrl[ (snd_ctrl1>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 7, vol_ctrl[ (snd_ctrl1>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
 }
 
 static WRITE8_HANDLER( sound_control_2_w )
@@ -267,14 +273,14 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xcc00, 0xcc00) AM_WRITE(sound_control_0_w)
 	AM_RANGE(0xce00, 0xce00) AM_WRITE(sound_control_1_w)
 	AM_RANGE(0xd800, 0xd800) AM_READWRITE(soundlatch_r, to_main_w)
-	AM_RANGE(0xda00, 0xda00) AM_READWRITE(MRA8_NOP, nmi_enable_w)			/* unknown read*/
+	AM_RANGE(0xda00, 0xda00) AM_READWRITE(SMH_NOP, nmi_enable_w)			/* unknown read*/
 	AM_RANGE(0xdc00, 0xdc00) AM_WRITE(nmi_disable_w)
-	AM_RANGE(0xde00, 0xde00) AM_READWRITE(MRA8_NOP, DAC_0_signed_data_w)	/* signed 8-bit DAC &  unknown read */
+	AM_RANGE(0xde00, 0xde00) AM_READWRITE(SMH_NOP, DAC_0_signed_data_w)	/* signed 8-bit DAC &  unknown read */
 	AM_RANGE(0xe000, 0xefff) AM_ROM											/* space for diagnostics ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( flstory_m68705_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_READWRITE(flstory_68705_portA_r, flstory_68705_portA_w)
 	AM_RANGE(0x0001, 0x0001) AM_READWRITE(flstory_68705_portB_r, flstory_68705_portB_w)
 	AM_RANGE(0x0002, 0x0002) AM_READWRITE(flstory_68705_portC_r, flstory_68705_portC_w)
@@ -683,28 +689,29 @@ static MACHINE_DRIVER_START( flstory )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,10733000/2)		/* ??? */
 	MDRV_CPU_PROGRAM_MAP(flstory_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
 	/* audio CPU */		/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* IRQ generated by ??? */
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* IRQ generated by ??? */
 						/* NMI generated by the main CPU */
 
 	MDRV_CPU_ADD(M68705,4000000)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(flstory_m68705_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(ta7630)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(flstory)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -720,7 +727,17 @@ static MACHINE_DRIVER_START( flstory )
 
 	MDRV_SOUND_ADD(MSM5232, 2000000)
 	MDRV_SOUND_CONFIG(msm5232_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(0, "mono", 1.0)	// pin 28  2'-1
+	MDRV_SOUND_ROUTE(1, "mono", 1.0)	// pin 29  4'-1
+	MDRV_SOUND_ROUTE(2, "mono", 1.0)	// pin 30  8'-1
+	MDRV_SOUND_ROUTE(3, "mono", 1.0)	// pin 31 16'-1
+	MDRV_SOUND_ROUTE(4, "mono", 1.0)	// pin 36  2'-2
+	MDRV_SOUND_ROUTE(5, "mono", 1.0)	// pin 35  4'-2
+	MDRV_SOUND_ROUTE(6, "mono", 1.0)	// pin 34  8'-2
+	MDRV_SOUND_ROUTE(7, "mono", 1.0)	// pin 33 16'-2
+	// pin 1 SOLO  8'       not mapped
+	// pin 2 SOLO 16'       not mapped
+	// pin 22 Noise Output  not mapped
 
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
@@ -731,27 +748,28 @@ static MACHINE_DRIVER_START( onna34ro )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,10733000/2)		/* ??? */
 	MDRV_CPU_PROGRAM_MAP(onna34ro_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
 	/* audio CPU */		/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* IRQ generated by ??? */
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* IRQ generated by ??? */
 						/* NMI generated by the main CPU */
 //  MDRV_CPU_ADD(M68705,4000000)  /* ??? */
 //  MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(ta7630)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(flstory)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -767,7 +785,17 @@ static MACHINE_DRIVER_START( onna34ro )
 
 	MDRV_SOUND_ADD(MSM5232, 2000000)
 	MDRV_SOUND_CONFIG(msm5232_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(0, "mono", 1.0)	// pin 28  2'-1
+	MDRV_SOUND_ROUTE(1, "mono", 1.0)	// pin 29  4'-1
+	MDRV_SOUND_ROUTE(2, "mono", 1.0)	// pin 30  8'-1
+	MDRV_SOUND_ROUTE(3, "mono", 1.0)	// pin 31 16'-1
+	MDRV_SOUND_ROUTE(4, "mono", 1.0)	// pin 36  2'-2
+	MDRV_SOUND_ROUTE(5, "mono", 1.0)	// pin 35  4'-2
+	MDRV_SOUND_ROUTE(6, "mono", 1.0)	// pin 34  8'-2
+	MDRV_SOUND_ROUTE(7, "mono", 1.0)	// pin 33 16'-2
+	// pin 1 SOLO  8'       not mapped
+	// pin 2 SOLO 16'       not mapped
+	// pin 22 Noise Output  not mapped
 
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
@@ -778,27 +806,28 @@ static MACHINE_DRIVER_START( victnine )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,8000000/2)		/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(victnine_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
 	/* audio CPU */		/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* IRQ generated by ??? */
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* IRQ generated by ??? */
 						/* NMI generated by the main CPU */
 //  MDRV_CPU_ADD(M68705,4000000)  /* ??? */
 //  MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(ta7630)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(flstory)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -814,7 +843,17 @@ static MACHINE_DRIVER_START( victnine )
 
 	MDRV_SOUND_ADD(MSM5232, 2000000)
 	MDRV_SOUND_CONFIG(msm5232_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(0, "mono", 1.0)	// pin 28  2'-1
+	MDRV_SOUND_ROUTE(1, "mono", 1.0)	// pin 29  4'-1
+	MDRV_SOUND_ROUTE(2, "mono", 1.0)	// pin 30  8'-1
+	MDRV_SOUND_ROUTE(3, "mono", 1.0)	// pin 31 16'-1
+	MDRV_SOUND_ROUTE(4, "mono", 1.0)	// pin 36  2'-2
+	MDRV_SOUND_ROUTE(5, "mono", 1.0)	// pin 35  4'-2
+	MDRV_SOUND_ROUTE(6, "mono", 1.0)	// pin 34  8'-2
+	MDRV_SOUND_ROUTE(7, "mono", 1.0)	// pin 33 16'-2
+	// pin 1 SOLO  8'       not mapped
+	// pin 2 SOLO 16'       not mapped
+	// pin 22 Noise Output  not mapped
 
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)

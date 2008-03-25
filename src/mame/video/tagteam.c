@@ -16,7 +16,7 @@ PALETTE_INIT( tagteam )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -87,7 +87,7 @@ WRITE8_HANDLER( tagteam_mirrorvideoram_w )
 	y = offset % 32;
 	offset = 32 * y + x;
 
-	tagteam_videoram_w(offset,data);
+	tagteam_videoram_w(machine,offset,data);
 }
 
 WRITE8_HANDLER( tagteam_mirrorcolorram_w )
@@ -99,7 +99,7 @@ WRITE8_HANDLER( tagteam_mirrorcolorram_w )
 	y = offset % 32;
 	offset = 32 * y + x;
 
-	tagteam_colorram_w(offset,data);
+	tagteam_colorram_w(machine,offset,data);
 }
 
 WRITE8_HANDLER( tagteam_control_w )
@@ -112,7 +112,7 @@ logerror("%04x: control = %02x\n",activecpu_get_pc(),data);
 
 WRITE8_HANDLER( tagteam_flipscreen_w )
 {
-	if (flip_screen != (data &0x01))
+	if (flip_screen_get() != (data &0x01))
 	{
 		flip_screen_set(data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -130,10 +130,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( tagteam )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows_flip_x,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -149,7 +149,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		if (!(videoram[offs] & 0x01)) continue;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -168,7 +168,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		code = videoram[offs + 0x20] + 256 * spritebank;
 		color = palettebank;
-		sy += (flip_screen ? -256 : 256);
+		sy += (flip_screen_get() ? -256 : 256);
 
 		drawgfx(bitmap, machine->gfx[1],
 			code, color,
@@ -182,6 +182,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( tagteam )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

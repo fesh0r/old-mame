@@ -79,6 +79,7 @@ enum _cpu_type
 	CPU_I8035,
 	CPU_I8039,
 	CPU_I8048,
+	CPU_I8749,
 	CPU_N7751,
 	CPU_MB8884,
 	CPU_M58715,
@@ -121,6 +122,7 @@ enum _cpu_type
 	CPU_TMS99100,
 	CPU_TMS99105A,
 	CPU_TMS99110A,
+	CPU_TMS99000,
 	CPU_Z8000,
 	CPU_TMS32010,
 	CPU_TMS32025,
@@ -139,6 +141,9 @@ enum _cpu_type
 	CPU_ASAP,
 	CPU_UPD7810,
 	CPU_UPD7807,
+	CPU_UPD7801,
+	CPU_UPD78C05,
+	CPU_UPD78C06,
 	CPU_JAGUARGPU,
 	CPU_JAGUARDSP,
 	CPU_R3000BE,
@@ -234,7 +239,7 @@ enum _cpu_type
 	CPU_MB8843,
 	CPU_MB8844,
 	CPU_MB86233,
-	CPU_SSP1610,
+	CPU_SSP1601,
 	CPU_MINX,
     CPU_COUNT
 };
@@ -253,9 +258,10 @@ struct _cpu_config
 	cpu_type		type;						/* index for the CPU type */
 	int				flags;						/* flags; see #defines below */
 	int				clock;						/* in Hertz */
-	construct_map_t construct_map[ADDRESS_SPACES][2]; /* 2 memory maps per address space */
+	const addrmap_token *address_map[ADDRESS_SPACES][2]; /* 2 memory maps per address space */
 	void 			(*vblank_interrupt)(running_machine *machine, int cpunum);	/* for interrupts tied to VBLANK */
 	int 			vblank_interrupts_per_frame;/* usually 1 */
+	const char *	vblank_interrupt_screen;	/* the screen that causes the VBLANK interrupt */
 	void 			(*timed_interrupt)(running_machine *machine, int cpunum);	/* for interrupts not tied to VBLANK */
 	attoseconds_t 	timed_interrupt_period;		/* period for periodic interrupts */
 	const void *	reset_param;				/* parameter for cpu_reset */
@@ -362,16 +368,6 @@ void cpu_triggertime(attotime duration, int trigger);
 
 /* generate a trigger corresponding to an interrupt on the given CPU */
 void cpu_triggerint(running_machine *machine, int cpunum);
-
-
-
-/* ----- watchdog timers ----- */
-
-/* reset the watchdog */
-void watchdog_reset(running_machine *machine);
-
-/* enable/disable the watchdog */
-void watchdog_enable(running_machine *machine, int enable);
 
 
 

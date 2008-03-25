@@ -126,7 +126,7 @@ static WRITE8_HANDLER( statriv2_videoram_w )
 
 static VIDEO_START (statriv2)
 {
-	statriv2_tilemap = tilemap_create(get_statriv2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,16,64, 16);
+	statriv2_tilemap = tilemap_create(get_statriv2_tile_info,tilemap_scan_rows,8,16,64, 16);
 }
 
 static VIDEO_UPDATE (statriv2)
@@ -139,13 +139,10 @@ static PALETTE_INIT(statriv2)
 {
 	int i;
 
-	for (i = 0; i < 8; i++)
-		palette_set_color_rgb(machine,i,pal1bit(i >> 2),pal1bit(i >> 0),pal1bit(i >> 1));
-
 	for (i = 0; i < 64; i++)
 	{
-		colortable[2*i+0] = i % 8;
-		colortable[2*i+1] = i / 8;
+		palette_set_color_rgb(machine,2*i+0,pal1bit(i >> 2),pal1bit(i >> 0),pal1bit(i >> 1));
+		palette_set_color_rgb(machine,2*i+1,pal1bit(i >> 5),pal1bit(i >> 4),pal1bit(i >> 3));
 	}
 }
 
@@ -300,30 +297,30 @@ static READ8_HANDLER (hangman_questions_read)
 }
 
 static ADDRESS_MAP_START( statriv2_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4800, 0x48ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc800, 0xcfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x2fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4800, 0x48ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc800, 0xcfff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( statriv2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x4800, 0x48ff) AM_WRITE(MWA8_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)    // backup ram?
+	AM_RANGE(0x0000, 0x2fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x4800, 0x48ff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)    // backup ram?
 	AM_RANGE(0xc800, 0xcfff) AM_WRITE(statriv2_videoram_w) AM_BASE(&statriv2_videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( supertr2_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4800, 0x48ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc800, 0xcfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4800, 0x48ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc800, 0xcfff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( supertr2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x4800, 0x48ff) AM_WRITE(MWA8_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)    // backup ram?
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x4800, 0x48ff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)    // backup ram?
 	AM_RANGE(0xc800, 0xcfff) AM_WRITE(statriv2_videoram_w) AM_BASE(&statriv2_videoram)
 ADDRESS_MAP_END
 
@@ -332,17 +329,17 @@ static ADDRESS_MAP_START( statriv2_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_1_r)
 	AM_RANGE(0x2b, 0x2b) AM_READ(statriv2_questions_read)		// question data
 	AM_RANGE(0xb1, 0xb1) AM_READ(AY8910_read_port_0_r)		// ???
-	AM_RANGE(0xce, 0xce) AM_READ(MRA8_NOP)				// ???
+	AM_RANGE(0xce, 0xce) AM_READ(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( statriv2_writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x22, 0x22) AM_WRITE(MWA8_NOP)				// ???
-	AM_RANGE(0x23, 0x23) AM_WRITE(MWA8_NOP)				// ???
+	AM_RANGE(0x22, 0x22) AM_WRITE(SMH_NOP)				// ???
+	AM_RANGE(0x23, 0x23) AM_WRITE(SMH_NOP)				// ???
 	AM_RANGE(0x29, 0x29) AM_WRITE(question_offset_low_w)
 	AM_RANGE(0x2a, 0x2a) AM_WRITE(question_offset_high_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xb1, 0xb1) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xc0, 0xcf) AM_WRITE(MWA8_NOP)				// ???
+	AM_RANGE(0xc0, 0xcf) AM_WRITE(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( statriv4_readport, ADDRESS_SPACE_IO, 8 )
@@ -350,17 +347,17 @@ static ADDRESS_MAP_START( statriv4_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_1_r)
 	AM_RANGE(0x28, 0x28) AM_READ(statriv2_questions_read)		// question data
 	AM_RANGE(0xb1, 0xb1) AM_READ(AY8910_read_port_0_r)		// ???
-	AM_RANGE(0xce, 0xce) AM_READ(MRA8_NOP)				// ???
+	AM_RANGE(0xce, 0xce) AM_READ(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( statriv4_writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x22, 0x22) AM_WRITE(MWA8_NOP)				// ???
-	AM_RANGE(0x23, 0x23) AM_WRITE(MWA8_NOP)				// ???
+	AM_RANGE(0x22, 0x22) AM_WRITE(SMH_NOP)				// ???
+	AM_RANGE(0x23, 0x23) AM_WRITE(SMH_NOP)				// ???
 	AM_RANGE(0x29, 0x29) AM_WRITE(question_offset_high_w)
 	AM_RANGE(0x2a, 0x2a) AM_WRITE(question_offset_low_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xb1, 0xb1) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xc0, 0xcf) AM_WRITE(MWA8_NOP)				// ???
+	AM_RANGE(0xc0, 0xcf) AM_WRITE(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( supertr2_readport, ADDRESS_SPACE_IO, 8 )
@@ -368,28 +365,28 @@ static ADDRESS_MAP_START( supertr2_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_1_r)
 	AM_RANGE(0x28, 0x28) AM_READ(supertr2_questions_read)                // question data
 	AM_RANGE(0xb1, 0xb1) AM_READ(AY8910_read_port_0_r)		// ???
-	AM_RANGE(0xce, 0xce) AM_READ(MRA8_NOP)			// ???
+	AM_RANGE(0xce, 0xce) AM_READ(SMH_NOP)			// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( supertr2_writeport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x22, 0x22) AM_WRITE(MWA8_NOP)				// ???
-	AM_RANGE(0x23, 0x23) AM_WRITE(MWA8_NOP)			// ???
+	AM_RANGE(0x22, 0x22) AM_WRITE(SMH_NOP)				// ???
+	AM_RANGE(0x23, 0x23) AM_WRITE(SMH_NOP)			// ???
 	AM_RANGE(0x28, 0x28) AM_WRITE(question_offset_low_w)
 	AM_RANGE(0x29, 0x29) AM_WRITE(question_offset_med_w)
 	AM_RANGE(0x2a, 0x2a) AM_WRITE(question_offset_high_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xb1, 0xb1) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xc0, 0xcf) AM_WRITE(MWA8_NOP)				// ???
+	AM_RANGE(0xc0, 0xcf) AM_WRITE(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( trivquiz_writeport, ADDRESS_SPACE_IO, 8 )
-    AM_RANGE(0x22, 0x22) AM_WRITE(MWA8_NOP)                               // ???
-    AM_RANGE(0x23, 0x23) AM_WRITE(MWA8_NOP)                               // ???
+    AM_RANGE(0x22, 0x22) AM_WRITE(SMH_NOP)                               // ???
+    AM_RANGE(0x23, 0x23) AM_WRITE(SMH_NOP)                               // ???
     AM_RANGE(0x28, 0x28) AM_WRITE(question_offset_low_w)
     AM_RANGE(0x29, 0x29) AM_WRITE(question_offset_high_w)
 	AM_RANGE(0xb0, 0xb0) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xb1, 0xb1) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xc0, 0xcf) AM_WRITE(MWA8_NOP)				// ???
+	AM_RANGE(0xc0, 0xcf) AM_WRITE(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( trivquiz_readport, ADDRESS_SPACE_IO, 8 )
@@ -397,7 +394,7 @@ static ADDRESS_MAP_START( trivquiz_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_1_r)
 	AM_RANGE(0x2a, 0x2a) AM_READ(statriv2_questions_read)                // question data
 	AM_RANGE(0xb1, 0xb1) AM_READ(AY8910_read_port_0_r)		// ???
-	AM_RANGE(0xce, 0xce) AM_READ(MRA8_NOP)				// ???
+	AM_RANGE(0xce, 0xce) AM_READ(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( supertr3_readport, ADDRESS_SPACE_IO, 8 )
@@ -405,7 +402,7 @@ static ADDRESS_MAP_START( supertr3_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_1_r)
 	AM_RANGE(0x28, 0x28) AM_READ(supertr3_questions_read)                // question data
 	AM_RANGE(0xb1, 0xb1) AM_READ(AY8910_read_port_0_r)		// ???
-	AM_RANGE(0xce, 0xce) AM_READ(MRA8_NOP)				// ???
+	AM_RANGE(0xce, 0xce) AM_READ(SMH_NOP)				// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hangman_readport, ADDRESS_SPACE_IO, 8 )
@@ -413,7 +410,7 @@ static ADDRESS_MAP_START( hangman_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_1_r)
 	AM_RANGE(0x28, 0x28) AM_READ(hangman_questions_read)                // question data
 	AM_RANGE(0xb1, 0xb1) AM_READ(AY8910_read_port_0_r)		// ???
-	AM_RANGE(0xce, 0xce) AM_READ(MRA8_NOP)			// ???
+	AM_RANGE(0xce, 0xce) AM_READ(SMH_NOP)			// ???
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( statriv2 )
@@ -610,21 +607,20 @@ static MACHINE_DRIVER_START( statriv2 )
 	MDRV_CPU_ADD_TAG("main",8085A,12400000*2)              /* 12.4MHz / 4? */
 	MDRV_CPU_PROGRAM_MAP(statriv2_readmem,statriv2_writemem)
 	MDRV_CPU_IO_MAP(statriv2_readport,statriv2_writeport)
-	MDRV_CPU_VBLANK_INT(statriv2_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", statriv2_interrupt)
 
 	MDRV_NVRAM_HANDLER(statriv2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(4*8, 38*8-1, 0, 32*8-1)
+
 	MDRV_GFXDECODE(statriv2)
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(2*64)
+	MDRV_PALETTE_LENGTH(2*64)
 
 	MDRV_PALETTE_INIT(statriv2)
 	MDRV_VIDEO_START(statriv2)
@@ -644,6 +640,7 @@ static MACHINE_DRIVER_START( statriv4 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(statriv4_readport,statriv4_writeport)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 36*8-1, 0, 32*8-1)
 MACHINE_DRIVER_END
 
@@ -662,6 +659,7 @@ static MACHINE_DRIVER_START( sextriv )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(trivquiz_readport,trivquiz_writeport)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 36*8-1, 0, 32*8-1)
 MACHINE_DRIVER_END
 
@@ -675,6 +673,7 @@ static MACHINE_DRIVER_START( supertr2 )
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 36*8-1, 0, 32*8-1)
 MACHINE_DRIVER_END
 
@@ -688,6 +687,7 @@ static MACHINE_DRIVER_START( supertr3 )
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 36*8-1, 0, 32*8-1)
 MACHINE_DRIVER_END
 
@@ -697,6 +697,7 @@ static MACHINE_DRIVER_START( quaquiz2 )
 
 	MDRV_NVRAM_HANDLER(quaquiz2)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(4*8, 38*8-1, 0, 32*8-1)
 MACHINE_DRIVER_END
 
@@ -707,6 +708,7 @@ static MACHINE_DRIVER_START( hangman )
 	MDRV_CPU_REPLACE("main",8085A,12400000/4)
 	MDRV_CPU_IO_MAP(hangman_readport,supertr2_writeport)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 35*8-1, 0, 32*8-1)
 MACHINE_DRIVER_END
 

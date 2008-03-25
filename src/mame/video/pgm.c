@@ -112,7 +112,7 @@ static void draw_sprite_line(int wide, UINT16* dest, int xzoom, int xgrow, int y
 	}
 }
 /* this just loops over our decoded bitmap and puts it on the screen */
-static void draw_sprite_new_zoomed(int wide, int high, int xpos, int ypos, int palt, int boffset, int flip, mame_bitmap* bitmap, UINT32 xzoom, int xgrow, UINT32 yzoom, int ygrow )
+static void draw_sprite_new_zoomed(int wide, int high, int xpos, int ypos, int palt, int boffset, int flip, bitmap_t* bitmap, UINT32 xzoom, int xgrow, UINT32 yzoom, int ygrow )
 {
 	int ycnt;
 	int ydrawpos;
@@ -183,7 +183,7 @@ static void draw_sprite_new_zoomed(int wide, int high, int xpos, int ypos, int p
 
 static UINT16 *pgm_sprite_source;
 
-static void draw_sprites(int priority, mame_bitmap* bitmap)
+static void draw_sprites(int priority, bitmap_t* bitmap)
 {
 	/* ZZZZ Zxxx xxxx xxxx
        zzzz z-yy yyyy yyyy
@@ -307,10 +307,10 @@ static TILE_GET_INFO( get_pgm_bg_tilemap_tile_info )
 
 VIDEO_START( pgm )
 {
-	pgm_tx_tilemap= tilemap_create(get_pgm_tx_tilemap_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	pgm_tx_tilemap= tilemap_create(get_pgm_tx_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
 	tilemap_set_transparent_pen(pgm_tx_tilemap,15);
 
-	pgm_bg_tilemap = tilemap_create(get_pgm_bg_tilemap_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 32, 32,64,64);
+	pgm_bg_tilemap = tilemap_create(get_pgm_bg_tilemap_tile_info,tilemap_scan_rows, 32, 32,64,64);
 	tilemap_set_transparent_pen(pgm_bg_tilemap,31);
 	tilemap_set_scroll_rows(pgm_bg_tilemap,64*32);
 
@@ -325,7 +325,7 @@ VIDEO_UPDATE( pgm )
 {
 	int y;
 
-	fillbitmap(bitmap,get_black_pen(machine),&machine->screen[0].visarea);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	pgm_sprite_source = pgm_spritebufferram;
 	draw_sprites(1, bitmap);

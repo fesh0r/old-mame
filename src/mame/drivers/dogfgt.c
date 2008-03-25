@@ -57,18 +57,18 @@ static WRITE8_HANDLER( dogfgt_soundcontrol_w )
 	{
 		/* bit 4 goes to the 8910 #0 BC1 pin */
 		if (last & 0x10)
-			AY8910_control_port_0_w(0,soundlatch);
+			AY8910_control_port_0_w(machine,0,soundlatch);
 		else
-			AY8910_write_port_0_w(0,soundlatch);
+			AY8910_write_port_0_w(machine,0,soundlatch);
 	}
 	/* bit 7 goes to 8910 #1 BDIR pin  */
 	if ((last & 0x80) == 0x80 && (data & 0x80) == 0x00)
 	{
 		/* bit 6 goes to the 8910 #1 BC1 pin */
 		if (last & 0x40)
-			AY8910_control_port_1_w(0,soundlatch);
+			AY8910_control_port_1_w(machine,0,soundlatch);
 		else
-			AY8910_write_port_1_w(0,soundlatch);
+			AY8910_write_port_1_w(machine,0,soundlatch);
 	}
 
 	last = data;
@@ -83,12 +83,12 @@ static ADDRESS_MAP_START( main_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1820, 0x1820) AM_READ(input_port_2_r)
 	AM_RANGE(0x1830, 0x1830) AM_READ(input_port_3_r)
 	AM_RANGE(0x2000, 0x3fff) AM_READ(dogfgt_bitmapram_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(sharedram_w) AM_BASE(&sharedram)
-	AM_RANGE(0x0f80, 0x0fdf) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0f80, 0x0fdf) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x1000, 0x17ff) AM_WRITE(dogfgt_bgvideoram_w) AM_BASE(&dogfgt_bgvideoram)
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(dogfgt_1800_w)	/* text color, flip screen & coin counters */
 	AM_RANGE(0x1810, 0x1810) AM_WRITE(subirqtrigger_w)
@@ -98,20 +98,20 @@ static ADDRESS_MAP_START( main_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1840, 0x1840) AM_WRITE(dogfgt_soundcontrol_w)
 	AM_RANGE(0x1870, 0x187f) AM_WRITE(paletteram_BBGGGRRR_w) AM_BASE(&paletteram)
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(dogfgt_bitmapram_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x2000, 0x27ff) AM_READ(sharedram_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x2000, 0x27ff) AM_WRITE(sharedram_w)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(sub_irqack_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -243,20 +243,21 @@ static MACHINE_DRIVER_START( dogfgt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 1500000)	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(main_readmem,main_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,16)	/* ? controls music tempo */
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,16)	/* ? controls music tempo */
 
 	MDRV_CPU_ADD(M6502, 1500000)	/* 1.5 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(sub_readmem,sub_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(dogfgt)
 	MDRV_PALETTE_LENGTH(16+64)
 

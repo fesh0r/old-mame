@@ -19,7 +19,7 @@ PALETTE_INIT( mouser )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -68,12 +68,12 @@ VIDEO_UPDATE( mouser )
 		sx = offs % 32;
 		sy = offs / 32;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 31 - sx;
 		}
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			sy = 31 - sy;
 		}
@@ -87,10 +87,10 @@ VIDEO_UPDATE( mouser )
 		/* Note: this is _not_ dependant on flipping */
 		color_offs = offs%32 + ((256 + 8*(offs/32) - spriteram[offs%32])%256)/8*32;
 
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx(bitmap,screen->machine->gfx[0],
 				videoram[offs] | (colorram[color_offs]>>5)*256 | ((colorram[color_offs]>>4)&1)*512,
 				colorram[color_offs]%16,
-				flip_screen_x,flip_screen_y,
+				flip_screen_x_get(),flip_screen_y_get(),
 				8*sx,scrolled_y_position,
 				cliprect,TRANSPARENCY_NONE,0);
 	}
@@ -106,20 +106,20 @@ VIDEO_UPDATE( mouser )
 		flipx = (spriteram[offs]&0x40)>>6;
 		flipy = (spriteram[offs]&0x80)>>7;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			flipx = !flipx;
 			sx = 240 - sx;
 		}
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			flipy = !flipy;
 			sy = 238 - sy;
 		}
 
 		if ((spriteram[offs+1]&0x10)>>4)
-			drawgfx(bitmap,machine->gfx[1+((spriteram[offs+1]&0x20)>>5)],
+			drawgfx(bitmap,screen->machine->gfx[1+((spriteram[offs+1]&0x20)>>5)],
 					spriteram[offs]&0x3f,
 					spriteram[offs+1]%16,
 					flipx,flipy,
@@ -136,20 +136,20 @@ VIDEO_UPDATE( mouser )
 		flipx = (spriteram[offs]&0x40)>>6;
 		flipy = (spriteram[offs]&0x80)>>7;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			flipx = !flipx;
 			sx = 240 - sx;
 		}
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			flipy = !flipy;
 			sy = 238 - sy;
 		}
 
 		if ((spriteram[offs+1]&0x10)>>4)
-			drawgfx(bitmap,machine->gfx[1+((spriteram[offs+1]&0x20)>>5)],
+			drawgfx(bitmap,screen->machine->gfx[1+((spriteram[offs+1]&0x20)>>5)],
 					spriteram[offs]&0x3f,
 					spriteram[offs+1]%16,
 					flipx,flipy,

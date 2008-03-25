@@ -43,7 +43,7 @@ PALETTE_INIT( zaxxon )
 			2,	&resistances[1], bweights, 470, 0);
 
 	/* initialize the palette with these colors */
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2;
 		int r, g, b;
@@ -124,7 +124,7 @@ static TILE_GET_INFO( congo_get_fg_tile_info )
  *
  *************************************/
 
-static void video_start_common(running_machine *machine, tile_get_info_callback fg_tile_info)
+static void video_start_common(running_machine *machine, tile_get_info_func fg_tile_info)
 {
 	/* reset globals */
 	bg_enable = 0;
@@ -136,13 +136,13 @@ static void video_start_common(running_machine *machine, tile_get_info_callback 
 	memset(congo_custom, 0, sizeof(congo_custom));
 
 	/* create a background and foreground tilemap */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,512);
-	fg_tilemap = tilemap_create(fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  8,8, 32,512);
+	fg_tilemap = tilemap_create(fg_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	/* configure the foreground tilemap */
 	tilemap_set_transparent_pen(fg_tilemap, 0);
-	tilemap_set_scrolldx(fg_tilemap, 0, machine->screen[0].width - 256);
-	tilemap_set_scrolldy(fg_tilemap, 0, machine->screen[0].height - 256);
+	tilemap_set_scrolldx(fg_tilemap, 0, video_screen_get_width(machine->primary_screen) - 256);
+	tilemap_set_scrolldy(fg_tilemap, 0, video_screen_get_height(machine->primary_screen) - 256);
 
 	/* register for save states */
 	state_save_register_global(bg_enable);
@@ -189,8 +189,8 @@ VIDEO_START( congo )
 WRITE8_HANDLER( zaxxon_flipscreen_w )
 {
 	/* low bit controls flip; background and sprite flip are handled at render time */
-	flip_screen = ~data & 1;
-	tilemap_set_flip(fg_tilemap, flip_screen ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
+	flip_screen_set_no_update(~data & 1);
+	tilemap_set_flip(fg_tilemap, flip_screen_get() ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 }
 
 
@@ -304,22 +304,22 @@ WRITE8_HANDLER( congo_sprite_custom_w )
  *
  *************************************/
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int skew)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int skew)
 {
 	/* only draw if enabled */
 	if (bg_enable)
 	{
-		mame_bitmap *pixmap = tilemap_get_pixmap(bg_tilemap);
+		bitmap_t *pixmap = tilemap_get_pixmap(bg_tilemap);
 		int colorbase = bg_color + (congo_color_bank << 8);
 		int xmask = pixmap->width - 1;
 		int ymask = pixmap->height - 1;
-		int flipmask = flip_screen ? 0xff : 0x00;
-		int flipoffs = flip_screen ? 0x38 : 0x40;
+		int flipmask = flip_screen_get() ? 0xff : 0x00;
+		int flipoffs = flip_screen_get() ? 0x38 : 0x40;
 		int x, y;
 
 		/* the starting X value is offset by 1 pixel (normal) or 7 pixels */
 		/* (flipped) due to a delay in the loading */
-		if (!flip_screen)
+		if (!flip_screen_get())
 			flipoffs -= 1;
 		else
 			flipoffs += 7;
@@ -377,8 +377,8 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 
 INLINE int find_minimum_y(UINT8 value)
 {
-	int flipmask = flip_screen ? 0xff : 0x00;
-	int flipconst = flip_screen ? 0xef : 0xf1;
+	int flipmask = flip_screen_get() ? 0xff : 0x00;
+	int flipconst = flip_screen_get() ? 0xef : 0xf1;
 	int y;
 
 	/* the sum of the Y position plus a constant based on the flip state */
@@ -408,7 +408,7 @@ INLINE int find_minimum_y(UINT8 value)
 
 INLINE int find_minimum_x(UINT8 value)
 {
-	int flipmask = flip_screen ? 0xff : 0x00;
+	int flipmask = flip_screen_get() ? 0xff : 0x00;
 	int x;
 
 	/* the sum of the X position plus a constant specifies the address within */
@@ -420,9 +420,9 @@ INLINE int find_minimum_x(UINT8 value)
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT16 flipxmask, UINT16 flipymask)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT16 flipxmask, UINT16 flipymask)
 {
-	int flipmask = flip_screen ? 0xff : 0x00;
+	int flipmask = flip_screen_get() ? 0xff : 0x00;
 	int offs;
 
 	/* only the lower half of sprite RAM is read during rendering */
@@ -453,8 +453,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( zaxxon )
 {
-	draw_background(machine, bitmap, cliprect, TRUE);
-	draw_sprites(machine, bitmap, cliprect, 0x140, 0x180);
+	draw_background(screen->machine, bitmap, cliprect, TRUE);
+	draw_sprites(screen->machine, bitmap, cliprect, 0x140, 0x180);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }
@@ -462,8 +462,8 @@ VIDEO_UPDATE( zaxxon )
 
 VIDEO_UPDATE( futspy )
 {
-	draw_background(machine, bitmap, cliprect, TRUE);
-	draw_sprites(machine, bitmap, cliprect, 0x180, 0x180);
+	draw_background(screen->machine, bitmap, cliprect, TRUE);
+	draw_sprites(screen->machine, bitmap, cliprect, 0x180, 0x180);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }
@@ -471,8 +471,8 @@ VIDEO_UPDATE( futspy )
 
 VIDEO_UPDATE( razmataz )
 {
-	draw_background(machine, bitmap, cliprect, FALSE);
-	draw_sprites(machine, bitmap, cliprect, 0x140, 0x180);
+	draw_background(screen->machine, bitmap, cliprect, FALSE);
+	draw_sprites(screen->machine, bitmap, cliprect, 0x140, 0x180);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }
@@ -480,8 +480,8 @@ VIDEO_UPDATE( razmataz )
 
 VIDEO_UPDATE( congo )
 {
-	draw_background(machine, bitmap, cliprect, TRUE);
-	draw_sprites(machine, bitmap, cliprect, 0x280, 0x180);
+	draw_background(screen->machine, bitmap, cliprect, TRUE);
+	draw_sprites(screen->machine, bitmap, cliprect, 0x280, 0x180);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

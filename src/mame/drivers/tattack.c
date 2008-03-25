@@ -49,7 +49,7 @@ static VIDEO_UPDATE( tattack )
 
 static VIDEO_START( tattack )
 {
-		tmap = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32 );
+		tmap = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,32,32 );
 }
 
 static ADDRESS_MAP_START( mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -186,16 +186,16 @@ static MACHINE_DRIVER_START( tattack )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 8000000 / 2)	/* 4 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(mem, 0)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(tattack)
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_PALETTE_INIT(tattack )

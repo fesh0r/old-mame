@@ -406,9 +406,9 @@ static TILE_GET_INFO( get_text_tile_info )
 ***************************************************************************/
 static void create_tilemaps_0(void)
 {
-	top_tilemap[0] = tilemap_create(get_top0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	fg_tilemap[0] = tilemap_create(get_fg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	top_tilemap[0] = tilemap_create(get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[0] = tilemap_create(get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(top_tilemap[0],0);
 	tilemap_set_transparent_pen(fg_tilemap[0],0);
@@ -417,9 +417,9 @@ static void create_tilemaps_0(void)
 
 static void create_tilemaps_1(void)
 {
-	top_tilemap[1] = tilemap_create(get_top1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	fg_tilemap[1] = tilemap_create(get_fg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	top_tilemap[1] = tilemap_create(get_top1_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[1] = tilemap_create(get_fg1_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(top_tilemap[1],0);
 	tilemap_set_transparent_pen(fg_tilemap[1],0);
@@ -428,10 +428,10 @@ static void create_tilemaps_1(void)
 
 static void truxton2_create_tilemaps_0(void)
 {
-	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	top_tilemap[0] = tilemap_create(get_top0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	fg_tilemap[0] = tilemap_create(get_fg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,64,32);
+	top_tilemap[0] = tilemap_create(get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[0] = tilemap_create(get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_scroll_rows(tx_tilemap,8*32);	/* line scrolling */
 	tilemap_set_scroll_cols(tx_tilemap,1);
@@ -444,10 +444,10 @@ static void truxton2_create_tilemaps_0(void)
 
 static void batrider_create_tilemaps_0(void)
 {
-	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	top_tilemap[0] = tilemap_create(batrider_get_top0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	fg_tilemap[0] = tilemap_create(batrider_get_fg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap[0] = tilemap_create(batrider_get_bg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,64,32);
+	top_tilemap[0] = tilemap_create(batrider_get_top0_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_tilemap[0] = tilemap_create(batrider_get_fg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(batrider_get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_scroll_rows(tx_tilemap,8*32);	/* line scrolling */
 	tilemap_set_scroll_cols(tx_tilemap,1);
@@ -951,7 +951,7 @@ static void toaplan2_scroll_reg_data_w(offs_t offset, UINT16 data, UINT32 mem_ma
 					if ((toaplan2_sub_cpu == CPU_2_Z80) && (data == 3))
 					{
 						/* HACK! When tilted, sound CPU needs to be reset. */
-						if (Machine->drv->sound[0].type == SOUND_YM3812)
+						if (Machine->config->sound[0].type == SOUND_YM3812)
 						{
 							cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 							sndti_reset(SOUND_YM3812, 0);
@@ -1256,7 +1256,7 @@ static void toaplan2_log_vram(void)
     Sprite Handlers
 ***************************************************************************/
 
-static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect, int controller, int priority_to_display, int bank_sel )
+static void draw_sprites( bitmap_t *bitmap, const rectangle *cliprect, int controller, int priority_to_display, int bank_sel )
 {
 	const gfx_element *gfx = Machine->gfx[ ((controller*2)+1) ];
 
@@ -1416,7 +1416,7 @@ static void mark_tile_priority(int controller)
 }
 
 /***************************************************************************
-    Draw the game screen in the given mame_bitmap.
+    Draw the game screen in the given bitmap_t.
 ***************************************************************************/
 
 VIDEO_UPDATE( toaplan2_0 )
@@ -1431,7 +1431,7 @@ VIDEO_UPDATE( toaplan2_0 )
 	mark_sprite_priority(0);
 	mark_tile_priority(0);
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1458,7 +1458,7 @@ VIDEO_UPDATE( dogyuun_1 )
 	mark_tile_priority(0);
 	mark_tile_priority(1);
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1493,7 +1493,7 @@ VIDEO_UPDATE( batsugun_1 )
 	mark_tile_priority(0);
 	mark_tile_priority(1);
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1529,6 +1529,7 @@ VIDEO_UPDATE( batrider_0 )
 
 	int line;
 	rectangle clip;
+	const rectangle *visarea = video_screen_get_visible_area(screen);
 
 #ifdef MAME_DEBUG
 	toaplan2_log_vram();
@@ -1546,7 +1547,7 @@ VIDEO_UPDATE( batrider_0 )
 		objectbank_dirty = 0;
 	}
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	for (priority = 0; priority < 16; priority++)
 	{
@@ -1557,10 +1558,10 @@ VIDEO_UPDATE( batrider_0 )
 			draw_sprites(bitmap,cliprect,0,priority,1);	/* consider bank select */
 	}
 
-	clip.min_x = machine->screen[0].visarea.min_x;
-	clip.max_x = machine->screen[0].visarea.max_x;
-	clip.min_y = machine->screen[0].visarea.min_y;
-	clip.max_y = machine->screen[0].visarea.max_y;
+	clip.min_x = visarea->min_x;
+	clip.max_x = visarea->max_x;
+	clip.min_y = visarea->min_y;
+	clip.max_y = visarea->max_y;
 
 	/* used for 'for use in' and '8ing' screen on bbakraid, raizing on batrider */
 	for (line = 0; line < 256;line++)
@@ -1585,7 +1586,7 @@ VIDEO_UPDATE( mahoudai_0 )
 	mark_sprite_priority(0);
 	mark_tile_priority(0);
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	if (bg_tile_priority[0][0]) tilemap_draw(bitmap,cliprect,bg_tilemap[0],0,0);
 	if (fg_tile_priority[0][0]) tilemap_draw(bitmap,cliprect,fg_tilemap[0],0,0);

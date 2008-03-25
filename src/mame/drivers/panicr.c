@@ -71,35 +71,54 @@ static PALETTE_INIT( panicr )
 {
 	int i;
 
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x100);
 
-	PALETTE_INIT_CALL(RRRR_GGGG_BBBB);
-	color_prom += 256*3;
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x100; i++)
+	{
+		int r = pal4bit(color_prom[i + 0x000]);
+		int g = pal4bit(color_prom[i + 0x100]);
+		int b = pal4bit(color_prom[i + 0x200]);
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
+	}
+
+	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x300;
 
 	// txt lookup table
-	for (i = 0;i < 256;i++)
+	for (i = 0; i < 0x100; i++)
 	{
-		if (*color_prom & 0x40)
-			*(colortable++) = 0;
+		UINT8 ctabentry;
+
+		if (color_prom[i] & 0x40)
+			ctabentry = 0;
 		else
-			*(colortable++) = (*color_prom & 0x3f) + 0x80;
-		color_prom++;
+			ctabentry = (color_prom[i] & 0x3f) | 0x80;
+
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 
 	// tile lookup table
-	for (i = 0;i < 256;i++)
+	for (i = 0x100; i < 0x200; i++)
 	{
-		*(colortable++) = (*color_prom & 0x3f) + 0x00;
-		color_prom++;
+		UINT8 ctabentry = (color_prom[i] & 0x3f) | 0x00;
+
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 
 	// sprite lookup table
-	for (i = 0;i < 256;i++)
+	for (i = 0x200; i < 0x300; i++)
 	{
-		if (*color_prom & 0x40)
-			*(colortable++) = 0;
+		UINT8 ctabentry;
+
+		if (color_prom[i] & 0x40)
+			ctabentry = 0;
 		else
-			*(colortable++) = (*color_prom & 0x3f) + 0x40;
-		color_prom++;
+			ctabentry = (color_prom[i] & 0x3f) | 0x40;
+
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 }
 
@@ -119,14 +138,16 @@ static TILE_GET_INFO( get_bgtile_info )
 
 static TILE_GET_INFO( get_txttile_info )
 {
-	int code,attr;
+	int code=videoram[tile_index*4];
+	int attr=videoram[tile_index*4+2];
+	int color = attr & 0x07;
 
-	code=videoram[tile_index*4];
-	attr=videoram[tile_index*4+2];
+	tileinfo->group = color;
+
 	SET_TILE_INFO(
 		0,
 		code + ((attr & 8) << 5),
-		attr&7,
+		color,
 		0);
 }
 
@@ -167,12 +188,13 @@ ADDRESS_MAP_END
 
 static VIDEO_START( panicr )
 {
-	bgtilemap = tilemap_create( get_bgtile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,1024,16 );
-	txttilemap = tilemap_create( get_txttile_info,tilemap_scan_rows,TILEMAP_TYPE_COLORTABLE,8,8,32,32 );
-	tilemap_set_transparent_pen(txttilemap, 0);
+	bgtilemap = tilemap_create( get_bgtile_info,tilemap_scan_rows,16,16,1024,16 );
+
+	txttilemap = tilemap_create( get_txttile_info,tilemap_scan_rows,8,8,32,32 );
+	colortable_configure_tilemap_groups(machine->colortable, txttilemap, machine->gfx[0], 0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect )
 {
 	int offs,fx,fy,x,y,color,sprite;
 
@@ -191,17 +213,18 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		drawgfx(bitmap,machine->gfx[2],
 				sprite,
 				color,fx,fy,x,y,
-				cliprect,TRANSPARENCY_COLOR,0);
+				cliprect,TRANSPARENCY_PENS,
+				colortable_get_transpen_mask(machine->colortable, machine->gfx[2], color, 0));
 	}
 }
 
 static VIDEO_UPDATE( panicr)
 {
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	tilemap_mark_all_tiles_dirty( txttilemap );
 	tilemap_set_scrollx( bgtilemap,0, ((scrollram[0x02]&0x0f)<<12)+((scrollram[0x02]&0xf0)<<4)+((scrollram[0x04]&0x7f)<<1)+((scrollram[0x04]&0x80)>>7) );
 	tilemap_draw(bitmap,cliprect,bgtilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,txttilemap,0,0);
 
 	return 0;
@@ -335,21 +358,21 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( panicr )
 	MDRV_CPU_ADD(V20,16000000/2) /* Sony 8623h9 CXQ70116D-8 (V20 compatible) */
 	MDRV_CPU_PROGRAM_MAP(panicr_map,0)
-	MDRV_CPU_VBLANK_INT(panicr_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(panicr_interrupt,2)
 
 	MDRV_CPU_ADD_TAG(CPUTAG_T5182,Z80,14318180/4)	/* 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(t5182_map, 0)
 	MDRV_CPU_IO_MAP(t5182_io, 0)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(panicr)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(256*3)
+	MDRV_PALETTE_LENGTH(256*3)
 	MDRV_PALETTE_INIT(panicr)
 
 	MDRV_VIDEO_START(panicr)

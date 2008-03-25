@@ -139,7 +139,7 @@ static void ddealer_protection(running_machine *machine)
 
 static VIDEO_UPDATE( ddealer )
 {
-	ddealer_protection(machine);
+	ddealer_protection(screen->machine);
 	return 0;
 }
 
@@ -189,18 +189,19 @@ static INTERRUPT_GEN( ddealer_interrupt )
 static MACHINE_DRIVER_START( ddealer )
 	MDRV_CPU_ADD_TAG("main" , M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(ddealer,0)
-	MDRV_CPU_VBLANK_INT(ddealer_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", ddealer_interrupt)
 	MDRV_CPU_PERIODIC_INT(irq1_line_hold, 112)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_GFXDECODE(jalmah)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(0x400)
 	MDRV_MACHINE_RESET(ddealer)
 

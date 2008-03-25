@@ -5,6 +5,7 @@ Atari Drag Race Driver
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "dragrace.h"
 #include "sound/discrete.h"
 
@@ -36,10 +37,10 @@ static TIMER_CALLBACK( dragrace_frame_callback )
 
 static MACHINE_RESET( dragrace )
 {
-	timer_pulse(video_screen_get_frame_period(0), NULL, 0, dragrace_frame_callback);
+	timer_pulse(video_screen_get_frame_period(machine->primary_screen), NULL, 0, dragrace_frame_callback);
 }
 
-static void dragrace_update_misc_flags(void)
+static void dragrace_update_misc_flags(running_machine *machine)
 {
 	/* 0x0900 = set 3SPEED1         0x00000001
      * 0x0901 = set 4SPEED1         0x00000002
@@ -75,21 +76,21 @@ static void dragrace_update_misc_flags(void)
 	set_led_status(0, dragrace_misc_flags & 0x00008000);
 	set_led_status(1, dragrace_misc_flags & 0x80000000);
 
-	discrete_sound_w(DRAGRACE_MOTOR1_DATA,  ~dragrace_misc_flags & 0x0000001f);		// Speed1 data*
-	discrete_sound_w(DRAGRACE_EXPLODE1_EN, (dragrace_misc_flags & 0x00000020) ? 1: 0);	// Explosion1 enable
-	discrete_sound_w(DRAGRACE_SCREECH1_EN, (dragrace_misc_flags & 0x00000040) ? 1: 0);	// Screech1 enable
-	discrete_sound_w(DRAGRACE_KLEXPL1_EN, (dragrace_misc_flags & 0x00000200) ? 1: 0);	// KLEXPL1 enable
-	discrete_sound_w(DRAGRACE_MOTOR1_EN, (dragrace_misc_flags & 0x00000800) ? 1: 0);	// Motor1 enable
+	discrete_sound_w(machine, DRAGRACE_MOTOR1_DATA,  ~dragrace_misc_flags & 0x0000001f);		// Speed1 data*
+	discrete_sound_w(machine, DRAGRACE_EXPLODE1_EN, (dragrace_misc_flags & 0x00000020) ? 1: 0);	// Explosion1 enable
+	discrete_sound_w(machine, DRAGRACE_SCREECH1_EN, (dragrace_misc_flags & 0x00000040) ? 1: 0);	// Screech1 enable
+	discrete_sound_w(machine, DRAGRACE_KLEXPL1_EN, (dragrace_misc_flags & 0x00000200) ? 1: 0);	// KLEXPL1 enable
+	discrete_sound_w(machine, DRAGRACE_MOTOR1_EN, (dragrace_misc_flags & 0x00000800) ? 1: 0);	// Motor1 enable
 
-	discrete_sound_w(DRAGRACE_MOTOR2_DATA, (~dragrace_misc_flags & 0x001f0000) >> 0x10);	// Speed2 data*
-	discrete_sound_w(DRAGRACE_EXPLODE2_EN, (dragrace_misc_flags & 0x00200000) ? 1: 0);	// Explosion2 enable
-	discrete_sound_w(DRAGRACE_SCREECH2_EN, (dragrace_misc_flags & 0x00400000) ? 1: 0);	// Screech2 enable
-	discrete_sound_w(DRAGRACE_KLEXPL2_EN, (dragrace_misc_flags & 0x02000000) ? 1: 0);	// KLEXPL2 enable
-	discrete_sound_w(DRAGRACE_MOTOR2_EN, (dragrace_misc_flags & 0x08000000) ? 1: 0);	// Motor2 enable
+	discrete_sound_w(machine, DRAGRACE_MOTOR2_DATA, (~dragrace_misc_flags & 0x001f0000) >> 0x10);	// Speed2 data*
+	discrete_sound_w(machine, DRAGRACE_EXPLODE2_EN, (dragrace_misc_flags & 0x00200000) ? 1: 0);	// Explosion2 enable
+	discrete_sound_w(machine, DRAGRACE_SCREECH2_EN, (dragrace_misc_flags & 0x00400000) ? 1: 0);	// Screech2 enable
+	discrete_sound_w(machine, DRAGRACE_KLEXPL2_EN, (dragrace_misc_flags & 0x02000000) ? 1: 0);	// KLEXPL2 enable
+	discrete_sound_w(machine, DRAGRACE_MOTOR2_EN, (dragrace_misc_flags & 0x08000000) ? 1: 0);	// Motor2 enable
 
-	discrete_sound_w(DRAGRACE_ATTRACT_EN, (dragrace_misc_flags & 0x00001000) ? 1: 0);	// Attract enable
-	discrete_sound_w(DRAGRACE_LOTONE_EN, (dragrace_misc_flags & 0x00002000) ? 1: 0);	// LoTone enable
-	discrete_sound_w(DRAGRACE_HITONE_EN, (dragrace_misc_flags & 0x20000000) ? 1: 0);	// HiTone enable
+	discrete_sound_w(machine, DRAGRACE_ATTRACT_EN, (dragrace_misc_flags & 0x00001000) ? 1: 0);	// Attract enable
+	discrete_sound_w(machine, DRAGRACE_LOTONE_EN, (dragrace_misc_flags & 0x00002000) ? 1: 0);	// LoTone enable
+	discrete_sound_w(machine, DRAGRACE_HITONE_EN, (dragrace_misc_flags & 0x20000000) ? 1: 0);	// HiTone enable
 }
 
 static WRITE8_HANDLER( dragrace_misc_w )
@@ -101,8 +102,8 @@ static WRITE8_HANDLER( dragrace_misc_w )
 	else
 		dragrace_misc_flags &= (~mask);
 	logerror("Set   %#6x, Mask=%#10x, Flag=%#10x, Data=%x\n", 0x0900+offset, mask, dragrace_misc_flags, data & 0x01);
-	dragrace_update_misc_flags();
-	}
+	dragrace_update_misc_flags(machine);
+}
 
 static WRITE8_HANDLER( dragrace_misc_clear_w )
 {
@@ -110,7 +111,7 @@ static WRITE8_HANDLER( dragrace_misc_clear_w )
 	UINT32 mask = 0xff << (((offset >> 3) & 0x03) * 8);
 	dragrace_misc_flags &= (~mask);
 	logerror("Clear %#6x, Mask=%#10x, Flag=%#10x, Data=%x\n", 0x0920+offset, mask, dragrace_misc_flags, data & 0x01);
-	dragrace_update_misc_flags();
+	dragrace_update_misc_flags(machine);
 }
 
 static READ8_HANDLER( dragrace_input_r )
@@ -164,28 +165,28 @@ static READ8_HANDLER( dragrace_steering_r )
 
 static READ8_HANDLER( dragrace_scanline_r )
 {
-	return (video_screen_get_vpos(0) ^ 0xf0) | 0x0f;
+	return (video_screen_get_vpos(machine->primary_screen) ^ 0xf0) | 0x0f;
 }
 
 
 static ADDRESS_MAP_START( dragrace_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0080, 0x00ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0080, 0x00ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0800, 0x083f) AM_READ(dragrace_input_r)
 	AM_RANGE(0x0c00, 0x0c00) AM_READ(dragrace_steering_r)
 	AM_RANGE(0x0d00, 0x0d00) AM_READ(dragrace_scanline_r)
-	AM_RANGE(0x1000, 0x1fff) AM_READ(MRA8_ROM) /* program */
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_ROM) /* program mirror */
+	AM_RANGE(0x1000, 0x1fff) AM_READ(SMH_ROM) /* program */
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_ROM) /* program mirror */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dragrace_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0080, 0x00ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0080, 0x00ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x0900, 0x091f) AM_WRITE(dragrace_misc_w)
 	AM_RANGE(0x0920, 0x093f) AM_WRITE(dragrace_misc_clear_w)
-	AM_RANGE(0x0a00, 0x0aff) AM_WRITE(MWA8_RAM) AM_BASE(&dragrace_playfield_ram)
-	AM_RANGE(0x0b00, 0x0bff) AM_WRITE(MWA8_RAM) AM_BASE(&dragrace_position_ram)
+	AM_RANGE(0x0a00, 0x0aff) AM_WRITE(SMH_RAM) AM_BASE(&dragrace_playfield_ram)
+	AM_RANGE(0x0b00, 0x0bff) AM_WRITE(SMH_RAM) AM_BASE(&dragrace_position_ram)
 	AM_RANGE(0x0e00, 0x0eff) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE(MWA8_ROM) /* program */
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_ROM) /* program mirror */
+	AM_RANGE(0x1000, 0x1fff) AM_WRITE(SMH_ROM) /* program */
+	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_ROM) /* program mirror */
 ADDRESS_MAP_END
 
 
@@ -326,17 +327,18 @@ static MACHINE_DRIVER_START( dragrace )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6800, 12096000 / 12)
 	MDRV_CPU_PROGRAM_MAP(dragrace_readmem, dragrace_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 4)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 4)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
-	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_MACHINE_RESET(dragrace)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
+
 	MDRV_GFXDECODE(dragrace)
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_PALETTE_INIT(dragrace)

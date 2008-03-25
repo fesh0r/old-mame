@@ -64,8 +64,8 @@ static READ8_HANDLER(attckufo_io_r)
 {
 	switch(offset)
 	{
-		case 0: return input_port_0_r(0);
-		case 2: return input_port_1_r(0);
+		case 0: return input_port_0_r(machine,0);
+		case 2: return input_port_1_r(machine,0);
 	}
 	return 0xff;
 }
@@ -83,7 +83,7 @@ static WRITE8_HANDLER(attckufo_io_w)
 }
 
 static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_BASE(&mainram)
 	AM_RANGE(0x1000, 0x100f) AM_READWRITE(attckufo_port_r, attckufo_port_w)
 	AM_RANGE(0x1400, 0x1403) AM_READWRITE(attckufo_io_r, attckufo_io_w)
@@ -131,15 +131,16 @@ static MACHINE_DRIVER_START( attckufo )
 	MDRV_CPU_ADD_TAG("main", M6502, 14318181/14)
 	MDRV_CPU_PROGRAM_MAP(cpu_map, 0)
 	MDRV_CPU_PERIODIC_INT(attckufo_raster_interrupt, 15625)
-	MDRV_SCREEN_REFRESH_RATE(60)
-
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
   /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 23*8-1, 0, 22*8-1)
+
 	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(attckufo_palette))
 	MDRV_PALETTE_INIT( attckufo )
 

@@ -19,6 +19,9 @@ TODO:
   are drawn 2 pixels off in x/y directions. If you fix that, then the player
   sprite doesn't slide in the middle of the pipes when climbing...
 
+Dip locations verified for:
+- atomboy (manual)
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -122,7 +125,7 @@ static WRITE8_HANDLER( wilytwr_palbank_w )
 
 static WRITE8_HANDLER( wilytwr_flipscreen_w )
 {
-	if (flip_screen != (~data & 0x01))
+	if (flip_screen_get() != (~data & 0x01))
 	{
 		flip_screen_set(~data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -132,7 +135,7 @@ static WRITE8_HANDLER( wilytwr_flipscreen_w )
 static WRITE8_HANDLER( fghtbskt_flipscreen_w )
 {
 	flip_screen_set(data);
-	fg_flag = flip_screen ? TILE_FLIPX : 0;
+	fg_flag = flip_screen_get() ? TILE_FLIPX : 0;
 }
 
 
@@ -155,10 +158,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 static VIDEO_START( wilytowr )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		8, 8, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		8, 8, 32, 32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -166,7 +169,7 @@ static VIDEO_START( wilytowr )
 	fg_flag = 0;
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -179,7 +182,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sx = spriteram[offs + 3];
 		int sy = sy_offset - spriteram[offs];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = sy_offset - sy;
@@ -204,7 +207,7 @@ static VIDEO_UPDATE( wilytowr )
 		tilemap_set_scrolly(bg_tilemap, col, wilytowr_scrollram[col * 8]);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }
@@ -229,13 +232,13 @@ static WRITE8_HANDLER( snddata_w )
 {
 	int num_ays = (sndti_exists(SOUND_AY8910, 1)) ? 2 : 1;
 	if ((p2 & 0xf0) == 0xe0)
-		AY8910_control_port_0_w(0,offset);
+		AY8910_control_port_0_w(machine,0,offset);
 	else if ((p2 & 0xf0) == 0xa0)
-		AY8910_write_port_0_w(0,offset);
+		AY8910_write_port_0_w(machine,0,offset);
 	else if (num_ays == 2 && (p1 & 0xe0) == 0x60)
-		AY8910_control_port_1_w(0,offset);
+		AY8910_control_port_1_w(machine,0,offset);
 	else if (num_ays == 2 && (p1 & 0xe0) == 0x40)
-		AY8910_write_port_1_w(0,offset);
+		AY8910_write_port_1_w(machine,0,offset);
 	else // if ((p2 & 0xf0) != 0x70)
 		/* the port address is the data, while the data seems to be control bits */
 		logerror("%04x: snddata_w ctrl = %02x, p1 = %02x, p2 = %02x, data = %02x\n",activecpu_get_pc(),data,p1,p2,offset);
@@ -253,9 +256,9 @@ static WRITE8_HANDLER( p2_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xd000, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xd000, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf800, 0xf800) AM_READ(input_port_0_r)
 	AM_RANGE(0xf801, 0xf801) AM_READ(input_port_1_r)
 	AM_RANGE(0xf802, 0xf802) AM_READ(input_port_2_r)
@@ -263,11 +266,11 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xd000, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe000, 0xe1ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe200, 0xe2ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe300, 0xe3ff) AM_WRITE(MWA8_RAM) AM_BASE(&wilytowr_scrollram)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xd000, 0xdfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xe000, 0xe1ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xe200, 0xe2ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe300, 0xe3ff) AM_WRITE(SMH_RAM) AM_BASE(&wilytowr_scrollram)
 	AM_RANGE(0xe400, 0xe7ff) AM_WRITE(wilytowr_videoram2_w) AM_BASE(&wilytowr_videoram2)
 	AM_RANGE(0xe800, 0xebff) AM_WRITE(wilytowr_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xec00, 0xefff) AM_WRITE(wilytowr_colorram_w) AM_BASE(&colorram)
@@ -276,7 +279,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf003, 0xf003) AM_WRITE(wilytwr_palbank_w)
 	AM_RANGE(0xf006, 0xf007) AM_WRITE(coin_w)
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(soundlatch_w)
-	AM_RANGE(0xf801, 0xf801) AM_WRITE(watchdog_reset_w)	/* unknown (cleared by NMI handler) */
+	AM_RANGE(0xf801, 0xf801) AM_WRITE(SMH_NOP)	/* continues game when in stop mode (cleared by NMI handler) */
 	AM_RANGE(0xf803, 0xf803) AM_WRITE(snd_irq_w)
 ADDRESS_MAP_END
 
@@ -287,9 +290,9 @@ static ADDRESS_MAP_START( fghtbskt_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xd1ff) AM_RAM
 	AM_RANGE(0xd200, 0xd2ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd300, 0xd3ff) AM_RAM AM_BASE(&wilytowr_scrollram)
-	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(MRA8_RAM, wilytowr_videoram2_w) AM_BASE(&wilytowr_videoram2)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_RAM, wilytowr_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xdc00, 0xdfff) AM_READWRITE(MRA8_RAM, wilytowr_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(SMH_RAM, wilytowr_videoram2_w) AM_BASE(&wilytowr_videoram2)
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, wilytowr_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xdc00, 0xdfff) AM_READWRITE(SMH_RAM, wilytowr_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xf000, 0xf000) AM_READNOP //sound status
 	AM_RANGE(0xf001, 0xf001) AM_READ(input_port_0_r)
 	AM_RANGE(0xf002, 0xf002) AM_READ(input_port_1_r)
@@ -308,11 +311,11 @@ static ADDRESS_MAP_START( fghtbskt_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8039_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8039_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8039_readport, ADDRESS_SPACE_IO, 8 )
@@ -350,19 +353,27 @@ static INPUT_PORTS_START( wilytowr )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START_TAG("DSW0")
-	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW1:!1,!2")
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x01, "3" )
 	PORT_DIPSETTING(    0x02, "4" )
 	PORT_DIPSETTING(    0x03, "5" )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
-	/* TODO: support the different settings which happen in Coin Mode 2 */
-	PORT_DIPNAME( 0xf0, 0x00, DEF_STR( Coinage ) ) /* mapped on coin mode 1 */
+	PORT_DIPNAME( 0x0c, 0x00, "Bonus Points Rate" )		PORT_DIPLOCATION("SW1:!3,!4")
+	PORT_DIPSETTING(    0x00, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x04, "x1.2" )
+	PORT_DIPSETTING(    0x08, "x1.4" )
+	PORT_DIPSETTING(    0x0c, "x1.6" )
+	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SW1:!5,!6") PORT_CONDITION("DSW1",0x04,PORTCOND_EQUALS,0x04) /* coin mode 2 */
+	PORT_DIPSETTING(    0x20, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x30, DEF_STR( Free_Play ) )	/* Not documented */
+	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coin_B ) )		PORT_DIPLOCATION("SW1:!7,!8") PORT_CONDITION("DSW1",0x04,PORTCOND_EQUALS,0x04) /* coin mode 2 */
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_6C ) )
+	PORT_DIPNAME( 0xf0, 0x00, DEF_STR( Coinage ) )		PORT_DIPLOCATION("SW1:!5,!6,!7,!8") PORT_CONDITION("DSW1",0x04,PORTCOND_EQUALS,0x00) /* coin mode 1 */
 	PORT_DIPSETTING(    0x60, DEF_STR( 7C_1C ) )
 	PORT_DIPSETTING(    0x50, DEF_STR( 6C_1C ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 5C_1C ) )
@@ -381,29 +392,27 @@ static INPUT_PORTS_START( wilytowr )
 	PORT_DIPSETTING(    0xf0, DEF_STR( Free_Play ) )
 
 	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("SW2:!1")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("SW2:!2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x04, 0x00, "Coin Mode" )
+	/*  "For cabinets with a single coin selector or 2 coin selectors of the same value, set to Mode 1.
+        For cabinets with coin selectors of two different values, set to Mode 2." */
+	PORT_DIPNAME( 0x04, 0x00, "Coin Mode" )				PORT_DIPLOCATION("SW2:!3")
 	PORT_DIPSETTING(    0x00, "Mode 1" )
 	PORT_DIPSETTING(    0x04, "Mode 2" )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x08, 0x00, "SW2:!4" )		/* Listed as "Unused" */
 	/* In stop mode, press 1 to stop and 2 to restart */
-	PORT_DIPNAME( 0x10, 0x00, "Stop Mode (Cheat)")
+	PORT_DIPNAME( 0x10, 0x00, "Stop Mode (Cheat)")		PORT_DIPLOCATION("SW2:!5")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x00, "Invulnerability (Cheat)")
+	PORT_DIPUNUSED_DIPLOC( 0x08, 0x00, "SW2:!6" )		/* Listed as "Unused" */
+	PORT_DIPNAME( 0x40, 0x00, "Invulnerability (Cheat)") PORT_DIPLOCATION("SW2:!7")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
-	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
+	PORT_SERVICE_DIPLOC(0x80, IP_ACTIVE_HIGH, "SW2:!8" )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( fghtbskt )
@@ -515,21 +524,21 @@ static MACHINE_DRIVER_START( wilytowr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,4000000)	/* 4 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(I8039,8000000)	/* ????? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(i8039_readmem,i8039_writemem)
 	MDRV_CPU_IO_MAP(i8039_readport,i8039_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(wilytowr)
 	MDRV_PALETTE_LENGTH(256+4)
 
@@ -552,21 +561,21 @@ static MACHINE_DRIVER_START( fghtbskt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 12000000/4)     /* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(fghtbskt_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(I8039,12000000/4)	/* ????? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(i8039_readmem,i8039_writemem)
 	MDRV_CPU_IO_MAP(i8039_readport,i8039_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(fghtbskt)
 	MDRV_PALETTE_LENGTH(256)
 

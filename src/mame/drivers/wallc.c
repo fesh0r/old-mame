@@ -90,7 +90,7 @@ static PALETTE_INIT( wallc )
 			2,	resistances_rg,	weights_g,	330,	0,
 			3,	resistances_b,	weights_b,	330,	655+220);
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit7,r,g,b;
 
@@ -127,7 +127,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( wallc )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_y,	TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flip_y,	8, 8, 32, 32);
 }
 
 static VIDEO_UPDATE( wallc )
@@ -278,16 +278,16 @@ static MACHINE_DRIVER_START( wallc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 12288000 / 4)	/* 3.072 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(wallc_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(wallc)
 	MDRV_PALETTE_LENGTH(32)
 

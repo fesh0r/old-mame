@@ -637,7 +637,7 @@ static void adjust_timer_interrupt(void)
 	{
 		UINT64 clocks_until_int = hyperstone.tr_clocks_per_tick - (clocks_since_base % hyperstone.tr_clocks_per_tick);
 		UINT64 cycles_until_int = (clocks_until_int << hyperstone.clock_scale) + cycles_until_next_clock;
-		timer_adjust(hyperstone.timer, ATTOTIME_IN_CYCLES(cycles_until_int + 1, cpunum), cpunum * 2 + 1, attotime_never);
+		timer_adjust_oneshot(hyperstone.timer, ATTOTIME_IN_CYCLES(cycles_until_int + 1, cpunum), cpunum * 2 + 1);
 	}
 
 	/* else if the timer interrupt is enabled, configure it to fire at the appropriate time */
@@ -648,19 +648,19 @@ static void adjust_timer_interrupt(void)
 		if (delta > 0x80000000)
 		{
 			if (!hyperstone.timer_int_pending)
-				timer_adjust(hyperstone.timer, attotime_zero, cpunum * 2 + 0, attotime_never);
+				timer_adjust_oneshot(hyperstone.timer, attotime_zero, cpunum * 2 + 0);
 		}
 		else
 		{
 			UINT64 clocks_until_int = mulu_32x32(delta, hyperstone.tr_clocks_per_tick);
 			UINT64 cycles_until_int = (clocks_until_int << hyperstone.clock_scale) + cycles_until_next_clock;
-			timer_adjust(hyperstone.timer, ATTOTIME_IN_CYCLES(cycles_until_int, cpunum), cpunum * 2 + 0, attotime_never);
+			timer_adjust_oneshot(hyperstone.timer, ATTOTIME_IN_CYCLES(cycles_until_int, cpunum), cpunum * 2 + 0);
 		}
 	}
 
 	/* otherwise, disable the timer */
 	else
-		timer_adjust(hyperstone.timer, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(hyperstone.timer, attotime_never, 0);
 }
 
 static TIMER_CALLBACK( e132xs_timer_callback )
@@ -1470,7 +1470,7 @@ static void check_interrupts(void)
 	/* IO3 is priority 5; state is in bit 6 of ISR; FCR bit 10 enables input and FCR bit 8 inhibits interrupt */
 	if (IO3_LINE_STATE && (FCR & 0x00000500) == 0x00000400)
 	{
-		execute_int(get_trap_addr(IO3));
+		execute_int(get_trap_addr(TRAPNO_IO3));
 		(*hyperstone.irq_callback)(IRQ_IO3);
 		return;
 	}
@@ -1479,14 +1479,14 @@ static void check_interrupts(void)
 	if (hyperstone.timer_int_pending && (FCR & 0x00b00000) == 0x00300000)
 	{
 		hyperstone.timer_int_pending = 0;
-		execute_int(get_trap_addr(TIMER));
+		execute_int(get_trap_addr(TRAPNO_TIMER));
 		return;
 	}
 
 	/* INT1 is priority 7; state is in bit 0 of ISR; FCR bit 28 inhibits interrupt */
 	if (INT1_LINE_STATE && (FCR & 0x10000000) == 0x00000000)
 	{
-		execute_int(get_trap_addr(INT1));
+		execute_int(get_trap_addr(TRAPNO_INT1));
 		(*hyperstone.irq_callback)(IRQ_INT1);
 		return;
 	}
@@ -1495,14 +1495,14 @@ static void check_interrupts(void)
 	if (hyperstone.timer_int_pending && (FCR & 0x00b00000) == 0x00200000)
 	{
 		hyperstone.timer_int_pending = 0;
-		execute_int(get_trap_addr(TIMER));
+		execute_int(get_trap_addr(TRAPNO_TIMER));
 		return;
 	}
 
 	/* INT2 is priority 9; state is in bit 1 of ISR; FCR bit 29 inhibits interrupt */
 	if (INT2_LINE_STATE && (FCR & 0x20000000) == 0x00000000)
 	{
-		execute_int(get_trap_addr(INT2));
+		execute_int(get_trap_addr(TRAPNO_INT2));
 		(*hyperstone.irq_callback)(IRQ_INT2);
 		return;
 	}
@@ -1511,14 +1511,14 @@ static void check_interrupts(void)
 	if (hyperstone.timer_int_pending && (FCR & 0x00b00000) == 0x00100000)
 	{
 		hyperstone.timer_int_pending = 0;
-		execute_int(get_trap_addr(TIMER));
+		execute_int(get_trap_addr(TRAPNO_TIMER));
 		return;
 	}
 
 	/* INT3 is priority 11; state is in bit 2 of ISR; FCR bit 30 inhibits interrupt */
 	if (INT3_LINE_STATE && (FCR & 0x40000000) == 0x00000000)
 	{
-		execute_int(get_trap_addr(INT3));
+		execute_int(get_trap_addr(TRAPNO_INT3));
 		(*hyperstone.irq_callback)(IRQ_INT3);
 		return;
 	}
@@ -1527,14 +1527,14 @@ static void check_interrupts(void)
 	if (hyperstone.timer_int_pending && (FCR & 0x00b00000) == 0x00000000)
 	{
 		hyperstone.timer_int_pending = 0;
-		execute_int(get_trap_addr(TIMER));
+		execute_int(get_trap_addr(TRAPNO_TIMER));
 		return;
 	}
 
 	/* INT4 is priority 13; state is in bit 3 of ISR; FCR bit 31 inhibits interrupt */
 	if (INT4_LINE_STATE && (FCR & 0x80000000) == 0x00000000)
 	{
-		execute_int(get_trap_addr(INT4));
+		execute_int(get_trap_addr(TRAPNO_INT4));
 		(*hyperstone.irq_callback)(IRQ_INT4);
 		return;
 	}
@@ -1542,7 +1542,7 @@ static void check_interrupts(void)
 	/* IO1 is priority 14; state is in bit 4 of ISR; FCR bit 2 enables input and FCR bit 0 inhibits interrupt */
 	if (IO1_LINE_STATE && (FCR & 0x00000005) == 0x00000004)
 	{
-		execute_int(get_trap_addr(IO1));
+		execute_int(get_trap_addr(TRAPNO_IO1));
 		(*hyperstone.irq_callback)(IRQ_IO1);
 		return;
 	}
@@ -1550,7 +1550,7 @@ static void check_interrupts(void)
 	/* IO2 is priority 15; state is in bit 5 of ISR; FCR bit 6 enables input and FCR bit 4 inhibits interrupt */
 	if (IO2_LINE_STATE && (FCR & 0x00000050) == 0x00000040)
 	{
-		execute_int(get_trap_addr(IO2));
+		execute_int(get_trap_addr(TRAPNO_IO2));
 		(*hyperstone.irq_callback)(IRQ_IO2);
 		return;
 	}
@@ -1598,32 +1598,44 @@ static void e116_init(int index, int clock, const void *config, int (*irqcallbac
 
 	hyperstone_init(index, clock, config, irqcallback, scale_mask);
 }
+#endif
 
+#if (HAS_E116T)
 static void e116t_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e116_init(index, clock, config, irqcallback, 0);
 }
+#endif
 
+#if (HAS_E116XT)
 static void e116xt_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e116_init(index, clock, config, irqcallback, 3);
 }
+#endif
 
+#if (HAS_E116XS)
 static void e116xs_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e116_init(index, clock, config, irqcallback, 7);
 }
+#endif
 
+#if (HAS_E116XSR)
 static void e116xsr_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e116_init(index, clock, config, irqcallback, 7);
 }
+#endif
 
+#if (HAS_GMS30C2116)
 static void gms30c2116_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e116_init(index, clock, config, irqcallback, 0);
 }
+#endif
 
+#if (HAS_GMS30C2216)
 static void gms30c2216_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e116_init(index, clock, config, irqcallback, 0);
@@ -1647,42 +1659,58 @@ static void e132_init(int index, int clock, const void *config, int (*irqcallbac
 
 	hyperstone_init(index, clock, config, irqcallback, scale_mask);
 }
+#endif
 
+#if (HAS_E132N)
 static void e132n_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 0);
 }
+#endif
 
+#if (HAS_E132T)
 static void e132t_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 0);
 }
+#endif
 
+#if (HAS_E132XN)
 static void e132xn_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 3);
 }
+#endif
 
+#if (HAS_E132XT)
 static void e132xt_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 3);
 }
+#endif
 
+#if (HAS_E132XS)
 static void e132xs_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 7);
 }
+#endif
 
+#if (HAS_E132XSR)
 static void e132xsr_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 7);
 }
+#endif
 
+#if (HAS_GMS30C2132)
 static void gms30c2132_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 0);
 }
+#endif
 
+#if (HAS_GMS30C2232)
 static void gms30c2232_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
 	e132_init(index, clock, config, irqcallback, 0);
@@ -1711,7 +1739,7 @@ static void hyperstone_reset(void)
 	set_global_register(FCR_REGISTER, ~0);
 	set_global_register(TPR_REGISTER, 0xc000000);
 
-	PC = get_trap_addr(RESET);
+	PC = get_trap_addr(TRAPNO_RESET);
 	change_pc(PC);
 
 	SET_FP(0);
@@ -1758,7 +1786,7 @@ static offs_t hyperstone_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const
 
 INLINE void hyperstone_chk(struct regs_decode *decode)
 {
-	UINT32 addr = get_trap_addr(RANGE_ERROR);
+	UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 
 	if( SRC_IS_SR )
 	{
@@ -1811,7 +1839,7 @@ INLINE void hyperstone_movd(struct regs_decode *decode)
 
 			if( (!old_s && GET_S) || (!GET_S && !old_l && GET_L))
 			{
-				UINT32 addr = get_trap_addr(PRIVILEGE_ERROR);
+				UINT32 addr = get_trap_addr(TRAPNO_PRIVILEGE_ERROR);
 				execute_exception(addr);
 			}
 
@@ -1887,7 +1915,7 @@ INLINE void hyperstone_divu(struct regs_decode *decode)
 				//N -> undefined
 				UINT32 addr;
 				SET_V(1);
-				addr = get_trap_addr(RANGE_ERROR);
+				addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 				execute_exception(addr);
 			}
 			else
@@ -1936,7 +1964,7 @@ INLINE void hyperstone_divs(struct regs_decode *decode)
 				//N -> undefined
 				UINT32 addr;
 				SET_V(1);
-				addr = get_trap_addr(RANGE_ERROR);
+				addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 				execute_exception(addr);
 			}
 			else
@@ -1976,12 +2004,12 @@ INLINE void hyperstone_xm(struct regs_decode *decode)
 			case 3:
 				if( !SRC_IS_PC && (SREG > EXTRA_U) )
 				{
-					UINT32 addr = get_trap_addr(RANGE_ERROR);
+					UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 					execute_exception(addr);
 				}
 				else if( SRC_IS_PC && (SREG >= EXTRA_U) )
 				{
-					UINT32 addr = get_trap_addr(RANGE_ERROR);
+					UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 					execute_exception(addr);
 				}
 				else
@@ -2067,7 +2095,7 @@ INLINE void hyperstone_sums(struct regs_decode *decode)
 
 	if( GET_V && !SRC_IS_SR )
 	{
-		UINT32 addr = get_trap_addr(RANGE_ERROR);
+		UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 		execute_exception(addr);
 	}
 }
@@ -2104,7 +2132,7 @@ INLINE void hyperstone_mov(struct regs_decode *decode)
 {
 	if( !GET_S && decode->dst >= 16 )
 	{
-		UINT32 addr = get_trap_addr(PRIVILEGE_ERROR);
+		UINT32 addr = get_trap_addr(TRAPNO_PRIVILEGE_ERROR);
 		execute_exception(addr);
 	}
 
@@ -2169,7 +2197,7 @@ INLINE void hyperstone_adds(struct regs_decode *decode)
 
 	if( GET_V )
 	{
-		UINT32 addr = get_trap_addr(RANGE_ERROR);
+		UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 		execute_exception(addr);
 	}
 }
@@ -2305,7 +2333,7 @@ INLINE void hyperstone_subs(struct regs_decode *decode)
 
 	if( GET_V )
 	{
-		UINT32 addr = get_trap_addr(RANGE_ERROR);
+		UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 		execute_exception(addr);
 	}
 }
@@ -2409,7 +2437,7 @@ INLINE void hyperstone_negs(struct regs_decode *decode)
 
 	if( GET_V && !SRC_IS_SR ) //trap doesn't occur when source is SR
 	{
-		UINT32 addr = get_trap_addr(RANGE_ERROR);
+		UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 		execute_exception(addr);
 	}
 }
@@ -2443,7 +2471,7 @@ INLINE void hyperstone_movi(struct regs_decode *decode)
 {
 	if( !GET_S && decode->dst >= 16 )
 	{
-		UINT32 addr = get_trap_addr(PRIVILEGE_ERROR);
+		UINT32 addr = get_trap_addr(TRAPNO_PRIVILEGE_ERROR);
 		execute_exception(addr);
 	}
 
@@ -2517,7 +2545,7 @@ INLINE void hyperstone_addsi(struct regs_decode *decode)
 
 	if( GET_V )
 	{
-		UINT32 addr = get_trap_addr(RANGE_ERROR);
+		UINT32 addr = get_trap_addr(TRAPNO_RANGE_ERROR);
 		execute_exception(addr);
 	}
 }
@@ -4488,7 +4516,7 @@ INLINE void hyperstone_frame(struct regs_decode *decode)
 
 		if( tmp_flag )
 		{
-			UINT32 addr = get_trap_addr(FRAME_ERROR);
+			UINT32 addr = get_trap_addr(TRAPNO_FRAME_ERROR);
 			execute_exception(addr);
 		}
 	}
@@ -4752,7 +4780,7 @@ static int hyperstone_execute(int cycles)
 
 		if( GET_T && GET_P && hyperstone.delay.delay_cmd == NO_DELAY ) /* Not in a Delayed Branch instructions */
 		{
-			UINT32 addr = get_trap_addr(TRACE_EXCEPTION);
+			UINT32 addr = get_trap_addr(TRAPNO_TRACE_EXCEPTION);
 			execute_exception(addr);
 		}
 
@@ -5062,8 +5090,8 @@ static void hyperstone_get_info(UINT32 state, cpuinfo *info)
 #endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &hyperstone_ICount;		break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:    info->internal_map = 0;	break;
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_IO:      info->internal_map = 0;	break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:    info->internal_map16 = NULL;	break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_IO:      info->internal_map16 = NULL;	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_CORE_FAMILY:					strcpy(info->s, "Hyperstone CPU");		break;
@@ -5217,7 +5245,7 @@ void e116t_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 16;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e116_4k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map16 = address_map_e116_4k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e116t_init;					break;
@@ -5240,7 +5268,7 @@ void e116xt_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 16;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e116_8k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map16 = address_map_e116_8k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e116xt_init;					break;
@@ -5263,7 +5291,7 @@ void e116xs_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 16;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e116_16k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map16 = address_map_e116_16k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e116xs_init;					break;
@@ -5286,7 +5314,7 @@ void e116xsr_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 16;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e116_16k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map16 = address_map_e116_16k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e116xsr_init;					break;
@@ -5309,7 +5337,7 @@ void e132n_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_4k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_4k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e132n_init;					break;
@@ -5332,7 +5360,7 @@ void e132t_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_4k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_4k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e132t_init;					break;
@@ -5355,7 +5383,7 @@ void e132xn_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_8k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_8k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e132xn_init;					break;
@@ -5378,7 +5406,7 @@ void e132xt_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_8k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_8k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e132xt_init;					break;
@@ -5401,7 +5429,7 @@ void e132xs_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_16k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_16k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e132xs_init;					break;
@@ -5424,7 +5452,7 @@ void e132xsr_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_16k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_16k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = e132xsr_init;					break;
@@ -5447,7 +5475,7 @@ void gms30c2116_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 16;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e116_4k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map16 = address_map_e116_4k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = gms30c2116_init;					break;
@@ -5470,7 +5498,7 @@ void gms30c2132_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_4k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_4k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = gms30c2132_init;					break;
@@ -5493,7 +5521,7 @@ void gms30c2216_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 16;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 16;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e116_8k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map16 = address_map_e116_8k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = gms30c2216_init;					break;
@@ -5516,7 +5544,7 @@ void gms30c2232_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_PROGRAM:	info->i = 32;					break;
 		case CPUINFO_INT_DATABUS_WIDTH + ADDRESS_SPACE_IO:		info->i = 32;					break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_e132_8k_iram_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map32 = address_map_e132_8k_iram_map; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case CPUINFO_PTR_INIT:							info->init = gms30c2232_init;					break;

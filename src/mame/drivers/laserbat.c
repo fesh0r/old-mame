@@ -25,14 +25,16 @@ TODO:
 #include "sound/sn76477.h"
 #include "sound/tms3615.h"
 
-extern WRITE8_HANDLER( laserbat_csound1_w );
-extern WRITE8_HANDLER( laserbat_csound2_w );
+WRITE8_HANDLER( laserbat_csound1_w );
+WRITE8_HANDLER( laserbat_csound2_w );
 
 static tilemap *bg_tilemap;
 static int laserbat_video_page = 0;
 static int laserbat_input_mux = 0;
-
-static mame_bitmap *collision_bitmap;
+static s2636_t *s2636_0, *s2636_1, *s2636_2;
+static UINT8 *s2636_0_ram;
+static UINT8 *s2636_1_ram;
+static UINT8 *s2636_2_ram;
 
 /* information for the single 32x32 sprite displayed */
 static struct sprite_info
@@ -78,7 +80,7 @@ static WRITE8_HANDLER( laserbat_input_mux_w )
 {
 	laserbat_input_mux = (data & 0x30) >> 4;
 
-	flip_screen = data & 0x08;
+	flip_screen_set_no_update(data & 0x08);
 
 	coin_counter_w(0,data & 1);
 
@@ -182,9 +184,9 @@ static ADDRESS_MAP_START( laserbat_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7800, 0x7bff) AM_ROM
 
 	AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_WRITENOP // always 0 (bullet ram in Quasar)
-	AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_RAM AM_BASE(&s2636_1_ram)
-	AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_RAM AM_BASE(&s2636_2_ram)
-	AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_RAM AM_BASE(&s2636_3_ram)
+	AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_RAM AM_BASE(&s2636_0_ram)
+	AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_RAM AM_BASE(&s2636_1_ram)
+	AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_RAM AM_BASE(&s2636_2_ram)
 	AM_RANGE(0x1800, 0x1bff) AM_MIRROR(0x6000) AM_WRITE(laserbat_videoram_w)
 	AM_RANGE(0x1c00, 0x1fff) AM_MIRROR(0x6000) AM_RAM
 ADDRESS_MAP_END
@@ -489,9 +491,6 @@ static const gfx_layout sprites_layout =
 
 static GFXDECODE_START( laserbat )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout,       0, 256 )	/* Rom chars */
-	GFXDECODE_ENTRY( REGION_CPU1, 0x1500, s2636_gfx_layout, 0,   8 )	/* s2636 #1  */
-	GFXDECODE_ENTRY( REGION_CPU1, 0x1600, s2636_gfx_layout, 0,   8 )	/* s2636 #2  */
-	GFXDECODE_ENTRY( REGION_CPU1, 0x1700, s2636_gfx_layout, 0,   8 )	/* s2636 #3  */
 	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, sprites_layout,   0,   8 )	/* Sprites   */
 GFXDECODE_END
 
@@ -503,31 +502,64 @@ static TILE_GET_INFO( get_tile_info )
 
 static VIDEO_START( laserbat )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	int screen_width = video_screen_get_width(machine->primary_screen);
+	int screen_height = video_screen_get_height(machine->primary_screen);
+
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	videoram = (UINT8 *)auto_malloc(0x400);
 	colorram = (UINT8 *)auto_malloc(0x400);
 
-	collision_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,BITMAP_FORMAT_INDEXED8);
-
-	s2636_x_offset = -19;
+	/* configure the S2636 chips */
+	s2636_0 = s2636_config(s2636_0_ram, screen_height, screen_width, 0, -19);
+	s2636_1 = s2636_config(s2636_1_ram, screen_height, screen_width, 0, -19);
+	s2636_2 = s2636_config(s2636_2_ram, screen_height, screen_width, 0, -19);
 }
 
 static VIDEO_UPDATE( laserbat )
 {
+	int y;
+	bitmap_t *s2636_0_bitmap;
+	bitmap_t *s2636_1_bitmap;
+	bitmap_t *s2636_2_bitmap;
+
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
-	s2636_update_bitmap(machine,bitmap,s2636_1_ram,1,collision_bitmap);
-	s2636_update_bitmap(machine,bitmap,s2636_2_ram,2,collision_bitmap);
-	s2636_update_bitmap(machine,bitmap,s2636_3_ram,3,collision_bitmap);
+    /* update the S2636 chips */
+	s2636_0_bitmap = s2636_update(s2636_0, cliprect);
+	s2636_1_bitmap = s2636_update(s2636_1, cliprect);
+	s2636_2_bitmap = s2636_update(s2636_2, cliprect);
+
+	/* copy the S2636 images into the main bitmap */
+	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
+	{
+		int x;
+
+		for (x = cliprect->min_x; x <= cliprect->max_x; x++)
+		{
+			int pixel0 = *BITMAP_ADDR16(s2636_0_bitmap, y, x);
+			int pixel1 = *BITMAP_ADDR16(s2636_1_bitmap, y, x);
+			int pixel2 = *BITMAP_ADDR16(s2636_2_bitmap, y, x);
+
+			if (S2636_IS_PIXEL_DRAWN(pixel0))
+				*BITMAP_ADDR16(bitmap, y, x) = S2636_PIXEL_COLOR(pixel0);
+
+			if (S2636_IS_PIXEL_DRAWN(pixel1))
+				*BITMAP_ADDR16(bitmap, y, x) = S2636_PIXEL_COLOR(pixel1);
+
+			if (S2636_IS_PIXEL_DRAWN(pixel2))
+				*BITMAP_ADDR16(bitmap, y, x) = S2636_PIXEL_COLOR(pixel2);
+		}
+	}
 
 	if(sprite_info.enable)
-		drawgfx(bitmap,machine->gfx[4],
+		drawgfx(bitmap,screen->machine->gfx[1],
 		        sprite_info.code,
 				sprite_info.color,
 				0,0,
 				sprite_info.x - 6,sprite_info.y,
 				cliprect,TRANSPARENCY_PEN,0);
+
 	return 0;
 }
 
@@ -570,9 +602,9 @@ static int active_8910,port0a;
 static READ8_HANDLER( zaccaria_port0a_r )
 {
 	if (active_8910 == 0)
-		return AY8910_read_port_0_r(0);
+		return AY8910_read_port_0_r(machine,0);
 	else
-		return AY8910_read_port_1_r(0);
+		return AY8910_read_port_1_r(machine,0);
 }
 
 static WRITE8_HANDLER( zaccaria_port0a_w )
@@ -590,9 +622,9 @@ static WRITE8_HANDLER( zaccaria_port0b_w )
 	{
 		/* bit 0 goes to the 8910 #0 BC1 pin */
 		if (last & 0x01)
-			AY8910_control_port_0_w(0,port0a);
+			AY8910_control_port_0_w(machine,0,port0a);
 		else
-			AY8910_write_port_0_w(0,port0a);
+			AY8910_write_port_0_w(machine,0,port0a);
 	}
 	else if ((last & 0x02) == 0x00 && (data & 0x02) == 0x02)
 	{
@@ -605,9 +637,9 @@ static WRITE8_HANDLER( zaccaria_port0b_w )
 	{
 		/* bit 2 goes to the 8910 #1 BC1 pin */
 		if (last & 0x04)
-			AY8910_control_port_1_w(0,port0a);
+			AY8910_control_port_1_w(machine,0,port0a);
 		else
-			AY8910_write_port_1_w(0,port0a);
+			AY8910_write_port_1_w(machine,0,port0a);
 	}
 	else if ((last & 0x08) == 0x00 && (data & 0x08) == 0x08)
 	{
@@ -654,7 +686,7 @@ static INTERRUPT_GEN( zaccaria_cb1_toggle )
 {
 	static int toggle;
 
-	pia_0_cb1_w(0,toggle & 1);
+	pia_0_cb1_w(machine,0,toggle & 1);
 	toggle ^= 1;
 }
 
@@ -664,20 +696,18 @@ static MACHINE_DRIVER_START( laserbat )
 	MDRV_CPU_ADD(S2650, 14318180/4) // ???
 	MDRV_CPU_PROGRAM_MAP(laserbat_map,0)
 	MDRV_CPU_IO_MAP(laserbat_io_map,0)
-	MDRV_CPU_VBLANK_INT(laserbat_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", laserbat_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 29*8-1, 2*8, 32*8-1)
 
 	MDRV_GFXDECODE(laserbat)
 	MDRV_PALETTE_LENGTH(1024)
-	MDRV_COLORTABLE_LENGTH(4096)
 
 	MDRV_VIDEO_START(laserbat)
 	MDRV_VIDEO_UPDATE(laserbat)
@@ -700,27 +730,25 @@ static MACHINE_DRIVER_START( catnmous )
 	MDRV_CPU_ADD(S2650, 14318000/4)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(laserbat_map,0)
 	MDRV_CPU_IO_MAP(catnmous_io_map,0)
-	MDRV_CPU_VBLANK_INT(laserbat_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", laserbat_interrupt)
 
 	MDRV_CPU_ADD(M6802,3580000) /* ? */
 	MDRV_CPU_PROGRAM_MAP(catnmous_sound_map,0)
 	MDRV_CPU_PERIODIC_INT(zaccaria_cb1_toggle, (double)3580000/4096)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_START(catnmous)
 	MDRV_MACHINE_RESET(catnmous)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 32*8-1)
 
 	MDRV_GFXDECODE(laserbat)
 	MDRV_PALETTE_LENGTH(1024)
-	MDRV_COLORTABLE_LENGTH(4096)
 
 	MDRV_VIDEO_START(laserbat)
 	MDRV_VIDEO_UPDATE(laserbat)

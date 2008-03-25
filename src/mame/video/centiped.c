@@ -87,7 +87,7 @@ static void init_penmask(void)
 
 VIDEO_START( centiped )
 {
-	bg_tilemap = tilemap_create(centiped_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	bg_tilemap = tilemap_create(centiped_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	init_penmask();
 
@@ -100,7 +100,7 @@ VIDEO_START( centiped )
 
 VIDEO_START( warlords )
 {
-	bg_tilemap = tilemap_create(warlords_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	bg_tilemap = tilemap_create(warlords_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	/* we overload centiped_flipscreen here to track the cocktail/upright state */
 	centiped_flipscreen = readinputport(0) & 0x80;
@@ -110,7 +110,7 @@ VIDEO_START( warlords )
 
 VIDEO_START( milliped )
 {
-	bg_tilemap = tilemap_create(milliped_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	bg_tilemap = tilemap_create(milliped_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	init_penmask();
 
@@ -122,7 +122,7 @@ VIDEO_START( milliped )
 
 VIDEO_START( bullsdrt )
 {
-	bg_tilemap = tilemap_create(bullsdrt_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	bg_tilemap = tilemap_create(bullsdrt_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	init_penmask();
 
@@ -277,7 +277,7 @@ PALETTE_INIT( warlords )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		UINT8 pen;
 		int r, g, b;
@@ -434,7 +434,7 @@ VIDEO_UPDATE( centiped )
 		int x = spriteram[offs + 0x20];
 		int y = 240 - spriteram[offs + 0x10];
 
-		drawgfx(bitmap, machine->gfx[1], code, color, flipx, flipy, x, y,
+		drawgfx(bitmap, screen->machine->gfx[1], code, color, flipx, flipy, x, y,
 				&spriteclip, TRANSPARENCY_PENS, penmask[color & 0x3f]);
 	}
 	return 0;
@@ -443,7 +443,7 @@ VIDEO_UPDATE( centiped )
 
 VIDEO_UPDATE( warlords )
 {
-	int upright_mode = input_port_0_r(0) & 0x80;
+	int upright_mode = readinputport(0) & 0x80;
 	int offs;
 
 	/* if the cocktail/upright switch flipped, force refresh */
@@ -479,7 +479,7 @@ VIDEO_UPDATE( warlords )
 			flipx = !flipx;
 		}
 
-		drawgfx(bitmap, machine->gfx[1], code, color, flipx, flipy, x, y,
+		drawgfx(bitmap, screen->machine->gfx[1], code, color, flipx, flipy, x, y,
 				cliprect, TRANSPARENCY_PEN, 0);
 	}
 	return 0;
@@ -510,7 +510,7 @@ VIDEO_UPDATE( bullsdrt )
 		int x = spriteram[offs + 0x20];
 		int y = 240 - spriteram[offs + 0x10];
 
-		drawgfx(bitmap, machine->gfx[1], code, color & 0x3f, 1, flipy, x, y,
+		drawgfx(bitmap, screen->machine->gfx[1], code, color & 0x3f, 1, flipy, x, y,
 				&spriteclip, TRANSPARENCY_PEN, 0);
 	}
 	return 0;
@@ -547,7 +547,7 @@ VIDEO_UPDATE( milliped )
 			flipy = !flipy;
 		}
 
-		drawgfx(bitmap, machine->gfx[1], code, color, flipx, flipy, x, y,
+		drawgfx(bitmap, screen->machine->gfx[1], code, color, flipx, flipy, x, y,
 				&spriteclip, TRANSPARENCY_PENS, penmask[color & 0x3f]);
 	}
 	return 0;

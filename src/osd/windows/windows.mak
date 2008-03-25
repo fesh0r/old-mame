@@ -71,7 +71,7 @@ OBJDIRS += $(WINOBJ)
 
 RC = @windres --use-temp-file
 
-RCDEFS = -DNDEBUG -D_WIN32_IE=0x0400
+RCDEFS = -DNDEBUG -D_WIN32_IE=0x0501
 
 RCFLAGS = -O coff -I $(WINSRC) -I $(WINOBJ)
 
@@ -135,6 +135,7 @@ DEFS += -D_CRT_SECURE_NO_DEPRECATE -DXML_STATIC -D__inline__=__inline -Dsnprintf
 # make msvcprep into a pre-build step
 # OSPREBUILD = $(VCONV)
 
+ifneq ($(CROSS_BUILD),1)
 # add VCONV to the build tools
 BUILD += $(VCONV)
 
@@ -147,7 +148,7 @@ $(WINOBJ)/vconv.o: $(WINSRC)/vconv.c
 	@cl.exe /nologo /O1 -D_CRT_SECURE_NO_DEPRECATE -c $< /Fo$@
 
 endif
-
+endif
 
 
 #-------------------------------------------------
@@ -197,7 +198,11 @@ endif
 LIBS += -luser32 -lgdi32 -lddraw -ldsound -ldinput -ldxguid -lwinmm -ladvapi32 -lcomctl32 -lshlwapi
 
 ifdef PTR64
+ifdef MSVC_BUILD
 LIBS += -lbufferoverflowu
+else
+DEFS += -D_COM_interface=struct
+endif
 endif
 
 
@@ -286,25 +291,6 @@ $(LEDUTIL): $(LEDUTILOBJS) $(LIBOCORE)
 
 
 #-------------------------------------------------
-# rule for making the verinfo tool
-#-------------------------------------------------
-
-VERINFO = $(WINOBJ)/verinfo$(EXE)
-
-ifneq ($(CROSS_BUILD),1)
-BUILD += $(VERINFO)
-
-VERINFOOBJS = \
-	$(WINOBJ)/verinfo.o
-
-$(VERINFO): $(VERINFOOBJS) $(LIBOCORE)
-	@echo Linking $@...
-	$(LD) $(LDFLAGS) $^ $(LIBS) -o $@
-endif
-
-
-
-#-------------------------------------------------
 # generic rule for the resource compiler
 #-------------------------------------------------
 
@@ -320,6 +306,7 @@ $(WINOBJ)/%.res: $(WINSRC)/%.rc | $(OSPREBUILD)
 
 $(RESFILE): $(WINSRC)/mame.rc $(WINOBJ)/mamevers.rc
 
-$(WINOBJ)/mamevers.rc: $(VERINFO) $(SRC)/version.c
+$(WINOBJ)/mamevers.rc: $(BUILDOUT)/verinfo$(BUILD_EXE) $(SRC)/version.c
 	@echo Emitting $@...
-	@$(VERINFO) $(SRC)/version.c > $@
+	@$(BUILDOUT)/verinfo$(BUILD_EXE) -b windows $(SRC)/version.c > $@
+

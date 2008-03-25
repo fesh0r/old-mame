@@ -14,7 +14,7 @@ static tilemap *aquarium_bak_tilemap;
 extern UINT16 *aquarium_bak_videoram;
 
 /* gcpinbal.c modified */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int y_offs)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int y_offs)
 {
 	int offs,chain_pos;
 	int x,y,curx,cury;
@@ -153,11 +153,11 @@ WRITE16_HANDLER( aquarium_bak_videoram_w )
 
 VIDEO_START(aquarium)
 {
-	aquarium_txt_tilemap = tilemap_create(get_aquarium_txt_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
+	aquarium_txt_tilemap = tilemap_create(get_aquarium_txt_tile_info,tilemap_scan_rows, 8, 8,64,64);
 	tilemap_set_transparent_pen(aquarium_txt_tilemap,0);
 
-	aquarium_bak_tilemap = tilemap_create(get_aquarium_bak_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
-	aquarium_mid_tilemap = tilemap_create(get_aquarium_mid_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
+	aquarium_bak_tilemap = tilemap_create(get_aquarium_bak_tile_info,tilemap_scan_rows, 16, 16,32,32);
+	aquarium_mid_tilemap = tilemap_create(get_aquarium_mid_tile_info,tilemap_scan_rows, 16, 16,32,32);
 	tilemap_set_transparent_pen(aquarium_mid_tilemap,0);
 }
 
@@ -173,7 +173,7 @@ VIDEO_UPDATE(aquarium)
 	tilemap_draw(bitmap,cliprect,aquarium_bak_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,aquarium_mid_tilemap,0,0);
 
-	draw_sprites(machine, bitmap,cliprect,16);
+	draw_sprites(screen->machine, bitmap,cliprect,16);
 
 	tilemap_draw(bitmap,cliprect,aquarium_bak_tilemap,1,0);
 	tilemap_draw(bitmap,cliprect,aquarium_mid_tilemap,1,0);

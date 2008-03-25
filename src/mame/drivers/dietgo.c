@@ -27,13 +27,13 @@ extern void deco102_decrypt(int region, int address_xor, int data_select_xor, in
 
 static ADDRESS_MAP_START( dietgo_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
-	AM_RANGE(0x200000, 0x20000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x200000, 0x20000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x210000, 0x211fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x212000, 0x213fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x220000, 0x2207ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x222000, 0x2227ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x220000, 0x2207ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x222000, 0x2227ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 	AM_RANGE(0x280000, 0x2807ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x300000, 0x300bff) AM_READ(MRA16_RAM) AM_WRITE(deco16_nonbuffered_palette_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x300000, 0x300bff) AM_READ(SMH_RAM) AM_WRITE(deco16_nonbuffered_palette_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x340000, 0x3407ff) AM_READ(dietgo_104_prot_r) AM_WRITE(dietgo_104_prot_w)
 	AM_RANGE(0x380000, 0x38ffff) AM_RAM // mainram
 ADDRESS_MAP_END
@@ -43,32 +43,32 @@ static WRITE8_HANDLER( YM2151_w )
 {
 	switch (offset) {
 	case 0:
-		YM2151_register_port_0_w(0,data);
+		YM2151_register_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2151_data_port_0_w(0,data);
+		YM2151_data_port_0_w(machine,0,data);
 		break;
 	}
 }
 
 /* Physical memory map (21 bits) */
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_READ(MRA8_NOP)
+	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x100001) AM_READ(SMH_NOP)
 	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
-	AM_RANGE(0x130000, 0x130001) AM_READ(MRA8_NOP) /* This board only has 1 oki chip */
+	AM_RANGE(0x130000, 0x130001) AM_READ(SMH_NOP) /* This board only has 1 oki chip */
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_WRITE(MWA8_NOP) /* YM2203 - this board doesn't have one */
+	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x100001) AM_WRITE(SMH_NOP) /* YM2203 - this board doesn't have one */
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_w)
 	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0x130000, 0x130001) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
+	AM_RANGE(0x130000, 0x130001) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
@@ -205,19 +205,19 @@ static MACHINE_DRIVER_START( dietgo )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_28MHz/2) /* DE102 (verified on pcb) */
 	MDRV_CPU_PROGRAM_MAP(dietgo_map,0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD(H6280, XTAL_32_22MHz/4/3)	/* Custom chip 45; XIN is 32.220MHZ/4, verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_PALETTE_LENGTH(1024)
 	MDRV_GFXDECODE(dietgo)
 

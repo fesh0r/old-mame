@@ -71,17 +71,17 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START( deadang )
 {
-	pf3_layer = tilemap_create(get_pf3_tile_info,bg_scan,          TILEMAP_TYPE_PEN,     16,16,128,256);
-	pf2_layer = tilemap_create(get_pf2_tile_info,bg_scan,          TILEMAP_TYPE_PEN,16,16,128,256);
-	pf1_layer = tilemap_create(get_pf1_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16, 32, 32);
-	text_layer = tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	pf3_layer = tilemap_create(get_pf3_tile_info,bg_scan,               16,16,128,256);
+	pf2_layer = tilemap_create(get_pf2_tile_info,bg_scan,          16,16,128,256);
+	pf1_layer = tilemap_create(get_pf1_tile_info,tilemap_scan_cols,16,16, 32, 32);
+	text_layer = tilemap_create(get_text_tile_info,tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(pf2_layer, 15);
 	tilemap_set_transparent_pen(pf1_layer, 15);
 	tilemap_set_transparent_pen(text_layer, 15);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs,fx,fy,x,y,color,sprite,pri;
 
@@ -108,7 +108,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		color = (spriteram16[offs+1]>>12)&0xf;
 		sprite = spriteram16[offs+1]&0xfff;
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			x=240-x;
 			y=240-y;
 			if (fx) fx=0; else fx=1;
@@ -147,12 +147,12 @@ VIDEO_UPDATE( deadang )
 	tilemap_set_enable(pf2_layer,!(deadang_scroll_ram[0x34]&4));
 	flip_screen_set( deadang_scroll_ram[0x34]&0x40 );
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	fillbitmap(priority_bitmap,0,cliprect);
 	tilemap_draw(bitmap,cliprect,pf3_layer,0,1);
 	tilemap_draw(bitmap,cliprect,pf1_layer,0,2);
 	tilemap_draw(bitmap,cliprect,pf2_layer,0,4);
-	if (!(deadang_scroll_ram[0x34]&0x10)) draw_sprites(machine,bitmap,cliprect);
+	if (!(deadang_scroll_ram[0x34]&0x10)) draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,text_layer,0,0);
 	return 0;
 }

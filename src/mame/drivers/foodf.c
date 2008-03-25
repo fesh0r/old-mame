@@ -146,7 +146,7 @@ static TIMER_CALLBACK( scanline_update )
 		scanline = 0;
 
 	/* set a timer for it */
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -160,7 +160,7 @@ static MACHINE_START( foodf )
 static MACHINE_RESET( foodf )
 {
 	atarigen_interrupt_reset(update_interrupts);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 
@@ -180,9 +180,9 @@ static WRITE16_HANDLER( digital_w )
 		/* bit 1 = UPDATE */
 
 		if (!(data & 0x04))
-			atarigen_scanline_int_ack_w(0,0,0);
+			atarigen_scanline_int_ack_w(machine,0,0,0);
 		if (!(data & 0x08))
-			atarigen_video_int_ack_w(0,0,0);
+			atarigen_video_int_ack_w(machine,0,0,0);
 
 		output_set_led_value(0, (data >> 4) & 1);
 		output_set_led_value(1, (data >> 5) & 1);
@@ -219,13 +219,13 @@ static WRITE16_HANDLER( analog_w )
  *
  *************************************/
 
-static READ16_HANDLER( pokey1_word_r ) { return pokey1_r(offset); }
-static READ16_HANDLER( pokey2_word_r ) { return pokey2_r(offset); }
-static READ16_HANDLER( pokey3_word_r ) { return pokey3_r(offset); }
+static READ16_HANDLER( pokey1_word_r ) { return pokey1_r(machine, offset); }
+static READ16_HANDLER( pokey2_word_r ) { return pokey2_r(machine, offset); }
+static READ16_HANDLER( pokey3_word_r ) { return pokey3_r(machine, offset); }
 
-static WRITE16_HANDLER( pokey1_word_w ) { if (ACCESSING_LSB) pokey1_w(offset, data & 0xff); }
-static WRITE16_HANDLER( pokey2_word_w ) { if (ACCESSING_LSB) pokey2_w(offset, data & 0xff); }
-static WRITE16_HANDLER( pokey3_word_w ) { if (ACCESSING_LSB) pokey3_w(offset, data & 0xff); }
+static WRITE16_HANDLER( pokey1_word_w ) { if (ACCESSING_LSB) pokey1_w(machine, offset, data & 0xff); }
+static WRITE16_HANDLER( pokey2_word_w ) { if (ACCESSING_LSB) pokey2_w(machine, offset, data & 0xff); }
+static WRITE16_HANDLER( pokey3_word_w ) { if (ACCESSING_LSB) pokey3_w(machine, offset, data & 0xff); }
 
 
 
@@ -240,8 +240,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x014000, 0x014fff) AM_MIRROR(0x3e3000) AM_RAM
 	AM_RANGE(0x018000, 0x018fff) AM_MIRROR(0x3e3000) AM_RAM
 	AM_RANGE(0x01c000, 0x01c0ff) AM_MIRROR(0x3e3f00) AM_RAM AM_BASE(&spriteram16)
-	AM_RANGE(0x800000, 0x8007ff) AM_MIRROR(0x03f800) AM_READWRITE(MRA16_RAM, atarigen_playfield_w) AM_BASE(&atarigen_playfield)
-	AM_RANGE(0x900000, 0x9001ff) AM_MIRROR(0x03fe00) AM_READWRITE(nvram_r, MWA16_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x800000, 0x8007ff) AM_MIRROR(0x03f800) AM_READWRITE(SMH_RAM, atarigen_playfield_w) AM_BASE(&atarigen_playfield)
+	AM_RANGE(0x900000, 0x9001ff) AM_MIRROR(0x03fe00) AM_READWRITE(nvram_r, SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x940000, 0x940007) AM_MIRROR(0x023ff8) AM_READ(analog_r)
 	AM_RANGE(0x944000, 0x944007) AM_MIRROR(0x023ff8) AM_WRITE(analog_w)
 	AM_RANGE(0x948000, 0x948001) AM_MIRROR(0x023ffe) AM_READWRITE(input_port_4_word_r, digital_w)
@@ -374,7 +374,7 @@ static MACHINE_DRIVER_START( foodf )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(atarigen_video_int_gen,1)
+	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 
 	MDRV_MACHINE_START(foodf)
 	MDRV_MACHINE_RESET(foodf)
@@ -382,11 +382,10 @@ static MACHINE_DRIVER_START( foodf )
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(foodf)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK/2, 384, 0, 256, 259, 0, 224)
 

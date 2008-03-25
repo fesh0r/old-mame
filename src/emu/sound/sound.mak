@@ -434,6 +434,7 @@ endif
 SOUNDDEFS += -DHAS_SEGAPCM=$(if $(filter SEGAPCM,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_MULTIPCM=$(if $(filter MULTIPCM,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_SCSP=$(if $(filter SCSP,$(SOUNDS)),1,0)
+SOUNDDEFS += -DHAS_AICA=$(if $(filter AICA,$(SOUNDS)),1,0)
 
 ifneq ($(filter SEGAPCM,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/segapcm.o
@@ -447,6 +448,9 @@ ifneq ($(filter SCSP,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/scsp.o $(SOUNDOBJ)/scspdsp.o
 endif
 
+ifneq ($(filter AICA,$(SOUNDS)),)
+SOUNDOBJS += $(SOUNDOBJ)/aica.o $(SOUNDOBJ)/aicadsp.o
+endif
 
 
 #-------------------------------------------------
@@ -592,7 +596,7 @@ SOUNDDEFS += -DHAS_TMC0285=$(if $(filter TMC0285,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_TMS5200=$(if $(filter TMS5200,$(SOUNDS)),1,0)
 SOUNDDEFS += -DHAS_TMS5220=$(if $(filter TMS5220,$(SOUNDS)),1,0)
 
-ifneq ($(filter TMS5110,$(SOUNDS)),)
+ifneq ($(filter TMS5100 TMS5110 TMS5110A CD2801 TMC0281 CD2802 M58817,$(SOUNDS)),)
 SOUNDOBJS += $(SOUNDOBJ)/tms5110.o $(SOUNDOBJ)/5110intf.o
 endif
 

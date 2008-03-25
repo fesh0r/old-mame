@@ -15,15 +15,15 @@ Atari Sprint 4 driver
 #define PIXEL_CLOCK    (MASTER_CLOCK / 2)
 
 
-extern PALETTE_INIT( sprint4 );
+PALETTE_INIT( sprint4 );
 
-extern VIDEO_EOF( sprint4 );
-extern VIDEO_START( sprint4 );
-extern VIDEO_UPDATE( sprint4 );
+VIDEO_EOF( sprint4 );
+VIDEO_START( sprint4 );
+VIDEO_UPDATE( sprint4 );
 
 extern int sprint4_collision[4];
 
-extern WRITE8_HANDLER( sprint4_video_ram_w );
+WRITE8_HANDLER( sprint4_video_ram_w );
 
 static int da_latch;
 
@@ -120,13 +120,13 @@ static TIMER_CALLBACK( nmi_callback	)
 	if (readinputport(0) & 0x40)
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, nmi_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, nmi_callback);
 }
 
 
 static MACHINE_RESET( sprint4 )
 {
-	timer_set(video_screen_get_time_until_pos(0, 32, 0), NULL, 32, nmi_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 32, 0), NULL, 32, nmi_callback);
 
 	memset(steer_FF1, 0, sizeof steer_FF1);
 	memset(steer_FF2, 0, sizeof steer_FF2);
@@ -200,25 +200,25 @@ static WRITE8_HANDLER( sprint4_lockout_w )
 
 static WRITE8_HANDLER( sprint4_screech_1_w )
 {
-	discrete_sound_w(SPRINT4_SCREECH_EN_1, offset & 1);
+	discrete_sound_w(machine, SPRINT4_SCREECH_EN_1, offset & 1);
 }
 
 
 static WRITE8_HANDLER( sprint4_screech_2_w )
 {
-	discrete_sound_w(SPRINT4_SCREECH_EN_2, offset & 1);
+	discrete_sound_w(machine, SPRINT4_SCREECH_EN_2, offset & 1);
 }
 
 
 static WRITE8_HANDLER( sprint4_screech_3_w )
 {
-	discrete_sound_w(SPRINT4_SCREECH_EN_3, offset & 1);
+	discrete_sound_w(machine, SPRINT4_SCREECH_EN_3, offset & 1);
 }
 
 
 static WRITE8_HANDLER( sprint4_screech_4_w )
 {
-	discrete_sound_w(SPRINT4_SCREECH_EN_4, offset & 1);
+	discrete_sound_w(machine, SPRINT4_SCREECH_EN_4, offset & 1);
 }
 
 
@@ -226,22 +226,22 @@ static WRITE8_HANDLER( sprint4_screech_4_w )
 
 static WRITE8_HANDLER( sprint4_bang_w )
 {
-	discrete_sound_w(SPRINT4_BANG_DATA, data & 0x0f);
+	discrete_sound_w(machine, SPRINT4_BANG_DATA, data & 0x0f);
 }
 
 
 static WRITE8_HANDLER( sprint4_attract_w )
 {
-	discrete_sound_w(SPRINT4_ATTRACT_EN, data & 1);
+	discrete_sound_w(machine, SPRINT4_ATTRACT_EN, data & 1);
 }
 
 
 static ADDRESS_MAP_START( sprint4_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 
 	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x700) AM_READWRITE(sprint4_wram_r, sprint4_wram_w)
-	AM_RANGE(0x0800, 0x0bff) AM_MIRROR(0x400) AM_READWRITE(MRA8_RAM, sprint4_video_ram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0800, 0x0bff) AM_MIRROR(0x400) AM_READWRITE(SMH_RAM, sprint4_video_ram_w) AM_BASE(&videoram)
 
 	AM_RANGE(0x0000, 0x0007) AM_MIRROR(0x718) AM_READ(sprint4_analog_r)
 	AM_RANGE(0x0020, 0x0027) AM_MIRROR(0x718) AM_READ(sprint4_coin_r)
@@ -279,13 +279,13 @@ static INPUT_PORTS_START( sprint4 )
 
 	PORT_START_TAG("COLLISION")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Player 1 Gas") PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, 0 )
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, (void *)0 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Player 2 Gas") PORT_PLAYER(2)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, 1 )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, (void *)1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Player 3 Gas") PORT_PLAYER(3)
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, 2 )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, (void *)2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Player 4 Gas") PORT_PLAYER(4)
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, 3 )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_collision, (void *)3 )
 
 	PORT_START_TAG("COIN")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -316,14 +316,14 @@ static INPUT_PORTS_START( sprint4 )
 	PORT_DIPSETTING(    0xe0, "150 seconds" )
 
 	PORT_START_TAG("ANALOG")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 0)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 0)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 1)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 1)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 2)
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 2)
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, 3)
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, 3)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, (void *)0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, (void *)0)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, (void *)1)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, (void *)1)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, (void *)2)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, (void *)2)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_wheel, (void *)3)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM( get_lever, (void *)3)
 
 	PORT_START_TAG("WHEEL1")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(16) PORT_PLAYER(1)
@@ -411,12 +411,11 @@ static MACHINE_DRIVER_START( sprint4 )
 	MDRV_MACHINE_RESET(sprint4)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, 0, 256, VTOTAL, 0, 224)
 	MDRV_GFXDECODE(sprint4)
-	MDRV_PALETTE_LENGTH(6)
-	MDRV_COLORTABLE_LENGTH(10)
+	MDRV_PALETTE_LENGTH(10)
 
 	MDRV_PALETTE_INIT(sprint4)
 	MDRV_VIDEO_START(sprint4)

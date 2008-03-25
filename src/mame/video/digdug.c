@@ -134,9 +134,9 @@ static TILE_GET_INFO( tx_get_tile_info )
        characters when screen is flipped, we have to flip them back. */
 	SET_TILE_INFO(
 			0,
-			(code & 0x7f) | (flip_screen ? 0x80 : 0),
+			(code & 0x7f) | (flip_screen_get() ? 0x80 : 0),
 			color,
-			flip_screen ? TILE_FLIPX : 0);
+			flip_screen_get() ? TILE_FLIPX : 0);
 }
 
 
@@ -149,8 +149,8 @@ static TILE_GET_INFO( tx_get_tile_info )
 
 VIDEO_START( digdug )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,     8,8,36,28);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
+	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan,     8,8,36,28);
+	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan,8,8,36,28);
 
 	tilemap_set_transparent_pen(tx_tilemap, 0);
 
@@ -254,7 +254,7 @@ static const rectangle spritevisiblearea =
 	0*8, 28*8-1
 };
 
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -277,7 +277,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 		if (size)
 			sprite = (sprite & 0xc0) | ((sprite & ~0xc0) << 2);
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx ^= 1;
 			flipy ^= 1;
@@ -314,7 +314,6 @@ VIDEO_UPDATE( digdug )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
-
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

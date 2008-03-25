@@ -61,30 +61,30 @@ static WRITE8_HANDLER( sprite_shared_w ) {
 }
 
 static WRITE8_HANDLER( video_interrupt_w ) {
-	cpunum_set_input_line_and_vector(Machine, 1, 0, HOLD_LINE, 0xff );
+	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff );
 }
 
 static WRITE8_HANDLER( sprite_interrupt_w ) {
-	cpunum_set_input_line_and_vector(Machine, 2, 0, HOLD_LINE, 0xff );
+	cpunum_set_input_line_and_vector(machine, 2, 0, HOLD_LINE, 0xff );
 }
 
 static WRITE8_HANDLER( scroll_interrupt_w ) {
-	sprite_interrupt_w( offset, data );
+	sprite_interrupt_w( machine, offset, data );
 	*kingofb_scroll_y = data;
 }
 
 static WRITE8_HANDLER( sound_command_w ) {
-	soundlatch_w( 0, data );
-	cpunum_set_input_line_and_vector(Machine, 3, 0, HOLD_LINE, 0xff );
+	soundlatch_w( machine, 0, data );
+	cpunum_set_input_line_and_vector(machine, 3, 0, HOLD_LINE, 0xff );
 }
 
 
 static ADDRESS_MAP_START( main_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-    AM_RANGE(0xc000, 0xc3ff) AM_READ(MRA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+    AM_RANGE(0xc000, 0xc3ff) AM_READ(SMH_RAM) /* work ram */
     AM_RANGE(0xe000, 0xe7ff) AM_READ(sprite_shared_r)
     AM_RANGE(0xe800, 0xefff) AM_READ(video_shared_r)
-    AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM) /* ???? */
+    AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM) /* ???? */
     AM_RANGE(0xfc00, 0xfc00) AM_READ(input_port_0_r) /* DSW 0 */
     AM_RANGE(0xfc01, 0xfc01) AM_READ(input_port_1_r) /* DSW 1 */
     AM_RANGE(0xfc02, 0xfc02) AM_READ(input_port_2_r) /* Player 1 controls */
@@ -94,32 +94,32 @@ static ADDRESS_MAP_START( main_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(MWA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(SMH_RAM) /* work ram */
     AM_RANGE(0xe000, 0xe7ff) AM_WRITE(sprite_shared_w) /* shared with sprite cpu */
     AM_RANGE(0xe800, 0xefff) AM_WRITE(video_shared_w) /* shared with video cpu */
-    AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_RAM) /* ???? */
+    AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_RAM) /* ???? */
     AM_RANGE(0xf800, 0xf800) AM_WRITE(kingofb_f800_w)	/* NMI enable, palette bank */
-    AM_RANGE(0xf801, 0xf801) AM_WRITE(MWA8_NOP) /* ???? */
-    AM_RANGE(0xf802, 0xf802) AM_WRITE(MWA8_RAM) AM_BASE(&kingofb_scroll_y)
+    AM_RANGE(0xf801, 0xf801) AM_WRITE(SMH_NOP) /* ???? */
+    AM_RANGE(0xf802, 0xf802) AM_WRITE(SMH_RAM) AM_BASE(&kingofb_scroll_y)
     AM_RANGE(0xf803, 0xf803) AM_WRITE(scroll_interrupt_w)
     AM_RANGE(0xf804, 0xf804) AM_WRITE(video_interrupt_w)
     AM_RANGE(0xf807, 0xf807) AM_WRITE(sound_command_w) /* sound latch */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( video_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM) /* work ram */
     AM_RANGE(0xa000, 0xa7ff) AM_READ(video_shared_r) /* shared with main */
-    AM_RANGE(0xc000, 0xc0ff) AM_READ(MRA8_RAM) /* background vram */
-    AM_RANGE(0xc400, 0xc4ff) AM_READ(MRA8_RAM) /* background colorram */
-    AM_RANGE(0xc800, 0xcbff) AM_READ(MRA8_RAM) /* foreground vram */
-    AM_RANGE(0xcc00, 0xcfff) AM_READ(MRA8_RAM) /* foreground colorram */
+    AM_RANGE(0xc000, 0xc0ff) AM_READ(SMH_RAM) /* background vram */
+    AM_RANGE(0xc400, 0xc4ff) AM_READ(SMH_RAM) /* background colorram */
+    AM_RANGE(0xc800, 0xcbff) AM_READ(SMH_RAM) /* foreground vram */
+    AM_RANGE(0xcc00, 0xcfff) AM_READ(SMH_RAM) /* foreground colorram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( video_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) /* work ram */
     AM_RANGE(0xa000, 0xa7ff) AM_WRITE(video_shared_w) AM_BASE(&video_shared) /* shared with main */
     AM_RANGE(0xc000, 0xc0ff) AM_WRITE(kingofb_videoram_w) AM_BASE(&videoram) /* background vram */
     AM_RANGE(0xc400, 0xc4ff) AM_WRITE(kingofb_colorram_w) AM_BASE(&colorram) /* background colorram */
@@ -128,39 +128,39 @@ static ADDRESS_MAP_START( video_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sprite_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM) /* work ram */
     AM_RANGE(0xa000, 0xa7ff) AM_READ(sprite_shared_r) /* shared with main */
-    AM_RANGE(0xc000, 0xc3ff) AM_READ(MRA8_RAM) /* sprite ram */
-    AM_RANGE(0xc400, 0xc43f) AM_READ(MRA8_RAM) /* something related to scroll? */
+    AM_RANGE(0xc000, 0xc3ff) AM_READ(SMH_RAM) /* sprite ram */
+    AM_RANGE(0xc400, 0xc43f) AM_READ(SMH_RAM) /* something related to scroll? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sprite_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) /* work ram */
     AM_RANGE(0xa000, 0xa7ff) AM_WRITE(sprite_shared_w) AM_BASE(&sprite_shared) /* shared with main */
-    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size) /* sprite ram */
-    AM_RANGE(0xc400, 0xc43f) AM_WRITE(MWA8_RAM)  /* something related to scroll? */
+    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size) /* sprite ram */
+    AM_RANGE(0xc400, 0xc43f) AM_WRITE(SMH_RAM)  /* something related to scroll? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-    AM_RANGE(0xc000, 0xc3ff) AM_READ(MRA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+    AM_RANGE(0xc000, 0xc3ff) AM_READ(SMH_RAM) /* work ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x8000, 0x8000) AM_WRITE(MWA8_NOP) /* ??? */
-    AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(MWA8_RAM) /* work ram */
+    AM_RANGE(0x8000, 0x8000) AM_WRITE(SMH_NOP) /* ??? */
+    AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(SMH_RAM) /* work ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x08, 0x08) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(DAC_0_data_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x0c, 0x0c) AM_WRITE(AY8910_control_port_0_w)
@@ -168,8 +168,8 @@ ADDRESS_MAP_END
 
 /* Ring King */
 static ADDRESS_MAP_START( rk_main_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-    AM_RANGE(0xc000, 0xc3ff) AM_READ(MRA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+    AM_RANGE(0xc000, 0xc3ff) AM_READ(SMH_RAM) /* work ram */
     AM_RANGE(0xc800, 0xcfff) AM_READ(sprite_shared_r)
     AM_RANGE(0xd000, 0xd7ff) AM_READ(video_shared_r)
     AM_RANGE(0xe000, 0xe000) AM_READ(input_port_0_r) /* DSW 0 */
@@ -178,35 +178,35 @@ static ADDRESS_MAP_START( rk_main_readmem, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0xe003, 0xe003) AM_READ(input_port_3_r) /* Player 2 controls */
     AM_RANGE(0xe004, 0xe004) AM_READ(input_port_4_r) /* Coin & Start */
     AM_RANGE(0xe005, 0xe005) AM_READ(input_port_5_r) /* Player 1 & 2 button 3 */
-    AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM) /* ???? */
+    AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM) /* ???? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rk_main_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(MWA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0xc000, 0xc3ff) AM_WRITE(SMH_RAM) /* work ram */
     AM_RANGE(0xc800, 0xcfff) AM_WRITE(sprite_shared_w)
     AM_RANGE(0xd000, 0xd7ff) AM_WRITE(video_shared_w)
     AM_RANGE(0xd800, 0xd800) AM_WRITE(kingofb_f800_w)
     AM_RANGE(0xd801, 0xd801) AM_WRITE(sprite_interrupt_w)
     AM_RANGE(0xd802, 0xd802) AM_WRITE(video_interrupt_w)
     AM_RANGE(0xd803, 0xd803) AM_WRITE(sound_command_w)
-    AM_RANGE(0xe800, 0xe800) AM_WRITE(MWA8_RAM) AM_BASE(&kingofb_scroll_y)
-    AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_RAM) /* ???? */
+    AM_RANGE(0xe800, 0xe800) AM_WRITE(SMH_RAM) AM_BASE(&kingofb_scroll_y)
+    AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_RAM) /* ???? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rk_video_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM) /* work ram */
     AM_RANGE(0xc000, 0xc7ff) AM_READ(video_shared_r) /* shared with main */
-    AM_RANGE(0xa800, 0xa8ff) AM_READ(MRA8_RAM) /* background vram */
-    AM_RANGE(0xac00, 0xacff) AM_READ(MRA8_RAM) /* background colorram */
-    AM_RANGE(0xa000, 0xa3ff) AM_READ(MRA8_RAM) /* foreground vram */
-    AM_RANGE(0xa400, 0xa7ff) AM_READ(MRA8_RAM) /* foreground colorram */
+    AM_RANGE(0xa800, 0xa8ff) AM_READ(SMH_RAM) /* background vram */
+    AM_RANGE(0xac00, 0xacff) AM_READ(SMH_RAM) /* background colorram */
+    AM_RANGE(0xa000, 0xa3ff) AM_READ(SMH_RAM) /* foreground vram */
+    AM_RANGE(0xa400, 0xa7ff) AM_READ(SMH_RAM) /* foreground colorram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rk_video_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) /* work ram */
     AM_RANGE(0xc000, 0xc7ff) AM_WRITE(video_shared_w) AM_BASE(&video_shared) /* shared with main */
     AM_RANGE(0xa800, 0xa8ff) AM_WRITE(kingofb_videoram_w) AM_BASE(&videoram) /* background vram */
     AM_RANGE(0xac00, 0xacff) AM_WRITE(kingofb_colorram_w) AM_BASE(&colorram) /* background colorram */
@@ -215,28 +215,28 @@ static ADDRESS_MAP_START( rk_video_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rk_sprite_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM) /* work ram */
     AM_RANGE(0xc800, 0xcfff) AM_READ(sprite_shared_r) /* shared with main */
-    AM_RANGE(0xa000, 0xa3ff) AM_READ(MRA8_RAM) /* sprite ram */
-    AM_RANGE(0xa400, 0xa43f) AM_READ(MRA8_RAM) /* something related to scroll? */
+    AM_RANGE(0xa000, 0xa3ff) AM_READ(SMH_RAM) /* sprite ram */
+    AM_RANGE(0xa400, 0xa43f) AM_READ(SMH_RAM) /* something related to scroll? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rk_sprite_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) /* work ram */
+    AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) /* work ram */
     AM_RANGE(0xc800, 0xcfff) AM_WRITE(sprite_shared_w) AM_BASE(&sprite_shared) /* shared with main */
-    AM_RANGE(0xa000, 0xa3ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size) /* sprite ram */
-    AM_RANGE(0xa400, 0xa43f) AM_WRITE(MWA8_RAM)  /* something related to scroll? */
+    AM_RANGE(0xa000, 0xa3ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size) /* sprite ram */
+    AM_RANGE(0xa400, 0xa43f) AM_WRITE(SMH_RAM)  /* something related to scroll? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rk_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rk_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(DAC_0_data_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(AY8910_control_port_0_w)
@@ -553,15 +553,15 @@ static MACHINE_DRIVER_START( kingofb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)        /* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_readmem,main_writemem)
-	MDRV_CPU_VBLANK_INT(kingofb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kingofb_interrupt)
 
 	MDRV_CPU_ADD(Z80, 4000000)        /* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(video_readmem,video_writemem)
-	MDRV_CPU_VBLANK_INT(kingofb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kingofb_interrupt)
 
 	MDRV_CPU_ADD(Z80, 4000000)        /* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(sprite_readmem,sprite_writemem)
-	MDRV_CPU_VBLANK_INT(kingofb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kingofb_interrupt)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */        /* 4.0 MHz */
@@ -569,18 +569,18 @@ static MACHINE_DRIVER_START( kingofb )
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 6000)	/* Hz */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100) /* We really need heavy synching among the processors */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(kingobox)
-	MDRV_PALETTE_LENGTH(256+8)
-	MDRV_COLORTABLE_LENGTH(256+8*2)
+	MDRV_PALETTE_LENGTH(256+8*2)
 
 	MDRV_PALETTE_INIT(kingofb)
 	MDRV_VIDEO_START(kingofb)
@@ -604,15 +604,15 @@ static MACHINE_DRIVER_START( ringking )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)        /* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(rk_main_readmem,rk_main_writemem)
-	MDRV_CPU_VBLANK_INT(kingofb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kingofb_interrupt)
 
 	MDRV_CPU_ADD(Z80, 4000000)        /* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(rk_video_readmem,rk_video_writemem)
-	MDRV_CPU_VBLANK_INT(kingofb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kingofb_interrupt)
 
 	MDRV_CPU_ADD(Z80, 4000000)        /* 4.0 MHz */
 	MDRV_CPU_PROGRAM_MAP(rk_sprite_readmem,rk_sprite_writemem)
-	MDRV_CPU_VBLANK_INT(kingofb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", kingofb_interrupt)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */        /* 4.0 MHz */
@@ -620,18 +620,18 @@ static MACHINE_DRIVER_START( ringking )
 	MDRV_CPU_IO_MAP(rk_sound_readport,rk_sound_writeport)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 6000)	/* Hz */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100) /* We really need heavy synching among the processors */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(rk)
-	MDRV_PALETTE_LENGTH(256+8)
-	MDRV_COLORTABLE_LENGTH(256+8*2)
+	MDRV_PALETTE_LENGTH(256+8*2)
 
 	MDRV_PALETTE_INIT(ringking)
 	MDRV_VIDEO_START(ringking)

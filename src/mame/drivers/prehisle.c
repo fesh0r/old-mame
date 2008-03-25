@@ -29,27 +29,27 @@ static UINT16 *prehisle_ram16;
 
 static WRITE16_HANDLER( prehisle_sound16_w )
 {
-	soundlatch_w(0, data & 0xff);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine, 0, data & 0xff);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /*******************************************************************************/
 
 static ADDRESS_MAP_START( prehisle_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x070000, 0x073fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x090000, 0x0907ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0a0000, 0x0a07ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0b0000, 0x0b3fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0d0000, 0x0d07ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x070000, 0x073fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x090000, 0x0907ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0a0000, 0x0a07ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0b0000, 0x0b3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0d0000, 0x0d07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0e0000, 0x0e00ff) AM_READ(prehisle_control16_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prehisle_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x070000, 0x073fff) AM_WRITE(MWA16_RAM) AM_BASE(&prehisle_ram16)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x070000, 0x073fff) AM_WRITE(SMH_RAM) AM_BASE(&prehisle_ram16)
 	AM_RANGE(0x090000, 0x0907ff) AM_WRITE(prehisle_fg_videoram16_w) AM_BASE(&videoram16)
-	AM_RANGE(0x0a0000, 0x0a07ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16)
+	AM_RANGE(0x0a0000, 0x0a07ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)
 	AM_RANGE(0x0b0000, 0x0b3fff) AM_WRITE(prehisle_bg_videoram16_w) AM_BASE(&prehisle_bg_videoram16)
 	AM_RANGE(0x0d0000, 0x0d07ff) AM_WRITE(paletteram16_RRRRGGGGBBBBxxxx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0f0070, 0x0ff071) AM_WRITE(prehisle_sound16_w)
@@ -66,24 +66,24 @@ static WRITE8_HANDLER( D7759_write_port_0_w )
 }
 
 static ADDRESS_MAP_START( prehisle_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xefff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xefff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf800, 0xf800) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prehisle_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xefff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xf800, 0xf800) AM_WRITE(MWA8_NOP)	// ???
+	AM_RANGE(0x0000, 0xefff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xf800, 0xf800) AM_WRITE(SMH_NOP)	// ???
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prehisle_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(YM3812_status_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prehisle_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(D7759_write_port_0_w)
@@ -235,23 +235,22 @@ static const struct upd7759_interface upd7759_interface =
 static MACHINE_DRIVER_START( prehisle )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 12000000)
+	MDRV_CPU_ADD(M68000, XTAL_18MHz/2) 	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(prehisle_readmem,prehisle_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)
-	/* audio CPU */
+	MDRV_CPU_ADD(Z80, XTAL_4MHz)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(prehisle_sound_readmem,prehisle_sound_writemem)
 	MDRV_CPU_IO_MAP(prehisle_sound_readport,prehisle_sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(prehisle)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -261,7 +260,7 @@ static MACHINE_DRIVER_START( prehisle )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM3812, 4000000)
+	MDRV_SOUND_ADD(YM3812, XTAL_4MHz)	/* verified on pcb */
 	MDRV_SOUND_CONFIG(ym3812_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 

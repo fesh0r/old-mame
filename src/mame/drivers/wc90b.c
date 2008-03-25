@@ -129,8 +129,8 @@ static WRITE8_HANDLER( wc90b_bankswitch1_w )
 
 static WRITE8_HANDLER( wc90b_sound_command_w )
 {
-	soundlatch_w(offset,data);
-	cpunum_set_input_line(Machine, 2,0,HOLD_LINE);
+	soundlatch_w(machine,offset,data);
+	cpunum_set_input_line(machine, 2,0,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( adpcm_control_w )
@@ -152,54 +152,54 @@ static WRITE8_HANDLER( adpcm_data_w )
 
 
 static ADDRESS_MAP_START( wc90b_readmem1, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ(MRA8_RAM) /* Main RAM */
-	AM_RANGE(0xa000, 0xafff) AM_READ(MRA8_RAM) /* fg video ram */
-	AM_RANGE(0xc000, 0xcfff) AM_READ(MRA8_RAM) /* bg video ram */
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_RAM) /* tx video ram */
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_RAM) /* Main RAM */
+	AM_RANGE(0xa000, 0xafff) AM_READ(SMH_RAM) /* fg video ram */
+	AM_RANGE(0xc000, 0xcfff) AM_READ(SMH_RAM) /* bg video ram */
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM) /* tx video ram */
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xf800, 0xfbff) AM_READ(wc90b_shared_r)
 	AM_RANGE(0xfd00, 0xfd00) AM_READ(input_port_0_r) /* Stick 1, Coin 1 & Start 1 */
 	AM_RANGE(0xfd02, 0xfd02) AM_READ(input_port_1_r) /* Stick 2, Coin 2 & Start 2 */
 	AM_RANGE(0xfd06, 0xfd06) AM_READ(input_port_2_r) /* DIP Switch A */
 	AM_RANGE(0xfd08, 0xfd08) AM_READ(input_port_3_r) /* DIP Switch B */
-	AM_RANGE(0xfd00, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xfd00, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wc90b_readmem2, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc1ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc200, 0xe1ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe800, 0xefff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_BANK2)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc1ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc200, 0xe1ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe800, 0xefff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_BANK2)
 	AM_RANGE(0xf800, 0xfbff) AM_READ(wc90b_shared_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wc90b_writemem1, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x9fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xafff) AM_WRITE(wc90b_fgvideoram_w) AM_BASE(&wc90b_fgvideoram)
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(wc90b_bgvideoram_w) AM_BASE(&wc90b_bgvideoram)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(wc90b_txvideoram_w) AM_BASE(&wc90b_txvideoram)
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(wc90b_shared_w) AM_BASE(&wc90b_shared)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(wc90b_bankswitch_w)
 	AM_RANGE(0xfd00, 0xfd00) AM_WRITE(wc90b_sound_command_w)
-	AM_RANGE(0xfd04, 0xfd04) AM_WRITE(MWA8_RAM) AM_BASE(&wc90b_scroll1y)
-	AM_RANGE(0xfd06, 0xfd06) AM_WRITE(MWA8_RAM) AM_BASE(&wc90b_scroll1x)
-	AM_RANGE(0xfd08, 0xfd08) AM_WRITE(MWA8_RAM) AM_BASE(&wc90b_scroll2y)
-	AM_RANGE(0xfd0a, 0xfd0a) AM_WRITE(MWA8_RAM) AM_BASE(&wc90b_scroll2x)
+	AM_RANGE(0xfd04, 0xfd04) AM_WRITE(SMH_RAM) AM_BASE(&wc90b_scroll1y)
+	AM_RANGE(0xfd06, 0xfd06) AM_WRITE(SMH_RAM) AM_BASE(&wc90b_scroll1x)
+	AM_RANGE(0xfd08, 0xfd08) AM_WRITE(SMH_RAM) AM_BASE(&wc90b_scroll2y)
+	AM_RANGE(0xfd0a, 0xfd0a) AM_WRITE(SMH_RAM) AM_BASE(&wc90b_scroll2x)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wc90b_writemem2, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xd800, 0xdfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xd800, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_be_w) AM_BASE(&paletteram)
-	AM_RANGE(0xe800, 0xefff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xe800, 0xefff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(wc90b_shared_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(wc90b_bankswitch1_w)
 ADDRESS_MAP_END
@@ -393,24 +393,25 @@ static MACHINE_DRIVER_START( wc90b )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 6000000)	/* 6.0 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(wc90b_readmem1,wc90b_writemem1)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 6000000)	/* 6.0 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(wc90b_readmem2,wc90b_writemem2)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 2510000) // based on goal92 speed measured by guru (although maybe it should be 10mhz / 4 which is close)
 	/* audio CPU */	/* 2.51 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
 								/* IRQs are triggered by the main CPU */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(wc90b)
 	MDRV_PALETTE_LENGTH(1024)
 

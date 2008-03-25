@@ -28,7 +28,7 @@ static void generate_interrupt(running_machine *machine, int state)
 
 static const struct tms34061_interface tms34061intf =
 {
-	0,						/* the screen we are acting on */
+	"main",					/* the screen we are acting on */
 	8,						/* VRAM address is (row << rowshift) | col */
 	0x10000,				/* size of video RAM */
 	generate_interrupt		/* interrupt gen callback */
@@ -175,7 +175,7 @@ VIDEO_UPDATE( capbowl )
 	/* if we're blanked, just fill with black */
 	if (state.blanked)
 	{
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 		return 0;
 	}
 

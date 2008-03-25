@@ -197,7 +197,7 @@ static ADDRESS_MAP_START( littlerb_main, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x7e0000, 0x7e0001) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x7e0002, 0x7e0003) AM_READ(input_port_2_word_r)
 	AM_RANGE(0x700000, 0x700007) AM_READ(littlerb_vdp_r) AM_WRITE(littlerb_vdp_w)
-	AM_RANGE(0x780000, 0x780001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x780000, 0x780001) AM_WRITE(SMH_NOP)
 
 	/* below are fake.. just to see the data */
 	AM_RANGE(0xc00000, 0xc7ffff) AM_RAM AM_BASE(&littlerb_region1)
@@ -302,7 +302,7 @@ PALETTE_INIT( littlerb )
 }
 #endif
 
-static void draw_sprite(mame_bitmap *bitmap, int xsize,int ysize, int offset, int xpos, int ypos )
+static void draw_sprite(bitmap_t *bitmap, int xsize,int ysize, int offset, int xpos, int ypos )
 {
 	UINT16* spritegfx = littlerb_region4;
 	int x,y;
@@ -339,7 +339,7 @@ static VIDEO_UPDATE(littlerb)
 	int x,y,offs, code;
 	int xsize,ysize;
 	UINT16* spriteregion = &littlerb_region4[0x400];
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	/* the spriteram format is something like this .. */
 	for (offs=0x26/2;offs<0xc00;offs+=6) // start at 00x26?
@@ -362,12 +362,12 @@ static VIDEO_UPDATE(littlerb)
 static MACHINE_DRIVER_START( littlerb )
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(littlerb_main, 0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 320-1, 0*8, 256-1)

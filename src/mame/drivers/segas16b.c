@@ -893,14 +893,14 @@ static int atomicp_sound_rate;
 
 static UINT8 has_sound_cpu;
 
-static read16_handler custom_io_r;
-static write16_handler custom_io_w;
+static read16_machine_func custom_io_r;
+static write16_machine_func custom_io_w;
 
 static UINT8 disable_screen_blanking;
 static UINT8 mj_input_num;
 static UINT8 hwc_input_value;
 
-static void (*i8751_vblank_hook)(void);
+static void (*i8751_vblank_hook)(running_machine *machine);
 static const UINT8 *i8751_initial_config;
 
 
@@ -934,70 +934,70 @@ static WRITE16_HANDLER( atomicp_sound_w );
 static const struct segaic16_memory_map_entry rom_171_5358_info_small[] =
 {
 	{ 0x3d/2, 0x00000, 0x04000, 0xffc000,      ~0, misc_io_r,             misc_io_w,             NULL,                  "I/O space" },
-	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, MRA16_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
-	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, MRA16_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
-	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, MRA16_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
-	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, MRA16_BANK13,          MWA16_BANK13,          &segaic16_spriteram_0, "object RAM" },
-	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, MRA16_BANK14,          MWA16_BANK14,          &workram,              "work RAM" },
-	{ 0x29/2, 0x00000, 0x20000, 0xfe0000, 0x20000, MRA16_BANK15,          MWA16_UNMAP,           NULL,                  "ROM 2" },
-	{ 0x25/2, 0x00000, 0x20000, 0xfe0000, 0x10000, MRA16_BANK16,          MWA16_UNMAP,           NULL,                  "ROM 1" },
-	{ 0x21/2, 0x00000, 0x20000, 0xfe0000, 0x00000, MRA16_BANK17,          MWA16_UNMAP,           NULL,                  "ROM 0" },
+	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, SMH_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
+	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, SMH_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
+	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, SMH_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
+	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, SMH_BANK13,          SMH_BANK13,          &segaic16_spriteram_0, "object RAM" },
+	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, SMH_BANK14,          SMH_BANK14,          &workram,              "work RAM" },
+	{ 0x29/2, 0x00000, 0x20000, 0xfe0000, 0x20000, SMH_BANK15,          SMH_UNMAP,           NULL,                  "ROM 2" },
+	{ 0x25/2, 0x00000, 0x20000, 0xfe0000, 0x10000, SMH_BANK16,          SMH_UNMAP,           NULL,                  "ROM 1" },
+	{ 0x21/2, 0x00000, 0x20000, 0xfe0000, 0x00000, SMH_BANK17,          SMH_UNMAP,           NULL,                  "ROM 0" },
 	{ 0 }
 };
 
 static const struct segaic16_memory_map_entry rom_171_5358_info[] =
 {
 	{ 0x3d/2, 0x00000, 0x04000, 0xffc000,      ~0, misc_io_r,             misc_io_w,             NULL,                  "I/O space" },
-	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, MRA16_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
-	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, MRA16_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
-	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, MRA16_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
-	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, MRA16_BANK13,          MWA16_BANK13,          &segaic16_spriteram_0, "object RAM" },
-	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, MRA16_BANK14,          MWA16_BANK14,          &workram,              "work RAM" },
-	{ 0x29/2, 0x00000, 0x20000, 0xfe0000, 0x40000, MRA16_BANK15,          MWA16_UNMAP,           NULL,                  "ROM 2" },
-	{ 0x25/2, 0x00000, 0x20000, 0xfe0000, 0x20000, MRA16_BANK16,          MWA16_UNMAP,           NULL,                  "ROM 1" },
-	{ 0x21/2, 0x00000, 0x20000, 0xfe0000, 0x00000, MRA16_BANK17,          MWA16_UNMAP,           NULL,                  "ROM 0" },
+	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, SMH_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
+	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, SMH_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
+	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, SMH_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
+	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, SMH_BANK13,          SMH_BANK13,          &segaic16_spriteram_0, "object RAM" },
+	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, SMH_BANK14,          SMH_BANK14,          &workram,              "work RAM" },
+	{ 0x29/2, 0x00000, 0x20000, 0xfe0000, 0x40000, SMH_BANK15,          SMH_UNMAP,           NULL,                  "ROM 2" },
+	{ 0x25/2, 0x00000, 0x20000, 0xfe0000, 0x20000, SMH_BANK16,          SMH_UNMAP,           NULL,                  "ROM 1" },
+	{ 0x21/2, 0x00000, 0x20000, 0xfe0000, 0x00000, SMH_BANK17,          SMH_UNMAP,           NULL,                  "ROM 0" },
 	{ 0 }
 };
 
 static const struct segaic16_memory_map_entry rom_171_5704_info[] =
 {
 	{ 0x3d/2, 0x00000, 0x04000, 0xffc000,      ~0, misc_io_r,             misc_io_w,             NULL,                  "I/O space" },
-	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, MRA16_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
-	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, MRA16_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
-	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, MRA16_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
-	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, MRA16_BANK13,          MWA16_BANK13,          &segaic16_spriteram_0, "object RAM" },
-	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, MRA16_BANK14,          MWA16_BANK14,          &workram,              "work RAM" },
+	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, SMH_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
+	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, SMH_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
+	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, SMH_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
+	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, SMH_BANK13,          SMH_BANK13,          &segaic16_spriteram_0, "object RAM" },
+	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, SMH_BANK14,          SMH_BANK14,          &workram,              "work RAM" },
 	{ 0x29/2, 0x00000, 0x10000, 0xff0000,      ~0, NULL,                  rom_5704_bank_w,       NULL,                  "tile bank" },
-	{ 0x25/2, 0x00000, 0x80000, 0xfc0000, 0x80000, MRA16_BANK16,          MWA16_UNMAP,           NULL,                  "ROM 1" },
-	{ 0x21/2, 0x00000, 0x80000, 0xfc0000, 0x00000, MRA16_BANK17,          MWA16_UNMAP,           NULL,                  "ROM 0" },
+	{ 0x25/2, 0x00000, 0x80000, 0xfc0000, 0x80000, SMH_BANK16,          SMH_UNMAP,           NULL,                  "ROM 1" },
+	{ 0x21/2, 0x00000, 0x80000, 0xfc0000, 0x00000, SMH_BANK17,          SMH_UNMAP,           NULL,                  "ROM 0" },
 	{ 0 }
 };
 
 static const struct segaic16_memory_map_entry rom_atomicp_info[] =
 {
 	{ 0x3d/2, 0x00000, 0x04000, 0xffc000,      ~0, misc_io_r,             misc_io_w,             NULL,                  "I/O space" },
-	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, MRA16_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
-	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, MRA16_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
-	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, MRA16_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
-	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, MRA16_BANK13,          MWA16_BANK13,          &segaic16_spriteram_0, "object RAM" },
-	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, MRA16_BANK14,          MWA16_BANK14,          &workram,              "work RAM" },
+	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, SMH_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
+	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, SMH_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
+	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, SMH_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
+	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, SMH_BANK13,          SMH_BANK13,          &segaic16_spriteram_0, "object RAM" },
+	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, SMH_BANK14,          SMH_BANK14,          &workram,              "work RAM" },
 	{ 0x29/2, 0x00000, 0x10000, 0xff0000,      ~0, NULL,                  rom_5704_bank_w,       NULL,                  "tile bank" },
 	{ 0x25/2, 0x00000, 0x10000, 0xff0000,      ~0, NULL,                  atomicp_sound_w,       NULL,                  "sound" },
-	{ 0x21/2, 0x00000, 0x80000, 0xfc0000, 0x00000, MRA16_BANK17,          MWA16_UNMAP,           NULL,                  "ROM 0" },
+	{ 0x21/2, 0x00000, 0x80000, 0xfc0000, 0x00000, SMH_BANK17,          SMH_UNMAP,           NULL,                  "ROM 0" },
 	{ 0 }
 };
 
 static const struct segaic16_memory_map_entry rom_171_5797_info[] =
 {
 	{ 0x3d/2, 0x00000, 0x04000, 0xffc000,      ~0, misc_io_r,             misc_io_w,             NULL,                  "I/O space" },
-	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, MRA16_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
-	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, MRA16_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
-	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, MRA16_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
-	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, MRA16_BANK13,          MWA16_BANK13,          &segaic16_spriteram_0, "object RAM" },
-	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, MRA16_BANK14,          MWA16_BANK14,          &workram,              "work RAM" },
+	{ 0x39/2, 0x00000, 0x01000, 0xfff000,      ~0, SMH_BANK10,          segaic16_paletteram_w, &paletteram16,         "color RAM" },
+	{ 0x35/2, 0x00000, 0x10000, 0xfe0000,      ~0, SMH_BANK11,          segaic16_tileram_0_w,  &segaic16_tileram_0,   "tile RAM" },
+	{ 0x35/2, 0x10000, 0x01000, 0xfef000,      ~0, SMH_BANK12,          segaic16_textram_0_w,  &segaic16_textram_0,   "text RAM" },
+	{ 0x31/2, 0x00000, 0x00800, 0xfff800,      ~0, SMH_BANK13,          SMH_BANK13,          &segaic16_spriteram_0, "object RAM" },
+	{ 0x2d/2, 0x00000, 0x04000, 0xffc000,      ~0, SMH_BANK14,          SMH_BANK14,          &workram,              "work RAM" },
 	{ 0x29/2, 0x00000, 0x10000, 0xff0000,      ~0, unknown_rgn2_r,        unknown_rgn2_w,        NULL,                  "???" },
 	{ 0x25/2, 0x00000, 0x04000, 0xffc000,      ~0, rom_5797_bank_math_r,  rom_5797_bank_math_w,  NULL,                  "tile bank/math" },
-	{ 0x21/2, 0x00000, 0x80000, 0xf80000, 0x00000, MRA16_BANK17,          MWA16_UNMAP,           NULL,                  "ROM 0" },
+	{ 0x21/2, 0x00000, 0x80000, 0xf80000, 0x00000, SMH_BANK17,          SMH_UNMAP,           NULL,                  "ROM 0" },
 	{ 0 }
 };
 
@@ -1022,7 +1022,7 @@ static void sound_w(UINT8 data)
 {
 	if (has_sound_cpu)
 	{
-		soundlatch_w(0, data & 0xff);
+		soundlatch_w(Machine, 0, data & 0xff);
 		cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
 	}
 }
@@ -1126,7 +1126,7 @@ static READ16_HANDLER( standard_io_r )
 			return readinputport(4 + (offset & 1));
 	}
 	logerror("%06X:standard_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(0,0);
+	return segaic16_open_bus_r(machine,0,0);
 }
 
 
@@ -1163,18 +1163,18 @@ static WRITE16_HANDLER( standard_io_w )
 static READ16_HANDLER( misc_io_r )
 {
 	if (custom_io_r)
-		return (*custom_io_r)(offset, mem_mask);
+		return (*custom_io_r)(machine, offset, mem_mask);
 	else
-		return standard_io_r(offset, mem_mask);
+		return standard_io_r(machine, offset, mem_mask);
 }
 
 
 static WRITE16_HANDLER( misc_io_w )
 {
 	if (custom_io_w)
-		(*custom_io_w)(offset, data, mem_mask);
+		(*custom_io_w)(machine, offset, data, mem_mask);
 	else
-		standard_io_w(offset, data, mem_mask);
+		standard_io_w(machine, offset, data, mem_mask);
 }
 
 
@@ -1199,13 +1199,13 @@ static READ16_HANDLER( rom_5797_bank_math_r )
 	{
 		case 0x0000/2:
 			/* multiply registers */
-			return segaic16_multiply_0_r(offset & 3, mem_mask);
+			return segaic16_multiply_0_r(machine, offset & 3, mem_mask);
 
 		case 0x1000/2:
 			/* compare registers */
-			return segaic16_compare_timer_0_r(offset & 7, mem_mask);
+			return segaic16_compare_timer_0_r(machine, offset & 7, mem_mask);
 	}
-	return segaic16_open_bus_r(0,0);
+	return segaic16_open_bus_r(machine,0,0);
 }
 
 
@@ -1216,12 +1216,12 @@ static WRITE16_HANDLER( rom_5797_bank_math_w )
 	{
 		case 0x0000/2:
 			/* multiply registers */
-			segaic16_multiply_0_w(offset & 3, data, mem_mask);
+			segaic16_multiply_0_w(machine, offset & 3, data, mem_mask);
 			break;
 
 		case 0x1000/2:
 			/* compare registers */
-			segaic16_compare_timer_0_w(offset & 7, data, mem_mask);
+			segaic16_compare_timer_0_w(machine, offset & 7, data, mem_mask);
 			break;
 
 		case 0x2000/2:
@@ -1235,14 +1235,14 @@ static WRITE16_HANDLER( rom_5797_bank_math_w )
 static READ16_HANDLER( unknown_rgn2_r )
 {
 	logerror("Region 2: read from %04X\n", offset * 2);
-	return segaic16_compare_timer_1_r(offset & 7, mem_mask);
+	return segaic16_compare_timer_1_r(machine, offset & 7, mem_mask);
 }
 
 
 static WRITE16_HANDLER( unknown_rgn2_w )
 {
 	logerror("Region 2: write to %04X = %04X & %04X\n", offset * 2, data, mem_mask ^ 0xffff);
-	segaic16_compare_timer_1_w(offset & 7, data, mem_mask);
+	segaic16_compare_timer_1_w(machine, offset & 7, data, mem_mask);
 }
 
 
@@ -1349,7 +1349,7 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
 {
 	/* if we have a fake 8751 handler, call it on VBLANK */
 	if (i8751_vblank_hook != NULL)
-		(*i8751_vblank_hook)();
+		(*i8751_vblank_hook)(machine);
 }
 
 
@@ -1360,21 +1360,21 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
  *
  *************************************/
 
-static void altbeast_common_i8751_sim(offs_t soundoffs, offs_t inputoffs)
+static void altbeast_common_i8751_sim(running_machine *machine, offs_t soundoffs, offs_t inputoffs)
 {
 	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* set tile banks */
-	rom_5704_bank_w(1, workram[0x3094/2] & 0x00ff, 0xff00);
+	rom_5704_bank_w(machine, 1, workram[0x3094/2] & 0x00ff, 0xff00);
 
 	/* process any new sound data */
 	temp = workram[soundoffs];
 	if ((temp & 0xff00) != 0x0000)
 	{
-		segaic16_memory_mapper_w(0x03, temp >> 8);
+		segaic16_memory_mapper_w(machine, 0x03, temp >> 8);
 		workram[soundoffs] = temp & 0x00ff;
 	}
 
@@ -1382,40 +1382,40 @@ static void altbeast_common_i8751_sim(offs_t soundoffs, offs_t inputoffs)
 	workram[inputoffs] = ~readinputport(0) << 8;
 }
 
-static void altbeasj_i8751_sim(void)
+static void altbeasj_i8751_sim(running_machine *machine)
 {
-	altbeast_common_i8751_sim(0x30d4/2, 0x30d0/2);
+	altbeast_common_i8751_sim(machine, 0x30d4/2, 0x30d0/2);
 }
 
-static void altbeas5_i8751_sim(void)
+static void altbeas5_i8751_sim(running_machine *machine)
 {
-	altbeast_common_i8751_sim(0x3098/2, 0x3096/2);
+	altbeast_common_i8751_sim(machine, 0x3098/2, 0x3096/2);
 }
 
-static void altbeast_i8751_sim(void)
+static void altbeast_i8751_sim(running_machine *machine)
 {
-	altbeast_common_i8751_sim(0x30c4/2, 0x30c2/2);
+	altbeast_common_i8751_sim(machine, 0x30c4/2, 0x30c2/2);
 }
 
 
-static void ddux_i8751_sim(void)
+static void ddux_i8751_sim(running_machine *machine)
 {
 	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* process any new sound data */
 	temp = workram[0x0bd0/2];
 	if ((temp & 0xff00) != 0x0000)
 	{
-		segaic16_memory_mapper_w(0x03, temp >> 8);
+		segaic16_memory_mapper_w(machine, 0x03, temp >> 8);
 		workram[0x0bd0/2] = temp & 0x00ff;
 	}
 }
 
 
-static void goldnaxe_i8751_init(void)
+static void goldnaxe_i8751_init(running_machine *machine)
 {
 	static const UINT8 memory_control_5704[0x10] =
 		{ 0x02,0x00, 0x02,0x08, 0x00,0x1f, 0x00,0xff, 0x00,0x20, 0x01,0x10, 0x00,0x14, 0x00,0xc4 };
@@ -1433,12 +1433,12 @@ static void goldnaxe_i8751_init(void)
 	}
 }
 
-static void goldnaxe_i8751_sim(void)
+static void goldnaxe_i8751_sim(running_machine *machine)
 {
 	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* they periodically clear the data at 2cd8,2cda,2cdc,2cde and expect the MCU to fill it in */
 	if (workram[0x2cd8/2] == 0 && workram[0x2cda/2] == 0 && workram[0x2cdc/2] == 0 && workram[0x2cde/2] == 0)
@@ -1453,7 +1453,7 @@ static void goldnaxe_i8751_sim(void)
 	temp = workram[0x2cfc/2];
 	if ((temp & 0xff00) != 0x0000)
 	{
-		segaic16_memory_mapper_w(0x03, temp >> 8);
+		segaic16_memory_mapper_w(machine, 0x03, temp >> 8);
 		workram[0x2cfc/2] = temp & 0x00ff;
 	}
 
@@ -1463,18 +1463,18 @@ static void goldnaxe_i8751_sim(void)
 }
 
 
-static void tturf_i8751_sim(void)
+static void tturf_i8751_sim(running_machine *machine)
 {
 	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* process any new sound data */
 	temp = workram[0x01d0/2];
 	if ((temp & 0xff00) != 0x0000)
 	{
-		segaic16_memory_mapper_w(0x03, temp);
+		segaic16_memory_mapper_w(machine, 0x03, temp);
 		workram[0x01d0/2] = temp & 0x00ff;
 	}
 
@@ -1485,35 +1485,35 @@ static void tturf_i8751_sim(void)
 }
 
 
-static void wb3_i8751_sim(void)
+static void wb3_i8751_sim(running_machine *machine)
 {
 	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* process any new sound data */
 	temp = workram[0x0008/2];
 	if ((temp & 0x00ff) != 0x0000)
 	{
-		segaic16_memory_mapper_w(0x03, temp >> 8);
+		segaic16_memory_mapper_w(machine, 0x03, temp >> 8);
 		workram[0x0008/2] = temp & 0xff00;
 	}
 }
 
 
-static void wrestwar_i8751_sim(void)
+static void wrestwar_i8751_sim(running_machine *machine)
 {
 	UINT16 temp;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* process any new sound data */
 	temp = workram[0x208e/2];
 	if ((temp & 0xff00) != 0x0000)
 	{
-		segaic16_memory_mapper_w(0x03, temp);
+		segaic16_memory_mapper_w(machine, 0x03, temp);
 		workram[0x208e/2] = temp & 0x00ff;
 	}
 
@@ -1534,8 +1534,8 @@ static WRITE16_HANDLER( atomicp_sound_w )
 	if (ACCESSING_MSB)
 		switch (offset & 1)
 		{
-			case 0:	YM2413_register_port_0_w(0, data >> 8);	break;
-			case 1:	YM2413_data_port_0_w(0, data >> 8);		break;
+			case 0:	YM2413_register_port_0_w(machine, 0, data >> 8);	break;
+			case 1:	YM2413_data_port_0_w(machine, 0, data >> 8);		break;
 		}
 }
 
@@ -1565,7 +1565,7 @@ static READ16_HANDLER( dunkshot_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
@@ -1592,14 +1592,13 @@ static READ16_HANDLER( hwchamp_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
 static WRITE16_HANDLER( hwchamp_custom_io_w )
 {
 	static const char *const portname[4] = { "MONITOR", "LEFT", "RIGHT", "DUMMY" };
-
 	switch (offset & (0x3000/2))
 	{
 		case 0x3000/2:
@@ -1620,7 +1619,7 @@ static WRITE16_HANDLER( hwchamp_custom_io_w )
 			}
 			break;
 	}
-	standard_io_w(offset, data, mem_mask);
+	standard_io_w(machine, offset, data, mem_mask);
 }
 
 
@@ -1645,7 +1644,7 @@ static READ16_HANDLER( passshtj_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
@@ -1670,7 +1669,7 @@ static READ16_HANDLER( sdi_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
@@ -1684,7 +1683,6 @@ static READ16_HANDLER( sdi_custom_io_r )
 static READ16_HANDLER( sjryuko_custom_io_r )
 {
 	static const char *const portname[] = { "MJ0", "MJ1", "MJ2", "MJ3", "MJ4", "MJ5" };
-
 	switch (offset & (0x3000/2))
 	{
 		case 0x1000/2:
@@ -1700,14 +1698,13 @@ static READ16_HANDLER( sjryuko_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
 static WRITE16_HANDLER( sjryuko_custom_io_w )
 {
 	static UINT8 last_val;
-
 	switch (offset & (0x3000/2))
 	{
 		case 0x0000/2:
@@ -1715,7 +1712,7 @@ static WRITE16_HANDLER( sjryuko_custom_io_w )
 				mj_input_num = (mj_input_num + 1) % 6;
 			break;
 	}
-	standard_io_w(offset, data, mem_mask);
+	standard_io_w(machine, offset, data, mem_mask);
 }
 
 
@@ -1743,7 +1740,7 @@ static NVRAM_HANDLER( system16b )
  *************************************/
 
 static ADDRESS_MAP_START( system16b_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0xffffff) AM_READWRITE(segaic16_memory_mapper_lsb_r, segaic16_memory_mapper_lsb_w)
 ADDRESS_MAP_END
 
@@ -1756,7 +1753,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xdfff) AM_ROMBANK(1)
 	AM_RANGE(0xe800, 0xe800) AM_READ(soundlatch_r)
@@ -1764,7 +1761,8 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_WRITE(upd7759_control_w)
@@ -1781,12 +1779,12 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_data_map, ADDRESS_SPACE_DATA, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(segaic16_memory_mapper_r, segaic16_memory_mapper_w)
 ADDRESS_MAP_END
 
@@ -1906,10 +1904,11 @@ static INPUT_PORTS_START( system16b_1button )
 INPUT_PORTS_END
 
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( generic )
 	PORT_INCLUDE( system16b_generic )
 INPUT_PORTS_END
-
+#endif
 
 
 /*************************************
@@ -2151,10 +2150,19 @@ static INPUT_PORTS_START( bullet )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_LEFT ) PORT_8WAY PORT_PLAYER(2)
-/*
+
     PORT_MODIFY("DSW2")
-    PORT_DIPUNUSED( 0x01, 0x01 )    // 2p vs. 3p
-*/
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Players ) ) PORT_DIPLOCATION("SW2:1")
+	PORT_DIPSETTING(    0x01, "2" )
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:2")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Lives ) ) PORT_DIPLOCATION("SW2:3,4")
+	PORT_DIPSETTING(    0x00, "2" )
+	PORT_DIPSETTING(    0x0c, "3" )
+	PORT_DIPSETTING(    0x08, "4" )
+	PORT_DIPSETTING(    0x04, "5" )
 INPUT_PORTS_END
 
 
@@ -3217,23 +3225,20 @@ static MACHINE_DRIVER_START( system16b )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK_10MHz)
 	MDRV_CPU_PROGRAM_MAP(system16b_map,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK_10MHz/2)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_RESET(system16b)
 	MDRV_NVRAM_HANDLER(system16b)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(segas16b)
 	MDRV_PALETTE_LENGTH(2048*3)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_25MHz/4, 400, 0, 320, 262, 0, 224)
 
@@ -3255,12 +3260,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( system16b_8751 )
 	MDRV_IMPORT_FROM(system16b)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(i8751_main_cpu_vblank,1)
+	MDRV_CPU_VBLANK_INT("main", i8751_main_cpu_vblank)
 
 	MDRV_CPU_ADD_TAG("mcu", I8751, MASTER_CLOCK_8MHz)
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_DATA_MAP(mcu_data_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse)
 MACHINE_DRIVER_END
 
 
@@ -3279,7 +3284,7 @@ static MACHINE_DRIVER_START( atomicp )
 	MDRV_MACHINE_RESET(atomicp)
 
 	/* sound hardware */
-	MDRV_SOUND_REPLACE("2151", YM2413, 4000000)
+	MDRV_SOUND_REPLACE("2151", YM2413, 5000000) /* 20MHz OSC divided by 4 */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MDRV_SOUND_REMOVE("7759")
@@ -3709,8 +3714,16 @@ ROM_END
  **************************************************************************************************************************
  **************************************************************************************************************************
     Atomic Point
-    CPU: 68000
-    Custom Korean Board - NOT Sega
+
+    Custom Korean Board - NOT Sega:
+
+    CPU: TMP68000P-10
+    OSC: 25.1748MHz & 20MHz
+  Chips: Philko PK8702
+         Philko PK8811
+   Dips: Two 8-way dipswitch banks
+  Sound: Yamaha YM2413
+
 */
 ROM_START( atomicp )
 	ROM_REGION( 0x020000, REGION_CPU1, 0 ) /* 68000 code */
@@ -6160,7 +6173,7 @@ static DRIVER_INIT( exctleag_5358 )
 static DRIVER_INIT( goldnaxe_5704 )
 {
 	DRIVER_INIT_CALL(generic_5704);
-	goldnaxe_i8751_init();
+	goldnaxe_i8751_init(machine);
 	i8751_vblank_hook = goldnaxe_i8751_sim;
 }
 
@@ -6168,7 +6181,7 @@ static DRIVER_INIT( goldnaxe_5704 )
 static DRIVER_INIT( goldnaxe_5797 )
 {
 	DRIVER_INIT_CALL(generic_5797);
-	goldnaxe_i8751_init();
+	goldnaxe_i8751_init(machine);
 	i8751_vblank_hook = goldnaxe_i8751_sim;
 }
 

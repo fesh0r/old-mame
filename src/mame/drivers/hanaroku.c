@@ -40,7 +40,7 @@ static VIDEO_START(hanaroku)
 {
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i;
 
@@ -53,7 +53,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sx = hanaroku_spriteram1[i + 0x200] | ((hanaroku_spriteram2[i + 0x200] & 0x07) << 8);
 		int sy = 242 - hanaroku_spriteram3[i];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sy = 242 - sy;
 			flipx = !flipx;
@@ -67,8 +67,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 static VIDEO_UPDATE(hanaroku)
 {
-	fillbitmap(bitmap, machine->pens[0x1f0], cliprect);	// ???
-	draw_sprites(machine, bitmap, cliprect);
+	fillbitmap(bitmap, 0x1f0, cliprect);	// ???
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -118,12 +118,12 @@ static WRITE8_HANDLER( hanaroku_out_2_w )
 /* main cpu */
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x9000, 0x97ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa000, 0xa1ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc000, 0xc3ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc400, 0xc4ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x9000, 0x97ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xa000, 0xa1ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc000, 0xc3ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc400, 0xc4ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd000, 0xd000) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_0_r)
 	AM_RANGE(0xe001, 0xe001) AM_READ(input_port_1_r)
@@ -132,15 +132,15 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&hanaroku_spriteram1)
-	AM_RANGE(0x9000, 0x97ff) AM_WRITE(MWA8_RAM) AM_BASE(&hanaroku_spriteram2)
-	AM_RANGE(0xa000, 0xa1ff) AM_WRITE(MWA8_RAM) AM_BASE(&hanaroku_spriteram3)
-	AM_RANGE(0xa200, 0xa2ff) AM_WRITE(MWA8_NOP)	// ??? written once during P.O.S.T.
-	AM_RANGE(0xa300, 0xa304) AM_WRITE(MWA8_NOP)	// ???
-	AM_RANGE(0xc000, 0xc3ff) AM_WRITE(MWA8_RAM)				// main ram
-	AM_RANGE(0xc400, 0xc4ff) AM_WRITE(MWA8_RAM)	// ???
-	AM_RANGE(0xb000, 0xb000) AM_WRITE(MWA8_NOP)	// ??? always 0x40
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) AM_BASE(&hanaroku_spriteram1)
+	AM_RANGE(0x9000, 0x97ff) AM_WRITE(SMH_RAM) AM_BASE(&hanaroku_spriteram2)
+	AM_RANGE(0xa000, 0xa1ff) AM_WRITE(SMH_RAM) AM_BASE(&hanaroku_spriteram3)
+	AM_RANGE(0xa200, 0xa2ff) AM_WRITE(SMH_NOP)	// ??? written once during P.O.S.T.
+	AM_RANGE(0xa300, 0xa304) AM_WRITE(SMH_NOP)	// ???
+	AM_RANGE(0xc000, 0xc3ff) AM_WRITE(SMH_RAM)				// main ram
+	AM_RANGE(0xc400, 0xc4ff) AM_WRITE(SMH_RAM)	// ???
+	AM_RANGE(0xb000, 0xb000) AM_WRITE(SMH_NOP)	// ??? always 0x40
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xd001, 0xd001) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(hanaroku_out_0_w)
@@ -238,16 +238,16 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( hanaroku )
 	MDRV_CPU_ADD(Z80,6000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 48*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(hanaroku)
 	MDRV_PALETTE_LENGTH(0x200)
 

@@ -148,6 +148,15 @@ FG-3J ROM-J 507KA0301P04       Rev:1.3
 
 ***************************************************************************/
 
+/* Define clocks based on actual OSC on the PCB */
+
+#define CPU_CLOCK		(XTAL_40MHz / 2)		/* clock for 68020 */
+#define SOUND_CPU_CLOCK		(XTAL_12MHz / 2)		/* clock for Z80 sound CPU */
+#define FM_SOUND_CLOCK		(XTAL_33_8688MHz / 2)		/* FM clock */
+
+/* NOTE: YMF278B_STD_CLOCK is defined in /src/emu/sound/ymf278b.h */
+
+
 #include "driver.h"
 #include "deprecat.h"
 #include "sound/262intf.h"
@@ -250,7 +259,9 @@ static WRITE32_HANDLER( fuuki32_vregs_w )
 		COMBINE_DATA(&fuuki32_vregs[offset]);
 		if (offset == 0x1c/4)
 		{
-			timer_adjust(raster_interrupt_timer, video_screen_get_time_until_pos(0, fuuki32_vregs[0x1c/4]>>16, Machine->screen[0].visarea.max_x + 1), 0, video_screen_get_frame_period(0));
+			const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+			attotime period = video_screen_get_frame_period(machine->primary_screen);
+			timer_adjust_periodic(raster_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, fuuki32_vregs[0x1c/4]>>16, visarea->max_x + 1), 0, period);
 		}
 	}
 }
@@ -258,57 +269,57 @@ static WRITE32_HANDLER( fuuki32_vregs_w )
 // Lines with empty comment are for debug only
 
 static ADDRESS_MAP_START( fuuki32_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA32_ROM)
-	AM_RANGE(0x400000, 0x40ffff) AM_READ(MRA32_RAM) // Work RAM
-	AM_RANGE(0x410000, 0x41ffff) AM_READ(MRA32_RAM) // Work RAM (used by asurabus)
-	AM_RANGE(0x500000, 0x501fff) AM_READ(MRA32_RAM) // Tilemap 1
-	AM_RANGE(0x502000, 0x503fff) AM_READ(MRA32_RAM) // Tilemap 2
-	AM_RANGE(0x504000, 0x505fff) AM_READ(MRA32_RAM) // Tilemap bg
-	AM_RANGE(0x506000, 0x507fff) AM_READ(MRA32_RAM) // Tilemap bg2
-	AM_RANGE(0x508000, 0x517fff) AM_READ(MRA32_RAM) // More tilemap, or linescroll? Seems to be empty all of the time
-	AM_RANGE(0x600000, 0x601fff) AM_READ(MRA32_RAM) // Sprites
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x400000, 0x40ffff) AM_READ(SMH_RAM) // Work RAM
+	AM_RANGE(0x410000, 0x41ffff) AM_READ(SMH_RAM) // Work RAM (used by asurabus)
+	AM_RANGE(0x500000, 0x501fff) AM_READ(SMH_RAM) // Tilemap 1
+	AM_RANGE(0x502000, 0x503fff) AM_READ(SMH_RAM) // Tilemap 2
+	AM_RANGE(0x504000, 0x505fff) AM_READ(SMH_RAM) // Tilemap bg
+	AM_RANGE(0x506000, 0x507fff) AM_READ(SMH_RAM) // Tilemap bg2
+	AM_RANGE(0x508000, 0x517fff) AM_READ(SMH_RAM) // More tilemap, or linescroll? Seems to be empty all of the time
+	AM_RANGE(0x600000, 0x601fff) AM_READ(SMH_RAM) // Sprites
 
-	AM_RANGE(0x700000, 0x703fff) AM_READ(MRA32_RAM) // Palette
+	AM_RANGE(0x700000, 0x703fff) AM_READ(SMH_RAM) // Palette
 
 	AM_RANGE(0x800000, 0x800003) AM_READ(io32_0_r) // Coin
 	AM_RANGE(0x810000, 0x810003) AM_READ(io32_1_r) // Player Inputs
 	AM_RANGE(0x880000, 0x880003) AM_READ(io32_2_r) // Service + DIPS
 	AM_RANGE(0x890000, 0x890003) AM_READ(io32_3_r) // More DIPS
 
-	AM_RANGE(0x8c0000, 0x8c001f) AM_READ(MRA32_RAM)// Video Registers
+	AM_RANGE(0x8c0000, 0x8c001f) AM_READ(SMH_RAM)// Video Registers
 
-/**/AM_RANGE(0x8d0000, 0x8d0003) AM_READ(MRA32_RAM) // Flipscreen Related
-/**/AM_RANGE(0x8e0000, 0x8e0003) AM_READ(MRA32_RAM) // Controls layer order
+/**/AM_RANGE(0x8d0000, 0x8d0003) AM_READ(SMH_RAM) // Flipscreen Related
+/**/AM_RANGE(0x8e0000, 0x8e0003) AM_READ(SMH_RAM) // Controls layer order
 
 	AM_RANGE(0x903fe0, 0x903fff) AM_READ(snd_020_r) // Shared with Z80
 //  AM_RANGE(0x903fe0, 0x903fe3) AM_READ(fuuki32_sound_command_r) // Shared with Z80
-//  AM_RANGE(0x903fe4, 0x903fff) AM_READ(MRA32_RAM) // ??
+//  AM_RANGE(0x903fe4, 0x903fff) AM_READ(SMH_RAM) // ??
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fuuki32_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA32_ROM)
-	AM_RANGE(0x400000, 0x40ffff) AM_WRITE(MWA32_RAM) // Work RAM
-	AM_RANGE(0x410000, 0x41ffff) AM_WRITE(MWA32_RAM) // Work RAM
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x400000, 0x40ffff) AM_WRITE(SMH_RAM) // Work RAM
+	AM_RANGE(0x410000, 0x41ffff) AM_WRITE(SMH_RAM) // Work RAM
 	AM_RANGE(0x500000, 0x501fff) AM_WRITE(fuuki32_vram_0_w) AM_BASE(&fuuki32_vram_0) // Tilemap 1
 	AM_RANGE(0x502000, 0x503fff) AM_WRITE(fuuki32_vram_1_w) AM_BASE(&fuuki32_vram_1) // Tilemap 2
 	AM_RANGE(0x504000, 0x505fff) AM_WRITE(fuuki32_vram_2_w) AM_BASE(&fuuki32_vram_2) // Tilemap bg
 	AM_RANGE(0x506000, 0x507fff) AM_WRITE(fuuki32_vram_3_w) AM_BASE(&fuuki32_vram_3) // Tilemap bg2
-	AM_RANGE(0x508000, 0x517fff) AM_WRITE(MWA32_RAM) // More tilemap, or linescroll? Seems to be empty all of the time
+	AM_RANGE(0x508000, 0x517fff) AM_WRITE(SMH_RAM) // More tilemap, or linescroll? Seems to be empty all of the time
 
-	AM_RANGE(0x600000, 0x601fff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size	)	// Sprites
+	AM_RANGE(0x600000, 0x601fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size	)	// Sprites
 	AM_RANGE(0x700000, 0x703fff) AM_WRITE(paletteram32_xRRRRRGGGGGBBBBB_dword_w) AM_BASE(&paletteram32) // Palette
 
-	AM_RANGE(0x800000, 0x800003) AM_WRITE(MWA32_NOP) // Clear buffered inputs
-	AM_RANGE(0x810000, 0x810003) AM_WRITE(MWA32_NOP) // Clear buffered inputs
+	AM_RANGE(0x800000, 0x800003) AM_WRITE(SMH_NOP) // Clear buffered inputs
+	AM_RANGE(0x810000, 0x810003) AM_WRITE(SMH_NOP) // Clear buffered inputs
 
 	AM_RANGE(0x8c0000, 0x8c001f) AM_WRITE(fuuki32_vregs_w) AM_BASE(&fuuki32_vregs)	// Video Registers
 
-	AM_RANGE(0x8d0000, 0x8d0003) AM_WRITE(MWA32_RAM) // Flipscreen Related
-	AM_RANGE(0x8e0000, 0x8e0003) AM_WRITE(MWA32_RAM) AM_BASE(&fuuki32_priority) // Controls layer order
+	AM_RANGE(0x8d0000, 0x8d0003) AM_WRITE(SMH_RAM) // Flipscreen Related
+	AM_RANGE(0x8e0000, 0x8e0003) AM_WRITE(SMH_RAM) AM_BASE(&fuuki32_priority) // Controls layer order
 
 	AM_RANGE(0x903fe0, 0x903fff) AM_WRITE(snd_020_w) // z80 comms
 
-	AM_RANGE(0xa00000, 0xa00003) AM_WRITE(MWA32_RAM) AM_BASE(&fuuki32_tilebank)
+	AM_RANGE(0xa00000, 0xa00003) AM_WRITE(SMH_RAM) AM_BASE(&fuuki32_tilebank)
 ADDRESS_MAP_END
 
 
@@ -337,28 +348,28 @@ static WRITE8_HANDLER( snd_z80_w )
 }
 
 static ADDRESS_MAP_START( fuuki32_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM		)	// ROM
-	AM_RANGE(0x6000, 0x6fff) AM_READ(MRA8_RAM		)	// RAM
+	AM_RANGE(0x0000, 0x5fff) AM_READ(SMH_ROM		)	// ROM
+	AM_RANGE(0x6000, 0x6fff) AM_READ(SMH_RAM		)	// RAM
 	AM_RANGE(0x7ff0, 0x7fff) AM_READ(snd_z80_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK1		)	// ROM
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1		)	// ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fuuki32_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_WRITE(MWA8_ROM		)	// ROM
-	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_RAM		)	// RAM
+	AM_RANGE(0x0000, 0x5fff) AM_WRITE(SMH_ROM		)	// ROM
+	AM_RANGE(0x6000, 0x6fff) AM_WRITE(SMH_RAM		)	// RAM
 	AM_RANGE(0x7ff0, 0x7fff) AM_WRITE(snd_z80_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM		)	// ROM
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM		)	// ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fuuki32_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_READ(YMF262_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( fuuki32_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(fuuki32_sound_bw_w)
-	AM_RANGE(0x30, 0x30) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x30, 0x30) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x40, 0x40) AM_WRITE(YMF262_register_A_0_w)
 	AM_RANGE(0x41, 0x41) AM_WRITE(YMF262_data_A_0_w)
 	AM_RANGE(0x42, 0x42) AM_WRITE(YMF262_register_B_0_w)
@@ -540,22 +551,22 @@ GFXDECODE_END
 static TIMER_CALLBACK( level_1_interrupt_callback )
 {
 	cpunum_set_input_line(machine, 0, 1, PULSE_LINE);
-	timer_set(video_screen_get_time_until_pos(0, 248, 0), NULL, 0, level_1_interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
 	cpunum_set_input_line(machine, 0, 3, PULSE_LINE);	// VBlank IRQ
-	timer_set(video_screen_get_time_until_pos(0, machine->screen[0].visarea.max_y + 1, 0), NULL, 0, vblank_interrupt_callback);
+	timer_set(video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
 }
 
 
 static TIMER_CALLBACK( raster_interrupt_callback )
 {
 	cpunum_set_input_line(machine, 0, 5, PULSE_LINE);	// Raster Line IRQ
-	video_screen_update_partial(0, video_screen_get_vpos(0));
-	timer_adjust(raster_interrupt_timer, video_screen_get_frame_period(0), 0, attotime_zero);
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+	timer_adjust_oneshot(raster_interrupt_timer, video_screen_get_frame_period(machine->primary_screen), 0);
 }
 
 
@@ -567,9 +578,11 @@ static MACHINE_START( fuuki32 )
 
 static MACHINE_RESET( fuuki32 )
 {
-	timer_set(video_screen_get_time_until_pos(0, 248, 0), NULL, 0, level_1_interrupt_callback);
-	timer_set(video_screen_get_time_until_pos(0, machine->screen[0].visarea.max_y + 1, 0), NULL, 0, vblank_interrupt_callback);
-	timer_adjust(raster_interrupt_timer, video_screen_get_time_until_pos(0, 0, machine->screen[0].visarea.max_x + 1), 0, attotime_zero);
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 248, 0), NULL, 0, level_1_interrupt_callback);
+	timer_set(video_screen_get_time_until_vblank_start(machine->primary_screen), NULL, 0, vblank_interrupt_callback);
+	timer_adjust_oneshot(raster_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, visarea->max_x + 1), 0);
 }
 
 
@@ -591,23 +604,25 @@ static const struct YMF262interface ymf262_interface =
 static MACHINE_DRIVER_START( fuuki32 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68EC020, 20000000) /* verified */
+	MDRV_CPU_ADD(M68EC020, CPU_CLOCK) /* 20MHz verified */
 	MDRV_CPU_PROGRAM_MAP(fuuki32_readmem,fuuki32_writemem)
 
-	MDRV_CPU_ADD_TAG("sound", Z80, 6000000) /* verified */
+	MDRV_CPU_ADD_TAG("sound", Z80, SOUND_CPU_CLOCK) /* 6MHz verified */
 	MDRV_CPU_PROGRAM_MAP(fuuki32_sound_readmem,fuuki32_sound_writemem)
 	MDRV_CPU_IO_MAP(fuuki32_sound_readport,fuuki32_sound_writeport)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_MACHINE_START(fuuki32)
 	MDRV_MACHINE_RESET(fuuki32)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER) // | VIDEO_BUFFERS_SPRITERAM ) // Buffered by 2 frames
+	//MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM) // Buffered by 2 frames
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 30*8-1)
+
 	MDRV_GFXDECODE(fuuki32)
 	MDRV_PALETTE_LENGTH(0x4000/2)
 
@@ -618,14 +633,14 @@ static MACHINE_DRIVER_START( fuuki32 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(YMF262, 14318180)
+	MDRV_SOUND_ADD(YMF262, FM_SOUND_CLOCK) /* 33.8688MHz OSC divided by 2 is 16.9344MHz */
 	MDRV_SOUND_CONFIG(ymf262_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
 	MDRV_SOUND_ROUTE(2, "left", 0.50)
 	MDRV_SOUND_ROUTE(3, "right", 0.50)
 
-	MDRV_SOUND_ADD(YMF278B, YMF278B_STD_CLOCK)
+	MDRV_SOUND_ADD(YMF278B, YMF278B_STD_CLOCK) /* YMF278B_STD_CLOCK = OSC 33.8688MHz */
 	MDRV_SOUND_CONFIG(ymf278b_interface)
 	MDRV_SOUND_ROUTE(0, "left", 0.50)
 	MDRV_SOUND_ROUTE(1, "right", 0.50)
@@ -641,19 +656,9 @@ MACHINE_DRIVER_END
 
 /***************************************************************************
 
-                                Asura Blade
-Fuuki, 1999
+                 Asura Blade - Sword of Dynasty (Japan)
 
-This dump is taken from a ROM board with number FG-3J ROM-J
-There's nothing on the board except some 4M EPROMs and several
-surface mounted MASK ROMs.
-
-The connectors on the board and the size of the board is similar
-to Jaleco Megasys32, however it's not compatible with it due to the
-connector spacing being different. The physical size of the board
-is too large to fit an SSV board.
-So, I have no idea what the main hardware is, the game probably
-runs on a custom Fuuki system board named 'FG-3'?
+Fuuki, 1999   Consists of a FG-3J MAIN-J mainboard &  FG-3J ROM-J combo
 
 ***************************************************************************/
 
@@ -691,6 +696,14 @@ ROM_START( asurabld )
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) // OPL4 samples
 	ROM_LOAD( "pcm.u6", 0x00000, 0x400000, CRC(ac72225a) SHA1(8d16399ed34ac5bd69dbf43b2de2b0db9ac1c610) )
 ROM_END
+
+/***************************************************************************
+
+                 Asura Buster - Eternal Warriors (Japan)
+
+Fuuki, 2000   Consists of a FG-3J MAIN-J mainboard &  FG-3J ROM-J combo
+
+***************************************************************************/
 
 ROM_START( asurabus )
 	ROM_REGION( 0x200000, REGION_CPU1, 0 ) /* M68020 */

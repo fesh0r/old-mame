@@ -87,9 +87,9 @@ WRITE16_HANDLER( twin16_video_register_w )
 }
 
 static void draw_sprite( /* slow slow slow, but it's ok for now */
-	mame_bitmap *bitmap,
+	bitmap_t *bitmap,
 	const UINT16 *pen_data,
-	const pen_t *pal_data,
+	int pal_base,
 	int xpos, int ypos,
 	int width, int height,
 	int flipx, int flipy, int pri )
@@ -127,7 +127,7 @@ static void draw_sprite( /* slow slow slow, but it's ok for now */
 
 							if( pen )
 							{
-								if(pdest[sx]<pval) { dest[sx] = pal_data[pen]; }
+								if(pdest[sx]<pval) { dest[sx] = pal_base + pen; }
 
 								pdest[sx]|=0x10;
 							}
@@ -196,7 +196,7 @@ shadow bit?
 
  */
 
-static void draw_sprites( mame_bitmap *bitmap )
+static void draw_sprites( bitmap_t *bitmap )
 {
 	int count = 0;
 
@@ -211,7 +211,7 @@ static void draw_sprites( mame_bitmap *bitmap )
 			int xpos = source[1];
 			int ypos = source[2];
 
-			const pen_t *pal_data = Machine->pens+((attributes&0xf)+0x10)*16;
+			int pal_base = ((attributes&0xf)+0x10)*16;
 			int height	= 16<<((attributes>>6)&0x3);
 			int width	= 16<<((attributes>>4)&0x3);
 			const UINT16 *pen_data = 0;
@@ -275,14 +275,14 @@ static void draw_sprites( mame_bitmap *bitmap )
 			}
 
 			//if( sprite_which==count || !input_code_pressed( KEYCODE_B ) )
-			draw_sprite( bitmap, pen_data, pal_data, xpos, ypos, width, height, flipx, flipy, (attributes&0x4000) );
+			draw_sprite( bitmap, pen_data, pal_base, xpos, ypos, width, height, flipx, flipy, (attributes&0x4000) );
 		}
 
 		count++;
 	}
 }
 
-static void draw_layer( mame_bitmap *bitmap, int opaque ){
+static void draw_layer( bitmap_t *bitmap, int opaque ){
 	const UINT16 *gfx_base;
 	const UINT16 *source = videoram16;
 	int i, xxor, yxor;
@@ -362,7 +362,7 @@ static void draw_layer( mame_bitmap *bitmap, int opaque ){
             */
 			const UINT16 *gfx_data = gfx_base + (code&0x7ff)*16 + bank_table[(code>>11)&0x3]*0x8000;
 			int color = (code>>13);
-			const pen_t *pal_data = Machine->pens + 16*(0x20+color+8*palette);
+			int pal_base = 16*(0x20+color+8*palette);
 			int x, y;
 
 			if( opaque )
@@ -377,7 +377,7 @@ static void draw_layer( mame_bitmap *bitmap, int opaque ){
 					{
 						int effx = (x - xpos) ^ xxor;
 						UINT16 data = gfxptr[effx / 4];
-						dest[x] = pal_data[(data >> 4*(~effx & 3)) & 0x0f];
+						dest[x] = pal_base + ((data >> 4*(~effx & 3)) & 0x0f);
 						pdest[x] |= 1;
 					}
 				}
@@ -397,7 +397,7 @@ static void draw_layer( mame_bitmap *bitmap, int opaque ){
 						UINT8 pen = (data >> 4*(~effx & 3)) & 0x0f;
 						if (pen)
 						{
-							dest[x] = pal_data[pen];
+							dest[x] = pal_base + pen;
 							pdest[x] |= 4;
 						}
 					}
@@ -420,7 +420,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( twin16 )
 {
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows_flip_y,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -428,7 +428,7 @@ VIDEO_START( twin16 )
 VIDEO_START( fround )
 {
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		 8, 8, 64, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -440,7 +440,7 @@ VIDEO_EOF( twin16 )
 
 	need_process_spriteram = 1;
 
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }
 
 VIDEO_UPDATE( twin16 )

@@ -31,10 +31,10 @@ static int palette_bank;
 static int controller;
 static int hit;
 
-static mame_bitmap* helper0;
-static mame_bitmap* helper1;
+static bitmap_t *helper0;
+static bitmap_t *helper1;
 
-static tilemap* bg_tilemap;
+static tilemap *bg_tilemap;
 
 
 /***************************************************************************
@@ -67,7 +67,7 @@ PALETTE_INIT( bking )
 			3, &resistances_rg[0], gweights, 0, 0,
 			2, &resistances_b[0],  bweights, 0, 0);
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		UINT16 pen;
 		int bit0, bit1, bit2, r, g, b;
@@ -149,9 +149,9 @@ WRITE8_HANDLER( bking_cont1_w )
 
 	coin_lockout_global_w(~data & 0x01);
 
-	flip_screen = data & 0x04;
+	flip_screen_set_no_update(data & 0x04);
 
-	tilemap_set_flip(ALL_TILEMAPS, flip_screen ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
+	tilemap_set_flip(ALL_TILEMAPS, flip_screen_get() ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 
 	controller = data & 0x02;
 
@@ -246,9 +246,9 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( bking )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 0, 8, 8, 32, 32);
-	helper0 = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
-	helper1 = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	helper0 = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	helper1 = video_screen_auto_bitmap_alloc(machine->primary_screen);
 }
 
 
@@ -258,14 +258,14 @@ VIDEO_UPDATE( bking )
 
 	/* draw the balls */
 
-	drawgfx(bitmap, machine->gfx[2],
+	drawgfx(bitmap, screen->machine->gfx[2],
 		ball1_pic,
 		palette_bank,
 		0, 0,
 		xld1, yld1,
 		cliprect, TRANSPARENCY_PEN, 0);
 
-	drawgfx(bitmap, machine->gfx[3],
+	drawgfx(bitmap, screen->machine->gfx[3],
 		ball2_pic,
 		palette_bank,
 		0, 0,
@@ -274,7 +274,7 @@ VIDEO_UPDATE( bking )
 
 	/* draw the crow */
 
-	drawgfx(bitmap, machine->gfx[1],
+	drawgfx(bitmap, screen->machine->gfx[1],
 		crow_pic,
 		palette_bank,
 		crow_flip, crow_flip,
@@ -323,8 +323,8 @@ VIDEO_EOF( bking )
 		latch = 0x0400;
 	}
 
-	tilemap_set_scrollx(bg_tilemap, 0, flip_screen ? -xld : xld);
-	tilemap_set_scrolly(bg_tilemap, 0, flip_screen ? -yld : yld);
+	tilemap_set_scrollx(bg_tilemap, 0, flip_screen_get() ? -xld : xld);
+	tilemap_set_scrolly(bg_tilemap, 0, flip_screen_get() ? -yld : yld);
 
 	tilemap_draw(helper0, &rect, bg_tilemap, 0, 0);
 
@@ -350,8 +350,8 @@ VIDEO_EOF( bking )
 					int col = (xld + x) / 8 + 1;
 					int row = (yld + y) / 8 + 0;
 
-					latch |= (flip_screen ? 31 - col : col) << 0;
-					latch |= (flip_screen ? 31 - row : row) << 5;
+					latch |= (flip_screen_get() ? 31 - col : col) << 0;
+					latch |= (flip_screen_get() ? 31 - row : row) << 5;
 
 					pc3259_output[0] = (latch >> 0x0) & 0xf;
 					pc3259_output[1] = (latch >> 0x4) & 0xf;

@@ -47,12 +47,12 @@ static WRITE8_HANDLER( jamma_if_control_latch_w )
 	// bit 3 - enable 752 Hz (D-3) square wave output
 
 	logerror( "Writing control latch with %02X\n", data );
-};
+}
 
 static READ8_HANDLER( jamma_if_control_latch_r )
 {
 	return jamma_if_control_latch & 0x08;
-};
+}
 
 static READ8_HANDLER( jamma_if_read_dsw )
 {
@@ -94,7 +94,7 @@ static READ8_HANDLER( jamma_if_read_dsw )
 	}
 
 	return dsw_val & 1;
-};
+}
 
 static UINT8 jamma_if_read_joystick( void )
 {
@@ -106,20 +106,20 @@ static UINT8 jamma_if_read_joystick( void )
 	{
 		return readinputportbytag( "IN" ) | 0x08;
 	}
-};
+}
 
 static MACHINE_RESET( uapce )
 {
 	pce_set_joystick_readinputport_callback( jamma_if_read_joystick );
 	jamma_if_control_latch = 0;
-};
+}
 
 static ADDRESS_MAP_START( z80_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x07FF) AM_ROM
 	AM_RANGE( 0x0800, 0x0FFF) AM_RAM
 	AM_RANGE( 0x1000, 0x17FF) AM_WRITE( jamma_if_control_latch_w )
 	AM_RANGE( 0x1800, 0x1FFF) AM_READ(  jamma_if_read_dsw )
-	AM_RANGE( 0x2000, 0x27FF) AM_READ(  port_tag_to_handler8( "COIN" ) )
+	AM_RANGE( 0x2000, 0x27FF) AM_READ_PORT( "COIN" )
 	AM_RANGE( 0x2800, 0x2FFF) AM_READ(  jamma_if_control_latch_r )
 ADDRESS_MAP_END
 
@@ -182,26 +182,24 @@ static MACHINE_DRIVER_START( uapce )
 	MDRV_CPU_ADD(H6280, PCE_MAIN_CLOCK/3)
 	MDRV_CPU_PROGRAM_MAP(pce_mem, 0)
 	MDRV_CPU_IO_MAP(pce_io, 0)
-	MDRV_CPU_VBLANK_INT(pce_interrupt, VDC_LPF)
+	MDRV_CPU_VBLANK_INT_HACK(pce_interrupt, VDC_LPF)
 
 	MDRV_CPU_ADD(Z80, 1400000)
 	MDRV_CPU_PROGRAM_MAP(z80_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( uapce )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_ADD("main",0)
 	MDRV_SCREEN_RAW_PARAMS(PCE_MAIN_CLOCK/2, VDC_WPF, 70, 70 + 512 + 32, VDC_LPF, 14, 14+242)
+
 	/* MDRV_GFXDECODE( pce_gfxdecodeinfo ) */
 	MDRV_PALETTE_LENGTH(1024)
 	MDRV_PALETTE_INIT( vce )
-	MDRV_COLORTABLE_LENGTH(1024)
 
 	MDRV_VIDEO_START( pce )
 	MDRV_VIDEO_UPDATE( pce )
@@ -226,6 +224,6 @@ ROM_END
 static DRIVER_INIT(uapce)
 {
 	DRIVER_INIT_CALL(pce);
-};
+}
 
 GAME( 1989, blazlaz, 0, uapce, uapce, uapce, ROT0, "Hudson Soft", "Blazing Lazers", GAME_IMPERFECT_SOUND )

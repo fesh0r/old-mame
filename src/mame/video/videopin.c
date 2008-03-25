@@ -31,7 +31,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( videopin )
 {
-	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset, TILEMAP_TYPE_PEN, 8, 8, 48, 32);
+	bg_tilemap = tilemap_create(get_tile_info, get_memory_offset,  8, 8, 48, 32);
 }
 
 
@@ -85,7 +85,7 @@ VIDEO_UPDATE( videopin )
 				{
 					for (j = 0; j < 2; j++)
 					{
-						drawgfx(bitmap, machine->gfx[1],
+						drawgfx(bitmap, screen->machine->gfx[1],
 							0, 0,
 							0, 0,
 							x + 16 * i,

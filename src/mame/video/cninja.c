@@ -5,7 +5,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "deco16ic.h"
 #include "cninja.h"
 
@@ -105,7 +104,7 @@ VIDEO_EOF( cninja )
 	deco16_raster_display_position=0;
 }
 
-static void raster_pf3_draw(mame_bitmap *bitmap, const rectangle *cliprect, int flags, int pri)
+static void raster_pf3_draw(bitmap_t *bitmap, const rectangle *cliprect, int flags, int pri)
 {
 	tilemap *tmap=deco16_get_tilemap(2,0);
 	int ptr=0,start,end=0;
@@ -151,7 +150,7 @@ static void raster_pf3_draw(mame_bitmap *bitmap, const rectangle *cliprect, int 
 
 /******************************************************************************/
 
-static void cninja_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void cninja_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -174,7 +173,7 @@ static void cninja_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
 
 		y = buffered_spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 		colour = (x >> 9) &0x1f;
 
 		fx = y & 0x2000;
@@ -197,7 +196,7 @@ static void cninja_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
 			inc = 1;
 		}
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			y=240-y;
 			x=240-x;
 			if (fx) fx=0; else fx=1;
@@ -220,7 +219,7 @@ static void cninja_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
 	}
 }
 
-static void robocop2_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void robocop2_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -242,7 +241,7 @@ static void robocop2_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 		y = buffered_spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 		colour = (x >> 9) &0x1f;
 
 		fx = y & 0x2000;
@@ -265,7 +264,7 @@ static void robocop2_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 			inc = 1;
 		}
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			y=240-y;
 			x=304-x;
 			if (fx) fx=0; else fx=1;
@@ -288,7 +287,7 @@ static void robocop2_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 	}
 }
 
-static void mutantf_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, const UINT16 *spriteptr, int gfxbank)
+static void mutantf_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, const UINT16 *spriteptr, int gfxbank)
 {
 	int offs,end,inc;
 
@@ -340,7 +339,7 @@ static void mutantf_draw_sprites(running_machine *machine, mame_bitmap *bitmap, 
 		w = (spriteptr[offs+2]&0x0f00)>> 8;
 
 		sy = spriteptr[offs];
-		if ((sy&0x2000) && (cpu_getcurrentframe() & 1)) {
+		if ((sy&0x2000) && (video_screen_get_frame_number(machine->primary_screen) & 1)) {
 			offs+=inc;
 			continue;
 		}
@@ -355,7 +354,7 @@ static void mutantf_draw_sprites(running_machine *machine, mame_bitmap *bitmap, 
 		fx = (spriteptr[offs+0]&0x4000);
 		fy = (spriteptr[offs+0]&0x8000);
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			if (fx) fx=0; else fx=1;
 			if (fy) fy=0; else fy=1;
 
@@ -404,12 +403,12 @@ VIDEO_UPDATE( cninja )
 
 	/* Draw playfields */
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[512],cliprect);
+	fillbitmap(bitmap,512,cliprect);
 	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
 	deco16_tilemap_3_draw(bitmap,cliprect,0,2);
 	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_LAYER1,2);
 	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_LAYER0,4);
-	cninja_draw_sprites(machine,bitmap,cliprect);
+	cninja_draw_sprites(screen->machine,bitmap,cliprect);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }
@@ -421,14 +420,14 @@ VIDEO_UPDATE( edrandy )
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
 	if (deco16_raster_display_position)
 		raster_pf3_draw(bitmap,cliprect,0,2);
 	else
 		deco16_tilemap_3_draw(bitmap,cliprect,0,2);
 	deco16_tilemap_2_draw(bitmap,cliprect,0,4);
-	cninja_draw_sprites(machine,bitmap,cliprect);
+	cninja_draw_sprites(screen->machine,bitmap,cliprect);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }
@@ -453,7 +452,7 @@ VIDEO_UPDATE( robocop2 )
 
 	/* Draw playfields */
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0x200],cliprect);
+	fillbitmap(bitmap,0x200,cliprect);
 	if ((deco16_priority&4)==0)
 		deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,1);
 
@@ -476,7 +475,7 @@ VIDEO_UPDATE( robocop2 )
 			break;
 	}
 
-	robocop2_draw_sprites(machine,bitmap,cliprect);
+	robocop2_draw_sprites(screen->machine,bitmap,cliprect);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }
@@ -488,7 +487,7 @@ VIDEO_UPDATE( mutantf )
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields */
-	fillbitmap(bitmap,machine->pens[0x400],cliprect); /* Confirmed */
+	fillbitmap(bitmap,0x400,cliprect); /* Confirmed */
 
 	/* There is no priority prom on this board, but there is a
     priority control word, the only values used in game appear
@@ -513,14 +512,14 @@ VIDEO_UPDATE( mutantf )
         transparent against the background, rather than 50% */
 	if (deco16_priority&1) {
 		fillbitmap(priority_bitmap,0,cliprect);
-		mutantf_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16,3);
+		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,3);
 		fillbitmap(priority_bitmap,0,cliprect);
-		mutantf_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16_2,4);
+		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16_2,4);
 	} else {
 		fillbitmap(priority_bitmap,0,cliprect);
-		mutantf_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16_2,4);
+		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16_2,4);
 		fillbitmap(priority_bitmap,0,cliprect);
-		mutantf_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16,3);
+		mutantf_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,3);
 	}
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;

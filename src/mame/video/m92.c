@@ -93,7 +93,7 @@ WRITE16_HANDLER( m92_spritecontrol_w )
 	/* Sprite buffer - the data written doesn't matter (confirmed by several games) */
 	if (offset==4)
 	{
-		buffer_spriteram16_w(0,0,0);
+			buffer_spriteram16_w(machine,0,0,0);
 		m92_sprite_buffer_busy = 0;
 
 		/* Pixel clock is 26.6666 MHz, we have 0x800 bytes, or 0x400 words
@@ -134,7 +134,7 @@ READ16_HANDLER( m92_paletteram_r )
 
 WRITE16_HANDLER( m92_paletteram_w )
 {
-	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset + 0x400 * m92_palette_bank, data, mem_mask);
+	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset + 0x400 * m92_palette_bank, data, mem_mask);
 }
 
 /*****************************************************************************/
@@ -250,8 +250,8 @@ VIDEO_START( m92 )
 		pf_layer_info *layer = &pf_layer[laynum];
 
 		/* allocate two tilemaps per layer, one normal, one wide */
-		layer->tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,64);
-		layer->wide_tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 128,64);
+		layer->tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows,  8,8, 64,64);
+		layer->wide_tmap = tilemap_create(get_pf_tile_info, tilemap_scan_rows,  8,8, 128,64);
 
 		/* set the user data for each one to point to the layer */
 		tilemap_set_user_data(layer->tmap, &pf_layer[laynum]);
@@ -296,7 +296,7 @@ VIDEO_START( m92 )
 
 /*****************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs,k;
 
@@ -340,7 +340,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				x &= 0x1ff;
 				for (i=0; i<y_multi; i++)
 				{
-					if (flip_screen) {
+					if (flip_screen_get()) {
 						pdrawgfx(bitmap,machine->gfx[1],
 								sprite + s_ptr,
 								colour,
@@ -429,7 +429,7 @@ static void m92_update_scroll_positions(void)
 
 /*****************************************************************************/
 
-static void m92_screenrefresh(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void m92_screenrefresh(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	fillbitmap(priority_bitmap, 0, cliprect);
 
@@ -441,7 +441,7 @@ static void m92_screenrefresh(running_machine *machine, mame_bitmap *bitmap,cons
 		tilemap_draw(bitmap, cliprect, pf_layer[2].tmap,      TILEMAP_DRAW_LAYER0, 1);
 	}
 	else
-		fillbitmap(bitmap, machine->pens[0], cliprect);
+		fillbitmap(bitmap, 0, cliprect);
 
 	tilemap_draw(bitmap, cliprect, pf_layer[1].wide_tmap, TILEMAP_DRAW_LAYER1, 0);
 	tilemap_draw(bitmap, cliprect, pf_layer[1].tmap,      TILEMAP_DRAW_LAYER1, 0);
@@ -460,7 +460,7 @@ static void m92_screenrefresh(running_machine *machine, mame_bitmap *bitmap,cons
 VIDEO_UPDATE( m92 )
 {
 	m92_update_scroll_positions();
-	m92_screenrefresh(machine, bitmap, cliprect);
+	m92_screenrefresh(screen->machine, bitmap, cliprect);
 
 	/* Flipscreen appears hardwired to the dipswitch - strange */
 	if (readinputportbytag("DIPS21") & 0x100)

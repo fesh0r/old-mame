@@ -72,7 +72,7 @@ static WRITE8_HANDLER( aso_scroll_sync_w )
 	aso_scroll_sync[offset] = data;
 }
 
-static void hal21_sound_scheduler(int mode, int data)
+static void hal21_sound_scheduler(running_machine *machine, int mode, int data)
 {
 	static int busy, hold, ffcount, ffhead, fftail;
 
@@ -116,8 +116,8 @@ static void hal21_sound_scheduler(int mode, int data)
 	}
 
 	snk_sound_busy_bit = 0x20;
-	soundlatch_w(0, data);
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine, 0, data);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /**************************************************************************/
@@ -180,7 +180,7 @@ static VIDEO_START( aso )
 }
 
 
-static void hal21_draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly, int attrs,
+static void hal21_draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int scrollx, int scrolly, int attrs,
 								const gfx_element *gfx )
 {
 	static int color[2] = {8, 8};
@@ -188,7 +188,7 @@ static void hal21_draw_background(running_machine *machine, mame_bitmap *bitmap,
 
 	bankbase = attrs<<3 & 0x100;
 	c = attrs & 0x0f;
-	if (c > 11) { fillbitmap(bitmap,machine->pens[(c<<4)+8], cliprect); return; }
+	if (c > 11) { fillbitmap(bitmap,(c<<4)+8, cliprect); return; }
 	if (c<8 || color[0]<14 || bankbase)
 	{
 		c ^= 0x08;
@@ -218,7 +218,7 @@ static void hal21_draw_background(running_machine *machine, mame_bitmap *bitmap,
 		}
 }
 
-static void hal21_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly,
+static void hal21_draw_sprites(bitmap_t *bitmap, const rectangle *cliprect, int scrollx, int scrolly,
 								const gfx_element *gfx )
 {
 	UINT8 *sprptr, *endptr;
@@ -248,7 +248,7 @@ static void hal21_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, i
 	}
 }
 
-static void aso_draw_background(mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly, int attrs,
+static void aso_draw_background(bitmap_t *bitmap, const rectangle *cliprect, int scrollx, int scrolly, int attrs,
 								const gfx_element *gfx )
 {
 	int bankbase, c, x, y, offsx, offsy, dx, dy, sx, sy, offs, tile_number;
@@ -278,7 +278,7 @@ static void aso_draw_background(mame_bitmap *bitmap, const rectangle *cliprect, 
 		}
 }
 
-static void aso_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly,
+static void aso_draw_sprites(bitmap_t *bitmap, const rectangle *cliprect, int scrollx, int scrolly,
 								const gfx_element *gfx )
 {
 	UINT8 *sprptr, *endptr;
@@ -320,23 +320,23 @@ static VIDEO_UPDATE( aso )
 
 	if (snk_gamegroup)
 	{
-		hal21_draw_background(machine, bitmap, cliprect, bgsx+(msbs<<7 & 0x100), bgsy, attr, machine->gfx[1]);
+		hal21_draw_background(screen->machine, bitmap, cliprect, bgsx+(msbs<<7 & 0x100), bgsy, attr, screen->machine->gfx[1]);
 
 		attr = snk_blink_parity;
 		snk_blink_parity ^= 0xdf;
-		for (i=6; i<0x80; i+=8) { palette_set_color(machine, i, MAKE_RGB(attr, attr, attr)); }
+		for (i=6; i<0x80; i+=8) { palette_set_color(screen->machine, i, MAKE_RGB(attr, attr, attr)); }
 
-		hal21_draw_sprites(bitmap, cliprect, spsx, spsy, machine->gfx[2]);
+		hal21_draw_sprites(bitmap, cliprect, spsx, spsy, screen->machine->gfx[2]);
 	}
 	else
 	{
-		aso_draw_background(bitmap, cliprect, bgsx+(~msbs<<7 & 0x100), bgsy, attr, machine->gfx[1]);
-		aso_draw_sprites(bitmap, cliprect, spsx, spsy, machine->gfx[2]);
+		aso_draw_background(bitmap, cliprect, bgsx+(~msbs<<7 & 0x100), bgsy, attr, screen->machine->gfx[1]);
+		aso_draw_sprites(bitmap, cliprect, spsx, spsy, screen->machine->gfx[2]);
 	}
 
 	bank = msbs>>6 & 1;
-	tnk3_draw_text(machine, bitmap, cliprect, bank, &textram[0]);
-	tnk3_draw_status(machine, bitmap, cliprect, bank, &textram[0x400]);
+	tnk3_draw_text(screen->machine, bitmap, cliprect, bank, &textram[0]);
+	tnk3_draw_status(screen->machine, bitmap, cliprect, bank, &textram[0x400]);
 	return 0;
 }
 
@@ -551,28 +551,28 @@ GFXDECODE_END
 
 static READ8_HANDLER( CPUC_ready_r ) { snk_sound_busy_bit = 0; return 0; }
 
-static READ8_HANDLER( hal21_input_port_0_r ) { return input_port_0_r(0) | snk_sound_busy_bit; }
+static READ8_HANDLER( hal21_input_port_0_r ) { return input_port_0_r(machine,0) | snk_sound_busy_bit; }
 
-static WRITE8_HANDLER( hal21_soundcommand_w ) { hal21_sound_scheduler(1, data); }
-static WRITE8_HANDLER( hal21_soundack_w ) { hal21_sound_scheduler(2, data); }
+static WRITE8_HANDLER( hal21_soundcommand_w ) { hal21_sound_scheduler(machine, 1, data); }
+static WRITE8_HANDLER( hal21_soundack_w ) { hal21_sound_scheduler(machine,2, data); }
 
 static READ8_HANDLER( hal21_soundcommand_r )
 {
-	int data = soundlatch_r(0);
-	soundlatch_clear_w(0, 0);
+	int data = soundlatch_r(machine, 0);
+	soundlatch_clear_w(machine, 0, 0);
 	return data;
 }
 
 static WRITE8_HANDLER( aso_soundcommand_w )
 {
 	snk_sound_busy_bit = 0x20;
-	soundlatch_w(0, data);
-	cpunum_set_input_line(Machine, 2, 0, HOLD_LINE );
+	soundlatch_w(machine, 0, data);
+	cpunum_set_input_line(machine, 2, 0, HOLD_LINE );
 }
 
 static INTERRUPT_GEN( hal21_sound_interrupt )
 {
-	hal21_sound_scheduler(3, 0);
+	hal21_sound_scheduler(machine, 3, 0);
 }
 
 /**************************************************************************/
@@ -604,7 +604,7 @@ static ADDRESS_MAP_START( hal21_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hal21_sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x0000, 0x0000) AM_NOP				// external sound ROM detection?
 ADDRESS_MAP_END
 
@@ -691,7 +691,7 @@ static DRIVER_INIT( hal21 )
 static MACHINE_RESET( aso )
 {
 	memset(hal21_vreg, 0, 8);
-	hal21_sound_scheduler(0, 0);
+	hal21_sound_scheduler(machine, 0, 0);
 	snk_sound_busy_bit = 0;
 }
 
@@ -700,26 +700,29 @@ static MACHINE_DRIVER_START( aso )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(aso_cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(aso_cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(aso_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 28*8-1)
+
 	MDRV_GFXDECODE(aso)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -741,28 +744,31 @@ static MACHINE_DRIVER_START( hal21 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(hal21_cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(hal21_cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(hal21_sound_map,0)
 	MDRV_CPU_IO_MAP(hal21_sound_portmap,0)
-	MDRV_CPU_VBLANK_INT(hal21_sound_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", hal21_sound_interrupt)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 220) // music tempo, hand tuned
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_HIGHLIGHTS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_HIGHLIGHTS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 28*8-1)
+
 	MDRV_GFXDECODE(aso)
 	MDRV_PALETTE_LENGTH(1024)
 

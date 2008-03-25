@@ -30,7 +30,7 @@ PALETTE_INIT( sprtmtch )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int x =	(color_prom[i]<<8) + color_prom[0x200+i];
 		/* The bits are in reverse order! */
@@ -123,7 +123,7 @@ WRITE8_HANDLER( dynax_blit2_dest_w )
 }
 WRITE8_HANDLER( tenkai_blit_dest_w )
 {
-	dynax_blit_dest_w(0, BITSWAP8(data, 7,6,5,4, 0,1,2,3));
+	dynax_blit_dest_w(machine, 0, BITSWAP8(data, 7,6,5,4, 0,1,2,3));
 }
 
 /* Background Color */
@@ -656,7 +656,7 @@ WRITE8_HANDLER( dynax_blitter_rev2_w )
 		case 3:	blit_src	=	(blit_src & 0xffff00) | (data << 0); break;
 		case 4: blit_src	=	(blit_src & 0xff00ff) | (data << 8); break;
 		case 5: blit_src	=	(blit_src & 0x00ffff) | (data <<16); break;
-		case 6: dynax_blit_scroll_w(0,data); break;
+		case 6: dynax_blit_scroll_w(machine,0,data); break;
 	}
 }
 
@@ -671,7 +671,7 @@ WRITE8_HANDLER( tenkai_blitter_rev2_w )
 		case 3:	blit_src	=	(blit_src & 0xffff00) | (data << 0); break;
 		case 4: blit_src	=	(blit_src & 0xff00ff) | (data << 8); break;
 		case 5: blit_src	=	(blit_src & 0x00ffff) | (data <<16); break;
-		case 6: tenkai_blit_scroll_w(0,data); break;
+		case 6: tenkai_blit_scroll_w(machine,0,data); break;
 	}
 }
 
@@ -686,7 +686,7 @@ WRITE8_HANDLER( jantouki_blitter_rev2_w )
 		case 3:	blit_src	=	(blit_src & 0xffff00) | (data << 0); break;
 		case 4: blit_src	=	(blit_src & 0xff00ff) | (data << 8); break;
 		case 5: blit_src	=	(blit_src & 0x00ffff) | (data <<16); break;
-		case 6: dynax_blit_scroll_w(0,data); break;
+		case 6: dynax_blit_scroll_w(machine,0,data); break;
 	}
 }
 
@@ -700,7 +700,7 @@ WRITE8_HANDLER( jantouki_blitter2_rev2_w )
 		case 3:	blit2_src	=	(blit2_src & 0xffff00) | (data << 0); break;
 		case 4: blit2_src	=	(blit2_src & 0xff00ff) | (data << 8); break;
 		case 5: blit2_src	=	(blit2_src & 0x00ffff) | (data <<16); break;
-		case 6: dynax_blit2_scroll_w(0,data); break;
+		case 6: dynax_blit2_scroll_w(machine,0,data); break;
 	}
 }
 
@@ -848,7 +848,7 @@ VIDEO_START( neruton )
 
 ***************************************************************************/
 
-static void hanamai_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int i)
+static void hanamai_copylayer(bitmap_t *bitmap,const rectangle *cliprect,int i)
 {
 	int color;
 	int scrollx,scrolly;
@@ -913,7 +913,7 @@ static void hanamai_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int 
 }
 
 
-static void jantouki_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int i, int y)
+static void jantouki_copylayer(bitmap_t *bitmap,const rectangle *cliprect,int i, int y)
 {
 	int color,scrollx,scrolly,palettes,palbank;
 
@@ -982,7 +982,7 @@ static void jantouki_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int
 }
 
 
-static void mjdialq2_copylayer(mame_bitmap *bitmap,const rectangle *cliprect,int i)
+static void mjdialq2_copylayer(bitmap_t *bitmap,const rectangle *cliprect,int i)
 {
 	int color;
 	int scrollx,scrolly;
@@ -1072,7 +1072,7 @@ static int debug_mask(void)
     I,O        -  Change palette (-,+)
     J,K & N,M  -  Change "tile"  (-,+, slow & fast)
     R          -  move "tile" to the next 1/8th of the gfx  */
-static int debug_viewer(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static int debug_viewer(bitmap_t *bitmap,const rectangle *cliprect)
 {
 #ifdef MAME_DEBUG
 	static int toggle;
@@ -1093,7 +1093,7 @@ static int debug_viewer(running_machine *machine, mame_bitmap *bitmap,const rect
 		dynax_blit_palettes = (c & 0xf) * 0x111;
 		dynax_blit_palbank  = (c >>  4) & 1;
 
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 		memset(dynax_pixmap[0][0],0,sizeof(UINT8)*0x100*0x100);
 		if (layer_layout != LAYOUT_MJDIALQ2)
 			memset(dynax_pixmap[0][1],0,sizeof(UINT8)*0x100*0x100);
@@ -1116,12 +1116,12 @@ VIDEO_UPDATE( hanamai )
 	int layers_ctrl = ~dynax_layer_enable;
 	int lay[4];
 
-	if (debug_viewer(machine,bitmap,cliprect))	return 0;
+	if (debug_viewer(bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
 	fillbitmap(
 		bitmap,
-		machine->pens[(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256],
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
 		cliprect);
 
 	/* bit 4 = display enable? */
@@ -1152,12 +1152,12 @@ VIDEO_UPDATE( hnoridur )
 	int lay[4];
 	int pri;
 
-	if (debug_viewer(machine,bitmap,cliprect))	return 0;
+	if (debug_viewer(bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
 	fillbitmap(
 		bitmap,
-		machine->pens[(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 0x0f) * 256],
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 0x0f) * 256,
 		cliprect);
 
 	pri = hanamai_priority >> 4;
@@ -1187,12 +1187,12 @@ VIDEO_UPDATE( sprtmtch )
 {
 	int layers_ctrl = ~dynax_layer_enable;
 
-	if (debug_viewer(machine,bitmap,cliprect))	return 0;
+	if (debug_viewer(bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
 	fillbitmap(
 		bitmap,
-		machine->pens[(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256],
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
 		cliprect);
 
 	if (layers_ctrl & 1)	hanamai_copylayer( bitmap, cliprect, 0 );
@@ -1203,25 +1203,27 @@ VIDEO_UPDATE( sprtmtch )
 
 VIDEO_UPDATE( jantouki )
 {
-
 	int layers_ctrl = dynax_layer_enable;
 
-	if (debug_viewer(machine,bitmap,cliprect))	return 0;
+	const device_config *top_screen    = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "top");
+	const device_config *bottom_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "bottom");
+
+	if (debug_viewer(bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
 	fillbitmap(
 		bitmap,
-		machine->pens[(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256],
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
 		cliprect);
 
-	if (screen==0)
+	if (screen == top_screen)
 	{
 	//  if (layers_ctrl & 0x01) jantouki_copylayer( bitmap, cliprect, 3, 0 );
 		if (layers_ctrl & 0x02)	jantouki_copylayer( bitmap, cliprect, 2, 0 );
 		if (layers_ctrl & 0x04)	jantouki_copylayer( bitmap, cliprect, 1, 0 );
 		if (layers_ctrl & 0x08)	jantouki_copylayer( bitmap, cliprect, 0, 0 );
 	}
-	else if (screen==1)
+	else if (screen == bottom_screen)
 	{
 		if (layers_ctrl & 0x01)	jantouki_copylayer( bitmap, cliprect, 3, 0 );
 		if (layers_ctrl & 0x10)	jantouki_copylayer( bitmap, cliprect, 7, 0 );
@@ -1237,12 +1239,12 @@ VIDEO_UPDATE( mjdialq2 )
 {
 	int layers_ctrl = ~dynax_layer_enable;
 
-	if (debug_viewer(machine,bitmap,cliprect))	return 0;
+	if (debug_viewer(bitmap,cliprect))	return 0;
 	layers_ctrl &= debug_mask();
 
 	fillbitmap(
 		bitmap,
-		machine->pens[(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256],
+		(dynax_blit_backpen & 0xff) + (dynax_blit_palbank & 1) * 256,
 		cliprect);
 
 	if (layers_ctrl & 1)	mjdialq2_copylayer( bitmap, cliprect, 0 );
@@ -1252,29 +1254,26 @@ VIDEO_UPDATE( mjdialq2 )
 
 // htengoku uses the mixer chip from ddenlovr
 
-static mame_bitmap *framebuffer;
-
 VIDEO_START(htengoku)
 {
 	VIDEO_START_CALL(ddenlovr);
 	VIDEO_START_CALL(hnoridur);
-	framebuffer = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 }
 
-VIDEO_EOF(htengoku)
+VIDEO_UPDATE(htengoku)
 {
 	int layer,x,y;
 
 	// render the layers, one by one, "dynax.c" style. Then convert the pixmaps to "ddenlovr.c"
-	// format and let VIDEO_EOF(ddenlovr) do the final compositing (priorities + palettes)
+	// format and let VIDEO_UPDATE(ddenlovr) do the final compositing (priorities + palettes)
 	for (layer = 0; layer < 4; layer++)
 	{
-		fillbitmap(framebuffer,0,&machine->screen[0].visarea);
-		hanamai_copylayer( framebuffer, &machine->screen[0].visarea, layer );
+		fillbitmap(bitmap,0,cliprect);
+		hanamai_copylayer( bitmap, cliprect, layer );
 
 		for (y=0; y < 256; y++)
 			for (x=0; x < 512; x++)
-				ddenlovr_pixmap[3-layer][y*512+x] = (UINT8)(*BITMAP_ADDR16(framebuffer, y,x));
+				ddenlovr_pixmap[3-layer][y*512+x] = (UINT8)(*BITMAP_ADDR16(bitmap, y,x));
 	}
-	VIDEO_EOF_CALL(ddenlovr);
+	return VIDEO_UPDATE_CALL(ddenlovr);
 }

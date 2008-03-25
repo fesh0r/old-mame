@@ -97,7 +97,7 @@ VIDEO_START( dleague )
   Screen refresh
 ***************************************************************************/
 
-static void syvalion_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
+static void syvalion_draw_sprites(bitmap_t *bitmap,const rectangle *cliprect)
 {
 	/* Y chain size is 16/32?/64/64? pixels. X chain size
        is always 64 pixels. */
@@ -190,7 +190,7 @@ static void syvalion_draw_sprites(mame_bitmap *bitmap,const rectangle *cliprect)
 	}
 }
 
-static void recordbr_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void recordbr_draw_sprites(bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	/* Y chain size is 16/32?/64/64? pixels. X chain size
        is always 64 pixels. */
@@ -302,7 +302,7 @@ static void recordbr_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect
 	}
 }
 
-static void dleague_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void dleague_draw_sprites(bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	/* Y chain size is 16/32?/64/64? pixels. X chain size
        is always 64 pixels. */
@@ -421,80 +421,80 @@ static void taitoh_log_vram(void)
 
 VIDEO_UPDATE( syvalion )
 {
-	TC0080VCO_tilemap_update(machine);
+	TC0080VCO_tilemap_update(screen->machine);
 
 #ifdef MAME_DEBUG
 	taitoh_log_vram();
 #endif
 
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,1,0,0);
-	syvalion_draw_sprites (bitmap,cliprect);
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,2,0,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,1,0,0);
+	syvalion_draw_sprites(bitmap,cliprect);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,2,0,0);
 	return 0;
 }
 
 
 VIDEO_UPDATE( recordbr )
 {
-	TC0080VCO_tilemap_update(machine);
+	TC0080VCO_tilemap_update(screen->machine);
 
 #ifdef MAME_DEBUG
 	taitoh_log_vram();
 #endif
 
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 #ifdef MAME_DEBUG
 	if ( !input_code_pressed(KEYCODE_A) )
-		TC0080VCO_tilemap_draw(machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
+		TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
 	if ( !input_code_pressed(KEYCODE_S) )
 		recordbr_draw_sprites(bitmap,cliprect,0);
 	if ( !input_code_pressed(KEYCODE_D) )
-		TC0080VCO_tilemap_draw(machine,bitmap,cliprect,1,0,0);
+		TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,1,0,0);
 	if ( !input_code_pressed(KEYCODE_F) )
 		recordbr_draw_sprites(bitmap,cliprect,1);
 #else
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
-	recordbr_draw_sprites (bitmap,cliprect,0);
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,1,0,0);
-	recordbr_draw_sprites (bitmap,cliprect,1);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
+	recordbr_draw_sprites(bitmap,cliprect,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,1,0,0);
+	recordbr_draw_sprites(bitmap,cliprect,1);
 #endif
 
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,2,0,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,2,0,0);
 	return 0;
 }
 
 
 VIDEO_UPDATE( dleague )
 {
-	TC0080VCO_tilemap_update(machine);
+	TC0080VCO_tilemap_update(screen->machine);
 
 #ifdef MAME_DEBUG
 	taitoh_log_vram();
 #endif
 
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 #ifdef MAME_DEBUG
 	if ( !input_code_pressed(KEYCODE_A) )
-		TC0080VCO_tilemap_draw(machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
+		TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
 	if ( !input_code_pressed(KEYCODE_S) )
 		dleague_draw_sprites(bitmap,cliprect,0);
 	if ( !input_code_pressed(KEYCODE_D) )
-		TC0080VCO_tilemap_draw(machine,bitmap,cliprect,1,0,0);
+		TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,1,0,0);
 	if ( !input_code_pressed(KEYCODE_F) )
 		dleague_draw_sprites(bitmap,cliprect,1);
 #else
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
-	dleague_draw_sprites  (bitmap,cliprect,0);
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,1,0,0);
-	dleague_draw_sprites  (bitmap,cliprect,1);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,0,TILEMAP_DRAW_OPAQUE,0);
+	dleague_draw_sprites (bitmap,cliprect,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,1,0,0);
+	dleague_draw_sprites (bitmap,cliprect,1);
 #endif
 
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,2,0,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,2,0,0);
 	return 0;
 }
 

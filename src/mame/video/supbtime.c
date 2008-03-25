@@ -13,12 +13,11 @@ End sequence uses rowscroll '98 c0' on pf1 (jmp to 1d61a on supbtimj)
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "deco16ic.h"
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -31,7 +30,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		y = spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0x1f;
@@ -58,7 +57,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			inc = 1;
 		}
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			y=240-y;
 			x=304-x;
@@ -94,10 +93,10 @@ VIDEO_UPDATE(supbtime)
 	flip_screen_set( deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	fillbitmap(bitmap,machine->pens[768],cliprect);
+	fillbitmap(bitmap,768,cliprect);
 
 	deco16_tilemap_2_draw(bitmap,cliprect,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }

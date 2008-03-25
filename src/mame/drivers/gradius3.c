@@ -35,40 +35,40 @@ VIDEO_UPDATE( gradius3 );
 
 static READ16_HANDLER( K052109_halfword_r )
 {
-	return K052109_r(offset);
+	return K052109_r(machine,offset);
 }
 
 static WRITE16_HANDLER( K052109_halfword_w )
 {
 	if (ACCESSING_LSB)
-		K052109_w(offset,data & 0xff);
+		K052109_w(machine,offset,data & 0xff);
 
 	/* is this a bug in the game or something else? */
 	if (!ACCESSING_LSB)
-		K052109_w(offset,(data >> 8) & 0xff);
+		K052109_w(machine,offset,(data >> 8) & 0xff);
 //      logerror("%06x half %04x = %04x\n",activecpu_get_pc(),offset,data);
 }
 
 static READ16_HANDLER( K051937_halfword_r )
 {
-	return K051937_r(offset);
+	return K051937_r(machine,offset);
 }
 
 static WRITE16_HANDLER( K051937_halfword_w )
 {
 	if (ACCESSING_LSB)
-		K051937_w(offset,data & 0xff);
+		K051937_w(machine,offset,data & 0xff);
 }
 
 static READ16_HANDLER( K051960_halfword_r )
 {
-	return K051960_r(offset);
+	return K051960_r(machine,offset);
 }
 
 static WRITE16_HANDLER( K051960_halfword_w )
 {
 	if (ACCESSING_LSB)
-		K051960_w(offset,data & 0xff);
+		K051960_w(machine,offset,data & 0xff);
 }
 
 
@@ -139,7 +139,7 @@ static WRITE16_HANDLER( cpuB_irqtrigger_w )
 	if (irqBmask & 4)
 	{
 logerror("%04x trigger cpu B irq 4 %02x\n",activecpu_get_pc(),data);
-		cpunum_set_input_line(Machine, 1,4,HOLD_LINE);
+		cpunum_set_input_line(machine, 1,4,HOLD_LINE);
 	}
 	else
 logerror("%04x MISSED cpu B irq 4 %02x\n",activecpu_get_pc(),data);
@@ -148,7 +148,7 @@ logerror("%04x MISSED cpu B irq 4 %02x\n",activecpu_get_pc(),data);
 static WRITE16_HANDLER( sound_command_w )
 {
 	if (ACCESSING_MSB)
-		soundlatch_w(0,(data >> 8) & 0xff);
+		soundlatch_w(machine,0,(data >> 8) & 0xff);
 }
 
 static WRITE16_HANDLER( sound_irq_w )
@@ -171,7 +171,7 @@ static WRITE8_HANDLER( sound_bank_w )
 static ADDRESS_MAP_START( gradius3_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x040000, 0x043fff) AM_RAM
-	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(MRA16_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(SMH_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_WRITE(cpuA_ctrl_w)	/* halt cpu B, irq enable, priority, coin counters, other? */
 	AM_RANGE(0x0c8000, 0x0c8001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x0c8002, 0x0c8003) AM_READ(input_port_1_word_r)
@@ -185,7 +185,7 @@ static ADDRESS_MAP_START( gradius3_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0f0000, 0x0f0001) AM_WRITE(sound_irq_w)
 	AM_RANGE(0x100000, 0x103fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x14c000, 0x153fff) AM_READWRITE(K052109_halfword_r, K052109_halfword_w)
-	AM_RANGE(0x180000, 0x19ffff) AM_READWRITE(MRA16_RAM, gradius3_gfxram_w) AM_BASE(&gradius3_gfxram)
+	AM_RANGE(0x180000, 0x19ffff) AM_READWRITE(SMH_RAM, gradius3_gfxram_w) AM_BASE(&gradius3_gfxram)
 ADDRESS_MAP_END
 
 
@@ -195,7 +195,7 @@ static ADDRESS_MAP_START( gradius3_map2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x140000, 0x140001) AM_WRITE(cpuB_irqenable_w)
 	AM_RANGE(0x200000, 0x203fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x24c000, 0x253fff) AM_READWRITE(K052109_halfword_r, K052109_halfword_w)
-	AM_RANGE(0x280000, 0x29ffff) AM_READWRITE(MRA16_RAM, gradius3_gfxram_w)
+	AM_RANGE(0x280000, 0x29ffff) AM_READWRITE(SMH_RAM, gradius3_gfxram_w)
 	AM_RANGE(0x2c0000, 0x2c000f) AM_READWRITE(K051937_halfword_r, K051937_halfword_w)
 	AM_RANGE(0x2c0800, 0x2c0fff) AM_READWRITE(K051960_halfword_r, K051960_halfword_w)
 	AM_RANGE(0x400000, 0x5fffff) AM_READ(gradius3_gfxrom_r)		/* gfx ROMs are mapped here, and copied to RAM */
@@ -339,27 +339,30 @@ static MACHINE_DRIVER_START( gradius3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 10000000)	/* 10 MHz */
 	MDRV_CPU_PROGRAM_MAP(gradius3_map,0)
-	MDRV_CPU_VBLANK_INT(cpuA_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", cpuA_interrupt)
 
 	MDRV_CPU_ADD(M68000, 10000000)	/* 10 MHz */
 	MDRV_CPU_PROGRAM_MAP(gradius3_map2,0)
-	MDRV_CPU_VBLANK_INT(cpuB_interrupt,2)	/* has three interrupt vectors, 1 2 and 4 */
+	MDRV_CPU_VBLANK_INT_HACK(cpuB_interrupt,2)	/* has three interrupt vectors, 1 2 and 4 */
 								/* 4 is triggered by cpu A, the others are unknown but */
 								/* required for the game to run. */
 	MDRV_CPU_ADD(Z80, 3579545)
 	MDRV_CPU_PROGRAM_MAP(gradius3_s_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_MACHINE_RESET(gradius3)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(12*8, (64-12)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(gradius3)

@@ -359,8 +359,8 @@ static UINT16 sound_bank;
 
 /* I/O chips and custom I/O */
 static UINT8 misc_io_data[2][0x10];
-static read16_handler custom_io_r[2];
-static write16_handler custom_io_w[2];
+static read16_machine_func custom_io_r[2];
+static write16_machine_func custom_io_w[2];
 static UINT8 analog_bank;
 static UINT8 analog_value[4];
 static UINT8 sonic_last[6];
@@ -482,7 +482,7 @@ static void int_control_w(int offset, UINT8 data)
 			if (duration)
 			{
 				attotime period = attotime_make(0, attotime_to_attoseconds(ATTOTIME_IN_HZ(TIMER_0_CLOCK)) * duration);
-				timer_adjust(v60_irq_timer[0], period, MAIN_IRQ_TIMER0, attotime_never);
+				timer_adjust_oneshot(v60_irq_timer[0], period, MAIN_IRQ_TIMER0);
 			}
 			break;
 
@@ -493,7 +493,7 @@ static void int_control_w(int offset, UINT8 data)
 			if (duration)
 			{
 				attotime period = attotime_make(0, attotime_to_attoseconds(ATTOTIME_IN_HZ(TIMER_1_CLOCK)) * duration);
-				timer_adjust(v60_irq_timer[1], period, MAIN_IRQ_TIMER1, attotime_never);
+				timer_adjust_oneshot(v60_irq_timer[1], period, MAIN_IRQ_TIMER1);
 			}
 			break;
 
@@ -572,7 +572,7 @@ static INTERRUPT_GEN( start_of_vblank_int )
 {
 	signal_v60_irq(MAIN_IRQ_VBSTART);
 	system32_set_vblank(1);
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, end_of_vblank_int);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, end_of_vblank_int);
 	if (system32_prot_vblank)
 		(*system32_prot_vblank)();
 }
@@ -752,7 +752,7 @@ static WRITE32_HANDLER( io_chip_1_w )
 static READ16_HANDLER( io_expansion_r )
 {
 	if (custom_io_r[0])
-		return (*custom_io_r[0])(offset, mem_mask);
+		return (*custom_io_r[0])(machine, offset, mem_mask);
 	else
 		logerror("%06X:io_expansion_r(%X)\n", activecpu_get_pc(), offset);
 	return 0xffff;
@@ -766,7 +766,7 @@ static WRITE16_HANDLER( io_expansion_w )
 		return;
 
 	if (custom_io_w[0])
-		(*custom_io_w[0])(offset, data, mem_mask);
+		(*custom_io_w[0])(machine, offset, data, mem_mask);
 	else
 		logerror("%06X:io_expansion_w(%X) = %02X\n", activecpu_get_pc(), offset, data & 0xff);
 }
@@ -775,8 +775,8 @@ static WRITE16_HANDLER( io_expansion_w )
 static READ32_HANDLER( io_expansion_0_r )
 {
 	if (custom_io_r[0])
-		return (*custom_io_r[0])(offset*2+0, mem_mask) |
-			  ((*custom_io_r[0])(offset*2+1, mem_mask >> 16) << 16);
+		return (*custom_io_r[0])(machine, offset*2+0, mem_mask) |
+			  ((*custom_io_r[0])(machine, offset*2+1, mem_mask >> 16) << 16);
 	else
 		logerror("%06X:io_expansion_r(%X)\n", activecpu_get_pc(), offset);
 	return 0xffffffff;
@@ -789,14 +789,14 @@ static WRITE32_HANDLER( io_expansion_0_w )
 	if ((mem_mask & 0x000000ff) != 0x000000ff)
 	{
 		if (custom_io_w[0])
-			(*custom_io_w[0])(offset*2+0, data, mem_mask);
+			(*custom_io_w[0])(machine, offset*2+0, data, mem_mask);
 		else
 			logerror("%06X:io_expansion_w(%X) = %02X\n", activecpu_get_pc(), offset, data & 0xff);
 	}
 	if ((mem_mask & 0x00ff0000) != 0x00ff0000)
 	{
 		if (custom_io_w[0])
-			(*custom_io_w[0])(offset*2+1, data >> 16, mem_mask >> 16);
+			(*custom_io_w[0])(machine, offset*2+1, data >> 16, mem_mask >> 16);
 		else
 			logerror("%06X:io_expansion_w(%X) = %02X\n", activecpu_get_pc(), offset, data & 0xff);
 	}
@@ -806,8 +806,8 @@ static WRITE32_HANDLER( io_expansion_0_w )
 static READ32_HANDLER( io_expansion_1_r )
 {
 	if (custom_io_r[1])
-		return (*custom_io_r[1])(offset*2+0, mem_mask) |
-			  ((*custom_io_r[1])(offset*2+1, mem_mask >> 16) << 16);
+		return (*custom_io_r[1])(machine, offset*2+0, mem_mask) |
+			  ((*custom_io_r[1])(machine, offset*2+1, mem_mask >> 16) << 16);
 	else
 		logerror("%06X:io_expansion_r(%X)\n", activecpu_get_pc(), offset);
 	return 0xffffffff;
@@ -820,14 +820,14 @@ static WRITE32_HANDLER( io_expansion_1_w )
 	if ((mem_mask & 0x000000ff) != 0x000000ff)
 	{
 		if (custom_io_w[1])
-			(*custom_io_w[1])(offset*2+0, data, mem_mask);
+			(*custom_io_w[1])(machine, offset*2+0, data, mem_mask);
 		else
 			logerror("%06X:io_expansion_w(%X) = %02X\n", activecpu_get_pc(), offset, data & 0xff);
 	}
 	if ((mem_mask & 0x00ff0000) != 0x00ff0000)
 	{
 		if (custom_io_w[1])
-			(*custom_io_w[1])(offset*2+1, data >> 16, mem_mask >> 16);
+			(*custom_io_w[1])(machine, offset*2+1, data >> 16, mem_mask >> 16);
 		else
 			logerror("%06X:io_expansion_w(%X) = %02X\n", activecpu_get_pc(), offset, data & 0xff);
 	}
@@ -1183,7 +1183,7 @@ static NVRAM_HANDLER( system32 )
  *************************************/
 
 static ADDRESS_MAP_START( system32_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x1fffff) AM_ROM
 	AM_RANGE(0x200000, 0x20ffff) AM_MIRROR(0x0f0000) AM_RAM	AM_BASE(&system32_workram)
 	AM_RANGE(0x300000, 0x31ffff) AM_MIRROR(0x0e0000) AM_READWRITE(system32_videoram_r, system32_videoram_w) AM_BASE(&system32_videoram)
@@ -1201,7 +1201,8 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( multi32_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(24) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xffffff)
 	AM_RANGE(0x000000, 0x1fffff) AM_ROM
 	AM_RANGE(0x200000, 0x21ffff) AM_MIRROR(0x0e0000) AM_RAM
 	AM_RANGE(0x300000, 0x31ffff) AM_MIRROR(0x0e0000) AM_READWRITE(multi32_videoram_r, multi32_videoram_w) AM_BASE((UINT32 **)&system32_videoram)
@@ -1238,7 +1239,8 @@ static ADDRESS_MAP_START( system32_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( system32_sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0c) AM_READWRITE(YM3438_status_port_0_A_r, YM3438_control_port_0_A_w)
 	AM_RANGE(0x81, 0x81) AM_MIRROR(0x0c) AM_WRITE(YM3438_data_port_0_A_w)
 	AM_RANGE(0x82, 0x82) AM_MIRROR(0x0c) AM_WRITE(YM3438_control_port_0_B_w)
@@ -1263,7 +1265,8 @@ static ADDRESS_MAP_START( multi32_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( multi32_sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x0c) AM_READWRITE(YM3438_status_port_0_A_r, YM3438_control_port_0_A_w)
 	AM_RANGE(0x81, 0x81) AM_MIRROR(0x0c) AM_WRITE(YM3438_data_port_0_A_w)
 	AM_RANGE(0x82, 0x82) AM_MIRROR(0x0c) AM_WRITE(YM3438_control_port_0_B_w)
@@ -2192,7 +2195,7 @@ static MACHINE_DRIVER_START( system32 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(V60, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(system32_map,0)
-	MDRV_CPU_VBLANK_INT(start_of_vblank_int,1)
+	MDRV_CPU_VBLANK_INT("main", start_of_vblank_int)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(system32_sound_map,0)
@@ -2202,11 +2205,10 @@ static MACHINE_DRIVER_START( system32 )
 	MDRV_NVRAM_HANDLER(system32)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_GFXDECODE(segas32)
 	MDRV_PALETTE_LENGTH(0x4000)
 
-	MDRV_SCREEN_ADD("main", 0x000)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(52*8, 262)
@@ -2247,7 +2249,7 @@ static MACHINE_DRIVER_START( multi32 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(V70, MULTI32_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(multi32_map,0)
-	MDRV_CPU_VBLANK_INT(start_of_vblank_int,1)
+	MDRV_CPU_VBLANK_INT("left", start_of_vblank_int)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(multi32_sound_map,0)
@@ -2257,18 +2259,17 @@ static MACHINE_DRIVER_START( multi32 )
 	MDRV_NVRAM_HANDLER(system32)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_GFXDECODE(segas32)
 	MDRV_PALETTE_LENGTH(0x8000)
 	MDRV_DEFAULT_LAYOUT(layout_dualhsxs)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(52*8, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 52*8-1, 0*8, 28*8-1)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(52*8, 262)
@@ -3774,7 +3775,7 @@ ROM_END
  *
  *************************************/
 
-static void segas32_common_init(read16_handler custom_r, write16_handler custom_w, const UINT8 *default_eeprom)
+static void segas32_common_init(read16_machine_func custom_r, write16_machine_func custom_w, const UINT8 *default_eeprom)
 {
 	/* reset the custom handlers and other pointers */
 	custom_io_r[0] = custom_r;

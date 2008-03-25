@@ -92,7 +92,7 @@ static READ16_HANDLER( zwackery_6840_r )
 	/* make this happen, we must assume that reads from the */
 	/* 6840 take 14 additional cycles                       */
 	activecpu_adjust_icount(-14);
-	return mcr68_6840_upper_r(offset,0);
+	return mcr68_6840_upper_r(machine,offset,0);
 }
 
 
@@ -107,7 +107,7 @@ static WRITE16_HANDLER( xenophobe_control_w )
 {
 	COMBINE_DATA(&control_word);
 /*  soundsgood_reset_w(~control_word & 0x0020);*/
-	soundsgood_data_w(offset, ((control_word & 0x000f) << 1) | ((control_word & 0x0010) >> 4));
+	soundsgood_data_w(machine, offset, ((control_word & 0x000f) << 1) | ((control_word & 0x0010) >> 4));
 }
 
 
@@ -122,7 +122,7 @@ static WRITE16_HANDLER( blasted_control_w )
 {
 	COMBINE_DATA(&control_word);
 /*  soundsgood_reset_w(~control_word & 0x0020);*/
-	soundsgood_data_w(offset, (control_word >> 8) & 0x1f);
+	soundsgood_data_w(machine, offset, (control_word >> 8) & 0x1f);
 }
 
 
@@ -138,14 +138,14 @@ static READ16_HANDLER( spyhunt2_port_0_r )
 	int result = readinputportbytag("IN0");
 	int which = (control_word >> 3) & 3;
 	int analog = readinputport(3 + which);
-	return result | ((soundsgood_status_r(0) & 1) << 5) | (analog << 8);
+	return result | ((soundsgood_status_r(machine, 0) & 1) << 5) | (analog << 8);
 }
 
 
 static READ16_HANDLER( spyhunt2_port_1_r )
 {
 	int result = readinputportbytag("IN1");
-	return result | ((turbocs_status_r(0) & 1) << 7);
+	return result | ((turbocs_status_r(machine, 0) & 1) << 7);
 }
 
 
@@ -154,10 +154,10 @@ static WRITE16_HANDLER( spyhunt2_control_w )
 	COMBINE_DATA(&control_word);
 
 /*  turbocs_reset_w(~control_word & 0x0080);*/
-	turbocs_data_w(offset, (control_word >> 8) & 0x001f);
+	turbocs_data_w(machine, offset, (control_word >> 8) & 0x001f);
 
 	soundsgood_reset_w(~control_word & 0x2000);
-	soundsgood_data_w(offset, (control_word >> 8) & 0x001f);
+	soundsgood_data_w(machine, offset, (control_word >> 8) & 0x001f);
 }
 
 
@@ -302,10 +302,11 @@ static READ16_HANDLER( trisport_port_1_r )
  *************************************/
 
 static ADDRESS_MAP_START( mcr68_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(21) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0x1fffff)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x060000, 0x063fff) AM_RAM
-	AM_RANGE(0x070000, 0x070fff) AM_READWRITE(MRA16_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x070000, 0x070fff) AM_READWRITE(SMH_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
 	AM_RANGE(0x071000, 0x071fff) AM_RAM
 	AM_RANGE(0x080000, 0x080fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x090000, 0x09007f) AM_WRITE(mcr68_paletteram_w) AM_BASE(&paletteram16)
@@ -325,7 +326,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( zwackery_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x037fff) AM_ROM
 	AM_RANGE(0x080000, 0x080fff) AM_RAM
 	AM_RANGE(0x084000, 0x084fff) AM_RAM
@@ -333,9 +334,9 @@ static ADDRESS_MAP_START( zwackery_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x104000, 0x104007) AM_READWRITE(pia_2_msb_r, pia_2_msb_w)
 	AM_RANGE(0x108000, 0x108007) AM_READWRITE(pia_3_lsb_r, pia_3_lsb_w)
 	AM_RANGE(0x10c000, 0x10c007) AM_READWRITE(pia_4_lsb_r, pia_4_lsb_w)
-	AM_RANGE(0x800000, 0x800fff) AM_READWRITE(MRA16_RAM, zwackery_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
-	AM_RANGE(0x802000, 0x803fff) AM_READWRITE(MRA16_RAM, zwackery_paletteram_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xc00000, 0xc00fff) AM_READWRITE(MRA16_RAM, zwackery_spriteram_w) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x800000, 0x800fff) AM_READWRITE(SMH_RAM, zwackery_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x802000, 0x803fff) AM_READWRITE(SMH_RAM, zwackery_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xc00000, 0xc00fff) AM_READWRITE(SMH_RAM, zwackery_spriteram_w) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 ADDRESS_MAP_END
 
 
@@ -347,13 +348,14 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( pigskin_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(21) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0x1fffff)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x080000, 0x08ffff) AM_READ(pigskin_port_1_r)
 	AM_RANGE(0x0a0000, 0x0affff) AM_READ(pigskin_port_2_r)
 	AM_RANGE(0x0c0000, 0x0c007f) AM_WRITE(mcr68_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0e0000, 0x0effff) AM_WRITE(watchdog_reset16_w)
-	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(MRA16_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(SMH_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
 	AM_RANGE(0x120000, 0x120001) AM_READWRITE(pigskin_protection_r, pigskin_protection_w)
 	AM_RANGE(0x140000, 0x143fff) AM_RAM
 	AM_RANGE(0x160000, 0x1607ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
@@ -371,14 +373,15 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( trisport_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(21) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0x1fffff)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x080000, 0x08ffff) AM_READ(trisport_port_1_r)
 	AM_RANGE(0x0a0000, 0x0affff) AM_READ(input_port_2_word_r)
 	AM_RANGE(0x100000, 0x103fff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x120000, 0x12007f) AM_WRITE(mcr68_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x140000, 0x1407ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x160000, 0x160fff) AM_READWRITE(MRA16_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x160000, 0x160fff) AM_READWRITE(SMH_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
 	AM_RANGE(0x180000, 0x18000f) AM_READWRITE(mcr68_6840_upper_r, mcr68_6840_upper_w)
 	AM_RANGE(0x1a0000, 0x1affff) AM_WRITE(archrivl_control_w)
 	AM_RANGE(0x1c0000, 0x1cffff) AM_WRITE(watchdog_reset16_w)
@@ -880,19 +883,20 @@ static MACHINE_DRIVER_START( zwackery )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 7652400)	/* should be XTAL_16MHz/2 */
 	MDRV_CPU_PROGRAM_MAP(zwackery_map,0)
-	MDRV_CPU_VBLANK_INT(mcr68_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", mcr68_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(30)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_30HZ_VBLANK_DURATION)
 //  MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_MACHINE_START(zwackery)
 	MDRV_MACHINE_RESET(zwackery)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 30*16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*16-1, 0, 30*16-1)
+
 	MDRV_GFXDECODE(zwackery)
 	MDRV_PALETTE_LENGTH(4096)
 
@@ -909,19 +913,20 @@ static MACHINE_DRIVER_START( mcr68 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 7723800)
 	MDRV_CPU_PROGRAM_MAP(mcr68_map,0)
-	MDRV_CPU_VBLANK_INT(mcr68_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", mcr68_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(30)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_30HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_MACHINE_START(mcr68)
 	MDRV_MACHINE_RESET(mcr68)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 30*16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*16-1, 0, 30*16-1)
+
 	MDRV_GFXDECODE(mcr68)
 	MDRV_PALETTE_LENGTH(64)
 
@@ -1027,6 +1032,25 @@ ROM_START( zwackery )
 	ROM_REGION( 0x8000, REGION_GFX3, ROMREGION_DISPOSE )	/* bg color maps */
 	ROM_LOAD16_BYTE( "tilef.bin",  0x0000, 0x4000, CRC(a0dfcd7e) SHA1(0fc6723eddef2a96de9bf1f48006dd067c148540) )
 	ROM_LOAD16_BYTE( "tilee.bin",  0x0001, 0x4000, CRC(ab504dc8) SHA1(4ebdcd42624e94c29ccdb8247bfff2d8e936ddd7) )
+
+	ROM_REGION( 0x000D, REGION_PLDS, ROMREGION_DISPOSE )
+    /* According to the manual these pal's are located on the "Venus CPU" board */
+	ROM_LOAD( "pal.d5",    0x0000, 0x00001, NO_DUMP ) /* marked H-T in manual */
+	ROM_LOAD( "pal.d2",    0x0001, 0x00001, NO_DUMP ) /* marked V-T in manual */
+	ROM_LOAD( "pal.d4",    0x0002, 0x00001, NO_DUMP ) /* marked MISC V&H PAL in manual */
+	ROM_LOAD( "pal.d3",    0x0003, 0x00001, NO_DUMP ) /* marked MISC CUSTOM PAL in manual */
+	ROM_LOAD( "pal.e6",    0x0004, 0x00001, NO_DUMP ) /* marked CPU WTS PAL in manual*/
+	ROM_LOAD( "pal.f8",    0x0005, 0x00001, NO_DUMP ) /* marked CPU IOC PAL in manual*/
+	ROM_LOAD( "pal.a5",    0x0006, 0x00001, NO_DUMP ) /* marked CPU RMD PAL in manual*/
+    /* According to the manual these pal's are located on the "Venus VIDEO" board */
+	ROM_LOAD( "pal.1f",    0x0007, 0x00001, NO_DUMP ) /* marked PAL FGBDCD in manual*/
+	ROM_LOAD( "pal.1d",    0x0008, 0x00001, NO_DUMP ) /* marked PAL HCT in manual*/
+    /* According to the manual these pal's are located on the "Venus BACKGROUND" board */
+	ROM_LOAD( "pal.1c",    0x0009, 0x00001, NO_DUMP ) /* marked BGBPE PAL in manual*/
+	ROM_LOAD( "pal.5c",    0x000a, 0x00001, NO_DUMP ) /* marked HCT PAL in manual*/
+	ROM_LOAD( "pal.5j",    0x000b, 0x00001, NO_DUMP ) /* marked BGBDCD PAL in manual*/
+    /* According to the manual this pal is located on the "Artificial Artist" board */
+	ROM_LOAD( "pal20.u15", 0x000c, 0x00001, NO_DUMP ) /* marked CSD002R0 in manual, pal type not specified */
 ROM_END
 
 
@@ -1052,6 +1076,16 @@ ROM_START( xenophob )
 	ROM_LOAD( "xeno_fg.8j",   0x10000, 0x10000, CRC(20e682f5) SHA1(1009f7ec56998df8a1d5ecd724d0523c435c9ee0) )
 	ROM_LOAD( "xeno_fg.9j",   0x20000, 0x10000, CRC(82fb3e09) SHA1(f06e9df20044244a6c174f4876e615ccc18e1cba) )
 	ROM_LOAD( "xeno_fg.10j",  0x30000, 0x10000, CRC(6a7a3516) SHA1(1def9c134220eac9ba5e46d38282ff18f51b6398) )
+
+	ROM_REGION( 0x0006, REGION_PLDS, ROMREGION_DISPOSE )
+    /* According to the manual these pal's are located on the Video Game board */
+	ROM_LOAD( "pal20l8.9b",   0x00000, 0x00001, NO_DUMP ) /* marked COLARB in manual */
+	ROM_LOAD( "pal16l8.1j",   0x00001, 0x00001, NO_DUMP ) /* marked IODCD in manual */
+	ROM_LOAD( "pal16l8.2j",   0x00002, 0x00001, NO_DUMP ) /* marked MEMDCD in manual */
+	ROM_LOAD( "pal16r4.2k",   0x00003, 0x00001, NO_DUMP ) /* marked DTACK in manual */
+	ROM_LOAD( "pal16r4.14k",  0x00004, 0x00001, NO_DUMP ) /* marked HSYNC in manual*/
+    /* According to the manual this pal is located on the "Sounds Good" board */
+	ROM_LOAD( "pal20.u15",    0x00005, 0x00001, NO_DUMP ) /* marked SG01R0 in manual, pal type not specified */
 ROM_END
 
 
@@ -1079,6 +1113,16 @@ ROM_START( spyhunt2 )
 	ROM_LOAD( "fg1.8j",   0x20000, 0x20000, CRC(692afb67) SHA1(5669298a646deb2f82e438ae52de03f81a9e11a7) )
 	ROM_LOAD( "fg2.9j",   0x40000, 0x20000, CRC(f1aba383) SHA1(56d1f7e9eb430671076415dd87fe77a38fadad84) )
 	ROM_LOAD( "fg3.10j",  0x60000, 0x20000, CRC(d3475ff8) SHA1(aa7a283a190a6c43e365fcd9242c5d0b920dbf32) )
+
+	ROM_REGION( 0x0006, REGION_PLDS, ROMREGION_DISPOSE )
+    /* According to the manual these pal's are located on the Video Game board */
+	ROM_LOAD( "pal20l8.9b",   0x00000, 0x00001, NO_DUMP ) /* marked COLARB in manual */
+	ROM_LOAD( "pal16l8.1j",   0x00001, 0x00001, NO_DUMP ) /* marked IODCD in manual */
+	ROM_LOAD( "pal16l8.2j",   0x00002, 0x00001, NO_DUMP ) /* marked MEMDCD in manual */
+	ROM_LOAD( "pal16r4.2k",   0x00003, 0x00001, NO_DUMP ) /* marked DTACK in manual */
+	ROM_LOAD( "pal16r4.14k",  0x00004, 0x00001, NO_DUMP ) /* marked HSYNC in manual*/
+    /* According to the manual this pal is located on the "Sounds Good" board */
+	ROM_LOAD( "pal20.u15",    0x00005, 0x00001, NO_DUMP ) /* marked SG01R0 in manual, pal type not specified */
 ROM_END
 
 
@@ -1106,6 +1150,16 @@ ROM_START( spyhnt2a )
 	ROM_LOAD( "fg1.8j",   0x20000, 0x20000, CRC(692afb67) SHA1(5669298a646deb2f82e438ae52de03f81a9e11a7) )
 	ROM_LOAD( "fg2.9j",   0x40000, 0x20000, CRC(f1aba383) SHA1(56d1f7e9eb430671076415dd87fe77a38fadad84) )
 	ROM_LOAD( "fg3.10j",  0x60000, 0x20000, CRC(d3475ff8) SHA1(aa7a283a190a6c43e365fcd9242c5d0b920dbf32) )
+
+	ROM_REGION( 0x0006, REGION_PLDS, ROMREGION_DISPOSE )
+    /* According to the manual these pal's are located on the Video Game board */
+	ROM_LOAD( "pal20l8.9b",   0x00000, 0x00001, NO_DUMP ) /* marked COLARB in manual */
+	ROM_LOAD( "pal16l8.1j",   0x00001, 0x00001, NO_DUMP ) /* marked IODCD in manual */
+	ROM_LOAD( "pal16l8.2j",   0x00002, 0x00001, NO_DUMP ) /* marked MEMDCD in manual */
+	ROM_LOAD( "pal16r4.2k",   0x00003, 0x00001, NO_DUMP ) /* marked DTACK in manual */
+	ROM_LOAD( "pal16r4.14k",  0x00004, 0x00001, NO_DUMP ) /* marked HSYNC in manual*/
+    /* According to the manual this pal is located on the "Sounds Good" board */
+	ROM_LOAD( "pal20.u15",    0x00005, 0x00001, NO_DUMP ) /* marked SG01R0 in manual, pal type not specified */
 ROM_END
 
 
@@ -1131,6 +1185,16 @@ ROM_START( blasted )
 	ROM_LOAD( "fg1",  0x20000, 0x20000, CRC(4fbdba58) SHA1(5dfaca5447e96d904028a14ef01ab6bd972011e6) )
 	ROM_LOAD( "fg2",  0x40000, 0x20000, CRC(8891f6f8) SHA1(af07aa290eff3b9632b238d8b5a37280961f63f7) )
 	ROM_LOAD( "fg3",  0x60000, 0x20000, CRC(18e4a130) SHA1(2412b45ca58b36515c80b0888a5d35303a5ce5a2) )
+
+	ROM_REGION( 0x0006, REGION_PLDS, ROMREGION_DISPOSE )
+    /* According to the manual these pal's are located on the Video Game board */
+	ROM_LOAD( "pal20l8.9b",   0x00000, 0x00001, NO_DUMP ) /* marked COLARB in manual */
+	ROM_LOAD( "pal16l8.1j",   0x00001, 0x00001, NO_DUMP ) /* marked IODCD in manual */
+	ROM_LOAD( "pal16l8.2j",   0x00002, 0x00001, NO_DUMP ) /* marked MEMDCD in manual */
+	ROM_LOAD( "pal16r4.2k",   0x00003, 0x00001, NO_DUMP ) /* marked DTACK in manual */
+	ROM_LOAD( "pal16r4.14k",  0x00004, 0x00001, NO_DUMP ) /* marked HSYNC in manual*/
+    /* According to the manual this pal is located on the "Sounds Good" board */
+	ROM_LOAD( "pal20.u15",    0x00005, 0x00001, NO_DUMP ) /* marked SG01R0 in manual, pal type not specified */
 ROM_END
 
 
@@ -1327,7 +1391,7 @@ static DRIVER_INIT( zwackery )
 
 static DRIVER_INIT( xenophob )
 {
-	mcr68_common_init(MCR_SOUNDS_GOOD, 0, 0);
+	mcr68_common_init(MCR_SOUNDS_GOOD, 0, -4);
 
 	/* Xenophobe doesn't care too much about this value; currently taken from Blasted */
 	mcr68_timing_factor = attotime_make(0, HZ_TO_ATTOSECONDS(cpunum_get_clock(0) / 10) * (256 + 16));

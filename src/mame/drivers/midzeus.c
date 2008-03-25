@@ -164,14 +164,14 @@ static WRITE32_HANDLER( cmos_protect_w )
 
 static READ32_HANDLER( timekeeper_r )
 {
-	return timekeeper_0_r(offset) | 0xffffff00;
+	return timekeeper_0_r(machine, offset) | 0xffffff00;
 }
 
 
 static WRITE32_HANDLER( timekeeper_w )
 {
 	if (bitlatch[2] && !cmos_protected)
-		timekeeper_0_w(offset, data);
+		timekeeper_0_w(machine, offset, data);
 	else
 		logerror("%06X:timekeeper_w with bitlatch[2] = %d, cmos_protected = %d\n", activecpu_get_pc(), bitlatch[2], cmos_protected);
 	cmos_protected = TRUE;
@@ -432,7 +432,7 @@ static WRITE32_HANDLER( tms32031_control_w )
 	{
 		int which = (offset >> 4) & 1;
 		if (data & 0x40)
-			timer_adjust(timer[which], attotime_never, 0, attotime_never);
+			timer_adjust_oneshot(timer[which], attotime_never, 0);
 	}
 	else
 		logerror("%06X:tms32031_control_w(%02X) = %08X\n", activecpu_get_pc(), offset, data);
@@ -517,7 +517,7 @@ static void update_gun_irq(running_machine *machine)
 static TIMER_CALLBACK( invasn_gun_callback )
 {
 	int player = param;
-	int beamy = video_screen_get_vpos(0);
+	int beamy = video_screen_get_vpos(machine->primary_screen);
 
 	/* set the appropriate IRQ in the internal gun control and update */
 	gun_irq_state |= 0x01 << player;
@@ -525,8 +525,8 @@ static TIMER_CALLBACK( invasn_gun_callback )
 
 	/* generate another interrupt on the next scanline while we are within the BEAM_DY */
 	beamy++;
-	if (beamy <= machine->screen[0].visarea.max_y && beamy <= gun_y[player] + BEAM_DY)
-		timer_adjust(gun_timer[player], video_screen_get_time_until_pos(0, beamy, MAX(0, gun_x[player] - BEAM_DX)), player, attotime_never);
+	if (beamy <= video_screen_get_visible_area(machine->primary_screen)->max_y && beamy <= gun_y[player] + BEAM_DY)
+		timer_adjust_oneshot(gun_timer[player], video_screen_get_time_until_pos(machine->primary_screen, beamy, MAX(0, gun_x[player] - BEAM_DX)), player);
 }
 
 
@@ -547,7 +547,7 @@ static WRITE32_HANDLER( invasn_gun_w )
 		UINT8 pmask = 0x04 << player;
 		if (((old_control ^ gun_control) & pmask) != 0 && (gun_control & pmask) == 0)
 		{
-			const rectangle *visarea = &Machine->screen[0].visarea;
+			const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 			static const char *const names[2][2] =
 			{
 				{ "GUNX1", "GUNY1" },
@@ -555,7 +555,7 @@ static WRITE32_HANDLER( invasn_gun_w )
 			};
 			gun_x[player] = readinputportbytag(names[player][0]) * (visarea->max_x + 1 - visarea->min_x) / 255 + visarea->min_x + BEAM_XOFFS;
 			gun_y[player] = readinputportbytag(names[player][1]) * (visarea->max_y + 1 - visarea->min_y) / 255 + visarea->min_y;
-			timer_adjust(gun_timer[player], video_screen_get_time_until_pos(0, MAX(0, gun_y[player] - BEAM_DY), MAX(0, gun_x[player] - BEAM_DX)), player, attotime_never);
+			timer_adjust_oneshot(gun_timer[player], video_screen_get_time_until_pos(machine->primary_screen, MAX(0, gun_y[player] - BEAM_DY), MAX(0, gun_x[player] - BEAM_DX)), player);
 		}
 	}
 }
@@ -563,8 +563,8 @@ static WRITE32_HANDLER( invasn_gun_w )
 
 static READ32_HANDLER( invasn_gun_r )
 {
-	int beamx = video_screen_get_hpos(0);
-	int beamy = video_screen_get_vpos(0);
+	int beamx = video_screen_get_hpos(machine->primary_screen);
+	int beamy = video_screen_get_vpos(machine->primary_screen);
 	UINT32 result = 0xffff;
 	int player;
 
@@ -587,7 +587,7 @@ static READ32_HANDLER( invasn_gun_r )
  *************************************/
 
 static ADDRESS_MAP_START( zeus_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_RAM AM_BASE(&ram_base)
 	AM_RANGE(0x400000, 0x41ffff) AM_RAM
 	AM_RANGE(0x808000, 0x80807f) AM_READWRITE(tms32031_control_r, tms32031_control_w) AM_BASE(&tms32031_control)
@@ -602,7 +602,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( zeus2_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_RAM AM_BASE(&ram_base)
 	AM_RANGE(0x400000, 0x43ffff) AM_RAM
 	AM_RANGE(0x808000, 0x80807f) AM_READWRITE(tms32031_control_r, tms32031_control_w) AM_BASE(&tms32031_control)
@@ -724,7 +724,7 @@ static INPUT_PORTS_START( mk4 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT ) /* Slam Switch */
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE) PORT_NAME(DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -829,7 +829,7 @@ static INPUT_PORTS_START( invasn )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT ) /* Slam Switch */
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE) PORT_NAME(DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -926,7 +926,7 @@ static INPUT_PORTS_START( crusnexo )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT ) /* Slam Switch */
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE) PORT_NAME(DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -1062,7 +1062,7 @@ static INPUT_PORTS_START( thegrid )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT ) /* Slam Switch */
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE) PORT_NAME(DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -1116,17 +1116,16 @@ static MACHINE_DRIVER_START( midzeus )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", TMS32032, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(zeus_map,0)
-	MDRV_CPU_VBLANK_INT(display_irq,1)
+	MDRV_CPU_VBLANK_INT("main", display_irq)
 
 	MDRV_MACHINE_START(midzeus)
 	MDRV_MACHINE_RESET(midzeus)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_PALETTE_LENGTH(32768)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MIDZEUS_VIDEO_CLOCK/8, 529, 0, 400, 278, 0, 256)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
@@ -1143,16 +1142,14 @@ static MACHINE_DRIVER_START( midzeus2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", TMS32032, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(zeus2_map,0)
-	MDRV_CPU_VBLANK_INT(display_irq,1)
+	MDRV_CPU_VBLANK_INT("main", display_irq)
 
 	MDRV_MACHINE_START(midzeus2)
 	MDRV_MACHINE_RESET(midzeus)
 	MDRV_NVRAM_HANDLER(midzeus2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MIDZEUS_VIDEO_CLOCK/4, 666, 0, 512, 438, 0, 400)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 

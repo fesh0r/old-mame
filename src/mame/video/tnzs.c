@@ -36,7 +36,7 @@ PALETTE_INIT( arknoid2 )
 {
 	int i,col;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		col = (color_prom[i]<<8)+color_prom[i+512];
 		palette_set_color_rgb(machine,i,pal5bit(col >> 10),pal5bit(col >> 5),pal5bit(col >> 0));
@@ -45,7 +45,7 @@ PALETTE_INIT( arknoid2 )
 
 
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT8 *m)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT8 *m)
 {
 	int x,y,column,tot,flag;
 	int scrollx, scrolly;
@@ -131,7 +131,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 
 
 static void draw_foreground(running_machine *machine,
-							mame_bitmap *bitmap,
+							bitmap_t *bitmap,
 							const rectangle *cliprect,
 							 UINT8 *char_pointer,
 							 UINT8 *x_pointer,
@@ -197,13 +197,13 @@ VIDEO_UPDATE( tnzs )
 
 
 	/* Fill the background */
-	fillbitmap(bitmap, machine->pens[0x1f0], cliprect);
+	fillbitmap(bitmap, 0x1f0, cliprect);
 
 	/* Redraw the background tiles (c400-c5ff) */
-	draw_background(machine, bitmap, cliprect, tnzs_objram + 0x400);
+	draw_background(screen->machine, bitmap, cliprect, tnzs_objram + 0x400);
 
 	/* Draw the sprites on top */
-	draw_foreground(machine, bitmap, cliprect,
+	draw_foreground(screen->machine, bitmap, cliprect,
 					tnzs_objram + 0x0000, /*  chars : c000 */
 					tnzs_objram + 0x0200, /*      x : c200 */
 					tnzs_vdcram + 0x0000, /*      y : f000 */

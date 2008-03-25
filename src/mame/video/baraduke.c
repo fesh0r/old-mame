@@ -119,9 +119,9 @@ static TILE_GET_INFO( get_tile_info1 )
 
 VIDEO_START( baraduke )
 {
-	tx_tilemap = tilemap_create(tx_get_tile_info,tx_tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
-	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	tx_tilemap = tilemap_create(tx_get_tile_info,tx_tilemap_scan,8,8,36,28);
+	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
 	tilemap_set_transparent_pen(bg_tilemap[0],7);
@@ -214,7 +214,7 @@ WRITE8_HANDLER( baraduke_spriteram_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int sprite_priority)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int sprite_priority)
 {
 	const UINT8 *source = &spriteram[0];
 	const UINT8 *finish = &spriteram[0x0800-16];	/* the last is NOT a sprite */
@@ -261,7 +261,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 			sy -= 16 * sizey;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 496+3 - 16 * sizex - sx;
 				sy = 240 - 16 * sizey - sy;
@@ -296,7 +296,7 @@ static void set_scroll(int layer)
 
 	scrollx = xscroll[layer] + xdisp[layer];
 	scrolly = yscroll[layer] + 9;
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		scrollx = -scrollx + 3;
 		scrolly = -scrolly;
@@ -313,8 +313,8 @@ VIDEO_UPDATE( baraduke )
 
 	/* flip screen is embedded in the sprite control registers */
 	/* can't use flip_screen_set() because the visible area is asymmetrical */
-	flip_screen = spriteram[0x07f6] & 0x01;
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
+	flip_screen_set_no_update(spriteram[0x07f6] & 0x01);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get() ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 	set_scroll(0);
 	set_scroll(1);
 
@@ -324,9 +324,9 @@ VIDEO_UPDATE( baraduke )
 		back = 0;
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap[back],TILEMAP_DRAW_OPAQUE,0);
-	draw_sprites(machine, bitmap,cliprect,0);
+	draw_sprites(screen->machine, bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,bg_tilemap[back ^ 1],0,0);
-	draw_sprites(machine, bitmap,cliprect,1);
+	draw_sprites(screen->machine, bitmap,cliprect,1);
 
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;

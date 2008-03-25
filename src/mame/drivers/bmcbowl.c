@@ -132,7 +132,7 @@ static VIDEO_UPDATE( bmcbowl )
 */
 
 	int x,y,z,pixdat;
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	z=0;
 	for (y=0;y<230;y++)
@@ -215,17 +215,17 @@ static WRITE16_HANDLER( scroll_w )
 
 static READ16_HANDLER(via_r)
 {
-	return via_0_r(offset);
+	return via_0_r(machine,offset);
 }
 
 static WRITE16_HANDLER(via_w)
 {
-	via_0_w(offset,data);
+	via_0_w(machine,offset,data);
 }
 
 static READ8_HANDLER(via_b_in)
 {
-	return input_port_3_r(0);
+	return input_port_3_r(machine,0);
 }
 
 
@@ -327,20 +327,20 @@ static ADDRESS_MAP_START( bmcbowl_mem, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x090000, 0x090001) AM_WRITE(bmc_RAMDAC_offset_w)
 	AM_RANGE(0x090002, 0x090003) AM_WRITE(bmc_RAMDAC_color_w)
-	AM_RANGE(0x090004, 0x090005) AM_WRITE(MWA16_NOP)//RAMDAC
+	AM_RANGE(0x090004, 0x090005) AM_WRITE(SMH_NOP)//RAMDAC
 
-	AM_RANGE(0x090800, 0x090803) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x091000, 0x091001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x090800, 0x090803) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x091000, 0x091001) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x091800, 0x091801) AM_WRITE(scroll_w)
 
 	AM_RANGE(0x092000, 0x09201f) AM_READWRITE(via_r,via_w)
 
-	AM_RANGE(0x093000, 0x093003) AM_WRITE(MWA16_NOP)  // related to music
+	AM_RANGE(0x093000, 0x093003) AM_WRITE(SMH_NOP)  // related to music
 	AM_RANGE(0x092800, 0x092801) AM_WRITE(AY8910_write_port_0_msb_w		)
 	AM_RANGE(0x092802, 0x092803) AM_READ(AY8910_read_port_0_msb_r) AM_WRITE(AY8910_control_port_0_msb_w	)
 	AM_RANGE(0x093802, 0x093803) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x095000, 0x095fff) AM_RAM AM_BASE((UINT16 **)&stats_ram) AM_SIZE(&stats_ram_size) /* 8 bit */
-	AM_RANGE(0x097000, 0x097001) AM_READ(MRA16_NOP)
+	AM_RANGE(0x097000, 0x097001) AM_READ(SMH_NOP)
 	AM_RANGE(0x140000, 0x1bffff) AM_ROM
 	AM_RANGE(0x1c0000, 0x1effff) AM_RAM AM_BASE(&bmcbowl_vid1)
 	AM_RANGE(0x1f0000, 0x1fffff) AM_RAM
@@ -349,13 +349,13 @@ static ADDRESS_MAP_START( bmcbowl_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x28c000, 0x28c001) AM_READWRITE(OKIM6295_status_0_msb_r,OKIM6295_data_0_msb_w)
 
 	/* protection device*/
-	AM_RANGE(0x30c000, 0x30c001) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x30c040, 0x30c041) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x30c080, 0x30c081) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x30c0c0, 0x30c0c1) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x30c000, 0x30c001) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x30c040, 0x30c041) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x30c080, 0x30c081) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x30c0c0, 0x30c0c1) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x30c100, 0x30c101) AM_READ(bmc_protection_r)
-	AM_RANGE(0x30c140, 0x30c141) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x30ca00, 0x30ca01) AM_READ(bmc_random_read) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x30c140, 0x30c141) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x30ca00, 0x30ca01) AM_READ(bmc_random_read) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 
@@ -447,8 +447,8 @@ static READ8_HANDLER(dips1_r)
 {
 	switch(bmc_input)
 	{
-			case 0x00:	return  input_port_1_r(0);
-			case 0x40:	return  input_port_2_r(0);
+			case 0x00:	return  input_port_1_r(machine,0);
+			case 0x40:	return  input_port_2_r(machine,0);
 	}
 	logerror("unknown input - %X (PC=%X)\n",bmc_input,activecpu_get_previouspc());
 	return 0xff;
@@ -495,14 +495,16 @@ static INTERRUPT_GEN( bmc_interrupt )
 static MACHINE_DRIVER_START( bmcbowl )
 	MDRV_CPU_ADD_TAG("main", M68000, 21477270/2 )
 	MDRV_CPU_PROGRAM_MAP(bmcbowl_mem,0)
-	MDRV_CPU_VBLANK_INT(bmc_interrupt,2)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(bmc_interrupt,2)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(35*8, 30*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 35*8-1, 0*8, 29*8-1)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(bmcbowl)

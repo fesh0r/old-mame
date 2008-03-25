@@ -100,17 +100,17 @@ static const rgb_t TMS9928A_palette[16] =
 /*
 ** Forward declarations of internal functions.
 */
-static void draw_mode0 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
-static void draw_mode1 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
-static void draw_mode2 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
-static void draw_mode12 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
-static void draw_mode3 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
-static void draw_mode23 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
-static void draw_modebogus (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
-static void draw_sprites (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
+static void draw_mode0 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
+static void draw_mode1 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
+static void draw_mode2 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
+static void draw_mode12 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
+static void draw_mode3 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
+static void draw_mode23 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
+static void draw_modebogus (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
+static void draw_sprites (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
 static void change_register (int reg, UINT8 data);
 
-static void (*const ModeHandlers[])(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) = {
+static void (*const ModeHandlers[])(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) = {
         draw_mode0, draw_mode1, draw_mode2,  draw_mode12,
         draw_mode3, draw_modebogus, draw_mode23,
         draw_modebogus };
@@ -141,7 +141,7 @@ typedef struct {
     void (*INTCallback)(int);
     /* memory */
     UINT8 *vMem, *dBackMem;
-    mame_bitmap *tmpbmp;
+    bitmap_t *tmpbmp;
     int vramsize, model;
     /* emulation settings */
     int LimitSprites; /* max 4 sprites on a row, like original TMS9918A */
@@ -194,8 +194,9 @@ static void TMS9928A_start (running_machine *machine, const TMS9928a_interface *
 	tms.visarea.max_y = tms.top_border + 24*8 - 1 + MIN(intf->bordery, tms.bottom_border);
 
 	/* configure the screen if we weren't overridden */
-	if (machine->screen[0].width == LEFT_BORDER+32*8+RIGHT_BORDER && machine->screen[0].height == TOP_BORDER_60HZ+24*8+BOTTOM_BORDER_60HZ)
-		video_screen_configure(0, LEFT_BORDER + 32*8 + RIGHT_BORDER, tms.top_border + 24*8 + tms.bottom_border, &tms.visarea, machine->screen[0].refresh);
+	if (video_screen_get_width(machine->primary_screen) == LEFT_BORDER+32*8+RIGHT_BORDER &&
+	    video_screen_get_height(machine->primary_screen) == TOP_BORDER_60HZ+24*8+BOTTOM_BORDER_60HZ)
+		video_screen_configure(machine->primary_screen, LEFT_BORDER + 32*8 + RIGHT_BORDER, tms.top_border + 24*8 + tms.bottom_border, &tms.visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds);
 
     /* Video RAM */
     tms.vramsize = intf->vram;
@@ -206,7 +207,7 @@ static void TMS9928A_start (running_machine *machine, const TMS9928a_interface *
     tms.dBackMem = (UINT8*)auto_malloc (IMAGE_SIZE);
 
     /* back bitmap */
-    tms.tmpbmp = auto_bitmap_alloc (256, 192, machine->screen[0].format);
+    tms.tmpbmp = auto_bitmap_alloc (256, 192, video_screen_get_format(machine->primary_screen));
 
     TMS9928A_reset ();
     tms.LimitSprites = 1;
@@ -292,7 +293,7 @@ WRITE8_HANDLER (TMS9928A_register_w) {
             tms.Addr = ((UINT16)data << 8 | tms.FirstByte) & (tms.vramsize - 1);
             if ( !(data & 0x40) ) {
 				/* read ahead */
-				TMS9928A_vram_r	(0);
+				TMS9928A_vram_r	(machine,0);
             }
         }
         tms.latch = 0;
@@ -390,13 +391,13 @@ void TMS9928A_set_spriteslimit (int limit) {
 VIDEO_UPDATE( tms9928a )
 {
     INT32 BackColour = tms.Regs[7] & 15; if (!BackColour) BackColour=1;
-    palette_set_color(machine, 0, TMS9928A_palette[BackColour]);
+    palette_set_color(screen->machine, 0, TMS9928A_palette[BackColour]);
 
 	if (! (tms.Regs[1] & 0x40))
-		fillbitmap(bitmap, machine->pens[BackColour], cliprect);
+		fillbitmap(bitmap, screen->machine->pens[BackColour], cliprect);
 	else
 	{
-		(*ModeHandlers[TMS_MODE])(machine, tms.tmpbmp, cliprect);
+		(*ModeHandlers[TMS_MODE])(screen->machine, tms.tmpbmp, cliprect);
 
 		copybitmap(bitmap, tms.tmpbmp, 0, 0, LEFT_BORDER, TOP_BORDER, cliprect);
 		{
@@ -416,7 +417,7 @@ VIDEO_UPDATE( tms9928a )
 			fillbitmap (bitmap, BackColour, &rt);
 	    }
 		if (TMS_SPRITES_ENABLED)
-			draw_sprites(machine, bitmap, cliprect);
+			draw_sprites(screen->machine, bitmap, cliprect);
 	}
 
 	return 0;
@@ -442,7 +443,7 @@ int TMS9928A_interrupt () {
     return b;
 }
 
-static void draw_mode1 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_mode1 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     int pattern,x,y,yy,xx,name,charcode;
     UINT8 fg,bg,*patternptr;
 	rectangle rt;
@@ -475,7 +476,7 @@ static void draw_mode1 (running_machine *machine, mame_bitmap *bitmap, const rec
     }
 }
 
-static void draw_mode12 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_mode12 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     int pattern,x,y,yy,xx,name,charcode;
     UINT8 fg,bg,*patternptr;
 	rectangle rt;
@@ -508,7 +509,7 @@ static void draw_mode12 (running_machine *machine, mame_bitmap *bitmap, const re
     }
 }
 
-static void draw_mode0 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_mode0 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     int pattern,x,y,yy,xx,name,charcode,colour;
     UINT8 fg,bg,*patternptr;
 
@@ -532,7 +533,7 @@ static void draw_mode0 (running_machine *machine, mame_bitmap *bitmap, const rec
     }
 }
 
-static void draw_mode2 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_mode2 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     int colour,name,x,y,yy,pattern,xx,charcode;
     UINT8 fg,bg;
     UINT8 *colourptr,*patternptr;
@@ -560,7 +561,7 @@ static void draw_mode2 (running_machine *machine, mame_bitmap *bitmap, const rec
     }
 }
 
-static void draw_mode3 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_mode3 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     int x,y,yy,yyy,name,charcode;
     UINT8 fg,bg,*patternptr;
 
@@ -588,7 +589,7 @@ static void draw_mode3 (running_machine *machine, mame_bitmap *bitmap, const rec
     }
 }
 
-static void draw_mode23 (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_mode23 (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     int x,y,yy,yyy,name,charcode;
     UINT8 fg,bg,*patternptr;
 
@@ -617,7 +618,7 @@ static void draw_mode23 (running_machine *machine, mame_bitmap *bitmap, const re
     }
 }
 
-static void draw_modebogus (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_modebogus (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     UINT8 fg,bg;
     int x,y,n,xx;
 
@@ -644,7 +645,7 @@ static void draw_modebogus (running_machine *machine, mame_bitmap *bitmap, const
 **
 ** This code should be optimized. One day.
 */
-static void draw_sprites (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect) {
+static void draw_sprites (running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect) {
     UINT8 *attributeptr,*patternptr,c;
     int p,x,y,size,i,j,large,yy,xx,limit[192],
         illegalsprite,illegalspriteline;
@@ -795,7 +796,9 @@ VIDEO_START( tms9928a )
 MACHINE_DRIVER_START( tms9928a )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(LEFT_BORDER+32*8+RIGHT_BORDER, TOP_BORDER_60HZ+24*8+BOTTOM_BORDER_60HZ)
 	MDRV_SCREEN_VISIBLE_AREA(LEFT_BORDER-12, LEFT_BORDER+32*8+12-1, TOP_BORDER_60HZ-9, TOP_BORDER_60HZ+24*8+9-1)

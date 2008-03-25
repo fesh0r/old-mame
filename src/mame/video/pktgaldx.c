@@ -1,15 +1,14 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "deco16ic.h"
 
 UINT16* pcktgaldb_fgram;
 UINT16* pcktgaldb_sprites;
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
-	int flipscreen=!flip_screen;
+	int flipscreen=!flip_screen_get();
 
 	for (offs = 0;offs < 0x400;offs += 4)
 	{
@@ -20,7 +19,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		y = spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0x1f;
@@ -89,11 +88,11 @@ VIDEO_UPDATE(pktgaldx)
 	flip_screen_set( deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	fillbitmap(bitmap,machine->pens[0x0],cliprect); /* not Confirmed */
+	fillbitmap(bitmap,0,cliprect); /* not Confirmed */
 	fillbitmap(priority_bitmap,0,NULL);
 
 	deco16_tilemap_2_draw(bitmap,cliprect,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }
@@ -110,7 +109,7 @@ VIDEO_UPDATE(pktgaldb)
 	int tileno;
 	int colour;
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	/* the bootleg seems to treat the tilemaps as sprites */
 	for (offset = 0;offset<0x1600/2;offset+=8)
@@ -124,7 +123,7 @@ VIDEO_UPDATE(pktgaldb)
 		y&=0x1ff;
 		y-=8;
 
-		drawgfx(bitmap,machine->gfx[0],tileno^0x1000,colour,0,0,x,y,cliprect,TRANSPARENCY_PEN,0);
+		drawgfx(bitmap,screen->machine->gfx[0],tileno^0x1000,colour,0,0,x,y,cliprect,TRANSPARENCY_PEN,0);
 	}
 
 	for (offset = 0x1600/2;offset<0x2000/2;offset+=8)
@@ -138,7 +137,7 @@ VIDEO_UPDATE(pktgaldb)
 		y&=0x1ff;
 		y-=8;
 
-		drawgfx(bitmap,machine->gfx[0],tileno^0x4000,colour,0,0,x,y,cliprect,TRANSPARENCY_PEN,0);
+		drawgfx(bitmap,screen->machine->gfx[0],tileno^0x4000,colour,0,0,x,y,cliprect,TRANSPARENCY_PEN,0);
 	}
 
 	for (offset = 0x2000/2;offset<0x4000/2;offset+=8)
@@ -152,7 +151,7 @@ VIDEO_UPDATE(pktgaldb)
 		y&=0x1ff;
 		y-=8;
 
-		drawgfx(bitmap,machine->gfx[0],tileno^0x3000,colour,0,0,x,y,cliprect,TRANSPARENCY_PEN,0);
+		drawgfx(bitmap,screen->machine->gfx[0],tileno^0x3000,colour,0,0,x,y,cliprect,TRANSPARENCY_PEN,0);
 	}
 
 	return 0;

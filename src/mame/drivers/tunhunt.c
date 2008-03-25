@@ -49,6 +49,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/pokey.h"
 
 
@@ -145,32 +146,32 @@ static READ8_HANDLER( dsw2_4r )
  *************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READ(MRA8_RAM) /* Work RAM */
+	AM_RANGE(0x0000, 0x03ff) AM_READ(SMH_RAM) /* Work RAM */
 	AM_RANGE(0x2000, 0x2007) AM_READ(tunhunt_button_r)
 	AM_RANGE(0x3000, 0x300f) AM_READ(pokey1_r)
 	AM_RANGE(0x4000, 0x400f) AM_READ(pokey2_r)
-	AM_RANGE(0x5000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xfffa, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x5000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xfffa, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_WRITE(MWA8_RAM) AM_BASE(&tunhunt_ram) /* Work RAM */
-	AM_RANGE(0x1080, 0x10ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1200, 0x12ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1400, 0x14ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1600, 0x160f) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram) /* COLRAM (D7-D4 SHADE; D3-D0 COLOR) */
-	AM_RANGE(0x1800, 0x1800) AM_WRITE(MWA8_RAM) /* SHEL0H */
-	AM_RANGE(0x1a00, 0x1a00) AM_WRITE(MWA8_RAM) /* SHEL1H */
-	AM_RANGE(0x1c00, 0x1c00) AM_WRITE(MWA8_RAM) /* MOBJV */
+	AM_RANGE(0x0000, 0x03ff) AM_WRITE(SMH_RAM) AM_BASE(&tunhunt_ram) /* Work RAM */
+	AM_RANGE(0x1080, 0x10ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1200, 0x12ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1400, 0x14ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1600, 0x160f) AM_WRITE(SMH_RAM) AM_BASE(&paletteram) /* COLRAM (D7-D4 SHADE; D3-D0 COLOR) */
+	AM_RANGE(0x1800, 0x1800) AM_WRITE(SMH_RAM) /* SHEL0H */
+	AM_RANGE(0x1a00, 0x1a00) AM_WRITE(SMH_RAM) /* SHEL1H */
+	AM_RANGE(0x1c00, 0x1c00) AM_WRITE(SMH_RAM) /* MOBJV */
 	AM_RANGE(0x1e00, 0x1eff) AM_WRITE(tunhunt_videoram_w) AM_BASE(&videoram)	/* ALPHA */
-	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(MWA8_NOP) /* watchdog */
-	AM_RANGE(0x2400, 0x2400) AM_WRITE(MWA8_NOP) /* INT ACK */
+	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(SMH_NOP) /* watchdog */
+	AM_RANGE(0x2400, 0x2400) AM_WRITE(SMH_NOP) /* INT ACK */
 	AM_RANGE(0x2800, 0x2800) AM_WRITE(tunhunt_control_w)
 	AM_RANGE(0x3000, 0x300f) AM_WRITE(pokey1_w)
 	AM_RANGE(0x4000, 0x400f) AM_WRITE(pokey2_w)
-	AM_RANGE(0x5000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x5000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -282,9 +283,9 @@ static const gfx_layout obj_layout =
 
 
 static GFXDECODE_START( tunhunt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x000, alpha_layout, 0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x200, obj_layout,	 8, 1 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x000, obj_layout,	 8, 1 ) /* second bank, or second bitplane? */
+	GFXDECODE_ENTRY( REGION_GFX1, 0x000, alpha_layout, 0x10, 4 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0x200, obj_layout,   0x18, 1 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0x000, obj_layout,   0x18, 1 ) /* second bank, or second bitplane? */
 GFXDECODE_END
 
 
@@ -319,19 +320,18 @@ static MACHINE_DRIVER_START( tunhunt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502,2000000)		/* ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* ? probably wrong */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ? probably wrong */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256-16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 255-16)
+
 	MDRV_GFXDECODE(tunhunt)
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(16)
+	MDRV_PALETTE_LENGTH(0x1a)
 
 	MDRV_PALETTE_INIT(tunhunt)
 	MDRV_VIDEO_START(tunhunt)

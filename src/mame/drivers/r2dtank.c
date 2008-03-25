@@ -35,7 +35,7 @@ RAM = 4116 (x11)
 #include "rescap.h"
 #include "machine/6821pia.h"
 #include "machine/74123.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "cpu/m6800/m6800.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/ay8910.h"
@@ -90,7 +90,7 @@ static void main_cpu_irq(int state)
 
 static READ8_HANDLER( audio_command_r )
 {
-	UINT8 ret = soundlatch_r(0);
+	UINT8 ret = soundlatch_r(machine, 0);
 
 if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Command Read: %x\n", safe_activecpu_get_pc(), ret);
 
@@ -100,8 +100,8 @@ if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Command Read: %x\n", safe_activ
 
 static WRITE8_HANDLER( audio_command_w )
 {
-	soundlatch_w(0, ~data);
-	cpunum_set_input_line(Machine, 1, M6802_IRQ_LINE, HOLD_LINE);
+	soundlatch_w(machine, 0, ~data);
+	cpunum_set_input_line(machine, 1, M6802_IRQ_LINE, HOLD_LINE);
 
 if (LOG_AUDIO_COMM) logerror("%08X   CPU#0  Audio Command Write: %x\n", safe_activecpu_get_pc(), data^0xff);
 }
@@ -109,7 +109,7 @@ if (LOG_AUDIO_COMM) logerror("%08X   CPU#0  Audio Command Write: %x\n", safe_act
 
 static READ8_HANDLER( audio_answer_r )
 {
-	UINT8 ret = soundlatch2_r(0);
+	UINT8 ret = soundlatch2_r(machine, 0);
 if (LOG_AUDIO_COMM) logerror("%08X  CPU#0  Audio Answer Read: %x\n", safe_activecpu_get_pc(), ret);
 
 	return ret;
@@ -122,8 +122,8 @@ static WRITE8_HANDLER( audio_answer_w )
 	if (safe_activecpu_get_pc() == 0xfb12)
 		data = 0x00;
 
-	soundlatch2_w(0, data);
-	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, HOLD_LINE);
+	soundlatch2_w(machine, 0, data);
+	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, HOLD_LINE);
 
 if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  Audio Answer Write: %x\n", safe_activecpu_get_pc(), data);
 }
@@ -150,12 +150,12 @@ static READ8_HANDLER( AY8910_port_r )
 
 	if (AY8910_selected & 0x08)
 {
-		ret = AY8910_read_port_0_r(offset);
+		ret = AY8910_read_port_0_r(machine, offset);
 if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Read: %x\n", safe_activecpu_get_pc(), ret);}
 
 	if (AY8910_selected & 0x10)
 {
-		ret = AY8910_read_port_1_r(offset);
+		ret = AY8910_read_port_1_r(machine, offset);
 if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Read: %x\n", safe_activecpu_get_pc(), ret);}
 
 	return ret;
@@ -168,23 +168,23 @@ static WRITE8_HANDLER( AY8910_port_w )
 	{
 		if (AY8910_selected & 0x08)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Control Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_control_port_0_w(offset, data);
+			AY8910_control_port_0_w(machine, offset, data);
 }
 		if (AY8910_selected & 0x10)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Control Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_control_port_1_w(offset, data);
+			AY8910_control_port_1_w(machine, offset, data);
 }
 	}
 	else
 	{
 		if (AY8910_selected & 0x08)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #0 Port Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_write_port_0_w(offset, data);
+			AY8910_write_port_0_w(machine, offset, data);
 }
 
 		if (AY8910_selected & 0x10)
 {if (LOG_AUDIO_COMM) logerror("%08X  CPU#1  AY8910 #1 Port Write: %x\n", safe_activecpu_get_pc(), data);
-			AY8910_write_port_1_w(offset, data);
+			AY8910_write_port_1_w(machine, offset, data);
 }
 	}
 }
@@ -219,7 +219,7 @@ static const struct AY8910interface ay8910_2_interface =
 
 static void ttl74123_output_changed(int output)
 {
-	pia_0_ca1_w(0, output);
+	pia_0_ca1_w(Machine, 0, output);
 	ttl74123_output = output;
 }
 
@@ -309,8 +309,7 @@ static WRITE8_HANDLER( flipscreen_w )
 }
 
 
-static void *begin_update(running_machine *machine, int screen,
-						  mame_bitmap *bitmap, const rectangle *cliprect)
+static MC6845_BEGIN_UPDATE( begin_update )
 {
 	/* create the pens */
 	offs_t i;
@@ -325,8 +324,7 @@ static void *begin_update(running_machine *machine, int screen,
 }
 
 
-static void update_row(mame_bitmap *bitmap, const rectangle *cliprect,
-					   UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, void *param)
+static MC6845_UPDATE_ROW( update_row )
 {
 	UINT8 cx;
 
@@ -375,28 +373,32 @@ static void update_row(mame_bitmap *bitmap, const rectangle *cliprect,
 }
 
 
-static void display_enable_changed(int display_enabled)
+static MC6845_ON_DE_CHANGED( display_enable_changed )
 {
 	TTL74123_A_w(0, display_enabled);
 }
 
 
-static const crtc6845_interface crtc6845_intf =
+static const mc6845_interface mc6845_intf =
 {
-	0,						/* screen we are acting on */
+	"main",					/* screen we are acting on */
 	CRTC_CLOCK, 			/* the clock (pin 21) of the chip */
 	8,						/* number of pixels per video memory address */
 	begin_update,			/* before pixel update callback */
 	update_row,				/* row update callback */
 	0,						/* after pixel update callback */
-	display_enable_changed	/* call back for display state changes */
+	display_enable_changed,	/* callback for display state changes */
+	NULL,					/* HSYNC callback */
+	NULL					/* VSYNC callback */
 };
 
 
-static VIDEO_START( r2dtank )
+static VIDEO_UPDATE( r2dtank )
 {
-	/* configure the CRT controller */
-	crtc6845_config(0, &crtc6845_intf);
+	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	mc6845_update(mc6845, bitmap, cliprect);
+
+	return 0;
 }
 
 
@@ -409,7 +411,7 @@ static VIDEO_START( r2dtank )
 
 static WRITE8_HANDLER( pia_comp_0_w )
 {
-	pia_0_w(offset, ~data);
+	pia_0_w(machine, offset, ~data);
 }
 
 
@@ -420,8 +422,8 @@ static ADDRESS_MAP_START( r2dtank_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0x8003) AM_READWRITE(pia_0_r, pia_comp_0_w)
 	AM_RANGE(0x8004, 0x8004) AM_READWRITE(audio_answer_r, audio_command_w)
-	AM_RANGE(0xb000, 0xb000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0xb001, 0xb001) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0xb000, 0xb000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xb001, 0xb001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xc000, 0xc007) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xc800, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -538,13 +540,14 @@ static MACHINE_DRIVER_START( r2dtank )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_VIDEO_START(r2dtank)
-	MDRV_VIDEO_UPDATE(crtc6845)
+	MDRV_VIDEO_UPDATE(r2dtank)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG(mc6845_intf)
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

@@ -66,7 +66,7 @@ static READ8_HANDLER( portC_r )
 
 static READ8_HANDLER( port1_r )
 {
-	return input_port_1_r(0) | (ticket_dispenser_0_r(0) >> 5);
+	return input_port_1_r(machine, 0) | (ticket_dispenser_0_r(machine, 0) >> 5);
 }
 
 static WRITE8_HANDLER( lamps_w )
@@ -90,10 +90,10 @@ static WRITE8_HANDLER( sound_w )
 	set_led_status(9,data & 0x08);
 
 	/* bit 5 - ticket out in trivia games */
-	ticket_dispenser_w(0, (data & 0x20)<< 2);
+	ticket_dispenser_w(machine, 0, (data & 0x20)<< 2);
 
 	/* bit 6 enables NMI */
-	interrupt_enable_w(0,data & 0x40);
+	interrupt_enable_w(machine, 0,data & 0x40);
 
 	/* bit 7 goes directly to the sound amplifier */
 	DAC_data_w(0,((data & 0x80) >> 7) * 255);
@@ -181,19 +181,19 @@ static WRITE8_HANDLER( signature_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x47ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x4800, 0x4803) AM_READ(ppi8255_0_r)
 	AM_RANGE(0x5000, 0x5003) AM_READ(ppi8255_1_r)
 	AM_RANGE(0x6400, 0x6400) AM_READ(signature_r)
-	AM_RANGE(0x7800, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x7800, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x0000, 0xffff) AM_READ(catchall)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_WRITE(MWA8_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x47ff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x4800, 0x4803) AM_WRITE(ppi8255_0_w)
 	AM_RANGE(0x5000, 0x5003) AM_WRITE(ppi8255_1_w)
 	/* banked ROMs are enabled by low 6 bits of the address */
@@ -204,10 +204,10 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x602f, 0x602f) AM_WRITE(banksel_5_w)
 	AM_RANGE(0x601f, 0x601f) AM_WRITE(banksel_main_w)
 	AM_RANGE(0x6200, 0x6200) AM_WRITE(signature_w)
-	AM_RANGE(0x7800, 0x7fff) AM_WRITE(MWA8_ROM)	/* space for diagnostic ROM? */
+	AM_RANGE(0x7800, 0x7fff) AM_WRITE(SMH_ROM)	/* space for diagnostic ROM? */
 	AM_RANGE(0x8000, 0x8002) AM_WRITE(findout_drawctrl_w)
 	AM_RANGE(0xc000, 0xffff) AM_WRITE(findout_bitmap_w)  AM_BASE(&videoram)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)	/* overlapped by the above */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)	/* overlapped by the above */
 ADDRESS_MAP_END
 
 
@@ -446,19 +446,19 @@ static MACHINE_DRIVER_START( findout )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_MACHINE_RESET(findout)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(48, 511-48, 16, 255-16)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(generic_bitmapped)

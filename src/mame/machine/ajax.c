@@ -14,7 +14,6 @@
 #include "cpu/konami/konami.h"
 #include "video/konamiic.h"
 
-UINT8 *ajax_sharedram;
 extern UINT8 ajax_priority;
 static int firq_enable;
 
@@ -141,39 +140,28 @@ WRITE8_HANDLER( ajax_ls138_f10_w )
 	switch ((offset & 0x01c0) >> 6){
 		case 0x00:	/* NSFIRQ + AFR */
 			if (offset)
-				watchdog_reset_w(0, data);
+				watchdog_reset_w(machine, 0, data);
 			else{
 				if (firq_enable)	/* Cause interrupt on slave CPU */
-					cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, HOLD_LINE);
+					cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, HOLD_LINE);
 			}
 			break;
 		case 0x01:	/* Cause interrupt on audio CPU */
-			cpunum_set_input_line(Machine, 2, 0, HOLD_LINE);
+			cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 			break;
 		case 0x02:	/* Sound command number */
-			soundlatch_w(offset,data);
+			soundlatch_w(machine,offset,data);
 			break;
 		case 0x03:	/* Bankswitch + coin counters + priority*/
-			ajax_bankswitch_w(0, data);
+			ajax_bankswitch_w(machine, 0, data);
 			break;
 		case 0x05:	/* Lamps + Joystick vibration + Control panel quaking */
-			ajax_lamps_w(0, data);
+			ajax_lamps_w(machine, 0, data);
 			break;
 
 		default:
 			logerror("%04x: (ls138_f10) write %02x to an unknown address %02x\n",activecpu_get_pc(), data, offset);
 	}
-}
-
-/* Shared RAM between the 052001 and the 6809 (6264SL at I8) */
-READ8_HANDLER( ajax_sharedram_r )
-{
-	return ajax_sharedram[offset];
-}
-
-WRITE8_HANDLER( ajax_sharedram_w )
-{
-	ajax_sharedram[offset] = data;
 }
 
 /*  ajax_bankswitch_w_2:
@@ -213,7 +201,8 @@ WRITE8_HANDLER( ajax_bankswitch_2_w )
 
 MACHINE_RESET( ajax )
 {
-	firq_enable = 1;
+	ajax_bankswitch_w(machine, 0, 0);
+	ajax_bankswitch_2_w(machine, 0, 0);
 }
 
 INTERRUPT_GEN( ajax_interrupt )

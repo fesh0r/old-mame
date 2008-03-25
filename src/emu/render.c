@@ -121,7 +121,7 @@ struct _object_transform
 /* a scaled_texture contains a single scaled entry for a texture */
 struct _scaled_texture
 {
-	mame_bitmap *		bitmap;				/* final bitmap */
+	bitmap_t *			bitmap;				/* final bitmap */
 	UINT32				seqid;				/* sequence number */
 };
 
@@ -131,11 +131,11 @@ struct _render_texture
 {
 	render_texture *	next;				/* next texture (for free list) */
 	render_texture *	base;				/* pointer to base of texture group */
-	mame_bitmap *		bitmap;				/* pointer to the original bitmap */
+	bitmap_t *			bitmap;				/* pointer to the original bitmap */
 	rectangle			sbounds;			/* source bounds within the bitmap */
 	UINT32				palettebase;		/* palette base within the system palette */
 	int					format;				/* format of the texture data */
-	texture_scaler		scaler;				/* scaling callback */
+	texture_scaler_func	scaler;				/* scaling callback */
 	void *				param;				/* scaling callback parameter */
 	UINT32				curseq;				/* current sequence number */
 	scaled_texture		scaled[MAX_TEXTURE_SCALES];	/* array of scaled variants of this texture */
@@ -183,8 +183,10 @@ struct _container_item
 /* a render_container holds a list of items and an orientation for the entire collection */
 struct _render_container
 {
+	render_container *	next;				/* the next container in the list */
 	container_item *	itemlist;			/* head of the item list */
 	container_item **	nextitem;			/* pointer to the next item to add */
+	const device_config *screen;			/* the screen device */
 	int					orientation;		/* orientation of the container */
 	float				brightness;			/* brightness of the container */
 	float				contrast;			/* contrast of the container */
@@ -193,7 +195,7 @@ struct _render_container
 	float				yscale;				/* Y scale factor of the container */
 	float				xoffset;			/* X offset of the container */
 	float				yoffset;			/* Y offset of the container */
-	mame_bitmap *		overlaybitmap;		/* overlay bitmap */
+	bitmap_t *			overlaybitmap;		/* overlay bitmap */
 	render_texture *	overlaytexture;		/* overlay texture */
 	palette_client *	palclient;			/* client to the system palette */
 	rgb_t				bcglookup256[0x400];/* lookup table for brightness/contrast/gamma */
@@ -222,8 +224,8 @@ static render_texture *render_texture_free_list;
 
 /* containers for the UI and for screens */
 static render_container *ui_container;
-static render_container *screen_container[MAX_SCREENS];
-static mame_bitmap *screen_overlay;
+static render_container *screen_container_list;
+static bitmap_t *screen_overlay;
 
 /* variables for tracking extents to clear */
 static INT32 clear_extents[MAX_CLEAR_EXTENTS];
@@ -270,7 +272,7 @@ static int render_texture_get_scaled(render_texture *texture, UINT32 dwidth, UIN
 static render_container *render_container_alloc(void);
 static void render_container_free(render_container *container);
 static container_item *render_container_item_add_generic(render_container *container, UINT8 type, float x0, float y0, float x1, float y1, rgb_t argb);
-static void render_container_overlay_scale(mame_bitmap *dest, const mame_bitmap *source, const rectangle *sbounds, void *param);
+static void render_container_overlay_scale(bitmap_t *dest, const bitmap_t *source, const rectangle *sbounds, void *param);
 static void render_container_recompute_lookups(render_container *container);
 static void render_container_update_palette(render_container *container);
 
@@ -458,6 +460,31 @@ INLINE void free_render_ref(render_ref *ref)
 }
 
 
+/*-------------------------------------------------
+    get_screen_container_by_index - get the
+    screen container for this screen index
+-------------------------------------------------*/
+
+INLINE render_container *get_screen_container_by_index(int index)
+{
+	render_container *container;
+
+	assert(index >= 0);
+
+	/* get the container for the screen index */
+	for (container = screen_container_list; container != NULL; container = container->next)
+	{
+		if (index == 0)
+			break;
+		index--;
+	}
+
+	assert(index == 0);
+
+	return container;
+}
+
+
 
 /***************************************************************************
     CORE IMPLEMENTATION
@@ -470,7 +497,8 @@ INLINE void free_render_ref(render_ref *ref)
 
 void render_init(running_machine *machine)
 {
-	int scrnum;
+	const device_config *screen;
+	render_container **current_container_ptr = &screen_container_list;
 
 	/* make sure we clean up after ourselves */
 	add_exit_callback(machine, render_exit);
@@ -484,21 +512,29 @@ void render_init(running_machine *machine)
 
 	/* zap more variables */
 	ui_target = NULL;
-	memset(screen_container, 0, sizeof(screen_container));
 
 	/* create a UI container */
 	ui_container = render_container_alloc();
 
 	/* create a container for each screen and determine its orientation */
-	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
-		if (Machine->drv->screen[scrnum].tag != NULL)
-		{
-			screen_container[scrnum] = render_container_alloc();
-			render_container_set_orientation(screen_container[scrnum], Machine->gamedrv->flags & ORIENTATION_MASK);
-			render_container_set_brightness(screen_container[scrnum], options_get_float(mame_options(), OPTION_BRIGHTNESS));
-			render_container_set_contrast(screen_container[scrnum], options_get_float(mame_options(), OPTION_CONTRAST));
-			render_container_set_gamma(screen_container[scrnum], options_get_float(mame_options(), OPTION_GAMMA));
-		}
+	for (screen = video_screen_first(machine->config); screen != NULL; screen = video_screen_next(screen))
+	{
+		render_container *screen_container = render_container_alloc();
+		render_container **temp = &screen_container->next;
+
+		render_container_set_orientation(screen_container, machine->gamedrv->flags & ORIENTATION_MASK);
+		render_container_set_brightness(screen_container, options_get_float(mame_options(), OPTION_BRIGHTNESS));
+		render_container_set_contrast(screen_container, options_get_float(mame_options(), OPTION_CONTRAST));
+		render_container_set_gamma(screen_container, options_get_float(mame_options(), OPTION_GAMMA));
+		screen_container->screen = screen;
+
+		/* link it up */
+		*current_container_ptr = screen_container;
+		current_container_ptr = temp;
+	}
+
+	/* terminate list */
+	*current_container_ptr = NULL;
 
 	/* register callbacks */
 	config_register("video", render_load, render_save);
@@ -512,16 +548,19 @@ void render_init(running_machine *machine)
 static void render_exit(running_machine *machine)
 {
 	render_texture **texture_ptr;
-	int screen;
+	render_container *container;
 
 	/* free the UI container */
 	if (ui_container != NULL)
 		render_container_free(ui_container);
 
 	/* free the screen container */
-	for (screen = 0; screen < MAX_SCREENS; screen++)
-		if (screen_container[screen] != NULL)
-			render_container_free(screen_container[screen]);
+	for (container = screen_container_list; container != NULL; )
+	{
+		render_container *temp = container;
+		container = temp->next;
+		render_container_free(temp);
+	}
 
 	/* remove all non-head entries from the texture free list */
 	for (texture_ptr = &render_texture_free_list; *texture_ptr != NULL; texture_ptr = &(*texture_ptr)->next)
@@ -673,21 +712,18 @@ static void render_load(int config_type, xml_data_node *parentnode)
 	for (screennode = xml_get_sibling(parentnode->child, "screen"); screennode; screennode = xml_get_sibling(screennode->next, "screen"))
 	{
 		int index = xml_get_attribute_int(screennode, "index", -1);
-		if (index >= 0 && index < MAX_SCREENS && screen_container[index] != NULL)
-		{
-			render_container *container = screen_container[index];
+		render_container *container = get_screen_container_by_index(index);
 
-			/* fetch color controls */
-			render_container_set_brightness(container, xml_get_attribute_float(screennode, "brightness", container->brightness));
-			render_container_set_contrast(container, xml_get_attribute_float(screennode, "contrast", container->contrast));
-			render_container_set_gamma(container, xml_get_attribute_float(screennode, "gamma", container->gamma));
+		/* fetch color controls */
+		render_container_set_brightness(container, xml_get_attribute_float(screennode, "brightness", container->brightness));
+		render_container_set_contrast(container, xml_get_attribute_float(screennode, "contrast", container->contrast));
+		render_container_set_gamma(container, xml_get_attribute_float(screennode, "gamma", container->gamma));
 
-			/* fetch positioning controls */
-			render_container_set_xoffset(container, xml_get_attribute_float(screennode, "hoffset", container->xoffset));
-			render_container_set_xscale(container, xml_get_attribute_float(screennode, "hstretch", container->xscale));
-			render_container_set_yoffset(container, xml_get_attribute_float(screennode, "voffset", container->yoffset));
-			render_container_set_yscale(container, xml_get_attribute_float(screennode, "vstretch", container->yscale));
-		}
+		/* fetch positioning controls */
+		render_container_set_xoffset(container, xml_get_attribute_float(screennode, "hoffset", container->xoffset));
+		render_container_set_xscale(container, xml_get_attribute_float(screennode, "hstretch", container->xscale));
+		render_container_set_yoffset(container, xml_get_attribute_float(screennode, "voffset", container->yoffset));
+		render_container_set_yscale(container, xml_get_attribute_float(screennode, "vstretch", container->yscale));
 	}
 }
 
@@ -700,8 +736,9 @@ static void render_load(int config_type, xml_data_node *parentnode)
 static void render_save(int config_type, xml_data_node *parentnode)
 {
 	render_target *target;
-	int targetnum = 0;
+	render_container *container;
 	int scrnum;
+	int targetnum = 0;
 
 	/* we only care about game files */
 	if (config_type != CONFIG_TYPE_GAME)
@@ -782,65 +819,67 @@ static void render_save(int config_type, xml_data_node *parentnode)
 	}
 
 	/* iterate over screen containers */
-	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
+	for (container = screen_container_list, scrnum = 0; container != NULL; container = container->next, scrnum++)
 	{
-		render_container *container = screen_container[scrnum];
-		if (container != NULL)
+		xml_data_node *screennode;
+
+		/* create a node */
+		screennode = xml_add_child(parentnode, "screen", NULL);
+
+		if (screennode != NULL)
 		{
-			xml_data_node *screennode;
+			int changed = FALSE;
 
-			/* create a node */
-			screennode = xml_add_child(parentnode, "screen", NULL);
-			if (screennode != NULL)
+			/* output the basics */
+			xml_set_attribute_int(screennode, "index", scrnum);
+
+			/* output the color controls */
+			if (container->brightness != options_get_float(mame_options(), OPTION_BRIGHTNESS))
 			{
-				int changed = FALSE;
-
-				/* output the basics */
-				xml_set_attribute_int(screennode, "index", scrnum);
-
-				/* output the color controls */
-				if (container->brightness != options_get_float(mame_options(), OPTION_BRIGHTNESS))
-				{
-					xml_set_attribute_float(screennode, "brightness", container->brightness);
-					changed = TRUE;
-				}
-				if (container->contrast != options_get_float(mame_options(), OPTION_CONTRAST))
-				{
-					xml_set_attribute_float(screennode, "contrast", container->contrast);
-					changed = TRUE;
-				}
-				if (container->gamma != options_get_float(mame_options(), OPTION_GAMMA))
-				{
-					xml_set_attribute_float(screennode, "gamma", container->gamma);
-					changed = TRUE;
-				}
-
-				/* output the positioning controls */
-				if (container->xoffset != 0.0f)
-				{
-					xml_set_attribute_float(screennode, "hoffset", container->xoffset);
-					changed = TRUE;
-				}
-				if (container->xscale != 1.0f)
-				{
-					xml_set_attribute_float(screennode, "hstretch", container->xscale);
-					changed = TRUE;
-				}
-				if (container->yoffset != 0.0f)
-				{
-					xml_set_attribute_float(screennode, "voffset", container->yoffset);
-					changed = TRUE;
-				}
-				if (container->yscale != 1.0f)
-				{
-					xml_set_attribute_float(screennode, "vstretch", container->yscale);
-					changed = TRUE;
-				}
-
-				/* if nothing changed, kill the node */
-				if (!changed)
-					xml_delete_node(screennode);
+				xml_set_attribute_float(screennode, "brightness", container->brightness);
+				changed = TRUE;
 			}
+
+			if (container->contrast != options_get_float(mame_options(), OPTION_CONTRAST))
+			{
+				xml_set_attribute_float(screennode, "contrast", container->contrast);
+				changed = TRUE;
+			}
+
+			if (container->gamma != options_get_float(mame_options(), OPTION_GAMMA))
+			{
+				xml_set_attribute_float(screennode, "gamma", container->gamma);
+				changed = TRUE;
+			}
+
+			/* output the positioning controls */
+			if (container->xoffset != 0.0f)
+			{
+				xml_set_attribute_float(screennode, "hoffset", container->xoffset);
+				changed = TRUE;
+			}
+
+			if (container->xscale != 1.0f)
+			{
+				xml_set_attribute_float(screennode, "hstretch", container->xscale);
+				changed = TRUE;
+			}
+
+			if (container->yoffset != 0.0f)
+			{
+				xml_set_attribute_float(screennode, "voffset", container->yoffset);
+				changed = TRUE;
+			}
+
+			if (container->yscale != 1.0f)
+			{
+				xml_set_attribute_float(screennode, "vstretch", container->yscale);
+				changed = TRUE;
+			}
+
+			/* if nothing changed, kill the node */
+			if (!changed)
+				xml_delete_node(screennode);
 		}
 	}
 }
@@ -859,20 +898,31 @@ void render_set_rescale_notify(running_machine *machine, int (*notifier)(running
 
 
 /*-------------------------------------------------
-    render_get_live_screens_mask - return a
-    bitmask indicating the live screens
+    render_is_live_screen - return if the screen
+    is 'live'
 -------------------------------------------------*/
 
-UINT32 render_get_live_screens_mask(void)
+int render_is_live_screen(const device_config *screen)
 {
 	render_target *target;
+	int screen_index;
 	UINT32 bitmask = 0;
+
+	assert(screen != NULL);
+	assert(screen->machine != NULL);
+	assert(screen->machine->config != NULL);
+	assert(screen->machine->config->devicelist != NULL);
+	assert(screen->tag != NULL);
+
+	screen_index = device_list_index(screen->machine->config->devicelist, VIDEO_SCREEN, screen->tag);
+
+	assert(screen_index != -1);
 
 	/* iterate over all live targets and or together their screen masks */
 	for (target = targetlist; target != NULL; target = target->next)
 		bitmask |= target->curview->screens;
 
-	return bitmask;
+	return (bitmask & (1 << screen_index)) ? TRUE : FALSE;
 }
 
 
@@ -1302,7 +1352,7 @@ void render_target_set_max_texture_size(render_target *target, int maxwidth, int
     the current layout and proposed new parameters
 -------------------------------------------------*/
 
-void render_target_compute_visible_area(render_target *target, INT32 target_width, INT32 target_height, float target_pixel_aspect, UINT8 target_orientation, INT32 *visible_width, INT32 *visible_height)
+void render_target_compute_visible_area(render_target *target, INT32 target_width, INT32 target_height, float target_pixel_aspect, int target_orientation, INT32 *visible_width, INT32 *visible_height)
 {
 	float width, height;
 	float scale;
@@ -1355,6 +1405,7 @@ void render_target_compute_visible_area(render_target *target, INT32 target_widt
 void render_target_get_minimum_size(render_target *target, INT32 *minwidth, INT32 *minheight)
 {
 	float maxxscale = 1.0f, maxyscale = 1.0f;
+	int screens_considered = 0;
 	int layer;
 
 	/* scan the current view for all screens */
@@ -1366,19 +1417,21 @@ void render_target_get_minimum_size(render_target *target, INT32 *minwidth, INT3
 		for (item = target->curview->itemlist[layer]; item != NULL; item = item->next)
 			if (item->element == NULL)
 			{
+				const device_config *screen = device_list_find_by_index(Machine->config->devicelist, VIDEO_SCREEN, item->index);
+				const screen_config *scrconfig = screen->inline_config;
 				const rectangle vectorvis = { 0, 639, 0, 479 };
-				const rectangle *visarea;
-				render_container *container = screen_container[item->index];
+				const rectangle *visarea = NULL;
+				render_container *container = get_screen_container_by_index(item->index);
 				render_bounds bounds;
 				float xscale, yscale;
 
 				/* we may be called very early, before Machine->visible_area is initialized; handle that case */
-				if ((Machine->drv->video_attributes & VIDEO_TYPE_VECTOR) != 0)
+				if (scrconfig->type == SCREEN_TYPE_VECTOR)
 					visarea = &vectorvis;
-				else if (Machine->screen[item->index].visarea.max_x > Machine->screen[item->index].visarea.min_x)
-					visarea = &Machine->screen[item->index].visarea;
+				else if (screen->token != NULL)
+					visarea = video_screen_get_visible_area(screen);
 				else
-					visarea = &Machine->drv->screen[item->index].defstate.visarea;
+					visarea = &scrconfig->visarea;
 
 				/* apply target orientation to the bounds */
 				bounds = item->bounds;
@@ -1398,11 +1451,17 @@ void render_target_get_minimum_size(render_target *target, INT32 *minwidth, INT3
 				}
 
 				/* pick the greater */
-				if (xscale > maxxscale)
-					maxxscale = xscale;
-				if (yscale > maxyscale)
-					maxyscale = yscale;
+				maxxscale = MAX(xscale, maxxscale);
+				maxyscale = MAX(yscale, maxyscale);
+				screens_considered++;
 			}
+	}
+
+	/* if there were no screens considered, pick a nominal default */
+	if (screens_considered == 0)
+	{
+		maxxscale = 640.0f;
+		maxyscale = 480.0f;
 	}
 
 	/* round up */
@@ -1444,10 +1503,10 @@ const render_primitive_list *render_target_get_primitives(render_target *target)
 	render_target_compute_visible_area(target, target->width, target->height, target->pixel_aspect, target->orientation, &viswidth, &visheight);
 
 	/* create a root transform for the target */
-	root_xform.xoffs = (target->width - viswidth) / 2;
-	root_xform.yoffs = (target->height - visheight) / 2;
-	root_xform.xscale = viswidth;
-	root_xform.yscale = visheight;
+	root_xform.xoffs = (float) (target->width - viswidth) / 2;
+	root_xform.yoffs = (float) (target->height - visheight) / 2;
+	root_xform.xscale = (float) viswidth;
+	root_xform.yscale = (float) visheight;
 	root_xform.color.r = root_xform.color.g = root_xform.color.b = root_xform.color.a = 1.0f;
 	root_xform.orientation = target->orientation;
 
@@ -1511,7 +1570,10 @@ const render_primitive_list *render_target_get_primitives(render_target *target)
 						add_element_primitives(target, &target->primlist[listnum], &item_xform, item->element, state, blendmode);
 					}
 					else
-						add_container_primitives(target, &target->primlist[listnum], &item_xform, screen_container[item->index], blendmode);
+					{
+						render_container *container = get_screen_container_by_index(item->index);
+						add_container_primitives(target, &target->primlist[listnum], &item_xform, container, blendmode);
+					}
 
 					/* keep track of how many items are in the layer */
 					itemcount[layer]++;
@@ -1548,8 +1610,8 @@ const render_primitive_list *render_target_get_primitives(render_target *target)
 		/* compute the transform for the UI */
 		ui_xform.xoffs = 0;
 		ui_xform.yoffs = 0;
-		ui_xform.xscale = target->width;
-		ui_xform.yscale = target->height;
+		ui_xform.xscale = (float) target->width;
+		ui_xform.yscale = (float) target->height;
 		ui_xform.color.r = ui_xform.color.g = ui_xform.color.b = ui_xform.color.a = 1.0f;
 		ui_xform.orientation = target->orientation;
 
@@ -1600,9 +1662,9 @@ static int load_layout_files(render_target *target, const char *layoutfile, int 
 		if (*nextfile != NULL)
 			nextfile = &(*nextfile)->next;
 	}
-	if (Machine->drv->default_layout != NULL)
+	if (Machine->config->default_layout != NULL)
 	{
-		*nextfile = layout_file_load(NULL, Machine->drv->default_layout);
+		*nextfile = layout_file_load(NULL, Machine->config->default_layout);
 		if (*nextfile != NULL)
 			nextfile = &(*nextfile)->next;
 	}
@@ -1619,7 +1681,7 @@ static int load_layout_files(render_target *target, const char *layoutfile, int 
 	}
 
 	/* now do the built-in layouts for single-screen games */
-	if (Machine->drv->screen[0].tag != NULL && Machine->drv->screen[1].tag == NULL)
+	if (video_screen_count(Machine->config) == 1)
 	{
 		if (Machine->gamedrv->flags & ORIENTATION_SWAP_XY)
 			*nextfile = layout_file_load(NULL, layout_vertical);
@@ -1885,7 +1947,7 @@ static void add_element_primitives(render_target *target, render_primitive_list 
 		prim->flags = PRIMFLAG_TEXORIENT(xform->orientation) | PRIMFLAG_BLENDMODE(blendmode) | PRIMFLAG_TEXFORMAT(texture->format);
 
 		/* compute the bounds */
-		set_render_bounds_wh(&prim->bounds, render_round_nearest(xform->xoffs), render_round_nearest(xform->yoffs), width, height);
+		set_render_bounds_wh(&prim->bounds, render_round_nearest(xform->xoffs), render_round_nearest(xform->yoffs), (float) width, (float) height);
 		if (xform->orientation & ORIENTATION_SWAP_XY)
 			ISWAP(width, height);
 		width = MIN(width, target->maxtexwidth);
@@ -2220,7 +2282,7 @@ static void invalidate_all_render_ref(void *refptr)
     render_texture_alloc - allocate a new texture
 -------------------------------------------------*/
 
-render_texture *render_texture_alloc(texture_scaler scaler, void *param)
+render_texture *render_texture_alloc(texture_scaler_func scaler, void *param)
 {
 	render_texture *texture;
 
@@ -2290,7 +2352,7 @@ void render_texture_free(render_texture *texture)
     bitmap
 -------------------------------------------------*/
 
-void render_texture_set_bitmap(render_texture *texture, mame_bitmap *bitmap, const rectangle *sbounds, UINT32 palettebase, int format)
+void render_texture_set_bitmap(render_texture *texture, bitmap_t *bitmap, const rectangle *sbounds, UINT32 palettebase, int format)
 {
 	int scalenum;
 
@@ -2414,7 +2476,7 @@ static int render_texture_get_scaled(render_texture *texture, UINT32 dwidth, UIN
     resampling scaler
 -------------------------------------------------*/
 
-void render_texture_hq_scale(mame_bitmap *dest, const mame_bitmap *source, const rectangle *sbounds, void *param)
+void render_texture_hq_scale(bitmap_t *dest, const bitmap_t *source, const rectangle *sbounds, void *param)
 {
 	render_color color = { 1.0f, 1.0f, 1.0f, 1.0f };
 	render_resample_argb_bitmap_hq(dest->base, dest->rowpixels, dest->width, dest->height, source, sbounds, &color);
@@ -2700,7 +2762,7 @@ void render_container_set_yoffset(render_container *container, float yoffset)
     overlay bitmap for the container
 -------------------------------------------------*/
 
-void render_container_set_overlay(render_container *container, mame_bitmap *bitmap)
+void render_container_set_overlay(render_container *container, bitmap_t *bitmap)
 {
 	/* free any existing texture */
 	if (container->overlaytexture != NULL)
@@ -2729,12 +2791,23 @@ render_container *render_container_get_ui(void)
 
 /*-------------------------------------------------
     render_container_get_screen - return a pointer
-    to the indexed screen container
+    to the screen container for this device
 -------------------------------------------------*/
 
-render_container *render_container_get_screen(int screen)
+render_container *render_container_get_screen(const device_config *screen)
 {
-	return screen_container[screen];
+	render_container *container;
+
+	assert(screen != NULL);
+
+	/* get the container for the screen device */
+	for (container = screen_container_list; container != NULL; container = container->next)
+		if (container->screen == screen)
+			break;
+
+	assert(container != NULL);
+
+	return container;
 }
 
 
@@ -2835,7 +2908,7 @@ void render_container_add_char(render_container *container, float x0, float y0, 
     an overlay
 -------------------------------------------------*/
 
-static void render_container_overlay_scale(mame_bitmap *dest, const mame_bitmap *source, const rectangle *sbounds, void *param)
+static void render_container_overlay_scale(bitmap_t *dest, const bitmap_t *source, const rectangle *sbounds, void *param)
 {
 	int x, y;
 

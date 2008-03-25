@@ -95,13 +95,13 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( prehisle )
 {
 	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 16, 16, 1024, 32);
+		 16, 16, 1024, 32);
 
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 16, 16, 256, 32);
+		 16, 16, 256, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 15);
 	tilemap_set_transparent_pen(fg_tilemap, 15);
@@ -110,7 +110,7 @@ VIDEO_START( prehisle )
 	state_save_register_global(invert_controls);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int foreground )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int foreground )
 {
 	int offs;
 
@@ -127,7 +127,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		if (sx & 0x200) sx = -(0xff - (sx & 0xff));	// wraparound
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -146,9 +146,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( prehisle )
 {
 	tilemap_draw(bitmap, cliprect, bg2_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, 0);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect, 1);
+	draw_sprites(screen->machine, bitmap, cliprect, 1);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

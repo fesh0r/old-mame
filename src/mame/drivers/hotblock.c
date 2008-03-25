@@ -126,12 +126,12 @@ static VIDEO_UPDATE(hotblock)
 	int i;
 	static int xxx=320,yyy=204;
 
-	fillbitmap(bitmap, get_black_pen(machine), 0);
+	fillbitmap(bitmap, get_black_pen(screen->machine), 0);
 
 	for (i=0;i<256;i++)
 	{
 		int dat=(hotblock_pal[i*2+1]<<8)|hotblock_pal[i*2];
-		palette_set_color_rgb(machine,i,pal5bit(dat>>0),pal5bit(dat>>5),pal5bit(dat>>10));
+		palette_set_color_rgb(screen->machine,i,pal5bit(dat>>0),pal5bit(dat>>5),pal5bit(dat>>10));
 	}
 
 	count=0;
@@ -188,16 +188,16 @@ static MACHINE_DRIVER_START( hotblock )
 	MDRV_CPU_ADD(I8088, 10000000)
 	MDRV_CPU_PROGRAM_MAP(hotblock_map, 0)
 	MDRV_CPU_IO_MAP(hotblock_io,0)
-	MDRV_CPU_VBLANK_INT(hotblocks_irq,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", hotblocks_irq)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(1024,1024)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 200-1)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(hotblock)

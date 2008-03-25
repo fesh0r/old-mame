@@ -61,7 +61,7 @@ static TILE_GET_INFO( sengoku_tx_tile_info )
 	SET_TILE_INFO(2, (tile & 0xfff) + 0x3000, color, 0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int pri)
 {
 	int offs,fx,fy,x,y,color,sprite;
 	int dx,dy,ax,ay;
@@ -105,10 +105,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 VIDEO_START( sengokmj )
 {
-	bg_tilemap = tilemap_create(sengoku_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,16);
-	md_tilemap = tilemap_create(sengoku_md_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
-	fg_tilemap = tilemap_create(sengoku_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
-	tx_tilemap = tilemap_create(sengoku_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	bg_tilemap = tilemap_create(sengoku_bg_tile_info,tilemap_scan_rows,     16,16,32,16);
+	md_tilemap = tilemap_create(sengoku_md_tile_info,tilemap_scan_rows,16,16,32,16);
+	fg_tilemap = tilemap_create(sengoku_fg_tile_info,tilemap_scan_rows,16,16,32,16);
+	tx_tilemap = tilemap_create(sengoku_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(md_tilemap,15);
 	tilemap_set_transparent_pen(fg_tilemap,15);
@@ -118,12 +118,12 @@ VIDEO_START( sengokmj )
 VIDEO_UPDATE( sengokmj )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect, 2);
-	draw_sprites(machine, bitmap,cliprect, 1);
+	draw_sprites(screen->machine, bitmap,cliprect, 2);
+	draw_sprites(screen->machine, bitmap,cliprect, 1);
 	tilemap_draw(bitmap,cliprect,md_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect, 0);
-	draw_sprites(machine, bitmap,cliprect, 3);
+	draw_sprites(screen->machine, bitmap,cliprect, 0);
+	draw_sprites(screen->machine, bitmap,cliprect, 3);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }

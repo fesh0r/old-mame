@@ -264,7 +264,7 @@ static READ8_HANDLER( gaplus_snd_sharedram_r )
 static WRITE8_HANDLER( gaplus_snd_sharedram_w )
 {
 	if (offset < 0x40)
-		namco_15xx_w(offset,data);
+		namco_15xx_w(machine,offset,data);
 	else
 		namco_soundregs[offset] = data;
 }
@@ -334,7 +334,7 @@ static ADDRESS_MAP_START( readmem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6820, 0x682f) AM_READ(gaplus_customio_3_r)	/* custom I/O chip #3 interface */
 	AM_RANGE(0x6800, 0x6bff) AM_READ(namcoio_r)				/* custom I/O chips interface */
 	AM_RANGE(0x7800, 0x7fff) AM_READ(watchdog_reset_r)		/* watchdog */
-	AM_RANGE(0xa000, 0xffff) AM_READ(MRA8_ROM)				/* ROM */
+	AM_RANGE(0xa000, 0xffff) AM_READ(SMH_ROM)				/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
@@ -347,27 +347,27 @@ static ADDRESS_MAP_START( writemem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(gaplus_sreset_w)	 					/* reset CPU #2 & #3, enable sound */
 	AM_RANGE(0x9000, 0x9fff) AM_WRITE(gaplus_freset_w)	 					/* reset I/O chips */
 	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(gaplus_starfield_control_w)				/* starfield control */
-	AM_RANGE(0xa000, 0xffff) AM_WRITE(MWA8_ROM)								/* ROM */
+	AM_RANGE(0xa000, 0xffff) AM_WRITE(SMH_ROM)								/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(gaplus_videoram_r)		/* tilemap RAM (shared with CPU #1) */
 	AM_RANGE(0x0800, 0x1fff) AM_READ(gaplus_spriteram_r)		/* shared RAM with CPU #1 & spriteram */
-	AM_RANGE(0xa000, 0xffff) AM_READ(MRA8_ROM)				/* ROM */
+	AM_RANGE(0xa000, 0xffff) AM_READ(SMH_ROM)				/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(gaplus_videoram_w)		/* tilemap RAM (shared with CPU #1) */
 	AM_RANGE(0x0800, 0x1fff) AM_WRITE(gaplus_spriteram_w)		/* shared RAM with CPU #1 */
-//  AM_RANGE(0x500f, 0x500f) AM_WRITE(MWA8_NOP)             /* ??? written 256 times on startup */
+//  AM_RANGE(0x500f, 0x500f) AM_WRITE(SMH_NOP)             /* ??? written 256 times on startup */
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(gaplus_irq_2_ctrl_w)	/* IRQ 2 control */
-	AM_RANGE(0xa000, 0xffff) AM_WRITE(MWA8_ROM)				/* ROM */
+	AM_RANGE(0xa000, 0xffff) AM_WRITE(SMH_ROM)				/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_cpu3, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_READ(gaplus_snd_sharedram_r) /* shared RAM with CPU #1 */
 	AM_RANGE(0x2000, 0x3fff) AM_READ(watchdog_reset_r)		/* watchdog? */
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)				/* ROM */
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)				/* ROM */
 ADDRESS_MAP_END
 
 	/* CPU 3 (SOUND CPU) write addresses */
@@ -375,7 +375,7 @@ static ADDRESS_MAP_START( writemem_cpu3, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_WRITE(gaplus_snd_sharedram_w) AM_BASE(&namco_soundregs)	/* shared RAM with the main CPU + sound registers */
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(watchdog_reset_w)		/* watchdog? */
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(gaplus_irq_3_ctrl_w)	/* interrupt enable/disable */
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)				/* ROM */
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)				/* ROM */
 ADDRESS_MAP_END
 
 
@@ -758,26 +758,27 @@ static MACHINE_DRIVER_START( gaplus )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809,	24576000/16)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu1,writemem_cpu1)
-	MDRV_CPU_VBLANK_INT(gaplus_interrupt_1,1)
+	MDRV_CPU_VBLANK_INT("main", gaplus_interrupt_1)
 
 	MDRV_CPU_ADD(M6809,	24576000/16)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu2,writemem_cpu2)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_CPU_ADD(M6809, 24576000/16)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu3,writemem_cpu3)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* a high value to ensure proper synchronization of the CPUs */
 	MDRV_MACHINE_RESET(gaplus)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(gaplus)
 	MDRV_PALETTE_LENGTH(64*4+64*8)
 

@@ -64,13 +64,13 @@ static TIMER_CALLBACK( interrupt_timer )
 
 	param = (param + 0x10) & 0xff;
 
-	timer_adjust(int_timer, video_screen_get_time_until_pos(0, param, 0), param, attotime_zero);
+	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, param, 0), param);
 
 	TTL7474_update(0);
 }
 
 
-static void machine_reset_common( int line )
+static void machine_reset_common(running_machine *machine, int line)
 {
 	irq_line = line;
 
@@ -86,17 +86,17 @@ static void machine_reset_common( int line )
 
 	/* start a timer to generate interrupts */
 	int_timer = timer_alloc(interrupt_timer, NULL);
-	timer_adjust(int_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 MACHINE_RESET( galaxian )
 {
-	machine_reset_common(INPUT_LINE_NMI);
+	machine_reset_common(machine, INPUT_LINE_NMI);
 }
 
 MACHINE_RESET( devilfsg )
 {
-	machine_reset_common(0);
+	machine_reset_common(machine, 0);
 }
 
 
@@ -271,7 +271,7 @@ WRITE8_HANDLER( kingball_sound1_w )
 WRITE8_HANDLER( kingball_sound2_w )
 {
 	kingball_sound = (kingball_sound & ~0x02) | (data << 1);
-	soundlatch_w (0, kingball_sound | 0xf0);
+	soundlatch_w (machine, 0, kingball_sound | 0xf0);
 }
 
 
@@ -313,7 +313,7 @@ static READ8_HANDLER( azurian_IN2_r )
 WRITE8_HANDLER( _4in1_bank_w )
 {
 	_4in1_bank = data & 0x03;
-	galaxian_gfxbank_w(0, _4in1_bank);
+	galaxian_gfxbank_w(machine, 0, _4in1_bank);
 	memory_set_bank(1, _4in1_bank);
 }
 
@@ -334,7 +334,7 @@ static void gmgalax_select_game(int game)
 
 	memory_set_bank(1, game);
 
-	galaxian_gfxbank_w(0, gmgalax_selected_game);
+	galaxian_gfxbank_w(Machine, 0, gmgalax_selected_game);
 }
 
 READ8_HANDLER( gmgalax_input_port_0_r )
@@ -520,7 +520,7 @@ DRIVER_INIT( 4in1 )
 	/* games are banked at 0x0000 - 0x3fff */
 	memory_configure_bank(1, 0, 4, &RAM[0x10000], 0x4000);
 
-	_4in1_bank_w(0, 0); /* set the initial CPU bank */
+	_4in1_bank_w(machine, 0, 0); /* set the initial CPU bank */
 
 	state_save_register_global(_4in1_bank);
 }
@@ -544,20 +544,20 @@ DRIVER_INIT( gmgalax )
 
 	state_save_register_global(gmgalax_selected_game);
 
-	gmgalax_select_game(input_port_6_r(0) & 0x01);
+	gmgalax_select_game(input_port_6_r(machine, 0) & 0x01);
 }
 
 INTERRUPT_GEN( gmgalax_vh_interrupt )
 {
 	// reset the cpu if the selected game changed
-	int new_game = input_port_6_r(0) & 0x01;
+	int new_game = input_port_6_r(machine, 0) & 0x01;
 
 	if (gmgalax_selected_game != new_game)
 	{
 		gmgalax_select_game(new_game);
 
 		/* Ghost Muncher never clears this */
-		galaxian_stars_enable_w(0, 0);
+		galaxian_stars_enable_w(machine, 0, 0);
 
 		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, ASSERT_LINE);
 	}

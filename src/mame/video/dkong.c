@@ -8,7 +8,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/resnet.h"
 #include "includes/dkong.h"
 
@@ -448,7 +447,7 @@ PALETTE_INIT( dkong3 )
 static TILE_GET_INFO( dkong_bg_tile_info )
 {
 	dkong_state *state = machine->driver_data;
-	int code = videoram[tile_index] + 256 * state->gfx_bank;
+	int code = state->video_ram[tile_index] + 256 * state->gfx_bank;
 	int color = (state->color_codes[tile_index % 32 + 32 * (tile_index / 32 / 4)] & 0x0f) + 0x10 * state->palette_bank;
 
 	SET_TILE_INFO(0, code, color, 0);
@@ -457,7 +456,7 @@ static TILE_GET_INFO( dkong_bg_tile_info )
 static TILE_GET_INFO( radarsc1_bg_tile_info )
 {
 	dkong_state *state = machine->driver_data;
-	int code = videoram[tile_index] + 256 * state->gfx_bank;
+	int code = state->video_ram[tile_index] + 256 * state->gfx_bank;
 	int color = (state->color_codes[tile_index % 32] & 0x0f);
 	color = color | (state->palette_bank<<4);
 
@@ -472,32 +471,32 @@ static TILE_GET_INFO( radarsc1_bg_tile_info )
 
 WRITE8_HANDLER( dkong_videoram_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
-	if (videoram[offset] != data)
+	if (state->video_ram[offset] != data)
 	{
-		videoram[offset] = data;
+		state->video_ram[offset] = data;
 		tilemap_mark_tile_dirty(state->bg_tilemap, offset);
 	}
 }
 
 WRITE8_HANDLER( radarscp_snd02_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
 	state->snd02_enable = data & 0x01;
 }
 
 WRITE8_HANDLER( radarsc1_ansn_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
 	state->sig_ansn = data & 0x01;
 }
 
 WRITE8_HANDLER( dkongjr_gfxbank_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
 	if (state->gfx_bank != (data & 0x01))
 	{
@@ -508,7 +507,7 @@ WRITE8_HANDLER( dkongjr_gfxbank_w )
 
 WRITE8_HANDLER( dkong3_gfxbank_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
 	if (state->gfx_bank != (~data & 0x01))
 	{
@@ -519,7 +518,7 @@ WRITE8_HANDLER( dkong3_gfxbank_w )
 
 WRITE8_HANDLER( dkong_palettebank_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 	int newbank;
 
 	newbank = state->palette_bank;
@@ -538,14 +537,14 @@ WRITE8_HANDLER( dkong_palettebank_w )
 
 WRITE8_HANDLER( radarscp_grid_enable_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
 	state->grid_on = data & 0x01;
 }
 
 WRITE8_HANDLER( radarscp_grid_color_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
 	state->grid_col = (data & 0x07) ^ 0x07;
 	//popmessage("Gridcol: %d", state->grid_col);
@@ -553,77 +552,79 @@ WRITE8_HANDLER( radarscp_grid_color_w )
 
 WRITE8_HANDLER( dkong_flipscreen_w )
 {
-	flip_screen_set(~data & 0x01);
+	dkong_state *state = machine->driver_data;
+
+	state->flip = ~data & 0x01;
 }
 
 WRITE8_HANDLER( dkong_spritebank_w )
 {
-	dkong_state *state = Machine->driver_data;
+	dkong_state *state = machine->driver_data;
 
 	state->sprite_bank = data & 0x01;
 }
 
 /***************************************************************************
 
-  Draw the game screen in the given mame_bitmap.
+  Draw the game screen in the given bitmap_t.
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT32 mask_bank, UINT32 shift_bits)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT32 mask_bank, UINT32 shift_bits)
 {
 	dkong_state *state = machine->driver_data;
 	int offs;
 
 	/* Draw the sprites. */
-	for (offs = state->sprite_bank<<9;offs < (state->sprite_bank<<9) + 0x200 /* spriteram_size */; offs += 4)
+	for (offs = state->sprite_bank<<9;offs < (state->sprite_bank<<9) + 0x200 /* sprite_ram_size */; offs += 4)
 	{
-		if (spriteram[offs])
+		if (state->sprite_ram[offs])
 		{
-			/* spriteram[offs + 2] & 0x40 is used by Donkey Kong 3 only */
-			/* spriteram[offs + 2] & 0x30 don't seem to be used (they are */
+			/* sprite_ram[offs + 2] & 0x40 is used by Donkey Kong 3 only */
+			/* sprite_ram[offs + 2] & 0x30 don't seem to be used (they are */
 			/* probably not part of the color code, since Mario Bros, which */
 			/* has similar hardware, uses a memory mapped port to change */
 			/* palette bank, so it's limited to 16 color codes) */
 
 			int x,y;
 
-			x = spriteram[offs + 3] - 8;
-			y = 240 - spriteram[offs] + 7;
+			x = state->sprite_ram[offs + 3] - 8;
+			y = 240 - state->sprite_ram[offs] + 7;
 
-			if (flip_screen)
+			if (state->flip)
 			{
 				x = 240 - x;
-				y = VTOTAL - VBEND - y;
+				y = VTOTAL - VBEND - y - 8;
 
 				drawgfx(bitmap,machine->gfx[1],
-						(spriteram[offs + 1] & 0x7f) + ((spriteram[offs + 2] & mask_bank) << shift_bits),
-						(spriteram[offs + 2] & 0x0f) + 16 * state->palette_bank,
-						!(spriteram[offs + 2] & 0x80),!(spriteram[offs + 1] & 0x80),
+						(state->sprite_ram[offs + 1] & 0x7f) + ((state->sprite_ram[offs + 2] & mask_bank) << shift_bits),
+						(state->sprite_ram[offs + 2] & 0x0f) + 16 * state->palette_bank,
+						!(state->sprite_ram[offs + 2] & 0x80),!(state->sprite_ram[offs + 1] & 0x80),
 						x,y,
 						cliprect,TRANSPARENCY_PEN,0);
 
 				/* draw with wrap around - this fixes the 'beheading' bug */
 				drawgfx(bitmap,machine->gfx[1],
-						(spriteram[offs + 1] & 0x7f) + ((spriteram[offs + 2] & mask_bank) << shift_bits),
-						(spriteram[offs + 2] & 0x0f) + 16 * state->palette_bank,
-						(spriteram[offs + 2] & 0x80),(spriteram[offs + 1] & 0x80),
+						(state->sprite_ram[offs + 1] & 0x7f) + ((state->sprite_ram[offs + 2] & mask_bank) << shift_bits),
+						(state->sprite_ram[offs + 2] & 0x0f) + 16 * state->palette_bank,
+						(state->sprite_ram[offs + 2] & 0x80),(state->sprite_ram[offs + 1] & 0x80),
 						x-256,y,
 						cliprect,TRANSPARENCY_PEN,0);
 			}
 			else
 			{
 				drawgfx(bitmap,machine->gfx[1],
-						(spriteram[offs + 1] & 0x7f) + ((spriteram[offs + 2] & mask_bank) << shift_bits),
-						(spriteram[offs + 2] & 0x0f) + 16 * state->palette_bank,
-						(spriteram[offs + 2] & 0x80),(spriteram[offs + 1] & 0x80),
+						(state->sprite_ram[offs + 1] & 0x7f) + ((state->sprite_ram[offs + 2] & mask_bank) << shift_bits),
+						(state->sprite_ram[offs + 2] & 0x0f) + 16 * state->palette_bank,
+						(state->sprite_ram[offs + 2] & 0x80),(state->sprite_ram[offs + 1] & 0x80),
 						x,y,
 						cliprect,TRANSPARENCY_PEN,0);
 
 				/* draw with wrap around - this fixes the 'beheading' bug */
 				drawgfx(bitmap,machine->gfx[1],
-						(spriteram[offs + 1] & 0x7f) + ((spriteram[offs + 2] & mask_bank) << shift_bits),
-						(spriteram[offs + 2] & 0x0f) + 16 * state->palette_bank,
-						(spriteram[offs + 2] & 0x80),(spriteram[offs + 1] & 0x80),
+						(state->sprite_ram[offs + 1] & 0x7f) + ((state->sprite_ram[offs + 2] & mask_bank) << shift_bits),
+						(state->sprite_ram[offs + 2] & 0x0f) + 16 * state->palette_bank,
+						(state->sprite_ram[offs + 2] & 0x80),(state->sprite_ram[offs + 1] & 0x80),
 						x+256,y,
 						cliprect,TRANSPARENCY_PEN,0);
 			}
@@ -697,7 +698,7 @@ static void radarscp_step(running_machine *machine, int line_cnt)
 	if (line_cnt>=512)
 		line_cnt=512-VTOTAL;
 
-	if ( ( !(line_cnt & 0x40) && ((line_cnt+1) & 0x40) ) && (mame_rand(Machine) > RAND_MAX/2))
+	if ( ( !(line_cnt & 0x40) && ((line_cnt+1) & 0x40) ) && (mame_rand(machine) > RAND_MAX/2))
 		state->sig30Hz = (1-state->sig30Hz);
 
 	state->rflip_sig = state->snd02_enable & state->sig30Hz;
@@ -760,9 +761,8 @@ static void radarscp_step(running_machine *machine, int line_cnt)
 
 }
 
-static void radarscp_draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void radarscp_draw_background(dkong_state *state, bitmap_t *bitmap, const rectangle *cliprect)
 {
-	dkong_state *state = machine->driver_data;
 	const UINT8 	*htable = NULL;
 	int 			x,y;
 	UINT8 			draw_ok;
@@ -771,11 +771,11 @@ static void radarscp_draw_background(running_machine *machine, mame_bitmap *bitm
 	if (state->hardware_type == HARDWARE_TRS01)
 		htable = memory_region(REGION_GFX4);
 
-	y = machine->screen[0].visarea.min_y;
-	while (y <= machine->screen[0].visarea.max_y)
+	y = cliprect->min_y;
+	while (y <= cliprect->max_y)
 	{
-		x = machine->screen[0].visarea.min_x;
-		while (x <= machine->screen[0].visarea.max_x)
+		x = cliprect->min_x;
+		while (x <= cliprect->max_x)
 		{
 			pixel = BITMAP_ADDR16(bitmap, y, x);
 			draw_ok = !(*pixel & 0x01) && !(*pixel & 0x02);
@@ -799,35 +799,36 @@ static TIMER_CALLBACK( scanline_callback )
 	UINT16 			*pixel;
 	static int		counter=0;
 	int scanline = param;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 	y = scanline;
 	radarscp_step(machine, y);
-	if (y <= machine->screen[0].visarea.min_y || y > machine->screen[0].visarea.max_y)
+	if (y <= visarea->min_y || y > visarea->max_y)
 		counter = 0;
-	offset = ((-flip_screen) ^ state->rflip_sig) ? 0x000 : 0x400;
+	offset = (state->flip ^ state->rflip_sig) ? 0x000 : 0x400;
 	x = 0;
-	while (x < machine->screen[0].width)
+	while (x < video_screen_get_width(machine->primary_screen))
 	{
 		pixel = BITMAP_ADDR16(state->bg_bits, y, x);
 		if ((counter < table_len) && (x == 4 * (table[counter|offset] & 0x7f)))
 		{
 			if ( state->star_ff && (table[counter|offset] & 0x80) )	/* star */
-				*pixel = machine->pens[RADARSCP_STAR_COL];
+				*pixel = RADARSCP_STAR_COL;
 			else if (state->grid_sig && !(table[counter|offset] & 0x80))			/* radar */
-				*pixel = machine->pens[RADARSCP_GRID_COL_OFFSET+state->grid_col];
+				*pixel = RADARSCP_GRID_COL_OFFSET+state->grid_col;
 			else
-				*pixel = machine->pens[RADARSCP_BCK_COL_OFFSET + state->blue_level];
+				*pixel = RADARSCP_BCK_COL_OFFSET + state->blue_level;
 			counter++;
 		}
 		else
-			*pixel = machine->pens[RADARSCP_BCK_COL_OFFSET + state->blue_level];
+			*pixel = RADARSCP_BCK_COL_OFFSET + state->blue_level;
 		x++;
 	}
 	while ((counter < table_len) && ( x < 4 * (table[counter|offset] & 0x7f)))
 		counter++;
 	scanline = (scanline+1) % VTOTAL;
 	/* come back at the next appropriate scanline */
-	timer_adjust(state->scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(state->scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 static void check_palette(running_machine *machine)
@@ -846,10 +847,10 @@ static void check_palette(running_machine *machine)
 			switch (newset)
 			{
 				case 0x00:
-					palette_init_radarscp(machine, (UINT16 *) machine->game_colortable, memory_region(REGION_PROMS));
+					palette_init_radarscp(machine, memory_region(REGION_PROMS));
 					break;
 				case 0x01:
-					palette_init_dkong2b(machine, (UINT16 *) machine->game_colortable, memory_region(REGION_PROMS));
+					palette_init_dkong2b(machine, memory_region(REGION_PROMS));
 					break;
 			}
 		}
@@ -877,9 +878,10 @@ static VIDEO_START( dkong_base )
 	state_save_register_global(state->snd02_enable);
 	state_save_register_global(state->sig_ansn);
 	state_save_register_global(state->grid_col);
+	state_save_register_global(state->flip);
 
 	/* this must be registered here - hmmm */
-	state_save_register_global(flip_screen);
+	//state_save_register_global(flip_screen_get());
 
 }
 
@@ -892,23 +894,23 @@ VIDEO_START( dkong )
 	switch (state->hardware_type)
 	{
 		case HARDWARE_TRS02:
-			state->bg_bits = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+			state->bg_bits = video_screen_auto_bitmap_alloc(machine->primary_screen);
 			state->scanline_timer = timer_alloc(scanline_callback, NULL);
-			timer_adjust(state->scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+			timer_adjust_oneshot(state->scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 		    /* fall through */
 		case HARDWARE_TKG04:
 		case HARDWARE_TKG02:
-			state->bg_tilemap = tilemap_create(dkong_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+			state->bg_tilemap = tilemap_create(dkong_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 			tilemap_set_scrolldx(state->bg_tilemap, 0, 128);
 			break;
 		case HARDWARE_TRS01:
-			state->bg_tilemap = tilemap_create(radarsc1_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+			state->bg_tilemap = tilemap_create(radarsc1_bg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 			tilemap_set_scrolldx(state->bg_tilemap, 0, 128);
 
-			state->bg_bits = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+			state->bg_bits = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 			state->scanline_timer = timer_alloc(scanline_callback, NULL);
-			timer_adjust(state->scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+			timer_adjust_oneshot(state->scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 			break;
 		default:
 			fatalerror("Invalid hardware type in dkong_video_start");
@@ -917,21 +919,25 @@ VIDEO_START( dkong )
 
 VIDEO_UPDATE( dkong )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = screen->machine->driver_data;
+
+	tilemap_set_flip(ALL_TILEMAPS, state->flip ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
+	tilemap_set_scrollx(state->bg_tilemap, 0, state->flip ?  0 : 0);
+	tilemap_set_scrolly(state->bg_tilemap, 0, state->flip ? -8 : 0);
 
 	switch (state->hardware_type)
 	{
 		case HARDWARE_TKG02:
 		case HARDWARE_TKG04:
-			check_palette(machine);
+			check_palette(screen->machine);
 			tilemap_draw(bitmap, cliprect, state->bg_tilemap, 0, 0);
-			draw_sprites(machine, bitmap, cliprect, 0x40, 1);
+			draw_sprites(screen->machine, bitmap, cliprect, 0x40, 1);
 			break;
 		case HARDWARE_TRS01:
 		case HARDWARE_TRS02:
 			tilemap_draw(bitmap, cliprect, state->bg_tilemap, 0, 0);
-			draw_sprites(machine, bitmap, cliprect, 0x40, 1);
-			radarscp_draw_background(machine, bitmap, cliprect);
+			draw_sprites(screen->machine, bitmap, cliprect, 0x40, 1);
+			radarscp_draw_background(state, bitmap, cliprect);
 			break;
 		default:
 			fatalerror("Invalid hardware type in dkong_video_update");
@@ -941,21 +947,21 @@ VIDEO_UPDATE( dkong )
 
 VIDEO_UPDATE( pestplce )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = screen->machine->driver_data;
 	int offs;
 
 	tilemap_draw(bitmap, cliprect, state->bg_tilemap, 0, 0);
 
 	/* Draw the sprites. */
-	for (offs = 0;offs < spriteram_size;offs += 4)
+	for (offs = 0;offs < state->sprite_ram_size;offs += 4)
 	{
-		if (spriteram[offs])
+		if (state->sprite_ram[offs])
 		{
-			drawgfx(bitmap,machine->gfx[1],
-					spriteram[offs + 2],
-					(spriteram[offs + 1] & 0x0f) + 16 * state->palette_bank,
-					spriteram[offs + 1] & 0x80,spriteram[offs + 1] & 0x40,
-					spriteram[offs + 3] - 8,240 - spriteram[offs] + 8,
+			drawgfx(bitmap,screen->machine->gfx[1],
+					state->sprite_ram[offs + 2],
+					(state->sprite_ram[offs + 1] & 0x0f) + 16 * state->palette_bank,
+					state->sprite_ram[offs + 1] & 0x80,state->sprite_ram[offs + 1] & 0x40,
+					state->sprite_ram[offs + 3] - 8,240 - state->sprite_ram[offs] + 8,
 					cliprect,TRANSPARENCY_PEN,0);
 		}
 	}
@@ -964,11 +970,11 @@ VIDEO_UPDATE( pestplce )
 
 VIDEO_UPDATE( spclforc )
 {
-	dkong_state *state = machine->driver_data;
+	dkong_state *state = screen->machine->driver_data;
 
 	tilemap_draw(bitmap, cliprect, state->bg_tilemap, 0, 0);
 
-	/* it uses spriteram[offs + 2] & 0x10 for sprite bank */
-	draw_sprites(machine, bitmap, cliprect, 0x10, 3);
+	/* it uses sprite_ram[offs + 2] & 0x10 for sprite bank */
+	draw_sprites(screen->machine, bitmap, cliprect, 0x10, 3);
 	return 0;
 }

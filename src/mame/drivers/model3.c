@@ -1287,10 +1287,10 @@ static READ64_HANDLER( model3_rtc_r )
 {
 	UINT64 r = 0;
 	if(!(mem_mask & U64(0xff00000000000000))) {
-		r |= (UINT64)rtc72421_r((offset*2)+0, (UINT32)(mem_mask >> 32)) << 32;
+		r |= (UINT64)rtc72421_r(machine, (offset*2)+0, (UINT32)(mem_mask >> 32)) << 32;
 	}
 	if(!(mem_mask & U64(0x00000000ff000000))) {
-		r |= (UINT64)rtc72421_r((offset*2)+1, (UINT32)(mem_mask));
+		r |= (UINT64)rtc72421_r(machine, (offset*2)+1, (UINT32)(mem_mask));
 	}
 	return r;
 }
@@ -1298,10 +1298,10 @@ static READ64_HANDLER( model3_rtc_r )
 static WRITE64_HANDLER( model3_rtc_w )
 {
 	if(!(mem_mask & U64(0xff00000000000000))) {
-		rtc72421_w((offset*2)+0, (UINT32)(data >> 32), (UINT32)(mem_mask >> 32));
+		rtc72421_w(machine, (offset*2)+0, (UINT32)(data >> 32), (UINT32)(mem_mask >> 32));
 	}
 	if(!(mem_mask & U64(0x00000000ff000000))) {
-		rtc72421_w((offset*2)+1, (UINT32)(data), (UINT32)(mem_mask));
+		rtc72421_w(machine, (offset*2)+1, (UINT32)(data), (UINT32)(mem_mask));
 	}
 }
 
@@ -1325,7 +1325,7 @@ static WRITE64_HANDLER(model3_sound_w)
 	// serial configuration writes
 	if ((mem_mask == U64(0x00ffffffffffffff)) && (offset == 0))
 	{
-		SCSP_MidiIn(0, (data>>56)&0xff, 0);
+		SCSP_MidiIn(machine, 0, (data>>56)&0xff, 0);
 
 		// give the 68k time to notice
 		cpu_spinuntil_time(ATTOTIME_IN_USEC(40));
@@ -1517,8 +1517,8 @@ ADDRESS_MAP_END
 PORT_START_TAG("IN0") \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 ) \
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test Button */ \
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 ) \
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW ) /* Test Button A */ \
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 ) /* Service Button A */ \
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 ) \
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 ) \
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1758,16 +1758,16 @@ static INPUT_PORTS_START( skichamp )
 	PORT_START_TAG("IN0") \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test Button */ \
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW ) /* Test Button A */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 ) /* Service Button A */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START3 )		/* Select 3 */
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )	/* Pole Left */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )		/* Select 1 */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )		/* Select 2 */
 
 	PORT_START_TAG("IN1") \
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button B") PORT_CODE(KEYCODE_8) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Test Button B") PORT_CODE(KEYCODE_7) \
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button B") PORT_CODE(KEYCODE_8)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Test Button B") PORT_CODE(KEYCODE_7)
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START
@@ -4004,8 +4004,8 @@ static ADDRESS_MAP_START( model3_snd, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(model3snd_ctrl)
 	AM_RANGE(0x600000, 0x67ffff) AM_ROM AM_REGION(REGION_CPU2, 0x80000)
 	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION(REGION_SOUND1, 0)
-	AM_RANGE(0xa00000, 0xdfffff) AM_READ(MRA16_BANK4)
-	AM_RANGE(0xe00000, 0xffffff) AM_READ(MRA16_BANK5)
+	AM_RANGE(0xa00000, 0xdfffff) AM_READ(SMH_BANK4)
+	AM_RANGE(0xe00000, 0xffffff) AM_READ(SMH_BANK5)
 ADDRESS_MAP_END
 
 static int scsp_last_line = 0;
@@ -4083,7 +4083,7 @@ static MACHINE_DRIVER_START( model3_10 )
 	MDRV_CPU_ADD(PPC603, 66000000)
 	MDRV_CPU_CONFIG(model3_10)
 	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
- 	MDRV_CPU_VBLANK_INT(model3_interrupt,2)
+ 	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
@@ -4094,12 +4094,14 @@ static MACHINE_DRIVER_START( model3_10 )
 	MDRV_MACHINE_RESET(model3_10)
 	MDRV_NVRAM_HANDLER(model3)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(model3)
@@ -4120,7 +4122,7 @@ static MACHINE_DRIVER_START( model3_15 )
 	MDRV_CPU_ADD(PPC603, 100000000)
 	MDRV_CPU_CONFIG(model3_15)
 	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
- 	MDRV_CPU_VBLANK_INT(model3_interrupt,2)
+ 	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
@@ -4129,12 +4131,14 @@ static MACHINE_DRIVER_START( model3_15 )
 	MDRV_MACHINE_RESET(model3_15)
 	MDRV_NVRAM_HANDLER(model3)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(model3)
@@ -4155,7 +4159,7 @@ static MACHINE_DRIVER_START( model3_20 )
 	MDRV_CPU_ADD(PPC603, 166000000)
 	MDRV_CPU_CONFIG(model3_2x)
 	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
- 	MDRV_CPU_VBLANK_INT(model3_interrupt,2)
+ 	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
@@ -4163,12 +4167,14 @@ static MACHINE_DRIVER_START( model3_20 )
 	MDRV_MACHINE_RESET(model3_20)
 	MDRV_NVRAM_HANDLER(model3)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(model3)
@@ -4189,7 +4195,7 @@ static MACHINE_DRIVER_START( model3_21 )
 	MDRV_CPU_ADD(PPC603, 166000000)
 	MDRV_CPU_CONFIG(model3_2x)
 	MDRV_CPU_PROGRAM_MAP(model3_mem, 0)
- 	MDRV_CPU_VBLANK_INT(model3_interrupt,2)
+ 	MDRV_CPU_VBLANK_INT_HACK(model3_interrupt,2)
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model3_snd, 0)
@@ -4197,12 +4203,14 @@ static MACHINE_DRIVER_START( model3_21 )
 	MDRV_MACHINE_RESET(model3_21)
 	MDRV_NVRAM_HANDLER(model3)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(model3)
@@ -4256,7 +4264,7 @@ static DRIVER_INIT( model3_10 )
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00000ff, 0, 0, scsi_w );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, MRA64_BANK1 );
+	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_w );
@@ -4269,7 +4277,7 @@ static DRIVER_INIT( model3_10 )
 static DRIVER_INIT( model3_15 )
 {
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, MRA64_BANK1 );
+	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_w );
@@ -4282,7 +4290,7 @@ static DRIVER_INIT( model3_15 )
 static DRIVER_INIT( model3_20 )
 {
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, MRA64_BANK1 );
+	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc2000000, 0xc20000ff, 0, 0, real3d_dma_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc2000000, 0xc20000ff, 0, 0, real3d_dma_w );
@@ -4375,7 +4383,7 @@ static DRIVER_INIT( vs215 )
 	rom[(0x70e710^4)/4] = 0x60000000;
 
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, MRA64_BANK1 );
+	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
@@ -4400,7 +4408,7 @@ static DRIVER_INIT( vs29815 )
 	rom[(0x60290c^4)/4] = 0x60000000;
 
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, MRA64_BANK1 );
+	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
@@ -4425,7 +4433,7 @@ static DRIVER_INIT( bass )
 	rom[(0x7999c8^4)/4] = 0x60000000;
 
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, MRA64_BANK1 );
+	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
@@ -4445,7 +4453,7 @@ static DRIVER_INIT( bass )
 static DRIVER_INIT( getbass )
 {
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, MRA64_BANK1 );
+	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
 	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
 	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );

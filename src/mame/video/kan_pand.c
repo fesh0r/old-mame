@@ -50,7 +50,7 @@
 
 static UINT8* pandora_spriteram;
 static UINT8 pandora_region;
-static mame_bitmap *pandora_sprites_bitmap; /* bitmap to render sprites to, Pandora seems to be frame'buffered' */
+static bitmap_t *pandora_sprites_bitmap; /* bitmap to render sprites to, Pandora seems to be frame'buffered' */
 static int pandora_clear_bitmap;
 static int pandora_xoffset, pandora_yoffset;
 
@@ -59,7 +59,7 @@ void pandora_set_clear_bitmap(int clear)
 	pandora_clear_bitmap = clear;
 }
 
-void pandora_update(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+void pandora_update(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if (!pandora_sprites_bitmap)
 	{
@@ -71,7 +71,7 @@ void pandora_update(running_machine *machine, mame_bitmap *bitmap, const rectang
 }
 
 
-static void pandora_draw(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void pandora_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 
 	int sx=0, sy=0, x=0, y=0, offs;
@@ -120,7 +120,7 @@ static void pandora_draw(running_machine *machine, mame_bitmap *bitmap, const re
 			y = dy;
 		}
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - x;
 			sy = 240 - y;
@@ -148,30 +148,18 @@ static void pandora_draw(running_machine *machine, mame_bitmap *bitmap, const re
 				(tilecolour & 0xf0) >> 4,
 				flipx, flipy,
 				sx,sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 }
 
 void pandora_eof(running_machine *machine)
 {
-	rectangle clip;
-
-	/* draw top of screen */
-	clip.min_x = machine->screen[0].visarea.min_x;
-	clip.max_x = machine->screen[0].visarea.max_x;
-	clip.min_y = machine->screen[0].visarea.min_y;
-	clip.max_y = machine->screen[0].visarea.max_y;
-
-	if (!pandora_spriteram)
-	{
-		printf("ERROR: pandora_eof with no pandora_spriteram\n");
-		return;
-	}
+	assert(pandora_spriteram != NULL);
 
 	// the games can disable the clearing of the sprite bitmap, to leave sprite trails
-	if (pandora_clear_bitmap) fillbitmap(pandora_sprites_bitmap,0,&clip);
+	if (pandora_clear_bitmap) fillbitmap(pandora_sprites_bitmap,0,video_screen_get_visible_area(machine->primary_screen));
 
-	pandora_draw(machine, pandora_sprites_bitmap, &clip);
+	pandora_draw(machine, pandora_sprites_bitmap, video_screen_get_visible_area(machine->primary_screen));
 }
 
 void pandora_start(UINT8 region, int x, int y)
@@ -182,7 +170,7 @@ void pandora_start(UINT8 region, int x, int y)
 	pandora_spriteram = auto_malloc(0x1000);
 	memset(pandora_spriteram,0x00, 0x1000);
 
-	pandora_sprites_bitmap = auto_bitmap_alloc(Machine->screen[0].width,Machine->screen[0].height,Machine->screen[0].format);
+	pandora_sprites_bitmap = video_screen_auto_bitmap_alloc(Machine->primary_screen);
 	pandora_clear_bitmap = 1;
 }
 

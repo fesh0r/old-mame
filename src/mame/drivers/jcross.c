@@ -55,14 +55,14 @@ static const struct namco_interface snkwave_interface =
 static WRITE8_HANDLER( sound_command_w )
 {
 	sound_cpu_busy = 0x20;
-	soundlatch_w(0, data);
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine, 0, data);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static READ8_HANDLER( sound_command_r )
 {
 	sound_cpu_busy = 0;
-	return(soundlatch_r(0));
+	return(soundlatch_r(machine,0));
 }
 
 static READ8_HANDLER( sound_nmi_ack_r )
@@ -73,7 +73,7 @@ static READ8_HANDLER( sound_nmi_ack_r )
 
 static READ8_HANDLER( jcross_port_0_r )
 {
-	return(input_port_0_r(0) | sound_cpu_busy);
+	return(input_port_0_r(machine,0) | sound_cpu_busy);
 }
 
 static WRITE8_HANDLER(jcross_vregs0_w){jcross_vregs[0]=data;}
@@ -96,7 +96,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READNOP
 ADDRESS_MAP_END
 
@@ -116,8 +116,8 @@ static ADDRESS_MAP_START( cpuA_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd600, 0xd600) AM_WRITE(jcross_vregs3_w)
 	AM_RANGE(0xd700, 0xd700) AM_WRITE(jcross_vregs4_w)
  	AM_RANGE(0xd800, 0xdfff) AM_RAM AM_SHARE(1) AM_BASE(&spriteram)
-	AM_RANGE(0xe000, 0xefff) AM_READWRITE(MRA8_RAM, jcross_background_ram_w) AM_SHARE(2) AM_BASE(&videoram)
-	AM_RANGE(0xf000, 0xf3ff) AM_READWRITE(MRA8_RAM, jcross_text_ram_w) AM_BASE(&jcr_textram)
+	AM_RANGE(0xe000, 0xefff) AM_READWRITE(SMH_RAM, jcross_background_ram_w) AM_SHARE(2) AM_BASE(&videoram)
+	AM_RANGE(0xf000, 0xf3ff) AM_READWRITE(SMH_RAM, jcross_text_ram_w) AM_BASE(&jcr_textram)
 	AM_RANGE(0xf400, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -261,11 +261,11 @@ static MACHINE_DRIVER_START( jcross )
 
 	MDRV_CPU_ADD(Z80, 3360000)
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3360000)
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
@@ -273,15 +273,16 @@ static MACHINE_DRIVER_START( jcross )
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 244)
 
-	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(61)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 512)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255,0, 223)
+
 	MDRV_GFXDECODE(jcross)
 	MDRV_PALETTE_LENGTH((16+2)*16)
 	MDRV_VIDEO_START(jcross)

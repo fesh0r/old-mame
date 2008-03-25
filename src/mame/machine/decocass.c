@@ -28,8 +28,8 @@ static UINT8 crc16_msb;
 static UINT8 tape_crc16_lsb[256];
 static UINT8 tape_crc16_msb[256];
 
-static read8_handler decocass_dongle_r;
-static write8_handler decocass_dongle_w;
+static read8_machine_func decocass_dongle_r;
+static write8_machine_func decocass_dongle_w;
 
 static UINT8 decocass_reset;
 static UINT8 i8041_p1;
@@ -104,16 +104,16 @@ WRITE8_HANDLER( decocass_coin_counter_w )
 WRITE8_HANDLER( decocass_sound_command_w )
 {
 	LOG(2,("CPU #%d sound command -> $%02x\n", cpu_getactivecpu(), data));
-	soundlatch_w(0,data);
+	soundlatch_w(machine,0,data);
 	decocass_sound_ack |= 0x80;
 	/* remove snd cpu data ack bit. i don't see it in the schems, but... */
 	decocass_sound_ack &= ~0x40;
-	cpunum_set_input_line(Machine, 1, M6502_IRQ_LINE, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, M6502_IRQ_LINE, ASSERT_LINE);
 }
 
 READ8_HANDLER( decocass_sound_data_r )
 {
-	UINT8 data = soundlatch2_r(0);
+	UINT8 data = soundlatch2_r(machine, 0);
 	LOG(2,("CPU #%d sound data    <- $%02x\n", cpu_getactivecpu(), data));
 	return data;
 }
@@ -128,13 +128,13 @@ READ8_HANDLER( decocass_sound_ack_r )
 WRITE8_HANDLER( decocass_sound_data_w )
 {
 	LOG(2,("CPU #%d sound data    -> $%02x\n", cpu_getactivecpu(), data));
-	soundlatch2_w(0, data);
+	soundlatch2_w(machine, 0, data);
 	decocass_sound_ack |= 0x40;
 }
 
 READ8_HANDLER( decocass_sound_command_r )
 {
-	UINT8 data = soundlatch_r(0);
+	UINT8 data = soundlatch_r(machine, 0);
 	LOG(4,("CPU #%d sound command <- $%02x\n", cpu_getactivecpu(), data));
 	cpunum_set_input_line(Machine, 1, M6502_IRQ_LINE, CLEAR_LINE);
 	decocass_sound_ack &= ~0x80;
@@ -149,14 +149,14 @@ static TIMER_CALLBACK( decocass_sound_nmi_pulse )
 WRITE8_HANDLER( decocass_sound_nmi_enable_w )
 {
 	LOG(2,("CPU #%d sound NMI enb -> $%02x\n", cpu_getactivecpu(), data));
-	timer_adjust(decocass_sound_timer, ATTOTIME_IN_HZ(256 * 57 / 8 / 2), 0, ATTOTIME_IN_HZ(256 * 57 / 8 / 2));
+	timer_adjust_periodic(decocass_sound_timer, ATTOTIME_IN_HZ(256 * 57 / 8 / 2), 0, ATTOTIME_IN_HZ(256 * 57 / 8 / 2));
 }
 
 READ8_HANDLER( decocass_sound_nmi_enable_r )
 {
 	UINT8 data = 0xff;
 	LOG(2,("CPU #%d sound NMI enb <- $%02x\n", cpu_getactivecpu(), data));
-	timer_adjust(decocass_sound_timer, ATTOTIME_IN_HZ(256 * 57 / 8 / 2), 0, ATTOTIME_IN_HZ(256 * 57 / 8 / 2));
+	timer_adjust_periodic(decocass_sound_timer, ATTOTIME_IN_HZ(256 * 57 / 8 / 2), 0, ATTOTIME_IN_HZ(256 * 57 / 8 / 2));
 	return data;
 }
 
@@ -176,16 +176,16 @@ WRITE8_HANDLER( decocass_sound_data_ack_reset_w )
 
 WRITE8_HANDLER( decocass_nmi_reset_w )
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE );
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE );
 }
 
 WRITE8_HANDLER( decocass_quadrature_decoder_reset_w )
 {
 	/* just latch the analog controls here */
-	decocass_quadrature_decoder[0] = input_port_3_r(0);
-	decocass_quadrature_decoder[1] = input_port_4_r(0);
-	decocass_quadrature_decoder[2] = input_port_5_r(0);
-	decocass_quadrature_decoder[3] = input_port_6_r(0);
+	decocass_quadrature_decoder[0] = input_port_3_r(machine, 0);
+	decocass_quadrature_decoder[1] = input_port_4_r(machine, 0);
+	decocass_quadrature_decoder[2] = input_port_5_r(machine, 0);
+	decocass_quadrature_decoder[3] = input_port_6_r(machine, 0);
 }
 
 WRITE8_HANDLER( decocass_adc_w )
@@ -286,7 +286,7 @@ WRITE8_HANDLER( decocass_reset_w )
 
 	/* on reset also remove the sound timer */
 	if (data & 1)
-		timer_adjust(decocass_sound_timer, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(decocass_sound_timer, attotime_never, 0);
 
 	/* 8041 active low reset */
 	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 0x08) ^ 0x08 );
@@ -1525,7 +1525,7 @@ READ8_HANDLER( decocass_e5xx_r )
 	else
 	{
 		if (decocass_dongle_r)
-			data = (*decocass_dongle_r)(offset);
+			data = (*decocass_dongle_r)(machine, offset);
 		else
 			data = 0xff;
 	}
@@ -1536,7 +1536,7 @@ WRITE8_HANDLER( decocass_e5xx_w )
 {
 	if (decocass_dongle_w)
 	{
-		(*decocass_dongle_w)(offset, data);
+		(*decocass_dongle_w)(machine, offset, data);
 		return;
 	}
 
@@ -1581,7 +1581,7 @@ WRITE8_HANDLER( decocass_de0091_w )
 {
 	/* don't allow writes to the ROMs */
 	if (!de0091_enable)
-		decocass_charram_w(offset, data);
+		decocass_charram_w(machine, offset, data);
 }
 
 /***************************************************************************
@@ -1603,7 +1603,7 @@ static void decocass_state_save_postload(void)
 		decocass_w(A, mem[A]);
 	/* restart the timer if the tape was playing */
 	if (0 != tape_dir)
-		timer_adjust(tape_timer, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(tape_timer, attotime_never, 0);
 #endif
 }
 
@@ -1985,7 +1985,7 @@ static void tape_stop(void)
 	/* remember time */
 	tape_time0 = decocass_adjust_tape_time(tape_time0);
 
-	timer_adjust(tape_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(tape_timer, attotime_never, 0);
 }
 
 
@@ -2018,7 +2018,7 @@ WRITE8_HANDLER( i8041_p1_w )
 		{
 			LOG(2,("tape %5.4fs: rewind\n", attotime_to_double(tape_time0)));
 			tape_dir = -1;
-			timer_adjust(tape_timer, attotime_never, 0, attotime_never);
+			timer_adjust_oneshot(tape_timer, attotime_never, 0);
 			set_led_status(0, 1);
 		}
 		else
@@ -2041,7 +2041,7 @@ WRITE8_HANDLER( i8041_p1_w )
 		{
 			LOG(2,("tape %5.4fs: forward\n", attotime_to_double(tape_time0)));
 			tape_dir = +1;
-			timer_adjust(tape_timer, attotime_never, 0, attotime_never);
+			timer_adjust_oneshot(tape_timer, attotime_never, 0);
 			set_led_status(0, 1);
 		}
 		else
@@ -2066,14 +2066,14 @@ WRITE8_HANDLER( i8041_p1_w )
 		{
 			LOG(2,("tape: fast rewind %s\n", (0 == (data & 0x04)) ? "on" : "off"));
 			tape_dir = (tape_speed) ? -7 : -1;
-			timer_adjust(tape_timer, attotime_never, 0, attotime_never);
+			timer_adjust_oneshot(tape_timer, attotime_never, 0);
 		}
 		else
 		if (tape_dir > 0)
 		{
 			LOG(2,("tape: fast forward %s\n", (0 == (data & 0x04)) ? "on" : "off"));
 			tape_dir = (tape_speed) ? +7 : +1;
-			timer_adjust(tape_timer, attotime_never, 0, attotime_never);
+			timer_adjust_oneshot(tape_timer, attotime_never, 0);
 		}
 	}
 

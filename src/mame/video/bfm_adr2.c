@@ -209,9 +209,9 @@ VIDEO_START( adder2 )
 	state_save_register_item_array("Adder", 0, adder_ram);
 	state_save_register_item_2d_array("Adder", 0, adder_screen_ram);
 
-	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 50, 35);
+	tilemap0 = tilemap_create(get_tile0_info, tilemap_scan_rows,  8, 8, 50, 35);
 
-	tilemap1 = tilemap_create(get_tile1_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 50, 35);
+	tilemap1 = tilemap_create(get_tile1_info, tilemap_scan_rows,  8, 8, 50, 35);
 }
 
 // video update ///////////////////////////////////////////////////////////
@@ -472,7 +472,7 @@ void adder2_decode_char_roms(void)
 ADDRESS_MAP_START( adder2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(adder2_screen_page_w)		// screen access/display select
-	AM_RANGE(0x0000, 0x7FFF) AM_READ(MRA8_BANK2)				// 8k  paged ROM (4 pages)
+	AM_RANGE(0x0000, 0x7FFF) AM_READ(SMH_BANK2)				// 8k  paged ROM (4 pages)
 	AM_RANGE(0x8000, 0x917F) AM_READWRITE(screen_ram_r, screen_ram_w)
 	AM_RANGE(0x9180, 0x9FFF) AM_READWRITE(normal_ram_r, normal_ram_w)
 

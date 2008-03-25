@@ -71,9 +71,9 @@ static TILEMAP_MAPPER( bsb_bg_scan )
 
 static VIDEO_START(bestleag)
 {
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,256, 32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,bsb_bg_scan,TILEMAP_TYPE_PEN,16,16,128, 64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,bsb_bg_scan,TILEMAP_TYPE_PEN,16,16,128, 64);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_cols,8,8,256, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,bsb_bg_scan,16,16,128, 64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,bsb_bg_scan,16,16,128, 64);
 
 	tilemap_set_transparent_pen(tx_tilemap,15);
 	tilemap_set_transparent_pen(fg_tilemap,15);
@@ -84,7 +84,7 @@ Note: sprite chip is different than the other Big Striker sets and they
       include several similiarities with other Playmark games (including
       the sprite end code and the data being offset (i.e. spriteram starting from 0x16/2))
 */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 
 	/*
@@ -153,7 +153,7 @@ static VIDEO_UPDATE(bestleag)
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
@@ -315,12 +315,12 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( bestleag )
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(bestleag_map,0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)

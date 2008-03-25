@@ -44,13 +44,13 @@ static READ8_HANDLER(mux_r)
         xxxx - input port #2
     xxxx     - dip switches (2x8 bits) (multiplexed)
 */
-	int retval=input_port_2_r(0)&0x0f;
+	int retval=input_port_2_r(machine,0)&0x0f;
 	switch(mux_port&0x30)
 	{
-		case 0x00: retval|=((input_port_4_r(0)&1)<<4)|((input_port_4_r(0)&0x10)<<1)|((input_port_5_r(0)&1)<<6)|((input_port_5_r(0)&0x10)<<3);break;
-		case 0x10: retval|=((input_port_4_r(0)&2)<<3)|((input_port_4_r(0)&0x20)   )|((input_port_5_r(0)&2)<<5)|((input_port_5_r(0)&0x20)<<2);break;
-		case 0x20: retval|=((input_port_4_r(0)&4)<<2)|((input_port_4_r(0)&0x40)>>1)|((input_port_5_r(0)&4)<<4)|((input_port_5_r(0)&0x40)<<1);break;
-		case 0x30: retval|=((input_port_4_r(0)&8)<<1)|((input_port_4_r(0)&0x80)>>2)|((input_port_5_r(0)&8)<<3)|((input_port_5_r(0)&0x80)   );break;
+		case 0x00: retval|=((input_port_4_r(machine,0)&1)<<4)|((input_port_4_r(machine,0)&0x10)<<1)|((input_port_5_r(machine,0)&1)<<6)|((input_port_5_r(machine,0)&0x10)<<3);break;
+		case 0x10: retval|=((input_port_4_r(machine,0)&2)<<3)|((input_port_4_r(machine,0)&0x20)   )|((input_port_5_r(machine,0)&2)<<5)|((input_port_5_r(machine,0)&0x20)<<2);break;
+		case 0x20: retval|=((input_port_4_r(machine,0)&4)<<2)|((input_port_4_r(machine,0)&0x40)>>1)|((input_port_5_r(machine,0)&4)<<4)|((input_port_5_r(machine,0)&0x40)<<1);break;
+		case 0x30: retval|=((input_port_4_r(machine,0)&8)<<1)|((input_port_4_r(machine,0)&0x80)>>2)|((input_port_5_r(machine,0)&8)<<3)|((input_port_5_r(machine,0)&0x80)   );break;
 	}
 	return retval;
 }
@@ -69,7 +69,7 @@ WRITE8_HANDLER(st0016_rom_bank_w)
 READ8_HANDLER(st0016_dma_r);
 
 static ADDRESS_MAP_START( st0016_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w) /* video/crt regs ? */
 	AM_RANGE(0xc0, 0xc0) AM_READ(input_port_0_r) AM_WRITE(mux_select_w)
 	AM_RANGE(0xc1, 0xc1) AM_READ(input_port_1_r) AM_WRITENOP
@@ -129,11 +129,11 @@ static ADDRESS_MAP_START( v810_mem,ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x80000000, 0x8001ffff) AM_RAM
 	AM_RANGE(0xc0000000, 0xc001ffff) AM_RAM
 	AM_RANGE(0x40000000, 0x4000000f) AM_READ(latch32_r) AM_WRITE(latch32_w)
-	AM_RANGE(0xfff80000, 0xffffffff) AM_READ(MRA32_BANK2)
+	AM_RANGE(0xfff80000, 0xffffffff) AM_READ(SMH_BANK2)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( st0016_m2_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w)
 	AM_RANGE(0xc0, 0xc3)	AM_READ(latch8_r) AM_WRITE(latch8_w)
 
@@ -420,16 +420,16 @@ static MACHINE_DRIVER_START( st0016 )
 	MDRV_CPU_PROGRAM_MAP(st0016_mem,0)
 	MDRV_CPU_IO_MAP(st0016_io,0)
 
-	MDRV_CPU_VBLANK_INT(st0016_int,5) /*  4*nmi + int0 */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(st0016_int,5) /*  4*nmi + int0 */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(48*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 0*8, 48*8-1)
+
 	MDRV_GFXDECODE(st0016)
 	MDRV_PALETTE_LENGTH(16*16*4+1)
 

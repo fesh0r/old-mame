@@ -94,11 +94,11 @@ type1       type0           function
 #include "video/resnet.h"
 
 /* video/segac2.c */
-extern void update_system18_vdp( mame_bitmap *bitmap, const rectangle *cliprect );
-extern void start_system18_vdp(void);
-extern READ16_HANDLER( segac2_vdp_r );
-extern WRITE16_HANDLER( segac2_vdp_w );
-static UINT16 sys18_ddcrew_bankregs[0x20];
+void system18_vdp_update( bitmap_t *bitmap, const rectangle *cliprect );
+void system18_vdp_start(running_machine *machine);
+READ16_HANDLER( segac2_vdp_r );
+WRITE16_HANDLER( segac2_vdp_w );
+UINT16 sys18_ddcrew_bankregs[0x20];
 
 
 
@@ -198,10 +198,10 @@ READ16_HANDLER( sys16_tileram_r ){
 */
 
 static void draw_sprite(running_machine *machine,
-	mame_bitmap *bitmap,
+	bitmap_t *bitmap,
 	const rectangle *cliprect,
 	const UINT8 *addr, int pitch,
-	const pen_t *paldata,
+	pen_t pen_base,
 	int x0, int y0, int screen_width, int screen_height,
 	int width, int height,
 	int flipx, int flipy,
@@ -209,11 +209,11 @@ static void draw_sprite(running_machine *machine,
 	int shadow,
 	int shadow_pen, int eos )
 {
-	const pen_t *shadow_base = machine->remapped_colortable + machine->gfx[0]->color_base + (machine->drv->total_colors/2);
+	pen_t shadow_pen_base = machine->gfx[0]->color_base + (machine->config->total_colors/2);
 	const UINT8 *source;
 	int full_shadow=shadow&SYS16_SPR_SHADOW;
 	int partial_shadow=shadow&SYS16_SPR_PARTIAL_SHADOW;
-	int shadow_mask=(machine->drv->total_colors/2)-1;
+	int shadow_mask=(machine->config->total_colors/2)-1;
 	int sx, x, xcount;
 	int sy, y, ycount = 0;
 	int dx,dy;
@@ -260,11 +260,11 @@ static void draw_sprite(running_machine *machine,
 							if( pen && pen!=0xf && sx>=cliprect->min_x && sx<=cliprect->max_x ){
 								if(!(pri[sx]&priority)){
 									if (full_shadow)
-										dest[sx] = shadow_base[dest[sx]&shadow_mask];
+										dest[sx] = shadow_pen_base + (dest[sx]&shadow_mask);
 									else if (partial_shadow && pen==shadow_pen)
-										dest[sx] = shadow_base[dest[sx]&shadow_mask];
+										dest[sx] = shadow_pen_base + (dest[sx]&shadow_mask);
 									else
-										dest[sx] = paldata[pen];
+										dest[sx] = pen_base + pen;
 								}
 							}
 							xcount -= width;
@@ -277,11 +277,11 @@ static void draw_sprite(running_machine *machine,
 							if( pen && pen!=0xf && sx>=cliprect->min_x && sx<=cliprect->max_x ){
 								if(!(pri[sx]&priority)){
 									if (full_shadow)
-										dest[sx] = shadow_base[dest[sx]&shadow_mask];
+										dest[sx] = shadow_pen_base + (dest[sx]&shadow_mask);
 									else if (partial_shadow && pen==shadow_pen)
-										dest[sx] = shadow_base[dest[sx]&shadow_mask];
+										dest[sx] = shadow_pen_base + (dest[sx]&shadow_mask);
 									else
-										dest[sx] = paldata[pen];
+										dest[sx] = pen_base + pen;
 								}
 							}
 							xcount -= width;
@@ -315,7 +315,7 @@ static void draw_sprite(running_machine *machine,
 						while( xcount>=width )
 						{
 							if( pen && pen!=0xf && sx>=cliprect->min_x && sx<=cliprect->max_x )
-								if(!(pri[sx]&priority)) dest[sx] = paldata[pen];
+								if(!(pri[sx]&priority)) dest[sx] = pen_base + pen;
 							xcount -= width;
 							sx+=dx;
 						}
@@ -324,7 +324,7 @@ static void draw_sprite(running_machine *machine,
 						while( xcount>=width )
 						{
 							if( pen && pen!=0xf && sx>=cliprect->min_x && sx<=cliprect->max_x )
-								if(!(pri[sx]&priority)) dest[sx] = paldata[pen];
+								if(!(pri[sx]&priority)) dest[sx] = pen_base + pen;
 							xcount -= width;
 							sx+=dx;
 						}
@@ -338,9 +338,9 @@ static void draw_sprite(running_machine *machine,
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int b3d ) //*
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int b3d ) //*
 {
-	const pen_t *base_pal = machine->remapped_colortable + machine->gfx[0]->color_base;
+	pen_t pen_base = machine->gfx[0]->color_base;
 	const UINT8 *base_gfx = memory_region(REGION_GFX2);
 	const int gfx_rom_size = memory_region_length(REGION_GFX2);
 	const UINT16 *source = sys16_spriteram;
@@ -423,7 +423,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			draw_sprite(machine,
 				bitmap,cliprect,
 				base_gfx + gfx, pitch,
-				base_pal + (sprite.color<<4),
+				pen_base + (sprite.color<<4),
 				xpos, ypos, screen_width, sprite.screen_height,
 				width, logical_height,
 				flipx, flipy,
@@ -526,7 +526,7 @@ WRITE16_HANDLER( sys16_paletteram_w )
 
 		palette_set_color( Machine, offset, MAKE_RGB(r, g, b) );
 
-		palette_set_color( Machine, offset+Machine->drv->total_colors/2,MAKE_RGB(rs,gs,bs));
+		palette_set_color( Machine, offset+Machine->config->total_colors/2,MAKE_RGB(rs,gs,bs));
 	}
 }
 
@@ -788,28 +788,28 @@ VIDEO_START( system16 ){
 		background = tilemap_create(
 			get_bg_tile_info,
 			sys16_bg_map,
-			TILEMAP_TYPE_PEN,
+
 			8,8,
 			64*2,32*2 );
 	else
 		background = tilemap_create(
 			get_bg_tile_info,
 			sys16_bg_map,
-			TILEMAP_TYPE_PEN,
+
 			8,8,
 			64*2,32*2 );
 
 	foreground = tilemap_create(
 		get_fg_tile_info,
 		sys16_bg_map,
-		TILEMAP_TYPE_PEN,
+
 		8,8,
 		64*2,32*2 );
 
 	text_layer = tilemap_create(
 		get_text_tile_info,
 		sys16_text_map,
-		TILEMAP_TYPE_PEN,
+
 		8,8,
 		40,28 );
 
@@ -821,7 +821,7 @@ VIDEO_START( system16 ){
 	{
 		/* initialize all entries to black - needed for Golden Axe*/
 		int i;
-		for( i=0; i<machine->drv->total_colors; i++ ){
+		for( i=0; i<machine->config->total_colors; i++ ){
 			palette_set_color( machine, i, MAKE_RGB(0,0,0) );
 		}
 
@@ -864,7 +864,7 @@ VIDEO_START( system18old ){
 
 	sys16_bg1_trans=1;
 
-	start_system18_vdp();
+	system18_vdp_start(machine);
 
 	/* clear these registers to -1 so that writes of 0 get picked up */
 	for (i=0;i<0x20;i++)
@@ -875,14 +875,14 @@ VIDEO_START( system18old ){
 	background2 = tilemap_create(
 		get_bg2_tile_info,
 		sys16_bg_map,
-		TILEMAP_TYPE_PEN,
+
 		8,8,
 		64*2,32*2 );
 
 	foreground2 = tilemap_create(
 		get_fg2_tile_info,
 		sys16_bg_map,
-		TILEMAP_TYPE_PEN,
+
 		8,8,
 		64*2,32*2 );
 
@@ -1091,7 +1091,7 @@ VIDEO_UPDATE( system16 ){
 //  sprite_draw(sprite_list,0);
 	tilemap_draw( bitmap,cliprect, text_layer, 0, 0xf );
 
-	draw_sprites(machine, bitmap,cliprect,0 );
+	draw_sprites(screen->machine, bitmap,cliprect,0 );
 	return 0;
 }
 
@@ -1100,7 +1100,7 @@ VIDEO_UPDATE( system18old ){
 	if (!sys16_refreshenable)
 	{
 		/* should it REALLY not clear the bitmap? ddcrew vdp gfx look ugly if i don't do it like this */
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -1112,13 +1112,13 @@ VIDEO_UPDATE( system18old ){
 	if(sys18_bg2_active)
 		tilemap_draw( bitmap,cliprect, background2, 0, 0 );
 	else
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 
 	tilemap_draw( bitmap,cliprect, background, TILEMAP_DRAW_OPAQUE, 0 );
 	tilemap_draw( bitmap,cliprect, background, TILEMAP_DRAW_OPAQUE | 1, 0 );	//??
 	tilemap_draw( bitmap,cliprect, background, TILEMAP_DRAW_OPAQUE | 2, 0 );	//??
 
-	if (!strcmp(machine->gamedrv->name,"astorm"))  update_system18_vdp(bitmap,cliprect); // kludge: render vdp here for astorm
+	if (!strcmp(screen->machine->gamedrv->name,"astorm"))  system18_vdp_update(bitmap,cliprect); // kludge: render vdp here for astorm
 	/* ASTORM also draws some sprites with the vdp, needs to be higher priority..*/
 
 //  sprite_draw(sprite_list,3);
@@ -1133,16 +1133,16 @@ VIDEO_UPDATE( system18old ){
 	if(sys18_fg2_active) tilemap_draw( bitmap,cliprect, foreground2, 1, 0x7 );
 	tilemap_draw( bitmap,cliprect, foreground, 1, 0x7 );
 
-	if (!strcmp(machine->gamedrv->name,"ddcrew"))  update_system18_vdp(bitmap,cliprect); // kludge: render vdp here for ddcrew
+	if (!strcmp(screen->machine->gamedrv->name,"ddcrew"))  system18_vdp_update(bitmap,cliprect); // kludge: render vdp here for ddcrew
 
 	tilemap_draw( bitmap,cliprect, text_layer, 1, 0x7 );
 //  sprite_draw(sprite_list,0);
 	tilemap_draw( bitmap,cliprect, text_layer, 0, 0xf );
 
-	if (!strcmp(machine->gamedrv->name,"cltchitr"))  update_system18_vdp(bitmap,cliprect); // kludge: render vdp here for clthitr, draws the ball in game!
-	if (!strcmp(machine->gamedrv->name,"cltchtrj"))  update_system18_vdp(bitmap,cliprect); // kludge: render vdp here for clthitr, draws the ball in game!
-//  if (!strcmp(machine->gamedrv->name,"astorm"))  update_system18_vdp(bitmap,cliprect); // kludge: render vdp here for astorm
+	if (!strcmp(screen->machine->gamedrv->name,"cltchitr"))  system18_vdp_update(bitmap,cliprect); // kludge: render vdp here for clthitr, draws the ball in game!
+	if (!strcmp(screen->machine->gamedrv->name,"cltchtrj"))  system18_vdp_update(bitmap,cliprect); // kludge: render vdp here for clthitr, draws the ball in game!
+//  if (!strcmp(screen->machine->gamedrv->name,"astorm"))  system18_vdp_update(bitmap,cliprect); // kludge: render vdp here for astorm
 
-	draw_sprites(machine, bitmap,cliprect, 0 );
+	draw_sprites(screen->machine, bitmap,cliprect, 0 );
 	return 0;
 }

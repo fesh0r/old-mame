@@ -67,6 +67,7 @@ Stephh's notes (based on the games Z80 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 
 extern UINT8 *gunsmoke_scrollx;
@@ -287,24 +288,24 @@ static MACHINE_DRIVER_START( gunsmoke )
 	// basic machine hardware
 	MDRV_CPU_ADD(Z80, 4000000)	// 4 MHz
 	MDRV_CPU_PROGRAM_MAP(gunsmoke_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3000000)	// 3 MHz
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 4)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(gunsmoke)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(32*4+16*16+16*16)
+	MDRV_PALETTE_LENGTH(32*4+16*16+16*16)
 
 	MDRV_PALETTE_INIT(gunsmoke)
 	MDRV_VIDEO_START(gunsmoke)

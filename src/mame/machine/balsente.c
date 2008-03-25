@@ -111,15 +111,15 @@ static TIMER_CALLBACK( interrupt_timer )
 {
 	/* next interrupt after scanline 256 is scanline 64 */
 	if (param == 256)
-		timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 64, 0), 64, attotime_zero);
+		timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 64, 0), 64);
 	else
-		timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, param + 64, 0), param + 64, attotime_zero);
+		timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, param + 64, 0), param + 64);
 
 	/* IRQ starts on scanline 0, 64, 128, etc. */
 	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
 
 	/* it will turn off on the next HBLANK */
-	timer_set(video_screen_get_time_until_pos(0, param, BALSENTE_HBSTART), NULL, 0, irq_off);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, param, BALSENTE_HBSTART), NULL, 0, irq_off);
 
 	/* if this is Grudge Match, update the steering */
 	if (grudge_steering_result & 0x80)
@@ -177,8 +177,8 @@ MACHINE_RESET( balsente )
 	grudge_steering_result = 0;
 
 	/* reset the 6850 chips */
-	balsente_m6850_w(0, 3);
-	balsente_m6850_sound_w(0, 3);
+	balsente_m6850_w(machine, 0, 3);
+	balsente_m6850_sound_w(machine, 0, 3);
 
 	/* reset the noise generator */
 	memset(noise_position, 0, sizeof(noise_position));
@@ -192,7 +192,7 @@ MACHINE_RESET( balsente )
 
 	/* start a timer to generate interrupts */
 	scanline_timer = timer_alloc(interrupt_timer, NULL);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 
 	/* register for saving */
 	for (i = 0; i < 3; i++)
@@ -683,7 +683,7 @@ INLINE void counter_start(int which)
 		if (counter[which].gate && !counter[which].timer_active)
 		{
 			counter[which].timer_active = 1;
-			timer_adjust(counter[which].timer, attotime_mul(ATTOTIME_IN_HZ(2000000), counter[which].count), which, attotime_zero);
+			timer_adjust_oneshot(counter[which].timer, attotime_mul(ATTOTIME_IN_HZ(2000000), counter[which].count), which);
 		}
 	}
 }
@@ -693,7 +693,7 @@ INLINE void counter_stop(int which)
 {
 	/* only stop the timer if it exists */
 	if (counter[which].timer_active)
-		timer_adjust(counter[which].timer, attotime_never, 0, attotime_zero);
+		timer_adjust_oneshot(counter[which].timer, attotime_never, 0);
 	counter[which].timer_active = 0;
 }
 
@@ -932,7 +932,7 @@ static void update_counter_0_timer(void)
 
 	/* if there's already a timer, remove it */
 	if (counter_0_timer_active)
-		timer_adjust(counter_0_timer, attotime_never, 0, attotime_zero);
+		timer_adjust_oneshot(counter_0_timer, attotime_never, 0);
 	counter_0_timer_active = 0;
 
 	/* find the counter with the maximum frequency */
@@ -957,7 +957,7 @@ static void update_counter_0_timer(void)
 	if (maxfreq > 0.0)
 	{
 		counter_0_timer_active = 1;
-		timer_adjust(counter_0_timer, ATTOTIME_IN_HZ(maxfreq), 0, ATTOTIME_IN_HZ(maxfreq));
+		timer_adjust_periodic(counter_0_timer, ATTOTIME_IN_HZ(maxfreq), 0, ATTOTIME_IN_HZ(maxfreq));
 	}
 }
 
@@ -1006,7 +1006,7 @@ WRITE8_HANDLER( balsente_counter_control_w )
 	/* if we gate off, remove the timer */
 	else if (counter[0].gate && !(data & 0x02) && counter_0_timer_active)
 	{
-		timer_adjust(counter_0_timer, attotime_never, 0, attotime_zero);
+		timer_adjust_oneshot(counter_0_timer, attotime_never, 0);
 		counter_0_timer_active = 0;
 	}
 
@@ -1101,8 +1101,8 @@ WRITE8_HANDLER( balsente_dac_data_w )
 	if ((chip_select & 0x3f) != 0x3f)
 	{
 		UINT8 temp = chip_select;
-		balsente_chip_select_w(0, 0x3f);
-		balsente_chip_select_w(0, temp);
+		balsente_chip_select_w(machine, 0, 0x3f);
+		balsente_chip_select_w(machine, 0, temp);
 	}
 }
 
@@ -1204,7 +1204,7 @@ static void update_grudge_steering(void)
 
 READ8_HANDLER( grudge_steering_r )
 {
-	logerror("%04X:grudge_steering_r(@%d)\n", activecpu_get_pc(), video_screen_get_vpos(0));
+	logerror("%04X:grudge_steering_r(@%d)\n", activecpu_get_pc(), video_screen_get_vpos(machine->primary_screen));
 	grudge_steering_result |= 0x80;
 	return grudge_steering_result;
 }

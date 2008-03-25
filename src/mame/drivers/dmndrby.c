@@ -51,7 +51,7 @@ static ADDRESS_MAP_START( memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xC000, 0xC007) AM_READ(dderby_random_reader)
 	AM_RANGE(0xC802, 0xC802) AM_READ(dderby_random_reader)
 	AM_RANGE(0xC803, 0xC803) AM_READ(dderby_random_reader)
-	AM_RANGE(0xCA01, 0xCA01) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0xCA01, 0xCA01) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xD000, 0xD7ff) AM_RAM AM_BASE(&dderby_vid)
 ADDRESS_MAP_END
 
@@ -140,9 +140,9 @@ static VIDEO_START(dderby)
 static VIDEO_UPDATE(dderby)
 {
 	int x,y,count;
-	const gfx_element *gfx = machine->gfx[0];
+	const gfx_element *gfx = screen->machine->gfx[0];
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	count=0;
 	for (y=0;y<32;y++)
@@ -178,16 +178,16 @@ static MACHINE_DRIVER_START( dderby )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(memmap,0)
-	MDRV_CPU_VBLANK_INT(dderby_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", dderby_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-16-1)
+
 	MDRV_GFXDECODE(dmndrby)
 	MDRV_PALETTE_LENGTH(0x100)
 

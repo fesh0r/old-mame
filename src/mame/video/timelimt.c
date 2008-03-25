@@ -30,7 +30,7 @@ static tilemap *bg_tilemap, *fg_tilemap;
 PALETTE_INIT( timelimt ) {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -73,10 +73,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( timelimt )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		 8, 8, 64, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -113,7 +113,7 @@ WRITE8_HANDLER( timelimt_scroll_y_w )
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -145,7 +145,7 @@ VIDEO_UPDATE( timelimt )
 	tilemap_set_scrolly(bg_tilemap, 0, scrolly);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;

@@ -50,7 +50,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( vb )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,TILEMAP_TYPE_PEN, 8, 8,64,64);
+	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan, 8, 8,64,64);
 
 	tilemap_set_scroll_rows(bg_tilemap,32);
 }
@@ -114,7 +114,7 @@ void vb_mark_all_dirty( void )
 					(which+order),color,flipx,flipy,sx,sy, \
 					cliprect,TRANSPARENCY_PEN,0);
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[1];
 	UINT8 *src = spriteram;
@@ -135,7 +135,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int flipy = 0;
 		int dy = -16;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -172,7 +172,7 @@ VIDEO_UPDATE( vb )
 		//logerror("scrollx[%d] = %d\n",i,scrollx[i]);
 	}
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 

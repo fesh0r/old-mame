@@ -67,12 +67,12 @@ static TILE_GET_INFO( get_tile_info )
 static VIDEO_START( livequiz )
 {
 	tmap = tilemap_create(	get_tile_info, tilemap_scan_cols,
-							TILEMAP_TYPE_PEN, 8,8, 0x80,0x20	);
+							8,8, 0x80,0x20	);
 
 	tilemap_set_transparent_pen(tmap, 0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT16 *s		=	livequiz_gfxram + 0x8000;
 	UINT16 *codes	=	livequiz_gfxram;
@@ -170,9 +170,9 @@ static VIDEO_UPDATE( livequiz )
 	}
 #endif
 
-	fillbitmap(bitmap,machine->pens[4095],cliprect);
+	fillbitmap(bitmap,4095,cliprect);
 
-	if (layers_ctrl & 2)	draw_sprites(machine, bitmap,cliprect);
+	if (layers_ctrl & 2)	draw_sprites(screen->machine, bitmap,cliprect);
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, tmap, 0, 0);
 
 	return 0;
@@ -234,7 +234,7 @@ static ADDRESS_MAP_START( mem_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x9c0000, 0x9c0005) AM_WRITE( livequiz_gfxregs_w ) AM_BASE( &livequiz_gfxregs )
 
-	AM_RANGE(0xa00000, 0xa3ffff) AM_READWRITE( MRA16_RAM, paletteram16_xrgb_word_be_w ) AM_BASE( &paletteram16 )
+	AM_RANGE(0xa00000, 0xa3ffff) AM_READWRITE( SMH_RAM, paletteram16_xrgb_word_be_w ) AM_BASE( &paletteram16 )
 	AM_RANGE(0xa40000, 0xa7ffff) AM_RAM
 
 	AM_RANGE(0xb00000, 0xb00001) AM_READ( ret_ffff )
@@ -442,18 +442,18 @@ static MACHINE_DRIVER_START( livequiz )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 24000000 / 2)
 	MDRV_CPU_PROGRAM_MAP(mem_map,0)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 16, 256-16-1)
+
 	MDRV_GFXDECODE(midas)
 	MDRV_PALETTE_LENGTH(0x10000)
 

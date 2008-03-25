@@ -158,7 +158,7 @@ WRITE16_HANDLER( seta2_vregs_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	/* Sprites list */
 
@@ -374,12 +374,12 @@ VIDEO_START( seta2_offset )
 
 VIDEO_UPDATE( seta2 )
 {
-	/* Black or pens[0]? */
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	/* Black or pen 0? */
+	fillbitmap(bitmap,0,cliprect);
 
 	if (seta2_vregs[0x30/2] & 1)	return 0;		// BLANK SCREEN
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 

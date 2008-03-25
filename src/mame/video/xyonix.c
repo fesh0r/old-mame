@@ -11,7 +11,7 @@ PALETTE_INIT( xyonix )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -53,7 +53,7 @@ WRITE8_HANDLER( xyonix_vidram_w )
 
 VIDEO_START(xyonix)
 {
-	xyonix_tilemap = tilemap_create(get_xyonix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 4, 8,80,32);
+	xyonix_tilemap = tilemap_create(get_xyonix_tile_info,tilemap_scan_rows, 4, 8,80,32);
 }
 
 VIDEO_UPDATE(xyonix)

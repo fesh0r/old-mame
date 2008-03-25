@@ -131,10 +131,10 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START( dcon )
 {
-	background_layer = tilemap_create(get_back_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,32);
-	foreground_layer = tilemap_create(get_fore_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	midground_layer =  tilemap_create(get_mid_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	text_layer =       tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,  8,8,64,32);
+	background_layer = tilemap_create(get_back_tile_info,tilemap_scan_rows,     16,16,32,32);
+	foreground_layer = tilemap_create(get_fore_tile_info,tilemap_scan_rows,16,16,32,32);
+	midground_layer =  tilemap_create(get_mid_tile_info, tilemap_scan_rows,16,16,32,32);
+	text_layer =       tilemap_create(get_text_tile_info,tilemap_scan_rows,  8,8,64,32);
 
 	tilemap_set_transparent_pen(midground_layer,15);
 	tilemap_set_transparent_pen(foreground_layer,15);
@@ -143,7 +143,7 @@ VIDEO_START( dcon )
 	dcon_gfx_bank_select = 0;
 }
 
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,fx,fy,x,y,color,sprite;
 	int dx,dy,ax,ay,inc,pri_mask = 0;
@@ -282,13 +282,13 @@ VIDEO_UPDATE( dcon )
 	if ((dcon_enable&1)!=1)
 		tilemap_draw(bitmap,cliprect,background_layer,0,0);
 	else
-		fillbitmap(bitmap,machine->pens[15],cliprect); /* Should always be black, not pen 15 */
+		fillbitmap(bitmap,15,cliprect); /* Should always be black, not pen 15 */
 
 	tilemap_draw(bitmap,cliprect,midground_layer,0,1);
 	tilemap_draw(bitmap,cliprect,foreground_layer,0,2);
 	tilemap_draw(bitmap,cliprect,text_layer,0,4);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -318,12 +318,12 @@ VIDEO_UPDATE( sdgndmps )
 	if ((dcon_enable&1)!=1)
 		tilemap_draw(bitmap,cliprect,background_layer,0,0);
 	else
-		fillbitmap(bitmap,machine->pens[15],cliprect); /* Should always be black, not pen 15 */
+		fillbitmap(bitmap,15,cliprect); /* Should always be black, not pen 15 */
 
 	tilemap_draw(bitmap,cliprect,midground_layer,0,1);
 	tilemap_draw(bitmap,cliprect,foreground_layer,0,2);
 	tilemap_draw(bitmap,cliprect,text_layer,0,4);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

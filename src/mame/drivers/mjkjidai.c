@@ -155,33 +155,33 @@ static NVRAM_HANDLER( mjkjidai )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xf7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xf7ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xd000, 0xdfff) AM_WRITE(MWA8_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)	// cleared and initialized on startup if bit 6 if port 00 is 0
-	AM_RANGE(0xe000, 0xe01f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)	// shared with tilemap ram
-	AM_RANGE(0xe800, 0xe81f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)	// shared with tilemap ram
-	AM_RANGE(0xf000, 0xf01f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_3)	// shared with tilemap ram
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xd000, 0xdfff) AM_WRITE(SMH_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)	// cleared and initialized on startup if bit 6 if port 00 is 0
+	AM_RANGE(0xe000, 0xe01f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)	// shared with tilemap ram
+	AM_RANGE(0xe800, 0xe81f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)	// shared with tilemap ram
+	AM_RANGE(0xf000, 0xf01f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_3)	// shared with tilemap ram
 	AM_RANGE(0xe000, 0xf7ff) AM_WRITE(mjkjidai_videoram_w) AM_BASE(&mjkjidai_videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(keyboard_r)
-	AM_RANGE(0x01, 0x01) AM_READ(MRA8_NOP)	// ???
+	AM_RANGE(0x01, 0x01) AM_READ(SMH_NOP)	// ???
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
 	AM_RANGE(0x11, 0x11) AM_READ(input_port_0_r)
 	AM_RANGE(0x12, 0x12) AM_READ(input_port_1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x02) AM_WRITE(keyboard_select_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(mjkjidai_ctrl_w)	// rom bank, coin counter, flip screen etc
 	AM_RANGE(0x20, 0x20) AM_WRITE(SN76496_0_w)
@@ -356,18 +356,18 @@ static MACHINE_DRIVER_START( mjkjidai )
 	MDRV_CPU_ADD(Z80,10000000/2)	/* 5 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_NVRAM_HANDLER(mjkjidai)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(3*8, 61*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(mjkjidai)
 	MDRV_PALETTE_LENGTH(0x100)
 

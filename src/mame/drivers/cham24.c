@@ -68,17 +68,17 @@ static WRITE8_HANDLER( sprite_dma_w )
 
 static READ8_HANDLER( psg_4015_r )
 {
-	return NESPSG_0_r(0x15);
+	return NESPSG_0_r(machine,0x15);
 }
 
 static WRITE8_HANDLER( psg_4015_w )
 {
-	NESPSG_0_w(0x15, data);
+	NESPSG_0_w(machine,0x15, data);
 }
 
 static WRITE8_HANDLER( psg_4017_w )
 {
-	NESPSG_0_w(0x17, data);
+	NESPSG_0_w(machine,0x17, data);
 }
 
 static UINT32 in_0;
@@ -206,7 +206,7 @@ static MACHINE_RESET( cham24 )
 
 	/* reset the ppu */
 	ppu2c0x_reset( 0, 1 );
-};
+}
 
 static PALETTE_INIT( cham24 )
 {
@@ -255,15 +255,15 @@ static MACHINE_DRIVER_START( cham24 )
 	MDRV_CPU_ADD_TAG("main", N2A03, N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(cham24_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_RESET( cham24 )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(cham24)
 	MDRV_PALETTE_LENGTH(8*4*16)
 

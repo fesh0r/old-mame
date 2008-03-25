@@ -496,7 +496,7 @@ static WRITE8_HANDLER( ampoker2_watchdog_reset_w )
 	/* watchdog sometimes stop to work */
 	if (( (data >> 3) & 0x01) == 0)		/* check for refresh value (0x08h) */
 	{
-		watchdog_reset_w(0,0);
+		watchdog_reset(machine);
 //      fprintf(stdout,"Watchdog\n");
 	}
 }
@@ -513,7 +513,7 @@ static ADDRESS_MAP_START( ampoker2_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ampoker2_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x08, 0x0f) AM_WRITENOP				/* inexistent in the real hardware */
 	AM_RANGE(0x10, 0x10) AM_READ(input_port_0_r)
 	AM_RANGE(0x11, 0x11) AM_READ(input_port_1_r)
@@ -860,16 +860,17 @@ static MACHINE_DRIVER_START( ampoker2 )
 	MDRV_CPU_PROGRAM_MAP(ampoker2_map, 0)
 	MDRV_CPU_IO_MAP(ampoker2_io_map, 0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 1536)
-	MDRV_WATCHDOG_TIME_INIT(ATTOTIME_IN_HZ( 5 ))	/* 200 ms, measured */
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_HZ( 5 ))	/* 200 ms, measured */
 	//MDRV_WATCHDOG_VBLANK_INIT(8)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	/*  if VBLANK is used, the watchdog timer stop to work.
-    MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-    */
+
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	/*  if VBLANK is used, the watchdog timer stop to work.
+    MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+    */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(20*8, 56*8-1, 2*8, 32*8-1)

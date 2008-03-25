@@ -113,7 +113,6 @@ VIDEO_START( thief ){
 VIDEO_UPDATE( thief ){
 	UINT32 offs;
 	int flipscreen = thief_video_control&1;
-	const pen_t *pal_data = machine->pens;
 	const UINT8 *source = videoram;
 
 	if( thief_video_control&4 ) /* visible page */
@@ -130,21 +129,19 @@ VIDEO_UPDATE( thief ){
 		if( flipscreen ){
 			for( bit=0; bit<8; bit++ ){
 				*BITMAP_ADDR16(bitmap, 0xff - ypos, 0xff - (xpos+bit)) =
-					pal_data[
 						(((plane0<<bit)&0x80)>>7) |
 						(((plane1<<bit)&0x80)>>6) |
 						(((plane2<<bit)&0x80)>>5) |
-						(((plane3<<bit)&0x80)>>4)];
+						(((plane3<<bit)&0x80)>>4);
 			}
 		}
 		else {
 			for( bit=0; bit<8; bit++ ){
 				*BITMAP_ADDR16(bitmap, ypos, xpos+bit) =
-					pal_data[
 						(((plane0<<bit)&0x80)>>7) |
 						(((plane1<<bit)&0x80)>>6) |
 						(((plane2<<bit)&0x80)>>5) |
-						(((plane3<<bit)&0x80)>>4)];
+						(((plane3<<bit)&0x80)>>4);
 			}
 		}
 	}
@@ -199,22 +196,22 @@ WRITE8_HANDLER( thief_blit_w ){
 				if( addr<0x2000*3 ) data = gfx_rom[addr];
 			}
 			offs = (y*32+x/8+i)&0x1fff;
-			old_data = thief_videoram_r( offs );
+			old_data = thief_videoram_r( machine,offs );
 			if( xor_blit ){
-				thief_videoram_w( offs, old_data^(data>>xoffset) );
+				thief_videoram_w( machine,offs, old_data^(data>>xoffset) );
 			}
 			else {
-				thief_videoram_w( offs,
+				thief_videoram_w( machine,offs,
 					(old_data&(0xff00>>xoffset)) | (data>>xoffset)
 				);
 			}
 			offs = (offs+1)&0x1fff;
-			old_data = thief_videoram_r( offs );
+			old_data = thief_videoram_r( machine,offs );
 			if( xor_blit ){
-				thief_videoram_w( offs, old_data^((data<<(8-xoffset))&0xff) );
+				thief_videoram_w( machine,offs, old_data^((data<<(8-xoffset))&0xff) );
 			}
 			else {
-				thief_videoram_w( offs,
+				thief_videoram_w( machine,offs,
 					(old_data&(0xff>>xoffset)) | ((data<<(8-xoffset))&0xff)
 				);
 			}

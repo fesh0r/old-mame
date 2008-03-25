@@ -268,9 +268,9 @@ static void PS7500_startTimer0(void)
 	int val=((PS7500_IO[T0low]&0xff)|((PS7500_IO[T0high]&0xff)<<8))>>1;
 
 	if(val==0)
-		timer_adjust(PS7500timer0, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(PS7500timer0, attotime_never, 0);
 	else
-		timer_adjust(PS7500timer0, ATTOTIME_IN_USEC(val ), 0, ATTOTIME_IN_USEC(val ));
+		timer_adjust_periodic(PS7500timer0, ATTOTIME_IN_USEC(val ), 0, ATTOTIME_IN_USEC(val ));
 }
 
 static TIMER_CALLBACK( PS7500_Timer1_callback )
@@ -286,9 +286,9 @@ static void PS7500_startTimer1(void)
 {
 	int val=((PS7500_IO[T1low]&0xff)|((PS7500_IO[T1high]&0xff)<<8))>>1;
 	if(val==0)
-		timer_adjust(PS7500timer1, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(PS7500timer1, attotime_never, 0);
 	else
-		timer_adjust(PS7500timer1, ATTOTIME_IN_USEC(val ), 0, ATTOTIME_IN_USEC(val ));
+		timer_adjust_periodic(PS7500timer1, ATTOTIME_IN_USEC(val ), 0, ATTOTIME_IN_USEC(val ));
 }
 
 static INTERRUPT_GEN( ssfindo_interrupt )
@@ -305,8 +305,8 @@ static void PS7500_reset(void)
 		PS7500_IO[IOCR]			=	0x3f;
 		PS7500_IO[VIDCR]		=	0;
 
-		timer_adjust( PS7500timer0, attotime_never, 0, attotime_never);
-		timer_adjust( PS7500timer1, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot( PS7500timer0, attotime_never, 0);
+		timer_adjust_oneshot( PS7500timer1, attotime_never, 0);
 }
 
 static READ32_HANDLER(PS7500_IO_r)
@@ -335,7 +335,7 @@ static READ32_HANDLER(PS7500_IO_r)
 			return (PS7500_IO[IRQSTA]&PS7500_IO[IRQMSKA])|0x80;
 
 		case IOCR: //TODO: nINT1, OD[n] p.81
-			return (input_port_0_r(0)&0x80)|0x34|3;
+			return (input_port_0_r(machine,0)&0x80)|0x34|3;
 
 		case VIDCR:
 			return (PS7500_IO[offset]|0x50)&0xfffffff0;
@@ -613,16 +613,17 @@ static MACHINE_DRIVER_START( ssfindo )
 	MDRV_CPU_ADD(ARM7, 54000000) // guess...
 	MDRV_CPU_PROGRAM_MAP(ssfindo_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
-	MDRV_CPU_VBLANK_INT(ssfindo_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", ssfindo_interrupt)
 	MDRV_MACHINE_RESET(ssfindo)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_UPDATE(ssfindo)
@@ -635,16 +636,17 @@ static MACHINE_DRIVER_START( ppcar )
 	MDRV_CPU_ADD(ARM7, 54000000) // guess...
 	MDRV_CPU_PROGRAM_MAP(ppcar_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
-	MDRV_CPU_VBLANK_INT(ssfindo_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", ssfindo_interrupt)
 	MDRV_MACHINE_RESET(ssfindo)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_UPDATE(ssfindo)

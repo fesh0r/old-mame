@@ -41,8 +41,8 @@ static TILE_GET_INFO( get_tile_info2 )
 
 VIDEO_START( crshrace )
 {
-	tilemap1 = tilemap_create(get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	tilemap2 = tilemap_create(get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
+	tilemap1 = tilemap_create(get_tile_info1,tilemap_scan_rows,16,16,64,64);
+	tilemap2 = tilemap_create(get_tile_info2,tilemap_scan_rows, 8, 8,64,64);
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, -48, -21);
@@ -99,7 +99,7 @@ WRITE16_HANDLER( crshrace_gfxctrl_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -171,13 +171,13 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 }
 
 
-static void draw_bg(mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_bg(bitmap_t *bitmap,const rectangle *cliprect)
 {
 	tilemap_draw(bitmap,cliprect,tilemap2,0,0);
 }
 
 
-static void draw_fg(mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_fg(bitmap_t *bitmap,const rectangle *cliprect)
 {
 	K053936_0_zoom_draw(bitmap,cliprect,tilemap1,0,0);
 }
@@ -187,16 +187,16 @@ VIDEO_UPDATE( crshrace )
 {
 	if (gfxctrl & 0x04)	/* display disable? */
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
-	fillbitmap(bitmap,machine->pens[0x1ff],cliprect);
+	fillbitmap(bitmap,0x1ff,cliprect);
 
 	switch (gfxctrl & 0xfb)
 	{
 		case 0x00:	/* high score screen */
-			draw_sprites(machine,bitmap,cliprect);
+			draw_sprites(screen->machine,bitmap,cliprect);
 			draw_bg(bitmap,cliprect);
 			draw_fg(bitmap,cliprect);
 			break;
@@ -204,7 +204,7 @@ VIDEO_UPDATE( crshrace )
 		case 0x02:
 			draw_bg(bitmap,cliprect);
 			draw_fg(bitmap,cliprect);
-			draw_sprites(machine,bitmap,cliprect);
+			draw_sprites(screen->machine,bitmap,cliprect);
 			break;
 		default:
 popmessage("gfxctrl = %02x",gfxctrl);
@@ -215,6 +215,6 @@ popmessage("gfxctrl = %02x",gfxctrl);
 
 VIDEO_EOF( crshrace )
 {
-	buffer_spriteram16_w(0,0,0);
-	buffer_spriteram16_2_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
+	buffer_spriteram16_2_w(machine,0,0,0);
 }

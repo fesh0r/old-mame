@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "sndintrf.h"
+#include "deprecat.h"
 #include "streams.h"
 #include "ym2151.h"
 
@@ -165,7 +166,7 @@ typedef struct
 	UINT32		noise_tab[32];			/* 17bit Noise Generator periods */
 
 	void (*irqhandler)(int irq);		/* IRQ function handler */
-	write8_handler porthandler;		/* port write function handler */
+	write8_machine_func porthandler;		/* port write function handler */
 
 	unsigned int clock;					/* chip clock in Hz (passed from 2151intf.c) */
 	unsigned int sampfreq;				/* sampling frequency in Hz (passed from 2151intf.c) */
@@ -826,7 +827,7 @@ static TIMER_CALLBACK( irqBoff_callback )
 static TIMER_CALLBACK( timer_callback_a )
 {
 	YM2151 *chip = ptr;
-	timer_adjust(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], 0, attotime_zero);
+	timer_adjust_oneshot(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], 0);
 	chip->timer_A_index_old = chip->timer_A_index;
 	if (chip->irq_enable & 0x04)
 	{
@@ -839,7 +840,7 @@ static TIMER_CALLBACK( timer_callback_a )
 static TIMER_CALLBACK( timer_callback_b )
 {
 	YM2151 *chip = ptr;
-	timer_adjust(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], 0, attotime_zero);
+	timer_adjust_oneshot(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], 0);
 	chip->timer_B_index_old = chip->timer_B_index;
 	if (chip->irq_enable & 0x08)
 	{
@@ -1133,7 +1134,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 				/* start timer _only_ if it wasn't already started (it will reload time value next round) */
 					if (!timer_enable(chip->timer_B, 1))
 					{
-						timer_adjust(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], 0, attotime_zero);
+						timer_adjust_oneshot(chip->timer_B, chip->timer_B_time[ chip->timer_B_index ], 0);
 						chip->timer_B_index_old = chip->timer_B_index;
 					}
 				#else
@@ -1158,7 +1159,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 				/* start timer _only_ if it wasn't already started (it will reload time value next round) */
 					if (!timer_enable(chip->timer_A, 1))
 					{
-						timer_adjust(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], 0, attotime_zero);
+						timer_adjust_oneshot(chip->timer_A, chip->timer_A_time[ chip->timer_A_index ], 0);
 						chip->timer_A_index_old = chip->timer_A_index;
 					}
 				#else
@@ -1195,7 +1196,7 @@ void YM2151WriteReg(void *_chip, int r, int v)
 		case 0x1b:	/* CT2, CT1, LFO waveform */
 			chip->ct = v >> 6;
 			chip->lfo_wsel = v & 3;
-			if (chip->porthandler) (*chip->porthandler)(0 , chip->ct );
+			if (chip->porthandler) (*chip->porthandler)(Machine, 0 , chip->ct );
 			break;
 
 		default:
@@ -2497,7 +2498,7 @@ void YM2151SetIrqHandler(void *chip, void(*handler)(int irq))
 	PSG->irqhandler = handler;
 }
 
-void YM2151SetPortWriteHandler(void *chip, write8_handler handler)
+void YM2151SetPortWriteHandler(void *chip, write8_machine_func handler)
 {
 	YM2151 *PSG = chip;
 	PSG->porthandler = handler;

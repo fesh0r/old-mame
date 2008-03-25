@@ -29,7 +29,7 @@ struct _ui_gfx_state
 
 	/* intermediate bitmaps */
 	UINT8			bitmap_dirty;		/* is the bitmap dirty? */
-	mame_bitmap *	bitmap;				/* bitmap for drawing gfx and tilemaps */
+	bitmap_t *		bitmap;				/* bitmap for drawing gfx and tilemaps */
 	render_texture *texture;			/* texture for rendering the above bitmap */
 
 	/* palette-specific data */
@@ -83,7 +83,7 @@ static void palette_handler(ui_gfx_state *state);
 
 /* graphics set handling */
 static void gfxset_handle_keys(ui_gfx_state *state, int xcells, int ycells);
-static void gfxset_draw_item(const gfx_element *gfx, int index, mame_bitmap *bitmap, int dstx, int dsty, int color, int rotate);
+static void gfxset_draw_item(const gfx_element *gfx, int index, bitmap_t *bitmap, int dstx, int dsty, int color, int rotate);
 static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gfx_element *gfx);
 static void gfxset_handler(ui_gfx_state *state);
 
@@ -155,7 +155,7 @@ UINT32 ui_gfx_ui_handler(running_machine *machine, UINT32 uistate)
 	ui_gfx_state *state = &ui_gfx;
 
 	/* if we have nothing, implicitly cancel */
-	if (Machine->drv->total_colors == 0 && Machine->drv->color_table_len == 0 && Machine->gfx[0] == NULL && tilemap_count() == 0)
+	if (Machine->config->total_colors == 0 && Machine->colortable == NULL && Machine->gfx[0] == NULL && tilemap_count() == 0)
 		goto cancel;
 
 	/* if we're not paused, mark the bitmap dirty */
@@ -168,7 +168,7 @@ again:
 	{
 		case 0:
 			/* if we have a palette, display it */
-			if (Machine->drv->total_colors > 0)
+			if (Machine->config->total_colors > 0)
 			{
 				palette_handler(state);
 				break;
@@ -235,8 +235,7 @@ cancel:
 
 static void palette_handler(ui_gfx_state *state)
 {
-	int total = state->palette.which ? Machine->drv->color_table_len : Machine->drv->total_colors;
-	const UINT16 *pens = state->palette.which ? Machine->game_colortable : NULL;
+	int total = state->palette.which ? colortable_palette_get_size(Machine->colortable) : Machine->config->total_colors;
 	const char *title = state->palette.which ? "COLORTABLE" : "PALETTE";
 	const rgb_t *raw_color = palette_entry_list_raw(Machine->palette);
 	render_font *ui_font = ui_get_font();
@@ -337,10 +336,10 @@ static void palette_handler(ui_gfx_state *state)
 			int index = state->palette.offset + y * state->palette.count + x;
 			if (index < total)
 			{
-				pen_t pen = (pens != NULL) ? pens[index] : index;
+				pen_t pen = state->palette.which ? colortable_palette_get_color(Machine->colortable, index) : raw_color[index];
 				render_ui_add_rect(cellboxbounds.x0 + x * cellwidth, cellboxbounds.y0 + y * cellheight,
 									cellboxbounds.x0 + (x + 1) * cellwidth, cellboxbounds.y0 + (y + 1) * cellheight,
-									0xff000000 | raw_color[pen], PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
+									0xff000000 | pen, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA));
 			}
 		}
 
@@ -380,11 +379,11 @@ static void palette_handle_keys(ui_gfx_state *state)
 	/* clamp within range */
 	if (state->palette.which < 0)
 		state->palette.which = 1;
-	if (state->palette.which > (Machine->drv->color_table_len != 0))
-		state->palette.which = (Machine->drv->color_table_len != 0);
+	if (state->palette.which > (Machine->colortable != NULL))
+		state->palette.which = (Machine->colortable != NULL);
 
 	/* cache some info in locals */
-	total = state->palette.which ? Machine->drv->color_table_len : Machine->drv->total_colors;
+	total = state->palette.which ? colortable_palette_get_size(Machine->colortable) : Machine->config->total_colors;
 
 	/* determine number of entries per row and total */
 	rowcount = state->palette.count;
@@ -762,7 +761,7 @@ static void gfxset_update_bitmap(ui_gfx_state *state, int xcells, int ycells, gf
     the view
 -------------------------------------------------*/
 
-static void gfxset_draw_item(const gfx_element *gfx, int index, mame_bitmap *bitmap, int dstx, int dsty, int color, int rotate)
+static void gfxset_draw_item(const gfx_element *gfx, int index, bitmap_t *bitmap, int dstx, int dsty, int color, int rotate)
 {
 	static const pen_t default_palette[] =
 	{
@@ -771,16 +770,12 @@ static void gfxset_draw_item(const gfx_element *gfx, int index, mame_bitmap *bit
 	};
 	int width = (rotate & ORIENTATION_SWAP_XY) ? gfx->height : gfx->width;
 	int height = (rotate & ORIENTATION_SWAP_XY) ? gfx->width : gfx->height;
-	const pen_t *palette = (Machine->drv->total_colors != 0) ? palette_entry_list_raw(Machine->palette) : NULL;
+	const rgb_t *palette = (Machine->config->total_colors != 0) ? palette_entry_list_raw(Machine->palette) : NULL;
 	UINT32 rowpixels = bitmap->rowpixels;
-	const UINT16 *colortable = NULL;
 	UINT32 palette_mask = ~0;
 	int x, y;
 
-	/* select either the raw palette or the colortable */
-	if (Machine->game_colortable != NULL)
-		colortable = &Machine->game_colortable[gfx->color_base + color * gfx->color_granularity];
-	else if (palette != NULL)
+	if (palette != NULL)
 		palette += gfx->color_base + color * gfx->color_granularity;
 	else
 	{
@@ -827,8 +822,6 @@ static void gfxset_draw_item(const gfx_element *gfx, int index, mame_bitmap *bit
 				pixel = (s[effx/2] >> ((effx & 1) * 4)) & 0xf;
 			else
 				pixel = s[effx];
-			if (colortable != NULL)
-				pixel = colortable[pixel];
 			*dest++ = 0xff000000 | palette[pixel & palette_mask];
 		}
 	}
@@ -1040,7 +1033,7 @@ static void tilemap_handle_keys(ui_gfx_state *state, int viswidth, int visheight
 
 static void tilemap_update_bitmap(ui_gfx_state *state, int width, int height)
 {
-	bitmap_format screen_format = Machine->screen[0].format;
+	bitmap_format screen_format = video_screen_get_format(Machine->primary_screen);
 	int screen_texformat;
 
 	/* convert the screen format to a texture format */

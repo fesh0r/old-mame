@@ -70,13 +70,13 @@ static WRITE8_HANDLER( b_via_0_pa_w )
 		switch (data & 0x03)
 		{
 		case 0:
-			pbus = input_port_0_r(0);
+			pbus = input_port_0_r(machine,0);
 			break;
 		case 1:
-			pbus = input_port_1_r(0) | (input_port_2_r(0) << 4);
+			pbus = input_port_1_r(machine,0) | (input_port_2_r(machine,0) << 4);
 			break;
 		case 2:
-			pbus = input_port_3_r(0);
+			pbus = input_port_3_r(machine,0);
 			break;
 		case 3:
 			pbus = 0xff;
@@ -135,8 +135,8 @@ WRITE8_HANDLER( beezer_bankswitch_w )
 	else
 	{
 		UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, MRA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, MWA8_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1);
 		memory_set_bankptr(1, rom + (data & 0x07) * 0x2000 + ((data & 0x08) ? 0x1000: 0));
 	}
 }

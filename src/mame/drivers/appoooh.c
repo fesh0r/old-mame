@@ -86,43 +86,29 @@ static WRITE8_HANDLER( appoooh_adpcm_w )
 
 
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x9fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xa000, 0xdfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe800, 0xefff) AM_READ(MRA8_RAM) /* RAM ? */
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_RAM)
-ADDRESS_MAP_END
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x9fff) AM_ROM
+	AM_RANGE(0xa000, 0xdfff) AM_ROMBANK(1)
+	AM_RANGE(0xe000, 0xe7ff) AM_RAM
+	AM_RANGE(0xe800, 0xefff) AM_RAM /* RAM ? */
 
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xdfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe800, 0xefff) AM_WRITE(MWA8_RAM) /* RAM ? */
-	AM_RANGE(0xf000, 0xf01f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
+	AM_RANGE(0xf000, 0xf01f) AM_BASE(&spriteram)
 	AM_RANGE(0xf020, 0xf3ff) AM_WRITE(appoooh_fg_videoram_w) AM_BASE(&appoooh_fg_videoram)
 	AM_RANGE(0xf420, 0xf7ff) AM_WRITE(appoooh_fg_colorram_w) AM_BASE(&appoooh_fg_colorram)
-	AM_RANGE(0xf800, 0xf81f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)
+	AM_RANGE(0xf800, 0xf81f) AM_BASE(&spriteram_2)
 	AM_RANGE(0xf820, 0xfbff) AM_WRITE(appoooh_bg_videoram_w) AM_BASE(&appoooh_bg_videoram)
 	AM_RANGE(0xfc20, 0xffff) AM_WRITE(appoooh_bg_colorram_w) AM_BASE(&appoooh_bg_colorram)
+	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x03, 0x03) AM_READ(input_port_3_r)	/* DSW */
-	AM_RANGE(0x04, 0x04) AM_READ(input_port_2_r)	/* IN2 */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_WRITE(SN76496_0_w)
-	AM_RANGE(0x01, 0x01) AM_WRITE(SN76496_1_w)
+static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(input_port_0_r, SN76496_0_w)
+	AM_RANGE(0x01, 0x01) AM_READWRITE(input_port_1_r, SN76496_1_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(SN76496_2_w)
-	AM_RANGE(0x03, 0x03) AM_WRITE(appoooh_adpcm_w)
-	AM_RANGE(0x04, 0x04) AM_WRITE(appoooh_out_w)
+	AM_RANGE(0x03, 0x03) AM_READWRITE(input_port_3_r, appoooh_adpcm_w)
+	AM_RANGE(0x04, 0x04) AM_READWRITE(input_port_2_r, appoooh_out_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(appoooh_scroll_w) /* unknown */
 ADDRESS_MAP_END
 
@@ -155,8 +141,8 @@ static INPUT_PORTS_START( appoooh )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
 
-	PORT_START_TAG("DSW")
-	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_A ) )
+	PORT_START_TAG("DSW1")
+	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SW1:1,2,3")
 	PORT_DIPSETTING(    0x03, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
@@ -165,18 +151,18 @@ static INPUT_PORTS_START( appoooh )
 	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(    0x06, DEF_STR( 1C_4C ) )
-	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Coin_B ) )		PORT_DIPLOCATION("SW1:4,5")
 	PORT_DIPSETTING(    0x18, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(    0x40, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Hard ) )
 INPUT_PORTS_END
@@ -228,15 +214,14 @@ static MACHINE_DRIVER_START( appoooh )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,18432000/6)	/* ??? the main xtal is 18.432 MHz */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
@@ -281,10 +266,10 @@ PROMs : (x1, near EPR-7543.12B, labelled PR7571)
 DIPSW : 8 position (x1)
 DIPSW Info:
 
-            1   2   3   4   5   6   7   8
+                    1   2   3   4   5   6   7   8
 -----------------------------------------------------------------------------------
 Coin1
-        1Coin 1Credit   OFF OFF OFF
+    1Coin 1Credit   OFF OFF OFF
     2Coin 1Credit   ON  OFF OFF
     3Coin 1Credit   OFF ON  OFF
     4Coin 1Credit   ON  ON  OFF
@@ -300,14 +285,14 @@ Coin2
     3Coin 1Credit               ON  ON
 -----------------------------------------------------------------------------------
 Demo Sound
-    Off                         OFF
-    On                          ON
+    Off                                 OFF
+    On                                  ON
 -----------------------------------------------------------------------------------
-Not Used                                OFF
+Not Used                                    OFF
 -----------------------------------------------------------------------------------
 Language
-    Japanese                                OFF
-    English                                 ON
+    Japanese                                    OFF
+    English                                     ON
 -----------------------------------------------------------------------------------
 
 
@@ -386,52 +371,11 @@ PR7573.7G      82s129       06F1h  / identical contents
 */
 
 static INPUT_PORTS_START( robowres )
-	PORT_START_TAG("IN0")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 )
+	PORT_INCLUDE( appoooh )
 
-	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_COCKTAIL
-
-	PORT_START_TAG("IN2")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON3 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_COCKTAIL
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN3 )
-	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* probably unused */
-
-	PORT_START_TAG("DSW")
-	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_A ) )
-	PORT_DIPSETTING(    0x03, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x07, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x05, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x06, DEF_STR( 1C_4C ) )
-	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Coin_B ) )
-	PORT_DIPSETTING(    0x18, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Language ) )
+	PORT_MODIFY("DSW1")
+	PORT_DIPUNUSED_DIPLOC(0x40,0x40, "SW1:7" )			/* Listed as "Unused" */
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Language ) )		PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Japanese ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( English ) )
 INPUT_PORTS_END
@@ -472,15 +416,14 @@ static MACHINE_DRIVER_START( robowres )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,18432000/6)	/* ??? the main xtal is 18.432 MHz */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
@@ -615,6 +558,6 @@ static DRIVER_INIT(robowrb){
 }
 
 
-GAME( 1984, appoooh, 0, appoooh, appoooh, 0, ROT0, "[Sanritsu] Sega", "Appoooh", 0 )
-GAME( 1986, robowres, 0, 				robowres, robowres, robowres,	ROT0, "Sega", "Robo Wres 2001", 0 )
+GAME( 1984, appoooh,  0,        appoooh,  appoooh,  0,        ROT0, "[Sanritsu] Sega", "Appoooh", 0 )
+GAME( 1986, robowres, 0, 		robowres, robowres, robowres, ROT0, "Sega", "Robo Wres 2001", 0 )
 GAME( 1986, robowrb,  robowres, robowres, robowres, robowrb,  ROT0, "bootleg", "Robo Wres 2001 (bootleg)", 0 )

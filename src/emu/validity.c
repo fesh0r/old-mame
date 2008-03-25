@@ -19,31 +19,25 @@
 #include <zlib.h>
 
 
-/*************************************
- *
- *  Debugging
- *
- *************************************/
+/***************************************************************************
+    DEBUGGING
+***************************************************************************/
 
 #define REPORT_TIMES		(0)
 
 
 
-/*************************************
- *
- *  Constants
- *
- *************************************/
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define QUARK_HASH_SIZE		389
 
 
 
-/*************************************
- *
- *  Type definitions
- *
- *************************************/
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
 typedef struct _quark_entry quark_entry;
 struct _quark_entry
@@ -64,11 +58,9 @@ struct _quark_table
 
 
 
-/*************************************
- *
- *  Local variables
- *
- *************************************/
+/***************************************************************************
+    GLOBAL VARIABLES
+***************************************************************************/
 
 static quark_table *source_table;
 static quark_table *name_table;
@@ -79,14 +71,70 @@ static quark_table *defstr_table;
 
 
 
-/*************************************
- *
- *  Allocate an array of quark
- *  entries and a hash table
- *
- *************************************/
+/***************************************************************************
+    INLINE FUNCTIONS
+***************************************************************************/
 
-static quark_table *allocate_quark_table(UINT32 entries, UINT32 hashsize)
+/*-------------------------------------------------
+    input_port_string_from_index - return an
+    indexed string from the input port system
+-------------------------------------------------*/
+
+INLINE const char *input_port_string_from_index(UINT32 index)
+{
+	input_port_token token;
+	token.i = index;
+	return input_port_string_from_token(token);
+}
+
+
+/*-------------------------------------------------
+    quark_string_crc - compute the CRC of a string
+-------------------------------------------------*/
+
+INLINE UINT32 quark_string_crc(const char *string)
+{
+	return crc32(0, (UINT8 *)string, (UINT32)strlen(string));
+}
+
+
+/*-------------------------------------------------
+    quark_add - add a quark to the table and
+    connect it to the hash tables
+-------------------------------------------------*/
+
+INLINE void quark_add(quark_table *table, int index, UINT32 crc)
+{
+	quark_entry *entry = &table->entry[index];
+	int hash = crc % table->hashsize;
+	entry->crc = crc;
+	entry->next = table->hash[hash];
+	table->hash[hash] = entry;
+}
+
+
+/*-------------------------------------------------
+    quark_table_get_first - return a pointer to the
+    first hash entry connected to a CRC
+-------------------------------------------------*/
+
+INLINE quark_entry *quark_table_get_first(quark_table *table, UINT32 crc)
+{
+	return table->hash[crc % table->hashsize];
+}
+
+
+
+/***************************************************************************
+    QUARK TABLES
+***************************************************************************/
+
+/*-------------------------------------------------
+    quark_table_alloc - allocate an array of
+    quark entries and a hash table
+-------------------------------------------------*/
+
+static quark_table *quark_table_alloc(UINT32 entries, UINT32 hashsize)
 {
 	quark_table *table;
 	UINT32 total_bytes;
@@ -109,73 +157,21 @@ static quark_table *allocate_quark_table(UINT32 entries, UINT32 hashsize)
 }
 
 
+/*-------------------------------------------------
+    quark_tables_create - build "quarks" for fast
+    string operations
+-------------------------------------------------*/
 
-/*************************************
- *
- *  Compute the CRC of a string
- *
- *************************************/
-
-INLINE UINT32 quark_string_crc(const char *string)
+static void quark_tables_create(void)
 {
-	return crc32(0, (UINT8 *)string, (UINT32)strlen(string));
-}
-
-
-
-/*************************************
- *
- *  Add a quark to the table and
- *  connect it to the hash tables
- *
- *************************************/
-
-INLINE void add_quark(quark_table *table, int index, UINT32 crc)
-{
-	quark_entry *entry = &table->entry[index];
-	int hash = crc % table->hashsize;
-	entry->crc = crc;
-	entry->next = table->hash[hash];
-	table->hash[hash] = entry;
-}
-
-
-
-/*************************************
- *
- *  Return a pointer to the first
- *  hash entry connected to a CRC
- *
- *************************************/
-
-INLINE quark_entry *first_hash_entry(quark_table *table, UINT32 crc)
-{
-	return table->hash[crc % table->hashsize];
-}
-
-
-
-/*************************************
- *
- *  Build "quarks" for fast string
- *  operations
- *
- *************************************/
-
-static void build_quarks(void)
-{
-	int drivnum, strnum;
-
-	/* first count drivers */
-	for (drivnum = 0; drivers[drivnum]; drivnum++)
-		;
+	int drivnum = driver_list_get_count(drivers), strnum;
 
 	/* allocate memory for the quark tables */
-	source_table = allocate_quark_table(drivnum, QUARK_HASH_SIZE);
-	name_table = allocate_quark_table(drivnum, QUARK_HASH_SIZE);
-	description_table = allocate_quark_table(drivnum, QUARK_HASH_SIZE);
-	roms_table = allocate_quark_table(drivnum, QUARK_HASH_SIZE);
-	inputs_table = allocate_quark_table(drivnum, QUARK_HASH_SIZE);
+	source_table = quark_table_alloc(drivnum, QUARK_HASH_SIZE);
+	name_table = quark_table_alloc(drivnum, QUARK_HASH_SIZE);
+	description_table = quark_table_alloc(drivnum, QUARK_HASH_SIZE);
+	roms_table = quark_table_alloc(drivnum, QUARK_HASH_SIZE);
+	inputs_table = quark_table_alloc(drivnum, QUARK_HASH_SIZE);
 
 	/* build the quarks and the hash tables */
 	for (drivnum = 0; drivers[drivnum]; drivnum++)
@@ -183,34 +179,37 @@ static void build_quarks(void)
 		const game_driver *driver = drivers[drivnum];
 
 		/* fill in the quark with hashes of the strings */
-		add_quark(source_table,      drivnum, quark_string_crc(driver->source_file));
-		add_quark(name_table,        drivnum, quark_string_crc(driver->name));
-		add_quark(description_table, drivnum, quark_string_crc(driver->description));
+		quark_add(source_table,      drivnum, quark_string_crc(driver->source_file));
+		quark_add(name_table,        drivnum, quark_string_crc(driver->name));
+		quark_add(description_table, drivnum, quark_string_crc(driver->description));
 
 		/* only track actual driver ROM entries */
 		if (driver->rom && (driver->flags & GAME_NO_STANDALONE) == 0)
-			add_quark(roms_table,    drivnum, (FPTR)driver->rom);
+			quark_add(roms_table,    drivnum, (FPTR)driver->rom);
 	}
 
 	/* allocate memory for a quark table of strings */
-	defstr_table = allocate_quark_table(INPUT_STRING_COUNT, 97);
+	defstr_table = quark_table_alloc(INPUT_STRING_COUNT, 97);
 
 	/* add all the default strings */
 	for (strnum = 1; strnum < INPUT_STRING_COUNT; strnum++)
 	{
-		const char *string = input_port_string_from_token(INPUT_PORT_UINT32(strnum));
+		const char *string = input_port_string_from_index(strnum);
 		if (string != NULL)
-			add_quark(defstr_table, strnum, quark_string_crc(string));
+			quark_add(defstr_table, strnum, quark_string_crc(string));
 	}
 }
 
 
 
-/*************************************
- *
- *  Validate inline functions
- *
- *************************************/
+/***************************************************************************
+    VALIDATION FUNCTIONS
+***************************************************************************/
+
+/*-------------------------------------------------
+    validate_inlines - validate inline function
+    behaviors
+-------------------------------------------------*/
 
 static int validate_inlines(void)
 {
@@ -360,14 +359,12 @@ static int validate_inlines(void)
 }
 
 
+/*-------------------------------------------------
+    validate_driver - validate basic driver
+    information
+-------------------------------------------------*/
 
-/*************************************
- *
- *  Validate basic driver info
- *
- *************************************/
-
-static int validate_driver(int drivnum, const machine_config *drv)
+static int validate_driver(int drivnum, const machine_config *config)
 {
 	const game_driver *driver = drivers[drivnum];
 	const game_driver *clone_of;
@@ -419,7 +416,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 
 #ifndef MESS
 	/* make sure sound-less drivers are flagged */
-	if ((driver->flags & GAME_IS_BIOS_ROOT) == 0 && drv->sound[0].type == SOUND_DUMMY && (driver->flags & GAME_NO_SOUND) == 0 && strcmp(driver->name, "minivadr"))
+	if ((driver->flags & GAME_IS_BIOS_ROOT) == 0 && config->sound[0].type == SOUND_DUMMY && (driver->flags & GAME_NO_SOUND) == 0 && strcmp(driver->name, "minivadr"))
 	{
 		mame_printf_error("%s: %s missing GAME_NO_SOUND flag\n", driver->source_file, driver->name);
 		error = TRUE;
@@ -428,7 +425,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 
 	/* find duplicate driver names */
 	crc = quark_string_crc(driver->name);
-	for (entry = first_hash_entry(name_table, crc); entry; entry = entry->next)
+	for (entry = quark_table_get_first(name_table, crc); entry; entry = entry->next)
 		if (entry->crc == crc && entry != &name_table->entry[drivnum])
 		{
 			const game_driver *match = drivers[entry - name_table->entry];
@@ -441,7 +438,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 
 	/* find duplicate descriptions */
 	crc = quark_string_crc(driver->description);
-	for (entry = first_hash_entry(description_table, crc); entry; entry = entry->next)
+	for (entry = quark_table_get_first(description_table, crc); entry; entry = entry->next)
 		if (entry->crc == crc && entry != &description_table->entry[drivnum])
 		{
 			const game_driver *match = drivers[entry - description_table->entry];
@@ -457,7 +454,7 @@ static int validate_driver(int drivnum, const machine_config *drv)
 	if (driver->rom && (driver->flags & GAME_IS_BIOS_ROOT) == 0)
 	{
 		crc = (FPTR)driver->rom;
-		for (entry = first_hash_entry(roms_table, crc); entry; entry = entry->next)
+		for (entry = quark_table_get_first(roms_table, crc); entry; entry = entry->next)
 			if (entry->crc == crc && entry != &roms_table->entry[drivnum])
 			{
 				const game_driver *match = drivers[entry - roms_table->entry];
@@ -474,14 +471,11 @@ static int validate_driver(int drivnum, const machine_config *drv)
 }
 
 
+/*-------------------------------------------------
+    validate_roms - validate ROM definitions
+-------------------------------------------------*/
 
-/*************************************
- *
- *  Validate ROM definitions
- *
- *************************************/
-
-static int validate_roms(int drivnum, const machine_config *drv, UINT32 *region_length)
+static int validate_roms(int drivnum, const machine_config *config, UINT32 *region_length)
 {
 	const game_driver *driver = drivers[drivnum];
 	const rom_entry *romp;
@@ -605,14 +599,11 @@ static int validate_roms(int drivnum, const machine_config *drv, UINT32 *region_
 }
 
 
+/*-------------------------------------------------
+    validate_cpu - validate CPUs and memory maps
+-------------------------------------------------*/
 
-/*************************************
- *
- *  Validate CPUs and memory maps
- *
- *************************************/
-
-static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *region_length)
+static int validate_cpu(int drivnum, const machine_config *config, const UINT32 *region_length)
 {
 	const game_driver *driver = drivers[drivnum];
 	int error = FALSE;
@@ -622,7 +613,7 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
 	{
 		extern void dummy_get_info(UINT32 state, cpuinfo *info);
-		const cpu_config *cpu = &drv->cpu[cpunum];
+		const cpu_config *cpu = &config->cpu[cpunum];
 		int spacenum;
 
 		/* skip empty entries */
@@ -653,121 +644,144 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 		{
 #define SPACE_SHIFT(a)		((addr_shift < 0) ? ((a) << -addr_shift) : ((a) >> addr_shift))
 #define SPACE_SHIFT_END(a)	((addr_shift < 0) ? (((a) << -addr_shift) | ((1 << -addr_shift) - 1)) : ((a) >> addr_shift))
-			static const char *const spacename[] = { "program", "data", "I/O" };
 			int databus_width = cputype_databus_width(cpu->type, spacenum);
 			int addr_shift = cputype_addrbus_shift(cpu->type, spacenum);
 			int alignunit = databus_width/8;
-			address_map addrmap[MAX_ADDRESS_MAP_SIZE*2];
+			address_map_entry *entry;
 			address_map *map;
-			UINT32 flags;
 
 			/* check to see that the same map is not used twice */
-			if (cpu->construct_map[spacenum][0] && cpu->construct_map[spacenum][0] == cpu->construct_map[spacenum][1])
+			if (cpu->address_map[spacenum][0] != NULL && cpu->address_map[spacenum][0] == cpu->address_map[spacenum][1])
 			{
 				mame_printf_error("%s: %s uses identical memory maps for CPU #%d spacenum %d\n", driver->source_file, driver->name, cpunum, spacenum);
 				error = TRUE;
 			}
 
-			/* reset the address map, resetting the base address to a non-NULL value */
-			/* because the AM_REGION macro will query non-existant memory regions and */
-			/* product valid NULL results */
-			memset(addrmap, 0, sizeof(addrmap));
-
 			/* construct the maps */
-			map = addrmap;
-			construct_address_map(map, drv, cpunum, spacenum);
+			map = address_map_alloc(config, cpunum, spacenum);
 
 			/* if this is an empty map, just skip it */
-			if (IS_AMENTRY_END(map))
-				continue;
-
-			/* make sure we start with a proper entry */
-			if (!IS_AMENTRY_EXTENDED(map))
+			if (map->entrylist == NULL)
 			{
-				mame_printf_error("%s: %s wrong MEMORY_READ_START for %s space\n", driver->source_file, driver->name, spacename[spacenum]);
+				address_map_free(map);
+				continue;
+			}
+
+			/* validate the global map parameters */
+			if (map->spacenum != spacenum)
+			{
+				mame_printf_error("%s: %s CPU #%d space %d has address space %d handlers!", driver->source_file, driver->name, cpunum, spacenum, map->spacenum);
+				error = TRUE;
+			}
+			if (map->databits != databus_width)
+			{
+				mame_printf_error("%s: %s cpu #%d uses wrong memory handlers for %s space! (width = %d, memory = %08x)\n", driver->source_file, driver->name, cpunum, address_space_names[spacenum], databus_width, map->databits);
 				error = TRUE;
 			}
 
 			/* loop over entries and look for errors */
-			for ( ; !IS_AMENTRY_END(map); map++)
-				if (!IS_AMENTRY_EXTENDED(map))
+			for (entry = map->entrylist; entry != NULL; entry = entry->next)
+			{
+				UINT32 bytestart = SPACE_SHIFT(entry->addrstart);
+				UINT32 byteend = SPACE_SHIFT_END(entry->addrend);
+
+				/* look for inverted start/end pairs */
+				if (byteend < bytestart)
 				{
-					int ismatchmask = ((map->flags & AM_FLAGS_MATCH_MASK) != 0);
-					UINT32 start = SPACE_SHIFT(map->start);
-					UINT32 end = ismatchmask ? SPACE_SHIFT(map->end) : SPACE_SHIFT_END(map->end);
+					mame_printf_error("%s: %s wrong %s memory read handler start = %08x > end = %08x\n", driver->source_file, driver->name, address_space_names[spacenum], entry->addrstart, entry->addrend);
+					error = TRUE;
+				}
 
+				/* look for misaligned entries */
+				if ((bytestart & (alignunit - 1)) != 0 || (byteend & (alignunit - 1)) != (alignunit - 1))
+				{
+					mame_printf_error("%s: %s wrong %s memory read handler start = %08x, end = %08x ALIGN = %d\n", driver->source_file, driver->name, address_space_names[spacenum], entry->addrstart, entry->addrend, alignunit);
+					error = TRUE;
+				}
+
+				/* if this is a program space, auto-assign implicit ROM entries */
+				if ((FPTR)entry->read.generic == STATIC_ROM && !entry->region)
+				{
+					entry->region = REGION_CPU1 + cpunum;
+					entry->region_offs = entry->addrstart;
+				}
+
+				/* if this entry references a memory region, validate it */
+				if (entry->region && entry->share == 0)
+				{
+					offs_t length = region_length[entry->region];
+
+					if (length == 0)
 					{
-						/* look for inverted start/end pairs */
-						if (end < start)
-						{
-							mame_printf_error("%s: %s wrong %s memory read handler start = %08x > end = %08x\n", driver->source_file, driver->name, spacename[spacenum], map->start, map->end);
-							error = TRUE;
-						}
-
-						/* look for misaligned entries */
-						if ((start & (alignunit-1)) != 0 || (end & (alignunit-1)) != (alignunit-1))
-						{
-							mame_printf_error("%s: %s wrong %s memory read handler start = %08x, end = %08x ALIGN = %d\n", driver->source_file, driver->name, spacename[spacenum], map->start, map->end, alignunit);
-							error = TRUE;
-						}
-
-						/* if this is a program space, auto-assign implicit ROM entries */
-						if ((FPTR)map->read.handler == STATIC_ROM && !map->region)
-						{
-							map->region = REGION_CPU1 + cpunum;
-							map->region_offs = map->start;
-						}
-
-						/* if this entry references a memory region, validate it */
-						if (map->region && map->share == 0)
-						{
-							offs_t length = region_length[map->region];
-
-							if (length == 0)
-							{
-								mame_printf_error("%s: %s CPU %d space %d memory map entry %X-%X references non-existant region %d\n", driver->source_file, driver->name, cpunum, spacenum, map->start, map->end, map->region);
-								error = TRUE;
-							}
-							else if (map->region_offs + (end - start + 1) > length)
-							{
-								mame_printf_error("%s: %s CPU %d space %d memory map entry %X-%X extends beyond region %d size (%X)\n", driver->source_file, driver->name, cpunum, spacenum, map->start, map->end, map->region, length);
-								error = TRUE;
-							}
-						}
-
-						/* If this is a match/mask, make sure the match bits are present in the mask */
-						if (ismatchmask && (start & end) != start)
-						{
-							mame_printf_error("%s: %s CPU %d space %d memory map entry match %X contains bits not in mask %X for region %d\n", driver->source_file, driver->name, cpunum, spacenum, map->start, map->end, map->region);
-							error = TRUE;
-						}
+						mame_printf_error("%s: %s CPU %d space %d memory map entry %X-%X references non-existant region %d\n", driver->source_file, driver->name, cpunum, spacenum, entry->addrstart, entry->addrend, entry->region);
+						error = TRUE;
+					}
+					else if (entry->region_offs + (byteend - bytestart + 1) > length)
+					{
+						mame_printf_error("%s: %s CPU %d space %d memory map entry %X-%X extends beyond region %d size (%X)\n", driver->source_file, driver->name, cpunum, spacenum, entry->addrstart, entry->addrend, entry->region, length);
+						error = TRUE;
 					}
 				}
-				else
-				{
-					flags = AM_EXTENDED_FLAGS(map);
-					if (flags & AMEF_SPECIFIES_SPACE)
-					{
-						int val = (flags & AMEF_SPACE_MASK) >> AMEF_SPACE_SHIFT;
-						if (val != spacenum)
-						{
-							mame_printf_error("%s: %s CPU #%d space %d has address space %d handlers!", driver->source_file, driver->name, cpunum, spacenum, val);
-							error = TRUE;
-						}
-					}
 
-					/* verify the type of memory handlers */
-					if (flags & AMEF_SPECIFIES_DBITS)
+				/* make sure all devices exist */
+				if (entry->read_devtype != NULL && device_list_find_by_tag(config->devicelist, entry->read_devtype, entry->read_devtag) == NULL)
+				{
+					mame_printf_error("%s: %s CPU %d space %d memory map entry references nonexistant device type %s, tag %s\n", driver->source_file, driver->name, cpunum, spacenum, devtype_name(entry->read_devtype), entry->read_devtag);
+					error = TRUE;
+				}
+				if (entry->write_devtype != NULL && device_list_find_by_tag(config->devicelist, entry->write_devtype, entry->write_devtag) == NULL)
+				{
+					mame_printf_error("%s: %s CPU %d space %d memory map entry references nonexistant device type %s, tag %s\n", driver->source_file, driver->name, cpunum, spacenum, devtype_name(entry->write_devtype), entry->write_devtag);
+					error = TRUE;
+				}
+			}
+
+			/* release the address map */
+			address_map_free(map);
+
+			/* validate the interrupts */
+			if (cpu->vblank_interrupt != NULL)
+			{
+				if (video_screen_count(config) == 0)
+				{
+					mame_printf_error("%s: %s cpu #%d has a VBLANK interrupt, but the driver is screenless !\n", driver->source_file, driver->name, cpunum);
+					error = TRUE;
+				}
+				else if (cpu->vblank_interrupts_per_frame == 0)
+				{
+					mame_printf_error("%s: %s cpu #%d has a VBLANK interrupt handler with 0 interrupts!\n", driver->source_file, driver->name, cpunum);
+					error = TRUE;
+				}
+				else if (cpu->vblank_interrupts_per_frame == 1)
+				{
+					if (cpu->vblank_interrupt_screen == NULL)
 					{
-						int val = (flags & AMEF_DBITS_MASK) >> AMEF_DBITS_SHIFT;
-						val = (val + 1) * 8;
-						if (val != databus_width)
-						{
-							mame_printf_error("%s: %s cpu #%d uses wrong memory handlers for %s space! (width = %d, memory = %08x)\n", driver->source_file, driver->name, cpunum, spacename[spacenum], databus_width, val);
-							error = TRUE;
-						}
+						mame_printf_error("%s: %s cpu #%d has a valid VBLANK interrupt handler with no screen tag supplied!\n", driver->source_file, driver->name, cpunum);
+						error = TRUE;
+					}
+					else if (device_list_index(config->devicelist, VIDEO_SCREEN, cpu->vblank_interrupt_screen) == -1)
+					{
+						mame_printf_error("%s: %s cpu #%d VBLANK interrupt with a non-existant screen tag (%s)!\n", driver->source_file, driver->name, cpunum, cpu->vblank_interrupt_screen);
+						error = TRUE;
 					}
 				}
+			}
+			else if (cpu->vblank_interrupts_per_frame != 0)
+			{
+				mame_printf_error("%s: %s cpu #%d has no VBLANK interrupt handler but a non-0 interrupt count is given!\n", driver->source_file, driver->name, cpunum);
+				error = TRUE;
+			}
+
+			if ((cpu->timed_interrupt != NULL) && (cpu->timed_interrupt_period == 0))
+			{
+				mame_printf_error("%s: %s cpu #%d has a timer interrupt handler with 0 period!\n", driver->source_file, driver->name, cpunum);
+				error = TRUE;
+			}
+			else if ((cpu->timed_interrupt == NULL) && (cpu->timed_interrupt_period != 0))
+			{
+				mame_printf_error("%s: %s cpu #%d has a no timer interrupt handler but has a non-0 period given!\n", driver->source_file, driver->name, cpunum);
+				error = TRUE;
+			}
 		}
 	}
 
@@ -775,65 +789,64 @@ static int validate_cpu(int drivnum, const machine_config *drv, const UINT32 *re
 }
 
 
+/*-------------------------------------------------
+    validate_display - validate display
+    configurations
+-------------------------------------------------*/
 
-/*************************************
- *
- *  Validate display
- *
- *************************************/
-
-static int validate_display(int drivnum, const machine_config *drv)
+static int validate_display(int drivnum, const machine_config *config)
 {
 	const game_driver *driver = drivers[drivnum];
+	const device_config *device;
 	int palette_modes = FALSE;
 	int error = FALSE;
-	int scrnum;
 
 	/* loop over screens */
-	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
-		if (drv->screen[scrnum].tag != NULL)
+	for (device = video_screen_first(config); device != NULL; device = video_screen_next(device))
+	{
+		const screen_config *scrconfig = device->inline_config;
+
+		/* sanity check dimensions */
+		if ((scrconfig->width <= 0) || (scrconfig->height <= 0))
 		{
-			/* sanity check dimensions */
-			if ((drv->screen[scrnum].defstate.width <= 0) || (drv->screen[scrnum].defstate.height <= 0))
+			mame_printf_error("%s: %s screen \"%s\" has invalid display dimensions\n", driver->source_file, driver->name, device->tag);
+			error = TRUE;
+		}
+
+		/* sanity check display area */
+		if (scrconfig->type != SCREEN_TYPE_VECTOR)
+		{
+			if ((scrconfig->visarea.max_x < scrconfig->visarea.min_x) ||
+				(scrconfig->visarea.max_y < scrconfig->visarea.min_y) ||
+				(scrconfig->visarea.max_x >= scrconfig->width) ||
+				(scrconfig->visarea.max_y >= scrconfig->height))
 			{
-				mame_printf_error("%s: %s screen %d has invalid display dimensions\n", driver->source_file, driver->name, scrnum);
+				mame_printf_error("%s: %s screen \"%s\" has an invalid display area\n", driver->source_file, driver->name, device->tag);
 				error = TRUE;
 			}
 
 			/* sanity check screen formats */
-			if (drv->screen[scrnum].defstate.format != BITMAP_FORMAT_INDEXED16 &&
-				drv->screen[scrnum].defstate.format != BITMAP_FORMAT_RGB15 &&
-				drv->screen[scrnum].defstate.format != BITMAP_FORMAT_RGB32)
+			if (scrconfig->format != BITMAP_FORMAT_INDEXED16 &&
+				scrconfig->format != BITMAP_FORMAT_RGB15 &&
+				scrconfig->format != BITMAP_FORMAT_RGB32)
 			{
-				mame_printf_error("%s: %s screen %d has unsupported format\n", driver->source_file, driver->name, scrnum);
+				mame_printf_error("%s: %s screen \"%s\" has unsupported format\n", driver->source_file, driver->name, device->tag);
 				error = TRUE;
 			}
-			if (drv->screen[scrnum].defstate.format == BITMAP_FORMAT_INDEXED16)
+			if (scrconfig->format == BITMAP_FORMAT_INDEXED16)
 				palette_modes = TRUE;
-
-			/* sanity check display area */
-			if (!(drv->video_attributes & VIDEO_TYPE_VECTOR))
-			{
-				if ((drv->screen[scrnum].defstate.visarea.max_x < drv->screen[scrnum].defstate.visarea.min_x)
-					|| (drv->screen[scrnum].defstate.visarea.max_y < drv->screen[scrnum].defstate.visarea.min_y)
-					|| (drv->screen[scrnum].defstate.visarea.max_x >= drv->screen[scrnum].defstate.width)
-					|| (drv->screen[scrnum].defstate.visarea.max_y >= drv->screen[scrnum].defstate.height))
-				{
-					mame_printf_error("%s: %s screen %d has an invalid display area\n", driver->source_file, driver->name, scrnum);
-					error = TRUE;
-				}
-			}
-
-			/* check for zero frame rate */
-			if (drv->screen[scrnum].defstate.refresh == 0)
-			{
-				mame_printf_error("%s: %s screen %d has a zero refresh rate\n", driver->source_file, driver->name, scrnum);
-				error = TRUE;
-			}
 		}
 
+		/* check for zero frame rate */
+		if (scrconfig->refresh == 0)
+		{
+			mame_printf_error("%s: %s screen \"%s\" has a zero refresh rate\n", driver->source_file, driver->name, device->tag);
+			error = TRUE;
+		}
+	}
+
 	/* check for empty palette */
-	if (palette_modes && drv->total_colors == 0)
+	if (palette_modes && config->total_colors == 0)
 	{
 		mame_printf_error("%s: %s has zero palette entries\n", driver->source_file, driver->name);
 		error = TRUE;
@@ -843,30 +856,28 @@ static int validate_display(int drivnum, const machine_config *drv)
 }
 
 
+/*-------------------------------------------------
+    validate_gfx - validate graphics decoding
+    configuration
+-------------------------------------------------*/
 
-/*************************************
- *
- *  Validate graphics
- *
- *************************************/
-
-static int validate_gfx(int drivnum, const machine_config *drv, const UINT32 *region_length)
+static int validate_gfx(int drivnum, const machine_config *config, const UINT32 *region_length)
 {
 	const game_driver *driver = drivers[drivnum];
 	int error = FALSE;
 	int gfxnum;
 
 	/* bail if no gfx */
-	if (!drv->gfxdecodeinfo)
+	if (!config->gfxdecodeinfo)
 		return FALSE;
 
 	/* iterate over graphics decoding entries */
-	for (gfxnum = 0; gfxnum < MAX_GFX_ELEMENTS && drv->gfxdecodeinfo[gfxnum].memory_region != -1; gfxnum++)
+	for (gfxnum = 0; gfxnum < MAX_GFX_ELEMENTS && config->gfxdecodeinfo[gfxnum].memory_region != -1; gfxnum++)
 	{
-		const gfx_decode_entry *gfx = &drv->gfxdecodeinfo[gfxnum];
+		const gfx_decode_entry *gfx = &config->gfxdecodeinfo[gfxnum];
 		int region = gfx->memory_region;
-		int xscale = (drv->gfxdecodeinfo[gfxnum].xscale == 0) ? 1 : drv->gfxdecodeinfo[gfxnum].xscale;
-		int yscale = (drv->gfxdecodeinfo[gfxnum].yscale == 0) ? 1 : drv->gfxdecodeinfo[gfxnum].yscale;
+		int xscale = (config->gfxdecodeinfo[gfxnum].xscale == 0) ? 1 : config->gfxdecodeinfo[gfxnum].xscale;
+		int yscale = (config->gfxdecodeinfo[gfxnum].yscale == 0) ? 1 : config->gfxdecodeinfo[gfxnum].yscale;
 		const gfx_layout *gl = gfx->gfxlayout;
 		int israw = (gl->planeoffset[0] == GFX_RAW);
 		int planes = gl->planes;
@@ -935,11 +946,10 @@ static int validate_gfx(int drivnum, const machine_config *drv, const UINT32 *re
 }
 
 
-/*************************************
- *
- *  Display valid coin order
- *
- *************************************/
+/*-------------------------------------------------
+    display_valid_coin_order - display the
+    correct coin order
+-------------------------------------------------*/
 
 static void display_valid_coin_order(int drivnum, const input_port_entry *memory)
 {
@@ -960,8 +970,8 @@ static void display_valid_coin_order(int drivnum, const input_port_entry *memory
 
 		/* hash the string and look it up in the string table */
 		crc = quark_string_crc(inp->name);
-		for (entry = first_hash_entry(defstr_table, crc); entry; entry = entry->next)
-			if (entry->crc == crc && !strcmp(inp->name, input_port_string_from_token(INPUT_PORT_UINT32(entry - defstr_table->entry))))
+		for (entry = quark_table_get_first(defstr_table, crc); entry; entry = entry->next)
+			if (entry->crc == crc && !strcmp(inp->name, input_port_string_from_index(entry - defstr_table->entry)))
 			{
 				strindex = entry - defstr_table->entry;
 				break;
@@ -992,22 +1002,22 @@ static void display_valid_coin_order(int drivnum, const input_port_entry *memory
 		for (j = 0; j < coin_len; j++)
 			/* if it's on our list, display it */
 			if (coin_list[j] == i)
-				mame_printf_error("%s\n", input_port_string_from_token(INPUT_PORT_UINT32(i)));
+				mame_printf_error("%s\n", input_port_string_from_index(i));
 }
 
 
-/*************************************
- *
- *  Validate input ports
- *
- *************************************/
+/*-------------------------------------------------
+    validate_inputs - validate input configuration
+-------------------------------------------------*/
 
-static int validate_inputs(int drivnum, const machine_config *drv, input_port_entry **memory)
+static int validate_inputs(int drivnum, const machine_config *config, input_port_entry **memory)
 {
-	const char *demo_sounds = input_port_string_from_token(INPUT_PORT_UINT32(INPUT_STRING_Demo_Sounds));
-	const char *flipscreen = input_port_string_from_token(INPUT_PORT_UINT32(INPUT_STRING_Flip_Screen));
+	const char *demo_sounds = input_port_string_from_index(INPUT_STRING_Demo_Sounds);
+	const char *flipscreen = input_port_string_from_index(INPUT_STRING_Flip_Screen);
 	const input_port_entry *inp, *last_dipname_entry = NULL;
 	const game_driver *driver = drivers[drivnum];
+	const char *tag[MAX_INPUT_PORTS] = { 0 };
+	int portnum = 0;
 	int empty_string_found = FALSE;
 	int last_strindex = 0;
 	quark_entry *entry;
@@ -1021,12 +1031,12 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 
 	/* skip if we already validated these ports */
 	crc = (FPTR)driver->ipt;
-	for (entry = first_hash_entry(inputs_table, crc); entry; entry = entry->next)
+	for (entry = quark_table_get_first(inputs_table, crc); entry; entry = entry->next)
 		if (entry->crc == crc && driver->ipt == drivers[entry - inputs_table->entry]->ipt)
 			return FALSE;
 
 	/* otherwise, add ourself to the list */
-	add_quark(inputs_table, drivnum, crc);
+	quark_add(inputs_table, drivnum, crc);
 
 	/* allocate the input ports */
 	*memory = input_port_allocate(driver->ipt, *memory);
@@ -1035,6 +1045,24 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 	for (inp = *memory; inp->type != IPT_END; inp++)
 	{
 		int strindex = 0;
+
+		/* check for duplicate tags */
+		if (inp->type == IPT_PORT)
+		{
+			if (inp->start.tag != NULL && portnum < ARRAY_LENGTH(tag))
+			{
+				int scanport;
+
+				for (scanport = 0; scanport < portnum - 1; scanport++)
+					if (strcmp(inp->start.tag, tag[scanport]) == 0)
+					{
+						mame_printf_error("%s: %s has a duplicate input port tag \"%s\"\n", driver->source_file, driver->name, inp->start.tag);
+						error = TRUE;
+					}
+				tag[portnum++] = inp->start.tag;
+			}
+			continue;
+		}
 
 		if (port_type_is_analog(inp->type))
 		{
@@ -1140,7 +1168,7 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 		}
 
 		/* clear the DIP switch tracking when we hit the first non-DIP entry */
-		if (last_dipname_entry && inp->type != IPT_DIPSWITCH_SETTING)
+		if (last_dipname_entry != NULL && inp->type != IPT_DIPSWITCH_SETTING)
 			last_dipname_entry = NULL;
 
 		/* look for invalid (0) types which should be mapped to IPT_OTHER */
@@ -1151,7 +1179,7 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 		}
 
 		/* if this entry doesn't have a name, we don't care about the rest of this stuff */
-		if (!inp->name || inp->name == IP_NAME_DEFAULT)
+		if (inp->name == NULL || inp->name == IP_NAME_DEFAULT)
 		{
 			/* not allowed for dipswitches */
 			if (inp->type == IPT_DIPSWITCH_NAME || inp->type == IPT_DIPSWITCH_SETTING)
@@ -1164,7 +1192,7 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 		}
 
 		/* check for empty string */
-		if (!inp->name[0] && !empty_string_found)
+		if (inp->name[0] == 0 && !empty_string_found)
 		{
 			mame_printf_error("%s: %s has an input with an empty string\n", driver->source_file, driver->name);
 			error = TRUE;
@@ -1172,7 +1200,7 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 		}
 
 		/* check for trailing spaces */
-		if (inp->name[0] && inp->name[strlen(inp->name) - 1] == ' ')
+		if (inp->name[0] != 0 && inp->name[strlen(inp->name) - 1] == ' ')
 		{
 			mame_printf_error("%s: %s input '%s' has trailing spaces\n", driver->source_file, driver->name, inp->name);
 			error = TRUE;
@@ -1187,15 +1215,15 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 
 		/* hash the string and look it up in the string table */
 		crc = quark_string_crc(inp->name);
-		for (entry = first_hash_entry(defstr_table, crc); entry; entry = entry->next)
-			if (entry->crc == crc && !strcmp(inp->name, input_port_string_from_token(INPUT_PORT_UINT32(entry - defstr_table->entry))))
+		for (entry = quark_table_get_first(defstr_table, crc); entry; entry = entry->next)
+			if (entry->crc == crc && !strcmp(inp->name, input_port_string_from_index(entry - defstr_table->entry)))
 			{
 				strindex = entry - defstr_table->entry;
 				break;
 			}
 
 		/* check for strings that should be DEF_STR */
-		if (strindex != 0 && inp->name != input_port_string_from_token(INPUT_PORT_UINT32(strindex)))
+		if (strindex != 0 && inp->name != input_port_string_from_index(strindex))
 		{
 			mame_printf_error("%s: %s must use DEF_STR( %s )\n", driver->source_file, driver->name, inp->name);
 			error = TRUE;
@@ -1276,67 +1304,66 @@ static int validate_inputs(int drivnum, const machine_config *drv, input_port_en
 }
 
 
+/*-------------------------------------------------
+    validate_sound - validate sound and
+    speaker configuration
+-------------------------------------------------*/
 
-/*************************************
- *
- *  Validate sound and speakers
- *
- *************************************/
-
-static int validate_sound(int drivnum, const machine_config *drv)
+static int validate_sound(int drivnum, const machine_config *config)
 {
 	const game_driver *driver = drivers[drivnum];
-	int speaknum, sndnum;
+	const device_config *curspeak, *checkspeak;
 	int error = FALSE;
+	int sndnum;
 
 	/* make sure the speaker layout makes sense */
-	for (speaknum = 0; speaknum < MAX_SPEAKER && drv->speaker[speaknum].tag; speaknum++)
+	for (curspeak = speaker_output_first(config); curspeak != NULL; curspeak = speaker_output_next(curspeak))
 	{
 		int check;
 
 		/* check for duplicate tags */
-		for (check = 0; check < MAX_SPEAKER && drv->speaker[check].tag; check++)
-			if (speaknum != check && drv->speaker[check].tag && !strcmp(drv->speaker[speaknum].tag, drv->speaker[check].tag))
+		for (checkspeak = speaker_output_first(config); checkspeak != NULL; checkspeak = speaker_output_next(checkspeak))
+			if (checkspeak != curspeak && strcmp(checkspeak->tag, curspeak->tag) == 0)
 			{
-				mame_printf_error("%s: %s has multiple speakers tagged as '%s'\n", driver->source_file, driver->name, drv->speaker[speaknum].tag);
+				mame_printf_error("%s: %s has multiple speakers tagged as '%s'\n", driver->source_file, driver->name, checkspeak->tag);
 				error = TRUE;
 			}
 
 		/* make sure there are no sound chips with the same tag */
-		for (check = 0; check < MAX_SOUND && drv->sound[check].type != SOUND_DUMMY; check++)
-			if (drv->sound[check].tag && !strcmp(drv->speaker[speaknum].tag, drv->sound[check].tag))
+		for (check = 0; check < MAX_SOUND && config->sound[check].type != SOUND_DUMMY; check++)
+			if (config->sound[check].tag && strcmp(curspeak->tag, config->sound[check].tag) == 0)
 			{
-				mame_printf_error("%s: %s has both a speaker and a sound chip tagged as '%s'\n", driver->source_file, driver->name, drv->speaker[speaknum].tag);
+				mame_printf_error("%s: %s has both a speaker and a sound chip tagged as '%s'\n", driver->source_file, driver->name, curspeak->tag);
 				error = TRUE;
 			}
 	}
 
 	/* make sure the sounds are wired to the speakers correctly */
-	for (sndnum = 0; sndnum < MAX_SOUND && drv->sound[sndnum].type != SOUND_DUMMY; sndnum++)
+	for (sndnum = 0; sndnum < MAX_SOUND && config->sound[sndnum].type != SOUND_DUMMY; sndnum++)
 	{
 		int routenum;
 
 		/* loop over all the routes */
-		for (routenum = 0; routenum < drv->sound[sndnum].routes; routenum++)
+		for (routenum = 0; routenum < config->sound[sndnum].routes; routenum++)
 		{
 			/* find a speaker with the requested tag */
-			for (speaknum = 0; speaknum < MAX_SPEAKER && drv->speaker[speaknum].tag; speaknum++)
-				if (!strcmp(drv->sound[sndnum].route[routenum].target, drv->speaker[speaknum].tag))
+			for (checkspeak = speaker_output_first(config); checkspeak != NULL; checkspeak = speaker_output_next(checkspeak))
+				if (strcmp(config->sound[sndnum].route[routenum].target, checkspeak->tag) == 0)
 					break;
 
 			/* if we didn't find one, look for another sound chip with the tag */
-			if (speaknum >= MAX_SPEAKER || !drv->speaker[speaknum].tag)
+			if (checkspeak == NULL)
 			{
 				int check;
 
-				for (check = 0; check < MAX_SOUND && drv->sound[check].type != SOUND_DUMMY; check++)
-					if (check != sndnum && drv->sound[check].tag && !strcmp(drv->sound[check].tag, drv->sound[sndnum].route[routenum].target))
+				for (check = 0; check < MAX_SOUND && config->sound[check].type != SOUND_DUMMY; check++)
+					if (check != sndnum && config->sound[check].tag && strcmp(config->sound[check].tag, config->sound[sndnum].route[routenum].target) == 0)
 						break;
 
 				/* if we didn't find one, it's an error */
-				if (check >= MAX_SOUND || drv->sound[check].type == SOUND_DUMMY)
+				if (check >= MAX_SOUND || config->sound[check].type == SOUND_DUMMY)
 				{
-					mame_printf_error("%s: %s attempting to route sound to non-existant speaker '%s'\n", driver->source_file, driver->name, drv->sound[sndnum].route[routenum].target);
+					mame_printf_error("%s: %s attempting to route sound to non-existant speaker '%s'\n", driver->source_file, driver->name, config->sound[sndnum].route[routenum].target);
 					error = TRUE;
 				}
 			}
@@ -1347,12 +1374,9 @@ static int validate_sound(int drivnum, const machine_config *drv)
 }
 
 
-
-/*************************************
- *
- *  Master validity checker
- *
- *************************************/
+/*-------------------------------------------------
+    mame_validitychecks - master validity checker
+-------------------------------------------------*/
 
 int mame_validitychecks(const game_driver *curdriver)
 {
@@ -1414,7 +1438,7 @@ int mame_validitychecks(const game_driver *curdriver)
 
 	/* prepare by pre-scanning all the drivers and adding their info to hash tables */
 	prep -= osd_profiling_ticks();
-	build_quarks();
+	quark_tables_create();
 	prep += osd_profiling_ticks();
 
 	/* iterate over all drivers */
@@ -1422,7 +1446,7 @@ int mame_validitychecks(const game_driver *curdriver)
 	{
 		const game_driver *driver = drivers[drivnum];
 		UINT32 region_length[REGION_MAX];
-		machine_config drv;
+		machine_config *config;
 
 /* ASG -- trying this for a while to see if submission failures increase */
 #if 1
@@ -1433,43 +1457,45 @@ int mame_validitychecks(const game_driver *curdriver)
 
 		/* expand the machine driver */
 		expansion -= osd_profiling_ticks();
-		expand_machine_driver(driver->drv, &drv);
+		config = machine_config_alloc(driver->machine_config);
 		expansion += osd_profiling_ticks();
 
 		/* validate the driver entry */
 		driver_checks -= osd_profiling_ticks();
-		error = validate_driver(drivnum, &drv) || error;
+		error = validate_driver(drivnum, config) || error;
 		driver_checks += osd_profiling_ticks();
 
 		/* validate the ROM information */
 		rom_checks -= osd_profiling_ticks();
-		error = validate_roms(drivnum, &drv, region_length) || error;
+		error = validate_roms(drivnum, config, region_length) || error;
 		rom_checks += osd_profiling_ticks();
 
 		/* validate the CPU information */
 		cpu_checks -= osd_profiling_ticks();
-		error = validate_cpu(drivnum, &drv, region_length) || error;
+		error = validate_cpu(drivnum, config, region_length) || error;
 		cpu_checks += osd_profiling_ticks();
 
 		/* validate the display */
 		display_checks -= osd_profiling_ticks();
-		error = validate_display(drivnum, &drv) || error;
+		error = validate_display(drivnum, config) || error;
 		display_checks += osd_profiling_ticks();
 
 		/* validate the graphics decoding */
 		gfx_checks -= osd_profiling_ticks();
-		error = validate_gfx(drivnum, &drv, region_length) || error;
+		error = validate_gfx(drivnum, config, region_length) || error;
 		gfx_checks += osd_profiling_ticks();
 
 		/* validate input ports */
 		input_checks -= osd_profiling_ticks();
-		error = validate_inputs(drivnum, &drv, &inputports) || error;
+		error = validate_inputs(drivnum, config, &inputports) || error;
 		input_checks += osd_profiling_ticks();
 
 		/* validate sounds and speakers */
 		sound_checks -= osd_profiling_ticks();
-		error = validate_sound(drivnum, &drv) || error;
+		error = validate_sound(drivnum, config) || error;
 		sound_checks += osd_profiling_ticks();
+
+		machine_config_free(config);
 	}
 
 #ifdef MESS

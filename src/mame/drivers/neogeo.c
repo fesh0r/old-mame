@@ -163,9 +163,9 @@ static void adjust_display_position_interrupt_timer(void)
 	if ((display_counter + 1) != 0)
 	{
 		attotime period = attotime_mul(ATTOTIME_IN_HZ(NEOGEO_PIXEL_CLOCK), display_counter + 1);
-		if (LOG_VIDEO_SYSTEM) logerror("adjust_display_position_interrupt_timer  current y: %02x  current x: %02x   target y: %x  target x: %x\n", video_screen_get_vpos(0), video_screen_get_hpos(0), (display_counter + 1) / NEOGEO_HTOTAL, (display_counter + 1) % NEOGEO_HTOTAL);
+		if (LOG_VIDEO_SYSTEM) logerror("adjust_display_position_interrupt_timer  current y: %02x  current x: %02x   target y: %x  target x: %x\n", video_screen_get_vpos(Machine->primary_screen), video_screen_get_hpos(Machine->primary_screen), (display_counter + 1) / NEOGEO_HTOTAL, (display_counter + 1) % NEOGEO_HTOTAL);
 
-		timer_adjust(display_position_interrupt_timer, period, 0, attotime_zero);
+		timer_adjust_oneshot(display_position_interrupt_timer, period, 0);
 	}
 }
 
@@ -227,10 +227,10 @@ void neogeo_acknowledge_interrupt(UINT16 data)
 
 static TIMER_CALLBACK( display_position_interrupt_callback )
 {
-	if (LOG_VIDEO_SYSTEM) logerror("--- Scanline @ %d,%d\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+	if (LOG_VIDEO_SYSTEM) logerror("--- Scanline @ %d,%d\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
 	if (display_position_interrupt_control & IRQ2CTRL_ENABLE)
 	{
-		if (LOG_VIDEO_SYSTEM) logerror("*** Scanline interrupt (IRQ2) ***  y: %02x  x: %02x\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+		if (LOG_VIDEO_SYSTEM) logerror("*** Scanline interrupt (IRQ2) ***  y: %02x  x: %02x\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
 		display_position_interrupt_pending = 1;
 
 		update_interrupts(machine);
@@ -253,13 +253,13 @@ static TIMER_CALLBACK( display_position_vblank_callback )
 	}
 
 	/* set timer for next screen */
-	timer_adjust(display_position_vblank_timer, video_screen_get_time_until_pos(0, NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0, attotime_zero);
+	timer_adjust_oneshot(display_position_vblank_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0);
 }
 
 
 static TIMER_CALLBACK( vblank_interrupt_callback )
 {
-	if (LOG_VIDEO_SYSTEM) logerror("+++ VBLANK @ %d,%d\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+	if (LOG_VIDEO_SYSTEM) logerror("+++ VBLANK @ %d,%d\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
 
 	/* add a timer tick to the pd4990a */
 	calendar_clock();
@@ -269,7 +269,7 @@ static TIMER_CALLBACK( vblank_interrupt_callback )
 	update_interrupts(machine);
 
 	/* set timer for next screen */
-	timer_adjust(vblank_interrupt_timer, video_screen_get_time_until_pos(0, NEOGEO_VBSTART, 0), 0, attotime_zero);
+	timer_adjust_oneshot(vblank_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, 0), 0);
 }
 
 
@@ -281,10 +281,10 @@ static void create_interrupt_timers(void)
 }
 
 
-static void start_interrupt_timers(void)
+static void start_interrupt_timers(running_machine *machine)
 {
-	timer_adjust(vblank_interrupt_timer, video_screen_get_time_until_pos(0, NEOGEO_VBSTART, 0), 0, attotime_zero);
-	timer_adjust(display_position_vblank_timer, video_screen_get_time_until_pos(0, NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0, attotime_zero);
+	timer_adjust_oneshot(vblank_interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, 0), 0);
+	timer_adjust_oneshot(display_position_vblank_timer, video_screen_get_time_until_pos(machine->primary_screen, NEOGEO_VBSTART, NEOGEO_VBLANK_RELOAD_HPOS), 0);
 }
 
 
@@ -368,7 +368,7 @@ static WRITE16_HANDLER( io_control_w )
 	case 0x00: select_controller(data & 0x00ff); break;
 	case 0x18: set_output_latch(data & 0x00ff); break;
 	case 0x20: set_output_data(data & 0x00ff); break;
-	case 0x28: pd4990a_control_16_w(0, data, mem_mask); break;
+	case 0x28: pd4990a_control_16_w(machine, 0, data, mem_mask); break;
 //  case 0x30: break; // coin counters
 //  case 0x31: break; // coin counters
 //  case 0x32: break; // coin lockout
@@ -444,7 +444,7 @@ static void calendar_clock(void)
 
 static CUSTOM_INPUT( get_calendar_status )
 {
-	return (pd4990a_databit_r(0) << 1) | pd4990a_testbit_r(0);
+	return (pd4990a_databit_r(machine, 0) << 1) | pd4990a_testbit_r(machine, 0);
 }
 
 
@@ -564,7 +564,7 @@ static WRITE16_HANDLER( audio_command_w )
 	/* accessing the LSB only is not mapped */
 	if (mem_mask != 0xff00)
 	{
-		soundlatch_w(0, data >> 8);
+		soundlatch_w(machine, 0, data >> 8);
 
 		audio_cpu_assert_nmi();
 
@@ -578,12 +578,12 @@ static WRITE16_HANDLER( audio_command_w )
 
 static READ8_HANDLER( audio_command_r )
 {
-	UINT8 ret = soundlatch_r(0);
+	UINT8 ret = soundlatch_r(machine, 0);
 
 	if (LOG_CPU_COMM) logerror(" AUD CPU PC   %04x: audio_command_r %02x\n", activecpu_get_pc(), ret);
 
 	/* this is a guess */
-	audio_cpu_clear_nmi_w(0, 0);
+	audio_cpu_clear_nmi_w(machine, 0, 0);
 
 	return ret;
 }
@@ -877,7 +877,7 @@ static WRITE16_HANDLER( watchdog_w )
 	/* only an LSB write resets the watchdog */
 	if (ACCESSING_LSB)
 	{
-		watchdog_reset16_w(offset, data, mem_mask);
+		watchdog_reset16_w(machine, offset, data, mem_mask);
 	}
 }
 
@@ -1008,11 +1008,11 @@ static MACHINE_RESET( neogeo )
 
 	/* reset system control registers */
 	for (offs = 0; offs < 8; offs++)
-		system_control_w(offs, 0, 0xff00);
+		system_control_w(machine, offs, 0, 0xff00);
 
 	neogeo_reset_rng();
 
-	start_interrupt_timers();
+	start_interrupt_timers(machine);
 
 	/* trigger the IRQ3 that was set by MACHINE_START */
 	update_interrupts(machine);
@@ -1048,7 +1048,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x401fff) AM_MIRROR(0x3fe000) AM_READWRITE(neogeo_paletteram_r, neogeo_paletteram_w)
 	AM_RANGE(0x800000, 0x800fff) AM_READWRITE(memcard_r, memcard_w)
 	AM_RANGE(0xc00000, 0xc1ffff) AM_MIRROR(0x0e0000) AM_ROMBANK(NEOGEO_BANK_BIOS)
-	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READWRITE(MRA16_RAM, save_ram_w) AM_BASE(&save_ram)
+	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READWRITE(SMH_RAM, save_ram_w) AM_BASE(&save_ram)
 	AM_RANGE(0xe00000, 0xffffff) AM_READ(neogeo_unmapped_r)
 ADDRESS_MAP_END
 
@@ -1085,10 +1085,10 @@ static ADDRESS_MAP_START( auido_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff00) AM_READWRITE(YM2610_status_port_0_B_r, YM2610_control_port_0_B_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff00) AM_WRITE(YM2610_data_port_0_B_w)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0xff00) /* write - NMI enable / acknowledge? (the data written doesn't matter) */
-	AM_SPACE(0x08, 0x0f) AM_READ(audio_cpu_bank_select_f000_f7ff_r)
-	AM_SPACE(0x09, 0x0f) AM_READ(audio_cpu_bank_select_e000_efff_r)
-	AM_SPACE(0x0a, 0x0f) AM_READ(audio_cpu_bank_select_c000_dfff_r)
-	AM_SPACE(0x0b, 0x0f) AM_READ(audio_cpu_bank_select_8000_bfff_r)
+	AM_RANGE(0x08, 0x08) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_f000_f7ff_r)
+	AM_RANGE(0x09, 0x09) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_e000_efff_r)
+	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_c000_dfff_r)
+	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0xfff0) AM_MASK(0xfff0) AM_READ(audio_cpu_bank_select_8000_bfff_r)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0xff00) AM_WRITE(audio_result_w)
 	AM_RANGE(0x18, 0x18) AM_MIRROR(0xff00) /* write - NMI disable? (the data written doesn't matter) */
 ADDRESS_MAP_END
@@ -1233,7 +1233,7 @@ static MACHINE_DRIVER_START( neogeo )
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 	MDRV_CPU_IO_MAP(auido_io_map,0)
 
-	MDRV_WATCHDOG_TIME_INIT(ATTOTIME_IN_USEC(128762))
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_USEC(128762))
 
 	MDRV_MACHINE_START(neogeo)
 	MDRV_MACHINE_RESET(neogeo)
@@ -1241,13 +1241,12 @@ static MACHINE_DRIVER_START( neogeo )
 	MDRV_MEMCARD_HANDLER(neogeo)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_START(neogeo)
 	MDRV_VIDEO_RESET(neogeo)
 	MDRV_VIDEO_UPDATE(neogeo)
 	MDRV_DEFAULT_LAYOUT(layout_neogeo)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(NEOGEO_PIXEL_CLOCK, NEOGEO_HTOTAL, NEOGEO_HBEND, NEOGEO_HBSTART, NEOGEO_VTOTAL, NEOGEO_VBEND, NEOGEO_VBSTART)
 

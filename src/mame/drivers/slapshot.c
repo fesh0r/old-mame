@@ -202,11 +202,11 @@ static READ16_HANDLER( slapshot_service_input_r )
 	switch (offset)
 	{
 		case 0x03:
-			return ((input_port_3_word_r(0,0) & 0xef) |
-				  (input_port_5_word_r(0,0) & 0x10))  << 8;	/* IN3 + service switch */
+			return ((input_port_3_word_r(machine,0,0) & 0xef) |
+				  (input_port_5_word_r(machine,0,0) & 0x10))  << 8;	/* IN3 + service switch */
 
 		default:
-			return TC0640FIO_r(offset) << 8;
+			return TC0640FIO_r(machine,offset) << 8;
 	}
 }
 
@@ -248,9 +248,9 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 static WRITE16_HANDLER( slapshot_msb_sound_w )
 {
 	if (offset == 0)
-		taitosound_port_w (0,(data >> 8) & 0xff);
+		taitosound_port_w (machine,0,(data >> 8) & 0xff);
 	else if (offset == 1)
-		taitosound_comm_w (0,(data >> 8) & 0xff);
+		taitosound_comm_w (machine,0,(data >> 8) & 0xff);
 
 #ifdef MAME_DEBUG
 	if (data & 0xff)
@@ -261,7 +261,7 @@ static WRITE16_HANDLER( slapshot_msb_sound_w )
 static READ16_HANDLER( slapshot_msb_sound_r )
 {
 	if (offset == 1)
-		return ((taitosound_comm_r (0) & 0xff) << 8);
+		return ((taitosound_comm_r (machine, 0) & 0xff) << 8);
 	else return 0;
 }
 
@@ -271,10 +271,10 @@ static READ16_HANDLER( slapshot_msb_sound_r )
 ***********************************************************/
 
 static ADDRESS_MAP_START( slapshot_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x500000, 0x50ffff) AM_READ(MRA16_RAM)	/* main RAM */
-	AM_RANGE(0x600000, 0x60ffff) AM_READ(MRA16_RAM)	/* sprite ram */
-	AM_RANGE(0x700000, 0x701fff) AM_READ(MRA16_RAM)	/* debugging */
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x500000, 0x50ffff) AM_READ(SMH_RAM)	/* main RAM */
+	AM_RANGE(0x600000, 0x60ffff) AM_READ(SMH_RAM)	/* sprite ram */
+	AM_RANGE(0x700000, 0x701fff) AM_READ(SMH_RAM)	/* debugging */
 	AM_RANGE(0x800000, 0x80ffff) AM_READ(TC0480SCP_word_r)	/* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_READ(TC0480SCP_ctrl_word_r)
 	AM_RANGE(0x900000, 0x907fff) AM_READ(color_ram_word_r)	/* 8bpg palette */
@@ -285,10 +285,10 @@ static ADDRESS_MAP_START( slapshot_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( slapshot_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x500000, 0x50ffff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x600000, 0x60ffff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x700000, 0x701fff) AM_WRITE(MWA16_RAM) AM_BASE(&taito_sprite_ext) AM_SIZE(&taito_spriteext_size)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x500000, 0x50ffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x600000, 0x60ffff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x700000, 0x701fff) AM_WRITE(SMH_RAM) AM_BASE(&taito_sprite_ext) AM_SIZE(&taito_spriteext_size)
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(TC0480SCP_word_w)	  /* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_WRITE(TC0480SCP_ctrl_word_w)
 	AM_RANGE(0x900000, 0x907fff) AM_WRITE(color_ram_word_w) AM_BASE(&color_ram)
@@ -299,10 +299,10 @@ static ADDRESS_MAP_START( slapshot_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( opwolf3_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x500000, 0x50ffff) AM_READ(MRA16_RAM)	/* main RAM */
-	AM_RANGE(0x600000, 0x60ffff) AM_READ(MRA16_RAM)	/* sprite ram */
-	AM_RANGE(0x700000, 0x701fff) AM_READ(MRA16_RAM)	/* debugging */
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x500000, 0x50ffff) AM_READ(SMH_RAM)	/* main RAM */
+	AM_RANGE(0x600000, 0x60ffff) AM_READ(SMH_RAM)	/* sprite ram */
+	AM_RANGE(0x700000, 0x701fff) AM_READ(SMH_RAM)	/* debugging */
 	AM_RANGE(0x800000, 0x80ffff) AM_READ(TC0480SCP_word_r)	/* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_READ(TC0480SCP_ctrl_word_r)
 	AM_RANGE(0x900000, 0x907fff) AM_READ(color_ram_word_r)	/* 8bpg palette */
@@ -314,10 +314,10 @@ static ADDRESS_MAP_START( opwolf3_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( opwolf3_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x500000, 0x50ffff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x600000, 0x60ffff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x700000, 0x701fff) AM_WRITE(MWA16_RAM) AM_BASE(&taito_sprite_ext) AM_SIZE(&taito_spriteext_size)
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x500000, 0x50ffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x600000, 0x60ffff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x700000, 0x701fff) AM_WRITE(SMH_RAM) AM_BASE(&taito_sprite_ext) AM_SIZE(&taito_spriteext_size)
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(TC0480SCP_word_w)	  /* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_WRITE(TC0480SCP_ctrl_word_w)
 	AM_RANGE(0x900000, 0x907fff) AM_WRITE(color_ram_word_w) AM_BASE(&color_ram)
@@ -331,29 +331,29 @@ ADDRESS_MAP_END
 /***************************************************************************/
 
 static ADDRESS_MAP_START( z80_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_BANK10)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK10)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0xe001, 0xe001) AM_READ(YM2610_read_port_0_r)
 	AM_RANGE(0xe002, 0xe002) AM_READ(YM2610_status_port_0_B_r)
-	AM_RANGE(0xe200, 0xe200) AM_READ(MRA8_NOP)
+	AM_RANGE(0xe200, 0xe200) AM_READ(SMH_NOP)
 	AM_RANGE(0xe201, 0xe201) AM_READ(taitosound_slave_comm_r)
-	AM_RANGE(0xea00, 0xea00) AM_READ(MRA8_NOP)
+	AM_RANGE(0xea00, 0xea00) AM_READ(SMH_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(YM2610_control_port_0_A_w)
 	AM_RANGE(0xe001, 0xe001) AM_WRITE(YM2610_data_port_0_A_w)
 	AM_RANGE(0xe002, 0xe002) AM_WRITE(YM2610_control_port_0_B_w)
 	AM_RANGE(0xe003, 0xe003) AM_WRITE(YM2610_data_port_0_B_w)
 	AM_RANGE(0xe200, 0xe200) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xe201, 0xe201) AM_WRITE(taitosound_slave_comm_w)
-	AM_RANGE(0xe400, 0xe403) AM_WRITE(MWA8_NOP) /* pan */
-	AM_RANGE(0xee00, 0xee00) AM_WRITE(MWA8_NOP) /* ? */
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(MWA8_NOP) /* ? */
+	AM_RANGE(0xe400, 0xe403) AM_WRITE(SMH_NOP) /* pan */
+	AM_RANGE(0xee00, 0xee00) AM_WRITE(SMH_NOP) /* ? */
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP) /* ? */
 	AM_RANGE(0xf200, 0xf200) AM_WRITE(sound_bankswitch_w)
 ADDRESS_MAP_END
 
@@ -550,24 +550,25 @@ static MACHINE_DRIVER_START( slapshot )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 14346000)	/* 28.6860 MHz / 2 ??? */
 	MDRV_CPU_PROGRAM_MAP(slapshot_readmem,slapshot_writemem)
-	MDRV_CPU_VBLANK_INT(slapshot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", slapshot_interrupt)
 
 	MDRV_CPU_ADD(Z80,32000000/8)
 	/* audio CPU */	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(z80_sound_readmem,z80_sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_START(slapshot)
 	MDRV_NVRAM_HANDLER(timekeeper_0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(slapshot)
 	MDRV_PALETTE_LENGTH(8192)
 
@@ -591,23 +592,24 @@ static MACHINE_DRIVER_START( opwolf3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 14346000)	/* 28.6860 MHz / 2 ??? */
 	MDRV_CPU_PROGRAM_MAP(opwolf3_readmem,opwolf3_writemem)
-	MDRV_CPU_VBLANK_INT(slapshot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", slapshot_interrupt)
 
 	MDRV_CPU_ADD(Z80,32000000/8)
 	/* audio CPU */	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(z80_sound_readmem,z80_sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_NVRAM_HANDLER(timekeeper_0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(slapshot)
 	MDRV_PALETTE_LENGTH(8192)
 

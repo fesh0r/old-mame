@@ -105,14 +105,14 @@ VIDEO_START(mainsnk)
 	old_bg_color = -1;
 	stuff_palette( machine, 0, 0, 16*8 );
 	stuff_palette( machine, 16*8*3, 16*8, 16*8 );
-	me_fg_tilemap = tilemap_create(get_me_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32, 32);
+	me_fg_tilemap = tilemap_create(get_me_fg_tile_info,tilemap_scan_cols,8,8,32, 32);
 	tilemap_set_transparent_pen(me_fg_tilemap,15);
-	me_bg_tilemap = tilemap_create(get_me_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32, 32);
+	me_bg_tilemap = tilemap_create(get_me_bg_tile_info,tilemap_scan_cols,8,8,32, 32);
 	tilemap_set_scrollx( me_fg_tilemap, 0, -mainsnk_offset );
 	tilemap_set_scrollx( me_bg_tilemap, 0, -mainsnk_offset );
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int scrollx, int scrolly )
 {
 	const gfx_element *gfx = machine->gfx[1];
 	const UINT8 *source, *finish;
@@ -142,7 +142,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void draw_status(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect,int dx,int off )
+static void draw_status(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect,int dx,int off )
 {
 	const UINT8 *base = mainsnk_fgram+off;
 	const gfx_element *gfx = machine->gfx[0];
@@ -181,10 +181,10 @@ VIDEO_UPDATE(mainsnk)
 	myclip.min_y = cliprect->min_y;
 	myclip.max_y = cliprect->max_y;
 	tilemap_draw(bitmap,&myclip,me_bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,&myclip, 0,0 );
+	draw_sprites(screen->machine,bitmap,&myclip, 0,0 );
 	tilemap_draw(bitmap,&myclip,me_fg_tilemap,0,0);
-	draw_status(machine,bitmap,cliprect,0,0x400 );
-	draw_status(machine,bitmap,cliprect,32*8,0x40 );
+	draw_status(screen->machine,bitmap,cliprect,0,0x400 );
+	draw_status(screen->machine,bitmap,cliprect,32*8,0x40 );
 	update_palette(1);
 	return 0;
 }
@@ -197,10 +197,10 @@ VIDEO_UPDATE(canvas)
 	myclip.min_y = cliprect->min_y;
 	myclip.max_y = cliprect->max_y;
 	tilemap_draw(bitmap,&myclip,me_bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,&myclip, 0,0 );
+	draw_sprites(screen->machine,bitmap,&myclip, 0,0 );
 //  tilemap_draw(bitmap,&myclip,me_fg_tilemap,0,0);
-//  draw_status(machine,bitmap,cliprect,0,0x400 );
-//  draw_status(machine,bitmap,cliprect,32*8,0x40 );
+//  draw_status(screen->machine,bitmap,cliprect,0,0x400 );
+//  draw_status(screen->machine,bitmap,cliprect,32*8,0x40 );
 	update_palette(1);
 	return 0;
 }

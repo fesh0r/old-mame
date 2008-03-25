@@ -506,7 +506,7 @@ static WRITE16_HANDLER( fdc_ctrl_w )
 
 // I/O Mappers
 
-static UINT8 hotrod_io_r(int port)
+static UINT8 hotrod_io_r(running_machine *machine, int port)
 {
 	switch(port) {
 	case 0:
@@ -529,7 +529,7 @@ static UINT8 hotrod_io_r(int port)
 	return 0x00;
 }
 
-static UINT8 dcclub_io_r(int port)
+static UINT8 dcclub_io_r(running_machine *machine, int port)
 {
 	switch(port) {
 	case 0: {
@@ -556,7 +556,7 @@ static UINT8 dcclub_io_r(int port)
 
 static int cur_input_line;
 
-static UINT8 mahmajn_io_r(int port)
+static UINT8 mahmajn_io_r(running_machine *machine, int port)
 {
 	switch(port) {
 	case 0:
@@ -579,7 +579,7 @@ static UINT8 mahmajn_io_r(int port)
 	return 0x00;
 }
 
-static UINT8 gground_io_r(int port)
+static UINT8 gground_io_r(running_machine *machine, int port)
 {
 	switch(port) {
 	case 0:
@@ -602,7 +602,7 @@ static UINT8 gground_io_r(int port)
 	return 0x00;
 }
 
-static void mahmajn_io_w(int port, UINT8 data)
+static void mahmajn_io_w(running_machine *machine, int port, UINT8 data)
 {
 	switch(port) {
 	case 3:
@@ -610,20 +610,20 @@ static void mahmajn_io_w(int port, UINT8 data)
 			cur_input_line = (cur_input_line + 1) & 7;
 		break;
 	case 7: // DAC
-		DAC_0_signed_data_w(0, data);
+		DAC_0_signed_data_w(machine, 0, data);
 		break;
 	default:
 		fprintf(stderr, "Port %d : %02x\n", port, data & 0xff);
 	}
 }
 
-static void hotrod_io_w(int port, UINT8 data)
+static void hotrod_io_w(running_machine *machine, int port, UINT8 data)
 {
 	switch(port) {
 	case 3: // Lamps
 		break;
 	case 7: // DAC
-		DAC_0_signed_data_w(0, data);
+		DAC_0_signed_data_w(machine,0, data);
 		break;
 	default:
 		fprintf(stderr, "Port %d : %02x\n", port, data & 0xff);
@@ -746,19 +746,19 @@ static WRITE16_HANDLER( curbank_w )
 
 static READ16_HANDLER( ym_status_r )
 {
-	return YM2151_status_port_0_r(0);
+	return YM2151_status_port_0_r(machine, 0);
 }
 
 static WRITE16_HANDLER( ym_register_w )
 {
 	if(ACCESSING_LSB)
-		YM2151_register_port_0_w(0, data);
+		YM2151_register_port_0_w(machine, 0, data);
 }
 
 static WRITE16_HANDLER( ym_data_w )
 {
 	if(ACCESSING_LSB)
-		YM2151_data_port_0_w(0, data);
+		YM2151_data_port_0_w(machine, 0, data);
 }
 
 
@@ -846,7 +846,7 @@ static void irq_timer_reset(void)
 	int freq = (irq_timerb << 12) | irq_timera;
 	freq &= 0x1fff;
 
-	timer_adjust(irq_timer, ATTOTIME_IN_HZ(freq), 0, ATTOTIME_IN_HZ(freq));
+	timer_adjust_periodic(irq_timer, ATTOTIME_IN_HZ(freq), 0, ATTOTIME_IN_HZ(freq));
 	logerror("New timer frequency: %0d [%02x %04x]\n", freq, irq_timerb, irq_timera);
 }
 
@@ -1021,7 +1021,7 @@ static ADDRESS_MAP_START( system24_cpu1_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x260000, 0x260001) AM_WRITENOP		// Vertical synchronization register
 	AM_RANGE(0x270000, 0x270001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x280000, 0x29ffff) AM_READWRITE(sys24_char_r, sys24_char_w)
-	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(MRA16_RAM, system24temp_sys16_paletteram1_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(SMH_RAM, system24temp_sys16_paletteram1_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x404000, 0x40401f) AM_READWRITE(sys24_mixer_r, sys24_mixer_w)
 	AM_RANGE(0x600000, 0x63ffff) AM_READWRITE(sys24_sprite_r, sys24_sprite_w)
 	AM_RANGE(0x800000, 0x80007f) AM_READWRITE(system24temp_sys16_io_r, system24temp_sys16_io_w)
@@ -1037,7 +1037,7 @@ static ADDRESS_MAP_START( system24_cpu1_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc80000, 0xcbffff) AM_ROMBANK(2)
 	AM_RANGE(0xcc0000, 0xcc0001) AM_READWRITE(curbank_r, curbank_w)
 	AM_RANGE(0xcc0006, 0xcc0007) AM_READWRITE(mlatch_r, mlatch_w)
-AM_RANGE(0xd00300, 0xd00301) AM_WRITE(MWA16_NOP)
+AM_RANGE(0xd00300, 0xd00301) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf00000, 0xf3ffff) AM_RAM AM_SHARE(3)
 	AM_RANGE(0xf40000, 0xf7ffff) AM_ROM AM_SHARE(1)
 	AM_RANGE(0xf80000, 0xffffff) AM_RAM AM_SHARE(2)
@@ -1060,7 +1060,7 @@ static ADDRESS_MAP_START( system24_cpu2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x260000, 0x260001) AM_WRITENOP		// Vertical synchronization register
 	AM_RANGE(0x270000, 0x270001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x280000, 0x29ffff) AM_READWRITE(sys24_char_r, sys24_char_w)
-	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(MRA16_RAM, system24temp_sys16_paletteram1_w)
+	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(SMH_RAM, system24temp_sys16_paletteram1_w)
 	AM_RANGE(0x404000, 0x40401f) AM_READWRITE(sys24_mixer_r, sys24_mixer_w)
 	AM_RANGE(0x600000, 0x63ffff) AM_READWRITE(sys24_sprite_r, sys24_sprite_w)
 	AM_RANGE(0x800000, 0x80007f) AM_READWRITE(system24temp_sys16_io_r, system24temp_sys16_io_w)
@@ -1076,7 +1076,7 @@ static ADDRESS_MAP_START( system24_cpu2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc80000, 0xcbffff) AM_ROMBANK(2)
 	AM_RANGE(0xcc0000, 0xcc0001) AM_READWRITE(curbank_r, curbank_w)
 	AM_RANGE(0xcc0006, 0xcc0007) AM_READWRITE(mlatch_r, mlatch_w)
-AM_RANGE(0xd00300, 0xd00301) AM_WRITE(MWA16_NOP)
+AM_RANGE(0xd00300, 0xd00301) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf00000, 0xf3ffff) AM_RAM AM_SHARE(3)
 	AM_RANGE(0xf40000, 0xf7ffff) AM_ROM AM_SHARE(1)
 	AM_RANGE(0xf80000, 0xffffff) AM_RAM AM_SHARE(2)
@@ -1908,23 +1908,26 @@ static const struct YM2151interface ym2151_interface =
 static MACHINE_DRIVER_START( system24 )
 	MDRV_CPU_ADD(M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(system24_cpu1_map, 0)
-	MDRV_CPU_VBLANK_INT(irq_vbl, 2)
+	MDRV_CPU_VBLANK_INT_HACK(irq_vbl, 2)
 
 	MDRV_CPU_ADD(M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(system24_cpu2_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
 	MDRV_INTERLEAVE(4)
 
 	MDRV_MACHINE_START(system24)
 	MDRV_MACHINE_RESET(system24)
 	MDRV_NVRAM_HANDLER(system24)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(8192*2)
 
 	MDRV_VIDEO_START(system24)

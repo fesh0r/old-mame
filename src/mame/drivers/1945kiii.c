@@ -76,10 +76,10 @@ static TILE_GET_INFO( get_k3_bg_tile_info )
 
 static VIDEO_START(k3)
 {
-	k3_bg_tilemap = tilemap_create(get_k3_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      16, 16, 32,64);
+	k3_bg_tilemap = tilemap_create(get_k3_bg_tile_info,tilemap_scan_rows,16, 16, 32,64);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[0];
 	UINT16 *source = k3_spriteram_1;
@@ -106,7 +106,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 static VIDEO_UPDATE(k3)
 {
 	tilemap_draw(bitmap,cliprect,k3_bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -129,37 +129,25 @@ static WRITE16_HANDLER( k3_soundbanks_w )
 
 
 
-static ADDRESS_MAP_START( k3_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x200000, 0x200fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x240000, 0x240fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x280000, 0x280fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x2c0000, 0x2c0fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x400000, 0x400001) AM_READ(input_port_0_word_r)
-	AM_RANGE(0x440000, 0x440001) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x480000, 0x480001) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x4c0000, 0x4c0001) AM_READ(OKIM6295_status_1_msb_r)
-	AM_RANGE(0x500000, 0x500001) AM_READ(OKIM6295_status_0_msb_r)
-	AM_RANGE(0x8c0000, 0x8cffff) AM_READ(MRA16_RAM)// not used?
-ADDRESS_MAP_END
+static ADDRESS_MAP_START( k3_map, ADDRESS_SPACE_PROGRAM, 16 )
+	AM_RANGE(0x0009CE, 0x0009CF) AM_WRITE(SMH_NOP) // bug in code? (clean up log)
+	AM_RANGE(0x0009D2, 0x0009D3) AM_WRITE(SMH_NOP) // bug in code? (clean up log)
 
-static ADDRESS_MAP_START( k3_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x0009CE, 0x0009CF) AM_WRITE(MWA16_NOP) // bug in code? (clean up log)
-	AM_RANGE(0x0009D2, 0x0009D3) AM_WRITE(MWA16_NOP) // bug in code? (clean up log)
-
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM) // ROM
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM) // Main Ram
-	AM_RANGE(0x200000, 0x200fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16) // palette
-	AM_RANGE(0x240000, 0x240fff) AM_WRITE(MWA16_RAM) AM_BASE(&k3_spriteram_1)
-	AM_RANGE(0x280000, 0x280fff) AM_WRITE(MWA16_RAM) AM_BASE(&k3_spriteram_2)
-	AM_RANGE(0x2c0000, 0x2c0fff) AM_WRITE(k3_bgram_w) AM_BASE(&k3_bgram)
+	AM_RANGE(0x000000, 0x0fffff) AM_ROM // ROM
+	AM_RANGE(0x100000, 0x10ffff) AM_RAM // Main Ram
+	AM_RANGE(0x200000, 0x200fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16) // palette
+	AM_RANGE(0x240000, 0x240fff) AM_RAM AM_BASE(&k3_spriteram_1)
+	AM_RANGE(0x280000, 0x280fff) AM_RAM AM_BASE(&k3_spriteram_2)
+	AM_RANGE(0x2c0000, 0x2c0fff) AM_READWRITE(SMH_RAM, k3_bgram_w) AM_BASE(&k3_bgram)
 	AM_RANGE(0x340000, 0x340001) AM_WRITE(k3_scrollx_w)
 	AM_RANGE(0x380000, 0x380001) AM_WRITE(k3_scrolly_w)
 	AM_RANGE(0x3c0000, 0x3c0001) AM_WRITE(k3_soundbanks_w)
-	AM_RANGE(0x4c0000, 0x4c0001) AM_WRITE(OKIM6295_data_1_msb_w)
-	AM_RANGE(0x500000, 0x500001) AM_WRITE(OKIM6295_data_0_msb_w)
-	AM_RANGE(0x8c0000, 0x8cffff) AM_WRITE(MWA16_RAM) // not used?
+	AM_RANGE(0x400000, 0x400001) AM_READ(input_port_0_word_r)
+	AM_RANGE(0x440000, 0x440001) AM_READ(input_port_1_word_r)
+	AM_RANGE(0x480000, 0x480001) AM_READ(input_port_2_word_r)
+	AM_RANGE(0x4c0000, 0x4c0001) AM_READWRITE(OKIM6295_status_1_msb_r, OKIM6295_data_1_msb_w)
+	AM_RANGE(0x500000, 0x500001) AM_READWRITE(OKIM6295_status_0_msb_r, OKIM6295_data_0_msb_w)
+	AM_RANGE(0x8c0000, 0x8cffff) AM_RAM // not used?
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( k3 )
@@ -216,24 +204,12 @@ static INPUT_PORTS_START( k3 )
 	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Allow_Continue ) )	PORT_DIPLOCATION("SW2:2")
 	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
 	PORT_DIPSETTING(      0x0200, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Unknown ) )			PORT_DIPLOCATION("SW2:3")
-	PORT_DIPSETTING(      0x0400, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0800, 0x0800, DEF_STR( Unknown ) )			PORT_DIPLOCATION("SW2:4")
-	PORT_DIPSETTING(      0x0800, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Unknown ) )			PORT_DIPLOCATION("SW2:5")
-	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Unknown ) )			PORT_DIPLOCATION("SW2:6")
-	PORT_DIPSETTING(      0x2000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Unknown ) )			PORT_DIPLOCATION("SW2:7")
-	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Unknown ) )			PORT_DIPLOCATION("SW2:8")
-	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0400, 0x0400, "SW2:3" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x0800, 0x0800, "SW2:4" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x1000, 0x1000, "SW2:5" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x2000, 0x2000, "SW2:6" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x4000, 0x4000, "SW2:7" )
+	PORT_DIPUNKNOWN_DIPLOC( 0x8000, 0x8000, "SW2:8" )
 INPUT_PORTS_END
 
 
@@ -257,15 +233,15 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( k3 )
 	MDRV_CPU_ADD(M68000, 16000000)
-	MDRV_CPU_PROGRAM_MAP(k3_readmem,k3_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_PROGRAM_MAP(k3_map,0)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_GFXDECODE(1945kiii)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)

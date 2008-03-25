@@ -228,19 +228,19 @@ VIDEO_START( segag80r )
 		/* and one vertically scrolling */
 		case G80_BACKGROUND_SPACEOD:
 			spaceod_bg_init_palette(machine);
-			spaceod_bg_htilemap = tilemap_create(spaceod_get_tile_info, spaceod_scan_rows, TILEMAP_TYPE_PEN, 8,8, 128,32);
-			spaceod_bg_vtilemap = tilemap_create(spaceod_get_tile_info, spaceod_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,128);
+			spaceod_bg_htilemap = tilemap_create(spaceod_get_tile_info, spaceod_scan_rows,  8,8, 128,32);
+			spaceod_bg_vtilemap = tilemap_create(spaceod_get_tile_info, spaceod_scan_rows,  8,8, 32,128);
 			break;
 
 		/* background tilemap is effectively 1 screen x n screens */
 		case G80_BACKGROUND_MONSTERB:
-			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,memory_region_length(REGION_GFX2) / 32);
+			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 32,memory_region_length(REGION_GFX2) / 32);
 			break;
 
 		/* background tilemap is effectively 4 screens x n screens */
 		case G80_BACKGROUND_PIGNEWT:
 		case G80_BACKGROUND_SINDBADM:
-			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 128,memory_region_length(REGION_GFX2) / 128);
+			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 128,memory_region_length(REGION_GFX2) / 128);
 			break;
 	}
 
@@ -351,7 +351,7 @@ WRITE8_HANDLER( segag80r_video_port_w )
 READ8_HANDLER( spaceod_back_port_r )
 {
 	/* force an update to get the current detection value */
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 	return 0xfe | spaceod_bg_detect;
 }
 
@@ -404,7 +404,7 @@ WRITE8_HANDLER( spaceod_back_port_w )
 
 		/* port 3: clears the background detection flag */
 		case 3:
-			video_screen_update_partial(0, video_screen_get_vpos(0));
+			video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 			spaceod_bg_detect = 0;
 			break;
 
@@ -450,7 +450,7 @@ WRITE8_HANDLER( monsterb_videoram_w )
 	}
 
 	/* handle everything else */
-	segag80r_videoram_w(offset, data);
+	segag80r_videoram_w(machine, offset, data);
 }
 
 
@@ -519,7 +519,7 @@ WRITE8_HANDLER( pignewt_videoram_w )
 	}
 
 	/* handle everything else */
-	segag80r_videoram_w(offset, data);
+	segag80r_videoram_w(machine, offset, data);
 }
 
 
@@ -602,7 +602,7 @@ WRITE8_HANDLER( sindbadm_videoram_w )
 	}
 
 	/* handle everything else */
-	segag80r_videoram_w(offset, data);
+	segag80r_videoram_w(machine, offset, data);
 }
 
 
@@ -645,7 +645,7 @@ WRITE8_HANDLER( sindbadm_back_port_w )
  *
  *************************************/
 
-static void draw_videoram(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, const UINT8 *transparent_pens)
+static void draw_videoram(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, const UINT8 *transparent_pens)
 {
 	int flipmask = video_flip ? 0x1f : 0x00;
 	int x, y;
@@ -680,9 +680,9 @@ static void draw_videoram(running_machine *machine, mame_bitmap *bitmap, const r
  *
  *************************************/
 
-static void draw_background_spaceod(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background_spaceod(bitmap_t *bitmap, const rectangle *cliprect)
 {
-	mame_bitmap *pixmap = tilemap_get_pixmap(!(spaceod_bg_control & 0x02) ? spaceod_bg_htilemap : spaceod_bg_vtilemap);
+	bitmap_t *pixmap = tilemap_get_pixmap(!(spaceod_bg_control & 0x02) ? spaceod_bg_htilemap : spaceod_bg_vtilemap);
 	int flipmask = (spaceod_bg_control & 0x01) ? 0xff : 0x00;
 	int xoffset = (spaceod_bg_control & 0x02) ? 0x10 : 0x00;
 	int xmask = pixmap->width - 1;
@@ -737,9 +737,9 @@ static void draw_background_spaceod(mame_bitmap *bitmap, const rectangle *clipre
  *
  *************************************/
 
-static void draw_background_page_scroll(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background_page_scroll(bitmap_t *bitmap, const rectangle *cliprect)
 {
-	mame_bitmap *pixmap = tilemap_get_pixmap(bg_tilemap);
+	bitmap_t *pixmap = tilemap_get_pixmap(bg_tilemap);
 	int flipmask = (video_control & 0x08) ? 0xff : 0x00;
 	int xmask = pixmap->width - 1;
 	int ymask = pixmap->height - 1;
@@ -777,9 +777,9 @@ static void draw_background_page_scroll(mame_bitmap *bitmap, const rectangle *cl
  *
  *************************************/
 
-static void draw_background_full_scroll(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background_full_scroll(bitmap_t *bitmap, const rectangle *cliprect)
 {
-	mame_bitmap *pixmap = tilemap_get_pixmap(bg_tilemap);
+	bitmap_t *pixmap = tilemap_get_pixmap(bg_tilemap);
 	int flipmask = (video_control & 0x08) ? 0x3ff : 0x000;
 	int xmask = pixmap->width - 1;
 	int ymask = pixmap->height - 1;
@@ -826,7 +826,7 @@ VIDEO_UPDATE( segag80r )
 		/* background: none */
 		case G80_BACKGROUND_NONE:
 			memset(transparent_pens, 0, 16);
-			draw_videoram(machine, bitmap, cliprect, transparent_pens);
+			draw_videoram(screen->machine, bitmap, cliprect, transparent_pens);
 			break;
 
 		/* foreground: visible except where black */
@@ -834,7 +834,7 @@ VIDEO_UPDATE( segag80r )
 		/* we draw the foreground first, then the background to do collision detection */
 		case G80_BACKGROUND_SPACEOD:
 			memset(transparent_pens, 0, 16);
-			draw_videoram(machine, bitmap, cliprect, transparent_pens);
+			draw_videoram(screen->machine, bitmap, cliprect, transparent_pens);
 			draw_background_spaceod(bitmap, cliprect);
 			break;
 
@@ -843,7 +843,7 @@ VIDEO_UPDATE( segag80r )
 		case G80_BACKGROUND_MONSTERB:
 			memset(transparent_pens, 1, 16);
 			draw_background_page_scroll(bitmap, cliprect);
-			draw_videoram(machine, bitmap, cliprect, transparent_pens);
+			draw_videoram(screen->machine, bitmap, cliprect, transparent_pens);
 			break;
 
 		/* foreground: visible except for pen 0 */
@@ -851,7 +851,7 @@ VIDEO_UPDATE( segag80r )
 		case G80_BACKGROUND_PIGNEWT:
 			memset(transparent_pens, 1, 16);
 			draw_background_full_scroll(bitmap, cliprect);
-			draw_videoram(machine, bitmap, cliprect, transparent_pens);
+			draw_videoram(screen->machine, bitmap, cliprect, transparent_pens);
 			break;
 
 		/* foreground: visible except for pen 0 */
@@ -859,7 +859,7 @@ VIDEO_UPDATE( segag80r )
 		case G80_BACKGROUND_SINDBADM:
 			memset(transparent_pens, 1, 16);
 			draw_background_page_scroll(bitmap, cliprect);
-			draw_videoram(machine, bitmap, cliprect, transparent_pens);
+			draw_videoram(screen->machine, bitmap, cliprect, transparent_pens);
 			break;
 	}
 	return 0;

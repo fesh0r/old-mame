@@ -72,10 +72,9 @@ VIDEO_START( tunhunt )
     We keep track of dirty lines and cache the expanded bitmap.
     With max RLE expansion, bitmap size is 256x64.
     */
-	tmpbitmap = auto_bitmap_alloc( 256, 64, machine->screen[0].format );
+	tmpbitmap = auto_bitmap_alloc(256, 64, video_screen_get_format(machine->primary_screen));
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_cols, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_scrollx(fg_tilemap, 0, 64);
@@ -83,10 +82,19 @@ VIDEO_START( tunhunt )
 
 PALETTE_INIT( tunhunt )
 {
+	int i;
+
 	/* Tunnel Hunt uses a combination of color proms and palette RAM to specify a 16 color
      * palette.  Here, we manage only the mappings for alphanumeric characters and SHELL
      * graphics, which are unpacked ahead of time and drawn using MAME's drawgfx primitives.
      */
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x10);
+
+	/* motion objects/box */
+	for (i = 0; i < 0x10; i++)
+		colortable_entry_set_value(machine->colortable, i, i);
 
 	/* AlphaNumerics (1bpp)
      *  2 bits of hilite select from 4 different background colors
@@ -95,28 +103,26 @@ PALETTE_INIT( tunhunt )
      */
 
 	/* alpha hilite#0 */
-	colortable[0] = 0x0; /* background color#0 (transparent) */
-	colortable[1] = 0x4; /* foreground color */
+	colortable_entry_set_value(machine->colortable, 0x10, 0x0); /* background color#0 (transparent) */
+	colortable_entry_set_value(machine->colortable, 0x11, 0x4); /* foreground color */
 
 	/* alpha hilite#1 */
-	colortable[2] = 0x5; /* background color#1 */
-	colortable[3] = 0x4; /* foreground color */
+	colortable_entry_set_value(machine->colortable, 0x12, 0x5); /* background color#1 */
+	colortable_entry_set_value(machine->colortable, 0x13, 0x4); /* foreground color */
 
 	/* alpha hilite#2 */
-	colortable[4] = 0x6; /* background color#2 */
-	colortable[5] = 0x4; /* foreground color */
+	colortable_entry_set_value(machine->colortable, 0x14, 0x6); /* background color#2 */
+	colortable_entry_set_value(machine->colortable, 0x15, 0x4); /* foreground color */
 
 	/* alpha hilite#3 */
-	colortable[6] = 0xf; /* background color#3 */
-	colortable[7] = 0x4; /* foreground color */
+	colortable_entry_set_value(machine->colortable, 0x16, 0xf); /* background color#3 */
+	colortable_entry_set_value(machine->colortable, 0x17, 0x4); /* foreground color */
 
 	/* shell graphics; these are either 1bpp (2 banks) or 2bpp.  It isn't clear which.
      * In any event, the following pens are associated with the shell graphics:
      */
-	colortable[0x8] = 0;
-	colortable[0x9] = 4;//1;
-	colortable[0xa] = 2;
-	colortable[0xb] = 4;
+	colortable_entry_set_value(machine->colortable, 0x18, 0);
+	colortable_entry_set_value(machine->colortable, 0x19, 4);//1;
 }
 
 /*
@@ -132,7 +138,7 @@ Color Array Ram Assignments:
         8-E             Lines (as normal) background
         F               Hilight 3
 */
-static void update_palette(running_machine *machine)
+static void set_pens(colortable_t *colortable)
 {
 //  const UINT8 *color_prom = memory_region( REGION_PROMS );
 /*
@@ -186,11 +192,11 @@ static void update_palette(running_machine *machine)
 		green	= APPLY_SHADE(green,shade);
 		blue	= APPLY_SHADE(blue,shade);
 
-		palette_set_color( machine,i,MAKE_RGB(red,green,blue) );
+		colortable_palette_set_color( colortable,i,MAKE_RGB(red,green,blue) );
 	}
 }
 
-static void draw_motion_object(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_motion_object(bitmap_t *bitmap, const rectangle *cliprect)
 {
 /*
  *      VSTRLO  0x1202
@@ -223,10 +229,10 @@ static void draw_motion_object(running_machine *machine, mame_bitmap *bitmap, co
 			color = ((span_data>>6)&0x3)^0x3;
 			count = (span_data&0x1f)+1;
 			while( count-- && x < 256 )
-				*BITMAP_ADDR16(tmpbitmap, line, x++) = machine->pens[color];
+				*BITMAP_ADDR16(tmpbitmap, line, x++) = color;
 		}
 		while( x<256 )
-			*BITMAP_ADDR16(tmpbitmap, line, x++) = machine->pens[0];
+			*BITMAP_ADDR16(tmpbitmap, line, x++) = 0;
 	} /* next line */
 
 	switch( tunhunt_ram[VSTRLO] )
@@ -254,12 +260,12 @@ static void draw_motion_object(running_machine *machine, mame_bitmap *bitmap, co
 		scaley,/* incyy */
 		0, /* no wraparound */
 		cliprect,
-		TRANSPARENCY_PEN,machine->pens[0],
+		TRANSPARENCY_PEN,0,
 		0 /* priority */
 	);
 }
 
-static void draw_box(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_box(bitmap_t *bitmap, const rectangle *cliprect)
 {
 /*
     This is unnecessarily slow, but the box priorities aren't completely understood,
@@ -305,14 +311,14 @@ static void draw_box(running_machine *machine, mame_bitmap *bitmap, const rectan
 					}
 				}
 				if (x >= cliprect->min_x && x <= cliprect->max_x)
-					*BITMAP_ADDR16(bitmap, 0xff-y, x) = machine->pens[color];
+					*BITMAP_ADDR16(bitmap, 0xff-y, x) = color;
 			}
 	}
 }
 
 /* "shell" graphics are 16x16 pixel tiles used for player shots and targeting cursor */
 static void draw_shell(running_machine *machine,
-		mame_bitmap *bitmap,
+		bitmap_t *bitmap,
 		const rectangle *cliprect,
 		int picture_code,
 		int hposition,
@@ -365,13 +371,13 @@ static void draw_shell(running_machine *machine,
 
 VIDEO_UPDATE( tunhunt )
 {
-	update_palette(machine);
+	set_pens(screen->machine->colortable);
 
-	draw_box(machine, bitmap, cliprect);
+	draw_box(bitmap, cliprect);
 
-	draw_motion_object(machine, bitmap, cliprect);
+	draw_motion_object(bitmap, cliprect);
 
-	draw_shell(machine, bitmap, cliprect,
+	draw_shell(screen->machine, bitmap, cliprect,
 		tunhunt_ram[SHL0PC],	/* picture code */
 		tunhunt_ram[SHEL0H],	/* hposition */
 		tunhunt_ram[SHL0V],	/* vstart */
@@ -379,7 +385,7 @@ VIDEO_UPDATE( tunhunt )
 		tunhunt_ram[SHL0ST],	/* vstretch */
 		tunhunt_control&0x08 ); /* hstretch */
 
-	draw_shell(machine, bitmap, cliprect,
+	draw_shell(screen->machine, bitmap, cliprect,
 		tunhunt_ram[SHL1PC],	/* picture code */
 		tunhunt_ram[SHEL1H],	/* hposition */
 		tunhunt_ram[SHL1V],	/* vstart */

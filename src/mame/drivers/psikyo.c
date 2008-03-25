@@ -53,7 +53,7 @@ The Following Section of Code in Gunbird causes reads from the
 0028B6: 720FC041           moveq   #$f, D1
 
 This causes Gunbird to crash if the ROM Region Size
-allocated during loading is smaller than the MRA32_ROM
+allocated during loading is smaller than the SMH_ROM
 region as it trys to read beyond the allocated rom region
 
 This was pointed out by Bart Puype
@@ -311,8 +311,8 @@ static READ32_HANDLER( s1945_input_r )
 	switch(offset)
 	{
 		case 0x0:	return (readinputport(0) << 16) | psikyo_readcoinport(1);
-		case 0x1:	return (((readinputport(2) << 16) | readinputport(3)) & 0xffff000f) | s1945_mcu_r(offset-1, mem_mask);
-		case 0x2:	return s1945_mcu_r(offset-1, mem_mask);
+		case 0x1:	return (((readinputport(2) << 16) | readinputport(3)) & 0xffff000f) | s1945_mcu_r(machine, offset-1, mem_mask);
+		case 0x2:	return s1945_mcu_r(machine, offset-1, mem_mask);
 		default:	logerror("PC %06X - Read input %02X !\n", activecpu_get_pc(), offset*2);
 					return 0;
 	}
@@ -331,32 +331,32 @@ static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 {
 	paletteram16 = (UINT16 *)paletteram32;
 	if (ACCESSING_MSW32)
-		paletteram16_xRRRRRGGGGGBBBBB_word_w(offset*2, data >> 16, mem_mask >> 16);
+		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2, data >> 16, mem_mask >> 16);
 	if (ACCESSING_LSW32)
-		paletteram16_xRRRRRGGGGGBBBBB_word_w(offset*2+1, data, mem_mask);
+		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2+1, data, mem_mask);
 }
 
 static ADDRESS_MAP_START( psikyo_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA32_ROM			)	// ROM (not all used)
-	AM_RANGE(0x400000, 0x401fff) AM_READ(MRA32_RAM			)	// Sprites Data
-	AM_RANGE(0x600000, 0x601fff) AM_READ(MRA32_RAM			)	// Palette
-	AM_RANGE(0x800000, 0x801fff) AM_READ(MRA32_RAM			)	// Layer 0
-	AM_RANGE(0x802000, 0x803fff) AM_READ(MRA32_RAM			)	// Layer 1
-	AM_RANGE(0x804000, 0x807fff) AM_READ(MRA32_RAM			)	// RAM + Vregs
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM			)	// ROM (not all used)
+	AM_RANGE(0x400000, 0x401fff) AM_READ(SMH_RAM			)	// Sprites Data
+	AM_RANGE(0x600000, 0x601fff) AM_READ(SMH_RAM			)	// Palette
+	AM_RANGE(0x800000, 0x801fff) AM_READ(SMH_RAM			)	// Layer 0
+	AM_RANGE(0x802000, 0x803fff) AM_READ(SMH_RAM			)	// Layer 1
+	AM_RANGE(0x804000, 0x807fff) AM_READ(SMH_RAM			)	// RAM + Vregs
 //  AM_RANGE(0xc00000, 0xc0000b) AM_READ(psikyo_input_r )   Depends on board, see DRIVER_INIT
-	AM_RANGE(0xfe0000, 0xffffff) AM_READ(MRA32_RAM			)	// RAM
+	AM_RANGE(0xfe0000, 0xffffff) AM_READ(SMH_RAM			)	// RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( psikyo_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA32_ROM							)	// ROM (not all used)
-	AM_RANGE(0x400000, 0x401fff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)	// Sprites, buffered by two frames (list buffered + fb buffered)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM							)	// ROM (not all used)
+	AM_RANGE(0x400000, 0x401fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)	// Sprites, buffered by two frames (list buffered + fb buffered)
 	AM_RANGE(0x600000, 0x601fff) AM_WRITE(paletteram32_xRRRRRGGGGGBBBBB_dword_w) AM_BASE(&paletteram32	)	// Palette
 	AM_RANGE(0x800000, 0x801fff) AM_WRITE(psikyo_vram_0_w) AM_BASE(&psikyo_vram_0	)	// Layer 0
 	AM_RANGE(0x802000, 0x803fff) AM_WRITE(psikyo_vram_1_w) AM_BASE(&psikyo_vram_1	)	// Layer 1
-	AM_RANGE(0x804000, 0x807fff) AM_WRITE(MWA32_RAM) AM_BASE(&psikyo_vregs			)	// RAM + Vregs
+	AM_RANGE(0x804000, 0x807fff) AM_WRITE(SMH_RAM) AM_BASE(&psikyo_vregs			)	// RAM + Vregs
 //  AM_RANGE(0xc00004, 0xc0000b) AM_WRITE(s1945_mcu_w                       )   MCU on sh404, see DRIVER_INIT
 //  AM_RANGE(0xc00010, 0xc00013) AM_WRITE(psikyo_soundlatch_w               )   Depends on board, see DRIVER_INIT
-	AM_RANGE(0xfe0000, 0xffffff) AM_WRITE(MWA32_RAM							)	// RAM
+	AM_RANGE(0xfe0000, 0xffffff) AM_WRITE(SMH_RAM							)	// RAM
 ADDRESS_MAP_END
 
 
@@ -398,27 +398,27 @@ static WRITE8_HANDLER( sngkace_sound_bankswitch_w )
 }
 
 static ADDRESS_MAP_START( sngkace_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_READ(MRA8_ROM		)	// ROM
-	AM_RANGE(0x7800, 0x7fff) AM_READ(MRA8_RAM		)	// RAM
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK1		)	// Banked ROM
+	AM_RANGE(0x0000, 0x77ff) AM_READ(SMH_ROM		)	// ROM
+	AM_RANGE(0x7800, 0x7fff) AM_READ(SMH_RAM		)	// RAM
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1		)	// Banked ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sngkace_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_WRITE(MWA8_ROM		)	// ROM
-	AM_RANGE(0x7800, 0x7fff) AM_WRITE(MWA8_RAM		)	// RAM
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM		)	// Banked ROM
+	AM_RANGE(0x0000, 0x77ff) AM_WRITE(SMH_ROM		)	// ROM
+	AM_RANGE(0x7800, 0x7fff) AM_WRITE(SMH_RAM		)	// RAM
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM		)	// Banked ROM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sngkace_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(YM2610_status_port_0_A_r		)
 	AM_RANGE(0x02, 0x02) AM_READ(YM2610_status_port_0_B_r		)
 	AM_RANGE(0x08, 0x08) AM_READ(psikyo_soundlatch_r			)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sngkace_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2610_control_port_0_A_w		)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2610_data_port_0_A_w		)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM2610_control_port_0_B_w		)
@@ -444,27 +444,27 @@ static WRITE8_HANDLER( gunbird_sound_bankswitch_w )
 }
 
 static ADDRESS_MAP_START( gunbird_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM		)	// ROM
-	AM_RANGE(0x8000, 0x81ff) AM_READ(MRA8_RAM		)	// RAM
-	AM_RANGE(0x8200, 0xffff) AM_READ(MRA8_BANK1		)	// Banked ROM
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM		)	// ROM
+	AM_RANGE(0x8000, 0x81ff) AM_READ(SMH_RAM		)	// RAM
+	AM_RANGE(0x8200, 0xffff) AM_READ(SMH_BANK1		)	// Banked ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gunbird_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM		)	// ROM
-	AM_RANGE(0x8000, 0x81ff) AM_WRITE(MWA8_RAM		)	// RAM
-	AM_RANGE(0x8200, 0xffff) AM_WRITE(MWA8_ROM		)	// Banked ROM
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM		)	// ROM
+	AM_RANGE(0x8000, 0x81ff) AM_WRITE(SMH_RAM		)	// RAM
+	AM_RANGE(0x8200, 0xffff) AM_WRITE(SMH_ROM		)	// Banked ROM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( gunbird_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x04, 0x04) AM_READ(YM2610_status_port_0_A_r		)
 	AM_RANGE(0x06, 0x06) AM_READ(YM2610_status_port_0_B_r		)
 	AM_RANGE(0x08, 0x08) AM_READ(psikyo_soundlatch_r			)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gunbird_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(gunbird_sound_bankswitch_w	)
 	AM_RANGE(0x04, 0x04) AM_WRITE(YM2610_control_port_0_A_w		)
 	AM_RANGE(0x05, 0x05) AM_WRITE(YM2610_data_port_0_A_w		)
@@ -479,15 +479,15 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static ADDRESS_MAP_START( s1945_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x08, 0x08) AM_READ(YMF278B_status_port_0_r		)
 	AM_RANGE(0x10, 0x10) AM_READ(psikyo_soundlatch_r			)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( s1945_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(gunbird_sound_bankswitch_w	)
-	AM_RANGE(0x02, 0x03) AM_WRITE(MWA8_NOP						)
+	AM_RANGE(0x02, 0x03) AM_WRITE(SMH_NOP						)
 	AM_RANGE(0x08, 0x08) AM_WRITE(YMF278B_control_port_0_A_w	)
 	AM_RANGE(0x09, 0x09) AM_WRITE(YMF278B_data_port_0_A_w		)
 	AM_RANGE(0x0a, 0x0a) AM_WRITE(YMF278B_control_port_0_B_w	)
@@ -532,7 +532,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_SPECIAL  ) \
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW,  IPT_UNKNOWN  ) \
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW,  IPT_SERVICE1 ) \
-	PORT_BIT(0x0020, IP_ACTIVE_LOW,  IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) \
+	PORT_SERVICE_NO_TOGGLE( 0x0020, IP_ACTIVE_LOW ) \
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW,  IPT_TILT     ) \
 	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL  )	// From Sound CPU
 
@@ -1565,23 +1565,23 @@ static MACHINE_DRIVER_START( sngkace )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(psikyo_readmem,psikyo_writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */	/* ? */
 	MDRV_CPU_PROGRAM_MAP(sngkace_sound_readmem,sngkace_sound_writemem)
 	MDRV_CPU_IO_MAP(sngkace_sound_readport,sngkace_sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(59.3)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)	// we're using IPT_VBLANK
-
 	MDRV_MACHINE_RESET(psikyo)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59.3)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)	// we're using IPT_VBLANK
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 256-32-1)
+
 	MDRV_GFXDECODE(psikyo)
 	MDRV_PALETTE_LENGTH(0x1000)
 
@@ -1619,23 +1619,23 @@ static MACHINE_DRIVER_START( gunbird )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(psikyo_readmem,psikyo_writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* ! LZ8420M (Z80 core) ! */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(gunbird_sound_readmem,gunbird_sound_writemem)
 	MDRV_CPU_IO_MAP(gunbird_sound_readport,gunbird_sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(59.3)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)	// we're using IPT_VBLANK
-
 	MDRV_MACHINE_RESET(psikyo)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59.3)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)	// we're using IPT_VBLANK
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 256-32-1)
+
 	MDRV_GFXDECODE(psikyo)
 	MDRV_PALETTE_LENGTH(0x1000)
 
@@ -1681,7 +1681,7 @@ static MACHINE_DRIVER_START( s1945 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(psikyo_readmem,psikyo_writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* ! LZ8420M (Z80 core) ! */
 	/* audio CPU */
@@ -1690,16 +1690,16 @@ static MACHINE_DRIVER_START( s1945 )
 
 	/* MCU should go here */
 
-	MDRV_SCREEN_REFRESH_RATE(59.3)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)	// we're using IPT_VBLANK
-
 	MDRV_MACHINE_RESET(psikyo)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59.3)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)	// we're using IPT_VBLANK
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 256-32-1)
+
 	MDRV_GFXDECODE(psikyo)
 	MDRV_PALETTE_LENGTH(0x1000)
 

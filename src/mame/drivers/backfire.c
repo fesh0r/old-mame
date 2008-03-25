@@ -27,8 +27,8 @@ extern void decrypt156(void);
 static UINT32 *backfire_spriteram32_1;
 static UINT32 *backfire_spriteram32_2;
 static UINT32 *backfire_mainram;
-static mame_bitmap * backfire_left;
-static mame_bitmap * backfire_right;
+static bitmap_t *backfire_left;
+static bitmap_t *backfire_right;
 
 //UINT32 *backfire_180010, *backfire_188010;
 static UINT32 *backfire_left_priority, *backfire_right_priority;
@@ -90,11 +90,11 @@ static VIDEO_START(backfire)
 	backfire_right = auto_bitmap_alloc(80*8, 32*8, BITMAP_FORMAT_INDEXED16);
 }
 
-static void draw_sprites(running_machine *machine,mame_bitmap *bitmap,const rectangle *cliprect, UINT32 *backfire_spriteram32, int region)
+static void draw_sprites(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect, UINT32 *backfire_spriteram32, int region)
 {
 	int offs;
 
-	flip_screen = 1;
+	flip_screen_set_no_update(1);
 
 	for (offs = (0x1400/4)-4;offs >= 0;offs -= 4) // 0x1400 for charlien
 	{
@@ -104,7 +104,7 @@ static void draw_sprites(running_machine *machine,mame_bitmap *bitmap,const rect
 
 		y = backfire_spriteram32[offs]&0xffff;
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = backfire_spriteram32[offs+2]&0xffff;
 		colour = (x >>9) & 0x1f;
@@ -144,7 +144,7 @@ static void draw_sprites(running_machine *machine,mame_bitmap *bitmap,const rect
 			inc = 1;
 		}
 
-		if (flip_screen)
+		if (flip_screen_x_get())
 		{
 			y=240-y;
 			x=304-x;
@@ -172,56 +172,55 @@ static void draw_sprites(running_machine *machine,mame_bitmap *bitmap,const rect
 
 static VIDEO_UPDATE(backfire)
 {
+	const device_config *left_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
+
 	/* screen 1 uses pf1 as the forground and pf3 as the background */
 	/* screen 2 uses pf2 as the foreground and pf4 as the background */
 
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
-	if (screen==0)
+	if (screen == left_screen)
 	{
 
 		fillbitmap(priority_bitmap,0,NULL);
-		fillbitmap(bitmap,machine->pens[0x100],cliprect);
+		fillbitmap(bitmap,0x100,cliprect);
 
 		if (backfire_left_priority[0] == 0)
 		{
 			deco16_tilemap_3_draw(bitmap,cliprect,0,1);
 			deco16_tilemap_1_draw(bitmap,cliprect,0,2);
-			draw_sprites(machine,bitmap,cliprect,backfire_spriteram32_1,3);
+			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_1,3);
 		}
 		else if (backfire_left_priority[0] == 2)
 		{
 			deco16_tilemap_1_draw(bitmap,cliprect,0,2);
 			deco16_tilemap_3_draw(bitmap,cliprect,0,4);
-			draw_sprites(machine,bitmap,cliprect,backfire_spriteram32_1,3);
+			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_1,3);
 		}
 		else
-		{
 			popmessage( "unknown left priority %08x", backfire_left_priority[0] );
-		}
 	}
-	else if (screen==1)
+	else if (screen == right_screen)
 	{
 		fillbitmap(priority_bitmap,0,NULL);
-		fillbitmap(bitmap,machine->pens[0x500],cliprect);
+		fillbitmap(bitmap,0x500,cliprect);
 
 		if (backfire_right_priority[0] == 0)
 		{
 			deco16_tilemap_4_draw(bitmap,cliprect,0,1);
 			deco16_tilemap_2_draw(bitmap,cliprect,0,2);
-			draw_sprites(machine,bitmap,cliprect,backfire_spriteram32_2,4);
+			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_2,4);
 		}
 		else if (backfire_right_priority[0] == 2)
 		{
 			deco16_tilemap_2_draw(bitmap,cliprect,0,2);
 			deco16_tilemap_4_draw(bitmap,cliprect,0,4);
-			draw_sprites(machine,bitmap,cliprect,backfire_spriteram32_2,4);
+			draw_sprites(screen->machine,bitmap,cliprect,backfire_spriteram32_2,4);
 		}
 		else
-		{
 			popmessage( "unknown right priority %08x", backfire_right_priority[0] );
-		}
 	}
 	return 0;
 }
@@ -264,21 +263,21 @@ static WRITE32_HANDLER(backfire_eeprom_w)
 static WRITE32_HANDLER(wcvol95_nonbuffered_palette_w)
 {
 	COMBINE_DATA(&paletteram32[offset]);
-	palette_set_color_rgb(Machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
+	palette_set_color_rgb(machine,offset,pal5bit(paletteram32[offset] >> 0),pal5bit(paletteram32[offset] >> 5),pal5bit(paletteram32[offset] >> 10));
 }
 
 
 static READ32_HANDLER( deco156_snd_r )
 {
-	return YMZ280B_status_0_r(0);
+	return YMZ280B_status_0_r(machine, 0);
 }
 
 static WRITE32_HANDLER( deco156_snd_w )
 {
 	if (offset)
-		YMZ280B_data_0_w(0, data);
+		YMZ280B_data_0_w(machine, 0, data);
 	else
-		YMZ280B_register_0_w(0, data);
+		YMZ280B_register_0_w(machine, 0, data);
 }
 
 /* map 32-bit writes to 16-bit */
@@ -299,10 +298,10 @@ static READ32_HANDLER( backfire_pf1_data_r ) {	return deco16_pf1_data[offset]^0x
 static READ32_HANDLER( backfire_pf2_data_r ) {	return deco16_pf2_data[offset]^0xffff0000; }
 static READ32_HANDLER( backfire_pf3_data_r ) {	return deco16_pf3_data[offset]^0xffff0000; }
 static READ32_HANDLER( backfire_pf4_data_r ) {	return deco16_pf4_data[offset]^0xffff0000; }
-static WRITE32_HANDLER( backfire_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(offset,data,mem_mask); }
-static WRITE32_HANDLER( backfire_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(offset,data,mem_mask); }
-static WRITE32_HANDLER( backfire_pf3_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf3_data_w(offset,data,mem_mask); }
-static WRITE32_HANDLER( backfire_pf4_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf4_data_w(offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf1_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf1_data_w(machine,offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf2_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf2_data_w(machine,offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf3_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf3_data_w(machine,offset,data,mem_mask); }
+static WRITE32_HANDLER( backfire_pf4_data_w ) { data &=0x0000ffff; mem_mask &=0x0000ffff; deco16_pf4_data_w(machine,offset,data,mem_mask); }
 
 #ifdef UNUSED_FUNCTION
 READ32_HANDLER( backfire_unknown_wheel_r )
@@ -348,7 +347,7 @@ static ADDRESS_MAP_START( backfire_map, ADDRESS_SPACE_PROGRAM, 32 )
 
 	AM_RANGE(0x1a8000, 0x1a8003) AM_RAM AM_BASE(&backfire_left_priority)
 	AM_RANGE(0x1ac000, 0x1ac003) AM_RAM AM_BASE(&backfire_right_priority)
-//  AM_RANGE(0x1b0000, 0x1b0003) AM_WRITE(MWA32_NOP) // always 1b0000
+//  AM_RANGE(0x1b0000, 0x1b0003) AM_WRITE(SMH_NOP) // always 1b0000
 
 	/* when set to pentometer in test mode */
 //  AM_RANGE(0x1e4000, 0x1e4003) AM_READ(backfire_unknown_wheel_r)
@@ -384,7 +383,7 @@ static INPUT_PORTS_START( backfire )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0008, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNUSED ) /* 'soundmask' */
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -402,7 +401,7 @@ static INPUT_PORTS_START( backfire )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0008, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNUSED ) /* 'soundmask' */
 	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_VBLANK )
@@ -489,29 +488,26 @@ static MACHINE_DRIVER_START( backfire )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(ARM, 28000000/4) /* Unconfirmed */
 	MDRV_CPU_PROGRAM_MAP(backfire_map,0)
-	MDRV_CPU_VBLANK_INT(deco32_vbl_interrupt,1)
+	MDRV_CPU_VBLANK_INT("left", deco32_vbl_interrupt)	/* or is it "right?" */
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_PALETTE_LENGTH(2048)
 	MDRV_GFXDECODE(backfire)
 	MDRV_DEFAULT_LAYOUT(layout_dualhsxs)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
 

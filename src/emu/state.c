@@ -249,6 +249,8 @@ void state_save_register_memory(const char *module, UINT32 instance, const char 
 	if (!ss_registration_allowed)
 	{
 		logerror("Attempt to register save state entry after state registration is closed! module %s name %s\n",module,name);
+		if (Machine->gamedrv->flags & GAME_SUPPORTS_SAVE)
+			fatalerror("Attempt to register save state entry after state registration is closed! module %s name %s\n",module,name);
 		ss_illegal_regs++;
 		return;
 	}
@@ -291,7 +293,7 @@ void state_save_register_memory(const char *module, UINT32 instance, const char 
     bitmap to be saved
 -------------------------------------------------*/
 
-void state_save_register_bitmap(const char *module, UINT32 instance, const char *name, mame_bitmap *val)
+void state_save_register_bitmap(const char *module, UINT32 instance, const char *name, bitmap_t *val)
 {
 	state_save_register_memory(module, instance, name, val->base, val->bpp / 8, val->rowpixels * val->height);
 }
@@ -315,6 +317,8 @@ static void register_func_void(ss_func **root, void (*func)(void))
 	if (!ss_registration_allowed)
 	{
 		logerror("Attempt to register callback function after state registration is closed!");
+		if (Machine->gamedrv->flags & GAME_SUPPORTS_SAVE)
+			fatalerror("Attempt to register callback function after state registration is closed!");
 		ss_illegal_regs++;
 		return;
 	}
@@ -943,6 +947,53 @@ const char *state_save_get_indexed_item(int index, void **base, UINT32 *valsize,
 		}
 
 	return NULL;
+}
+
+
+/*-------------------------------------------------
+    state_save_combine_module_and_tag - creates
+    a name from a given module and tag that can
+    be used as the first agrument to the
+    state_save_register_item family of functions
+-------------------------------------------------*/
+
+void state_save_combine_module_and_tag(char *dest, const char *module, const char *tag)
+{
+	astring *module_lower;
+	astring *tag_lower;
+	astring *combined;
+
+	/* validate arguments */
+	assert(dest != NULL);
+	assert(module != NULL);
+	assert(tag != NULL);
+	assert(strlen(module) > 0);
+	assert(strlen(tag) > 0);
+
+	/* allocate objects */
+	module_lower = astring_alloc();
+	tag_lower = astring_alloc();
+	combined = astring_alloc();
+
+	/* convert both arguments to lower case for case insenstive comparisson */
+	astring_tolower(astring_cpyc(module_lower, module));
+	astring_tolower(astring_cpyc(tag_lower, tag));
+
+	/* if the tag contains the module name, just use the tag as the combined name */
+	if (astring_find(tag_lower, 0, module_lower) >= 0)
+		astring_cpyc(combined, tag);
+
+	/* otherwise combine the module and the tag */
+	else
+		astring_assemble_3(combined, module, ".", tag);
+
+	/* copy the result to the destination array */
+	strcpy(dest, astring_c(combined));
+
+	/* free the objects */
+	astring_free(module_lower);
+	astring_free(tag_lower);
+	astring_free(combined);
 }
 
 

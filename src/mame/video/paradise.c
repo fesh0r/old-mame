@@ -155,17 +155,12 @@ WRITE8_HANDLER( paradise_pixmap_w )
 
 VIDEO_START( paradise )
 {
-	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 8,8, 0x20,0x20 );
-
-	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 8,8, 0x20,0x20 );
-
-	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 8,8, 0x20,0x20 );
+	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows, 8,8, 0x20,0x20 );
+	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows, 8,8, 0x20,0x20 );
+	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows, 8,8, 0x20,0x20 );
 
 	/* pixmap */
-	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	tmpbitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	tilemap_set_transparent_pen(tilemap_0,0x0f);
 	tilemap_set_transparent_pen(tilemap_1,0xff);
@@ -185,7 +180,7 @@ WRITE8_HANDLER( paradise_priority_w )
 	paradise_priority = data;
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int i;
 	for (i = 0; i < spriteram_size ; i += paradise_sprite_inc)
@@ -198,7 +193,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		int flipx	=	0;	// ?
 		int flipy	=	0;
 
-		if (flip_screen)	{	x = 0xf0 - x;	flipx = !flipx;
+		if (flip_screen_get())	{	x = 0xf0 - x;	flipx = !flipx;
 								y = 0xf0 - y;	flipy = !flipy;	}
 
 		drawgfx(bitmap,machine->gfx[0],
@@ -249,29 +244,29 @@ if (input_code_pressed(KEYCODE_Z))
 }
 #endif
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	if (!(paradise_priority & 4))	/* Screen blanking */
 		return 0;
 
 	if (paradise_priority & 1)
-		if (layers_ctrl&16)	draw_sprites(machine,bitmap,cliprect);
+		if (layers_ctrl&16)	draw_sprites(screen->machine,bitmap,cliprect);
 
 	if (layers_ctrl&1)	tilemap_draw(bitmap,cliprect, tilemap_0, 0,0);
 	if (layers_ctrl&2)	tilemap_draw(bitmap,cliprect, tilemap_1, 0,0);
-	if (layers_ctrl&4)	copybitmap_trans(bitmap,tmpbitmap,flip_screen,flip_screen,0,0,cliprect, 0x80f);
+	if (layers_ctrl&4)	copybitmap_trans(bitmap,tmpbitmap,flip_screen_get(),flip_screen_get(),0,0,cliprect, 0x80f);
 
 	if (paradise_priority & 2)
 	{
 		if (!(paradise_priority & 1))
-			if (layers_ctrl&16)	draw_sprites(machine, bitmap,cliprect);
+			if (layers_ctrl&16)	draw_sprites(screen->machine, bitmap,cliprect);
 		if (layers_ctrl&8)	tilemap_draw(bitmap,cliprect, tilemap_2, 0,0);
 	}
 	else
 	{
 		if (layers_ctrl&8)	tilemap_draw(bitmap,cliprect, tilemap_2, 0,0);
 		if (!(paradise_priority & 1))
-			if (layers_ctrl&16)	draw_sprites(machine, bitmap,cliprect);
+			if (layers_ctrl&16)	draw_sprites(screen->machine, bitmap,cliprect);
 	}
 	return 0;
 }
@@ -279,20 +274,20 @@ if (input_code_pressed(KEYCODE_Z))
 /* no pix layer, no tilemap_0, different priority bits */
 VIDEO_UPDATE( torus )
 {
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	if (!(paradise_priority & 2))	/* Screen blanking */
 		return 0;
 
 	if (paradise_priority & 1)
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 
 	tilemap_draw(bitmap,cliprect, tilemap_1, 0,0);
 
 	if(paradise_priority & 4)
 	{
 		if (!(paradise_priority & 1))
-			draw_sprites(machine, bitmap,cliprect);
+			draw_sprites(screen->machine, bitmap,cliprect);
 
 		tilemap_draw(bitmap,cliprect, tilemap_2, 0,0);
 	}
@@ -301,7 +296,7 @@ VIDEO_UPDATE( torus )
 		tilemap_draw(bitmap,cliprect, tilemap_2, 0,0);
 
 		if (!(paradise_priority & 1))
-			draw_sprites(machine, bitmap,cliprect);
+			draw_sprites(screen->machine, bitmap,cliprect);
 	}
 	return 0;
 }
@@ -309,11 +304,11 @@ VIDEO_UPDATE( torus )
 /* I don't know how the priority bits work on this one */
 VIDEO_UPDATE( madball )
 {
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	tilemap_draw(bitmap,cliprect, tilemap_0, 0,0);
 	tilemap_draw(bitmap,cliprect, tilemap_1, 0,0);
 	tilemap_draw(bitmap,cliprect, tilemap_2, 0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }
 

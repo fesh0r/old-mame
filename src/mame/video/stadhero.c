@@ -10,7 +10,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 UINT16 *stadhero_pf1_data;
 static UINT16 *stadhero_pf2_data;
@@ -21,7 +20,7 @@ static int flipscreen;
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int pri_mask,int pri_val)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int pri_mask,int pri_val)
 {
 	int offs;
 
@@ -37,7 +36,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		if ((colour & pri_mask) != pri_val) continue;
 
 		flash=x&0x800;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		fx = y & 0x2000;
 		fy = y & 0x4000;
@@ -94,7 +93,7 @@ VIDEO_UPDATE( stadhero )
 	tilemap_set_scrolly( pf2_tilemap,0, stadhero_pf2_control_1[1] );
 
 	tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,0x00,0x00);
+	draw_sprites(screen->machine, bitmap,cliprect,0x00,0x00);
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	return 0;
 }
@@ -157,8 +156,8 @@ static TILE_GET_INFO( get_pf1_tile_info )
 
 VIDEO_START( stadhero )
 {
-	pf1_tilemap =     tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
-	pf2_tilemap =     tilemap_create(get_pf2_tile_info,stadhero_scan,TILEMAP_TYPE_PEN,     16,16,64,64);
+	pf1_tilemap =     tilemap_create(get_pf1_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	pf2_tilemap =     tilemap_create(get_pf2_tile_info,stadhero_scan,     16,16,64,64);
 
 	stadhero_pf2_data = auto_malloc(0x2000 * 2);
 

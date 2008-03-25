@@ -21,64 +21,58 @@ UINT8 *kncljoe_scrollregs;
 PALETTE_INIT( kncljoe )
 {
 	int i;
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
-	for (i = 0;i < 128;i++)
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x90);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x80; i++)
 	{
-		int bit0,bit1,bit2,bit3,r,g,b;
+		int r = pal4bit(color_prom[i + 0x000]);
+		int g = pal4bit(color_prom[i + 0x100]);
+		int b = pal4bit(color_prom[i + 0x200]);
 
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[0x100] >> 0) & 0x01;
-		bit1 = (color_prom[0x100] >> 1) & 0x01;
-		bit2 = (color_prom[0x100] >> 2) & 0x01;
-		bit3 = (color_prom[0x100] >> 3) & 0x01;
-		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[0x200] >> 0) & 0x01;
-		bit1 = (color_prom[0x200] >> 1) & 0x01;
-		bit2 = (color_prom[0x200] >> 2) & 0x01;
-		bit3 = (color_prom[0x200] >> 3) & 0x01;
-		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
-		color_prom++;
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 2*256 + 128;	/* bottom half is not used */
-
-	for (i = 0;i < 16;i++)
+	for (i = 0x80; i < 0x90; i++)
 	{
-		int bit0,bit1,bit2,r,g,b;
+		int bit0, bit1, bit2;
+		int r, g, b;
 
 		/* red component */
 		bit0 = 0;
-		bit1 = (*color_prom >> 6) & 0x01;
-		bit2 = (*color_prom >> 7) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x300] >> 6) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x300] >> 7) & 0x01;
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* green component */
-		bit0 = (*color_prom >> 3) & 0x01;
-		bit1 = (*color_prom >> 4) & 0x01;
-		bit2 = (*color_prom >> 5) & 0x01;
+		bit0 = (color_prom[(i - 0x80) + 0x300] >> 3) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x300] >> 4) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x300] >> 5) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* blue component */
-		bit0 = (*color_prom >> 0) & 0x01;
-		bit1 = (*color_prom >> 1) & 0x01;
-		bit2 = (*color_prom >> 2) & 0x01;
+		bit0 = (color_prom[(i - 0x80) + 0x300] >> 0) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x300] >> 1) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x300] >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+128,MAKE_RGB(r,g,b));
-		color_prom ++;
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 16;	/* bottom half is not used */
+	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x320;
+
+	/* chars */
+	for (i = 0; i < 0x80; i++)
+		colortable_entry_set_value(machine->colortable, i, i);
 
 	/* sprite lookup table */
-	for (i = 0;i < 128;i++)
+	for (i = 0x80; i < 0x100; i++)
 	{
-		COLOR(1,i) = 128 + (*(color_prom++) & 0x0f);
+		UINT8 ctabentry = (color_prom[i - 0x80] & 0x0f) | 0x80;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 }
 
@@ -112,7 +106,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( kncljoe )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_scroll_rows(bg_tilemap,4);
 
@@ -136,10 +130,7 @@ WRITE8_HANDLER( kncljoe_videoram_w )
 WRITE8_HANDLER( kncljoe_control_w )
 {
 	int i;
-
-	switch(offset)
-	{
-		/*
+	/*
             0x01    screen flip
             0x02    coin counter#1
             0x04    sprite bank
@@ -148,34 +139,25 @@ WRITE8_HANDLER( kncljoe_control_w )
 
             reset when IN0 - Coin 1 goes low (active)
             set after IN0 - Coin 1 goes high AND the credit has been added
-        */
-		case 0:
-			flipscreen = data & 0x01;
-			tilemap_set_flip(ALL_TILEMAPS,flipscreen ? TILEMAP_FLIPX : TILEMAP_FLIPY);
+   */
+	flipscreen = data & 0x01;
+	tilemap_set_flip(ALL_TILEMAPS,flipscreen ? TILEMAP_FLIPX : TILEMAP_FLIPY);
 
-			coin_counter_w(0,data & 0x02);
-			coin_counter_w(1,data & 0x20);
+	coin_counter_w(0,data & 0x02);
+	coin_counter_w(1,data & 0x20);
 
-			i = (data & 0x10) >> 4;
-			if (tile_bank != i)
-			{
-				tile_bank = i;
-				tilemap_mark_all_tiles_dirty(bg_tilemap);
-			}
+	i = (data & 0x10) >> 4;
+	if (tile_bank != i)
+	{
+		tile_bank = i;
+		tilemap_mark_all_tiles_dirty(bg_tilemap);
+	}
 
-			i = (data & 0x04) >> 2;
-			if (sprite_bank != i)
-			{
-				sprite_bank = i;
-				memset(memory_region(REGION_CPU1)+0xf100, 0, 0x180);
-			}
-		break;
-		case 1:
-			// ???
-		break;
-		case 2:
-			// ???
-		break;
+	i = (data & 0x04) >> 2;
+	if (sprite_bank != i)
+	{
+		sprite_bank = i;
+		memset(memory_region(REGION_CPU1)+0xf100, 0, 0x180);
 	}
 }
 
@@ -199,23 +181,24 @@ WRITE8_HANDLER( kncljoe_scroll_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	rectangle clip = *cliprect;
 	const gfx_element *gfx = machine->gfx[1 + sprite_bank];
 	int i, j;
 	static const int pribase[4]={0x0180, 0x0080, 0x0100, 0x0000};
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 	/* score covers sprites */
 	if (flipscreen)
 	{
-		if (clip.max_y > machine->screen[0].visarea.max_y - 64)
-			clip.max_y = machine->screen[0].visarea.max_y - 64;
+		if (clip.max_y > visarea->max_y - 64)
+			clip.max_y = visarea->max_y - 64;
 	}
 	else
 	{
-		if (clip.min_y < machine->screen[0].visarea.min_y + 64)
-			clip.min_y = machine->screen[0].visarea.min_y + 64;
+		if (clip.min_y < visarea->min_y + 64)
+			clip.min_y = visarea->min_y + 64;
 	}
 
 	for (i=0; i<4; i++)
@@ -255,6 +238,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( kncljoe )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

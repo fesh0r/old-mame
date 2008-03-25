@@ -86,7 +86,7 @@ static WRITE32_HANDLER( f3_control_w )
 	switch (offset)
 	{
 		case 0x00: /* Watchdog */
-			watchdog_reset_w(0,0);
+			watchdog_reset(machine);
 			return;
 		case 0x01: /* Coin counters & lockouts */
 			if (ACCESSING_MSB32) {
@@ -152,26 +152,26 @@ static WRITE32_HANDLER( f3_sound_bankswitch_w )
 /******************************************************************************/
 
 static ADDRESS_MAP_START( f3_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA32_ROM)
-  	AM_RANGE(0x400000, 0x41ffff) AM_MIRROR(0x20000) AM_READ(MRA32_RAM)
-	AM_RANGE(0x440000, 0x447fff) AM_READ(MRA32_RAM) /* Palette ram */
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
+  	AM_RANGE(0x400000, 0x41ffff) AM_MIRROR(0x20000) AM_READ(SMH_RAM)
+	AM_RANGE(0x440000, 0x447fff) AM_READ(SMH_RAM) /* Palette ram */
 	AM_RANGE(0x4a0000, 0x4a0017) AM_READ(f3_control_r)
-	AM_RANGE(0x600000, 0x60ffff) AM_READ(MRA32_RAM) /* Object data */
-	AM_RANGE(0x610000, 0x61bfff) AM_READ(MRA32_RAM) /* Playfield data */
-	AM_RANGE(0x61c000, 0x61dfff) AM_READ(MRA32_RAM) /* Text layer */
-	AM_RANGE(0x61e000, 0x61ffff) AM_READ(MRA32_RAM) /* Vram */
-	AM_RANGE(0x620000, 0x62ffff) AM_READ(MRA32_RAM) /* Line ram */
-	AM_RANGE(0x630000, 0x63ffff) AM_READ(MRA32_RAM) /* Pivot ram */
-	AM_RANGE(0xc00000, 0xc007ff) AM_READ(MRA32_RAM) /* Sound CPU shared ram */
+	AM_RANGE(0x600000, 0x60ffff) AM_READ(SMH_RAM) /* Object data */
+	AM_RANGE(0x610000, 0x61bfff) AM_READ(SMH_RAM) /* Playfield data */
+	AM_RANGE(0x61c000, 0x61dfff) AM_READ(SMH_RAM) /* Text layer */
+	AM_RANGE(0x61e000, 0x61ffff) AM_READ(SMH_RAM) /* Vram */
+	AM_RANGE(0x620000, 0x62ffff) AM_READ(SMH_RAM) /* Line ram */
+	AM_RANGE(0x630000, 0x63ffff) AM_READ(SMH_RAM) /* Pivot ram */
+	AM_RANGE(0xc00000, 0xc007ff) AM_READ(SMH_RAM) /* Sound CPU shared ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( f3_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA32_ROM)
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x300000, 0x30007f) AM_WRITE(f3_sound_bankswitch_w)
-	AM_RANGE(0x400000, 0x41ffff) AM_MIRROR(0x20000) AM_WRITE(MWA32_RAM) AM_BASE(&f3_ram)
+	AM_RANGE(0x400000, 0x41ffff) AM_MIRROR(0x20000) AM_WRITE(SMH_RAM) AM_BASE(&f3_ram)
 	AM_RANGE(0x440000, 0x447fff) AM_WRITE(f3_palette_24bit_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x4a0000, 0x4a001f) AM_WRITE(f3_control_w)
-	AM_RANGE(0x600000, 0x60ffff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x600000, 0x60ffff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x610000, 0x61bfff) AM_WRITE(f3_pf_data_w) AM_BASE(&f3_pf_data)
 	AM_RANGE(0x61c000, 0x61dfff) AM_WRITE(f3_videoram_w) AM_BASE(&videoram32)
 	AM_RANGE(0x61e000, 0x61ffff) AM_WRITE(f3_vram_w) AM_BASE(&f3_vram)
@@ -179,7 +179,7 @@ static ADDRESS_MAP_START( f3_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x630000, 0x63ffff) AM_WRITE(f3_pivot_w) AM_BASE(&f3_pivot_ram)
 	AM_RANGE(0x660000, 0x66000f) AM_WRITE(f3_control_0_w)
 	AM_RANGE(0x660010, 0x66001f) AM_WRITE(f3_control_1_w)
-	AM_RANGE(0xc00000, 0xc007ff) AM_WRITE(MWA32_RAM) AM_BASE(&f3_shared_ram)
+	AM_RANGE(0xc00000, 0xc007ff) AM_WRITE(SMH_RAM) AM_BASE(&f3_shared_ram)
 	AM_RANGE(0xc80000, 0xc80003) AM_WRITE(f3_sound_reset_0_w)
 	AM_RANGE(0xc80100, 0xc80103) AM_WRITE(f3_sound_reset_1_w)
 ADDRESS_MAP_END
@@ -219,7 +219,7 @@ static INPUT_PORTS_START( f3 )
 
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* Eprom data bit */
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED ) /* Another service mode */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -285,7 +285,7 @@ static INPUT_PORTS_START( kn )
 
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL ) /* Eprom data bit */
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED ) /* Another service mode */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -424,10 +424,13 @@ static NVRAM_HANDLER( taito_f3 )
 		};
 
 		// RecalH does not initialise it's eeprom on first boot, so we provide one.
+		// Same applies to gseeker.
 		EEPROM_init(&eeprom_interface_93C46);
 		if (file)
 			EEPROM_load(file);
 		else if (f3_game==RECALH)
+			EEPROM_set_data(recalh_eeprom,128);
+		else if (f3_game==GSEEKER)
 			EEPROM_set_data(recalh_eeprom,128);
 	}
 }
@@ -442,22 +445,22 @@ static MACHINE_DRIVER_START( f3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(f3_readmem,f3_writemem)
-	MDRV_CPU_VBLANK_INT(f3_interrupt2,1)
+	MDRV_CPU_VBLANK_INT("main", f3_interrupt2)
 
 	TAITO_F3_SOUND_SYSTEM_CPU(16000000)
-
-	MDRV_SCREEN_REFRESH_RATE(58.97)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(624) /* 58.97 Hz, 624us vblank time */)
 
 	MDRV_MACHINE_START(f3)
 	MDRV_MACHINE_RESET(f3)
 	MDRV_NVRAM_HANDLER(taito_f3)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58.97)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(624) /* 58.97 Hz, 624us vblank time */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(40*8+48*2, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(46, 40*8-1 + 46, 24, 24+232-1)
+
 	MDRV_GFXDECODE(taito_f3)
 	MDRV_PALETTE_LENGTH(8192)
 
@@ -476,16 +479,19 @@ MACHINE_DRIVER_END
 */
 static MACHINE_DRIVER_START( f3_224a )
 	MDRV_IMPORT_FROM(f3)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(46, 40*8-1 + 46, 31, 31+224-1)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( f3_224b )
 	MDRV_IMPORT_FROM(f3)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(46, 40*8-1 + 46, 32, 32+224-1)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( f3_224c )
 	MDRV_IMPORT_FROM(f3)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(46, 40*8-1 + 46, 24, 24+224-1)
 MACHINE_DRIVER_END
 

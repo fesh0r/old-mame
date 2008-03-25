@@ -283,7 +283,7 @@ static WRITE8_HANDLER( watchdog1_w )
 	if (wdog == 3)
 	{
 		wdog = 0;
-		watchdog_reset_w(0,0);
+		watchdog_reset_w(machine,0,0);
 	}
 }
 
@@ -293,7 +293,7 @@ static WRITE8_HANDLER( watchdog2_w )
 	if (wdog == 3)
 	{
 		wdog = 0;
-		watchdog_reset_w(0,0);
+		watchdog_reset_w(machine,0,0);
 	}
 }
 
@@ -331,7 +331,7 @@ static WRITE8_HANDLER( cus115_w )
 			break;
 
 		case 4:
-			bankswitch1_ext_w(0,data);
+			bankswitch1_ext_w(machine,0,data);
 			break;
 
 		case 5:	// not used?
@@ -360,7 +360,7 @@ static ADDRESS_MAP_START( cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(rthunder_spriteram_r,rthunder_spriteram_w)
 
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 
 	/* ROM & Voice expansion board - only some games have it */
@@ -387,14 +387,14 @@ static ADDRESS_MAP_START( NAME##_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )							\
 	AM_RANGE(ADDR_SPRITE+0x0000, ADDR_SPRITE+0x1fff) AM_READWRITE(rthunder_spriteram_r,rthunder_spriteram_w) AM_BASE(&rthunder_spriteram)	\
 	AM_RANGE(ADDR_VIDEO1+0x0000, ADDR_VIDEO1+0x1fff) AM_READWRITE(rthunder_videoram1_r,rthunder_videoram1_w)	\
 	AM_RANGE(ADDR_VIDEO2+0x0000, ADDR_VIDEO2+0x1fff) AM_READWRITE(rthunder_videoram2_r,rthunder_videoram2_w)	\
-	AM_RANGE(ADDR_ROM+0x0000, ADDR_ROM+0x1fff) AM_READ(MRA8_BANK2)								\
+	AM_RANGE(ADDR_ROM+0x0000, ADDR_ROM+0x1fff) AM_READ(SMH_BANK2)								\
 	AM_RANGE(0x8000, 0xffff) AM_ROM																\
 /*  { ADDR_BANK+0x00, ADDR_BANK+0x02 } layer 2 scroll registers would be here */				\
 	AM_RANGE(ADDR_BANK+0x03, ADDR_BANK+0x03) AM_WRITE(bankswitch2_w)							\
 /*  { ADDR_BANK+0x04, ADDR_BANK+0x06 } layer 3 scroll registers would be here */				\
 	AM_RANGE(ADDR_WDOG, ADDR_WDOG) AM_WRITE(watchdog2_w)										\
 	AM_RANGE(ADDR_INT, ADDR_INT) AM_WRITE(int_ack2_w)	/* IRQ acknowledge */					\
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)													\
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)													\
 ADDRESS_MAP_END
 
 #define UNUSED 0x4000
@@ -424,8 +424,8 @@ static ADDRESS_MAP_START( NAME##_mcu_map, ADDRESS_SPACE_PROGRAM, 8 )					\
 	AM_RANGE(ADDR_LOWROM, ADDR_LOWROM+0x3fff) AM_ROM									\
 	AM_RANGE(0x8000, 0xbfff) AM_ROM														\
 	AM_RANGE(0xf000, 0xffff) AM_ROM														\
-	AM_RANGE(ADDR_UNK1, ADDR_UNK1) AM_WRITE(MWA8_NOP) /* ??? written (not always) at end of interrupt */	\
-	AM_RANGE(ADDR_UNK2, ADDR_UNK2) AM_WRITE(MWA8_NOP) /* ??? written (not always) at end of interrupt */	\
+	AM_RANGE(ADDR_UNK1, ADDR_UNK1) AM_WRITE(SMH_NOP) /* ??? written (not always) at end of interrupt */	\
+	AM_RANGE(ADDR_UNK2, ADDR_UNK2) AM_WRITE(SMH_NOP) /* ??? written (not always) at end of interrupt */	\
 ADDRESS_MAP_END
 
 #define UNUSED 0x4000
@@ -1066,28 +1066,29 @@ static MACHINE_DRIVER_START( hopmappy )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("cpu1", M6809, 49152000/32)
 	MDRV_CPU_PROGRAM_MAP(cpu1_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_CPU_ADD_TAG("cpu2", M6809, 49152000/32)
 	MDRV_CPU_PROGRAM_MAP(hopmappy_cpu2_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_CPU_ADD_TAG("mcu", HD63701, 49152000/8)	/* or compatible 6808 with extra instructions */
 	MDRV_CPU_PROGRAM_MAP(hopmappy_mcu_map,0)
 	MDRV_CPU_IO_MAP(mcu_port_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* ??? */
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* ??? */
 
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(800)	/* heavy interleaving needed to avoid hangs in rthunder */
 
 	MDRV_MACHINE_RESET(namco86)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(3 + 8*8, 3 + 44*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(namcos86)
 	MDRV_PALETTE_LENGTH(4096)
 

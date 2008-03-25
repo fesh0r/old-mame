@@ -144,8 +144,8 @@ VIDEO_START( metlclsh )
 {
 	metlclsh_otherram = auto_malloc(0x800);	// banked ram
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,metlclsh_bgtilemap_scan,TILEMAP_TYPE_PEN,16,16,32,16);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,metlclsh_bgtilemap_scan,16,16,32,16);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen( bg_tilemap, 0 );
 	tilemap_set_transparent_pen( fg_tilemap, 0 );
@@ -172,7 +172,7 @@ VIDEO_START( metlclsh )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	gfx_element *gfx = machine->gfx[0];
 	int offs;
@@ -194,7 +194,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		if (sx < -7) sx += 256;
 		sy	=	240 - spriteram[offs+2];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;	flipx = !flipx;
 			sy = 240 - sy;	flipy = !flipy;		if (sizey)	sy+=16;
@@ -237,17 +237,17 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 VIDEO_UPDATE( metlclsh )
 {
-	fillbitmap(bitmap,machine->pens[0x10],cliprect);
+	fillbitmap(bitmap,0x10,cliprect);
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,1,0);	// low priority tiles of foreground
 	if (metlclsh_scrollx[0] & 0x08)					// background (if enabled)
 	{
 		/* The background seems to be always flipped along x */
-		tilemap_set_flip(bg_tilemap, (flip_screen ? (TILEMAP_FLIPX|TILEMAP_FLIPY) : 0) ^ TILEMAP_FLIPX);
+		tilemap_set_flip(bg_tilemap, (flip_screen_get() ? (TILEMAP_FLIPX|TILEMAP_FLIPY) : 0) ^ TILEMAP_FLIPX);
 		tilemap_set_scrollx(bg_tilemap, 0,metlclsh_scrollx[1] + ((metlclsh_scrollx[0]&0x02)<<7) );
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	}
-	draw_sprites(machine,bitmap,cliprect);			// sprites
+	draw_sprites(screen->machine,bitmap,cliprect);			// sprites
 	tilemap_draw(bitmap,cliprect,fg_tilemap,2,0);	// high priority tiles of foreground
 
 //  popmessage("%02X",metlclsh_scrollx[0]);

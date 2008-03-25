@@ -51,7 +51,7 @@ static WRITE8_HANDLER( cbasebal_bankswitch_w )
 static READ8_HANDLER( bankedram_r )
 {
 	if (rambank == 2)
-		return cbasebal_textram_r(offset);	/* VRAM */
+		return cbasebal_textram_r(machine,offset);	/* VRAM */
 	else if (rambank == 1)
 	{
 		if (offset < 0x800)
@@ -60,21 +60,21 @@ static READ8_HANDLER( bankedram_r )
 	}
 	else
 	{
-		return cbasebal_scrollram_r(offset);	/* SCROLL */
+		return cbasebal_scrollram_r(machine,offset);	/* SCROLL */
 	}
 }
 
 static WRITE8_HANDLER( bankedram_w )
 {
 	if (rambank == 2)
-		cbasebal_textram_w(offset,data);
+		cbasebal_textram_w(machine,offset,data);
 	else if (rambank == 1)
 	{
 		if (offset < 0x800)
-			paletteram_xxxxBBBBRRRRGGGG_le_w(offset,data);
+			paletteram_xxxxBBBBRRRRGGGG_le_w(machine,offset,data);
 	}
 	else
-		cbasebal_scrollram_w(offset,data);
+		cbasebal_scrollram_w(machine,offset,data);
 }
 
 static WRITE8_HANDLER( cbasebal_coinctrl_w )
@@ -122,7 +122,7 @@ static READ8_HANDLER( eeprom_r )
 
 	bit = EEPROM_read_bit() << 7;
 
-	return (input_port_2_r(0) & 0x7f) | bit;
+	return (input_port_2_r(machine,0) & 0x7f) | bit;
 }
 
 static WRITE8_HANDLER( eeprom_cs_w )
@@ -151,7 +151,7 @@ static ADDRESS_MAP_START( cbasebal_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cbasebal_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(cbasebal_bankswitch_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(eeprom_cs_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(eeprom_clock_w)
@@ -255,18 +255,20 @@ static MACHINE_DRIVER_START( cbasebal )
 	MDRV_CPU_ADD(Z80, 6000000)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(cbasebal_map,0)
 	MDRV_CPU_IO_MAP(cbasebal_portmap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* ??? */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* ??? */
 
 	MDRV_NVRAM_HANDLER(cbasebal)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 2*8, 30*8-1 )
+
 	MDRV_GFXDECODE(cbasebal)
 	MDRV_PALETTE_LENGTH(1024)
 

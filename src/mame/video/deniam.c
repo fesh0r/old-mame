@@ -98,9 +98,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( deniam )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,scan_pages,       TILEMAP_TYPE_PEN,     8,8,128,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,scan_pages,       TILEMAP_TYPE_PEN,8,8,128,64);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8, 64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,scan_pages,            8,8,128,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,scan_pages,       8,8,128,64);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8, 64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -202,7 +202,7 @@ WRITE16_HANDLER( deniam_coinctrl_w )
  *   c  | ---------------- | zoomy like in System 16?
  *   e  | ---------------- |
  */
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -260,7 +260,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 								y >= cliprect->min_y && y <= cliprect->max_y)
 							{
 								if ((*BITMAP_ADDR8(priority_bitmap, y, sx+x) & primask) == 0)
-									*BITMAP_ADDR16(bitmap, y, sx+x) = machine->pens[color*16+(rom[i]&0x0f)];
+									*BITMAP_ADDR16(bitmap, y, sx+x) = color*16+(rom[i]&0x0f);
 								*BITMAP_ADDR8(priority_bitmap, y, sx+x) = 8;
 							}
 						}
@@ -280,7 +280,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 								y >= cliprect->min_y && y <= cliprect->max_y)
 							{
 								if ((*BITMAP_ADDR8(priority_bitmap, y, sx+x) & primask) == 0)
-									*BITMAP_ADDR16(bitmap, y, sx+x) = machine->pens[color*16+(rom[i]>>4)];
+									*BITMAP_ADDR16(bitmap, y, sx+x) = color*16+(rom[i]>>4);
 								*BITMAP_ADDR8(priority_bitmap, y, sx+x) = 8;
 							}
 						}
@@ -304,7 +304,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 								y >= cliprect->min_y && y <= cliprect->max_y)
 							{
 								if ((*BITMAP_ADDR8(priority_bitmap, y, sx+x) & primask) == 0)
-									*BITMAP_ADDR16(bitmap, y, sx+x) = machine->pens[color*16+(rom[i]>>4)];
+									*BITMAP_ADDR16(bitmap, y, sx+x) = color*16+(rom[i]>>4);
 								*BITMAP_ADDR8(priority_bitmap, y, sx+x) = 8;
 							}
 						}
@@ -324,7 +324,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 								y >= cliprect->min_y && y <= cliprect->max_y)
 							{
 								if ((*BITMAP_ADDR8(priority_bitmap, y, sx+x) & primask) == 0)
-									*BITMAP_ADDR16(bitmap, y, sx+x) = machine->pens[color*16+(rom[i]&0x0f)];
+									*BITMAP_ADDR16(bitmap, y, sx+x) = color*16+(rom[i]&0x0f);
 								*BITMAP_ADDR8(priority_bitmap, y, sx+x) = 8;
 							}
 						}
@@ -397,6 +397,6 @@ VIDEO_UPDATE( deniam )
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,2);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,4);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(bitmap,cliprect);
 	return 0;
 }

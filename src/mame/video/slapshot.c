@@ -74,7 +74,7 @@ VIDEO_START( slapshot )
             SPRITE DRAW ROUTINES
 ************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int *primasks,int y_offset)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int *primasks,int y_offset)
 {
 	/*
         Sprite format:
@@ -557,7 +557,7 @@ VIDEO_UPDATE( slapshot )
 
 	taito_handle_sprite_buffering();
 
-	TC0480SCP_tilemap_update(machine);
+	TC0480SCP_tilemap_update(screen->machine);
 
 	priority = TC0480SCP_get_bg_priority();
 
@@ -581,7 +581,7 @@ VIDEO_UPDATE( slapshot )
 	spritepri[3] = TC0360PRI_regs[7] >> 4;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[0]]==0)
@@ -615,7 +615,7 @@ VIDEO_UPDATE( slapshot )
 			if (spritepri[i] < tilepri[(layer[3])]) primasks[i] |= 0xff00;
 		}
 
-		draw_sprites(machine,bitmap,cliprect,primasks,0);
+		draw_sprites(screen->machine,bitmap,cliprect,primasks,0);
 	}
 
 	/*

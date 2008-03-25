@@ -75,7 +75,7 @@ static void combine32(UINT32 *val, int offset, UINT16 data, UINT16 mem_mask)
 
 /* SPRITE DRAWING (move to video file) */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect ,int pri_mask )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect ,int pri_mask )
 {
 	const UINT16 *source = spriteram16 + 0x1000/2 - 4;
 	const UINT16 *finish = spriteram16;
@@ -252,10 +252,10 @@ static void set_scroll(tilemap *tm, int plane)
 
 static VIDEO_START( raiden2 )
 {
-	text_layer       = tilemap_create(get_text_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,  8, 8, 64,32 );
-	background_layer = tilemap_create(get_back_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32 );
-	midground_layer  = tilemap_create(get_mid_tile_info,  tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32 );
-	foreground_layer = tilemap_create(get_fore_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32 );
+	text_layer       = tilemap_create(get_text_tile_info, tilemap_scan_rows,  8, 8, 64,32 );
+	background_layer = tilemap_create(get_back_tile_info, tilemap_scan_rows, 16,16, 32,32 );
+	midground_layer  = tilemap_create(get_mid_tile_info,  tilemap_scan_rows, 16,16, 32,32 );
+	foreground_layer = tilemap_create(get_fore_tile_info, tilemap_scan_rows, 16,16, 32,32 );
 
 	tilemap_set_transparent_pen(midground_layer, 15);
 	tilemap_set_transparent_pen(foreground_layer, 15);
@@ -448,7 +448,7 @@ static VIDEO_UPDATE ( raiden2 )
 #endif
 #endif
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	if (!input_code_pressed(KEYCODE_Q))
 		tilemap_draw(bitmap, cliprect, background_layer, 0, 0);
@@ -457,7 +457,7 @@ static VIDEO_UPDATE ( raiden2 )
 	if (!input_code_pressed(KEYCODE_E))
 		tilemap_draw(bitmap, cliprect, foreground_layer, 0, 0);
 
-	draw_sprites(machine, bitmap, cliprect, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, 0);
 
 	if (!input_code_pressed(KEYCODE_A))
 		tilemap_draw(bitmap, cliprect, text_layer, 0, 0);
@@ -951,14 +951,14 @@ static ADDRESS_MAP_START( raiden2_mem, ADDRESS_SPACE_PROGRAM, 16 )
 //  AM_RANGE(0x00000, 0x003ff) AM_RAM
 
 	AM_RANGE(0x0c000, 0x0cfff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(MRA16_RAM, raiden2_background_w) AM_BASE(&back_data)
-	AM_RANGE(0x0d800, 0x0dfff) AM_READWRITE(MRA16_RAM, raiden2_foreground_w) AM_BASE(&fore_data)
-    AM_RANGE(0x0e000, 0x0e7ff) AM_READWRITE(MRA16_RAM, raiden2_midground_w)  AM_BASE(&mid_data)
-    AM_RANGE(0x0e800, 0x0f7ff) AM_READWRITE(MRA16_RAM, raiden2_text_w) AM_BASE(&videoram16)
+	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(SMH_RAM, raiden2_background_w) AM_BASE(&back_data)
+	AM_RANGE(0x0d800, 0x0dfff) AM_READWRITE(SMH_RAM, raiden2_foreground_w) AM_BASE(&fore_data)
+    AM_RANGE(0x0e000, 0x0e7ff) AM_READWRITE(SMH_RAM, raiden2_midground_w)  AM_BASE(&mid_data)
+    AM_RANGE(0x0e800, 0x0f7ff) AM_READWRITE(SMH_RAM, raiden2_text_w) AM_BASE(&videoram16)
 	AM_RANGE(0x0f800, 0x0ffff) AM_RAM /* Stack area */
 
-	AM_RANGE(0x10000, 0x1efff) AM_READWRITE(MRA16_RAM, w1x) AM_BASE(&w1ram)
-	AM_RANGE(0x1f000, 0x1ffff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x10000, 0x1efff) AM_READWRITE(SMH_RAM, w1x) AM_BASE(&w1ram)
+	AM_RANGE(0x1f000, 0x1ffff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 
 	AM_RANGE(0x20000, 0x3ffff) AM_ROMBANK(1)
 	AM_RANGE(0x40000, 0xfffff) AM_ROMBANK(2)
@@ -1179,17 +1179,18 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( raiden2 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(V30,32000000/2) /* NEC V30 CPU, 32? Mhz */
+	MDRV_CPU_ADD(V30,XTAL_32MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(raiden2_mem, 0)
-	MDRV_CPU_VBLANK_INT(raiden2_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION/2)
+	MDRV_CPU_VBLANK_INT("main", raiden2_interrupt)
 
 	MDRV_MACHINE_RESET(raiden2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate *//2)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 #if 1
 	MDRV_SCREEN_SIZE(64*8, 64*8)
@@ -1203,6 +1204,10 @@ static MACHINE_DRIVER_START( raiden2 )
 
 	MDRV_VIDEO_START(raiden2)
 	MDRV_VIDEO_UPDATE(raiden2)
+
+/* Sound hardware infos: Z80 and YM2151 are clocked at XTAL_28_63636MHz/8 */
+/* The 2 Oki M6295 are clocked at XTAL_28_63636MHz/28 and pin 7 is high for both */
+
 MACHINE_DRIVER_END
 
 /* ROM LOADING */
@@ -2092,12 +2097,12 @@ static READ16_HANDLER( r2_playerin_r )
 }
 static READ16_HANDLER( rdx_v33_oki_r )
 {
-	return OKIM6295_status_0_r(0);
+	return OKIM6295_status_0_r(machine,0);
 }
 
 static WRITE16_HANDLER( rdx_v33_oki_w )
 {
-	if (ACCESSING_LSB) OKIM6295_data_0_w(0, data & 0x00ff);
+	if (ACCESSING_LSB) OKIM6295_data_0_w(machine, 0, data & 0x00ff);
 	if (ACCESSING_MSB) logerror("rdx_v33_oki_w MSB %04x\n",data);
 }
 
@@ -2132,8 +2137,8 @@ static ADDRESS_MAP_START( rdx_v33_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x006b0, 0x006b1) AM_WRITE(mcu_prog_w)
 	AM_RANGE(0x006b2, 0x006b3) AM_WRITE(mcu_prog_w2)
-	AM_RANGE(0x006b4, 0x006b5) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x006b6, 0x006b7) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x006b4, 0x006b5) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x006b6, 0x006b7) AM_WRITE(SMH_NOP)
 
 	AM_RANGE(0x006bc, 0x006bd) AM_WRITE(mcu_prog_offs_w)
 
@@ -2156,13 +2161,13 @@ static ADDRESS_MAP_START( rdx_v33_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00880, 0x0bfff) AM_RAM
 
 	AM_RANGE(0x0c000, 0x0cfff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(MRA16_RAM, raiden2_background_w) AM_BASE(&back_data)
-	AM_RANGE(0x0d800, 0x0dfff) AM_READWRITE(MRA16_RAM, raiden2_foreground_w) AM_BASE(&fore_data)
-    AM_RANGE(0x0e000, 0x0e7ff) AM_READWRITE(MRA16_RAM, raiden2_midground_w)  AM_BASE(&mid_data)
-    AM_RANGE(0x0e800, 0x0f7ff) AM_READWRITE(MRA16_RAM, raiden2_text_w) AM_BASE(&videoram16)
+	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(SMH_RAM, raiden2_background_w) AM_BASE(&back_data)
+	AM_RANGE(0x0d800, 0x0dfff) AM_READWRITE(SMH_RAM, raiden2_foreground_w) AM_BASE(&fore_data)
+    AM_RANGE(0x0e000, 0x0e7ff) AM_READWRITE(SMH_RAM, raiden2_midground_w)  AM_BASE(&mid_data)
+    AM_RANGE(0x0e800, 0x0f7ff) AM_READWRITE(SMH_RAM, raiden2_text_w) AM_BASE(&videoram16)
 	AM_RANGE(0x0f800, 0x0ffff) AM_RAM /* Stack area */
 	AM_RANGE(0x10000, 0x1efff) AM_RAM
-	AM_RANGE(0x1f000, 0x1ffff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x1f000, 0x1ffff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 
 	/* not sure of bank sizes etc. */
 	AM_RANGE(0x20000, 0x2ffff) AM_ROMBANK(1)
@@ -2232,17 +2237,15 @@ static MACHINE_DRIVER_START( rdx_v33 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(V33, 32000000/2 ) // ?
 	MDRV_CPU_PROGRAM_MAP(rdx_v33_map, 0)
-	MDRV_CPU_VBLANK_INT(rdx_v33_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", rdx_v33_interrupt)
 
 	MDRV_NVRAM_HANDLER(rdx_v33)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(5*8, 43*8-1, 1, 30*8)
 

@@ -75,6 +75,7 @@ ROMS: All ROM labels say only "PROM" and a number.
 
 */
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static tilemap *pturn_fgmap,*pturn_bgmap;
@@ -119,9 +120,9 @@ static TILE_GET_INFO( get_pturn_bg_tile_info )
 
 static VIDEO_START(pturn)
 {
-	pturn_fgmap = tilemap_create(get_pturn_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	pturn_fgmap = tilemap_create(get_pturn_tile_info,tilemap_scan_rows,8, 8,32,32);
 	tilemap_set_transparent_pen(pturn_fgmap,0);
-	pturn_bgmap = tilemap_create(get_pturn_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32*8);
+	pturn_bgmap = tilemap_create(get_pturn_bg_tile_info,tilemap_scan_rows,8, 8,32,32*8);
 	tilemap_set_transparent_pen(pturn_bgmap,0);
 }
 
@@ -131,7 +132,7 @@ static VIDEO_UPDATE(pturn)
 	int sx, sy;
 	int flipx, flipy;
 
-	fillbitmap(bitmap, bgcolor, &machine->screen[0].visarea);
+	fillbitmap(bitmap, bgcolor, cliprect);
 	tilemap_draw(bitmap,cliprect,pturn_bgmap,0,0);
 	for ( offs = 0x80-4 ; offs >=0 ; offs -= 4)
 	{
@@ -142,13 +143,13 @@ static VIDEO_UPDATE(pturn)
 		flipy=spriteram[offs+1]&0x80;
 
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 224 - sx;
 			flipx ^= 0x40;
 		}
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			flipy ^= 0x80;
 			sy = 224 - sy;
@@ -156,7 +157,7 @@ static VIDEO_UPDATE(pturn)
 
 		if(sx|sy)
 		{
-			drawgfx(bitmap, machine->gfx[2],
+			drawgfx(bitmap, screen->machine->gfx[2],
 			spriteram[offs+1] & 0x3f ,
 			(spriteram[offs+2] & 0x1f),
 			flipx, flipy,
@@ -200,7 +201,7 @@ static WRITE8_HANDLER( nmi_sub_enable_w )
 
 static WRITE8_HANDLER(sound_w)
 {
-	soundlatch_w(0,data);
+	soundlatch_w(machine,0,data);
 }
 
 
@@ -278,7 +279,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0xdfe0, 0xdfe0) AM_NOP
 
-	AM_RANGE(0xe000, 0xe3ff) AM_READWRITE(MRA8_RAM, pturn_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xe000, 0xe3ff) AM_READWRITE(SMH_RAM, pturn_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xe400, 0xe400) AM_WRITE(fgpalette_w)
 	AM_RANGE(0xe800, 0xe800) AM_WRITE(sound_w)
 
@@ -440,29 +441,30 @@ static INTERRUPT_GEN( pturn_main_intgen )
 
 static MACHINE_RESET( pturn )
 {
-	soundlatch_clear_w(0,0);
+	soundlatch_clear_w(machine,0,0);
 }
 
 static MACHINE_DRIVER_START( pturn )
 	MDRV_CPU_ADD(Z80, 12000000/3)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(pturn_main_intgen,1)
+	MDRV_CPU_VBLANK_INT("main", pturn_main_intgen)
 	MDRV_MACHINE_RESET(pturn)
 
 	MDRV_CPU_ADD(Z80, 12000000/3)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
-	MDRV_CPU_VBLANK_INT(pturn_sub_intgen,3)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(pturn_sub_intgen,3)
 
 	MDRV_GFXDECODE(pturn)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(0x100)
 	MDRV_PALETTE_INIT(RRRR_GGGG_BBBB)
 

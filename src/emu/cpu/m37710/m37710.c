@@ -272,7 +272,7 @@ static TIMER_CALLBACK( m37710_timer_a0_cb)
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[0], m37710i_cpu.reload[0], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[0], m37710i_cpu.reload[0], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[12]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA0, PULSE_LINE);
@@ -285,7 +285,7 @@ static TIMER_CALLBACK( m37710_timer_a1_cb )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[1], m37710i_cpu.reload[1], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[1], m37710i_cpu.reload[1], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[11]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA1, PULSE_LINE);
@@ -298,7 +298,7 @@ static TIMER_CALLBACK( m37710_timer_a2_cb )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[2], m37710i_cpu.reload[2], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[2], m37710i_cpu.reload[2], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[10]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA2, PULSE_LINE);
@@ -311,7 +311,7 @@ static TIMER_CALLBACK( m37710_timer_a3_cb )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[3], m37710i_cpu.reload[3], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[3], m37710i_cpu.reload[3], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[9]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA3, PULSE_LINE);
@@ -324,7 +324,7 @@ static TIMER_CALLBACK( m37710_timer_a4_cb )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[4], m37710i_cpu.reload[4], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[4], m37710i_cpu.reload[4], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[8]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERA4, PULSE_LINE);
@@ -337,7 +337,7 @@ static TIMER_CALLBACK( m37710_timer_b0_cb )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[5], m37710i_cpu.reload[5], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[5], m37710i_cpu.reload[5], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[7]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERB0, PULSE_LINE);
@@ -350,7 +350,7 @@ static TIMER_CALLBACK( m37710_timer_b1_cb )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[6], m37710i_cpu.reload[6], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[6], m37710i_cpu.reload[6], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[6]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERB1, PULSE_LINE);
@@ -363,7 +363,7 @@ static TIMER_CALLBACK( m37710_timer_b2_cb )
 	int cpunum = param;
 
 	cpuintrf_push_context(cpunum);
-	timer_adjust(m37710i_cpu.timers[7], m37710i_cpu.reload[7], cpunum, attotime_zero);
+	timer_adjust_oneshot(m37710i_cpu.timers[7], m37710i_cpu.reload[7], cpunum);
 
 	m37710i_cpu.m37710_regs[m37710_irq_levels[5]] |= 0x04;
 	m37710_set_irq_line(M37710_LINE_TIMERB2, PULSE_LINE);
@@ -433,7 +433,7 @@ static void m37710_recalc_timer(int timer)
 					mame_printf_debug("Timer %d in timer mode, %f Hz\n", timer, 1.0 / attotime_to_double(time));
 					#endif
 
-					timer_adjust(m37710i_cpu.timers[timer], time, cpunum, attotime_zero);
+					timer_adjust_oneshot(m37710i_cpu.timers[timer], time, cpunum);
 					m37710i_cpu.reload[timer] = time;
 					break;
 
@@ -468,7 +468,7 @@ static void m37710_recalc_timer(int timer)
 					mame_printf_debug("Timer %d in timer mode, %f Hz\n", timer, 1.0 / attotime_to_double(time));
 					#endif
 
-					timer_adjust(m37710i_cpu.timers[timer], time, cpunum, attotime_zero);
+					timer_adjust_oneshot(m37710i_cpu.timers[timer], time, cpunum);
 					m37710i_cpu.reload[timer] = time;
 					break;
 
@@ -1229,9 +1229,9 @@ void m37710_get_info(UINT32 state, cpuinfo *info)
 #endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m37710_ICount;			break;
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_m37710_internal_map; break;
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:    info->internal_map = 0;	break;
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_IO:      info->internal_map = 0;	break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map16 = address_map_m37710_internal_map; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_DATA:    info->internal_map16 = NULL;	break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_IO:      info->internal_map8 = NULL;	break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "M37710");				break;

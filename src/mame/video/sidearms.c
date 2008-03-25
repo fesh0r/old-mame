@@ -152,17 +152,17 @@ VIDEO_START( sidearms )
 	if (!sidearms_gameid)
 	{
 		bg_tilemap = tilemap_create(get_sidearms_bg_tile_info, sidearms_tilemap_scan,
-			TILEMAP_TYPE_PEN, 32, 32, 128, 128);
+			 32, 32, 128, 128);
 
 		tilemap_set_transparent_pen(bg_tilemap, 15);
 	}
 	else
 	{
-		bg_tilemap = tilemap_create(get_philko_bg_tile_info, sidearms_tilemap_scan,TILEMAP_TYPE_PEN, 32, 32, 128, 128);
+		bg_tilemap = tilemap_create(get_philko_bg_tile_info, sidearms_tilemap_scan, 32, 32, 128, 128);
 	}
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 64);
+		 8, 8, 64, 64);
 
 	tilemap_set_transparent_pen(fg_tilemap, 3);
 
@@ -172,7 +172,7 @@ VIDEO_START( sidearms )
 	flipon = charon = staron = objon = bgon = 0;
 }
 
-static void draw_sprites_region(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int start_offset, int end_offset )
+static void draw_sprites_region(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int start_offset, int end_offset )
 {
 	const gfx_element *gfx = machine->gfx[2];
 	int offs, attr, color, code, x, y, flipx, flipy;
@@ -204,7 +204,7 @@ static void draw_sprites_region(running_machine *machine, mame_bitmap *bitmap, c
 	}
 }
 
-static void sidearms_draw_starfield( mame_bitmap *bitmap )
+static void sidearms_draw_starfield( bitmap_t *bitmap )
 {
 	int x, y, i;
 	UINT32 hadd_283, vadd_283, _hflop_74a_n, _hcount_191, _vcount_191;
@@ -327,7 +327,7 @@ static void sidearms_draw_starfield( mame_bitmap *bitmap )
 #endif
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if (sidearms_gameid == 2 || sidearms_gameid == 3) // Dyger and Whizz have simple front-to-back sprite priority
 		draw_sprites_region(machine, bitmap, cliprect, 0x0000, 0x1000);
@@ -351,7 +351,7 @@ VIDEO_UPDATE( sidearms )
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	if (objon)
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 
 	if (charon)
 		tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
@@ -360,5 +360,5 @@ VIDEO_UPDATE( sidearms )
 
 VIDEO_EOF( sidearms )
 {
-	buffer_spriteram_w(0, 0);
+	buffer_spriteram_w(machine, 0, 0);
 }

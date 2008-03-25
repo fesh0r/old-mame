@@ -200,13 +200,13 @@ VIDEO_START( powerins )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0,
 								powerins_get_memory_offset_0,
-								TILEMAP_TYPE_PEN,
+
 								16,16,
 								DIM_NX_0, DIM_NY_0 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1,
 								tilemap_scan_cols,
-								TILEMAP_TYPE_PEN,
+
 								8,8,
 								DIM_NX_1, DIM_NY_1 );
 
@@ -267,13 +267,13 @@ Offset:     Format:                 Value:
 #define SIGN_EXTEND_POS(_var_)	{_var_ &= 0x3ff; if (_var_ > 0x1ff) _var_ -= 0x400;}
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	UINT16 *source = spriteram16 + 0x8000/2;
 	UINT16 *finish = spriteram16 + 0x9000/2;
 
-	int screen_w	=	machine->screen[0].width;
-	int screen_h	=	machine->screen[0].height;
+	int screen_w = video_screen_get_width(machine->primary_screen);
+	int screen_h = video_screen_get_height(machine->primary_screen);
 
 	for ( ; source < finish; source += 16/2 )
 	{
@@ -299,7 +299,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		/* Handle flip_screen. Apply a global offset of 32 pixels along x too */
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{	sx = screen_w - sx - dimx*16 - 32;	flipx = !flipx;
 			sy = screen_h - sy - dimy*16;		flipy = !flipy;
 			code += dimx*dimy-1;			inc = -1;	}
@@ -367,8 +367,8 @@ if (input_code_pressed(KEYCODE_Z))
 #endif
 
 	if (layers_ctrl&1)		tilemap_draw(bitmap,cliprect, tilemap_0, 0, 0);
-	else					fillbitmap(bitmap,machine->pens[0],cliprect);
-	if (layers_ctrl&8)		draw_sprites(machine,bitmap,cliprect);
+	else					fillbitmap(bitmap,0,cliprect);
+	if (layers_ctrl&8)		draw_sprites(screen->machine,bitmap,cliprect);
 	if (layers_ctrl&2)		tilemap_draw(bitmap,cliprect, tilemap_1, 0, 0);
 	return 0;
 }

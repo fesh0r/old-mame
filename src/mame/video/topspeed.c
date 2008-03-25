@@ -35,7 +35,7 @@ VIDEO_START( topspeed )
 
 ********************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,map_offset,x,y,curx,cury,sprite_chunk;
 	UINT16 *spritemap = topspeed_spritemap;
@@ -166,7 +166,7 @@ VIDEO_UPDATE( topspeed )
 	layer[3] = 0;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 #ifdef MAME_DEBUG
 	if (dislayer[3]==0)
@@ -192,7 +192,7 @@ VIDEO_UPDATE( topspeed )
 	if (dislayer[4]==0)
 #endif
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }
 

@@ -157,13 +157,13 @@ static void sfx_sh_7474_callback(void)
 
 WRITE8_HANDLER( hotshock_sh_irqtrigger_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
 }
 
 READ8_HANDLER( hotshock_soundlatch_r )
 {
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
-	return soundlatch_r(0);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+	return soundlatch_r(machine,0);
 }
 
 static void filter_w(int chip, int channel, int data)
@@ -323,8 +323,8 @@ static TIMER_CALLBACK( ad2083_step )
 	if (ctrl & 0x40)
 		speech_rom_address = 0;
 
-	tms5110_CTL_w(0, ctrl & 0x04 ? TMS5110_CMD_SPEAK : TMS5110_CMD_RESET);
-	tms5110_PDC_w(0, ctrl & 0x02 ? 0 : 1);
+	tms5110_CTL_w(machine, 0, ctrl & 0x04 ? TMS5110_CMD_SPEAK : TMS5110_CMD_RESET);
+	tms5110_PDC_w(machine, 0, ctrl & 0x02 ? 0 : 1);
 
 	if (!(ctrl & 0x80))
 		timer_set(ATTOTIME_IN_HZ(AD2083_TMS5110_CLOCK / 2),NULL,1,ad2083_step);
@@ -391,7 +391,7 @@ static ADDRESS_MAP_START( ad2083_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ad2083_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_WRITE(ad2083_tms5110_ctrl_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x20, 0x20) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)

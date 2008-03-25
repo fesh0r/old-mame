@@ -386,23 +386,23 @@ static void create_tilemaps(void)
 	{
 		/* 16x16 tilemaps */
 		megasys1_tilemap[layer][0][0] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 16, TILES_PER_PAGE_Y * 2);
+								 8,8, TILES_PER_PAGE_X * 16, TILES_PER_PAGE_Y * 2);
 		megasys1_tilemap[layer][0][1] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 8, TILES_PER_PAGE_Y * 4);
+								 8,8, TILES_PER_PAGE_X * 8, TILES_PER_PAGE_Y * 4);
 		megasys1_tilemap[layer][0][2] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 8);
+								 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 8);
 		megasys1_tilemap[layer][0][3] = tilemap_create(megasys1_get_scroll_tile_info_16x16, megasys1_scan_16x16,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 2, TILES_PER_PAGE_Y * 16);
+								 8,8, TILES_PER_PAGE_X * 2, TILES_PER_PAGE_Y * 16);
 
 		/* 8x8 tilemaps */
 		megasys1_tilemap[layer][1][0] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 8, TILES_PER_PAGE_Y * 1);
+								 8,8, TILES_PER_PAGE_X * 8, TILES_PER_PAGE_Y * 1);
 		megasys1_tilemap[layer][1][1] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 2);
+								 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 2);
 		megasys1_tilemap[layer][1][2] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 2);
+								 8,8, TILES_PER_PAGE_X * 4, TILES_PER_PAGE_Y * 2);
 		megasys1_tilemap[layer][1][3] = tilemap_create(megasys1_get_scroll_tile_info_8x8, megasys1_scan_8x8,
-								TILEMAP_TYPE_PEN, 8,8, TILES_PER_PAGE_X * 2, TILES_PER_PAGE_Y * 4);
+								 8,8, TILES_PER_PAGE_X * 2, TILES_PER_PAGE_Y * 4);
 
 		/* set user data and transparency */
 		for (i = 0; i < 8; i++)
@@ -450,13 +450,13 @@ WRITE16_HANDLER( megasys1_vregs_A_w )
 
 		case 0x300/2   :	megasys1_screen_flag = new_data;
 							if (new_data & 0x10)
-								cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 							else
-								cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 							break;
 
-		case 0x308/2   :	soundlatch_word_w(0,new_data,0);
-							cpunum_set_input_line(Machine, 1,4,HOLD_LINE);
+		case 0x308/2   :	soundlatch_word_w(machine,0,new_data,0);
+							cpunum_set_input_line(machine, 1,4,HOLD_LINE);
 							break;
 
 		default		 :	SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
@@ -472,7 +472,7 @@ READ16_HANDLER( megasys1_vregs_C_r )
 {
 	switch (offset)
 	{
-		case 0x8000/2:	return soundlatch2_word_r(0,0);
+		case 0x8000/2:	return soundlatch2_word_r(machine,0,0);
 		default:		return megasys1_vregs[offset];
 	}
 }
@@ -501,14 +501,14 @@ WRITE16_HANDLER( megasys1_vregs_C_w )
 
 		case 0x2308/2   :	megasys1_screen_flag = new_data;
 							if (new_data & 0x10)
-								cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 							else
-								cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+								cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 							break;
 
 		case 0x8000/2   :	/* Cybattler reads sound latch on irq 2 */
-							soundlatch_word_w(0,new_data,0);
-							cpunum_set_input_line(Machine, 1,2,HOLD_LINE);
+							soundlatch_word_w(machine,0,new_data,0);
+							cpunum_set_input_line(machine, 1,2,HOLD_LINE);
 							break;
 
 		default:		SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
@@ -572,7 +572,7 @@ WRITE16_HANDLER( megasys1_vregs_D_w )
     0C      Y position
     0E      Code                                            */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int color,code,sx,sy,flipx,flipy,attr,sprite,offs,color_mask;
 
@@ -923,7 +923,7 @@ PALETTE_INIT( megasys1 )
 
 
 /***************************************************************************
-              Draw the game screen in the given mame_bitmap.
+              Draw the game screen in the given bitmap_t.
 ***************************************************************************/
 
 
@@ -1001,7 +1001,7 @@ VIDEO_UPDATE( megasys1 )
 				if (flag != 0)
 				{
 					flag = 0;
-					fillbitmap(bitmap,machine->pens[0],cliprect);
+					fillbitmap(bitmap,0,cliprect);
 				}
 
 				if (megasys1_sprite_flag & 0x100)	/* sprites are split */
@@ -1018,6 +1018,6 @@ VIDEO_UPDATE( megasys1 )
 	}
 
 	if (active_layers & 0x08)
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

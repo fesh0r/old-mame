@@ -7,6 +7,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "video/resnet.h"
 
 
 
@@ -51,14 +52,22 @@ Here's the hookup from the proms (82s131) to the r-g-b-outputs
 ***************************************************************************/
 PALETTE_INIT( zaccaria )
 {
-	int i,j,k;
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
+	int i, j, k;
+	static const int resistances_rg[] = { 1200, 1000, 820 };
+	static const int resistances_b[]  = { 1000, 820 };
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	double weights_rg[3], weights_b[2];
+
+	compute_resistor_weights(0, 0xff, -1.0,
+							 3, resistances_rg, weights_rg, 390, 0,
+							 2, resistances_b,  weights_b,  470, 0,
+							 0, 0, 0, 0, 0);
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x200);
+
+	for (i = 0; i < 0x200; i++)
 	{
-		int bit0,bit1,bit2,r,g,b;
-
-
 		/*
           TODO: I'm not sure, but I think that pen 0 must always be black, otherwise
           there's some junk brown background in Jack Rabbit.
@@ -68,29 +77,31 @@ PALETTE_INIT( zaccaria )
           black anyway.
          */
 		if (((i % 64) / 8) == 0)
-		{
-			palette_set_color(machine,i,MAKE_RGB(0,0,0));
-		}
+			colortable_palette_set_color(machine->colortable, i, RGB_BLACK);
 		else
 		{
-			/* red component */
-			bit0 = (color_prom[0] >> 3) & 0x01;
-			bit1 = (color_prom[0] >> 2) & 0x01;
-			bit2 = (color_prom[0] >> 1) & 0x01;
-			r = 0x46 * bit0 + 0x53 * bit1 + 0x66 * bit2;
-			/* green component */
-			bit0 = (color_prom[0] >> 0) & 0x01;
-			bit1 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
-			bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-			g = 0x46 * bit0 + 0x53 * bit1 + 0x66 * bit2;
-			/* blue component */
-			bit0 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-			bit1 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-			b = 0x66 * bit0 + 0x96 * bit1;
-			palette_set_color(machine,i,MAKE_RGB(r,g,b));
-		}
+			int bit0, bit1, bit2;
+			int r, g, b;
 
-		color_prom++;
+			/* red component */
+			bit0 = (color_prom[i + 0x000] >> 3) & 0x01;
+			bit1 = (color_prom[i + 0x000] >> 2) & 0x01;
+			bit2 = (color_prom[i + 0x000] >> 1) & 0x01;
+			r = combine_3_weights(weights_rg, bit0, bit1, bit2);
+
+			/* green component */
+			bit0 = (color_prom[i + 0x000] >> 0) & 0x01;
+			bit1 = (color_prom[i + 0x200] >> 3) & 0x01;
+			bit2 = (color_prom[i + 0x200] >> 2) & 0x01;
+			g = combine_3_weights(weights_rg, bit0, bit1, bit2);
+
+			/* blue component */
+			bit0 = (color_prom[i + 0x200] >> 1) & 0x01;
+			bit1 = (color_prom[i + 0x200] >> 0) & 0x01;
+			b = combine_2_weights(weights_b, bit0, bit1);
+
+			colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
+		}
 	}
 
 	/* There are 512 unique colors, which seem to be organized in 8 blocks */
@@ -98,27 +109,16 @@ PALETTE_INIT( zaccaria )
 	/* but in interleaved order, like Phoenix. Additionally, colors for */
 	/* background and sprites are interleaved. */
 	for (i = 0;i < 8;i++)
-	{
 		for (j = 0;j < 4;j++)
-		{
 			for (k = 0;k < 8;k++)
-			{
 				/* swap j and k to make the colors sequential */
-				COLOR(0,32 * i + 8 * j + k) = 64 * i + 8 * k + 2*j;
-			}
-		}
-	}
+				colortable_entry_set_value(machine->colortable, 0 + 32 * i + 8 * j + k, 64 * i + 8 * k + 2*j);
+
 	for (i = 0;i < 8;i++)
-	{
 		for (j = 0;j < 4;j++)
-		{
 			for (k = 0;k < 8;k++)
-			{
 				/* swap j and k to make the colors sequential */
-				COLOR(1,32 * i + 8 * j + k) = 64 * i + 8 * k + 2*j+1;
-			}
-		}
-	}
+				colortable_entry_set_value(machine->colortable, 256 + 32 * i + 8 * j + k, 64 * i + 8 * k + 2*j+1);
 }
 
 
@@ -149,7 +149,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( zaccaria )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_scroll_cols(bg_tilemap,32);
 }
@@ -204,12 +204,12 @@ WRITE8_HANDLER( zaccaria_flip_screen_y_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 	rectangle clip = *cliprect;
 
-	if (flip_screen_x)
+	if (flip_screen_x_get())
 		sect_rect(&clip, &spritevisiblearea_flipx);
 	else
 		sect_rect(&clip, &spritevisiblearea);
@@ -235,12 +235,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		int flipx = spriteram_2[offs + 2] & 0x40;
 		int flipy = spriteram_2[offs + 2] & 0x80;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 240 - sx;
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -261,12 +261,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		int flipx = spriteram[offs + 1] & 0x40;
 		int flipy = spriteram[offs + 1] & 0x80;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 240 - sx;
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -285,7 +285,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( zaccaria )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

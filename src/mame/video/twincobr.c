@@ -13,7 +13,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "twincobr.h"
 
 
@@ -103,9 +103,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static void twincobr_create_tilemaps(void)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -190,12 +190,12 @@ void twincobr_flipscreen(int flip)
 
 WRITE16_HANDLER( twincobr_crtc_reg_sel_w )
 {
-	crtc6845_address_w(offset, data);
+//  mc6845_address_w(offset, data);
 }
 
 WRITE16_HANDLER( twincobr_crtc_data_w )
 {
-	crtc6845_register_w(offset, data);
+//  mc6845_register_w(offset, data);
 }
 
 WRITE16_HANDLER( twincobr_txoffs_w )
@@ -290,37 +290,37 @@ WRITE16_HANDLER( twincobr_exscroll_w )	/* Extra unused video layer */
 WRITE8_HANDLER( wardner_txlayer_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_txoffs_w(offset / 2, data << shift, 0xff00 >> shift);
+	twincobr_txoffs_w(machine, offset / 2, data << shift, 0xff00 >> shift);
 }
 
 WRITE8_HANDLER( wardner_bglayer_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_bgoffs_w(offset / 2, data << shift, 0xff00 >> shift);
+	twincobr_bgoffs_w(machine, offset / 2, data << shift, 0xff00 >> shift);
 }
 
 WRITE8_HANDLER( wardner_fglayer_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_fgoffs_w(offset / 2, data << shift, 0xff00 >> shift);
+	twincobr_fgoffs_w(machine, offset / 2, data << shift, 0xff00 >> shift);
 }
 
 WRITE8_HANDLER( wardner_txscroll_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_txscroll_w(offset / 2, data << shift, 0xff00 >> shift);
+	twincobr_txscroll_w(machine, offset / 2, data << shift, 0xff00 >> shift);
 }
 
 WRITE8_HANDLER( wardner_bgscroll_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_bgscroll_w(offset / 2, data << shift, 0xff00 >> shift);
+	twincobr_bgscroll_w(machine, offset / 2, data << shift, 0xff00 >> shift);
 }
 
 WRITE8_HANDLER( wardner_fgscroll_w )
 {
 	int shift = 8 * (offset & 1);
-	twincobr_fgscroll_w(offset / 2, data << shift, 0xff00 >> shift);
+	twincobr_fgscroll_w(machine, offset / 2, data << shift, 0xff00 >> shift);
 }
 
 WRITE8_HANDLER( wardner_exscroll_w )	/* Extra unused video layer */
@@ -338,9 +338,9 @@ READ8_HANDLER( wardner_videoram_r )
 {
 	int shift = 8 * (offset & 1);
 	switch (offset/2) {
-		case 0: return twincobr_txram_r(0,0) >> shift; break;
-		case 1: return twincobr_bgram_r(0,0) >> shift; break;
-		case 2: return twincobr_fgram_r(0,0) >> shift; break;
+		case 0: return twincobr_txram_r(machine,0,0) >> shift; break;
+		case 1: return twincobr_bgram_r(machine,0,0) >> shift; break;
+		case 2: return twincobr_fgram_r(machine,0,0) >> shift; break;
 	}
 	return 0;
 }
@@ -349,9 +349,9 @@ WRITE8_HANDLER( wardner_videoram_w )
 {
 	int shift = 8 * (offset & 1);
 	switch (offset/2) {
-		case 0: twincobr_txram_w(0,data << shift, 0xff00 >> shift); break;
-		case 1: twincobr_bgram_w(0,data << shift, 0xff00 >> shift); break;
-		case 2: twincobr_fgram_w(0,data << shift, 0xff00 >> shift); break;
+		case 0: twincobr_txram_w(machine,0,data << shift, 0xff00 >> shift); break;
+		case 1: twincobr_bgram_w(machine,0,data << shift, 0xff00 >> shift); break;
+		case 2: twincobr_fgram_w(machine,0,data << shift, 0xff00 >> shift); break;
 	}
 }
 
@@ -371,12 +371,12 @@ WRITE8_HANDLER( wardner_sprite_w )
 
 WRITE8_HANDLER( wardner_CRTC_reg_sel_w )
 {
-	crtc6845_address_w(offset, data);
+//  mc6845_address_w(offset, data);
 }
 
 WRITE8_HANDLER( wardner_CRTC_data_w )
 {
-	crtc6845_register_w(0, data);
+//  mc6845_register_w(0, data);
 }
 
 
@@ -417,7 +417,7 @@ static void twincobr_log_vram(void)
 	if ( input_code_pressed(KEYCODE_M) )
 	{
 		offs_t tile_voffs;
-		int tcode[3];
+		int tcode[4];
 		while (input_code_pressed(KEYCODE_M)) ;
 		logerror("Scrolls             BG-X BG-Y  FG-X FG-Y  TX-X  TX-Y\n");
 		logerror("------>             %04x %04x  %04x %04x  %04x  %04x\n",bgscrollx,bgscrolly,fgscrollx,fgscrolly,txscrollx,txscrolly);
@@ -454,7 +454,7 @@ static void twincobr_log_vram(void)
     Sprite Handlers
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority )
 {
 	int offs;
 
@@ -489,7 +489,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 
 /***************************************************************************
-    Draw the game screen in the given mame_bitmap.
+    Draw the game screen in the given bitmap_t.
 ***************************************************************************/
 
 VIDEO_UPDATE( toaplan0 )
@@ -500,14 +500,14 @@ VIDEO_UPDATE( toaplan0 )
 
 	if (wardner_sprite_hack) wardner_sprite_priority_hack();
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_OPAQUE,0);
-	draw_sprites(machine, bitmap,cliprect,0x0400);
+	draw_sprites(screen->machine, bitmap,cliprect,0x0400);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,0x0800);
+	draw_sprites(screen->machine, bitmap,cliprect,0x0800);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,0x0c00);
+	draw_sprites(screen->machine, bitmap,cliprect,0x0c00);
 	return 0;
 }
 
@@ -517,5 +517,5 @@ VIDEO_EOF( toaplan0 )
 	/* Spriteram is always 1 frame ahead, suggesting spriteram buffering.
         There are no CPU output registers that control this so we
         assume it happens automatically every frame, at the end of vblank */
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }

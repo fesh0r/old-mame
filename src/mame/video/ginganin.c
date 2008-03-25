@@ -142,9 +142,9 @@ WRITE16_HANDLER( ginganin_txtram16_w )
 
 VIDEO_START( ginganin )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,BG_NX,BG_NY);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,FG_NX,FG_NY);
-	tx_tilemap = tilemap_create(get_txt_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,TXT_NX,TXT_NY);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,BG_NX,BG_NY);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,FG_NX,FG_NY);
+	tx_tilemap = tilemap_create(get_txt_tile_info,tilemap_scan_rows,8,8,TXT_NX,TXT_NY);
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -181,7 +181,7 @@ WRITE16_HANDLER( ginganin_vregs16_w )
 		tilemap_set_flip(ALL_TILEMAPS,flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 		break;
 	case 7:
-		soundlatch_w(0,data);
+		soundlatch_w(machine,0,data);
 		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 		break;
 	default:
@@ -211,7 +211,7 @@ Offset:         Values:         Format:
 
 ------------------------------------------------------------------------ */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 int offs;
 
@@ -280,10 +280,10 @@ if (input_code_pressed(KEYCODE_Z))
 
 
 	if (layers_ctrl1 & 1)	tilemap_draw(bitmap,cliprect, bg_tilemap,  0,0);
-	else					fillbitmap(bitmap,machine->pens[0],cliprect);
+	else					fillbitmap(bitmap,0,cliprect);
 
 	if (layers_ctrl1 & 2)	tilemap_draw(bitmap,cliprect, fg_tilemap,  0,0);
-	if (layers_ctrl1 & 8)	draw_sprites(machine, bitmap,cliprect);
+	if (layers_ctrl1 & 8)	draw_sprites(screen->machine, bitmap,cliprect);
 	if (layers_ctrl1 & 4)	tilemap_draw(bitmap,cliprect, tx_tilemap, 0,0);
 
 	return 0;

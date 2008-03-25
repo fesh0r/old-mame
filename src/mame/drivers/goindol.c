@@ -18,6 +18,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 
 VIDEO_START( goindol );
@@ -95,32 +96,32 @@ logerror("%04x: prot_fcb0_w(%02x)\n",activecpu_get_pc(),data);
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc800, 0xc800) AM_READ(MRA8_NOP)	// watchdog?
-	AM_RANGE(0xd000, 0xefff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc800, 0xc800) AM_READ(SMH_NOP)	// watchdog?
+	AM_RANGE(0xd000, 0xefff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_3_r)
 	AM_RANGE(0xf422, 0xf422) AM_READ(prot_f422_r)
 	AM_RANGE(0xf800, 0xf800) AM_READ(input_port_4_r)
 	AM_RANGE(0xc834, 0xc834) AM_READ(input_port_1_r)
 	AM_RANGE(0xc820, 0xc820) AM_READ(input_port_2_r)
 	AM_RANGE(0xc830, 0xc830) AM_READ(input_port_0_r)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM) AM_BASE(&ram)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM) AM_BASE(&ram)
 	AM_RANGE(0xc810, 0xc810) AM_WRITE(goindol_bankswitch_w)
-	AM_RANGE(0xc820, 0xd820) AM_WRITE(MWA8_RAM) AM_BASE(&goindol_fg_scrolly)
-	AM_RANGE(0xc830, 0xd830) AM_WRITE(MWA8_RAM) AM_BASE(&goindol_fg_scrollx)
+	AM_RANGE(0xc820, 0xd820) AM_WRITE(SMH_RAM) AM_BASE(&goindol_fg_scrolly)
+	AM_RANGE(0xc830, 0xd830) AM_WRITE(SMH_RAM) AM_BASE(&goindol_fg_scrollx)
 	AM_RANGE(0xc800, 0xc800) AM_WRITE(soundlatch_w)
-	AM_RANGE(0xd000, 0xd03f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xd040, 0xd7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xd000, 0xd03f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xd040, 0xd7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(goindol_bg_videoram_w) AM_BASE(&goindol_bg_videoram) AM_SIZE(&goindol_bg_videoram_size)
-	AM_RANGE(0xe000, 0xe03f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)
-	AM_RANGE(0xe040, 0xe7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xe03f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)
+	AM_RANGE(0xe040, 0xe7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(goindol_fg_videoram_w) AM_BASE(&goindol_fg_videoram) AM_SIZE(&goindol_fg_videoram_size)
 	AM_RANGE(0xfc44, 0xfc44) AM_WRITE(prot_fc44_w)
 	AM_RANGE(0xfc66, 0xfc66) AM_WRITE(prot_fc66_w)
@@ -129,14 +130,14 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd800, 0xd800) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0xa001, 0xa001) AM_WRITE(YM2203_write_port_0_w)
 ADDRESS_MAP_END
@@ -272,21 +273,21 @@ static MACHINE_DRIVER_START( goindol )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 6000000)        /* 6 MHz (?) */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(goindol)
 	MDRV_PALETTE_LENGTH(256)
 

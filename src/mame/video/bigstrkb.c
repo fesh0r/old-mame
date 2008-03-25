@@ -10,7 +10,7 @@ extern UINT16 *bigstrkb_spriteram;
 
 /* Sprites */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	/*- SPR RAM Format -**
 
@@ -115,9 +115,9 @@ WRITE16_HANDLER( bsb_videoram3_w )
 
 VIDEO_START(bigstrkb)
 {
-	bsb_tilemap = tilemap_create(get_bsb_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	bsb_tilemap2 = tilemap_create(get_bsb_tile2_info,bsb_bg_scan,TILEMAP_TYPE_PEN, 16, 16,128,64);
-	bsb_tilemap3 = tilemap_create(get_bsb_tile3_info,bsb_bg_scan,TILEMAP_TYPE_PEN, 16, 16,128,64);
+	bsb_tilemap = tilemap_create(get_bsb_tile_info,tilemap_scan_cols, 8, 8,64,32);
+	bsb_tilemap2 = tilemap_create(get_bsb_tile2_info,bsb_bg_scan, 16, 16,128,64);
+	bsb_tilemap3 = tilemap_create(get_bsb_tile3_info,bsb_bg_scan, 16, 16,128,64);
 
 	tilemap_set_transparent_pen(bsb_tilemap,15);
 //  tilemap_set_transparent_pen(bsb_tilemap2,15);
@@ -126,7 +126,7 @@ VIDEO_START(bigstrkb)
 
 VIDEO_UPDATE(bigstrkb)
 {
-//  fillbitmap(bitmap,get_black_pen(machine),cliprect);
+//  fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	tilemap_set_scrollx(bsb_tilemap2,0, bsb_vidreg1[0]+(256-14));
 	tilemap_set_scrolly(bsb_tilemap2,0, bsb_vidreg2[0]);
@@ -137,7 +137,7 @@ VIDEO_UPDATE(bigstrkb)
 	tilemap_draw(bitmap,cliprect,bsb_tilemap2,0,0);
 	tilemap_draw(bitmap,cliprect,bsb_tilemap3,0,0);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bsb_tilemap,0,0);
 
 //  popmessage ("Regs %08x %08x %08x %08x",bsb_vidreg2[0],bsb_vidreg2[1],bsb_vidreg2[2],bsb_vidreg2[3]);

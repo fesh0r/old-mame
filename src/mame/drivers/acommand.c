@@ -86,7 +86,7 @@ static TILE_GET_INFO( ac_get_tx_tile_info )
 			0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority, int pri_mask)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority, int pri_mask)
 {
 	int offs;
 
@@ -109,12 +109,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			int xx,yy,x;
 			int delta = 16;
 
-			flipx ^= flip_screen;
-			flipy ^= flip_screen;
+			flipx ^= flip_screen_get();
+			flipy ^= flip_screen_get();
 
 			if ((pri&pri_mask)!=priority) continue;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 368 - sx;
 				sy = 240 - sy;
@@ -148,8 +148,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 static VIDEO_START( acommand )
 {
-	tx_tilemap = tilemap_create(ac_get_tx_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,512,32);
-	bg_tilemap = tilemap_create(ac_get_bg_tile_info,bg_scan,TILEMAP_TYPE_PEN,16,16,256,16);
+	tx_tilemap = tilemap_create(ac_get_tx_tile_info,tilemap_scan_cols,8,8,512,32);
+	bg_tilemap = tilemap_create(ac_get_bg_tile_info,bg_scan,16,16,256,16);
 
 	ac_vregs = auto_malloc(0x80);
 
@@ -162,7 +162,7 @@ static VIDEO_START( acommand )
 #define SHOW_LEDS	0
 
 #if SHOW_LEDS
-static void draw_led(mame_bitmap *bitmap, int x, int y,UINT8 value)
+static void draw_led(bitmap_t *bitmap, int x, int y,UINT8 value)
 {
 	plot_box(bitmap, x, y, 5, 9, 0x00000000);
 
@@ -215,7 +215,7 @@ static UINT16 led0;
 static VIDEO_UPDATE( acommand )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect,0,0);
+	draw_sprites(screen->machine,bitmap,cliprect,0,0);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 
 	#if SHOW_LEDS
@@ -281,7 +281,7 @@ static READ16_HANDLER(ac_devices_r)
                 ---- ---- ---- --x- (Activate Test)
                 ---- ---- ---- ---x (Advance Thru Tests)
             */
-			return input_port_0_word_r(0,0);
+			return input_port_0_word_r(machine,0,0);
 		case 0x0014/2:
 			/*
                 write 0x40,read (~0x08)
@@ -291,14 +291,14 @@ static READ16_HANDLER(ac_devices_r)
             */
 			return (ac_devram[offset]);
 		case 0x0016/2:
-			return OKIM6295_status_0_r(0);
+			return OKIM6295_status_0_r(machine,0);
 		case 0x0018/2:
 			/*
                 ---- ---- ---- x--- Astronaut - switch
             */
 			return ac_devram[offset];
 		case 0x001a/2:
-			return OKIM6295_status_1_r(0);
+			return OKIM6295_status_1_r(machine,0);
 		case 0x0040/2:
 			/*
                 x-x- x-x- x-x- xx-- (ACTIVE HIGH?) [eori #$aaac, D0]
@@ -315,7 +315,7 @@ static READ16_HANDLER(ac_devices_r)
                 xxxx xxxx ---- ---- DIPSW4
                 ---- ---- xxxx xxxx DIPSW3
             */
-			return input_port_1_word_r(0,0);
+			return input_port_1_word_r(machine,0,0);
 	}
 	return ac_devram[offset];
 }
@@ -329,14 +329,14 @@ static WRITE16_HANDLER(ac_devices_w)
 			if(ACCESSING_LSB)
 			{
 				logerror("Request to play sample %02x with rom 2\n",data);
-				OKIM6295_data_0_w(0,data);
+				OKIM6295_data_0_w(machine,0,data);
 			}
 			break;
 		case 0x1a/2:
 			if(ACCESSING_LSB)
 			{
 				logerror("Request to play sample %02x with rom 1\n",data);
-				OKIM6295_data_1_w(0,data);
+				OKIM6295_data_1_w(machine,0,data);
 			}
 			break;
 		case 0x1c/2:
@@ -365,9 +365,9 @@ static ADDRESS_MAP_START( acommand, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x082000, 0x082005) AM_WRITE(ac_bgscroll_w)
 	AM_RANGE(0x082100, 0x082105) AM_WRITE(ac_txscroll_w)
 	AM_RANGE(0x082208, 0x082209) AM_WRITE(ac_unk2_w)
-	AM_RANGE(0x0a0000, 0x0a3fff) AM_READWRITE(MRA16_RAM, ac_bgvram_w) AM_BASE(&ac_bgvram)
-	AM_RANGE(0x0b0000, 0x0b3fff) AM_READWRITE(MRA16_RAM, ac_txvram_w) AM_BASE(&ac_txvram)
-	AM_RANGE(0x0b8000, 0x0bffff) AM_READWRITE(MRA16_RAM, paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x0a0000, 0x0a3fff) AM_READWRITE(SMH_RAM, ac_bgvram_w) AM_BASE(&ac_bgvram)
+	AM_RANGE(0x0b0000, 0x0b3fff) AM_READWRITE(SMH_RAM, ac_txvram_w) AM_BASE(&ac_txvram)
+	AM_RANGE(0x0b8000, 0x0bffff) AM_READWRITE(SMH_RAM, paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0f0000, 0x0f7fff) AM_RAM
 	AM_RANGE(0x0f8000, 0x0f8fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x0f9000, 0x0fffff) AM_RAM
@@ -519,13 +519,12 @@ static MACHINE_DRIVER_START( acommand )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,12000000)
 	MDRV_CPU_PROGRAM_MAP(acommand,0)
-	MDRV_CPU_VBLANK_INT(acommand_irq,2)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(acommand_irq,2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)

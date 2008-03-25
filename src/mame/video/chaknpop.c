@@ -176,7 +176,7 @@ VIDEO_START( chaknpop )
 	UINT8 *RAM = memory_region(REGION_CPU1);
 
 	/*                          info                       offset             type             w   h  col row */
-	tx_tilemap = tilemap_create(chaknpop_get_tx_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,  8,  8, 32, 32);
+	tx_tilemap = tilemap_create(chaknpop_get_tx_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
 
 	vram1 = &RAM[0x10000];
 	vram2 = &RAM[0x12000];
@@ -203,7 +203,7 @@ VIDEO_START( chaknpop )
   Screen refresh
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -238,7 +238,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-static void draw_bitmap(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_bitmap(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int dx = flip_x ? -1 : 1;
 	int offs, i;
@@ -280,7 +280,7 @@ static void draw_bitmap(mame_bitmap *bitmap, const rectangle *cliprect)
 VIDEO_UPDATE( chaknpop )
 {
 	tilemap_draw(bitmap, cliprect, tx_tilemap, 0, 0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	draw_bitmap(bitmap,cliprect);
 	return 0;
 }

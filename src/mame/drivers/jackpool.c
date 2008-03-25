@@ -80,14 +80,14 @@ static READ16_HANDLER( jackpool_io_r )
 }
 
 static ADDRESS_MAP_START( jackpool_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x120000, 0x1200ff) AM_READ(MRA16_RAM) // maybe nvram?
+	AM_RANGE(0x120000, 0x1200ff) AM_READ(SMH_RAM) // maybe nvram?
 
-	AM_RANGE(0x340000, 0x34ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x360000, 0x3603ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x380000, 0x38005f) AM_READ(MRA16_RAM)
+	AM_RANGE(0x340000, 0x34ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x360000, 0x3603ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x380000, 0x38005f) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x800000, 0x80000f) AM_READ(jackpool_io_r)
 
@@ -95,23 +95,23 @@ static ADDRESS_MAP_START( jackpool_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( jackpool_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM)
 
-	AM_RANGE(0x120000, 0x1200ff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x120000, 0x1200ff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x340000, 0x341fff) AM_WRITE(jackpool_layer0_videoram_w) AM_BASE(&jackpool_layer0_videoram)
 	AM_RANGE(0x342000, 0x343fff) AM_WRITE(jackpool_layer1_videoram_w) AM_BASE(&jackpool_layer1_videoram)
 	AM_RANGE(0x344000, 0x345fff) AM_WRITE(jackpool_layer2_videoram_w) AM_BASE(&jackpool_layer2_videoram) // is this the same screen?
 	/* are the ones below used? */
-	AM_RANGE(0x346000, 0x347fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x348000, 0x349fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x34a000, 0x34bfff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x34c000, 0x34dfff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x34e000, 0x34ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x346000, 0x347fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x348000, 0x349fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x34a000, 0x34bfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x34c000, 0x34dfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x34e000, 0x34ffff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x360000, 0x3603ff) AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x380000, 0x38005f) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x380000, 0x38005f) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 #if 0
@@ -142,9 +142,9 @@ static const gfx_layout tiles8x8_layout =
 
 static VIDEO_START(jackpool)
 {
-	jackpool_layer0_tilemap = tilemap_create(get_jackpool_layer0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	jackpool_layer1_tilemap = tilemap_create(get_jackpool_layer1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	jackpool_layer2_tilemap = tilemap_create(get_jackpool_layer2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	jackpool_layer0_tilemap = tilemap_create(get_jackpool_layer0_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	jackpool_layer1_tilemap = tilemap_create(get_jackpool_layer1_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	jackpool_layer2_tilemap = tilemap_create(get_jackpool_layer2_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(jackpool_layer0_tilemap,0);
 	tilemap_set_transparent_pen(jackpool_layer2_tilemap,0);
@@ -175,17 +175,18 @@ static INTERRUPT_GEN( jackpool_interrupt )
 static MACHINE_DRIVER_START( jackpool )
 	MDRV_CPU_ADD(M68000, 12000000) // ?
 	MDRV_CPU_PROGRAM_MAP(jackpool_readmem,jackpool_writemem)
-	MDRV_CPU_VBLANK_INT(jackpool_interrupt,3)  // ?
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(jackpool_interrupt,3)  // ?
 
 	MDRV_GFXDECODE(jackpool)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(0x200)
 
 	MDRV_VIDEO_START(jackpool)

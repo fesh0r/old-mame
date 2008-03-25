@@ -20,7 +20,7 @@ Main CPU: ( 6502 )
 2100-2100 Sound latch write
 2800-2801 Protection
 3800-3800 VBblank ( bootleg 1 only )
-4000-ffff MRA8_ROM
+4000-ffff SMH_ROM
 
 Sound Cpu: ( 6809 )
 0000-1fff RAM
@@ -99,18 +99,13 @@ static READ8_HANDLER( exprraid_protection_r )
 
 static WRITE8_HANDLER( sound_cpu_command_w )
 {
-    soundlatch_w(0,data);
-    cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+    soundlatch_w(machine,0,data);
+    cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static READ8_HANDLER( vblank_r )
 {
-	int val = readinputport( 0 );
-
-	if ( ( val & 0x02 ) )
-		cpu_spin();
-
-	return val;
+	return readinputport( 0 );
 }
 
 static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -307,19 +302,20 @@ static MACHINE_DRIVER_START( exprraid )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 4000000)        /* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
-	MDRV_CPU_VBLANK_INT(exprraid_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", exprraid_interrupt)
 
 	MDRV_CPU_ADD(M6809, 2000000)        /* 2 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
 								/* IRQs are caused by the YM3526 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(exprraid)
 	MDRV_PALETTE_LENGTH(256)
 

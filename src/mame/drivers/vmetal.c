@@ -92,7 +92,7 @@ static tilemap *vmetal_mid2tilemap;
 
 /* video/metro.c */
 extern UINT16 *metro_videoregs;
-void metro_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect);
+void metro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect);
 WRITE16_HANDLER( metro_paletteram_w );
 
 static READ16_HANDLER ( varia_crom_read )
@@ -208,25 +208,25 @@ static WRITE16_HANDLER( vmetal_es8712_w )
     16   002a 000e 0083 00ee 000f 0069 0069   0e832a-0f69ee
     */
 
-	ES8712_data_0_lsb_w(offset, data, mem_mask);
+	ES8712_data_0_lsb_w(machine, offset, data, mem_mask);
 	logerror("PC:%06x - Writing %04x to ES8712 offset %02x\n",activecpu_get_previouspc(),data,offset);
 }
 
 
 static ADDRESS_MAP_START( varia_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
-	AM_RANGE(0x100000, 0x11ffff) AM_READWRITE(MRA16_RAM, vmetal_texttileram_w) AM_BASE(&vmetal_texttileram)
-	AM_RANGE(0x120000, 0x13ffff) AM_READWRITE(MRA16_RAM, vmetal_mid1tileram_w) AM_BASE(&vmetal_mid1tileram)
-	AM_RANGE(0x140000, 0x15ffff) AM_READWRITE(MRA16_RAM, vmetal_mid2tileram_w) AM_BASE(&vmetal_mid2tileram)
+	AM_RANGE(0x100000, 0x11ffff) AM_READWRITE(SMH_RAM, vmetal_texttileram_w) AM_BASE(&vmetal_texttileram)
+	AM_RANGE(0x120000, 0x13ffff) AM_READWRITE(SMH_RAM, vmetal_mid1tileram_w) AM_BASE(&vmetal_mid1tileram)
+	AM_RANGE(0x140000, 0x15ffff) AM_READWRITE(SMH_RAM, vmetal_mid2tileram_w) AM_BASE(&vmetal_mid2tileram)
 
 	AM_RANGE(0x160000, 0x16ffff) AM_READ(varia_crom_read) // cgrom read window ..
 
-	AM_RANGE(0x170000, 0x173fff) AM_READWRITE(MRA16_RAM,metro_paletteram_w) AM_BASE(&paletteram16	)	// Palette
+	AM_RANGE(0x170000, 0x173fff) AM_READWRITE(SMH_RAM,metro_paletteram_w) AM_BASE(&paletteram16	)	// Palette
 	AM_RANGE(0x174000, 0x174fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x175000, 0x177fff) AM_RAM
 	AM_RANGE(0x178000, 0x1787ff) AM_RAM AM_BASE(&vmetal_tlookup)
 	AM_RANGE(0x178800, 0x1796ff) AM_RAM AM_BASE(&vmetal_videoregs)
-	AM_RANGE(0x179700, 0x179713) AM_WRITE(MWA16_RAM) AM_BASE(&metro_videoregs	)	// Video Registers
+	AM_RANGE(0x179700, 0x179713) AM_WRITE(SMH_RAM) AM_BASE(&metro_videoregs	)	// Video Registers
 
 	AM_RANGE(0x200000, 0x200001) AM_READWRITE(input_port_0_word_r, vmetal_control_w)
 	AM_RANGE(0x200002, 0x200003) AM_READ(input_port_1_word_r )
@@ -396,9 +396,9 @@ static TILE_GET_INFO( get_vmetal_mid2tilemap_tile_info )
 
 static VIDEO_START(varia)
 {
-	vmetal_texttilemap = tilemap_create(get_vmetal_texttilemap_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      8, 8, 256,256);
-	vmetal_mid1tilemap = tilemap_create(get_vmetal_mid1tilemap_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      16,16, 256,256);
-	vmetal_mid2tilemap = tilemap_create(get_vmetal_mid2tilemap_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      16,16, 256,256);
+	vmetal_texttilemap = tilemap_create(get_vmetal_texttilemap_tile_info,tilemap_scan_rows, 8, 8, 256,256);
+	vmetal_mid1tilemap = tilemap_create(get_vmetal_mid1tilemap_tile_info,tilemap_scan_rows,16,16, 256,256);
+	vmetal_mid2tilemap = tilemap_create(get_vmetal_mid2tilemap_tile_info,tilemap_scan_rows,16,16, 256,256);
 	tilemap_set_transparent_pen(vmetal_texttilemap,0);
 	tilemap_set_transparent_pen(vmetal_mid1tilemap,0);
 	tilemap_set_transparent_pen(vmetal_mid2tilemap,0);
@@ -406,7 +406,7 @@ static VIDEO_START(varia)
 
 static VIDEO_UPDATE(varia)
 {
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	fillbitmap(priority_bitmap,0,cliprect);
 
 	tilemap_set_scrollx(vmetal_mid2tilemap,0, vmetal_videoregs[0x06a/2]-64 /*+ vmetal_videoregs[0x066/2]*/);
@@ -419,7 +419,7 @@ static VIDEO_UPDATE(varia)
 
 	tilemap_draw(bitmap,cliprect,vmetal_mid1tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,vmetal_mid2tilemap,0,0);
-	metro_draw_sprites(machine, bitmap,cliprect);
+	metro_draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,vmetal_texttilemap,0,0);
 	return 0;
 }
@@ -427,15 +427,16 @@ static VIDEO_UPDATE(varia)
 static MACHINE_DRIVER_START( varia )
 	MDRV_CPU_ADD(M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(varia_program_map, 0)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1) // also level 3
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold) // also level 3
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(2048, 2048)
 	MDRV_SCREEN_VISIBLE_AREA(0+64, 319+64, 0+64, 223+64)
+
 	MDRV_GFXDECODE(vmetal)
 	MDRV_PALETTE_LENGTH(0x4000)
 

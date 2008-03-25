@@ -46,7 +46,7 @@ PALETTE_INIT( espial )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -58,13 +58,13 @@ PALETTE_INIT( espial )
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* green component */
 		bit0 = (color_prom[i] >> 3) & 0x01;
-		bit1 = (color_prom[i + machine->drv->total_colors] >> 0) & 0x01;
-		bit2 = (color_prom[i + machine->drv->total_colors] >> 1) & 0x01;
+		bit1 = (color_prom[i + machine->config->total_colors] >> 0) & 0x01;
+		bit2 = (color_prom[i + machine->config->total_colors] >> 1) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 		/* blue component */
 		bit0 = 0;
-		bit1 = (color_prom[i + machine->drv->total_colors] >> 2) & 0x01;
-		bit2 = (color_prom[i + machine->drv->total_colors] >> 3) & 0x01;
+		bit1 = (color_prom[i + machine->config->total_colors] >> 2) & 0x01;
+		bit2 = (color_prom[i + machine->config->total_colors] >> 3) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -100,7 +100,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( espial )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 }
@@ -108,7 +108,7 @@ VIDEO_START( espial )
 VIDEO_START( netwars )
 {
 	/* Net Wars has a tile map that's twice as big as Espial's */
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,64);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,64);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 	tilemap_set_scrolldy(bg_tilemap, 0, 0x100);
@@ -163,7 +163,7 @@ WRITE8_HANDLER( espial_flipscreen_w )
  *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -237,7 +237,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( espial )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

@@ -124,7 +124,7 @@ WRITE8_HANDLER( bankp_out_w )
 	/* bits 2-3 unknown (2 is used) */
 
 	/* bit 4 controls NMI */
-	interrupt_enable_w(0,(data & 0x10)>>4);
+	interrupt_enable_w(machine,0,(data & 0x10)>>4);
 
 	/* bit 5 controls screen flip */
 	flip_screen_set(data & 0x20);
@@ -155,10 +155,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( bankp )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[1], 0);
 	colortable_configure_tilemap_groups(machine->colortable, fg_tilemap, machine->gfx[0], 0);
@@ -166,7 +166,7 @@ VIDEO_START( bankp )
 
 VIDEO_UPDATE( bankp )
 {
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		tilemap_set_scrollx(fg_tilemap, 0, -scroll_x);
 		tilemap_set_scrollx(bg_tilemap, 0, 0);

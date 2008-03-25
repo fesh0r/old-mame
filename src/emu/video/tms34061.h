@@ -37,10 +37,10 @@ enum
 /* interface structure */
 struct tms34061_interface
 {
-	int		scrnum;			/* the screen we are acting on */
-	UINT8	rowshift;		/* VRAM address is (row << rowshift) | col */
-	UINT32	vramsize;		/* size of video RAM */
-	void	(*interrupt)(running_machine *machine, int state);	/* interrupt gen callback */
+	const char	*screen_tag;	/* the screen we are acting on */
+	UINT8		rowshift;		/* VRAM address is (row << rowshift) | col */
+	UINT32		vramsize;		/* size of video RAM */
+	void		(*interrupt)(running_machine *machine, int state);	/* interrupt gen callback */
 };
 
 

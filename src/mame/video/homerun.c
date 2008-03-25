@@ -12,7 +12,7 @@ UINT8 *homerun_videoram;
 
 WRITE8_HANDLER(homerun_banking_w)
 {
-	if(video_screen_get_vpos(0)>half_screen)
+	if(video_screen_get_vpos(machine->primary_screen)>half_screen)
 		homerun_gc_down=data&3;
 	else
 		homerun_gc_up=data&3;
@@ -63,10 +63,10 @@ static TILE_GET_INFO( get_homerun_tile_info )
 
 VIDEO_START(homerun)
 {
-	homerun_tilemap = tilemap_create(get_homerun_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
+	homerun_tilemap = tilemap_create(get_homerun_tile_info,tilemap_scan_rows, 8, 8,64,64);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 	for (offs = spriteram_size-4; offs >=0; offs -= 4)
@@ -98,7 +98,7 @@ VIDEO_UPDATE(homerun)
 	myclip.max_y/=2;
 	homerun_gfx_ctrl=homerun_gc_up;
 	tilemap_draw(bitmap,&myclip,homerun_tilemap,0,0);
-	draw_sprites(machine, bitmap,&myclip);
+	draw_sprites(screen->machine, bitmap,&myclip);
 
 	/* lower part */
 
@@ -106,7 +106,7 @@ VIDEO_UPDATE(homerun)
 	myclip.max_y*=2;
 	homerun_gfx_ctrl=homerun_gc_down;
 	tilemap_draw(bitmap,&myclip,homerun_tilemap,0,0);
-	draw_sprites(machine, bitmap,&myclip);
+	draw_sprites(screen->machine, bitmap,&myclip);
 
 	homerun_gc_down=homerun_gc_up;
 	return 0;

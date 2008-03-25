@@ -156,19 +156,16 @@ static UINT8 *mainram;
  *
  *************************************/
 
-static void service_switch(void *param, UINT32 oldval, UINT32 newval)
+static INPUT_CHANGED( service_switch )
 {
 	/* pressing the service switch sends an NMI */
 	if (newval)
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
 static MACHINE_START( g80r )
 {
-	/* request a callback if the service switch is pressed */
-	input_port_set_changed_callback(port_tag_to_index("SERVICESW"), 0x01, service_switch, NULL);
-
 	/* register for save states */
 }
 
@@ -204,11 +201,11 @@ static offs_t decrypt_offset(offs_t offset)
 }
 
 static WRITE8_HANDLER( mainram_w )         { mainram[decrypt_offset(offset)] = data; }
-static WRITE8_HANDLER( vidram_w )          { segag80r_videoram_w(decrypt_offset(offset), data); }
-static WRITE8_HANDLER( monsterb_vidram_w ) { monsterb_videoram_w(decrypt_offset(offset), data); }
-static WRITE8_HANDLER( pignewt_vidram_w )  { pignewt_videoram_w(decrypt_offset(offset), data); }
-static WRITE8_HANDLER( sindbadm_vidram_w ) { sindbadm_videoram_w(decrypt_offset(offset), data); }
-static WRITE8_HANDLER( usb_ram_w )         { sega_usb_ram_w(decrypt_offset(offset), data); }
+static WRITE8_HANDLER( vidram_w )          { segag80r_videoram_w(machine, decrypt_offset(offset), data); }
+static WRITE8_HANDLER( monsterb_vidram_w ) { monsterb_videoram_w(machine, decrypt_offset(offset), data); }
+static WRITE8_HANDLER( pignewt_vidram_w )  { pignewt_videoram_w(machine, decrypt_offset(offset), data); }
+static WRITE8_HANDLER( sindbadm_vidram_w ) { sindbadm_videoram_w(machine, decrypt_offset(offset), data); }
+static WRITE8_HANDLER( usb_ram_w )         { sega_usb_ram_w(machine, decrypt_offset(offset), data); }
 
 
 
@@ -305,8 +302,8 @@ static WRITE8_HANDLER( coin_count_w )
 
 static WRITE8_HANDLER( sindbadm_soundport_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(50));
 }
 
@@ -321,13 +318,13 @@ static WRITE8_HANDLER( sindbadm_misc_w )
 /* the data lines are flipped */
 static WRITE8_HANDLER( sindbadm_SN76496_0_w )
 {
-	SN76496_0_w(offset, BITSWAP8(data, 0,1,2,3,4,5,6,7));
+	SN76496_0_w(machine, offset, BITSWAP8(data, 0,1,2,3,4,5,6,7));
 }
 
 
 static WRITE8_HANDLER( sindbadm_SN76496_1_w )
 {
-	SN76496_1_w(offset, BITSWAP8(data, 0,1,2,3,4,5,6,7));
+	SN76496_1_w(machine, offset, BITSWAP8(data, 0,1,2,3,4,5,6,7));
 }
 
 
@@ -343,14 +340,14 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM		/* CPU board ROM */
 	AM_RANGE(0x0800, 0x7fff) AM_ROM		/* PROM board ROM area */
 	AM_RANGE(0x8000, 0xbfff) AM_ROM		/* PROM board ROM area */
-	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(MRA8_RAM, mainram_w) AM_BASE(&mainram)
-	AM_RANGE(0xe000, 0xffff) AM_READWRITE(MRA8_RAM, vidram_w) AM_BASE(&videoram)
+	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(SMH_RAM, mainram_w) AM_BASE(&mainram)
+	AM_RANGE(0xe000, 0xffff) AM_READWRITE(SMH_RAM, vidram_w) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 
 /* complete memory map derived from schematics */
 static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xbe, 0xbf) AM_READWRITE(segag80r_video_port_r, segag80r_video_port_w)
 	AM_RANGE(0xf9, 0xf9) AM_MIRROR(0x04) AM_WRITE(coin_count_w)
 	AM_RANGE(0xf8, 0xfb) AM_READ(mangled_ports_r)
@@ -359,7 +356,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sindbadm_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x42, 0x43) AM_READWRITE(segag80r_video_port_r, segag80r_video_port_w)
 	AM_RANGE(0xf8, 0xfb) AM_READ(mangled_ports_r)
 ADDRESS_MAP_END
@@ -467,7 +464,7 @@ static INPUT_PORTS_START( g80r_generic )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )				/* P1.30 */
 
 	PORT_START_TAG("SERVICESW")
-	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH )
+	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH ) PORT_CHANGED(service_switch, 0)
 INPUT_PORTS_END
 
 
@@ -821,19 +818,15 @@ static MACHINE_DRIVER_START( g80r_base )
 	MDRV_CPU_ADD_TAG("main", Z80, VIDEO_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT(segag80r_vblank_start,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", segag80r_vblank_start)
 
 	MDRV_MACHINE_START(g80r)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(segag80r)
 	MDRV_PALETTE_LENGTH(64)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 
@@ -872,7 +865,8 @@ static MACHINE_DRIVER_START( spaceod )
 	MDRV_IMPORT_FROM(g80r_base)
 
 	/* background board changes */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_ALWAYS_UPDATE)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_GFXDECODE(spaceod)
 	MDRV_PALETTE_LENGTH(64+64)
@@ -917,7 +911,7 @@ static MACHINE_DRIVER_START( sindbadm )
 	MDRV_IMPORT_FROM(g80r_base)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(sindbadm_portmap,0)
-	MDRV_CPU_VBLANK_INT(sindbadm_vblank_start,1)
+	MDRV_CPU_VBLANK_INT("main", sindbadm_vblank_start)
 
 	/* video hardware */
 	MDRV_GFXDECODE(monsterb)
@@ -927,7 +921,7 @@ static MACHINE_DRIVER_START( sindbadm )
 
 	MDRV_CPU_ADD(Z80, SINDBADM_SOUND_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(sindbadm_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	/* sound hardware */
 	MDRV_SOUND_ADD(SN76496, SINDBADM_SOUND_CLOCK/4)

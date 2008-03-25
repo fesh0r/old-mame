@@ -14,15 +14,13 @@ PALETTE_INIT( kchamp )
 {
 	int i, red, green, blue;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		red = color_prom[i];
-		green = color_prom[machine->drv->total_colors+i];
-		blue = color_prom[2*machine->drv->total_colors+i];
+		green = color_prom[machine->config->total_colors+i];
+		blue = color_prom[2*machine->config->total_colors+i];
 
 		palette_set_color_rgb(machine,i,pal4bit(red),pal4bit(green),pal4bit(blue));
-
-		*(colortable++) = i;
 	}
 }
 
@@ -54,7 +52,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( kchamp )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
 /*
@@ -67,7 +65,7 @@ VIDEO_START( kchamp )
             3             XXXXXXXX
 */
 
-static void kchamp_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void kchamp_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -82,7 +80,7 @@ static void kchamp_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
         int sx = spriteram[offs + 3] - 8;
         int sy = 247 - spriteram[offs];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -95,7 +93,7 @@ static void kchamp_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
 	}
 }
 
-static void kchampvs_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void kchampvs_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -110,7 +108,7 @@ static void kchampvs_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
         int sx = spriteram[offs + 3];
         int sy = 240 - spriteram[offs];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -127,13 +125,13 @@ static void kchampvs_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 VIDEO_UPDATE( kchamp )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	kchamp_draw_sprites(machine, bitmap, cliprect);
+	kchamp_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
 VIDEO_UPDATE( kchampvs )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	kchampvs_draw_sprites(machine, bitmap, cliprect);
+	kchampvs_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

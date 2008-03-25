@@ -44,7 +44,7 @@
 
 PALETTE_INIT( karnov );
 VIDEO_UPDATE( karnov );
-WRITE16_HANDLER( karnov_playfield_w );
+WRITE16_HANDLER( karnov_playfield_swap_w );
 WRITE16_HANDLER( karnov_videoram_w );
 void karnov_flipscreen_w(int data);
 
@@ -262,19 +262,19 @@ static WRITE16_HANDLER( karnov_control_w )
 	/* Mnemonics filled in from the schematics, brackets are my comments */
 	switch (offset<<1) {
 		case 0: /* SECLR (Interrupt ack for Level 6 i8751 interrupt) */
-			cpunum_set_input_line(Machine, 0,6,CLEAR_LINE);
+			cpunum_set_input_line(machine, 0,6,CLEAR_LINE);
 
 			if (i8751_needs_ack) {
 				/* If a command and coin insert happen at once, then the i8751 will queue the
                     coin command until the previous command is ACK'd */
 				if (i8751_coin_pending) {
 					i8751_return=i8751_coin_pending;
-					cpunum_set_input_line(Machine, 0,6,HOLD_LINE);
+					cpunum_set_input_line(machine, 0,6,HOLD_LINE);
 					i8751_coin_pending=0;
 				} else if (i8751_command_queue) {
 					/* Pending control command - just write it back as SECREQ */
 					i8751_needs_ack=0;
-					karnov_control_w(3,i8751_command_queue,0xffff);
+					karnov_control_w(machine,3,i8751_command_queue,0xffff);
 					i8751_command_queue=0;
 				} else {
 					i8751_needs_ack=0;
@@ -283,12 +283,12 @@ static WRITE16_HANDLER( karnov_control_w )
 			return;
 
 		case 2: /* SONREQ (Sound CPU byte) */
-			soundlatch_w(0,data&0xff);
-			cpunum_set_input_line (Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+			soundlatch_w(machine,0,data&0xff);
+			cpunum_set_input_line (machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 			break;
 
 		case 4: /* DM (DMA to buffer spriteram) */
-			buffer_spriteram16_w(0,0,0);
+			buffer_spriteram16_w(machine,0,0,0);
 			break;
 
 		case 6: /* SECREQ (Interrupt & Data to i8751) */
@@ -341,38 +341,39 @@ static READ16_HANDLER( karnov_control_r )
 /******************************************************************************/
 
 static ADDRESS_MAP_START( karnov_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x05ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x060000, 0x063fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x080000, 0x080fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0a0000, 0x0a07ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x05ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x060000, 0x063fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x080000, 0x080fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0a0000, 0x0a07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0c0000, 0x0c0007) AM_READ(karnov_control_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( karnov_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x05ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x060000, 0x063fff) AM_WRITE(MWA16_RAM) AM_BASE(&karnov_ram)
-	AM_RANGE(0x080000, 0x080fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x000000, 0x05ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x060000, 0x063fff) AM_WRITE(SMH_RAM) AM_BASE(&karnov_ram)
+	AM_RANGE(0x080000, 0x080fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x0a0000, 0x0a07ff) AM_WRITE(karnov_videoram_w) AM_BASE(&videoram16)
 	AM_RANGE(0x0a0800, 0x0a0fff) AM_WRITE(karnov_videoram_w) /* Wndrplnt Mirror */
-	AM_RANGE(0x0a1000, 0x0a1fff) AM_WRITE(karnov_playfield_w) AM_BASE(&karnov_pf_data)
+	AM_RANGE(0x0a1000, 0x0a17ff) AM_WRITE(SMH_RAM) AM_BASE(&karnov_pf_data)
+	AM_RANGE(0x0a1800, 0x0a1fff) AM_WRITE(karnov_playfield_swap_w)
 	AM_RANGE(0x0c0000, 0x0c000f) AM_WRITE(karnov_control_w)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static ADDRESS_MAP_START( karnov_s_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x05ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x05ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0800, 0x0800) AM_READ(soundlatch_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( karnov_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
- 	AM_RANGE(0x0000, 0x05ff) AM_WRITE(MWA8_RAM)
+ 	AM_RANGE(0x0000, 0x05ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(YM2203_control_port_0_w) /* OPN */
 	AM_RANGE(0x1001, 0x1001) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(YM3526_control_port_0_w) /* OPL */
 	AM_RANGE(0x1801, 0x1801) AM_WRITE(YM3526_write_port_0_w)
- 	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+ 	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -689,21 +690,24 @@ static MACHINE_DRIVER_START( karnov )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 10000000)	/* 10 MHz */
 	MDRV_CPU_PROGRAM_MAP(karnov_readmem,karnov_writemem)
-	MDRV_CPU_VBLANK_INT(karnov_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", karnov_interrupt)
 
 	MDRV_CPU_ADD(M6502, 1500000)
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(karnov_s_readmem,karnov_s_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(karnov)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(karnov)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -728,21 +732,24 @@ static MACHINE_DRIVER_START( wndrplnt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 10000000)	/* 10 MHz */
 	MDRV_CPU_PROGRAM_MAP(karnov_readmem,karnov_writemem)
-	MDRV_CPU_VBLANK_INT(karnov_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", karnov_interrupt)
 
 	MDRV_CPU_ADD(M6502, 1500000)
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(karnov_s_readmem,karnov_s_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(karnov)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(karnov)
 	MDRV_PALETTE_LENGTH(1024)
 

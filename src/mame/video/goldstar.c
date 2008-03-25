@@ -14,7 +14,7 @@ UINT8 *goldstar_video1, *goldstar_video2, *goldstar_video3;
 size_t goldstar_video_size;
 UINT8 *goldstar_scroll1, *goldstar_scroll2, *goldstar_scroll3;
 
-static mame_bitmap *tmpbitmap1, *tmpbitmap2, *tmpbitmap3, *tmpbitmap4;
+static bitmap_t *tmpbitmap1, *tmpbitmap2, *tmpbitmap3, *tmpbitmap4;
 static int bgcolor;
 
 
@@ -29,13 +29,10 @@ VIDEO_START( goldstar )
 //        int i;
 
 	/* the background area is half as high as the screen */
-	tmpbitmap1 = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	tmpbitmap2 = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	tmpbitmap3 = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	tmpbitmap4 = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-
-	/* leave everything at the default, but map all foreground 0 pens as transparent */
-//        for (i = 0;i < 16;i++) palette_used_colors[8 * i] = PALETTE_COLOR_TRANSPARENT;
+	tmpbitmap1 = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmpbitmap2 = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmpbitmap3 = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmpbitmap4 = video_screen_auto_bitmap_alloc(machine->primary_screen);
 }
 
 
@@ -69,7 +66,7 @@ VIDEO_UPDATE( goldstar )
 		sx = offs % 64;
 		sy = offs / 64;
 
-		drawgfx(tmpbitmap4,machine->gfx[0],
+		drawgfx(bitmap,screen->machine->gfx[0],
 				videoram[offs] + ((colorram[offs] & 0xf0) << 4),
 				colorram[offs] & 0x0f,
 				0,0,
@@ -86,21 +83,21 @@ VIDEO_UPDATE( goldstar )
 		int sy = offs / 64;
 
 
-		drawgfx(tmpbitmap1,machine->gfx[1],
+		drawgfx(tmpbitmap1,screen->machine->gfx[1],
 				goldstar_video1[offs],
 				bgcolor,
 				0,0,
 				sx*8,sy*32,
 				0,TRANSPARENCY_NONE,0);
 
-		drawgfx(tmpbitmap2,machine->gfx[1],
+		drawgfx(tmpbitmap2,screen->machine->gfx[1],
 				goldstar_video2[offs],
 				bgcolor,
 				0,0,
 				sx*8,sy*32,
 				0,TRANSPARENCY_NONE,0);
 
-		drawgfx(tmpbitmap3,machine->gfx[1],
+		drawgfx(tmpbitmap3,screen->machine->gfx[1],
 				goldstar_video3[offs],
 				bgcolor,
 				0,0,

@@ -18,40 +18,46 @@ static tilemap *bg_tilemap;
 PALETTE_INIT( mrjong )
 {
 	int i;
-	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-	#define COLOR(gfxn, offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + (offs)])
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x10);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x10; i++)
 	{
-		int bit0, bit1, bit2, r, g, b;
+		int bit0, bit1, bit2;
+		int r, g, b;
 
 		/* red component */
-		bit0 = (*color_prom >> 0) & 0x01;
-		bit1 = (*color_prom >> 1) & 0x01;
-		bit2 = (*color_prom >> 2) & 0x01;
+		bit0 = (color_prom[i] >> 0) & 0x01;
+		bit1 = (color_prom[i] >> 1) & 0x01;
+		bit2 = (color_prom[i] >> 2) & 0x01;
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* green component */
-		bit0 = (*color_prom >> 3) & 0x01;
-		bit1 = (*color_prom >> 4) & 0x01;
-		bit2 = (*color_prom >> 5) & 0x01;
+		bit0 = (color_prom[i] >> 3) & 0x01;
+		bit1 = (color_prom[i] >> 4) & 0x01;
+		bit2 = (color_prom[i] >> 5) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* blue component */
 		bit0 = 0;
-		bit1 = (*color_prom >> 6) & 0x01;
-		bit2 = (*color_prom >> 7) & 0x01;
+		bit1 = (color_prom[i] >> 6) & 0x01;
+		bit2 = (color_prom[i] >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
-		color_prom++;
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 0x10;
 	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x20;
 
-	/* character lookup table */
-	/* sprites use the same color lookup table as characters */
-	for (i = 0; i < TOTAL_COLORS(0); i++)
-		COLOR(0, i) = *(color_prom++) & 0x0f;
+	/* characters/sprites */
+	for (i = 0; i < 0x80; i++)
+	{
+		UINT8 ctabentry = color_prom[i] & 0x0f;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 }
 
 
@@ -74,7 +80,7 @@ WRITE8_HANDLER( mrjong_colorram_w )
 
 WRITE8_HANDLER( mrjong_flipscreen_w )
 {
-	if (flip_screen != (data & 0x01))
+	if (flip_screen_get() != (data & 0x01))
 	{
 		flip_screen_set(data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -92,11 +98,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( mrjong )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows_flip_xy,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows_flip_xy, 8, 8, 32, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -114,7 +119,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		sx = 224 - spriteram[offs + 2];
 		sy = spriteram[offs + 0];
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 208 - sx;
 			sy = 240 - sy;
@@ -134,6 +139,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( mrjong )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

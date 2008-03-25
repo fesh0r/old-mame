@@ -107,8 +107,8 @@ static WRITE8_HANDLER( analog_reset_w )
 
 	analog_port_val = 0xff;
 
-	timer_adjust(analog_timer_1, compute_duration(readinputportbytag("AN1")), 0x02, attotime_zero);
-	timer_adjust(analog_timer_2, compute_duration(readinputportbytag("AN2")), 0x01, attotime_zero);
+	timer_adjust_oneshot(analog_timer_1, compute_duration(readinputportbytag("AN1")), 0x02);
+	timer_adjust_oneshot(analog_timer_2, compute_duration(readinputportbytag("AN2")), 0x01);
 }
 
 
@@ -201,7 +201,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x23ff) AM_RAM
 	AM_RANGE(0x4000, 0x47ff) AM_ROM
 	AM_RANGE(0x8000, 0x97ff) AM_RAM AM_BASE(&clayshoo_videoram) AM_SIZE(&clayshoo_videoram_size)	/* 6k of video ram according to readme */
-	AM_RANGE(0x9800, 0xa800) AM_WRITE(MWA8_NOP)	  /* not really mapped, but cleared */
+	AM_RANGE(0x9800, 0xa800) AM_WRITE(SMH_NOP)	  /* not really mapped, but cleared */
 	AM_RANGE(0xc800, 0xc800) AM_READWRITE(analog_r, analog_reset_w)
 ADDRESS_MAP_END
 
@@ -214,7 +214,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x20, 0x23) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
 	AM_RANGE(0x30, 0x33) AM_READWRITE(ppi8255_1_r, ppi8255_1_w)
@@ -299,20 +299,19 @@ static MACHINE_DRIVER_START( clayshoo )
 	MDRV_CPU_ADD(Z80,5068000/4)		/* 5.068/4 Mhz (divider is a guess) */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_START(clayshoo)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(clayshoo)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 64, 255)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 
 MACHINE_DRIVER_END
 

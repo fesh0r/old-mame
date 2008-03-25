@@ -13,15 +13,15 @@ driver by Allard Van Der Bas
 
 UINT8 shaolins_nmi_enable;
 
-extern WRITE8_HANDLER( shaolins_videoram_w );
-extern WRITE8_HANDLER( shaolins_colorram_w );
-extern WRITE8_HANDLER( shaolins_palettebank_w );
-extern WRITE8_HANDLER( shaolins_scroll_w );
-extern WRITE8_HANDLER( shaolins_nmi_w );
+WRITE8_HANDLER( shaolins_videoram_w );
+WRITE8_HANDLER( shaolins_colorram_w );
+WRITE8_HANDLER( shaolins_palettebank_w );
+WRITE8_HANDLER( shaolins_scroll_w );
+WRITE8_HANDLER( shaolins_nmi_w );
 
-extern PALETTE_INIT( shaolins );
-extern VIDEO_START( shaolins );
-extern VIDEO_UPDATE( shaolins );
+PALETTE_INIT( shaolins );
+VIDEO_START( shaolins );
+VIDEO_UPDATE( shaolins );
 
 
 static INTERRUPT_GEN( shaolins_interrupt )
@@ -42,11 +42,11 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0701, 0x0701) AM_READ(input_port_1_r)	/* player 1 controls */
 	AM_RANGE(0x0702, 0x0702) AM_READ(input_port_2_r)	/* player 2 controls */
 	AM_RANGE(0x0703, 0x0703) AM_READ(input_port_5_r)	/* selftest */
-	AM_RANGE(0x2800, 0x2bff) AM_READ(MRA8_RAM)	/* RAM BANK 2 */
-	AM_RANGE(0x3000, 0x33ff) AM_READ(MRA8_RAM)	/* RAM BANK 1 */
-	AM_RANGE(0x3800, 0x3fff) AM_READ(MRA8_RAM)	/* video RAM */
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_ROM)    /* Machine checks for extra rom */
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x2800, 0x2bff) AM_READ(SMH_RAM)	/* RAM BANK 2 */
+	AM_RANGE(0x3000, 0x33ff) AM_READ(SMH_RAM)	/* RAM BANK 1 */
+	AM_RANGE(0x3800, 0x3fff) AM_READ(SMH_RAM)	/* video RAM */
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_ROM)    /* Machine checks for extra rom */
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -56,16 +56,16 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0300, 0x0300) AM_WRITE(SN76496_0_w) 	/* trigger chip to read from latch. The program always */
 	AM_RANGE(0x0400, 0x0400) AM_WRITE(SN76496_1_w) 	/* writes the same number as the latch, so we don't */
 										/* bother emulating them. */
-	AM_RANGE(0x0800, 0x0800) AM_WRITE(MWA8_NOP)	/* latch for 76496 #0 */
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(MWA8_NOP)	/* latch for 76496 #1 */
+	AM_RANGE(0x0800, 0x0800) AM_WRITE(SMH_NOP)	/* latch for 76496 #0 */
+	AM_RANGE(0x1000, 0x1000) AM_WRITE(SMH_NOP)	/* latch for 76496 #1 */
 	AM_RANGE(0x1800, 0x1800) AM_WRITE(shaolins_palettebank_w)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(shaolins_scroll_w)
-	AM_RANGE(0x2800, 0x2bff) AM_WRITE(MWA8_RAM)	/* RAM BANK 2 */
-	AM_RANGE(0x3000, 0x30ff) AM_WRITE(MWA8_RAM)	/* RAM BANK 1 */
-	AM_RANGE(0x3100, 0x33ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x2800, 0x2bff) AM_WRITE(SMH_RAM)	/* RAM BANK 2 */
+	AM_RANGE(0x3000, 0x30ff) AM_WRITE(SMH_RAM)	/* RAM BANK 1 */
+	AM_RANGE(0x3100, 0x33ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x3800, 0x3bff) AM_WRITE(shaolins_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x3c00, 0x3fff) AM_WRITE(shaolins_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -220,19 +220,18 @@ static MACHINE_DRIVER_START( shaolins )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, XTAL_18_432MHz/12)        /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(shaolins_interrupt,16)	/* 1 IRQ + 8 NMI */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(shaolins_interrupt,16)	/* 1 IRQ + 8 NMI */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(shaolins)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(16*8*16+16*8*16)
+	MDRV_PALETTE_LENGTH(16*8*16+16*8*16)
 
 	MDRV_PALETTE_INIT(shaolins)
 	MDRV_VIDEO_START(shaolins)
@@ -302,4 +301,4 @@ ROM_END
 
 
 GAME( 1985, kicker,   0,      shaolins, shaolins, 0, ROT90, "Konami", "Kicker", 0 )
-GAME( 1985, shaolins, kicker, shaolins, shaolins, 0, ROT90, "Konami", "Shao-Lin's Road", 0 )
+GAME( 1985, shaolins, kicker, shaolins, shaolins, 0, ROT90, "Konami", "Shao-lin's Road", 0 )

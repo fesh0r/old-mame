@@ -93,10 +93,10 @@ static CUSTOM_INPUT( vicdual_read_coin_status )
 		coin_counter_w(0, 1);
 		coin_counter_w(0, 0);
 
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 
 		/* simulate the coin switch being closed for a while */
-		timer_set(double_to_attotime(4 * attotime_to_double(video_screen_get_frame_period(0))), NULL, 0, clear_coin_status);
+		timer_set(double_to_attotime(4 * attotime_to_double(video_screen_get_frame_period(machine->primary_screen))), NULL, 0, clear_coin_status);
 	}
 
 	last_coin_input = coin_input;
@@ -129,16 +129,14 @@ static UINT32 timer_value;
 #define TIMER_HALF_PERIOD	ATTOTIME_IN_MSEC(4 / 2)	/* 4Mhz square wave */
 
 
-static int get_vcounter(void)
+static int get_vcounter(running_machine *machine)
 {
-	int vcounter = video_screen_get_vpos(0);
+	int vcounter = video_screen_get_vpos(machine->primary_screen);
 
 	/* the vertical synch counter gets incremented at the end of HSYNC,
        compensate for this */
-	if (video_screen_get_hpos(0) >= VICDUAL_HSEND)
-	{
+	if (video_screen_get_hpos(machine->primary_screen) >= VICDUAL_HSEND)
 		vcounter = (vcounter + 1) % VICDUAL_VTOTAL;
-	}
 
 	return vcounter;
 }
@@ -146,19 +144,19 @@ static int get_vcounter(void)
 
 static CUSTOM_INPUT( vicdual_get_64v )
 {
-	return (get_vcounter() >> 6) & 0x01;
+	return (get_vcounter(machine) >> 6) & 0x01;
 }
 
 
 static CUSTOM_INPUT( vicdual_get_vblank_comp )
 {
-	return (get_vcounter() < VICDUAL_VBSTART);
+	return (get_vcounter(machine) < VICDUAL_VBSTART);
 }
 
 
 static CUSTOM_INPUT( vicdual_get_composite_blank_comp )
 {
-	return (vicdual_get_vblank_comp(0) && !video_screen_get_hblank(0));
+	return (vicdual_get_vblank_comp(machine, 0) && !video_screen_get_hblank(machine->primary_screen));
 }
 
 
@@ -174,7 +172,6 @@ static CUSTOM_INPUT( vicdual_get_timer_value )
 	if (!timer_started)
 	{
 		timer_started = 1;
-
 		timer_pulse(TIMER_HALF_PERIOD, NULL, 0, vicdual_timer_callback);
 	}
 
@@ -193,9 +190,7 @@ static CUSTOM_INPUT( vicdual_get_timer_value )
 
 int vicdual_is_cabinet_color(void)
 {
-	UINT32 input = readinputportbytag(COLOR_BW_PORT_TAG);
-
-	return (input == 0);
+	return (readinputportbytag(COLOR_BW_PORT_TAG) == 0);
 }
 
 
@@ -220,8 +215,7 @@ static UINT8 *vicdual_characterram;
 
 static WRITE8_HANDLER( vicdual_videoram_w )
 {
-	video_screen_update_partial(0, video_screen_get_vpos(0));
-
+	video_screen_update_now(machine->primary_screen);
 	vicdual_videoram[offset] = data;
 }
 
@@ -234,8 +228,7 @@ UINT8 vicdual_videoram_r(offs_t offset)
 
 static WRITE8_HANDLER( vicdual_characterram_w )
 {
-	video_screen_update_partial(0, video_screen_get_vpos(0));
-
+	video_screen_update_now(machine->primary_screen);
 	vicdual_characterram[offset] = data;
 }
 
@@ -259,9 +252,7 @@ static MACHINE_DRIVER_START( vicdual_root )
 	MDRV_CPU_ADD_TAG("main", Z80, VICDUAL_MAIN_CPU_CLOCK)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(VICDUAL_PIXEL_CLOCK, VICDUAL_HTOTAL, VICDUAL_HBEND, VICDUAL_HBSTART, VICDUAL_VTOTAL, VICDUAL_VBEND, VICDUAL_VBSTART)
 
@@ -279,9 +270,8 @@ static READ8_HANDLER( depthch_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
-	if (offset & 0x08)  ret = input_port_1_r(0);
+	if (offset & 0x01)  ret = input_port_0_r(machine, 0);
+	if (offset & 0x08)  ret = input_port_1_r(machine, 0);
 
 	return ret;
 }
@@ -290,21 +280,20 @@ static READ8_HANDLER( depthch_io_r )
 static WRITE8_HANDLER( depthch_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
-	if (offset & 0x04)  depthch_audio_w(0, data);
+	if (offset & 0x04)  depthch_audio_w(machine, 0, data);
 }
 
 
 static ADDRESS_MAP_START( depthch_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( depthch_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -363,9 +352,8 @@ static READ8_HANDLER( safari_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
-	if (offset & 0x08)  ret = input_port_1_r(0);
+	if (offset & 0x01)  ret = input_port_0_r(machine,0);
+	if (offset & 0x08)  ret = input_port_1_r(machine,0);
 
 	return ret;
 }
@@ -374,7 +362,6 @@ static READ8_HANDLER( safari_io_r )
 static WRITE8_HANDLER( safari_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
 	if (offset & 0x02)  /* safari_audio_w(0, data) */;
 }
 
@@ -383,14 +370,14 @@ static ADDRESS_MAP_START( safari_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
     AM_RANGE(0x4000, 0x7fff) AM_NOP	/* unused */
 	AM_RANGE(0x8000, 0x8fff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( safari_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -449,9 +436,8 @@ static READ8_HANDLER( frogs_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
-	if (offset & 0x08)  ret = input_port_1_r(0);
+	if (offset & 0x01)  ret = input_port_0_r(machine,0);
+	if (offset & 0x08)  ret = input_port_1_r(machine,0);
 
 	return ret;
 }
@@ -460,21 +446,20 @@ static READ8_HANDLER( frogs_io_r )
 static WRITE8_HANDLER( frogs_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
-	if (offset & 0x02)  frogs_audio_w(0, data);
+	if (offset & 0x02)  frogs_audio_w(machine, 0, data);
 }
 
 
 static ADDRESS_MAP_START( frogs_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( frogs_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -559,9 +544,8 @@ static READ8_HANDLER( headon_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
-	if (offset & 0x08)  ret = input_port_1_r(0);
+	if (offset & 0x01)  ret = input_port_0_r(machine,0);
+	if (offset & 0x08)  ret = input_port_1_r(machine,0);
 
 	return ret;
 }
@@ -571,11 +555,9 @@ static READ8_HANDLER( sspaceat_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
-	if (offset & 0x04)  ret = input_port_1_r(0);
-
-	if (offset & 0x08)  ret = input_port_2_r(0);
+	if (offset & 0x01)  ret = input_port_0_r(machine, 0);
+	if (offset & 0x04)  ret = input_port_1_r(machine, 0);
+	if (offset & 0x08)  ret = input_port_2_r(machine, 0);
 
 	return ret;
 }
@@ -584,9 +566,7 @@ static READ8_HANDLER( sspaceat_io_r )
 static WRITE8_HANDLER( headon_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
-	if (offset & 0x02)  headon_audio_w(0, data);
-
+	if (offset & 0x02)  headon_audio_w(machine, 0, data);
 	if (offset & 0x04)  /* vicdual_palette_bank_w(0, data)  */;	 /* not written to */
 }
 
@@ -594,14 +574,14 @@ static WRITE8_HANDLER( headon_io_w )
 static ADDRESS_MAP_START( headon_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x6000) AM_ROM
     AM_RANGE(0x8000, 0xbfff) AM_NOP	/* unused */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( headon_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -610,7 +590,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sspaceat_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -764,14 +744,10 @@ static READ8_HANDLER( headon2_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
+	if (offset & 0x01)  ret = input_port_0_r(machine, 0);
  	if (offset & 0x02)  /* schematics show this as in input port, but never read from */
-
-	if (offset & 0x04)  ret = input_port_1_r(0);
-
-	if (offset & 0x08)  ret = input_port_2_r(0);
-
+	if (offset & 0x04)  ret = input_port_1_r(machine, 0);
+	if (offset & 0x08)  ret = input_port_2_r(machine, 0);
 	if (offset & 0x12)  logerror("********* Read from port %x\n", offset);
 
 	return ret;
@@ -781,15 +757,10 @@ static READ8_HANDLER( headon2_io_r )
 static WRITE8_HANDLER( headon2_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
-	if (offset & 0x02)  headon_audio_w(0, data);
-
-	if (offset & 0x04)  vicdual_palette_bank_w(0, data);
-
+	if (offset & 0x02)  headon_audio_w(machine, 0, data);
+	if (offset & 0x04)  vicdual_palette_bank_w(machine, 0, data);
     if (offset & 0x08)  ;/* schematics show this as going into a shifer circuit, but never written to */
-
     if (offset & 0x10)  ;/* schematics show this as going to an edge connector, but never written to */
-
 	if (offset & 0x18)  logerror("********* Write to port %x\n", offset);
 }
 
@@ -797,19 +768,15 @@ static WRITE8_HANDLER( headon2_io_w )
 static WRITE8_HANDLER( digger_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
 	if (offset & 0x02)  /* digger_audio_1_w(0, data) */;
-
 	if (offset & 0x04)
 	{
-		vicdual_palette_bank_w(0, data & 0x03);
+		vicdual_palette_bank_w(machine, 0, data & 0x03);
 		/* digger_audio_2_w(0, data & 0xfc) */;
 	}
 
     if (offset & 0x08)  ;/* schematics show this as going into a shifer circuit, but never written to */
-
     if (offset & 0x10)  ;/* schematics show this as going to an edge connector, but never written to */
-
 	if (offset & 0x18)  logerror("********* Write to port %x\n", offset);
 }
 
@@ -817,14 +784,14 @@ static WRITE8_HANDLER( digger_io_w )
 static ADDRESS_MAP_START( headon2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x6000) AM_ROM
  /* AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x3f00) */  /* schematics show this as battery backed RAM, but doesn't appear to be used */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( headon2_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(5) )
+	ADDRESS_MAP_GLOBAL_MASK(0x1f)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -833,7 +800,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( digger_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(5) )
+	ADDRESS_MAP_GLOBAL_MASK(0x1f)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -995,93 +962,71 @@ MACHINE_DRIVER_END
 
 static WRITE8_HANDLER( invho2_io_w )
 {
-	if (offset & 0x01)  invho2_audio_w(0, data);
-
-	if (offset & 0x02)  invinco_audio_w(0, data);
-
+	if (offset & 0x01)  invho2_audio_w(machine, 0, data);
+	if (offset & 0x02)  invinco_audio_w(machine, 0, data);
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static WRITE8_HANDLER( invds_io_w )
 {
-	if (offset & 0x01)  invinco_audio_w(0, data);
-
+	if (offset & 0x01)  invinco_audio_w(machine, 0, data);
 	if (offset & 0x02)  /* deepscan_audio_w(0, data) */;
-
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static WRITE8_HANDLER( sspacaho_io_w )
 {
-	if (offset & 0x01)  invho2_audio_w(0, data);
-
-	if (offset & 0x02)  /* sspaceatt_audio_w(0, data) */;
-
+	if (offset & 0x01)  invho2_audio_w(machine, 0, data);
+	if (offset & 0x02)  /* sspaceatt_audio_w(machine, 0, data) */;
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static WRITE8_HANDLER( tranqgun_io_w )
 {
-	if (offset & 0x01)  /* tranqgun_audio_w(0, data) */;
-
-	if (offset & 0x02)  vicdual_palette_bank_w(0, data);
-
+	if (offset & 0x01)  /* tranqgun_audio_w(machine, 0, data) */;
+	if (offset & 0x02)  vicdual_palette_bank_w(machine, 0, data);
 	if (offset & 0x08)  assert_coin_status();
 }
 
 
 static WRITE8_HANDLER( spacetrk_io_w )
 {
-	if (offset & 0x01)  /* spacetrk_audio_w(0, data) */;
-
-	if (offset & 0x02)  /* spacetrk_audio_w(0, data) */;
-
+	if (offset & 0x01)  /* spacetrk_audio_w(machine, 0, data) */;
+	if (offset & 0x02)  /* spacetrk_audio_w(machine, 0, data) */;
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static WRITE8_HANDLER( carnival_io_w )
 {
-	if (offset & 0x01)  carnival_audio_1_w(0, data);
-
-	if (offset & 0x02)  carnival_audio_2_w(0, data);
-
+	if (offset & 0x01)  carnival_audio_1_w(machine, 0, data);
+	if (offset & 0x02)  carnival_audio_2_w(machine, 0, data);
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static WRITE8_HANDLER( brdrline_io_w )
 {
-	if (offset & 0x01)  /* brdrline_audio_w(0, data) */;
-
-	if (offset & 0x02)  vicdual_palette_bank_w(0, data);
-
+	if (offset & 0x01)  /* brdrline_audio_w(machine, 0, data) */;
+	if (offset & 0x02)  vicdual_palette_bank_w(machine, 0, data);
 	if (offset & 0x08)  assert_coin_status();
 }
 
 
 static WRITE8_HANDLER( pulsar_io_w )
 {
-	if (offset & 0x01)  pulsar_audio_1_w(0, data);
-
-	if (offset & 0x02)  pulsar_audio_2_w(0, data);
-
+	if (offset & 0x01)  pulsar_audio_1_w(machine, 0, data);
+	if (offset & 0x02)  pulsar_audio_2_w(machine, 0, data);
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
@@ -1091,7 +1036,7 @@ static WRITE8_HANDLER( heiankyo_io_w )
 
 	if (offset & 0x02)
 	{
-		vicdual_palette_bank_w(0, data & 0x03);
+		vicdual_palette_bank_w(machine, 0, data & 0x03);
 		/* heiankyo_audio_2_w(0, data & 0xfc) */;
 	}
 
@@ -1102,25 +1047,22 @@ static WRITE8_HANDLER( heiankyo_io_w )
 static WRITE8_HANDLER( alphaho_io_w )
 {
 	if (offset & 0x01)  /* headon_audio_w(0, data) */;
-
 	if (offset & 0x02)  /* alphaf_audio_w(0, data) */;
-
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static ADDRESS_MAP_START( vicdual_dualgame_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( invho2_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -1134,7 +1076,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( invds_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -1148,7 +1090,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sspacaho_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -1162,7 +1104,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( tranqgun_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x0c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x0c) AM_READ(input_port_1_r)
@@ -1176,7 +1118,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( spacetrk_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -1190,7 +1132,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( carnival_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -1204,7 +1146,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( brdrline_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x0c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x0c) AM_READ(input_port_1_r)
@@ -1218,7 +1160,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( pulsar_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -1232,7 +1174,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( heiankyo_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x0c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x0c) AM_READ(input_port_1_r)
@@ -1246,7 +1188,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( alphaho_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -2037,13 +1979,9 @@ static CUSTOM_INPUT( samurai_protection_r )
 	UINT32 answer = 0;
 
 	if (samurai_protection_data == 0xab)
-	{
 		answer = 0x02;
-	}
 	else if (samurai_protection_data == 0x1d)
-	{
 		answer = 0x0c;
-	}
 
 	return (answer >> offset) & 0x01;
 }
@@ -2052,24 +1990,22 @@ static CUSTOM_INPUT( samurai_protection_r )
 static WRITE8_HANDLER( samurai_io_w )
 {
 	if (offset & 0x02)  /* samurai_audio_w(0, data) */;
-
 	if (offset & 0x08)  assert_coin_status();
-
-	if (offset & 0x40)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x40)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 /* dual game hardware */
 static ADDRESS_MAP_START( samurai_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_READWRITE(MRA8_ROM, samurai_protection_w)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_READWRITE(SMH_ROM, samurai_protection_w)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( samurai_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(7) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7f)
 
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x7c) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x7c) AM_READ(input_port_1_r)
@@ -2098,7 +2034,7 @@ static INPUT_PORTS_START( samurai )
 
 	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* probably unused */
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(samurai_protection_r, 1)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(samurai_protection_r, (void *)1)
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) ) /* unknown, but used */
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2109,7 +2045,7 @@ static INPUT_PORTS_START( samurai )
 
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* probably unused */
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(samurai_protection_r, 2)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(samurai_protection_r, (void *)2)
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2120,7 +2056,7 @@ static INPUT_PORTS_START( samurai )
 
 	PORT_START_TAG("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* probably unused */
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(samurai_protection_r, 3)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(samurai_protection_r, (void *)3)
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2162,9 +2098,8 @@ static READ8_HANDLER( nsub_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
-	if (offset & 0x08)  ret = input_port_1_r(0);
+	if (offset & 0x01)  ret = input_port_0_r(machine,0);
+	if (offset & 0x08)  ret = input_port_1_r(machine,0);
 
 	return ret;
 }
@@ -2173,24 +2108,22 @@ static READ8_HANDLER( nsub_io_r )
 static WRITE8_HANDLER( nsub_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
 	if (offset & 0x02)  /* nsub_audio_w(0, data) */;
-
-	if (offset & 0x04)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x04)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static ADDRESS_MAP_START( nsub_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
     AM_RANGE(0x8000, 0xbfff) AM_NOP	/* unused */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( nsub_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */
@@ -2260,11 +2193,9 @@ static READ8_HANDLER( invinco_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(0);
-
-	if (offset & 0x02)  ret = input_port_1_r(0);
-
-	if (offset & 0x08)  ret = input_port_2_r(0);
+	if (offset & 0x01)  ret = input_port_0_r(machine,0);
+	if (offset & 0x02)  ret = input_port_1_r(machine,0);
+	if (offset & 0x08)  ret = input_port_2_r(machine,0);
 
 	return ret;
 }
@@ -2273,24 +2204,22 @@ static READ8_HANDLER( invinco_io_r )
 static WRITE8_HANDLER( invinco_io_w )
 {
 	if (offset & 0x01)  assert_coin_status();
-
-	if (offset & 0x02)  invinco_audio_w(0, data);
-
-	if (offset & 0x04)  vicdual_palette_bank_w(0, data);
+	if (offset & 0x02)  invinco_audio_w(machine, 0, data);
+	if (offset & 0x04)  vicdual_palette_bank_w(machine, 0, data);
 }
 
 
 static ADDRESS_MAP_START( invinco_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
     AM_RANGE(0x8000, 0xbfff) AM_NOP	/* unused */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(MRA8_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( invinco_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0xf)
 
 	/* no decoder, just logic gates, so in theory the
        game can read/write from multiple locations at once */

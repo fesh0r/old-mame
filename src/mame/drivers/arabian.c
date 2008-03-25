@@ -165,7 +165,6 @@ static READ8_HANDLER( custom_cpu_r )
 		/* error cases */
 		default:
 			logerror("Input Port %04X read.  PC=%04X\n", offset+0xd7f0, activecpu_get_pc());
-			return 0;
 	}
 	return 0;
 }
@@ -216,7 +215,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xc000) AM_MIRROR(0x01ff) AM_READ(input_port_0_r)
 	AM_RANGE(0xc200, 0xc200) AM_MIRROR(0x01ff) AM_READ(input_port_1_r)
 	AM_RANGE(0xd000, 0xd7ef) AM_RAM AM_BASE(&custom_cpu_ram)
-	AM_RANGE(0xd7f0, 0xd7ff) AM_READWRITE(custom_cpu_r, MWA8_RAM)
+	AM_RANGE(0xd7f0, 0xd7ff) AM_READWRITE(custom_cpu_r, SMH_RAM)
 	AM_RANGE(0xe000, 0xe007) AM_MIRROR(0x0ff8) AM_WRITE(arabian_blitter_w) AM_BASE(&arabian_blitter)
 ADDRESS_MAP_END
 
@@ -249,19 +248,19 @@ static INPUT_PORTS_START( arabian )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ))				PORT_DIPLOCATION("SW1:1")
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ))				PORT_DIPLOCATION("SW1:!1")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "5" )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ))			PORT_DIPLOCATION("SW1:2")
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ))			PORT_DIPLOCATION("SW1:!2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Upright ))
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ))
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Flip_Screen ))		PORT_DIPLOCATION("SW1:3")
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Flip_Screen ))		PORT_DIPLOCATION("SW1:!3")
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ))
-	PORT_DIPNAME( 0x08, 0x00, "Carry Bowls to Next Life" )	PORT_DIPLOCATION("SW1:4")
-	PORT_DIPSETTING(    0x08, DEF_STR( No ))
-	PORT_DIPSETTING(    0x00, DEF_STR( Yes ))
-	PORT_DIPNAME( 0xf0, 0x00, DEF_STR( Coinage ))			PORT_DIPLOCATION("SW1:5,6,7,8")
+	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Difficulty ))		PORT_DIPLOCATION("SW1:!4") /* Carry Bowls to Next Life */
+	PORT_DIPSETTING(    0x00, DEF_STR( Easy ))
+	PORT_DIPSETTING(    0x08, DEF_STR( Hard ))
+	PORT_DIPNAME( 0xf0, 0x00, DEF_STR( Coinage ))			PORT_DIPLOCATION("SW1:!5,!6,!7,!8")
 	PORT_DIPSETTING(    0x10, "A 2/1 B 2/1" )
 	PORT_DIPSETTING(    0x20, "A 2/1 B 1/3" )
 	PORT_DIPSETTING(    0x00, "A 1/1 B 1/1" )
@@ -310,16 +309,16 @@ static INPUT_PORTS_START( arabian )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* IN19 */
 
 	PORT_START_TAG("COM5")
-	PORT_DIPNAME( 0x01, 0x00, "Coin Chutes" )				PORT_DIPLOCATION("SW2:1")
+	PORT_DIPNAME( 0x01, 0x01, "Coin Counters" )				PORT_DIPLOCATION("SW2:!1")
 	PORT_DIPSETTING(    0x01, "1" )
 	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ))		PORT_DIPLOCATION("SW2:2")
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ))		PORT_DIPLOCATION("SW2:!2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ))
-	PORT_DIPNAME( 0x0c, 0x04, DEF_STR( Bonus_Life ))		PORT_DIPLOCATION("SW2:3,4")
-	PORT_DIPSETTING(    0x04, "20000" )
-	PORT_DIPSETTING(    0x08, "40000" )
-	PORT_DIPSETTING(    0x0c, "20000 50000 +100K" )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ))		PORT_DIPLOCATION("SW2:!3,!4")
+	PORT_DIPSETTING(    0x04, "20K" )
+	PORT_DIPSETTING(    0x08, "40K" )
+	PORT_DIPSETTING(    0x0c, "20K, 50K, 100K, Every 100K" )
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
 INPUT_PORTS_END
 
@@ -353,13 +352,12 @@ static MACHINE_DRIVER_START( arabian )
 	MDRV_CPU_ADD(Z80, MAIN_OSC/4)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 11, 244)
@@ -436,5 +434,5 @@ static DRIVER_INIT( arabian )
  *
  *************************************/
 
-GAME( 1983, arabian,  0,       arabian, arabian, arabian, ROT270, "Sun Electronics", "Arabian", 0 )
+GAME( 1983, arabian,  0,       arabian, arabian, arabian, ROT270, "Sun Electronics",                   "Arabian",         0 )
 GAME( 1983, arabiana, arabian, arabian, arabian, arabian, ROT270, "[Sun Electronics] (Atari license)", "Arabian (Atari)", 0 )

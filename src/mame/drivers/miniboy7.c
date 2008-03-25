@@ -124,7 +124,7 @@
 #define MASTER_CLOCK	10000000	/* 10MHz */
 
 #include "driver.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 
 
 /*************************
@@ -166,8 +166,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( miniboy7 )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 37, 37);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 37, 37);
 }
 
 static VIDEO_UPDATE( miniboy7 )
@@ -187,8 +186,8 @@ static ADDRESS_MAP_START( miniboy7_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0x17ff) AM_RAM AM_WRITE(miniboy7_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1800, 0x25ff) AM_RAM	/* looks like videoram */
 	AM_RANGE(0x2600, 0x27ff) AM_RAM
-	AM_RANGE(0x2800, 0x2800) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x2801, 0x2801) AM_READWRITE(crtc6845_register_r, crtc6845_register_w)
+	AM_RANGE(0x2800, 0x2800) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x2801, 0x2801) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 //  AM_RANGE(0x3000, 0x3001) ????? R/W
 //  AM_RANGE(0x3080, 0x3083) AM_READWRITE(pia_0_r, pia_0_w)
 //  AM_RANGE(0x3800, 0x3800) ????? R
@@ -257,13 +256,12 @@ static MACHINE_DRIVER_START( miniboy7 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, MASTER_CLOCK/16)	/* guess */
 	MDRV_CPU_PROGRAM_MAP(miniboy7_map, 0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((47+1)*8, (39+1)*8)                  /* Taken from MC6845, registers 00 & 04. Normally programmed with (value-1) */
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 37*8-1, 0*8, 37*8-1)    /* Taken from MC6845, registers 01 & 06 */
@@ -271,10 +269,11 @@ static MACHINE_DRIVER_START( miniboy7 )
 	MDRV_GFXDECODE(miniboy7)
 
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(1024)
 
 	MDRV_VIDEO_START(miniboy7)
 	MDRV_VIDEO_UPDATE(miniboy7)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
 MACHINE_DRIVER_END
 
 

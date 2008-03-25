@@ -198,7 +198,7 @@ READ8_HANDLER( victory_video_control_r )
 			result |= (~fgcoll & 1) << 6;
 			result |= (~vblank_irq & 1) << 5;
 			result |= (~bgcoll & 1) << 4;
-			result |= (video_screen_get_vpos(0) & 0x100) >> 5;
+			result |= (video_screen_get_vpos(machine->primary_screen) & 0x100) >> 5;
 			if (LOG_COLLISION) logerror("%04X:5STAT read = %02X\n", activecpu_get_previouspc(), result);
 			return result;
 
@@ -531,13 +531,13 @@ INLINE void count_states(int states)
 
 	if (!micro.timer)
 	{
-		timer_adjust(micro.timer, attotime_never, 0, attotime_zero);
+		timer_adjust_oneshot(micro.timer, attotime_never, 0);
 		micro.timer_active = 1;
 		micro.endtime = state_time;
 	}
 	else if (attotime_compare(timer_timeelapsed(micro.timer), micro.endtime) > 0)
 	{
-		timer_adjust(micro.timer, attotime_never, 0, attotime_zero);
+		timer_adjust_oneshot(micro.timer, attotime_never, 0);
 		micro.timer_active = 1;
 		micro.endtime = state_time;
 	}
@@ -1105,7 +1105,7 @@ VIDEO_UPDATE( victory )
 	int x, y;
 
 	/* copy the palette from palette RAM */
-	set_palette(machine);
+	set_palette(screen->machine);
 
 	/* update the foreground & background */
 	update_foreground();
@@ -1126,11 +1126,11 @@ VIDEO_UPDATE( victory )
 			int bpix = bg[(x + scrollx) & 255];
 			scanline[x] = bpix | (fpix << 3);
 			if (fpix && (bpix & bgcollmask) && count++ < 128)
-				timer_set(video_screen_get_time_until_pos(0, y, x), NULL, x | (y << 8), bgcoll_irq_callback);
+				timer_set(video_screen_get_time_until_pos(screen, y, x), NULL, x | (y << 8), bgcoll_irq_callback);
 		}
 
 		/* draw the scanline */
-		draw_scanline8(bitmap, 0, y, 256, scanline, machine->pens, -1);
+		draw_scanline8(bitmap, 0, y, 256, scanline, NULL, -1);
 	}
 
 	return 0;

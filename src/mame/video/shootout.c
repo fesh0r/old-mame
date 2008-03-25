@@ -14,7 +14,7 @@ PALETTE_INIT( shootout )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -72,12 +72,12 @@ WRITE8_HANDLER( shootout_textram_w ){
 }
 
 VIDEO_START( shootout ){
-	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	foreground = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
+	foreground = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 		tilemap_set_transparent_pen( foreground, 0 );
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int bank_bits ){
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int bank_bits ){
 	static int bFlicker;
 	const gfx_element *gfx = machine->gfx[1];
 	const UINT8 *source = spriteram+127*4;
@@ -106,7 +106,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				int flipx = (attributes & 0x04);
 				int flipy = 0;
 
-				if (flip_screen) {
+				if (flip_screen_get()) {
 					flipx = !flipx;
 					flipy = !flipy;
 				}
@@ -117,7 +117,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 					vx = sx;
 					vy = sy;
-					if (flip_screen) {
+					if (flip_screen_get()) {
 						vx = 240 - vx;
 						vy = 240 - vy;
 					}
@@ -136,7 +136,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 				vx = sx;
 				vy = sy;
-				if (flip_screen) {
+				if (flip_screen_get()) {
 					vx = 240 - vx;
 					vy = 240 - vy;
 				}
@@ -160,7 +160,7 @@ VIDEO_UPDATE( shootout )
 
 	tilemap_draw(bitmap,cliprect,background,0,0);
 	tilemap_draw(bitmap,cliprect,foreground,0,1);
-	draw_sprites(machine, bitmap,cliprect,3/*bank bits */);
+	draw_sprites(screen->machine, bitmap,cliprect,3/*bank bits */);
 	return 0;
 }
 
@@ -170,6 +170,6 @@ VIDEO_UPDATE( shootouj )
 
 	tilemap_draw(bitmap,cliprect,background,0,0);
 	tilemap_draw(bitmap,cliprect,foreground,0,1);
-	draw_sprites(machine, bitmap,cliprect,2/*bank bits*/);
+	draw_sprites(screen->machine, bitmap,cliprect,2/*bank bits*/);
 	return 0;
 }

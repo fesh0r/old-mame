@@ -140,6 +140,22 @@ int mame_debug_is_active(void)
 }
 
 
+/*-------------------------------------------------
+    on_vblank - called when a VBLANK hits
+-------------------------------------------------*/
+
+static void on_vblank(const device_config *device, int vblank_state)
+{
+	/* if we're configured to stop on VBLANK, break */
+	if (vblank_state && break_on_vblank)
+	{
+		execution_state = EXECUTION_STATE_STOPPED;
+		debug_console_printf("Stopped at VBLANK\n");
+		break_on_vblank = 0;
+	}
+}
+
+
 /***************************************************************************
     INITIALIZATION
 ***************************************************************************/
@@ -193,7 +209,7 @@ void debug_cpu_init(running_machine *machine)
 	/* loop over CPUs and build up their info */
 	for (cpunum = 0; cpunum < MAX_CPU; cpunum++)
 	{
-		cpu_type cputype = Machine->drv->cpu[cpunum].type;
+		cpu_type cputype = Machine->config->cpu[cpunum].type;
 
 		/* if this is a dummy, stop looking */
 		if (cputype == CPU_DUMMY)
@@ -278,6 +294,10 @@ void debug_cpu_init(running_machine *machine)
 			spaceinfo->logbytemask = ((spaceinfo->logaddrmask << spaceinfo->addr2byte_lshift) | ((1 << spaceinfo->addr2byte_lshift) - 1)) >> spaceinfo->addr2byte_rshift;
 		}
 	}
+
+	/* add callback for breaking on VBLANK */
+	if (machine->primary_screen != NULL)
+		video_screen_register_vblank_callback(machine->primary_screen, on_vblank);
 
 	add_exit_callback(machine, debug_cpu_exit);
 }
@@ -638,7 +658,13 @@ static UINT64 get_logunmap(UINT32 ref)
 
 static UINT64 get_beamx(UINT32 ref)
 {
-	return video_screen_get_hpos(ref);
+	UINT64 ret = 0;
+	const device_config *screen = device_list_find_by_index(Machine->config->devicelist, VIDEO_SCREEN, ref);
+
+	if (screen != NULL)
+		ret = video_screen_get_hpos(screen);
+
+	return ret;
 }
 
 
@@ -648,7 +674,13 @@ static UINT64 get_beamx(UINT32 ref)
 
 static UINT64 get_beamy(UINT32 ref)
 {
-	return video_screen_get_vpos(ref);
+	UINT64 ret = 0;
+	const device_config *screen = device_list_find_by_index(Machine->config->devicelist, VIDEO_SCREEN, ref);
+
+	if (screen != NULL)
+		ret = video_screen_get_vpos(screen);
+
+	return ret;
 }
 
 
@@ -1028,23 +1060,6 @@ static void process_source_file(void)
 
 
 /*-------------------------------------------------
-    debug_vblank_hook - called when the real
-    VBLANK hits
--------------------------------------------------*/
-
-void debug_vblank_hook(void)
-{
-	/* if we're configured to stop on VBLANK, break */
-	if (break_on_vblank)
-	{
-		execution_state = EXECUTION_STATE_STOPPED;
-		debug_console_printf("Stopped at VBLANK\n");
-		break_on_vblank = 0;
-	}
-}
-
-
-/*-------------------------------------------------
     debug_vblank_hook - called when an interrupt
     is acknowledged
 -------------------------------------------------*/
@@ -1097,7 +1112,7 @@ static void standard_debug_hook_write(int spacenum, int size, offs_t address, UI
     for the specified CPU
 -------------------------------------------------*/
 
-void debug_get_memory_hooks(int cpunum, debug_hook_read_ptr *read, debug_hook_write_ptr *write)
+void debug_get_memory_hooks(int cpunum, debug_hook_read_func *read, debug_hook_write_func *write)
 {
 	memory_hook_cpunum = cpunum;
 

@@ -10,14 +10,24 @@ PALETTE_INIT( flower )
 {
 	int i;
 
-	for (i=0; i<256; i++)
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x100);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x100; i++)
 	{
-		palette_set_color_rgb(machine, i, pal4bit(color_prom[i]), pal4bit(color_prom[i+0x100]), pal4bit(color_prom[i+0x200]));
-		colortable[i] = i;
+		int r = pal4bit(color_prom[i + 0x000]);
+		int g = pal4bit(color_prom[i + 0x100]);
+		int b = pal4bit(color_prom[i + 0x200]);
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
+
+	for (i = 0; i < 0x100; i++)
+		colortable_entry_set_value(machine->colortable, i, i);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const gfx_element *gfx = machine->gfx[1];
 	UINT8 *source = spriteram + 0x200;
@@ -69,7 +79,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		code |= ((source[2] & 0x01) << 6);
 		code |= ((source[2] & 0x08) << 4);
 
-		if(flip_screen)
+		if(flip_screen_get())
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -138,10 +148,10 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START(flower)
 {
-	flower_bg0_tilemap        = tilemap_create(get_bg0_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,16,16);
-	flower_bg1_tilemap        = tilemap_create(get_bg1_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,16,16);
-	flower_text_tilemap       = tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
-	flower_text_right_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN, 8, 8, 2,32);
+	flower_bg0_tilemap        = tilemap_create(get_bg0_tile_info, tilemap_scan_rows,     16,16,16,16);
+	flower_bg1_tilemap        = tilemap_create(get_bg1_tile_info, tilemap_scan_rows,16,16,16,16);
+	flower_text_tilemap       = tilemap_create(get_text_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	flower_text_right_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_cols, 8, 8, 2,32);
 
 	tilemap_set_transparent_pen(flower_bg1_tilemap,15);
 	tilemap_set_transparent_pen(flower_text_tilemap,3);
@@ -161,9 +171,9 @@ VIDEO_UPDATE( flower )
 	tilemap_draw(bitmap,cliprect,flower_bg0_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,flower_bg1_tilemap,0,0);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 
-	if(flip_screen)
+	if(flip_screen_get())
 	{
 		myclip.min_x = cliprect->min_x;
 		myclip.max_x = cliprect->min_x + 15;

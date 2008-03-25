@@ -24,7 +24,7 @@ PALETTE_INIT( ambush )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors; i++)
+	for (i = 0;i < machine->config->total_colors; i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -49,7 +49,7 @@ PALETTE_INIT( ambush )
 }
 
 
-static void draw_chars(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void draw_chars(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	int offs, transparency;
 
@@ -73,7 +73,7 @@ static void draw_chars(running_machine *machine, mame_bitmap *bitmap, const rect
 
 		code = videoram[offs] | ((col & 0x60) << 3);
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 31 - sx;
 			sy = 31 - sy;
@@ -83,7 +83,7 @@ static void draw_chars(running_machine *machine, mame_bitmap *bitmap, const rect
 		drawgfx(bitmap,machine->gfx[0],
 				code,
 				(col & 0x0f) | ((*ambush_colorbank & 0x03) << 4),
-				flip_screen,flip_screen,
+				flip_screen_get(),flip_screen_get(),
 				8*sx, (8*sy + scroll) & 0xff,
 				cliprect,transparency,0);
 	}
@@ -95,11 +95,11 @@ VIDEO_UPDATE( ambush )
 	int offs;
 
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 
 	/* Draw the background priority characters */
-	draw_chars(machine, bitmap, cliprect, 0x00);
+	draw_chars(screen->machine, bitmap, cliprect, 0x00);
 
 
 	/* Draw the sprites. */
@@ -124,7 +124,7 @@ VIDEO_UPDATE( ambush )
 			/* 16x16 sprites */
 			gfx = 1;
 
-			if (!flip_screen)
+			if (!flip_screen_get())
 			{
 				sy = 240 - sy;
 			}
@@ -139,7 +139,7 @@ VIDEO_UPDATE( ambush )
 			gfx = 0;
 			code <<= 2;
 
-			if (!flip_screen)
+			if (!flip_screen_get())
 			{
 				sy = 248 - sy;
 			}
@@ -153,13 +153,13 @@ VIDEO_UPDATE( ambush )
 		flipx = spriteram[offs + 1] & 0x40;
 		flipy = spriteram[offs + 1] & 0x80;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx = !flipx;
 			flipy = !flipy;
 		}
 
-		drawgfx(bitmap,machine->gfx[gfx],
+		drawgfx(bitmap,screen->machine->gfx[gfx],
 				code, col | ((*ambush_colorbank & 0x03) << 4),
 				flipx, flipy,
 				sx,sy,
@@ -168,6 +168,6 @@ VIDEO_UPDATE( ambush )
 
 
 	/* Draw the foreground priority characters */
-	draw_chars(machine, bitmap, cliprect, 0x10);
+	draw_chars(screen->machine, bitmap, cliprect, 0x10);
 	return 0;
 }

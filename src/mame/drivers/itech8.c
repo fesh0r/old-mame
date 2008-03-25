@@ -454,6 +454,7 @@
 
 #include "driver.h"
 #include "deprecat.h"
+#include "memconv.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
@@ -546,7 +547,7 @@ void itech8_update_interrupts(running_machine *machine, int periodic, int tms340
 	if (blitter != -1) blitter_int = blitter;
 
 	/* handle the 6809 case */
-	if (machine->drv->cpu[0].type == CPU_M6809)
+	if (machine->config->cpu[0].type == CPU_M6809)
 	{
 		/* just modify lines that have changed */
 		if (periodic != -1) cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, periodic ? ASSERT_LINE : CLEAR_LINE);
@@ -585,7 +586,7 @@ static INTERRUPT_GEN( generate_nmi )
 	itech8_update_interrupts(machine, 1, -1, -1);
 	itech8_update_interrupts(machine, 0, -1, -1);
 
-	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(0));
+	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(machine->primary_screen));
 }
 
 
@@ -622,13 +623,13 @@ static MACHINE_START( sstrike )
 	MACHINE_START_CALL(itech8);
 
 	/* we need to update behind the beam as well */
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 32, behind_the_beam_update);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 32, behind_the_beam_update);
 }
 
 static MACHINE_RESET( itech8 )
 {
 	/* make sure bank 0 is selected */
-	if (machine->drv->cpu[0].type == CPU_M6809)
+	if (machine->config->cpu[0].type == CPU_M6809)
 		memory_set_bankptr(1, &memory_region(REGION_CPU1)[0x4000]);
 
 	/* reset the PIA (if used) */
@@ -648,7 +649,7 @@ static MACHINE_RESET( itech8 )
 	/* set the visible area */
 	if (visarea)
 	{
-		video_screen_set_visarea(0, visarea->min_x, visarea->max_x, visarea->min_y, visarea->max_y);
+		video_screen_set_visarea(machine->primary_screen, visarea->min_x, visarea->max_x, visarea->min_y, visarea->max_y);
 		visarea = NULL;
 	}
 }
@@ -667,14 +668,14 @@ static TIMER_CALLBACK( behind_the_beam_update )
 	int interval = param & 0xff;
 
 	/* force a partial update to the current scanline */
-	video_screen_update_partial(0, scanline);
+	video_screen_update_partial(machine->primary_screen, scanline);
 
 	/* advance by the interval, and wrap to 0 */
 	scanline += interval;
 	if (scanline >= 256) scanline = 0;
 
 	/* set a new timer */
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, (scanline << 8) + interval, behind_the_beam_update);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, (scanline << 8) + interval, behind_the_beam_update);
 }
 
 
@@ -692,7 +693,7 @@ static WRITE8_HANDLER( blitter_w )
 		memory_set_bankptr(1, &memory_region(REGION_CPU1)[0x4000 + 0xc000 * ((data >> 5) & 1)]);
 
 	/* the rest is handled by the video hardware */
-	itech8_blitter_w(offset, data);
+	itech8_blitter_w(machine, offset, data);
 }
 
 
@@ -751,7 +752,7 @@ static WRITE8_HANDLER( pia_portb_out )
 	/* bit 5 controls the coin counter */
 	/* bit 6 controls the diagnostic sound LED */
 	pia_portb_data = data;
-	ticket_dispenser_w(0, (data & 0x10) << 3);
+	ticket_dispenser_w(machine, 0, (data & 0x10) << 3);
 	coin_counter_w(0, (data & 0x20) >> 5);
 }
 
@@ -765,7 +766,7 @@ static WRITE8_HANDLER( ym2203_portb_out )
 	/* bit 6 controls the diagnostic sound LED */
 	/* bit 7 controls the ticket dispenser */
 	pia_portb_data = data;
-	ticket_dispenser_w(0, data & 0x80);
+	ticket_dispenser_w(machine, 0, data & 0x80);
 	coin_counter_w(0, (data & 0x20) >> 5);
 }
 
@@ -833,7 +834,7 @@ static void via_irq(int state)
 
 static READ16_HANDLER( blitter16_r )
 {
-	return (itech8_blitter_r(offset * 2 + 0) << 8) + itech8_blitter_r(offset * 2 + 1);
+	return read16be_with_read8_handler(itech8_blitter_r, machine, offset, mem_mask);
 }
 
 
@@ -844,18 +845,18 @@ static READ16_HANDLER( tms34061_16_r )
 	/* bit doesn't matter in XY addressing mode */
 	if ((offset & 0x700) == 0x100)
 	{
-		int result = itech8_tms34061_r(offset * 2);
+		int result = itech8_tms34061_r(machine, offset * 2);
 		return (result << 8) | result;
 	}
 	else
-		return (itech8_tms34061_r(offset * 2 + 0) << 8) + itech8_tms34061_r(offset * 2 + 1);
+		return (itech8_tms34061_r(machine, offset * 2 + 0) << 8) + itech8_tms34061_r(machine, offset * 2 + 1);
 }
 
 
 static WRITE16_HANDLER( sound_data16_w )
 {
 	if (ACCESSING_MSB)
-		sound_data_w(0, data >> 8);
+		sound_data_w(machine, 0, data >> 8);
 }
 
 
@@ -869,39 +870,33 @@ static WRITE16_HANDLER( grom_bank16_w )
 static WRITE16_HANDLER( display_page16_w )
 {
 	if (ACCESSING_MSB)
-		itech8_page_w(0, ~data >> 8);
+		itech8_page_w(machine, 0, ~data >> 8);
 }
 
 
 static WRITE16_HANDLER( tms34061_latch16_w )
 {
 	if (ACCESSING_MSB)
-		tms34061_latch_w(0, data >> 8);
+		tms34061_latch_w(machine, 0, data >> 8);
 }
 
 
 static WRITE16_HANDLER( blitter16_w )
 {
-	if (ACCESSING_MSB)
-		itech8_blitter_w(offset * 2 + 0, data >> 8);
-	if (ACCESSING_LSB)
-		itech8_blitter_w(offset * 2 + 1, data);
+	write16be_with_write8_handler(itech8_blitter_w, machine, offset, data, mem_mask);
 }
 
 
 static WRITE16_HANDLER( palette16_w )
 {
 	if (ACCESSING_MSB)
-		itech8_palette_w(offset / 8, data >> 8);
+		itech8_palette_w(machine, offset / 8, data >> 8);
 }
 
 
 static WRITE16_HANDLER( tms34061_16_w )
 {
-	if (ACCESSING_MSB)
-		itech8_tms34061_w(offset * 2 + 0, data >> 8);
-	else if (ACCESSING_LSB)
-		itech8_tms34061_w(offset * 2 + 1, data);
+	write16be_with_write8_handler(itech8_tms34061_w, machine, offset, data, mem_mask);
 }
 
 
@@ -938,7 +933,7 @@ static ADDRESS_MAP_START( tmslo_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(itech8_tms34061_r, itech8_tms34061_w)
 	AM_RANGE(0x1100, 0x1100) AM_WRITENOP
 	AM_RANGE(0x1120, 0x1120) AM_WRITE(sound_data_w)
-	AM_RANGE(0x1140, 0x1140) AM_READWRITE(special_port0_r, MWA8_RAM) AM_BASE(&itech8_grom_bank)
+	AM_RANGE(0x1140, 0x1140) AM_READWRITE(special_port0_r, SMH_RAM) AM_BASE(&itech8_grom_bank)
 	AM_RANGE(0x1160, 0x1160) AM_READWRITE(input_port_1_r, itech8_page_w)
 	AM_RANGE(0x1180, 0x1180) AM_READWRITE(input_port_2_r, tms34061_latch_w)
 	AM_RANGE(0x11a0, 0x11a0) AM_WRITE(itech8_nmi_ack_w)
@@ -954,7 +949,7 @@ static ADDRESS_MAP_START( tmshi_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(itech8_tms34061_r, itech8_tms34061_w)
 	AM_RANGE(0x0100, 0x0100) AM_WRITENOP
 	AM_RANGE(0x0120, 0x0120) AM_WRITE(sound_data_w)
-	AM_RANGE(0x0140, 0x0140) AM_READWRITE(special_port0_r, MWA8_RAM) AM_BASE(&itech8_grom_bank)
+	AM_RANGE(0x0140, 0x0140) AM_READWRITE(special_port0_r, SMH_RAM) AM_BASE(&itech8_grom_bank)
 	AM_RANGE(0x0160, 0x0160) AM_READWRITE(input_port_1_r, itech8_page_w)
 	AM_RANGE(0x0180, 0x0180) AM_READWRITE(input_port_2_r, tms34061_latch_w)
 	AM_RANGE(0x01a0, 0x01a0) AM_WRITE(itech8_nmi_ack_w)
@@ -971,7 +966,7 @@ static ADDRESS_MAP_START( gtg2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0120, 0x0120) AM_READWRITE(input_port_1_r, itech8_page_w)
 	AM_RANGE(0x0140, 0x015f) AM_WRITE(itech8_palette_w)
 	AM_RANGE(0x0140, 0x0140) AM_READ(input_port_2_r)
-	AM_RANGE(0x0160, 0x0160) AM_WRITE(MWA8_RAM) AM_BASE(&itech8_grom_bank)
+	AM_RANGE(0x0160, 0x0160) AM_WRITE(SMH_RAM) AM_BASE(&itech8_grom_bank)
 	AM_RANGE(0x0180, 0x019f) AM_READWRITE(itech8_blitter_r, blitter_w)
 	AM_RANGE(0x01c0, 0x01c0) AM_WRITE(gtg2_sound_data_w)
 	AM_RANGE(0x01e0, 0x01e0) AM_WRITE(tms34061_latch_w)
@@ -990,7 +985,7 @@ static ADDRESS_MAP_START( ninclown_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100100, 0x100101) AM_READWRITE(input_port_0_word_r, grom_bank16_w) AM_BASE((void *)&itech8_grom_bank)
 	AM_RANGE(0x100180, 0x100181) AM_READWRITE(input_port_1_word_r, display_page16_w)
 	AM_RANGE(0x100240, 0x100241) AM_WRITE(tms34061_latch16_w)
-	AM_RANGE(0x100280, 0x100281) AM_READWRITE(input_port_2_word_r, MWA16_NOP)
+	AM_RANGE(0x100280, 0x100281) AM_READWRITE(input_port_2_word_r, SMH_NOP)
 	AM_RANGE(0x100300, 0x10031f) AM_READWRITE(blitter16_r, blitter16_w)
 	AM_RANGE(0x100380, 0x1003ff) AM_WRITE(palette16_w)
 	AM_RANGE(0x110000, 0x110fff) AM_READWRITE(tms34061_16_r, tms34061_16_w)
@@ -1055,7 +1050,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( slikz80_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(slikz80_port_r, slikz80_port_w)
 ADDRESS_MAP_END
 
@@ -1764,18 +1759,18 @@ static MACHINE_DRIVER_START( itech8_core_lo )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6809, CLOCK_8MHz/4)
 	MDRV_CPU_PROGRAM_MAP(tmslo_map,0)
-	MDRV_CPU_VBLANK_INT(generate_nmi,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", generate_nmi)
 
 	MDRV_MACHINE_START(itech8)
 	MDRV_MACHINE_RESET(itech8)
 	MDRV_NVRAM_HANDLER(itech8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_VIDEO_START(itech8)
 
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(512, 263)
 
@@ -1848,6 +1843,7 @@ static MACHINE_DRIVER_START( wfortune )
 	MDRV_IMPORT_FROM(itech8_sound_ym2203)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2layer)
 MACHINE_DRIVER_END
@@ -1860,6 +1856,7 @@ static MACHINE_DRIVER_START( stratab_hi )
 	MDRV_IMPORT_FROM(itech8_sound_ym2203)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2layer)
 MACHINE_DRIVER_END
@@ -1872,6 +1869,7 @@ static MACHINE_DRIVER_START( stratab_lo )
 	MDRV_IMPORT_FROM(itech8_sound_ym2203)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2layer)
 MACHINE_DRIVER_END
@@ -1888,6 +1886,7 @@ static MACHINE_DRIVER_START( slikshot_hi )
 	MDRV_CPU_IO_MAP(slikz80_io_map,0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(slikshot)
 MACHINE_DRIVER_END
@@ -1904,6 +1903,7 @@ static MACHINE_DRIVER_START( slikshot_lo )
 	MDRV_CPU_IO_MAP(slikz80_io_map,0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(slikshot)
 MACHINE_DRIVER_END
@@ -1916,6 +1916,7 @@ static MACHINE_DRIVER_START( slikshot_lo_noz80 )
 	MDRV_IMPORT_FROM(itech8_sound_ym2203)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2page)
 MACHINE_DRIVER_END
@@ -1937,6 +1938,7 @@ static MACHINE_DRIVER_START( hstennis_hi )
 	MDRV_IMPORT_FROM(itech8_sound_ym3812)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 399, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2page_large)
 MACHINE_DRIVER_END
@@ -1949,6 +1951,7 @@ static MACHINE_DRIVER_START( hstennis_lo )
 	MDRV_IMPORT_FROM(itech8_sound_ym3812)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 399, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2page_large)
 MACHINE_DRIVER_END
@@ -1963,6 +1966,7 @@ static MACHINE_DRIVER_START( rimrockn )
 	MDRV_CPU_REPLACE("main", M6809/*HD6309*/, CLOCK_12MHz/4)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(24, 375, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2page_large)
 MACHINE_DRIVER_END
@@ -1978,6 +1982,7 @@ static MACHINE_DRIVER_START( ninclown )
 	MDRV_CPU_PROGRAM_MAP(ninclown_map,0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(64, 423, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2page_large)
 MACHINE_DRIVER_END
@@ -1993,6 +1998,7 @@ static MACHINE_DRIVER_START( gtg2 )
 	MDRV_CPU_PROGRAM_MAP(gtg2_map,0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 239)
 	MDRV_VIDEO_UPDATE(itech8_2layer)
 MACHINE_DRIVER_END

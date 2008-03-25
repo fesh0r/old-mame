@@ -558,17 +558,14 @@ int cli_info_listsamples(core_options *options, const char *gamename)
 	for (drvindex = 0; drivers[drvindex]; drvindex++)
 		if (mame_strwildcmp(gamename, drivers[drvindex]->name) == 0)
 		{
-			machine_config drv;
+			machine_config *config = machine_config_alloc(drivers[drvindex]->machine_config);
 			int sndnum;
 
-			/* expand the machine driver */
-			expand_machine_driver(drivers[drvindex]->drv, &drv);
-
 			/* find samples interfaces */
-			for (sndnum = 0; sndnum < MAX_SOUND && drv.sound[sndnum].type != SOUND_DUMMY; sndnum++)
-				if (drv.sound[sndnum].type == SOUND_SAMPLES)
+			for (sndnum = 0; sndnum < MAX_SOUND && config->sound[sndnum].type != SOUND_DUMMY; sndnum++)
+				if (config->sound[sndnum].type == SOUND_SAMPLES)
 				{
-					const char *const *samplenames = ((const struct Samplesinterface *)drv.sound[sndnum].config)->samplenames;
+					const char *const *samplenames = ((const struct Samplesinterface *)config->sound[sndnum].config)->samplenames;
 					int sampnum;
 
 					/* if the list is legit, walk it and print the sample info */
@@ -578,6 +575,7 @@ int cli_info_listsamples(core_options *options, const char *gamename)
 				}
 
 			count++;
+			machine_config_free(config);
 		}
 
 	/* clean up our tracked resources */
@@ -683,7 +681,7 @@ static int info_verifysamples(core_options *options, const char *gamename)
 {
 	int correct = 0;
 	int incorrect = 0;
-	int notfound = 0;
+	int notfound = FALSE;
 	int drvindex;
 
 	/* now iterate over drivers */
@@ -702,9 +700,12 @@ static int info_verifysamples(core_options *options, const char *gamename)
 			else
 				continue;
 
-			/* if not found, count that and leave it at that */
+			/* if not found, print a message and set the flag */
 			if (res == NOTFOUND)
-				notfound++;
+			{
+				mame_printf_error("sampleset \"%s\" not found!\n", drivers[drvindex]->name);
+				notfound = TRUE;
+			}
 
 			/* else display information about what we discovered */
 			else
@@ -732,12 +733,13 @@ static int info_verifysamples(core_options *options, const char *gamename)
 			}
 		}
 
-	/* if we didn't get anything at all, display a generic end message */
+	/* clear out any cached files */
+	zip_file_cache_clear();
+
+	/* if we didn't get anything at all because of an unsupported set, display message */
 	if (correct + incorrect == 0)
 	{
-		if (notfound > 0)
-			mame_printf_error("sampleset \"%s\" not found!\n", gamename);
-		else
+		if (!notfound)
 			mame_printf_error("sampleset \"%s\" not supported!\n", gamename);
 		return MAMERR_NO_SUCH_GAME;
 	}

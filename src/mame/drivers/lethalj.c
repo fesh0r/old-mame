@@ -64,7 +64,7 @@ Note 2: Lethal Justice uses a TMS34010FNL-50 instead of the TMS34010FNL-40
 
 static CUSTOM_INPUT( ticket_status )
 {
-	return ticket_dispenser_0_r(0) >> 7;
+	return ticket_dispenser_0_r(machine, 0) >> 7;
 }
 
 
@@ -85,14 +85,14 @@ static CUSTOM_INPUT( cclownz_paddle )
 static WRITE16_HANDLER( ripribit_control_w )
 {
 	coin_counter_w(0, data & 1);
-	ticket_dispenser_0_w(0, ((data >> 1) & 1) << 7);
+	ticket_dispenser_0_w(machine, 0, ((data >> 1) & 1) << 7);
 	output_set_lamp_value(0, (data >> 2) & 1);
 }
 
 
 static WRITE16_HANDLER( cfarm_control_w )
 {
-	ticket_dispenser_0_w(0, ((data >> 0) & 1) << 7);
+	ticket_dispenser_0_w(machine, 0, ((data >> 0) & 1) << 7);
 	output_set_lamp_value(0, (data >> 2) & 1);
 	output_set_lamp_value(1, (data >> 3) & 1);
 	output_set_lamp_value(2, (data >> 4) & 1);
@@ -102,7 +102,7 @@ static WRITE16_HANDLER( cfarm_control_w )
 
 static WRITE16_HANDLER( cclownz_control_w )
 {
-	ticket_dispenser_0_w(0, ((data >> 0) & 1) << 7);
+	ticket_dispenser_0_w(machine, 0, ((data >> 0) & 1) << 7);
 	output_set_lamp_value(0, (data >> 2) & 1);
 	output_set_lamp_value(1, (data >> 4) & 1);
 	output_set_lamp_value(2, (data >> 5) & 1);
@@ -488,7 +488,7 @@ INPUT_PORTS_END
 static const tms34010_config tms_config =
 {
 	FALSE,							/* halt on reset */
-	0,								/* the screen operated on */
+	"main",							/* the screen operated on */
 	VIDEO_CLOCK,					/* pixel clock */
 	1,								/* pixels per clock */
 	lethalj_scanline_update,		/* scanline update */
@@ -500,7 +500,7 @@ static const tms34010_config tms_config =
 static const tms34010_config tms_config_lethalj =
 {
 	FALSE,							/* halt on reset */
-	0,								/* the screen operated on */
+	"main",							/* the screen operated on */
 	VIDEO_CLOCK_LETHALJ,			/* pixel clock */
 	1,								/* pixels per clock */
 	lethalj_scanline_update,		/* scanline update */
@@ -525,30 +525,30 @@ static MACHINE_DRIVER_START( gameroom )
 	MDRV_CPU_PROGRAM_MAP(lethalj_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_PALETTE_LENGTH(32768)
-
-	MDRV_SCREEN_ADD("main", 0)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(VIDEO_CLOCK, 701, 0, 512, 263, 0, 236)
 
 	MDRV_VIDEO_START(lethalj)
 	MDRV_VIDEO_UPDATE(tms340x0)
+
+	MDRV_PALETTE_INIT(RRRRR_GGGGG_BBBBB)
+	MDRV_PALETTE_LENGTH(32768)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD(OKIM6295, SOUND_CLOCK)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.26)
 
 	MDRV_SOUND_ADD(OKIM6295, SOUND_CLOCK)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.26)
 
 	MDRV_SOUND_ADD(OKIM6295, SOUND_CLOCK)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_3_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.26)
 MACHINE_DRIVER_END
 
 

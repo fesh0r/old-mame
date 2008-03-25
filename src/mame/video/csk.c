@@ -110,6 +110,14 @@ MACHINE_RESET (cpk)
 	}
 }
 
+INTERRUPT_GEN( cpoker_interrupt )
+{
+	if (cpu_getiloops() % 2)
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+	else
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+}
+
 INTERRUPT_GEN( cska_interrupt )
 {
 	UINT8 * RAM = memory_region(REGION_CPU1);
@@ -171,7 +179,7 @@ VIDEO_UPDATE( cska )
 			sx = offs % 64;
 			sy = offs / 64;
 
-			drawgfx(bitmap,machine->gfx[1+(offs % 4)],
+			drawgfx(bitmap,screen->machine->gfx[1+(offs % 4)],
 					cpk_expram[offs],
 					0,
 					0,0,
@@ -191,13 +199,13 @@ VIDEO_UPDATE( cska )
 		sx = offs % 64;
 		sy = offs / 64;
 
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx(bitmap,screen->machine->gfx[0],
 				tile,
 				color,
 				0,0,
 				8*sx,8*sy,
 				cliprect,
-				(abilityflag) ? TRANSPARENCY_COLOR : TRANSPARENCY_NONE, 0);
+				(abilityflag) ? TRANSPARENCY_PEN : TRANSPARENCY_NONE, 0);
 	}
 
 	return 0;

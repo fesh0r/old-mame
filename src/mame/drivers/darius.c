@@ -173,7 +173,7 @@ static WRITE16_HANDLER( cpua_ctrl_w )
 
 static WRITE16_HANDLER( darius_watchdog_w )
 {
-	watchdog_reset_w(0,data);
+	watchdog_reset_w(machine,0,data);
 }
 
 
@@ -186,22 +186,22 @@ static READ16_HANDLER( darius_ioc_r )
 	switch (offset)
 	{
 		case 0x01:
-			return (taitosound_comm_r(0) & 0xff);	/* sound interface read */
+			return (taitosound_comm_r(machine,0) & 0xff);	/* sound interface read */
 
 		case 0x04:
-			return input_port_0_word_r(0,mem_mask);	/* IN0 */
+			return input_port_0_word_r(machine,0,mem_mask);	/* IN0 */
 
 		case 0x05:
-			return input_port_1_word_r(0,mem_mask);	/* IN1 */
+			return input_port_1_word_r(machine,0,mem_mask);	/* IN1 */
 
 		case 0x06:
-			return input_port_2_word_r(0,mem_mask);	/* IN2 */
+			return input_port_2_word_r(machine,0,mem_mask);	/* IN2 */
 
 		case 0x07:
 			return coin_word;	/* bits 3&4 coin lockouts, must return zero */
 
 		case 0x08:
-			return input_port_3_word_r(0,mem_mask);	/* DSW */
+			return input_port_3_word_r(machine,0,mem_mask);	/* DSW */
 	}
 
 logerror("CPU #0 PC %06x: warning - read unmapped ioc offset %06x\n",activecpu_get_pc(),offset);
@@ -215,12 +215,12 @@ static WRITE16_HANDLER( darius_ioc_w )
 	{
 		case 0x00:	/* sound interface write */
 
-			taitosound_port_w (0, data & 0xff);
+			taitosound_port_w (machine, 0, data & 0xff);
 			return;
 
 		case 0x01:	/* sound interface write */
 
-			taitosound_comm_w (0, data & 0xff);
+			taitosound_comm_w (machine, 0, data & 0xff);
 			return;
 
 		case 0x28:	/* unknown, written by both cpus - always 0? */
@@ -248,20 +248,20 @@ logerror("CPU #0 PC %06x: warning - write unmapped ioc offset %06x with %04x\n",
 ***********************************************************/
 
 static ADDRESS_MAP_START( darius_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x05ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x080000, 0x08ffff) AM_READ(MRA16_RAM)		/* main RAM */
+	AM_RANGE(0x000000, 0x05ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x080000, 0x08ffff) AM_READ(SMH_RAM)		/* main RAM */
 	AM_RANGE(0xc00000, 0xc0001f) AM_READ(darius_ioc_r)	/* inputs, sound */
 	AM_RANGE(0xd00000, 0xd0ffff) AM_READ(PC080SN_word_0_r)	/* tilemaps */
-	AM_RANGE(0xd80000, 0xd80fff) AM_READ(MRA16_RAM)	/* palette */
+	AM_RANGE(0xd80000, 0xd80fff) AM_READ(SMH_RAM)	/* palette */
 	AM_RANGE(0xe00100, 0xe00fff) AM_RAM AM_SHARE(1) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xe01000, 0xe02fff) AM_RAM AM_SHARE(2)
-	AM_RANGE(0xe08000, 0xe0ffff) AM_READWRITE(MRA16_RAM, darius_fg_layer_w) AM_SHARE(3) AM_BASE(&darius_fg_ram)
-	AM_RANGE(0xe10000, 0xe10fff) AM_READ(MRA16_RAM)		/* ??? */
+	AM_RANGE(0xe08000, 0xe0ffff) AM_READWRITE(SMH_RAM, darius_fg_layer_w) AM_SHARE(3) AM_BASE(&darius_fg_ram)
+	AM_RANGE(0xe10000, 0xe10fff) AM_READ(SMH_RAM)		/* ??? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x05ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x080000, 0x08ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x05ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x080000, 0x08ffff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_WRITE(cpua_ctrl_w)
 	AM_RANGE(0x0b0000, 0x0b0001) AM_WRITE(darius_watchdog_w)
 	AM_RANGE(0xc00000, 0xc0007f) AM_WRITE(darius_ioc_w)	/* coin ctr & lockout, sound */
@@ -270,20 +270,20 @@ static ADDRESS_MAP_START( darius_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xd40000, 0xd40003) AM_WRITE(PC080SN_xscroll_word_0_w)
 	AM_RANGE(0xd50000, 0xd50003) AM_WRITE(PC080SN_ctrl_word_0_w)
 	AM_RANGE(0xd80000, 0xd80fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xe10000, 0xe10fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0xe10000, 0xe10fff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_cpub_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x040000, 0x04ffff) AM_READ(MRA16_RAM)	/* local RAM */
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x040000, 0x04ffff) AM_READ(SMH_RAM)	/* local RAM */
 	AM_RANGE(0xe00100, 0xe00fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xe01000, 0xe02fff) AM_RAM AM_SHARE(2)
-	AM_RANGE(0xe08000, 0xe0ffff) AM_READWRITE(MRA16_RAM, darius_fg_layer_w) AM_SHARE(3)
+	AM_RANGE(0xe08000, 0xe0ffff) AM_READWRITE(SMH_RAM, darius_fg_layer_w) AM_SHARE(3)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_cpub_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x040000, 0x04ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x040000, 0x04ffff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc00000, 0xc0007f) AM_WRITE(darius_ioc_w)	/* only writes $c00050 (?) */
 	AM_RANGE(0xd80000, 0xd80fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w)
 ADDRESS_MAP_END
@@ -475,19 +475,19 @@ static WRITE8_HANDLER( darius_write_portB1 )
 *****************************************************/
 
 static ADDRESS_MAP_START( darius_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0x8000, 0x8fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0x9001, 0x9001) AM_READ(YM2203_read_port_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(YM2203_status_port_1_r)
 	AM_RANGE(0xa001, 0xa001) AM_READ(YM2203_read_port_1_r)
-	AM_RANGE(0xb000, 0xb000) AM_READ(MRA8_NOP)
+	AM_RANGE(0xb000, 0xb000) AM_READ(SMH_NOP)
 	AM_RANGE(0xb001, 0xb001) AM_READ(taitosound_slave_comm_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x8fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x9001, 0x9001) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(YM2203_control_port_1_w)
@@ -505,12 +505,12 @@ static ADDRESS_MAP_START( darius_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_sound2_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0xffff) AM_READ(SMH_ROM)
 	/* yes, no RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_sound2_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xffff) AM_WRITE(MWA8_NOP)	/* writes rom whenever interrupt occurs - as no stack */
+	AM_RANGE(0x0000, 0xffff) AM_WRITE(SMH_NOP)	/* writes rom whenever interrupt occurs - as no stack */
 	/* yes, no RAM */
 ADDRESS_MAP_END
 
@@ -562,14 +562,14 @@ static WRITE8_HANDLER( adpcm_data_w )
 }
 
 static ADDRESS_MAP_START( darius_sound2_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(adpcm_command_read)
 	AM_RANGE(0x02, 0x02) AM_READ(readport2)	/* ??? */
 	AM_RANGE(0x03, 0x03) AM_READ(readport3)	/* ??? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius_sound2_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(adpcm_nmi_disable)
 	AM_RANGE(0x01, 0x01) AM_WRITE(adpcm_nmi_enable)
 	AM_RANGE(0x02, 0x02) AM_WRITE(adpcm_data_w)
@@ -833,7 +833,7 @@ static MACHINE_DRIVER_START( darius )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,16000000/2)	/* 8 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darius_readmem,darius_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
 	/* audio CPU */	/* 4 MHz ? */
@@ -841,7 +841,7 @@ static MACHINE_DRIVER_START( darius )
 
 	MDRV_CPU_ADD(M68000,16000000/2)	/* 8 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darius_cpub_readmem,darius_cpub_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2) /* 4 MHz ? */
 	/* audio CPU */	/* ADPCM player using MSM5205 */
@@ -854,29 +854,28 @@ static MACHINE_DRIVER_START( darius )
 	MDRV_MACHINE_RESET(darius)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(darius)
 	MDRV_PALETTE_LENGTH(4096*2)
 	MDRV_DEFAULT_LAYOUT(layout_darius)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 29*8-1)
 
-	MDRV_SCREEN_ADD("middle", 0x000)
+	MDRV_SCREEN_ADD("middle", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 29*8-1)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(36*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 29*8-1)
 

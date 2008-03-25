@@ -295,9 +295,9 @@ static TILE_GET_INFO( get_layer2_tile_info )
 
 static VIDEO_START( magic10 )
 {
-	layer0_tilemap = tilemap_create(get_layer0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,32);
-	layer1_tilemap = tilemap_create(get_layer1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	layer2_tilemap = tilemap_create(get_layer2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
+	layer0_tilemap = tilemap_create(get_layer0_tile_info,tilemap_scan_rows,16,16,32,32);
+	layer1_tilemap = tilemap_create(get_layer1_tile_info,tilemap_scan_rows,16,16,32,32);
+	layer2_tilemap = tilemap_create(get_layer2_tile_info,tilemap_scan_rows, 8, 8,64,64);
 
 	tilemap_set_transparent_pen(layer1_tilemap,0);
 	tilemap_set_transparent_pen(layer2_tilemap,0);
@@ -346,17 +346,18 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( magic10 )
 	MDRV_CPU_ADD_TAG("cpu", M68000, 10000000) // ?
 	MDRV_CPU_PROGRAM_MAP(magic10_map,0)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 44*8-1, 2*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(0x100)
 	MDRV_GFXDECODE(magic10)
 
@@ -385,6 +386,7 @@ static MACHINE_DRIVER_START( magic102 )
 	MDRV_CPU_MODIFY("cpu")
 	MDRV_CPU_PROGRAM_MAP(magic102_map,0)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 0*8, 30*8-1)
 MACHINE_DRIVER_END
 

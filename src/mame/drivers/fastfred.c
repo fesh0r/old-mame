@@ -6,6 +6,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "fastfred.h"
 #include "sound/ay8910.h"
 
@@ -112,13 +113,13 @@ static READ8_HANDLER( jumpcoas_custom_io_r )
 static ADDRESS_MAP_START( fastfred_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
-	AM_RANGE(0xd000, 0xd3ff) AM_MIRROR(0x400) AM_READWRITE(MRA8_RAM, fastfred_videoram_w) AM_BASE(&fastfred_videoram)
-	AM_RANGE(0xd800, 0xd83f) AM_READWRITE(MRA8_RAM, fastfred_attributes_w) AM_BASE(&fastfred_attributesram)
+	AM_RANGE(0xd000, 0xd3ff) AM_MIRROR(0x400) AM_READWRITE(SMH_RAM, fastfred_videoram_w) AM_BASE(&fastfred_videoram)
+	AM_RANGE(0xd800, 0xd83f) AM_READWRITE(SMH_RAM, fastfred_attributes_w) AM_BASE(&fastfred_attributesram)
 	AM_RANGE(0xd840, 0xd85f) AM_RAM AM_BASE(&fastfred_spriteram) AM_SIZE(&fastfred_spriteram_size)
 	AM_RANGE(0xd860, 0xdbff) AM_RAM // Unused, but initialized
-	AM_RANGE(0xe000, 0xe000) AM_READWRITE(input_port_0_r, fastfred_background_color_w)
+	AM_RANGE(0xe000, 0xe000) AM_READWRITE(input_port_0_r, SMH_RAM) AM_BASE(&fastfred_background_color)
 	AM_RANGE(0xe800, 0xe800) AM_READ(input_port_1_r)
-	AM_RANGE(0xf000, 0xf000) AM_READWRITE(input_port_2_r, MWA8_NOP)
+	AM_RANGE(0xf000, 0xf000) AM_READWRITE(input_port_2_r, SMH_NOP)
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0xf002, 0xf002) AM_WRITE(fastfred_colorbank1_w)
 	AM_RANGE(0xf003, 0xf003) AM_WRITE(fastfred_colorbank2_w)
@@ -135,16 +136,16 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( jumpcoas_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
-	AM_RANGE(0xd000, 0xd03f) AM_READWRITE(MRA8_RAM, fastfred_attributes_w) AM_BASE(&fastfred_attributesram)
+	AM_RANGE(0xd000, 0xd03f) AM_READWRITE(SMH_RAM, fastfred_attributes_w) AM_BASE(&fastfred_attributesram)
 	AM_RANGE(0xd040, 0xd05f) AM_RAM AM_BASE(&fastfred_spriteram) AM_SIZE(&fastfred_spriteram_size)
 	AM_RANGE(0xd060, 0xd3ff) AM_RAM
-	AM_RANGE(0xd800, 0xdbff) AM_MIRROR(0x400) AM_READWRITE(MRA8_RAM, fastfred_videoram_w) AM_BASE(&fastfred_videoram)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(fastfred_background_color_w)
+	AM_RANGE(0xd800, 0xdbff) AM_MIRROR(0x400) AM_READWRITE(SMH_RAM, fastfred_videoram_w) AM_BASE(&fastfred_videoram)
+	AM_RANGE(0xe000, 0xe000) AM_WRITE(SMH_RAM) AM_BASE(&fastfred_background_color)
 	AM_RANGE(0xe800, 0xe800) AM_READ(input_port_0_r)
 	AM_RANGE(0xe801, 0xe801) AM_READ(input_port_1_r)
 	AM_RANGE(0xe802, 0xe802) AM_READ(input_port_2_r)
 	AM_RANGE(0xe803, 0xe803) AM_READ(input_port_3_r)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(MWA8_NOP) // Unused, but initialized
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP) // Unused, but initialized
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0xf002, 0xf002) AM_WRITE(fastfred_colorbank1_w)
 	AM_RANGE(0xf003, 0xf003) AM_WRITE(fastfred_colorbank2_w)
@@ -155,7 +156,7 @@ static ADDRESS_MAP_START( jumpcoas_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf116, 0xf116) AM_WRITE(fastfred_flip_screen_x_w)
 	AM_RANGE(0xf117, 0xf117) AM_WRITE(fastfred_flip_screen_y_w)
 	//AM_RANGE(0xf800, 0xf800) AM_READ(watchdog_reset_r)  // Why doesn't this work???
-	AM_RANGE(0xf800, 0xf800) AM_READWRITE(MRA8_NOP, AY8910_control_port_0_w)
+	AM_RANGE(0xf800, 0xf800) AM_READWRITE(SMH_NOP, AY8910_control_port_0_w)
 	AM_RANGE(0xf801, 0xf801) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
 
@@ -165,34 +166,34 @@ static ADDRESS_MAP_START( imago_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x6fff) AM_ROM
 	AM_RANGE(0xb000, 0xb3ff) AM_RAM
 	AM_RANGE(0xc000, 0xc7ff) AM_RAM
-	AM_RANGE(0xc800, 0xcbff) AM_READWRITE(MRA8_RAM, imago_fg_videoram_w) AM_BASE(&imago_fg_videoram)
-	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(MRA8_RAM, fastfred_videoram_w) AM_BASE(&fastfred_videoram)
-	AM_RANGE(0xd800, 0xd83f) AM_READWRITE(MRA8_RAM, fastfred_attributes_w) AM_BASE(&fastfred_attributesram)
+	AM_RANGE(0xc800, 0xcbff) AM_READWRITE(SMH_RAM, imago_fg_videoram_w) AM_BASE(&imago_fg_videoram)
+	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(SMH_RAM, fastfred_videoram_w) AM_BASE(&fastfred_videoram)
+	AM_RANGE(0xd800, 0xd83f) AM_READWRITE(SMH_RAM, fastfred_attributes_w) AM_BASE(&fastfred_attributesram)
 	AM_RANGE(0xd840, 0xd85f) AM_RAM AM_BASE(&fastfred_spriteram) AM_SIZE(&fastfred_spriteram_size)
 	AM_RANGE(0xd860, 0xd8ff) AM_RAM // Unused, but initialized
 	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_0_r)
 	AM_RANGE(0xe800, 0xe800) AM_READ(input_port_1_r)
-	AM_RANGE(0xf000, 0xf000) AM_READWRITE(input_port_2_r, MWA8_NOP) // writes 1 when level starts, 0 when game over
+	AM_RANGE(0xf000, 0xf000) AM_READWRITE(input_port_2_r, SMH_NOP) // writes 1 when level starts, 0 when game over
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0xf002, 0xf002) AM_WRITE(fastfred_colorbank1_w)
 	AM_RANGE(0xf003, 0xf003) AM_WRITE(fastfred_colorbank2_w)
-	AM_RANGE(0xf004, 0xf004) AM_WRITE(MWA8_NOP) // initialized with 0 then when written always 1
+	AM_RANGE(0xf004, 0xf004) AM_WRITE(SMH_NOP) // initialized with 0 then when written always 1
 	AM_RANGE(0xf005, 0xf005) AM_WRITE(imago_charbank_w)
 	AM_RANGE(0xf006, 0xf006) AM_WRITE(fastfred_flip_screen_x_w) // always 0
 	AM_RANGE(0xf007, 0xf007) AM_WRITE(fastfred_flip_screen_y_w) // always 0
-	AM_RANGE(0xf800, 0xf800) AM_READWRITE(MRA8_NOP, soundlatch_w)
+	AM_RANGE(0xf800, 0xf800) AM_READWRITE(SMH_NOP, soundlatch_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x23ff) AM_RAM
 	AM_RANGE(0x3000, 0x3000) AM_READWRITE(soundlatch_r, interrupt_enable_w)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(MWA8_RAM)  // Reset PSG's
+	AM_RANGE(0x4000, 0x4000) AM_WRITE(SMH_RAM)  // Reset PSG's
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x5001, 0x5001) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0x6001, 0x6001) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0x7000, 0x7000) AM_READ(MRA8_NOP) // only for Imago, read but not used
+	AM_RANGE(0x7000, 0x7000) AM_READ(SMH_NOP) // only for Imago, read but not used
 ADDRESS_MAP_END
 
 
@@ -558,24 +559,23 @@ static MACHINE_DRIVER_START( fastfred )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, CLOCK/6)     /* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(fastfred_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD_TAG("audio", Z80, CLOCK/12)
 	/* audio CPU */    /* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)	//CLOCK/16/60
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,4)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))	//CLOCK/16/60
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(fastfred)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(32*8)
+	MDRV_PALETTE_LENGTH(32*8)
 
 	MDRV_PALETTE_INIT(fastfred)
 	MDRV_VIDEO_START(fastfred)
@@ -616,7 +616,6 @@ static MACHINE_DRIVER_START( imago )
 
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(256+64+2) /* 256 for characters, 64 for the stars and 2 for the web */
-	MDRV_COLORTABLE_LENGTH(32*8+64+2)
 	MDRV_GFXDECODE(imago)
 
 	MDRV_VIDEO_START(imago)
@@ -874,21 +873,21 @@ static DRIVER_INIT( flyboyb )
 
 static DRIVER_INIT( fastfred )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, MWA8_NOP );
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, SMH_NOP );
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, fastfred_custom_io_r);
 	fastfred_hardware_type = 1;
 }
 
 static DRIVER_INIT( jumpcoas )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, MWA8_NOP );
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, SMH_NOP );
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, jumpcoas_custom_io_r);
 	fastfred_hardware_type = 0;
 }
 
 static DRIVER_INIT( boggy84 )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, MWA8_NOP );
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, SMH_NOP );
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc800, 0xcfff, 0, 0, jumpcoas_custom_io_r);
 	fastfred_hardware_type = 2;
 }
@@ -898,11 +897,11 @@ static DRIVER_INIT( imago )
 	fastfred_hardware_type = 3;
 }
 
-GAME( 1982, flyboy,   0,      fastfred, flyboy,   flyboy,   ROT90, "Kaneko", "Fly-Boy", 0 )
-GAME( 1982, flyboyb,  flyboy, fastfred, flyboy,   flyboyb,  ROT90, "Kaneko", "Fly-Boy (bootleg)", 0 )
-GAME( 1982, fastfred, flyboy, fastfred, fastfred, fastfred, ROT90, "Atari", "Fast Freddie", 0 )
-GAME( 1983, jumpcoas, 0,      jumpcoas, jumpcoas, jumpcoas, ROT90, "Kaneko", "Jump Coaster", 0 )
-GAME( 1983, jumpcoat, jumpcoas,jumpcoas, jumpcoas, jumpcoas, ROT90, "Taito", "Jump Coaster (Taito)", 0 )
-GAME( 1983, boggy84,  0,      jumpcoas, boggy84,  boggy84,  ROT90, "bootleg", "Boggy '84", 0 )
-GAME( 1986, redrobin, 0,      fastfred, redrobin, flyboyb,  ROT90, "Elettronolo", "Red Robin", 0 )
-GAME( 1983, imago,	  0,	  imago,	imago,	  imago,	ROT90, "Acom", "Imago", GAME_IMPERFECT_GRAPHICS )
+GAME( 1982, flyboy,   0,        fastfred, flyboy,   flyboy,   ROT90, "Kaneko", "Fly-Boy", 0 )
+GAME( 1982, flyboyb,  flyboy,   fastfred, flyboy,   flyboyb,  ROT90, "Kaneko", "Fly-Boy (bootleg)", 0 )
+GAME( 1982, fastfred, flyboy,   fastfred, fastfred, fastfred, ROT90, "Atari", "Fast Freddie", 0 )
+GAME( 1983, jumpcoas, 0,        jumpcoas, jumpcoas, jumpcoas, ROT90, "Kaneko", "Jump Coaster", 0 )
+GAME( 1983, jumpcoat, jumpcoas, jumpcoas, jumpcoas, jumpcoas, ROT90, "Taito", "Jump Coaster (Taito)", 0 )
+GAME( 1983, boggy84,  0,        jumpcoas, boggy84,  boggy84,  ROT90, "bootleg", "Boggy '84", 0 )
+GAME( 1986, redrobin, 0,        fastfred, redrobin, flyboyb,  ROT90, "Elettronolo", "Red Robin", 0 )
+GAME( 1983, imago,	  0,	    imago,    imago,    imago,    ROT90, "Acom", "Imago", GAME_IMPERFECT_GRAPHICS )

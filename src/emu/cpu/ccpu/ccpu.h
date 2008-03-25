@@ -13,6 +13,7 @@
 
 #include "cpuintrf.h"
 
+
 /***************************************************************************
     REGISTER ENUMERATION
 ***************************************************************************/
@@ -32,6 +33,7 @@ enum
 };
 
 
+
 /***************************************************************************
     CONFIG STRUCTURE
 ***************************************************************************/
@@ -40,8 +42,8 @@ struct CCPUConfig
 {
 	UINT8		(*external_input)(void);		/* if NULL, assume JMI jumper is present */
 	void		(*vector_callback)(INT16 sx, INT16 sy, INT16 ex, INT16 ey, UINT8 shift);
-	UINT8		scrnum;
 };
+
 
 
 /***************************************************************************
@@ -49,6 +51,7 @@ struct CCPUConfig
 ***************************************************************************/
 
 void ccpu_get_info(UINT32 state, cpuinfo *info);
+void ccpu_wdt_timer_trigger(void);
 
 #ifdef ENABLE_DEBUGGER
 offs_t ccpu_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);

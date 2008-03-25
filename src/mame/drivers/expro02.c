@@ -245,18 +245,18 @@ static ADDRESS_MAP_START( galsnew, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x500000, 0x51ffff) AM_RAM AM_BASE(&galsnew_bg_pixram)
 	AM_RANGE(0x520000, 0x53ffff) AM_RAM AM_BASE(&galsnew_fg_pixram)
 
-	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(MRA16_RAM,kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(MRA16_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(SMH_RAM,kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(SMH_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x582000, 0x582fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0x583000, 0x583fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
 
-	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(MRA16_RAM,galsnew_paletteram_w) AM_BASE(&paletteram16) // palette?
+	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(SMH_RAM,galsnew_paletteram_w) AM_BASE(&paletteram16) // palette?
 
-	AM_RANGE(0x680000, 0x68001f) AM_READWRITE(MRA16_RAM,kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs) // sprite regs? tileregs?
+	AM_RANGE(0x680000, 0x68001f) AM_READWRITE(SMH_RAM,kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs) // sprite regs? tileregs?
 
 	AM_RANGE(0x700000, 0x700fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	 // sprites? 0x72f words tested
 
-	AM_RANGE(0x780000, 0x78001f) AM_READWRITE(MRA16_RAM,kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	) // sprite regs? tileregs?
+	AM_RANGE(0x780000, 0x78001f) AM_READWRITE(SMH_RAM,kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	) // sprite regs? tileregs?
 
 	AM_RANGE(0x800000, 0x800001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x800002, 0x800003) AM_READ(input_port_1_word_r)
@@ -264,15 +264,15 @@ static ADDRESS_MAP_START( galsnew, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x900000, 0x900001) AM_WRITE(galsnew_6295_bankswitch_w)
 
-	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(MWA16_NOP)	/* ??? */
+	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(SMH_NOP)	/* ??? */
 
 	AM_RANGE(0xc80000, 0xc8ffff) AM_RAM
 
-	AM_RANGE(0xd80000, 0xd80001) AM_WRITE(MWA16_NOP)	/* ??? */
+	AM_RANGE(0xd80000, 0xd80001) AM_WRITE(SMH_NOP)	/* ??? */
 
 	AM_RANGE(0xe00000, 0xe00015) AM_READWRITE(galpanib_calc_r,galpanib_calc_w) /* CALC1 MCU interaction (simulated) */
 
-	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(MWA16_NOP)	/* ??? */
+	AM_RANGE(0xe80000, 0xe80001) AM_WRITE(SMH_NOP)	/* ??? */
 ADDRESS_MAP_END
 
 
@@ -317,18 +317,18 @@ static MACHINE_DRIVER_START( galsnew )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(galsnew,0)
-	MDRV_CPU_VBLANK_INT(galsnew_interrupt,3)
+	MDRV_CPU_VBLANK_INT_HACK(galsnew_interrupt,3)
 
 	/* CALC01 MCU @ 16Mhz (unknown type, simulated) */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-32-1)
+
 	MDRV_GFXDECODE(1x4bit_1x4bit)
 	MDRV_PALETTE_LENGTH(2048 + 32768)
 	MDRV_MACHINE_RESET( galsnew )
@@ -338,7 +338,7 @@ static MACHINE_DRIVER_START( galsnew )
 	MDRV_PALETTE_INIT(berlwall)
 
 	/* arm watchdog */
-	MDRV_WATCHDOG_VBLANK_INIT(DEFAULT_60HZ_3S_VBLANK_WATCHDOG)
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(3))	/* a guess, and certainly wrong */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

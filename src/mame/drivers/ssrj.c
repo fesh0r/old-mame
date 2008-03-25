@@ -56,20 +56,20 @@ static MACHINE_RESET(ssrj)
 
 static READ8_HANDLER(ssrj_wheel_r)
 {
-	int port= input_port_1_r(0) -0x80;
+	int port= input_port_1_r(machine,0) -0x80;
 	int retval=port-oldport;
 	oldport=port;
 	return retval;
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(ssrj_vram1_r)
 	AM_RANGE(0xc800, 0xcfff) AM_READ(ssrj_vram2_r)
-	AM_RANGE(0xd000, 0xd7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xd000, 0xd7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd800, 0xdfff) AM_READ(ssrj_vram4_r)
-	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe800, 0xefff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe800, 0xefff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_0_r)
 	AM_RANGE(0xf001, 0xf001) AM_READ(ssrj_wheel_r)
 	AM_RANGE(0xf002, 0xf002) AM_READ(input_port_2_r)
@@ -77,18 +77,18 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(ssrj_vram1_w) AM_BASE(&ssrj_vram1)
 	AM_RANGE(0xc800, 0xcfff) AM_WRITE(ssrj_vram2_w) AM_BASE(&ssrj_vram2)
-	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(MWA8_RAM) AM_BASE(&ssrj_vram3)
+	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(SMH_RAM) AM_BASE(&ssrj_vram3)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(ssrj_vram4_w) AM_BASE(&ssrj_vram4)
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe800, 0xefff) AM_WRITE(MWA8_RAM) AM_BASE(&ssrj_scrollram)
-	AM_RANGE(0xf003, 0xf003) AM_WRITE(MWA8_NOP) /* unknown */
+	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xe800, 0xefff) AM_WRITE(SMH_RAM) AM_BASE(&ssrj_scrollram)
+	AM_RANGE(0xf003, 0xf003) AM_WRITE(SMH_NOP) /* unknown */
 	AM_RANGE(0xf401, 0xf401) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0xf400, 0xf400) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(MWA8_NOP) /* unknown */
-	AM_RANGE(0xf800, 0xf800) AM_WRITE(MWA8_NOP) /* wheel ? */
+	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(SMH_NOP) /* unknown */
+	AM_RANGE(0xf800, 0xf800) AM_WRITE(SMH_NOP) /* wheel ? */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( ssrj )
@@ -173,16 +173,16 @@ static MACHINE_DRIVER_START( ssrj )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,8000000/2)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 30*8-1, 3*8, 32*8-1)
+
 	MDRV_GFXDECODE(ssrj)
 	MDRV_PALETTE_LENGTH(128)
 	MDRV_PALETTE_INIT(ssrj)

@@ -169,22 +169,21 @@ struct _custom_port_info
 };
 
 
+typedef struct _changed_port_info changed_port_info;
+struct _changed_port_info
+{
+	changed_port_info *	next;		/* linked list */
+	input_port_entry *	port;		/* pointer to the input port referenced */
+	UINT8				shift;		/* right shift to apply before calling callback */
+};
+
+
 typedef struct _input_bit_info input_bit_info;
 struct _input_bit_info
 {
 	input_port_entry *	port;		/* port for this input */
 	UINT8				impulse;	/* counter for impulse controls */
 	UINT8				last;		/* were we pressed last time? */
-};
-
-
-typedef struct _changed_callback_info changed_callback_info;
-struct _changed_callback_info
-{
-	changed_callback_info *next;	/* linked list */
-	UINT32				mask;		/* mask we care about */
-	void				(*callback)(void *, UINT32, UINT32); /* callback */
-	void *				param;		/* parameter */
 };
 
 
@@ -202,8 +201,7 @@ struct _input_port_info
 	input_bit_info 		bit[MAX_BITS_PER_PORT]; /* info about each bit in the port */
 	analog_port_info *	analoginfo;	/* pointer to linked list of analog port info */
 	custom_port_info *	custominfo;	/* pointer to linked list of custom port info */
-	changed_callback_info *change_notify;/* list of people to notify if things change */
-	UINT32				changed_last_value;
+	changed_port_info *	changedinfo;/* pointer to linked list of changed port info */
 };
 
 
@@ -267,6 +265,8 @@ static double rec_speed;
 static int extended_inp;
 
 /* for average speed calculations */
+static attotime last_update;
+static attoseconds_t last_delta;
 static int framecount;
 static double totalspeed;
 
@@ -276,7 +276,7 @@ static double totalspeed;
     PORT HANDLER TABLES
 ***************************************************************************/
 
-static const read8_handler port_handler8[] =
+static const read8_machine_func port_handler8[] =
 {
 	input_port_0_r,			input_port_1_r,			input_port_2_r,			input_port_3_r,
 	input_port_4_r,			input_port_5_r,			input_port_6_r,			input_port_7_r,
@@ -289,7 +289,7 @@ static const read8_handler port_handler8[] =
 };
 
 
-static const read16_handler port_handler16[] =
+static const read16_machine_func port_handler16[] =
 {
 	input_port_0_word_r,	input_port_1_word_r,	input_port_2_word_r,	input_port_3_word_r,
 	input_port_4_word_r,	input_port_5_word_r,	input_port_6_word_r,	input_port_7_word_r,
@@ -302,7 +302,7 @@ static const read16_handler port_handler16[] =
 };
 
 
-static const read32_handler port_handler32[] =
+static const read32_machine_func port_handler32[] =
 {
 	input_port_0_dword_r,	input_port_1_dword_r,	input_port_2_dword_r,	input_port_3_dword_r,
 	input_port_4_dword_r,	input_port_5_dword_r,	input_port_6_dword_r,	input_port_7_dword_r,
@@ -1037,6 +1037,7 @@ static int default_ports_lookup[__ipt_max][MAX_PLAYERS];
 static void setup_playback(running_machine *machine);
 static void setup_record(running_machine *machine);
 static void input_port_exit(running_machine *machine);
+static void input_port_frame(running_machine *machine);
 static void input_port_load(int config_type, xml_data_node *parentnode);
 static void input_port_save(int config_type, xml_data_node *parentnode);
 static void update_digital_joysticks(void);
@@ -1062,6 +1063,10 @@ void input_port_init(running_machine *machine, const input_port_token *ipt)
 
 	/* add an exit callback */
 	add_exit_callback(machine, input_port_exit);
+	add_frame_callback(machine, input_port_frame);
+
+	/* reset the pointers */
+	memset(&joystick_info, 0, sizeof(joystick_info));
 
 	/* start with the raw defaults and ask the OSD to customize them in the backup array */
 	memcpy(default_ports_backup, default_ports_builtin, sizeof(default_ports_backup));
@@ -1138,6 +1143,7 @@ void input_port_init(running_machine *machine, const input_port_token *ipt)
 }
 
 
+
 /*************************************
  *
  *  Set up for playback
@@ -1167,7 +1173,7 @@ static void setup_playback(running_machine *machine)
 
 	/* Check if input file is an eXtended INP file */
 	extended_inp = (memcmp(check, "XINP\0\0\0", 7) == 0);
-	if (extended_inp)
+	if (!extended_inp)
 	{
 		/* read playback header */
 		mame_fread(machine->playback_file, &inpheader, sizeof(inpheader));
@@ -1261,9 +1267,6 @@ static void input_port_postload(void)
 	int portnum, bitnum;
 	UINT32 mask;
 
-	/* reset the pointers */
-	memset(&joystick_info, 0, sizeof(joystick_info));
-
 	/* loop over the ports and identify all the analog inputs */
 	portnum = -1;
 	bitnum = 0;
@@ -1309,6 +1312,25 @@ static void input_port_postload(void)
 				/* hook in the list */
 				info->next = port_info[portnum].custominfo;
 				port_info[portnum].custominfo = info;
+			}
+
+			/* if this is a changed input, add it to the list */
+			else if (port->changed != NULL)
+			{
+				changed_port_info *info;
+
+				/* allocate memory */
+				info = auto_malloc(sizeof(*info));
+				memset(info, 0, sizeof(*info));
+
+				/* fill in the data */
+				info->port = port;
+				for (mask = port->mask; !(mask & 1); mask >>= 1)
+					info->shift++;
+
+				/* hook in the list */
+				info->next = port_info[portnum].changedinfo;
+				port_info[portnum].changedinfo = info;
 			}
 
 			/* if this is an analog port, create an info struct for it */
@@ -1492,7 +1514,7 @@ static void input_port_postload(void)
 	}
 
 	/* run an initial update */
-	input_port_vblank_start();
+	input_port_frame(Machine);
 }
 
 
@@ -1529,6 +1551,7 @@ static int save_this_port_type(int type)
  *
  *************************************/
 
+#ifdef UNUSED_FUNCTION
 INLINE input_code get_default_code(int config_type, int type)
 {
 	switch (type)
@@ -1545,6 +1568,7 @@ INLINE input_code get_default_code(int config_type, int type)
 	}
 	return SEQCODE_END;
 }
+#endif
 
 
 INLINE int string_to_seq_index(const char *string)
@@ -1906,12 +1930,12 @@ const char *input_port_string_from_token(const input_port_token token)
 {
 	int index;
 
-	if (token == 0)
+	if (token.i == 0)
 		return NULL;
-	if ((FPTR)token >= INPUT_STRING_COUNT)
-		return (const char *)token;
+	if (token.i >= INPUT_STRING_COUNT)
+		return token.stringptr;
 	for (index = 0; index < ARRAY_LENGTH(input_port_default_strings); index++)
-		if (input_port_default_strings[index].id == (FPTR)token)
+		if (input_port_default_strings[index].id == token.i)
 			return input_port_default_strings[index].string;
 	return "(Unknown Default)";
 }
@@ -1935,10 +1959,12 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 	while (entrytype != INPUT_TOKEN_END)
 	{
 		UINT32 mask, defval, type, val;
+#ifdef MESS
+		UINT16 category;
+#endif /* MESS */
 
-		/* the entry is the first of a UINT32 pair */
-		/* note that we advance IPT assuming that there is no second half */
-		entrytype = INPUT_PORT_PAIR_ITEM(ipt++, 0);
+		/* unpack the token from the first entry */
+		TOKEN_GET_UINT32_UNPACK1(ipt, entrytype, 8);
 		switch (entrytype)
 		{
 			/* end */
@@ -1947,7 +1973,7 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 
 			/* including */
 			case INPUT_TOKEN_INCLUDE:
-				input_port_detokenize(param, (const input_port_token *)*ipt++);
+				input_port_detokenize(param, TOKEN_GET_PTR(ipt, tokenptr));
 				break;
 
 			/* start of a new input port */
@@ -1956,46 +1982,43 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 				modify_tag = NULL;
 				port = input_port_initialize(param, IPT_PORT, NULL, 0, 0);
 				if (entrytype == INPUT_TOKEN_START_TAG)
-					port->start.tag = (const char *)*ipt++;
+					port->start.tag = TOKEN_GET_STRING(ipt);
 				break;
 
 			/* modify an existing port */
 			case INPUT_TOKEN_MODIFY:
-				modify_tag = (const char *)*ipt++;
+				modify_tag = TOKEN_GET_STRING(ipt);
 				break;
 
 			/* input bit definition */
 			case INPUT_TOKEN_BIT:
-				type = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-				mask = INPUT_PORT_PAIR_ITEM(ipt, 0);
-				defval = INPUT_PORT_PAIR_ITEM(ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, type, 24);
+				TOKEN_GET_UINT64_UNPACK2(ipt, mask, 32, defval, 32);
 				port = input_port_initialize(param, type, modify_tag, mask, defval);
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
 				break;
 
 			/* append a code */
 			case INPUT_TOKEN_CODE:
-				val = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT64_UNPACK2(ipt, entrytype, 8, val, 32);
 				if (seq_index[0] > 0)
 					port->seq.code[seq_index[0]++] = SEQCODE_OR;
 				port->seq.code[seq_index[0]++] = val;
 				break;
 
 			case INPUT_TOKEN_CODE_DEC:
-				val = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT64_UNPACK2(ipt, entrytype, 8, val, 32);
 				if (seq_index[1] > 0)
 					port->analog.decseq.code[seq_index[1]++] = SEQCODE_OR;
 				port->analog.decseq.code[seq_index[1]++] = val;
 				break;
 
 			case INPUT_TOKEN_CODE_INC:
-				val = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT64_UNPACK2(ipt, entrytype, 8, val, 32);
 				if (seq_index[2] > 0)
 					port->analog.incseq.code[seq_index[2]++] = SEQCODE_OR;
 				port->analog.incseq.code[seq_index[2]++] = val;
@@ -2039,8 +2062,8 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 				break;
 
 			case INPUT_TOKEN_IMPULSE:
-				port->impulse = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->impulse, 24);
 				break;
 
 			case INPUT_TOKEN_REVERSE:
@@ -2057,43 +2080,42 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 
 			/* analog settings */
 			case INPUT_TOKEN_MINMAX:
-				port->analog.min = INPUT_PORT_PAIR_ITEM(ipt, 0);
-				port->analog.max = INPUT_PORT_PAIR_ITEM(ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_GET_UINT64_UNPACK2(ipt, port->analog.min, 32, port->analog.max, 32);
 				break;
 
 			case INPUT_TOKEN_SENSITIVITY:
-				port->analog.sensitivity = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->analog.sensitivity, 24);
 				break;
 
 			case INPUT_TOKEN_KEYDELTA:
-				port->analog.delta = port->analog.centerdelta = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->analog.delta, -24);
+				port->analog.centerdelta = port->analog.delta;
 				break;
 
 			case INPUT_TOKEN_CENTERDELTA:
-				port->analog.centerdelta = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->analog.centerdelta, -24);
 				break;
 
 			case INPUT_TOKEN_CROSSHAIR:
-				port->analog.crossaxis = INPUT_PORT_PAIR_ITEM(--ipt, 1) & 0xff;
-				port->analog.crossaltaxis = (float)((INT32)INPUT_PORT_PAIR_ITEM(ipt, 1) >> 8) / 65536.0f;
-				ipt += INPUT_PORT_PAIR_TOKENS;
-				port->analog.crossscale = (float)(INT32)INPUT_PORT_PAIR_ITEM(ipt, 0) / 65536.0f;
-				port->analog.crossoffset = (float)(INT32)INPUT_PORT_PAIR_ITEM(ipt, 1) / 65536.0f;
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK3(ipt, entrytype, 8, port->analog.crossaxis, 4, port->analog.crossaltaxis, -20);
+				TOKEN_GET_UINT64_UNPACK2(ipt, port->analog.crossscale, -32, port->analog.crossoffset, -32);
+				port->analog.crossaltaxis *= 1.0f / 65536.0f;
+				port->analog.crossscale *= 1.0f / 65536.0f;
+				port->analog.crossoffset *= 1.0f / 65536.0f;
 				break;
 
 			case INPUT_TOKEN_FULL_TURN_COUNT:
-				port->analog.full_turn_count = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->analog.full_turn_count, 24);
 				break;
 
 			case INPUT_TOKEN_POSITIONS:
-				port->analog.max = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->analog.max, 24);
 				break;
 
 			case INPUT_TOKEN_WRAPS:
@@ -2101,7 +2123,7 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 				break;
 
 			case INPUT_TOKEN_REMAP_TABLE:
-				port->analog.remap_table = (UINT32 *)*ipt++;
+				port->analog.remap_table = TOKEN_GET_PTR(ipt, ui32ptr);
 				break;
 
 			case INPUT_TOKEN_INVERT:
@@ -2110,25 +2132,27 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 
 			/* custom callbacks */
 			case INPUT_TOKEN_CUSTOM:
-				port->custom = (UINT32 (*)(void *))*ipt++;
-				port->custom_param = (void *)*ipt++;
+				port->custom = TOKEN_GET_PTR(ipt, customptr);
+				port->custom_param = (void *)TOKEN_GET_PTR(ipt, voidptr);
+				break;
+
+			/* changed callbacks */
+			case INPUT_TOKEN_CHANGED:
+				port->changed = TOKEN_GET_PTR(ipt, changedptr);
+				port->changed_param = (void *)TOKEN_GET_PTR(ipt, voidptr);
 				break;
 
 			/* dip switch definition */
 			case INPUT_TOKEN_DIPNAME:
-				mask = INPUT_PORT_PAIR_ITEM(ipt, 0);
-				defval = INPUT_PORT_PAIR_ITEM(ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_GET_UINT64_UNPACK2(ipt, mask, 32, defval, 32);
 				port = input_port_initialize(param, IPT_DIPSWITCH_NAME, modify_tag, mask, defval);
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
 				port->name = input_port_string_from_token(*ipt++);
 				break;
 
 			case INPUT_TOKEN_DIPSETTING:
-				defval = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT64_UNPACK2(ipt, entrytype, 8, defval, 32);
 				port = input_port_initialize(param, IPT_DIPSWITCH_SETTING, modify_tag, 0, defval);
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
 				port->name = input_port_string_from_token(*ipt++);
@@ -2136,44 +2160,37 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 
 			/* physical location */
 			case INPUT_TOKEN_DIPLOCATION:
-				input_port_parse_diplocation(port, (const char *)*ipt++);
+				input_port_parse_diplocation(port, TOKEN_GET_STRING(ipt));
 				break;
 
 			/* conditionals for dip switch settings */
 			case INPUT_TOKEN_CONDITION:
-				port->condition.condition = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-				port->condition.mask = INPUT_PORT_PAIR_ITEM(ipt, 0);
-				port->condition.value = INPUT_PORT_PAIR_ITEM(ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-				port->condition.tag = (const char *)*ipt++;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->condition.condition, 24);
+				TOKEN_GET_UINT64_UNPACK2(ipt, port->condition.mask, 32, port->condition.value, 32);
+				port->condition.tag = TOKEN_GET_STRING(ipt);
 				break;
 
 			/* analog adjuster definition */
 			case INPUT_TOKEN_ADJUSTER:
-				defval = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT64_UNPACK2(ipt, entrytype, 8, defval, 32);
 				port = input_port_initialize(param, IPT_ADJUSTER, modify_tag, 0xff, defval | (defval << 8));
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
-				port->name = input_port_string_from_token(*ipt++);
+				port->name = TOKEN_GET_STRING(ipt);
 				break;
 
 			/* configuration definition */
 			case INPUT_TOKEN_CONFNAME:
-				mask = INPUT_PORT_PAIR_ITEM(ipt, 0);
-				defval = INPUT_PORT_PAIR_ITEM(ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_GET_UINT64_UNPACK2(ipt, mask, 32, defval, 32);
 				port = input_port_initialize(param, IPT_CONFIG_NAME, modify_tag, mask, defval);
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
 				port->name = input_port_string_from_token(*ipt++);
 				break;
 
 			case INPUT_TOKEN_CONFSETTING:
-				defval = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT64_UNPACK2(ipt, entrytype, 8, defval, 32);
 				port = input_port_initialize(param, IPT_CONFIG_SETTING, modify_tag, 0, defval);
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
 				port->name = input_port_string_from_token(*ipt++);
@@ -2181,9 +2198,8 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 
 #ifdef MESS
 			case INPUT_TOKEN_CHAR:
-				val = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, val, 24);
 				{
 					int ch;
 					for (ch = 0; port->keyboard.chars[ch] != 0; ch++)
@@ -2194,32 +2210,29 @@ static void input_port_detokenize(input_port_init_params *param, const input_por
 
 			/* category definition */
 			case INPUT_TOKEN_CATEGORY:
-				port->category = (UINT16) INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT32_UNPACK2(ipt, entrytype, 8, port->category, 24);
 				break;
 
 			case INPUT_TOKEN_CATEGORY_NAME:
-				mask = INPUT_PORT_PAIR_ITEM(ipt, 0);
-				defval = INPUT_PORT_PAIR_ITEM(ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_GET_UINT64_UNPACK2(ipt, mask, 32, defval, 32);
 				port = input_port_initialize(param, IPT_CATEGORY_NAME, modify_tag, mask, defval);
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
 				port->name = input_port_string_from_token(*ipt++);
 				break;
 
 			case INPUT_TOKEN_CATEGORY_SETTING:
-				defval = INPUT_PORT_PAIR_ITEM(--ipt, 1);
-				ipt += INPUT_PORT_PAIR_TOKENS;
-
+				TOKEN_UNGET_UINT32(ipt);
+				TOKEN_GET_UINT64_UNPACK3(ipt, entrytype, 8, defval, 32, category, 16);
 				port = input_port_initialize(param, IPT_CATEGORY_SETTING, modify_tag, 0, defval);
 				seq_index[0] = seq_index[1] = seq_index[2] = 0;
 				port->name = input_port_string_from_token(*ipt++);
+				port->category = category;
 				break;
 #endif /* MESS */
 
 			default:
-				fatalerror("unknown port entry type");
+				fatalerror("Invalid token %d in input ports\n", entrytype);
 				break;
 		}
 	}
@@ -2541,30 +2554,30 @@ int port_tag_to_index(const char *tag)
 }
 
 
-read8_handler port_tag_to_handler8(const char *tag)
+read8_machine_func port_tag_to_handler8(const char *tag)
 {
 	int port = port_tag_to_index(tag);
-	return (port == -1) ? MRA8_NOP : port_handler8[port];
+	return (port == -1) ? SMH_NOP : port_handler8[port];
 }
 
 
-read16_handler port_tag_to_handler16(const char *tag)
+read16_machine_func port_tag_to_handler16(const char *tag)
 {
 	int port = port_tag_to_index(tag);
-	return (port == -1) ? MRA16_NOP : port_handler16[port];
+	return (port == -1) ? SMH_NOP : port_handler16[port];
 }
 
 
-read32_handler port_tag_to_handler32(const char *tag)
+read32_machine_func port_tag_to_handler32(const char *tag)
 {
 	int port = port_tag_to_index(tag);
-	return (port == -1) ? MRA32_NOP : port_handler32[port];
+	return (port == -1) ? SMH_NOP : port_handler32[port];
 }
 
 
-read64_handler port_tag_to_handler64(const char *tag)
+read64_machine_func port_tag_to_handler64(const char *tag)
 {
-	return MRA64_NOP;
+	return SMH_NOP;
 }
 
 
@@ -2761,22 +2774,22 @@ profiler_mark(PROFILER_END);
  *
  *************************************/
 
-static void update_playback_record(int portnum, UINT32 portvalue)
+static void update_playback_record(running_machine *machine, int portnum, UINT32 portvalue)
 {
 	/* handle playback */
-	if (Machine->playback_file != NULL)
+	if (machine->playback_file != NULL)
 	{
 		UINT32 result;
 
 		/* a successful read goes into the playback field which overrides everything else */
-		if (mame_fread(Machine->playback_file, &result, sizeof(result)) == sizeof(result))
+		if (mame_fread(machine->playback_file, &result, sizeof(result)) == sizeof(result))
 			portvalue = port_info[portnum].playback = BIG_ENDIANIZE_INT32(result);
 
 		/* a failure causes us to close the playback file and stop playback */
 		else
 		{
-			mame_fclose(Machine->playback_file);
-			Machine->playback_file = NULL;
+			mame_fclose(machine->playback_file);
+			machine->playback_file = NULL;
 			if (!extended_inp)
 				popmessage("End of playback");
 			else
@@ -2788,19 +2801,19 @@ static void update_playback_record(int portnum, UINT32 portvalue)
 	}
 
 	/* handle recording */
-	if (Machine->record_file != NULL)
+	if (machine->record_file != NULL)
 	{
 		UINT32 result = BIG_ENDIANIZE_INT32(portvalue);
 
 		/* a successful write just works */
-		if (mame_fwrite(Machine->record_file, &result, sizeof(result)) == sizeof(result))
+		if (mame_fwrite(machine->record_file, &result, sizeof(result)) == sizeof(result))
 			;
 
 		/* a failure causes us to close the record file and stop recording */
 		else
 		{
-			mame_fclose(Machine->record_file);
-			Machine->record_file = NULL;
+			mame_fclose(machine->record_file);
+			machine->record_file = NULL;
 		}
 	}
 }
@@ -2846,12 +2859,22 @@ void input_port_update_defaults(void)
  *
  *************************************/
 
-void input_port_vblank_start(void)
+static void input_port_frame(running_machine *machine)
 {
 	int ui_visible = ui_is_menu_active() || ui_is_slider_active();
+	attotime curtime = timer_get_time();
 	int portnum, bitnum;
 
 profiler_mark(PROFILER_INPUT);
+
+	/* track the duration of the previous frame */
+	last_delta = attotime_to_attoseconds(attotime_sub(curtime, last_update)) / ATTOSECONDS_PER_SECOND_SQRT;
+	last_update = curtime;
+
+	/* update all analog ports if the UI isn't visible */
+	if (!ui_visible)
+		for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
+			update_analog_port(portnum);
 
 	/* update the digital joysticks first */
 	update_digital_joysticks();
@@ -2864,16 +2887,13 @@ profiler_mark(PROFILER_INPUT);
 	{
 		input_port_info *portinfo = &port_info[portnum];
 		input_bit_info *info;
+		changed_port_info *changed;
 
 		/* compute the VBLANK mask */
 		portinfo->vblank = 0;
 		for (bitnum = 0, info = &portinfo->bit[0]; bitnum < MAX_BITS_PER_PORT && info->port; bitnum++, info++)
 			if (info->port->type == IPT_VBLANK)
-			{
 				portinfo->vblank ^= info->port->mask;
-				if (Machine->screen[0].vblank == 0)
-					logerror("Warning: you are using IPT_VBLANK with vblank_time = 0. You need to increase vblank_time for IPT_VBLANK to work.\n");
-			}
 
 		/* now loop back and modify based on the inputs */
 		portinfo->digital = 0;
@@ -2923,15 +2943,15 @@ profiler_mark(PROFILER_INPUT);
 							UINT8 mask;
 							switch( port->way )
 							{
-							case 4:
-								mask = joyinfo->current4way;
-								break;
-							case 16:
-								mask = 0xff;
-								break;
-							default:
-								mask = joyinfo->current;
-								break;
+								case 4:
+									mask = joyinfo->current4way;
+									break;
+								case 16:
+									mask = 0xff;
+									break;
+								default:
+									mask = joyinfo->current;
+									break;
 							}
 							if ((mask >> JOYSTICK_DIR_FOR_PORT(port)) & 1)
 								portinfo->digital ^= port->mask;
@@ -2958,29 +2978,28 @@ profiler_mark(PROFILER_INPUT);
 
 				/* note that analog ports are handled instantaneously at port read time */
 			}
+
+		/* call changed handlers */
+		for (changed = portinfo->changedinfo; changed; changed = changed->next)
+			if (input_port_condition(changed->port))
+			{
+				input_port_entry *port = changed->port;
+
+				UINT32 new_unmasked_value = readinputport(portnum);
+				UINT32 newval = (new_unmasked_value       & port->mask) >> changed->shift;
+				UINT32 oldval = (port->changed_last_value & port->mask) >> changed->shift;
+
+				if (newval != oldval)
+					(*port->changed)(machine, port->changed_param, oldval, newval);
+
+				port->changed_last_value = new_unmasked_value;
+			}
 	}
 
 #ifdef MESS
 	/* less MESS to MESSy things */
 	inputx_update();
 #endif
-
-	/* call changed handlers */
-	for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
-		if (port_info[portnum].change_notify != NULL)
-		{
-			changed_callback_info *cbinfo;
-			UINT32 newvalue = readinputport(portnum);
-			UINT32 oldvalue = port_info[portnum].changed_last_value;
-			UINT32 delta = newvalue ^ oldvalue;
-
-			/* call all the callbacks whose mask matches the requested mask */
-			for (cbinfo = port_info[portnum].change_notify; cbinfo; cbinfo = cbinfo->next)
-				if (delta & cbinfo->mask)
-					(*cbinfo->callback)(cbinfo->param, oldvalue & cbinfo->mask, newvalue & cbinfo->mask);
-
-			port_info[portnum].changed_last_value = newvalue;
-		}
 
 	/* handle playback/record */
 	for (portnum = 0; portnum < MAX_INPUT_PORTS; portnum++)
@@ -2991,42 +3010,19 @@ profiler_mark(PROFILER_INPUT);
 
 		/* non-analog ports must be manually updated */
 		else
-			update_playback_record(portnum, readinputport(portnum));
+			update_playback_record(machine, portnum, readinputport(portnum));
 	}
 
 	/* store speed read from INP file, if extended INP */
-	if (Machine->playback_file != NULL && extended_inp)
+	if (machine->playback_file != NULL && extended_inp)
 	{
 		UINT32 dummy;
-		mame_fread(Machine->playback_file, &rec_speed, sizeof(rec_speed));
-		mame_fread(Machine->playback_file, &dummy, sizeof(dummy));
+		mame_fread(machine->playback_file, &rec_speed, sizeof(rec_speed));
+		mame_fread(machine->playback_file, &dummy, sizeof(dummy));
 		framecount++;
 		rec_speed *= 100;
 		totalspeed += rec_speed;
 	}
-
-profiler_mark(PROFILER_END);
-}
-
-
-
-/*************************************
- *
- *  VBLANK end routine
- *
- *************************************/
-
-void input_port_vblank_end(void)
-{
-	int ui_visible = ui_is_menu_active() || ui_is_slider_active();
-	int port;
-
-profiler_mark(PROFILER_INPUT);
-
-	/* update all analog ports if the UI isn't visible */
-	if (!ui_visible)
-		for (port = 0; port < MAX_INPUT_PORTS; port++)
-			update_analog_port(port);
 
 profiler_mark(PROFILER_END);
 }
@@ -3346,8 +3342,11 @@ profiler_mark(PROFILER_INPUT);
 			INT32 value;
 
 			/* interpolate or not */
-			if (info->interpolate && !port->analog.reset)
-				current = info->previous + cpu_scalebyfcount(info->accum - info->previous);
+			if (info->interpolate && !port->analog.reset && last_delta != 0)
+			{
+				attoseconds_t time_since_last = attotime_to_attoseconds(attotime_sub(timer_get_time(), last_update)) / ATTOSECONDS_PER_SECOND_SQRT;
+				current = info->previous + ((INT64)(info->accum - info->previous) * time_since_last / last_delta);
+			}
 			else
 				current = info->accum;
 
@@ -3415,7 +3414,7 @@ UINT32 readinputport(int port)
 			/* replace the bits with bits from the custom routine */
 			input_port_entry *port = custom->port;
 			portinfo->digital &= ~port->mask;
-			portinfo->digital |= ((*port->custom)(port->custom_param) << custom->shift) & port->mask;
+			portinfo->digital |= ((*port->custom)(Machine, port->custom_param) << custom->shift) & port->mask;
 		}
 
 	/* compute the current result: default value XOR the digital, merged with the analog */
@@ -3423,7 +3422,7 @@ UINT32 readinputport(int port)
 
 	/* if we have analog data, update the recording state */
 	if (port_info[port].analoginfo)
-		update_playback_record(port, result);
+		update_playback_record(Machine, port, result);
 
 	/* if we're playing back, use the recorded value for inputs instead */
 	if (Machine->playback_file != NULL)
@@ -3436,18 +3435,8 @@ UINT32 readinputport(int port)
 		result = (result & ~portinfo->vblank) | (portinfo->defvalue & portinfo->vblank);
 
 		/* toggle VBLANK if we're in a VBLANK state */
-		if (Machine->screen[0].oldstyle_vblank_supplied)
-		{
-			int cpu_getvblank(void);
-
-			if (cpu_getvblank())
-				result ^= portinfo->vblank;
-		}
-		else
-		{
-			if (video_screen_get_vblank(0))
-				result ^= portinfo->vblank;
-		}
+		if (video_screen_get_vblank(Machine->primary_screen))
+			result ^= portinfo->vblank;
 	}
 	return result;
 }
@@ -3486,31 +3475,6 @@ void input_port_set_digital_value(int portnum, UINT32 value, UINT32 mask)
 	input_port_info *portinfo = &port_info[portnum];
 	portinfo->digital &= ~mask;
 	portinfo->digital |= value;
-}
-
-
-
-/*************************************
- *
- *  Input port callbacks
- *
- *************************************/
-
-void input_port_set_changed_callback(int port, UINT32 mask, void (*callback)(void *, UINT32, UINT32), void *param)
-{
-	input_port_info *portinfo = &port_info[port];
-	changed_callback_info *cbinfo;
-
-	assert_always(mame_get_phase(Machine) == MAME_PHASE_INIT, "Can only call input_port_set_changed_callback() at init time!");
-	assert_always((port >= 0) && (port < MAX_INPUT_PORTS), "Invalid port number passed to input_port_set_changed_callback()!");
-
-	cbinfo = auto_malloc(sizeof(*cbinfo));
-	cbinfo->next = portinfo->change_notify;
-	cbinfo->mask = mask;
-	cbinfo->callback = callback;
-	cbinfo->param = param;
-
-	portinfo->change_notify = cbinfo;
 }
 
 

@@ -25,28 +25,28 @@ MAIN BOARD:
 #include "sound/msm5205.h"
 
 
-extern void konami1_decode(void);
-extern UINT8 konami1_decodebyte( UINT8 opcode, UINT16 address );
+void konami1_decode(void);
+UINT8 konami1_decodebyte( UINT8 opcode, UINT16 address );
 
 
 extern UINT8 *trackfld_scroll;
 extern UINT8 *trackfld_scroll2;
 
-extern WRITE8_HANDLER( trackfld_videoram_w );
-extern WRITE8_HANDLER( trackfld_colorram_w );
-extern WRITE8_HANDLER( trackfld_flipscreen_w );
-extern WRITE8_HANDLER( atlantol_gfxbank_w );
+WRITE8_HANDLER( trackfld_videoram_w );
+WRITE8_HANDLER( trackfld_colorram_w );
+WRITE8_HANDLER( trackfld_flipscreen_w );
+WRITE8_HANDLER( atlantol_gfxbank_w );
 
-extern PALETTE_INIT( trackfld );
-extern VIDEO_START( trackfld );
-extern VIDEO_UPDATE( trackfld );
+PALETTE_INIT( trackfld );
+VIDEO_START( trackfld );
+VIDEO_UPDATE( trackfld );
 
-extern WRITE8_HANDLER( konami_sh_irqtrigger_w );
-extern READ8_HANDLER( trackfld_sh_timer_r );
-extern READ8_HANDLER( trackfld_speech_r );
-extern WRITE8_HANDLER( trackfld_sound_w );
-extern READ8_HANDLER( hyprolyb_speech_r );
-extern WRITE8_HANDLER( hyprolyb_ADPCM_data_w );
+WRITE8_HANDLER( konami_sh_irqtrigger_w );
+READ8_HANDLER( trackfld_sh_timer_r );
+READ8_HANDLER( trackfld_speech_r );
+WRITE8_HANDLER( trackfld_sound_w );
+READ8_HANDLER( hyprolyb_speech_r );
+WRITE8_HANDLER( hyprolyb_ADPCM_data_w );
 
 /*
  Track'n'Field has 1k of battery backed RAM which can be erased by setting a dipswitch
@@ -182,11 +182,11 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1281, 0x1281) AM_READ(input_port_1_r) /* P1 IO */
 	AM_RANGE(0x1282, 0x1282) AM_READ(input_port_2_r) /* P2 IO */
 	AM_RANGE(0x1283, 0x1283) AM_READ(input_port_3_r) /* DIP 1 */
-	AM_RANGE(0x1800, 0x1fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x2800, 0x3fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x1800, 0x1fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x2800, 0x3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)
 
-	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM)       /* for atlantol (everything not mapped is read from rom) */
+	AM_RANGE(0x0000, 0x5fff) AM_READ(SMH_ROM)       /* for atlantol (everything not mapped is read from rom) */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -197,33 +197,33 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1083, 0x1084) AM_WRITE(coin_w)
 	AM_RANGE(0x1087, 0x1087) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x1100, 0x1100) AM_WRITE(soundlatch_w)
-	AM_RANGE(0x1800, 0x183f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)
-	AM_RANGE(0x1840, 0x185f) AM_WRITE(MWA8_RAM) AM_BASE(&trackfld_scroll)
-	AM_RANGE(0x1860, 0x1bff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1c00, 0x1c3f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x1c40, 0x1c5f) AM_WRITE(MWA8_RAM) AM_BASE(&trackfld_scroll2)
-	AM_RANGE(0x1c60, 0x1fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x2800, 0x2bff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(MWA8_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)
+	AM_RANGE(0x1800, 0x183f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)
+	AM_RANGE(0x1840, 0x185f) AM_WRITE(SMH_RAM) AM_BASE(&trackfld_scroll)
+	AM_RANGE(0x1860, 0x1bff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1c00, 0x1c3f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x1c40, 0x1c5f) AM_WRITE(SMH_RAM) AM_BASE(&trackfld_scroll2)
+	AM_RANGE(0x1c60, 0x1fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x2800, 0x2bff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(SMH_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)
 	AM_RANGE(0x3000, 0x37ff) AM_WRITE(trackfld_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x3800, 0x3fff) AM_WRITE(trackfld_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( reaktor_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	/* all usual addresses +0x8000 */
 	AM_RANGE(0x9200, 0x9200) AM_READ(input_port_4_r) /* DIP 2 */
 	AM_RANGE(0x9280, 0x9280) AM_READ(input_port_0_r) /* IO Coin */
 	AM_RANGE(0x9281, 0x9281) AM_READ(input_port_1_r) /* P1 IO */
 	AM_RANGE(0x9282, 0x9282) AM_READ(input_port_2_r) /* P2 IO */
 	AM_RANGE(0x9283, 0x9283) AM_READ(input_port_3_r) /* DIP 1 */
-	AM_RANGE(0x9800, 0x9fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa800, 0xbfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x9800, 0x9fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xa800, 0xbfff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( reaktor_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	/* all usual addresses +0x8000 */
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x9080, 0x9080) AM_WRITE(trackfld_flipscreen_w)
@@ -231,30 +231,30 @@ static ADDRESS_MAP_START( reaktor_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9083, 0x9084) AM_WRITE(coin_w)
 	AM_RANGE(0x9087, 0x9087) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x9100, 0x9100) AM_WRITE(soundlatch_w)
-	AM_RANGE(0x9800, 0x983f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)
-	AM_RANGE(0x9840, 0x985f) AM_WRITE(MWA8_RAM) AM_BASE(&trackfld_scroll)
-	AM_RANGE(0x9860, 0x9bff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x9c00, 0x9c3f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x9c40, 0x9c5f) AM_WRITE(MWA8_RAM) AM_BASE(&trackfld_scroll2)
-	AM_RANGE(0x9c60, 0x9fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xa800, 0xabff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xac00, 0xafff) AM_WRITE(MWA8_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)
+	AM_RANGE(0x9800, 0x983f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)
+	AM_RANGE(0x9840, 0x985f) AM_WRITE(SMH_RAM) AM_BASE(&trackfld_scroll)
+	AM_RANGE(0x9860, 0x9bff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x9c00, 0x9c3f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x9c40, 0x9c5f) AM_WRITE(SMH_RAM) AM_BASE(&trackfld_scroll2)
+	AM_RANGE(0x9c60, 0x9fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xa800, 0xabff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xac00, 0xafff) AM_WRITE(SMH_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)
 	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(trackfld_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xb800, 0xbfff) AM_WRITE(trackfld_colorram_w) AM_BASE(&colorram)
 ADDRESS_MAP_END
 
 /* Reaktor reads / writes some I/O ports, no idea what they're connected to, if anything */
 static ADDRESS_MAP_START( reaktor_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x01, 0x01) AM_READ(MRA8_NOP)
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x01, 0x01) AM_READ(SMH_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( reaktor_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x01, 0x01) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x02, 0x02) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x03, 0x03) AM_WRITE(MWA8_NOP)
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x01, 0x01) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x02, 0x02) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x03, 0x03) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mastkin_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -263,9 +263,9 @@ static ADDRESS_MAP_START( mastkin_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1281, 0x1281) AM_READ(input_port_1_r) /* P1 IO */
 //  AM_RANGE(0x1282, 0x1282) AM_READ(input_port_2_r) /* unused */
 	AM_RANGE(0x1283, 0x1283) AM_READ(input_port_3_r) /* DIP 1 */
-	AM_RANGE(0x1800, 0x1fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x2800, 0x3fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x1800, 0x1fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x2800, 0x3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mastkin_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -275,17 +275,17 @@ static ADDRESS_MAP_START( mastkin_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1083, 0x1084) AM_WRITE(coin_w)
 	AM_RANGE(0x1087, 0x1087) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x1100, 0x1100) AM_WRITE(soundlatch_w)
-	AM_RANGE(0x1800, 0x183f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)
-	AM_RANGE(0x1840, 0x185f) AM_WRITE(MWA8_RAM) AM_BASE(&trackfld_scroll)
-	AM_RANGE(0x1860, 0x1bff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1c00, 0x1c3f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x1c40, 0x1c5f) AM_WRITE(MWA8_RAM) AM_BASE(&trackfld_scroll2)
-	AM_RANGE(0x1c60, 0x1fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x2800, 0x2bff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(MWA8_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)
+	AM_RANGE(0x1800, 0x183f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)
+	AM_RANGE(0x1840, 0x185f) AM_WRITE(SMH_RAM) AM_BASE(&trackfld_scroll)
+	AM_RANGE(0x1860, 0x1bff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1c00, 0x1c3f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x1c40, 0x1c5f) AM_WRITE(SMH_RAM) AM_BASE(&trackfld_scroll2)
+	AM_RANGE(0x1c60, 0x1fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x2800, 0x2bff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(SMH_RAM) AM_BASE(&nvram) AM_SIZE(&nvram_size)
 	AM_RANGE(0x3000, 0x37ff) AM_WRITE(trackfld_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x3800, 0x3fff) AM_WRITE(trackfld_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wizzquiz_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -309,61 +309,61 @@ static ADDRESS_MAP_START( wizzquiz_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1c60, 0x1fff) AM_RAM
 	AM_RANGE(0x2800, 0x2bff) AM_RAM
 	AM_RANGE(0x2c00, 0x2fff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x3000, 0x37ff) AM_READ(MRA8_RAM) AM_WRITE(trackfld_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x3800, 0x3fff) AM_READ(MRA8_RAM) AM_WRITE(trackfld_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x3000, 0x37ff) AM_READ(SMH_RAM) AM_WRITE(trackfld_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x3800, 0x3fff) AM_READ(SMH_RAM) AM_WRITE(trackfld_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(questions_bank_w)
-	AM_RANGE(0x6000, 0xdfff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x6000, 0xdfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)
 	AM_RANGE(0x8000, 0x8000) AM_READ(trackfld_sh_timer_r)
-	AM_RANGE(0xc000, 0xc000) AM_READ(MRA8_NOP) // reaktor reads here
-	AM_RANGE(0xe001, 0xe001) AM_READ(MRA8_NOP) // reaktor reads here
+	AM_RANGE(0xc000, 0xc000) AM_READ(SMH_NOP) // reaktor reads here
+	AM_RANGE(0xe001, 0xe001) AM_READ(SMH_NOP) // reaktor reads here
 	AM_RANGE(0xe002, 0xe002) AM_READ(trackfld_speech_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(SN76496_0_w)	/* Loads the snd command into the snd latch */
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(MWA8_NOP)		/* This address triggers the SN chip to read the data port. */
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(SMH_NOP)		/* This address triggers the SN chip to read the data port. */
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(DAC_0_data_w)
 /* There are lots more addresses which are used for setting a two bit volume
     controls for speech and music
 
     Currently these are un-supported by Mame
 */
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(MWA8_NOP) /* watch dog ? */
+	AM_RANGE(0xe001, 0xe001) AM_WRITE(SMH_NOP) /* watch dog ? */
 	AM_RANGE(0xe004, 0xe004) AM_WRITE(VLM5030_data_w)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(trackfld_sound_w) /* e003 speech control */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hyprolyb_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)
 	AM_RANGE(0x8000, 0x8000) AM_READ(trackfld_sh_timer_r)
 	AM_RANGE(0xe002, 0xe002) AM_READ(hyprolyb_speech_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hyprolyb_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(SN76496_0_w)	/* Loads the snd command into the snd latch */
-	AM_RANGE(0xc000, 0xc000) AM_WRITE(MWA8_NOP)		/* This address triggers the SN chip to read the data port. */
+	AM_RANGE(0xc000, 0xc000) AM_WRITE(SMH_NOP)		/* This address triggers the SN chip to read the data port. */
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(DAC_0_data_w)
 /* There are lots more addresses which are used for setting a two bit volume
     controls for speech and music
 
     Currently these are un-supported by Mame
 */
-	AM_RANGE(0xe001, 0xe001) AM_WRITE(MWA8_NOP) /* watch dog ? */
+	AM_RANGE(0xe001, 0xe001) AM_WRITE(SMH_NOP) /* watch dog ? */
 	AM_RANGE(0xe004, 0xe004) AM_WRITE(hyprolyb_ADPCM_data_w)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0xe000, 0xefff) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 
@@ -839,8 +839,8 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( trackfld )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,       0, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 16*16, 16 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, spritelayout,     0, 16 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, charlayout,   16*16, 16 )
 GFXDECODE_END
 
 
@@ -863,25 +863,24 @@ static MACHINE_DRIVER_START( trackfld )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6809, 2048000)        /* 1.400 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,14318180/4)
 	/* audio CPU */	/* Z80 Clock is derived from a 14.31818 MHz crystal */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(trackfld)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(trackfld)
-	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(16*16+16*16)
+	MDRV_PALETTE_LENGTH(16*16+16*16)
 
 	MDRV_PALETTE_INIT(trackfld)
 	MDRV_VIDEO_START(trackfld)
@@ -908,25 +907,24 @@ static MACHINE_DRIVER_START( hyprolyb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, 2048000)        /* 1.400 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,14318180/4)
 	/* audio CPU */	/* Z80 Clock is derived from a 14.31818 MHz crystal */
 	MDRV_CPU_PROGRAM_MAP(hyprolyb_sound_readmem,hyprolyb_sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(trackfld)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(trackfld)
-	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(16*16+16*16)
+	MDRV_PALETTE_LENGTH(16*16+16*16)
 
 	MDRV_PALETTE_INIT(trackfld)
 	MDRV_VIDEO_START(trackfld)
@@ -964,7 +962,7 @@ static MACHINE_DRIVER_START( wizzquiz )
 	// right cpu?
 	MDRV_CPU_REPLACE("main",M6800,2048000)		/* 1.400 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(wizzquiz_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 MACHINE_DRIVER_END
@@ -976,7 +974,7 @@ static MACHINE_DRIVER_START( reaktor )
 	MDRV_CPU_REPLACE("main",Z80,18432000/6)
 	MDRV_CPU_PROGRAM_MAP(reaktor_readmem,reaktor_writemem)
 	MDRV_CPU_IO_MAP(reaktor_readport,reaktor_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 MACHINE_DRIVER_END
 
 
@@ -997,16 +995,16 @@ ROM_START( trackfld )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "c2_d13.bin",   0x0000, 0x2000, CRC(95bf79b6) SHA1(ea9135acd7ad162c19c5cdde356e69792d61b675) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "h16_e12.bin",  0x0000, 0x2000, CRC(50075768) SHA1(dfff92c0f59dd3d8d3d6256944bfd48792cef6a9) )
-	ROM_LOAD( "h15_e11.bin",  0x2000, 0x2000, CRC(dda9e29f) SHA1(0f41cde82bb60c3f1591ee14dc3cff4642bbddc1) )
-	ROM_LOAD( "h14_e10.bin",  0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) )
-
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "c11_d06.bin",  0x0000, 0x2000, CRC(82e2185a) SHA1(1da9ea20e7af0b49c62fb39834a7ec686491af04) )
 	ROM_LOAD( "c12_d07.bin",  0x2000, 0x2000, CRC(800ff1f1) SHA1(33d73b18903e3e6bfb30f1a06db4b8105d4040d8) )
 	ROM_LOAD( "c13_d08.bin",  0x4000, 0x2000, CRC(d9faf183) SHA1(4448b6242790783d37acf50704d597af5878c2ab) )
 	ROM_LOAD( "c14_d09.bin",  0x6000, 0x2000, CRC(5886c802) SHA1(884a12a8f63600da4f23b29be6dbaacef37add20) )
+
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "h16_e12.bin",  0x0000, 0x2000, CRC(50075768) SHA1(dfff92c0f59dd3d8d3d6256944bfd48792cef6a9) )
+	ROM_LOAD( "h15_e11.bin",  0x2000, 0x2000, CRC(dda9e29f) SHA1(0f41cde82bb60c3f1591ee14dc3cff4642bbddc1) )
+	ROM_LOAD( "h14_e10.bin",  0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "361b16.f1",    0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
@@ -1028,16 +1026,16 @@ ROM_START( trackflc )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "c2_d13.bin",   0x0000, 0x2000, CRC(95bf79b6) SHA1(ea9135acd7ad162c19c5cdde356e69792d61b675) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "h16_e12.bin",  0x0000, 0x2000, CRC(50075768) SHA1(dfff92c0f59dd3d8d3d6256944bfd48792cef6a9) )
-	ROM_LOAD( "h15_e11.bin",  0x2000, 0x2000, CRC(dda9e29f) SHA1(0f41cde82bb60c3f1591ee14dc3cff4642bbddc1) )
-	ROM_LOAD( "h14_e10.bin",  0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) )
-
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "c11_d06.bin",  0x0000, 0x2000, CRC(82e2185a) SHA1(1da9ea20e7af0b49c62fb39834a7ec686491af04) )
 	ROM_LOAD( "c12_d07.bin",  0x2000, 0x2000, CRC(800ff1f1) SHA1(33d73b18903e3e6bfb30f1a06db4b8105d4040d8) )
 	ROM_LOAD( "c13_d08.bin",  0x4000, 0x2000, CRC(d9faf183) SHA1(4448b6242790783d37acf50704d597af5878c2ab) )
 	ROM_LOAD( "c14_d09.bin",  0x6000, 0x2000, CRC(5886c802) SHA1(884a12a8f63600da4f23b29be6dbaacef37add20) )
+
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "h16_e12.bin",  0x0000, 0x2000, CRC(50075768) SHA1(dfff92c0f59dd3d8d3d6256944bfd48792cef6a9) )
+	ROM_LOAD( "h15_e11.bin",  0x2000, 0x2000, CRC(dda9e29f) SHA1(0f41cde82bb60c3f1591ee14dc3cff4642bbddc1) )
+	ROM_LOAD( "h14_e10.bin",  0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "361b16.f1",    0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
@@ -1059,16 +1057,16 @@ ROM_START( hyprolym ) /* GX361 */
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "c2_d13.bin",   0x0000, 0x2000, CRC(95bf79b6) SHA1(ea9135acd7ad162c19c5cdde356e69792d61b675) ) /* 361-d13.c03 */
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "361-d12.h16", 0x0000, 0x2000, CRC(768bb63d) SHA1(effc46615c389245e5a4aac18292e1d764ff0e46) )
-	ROM_LOAD( "361-d11.h15", 0x2000, 0x2000, CRC(3af0e2a8) SHA1(450f35fd7e45ecc88ee80bf57499b2e9f06f6487) )
-	ROM_LOAD( "h14_e10.bin",  0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) ) /* 361-d10.h14 */
-
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "c11_d06.bin",  0x0000, 0x2000, CRC(82e2185a) SHA1(1da9ea20e7af0b49c62fb39834a7ec686491af04) ) /* 361-d06.c11 */
 	ROM_LOAD( "c12_d07.bin",  0x2000, 0x2000, CRC(800ff1f1) SHA1(33d73b18903e3e6bfb30f1a06db4b8105d4040d8) ) /* 361-d07.c12 */
 	ROM_LOAD( "c13_d08.bin",  0x4000, 0x2000, CRC(d9faf183) SHA1(4448b6242790783d37acf50704d597af5878c2ab) ) /* 361-d08.c13 */
 	ROM_LOAD( "c14_d09.bin",  0x6000, 0x2000, CRC(5886c802) SHA1(884a12a8f63600da4f23b29be6dbaacef37add20) ) /* 361-d09.c14 */
+
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "361-d12.h16", 0x0000, 0x2000, CRC(768bb63d) SHA1(effc46615c389245e5a4aac18292e1d764ff0e46) )
+	ROM_LOAD( "361-d11.h15", 0x2000, 0x2000, CRC(3af0e2a8) SHA1(450f35fd7e45ecc88ee80bf57499b2e9f06f6487) )
+	ROM_LOAD( "h14_e10.bin",  0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) ) /* 361-d10.h14 */
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 ) /* Prom names = 361-b16.f01 / 361-b17.b16 / 361-b18.e15 */
 	ROM_LOAD( "361b16.f1",    0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
@@ -1080,16 +1078,19 @@ ROM_START( hyprolym ) /* GX361 */
 ROM_END
 
 ROM_START( hyprolyb )
+    /* These ROM's are located on the CPU/Video Board */
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for code + 64k for decrypted opcodes */
-	ROM_LOAD( "a1.1",         0x6000, 0x2000, CRC(9aee2d5a) SHA1(81f151459f1113b5f2f76ddc140bf86676f778e4) )
-	ROM_LOAD( "361-d02.a02",  0x8000, 0x2000, CRC(15b83099) SHA1(79827590d74f20c9a95723e06b05af2b15c34f5f) )
-	ROM_LOAD( "a3.3",         0xa000, 0x2000, CRC(2d6fc308) SHA1(1ff95384670e40d560703f2238998a8e154aa4cf) )
-	ROM_LOAD( "361-d04.a04", 0xc000, 0x2000, CRC(d099b1e8) SHA1(0472991ad6caef41ec6b8ec8bf3d9d07584a57cc) )
-	ROM_LOAD( "361-d05.a05", 0xe000, 0x2000, CRC(974ff815) SHA1(11512df2008a79ba44bbb84bd70885f187113211) )
+	ROM_LOAD( "1.a1",         0x6000, 0x2000, CRC(9aee2d5a) SHA1(81f151459f1113b5f2f76ddc140bf86676f778e4) )
+	ROM_LOAD( "2.a2",         0x8000, 0x2000, CRC(15b83099) SHA1(79827590d74f20c9a95723e06b05af2b15c34f5f) )
+	ROM_LOAD( "3.a4",         0xa000, 0x2000, CRC(2d6fc308) SHA1(1ff95384670e40d560703f2238998a8e154aa4cf) )
+	ROM_LOAD( "4.a5",         0xc000, 0x2000, CRC(d099b1e8) SHA1(0472991ad6caef41ec6b8ec8bf3d9d07584a57cc) )
+	ROM_LOAD( "5.a7",         0xe000, 0x2000, CRC(974ff815) SHA1(11512df2008a79ba44bbb84bd70885f187113211) )
 
+    /* These ROM's are located on the Sound Board */
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "c2_d13.bin",   0x0000, 0x2000, CRC(95bf79b6) SHA1(ea9135acd7ad162c19c5cdde356e69792d61b675) )
 
+    /* These ROM's are located on the Sound Board */
 	ROM_REGION( 0x10000, REGION_CPU3, 0 )	/*  64k for the 6802 which plays ADPCM samples */
 	/* this bootleg uses a 6802 to "emulate" the VLM5030 speech chip */
 	/* I didn't bother to emulate the 6802, I just play the samples. */
@@ -1098,21 +1099,29 @@ ROM_START( hyprolyb )
 	ROM_LOAD( "2764.3",       0xc000, 0x2000, CRC(c3ec42e1) SHA1(048a95726c4f031552e629c3788952c1bc5e7251) )
 	ROM_LOAD( "2764.4",       0xe000, 0x2000, CRC(76998389) SHA1(499189b0e20296af88712199b93b958655083608) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "361-d12.h16", 0x0000, 0x2000, CRC(768bb63d) SHA1(effc46615c389245e5a4aac18292e1d764ff0e46) )
-	ROM_LOAD( "361-d11.h15", 0x2000, 0x2000, CRC(3af0e2a8) SHA1(450f35fd7e45ecc88ee80bf57499b2e9f06f6487) )
-	ROM_LOAD( "h14_e10.bin",  0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) )
+    /* These ROM's are located on the CPU/Video Board */
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "6.a18",       0x0000, 0x2000, CRC(82e2185a) SHA1(1da9ea20e7af0b49c62fb39834a7ec686491af04) )
+	ROM_LOAD( "7.a19",       0x2000, 0x2000, CRC(800ff1f1) SHA1(33d73b18903e3e6bfb30f1a06db4b8105d4040d8) )
+	ROM_LOAD( "8.a21",       0x4000, 0x2000, CRC(d9faf183) SHA1(4448b6242790783d37acf50704d597af5878c2ab) )
+	ROM_LOAD( "9.a22",       0x6000, 0x2000, CRC(5886c802) SHA1(884a12a8f63600da4f23b29be6dbaacef37add20) )
 
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "c11_d06.bin",  0x0000, 0x2000, CRC(82e2185a) SHA1(1da9ea20e7af0b49c62fb39834a7ec686491af04) )
-	ROM_LOAD( "c12_d07.bin",  0x2000, 0x2000, CRC(800ff1f1) SHA1(33d73b18903e3e6bfb30f1a06db4b8105d4040d8) )
-	ROM_LOAD( "c13_d08.bin",  0x4000, 0x2000, CRC(d9faf183) SHA1(4448b6242790783d37acf50704d597af5878c2ab) )
-	ROM_LOAD( "c14_d09.bin",  0x6000, 0x2000, CRC(5886c802) SHA1(884a12a8f63600da4f23b29be6dbaacef37add20) )
+    /* These ROM's are located on the CPU/Video Board */
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "12.h22",      0x0000, 0x2000, CRC(768bb63d) SHA1(effc46615c389245e5a4aac18292e1d764ff0e46) )
+	ROM_LOAD( "11.h21",      0x2000, 0x2000, CRC(3af0e2a8) SHA1(450f35fd7e45ecc88ee80bf57499b2e9f06f6487) )
+	ROM_LOAD( "10.h19",      0x4000, 0x2000, CRC(c2166a5c) SHA1(5ba25900e653ce4edcf35f1fbce758a327a715ce) )
 
+    /* These PROM's are located on the CPU/Video Board */
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
-	ROM_LOAD( "361b16.f1",    0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
-	ROM_LOAD( "361b17.b16",   0x0020, 0x0100, CRC(d2ba4d32) SHA1(894b5cedf01ba9225a0d6215291857e455b84903) ) /* sprite lookup table */
-	ROM_LOAD( "361b18.e15",   0x0120, 0x0100, CRC(053e5861) SHA1(6740a62cf7b6938a4f936a2fed429704612060a5) ) /* char lookup table */
+	ROM_LOAD( "361b16.e1",   0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
+	ROM_LOAD( "361b17.b15",  0x0020, 0x0100, CRC(d2ba4d32) SHA1(894b5cedf01ba9225a0d6215291857e455b84903) ) /* sprite lookup table */
+	ROM_LOAD( "361b18.f22",  0x0120, 0x0100, CRC(053e5861) SHA1(6740a62cf7b6938a4f936a2fed429704612060a5) ) /* char lookup table */
+
+    /* These PAL's are located on the CPU/Video Board */
+	ROM_REGION( 0x0002, REGION_PLDS, ROMREGION_DISPOSE )
+    ROM_LOAD( "pal16l8.bin", 0x0000, 0x0001, NO_DUMP ) /* Located at 4E. */
+    ROM_LOAD( "pal16l8.bin", 0x0000, 0x0001, NO_DUMP ) /* Located at 6E. */
 ROM_END
 
 ROM_START( atlantol )
@@ -1130,12 +1139,12 @@ ROM_START( atlantol )
 	ROM_LOAD( "atl36", 0x00000, 0x10000, CRC(0bae8489) SHA1(fbaeac99733f9c46b0b8d9a601c57df4004e2044) )
 	ROM_CONTINUE(      0x00000, 0x10000 )
 
-	ROM_REGION( 0x20000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "atl40", 0x00000, 0x20000, CRC(c915f53a) SHA1(5983fa68f8a494fe0c71e8dae79b45eee178bbcd) )
-
-	ROM_REGION( 0x40000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "atl38", 0x00000, 0x20000, CRC(dbbcbcda) SHA1(df84fd73425bac2dcde0b650369ed1ff105f729f) )
 	ROM_LOAD( "atl39", 0x20000, 0x20000, CRC(d08f067f) SHA1(077446bf3269dba2881e745434f1581f3a901d99) )
+
+	ROM_REGION( 0x20000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "atl40", 0x00000, 0x20000, CRC(c915f53a) SHA1(5983fa68f8a494fe0c71e8dae79b45eee178bbcd) )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "361b16.f1",    0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
@@ -1152,16 +1161,16 @@ ROM_START( mastkin )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "mk1",          0x0000, 0x2000, CRC(95bf79b6) SHA1(ea9135acd7ad162c19c5cdde356e69792d61b675) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "mk12",         0x0000, 0x2000, CRC(8b1a19cf) SHA1(9f75f69828eeaeb2d0dcf20fb80425546124b21e) )
-	ROM_LOAD( "mk11",         0x2000, 0x2000, CRC(1a56d24d) SHA1(e64b8a9bdbcf6d2d583ded0750d5f48721785459) )
-	ROM_LOAD( "mk10",         0x4000, 0x2000, CRC(e7d05634) SHA1(e7532749fe9b955ba221517807888b34a7754db7) )
-
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "mk6",          0x0000, 0x2000, CRC(18fbe047) SHA1(d2c6aeb1dfd9751f4db386944d144e293001b497) )
 	ROM_LOAD( "mk7",          0x2000, 0x2000, CRC(47dee791) SHA1(9c2d5c2ef1e2e8f329160a1c536119b078803347) )
 	ROM_LOAD( "mk8",          0x4000, 0x2000, CRC(9c091ead) SHA1(fce50c9d260f20873289921926bd632d6d49ef15) )
 	ROM_LOAD( "mk9",          0x6000, 0x2000, CRC(5c8ed3fe) SHA1(a878fcd547aad5388fef9fe2825c1122444c216d) )
+
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "mk12",         0x0000, 0x2000, CRC(8b1a19cf) SHA1(9f75f69828eeaeb2d0dcf20fb80425546124b21e) )
+	ROM_LOAD( "mk11",         0x2000, 0x2000, CRC(1a56d24d) SHA1(e64b8a9bdbcf6d2d583ded0750d5f48721785459) )
+	ROM_LOAD( "mk10",         0x4000, 0x2000, CRC(e7d05634) SHA1(e7532749fe9b955ba221517807888b34a7754db7) )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "prom.1",       0x0000, 0x0020, NO_DUMP ) /* palette */
@@ -1197,14 +1206,14 @@ ROM_START( wizzquiz )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "zandz.2c",     0x0000, 0x2000, CRC(3daca93a) SHA1(743c2b787aeb2c893ea476efc95d92e33b9bd159) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "rom.11c",      0x0000, 0x2000, CRC(87d060d4) SHA1(22da2dfaf71d78a4789ca34c27571733ab65ea30) )
+	ROM_LOAD( "rom.14c",      0x2000, 0x2000, CRC(5bff1607) SHA1(20c4b74c93511f9cafd6e3f2d048baad3a3a8aa4) )
+
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "rom.16h",      0x0000, 0x2000, CRC(e6728bda) SHA1(8bd029af5136b0ed6c0087989c69f0b1c23305fb) )
 	ROM_LOAD( "rom.15h",      0x2000, 0x2000, CRC(9c067ef4) SHA1(2a66beee4fa76d40ca18637c0061b196d3873df3) )
 	ROM_LOAD( "rom.14h",      0x4000, 0x2000, CRC(3bbad920) SHA1(f5c491f37aa6855181c62fe6bb2975c7d011cc72) )
-
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "rom.11c",      0x0000, 0x2000, CRC(87d060d4) SHA1(22da2dfaf71d78a4789ca34c27571733ab65ea30) )
-	ROM_LOAD( "rom.14c",      0x2000, 0x2000, CRC(5bff1607) SHA1(20c4b74c93511f9cafd6e3f2d048baad3a3a8aa4) )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "361b16.f1",    0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
@@ -1240,14 +1249,14 @@ ROM_START( wizzquza )
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "02c.bin",      0x0000, 0x2000, CRC(3daca93a) SHA1(743c2b787aeb2c893ea476efc95d92e33b9bd159) )
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_REGION( 0x4000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "11c.bin",      0x0000, 0x2000, CRC(87d060d4) SHA1(22da2dfaf71d78a4789ca34c27571733ab65ea30) )
+	ROM_LOAD( "14c.bin",      0x2000, 0x2000, CRC(5bff1607) SHA1(20c4b74c93511f9cafd6e3f2d048baad3a3a8aa4) )
+
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "16h.bin",      0x0000, 0x2000, CRC(e6728bda) SHA1(8bd029af5136b0ed6c0087989c69f0b1c23305fb) )
 	ROM_LOAD( "15h.bin",      0x2000, 0x2000, CRC(9c067ef4) SHA1(2a66beee4fa76d40ca18637c0061b196d3873df3) )
 	ROM_LOAD( "14h.bin",      0x4000, 0x2000, CRC(3bbad920) SHA1(f5c491f37aa6855181c62fe6bb2975c7d011cc72) )
-
-	ROM_REGION( 0x4000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD( "11c.bin",      0x0000, 0x2000, CRC(87d060d4) SHA1(22da2dfaf71d78a4789ca34c27571733ab65ea30) )
-	ROM_LOAD( "14c.bin",      0x2000, 0x2000, CRC(5bff1607) SHA1(20c4b74c93511f9cafd6e3f2d048baad3a3a8aa4) )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "361b16.f1",    0x0000, 0x0020, CRC(d55f30b5) SHA1(4d6a851f4886778307f75771645078b97ad55f5f) ) /* palette */
@@ -1270,15 +1279,7 @@ ROM_START( reaktor )
 	ROM_LOAD( "2c.bin",   0x0000, 0x2000, CRC(105a8beb) SHA1(4bd9a0076fece8dc9a830e76a60fbcefe08940f7) )
 	ROM_CONTINUE(0x0000,0x2000)
 
-	ROM_REGION( 0x6000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "16h.bin",  0x0000, 0x2000, CRC(cb062c3b) SHA1(4a1c1a662dec26cb49310de596e1e1416d101d5d) )
-	ROM_CONTINUE(0x0000,0x2000)
-	ROM_LOAD( "15h.bin",  0x2000, 0x2000, CRC(df83e659) SHA1(435523f3747c5aaf0a2d3a826766cb9b9ebb821e) )
-	ROM_CONTINUE(0x2000,0x2000)
-	ROM_LOAD( "14h.bin",  0x4000, 0x2000, CRC(5ca53215) SHA1(650338a95465b61d9388bede716053523855eeee) )
-	ROM_CONTINUE(0x4000,0x2000)
-
-	ROM_REGION( 0x8000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "11c.bin",  0x0000, 0x2000, CRC(d24553fa) SHA1(ad4f2dd6c7236f33841bc59ce150a212fbe871cd) )
 	ROM_CONTINUE(0x0000,0x2000)
 	ROM_LOAD( "14c.bin",  0x4000, 0x2000, CRC(4d0ab831) SHA1(2009b263fff3fd512a055fef23e667e76af1c584) )
@@ -1287,6 +1288,14 @@ ROM_START( reaktor )
 
 	ROM_LOAD( "15c.bin",  0x6000, 0x2000, CRC(bf1e608d) SHA1(ad5f16c091439358bbece9bc50e5979d44e85980) )
 	ROM_CONTINUE(0x6000,0x2000)
+
+	ROM_REGION( 0x6000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD( "16h.bin",  0x0000, 0x2000, CRC(cb062c3b) SHA1(4a1c1a662dec26cb49310de596e1e1416d101d5d) )
+	ROM_CONTINUE(0x0000,0x2000)
+	ROM_LOAD( "15h.bin",  0x2000, 0x2000, CRC(df83e659) SHA1(435523f3747c5aaf0a2d3a826766cb9b9ebb821e) )
+	ROM_CONTINUE(0x2000,0x2000)
+	ROM_LOAD( "14h.bin",  0x4000, 0x2000, CRC(5ca53215) SHA1(650338a95465b61d9388bede716053523855eeee) )
+	ROM_CONTINUE(0x4000,0x2000)
 
 	/* Proms, and speech rom (unused?) are unchanged from the original */
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
@@ -1314,17 +1323,13 @@ static DRIVER_INIT( atlantol )
 
 	/* not encrypted opcodes */
 	for (A = 0;A < 0x6000;A++)
-	{
 		decrypt[A] = rom[A];
-	}
 
 	/* "konami1" encrypted opcodes */
 	for (A = 0x6000;A < size;A++)
-	{
 		decrypt[A] = konami1_decodebyte(rom[A],A);
-	}
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1000, 0, 0, MWA8_NOP );
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1000, 0, 0, SMH_NOP );
 }
 
 static DRIVER_INIT( mastkin )
@@ -1355,26 +1360,22 @@ static DRIVER_INIT( wizzquiz )
 
 	/* decrypt program rom */
 	for( i = 0; i < 0x2000; i++ )
-	{
 		ROM[i] = BITSWAP8(ROM[i],0,1,2,3,4,5,6,7);
-	}
 
 	ROM = memory_region(REGION_USER1);
 
 	/* decrypt questions roms */
 	for( i = 0; i < 0x40000; i++ )
-	{
 		ROM[i] = BITSWAP8(ROM[i],0,1,2,3,4,5,6,7);
-	}
 }
 
 
-GAME( 1983, trackfld, 0,        trackfld, trackfld, trackfld, ROT0, "Konami", "Track & Field", 0 )
-GAME( 1983, trackflc, trackfld, trackfld, trackfld, trackfld, ROT0, "Konami (Centuri license)", "Track & Field (Centuri)", 0 )
-GAME( 1983, hyprolym, trackfld, trackfld, trackfld, trackfld, ROT0, "Konami", "Hyper Olympic", 0 )
-GAME( 1983, hyprolyb, trackfld, hyprolyb, trackfld, trackfld, ROT0, "bootleg", "Hyper Olympic (bootleg)", GAME_IMPERFECT_SOUND )
-GAME( 1996, atlantol, trackfld, hyprolyb, atlantol,	atlantol, ROT0, "bootleg", "Atlant Olimpic", 0 )
-GAME( 1988, mastkin,  0,        mastkin,  mastkin,  mastkin,  ROT0, "Du Tech", "The Masters of Kin", GAME_WRONG_COLORS )
-GAME( 1985, wizzquiz, 0,        wizzquiz, wizzquiz, wizzquiz, ROT0, "Konami", "Wizz Quiz (Konami version)", 0 )
-GAME( 1985, wizzquza, wizzquiz, wizzquiz, wizzquiz, wizzquiz, ROT0, "Zilec - Zenitone", "Wizz Quiz (version 4)", 0 )
-GAME( 1987, reaktor,  0,        reaktor,  reaktor,  0,        ROT90, "Zilec", "Reaktor (Track & Field Conversion)", 0 )
+GAME( 1983, trackfld, 0,        trackfld, trackfld, trackfld, ROT0,  "Konami", "Track & Field", 0 )
+GAME( 1983, trackflc, trackfld, trackfld, trackfld, trackfld, ROT0,  "Konami (Centuri license)", "Track & Field (Centuri)", 0 )
+GAME( 1983, hyprolym, trackfld, trackfld, trackfld, trackfld, ROT0,  "Konami", "Hyper Olympic", 0 )
+GAME( 1983, hyprolyb, trackfld, hyprolyb, trackfld, trackfld, ROT0,  "bootleg", "Hyper Olympic (bootleg)", GAME_IMPERFECT_SOUND )
+GAME( 1996, atlantol, trackfld, hyprolyb, atlantol,	atlantol, ROT0,  "bootleg", "Atlant Olimpic", 0 )
+GAME( 1988, mastkin,  0,        mastkin,  mastkin,  mastkin,  ROT0,  "Du Tech", "The Masters of Kin", GAME_WRONG_COLORS )
+GAME( 1985, wizzquiz, 0,        wizzquiz, wizzquiz, wizzquiz, ROT0,  "Konami", "Wizz Quiz (Konami version)", 0 )
+GAME( 1985, wizzquza, wizzquiz, wizzquiz, wizzquiz, wizzquiz, ROT0,  "Zilec - Zenitone", "Wizz Quiz (version 4)", 0 )
+GAME( 1987, reaktor,  0,        reaktor,  reaktor,  0,        ROT90, "Zilec", "Reaktor (Track & Field conversion)", 0 )

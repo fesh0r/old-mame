@@ -62,7 +62,7 @@ static UINT8 m6840_irq_vector;
 static UINT8 v493_irq_state;
 static UINT8 v493_irq_vector;
 
-static timer_callback v493_callback;
+static timer_fired_func v493_callback;
 
 static UINT8 zwackery_sound_data;
 
@@ -424,15 +424,15 @@ INTERRUPT_GEN( mcr_interrupt )
 {
 	/* CTC line 2 is connected to VBLANK, which is once every 1/2 frame */
 	/* for the 30Hz interlaced display */
-	z80ctc_0_trg2_w(0, 1);
-	z80ctc_0_trg2_w(0, 0);
+	z80ctc_0_trg2_w(machine, 0, 1);
+	z80ctc_0_trg2_w(machine, 0, 0);
 
 	/* CTC line 3 is connected to 493, which is signalled once every */
 	/* frame at 30Hz */
 	if (cpu_getiloops() == 0)
 	{
-		z80ctc_0_trg3_w(0, 1);
-		z80ctc_0_trg3_w(0, 0);
+		z80ctc_0_trg3_w(machine, 0, 1);
+		z80ctc_0_trg3_w(machine, 0, 0);
 	}
 }
 
@@ -443,8 +443,8 @@ INTERRUPT_GEN( mcr_ipu_interrupt )
 	/* frame at 30Hz */
 	if (cpu_getiloops() == 0)
 	{
-		z80ctc_1_trg3_w(0, 1);
-		z80ctc_1_trg3_w(0, 0);
+		z80ctc_1_trg3_w(machine, 0, 1);
+		z80ctc_1_trg3_w(machine, 0, 0);
 	}
 }
 
@@ -500,7 +500,7 @@ static TIMER_CALLBACK( mcr68_493_callback )
 {
 	v493_irq_state = 1;
 	update_mcr68_interrupts();
-	timer_set(video_screen_get_scan_period(0), NULL, 0, mcr68_493_off_callback);
+	timer_set(video_screen_get_scan_period(machine->primary_screen), NULL, 0, mcr68_493_off_callback);
 	logerror("--- (INT1) ---\n");
 }
 
@@ -585,7 +585,7 @@ WRITE8_HANDLER( mcr_scroll_value_w )
 WRITE8_HANDLER( zwackery_pia_2_w )
 {
 	/* bit 7 is the watchdog */
-	if (!(data & 0x80)) watchdog_reset_w(offset, data);
+	if (!(data & 0x80)) watchdog_reset_w(machine, offset, data);
 
 	/* bits 5 and 6 control hflip/vflip */
 	/* bits 3 and 4 control coin counters? */
@@ -601,7 +601,7 @@ WRITE8_HANDLER( zwackery_pia_3_w )
 
 WRITE8_HANDLER( zwackery_ca2_w )
 {
-	csdeluxe_data_w(offset, (data << 4) | zwackery_sound_data);
+	csdeluxe_data_w(machine, offset, (data << 4) | zwackery_sound_data);
 }
 
 
@@ -614,14 +614,14 @@ static void zwackery_pia_irq(int state)
 
 static TIMER_CALLBACK( zwackery_493_off_callback )
 {
-	pia_2_ca1_w(0, 0);
+	pia_2_ca1_w(machine, 0, 0);
 }
 
 
 static TIMER_CALLBACK( zwackery_493_callback )
 {
-	pia_2_ca1_w(0, 1);
-	timer_set(video_screen_get_scan_period(0), NULL, 0, zwackery_493_off_callback);
+	pia_2_ca1_w(machine, 0, 1);
+	timer_set(video_screen_get_scan_period(machine->primary_screen), NULL, 0, zwackery_493_off_callback);
 }
 
 
@@ -730,7 +730,7 @@ static void reload_count(int counter)
 	/* counter 0 is self-updating if clocked externally */
 	if (counter == 0 && !(m6840_state[counter].control & 0x02))
 	{
-		timer_adjust(m6840_state[counter].timer, attotime_never, 0, attotime_zero);
+		timer_adjust_oneshot(m6840_state[counter].timer, attotime_never, 0);
 		m6840_state[counter].timer_active = 0;
 		return;
 	}
@@ -751,7 +751,7 @@ static void reload_count(int counter)
 	/* set the timer */
 	total_period = attotime_make(0, attotime_to_attoseconds(period) * count);
 LOG(("reload_count(%d): period = %f  count = %d\n", counter, attotime_to_double(period), count));
-	timer_adjust(m6840_state[counter].timer, total_period, (count << 2) + counter, attotime_zero);
+	timer_adjust_oneshot(m6840_state[counter].timer, total_period, (count << 2) + counter);
 	m6840_state[counter].timer_active = 1;
 }
 
@@ -814,7 +814,7 @@ static WRITE8_HANDLER( mcr68_6840_w_common )
 			{
 				for (i = 0; i < 3; i++)
 				{
-					timer_adjust(m6840_state[i].timer, attotime_never, 0, attotime_zero);
+					timer_adjust_oneshot(m6840_state[i].timer, attotime_never, 0);
 					m6840_state[i].timer_active = 0;
 				}
 			}
@@ -903,26 +903,26 @@ static READ16_HANDLER( mcr68_6840_r_common )
 WRITE16_HANDLER( mcr68_6840_upper_w )
 {
 	if (ACCESSING_MSB)
-		mcr68_6840_w_common(offset, (data >> 8) & 0xff);
+		mcr68_6840_w_common(machine, offset, (data >> 8) & 0xff);
 }
 
 
 WRITE16_HANDLER( mcr68_6840_lower_w )
 {
 	if (ACCESSING_LSB)
-		mcr68_6840_w_common(offset, data & 0xff);
+		mcr68_6840_w_common(machine, offset, data & 0xff);
 }
 
 
 READ16_HANDLER( mcr68_6840_upper_r )
 {
-	return (mcr68_6840_r_common(offset,0) << 8) | 0x00ff;
+	return (mcr68_6840_r_common(machine,offset,0) << 8) | 0x00ff;
 }
 
 
 READ16_HANDLER( mcr68_6840_lower_r )
 {
-	return mcr68_6840_r_common(offset,0) | 0xff00;
+	return mcr68_6840_r_common(machine,offset,0) | 0xff00;
 }
 
 
@@ -1016,12 +1016,12 @@ READ8_HANDLER( mcr_ipu_watchdog_r )
 {
 	/* watchdog counter is clocked by 7.3728MHz crystal / 16 */
 	/* watchdog is tripped when 14-bit counter overflows => / 32768 = 14.0625Hz*/
-	timer_adjust(ipu_watchdog_timer, ATTOTIME_IN_HZ(7372800 / 16 / 32768), 0, attotime_zero);
+	timer_adjust_oneshot(ipu_watchdog_timer, ATTOTIME_IN_HZ(7372800 / 16 / 32768), 0);
 	return 0xff;
 }
 
 
 WRITE8_HANDLER( mcr_ipu_watchdog_w )
 {
-	mcr_ipu_watchdog_r(0);
+	mcr_ipu_watchdog_r(machine,0);
 }

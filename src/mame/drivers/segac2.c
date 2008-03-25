@@ -180,9 +180,9 @@ static READ16_HANDLER( ym3438_r )
 {
 	switch (offset)
 	{
-		case 0: return YM3438_status_port_0_A_r(0);
-		case 1: return YM3438_read_port_0_r(0);
-		case 2: return YM3438_status_port_0_B_r(0);
+		case 0: return YM3438_status_port_0_A_r(machine, 0);
+		case 1: return YM3438_read_port_0_r(machine, 0);
+		case 2: return YM3438_status_port_0_B_r(machine, 0);
 	}
 	return 0xff;
 }
@@ -205,10 +205,10 @@ static WRITE16_HANDLER( ym3438_w )
 
 		switch (offset)
 		{
-			case 0: YM3438_control_port_0_A_w(0, data & 0xff);	last_port = data;	break;
-			case 1: YM3438_data_port_0_A_w(0, data & 0xff);							break;
-			case 2: YM3438_control_port_0_B_w(0, data & 0xff);	last_port = data;	break;
-			case 3: YM3438_data_port_0_B_w(0, data & 0xff);							break;
+			case 0: YM3438_control_port_0_A_w(machine, 0, data & 0xff);	last_port = data;	break;
+			case 1: YM3438_data_port_0_A_w(machine, 0, data & 0xff);							break;
+			case 2: YM3438_control_port_0_B_w(machine, 0, data & 0xff);	last_port = data;	break;
+			case 3: YM3438_data_port_0_B_w(machine, 0, data & 0xff);							break;
 		}
 	}
 }
@@ -372,7 +372,7 @@ static READ16_HANDLER( io_chip_r )
 
 			/* otherwise, return an input port */
 			if (offset == 0x04/2 && sound_banks)
-				return (readinputport(offset) & 0xbf) | (upd7759_0_busy_r(0) << 6);
+				return (readinputport(offset) & 0xbf) | (upd7759_0_busy_r(machine,0) << 6);
 			return readinputport(offset);
 
 		/* 'SEGA' protection */
@@ -453,7 +453,7 @@ static WRITE16_HANDLER( io_chip_w )
 			newbank = data & 3;
 			if (newbank != palbank)
 			{
-				video_screen_update_partial(0, video_screen_get_vpos(0) + 1);
+				video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen) + 1);
 				palbank = newbank;
 				recompute_palette_tables();
 			}
@@ -551,11 +551,11 @@ static WRITE16_HANDLER( prot_w )
 	/* if the palette changed, force an update */
 	if (new_sp_palbase != sp_palbase || new_bg_palbase != bg_palbase)
 	{
-		video_screen_update_partial(0, video_screen_get_vpos(0) + 1);
+		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen) + 1);
 		sp_palbase = new_sp_palbase;
 		bg_palbase = new_bg_palbase;
 		recompute_palette_tables();
-		if (LOG_PALETTE) logerror("Set palbank: %d/%d (scan=%d)\n", bg_palbase, sp_palbase, video_screen_get_vpos(0));
+		if (LOG_PALETTE) logerror("Set palbank: %d/%d (scan=%d)\n", bg_palbase, sp_palbase, video_screen_get_vpos(machine->primary_screen));
 	}
 }
 
@@ -1263,6 +1263,74 @@ static INPUT_PORTS_START( pclub )
 INPUT_PORTS_END
 
 
+static INPUT_PORTS_START( pclubjv2 )
+	PORT_INCLUDE( systemc_generic )
+
+	PORT_MODIFY("P1")
+	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNKNOWN ) 	/* Probably Unused */
+    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Ok")
+    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Cancel")
+    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY
+    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
+
+	PORT_MODIFY("P2")
+	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN ) 	/* Probably Unused */
+
+	PORT_MODIFY("SERVICE")
+	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* Probably Unused */
+
+	PORT_MODIFY("COINAGE")
+	PORT_DIPNAME( 0x07, 0x07, "Coins per Credit (Normal / Alternate)" )
+	PORT_DIPSETTING(    0x00, "25 / 30" ) //7C1C
+	PORT_DIPSETTING(    0x01, "6 / 7" ) //6C1C
+	PORT_DIPSETTING(    0x02, "10 / 12" ) //5C1C
+	PORT_DIPSETTING(    0x03, "1 / 2" ) //4C1C
+    PORT_DIPSETTING(    0x07, "3 / Free Play" ) //3C1C
+	PORT_DIPSETTING(    0x04, "15 / 20" ) //2C1C
+	PORT_DIPSETTING(    0x05, "4 / 5" ) //1C1C
+    PORT_DIPSETTING(    0x06, "8 / 9" ) //FP
+    PORT_DIPNAME( 0x08, 0x08, "Alternate Coinage" )
+    PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x10, 0x10, "Unknown 4-5" )
+    PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x20, 0x20, "Unknown 4-6" )
+    PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x40, 0x40, "Unknown 4-7" )
+    PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x80, 0x80, "Unknown 4-8" )
+    PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_MODIFY("DSW")
+    PORT_DIPNAME( 0x01, 0x01, "Unknown 5-1" )
+    PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+    PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x02, 0x02, "Unknown 5-2" )
+    PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x04, 0x04, "Unknown 5-3" )
+    PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x08, 0x08, "Unknown 5-4" )
+    PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x10, 0x10, "Unknown 5-5" )
+    PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ))
+    PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
+    PORT_DIPNAME( 0x40, 0x40, "Unknown 5-7" )
+    PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+    PORT_DIPNAME( 0x80, 0x80, "Unknown 5-8" )
+    PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+INPUT_PORTS_END
 
 /******************************************************************************
     Sound interfaces
@@ -1297,19 +1365,21 @@ static MACHINE_DRIVER_START( segac )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, XL2_CLOCK/6)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(genesis_vblank_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
 
 	MDRV_MACHINE_START(segac2)
 	MDRV_MACHINE_RESET(segac2)
 	MDRV_NVRAM_HANDLER(generic_randfill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(342,262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 223)
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(segac2)
@@ -2018,7 +2088,7 @@ static DRIVER_INIT( tfrceacb )
 {
 	/* disable the palette bank switching from the protection chip */
 	segac2_common_init(NULL);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x800001, 0, 0, MWA16_NOP);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x800001, 0, 0, SMH_NOP);
 }
 
 static DRIVER_INIT( borench )
@@ -2191,6 +2261,6 @@ GAME( 1994, zunkyou,  0,        segac2,   zunkyou,  zunkyou,  ROT0, "Sega",     
 
 /* Atlus Print Club 'Games' (C-2 Hardware, might not be possible to support them because they use camera + printer, really just put here for reference) */
 GAME( 1995, pclubj,   0,        segac2,   pclub,    pclub,    ROT0, "Atlus",                  "Print Club (Japan Vol.1)", GAME_NOT_WORKING )
-GAME( 1995, pclubjv2, pclubj,   segac2,   pclub,    pclubjv2, ROT0, "Atlus",                  "Print Club (Japan Vol.2)", GAME_NOT_WORKING )
-GAME( 1996, pclubjv4, pclubj,   segac2,   pclub,    pclubjv4, ROT0, "Atlus",                  "Print Club (Japan Vol.4)", GAME_NOT_WORKING )
-GAME( 1996, pclubjv5, pclubj,   segac2,   pclub,    pclubjv5, ROT0, "Atlus",                  "Print Club (Japan Vol.5)", GAME_NOT_WORKING )
+GAME( 1995, pclubjv2, pclubj,   segac2,   pclubjv2, pclubjv2, ROT0, "Atlus",                  "Print Club (Japan Vol.2)", GAME_NOT_WORKING )
+GAME( 1996, pclubjv4, pclubj,   segac2,   pclubjv2, pclubjv4, ROT0, "Atlus",                  "Print Club (Japan Vol.4)", GAME_NOT_WORKING )
+GAME( 1996, pclubjv5, pclubj,   segac2,   pclubjv2, pclubjv5, ROT0, "Atlus",                  "Print Club (Japan Vol.5)", GAME_NOT_WORKING )

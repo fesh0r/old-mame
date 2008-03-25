@@ -9,6 +9,7 @@ Todo:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 
 
 #define NUM_PENS	(8)
@@ -118,7 +119,7 @@ static CUSTOM_INPUT( dorachan_v128_r )
 {
 	/* to avoid resetting (when player 2 starts) bit 0 need to be
        inverted when screen is flipped */
-	return ((video_screen_get_vpos(0) >> 7) & 0x01) ^ dorachan_flip_screen;
+	return ((video_screen_get_vpos(machine->primary_screen) >> 7) & 0x01) ^ dorachan_flip_screen;
 }
 
 
@@ -150,9 +151,9 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( dorachan_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x01, 0x01) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x02, 0x02) AM_WRITE(MWA8_NOP)
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x01, 0x01) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x02, 0x02) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x03, 0x03) AM_WRITE(dorachan_ctrl_w)
 ADDRESS_MAP_END
 
@@ -213,13 +214,12 @@ static MACHINE_DRIVER_START( dorachan )
 	MDRV_CPU_ADD(Z80, 2000000)
 	MDRV_CPU_PROGRAM_MAP(dorachan_map,0)
 	MDRV_CPU_IO_MAP(dorachan_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(dorachan)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 1*8, 31*8-1)

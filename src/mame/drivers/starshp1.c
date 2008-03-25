@@ -8,7 +8,6 @@ Atari Starship 1 driver
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/starshp1.h"
 
 int starshp1_attract;
@@ -20,36 +19,6 @@ static INTERRUPT_GEN( starshp1_interrupt )
 {
 	if ((readinputport(0) & 0x90) != 0x90)
 		cpunum_set_input_line(machine, 0, 0, PULSE_LINE);
-}
-
-
-static void starshp1_write_palette(running_machine *machine, int inverse)
-{
-	palette_set_color(machine, inverse ? 7 : 0, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, inverse ? 6 : 1, MAKE_RGB(0x1e, 0x1e, 0x1e));
-	palette_set_color(machine, inverse ? 5 : 2, MAKE_RGB(0x4e, 0x4e, 0x4e));
-	palette_set_color(machine, inverse ? 4 : 3, MAKE_RGB(0x6c, 0x6c, 0x6c));
-	palette_set_color(machine, inverse ? 3 : 4, MAKE_RGB(0x93, 0x93, 0x93));
-	palette_set_color(machine, inverse ? 2 : 5, MAKE_RGB(0xb1, 0xb1, 0xb1));
-	palette_set_color(machine, inverse ? 1 : 6, MAKE_RGB(0xe1, 0xe1, 0xe1));
-	palette_set_color(machine, inverse ? 0 : 7, MAKE_RGB(0xff, 0xff, 0xff));
-}
-
-
-static PALETTE_INIT( starshp1 )
-{
-	static const UINT16 colortable_source[] =
-	{
-		0, 3,       /* for the alpha numerics */
-		0, 2,       /* for the sprites (Z=0) */
-		0, 5,       /* for the sprites (Z=1) */
-		0, 2, 4, 6, /* for the spaceship (EXPLODE=0) */
-		0, 6, 6, 7  /* for the spaceship (EXPLODE=1) */
-	};
-
-	starshp1_write_palette(machine, 0);
-
-	memcpy(colortable, colortable_source, sizeof(colortable_source));
 }
 
 
@@ -177,7 +146,7 @@ static WRITE8_HANDLER( starshp1_misc_w )
 		starshp1_starfield_kill = data;
 		break;
 	case 4:
-		starshp1_write_palette(Machine, data);
+		starshp1_inverse = data;
 		break;
 	case 5:
 		/* BLACK HOLE, not used */
@@ -193,30 +162,30 @@ static WRITE8_HANDLER( starshp1_misc_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_READ(MRA8_RAM) AM_MIRROR(0x100)
-	AM_RANGE(0x2c00, 0x3fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x00ff) AM_READ(SMH_RAM) AM_MIRROR(0x100)
+	AM_RANGE(0x2c00, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
 	AM_RANGE(0xb000, 0xb000) AM_READ(starshp1_port_1_r)
 	AM_RANGE(0xc400, 0xc400) AM_READ(starshp1_port_2_r)
 	AM_RANGE(0xd800, 0xd800) AM_READ(starshp1_rng_r)
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_WRITE(MWA8_RAM) AM_MIRROR(0x100)
-	AM_RANGE(0x2c00, 0x3fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x00ff) AM_WRITE(SMH_RAM) AM_MIRROR(0x100)
+	AM_RANGE(0x2c00, 0x3fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc300, 0xc3ff) AM_WRITE(starshp1_sspic_w) /* spaceship picture */
 	AM_RANGE(0xc400, 0xc4ff) AM_WRITE(starshp1_ssadd_w) /* spaceship address */
 	AM_RANGE(0xc800, 0xc9ff) AM_WRITE(starshp1_playfield_w) AM_BASE(&starshp1_playfield_ram)
-	AM_RANGE(0xcc00, 0xcc0f) AM_WRITE(MWA8_RAM) AM_BASE(&starshp1_hpos_ram)
-	AM_RANGE(0xd000, 0xd00f) AM_WRITE(MWA8_RAM) AM_BASE(&starshp1_vpos_ram)
-	AM_RANGE(0xd400, 0xd40f) AM_WRITE(MWA8_RAM) AM_BASE(&starshp1_obj_ram)
+	AM_RANGE(0xcc00, 0xcc0f) AM_WRITE(SMH_RAM) AM_BASE(&starshp1_hpos_ram)
+	AM_RANGE(0xd000, 0xd00f) AM_WRITE(SMH_RAM) AM_BASE(&starshp1_vpos_ram)
+	AM_RANGE(0xd400, 0xd40f) AM_WRITE(SMH_RAM) AM_BASE(&starshp1_obj_ram)
 	AM_RANGE(0xd800, 0xd80f) AM_WRITE(starshp1_collision_reset_w)
 	AM_RANGE(0xdc00, 0xdc0f) AM_WRITE(starshp1_misc_w)
 	AM_RANGE(0xdd00, 0xdd0f) AM_WRITE(starshp1_analog_in_w)
 	AM_RANGE(0xde00, 0xde0f) AM_WRITE(starshp1_audio_w)
 	AM_RANGE(0xdf00, 0xdf0f) AM_WRITE(starshp1_analog_out_w)
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -333,16 +302,17 @@ static MACHINE_DRIVER_START( starshp1 )
 
 	MDRV_CPU_ADD(M6502, STARSHP1_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_VBLANK_INT(starshp1_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", starshp1_interrupt)
 
 	/* video hardware */
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(STARSHP1_PIXEL_CLOCK, STARSHP1_HTOTAL, STARSHP1_HBEND, STARSHP1_HBSTART, STARSHP1_VTOTAL, STARSHP1_VBEND, STARSHP1_VBSTART)
+
 	MDRV_GFXDECODE(starshp1)
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(14)
+	MDRV_PALETTE_LENGTH(19)
 	MDRV_PALETTE_INIT(starshp1)
 
 	MDRV_VIDEO_START(starshp1)

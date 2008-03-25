@@ -136,8 +136,8 @@ static TILE_GET_INFO( fg_get_tile_info )
 
 VIDEO_START( bosco )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	fg_tilemap = tilemap_create(fg_get_tile_info,fg_tilemap_scan,  TILEMAP_TYPE_PEN,8,8, 8,32);
+	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,8,8,32,32);
+	fg_tilemap = tilemap_create(fg_get_tile_info,fg_tilemap_scan,  8,8, 8,32);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 0x1f);
 	colortable_configure_tilemap_groups(machine->colortable, fg_tilemap, machine->gfx[0], 0x1f);
@@ -211,7 +211,7 @@ WRITE8_HANDLER( bosco_starclr_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -222,7 +222,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int flipx = spriteram[offs] & 1;
 		int flipy = spriteram[offs] & 2;
 		int color = spriteram_2[offs + 1] & 0x3f;
-		if (flip_screen) sx += 32-2;
+		if (flip_screen_get()) sx += 32-2;
 
 		drawgfx(bitmap,machine->gfx[1],
 				(spriteram[offs] & 0xfc) >> 2,
@@ -235,7 +235,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void draw_bullets(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_bullets(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -245,7 +245,7 @@ static void draw_bullets(running_machine *machine, mame_bitmap *bitmap, const re
 
 		x = bosco_radarx[offs] + ((~bosco_radarattr[offs] & 0x01) << 8);
 		y = 253 - bosco_radary[offs];
-		if (flip_screen) x -= 3;
+		if (flip_screen_get()) x -= 3;
 
 		drawgfx(bitmap,machine->gfx[2],
 				((bosco_radarattr[offs] & 0x0e) >> 1) ^ 0x07,
@@ -257,7 +257,7 @@ static void draw_bullets(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void draw_stars(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_stars(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if (1)
 	{
@@ -280,9 +280,9 @@ static void draw_stars(running_machine *machine, mame_bitmap *bitmap, const rect
 				/* dont draw the stars that are off the screen */
 				if ( x < 224 && y < 224 )
 				{
-					if (flip_screen) x += 64;
+					if (flip_screen_get()) x += 64;
 
-					if (y >= machine->screen[0].visarea.min_y && y <= machine->screen[0].visarea.max_y)
+					if (y >= cliprect->min_y && y <= cliprect->max_y)
 						*BITMAP_ADDR16(bitmap, y, x) = STARS_COLOR_BASE + star_seed_tab[star_cntr].col;
 				 }
 			}
@@ -297,7 +297,7 @@ VIDEO_UPDATE( bosco )
        the screen, and clip it to only the position where it is supposed to be shown */
 	rectangle fg_clip = *cliprect;
 	rectangle bg_clip = *cliprect;
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		bg_clip.min_x = 8*8;
 		fg_clip.max_x = 8*8-1;
@@ -308,19 +308,19 @@ VIDEO_UPDATE( bosco )
 		fg_clip.min_x = 28*8;
 	}
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
-	draw_stars(machine, bitmap,cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	draw_stars(bitmap,cliprect);
 
 	tilemap_draw(bitmap,&bg_clip,bg_tilemap,0,0);
 	tilemap_draw(bitmap,&fg_clip,fg_tilemap,0,0);
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 
 	/* draw the high priority characters */
 	tilemap_draw(bitmap,&bg_clip,bg_tilemap,1,0);
 	tilemap_draw(bitmap,&fg_clip,fg_tilemap,1,0);
 
-	draw_bullets(machine, bitmap,cliprect);
+	draw_bullets(screen->machine, bitmap,cliprect);
 
 	return 0;
 }

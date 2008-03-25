@@ -34,32 +34,32 @@ static int zoomreadroms,K052109_selected;
 static READ8_HANDLER( bottom9_bankedram1_r )
 {
 	if (K052109_selected)
-		return K052109_051960_r(offset);
+		return K052109_051960_r(machine,offset);
 	else
 	{
 		if (zoomreadroms)
-			return K051316_rom_0_r(offset);
+			return K051316_rom_0_r(machine,offset);
 		else
-			return K051316_0_r(offset);
+			return K051316_0_r(machine,offset);
 	}
 }
 
 static WRITE8_HANDLER( bottom9_bankedram1_w )
 {
-	if (K052109_selected) K052109_051960_w(offset,data);
-	else K051316_0_w(offset,data);
+	if (K052109_selected) K052109_051960_w(machine,offset,data);
+	else K051316_0_w(machine,offset,data);
 }
 
 static READ8_HANDLER( bottom9_bankedram2_r )
 {
-	if (K052109_selected) return K052109_051960_r(offset + 0x2000);
+	if (K052109_selected) return K052109_051960_r(machine,offset + 0x2000);
 	else return paletteram[offset];
 }
 
 static WRITE8_HANDLER( bottom9_bankedram2_w )
 {
-	if (K052109_selected) K052109_051960_w(offset + 0x2000,data);
-	else paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
+	if (K052109_selected) K052109_051960_w(machine,offset + 0x2000,data);
+	else paletteram_xBBBBBGGGGGRRRRR_be_w(machine,offset,data);
 }
 
 static WRITE8_HANDLER( bankswitch_w )
@@ -136,9 +136,9 @@ static ADDRESS_MAP_START( bottom9_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1fe0, 0x1fe0) AM_READ(input_port_3_r)
 	AM_RANGE(0x2000, 0x27ff) AM_READ(bottom9_bankedram2_r)
 	AM_RANGE(0x0000, 0x3fff) AM_READ(K052109_051960_r)
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bottom9_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -151,22 +151,22 @@ static ADDRESS_MAP_START( bottom9_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1ff0, 0x1fff) AM_WRITE(K051316_ctrl_0_w)
 	AM_RANGE(0x2000, 0x27ff) AM_WRITE(bottom9_bankedram2_w) AM_BASE(&paletteram)
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(K052109_051960_w)
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x6000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x6000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bottom9_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa00d) AM_READ(K007232_read_port_0_r)
 	AM_RANGE(0xb000, 0xb00d) AM_READ(K007232_read_port_1_r)
 	AM_RANGE(0xd000, 0xd000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bottom9_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(sound_bank_w)
 	AM_RANGE(0xa000, 0xa00d) AM_WRITE(K007232_write_port_0_w)
 	AM_RANGE(0xb000, 0xb00d) AM_WRITE(K007232_write_port_1_w)
@@ -403,21 +403,23 @@ static MACHINE_DRIVER_START( bottom9 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, 2000000) /* ? */
 	MDRV_CPU_PROGRAM_MAP(bottom9_readmem,bottom9_writemem)
-	MDRV_CPU_VBLANK_INT(bottom9_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", bottom9_interrupt)
 
 	MDRV_CPU_ADD(Z80, 3579545)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(bottom9_sound_readmem,bottom9_sound_writemem)
-	MDRV_CPU_VBLANK_INT(bottom9_sound_interrupt,8)	/* irq is triggered by the main CPU */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(bottom9_sound_interrupt,8)	/* irq is triggered by the main CPU */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(1024)
 
 	MDRV_VIDEO_START(bottom9)

@@ -1089,7 +1089,7 @@ static WRITE32_HANDLER( s12_dma_bias_w )
 
 static ADDRESS_MAP_START( namcos12_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x003fffff) AM_RAM	AM_SHARE(1) AM_BASE(&g_p_n_psxram) AM_SIZE(&g_n_psxramsize) /* ram */
-	AM_RANGE(0x1f000000, 0x1f000003) AM_READWRITE(MRA32_NOP, bankoffset_w)			/* banking */
+	AM_RANGE(0x1f000000, 0x1f000003) AM_READWRITE(SMH_NOP, bankoffset_w)			/* banking */
 	AM_RANGE(0x1f080000, 0x1f083fff) AM_READWRITE(sharedram_r, sharedram_w) AM_BASE(&namcos12_sharedram) /* shared ram?? */
 	AM_RANGE(0x1f140000, 0x1f140fff) AM_READWRITE( at28c16_32le_16lsb_0_r, at28c16_32le_16lsb_0_w ) /* eeprom */
 	AM_RANGE(0x1f1bff08, 0x1f1bff0f) AM_WRITENOP    /* ?? */
@@ -1208,7 +1208,7 @@ static READ32_HANDLER( tektagt_protection_2_r )
 static MACHINE_RESET( namcos12 )
 {
 	psx_machine_init();
-	bankoffset_w(0,0,0);
+	bankoffset_w(machine,0,0,0);
 
 	if( strcmp( machine->gamedrv->name, "tektagt" ) == 0 ||
 		strcmp( machine->gamedrv->name, "tektagta" ) == 0 ||
@@ -1240,7 +1240,7 @@ static MACHINE_RESET( namcos12 )
 		strcmp( machine->gamedrv->name, "ghlpanic" ) == 0 )
 	{
 		/* this is based on guesswork, it might not even be keycus. */
-		memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x1fc20280, 0x1fc2028b, 0, 0, MRA32_BANK2 );
+		memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x1fc20280, 0x1fc2028b, 0, 0, SMH_BANK2 );
 		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f008000, 0x1f008003, 0, 0, kcon_w );
 		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f018000, 0x1f018003, 0, 0, kcoff_w );
 
@@ -1252,7 +1252,7 @@ static MACHINE_RESET( namcos12 )
 
 /* H8/3002 MCU stuff */
 static ADDRESS_MAP_START( s12h8rwmap, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x080000, 0x08ffff) AM_READWRITE( sharedram_sub_r, sharedram_sub_w )
 	AM_RANGE(0x280000, 0x287fff) AM_READWRITE( c352_0_r, c352_0_w )
 	AM_RANGE(0x300000, 0x300001) AM_READ( input_port_1_word_r )
@@ -1476,24 +1476,24 @@ static MACHINE_DRIVER_START( coh700 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( PSXCPU, XTAL_100MHz )
 	MDRV_CPU_PROGRAM_MAP( namcos12_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_CPU_VBLANK_INT("main", psx_vblank)
 
 	MDRV_CPU_ADD(H83002, 14745600 )	/* verified 14.7456 MHz */
 	MDRV_CPU_PROGRAM_MAP( s12h8rwmap, 0 )
 	MDRV_CPU_IO_MAP( s12h8iomap, 0 )
-	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_pulse)
 
 	MDRV_MACHINE_RESET( namcos12 )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE( 60 )
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 1024, 1024 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
+
 	MDRV_PALETTE_LENGTH( 65536 )
 
 	MDRV_PALETTE_INIT( psx )
@@ -1554,7 +1554,7 @@ static INPUT_PORTS_START( namcos12 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("Test Switch") PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x4000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 INPUT_PORTS_END
 

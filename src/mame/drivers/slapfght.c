@@ -186,6 +186,7 @@ $8609 - $860f    High score characters to display to screen for highest score
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 
@@ -243,134 +244,134 @@ INTERRUPT_GEN( getstar_interrupt );
 
 
 static ADDRESS_MAP_START( perfrman_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x8800, 0x880f) AM_READ(slapfight_dpram_r)
-	AM_RANGE(0x8810, 0x8fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0x9000, 0x97ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x9800, 0x9fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa000, 0xa7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x8810, 0x8fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x9000, 0x97ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x9800, 0x9fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xa000, 0xa7ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( perfrman_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x8800, 0x880f) AM_WRITE(slapfight_dpram_w) AM_BASE(&slapfight_dpram) AM_SIZE(&slapfight_dpram_size)
-	AM_RANGE(0x8810, 0x8fff) AM_WRITE(MWA8_BANK1)	/* Shared RAM with sound CPU */
+	AM_RANGE(0x8810, 0x8fff) AM_WRITE(SMH_BANK1)	/* Shared RAM with sound CPU */
 	AM_RANGE(0x9000, 0x97ff) AM_WRITE(slapfight_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x9800, 0x9fff) AM_WRITE(slapfight_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tigerh_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc800, 0xc80f) AM_READ(slapfight_dpram_r)
-	AM_RANGE(0xc810, 0xcfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xd7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd800, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xc810, 0xcfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xd7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd800, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc800, 0xc80f) AM_READ(slapfight_dpram_r)
-	AM_RANGE(0xc810, 0xcfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xd7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd800, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xc810, 0xcfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xd7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd800, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
 //  AM_RANGE(0xe803, 0xe803) AM_READ(mcu_r) // MCU lives here
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc800, 0xc80f) AM_WRITE(slapfight_dpram_w) AM_BASE(&slapfight_dpram) AM_SIZE(&slapfight_dpram_size)
-	AM_RANGE(0xc810, 0xcfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc810, 0xcfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(slapfight_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(slapfight_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe800, 0xe800) AM_WRITE(MWA8_RAM) AM_BASE(&slapfight_scrollx_lo)
-	AM_RANGE(0xe801, 0xe801) AM_WRITE(MWA8_RAM) AM_BASE(&slapfight_scrollx_hi)
-	AM_RANGE(0xe802, 0xe802) AM_WRITE(MWA8_RAM) AM_BASE(&slapfight_scrolly)
+	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe800, 0xe800) AM_WRITE(SMH_RAM) AM_BASE(&slapfight_scrollx_lo)
+	AM_RANGE(0xe801, 0xe801) AM_WRITE(SMH_RAM) AM_BASE(&slapfight_scrollx_hi)
+	AM_RANGE(0xe802, 0xe802) AM_WRITE(SMH_RAM) AM_BASE(&slapfight_scrolly)
 	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(slapfight_fixram_w) AM_BASE(&slapfight_videoram) AM_SIZE(&slapfight_videoram_size)
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(slapfight_fixcol_w) AM_BASE(&slapfight_colorram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( slapbtuk_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc800, 0xc80f) AM_READ(slapfight_dpram_r)
-	AM_RANGE(0xc810, 0xcfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xd7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd800, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xc810, 0xcfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xd7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd800, 0xdfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
 //  AM_RANGE(0xe803, 0xe803) AM_READ(getstar_e803_r)
-	AM_RANGE(0xec00, 0xefff) AM_READ(MRA8_ROM) // it reads a copy of the logo from here!
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xec00, 0xefff) AM_READ(SMH_ROM) // it reads a copy of the logo from here!
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( slapbtuk_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc800, 0xc80f) AM_WRITE(slapfight_dpram_w) AM_BASE(&slapfight_dpram) AM_SIZE(&slapfight_dpram_size)
-	AM_RANGE(0xc810, 0xcfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc810, 0xcfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(slapfight_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xd800, 0xdfff) AM_WRITE(slapfight_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe800, 0xe800) AM_WRITE(MWA8_RAM) AM_BASE(&slapfight_scrollx_hi)
-	AM_RANGE(0xe802, 0xe802) AM_WRITE(MWA8_RAM) AM_BASE(&slapfight_scrolly)
-	AM_RANGE(0xe803, 0xe803) AM_WRITE(MWA8_RAM) AM_BASE(&slapfight_scrollx_lo)
+	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe800, 0xe800) AM_WRITE(SMH_RAM) AM_BASE(&slapfight_scrollx_hi)
+	AM_RANGE(0xe802, 0xe802) AM_WRITE(SMH_RAM) AM_BASE(&slapfight_scrolly)
+	AM_RANGE(0xe803, 0xe803) AM_WRITE(SMH_RAM) AM_BASE(&slapfight_scrollx_lo)
 	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(slapfight_fixram_w) AM_BASE(&slapfight_videoram) AM_SIZE(&slapfight_videoram_size)
 	AM_RANGE(0xf800, 0xffff) AM_WRITE(slapfight_fixcol_w) AM_BASE(&slapfight_colorram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(slapfight_port_00_r)	/* status register */
 ADDRESS_MAP_END
 
 static READ8_HANDLER(tigerh_status_r)
 {
-	return (slapfight_port_00_r(0)&0xf9)| ((tigerh_mcu_status_r(0)));
+	return (slapfight_port_00_r(machine,0)&0xf9)| ((tigerh_mcu_status_r(machine,0)));
 }
 
 static ADDRESS_MAP_START( tigerh_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(tigerh_status_r)	/* status register */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m68705_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_READ(tigerh_68705_portA_r)
 	AM_RANGE(0x0001, 0x0001) AM_READ(tigerh_68705_portB_r)
 	AM_RANGE(0x0002, 0x0002) AM_READ(tigerh_68705_portC_r)
-	AM_RANGE(0x0010, 0x007f) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m68705_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(tigerh_68705_portA_w)
 	AM_RANGE(0x0001, 0x0001) AM_WRITE(tigerh_68705_portB_w)
 	AM_RANGE(0x0002, 0x0002) AM_WRITE(tigerh_68705_portC_w)
 	AM_RANGE(0x0004, 0x0004) AM_WRITE(tigerh_68705_ddrA_w)
 	AM_RANGE(0x0005, 0x0005) AM_WRITE(tigerh_68705_ddrB_w)
 	AM_RANGE(0x0006, 0x0006) AM_WRITE(tigerh_68705_ddrC_w)
-	AM_RANGE(0x0010, 0x007f) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tigerh_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(slapfight_port_00_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(slapfight_port_01_w)
 	AM_RANGE(0x02, 0x03) AM_WRITE(slapfight_flipscreen_w)
@@ -379,7 +380,7 @@ static ADDRESS_MAP_START( tigerh_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(slapfight_port_00_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(slapfight_port_01_w)
 	AM_RANGE(0x02, 0x03) AM_WRITE(slapfight_flipscreen_w)
@@ -393,44 +394,44 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( perfrman_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8800, 0x880f) AM_READ(slapfight_dpram_r)
-	AM_RANGE(0x8810, 0x8fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x8810, 0x8fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xa081, 0xa081) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0xa091, 0xa091) AM_READ(AY8910_read_port_1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( perfrman_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8800, 0x880f) AM_WRITE(slapfight_dpram_w)
-	AM_RANGE(0x8810, 0x8fff) AM_WRITE(MWA8_BANK1)	/* Shared RAM with main CPU */
+	AM_RANGE(0x8810, 0x8fff) AM_WRITE(SMH_BANK1)	/* Shared RAM with main CPU */
 	AM_RANGE(0xa080, 0xa080) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xa082, 0xa082) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0xa090, 0xa090) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0xa092, 0xa092) AM_WRITE(AY8910_write_port_1_w)
 	AM_RANGE(0xa0e0, 0xa0e0) AM_WRITE(getstar_sh_intenable_w) /* maybe a0f0 also -LE */
-//  AM_RANGE(0xa0f0, 0xa0f0) AM_WRITE(MWA8_NOP)
+//  AM_RANGE(0xa0f0, 0xa0f0) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xa081, 0xa081) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0xa091, 0xa091) AM_READ(AY8910_read_port_1_r)
 	AM_RANGE(0xc800, 0xc80f) AM_READ(slapfight_dpram_r)
-	AM_RANGE(0xc810, 0xcfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xc810, 0xcfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xa080, 0xa080) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xa082, 0xa082) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0xa090, 0xa090) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0xa092, 0xa092) AM_WRITE(AY8910_write_port_1_w)
 	AM_RANGE(0xa0e0, 0xa0e0) AM_WRITE(getstar_sh_intenable_w) /* maybe a0f0 also -LE */
 	AM_RANGE(0xc800, 0xc80f) AM_WRITE(slapfight_dpram_w)
-	AM_RANGE(0xc810, 0xcfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xd000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc810, 0xcfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xd000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 #define COMMON_START\
@@ -459,9 +460,7 @@ COMMON_START
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT(    0x40, 0x40, IPT_DIPSWITCH_NAME ) PORT_NAME("Dipswitch Test") PORT_CODE(KEYCODE_F2) PORT_TOGGLE
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	/* Actually, the following DIPSW doesnt seem to do anything */
 	PORT_BIT(    0x20, 0x20, IPT_DIPSWITCH_NAME ) PORT_NAME("Screen Test") PORT_CODE(KEYCODE_F1) PORT_TOGGLE
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
@@ -530,9 +529,7 @@ COMMON_START
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT(    0x40, 0x40, IPT_DIPSWITCH_NAME ) PORT_NAME("Dipswitch Test") PORT_CODE(KEYCODE_F2) PORT_TOGGLE
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x80, 0x80, "Player Speed" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, "Fast" )
@@ -592,9 +589,7 @@ COMMON_START
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT(    0x02, 0x02, IPT_DIPSWITCH_NAME ) PORT_NAME("Dipswitch Test") PORT_CODE(KEYCODE_F2) PORT_TOGGLE
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x02, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x08, "1" )
 	PORT_DIPSETTING(    0x00, "2" )
@@ -652,9 +647,7 @@ static INPUT_PORTS_START( getstar )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT(    0x40, 0x40, IPT_DIPSWITCH_NAME ) PORT_NAME("Dipswitch Test") PORT_CODE(KEYCODE_F2) PORT_TOGGLE
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -723,9 +716,7 @@ static INPUT_PORTS_START( gtstarba )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT(    0x40, 0x40, IPT_DIPSWITCH_NAME ) PORT_NAME("Dipswitch Test") PORT_CODE(KEYCODE_F2) PORT_TOGGLE
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -843,7 +834,7 @@ static const struct AY8910interface ay8910_interface_2 =
 
 static VIDEO_EOF( perfrman )
 {
-	buffer_spriteram_w(0,0);
+	buffer_spriteram_w(machine,0,0);
 }
 
 static MACHINE_DRIVER_START( perfrman )
@@ -852,23 +843,26 @@ static MACHINE_DRIVER_START( perfrman )
 	MDRV_CPU_ADD(Z80,16000000/4)			/* 4MHz ???, 16MHz Oscillator */
 	MDRV_CPU_PROGRAM_MAP(perfrman_readmem,perfrman_writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,16000000/8)			/* 2MHz ???, 16MHz Oscillator */
 	MDRV_CPU_PROGRAM_MAP(perfrman_sound_readmem,perfrman_sound_writemem)
-	MDRV_CPU_VBLANK_INT(getstar_interrupt,4)	/* music speed, verified */
+	MDRV_CPU_VBLANK_INT_HACK(getstar_interrupt,4)	/* music speed, verified */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)		/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_RESET(slapfight)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 34*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(perfrman)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -896,23 +890,26 @@ static MACHINE_DRIVER_START( tigerhb )
 	MDRV_CPU_ADD(Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(tigerh_readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,tigerh_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,6)    /* ??? */
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,6)    /* ??? */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_RESET(slapfight)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 36*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(slapfght)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -936,29 +933,32 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( tigerh )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD(Z80, XTAL_36MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(tigerh_readmem,writemem)
 	MDRV_CPU_IO_MAP(tigerh_readport,tigerh_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD(Z80, XTAL_36MHz/12) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,6)    /* ??? */
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,6)    /* ??? */
 
-	MDRV_CPU_ADD(M68705,4000000)
+	MDRV_CPU_ADD(M68705,XTAL_36MHz/12) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_RESET(slapfight)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 36*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(slapfght)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -970,11 +970,11 @@ static MACHINE_DRIVER_START( tigerh )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_36MHz/24) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_36MHz/24) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END
@@ -982,26 +982,29 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( slapfigh )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main",Z80, 6000000)
+	MDRV_CPU_ADD_TAG("main",Z80, XTAL_36MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80, 6000000)
+	MDRV_CPU_ADD(Z80, XTAL_36MHz/12) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(getstar_interrupt, 3)
+	MDRV_CPU_VBLANK_INT_HACK(getstar_interrupt, 3)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	MDRV_MACHINE_RESET(slapfight)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 36*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(slapfght)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -1013,11 +1016,11 @@ static MACHINE_DRIVER_START( slapfigh )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_36MHz/24) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface_1)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_36MHz/24) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface_2)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END

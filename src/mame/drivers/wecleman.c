@@ -408,9 +408,9 @@ static READ16_HANDLER( selected_ip_r )
 {
 	switch ( (wecleman_selected_ip >> 5) & 3 )
 	{												// From WEC Le Mans Schems:
-		case 0:  return input_port_4_r(offset);		// Accel - Schems: Accelevr
+		case 0:  return input_port_4_r(machine, offset);		// Accel - Schems: Accelevr
 		case 1:  return ~0;							// ????? - Schems: Not Used
-		case 2:  return input_port_5_r(offset);		// Wheel - Schems: Handlevr
+		case 2:  return input_port_5_r(machine, offset);		// Wheel - Schems: Handlevr
 		case 3:  return ~0;							// Table - Schems: Turnvr
 
 		default: return ~0;
@@ -537,23 +537,23 @@ static ADDRESS_MAP_START( wecleman_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x040000, 0x043fff) AM_RAM	// RAM
 	AM_RANGE(0x060000, 0x060005) AM_WRITE(wecleman_protection_w) AM_BASE(&wecleman_protection_ram)
 	AM_RANGE(0x060006, 0x060007) AM_READ(wecleman_protection_r)	// MCU read
-	AM_RANGE(0x080000, 0x080011) AM_READWRITE(MRA16_RAM, blitter_w) AM_BASE(&blitter_regs)	// Blitter
-	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(MRA16_RAM, wecleman_pageram_w) AM_BASE(&wecleman_pageram)	// Background Layers
-	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(MRA16_RAM, wecleman_txtram_w) AM_BASE(&wecleman_txtram)	// Text Layer
-	AM_RANGE(0x110000, 0x110fff) AM_READWRITE(MRA16_RAM, wecleman_paletteram16_SSSSBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x080000, 0x080011) AM_READWRITE(SMH_RAM, blitter_w) AM_BASE(&blitter_regs)	// Blitter
+	AM_RANGE(0x100000, 0x103fff) AM_READWRITE(SMH_RAM, wecleman_pageram_w) AM_BASE(&wecleman_pageram)	// Background Layers
+	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(SMH_RAM, wecleman_txtram_w) AM_BASE(&wecleman_txtram)	// Text Layer
+	AM_RANGE(0x110000, 0x110fff) AM_READWRITE(SMH_RAM, wecleman_paletteram16_SSSSBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x124000, 0x127fff) AM_RAM AM_SHARE(1)	// Shared with main CPU
 	AM_RANGE(0x130000, 0x130fff) AM_RAM AM_BASE(&spriteram16)	// Sprites
 	AM_RANGE(0x140000, 0x140001) AM_WRITE(wecleman_soundlatch_w)	// To sound CPU
 	AM_RANGE(0x140002, 0x140003) AM_WRITE(selected_ip_w)	// Selects accelerator / wheel / ..
 	AM_RANGE(0x140004, 0x140005) AM_WRITE(irqctrl_w)	// Main CPU controls the other CPUs
-	AM_RANGE(0x140006, 0x140007) AM_WRITE(MWA16_NOP)	// Watchdog reset
+	AM_RANGE(0x140006, 0x140007) AM_WRITE(SMH_NOP)	// Watchdog reset
 	AM_RANGE(0x140010, 0x140011) AM_READ(input_port_0_word_r)	// Coins + brake + gear
 	AM_RANGE(0x140012, 0x140013) AM_READ(input_port_1_word_r)	// ??
 	AM_RANGE(0x140014, 0x140015) AM_READ(input_port_2_word_r)	// DSW
 	AM_RANGE(0x140016, 0x140017) AM_READ(input_port_3_word_r)	// DSW
-	AM_RANGE(0x140020, 0x140021) AM_WRITE(MWA16_RAM)	// Paired with writes to $140003
+	AM_RANGE(0x140020, 0x140021) AM_WRITE(SMH_RAM)	// Paired with writes to $140003
 	AM_RANGE(0x140020, 0x140021) AM_READ(selected_ip_r)	// Accelerator or Wheel or ..
-	AM_RANGE(0x140030, 0x140031) AM_WRITE(MWA16_NOP)	// toggles between 0 & 1 on hitting bumps and crashes (vibration?)
+	AM_RANGE(0x140030, 0x140031) AM_WRITE(SMH_NOP)	// toggles between 0 & 1 on hitting bumps and crashes (vibration?)
 ADDRESS_MAP_END
 
 
@@ -563,32 +563,32 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( hotchase_K051316_0_r )
 {
-	return K051316_0_r(offset) & 0xff;
+	return K051316_0_r(machine, offset) & 0xff;
 }
 
 static READ16_HANDLER( hotchase_K051316_1_r )
 {
-	return K051316_1_r(offset) & 0xff;
+	return K051316_1_r(machine, offset) & 0xff;
 }
 
 static WRITE16_HANDLER( hotchase_K051316_0_w )
 {
-	if (ACCESSING_LSB)      K051316_0_w(offset, data & 0xff);
+	if (ACCESSING_LSB)      K051316_0_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( hotchase_K051316_1_w )
 {
-	if (ACCESSING_LSB)      K051316_1_w(offset, data & 0xff);
+	if (ACCESSING_LSB)      K051316_1_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( hotchase_K051316_ctrl_0_w )
 {
-	if (ACCESSING_LSB)      K051316_ctrl_0_w(offset, data & 0xff);
+	if (ACCESSING_LSB)      K051316_ctrl_0_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( hotchase_K051316_ctrl_1_w )
 {
-	if (ACCESSING_LSB)      K051316_ctrl_1_w(offset, data & 0xff);
+	if (ACCESSING_LSB)      K051316_ctrl_1_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( hotchase_soundlatch_w );
@@ -596,26 +596,26 @@ static WRITE16_HANDLER( hotchase_soundlatch_w );
 static ADDRESS_MAP_START( hotchase_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x040000, 0x063fff) AM_RAM										// RAM (weird size!?)
-	AM_RANGE(0x080000, 0x080011) AM_READWRITE(MRA16_RAM, blitter_w) AM_BASE(&blitter_regs)	// Blitter
+	AM_RANGE(0x080000, 0x080011) AM_READWRITE(SMH_RAM, blitter_w) AM_BASE(&blitter_regs)	// Blitter
 	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(hotchase_K051316_0_r, hotchase_K051316_0_w)	// Background
 	AM_RANGE(0x101000, 0x10101f) AM_WRITE(hotchase_K051316_ctrl_0_w)	// Background Ctrl
 	AM_RANGE(0x102000, 0x102fff) AM_READWRITE(hotchase_K051316_1_r, hotchase_K051316_1_w)	// Foreground
 	AM_RANGE(0x103000, 0x10301f) AM_WRITE(hotchase_K051316_ctrl_1_w)	// Foreground Ctrl
-	AM_RANGE(0x110000, 0x111fff) AM_READWRITE(MRA16_RAM, hotchase_paletteram16_SBGRBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x110000, 0x111fff) AM_READWRITE(SMH_RAM, hotchase_paletteram16_SBGRBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x120000, 0x123fff) AM_RAM AM_SHARE(1)					// Shared with sub CPU
 	AM_RANGE(0x130000, 0x130fff) AM_RAM AM_BASE(&spriteram16)	// Sprites
 	// Input Ports:
 	AM_RANGE(0x140000, 0x140001) AM_WRITE(hotchase_soundlatch_w)	// To sound CPU
 	AM_RANGE(0x140002, 0x140003) AM_WRITE(selected_ip_w)	// Selects accelerator / wheel /
 	AM_RANGE(0x140004, 0x140005) AM_WRITE(irqctrl_w)	// Main CPU controls the other CPUs
-	AM_RANGE(0x140006, 0x140007) AM_READ(MRA16_NOP)	// Watchdog reset
+	AM_RANGE(0x140006, 0x140007) AM_READ(SMH_NOP)	// Watchdog reset
 	AM_RANGE(0x140010, 0x140011) AM_READ(input_port_0_word_r)	// Coins + brake + gear
 	AM_RANGE(0x140012, 0x140013) AM_READ(input_port_1_word_r)	// ?? bit 4 from sound cpu
 	AM_RANGE(0x140014, 0x140015) AM_READ(input_port_2_word_r)	// DSW 2
 	AM_RANGE(0x140016, 0x140017) AM_READ(input_port_3_word_r)	// DSW 1
-	AM_RANGE(0x140020, 0x140021) AM_READWRITE(selected_ip_r, MWA16_NOP)	// Paired with writes to $140003
-	AM_RANGE(0x140022, 0x140023) AM_READ(MRA16_NOP)	// ??
-	AM_RANGE(0x140030, 0x140031) AM_WRITE(MWA16_NOP)	// signal to cabinet vibration motors?
+	AM_RANGE(0x140020, 0x140021) AM_READWRITE(selected_ip_r, SMH_NOP)	// Paired with writes to $140003
+	AM_RANGE(0x140022, 0x140023) AM_READ(SMH_NOP)	// ??
+	AM_RANGE(0x140030, 0x140031) AM_WRITE(SMH_NOP)	// signal to cabinet vibration motors?
 ADDRESS_MAP_END
 
 
@@ -651,8 +651,8 @@ WRITE16_HANDLER( wecleman_soundlatch_w )
 {
 	if (ACCESSING_LSB)
 	{
-		soundlatch_w(0,data & 0xFF);
-		cpunum_set_input_line(Machine, 2,0, HOLD_LINE);
+		soundlatch_w(machine,0,data & 0xFF);
+		cpunum_set_input_line(machine, 2,0, HOLD_LINE);
 	}
 }
 
@@ -689,8 +689,8 @@ static WRITE8_HANDLER( wecleman_K00723216_bank_w )
 }
 
 static ADDRESS_MAP_START( wecleman_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)	// ROM
-	AM_RANGE(0x8000, 0x83ff) AM_READ(MRA8_RAM)	// RAM
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)	// ROM
+	AM_RANGE(0x8000, 0x83ff) AM_READ(SMH_RAM)	// RAM
 	AM_RANGE(0x9000, 0x9000) AM_READ(multiply_r)	// Protection
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)	// From main CPU
 	AM_RANGE(0xb000, 0xb00d) AM_READ(K007232_read_port_0_r)	// K007232 (Reading offset 5/b triggers the sample)
@@ -698,11 +698,11 @@ static ADDRESS_MAP_START( wecleman_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wecleman_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)	// ROM
-	AM_RANGE(0x8000, 0x83ff) AM_WRITE(MWA8_RAM)	// RAM
-	AM_RANGE(0x8500, 0x8500) AM_WRITE(MWA8_NOP)	// incresed with speed (global volume)?
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)	// ROM
+	AM_RANGE(0x8000, 0x83ff) AM_WRITE(SMH_RAM)	// RAM
+	AM_RANGE(0x8500, 0x8500) AM_WRITE(SMH_NOP)	// incresed with speed (global volume)?
 	AM_RANGE(0x9000, 0x9001) AM_WRITE(multiply_w)	// Protection
-	AM_RANGE(0x9006, 0x9006) AM_WRITE(MWA8_NOP)	// ?
+	AM_RANGE(0x9006, 0x9006) AM_WRITE(SMH_NOP)	// ?
 	AM_RANGE(0xb000, 0xb00d) AM_WRITE(K007232_write_port_0_w)	// K007232
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2151_register_port_0_w)	// YM2151
 	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2151_data_port_0_w)
@@ -719,8 +719,8 @@ static WRITE16_HANDLER( hotchase_soundlatch_w )
 {
 	if (ACCESSING_LSB)
 	{
-		soundlatch_w(0,data & 0xFF);
-		cpunum_set_input_line(Machine, 2,M6809_IRQ_LINE, HOLD_LINE);
+		soundlatch_w(machine,0,data & 0xFF);
+		cpunum_set_input_line(machine, 2,M6809_IRQ_LINE, HOLD_LINE);
 	}
 }
 
@@ -791,11 +791,11 @@ static WRITE8_HANDLER( hotchase_sound_control_w )
 #define HOTCHASE_K007232_RW(_chip_) \
 static READ8_HANDLER( hotchase_K007232_##_chip_##_r ) \
 { \
-	return K007232_read_port_##_chip_##_r(offset ^ 1); \
+	return K007232_read_port_##_chip_##_r(machine, offset ^ 1); \
 } \
 static WRITE8_HANDLER( hotchase_K007232_##_chip_##_w ) \
 { \
-	K007232_write_port_##_chip_##_w(offset ^ 1, data); \
+	K007232_write_port_##_chip_##_w(machine, offset ^ 1, data); \
 } \
 
 /* 3 x K007232 */
@@ -804,23 +804,23 @@ HOTCHASE_K007232_RW(1)
 HOTCHASE_K007232_RW(2)
 
 static ADDRESS_MAP_START( hotchase_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM)	// RAM
+	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)	// RAM
 	AM_RANGE(0x1000, 0x100d) AM_READ(hotchase_K007232_0_r)	// 3 x  K007232
 	AM_RANGE(0x2000, 0x200d) AM_READ(hotchase_K007232_1_r)
 	AM_RANGE(0x3000, 0x300d) AM_READ(hotchase_K007232_2_r)
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)	// From main CPU (Read on IRQ)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)	// ROM
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)	// ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hotchase_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_RAM)	// RAM
+	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)	// RAM
 	AM_RANGE(0x1000, 0x100d) AM_WRITE(hotchase_K007232_0_w)	// 3 x K007232
 	AM_RANGE(0x2000, 0x200d) AM_WRITE(hotchase_K007232_1_w)
 	AM_RANGE(0x3000, 0x300d) AM_WRITE(hotchase_K007232_2_w)
 	AM_RANGE(0x4000, 0x4007) AM_WRITE(hotchase_sound_control_w)	// Sound volume, banking, etc.
-	AM_RANGE(0x5000, 0x5000) AM_WRITE(MWA8_NOP)	// ? (written with 0 on IRQ, 1 on FIRQ)
-	AM_RANGE(0x7000, 0x7000) AM_WRITE(MWA8_NOP)	// Command acknowledge ?
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)	// ROM
+	AM_RANGE(0x5000, 0x5000) AM_WRITE(SMH_NOP)	// ? (written with 0 on IRQ, 1 on FIRQ)
+	AM_RANGE(0x7000, 0x7000) AM_WRITE(SMH_NOP)	// Command acknowledge ?
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)	// ROM
 ADDRESS_MAP_END
 
 
@@ -1115,7 +1115,7 @@ static MACHINE_DRIVER_START( wecleman )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 10000000)	/* Schems show 10MHz */
 	MDRV_CPU_PROGRAM_MAP(wecleman_map,0)
-	MDRV_CPU_VBLANK_INT(wecleman_interrupt,5 + 1)	/* in order to read the inputs once per frame */
+	MDRV_CPU_VBLANK_INT_HACK(wecleman_interrupt,5 + 1)	/* in order to read the inputs once per frame */
 
 	MDRV_CPU_ADD(M68000, 10000000)	/* Schems show 10MHz */
 	MDRV_CPU_PROGRAM_MAP(wecleman_sub_map,0)
@@ -1125,17 +1125,18 @@ static MACHINE_DRIVER_START( wecleman )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(wecleman_sound_readmem,wecleman_sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_MACHINE_RESET(wecleman)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(320 +16, 224 +16)
 	MDRV_SCREEN_VISIBLE_AREA(0 +8, 320-1 +8, 0 +8, 224-1 +8)
+
 	MDRV_GFXDECODE(wecleman)
 
 	MDRV_PALETTE_LENGTH(2048)
@@ -1171,7 +1172,7 @@ static MACHINE_DRIVER_START( hotchase )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 10000000)	/* 10 MHz - PCB is drawn in one set's readme */
 	MDRV_CPU_PROGRAM_MAP(hotchase_map,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD(M68000, 10000000)	/* 10 MHz - PCB is drawn in one set's readme */
 	MDRV_CPU_PROGRAM_MAP(hotchase_sub_map,0)
@@ -1182,15 +1183,17 @@ static MACHINE_DRIVER_START( hotchase )
 	MDRV_CPU_PERIODIC_INT( hotchase_sound_timer, 496 )
 
 	/* Amuse: every 2 ms */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 224)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 224-1)
+
 	MDRV_GFXDECODE(hotchase)
 	MDRV_PALETTE_LENGTH(2048*2)
 

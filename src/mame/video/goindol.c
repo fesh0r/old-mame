@@ -58,8 +58,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( goindol )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,      8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,      8,8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -91,7 +91,7 @@ WRITE8_HANDLER( goindol_bg_videoram_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int gfxbank, UINT8 *sprite_ram)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int gfxbank, UINT8 *sprite_ram)
 {
 	int offs,sx,sy,tile,palette;
 
@@ -100,7 +100,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx = sprite_ram[offs];
 		sy = 240-sprite_ram[offs+1];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;
@@ -115,15 +115,15 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			drawgfx(bitmap,machine->gfx[gfxbank],
 						tile,
 						palette,
-						flip_screen,flip_screen,
+						flip_screen_get(),flip_screen_get(),
 						sx,sy,
 						cliprect,
 						TRANSPARENCY_PEN, 0);
 			drawgfx(bitmap,machine->gfx[gfxbank],
 						tile+1,
 						palette,
-						flip_screen,flip_screen,
-						sx,sy + (flip_screen ? -8 : 8),
+						flip_screen_get(),flip_screen_get(),
+						sx,sy + (flip_screen_get() ? -8 : 8),
 						cliprect,
 						TRANSPARENCY_PEN, 0);
 		}
@@ -137,7 +137,7 @@ VIDEO_UPDATE( goindol )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect,1,spriteram);
-	draw_sprites(machine,bitmap,cliprect,0,spriteram_2);
+	draw_sprites(screen->machine,bitmap,cliprect,1,spriteram);
+	draw_sprites(screen->machine,bitmap,cliprect,0,spriteram_2);
 	return 0;
 }

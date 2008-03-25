@@ -59,9 +59,9 @@ static TILE_GET_INFO( get_tile_info2 )
 
 VIDEO_START( othldrby )
 {
-	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap[2] = tilemap_create(get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap[2] = tilemap_create(get_tile_info2,tilemap_scan_rows,16,16,32,32);
 
 	vram = auto_malloc(VIDEORAM_SIZE * sizeof(vram[0]));
 	buf_spriteram = auto_malloc(2*SPRITERAM_SIZE * sizeof(buf_spriteram[0]));
@@ -132,7 +132,7 @@ WRITE16_HANDLER( othldrby_vreg_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int priority)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int priority)
 {
 	int offs;
 
@@ -153,7 +153,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		sizex = (buf_spriteram[offs+2] & 0x000f) + 1;
 		sizey = (buf_spriteram[offs+3] & 0x000f) + 1;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -185,7 +185,7 @@ VIDEO_UPDATE( othldrby )
 
 	for (layer = 0;layer < 3;layer++)
 	{
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			tilemap_set_scrollx(bg_tilemap[layer],0,vreg[2*layer]+59);
 			tilemap_set_scrolly(bg_tilemap[layer],0,vreg[2*layer+1]+248);
@@ -199,20 +199,20 @@ VIDEO_UPDATE( othldrby )
 
 	fillbitmap(priority_bitmap,0,cliprect);
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	for (layer = 0;layer < 3;layer++)
 		tilemap_draw(bitmap,cliprect,bg_tilemap[layer],0,0);
-	draw_sprites(machine,bitmap,cliprect,0);
+	draw_sprites(screen->machine,bitmap,cliprect,0);
 	for (layer = 0;layer < 3;layer++)
 		tilemap_draw(bitmap,cliprect,bg_tilemap[layer],1,0);
-	draw_sprites(machine,bitmap,cliprect,1);
+	draw_sprites(screen->machine,bitmap,cliprect,1);
 	for (layer = 0;layer < 3;layer++)
 		tilemap_draw(bitmap,cliprect,bg_tilemap[layer],2,0);
-	draw_sprites(machine,bitmap,cliprect,2);
+	draw_sprites(screen->machine,bitmap,cliprect,2);
 	for (layer = 0;layer < 3;layer++)
 		tilemap_draw(bitmap,cliprect,bg_tilemap[layer],3,0);
-	draw_sprites(machine,bitmap,cliprect,3);
+	draw_sprites(screen->machine,bitmap,cliprect,3);
 	return 0;
 }
 

@@ -87,7 +87,7 @@ static TIMER_CALLBACK( interrupt_gen )
 	scanline += 32;
 	if (scanline >= 256)
 		scanline -= 256;
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -130,7 +130,7 @@ static MACHINE_RESET( atetris )
 	reset_bank();
 
 	/* start interrupts going (32V clocked by 16V) */
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 48, 0), 48, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 48, 0), 48);
 }
 
 
@@ -201,9 +201,9 @@ static WRITE8_HANDLER( nvram_enable_w )
 /* full address map derived from schematics */
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(MRA8_RAM, atetris_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x2000, 0x20ff) AM_MIRROR(0x0300) AM_READWRITE(MRA8_RAM, paletteram_RRRGGGBB_w) AM_BASE(&paletteram)
-	AM_RANGE(0x2400, 0x25ff) AM_MIRROR(0x0200) AM_READWRITE(MRA8_RAM, nvram_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(SMH_RAM, atetris_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x2000, 0x20ff) AM_MIRROR(0x0300) AM_READWRITE(SMH_RAM, paletteram_RRRGGGBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0x2400, 0x25ff) AM_MIRROR(0x0200) AM_READWRITE(SMH_RAM, nvram_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x2800, 0x280f) AM_MIRROR(0x03e0) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x2810, 0x281f) AM_MIRROR(0x03e0) AM_READWRITE(pokey2_r, pokey2_w)
 	AM_RANGE(0x3000, 0x3000) AM_MIRROR(0x03ff) AM_WRITE(watchdog_reset_w)
@@ -218,9 +218,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( atetrsb2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(MRA8_RAM, atetris_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x2000, 0x20ff) AM_READWRITE(MRA8_RAM, paletteram_RRRGGGBB_w) AM_BASE(&paletteram)
-	AM_RANGE(0x2400, 0x25ff) AM_READWRITE(MRA8_RAM, nvram_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(SMH_RAM, atetris_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x2000, 0x20ff) AM_READWRITE(SMH_RAM, paletteram_RRRGGGBB_w) AM_BASE(&paletteram)
+	AM_RANGE(0x2400, 0x25ff) AM_READWRITE(SMH_RAM, nvram_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x2802, 0x2802) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0x2804, 0x2804) AM_WRITE(SN76496_1_w)
 	AM_RANGE(0x2806, 0x2806) AM_WRITE(SN76496_2_w)
@@ -245,18 +245,21 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( atetris )
 	// These ports are read via the Pokeys
-	PORT_START      /* IN0 */
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_DIPNAME( 0x04, 0x00, "Freeze" )
+	PORT_DIPNAME( 0x04, 0x00, "Freeze" )			PORT_DIPLOCATION("50H:!4")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Freeze Step") PORT_CODE(KEYCODE_F1)
-	PORT_BIT( 0x30, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_DIPNAME( 0x08, 0x00, "Freeze Step" )		PORT_DIPLOCATION("50H:!3")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x00, "50H:!2" )	/* Listed As "SPARE2 (Unused)" */
+	PORT_DIPUNUSED_DIPLOC( 0x20, 0x00, "50H:!1" )	/* Listed As "SPARE1 (Unused)" */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
 
-	PORT_START      /* IN1 */
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_PLAYER(1)
@@ -270,30 +273,12 @@ INPUT_PORTS_END
 
 // Same as the regular one except they added a Flip Controls switch
 static INPUT_PORTS_START( atetcktl )
-	// These ports are read via the Pokeys
-	PORT_START      /* IN0 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN2 )
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
-	PORT_DIPNAME( 0x04, 0x00, "Freeze" )
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME("Freeze Step") PORT_CODE(KEYCODE_F1)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_DIPNAME( 0x20, 0x00, "Flip Controls" )
+	PORT_INCLUDE( atetris )
+
+	PORT_MODIFY("IN0")
+	PORT_DIPNAME( 0x20, 0x00, "Flip Controls" )		PORT_DIPLOCATION("50H:!1")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_VBLANK )
-	PORT_SERVICE( 0x80, IP_ACTIVE_HIGH )
-
-	PORT_START      /* IN1 */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(2)
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
@@ -360,11 +345,10 @@ static MACHINE_DRIVER_START( atetris )
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(atetris)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */
@@ -392,18 +376,15 @@ static MACHINE_DRIVER_START( atetrsb2 )
 	MDRV_CPU_ADD(M6502,BOOTLEG_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(atetrsb2_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_START(atetris)
 	MDRV_MACHINE_RESET(atetris)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(atetris)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */

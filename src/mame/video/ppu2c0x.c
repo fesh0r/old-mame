@@ -25,6 +25,7 @@ NES-specific:
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "profiler.h"
 #include "video/ppu2c0x.h"
 
@@ -65,7 +66,7 @@ static const pen_t default_colortable[] =
 /* our chip state */
 typedef struct {
 	running_machine 		*machine;				/* execution context */
-	mame_bitmap				*bitmap;				/* target bitmap */
+	bitmap_t				*bitmap;				/* target bitmap */
 	UINT8					*videoram;				/* video ram */
 	UINT8					*spriteram;				/* sprite ram */
 	pen_t					*colortable;			/* color table modified at run time */
@@ -302,7 +303,7 @@ void ppu2c0x_init(running_machine *machine, const ppu2c0x_interface *interface )
 		chips[i].scan_scale = 1;
 
 		/* allocate a screen bitmap, videoram and spriteram, a dirtychar array and the monochromatic colortable */
-		chips[i].bitmap = auto_bitmap_alloc( VISIBLE_SCREEN_WIDTH, VISIBLE_SCREEN_HEIGHT, machine->screen[0].format );
+		chips[i].bitmap = auto_bitmap_alloc( VISIBLE_SCREEN_WIDTH, VISIBLE_SCREEN_HEIGHT, video_screen_get_format(machine->primary_screen));
 		chips[i].videoram = auto_malloc( VIDEORAM_SIZE );
 		chips[i].spriteram = auto_malloc( SPRITERAM_SIZE );
 		chips[i].dirtychar = auto_malloc( CHARGEN_NUM_CHARS );
@@ -367,7 +368,7 @@ static TIMER_CALLBACK( hblank_callback )
 	if (this_ppu->hblank_callback_proc)
 		(*this_ppu->hblank_callback_proc) (num, this_ppu->scanline, vblank, blanked);
 
-	timer_adjust(chips[num].hblank_timer, attotime_never, num, attotime_never);
+	timer_adjust_oneshot(chips[num].hblank_timer, attotime_never, num);
 }
 
 static TIMER_CALLBACK( nmi_callback )
@@ -379,13 +380,13 @@ static TIMER_CALLBACK( nmi_callback )
 	if (intf->nmi_handler[num])
 		(*intf->nmi_handler[num]) (num, ppu_regs);
 
-	timer_adjust(chips[num].nmi_timer, attotime_never, num, attotime_never);
+	timer_adjust_oneshot(chips[num].nmi_timer, attotime_never, num);
 }
 
 static void draw_background(const int num, UINT8 *line_priority )
 {
 	/* cache some values locally */
-	mame_bitmap *bitmap = chips[num].bitmap;
+	bitmap_t *bitmap = chips[num].bitmap;
 	const int *ppu_regs = &chips[num].regs[0];
 	const int scanline = chips[num].scanline;
 	const int refresh_data = chips[num].refresh_data;
@@ -423,7 +424,7 @@ static void draw_background(const int num, UINT8 *line_priority )
 	}
 
 	/* cache the background pen */
-	back_pen = chips[num].machine->pens[(chips[num].back_color & color_mask)+intf->color_base[num]];
+	back_pen = (chips[num].back_color & color_mask)+intf->color_base[num];
 
 	/* determine where in the nametable to start drawing from */
 	/* based on the current scanline and scroll regs */
@@ -524,7 +525,7 @@ static void draw_background(const int num, UINT8 *line_priority )
 static void draw_sprites(const int num, UINT8 *line_priority )
 {
 	/* cache some values locally */
-	mame_bitmap *bitmap = chips[num].bitmap;
+	bitmap_t *bitmap = chips[num].bitmap;
 	const int scanline = chips[num].scanline;
 	const int gfx_bank = intf->gfx_layout_number[num];
 	const int total_elements = chips[num].machine->gfx[gfx_bank]->total_elements;
@@ -726,7 +727,7 @@ static void render_scanline(int num)
 		draw_background(num, line_priority );
 	else
 	{
-		mame_bitmap *bitmap = chips[num].bitmap;
+		bitmap_t *bitmap = chips[num].bitmap;
 		const int scanline = chips[num].scanline;
 		UINT8 color_mask;
 		UINT16 back_pen;
@@ -739,7 +740,7 @@ static void render_scanline(int num)
 			color_mask = 0xff;
 
 		/* cache the background pen */
-		back_pen = chips[num].machine->pens[(chips[num].back_color & color_mask)+intf->color_base[num]];
+		back_pen = (chips[num].back_color & color_mask)+intf->color_base[num];
 
 		// Fill this scanline with the background pen.
 		for (i = 0; i < bitmap->width; i ++)
@@ -777,7 +778,7 @@ static void update_scanline(int num )
 		}
 		else
 		{
-			mame_bitmap *bitmap = this_ppu->bitmap;
+			bitmap_t *bitmap = this_ppu->bitmap;
 			const int scanline = this_ppu->scanline;
 			UINT8 color_mask;
 			UINT16 back_pen;
@@ -803,10 +804,10 @@ static void update_scanline(int num )
 				else
 					penNum = this_ppu->videoram[this_ppu->videoram_addr & 0x3f00] & 0x3f;
 
-				back_pen = chips[num].machine->pens[penNum + intf->color_base[num]];
+				back_pen = penNum + intf->color_base[num];
 			}
 			else
-				back_pen = chips[num].machine->pens[(this_ppu->back_color & color_mask)+intf->color_base[num]];
+				back_pen = (this_ppu->back_color & color_mask)+intf->color_base[num];
 
 			// Fill this scanline with the background pen.
 			for (i = 0; i < bitmap->width; i ++)
@@ -855,7 +856,7 @@ static TIMER_CALLBACK( scanline_callback )
 	/* increment our scanline count */
 	this_ppu->scanline++;
 
-//logerror("starting scanline %d (MAME %d, beam %d)\n", this_ppu->scanline, video_screen_get_vpos(0), video_screen_get_hpos(0));
+//logerror("starting scanline %d (MAME %d, beam %d)\n", this_ppu->scanline, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
 
 	/* Note: this is called at the _end_ of each scanline */
 	if (this_ppu->scanline == PPU_VBLANK_FIRST_SCANLINE)
@@ -871,7 +872,7 @@ logerror("vlbank starting\n");
 			// a game can read the high bit of $2002 before the NMI is called (potentially resetting the bit
 			// via a read from $2002 in the NMI handler).
 			// B-Wings is an example game that needs this.
-			timer_adjust(this_ppu->nmi_timer, ATTOTIME_IN_CYCLES(4, 0), num, attotime_never);
+			timer_adjust_oneshot(this_ppu->nmi_timer, ATTOTIME_IN_CYCLES(4, 0), num);
 		}
 	}
 
@@ -922,10 +923,10 @@ logerror("vlbank ending\n");
 		next_scanline = 0;
 
 	// Call us back when the hblank starts for this scanline
-	timer_adjust(this_ppu->hblank_timer, ATTOTIME_IN_CYCLES(86.67, 0), num, attotime_never); // ??? FIXME - hardcoding NTSC, need better calculation
+	timer_adjust_oneshot(this_ppu->hblank_timer, ATTOTIME_IN_CYCLES(86.67, 0), num); // ??? FIXME - hardcoding NTSC, need better calculation
 
 	// trigger again at the start of the next scanline
-	timer_adjust(this_ppu->scanline_timer, video_screen_get_time_until_pos(0, next_scanline * this_ppu->scan_scale, 0), num, attotime_zero);
+	timer_adjust_oneshot(this_ppu->scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, next_scanline * this_ppu->scan_scale, 0), num);
 }
 
 /*************************************
@@ -950,13 +951,13 @@ void ppu2c0x_reset(int num, int scan_scale )
 	/* set the scan scale (this is for dual monitor vertical setups) */
 	chips[num].scan_scale = scan_scale;
 
-	timer_adjust(chips[num].nmi_timer, attotime_never, num, attotime_never);
+	timer_adjust_oneshot(chips[num].nmi_timer, attotime_never, num);
 
 	// Call us back when the hblank starts for this scanline
-	timer_adjust(chips[num].hblank_timer, ATTOTIME_IN_CYCLES(86.67, 0), num, attotime_never); // ??? FIXME - hardcoding NTSC, need better calculation
+	timer_adjust_oneshot(chips[num].hblank_timer, ATTOTIME_IN_CYCLES(86.67, 0), num); // ??? FIXME - hardcoding NTSC, need better calculation
 
 	// Call us back at the start of the next scanline
-	timer_adjust(chips[num].scanline_timer, video_screen_get_time_until_pos(0, 1, 0), num, attotime_zero);
+	timer_adjust_oneshot(chips[num].scanline_timer, video_screen_get_time_until_pos(Machine->primary_screen, 1, 0), num);
 
 	/* reset the callbacks */
 	chips[num].scanline_callback_proc = 0;
@@ -986,10 +987,10 @@ void ppu2c0x_reset(int num, int scan_scale )
 		for( i = 0; i < ARRAY_LENGTH( default_colortable_mono ); i++ )
 		{
 			/* monochromatic table */
-			chips[num].colortable_mono[i] = chips[num].machine->pens[default_colortable_mono[i] + color_base];
+			chips[num].colortable_mono[i] = default_colortable_mono[i] + color_base;
 
 			/* color table */
-			chips[num].colortable[i] = chips[num].machine->pens[default_colortable[i] + color_base];
+			chips[num].colortable[i] = default_colortable[i] + color_base;
 		}
 	}
 
@@ -1103,7 +1104,7 @@ void ppu2c0x_w( int num, offs_t offset, UINT8 data )
 
 #ifdef MAME_DEBUG
 	if (this_ppu->scanline <= PPU_BOTTOM_VISIBLE_SCANLINE)
-		logerror("  PPU register %d write %02x during non-vblank scanline %d (MAME %d, beam pos: %d)\n", offset, data, this_ppu->scanline, video_screen_get_vpos(0), video_screen_get_hpos(0));
+		logerror("  PPU register %d write %02x during non-vblank scanline %d (MAME %d, beam pos: %d)\n", offset, data, this_ppu->scanline, video_screen_get_vpos(Machine->primary_screen), video_screen_get_hpos(Machine->primary_screen));
 #endif
 
 	switch( offset & 7 )
@@ -1132,7 +1133,7 @@ void ppu2c0x_w( int num, offs_t offset, UINT8 data )
 				{
 					UINT8 oldColor = this_ppu->videoram[i+0x3f00];
 
-					this_ppu->colortable[i] = chips[num].machine->pens[color_base + oldColor + (data & PPU_CONTROL1_COLOR_EMPHASIS)*2];
+					this_ppu->colortable[i] = color_base + oldColor + (data & PPU_CONTROL1_COLOR_EMPHASIS)*2;
 				}
 			}
 
@@ -1248,8 +1249,8 @@ void ppu2c0x_w( int num, offs_t offset, UINT8 data )
 
 					if ( tempAddr & 0x03 )
 					{
-						this_ppu->colortable[ tempAddr & 0x1f ] = chips[num].machine->pens[color_base + data + colorEmphasis];
-						this_ppu->colortable_mono[tempAddr & 0x1f] = chips[num].machine->pens[color_base + (data & 0xf0) + colorEmphasis];
+						this_ppu->colortable[ tempAddr & 0x1f ] = color_base + data + colorEmphasis;
+						this_ppu->colortable_mono[tempAddr & 0x1f] = color_base + (data & 0xf0) + colorEmphasis;
 					}
 
 					/* The only valid background colors are writes to 0x3f00 and 0x3f10 */
@@ -1261,8 +1262,8 @@ void ppu2c0x_w( int num, offs_t offset, UINT8 data )
 						this_ppu->back_color = data;
 						for( i = 0; i < 32; i += 4 )
 						{
-							this_ppu->colortable[ i ] = chips[num].machine->pens[color_base + data + colorEmphasis];
-							this_ppu->colortable_mono[i] = chips[num].machine->pens[color_base + (data & 0xf0) + colorEmphasis];
+							this_ppu->colortable[ i ] = color_base + data + colorEmphasis;
+							this_ppu->colortable_mono[i] = color_base + (data & 0xf0) + colorEmphasis;
 						}
 					}
 				}
@@ -1335,7 +1336,7 @@ void ppu2c0x_spriteram_dma (int num, const UINT8 page)
  *  PPU Rendering
  *
  *************************************/
-void ppu2c0x_render( int num, mame_bitmap *bitmap, int flipx, int flipy, int sx, int sy )
+void ppu2c0x_render( int num, bitmap_t *bitmap, int flipx, int flipy, int sx, int sy )
 {
 	/* check bounds */
 	if ( num >= intf->num )

@@ -71,7 +71,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( master_map_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xf0, 0xf0) AM_WRITE(leland_master_alt_bankswitch_w)
     AM_RANGE(0xf2, 0xf2) AM_READWRITE(leland_80186_response_r, leland_80186_command_lo_w)
 	AM_RANGE(0xf4, 0xf4) AM_WRITE(leland_80186_command_hi_w)
@@ -107,7 +107,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( slave_map_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x1f) AM_READWRITE(leland_svram_port_r, leland_svram_port_w)
 	AM_RANGE(0x40, 0x5f) AM_READWRITE(leland_svram_port_r, leland_svram_port_w)
 ADDRESS_MAP_END
@@ -719,7 +719,7 @@ static MACHINE_DRIVER_START( leland )
 	MDRV_CPU_ADD_TAG("master", Z80, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(master_map_program,0)
 	MDRV_CPU_IO_MAP(master_map_io,0)
-	MDRV_CPU_VBLANK_INT(leland_master_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", leland_master_interrupt)
 
 	MDRV_CPU_ADD_TAG("slave", Z80, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(slave_small_map_program,0)

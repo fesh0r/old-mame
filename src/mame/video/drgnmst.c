@@ -68,7 +68,7 @@ WRITE16_HANDLER( drgnmst_md_videoram_w )
 	tilemap_mark_tile_dirty(drgnmst_md_tilemap,offset/2);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[0];
 	UINT16 *source = spriteram16;
@@ -133,13 +133,13 @@ static TILEMAP_MAPPER( drgnmst_bg_tilemap_scan_cols )
 
 VIDEO_START(drgnmst)
 {
-	drgnmst_fg_tilemap = tilemap_create(get_drgnmst_fg_tile_info,drgnmst_fg_tilemap_scan_cols,TILEMAP_TYPE_PEN,      8, 8, 64,64);
+	drgnmst_fg_tilemap = tilemap_create(get_drgnmst_fg_tile_info,drgnmst_fg_tilemap_scan_cols,      8, 8, 64,64);
 	tilemap_set_transparent_pen(drgnmst_fg_tilemap,15);
 
-	drgnmst_md_tilemap = tilemap_create(get_drgnmst_md_tile_info,drgnmst_md_tilemap_scan_cols,TILEMAP_TYPE_PEN,      16, 16, 64,64);
+	drgnmst_md_tilemap = tilemap_create(get_drgnmst_md_tile_info,drgnmst_md_tilemap_scan_cols,      16, 16, 64,64);
 	tilemap_set_transparent_pen(drgnmst_md_tilemap,15);
 
-	drgnmst_bg_tilemap = tilemap_create(get_drgnmst_bg_tile_info,drgnmst_bg_tilemap_scan_cols,TILEMAP_TYPE_PEN,      32, 32, 64,64);
+	drgnmst_bg_tilemap = tilemap_create(get_drgnmst_bg_tile_info,drgnmst_bg_tilemap_scan_cols,      32, 32, 64,64);
 	tilemap_set_transparent_pen(drgnmst_bg_tilemap,15);
 
 	// do the other tilemaps have rowscroll too? probably not ..
@@ -200,7 +200,7 @@ VIDEO_UPDATE(drgnmst)
 
 	}
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 
 //  popmessage ("x %04x x %04x x %04x x %04x x %04x", drgnmst_vidregs2[0], drgnmst_vidregs[12], drgnmst_vidregs[13], drgnmst_vidregs[14], drgnmst_vidregs[15]);
 //  popmessage ("x %04x x %04x y %04x y %04x z %04x z %04x",drgnmst_vidregs[0],drgnmst_vidregs[1],drgnmst_vidregs[2],drgnmst_vidregs[3],drgnmst_vidregs[4],drgnmst_vidregs[5]);

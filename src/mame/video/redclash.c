@@ -25,68 +25,81 @@ PALETTE_INIT( redclash )
 {
 	int i;
 
-	for (i = 0;i < 32;i++)
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x40);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x20; i++)
 	{
-		int bit1,bit2,r,g,b;
+		int bit0, bit1;
+		int r, g, b;
 
+		/* red component */
+		bit0 = (color_prom[i] >> 0) & 0x01;
+		bit1 = (color_prom[i] >> 5) & 0x01;
+		r = 0x47 * bit0 + 0x97 * bit1;
 
-		bit1 = (color_prom[i] >> 0) & 0x01;
-		bit2 = (color_prom[i] >> 5) & 0x01;
-		r = 0x47 * bit1 + 0x97 * bit2;
-		bit1 = (color_prom[i] >> 2) & 0x01;
-		bit2 = (color_prom[i] >> 6) & 0x01;
-		g = 0x47 * bit1 + 0x97 * bit2;
-		bit1 = (color_prom[i] >> 4) & 0x01;
-		bit2 = (color_prom[i] >> 7) & 0x01;
-		b = 0x47 * bit1 + 0x97 * bit2;
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
+		/* green component */
+		bit0 = (color_prom[i] >> 2) & 0x01;
+		bit1 = (color_prom[i] >> 6) & 0x01;
+		g = 0x47 * bit0 + 0x97 * bit1;
+
+		/* blue component */
+		bit0 = (color_prom[i] >> 4) & 0x01;
+		bit1 = (color_prom[i] >> 7) & 0x01;
+		b = 0x47 * bit0 + 0x97 * bit1;
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	/* This is for the stars colors */
-	for (i = 32;i < 64;i++)
+	/* star colors */
+	for (i = 0x20; i < 0x40; i++)
 	{
-			int bit1,bit2,r,g,b;
+		int bit0, bit1;
+		int r, g, b;
 
-			bit2 = (i >> 4) & 0x01;
-			bit1 = (i >> 3) & 0x01;
-			b = 0x47 * bit1 + 0x97 * bit2;
-			bit2 = (i >> 2) & 0x01;
-			bit1 = (i >> 1) & 0x01;
-			g = 0x47 * bit1 + 0x97 * bit2;
-			bit1 = i & 0x01;
-			r = 0x47 * bit1;
-			palette_set_color(machine,i,MAKE_RGB(r,g,b));
+		/* red component */
+		bit0 = ((i - 0x20) >> 3) & 0x01;
+		bit1 = ((i - 0x20) >> 4) & 0x01;
+		b = 0x47 * bit0 + 0x97 * bit1;
+
+		/* green component */
+		bit0 = ((i - 0x20) >> 1) & 0x01;
+		bit1 = ((i - 0x20) >> 2) & 0x01;
+		g = 0x47 * bit0 + 0x97 * bit1;
+
+		/* blue component */
+		bit0 = ((i - 0x20) >> 0) & 0x01;
+		r = 0x47 * bit0;
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
+
+	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x20;
 
 	/* characters */
-	for (i = 0;i < 8;i++)
+	for (i = 0; i < 0x20; i++)
 	{
-		colortable[4 * i] = 0;
-		colortable[4 * i + 1] = i + 0x08;
-		colortable[4 * i + 2] = i + 0x10;
-		colortable[4 * i + 3] = i + 0x18;
+		UINT8 ctabentry = ((i << 3) & 0x18) | ((i >> 2) & 0x07);
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 
 	/* sprites */
-	for (i = 0;i < 4 * 8;i++)
+	for (i = 0x20; i < 0x40; i++)
 	{
-		int bit0,bit1,bit2,bit3;
+		UINT8 ctabentry = color_prom[(i - 0x20) >> 1];
 
+		ctabentry = BITSWAP8((color_prom[i - 0x20] >> 0) & 0x0f, 7,6,5,4,0,1,2,3);
+		colortable_entry_set_value(machine->colortable, i + 0x00, ctabentry);
 
-		/* low 4 bits are for sprite n */
-		bit0 = (color_prom[i + 32] >> 3) & 0x01;
-		bit1 = (color_prom[i + 32] >> 2) & 0x01;
-		bit2 = (color_prom[i + 32] >> 1) & 0x01;
-		bit3 = (color_prom[i + 32] >> 0) & 0x01;
-		colortable[i + 4 * 8] = 1 * bit0 + 2 * bit1 + 4 * bit2 + 8 * bit3;
-
-		/* high 4 bits are for sprite n + 8 */
-		bit0 = (color_prom[i + 32] >> 7) & 0x01;
-		bit1 = (color_prom[i + 32] >> 6) & 0x01;
-		bit2 = (color_prom[i + 32] >> 5) & 0x01;
-		bit3 = (color_prom[i + 32] >> 4) & 0x01;
-		colortable[i + 4 * 16] = 1 * bit0 + 2 * bit1 + 4 * bit2 + 8 * bit3;
+		ctabentry = BITSWAP8((color_prom[i - 0x20] >> 4) & 0x0f, 7,6,5,4,0,1,2,3);
+		colortable_entry_set_value(machine->colortable, i + 0x20, ctabentry);
 	}
+
+	/* stars */
+	for (i = 0x60; i < 0x80; i++)
+		colortable_entry_set_value(machine->colortable, i, (i - 0x60) + 0x20);
 }
 
 WRITE8_HANDLER( redclash_videoram_w )
@@ -155,12 +168,12 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( redclash )
 {
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int i, offs;
 
@@ -247,7 +260,7 @@ popmessage("unknown sprite size 0");
 	}
 }
 
-static void draw_bullets(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_bullets(bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -257,14 +270,14 @@ static void draw_bullets(running_machine *machine, mame_bitmap *bitmap, const re
 		int sx = 8 * offs + (videoram[offs] & 0x07);	/* ?? */
 		int sy = 0xff - videoram[offs + 0x20];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 		}
 
 		if (sx >= cliprect->min_x && sx <= cliprect->max_x &&
 			sy >= cliprect->min_y && sy <= cliprect->max_y)
-			*BITMAP_ADDR16(bitmap, sy, sx) = machine->pens[0x0e];
+			*BITMAP_ADDR16(bitmap, sy, sx) = 0x19;
 	}
 }
 
@@ -344,7 +357,7 @@ void redclash_set_stars_speed( UINT8 speed )
 /* Space Raider doesn't use the Va bit, and it is also set up to */
 /* window the stars to a certain x range */
 
-void redclash_draw_stars(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT8 palette_offset, UINT8 sraider, UINT8 firstx, UINT8 lastx)
+void redclash_draw_stars(bitmap_t *bitmap, const rectangle *cliprect, UINT8 palette_offset, UINT8 sraider, UINT8 firstx, UINT8 lastx)
 {
 	int i;
 	UINT8 tempbit, feedback, star_color, xloc, yloc;
@@ -390,7 +403,7 @@ void redclash_draw_stars(running_machine *machine, mame_bitmap *bitmap, const re
 					if ((xloc>=firstx) && (xloc<=lastx))
 					{
 						star_color = (state >> 9) & 0x1f;
-						*BITMAP_ADDR16(bitmap, yloc, xloc) = machine->pens[palette_offset+star_color];
+						*BITMAP_ADDR16(bitmap, yloc, xloc) = palette_offset+star_color;
 					}
 				}
 			}
@@ -408,10 +421,10 @@ VIDEO_EOF( redclash )
 
 VIDEO_UPDATE( redclash )
 {
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
-	redclash_draw_stars(machine, bitmap, cliprect, 32, 0, 0x00, 0xff);
-	draw_sprites(machine, bitmap, cliprect);
-	draw_bullets(machine, bitmap, cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	redclash_draw_stars(bitmap, cliprect, 0x60, 0, 0x00, 0xff);
+	draw_sprites(screen->machine, bitmap, cliprect);
+	draw_bullets(bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

@@ -44,7 +44,7 @@ PALETTE_INIT( labyrunr )
 }
 
 
-static void set_pens(running_machine *machine)
+static void set_pens(colortable_t *colortable)
 {
 	int i;
 
@@ -54,7 +54,7 @@ static void set_pens(running_machine *machine)
 
 		rgb_t color = MAKE_RGB(pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
 
-		colortable_palette_set_color(machine->colortable, i >> 1, color);
+		colortable_palette_set_color(colortable, i >> 1, color);
 	}
 }
 
@@ -125,16 +125,16 @@ static TILE_GET_INFO( get_tile_info1 )
 
 VIDEO_START( labyrunr )
 {
-	layer0 = tilemap_create(get_tile_info0,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	layer1 = tilemap_create(get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	layer0 = tilemap_create(get_tile_info0,tilemap_scan_rows,8,8,32,32);
+	layer1 = tilemap_create(get_tile_info1,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(layer0,0);
 	tilemap_set_transparent_pen(layer1,0);
 
-	clip0 = machine->screen[0].visarea;
+	clip0 = *video_screen_get_visible_area(machine->primary_screen);
 	clip0.min_x += 40;
 
-	clip1 = machine->screen[0].visarea;
+	clip1 = *video_screen_get_visible_area(machine->primary_screen);
 	clip1.max_x = 39;
 	clip1.min_x = 0;
 
@@ -173,10 +173,10 @@ VIDEO_UPDATE( labyrunr )
 {
 	rectangle finalclip0, finalclip1;
 
-	set_pens(machine);
+	set_pens(screen->machine->colortable);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	if(~K007121_ctrlram[0][3] & 0x20)
 	{
@@ -201,7 +201,7 @@ VIDEO_UPDATE( labyrunr )
 		}
 
 		tilemap_draw(bitmap,&finalclip0,layer0,TILEMAP_DRAW_OPAQUE,0);
-		K007121_sprites_draw(0,bitmap,machine->gfx,machine->colortable,cliprect,spriteram,(K007121_ctrlram[0][6]&0x30)*2,40,0,(K007121_ctrlram[0][3] & 0x40) >> 5);
+		K007121_sprites_draw(0,bitmap,screen->machine->gfx,screen->machine->colortable,cliprect,spriteram,(K007121_ctrlram[0][6]&0x30)*2,40,0,(K007121_ctrlram[0][3] & 0x40) >> 5);
 		/* we ignore the transparency because layer1 is drawn only at the top of the screen also covering sprites */
 		tilemap_draw(bitmap,&finalclip1,layer1,TILEMAP_DRAW_OPAQUE,0);
 	}
@@ -269,7 +269,7 @@ VIDEO_UPDATE( labyrunr )
 		tilemap_draw(bitmap,&finalclip1,layer1,0,1);
 		if(use_clip3[1]) tilemap_draw(bitmap,&finalclip3,layer1,0,1);
 
-		K007121_sprites_draw(0,bitmap,machine->gfx,machine->colortable,cliprect,spriteram,(K007121_ctrlram[0][6]&0x30)*2,40,0,(K007121_ctrlram[0][3] & 0x40) >> 5);
+		K007121_sprites_draw(0,bitmap,screen->machine->gfx,screen->machine->colortable,cliprect,spriteram,(K007121_ctrlram[0][6]&0x30)*2,40,0,(K007121_ctrlram[0][3] & 0x40) >> 5);
 	}
 	return 0;
 }

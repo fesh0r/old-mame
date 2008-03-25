@@ -365,29 +365,29 @@ static READ32_HANDLER( ps4_sample_r ) /* Send sample data for test */
 
 static READ32_HANDLER( psh_ymf_fm_r )
 {
-	return YMF278B_status_port_0_r(0)<<24; /* Also, bit 0 being high indicates not ready to send sample data for test */
+	return YMF278B_status_port_0_r(machine, 0)<<24; /* Also, bit 0 being high indicates not ready to send sample data for test */
 }
 
 static WRITE32_HANDLER( psh_ymf_fm_w )
 {
 	if (!(mem_mask & 0xff000000))	// FM bank 1 address (OPL2/OPL3 compatible)
 	{
-		YMF278B_control_port_0_A_w(0, data>>24);
+		YMF278B_control_port_0_A_w(machine, 0, data>>24);
 	}
 
 	if (!(mem_mask & 0x00ff0000))	// FM bank 1 data
 	{
-		YMF278B_data_port_0_A_w(0, data>>16);
+		YMF278B_data_port_0_A_w(machine, 0, data>>16);
 	}
 
 	if (!(mem_mask & 0x0000ff00))	// FM bank 2 address (OPL3/YMF 262 extended)
 	{
-		YMF278B_control_port_0_B_w(0, data>>8);
+		YMF278B_control_port_0_B_w(machine, 0, data>>8);
 	}
 
 	if (!(mem_mask & 0x000000ff))	// FM bank 2 data
 	{
-		YMF278B_data_port_0_B_w(0, data);
+		YMF278B_data_port_0_B_w(machine, 0, data);
 	}
 }
 
@@ -395,7 +395,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 {
 	if (!(mem_mask & 0xff000000))	// PCM address (OPL4/YMF 278B extended)
 	{
-		YMF278B_control_port_0_C_w(0, data>>24);
+		YMF278B_control_port_0_C_w(machine, 0, data>>24);
 
 #if ROMTEST
 		if (data>>24 == 0x06)	// Reset Sample reading (They always write this code immediately before reading data)
@@ -407,7 +407,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 
 	if (!(mem_mask & 0x00ff0000))	// PCM data
 	{
-		YMF278B_data_port_0_C_w(0, data>>16);
+		YMF278B_data_port_0_C_w(machine, 0, data>>16);
 	}
 }
 
@@ -440,28 +440,28 @@ static WRITE32_HANDLER( hotgmck_pcm_bank_w )
 }
 
 static ADDRESS_MAP_START( ps4_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x000fffff) AM_READ(MRA32_ROM)	// program ROM (1 meg)
-	AM_RANGE(0x02000000, 0x021fffff) AM_READ(MRA32_BANK1) // data ROM
-	AM_RANGE(0x03000000, 0x030037ff) AM_READ(MRA32_RAM)
+	AM_RANGE(0x00000000, 0x000fffff) AM_READ(SMH_ROM)	// program ROM (1 meg)
+	AM_RANGE(0x02000000, 0x021fffff) AM_READ(SMH_BANK1) // data ROM
+	AM_RANGE(0x03000000, 0x030037ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x03003fe0, 0x03003fe3) AM_READ(ps4_eeprom_r)
-	AM_RANGE(0x03003fe4, 0x03003fe7) AM_READ(MRA32_NOP) // also writes to this address - might be vblank?
-//  AM_RANGE(0x03003fe8, 0x03003fef) AM_READ(MRA32_RAM) // vid regs?
-	AM_RANGE(0x03004000, 0x03005fff) AM_READ(MRA32_RAM)
+	AM_RANGE(0x03003fe4, 0x03003fe7) AM_READ(SMH_NOP) // also writes to this address - might be vblank?
+//  AM_RANGE(0x03003fe8, 0x03003fef) AM_READ(SMH_RAM) // vid regs?
+	AM_RANGE(0x03004000, 0x03005fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x05000000, 0x05000003) AM_READ(psh_ymf_fm_r) // read YMF status
 	AM_RANGE(0x05800000, 0x05800007) AM_READ(ps4_io32_r) // Screen 1+2's Controls
-	AM_RANGE(0x06000000, 0x060fffff) AM_READ(MRA32_RAM)	// main RAM (1 meg)
+	AM_RANGE(0x06000000, 0x060fffff) AM_READ(SMH_RAM)	// main RAM (1 meg)
 
 #if ROMTEST
 	AM_RANGE(0x05000004, 0x05000007) AM_READ(ps4_sample_r) // data for rom tests (Used to verify Sample rom)
-	AM_RANGE(0x03006000, 0x03007fff) AM_READ(MRA32_BANK2) // data for rom tests (gfx), data is controlled by vidreg
+	AM_RANGE(0x03006000, 0x03007fff) AM_READ(SMH_BANK2) // data for rom tests (gfx), data is controlled by vidreg
 #endif
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ps4_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x000fffff) AM_WRITE(MWA32_ROM)	// program ROM (1 meg)
-	AM_RANGE(0x03000000, 0x030037ff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x00000000, 0x000fffff) AM_WRITE(SMH_ROM)	// program ROM (1 meg)
+	AM_RANGE(0x03000000, 0x030037ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x03003fe0, 0x03003fe3) AM_WRITE(ps4_eeprom_w)
-//  AM_RANGE(0x03003fe4, 0x03003fe7) AM_WRITE(MWA32_NOP) // might be vblank?
+//  AM_RANGE(0x03003fe4, 0x03003fe7) AM_WRITE(SMH_NOP) // might be vblank?
 	AM_RANGE(0x03003fe4, 0x03003fef) AM_WRITE(ps4_vidregs_w) AM_BASE(&psikyo4_vidregs) // vid regs?
 	AM_RANGE(0x03003ff0, 0x03003ff3) AM_WRITE(ps4_screen1_brt_w) // screen 1 brightness
 	AM_RANGE(0x03003ff4, 0x03003ff7) AM_WRITE(ps4_bgpen_1_dword_w) AM_BASE(&bgpen_1) // screen 1 clear colour
@@ -470,8 +470,8 @@ static ADDRESS_MAP_START( ps4_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x03004000, 0x03005fff) AM_WRITE(ps4_paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w) AM_BASE(&paletteram32) // palette
 	AM_RANGE(0x05000000, 0x05000003) AM_WRITE(psh_ymf_fm_w) // first 2 OPL4 register banks
 	AM_RANGE(0x05000004, 0x05000007) AM_WRITE(psh_ymf_pcm_w) // third OPL4 register bank
-	AM_RANGE(0x05800008, 0x0580000b) AM_WRITE(MWA32_RAM) AM_BASE(&ps4_io_select) // Used by Mahjong games to choose input (also maps normal loderndf inputs to offsets)
-	AM_RANGE(0x06000000, 0x060fffff) AM_WRITE(MWA32_RAM) AM_BASE(&ps4_ram)	// work RAM
+	AM_RANGE(0x05800008, 0x0580000b) AM_WRITE(SMH_RAM) AM_BASE(&ps4_io_select) // Used by Mahjong games to choose input (also maps normal loderndf inputs to offsets)
+	AM_RANGE(0x06000000, 0x060fffff) AM_WRITE(SMH_RAM) AM_BASE(&ps4_ram)	// work RAM
 ADDRESS_MAP_END
 
 static void irqhandler(int linestate)
@@ -492,27 +492,26 @@ static MACHINE_DRIVER_START( ps4big )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", SH2, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(ps4_readmem,ps4_writemem)
-	MDRV_CPU_VBLANK_INT(psikyosh_interrupt,1)
+	MDRV_CPU_VBLANK_INT("left", psikyosh_interrupt)
 
 	MDRV_NVRAM_HANDLER(93C56)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(ps4)
 	MDRV_PALETTE_LENGTH((0x2000/4)*2 + 2) /* 0x2000/4 for each screen. 1 for each screen clear colour */
 	MDRV_DEFAULT_LAYOUT(layout_dualhsxs)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
 

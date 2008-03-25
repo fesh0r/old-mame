@@ -93,20 +93,20 @@ static WRITE8_HANDLER( b800_w )
 		/* special case to return the value written to 0xb000 */
 		/* does it reset the chips too ? */
 		case 0:	break;
-		case 0xc4: b000_ret = AY8910_read_port_0_r(0);	break;
-		case 0x94: b000_ret = AY8910_read_port_1_r(0);	break;
-		case 0x86: b000_ret = AY8910_read_port_2_r(0);	break;
+		case 0xc4: b000_ret = AY8910_read_port_0_r(machine,0);	break;
+		case 0x94: b000_ret = AY8910_read_port_1_r(machine,0);	break;
+		case 0x86: b000_ret = AY8910_read_port_2_r(machine,0);	break;
 
 		case 0x80:
 			switch(b800_prev)
 			{
-				case 0xe0: AY8910_control_port_0_w(0,b000_val);	break;
-				case 0x98: AY8910_control_port_1_w(0,b000_val);	break;
-				case 0x83: AY8910_control_port_2_w(0,b000_val);	break;
+				case 0xe0: AY8910_control_port_0_w(machine,0,b000_val);	break;
+				case 0x98: AY8910_control_port_1_w(machine,0,b000_val);	break;
+				case 0x83: AY8910_control_port_2_w(machine,0,b000_val);	break;
 
-				case 0xa0: AY8910_write_port_0_w(0,b000_val);	break;
-				case 0x88: AY8910_write_port_1_w(0,b000_val);	break;
-				case 0x81: AY8910_write_port_2_w(0,b000_val);	break;
+				case 0xa0: AY8910_write_port_0_w(machine,0,b000_val);	break;
+				case 0x88: AY8910_write_port_1_w(machine,0,b000_val);	break;
+				case 0x81: AY8910_write_port_2_w(machine,0,b000_val);	break;
 
 			}
 		break;
@@ -194,8 +194,8 @@ static TILE_GET_INFO( get_tile_info_fg )
 
 static VIDEO_START( ettrivia )
 {
-	bg_tilemap = tilemap_create( get_tile_info_bg,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32 );
-	fg_tilemap = tilemap_create( get_tile_info_fg,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32 );
+	bg_tilemap = tilemap_create( get_tile_info_bg,tilemap_scan_rows,8,8,64,32 );
+	fg_tilemap = tilemap_create( get_tile_info_fg,tilemap_scan_rows,8,8,64,32 );
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -230,21 +230,20 @@ static MACHINE_DRIVER_START( ettrivia )
 	MDRV_CPU_ADD(Z80,12000000/4-48000) //should be ok, it gives the 300 interrupts expected
 	MDRV_CPU_PROGRAM_MAP(cpu_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT(ettrivia_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", ettrivia_interrupt)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(ettrivia)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(32*4+32*4)
 
 	MDRV_PALETTE_INIT(naughtyb)
 	MDRV_VIDEO_START(ettrivia)

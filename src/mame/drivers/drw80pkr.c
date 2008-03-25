@@ -29,7 +29,6 @@
 #include "driver.h"
 #include "sound/ay8910.h"
 #include "cpu/i8039/i8039.h"
-#include "video/crtc6845.h"
 
 static tilemap *bg_tilemap;
 
@@ -108,7 +107,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( drw80pkr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 40, 25);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 40, 25);
 }
 
 static VIDEO_UPDATE( drw80pkr )
@@ -128,7 +127,7 @@ static PALETTE_INIT( drw80pkr )
 */
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -195,7 +194,7 @@ static DRIVER_INIT( drw80pkr )
 *************************/
 
 static ADDRESS_MAP_START( drw80pkr_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(SMH_ROM, SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( drw80pkr_io_map, ADDRESS_SPACE_IO, 8 )
@@ -224,13 +223,13 @@ static MACHINE_DRIVER_START( drw80pkr )
 	MDRV_CPU_ADD_TAG("main", I8039, 7864300)
 	MDRV_CPU_PROGRAM_MAP(drw80pkr_map, 0)
     MDRV_CPU_IO_MAP(drw80pkr_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((31+1)*8, (31+1)*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 24*8-1, 0*8, 27*8-1)

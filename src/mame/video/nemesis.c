@@ -211,10 +211,10 @@ VIDEO_START( nemesis )
 	spriteram_words = spriteram_size / 2;
 
 	background = tilemap_create(
-		get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32 );
+		get_bg_tile_info, tilemap_scan_rows,  8,8, 64,32 );
 
 	foreground = tilemap_create(
-		get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32 );
+		get_fg_tile_info, tilemap_scan_rows,  8,8, 64,32 );
 
 	tilemap_set_transparent_pen( background, 0 );
 	tilemap_set_transparent_pen( foreground, 0 );
@@ -241,7 +241,7 @@ VIDEO_START( nemesis )
 	tilemap_flip = 0;
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/*
      *  16 bytes per sprite, in memory from 56000-56fff
@@ -385,10 +385,10 @@ VIDEO_UPDATE( nemesis )
 {
 	int offs;
 
-	update_gfx(machine);
+	update_gfx(screen->machine);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	tilemap_set_scrolly( background, 0, (nemesis_yscroll[0x180] & 0xff) );
 
@@ -405,7 +405,7 @@ VIDEO_UPDATE( nemesis )
 	tilemap_draw(bitmap,cliprect,background,1,4);
 	tilemap_draw(bitmap,cliprect,foreground,1,8);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -414,10 +414,10 @@ VIDEO_UPDATE( salamand )
 	int offs;
 	rectangle clip;
 
-	update_gfx(machine);
+	update_gfx(screen->machine);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	clip.min_x = 0;
 	clip.max_x = 255;
@@ -449,6 +449,6 @@ VIDEO_UPDATE( salamand )
 		tilemap_draw(bitmap,&clip,background,1,8);
 	}
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

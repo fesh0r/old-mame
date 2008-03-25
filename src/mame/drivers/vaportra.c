@@ -29,8 +29,8 @@ static WRITE16_HANDLER( vaportra_sound_w )
 {
 	/* Force synchronisation between CPUs with fake timer */
 	timer_call_after_resynch(NULL, 0, NULL);
-	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line(Machine, 1,0,ASSERT_LINE);
+	soundlatch_w(machine,0,data & 0xff);
+	cpunum_set_input_line(machine, 1,0,ASSERT_LINE);
 }
 
 static READ16_HANDLER( vaportra_control_r )
@@ -52,59 +52,59 @@ static READ16_HANDLER( vaportra_control_r )
 /******************************************************************************/
 
 static ADDRESS_MAP_START( vaportra_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x10000f) AM_READ(vaportra_control_r)
 
-	AM_RANGE(0x200000, 0x201fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x202000, 0x203fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x280000, 0x281fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x282000, 0x283fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x200000, 0x201fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x202000, 0x203fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x280000, 0x281fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x282000, 0x283fff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x300000, 0x300fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x304000, 0x304fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x308000, 0x308001) AM_READ(MRA16_NOP)
-	AM_RANGE(0xff8000, 0xff87ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xffc000, 0xffffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x300000, 0x300fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x304000, 0x304fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x308000, 0x308001) AM_READ(SMH_NOP)
+	AM_RANGE(0xff8000, 0xff87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xffc000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( vaportra_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x100003) AM_WRITE(vaportra_priority_w)
 	AM_RANGE(0x100006, 0x100007) AM_WRITE(vaportra_sound_w)
 
 	AM_RANGE(0x200000, 0x201fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
 	AM_RANGE(0x202000, 0x203fff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x240000, 0x24000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x240000, 0x24000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
 
 	AM_RANGE(0x280000, 0x281fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x282000, 0x283fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x2c0000, 0x2c000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x2c0000, 0x2c000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 
 	AM_RANGE(0x300000, 0x3009ff) AM_WRITE(vaportra_palette_24bit_rg_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x304000, 0x3049ff) AM_WRITE(vaportra_palette_24bit_b_w) AM_BASE(&paletteram16_2)
 
-	AM_RANGE(0x308000, 0x308001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x308000, 0x308001) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x30c000, 0x30c001) AM_WRITE(buffer_spriteram16_w)
-	AM_RANGE(0xff8000, 0xff87ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xffc000, 0xffffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0xff8000, 0xff87ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xffc000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static READ8_HANDLER( vaportra_soundlatch_r )
 {
-	cpunum_set_input_line(Machine, 1,0,CLEAR_LINE);
-	return soundlatch_r(offset);
+	cpunum_set_input_line(machine, 1,0,CLEAR_LINE);
+	return soundlatch_r(machine, offset);
 }
 
 static WRITE8_HANDLER( YM2151_w )
 {
 	switch (offset) {
 	case 0:
-		YM2151_register_port_0_w(0,data);
+		YM2151_register_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2151_data_port_0_w(0,data);
+		YM2151_data_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -113,31 +113,31 @@ static WRITE8_HANDLER( YM2203_w )
 {
 	switch (offset) {
 	case 0:
-		YM2203_control_port_0_w(0,data);
+		YM2203_control_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2203_write_port_0_w(0,data);
+		YM2203_write_port_0_w(machine,0,data);
 		break;
 	}
 }
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0x130000, 0x130001) AM_READ(OKIM6295_status_1_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(vaportra_soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(YM2203_w)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_w)
 	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0x130000, 0x130001) AM_WRITE(OKIM6295_data_1_w)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
@@ -275,17 +275,18 @@ static MACHINE_DRIVER_START( vaportra )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,12000000) /* Custom chip 59 */
 	MDRV_CPU_PROGRAM_MAP(vaportra_readmem,vaportra_writemem)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD(H6280, 32220000/4) /* Custom chip 45; Audio section crystal is 32.220 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)

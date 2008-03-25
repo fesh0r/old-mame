@@ -42,19 +42,19 @@ static void gtia_state_postload(void);
  * set both color clocks equal for one color
  **********************************************/
 #define SETCOL_B(o,d) \
-	antic.color_lookup[o] = (Machine->remapped_colortable[d] << 8) | Machine->remapped_colortable[d]
+	antic.color_lookup[o] = ((d) << 8) | (d)
 
 /**********************************************
  * set left color clock for one color
  **********************************************/
 #define SETCOL_L(o,d) \
-	*((UINT8*)&antic.color_lookup[o] + 0) = Machine->remapped_colortable[d]
+	*((UINT8*)&antic.color_lookup[o] + 0) = d
 
 /**********************************************
  * set right color clock for one color
  **********************************************/
 #define SETCOL_R(o,d) \
-	*((UINT8*)&antic.color_lookup[o] + 1) = Machine->remapped_colortable[d]
+	*((UINT8*)&antic.color_lookup[o] + 1) = d
 
 
 
@@ -145,9 +145,9 @@ static void gtia_state(void)
 
 
 
-static int is_ntsc(void)
+static int is_ntsc(running_machine *machine)
 {
-	return ATTOSECONDS_TO_HZ(Machine->screen[0].refresh) > 55;
+	return ATTOSECONDS_TO_HZ(video_screen_get_frame_period(machine->primary_screen).attoseconds) > 55;
 }
 
 
@@ -157,9 +157,9 @@ static void gtia_reset(running_machine *machine)
 	int i;
     /* reset the GTIA read/write/helper registers */
 	for (i = 0; i < 32; i++)
-		atari_gtia_w(i,0);
+		atari_gtia_w(machine,i,0);
     memset(&gtia.r, 0, sizeof(gtia.r));
-	if (is_ntsc())
+	if (is_ntsc(machine))
 		gtia.r.pal = 0xff;
 	else
 		gtia.r.pal = 0xf1;

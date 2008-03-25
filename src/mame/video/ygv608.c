@@ -49,7 +49,7 @@ static tilemap *tilemap_B_cache_8[3];
 static tilemap *tilemap_B_cache_16[3];
 static tilemap *tilemap_A = NULL;
 static tilemap *tilemap_B = NULL;
-static mame_bitmap *work_bitmap = NULL;
+static bitmap_t *work_bitmap = NULL;
 
 static void HandleYGV608Reset( void );
 static void HandleRomTransfers( void );
@@ -102,7 +102,7 @@ static TILEMAP_MAPPER( get_tile_offset )
 }
 
 #define layout_total(x) \
-(machine->drv->gfxdecodeinfo[x].gfxlayout->total)
+(machine->config->gfxdecodeinfo[x].gfxlayout->total)
 
 static TILE_GET_INFO( get_tile_info_A_8 )
 {
@@ -515,21 +515,21 @@ VIDEO_START( ygv608 )
 	namcond1_gfxbank = 0;
 
 	/* create tilemaps of all sizes and combinations */
-	tilemap_A_cache_8[0] = tilemap_create(get_tile_info_A_8, get_tile_offset, TILEMAP_TYPE_PEN, 8,8, 32,32);
-	tilemap_A_cache_8[1] = tilemap_create(get_tile_info_A_8, get_tile_offset, TILEMAP_TYPE_PEN, 8,8, 64,32);
-	tilemap_A_cache_8[2] = tilemap_create(get_tile_info_A_8, get_tile_offset, TILEMAP_TYPE_PEN, 8,8, 32,64);
+	tilemap_A_cache_8[0] = tilemap_create(get_tile_info_A_8, get_tile_offset,  8,8, 32,32);
+	tilemap_A_cache_8[1] = tilemap_create(get_tile_info_A_8, get_tile_offset,  8,8, 64,32);
+	tilemap_A_cache_8[2] = tilemap_create(get_tile_info_A_8, get_tile_offset,  8,8, 32,64);
 
-	tilemap_A_cache_16[0] = tilemap_create(get_tile_info_A_16, get_tile_offset, TILEMAP_TYPE_PEN, 16,16, 32,32);
-	tilemap_A_cache_16[1] = tilemap_create(get_tile_info_A_16, get_tile_offset, TILEMAP_TYPE_PEN, 16,16, 64,32);
-	tilemap_A_cache_16[2] = tilemap_create(get_tile_info_A_16, get_tile_offset, TILEMAP_TYPE_PEN, 16,16, 32,64);
+	tilemap_A_cache_16[0] = tilemap_create(get_tile_info_A_16, get_tile_offset,  16,16, 32,32);
+	tilemap_A_cache_16[1] = tilemap_create(get_tile_info_A_16, get_tile_offset,  16,16, 64,32);
+	tilemap_A_cache_16[2] = tilemap_create(get_tile_info_A_16, get_tile_offset,  16,16, 32,64);
 
-	tilemap_B_cache_8[0] = tilemap_create(get_tile_info_B_8, get_tile_offset, TILEMAP_TYPE_PEN, 8,8, 32,32);
-	tilemap_B_cache_8[1] = tilemap_create(get_tile_info_B_8, get_tile_offset, TILEMAP_TYPE_PEN, 8,8, 64,32);
-	tilemap_B_cache_8[2] = tilemap_create(get_tile_info_B_8, get_tile_offset, TILEMAP_TYPE_PEN, 8,8, 32,64);
+	tilemap_B_cache_8[0] = tilemap_create(get_tile_info_B_8, get_tile_offset,  8,8, 32,32);
+	tilemap_B_cache_8[1] = tilemap_create(get_tile_info_B_8, get_tile_offset,  8,8, 64,32);
+	tilemap_B_cache_8[2] = tilemap_create(get_tile_info_B_8, get_tile_offset,  8,8, 32,64);
 
-	tilemap_B_cache_16[0] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TYPE_PEN, 16,16, 32,32);
-	tilemap_B_cache_16[1] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TYPE_PEN, 16,16, 64,32);
-	tilemap_B_cache_16[2] = tilemap_create(get_tile_info_B_16, get_tile_offset, TILEMAP_TYPE_PEN, 16,16, 32,64);
+	tilemap_B_cache_16[0] = tilemap_create(get_tile_info_B_16, get_tile_offset,  16,16, 32,32);
+	tilemap_B_cache_16[1] = tilemap_create(get_tile_info_B_16, get_tile_offset,  16,16, 64,32);
+	tilemap_B_cache_16[2] = tilemap_create(get_tile_info_B_16, get_tile_offset,  16,16, 32,64);
 
 	tilemap_A = NULL;
 	tilemap_B = NULL;
@@ -538,7 +538,7 @@ VIDEO_START( ygv608 )
 	add_exit_callback(machine, ygv608_exit);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 #ifdef _ENABLE_SPRITES
 
@@ -743,12 +743,13 @@ VIDEO_UPDATE( ygv608 )
     double r, alpha, sin_theta, cos_theta;
 #endif
 	rectangle finalclip;
+	const rectangle *visarea = video_screen_get_visible_area(screen);
 
 	// clip to the current bitmap
 	finalclip.min_x = 0;
-	finalclip.max_x = machine->screen[0].width - 1;
+	finalclip.max_x = video_screen_get_width(screen) - 1;
 	finalclip.min_y = 0;
-	finalclip.max_y = machine->screen[0].height - 1;
+	finalclip.max_y = video_screen_get_height(screen) - 1;
 	sect_rect(&finalclip, cliprect);
 	cliprect = &finalclip;
 
@@ -764,14 +765,13 @@ VIDEO_UPDATE( ygv608 )
 #ifdef _ENABLE_SCREEN_RESIZE
 		// hdw should be scaled by 16, not 8
 		// - is it something to do with double dot-clocks???
-		video_screen_set_visarea(0,  0, ((int)(ygv608.regs.s.hdw)<<3/*4*/)-1,
+		video_screen_set_visarea(screen,  0, ((int)(ygv608.regs.s.hdw)<<3/*4*/)-1,
 						  0, ((int)(ygv608.regs.s.vdw)<<3)-1 );
 #endif
 
 		if( work_bitmap )
 			bitmap_free( work_bitmap );
-		work_bitmap = bitmap_alloc( machine->screen[0].width,
-										  machine->screen[0].height, machine->screen[0].format );
+		work_bitmap = bitmap_alloc(video_screen_get_width(screen), video_screen_get_height(screen), video_screen_get_format(screen));
 
 		// reset resize flag
 		ygv608.screen_resize = 0;
@@ -809,7 +809,7 @@ VIDEO_UPDATE( ygv608 )
 		tilemap_set_scroll_cols( tilemap_B, ygv608.page_x );
 
 		// now clear the screen in case we change to 1-plane mode
-		fillbitmap( work_bitmap, machine->pens[0], cliprect );
+		fillbitmap( work_bitmap, 0, cliprect );
 
 		// reset resize flag
 		ygv608.tilemap_resize = 0;
@@ -862,8 +862,8 @@ VIDEO_UPDATE( ygv608 )
 	if ((ygv608.regs.s.r7 & r7_md) & MD_1PLANE)
 	{
 		// If the background tilemap is disabled, we need to clear the bitmap to black
-		fillbitmap (work_bitmap,machine->pens[0],cliprect);
-//      fillbitmap (work_bitmap,1,&machine->screen[0].visarea);
+		fillbitmap (work_bitmap,0,cliprect);
+//      fillbitmap (work_bitmap,1,visarea);
 	}
 	else
 #endif
@@ -884,10 +884,10 @@ VIDEO_UPDATE( ygv608 )
 
   if( ygv608.regs.s.zron )
     copyrozbitmap( bitmap, work_bitmap,
-                   ( machine->screen[0].visarea.min_x << 16 ) +
+                   ( visarea->min_x << 16 ) +
                     ygv608.ax + 0x10000 * r *
                     ( -sin( alpha ) * cos_theta + cos( alpha ) * sin_theta ),
-                   ( machine->screen[0].visarea.min_y << 16 ) +
+                   ( visarea->min_y << 16 ) +
                     ygv608.ay + 0x10000 * r *
                     ( cos( alpha ) * cos_theta + sin( alpha ) * sin_theta ),
                    ygv608.dx, ygv608.dxy, ygv608.dyx, ygv608.dy, 0,
@@ -900,31 +900,29 @@ VIDEO_UPDATE( ygv608 )
   // for some reason we can't use an opaque tilemap_A
   // so use a transparent but clear the work bitmap first
   // - look at why this is the case?!?
-  fillbitmap( work_bitmap,
-              machine->pens[0],
-              &machine->screen[0].visarea );
+  fillbitmap( work_bitmap,0,visarea );
 
 	if ((ygv608.regs.s.r11 & r11_prm) == PRM_ASBDEX ||
 		(ygv608.regs.s.r11 & r11_prm) == PRM_ASEBDX )
-		draw_sprites(machine, bitmap,cliprect );
+		draw_sprites(screen->machine, bitmap,cliprect );
 
 	tilemap_draw( work_bitmap,cliprect, tilemap_A, 0, 0 );
 
 #ifdef _ENABLE_ROTATE_ZOOM
   if( ygv608.regs.s.zron )
     copyrozbitmap( bitmap, work_bitmap,
-                   ygv608.ax, // + ( machine->screen[0].visarea.min_x << 16 ),
-                   ygv608.ay, // + ( machine->screen[0].visarea.min_y << 16 ),
+                   ygv608.ax, // + ( visarea->min_x << 16 ),
+                   ygv608.ay, // + ( visarea->min_y << 16 ),
                    ygv608.dx, ygv608.dxy, ygv608.dyx, ygv608.dy, 0,
                    cliprect,
-                   TRANSPARENCY_PEN, machine->pens[0], 0 );
+                   TRANSPARENCY_PEN, 0, 0 );
   else
 #endif
-    copybitmap_trans( bitmap, work_bitmap, 0, 0, 0, 0, cliprect, machine->pens[0] );
+    copybitmap_trans( bitmap, work_bitmap, 0, 0, 0, 0, cliprect, 0 );
 
 	if ((ygv608.regs.s.r11 & r11_prm) == PRM_SABDEX ||
 		(ygv608.regs.s.r11 & r11_prm) == PRM_SEABDX)
-		draw_sprites(machine, bitmap,cliprect );
+		draw_sprites(screen->machine, bitmap,cliprect );
 
 
 #ifdef _SHOW_VIDEO_DEBUG

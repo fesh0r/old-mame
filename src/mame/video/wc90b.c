@@ -62,9 +62,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( wc90b )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     16,16,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,64,32);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -104,7 +104,7 @@ WRITE8_HANDLER( wc90b_txvideoram_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority ){
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority ){
   int offs;
 
   /* draw all visible sprites of specified priority */
@@ -140,12 +140,12 @@ VIDEO_UPDATE( wc90b )
 	tilemap_set_scrollx(fg_tilemap,0,8 * wc90b_scroll1x[0] + 256);
 	tilemap_set_scrolly(fg_tilemap,0,wc90b_scroll1y[0] + ((wc90b_scroll1y[0] < 0x10 || wc90b_scroll1y[0] == 0xff) ? 256 : 0));
 
-//  draw_sprites(machine, bitmap,cliprect, 3 );
+//  draw_sprites(screen->machine, bitmap,cliprect, 3 );
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect, 2 );
+	draw_sprites(screen->machine, bitmap,cliprect, 2 );
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect, 1 );
+	draw_sprites(screen->machine, bitmap,cliprect, 1 );
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect, 0 );
+	draw_sprites(screen->machine, bitmap,cliprect, 0 );
 	return 0;
 }

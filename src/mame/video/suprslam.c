@@ -9,7 +9,7 @@ static UINT16 screen_bank, bg_bank;
 static tilemap *suprslam_screen_tilemap, *suprslam_bg_tilemap;
 
 /* todo, fix zooming correctly, its _not_ like aerofgt */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	/* SPRITE INFO
 
@@ -139,8 +139,8 @@ static TILE_GET_INFO( get_suprslam_bg_tile_info )
 
 VIDEO_START( suprslam )
 {
-	suprslam_bg_tilemap = tilemap_create(get_suprslam_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,64,64);
-	suprslam_screen_tilemap = tilemap_create(get_suprslam_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	suprslam_bg_tilemap = tilemap_create(get_suprslam_bg_tile_info,tilemap_scan_rows, 16, 16,64,64);
+	suprslam_screen_tilemap = tilemap_create(get_suprslam_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	K053936_wraparound_enable(0, 1);
 	K053936_set_offset(0, -45, -21);
@@ -150,12 +150,9 @@ VIDEO_START( suprslam )
 
 VIDEO_UPDATE( suprslam )
 {
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
-
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	K053936_0_zoom_draw(bitmap,cliprect,suprslam_bg_tilemap,0,0);
-
-	draw_sprites(machine, bitmap, cliprect);
-
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap,cliprect,suprslam_screen_tilemap,0,0);
 	return 0;
 }

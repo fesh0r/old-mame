@@ -22,12 +22,6 @@ WRITE8_HANDLER( orbit_playfield_w )
 }
 
 
-WRITE8_HANDLER( orbit_sprite_w )
-{
-	orbit_sprite_ram[offset] = data;
-}
-
-
 static TILE_GET_INFO( get_tile_info )
 {
 	UINT8 code = orbit_playfield_ram[tile_index];
@@ -35,13 +29,9 @@ static TILE_GET_INFO( get_tile_info )
 	int flags = 0;
 
 	if (code & 0x40)
-	{
 		flags |= TILE_FLIPX;
-	}
 	if (orbit_flip_screen)
-	{
 		flags |= TILE_FLIPY;
-	}
 
 	SET_TILE_INFO(3, code & 0x3f, 0, flags);
 }
@@ -49,11 +39,11 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( orbit )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 0, 16, 16, 32, 30);
+	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 16, 16, 32, 30);
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap* bitmap, const rectangle* cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t* bitmap, const rectangle* cliprect)
 {
 	const UINT8* p = orbit_sprite_ram;
 
@@ -79,13 +69,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap* bitmap, const re
 		code &= 0x3f;
 
 		if (flag & 1)
-		{
 			code |= 0x40;
-		}
 		if (flag & 2)
-		{
 			zoom_x *= 2;
-		}
 
 		vpos = 240 - vpos;
 
@@ -104,6 +90,6 @@ VIDEO_UPDATE( orbit )
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

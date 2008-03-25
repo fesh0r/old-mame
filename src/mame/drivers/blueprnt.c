@@ -81,8 +81,8 @@ static READ8_HANDLER( blueprnt_sh_dipsw_r )
 
 static WRITE8_HANDLER( blueprnt_sound_command_w )
 {
-	soundlatch_w(offset, data);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine, offset, data);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( blueprnt_coin_counter_w )
@@ -297,20 +297,21 @@ static MACHINE_DRIVER_START( blueprnt )
 	// basic machine hardware
 	MDRV_CPU_ADD(Z80, 7000000/2)	// 3.5 MHz
 	MDRV_CPU_PROGRAM_MAP(blueprnt_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 10000000/2/2/2)	// 1.25 MHz (2H)
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 4)	// IRQs connected to 32V
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 4)	// IRQs connected to 32V
 											// NMIs are caused by the main CPU
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(blueprnt)
 	MDRV_PALETTE_LENGTH(128*4+8)
 

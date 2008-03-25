@@ -74,9 +74,9 @@ VIDEO_START( blktiger )
 {
 	scroll_ram = auto_malloc(BGRAM_BANK_SIZE * BGRAM_BANKS);
 
-	tx_tilemap =    tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	bg_tilemap8x4 = tilemap_create(get_bg_tile_info,bg8x4_scan,       TILEMAP_TYPE_PEN,   16,16,128,64);
-	bg_tilemap4x8 = tilemap_create(get_bg_tile_info,bg4x8_scan,       TILEMAP_TYPE_PEN,   16,16,64,128);
+	tx_tilemap =    tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap8x4 = tilemap_create(get_bg_tile_info,bg8x4_scan,          16,16,128,64);
+	bg_tilemap4x8 = tilemap_create(get_bg_tile_info,bg4x8_scan,          16,16,64,128);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
 
@@ -195,7 +195,7 @@ WRITE8_HANDLER( blktiger_screen_layout_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -209,7 +209,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int color = attr & 0x07;
 		int flipx = attr & 0x08;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -219,7 +219,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		drawgfx(bitmap,machine->gfx[2],
 				code,
 				color,
-				flipx,flip_screen,
+				flipx,flip_screen_get(),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,15);
 	}
@@ -227,13 +227,13 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( blktiger )
 {
-	fillbitmap(bitmap,machine->pens[1023],cliprect);
+	fillbitmap(bitmap,1023,cliprect);
 
 	if (bgon)
 		tilemap_draw(bitmap,cliprect,screen_layout ? bg_tilemap8x4 : bg_tilemap4x8,TILEMAP_DRAW_LAYER1,0);
 
 	if (objon)
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 
 	if (bgon)
 		tilemap_draw(bitmap,cliprect,screen_layout ? bg_tilemap8x4 : bg_tilemap4x8,TILEMAP_DRAW_LAYER0,0);
@@ -245,5 +245,5 @@ VIDEO_UPDATE( blktiger )
 
 VIDEO_EOF( blktiger )
 {
-	buffer_spriteram_w(0,0);
+	buffer_spriteram_w(machine,0,0);
 }

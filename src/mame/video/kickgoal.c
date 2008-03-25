@@ -55,11 +55,11 @@ static TILEMAP_MAPPER( tilemap_scan_kicksfg )
 
 VIDEO_START( kickgoal )
 {
-	kickgoal_fgtm = tilemap_create(get_kickgoal_fg_tile_info,tilemap_scan_kicksfg,TILEMAP_TYPE_PEN, 8, 16,64,64);
+	kickgoal_fgtm = tilemap_create(get_kickgoal_fg_tile_info,tilemap_scan_kicksfg, 8, 16,64,64);
 		tilemap_set_transparent_pen(kickgoal_fgtm,15);
-	kickgoal_bgtm = tilemap_create(get_kickgoal_bg_tile_info,tilemap_scan_kicksbg,TILEMAP_TYPE_PEN, 16, 32,64,64);
+	kickgoal_bgtm = tilemap_create(get_kickgoal_bg_tile_info,tilemap_scan_kicksbg, 16, 32,64,64);
 		tilemap_set_transparent_pen(kickgoal_bgtm,15);
-	kickgoal_bg2tm = tilemap_create(get_kickgoal_bg2_tile_info,tilemap_scan_kicksbg2,TILEMAP_TYPE_PEN, 32, 64,64,64);
+	kickgoal_bg2tm = tilemap_create(get_kickgoal_bg2_tile_info,tilemap_scan_kicksbg2, 32, 64,64,64);
 }
 
 
@@ -84,7 +84,7 @@ WRITE16_HANDLER( kickgoal_bg2ram_w )
 
 
 
-static void kickgoal_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void kickgoal_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[1];
 	int offs;
@@ -127,7 +127,7 @@ VIDEO_UPDATE( kickgoal )
 	tilemap_draw(bitmap,cliprect,kickgoal_bg2tm,0,0);
 	tilemap_draw(bitmap,cliprect,kickgoal_bgtm,0,0);
 
-	kickgoal_draw_sprites(machine,bitmap,cliprect);
+	kickgoal_draw_sprites(screen->machine,bitmap,cliprect);
 
 	tilemap_draw(bitmap,cliprect,kickgoal_fgtm,0,0);
 
@@ -200,16 +200,16 @@ static TILEMAP_MAPPER( tilemap_scan_actionhwfg )
 
 VIDEO_START( actionhw )
 {
-	kickgoal_fgtm  = tilemap_create(get_actionhw_fg_tile_info,tilemap_scan_actionhwfg,TILEMAP_TYPE_PEN,  8, 8,64,64);
-	kickgoal_bgtm  = tilemap_create(get_actionhw_bg_tile_info,tilemap_scan_actionhwbg,TILEMAP_TYPE_PEN, 16,16,64,64);
-	kickgoal_bg2tm = tilemap_create(get_actionhw_bg2_tile_info,tilemap_scan_actionhwbg2,TILEMAP_TYPE_PEN,    16,16,64,64);
+	kickgoal_fgtm  = tilemap_create(get_actionhw_fg_tile_info,tilemap_scan_actionhwfg,  8, 8,64,64);
+	kickgoal_bgtm  = tilemap_create(get_actionhw_bg_tile_info,tilemap_scan_actionhwbg, 16,16,64,64);
+	kickgoal_bg2tm = tilemap_create(get_actionhw_bg2_tile_info,tilemap_scan_actionhwbg2,    16,16,64,64);
 
 	tilemap_set_transparent_pen(kickgoal_fgtm,15);
 	tilemap_set_transparent_pen(kickgoal_bgtm,15);
 }
 
 
-static void actionhw_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void actionhw_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[1];
 	int offs;
@@ -250,7 +250,7 @@ VIDEO_UPDATE( actionhw )
 	tilemap_draw(bitmap,cliprect,kickgoal_bg2tm,0,0);
 	tilemap_draw(bitmap,cliprect,kickgoal_bgtm,0,0);
 
-	actionhw_draw_sprites(machine,bitmap,cliprect);
+	actionhw_draw_sprites(screen->machine,bitmap,cliprect);
 
 	tilemap_draw(bitmap,cliprect,kickgoal_fgtm,0,0);
 	return 0;

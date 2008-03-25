@@ -691,7 +691,7 @@ static DRIVER_INIT( 58_56 )
 static WRITE8_HANDLER( mappy_snd_sharedram_w )
 {
 	if (offset < 0x40)
-		namco_15xx_w(offset,data);
+		namco_15xx_w(machine,offset,data);
 	else
 		namco_soundregs[offset] = data;
 }
@@ -833,7 +833,7 @@ static MACHINE_RESET( superpac )
 
 	/* Reset all latches */
 	for (i = 0;i < 0x10;i += 2)
-		superpac_latch_w(i,0);
+		superpac_latch_w(machine,i,0);
 }
 
 static MACHINE_RESET( phozon )
@@ -842,7 +842,7 @@ static MACHINE_RESET( phozon )
 
 	/* Reset all latches */
 	for (i = 0;i < 0x10;i += 2)
-		phozon_latch_w(i,0);
+		phozon_latch_w(machine,i,0);
 }
 
 static MACHINE_RESET( mappy )
@@ -851,7 +851,7 @@ static MACHINE_RESET( mappy )
 
 	/* Reset all latches */
 	for (i = 0;i < 0x10;i += 2)
-		mappy_latch_w(i,0);
+		mappy_latch_w(machine,i,0);
 }
 
 static INTERRUPT_GEN( mappy_interrupt_1 )
@@ -866,10 +866,10 @@ static INTERRUPT_GEN( mappy_interrupt_1 )
 
 
 static ADDRESS_MAP_START( superpac_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(MRA8_RAM, superpac_videoram_w) AM_BASE(&mappy_videoram)	/* video RAM */
+	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(SMH_RAM, superpac_videoram_w) AM_BASE(&mappy_videoram)	/* video RAM */
 	AM_RANGE(0x0800, 0x1fff) AM_RAM AM_BASE(&mappy_spriteram)		/* work RAM with embedded sprite RAM */
 	AM_RANGE(0x2000, 0x2000) AM_READWRITE(superpac_flipscreen_r, superpac_flipscreen_w)
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(MRA8_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
+	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
 	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(namcoio_r, namcoio_w)		/* custom I/O chips interface */
 	AM_RANGE(0x5000, 0x500f) AM_WRITE(superpac_latch_w)				/* various control bits */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(watchdog_reset_w)
@@ -877,9 +877,9 @@ static ADDRESS_MAP_START( superpac_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( phozon_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(MRA8_RAM, superpac_videoram_w) AM_SHARE(2) AM_BASE(&mappy_videoram)	/* video RAM */
+	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(SMH_RAM, superpac_videoram_w) AM_SHARE(2) AM_BASE(&mappy_videoram)	/* video RAM */
 	AM_RANGE(0x0800, 0x1fff) AM_RAM AM_BASE(&mappy_spriteram) AM_SHARE(3) /* shared RAM with CPU #2/sprite RAM*/
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(MRA8_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
+	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
 	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(namcoio_r, namcoio_w)		/* custom I/O chips interface */
 	AM_RANGE(0x5000, 0x500f) AM_WRITE(phozon_latch_w)				/* various control bits */
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(watchdog_reset_w)		 		/* watchdog reset */
@@ -887,10 +887,10 @@ static ADDRESS_MAP_START( phozon_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mappy_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(MRA8_RAM, mappy_videoram_w) AM_BASE(&mappy_videoram)		/* video RAM */
+	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_RAM, mappy_videoram_w) AM_BASE(&mappy_videoram)		/* video RAM */
 	AM_RANGE(0x1000, 0x27ff) AM_RAM AM_BASE(&mappy_spriteram)		/* work RAM with embedded sprite RAM */
 	AM_RANGE(0x3800, 0x3fff) AM_WRITE(mappy_scroll_w)				/* scroll */
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(MRA8_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
+	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
 	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(namcoio_r, namcoio_w)		/* custom I/O chips interface */
 	AM_RANGE(0x5000, 0x500f) AM_WRITE(mappy_latch_w)				/* various control bits */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(watchdog_reset_w)				/* watchdog reset */
@@ -899,18 +899,18 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( superpac_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(MRA8_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
+	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
 	AM_RANGE(0x2000, 0x200f) AM_WRITE(superpac_latch_w)                   /* various control bits */
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( phozon_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(MRA8_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU + sound registers */
+	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU + sound registers */
 	AM_RANGE(0xe000, 0xffff) AM_ROM											/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mappy_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(MRA8_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
+	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
 	AM_RANGE(0x2000, 0x200f) AM_WRITE(mappy_latch_w)						/* various control bits */
 	AM_RANGE(0xe000, 0xffff) AM_ROM											/* ROM code */
 ADDRESS_MAP_END
@@ -918,9 +918,9 @@ ADDRESS_MAP_END
 
 /* extra CPU only present in Phozon */
 static ADDRESS_MAP_START( phozon_cpu3_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(MRA8_RAM, superpac_videoram_w) AM_SHARE(2)	/* video RAM */
+	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(SMH_RAM, superpac_videoram_w) AM_SHARE(2)	/* video RAM */
 	AM_RANGE(0x0800, 0x1fff) AM_RAM AM_SHARE(3) 			/* shared RAM with CPU #2/sprite RAM*/
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(MRA8_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with CPU #2 */
+	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with CPU #2 */
 	AM_RANGE(0xa000, 0xa7ff) AM_RAM							/* RAM */
 	AM_RANGE(0xe000, 0xffff) AM_ROM							/* ROM */
 ADDRESS_MAP_END
@@ -1573,11 +1573,11 @@ static MACHINE_DRIVER_START( superpac )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(superpac_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT(mappy_interrupt_1,1)	// also update the custom I/O chips
+	MDRV_CPU_VBLANK_INT("main", mappy_interrupt_1)	// also update the custom I/O chips
 
 	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(superpac_cpu2_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_INTERLEAVE(100)    /* 100 CPU slices per frame - an high value to ensure proper */
@@ -1585,11 +1585,10 @@ static MACHINE_DRIVER_START( superpac )
 	MDRV_MACHINE_RESET(superpac)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(superpac)
 	MDRV_PALETTE_LENGTH(64*4+64*4)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 
@@ -1621,15 +1620,15 @@ static MACHINE_DRIVER_START( phozon )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809,	PIXEL_CLOCK/4)	/* MAIN CPU */
 	MDRV_CPU_PROGRAM_MAP(phozon_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT(mappy_interrupt_1,1)	// also update the custom I/O chips
+	MDRV_CPU_VBLANK_INT("main", mappy_interrupt_1)	// also update the custom I/O chips
 
 	MDRV_CPU_ADD(M6809,	PIXEL_CLOCK/4)	/* SOUND CPU */
 	MDRV_CPU_PROGRAM_MAP(phozon_cpu2_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_CPU_ADD(M6809,	PIXEL_CLOCK/4)	/* SUB CPU */
 	MDRV_CPU_PROGRAM_MAP(phozon_cpu3_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_INTERLEAVE(100)    /* 100 CPU slices per frame - an high value to ensure proper */
@@ -1637,11 +1636,10 @@ static MACHINE_DRIVER_START( phozon )
 	MDRV_MACHINE_RESET(phozon)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(phozon)
 	MDRV_PALETTE_LENGTH(64*4+64*4)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 
@@ -1663,11 +1661,11 @@ static MACHINE_DRIVER_START( mappy )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(mappy_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT(mappy_interrupt_1,1)	// also update the custom I/O chips
+	MDRV_CPU_VBLANK_INT("main", mappy_interrupt_1)	// also update the custom I/O chips
 
 	MDRV_CPU_ADD(M6809, PIXEL_CLOCK/4)	/* 1.536 MHz */
 	MDRV_CPU_PROGRAM_MAP(mappy_cpu2_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_INTERLEAVE(100)    /* 100 CPU slices per frame - an high value to ensure proper */
@@ -1675,11 +1673,10 @@ static MACHINE_DRIVER_START( mappy )
 	MDRV_MACHINE_RESET(mappy)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(mappy)
 	MDRV_PALETTE_LENGTH(64*4+16*16)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 
@@ -2139,7 +2136,7 @@ static DRIVER_INIT( grobda )
 static DRIVER_INIT( digdug2 )
 {
 	/* appears to not use the watchdog */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8000, 0, 0, MWA8_NOP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8000, 0, 0, SMH_NOP);
 	DRIVER_INIT_CALL(58_56);
 }
 

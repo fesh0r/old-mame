@@ -16,22 +16,23 @@ extern int wolfpack_collision;
 
 extern UINT8* wolfpack_alpha_num_ram;
 
-extern VIDEO_UPDATE( wolfpack );
-extern VIDEO_START( wolfpack );
-extern VIDEO_EOF( wolfpack );
+PALETTE_INIT( wolfpack );
+VIDEO_UPDATE( wolfpack );
+VIDEO_START( wolfpack );
+VIDEO_EOF( wolfpack );
 
-extern WRITE8_HANDLER( wolfpack_video_invert_w );
-extern WRITE8_HANDLER( wolfpack_ship_reflect_w );
-extern WRITE8_HANDLER( wolfpack_pt_pos_select_w );
-extern WRITE8_HANDLER( wolfpack_pt_horz_w );
-extern WRITE8_HANDLER( wolfpack_pt_pic_w );
-extern WRITE8_HANDLER( wolfpack_ship_h_w );
-extern WRITE8_HANDLER( wolfpack_torpedo_pic_w );
-extern WRITE8_HANDLER( wolfpack_ship_size_w );
-extern WRITE8_HANDLER( wolfpack_ship_h_precess_w );
-extern WRITE8_HANDLER( wolfpack_ship_pic_w );
-extern WRITE8_HANDLER( wolfpack_torpedo_h_w );
-extern WRITE8_HANDLER( wolfpack_torpedo_v_w );
+WRITE8_HANDLER( wolfpack_video_invert_w );
+WRITE8_HANDLER( wolfpack_ship_reflect_w );
+WRITE8_HANDLER( wolfpack_pt_pos_select_w );
+WRITE8_HANDLER( wolfpack_pt_horz_w );
+WRITE8_HANDLER( wolfpack_pt_pic_w );
+WRITE8_HANDLER( wolfpack_ship_h_w );
+WRITE8_HANDLER( wolfpack_torpedo_pic_w );
+WRITE8_HANDLER( wolfpack_ship_size_w );
+WRITE8_HANDLER( wolfpack_ship_h_precess_w );
+WRITE8_HANDLER( wolfpack_ship_pic_w );
+WRITE8_HANDLER( wolfpack_torpedo_h_w );
+WRITE8_HANDLER( wolfpack_torpedo_v_w );
 
 
 static TIMER_CALLBACK( periodic_callback )
@@ -43,47 +44,15 @@ static TIMER_CALLBACK( periodic_callback )
 	scanline += 64;
 
 	if (scanline >= 262)
-	{
 		scanline = 0;
-	}
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, periodic_callback);
 }
 
 
 static MACHINE_RESET( wolfpack )
 {
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, periodic_callback);
-}
-
-
-static PALETTE_INIT( wolfpack )
-{
-	int i;
-
-	palette_set_color(machine, 0, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 1, MAKE_RGB(0xc1, 0xc1, 0xc1));
-	palette_set_color(machine, 2, MAKE_RGB(0x81, 0x81, 0x81));
-	palette_set_color(machine, 3, MAKE_RGB(0x48, 0x48, 0x48));
-
-	for (i = 0; i < 4; i++)
-	{
-		rgb_t color = palette_get_color(machine, i);
-
-		palette_set_color_rgb(machine, 4 + i,
-			RGB_RED(color) < 0xb8   ? RGB_RED(color)   + 0x48 : 0xff,
-			RGB_GREEN(color) < 0xb8 ? RGB_GREEN(color) + 0x48 : 0xff,
-			RGB_BLUE(color) < 0xb8  ? RGB_BLUE(color)  + 0x48 : 0xff);
-	}
-
-	colortable[0] = 0;
-	colortable[1] = 1;
-	colortable[2] = 1;
-	colortable[3] = 0;
-	colortable[4] = 0;
-	colortable[5] = 2;
-	colortable[6] = 0;
-	colortable[7] = 3;
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, periodic_callback);
 }
 
 
@@ -118,17 +87,13 @@ static READ8_HANDLER( wolfpack_misc_r )
 	/* BIT7 => VBLANK      */
 
 	if (!S14001A_bsy_0_r())
-	{
-	        val |= 0x01;
-	}
+        val |= 0x01;
+
 	if (!wolfpack_collision)
-	{
 		val |= 0x10;
-	}
-	if (video_screen_get_vpos(0) >= 240)
-	{
+
+	if (video_screen_get_vpos(machine->primary_screen) >= 240)
 		val |= 0x80;
-	}
 
 	return val;
 }
@@ -178,19 +143,19 @@ static WRITE8_HANDLER( wolfpack_coldetres_w )
 
 
 static ADDRESS_MAP_START( wolfpack_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_READ(MRA8_RAM) AM_MIRROR(0x100)
+	AM_RANGE(0x0000, 0x00ff) AM_READ(SMH_RAM) AM_MIRROR(0x100)
 	AM_RANGE(0x1000, 0x1000) AM_READ(wolfpack_input_r)
 	AM_RANGE(0x2000, 0x2000) AM_READ(wolfpack_misc_r)
 	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_1_r)
-	AM_RANGE(0x7000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x9000, 0x9000) AM_READ(MRA8_NOP) /* debugger ROM location? */
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x7000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x9000, 0x9000) AM_READ(SMH_NOP) /* debugger ROM location? */
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( wolfpack_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_WRITE(MWA8_RAM) AM_MIRROR(0x100)
-	AM_RANGE(0x1000, 0x10ff) AM_WRITE(MWA8_RAM) AM_BASE(&wolfpack_alpha_num_ram)
+	AM_RANGE(0x0000, 0x00ff) AM_WRITE(SMH_RAM) AM_MIRROR(0x100)
+	AM_RANGE(0x1000, 0x10ff) AM_WRITE(SMH_RAM) AM_BASE(&wolfpack_alpha_num_ram)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(wolfpack_high_explo_w)
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(wolfpack_sonar_ping_w)
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(wolfpack_sirlat_w)
@@ -219,8 +184,8 @@ static ADDRESS_MAP_START( wolfpack_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4005, 0x4005) AM_WRITE(wolfpack_torpedo_h_w)
 	AM_RANGE(0x4006, 0x4006) AM_WRITE(wolfpack_torpedo_v_w)
 	AM_RANGE(0x5000, 0x5fff) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x7000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x7000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -368,18 +333,18 @@ static MACHINE_DRIVER_START(wolfpack)
 	MDRV_CPU_ADD(M6502, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(wolfpack_readmem, wolfpack_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	/* video hardware */
 	MDRV_MACHINE_RESET(wolfpack)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 16, 239)
+
 	MDRV_GFXDECODE(wolfpack)
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(8)
+	MDRV_PALETTE_LENGTH(12)
 	MDRV_PALETTE_INIT(wolfpack)
 	MDRV_VIDEO_START(wolfpack)
 	MDRV_VIDEO_UPDATE(wolfpack)

@@ -1,6 +1,72 @@
-/* Sand Scorpian
+/*
 
-    Sand Scorpion (by Face)                MCU protection (collision detection etc.)
+    Sand Scorpion
+
+(C) 1992 FACE
+
+PCB Number: Z03VA-001
+
+      CPU: TMP68HC000N-12
+Sound CPU: Z8400AB1 (Z80A)
+    Sound: OKI6295, YM2203C & Y3014B
+      OSC: 16.000mhz & 12.000mhz
+     Dips: Two 8-way dipswitch banks
+
+Kaneko custom (surfaced scratched):
+   PX79C480FP-3 PANDORA-CHIP (160pin PQFP)  <- Sprites
+   VIEW2-CHIP (144pin PQFP)                 <- Tilemaps
+   HELP1-CHIP (64pin PQFP)
+   CALC1-CHIP (40pin DIP)                   <- Collision Detection etc.
+
+
++-------------------------------------+
+|  VOL   M6295 7.IC55   Z80A   HELP1  |
+|        Y3014B YM2203C 8.IC51        |
+|            DSW1 DSW2 LH5168D  4.IC32|
+|        12MHz 16MHz   LH5168D  3.IC33|
+|J                     LH5168D   IC30*|
+|A                       VIEW2   IC31*|
+|M       LH5116D             M51257AL |
+|M       LH5116D        PAL  M51257AL |
+|A                               2.IC5|
+|         PAL                    1.IC4|
+|         IC15*       PANDORA    68000|
+|  IC14* 5.IC16   M41464 M41464  CALC1|
+|  IC18* 6.IC17   M41464 M41464       |
++-------------------------------------+
+
+IC18 unpopulated 28 pin socket (silkscreened EPROM)
+IC14 & IC15 unpopulated 32 pin socket (silkscreened MASK)
+IC30 & IC31 unpopulated 42 pin socket (silkscreened MASK)
+
+RAM:
+ OKI M41464C-10 (x4)
+ OKI M51257AL-10 (x2)
+ Sharp LH5116D-10 (x2)
+ Sharp LH5168D-10L (x3)
+
+PALS:
+ AMI 18CV8PC-25 (Stamped IC25D located at IC25)
+ AMI 18CV8PC-25 (Stamped IC26 located at IC26)
+
+Chips simply labeled 1 through 8
+
+ROM ID    ROM Type
+===================
+1.ic4     27C2001
+2.ic5     27C2001
+3.ic33    27C040
+4.ic32    27C040
+5.ic16    27C040
+6.ic17    27C040
+7.ic55    27C2001
+8.ic51    27C1001
+
+Alternate Program roms:
+11.ic4    27C2001
+12.ic5    27C2001
+
+Is there another alt program rom set labeled 9 & 10?
 
 */
 
@@ -121,7 +187,7 @@ static WRITE16_HANDLER( sandscrp_latchstatus_word_w )
 static READ16_HANDLER( sandscrp_soundlatch_word_r )
 {
 	latch2_full = 0;
-	return soundlatch2_r(0);
+	return soundlatch2_r(machine,0);
 }
 
 static WRITE16_HANDLER( sandscrp_soundlatch_word_w )
@@ -129,8 +195,8 @@ static WRITE16_HANDLER( sandscrp_soundlatch_word_w )
 	if (ACCESSING_LSB)
 	{
 		latch1_full = 1;
-		soundlatch_w(0, data & 0xff);
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(machine, 0, data & 0xff);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 		cpu_spinuntil_time(ATTOTIME_IN_USEC(100));	// Allow the other cpu to reply
 	}
 }
@@ -141,13 +207,13 @@ static ADDRESS_MAP_START( sandscrp, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x700000, 0x70ffff) AM_RAM		// RAM
 	AM_RANGE(0x200000, 0x20001f) AM_READWRITE(galpanib_calc_r,galpanib_calc_w)	// Protection
-	AM_RANGE(0x300000, 0x30000f) AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
-	AM_RANGE(0x400000, 0x400fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x401000, 0x401fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0x300000, 0x30000f) AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
+	AM_RANGE(0x400000, 0x400fff) AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x401000, 0x401fff) AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x402000, 0x402fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0x403000, 0x403fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
 	AM_RANGE(0x500000, 0x501fff) AM_READWRITE(pandora_spriteram_LSB_r, pandora_spriteram_LSB_w ) // sprites
-	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(sandscrp_coin_counter_w)	// Coin Counters (Lockout unused)
 	AM_RANGE(0xb00000, 0xb00001) AM_READ(input_port_0_word_r)	// Inputs
 	AM_RANGE(0xb00002, 0xb00003) AM_READ(input_port_1_word_r)	//
@@ -187,23 +253,23 @@ static READ8_HANDLER( sandscrp_latchstatus_r )
 static READ8_HANDLER( sandscrp_soundlatch_r )
 {
 	latch1_full = 0;
-	return soundlatch_r(0);
+	return soundlatch_r(machine,0);
 }
 
 static WRITE8_HANDLER( sandscrp_soundlatch_w )
 {
 	latch2_full = 1;
-	soundlatch2_w(0,data);
+	soundlatch2_w(machine,0,data);
 }
 
 static ADDRESS_MAP_START( sandscrp_soundmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM		// ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_ROM)	// Banked ROM
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_ROM)	// Banked ROM
 	AM_RANGE(0xc000, 0xdfff) AM_RAM		// RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sandscrp_soundport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(sandscrp_bankswitch_w)	// ROM Bank
 	AM_RANGE(0x02, 0x02) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)	// YM2203
 	AM_RANGE(0x03, 0x03) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)		// PORTA/B read
@@ -369,23 +435,24 @@ static MACHINE_DRIVER_START( sandscrp )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,12000000)	/* TMP68HC000N-12 */
 	MDRV_CPU_PROGRAM_MAP(sandscrp,0)
-	MDRV_CPU_VBLANK_INT(sandscrp_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", sandscrp_interrupt)
 
 	MDRV_CPU_ADD(Z80,4000000)	/* Z8400AB1, Reads the DSWs: it can't be disabled */
 	MDRV_CPU_PROGRAM_MAP(sandscrp_soundmem,0)
 	MDRV_CPU_IO_MAP(sandscrp_soundport,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME( DEFAULT_REAL_60HZ_VBLANK_DURATION )
-	MDRV_WATCHDOG_VBLANK_INIT(DEFAULT_60HZ_3S_VBLANK_WATCHDOG)
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(3))	/* a guess, and certainly wrong */
 
 	MDRV_MACHINE_RESET(sandscrp)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME( ATTOSECONDS_IN_USEC(2500) /* not accurate */ )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
+
 	MDRV_GFXDECODE(sandscrp)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -413,53 +480,59 @@ MACHINE_DRIVER_END
 
                                 Sand Scorpion
 
-(C) FACE
-68HC000N-12
-Z8400AB1
-OKI6295, YM2203C
-OSC:  16.000mhz,   12.000mhz
-
-SANDSC03.BIN     27C040
-SANDSC04.BIN     27C040
-SANDSC05.BIN     27C040
-SANDSC06.BIN     27C040
-SANDSC07.BIN     27C2001
-SANDSC08.BIN     27C1001
-SANDSC11.BIN     27C2001
-SANDSC12.BIN     27C2001
-
 ***************************************************************************/
 
-ROM_START( sandscrp )
+ROM_START( sandscrp ) /* Z03VA-003 PCB */
 	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
-	ROM_LOAD16_BYTE( "sandsc11.bin", 0x000000, 0x040000, CRC(9b24ab40) SHA1(3187422dbe8b15d8053be4cb20e56d3e6afbd5f2) )
-	ROM_LOAD16_BYTE( "sandsc12.bin", 0x000001, 0x040000, CRC(ad12caee) SHA1(83267445b89c3cf4dc317106aa68763d2f29eff7) )
+	ROM_LOAD16_BYTE( "11.bin", 0x000000, 0x040000, CRC(9b24ab40) SHA1(3187422dbe8b15d8053be4cb20e56d3e6afbd5f2) ) /* Location is IC4 */
+	ROM_LOAD16_BYTE( "12.bin", 0x000001, 0x040000, CRC(ad12caee) SHA1(83267445b89c3cf4dc317106aa68763d2f29eff7) ) /* Location is IC5 */
 
 	ROM_REGION( 0x24000, REGION_CPU2, 0 )		/* Z80 Code */
-	ROM_LOAD( "sandsc08.bin", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
-	ROM_CONTINUE(             0x10000, 0x14000             )
+	ROM_LOAD( "8.ic51", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
+	ROM_CONTINUE(       0x10000, 0x14000 )
 
 	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
-	ROM_LOAD( "sandsc05.bin", 0x000000, 0x080000, CRC(9bb675f6) SHA1(c3f6768cfd99a0e19ca2224fff9aa4e27ec0da24) )
-	ROM_LOAD( "sandsc06.bin", 0x080000, 0x080000, CRC(7df2f219) SHA1(e2a59e201bfededa92d6c86f8dc1b212527ef66f) )
+	ROM_LOAD( "5.ic16", 0x000000, 0x080000, CRC(9bb675f6) SHA1(c3f6768cfd99a0e19ca2224fff9aa4e27ec0da24) )
+	ROM_LOAD( "6.ic17", 0x080000, 0x080000, CRC(7df2f219) SHA1(e2a59e201bfededa92d6c86f8dc1b212527ef66f) )
 
 	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layers */
-	ROM_LOAD16_BYTE( "sandsc04.bin", 0x000000, 0x080000, CRC(b9222ff2) SHA1(a445da3f7f5dea5ff64bb0b048f624f947875a39) )
-	ROM_LOAD16_BYTE( "sandsc03.bin", 0x000001, 0x080000, CRC(adf20fa0) SHA1(67a7a2be774c86916cbb97e4c9b16c2e48125780) )
+	ROM_LOAD16_BYTE( "4.ic32", 0x000000, 0x080000, CRC(b9222ff2) SHA1(a445da3f7f5dea5ff64bb0b048f624f947875a39) )
+	ROM_LOAD16_BYTE( "3.ic33", 0x000001, 0x080000, CRC(adf20fa0) SHA1(67a7a2be774c86916cbb97e4c9b16c2e48125780) )
 
 	ROM_REGION( 0x040000, REGION_SOUND1, 0 )	/* Samples */
-	ROM_LOAD( "sandsc07.bin", 0x000000, 0x040000, CRC(9870ab12) SHA1(5ea3412cbc57bfaa32a1e2552b2eb46f4ceb5fa8) )
+	ROM_LOAD( "7.ic55", 0x000000, 0x040000, CRC(9870ab12) SHA1(5ea3412cbc57bfaa32a1e2552b2eb46f4ceb5fa8) )
+ROM_END
+
+ROM_START( sandscra ) /* Z03VA-003 PCB, earlier program version */
+	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "1.ic4", 0x000000, 0x040000, CRC(c0943ae2) SHA1(04dac4e1f116cd96d6292daa61ef40efc7eba919) )
+	ROM_LOAD16_BYTE( "2.ic5", 0x000001, 0x040000, CRC(6a8e0012) SHA1(2350b11c9bd545c8ba4b3c25cd6547ba2ad474b5) )
+
+	ROM_REGION( 0x24000, REGION_CPU2, 0 )		/* Z80 Code */
+	ROM_LOAD( "8.ic51", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
+	ROM_CONTINUE(       0x10000, 0x14000 )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
+	ROM_LOAD( "5.ic16", 0x000000, 0x080000, CRC(9bb675f6) SHA1(c3f6768cfd99a0e19ca2224fff9aa4e27ec0da24) )
+	ROM_LOAD( "6.ic17", 0x080000, 0x080000, CRC(7df2f219) SHA1(e2a59e201bfededa92d6c86f8dc1b212527ef66f) )
+
+	ROM_REGION( 0x100000, REGION_GFX2, ROMREGION_DISPOSE )	/* Layers */
+	ROM_LOAD16_BYTE( "4.ic32", 0x000000, 0x080000, CRC(b9222ff2) SHA1(a445da3f7f5dea5ff64bb0b048f624f947875a39) )
+	ROM_LOAD16_BYTE( "3.ic33", 0x000001, 0x080000, CRC(adf20fa0) SHA1(67a7a2be774c86916cbb97e4c9b16c2e48125780) )
+
+	ROM_REGION( 0x040000, REGION_SOUND1, 0 )	/* Samples */
+	ROM_LOAD( "7.ic55", 0x000000, 0x040000, CRC(9870ab12) SHA1(5ea3412cbc57bfaa32a1e2552b2eb46f4ceb5fa8) )
 ROM_END
 
 
-ROM_START( sandscra )
+ROM_START( sandscrb ) /* Different rev PCB */
 	ROM_REGION( 0x080000, REGION_CPU1, 0 )		/* 68000 Code */
 	ROM_LOAD16_BYTE( "11.ic4", 0x000000, 0x040000, CRC(80020cab) SHA1(4f1f4d8ea07ad745f2d6d3f800686f07fe4bf20f) )
 	ROM_LOAD16_BYTE( "12.ic5", 0x000001, 0x040000, CRC(8df1d42f) SHA1(2a9db5c4b99a8a3f62bffa9ddd96a95e2042602b) )
 
 	ROM_REGION( 0x24000, REGION_CPU2, 0 )		/* Z80 Code */
-	ROM_LOAD( "sandsc08.bin", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
-	ROM_CONTINUE(             0x10000, 0x14000             )
+	ROM_LOAD( "8.ic51", 0x00000, 0x0c000, CRC(6f3e9db1) SHA1(06a04fa17f44319986913bff70433510c89e38f1) )
+	ROM_CONTINUE(       0x10000, 0x14000 )
 
 	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "ss502.ic16", 0x000000, 0x100000, CRC(d8012ebb) SHA1(975bbb3b57a09e41d2257d4fa3a64097144de554) )
@@ -468,9 +541,10 @@ ROM_START( sandscra )
 	ROM_LOAD16_WORD_SWAP( "ss501.ic30", 0x000000, 0x100000, CRC(0cf9f99d) SHA1(47f7f120d2bc075bedaff0a44306a8f46a1d848c) )
 
 	ROM_REGION( 0x040000, REGION_SOUND1, 0 )	/* Samples */
-	ROM_LOAD( "sandsc07.bin", 0x000000, 0x040000, CRC(9870ab12) SHA1(5ea3412cbc57bfaa32a1e2552b2eb46f4ceb5fa8) )
+	ROM_LOAD( "7.ic55", 0x000000, 0x040000, CRC(9870ab12) SHA1(5ea3412cbc57bfaa32a1e2552b2eb46f4ceb5fa8) )
 ROM_END
 
 
-GAME( 1992, sandscrp, 0,        sandscrp, sandscrp, 0,          ROT90, "Face",   "Sand Scorpion (set 1)", 0 )
-GAME( 1992, sandscra, sandscrp, sandscrp, sandscrp, 0,          ROT90, "Face",   "Sand Scorpion (set 2)", 0 )
+GAME( 1992, sandscrp, 0,        sandscrp, sandscrp, 0,          ROT90, "Face",   "Sand Scorpion", 0 )
+GAME( 1992, sandscra, sandscrp, sandscrp, sandscrp, 0,          ROT90, "Face",   "Sand Scorpion (Earlier)", 0 )
+GAME( 1992, sandscrb, sandscrp, sandscrp, sandscrp, 0,          ROT90, "Face",   "Sand Scorpion (Revised Hardware)", 0 )

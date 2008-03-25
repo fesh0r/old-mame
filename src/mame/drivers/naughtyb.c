@@ -111,14 +111,14 @@ TODO:
 
 static READ8_HANDLER( in0_port_r )
 {
-	int in0 = input_port_0_r(0);
+	int in0 = input_port_0_r(machine,0);
 
 	if ( naughtyb_cocktail )
 	{
 		// cabinet == cocktail -AND- handling player 2
 
 		in0 = ( in0 & 0x03 ) |				// start buttons
-			  ( input_port_1_r(0) & 0xFC );	// cocktail inputs
+			  ( input_port_1_r(machine,0) & 0xFC );	// cocktail inputs
 	}
 
 	return in0;
@@ -128,8 +128,8 @@ static READ8_HANDLER( dsw0_port_r )
 {
 	// vblank replaces the cabinet dip
 
-	return ( ( input_port_2_r(0) & 0x7F ) |		// dsw0
-   			 ( input_port_3_r(0) & 0x80 ) );	// vblank
+	return ( ( input_port_2_r(machine,0) & 0x7F ) |		// dsw0
+   			 ( input_port_3_r(machine,0) & 0x80 ) );	// vblank
 }
 
 /* Pop Flamer
@@ -177,30 +177,30 @@ static READ8_HANDLER( popflame_protection_r ) /* Not used by bootleg/hack */
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x8fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x8fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xb000, 0xb7ff) AM_READ(in0_port_r)	// IN0
 	AM_RANGE(0xb800, 0xbfff) AM_READ(dsw0_port_r)	// DSW0
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x7fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x8800, 0x8fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_videoram2)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x7fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x8800, 0x8fff) AM_WRITE(SMH_RAM) AM_BASE(&naughtyb_videoram2)
 	AM_RANGE(0x9000, 0x97ff) AM_WRITE(naughtyb_videoreg_w)
-	AM_RANGE(0x9800, 0x9fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_scrollreg)
+	AM_RANGE(0x9800, 0x9fff) AM_WRITE(SMH_RAM) AM_BASE(&naughtyb_scrollreg)
 	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(pleiads_sound_control_a_w)
 	AM_RANGE(0xa800, 0xafff) AM_WRITE(pleiads_sound_control_b_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( popflame_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x7fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x8800, 0x8fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_videoram2)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x7fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x8800, 0x8fff) AM_WRITE(SMH_RAM) AM_BASE(&naughtyb_videoram2)
 	AM_RANGE(0x9000, 0x97ff) AM_WRITE(popflame_videoreg_w)
-	AM_RANGE(0x9800, 0x9fff) AM_WRITE(MWA8_RAM) AM_BASE(&naughtyb_scrollreg)
+	AM_RANGE(0x9800, 0x9fff) AM_WRITE(SMH_RAM) AM_BASE(&naughtyb_scrollreg)
 	AM_RANGE(0xa000, 0xa7ff) AM_WRITE(pleiads_sound_control_a_w)
 	AM_RANGE(0xa800, 0xafff) AM_WRITE(pleiads_sound_control_b_w)
 ADDRESS_MAP_END
@@ -381,19 +381,18 @@ static MACHINE_DRIVER_START( naughtyb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, CLOCK_XTAL / 4) /* 12 MHz clock, divided by 4. CPU is a Z80A */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(naughtyb_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", naughtyb_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(naughtyb)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(32*4+32*4)
 
 	MDRV_PALETTE_INIT(naughtyb)
 	MDRV_VIDEO_START(naughtyb)
@@ -419,19 +418,18 @@ static MACHINE_DRIVER_START( popflame )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, CLOCK_XTAL / 4) /* 12 MHz clock, divided by 4. CPU is a Z80A */
 	MDRV_CPU_PROGRAM_MAP(readmem,popflame_writemem)
-	MDRV_CPU_VBLANK_INT(naughtyb_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", naughtyb_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(naughtyb)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(32*4+32*4)
 
 	MDRV_PALETTE_INIT(naughtyb)
 	MDRV_VIDEO_START(naughtyb)

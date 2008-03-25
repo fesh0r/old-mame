@@ -301,7 +301,7 @@ static READ16_HANDLER( duart_1_r )
 		case 0xe:
 		{
 			attotime rate = attotime_mul(ATTOTIME_IN_HZ(MC68681_1_CLOCK), 16 * duart_1.CT);
-			timer_adjust(duart_1_timer, rate, 0, rate);
+			timer_adjust_periodic(duart_1_timer, rate, 0, rate);
 			break;
 		}
 		case 0xf:
@@ -821,7 +821,7 @@ static void jpmimpct_tms_irq(int state)
 static const tms34010_config tms_config =
 {
 	TRUE,                       /* halt on reset */
-	0,                          /* the screen operated on */
+	"main",                     /* the screen operated on */
 	40000000/16,                /* pixel clock */
 	4,                          /* pixels per clock */
 	jpmimpct_scanline_update,   /* scanline updater */
@@ -849,7 +849,7 @@ static MACHINE_DRIVER_START( jpmimpct )
 	MDRV_MACHINE_RESET(jpmimpct)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(40000000/4, 156*4, 0, 100*4, 328, 0, 300)
 	MDRV_PALETTE_LENGTH(256)

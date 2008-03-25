@@ -340,7 +340,7 @@ WRITE8_HANDLER( m62_textram_w )
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int colormask, int prioritymask, int priority)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int colormask, int prioritymask, int priority)
 {
 	int offs;
 
@@ -399,9 +399,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-static void m62_start( tile_get_info_callback tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
+static void m62_start( tile_get_info_func tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
 {
-	m62_background = tilemap_create( tile_get_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, x1, y1, x2, y2 );
+	m62_background = tilemap_create( tile_get_info, tilemap_scan_rows,  x1, y1, x2, y2 );
 
 	m62_background_hscroll = 0;
 	m62_background_vscroll = 0;
@@ -418,9 +418,9 @@ static void m62_start( tile_get_info_callback tile_get_info, int rows, int cols,
 	}
 }
 
-static void m62_textlayer( tile_get_info_callback tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
+static void m62_textlayer( tile_get_info_func tile_get_info, int rows, int cols, int x1, int y1, int x2, int y2 )
 {
-	m62_foreground = tilemap_create( tile_get_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, x1, y1, x2, y2 );
+	m62_foreground = tilemap_create( tile_get_info, tilemap_scan_rows,  x1, y1, x2, y2 );
 
 	if( rows != 0 )
 	{
@@ -475,7 +475,7 @@ VIDEO_UPDATE( kungfum )
 		tilemap_set_scrollx( m62_background, i, m62_background_hscroll );
 	}
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
 	return 0;
 }
@@ -515,9 +515,9 @@ VIDEO_UPDATE( ldrun )
 	tilemap_set_scrolly( m62_background, 0, m62_background_vscroll );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x0f, 0x10, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x10 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x0f, 0x10, 0x10 );
 	return 0;
 }
 
@@ -595,9 +595,9 @@ VIDEO_UPDATE( battroad )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x0f, 0x10, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x0f, 0x10, 0x10 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x0f, 0x10, 0x10 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
 }
@@ -625,7 +625,7 @@ VIDEO_UPDATE( ldrun4 )
 	tilemap_set_scrollx( m62_background, 0, m62_background_hscroll );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	return 0;
 }
 
@@ -669,7 +669,7 @@ VIDEO_UPDATE( lotlot )
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	return 0;
 }
 
@@ -726,7 +726,7 @@ VIDEO_UPDATE( kidniki )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, TILEMAP_DRAW_LAYER1, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, TILEMAP_DRAW_LAYER0, 0 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
@@ -734,7 +734,7 @@ VIDEO_UPDATE( kidniki )
 
 VIDEO_START( kidniki )
 {
-	m62_background = tilemap_create( get_kidniki_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32 );
+	m62_background = tilemap_create( get_kidniki_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32 );
 
 	m62_background_hscroll = 0;
 	m62_background_vscroll = 0;
@@ -786,7 +786,7 @@ VIDEO_UPDATE( spelunkr )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
 }
@@ -800,8 +800,8 @@ VIDEO_START( spelunkr )
 
 WRITE8_HANDLER( spelunk2_gfxport_w )
 {
-	m62_hscroll_high_w(0,(data&2)>>1);
-	m62_vscroll_high_w(0,(data&1));
+	m62_hscroll_high_w(machine,0,(data&2)>>1);
+	m62_vscroll_high_w(machine,0,(data&1));
 	if (spelunkr_palbank != ((data & 0x0c) >> 2))
 	{
 		spelunkr_palbank = (data & 0x0c) >> 2;
@@ -828,7 +828,7 @@ VIDEO_UPDATE( spelunk2 )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
 }
@@ -874,7 +874,7 @@ VIDEO_UPDATE( youjyudn )
 	tilemap_set_transparent_pen( m62_foreground, 0 );
 
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
 	tilemap_draw( bitmap, cliprect, m62_foreground, 0, 0 );
 	return 0;
@@ -917,7 +917,7 @@ VIDEO_UPDATE( horizon )
 		tilemap_set_scrollx( m62_background, i, horizon_scrollram[ i << 1 ] | ( horizon_scrollram[ ( i << 1 ) | 1 ] << 8 ) );
 	}
 	tilemap_draw( bitmap, cliprect, m62_background, 0, 0 );
-	draw_sprites( machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
+	draw_sprites( screen->machine, bitmap, cliprect, 0x1f, 0x00, 0x00 );
 	tilemap_draw( bitmap, cliprect, m62_background, 1, 0 );
 	return 0;
 }

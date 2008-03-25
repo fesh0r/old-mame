@@ -62,7 +62,7 @@ static MACHINE_RESET( suprgolf )
 
 static VIDEO_START( suprgolf )
 {
-	suprgolf_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32 );
+	suprgolf_tilemap = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,32,32 );
 }
 
 static VIDEO_UPDATE( suprgolf )
@@ -77,10 +77,10 @@ static VIDEO_UPDATE( suprgolf )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE( rom2_bank_select_w )
 
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK2)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK2)
 
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
 	AM_RANGE(0xd000, 0xdfff) AM_RAM
@@ -96,7 +96,7 @@ static READ8_HANDLER( suprgolf_random )
 }
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r) // Player 1 controls
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r) // Player 2 controls
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r) // ??
@@ -291,21 +291,21 @@ static MACHINE_DRIVER_START( suprgolf )
 	MDRV_CPU_ADD(Z80,4000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_VIDEO_START(suprgolf)
 	MDRV_VIDEO_UPDATE(suprgolf)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(suprgolf)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 191)
+
 	MDRV_GFXDECODE(suprgolf)
 	MDRV_PALETTE_LENGTH(512)
 

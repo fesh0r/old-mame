@@ -417,14 +417,13 @@ static VIDEO_START(jchan)
 	skns_spc_regs = auto_malloc (0x40);
 }
 
-extern void skns_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect );
+extern void skns_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect );
 
 
 static VIDEO_UPDATE(jchan)
 {
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
-
-	skns_draw_sprites(machine,bitmap,cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
+	skns_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -595,11 +594,11 @@ static ADDRESS_MAP_START( jchan_sub, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400002, 0x403fff) AM_RAM
 
 	/* VIEW2 Tilemap - [D] grid tested, cleared ($1d84), also cleared at startup ($810-$826) */
-	AM_RANGE(0x500000, 0x500fff) AM_RAM // AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1) // Layers 0
-	AM_RANGE(0x501000, 0x501fff) AM_RAM // AM_READWRITE(MRA16_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0) //
+	AM_RANGE(0x500000, 0x500fff) AM_RAM // AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1) // Layers 0
+	AM_RANGE(0x501000, 0x501fff) AM_RAM // AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0) //
 	AM_RANGE(0x502000, 0x502fff) AM_RAM // AM_RAM AM_BASE(&kaneko16_vscroll_1)                                  //
 	AM_RANGE(0x503000, 0x503fff) AM_RAM // AM_RAM AM_BASE(&kaneko16_vscroll_0)                                  //
-	AM_RANGE(0x600000, 0x60001f) AM_RAM // AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)   // Layers 0 Regs
+	AM_RANGE(0x600000, 0x60001f) AM_RAM // AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)   // Layers 0 Regs
 
 	/* 2nd sprite layer? - [C] grid tested, cleared ($1e2a), also cleared at startup ($7dc-$80a) */
 	AM_RANGE(0x700000, 0x703fff) AM_RAM // AM_BASE(&jchan_spriteram) AM_WRITE(jchan_suprnova_sprite32_w)
@@ -749,17 +748,17 @@ static MACHINE_DRIVER_START( jchan )
 
 	MDRV_CPU_ADD(M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(jchan_main,0)
-	MDRV_CPU_VBLANK_INT(jchan_vblank, 2)
+	MDRV_CPU_VBLANK_INT_HACK(jchan_vblank, 2)
 
 	MDRV_CPU_ADD(M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(jchan_sub,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_GFXDECODE(jchan)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)

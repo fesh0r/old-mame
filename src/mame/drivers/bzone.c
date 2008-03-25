@@ -311,7 +311,7 @@ static READ8_HANDLER( redbaron_joy_r )
  *************************************/
 
 static ADDRESS_MAP_START( bzone_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0800, 0x0800) AM_READ(bzone_IN0_r)    /* IN0 */
 	AM_RANGE(0x0a00, 0x0a00) AM_READ(input_port_1_r)	/* DSW1 */
@@ -331,12 +331,12 @@ static ADDRESS_MAP_START( bzone_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( redbaron_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0800, 0x0800) AM_READ(bzone_IN0_r)    /* IN0 */
 	AM_RANGE(0x0a00, 0x0a00) AM_READ(input_port_1_r)	/* DSW1 */
 	AM_RANGE(0x0c00, 0x0c00) AM_READ(input_port_2_r)	/* DSW2 */
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(MWA8_NOP)			/* coin out */
+	AM_RANGE(0x1000, 0x1000) AM_WRITE(SMH_NOP)			/* coin out */
 	AM_RANGE(0x1200, 0x1200) AM_WRITE(avgdvg_go_w)
 	AM_RANGE(0x1400, 0x1400) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x1600, 0x1600) AM_WRITE(avgdvg_reset_w)
@@ -345,7 +345,7 @@ static ADDRESS_MAP_START( redbaron_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1804, 0x1804) AM_READ(mb_lo_r)
 	AM_RANGE(0x1806, 0x1806) AM_READ(mb_hi_r)
 	AM_RANGE(0x1808, 0x1808) AM_WRITE(redbaron_sounds_w)	/* and select joystick pot also */
-	AM_RANGE(0x180a, 0x180a) AM_WRITE(MWA8_NOP)			/* sound reset, yet todo */
+	AM_RANGE(0x180a, 0x180a) AM_WRITE(SMH_NOP)			/* sound reset, yet todo */
 	AM_RANGE(0x180c, 0x180c) AM_WRITE(atari_vg_earom_ctrl_w)
 	AM_RANGE(0x1810, 0x181f) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x1820, 0x185f) AM_READWRITE(atari_vg_earom_r, atari_vg_earom_w)
@@ -579,17 +579,13 @@ static MACHINE_DRIVER_START( bzone )
 	MDRV_CPU_PROGRAM_MAP(bzone_map,0)
 	MDRV_CPU_PERIODIC_INT(bzone_interrupt, (double)MASTER_CLOCK / 4096 / 12)
 
-	MDRV_SCREEN_REFRESH_RATE(40)
-	MDRV_SCREEN_VBLANK_TIME(0)
-
 	MDRV_MACHINE_START(bzone)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_REFRESH_RATE(40)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(0, 580, 0, 400)
-	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(avg_bzone)
 	MDRV_VIDEO_UPDATE(vector)
@@ -629,10 +625,11 @@ static MACHINE_DRIVER_START( redbaron )
 
 	MDRV_MACHINE_START(redbaron)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_NVRAM_HANDLER(atari_vg)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VISIBLE_AREA(0, 520, 0, 400)
 
 	MDRV_VIDEO_START(avg_bzone)
@@ -816,7 +813,7 @@ static WRITE8_HANDLER( analog_select_w )
 
 static DRIVER_INIT( bradley )
 {
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x400, 0x7ff, 0, 0, MRA8_BANK1, MWA8_BANK1);
+	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x400, 0x7ff, 0, 0, SMH_BANK1, SMH_BANK1);
 	memory_set_bankptr(1, auto_malloc(0x400));
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1808, 0x1808, 0, 0, input_port_4_r);

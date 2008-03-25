@@ -137,7 +137,7 @@ static READ8_HANDLER( toypop_sound_sharedram_r )
 static WRITE8_HANDLER( toypop_sound_sharedram_w )
 {
 	if (offset < 0x40)
-		namco_15xx_w(offset,data);
+		namco_15xx_w(machine,offset,data);
 	else
 		namco_soundregs[offset] = data;
 }
@@ -252,30 +252,30 @@ static WRITE16_HANDLER( toypop_m68000_interrupt_disable_w )
  *************************************/
 
 static ADDRESS_MAP_START( readmem_mainCPU_liblrabl, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_READ(MRA8_RAM)								/* RAM everywhere else */
+	AM_RANGE(0x0000, 0x2fff) AM_READ(SMH_RAM)								/* RAM everywhere else */
 	AM_RANGE(0x6000, 0x63ff) AM_READ(toypop_sound_sharedram_r)				/* shared RAM with sound CPU */
 	AM_RANGE(0x6800, 0x683f) AM_READ(namcoio_r)								/* custom I/O */
 	AM_RANGE(0x7800, 0x7800) AM_READ(watchdog_reset_r)						/* not sure; this is NOT irq enable (game crashes otherwise) */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)								/* ROM code */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)								/* ROM code */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_mainCPU_toypop, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_READ(MRA8_RAM)								/* RAM everywhere else */
+	AM_RANGE(0x0000, 0x2fff) AM_READ(SMH_RAM)								/* RAM everywhere else */
 	AM_RANGE(0x6000, 0x603f) AM_READ(namcoio_r)								/* custom I/O */
 	AM_RANGE(0x6800, 0x6bff) AM_READ(toypop_sound_sharedram_r)				/* shared RAM with sound CPU */
 	AM_RANGE(0x7000, 0x7000) AM_READ(toypop_main_interrupt_enable_r)			/* enable interrupt?? */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)								/* ROM code */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)								/* ROM code */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_mainCPU_liblrabl, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(toypop_videoram_w) AM_BASE(&toypop_videoram)	/* video RAM */
-	AM_RANGE(0x0800, 0x0f7f) AM_WRITE(MWA8_RAM)								/* general RAM, area 1 */
-	AM_RANGE(0x0f80, 0x0fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)					/* sprite RAM, area 1 */
-	AM_RANGE(0x1000, 0x177f) AM_WRITE(MWA8_RAM)								/* general RAM, area 2 */
-	AM_RANGE(0x1780, 0x17ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)					/* sprite RAM, area 2 */
-	AM_RANGE(0x1800, 0x1f7f) AM_WRITE(MWA8_RAM)								/* general RAM, area 3 */
-	AM_RANGE(0x1f80, 0x1fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_3)					/* sprite RAM, area 3 */
-	AM_RANGE(0x2800, 0x2fff) AM_WRITE(MWA8_RAM) AM_BASE(&toypop_m68000_sharedram)		/* shared RAM with the 68000 CPU */
+	AM_RANGE(0x0800, 0x0f7f) AM_WRITE(SMH_RAM)								/* general RAM, area 1 */
+	AM_RANGE(0x0f80, 0x0fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)					/* sprite RAM, area 1 */
+	AM_RANGE(0x1000, 0x177f) AM_WRITE(SMH_RAM)								/* general RAM, area 2 */
+	AM_RANGE(0x1780, 0x17ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)					/* sprite RAM, area 2 */
+	AM_RANGE(0x1800, 0x1f7f) AM_WRITE(SMH_RAM)								/* general RAM, area 3 */
+	AM_RANGE(0x1f80, 0x1fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_3)					/* sprite RAM, area 3 */
+	AM_RANGE(0x2800, 0x2fff) AM_WRITE(SMH_RAM) AM_BASE(&toypop_m68000_sharedram)		/* shared RAM with the 68000 CPU */
 	AM_RANGE(0x6000, 0x63ff) AM_WRITE(toypop_sound_sharedram_w)				/* shared RAM with sound CPU */
 	AM_RANGE(0x6800, 0x683f) AM_WRITE(namcoio_w)								/* custom I/O */
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(toypop_main_interrupt_enable_w)			/* enable interrupt */
@@ -285,18 +285,18 @@ static ADDRESS_MAP_START( writemem_mainCPU_liblrabl, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(toypop_sound_clear_w)					/* sound CPU reset */
 	AM_RANGE(0x9800, 0x9800) AM_WRITE(toypop_sound_assert_w)					/* sound CPU reset */
 	AM_RANGE(0xa000, 0xa001) AM_WRITE(toypop_palettebank_w)					/* background image palette */
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)								/* ROM code */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)								/* ROM code */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_mainCPU_toypop, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(toypop_videoram_w) AM_BASE(&toypop_videoram)	/* video RAM */
-	AM_RANGE(0x0800, 0x0f7f) AM_WRITE(MWA8_RAM)								/* general RAM, area 1 */
-	AM_RANGE(0x0f80, 0x0fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)					/* sprite RAM, area 1 */
-	AM_RANGE(0x1000, 0x177f) AM_WRITE(MWA8_RAM)								/* general RAM, area 2 */
-	AM_RANGE(0x1780, 0x17ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)					/* sprite RAM, area 2 */
-	AM_RANGE(0x1800, 0x1f7f) AM_WRITE(MWA8_RAM)								/* general RAM, area 3 */
-	AM_RANGE(0x1f80, 0x1fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_3)					/* sprite RAM, area 3 */
-	AM_RANGE(0x2800, 0x2fff) AM_WRITE(MWA8_RAM) AM_BASE(&toypop_m68000_sharedram)		/* shared RAM with the 68000 CPU */
+	AM_RANGE(0x0800, 0x0f7f) AM_WRITE(SMH_RAM)								/* general RAM, area 1 */
+	AM_RANGE(0x0f80, 0x0fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)					/* sprite RAM, area 1 */
+	AM_RANGE(0x1000, 0x177f) AM_WRITE(SMH_RAM)								/* general RAM, area 2 */
+	AM_RANGE(0x1780, 0x17ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2)					/* sprite RAM, area 2 */
+	AM_RANGE(0x1800, 0x1f7f) AM_WRITE(SMH_RAM)								/* general RAM, area 3 */
+	AM_RANGE(0x1f80, 0x1fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_3)					/* sprite RAM, area 3 */
+	AM_RANGE(0x2800, 0x2fff) AM_WRITE(SMH_RAM) AM_BASE(&toypop_m68000_sharedram)		/* shared RAM with the 68000 CPU */
 	AM_RANGE(0x6000, 0x603f) AM_WRITE(namcoio_w)								/* custom I/O */
 	AM_RANGE(0x6800, 0x6bff) AM_WRITE(toypop_sound_sharedram_w)				/* shared RAM with sound CPU */
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(toypop_main_interrupt_disable_w)		/* disable interrupt */
@@ -305,7 +305,7 @@ static ADDRESS_MAP_START( writemem_mainCPU_toypop, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(toypop_sound_clear_w)					/* sound CPU reset */
 	AM_RANGE(0x9800, 0x9800) AM_WRITE(toypop_sound_assert_w)					/* sound CPU reset */
 	AM_RANGE(0xa000, 0xa001) AM_WRITE(toypop_palettebank_w)					/* background image palette */
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)								/* ROM code */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)								/* ROM code */
 ADDRESS_MAP_END
 
 
@@ -317,7 +317,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_soundCPU, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_READ(toypop_sound_sharedram_r)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_soundCPU, ADDRESS_SPACE_PROGRAM, 8 )
@@ -325,7 +325,7 @@ static ADDRESS_MAP_START( writemem_soundCPU, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(toypop_sound_interrupt_disable_w)	/* ??? toypop doesn't write here */
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(toypop_sound_interrupt_enable_acknowledge_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -337,20 +337,20 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( readmem_68k, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x007fff) AM_READ(MRA16_ROM)				// ROM code
-	AM_RANGE(0x080000, 0x0bffff) AM_READ(MRA16_RAM)				// RAM
+	AM_RANGE(0x000000, 0x007fff) AM_READ(SMH_ROM)				// ROM code
+	AM_RANGE(0x080000, 0x0bffff) AM_READ(SMH_RAM)				// RAM
 	AM_RANGE(0x100000, 0x100fff) AM_READ(toypop_m68000_sharedram_r)	// shared RAM with the main CPU
 	AM_RANGE(0x180000, 0x187fff) AM_READ(toypop_merged_background_r)	// RAM merged with the background image
-	AM_RANGE(0x190000, 0x1dffff) AM_READ(MRA16_RAM)				// RAM containing the background image
+	AM_RANGE(0x190000, 0x1dffff) AM_READ(SMH_RAM)				// RAM containing the background image
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_68k, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x007fff) AM_WRITE(MWA16_ROM)						/* ROM code */
-	AM_RANGE(0x080000, 0x0bffff) AM_WRITE(MWA16_RAM)						/* RAM */
+	AM_RANGE(0x000000, 0x007fff) AM_WRITE(SMH_ROM)						/* ROM code */
+	AM_RANGE(0x080000, 0x0bffff) AM_WRITE(SMH_RAM)						/* RAM */
 	AM_RANGE(0x100000, 0x100fff) AM_WRITE(toypop_m68000_sharedram_w)		/* shared RAM with the main CPU */
 	AM_RANGE(0x180000, 0x187fff) AM_WRITE(toypop_merged_background_w)		/* RAM that has to be merged with the background image */
 	AM_RANGE(0x18fffc, 0x18ffff) AM_WRITE(toypop_flipscreen_w)			/* flip mode */
-	AM_RANGE(0x190000, 0x1dffff) AM_WRITE(MWA16_RAM) AM_BASE(&toypop_bg_image)			/* RAM containing the background image */
+	AM_RANGE(0x190000, 0x1dffff) AM_WRITE(SMH_RAM) AM_BASE(&toypop_bg_image)			/* RAM containing the background image */
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(toypop_m68000_interrupt_enable_w)		/* interrupt enable */
 	AM_RANGE(0x380000, 0x380001) AM_WRITE(toypop_m68000_interrupt_disable_w)		/* interrupt disable */
 ADDRESS_MAP_END
@@ -571,28 +571,29 @@ static MACHINE_DRIVER_START( liblrabl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6809, 1536000)	/* 1.536 MHz (measured on Libble Rabble board) */
 	MDRV_CPU_PROGRAM_MAP(readmem_mainCPU_liblrabl,writemem_mainCPU_liblrabl)
-	MDRV_CPU_VBLANK_INT(toypop_main_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", toypop_main_interrupt)
 
 	MDRV_CPU_ADD(M6809, 1536000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_soundCPU,writemem_soundCPU)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_CPU_ADD(M68000, 6144000)	/* 6.144 MHz (measured on Libble Rabble board) */
 	MDRV_CPU_PROGRAM_MAP(readmem_68k,writemem_68k)
-	MDRV_CPU_VBLANK_INT(toypop_m68000_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", toypop_m68000_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)    /* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 	MDRV_MACHINE_RESET(toypop)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(toypop)
 	MDRV_PALETTE_LENGTH(128*4+64*4+16*2)
 

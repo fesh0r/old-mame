@@ -1007,7 +1007,7 @@ static WRITE8_HANDLER( blitter_w )
 		else
 		{
 			blitter_busy = 1;
-			timer_adjust(blitter_reset_timer, ATTOTIME_IN_CYCLES(100, 0), 0, attotime_zero); // free blitter if no updates in 100 cycles
+			timer_adjust_oneshot(blitter_reset_timer, ATTOTIME_IN_CYCLES(100, 0), 0); // free blitter if no updates in 100 cycles
 		}
 	}
 }
@@ -1202,7 +1202,7 @@ static VIDEO_START( halleys )
 }
 
 
-static void copy_scroll_op(mame_bitmap *bitmap, UINT16 *source, int sx, int sy)
+static void copy_scroll_op(bitmap_t *bitmap, UINT16 *source, int sx, int sy)
 {
 
 //--------------------------------------------------------------------------
@@ -1240,7 +1240,7 @@ static void copy_scroll_op(mame_bitmap *bitmap, UINT16 *source, int sx, int sy)
 }
 
 
-static void copy_scroll_xp(mame_bitmap *bitmap, UINT16 *source, int sx, int sy)
+static void copy_scroll_xp(bitmap_t *bitmap, UINT16 *source, int sx, int sy)
 {
 
 //--------------------------------------------------------------------------
@@ -1296,7 +1296,7 @@ static void copy_scroll_xp(mame_bitmap *bitmap, UINT16 *source, int sx, int sy)
 
 
 
-static void copy_fixed_xp(mame_bitmap *bitmap, UINT16 *source)
+static void copy_fixed_xp(bitmap_t *bitmap, UINT16 *source)
 {
 	UINT16 *esi, *edi;
 	int dst_pitch, ecx, edx;
@@ -1331,7 +1331,7 @@ static void copy_fixed_xp(mame_bitmap *bitmap, UINT16 *source)
 }
 
 
-static void copy_fixed_2b(mame_bitmap *bitmap, UINT16 *source)
+static void copy_fixed_2b(bitmap_t *bitmap, UINT16 *source)
 {
 	UINT16 *esi, *edi;
 	int dst_pitch, ecx, edx;
@@ -1378,7 +1378,7 @@ static void copy_fixed_2b(mame_bitmap *bitmap, UINT16 *source)
 }
 
 
-static void filter_bitmap(mame_bitmap *bitmap, int mask)
+static void filter_bitmap(bitmap_t *bitmap, int mask)
 {
 	int dst_pitch;
 
@@ -1499,7 +1499,7 @@ static INTERRUPT_GEN( halleys_interrupt )
 				latch_data = sound_fifo[fftail];
 				fftail = (fftail + 1) & (MAX_SOUNDS - 1);
 				latch_delay = (latch_data) ? 0 : 4;
-				soundlatch_w(0, latch_data);
+				soundlatch_w(machine, 0, latch_data);
 				cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 			}
 
@@ -1539,7 +1539,7 @@ static INTERRUPT_GEN( benberob_interrupt )
 				latch_data = sound_fifo[fftail];
 				fftail = (fftail + 1) & (MAX_SOUNDS - 1);
 				latch_delay = (latch_data) ? 0 : 4;
-				soundlatch_w(0, latch_data);
+				soundlatch_w(machine, 0, latch_data);
 				cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 			}
 		break;
@@ -1614,8 +1614,8 @@ static READ8_HANDLER( io_mirror_r )
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_READ(blitter_r)
-	AM_RANGE(0x1000, 0xefff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf000, 0xfeff) AM_READ(MRA8_RAM)        // work ram
+	AM_RANGE(0x1000, 0xefff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf000, 0xfeff) AM_READ(SMH_RAM)        // work ram
 
 	AM_RANGE(0xff66, 0xff66) AM_READ(collision_id_r) // HACK: collision detection bypass(Halley's Comet only)
 	AM_RANGE(0xff71, 0xff71) AM_READ(blitter_status_r)
@@ -1628,9 +1628,9 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xff95, 0xff95) AM_READ(input_port_0_r) // dipswitch 4
 	AM_RANGE(0xff96, 0xff96) AM_READ(input_port_1_r) // dipswitch 3
 	AM_RANGE(0xff97, 0xff97) AM_READ(input_port_2_r) // dipswitch 2
-	AM_RANGE(0xff00, 0xffbf) AM_READ(MRA8_RAM)        // I/O read fall-through
+	AM_RANGE(0xff00, 0xffbf) AM_READ(SMH_RAM)        // I/O read fall-through
 
-	AM_RANGE(0xffc0, 0xffdf) AM_READ(MRA8_RAM)        // palette read
+	AM_RANGE(0xffc0, 0xffdf) AM_READ(SMH_RAM)        // palette read
 	AM_RANGE(0xffe0, 0xffff) AM_READ(vector_r)
 ADDRESS_MAP_END
 
@@ -1638,39 +1638,39 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(blitter_w) AM_BASE(&blitter_ram) AM_SIZE(&blitter_ramsize)
 	AM_RANGE(0x1f00, 0x1fff) AM_WRITE(bgtile_w)       // background tiles?(Ben Bero Beh only)
-	AM_RANGE(0x1000, 0xefff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf000, 0xfeff) AM_WRITE(MWA8_RAM)        // work ram
+	AM_RANGE(0x1000, 0xefff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xf000, 0xfeff) AM_WRITE(SMH_RAM)        // work ram
 
 	AM_RANGE(0xff8a, 0xff8a) AM_WRITE(soundcommand_w)
 	AM_RANGE(0xff9c, 0xff9c) AM_WRITE(firq_ack_w)
-	AM_RANGE(0xff00, 0xffbf) AM_WRITE(MWA8_RAM) AM_BASE(&io_ram) AM_SIZE(&io_ramsize) // I/O write fall-through
+	AM_RANGE(0xff00, 0xffbf) AM_WRITE(SMH_RAM) AM_BASE(&io_ram) AM_SIZE(&io_ramsize) // I/O write fall-through
 
 	AM_RANGE(0xffc0, 0xffdf) AM_WRITE(halleys_paletteram_IIRRGGBB_w) AM_BASE(&paletteram)
-	AM_RANGE(0xffe0, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xffe0, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x47ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x4801, 0x4801) AM_READ(AY8910_read_port_1_r)
 	AM_RANGE(0x4803, 0x4803) AM_READ(AY8910_read_port_2_r)
 	AM_RANGE(0x4805, 0x4805) AM_READ(AY8910_read_port_3_r)
 	AM_RANGE(0x5000, 0x5000) AM_READ(soundlatch_r)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_ROM) // space for diagnostic ROM
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_ROM) // space for diagnostic ROM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x47ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x4800, 0x4800) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0x4801, 0x4801) AM_WRITE(AY8910_write_port_1_w)
 	AM_RANGE(0x4802, 0x4802) AM_WRITE(AY8910_control_port_2_w)
 	AM_RANGE(0x4803, 0x4803) AM_WRITE(AY8910_write_port_2_w)
 	AM_RANGE(0x4804, 0x4804) AM_WRITE(AY8910_control_port_3_w)
 	AM_RANGE(0x4805, 0x4805) AM_WRITE(AY8910_write_port_3_w)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xe000, 0xefff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -1948,21 +1948,21 @@ static const struct AY8910interface ay8910_interface =
 
 
 static MACHINE_DRIVER_START( halleys )
-	MDRV_CPU_ADD_TAG("main", M6809, 1664000) /* 19968000/12 (verified on pcb) */
+	MDRV_CPU_ADD_TAG("main", M6809, XTAL_19_968MHz/12) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_VBLANK_INT(halleys_interrupt, 4)
+	MDRV_CPU_VBLANK_INT_HACK(halleys_interrupt, 4)
 
-	MDRV_CPU_ADD(Z80, 6000000/2) /* (verified on pcb) */
-	/* audio CPU */
+	MDRV_CPU_ADD(Z80, XTAL_6MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, (double)6000000/(4*16*16*10*16))
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(halleys)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(VIS_MINX, VIS_MAXX, VIS_MINY, VIS_MAXY)
@@ -1976,16 +1976,16 @@ static MACHINE_DRIVER_START( halleys )
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 6000000/4) /* (verified on pcb) */
+	MDRV_SOUND_ADD(AY8910, XTAL_6MHz/4) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 6000000/4)
+	MDRV_SOUND_ADD(AY8910, XTAL_6MHz/4) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 6000000/4)
+	MDRV_SOUND_ADD(AY8910, XTAL_6MHz/4) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
-	MDRV_SOUND_ADD(AY8910, 6000000/4)
+	MDRV_SOUND_ADD(AY8910, XTAL_6MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 MACHINE_DRIVER_END
@@ -1993,8 +1993,8 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( benberob )
 	MDRV_IMPORT_FROM(halleys)
-	MDRV_CPU_REPLACE("main", M6809, 1000000) // 19.968MHz/20? (CAUTION: timing critical)
-	MDRV_CPU_VBLANK_INT(benberob_interrupt, 4)
+	MDRV_CPU_REPLACE("main", M6809, XTAL_19_968MHz/12) /* not verified but pcb identical to halley's comet */
+	MDRV_CPU_VBLANK_INT_HACK(benberob_interrupt, 4)
 	MDRV_VIDEO_UPDATE(benberob)
 MACHINE_DRIVER_END
 

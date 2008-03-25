@@ -1201,13 +1201,13 @@ static TIMER_CALLBACK( run_state_machine )
 
 		/* If halt flag was set, let CPU catch up before we make halt visible */
 		if (vg->halt && !(vg->state_latch & 0x10))
-			timer_adjust(vg_halt_timer, attotime_mul(ATTOTIME_IN_HZ(MASTER_CLOCK), cycles), 1, attotime_zero);
+			timer_adjust_oneshot(vg_halt_timer, attotime_mul(ATTOTIME_IN_HZ(MASTER_CLOCK), cycles), 1);
 
 		vg->state_latch = (vg->halt << 4) | (vg->state_latch & 0xf);
 		cycles += 8;
 	}
 
-	timer_adjust(vg_run_timer, attotime_mul(ATTOTIME_IN_HZ(MASTER_CLOCK), cycles), 0, attotime_zero);
+	timer_adjust_oneshot(vg_run_timer, attotime_mul(ATTOTIME_IN_HZ(MASTER_CLOCK), cycles), 0);
 }
 
 
@@ -1237,12 +1237,12 @@ WRITE8_HANDLER( avgdvg_go_w )
 
 	vgc->vggo(vg);
 	vg_set_halt(0);
-	timer_adjust(vg_run_timer, attotime_zero, 0, attotime_zero);
+	timer_adjust_oneshot(vg_run_timer, attotime_zero, 0);
 }
 
 WRITE16_HANDLER( avgdvg_go_word_w )
 {
-	avgdvg_go_w(offset, data);
+	avgdvg_go_w(machine, offset, data);
 }
 
 
@@ -1260,12 +1260,12 @@ WRITE8_HANDLER( avgdvg_reset_w )
 
 WRITE16_HANDLER( avgdvg_reset_word_w )
 {
-	avgdvg_reset_w (0,0);
+	avgdvg_reset_w (machine,0,0);
 }
 
 MACHINE_RESET( avgdvg )
 {
-	avgdvg_reset_w (0,0);
+	avgdvg_reset_w (machine,0,0);
 }
 
 
@@ -1445,10 +1445,12 @@ static void register_state (void)
 
 static VIDEO_START( avg_common )
 {
-	xmin = machine->screen[0].visarea.min_x;
-	ymin = machine->screen[0].visarea.min_y;
-	xmax = machine->screen[0].visarea.max_x;
-	ymax = machine->screen[0].visarea.max_y;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+
+	xmin = visarea->min_x;
+	ymin = visarea->min_y;
+	xmax = visarea->max_x;
+	ymax = visarea->max_y;
 
 	xcenter = ((xmax - xmin) / 2) << 16;
 	ycenter = ((ymax - ymin) / 2) << 16;
@@ -1472,11 +1474,13 @@ static VIDEO_START( avg_common )
 
 VIDEO_START( dvg )
 {
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+
 	vgc = &dvg_default;
 	vg = &vgd;
 
-	xmin = machine->screen[0].visarea.min_x;
-	ymin = machine->screen[0].visarea.min_y;
+	xmin = visarea->min_x;
+	ymin = visarea->min_y;
 
 	vg_halt_timer = timer_alloc(vg_set_halt_callback, NULL);
 	vg_run_timer = timer_alloc(run_state_machine, NULL);

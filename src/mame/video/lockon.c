@@ -32,7 +32,6 @@ size_t	lockon_hudram_size;
 size_t	lockon_objectram_size;
 size_t	lockon_groundram_size;
 
-UINT8	*obj_pal_ram;
 
 /*************************************
  *
@@ -45,8 +44,8 @@ static UINT8	ground_ctrl;
 static UINT16	scroll_h;
 static UINT16	scroll_v;
 
-static mame_bitmap	*front_buffer;
-static mame_bitmap	*back_buffer;
+static bitmap_t	*front_buffer;
+static bitmap_t	*back_buffer;
 static emu_timer	*bufend_timer;
 static emu_timer	*cursor_timer;
 
@@ -62,6 +61,7 @@ static UINT16	dyll;
 
 /* Object palette RAM control */
 static UINT32	iden;
+static UINT8	*obj_pal_ram;
 static UINT32	obj_pal_latch;
 static UINT32	obj_pal_addr;
 
@@ -118,7 +118,7 @@ static TIMER_CALLBACK( cursor_callback )
 	if (lockon_main_inten)
 		cpunum_set_input_line_and_vector(machine, MAIN_CPU, 0, HOLD_LINE, 0xff);
 
-	timer_adjust(cursor_timer, video_screen_get_time_until_pos(0, CURSOR_YPOS, CURSOR_XPOS), 0, attotime_zero);
+	timer_adjust_oneshot(cursor_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
 
 /*************************************
@@ -283,7 +283,7 @@ static void scene_draw(void)
 				 | (((d1 >> x_gran) & 1) << 1)
 				 | ( (d0 >> x_gran) & 1);
 
-			*bmpaddr++ = Machine->pens[0xa00 + col];
+			*bmpaddr++ = 0xa00 + col;
 
 			x_offs = (x_offs + 1) & 0x1ff;
 		}
@@ -411,7 +411,7 @@ static void ground_draw(void)
 				color += ((rom_data2 >> gpbal2_0) & 0x1) << 1;
 				color += ((rom_data3 >> gpbal2_0) & 0x1) << 2;
 
-				*bmpaddr++ = Machine->pens[0x800 + color];
+				*bmpaddr++ = 0x800 + color;
 
 				/* Update the counters */
 				tz2213_cy = (UINT8)tz2213_dx > (UINT8)~(tz2213_x);
@@ -428,7 +428,7 @@ static void ground_draw(void)
 		/* End of list marker */
 		if (lockon_ground_ram[offs + 2] & 0x8000)
 		{
-			timer_adjust(bufend_timer, attotime_mul(ATTOTIME_IN_HZ(FRAMEBUFFER_CLOCK), FRAMEBUFFER_MAX_X * y), 0, attotime_zero);
+			timer_adjust_oneshot(bufend_timer, attotime_mul(ATTOTIME_IN_HZ(FRAMEBUFFER_CLOCK), FRAMEBUFFER_MAX_X * y), 0);
 		}
 	}
 }
@@ -468,7 +468,7 @@ do {                                                     \
 		UINT8 clr = obj_pal_ram[(pal << 4) + COLOR];     \
 		UINT16 *pix = (line + px);						 \
 		if (!(clr == 0xff && ((*pix & 0xe00) == 0xa00))) \
-			*pix = Machine->pens[0x400 + clr];			 \
+			*pix = 0x400 + clr;			 \
 	}                                                    \
 	px = (px + 1) & 0x7ff;                               \
 } while(0)
@@ -730,7 +730,7 @@ do {                                     \
 	if (carry) --CNT;                    \
 } while(0)
 
-static void rotate_draw(mame_bitmap *bitmap, const rectangle *cliprect)
+static void rotate_draw(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT32 y;
 
@@ -834,7 +834,7 @@ static void rotate_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 
 *******************************************************************************************/
 
-static void hud_draw(mame_bitmap *bitmap, const rectangle *cliprect)
+static void hud_draw(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT8	*tile_rom = memory_region(REGION_GFX3);
 	UINT32	offs;
@@ -859,7 +859,7 @@ static void hud_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 		x_pos	= lockon_hud_ram[offs + 1] & 0x1ff;
 		x_size	= (lockon_hud_ram[offs + 1] >> 12) & 7;
 		code	= (lockon_hud_ram[offs] >> 9) & 0x7f;
-		colour	= Machine->pens[0x200 + ((lockon_hud_ram[offs + 1] >> 9) & 7)];
+		colour	= 0x200 + ((lockon_hud_ram[offs + 1] >> 9) & 7);
 		layout	= (code >> 5) & 3;
 
 		rom_a12_7 = (code & 0xfe) << 6;
@@ -935,7 +935,7 @@ static void hud_draw(mame_bitmap *bitmap, const rectangle *cliprect)
 
 VIDEO_START( lockon )
 {
-	lockon_tilemap = tilemap_create(get_lockon_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+	lockon_tilemap = tilemap_create(get_lockon_tile_info, tilemap_scan_rows, 8, 8, 64, 32);
 	tilemap_set_transparent_pen(lockon_tilemap, 0);
 
 	/* Allocate the two frame buffers for rotation */
@@ -950,7 +950,7 @@ VIDEO_START( lockon )
 
 	/* Timer for the CRTC cursor pulse */
 	cursor_timer = timer_alloc(cursor_callback, NULL);
-	timer_adjust(cursor_timer, video_screen_get_time_until_pos(0, CURSOR_YPOS, CURSOR_XPOS), 0, attotime_zero);
+	timer_adjust_oneshot(cursor_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
 
 VIDEO_UPDATE( lockon )
@@ -958,7 +958,7 @@ VIDEO_UPDATE( lockon )
 	/* If screen output is disabled, fill with black */
 	if ( !BIT(lockon_ctrl_reg, 7) )
 	{
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 		return 0;
 	}
 
@@ -977,7 +977,7 @@ VIDEO_UPDATE( lockon )
 VIDEO_EOF( lockon )
 {
 	/* Swap the frame buffers */
-	mame_bitmap *tmp = front_buffer;
+	bitmap_t *tmp = front_buffer;
 	front_buffer = back_buffer;
 	back_buffer = tmp;
 

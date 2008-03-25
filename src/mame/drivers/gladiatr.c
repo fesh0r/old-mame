@@ -309,14 +309,14 @@ static WRITE8_HANDLER( glad_adpcm_w )
 
 static WRITE8_HANDLER( glad_cpu_sound_command_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, ASSERT_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 static READ8_HANDLER( glad_cpu_sound_command_r )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
-	return soundlatch_r(0);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
+	return soundlatch_r(machine,0);
 }
 
 static WRITE8_HANDLER( gladiatr_flipscreen_w )
@@ -386,10 +386,10 @@ static ADDRESS_MAP_START( ppking_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xcbff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0xcc00, 0xcfff) AM_WRITE(ppking_video_registers_w)
-	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(MRA8_RAM, gladiatr_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(MRA8_RAM, gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(MRA8_RAM, gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, gladiatr_textram_w) AM_BASE(&gladiatr_textram)
+	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(SMH_RAM, gladiatr_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(SMH_RAM, gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
+	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, gladiatr_textram_w) AM_BASE(&gladiatr_textram)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* battery backed RAM */
 ADDRESS_MAP_END
 
@@ -400,7 +400,7 @@ static ADDRESS_MAP_START( ppking_cpu3_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ppking_cpu1_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(gladiatr_spritebuffer_w)
 	AM_RANGE(0x04, 0x04) AM_NOP	// WRITE(ppking_irq_patch_w)
 	AM_RANGE(0x9e, 0x9f) AM_READ(qx0_r) AM_WRITE(qx0_w)
@@ -408,11 +408,11 @@ static ADDRESS_MAP_START( ppking_cpu1_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ppking_cpu2_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(YM2203_status_port_0_r) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_READ(YM2203_read_port_0_r) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x20, 0x21) AM_READ(qx1_r) AM_WRITE(qx1_w)
-	AM_RANGE(0x40, 0x40) AM_READ(MRA8_NOP)
+	AM_RANGE(0x40, 0x40) AM_READ(SMH_NOP)
 	AM_RANGE(0x60, 0x61) AM_READ(qx2_r) AM_WRITE(qx2_w)
 	AM_RANGE(0x80, 0x81) AM_READ(qx3_r) AM_WRITE(qx3_w)
 ADDRESS_MAP_END
@@ -425,10 +425,10 @@ static ADDRESS_MAP_START( gladiatr_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0xbfff) AM_ROMBANK(1)
 	AM_RANGE(0xc000, 0xcbff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0xcc00, 0xcfff) AM_WRITE(gladiatr_video_registers_w)
-	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(MRA8_RAM, gladiatr_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(MRA8_RAM, gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(MRA8_RAM, gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, gladiatr_textram_w) AM_BASE(&gladiatr_textram)
+	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(SMH_RAM, gladiatr_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(SMH_RAM, gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
+	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, gladiatr_textram_w) AM_BASE(&gladiatr_textram)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* battery backed RAM */
 ADDRESS_MAP_END
 
@@ -445,7 +445,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( gladiatr_cpu1_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(gladiatr_spritebuffer_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(gladiatr_spritebank_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(gladiatr_bankswitch_w)
@@ -456,7 +456,7 @@ static ADDRESS_MAP_START( gladiatr_cpu1_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gladiatr_cpu2_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
 	AM_RANGE(0x20, 0x21) AM_READWRITE(TAITO8741_1_r, TAITO8741_1_w)
@@ -683,28 +683,29 @@ static MACHINE_DRIVER_START( ppking )
 	MDRV_CPU_ADD(Z80, XTAL_12MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(ppking_cpu1_map,0)
 	MDRV_CPU_IO_MAP(ppking_cpu1_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_12MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(ppking_cpu2_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(M6809, XTAL_12MHz/16) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(ppking_cpu3_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(ppking)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -732,7 +733,7 @@ static MACHINE_DRIVER_START( gladiatr )
 	MDRV_CPU_ADD(Z80, XTAL_12MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu1_map,0)
 	MDRV_CPU_IO_MAP(gladiatr_cpu1_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_12MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
@@ -742,18 +743,19 @@ static MACHINE_DRIVER_START( gladiatr )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(gladiatr_cpu3_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_RESET(gladiator)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(gladiatr)
 	MDRV_PALETTE_LENGTH(1024)
 

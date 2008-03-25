@@ -4,15 +4,14 @@
  */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "namcoic.h"
 
 #define TX_TILE_OFFSET_CENTER	(32 * 2)
 #define TX_TILE_OFFSET_RIGHT	(32 * 0 + 2)
 #define TX_TILE_OFFSET_LEFT	(32 * 31 + 2)
 
-#define SPR_TRANS_COLOR		(0xff + 768)
-#define SPR_MASK_COLOR		(0xfe + 768)
+#define SPR_TRANS_COLOR		(0xff + 0x300)
+#define SPR_MASK_COLOR		(0xfe + 0x300)
 
 
 UINT8 *tceptor_tile_ram;
@@ -32,7 +31,7 @@ static tilemap *bg2_tilemap;
 static INT32 bg1_scroll_x, bg1_scroll_y;
 static INT32 bg2_scroll_x, bg2_scroll_y;
 
-static mame_bitmap *temp_bitmap;
+static bitmap_t *temp_bitmap;
 
 static UINT16 *tceptor_sprite_ram_buffered;
 
@@ -42,38 +41,24 @@ static int is_mask_spr[1024/16];
 
 PALETTE_INIT( tceptor )
 {
-	int totcolors, totlookup;
 	int i;
 
-	totcolors = machine->drv->total_colors;
-	totlookup = machine->drv->color_table_len;
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x400);
 
-	for (i = 0; i < totcolors; i++)
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x400; i++)
 	{
-		int bit0, bit1, bit2, bit3, r, g, b;
+		int r = pal4bit(color_prom[i + 0x000]);
+		int g = pal4bit(color_prom[i + 0x400]);
+		int b = pal4bit(color_prom[i + 0x800]);
 
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[totcolors] >> 0) & 0x01;
-		bit1 = (color_prom[totcolors] >> 1) & 0x01;
-		bit2 = (color_prom[totcolors] >> 2) & 0x01;
-		bit3 = (color_prom[totcolors] >> 3) & 0x01;
-		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[2*totcolors] >> 0) & 0x01;
-		bit1 = (color_prom[2*totcolors] >> 1) & 0x01;
-		bit2 = (color_prom[2*totcolors] >> 2) & 0x01;
-		bit3 = (color_prom[2*totcolors] >> 3) & 0x01;
-		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(machine, i, MAKE_RGB(r, g, b));
-		color_prom++;
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 2 * totcolors;
 	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0xc00;
+
 
 	/*
           color lookup table:
@@ -84,27 +69,39 @@ PALETTE_INIT( tceptor )
         */
 
 	/* tiles lookup table (1024 colors) */
-	for (i = 0; i < 1024;i++)
-		colortable[i] = *color_prom++;
-
-	/* road lookup table (256 colors) */
-	for (i = 0; i < 256; i++)
-		colortable[i + 0xf00] = *(color_prom++) + 512;
+	for (i = 0; i < 0x0400; i++)
+	{
+		int ctabentry = color_prom[i];
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 
 	/* sprites lookup table (1024 colors) */
-	for (i = 0;i < 1024; i++)
-		colortable[i + 1024] = *(color_prom++) + 768;
+	for (i = 0x0400; i < 0x0800; i++)
+	{
+		int ctabentry = color_prom[i] | 0x300;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 
-	/* background: lookup prom is not presented, use prom directly (512 colors) */
-	for (i = 0;i < 512; i++)
-		colortable[i + 2048] = i;
+	/* background: no lookup PROM, use directly (512 colors) */
+	for (i = 0x0a00; i < 0x0c00; i++)
+	{
+		int ctabentry = i & 0x1ff;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
+
+	/* road lookup table (256 colors) */
+	for (i = 0x0f00; i < 0x1000; i++)
+	{
+		int ctabentry = color_prom[i - 0x700] | 0x200;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 
 	/* setup sprite mask color map */
 	/* tceptor2: only 0x23 */
 	memset(is_mask_spr, 0, sizeof is_mask_spr);
-	for (i = 0; i < 1024; i++)
-		if (colortable[i + 1024] == SPR_MASK_COLOR)
-			is_mask_spr[i / 16] = 1;
+	for (i = 0; i < 0x400; i++)
+		if (colortable_entry_get_value(machine->colortable, i | 0x400) == SPR_MASK_COLOR)
+			is_mask_spr[i >> 4] = 1;
 }
 
 
@@ -131,6 +128,8 @@ static TILE_GET_INFO( get_tx_tile_info )
 	int offset = get_tile_addr(tile_index);
 	int code = tceptor_tile_ram[offset];
 	int color = tceptor_tile_attr[offset];
+
+	tileinfo->group = color;
 
 	SET_TILE_INFO(0, code, color, 0);
 }
@@ -426,20 +425,20 @@ VIDEO_START( tceptor )
 	decode_sprite32(machine, REGION_GFX4);
 
 	/* allocate temp bitmaps */
-	temp_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	temp_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	namco_road_init(machine, gfx_index);
 
-	namco_road_set_transparent_color(machine->remapped_colortable[0xfff]);
+	namco_road_set_transparent_color(colortable_entry_get_value(machine->colortable, 0xfff));
 
-	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols, TILEMAP_TYPE_COLORTABLE, 8, 8, 34, 28);
+	tx_tilemap = tilemap_create(get_tx_tile_info, tilemap_scan_cols,  8, 8, 34, 28);
 
 	tilemap_set_scrollx(tx_tilemap, 0, -2*8);
 	tilemap_set_scrolly(tx_tilemap, 0, 0);
-	tilemap_set_transparent_pen(tx_tilemap, 7);
+	colortable_configure_tilemap_groups(machine->colortable, tx_tilemap, machine->gfx[0], 7);
 
-	bg1_tilemap = tilemap_create(get_bg1_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+	bg1_tilemap = tilemap_create(get_bg1_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
+	bg2_tilemap = tilemap_create(get_bg2_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
 
 	state_save_register_global_pointer(tceptor_sprite_ram_buffered, 0x200 / 2);
 	state_save_register_global(bg1_scroll_x);
@@ -474,7 +473,7 @@ VIDEO_START( tceptor )
     z: zoom y
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int sprite_priority)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int sprite_priority)
 {
 	UINT16 *mem1 = &tceptor_sprite_ram_buffered[0x000/2];
 	UINT16 *mem2 = &tceptor_sprite_ram_buffered[0x100/2];
@@ -533,7 +532,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			            flipx, flipy,
 			            x, y,
 			            cliprect,
-			            TRANSPARENCY_COLOR, SPR_TRANS_COLOR,
+			            TRANSPARENCY_PENS,
+			            colortable_get_transpen_mask(machine->colortable, machine->gfx[gfx], color, SPR_TRANS_COLOR),
 			            scalex,
 			            scaley);
 		}
@@ -546,11 +546,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		for (x = cliprect->min_x; x <= cliprect->max_x; x++)
 			for (y = cliprect->min_y; y <= cliprect->max_y; y++)
-				if (*BITMAP_ADDR16(bitmap, y, x) == SPR_MASK_COLOR)
-				{
+				if (colortable_entry_get_value(machine->colortable, *BITMAP_ADDR16(bitmap, y, x)) == SPR_MASK_COLOR)
 					// restore pixel
 					*BITMAP_ADDR16(bitmap, y, x) = *BITMAP_ADDR16(temp_bitmap, y, x);
-				}
 	}
 }
 
@@ -561,13 +559,17 @@ VIDEO_UPDATE( tceptor )
 	int pri;
 	int bg_center = 144 - ((((bg1_scroll_x + bg2_scroll_x ) & 0x1ff) - 288) / 2);
 
-	if (screen)
-	{
-		int frame = cpu_getcurrentframe();
+	const device_config *_2d_screen       = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "2D");
+	const device_config *_3d_left_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "3D Left");
+	const device_config *_3d_right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "3D Right");
 
-		if ((frame & 1) == 1 && screen == 1)
+	if (screen != _2d_screen)
+	{
+		int frame = video_screen_get_frame_number(screen);
+
+		if ((frame & 1) == 1 && screen == _3d_left_screen)
 			return UPDATE_HAS_NOT_CHANGED;
-		if ((frame & 1) == 0 && screen == 2)
+		if ((frame & 1) == 0 && screen == _3d_right_screen)
 			return UPDATE_HAS_NOT_CHANGED;
 	}
 
@@ -587,9 +589,9 @@ VIDEO_UPDATE( tceptor )
 
 	for (pri = 0; pri < 8; pri++)
 	{
-		namco_road_draw(machine, bitmap, cliprect, pri * 2);
-		namco_road_draw(machine, bitmap, cliprect, pri * 2 + 1);
-		draw_sprites(machine, bitmap, cliprect, pri);
+		namco_road_draw(screen->machine, bitmap, cliprect, pri * 2);
+		namco_road_draw(screen->machine, bitmap, cliprect, pri * 2 + 1);
+		draw_sprites(screen->machine, bitmap, cliprect, pri);
 	}
 
 	tilemap_draw(bitmap, cliprect, tx_tilemap, 0, 0);

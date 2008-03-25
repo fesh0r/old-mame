@@ -2345,7 +2345,7 @@ static void t90_start_timer(int i)
 
 	period = attotime_mul(T90.timer_period, prescaler);
 
-	timer_adjust(T90.timer[i], period, i, period);
+	timer_adjust_periodic(T90.timer[i], period, i, period);
 
 	logerror("%04X: CPU Timer %d started at %lf Hz\n", activecpu_get_pc(), i, 1.0 / attotime_to_double(period));
 }
@@ -2367,7 +2367,7 @@ static void t90_start_timer4(void)
 
 	period = attotime_mul(T90.timer_period, prescaler);
 
-	timer_adjust(T90.timer[4], period, 4, period);
+	timer_adjust_periodic(T90.timer[4], period, 4, period);
 
 	logerror("%04X: CPU Timer 4 started at %lf Hz\n", activecpu_get_pc(), 1.0 / attotime_to_double(period));
 }
@@ -2375,7 +2375,7 @@ static void t90_start_timer4(void)
 
 static void t90_stop_timer(int i)
 {
-	timer_adjust(T90.timer[i], attotime_never, i, attotime_zero);
+	timer_adjust_oneshot(T90.timer[i], attotime_never, i);
 	logerror("%04X: CPU Timer %d stopped\n", activecpu_get_pc(), i);
 }
 
@@ -2788,7 +2788,7 @@ void tmp90840_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_DISASSEMBLE:								info->disassemble = t90_dasm;		break;
 #endif
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:						info->icount = &t90_ICount;			break;
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_tmp90840_mem; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map8 = address_map_tmp90840_mem; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 
@@ -2834,7 +2834,7 @@ void tmp90841_get_info(UINT32 state, cpuinfo *info)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_tmp90841_mem; return;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map8 = address_map_tmp90841_mem; return;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 
@@ -2850,7 +2850,7 @@ void tmp91640_get_info(UINT32 state, cpuinfo *info)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_tmp91640_mem; return;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map8 = address_map_tmp91640_mem; return;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 
@@ -2866,7 +2866,7 @@ void tmp91641_get_info(UINT32 state, cpuinfo *info)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_tmp91641_mem; return;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map8 = address_map_tmp91641_mem; return;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 

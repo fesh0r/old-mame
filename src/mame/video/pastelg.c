@@ -18,10 +18,8 @@ static int pastelg_gfxrom;
 static int pastelg_dispflag;
 static int pastelg_flipscreen;
 static int blitter_direction_x, blitter_direction_y;
-static int pastelg_screen_refresh;
 static int pastelg_palbank;
 
-static mame_bitmap *pastelg_tmpbitmap;
 static UINT8 *pastelg_videoram;
 static UINT8 *pastelg_clut;
 
@@ -39,7 +37,7 @@ PALETTE_INIT( pastelg )
 	int i;
 	int bit0, bit1, bit2, bit3, r, g, b;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		bit0 = (color_prom[0] >> 0) & 0x01;
 		bit1 = (color_prom[0] >> 1) & 0x01;
@@ -51,10 +49,10 @@ PALETTE_INIT( pastelg )
 		bit2 = (color_prom[0] >> 6) & 0x01;
 		bit3 = (color_prom[0] >> 7) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -102,7 +100,7 @@ WRITE8_HANDLER( pastelg_romsel_w )
 {
 	pastelg_gfxrom = ((data & 0xc0) >> 6);
 	pastelg_palbank = ((data & 0x10) >> 4);
-	nb1413m3_sndrombank1_w(0, data);
+	nb1413m3_sndrombank1_w(machine, 0, data);
 
 	if ((pastelg_gfxrom << 16) > (memory_region_length(REGION_GFX1) - 1))
 	{
@@ -122,28 +120,23 @@ static void pastelg_vramflip(void)
 	static int pastelg_flipscreen_old = 0;
 	int x, y;
 	UINT8 color1, color2;
+	int width = video_screen_get_width(Machine->primary_screen);
+	int height = video_screen_get_height(Machine->primary_screen);
 
 	if (pastelg_flipscreen == pastelg_flipscreen_old) return;
 
-	for (y = 0; y < Machine->screen[0].height; y++)
+	for (y = 0; y < height; y++)
 	{
-		for (x = 0; x < Machine->screen[0].width; x++)
+		for (x = 0; x < width; x++)
 		{
-			color1 = pastelg_videoram[(y * Machine->screen[0].width) + x];
-			color2 = pastelg_videoram[((y ^ 0xff) * Machine->screen[0].width) + (x ^ 0xff)];
-			pastelg_videoram[(y * Machine->screen[0].width) + x] = color2;
-			pastelg_videoram[((y ^ 0xff) * Machine->screen[0].width) + (x ^ 0xff)] = color1;
+			color1 = pastelg_videoram[(y * width) + x];
+			color2 = pastelg_videoram[((y ^ 0xff) * width) + (x ^ 0xff)];
+			pastelg_videoram[(y * width) + x] = color2;
+			pastelg_videoram[((y ^ 0xff) * width) + (x ^ 0xff)] = color1;
 		}
 	}
 
 	pastelg_flipscreen_old = pastelg_flipscreen;
-	pastelg_screen_refresh = 1;
-}
-
-static void update_pixel(int x,int y)
-{
-	int color = pastelg_videoram[(y * Machine->screen[0].width) + x];
-	*BITMAP_ADDR16(pastelg_tmpbitmap, y, x) = Machine->pens[color];
 }
 
 static TIMER_CALLBACK( blitter_timer_callback )
@@ -154,6 +147,7 @@ static TIMER_CALLBACK( blitter_timer_callback )
 static void pastelg_gfxdraw(void)
 {
 	UINT8 *GFX = memory_region(REGION_GFX1);
+	int width = video_screen_get_width(Machine->primary_screen);
 
 	int x, y;
 	int dx, dy;
@@ -238,15 +232,13 @@ static void pastelg_gfxdraw(void)
 				if (color)
 				{
 					color = ((pastelg_palbank * 0x10) + color);
-					pastelg_videoram[(dy * Machine->screen[0].width) + dx] = color;
-					update_pixel(dx, dy);
+					pastelg_videoram[(dy * width) + dx] = color;
 				}
 			}
 			else
 			{
 				color = ((pastelg_palbank * 0x10) + pastelg_clut[color]);
-				pastelg_videoram[(dy * Machine->screen[0].width) + dx] = color;
-				update_pixel(dx, dy);
+				pastelg_videoram[(dy * width) + dx] = color;
 			}
 
 			nb1413m3_busyctr++;
@@ -263,10 +255,12 @@ static void pastelg_gfxdraw(void)
 ******************************************************************************/
 VIDEO_START( pastelg )
 {
-	pastelg_tmpbitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height,machine->screen[0].format);
-	pastelg_videoram = auto_malloc(machine->screen[0].width * machine->screen[0].height * sizeof(UINT8));
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
+
+	pastelg_videoram = auto_malloc(width * height * sizeof(UINT8));
 	pastelg_clut = auto_malloc(0x10 * sizeof(UINT8));
-	memset(pastelg_videoram, 0x00, (machine->screen[0].width * machine->screen[0].height * sizeof(UINT8)));
+	memset(pastelg_videoram, 0x00, (width * height * sizeof(UINT8)));
 }
 
 /******************************************************************************
@@ -275,27 +269,18 @@ VIDEO_START( pastelg )
 ******************************************************************************/
 VIDEO_UPDATE( pastelg )
 {
-	int x, y;
-	UINT8 color;
-
-	if (pastelg_screen_refresh)
-	{
-		pastelg_screen_refresh = 0;
-
-		for (y = 0; y < machine->screen[0].height; y++)
-		{
-			for (x = 0; x < machine->screen[0].width; x++)
-			{
-				color = pastelg_videoram[(y * machine->screen[0].width) + x];
-				*BITMAP_ADDR16(pastelg_tmpbitmap, y, x) = machine->pens[color];
-			}
-		}
-	}
-
 	if (pastelg_dispflag)
-		copybitmap(bitmap, pastelg_tmpbitmap, 0, 0, 0, 0, cliprect);
+	{
+		int x, y;
+		int width = video_screen_get_width(screen);
+		int height = video_screen_get_height(screen);
+
+		for (y = 0; y < height; y++)
+			for (x = 0; x < width; x++)
+				*BITMAP_ADDR16(bitmap, y, x) = pastelg_videoram[(y * width) + x];
+	}
 	else
-		fillbitmap(bitmap, machine->pens[0x00], 0);
+		fillbitmap(bitmap, 0, cliprect);
 
 	return 0;
 }

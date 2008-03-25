@@ -69,8 +69,8 @@ WRITE8_HANDLER( cop01_vreg_w );
 
 static WRITE8_HANDLER( cop01_sound_command_w )
 {
-	soundlatch_w(offset,data);
-	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+	soundlatch_w(machine,offset,data);
+	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 }
 
 static READ8_HANDLER( cop01_sound_command_r )
@@ -80,7 +80,7 @@ static READ8_HANDLER( cop01_sound_command_r )
 #define TIMER_RATE 12000	/* total guess */
 
 
-	res = (soundlatch_r(offset) & 0x7f) << 1;
+	res = (soundlatch_r(machine,offset) & 0x7f) << 1;
 
 	/* bit 0 seems to be a timer */
 	if ((activecpu_gettotalcycles() / TIMER_RATE) & 1)
@@ -113,21 +113,21 @@ static READ8_HANDLER( mightguy_dsw_r )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_READ(MRA8_RAM)	/* c000-c7ff in cop01 */
-	AM_RANGE(0xd000, 0xdfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_READ(SMH_RAM)	/* c000-c7ff in cop01 */
+	AM_RANGE(0xd000, 0xdfff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)	/* c000-c7ff in cop01 */
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM)	/* c000-c7ff in cop01 */
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(cop01_background_w) AM_BASE(&cop01_bgvideoram)
-	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(cop01_foreground_w) AM_BASE(&cop01_fgvideoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
@@ -136,7 +136,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mightguy_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
@@ -144,30 +144,30 @@ static ADDRESS_MAP_START( mightguy_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x43) AM_WRITE(cop01_vreg_w)
 	AM_RANGE(0x44, 0x44) AM_WRITE(cop01_sound_command_w)
 	AM_RANGE(0x45, 0x45) AM_WRITE(watchdog_reset_w) /* ? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x8000) AM_READ(MRA8_NOP)	/* irq ack? */
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x8000) AM_READ(SMH_NOP)	/* irq ack? */
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x06, 0x06) AM_READ(cop01_sound_command_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_control_port_1_w)
@@ -180,17 +180,17 @@ ADDRESS_MAP_END
 static READ8_HANDLER( kludge ) { static int timer; return timer++; }
 
 static ADDRESS_MAP_START( mightguy_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x03, 0x03) AM_READ(kludge)		/* 1412M2? */
 	AM_RANGE(0x06, 0x06) AM_READ(cop01_sound_command_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mightguy_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM3526_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM3526_write_port_0_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(MWA8_NOP)	/* 1412M2? */
-	AM_RANGE(0x03, 0x03) AM_WRITE(MWA8_NOP)	/* 1412M2? */
+	AM_RANGE(0x02, 0x02) AM_WRITE(SMH_NOP)	/* 1412M2? */
+	AM_RANGE(0x03, 0x03) AM_WRITE(SMH_NOP)	/* 1412M2? */
 ADDRESS_MAP_END
 
 
@@ -418,21 +418,21 @@ static MACHINE_DRIVER_START( cop01 )
 	MDRV_CPU_ADD(Z80, 4000000)	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3000000)
 	/* audio CPU */	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(cop01)
 	MDRV_PALETTE_LENGTH(16+8*16+16*16)
 
@@ -459,21 +459,21 @@ static MACHINE_DRIVER_START( mightguy )
 	MDRV_CPU_ADD(Z80, 4000000)	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(mightguy_readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3000000)
 	/* audio CPU */	/* ???? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(mightguy_sound_readport,mightguy_sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(cop01)
 	MDRV_PALETTE_LENGTH(16+8*16+16*16)
 

@@ -35,46 +35,46 @@ VIDEO_UPDATE( overdriv );
 
 static READ16_HANDLER( K051316_0_msb_r )
 {
-	return K051316_0_r(offset) << 8;
+	return K051316_0_r(machine,offset) << 8;
 }
 
 static READ16_HANDLER( K051316_1_msb_r )
 {
-	return K051316_1_r(offset) << 8;
+	return K051316_1_r(machine,offset) << 8;
 }
 
 static READ16_HANDLER( K051316_rom_0_msb_r )
 {
-	return K051316_rom_0_r(offset) << 8;
+	return K051316_rom_0_r(machine,offset) << 8;
 }
 
 static READ16_HANDLER( K051316_rom_1_msb_r )
 {
-	return K051316_rom_1_r(offset) << 8;
+	return K051316_rom_1_r(machine,offset) << 8;
 }
 
 static WRITE16_HANDLER( K051316_0_msb_w )
 {
 	if (ACCESSING_MSB)
-		K051316_0_w(offset,data >> 8);
+		K051316_0_w(machine,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_1_msb_w )
 {
 	if (ACCESSING_MSB)
-		K051316_1_w(offset,data >> 8);
+		K051316_1_w(machine,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_ctrl_0_msb_w )
 {
 	if (ACCESSING_MSB)
-		K051316_ctrl_0_w(offset,data >> 8);
+		K051316_ctrl_0_w(machine,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_ctrl_1_msb_w )
 {
 	if (ACCESSING_MSB)
-		K051316_ctrl_1_w(offset,data >> 8);
+		K051316_ctrl_1_w(machine,offset,data >> 8);
 }
 
 
@@ -129,7 +129,7 @@ static READ16_HANDLER( eeprom_r )
 
 //logerror("%06x eeprom_r\n",activecpu_get_pc());
 	/* bit 6 is EEPROM data */
-	res = (EEPROM_read_bit() << 6) | input_port_0_word_r(0,0);
+	res = (EEPROM_read_bit() << 6) | input_port_0_word_r(machine,0,0);
 
 	return res;
 }
@@ -227,12 +227,12 @@ static WRITE16_HANDLER( sharedram_w )
 
 static READ16_HANDLER( overdriv_sound_0_r )
 {
-	return K053260_0_r(2 + offset);
+	return K053260_0_r(machine,2 + offset);
 }
 
 static READ16_HANDLER( overdriv_sound_1_r )
 {
-	return K053260_1_r(2 + offset);
+	return K053260_1_r(machine,2 + offset);
 }
 
 static WRITE16_HANDLER( overdriv_soundirq_w )
@@ -254,9 +254,9 @@ static WRITE16_HANDLER( overdriv_cpuB_irq6_w )
 
 
 static ADDRESS_MAP_START( overdriv_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x040000, 0x043fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x080000, 0x080fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x040000, 0x043fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x080000, 0x080fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_READ(eeprom_r)
 	AM_RANGE(0x0c0002, 0x0c0003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x180000, 0x180001) AM_READ(input_port_2_word_r)
@@ -270,11 +270,11 @@ static ADDRESS_MAP_START( overdriv_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( overdriv_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x040000, 0x043fff) AM_WRITE(MWA16_RAM)	/* work RAM */
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x040000, 0x043fff) AM_WRITE(SMH_RAM)	/* work RAM */
 	AM_RANGE(0x080000, 0x080fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x0e0000, 0x0e0001) AM_WRITE(MWA16_NOP)	/* unknown (always 0x30) */
-	AM_RANGE(0x100000, 0x10001f) AM_WRITE(MWA16_NOP)	/* 053252? (LSB) */
+	AM_RANGE(0x0e0000, 0x0e0001) AM_WRITE(SMH_NOP)	/* unknown (always 0x30) */
+	AM_RANGE(0x100000, 0x10001f) AM_WRITE(SMH_NOP)	/* 053252? (LSB) */
 	AM_RANGE(0x140000, 0x140001) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x1c0000, 0x1c001f) AM_WRITE(K051316_ctrl_0_msb_w)
 	AM_RANGE(0x1c8000, 0x1c801f) AM_WRITE(K051316_ctrl_1_msb_w)
@@ -293,32 +293,32 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( overdriv_readmem2, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x080000, 0x083fff) AM_READ(MRA16_RAM)
-AM_RANGE(0x0c0000, 0x0c1fff) AM_READ(MRA16_RAM)
-AM_RANGE(0x100000, 0x10000f) AM_READ(MRA16_NOP)	// K053250 #0
-AM_RANGE(0x108000, 0x10800f) AM_READ(MRA16_NOP)	// K053250 #1
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x080000, 0x083fff) AM_READ(SMH_RAM)
+AM_RANGE(0x0c0000, 0x0c1fff) AM_READ(SMH_RAM)
+AM_RANGE(0x100000, 0x10000f) AM_READ(SMH_NOP)	// K053250 #0
+AM_RANGE(0x108000, 0x10800f) AM_READ(SMH_NOP)	// K053250 #1
 	AM_RANGE(0x118000, 0x118fff) AM_READ(K053247_word_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(K053246_word_r)
 	AM_RANGE(0x128000, 0x128001) AM_READ(cpuB_ctrl_r)
 	AM_RANGE(0x200000, 0x203fff) AM_READ(sharedram_r)
-AM_RANGE(0x208000, 0x20bfff) AM_READ(MRA16_RAM)
+AM_RANGE(0x208000, 0x20bfff) AM_READ(SMH_RAM)
 
-AM_RANGE(0x218000, 0x219fff) AM_READ(MRA16_NOP)	// K053250 #0 gfx ROM read (LSB)
-AM_RANGE(0x220000, 0x221fff) AM_READ(MRA16_NOP)	// K053250 #1 gfx ROM read (LSB)
+AM_RANGE(0x218000, 0x219fff) AM_READ(SMH_NOP)	// K053250 #0 gfx ROM read (LSB)
+AM_RANGE(0x220000, 0x221fff) AM_READ(SMH_NOP)	// K053250 #1 gfx ROM read (LSB)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( overdriv_writemem2, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x080000, 0x083fff) AM_WRITE(MWA16_RAM)	/* work RAM */
-AM_RANGE(0x0c0000, 0x0c1fff) AM_WRITE(MWA16_RAM)
-AM_RANGE(0x100000, 0x10000f) AM_WRITE(MWA16_NOP)	// K053250 #0
-AM_RANGE(0x108000, 0x10800f) AM_WRITE(MWA16_NOP)	// K053250 #1
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x080000, 0x083fff) AM_WRITE(SMH_RAM)	/* work RAM */
+AM_RANGE(0x0c0000, 0x0c1fff) AM_WRITE(SMH_RAM)
+AM_RANGE(0x100000, 0x10000f) AM_WRITE(SMH_NOP)	// K053250 #0
+AM_RANGE(0x108000, 0x10800f) AM_WRITE(SMH_NOP)	// K053250 #1
 	AM_RANGE(0x118000, 0x118fff) AM_WRITE(K053247_word_w)
 	AM_RANGE(0x128000, 0x128001) AM_WRITE(cpuB_ctrl_w)	/* enable K053247 ROM reading, plus something else */
 	AM_RANGE(0x130000, 0x130007) AM_WRITE(K053246_word_w)
 	AM_RANGE(0x200000, 0x203fff) AM_WRITE(sharedram_w)
-AM_RANGE(0x208000, 0x20bfff) AM_WRITE(MWA16_RAM)
+AM_RANGE(0x208000, 0x20bfff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -326,8 +326,8 @@ static ADDRESS_MAP_START( overdriv_s_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0201, 0x0201) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x0400, 0x042f) AM_READ(K053260_0_r)
 	AM_RANGE(0x0600, 0x062f) AM_READ(K053260_1_r)
-	AM_RANGE(0x0800, 0x0fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0800, 0x0fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( overdriv_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -335,8 +335,8 @@ static ADDRESS_MAP_START( overdriv_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0201, 0x0201) AM_WRITE(YM2151_data_port_0_w)
 	AM_RANGE(0x0400, 0x042f) AM_WRITE(K053260_0_w)
 	AM_RANGE(0x0600, 0x062f) AM_WRITE(K053260_1_w)
-	AM_RANGE(0x0800, 0x0fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0800, 0x0fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -357,7 +357,7 @@ static INPUT_PORTS_START( overdriv )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// ?
@@ -398,11 +398,11 @@ static MACHINE_DRIVER_START( overdriv )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,24000000/2)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(overdriv_readmem,overdriv_writemem)
-	MDRV_CPU_VBLANK_INT(cpuA_interrupt,4)	/* ??? IRQ 4 is vblank, IRQ 5 of unknown origin */
+	MDRV_CPU_VBLANK_INT_HACK(cpuA_interrupt,4)	/* ??? IRQ 4 is vblank, IRQ 5 of unknown origin */
 
 	MDRV_CPU_ADD(M68000,24000000/2)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(overdriv_readmem2,overdriv_writemem2)
-	MDRV_CPU_VBLANK_INT(cpuB_interrupt,1)	/* IRQ 5 and 6 are generated by the main CPU. */
+	MDRV_CPU_VBLANK_INT("main", cpuB_interrupt)	/* IRQ 5 and 6 are generated by the main CPU. */
 								/* IRQ 5 is used only in test mode, to request the checksums of the gfx ROMs. */
 	MDRV_CPU_ADD(M6809,3579545/2)	/* 1.789 MHz?? This might be the right speed, but ROM testing */
 						/* takes a little too much (the counter wraps from 0000 to 9999). */
@@ -410,18 +410,21 @@ static MACHINE_DRIVER_START( overdriv )
 						/* 60 fps, that's how I fixed it for now. */
 	MDRV_CPU_PROGRAM_MAP(overdriv_s_readmem,overdriv_s_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(59)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(200)
 
 	MDRV_MACHINE_RESET(overdriv)
 	MDRV_NVRAM_HANDLER(overdriv)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 0*8, 32*8-1 )
+
 	MDRV_GFXDECODE(overdriv)
 	MDRV_PALETTE_LENGTH(2048)
 

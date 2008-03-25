@@ -47,9 +47,9 @@ static TILE_GET_INFO( get_tile_info2 )
 
 VIDEO_START( suprridr )
 {
-	fg_tilemap          = tilemap_create(get_tile_info2, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
-	bg_tilemap          = tilemap_create(get_tile_info,  tilemap_scan_rows, TILEMAP_TYPE_PEN,      8,8, 32,32);
-	bg_tilemap_noscroll = tilemap_create(get_tile_info,  tilemap_scan_rows, TILEMAP_TYPE_PEN,      8,8, 32,32);
+	fg_tilemap          = tilemap_create(get_tile_info2, tilemap_scan_rows,  8,8, 32,32);
+	bg_tilemap          = tilemap_create(get_tile_info,  tilemap_scan_rows,       8,8, 32,32);
+	bg_tilemap_noscroll = tilemap_create(get_tile_info,  tilemap_scan_rows,       8,8, 32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -169,21 +169,22 @@ VIDEO_UPDATE( suprridr )
 {
 	rectangle subclip;
 	int i;
+	const rectangle *visarea = video_screen_get_visible_area(screen);
 
 	/* render left 4 columns with no scroll */
-	subclip = machine->screen[0].visarea;
+	subclip = *visarea;;
 	subclip.max_x = subclip.min_x + (flipx ? 1*8 : 4*8) - 1;
 	sect_rect(&subclip, cliprect);
 	tilemap_draw(bitmap, &subclip, bg_tilemap_noscroll, 0, 0);
 
 	/* render right 1 column with no scroll */
-	subclip = machine->screen[0].visarea;
+	subclip = *visarea;;
 	subclip.min_x = subclip.max_x - (flipx ? 4*8 : 1*8) + 1;
 	sect_rect(&subclip, cliprect);
 	tilemap_draw(bitmap, &subclip, bg_tilemap_noscroll, 0, 0);
 
 	/* render the middle columns normally */
-	subclip = machine->screen[0].visarea;
+	subclip = *visarea;;
 	subclip.min_x += flipx ? 1*8 : 4*8;
 	subclip.max_x -= flipx ? 4*8 : 1*8;
 	sect_rect(&subclip, cliprect);
@@ -212,7 +213,7 @@ VIDEO_UPDATE( suprridr )
 			fy = !fy;
 			y = 240 - y;
 		}
-		drawgfx(bitmap, machine->gfx[2], code, color, fx, fy, x, y, cliprect, TRANSPARENCY_PEN, 0);
+		drawgfx(bitmap, screen->machine->gfx[2], code, color, fx, fy, x, y, cliprect, TRANSPARENCY_PEN, 0);
 	}
 	return 0;
 }

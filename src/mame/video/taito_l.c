@@ -76,9 +76,9 @@ VIDEO_START( taitol )
 {
 	int i;
 
-	bg18_tilemap = tilemap_create(get_bg18_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg19_tilemap = tilemap_create(get_bg19_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,64,32);
-	ch1a_tilemap = tilemap_create(get_ch1a_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg18_tilemap = tilemap_create(get_bg18_tile_info,tilemap_scan_rows,8,8,64,32);
+	bg19_tilemap = tilemap_create(get_bg19_tile_info,tilemap_scan_rows,     8,8,64,32);
+	ch1a_tilemap = tilemap_create(get_ch1a_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	bankc[0] = bankc[1] = bankc[2] = bankc[3] = 0;
 	horshoes_gfxbank = 0;
@@ -254,7 +254,7 @@ void taitol_obj1b_m(int offset)
                  plgirs2 bullets and raimais big bosses.
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -326,12 +326,12 @@ VIDEO_UPDATE( taitol )
 			tilemap_draw(bitmap,cliprect,bg18_tilemap,0,0);
 		else					/* split priority */
 			tilemap_draw(bitmap,cliprect,bg18_tilemap,0,1);
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 
 		tilemap_draw(bitmap,cliprect,ch1a_tilemap,0,0);
 	}
 	else
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,screen->machine->pens[0],cliprect);
 	return 0;
 }
 

@@ -509,7 +509,7 @@ void *leland_80186_sh_start(int clock, const struct CustomSound_interface *confi
 	/* determine which sound hardware is installed */
 	has_ym2151 = 0;
 	for (i = 0; i < MAX_SOUND; i++)
-		if (Machine->drv->sound[i].type == SOUND_YM2151)
+		if (Machine->config->sound[i].type == SOUND_YM2151)
 			has_ym2151 = 1;
 
 	/* allocate separate streams for the DMA and non-DMA DACs */
@@ -819,11 +819,11 @@ static TIMER_CALLBACK( internal_timer_int )
 	if (t->control & 0x0001)
 	{
 		int count = t->maxA ? t->maxA : 0x10000;
-		timer_adjust(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), count), which, attotime_zero);
+		timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), count), which);
 		if (LOG_TIMER) logerror("  Repriming interrupt\n");
 	}
 	else
-		timer_adjust(t->int_timer, attotime_never, which, attotime_never);
+		timer_adjust_oneshot(t->int_timer, attotime_never, which);
 }
 
 
@@ -937,7 +937,7 @@ static void internal_timer_update(int which, int new_count, int new_maxA, int ne
 				internal_timer_sync(which);
 
 				/* nuke the timer and force the interrupt timer to be recomputed */
-				timer_adjust(t->time_timer, attotime_never, which, attotime_never);
+				timer_adjust_oneshot(t->time_timer, attotime_never, which);
 				t->time_timer_active = 0;
 				update_int_timer = 1;
 			}
@@ -946,7 +946,7 @@ static void internal_timer_update(int which, int new_count, int new_maxA, int ne
 			else if ((diff & 0x8000) && (new_control & 0x8000))
 			{
 				/* start the timing */
-				timer_adjust(t->time_timer, attotime_never, which, attotime_never);
+				timer_adjust_oneshot(t->time_timer, attotime_never, which);
 				t->time_timer_active = 1;
 				update_int_timer = 1;
 			}
@@ -975,11 +975,11 @@ static void internal_timer_update(int which, int new_count, int new_maxA, int ne
 			{
 				int diff = t->maxA - t->count;
 				if (diff <= 0) diff += 0x10000;
-				timer_adjust(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), diff), which, attotime_zero);
+				timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), diff), which);
 				if (LOG_TIMER) logerror("Set interrupt timer for %d\n", which);
 			}
 			else
-				timer_adjust(t->int_timer, attotime_never, which, attotime_never);
+				timer_adjust_oneshot(t->int_timer, attotime_never, which);
 		}
 }
 
@@ -1064,7 +1064,7 @@ static void update_dma_control(int which, int new_control)
 			if (LOG_DMA) logerror("Initiated DMA %d - count = %04X, source = %04X, dest = %04X\n", which, d->count, d->source, d->dest);
 
 			d->finished = 0;
-			timer_adjust(d->finish_timer, attotime_mul(ATTOTIME_IN_HZ(dac[dacnum].frequency), count), which, attotime_zero);
+			timer_adjust_oneshot(d->finish_timer, attotime_mul(ATTOTIME_IN_HZ(dac[dacnum].frequency), count), which);
 		}
 	}
 
@@ -1270,9 +1270,9 @@ static WRITE16_HANDLER( i80186_internal_port_w )
 
 	/* handle partials */
 	if (!ACCESSING_MSB)
-		data = (i80186_internal_port_r(offset, 0) & 0xff00) | (data & 0x00ff);
+		data = (i80186_internal_port_r(machine, offset, 0) & 0xff00) | (data & 0x00ff);
 	else if (!ACCESSING_LSB)
-		data = (i80186_internal_port_r(offset, 0) & 0x00ff) | (data & 0xff00);
+		data = (i80186_internal_port_r(machine, offset, 0) & 0x00ff) | (data & 0xff00);
 
 	switch (offset)
 	{
@@ -1607,7 +1607,7 @@ static WRITE16_HANDLER( pit8254_w )
 				if (ctr->count == 0) ctr->count = 0x10000;
 
 				/* reset/start the timer */
-				timer_adjust(ctr->timer, attotime_never, 0, attotime_never);
+				timer_adjust_oneshot(ctr->timer, attotime_never, 0);
 
 				if (LOG_PIT) logerror("PIT counter %d set to %d (%d Hz)\n", which, ctr->count, 4000000 / ctr->count);
 
@@ -1931,13 +1931,13 @@ static WRITE16_HANDLER( ataxx_dac_control )
 		case 0x01:
 		case 0x02:
 			if (ACCESSING_LSB)
-				dac_w(offset, data, 0xff00);
+				dac_w(machine, offset, data, 0xff00);
 			return;
 
 		case 0x03:
-			dac_w(0, ((data << 13) & 0xe000) | ((data << 10) & 0x1c00) | ((data << 7) & 0x0300), 0x00ff);
-			dac_w(2, ((data << 10) & 0xe000) | ((data <<  7) & 0x1c00) | ((data << 4) & 0x0300), 0x00ff);
-			dac_w(4, ((data <<  8) & 0xc000) | ((data <<  6) & 0x3000) | ((data << 4) & 0x0c00) | ((data << 2) & 0x0300), 0x00ff);
+			dac_w(machine, 0, ((data << 13) & 0xe000) | ((data << 10) & 0x1c00) | ((data << 7) & 0x0300), 0x00ff);
+			dac_w(machine, 2, ((data << 10) & 0xe000) | ((data <<  7) & 0x1c00) | ((data << 4) & 0x0300), 0x00ff);
+			dac_w(machine, 4, ((data <<  8) & 0xc000) | ((data <<  6) & 0x3000) | ((data << 4) & 0x0c00) | ((data << 2) & 0x0300), 0x00ff);
 			return;
 	}
 
@@ -1972,7 +1972,7 @@ static WRITE16_HANDLER( ataxx_dac_control )
 				return;
 
 			case 0x21:
-				dac_w(offset - 0x21 + 7, data, mem_mask);
+				dac_w(machine, offset - 0x21 + 7, data, mem_mask);
 				return;
 		}
 	}
@@ -2007,20 +2007,20 @@ static READ16_HANDLER( peripheral_r )
 				return ((clock_active << 1) & 0x7e);
 
 		case 1:
-			return main_to_sound_comm_r(offset, mem_mask);
+			return main_to_sound_comm_r(machine, offset, mem_mask);
 
 		case 2:
-			return pit8254_r(offset, mem_mask);
+			return pit8254_r(machine, offset, mem_mask);
 
 		case 3:
 			if (!has_ym2151)
-				return pit8254_r(offset | 0x40, mem_mask);
+				return pit8254_r(machine, offset | 0x40, mem_mask);
 			else
-				return YM2151_status_port_0_lsb_r(offset, mem_mask);
+				return YM2151_status_port_0_lsb_r(machine, offset, mem_mask);
 
 		case 4:
 			if (is_redline)
-				return pit8254_r(offset | 0x80, mem_mask);
+				return pit8254_r(machine, offset | 0x80, mem_mask);
 			else
 				logerror("%05X:Unexpected peripheral read %d/%02X\n", activecpu_get_pc(), select, offset*2);
 			break;
@@ -2041,31 +2041,31 @@ static WRITE16_HANDLER( peripheral_w )
 	switch (select)
 	{
 		case 1:
-			sound_to_main_comm_w(offset, data, mem_mask);
+			sound_to_main_comm_w(machine, offset, data, mem_mask);
 			break;
 
 		case 2:
-			pit8254_w(offset, data, mem_mask);
+			pit8254_w(machine, offset, data, mem_mask);
 			break;
 
 		case 3:
 			if (!has_ym2151)
-				pit8254_w(offset | 0x40, data, mem_mask);
+				pit8254_w(machine, offset | 0x40, data, mem_mask);
 			else if (offset == 0)
-				YM2151_register_port_0_lsb_w(offset, data, mem_mask);
+				YM2151_register_port_0_lsb_w(machine, offset, data, mem_mask);
 			else if (offset == 1)
-				YM2151_data_port_0_lsb_w(offset, data, mem_mask);
+				YM2151_data_port_0_lsb_w(machine, offset, data, mem_mask);
 			break;
 
 		case 4:
 			if (is_redline)
-				pit8254_w(offset | 0x80, data, mem_mask);
+				pit8254_w(machine, offset | 0x80, data, mem_mask);
 			else
-				dac_10bit_w(offset, data, mem_mask);
+				dac_10bit_w(machine, offset, data, mem_mask);
 			break;
 
 		case 5:	/* Ataxx/WSF/Indy Heat only */
-			ataxx_dac_control(offset, data, mem_mask);
+			ataxx_dac_control(machine, offset, data, mem_mask);
 			break;
 
 		default:
@@ -2089,7 +2089,7 @@ WRITE8_HANDLER( ataxx_80186_control_w )
 					((data & 0x02) << 5) |
 					((data & 0x04) << 3) |
 					((data & 0x08) << 1);
-	leland_80186_control_w(offset, modified);
+	leland_80186_control_w(machine, offset, modified);
 }
 
 

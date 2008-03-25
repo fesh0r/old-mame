@@ -524,17 +524,18 @@ $(CPUOBJ)/i8085/i8085.o:	$(CPUSRC)/i8085/i8085.c \
 
 
 #-------------------------------------------------
-# Intel 8039 and derivatives
+# Intel MCS-48 (8039 and derivatives)
 #-------------------------------------------------
 
 CPUDEFS += -DHAS_I8035=$(if $(filter I8035,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8039=$(if $(filter I8039,$(CPUS)),1,0)
 CPUDEFS += -DHAS_I8048=$(if $(filter I8048,$(CPUS)),1,0)
+CPUDEFS += -DHAS_I8749=$(if $(filter I8749,$(CPUS)),1,0)
 CPUDEFS += -DHAS_N7751=$(if $(filter N7751,$(CPUS)),1,0)
 CPUDEFS += -DHAS_MB8884=$(if $(filter MB8884,$(CPUS)),1,0)
 CPUDEFS += -DHAS_M58715=$(if $(filter M58715,$(CPUS)),1,0)
 
-ifneq ($(filter I8035 I8039 I8048 N7751,$(CPUS)),)
+ifneq ($(filter I8035 I8039 I8048 I8749 N7751 MB8884 M58715,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/i8039
 CPUOBJS += $(CPUOBJ)/i8039/i8039.o
 DBGOBJS += $(CPUOBJ)/i8039/8039dasm.o
@@ -1018,8 +1019,8 @@ ifneq ($(filter M68000 M68008 M68010 M68EC020 M68020 M68040,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/m68000
 CPUOBJS += $(CPUOBJ)/m68000/m68kcpu.o $(CPUOBJ)/m68000/m68kmame.o $(CPUOBJ)/m68000/m68kops.o
 DBGOBJS += $(CPUOBJ)/m68000/m68kdasm.o
+M68KMAKE = $(BUILDOUT)/m68kmake$(BUILD_EXE)
 endif
-M68KMAKE = $(CPUOBJ)/m68000/m68kmake$(EXE)
 
 # when we compile source files we need to include generated files from the OBJ directory
 $(CPUOBJ)/m68000/%.o: $(CPUSRC)/m68000/%.c
@@ -1038,6 +1039,9 @@ $(CPUOBJ)/m68000/m68kops.c: $(M68KMAKE) $(CPUSRC)/m68000/m68k_in.c
 
 # rule to build the generator
 ifneq ($(CROSS_BUILD),1)
+
+BUILD += $(M68KMAKE)
+
 $(M68KMAKE): $(CPUOBJ)/m68000/m68kmake.o $(LIBOCORE)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(OSDBGLDFLAGS) $^ $(LIBS) -o $@
@@ -1221,8 +1225,9 @@ $(CPUOBJ)/v810/v810.o:	$(CPUSRC)/v810/v810.c \
 
 CPUDEFS += -DHAS_UPD7810=$(if $(filter UPD7810,$(CPUS)),1,0)
 CPUDEFS += -DHAS_UPD7807=$(if $(filter UPD7807,$(CPUS)),1,0)
+CPUDEFS += -DHAS_UPD7801=$(if $(filter UPD7801,$(CPUS)),1,0)
 
-ifneq ($(filter UPD7810 UPD7807,$(CPUS)),)
+ifneq ($(filter UPD7810 UPD7807 UPD7801,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/upd7810
 CPUOBJS += $(CPUOBJ)/upd7810/upd7810.o
 DBGOBJS += $(CPUOBJ)/upd7810/7810dasm.o
@@ -1385,19 +1390,19 @@ $(CPUOBJ)/mips/psx.o:	$(CPUSRC)/mips/psx.c \
 
 
 #-------------------------------------------------
-# SSP1610
+# SSP1601
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_SSP1610=$(if $(filter SSP1610,$(CPUS)),1,0)
+CPUDEFS += -DHAS_SSP1601=$(if $(filter SSP1601,$(CPUS)),1,0)
 
-ifneq ($(filter SSP1610,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/ssp1610
-CPUOBJS += $(CPUOBJ)/ssp1610/ssp1610.o
-DBGOBJS += $(CPUOBJ)/ssp1610/ssp1610d.o
+ifneq ($(filter SSP1601,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/ssp1601
+CPUOBJS += $(CPUOBJ)/ssp1601/ssp1601.o
+DBGOBJS += $(CPUOBJ)/ssp1601/ssp1601d.o
 endif
 
-$(CPUOBJ)/ssp1610/ssp1610.o:	$(CPUSRC)/ssp1610/ssp1610.c \
-								$(CPUSRC)/ssp1610/ssp1610.h
+$(CPUOBJ)/ssp1610/ssp1601.o:	$(CPUSRC)/ssp1601/ssp1601.c \
+								$(CPUSRC)/ssp1610/ssp1601.h
 
 
 

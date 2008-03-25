@@ -122,8 +122,8 @@ static void register_savestate(void)
 
 VIDEO_START( m72 )
 {
-	bg_tilemap = tilemap_create(m72_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	fg_tilemap = tilemap_create(m72_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	bg_tilemap = tilemap_create(m72_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(m72_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -148,8 +148,8 @@ VIDEO_START( m72 )
 
 VIDEO_START( rtype2 )
 {
-	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -186,9 +186,9 @@ VIDEO_START( majtitle )
 {
 // The tilemap can be 256x64, but seems to be used at 128x64 (scroll wraparound).
 // The layout ramains 256x64, the right half is just not displayed.
-//  bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,256,64);
-	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,majtitle_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
-	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+//  bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,tilemap_scan_rows,8,8,256,64);
+	bg_tilemap = tilemap_create(rtype2_get_bg_tile_info,majtitle_scan_rows,8,8,128,64);
+	fg_tilemap = tilemap_create(rtype2_get_fg_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -213,8 +213,8 @@ VIDEO_START( majtitle )
 
 VIDEO_START( hharry )
 {
-	bg_tilemap = tilemap_create(hharry_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	fg_tilemap = tilemap_create(m72_get_fg_tile_info,   tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	bg_tilemap = tilemap_create(hharry_get_bg_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(m72_get_fg_tile_info,   tilemap_scan_rows,8,8,64,64);
 
 	m72_spriteram = auto_malloc(spriteram_size);
 
@@ -401,7 +401,7 @@ WRITE16_HANDLER( majtitle_gfx_ctrl_w )
 
 ***************************************************************************/
 
-static void m72_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void m72_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -422,7 +422,7 @@ static void m72_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const
 		h = 1 << ((m72_spriteram[offs+2] & 0x3000) >> 12);
 		sy -= 16 * h;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 512 - 16*w - sx;
 			sy = 284 - 16*h - sy;
@@ -454,7 +454,7 @@ static void m72_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const
 	}
 }
 
-static void majtitle_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void majtitle_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -474,7 +474,7 @@ static void majtitle_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 		h = 1 << ((spriteram16_2[offs+2] & 0x3000) >> 12);
 		sy -= 16 * h;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 512 - 16*w - sx;
 			sy = 256 - 16*h - sy;
@@ -508,7 +508,7 @@ VIDEO_UPDATE( m72 )
 {
 	if (video_off)
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -520,7 +520,7 @@ VIDEO_UPDATE( m72 )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	m72_draw_sprites(machine, bitmap,cliprect);
+	m72_draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	return 0;
@@ -533,7 +533,7 @@ VIDEO_UPDATE( majtitle )
 
 	if (video_off)
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -556,8 +556,8 @@ VIDEO_UPDATE( majtitle )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	majtitle_draw_sprites(machine, bitmap,cliprect);
-	m72_draw_sprites(machine, bitmap,cliprect);
+	majtitle_draw_sprites(screen->machine, bitmap,cliprect);
+	m72_draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	return 0;

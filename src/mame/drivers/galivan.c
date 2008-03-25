@@ -59,15 +59,15 @@ static MACHINE_RESET( galivan )
 
 static WRITE8_HANDLER( galivan_sound_command_w )
 {
-	soundlatch_w(offset,(data << 1) | 1);
+	soundlatch_w(machine,offset,(data << 1) | 1);
 }
 
 static READ8_HANDLER( galivan_sound_command_r )
 {
 	int data;
 
-	data = soundlatch_r(offset);
-	soundlatch_clear_w(0,0);
+	data = soundlatch_r(machine,offset);
+	soundlatch_clear_w(machine,0,0);
 	return data;
 }
 
@@ -83,16 +83,16 @@ static WRITE8_HANDLER( ninjemak_videoreg_w )
 	switch (offset)
 	{
 		case	0x0b:
-			ninjemak_scrolly_w(0, data);
+			ninjemak_scrolly_w(machine, 0, data);
 			break;
 		case	0x0c:
-			ninjemak_scrolly_w(1, data);
+			ninjemak_scrolly_w(machine, 1, data);
 			break;
 		case	0x0d:
-			ninjemak_scrollx_w(0, data);
+			ninjemak_scrollx_w(machine, 0, data);
 			break;
 		case	0x0e:
-			ninjemak_scrollx_w(1, data);
+			ninjemak_scrollx_w(machine, 1, data);
 			break;
 		default:
 			break;
@@ -102,31 +102,31 @@ static WRITE8_HANDLER( ninjemak_videoreg_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xd800, 0xdbff) AM_WRITE(galivan_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xdc00, 0xdfff) AM_WRITE(galivan_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe100, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe100, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ninjemak_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xd800, 0xd81f) AM_WRITE(ninjemak_videoreg_w)
 	AM_RANGE(0xd800, 0xdbff) AM_WRITE(galivan_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xdc00, 0xdfff) AM_WRITE(galivan_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xe000, 0xe1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe200, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xe1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe200, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
@@ -136,17 +136,17 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_WRITE(galivan_gfxbank_w)
 	AM_RANGE(0x41, 0x42) AM_WRITE(galivan_scrollx_w)
 	AM_RANGE(0x43, 0x44) AM_WRITE(galivan_scrolly_w)
 	AM_RANGE(0x45, 0x45) AM_WRITE(galivan_sound_command_w)
-/*  AM_RANGE(0x46, 0x46) AM_WRITE(MWA8_NOP) */
-/*  AM_RANGE(0x47, 0x47) AM_WRITE(MWA8_NOP) */
+/*  AM_RANGE(0x46, 0x46) AM_WRITE(SMH_NOP) */
+/*  AM_RANGE(0x47, 0x47) AM_WRITE(SMH_NOP) */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ninjemak_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_READ(input_port_0_r)
 	AM_RANGE(0x81, 0x81) AM_READ(input_port_1_r)
 	AM_RANGE(0x82, 0x82) AM_READ(input_port_2_r)
@@ -156,33 +156,33 @@ static ADDRESS_MAP_START( ninjemak_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ninjemak_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_WRITE(ninjemak_gfxbank_w)
 	AM_RANGE(0x85, 0x85) AM_WRITE(galivan_sound_command_w)
-//  AM_RANGE(0x86, 0x86) AM_WRITE(MWA8_NOP)         // ??
-//  AM_RANGE(0x87, 0x87) AM_WRITE(MWA8_NOP)         // ??
+//  AM_RANGE(0x86, 0x86) AM_WRITE(SMH_NOP)         // ??
+//  AM_RANGE(0x87, 0x87) AM_WRITE(SMH_NOP)         // ??
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-/*  AM_RANGE(0x04, 0x04) AM_READ(MRA8_NOP)    value read and *discarded*    */
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+/*  AM_RANGE(0x04, 0x04) AM_READ(SMH_NOP)    value read and *discarded*    */
 	AM_RANGE(0x06, 0x06) AM_READ(galivan_sound_command_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM3526_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM3526_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(DAC_0_data_w)
@@ -560,7 +560,7 @@ static MACHINE_DRIVER_START( galivan )
 	MDRV_CPU_ADD(Z80,12000000/2)		/* 6 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
 	/* audio CPU */		/* 4 MHz? */
@@ -568,19 +568,18 @@ static MACHINE_DRIVER_START( galivan )
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 7250)  /* timed interrupt, ?? Hz */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(galivan)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(galivan)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(8*16+16*16+256*16)
+	MDRV_PALETTE_LENGTH(8*16+16*16+256*16)
 
 	MDRV_PALETTE_INIT(galivan)
 	MDRV_VIDEO_START(galivan)
@@ -605,7 +604,7 @@ static MACHINE_DRIVER_START( ninjemak )
 	MDRV_CPU_ADD(Z80,12000000/2)		/* 6 MHz? */
 	MDRV_CPU_PROGRAM_MAP(readmem,ninjemak_writemem)
 	MDRV_CPU_IO_MAP(ninjemak_readport,ninjemak_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
 	/* audio CPU */		/* 4 MHz? */
@@ -613,19 +612,18 @@ static MACHINE_DRIVER_START( ninjemak )
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 7250)	/* timed interrupt, ?? Hz */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(galivan)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(ninjemak)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(8*16+16*16+256*16)
+	MDRV_PALETTE_LENGTH(8*16+16*16+256*16)
 
 	MDRV_PALETTE_INIT(galivan)
 	MDRV_VIDEO_START(ninjemak)
@@ -678,12 +676,14 @@ ROM_START( galivan )
 	ROM_LOAD( "gv6.19d",      0x0000, 0x4000, CRC(da38168b) SHA1(a12decd55fd1cf32fd192f13bd33d2f1f4129d2c) )
 	ROM_LOAD( "gv5.17d",      0x4000, 0x4000, CRC(22492d2a) SHA1(c8d36949abc2fcc8f2b12276eb82b330a940bc38) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )
 	ROM_LOAD( "mb7114e.9f",   0x0000, 0x0100, CRC(de782b3e) SHA1(c76da7d5cbd9170be93c9591e525646a4360203c) )	/* red */
 	ROM_LOAD( "mb7114e.10f",  0x0100, 0x0100, CRC(0ae2a857) SHA1(cdf84c0c75d483a81013dbc050e7aa8c8503c74c) )	/* green */
 	ROM_LOAD( "mb7114e.11f",  0x0200, 0x0100, CRC(7ba8b9d1) SHA1(5942b403eda046e2f2584062443472cbf559db5c) )	/* blue */
 	ROM_LOAD( "mb7114e.2d",   0x0300, 0x0100, CRC(75466109) SHA1(6196d12ab7103f6ef991b826d8b93303a61d4c48) )	/* sprite lookup table */
-	ROM_LOAD( "mb7114e.7f",   0x0400, 0x0100, CRC(06538736) SHA1(a2fb2ecb768686839f3087e691102e2dc2eb65b5) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "mb7114e.7f",   0x0000, 0x0100, CRC(06538736) SHA1(a2fb2ecb768686839f3087e691102e2dc2eb65b5) )	/* sprite palette bank */
 ROM_END
 
 ROM_START( galivan2 )
@@ -713,12 +713,14 @@ ROM_START( galivan2 )
 	ROM_LOAD( "gv6.19d",      0x0000, 0x4000, CRC(da38168b) SHA1(a12decd55fd1cf32fd192f13bd33d2f1f4129d2c) )
 	ROM_LOAD( "gv5.17d",      0x4000, 0x4000, CRC(22492d2a) SHA1(c8d36949abc2fcc8f2b12276eb82b330a940bc38) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )
 	ROM_LOAD( "mb7114e.9f",   0x0000, 0x0100, CRC(de782b3e) SHA1(c76da7d5cbd9170be93c9591e525646a4360203c) )	/* red */
 	ROM_LOAD( "mb7114e.10f",  0x0100, 0x0100, CRC(0ae2a857) SHA1(cdf84c0c75d483a81013dbc050e7aa8c8503c74c) )	/* green */
 	ROM_LOAD( "mb7114e.11f",  0x0200, 0x0100, CRC(7ba8b9d1) SHA1(5942b403eda046e2f2584062443472cbf559db5c) )	/* blue */
 	ROM_LOAD( "mb7114e.2d",   0x0300, 0x0100, CRC(75466109) SHA1(6196d12ab7103f6ef991b826d8b93303a61d4c48) )	/* sprite lookup table */
-	ROM_LOAD( "mb7114e.7f",   0x0400, 0x0100, CRC(06538736) SHA1(a2fb2ecb768686839f3087e691102e2dc2eb65b5) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "mb7114e.7f",   0x0000, 0x0100, CRC(06538736) SHA1(a2fb2ecb768686839f3087e691102e2dc2eb65b5) )	/* sprite palette bank */
 ROM_END
 
 ROM_START( dangar )
@@ -748,12 +750,14 @@ ROM_START( dangar )
 	ROM_LOAD( "dangar07.19d", 0x0000, 0x4000, CRC(6dba32cf) SHA1(e6433f291364202c1291b137d6ee1840ecf7d72d) )
 	ROM_LOAD( "dangar06.17d", 0x4000, 0x4000, CRC(6c899071) SHA1(9a776aae897d57e66ebdbcf79f3c673da8b78b05) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )
 	ROM_LOAD( "82s129.9f",    0x0000, 0x0100, CRC(b29f6a07) SHA1(17c82f439f314c212470bafd917b3f7e12462d16) )	/* red */
 	ROM_LOAD( "82s129.10f",   0x0100, 0x0100, CRC(c6de5ecb) SHA1(d5b6cb784b5df16332c5e2b19b763c8858a0b6a7) )	/* green */
 	ROM_LOAD( "82s129.11f",   0x0200, 0x0100, CRC(a5bbd6dc) SHA1(5587844900a24d833500d204f049c05493c4a25a) )	/* blue */
 	ROM_LOAD( "82s129.2d",    0x0300, 0x0100, CRC(a4ac95a5) SHA1(3b31cd3fd6caedd89d1bedc606a978081fc5431f) )	/* sprite lookup table */
-	ROM_LOAD( "82s129.7f",    0x0400, 0x0100, CRC(29bc6216) SHA1(1d7864ad06ad0cd5e3d1905fc6066bee1cd90995) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "82s129.7f",    0x0000, 0x0100, CRC(29bc6216) SHA1(1d7864ad06ad0cd5e3d1905fc6066bee1cd90995) )	/* sprite palette bank */
 ROM_END
 
 ROM_START( dangar2 )
@@ -783,12 +787,14 @@ ROM_START( dangar2 )
 	ROM_LOAD( "dangar07.19d", 0x0000, 0x4000, CRC(6dba32cf) SHA1(e6433f291364202c1291b137d6ee1840ecf7d72d) )
 	ROM_LOAD( "dangar06.17d", 0x4000, 0x4000, CRC(6c899071) SHA1(9a776aae897d57e66ebdbcf79f3c673da8b78b05) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )
 	ROM_LOAD( "82s129.9f",    0x0000, 0x0100, CRC(b29f6a07) SHA1(17c82f439f314c212470bafd917b3f7e12462d16) )	/* red */
 	ROM_LOAD( "82s129.10f",   0x0100, 0x0100, CRC(c6de5ecb) SHA1(d5b6cb784b5df16332c5e2b19b763c8858a0b6a7) )	/* green */
 	ROM_LOAD( "82s129.11f",   0x0200, 0x0100, CRC(a5bbd6dc) SHA1(5587844900a24d833500d204f049c05493c4a25a) )	/* blue */
 	ROM_LOAD( "82s129.2d",    0x0300, 0x0100, CRC(a4ac95a5) SHA1(3b31cd3fd6caedd89d1bedc606a978081fc5431f) )	/* sprite lookup table */
-	ROM_LOAD( "82s129.7f",    0x0400, 0x0100, CRC(29bc6216) SHA1(1d7864ad06ad0cd5e3d1905fc6066bee1cd90995) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "82s129.7f",    0x0000, 0x0100, CRC(29bc6216) SHA1(1d7864ad06ad0cd5e3d1905fc6066bee1cd90995) )	/* sprite palette bank */
 ROM_END
 
 ROM_START( dangarb )
@@ -818,12 +824,14 @@ ROM_START( dangarb )
 	ROM_LOAD( "dangar07.19d", 0x0000, 0x4000, CRC(6dba32cf) SHA1(e6433f291364202c1291b137d6ee1840ecf7d72d) )
 	ROM_LOAD( "dangar06.17d", 0x4000, 0x4000, CRC(6c899071) SHA1(9a776aae897d57e66ebdbcf79f3c673da8b78b05) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )
 	ROM_LOAD( "82s129.9f",    0x0000, 0x0100, CRC(b29f6a07) SHA1(17c82f439f314c212470bafd917b3f7e12462d16) )	/* red */
 	ROM_LOAD( "82s129.10f",   0x0100, 0x0100, CRC(c6de5ecb) SHA1(d5b6cb784b5df16332c5e2b19b763c8858a0b6a7) )	/* green */
 	ROM_LOAD( "82s129.11f",   0x0200, 0x0100, CRC(a5bbd6dc) SHA1(5587844900a24d833500d204f049c05493c4a25a) )	/* blue */
 	ROM_LOAD( "82s129.2d",    0x0300, 0x0100, CRC(a4ac95a5) SHA1(3b31cd3fd6caedd89d1bedc606a978081fc5431f) )	/* sprite lookup table */
-	ROM_LOAD( "82s129.7f",    0x0400, 0x0100, CRC(29bc6216) SHA1(1d7864ad06ad0cd5e3d1905fc6066bee1cd90995) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "82s129.7f",    0x0000, 0x0100, CRC(29bc6216) SHA1(1d7864ad06ad0cd5e3d1905fc6066bee1cd90995) )	/* sprite palette bank */
 ROM_END
 
 ROM_START( ninjemak )
@@ -858,12 +866,14 @@ ROM_START( ninjemak )
 	ROM_REGION( 0x4000, REGION_GFX5, 0 )	/* data for mcu/blitter? */
 	ROM_LOAD( "ninjemak.5",   0x0000, 0x4000, CRC(5f91dd30) SHA1(3513c0a2e4ca83f602cacad6af9c07fe9e4b16a1) )	/* text layer data */
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )	/* Region 3 - color data */
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )	/* Region 3 - color data */
 	ROM_LOAD( "ninjemak.pr1", 0x0000, 0x0100, CRC(8a62d4e4) SHA1(99ca4da01ea1b5585f6e3ebf162c3f988ab317e5) )	/* red */
 	ROM_LOAD( "ninjemak.pr2", 0x0100, 0x0100, CRC(2ccf976f) SHA1(b804ee761793697087fbe3372352f301a22feeab) )	/* green */
 	ROM_LOAD( "ninjemak.pr3", 0x0200, 0x0100, CRC(16b2a7a4) SHA1(53c410b439c8a835447f15f2ab250b363b3f7888) )	/* blue */
 	ROM_LOAD( "yncp-2d.bin",  0x0300, 0x0100, BAD_DUMP CRC(23bade78) SHA1(7e2de5eb08d888f97830807b6dbe85d09bb3b7f8)  )	/* sprite lookup table */
-	ROM_LOAD( "yncp-7f.bin",  0x0400, 0x0100, BAD_DUMP CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450)  )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "yncp-7f.bin",  0x0000, 0x0100, BAD_DUMP CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450)  )	/* sprite palette bank */
 ROM_END
 
 ROM_START( youma )
@@ -898,12 +908,14 @@ ROM_START( youma )
 	ROM_REGION( 0x4000, REGION_GFX5, 0 )	/* data for mcu/blitter? */
 	ROM_LOAD( "ync-5.bin",    0x0000, 0x4000, CRC(993e4ab2) SHA1(aceafc83b36db4db923d27f77ad045e626678bae) )	/* text layer data */
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )	/* Region 3 - color data */
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )	/* Region 3 - color data */
 	ROM_LOAD( "yncp-6e.bin",  0x0000, 0x0100, CRC(ea47b91a) SHA1(9921aa1ef882fb664d85d3e065223610262ca112) )	/* red */
 	ROM_LOAD( "yncp-7e.bin",  0x0100, 0x0100, CRC(e94c0fed) SHA1(68581c91e9aa485f78af6b6a5c98612372cd5b17) )	/* green */
 	ROM_LOAD( "yncp-8e.bin",  0x0200, 0x0100, CRC(ffb4b287) SHA1(c3c7018e6d5e18cc2db135812d0dc3824710ab4c) )	/* blue */
 	ROM_LOAD( "yncp-2d.bin",  0x0300, 0x0100, CRC(23bade78) SHA1(7e2de5eb08d888f97830807b6dbe85d09bb3b7f8) )	/* sprite lookup table */
-	ROM_LOAD( "yncp-7f.bin",  0x0400, 0x0100, CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "yncp-7f.bin",  0x0000, 0x0100, CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450) )	/* sprite palette bank */
 ROM_END
 
 ROM_START( youmab )
@@ -911,7 +923,7 @@ ROM_START( youmab )
 	ROM_LOAD( "electric1.3u", 0x00000, 0x8000, CRC(cc4fdb92) SHA1(9ce963db23f91f91e775a0b9a819f00db869120f) )
 	ROM_LOAD( "electric3.3r", 0x10000, 0x8000, CRC(c1bc7387) SHA1(ad05bff02ece515465a9506e09c252c446c8f81d) )
 
-	ROM_REGION( 0x10000, REGION_USER1, 0 )	/* main cpu code */
+	ROM_REGION( 0x10000, REGION_USER2, 0 )	/* main cpu code */
 	/* This rom is double the size of the original one, appears to have extra (banked) code for 0x8000 */
 	ROM_LOAD( "electric2.3t", 0x00000, 0x8000, CRC(99aee3bc) SHA1(5ffd60b959dda3fd41609c89a3486a989b1e2530) )
 
@@ -939,12 +951,14 @@ ROM_START( youmab )
 	ROM_LOAD( "electric7.3a",   0x0000, 0x4000, CRC(80c20d36) SHA1(f20724754824030d62059388f3ea2224f5b7a60e) )
 	ROM_LOAD( "electric6.3b",   0x4000, 0x4000, CRC(1da7a651) SHA1(5307452058164a0bc39d144dd204627a9ead7543) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )	/* Region 3 - color data */
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )	/* Region 3 - color data */
 	ROM_LOAD( "prom82s129.2n",  0x0000, 0x0100, CRC(ea47b91a) SHA1(9921aa1ef882fb664d85d3e065223610262ca112) )	/* red */
 	ROM_LOAD( "prom82s129.2m",  0x0100, 0x0100, CRC(e94c0fed) SHA1(68581c91e9aa485f78af6b6a5c98612372cd5b17) )	/* green */
 	ROM_LOAD( "prom82s129.2l",  0x0200, 0x0100, CRC(ffb4b287) SHA1(c3c7018e6d5e18cc2db135812d0dc3824710ab4c) )	/* blue */
 	ROM_LOAD( "prom82s129.3s",  0x0300, 0x0100, CRC(23bade78) SHA1(7e2de5eb08d888f97830807b6dbe85d09bb3b7f8) )	/* sprite lookup table */
-	ROM_LOAD( "prom82s129.1l",  0x0400, 0x0100, CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "prom82s129.1l",  0x0000, 0x0100, CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450) )	/* sprite palette bank */
 ROM_END
 
 
@@ -953,7 +967,7 @@ ROM_START( youmab2 )
 	ROM_LOAD( "1.1d",	  0x00000, 0x8000, CRC(692ae497) SHA1(572e5a1eae9b0bb48f65dce5de2df5c5ae95a3bd) )
 	ROM_LOAD( "3.4d",     0x10000, 0x8000, CRC(ebf61afc) SHA1(30235a90e8316f5033d44d31f02cca97c64f2d5e) )
 
-	ROM_REGION( 0x10000, REGION_USER1, 0 )	/* main cpu code */
+	ROM_REGION( 0x10000, REGION_USER2, 0 )	/* main cpu code */
 	/* This rom is double the size of the original one, appears to have extra (banked) code for 0x8000 */
 	ROM_LOAD( "2.2d", 0x00000, 0x8000, CRC(99aee3bc) SHA1(5ffd60b959dda3fd41609c89a3486a989b1e2530) ) // same as first bootleg
 
@@ -980,12 +994,14 @@ ROM_START( youmab2 )
 	ROM_LOAD( "6.18d",   0x0000, 0x4000, CRC(80c20d36) SHA1(f20724754824030d62059388f3ea2224f5b7a60e) )
 	ROM_LOAD( "5.17d",   0x4000, 0x4000, CRC(1da7a651) SHA1(5307452058164a0bc39d144dd204627a9ead7543) )
 
-	ROM_REGION( 0x0500, REGION_PROMS, 0 )	/* Region 3 - color data */
+	ROM_REGION( 0x0400, REGION_PROMS, 0 )	/* Region 3 - color data */
 	ROM_LOAD( "pr.6e",  0x0000, 0x0100, CRC(ea47b91a) SHA1(9921aa1ef882fb664d85d3e065223610262ca112) )	/* red */
 	ROM_LOAD( "pr.7e",  0x0100, 0x0100, CRC(6d66da81) SHA1(ffdd1778ce5b7614b90b5da85589c5871405d3fe) )	/* green */ // different (bad?)
 	ROM_LOAD( "pr.8e",  0x0200, 0x0100, CRC(ffb4b287) SHA1(c3c7018e6d5e18cc2db135812d0dc3824710ab4c) )	/* blue */
 	ROM_LOAD( "pr.2e",  0x0300, 0x0100, CRC(23bade78) SHA1(7e2de5eb08d888f97830807b6dbe85d09bb3b7f8) )	/* sprite lookup table */
-	ROM_LOAD( "pr.7h",  0x0400, 0x0100, CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450) )	/* sprite palette bank */
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 )
+	ROM_LOAD( "pr.7h",  0x0000, 0x0100, CRC(262d0809) SHA1(a67281af02cef082023c0d7d57e3824aeef67450) )	/* sprite palette bank */
 ROM_END
 
 
@@ -993,11 +1009,11 @@ static WRITE8_HANDLER( youmab_extra_bank_w )
 {
 	if (data==0xff)
 	{
-		memory_set_bankptr( 2, memory_region(REGION_USER1)+0x4000 );
+		memory_set_bankptr( 2, memory_region(REGION_USER2)+0x4000 );
 	}
 	else if (data==0x00)
 	{
-		memory_set_bankptr( 2, memory_region(REGION_USER1) );
+		memory_set_bankptr( 2, memory_region(REGION_USER2) );
 	}
 	else
 	{
@@ -1023,13 +1039,13 @@ static WRITE8_HANDLER( youmab_84_w )
 static DRIVER_INIT( youmab )
 {
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x82, 0x82, 0, 0, youmab_extra_bank_w); // banks rom at 0x8000? writes 0xff and 0x00 before executing code there
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK2);
-	memory_set_bankptr( 2, memory_region(REGION_USER1) );
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2);
+	memory_set_bankptr( 2, memory_region(REGION_USER2) );
 
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x81, 0x81, 0, 0, youmab_81_w); // ?? often, alternating values
 	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x84, 0x84, 0, 0, youmab_84_w); // ?? often, sequence..
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xd81f, 0, 0, MWA8_NOP); // scrolling isn't here..
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xd81f, 0, 0, SMH_NOP); // scrolling isn't here..
 
 	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x8a, 0x8a, 0, 0, youmab_8a_r); // ???
 

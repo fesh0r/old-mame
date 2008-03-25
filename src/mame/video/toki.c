@@ -32,19 +32,18 @@ remove all the code writing the $a0000 area.)
 
 WRITE16_HANDLER( toki_control_w )
 {
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen) - 1);
 	COMBINE_DATA(&toki_scrollram16[offset]);
-
-	video_screen_update_partial(0, video_screen_get_vpos(0) - 1);
 }
 
 VIDEO_EOF( toki )
 {
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }
 
 VIDEO_EOF( tokib )
 {
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }
 
 static TILE_GET_INFO( get_text_tile_info )
@@ -98,9 +97,9 @@ static TILE_GET_INFO( get_fore_tile_info )
 
 VIDEO_START( toki )
 {
-	text_layer       = tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,  8,8,32,32);
-	background_layer = tilemap_create(get_back_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	foreground_layer = tilemap_create(get_fore_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	text_layer       = tilemap_create(get_text_tile_info,tilemap_scan_rows,  8,8,32,32);
+	background_layer = tilemap_create(get_back_tile_info,tilemap_scan_rows,16,16,32,32);
+	foreground_layer = tilemap_create(get_fore_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(text_layer,15);
 	tilemap_set_transparent_pen(background_layer,15);
@@ -176,7 +175,7 @@ WRITE16_HANDLER( toki_background2_videoram16_w )
 ***************************************************************************/
 
 
-static void toki_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void toki_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int x,y,xoffs,yoffs,tile,flipx,flipy,color,offs;
 	UINT16 *sprite_word;
@@ -202,7 +201,7 @@ static void toki_draw_sprites(running_machine *machine, mame_bitmap *bitmap,cons
 			flipy   = 0;
 			tile    = (sprite_word[1] & 0xfff) + ((sprite_word[2] & 0x8000) >> 3);
 
-			if (flip_screen) {
+			if (flip_screen_get()) {
 				x=240-x;
 				y=240-y;
 				if (flipx) flipx=0; else flipx=1;
@@ -220,7 +219,7 @@ static void toki_draw_sprites(running_machine *machine, mame_bitmap *bitmap,cons
 }
 
 
-static void tokib_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void tokib_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int x,y,tile,flipx,color,offs;
 	UINT16 *sprite_word;
@@ -293,7 +292,7 @@ VIDEO_UPDATE( toki )
 		tilemap_draw(bitmap,cliprect,foreground_layer,TILEMAP_DRAW_OPAQUE,0);
 		tilemap_draw(bitmap,cliprect,background_layer,0,0);
 	}
-	toki_draw_sprites(machine, bitmap,cliprect);
+	toki_draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,text_layer,0,0);
 	return 0;
 }
@@ -315,7 +314,7 @@ VIDEO_UPDATE( tokib )
 		tilemap_draw(bitmap,cliprect,background_layer,0,0);
 	}
 
-	tokib_draw_sprites(machine, bitmap,cliprect);
+	tokib_draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,text_layer,0,0);
 	return 0;
 }

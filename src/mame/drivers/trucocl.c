@@ -36,16 +36,16 @@ Daughterboard: Custom made, plugged in the 2 roms and Z80 mainboard sockets.
 #include "sound/dac.h"
 
 /* from video */
-extern WRITE8_HANDLER( trucocl_videoram_w );
-extern WRITE8_HANDLER( trucocl_colorram_w );
-extern PALETTE_INIT( trucocl );
-extern VIDEO_START( trucocl );
-extern VIDEO_UPDATE( trucocl );
+WRITE8_HANDLER( trucocl_videoram_w );
+WRITE8_HANDLER( trucocl_colorram_w );
+PALETTE_INIT( trucocl );
+VIDEO_START( trucocl );
+VIDEO_UPDATE( trucocl );
 
 
 static WRITE8_HANDLER( irq_enable_w)
 {
-	interrupt_enable_w( 0, (~data) & 1 );
+	interrupt_enable_w( machine, 0, (~data) & 1 );
 }
 
 static int cur_dac_address = -1;
@@ -86,23 +86,23 @@ static WRITE8_HANDLER( audio_dac_w)
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4400, 0x47ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4c00, 0x4fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4400, 0x47ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4c00, 0x4fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x5000, 0x503f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x4000, 0x43ff) AM_WRITE(trucocl_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4400, 0x47ff) AM_WRITE(trucocl_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x4c00, 0x4fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x4c00, 0x4fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(irq_enable_w)
 	AM_RANGE(0x5080, 0x5080) AM_WRITE(audio_dac_w)
 	AM_RANGE(0x50c0, 0x50c0) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( trucocl )
@@ -145,19 +145,18 @@ static MACHINE_DRIVER_START( trucocl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 18432000/6)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(trucocl_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", trucocl_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(trucocl)
 	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(32)
 
 	MDRV_PALETTE_INIT(trucocl)
 	MDRV_VIDEO_START(trucocl)

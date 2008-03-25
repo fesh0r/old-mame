@@ -76,8 +76,8 @@ WRITE16_HANDLER( targeth_vram_w )
 
 VIDEO_START( targeth )
 {
-	pant[0] = tilemap_create(get_tile_info_targeth_screen0,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
-	pant[1] = tilemap_create(get_tile_info_targeth_screen1,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	pant[0] = tilemap_create(get_tile_info_targeth_screen0,tilemap_scan_rows,16,16,64,32);
+	pant[1] = tilemap_create(get_tile_info_targeth_screen1,tilemap_scan_rows,16,16,64,32);
 
 	tilemap_set_transparent_pen(pant[0],0);
 }
@@ -106,7 +106,7 @@ VIDEO_START( targeth )
       3  | xx------ -------- | not used?
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i;
 	const gfx_element *gfx = machine->gfx[0];
@@ -144,7 +144,7 @@ VIDEO_UPDATE( targeth )
 
 	tilemap_draw(bitmap,cliprect,pant[1],0,0);
 	tilemap_draw(bitmap,cliprect,pant[0],0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 
 	return 0;
 }

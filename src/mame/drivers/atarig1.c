@@ -75,7 +75,7 @@ static MACHINE_RESET( atarig1 )
 	atarigen_eeprom_reset();
 	atarigen_slapstic_reset();
 	atarigen_interrupt_reset(update_interrupts);
-	atarigen_scanline_timer_reset(0, atarig1_scanline_update, 8);
+	atarigen_scanline_timer_reset(machine->primary_screen, atarig1_scanline_update, 8);
 	atarijsa_reset();
 }
 
@@ -218,7 +218,10 @@ static void pitfighb_cheap_slapstic_init(void)
  *************************************/
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_ROM
+	AM_RANGE(0x000000, 0x037fff) AM_ROM
+	AM_RANGE(0x038000, 0x03ffff) AM_ROM	/* pitfight slapstic goes here */
+	AM_RANGE(0x040000, 0x077fff) AM_ROM
+	AM_RANGE(0x078000, 0x07ffff) AM_ROM	/* hydra slapstic goes here */
 	AM_RANGE(0xf80000, 0xf80001) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0xf88000, 0xf8ffff) AM_WRITE(atarigen_eeprom_enable_w)
 	AM_RANGE(0xf90000, 0xf90001) AM_WRITE(atarigen_sound_upper_w)
@@ -230,7 +233,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xfd0000, 0xfd0001) AM_READ(atarigen_sound_upper_r)
 	AM_RANGE(0xfd8000, 0xfdffff) AM_READWRITE(atarigen_eeprom_r, atarigen_eeprom_w) AM_BASE(&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
 /*  AM_RANGE(0xfe0000, 0xfe7fff) AM_READ(from_r)*/
-	AM_RANGE(0xfe8000, 0xfe89ff) AM_READWRITE(MRA16_RAM, atarigen_666_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xfe8000, 0xfe89ff) AM_READWRITE(SMH_RAM, atarigen_666_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xff0fff) AM_WRITE(atarirle_0_spriteram_w) AM_BASE(&atarirle_0_spriteram)
 	AM_RANGE(0xff2000, 0xff2001) AM_WRITE(mo_command_w) AM_BASE(&mo_command)
 	AM_RANGE(0xff4000, 0xff5fff) AM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
@@ -424,18 +427,18 @@ static MACHINE_DRIVER_START( atarig1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, ATARI_CLOCK_14MHz)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(atarigen_video_int_gen,1)
+	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 
 	MDRV_MACHINE_START(atarig1)
 	MDRV_MACHINE_RESET(atarig1)
 	MDRV_NVRAM_HANDLER(atarigen)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_GFXDECODE(atarig1)
 	MDRV_PALETTE_LENGTH(1280)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	MDRV_SCREEN_RAW_PARAMS(ATARI_CLOCK_14MHz/2, 456, 0, 336, 262, 0, 240)

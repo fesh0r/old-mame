@@ -658,7 +658,7 @@ extern WRITE16_HANDLER( model1_tgp_vr_adr_w );
 extern READ16_HANDLER( model1_vr_tgp_ram_r );
 extern WRITE16_HANDLER( model1_vr_tgp_ram_w );
 extern void model1_vr_tgp_reset( void );
-ADDRESS_MAP_EXTERN( model1_vr_tgp_map );
+ADDRESS_MAP_EXTERN( model1_vr_tgp_map, 32 );
 
 static int model1_sound_irq;
 
@@ -822,7 +822,7 @@ static WRITE16_HANDLER(md0_w)
 static WRITE16_HANDLER(p_w)
 {
 	UINT16 old = paletteram16[offset];
-	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset, data, mem_mask);
+	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset, data, mem_mask);
 	if(0 && paletteram16[offset] != old)
 		logerror("XVIDEO: p_w %x, %04x @ %04x (%x)\n", offset, data, mem_mask, activecpu_get_pc());
 }
@@ -890,11 +890,11 @@ static ADDRESS_MAP_START( model1_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x1fffff) AM_ROMBANK(1)
 	AM_RANGE(0x200000, 0x2fffff) AM_ROM
 
-	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(MRA16_RAM, mr2_w) AM_BASE(&mr2)
-	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(MRA16_RAM, mr_w)  AM_BASE(&mr)
+	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(SMH_RAM, mr2_w) AM_BASE(&mr2)
+	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(SMH_RAM, mr_w)  AM_BASE(&mr)
 
-	AM_RANGE(0x600000, 0x60ffff) AM_READWRITE(MRA16_RAM, md0_w) AM_BASE(&model1_display_list0)
-	AM_RANGE(0x610000, 0x61ffff) AM_READWRITE(MRA16_RAM, md1_w) AM_BASE(&model1_display_list1)
+	AM_RANGE(0x600000, 0x60ffff) AM_READWRITE(SMH_RAM, md0_w) AM_BASE(&model1_display_list0)
+	AM_RANGE(0x610000, 0x61ffff) AM_READWRITE(SMH_RAM, md1_w) AM_BASE(&model1_display_list1)
 	AM_RANGE(0x680000, 0x680003) AM_READWRITE(model1_listctl_r, model1_listctl_w)
 
 	AM_RANGE(0x700000, 0x70ffff) AM_READWRITE(sys24_tile_r, sys24_tile_w)
@@ -904,7 +904,7 @@ static ADDRESS_MAP_START( model1_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x770000, 0x770001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x780000, 0x7fffff) AM_READWRITE(sys24_char_r, sys24_char_w)
 
-	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(MRA16_RAM, p_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(SMH_RAM, p_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x910000, 0x91bfff) AM_RAM  AM_BASE(&model1_color_xlat)
 
 	AM_RANGE(0xc00000, 0xc0003f) AM_READ(io_r) AM_WRITENOP
@@ -938,11 +938,11 @@ static ADDRESS_MAP_START( model1_vr_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x1fffff) AM_ROMBANK(1)
 	AM_RANGE(0x200000, 0x2fffff) AM_ROM
 
-	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(MRA16_RAM, mr2_w) AM_BASE(&mr2)
-	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(MRA16_RAM, mr_w)  AM_BASE(&mr)
+	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(SMH_RAM, mr2_w) AM_BASE(&mr2)
+	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(SMH_RAM, mr_w)  AM_BASE(&mr)
 
-	AM_RANGE(0x600000, 0x60ffff) AM_READWRITE(MRA16_RAM, md0_w) AM_BASE(&model1_display_list0)
-	AM_RANGE(0x610000, 0x61ffff) AM_READWRITE(MRA16_RAM, md1_w) AM_BASE(&model1_display_list1)
+	AM_RANGE(0x600000, 0x60ffff) AM_READWRITE(SMH_RAM, md0_w) AM_BASE(&model1_display_list0)
+	AM_RANGE(0x610000, 0x61ffff) AM_READWRITE(SMH_RAM, md1_w) AM_BASE(&model1_display_list1)
 	AM_RANGE(0x680000, 0x680003) AM_READWRITE(model1_listctl_r, model1_listctl_w)
 
 	AM_RANGE(0x700000, 0x70ffff) AM_READWRITE(sys24_tile_r, sys24_tile_w)
@@ -952,7 +952,7 @@ static ADDRESS_MAP_START( model1_vr_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x770000, 0x770001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x780000, 0x7fffff) AM_READWRITE(sys24_char_r, sys24_char_w)
 
-	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(MRA16_RAM, p_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(SMH_RAM, p_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x910000, 0x91bfff) AM_RAM  AM_BASE(&model1_color_xlat)
 
 	AM_RANGE(0xc00000, 0xc0003f) AM_READ(io_r) AM_WRITENOP
@@ -1000,12 +1000,12 @@ static READ16_HANDLER( m1_snd_v60_ready_r )
 
 static READ16_HANDLER( m1_snd_mpcm0_r )
 {
-	return MultiPCM_reg_0_r(0);
+	return MultiPCM_reg_0_r(machine, 0);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm0_w )
 {
-	MultiPCM_reg_0_w(offset, data);
+	MultiPCM_reg_0_w(machine, offset, data);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm0_bnk_w )
@@ -1015,12 +1015,12 @@ static WRITE16_HANDLER( m1_snd_mpcm0_bnk_w )
 
 static READ16_HANDLER( m1_snd_mpcm1_r )
 {
-	return MultiPCM_reg_1_r(0);
+	return MultiPCM_reg_1_r(machine, 0);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm1_w )
 {
-	MultiPCM_reg_1_w(offset, data);
+	MultiPCM_reg_1_w(machine, offset, data);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm1_bnk_w )
@@ -1030,7 +1030,7 @@ static WRITE16_HANDLER( m1_snd_mpcm1_bnk_w )
 
 static READ16_HANDLER( m1_snd_ym_r )
 {
-	return YM3438_status_port_0_A_r(0);
+	return YM3438_status_port_0_A_r(machine, 0);
 }
 
 static WRITE16_HANDLER( m1_snd_ym_w )
@@ -1038,19 +1038,19 @@ static WRITE16_HANDLER( m1_snd_ym_w )
 	switch (offset)
 	{
 		case 0:
-			YM3438_control_port_0_A_w(0, data);
+			YM3438_control_port_0_A_w(machine, 0, data);
 			break;
 
 		case 1:
-			YM3438_data_port_0_A_w(0, data);
+			YM3438_data_port_0_A_w(machine, 0, data);
 			break;
 
 		case 2:
-			YM3438_control_port_0_B_w(0, data);
+			YM3438_control_port_0_B_w(machine, 0, data);
 			break;
 
 		case 3:
-			YM3438_data_port_0_B_w(0, data);
+			YM3438_data_port_0_B_w(machine, 0, data);
 			break;
 	}
 }
@@ -1534,21 +1534,23 @@ static MACHINE_DRIVER_START( model1 )
 	MDRV_CPU_ADD(V60, 16000000)
 	MDRV_CPU_PROGRAM_MAP(model1_mem, 0)
 	MDRV_CPU_IO_MAP(model1_io, 0)
-	MDRV_CPU_VBLANK_INT(model1_interrupt, 2)
+	MDRV_CPU_VBLANK_INT_HACK(model1_interrupt, 2)
 
 	MDRV_CPU_ADD(M68000, 10000000)	// verified on real h/w
 	MDRV_CPU_PROGRAM_MAP(model1_snd, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(model1)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(model1)
@@ -1578,7 +1580,7 @@ static MACHINE_DRIVER_START( model1_vr )
 	MDRV_CPU_ADD(V60, 16000000)
 	MDRV_CPU_PROGRAM_MAP(model1_vr_mem, 0)
 	MDRV_CPU_IO_MAP(model1_vr_io, 0)
-	MDRV_CPU_VBLANK_INT(model1_interrupt, 2)
+	MDRV_CPU_VBLANK_INT_HACK(model1_interrupt, 2)
 
 	MDRV_CPU_ADD(M68000, 10000000)	// verified on real h/w
 	MDRV_CPU_PROGRAM_MAP(model1_snd, 0)
@@ -1587,16 +1589,18 @@ static MACHINE_DRIVER_START( model1_vr )
 	MDRV_CPU_CONFIG(model1_vr_tgp_config)
 	MDRV_CPU_PROGRAM_MAP(model1_vr_tgp_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(model1_vr)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(model1)

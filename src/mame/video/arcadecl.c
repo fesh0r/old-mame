@@ -32,7 +32,7 @@ static UINT8 has_mo;
 
 VIDEO_START( arcadecl )
 {
-	static const struct atarimo_desc modesc =
+	static const atarimo_desc modesc =
 	{
 		0,					/* index to which gfx system */
 		1,					/* number of motion object banks */
@@ -89,16 +89,16 @@ VIDEO_START( arcadecl )
 VIDEO_UPDATE( arcadecl )
 {
 	/* draw the playfield */
-	rampart_bitmap_render(machine, bitmap, cliprect);
+	rampart_bitmap_render(screen->machine, bitmap, cliprect);
 
 	/* draw and merge the MO */
 	if (has_mo)
 	{
-		struct atarimo_rect_list rectlist;
-		mame_bitmap *mobitmap;
+		atarimo_rect_list rectlist;
+		bitmap_t *mobitmap;
 		int x, y, r;
 
-		mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
+		mobitmap = atarimo_render(0, cliprect, &rectlist);
 		for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 			for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 			{

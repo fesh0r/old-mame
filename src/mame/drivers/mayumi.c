@@ -41,7 +41,7 @@ static WRITE8_HANDLER( bank_sel_w )
 
 static MACHINE_RESET( mayumi )
 {
-	bank_sel_w(0,0);
+	bank_sel_w(machine,0,0);
 }
 
 static WRITE8_HANDLER( input_sel_w )
@@ -69,30 +69,30 @@ static READ8_HANDLER( key_matrix_r )
 /****************************************************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xf7ff) AM_READ(mayumi_videoram_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe000, 0xf7ff) AM_WRITE(mayumi_videoram_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x30, 0x30) AM_READ(input_port_12_r)
 	AM_RANGE(0xc1, 0xc2) AM_READ(key_matrix_r)	// 0xc0-c3 8255ppi
 	AM_RANGE(0xd1, 0xd1) AM_READ(YM2203_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x30, 0x30) AM_WRITE(bank_sel_w)
 	AM_RANGE(0xc0, 0xc0) AM_WRITE(input_sel_w)
-	AM_RANGE(0xc3, 0xc3) AM_WRITE(MWA8_NOP)		// 0xc0-c3 8255ppi
+	AM_RANGE(0xc3, 0xc3) AM_WRITE(SMH_NOP)		// 0xc0-c3 8255ppi
 	AM_RANGE(0xd0, 0xd0) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0xd1, 0xd1) AM_WRITE(YM2203_write_port_0_w)
 ADDRESS_MAP_END
@@ -273,17 +273,18 @@ static MACHINE_DRIVER_START( mayumi )
 	MDRV_CPU_ADD(Z80, MCLK/2) /* 5.000 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(mayumi_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", mayumi_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET( mayumi )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 62*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(mayumi)
 	MDRV_PALETTE_LENGTH(256)
 

@@ -61,16 +61,16 @@ GFXDECODE_END
 static WRITE8_HANDLER( sgladiat_soundlatch_w )
 {
 	snk_sound_busy_bit = 0x20;
-	soundlatch_w( offset, data );
+	soundlatch_w( machine, offset, data );
 
 	/* trigger NMI on sound CPU */
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);	// safer because NMI can be lost in rare occations
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);	// safer because NMI can be lost in rare occations
 }
 
 static READ8_HANDLER( sgladiat_soundlatch_r )
 {
 	snk_sound_busy_bit = 0;
-	return(soundlatch_r(0));
+	return(soundlatch_r(machine,0));
 }
 
 static READ8_HANDLER( sgladiat_sound_nmi_ack_r )
@@ -103,12 +103,12 @@ static ADDRESS_MAP_START( sgladiat_cpuA_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa600, 0xa600) AM_WRITE(sglatiat_flipscreen_w)
 	AM_RANGE(0xa700, 0xa700) AM_READWRITE(snk_cpuB_nmi_trigger_r, snk_cpuA_nmi_ack_w)
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM AM_SHARE(3) AM_BASE(&snk_rambase)
-//      AM_RANGE(0xd200, 0xd200) AM_WRITE(MWA8_RAM) /* ?0x24 */
-//      AM_RANGE(0xd300, 0xd300) AM_WRITE(MWA8_RAM) /* ------xx: msb scrollx */
-//      AM_RANGE(0xd400, 0xd400) AM_WRITE(MWA8_RAM) /* xscroll (sprite) */
-//      AM_RANGE(0xd500, 0xd500) AM_WRITE(MWA8_RAM) /* yscroll (sprite) */
-//      AM_RANGE(0xd600, 0xd600) AM_WRITE(MWA8_RAM) /* xscroll (bg) */
-//      AM_RANGE(0xd700, 0xd700) AM_WRITE(MWA8_RAM) /* yscroll (bg) */
+//      AM_RANGE(0xd200, 0xd200) AM_WRITE(SMH_RAM) /* ?0x24 */
+//      AM_RANGE(0xd300, 0xd300) AM_WRITE(SMH_RAM) /* ------xx: msb scrollx */
+//      AM_RANGE(0xd400, 0xd400) AM_WRITE(SMH_RAM) /* xscroll (sprite) */
+//      AM_RANGE(0xd500, 0xd500) AM_WRITE(SMH_RAM) /* yscroll (sprite) */
+//      AM_RANGE(0xd600, 0xd600) AM_WRITE(SMH_RAM) /* xscroll (bg) */
+//      AM_RANGE(0xd700, 0xd700) AM_WRITE(SMH_RAM) /* yscroll (bg) */
 	AM_RANGE(0xd800, 0xdfff) AM_RAM AM_BASE(&spriteram) AM_SHARE(1)
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_BASE(&videoram) AM_SHARE(2)
 	AM_RANGE(0xe800, 0xefff) AM_RAM
@@ -132,13 +132,13 @@ static ADDRESS_MAP_START( sgladiat_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xc000) AM_READ(sgladiat_sound_nmi_ack_r)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xe001, 0xe001) AM_WRITE(AY8910_write_port_0_w)
-	AM_RANGE(0xe002, 0xe003) AM_WRITE(MWA8_NOP)	// leftover wave generator ports?
+	AM_RANGE(0xe002, 0xe003) AM_WRITE(SMH_NOP)	// leftover wave generator ports?
 	AM_RANGE(0xe004, 0xe004) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0xe005, 0xe005) AM_WRITE(AY8910_write_port_1_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sgladiat_sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READNOP
 ADDRESS_MAP_END
 
@@ -147,26 +147,29 @@ static MACHINE_DRIVER_START( sgladiat )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(sgladiat_cpuA_map,0)
-//  MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+//  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(sgladiat_cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(snk_irq_BA,1)
+	MDRV_CPU_VBLANK_INT("main", snk_irq_BA)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(sgladiat_sound_map,0)
 	MDRV_CPU_IO_MAP(sgladiat_sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, 244)	// Marvin's frequency, sounds ok
 
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(300)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8+16, 36*8-1-16, 1*8, 28*8-1)
+
 	MDRV_GFXDECODE(tnk3)
 	MDRV_PALETTE_LENGTH(1024)
 

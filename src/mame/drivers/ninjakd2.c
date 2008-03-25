@@ -85,6 +85,8 @@ Notes:
   all write the 0xF0 "silence" command), however since these games don't have PCM
   samples it seems unlikely that the boards actually have the PCM circuitry. The
   command written might be a leftover from the code used for Ninja Kid II.
+  Atomic Robo-Kid definitely doesn't have the DAC and counters. The other boards
+  have not been verified.
 
 - Ark Area has no explicit copyright year on the title screen, however it was
   reportedly released in December 1987.
@@ -115,8 +117,6 @@ Notes:
 
 TODO:
 -----
-- Ninja Kid II PCM sample playback frequency is not verified
-
 - What does the "credit service" dip switch do in Ninja Kid II?
 
 ******************************************************************************/
@@ -130,6 +130,11 @@ TODO:
 
 #define MAIN_CLOCK_12 XTAL_12MHz
 #define MAIN_CLOCK_5  XTAL_5MHz
+
+// PCM playback is controlled by a 555 timer
+#define NE555_FREQUENCY	16300	// measured on PCB
+//#define NE555_FREQUENCY   (1.0f / (0.693 * (560 + 2*51) * 0.1e-6))    // theoretical: this gives 21.8kHz which is too high
+
 
 static const INT16* ninjakd2_sampledata;
 
@@ -233,7 +238,7 @@ static WRITE8_HANDLER( ninjakd2_pcm_play_w )
 			++end;
 
 		if (end - start)
-			sample_start_raw(0, &ninjakd2_sampledata[start], end - start, MAIN_CLOCK_5 / 384, 0);	// 13020kHz NOT verified
+			sample_start_raw(0, &ninjakd2_sampledata[start], end - start, NE555_FREQUENCY, 0);
 		else
 			sample_stop(0);
 	}
@@ -466,7 +471,7 @@ static ADDRESS_MAP_START( ninjakd2_sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ninjakd2_sound_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(YM2203_control_port_1_w)
@@ -925,7 +930,7 @@ static MACHINE_DRIVER_START( ninjakd2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, MAIN_CLOCK_12/2)		/* verified */
 	MDRV_CPU_PROGRAM_MAP(ninjakd2_main_cpu,0)
-	MDRV_CPU_VBLANK_INT(ninjakd2_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", ninjakd2_interrupt)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, MAIN_CLOCK_5)		/* verified */
 	MDRV_CPU_PROGRAM_MAP(ninjakd2_sound_cpu,0)
@@ -934,11 +939,12 @@ static MACHINE_DRIVER_START( ninjakd2 )
 	MDRV_MACHINE_RESET(ninjakd2)
 
 	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 28*8-1)
+
 	MDRV_GFXDECODE(ninjakd2)
 	MDRV_PALETTE_LENGTH(0x300)
 

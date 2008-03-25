@@ -11,6 +11,9 @@ Misc early Z80 games with simple color bitmap graphics
 Space Intruder emulation by Lee Taylor (lee@defender.demon.co.uk),
     December 1998.
 
+DIP locations verified for:
+    - astinvad (manual)
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -107,7 +110,7 @@ static WRITE8_HANDLER( spaceint_videoram_w )
  *
  *************************************/
 
-static void plot_byte(mame_bitmap *bitmap, UINT8 y, UINT8 x, UINT8 data, UINT8 color)
+static void plot_byte(bitmap_t *bitmap, UINT8 y, UINT8 x, UINT8 data, UINT8 color)
 {
 	pen_t fore_pen = MAKE_RGB(pal1bit(color >> 0), pal1bit(color >> 2), pal1bit(color >> 1));
 	UINT8 flip_xor = screen_flip & 7;
@@ -183,7 +186,7 @@ static TIMER_CALLBACK( kamizake_int_gen )
 	/* interrupts are asserted on every state change of the 128V line */
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 	param ^= 128;
-	timer_adjust(int_timer, video_screen_get_time_until_pos(0, param, 0), param, attotime_never);
+	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, param, 0), param);
 
 	/* an RC circuit turns the interrupt off after a short amount of time */
 	timer_set(double_to_attotime(300 * 0.1e-6), NULL, 0, kamikaze_int_off);
@@ -194,16 +197,14 @@ static MACHINE_START( kamikaze )
 {
 	ppi8255_init(&ppi8255_intf);
 	int_timer = timer_alloc(kamizake_int_gen, NULL);
-	timer_adjust(int_timer, video_screen_get_time_until_pos(0, 128, 0), 128, attotime_never);
+	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, 128, 0), 128);
 }
 
 
-static INTERRUPT_GEN( spaceint_interrupt )
+static INPUT_CHANGED( spaceint_coin_inserted )
 {
-	if (readinputport(2) & 1)	/* coin */
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
-
-	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+	/* coin insertion causes an NMI */
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -220,9 +221,9 @@ static READ8_HANDLER( kamikaze_ppi_r )
 
 	/* the address lines are used for /CS; yes, they can overlap! */
 	if (!(offset & 4))
-		result &= ppi8255_0_r(offset);
+		result &= ppi8255_0_r(machine, offset);
 	if (!(offset & 8))
-		result &= ppi8255_1_r(offset);
+		result &= ppi8255_1_r(machine, offset);
 	return result;
 }
 
@@ -231,9 +232,9 @@ static WRITE8_HANDLER( kamikaze_ppi_w )
 {
 	/* the address lines are used for /CS; yes, they can overlap! */
 	if (!(offset & 4))
-		ppi8255_0_w(offset, data);
+		ppi8255_0_w(machine, offset, data);
 	if (!(offset & 8))
-		ppi8255_1_w(offset, data);
+		ppi8255_1_w(machine, offset, data);
 }
 
 
@@ -314,7 +315,7 @@ static WRITE8_HANDLER( spaceint_sound2_w )
  *************************************/
 
 static ADDRESS_MAP_START( kamikaze_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x1bff) AM_ROM
 	AM_RANGE(0x1c00, 0x1fff) AM_RAM
 	AM_RANGE(0x2000, 0x3fff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
@@ -324,18 +325,18 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( spaceint_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x17ff) AM_ROM
 	AM_RANGE(0x2000, 0x23ff) AM_RAM
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(MRA8_RAM, spaceint_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(SMH_RAM, spaceint_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( kamikaze_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xff) AM_READWRITE(kamikaze_ppi_r, kamikaze_ppi_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( spaceint_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(spaceint_sound1_w)
@@ -393,14 +394,14 @@ static INPUT_PORTS_START( astinvad )
 	PORT_INCLUDE(kamikaze)
 
 	PORT_MODIFY("IN1")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW:2")
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW:1")
 	PORT_DIPSETTING(    0x02, "10000" )
 	PORT_DIPSETTING(    0x00, "20000" )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_DIPNAME( 0x88, 0x00, DEF_STR( Coinage ) )
+	PORT_DIPNAME( 0x88, 0x00, DEF_STR( Coinage ) )		PORT_DIPLOCATION("SW:3,4")
 	PORT_DIPSETTING(    0x88, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
@@ -450,7 +451,7 @@ static INPUT_PORTS_START( spaceint )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
 
 	PORT_START_TAG("IN2")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1) /* causes NMI */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(spaceint_coin_inserted, 0)
 
 	PORT_START_TAG("IN3")
 	PORT_DIPNAME( 0xff, 0x00, DEF_STR( Cabinet ) )
@@ -505,10 +506,9 @@ static MACHINE_DRIVER_START( kamikaze )
 	MDRV_MACHINE_START(kamikaze)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(astinvad)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(VIDEO_CLOCK, 320, 0, 256, 256, 32, 256)
 
@@ -536,14 +536,13 @@ static MACHINE_DRIVER_START( spaceint )
 	MDRV_CPU_ADD(Z80, MASTER_CLOCK)        /* a guess */
 	MDRV_CPU_PROGRAM_MAP(spaceint_map,0)
 	MDRV_CPU_IO_MAP(spaceint_portmap,0)
-	MDRV_CPU_VBLANK_INT(spaceint_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_START(spaceint)
 	MDRV_VIDEO_UPDATE(spaceint)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)

@@ -15,7 +15,7 @@ PALETTE_INIT( carjmbre )
 {
 	int i,bit0,bit1,bit2,r,g,b;
 
-	for (i = 0;i < machine->drv->total_colors; i++)
+	for (i = 0;i < machine->config->total_colors; i++)
 	{
 		/* red component */
 		bit0 = (*color_prom >> 0) & 0x01;
@@ -81,7 +81,7 @@ WRITE8_HANDLER( carjmbre_videoram_w ){
 VIDEO_START( carjmbre )
 {
 
-	carjmbre_tilemap = tilemap_create( get_carjmbre_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32 );
+	carjmbre_tilemap = tilemap_create( get_carjmbre_tile_info,tilemap_scan_rows,8,8,32,32 );
 
 	state_save_register_global(carjmbre_flipscreen);
 	state_save_register_global(carjmbre_bgcolor);
@@ -134,7 +134,7 @@ VIDEO_UPDATE( carjmbre )
 					flipy = !flipy;
 				}
 
-				drawgfx(bitmap,machine->gfx[1],
+				drawgfx(bitmap,screen->machine->gfx[1],
 						spriteram[troffs+1],
 						spriteram[troffs+2]&0x07,
 						flipx,flipy,

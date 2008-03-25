@@ -155,7 +155,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( m52 )
 {
-	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_scrolldx(bg_tilemap, 128 - 1, -1);
@@ -270,14 +270,24 @@ WRITE8_HANDLER( m52_bgcontrol_w )
 
 
 
+/*************************************
+ *
+ *  Outputs
+ *
+ *************************************/
+
 WRITE8_HANDLER( m52_flipscreen_w )
 {
+	/* screen flip is handled both by software and hardware */
+	flip_screen_set((data & 0x01) ^ (~readinputportbytag("DSW2") & 0x01));
+
 	coin_counter_w(0, data & 0x02);
 	coin_counter_w(1, data & 0x20);
+}
 
-	/* screen flip is handled both by software and hardware */
-
-	flip_screen_set((data ^ ~readinputport(4)) & 1);
+WRITE8_HANDLER( alpha1v_flipscreen_w )
+{
+	flip_screen_set(data & 0x01);
 }
 
 
@@ -288,11 +298,12 @@ WRITE8_HANDLER( m52_flipscreen_w )
  *
  *************************************/
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int xpos, int ypos, int image)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int xpos, int ypos, int image)
 {
 	rectangle rect;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		xpos = 255 - xpos;
 		ypos = 255 - ypos - BGHEIGHT;
@@ -300,10 +311,13 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 
 	xpos += 128;
 
+	/* this may not be correct */
+	ypos = ypos + (22 - 8);
+
 	drawgfx(bitmap, machine->gfx[image],
 		0, 0,
-		flip_screen,
-		flip_screen,
+		flip_screen_get(),
+		flip_screen_get(),
 		xpos,
 		ypos,
 		cliprect,
@@ -311,17 +325,17 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 
 	drawgfx(bitmap, machine->gfx[image],
 		0, 0,
-		flip_screen,
-		flip_screen,
+		flip_screen_get(),
+		flip_screen_get(),
 		xpos - 256,
 		ypos,
 		cliprect,
 		TRANSPARENCY_PEN, 0);
 
-	rect.min_x = machine->screen[0].visarea.min_x;
-	rect.max_x = machine->screen[0].visarea.max_x;
+	rect.min_x = visarea->min_x;
+	rect.max_x = visarea->max_x;
 
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		rect.min_y = ypos - BGHEIGHT;
 		rect.max_y = ypos - 1;
@@ -332,7 +346,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 		rect.max_y = ypos + 2 * BGHEIGHT - 1;
 	}
 
-	fillbitmap(bitmap, machine->remapped_colortable[machine->gfx[image]->color_base + 3], &rect);
+	fillbitmap(bitmap, machine->gfx[image]->color_base + 3, &rect);
 }
 
 
@@ -352,16 +366,16 @@ VIDEO_UPDATE( m52 )
 	if (!(bgcontrol & 0x20))
 	{
 		if (!(bgcontrol & 0x10))
-			draw_background(machine, bitmap, cliprect, bg2xpos, bg2ypos, 2); /* distant mountains */
+			draw_background(screen->machine, bitmap, cliprect, bg2xpos, bg2ypos, 2); /* distant mountains */
 
 		if (!(bgcontrol & 0x02))
-			draw_background(machine, bitmap, cliprect, bg1xpos, bg1ypos, 3); /* hills */
+			draw_background(screen->machine, bitmap, cliprect, bg1xpos, bg1ypos, 3); /* hills */
 
 		if (!(bgcontrol & 0x04))
-			draw_background(machine, bitmap, cliprect, bg1xpos, bg1ypos, 4); /* cityscape */
+			draw_background(screen->machine, bitmap, cliprect, bg1xpos, bg1ypos, 4); /* cityscape */
 	}
 
-	tilemap_set_flip(bg_tilemap, flip_screen ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
+	tilemap_set_flip(bg_tilemap, flip_screen_get() ? TILEMAP_FLIPX | TILEMAP_FLIPY : 0);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
@@ -385,7 +399,7 @@ VIDEO_UPDATE( m52 )
 			clip.min_y = 128, clip.max_y = 255;
 
 		/* adjust for flipping */
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			int temp = clip.min_y;
 			clip.min_y = 255 - clip.max_y;
@@ -405,10 +419,10 @@ VIDEO_UPDATE( m52 )
 		clip = *cliprect;
 #endif
 
-		drawgfx(bitmap, machine->gfx[1],
+		drawgfx(bitmap, screen->machine->gfx[1],
 			code, color, flipx, flipy, sx, sy,
 			&clip, TRANSPARENCY_PENS,
-			colortable_get_transpen_mask(machine->colortable, machine->gfx[1], color, 512+32));
+			colortable_get_transpen_mask(screen->machine->colortable, screen->machine->gfx[1], color, 512+32));
 	}
 	return 0;
 }

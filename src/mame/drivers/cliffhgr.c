@@ -90,7 +90,7 @@ static int phillips_code = 0;
 
 static render_texture *video_texture;
 static render_texture *overlay_texture;
-static mame_bitmap *last_video_bitmap;
+static bitmap_t *last_video_bitmap;
 
 static emu_timer *irq_timer;
 
@@ -112,7 +112,7 @@ static VIDEO_UPDATE( cliff )
 
 	if (discinfo != NULL)
 	{
-		mame_bitmap *vidbitmap;
+		bitmap_t *vidbitmap;
 		rectangle fixedvis = *TMS9928A_get_visarea();
 		fixedvis.max_x++;
 		fixedvis.max_y++;
@@ -201,12 +201,12 @@ static WRITE8_HANDLER( cliff_sound_overlay_w )
 	int overlay = ( data & 0x10 ) ? 1 : 0;
 
 	/* configure pen 0 and 1 as transparent in the renderer and use it as the compositing color */
-	render_container_set_palette_alpha(render_container_get_screen(0), 0, overlay ? 0x00 : 0xff );
-	render_container_set_palette_alpha(render_container_get_screen(0), 1, overlay ? 0x00 : 0xff );
+	render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), 0, overlay ? 0x00 : 0xff );
+	render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), 1, overlay ? 0x00 : 0xff );
 
 	/* audio */
-	discrete_sound_w(CLIFF_ENABLE_SND_1, sound&1);
-	discrete_sound_w(CLIFF_ENABLE_SND_2, (sound>>1)&1);
+	discrete_sound_w(machine, CLIFF_ENABLE_SND_1, sound&1);
+	discrete_sound_w(machine, CLIFF_ENABLE_SND_2, (sound>>1)&1);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -252,7 +252,7 @@ static TIMER_CALLBACK( cliff_irq_callback )
 	if ( phillips_code & 0x800000 )
 		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 
-	timer_adjust(irq_timer, video_screen_get_time_until_pos(0, param, 0), param, attotime_zero);
+	timer_adjust_oneshot(irq_timer, video_screen_get_time_until_pos(machine->primary_screen, param, 0), param);
 }
 
 static void vdp_interrupt (int state)
@@ -272,7 +272,7 @@ static MACHINE_RESET( cliffhgr )
 {
 	port_bank = 0;
 	phillips_code = 0;
-	timer_adjust(irq_timer, video_screen_get_time_until_pos(0, 17, 0), 17, attotime_zero);
+	timer_adjust_oneshot(irq_timer, video_screen_get_time_until_pos(machine->primary_screen, 17, 0), 17);
 }
 
 /********************************************************/
@@ -284,7 +284,7 @@ static ADDRESS_MAP_START( mainmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mainport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x44, 0x44) AM_WRITE(TMS9928A_vram_w)
 	AM_RANGE(0x45, 0x45) AM_READ(TMS9928A_vram_r)
 	AM_RANGE(0x46, 0x46) AM_WRITE(cliff_sound_overlay_w)
@@ -738,7 +738,7 @@ static MACHINE_DRIVER_START( cliffhgr )
 	MDRV_CPU_ADD(Z80, 4000000)       /* 4MHz */
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 	MDRV_CPU_IO_MAP(mainport,0)
-	MDRV_CPU_VBLANK_INT(cliff_vsync,1)
+	MDRV_CPU_VBLANK_INT("main", cliff_vsync)
 
 	MDRV_MACHINE_START(cliffhgr)
 	MDRV_MACHINE_RESET(cliffhgr)
@@ -749,8 +749,9 @@ static MACHINE_DRIVER_START( cliffhgr )
 	MDRV_IMPORT_FROM(tms9928a)
 
 	/* override video rendering and raw screen info */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_SELF_RENDER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_SELF_RENDER)
 	MDRV_VIDEO_UPDATE(cliff)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_RAW_PARAMS(13500000, 858, 0, 720, 262.5, 21, 262.5)
 
 	/* sound hardware */

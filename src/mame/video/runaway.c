@@ -77,13 +77,13 @@ static TILE_GET_INFO( qwak_get_tile_info )
 
 VIDEO_START( runaway )
 {
-	bg_tilemap = tilemap_create(runaway_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 30);
+	bg_tilemap = tilemap_create(runaway_get_tile_info, tilemap_scan_rows,  8, 8, 32, 30);
 }
 
 
 VIDEO_START( qwak )
 {
-	bg_tilemap = tilemap_create(qwak_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 30);
+	bg_tilemap = tilemap_create(qwak_get_tile_info, tilemap_scan_rows,  8, 8, 32, 30);
 }
 
 
@@ -106,14 +106,14 @@ VIDEO_UPDATE( runaway )
 
 		code |= (runaway_sprite_ram[i + 0x30] << 2) & 0x1c0;
 
-		drawgfx(bitmap, machine->gfx[1],
+		drawgfx(bitmap, screen->machine->gfx[1],
 			code,
 			0,
 			flipx, flipy,
 			x, 240 - y,
 			cliprect, TRANSPARENCY_PEN, 0);
 
-		drawgfx(bitmap, machine->gfx[1],
+		drawgfx(bitmap, screen->machine->gfx[1],
 			code,
 			0,
 			flipx, flipy,
@@ -142,14 +142,14 @@ VIDEO_UPDATE( qwak )
 
 		code |= (runaway_sprite_ram[i + 0x30] << 2) & 0x1c0;
 
-		drawgfx(bitmap, machine->gfx[1],
+		drawgfx(bitmap, screen->machine->gfx[1],
 			code,
 			0,
 			flipx, flipy,
 			x, 240 - y,
 			cliprect, TRANSPARENCY_PEN, 0);
 
-		drawgfx(bitmap, machine->gfx[1],
+		drawgfx(bitmap, screen->machine->gfx[1],
 			code,
 			0,
 			flipx, flipy,

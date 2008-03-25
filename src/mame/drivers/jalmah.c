@@ -180,10 +180,10 @@ static TILE_GET_INFO( get_sc1_tile_info )
 
 static VIDEO_START( jalmah )
 {
-	sc0_tilemap = tilemap_create(get_sc0_tile_info,bg_scan,TILEMAP_TYPE_PEN,16,16,256,32);
-	sc1_tilemap = tilemap_create(get_sc1_tile_info,bg_scan,TILEMAP_TYPE_PEN,16,16,256,32);
-	sc2_tilemap = tilemap_create(get_sc2_tile_info,bg_scan,TILEMAP_TYPE_PEN,16,16,256,32);
-	sc3_tilemap = tilemap_create(get_sc3_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,256,32);
+	sc0_tilemap = tilemap_create(get_sc0_tile_info,bg_scan,16,16,256,32);
+	sc1_tilemap = tilemap_create(get_sc1_tile_info,bg_scan,16,16,256,32);
+	sc2_tilemap = tilemap_create(get_sc2_tile_info,bg_scan,16,16,256,32);
+	sc3_tilemap = tilemap_create(get_sc3_tile_info,tilemap_scan_cols,8,8,256,32);
 
 	jm_scrollram = auto_malloc(0x80);
 	jm_vregs = auto_malloc(0x40);
@@ -195,21 +195,21 @@ static VIDEO_START( jalmah )
 }
 
 #define MCU_READ(_number_,_bit_,_offset_,_retval_)\
-if((0xffff - input_port_##_number_##_word_r(0,0)) & _bit_) { jm_regs[_offset_] = _retval_; }
+if((0xffff - readinputport(_number_)) & _bit_) { jm_regs[_offset_] = _retval_; }
 
 /*RAM-based protection handlings*/
 static void daireika_mcu_run(running_machine *machine)
 {
 	static UINT16 prg_prot;
 
-	if((0xffff - input_port_0_word_r(0,0)) & 0x0008)//service_mode
+	if((0xffff - input_port_0_word_r(machine,0,0)) & 0x0008)//service_mode
 	{
-		jm_regs[0x000/2] = input_port_2_word_r(0,0);
-		jm_regs[0x002/2] = input_port_3_word_r(0,0);
-		jm_regs[0x004/2] = input_port_4_word_r(0,0);
-		jm_regs[0x006/2] = input_port_5_word_r(0,0);
-		jm_regs[0x008/2] = input_port_6_word_r(0,0);
-		jm_regs[0x00a/2] = input_port_7_word_r(0,0);
+		jm_regs[0x000/2] = input_port_2_word_r(machine,0,0);
+		jm_regs[0x002/2] = input_port_3_word_r(machine,0,0);
+		jm_regs[0x004/2] = input_port_4_word_r(machine,0,0);
+		jm_regs[0x006/2] = input_port_5_word_r(machine,0,0);
+		jm_regs[0x008/2] = input_port_6_word_r(machine,0,0);
+		jm_regs[0x00a/2] = input_port_7_word_r(machine,0,0);
 	}
 	else
 	{
@@ -247,14 +247,14 @@ static void urashima_mcu_run(running_machine *machine)
 {
 	static UINT16 prg_prot;
 
-	if((0xffff - input_port_0_word_r(0,0)) & 0x0008)//service_mode
+	if((0xffff - input_port_0_word_r(machine,0,0)) & 0x0008)//service_mode
 	{
-		jm_regs[0x300/2] = input_port_2_word_r(0,0);
-		jm_regs[0x302/2] = input_port_3_word_r(0,0);
-		jm_regs[0x304/2] = input_port_4_word_r(0,0);
-		jm_regs[0x306/2] = input_port_5_word_r(0,0);
-		jm_regs[0x308/2] = input_port_6_word_r(0,0);
-		jm_regs[0x30a/2] = input_port_7_word_r(0,0);
+		jm_regs[0x300/2] = input_port_2_word_r(machine,0,0);
+		jm_regs[0x302/2] = input_port_3_word_r(machine,0,0);
+		jm_regs[0x304/2] = input_port_4_word_r(machine,0,0);
+		jm_regs[0x306/2] = input_port_5_word_r(machine,0,0);
+		jm_regs[0x308/2] = input_port_6_word_r(machine,0,0);
+		jm_regs[0x30a/2] = input_port_7_word_r(machine,0,0);
 	}
 	else
 	{
@@ -289,11 +289,11 @@ static void urashima_mcu_run(running_machine *machine)
 
 static void second_mcu_run(running_machine *machine)
 {
-	if((0xffff - input_port_1_word_r(0,0)) & 0x0004)//service_mode
+	if((0xffff - input_port_1_word_r(machine,0,0)) & 0x0004)//service_mode
 	{
-		jm_regs[0x200/2] = input_port_2_word_r(0,0);
-		jm_regs[0x202/2] = input_port_3_word_r(0,0);
-		jm_regs[0x204/2] = input_port_4_word_r(0,0);
+		jm_regs[0x200/2] = input_port_2_word_r(machine,0,0);
+		jm_regs[0x202/2] = input_port_3_word_r(machine,0,0);
+		jm_regs[0x204/2] = input_port_4_word_r(machine,0,0);
 	}
 	else
 	{
@@ -348,11 +348,11 @@ static VIDEO_UPDATE( jalmah )
         #define SUCHIPI_MCU  (0x23)
         */
 		case MJZOOMIN_MCU:
-		case DAIREIKA_MCU: daireika_mcu_run(machine); break;
-		case URASHIMA_MCU: urashima_mcu_run(machine); break;
+		case DAIREIKA_MCU: daireika_mcu_run(screen->machine); break;
+		case URASHIMA_MCU: urashima_mcu_run(screen->machine); break;
 		case KAKUMEI_MCU:
 		case KAKUMEI2_MCU:
-		case SUCHIPI_MCU:  second_mcu_run(machine); break;
+		case SUCHIPI_MCU:  second_mcu_run(screen->machine); break;
 	}
 	tilemap_set_scrollx( sc0_tilemap, 0, jm_scrollram[0] + ((jm_vregs[0] & 3) ? ((jm_scrollram[4] & 0x200) * 4) : 0));
 	tilemap_set_scrollx( sc1_tilemap, 0, jm_scrollram[1] + ((jm_vregs[1] & 3) ? ((jm_scrollram[5] & 0x200) * 4) : 0));
@@ -529,19 +529,19 @@ static ADDRESS_MAP_START( jalmah, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080010, 0x080011) AM_WRITE(jalmah_flip_screen_w)
 	//       0x080012, 0x080013  MCU write related,same for each game
 	//       0x080014, 0x080015  MCU write related,same for each game
-/**/AM_RANGE(0x080016, 0x080017) AM_READ(MRA16_RAM) AM_WRITE(jalmah_tilebank_w)
+/**/AM_RANGE(0x080016, 0x080017) AM_READ(SMH_RAM) AM_WRITE(jalmah_tilebank_w)
 	AM_RANGE(0x080018, 0x080019) AM_WRITE(jalmah_okibank_w)
 	AM_RANGE(0x08001a, 0x08001b) AM_WRITE(jalmah_okirom_w)
 	//       0x08001c, 0x08001d  write 1 by urashima (?)
-/**/AM_RANGE(0x080020, 0x08003f) AM_READ(MRA16_RAM) AM_WRITE(jalmah_scroll_w)
+/**/AM_RANGE(0x080020, 0x08003f) AM_READ(SMH_RAM) AM_WRITE(jalmah_scroll_w)
 	AM_RANGE(0x080040, 0x080041) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
 	//       0x084000, 0x084001  ?
-	AM_RANGE(0x088000, 0x0887ff) AM_READWRITE(MRA16_RAM, paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16) /* Palette RAM */
-	AM_RANGE(0x090000, 0x093fff) AM_READWRITE(MRA16_RAM, sc0_vram_w) AM_BASE(&sc0_vram)
-	AM_RANGE(0x094000, 0x097fff) AM_READWRITE(MRA16_RAM, sc1_vram_w) AM_BASE(&sc1_vram)
-	AM_RANGE(0x098000, 0x09bfff) AM_READWRITE(MRA16_RAM, sc2_vram_w) AM_BASE(&sc2_vram)
-	AM_RANGE(0x09c000, 0x09ffff) AM_READWRITE(MRA16_RAM, sc3_vram_w) AM_BASE(&sc3_vram)
-	AM_RANGE(0x0a0000, 0x0a3fff) AM_READWRITE(MRA16_RAM, sc3_vram_w) /*urashima mirror*/
+	AM_RANGE(0x088000, 0x0887ff) AM_READWRITE(SMH_RAM, paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16) /* Palette RAM */
+	AM_RANGE(0x090000, 0x093fff) AM_READWRITE(SMH_RAM, sc0_vram_w) AM_BASE(&sc0_vram)
+	AM_RANGE(0x094000, 0x097fff) AM_READWRITE(SMH_RAM, sc1_vram_w) AM_BASE(&sc1_vram)
+	AM_RANGE(0x098000, 0x09bfff) AM_READWRITE(SMH_RAM, sc2_vram_w) AM_BASE(&sc2_vram)
+	AM_RANGE(0x09c000, 0x09ffff) AM_READWRITE(SMH_RAM, sc3_vram_w) AM_BASE(&sc3_vram)
+	AM_RANGE(0x0a0000, 0x0a3fff) AM_READWRITE(SMH_RAM, sc3_vram_w) /*urashima mirror*/
 	AM_RANGE(0x0f0000, 0x0f0fff) AM_RAM AM_BASE(&jm_regs)/*shared with MCU*/
 	AM_RANGE(0x0f1000, 0x0fffff) AM_RAM AM_BASE(&jm_ram)
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM AM_BASE(&jm_mcu_code)/*extra RAM for MCU code prg (NOT ON REAL HW!!!)*/
@@ -1002,17 +1002,18 @@ static MACHINE_RESET (daireika)
 static MACHINE_DRIVER_START( jalmah )
 	MDRV_CPU_ADD_TAG("main" , M68000, 8000000) /* 68000-8 */
 	MDRV_CPU_PROGRAM_MAP(jalmah,0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_GFXDECODE(jalmah)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(0x400)
 	MDRV_MACHINE_RESET(daireika)
 
@@ -1886,11 +1887,11 @@ static DRIVER_INIT( urashima )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, urashima_mcu_r );
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, urashima_mcu_w );
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0320, 0xf0321, 0, 0, MRA16_BANK1, MWA16_BANK1 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0320, 0xf0321, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0xf0322 - 0xf0320));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf03c0, 0xf03c5, 0, 0, MRA16_BANK2, MWA16_BANK2 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf03c0, 0xf03c5, 0, 0, SMH_BANK2, SMH_BANK2 );
 	memory_set_bankptr(2, auto_malloc(0xf03c6 - 0xf03c0));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf03c6, 0xf03e5, 0, 0, MRA16_BANK3, MWA16_BANK3 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf03c6, 0xf03e5, 0, 0, SMH_BANK3, SMH_BANK3 );
 	memory_set_bankptr(3, auto_malloc(0xf03e6 - 0xf03c6));
 	mcu_prg = 0x12;
 }
@@ -1899,13 +1900,13 @@ static DRIVER_INIT( daireika )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, daireika_mcu_r );
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, daireika_mcu_w );
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0140, 0xf0141, 0, 0, MRA16_BANK1, MWA16_BANK1 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0140, 0xf0141, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0xf0142 - 0xf0140));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf0025, 0, 0, MRA16_BANK2, MWA16_BANK2 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf0025, 0, 0, SMH_BANK2, SMH_BANK2 );
 	memory_set_bankptr(2, auto_malloc(0xf0026 - 0xf0020));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00d5, 0, 0, MRA16_BANK3, MWA16_BANK3 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00d5, 0, 0, SMH_BANK3, SMH_BANK3 );
 	memory_set_bankptr(3, auto_malloc(0xf00d6 - 0xf00c0));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0100, 0xf0130, 0, 0, MRA16_BANK4, MWA16_BANK4 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0100, 0xf0130, 0, 0, SMH_BANK4, SMH_BANK4 );
 	memory_set_bankptr(4, auto_malloc(0xf0130 - 0xf0100));
 	mcu_prg = 0x11;
 }
@@ -1914,11 +1915,11 @@ static DRIVER_INIT( mjzoomin )
 {
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, mjzoomin_mcu_r );
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, mjzoomin_mcu_w );
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00c5, 0, 0, MRA16_BANK1, MWA16_BANK1 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00c5, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0xf00c6 - 0xf00c0));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c6, 0xf00d1, 0, 0, MRA16_BANK2, MWA16_BANK2 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c6, 0xf00d1, 0, 0, SMH_BANK2, SMH_BANK2 );
 	memory_set_bankptr(2, auto_malloc(0xf00d2 - 0xf00c6));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf002f, 0, 0, MRA16_BANK3, MWA16_BANK3 );
+	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf002f, 0, 0, SMH_BANK3, SMH_BANK3 );
 	memory_set_bankptr(3, auto_malloc(0xf0030 - 0xf0020));
 	mcu_prg = 0x13;
 }

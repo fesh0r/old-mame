@@ -67,7 +67,7 @@ static TILE_GET_INFO( get_playfield2_tile_info )
 
 VIDEO_START( thunderj )
 {
-	static const struct atarimo_desc modesc =
+	static const atarimo_desc modesc =
 	{
 		1,					/* index to which gfx system */
 		1,					/* number of motion object banks */
@@ -105,17 +105,17 @@ VIDEO_START( thunderj )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
 
 	/* initialize the second playfield */
-	atarigen_playfield2_tilemap = tilemap_create(get_playfield2_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8, 64,64);
+	atarigen_playfield2_tilemap = tilemap_create(get_playfield2_tile_info, tilemap_scan_cols,  8,8, 64,64);
 	tilemap_set_transparent_pen(atarigen_playfield2_tilemap, 0);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 }
 
@@ -129,7 +129,7 @@ VIDEO_START( thunderj )
  *
  *************************************/
 
-void thunderj_mark_high_palette(mame_bitmap *bitmap, UINT16 *pf, UINT16 *mo, int x, int y)
+void thunderj_mark_high_palette(bitmap_t *bitmap, UINT16 *pf, UINT16 *mo, int x, int y)
 {
 	#define START_MARKER	((4 << ATARIMO_PRIORITY_SHIFT) | 2)
 	#define END_MARKER		((4 << ATARIMO_PRIORITY_SHIFT) | 4)
@@ -154,8 +154,8 @@ void thunderj_mark_high_palette(mame_bitmap *bitmap, UINT16 *pf, UINT16 *mo, int
 
 VIDEO_UPDATE( thunderj )
 {
-	struct atarimo_rect_list rectlist;
-	mame_bitmap *mobitmap;
+	atarimo_rect_list rectlist;
+	bitmap_t *mobitmap;
 	int x, y, r;
 
 	/* draw the playfield */
@@ -170,7 +170,7 @@ VIDEO_UPDATE( thunderj )
 	tilemap_draw(bitmap, cliprect, atarigen_playfield2_tilemap, 3, 0x8c);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
+	mobitmap = atarimo_render(0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{

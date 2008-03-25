@@ -21,18 +21,12 @@ PALETTE_INIT( srmp2 )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int col;
 
-		col = (color_prom[i] << 8) + color_prom[i + machine->drv->total_colors];
-
-		palette_set_color_rgb(machine,i,pal5bit(col >> 10),pal5bit(col >> 5),pal5bit(col >> 0));
-	}
-
-	for (i = 0; i < machine->drv->total_colors; i++)
-	{
-		colortable[i] = i ^ 0x0f;
+		col = (color_prom[i] << 8) + color_prom[i + machine->config->total_colors];
+		palette_set_color_rgb(machine,i ^ 0x0f,pal5bit(col >> 10),pal5bit(col >> 5),pal5bit(col >> 0));
 	}
 }
 
@@ -41,17 +35,17 @@ PALETTE_INIT( srmp3 )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int col;
 
-		col = (color_prom[i] << 8) + color_prom[i + machine->drv->total_colors];
+		col = (color_prom[i] << 8) + color_prom[i + machine->config->total_colors];
 		palette_set_color_rgb(machine,i,pal5bit(col >> 10),pal5bit(col >> 5),pal5bit(col >> 0));
 	}
 }
 
 
-static void srmp2_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void srmp2_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 /*
     Sprite RAM A:   spriteram16_2
@@ -85,7 +79,7 @@ static void srmp2_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 	/* Sprites Banking and/or Sprites Buffering */
 	UINT16 *src = spriteram16_2 + ( ((ctrl2 ^ (~ctrl2<<1)) & 0x40) ? 0x2000/2 : 0 );
 
-	int max_y	=	machine -> screen[0].height;
+	int max_y = video_screen_get_height(machine->primary_screen);
 
 	xoffs	=	flip ? 0x10 : 0x10;
 	yoffs	=	flip ? 0x05 : 0x07;
@@ -124,7 +118,7 @@ static void srmp2_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 }
 
 
-static void srmp3_draw_sprites_map(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void srmp3_draw_sprites_map(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs, col;
 	int xoffs, yoffs;
@@ -165,7 +159,7 @@ static void srmp3_draw_sprites_map(running_machine *machine, mame_bitmap *bitmap
 
 			int sx		=	  x + xoffs  + (offs & 1) * 16;
 			int sy		=	-(y + yoffs) + (offs / 2) * 16 -
-							(machine->screen[0].height-(machine->screen[0].visarea.max_y + 1));
+							(video_screen_get_height(machine->primary_screen) - (video_screen_get_visible_area(machine->primary_screen)->max_y + 1));
 
 			if (upper & (1 << col))	sx += 256;
 
@@ -197,7 +191,7 @@ static void srmp3_draw_sprites_map(running_machine *machine, mame_bitmap *bitmap
 }
 
 
-static void srmp3_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void srmp3_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 /*
     Sprite RAM A:   spriteram_2
@@ -235,7 +229,7 @@ static void srmp3_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 	int offs;
 	int xoffs, yoffs;
 
-	int max_y	=	machine -> screen[0].height;
+	int max_y = video_screen_get_height(machine->primary_screen);
 
 	int ctrl	=	spriteram[ 0x600/2 ];
 //  int ctrl2   =   spriteram[ 0x602/2 ];
@@ -281,12 +275,12 @@ static void srmp3_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 }
 
 
-static void mjyuugi_draw_sprites_map(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void mjyuugi_draw_sprites_map(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs, col;
 	int xoffs, yoffs;
 
-	int total_color_codes	=	machine->drv->gfxdecodeinfo[0].total_color_codes;
+	int total_color_codes	=	machine->config->gfxdecodeinfo[0].total_color_codes;
 
 	int ctrl	=	spriteram16[ 0x600/2 ];
 	int ctrl2	=	spriteram16[ 0x602/2 ];
@@ -328,7 +322,7 @@ static void mjyuugi_draw_sprites_map(running_machine *machine, mame_bitmap *bitm
 
 			int sx		=	  x + xoffs  + (offs & 1) * 16;
 			int sy		=	-(y + yoffs) + (offs / 2) * 16 -
-							(machine->screen[0].height-(machine->screen[0].visarea.max_y + 1));
+							(video_screen_get_height(machine->primary_screen) - (video_screen_get_visible_area(machine->primary_screen)->max_y + 1));
 
 			if (upper & (1 << col))	sx += 256;
 
@@ -361,7 +355,7 @@ static void mjyuugi_draw_sprites_map(running_machine *machine, mame_bitmap *bitm
 }
 
 
-static void mjyuugi_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void mjyuugi_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 /*
     Sprite RAM A:   spriteram16_2
@@ -396,7 +390,7 @@ static void mjyuugi_draw_sprites(running_machine *machine, mame_bitmap *bitmap, 
 	/* Sprites Banking and/or Sprites Buffering */
 	UINT16 *src = spriteram16_2 + ( ((ctrl2 ^ (~ctrl2<<1)) & 0x40) ? 0x2000/2 : 0 );
 
-	int max_y	=	machine -> screen[0].height;
+	int max_y = video_screen_get_height(machine->primary_screen);
 
 	mjyuugi_draw_sprites_map(machine, bitmap, cliprect);
 
@@ -422,7 +416,7 @@ static void mjyuugi_draw_sprites(running_machine *machine, mame_bitmap *bitmap, 
 		if (flip)
 		{
 			y = max_y - y
-				+(machine->screen[0].height-(machine->screen[0].visarea.max_y + 1));
+				+(video_screen_get_height(machine->primary_screen) - (video_screen_get_visible_area(machine->primary_screen)->max_y + 1));
 			flipx = !flipx;
 			flipy = !flipy;
 		}
@@ -440,23 +434,23 @@ static void mjyuugi_draw_sprites(running_machine *machine, mame_bitmap *bitmap, 
 
 VIDEO_UPDATE( srmp2 )
 {
-	fillbitmap(bitmap, machine->pens[0x1f0], cliprect);
-	srmp2_draw_sprites(machine, bitmap, cliprect);
+	fillbitmap(bitmap, 0x1f0, cliprect);
+	srmp2_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
 
 VIDEO_UPDATE( srmp3 )
 {
-	fillbitmap(bitmap, machine->pens[0x1f0], cliprect);
-	srmp3_draw_sprites(machine, bitmap, cliprect);
+	fillbitmap(bitmap, 0x1f0, cliprect);
+	srmp3_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
 
 VIDEO_UPDATE( mjyuugi )
 {
-	fillbitmap(bitmap, machine->pens[0x1f0], cliprect);
-	mjyuugi_draw_sprites(machine, bitmap, cliprect);
+	fillbitmap(bitmap, 0x1f0, cliprect);
+	mjyuugi_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

@@ -45,137 +45,151 @@ static tilemap *bg_tilemap;
 PALETTE_INIT( travrusa )
 {
 	int i;
-	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x90);
 
-	/* character palette */
-	for (i = 0;i < 128;i++)
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x80; i++)
 	{
-		int bit0,bit1,bit2,r,g,b;
-
+		int bit0, bit1, bit2;
+		int r, g, b;
 
 		/* red component */
 		bit0 = 0;
 		bit1 = (color_prom[i] >> 6) & 0x01;
 		bit2 = (color_prom[i] >> 7) & 0x01;
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* green component */
 		bit0 = (color_prom[i] >> 3) & 0x01;
 		bit1 = (color_prom[i] >> 4) & 0x01;
 		bit2 = (color_prom[i] >> 5) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* blue component */
 		bit0 = (color_prom[i] >> 0) & 0x01;
 		bit1 = (color_prom[i] >> 1) & 0x01;
 		bit2 = (color_prom[i] >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 256;
-
-	/* sprite palette */
-	for (i = 0;i < 16;i++)
+	for (i = 0x80; i < 0x90; i++)
 	{
-		int bit0,bit1,bit2,r,g,b;
-
+		int bit0, bit1, bit2;
+		int r, g, b;
 
 		/* red component */
 		bit0 = 0;
-		bit1 = (color_prom[i] >> 6) & 0x01;
-		bit2 = (color_prom[i] >> 7) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x200] >> 6) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x200] >> 7) & 0x01;
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* green component */
-		bit0 = (color_prom[i] >> 3) & 0x01;
-		bit1 = (color_prom[i] >> 4) & 0x01;
-		bit2 = (color_prom[i] >> 5) & 0x01;
+		bit0 = (color_prom[(i - 0x80) + 0x200] >> 3) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x200] >> 4) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x200] >> 5) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* blue component */
-		bit0 = (color_prom[i] >> 0) & 0x01;
-		bit1 = (color_prom[i] >> 1) & 0x01;
-		bit2 = (color_prom[i] >> 2) & 0x01;
+		bit0 = (color_prom[(i - 0x80) + 0x200] >> 0) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x200] >> 1) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x200] >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+128,MAKE_RGB(r,g,b));
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
-
-	color_prom += 32;
 
 	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x220;
 
-	/* sprite lookup table */
-	for (i = 0;i < TOTAL_COLORS(1);i++)
-		COLOR(1,i) = (color_prom[i] & 0x0f) + 128;
+	/* characters */
+	for (i = 0; i < 0x80; i++)
+		colortable_entry_set_value(machine->colortable, i, i);
+
+	/* sprites */
+	for (i = 0x80; i < 0x100; i++)
+	{
+		UINT8 ctabentry = (color_prom[i - 0x80] & 0x0f) | 0x80;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 }
 
 PALETTE_INIT( shtrider )
 {
 	int i;
-	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x90);
 
-	/* character palette */
-	for (i = 0;i < 128;i++)
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x80; i++)
 	{
-		int bit0,bit1,bit2,r,g,b;
-
+		int bit0, bit1, bit2;
+		int r, g, b;
 
 		/* red component */
 		bit0 = 0;
-		bit1 = (color_prom[i] >> 2) & 0x01;
-		bit2 = (color_prom[i] >> 3) & 0x01;
+		bit1 = (color_prom[i + 0x000] >> 2) & 0x01;
+		bit2 = (color_prom[i + 0x000] >> 3) & 0x01;
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* green component */
-		bit0 = (color_prom[i+256] >> 3) & 0x01;
-		bit1 = (color_prom[i] >> 0) & 0x01;
-		bit2 = (color_prom[i] >> 1) & 0x01;
+		bit0 = (color_prom[i + 0x100] >> 3) & 0x01;
+		bit1 = (color_prom[i + 0x000] >> 0) & 0x01;
+		bit2 = (color_prom[i + 0x000] >> 1) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* blue component */
-		bit0 = (color_prom[i+256] >> 0) & 0x01;
-		bit1 = (color_prom[i+256] >> 1) & 0x01;
-		bit2 = (color_prom[i+256] >> 2) & 0x01;
+		bit0 = (color_prom[i + 0x100] >> 0) & 0x01;
+		bit1 = (color_prom[i + 0x100] >> 1) & 0x01;
+		bit2 = (color_prom[i + 0x100] >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 512;
-
-	/* color_prom now points to the beginning of the sprite palette */
-
-	/* sprite palette */
-	for (i = 0;i < 16;i++)
+	for (i = 0x80; i < 0x90; i++)
 	{
-		int bit0,bit1,bit2,r,g,b;
+		int bit0, bit1, bit2;
+		int r, g, b;
 
 		/* red component */
 		bit0 = 0;
-		bit1 = (color_prom[i] >> 6) & 0x01;
-		bit2 = (color_prom[i] >> 7) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x200] >> 6) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x200] >> 7) & 0x01;
 		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* green component */
-		bit0 = (color_prom[i] >> 3) & 0x01;
-		bit1 = (color_prom[i] >> 4) & 0x01;
-		bit2 = (color_prom[i] >> 5) & 0x01;
+		bit0 = (color_prom[(i - 0x80) + 0x200] >> 3) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x200] >> 4) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x200] >> 5) & 0x01;
 		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+
 		/* blue component */
-		bit0 = (color_prom[i] >> 0) & 0x01;
-		bit1 = (color_prom[i] >> 1) & 0x01;
-		bit2 = (color_prom[i] >> 2) & 0x01;
+		bit0 = (color_prom[(i - 0x80) + 0x200] >> 0) & 0x01;
+		bit1 = (color_prom[(i - 0x80) + 0x200] >> 1) & 0x01;
+		bit2 = (color_prom[(i - 0x80) + 0x200] >> 2) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,i+128,MAKE_RGB(r,g,b));
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 32;
-	/* color_prom now points to the beginning of the sprite lookup table */
+	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x220;
 
-	/* sprite lookup table */
-	for (i = 0;i < TOTAL_COLORS(1);i++)
-		COLOR(1,i) = (color_prom[i] & 0x0f) + 128;
+	/* characters */
+	for (i = 0; i < 0x80; i++)
+		colortable_entry_set_value(machine->colortable, i, i);
+
+	/* sprites */
+	for (i = 0x80; i < 0x100; i++)
+	{
+		UINT8 ctabentry = (color_prom[i - 0x80] & 0x0f) | 0x80;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 }
 
 
@@ -210,7 +224,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( travrusa )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transmask(bg_tilemap,0,0xff,0x00); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x3f,0xc0); /* split type 1 has pens 6 and 7 opaque - tunnels */
@@ -276,7 +290,7 @@ WRITE8_HANDLER( travrusa_flipscreen_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 	static const rectangle spritevisiblearea =
@@ -290,7 +304,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		8*8, 32*8-1
 	};
 	rectangle clip = *cliprect;
-	if (flip_screen)
+	if (flip_screen_get())
 		sect_rect(&clip, &spritevisibleareaflip);
 	else
 		sect_rect(&clip, &spritevisiblearea);
@@ -305,7 +319,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		int flipx = attr & 0x40;
 		int flipy = attr & 0x80;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -326,7 +340,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( travrusa )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	return 0;
 }

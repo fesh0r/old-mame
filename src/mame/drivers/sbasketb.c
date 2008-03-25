@@ -22,25 +22,25 @@ MAIN BOARD:
 #include "sound/dac.h"
 
 
-extern void konami1_decode(void);
-
 extern UINT8 *sbasketb_scroll;
 extern UINT8 *sbasketb_palettebank;
 extern UINT8 *sbasketb_spriteram_select;
 
-extern WRITE8_HANDLER( sbasketb_videoram_w );
-extern WRITE8_HANDLER( sbasketb_colorram_w );
-extern WRITE8_HANDLER( sbasketb_flipscreen_w );
-extern WRITE8_HANDLER( sbasketb_scroll_w );
+void konami1_decode(void);
 
-extern PALETTE_INIT( sbasketb );
-extern VIDEO_START( sbasketb );
-extern VIDEO_UPDATE( sbasketb );
+WRITE8_HANDLER( sbasketb_videoram_w );
+WRITE8_HANDLER( sbasketb_colorram_w );
+WRITE8_HANDLER( sbasketb_flipscreen_w );
+WRITE8_HANDLER( sbasketb_scroll_w );
 
-extern WRITE8_HANDLER( konami_SN76496_latch_w );
-extern WRITE8_HANDLER( konami_SN76496_0_w );
-extern WRITE8_HANDLER( hyperspt_sound_w );
-extern READ8_HANDLER( hyperspt_sh_timer_r );
+PALETTE_INIT( sbasketb );
+VIDEO_START( sbasketb );
+VIDEO_UPDATE( sbasketb );
+
+WRITE8_HANDLER( konami_SN76496_latch_w );
+WRITE8_HANDLER( konami_SN76496_0_w );
+WRITE8_HANDLER( hyperspt_sound_w );
+READ8_HANDLER( hyperspt_sh_timer_r );
 
 
 static WRITE8_HANDLER( sbasketb_sh_irqtrigger_w )
@@ -55,43 +55,43 @@ static WRITE8_HANDLER( sbasketb_coin_counter_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x2000, 0x3bff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3c10, 0x3c10) AM_READ(MRA8_NOP)    /* ???? */
+	AM_RANGE(0x2000, 0x3bff) AM_READ(SMH_RAM)
+	AM_RANGE(0x3c10, 0x3c10) AM_READ(SMH_NOP)    /* ???? */
 	AM_RANGE(0x3e00, 0x3e00) AM_READ(input_port_0_r)
 	AM_RANGE(0x3e01, 0x3e01) AM_READ(input_port_1_r)
 	AM_RANGE(0x3e02, 0x3e02) AM_READ(input_port_2_r)
-	AM_RANGE(0x3e03, 0x3e03) AM_READ(MRA8_NOP)
+	AM_RANGE(0x3e03, 0x3e03) AM_READ(SMH_NOP)
 	AM_RANGE(0x3e80, 0x3e80) AM_READ(input_port_3_r)
 	AM_RANGE(0x3f00, 0x3f00) AM_READ(input_port_4_r)
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x2000, 0x2fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x2000, 0x2fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x3000, 0x33ff) AM_WRITE(sbasketb_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x3400, 0x37ff) AM_WRITE(sbasketb_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x3800, 0x39ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x3a00, 0x3bff) AM_WRITE(MWA8_RAM)           /* Probably unused, but initialized */
+	AM_RANGE(0x3800, 0x39ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x3a00, 0x3bff) AM_WRITE(SMH_RAM)           /* Probably unused, but initialized */
 	AM_RANGE(0x3c00, 0x3c00) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x3c20, 0x3c20) AM_WRITE(MWA8_RAM) AM_BASE(&sbasketb_palettebank)
+	AM_RANGE(0x3c20, 0x3c20) AM_WRITE(SMH_RAM) AM_BASE(&sbasketb_palettebank)
 	AM_RANGE(0x3c80, 0x3c80) AM_WRITE(sbasketb_flipscreen_w)
 	AM_RANGE(0x3c81, 0x3c81) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x3c83, 0x3c84) AM_WRITE(sbasketb_coin_counter_w)
-	AM_RANGE(0x3c85, 0x3c85) AM_WRITE(MWA8_RAM) AM_BASE(&sbasketb_spriteram_select)
+	AM_RANGE(0x3c85, 0x3c85) AM_WRITE(SMH_RAM) AM_BASE(&sbasketb_spriteram_select)
 	AM_RANGE(0x3d00, 0x3d00) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x3d80, 0x3d80) AM_WRITE(sbasketb_sh_irqtrigger_w)
-	AM_RANGE(0x3f80, 0x3f80) AM_WRITE(sbasketb_scroll_w)
+	AM_RANGE(0x3f80, 0x3f80) AM_WRITE(SMH_RAM) AM_BASE(&sbasketb_scroll)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x6000, 0x6000) AM_READ(soundlatch_r)
 	AM_RANGE(0x8000, 0x8000) AM_READ(hyperspt_sh_timer_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(VLM5030_data_w) /* speech data */
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(hyperspt_sound_w)     /* speech and output controll */
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(DAC_0_data_w)
@@ -240,23 +240,22 @@ static MACHINE_DRIVER_START( sbasketb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, 1400000)        /* 1.400 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,14318000/4)
 	/* audio CPU */	/* 3.5795 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(sbasketb)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(16*16+16*16*16)
+	MDRV_PALETTE_LENGTH(16*16+16*16*16)
 
 	MDRV_PALETTE_INIT(sbasketb)
 	MDRV_VIDEO_START(sbasketb)

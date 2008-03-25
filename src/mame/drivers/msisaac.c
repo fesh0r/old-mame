@@ -69,7 +69,7 @@ static TIMER_CALLBACK( nmi_callback )
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(0,data);
+	soundlatch_w(machine,0,data);
 	timer_call_after_resynch(NULL, data,nmi_callback);
 }
 
@@ -218,8 +218,8 @@ static WRITE8_HANDLER( msisaac_mcu_w )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xe000, 0xe7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xdfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0xf0e0, 0xf0e0) AM_READ(msisaac_mcu_r)
 	AM_RANGE(0xf0e1, 0xf0e1) AM_READ(msisaac_mcu_status_r)
@@ -233,8 +233,8 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xdfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0xe800, 0xefff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_le_w) AM_BASE(&paletteram)
 
@@ -243,11 +243,11 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf0a3, 0xf0a3) AM_WRITE(ms_unknown_w)			//???? written in interrupt routine
 
 	AM_RANGE(0xf060, 0xf060) AM_WRITE(sound_command_w)		//sound command
-	AM_RANGE(0xf061, 0xf061) AM_WRITE(MWA8_NOP) /*sound_reset*/	//????
+	AM_RANGE(0xf061, 0xf061) AM_WRITE(SMH_NOP) /*sound_reset*/	//????
 
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(msisaac_bg2_textbank_w)
-	AM_RANGE(0xf001, 0xf001) AM_WRITE(MWA8_RAM) 			//???
-	AM_RANGE(0xf002, 0xf002) AM_WRITE(MWA8_RAM) 			//???
+	AM_RANGE(0xf001, 0xf001) AM_WRITE(SMH_RAM) 			//???
+	AM_RANGE(0xf002, 0xf002) AM_WRITE(SMH_RAM) 			//???
 
 	AM_RANGE(0xf0c0, 0xf0c0) AM_WRITE(msisaac_fg_scrollx_w)
 	AM_RANGE(0xf0c1, 0xf0c1) AM_WRITE(msisaac_fg_scrolly_w)
@@ -258,7 +258,7 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0xf0e0, 0xf0e0) AM_WRITE(msisaac_mcu_w)
 
-	AM_RANGE(0xf100, 0xf17f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)	//sprites
+	AM_RANGE(0xf100, 0xf17f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)	//sprites
 	AM_RANGE(0xf400, 0xf7ff) AM_WRITE(msisaac_fg_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(msisaac_bg2_videoram_w) AM_BASE(&msisaac_videoram2)
 	AM_RANGE(0xfc00, 0xffff) AM_WRITE(msisaac_bg_videoram_w) AM_BASE(&msisaac_videoram)
@@ -271,10 +271,10 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x47ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc000, 0xc000) AM_READ(soundlatch_r)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_NOP) /*space for diagnostic ROM (not dumped, not reachable) */
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_NOP) /*space for diagnostic ROM (not dumped, not reachable) */
 ADDRESS_MAP_END
 
 
@@ -314,8 +314,13 @@ static WRITE8_HANDLER( sound_control_0_w )
 	//popmessage("SND0 0=%2x 1=%2x", snd_ctrl0, snd_ctrl1);
 
 	sndti_set_output_gain(SOUND_MSM5232, 0, 0, vol_ctrl[  snd_ctrl0     & 15 ] / 100.0);	/* group1 from msm5232 */
-	sndti_set_output_gain(SOUND_MSM5232, 0, 1, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
-
+	sndti_set_output_gain(SOUND_MSM5232, 0, 1, vol_ctrl[  snd_ctrl0     & 15 ] / 100.0);	/* group1 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 2, vol_ctrl[  snd_ctrl0     & 15 ] / 100.0);	/* group1 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 3, vol_ctrl[  snd_ctrl0     & 15 ] / 100.0);	/* group1 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 4, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 5, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 6, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
+	sndti_set_output_gain(SOUND_MSM5232, 0, 7, vol_ctrl[ (snd_ctrl0>>4) & 15 ] / 100.0);	/* group2 from msm5232 */
 }
 static WRITE8_HANDLER( sound_control_1_w )
 {
@@ -326,8 +331,8 @@ static WRITE8_HANDLER( sound_control_1_w )
 
 
 static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x47ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x47ff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(AY8910_write_port_0_w)
@@ -339,31 +344,31 @@ static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 
 	AM_RANGE(0xc001, 0xc001) AM_WRITE(nmi_enable_w)
 	AM_RANGE(0xc002, 0xc002) AM_WRITE(nmi_disable_w)
-	AM_RANGE(0xc003, 0xc003) AM_WRITE(MWA8_NOP) /*???*/ /* this is NOT mixer_enable */
+	AM_RANGE(0xc003, 0xc003) AM_WRITE(SMH_NOP) /*???*/ /* this is NOT mixer_enable */
 
 ADDRESS_MAP_END
 
 #ifdef USE_MCU
 
 static ADDRESS_MAP_START( mcu_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_READ(buggychl_68705_portA_r)
 	AM_RANGE(0x0001, 0x0001) AM_READ(buggychl_68705_portB_r)
 	AM_RANGE(0x0002, 0x0002) AM_READ(buggychl_68705_portC_r)
-	AM_RANGE(0x0010, 0x007f) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(buggychl_68705_portA_w)
 	AM_RANGE(0x0001, 0x0001) AM_WRITE(buggychl_68705_portB_w)
 	AM_RANGE(0x0002, 0x0002) AM_WRITE(buggychl_68705_portC_w)
 	AM_RANGE(0x0004, 0x0004) AM_WRITE(buggychl_68705_ddrA_w)
 	AM_RANGE(0x0005, 0x0005) AM_WRITE(buggychl_68705_ddrB_w)
 	AM_RANGE(0x0006, 0x0006) AM_WRITE(buggychl_68705_ddrC_w)
-	AM_RANGE(0x0010, 0x007f) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 #endif
@@ -530,28 +535,28 @@ static MACHINE_DRIVER_START( msisaac )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* source of IRQs is unknown */
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	/* source of IRQs is unknown */
 
 #ifdef USE_MCU
 	MDRV_CPU_ADD(M68705,8000000/2)  /* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(mcu_readmem,mcu_writemem)
 #endif
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(ta7630)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(msisaac)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -569,7 +574,17 @@ static MACHINE_DRIVER_START( msisaac )
 
 	MDRV_SOUND_ADD(MSM5232, 2000000)
 	MDRV_SOUND_CONFIG(msm5232_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(0, "mono", 1.0)	// pin 28  2'-1
+	MDRV_SOUND_ROUTE(1, "mono", 1.0)	// pin 29  4'-1
+	MDRV_SOUND_ROUTE(2, "mono", 1.0)	// pin 30  8'-1
+	MDRV_SOUND_ROUTE(3, "mono", 1.0)	// pin 31 16'-1
+	MDRV_SOUND_ROUTE(4, "mono", 1.0)	// pin 36  2'-2
+	MDRV_SOUND_ROUTE(5, "mono", 1.0)	// pin 35  4'-2
+	MDRV_SOUND_ROUTE(6, "mono", 1.0)	// pin 34  8'-2
+	MDRV_SOUND_ROUTE(7, "mono", 1.0)	// pin 33 16'-2
+	// pin 1 SOLO  8'       not mapped
+	// pin 2 SOLO 16'       not mapped
+	// pin 22 Noise Output  not mapped
 MACHINE_DRIVER_END
 
 

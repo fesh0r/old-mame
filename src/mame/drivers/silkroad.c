@@ -161,7 +161,7 @@ static READ32_HANDLER(io32_1_r)
 
 static READ32_HANDLER(silk_6295_0_r)
 {
-	return OKIM6295_status_0_r(0)<<16;
+	return OKIM6295_status_0_r(machine, 0)<<16;
 }
 
 static WRITE32_HANDLER(silk_6295_0_w)
@@ -169,13 +169,13 @@ static WRITE32_HANDLER(silk_6295_0_w)
 	if (!(mem_mask & 0x00ff0000))
 	{
 		logerror("OKI0: write %x mem_mask %8x\n", data>>16, mem_mask);
-		OKIM6295_data_0_w(0, (data>>16) & 0xff);
+		OKIM6295_data_0_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
 static READ32_HANDLER(silk_6295_1_r)
 {
-	return OKIM6295_status_1_r(0)<<16;
+	return OKIM6295_status_1_r(machine, 0)<<16;
 }
 
 static WRITE32_HANDLER(silk_6295_1_w)
@@ -183,20 +183,20 @@ static WRITE32_HANDLER(silk_6295_1_w)
 	if (!(mem_mask & 0x00ff0000))
 	{
 		logerror("OKI1: write %x mem_mask %8x\n", data>>16, mem_mask);
-		OKIM6295_data_1_w(0, (data>>16) & 0xff);
+		OKIM6295_data_1_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
 static READ32_HANDLER(silk_ym_r)
 {
-	return YM2151_status_port_0_r(0)<<16;
+	return YM2151_status_port_0_r(machine, 0)<<16;
 }
 
 static WRITE32_HANDLER(silk_ym_regport_w)
 {
 	if (!(mem_mask & 0x00ff0000))
 	{
-		YM2151_register_port_0_w(0, (data>>16) & 0xff);
+		YM2151_register_port_0_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
@@ -204,18 +204,18 @@ static WRITE32_HANDLER(silk_ym_dataport_w)
 {
 	if (!(mem_mask & 0x00ff0000))
 	{
-		YM2151_data_port_0_w(0, (data>>16) & 0xff);
+		YM2151_data_port_0_w(machine, 0, (data>>16) & 0xff);
 	}
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA32_ROM)
-	AM_RANGE(0x40c000, 0x40cfff) AM_READ(MRA32_RAM)
-	AM_RANGE(0x600000, 0x603fff) AM_READ(MRA32_RAM)
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x40c000, 0x40cfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x600000, 0x603fff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x800000, 0x803fff) AM_READ(MRA32_RAM)
-	AM_RANGE(0x804000, 0x807fff) AM_READ(MRA32_RAM)
-	AM_RANGE(0x808000, 0x80bfff) AM_READ(MRA32_RAM)
+	AM_RANGE(0x800000, 0x803fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x804000, 0x807fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x808000, 0x80bfff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0xC00000, 0xC00003) AM_READ(io32_r)	// player inputs
 	AM_RANGE(0xC00004, 0xC00007) AM_READ(io32_1_r) // dip switches
@@ -223,12 +223,12 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xC0002C, 0xC0002f) AM_READ(silk_ym_r)
 	AM_RANGE(0xC00030, 0xC00033) AM_READ(silk_6295_1_r)
 
-	AM_RANGE(0xfe0000, 0xffffff) AM_READ(MRA32_RAM)
+	AM_RANGE(0xfe0000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA32_ROM)
-	AM_RANGE(0x40c000, 0x40cfff) AM_WRITE(MWA32_RAM) AM_BASE(&silkroad_sprram) // sprites
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x40c000, 0x40cfff) AM_WRITE(SMH_RAM) AM_BASE(&silkroad_sprram) // sprites
 	AM_RANGE(0x600000, 0x603fff) AM_WRITE(paletteram32_xRRRRRGGGGGBBBBB_dword_w) AM_BASE(&paletteram32) // palette
 
 	AM_RANGE(0x800000, 0x803fff) AM_WRITE(silkroad_fgram_w) AM_BASE(&silkroad_vidram)  // lower Layer
@@ -243,19 +243,19 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 32 )
 
 	// C00038 appears to be the coin counter, bit 0 is pulsed when a coin is inserted
 /*
-    AM_RANGE(0xC00034, 0xC00037) AM_WRITE(MWA32_NOP)
+    AM_RANGE(0xC00034, 0xC00037) AM_WRITE(SMH_NOP)
 */
 
-	AM_RANGE(0xC0010c, 0xC00123) AM_WRITE(MWA32_RAM) AM_BASE(&silkroad_regs)
+	AM_RANGE(0xC0010c, 0xC00123) AM_WRITE(SMH_RAM) AM_BASE(&silkroad_regs)
 /*
-    AM_RANGE(0xC0010C, 0xC0010f) AM_WRITE(MWA32_NOP) // 0
-    AM_RANGE(0xC00110, 0xC00113) AM_WRITE(MWA32_NOP) // 1
-    AM_RANGE(0xC00114, 0xC00117) AM_WRITE(MWA32_NOP) // 2
+    AM_RANGE(0xC0010C, 0xC0010f) AM_WRITE(SMH_NOP) // 0
+    AM_RANGE(0xC00110, 0xC00113) AM_WRITE(SMH_NOP) // 1
+    AM_RANGE(0xC00114, 0xC00117) AM_WRITE(SMH_NOP) // 2
 
-    AM_RANGE(0xC0011c, 0xC0011f) AM_WRITE(MWA32_NOP) // 4
-    AM_RANGE(0xC00120, 0xC00123) AM_WRITE(MWA32_NOP) // 5
+    AM_RANGE(0xC0011c, 0xC0011f) AM_WRITE(SMH_NOP) // 4
+    AM_RANGE(0xC00120, 0xC00123) AM_WRITE(SMH_NOP) // 5
 */
-	AM_RANGE(0xfe0000, 0xffffff) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0xfe0000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -284,7 +284,7 @@ static INPUT_PORTS_START( silkroad )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0020, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE2 )	/* Not mentioned in the "test mode" */
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL )	/* See notes - Stephh*/
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )	// this input makes the 020 lock up...- RB
@@ -373,16 +373,16 @@ static MACHINE_DRIVER_START( silkroad )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(6*8+2, 64*8-1-(10*8)-2, 2*8, 32*8-1-(2*8))
+
 	MDRV_GFXDECODE(silkroad)
 	MDRV_PALETTE_LENGTH(0x2000)
 

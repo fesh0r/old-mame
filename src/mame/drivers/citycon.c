@@ -21,47 +21,47 @@ VIDEO_START( citycon );
 
 static READ8_HANDLER( citycon_in_r )
 {
-	return readinputport(flip_screen ? 1 : 0);
+	return readinputport(flip_screen_get() ? 1 : 0);
 }
 
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x3000, 0x3000) AM_READ(citycon_in_r)	/* player 1 & 2 inputs multiplexed */
 	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_2_r)
 	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_3_r)
 	AM_RANGE(0x3007, 0x3007) AM_READ(watchdog_reset_r)	/* ? */
-	AM_RANGE(0x4000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x1000, 0x1fff) AM_WRITE(citycon_videoram_w) AM_BASE(&citycon_videoram)
 	AM_RANGE(0x2000, 0x20ff) AM_WRITE(citycon_linecolor_w) AM_BASE(&citycon_linecolor)
-	AM_RANGE(0x2800, 0x28ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x2800, 0x28ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(citycon_background_w)
 	AM_RANGE(0x3001, 0x3001) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x3002, 0x3002) AM_WRITE(soundlatch2_w)
-	AM_RANGE(0x3004, 0x3005) AM_WRITE(MWA8_RAM) AM_BASE(&citycon_scroll)
+	AM_RANGE(0x3004, 0x3005) AM_WRITE(SMH_RAM) AM_BASE(&citycon_scroll)
 	AM_RANGE(0x3800, 0x3cff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_be_w) AM_BASE(&paletteram)
-	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_RAM)
 //  AM_RANGE(0x4002, 0x4002) AM_READ(AY8910_read_port_0_r)  /* ?? */
 	AM_RANGE(0x6001, 0x6001) AM_READ(YM2203_read_port_0_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x4001, 0x4001) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x6001, 0x6001) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -209,21 +209,21 @@ static MACHINE_DRIVER_START( citycon )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, 2048000)        /* 2.048 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(M6809, 640000)
 	/* audio CPU */        /* 0.640 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(citycon)
 	MDRV_PALETTE_LENGTH(640+1024)	/* 640 real palette + 1024 virtual palette */
 

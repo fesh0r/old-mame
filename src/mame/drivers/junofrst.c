@@ -168,8 +168,8 @@ static WRITE8_HANDLER( i8039_irqen_and_status_w )
 
 static WRITE8_HANDLER( flip_screen_w )
 {
-	tutankhm_flip_screen_x_w(0, data);
-	tutankhm_flip_screen_y_w(0, data);
+	tutankhm_flip_screen_x_w(machine, 0, data);
+	tutankhm_flip_screen_y_w(machine, 0, data);
 }
 
 
@@ -191,14 +191,14 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x802c, 0x802c) AM_READ(input_port_4_r)	/* DSW1 (inverted bits) */
 	AM_RANGE(0x8030, 0x8030) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x8031, 0x8032) AM_WRITE(junofrst_coin_counter_w)
-	AM_RANGE(0x8033, 0x8033) AM_WRITE(MWA8_RAM) AM_BASE(&tutankhm_scroll)  /* not used in Juno */
+	AM_RANGE(0x8033, 0x8033) AM_WRITE(SMH_RAM) AM_BASE(&tutankhm_scroll)  /* not used in Juno */
 	AM_RANGE(0x8034, 0x8035) AM_WRITE(flip_screen_w)
 	AM_RANGE(0x8040, 0x8040) AM_WRITE(junofrst_sh_irqtrigger_w)
 	AM_RANGE(0x8050, 0x8050) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x8060, 0x8060) AM_WRITE(junofrst_bankselect_w)
 	AM_RANGE(0x8070, 0x8073) AM_WRITE(junofrst_blitter_w)
 	AM_RANGE(0x8100, 0x8fff) AM_RAM
-	AM_RANGE(0x9000, 0x9fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x9000, 0x9fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xa000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -337,7 +337,7 @@ static MACHINE_DRIVER_START( junofrst )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, 1500000)			/* 1.5 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,14318000/8)
 	/* audio CPU */	/* 1.78975 MHz */
@@ -348,11 +348,10 @@ static MACHINE_DRIVER_START( junofrst )
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_IO_MAP(mcu_io_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(30)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_30HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)	/* not sure about the visible area */

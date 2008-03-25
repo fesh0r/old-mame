@@ -1965,12 +1965,12 @@ static WRITE8_HANDLER( m6803_internal_registers_w );
 
 READ8_HANDLER( hd63701_internal_registers_r )
 {
-	return m6803_internal_registers_r(offset);
+	return m6803_internal_registers_r(Machine, offset);
 }
 
 WRITE8_HANDLER( hd63701_internal_registers_w )
 {
-	m6803_internal_registers_w(offset,data);
+	m6803_internal_registers_w(Machine, offset,data);
 }
 #endif
 
@@ -2528,8 +2528,8 @@ static WRITE8_HANDLER( m6803_internal_registers_w )
 				{
 					int divisor = M6800_RMCR_SS[m6800.rmcr & M6800_RMCR_SS_MASK];
 
-					timer_adjust(m6800_rx_timer, attotime_zero, cpu_getactivecpu(), ATTOTIME_IN_HZ(m6800.clock / divisor));
-					timer_adjust(m6800_tx_timer, attotime_zero, cpu_getactivecpu(), ATTOTIME_IN_HZ(m6800.clock / divisor));
+					timer_adjust_periodic(m6800_rx_timer, attotime_zero, cpu_getactivecpu(), ATTOTIME_IN_HZ(m6800.clock / divisor));
+					timer_adjust_periodic(m6800_tx_timer, attotime_zero, cpu_getactivecpu(), ATTOTIME_IN_HZ(m6800.clock / divisor));
 				}
 				break;
 			}
@@ -2766,7 +2766,7 @@ void m6803_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m6803_dasm;			break;
 #endif /* ENABLE_DEBUGGER */
 
-		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map = construct_map_m6803_mem; break;
+		case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM: info->internal_map8 = address_map_m6803_mem; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case CPUINFO_STR_NAME:							strcpy(info->s, "M6803");				break;

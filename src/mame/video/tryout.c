@@ -17,7 +17,7 @@ PALETTE_INIT( tryout )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -174,8 +174,8 @@ static TILEMAP_MAPPER( get_bg_memory_offset )
 
 VIDEO_START( tryout )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,get_fg_memory_offset,TILEMAP_TYPE_PEN,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,get_bg_memory_offset,TILEMAP_TYPE_PEN,16,16,64,16);
+	fg_tilemap = tilemap_create(get_fg_tile_info,get_fg_memory_offset,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,get_bg_memory_offset,16,16,64,16);
 
 	tryout_vram=auto_malloc(8 * 0x800);
 	tryout_vram_gfx=auto_malloc(0x6000);
@@ -183,7 +183,7 @@ VIDEO_START( tryout )
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,fx,fy,x,y,color,sprite,inc;
 
@@ -200,7 +200,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		fy = 0;
 		inc = 16;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			x = 240 - x;
 			fx = !fx;
@@ -240,7 +240,7 @@ VIDEO_UPDATE( tryout )
 
 	int scrollx;
 
-	if (!flip_screen)
+	if (!flip_screen_get())
 		tilemap_set_scrollx(fg_tilemap, 0, 16); /* Assumed hard-wired */
 	else
 		tilemap_set_scrollx(fg_tilemap, 0, -8); /* Assumed hard-wired */
@@ -257,7 +257,7 @@ VIDEO_UPDATE( tryout )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 
 //  popmessage("%02x %02x %02x - %04x",mem[0xe402],mem[0xe403],mem[0xe404], ((tryout_gfx_control[0]&1)<<8) | ((tryout_gfx_control[0]&4)<<7));
 	return 0;

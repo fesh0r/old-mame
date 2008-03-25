@@ -31,8 +31,8 @@ static WRITE16_HANDLER( goal92_sound_command_w )
 {
 	if (ACCESSING_MSB)
 	{
-		soundlatch_w(0, (data >> 8) & 0xff);
-		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+		soundlatch_w(machine, 0, (data >> 8) & 0xff);
+		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 	}
 }
 
@@ -59,27 +59,27 @@ static READ16_HANDLER( goal92_inputs_r )
 }
 
 static ADDRESS_MAP_START( goal92_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x13ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x13ffff) AM_READ(SMH_RAM)
 	AM_RANGE(0x180000, 0x18000f) AM_READ(goal92_inputs_r)
 	AM_RANGE(0x18001c, 0x18001d) AM_READ(goal92_fg_bank_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( goal92_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x100800, 0x100fff) AM_WRITE(goal92_background_w) AM_BASE(&goal92_back_data)
 	AM_RANGE(0x101000, 0x1017ff) AM_WRITE(goal92_foreground_w) AM_BASE(&goal92_fore_data)
-	AM_RANGE(0x101800, 0x101fff) AM_WRITE(MWA16_RAM) // it has tiles for clouds, but they aren't used
+	AM_RANGE(0x101800, 0x101fff) AM_WRITE(SMH_RAM) // it has tiles for clouds, but they aren't used
 	AM_RANGE(0x102000, 0x102fff) AM_WRITE(goal92_text_w) AM_BASE(&goal92_textram)
 	AM_RANGE(0x103000, 0x103fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x104000, 0x13ffff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x140000, 0x1407ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x140800, 0x140801) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x140802, 0x140803) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x104000, 0x13ffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x140000, 0x1407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x140800, 0x140801) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x140802, 0x140803) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x180008, 0x180009) AM_WRITE(goal92_sound_command_w)
-	AM_RANGE(0x18000a, 0x18000b) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x180010, 0x180017) AM_WRITE(MWA16_RAM) AM_BASE(&goal92_scrollram16)
+	AM_RANGE(0x18000a, 0x18000b) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x180010, 0x180017) AM_WRITE(SMH_RAM) AM_BASE(&goal92_scrollram16)
 	AM_RANGE(0x18001c, 0x18001d) AM_WRITE(goal92_fg_bank_w)
 ADDRESS_MAP_END
 
@@ -287,6 +287,7 @@ static const gfx_layout layout_16x16x4 =
 	16*16
 };
 
+#ifdef UNUSED_FUNCTON
 static const gfx_layout layout_16x16x4_2 =
 {
 	16,16,
@@ -299,6 +300,7 @@ static const gfx_layout layout_16x16x4_2 =
 		256+0*32,256+1*32,256+2*32,256+3*32,256+4*32,256+5*32,256+6*32,256+7*32 },
 	1024
 };
+#endif
 
 static GFXDECODE_START( goal92 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_16x16x4,		   0*16, 8*16 ) // Sprites
@@ -314,21 +316,21 @@ static MACHINE_DRIVER_START( goal92 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,12000000)
 	MDRV_CPU_PROGRAM_MAP(goal92_readmem,goal92_writemem)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1) /* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold) /* VBL */
 
 	MDRV_CPU_ADD(Z80, 2500000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
 								/* IRQs are triggered by the main CPU */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1) // black border at bottom is a game bug...
+
 	MDRV_GFXDECODE(goal92)
 	MDRV_PALETTE_LENGTH(128*16)
 

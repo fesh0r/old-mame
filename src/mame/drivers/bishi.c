@@ -70,34 +70,34 @@ static READ16_HANDLER( bishi_mirror_r )
 
 static READ16_HANDLER( bishi_sound_r )
 {
-	return YMZ280B_status_0_r(offset)<<8;
+	return YMZ280B_status_0_r(machine, offset)<<8;
 }
 
 static WRITE16_HANDLER( bishi_sound_w )
 {
  	if (offset)
 	{
-		YMZ280B_data_0_w(offset, data>>8);
+		YMZ280B_data_0_w(machine, offset, data>>8);
 	}
  	else
 	{
-		YMZ280B_register_0_w(offset, data>>8);
+		YMZ280B_register_0_w(machine, offset, data>>8);
 	}
 }
 
 static READ16_HANDLER( dipsw_r )	// dips
 {
-	return input_port_1_r(0) | (input_port_5_r(0)<<8);
+	return input_port_1_r(machine,0) | (input_port_5_r(machine,0)<<8);
 }
 
 static READ16_HANDLER( player1_r ) 	// players 1 and 3
 {
-	return 0xff | (input_port_2_r(0)<<8);
+	return 0xff | (input_port_2_r(machine,0)<<8);
 }
 
 static READ16_HANDLER( player2_r )	// players 2 and 4
 {
-	return input_port_3_r(0) | (input_port_4_r(0)<<8);
+	return input_port_3_r(machine,0) | (input_port_4_r(machine,0)<<8);
 }
 
 static READ16_HANDLER( bishi_K056832_rom_r )
@@ -115,29 +115,29 @@ static READ16_HANDLER( bishi_K056832_rom_r )
 		ouroffs += 4;
 	}
 
-	return K056832_bishi_rom_word_r(ouroffs, mem_mask);
+	return K056832_bishi_rom_word_r(machine, ouroffs, mem_mask);
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x400000, 0x407fff) AM_READ(MRA16_RAM)		// work RAM
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x400000, 0x407fff) AM_READ(SMH_RAM)		// work RAM
 	AM_RANGE(0x800000, 0x800001) AM_READ(control_r)
 	AM_RANGE(0x800004, 0x800005) AM_READ(dipsw_r)
 	AM_RANGE(0x800006, 0x800007) AM_READ(player1_r)
 	AM_RANGE(0x800008, 0x800009) AM_READ(player2_r)
 	AM_RANGE(0x880000, 0x880003) AM_READ(bishi_sound_r)
 	AM_RANGE(0xa00000, 0xa01fff) AM_READ(K056832_ram_word_r)	// VRAM
-	AM_RANGE(0xb00000, 0xb03fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0xb00000, 0xb03fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xb04000, 0xb047ff) AM_READ(bishi_mirror_r)		// bug in the ram/rom test?
 	AM_RANGE(0xc00000, 0xc01fff) AM_READ(bishi_K056832_rom_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x400000, 0x407fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x400000, 0x407fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x800000, 0x800001) AM_WRITE(control_w)
 	AM_RANGE(0x810000, 0x810003) AM_WRITE(control2_w)		// bank switch for K056832 character ROM test
-	AM_RANGE(0x820000, 0x820001) AM_WRITE(MWA16_NOP)		// lamps (see lamp test in service menu)
+	AM_RANGE(0x820000, 0x820001) AM_WRITE(SMH_NOP)		// lamps (see lamp test in service menu)
 	AM_RANGE(0x830000, 0x83003f) AM_WRITE(K056832_word_w)
 	AM_RANGE(0x840000, 0x840007) AM_WRITE(K056832_b_word_w)	// VSCCS
 	AM_RANGE(0x850000, 0x85001f) AM_WRITE(K054338_word_w)		// CLTC
@@ -268,16 +268,17 @@ static MACHINE_DRIVER_START( bishi )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(bishi_interrupt, 2)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1200))
+	MDRV_CPU_VBLANK_INT_HACK(bishi_interrupt, 2)
 
 	MDRV_MACHINE_START(bishi)
 	MDRV_MACHINE_RESET(bishi)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1200))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(29, 29+288-1, 16, 16+224-1)

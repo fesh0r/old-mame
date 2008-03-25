@@ -12,7 +12,7 @@ VIDEO_UPDATE( honeydol )
 
 	/* not standard snowbros video */
 
-	fillbitmap(bitmap,0xf0,&machine->screen[0].visarea);
+	fillbitmap(bitmap,0xf0,cliprect);
 
 	for (offs = 0x0000/2;offs < 0x2000/2;offs += 8)
 	{
@@ -30,7 +30,7 @@ VIDEO_UPDATE( honeydol )
 		x = dx;
 		y = dy;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - x;
 			sy = 240 - y;
@@ -43,12 +43,12 @@ VIDEO_UPDATE( honeydol )
 			sy = y;
 		}
 
-		drawgfx(bitmap,machine->gfx[1],
+		drawgfx(bitmap,screen->machine->gfx[1],
 				tile,
 				tilecolour,
 				flipx, flipy,
 				sx,sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 
 		/* second list interleaved with first (4bpp) ??? */
 		dx = spriteram16[offs+4] & 0xff;
@@ -62,7 +62,7 @@ VIDEO_UPDATE( honeydol )
 		x = dx;
 		y = dy;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - x;
 			sy = 240 - y;
@@ -78,12 +78,12 @@ VIDEO_UPDATE( honeydol )
 		tilecolour = (tilecolour&0x03f0) >> 4;
 		tilecolour ^=0x3f; // unusual, but correct..
 
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx(bitmap,screen->machine->gfx[0],
 				tile,
 				tilecolour,
 				flipx, flipy,
 				sx,sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 	return 0;
 }
@@ -98,7 +98,7 @@ VIDEO_UPDATE( twinadv )
 
 	/* not standard snowbros video */
 
-	fillbitmap(bitmap,0xf0,&machine->screen[0].visarea);
+	fillbitmap(bitmap,0xf0,cliprect);
 
 	for (offs = 0x0000/2;offs < 0x2000/2;offs += 8)
 	{
@@ -117,7 +117,7 @@ VIDEO_UPDATE( twinadv )
 		x = dx;
 		y = dy;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - x;
 			sy = 240 - y;
@@ -133,12 +133,12 @@ VIDEO_UPDATE( twinadv )
 		tilecolour = (tilecolour&0x00f0) >> 4;
 		tilecolour ^=0xf; // unusual, but correct..
 
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx(bitmap,screen->machine->gfx[0],
 				tile,
 				tilecolour,
 				flipx, flipy,
 				sx,sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 	return 0;
 }
@@ -148,7 +148,7 @@ VIDEO_UPDATE( wintbob )
 {
 	int offs;
 
-	fillbitmap(bitmap,get_black_pen(machine),&machine->screen[0].visarea);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	for (offs = 0;offs < spriteram_size/2;offs += 8)
 	{
@@ -165,7 +165,7 @@ VIDEO_UPDATE( wintbob )
 
 		if (wrapr == 8) xpos -= 256;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			xpos = 240 - xpos;
 			ypos = 240 - ypos;
@@ -175,12 +175,12 @@ VIDEO_UPDATE( wintbob )
 
 		if ((xpos > -16) && (ypos > 0) && (xpos < 256) && (ypos < 240) && (disbl !=2))
 		{
-			drawgfx(bitmap,machine->gfx[0],
+			drawgfx(bitmap,screen->machine->gfx[0],
 					tilen,
 					colr,
 					flipx, flipy,
 					xpos,ypos,
-					&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+					cliprect,TRANSPARENCY_PEN,0);
 		}
 	}
 	return 0;
@@ -216,11 +216,11 @@ VIDEO_UPDATE( snowbro3 )
 
 	/* This clears & redraws the entire screen each pass */
 
-	fillbitmap(bitmap,get_black_pen(machine),&machine->screen[0].visarea);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	for (offs = 0;offs < spriteram_size/2;offs += 8)
 	{
-		gfx_element *gfx = machine->gfx[0];
+		gfx_element *gfx = screen->machine->gfx[0];
 		int dx = spriteram16[offs+4] & 0xff;
 		int dy = spriteram16[offs+5] & 0xff;
 		int tilecolour = spriteram16[offs+3];
@@ -245,7 +245,7 @@ VIDEO_UPDATE( snowbro3 )
 		if (x > 511) x &= 0x1ff;
 		if (y > 511) y &= 0x1ff;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - x;
 			sy = 240 - y;
@@ -260,7 +260,7 @@ VIDEO_UPDATE( snowbro3 )
 
 		if (offs < 0x800) /* i guess this is the right way */
 		{
-			gfx = machine->gfx[1];
+			gfx = screen->machine->gfx[1];
 			tilecolour = 0x10;
 		}
 
@@ -269,7 +269,7 @@ VIDEO_UPDATE( snowbro3 )
 				(tilecolour & 0xf0) >> 4,
 				flipx, flipy,
 				sx,sy,
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 	return 0;
 }

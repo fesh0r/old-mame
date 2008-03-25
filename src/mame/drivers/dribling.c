@@ -142,7 +142,7 @@ static WRITE8_HANDLER( shr_w )
 {
 	/* bit 3 = watchdog */
 	if (data & 0x08)
-		watchdog_reset_w(0, 0);
+		watchdog_reset(machine);
 
 	/* bit 2-0 = SH0-2 */
 	sh = data & 0x07;
@@ -159,9 +159,9 @@ static WRITE8_HANDLER( shr_w )
 static READ8_HANDLER( ioread )
 {
 	if (offset & 0x08)
-		return ppi8255_0_r(offset & 3);
+		return ppi8255_0_r(machine, offset & 3);
 	else if (offset & 0x10)
-		return ppi8255_1_r(offset & 3);
+		return ppi8255_1_r(machine, offset & 3);
 	return 0xff;
 }
 
@@ -169,9 +169,9 @@ static READ8_HANDLER( ioread )
 static WRITE8_HANDLER( iowrite )
 {
 	if (offset & 0x08)
-		ppi8255_0_w(offset & 3, data);
+		ppi8255_0_w(machine, offset & 3, data);
 	else if (offset & 0x10)
-		ppi8255_1_w(offset & 3, data);
+		ppi8255_1_w(machine, offset & 3, data);
 	else if (offset & 0x40)
 	{
 		dr = ds;
@@ -212,29 +212,29 @@ static MACHINE_RESET( dribling )
  *************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram)
-	AM_RANGE(0x4000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram)
+	AM_RANGE(0x4000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(dribling_colorram_w) AM_BASE(&colorram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xff) AM_READ(ioread)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xff) AM_WRITE(iowrite)
 ADDRESS_MAP_END
 
@@ -301,18 +301,20 @@ static MACHINE_DRIVER_START( dribling )
 	MDRV_CPU_ADD(Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(dribling_irq_gen,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", dribling_irq_gen)
 
 	MDRV_MACHINE_RESET(dribling)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 40, 255)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_PALETTE_INIT(dribling)

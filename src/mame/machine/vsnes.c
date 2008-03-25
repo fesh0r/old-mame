@@ -280,7 +280,7 @@ static WRITE8_HANDLER( vsnormal_vrom_banking )
 	/* bit 1 ( data & 2 ) enables writes to extra ram, we ignore it */
 
 	/* move along */
-	vsnes_in0_w( offset, data );
+	vsnes_in0_w( machine, offset, data );
 }
 
 /* Most games switch VROM Banks in controller 0 write */
@@ -295,14 +295,13 @@ static WRITE8_HANDLER( ppuRC2C05_protection )
 {
 	/* This PPU has registers mapped at $2000 and $2001 inverted */
 	/* and no remapped color */
-
 	if ( offset == 0 )
 	{
-		ppu2c0x_0_w( 1, data );
+		ppu2c0x_0_w( machine, 1, data );
 		return;
 	}
 
-	ppu2c0x_0_w( 0, data );
+	ppu2c0x_0_w( machine, 0, data );
 }
 
 /**********************************************************************************/
@@ -318,7 +317,7 @@ DRIVER_INIT( suprmrio )
 	DRIVER_INIT_CALL(vsnormal);
 
 	/* extra ram at $6000 is enabled with bit 1 of $4016 */
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK1, MWA8_BANK1 );
+	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	/* now override the vidaccess callback */
@@ -354,7 +353,6 @@ static WRITE8_HANDLER( gun_in0_w )
 			int x = readinputport( 4 );
 			int y = readinputport( 5 );
 			UINT32 pix, color_base;
-			const pen_t *pens = Machine->pens;
 
 			/* get the pixel at the gun position */
 			pix = ppu2c0x_get_pixel( 0, x, y );
@@ -363,8 +361,8 @@ static WRITE8_HANDLER( gun_in0_w )
 			color_base = ppu2c0x_get_colorbase( 0 );
 
 			/* look at the screen and see if the cursor is over a bright pixel */
-			if ( ( pix == pens[color_base+0x20] ) || ( pix == pens[color_base+0x30] ) ||
-				 ( pix == pens[color_base+0x33] ) || ( pix == pens[color_base+0x34] ) )
+			if ( ( pix == color_base+0x20 ) || ( pix == color_base+0x30 ) ||
+				 ( pix == color_base+0x33 ) || ( pix == color_base+0x34 ) )
 			{
 				input_latch[0] |= 0x40;
 			}
@@ -499,7 +497,7 @@ DRIVER_INIT( hogalley )
 static READ8_HANDLER( vsgshoe_security_r )
 {
 	/* low part must be 0x1c */
-	return ppu2c0x_0_r( 2 ) | 0x1c;
+	return ppu2c0x_0_r( machine, 2 ) | 0x1c;
 }
 
 static WRITE8_HANDLER( vsgshoe_gun_in0_w )
@@ -513,7 +511,7 @@ static WRITE8_HANDLER( vsgshoe_gun_in0_w )
 		memcpy (&memory_region( REGION_CPU1 )[0x08000], &memory_region( REGION_CPU1 )[addr], 0x2000);
 	}
 
-	gun_in0_w(offset, data);
+	gun_in0_w(machine, offset, data);
 }
 
 DRIVER_INIT( vsgshoe )
@@ -774,7 +772,7 @@ DRIVER_INIT( cstlevna )
 static READ8_HANDLER( topgun_security_r )
 {
 	/* low part must be 0x1b */
-	return ppu2c0x_0_r( 2 ) | 0x1b;
+	return ppu2c0x_0_r( machine, 2 ) | 0x1b;
 }
 
 DRIVER_INIT( topgun )
@@ -968,7 +966,7 @@ DRIVER_INIT( MMC3 )
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, mapper4_w );
 
 	/* extra ram at $6000-$7fff */
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK1, MWA8_BANK1 );
+	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	/* common init */
@@ -1193,7 +1191,7 @@ DRIVER_INIT( bnglngby )
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0231, 0x0231, 0, 0, set_bnglngby_irq_w );
 
 	/* extra ram */
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK1, MWA8_BANK1 );
+	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	ret = 0;
@@ -1213,7 +1211,7 @@ DRIVER_INIT( bnglngby )
 static READ8_HANDLER( jajamaru_security_r )
 {
 	/* low part must be 0x40 */
-	return ppu2c0x_0_r( 2 ) | 0x40;
+	return ppu2c0x_0_r( machine, 2 ) | 0x40;
 }
 
 DRIVER_INIT( jajamaru )
@@ -1240,7 +1238,7 @@ DRIVER_INIT( jajamaru )
 static READ8_HANDLER( mightybj_security_r )
 {
 	/* low part must be 0x3d */
-	return ppu2c0x_0_r( 2 ) | 0x3d;
+	return ppu2c0x_0_r( machine, 2 ) | 0x3d;
 }
 
 DRIVER_INIT( mightybj )
@@ -1268,9 +1266,9 @@ static WRITE8_HANDLER( vstennis_vrom_banking )
 
 	/* move along */
 	if ( cpu_getactivecpu() == 0 )
-		vsnes_in0_w( offset, data );
+		vsnes_in0_w( machine, offset, data );
 	else
-		vsnes_in0_1_w( offset, data );
+		vsnes_in0_1_w( machine, offset, data );
 }
 
 DRIVER_INIT( vstennis )
@@ -1280,10 +1278,10 @@ DRIVER_INIT( vstennis )
 	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x4016, 0x4016, 0, 0, vstennis_vrom_banking );
 
 	/* shared ram at $6000 */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK1 );
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK1 );
-	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK1 );
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK1 );
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1 );
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1 );
+	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1 );
+	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1 );
 
 	memory_set_bankptr(1, &memory_region(REGION_CPU1)[0x6000]);
 }
@@ -1353,7 +1351,7 @@ DRIVER_INIT( btlecity )
 DRIVER_INIT( vstetris )
 {
 	/* extra ram at $6000 is enabled with bit 1 of $4016 */
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK1, MWA8_BANK1 );
+	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	init_vsnes(machine);

@@ -73,14 +73,14 @@ static READ16_HANDLER( pkgnsh_input_r )
 	{
 		case 0x00/2: return 0xffff;
 		case 0x02/2: return 0xffff;
-		case 0x04/2: return input_port_0_word_r(0,0);/*Service buttons*/
-		case 0x06/2: return input_port_1_word_r(0,0);/*DIP 2*/
-		case 0x08/2: return input_port_2_word_r(0,0);/*DIP 1*/
-		case 0x0a/2: return input_port_3_word_r(0,0);/*DIP 1+2 Hi-Bits*/
-		case 0x0c/2: return input_port_4_word_r(0,0);/*Handle 1p*/
-		case 0x0e/2: return input_port_5_word_r(0,0);/*Buttons 1p*/
-		case 0x10/2: return input_port_6_word_r(0,0);/*Handle 2p*/
-		case 0x12/2: return input_port_7_word_r(0,0);/*Buttons 2p*/
+		case 0x04/2: return input_port_0_word_r(machine,0,0);/*Service buttons*/
+		case 0x06/2: return input_port_1_word_r(machine,0,0);/*DIP 2*/
+		case 0x08/2: return input_port_2_word_r(machine,0,0);/*DIP 1*/
+		case 0x0a/2: return input_port_3_word_r(machine,0,0);/*DIP 1+2 Hi-Bits*/
+		case 0x0c/2: return input_port_4_word_r(machine,0,0);/*Handle 1p*/
+		case 0x0e/2: return input_port_5_word_r(machine,0,0);/*Buttons 1p*/
+		case 0x10/2: return input_port_6_word_r(machine,0,0);/*Handle 2p*/
+		case 0x12/2: return input_port_7_word_r(machine,0,0);/*Buttons 2p*/
 	}
 	return 0xffff;
 }
@@ -92,22 +92,22 @@ static READ16_HANDLER( pkgnshdx_input_r )
 	switch(offset)
 	{
 		case 0x00/2: return 0xffff;
-		case 0x02/2: return input_port_0_word_r(0,0);/*Service buttons*/
+		case 0x02/2: return input_port_0_word_r(machine,0,0);/*Service buttons*/
 		/*DSW,same handling as realbrk*/
 		case 0x04/2:
-			if (sel & 0x01)	return	(input_port_1_word_r(0,0) & 0x00ff) << 8;		// DSW1 low bits
-			if (sel & 0x02)	return	(input_port_2_word_r(0,0) & 0x00ff) << 8;		// DSW2 low bits
-			if (sel & 0x04)	return	(input_port_3_word_r(0,0) & 0x00ff) << 8;		// DSW3 low bits
-			if (sel & 0x08)	return	(input_port_4_word_r(0,0) & 0x00ff) << 8;		// DSW4 low bits
+			if (sel & 0x01)	return	(input_port_1_word_r(machine,0,0) & 0x00ff) << 8;		// DSW1 low bits
+			if (sel & 0x02)	return	(input_port_2_word_r(machine,0,0) & 0x00ff) << 8;		// DSW2 low bits
+			if (sel & 0x04)	return	(input_port_3_word_r(machine,0,0) & 0x00ff) << 8;		// DSW3 low bits
+			if (sel & 0x08)	return	(input_port_4_word_r(machine,0,0) & 0x00ff) << 8;		// DSW4 low bits
 
-			if (sel & 0x10)	return	((input_port_1_word_r(0,0) & 0x0300) << 0) |	// DSWs high 2 bits
-									((input_port_2_word_r(0,0) & 0x0300) << 2) |
-									((input_port_3_word_r(0,0) & 0x0300) << 4) |
-									((input_port_4_word_r(0,0) & 0x0300) << 6) ;
+			if (sel & 0x10)	return	((input_port_1_word_r(machine,0,0) & 0x0300) << 0) |	// DSWs high 2 bits
+									((input_port_2_word_r(machine,0,0) & 0x0300) << 2) |
+									((input_port_3_word_r(machine,0,0) & 0x0300) << 4) |
+									((input_port_4_word_r(machine,0,0) & 0x0300) << 6) ;
 
 			return 0xffff;
-		case 0x06/2: return input_port_6_word_r(0,0);/*Buttons+Handle 2p*/
-		case 0x08/2: return input_port_5_word_r(0,0);/*Buttons+Handle 1p*/
+		case 0x06/2: return input_port_6_word_r(machine,0,0);/*Buttons+Handle 2p*/
+		case 0x08/2: return input_port_5_word_r(machine,0,0);/*Buttons+Handle 1p*/
 		case 0x0a/2: return 0xffff;
 		case 0x0c/2: return 0xffff;
 		case 0x0e/2: return 0xffff;
@@ -156,16 +156,16 @@ static WRITE16_HANDLER( backup_ram_w )
 static ADDRESS_MAP_START( base_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM							    			// ROM
 	AM_RANGE(0x200000, 0x203fff) AM_RAM                   AM_BASE(&spriteram16)	// Sprites
-	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(MRA16_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16	)	// Palette
-	AM_RANGE(0x600000, 0x601fff) AM_READWRITE(MRA16_RAM,realbrk_vram_0_w) AM_BASE(&realbrk_vram_0	)	// Background   (0)
-	AM_RANGE(0x602000, 0x603fff) AM_READWRITE(MRA16_RAM,realbrk_vram_1_w) AM_BASE(&realbrk_vram_1	)	// Background   (1)
-	AM_RANGE(0x604000, 0x604fff) AM_READWRITE(MRA16_RAM,realbrk_vram_2_w) AM_BASE(&realbrk_vram_2	)	// Text         (2)
-	AM_RANGE(0x606000, 0x60600f) AM_READWRITE(MRA16_RAM,realbrk_vregs_w) AM_BASE(&realbrk_vregs 	)	// Scroll + Video Regs
+	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(SMH_RAM,paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16	)	// Palette
+	AM_RANGE(0x600000, 0x601fff) AM_READWRITE(SMH_RAM,realbrk_vram_0_w) AM_BASE(&realbrk_vram_0	)	// Background   (0)
+	AM_RANGE(0x602000, 0x603fff) AM_READWRITE(SMH_RAM,realbrk_vram_1_w) AM_BASE(&realbrk_vram_1	)	// Background   (1)
+	AM_RANGE(0x604000, 0x604fff) AM_READWRITE(SMH_RAM,realbrk_vram_2_w) AM_BASE(&realbrk_vram_2	)	// Text         (2)
+	AM_RANGE(0x606000, 0x60600f) AM_READWRITE(SMH_RAM,realbrk_vregs_w) AM_BASE(&realbrk_vregs 	)	// Scroll + Video Regs
 	AM_RANGE(0x605000, 0x61ffff) AM_RAM							               	//
 	AM_RANGE(0x800000, 0x800001) AM_WRITE(YMZ280B_register_0_msb_w			)	// YMZ280
 	AM_RANGE(0x800002, 0x800003) AM_READWRITE(YMZ280B_status_0_msb_r,YMZ280B_data_0_msb_w)	//
 	AM_RANGE(0xfe0000, 0xfeffff) AM_RAM						                 	// RAM
-	AM_RANGE(0xfffc00, 0xffffff) AM_READWRITE(MRA16_RAM,tmp68301_regs_w) AM_BASE(&tmp68301_regs	)	// TMP68301 Registers
+	AM_RANGE(0xfffc00, 0xffffff) AM_READWRITE(SMH_RAM,tmp68301_regs_w) AM_BASE(&tmp68301_regs	)	// TMP68301 Registers
 ADDRESS_MAP_END
 
 /*realbrk specific memory map*/
@@ -174,7 +174,7 @@ static ADDRESS_MAP_START( realbrk_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x80000a, 0x80000b) AM_WRITE(YM2413_data_port_0_lsb_w			)	//
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(input_port_0_word_r		)	// P1 & P2 (Inputs)
 	AM_RANGE(0xc00002, 0xc00003) AM_READ(input_port_1_word_r		)	// Coins
-	AM_RANGE(0xc00004, 0xc00005) AM_READWRITE(realbrk_dsw_r,MWA16_RAM) AM_BASE(&realbrk_dsw_select	)	// DSW select
+	AM_RANGE(0xc00004, 0xc00005) AM_READWRITE(realbrk_dsw_r,SMH_RAM) AM_BASE(&realbrk_dsw_select	)	// DSW select
 	AM_RANGE(0xff0000, 0xfffbff) AM_RAM											// RAM
 	AM_RANGE(0xfffd0a, 0xfffd0b) AM_WRITE(realbrk_flipscreen_w				)	// Hack! Parallel port data register
 ADDRESS_MAP_END
@@ -192,19 +192,19 @@ static ADDRESS_MAP_START( pkgnshdx_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x800008, 0x800009) AM_WRITE(YM2413_register_port_0_lsb_w		)	// YM2413
 	AM_RANGE(0x80000a, 0x80000b) AM_WRITE(YM2413_data_port_0_lsb_w			)	//
 	AM_RANGE(0xc00000, 0xc00013) AM_READ(pkgnshdx_input_r		        )	// P1 & P2 (Inputs)
-	AM_RANGE(0xc00004, 0xc00005) AM_WRITE(MWA16_RAM) AM_BASE(&realbrk_dsw_select) // DSW select
+	AM_RANGE(0xc00004, 0xc00005) AM_WRITE(SMH_RAM) AM_BASE(&realbrk_dsw_select) // DSW select
 	AM_RANGE(0xff0000, 0xfffbff) AM_READWRITE(backup_ram_dx_r,backup_ram_w) AM_BASE(&backup_ram)	// RAM
 ADDRESS_MAP_END
 
 /*dai2kaku specific memory map*/
 static ADDRESS_MAP_START( dai2kaku_mem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x605000, 0x6053ff) AM_READWRITE(MRA16_RAM,MWA16_RAM) AM_BASE(&realbrk_vram_0ras	)	// rasterinfo   (0)
-	AM_RANGE(0x605400, 0x6057ff) AM_READWRITE(MRA16_RAM,MWA16_RAM) AM_BASE(&realbrk_vram_1ras	)	// rasterinfo   (1)
+	AM_RANGE(0x605000, 0x6053ff) AM_READWRITE(SMH_RAM,SMH_RAM) AM_BASE(&realbrk_vram_0ras	)	// rasterinfo   (0)
+	AM_RANGE(0x605400, 0x6057ff) AM_READWRITE(SMH_RAM,SMH_RAM) AM_BASE(&realbrk_vram_1ras	)	// rasterinfo   (1)
 	AM_RANGE(0x800008, 0x800009) AM_WRITE(YM2413_register_port_0_lsb_w		)	// YM2413
 	AM_RANGE(0x80000a, 0x80000b) AM_WRITE(YM2413_data_port_0_lsb_w			)	//
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(input_port_0_word_r		)	// P1 & P2 (Inputs)
 	AM_RANGE(0xc00002, 0xc00003) AM_READ(input_port_1_word_r		)	// Coins
-	AM_RANGE(0xc00004, 0xc00005) AM_READWRITE(realbrk_dsw_r,MWA16_RAM) AM_BASE(&realbrk_dsw_select	)	// DSW select
+	AM_RANGE(0xc00004, 0xc00005) AM_READWRITE(realbrk_dsw_r,SMH_RAM) AM_BASE(&realbrk_dsw_select	)	// DSW select
 	AM_RANGE(0xff0000, 0xfffbff) AM_RAM											// RAM
 	AM_RANGE(0xfffd0a, 0xfffd0b) AM_WRITE(dai2kaku_flipscreen_w				)	// Hack! Parallel port data register
 ADDRESS_MAP_END
@@ -683,19 +683,18 @@ static MACHINE_DRIVER_START( realbrk )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main",M68000,32000000 / 2)			/* !! TMP68301 !! */
 	MDRV_CPU_PROGRAM_MAP(base_mem,realbrk_mem)
-	MDRV_CPU_VBLANK_INT(realbrk_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", realbrk_interrupt)
 
 	MDRV_MACHINE_RESET( tmp68301 )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", 0)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x140, 0xe0)
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x140-1, 0, 0xe0-1)
+
 	MDRV_GFXDECODE(realbrk)
 	MDRV_PALETTE_LENGTH(0x8000)
 

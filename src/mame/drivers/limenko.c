@@ -94,7 +94,7 @@ static WRITE32_HANDLER( fg_videoram_w )
 
 static WRITE32_HANDLER( spotty_soundlatch_w )
 {
-	soundlatch_w(0, (data >> 16) & 0xff);
+	soundlatch_w(machine, 0, (data >> 16) & 0xff);
 }
 
 /*****************************************************************************************************
@@ -189,7 +189,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 }
 
 // sprites aren't tile based (except for 8x8 ones)
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i;
 	int sprites_on_screen = (limenko_videoreg[0] & 0x1ff0000) >> 16;
@@ -275,9 +275,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 static VIDEO_START( limenko )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,128,64);
-	md_tilemap = tilemap_create(get_md_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,128,64);
+	md_tilemap = tilemap_create(get_md_tile_info,tilemap_scan_rows,8,8,128,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,128,64);
 
 	tilemap_set_transparent_pen(md_tilemap,0);
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -304,7 +304,7 @@ static VIDEO_UPDATE( limenko )
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
 
 	if(limenko_videoreg[0] & 8)
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 
 	return 0;
 }
@@ -479,15 +479,14 @@ static MACHINE_DRIVER_START( limenko )
 	MDRV_CPU_ADD(E132XN, 20000000*4)	/* 4x internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(limenko_map,0)
 	MDRV_CPU_IO_MAP(limenko_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(384, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 383, 0, 239)
@@ -505,20 +504,19 @@ static MACHINE_DRIVER_START( spotty )
 	MDRV_CPU_ADD(GMS30C2232, 20000000)	/* 20 MHz, no internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(spotty_map,0)
 	MDRV_CPU_IO_MAP(spotty_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(I8051, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(spotty_sound_prg_map, 0)
 	MDRV_CPU_DATA_MAP(0, 0)
 	MDRV_CPU_IO_MAP(spotty_sound_io_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(384, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 383, 0, 239)

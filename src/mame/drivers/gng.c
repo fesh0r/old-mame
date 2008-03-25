@@ -21,6 +21,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
 
@@ -65,20 +66,20 @@ static MACHINE_START( gng )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x2fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_0_r)
 	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_1_r)
 	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_2_r)
 	AM_RANGE(0x3003, 0x3003) AM_READ(input_port_3_r)
 	AM_RANGE(0x3004, 0x3004) AM_READ(input_port_4_r)
-	AM_RANGE(0x3c00, 0x3c00) AM_READ(MRA8_NOP)	/* watchdog? */
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x3c00, 0x3c00) AM_READ(SMH_NOP)	/* watchdog? */
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1dff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1e00, 0x1fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x1dff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1e00, 0x1fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x2000, 0x27ff) AM_WRITE(gng_fgvideoram_w) AM_BASE(&gng_fgvideoram)
 	AM_RANGE(0x2800, 0x2fff) AM_WRITE(gng_bgvideoram_w) AM_BASE(&gng_bgvideoram)
 	AM_RANGE(0x3800, 0x38ff) AM_WRITE(paletteram_RRRRGGGGBBBBxxxx_split2_w) AM_BASE(&paletteram_2)
@@ -86,29 +87,29 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3a00, 0x3a00) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x3b08, 0x3b09) AM_WRITE(gng_bgscrollx_w)
 	AM_RANGE(0x3b0a, 0x3b0b) AM_WRITE(gng_bgscrolly_w)
-	AM_RANGE(0x3c00, 0x3c00) AM_WRITE(MWA8_NOP)   /* watchdog? */
+	AM_RANGE(0x3c00, 0x3c00) AM_WRITE(SMH_NOP)   /* watchdog? */
 	AM_RANGE(0x3d00, 0x3d00) AM_WRITE(gng_flipscreen_w)
 //  { 0x3d01, 0x3d01, reset sound cpu?
 	AM_RANGE(0x3d02, 0x3d03) AM_WRITE(gng_coin_counter_w)
 	AM_RANGE(0x3e00, 0x3e00) AM_WRITE(gng_bankswitch_w)
-	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc800, 0xc800) AM_READ(soundlatch_r)
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0xe001, 0xe001) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0xe002, 0xe002) AM_WRITE(YM2203_control_port_1_w)
 	AM_RANGE(0xe003, 0xe003) AM_WRITE(YM2203_write_port_1_w)
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 #define GNG_COMMON \
@@ -341,23 +342,25 @@ static MACHINE_DRIVER_START( gng )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, 1500000)			/* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	MDRV_MACHINE_START(gng)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(gng)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -448,10 +451,10 @@ ROM_START( gnga )
 	ROM_LOAD( "gg6.bin",      0x14000, 0x4000, CRC(2d77e9b2) SHA1(944da1ce29a18bf0fc8deff78bceacba0bf23a07) ) /* tiles 2-3 Plane 3*/
 
 	ROM_REGION( 0x20000, REGION_GFX3, ROMREGION_DISPOSE | ROMREGION_ERASEFF )
-	ROM_LOAD( "gg17.bin",     0x00000, 0x4000, CRC(93e50a8f) SHA1(42d367f57bb2fdf60a0445ac1533da99cfeaa617) ) /* sprites 0 Plane 1-2 */
+	ROM_LOAD( "gng13.n4",     0x00000, 0x4000, CRC(4613afdc) SHA1(13e5a38a134bd7cfa16c63a18fa332c6d66b9345) ) /* sprites 0 Plane 1-2 */
 	ROM_LOAD( "gg16.bin",     0x04000, 0x4000, CRC(06d7e5ca) SHA1(9e06012bcd82f98fad43de666ef9a75979d940ab) ) /* sprites 1 Plane 1-2 */
 	ROM_LOAD( "gg15.bin",     0x08000, 0x4000, CRC(bc1fe02d) SHA1(e3a1421d465b87148ffa94f5673b2307f0246afe) ) /* sprites 2 Plane 1-2 */
-	ROM_LOAD( "gg14.bin",     0x10000, 0x4000, CRC(6aaf12f9) SHA1(207a7407288182a4f3eddaea634c6a6452131182) ) /* sprites 0 Plane 3-4 */
+	ROM_LOAD( "gng16.l4",     0x10000, 0x4000, CRC(608d68d5) SHA1(af207f9ee2f93a0cf9cf25cfe72b0fdfe55481b8) ) /* sprites 0 Plane 3-4 */
 	ROM_LOAD( "gg13.bin",     0x14000, 0x4000, CRC(e80c3fca) SHA1(cb641c25bb04b970b2cbeca41adb792bbe142fb5) ) /* sprites 1 Plane 3-4 */
 	ROM_LOAD( "gg12.bin",     0x18000, 0x4000, CRC(7780a925) SHA1(3f129ca6d695548b659955fe538584bd9ac2ff17) ) /* sprites 2 Plane 3-4 */
 

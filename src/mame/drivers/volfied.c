@@ -69,12 +69,12 @@ VIDEO_START( volfied );
 ***********************************************************/
 
 static ADDRESS_MAP_START( volfied_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)    /* program */
-	AM_RANGE(0x080000, 0x0fffff) AM_READ(MRA16_ROM)    /* tiles   */
-	AM_RANGE(0x100000, 0x103fff) AM_READ(MRA16_RAM)    /* main    */
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)    /* program */
+	AM_RANGE(0x080000, 0x0fffff) AM_READ(SMH_ROM)    /* tiles   */
+	AM_RANGE(0x100000, 0x103fff) AM_READ(SMH_RAM)    /* main    */
 	AM_RANGE(0x200000, 0x203fff) AM_READ(PC090OJ_word_0_r)
 	AM_RANGE(0x400000, 0x47ffff) AM_READ(volfied_video_ram_r)
-	AM_RANGE(0x500000, 0x503fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x500000, 0x503fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd00000, 0xd00001) AM_READ(volfied_video_ctrl_r)
 	AM_RANGE(0xe00002, 0xe00003) AM_READ(taitosound_comm16_lsb_r)
 	AM_RANGE(0xf00000, 0xf007ff) AM_READ(volfied_cchip_ram_r)
@@ -82,9 +82,9 @@ static ADDRESS_MAP_START( volfied_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( volfied_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)    /* program */
-	AM_RANGE(0x080000, 0x0fffff) AM_WRITE(MWA16_ROM)    /* tiles   */
-	AM_RANGE(0x100000, 0x103fff) AM_WRITE(MWA16_RAM)    /* main    */
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)    /* program */
+	AM_RANGE(0x080000, 0x0fffff) AM_WRITE(SMH_ROM)    /* tiles   */
+	AM_RANGE(0x100000, 0x103fff) AM_WRITE(SMH_RAM)    /* main    */
 	AM_RANGE(0x200000, 0x203fff) AM_WRITE(PC090OJ_word_0_w)
 	AM_RANGE(0x400000, 0x47ffff) AM_WRITE(volfied_video_ram_w)
 	AM_RANGE(0x500000, 0x503fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
@@ -99,21 +99,21 @@ static ADDRESS_MAP_START( volfied_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x8801, 0x8801) AM_READ(taitosound_slave_comm_r)
 	AM_RANGE(0x9000, 0x9000) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0x9001, 0x9001) AM_READ(YM2203_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0x8801, 0x8801) AM_WRITE(taitosound_slave_comm_w)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x9001, 0x9001) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0x9800, 0x9800) AM_WRITE(MWA8_NOP)    /* ? */
+	AM_RANGE(0x9800, 0x9800) AM_WRITE(SMH_NOP)    /* ? */
 ADDRESS_MAP_END
 
 
@@ -265,20 +265,21 @@ static MACHINE_DRIVER_START( volfied )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 8000000)   /* 8MHz */
 	MDRV_CPU_PROGRAM_MAP(volfied_readmem,volfied_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)   /* sound CPU, required to run the game */
 	MDRV_CPU_PROGRAM_MAP(z80_readmem,z80_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(20)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 8, 247)
+
 	MDRV_GFXDECODE(volfied)
 	MDRV_PALETTE_LENGTH(8192)
 

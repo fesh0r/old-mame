@@ -11,7 +11,6 @@
 #define LOG_TEMP_PAUSE		0
 
 // Needed for RAW Input
-#define _WIN32_WINNT 0x501
 #define WM_INPUT 0x00FF
 
 // standard windows headers
@@ -874,10 +873,7 @@ static void set_starting_view(int index, win_window_info *window, const char *vi
 	// if we don't have a match, default to the nth view
 	if (viewindex == -1)
 	{
-		int scrcount;
-
-		// count the number of screens
-		for (scrcount = 0; Machine->drv->screen[scrcount].tag != NULL; scrcount++) ;
+		int scrcount = video_screen_count(Machine->config);
 
 		// if we have enough screens to be one per monitor, assign in order
 		if (video_config.numscreens >= scrcount)
@@ -1187,7 +1183,7 @@ static int complete_create(win_window_info *window)
 
 	// create the window menu if needed
 #if HAS_WINDOW_MENU
-	if (win_create_menu(&menu))
+	if (win_create_menu(Machine, &menu))
 		return 1;
 #endif
 

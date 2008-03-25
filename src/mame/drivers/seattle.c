@@ -469,7 +469,7 @@ static void vblank_assert(int state);
 static void update_vblank_irq(void);
 static void galileo_reset(void);
 static TIMER_CALLBACK( galileo_timer_callback );
-static void galileo_perform_dma(int which);
+static void galileo_perform_dma(running_machine *machine, int which);
 static void voodoo_stall(int stall);
 static void widget_reset(void);
 static void update_widget_irq(void);
@@ -492,7 +492,7 @@ static VIDEO_START( seattle )
 {
 	add_exit_callback(machine, seattle_exit);
 
-	voodoo_start(0, 0, VOODOO_1, 2, 4, 0);
+	voodoo_start(0, machine->primary_screen, VOODOO_1, 2, 4, 0);
 
 	voodoo_set_vblank_callback(0, vblank_assert);
 	voodoo_set_stall_callback(0, voodoo_stall);
@@ -503,7 +503,7 @@ static VIDEO_START( flagstaff )
 {
 	add_exit_callback(machine, seattle_exit);
 
-	voodoo_start(0, 0, VOODOO_1, 2, 4, 4);
+	voodoo_start(0, machine->primary_screen, VOODOO_1, 2, 4, 4);
 
 	voodoo_set_vblank_callback(0, vblank_assert);
 	voodoo_set_stall_callback(0, voodoo_stall);
@@ -652,7 +652,7 @@ static READ32_HANDLER( interrupt_state_r )
 
 static READ32_HANDLER( interrupt_state2_r )
 {
-	UINT32 result = interrupt_state_r(offset, mem_mask);
+	UINT32 result = interrupt_state_r(machine, offset, mem_mask);
 	result |= vblank_state << 8;
 	return result;
 }
@@ -916,7 +916,7 @@ static TIMER_CALLBACK( galileo_timer_callback )
 
 	/* if we're a timer, adjust the timer to fire again */
 	if (galileo.reg[GREG_TIMER_CONTROL] & (2 << (2 * which)))
-		timer_adjust(timer->timer, attotime_mul(TIMER_PERIOD, timer->count), which, attotime_zero);
+		timer_adjust_oneshot(timer->timer, attotime_mul(TIMER_PERIOD, timer->count), which);
 	else
 		timer->active = timer->count = 0;
 
@@ -973,7 +973,7 @@ static int galileo_dma_fetch_next(int which)
 }
 
 
-static void galileo_perform_dma(int which)
+static void galileo_perform_dma(running_machine *machine, int which)
 {
 	do
 	{
@@ -1024,7 +1024,7 @@ static void galileo_perform_dma(int which)
 				}
 
 				/* write the data and advance */
-				voodoo_0_w((dstaddr & 0xffffff) / 4, program_read_dword(srcaddr), 0);
+				voodoo_0_w(machine, (dstaddr & 0xffffff) / 4, program_read_dword(srcaddr), 0);
 				srcaddr += srcinc;
 				dstaddr += dstinc;
 				bytesleft -= 4;
@@ -1188,7 +1188,7 @@ static WRITE32_HANDLER( galileo_w )
 
 			/* if enabling, start the DMA */
 			if (!(oldata & 0x1000) && (data & 0x1000))
-				galileo_perform_dma(which);
+				galileo_perform_dma(machine, which);
 			break;
 		}
 
@@ -1227,7 +1227,7 @@ static WRITE32_HANDLER( galileo_w )
 						if (which != 0)
 							timer->count &= 0xffffff;
 					}
-					timer_adjust(timer->timer, attotime_mul(TIMER_PERIOD, timer->count), which, attotime_zero);
+					timer_adjust_oneshot(timer->timer, attotime_mul(TIMER_PERIOD, timer->count), which);
 					if (LOG_TIMERS)
 						logerror("Adjusted timer to fire in %f secs\n", attotime_to_double(attotime_mul(TIMER_PERIOD, timer->count)));
 				}
@@ -1236,7 +1236,7 @@ static WRITE32_HANDLER( galileo_w )
 					UINT32 elapsed = attotime_to_double(attotime_mul(timer_timeelapsed(timer->timer), SYSTEM_CLOCK));
 					timer->active = 0;
 					timer->count = (timer->count > elapsed) ? (timer->count - elapsed) : 0;
-					timer_adjust(timer->timer, attotime_never, which, attotime_zero);
+					timer_adjust_oneshot(timer->timer, attotime_never, which);
 					if (LOG_TIMERS)
 						logerror("Disabled timer\n");
 				}
@@ -1306,7 +1306,7 @@ static WRITE32_HANDLER( seattle_voodoo_w )
 	/* if we're not stalled, just write and get out */
 	if (!voodoo_stalled)
 	{
-		voodoo_0_w(offset, data, mem_mask);
+		voodoo_0_w(machine, offset, data, mem_mask);
 		return;
 	}
 
@@ -1362,7 +1362,7 @@ static void voodoo_stall(int stall)
 
 				/* resume execution */
 				cpuintrf_push_context(0);
-				galileo_perform_dma(which);
+				galileo_perform_dma(Machine, which);
 				cpuintrf_pop_context();
 				break;
 			}
@@ -1372,7 +1372,7 @@ static void voodoo_stall(int stall)
 		{
 			/* if the CPU had a pending write, do it now */
 			if (cpu_stalled_on_voodoo)
-				voodoo_0_w(cpu_stalled_offset, cpu_stalled_data, cpu_stalled_mem_mask);
+				voodoo_0_w(Machine, cpu_stalled_offset, cpu_stalled_data, cpu_stalled_mem_mask);
 			cpu_stalled_on_voodoo = FALSE;
 
 			/* resume CPU execution */
@@ -1473,18 +1473,18 @@ static WRITE32_HANDLER( carnevil_gun_w )
 static READ32_HANDLER( ethernet_r )
 {
 	if (!(offset & 8))
-		return smc91c94_r(offset & 7, mem_mask | 0x0000);
+		return smc91c94_r(machine, offset & 7, mem_mask | 0x0000);
 	else
-		return smc91c94_r(offset & 7, mem_mask | 0xff00);
+		return smc91c94_r(machine, offset & 7, mem_mask | 0xff00);
 }
 
 
 static WRITE32_HANDLER( ethernet_w )
 {
 	if (!(offset & 8))
-		smc91c94_w(offset & 7, data & 0xffff, mem_mask | 0x0000);
+		smc91c94_w(machine, offset & 7, data & 0xffff, mem_mask | 0x0000);
 	else
-		smc91c94_w(offset & 7, data & 0x00ff, mem_mask | 0xff00);
+		smc91c94_w(machine, offset & 7, data & 0x00ff, mem_mask | 0xff00);
 }
 
 
@@ -1532,11 +1532,11 @@ static READ32_HANDLER( widget_r )
 			break;
 
 		case WREG_ANALOG:
-			result = analog_port_r(0, mem_mask);
+			result = analog_port_r(machine, 0, mem_mask);
 			break;
 
 		case WREG_ETHER_DATA:
-			result = smc91c94_r(widget.ethernet_addr & 7, mem_mask & 0xffff);
+			result = smc91c94_r(machine, widget.ethernet_addr & 7, mem_mask & 0xffff);
 			break;
 	}
 
@@ -1563,11 +1563,11 @@ static WRITE32_HANDLER( widget_w )
 			break;
 
 		case WREG_ANALOG:
-			analog_port_w(0, data, mem_mask);
+			analog_port_w(machine, 0, data, mem_mask);
 			break;
 
 		case WREG_ETHER_DATA:
-			smc91c94_w(widget.ethernet_addr & 7, data & 0xffff, mem_mask & 0xffff);
+			smc91c94_w(machine, widget.ethernet_addr & 7, data & 0xffff, mem_mask & 0xffff);
 			break;
 	}
 }
@@ -1725,7 +1725,7 @@ PCI Mem  = 08000000-09FFFFFF
 */
 
 static ADDRESS_MAP_START( seattle_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x007fffff) AM_RAM AM_BASE(&rambase)	// wg3dh only has 4MB; sfrush, blitz99 8MB
 	AM_RANGE(0x08000000, 0x08ffffff) AM_READWRITE(voodoo_0_r, seattle_voodoo_w)
 	AM_RANGE(0x0a000000, 0x0a0003ff) AM_READWRITE(ide_controller32_0_r, ide_controller32_0_w)
@@ -1737,14 +1737,14 @@ static ADDRESS_MAP_START( seattle_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x16100000, 0x1611ffff) AM_READWRITE(cmos_r, cmos_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x17000000, 0x17000003) AM_READWRITE(cmos_protect_r, cmos_protect_w)
 	AM_RANGE(0x17100000, 0x17100003) AM_WRITE(seattle_watchdog_w)
-	AM_RANGE(0x17300000, 0x17300003) AM_READWRITE(MRA32_RAM, seattle_interrupt_enable_w) AM_BASE(&interrupt_enable)
-	AM_RANGE(0x17400000, 0x17400003) AM_READWRITE(MRA32_RAM, interrupt_config_w) AM_BASE(&interrupt_config)
+	AM_RANGE(0x17300000, 0x17300003) AM_READWRITE(SMH_RAM, seattle_interrupt_enable_w) AM_BASE(&interrupt_enable)
+	AM_RANGE(0x17400000, 0x17400003) AM_READWRITE(SMH_RAM, interrupt_config_w) AM_BASE(&interrupt_config)
 	AM_RANGE(0x17500000, 0x17500003) AM_READ(interrupt_state_r)
 	AM_RANGE(0x17600000, 0x17600003) AM_READ(interrupt_state2_r)
 	AM_RANGE(0x17700000, 0x17700003) AM_WRITE(vblank_clear_w)
 	AM_RANGE(0x17800000, 0x17800003) AM_NOP
 	AM_RANGE(0x17900000, 0x17900003) AM_READWRITE(status_leds_r, status_leds_w)
-	AM_RANGE(0x17f00000, 0x17f00003) AM_READWRITE(MRA32_RAM, asic_reset_w) AM_BASE(&asic_reset)
+	AM_RANGE(0x17f00000, 0x17f00003) AM_READWRITE(SMH_RAM, asic_reset_w) AM_BASE(&asic_reset)
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
 ADDRESS_MAP_END
 
@@ -1812,7 +1812,7 @@ static INPUT_PORTS_START( seattle_common )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_TILT )
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) /* Test switch */
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -2462,13 +2462,12 @@ static MACHINE_DRIVER_START( seattle_common )
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(seattle_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(57)
-
 	MDRV_MACHINE_RESET(seattle)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
@@ -2739,8 +2738,8 @@ static void init_common(int ioasic, int serialnum, int yearoffs, int config)
 	{
 		case PHOENIX_CONFIG:
 			/* original Phoenix board only has 4MB of RAM */
-			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, MRA32_NOP);
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, MWA32_NOP);
+			memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, SMH_NOP);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, SMH_NOP);
 			break;
 
 		case SEATTLE_WIDGET_CONFIG:

@@ -41,8 +41,10 @@ static emu_timer *setup_gun_timer;
 
 INLINE void get_crosshair_xy(running_machine *machine, int player, int *x, int *y)
 {
-	*x = (((readinputport(4 + player * 2) & 0xff) * (machine->screen[0].visarea.max_x - machine->screen[0].visarea.min_x)) >> 8) + machine->screen[0].visarea.min_x;
-	*y = (((readinputport(5 + player * 2) & 0xff) * (machine->screen[0].visarea.max_y - machine->screen[0].visarea.min_y)) >> 8) + machine->screen[0].visarea.min_y;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+
+	*x = (((readinputport(4 + player * 2) & 0xff) * (visarea->max_x - visarea->min_x)) >> 8) + visarea->min_x;
+	*y = (((readinputport(5 + player * 2) & 0xff) * (visarea->max_y - visarea->min_y)) >> 8) + visarea->min_y;
 }
 
 
@@ -72,7 +74,7 @@ static TIMER_CALLBACK( setup_gun_interrupts )
 	int beamx, beamy;
 
 	/* set a timer to do this again next frame */
-	timer_adjust(setup_gun_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(setup_gun_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 
 	/* only do work if the palette is flashed */
 	if (!tickee_control[2])
@@ -80,13 +82,13 @@ static TIMER_CALLBACK( setup_gun_interrupts )
 
 	/* generate interrupts for player 1's gun */
 	get_crosshair_xy(machine, 0, &beamx, &beamy);
-	timer_set(video_screen_get_time_until_pos(0, beamy,     beamx + 50), NULL, 0, trigger_gun_interrupt);
-	timer_set(video_screen_get_time_until_pos(0, beamy + 1, beamx + 50), NULL, 0, clear_gun_interrupt);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, beamy,     beamx + 50), NULL, 0, trigger_gun_interrupt);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, beamy + 1, beamx + 50), NULL, 0, clear_gun_interrupt);
 
 	/* generate interrupts for player 2's gun */
 	get_crosshair_xy(machine, 1, &beamx, &beamy);
-	timer_set(video_screen_get_time_until_pos(0, beamy,     beamx + 50), NULL, 1, trigger_gun_interrupt);
-	timer_set(video_screen_get_time_until_pos(0, beamy + 1, beamx + 50), NULL, 1, clear_gun_interrupt);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, beamy,     beamx + 50), NULL, 1, trigger_gun_interrupt);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, beamy + 1, beamx + 50), NULL, 1, clear_gun_interrupt);
 }
 
 
@@ -101,7 +103,7 @@ static VIDEO_START( tickee )
 {
 	/* start a timer going on the first scanline of every frame */
 	setup_gun_timer = timer_alloc(setup_gun_interrupts, NULL);
-	timer_adjust(setup_gun_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_zero);
+	timer_adjust_oneshot(setup_gun_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 
@@ -112,7 +114,7 @@ static VIDEO_START( tickee )
  *
  *************************************/
 
-static void scanline_update(running_machine *machine, int screen, mame_bitmap *bitmap, int scanline, const tms34010_display_params *params)
+static void scanline_update(const device_config *screen, bitmap_t *bitmap, int scanline, const tms34010_display_params *params)
 {
 	UINT16 *src = &tickee_vram[(params->rowaddr << 8) & 0x3ff00];
 	UINT32 *dest = BITMAP_ADDR32(bitmap, scanline, 0);
@@ -159,12 +161,12 @@ static MACHINE_RESET( tickee )
 
 static READ8_HANDLER( port1_r )
 {
-	return input_port_1_r(offset) | (ticket_dispenser_0_r(0) >> 5) | (ticket_dispenser_1_r(0) >> 6);
+	return input_port_1_r(machine, offset) | (ticket_dispenser_0_r(machine, 0) >> 5) | (ticket_dispenser_1_r(machine, 0) >> 6);
 }
 
 static READ8_HANDLER( port2_r )
 {
-	return input_port_3_r(offset) | (ticket_dispenser_0_r(0) >> 5) | (ticket_dispenser_1_r(0) >> 6);
+	return input_port_3_r(machine, offset) | (ticket_dispenser_0_r(machine, 0) >> 5) | (ticket_dispenser_1_r(machine, 0) >> 6);
 }
 
 
@@ -190,8 +192,8 @@ static WRITE16_HANDLER( tickee_control_w )
 
 	if (offset == 3)
 	{
-		ticket_dispenser_0_w(0, (data & 8) << 4);
-		ticket_dispenser_1_w(0, (data & 4) << 5);
+		ticket_dispenser_0_w(machine, 0, (data & 8) << 4);
+		ticket_dispenser_1_w(machine, 0, (data & 4) << 5);
 	}
 
 	if (olddata != tickee_control[offset])
@@ -395,7 +397,7 @@ static const struct AY8910interface ay8910_interface_2 =
 static const tms34010_config tms_config =
 {
 	FALSE,							/* halt on reset */
-	0,								/* the screen operated on */
+	"main",							/* the screen operated on */
 	VIDEO_CLOCK/2,					/* pixel clock */
 	1,								/* pixels per clock */
 	scanline_update,				/* scanline callback */
@@ -423,11 +425,10 @@ static MACHINE_DRIVER_START( tickee )
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_START(tickee)
 	MDRV_VIDEO_UPDATE(tms340x0)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(VIDEO_CLOCK/2, 444, 0, 320, 233, 0, 200)
 

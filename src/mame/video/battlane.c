@@ -15,7 +15,7 @@ static tilemap *bg_tilemap;
 static int battlane_video_ctrl;
 extern int battlane_cpu_control;
 
-static mame_bitmap *screen_bitmap;
+static bitmap_t *screen_bitmap;
 
 /*
     Video control register
@@ -145,12 +145,12 @@ static TILEMAP_MAPPER( battlane_tilemap_scan_rows_2x2 )
 VIDEO_START( battlane )
 {
 	bg_tilemap = tilemap_create(get_tile_info_bg, battlane_tilemap_scan_rows_2x2,
-		TILEMAP_TYPE_PEN, 16, 16, 32, 32);
+		 16, 16, 32, 32);
 
 	screen_bitmap = auto_bitmap_alloc(32 * 8, 32 * 8, BITMAP_FORMAT_INDEXED8);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs, attr, code, color, sx, sy, flipx, flipy, dy;
 
@@ -183,7 +183,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			flipx = attr & 0x04;
 			flipy = attr & 0x02;
 
-			if (!flip_screen)
+			if (!flip_screen_get())
             {
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -215,7 +215,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-static void draw_fg_bitmap(running_machine *machine, mame_bitmap *bitmap )
+static void draw_fg_bitmap(running_machine *machine, bitmap_t *bitmap )
 {
 	int x, y, data;
 
@@ -227,14 +227,10 @@ static void draw_fg_bitmap(running_machine *machine, mame_bitmap *bitmap )
 
 			if (data)
 			{
-				if (flip_screen)
-				{
-					*BITMAP_ADDR16(bitmap, 255 - y, 255 - x) = machine->pens[data];
-				}
+				if (flip_screen_get())
+					*BITMAP_ADDR16(bitmap, 255 - y, 255 - x) = data;
 				else
-				{
-					*BITMAP_ADDR16(bitmap, y, x) = machine->pens[data];
-				}
+					*BITMAP_ADDR16(bitmap, y, x) = data;
 			}
 		}
 	}
@@ -245,7 +241,7 @@ VIDEO_UPDATE( battlane )
 	tilemap_mark_all_tiles_dirty(bg_tilemap); // HACK
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
-	draw_fg_bitmap(machine, bitmap);
+	draw_sprites(screen->machine, bitmap, cliprect);
+	draw_fg_bitmap(screen->machine, bitmap);
 	return 0;
 }

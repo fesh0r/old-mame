@@ -265,7 +265,7 @@ static ADDRESS_MAP_START( game_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
         AM_RANGE(0x5000, 0x5000) AM_RAM                     		/* Write - related to 4C00. Bit 8 = ? bits0..3 =????  */
         AM_RANGE(0x5400, 0x54ff) AM_RAM                                 /* UART buffer? */
         AM_RANGE(0x5c00, 0x5c01) AM_READWRITE(UART_R, UART_W)           /* i8251A USART */
-        AM_RANGE(0x6000, 0xdfff) AM_READWRITE(MRA8_BANK1, MWA8_ROM)     /* Bank switched ROMs */
+        AM_RANGE(0x6000, 0xdfff) AM_READWRITE(SMH_BANK1, SMH_ROM)     /* Bank switched ROMs */
         AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -333,7 +333,7 @@ static MACHINE_DRIVER_START( turbosub )
 
 	MDRV_CPU_ADD(M6809E,4000000)
 	MDRV_CPU_PROGRAM_MAP(game_cpu_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)		/* Unverified */
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)		/* Unverified */
 
 	MDRV_CPU_ADD(M6809E,4000000)
 	MDRV_CPU_PROGRAM_MAP(frame_cpu_map,0)
@@ -341,14 +341,14 @@ static MACHINE_DRIVER_START( turbosub )
 	MDRV_CPU_ADD(M6809E,4000000)
 	MDRV_CPU_PROGRAM_MAP(sound_cpu_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(34*8, 34*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 0, 34*8-1)
+
 	MDRV_PALETTE_LENGTH(512)
         MDRV_MACHINE_RESET( turbosub )
         MDRV_INTERLEAVE(100)

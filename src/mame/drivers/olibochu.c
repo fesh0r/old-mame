@@ -20,7 +20,7 @@ static PALETTE_INIT( olibochu )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		UINT8 pen;
 		int bit0, bit1, bit2, r, g, b;
@@ -67,7 +67,7 @@ static WRITE8_HANDLER( olibochu_colorram_w )
 
 static WRITE8_HANDLER( olibochu_flipscreen_w )
 {
-	if (flip_screen != (data & 0x80))
+	if (flip_screen_get() != (data & 0x80))
 	{
 		flip_screen_set(data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -89,10 +89,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 static VIDEO_START( olibochu )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		8, 8, 32, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -108,7 +108,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sx = spriteram[offs+3];
 		int sy = ((spriteram[offs+2] + 8) & 0xff) - 8;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -136,7 +136,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sx = spriteram_2[offs+3];
 		int sy = spriteram_2[offs+2];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;
@@ -156,7 +156,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 static VIDEO_UPDATE( olibochu )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -173,42 +173,42 @@ static WRITE8_HANDLER( sound_command_w )
 	for (c = 15;c >= 0;c--)
 		if (cmd & (1 << c)) break;
 
-	if (c >= 0) soundlatch_w(0,15-c);
+	if (c >= 0) soundlatch_w(machine,0,15-c);
 }
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
 	AM_RANGE(0xa001, 0xa001) AM_READ(input_port_1_r)
 	AM_RANGE(0xa002, 0xa002) AM_READ(input_port_2_r)
 	AM_RANGE(0xa003, 0xa003) AM_READ(input_port_3_r)
 	AM_RANGE(0xa004, 0xa004) AM_READ(input_port_4_r)
 	AM_RANGE(0xa005, 0xa005) AM_READ(input_port_5_r)
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x83ff) AM_WRITE(olibochu_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_WRITE(olibochu_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xa800, 0xa801) AM_WRITE(sound_command_w)
 	AM_RANGE(0xa802, 0xa802) AM_WRITE(olibochu_flipscreen_w)	/* bit 6 = enable sound? */
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xf400, 0xf41f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xf440, 0xf47f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2) AM_SIZE(&spriteram_2_size)
+	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xf400, 0xf41f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xf440, 0xf47f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2) AM_SIZE(&spriteram_2_size)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x6000, 0x63ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x6000, 0x63ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x7000, 0x7000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x6000, 0x63ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x6000, 0x63ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x7001, 0x7001) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -368,21 +368,21 @@ static MACHINE_DRIVER_START( olibochu )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ?? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(olibochu_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(olibochu_interrupt,2)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */	/* 4 MHz ?? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(olibochu)
 	MDRV_PALETTE_LENGTH(512)
 

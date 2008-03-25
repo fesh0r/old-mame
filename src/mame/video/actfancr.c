@@ -5,7 +5,6 @@
 *******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 
 static UINT8 actfancr_control_1[0x20],actfancr_control_2[0x20];
@@ -87,9 +86,9 @@ static void register_savestate(void)
 
 VIDEO_START( actfancr )
 {
-	pf1_tilemap = tilemap_create(get_tile_info,actfancr_scan,TILEMAP_TYPE_PEN,16,16,256,16);
-	pf1_alt_tilemap = tilemap_create(get_tile_info,actfancr_scan2,TILEMAP_TYPE_PEN,16,16,128,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	pf1_tilemap = tilemap_create(get_tile_info,actfancr_scan,16,16,256,16);
+	pf1_alt_tilemap = tilemap_create(get_tile_info,actfancr_scan2,16,16,128,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(pf2_tilemap,0);
 
@@ -98,8 +97,8 @@ VIDEO_START( actfancr )
 
 VIDEO_START( triothep )
 {
-	pf1_tilemap = tilemap_create(get_trio_tile_info,triothep_scan,TILEMAP_TYPE_PEN,16,16,32,32);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	pf1_tilemap = tilemap_create(get_trio_tile_info,triothep_scan,16,16,32,32);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(pf2_tilemap,0);
 
@@ -175,7 +174,7 @@ VIDEO_UPDATE( actfancr )
 		x = buffered_spriteram[offs+4]+(buffered_spriteram[offs+5]<<8);
 		colour = ((x & 0xf000) >> 12);
 		flash=x&0x800;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(screen) & 1)) continue;
 
 		fx = y & 0x2000;
 		fy = y & 0x4000;
@@ -212,7 +211,7 @@ VIDEO_UPDATE( actfancr )
 
 		while (multi >= 0)
 		{
-			drawgfx(bitmap,machine->gfx[1],
+			drawgfx(bitmap,screen->machine->gfx[1],
 					sprite - multi * inc,
 					colour,
 					fx,fy,
@@ -260,7 +259,7 @@ VIDEO_UPDATE( triothep )
 		x = buffered_spriteram[offs+4]+(buffered_spriteram[offs+5]<<8);
 		colour = ((x & 0xf000) >> 12);
 		flash=x&0x800;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(screen) & 1)) continue;
 
 		fx = y & 0x2000;
 		fy = y & 0x4000;
@@ -297,7 +296,7 @@ VIDEO_UPDATE( triothep )
 
 		while (multi >= 0)
 		{
-			drawgfx(bitmap,machine->gfx[1],
+			drawgfx(bitmap,screen->machine->gfx[1],
 					sprite - multi * inc,
 					colour,
 					fx,fy,

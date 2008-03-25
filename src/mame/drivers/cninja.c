@@ -59,14 +59,14 @@ static UINT16 *cninja_ram;
 
 static WRITE16_HANDLER( cninja_sound_w )
 {
-	soundlatch_w(0,data&0xff);
-	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+	soundlatch_w(machine,0,data&0xff);
+	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 }
 
 static WRITE16_HANDLER( stoneage_sound_w )
 {
-	soundlatch_w(0,data&0xff);
-	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(machine,0,data&0xff);
+	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static TIMER_CALLBACK( interrupt_gen )
@@ -85,7 +85,7 @@ static TIMER_CALLBACK( interrupt_gen )
 	deco16_raster_display_list[deco16_raster_display_position++]=deco16_pf34_control[4]&0xffff;
 
 	cpunum_set_input_line(machine, 0, (cninja_irq_mask&0x10) ? 3 : 4, ASSERT_LINE);
-	timer_adjust(raster_irq_timer,attotime_never,0,attotime_zero);
+	timer_adjust_oneshot(raster_irq_timer,attotime_never,0);
 }
 
 static READ16_HANDLER( cninja_irq_r )
@@ -121,9 +121,9 @@ static WRITE16_HANDLER( cninja_irq_w )
 	case 1: /* Raster IRQ scanline position, only valid for values between 1 & 239 (0 and 240-256 do NOT generate IRQ's) */
 		cninja_scanline=data&0xff;
 		if ((cninja_irq_mask&0x2)==0 && cninja_scanline>0 && cninja_scanline<240)
-			timer_adjust(raster_irq_timer, video_screen_get_time_until_pos(0, cninja_scanline, 0), cninja_scanline, attotime_never);
+			timer_adjust_oneshot(raster_irq_timer, video_screen_get_time_until_pos(machine->primary_screen, cninja_scanline, 0), cninja_scanline);
 		else
-			timer_adjust(raster_irq_timer,attotime_never,0,attotime_zero);
+			timer_adjust_oneshot(raster_irq_timer,attotime_never,0);
 		return;
 
 	case 2: /* VBL irq ack */
@@ -155,232 +155,232 @@ static READ16_HANDLER( robocop2_prot_r )
 /**********************************************************************************/
 
 static ADDRESS_MAP_START( cninja_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0bffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x144000, 0x144fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x146000, 0x146fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x14e000, 0x14e7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x154000, 0x154fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x156000, 0x156fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x15c000, 0x15c7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x15e000, 0x15e7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x184000, 0x187fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0bffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x144000, 0x144fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x146000, 0x146fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x14e000, 0x14e7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x154000, 0x154fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x156000, 0x156fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x15c000, 0x15c7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x15e000, 0x15e7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x184000, 0x187fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x190000, 0x190007) AM_READ(cninja_irq_r)
-	AM_RANGE(0x19c000, 0x19dfff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x1a4000, 0x1a47ff) AM_READ(MRA16_RAM) /* Sprites */
+	AM_RANGE(0x19c000, 0x19dfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x1a4000, 0x1a47ff) AM_READ(SMH_RAM) /* Sprites */
 	AM_RANGE(0x1bc000, 0x1bcfff) AM_READ(deco16_104_cninja_prot_r) /* Protection device */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cninja_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0bffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x0bffff) AM_WRITE(SMH_ROM)
 
-	AM_RANGE(0x140000, 0x14000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x140000, 0x14000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x144000, 0x144fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x146000, 0x146fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x14c000, 0x14c7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x14e000, 0x14e7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x14c000, 0x14c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x14e000, 0x14e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
-	AM_RANGE(0x150000, 0x15000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x150000, 0x15000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
 	AM_RANGE(0x154000, 0x154fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
 	AM_RANGE(0x156000, 0x156fff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x15c000, 0x15c7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x15e000, 0x15e7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf4_rowscroll)
+	AM_RANGE(0x15c000, 0x15c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x15e000, 0x15e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
 
-	AM_RANGE(0x184000, 0x187fff) AM_WRITE(MWA16_RAM) AM_BASE(&cninja_ram) /* Main ram */
+	AM_RANGE(0x184000, 0x187fff) AM_WRITE(SMH_RAM) AM_BASE(&cninja_ram) /* Main ram */
 	AM_RANGE(0x190000, 0x190007) AM_WRITE(cninja_irq_w)
 	AM_RANGE(0x19c000, 0x19dfff) AM_WRITE(deco16_nonbuffered_palette_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x1a4000, 0x1a47ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x1a4000, 0x1a47ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x1b4000, 0x1b4001) AM_WRITE(buffer_spriteram16_w) /* DMA flag */
 	AM_RANGE(0x1bc000, 0x1bc0ff) AM_WRITE(deco16_104_cninja_prot_w) AM_BASE(&deco16_prot_ram) /* Protection writes */
-	AM_RANGE(0x308000, 0x308fff) AM_WRITE(MWA16_NOP) /* Bootleg only */
+	AM_RANGE(0x308000, 0x308fff) AM_WRITE(SMH_NOP) /* Bootleg only */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( edrandy_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x144000, 0x144fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x144000, 0x144fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x146000, 0x146fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x14c000, 0x14c7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x14e000, 0x14e7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x154000, 0x154fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x156000, 0x156fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x15c000, 0x15c7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x15e000, 0x15e7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x188000, 0x189fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x194000, 0x197fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x144000, 0x144fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x144000, 0x144fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x146000, 0x146fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x14c000, 0x14c7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x14e000, 0x14e7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x154000, 0x154fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x156000, 0x156fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x15c000, 0x15c7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x15e000, 0x15e7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x188000, 0x189fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x194000, 0x197fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x198000, 0x1987ff) AM_READ(deco16_60_prot_r) /* Protection device */
 	AM_RANGE(0x1a4000, 0x1a4007) AM_READ(cninja_irq_r)
-	AM_RANGE(0x1bc000, 0x1bc7ff) AM_READ(MRA16_RAM) /* Sprites */
+	AM_RANGE(0x1bc000, 0x1bc7ff) AM_READ(SMH_RAM) /* Sprites */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( edrandy_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
 
-	AM_RANGE(0x140000, 0x14000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x140000, 0x14000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x144000, 0x144fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x146000, 0x146fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x14c000, 0x14c7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x14e000, 0x14e7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x14c000, 0x14c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x14e000, 0x14e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
-	AM_RANGE(0x150000, 0x15000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x150000, 0x15000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
 	AM_RANGE(0x154000, 0x154fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
 	AM_RANGE(0x156000, 0x156fff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x15c000, 0x15c7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x15e000, 0x15e7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf4_rowscroll)
+	AM_RANGE(0x15c000, 0x15c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x15e000, 0x15e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
 
 	AM_RANGE(0x188000, 0x189fff) AM_WRITE(deco16_nonbuffered_palette_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x194000, 0x197fff) AM_WRITE(MWA16_RAM) AM_BASE(&cninja_ram) /* Main ram */
+	AM_RANGE(0x194000, 0x197fff) AM_WRITE(SMH_RAM) AM_BASE(&cninja_ram) /* Main ram */
 	AM_RANGE(0x198000, 0x1987ff) AM_WRITE(deco16_60_prot_w) AM_BASE(&deco16_prot_ram) /* Protection writes */
-	AM_RANGE(0x199550, 0x199551) AM_WRITE(MWA16_NOP) /* Looks like a bug in game code, a protection write is referenced off a5 instead of a6 and ends up here */
-	AM_RANGE(0x199750, 0x199751) AM_WRITE(MWA16_NOP) /* Looks like a bug in game code, a protection write is referenced off a5 instead of a6 and ends up here */
+	AM_RANGE(0x199550, 0x199551) AM_WRITE(SMH_NOP) /* Looks like a bug in game code, a protection write is referenced off a5 instead of a6 and ends up here */
+	AM_RANGE(0x199750, 0x199751) AM_WRITE(SMH_NOP) /* Looks like a bug in game code, a protection write is referenced off a5 instead of a6 and ends up here */
 
 	AM_RANGE(0x1a4000, 0x1a4007) AM_WRITE(cninja_irq_w)
 	AM_RANGE(0x1ac000, 0x1ac001) AM_WRITE(buffer_spriteram16_w) /* DMA flag */
-	AM_RANGE(0x1bc000, 0x1bc7ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x1bc800, 0x1bcfff) AM_WRITE(MWA16_NOP) /* Another bug in game code?  Sprite list can overrun.  Doesn't seem to mirror */
+	AM_RANGE(0x1bc000, 0x1bc7ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x1bc800, 0x1bcfff) AM_WRITE(SMH_NOP) /* Another bug in game code?  Sprite list can overrun.  Doesn't seem to mirror */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( robocop2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x180000, 0x1807ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x180000, 0x1807ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x18c000, 0x18c7ff) AM_READ(robocop2_prot_r) /* Protection device */
-	AM_RANGE(0x1a8000, 0x1a9fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x1a8000, 0x1a9fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1b0000, 0x1b0007) AM_READ(cninja_irq_r)
-	AM_RANGE(0x1b8000, 0x1bbfff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x144000, 0x144fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x146000, 0x146fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x14c000, 0x14c7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x14e000, 0x14e7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x154000, 0x154fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x156000, 0x156fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x15c000, 0x15c7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x15e000, 0x15e7ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x1b8000, 0x1bbfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x144000, 0x144fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x146000, 0x146fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x14c000, 0x14c7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x14e000, 0x14e7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x154000, 0x154fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x156000, 0x156fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x15c000, 0x15c7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x15e000, 0x15e7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1f8000, 0x1f8001) AM_READ(robocop2_dip3_r ) /* Dipswitch #3 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( robocop2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x140000, 0x14000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x140000, 0x14000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x144000, 0x144fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x146000, 0x146fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x14c000, 0x14c7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x14e000, 0x14e7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x14c000, 0x14c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x14e000, 0x14e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
-	AM_RANGE(0x150000, 0x15000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x150000, 0x15000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
 	AM_RANGE(0x154000, 0x154fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
 	AM_RANGE(0x156000, 0x156fff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x15c000, 0x15c7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x15e000, 0x15e7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf4_rowscroll)
+	AM_RANGE(0x15c000, 0x15c7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x15e000, 0x15e7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
 
-	AM_RANGE(0x180000, 0x1807ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x180000, 0x1807ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x18c064, 0x18c065) AM_WRITE(cninja_sound_w)
 //  AM_RANGE(0x18c000, 0x18c0ff) AM_WRITE(cninja_loopback_w) /* Protection writes */
 	AM_RANGE(0x198000, 0x198001) AM_WRITE(buffer_spriteram16_w) /* DMA flag */
 	AM_RANGE(0x1a8000, 0x1a9fff) AM_WRITE(deco16_nonbuffered_palette_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x1b0000, 0x1b0007) AM_WRITE(cninja_irq_w)
-	AM_RANGE(0x1b8000, 0x1bbfff) AM_WRITE(MWA16_RAM) AM_BASE(&cninja_ram) /* Main ram */
+	AM_RANGE(0x1b8000, 0x1bbfff) AM_WRITE(SMH_RAM) AM_BASE(&cninja_ram) /* Main ram */
 	AM_RANGE(0x1f0000, 0x1f0001) AM_WRITE(deco16_priority_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mutantf_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x120000, 0x1207ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x140000, 0x1407ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x160000, 0x161fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x120000, 0x1207ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x140000, 0x1407ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x160000, 0x161fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1a0000, 0x1a07ff) AM_READ(deco16_66_prot_r) /* Protection device */
 	AM_RANGE(0x1c0000, 0x1c0001) AM_READ(deco16_71_r)
 
-	AM_RANGE(0x304000, 0x305fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x306000, 0x307fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x308000, 0x3087ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x30a000, 0x30a7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x314000, 0x315fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x316000, 0x317fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x318000, 0x3187ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x31a000, 0x31a7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xad00ac, 0xad00ff) AM_READ(MRA16_NOP) /* Reads from here seem to be a game code bug */
+	AM_RANGE(0x304000, 0x305fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x306000, 0x307fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x308000, 0x3087ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x30a000, 0x30a7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x314000, 0x315fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x316000, 0x317fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x318000, 0x3187ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x31a000, 0x31a7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xad00ac, 0xad00ff) AM_READ(SMH_NOP) /* Reads from here seem to be a game code bug */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mutantf_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_WRITE(MWA16_RAM) /* Main ram */
-	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x140000, 0x1407ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_WRITE(SMH_RAM) /* Main ram */
+	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x140000, 0x1407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16_2) AM_SIZE(&spriteram_2_size)
 	AM_RANGE(0x160000, 0x161fff) AM_WRITE(deco16_nonbuffered_palette_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x180000, 0x180001) AM_WRITE(deco16_priority_w)
-	AM_RANGE(0x180002, 0x180003) AM_WRITE(MWA16_NOP) /* VBL irq ack */
+	AM_RANGE(0x180002, 0x180003) AM_WRITE(SMH_NOP) /* VBL irq ack */
 	AM_RANGE(0x1a0000, 0x1a07ff) AM_WRITE(deco16_66_prot_w) AM_BASE(&deco16_prot_ram) /* Protection writes */
 	AM_RANGE(0x1c0000, 0x1c0001) AM_WRITE(buffer_spriteram16_w)
 	AM_RANGE(0x1e0000, 0x1e0001) AM_WRITE(buffer_spriteram16_2_w)
 
-	AM_RANGE(0x300000, 0x30000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x300000, 0x30000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x304000, 0x305fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x306000, 0x307fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x308000, 0x3087ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x30a000, 0x30a7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x308000, 0x3087ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x30a000, 0x30a7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
-	AM_RANGE(0x310000, 0x31000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x310000, 0x31000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
 	AM_RANGE(0x314000, 0x315fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
 	AM_RANGE(0x316000, 0x317fff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x318000, 0x3187ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x31a000, 0x31a7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf4_rowscroll)
+	AM_RANGE(0x318000, 0x3187ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x31a000, 0x31a7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0x130000, 0x130001) AM_READ(OKIM6295_status_1_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(YM2203_word_0_w)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_word_0_w)
 	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0x130000, 0x130001) AM_WRITE(OKIM6295_data_1_w)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem_mutantf, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_READ(MRA8_NOP)
+	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x100001) AM_READ(SMH_NOP)
 	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0x130000, 0x130001) AM_READ(OKIM6295_status_1_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem_mutantf, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x100001) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_word_0_w)
 	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0x130000, 0x130001) AM_WRITE(OKIM6295_data_1_w)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( stoneage_s_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x8801, 0x8801) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 	AM_RANGE(0x9800, 0x9800) AM_READ(OKIM6295_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( stoneage_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x8801, 0x8801) AM_WRITE(YM2151_data_port_0_w)
 	AM_RANGE(0x9800, 0x9800) AM_WRITE(OKIM6295_data_0_w)
@@ -785,20 +785,23 @@ static MACHINE_DRIVER_START( cninja )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(cninja_readmem,cninja_writemem)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(H6280,32220000/8)
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_RESET(cninja)
-	MDRV_SCREEN_REFRESH_RATE(58)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(cninja)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -831,20 +834,23 @@ static MACHINE_DRIVER_START( stoneage )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(cninja_readmem,cninja_writemem)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3579545)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(stoneage_s_readmem,stoneage_s_writemem)
 
 	MDRV_MACHINE_RESET(cninja)
-	MDRV_SCREEN_REFRESH_RATE(58)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(cninja)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -874,20 +880,23 @@ static MACHINE_DRIVER_START( edrandy )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(edrandy_readmem,edrandy_writemem)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(H6280,32220000/8)
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_RESET(cninja)
-	MDRV_SCREEN_REFRESH_RATE(58)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(cninja)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -920,20 +929,23 @@ static MACHINE_DRIVER_START( robocop2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 14000000)
 	MDRV_CPU_PROGRAM_MAP(robocop2_readmem,robocop2_writemem)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(H6280,32220000/8)
 	/* audio CPU */	/* Accurate */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
 	MDRV_MACHINE_RESET(cninja)
-	MDRV_SCREEN_REFRESH_RATE(60)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(robocop2)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -969,19 +981,21 @@ static MACHINE_DRIVER_START( mutantf )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 14000000)
 	MDRV_CPU_PROGRAM_MAP(mutantf_readmem,mutantf_writemem)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD(H6280,32220000/8)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem_mutantf,sound_writemem_mutantf)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(mutantf)
 	MDRV_PALETTE_LENGTH(2048)
 

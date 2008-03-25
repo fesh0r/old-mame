@@ -53,8 +53,8 @@ UINT16 *atarigt_colorram;
  *
  *************************************/
 
-static mame_bitmap *pf_bitmap;
-static mame_bitmap *an_bitmap;
+static bitmap_t *pf_bitmap;
+static bitmap_t *an_bitmap;
 
 static UINT8 playfield_tile_bank;
 static UINT8 playfield_color_bank;
@@ -134,30 +134,33 @@ VIDEO_START( atarigt )
 		{{ 0,0x8000,0,0,0,0,0,0 }}	/* mask for the VRAM target */
 	};
 	atarirle_desc adjusted_modesc = modesc;
-	int i;
+	int i, width, height;
 
 	/* blend the playfields and free the temporary one */
 	atarigen_blend_gfx(machine, 0, 2, 0x0f, 0x30);
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, atarigt_playfield_scan, TILEMAP_TYPE_PEN, 8,8, 128,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, atarigt_playfield_scan,  8,8, 128,64);
 
 	/* initialize the motion objects */
 	atarirle_init(0, &adjusted_modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 
 	/* allocate temp bitmaps */
-	pf_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
-	an_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	width = video_screen_get_width(machine->primary_screen);
+	height = video_screen_get_height(machine->primary_screen);
+
+	pf_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
+	an_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
 	/* allocate memory */
 	expanded_mram = auto_malloc(sizeof(*expanded_mram) * MRAM_ENTRIES * 3);
 
 	/* map pens 1:1 */
 	substitute_pens = auto_malloc(65536 * sizeof(*substitute_pens));
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 		substitute_pens[i] = i;
 	machine->pens = substitute_pens;
 
@@ -221,7 +224,7 @@ UINT16 atarigt_colorram_r(offs_t address)
  *
  *************************************/
 
-void atarigt_scanline_update(running_machine *machine, int scrnum, int scanline)
+void atarigt_scanline_update(const device_config *screen, int scanline)
 {
 	UINT32 *base = &atarigen_alpha32[(scanline / 8) * 32 + 24];
 	int i;
@@ -241,13 +244,15 @@ void atarigt_scanline_update(running_machine *machine, int scrnum, int scanline)
 			int newbank = (word >> 16) & 0x1f;
 			if (newscroll != playfield_xscroll)
 			{
-				video_screen_update_partial(0, scanline + i - 1);
+				if (scanline + i > 0)
+					video_screen_update_partial(screen, scanline + i - 1);
 				tilemap_set_scrollx(atarigen_playfield_tilemap, 0, newscroll);
 				playfield_xscroll = newscroll;
 			}
 			if (newbank != playfield_color_bank)
 			{
-				video_screen_update_partial(0, scanline + i - 1);
+				if (scanline + i > 0)
+					video_screen_update_partial(screen, scanline + i - 1);
 				tilemap_set_palette_offset(atarigen_playfield_tilemap, (newbank & 0x1f) << 8);
 				playfield_color_bank = newbank;
 			}
@@ -259,13 +264,15 @@ void atarigt_scanline_update(running_machine *machine, int scrnum, int scanline)
 			int newbank = word & 15;
 			if (newscroll != playfield_yscroll)
 			{
-				video_screen_update_partial(0, scanline + i - 1);
+				if (scanline + i > 0)
+					video_screen_update_partial(screen, scanline + i - 1);
 				tilemap_set_scrolly(atarigen_playfield_tilemap, 0, newscroll);
 				playfield_yscroll = newscroll;
 			}
 			if (newbank != playfield_tile_bank)
 			{
-				video_screen_update_partial(0, scanline + i - 1);
+				if (scanline + i > 0)
+					video_screen_update_partial(screen, scanline + i - 1);
 				tilemap_mark_all_tiles_dirty(atarigen_playfield_tilemap);
 				playfield_tile_bank = newbank;
 			}
@@ -559,8 +566,8 @@ PrimRage GALs:
 
 VIDEO_UPDATE( atarigt )
 {
-	mame_bitmap *mo_bitmap = atarirle_get_vram(0, 0);
-	mame_bitmap *tm_bitmap = atarirle_get_vram(0, 1);
+	bitmap_t *mo_bitmap = atarirle_get_vram(0, 0);
+	bitmap_t *tm_bitmap = atarirle_get_vram(0, 1);
 	int color_latch;
 	int x, y;
 

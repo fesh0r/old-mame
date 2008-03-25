@@ -35,13 +35,13 @@ static WRITE8_HANDLER( tryout_nmi_ack_w )
 
 static WRITE8_HANDLER( tryout_sound_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1, 0, PULSE_LINE );
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1, 0, PULSE_LINE );
 }
 
 static WRITE8_HANDLER( tryout_sound_irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE );
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE );
 }
 
 static WRITE8_HANDLER( tryout_bankswitch_w )
@@ -68,7 +68,7 @@ static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe301, 0xe301) AM_WRITE(tryout_flipscreen_w)
 	AM_RANGE(0xe302, 0xe302) AM_WRITE(tryout_bankswitch_w)
 	AM_RANGE(0xe401, 0xe401) AM_WRITE(tryout_vram_bankswitch_w)
-	AM_RANGE(0xe402, 0xe404) AM_WRITE(MWA8_RAM) AM_BASE(&tryout_gfx_control)
+	AM_RANGE(0xe402, 0xe404) AM_WRITE(SMH_RAM) AM_BASE(&tryout_gfx_control)
 	AM_RANGE(0xe414, 0xe414) AM_WRITE(tryout_sound_w)
 	AM_RANGE(0xe417, 0xe417) AM_WRITE(tryout_nmi_ack_w)
 	AM_RANGE(0xfff0, 0xffff) AM_ROM AM_REGION(REGION_CPU1, 0xbff0) /* resect vectors */
@@ -183,7 +183,7 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( tryout_interrupt )
 {
-	if ((input_port_3_r(0) & 0x1c)!=0x1c)
+	if ((input_port_3_r(machine,0) & 0x1c)!=0x1c)
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
 }
 
@@ -191,18 +191,17 @@ static MACHINE_DRIVER_START( tryout )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(main_cpu,0)
-	MDRV_CPU_VBLANK_INT(tryout_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", tryout_interrupt)
 
 	MDRV_CPU_ADD(M6502, 1500000)		/* ? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,16) /* ? */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16) /* ? */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 32*8-1, 1*8, 31*8-1)

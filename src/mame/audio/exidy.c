@@ -13,6 +13,7 @@
 #include "sound/hc55516.h"
 #include "sound/5220intf.h"
 #include "sound/custom.h"
+#include "exidy.h"
 
 
 
@@ -418,14 +419,14 @@ static TIMER_CALLBACK( riot_interrupt )
 
 		/* now start counting clock cycles down */
 		riot_state = RIOT_POST_COUNT;
-		timer_adjust(riot_timer, attotime_mul(ATTOTIME_IN_HZ(SH6532_CLOCK), 0xff), 0, attotime_zero);
+		timer_adjust_oneshot(riot_timer, attotime_mul(ATTOTIME_IN_HZ(SH6532_CLOCK), 0xff), 0);
 	}
 
 	/* if not, we are done counting down */
 	else
 	{
 		riot_state = RIOT_IDLE;
-		timer_adjust(riot_timer, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(riot_timer, attotime_never, 0);
 	}
 }
 
@@ -459,13 +460,13 @@ static WRITE8_HANDLER( exidy_shriot_w )
 				{
 					if (!(data & 0x01) && (riot_portb_data & 0x01))
 					{
-						riot_porta_data = tms5220_status_r(0);
+						riot_porta_data = tms5220_status_r(machine, 0);
 						logerror("(%f)%04X:TMS5220 status read = %02X\n", attotime_to_double(timer_get_time()), activecpu_get_previouspc(), riot_porta_data);
 					}
 					if (!(data & 0x02) && (riot_portb_data & 0x02))
 					{
 						logerror("(%f)%04X:TMS5220 data write = %02X\n", attotime_to_double(timer_get_time()), activecpu_get_previouspc(), riot_porta_data);
-						tms5220_data_w(0, riot_porta_data);
+						tms5220_data_w(machine, 0, riot_porta_data);
 					}
 				}
 				riot_portb_data = (riot_portb_data & ~riot_portb_ddr) | (data & riot_portb_ddr);
@@ -499,7 +500,7 @@ static WRITE8_HANDLER( exidy_shriot_w )
 
 		/* set a new timer */
 		riot_clock_divisor = divisors[offset & 0x03];
-		timer_adjust(riot_timer, attotime_mul(ATTOTIME_IN_HZ(SH6532_CLOCK), data * riot_clock_divisor), 0, attotime_zero);
+		timer_adjust_oneshot(riot_timer, attotime_mul(ATTOTIME_IN_HZ(SH6532_CLOCK), data * riot_clock_divisor), 0);
 		riot_state = RIOT_COUNT;
 	}
 }
@@ -726,7 +727,7 @@ WRITE8_HANDLER( exidy_sfxctrl_w )
  *
  *************************************/
 
-WRITE8_HANDLER( exidy_sound_filter_w )
+static WRITE8_HANDLER( exidy_sound_filter_w )
 {
 	logerror("exidy_sound_filter_w = %02X\n", data);
 }
@@ -768,7 +769,7 @@ static void *venture_common_sh_start(int clock, const struct CustomSound_interfa
 	has_mc3417 = FALSE;
 	for (i = 0; i < MAX_SOUND; i++)
 	{
-		if (Machine->drv->sound[i].type == SOUND_MC3417)
+		if (Machine->config->sound[i].type == SOUND_MC3417)
 			has_mc3417 = TRUE;
 	}
 
@@ -820,7 +821,7 @@ static const struct CustomSound_interface venture_custom_interface =
 
 
 static ADDRESS_MAP_START( venture_audio_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x0780) AM_RAM
 	AM_RANGE(0x0800, 0x087f) AM_MIRROR(0x0780) AM_READWRITE(exidy_shriot_r, exidy_shriot_w)
 	AM_RANGE(0x1000, 0x1003) AM_MIRROR(0x07fc) AM_READWRITE(pia_1_r, pia_1_w)
@@ -881,13 +882,13 @@ static READ8_HANDLER( mtrap_voiceio_r )
 
 
 static ADDRESS_MAP_START( cvsd_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( cvsd_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xff) AM_READWRITE(mtrap_voiceio_r, mtrap_voiceio_w)
 ADDRESS_MAP_END
 

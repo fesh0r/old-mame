@@ -47,7 +47,7 @@ static TILE_GET_INFO( get_tile_info_bg )
       3  | xxxxxxxx xxxxxx-- | sprite code
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i, x, y, ex, ey;
 	const gfx_element *gfx = machine->gfx[0];
@@ -91,8 +91,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 static VIDEO_START( drtomy )
 {
-	tilemap_bg = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_TYPE_PEN,      16,16,32,32);
-	tilemap_fg = tilemap_create(get_tile_info_fg,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16,16,32,32);
+	tilemap_bg = tilemap_create(get_tile_info_bg,tilemap_scan_rows,16,16,32,32);
+	tilemap_fg = tilemap_create(get_tile_info_fg,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(tilemap_fg,0);
 }
@@ -101,7 +101,7 @@ static VIDEO_UPDATE( drtomy )
 {
 	tilemap_draw(bitmap,cliprect,tilemap_bg,0,0);
 	tilemap_draw(bitmap,cliprect,tilemap_fg,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -134,7 +134,7 @@ static ADDRESS_MAP_START( drtomy_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM	/* ROM */
 	AM_RANGE(0x100000, 0x100fff) AM_RAM AM_WRITE(drtomy_vram_fg_w) AM_BASE(&drtomy_videoram_fg)	/* Video RAM FG */
 	AM_RANGE(0x101000, 0x101fff) AM_RAM AM_WRITE(drtomy_vram_bg_w) AM_BASE(&drtomy_videoram_bg) /* Video RAM BG */
-	AM_RANGE(0x200000, 0x2007ff) AM_READWRITE(MRA16_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16) /* Palette */
+	AM_RANGE(0x200000, 0x2007ff) AM_READWRITE(SMH_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16) /* Palette */
 	AM_RANGE(0x440000, 0x440fff) AM_RAM AM_BASE(&drtomy_spriteram) /* Sprite RAM */
 	AM_RANGE(0x700000, 0x700001) AM_READ(input_port_0_word_r) /* DIPSW #1 */
 	AM_RANGE(0x700002, 0x700003) AM_READ(input_port_1_word_r) /* DIPSW #2 */
@@ -252,16 +252,16 @@ static MACHINE_DRIVER_START( drtomy )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,24000000/2)			/* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(drtomy_map,0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 32*16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 16, 256-1)
+
 	MDRV_GFXDECODE(drtomy)
 	MDRV_PALETTE_LENGTH(1024)
 

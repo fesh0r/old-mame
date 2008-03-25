@@ -98,6 +98,7 @@ Sound PCB
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/sn76496.h"
 
 //arbitrary
@@ -114,18 +115,18 @@ WRITE8_HANDLER( sbugger_videoram_w );
 /* memory maps */
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x37ff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc800, 0xcfff) AM_READ(MRA8_RAM) /* video ram */
-	AM_RANGE(0xe000, 0xe0ff) AM_READ(MRA8_RAM) /* sp is set to e0ff  = iternal 8156 RAM*/
-	AM_RANGE(0xf400, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x37ff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc800, 0xcfff) AM_READ(SMH_RAM) /* video ram */
+	AM_RANGE(0xe000, 0xe0ff) AM_READ(SMH_RAM) /* sp is set to e0ff  = iternal 8156 RAM*/
+	AM_RANGE(0xf400, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x37ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x37ff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc800, 0xcbff) AM_WRITE(sbugger_videoram_attr_w) AM_BASE(&sbugger_videoram_attr)
 	AM_RANGE(0xcc00, 0xcfff) AM_WRITE(sbugger_videoram_w) AM_BASE(&sbugger_videoram)
-	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(MWA8_RAM) /* sp is set to e0ff */
-	AM_RANGE(0xf400, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(SMH_RAM) /* sp is set to e0ff */
+	AM_RANGE(0xf400, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
@@ -229,17 +230,18 @@ static MACHINE_DRIVER_START( sbugger )
 	MDRV_CPU_ADD(8085A, 6000000)        /* 3.00 MHz??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,0)
-	MDRV_CPU_VBLANK_INT(irq3_line_hold,NUM_INTS_FRAME)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq3_line_hold,NUM_INTS_FRAME)
 
 	MDRV_GFXDECODE(sbugger)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(sbugger)

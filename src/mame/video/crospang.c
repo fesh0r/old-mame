@@ -10,7 +10,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 
 static int xsproff, ysproff; // sprite offsets
 static tilemap *bg_layer,*fg_layer;
@@ -126,7 +125,7 @@ static TILE_GET_INFO( get_fg_tile_info )
 */
 
 /* jumpkids / tumbleb.c! */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 	int flipscreen = 0;
@@ -140,7 +139,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		y = spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0xf;
@@ -191,8 +190,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 VIDEO_START( crospang )
 {
-	bg_layer = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	fg_layer = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	bg_layer = tilemap_create(get_bg_tile_info,tilemap_scan_rows,16,16,32,32);
+	fg_layer = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(fg_layer,0);
 	bestri_tilebank = 0;
@@ -206,6 +205,6 @@ VIDEO_UPDATE( crospang )
 {
 	tilemap_draw(bitmap,cliprect,bg_layer,0,0);
 	tilemap_draw(bitmap,cliprect,fg_layer,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

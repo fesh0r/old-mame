@@ -111,7 +111,7 @@ static INPUT_PORTS_START( simpl156 )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0008, IP_ACTIVE_LOW )
 	PORT_BIT( 0x00f0, IP_ACTIVE_HIGH, IPT_VBLANK ) // all bits? check..
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_SPECIAL ) // eeprom?..
 
@@ -193,22 +193,22 @@ static WRITE32_HANDLER( simpl156_eeprom_w )
 
 static READ32_HANDLER( oki_r )
 {
-	return OKIM6295_status_0_r(0);
+	return OKIM6295_status_0_r(machine, 0);
 }
 
 static WRITE32_HANDLER( oki_w )
 {
-	OKIM6295_data_0_w(0, data & 0xff);
+	OKIM6295_data_0_w(machine, 0, data & 0xff);
 }
 
 static READ32_HANDLER( oki2_r )
 {
-	return OKIM6295_status_1_r(0);
+	return OKIM6295_status_1_r(machine, 0);
 }
 
 static WRITE32_HANDLER( oki2_w )
 {
-	OKIM6295_data_1_w(0, data & 0xff);
+	OKIM6295_data_1_w(machine, 0, data & 0xff);
 }
 
 /* we need to throw away bits for all ram accesses as the devices are connected as 16-bit */
@@ -292,7 +292,7 @@ static WRITE32_HANDLER( simpl156_pf1_data_w )
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
 
-	deco16_pf1_data_w(offset,data,mem_mask);
+	deco16_pf1_data_w(machine,offset,data,mem_mask);
 }
 
 static READ32_HANDLER( simpl156_pf2_data_r )
@@ -305,7 +305,7 @@ static WRITE32_HANDLER( simpl156_pf2_data_w )
 {
 	data &=0x0000ffff;
 	mem_mask &=0x0000ffff;
-	deco16_pf2_data_w(offset,data,mem_mask);
+	deco16_pf2_data_w(machine,offset,data,mem_mask);
 }
 
 /* Memory Map controled by PALs */
@@ -323,7 +323,7 @@ static ADDRESS_MAP_START( joemacr_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x154000, 0x155fff) AM_READWRITE(simpl156_pf2_data_r, simpl156_pf2_data_w)
 	AM_RANGE(0x160000, 0x161fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x164000, 0x165fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
-	AM_RANGE(0x170000, 0x170003) AM_RAM AM_WRITE(MWA32_NOP) // ?
+	AM_RANGE(0x170000, 0x170003) AM_RAM AM_WRITE(SMH_NOP) // ?
 	AM_RANGE(0x180000, 0x180003) AM_READWRITE(oki_r,oki_w)
 	AM_RANGE(0x1c0000, 0x1c0003) AM_READWRITE(oki2_r,oki2_w)
 	AM_RANGE(0x200000, 0x200003) AM_READ(simpl156_inputs_read)
@@ -347,7 +347,7 @@ static ADDRESS_MAP_START( chainrec_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x454000, 0x455fff) AM_READWRITE(simpl156_pf2_data_r, simpl156_pf2_data_w)
 	AM_RANGE(0x460000, 0x461fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x464000, 0x465fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
-	AM_RANGE(0x470000, 0x470003) AM_RAM AM_WRITE(MWA32_NOP) // ??
+	AM_RANGE(0x470000, 0x470003) AM_RAM AM_WRITE(SMH_NOP) // ??
 	AM_RANGE(0x480000, 0x480003) AM_READWRITE(oki_r,oki_w)
 ADDRESS_MAP_END
 
@@ -368,7 +368,7 @@ static ADDRESS_MAP_START( magdrop_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x3d4000, 0x3d5fff) AM_READWRITE(simpl156_pf2_data_r, simpl156_pf2_data_w)
 	AM_RANGE(0x3e0000, 0x3e1fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x3e4000, 0x3e5fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
-	AM_RANGE(0x3f0000, 0x3f0003) AM_RAM AM_WRITE(MWA32_NOP) //?
+	AM_RANGE(0x3f0000, 0x3f0003) AM_RAM AM_WRITE(SMH_NOP) //?
 	AM_RANGE(0x400000, 0x400003) AM_READWRITE(oki_r,oki_w)
 ADDRESS_MAP_END
 
@@ -389,7 +389,7 @@ static ADDRESS_MAP_START( magdropp_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x6d4000, 0x6d5fff) AM_READWRITE(simpl156_pf2_data_r, simpl156_pf2_data_w)
 	AM_RANGE(0x6e0000, 0x6e1fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x6e4000, 0x6e5fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
-	AM_RANGE(0x6f0000, 0x6f0003) AM_RAM AM_WRITE(MWA32_NOP) // ?
+	AM_RANGE(0x6f0000, 0x6f0003) AM_RAM AM_WRITE(SMH_NOP) // ?
 	AM_RANGE(0x780000, 0x780003) AM_READWRITE(oki_r,oki_w)
 ADDRESS_MAP_END
 
@@ -409,7 +409,7 @@ static ADDRESS_MAP_START( mitchell156_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x1d4000, 0x1d5fff) AM_READWRITE(simpl156_pf2_data_r, simpl156_pf2_data_w)
 	AM_RANGE(0x1e0000, 0x1e1fff) AM_READWRITE(simpl156_pf1_rowscroll_r, simpl156_pf1_rowscroll_w)
 	AM_RANGE(0x1e4000, 0x1e5fff) AM_READWRITE(simpl156_pf2_rowscroll_r, simpl156_pf2_rowscroll_w)
-	AM_RANGE(0x1f0000, 0x1f0003) AM_RAM AM_WRITE(MWA32_NOP) // ?
+	AM_RANGE(0x1f0000, 0x1f0003) AM_RAM AM_WRITE(SMH_NOP) // ?
 	AM_RANGE(0x200000, 0x200003) AM_READ(simpl156_inputs_read)
 	AM_RANGE(0x201000, 0x201fff) AM_RAM AM_BASE(&simpl156_systemram) // work ram (32-bit)
 ADDRESS_MAP_END
@@ -484,17 +484,18 @@ static MACHINE_DRIVER_START( chainrec )
 
 	MDRV_CPU_ADD_TAG("DE156", ARM, 28000000 /* /4 */)	/*DE156*/ /* 7.000 MHz */ /* measured at 7.. seems to need 28? */
 	MDRV_CPU_PROGRAM_MAP(chainrec_map,0)
-	MDRV_CPU_VBLANK_INT(simpl156_vbl_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", simpl156_vbl_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(800))
 	MDRV_NVRAM_HANDLER(simpl156) // 93C45
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(800))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_PALETTE_LENGTH(4096)
 	MDRV_GFXDECODE(simpl156)
 	MDRV_VIDEO_START(simpl156)

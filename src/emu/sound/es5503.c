@@ -35,6 +35,7 @@
 
 #include <math.h>
 #include "sndintrf.h"
+#include "deprecat.h"
 #include "cpuintrf.h"
 #include "es5503.h"
 #include "streams.h"
@@ -69,7 +70,7 @@ typedef struct
 
 	void (*irq_callback)(int);	// IRQ callback
 
-	read8_handler adc_read;		// callback for the 5503's built-in analog to digital converter
+	read8_machine_func adc_read;		// callback for the 5503's built-in analog to digital converter
 
 	INT8  oscsenabled;		// # of oscillators enabled
 
@@ -376,7 +377,7 @@ READ8_HANDLER(ES5503_reg_0_r)
 			case 0xe2:	// A/D converter
 				if (chip->adc_read)
 				{
-					return chip->adc_read(0);
+					return chip->adc_read(Machine, 0);
 				}
 				break;
 		}
@@ -460,13 +461,13 @@ WRITE8_HANDLER(ES5503_reg_0_w)
 						// ok, we run for this long
 						period = attotime_mul(ATTOTIME_IN_HZ(chip->output_rate), length);
 
-						timer_adjust(chip->oscillators[osc].timer, period, 0, period);
+						timer_adjust_periodic(chip->oscillators[osc].timer, period, 0, period);
 					}
 				}
 				else if (!(chip->oscillators[osc].control & 1) && (data&1))
 				{
 					// key off
-					timer_adjust(chip->oscillators[osc].timer, attotime_never, 0, attotime_never);
+					timer_adjust_oneshot(chip->oscillators[osc].timer, attotime_never, 0);
 				}
 
 				chip->oscillators[osc].control = data;

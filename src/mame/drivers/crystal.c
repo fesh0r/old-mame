@@ -117,7 +117,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/se3208/se3208.h"
 #include "video/vrender0.h"
 #include "machine/ds1302.h"
@@ -140,7 +139,7 @@ static UINT32 DMA0ctrl,DMA1ctrl;
 static UINT8 OldPort4;
 static UINT32 *ResetPatch;
 
-static void IntReq(int num)
+static void IntReq(running_machine *machine, int num)
 {
 	UINT32 IntEn=program_read_dword_32le(0x01800c08);
 	UINT32 IntPend=program_read_dword_32le(0x01800c0c);
@@ -148,7 +147,7 @@ static void IntReq(int num)
 	{
 		IntPend|=(1<<num);
 		program_write_dword_32le(0x01800c0c,IntPend);
-		cpunum_set_input_line(Machine, 0,SE3208_INT,ASSERT_LINE);
+		cpunum_set_input_line(machine, 0,SE3208_INT,ASSERT_LINE);
 	}
 #ifdef IDLE_LOOP_SPEEDUP
 	FlipCntRead=0;
@@ -189,9 +188,9 @@ static READ32_HANDLER(Input_r)
 	{
 		UINT8 Port4=readinputport(4);
 		if(!(Port4&0x10) && ((OldPort4^Port4)&0x10))	//coin buttons trigger IRQs
-			IntReq(12);
+			IntReq(machine, 12);
 		if(!(Port4&0x20) && ((OldPort4^Port4)&0x20))
-			IntReq(19);
+			IntReq(machine, 19);
 		OldPort4=Port4;
 		return /*dips*/readinputport(5)|(Port4<<16);
 	}
@@ -206,7 +205,7 @@ static WRITE32_HANDLER(IntAck_w)
 		IntPend&=~(1<<(data&0x1f));
 		program_write_dword_32le(0x01800c0c,IntPend);
 		if(!IntPend)
-			cpunum_set_input_line(Machine, 0,SE3208_INT,CLEAR_LINE);
+			cpunum_set_input_line(machine, 0,SE3208_INT,CLEAR_LINE);
 	}
 	if((~mem_mask)&0xff00)
 		IntHigh=(data>>8)&7;
@@ -222,7 +221,6 @@ static int icallback(int line)
 		if(IntPend&(1<<i))
 		{
 			return (IntHigh<<5)|i;
-			break;
 		}
 	}
 	return 0;		//This should never happen
@@ -241,7 +239,7 @@ static TIMER_CALLBACK( Timer0cb )
 {
 	if(!(Timer0ctrl&2))
 		Timer0ctrl&=~1;
-	IntReq(0);
+	IntReq(machine, 0);
 }
 
 static WRITE32_HANDLER(Timer0_w)
@@ -253,9 +251,9 @@ static WRITE32_HANDLER(Timer0_w)
 		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer0ctrl&2)
-			timer_adjust(Timer0,period,0,period);
+			timer_adjust_periodic(Timer0,period,0,period);
 		else
-			timer_adjust(Timer0,period,0,attotime_zero);
+			timer_adjust_oneshot(Timer0,period,0);
 	}
 	COMBINE_DATA(&Timer0ctrl);
 }
@@ -269,7 +267,7 @@ static TIMER_CALLBACK( Timer1cb )
 {
 	if(!(Timer1ctrl&2))
 		Timer1ctrl&=~1;
-	IntReq(1);
+	IntReq(machine, 1);
 }
 
 static WRITE32_HANDLER(Timer1_w)
@@ -281,9 +279,9 @@ static WRITE32_HANDLER(Timer1_w)
 		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer1ctrl&2)
-			timer_adjust(Timer1,period,0,period);
+			timer_adjust_periodic(Timer1,period,0,period);
 		else
-			timer_adjust(Timer1,period,0,attotime_zero);
+			timer_adjust_oneshot(Timer1,period,0);
 	}
 	COMBINE_DATA(&Timer1ctrl);
 }
@@ -297,7 +295,7 @@ static TIMER_CALLBACK( Timer2cb )
 {
 	if(!(Timer2ctrl&2))
 		Timer2ctrl&=~1;
-	IntReq(9);
+	IntReq(machine, 9);
 }
 
 static WRITE32_HANDLER(Timer2_w)
@@ -309,9 +307,9 @@ static WRITE32_HANDLER(Timer2_w)
 		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer2ctrl&2)
-			timer_adjust(Timer2,period,0,period);
+			timer_adjust_periodic(Timer2,period,0,period);
 		else
-			timer_adjust(Timer2,period,0,attotime_zero);
+			timer_adjust_oneshot(Timer2,period,0);
 	}
 	COMBINE_DATA(&Timer2ctrl);
 }
@@ -325,7 +323,7 @@ static TIMER_CALLBACK( Timer3cb )
 {
 	if(!(Timer3ctrl&2))
 		Timer3ctrl&=~1;
-	IntReq(10);
+	IntReq(machine, 10);
 }
 
 static WRITE32_HANDLER(Timer3_w)
@@ -337,9 +335,9 @@ static WRITE32_HANDLER(Timer3_w)
 		attotime period = attotime_mul(ATTOTIME_IN_HZ(43000000), (PD + 1) * (TCV + 1));
 
 		if(Timer3ctrl&2)
-			timer_adjust(Timer3,period,0,period);
+			timer_adjust_periodic(Timer3,period,0,period);
 		else
-			timer_adjust(Timer3,period,0,attotime_zero);
+			timer_adjust_oneshot(Timer3,period,0);
 	}
 	COMBINE_DATA(&Timer3ctrl);
 }
@@ -440,7 +438,7 @@ static WRITE32_HANDLER(DMA0_w)
 		}
 		data&=~(1<<10);
 		program_write_dword_32le(0x0180080C,0);
-		IntReq(7);
+		IntReq(machine, 7);
 	}
 	COMBINE_DATA(&DMA0ctrl);
 }
@@ -486,7 +484,7 @@ static WRITE32_HANDLER(DMA1_w)
 		}
 		data&=~(1<<10);
 		program_write_dword_32le(0x0180081C,0);
-		IntReq(8);
+		IntReq(machine, 8);
 	}
 	COMBINE_DATA(&DMA1ctrl);
 }
@@ -520,7 +518,7 @@ static ADDRESS_MAP_START( crystal_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x04800000, 0x04800fff) AM_READ(VR0_Snd_Read) AM_WRITE(VR0_Snd_Write)
 
 	AM_RANGE(0x05000000, 0x05000003) AM_READ(FlashCmd_r) AM_WRITE(FlashCmd_w)
-	AM_RANGE(0x05000000, 0x05ffffff) AM_READ(MRA32_BANK1)
+	AM_RANGE(0x05000000, 0x05ffffff) AM_READ(SMH_BANK1)
 
 	AM_RANGE(0x44414F4C, 0x44414F7F) AM_RAM AM_BASE(&ResetPatch)
 
@@ -595,16 +593,16 @@ static MACHINE_RESET(crystal)
 	Timer3ctrl=0;
 
 	Timer0=timer_alloc(Timer0cb, NULL);
-	timer_adjust(Timer0,attotime_never,0,attotime_never);
+	timer_adjust_oneshot(Timer0,attotime_never,0);
 
 	Timer1=timer_alloc(Timer1cb, NULL);
-	timer_adjust(Timer1,attotime_never,0,attotime_never);
+	timer_adjust_oneshot(Timer1,attotime_never,0);
 
 	Timer2=timer_alloc(Timer2cb, NULL);
-	timer_adjust(Timer2,attotime_never,0,attotime_never);
+	timer_adjust_oneshot(Timer2,attotime_never,0);
 
 	Timer3=timer_alloc(Timer3cb, NULL);
-	timer_adjust(Timer3,attotime_never,0,attotime_never);
+	timer_adjust_oneshot(Timer3,attotime_never,0);
 
 	VR0_Snd_Set_Areas(textureram,frameram);
 #ifdef IDLE_LOOP_SPEEDUP
@@ -616,23 +614,6 @@ static MACHINE_RESET(crystal)
 
 static VIDEO_START(crystal)
 {
-}
-
-static void plot_pixel_rgb(mame_bitmap *bitmap, int x, int y , int color)
-{
-	//565 to 555
-	color=(color&0x1f)|((color>>1)&0x7fe0);
-	if (bitmap->bpp == 32)
-	{
-		UINT32 cb=(color&0x1f)<<3;
-		UINT32 cg=(color&0x3e0)>>2;
-		UINT32 cr=(color&0x7c00)>>7;
-		*BITMAP_ADDR32(bitmap, y, x) = cb | (cg<<8) | (cr<<16);
-	}
-	else
-	{
-		*BITMAP_ADDR16(bitmap, y, x) = color;
-	}
 }
 
 static UINT16 GetVidReg(UINT16 reg)
@@ -656,7 +637,7 @@ static VIDEO_UPDATE(crystal)
 	UINT16 *Front,*Back;
 	UINT16 *Visible,*DrawDest;
 	UINT16 *srcline;
-	int x,y;
+	int y;
 	UINT16 head,tail;
 
 	if(GetVidReg(0x8e)&1)
@@ -700,8 +681,8 @@ static VIDEO_UPDATE(crystal)
 
 	srcline=(UINT16 *) Visible;
 	for(y=0;y<240;y++)
-		for(x=0;x<320;x++)
-			plot_pixel_rgb(bitmap,x,y,srcline[y*512+x]);
+		memcpy(BITMAP_ADDR16(bitmap, y, 0), &srcline[y*512], 320*2);
+
 	return 0;
 }
 
@@ -733,7 +714,7 @@ static VIDEO_EOF(crystal)
 
 static INTERRUPT_GEN(crystal_interrupt)
 {
-	IntReq(24);		//VRender0 VBlank
+	IntReq(machine, 24);		//VRender0 VBlank
 }
 
 static INPUT_PORTS_START(crystal)
@@ -785,7 +766,7 @@ static INPUT_PORTS_START(crystal)
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Pause ) )
@@ -824,24 +805,25 @@ static const struct VR0Interface vr0_interface =
 static MACHINE_DRIVER_START( crystal )
 	MDRV_CPU_ADD(SE3208, 43000000)
 	MDRV_CPU_PROGRAM_MAP(crystal_mem,0)
- 	MDRV_CPU_VBLANK_INT(crystal_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+ 	MDRV_CPU_VBLANK_INT("main", crystal_interrupt)
 
 	MDRV_MACHINE_RESET(crystal)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
-	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(crystal)
 	MDRV_VIDEO_UPDATE(crystal)
 	MDRV_VIDEO_EOF(crystal)
+
+	MDRV_PALETTE_INIT(RRRRR_GGGGGG_BBBBB)
+	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
@@ -922,6 +904,6 @@ static DRIVER_INIT(evosocc)
 	Rom[WORD_XOR_LE(0x974ED2/2)]=0x9001;	//PUSH R0
 }
 
-GAME( 2001, crysbios,		   0,  crystal, crystal,        0, ROT0, "Brezzasoft", "Crystal System BIOS", GAME_IS_BIOS_ROOT )
-GAME( 2001, crysking,	crysbios,  crystal, crystal, crysking, ROT0, "Brezzasoft", "The Crystal of Kings", 0 )
-GAME( 2001, evosocc,   crysbios,  crystal, crystal,  evosocc, ROT0, "Evoga", "Evolution Soccer", 0 )
+GAME( 2001, crysbios,        0, crystal, crystal,        0, ROT0, "Brezzasoft", "Crystal System BIOS", GAME_IS_BIOS_ROOT )
+GAME( 2001, crysking, crysbios, crystal, crystal, crysking, ROT0, "Brezzasoft", "The Crystal of Kings", 0 )
+GAME( 2001, evosocc,  crysbios, crystal, crystal,  evosocc, ROT0, "Evoga", "Evolution Soccer", 0 )

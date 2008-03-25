@@ -108,10 +108,6 @@ static READ8_HANDLER( keyboard1_r )
 	switch (keyboard_select)
 	{
 
-		default:
-			printf("keyboard1_r, select %02x\n",keyboard_select);
-			return 0xff;
-
 		case 0xef:
 			return  readinputportbytag("0");
 
@@ -126,6 +122,10 @@ static READ8_HANDLER( keyboard1_r )
 
 		case 0xfe:
 			return  readinputportbytag("4");
+
+		default:
+			printf("keyboard1_r, select %02x\n",keyboard_select);
+			/* fall through */
 	}
 
 	return 0xff;
@@ -136,11 +136,6 @@ static READ8_HANDLER( keyboard2_r )
 {
 	switch (keyboard_select)
 	{
-
-		default:
-			printf("keyboard2_r, select %02x\n",keyboard_select);
-			return 0xff;
-
 		case 0xef:
 			return  readinputportbytag("5");
 
@@ -155,6 +150,10 @@ static READ8_HANDLER( keyboard2_r )
 
 		case 0xfe:
 			return  readinputportbytag("9");
+
+		default:
+			printf("keyboard2_r, select %02x\n",keyboard_select);
+			/* fall through */
 	}
 
 	return 0xff;
@@ -172,16 +171,16 @@ static WRITE8_HANDLER( videoram2_w )
 }
 
 static ADDRESS_MAP_START( jongkyo_memmap, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM) AM_WRITE(videoram2_w) // wrong, this doesn't seem to be video ram on write..
-	AM_RANGE(0x4000, 0x6bff) AM_READ(MRA8_ROM) // fixed rom
-	AM_RANGE(0x6c00, 0x6fff) AM_READ(MRA8_BANK1)	// banked (8 banks)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM) AM_WRITE(videoram2_w) // wrong, this doesn't seem to be video ram on write..
+	AM_RANGE(0x4000, 0x6bff) AM_READ(SMH_ROM) // fixed rom
+	AM_RANGE(0x6c00, 0x6fff) AM_READ(SMH_BANK1)	// banked (8 banks)
 	AM_RANGE(0x7000, 0x77ff) AM_RAM
 	AM_RANGE(0x8000, 0xffff) AM_RAM AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( jongkyo_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	// R 01 keyboard
 	AM_RANGE(0x01, 0x01) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_0_w)
@@ -591,16 +590,16 @@ static MACHINE_DRIVER_START( jongkyo )
 	MDRV_CPU_ADD(Z80,JONGKYO_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(jongkyo_memmap,0)
 	MDRV_CPU_IO_MAP(jongkyo_portmap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 8, 256-8-1)
+
 	MDRV_PALETTE_LENGTH(0x100)
 	MDRV_PALETTE_INIT(jongkyo)
 
@@ -610,7 +609,7 @@ static MACHINE_DRIVER_START( jongkyo )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(AY8910, JONGKYO_CLOCK/8)
 	MDRV_SOUND_CONFIG(ay8910_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
 MACHINE_DRIVER_END
 
 

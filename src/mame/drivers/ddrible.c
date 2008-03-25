@@ -92,8 +92,11 @@ static WRITE8_HANDLER( ddrible_coin_counter_w )
 static READ8_HANDLER( ddrible_vlm5030_busy_r )
 {
 	return mame_rand(Machine); /* patch */
+	/* FIXME: remove ? */
+#if 0
 	if (VLM5030_BSY()) return 1;
 	else return 0;
+#endif
 }
 
 static WRITE8_HANDLER( ddrible_vlm5030_ctrl_w )
@@ -124,26 +127,26 @@ static WRITE8_HANDLER( ddrible_vlm5030_ctrl_w )
 
 
 static ADDRESS_MAP_START( readmem_cpu0, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x1800, 0x187f) AM_READ(MRA8_RAM)			/* palette */
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_RAM)			/* Video RAM 1 + Object RAM 1 */
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)			/* shared RAM with CPU #1 */
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_RAM)			/* Video RAM 2 + Object RAM 2 */
-	AM_RANGE(0x8000, 0x9fff) AM_READ(MRA8_BANK1)			/* banked ROM */
-	AM_RANGE(0xa000, 0xffff) AM_READ(MRA8_ROM)			/* ROM */
+	AM_RANGE(0x1800, 0x187f) AM_READ(SMH_RAM)			/* palette */
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_RAM)			/* Video RAM 1 + Object RAM 1 */
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_RAM)			/* shared RAM with CPU #1 */
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_RAM)			/* Video RAM 2 + Object RAM 2 */
+	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_BANK1)			/* banked ROM */
+	AM_RANGE(0xa000, 0xffff) AM_READ(SMH_ROM)			/* ROM */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( writemem_cpu0, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0004) AM_WRITE(K005885_0_w)								/* video registers (005885 #1) */
 	AM_RANGE(0x0800, 0x0804) AM_WRITE(K005885_1_w)								/* video registers (005885 #2) */
-	AM_RANGE(0x1800, 0x187f) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
+	AM_RANGE(0x1800, 0x187f) AM_WRITE(SMH_RAM) AM_BASE(&paletteram)
 	AM_RANGE(0x2000, 0x2fff) AM_WRITE(ddrible_fg_videoram_w) AM_BASE(&ddrible_fg_videoram)/* Video RAM 1 */
-	AM_RANGE(0x3000, 0x3fff) AM_WRITE(MWA8_RAM) AM_BASE(&ddrible_spriteram_1)				/* Object RAM 1 */
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM) AM_BASE(&ddrible_sharedram)				/* shared RAM with CPU #1 */
+	AM_RANGE(0x3000, 0x3fff) AM_WRITE(SMH_RAM) AM_BASE(&ddrible_spriteram_1)				/* Object RAM 1 */
+	AM_RANGE(0x4000, 0x5fff) AM_WRITE(SMH_RAM) AM_BASE(&ddrible_sharedram)				/* shared RAM with CPU #1 */
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(ddrible_bg_videoram_w) AM_BASE(&ddrible_bg_videoram)/* Video RAM 2 */
-	AM_RANGE(0x7000, 0x7fff) AM_WRITE(MWA8_RAM) AM_BASE(&ddrible_spriteram_2)				/* Object RAM 2 + Work RAM */
+	AM_RANGE(0x7000, 0x7fff) AM_WRITE(SMH_RAM) AM_BASE(&ddrible_spriteram_2)				/* Object RAM 2 + Work RAM */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(ddrible_bankswitch_w)						/* bankswitch control */
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)									/* ROM */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)									/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
@@ -155,7 +158,7 @@ static ADDRESS_MAP_START( readmem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2803, 0x2803) AM_READ(input_port_2_r)				/* coinsw & start */
 	AM_RANGE(0x2c00, 0x2c00) AM_READ(input_port_4_r)				/* DSW #2 */
 	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_5_r)				/* DSW #3 */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)					/* ROM */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)					/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
@@ -163,22 +166,22 @@ static ADDRESS_MAP_START( writemem_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x27ff) AM_WRITE(ddrible_snd_sharedram_w)	/* shared RAM with CPU #2 */
 	AM_RANGE(0x3400, 0x3400) AM_WRITE(ddrible_coin_counter_w)		/* coin counters */
 	AM_RANGE(0x3c00, 0x3c00) AM_WRITE(watchdog_reset_w)			/* watchdog reset */
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)					/* ROM */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)					/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM)					/* shared RAM with CPU #1 */
+	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)					/* shared RAM with CPU #1 */
 	AM_RANGE(0x1000, 0x1000) AM_READ(YM2203_status_port_0_r)		/* YM2203 */
 	AM_RANGE(0x1001, 0x1001) AM_READ(YM2203_read_port_0_r)		/* YM2203 */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)					/* ROM */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)					/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_RAM) AM_BASE(&ddrible_snd_sharedram)	/* shared RAM with CPU #1 */
+	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM) AM_BASE(&ddrible_snd_sharedram)	/* shared RAM with CPU #1 */
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(YM2203_control_port_0_w)			/* YM2203 */
 	AM_RANGE(0x1001, 0x1001) AM_WRITE(YM2203_write_port_0_w)				/* YM2203 */
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(VLM5030_data_w)						/* Speech data */
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)							/* ROM */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)							/* ROM */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( ddribble )
@@ -342,26 +345,27 @@ static MACHINE_DRIVER_START( ddribble )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu0,writemem_cpu0)
-	MDRV_CPU_VBLANK_INT(ddrible_interrupt_0,1)
+	MDRV_CPU_VBLANK_INT("main", ddrible_interrupt_0)
 
 	MDRV_CPU_ADD(M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu1,writemem_cpu1)
-	MDRV_CPU_VBLANK_INT(ddrible_interrupt_1,1)
+	MDRV_CPU_VBLANK_INT("main", ddrible_interrupt_1)
 
 	MDRV_CPU_ADD(M6809,	XTAL_18_432MHz/12)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_cpu2,writemem_cpu2)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	/* we need heavy synch */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 /*  MDRV_SCREEN_SIZE(64*8, 32*8)
     MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 2*8, 30*8-1) */
+
 	MDRV_GFXDECODE(ddrible)
 	MDRV_PALETTE_LENGTH(64 + 256)
 

@@ -46,8 +46,7 @@ static VIDEO_UPDATE( missb2 )
 	/* and sprites) are stored in the same memory region, and information on */
 	/* the background character columns is stored in the area dd00-dd3f */
 
-	/* This clears & redraws the entire screen each pass */
-	fillbitmap(bitmap,machine->pens[255],&machine->screen[0].visarea);
+	fillbitmap(bitmap,255,cliprect);
 
 	if (!bublbobl_video_enable) return 0;
 
@@ -55,12 +54,12 @@ static VIDEO_UPDATE( missb2 )
 	//popmessage("%02x",(*missb2_bgvram) & 0x1f);
 	for(bg_offs = ((*missb2_bgvram) << 4);bg_offs<(((*missb2_bgvram)<< 4)|0xf);bg_offs++)
 	{
-		drawgfx(bitmap,machine->gfx[1],
+		drawgfx(bitmap,screen->machine->gfx[1],
 				bg_offs,
 				1,
 				0,0,
 				0,(bg_offs & 0xf) * 0x10,
-				&machine->screen[0].visarea,TRANSPARENCY_NONE,0xff);
+				cliprect,TRANSPARENCY_NONE,0xff);
 	}
 
 
@@ -107,7 +106,7 @@ static VIDEO_UPDATE( missb2 )
 				x = sx + xc * 8;
 				y = (sy + yc * 8) & 0xff;
 
-				if (flip_screen)
+				if (flip_screen_get())
 				{
 					x = 248 - x;
 					y = 248 - y;
@@ -115,12 +114,12 @@ static VIDEO_UPDATE( missb2 )
 					flipy = !flipy;
 				}
 
-				drawgfx(bitmap,machine->gfx[0],
+				drawgfx(bitmap,screen->machine->gfx[0],
 						code,
 						0,
 						flipx,flipy,
 						x,y,
-						&machine->screen[0].visarea,TRANSPARENCY_PEN,0xff);
+						cliprect,TRANSPARENCY_PEN,0xff);
 			}
 		}
 
@@ -368,27 +367,29 @@ static MACHINE_DRIVER_START( missb2 )
 	// basic machine hardware
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/8)
 	/* audio CPU */	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
-//  MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-	MDRV_CPU_VBLANK_INT(missb2_interrupt, 1)
+//  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+	MDRV_CPU_VBLANK_INT("main", missb2_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(missb2)
 	MDRV_PALETTE_LENGTH(512)
 

@@ -92,6 +92,10 @@ Hardware Info
 #include "cvs.h"
 
 
+/* Turn to 1 so all inputs are always available (this shall only be a debug feature) */
+#define CVS_SHOW_ALL_INPUTS	0
+
+
 #define VERBOSE 1
 #define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
@@ -121,7 +125,12 @@ UINT8 *cvs_video_ram;
 UINT8 *cvs_bullet_ram;
 UINT8 *cvs_palette_ram;
 UINT8 *cvs_character_ram;
+UINT8 *cvs_s2636_0_ram;
+UINT8 *cvs_s2636_1_ram;
+UINT8 *cvs_s2636_2_ram;
 
+static emu_timer *cvs_393hz_timer;
+static UINT8 cvs_393hz_clock;
 static UINT8 *cvs_4_bit_dac_data;
 static UINT8 *cvs_tms5110_ctl_data;
 
@@ -178,54 +187,54 @@ WRITE8_HANDLER( cvs_bullet_ram_or_palette_w )
 }
 
 
-READ8_HANDLER( cvs_s2636_1_or_character_ram_r )
+READ8_HANDLER( cvs_s2636_0_or_character_ram_r )
 {
 	if (activecpu_get_reg(S2650_FO))
 		return cvs_character_ram[(0 * 0x800) | 0x400 | character_ram_page_start | offset];
 	else
-		return s2636_1_ram[offset];
+		return cvs_s2636_0_ram[offset];
+}
+
+WRITE8_HANDLER( cvs_s2636_0_or_character_ram_w )
+{
+	if (activecpu_get_reg(S2650_FO))
+		cvs_character_ram[(0 * 0x800) | 0x400 | character_ram_page_start | offset] = data;
+	else
+		cvs_s2636_0_ram[offset] = data;
+}
+
+
+READ8_HANDLER( cvs_s2636_1_or_character_ram_r )
+{
+	if (activecpu_get_reg(S2650_FO))
+		return cvs_character_ram[(1 * 0x800) | 0x400 | character_ram_page_start | offset];
+	else
+		return cvs_s2636_1_ram[offset];
 }
 
 WRITE8_HANDLER( cvs_s2636_1_or_character_ram_w )
 {
 	if (activecpu_get_reg(S2650_FO))
-		cvs_character_ram[(0 * 0x800) | 0x400 | character_ram_page_start | offset] = data;
+		cvs_character_ram[(1 * 0x800) | 0x400 | character_ram_page_start | offset] = data;
 	else
-		s2636_1_ram[offset] = data;
+		cvs_s2636_1_ram[offset] = data;
 }
 
 
 READ8_HANDLER( cvs_s2636_2_or_character_ram_r )
 {
 	if (activecpu_get_reg(S2650_FO))
-		return cvs_character_ram[(1 * 0x800) | 0x400 | character_ram_page_start | offset];
+		return cvs_character_ram[(2 * 0x800) | 0x400 | character_ram_page_start | offset];
 	else
-		return s2636_2_ram[offset];
+		return cvs_s2636_2_ram[offset];
 }
 
 WRITE8_HANDLER( cvs_s2636_2_or_character_ram_w )
 {
 	if (activecpu_get_reg(S2650_FO))
-		cvs_character_ram[(1 * 0x800) | 0x400 | character_ram_page_start | offset] = data;
-	else
-		s2636_2_ram[offset] = data;
-}
-
-
-READ8_HANDLER( cvs_s2636_3_or_character_ram_r )
-{
-	if (activecpu_get_reg(S2650_FO))
-		return cvs_character_ram[(2 * 0x800) | 0x400 | character_ram_page_start | offset];
-	else
-		return s2636_3_ram[offset];
-}
-
-WRITE8_HANDLER( cvs_s2636_3_or_character_ram_w )
-{
-	if (activecpu_get_reg(S2650_FO))
 		cvs_character_ram[(2 * 0x800) | 0x400 | character_ram_page_start | offset] = data;
 	else
-		s2636_3_ram[offset] = data;
+		cvs_s2636_2_ram[offset] = data;
 }
 
 
@@ -270,12 +279,12 @@ static READ8_HANDLER( cvs_input_r )
 	/* the lower 4 (or 3?) bits select the port to read */
 	switch (offset & 0x0f)	/* might be 0x07 */
 	{
-	case 0x00:  ret = input_port_0_r(0); break;
-	case 0x02:  ret = input_port_1_r(0); break;
-	case 0x03:  ret = input_port_2_r(0); break;
-	case 0x04:  ret = input_port_3_r(0); break;
-	case 0x06:  ret = input_port_4_r(0); break;
-	case 0x07:  ret = input_port_5_r(0); break;
+	case 0x00:  ret = input_port_0_r(machine, 0); break;
+	case 0x02:  ret = input_port_1_r(machine, 0); break;
+	case 0x03:  ret = input_port_2_r(machine, 0); break;
+	case 0x04:  ret = input_port_3_r(machine, 0); break;
+	case 0x06:  ret = input_port_4_r(machine, 0); break;
+	case 0x07:  ret = input_port_5_r(machine, 0); break;
 	default:    logerror("%04x : CVS: Reading unmapped input port 0x%02x\n", activecpu_get_pc(), offset & 0x0f); break;
 	}
 
@@ -292,8 +301,20 @@ static READ8_HANDLER( cvs_input_r )
 
 static READ8_HANDLER( cvs_393hz_clock_r )
 {
-  	if(cpu_scalebyfcount(6) & 1) return 0x80;
-    else return 0;
+  	return cvs_393hz_clock ? 0x80 : 0;
+}
+
+
+static TIMER_CALLBACK( cvs_393hz_timer_cb )
+{
+	cvs_393hz_clock = !cvs_393hz_clock;
+}
+
+
+static void start_393hz_timer(void)
+{
+	cvs_393hz_timer = timer_alloc(cvs_393hz_timer_cb, NULL);
+	timer_adjust_periodic(cvs_393hz_timer, ATTOTIME_IN_HZ(2*393), 0, ATTOTIME_IN_HZ(2*393));
 }
 
 
@@ -317,7 +338,7 @@ static WRITE8_HANDLER( cvs_4_bit_dac_data_w )
 			    (cvs_4_bit_dac_data[3] << 3);
 
 	/* scale up to a full byte and output */
-	DAC_1_data_w(0, (dac_value << 4) | dac_value);
+	DAC_1_data_w(machine, 0, (dac_value << 4) | dac_value);
 }
 
 
@@ -329,35 +350,35 @@ static WRITE8_HANDLER( cvs_4_bit_dac_data_w )
  *************************************/
 
 /* temporary code begin */
-static void speech_execute_command(UINT8 command)
+static void speech_execute_command(running_machine *machine, UINT8 command)
 {
 	/* reset */
 	if (command == 0x3f)
 	{
-		tms5110_CTL_w(0, TMS5110_CMD_RESET);
+		tms5110_CTL_w(machine, 0, TMS5110_CMD_RESET);
 
-		tms5110_PDC_w(0,0);
-		tms5110_PDC_w(0,1);
-		tms5110_PDC_w(0,0);
+		tms5110_PDC_w(machine, 0,0);
+		tms5110_PDC_w(machine, 0,1);
+		tms5110_PDC_w(machine, 0,0);
 
-		tms5110_PDC_w(0,0);
-		tms5110_PDC_w(0,1);
-		tms5110_PDC_w(0,0);
+		tms5110_PDC_w(machine, 0,0);
+		tms5110_PDC_w(machine, 0,1);
+		tms5110_PDC_w(machine, 0,0);
 
-		tms5110_PDC_w(0,0);
-		tms5110_PDC_w(0,1);
-		tms5110_PDC_w(0,0);
+		tms5110_PDC_w(machine, 0,0);
+		tms5110_PDC_w(machine, 0,1);
+		tms5110_PDC_w(machine, 0,0);
 
 		speech_rom_bit_address = 0;
 	}
 	/* start */
 	else
 	{
-		tms5110_CTL_w(0, TMS5110_CMD_SPEAK);
+		tms5110_CTL_w(machine, 0, TMS5110_CMD_SPEAK);
 
-		tms5110_PDC_w(0, 0);
-		tms5110_PDC_w(0, 1);
-		tms5110_PDC_w(0, 0);
+		tms5110_PDC_w(machine, 0, 0);
+		tms5110_PDC_w(machine, 0, 1);
+		tms5110_PDC_w(machine, 0, 0);
 
 		speech_rom_bit_address = command * 0x80 * 8;
 	}
@@ -378,9 +399,9 @@ static WRITE8_HANDLER( cvs_speech_rom_address_hi_w )
 }
 
 
-static void cvs_set_speech_command_w(UINT8 data)
+static void cvs_set_speech_command_w(running_machine *machine, UINT8 data)
 {
-	soundlatch2_w(0, data & 0x7f);
+	soundlatch2_w(machine, 0, data & 0x7f);
 	if (~data & 0x40) LOG(("%04x : CVS: Speech Command W = %04x\n", activecpu_get_pc(), data & 0x7f));
 }
 
@@ -388,7 +409,7 @@ static void cvs_set_speech_command_w(UINT8 data)
 static READ8_HANDLER( cvs_speech_command_r )
 {
 	/* bit 7 is TMS status (active LO) */
-	return (~tms5110_status_r(0) << 7) | soundlatch2_r(0);
+	return (~tms5110_status_r(machine, 0) << 7) | soundlatch2_r(machine, 0);
 }
 
 
@@ -449,17 +470,17 @@ static WRITE8_HANDLER( audio_command_w )
     /* cause interrupt on audio CPU if bit 7 set */
 	if (data & 0x80)
 	{
-	   	soundlatch_w(0, data);
+	   	soundlatch_w(machine, 0, data);
 		cvs_dac_cpu_interrupt();
 
 		LOG(("%04x : CVS: Audio command = %02x\n", activecpu_get_pc(), data));
 	}
 
-	cvs_set_speech_command_w(data);
+	cvs_set_speech_command_w(machine, data);
 
 	/* temporary code begin */
 	if ((data & 0x40) == 0)
-		speech_execute_command(data & 0x03f);
+		speech_execute_command(machine, data & 0x03f);
 	/* temporary code end */
 }
 
@@ -479,10 +500,16 @@ MACHINE_START( cvs )
 	cvs_character_ram = auto_malloc(3 * 0x800);  /* only half is used, but
                                                     by allocating twice the amount,
                                                     we can use the same gfx_layout */
+	start_393hz_timer();
+
 	/* register state save */
+	state_save_register_global_pointer(cvs_color_ram, 0x400);
+	state_save_register_global_pointer(cvs_palette_ram, 0x10);
+	state_save_register_global_pointer(cvs_character_ram, 3 * 0x800);
 	state_save_register_global(character_banking_mode);
 	state_save_register_global(character_ram_page_start);
 	state_save_register_global(speech_rom_bit_address);
+	state_save_register_global(cvs_393hz_clock);
 }
 
 
@@ -494,12 +521,12 @@ MACHINE_START( cvs )
  *************************************/
 
 static ADDRESS_MAP_START( cvs_main_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x13ff) AM_ROM
     AM_RANGE(0x1400, 0x14ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_bullet_ram_or_palette_r, cvs_bullet_ram_or_palette_w) AM_BASE(&cvs_bullet_ram)
-    AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_3_or_character_ram_r, cvs_s2636_3_or_character_ram_w) AM_BASE(&s2636_3_ram)
-    AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_2_or_character_ram_r, cvs_s2636_2_or_character_ram_w) AM_BASE(&s2636_2_ram)
-    AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_1_or_character_ram_r, cvs_s2636_1_or_character_ram_w) AM_BASE(&s2636_1_ram)
+    AM_RANGE(0x1500, 0x15ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_2_or_character_ram_r, cvs_s2636_2_or_character_ram_w) AM_BASE(&cvs_s2636_2_ram)
+    AM_RANGE(0x1600, 0x16ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_1_or_character_ram_r, cvs_s2636_1_or_character_ram_w) AM_BASE(&cvs_s2636_1_ram)
+    AM_RANGE(0x1700, 0x17ff) AM_MIRROR(0x6000) AM_READWRITE(cvs_s2636_0_or_character_ram_r, cvs_s2636_0_or_character_ram_w) AM_BASE(&cvs_s2636_0_ram)
 	AM_RANGE(0x1800, 0x1bff) AM_MIRROR(0x6000) AM_READWRITE(cvs_video_or_color_ram_r, cvs_video_or_color_ram_w) AM_BASE(&cvs_video_ram)
     AM_RANGE(0x1c00, 0x1fff) AM_MIRROR(0x6000) AM_RAM
 	AM_RANGE(0x2000, 0x33ff) AM_ROM
@@ -524,13 +551,13 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( cvs_dac_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
     AM_RANGE(0x1000, 0x107f) AM_RAM
     AM_RANGE(0x1800, 0x1800) AM_READ(soundlatch_r)
     AM_RANGE(0x1840, 0x1840) AM_WRITE(DAC_0_data_w)
     AM_RANGE(0x1880, 0x1883) AM_WRITE(cvs_4_bit_dac_data_w) AM_BASE(&cvs_4_bit_dac_data)
-    AM_RANGE(0x1884, 0x1887) AM_WRITE(MWA8_NOP)		/* not connected to anything */
+    AM_RANGE(0x1884, 0x1887) AM_WRITE(SMH_NOP)		/* not connected to anything */
 ADDRESS_MAP_END
 
 
@@ -547,7 +574,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( cvs_speech_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x1d00, 0x1d00) AM_WRITE(cvs_speech_rom_address_lo_w)
 	AM_RANGE(0x1d40, 0x1d40) AM_WRITE(cvs_speech_rom_address_hi_w)
@@ -565,77 +592,399 @@ ADDRESS_MAP_END
 
 /*************************************
  *
- *  Standard CVS port definition
+ *  Standard CVS port definitions
  *
  *************************************/
 
 static INPUT_PORTS_START( cvs )
+	PORT_START_TAG("IN0")	/* Matrix 0 */
+    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
+    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL        /* "Red button" */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 )                      /* "Red button" */
+    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* Matrix 0 */
-    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )				/* confirmed */
-    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 ) 		  	/* confirmed */
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )				/* confirmed */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )				/* confirmed */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 )			/* confirmed */
-    PORT_BIT( 0xC0, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_START_TAG("IN1")	/* Dunno */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL        /* "Green button" */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )                      /* "Green button" */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )  PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
+    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* Dunno */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_COCKTAIL
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 )			/* confirmed */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )		/* confirmed */
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) 		/* confirmed */
-    PORT_BIT( 0xcc, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-	PORT_START	/* Dunno */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2 )				/* duplicate? */
+	PORT_START_TAG("IN2")	/* Dunno */
+    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE1 )           /* not sure it's SERVICE1 : it uses "Coin B" coinage and doesn't say "CREDIT" */
     PORT_BIT( 0xfe, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* Dunno */
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )		/* confirmed */
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )		/* confirmed */
-    PORT_BIT( 0xcf, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_START_TAG("IN3")	/* Dunno */
+    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+    PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )    PORT_COCKTAIL
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )  PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
+    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* SW BANK 3 */
-	PORT_DIPNAME( 0x01, 0x00, "Color" )
-	PORT_DIPSETTING(    0x00, "Option 1" )
-	PORT_DIPSETTING(    0x01, "Option 2" )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
-    PORT_DIPNAME( 0x0C, 0x00, DEF_STR( Bonus_Life ) )
-    PORT_DIPSETTING(    0x00, "10k only" )
-    PORT_DIPSETTING(    0x04, "20k only" )
-    PORT_DIPSETTING(    0x08, "30k and every 40k" )
-    PORT_DIPSETTING(    0x0c, "40k and every 80k" )
-	PORT_DIPNAME( 0x10, 0x00, "Registration Length" )
-	PORT_DIPSETTING(    0x00, "3" )
-	PORT_DIPSETTING(    0x10, "10" )
-	PORT_DIPNAME( 0x20, 0x00, "Registration" )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_START_TAG("DSW3")	/* SW BANK 3 */
+	PORT_DIPUNUSED( 0x01, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
+	PORT_DIPUNUSED( 0x02, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
+	PORT_DIPUNUSED( 0x04, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
+	PORT_DIPUNUSED( 0x08, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
+	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Cocktail ) )
+	PORT_DIPUNUSED( 0x20, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
 
-    PORT_START	/* SW BANK 2 */
-	PORT_DIPNAME( 0x03, 0x00, "Coins for 1 Play" )			/* confirmed */
-	PORT_DIPSETTING(    0x00, "1" )
-	PORT_DIPSETTING(    0x01, "2" )
-    PORT_DIPSETTING(    0x02, "3" )
-    PORT_DIPSETTING(    0x03, "4" )
-    PORT_DIPNAME( 0x0C, 0x0c, "Plays for 1 Coin" )			/* confirmed */
-    PORT_DIPSETTING(    0x0C, "2" )
-    PORT_DIPSETTING(    0x08, "3" )
-    PORT_DIPSETTING(    0x04, "4" )
-    PORT_DIPSETTING(    0x00, "5" )
-	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Lives ) )			/* confirmed */
+    PORT_START_TAG("DSW2")	/* SW BANK 2 */
+	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Coin_A ) )
+	PORT_DIPSETTING(    0x03, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
+	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 1C_5C ) )
+	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x10, "5" )
-	PORT_DIPNAME( 0x20, 0x00, "Meter Pulses" )
-	PORT_DIPSETTING(    0x00, "2" )
-	PORT_DIPSETTING(    0x20, "5" )
+	PORT_DIPUNUSED( 0x20, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
 
 	PORT_START	/* SENSE */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 INPUT_PORTS_END
+
+static INPUT_PORTS_START( cvs_registration )
+	PORT_INCLUDE(cvs)
+
+	PORT_MODIFY("DSW3")
+	PORT_DIPNAME( 0x01, 0x01, "Registration" )              /* can't tell what shall be the default value */
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, "Registration Length" )       /* can't tell what shall be the default value */
+	PORT_DIPSETTING(    0x02, "3" )
+	PORT_DIPSETTING(    0x00, "10" )
+	/* bits 2 and 3 determine bonus life settings but they might change from game to game - they are sometimes unused */
+
+	PORT_MODIFY("DSW2")
+	/* Told to be "Meter Pulses" but I don't know what this means */
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Unknown ) )          /* has an effect when COIN2 is pressed (when COIN1 is pressed, value always 1 */
+	PORT_DIPSETTING(    0x00, "2" )
+	PORT_DIPSETTING(    0x20, "5" )
+INPUT_PORTS_END
+
+
+
+/*************************************
+ *
+ *  Games port definitions
+ *
+ *************************************/
+
+static INPUT_PORTS_START( cosmos )
+	PORT_INCLUDE(cvs)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN2")
+    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
+
+	PORT_MODIFY("IN3")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP   PORT_COCKTAIL */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN PORT_COCKTAIL */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN */
+#endif
+
+	PORT_MODIFY("DSW3")
+    /* DSW3 bits 0 and 1 stored at 0x7d55 (0, 2, 1, 3) - code at 0x66f3 - not read back */
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+    PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
+    PORT_DIPSETTING(    0x04, "30k only" )                  /* displays "30000" */
+    PORT_DIPSETTING(    0x00, "40k only" )                  /* displays "40000" */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( darkwar )
+	PORT_INCLUDE(cvs)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+
+	PORT_MODIFY("IN2")
+    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
+
+	PORT_MODIFY("IN3")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP   PORT_COCKTAIL */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN PORT_COCKTAIL */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN */
+#endif
+
+    /* DSW3 bits 0 to 3 are not read */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( spacefrt )
+	PORT_INCLUDE(cvs)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN2")
+    PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_SERVICE1 */
+
+	PORT_MODIFY("IN3")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP   PORT_COCKTAIL */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN PORT_COCKTAIL */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN */
+#endif
+
+	PORT_MODIFY("DSW3")
+    /* DSW3 bits 0 and 1 stored at 0x7d3f (0, 2, 1, 3) - code at 0x6895 - not read back */
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "50000" */
+    PORT_DIPSETTING(    0x08, "150k only" )                 /* displays "110000" */
+    PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
+    PORT_DIPSETTING(    0x00, DEF_STR( None ) )             /* displays "200000" */
+INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( 8ball )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+    PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
+    PORT_DIPSETTING(    0x04, "40k only" )                  /* displays "80000" */
+    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+	PORT_DIPNAME( 0x20, 0x00, "Colors" )                    /* stored at 0x1ed4 - code at 0x0847 ('8ball') or 0x08af ('8ball1') */
+	PORT_DIPSETTING(    0x00, "Palette 1" )                 /* table at 0x0781 ('8ball') or 0x07e9 ('8ball1') - 16 bytes */
+	PORT_DIPSETTING(    0x20, "Palette 2" )                 /* table at 0x0791 ('8ball') or 0x07f9 ('8ball1') - 16 bytes */
+
+	/* DSW2 bit 5 stored at 0x1d93 - code at 0x0858 ('8ball') or 0x08c0 ('8ball1') - read back code at 0x0073 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( logger )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+    PORT_DIPSETTING(    0x08, "20k only" )                  /* displays "20000" */
+    PORT_DIPSETTING(    0x04, "40k only" )                  /* displays "40000" */
+    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+	/* DSW3 bit 5 stored at 0x7dc8 - code at 0x6eb6 - not read back */
+
+	/* DSW2 bit 5 stored at 0x7da1 - code at 0x6ec7 - read back code at 0x0073 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( dazzler )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+    PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
+    PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
+    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+
+	/* DSW2 bit 5 stored at 0x7d9c - code at 0x6b51 - read back code at 0x0099 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( wallst )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+    PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
+    PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
+    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+
+	/* DSW2 bit 5 stored at 0x1e95 - code at 0x1232 - read back code at 0x6054 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( radarzon )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "100000" */
+    PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
+    PORT_DIPSETTING(    0x08, "400k only" )                 /* displays "400000" */
+    PORT_DIPSETTING(    0x00, "800k only" )                 /* displays "800000" */
+
+	/* DSW2 bit 5 stored at 0x3d6e - code at 0x22aa - read back code at 0x00e4 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( goldbug )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "100k only" )                 /* displays "100000" */
+    PORT_DIPSETTING(    0x04, "200k only" )                 /* displays "200000" */
+    PORT_DIPSETTING(    0x08, "400k only" )                 /* displays "400000" */
+    PORT_DIPSETTING(    0x00, "800k only" )                 /* displays "800000" */
+
+	/* DSW2 bit 5 stored at 0x3d89 - code at 0x3377 - read back code at 0x6054 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( diggerc )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "50k only" )                  /* displays "50000" */
+    PORT_DIPSETTING(    0x04, "100k only" )                 /* displays "100000" */
+    PORT_DIPSETTING(    0x08, "150k only" )                 /* displays "150000" */
+    PORT_DIPSETTING(    0x00, "200k only" )                 /* displays "200000" */
+
+	/* DSW2 bit 5 stored at 0x3db3 - code at 0x22ad - read back code at 0x00e4 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( heartatk )
+	PORT_INCLUDE(cvs_registration)
+
+    /* DSW3 bits 2 and 3 stored at 0x1c61 (0, 2, 1, 3) - code at 0x0c52
+       read back code at 0x2197 but untested value : bonus life always at 100000 */
+
+	/* DSW2 bit 5 stored at 0x1e76 - code at 0x0c5c - read back code at 0x00e4 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( hunchbak )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+
+	PORT_MODIFY("IN3")
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP   PORT_COCKTAIL */
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN PORT_COCKTAIL */
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_UP */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_JOYSTICK_DOWN */
+#endif
+
+	PORT_MODIFY("DSW3")
+    PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
+    PORT_DIPSETTING(    0x0c, "10k only" )                  /* displays "10000" */
+    PORT_DIPSETTING(    0x04, "20k only" )                  /* displays "20000" */
+    PORT_DIPSETTING(    0x08, "40k only" )                  /* displays "40000" */
+    PORT_DIPSETTING(    0x00, "80k only" )                  /* displays "80000" */
+
+	/* hunchbak : DSW2 bit 5 stored at 0x5e97 - code at 0x516c - read back code at 0x6054 */
+	/* hunchbka : DSW2 bit 5 stored at 0x1e97 - code at 0x0c0c - read back code at 0x6054 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( superbik )
+	PORT_INCLUDE(cvs_registration)
+
+    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 5000 */
+
+	/* DSW2 bit 5 stored at 0x1e79 - code at 0x060f - read back code at 0x25bf */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( raiders )
+	PORT_INCLUDE(cvs_registration)
+
+    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 100000 */
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPUNUSED( 0x10, IP_ACTIVE_HIGH )                  /* always 4 lives - table at 0x4218 - 2 bytes */
+	/* DSW2 bit 5 stored at 0x1e79 - code at 0x1307 - read back code at 0x251d */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( hero )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 150000 */
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPUNUSED( 0x10, IP_ACTIVE_HIGH )                  /* always 3 lives - table at 0x4ebb - 2 bytes */
+	/* DSW2 bit 5 stored at 0x1e99 - code at 0x0fdd - read back code at 0x0352 */
+INPUT_PORTS_END
+
+static INPUT_PORTS_START( huncholy )
+	PORT_INCLUDE(cvs_registration)
+
+#if !CVS_SHOW_ALL_INPUTS
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 PORT_COCKTAIL */
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )             /* IPT_BUTTON2 */
+#endif
+
+    /* DSW3 bits 2 and 3 are not read : bonus life alaways at 20000 */
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPUNUSED( 0x10, IP_ACTIVE_HIGH )                  /* always 3 lives - table at 0x4531 - 2 bytes */
+	/* DSW2 bit 5 stored at 0x1e7c - code at 0x067d - read back code at 0x2f95 */
+INPUT_PORTS_END
+
+
+
+/*************************************
+ *
+ *  Graphics definitions
+ *
+ *************************************/
 
 static const gfx_layout charlayout =
 {
@@ -649,10 +998,7 @@ static const gfx_layout charlayout =
 };
 
 static GFXDECODE_START( cvs )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout,                  0, 256+3 )	/* chars */
-  	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, s2636_gfx_layout, (256+3)*8, 8        )	/* s2636 #1 */
-  	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, s2636_gfx_layout, (256+3)*8, 8        )	/* s2636 #2 */
-  	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, s2636_gfx_layout, (256+3)*8, 8        )   /* s2636 #3 */
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, charlayout, 0, 256+4 )
 GFXDECODE_END
 
 
@@ -669,7 +1015,7 @@ static MACHINE_DRIVER_START( cvs )
 	MDRV_CPU_ADD(S2650, 894886.25)
 	MDRV_CPU_PROGRAM_MAP(cvs_main_cpu_map,0)
 	MDRV_CPU_IO_MAP(cvs_main_cpu_io_map,0)
-	MDRV_CPU_VBLANK_INT(cvs_main_cpu_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", cvs_main_cpu_interrupt)
 
 	MDRV_CPU_ADD(S2650, 894886.25)
 	MDRV_CPU_PROGRAM_MAP(cvs_dac_cpu_map,0)
@@ -682,15 +1028,15 @@ static MACHINE_DRIVER_START( cvs )
 	MDRV_MACHINE_START(cvs)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_ALWAYS_UPDATE)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 	MDRV_VIDEO_START(cvs)
 	MDRV_VIDEO_UPDATE(cvs)
 
 	MDRV_GFXDECODE(cvs)
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH((256+3)*8+(8*2))
+	MDRV_PALETTE_LENGTH((256+4)*8+8+1)
 	MDRV_PALETTE_INIT(cvs)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 30*8-1, 1*8, 32*8-1)
@@ -1287,28 +1633,24 @@ static DRIVER_INIT( raiders )
  *
  *************************************/
 
-#define CVS_GAME(year, name, parent, init, company, desc) \
-GAME( year, name, parent, cvs, cvs, init, ROT90, company, desc, GAME_NO_COCKTAIL )
-
-/*        YEAR  NAME      PARENT    INIT */
-CVS_GAME( 1981, cosmos,   0,        0,       "Century Electronics", "Cosmos" )
-CVS_GAME( 1981, darkwar,  0,        0,       "Century Electronics", "Dark Warrior" )
-CVS_GAME( 1981, spacefrt, 0,        0,       "Century Electronics", "Space Fortress (CVS)" )
-CVS_GAME( 1982, 8ball,    0,        0,       "Century Electronics", "Video Eight Ball" )
-CVS_GAME( 1982, 8ball1,   8ball,    0,       "Century Electronics", "Video Eight Ball (Rev.1)" )
-CVS_GAME( 1982, logger,   0,        0,       "Century Electronics", "Logger" )
-CVS_GAME( 1982, dazzler,  0,        0,       "Century Electronics", "Dazzler" )
-CVS_GAME( 1982, wallst,   0,        0,       "Century Electronics", "Wall Street" )
-CVS_GAME( 1982, radarzon, 0,        0,       "Century Electronics", "Radar Zone" )
-CVS_GAME( 1982, radarzn1, radarzon, 0,       "Century Electronics", "Radar Zone (Rev.1)" )
-CVS_GAME( 1982, radarznt, radarzon, 0,       "Century Electronics (Tuni Electro Service Inc)", "Radar Zone (Tuni)" )
-CVS_GAME( 1982, outline,  radarzon, 0,       "Century Electronics", "Outline" )
-CVS_GAME( 1982, goldbug,  0,        0,       "Century Electronics", "Gold Bug" )
-CVS_GAME( 1982, diggerc,  0,        0,       "Century Electronics", "Digger (CVS)" )
-CVS_GAME( 1983, heartatk, 0,        0,       "Century Electronics", "Heart Attack" )
-CVS_GAME( 1983, hunchbak, 0,        0,       "Century Electronics", "Hunchback (set 1)" )
-CVS_GAME( 1983, hunchbka, hunchbak, hunchbka,"Century Electronics", "Hunchback (set 2)" )
-CVS_GAME( 1983, superbik, 0,        superbik,"Century Electronics", "Superbike" )
-CVS_GAME( 1983, raiders,  0,        raiders, "Century Electronics", "Raiders" )
-CVS_GAME( 1983, hero,     0,        hero,    "Seatongrove Ltd",     "Hero" )
-CVS_GAME( 1984, huncholy, 0,        huncholy,"Seatongrove Ltd",     "Hunchback Olympic" )
+GAME( 1981, cosmos,   0,        cvs,     cosmos,   0,        ROT90, "Century Electronics", "Cosmos", GAME_NO_COCKTAIL )
+GAME( 1981, darkwar,  0,        cvs,     darkwar,  0,        ROT90, "Century Electronics", "Dark Warrior", GAME_NO_COCKTAIL )
+GAME( 1981, spacefrt, 0,        cvs,     spacefrt, 0,        ROT90, "Century Electronics", "Space Fortress (CVS)", GAME_NO_COCKTAIL )
+GAME( 1982, 8ball,    0,        cvs,     8ball,    0,        ROT90, "Century Electronics", "Video Eight Ball", GAME_NO_COCKTAIL )
+GAME( 1982, 8ball1,   8ball,    cvs,     8ball,    0,        ROT90, "Century Electronics", "Video Eight Ball (Rev.1)", GAME_NO_COCKTAIL )
+GAME( 1982, logger,   0,        cvs,     logger,   0,        ROT90, "Century Electronics", "Logger", GAME_NO_COCKTAIL )
+GAME( 1982, dazzler,  0,        cvs,     dazzler,  0,        ROT90, "Century Electronics", "Dazzler", GAME_NO_COCKTAIL )
+GAME( 1982, wallst,   0,        cvs,     wallst,   0,        ROT90, "Century Electronics", "Wall Street", GAME_NO_COCKTAIL )
+GAME( 1982, radarzon, 0,        cvs,     radarzon, 0,        ROT90, "Century Electronics", "Radar Zone", GAME_NO_COCKTAIL )
+GAME( 1982, radarzn1, radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics", "Radar Zone (Rev.1)", GAME_NO_COCKTAIL )
+GAME( 1982, radarznt, radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics (Tuni Electro Service Inc)", "Radar Zone (Tuni)", GAME_NO_COCKTAIL )
+GAME( 1982, outline,  radarzon, cvs,     radarzon, 0,        ROT90, "Century Electronics", "Outline", GAME_NO_COCKTAIL )
+GAME( 1982, goldbug,  0,        cvs,     goldbug,  0,        ROT90, "Century Electronics", "Gold Bug", GAME_NO_COCKTAIL )
+GAME( 1982, diggerc,  0,        cvs,     diggerc,  0,        ROT90, "Century Electronics", "Digger (CVS)", GAME_NO_COCKTAIL )
+GAME( 1983, heartatk, 0,        cvs,     heartatk, 0,        ROT90, "Century Electronics", "Heart Attack", GAME_NO_COCKTAIL )
+GAME( 1983, hunchbak, 0,        cvs,     hunchbak, 0,        ROT90, "Century Electronics", "Hunchback (set 1)", GAME_NO_COCKTAIL )
+GAME( 1983, hunchbka, hunchbak, cvs,     hunchbak, hunchbka, ROT90, "Century Electronics", "Hunchback (set 2)", GAME_NO_COCKTAIL )
+GAME( 1983, superbik, 0,        cvs,     superbik, superbik, ROT90, "Century Electronics", "Superbike", GAME_NO_COCKTAIL )
+GAME( 1983, raiders,  0,        cvs,     raiders,  raiders,  ROT90, "Century Electronics", "Raiders", GAME_NO_COCKTAIL )
+GAME( 1983, hero,     0,        cvs,     hero,     hero,     ROT90, "Seatongrove Ltd",     "Hero", GAME_NO_COCKTAIL )
+GAME( 1984, huncholy, 0,        cvs,     huncholy, huncholy, ROT90, "Seatongrove Ltd",     "Hunchback Olympic", GAME_NO_COCKTAIL )

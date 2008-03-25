@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 UINT8 *toypop_videoram;
 
@@ -122,7 +121,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( toypop )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan,8,8,36,28);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
@@ -175,10 +174,11 @@ WRITE16_HANDLER( toypop_merged_background_w )
 		toypop_bg_image[2*offset+1] = (data & 0xf) | ((data & 0xf0) << 4);
 }
 
-static void draw_background(mame_bitmap *bitmap)
+static void draw_background(bitmap_t *bitmap)
 {
-	register int offs, x, y;
-	UINT8 scanline[288];
+	int offs, x, y;
+	UINT16 scanline[288];
+	pen_t pen_base = 0x300 + 0x10*palettebank;
 
 	// copy the background image from RAM (0x190200-0x19FDFF) to bitmap
 	if (bitmapflip)
@@ -189,11 +189,11 @@ static void draw_background(mame_bitmap *bitmap)
 			for (x = 0; x < 288; x+=2)
 			{
 				UINT16 data = toypop_bg_image[offs];
-				scanline[x]   = data;
-				scanline[x+1] = data >> 8;
+				scanline[x]   = pen_base | (data & 0x0f);
+				scanline[x+1] = pen_base | (data >> 8);
 				offs--;
 			}
-			draw_scanline8(bitmap, 0, y, 288, scanline, &Machine->pens[0x300 + 0x10*palettebank], -1);
+			draw_scanline16(bitmap, 0, y, 288, scanline, NULL, -1);
 		}
 	}
 	else
@@ -204,11 +204,11 @@ static void draw_background(mame_bitmap *bitmap)
 			for (x = 0; x < 288; x+=2)
 			{
 				UINT16 data = toypop_bg_image[offs];
-				scanline[x]   = data >> 8;
-				scanline[x+1] = data;
+				scanline[x]   = pen_base | (data >> 8);
+				scanline[x+1] = pen_base | (data & 0x0f);
 				offs++;
 			}
-			draw_scanline8(bitmap, 0, y, 288, scanline, &Machine->pens[0x300 + 0x10*palettebank], -1);
+			draw_scanline16(bitmap, 0, y, 288, scanline, NULL, -1);
 		}
 	}
 }
@@ -222,14 +222,13 @@ static void draw_background(mame_bitmap *bitmap)
 ***************************************************************************/
 
 /* from mappy.c */
-void mappy_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int xoffs, int yoffs, int transcolor);
+void mappy_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int xoffs, int yoffs, int transcolor);
 
 
 VIDEO_UPDATE( toypop )
 {
 	draw_background(bitmap);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-
-	mappy_draw_sprites(machine, bitmap, cliprect, -31, -8, 0xff);
+	mappy_draw_sprites(screen->machine, bitmap, cliprect, -31, -8, 0xff);
 	return 0;
 }

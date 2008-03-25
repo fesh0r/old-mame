@@ -34,7 +34,7 @@ PALETTE_INIT( appoooh )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		UINT8 pen;
 		int bit0, bit1, bit2, r, g, b;
@@ -72,7 +72,7 @@ PALETTE_INIT( robowres )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -139,8 +139,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 ***************************************************************************/
 VIDEO_START( appoooh )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_scrolldy(fg_tilemap,8,8);
@@ -180,7 +180,7 @@ WRITE8_HANDLER( appoooh_bg_colorram_w )
 WRITE8_HANDLER( appoooh_out_w )
 {
 	/* bit 0 controls NMI */
-	interrupt_enable_w(0,data & 0x01);
+	interrupt_enable_w(machine,0,data & 0x01);
 
 	/* bit 1 flip screen */
 	flip_screen_set(data & 0x02);
@@ -203,7 +203,7 @@ WRITE8_HANDLER( appoooh_out_w )
 	/* bit 7 unknown (used) */
 }
 
-static void appoooh_draw_sprites(mame_bitmap *dest_bmp,
+static void appoooh_draw_sprites(bitmap_t *dest_bmp,
 		const rectangle *cliprect,
         const gfx_element *gfx,
         UINT8 *sprite)
@@ -220,7 +220,7 @@ static void appoooh_draw_sprites(mame_bitmap *dest_bmp,
 
 		if(sx>=248) sx -= 256;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 239 - sx;
 			sy = 239 - sy;
@@ -229,14 +229,14 @@ static void appoooh_draw_sprites(mame_bitmap *dest_bmp,
 		drawgfx( dest_bmp, gfx,
 				code,
 				color,
-				flipx,flip_screen,
+				flipx,flip_screen_get(),
 				sx, sy,
 				cliprect,
 				TRANSPARENCY_PEN , 0);
 	 }
 }
 
-static void robowres_draw_sprites(mame_bitmap *dest_bmp,
+static void robowres_draw_sprites(bitmap_t *dest_bmp,
 		const rectangle *cliprect,
         const gfx_element *gfx,
         UINT8 *sprite)
@@ -253,7 +253,7 @@ static void robowres_draw_sprites(mame_bitmap *dest_bmp,
 
 		if(sx>=248) sx -= 256;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 239 - sx;
 			sy = 239 - sy;
@@ -262,7 +262,7 @@ static void robowres_draw_sprites(mame_bitmap *dest_bmp,
 		drawgfx( dest_bmp, gfx,
 				code,
 				color,
-				flipx,flip_screen,
+				flipx,flip_screen_get(),
 				sx, sy,
 				cliprect,
 				TRANSPARENCY_PEN , 0);
@@ -281,16 +281,16 @@ VIDEO_UPDATE( appoooh )
 	if (priority == 1)
 	{
 		/* sprite set #1 */
-		appoooh_draw_sprites( bitmap, cliprect, machine->gfx[2],spriteram);
+		appoooh_draw_sprites( bitmap, cliprect, screen->machine->gfx[2],spriteram);
 		/* sprite set #2 */
-		appoooh_draw_sprites( bitmap, cliprect, machine->gfx[3],spriteram_2);
+		appoooh_draw_sprites( bitmap, cliprect, screen->machine->gfx[3],spriteram_2);
 	}
 	else
 	{
 		/* sprite set #2 */
-		appoooh_draw_sprites( bitmap, cliprect, machine->gfx[3],spriteram_2);
+		appoooh_draw_sprites( bitmap, cliprect, screen->machine->gfx[3],spriteram_2);
 		/* sprite set #1 */
-		appoooh_draw_sprites( bitmap, cliprect, machine->gfx[2],spriteram);
+		appoooh_draw_sprites( bitmap, cliprect, screen->machine->gfx[2],spriteram);
 	}
 
 	if (priority != 0)	/* fg in front of sprites */
@@ -309,16 +309,16 @@ VIDEO_UPDATE( robowres )
 	if (priority == 1)
 	{
 		/* sprite set #1 */
-		robowres_draw_sprites( bitmap, cliprect, machine->gfx[2],spriteram);
+		robowres_draw_sprites( bitmap, cliprect, screen->machine->gfx[2],spriteram);
 		/* sprite set #2 */
-		robowres_draw_sprites( bitmap, cliprect, machine->gfx[3],spriteram_2);
+		robowres_draw_sprites( bitmap, cliprect, screen->machine->gfx[3],spriteram_2);
 	}
 	else
 	{
 		/* sprite set #2 */
-		robowres_draw_sprites( bitmap, cliprect, machine->gfx[3],spriteram_2);
+		robowres_draw_sprites( bitmap, cliprect, screen->machine->gfx[3],spriteram_2);
 		/* sprite set #1 */
-		robowres_draw_sprites( bitmap, cliprect, machine->gfx[2],spriteram);
+		robowres_draw_sprites( bitmap, cliprect, screen->machine->gfx[2],spriteram);
 	}
 
 	if (priority != 0)	/* fg in front of sprites */

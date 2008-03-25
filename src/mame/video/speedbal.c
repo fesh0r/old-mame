@@ -39,8 +39,8 @@ static TILE_GET_INFO( get_tile_info_fg )
 
 VIDEO_START( speedbal )
 {
-	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_cols_flip_x, TILEMAP_TYPE_PEN, 16, 16, 16, 16);
-	fg_tilemap = tilemap_create(get_tile_info_fg, tilemap_scan_cols_flip_x, TILEMAP_TYPE_PEN,  8,  8, 32, 32);
+	bg_tilemap = tilemap_create(get_tile_info_bg, tilemap_scan_cols_flip_x,  16, 16, 16, 16);
+	fg_tilemap = tilemap_create(get_tile_info_fg, tilemap_scan_cols_flip_x,   8,  8, 32, 32);
 
 	tilemap_set_transmask(bg_tilemap,0,0xffff,0x0000); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x00f7,0x0000); /* split type 1 has pen 0-2, 4-7 transparent in front half */
@@ -82,7 +82,7 @@ WRITE8_HANDLER( speedbal_background_videoram_w )
  *                                   *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int x,y,code,color,offset,flipx,flipy;
 
@@ -102,7 +102,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		flipx = flipy = 0;
 
-		if(flip_screen)
+		if(flip_screen_get())
 		{
 			x = 246 - x;
 			y = 238 - y;
@@ -128,7 +128,7 @@ VIDEO_UPDATE( speedbal )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_LAYER1, 0);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_DRAW_LAYER1, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_LAYER0, 0);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_DRAW_LAYER0, 0);
 	return 0;

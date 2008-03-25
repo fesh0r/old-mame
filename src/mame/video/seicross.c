@@ -33,7 +33,7 @@ PALETTE_INIT( seicross )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -88,12 +88,12 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( seicross )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_scroll_cols(bg_tilemap, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -139,11 +139,9 @@ VIDEO_UPDATE( seicross )
 	int col;
 
 	for (col = 0; col < 32; col++)
-	{
 		tilemap_set_scrolly(bg_tilemap, col, seicross_row_scroll[col]);
-	}
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

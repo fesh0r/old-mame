@@ -213,21 +213,16 @@ contain a level.
 
 */
 
-static ADDRESS_MAP_START( readmem_main, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem_main, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(angelkds_bgtopvideoram_w) AM_BASE(&angelkds_bgtopvideoram) /* Top Half of Screen */
-	AM_RANGE(0xe400, 0xe7ff) AM_WRITE(angelkds_bgbotvideoram_w) AM_BASE(&angelkds_bgbotvideoram) /* Bottom Half of Screen */
-	AM_RANGE(0xe800, 0xebff) AM_WRITE(angelkds_txvideoram_w) AM_BASE(&angelkds_txvideoram)
-	AM_RANGE(0xec00, 0xecff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
-	AM_RANGE(0xed00, 0xeeff) AM_WRITE(angelkds_paletteram_w) AM_BASE(&paletteram)
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)
+	AM_RANGE(0xc000, 0xdfff) AM_RAM
+	AM_RANGE(0xe000, 0xe3ff) AM_READWRITE(SMH_RAM, angelkds_bgtopvideoram_w) AM_BASE(&angelkds_bgtopvideoram) /* Top Half of Screen */
+	AM_RANGE(0xe400, 0xe7ff) AM_READWRITE(SMH_RAM, angelkds_bgbotvideoram_w) AM_BASE(&angelkds_bgbotvideoram) /* Bottom Half of Screen */
+	AM_RANGE(0xe800, 0xebff) AM_READWRITE(SMH_RAM, angelkds_txvideoram_w) AM_BASE(&angelkds_txvideoram)
+	AM_RANGE(0xec00, 0xecff) AM_RAM AM_BASE(&spriteram)
+	AM_RANGE(0xed00, 0xeeff) AM_READWRITE(SMH_RAM, angelkds_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xef00, 0xefff) AM_RAM
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(angelkds_bgtopbank_write)
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(angelkds_bgtopscroll_write)
 	AM_RANGE(0xf002, 0xf002) AM_WRITE(angelkds_bgbotbank_write)
@@ -236,68 +231,41 @@ static ADDRESS_MAP_START( writemem_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf005, 0xf005) AM_WRITE(angelkds_layer_ctrl_write)
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( readport_main, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP) // 00 on start-up, not again
+	AM_RANGE(0x42, 0x42) AM_WRITE(angelkds_cpu_bank_write)
+	AM_RANGE(0x43, 0x43) AM_WRITE(SMH_NOP) // 9a on start-up, not again
 	AM_RANGE(0x40, 0x40) AM_READ(input_port_0_r)	/* "Coinage" Dip Switches */
 	AM_RANGE(0x41, 0x41) AM_READ(input_port_1_r)	/* Other Dip Switches */
 	AM_RANGE(0x42, 0x42) AM_READ(input_port_2_r)	/* Players inputs (not needed ?) */
 	AM_RANGE(0x80, 0x80) AM_READ(input_port_3_r)	/* System inputs */
 	AM_RANGE(0x81, 0x82) AM_READ(angelkds_input_r)	/* Players inputs */
-	AM_RANGE(0xc0, 0xc3) AM_READ(angelkds_main_sound_r)  /* needed by spcpostn */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writeport_main, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP) // 00 on start-up, not again
-	AM_RANGE(0x42, 0x42) AM_WRITE(angelkds_cpu_bank_write)
-	AM_RANGE(0x43, 0x43) AM_WRITE(MWA8_NOP) // 9a on start-up, not again
-	AM_RANGE(0x83, 0x83) AM_WRITE(MWA8_NOP) // 9b on start-up, not again
-	AM_RANGE(0xc0, 0xc3) AM_WRITE(angelkds_main_sound_w) // 02 various points
+	AM_RANGE(0x83, 0x83) AM_WRITE(SMH_NOP) // 9b on start-up, not again
+	AM_RANGE(0xc0, 0xc3) AM_READWRITE(angelkds_main_sound_r, angelkds_main_sound_w) // 02 various points
 ADDRESS_MAP_END
 
 /* sub cpu */
 
-static ADDRESS_MAP_START( readmem_sub, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xaaa9, 0xaaa9) AM_READ(MRA8_NOP)
-	AM_RANGE(0xaaab, 0xaaab) AM_READ(MRA8_NOP)
-	AM_RANGE(0xaaac, 0xaaac) AM_READ(MRA8_NOP)
+static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
+	AM_RANGE(0xaaa9, 0xaaa9) AM_READNOP
+	AM_RANGE(0xaaab, 0xaaab) AM_READNOP
+	AM_RANGE(0xaaac, 0xaaac) AM_READNOP
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( writemem_sub, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( readport_sub, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_READ(YM2203_status_port_0_r)
-	AM_RANGE(0x40, 0x40) AM_READ(YM2203_status_port_1_r)
-	AM_RANGE(0x80, 0x83) AM_READ(angelkds_sub_sound_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writeport_sub, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_WRITE(YM2203_control_port_0_w)
+static ADDRESS_MAP_START( sub_portmap, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
-	AM_RANGE(0x40, 0x40) AM_WRITE(YM2203_control_port_1_w)
+	AM_RANGE(0x40, 0x40) AM_READWRITE(YM2203_status_port_1_r, YM2203_control_port_1_w)
 	AM_RANGE(0x41, 0x41) AM_WRITE(YM2203_write_port_1_w)
-	AM_RANGE(0x80, 0x83) AM_WRITE(angelkds_sub_sound_w) // spcpostn
+	AM_RANGE(0x80, 0x83) AM_READWRITE(angelkds_sub_sound_r, angelkds_sub_sound_w) // spcpostn
 ADDRESS_MAP_END
 
 
 /* Input Ports */
-
-/* Here is the way to access to the different parts of the "test mode" :
-
-     - sound  : set "Coin A" Dip Switch to "Free Play" and "Coin B" Dip Switch to "Free Play"
-     - paddle : set "Coin A" Dip Switch to "3C_1C" and "Coin B" Dip Switch to "Free Play"
-
-If use different settings, you'll only see a black screen.
-
-I haven't found how to exit the tests. The only way seems to reset the game.
-*/
 
 #define ANGELDSK_PLAYERS_INPUT( player ) \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICKRIGHT_UP ) PORT_PLAYER(player) PORT_8WAY \
@@ -321,8 +289,14 @@ I haven't found how to exit the tests. The only way seems to reset the game.
 
 
 static INPUT_PORTS_START( angelkds )
+	/*
+        Free Play: Set SW1:1-8 ON (A:Free Play & B:Free Play).
+        Sound Test: Set SW1:1-8 ON (A:Free Play & B:Free Play), hold test switch and reboot.
+        Joystick Test: Set SW1:1-7 ON & SW1:8 OFF (A:Free Play & B:3C_1C), hold test switch and reboot.
+        Joystick Test Coin_A & Coin_B seem to be switched, only works when setting A to 3C_1C and B to Free Play.
+    */
 	PORT_START_TAG("I40")		/* inport $40 */
-	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(	0x70, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(	0x90, DEF_STR( 2C_1C ) )
@@ -338,9 +312,9 @@ static INPUT_PORTS_START( angelkds )
 	PORT_DIPSETTING(	0xc0, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(	0xb0, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(	0xa0, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )	// needed to enter "test mode" (see above)
+	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
 
-	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_B ) )		PORT_DIPLOCATION("SW1:5,6,7,8")
 	PORT_DIPSETTING(	0x07, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(	0x08, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(	0x09, DEF_STR( 2C_1C ) )
@@ -359,23 +333,23 @@ static INPUT_PORTS_START( angelkds )
 	PORT_DIPSETTING(	0x00, DEF_STR( Free_Play ) )
 
 	PORT_START_TAG("I41")		/* inport $41 */
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )				PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x02, 0x00, "Hi Score" )
-	PORT_DIPSETTING(    0x00, "3 Characters" )
-	PORT_DIPSETTING(    0x02, "10 Characters" )
-	PORT_DIPNAME( 0x0c, 0x08, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x02, 0x00, "High Score Characters" )			PORT_DIPLOCATION("SW2:2")
+	PORT_DIPSETTING(    0x00, "3" )
+	PORT_DIPSETTING(    0x02, "10" )
+	PORT_DIPNAME( 0x0c, 0x08, DEF_STR( Bonus_Life ) )			PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(    0x0c, "20k, 50k, 100k, 200k and 500k" )
 	PORT_DIPSETTING(    0x08, "50k, 100k, 200k and 500k" )
 	PORT_DIPSETTING(    0x04, "100k, 200k and 500k" )
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Lives ) )				PORT_DIPLOCATION("SW2:5,6")
 	PORT_DIPSETTING(    0x30, "3" )
 	PORT_DIPSETTING(    0x20, "4" )
 	PORT_DIPSETTING(    0x10, "5" )
 	PORT_DIPSETTING(    0x00, "99 (Cheat)" )
-	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Difficulty ) )	/* Stored at 0xc023 */
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Difficulty ) )			PORT_DIPLOCATION("SW2:7,8") /* Stored at 0xc023 */
 	PORT_DIPSETTING(    0xc0, DEF_STR( Very_Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Hard ) )
@@ -428,7 +402,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( spcpostn )
 	PORT_START_TAG("I40")		/* inport $40 */
-	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x0f, 0x0f, DEF_STR( Coin_A ) )			PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(    0x02, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x05, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
@@ -445,7 +419,7 @@ static INPUT_PORTS_START( spcpostn )
 	PORT_DIPSETTING(    0x0a, DEF_STR( 1C_6C ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
-	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0xf0, 0xf0, DEF_STR( Coin_B ) )			PORT_DIPLOCATION("SW1:5,6,7,8")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x50, DEF_STR( 3C_1C ) )
@@ -464,28 +438,26 @@ static INPUT_PORTS_START( spcpostn )
 	PORT_DIPSETTING(    0x90, DEF_STR( 1C_7C ) )
 
 	PORT_START_TAG("I41")		/* inport $41 */
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR(Allow_Continue ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR(Allow_Continue ) )	PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x02, 0x02, "Obstruction Car" )
+	PORT_DIPNAME( 0x02, 0x02, "Obstruction Car" )			PORT_DIPLOCATION("SW2:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
-	PORT_DIPNAME( 0x0c, 0x08, "Time Limit" )
+	PORT_DIPNAME( 0x0c, 0x08, "Time Limit" )				PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(    0x00, "1:10" )
 	PORT_DIPSETTING(    0x04, "1:20" )
 	PORT_DIPSETTING(    0x08, "1:30" )
 	PORT_DIPSETTING(    0x0c, "1:40" )
-	PORT_DIPNAME( 0x30, 0x20, "Power Down" )
+	PORT_DIPNAME( 0x30, 0x20, "Power Down" )				PORT_DIPLOCATION("SW2:5,6")
 	PORT_DIPSETTING(    0x30, "Slow" )
 	PORT_DIPSETTING(    0x20, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x10, "Fast" )
 	PORT_DIPSETTING(    0x00, "Fastest" )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )		PORT_DIPLOCATION("SW2:7")
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW2:8" )			/* Listed as "Unused" */
 
 	PORT_START_TAG("I42")		/* inport $42 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -622,21 +594,20 @@ GFXDECODE_END
 
 static MACHINE_DRIVER_START( angelkds )
 	MDRV_CPU_ADD(Z80, 8000000) /* 8MHz? 6 seems too slow? */
-	MDRV_CPU_PROGRAM_MAP(readmem_main,writemem_main)
-	MDRV_CPU_IO_MAP(readport_main,writeport_main)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_IO_MAP(main_portmap,0)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000) /* 8 MHz? */
-	/* audio CPU */
-	MDRV_CPU_PROGRAM_MAP(readmem_sub,writemem_sub)
-	MDRV_CPU_IO_MAP(readport_sub,writeport_sub)
+	MDRV_CPU_PROGRAM_MAP(sub_map,0)
+	MDRV_CPU_IO_MAP(sub_portmap,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)

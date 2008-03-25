@@ -53,12 +53,8 @@ static TIMER_CALLBACK( periodic_callback )
 		mask[readinputport(8)] |= 0x20;
 
 		for (i = 1; i < 256; i++)
-		{
 			if (mask[i] != 0)
-			{
-				timer_set(video_screen_get_time_until_pos(0, i, 0), NULL, mask[i], pot_interrupt);
-			}
-		}
+				timer_set(video_screen_get_time_until_pos(machine->primary_screen, i, 0), NULL, mask[i], pot_interrupt);
 
 		pot_state = 0;
 	}
@@ -66,11 +62,9 @@ static TIMER_CALLBACK( periodic_callback )
 	scanline += 64;
 
 	if (scanline >= 262)
-	{
 		scanline = 0;
-	}
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, periodic_callback);
 }
 
 
@@ -86,7 +80,7 @@ static PALETTE_INIT( boxer )
 
 static MACHINE_RESET( boxer )
 {
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, periodic_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, periodic_callback);
 
 	pot_latch = 0;
 }
@@ -96,10 +90,8 @@ static READ8_HANDLER( boxer_input_r )
 {
 	UINT8 val = readinputport(0);
 
-	if (readinputport(9) < video_screen_get_vpos(0))
-	{
+	if (readinputport(9) < video_screen_get_vpos(machine->primary_screen))
 		val |= 0x02;
-	}
 
 	return (val << ((offset & 7) ^ 7)) & 0x80;
 }
@@ -116,7 +108,7 @@ static READ8_HANDLER( boxer_misc_r )
 		break;
 
 	case 1:
-		val = video_screen_get_vpos(0);
+		val = video_screen_get_vpos(machine->primary_screen);
 		break;
 
 	case 2:
@@ -186,7 +178,7 @@ static WRITE8_HANDLER( boxer_led_w )
 
 
 static ADDRESS_MAP_START( boxer_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
 	AM_RANGE(0x0200, 0x03ff) AM_RAM AM_BASE(&boxer_tile_ram)
 	AM_RANGE(0x0800, 0x08ff) AM_READ(boxer_input_r)
@@ -197,7 +189,7 @@ static ADDRESS_MAP_START( boxer_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1b00, 0x1bff) AM_WRITE(boxer_crowd_w)
 	AM_RANGE(0x1c00, 0x1cff) AM_WRITE(boxer_irq_reset_w)
 	AM_RANGE(0x1d00, 0x1dff) AM_WRITE(boxer_bell_w)
-	AM_RANGE(0x1e00, 0x1eff) AM_WRITE(MWA8_RAM) AM_BASE(&boxer_sprite_ram)
+	AM_RANGE(0x1e00, 0x1eff) AM_WRITE(SMH_RAM) AM_BASE(&boxer_sprite_ram)
 	AM_RANGE(0x1f00, 0x1fff) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x3000, 0x3fff) AM_ROM
 ADDRESS_MAP_END
@@ -301,15 +293,16 @@ static MACHINE_DRIVER_START(boxer)
 	MDRV_CPU_ADD(M6502, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(boxer_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	/* video hardware */
 	MDRV_MACHINE_RESET(boxer)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 262)
 	MDRV_SCREEN_VISIBLE_AREA(8, 247, 0, 239)
+
 	MDRV_GFXDECODE(boxer)
 	MDRV_PALETTE_LENGTH(4)
 	MDRV_PALETTE_INIT(boxer)

@@ -169,7 +169,7 @@ static VIDEO_START(mediagx)
 	}
 }
 
-static void draw_char(mame_bitmap *bitmap, const rectangle *cliprect, const gfx_element *gfx, int ch, int att, int x, int y)
+static void draw_char(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, const gfx_element *gfx, int ch, int att, int x, int y)
 {
 	int i,j;
 	UINT8 *dp;
@@ -183,21 +183,17 @@ static void draw_char(mame_bitmap *bitmap, const rectangle *cliprect, const gfx_
 		{
 			UINT8 pen = dp[index++];
 			if (pen)
-			{
-				p[i] = Machine->remapped_colortable[gfx->color_base + (att & 0xf)];
-			}
+				p[i] = machine->pens[gfx->color_base + (att & 0xf)];
 			else
 			{
 				if (((att >> 4) & 7) > 0)
-				{
-					p[i] = Machine->remapped_colortable[gfx->color_base + ((att >> 4) & 0x7)];
-				}
+					p[i] = machine->pens[gfx->color_base + ((att >> 4) & 0x7)];
 			}
 		}
 	}
 }
 
-static void draw_framebuffer(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_framebuffer(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i, j;
 	int width, height;
@@ -223,7 +219,7 @@ static void draw_framebuffer(running_machine *machine, mame_bitmap *bitmap, cons
 		visarea.min_x = visarea.min_y = 0;
 		visarea.max_x = width - 1;
 		visarea.max_y = height - 1;
-		video_screen_configure(0, width, height * 262 / 240, &visarea, machine->screen[0].refresh);
+		video_screen_configure(machine->primary_screen, width, height * 262 / 240, &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds);
 	}
 
 	if (disp_ctrl_reg[DC_OUTPUT_CFG] & 0x1)		// 8-bit mode
@@ -288,7 +284,7 @@ static void draw_framebuffer(running_machine *machine, mame_bitmap *bitmap, cons
 	}
 }
 
-static void draw_cga(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_cga(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i, j;
 	const gfx_element *gfx = machine->gfx[0];
@@ -304,8 +300,8 @@ static void draw_cga(running_machine *machine, mame_bitmap *bitmap, const rectan
 			int att1 = (cga[index] >> 24) & 0xff;
 			int ch1 = (cga[index] >> 16) & 0xff;
 
-			draw_char(bitmap, cliprect, gfx, ch0, att0, i*8, j*8);
-			draw_char(bitmap, cliprect, gfx, ch1, att1, (i*8)+8, j*8);
+			draw_char(machine, bitmap, cliprect, gfx, ch0, att0, i*8, j*8);
+			draw_char(machine, bitmap, cliprect, gfx, ch1, att1, (i*8)+8, j*8);
 			index++;
 		}
 	}
@@ -315,11 +311,11 @@ static VIDEO_UPDATE(mediagx)
 {
 	fillbitmap(bitmap, 0, cliprect);
 
-	draw_framebuffer(machine, bitmap, cliprect);
+	draw_framebuffer(screen->machine, bitmap, cliprect);
 
 	if (disp_ctrl_reg[DC_OUTPUT_CFG] & 0x1)	// don't show MDA text screen on 16-bit mode. this is basically a hack
 	{
-		draw_cga(machine, bitmap, cliprect);
+		draw_cga(screen->machine, bitmap, cliprect);
 	}
 	return 0;
 }
@@ -333,10 +329,8 @@ static READ32_HANDLER( disp_ctrl_r )
 		case DC_TIMING_CFG:
 			r |= 0x40000000;
 
-			if (video_screen_get_vpos(0) >= frame_height)
-			{
+			if (video_screen_get_vpos(machine->primary_screen) >= frame_height)
 				r &= ~0x40000000;
-			}
 
 #if SPEEDUP_HACKS
 			// wait for vblank speedup
@@ -356,44 +350,44 @@ static WRITE32_HANDLER( disp_ctrl_w )
 
 static READ8_HANDLER(at_dma8237_1_r)
 {
-	return dma8237_1_r(offset / 2);
+	return dma8237_1_r(machine, offset / 2);
 }
 
 static WRITE8_HANDLER(at_dma8237_1_w)
 {
-	dma8237_1_w(offset / 2, data);
+	dma8237_1_w(machine, offset / 2, data);
 }
 
 static READ32_HANDLER(at32_dma8237_1_r)
 {
-	return read32le_with_read8_handler(at_dma8237_1_r, offset, mem_mask);
+	return read32le_with_read8_handler(at_dma8237_1_r, machine, offset, mem_mask);
 }
 
 static WRITE32_HANDLER(at32_dma8237_1_w)
 {
-	write32le_with_write8_handler(at_dma8237_1_w, offset, data, mem_mask);
+	write32le_with_write8_handler(at_dma8237_1_w, machine, offset, data, mem_mask);
 }
 
 
 
 static READ32_HANDLER( ide0_r )
 {
-	return ide_controller32_0_r(0x1f0/4 + offset, mem_mask);
+	return ide_controller32_0_r(machine, 0x1f0/4 + offset, mem_mask);
 }
 
 static WRITE32_HANDLER( ide0_w )
 {
-	ide_controller32_0_w(0x1f0/4 + offset, data, mem_mask);
+	ide_controller32_0_w(machine, 0x1f0/4 + offset, data, mem_mask);
 }
 
 static READ32_HANDLER( fdc_r )
 {
-	return ide_controller32_0_r(0x3f0/4 + offset, mem_mask);
+	return ide_controller32_0_r(machine, 0x3f0/4 + offset, mem_mask);
 }
 
 static WRITE32_HANDLER( fdc_w )
 {
-	ide_controller32_0_w(0x3f0/4 + offset, data, mem_mask);
+	ide_controller32_0_w(machine, 0x3f0/4 + offset, data, mem_mask);
 }
 
 
@@ -473,7 +467,7 @@ static READ32_HANDLER( io20_r )
 	// 0x20 - 0x21, PIC
 	if ((mem_mask & 0x0000ffff) != 0xffff)
 	{
-		r |= pic8259_32le_0_r(offset, mem_mask);
+		r |= pic8259_32le_0_r(machine, offset, mem_mask);
 	}
 
 	// 0x22, 0x23, Cyrix configuration registers
@@ -493,7 +487,7 @@ static WRITE32_HANDLER( io20_w )
 	// 0x20 - 0x21, PIC
 	if ((mem_mask & 0x0000ffff) != 0xffff)
 	{
-		pic8259_32le_0_w(offset, data, mem_mask);
+		pic8259_32le_0_w(machine, offset, data, mem_mask);
 	}
 
 	// 0x22, 0x23, Cyrix configuration registers
@@ -643,7 +637,7 @@ static void cx5510_pci_w(int function, int reg, UINT32 data, UINT32 mem_mask)
 static TIMER_CALLBACK( sound_timer_callback )
 {
 	ad1847_sample_counter = 0;
-	timer_adjust(sound_timer, ATTOTIME_IN_MSEC(10), 0, attotime_zero);
+	timer_adjust_oneshot(sound_timer, ATTOTIME_IN_MSEC(10), 0);
 
 	dmadac_transfer(0, 1, 0, 1, dacl_ptr, dacl);
 	dmadac_transfer(1, 1, 0, 1, dacr_ptr, dacr);
@@ -782,7 +776,7 @@ GFXDECODE_END
 
 static INPUT_PORTS_START(mediagx)
 	PORT_START
-	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x001, IP_ACTIVE_HIGH )
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_SERVICE1 )
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_SERVICE2 )
 	PORT_BIT( 0x008, IP_ACTIVE_HIGH, IPT_VOLUME_DOWN )
@@ -860,7 +854,7 @@ static MACHINE_RESET(mediagx)
 	dacr = auto_malloc(65536 * sizeof(INT16));
 
 	sound_timer = timer_alloc(sound_timer_callback, NULL);
-	timer_adjust(sound_timer, ATTOTIME_IN_MSEC(10), 0, attotime_zero);
+	timer_adjust_oneshot(sound_timer, ATTOTIME_IN_MSEC(10), 0);
 
 	dmadac_enable(0, 2, 1);
 	ide_controller_reset(0);
@@ -873,17 +867,17 @@ static MACHINE_DRIVER_START(mediagx)
 	MDRV_CPU_PROGRAM_MAP(mediagx_map, 0)
 	MDRV_CPU_IO_MAP(mediagx_io, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_RESET(mediagx)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 239)
+
 	MDRV_GFXDECODE(CGA)
 	MDRV_PALETTE_LENGTH(16)
 
@@ -980,7 +974,7 @@ static READ32_HANDLER( speedup9_r ) { return generic_speedup(&speedup_table[9]);
 static READ32_HANDLER( speedup10_r ) { return generic_speedup(&speedup_table[10]); }
 static READ32_HANDLER( speedup11_r ) { return generic_speedup(&speedup_table[11]); }
 
-static const read32_handler speedup_handlers[] =
+static const read32_machine_func speedup_handlers[] =
 {
 	speedup0_r,		speedup1_r,		speedup2_r,		speedup3_r,
 	speedup4_r,		speedup5_r,		speedup6_r,		speedup7_r,

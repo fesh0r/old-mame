@@ -59,8 +59,8 @@ UINT32 *paletteram32;
 UINT8 *paletteram_2;	/* use when palette RAM is split in two parts */
 UINT16 *paletteram16_2;
 
-mame_bitmap *tmpbitmap;
-int flip_screen_x, flip_screen_y;
+bitmap_t *tmpbitmap;
+static int flip_screen_x, flip_screen_y;
 
 
 
@@ -295,6 +295,8 @@ void generic_video_init(running_machine *machine)
 	spriteram_3_size = 0;
 	tmpbitmap = NULL;
 	flip_screen_x = flip_screen_y = 0;
+	state_save_register_item("video", 0, flip_screen_x);
+	state_save_register_item("video", 0, flip_screen_y);
 }
 
 
@@ -304,17 +306,6 @@ void generic_video_init(running_machine *machine)
 ***************************************************************************/
 
 /*-------------------------------------------------
-    VIDEO_START( generic ) - general video system
--------------------------------------------------*/
-
-VIDEO_START( generic )
-{
-	/* allocate the temporary bitmap */
-	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
-}
-
-
-/*-------------------------------------------------
     VIDEO_START( generic_bitmapped ) - general video
     system with a bitmap
 -------------------------------------------------*/
@@ -322,7 +313,7 @@ VIDEO_START( generic )
 VIDEO_START( generic_bitmapped )
 {
 	/* allocate the temporary bitmap */
-	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	tmpbitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	/* ensure the contents of the bitmap are saved */
 	state_save_register_bitmap("video", 0, "tmpbitmap", tmpbitmap);
@@ -377,7 +368,7 @@ equal to the size of normal spriteram.
 
     Spriteram size _must_ be declared in the memory map:
 
-    { 0x120000, 0x1207ff, MWA8_BANK2, &spriteram, &spriteram_size },
+    { 0x120000, 0x1207ff, SMH_BANK2, &spriteram, &spriteram_size },
 
     Then the video driver must draw the sprites from the buffered_spriteram
 pointer.  The function buffer_spriteram_w() is used to simulate hardware
@@ -459,8 +450,10 @@ void buffer_spriteram_2(UINT8 *ptr, int length)
 
 static void updateflip(void)
 {
-	screen_state *state = &Machine->screen[0];
-	rectangle visarea = state->visarea;
+	int width = video_screen_get_width(Machine->primary_screen);
+	int height = video_screen_get_height(Machine->primary_screen);
+	attoseconds_t period = video_screen_get_frame_period(Machine->primary_screen).attoseconds;
+	rectangle visarea = *video_screen_get_visible_area(Machine->primary_screen);
 
 	tilemap_set_flip(ALL_TILEMAPS,(TILEMAP_FLIPX & flip_screen_x) | (TILEMAP_FLIPY & flip_screen_y));
 
@@ -468,20 +461,20 @@ static void updateflip(void)
 	{
 		int temp;
 
-		temp = state->width - visarea.min_x - 1;
-		visarea.min_x = state->width - visarea.max_x - 1;
+		temp = width - visarea.min_x - 1;
+		visarea.min_x = width - visarea.max_x - 1;
 		visarea.max_x = temp;
 	}
 	if (flip_screen_y)
 	{
 		int temp;
 
-		temp = state->height - visarea.min_y - 1;
-		visarea.min_y = state->height - visarea.max_y - 1;
+		temp = height - visarea.min_y - 1;
+		visarea.min_y = height - visarea.max_y - 1;
 		visarea.max_y = temp;
 	}
 
-	video_screen_configure(0, state->width, state->height, &visarea, state->refresh);
+	video_screen_configure(Machine->primary_screen, width, height, &visarea, period);
 }
 
 
@@ -493,6 +486,22 @@ void flip_screen_set(int on)
 {
 	flip_screen_x_set(on);
 	flip_screen_y_set(on);
+}
+
+
+/*-------------------------------------------------
+    flip_screen_set_no_update - set global flip
+       do not call update_flip.
+-------------------------------------------------*/
+
+void flip_screen_set_no_update(int on)
+{
+	/* flip_screen_y is not updated on purpose
+     * this function is for drivers which
+     * where writing to flip_screen_x to
+     * bypass update_flip
+     */
+	flip_screen_x = on;
 }
 
 
@@ -526,6 +535,36 @@ void flip_screen_y_set(int on)
 }
 
 
+/*-------------------------------------------------
+    flip_screen_get - get global flip
+-------------------------------------------------*/
+
+int flip_screen_get(void)
+{
+	return flip_screen_x;
+}
+
+
+/*-------------------------------------------------
+    flip_screen_x_get - get global x flip
+-------------------------------------------------*/
+
+int flip_screen_x_get(void)
+{
+	return flip_screen_x;
+}
+
+
+/*-------------------------------------------------
+    flip_screen_get - get global y flip
+-------------------------------------------------*/
+
+int flip_screen_y_get(void)
+{
+	return flip_screen_y;
+}
+
+
 /***************************************************************************
     COMMON PALETTE INITIALIZATION
 ***************************************************************************/
@@ -555,7 +594,7 @@ PALETTE_INIT( RRRR_GGGG_BBBB )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -567,21 +606,62 @@ PALETTE_INIT( RRRR_GGGG_BBBB )
 		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		/* green component */
-		bit0 = (color_prom[i + machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[i + machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[i + machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[i + machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[i + machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[i + machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[i + machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[i + machine->config->total_colors] >> 3) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		/* blue component */
-		bit0 = (color_prom[i + 2*machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[i + 2*machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[i + 2*machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[i + 2*machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[i + 2*machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[i + 2*machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[i + 2*machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[i + 2*machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
 	}
+}
+
+
+
+/*-------------------------------------------------
+    RRRRR_GGGGG_BBBBB/BBBBB_GGGGG_RRRRR -
+    standard 5-5-5 palette for games using a
+    15-bit color space
+-------------------------------------------------*/
+
+PALETTE_INIT( RRRRR_GGGGG_BBBBB )
+{
+	int i;
+
+	for (i = 0; i < 0x8000; i++)
+		palette_set_color(machine, i, MAKE_RGB(pal5bit(i >> 10), pal5bit(i >> 5), pal5bit(i >> 0)));
+}
+
+
+PALETTE_INIT( BBBBB_GGGGG_RRRRR )
+{
+	int i;
+
+	for (i = 0; i < 0x8000; i++)
+		palette_set_color(machine, i, MAKE_RGB(pal5bit(i >> 0), pal5bit(i >> 5), pal5bit(i >> 10)));
+}
+
+
+
+/*-------------------------------------------------
+    RRRRR_GGGGGG_BBBBB -
+    standard 5-6-5 palette for games using a
+    16-bit color space
+-------------------------------------------------*/
+
+PALETTE_INIT( RRRRR_GGGGGG_BBBBB )
+{
+	int i;
+
+	for (i = 0; i < 0x10000; i++)
+		palette_set_color(machine, i, MAKE_RGB(pal5bit(i >> 11), pal6bit(i >> 5), pal5bit(i >> 0)));
 }
 
 

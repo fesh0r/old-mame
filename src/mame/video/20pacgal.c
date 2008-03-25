@@ -56,7 +56,7 @@ static void get_pens(const _20pacgal_state *state, pen_t *pens)
 }
 
 
- static void do_pen_lookup(const _20pacgal_state *state, mame_bitmap *bitmap, const rectangle *cliprect)
+ static void do_pen_lookup(const _20pacgal_state *state, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int y, x;
 	pen_t pens[NUM_PENS];
@@ -76,7 +76,7 @@ static void get_pens(const _20pacgal_state *state, pen_t *pens)
  *
  *************************************/
 
-static void draw_sprite(const _20pacgal_state *state, mame_bitmap *bitmap, int y, int x,
+static void draw_sprite(const _20pacgal_state *state, bitmap_t *bitmap, int y, int x,
 						UINT8 code, UINT8 color, int flip_y, int flip_x)
 {
 	int sy;
@@ -145,7 +145,7 @@ static void draw_sprite(const _20pacgal_state *state, mame_bitmap *bitmap, int y
 }
 
 
-static void draw_sprites(const _20pacgal_state *state, mame_bitmap *bitmap)
+static void draw_sprites(const _20pacgal_state *state, bitmap_t *bitmap)
 {
 	int offs;
 
@@ -173,7 +173,7 @@ static void draw_sprites(const _20pacgal_state *state, mame_bitmap *bitmap)
 		sy = (sy & 0xff) - 32;	/* fix wraparound */
 
 		/* only Galaga appears to be effected by the global flip state */
-		if (state->game_selected && (state->flip_screen[0] & 0x01))
+		if (state->game_selected && (state->flip[0] & 0x01))
 		{
 			flip_x = !flip_x;
 			flip_y = !flip_y;
@@ -197,11 +197,11 @@ static void draw_sprites(const _20pacgal_state *state, mame_bitmap *bitmap)
  *
  *************************************/
 
-static void draw_chars(const _20pacgal_state *state, mame_bitmap *bitmap)
+static void draw_chars(const _20pacgal_state *state, bitmap_t *bitmap)
 {
 	offs_t offs;
 
-	int flip = state->flip_screen[0] & 0x01;
+	int flip = state->flip[0] & 0x01;
 
 	/* for each byte in the video RAM */
 	for (offs = 0; offs < 0x400; offs++)
@@ -292,7 +292,7 @@ static void draw_chars(const _20pacgal_state *state, mame_bitmap *bitmap)
 
 static VIDEO_UPDATE( 20pacgal )
 {
-	const _20pacgal_state *state = machine->driver_data;
+	const _20pacgal_state *state = screen->machine->driver_data;
 
 	draw_chars(state, bitmap);
 	draw_sprites(state, bitmap);
@@ -311,11 +311,11 @@ static VIDEO_UPDATE( 20pacgal )
 
 MACHINE_DRIVER_START( 20pacgal_video )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(20pacgal)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(SCREEN_WIDTH, SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, SCREEN_WIDTH - 1, 0, SCREEN_HEIGHT - 1)

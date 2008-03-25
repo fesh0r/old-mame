@@ -48,10 +48,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( circus )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
-static void draw_line(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int x1, int y1, int x2, int y2, int dotted)
+static void draw_line(bitmap_t *bitmap, const rectangle *cliprect, int x1, int y1, int x2, int y2, int dotted)
 {
 	/* Draws horizontal and Vertical lines only! */
 
@@ -65,55 +65,47 @@ static void draw_line(running_machine *machine, mame_bitmap *bitmap, const recta
 		skip = 1;
 
 	if (x1 == x2)
-	{
 		for (count = y2; count >= y1; count -= skip)
-		{
-			*BITMAP_ADDR16(bitmap, count, x1) = machine->pens[1];
-		}
-	}
+			*BITMAP_ADDR16(bitmap, count, x1) = 1;
 	else
-	{
 		for (count = x2; count >= x1; count -= skip)
-		{
-			*BITMAP_ADDR16(bitmap, y1, count) = machine->pens[1];
-		}
-	}
+			*BITMAP_ADDR16(bitmap, y1, count) = 1;
 }
 
-static void draw_robot_box (running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int x, int y)
+static void draw_robot_box(bitmap_t *bitmap, const rectangle *cliprect, int x, int y)
 {
 	/* Box */
 
 	int ex = x + 24;
 	int ey = y + 26;
 
-	draw_line(machine,bitmap,cliprect,x,y,ex,y,0);       /* Top */
-	draw_line(machine,bitmap,cliprect,x,ey,ex,ey,0);     /* Bottom */
-	draw_line(machine,bitmap,cliprect,x,y,x,ey,0);       /* Left */
-	draw_line(machine,bitmap,cliprect,ex,y,ex,ey,0);     /* Right */
+	draw_line(bitmap,cliprect,x,y,ex,y,0);       /* Top */
+	draw_line(bitmap,cliprect,x,ey,ex,ey,0);     /* Bottom */
+	draw_line(bitmap,cliprect,x,y,x,ey,0);       /* Left */
+	draw_line(bitmap,cliprect,ex,y,ex,ey,0);     /* Right */
 
 	/* Score Grid */
 
 	ey = y + 10;
-	draw_line(machine,bitmap,cliprect,x+8,ey,ex,ey,0);   /* Horizontal Divide Line */
-	draw_line(machine,bitmap,cliprect,x+8,y,x+8,ey,0);
-	draw_line(machine,bitmap,cliprect,x+16,y,x+16,ey,0);
+	draw_line(bitmap,cliprect,x+8,ey,ex,ey,0);   /* Horizontal Divide Line */
+	draw_line(bitmap,cliprect,x+8,y,x+8,ey,0);
+	draw_line(bitmap,cliprect,x+16,y,x+16,ey,0);
 }
 
-static void circus_draw_fg(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void circus_draw_fg(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* The sync generator hardware is used to   */
 	/* draw the border and diving boards        */
 
-	draw_line (machine,bitmap,cliprect,0,18,255,18,0);
-	draw_line (machine,bitmap,cliprect,0,249,255,249,1);
-	draw_line (machine,bitmap,cliprect,0,18,0,248,0);
-	draw_line (machine,bitmap,cliprect,247,18,247,248,0);
+	draw_line (bitmap,cliprect,0,18,255,18,0);
+	draw_line (bitmap,cliprect,0,249,255,249,1);
+	draw_line (bitmap,cliprect,0,18,0,248,0);
+	draw_line (bitmap,cliprect,247,18,247,248,0);
 
-	draw_line (machine,bitmap,cliprect,0,137,17,137,0);
-	draw_line (machine,bitmap,cliprect,231,137,248,137,0);
-	draw_line (machine,bitmap,cliprect,0,193,17,193,0);
-	draw_line (machine,bitmap,cliprect,231,193,248,193,0);
+	draw_line (bitmap,cliprect,0,137,17,137,0);
+	draw_line (bitmap,cliprect,231,137,248,137,0);
+	draw_line (bitmap,cliprect,0,193,17,193,0);
+	draw_line (bitmap,cliprect,231,193,248,193,0);
 
 	drawgfx(bitmap,machine->gfx[1],
 			clown_z,
@@ -126,11 +118,11 @@ static void circus_draw_fg(running_machine *machine, mame_bitmap *bitmap, const 
 VIDEO_UPDATE( circus )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	circus_draw_fg(machine, bitmap, cliprect);
+	circus_draw_fg(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
-static void robotbwl_draw_scoreboard(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void robotbwl_draw_scoreboard(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -139,31 +131,31 @@ static void robotbwl_draw_scoreboard(running_machine *machine, mame_bitmap *bitm
 
 	for(offs=15;offs<=63;offs+=24)
 	{
-		draw_robot_box(machine, bitmap, cliprect, offs, 31);
-		draw_robot_box(machine, bitmap, cliprect, offs, 63);
-		draw_robot_box(machine, bitmap, cliprect, offs, 95);
+		draw_robot_box(bitmap, cliprect, offs, 31);
+		draw_robot_box(bitmap, cliprect, offs, 63);
+		draw_robot_box(bitmap, cliprect, offs, 95);
 
-		draw_robot_box(machine, bitmap, cliprect, offs+152, 31);
-		draw_robot_box(machine, bitmap, cliprect, offs+152, 63);
-		draw_robot_box(machine, bitmap, cliprect, offs+152, 95);
+		draw_robot_box(bitmap, cliprect, offs+152, 31);
+		draw_robot_box(bitmap, cliprect, offs+152, 63);
+		draw_robot_box(bitmap, cliprect, offs+152, 95);
 	}
 
-	draw_robot_box(machine, bitmap, cliprect, 39, 127);                  /* 10th Frame */
-	draw_line(machine,bitmap, cliprect, 39,137,47,137,0);          /* Extra digit box */
+	draw_robot_box(bitmap, cliprect, 39, 127);                  /* 10th Frame */
+	draw_line(bitmap, cliprect, 39,137,47,137,0);          /* Extra digit box */
 
-	draw_robot_box(machine, bitmap, cliprect, 39+152, 127);
-	draw_line(machine,bitmap, cliprect, 39+152,137,47+152,137,0);
+	draw_robot_box(bitmap, cliprect, 39+152, 127);
+	draw_line(bitmap, cliprect, 39+152,137,47+152,137,0);
 }
 
-static void robotbwl_draw_bowling_alley(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void robotbwl_draw_bowling_alley(bitmap_t *bitmap, const rectangle *cliprect)
 {
-	draw_line(machine,bitmap, cliprect, 103,17,103,205,0);
-	draw_line(machine,bitmap, cliprect, 111,17,111,203,1);
-	draw_line(machine,bitmap, cliprect, 152,17,152,205,0);
-	draw_line(machine,bitmap, cliprect, 144,17,144,203,1);
+	draw_line(bitmap, cliprect, 103,17,103,205,0);
+	draw_line(bitmap, cliprect, 111,17,111,203,1);
+	draw_line(bitmap, cliprect, 152,17,152,205,0);
+	draw_line(bitmap, cliprect, 144,17,144,203,1);
 }
 
-static void robotbwl_draw_ball(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void robotbwl_draw_ball(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	drawgfx(bitmap,machine->gfx[1],
 			clown_z,
@@ -176,13 +168,13 @@ static void robotbwl_draw_ball(running_machine *machine, mame_bitmap *bitmap, co
 VIDEO_UPDATE( robotbwl )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	robotbwl_draw_scoreboard(machine, bitmap, cliprect);
-	robotbwl_draw_bowling_alley(machine, bitmap, cliprect);
-	robotbwl_draw_ball(machine, bitmap, cliprect);
+	robotbwl_draw_scoreboard(bitmap, cliprect);
+	robotbwl_draw_bowling_alley(bitmap, cliprect);
+	robotbwl_draw_ball(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
-static void crash_draw_car(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void crash_draw_car(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	drawgfx(bitmap,machine->gfx[1],
 		clown_z,
@@ -195,17 +187,16 @@ static void crash_draw_car(running_machine *machine, mame_bitmap *bitmap, const 
 VIDEO_UPDATE( crash )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	crash_draw_car(machine, bitmap, cliprect);
+	crash_draw_car(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
-static void ripcord_draw_skydiver(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void ripcord_draw_skydiver(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx;
-	const pen_t *pal_ptr;
 	UINT8  *src_lineptr, *src_pixptr;
 	UINT16 *dst_lineptr, *dst_lineend;
-	UINT32 code, color;
+	UINT32 code;
 	int sx, sy;
 	int src_pitch, dst_width, dst_height, dst_pitch, dst_pixoffs, dst_pixend;
 	int collision, eax, edx;
@@ -213,7 +204,6 @@ static void ripcord_draw_skydiver(running_machine *machine, mame_bitmap *bitmap,
 	gfx = machine->gfx[0];
 
 	code = clown_z;
-	color = 0;
 
 	sx = clown_y;
 	sy = clown_x - 1;
@@ -222,7 +212,6 @@ static void ripcord_draw_skydiver(running_machine *machine, mame_bitmap *bitmap,
 	edx = 1;
 
 	gfx = machine->gfx[1];
-	pal_ptr = &machine->remapped_colortable[gfx->color_base + color * gfx->color_granularity];
 	src_lineptr = gfx->gfxdata + code * gfx->char_modulo;
 	src_pitch = gfx->line_modulo;
 	dst_pitch = bitmap->rowpixels;
@@ -244,7 +233,7 @@ static void ripcord_draw_skydiver(running_machine *machine, mame_bitmap *bitmap,
 			src_pixptr ++;
 			if (eax)
 			{
-				eax = pal_ptr[eax];
+				eax = machine->pens[eax];
 				collision |= dst_lineptr[dst_pixoffs];
 				dst_lineptr[dst_pixoffs] = eax;
 			}
@@ -267,6 +256,6 @@ static void ripcord_draw_skydiver(running_machine *machine, mame_bitmap *bitmap,
 VIDEO_UPDATE( ripcord )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	ripcord_draw_skydiver(machine, bitmap, cliprect);
+	ripcord_draw_skydiver(screen->machine, bitmap, cliprect);
 	return 0;
 }

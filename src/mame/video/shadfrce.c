@@ -66,13 +66,13 @@ WRITE16_HANDLER( shadfrce_bg1videoram_w )
 
 VIDEO_START( shadfrce )
 {
-	shadfrce_fgtilemap = tilemap_create(get_shadfrce_fgtile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	shadfrce_fgtilemap = tilemap_create(get_shadfrce_fgtile_info,tilemap_scan_rows, 8, 8,64,32);
 		tilemap_set_transparent_pen(shadfrce_fgtilemap,0);
 
-	shadfrce_bg0tilemap = tilemap_create(get_shadfrce_bg0tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
+	shadfrce_bg0tilemap = tilemap_create(get_shadfrce_bg0tile_info,tilemap_scan_rows, 16, 16,32,32);
 		tilemap_set_transparent_pen(shadfrce_bg0tilemap,0);
 
-	shadfrce_bg1tilemap = tilemap_create(get_shadfrce_bg1tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
+	shadfrce_bg1tilemap = tilemap_create(get_shadfrce_bg1tile_info,tilemap_scan_rows, 16, 16,32,32);
 
 	shadfrce_spvideoram_old = auto_malloc(spriteram_size);
 }
@@ -100,7 +100,7 @@ WRITE16_HANDLER ( shadfrce_bg1scrolly_w )
 
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 
 	/* | ---- ---- hhhf Fe-Y | ---- ---- yyyy yyyy | ---- ---- TTTT TTTT | ---- ---- tttt tttt |
@@ -155,7 +155,7 @@ VIDEO_UPDATE( shadfrce )
 	tilemap_draw(bitmap,cliprect,shadfrce_bg1tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,shadfrce_bg0tilemap,0,1);
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 
 	tilemap_draw(bitmap,cliprect,shadfrce_fgtilemap, 0,0);
 

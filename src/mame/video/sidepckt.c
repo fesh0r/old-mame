@@ -9,7 +9,7 @@ PALETTE_INIT( sidepckt )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -26,10 +26,10 @@ PALETTE_INIT( sidepckt )
 		bit3 = (color_prom[i] >> 3) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 		/* blue component */
-		bit0 = (color_prom[i + machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[i + machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[i + machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[i + machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[i + machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[i + machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[i + machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[i + machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -65,7 +65,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( sidepckt )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transmask(bg_tilemap,0,0xff,0x00); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x01,0xfe); /* split type 1 has pen 0 transparent in front half */
@@ -106,7 +106,7 @@ WRITE8_HANDLER( sidepckt_flipscreen_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -143,7 +143,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( sidepckt )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	return 0;
 }

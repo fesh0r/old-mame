@@ -6,7 +6,7 @@ UINT8* ninjakd2_fg_videoram;
 
 static int sprite_overdraw_enabled;
 static int next_sprite_overdraw_enabled;
-static mame_bitmap *sp_bitmap;
+static bitmap_t *sp_bitmap;
 // in robokid and omegaf big sprites are laid out differently in ROM
 static int robokid_sprites;
 
@@ -24,6 +24,12 @@ static UINT8* robokid_bg0_videoram;
 static UINT8* robokid_bg1_videoram;
 static UINT8* robokid_bg2_videoram;
 
+
+/*************************************
+ *
+ *  Callbacks for the TileMap code
+ *
+ *************************************/
 
 static TILE_GET_INFO( get_fg_tile_info )
 {
@@ -82,7 +88,7 @@ static TILEMAP_MAPPER( omegaf_bg_scan )
 	return (col & 0x0f) | ((row & 0x1f) << 4) | ((col & 0x70) << 5);
 }
 
-void robokid_get_bg_tile_info(running_machine* const machine, tile_data* const tileinfo, tilemap_memory_index const tile_index, int const gfxnum, const UINT8* const videoram)
+static void robokid_get_bg_tile_info(running_machine* const machine, tile_data* const tileinfo, tilemap_memory_index const tile_index, int const gfxnum, const UINT8* const videoram)
 {
 	int const lo = videoram[(tile_index << 1)];
 	int const hi = videoram[(tile_index << 1) | 1];
@@ -113,6 +119,12 @@ static TILE_GET_INFO( robokid_get_bg2_tile_info )
 
 
 
+/*************************************
+ *
+ *  Video system start
+ *
+ *************************************/
+
 static void videoram_alloc(const running_machine* const machine, int const size)
 {
 	if (size)
@@ -128,15 +140,15 @@ static void videoram_alloc(const running_machine* const machine, int const size)
 		memset(robokid_bg2_videoram, 0x00, size);
 	}
 
-	sp_bitmap = auto_bitmap_alloc (machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	sp_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 }
 
 VIDEO_START( ninjakd2 )
 {
 	videoram_alloc(machine, 0);
 
-	fg_tilemap = tilemap_create(         get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,  8,  8, 32, 32);
-	bg_tilemap = tilemap_create(ninjakd2_get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16, 16, 32, 32);
+	fg_tilemap = tilemap_create(         get_fg_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+	bg_tilemap = tilemap_create(ninjakd2_get_bg_tile_info, tilemap_scan_rows,  16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 15);
 
@@ -147,8 +159,8 @@ VIDEO_START( mnight )
 {
 	videoram_alloc(machine, 0);
 
-	fg_tilemap = tilemap_create(       get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,  8,  8, 32, 32);
-	bg_tilemap = tilemap_create(mnight_get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16, 16, 32, 32);
+	fg_tilemap = tilemap_create(       get_fg_tile_info, tilemap_scan_rows,   8,  8, 32, 32);
+	bg_tilemap = tilemap_create(mnight_get_bg_tile_info, tilemap_scan_rows,  16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 15);
 
@@ -161,10 +173,10 @@ VIDEO_START( robokid )
 
 	videoram_alloc(machine, 0x0800);
 
-	fg_tilemap  = tilemap_create(        get_fg_tile_info,  tilemap_scan_rows, TILEMAP_TYPE_PEN,  8,  8, 32, 32);
-	bg0_tilemap = tilemap_create(robokid_get_bg0_tile_info, robokid_bg_scan,   TILEMAP_TYPE_PEN, 16, 16, 32, 32);
-	bg1_tilemap = tilemap_create(robokid_get_bg1_tile_info, robokid_bg_scan,   TILEMAP_TYPE_PEN, 16, 16, 32, 32);
-	bg2_tilemap = tilemap_create(robokid_get_bg2_tile_info, robokid_bg_scan,   TILEMAP_TYPE_PEN, 16, 16, 32, 32);
+	fg_tilemap  = tilemap_create(        get_fg_tile_info,  tilemap_scan_rows,   8,  8, 32, 32);
+	bg0_tilemap = tilemap_create(robokid_get_bg0_tile_info, robokid_bg_scan,    16, 16, 32, 32);
+	bg1_tilemap = tilemap_create(robokid_get_bg1_tile_info, robokid_bg_scan,    16, 16, 32, 32);
+	bg2_tilemap = tilemap_create(robokid_get_bg2_tile_info, robokid_bg_scan,    16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap,  15);
 	tilemap_set_transparent_pen(bg1_tilemap, 15);
@@ -179,10 +191,10 @@ VIDEO_START( omegaf )
 
 	videoram_alloc(machine, 0x2000);
 
-	fg_tilemap  = tilemap_create(        get_fg_tile_info,  tilemap_scan_rows, TILEMAP_TYPE_PEN,  8,  8,  32, 32);
-	bg0_tilemap = tilemap_create(robokid_get_bg0_tile_info, omegaf_bg_scan,    TILEMAP_TYPE_PEN, 16, 16, 128, 32);
-	bg1_tilemap = tilemap_create(robokid_get_bg1_tile_info, omegaf_bg_scan,    TILEMAP_TYPE_PEN, 16, 16, 128, 32);
-	bg2_tilemap = tilemap_create(robokid_get_bg2_tile_info, omegaf_bg_scan,    TILEMAP_TYPE_PEN, 16, 16, 128, 32);
+	fg_tilemap  = tilemap_create(        get_fg_tile_info,  tilemap_scan_rows,   8,  8,  32, 32);
+	bg0_tilemap = tilemap_create(robokid_get_bg0_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
+	bg1_tilemap = tilemap_create(robokid_get_bg1_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
+	bg2_tilemap = tilemap_create(robokid_get_bg2_tile_info, omegaf_bg_scan,     16, 16, 128, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap,  15);
 	tilemap_set_transparent_pen(bg0_tilemap, 15);
@@ -193,6 +205,12 @@ VIDEO_START( omegaf )
 }
 
 
+
+/*************************************
+ *
+ *  Memory handlers
+ *
+ *************************************/
 
 WRITE8_HANDLER( ninjakd2_bgvideoram_w )
 {
@@ -264,7 +282,7 @@ WRITE8_HANDLER( robokid_bg2_videoram_w )
 
 
 
-void bg_ctrl(int offset, int data, tilemap* tilemap)
+static void bg_ctrl(int offset, int data, tilemap* tilemap)
 {
 	int scrollx = tilemap_get_scrollx(tilemap, 0);
 	int scrolly = tilemap_get_scrolly(tilemap, 0);
@@ -310,7 +328,14 @@ WRITE8_HANDLER( ninjakd2_sprite_overdraw_w )
 }
 
 
-static void draw_sprites(running_machine* const machine, mame_bitmap* const bitmap, const rectangle* const cliprect)
+
+/*************************************
+ *
+ *  Video update
+ *
+ *************************************/
+
+static void draw_sprites(running_machine* const machine, bitmap_t* const bitmap)
 {
 	const gfx_element* const gfx = machine->gfx[1];
 	int const big_xshift = robokid_sprites ? 1 : 0;
@@ -322,10 +347,10 @@ static void draw_sprites(running_machine* const machine, mame_bitmap* const bitm
 	// the sprite generator draws exactly 96 16x16 sprites per frame. When big
 	// (32x32) sprites are drawn, this counts for 4 sprites drawn, so the sprite
 	// list is reduced accordingly (i.e. three slots at the end of the list will
-	// be ignored). Note that a disabled sprite, even if it is not draw, still
+	// be ignored). Note that a disabled sprite, even if it is not drawn, still
 	// counts as one sprite drawn.
 	// This is proven by Mutant Night, which doesn't work correctly (leaves shots
-	// on screen) if we don't take this into account.
+	// on screen) if we don't take big sprites into account.
 
 	for (;;)
 	{
@@ -342,7 +367,7 @@ static void draw_sprites(running_machine* const machine, mame_bitmap* const bitm
 			int const big = (sprptr[2] & 0x04) >> 2;
 			int x,y;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 240 - 16*big - sx;
 				sy = 240 - 16*big - sy;
@@ -374,12 +399,10 @@ static void draw_sprites(running_machine* const machine, mame_bitmap* const bitm
 							for (xx = 0; xx < 16; ++xx)
 							{
 								UINT16* const ptr = BITMAP_ADDR16(bitmap, sy + yy, sx + xx);
-								int const offset = (flipx ? (16 - xx) : xx) + (flipy ? (16 - yy) : yy ) * gfx->line_modulo;;
+								int const offset = (flipx ? (15 - xx) : xx) + (flipy ? (15 - yy) : yy ) * gfx->line_modulo;;
 
 								if (srcgfx[offset] != 15 && (*ptr & 0xf0) >= 0xc0)
-								{
 									*ptr = 15;
-								}
 							}
 						}
 					}
@@ -390,8 +413,7 @@ static void draw_sprites(running_machine* const machine, mame_bitmap* const bitm
 								color,
 								flipx,flipy,
 								sx + 16*x, sy + 16*y,
-								cliprect,
-								TRANSPARENCY_PEN, 15);
+								0, TRANSPARENCY_PEN, 15);
 					}
 
 					++sprites_drawn;
@@ -412,7 +434,7 @@ static void draw_sprites(running_machine* const machine, mame_bitmap* const bitm
 }
 
 
-static void erase_sprites(running_machine* const machine, mame_bitmap* const bitmap, const rectangle* const cliprect)
+static void erase_sprites(running_machine* const machine, bitmap_t* const bitmap, const rectangle* const cliprect)
 {
 	// if sprite overdraw is disabled, clear the sprite framebuffer
 	// if sprite overdraw is enabled, only clear palettes 0-B, and leave C-F on screen
@@ -439,7 +461,7 @@ static void erase_sprites(running_machine* const machine, mame_bitmap* const bit
 
 VIDEO_UPDATE( ninjakd2 )
 {
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
@@ -452,7 +474,7 @@ VIDEO_UPDATE( ninjakd2 )
 
 VIDEO_UPDATE( robokid )
 {
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 	tilemap_draw(bitmap, cliprect, bg0_tilemap, 0, 0);
 
@@ -469,7 +491,7 @@ VIDEO_UPDATE( robokid )
 
 VIDEO_UPDATE( omegaf )
 {
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 	tilemap_draw(bitmap, cliprect, bg0_tilemap, 0, 0);
 
@@ -494,5 +516,5 @@ VIDEO_EOF( ninjakd2 )
 	// exit from stage 3.
 	sprite_overdraw_enabled = next_sprite_overdraw_enabled;
 
-	draw_sprites(machine, sp_bitmap, 0);
+	draw_sprites(machine, sp_bitmap);
 }

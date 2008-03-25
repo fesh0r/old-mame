@@ -49,8 +49,8 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START( pushman )
 {
-	bg_tilemap = tilemap_create(get_back_tile_info,background_scan_rows,TILEMAP_TYPE_PEN,     32,32,128,64);
-	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,   TILEMAP_TYPE_PEN, 8, 8, 32,32);
+	bg_tilemap = tilemap_create(get_back_tile_info,background_scan_rows,     32,32,128,64);
+	tx_tilemap = tilemap_create(get_text_tile_info,tilemap_scan_rows,    8, 8, 32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
 }
@@ -82,7 +82,7 @@ WRITE16_HANDLER( pushman_videoram_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,x,y,color,sprite,flipx,flipy;
 
@@ -113,7 +113,7 @@ VIDEO_UPDATE( pushman )
 	tilemap_set_scrolly( bg_tilemap,0, 0xf00-control[1] );
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }

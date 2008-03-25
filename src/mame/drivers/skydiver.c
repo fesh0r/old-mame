@@ -87,6 +87,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "skydiver.h"
 #include "sound/discrete.h"
 
@@ -100,7 +101,7 @@ static int skydiver_nmion;
  *
  *************************************/
 
-static const UINT16 colortable_source[] =
+static const int colortable_source[] =
 {
 	0x02, 0x00,
 	0x02, 0x01,
@@ -110,11 +111,21 @@ static const UINT16 colortable_source[] =
 
 static PALETTE_INIT( skydiver )
 {
-	palette_set_color(machine,0,MAKE_RGB(0x00,0x00,0x00)); /* black */
-	palette_set_color(machine,1,MAKE_RGB(0xff,0xff,0xff)); /* white */
-	palette_set_color(machine,2,MAKE_RGB(0xa0,0xa0,0xa0)); /* grey */
+	int i;
 
-	memcpy(colortable,colortable_source,sizeof(colortable_source));
+	for (i = 0; i < sizeof(colortable_source) / sizeof(colortable_source[0]); i++)
+	{
+		rgb_t color;
+
+		switch (colortable_source[i])
+		{
+		case 0:   color = RGB_BLACK; break;
+		case 1:   color = RGB_WHITE; break;
+		default:  color = MAKE_RGB(0xa0, 0xa0, 0xa0); break; /* grey */
+		}
+
+		palette_set_color(machine, i, color);
+	}
 }
 
 
@@ -134,11 +145,11 @@ static WRITE8_HANDLER( skydiver_nmion_w )
 static INTERRUPT_GEN( skydiver_interrupt )
 {
 	/* Convert range data to divide value and write to sound */
-	discrete_sound_w(SKYDIVER_RANGE_DATA, (0x01 << (~skydiver_videoram[0x394] & 0x07)) & 0xff);	// Range 0-2
+	discrete_sound_w(machine, SKYDIVER_RANGE_DATA, (0x01 << (~skydiver_videoram[0x394] & 0x07)) & 0xff);	// Range 0-2
 
-	discrete_sound_w(SKYDIVER_RANGE3_EN,  skydiver_videoram[0x394] & 0x08);		// Range 3 - note disable
-	discrete_sound_w(SKYDIVER_NOTE_DATA, ~skydiver_videoram[0x395] & 0xff);		// Note - freq
-	discrete_sound_w(SKYDIVER_NOISE_DATA,  skydiver_videoram[0x396] & 0x0f);	// NAM - Noise Amplitude
+	discrete_sound_w(machine, SKYDIVER_RANGE3_EN,  skydiver_videoram[0x394] & 0x08);		// Range 3 - note disable
+	discrete_sound_w(machine, SKYDIVER_NOTE_DATA, ~skydiver_videoram[0x395] & 0xff);		// Note - freq
+	discrete_sound_w(machine, SKYDIVER_NOISE_DATA,  skydiver_videoram[0x396] & 0x0f);	// NAM - Noise Amplitude
 
 	if (skydiver_nmion)
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
@@ -154,12 +165,12 @@ static INTERRUPT_GEN( skydiver_interrupt )
 
 static WRITE8_HANDLER( skydiver_sound_enable_w )
 {
-	discrete_sound_w(SKYDIVER_SOUND_EN, offset);
+	discrete_sound_w(machine, SKYDIVER_SOUND_EN, offset);
 }
 
 static WRITE8_HANDLER( skydiver_whistle_w )
 {
-	discrete_sound_w(SKYDIVER_WHISTLE1_EN + (offset >> 1), offset & 0x01);
+	discrete_sound_w(machine, SKYDIVER_WHISTLE1_EN + (offset >> 1), offset & 0x01);
 }
 
 
@@ -171,10 +182,10 @@ static WRITE8_HANDLER( skydiver_whistle_w )
  *************************************/
 
 static ADDRESS_MAP_START( skydiver_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x4300) AM_READWRITE(skydiver_wram_r, skydiver_wram_w)
-	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x4000) AM_READWRITE(MRA8_RAM, MWA8_RAM)		/* RAM B1 */
-	AM_RANGE(0x0400, 0x07ff) AM_MIRROR(0x4000) AM_READWRITE(MRA8_RAM, skydiver_videoram_w) AM_BASE(&skydiver_videoram)		/* RAMs K1,M1,P1,J1,N1,K/L1,L1,H/J1 */
+	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x4000) AM_READWRITE(SMH_RAM, SMH_RAM)		/* RAM B1 */
+	AM_RANGE(0x0400, 0x07ff) AM_MIRROR(0x4000) AM_READWRITE(SMH_RAM, skydiver_videoram_w) AM_BASE(&skydiver_videoram)		/* RAMs K1,M1,P1,J1,N1,K/L1,L1,H/J1 */
 	AM_RANGE(0x0800, 0x0801) AM_MIRROR(0x47f0) AM_WRITE(skydiver_lamp_s_w)
 	AM_RANGE(0x0802, 0x0803) AM_MIRROR(0x47f0) AM_WRITE(skydiver_lamp_k_w)
 	AM_RANGE(0x0804, 0x0805) AM_MIRROR(0x47f0) AM_WRITE(skydiver_start_lamp_1_w)
@@ -203,10 +214,10 @@ static ADDRESS_MAP_START( skydiver_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1810, 0x1810) AM_MIRROR(0x47e4) AM_READ(input_port_12_r)
 	AM_RANGE(0x1811, 0x1811) AM_MIRROR(0x47e4) AM_READ(input_port_13_r)
 	AM_RANGE(0x2000, 0x201f) AM_MIRROR(0x47e0) AM_READWRITE(watchdog_reset_r, skydiver_2000_201F_w)
-	AM_RANGE(0x2800, 0x2fff) AM_MIRROR(0x4000) AM_READ(MRA8_ROM)
-	AM_RANGE(0x3000, 0x37ff) AM_MIRROR(0x4000) AM_READ(MRA8_ROM)
-	AM_RANGE(0x3800, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x2800, 0x2fff) AM_MIRROR(0x4000) AM_READ(SMH_ROM)
+	AM_RANGE(0x3000, 0x37ff) AM_MIRROR(0x4000) AM_READ(SMH_ROM)
+	AM_RANGE(0x3800, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x7800, 0x7fff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -360,21 +371,21 @@ static MACHINE_DRIVER_START( skydiver )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6800,3000000/4)	   /* ???? */
 	MDRV_CPU_PROGRAM_MAP(skydiver_map, 0)
-	MDRV_CPU_VBLANK_INT(skydiver_interrupt, 5)
+	MDRV_CPU_VBLANK_INT_HACK(skydiver_interrupt, 5)
 	MDRV_WATCHDOG_VBLANK_INIT(8)	// 128V clocks the same as VBLANK
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(skydiver)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(skydiver)
-	MDRV_PALETTE_LENGTH(3)
-	MDRV_COLORTABLE_LENGTH(sizeof(colortable_source) / sizeof(colortable_source[0]))
+	MDRV_PALETTE_LENGTH(sizeof(colortable_source) / sizeof(colortable_source[0]))
 
 	MDRV_PALETTE_INIT(skydiver)
 	MDRV_VIDEO_START(skydiver)

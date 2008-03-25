@@ -35,7 +35,7 @@ WRITE8_HANDLER( bombjack_background_w )
 
 WRITE8_HANDLER( bombjack_flipscreen_w )
 {
-	if (flip_screen != (data & 0x01))
+	if (flip_screen_get() != (data & 0x01))
 	{
 		flip_screen_set(data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -66,17 +66,17 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( bombjack )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 16, 16, 16, 16);
+		 16, 16, 16, 16);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	state_save_register_global(background_image);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -106,7 +106,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			sy = 241-spriteram[offs+2];
 		flipx = spriteram[offs+1] & 0x40;
 		flipy =	spriteram[offs+1] & 0x80;
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			if (spriteram[offs+1] & 0x20)
 			{
@@ -135,6 +135,6 @@ VIDEO_UPDATE( bombjack )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

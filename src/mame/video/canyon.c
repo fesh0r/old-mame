@@ -30,11 +30,11 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( canyon )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle* cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle* cliprect)
 {
 	int i;
 
@@ -56,7 +56,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void draw_bombs(mame_bitmap *bitmap, const rectangle* cliprect)
+static void draw_bombs(bitmap_t *bitmap, const rectangle* cliprect)
 {
 	int i;
 
@@ -86,12 +86,12 @@ VIDEO_UPDATE( canyon )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
 	draw_bombs(bitmap, cliprect);
 
 	/* watchdog is disabled during service mode */
-	watchdog_enable(machine, !(readinputport(2) & 0x10));
+	watchdog_enable(screen->machine, !(readinputport(2) & 0x10));
 
 	return 0;
 }

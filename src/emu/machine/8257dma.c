@@ -220,7 +220,7 @@ static void dma8257_update_status(int which)
 	if (pending_transfer)
 	{
 		next = ATTOTIME_IN_HZ(dma[which].intf->clockhz / 4 );
-		timer_adjust(dma[which].timer,
+		timer_adjust_periodic(dma[which].timer,
 			attotime_zero,
 			which,
 			/* 1 byte transferred in 4 clock cycles */
@@ -247,7 +247,7 @@ static void dma8257_update_status(int which)
 
 static void prepare_msb_flip(int which)
 {
-	timer_adjust(dma[which].msbflip_timer, attotime_zero, which, attotime_zero);
+	timer_adjust_oneshot(dma[which].msbflip_timer, attotime_zero, which);
 }
 
 
@@ -363,17 +363,17 @@ READ8_HANDLER( dma8257_1_r )	{ return dma8257_read(1, offset); }
 WRITE8_HANDLER( dma8257_0_w ) { dma8257_write(0, offset, data); }
 WRITE8_HANDLER( dma8257_1_w ) { dma8257_write(1, offset, data); }
 
-READ16_HANDLER( dma8257_16le_0_r ) { return read16le_with_read8_handler(dma8257_0_r, offset, mem_mask); }
-READ16_HANDLER( dma8257_16le_1_r ) { return read16le_with_read8_handler(dma8257_1_r, offset, mem_mask); }
-WRITE16_HANDLER( dma8257_16le_0_w ) { write16le_with_write8_handler(dma8257_0_w, offset, data, mem_mask); }
-WRITE16_HANDLER( dma8257_16le_1_w ) { write16le_with_write8_handler(dma8257_1_w, offset, data, mem_mask); }
+READ16_HANDLER( dma8257_16le_0_r ) { return read16le_with_read8_handler(dma8257_0_r, machine, offset, mem_mask); }
+READ16_HANDLER( dma8257_16le_1_r ) { return read16le_with_read8_handler(dma8257_1_r, machine, offset, mem_mask); }
+WRITE16_HANDLER( dma8257_16le_0_w ) { write16le_with_write8_handler(dma8257_0_w, machine, offset, data, mem_mask); }
+WRITE16_HANDLER( dma8257_16le_1_w ) { write16le_with_write8_handler(dma8257_1_w, machine, offset, data, mem_mask); }
 
-READ32_HANDLER( dma8257_32le_0_r ) { return read32le_with_read8_handler(dma8257_0_r, offset, mem_mask); }
-READ32_HANDLER( dma8257_32le_1_r ) { return read32le_with_read8_handler(dma8257_1_r, offset, mem_mask); }
-WRITE32_HANDLER( dma8257_32le_0_w ) { write32le_with_write8_handler(dma8257_0_w, offset, data, mem_mask); }
-WRITE32_HANDLER( dma8257_32le_1_w ) { write32le_with_write8_handler(dma8257_1_w, offset, data, mem_mask); }
+READ32_HANDLER( dma8257_32le_0_r ) { return read32le_with_read8_handler(dma8257_0_r, machine, offset, mem_mask); }
+READ32_HANDLER( dma8257_32le_1_r ) { return read32le_with_read8_handler(dma8257_1_r, machine, offset, mem_mask); }
+WRITE32_HANDLER( dma8257_32le_0_w ) { write32le_with_write8_handler(dma8257_0_w, machine, offset, data, mem_mask); }
+WRITE32_HANDLER( dma8257_32le_1_w ) { write32le_with_write8_handler(dma8257_1_w, machine, offset, data, mem_mask); }
 
-READ64_HANDLER( dma8257_64be_0_r ) { return read64be_with_read8_handler(dma8257_0_r, offset, mem_mask); }
-READ64_HANDLER( dma8257_64be_1_r ) { return read64be_with_read8_handler(dma8257_1_r, offset, mem_mask); }
-WRITE64_HANDLER( dma8257_64be_0_w ) { write64be_with_write8_handler(dma8257_0_w, offset, data, mem_mask); }
-WRITE64_HANDLER( dma8257_64be_1_w ) { write64be_with_write8_handler(dma8257_1_w, offset, data, mem_mask); }
+READ64_HANDLER( dma8257_64be_0_r ) { return read64be_with_read8_handler(dma8257_0_r, machine, offset, mem_mask); }
+READ64_HANDLER( dma8257_64be_1_r ) { return read64be_with_read8_handler(dma8257_1_r, machine, offset, mem_mask); }
+WRITE64_HANDLER( dma8257_64be_0_w ) { write64be_with_write8_handler(dma8257_0_w, machine, offset, data, mem_mask); }
+WRITE64_HANDLER( dma8257_64be_1_w ) { write64be_with_write8_handler(dma8257_1_w, machine, offset, data, mem_mask); }

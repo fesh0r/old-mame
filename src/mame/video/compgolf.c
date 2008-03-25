@@ -16,7 +16,7 @@ PALETTE_INIT( compgolf )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 		bit0 = (color_prom[i] >> 0) & 0x01;
@@ -71,8 +71,8 @@ static TILE_GET_INFO( get_back_info )
 
 VIDEO_START( compgolf )
 {
-	background_tilemap = tilemap_create(get_back_info,back_scan,TILEMAP_TYPE_PEN, 16, 16, 32, 32);
-	text_tilemap = tilemap_create(get_text_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	background_tilemap = tilemap_create(get_back_info,back_scan, 16, 16, 32, 32);
+	text_tilemap = tilemap_create(get_text_info,tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(text_tilemap,0);
 }
@@ -88,7 +88,7 @@ xx------ xxxxxxxx -------- -------- sprite code
 -----x-- -------- -------- -------- Flip X
 -------- -------- -------- -------- Flip Y(used?)
 */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,fx,fy,x,y,color,sprite;
 
@@ -127,6 +127,6 @@ VIDEO_UPDATE( compgolf )
 
 	tilemap_draw(bitmap, cliprect, background_tilemap, 0, 0);
 	tilemap_draw(bitmap, cliprect, text_tilemap, 0, 0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

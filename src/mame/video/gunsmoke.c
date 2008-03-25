@@ -1,8 +1,5 @@
 #include "driver.h"
 
-#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
-
 UINT8 *gunsmoke_scrollx;
 UINT8 *gunsmoke_scrolly;
 
@@ -29,58 +26,42 @@ PALETTE_INIT( gunsmoke )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x100);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x100; i++)
 	{
-		int bit0, bit1, bit2, bit3, r, g, b;
+		int r = pal4bit(color_prom[i + 0x000]);
+		int g = pal4bit(color_prom[i + 0x100]);
+		int b = pal4bit(color_prom[i + 0x200]);
 
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[0] >> 1) & 0x01;
-		bit2 = (color_prom[0] >> 2) & 0x01;
-		bit3 = (color_prom[0] >> 3) & 0x01;
-
-		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
-
-		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		bit0 = (color_prom[2*machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
-
-		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-
-		palette_set_color(machine, i, MAKE_RGB(r, g, b));
-		color_prom++;
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	color_prom += 2 * machine->drv->total_colors;
 	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x300;
 
-	/* characters use colors 64-79 */
-	for (i = 0; i < TOTAL_COLORS(0); i++)
-		COLOR(0, i) = *(color_prom++) + 64;
-	color_prom += 128;	/* skip the bottom half of the PROM - not used */
-
-	/* background tiles use colors 0-63 */
-	for (i = 0; i < TOTAL_COLORS(1); i++)
+	/* characters use colors 0x40-0x4f */
+	for (i = 0; i < 0x80; i++)
 	{
-		COLOR(1, i) = color_prom[0] + 16 * (color_prom[256] & 0x03);
-		color_prom++;
+		UINT8 ctabentry = color_prom[i] | 0x40;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
-	color_prom += TOTAL_COLORS(1);
 
-	/* sprites use colors 128-255 */
-	for (i = 0; i < TOTAL_COLORS(2); i++)
+	/* background tiles use colors 0-0x3f */
+	for (i = 0x100; i < 0x200; i++)
 	{
-		COLOR(2, i) = color_prom[0] + 16 * (color_prom[256] & 0x07) + 128;
-		color_prom++;
+		UINT8 ctabentry = color_prom[i] | ((color_prom[i + 0x100] & 0x03) << 4);
+		colortable_entry_set_value(machine->colortable, i - 0x80, ctabentry);
 	}
-	color_prom += TOTAL_COLORS(2);
+
+	/* sprites use colors 0x80-0xff */
+	for (i = 0x300; i < 0x400; i++)
+	{
+		UINT8 ctabentry = color_prom[i] | ((color_prom[i + 0x100] & 0x07) << 4) | 0x80;
+		colortable_entry_set_value(machine->colortable, i - 0x180, ctabentry);
+	}
 }
 
 WRITE8_HANDLER( gunsmoke_videoram_w )
@@ -144,6 +125,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 	int code = videoram[tile_index] + ((attr & 0xe0) << 2);
 	int color = attr & 0x1f;
 
+	tileinfo->group = color;
+
 	SET_TILE_INFO(0, code, color, 0);
 }
 
@@ -154,13 +137,10 @@ VIDEO_START( gunsmoke )
 	memory_configure_bank(1, 0, 4, &rombase[0x10000], 0x4000);
 
 	/* create tilemaps */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 32, 32, 2048, 8);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,  32, 32, 2048, 8);
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  8, 8, 32, 32);
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_COLORTABLE, 8, 8, 32, 32);
-
-	tilemap_set_transparent_pen(fg_tilemap, 0x4f);
+	colortable_configure_tilemap_groups(machine->colortable, fg_tilemap, machine->gfx[0], 0x4f);
 
 	/* register for saving */
 	state_save_register_global(chon);
@@ -169,7 +149,7 @@ VIDEO_START( gunsmoke )
 	state_save_register_global(sprite3bank);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -187,7 +167,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		if (bank == 3) bank += sprite3bank;
 		code += 256 * bank;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -208,9 +188,9 @@ VIDEO_UPDATE( gunsmoke )
 	if (bgon)
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	else
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
-	if (objon) draw_sprites(machine, bitmap, cliprect);
+	if (objon) draw_sprites(screen->machine, bitmap, cliprect);
 	if (chon)  tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

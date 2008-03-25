@@ -147,7 +147,7 @@ static VIDEO_START(firebeat)
 }
 
 
-static void gcu_draw_object(int chip, mame_bitmap *bitmap, const rectangle *cliprect, UINT32 *cmd)
+static void gcu_draw_object(int chip, bitmap_t *bitmap, const rectangle *cliprect, UINT32 *cmd)
 {
 	// 0x00: xxx----- -------- -------- --------   command type
 	// 0x00: -------- xxxxxxxx xxxxxxxx xxxxxxxx   object data address in vram
@@ -300,7 +300,7 @@ static void gcu_draw_object(int chip, mame_bitmap *bitmap, const rectangle *clip
 	}
 }
 
-static void gcu_fill_rect(mame_bitmap *bitmap, const rectangle *cliprect, UINT32 *cmd)
+static void gcu_fill_rect(bitmap_t *bitmap, const rectangle *cliprect, UINT32 *cmd)
 {
 	int i, j;
 	int x1, y1, x2, y2;
@@ -347,7 +347,7 @@ static void gcu_fill_rect(mame_bitmap *bitmap, const rectangle *cliprect, UINT32
 	}
 }
 
-static void gcu_draw_character(int chip, mame_bitmap *bitmap, const rectangle *cliprect, UINT32 *cmd)
+static void gcu_draw_character(int chip, bitmap_t *bitmap, const rectangle *cliprect, UINT32 *cmd)
 {
 	// 0x00: xxx----- -------- -------- --------   command type
 	// 0x00: -------- xxxxxxxx xxxxxxxx xxxxxxxx   character data address in vram
@@ -395,7 +395,7 @@ static void gcu_draw_character(int chip, mame_bitmap *bitmap, const rectangle *c
 	}
 }
 
-static void gcu_exec_display_list(int chip, mame_bitmap *bitmap, const rectangle *cliprect, UINT32 address)
+static void gcu_exec_display_list(int chip, bitmap_t *bitmap, const rectangle *cliprect, UINT32 address)
 {
 	int counter = 0;
 	int end = 0;
@@ -469,12 +469,16 @@ static int tick = 0;
 static int layer = 0;
 static VIDEO_UPDATE(firebeat)
 {
-	int chip = screen;
-	//int i;
+	int chip;
+
+	if (screen == device_list_find_by_index(screen->machine->config->devicelist, VIDEO_SCREEN, 0))
+		chip = 0;
+	else
+		chip = 1;
 
 	fillbitmap(bitmap, 0, cliprect);
 
-	if (mame_stricmp(machine->gamedrv->name, "popn7") == 0)
+	if (mame_stricmp(screen->machine->gamedrv->name, "popn7") == 0)
 	{
 		gcu_exec_display_list(chip, bitmap, cliprect, 0x1f80000);
 	}
@@ -568,7 +572,7 @@ static UINT32 GCU_r(int chip, UINT32 offset, UINT32 mem_mask)
 	return 0xffffffff;
 }
 
-static void GCU_w(int chip, UINT32 offset, UINT32 data, UINT32 mem_mask)
+static void GCU_w(running_machine *machine, int chip, UINT32 offset, UINT32 data, UINT32 mem_mask)
 {
 	int reg = offset * 4;
 
@@ -591,21 +595,21 @@ static void GCU_w(int chip, UINT32 offset, UINT32 data, UINT32 mem_mask)
 			COMBINE_DATA( &gcu[chip].visible_area );
 			if (ACCESSING_LSW32)
 			{
-				int screen = chip;
-				int width, height;
-				screen_state *state = &Machine->screen[screen];
-				rectangle visarea = state->visarea;
+				const device_config *screen = device_list_find_by_index(machine->config->devicelist, VIDEO_SCREEN, chip);
 
-				width = (gcu[chip].visible_area & 0xffff);
-				height = (gcu[chip].visible_area >> 16) & 0xffff;
-				//set_visible_area(0, width, 0, height);
+				if (screen != NULL)
+				{
+					rectangle visarea = *video_screen_get_visible_area(screen);
+					int width, height;
 
-				visarea.max_x = width-1;
-				visarea.max_y = height-1;
+					width = (gcu[chip].visible_area & 0xffff);
+					height = (gcu[chip].visible_area >> 16) & 0xffff;
 
-				// only try and update the screen if the driver says we have one
-				if(Machine->drv->screen[screen].tag)
-					video_screen_configure(screen, visarea.max_x + 1, visarea.max_y + 1, &visarea, Machine->screen[screen].refresh);
+					visarea.max_x = width-1;
+					visarea.max_y = height-1;
+
+					video_screen_configure(screen, visarea.max_x + 1, visarea.max_y + 1, &visarea, video_screen_get_frame_period(screen).attoseconds);
+				}
 			}
 			break;
 		}
@@ -649,7 +653,7 @@ static READ32_HANDLER(gcu0_r)
 
 static WRITE32_HANDLER(gcu0_w)
 {
-	GCU_w(0, offset, data, mem_mask);
+	GCU_w(machine, 0, offset, data, mem_mask);
 }
 
 static READ32_HANDLER(gcu1_r)
@@ -659,7 +663,7 @@ static READ32_HANDLER(gcu1_r)
 
 static WRITE32_HANDLER(gcu1_w)
 {
-	GCU_w(1, offset, data, mem_mask);
+	GCU_w(machine, 1, offset, data, mem_mask);
 }
 
 /*****************************************************************************/
@@ -1220,19 +1224,19 @@ static READ32_HANDLER( comm_uart_r )
 
 	if (!(mem_mask & 0xff000000))
 	{
-		r |= pc16552d_0_r((offset*4)+0) << 24;
+		r |= pc16552d_0_r(machine, (offset*4)+0) << 24;
 	}
 	if (!(mem_mask & 0x00ff0000))
 	{
-		r |= pc16552d_0_r((offset*4)+1) << 16;
+		r |= pc16552d_0_r(machine, (offset*4)+1) << 16;
 	}
 	if (!(mem_mask & 0x0000ff00))
 	{
-		r |= pc16552d_0_r((offset*4)+2) << 8;
+		r |= pc16552d_0_r(machine, (offset*4)+2) << 8;
 	}
 	if (!(mem_mask & 0x000000ff))
 	{
-		r |= pc16552d_0_r((offset*4)+3) << 0;
+		r |= pc16552d_0_r(machine, (offset*4)+3) << 0;
 	}
 
 	return r;
@@ -1242,19 +1246,19 @@ static WRITE32_HANDLER( comm_uart_w )
 {
 	if (!(mem_mask & 0xff000000))
 	{
-		pc16552d_0_w((offset*4)+0, (data >> 24) & 0xff);
+		pc16552d_0_w(machine, (offset*4)+0, (data >> 24) & 0xff);
 	}
 	if (!(mem_mask & 0x00ff0000))
 	{
-		pc16552d_0_w((offset*4)+1, (data >> 16) & 0xff);
+		pc16552d_0_w(machine, (offset*4)+1, (data >> 16) & 0xff);
 	}
 	if (!(mem_mask & 0x0000ff00))
 	{
-		pc16552d_0_w((offset*4)+2, (data >> 8) & 0xff);
+		pc16552d_0_w(machine, (offset*4)+2, (data >> 8) & 0xff);
 	}
 	if (!(mem_mask & 0x000000ff))
 	{
-		pc16552d_0_w((offset*4)+3, (data >> 0) & 0xff);
+		pc16552d_0_w(machine, (offset*4)+3, (data >> 0) & 0xff);
 	}
 }
 
@@ -1323,11 +1327,11 @@ static READ32_HANDLER( sound_r )
 
 	if (!(mem_mask & 0xff000000))	/* External RAM read */
 	{
-		r |= YMZ280B_data_0_r(offset) << 24;
+		r |= YMZ280B_data_0_r(machine, offset) << 24;
 	}
 	if (!(mem_mask & 0x00ff0000))
 	{
-		r |= YMZ280B_status_0_r(offset) << 16;
+		r |= YMZ280B_status_0_r(machine, offset) << 16;
 	}
 
 	return r;
@@ -1336,14 +1340,13 @@ static READ32_HANDLER( sound_r )
 static WRITE32_HANDLER( sound_w )
 {
 //  printf("sound_w: %08X, %08X, %08X\n", offset, data, mem_mask);
-
 	if (!(mem_mask & 0xff000000))
 	{
-		YMZ280B_register_0_w(offset, (data >> 24) & 0xff);
+		YMZ280B_register_0_w(machine, offset, (data >> 24) & 0xff);
 	}
 	if (!(mem_mask & 0x00ff0000))
 	{
-		YMZ280B_data_0_w(offset, (data >> 16) & 0xff);
+		YMZ280B_data_0_w(machine, offset, (data >> 16) & 0xff);
 	}
 }
 
@@ -1396,7 +1399,7 @@ static READ32_HANDLER( midi_uart_r )
 
 	if (!(mem_mask & 0xff000000))
 	{
-		r |= pc16552d_1_r(offset >> 6) << 24;
+		r |= pc16552d_1_r(machine, offset >> 6) << 24;
 	}
 
 	return r;
@@ -1406,7 +1409,7 @@ static WRITE32_HANDLER( midi_uart_w )
 {
 	if (!(mem_mask & 0xff000000))
 	{
-		pc16552d_1_w(offset >> 6, (data >> 24) & 0xff);
+		pc16552d_1_w(machine, offset >> 6, (data >> 24) & 0xff);
 	}
 }
 
@@ -1557,7 +1560,7 @@ static WRITE32_HANDLER( lamp_output_w )
 
 static WRITE32_HANDLER( lamp_output_kbm_w )
 {
-	lamp_output_w(offset, data, mem_mask);
+	lamp_output_w(machine, offset, data, mem_mask);
 
 	if (!(mem_mask & 0xff000000))
 	{
@@ -1576,7 +1579,7 @@ static WRITE32_HANDLER( lamp_output_kbm_w )
 
 static WRITE32_HANDLER( lamp_output_ppp_w )
 {
-	lamp_output_w(offset, data, mem_mask);
+	lamp_output_w(machine, offset, data, mem_mask);
 
 	// ParaParaParadise lamps (active high)
 	// 0x00000100 Left
@@ -1623,7 +1626,7 @@ static WRITE32_HANDLER( lamp_output2_w )
 
 static WRITE32_HANDLER( lamp_output2_ppp_w )
 {
-	lamp_output2_w(offset, data, mem_mask);
+	lamp_output2_w(machine, offset, data, mem_mask);
 
 	// ParaParaParadise lamps (active high)
 	// 0x00010000 Top LED 0
@@ -1657,7 +1660,7 @@ static WRITE32_HANDLER( lamp_output3_w )
 
 static WRITE32_HANDLER( lamp_output3_ppp_w )
 {
-	lamp_output3_w(offset, data, mem_mask);
+	lamp_output3_w(machine, offset, data, mem_mask);
 
 	// ParaParaParadise lamps (active high)
 	// 0x00010000 Lamp 0
@@ -1993,22 +1996,20 @@ static MACHINE_DRIVER_START(firebeat)
 	MDRV_CPU_ADD(PPC403, 66000000)
 	MDRV_CPU_CONFIG(firebeat_ppc_cfg)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
-	MDRV_CPU_VBLANK_INT(firebeat_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", firebeat_interrupt)
 
 	MDRV_MACHINE_RESET(firebeat)
 	MDRV_NVRAM_HANDLER(firebeat)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
-	MDRV_PALETTE_LENGTH(32768)
-
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
+
+	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(firebeat)
 	MDRV_VIDEO_UPDATE(firebeat)
@@ -2033,26 +2034,25 @@ static MACHINE_DRIVER_START(firebeat2)
 	MDRV_CPU_ADD(PPC403, 66000000)
 	MDRV_CPU_CONFIG(firebeat_ppc_cfg)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
-	MDRV_CPU_VBLANK_INT(firebeat_interrupt,1)
+	MDRV_CPU_VBLANK_INT("left", firebeat_interrupt)
 
 	MDRV_MACHINE_RESET(firebeat)
 	MDRV_NVRAM_HANDLER(firebeat)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_PALETTE_LENGTH(32768)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
 
@@ -2237,7 +2237,7 @@ static void security_w(UINT8 data)
 
 /*****************************************************************************/
 
-static void init_lights(write32_handler out1, write32_handler out2, write32_handler out3)
+static void init_lights(write32_machine_func out1, write32_machine_func out2, write32_machine_func out3)
 {
 	if(!out1) out1 = lamp_output_w;
 	if(!out2) out1 = lamp_output2_w;
@@ -2259,8 +2259,8 @@ static void init_firebeat(running_machine *machine)
 
 	rtc65271_init(xram, NULL);
 
-	pc16552d_init(0, 19660800, comm_uart_irq_callback);		// Network UART
-	pc16552d_init(1, 24000000, midi_uart_irq_callback);		// MIDI UART
+	pc16552d_init(0, 19660800, comm_uart_irq_callback, 0);		// Network UART
+	pc16552d_init(1, 24000000, midi_uart_irq_callback, 0);		// MIDI UART
 
 	extend_board_irq_enable = 0x3f;
 	extend_board_irq_active = 0x00;
@@ -2292,7 +2292,7 @@ static void init_keyboard(void)
 {
 	// set keyboard timer
 	keyboard_timer = timer_alloc(keyboard_timer_callback, NULL);
-	timer_adjust(keyboard_timer, ATTOTIME_IN_MSEC(10), 0, ATTOTIME_IN_MSEC(10));
+	timer_adjust_periodic(keyboard_timer, ATTOTIME_IN_MSEC(10), 0, ATTOTIME_IN_MSEC(10));
 }
 
 static DRIVER_INIT(kbm)
@@ -2412,10 +2412,10 @@ ROM_END
 
 /*****************************************************************************/
 
-GAME( 2000, ppp,	  0,       firebeat,      ppp,    ppp,      ROT0,   "Konami",  "ParaParaParadise", GAME_NOT_WORKING);
-GAME( 2000, ppd,      0,       firebeat,      ppp,    ppd,      ROT0,   "Konami",  "ParaParaDancing", GAME_NOT_WORKING);
-GAME( 2000, ppp11,	  0,       firebeat,      ppp,    ppp,      ROT0,   "Konami",  "ParaParaParadise v1.1", GAME_NOT_WORKING);
-GAMEL(2000, kbm,      0,       firebeat2,     kbm,    kbm,    ROT270,   "Konami",  "Keyboardmania", GAME_NOT_WORKING, layout_firebeat);
-GAMEL(2000, kbm2nd,   0,       firebeat2,     kbm,    kbm,    ROT270,   "Konami",  "Keyboardmania 2nd Mix", GAME_NOT_WORKING, layout_firebeat);
-GAMEL(2001, kbm3rd,   0,       firebeat2,     kbm,    kbm,    ROT270,   "Konami",  "Keyboardmania 3rd Mix", GAME_NOT_WORKING, layout_firebeat);
-GAME( 2001, popn7,    0,       firebeat_spu,  popn,   ppp,      ROT0,   "Konami",  "Pop n' Music 7", GAME_NOT_WORKING);
+GAME( 2000, ppp,	  0,       firebeat,      ppp,    ppp,      ROT0,   "Konami",  "ParaParaParadise", GAME_NOT_WORKING)
+GAME( 2000, ppd,      0,       firebeat,      ppp,    ppd,      ROT0,   "Konami",  "ParaParaDancing", GAME_NOT_WORKING)
+GAME( 2000, ppp11,	  0,       firebeat,      ppp,    ppp,      ROT0,   "Konami",  "ParaParaParadise v1.1", GAME_NOT_WORKING)
+GAMEL(2000, kbm,      0,       firebeat2,     kbm,    kbm,    ROT270,   "Konami",  "Keyboardmania", GAME_NOT_WORKING, layout_firebeat)
+GAMEL(2000, kbm2nd,   0,       firebeat2,     kbm,    kbm,    ROT270,   "Konami",  "Keyboardmania 2nd Mix", GAME_NOT_WORKING, layout_firebeat)
+GAMEL(2001, kbm3rd,   0,       firebeat2,     kbm,    kbm,    ROT270,   "Konami",  "Keyboardmania 3rd Mix", GAME_NOT_WORKING, layout_firebeat)
+GAME( 2001, popn7,    0,       firebeat_spu,  popn,   ppp,      ROT0,   "Konami",  "Pop n' Music 7", GAME_NOT_WORKING)

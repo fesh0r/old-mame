@@ -170,7 +170,7 @@ enum
 -------------------------------------------------*/
 
 /* texture scaling callback */
-typedef void (*texture_scaler)(mame_bitmap *dest, const mame_bitmap *source, const rectangle *sbounds, void *param);
+typedef void (*texture_scaler_func)(bitmap_t *dest, const bitmap_t *source, const rectangle *sbounds, void *param);
 
 
 
@@ -308,8 +308,8 @@ void render_init(running_machine *machine);
 /* set a notifier that we call before doing long scaling operations */
 void render_set_rescale_notify(running_machine *machine, int (*notifier)(running_machine *, int, int));
 
-/* return a bitmask indicating the live screens */
-UINT32 render_get_live_screens_mask(void);
+/* return a boolean indicating if the screen is live */
+int render_is_live_screen(const device_config *screen);
 
 /* return the smallest maximum update rate across all targets */
 float render_get_max_update_rate(void);
@@ -376,7 +376,7 @@ void render_target_set_view(render_target *target, int viewindex);
 void render_target_set_max_texture_size(render_target *target, int maxwidth, int maxheight);
 
 /* compute the visible area for the given target with the current layout and proposed new parameters */
-void render_target_compute_visible_area(render_target *target, INT32 target_width, INT32 target_height, float target_pixel_aspect, UINT8 target_orientation, INT32 *visible_width, INT32 *visible_height);
+void render_target_compute_visible_area(render_target *target, INT32 target_width, INT32 target_height, float target_pixel_aspect, int target_orientation, INT32 *visible_width, INT32 *visible_height);
 
 /* get the "minimum" size of a target, which is the smallest bounds that will ensure at least
    1 target pixel per source pixel for all included screens */
@@ -390,16 +390,16 @@ const render_primitive_list *render_target_get_primitives(render_target *target)
 /* ----- render texture management ----- */
 
 /* allocate a new texture */
-render_texture *render_texture_alloc(texture_scaler scaler, void *param);
+render_texture *render_texture_alloc(texture_scaler_func scaler, void *param);
 
 /* free an allocated texture */
 void render_texture_free(render_texture *texture);
 
 /* set a new source bitmap */
-void render_texture_set_bitmap(render_texture *texture, mame_bitmap *bitmap, const rectangle *sbounds, UINT32 palettebase, int format);
+void render_texture_set_bitmap(render_texture *texture, bitmap_t *bitmap, const rectangle *sbounds, UINT32 palettebase, int format);
 
 /* generic high quality resampling scaler */
-void render_texture_hq_scale(mame_bitmap *dest, const mame_bitmap *source, const rectangle *sbounds, void *param);
+void render_texture_hq_scale(bitmap_t *dest, const bitmap_t *source, const rectangle *sbounds, void *param);
 
 
 
@@ -460,13 +460,13 @@ float render_container_get_yoffset(render_container *container);
 void render_container_set_yoffset(render_container *container, float yoffset);
 
 /* set the overlay bitmap for the container */
-void render_container_set_overlay(render_container *container, mame_bitmap *bitmap);
+void render_container_set_overlay(render_container *container, bitmap_t *bitmap);
 
 /* return a pointer to the UI container */
 render_container *render_container_get_ui(void);
 
-/* return a pointer to the indexed screen container */
-render_container *render_container_get_screen(int screen);
+/* return a pointer to the container for the given screen */
+render_container *render_container_get_screen(const device_config *screen);
 
 /* set the opacity of a given palette entry */
 void render_container_set_palette_alpha(render_container *container, UINT32 entry, UINT8 alpha);

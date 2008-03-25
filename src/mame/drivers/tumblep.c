@@ -72,15 +72,15 @@ static READ16_HANDLER( tumblep_prot_r )
 
 static WRITE16_HANDLER( tumblep_sound_w )
 {
-	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+	soundlatch_w(machine,0,data & 0xff);
+	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 }
 
 #ifdef UNUSED_FUNCTION
 static WRITE16_HANDLER( jumppop_sound_w )
 {
-	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE );
+	soundlatch_w(machine,0,data & 0xff);
+	cpunum_set_input_line(machine, 1, 0, ASSERT_LINE );
 }
 #endif
 
@@ -107,31 +107,31 @@ static READ16_HANDLER( tumblepop_controls_r )
 /******************************************************************************/
 
 static ADDRESS_MAP_START( tumblepop_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x120000, 0x123fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x140000, 0x1407ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x120000, 0x123fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x140000, 0x1407ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x180000, 0x18000f) AM_READ(tumblepop_controls_r)
-	AM_RANGE(0x1a0000, 0x1a07ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x320000, 0x320fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x322000, 0x322fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x1a0000, 0x1a07ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x320000, 0x320fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x322000, 0x322fff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tumblepop_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 #if TUMBLEP_HACK
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_RAM)	// To write levels modifications
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_RAM)	// To write levels modifications
 #else
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
 #endif
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(tumblep_sound_w)
-	AM_RANGE(0x120000, 0x123fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x140000, 0x1407ff) AM_READ(MRA16_RAM) AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x18000c, 0x18000d) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x1a0000, 0x1a07ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x300000, 0x30000f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x120000, 0x123fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x140000, 0x1407ff) AM_READ(SMH_RAM) AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x18000c, 0x18000d) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x1a0000, 0x1a07ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x300000, 0x30000f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 	AM_RANGE(0x320000, 0x320fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x322000, 0x322fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x340000, 0x3407ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll) // unused
-	AM_RANGE(0x342000, 0x3427ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll) // unused
+	AM_RANGE(0x340000, 0x3407ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll) // unused
+	AM_RANGE(0x342000, 0x3427ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll) // unused
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -140,32 +140,32 @@ static WRITE8_HANDLER( YM2151_w )
 {
 	switch (offset) {
 	case 0:
-		YM2151_register_port_0_w(0,data);
+		YM2151_register_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2151_data_port_0_w(0,data);
+		YM2151_data_port_0_w(machine,0,data);
 		break;
 	}
 }
 
 /* Physical memory map (21 bits) */
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_READ(MRA8_NOP)
+	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x100001) AM_READ(SMH_NOP)
 	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
-	AM_RANGE(0x130000, 0x130001) AM_READ(MRA8_NOP) /* This board only has 1 oki chip */
+	AM_RANGE(0x130000, 0x130001) AM_READ(SMH_NOP) /* This board only has 1 oki chip */
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x100000, 0x100001) AM_WRITE(MWA8_NOP) /* YM2203 - this board doesn't have one */
+	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x100001) AM_WRITE(SMH_NOP) /* YM2203 - this board doesn't have one */
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_w)
 	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0x130000, 0x130001) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
+	AM_RANGE(0x130000, 0x130001) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
@@ -321,20 +321,20 @@ static MACHINE_DRIVER_START( tumblep )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 14000000)
 	MDRV_CPU_PROGRAM_MAP(tumblepop_readmem,tumblepop_writemem)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD(H6280, 32220000/8)	/* Custom chip 45; Audio section crystal is 32.220 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-2, 1*8, 31*8-1) // hmm
+
 	MDRV_GFXDECODE(tumblep)
 	MDRV_PALETTE_LENGTH(1024)
 

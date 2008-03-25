@@ -250,7 +250,7 @@ static READ8_HANDLER( devram_r )
            that would reset the main cpu. We avoid this and patch
            the rom instead (main cpu has to be reset once at startup) */
 		case 0xfe0:
-			return watchdog_reset_r(0);
+			return watchdog_reset_r(machine,0);
 
 		/* Reading a word at eff2 probably yelds the product
            of the words written to eff0 and eff2 */
@@ -319,25 +319,25 @@ static READ8_HANDLER( soundcommand_status_r )
 static READ8_HANDLER( soundcommand_r )
 {
 	soundlatch_status = 0;	// soundlatch has been read
-	return soundlatch_r(0);
+	return soundlatch_r(machine,0);
 }
 
 static READ8_HANDLER( soundcommand2_r )
 {
 	soundlatch2_status = 0;	// soundlatch2 has been read
-	return soundlatch2_r(0);
+	return soundlatch2_r(machine,0);
 }
 
 static WRITE8_HANDLER( soundcommand_w )
 {
-	soundlatch_w(0, data);
+	soundlatch_w(machine, 0, data);
 	soundlatch_status = 1;	// soundlatch has been written
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);	// cause a nmi to sub cpu
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);	// cause a nmi to sub cpu
 }
 
 static WRITE8_HANDLER( soundcommand2_w )
 {
-	soundlatch2_w(0, data);
+	soundlatch2_w(machine, 0, data);
 	soundlatch2_status = 1;	// soundlatch2 has been written
 }
 
@@ -375,7 +375,7 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( master_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(master_bankswitch_w)
 	AM_RANGE(0x01, 0x01) AM_WRITENOP // ???
 	AM_RANGE(0x02, 0x02) AM_WRITE(master_nmi_trigger_w)
@@ -395,7 +395,7 @@ static ADDRESS_MAP_START( slave_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( slave_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(slave_bankswitch_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(soundcommand2_r, soundcommand_w)
 	AM_RANGE(0x04, 0x0c) AM_WRITE(airbustr_scrollregs_w)
@@ -414,7 +414,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(sound_bankswitch_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
@@ -587,9 +587,9 @@ static INTERRUPT_GEN( slave_interrupt )
 static MACHINE_RESET( airbustr )
 {
 	soundlatch_status = soundlatch2_status = 0;
-	master_bankswitch_w(0, 0x02);
-	slave_bankswitch_w(0, 0x02);
-	sound_bankswitch_w(0, 0x02);
+	master_bankswitch_w(machine, 0, 0x02);
+	slave_bankswitch_w(machine, 0, 0x02);
+	sound_bankswitch_w(machine, 0, 0x02);
 }
 
 /* Machine Driver */
@@ -599,27 +599,28 @@ static MACHINE_DRIVER_START( airbustr )
 	MDRV_CPU_ADD(Z80, 6000000)	// ???
 	MDRV_CPU_PROGRAM_MAP(master_map, 0)
 	MDRV_CPU_IO_MAP(master_io_map, 0)
-	MDRV_CPU_VBLANK_INT(master_interrupt, 2)	// nmi caused by sub cpu?, ?
+	MDRV_CPU_VBLANK_INT_HACK(master_interrupt, 2)	// nmi caused by sub cpu?, ?
 
 	MDRV_CPU_ADD(Z80, 6000000)	// ???
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
 	MDRV_CPU_IO_MAP(slave_io_map, 0)
-	MDRV_CPU_VBLANK_INT(slave_interrupt, 2)		// nmi caused by main cpu, ?
+	MDRV_CPU_VBLANK_INT_HACK(slave_interrupt, 2)		// nmi caused by main cpu, ?
 
 	MDRV_CPU_ADD(Z80, 6000000)	// ???
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_IO_MAP(sound_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)		// nmi are caused by sub cpu writing a sound command
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)		// nmi are caused by sub cpu writing a sound command
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)	// Palette RAM is filled by sub cpu with data supplied by main cpu
 							// Maybe a high value is safer in order to avoid glitches
 	MDRV_MACHINE_RESET(airbustr)
-	MDRV_WATCHDOG_VBLANK_INIT(DEFAULT_60HZ_3S_VBLANK_WATCHDOG)
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(3))	/* a guess, and certainly wrong */
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
@@ -647,7 +648,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( airbusb )
 	MDRV_IMPORT_FROM(airbustr)
-	MDRV_WATCHDOG_VBLANK_INIT(0) // no protection device or watchdog
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_SEC(0)) // no protection device or watchdog
 MACHINE_DRIVER_END
 
 

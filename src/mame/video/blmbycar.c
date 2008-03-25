@@ -127,10 +127,10 @@ WRITE16_HANDLER( blmbycar_vram_1_w )
 VIDEO_START( blmbycar )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, DIM_NX, DIM_NY );
+								 16,16, DIM_NX, DIM_NY );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, DIM_NX, DIM_NY );
+								 16,16, DIM_NX, DIM_NY );
 
 		tilemap_set_scroll_rows(tilemap_0,1);
 		tilemap_set_scroll_cols(tilemap_0,1);
@@ -167,7 +167,7 @@ VIDEO_START( blmbycar )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT16 *source, *finish;
 
@@ -248,13 +248,14 @@ if (input_code_pressed(KEYCODE_Z))
 	if (layers_ctrl&1)
 		for (i = 0; i <= 1; i++)
 			tilemap_draw(bitmap, cliprect, tilemap_0, i, i);
-	else	fillbitmap(bitmap,machine->pens[0],cliprect);
+	else
+		fillbitmap(bitmap,0,cliprect);
 
 	if (layers_ctrl&2)
 		for (i = 0; i <= 1; i++)
 			tilemap_draw(bitmap, cliprect, tilemap_1, i, i);
 
 	if (layers_ctrl&8)
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

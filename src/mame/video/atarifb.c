@@ -5,6 +5,7 @@
 *************************************************************************/
 
 #include "driver.h"
+#include "includes/atarifb.h"
 
 
 /* local */
@@ -98,14 +99,14 @@ WRITE8_HANDLER( atarifb_field_videoram_w )
 
 VIDEO_START( atarifb )
 {
-	alpha1_tilemap = tilemap_create(alpha1_get_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8,  3,32);
-	alpha2_tilemap = tilemap_create(alpha2_get_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8,  3,32);
-	field_tilemap  = tilemap_create(field_get_tile_info,  tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	alpha1_tilemap = tilemap_create(alpha1_get_tile_info, tilemap_scan_cols,  8,8,  3,32);
+	alpha2_tilemap = tilemap_create(alpha2_get_tile_info, tilemap_scan_cols,  8,8,  3,32);
+	field_tilemap  = tilemap_create(field_get_tile_info,  tilemap_scan_rows,  8,8, 32,32);
 }
 
 
 
-static void draw_playfield_and_alpha(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect,
+static void draw_playfield_and_alpha(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect,
 									 int playfield_x_offset, int playfield_y_offset)
 {
 	static const rectangle bigfield_area = {  4*8, 34*8-1, 0*8, 32*8-1 };
@@ -122,7 +123,7 @@ static void draw_playfield_and_alpha(running_machine *machine, mame_bitmap *bitm
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect,
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect,
 						 int gfx, int is_soccer)
 {
 	static const rectangle bigfield_area = {  4*8, 34*8-1, 0*8, 32*8-1 };
@@ -185,9 +186,9 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( atarifb )
 {
-	draw_playfield_and_alpha(machine, bitmap, cliprect, 0, 0);
+	draw_playfield_and_alpha(screen->machine, bitmap, cliprect, 0, 0);
 
-	draw_sprites(machine, bitmap, cliprect, 1, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, 1, 0);
 
 	return 0;
 }
@@ -195,9 +196,9 @@ VIDEO_UPDATE( atarifb )
 
 VIDEO_UPDATE( abaseb )
 {
-	draw_playfield_and_alpha(machine, bitmap, cliprect, -8, 0);
+	draw_playfield_and_alpha(screen->machine, bitmap, cliprect, -8, 0);
 
-	draw_sprites(machine, bitmap, cliprect, 1, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, 1, 0);
 
 	return 0;
 }
@@ -205,9 +206,9 @@ VIDEO_UPDATE( abaseb )
 
 VIDEO_UPDATE( soccer )
 {
-	draw_playfield_and_alpha(machine, bitmap, cliprect, 0, 8);
+	draw_playfield_and_alpha(screen->machine, bitmap, cliprect, 0, 8);
 
-	draw_sprites(machine, bitmap, cliprect, 2, 1);
+	draw_sprites(screen->machine, bitmap, cliprect, 2, 1);
 
 	return 0;
 }

@@ -72,8 +72,8 @@ static READ8_HANDLER( timer_r )
 
 static WRITE8_HANDLER( jack_sh_command_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 }
 
 
@@ -139,9 +139,9 @@ static READ8_HANDLER( striv_question_r )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xb000, 0xb07f) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xb000, 0xb07f) AM_READ(SMH_RAM)
 	AM_RANGE(0xb500, 0xb500) AM_READ(input_port_0_r)
 	AM_RANGE(0xb501, 0xb501) AM_READ(input_port_1_r)
 	AM_RANGE(0xb502, 0xb502) AM_READ(input_port_2_r)
@@ -149,20 +149,20 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb504, 0xb504) AM_READ(input_port_4_r)
 	AM_RANGE(0xb505, 0xb505) AM_READ(input_port_5_r)
 	AM_RANGE(0xb506, 0xb507) AM_READ(jack_flipscreen_r)
-	AM_RANGE(0xb800, 0xbfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0xb800, 0xbfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xb000, 0xb07f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xb000, 0xb07f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xb400, 0xb400) AM_WRITE(jack_sh_command_w)
 	AM_RANGE(0xb506, 0xb507) AM_WRITE(jack_flipscreen_w)
 	AM_RANGE(0xb600, 0xb61f) AM_WRITE(jack_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xb800, 0xbbff) AM_WRITE(jack_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xbc00, 0xbfff) AM_WRITE(jack_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xc000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xc000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( joinem_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -183,24 +183,24 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_NOP)  /* R/C filter ??? */
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x6000, 0x6fff) AM_WRITE(SMH_NOP)  /* R/C filter ??? */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -875,21 +875,21 @@ static MACHINE_DRIVER_START( jack )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, 18000000/6)	/* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1) /* jack needs 1 or its too fast */
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* jack needs 1 or its too fast */
 
 	MDRV_CPU_ADD(Z80,18000000/12)
 	/* audio CPU */	/* 1.5 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(jack)
 	MDRV_PALETTE_LENGTH(32)
 
@@ -909,7 +909,7 @@ static MACHINE_DRIVER_START( tripool )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(jack)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2) /* tripool needs 2 or the palette is broken */
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2) /* tripool needs 2 or the palette is broken */
 MACHINE_DRIVER_END
 
 static INTERRUPT_GEN( joinem_interrupts )
@@ -929,11 +929,12 @@ static MACHINE_DRIVER_START( joinem )
 	MDRV_IMPORT_FROM(jack)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(joinem_map,0)
-	MDRV_CPU_VBLANK_INT(joinem_interrupts,3)
+	MDRV_CPU_VBLANK_INT_HACK(joinem_interrupts,3)
 
 	MDRV_GFXDECODE(joinem)
 	MDRV_PALETTE_LENGTH(0x100)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 2*8, 30*8-1)
 
 	MDRV_PALETTE_INIT(joinem)
@@ -948,11 +949,12 @@ static MACHINE_DRIVER_START( loverboy )
 	MDRV_IMPORT_FROM(jack)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(joinem_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_GFXDECODE(joinem)
 	MDRV_PALETTE_LENGTH(0x100)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 2*8, 30*8-1)
 
 	MDRV_PALETTE_INIT(joinem)
@@ -1456,7 +1458,7 @@ static DRIVER_INIT( striv )
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, striv_question_r);
 
 	// Nop out unused sprites writes
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xb0ff, 0, 0, MWA8_NOP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xb0ff, 0, 0, SMH_NOP);
 
 	timer_rate = 128;
 }

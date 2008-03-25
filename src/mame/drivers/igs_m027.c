@@ -132,10 +132,10 @@ static WRITE32_HANDLER( igs_pallete32_w )
 
 static VIDEO_START(igs_majhong)
 {
-	igs_tx_tilemap= tilemap_create(get_tx_tilemap_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	igs_tx_tilemap= tilemap_create(get_tx_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
 	tilemap_set_transparent_pen(igs_tx_tilemap,15);
-	igs_bg_tilemap= tilemap_create(get_bg_tilemap_tile_info,tilemap_scan_rows,0, 8, 8,64,32);
-	//igs_bg_tilemap= tilemap_create(get_bg_tilemap_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	igs_bg_tilemap= tilemap_create(get_bg_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
+	//igs_bg_tilemap= tilemap_create(get_bg_tilemap_tile_info,tilemap_scan_rows, 8, 8,64,32);
 	//tilemap_set_transparent_pen(igs_bg_tilemap,15);
 	logerror("Video START OK!\n");
 }
@@ -143,7 +143,7 @@ static VIDEO_START(igs_majhong)
 static VIDEO_UPDATE(igs_majhong)
 {
 	//??????????
-	fillbitmap(bitmap,get_black_pen(machine),&machine->screen[0].visarea);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	//??????
 	tilemap_draw(bitmap,cliprect,igs_bg_tilemap,0,0);
@@ -173,11 +173,11 @@ static ADDRESS_MAP_START( igs_majhong_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x10000000, 0x100003ff) AM_RAM AM_BASE(&igs_mainram)// main ram for asic?
 	AM_RANGE(0x18000000, 0x18007fff) AM_RAM
 
-	AM_RANGE(0x38001000, 0x380017ff) AM_READWRITE(MRA32_RAM, igs_cg_videoram_w) AM_BASE(&igs_cg_videoram)		//0x200 * 1   CG PALLETE?
-	AM_RANGE(0x38001800, 0x38001fff) AM_READWRITE(MRA32_RAM, igs_pallete32_w) AM_BASE(&igs_pallete32)		//0x200 * 1
+	AM_RANGE(0x38001000, 0x380017ff) AM_READWRITE(SMH_RAM, igs_cg_videoram_w) AM_BASE(&igs_cg_videoram)		//0x200 * 1   CG PALLETE?
+	AM_RANGE(0x38001800, 0x38001fff) AM_READWRITE(SMH_RAM, igs_pallete32_w) AM_BASE(&igs_pallete32)		//0x200 * 1
 
-	AM_RANGE(0x38004000, 0x38005FFF) AM_READWRITE(MRA32_RAM, igs_tx_videoram_w) AM_BASE(&igs_tx_videoram) /* Text Layer */
-	AM_RANGE(0x38006000, 0x38007FFF) AM_READWRITE(MRA32_RAM, igs_bg_videoram_w) AM_BASE(&igs_bg_videoram) /* CG Layer */
+	AM_RANGE(0x38004000, 0x38005FFF) AM_READWRITE(SMH_RAM, igs_tx_videoram_w) AM_BASE(&igs_tx_videoram) /* Text Layer */
+	AM_RANGE(0x38006000, 0x38007FFF) AM_READWRITE(SMH_RAM, igs_bg_videoram_w) AM_BASE(&igs_bg_videoram) /* CG Layer */
 
 
 	AM_RANGE(0x38002010, 0x38002017) AM_RAM		//??????????????
@@ -368,17 +368,19 @@ static MACHINE_DRIVER_START( igs_majhong )
 
 	MDRV_CPU_PROGRAM_MAP(igs_majhong_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-	MDRV_CPU_VBLANK_INT(igs_majhong_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", igs_majhong_interrupt)
 	//MDRV_NVRAM_HANDLER(generic_0fill)
 
 	MDRV_GFXDECODE(igs_m027)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+
 	MDRV_PALETTE_LENGTH(0x200)
 
 	MDRV_VIDEO_START( igs_majhong )

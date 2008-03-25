@@ -25,7 +25,7 @@ static UINT8 *fortecar_ram;
 
 
 static ADDRESS_MAP_START( fortecar_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xc7ff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0xc7ff) AM_READ(SMH_ROM)
 	AM_RANGE(0xd000, 0xd1ff) AM_RAM
 
 	AM_RANGE(0xd800, 0xffff) AM_RAM AM_BASE(&fortecar_ram)
@@ -39,9 +39,9 @@ READ8_HANDLER( fortecar_read62 )
 #endif
 
 static ADDRESS_MAP_START( fortecar_ports, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x40, 0x40) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x41, 0x41) AM_WRITE(MWA8_NOP)
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x40, 0x40) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x41, 0x41) AM_WRITE(SMH_NOP)
 //  AM_RANGE(0x62, 0x62) AM_READ(fortecar_read62) // nvram eeprom?
 ADDRESS_MAP_END
 
@@ -123,7 +123,7 @@ static VIDEO_UPDATE(fortecar)
 {
 	int x,y,count;
 	count = 0;
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 	for (y=0;y<32;y++)
 	{
 		for(x=0;x<64;x++)
@@ -132,7 +132,7 @@ static VIDEO_UPDATE(fortecar)
 
 			tile = fortecar_ram[0x800+(count*4)+1];
 
-			drawgfx(bitmap,machine->gfx[0],tile,0,0,0,x*8,y*8,cliprect,TRANSPARENCY_PEN,0);
+			drawgfx(bitmap,screen->machine->gfx[0],tile,0,0,0,x*8,y*8,cliprect,TRANSPARENCY_PEN,0);
 			count++;
 
 		}
@@ -147,16 +147,16 @@ static MACHINE_DRIVER_START( fortecar )
 	MDRV_CPU_PROGRAM_MAP(fortecar_map,0)
 	MDRV_CPU_IO_MAP(fortecar_ports,0)
 
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+
 	MDRV_GFXDECODE(fortecar)
 	MDRV_PALETTE_LENGTH(0x100)
 

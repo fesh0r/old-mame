@@ -89,15 +89,15 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( commando )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols,
-		TILEMAP_TYPE_PEN, 16, 16, 32, 32);
+		 16, 16, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 3);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -113,7 +113,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sx = buffered_spriteram[offs + 3] - ((attr & 0x01) << 8);
 		int sy = buffered_spriteram[offs + 2];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -130,12 +130,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( commando )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }
 
 VIDEO_EOF( commando )
 {
-	buffer_spriteram_w(0, 0);
+	buffer_spriteram_w(machine, 0, 0);
 }

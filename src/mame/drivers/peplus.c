@@ -623,7 +623,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( peplus )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 40, 25);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 40, 25);
 	palette_ram = auto_malloc(0x3000);
 	memset(palette_ram, 0, 0x3000);
 }
@@ -645,7 +645,7 @@ static PALETTE_INIT( peplus )
 */
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -760,7 +760,7 @@ static ADDRESS_MAP_START( peplus_datamap, ADDRESS_SPACE_DATA, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( peplus_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS(AMEF_ABITS(8))
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	// I/O Ports
 	AM_RANGE(0x00, 0x03) AM_READ(peplus_io_r) AM_WRITE(peplus_io_w) AM_BASE(&io_port)
@@ -978,16 +978,16 @@ static MACHINE_DRIVER_START( peplus )
 	MDRV_CPU_PROGRAM_MAP(peplus_map, 0)
 	MDRV_CPU_DATA_MAP(peplus_datamap, 0)
 	MDRV_CPU_IO_MAP(peplus_iomap, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(peplus)
 	MDRV_NVRAM_HANDLER(peplus)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((52+1)*8, (31+1)*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 25*8-1)

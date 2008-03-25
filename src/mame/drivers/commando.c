@@ -43,6 +43,7 @@ Note : there is an ingame typo bug that doesn't display the bonus life values
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/2203intf.h"
 
 extern UINT8 *commando_videoram2, *commando_colorram2;
@@ -240,21 +241,23 @@ static MACHINE_DRIVER_START( commando )
 	// basic machine hardware
 	MDRV_CPU_ADD(Z80, PHI_MAIN)	// ???
 	MDRV_CPU_PROGRAM_MAP(commando_map, 0)
-	MDRV_CPU_VBLANK_INT(commando_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", commando_interrupt)
 
 	MDRV_CPU_ADD(Z80, PHI_B)	// 3 MHz
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 4)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(commando)
 	MDRV_PALETTE_LENGTH(256)
 

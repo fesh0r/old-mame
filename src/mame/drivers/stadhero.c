@@ -52,8 +52,8 @@ static WRITE16_HANDLER( stadhero_control_w )
 		case 4: /* Interrupt ack (VBL - IRQ 5) */
 			break;
 		case 6: /* 6502 sound cpu */
-			soundlatch_w(0,data & 0xff);
-			cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+			soundlatch_w(machine,0,data & 0xff);
+			cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 			break;
 		default:
 			logerror("CPU #0 PC %06x: warning - write %02x to unmapped memory address %06x\n",activecpu_get_pc(),data,0x30c010+offset);
@@ -66,12 +66,12 @@ static WRITE16_HANDLER( stadhero_control_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x01ffff) AM_ROM
-	AM_RANGE(0x200000, 0x2007ff) AM_READWRITE(MRA16_RAM, stadhero_pf1_data_w) AM_BASE(&stadhero_pf1_data)
-	AM_RANGE(0x240000, 0x240007) AM_READWRITE(MRA16_RAM, MWA16_RAM) AM_BASE(&stadhero_pf2_control_0)
-	AM_RANGE(0x240010, 0x240017) AM_WRITE(MWA16_RAM) AM_BASE(&stadhero_pf2_control_1)
+	AM_RANGE(0x200000, 0x2007ff) AM_READWRITE(SMH_RAM, stadhero_pf1_data_w) AM_BASE(&stadhero_pf1_data)
+	AM_RANGE(0x240000, 0x240007) AM_READWRITE(SMH_RAM, SMH_RAM) AM_BASE(&stadhero_pf2_control_0)
+	AM_RANGE(0x240010, 0x240017) AM_WRITE(SMH_RAM) AM_BASE(&stadhero_pf2_control_1)
 	AM_RANGE(0x260000, 0x261fff) AM_READWRITE(stadhero_pf2_data_r, stadhero_pf2_data_w)
 	AM_RANGE(0x30c000, 0x30c00b) AM_READWRITE(stadhero_control_r, stadhero_control_w)
-	AM_RANGE(0x310000, 0x3107ff) AM_READWRITE(MRA16_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x310000, 0x3107ff) AM_READWRITE(SMH_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff8000, 0xffbfff) AM_RAM /* Main ram */
 	AM_RANGE(0xffc000, 0xffc7ff) AM_MIRROR(0x000800) AM_RAM AM_BASE(&spriteram16)
 ADDRESS_MAP_END
@@ -82,10 +82,10 @@ static WRITE8_HANDLER( YM3812_w )
 {
 	switch (offset) {
 	case 0:
-		YM3812_control_port_0_w(0,data);
+		YM3812_control_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM3812_write_port_0_w(0,data);
+		YM3812_write_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -94,10 +94,10 @@ static WRITE8_HANDLER( YM2203_w )
 {
 	switch (offset) {
 	case 0:
-		YM2203_control_port_0_w(0,data);
+		YM2203_control_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2203_write_port_0_w(0,data);
+		YM2203_write_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -259,20 +259,20 @@ static MACHINE_DRIVER_START( stadhero )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)/* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)/* VBL */
 
 	MDRV_CPU_ADD(M6502, 1500000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(audio_map,0)
 
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(stadhero)
 	MDRV_PALETTE_LENGTH(1024)
 

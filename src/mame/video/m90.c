@@ -55,10 +55,10 @@ static TILE_GET_INFO( get_pf2w_tile_info ) { get_tile_info(machine,tileinfo,tile
 
 VIDEO_START( m90 )
 {
-	pf1_layer =      tilemap_create(get_pf1_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	pf1_wide_layer = tilemap_create(get_pf1w_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
-	pf2_layer =      tilemap_create(get_pf2_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	pf2_wide_layer = tilemap_create(get_pf2w_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,128,64);
+	pf1_layer =      tilemap_create(get_pf1_tile_info, tilemap_scan_rows,8,8,64,64);
+	pf1_wide_layer = tilemap_create(get_pf1w_tile_info,tilemap_scan_rows,8,8,128,64);
+	pf2_layer =      tilemap_create(get_pf2_tile_info, tilemap_scan_rows,8,8,64,64);
+	pf2_wide_layer = tilemap_create(get_pf2w_tile_info,tilemap_scan_rows,8,8,128,64);
 
 	tilemap_set_transparent_pen(pf1_layer,0);
 	tilemap_set_transparent_pen(pf1_wide_layer,0);
@@ -66,7 +66,7 @@ VIDEO_START( m90 )
 	state_save_register_global_array(m90_video_control_data);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -101,7 +101,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 }
 
 #if 0
-static void bootleg_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void bootleg_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -228,7 +228,7 @@ VIDEO_UPDATE( m90 )
 	fillbitmap(priority_bitmap,0,cliprect);
 
 	if (!pf2_enable)
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 
 	if (pf2_enable)
 	{
@@ -256,6 +256,6 @@ VIDEO_UPDATE( m90 )
 			tilemap_draw(bitmap,cliprect,pf1_layer,1,1);
 	}
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

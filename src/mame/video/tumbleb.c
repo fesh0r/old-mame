@@ -15,7 +15,6 @@ to switch between 8*8 tiles and 16*16 tiles.
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 static UINT16 tumblepb_control_0[8];
 UINT16 *tumblepb_pf1_data,*tumblepb_pf2_data;
@@ -30,7 +29,7 @@ static int sprite_yoffset;
 
 /******************************************************************************/
 
-static void tumblepb_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void tumblepb_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -43,7 +42,7 @@ static void tumblepb_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 		y = spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0xf;
@@ -92,7 +91,7 @@ static void tumblepb_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 	}
 }
 
-static void jumpkids_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void jumpkids_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -105,7 +104,7 @@ static void jumpkids_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 		y = spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0xf;
@@ -154,7 +153,7 @@ static void jumpkids_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 	}
 }
 
-static void fncywld_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void fncywld_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -167,7 +166,7 @@ static void fncywld_draw_sprites(running_machine *machine, mame_bitmap *bitmap,c
 
 		y = spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0x3f;
@@ -459,9 +458,9 @@ static TILE_GET_INFO( pangpang_get_fg_tile_info )
 
 VIDEO_START( pangpang )
 {
-	pf1_tilemap =     tilemap_create(pangpang_get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	pf1_alt_tilemap = tilemap_create(pangpang_get_bg1_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,16,16,64,32);
-	pf2_tilemap =     tilemap_create(pangpang_get_bg2_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,     16,16,64,32);
+	pf1_tilemap =     tilemap_create(pangpang_get_fg_tile_info, tilemap_scan_rows, 8, 8,64,32);
+	pf1_alt_tilemap = tilemap_create(pangpang_get_bg1_tile_info,tumblep_scan,16,16,64,32);
+	pf2_tilemap =     tilemap_create(pangpang_get_bg2_tile_info,tumblep_scan,     16,16,64,32);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf1_alt_tilemap,0);
@@ -474,9 +473,9 @@ VIDEO_START( pangpang )
 
 VIDEO_START( tumblepb )
 {
-	pf1_tilemap =     tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	pf1_alt_tilemap = tilemap_create(get_bg1_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,16,16,64,32);
-	pf2_tilemap =     tilemap_create(get_bg2_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,     16,16,64,32);
+	pf1_tilemap =     tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8,64,32);
+	pf1_alt_tilemap = tilemap_create(get_bg1_tile_info,tumblep_scan,16,16,64,32);
+	pf2_tilemap =     tilemap_create(get_bg2_tile_info,tumblep_scan,     16,16,64,32);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf1_alt_tilemap,0);
@@ -488,9 +487,9 @@ VIDEO_START( tumblepb )
 
 VIDEO_START( sdfight )
 {
-	pf1_tilemap =     tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64); // 64*64 to prevent bad tilemap wrapping? - check real behavior
-	pf1_alt_tilemap = tilemap_create(get_bg1_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,16,16,64,32);
-	pf2_tilemap =     tilemap_create(get_bg2_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,     16,16,64,32);
+	pf1_tilemap =     tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8,64,64); // 64*64 to prevent bad tilemap wrapping? - check real behavior
+	pf1_alt_tilemap = tilemap_create(get_bg1_tile_info,tumblep_scan,16,16,64,32);
+	pf2_tilemap =     tilemap_create(get_bg2_tile_info,tumblep_scan,     16,16,64,32);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf1_alt_tilemap,0);
@@ -503,9 +502,9 @@ VIDEO_START( sdfight )
 
 VIDEO_START( fncywld )
 {
-	pf1_tilemap =     tilemap_create(get_fncywld_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	pf1_alt_tilemap = tilemap_create(get_fncywld_bg1_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,16,16,64,32);
-	pf2_tilemap =     tilemap_create(get_fncywld_bg2_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,     16,16,64,32);
+	pf1_tilemap =     tilemap_create(get_fncywld_fg_tile_info, tilemap_scan_rows, 8, 8,64,32);
+	pf1_alt_tilemap = tilemap_create(get_fncywld_bg1_tile_info,tumblep_scan,16,16,64,32);
+	pf2_tilemap =     tilemap_create(get_fncywld_bg2_tile_info,tumblep_scan,     16,16,64,32);
 
 	tilemap_set_transparent_pen(pf1_tilemap,15);
 	tilemap_set_transparent_pen(pf1_alt_tilemap,15);
@@ -517,10 +516,10 @@ VIDEO_START( fncywld )
 
 VIDEO_START( jumppop )
 {
-	pf1_tilemap =     tilemap_create(get_jumppop_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,128,64);
-	pf1_alt_tilemap = tilemap_create(get_jumppop_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	pf2_tilemap =     tilemap_create(get_jumppop_bg2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,64,64);
-	pf2_alt_tilemap =     tilemap_create(get_jumppop_bg2_alt_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,128,64);
+	pf1_tilemap =     tilemap_create(get_jumppop_fg_tile_info, tilemap_scan_rows, 8, 8,128,64);
+	pf1_alt_tilemap = tilemap_create(get_jumppop_bg1_tile_info,tilemap_scan_rows,16,16,64,64);
+	pf2_tilemap =     tilemap_create(get_jumppop_bg2_tile_info,tilemap_scan_rows,     16,16,64,64);
+	pf2_alt_tilemap =     tilemap_create(get_jumppop_bg2_alt_tile_info,tilemap_scan_rows,     8,8,128,64);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf1_alt_tilemap,0);
@@ -560,7 +559,7 @@ VIDEO_UPDATE( tumblepb )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	tumblepb_draw_sprites(machine,bitmap,cliprect);
+	tumblepb_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -585,7 +584,7 @@ VIDEO_UPDATE( jumpkids )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -610,7 +609,7 @@ VIDEO_UPDATE( semicom )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -636,7 +635,7 @@ VIDEO_UPDATE( semicom_altoffsets )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -661,7 +660,7 @@ VIDEO_UPDATE( bcstory )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -688,7 +687,7 @@ VIDEO_UPDATE( semibase )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -715,7 +714,7 @@ VIDEO_UPDATE( sdfight )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -742,14 +741,14 @@ VIDEO_UPDATE( fncywld )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	fncywld_draw_sprites(machine,bitmap,cliprect);
+	fncywld_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
 
 VIDEO_UPDATE( jumppop )
 {
-//  fillbitmap(bitmap, get_black_pen(machine), cliprect);
+//  fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	tilemap_set_scrollx( pf1_tilemap,0, jumppop_control[2]-0x3a0 );
 	tilemap_set_scrolly( pf1_tilemap,0, jumppop_control[3] );
@@ -772,7 +771,7 @@ VIDEO_UPDATE( jumppop )
 
 //popmessage("%04x %04x %04x %04x %04x %04x %04x %04x", jumppop_control[0],jumppop_control[1],jumppop_control[2],jumppop_control[3],jumppop_control[4],jumppop_control[5],jumppop_control[6],jumppop_control[7]);
 
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -787,7 +786,7 @@ VIDEO_UPDATE( suprtrio )
 	tilemap_draw(bitmap,cliprect,pf2_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
 
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 #if 0
 popmessage("%04x %04x %04x %04x %04x %04x %04x %04x",
  suprtrio_control[0],
@@ -824,15 +823,15 @@ VIDEO_UPDATE( pangpang )
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,0,0);
 	else
 		tilemap_draw(bitmap,cliprect,pf1_alt_tilemap,0,0);
-	jumpkids_draw_sprites(machine,bitmap,cliprect);
+	jumpkids_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
 VIDEO_START( suprtrio )
 {
-	pf1_tilemap =     tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
-	pf1_alt_tilemap = tilemap_create(get_bg1_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,16,16,64,32);
-	pf2_tilemap =     tilemap_create(get_bg2_tile_info,tumblep_scan,TILEMAP_TYPE_PEN,     16,16,64,32);
+	pf1_tilemap =     tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8,64,32);
+	pf1_alt_tilemap = tilemap_create(get_bg1_tile_info,tumblep_scan,16,16,64,32);
+	pf2_tilemap =     tilemap_create(get_bg2_tile_info,tumblep_scan,     16,16,64,32);
 
 	tilemap_set_transparent_pen(pf1_alt_tilemap,0);
 	bcstory_tilebank = 0;

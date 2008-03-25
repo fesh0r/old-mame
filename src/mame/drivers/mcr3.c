@@ -137,7 +137,7 @@ static WRITE8_HANDLER( demoderm_op6_w )
 	if (data & 0x40) input_mux = 1;
 
 	/* low 5 bits control the turbo CS */
-	turbocs_data_w(offset, data);
+	turbocs_data_w(machine, offset, data);
 }
 
 
@@ -204,14 +204,13 @@ static WRITE8_HANDLER( maxrpm_op5_w )
 	maxrpm_adc_control = data & 0x0f;
 
 	/* remaining bits go to standard connections */
-	mcrmono_control_port_w(offset, data);
+	mcrmono_control_port_w(machine, offset, data);
 }
 
 
 static WRITE8_HANDLER( maxrpm_op6_w )
 {
 	static const char *const inputs[] = { "MONO.IP1", "MONO.IP1.ALT1", "MONO.IP1.ALT2", "MONO.IP1.ALT3" };
-
 	/*
         Reflective Sensor Control:
             4 bits of input from OP5 are routed to a transceiver at U2, and
@@ -241,7 +240,7 @@ static WRITE8_HANDLER( maxrpm_op6_w )
 		maxrpm_adc_select = (maxrpm_adc_control >> 1) & 3;
 
 	/* low 5 bits control the turbo CS */
-	turbocs_data_w(offset, data);
+	turbocs_data_w(machine, offset, data);
 }
 
 
@@ -254,7 +253,7 @@ static WRITE8_HANDLER( maxrpm_op6_w )
 
 static READ8_HANDLER( rampage_ip4_r )
 {
-	return readinputportbytag("MONO.IP4") | (soundsgood_status_r(0) << 7);
+	return readinputportbytag("MONO.IP4") | (soundsgood_status_r(machine,0) << 7);
 }
 
 
@@ -264,7 +263,7 @@ static WRITE8_HANDLER( rampage_op6_w )
 	soundsgood_reset_w((~data >> 5) & 1);
 
 	/* low 5 bits go directly to the Sounds Good board */
-	soundsgood_data_w(offset, data);
+	soundsgood_data_w(machine, offset, data);
 }
 
 
@@ -277,7 +276,7 @@ static WRITE8_HANDLER( rampage_op6_w )
 
 static READ8_HANDLER( powerdrv_ip2_r )
 {
-	return readinputportbytag("MONO.IP2") | (soundsgood_status_r(0) << 7);
+	return readinputportbytag("MONO.IP2") | (soundsgood_status_r(machine, 0) << 7);
 }
 
 
@@ -298,7 +297,7 @@ static WRITE8_HANDLER( powerdrv_op5_w )
 	set_led_status(2, (data >> 1) & 1);
 
 	/* remaining bits go to standard connections */
-	mcrmono_control_port_w(offset, data);
+	mcrmono_control_port_w(machine, offset, data);
 }
 
 
@@ -308,7 +307,7 @@ static WRITE8_HANDLER( powerdrv_op6_w )
 	soundsgood_reset_w((~data >> 5) & 1);
 
 	/* low 5 bits go directly to the Sounds Good board */
-	soundsgood_data_w(offset, data);
+	soundsgood_data_w(machine, offset, data);
 }
 
 
@@ -322,7 +321,7 @@ static WRITE8_HANDLER( powerdrv_op6_w )
 static READ8_HANDLER( stargrds_ip0_r )
 {
 	UINT8 result = readinputportbytag(input_mux ? "MONO.IP0.ALT" : "MONO.IP0");
-	return result | ((soundsgood_status_r(0) << 4) & 0x10);
+	return result | ((soundsgood_status_r(machine, 0) << 4) & 0x10);
 }
 
 
@@ -339,7 +338,7 @@ static WRITE8_HANDLER( stargrds_op5_w )
 	set_led_status(2, (data >> 4) & 1);
 
 	/* remaining bits go to standard connections */
-	mcrmono_control_port_w(offset, data);
+	mcrmono_control_port_w(machine, offset, data);
 }
 
 
@@ -349,7 +348,7 @@ static WRITE8_HANDLER( stargrds_op6_w )
 	soundsgood_reset_w((~data >> 6) & 1);
 
 	/* unline the other games, the STROBE is in the high bit instead of the low bit */
-	soundsgood_data_w(offset, (data << 1) | (data >> 7));
+	soundsgood_data_w(machine, offset, (data << 1) | (data >> 7));
 }
 
 
@@ -362,7 +361,7 @@ static WRITE8_HANDLER( stargrds_op6_w )
 
 static READ8_HANDLER( spyhunt_ip1_r )
 {
-	return readinputportbytag("SSIO.IP1") | (csdeluxe_status_r(0) << 5);
+	return readinputportbytag("SSIO.IP1") | (csdeluxe_status_r(machine, 0) << 5);
 }
 
 
@@ -406,7 +405,7 @@ static WRITE8_HANDLER( spyhunt_op4_w )
 	last_op4 = data;
 
 	/* low 5 bits go to control the Chip Squeak Deluxe */
-	csdeluxe_data_w(offset, data);
+	csdeluxe_data_w(machine, offset, data);
 }
 
 
@@ -423,7 +422,7 @@ static READ8_HANDLER( turbotag_ip2_r )
 	if (input_mux)
 		return readinputportbytag("SSIO.IP2.ALT");
 
-	return readinputportbytag("SSIO.IP2") + 5 * (cpu_getcurrentframe() & 1);
+	return readinputportbytag("SSIO.IP2") + 5 * (video_screen_get_frame_number(machine->primary_screen) & 1);
 }
 
 
@@ -450,19 +449,20 @@ static READ8_HANDLER( turbotag_kludge_r )
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( mcrmono_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xdfff) AM_ROM
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe800, 0xe9ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xea00, 0xebff) AM_RAM
 	AM_RANGE(0xec00, 0xec7f) AM_MIRROR(0x0380) AM_WRITE(mcr3_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, mcr3_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, mcr3_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xf800, 0xffff) AM_ROM		/* schematics show a 2716 @ 2B here, but nobody used it */
 ADDRESS_MAP_END
 
 /* I/O map verified from schematics */
 static ADDRESS_MAP_START( mcrmono_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x78) AM_READ_PORT("MONO.IP0")
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x78) AM_READ_PORT("MONO.IP1")
 	AM_RANGE(0x02, 0x02) AM_MIRROR(0x78) AM_READ_PORT("MONO.IP2")
@@ -483,10 +483,10 @@ ADDRESS_MAP_END
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( spyhunt_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xdfff) AM_ROM
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(MRA8_RAM, spyhunt_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xe800, 0xebff) AM_MIRROR(0x0400) AM_READWRITE(MRA8_RAM, spyhunt_alpharam_w) AM_BASE(&spyhunt_alpharam)
+	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, spyhunt_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xe800, 0xebff) AM_MIRROR(0x0400) AM_READWRITE(SMH_RAM, spyhunt_alpharam_w) AM_BASE(&spyhunt_alpharam)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xf800, 0xf9ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xfa00, 0xfa7f) AM_MIRROR(0x0180) AM_WRITE(mcr3_paletteram_w) AM_BASE(&paletteram)
@@ -494,11 +494,12 @@ ADDRESS_MAP_END
 
 /* upper I/O map determined by PAL; only SSIO ports and scroll registers are verified from schematics */
 static ADDRESS_MAP_START( spyhunt_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	SSIO_INPUT_PORTS
 	AM_RANGE(0x84, 0x86) AM_WRITE(mcr_scroll_value_w)
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xe8, 0xe8) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0xe8, 0xe8) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf0, 0xf3) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 ADDRESS_MAP_END
 
@@ -1055,20 +1056,23 @@ static MACHINE_DRIVER_START( mcr3_base )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, MASTER_CLOCK/4)
 	MDRV_CPU_CONFIG(mcr_daisy_chain)
-	MDRV_CPU_VBLANK_INT(mcr_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(mcr_interrupt,2)
 
-	MDRV_SCREEN_REFRESH_RATE(30)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_30HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_VBLANK_INIT(16)
 	MDRV_MACHINE_START(mcr)
 	MDRV_MACHINE_RESET(mcr)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 30*16)
 	MDRV_SCREEN_VISIBLE_AREA(0*16, 32*16-1, 0*16, 30*16-1)
+
 	MDRV_GFXDECODE(mcr3)
 	MDRV_PALETTE_LENGTH(64)
 
@@ -1129,6 +1133,7 @@ static MACHINE_DRIVER_START( mcrscroll )
 	MDRV_CPU_IO_MAP(spyhunt_portmap,0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_SIZE(30*16, 30*16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 30*16-1, 0, 30*16-1)
 	MDRV_GFXDECODE(spyhunt)

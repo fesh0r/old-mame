@@ -54,7 +54,6 @@
 
 static UINT32 *vram;
 static int vbuffer = 0;
-static mame_bitmap *bitmaps[2];
 
 static int flash_roms;
 static UINT32 flash_cmd = 0;
@@ -139,55 +138,21 @@ static WRITE32_HANDLER( flash_w )
 	}
 }
 
-static void plot_pixel_rgb(int x, int y, int color)
-{
-	if (bitmaps[vbuffer]->bpp == 32)
-	{
-		UINT32 b = (color & 0x001f) << 3;
-		UINT32 g = (color & 0x03e0) >> 2;
-		UINT32 r = (color & 0x7c00) >> 7;
-		*BITMAP_ADDR32(bitmaps[vbuffer], y, x) = b | (g<<8) | (r<<16);
-	}
-	else
-	{
-		/* color is BGR; convert to RGB */
-		color = ((color & 0x1f) << 10) | (color & 0x3e0) | ((color & 0x7c00) >> 10);
-		*BITMAP_ADDR16(bitmaps[vbuffer], y, x) = color;
-	}
-}
-
 static WRITE32_HANDLER( vram_w )
 {
-	int x,y;
+	UINT32 *dest = &vram[offset+(0x40000/4)*vbuffer];
 
-	switch(mem_mask)
+	if (mem_mask == 0)
 	{
-		case 0:
-			vram_w(offset,data,0x0000ffff);
-			vram_w(offset,data,0xffff0000);
-			return;
+		if (~data & 0x80000000)
+			*dest = (*dest & 0x0000ffff) | (data & 0xffff0000);
 
-		case 0xffff:
-			if(data & 0x80000000)
-				return;
-		break;
-
-		case 0xffff0000:
-			if(data & 0x8000)
-				return;
-		break;
+		if (~data & 0x00008000)
+			*dest = (*dest & 0xffff0000) | (data & 0x0000ffff);
 	}
-
-	COMBINE_DATA(&vram[offset+(0x40000/4)*vbuffer]);
-
-	y = offset >> 8;
-	x = offset & 0xff;
-
-	if(x < 320/2 && y < 240)
-	{
-		plot_pixel_rgb(x*2,  y,(vram[offset+(0x40000/4)*vbuffer]>>16) & 0x7fff);
-		plot_pixel_rgb(x*2+1,y, vram[offset+(0x40000/4)*vbuffer] & 0x7fff);
-	}
+	else if (((mem_mask == 0x0000ffff) && (~data & 0x80000000)) ||
+	    	 ((mem_mask == 0xffff0000) && (~data & 0x00008000)))
+		COMBINE_DATA(dest);
 }
 
 static READ32_HANDLER( vram_r )
@@ -217,7 +182,7 @@ static READ32_HANDLER( vblank_r )
 {
 	/* burn a bunch of cycles because this is polled frequently during busy loops */
 	activecpu_adjust_icount(-100);
-	return input_port_0_dword_r(offset, 0);
+	return input_port_0_dword_r(machine, offset, 0);
 }
 
 static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -307,13 +272,28 @@ INPUT_PORTS_END
 static VIDEO_START( dgpix )
 {
 	vram = auto_malloc(0x40000*2);
-	bitmaps[0] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	bitmaps[1] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
 }
 
 static VIDEO_UPDATE( dgpix )
 {
-	copybitmap(bitmap,bitmaps[vbuffer ^ 1],0,0,0,0,cliprect);
+	int y;
+
+	for (y = 0; y < 240; y++)
+	{
+		int x;
+		UINT32 *src = &vram[(vbuffer ? 0 : 0x10000) | (y << 8)];
+		UINT16 *dest = BITMAP_ADDR16(bitmap, y, 0);
+
+		for (x = 0; x < 320; x += 2)
+		{
+			dest[0] = (*src >> 16) & 0x7fff;
+			dest[1] = (*src >>  0) & 0x7fff;
+
+			src++;
+			dest += 2;
+		}
+	}
+
 	return 0;
 }
 
@@ -327,16 +307,17 @@ static MACHINE_DRIVER_START( dgpix )
     running at 16.9MHz
 */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(flashroms)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
+
+	MDRV_PALETTE_INIT(BBBBB_GGGGG_RRRRR)
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(dgpix)
@@ -578,7 +559,7 @@ static DRIVER_INIT( xfiles )
 	rom[BYTE4_XOR_BE(0x3aa933)] = 0;
 
 //  protection related ?
-//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0c8b440, 0xf0c8b447, 0, 0, MRA32_NOP );
+//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0c8b440, 0xf0c8b447, 0, 0, SMH_NOP );
 
 	flash_roms = 2;
 }
@@ -598,7 +579,7 @@ static DRIVER_INIT( kdynastg )
 	rom[BYTE4_XOR_BE(0x3a45c9)] = 0;
 
 //  protection related ?
-//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x12341234, 0x12341243, 0, 0, MRA32_NOP );
+//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x12341234, 0x12341243, 0, 0, SMH_NOP );
 
 	flash_roms = 4;
 }

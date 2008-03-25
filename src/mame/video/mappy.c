@@ -8,7 +8,7 @@ UINT8 *mappy_spriteram;
 static UINT8 mappy_scroll;
 static tilemap *bg_tilemap;
 
-static mame_bitmap *sprite_bitmap;
+static bitmap_t *sprite_bitmap;
 
 
 /***************************************************************************
@@ -149,7 +149,7 @@ PALETTE_INIT( mappy )
 	}
 
 	/* sprites map to the lower 16 palette entries */
-	for (i = 64*4; i < machine->drv->total_colors; i++)
+	for (i = 64*4; i < machine->config->total_colors; i++)
 	{
 		UINT8 ctabentry = color_prom[i] & 0x0f;
 		colortable_entry_set_value(machine->colortable, i, ctabentry);
@@ -322,8 +322,8 @@ static TILE_GET_INFO( mappy_get_tile_info )
 
 VIDEO_START( superpac )
 {
-	bg_tilemap = tilemap_create(superpac_get_tile_info,superpac_tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
-	sprite_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	bg_tilemap = tilemap_create(superpac_get_tile_info,superpac_tilemap_scan,8,8,36,28);
+	sprite_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 31);
 
@@ -334,7 +334,7 @@ VIDEO_START( superpac )
 
 VIDEO_START( phozon )
 {
-	bg_tilemap = tilemap_create(phozon_get_tile_info,superpac_tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
+	bg_tilemap = tilemap_create(phozon_get_tile_info,superpac_tilemap_scan,8,8,36,28);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 15);
 
@@ -345,7 +345,7 @@ VIDEO_START( phozon )
 
 VIDEO_START( mappy )
 {
-	bg_tilemap = tilemap_create(mappy_get_tile_info,mappy_tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,60);
+	bg_tilemap = tilemap_create(mappy_get_tile_info,mappy_tilemap_scan,8,8,36,60);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 31);
 	tilemap_set_scroll_cols(bg_tilemap, 36);
@@ -400,7 +400,7 @@ WRITE8_HANDLER( mappy_scroll_w )
 ***************************************************************************/
 
 /* also used by toypop.c */
-void mappy_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int xoffs, int yoffs, int transcolor)
+void mappy_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int xoffs, int yoffs, int transcolor)
 {
 	int offs;
 
@@ -427,7 +427,7 @@ void mappy_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rec
 			sprite &= ~sizex;
 			sprite &= ~(sizey << 1);
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				flipx ^= 1;
 				flipy ^= 1;
@@ -475,7 +475,7 @@ spriteram_3
 1   -------x  X position MSB
 */
 
-static void phozon_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void phozon_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -502,7 +502,7 @@ static void phozon_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
 			int sizey = size[(spriteram_3[offs] & 0x30) >> 4];
 			int x,y;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				flipx ^= 1;
 				flipy ^= 1;
@@ -537,7 +537,7 @@ VIDEO_UPDATE( superpac )
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1|TILEMAP_DRAW_OPAQUE,0);
 
 	fillbitmap(sprite_bitmap,15,cliprect);
-	mappy_draw_sprites(machine,sprite_bitmap,cliprect,0,0,15);
+	mappy_draw_sprites(screen->machine,sprite_bitmap,cliprect,0,0,15);
 	copybitmap_trans(bitmap,sprite_bitmap,0,0,0,0,cliprect,15);
 
 	/* Redraw the high priority characters */
@@ -563,7 +563,7 @@ VIDEO_UPDATE( phozon )
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0|TILEMAP_DRAW_OPAQUE,0);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1|TILEMAP_DRAW_OPAQUE,0);
 
-	phozon_draw_sprites(machine,bitmap,cliprect);
+	phozon_draw_sprites(screen->machine,bitmap,cliprect);
 
 	/* Redraw the high priority characters */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1,0);
@@ -580,7 +580,7 @@ VIDEO_UPDATE( mappy )
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0|TILEMAP_DRAW_OPAQUE,0);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1|TILEMAP_DRAW_OPAQUE,0);
 
-	mappy_draw_sprites(machine,bitmap,cliprect,0,0,15);
+	mappy_draw_sprites(screen->machine,bitmap,cliprect,0,0,15);
 
 	/* Redraw the high priority characters */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,1,0);

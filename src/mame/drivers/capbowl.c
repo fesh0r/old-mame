@@ -127,16 +127,16 @@ static TIMER_CALLBACK( capbowl_update )
 {
 	int scanline = param;
 
-	video_screen_update_partial(0, scanline - 1);
+	video_screen_update_partial(machine->primary_screen, scanline - 1);
 	scanline += 32;
 	if (scanline > 240) scanline = 32;
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, capbowl_update);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, capbowl_update);
 }
 
 
 static MACHINE_RESET( capbowl )
 {
-	timer_set(video_screen_get_time_until_pos(0, 32, 0), NULL, 32, capbowl_update);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 32, 0), NULL, 32, capbowl_update);
 }
 
 
@@ -163,23 +163,23 @@ static WRITE8_HANDLER( capbowl_rom_select_w )
 
 static READ8_HANDLER( track_0_r )
 {
-	return (input_port_0_r(offset) & 0xf0) | ((input_port_2_r(offset) - last_trackball_val[0]) & 0x0f);
+	return (input_port_0_r(machine, offset) & 0xf0) | ((input_port_2_r(machine, offset) - last_trackball_val[0]) & 0x0f);
 }
 
 
 static READ8_HANDLER( track_1_r )
 {
-	return (input_port_1_r(offset) & 0xf0) | ((input_port_3_r(offset) - last_trackball_val[1]) & 0x0f);
+	return (input_port_1_r(machine, offset) & 0xf0) | ((input_port_3_r(machine, offset) - last_trackball_val[1]) & 0x0f);
 }
 
 
 static WRITE8_HANDLER( track_reset_w )
 {
 	/* reset the trackball counters */
-	last_trackball_val[0] = input_port_2_r(offset);
-	last_trackball_val[1] = input_port_3_r(offset);
+	last_trackball_val[0] = input_port_2_r(machine, offset);
+	last_trackball_val[1] = input_port_3_r(machine, offset);
 
-	watchdog_reset_w(offset,data);
+	watchdog_reset_w(machine, offset, data);
 }
 
 
@@ -192,8 +192,8 @@ static WRITE8_HANDLER( track_reset_w )
 
 static WRITE8_HANDLER( capbowl_sndcmd_w )
 {
-	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, HOLD_LINE);
-	soundlatch_w(offset, data);
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, HOLD_LINE);
+	soundlatch_w(machine, offset, data);
 }
 
 
@@ -243,7 +243,7 @@ static NVRAM_HANDLER( capbowl )
 
 static ADDRESS_MAP_START( capbowl_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROMBANK(1)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(MWA8_RAM) AM_BASE(&capbowl_rowaddress)
+	AM_RANGE(0x4000, 0x4000) AM_WRITE(SMH_RAM) AM_BASE(&capbowl_rowaddress)
 	AM_RANGE(0x4800, 0x4800) AM_WRITE(capbowl_rom_select_w)
 	AM_RANGE(0x5000, 0x57ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x5800, 0x5fff) AM_READWRITE(capbowl_tms34061_r, capbowl_tms34061_w)
@@ -257,7 +257,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bowlrama_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x001f) AM_READWRITE(bowlrama_blitter_r, bowlrama_blitter_w)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(MWA8_RAM) AM_BASE(&capbowl_rowaddress)
+	AM_RANGE(0x4000, 0x4000) AM_WRITE(SMH_RAM) AM_BASE(&capbowl_rowaddress)
 	AM_RANGE(0x5000, 0x57ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x5800, 0x5fff) AM_READWRITE(capbowl_tms34061_r, capbowl_tms34061_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(capbowl_sndcmd_w)
@@ -319,7 +319,7 @@ static INPUT_PORTS_START( capbowl )
 	PORT_START	/* FAKE */
 	/* This fake input port is used to get the status of the F2 key, */
 	/* and activate the test mode, which is triggered by a NMI */
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH )
 INPUT_PORTS_END
 
 
@@ -352,7 +352,7 @@ static MACHINE_DRIVER_START( capbowl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6809E, MASTER_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(capbowl_map,0)
-	MDRV_CPU_VBLANK_INT(capbowl_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", capbowl_interrupt)
 
 	/* audio CPU */
 	MDRV_CPU_ADD(M6809E, MASTER_CLOCK)
@@ -362,10 +362,10 @@ static MACHINE_DRIVER_START( capbowl )
 	MDRV_NVRAM_HANDLER(capbowl)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_START(capbowl)
 	MDRV_VIDEO_UPDATE(capbowl)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(360, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 359, 0, 244)
@@ -395,6 +395,7 @@ static MACHINE_DRIVER_START( bowlrama )
 	MDRV_CPU_PROGRAM_MAP(bowlrama_map,0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 359, 0, 239)
 MACHINE_DRIVER_END
 

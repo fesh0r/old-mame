@@ -424,9 +424,9 @@ static TILE_GET_INFO( get_tile_info )
     int color = galaga_videoram[tile_index + 0x400] & 0x3f;
 	SET_TILE_INFO(
 			0,
-			(galaga_videoram[tile_index] & 0x7f) | (flip_screen ? 0x80 : 0) | (galaga_gfxbank << 8),
+			(galaga_videoram[tile_index] & 0x7f) | (flip_screen_get() ? 0x80 : 0) | (galaga_gfxbank << 8),
 			color,
-			flip_screen ? TILE_FLIPX : 0);
+			flip_screen_get() ? TILE_FLIPX : 0);
 	tileinfo->group = color;
 }
 
@@ -440,7 +440,7 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( galaga )
 {
-	tx_tilemap = tilemap_create(get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
+	tx_tilemap = tilemap_create(get_tile_info,tilemap_scan,8,8,36,28);
 	colortable_configure_tilemap_groups(machine->colortable, tx_tilemap, machine->gfx[0], 0x1f);
 
 	galaga_gfxbank = 0;
@@ -494,7 +494,7 @@ WRITE8_HANDLER ( gatsbee_bank_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -516,7 +516,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sizey = (spriteram_3[offs] & 0x08) >> 3;
 		int x,y;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx ^= 1;
 			flipy ^= 1;
@@ -542,7 +542,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void draw_stars(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_stars(bitmap_t *bitmap, const rectangle *cliprect )
 {
 	/* draw the stars */
 
@@ -566,14 +566,11 @@ static void draw_stars(running_machine *machine, mame_bitmap *bitmap, const rect
 
 			if   ( (set_a == star_seed_tab[star_cntr].set) ||  ( set_b == star_seed_tab[star_cntr].set) )
 			{
-
 				x = (star_seed_tab[star_cntr].x + stars_scrollx) % 256 + 16;
 				y = (112 + star_seed_tab[star_cntr].y + stars_scrolly) % 256;
 			   /* 112 is a tweak to get alignment about perfect */
 
-
-
-				if (y >= machine->screen[0].visarea.min_y && y <= machine->screen[0].visarea.max_y)
+				if (y >= cliprect->min_y && y <= cliprect->max_y)
 					*BITMAP_ADDR16(bitmap, y, x) = STARS_COLOR_BASE + star_seed_tab[ star_cntr ].col;
 			}
 
@@ -583,9 +580,9 @@ static void draw_stars(running_machine *machine, mame_bitmap *bitmap, const rect
 
 VIDEO_UPDATE( galaga )
 {
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
-	draw_stars(machine,bitmap,cliprect);
-	draw_sprites(machine,bitmap,cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	draw_stars(bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }

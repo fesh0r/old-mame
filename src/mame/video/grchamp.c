@@ -108,21 +108,21 @@ VIDEO_START( grchamp )
 {
 	grchamp_state *state = machine->driver_data;
 
-	state->work_bitmap = auto_bitmap_alloc(32,32,machine->screen[0].format);
+	state->work_bitmap = auto_bitmap_alloc(32,32,video_screen_get_format(machine->primary_screen));
 
 	/* allocate tilemaps for each of the three sections */
-	state->text_tilemap = tilemap_create(get_text_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
-	state->left_tilemap = tilemap_create(get_left_tile_info, get_memory_offset, TILEMAP_TYPE_PEN, 8,8, 64,32);
-	state->right_tilemap = tilemap_create(get_right_tile_info, get_memory_offset, TILEMAP_TYPE_PEN, 8,8, 64,32);
-	state->center_tilemap = tilemap_create(get_center_tile_info, get_memory_offset, TILEMAP_TYPE_PEN, 8,8, 64,32);
+	state->text_tilemap = tilemap_create(get_text_tile_info, tilemap_scan_rows,  8,8, 32,32);
+	state->left_tilemap = tilemap_create(get_left_tile_info, get_memory_offset,  8,8, 64,32);
+	state->right_tilemap = tilemap_create(get_right_tile_info, get_memory_offset,  8,8, 64,32);
+	state->center_tilemap = tilemap_create(get_center_tile_info, get_memory_offset,  8,8, 64,32);
 }
 
 #if 0
-static int collision_check(running_machine *machine, grchamp_state *state, mame_bitmap *bitmap, int which )
+static int collision_check(running_machine *machine, grchamp_state *state, bitmap_t *bitmap, int which )
 {
 	int bgcolor = machine->pens[0];
 	int sprite_transp = machine->pens[0x24];
-	const rectangle *clip = &machine->screen[0].visarea;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 	int y0 = 240 - state->cpu0_out[3];
 	int x0 = 256 - state->cpu0_out[2];
 	int x,y,sx,sy;
@@ -150,8 +150,8 @@ static int collision_check(running_machine *machine, grchamp_state *state, mame_
 			if( pixel != sprite_transp ){
 				sx = x+x0;
 				sy = y+y0;
-				if( (sx >= clip->min_x) && (sx <= clip->max_x) &&
-					(sy >= clip->min_y) && (sy <= clip->max_y) )
+				if( (sx >= visarea->min_x) && (sx <= visarea->max_x) &&
+					(sy >= visarea->min_y) && (sy <= visarea->max_y) )
 				{
 					// Collision check uses only 16 pens!
 					pixel = *BITMAP_ADDR16(bitmap, sy, sx) % 16;
@@ -170,7 +170,7 @@ static int collision_check(running_machine *machine, grchamp_state *state, mame_
 	return result?(1<<which):0;
 }
 
-static void draw_fog(grchamp_state *state, mame_bitmap *bitmap, const rectangle *cliprect, int fog)
+static void draw_fog(grchamp_state *state, bitmap_t *bitmap, const rectangle *cliprect, int fog)
 {
 	int x,y,offs;
 
@@ -187,7 +187,7 @@ static void draw_fog(grchamp_state *state, mame_bitmap *bitmap, const rectangle 
 	}
 }
 
-static void draw_sprites(running_machine *machine, grchamp_state *state, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, grchamp_state *state, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[5];
 	int bank = (state->cpu0_out[0] & 0x20) ? 0x40 : 0x00;
@@ -369,13 +369,13 @@ VIDEO_UPDATE( grchamp )
 		MAKE_RGB(RGB_MAX,RGB_MAX,RGB_MAX)
 	};
 
-	grchamp_state *state = machine->driver_data;
+	grchamp_state *state = screen->machine->driver_data;
 	const UINT8 *amedata = memory_region(REGION_GFX5);
 	const UINT8 *headdata = memory_region(REGION_GFX6);
 	const UINT8 *pldata = memory_region(REGION_GFX7);
-	mame_bitmap *lpixmap = tilemap_get_pixmap(state->left_tilemap);
-	mame_bitmap *rpixmap = tilemap_get_pixmap(state->right_tilemap);
-	mame_bitmap *cpixmap = tilemap_get_pixmap(state->center_tilemap);
+	bitmap_t *lpixmap = tilemap_get_pixmap(state->left_tilemap);
+	bitmap_t *rpixmap = tilemap_get_pixmap(state->right_tilemap);
+	bitmap_t *cpixmap = tilemap_get_pixmap(state->center_tilemap);
 	int lrxscroll, cxscroll, lyscroll, ryscroll, cyscroll;
 	int bgcolor = state->cpu1_out[3] & 0x10;
 	int amebase = state->cpu0_out[4] >> 4;
@@ -401,7 +401,7 @@ VIDEO_UPDATE( grchamp )
 	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
 	{
 		/* select either left or right tilemaps based on Y */
-		mame_bitmap *lrpixmap = (y < 128) ? lpixmap : rpixmap;
+		bitmap_t *lrpixmap = (y < 128) ? lpixmap : rpixmap;
 		int lryscroll = (y < 128) ? lyscroll : ryscroll;
 
 		/* get source/dest pointers */
@@ -412,7 +412,7 @@ VIDEO_UPDATE( grchamp )
 		UINT8 objdata[256];
 
 		/* draw the objects for this scanline */
-		draw_objects(machine, state, y, objdata);
+		draw_objects(screen->machine, state, y, objdata);
 
 		/* iterate over columns */
 		for (x = cliprect->min_x; x <= cliprect->max_x; x++)

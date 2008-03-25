@@ -197,19 +197,19 @@ static int track[2];
 
 static READ8_HANDLER( gottlieb_track_0_r )
 {
-	return input_port_2_r(offset) - track[0];
+	return input_port_2_r(machine, offset) - track[0];
 }
 
 static READ8_HANDLER( gottlieb_track_1_r )
 {
-	return input_port_3_r(offset) - track[1];
+	return input_port_3_r(machine, offset) - track[1];
 }
 
 static WRITE8_HANDLER( gottlieb_track_reset_w )
 {
 	/* reset the trackball counters */
-	track[0] = input_port_2_r(offset);
-	track[1] = input_port_3_r(offset);
+	track[0] = input_port_2_r(machine, offset);
+	track[1] = input_port_3_r(machine, offset);
 }
 
 static int joympx;
@@ -240,13 +240,13 @@ static WRITE8_HANDLER( reactor_output_w )
 	set_led_status(0,data & 0x20);
 	set_led_status(1,data & 0x40);
 	set_led_status(2,data & 0x80);
-	gottlieb_video_outputs_w(offset,data);
+	gottlieb_video_outputs_w(machine,offset,data);
 }
 
 static WRITE8_HANDLER( stooges_output_w )
 {
 	joympx = (data >> 5) & 0x03;
-	gottlieb_video_outputs_w(offset,data);
+	gottlieb_video_outputs_w(machine,offset,data);
 }
 
 
@@ -410,11 +410,11 @@ logerror("current frame : %d\n",current_frame);
 
 
 static ADDRESS_MAP_START( reactor_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(16) )
+	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x00000, 0x01fff) AM_RAM
-	AM_RANGE(0x02000, 0x020ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x03000, 0x033ff) AM_MIRROR(0x0400) AM_READWRITE(MRA8_RAM, gottlieb_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x04000, 0x04fff) AM_READWRITE(MRA8_RAM, gottlieb_charram_w) AM_BASE(&gottlieb_charram)
+	AM_RANGE(0x02000, 0x020ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x03000, 0x033ff) AM_MIRROR(0x0400) AM_READWRITE(SMH_RAM, gottlieb_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x04000, 0x04fff) AM_READWRITE(SMH_RAM, gottlieb_charram_w) AM_BASE(&gottlieb_charram)
 	AM_RANGE(0x06000, 0x0601f) AM_WRITE(gottlieb_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0x07000, 0x07000) AM_READWRITE(input_port_0_r, watchdog_reset_w)	/* DSW */
 	AM_RANGE(0x07001, 0x07001) AM_READWRITE(input_port_1_r, gottlieb_track_reset_w)	/* buttons */
@@ -426,13 +426,13 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( gottlieb_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(16) )
+	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x00000, 0x00fff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x01000, 0x01fff) AM_RAM AM_REGION(REGION_CPU1, 0x1000)	/* or ROM */
 	AM_RANGE(0x02000, 0x02fff) AM_RAM AM_REGION(REGION_CPU1, 0x2000) 	/* or ROM */
 	AM_RANGE(0x03000, 0x037ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)	// argusg wants to check this
-	AM_RANGE(0x03800, 0x03bff) AM_MIRROR(0x0400) AM_READWRITE(MRA8_RAM, gottlieb_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x04000, 0x04fff) AM_READWRITE(MRA8_RAM, gottlieb_charram_w) AM_BASE(&gottlieb_charram)
+	AM_RANGE(0x03800, 0x03bff) AM_MIRROR(0x0400) AM_READWRITE(SMH_RAM, gottlieb_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x04000, 0x04fff) AM_READWRITE(SMH_RAM, gottlieb_charram_w) AM_BASE(&gottlieb_charram)
 	AM_RANGE(0x05000, 0x0501f) AM_WRITE(gottlieb_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0x05800, 0x05800) AM_READWRITE(input_port_0_r, watchdog_reset_w)	/* DSW */
 	AM_RANGE(0x05801, 0x05801) AM_READWRITE(input_port_1_r, gottlieb_track_reset_w)	/* buttons */
@@ -446,9 +446,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gottlieb_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	/* A15 not decoded except in expansion socket */
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x007f) AM_MIRROR(0x0180) AM_RAM
-	AM_RANGE(0x0200, 0x021f) AM_MIRROR(0x01e0) AM_READWRITE(gottlieb_riot_r, MWA8_RAM) AM_BASE(&gottlieb_riot_regs)
+	AM_RANGE(0x0200, 0x021f) AM_MIRROR(0x01e0) AM_READWRITE(gottlieb_riot_r, SMH_RAM) AM_BASE(&gottlieb_riot_regs)
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(DAC_0_data_w)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(gottlieb_speech_w)
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(gottlieb_speech_clock_DAC_w)
@@ -1523,23 +1523,24 @@ static MACHINE_DRIVER_START( gottlieb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", I8088, 5000000)	/* 5 MHz */
 	MDRV_CPU_PROGRAM_MAP(gottlieb_map,0)
-	MDRV_CPU_VBLANK_INT(gottlieb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", gottlieb_interrupt)
 
 	/* audio CPU */
 	MDRV_CPU_ADD_TAG("sound", M6502, 3579545/4)	/* the board can be set to /2 as well */
 	MDRV_CPU_PROGRAM_MAP(gottlieb_sound_map,0)
 								/* NMIs are triggered by the Votrax SC-01 */
-	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1018)	/* frames per second, vblank duration */)
 
 	MDRV_MACHINE_RESET(gottlieb)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(61)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1018)	/* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(charROM)
 	MDRV_PALETTE_LENGTH(16)
 
@@ -1600,7 +1601,7 @@ static MACHINE_DRIVER_START( gottlieb2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", I8088, 5000000)	/* 5 MHz */
 	MDRV_CPU_PROGRAM_MAP(gottlieb_map,0)
-	MDRV_CPU_VBLANK_INT(gottlieb_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", gottlieb_interrupt)
 
 	MDRV_CPU_ADD_TAG("sound", M6502, 1000000)	/* 1 MHz */
 	/* audio CPU */
@@ -1610,17 +1611,17 @@ static MACHINE_DRIVER_START( gottlieb2 )
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(stooges_sound2_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1018)	/* frames per second, vblank duration */)
-
 	MDRV_MACHINE_RESET(gottlieb)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(61)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1018)	/* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(charROM)
 	MDRV_PALETTE_LENGTH(16)
 

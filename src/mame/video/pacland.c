@@ -34,7 +34,7 @@ static UINT8 palette_bank;
 static const UINT8 *pacland_color_prom;
 
 static tilemap *bg_tilemap, *fg_tilemap;
-static mame_bitmap *fg_bitmap;
+static bitmap_t *fg_bitmap;
 
 static UINT32 *transmask[3];
 
@@ -203,11 +203,11 @@ VIDEO_START( pacland )
 {
 	int color;
 
-	fg_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	fg_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	fillbitmap(fg_bitmap, 0xffff, NULL);
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_scroll_rows(fg_tilemap, 32);
 
@@ -286,7 +286,7 @@ WRITE8_HANDLER( pacland_bankswitch_w )
 ***************************************************************************/
 
 /* the sprite generator IC is the same as Mappy */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int whichmask)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int whichmask)
 {
 	int offs;
 
@@ -310,7 +310,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sprite &= ~sizex;
 		sprite &= ~(sizey << 1);
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx ^= 1;
 			flipy ^= 1;
@@ -343,7 +343,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void draw_fg(mame_bitmap *bitmap, const rectangle *cliprect, int priority )
+static void draw_fg(bitmap_t *bitmap, const rectangle *cliprect, int priority )
 {
 	int y, x;
 
@@ -380,14 +380,14 @@ VIDEO_UPDATE( pacland )
 	int row;
 
 	for (row = 5; row < 29; row++)
-		tilemap_set_scrollx(fg_tilemap, row, flip_screen ? scroll0-7 : scroll0);
-	tilemap_set_scrollx(bg_tilemap, 0, flip_screen ? scroll1-4 : scroll1-3);
+		tilemap_set_scrollx(fg_tilemap, row, flip_screen_get() ? scroll0-7 : scroll0);
+	tilemap_set_scrollx(bg_tilemap, 0, flip_screen_get() ? scroll1-4 : scroll1-3);
 
 	/* draw high priority sprite pixels, setting priority bitmap to non-zero
        wherever there is a high-priority pixel; note that we draw to the bitmap
        which is safe because the bg_tilemap draw will overwrite everything */
 	fillbitmap(priority_bitmap, 0x00, cliprect);
-	draw_sprites(machine, bitmap, cliprect, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, 0);
 
 	/* draw background */
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
@@ -396,12 +396,12 @@ VIDEO_UPDATE( pacland )
 	draw_fg(bitmap, cliprect, 0);
 
 	/* draw sprites with regular transparency */
-	draw_sprites(machine, bitmap, cliprect, 1);
+	draw_sprites(screen->machine, bitmap, cliprect, 1);
 
 	/* draw high priority fg tiles */
 	draw_fg(bitmap, cliprect, 1);
 
 	/* draw sprite pixels with colortable values >= 0xf0, which have priority over everything */
-	draw_sprites(machine, bitmap, cliprect, 2);
+	draw_sprites(screen->machine, bitmap, cliprect, 2);
 	return 0;
 }

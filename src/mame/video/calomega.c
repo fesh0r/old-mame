@@ -1,22 +1,29 @@
-/**********************************************************************************
+/***********************************************
 
-    GAMING DRAW POKER (CEI)
-    Driver by Roberto Fresca.
+    +-------------------------------------+
+    |                                     |
+    | CAL OMEGA - SYSTEMS 903/904/905/906 |
+    |                                     |
+    |      Driver by Roberto Fresca.      |
+    |                                     |
+    +-------------------------------------+
 
-    Video Hardware
+             * Video Hardware *
 
-***********************************************************************************/
+************************************************/
+
 
 #include "driver.h"
+
 static tilemap *bg_tilemap;
 
-WRITE8_HANDLER( gdrawpkr_videoram_w )
+WRITE8_HANDLER( calomega_videoram_w )
 {
 	videoram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
 }
 
-WRITE8_HANDLER( gdrawpkr_colorram_w )
+WRITE8_HANDLER( calomega_colorram_w )
 {
 	colorram[offset] = data;
 	tilemap_mark_tile_dirty(bg_tilemap, offset);
@@ -41,19 +48,18 @@ static TILE_GET_INFO( get_bg_tile_info )
 	SET_TILE_INFO(bank, code, color, 0);
 }
 
-VIDEO_START( gdrawpkr )
+VIDEO_START( calomega )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 31);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 31);
 }
 
-VIDEO_UPDATE( gdrawpkr )
+VIDEO_UPDATE( calomega )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	return 0;
 }
 
-PALETTE_INIT( gdrawpkr )
+PALETTE_INIT( calomega )
 {
 /*  prom bits
     7654 3210
@@ -68,7 +74,7 @@ PALETTE_INIT( gdrawpkr )
 	/* 00000BGR */
 	if (color_prom == 0) return;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 

@@ -300,7 +300,7 @@ extern DRIVER_INIT( snes );
 static ADDRESS_MAP_START( snes_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x000000, 0x2fffff) AM_READWRITE(snes_r_bank1, snes_w_bank1)	/* I/O and ROM (repeats for each bank) */
 	AM_RANGE(0x300000, 0x3fffff) AM_READWRITE(snes_r_bank2, snes_w_bank2)	/* I/O and ROM (repeats for each bank) */
-	AM_RANGE(0x400000, 0x5fffff) AM_READWRITE(snes_r_bank3, MWA8_ROM)	/* ROM (and reserved in Mode 20) */
+	AM_RANGE(0x400000, 0x5fffff) AM_READWRITE(snes_r_bank3, SMH_ROM)	/* ROM (and reserved in Mode 20) */
 	AM_RANGE(0x600000, 0x6fffff) AM_READWRITE(snes_r_bank6, snes_w_bank6)	/* used by Mode 20 DSP-1 */
 	AM_RANGE(0x700000, 0x77ffff) AM_READWRITE(snes_r_sram, snes_w_sram)	/* 256KB Mode 20 save ram + reserved from 0x8000 - 0xffff */
 	AM_RANGE(0x780000, 0x7dffff) AM_NOP					/* Reserved */
@@ -310,12 +310,12 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( spc_ram_100_r )
 {
-	return spc_ram_r(offset + 0x100);
+	return spc_ram_r(machine, offset + 0x100);
 }
 
 static WRITE8_HANDLER( spc_ram_100_w )
 {
-	spc_ram_w(offset + 0x100, data);
+	spc_ram_w(machine, offset + 0x100, data);
 }
 
 static ADDRESS_MAP_START( spc_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -387,41 +387,7 @@ static INPUT_PORTS_START( snes )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(4)
 
-	PORT_START	/* IN 8 : Internal switches */
-	PORT_DIPNAME( 0x1, 0x1, "Enforce 32 sprites/line" )
-	PORT_DIPSETTING(   0x0, DEF_STR( No )  )
-	PORT_DIPSETTING(   0x1, DEF_STR( Yes ) )
-
-#ifdef MAME_DEBUG
-	PORT_START	/* IN 9 : debug switches */
-	PORT_DIPNAME( 0x3, 0x0, "Browse tiles" )
-	PORT_DIPSETTING(   0x0, DEF_STR( Off ) )
-	PORT_DIPSETTING(   0x1, "2bpl"  )
-	PORT_DIPSETTING(   0x2, "4bpl"  )
-	PORT_DIPSETTING(   0x3, "8bpl"  )
-	PORT_DIPNAME( 0xc, 0x0, "Browse maps" )
-	PORT_DIPSETTING(   0x0, DEF_STR( Off ) )
-	PORT_DIPSETTING(   0x4, "2bpl"  )
-	PORT_DIPSETTING(   0x8, "4bpl"  )
-	PORT_DIPSETTING(   0xc, "8bpl"  )
-
-	PORT_START	/* IN 10 : debug switches */
-	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_BUTTON7 ) PORT_NAME("Toggle BG 1") PORT_PLAYER(2)
-	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_BUTTON8 ) PORT_NAME("Toggle BG 2") PORT_PLAYER(2)
-	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_BUTTON9 ) PORT_NAME("Toggle BG 3") PORT_PLAYER(2)
-	PORT_BIT( 0x8, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_NAME("Toggle BG 4") PORT_PLAYER(2)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON7 ) PORT_NAME("Toggle Objects") PORT_PLAYER(3)
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON8 ) PORT_NAME("Toggle Main/Sub") PORT_PLAYER(3)
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON9 ) PORT_NAME("Toggle Back col") PORT_PLAYER(3)
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_NAME("Toggle Windows") PORT_PLAYER(3)
-
-	PORT_START	/* IN 11 : debug input */
-	PORT_BIT( 0x1, IP_ACTIVE_HIGH, IPT_BUTTON9 ) PORT_NAME("Pal prev")
-	PORT_BIT( 0x2, IP_ACTIVE_HIGH, IPT_BUTTON10 ) PORT_NAME("Pal next")
-	PORT_BIT( 0x4, IP_ACTIVE_HIGH, IPT_BUTTON7 ) PORT_NAME("Toggle Transparency") PORT_PLAYER(4)
-#endif
-
-	PORT_START	/* IN 12 : dip-switches */
+	PORT_START	/* IN 8 : dip-switches */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Hard )  )
@@ -446,21 +412,6 @@ INPUT_PORTS_END
 static const struct CustomSound_interface snes_sound_interface =
 { snes_sh_start };
 
-static GFXDECODE_START( nss )
-GFXDECODE_END
-
-static PALETTE_INIT( snes )
-{
-	int i;
-
-	for( i = 0; i < 32768; i++ )
-		palette_set_color_rgb( machine, i, pal5bit(i >> 0), pal5bit(i >> 5), pal5bit(i >> 10) );
-
-	/* The colortable can be black */
-	for( i = 0; i < 256; i++ )
-		colortable[i] = 0;
-}
-
 static MACHINE_DRIVER_START( snes )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", G65816, 3580000)	/* 2.68Mhz, also 3.58Mhz */
@@ -469,7 +420,6 @@ static MACHINE_DRIVER_START( snes )
 	MDRV_CPU_ADD_TAG("sound", SPC700, 2048000/2)	/* 2.048 Mhz, but internal divider */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(spc_mem, 0)
-	MDRV_CPU_VBLANK_INT(NULL, 0)
 
 	MDRV_INTERLEAVE(400)
 
@@ -479,14 +429,9 @@ static MACHINE_DRIVER_START( snes )
 	/* video hardware */
 	MDRV_VIDEO_UPDATE( snes )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_GFXDECODE(nss)
-	MDRV_PALETTE_LENGTH(32768)
-	MDRV_COLORTABLE_LENGTH(257)
-	MDRV_PALETTE_INIT( snes )
 
-	MDRV_SCREEN_ADD("main", 0)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(DOTCLK_NTSC, SNES_HTOTAL, 0, SNES_SCR_WIDTH, SNES_VTOTAL_NTSC, 0, SNES_SCR_HEIGHT_NTSC)
 
 	/* sound hardware */

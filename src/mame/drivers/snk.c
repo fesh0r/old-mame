@@ -316,11 +316,11 @@ static int snk_rot( int which ){
 	return value;
 }
 
-static int snk_input_port_r( int which ){
+static int snk_input_port_r( running_machine *machine, int which ){
 	switch( snk_io[which] ){
 		case SNK_INP0:
 		{
-			int value = input_port_0_r( 0 );
+			int value = input_port_0_r( machine,0 );
 			if( (snk_sound_register & 0x04) == 0 ) value &= ~snk_sound_busy_bit;
 			return value;
 		}
@@ -328,17 +328,17 @@ static int snk_input_port_r( int which ){
 		case SNK_ROT_PLAYER1: return snk_rot( 0 );
 		case SNK_ROT_PLAYER2: return snk_rot( 1 );
 
-		case SNK_INP1: return input_port_1_r(0);
-		case SNK_INP2: return input_port_2_r(0);
-		case SNK_INP3: return input_port_3_r(0);
-		case SNK_INP4: return input_port_4_r(0);
-		case SNK_INP5: return input_port_5_r(0);
-		case SNK_INP6: return input_port_6_r(0);
-		case SNK_INP7: return input_port_7_r(0);
-		case SNK_INP8: return input_port_8_r(0);
-		case SNK_INP9: return input_port_9_r(0);
-		case SNK_INP10: return input_port_10_r(0);
-		case SNK_INP11: return input_port_11_r(0);
+		case SNK_INP1: return input_port_1_r(machine,0);
+		case SNK_INP2: return input_port_2_r(machine,0);
+		case SNK_INP3: return input_port_3_r(machine,0);
+		case SNK_INP4: return input_port_4_r(machine,0);
+		case SNK_INP5: return input_port_5_r(machine,0);
+		case SNK_INP6: return input_port_6_r(machine,0);
+		case SNK_INP7: return input_port_7_r(machine,0);
+		case SNK_INP8: return input_port_8_r(machine,0);
+		case SNK_INP9: return input_port_9_r(machine,0);
+		case SNK_INP10: return input_port_10_r(machine,0);
+		case SNK_INP11: return input_port_11_r(machine,0);
 
 		default:
 		logerror("read from unmapped input port:%d\n", which );
@@ -384,11 +384,11 @@ static const struct YM3812interface ym3812_interface = {
 
 static WRITE8_HANDLER( snk_soundlatch_w ){
 	snk_sound_register |= 0x08 | 0x04;
-	soundlatch_w( offset, data );
+	soundlatch_w( machine, offset, data );
 }
 
 static READ8_HANDLER( snk_soundlatch_clear_r ){ /* TNK3 */
-	soundlatch_w( 0, 0 );
+	soundlatch_w( machine, 0, 0 );
 	snk_sound_register = 0;
 	return 0x00;
 }
@@ -455,21 +455,21 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( cpuA_io_r ){
 	switch( offset ){
-		case 0x000: return snk_input_port_r( 0 );	// coin input, player start
-		case 0x100: return snk_input_port_r( 1 );	// joy1
-		case 0x180: return snk_input_port_r( 2 );	// joy2
-		case 0x200: return snk_input_port_r( 3 );	// joy3
-		case 0x280: return snk_input_port_r( 4 );	// joy4
-		case 0x300: return snk_input_port_r( 5 );	// aim1
-		case 0x380: return snk_input_port_r( 6 );	// aim2
-		case 0x400: return snk_input_port_r( 7 );	// aim3
-		case 0x480: return snk_input_port_r( 8 );	// aim4
-		case 0x500: return snk_input_port_r( 9 );	// unused by tdfever
-		case 0x580: return snk_input_port_r( 10 );	// dsw
-		case 0x600: return snk_input_port_r( 11 );	// dsw
-		case 0x080: return snk_input_port_r( 12 );	// player start (types C and D in 'fsoccer')
+		case 0x000: return snk_input_port_r( machine,0 );	// coin input, player start
+		case 0x100: return snk_input_port_r( machine,1 );	// joy1
+		case 0x180: return snk_input_port_r( machine,2 );	// joy2
+		case 0x200: return snk_input_port_r( machine,3 );	// joy3
+		case 0x280: return snk_input_port_r( machine,4 );	// joy4
+		case 0x300: return snk_input_port_r( machine,5 );	// aim1
+		case 0x380: return snk_input_port_r( machine,6 );	// aim2
+		case 0x400: return snk_input_port_r( machine,7 );	// aim3
+		case 0x480: return snk_input_port_r( machine,8 );	// aim4
+		case 0x500: return snk_input_port_r( machine,9 );	// unused by tdfever
+		case 0x580: return snk_input_port_r( machine,10 );	// dsw
+		case 0x600: return snk_input_port_r( machine,11 );	// dsw
+		case 0x080: return snk_input_port_r( machine,12 );	// player start (types C and D in 'fsoccer')
 
-		case 0x700: return(snk_cpuB_nmi_trigger_r(0));
+		case 0x700: return(snk_cpuB_nmi_trigger_r(machine,0));
 
 		/* "Hard Flags" */
 		case 0xe00:
@@ -490,11 +490,11 @@ static WRITE8_HANDLER( cpuA_io_w ){
 
 		case 0x400: /* most games */
 		case 0x500: /* tdfever */
-		snk_soundlatch_w( 0, data );
+		snk_soundlatch_w( machine, 0, data );
 		break;
 
 		case 0x700:
-		snk_cpuA_nmi_ack_w(0, 0);
+		snk_cpuA_nmi_ack_w(machine, 0, 0);
 		break;
 
 		default:
@@ -506,7 +506,7 @@ static WRITE8_HANDLER( cpuA_io_w ){
 static READ8_HANDLER( cpuB_io_r ){
 	switch( offset ){
 		case 0x000:
-		case 0x700: return(snk_cpuA_nmi_trigger_r(0));
+		case 0x700: return(snk_cpuA_nmi_trigger_r(machine, 0));
 
 		/* "Hard Flags" they are needed here, otherwise ikarijp/b doesn't work right */
 		case 0xe00:
@@ -524,7 +524,7 @@ static WRITE8_HANDLER( cpuB_io_w )
 {
 	io_ram[offset] = data;
 
-	if (offset==0 || offset==0x700) snk_cpuB_nmi_ack_w(0, 0);
+	if (offset==0 || offset==0x700) snk_cpuB_nmi_ack_w(machine, 0, 0);
 }
 
 /**********************  Tnk3, Athena, Fighting Golf ********************/
@@ -817,26 +817,29 @@ static MACHINE_DRIVER_START( tnk3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(tnk3_cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(tnk3_cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 28*8-1)
+
 	MDRV_GFXDECODE(tnk3)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -858,26 +861,29 @@ static MACHINE_DRIVER_START( athena )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(tnk3_cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(tnk3_cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(300)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 28*8-1)
+
 	MDRV_GFXDECODE(athena)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -903,26 +909,29 @@ static MACHINE_DRIVER_START( ikari )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_YM3526_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 28*8-1)
+
 	MDRV_GFXDECODE(ikari)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -948,26 +957,29 @@ static MACHINE_DRIVER_START( victroad )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_13_4MHz/4) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(36*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 36*8-1, 1*8, 28*8-1)
+
 	MDRV_GFXDECODE(ikari)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -993,26 +1005,27 @@ static MACHINE_DRIVER_START( gwar )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400, 224)
 	MDRV_SCREEN_VISIBLE_AREA(8, 399-8, 0, 223)
+
 	MDRV_GFXDECODE(gwar)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1038,27 +1051,28 @@ static MACHINE_DRIVER_START( bermudat )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	// 5MHz gives CPUB higher priority or ROM test will fail if the first NMI is triggered too early by CPUA
 	MDRV_CPU_ADD(Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400, 224)
 	MDRV_SCREEN_VISIBLE_AREA(16, 399, 0, 223)
+
 	MDRV_GFXDECODE(bermudat)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1084,26 +1098,27 @@ static MACHINE_DRIVER_START( psychos )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400, 224)
 	MDRV_SCREEN_VISIBLE_AREA(8, 399-8, 0, 223)
+
 	MDRV_GFXDECODE(psychos)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1129,26 +1144,27 @@ static MACHINE_DRIVER_START( chopper1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3812_Y8950_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400, 224)
 	MDRV_SCREEN_VISIBLE_AREA(8, 399-8, 0, 223)
+
 	MDRV_GFXDECODE(psychos)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1174,26 +1190,29 @@ static MACHINE_DRIVER_START( tdfever )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(snk_irq_AB,1)
+	MDRV_CPU_VBLANK_INT("main", snk_irq_AB)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-//  MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+//  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1000))
 	MDRV_INTERLEAVE(300)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1000))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400,224)
 	MDRV_SCREEN_VISIBLE_AREA(8, 399-8, 0, 223)
+
 	MDRV_GFXDECODE(tdfever)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1219,26 +1238,29 @@ static MACHINE_DRIVER_START( tdfever2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(snk_irq_AB,1)
+	MDRV_CPU_VBLANK_INT("main", snk_irq_AB)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-//  MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+//  MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(YM3526_Y8950_sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1000))
 	MDRV_INTERLEAVE(300)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1000))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400,224)
 	MDRV_SCREEN_VISIBLE_AREA(8, 399-8, 0, 223)
+
 	MDRV_GFXDECODE(tdfever2)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -1264,26 +1286,29 @@ static MACHINE_DRIVER_START( fsoccer )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_8MHz/2) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(Y8950_sound_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS | VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(400,224)
 	MDRV_SCREEN_VISIBLE_AREA(8, 399-8, 0, 223)
+
 	MDRV_GFXDECODE(tdfever)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -2705,6 +2730,47 @@ ROM_START( fsoccer )
 
 	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
 	ROM_LOAD( "fs4.bin",  0x00000, 0x10000, CRC(435c3716) SHA1(42053741f60594e7ae8516b3ba600f5badb3620f) )
+ROM_END
+
+ROM_START( fsoccerj )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )     /* 64k for cpuA code */
+	ROM_LOAD( "fs3.6c",  0x00000, 0x10000, CRC(c5f505fa) SHA1(bc54a6482029735c7ec1d6dd819cad6bac32ac20) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )     /* 64k for cpuB code */
+	ROM_LOAD( "fs1.2c",  0x00000, 0x10000, CRC(2f68e38b) SHA1(0cbf2de24a5a5ae2134eb6f1e1404691554192bc) )
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )     /* 64k for sound code */
+	ROM_LOAD( "fs2.3j",  0x00000, 0x10000, CRC(9ee54ea1) SHA1(4e3bbacaa0e247eb8c4043f394e763817a4f9a28) )
+
+	ROM_REGION( 0x0c00, REGION_PROMS, 0 )
+	ROM_LOAD( "2.8e", 0x000, 0x400, CRC(bf4ac706) SHA1(b5015563d88dbd93ba2838f01b189812958f142b) ) /* red */
+	ROM_LOAD( "1.8d", 0x400, 0x400, CRC(1bac8010) SHA1(16854b1b6f3d1be48a247796d65aeb90547099b6) ) /* green */
+	ROM_LOAD( "3.9e", 0x800, 0x400, CRC(dbeddb14) SHA1(6053b587a3c8272aefe728a7198a15aa7fb9b2fa) ) /* blue */
+
+	ROM_REGION( 0x8000, REGION_GFX1, ROMREGION_DISPOSE ) /* characters */
+	ROM_LOAD( "fs13.4n",  0x0000, 0x08000, CRC(0de7b7ad) SHA1(4fa54b2acf83f03d09d16fc054ad6623cafe0f4a) )
+
+	ROM_REGION( 0x50000, REGION_GFX2, ROMREGION_DISPOSE ) /* background tiles */
+	ROM_LOAD( "fs14.8d",  0x00000, 0x10000, CRC(38c38b40) SHA1(c4580add0946720441f5ef751d0d4a944cd92ad5) )
+	ROM_LOAD( "fs15.8e",  0x10000, 0x10000, CRC(a614834f) SHA1(d73930e4bd780915e1b0d7f3fe7cbeaad19c233f) )
+
+//  ROM_REGION( 0x40000, REGION_GFX3, ROMREGION_DISPOSE ) /* 16x16 sprites */
+
+	ROM_REGION( 0x80000, REGION_GFX3, ROMREGION_DISPOSE ) /* 32x32 sprites */
+	ROM_LOAD( "fs5.2j",  0x10000, 0x10000, CRC(def2f1d8) SHA1(b72e4dec3306d8afe461ac812b2de67ee85f9dd9) )
+	ROM_LOAD( "fs6.2k",  0x00000, 0x10000, CRC(588d14b3) SHA1(c0489b061503677a38e4c5800ea8be17aabf4039) )
+
+	ROM_LOAD( "fs7.2l",  0x30000, 0x10000, CRC(d584964b) SHA1(7c806fc40dcce700ed0c268abbd2704938b65ff2) )
+	ROM_LOAD( "fs8.2n",  0x20000, 0x10000, CRC(11156a7d) SHA1(f298a54fa4c118bf8e7c7cccb6c95a4b97daf4d4) )
+
+	ROM_LOAD( "fs9.2p",  0x50000, 0x10000, CRC(d8112aa6) SHA1(575dd6dff2f00901603768f2c121eb0ea5afa444) )
+	ROM_LOAD( "fs10.2r",  0x40000, 0x10000, CRC(e42864d8) SHA1(fe18f58e5507676780fe181e2fb0e0e9d72e276e) )
+
+	ROM_LOAD( "fs11.2s",  0x70000, 0x10000, CRC(022f3e96) SHA1(57aa423b8f62015566bc3021300ac7e9682ed500) )
+	ROM_LOAD( "fs12.2t",  0x60000, 0x10000, CRC(b2442c30) SHA1(ba9331810659726389494ddc7c94c5a02ba80747) )
+
+	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
+	ROM_LOAD( "fs4.7p",  0x00000, 0x10000, CRC(435c3716) SHA1(42053741f60594e7ae8516b3ba600f5badb3620f) )
 ROM_END
 
 ROM_START( fsoccerb )
@@ -4537,5 +4603,6 @@ GAME( 1987, tdfever,  0,        tdfever,  tdfever,  tdfever,  ROT270, "SNK", "To
 GAME( 1987, tdfeverj, tdfever,  tdfever,  tdfeverj,  tdfever, ROT270, "SNK", "TouchDown Fever (Japan)", GAME_NO_COCKTAIL )
 GAME( 1988, tdfever2, tdfever,  tdfever2, tdfever,  tdfever2, ROT270, "SNK", "TouchDown Fever 2", GAME_NO_COCKTAIL ) /* upgrade kit for Touchdown Fever */
 GAME( 1988, fsoccer,  0,        fsoccer,  fsoccer,  fsoccer,  ROT0,   "SNK", "Fighting Soccer (version 4)", GAME_NO_COCKTAIL )
+GAME( 1988, fsoccerj, fsoccer,  fsoccer,  fsoccer,  fsoccer,  ROT0,   "SNK", "Fighting Soccer (Japan)", GAME_NO_COCKTAIL )
 GAME( 1988, fsoccerb, fsoccer,  fsoccer,  fsoccer,  fsoccer,  ROT0,   "bootleg", "Fighting Soccer (joystick hack bootleg)", GAME_NO_COCKTAIL )
 

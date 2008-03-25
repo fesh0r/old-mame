@@ -202,7 +202,7 @@ static WRITE8_HANDLER( mcu_tcr_w )
 		}
 
 		period = attotime_mul(ATTOTIME_IN_HZ(3579545), divider);
-		timer_adjust( mcu_timer, period, 0, period);
+		timer_adjust_periodic( mcu_timer, period, 0, period);
 	}
 }
 
@@ -223,12 +223,10 @@ static MACHINE_RESET(supervisor_board)
 	output_set_digit_value(2, 0x00);
 }
 
-static INTERRUPT_GEN( supervisor_board_check_coin_input )
+static INPUT_CHANGED( coin_inserted )
 {
-	if ( !readinputport(4) )
-	{
+	if (!newval)
 		cpunum_set_input_line(machine, 1, M6805_IRQ_LINE, HOLD_LINE );
-	}
 }
 
 int atari_input_disabled(void)
@@ -253,7 +251,7 @@ static ADDRESS_MAP_START(a600xl_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_READ( mcu_portA_r ) AM_WRITE( mcu_portA_w )
 	AM_RANGE(0x0001, 0x0001) AM_READ( mcu_portB_r ) AM_WRITE( mcu_portB_w )
 	AM_RANGE(0x0002, 0x0002) AM_READ( mcu_portC_r ) AM_WRITE( mcu_portC_w )
@@ -308,7 +306,7 @@ static INPUT_PORTS_START( a600xl )
 
 	/* Max-A-Flex specific ports */
 	PORT_START	/* IN4 coin */
-	PORT_BIT(0x1, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT(0x1, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START	/* IN5 DSW */
 	PORT_DIPNAME(0xf, 0x9, "Coin/Time" )
@@ -433,21 +431,21 @@ static MACHINE_DRIVER_START( a600xl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, FREQ_17_EXACT)
 	MDRV_CPU_PROGRAM_MAP(a600xl_mem, 0)
-	MDRV_CPU_VBLANK_INT(a800xl_interrupt, TOTAL_LINES_60HZ)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_CPU_VBLANK_INT_HACK(a800xl_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_CPU_ADD(M68705, 3579545)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem,0)
-	MDRV_CPU_PERIODIC_INT( supervisor_board_check_coin_input, 10 )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VISIBLE_AREA(MIN_X, MAX_X, MIN_Y, MAX_Y)
-	MDRV_PALETTE_LENGTH(sizeof(atari_palette) / sizeof(atari_palette[0]))
-	MDRV_PALETTE_INIT(atari)
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
+
+	MDRV_PALETTE_LENGTH(sizeof(atari_palette) / sizeof(atari_palette[0]))
+	MDRV_PALETTE_INIT(atari)
 	MDRV_DEFAULT_LAYOUT(layout_maxaflex)
 
 	MDRV_VIDEO_START(atari)

@@ -141,8 +141,8 @@ static WRITE16_HANDLER( bitmap_1_w )
 	switch(mem_mask)
 	{
 		case 0:
-			bitmap_1_w(offset,data,0x00ff);
-			bitmap_1_w(offset,data,0xff00);
+			bitmap_1_w(machine,offset,data,0x00ff);
+			bitmap_1_w(machine,offset,data,0xff00);
 			return;
 
 		case 0x00ff:
@@ -162,7 +162,7 @@ static WRITE16_HANDLER( bitmap_1_w )
 static READ16_HANDLER( oki_0_r )
 {
 	if(offset)
-		return OKIM6295_status_0_r(0);
+		return OKIM6295_status_0_r(machine, 0);
 	else
 		return 0;
 }
@@ -170,19 +170,19 @@ static READ16_HANDLER( oki_0_r )
 static WRITE16_HANDLER( oki_0_w )
 {
 	if(offset)
-		OKIM6295_data_0_w(0, data);
+		OKIM6295_data_0_w(machine, 0, data);
 }
 
 static WRITE16_HANDLER( oki_1_w )
 {
 	if(offset)
-		OKIM6295_data_1_w(0, data);
+		OKIM6295_data_1_w(machine, 0, data);
 }
 
 static READ16_HANDLER( oki_1_r )
 {
 	if(offset)
-		return OKIM6295_status_1_r(0);
+		return OKIM6295_status_1_r(machine, 0);
 	else
 		return 0;
 }
@@ -353,10 +353,10 @@ static VIDEO_UPDATE( pasha2 )
 			if(x*2 < cliprect->max_x)
 			{
 				color = (bitmap0[count + (vbuffer^1)*0x20000/2] & 0xff00) >> 8;
-				*BITMAP_ADDR16(bitmap, y, x*2 + 0) = machine->pens[(color + 0x100)];
+				*BITMAP_ADDR16(bitmap, y, x*2 + 0) = color + 0x100;
 
 				color = bitmap0[count + (vbuffer^1)*0x20000/2] & 0xff;
-				*BITMAP_ADDR16(bitmap, y, x*2 + 1) = machine->pens[(color + 0x100)];
+				*BITMAP_ADDR16(bitmap, y, x*2 + 1) = color + 0x100;
 			}
 
 			count++;
@@ -372,11 +372,11 @@ static VIDEO_UPDATE( pasha2 )
 			{
 				color = bitmap1[count + (vbuffer^1)*0x20000/2] & 0xff;
 				if(color != 0)
-					*BITMAP_ADDR16(bitmap, y, x*2 + 1) = machine->pens[(color)];
+					*BITMAP_ADDR16(bitmap, y, x*2 + 1) = color;
 
 				color = (bitmap1[count + (vbuffer^1)*0x20000/2] & 0xff00) >> 8;
 				if(color != 0)
-					*BITMAP_ADDR16(bitmap, y, x*2 + 0) = machine->pens[(color)];
+					*BITMAP_ADDR16(bitmap, y, x*2 + 0) = color;
 			}
 
 			count++;
@@ -390,18 +390,18 @@ static MACHINE_DRIVER_START( pasha2 )
 	MDRV_CPU_ADD(E116XT, 20000000*4)		/* 4x internal multiplier */
 	MDRV_CPU_PROGRAM_MAP(pasha2_map,0)
 	MDRV_CPU_IO_MAP(pasha2_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 512)
 	MDRV_SCREEN_VISIBLE_AREA(0, 383, 0, 239)
+
 	MDRV_PALETTE_LENGTH(0x200)
 
 	MDRV_VIDEO_START(pasha2)

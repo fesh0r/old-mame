@@ -61,8 +61,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( citycon )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,citycon_scan,TILEMAP_TYPE_PEN,8,8,128,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,citycon_scan,TILEMAP_TYPE_PEN,     8,8,128,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,citycon_scan,8,8,128,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,citycon_scan,     8,8,128,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_scroll_rows(fg_tilemap,32);
@@ -108,7 +108,7 @@ WRITE8_HANDLER( citycon_background_w )
 
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -120,7 +120,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx = spriteram[offs + 3];
 		sy = 239 - spriteram[offs];
 		flipx = ~spriteram[offs + 2] & 0x10;
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 238 - sy;
@@ -130,7 +130,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		drawgfx(bitmap,machine->gfx[spriteram[offs + 1] & 0x80 ? 2 : 1],
 				spriteram[offs + 1] & 0x7f,
 				spriteram[offs + 2] & 0x0f,
-				flipx,flip_screen,
+				flipx,flip_screen_get(),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}
@@ -166,6 +166,6 @@ VIDEO_UPDATE( citycon )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

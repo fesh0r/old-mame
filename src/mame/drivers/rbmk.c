@@ -88,7 +88,7 @@ static WRITE16_HANDLER( gms_write3 )
 
 static READ16_HANDLER( eeprom_r )
 {
-	return (EEPROM_read_bit() << 15)|(input_port_3_word_r(0,0)&0x7fff);
+	return (EEPROM_read_bit() << 15)|(input_port_3_word_r(machine,0,0)&0x7fff);
 }
 
 static WRITE16_HANDLER( eeprom_w )
@@ -110,7 +110,7 @@ static ADDRESS_MAP_START( rbmk_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x500000, 0x50ffff) AM_RAM
 	AM_RANGE(0x940000, 0x940fff) AM_RAM AM_BASE(&gms_vidram2)
 	AM_RANGE(0x980300, 0x983fff) AM_RAM // 0x2048  words ???, byte access
-	AM_RANGE(0x900000, 0x900fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x900000, 0x900fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x9c0000, 0x9c0fff) AM_RAM AM_BASE(&gms_vidram)
 	AM_RANGE(0xb00000, 0xb00001) AM_WRITE(eeprom_w)
 	AM_RANGE(0xC00000, 0xC00001) AM_READ(input_port_0_word_r) AM_WRITE(gms_write1)
@@ -459,7 +459,7 @@ static VIDEO_UPDATE(rbmk)
 		for (x=0;x<64;x++)
 		{
 			int tile = gms_vidram2[count+0x600];
-			drawgfx(bitmap,machine->gfx[0],(tile&0xfff)+((tilebank&0x10)>>4)*0x1000,tile>>12,0,0,x*8,y*32,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx(bitmap,screen->machine->gfx[0],(tile&0xfff)+((tilebank&0x10)>>4)*0x1000,tile>>12,0,0,x*8,y*32,cliprect,TRANSPARENCY_NONE,0);
 			count++;
 		}
 	}
@@ -471,7 +471,7 @@ static VIDEO_UPDATE(rbmk)
 		for (x=0;x<64;x++)
 		{
 			int tile = gms_vidram[count];
-			drawgfx(bitmap,machine->gfx[1],(tile&0xfff)+((tilebank>>1)&3)*0x1000,tile>>12,0,0,x*8,y*8,cliprect,TRANSPARENCY_PEN,0);
+			drawgfx(bitmap,screen->machine->gfx[1],(tile&0xfff)+((tilebank>>1)&3)*0x1000,tile>>12,0,0,x*8,y*8,cliprect,TRANSPARENCY_PEN,0);
 			count++;
 		}
 	}
@@ -501,16 +501,18 @@ static NVRAM_HANDLER( syf )
 static MACHINE_DRIVER_START( rbmk )
 	MDRV_CPU_ADD_TAG("main", M68000, 22000000 /2)
 	MDRV_CPU_PROGRAM_MAP(rbmk_mem,0)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_GFXDECODE(rbmk)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(0x800)
 
 	MDRV_VIDEO_START(rbmk)

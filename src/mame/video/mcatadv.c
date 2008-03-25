@@ -60,7 +60,7 @@ WRITE16_HANDLER( mcatadv_videoram2_w )
 }
 
 
-static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites( bitmap_t *bitmap, const rectangle *cliprect )
 {
 	UINT16 *source = spriteram_old;
 	UINT16 *finish = source + (spriteram_size/2)/2;
@@ -156,7 +156,7 @@ static void draw_sprites( mame_bitmap *bitmap, const rectangle *cliprect )
 	}
 }
 
-static void mcatadv_draw_tilemap_part(UINT16* current_scroll, UINT16* current_videoram1, int i, tilemap* current_tilemap, mame_bitmap *bitmap, const rectangle *cliprect)
+static void mcatadv_draw_tilemap_part(UINT16* current_scroll, UINT16* current_videoram1, int i, tilemap* current_tilemap, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int flip;
 	UINT32 drawline;
@@ -206,7 +206,7 @@ VIDEO_UPDATE( mcatadv )
 {
 	int i;
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	fillbitmap(priority_bitmap, 0, cliprect);
 
 	if(mcatadv_scroll[2] != palette_bank1) {
@@ -251,10 +251,10 @@ VIDEO_UPDATE( mcatadv )
 
 VIDEO_START( mcatadv )
 {
-	mcatadv_tilemap1 = tilemap_create(get_mcatadv_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
+	mcatadv_tilemap1 = tilemap_create(get_mcatadv_tile_info1,tilemap_scan_rows, 16, 16,32,32);
 	tilemap_set_transparent_pen(mcatadv_tilemap1,0);
 
-	mcatadv_tilemap2 = tilemap_create(get_mcatadv_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,32,32);
+	mcatadv_tilemap2 = tilemap_create(get_mcatadv_tile_info2,tilemap_scan_rows, 16, 16,32,32);
 	tilemap_set_transparent_pen(mcatadv_tilemap2,0);
 
 	spriteram_old = auto_malloc(spriteram_size);

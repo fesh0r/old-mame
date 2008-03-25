@@ -56,7 +56,7 @@ static TILE_GET_INFO( guts_get_playfield_tile_info )
 
 VIDEO_START( eprom )
 {
-	static const struct atarimo_desc modesc =
+	static const atarimo_desc modesc =
 	{
 		0,					/* index to which gfx system */
 		1,					/* number of motion object banks */
@@ -94,20 +94,20 @@ VIDEO_START( eprom )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 }
 
 
 VIDEO_START( guts )
 {
-	static const struct atarimo_desc modesc =
+	static const atarimo_desc modesc =
 	{
 		0,					/* index to which gfx system */
 		1,					/* number of motion object banks */
@@ -145,13 +145,13 @@ VIDEO_START( guts )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(guts_get_playfield_tile_info, tilemap_scan_cols, TILEMAP_TYPE_PEN, 8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(guts_get_playfield_tile_info, tilemap_scan_cols,  8,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 }
 
@@ -163,7 +163,7 @@ VIDEO_START( guts )
  *
  *************************************/
 
-void eprom_scanline_update(running_machine *machine, int scrnum, int scanline)
+void eprom_scanline_update(const device_config *screen, int scanline)
 {
 	/* update the playfield */
 	if (scanline == 0)
@@ -187,15 +187,15 @@ void eprom_scanline_update(running_machine *machine, int scrnum, int scanline)
 
 VIDEO_UPDATE( eprom )
 {
-	struct atarimo_rect_list rectlist;
-	mame_bitmap *mobitmap;
+	atarimo_rect_list rectlist;
+	bitmap_t *mobitmap;
 	int x, y, r;
 
 	/* draw the playfield */
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
+	mobitmap = atarimo_render(0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{
@@ -333,15 +333,15 @@ VIDEO_UPDATE( eprom )
 
 VIDEO_UPDATE( guts )
 {
-	struct atarimo_rect_list rectlist;
-	mame_bitmap *mobitmap;
+	atarimo_rect_list rectlist;
+	bitmap_t *mobitmap;
 	int x, y, r;
 
 	/* draw the playfield */
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
+	mobitmap = atarimo_render(0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{

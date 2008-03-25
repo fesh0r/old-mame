@@ -38,15 +38,15 @@ static WRITE16_HANDLER( twocrude_control_w )
 {
 	switch (offset<<1) {
 	case 0: /* DMA flag */
-		buffer_spriteram16_w(0,0,0);
+		buffer_spriteram16_w(machine,0,0,0);
 		return;
 
 	case 6: /* IRQ ack */
 		return;
 
     case 2: /* Sound CPU write */
-		soundlatch_w(0,data & 0xff);
-		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+		soundlatch_w(machine,0,data & 0xff);
+		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
     	return;
 
 	case 4: /* Protection, maybe this is a PAL on the board?
@@ -108,44 +108,44 @@ static READ16_HANDLER( twocrude_control_r )
 /******************************************************************************/
 
 static ADDRESS_MAP_START( twocrude_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x080000, 0x083fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x080000, 0x083fff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x0a0000, 0x0a1fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0a2000, 0x0a2fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0a4000, 0x0a47ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0a6000, 0x0a67ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0a0000, 0x0a1fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0a2000, 0x0a2fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0a4000, 0x0a47ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0a6000, 0x0a67ff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x0a8000, 0x0a8fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0aa000, 0x0aafff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0ac000, 0x0ac7ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0ae000, 0x0ae7ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0a8000, 0x0a8fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0aa000, 0x0aafff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0ac000, 0x0ac7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0ae000, 0x0ae7ff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x0b0000, 0x0b07ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0b8000, 0x0b8fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0b9000, 0x0b9fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0b0000, 0x0b07ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0b8000, 0x0b8fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0b9000, 0x0b9fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0bc000, 0x0bc00f) AM_READ(twocrude_control_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( twocrude_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x080000, 0x083fff) AM_WRITE(MWA16_RAM) AM_BASE(&twocrude_ram)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x080000, 0x083fff) AM_WRITE(SMH_RAM) AM_BASE(&twocrude_ram)
 
 	AM_RANGE(0x0a0000, 0x0a1fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data)
 	AM_RANGE(0x0a2000, 0x0a2fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data)
-	AM_RANGE(0x0a4000, 0x0a47ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x0a6000, 0x0a67ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x0a4000, 0x0a47ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x0a6000, 0x0a67ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
 	AM_RANGE(0x0a8000, 0x0a8fff) AM_WRITE(deco16_pf3_data_w) AM_BASE(&deco16_pf3_data)
 	AM_RANGE(0x0aa000, 0x0aafff) AM_WRITE(deco16_pf4_data_w) AM_BASE(&deco16_pf4_data)
-	AM_RANGE(0x0ac000, 0x0ac7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf3_rowscroll)
-	AM_RANGE(0x0ae000, 0x0ae7ff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf4_rowscroll)
+	AM_RANGE(0x0ac000, 0x0ac7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf3_rowscroll)
+	AM_RANGE(0x0ae000, 0x0ae7ff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf4_rowscroll)
 
-	AM_RANGE(0x0b0000, 0x0b07ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x0b4000, 0x0b4001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x0b0000, 0x0b07ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0b4000, 0x0b4001) AM_WRITE(SMH_NOP)
 
-	AM_RANGE(0x0b5000, 0x0b500f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
-	AM_RANGE(0x0b6000, 0x0b600f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf34_control)
+	AM_RANGE(0x0b5000, 0x0b500f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x0b6000, 0x0b600f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf34_control)
 
 	AM_RANGE(0x0b8000, 0x0b8fff) AM_WRITE(twocrude_palette_24bit_rg_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0b9000, 0x0b9fff) AM_WRITE(twocrude_palette_24bit_b_w) AM_BASE(&paletteram16_2)
@@ -158,10 +158,10 @@ static WRITE8_HANDLER( YM2151_w )
 {
 	switch (offset) {
 	case 0:
-		YM2151_register_port_0_w(0,data);
+		YM2151_register_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2151_data_port_0_w(0,data);
+		YM2151_data_port_0_w(machine,0,data);
 		break;
 	}
 }
@@ -170,31 +170,31 @@ static WRITE8_HANDLER( YM2203_w )
 {
 	switch (offset) {
 	case 0:
-		YM2203_control_port_0_w(0,data);
+		YM2203_control_port_0_w(machine,0,data);
 		break;
 	case 1:
-		YM2203_write_port_0_w(0,data);
+		YM2203_write_port_0_w(machine,0,data);
 		break;
 	}
 }
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_READ(YM2203_status_port_0_r)
 	AM_RANGE(0x110000, 0x110001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0x130000, 0x130001) AM_READ(OKIM6295_status_1_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(soundlatch_r)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(YM2203_w)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(YM2151_w)
 	AM_RANGE(0x120000, 0x120001) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0x130000, 0x130001) AM_WRITE(OKIM6295_data_1_w)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8)
 	AM_RANGE(0x1fec00, 0x1fec01) AM_WRITE(H6280_timer_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
@@ -346,19 +346,21 @@ static MACHINE_DRIVER_START( twocrude )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000) /* Custom chip 59 */
 	MDRV_CPU_PROGRAM_MAP(twocrude_readmem,twocrude_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)/* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)/* VBL */
 
 	MDRV_CPU_ADD(H6280,32220000/4) /* Custom chip 45, Audio section crystal is 32.220 MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
+	/* video hardware */
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(58)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
-
-	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(cbuster)
 	MDRV_PALETTE_LENGTH(2048)
 

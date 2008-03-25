@@ -81,9 +81,9 @@ VIDEO_START( lkage )
 {
 	bg_tile_bank = fg_tile_bank = 0;
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -94,7 +94,7 @@ VIDEO_START( lkage )
 } /* VIDEO_START( lkage ) */
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const UINT8 *source = spriteram;
 	const UINT8 *finish = source+0x60;
@@ -127,12 +127,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			priority_mask = (0xf0);
 		}
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 239 - sx - 24;
 			flipx = !flipx;
 		}
-		if( flip_screen_y )
+		if( flip_screen_y_get() )
 		{
 			sy = 254 - 16*height - sy;
 			flipy = !flipy;
@@ -205,6 +205,6 @@ VIDEO_UPDATE( lkage )
 	{
 		tilemap_draw( bitmap,cliprect,tx_tilemap,TILEMAP_DRAW_OPAQUE,0);
 	}
-	draw_sprites(machine, bitmap,cliprect );
+	draw_sprites(screen->machine, bitmap,cliprect );
 	return 0;
 }

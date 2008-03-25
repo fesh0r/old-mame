@@ -83,7 +83,7 @@ spriteram is being tested, take no notice of that.]
 ********************************************************/
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,const int *primasks,int y_offs)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,const int *primasks,int y_offs)
 {
 	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
 	UINT16 tile_mask = (machine->gfx[0]->total_elements) - 1;
@@ -223,7 +223,7 @@ VIDEO_UPDATE( othunder )
 {
 	int layer[3];
 
-	TC0100SCN_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
 
 	layer[0] = TC0100SCN_bottomlayer(0);
 	layer[1] = layer[0]^1;
@@ -232,16 +232,16 @@ VIDEO_UPDATE( othunder )
 	fillbitmap(priority_bitmap,0,cliprect);
 
 	/* Ensure screen blanked even when bottom layer not drawn due to disable bit */
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[0],TILEMAP_DRAW_OPAQUE,1);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[1],0,2);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[2],0,4);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],TILEMAP_DRAW_OPAQUE,1);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,2);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[2],0,4);
 
 	/* Sprites can be under/over the layer below text layer */
 	{
 		static const int primasks[2] = {0xf0,0xfc};
-		draw_sprites(machine, bitmap,cliprect,primasks,3);
+		draw_sprites(screen->machine, bitmap,cliprect,primasks,3);
 	}
 
 	return 0;

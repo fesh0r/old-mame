@@ -76,7 +76,7 @@ static render_texture *video_texture;
 static render_texture *overlay_texture;
 static UINT32 last_seqid;
 
-static mame_bitmap *overlay_bitmap;
+static bitmap_t *overlay_bitmap;
 
 static const UINT8 led_map[16] =
 	{ 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7c,0x07,0x7f,0x67,0x77,0x7c,0x39,0x5e,0x79,0x00 };
@@ -164,7 +164,7 @@ static void video_cleanup(running_machine *machine)
 
 static VIDEO_START( dlair )
 {
-	mame_bitmap *vidbitmap;
+	bitmap_t *vidbitmap;
 
 	/* create textures */
 	last_seqid = laserdisc_get_video(discinfo, &vidbitmap);
@@ -192,7 +192,7 @@ static VIDEO_START( dleuro )
 {
 	VIDEO_START_CALL(dlair);
 
-	overlay_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	overlay_bitmap = auto_bitmap_alloc(video_screen_get_width(machine->primary_screen), video_screen_get_height(machine->primary_screen), BITMAP_FORMAT_INDEXED16);
 	fillbitmap(overlay_bitmap, 8, NULL);
 	overlay_texture = render_texture_alloc(NULL, NULL);
 }
@@ -207,7 +207,7 @@ static VIDEO_START( dleuro )
 
 static VIDEO_UPDATE( dlair )
 {
-	mame_bitmap *vidbitmap;
+	bitmap_t *vidbitmap;
 	UINT32 seqid;
 
 	/* get the current video and update the bitmap if different */
@@ -229,7 +229,7 @@ static VIDEO_UPDATE( dlair )
 
 static VIDEO_UPDATE( dleuro )
 {
-	mame_bitmap *vidbitmap;
+	bitmap_t *vidbitmap;
 	UINT32 seqid;
 	int x, y;
 
@@ -238,11 +238,11 @@ static VIDEO_UPDATE( dleuro )
 		for (x = 0; x < 32; x++)
 		{
 			UINT8 *base = &videoram[y * 64 + x * 2 + 1];
-			drawgfx(overlay_bitmap, machine->gfx[0], base[0], base[1], 0, 0, 10 * x, 16 * y, cliprect, TRANSPARENCY_NONE, 0);
+			drawgfx(overlay_bitmap, screen->machine->gfx[0], base[0], base[1], 0, 0, 10 * x, 16 * y, cliprect, TRANSPARENCY_NONE, 0);
 		}
 
 	/* update the overlay */
-	render_texture_set_bitmap(overlay_texture, overlay_bitmap, &machine->screen[0].visarea, 0, TEXFORMAT_PALETTE16);
+	render_texture_set_bitmap(overlay_texture, overlay_bitmap, video_screen_get_visible_area(screen), 0, TEXFORMAT_PALETTE16);
 
 	/* get the current video and update the bitmap if different */
 	seqid = laserdisc_get_video(discinfo, &vidbitmap);
@@ -527,7 +527,7 @@ ADDRESS_MAP_END
 
 /* complete memory map derived from schematics */
 static ADDRESS_MAP_START( dleuro_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_MIRROR(0x7c) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 	AM_RANGE(0x80, 0x83) AM_MIRROR(0x7c) AM_READWRITE(sio_r, sio_w)
 ADDRESS_MAP_END
@@ -680,6 +680,7 @@ static INPUT_PORTS_START( dlaire )
 INPUT_PORTS_END
 
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( dleuro )
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP )
@@ -751,7 +752,7 @@ static INPUT_PORTS_START( dleuro )
 	PORT_DIPSETTING(	0x80, DEF_STR( Easy ) ) PORT_CONDITION("DSW1",0x04,PORTCOND_EQUALS,0x04)
 	PORT_DIPSETTING(	0x90, DEF_STR( Easy ) ) PORT_CONDITION("DSW1",0x04,PORTCOND_EQUALS,0x04)
 INPUT_PORTS_END
-
+#endif
 
 
 /*************************************
@@ -803,17 +804,19 @@ static MACHINE_DRIVER_START( dlair )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, MASTER_CLOCK_US/4)
 	MDRV_CPU_PROGRAM_MAP(dlus_map,0)
-	MDRV_CPU_VBLANK_INT(vblank_callback, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_callback)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, (double)MASTER_CLOCK_US/8/16/16/16/16)
 
 	MDRV_MACHINE_START(dlair)
 	MDRV_MACHINE_RESET(dlair)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_SELF_RENDER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_SELF_RENDER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(59.94)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 
@@ -841,18 +844,18 @@ static MACHINE_DRIVER_START( dleuro )
 	MDRV_CPU_CONFIG(dleuro_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(dleuro_map,0)
 	MDRV_CPU_IO_MAP(dleuro_io_map,0)
-	MDRV_CPU_VBLANK_INT(vblank_callback, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_callback)
 
-	MDRV_WATCHDOG_TIME_INIT(ATTOTIME_IN_HZ(MASTER_CLOCK_EURO/(16*16*16*16*16*8)))
+	MDRV_WATCHDOG_TIME_INIT(UINT64_ATTOTIME_IN_HZ(MASTER_CLOCK_EURO/(16*16*16*16*16*8)))
 
 	MDRV_MACHINE_START(dleuro)
 	MDRV_MACHINE_RESET(dlair)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 199, 0, 239)
 

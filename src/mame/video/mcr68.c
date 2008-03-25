@@ -64,7 +64,7 @@ static TILE_GET_INFO( zwackery_get_fg_tile_info )
 VIDEO_START( mcr68 )
 {
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  16,16, 32,32);
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
 
@@ -77,10 +77,10 @@ VIDEO_START( zwackery )
 	int code, y, x;
 
 	/* initialize the background tilemap */
-	bg_tilemap = tilemap_create(zwackery_get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32);
+	bg_tilemap = tilemap_create(zwackery_get_bg_tile_info, tilemap_scan_rows,  16,16, 32,32);
 
 	/* initialize the foreground tilemap */
-	fg_tilemap = tilemap_create(zwackery_get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,16, 32,32);
+	fg_tilemap = tilemap_create(zwackery_get_fg_tile_info, tilemap_scan_rows,  16,16, 32,32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 
 	/* "colorize" each code */
@@ -186,9 +186,9 @@ WRITE16_HANDLER( zwackery_spriteram_w )
  *
  *************************************/
 
-static void mcr68_update_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void mcr68_update_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
-	rectangle sprite_clip = machine->screen[0].visarea;
+	rectangle sprite_clip = *video_screen_get_visible_area(machine->primary_screen);
 	int offs;
 
 	/* adjust for clipping */
@@ -238,7 +238,7 @@ static void mcr68_update_sprites(running_machine *machine, mame_bitmap *bitmap, 
 }
 
 
-static void zwackery_update_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void zwackery_update_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	int offs;
 
@@ -308,13 +308,13 @@ VIDEO_UPDATE( mcr68 )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE | 1, 0);
 
 	/* draw the low-priority sprites */
-	mcr68_update_sprites(machine, bitmap, cliprect, 0);
+	mcr68_update_sprites(screen->machine, bitmap, cliprect, 0);
 
     /* redraw tiles with priority over sprites */
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 1, 0);
 
 	/* draw the high-priority sprites */
-	mcr68_update_sprites(machine, bitmap, cliprect, 1);
+	mcr68_update_sprites(screen->machine, bitmap, cliprect, 1);
 	return 0;
 }
 
@@ -325,12 +325,12 @@ VIDEO_UPDATE( zwackery )
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
 	/* draw the low-priority sprites */
-	zwackery_update_sprites(machine, bitmap, cliprect, 0);
+	zwackery_update_sprites(screen->machine, bitmap, cliprect, 0);
 
     /* redraw tiles with priority over sprites */
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 1, 0);
 
 	/* draw the high-priority sprites */
-	zwackery_update_sprites(machine, bitmap, cliprect, 1);
+	zwackery_update_sprites(screen->machine, bitmap, cliprect, 1);
 	return 0;
 }

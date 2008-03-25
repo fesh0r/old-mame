@@ -309,7 +309,7 @@ static READ8_HANDLER( polepos_ready_r )
 {
 	int ret = 0xff;
 
-	if (video_screen_get_vpos(0) >= 128)
+	if (video_screen_get_vpos(machine->primary_screen) >= 128)
 		ret ^= 0x02;
 
 	ret ^= 0x08; /* ADC End Flag */
@@ -327,7 +327,7 @@ static WRITE8_HANDLER( polepos_latch_w )
 		case 0x00:	/* IRQON */
 			cpu_interrupt_enable(0,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 			break;
 
 		case 0x01:	/* IOSEL */
@@ -338,8 +338,8 @@ static WRITE8_HANDLER( polepos_latch_w )
 			polepos_sound_enable(bit);
 			if (!bit)
 			{
-				polepos_engine_sound_lsb_w(0,0);
-				polepos_engine_sound_msb_w(0,0);
+				polepos_engine_sound_lsb_w(machine,0,0);
+				polepos_engine_sound_msb_w(machine,0,0);
 			}
 			break;
 
@@ -348,11 +348,11 @@ static WRITE8_HANDLER( polepos_latch_w )
 			break;
 
 		case 0x04:	/* RESB */
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x05:	/* RESA */
-			cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x06:	/* SB0 */
@@ -360,7 +360,7 @@ static WRITE8_HANDLER( polepos_latch_w )
 			break;
 
 		case 0x07:	/* CHACL */
-			polepos_chacl_w(offset,data);
+			polepos_chacl_w(machine,offset,data);
 			break;
 	}
 }
@@ -417,7 +417,7 @@ static MACHINE_RESET( polepos )
 
 	/* Reset all latches */
 	for (i = 0;i < 8;i++)
-		polepos_latch_w(i,0);
+		polepos_latch_w(machine,i,0);
 
 	namco_06xx_init(0, 0,
 		NAMCOIO_51XX, &intf0,
@@ -444,8 +444,8 @@ static ADDRESS_MAP_START( z80_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4c00, 0x4fff) AM_READWRITE(polepos_alpha_r, polepos_alpha_w)				/* Alphanumeric (char ram) */
 	AM_RANGE(0x5000, 0x57ff) AM_READWRITE(polepos_view_r, polepos_view_w) 				/* Background Memory */
 
-	AM_RANGE(0x8000, 0x83ff) AM_READ(MRA8_RAM)						/* Sound Memory */
-	AM_RANGE(0x8000, 0x83bf) AM_WRITE(MWA8_RAM)						/* Sound Memory */
+	AM_RANGE(0x8000, 0x83ff) AM_READ(SMH_RAM)						/* Sound Memory */
+	AM_RANGE(0x8000, 0x83bf) AM_WRITE(SMH_RAM)						/* Sound Memory */
 	AM_RANGE(0x83c0, 0x83ff) AM_WRITE(polepos_sound_w) AM_BASE(&polepos_soundregs)/* Sound data */
 
 	AM_RANGE(0x9000, 0x90ff) AM_READWRITE(namco_06xx_0_data_r, namco_06xx_0_data_w)
@@ -458,8 +458,8 @@ static ADDRESS_MAP_START( z80_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_READWRITE(polepos_adc_r, MWA8_NOP)
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(polepos_adc_r, SMH_NOP)
 ADDRESS_MAP_END
 
 
@@ -882,15 +882,15 @@ static MACHINE_DRIVER_START( polepos )
 	MDRV_CPU_ADD(Z80, 24576000/8)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(z80_map,0)
 	MDRV_CPU_IO_MAP(z80_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,2)	/* 64V */
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_assert,2)	/* 64V */
 
 	MDRV_CPU_ADD(Z8000, 24576000/8)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(z8002_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_CPU_ADD(Z8000, 24576000/8)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(z8002_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_CPU_ADD_TAG(CPUTAG_54XX, MB8844, 18432000/12/6)	/* 1.536 MHz, internally divided by 6 */
 	MDRV_CPU_PROGRAM_MAP(namco_54xx_map_program,0)
@@ -898,18 +898,20 @@ static MACHINE_DRIVER_START( polepos )
 	MDRV_CPU_IO_MAP(namco_54xx_map_io,0)
 
 	MDRV_WATCHDOG_VBLANK_INIT(16)	// 128V clocks the same as VBLANK
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+
 	MDRV_INTERLEAVE(100)	/* some interleaving */
 
 	MDRV_MACHINE_RESET(polepos)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(polepos)
 	MDRV_PALETTE_LENGTH(0x0f00)
 

@@ -90,13 +90,12 @@ write:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/z80dma.h"
 
 #include "mario.h"
 
-static UINT8 mario_dma_read_byte(offs_t offset);
-static void mario_dma_write_byte(offs_t offset, UINT8 data);
+static Z80DMA_READ(mario_dma_read_byte);
+static Z80DMA_WRITE(mario_dma_write_byte);
 
 /*************************************
  *
@@ -104,7 +103,7 @@ static void mario_dma_write_byte(offs_t offset, UINT8 data);
  *
  *************************************/
 
-static const struct z80dma_interface mario_dma =
+static const z80dma_interface mario_dma =
 {
 	0,
 	Z80_CLOCK,
@@ -120,24 +119,13 @@ static const struct z80dma_interface mario_dma =
  *
  *************************************/
 
-static MACHINE_START( mario )
-{
-	z80dma_init(1);
-	z80dma_config(0, &mario_dma);
-}
-
-static MACHINE_RESET( mario )
-{
-	z80dma_reset();
-}
-
 /*************************************
  *
  *  DMA handling
  *
  *************************************/
 
-static UINT8 mario_dma_read_byte(offs_t offset)
+static Z80DMA_READ(mario_dma_read_byte)
 {
 	UINT8 result;
 
@@ -148,7 +136,7 @@ static UINT8 mario_dma_read_byte(offs_t offset)
 	return result;
 }
 
-static void mario_dma_write_byte(offs_t offset, UINT8 data)
+static Z80DMA_WRITE(mario_dma_write_byte)
 {
 	cpuintrf_push_context(0);
 	program_write_byte(offset, data);
@@ -165,7 +153,7 @@ static ADDRESS_MAP_START( mario_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6000, 0x6fff) AM_RAM
 	AM_RANGE(0x7000, 0x73ff) AM_RAM	AM_BASE_MEMBER(mario_state, spriteram) AM_SIZE_MEMBER(mario_state, spriteram_size) /* physical sprite ram */
-	AM_RANGE(0x7400, 0x77ff) AM_READWRITE(MRA8_RAM, mario_videoram_w) AM_BASE_MEMBER(mario_state, videoram)
+	AM_RANGE(0x7400, 0x77ff) AM_READWRITE(SMH_RAM, mario_videoram_w) AM_BASE_MEMBER(mario_state, videoram)
 	AM_RANGE(0x7c00, 0x7c00) AM_READ_PORT("IN0") AM_WRITE(mario_sh1_w) /* Mario run sample */
 	AM_RANGE(0x7c80, 0x7c80) AM_READ_PORT("IN1") AM_WRITE(mario_sh2_w) /* Luigi run sample */
 	AM_RANGE(0x7d00, 0x7d00) AM_WRITE(mario_scroll_w)
@@ -175,7 +163,7 @@ static ADDRESS_MAP_START( mario_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7e84, 0x7e84) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x7e85, 0x7e85) AM_WRITE(z80dma_0_rdy_w)	/* ==> DMA Chip */
 	AM_RANGE(0x7f00, 0x7f07) AM_WRITE(mario_sh3_w) /* Sound port */
-	AM_RANGE(0x7f80, 0x7f80) AM_READ_PORT("DSW0")	/* DSW */
+	AM_RANGE(0x7f80, 0x7f80) AM_READ_PORT("DSW")	/* DSW */
 	AM_RANGE(0x7e00, 0x7e00) AM_WRITE(mario_sh_tuneselect_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -184,7 +172,7 @@ static ADDRESS_MAP_START( masao_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6000, 0x6fff) AM_RAM
 	AM_RANGE(0x7000, 0x73ff) AM_RAM	AM_BASE_MEMBER(mario_state, spriteram) AM_SIZE_MEMBER(mario_state, spriteram_size) /* physical sprite ram */
-	AM_RANGE(0x7400, 0x77ff) AM_READWRITE(MRA8_RAM, mario_videoram_w) AM_BASE_MEMBER(mario_state, videoram)
+	AM_RANGE(0x7400, 0x77ff) AM_READWRITE(SMH_RAM, mario_videoram_w) AM_BASE_MEMBER(mario_state, videoram)
 	AM_RANGE(0x7c00, 0x7c00) AM_READ_PORT("IN0")
 	AM_RANGE(0x7c80, 0x7c80) AM_READ_PORT("IN1")
 	AM_RANGE(0x7d00, 0x7d00) AM_WRITE(mario_scroll_w)
@@ -195,14 +183,14 @@ static ADDRESS_MAP_START( masao_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7e84, 0x7e84) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x7e85, 0x7e85) AM_WRITE(z80dma_0_rdy_w)	/* ==> DMA Chip */
 	AM_RANGE(0x7f00, 0x7f00) AM_WRITE(masao_sh_irqtrigger_w)
-	AM_RANGE(0x7f80, 0x7f80) AM_READ_PORT("DSW0")	/* DSW */
+	AM_RANGE(0x7f80, 0x7f80) AM_READ_PORT("DSW")	/* DSW */
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mario_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(z80dma_0_r, z80dma_0_w)	/* dma controller */
-	//AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP)  /*Z80 DMA Ctrl port */
+	//AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP)  /*Z80 DMA Ctrl port */
 ADDRESS_MAP_END
 
 /*************************************
@@ -361,13 +349,14 @@ static MACHINE_DRIVER_START( mario_base )
 	MDRV_CPU_ADD_TAG("main", Z80, Z80_CLOCK)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(mario_map, 0)
 	MDRV_CPU_IO_MAP(0,mario_writeport)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_MACHINE_START(mario)
-	MDRV_MACHINE_RESET(mario)
+	/* devices */
+	MDRV_DEVICE_ADD(Z80DMA_DEV_0_TAG, Z80DMA)
+	MDRV_DEVICE_CONFIG(mario_dma)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 	MDRV_GFXDECODE(mario)
@@ -397,7 +386,7 @@ static MACHINE_DRIVER_START( masao )
 	MDRV_CPU_REPLACE("main", Z80, 4000000)        /* 4.000 MHz (?) */
 	MDRV_CPU_PROGRAM_MAP(masao_map, 0)
 	MDRV_CPU_IO_MAP(0,mario_writeport)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	/* sound hardware */
 	MDRV_IMPORT_FROM(masao_audio)

@@ -71,19 +71,19 @@ static WRITE8_HANDLER( fantland_nmi_enable_w )
 static WRITE16_HANDLER( fantland_nmi_enable_16_w )
 {
 	if (ACCESSING_LSB)
-		fantland_nmi_enable_w(offset*2,data);
+		fantland_nmi_enable_w(machine,offset*2,data);
 }
 
 static WRITE8_HANDLER( fantland_soundlatch_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE16_HANDLER( fantland_soundlatch_16_w )
 {
 	if (ACCESSING_LSB)
-		fantland_soundlatch_w(offset*2, data);
+		fantland_soundlatch_w(machine, offset*2, data);
 }
 
 /***************************************************************************
@@ -120,7 +120,7 @@ static ADDRESS_MAP_START( fantland_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x00000, 0x07fff ) AM_RAM
 	AM_RANGE( 0x08000, 0x7ffff ) AM_ROM
 
-	AM_RANGE( 0xa2000, 0xa21ff ) AM_READWRITE( MRA16_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w ) AM_BASE( &paletteram16 )
+	AM_RANGE( 0xa2000, 0xa21ff ) AM_READWRITE( SMH_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w ) AM_BASE( &paletteram16 )
 
 	AM_RANGE( 0xa3000, 0xa3001 ) AM_READWRITE( input_port_0_word_r, fantland_nmi_enable_16_w )
 	AM_RANGE( 0xa3002, 0xa3003 ) AM_READWRITE( input_port_1_word_r, fantland_soundlatch_16_w )
@@ -140,7 +140,7 @@ static ADDRESS_MAP_START( galaxygn_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x00000, 0x07fff ) AM_RAM
 	AM_RANGE( 0x10000, 0x2ffff ) AM_ROM
 
-	AM_RANGE( 0x52000, 0x521ff ) AM_READWRITE( MRA8_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w ) AM_BASE( &paletteram )
+	AM_RANGE( 0x52000, 0x521ff ) AM_READWRITE( SMH_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w ) AM_BASE( &paletteram )
 
 	AM_RANGE( 0x53000, 0x53000 ) AM_READWRITE( input_port_0_r, fantland_nmi_enable_w )
 	AM_RANGE( 0x53001, 0x53001 ) AM_READ( input_port_1_r )
@@ -190,7 +190,7 @@ static READ8_HANDLER( borntofi_inputs_r )
 
 	x = readinputport(13 + offset * 2);
 	y = readinputport(12 + offset * 2);
-	f = cpu_getcurrentframe();
+	f = video_screen_get_frame_number(machine->primary_screen);
 
 	ret[offset]	=	(ret[offset] & 0x14) | (readinputport(2 + offset) & 0xc3);
 
@@ -219,7 +219,7 @@ static ADDRESS_MAP_START( borntofi_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x00000, 0x07fff ) AM_RAM
 	AM_RANGE( 0x10000, 0x2ffff ) AM_ROM
 
-	AM_RANGE( 0x52000, 0x521ff ) AM_READWRITE( MRA8_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w ) AM_BASE( &paletteram )
+	AM_RANGE( 0x52000, 0x521ff ) AM_READWRITE( SMH_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w ) AM_BASE( &paletteram )
 	AM_RANGE( 0x53000, 0x53001 ) AM_READWRITE( borntofi_inputs_r, borntofi_nmi_enable_w )
 	AM_RANGE( 0x53002, 0x53002 ) AM_READWRITE( input_port_6_r,    fantland_soundlatch_w )
 	AM_RANGE( 0x53003, 0x53003 ) AM_READ( input_port_7_r )
@@ -248,12 +248,12 @@ static ADDRESS_MAP_START( wheelrun_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x30000, 0x3ffff) AM_ROM
 	AM_RANGE(0x70000, 0x7ffff) AM_ROM
 
-	AM_RANGE(0x52000, 0x521ff) AM_READWRITE(MRA8_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w	) AM_BASE(&paletteram	)
+	AM_RANGE(0x52000, 0x521ff) AM_READWRITE(SMH_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w	) AM_BASE(&paletteram	)
 
 	AM_RANGE(0x53000, 0x53000) AM_READWRITE( input_port_0_r, borntofi_nmi_enable_w )
 	AM_RANGE(0x53001, 0x53001) AM_READ( input_port_1_r )
 	AM_RANGE(0x53002, 0x53002) AM_READWRITE( input_port_2_r, fantland_soundlatch_w )
-	AM_RANGE(0x53003, 0x53003) AM_READWRITE( input_port_3_r, MWA8_NOP)
+	AM_RANGE(0x53003, 0x53003) AM_READWRITE( input_port_3_r, SMH_NOP)
 
 	AM_RANGE(0x54000, 0x567ff) AM_RAM AM_BASE(&spriteram	)
 	AM_RANGE(0x60000, 0x6ffff) AM_RAM AM_BASE(&spriteram_2	)
@@ -387,8 +387,8 @@ static ADDRESS_MAP_START( wheelrun_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xa000) AM_READWRITE( YM3526_status_port_0_r, YM3526_control_port_0_w )
 	AM_RANGE(0xa001, 0xa001) AM_WRITE( YM3526_write_port_0_w )
 
-	AM_RANGE(0xb000, 0xb000) AM_WRITE( MWA8_NOP )	// on a car crash / hit
-	AM_RANGE(0xc000, 0xc000) AM_WRITE( MWA8_NOP )	// ""
+	AM_RANGE(0xb000, 0xb000) AM_WRITE( SMH_NOP )	// on a car crash / hit
+	AM_RANGE(0xc000, 0xc000) AM_WRITE( SMH_NOP )	// ""
 
 	AM_RANGE(0xd000, 0xd000) AM_READ( soundlatch_r )	// during NMI
 ADDRESS_MAP_END
@@ -712,7 +712,7 @@ static INPUT_PORTS_START( wheelrun )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
-	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(wheelrun_wheel_r, 0)
+	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(wheelrun_wheel_r, (void *)0)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
 
 	PORT_START	/* IN1 - 53001 */
@@ -720,7 +720,7 @@ static INPUT_PORTS_START( wheelrun )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
-	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(wheelrun_wheel_r, 1)
+	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(wheelrun_wheel_r, (void *)1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
 
 	PORT_START	/* IN2 - 53002 */
@@ -811,7 +811,7 @@ static MACHINE_DRIVER_START( fantland )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(I8086, 8000000)        // ?
 	MDRV_CPU_PROGRAM_MAP(fantland_map, 0)
-	MDRV_CPU_VBLANK_INT(fantland_irq,1)
+	MDRV_CPU_VBLANK_INT("main", fantland_irq)
 
 	/* audio CPU */
 	MDRV_CPU_ADD(I8088, 8000000)        // ?
@@ -820,18 +820,18 @@ static MACHINE_DRIVER_START( fantland )
 	MDRV_CPU_PERIODIC_INT(fantland_sound_irq, 8000)
 	// NMI when soundlatch is written
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(fantland)
 
 	MDRV_INTERLEAVE(8000/60)	// sound irq must feed the DAC at 8kHz
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(352,256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 352-1, 0, 256-1)
+
 	MDRV_GFXDECODE(fantland)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -863,7 +863,7 @@ static MACHINE_DRIVER_START( galaxygn )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(I8088, 8000000)        // ?
 	MDRV_CPU_PROGRAM_MAP(galaxygn_map, 0)
-	MDRV_CPU_VBLANK_INT(fantland_irq,1)
+	MDRV_CPU_VBLANK_INT("main", fantland_irq)
 
 	/* audio CPU */
 	MDRV_CPU_ADD(I8088, 8000000)        // ?
@@ -871,16 +871,16 @@ static MACHINE_DRIVER_START( galaxygn )
 	MDRV_CPU_IO_MAP(fantland_sound_iomap, 0)
 	// IRQ by YM2151, NMI when soundlatch is written
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(fantland)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(352,256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 352-1, 0, 256-1)
+
 	MDRV_GFXDECODE(fantland)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -917,22 +917,22 @@ static MACHINE_DRIVER_START( borntofi )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(V20, 16000000/2)        // D701080C-8 - NEC D70108C-8 V20 CPU, running at 8.000MHz [16/2]
 	MDRV_CPU_PROGRAM_MAP(borntofi_map, 0)
-	MDRV_CPU_VBLANK_INT(fantland_irq,1)
+	MDRV_CPU_VBLANK_INT("main", fantland_irq)
 
 	/* audio CPU */
 	MDRV_CPU_ADD(I8088, 18432000/3)        // 8088 - AMD P8088-2 CPU, running at 6.144MHz [18.432/3]
 	MDRV_CPU_PROGRAM_MAP(borntofi_sound_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(54)	// 54 Hz
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(borntofi)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(54)	// 54 Hz
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(352,256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 352-1, 0, 256-1)
+
 	MDRV_GFXDECODE(fantland)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -963,23 +963,23 @@ static MACHINE_DRIVER_START( wheelrun )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(V20, XTAL_18MHz/2)		// D701080C-8 (V20)
 	MDRV_CPU_PROGRAM_MAP(wheelrun_map, 0)
-	MDRV_CPU_VBLANK_INT(fantland_irq,1)
+	MDRV_CPU_VBLANK_INT("main", fantland_irq)
 
 	/* audio CPU */
 	MDRV_CPU_ADD(Z80, XTAL_18MHz/2)		// Z8400BB1 (Z80B)
 	MDRV_CPU_PROGRAM_MAP(wheelrun_sound_map, 0)
 	// IRQ by YM3526, NMI when soundlatch is written
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(fantland)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256,224)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 224-1)
+
 	MDRV_GFXDECODE(fantland)
 	MDRV_PALETTE_LENGTH(256)
 

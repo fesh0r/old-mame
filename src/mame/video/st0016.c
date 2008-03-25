@@ -20,7 +20,7 @@ static UINT8 st0016_vregs[0xc0];
 static int st0016_ramgfx;
 
 //super eagle shot
-static mame_bitmap *speglsht_bitmap;
+static bitmap_t *speglsht_bitmap;
 extern UINT32 *speglsht_framebuffer;
 extern UINT32  speglsht_videoreg;
 
@@ -196,7 +196,7 @@ WRITE8_HANDLER(st0016_vregs_w)
 			if( srcadr < (memory_region_length(REGION_CPU1)-0x10000) && (dstadr < ST0016_MAX_CHAR_BANK*ST0016_CHAR_BANK_SIZE))
 			{
 				st0016_char_bank=dstadr>>5;
-				st0016_character_ram_w(dstadr&0x1f,memory_region(REGION_CPU1)[0x10000+srcadr]);
+				st0016_character_ram_w(machine,dstadr&0x1f,memory_region(REGION_CPU1)[0x10000+srcadr]);
 				srcadr++;
 				dstadr++;
 				length--;
@@ -212,7 +212,7 @@ WRITE8_HANDLER(st0016_vregs_w)
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/*
     object ram :
@@ -421,7 +421,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 static void st0016_postload(void)
 {
 	int i;
-	st0016_rom_bank_w(0,st0016_rom_bank);
+	st0016_rom_bank_w(Machine,0,st0016_rom_bank);
 	for(i=0;i<ST0016_MAX_CHAR_BANK;i++)
 		decodechar(Machine->gfx[st0016_ramgfx], i,(UINT8 *) st0016_charram);
 }
@@ -470,13 +470,13 @@ VIDEO_START( st0016 )
 	switch(st0016_game&0x3f)
 	{
 		case 0: //renju kizoku
-			video_screen_set_visarea(0, 0, 40*8-1, 0, 30*8-1);
+			video_screen_set_visarea(machine->primary_screen, 0, 40*8-1, 0, 30*8-1);
 			spr_dx=0;
 			spr_dy=0;
 		break;
 
 		case 1: //neratte chu!
-			video_screen_set_visarea(0, 8,41*8-1,0,30*8-1);
+			video_screen_set_visarea(machine->primary_screen, 8,41*8-1,0,30*8-1);
 			spr_dx=0;
 			spr_dy=8;
 		break;
@@ -486,15 +486,15 @@ VIDEO_START( st0016 )
 		break;
 
 		case 4: //mayjinsen 1&2
-			video_screen_set_visarea(0, 0,32*8-1,0,28*8-1);
+			video_screen_set_visarea(machine->primary_screen, 0,32*8-1,0,28*8-1);
 		break;
 
 		case 10:
-			video_screen_set_visarea(0, 0,383,0,255);
+			video_screen_set_visarea(machine->primary_screen, 0,383,0,255);
 		break;
 
 		case 11:
-			video_screen_set_visarea(0, 0,383,0,383);
+			video_screen_set_visarea(machine->primary_screen, 0,383,0,383);
 		break;
 
 	}
@@ -503,7 +503,7 @@ VIDEO_START( st0016 )
 }
 
 
-static void draw_bgmap(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect, int priority)
+static void draw_bgmap(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect, int priority)
 {
 	int j;
 	//for(j=0x40-8;j>=0;j-=8)
@@ -635,7 +635,7 @@ VIDEO_UPDATE( st0016 )
 		//super eagle shot
 		int x,y,dy;
 
-		fillbitmap(speglsht_bitmap,machine->pens[0],&machine->screen[0].visarea);
+		fillbitmap(speglsht_bitmap,0,NULL);
 		dy=(speglsht_videoreg&0x20)?(256*512):0; //visible frame
 
 		for(y=0;y<256;y++)
@@ -648,9 +648,9 @@ VIDEO_UPDATE( st0016 )
 		}
 
 		//draw st0016 gfx to temporary bitmap (indexed 16)
-		draw_bgmap(machine, speglsht_bitmap,cliprect,0);
- 		draw_sprites(machine, speglsht_bitmap,cliprect);
-		draw_bgmap(machine, speglsht_bitmap,cliprect,1);
+		draw_bgmap(screen->machine, speglsht_bitmap,cliprect,0);
+ 		draw_sprites(screen->machine, speglsht_bitmap,cliprect);
+		draw_bgmap(screen->machine, speglsht_bitmap,cliprect,1);
 
 		//copy temporary bitmap to rgb 32 bit bitmap
 		for(y=cliprect->min_y; y<cliprect->max_y;y++)
@@ -660,7 +660,7 @@ VIDEO_UPDATE( st0016 )
 			{
 				if(srcline[x])
 				{
-					rgb_t color=palette_get_color(machine, srcline[x]);
+					rgb_t color=palette_get_color(screen->machine, srcline[x]);
 					PLOT_PIXEL_RGB(x,y,RGB_RED(color),RGB_GREEN(color),RGB_BLUE(color));
 				}
 			}
@@ -676,10 +676,10 @@ VIDEO_UPDATE( st0016 )
 			}
 		}
 
-		fillbitmap(bitmap,machine->pens[UNUSED_PEN],&machine->screen[0].visarea);
-		draw_bgmap(machine, bitmap,cliprect,0);
- 		draw_sprites(machine, bitmap,cliprect);
-		draw_bgmap(machine, bitmap,cliprect,1);
+		fillbitmap(bitmap,UNUSED_PEN,cliprect);
+		draw_bgmap(screen->machine, bitmap,cliprect,0);
+ 		draw_sprites(screen->machine, bitmap,cliprect);
+		draw_bgmap(screen->machine, bitmap,cliprect,1);
 	}
 	return 0;
 }

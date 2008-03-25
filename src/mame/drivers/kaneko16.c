@@ -17,7 +17,7 @@ CUSTOM :  VU-001 046A                  (48pin PQFP)
           VU-003                                        <- High Colour Background
           VIEW2-CHIP 23160-509 9047EAI (144pin PQFP)    <- Tilemaps
           MUX2-CHIP                    (64pin PQFP)
-          HELP1-CHIP
+          HELP1-CHIP                   (64pin PQFP)
           IU-001 9045KP002             (44pin PQFP)
           I/O JAMMA MC-8282 047        (46pin)          <- Inputs
 
@@ -28,7 +28,7 @@ Year + Game                    PCB         Notes
 91  The Berlin Wall
     Magical Crystals           Z00FC-02
 92  Bakuretsu Breaker          ZOOFC-02
-    Blaze On                               2 Sprites Chips !?
+    Blaze On                   Z02AT-002   2 VU-002 Sprites Chips (Atlus PCB ID: ATL-67140)
     Shogun Warriors            ZO1DK-002   CALC3 MCU protection (EEPROM handling, 68k code snippet, data - palettes, tilemaps, fighters)
     B.Rap Boys                 ZO1DK-002   CALC3 MCU protection (EEPROM handling, 68k code snippet, data - palettes, tilemaps, fighters)
 94  Great 1000 Miles Rally                 TBSOP01 MCU protection (EEPROM handling etc.)
@@ -272,8 +272,8 @@ static WRITE16_HANDLER( kaneko16_soundlatch_w )
 {
 	if (ACCESSING_MSB)
 	{
-		soundlatch_w(0, (data & 0xff00) >> 8 );
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(machine, 0, (data & 0xff00) >> 8 );
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -282,31 +282,31 @@ static WRITE16_HANDLER( kaneko16_soundlatch_w )
 static READ16_HANDLER( kaneko16_YM2149_0_r )
 {
 	/* Each 2149 register is mapped to a different address */
-	AY8910_control_port_0_w(0,offset);
-	return AY8910_read_port_0_r(0);
+	AY8910_control_port_0_w(machine,0,offset);
+	return AY8910_read_port_0_r(machine,0);
 }
 static READ16_HANDLER( kaneko16_YM2149_1_r )
 {
 	/* Each 2149 register is mapped to a different address */
-	AY8910_control_port_1_w(0,offset);
-	return AY8910_read_port_1_r(0);
+	AY8910_control_port_1_w(machine,0,offset);
+	return AY8910_read_port_1_r(machine,0);
 }
 
 static WRITE16_HANDLER( kaneko16_YM2149_0_w )
 {
 	/* Each 2149 register is mapped to a different address */
-	AY8910_control_port_0_w(0,offset);
+	AY8910_control_port_0_w(machine,0,offset);
 	/* The registers are mapped to odd addresses, except one! */
-	if (ACCESSING_LSB)	AY8910_write_port_0_w(0, data       & 0xff);
-	else				AY8910_write_port_0_w(0,(data >> 8) & 0xff);
+	if (ACCESSING_LSB)	AY8910_write_port_0_w(machine,0, data       & 0xff);
+	else				AY8910_write_port_0_w(machine,0,(data >> 8) & 0xff);
 }
 static WRITE16_HANDLER( kaneko16_YM2149_1_w )
 {
 	/* Each 2149 register is mapped to a different address */
-	AY8910_control_port_1_w(0,offset);
+	AY8910_control_port_1_w(machine,0,offset);
 	/* The registers are mapped to odd addresses, except one! */
-	if (ACCESSING_LSB)	AY8910_write_port_1_w(0, data       & 0xff);
-	else				AY8910_write_port_1_w(0,(data >> 8) & 0xff);
+	if (ACCESSING_LSB)	AY8910_write_port_1_w(machine,0, data       & 0xff);
+	else				AY8910_write_port_1_w(machine,0,(data >> 8) & 0xff);
 }
 
 
@@ -369,11 +369,11 @@ static ADDRESS_MAP_START( berlwall, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM		// ROM
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM		// Work RAM
 	AM_RANGE(0x30e000, 0x30ffff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)		// Sprites
-	AM_RANGE(0x400000, 0x400fff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x400000, 0x400fff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 //  AM_RANGE(0x480000, 0x480001) AM_RAM     // ?
 	AM_RANGE(0x500000, 0x500001) AM_READWRITE(kaneko16_bg15_reg_r, kaneko16_bg15_reg_w) AM_BASE(&kaneko16_bg15_reg)	// High Color Background
 	AM_RANGE(0x580000, 0x580001) AM_READWRITE(kaneko16_bg15_select_r, kaneko16_bg15_select_w) AM_BASE(&kaneko16_bg15_select)
-	AM_RANGE(0x600000, 0x60003f) AM_READWRITE(MRA16_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
+	AM_RANGE(0x600000, 0x60003f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
 	AM_RANGE(0x680000, 0x680001) AM_READ(input_port_0_word_r)		// Inputs
 	AM_RANGE(0x680002, 0x680003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x680004, 0x680005) AM_READ(input_port_2_word_r)
@@ -384,11 +384,11 @@ static ADDRESS_MAP_START( berlwall, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800200, 0x80021f) AM_READWRITE(kaneko16_YM2149_1_r, kaneko16_YM2149_1_w)
 	AM_RANGE(0x8003fe, 0x8003ff) AM_NOP // for OKI when accessed as .l
 	AM_RANGE(0x800400, 0x800401) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
-	AM_RANGE(0xc00000, 0xc00fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers
-	AM_RANGE(0xc01000, 0xc01fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0xc00000, 0xc00fff) AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers
+	AM_RANGE(0xc01000, 0xc01fff) AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0xc02000, 0xc02fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0xc03000, 0xc03fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
-	AM_RANGE(0xd00000, 0xd0001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers Regs
+	AM_RANGE(0xd00000, 0xd0001f) AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers Regs
 ADDRESS_MAP_END
 
 
@@ -416,20 +416,20 @@ static ADDRESS_MAP_START( bakubrkr, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x40001e, 0x40001f) AM_WRITE(bakubrkr_oki_bank_sw)	// OKI bank Switch
 	AM_RANGE(0x400200, 0x40021f) AM_READWRITE(kaneko16_YM2149_1_r,kaneko16_YM2149_1_w)			// Sound
 	AM_RANGE(0x400400, 0x400401) AM_READWRITE(OKIM6295_status_0_lsb_r,OKIM6295_data_0_lsb_w)	//
-	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(MRA16_RAM,kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x501000, 0x501fff) AM_READWRITE(MRA16_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM,kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x501000, 0x501fff) AM_READWRITE(SMH_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x502000, 0x502fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0x503000, 0x503fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
-	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(MRA16_RAM,kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
-	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(MRA16_RAM,kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
+	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(SMH_RAM,kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
+	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(SMH_RAM,kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
 	AM_RANGE(0x582000, 0x582fff) AM_RAM AM_BASE(&kaneko16_vscroll_3)									//
 	AM_RANGE(0x583000, 0x583fff) AM_RAM AM_BASE(&kaneko16_vscroll_2)									//
 	AM_RANGE(0x600000, 0x601fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)					// Sprites
-	AM_RANGE(0x700000, 0x700fff) AM_READWRITE(MRA16_RAM,paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
-	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(MRA16_RAM,kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
-	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(MRA16_RAM,kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
+	AM_RANGE(0x700000, 0x700fff) AM_READWRITE(SMH_RAM,paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(SMH_RAM,kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
+	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(SMH_RAM,kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
 	AM_RANGE(0xa80000, 0xa80001) AM_READ(watchdog_reset16_r)	// Watchdog
-	AM_RANGE(0xb00000, 0xb0001f) AM_READWRITE(MRA16_RAM,kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
+	AM_RANGE(0xb00000, 0xb0001f) AM_READWRITE(SMH_RAM,kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
 	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(kaneko16_eeprom_w)	// EEPROM
 	AM_RANGE(0xe00000, 0xe00001) AM_READ(input_port_0_word_r)	// Inputs
 	AM_RANGE(0xe00002, 0xe00003) AM_READ(input_port_1_word_r)
@@ -445,24 +445,24 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( blazeon, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM		// ROM
 	AM_RANGE(0x300000, 0x30ffff) AM_RAM		// Work RAM
-	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
-	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x601000, 0x601fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x601000, 0x601fff) AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x602000, 0x602fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0x603000, 0x603fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
 	AM_RANGE(0x700000, 0x700fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)					// Sprites
-	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
-	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(MRA16_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs #1
+	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
+	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs #1
 	AM_RANGE(0x980000, 0x98001f) AM_RAM																				// Sprites Regs #2
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(input_port_0_word_r)		// Inputs
 	AM_RANGE(0xc00002, 0xc00003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0xc00004, 0xc00005) AM_READ(input_port_2_word_r)
 	AM_RANGE(0xc00006, 0xc00007) AM_READ(input_port_3_word_r)
 	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(kaneko16_coin_lockout_w)	// Coin Lockout
-	AM_RANGE(0xe00000, 0xe00001) AM_READWRITE(MRA16_NOP, kaneko16_soundlatch_w)	// Read = IRQ Ack ?
-	AM_RANGE(0xe40000, 0xe40001) AM_READ(MRA16_NOP)	// IRQ Ack ?
-//  AM_RANGE(0xe80000, 0xe80001) AM_READ(MRA16_NOP) // IRQ Ack ?
-	AM_RANGE(0xec0000, 0xec0001) AM_READ(MRA16_NOP)	// Lev 4 IRQ Ack ?
+	AM_RANGE(0xe00000, 0xe00001) AM_READWRITE(SMH_NOP, kaneko16_soundlatch_w)	// Read = IRQ Ack ?
+	AM_RANGE(0xe40000, 0xe40001) AM_READ(SMH_NOP)	// IRQ Ack ?
+//  AM_RANGE(0xe80000, 0xe80001) AM_READ(SMH_NOP) // IRQ Ack ?
+	AM_RANGE(0xec0000, 0xec0001) AM_READ(SMH_NOP)	// Lev 4 IRQ Ack ?
 ADDRESS_MAP_END
 
 
@@ -507,19 +507,19 @@ static ADDRESS_MAP_START( bloodwar, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(toybox_mcu_com1_w)
 	AM_RANGE(0x2c0000, 0x2c0001) AM_WRITE(toybox_mcu_com2_w)
 	AM_RANGE(0x2d0000, 0x2d0001) AM_WRITE(toybox_mcu_com3_w)
-	AM_RANGE(0x300000, 0x30ffff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x300000, 0x30ffff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 	AM_RANGE(0x400000, 0x401fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)					// Sprites
-	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x501000, 0x501fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x501000, 0x501fff) AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x502000, 0x502fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0x503000, 0x503fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
-	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
-	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
+	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(SMH_RAM, kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
+	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(SMH_RAM, kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
 	AM_RANGE(0x582000, 0x582fff) AM_RAM AM_BASE(&kaneko16_vscroll_3)									//
 	AM_RANGE(0x583000, 0x583fff) AM_RAM AM_BASE(&kaneko16_vscroll_2)									//
-	AM_RANGE(0x600000, 0x60001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
-	AM_RANGE(0x680000, 0x68001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
-	AM_RANGE(0x700000, 0x70001f) AM_READWRITE(MRA16_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
+	AM_RANGE(0x600000, 0x60001f) AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
+	AM_RANGE(0x680000, 0x68001f) AM_READWRITE(SMH_RAM, kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
+	AM_RANGE(0x700000, 0x70001f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
 	AM_RANGE(0x800000, 0x800001) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
 	AM_RANGE(0x880000, 0x880001) AM_READWRITE(OKIM6295_status_1_lsb_r, OKIM6295_data_1_lsb_w)
 	AM_RANGE(0x900000, 0x900039) AM_READWRITE(bloodwar_calc_r, bloodwar_calc_w)
@@ -567,19 +567,19 @@ static ADDRESS_MAP_START( bonkadv, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(toybox_mcu_com1_w)
 	AM_RANGE(0x2c0000, 0x2c0001) AM_WRITE(toybox_mcu_com2_w)
 	AM_RANGE(0x2d0000, 0x2d0001) AM_WRITE(toybox_mcu_com3_w)
-	AM_RANGE(0x300000, 0x30ffff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x300000, 0x30ffff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 	AM_RANGE(0x400000, 0x401fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)					// Sprites
-	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x501000, 0x501fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x501000, 0x501fff) AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x502000, 0x502fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0x503000, 0x503fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
-	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
-	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
+	AM_RANGE(0x580000, 0x580fff) AM_READWRITE(SMH_RAM, kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
+	AM_RANGE(0x581000, 0x581fff) AM_READWRITE(SMH_RAM, kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
 	AM_RANGE(0x582000, 0x582fff) AM_RAM AM_BASE(&kaneko16_vscroll_3)									//
 	AM_RANGE(0x583000, 0x583fff) AM_RAM AM_BASE(&kaneko16_vscroll_2)									//
-	AM_RANGE(0x600000, 0x60001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
-	AM_RANGE(0x680000, 0x68001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
-	AM_RANGE(0x700000, 0x70001f) AM_READWRITE(MRA16_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
+	AM_RANGE(0x600000, 0x60001f) AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
+	AM_RANGE(0x680000, 0x68001f) AM_READWRITE(SMH_RAM, kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
+	AM_RANGE(0x700000, 0x70001f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
 	AM_RANGE(0x800000, 0x800001) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
 	AM_RANGE(0x880000, 0x880001) AM_READWRITE(OKIM6295_status_1_lsb_r, OKIM6295_data_1_lsb_w)
 	AM_RANGE(0x900000, 0x900015) AM_READWRITE(galpanib_calc_r,galpanib_calc_w)
@@ -631,7 +631,7 @@ static WRITE16_HANDLER( gtmr_oki_0_data_w )
 {
 	if (ACCESSING_LSB)
 	{
-		OKIM6295_data_0_w(0,data);
+		OKIM6295_data_0_w(machine,0,data);
 //      logerror("CPU #0 PC %06X : OKI0 <- %08X\n",activecpu_get_pc(),data);
 	}
 }
@@ -640,23 +640,23 @@ static WRITE16_HANDLER( gtmr_oki_1_data_w )
 {
 	if (ACCESSING_LSB)
 	{
-		OKIM6295_data_1_w(0,data);
+		OKIM6295_data_1_w(machine,0,data);
 //      logerror("CPU #0 PC %06X : OKI1 <- %08X\n",activecpu_get_pc(),data);
 	}
 }
 
 static ADDRESS_MAP_START( gtmr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0ffffd) AM_READ(MRA16_ROM					)	// ROM
+	AM_RANGE(0x000000, 0x0ffffd) AM_READ(SMH_ROM					)	// ROM
 	AM_RANGE(0x0ffffe, 0x0fffff) AM_READ(gtmr_wheel_r				)	// Wheel Value
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM					)	// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_READ(MRA16_RAM					)	// Shared With MCU
-	AM_RANGE(0x300000, 0x30ffff) AM_READ(MRA16_RAM					)	// Palette
-	AM_RANGE(0x310000, 0x327fff) AM_READ(MRA16_RAM					)	//
-	AM_RANGE(0x400000, 0x401fff) AM_READ(MRA16_RAM					)	// Sprites
-	AM_RANGE(0x500000, 0x503fff) AM_READ(MRA16_RAM					)	// Layers 0
-	AM_RANGE(0x580000, 0x583fff) AM_READ(MRA16_RAM					)	// Layers 1
-	AM_RANGE(0x600000, 0x60000f) AM_READ(MRA16_RAM					)	// Layers 0 Regs
-	AM_RANGE(0x680000, 0x68000f) AM_READ(MRA16_RAM					)	// Layers 1 Regs
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM					)	// Work RAM
+	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM					)	// Shared With MCU
+	AM_RANGE(0x300000, 0x30ffff) AM_READ(SMH_RAM					)	// Palette
+	AM_RANGE(0x310000, 0x327fff) AM_READ(SMH_RAM					)	//
+	AM_RANGE(0x400000, 0x401fff) AM_READ(SMH_RAM					)	// Sprites
+	AM_RANGE(0x500000, 0x503fff) AM_READ(SMH_RAM					)	// Layers 0
+	AM_RANGE(0x580000, 0x583fff) AM_READ(SMH_RAM					)	// Layers 1
+	AM_RANGE(0x600000, 0x60000f) AM_READ(SMH_RAM					)	// Layers 0 Regs
+	AM_RANGE(0x680000, 0x68000f) AM_READ(SMH_RAM					)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_READ(kaneko16_sprites_regs_r	)	// Sprites Regs
 	AM_RANGE(0x800000, 0x800001) AM_READ(OKIM6295_status_0_lsb_r	)	// Samples
 	AM_RANGE(0x880000, 0x880001) AM_READ(OKIM6295_status_1_lsb_r	)
@@ -670,24 +670,24 @@ static ADDRESS_MAP_START( gtmr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gtmr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM					)	// ROM
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM					)	// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(MWA16_RAM) AM_BASE(&kaneko16_mcu_ram	)	// Shared With MCU
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM					)	// ROM
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM					)	// Work RAM
+	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(SMH_RAM) AM_BASE(&kaneko16_mcu_ram	)	// Shared With MCU
 	AM_RANGE(0x2a0000, 0x2a0001) AM_WRITE(toybox_mcu_com0_w			)	// To MCU ?
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(toybox_mcu_com1_w			)
 	AM_RANGE(0x2c0000, 0x2c0001) AM_WRITE(toybox_mcu_com2_w			)
 	AM_RANGE(0x2d0000, 0x2d0001) AM_WRITE(toybox_mcu_com3_w			)
 	AM_RANGE(0x300000, 0x30ffff) AM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
-	AM_RANGE(0x310000, 0x327fff) AM_WRITE(MWA16_RAM												)	//
-	AM_RANGE(0x400000, 0x401fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size			)	// Sprites
+	AM_RANGE(0x310000, 0x327fff) AM_WRITE(SMH_RAM												)	//
+	AM_RANGE(0x400000, 0x401fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size			)	// Sprites
 	AM_RANGE(0x500000, 0x500fff) AM_WRITE(kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1				)	// Layers 0
 	AM_RANGE(0x501000, 0x501fff) AM_WRITE(kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0				)	//
-	AM_RANGE(0x502000, 0x502fff) AM_WRITE(MWA16_RAM) AM_BASE(&kaneko16_vscroll_1					)	//
-	AM_RANGE(0x503000, 0x503fff) AM_WRITE(MWA16_RAM) AM_BASE(&kaneko16_vscroll_0					)	//
+	AM_RANGE(0x502000, 0x502fff) AM_WRITE(SMH_RAM) AM_BASE(&kaneko16_vscroll_1					)	//
+	AM_RANGE(0x503000, 0x503fff) AM_WRITE(SMH_RAM) AM_BASE(&kaneko16_vscroll_0					)	//
 	AM_RANGE(0x580000, 0x580fff) AM_WRITE(kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3				)	// Layers 1
 	AM_RANGE(0x581000, 0x581fff) AM_WRITE(kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2				)	//
-	AM_RANGE(0x582000, 0x582fff) AM_WRITE(MWA16_RAM) AM_BASE(&kaneko16_vscroll_3					)	//
-	AM_RANGE(0x583000, 0x583fff) AM_WRITE(MWA16_RAM) AM_BASE(&kaneko16_vscroll_2					)	//
+	AM_RANGE(0x582000, 0x582fff) AM_WRITE(SMH_RAM) AM_BASE(&kaneko16_vscroll_3					)	//
+	AM_RANGE(0x583000, 0x583fff) AM_WRITE(SMH_RAM) AM_BASE(&kaneko16_vscroll_2					)	//
 	AM_RANGE(0x600000, 0x60000f) AM_WRITE(kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs	)	// Layers 0 Regs
 	AM_RANGE(0x680000, 0x68000f) AM_WRITE(kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs	)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_WRITE(kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
@@ -732,17 +732,17 @@ static READ16_HANDLER( gtmr2_IN1_r )
 }
 
 static ADDRESS_MAP_START( gtmr2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0ffffd) AM_READ(MRA16_ROM					)	// ROM
+	AM_RANGE(0x000000, 0x0ffffd) AM_READ(SMH_ROM					)	// ROM
 	AM_RANGE(0x0ffffe, 0x0fffff) AM_READ(gtmr2_wheel_r				)	// Wheel Value
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM					)	// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_READ(MRA16_RAM					)	// Shared With MCU
-	AM_RANGE(0x300000, 0x30ffff) AM_READ(MRA16_RAM					)	// Palette
-	AM_RANGE(0x310000, 0x327fff) AM_READ(MRA16_RAM					)	//
-	AM_RANGE(0x400000, 0x401fff) AM_READ(MRA16_RAM					)	// Sprites
-	AM_RANGE(0x500000, 0x503fff) AM_READ(MRA16_RAM					)	// Layers 0
-	AM_RANGE(0x580000, 0x583fff) AM_READ(MRA16_RAM					)	// Layers 1
-	AM_RANGE(0x600000, 0x60000f) AM_READ(MRA16_RAM					)	// Layers 0 Regs
-	AM_RANGE(0x680000, 0x68000f) AM_READ(MRA16_RAM					)	// Layers 1 Regs
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM					)	// Work RAM
+	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM					)	// Shared With MCU
+	AM_RANGE(0x300000, 0x30ffff) AM_READ(SMH_RAM					)	// Palette
+	AM_RANGE(0x310000, 0x327fff) AM_READ(SMH_RAM					)	//
+	AM_RANGE(0x400000, 0x401fff) AM_READ(SMH_RAM					)	// Sprites
+	AM_RANGE(0x500000, 0x503fff) AM_READ(SMH_RAM					)	// Layers 0
+	AM_RANGE(0x580000, 0x583fff) AM_READ(SMH_RAM					)	// Layers 1
+	AM_RANGE(0x600000, 0x60000f) AM_READ(SMH_RAM					)	// Layers 0 Regs
+	AM_RANGE(0x680000, 0x68000f) AM_READ(SMH_RAM					)	// Layers 1 Regs
 	AM_RANGE(0x700000, 0x70001f) AM_READ(kaneko16_sprites_regs_r	)	// Sprites Regs
 	AM_RANGE(0x800000, 0x800001) AM_READ(OKIM6295_status_0_lsb_r	)	// Samples
 	AM_RANGE(0x880000, 0x880001) AM_READ(OKIM6295_status_1_lsb_r	)
@@ -767,19 +767,19 @@ static ADDRESS_MAP_START( mgcrystl, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x40001f) AM_READWRITE(kaneko16_YM2149_0_r, kaneko16_YM2149_0_w)	// Sound
 	AM_RANGE(0x400200, 0x40021f) AM_READWRITE(kaneko16_YM2149_1_r, kaneko16_YM2149_1_w)
 	AM_RANGE(0x400400, 0x400401) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
-	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
-	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x601000, 0x601fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
+	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x601000, 0x601fff) AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)	//
 	AM_RANGE(0x602000, 0x602fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)									//
 	AM_RANGE(0x603000, 0x603fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)									//
-	AM_RANGE(0x680000, 0x680fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
-	AM_RANGE(0x681000, 0x681fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
+	AM_RANGE(0x680000, 0x680fff) AM_READWRITE(SMH_RAM, kaneko16_vram_3_w) AM_BASE(&kaneko16_vram_3)	// Layers 1
+	AM_RANGE(0x681000, 0x681fff) AM_READWRITE(SMH_RAM, kaneko16_vram_2_w) AM_BASE(&kaneko16_vram_2)	//
 	AM_RANGE(0x682000, 0x682fff) AM_RAM AM_BASE(&kaneko16_vscroll_3)									//
 	AM_RANGE(0x683000, 0x683fff) AM_RAM AM_BASE(&kaneko16_vscroll_2)									//
 	AM_RANGE(0x700000, 0x701fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)					// Sprites
-	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
-	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(MRA16_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
-	AM_RANGE(0xb00000, 0xb0001f) AM_READWRITE(MRA16_RAM, kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
+	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
+	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
+	AM_RANGE(0xb00000, 0xb0001f) AM_READWRITE(SMH_RAM, kaneko16_layers_1_regs_w) AM_BASE(&kaneko16_layers_1_regs)	// Layers 1 Regs
 	AM_RANGE(0xa00000, 0xa00001) AM_READ(watchdog_reset16_r)	// Watchdog
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(input_port_0_word_r)	// Inputs
 	AM_RANGE(0xc00002, 0xc00003) AM_READ(input_port_1_word_r)	//
@@ -806,21 +806,21 @@ static WRITE16_HANDLER( shogwarr_oki_bank_w )
 static ADDRESS_MAP_START( shogwarr, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM		// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM		// Work RAM
-	AM_RANGE(0x200000, 0x20ffff) AM_READWRITE(MRA16_RAM,calc3_mcu_ram_w) AM_BASE(&kaneko16_mcu_ram)	// Shared With MCU
+	AM_RANGE(0x200000, 0x20ffff) AM_READWRITE(SMH_RAM,calc3_mcu_ram_w) AM_BASE(&kaneko16_mcu_ram)	// Shared With MCU
 	AM_RANGE(0x280000, 0x280001) AM_WRITE(calc3_mcu_com0_w)
 	AM_RANGE(0x290000, 0x290001) AM_WRITE(calc3_mcu_com1_w)
 	AM_RANGE(0x2b0000, 0x2b0001) AM_WRITE(calc3_mcu_com2_w)
 	AM_RANGE(0x2d0000, 0x2d0001) AM_WRITE(calc3_mcu_com3_w)
-	AM_RANGE(0x380000, 0x380fff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
+	AM_RANGE(0x380000, 0x380fff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16)	// Palette
 	AM_RANGE(0x400000, 0x400001) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)	// Samples
 	AM_RANGE(0x480000, 0x480001) AM_READWRITE(OKIM6295_status_1_lsb_r, OKIM6295_data_1_lsb_w)
 	AM_RANGE(0x580000, 0x581fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)					// Sprites
-	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(MRA16_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
-	AM_RANGE(0x601000, 0x601fff) AM_READWRITE(MRA16_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)
+	AM_RANGE(0x600000, 0x600fff) AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1)	// Layers 0
+	AM_RANGE(0x601000, 0x601fff) AM_READWRITE(SMH_RAM,kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0)
 	AM_RANGE(0x602000, 0x602fff) AM_RAM AM_BASE(&kaneko16_vscroll_1)
 	AM_RANGE(0x603000, 0x603fff) AM_RAM AM_BASE(&kaneko16_vscroll_0)
-	AM_RANGE(0x800000, 0x80000f) AM_READWRITE(MRA16_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
-	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(MRA16_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
+	AM_RANGE(0x800000, 0x80000f) AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)	// Layers 0 Regs
+	AM_RANGE(0x900000, 0x90001f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs)	// Sprites Regs
 	AM_RANGE(0xa00014, 0xa00015) AM_READ(kaneko16_rnd_r)		// Random Number ?
 	AM_RANGE(0xa80000, 0xa80001) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)	// Watchdog
 	AM_RANGE(0xb80000, 0xb80001) AM_READ(input_port_0_word_r)	// Inputs
@@ -859,7 +859,7 @@ static ADDRESS_MAP_START( blazeon_soundmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( blazeon_soundport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0x06, 0x06) AM_READ(soundlatch_r)
@@ -892,44 +892,44 @@ static INPUT_PORTS_START( bakubrkr )
 	PORT_DIPUNUSED_DIPLOC( 0x0040, 0x0040, "SW1:7" ) /* Listed as "Unused" */
 	PORT_DIPUNUSED_DIPLOC( 0x0080, 0x0080, "SW1:8" ) /* Listed as "Unused" */
 
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN1 - Player 2 - e00002.b
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN2 - Coins - e00004.b
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START1	)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_START2	)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_TILT		)	// pause
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT		)	// pause
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
 	PORT_START	// IN3 - Seems unused ! - e00006.b
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
 
@@ -939,44 +939,44 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( berlwall )
 	PORT_START	// IN0 - Player 1 - 680000.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN1 - Player 2 - 680002.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN2 - Coins - 680004.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START1	)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_START2	)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_TILT		)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT		)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
 	PORT_START	// IN3 - ? - 680006.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START_TAG("DSW1")	// IN4 - DSW 1 - $200018.b <- ! $80001d.b
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:1")
@@ -1130,7 +1130,7 @@ static INPUT_PORTS_START( blazeon )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN  )
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_SERVICE  ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x2000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_TILT     )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 INPUT_PORTS_END
@@ -1141,44 +1141,44 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( bloodwar )
 	PORT_START	// IN0 - Player 1 - b00000.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(1)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(1)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(1)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(1)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(1)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(1)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(1)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(1)
 
 	PORT_START	// IN1 - Player 2 - b00002.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(2)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(2)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(2)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN2 - Coins - b00004.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START1	)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_START2	)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_TILT		)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_SERVICE2	)	// tested
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT		)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE2	)	// tested
 
 	PORT_START	// IN3 - ? - b00006.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )	// tested
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)	// tested
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )	// tested
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)	// tested
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN4 - DSW from the MCU - $10497e.b <- $208000.b
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:1")
@@ -1211,44 +1211,44 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( bonkadv )
 	PORT_START	// IN0 - Player 1 - b00000.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(1)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(1)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(1)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(1)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(1)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(1)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(1)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(1)
 
 	PORT_START	// IN1 - Player 2 - b00002.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(2)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(2)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(2)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT	) PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(2)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(2)
 
 	PORT_START	// IN2 - Coins - b00004.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START1	)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_START2	)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_TILT		)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_SERVICE2	)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT		)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE2	)
 
 	PORT_START	// IN3 - ? - b00006.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN ) // tested
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN ) // tested
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN ) // tested
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN ) // tested
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN4 - DSW from the MCU - $10019e.b <- $200200.b
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Flip_Screen ) )
@@ -1282,44 +1282,44 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( gtmr )
 	PORT_START	// IN0 - Player 1 - b00000.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) // swapped for consistency:
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) // button1 is usually accel.
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) // swapped for consistency:
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) // button1 is usually accel.
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN1 - Player 2 - b00002.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) // swapped for consistency:
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) // button1 is usually accel.
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) // swapped for consistency:
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) // button1 is usually accel.
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN2 - Coins - b00004.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START1	)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_START2	)
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_TILT		)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT		)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
 	PORT_START	// IN3 - Seems unused ! - b00006.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN4 - DSW from the MCU - 101265.b <- 206000.b
 	PORT_SERVICE_DIPLOC(  0x0100, IP_ACTIVE_LOW, "SW1:1" )
@@ -1355,44 +1355,44 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( gtmr2 )
 	PORT_START	// IN0 - Player 1 - 100004.w <- b00000.w (cpl)
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) // swapped for consistency:
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) // button1 is usually accel.
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) // swapped for consistency:
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) // button1 is usually accel.
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN1 - Player 2 - 10000c.w <- b00002.w (cpl) - for "test mode" only
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) // swapped for consistency:
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) // button1 is usually accel.
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) // swapped for consistency:
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) // button1 is usually accel.
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN2 - Coins - 100014.w <- b00004.w (cpl)
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START1	)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_START2	)	// only in "test mode"
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)	// only in "test mode"
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_TILT	)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT	)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
 	PORT_START	// IN3 - 100017.w <- b00006.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("IN 3-6")	// Code at 0x002236 - Centers 270D wheel ?
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN4 - DSW from the MCU - 1016f7.b <- 206000.b
 	PORT_DIPNAME( 0x0700, 0x0700, "Linked Operation Board Number" ) PORT_DIPLOCATION("SW1:6,7,8")
@@ -1430,13 +1430,13 @@ static INPUT_PORTS_START( gtmr2 )
 
 	PORT_START	// Fake IN1 - To be pressed during boot sequence - Code at 0x000c9e
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("IN 1-0") PORT_CODE(KEYCODE_H)	// "sound test"
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME("IN 1-4") PORT_CODE(KEYCODE_J)	// "view tiles"
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME("IN 1-5") PORT_CODE(KEYCODE_K)	// "view memory"
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_NAME("IN 1-6") PORT_CODE(KEYCODE_L)	// "view sprites ?"
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 INPUT_PORTS_END
 
 
@@ -1458,33 +1458,33 @@ static INPUT_PORTS_START( mgcrystl )
 	PORT_DIPUNUSED_DIPLOC( 0x0040, 0x0040, "SW1:7" ) /* Listed as "Unused" */
 	PORT_DIPUNUSED_DIPLOC( 0x0080, 0x0080, "SW1:8" ) /* Listed as "Unused" */
 
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN1 - Player 2 - c00002.b
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0010, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN2 - Other Buttons - c00004.b
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -1492,7 +1492,7 @@ static INPUT_PORTS_START( mgcrystl )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2   )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT     )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -1506,44 +1506,44 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( shogwarr )
 	PORT_START	// IN0 - - b80000.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	// ? tested
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	// ? tested
 
 	PORT_START	// IN1 - - b80002.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	// ? tested
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	// ? tested
 
 	PORT_START	// IN2 - Coins - b80004.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START1	)
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_START2	)
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_TILT		)
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)	// ? tested
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_TILT		)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)	// ? tested
 
 	PORT_START	// IN3 - ? - b80006.w
-	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START	// IN4 - DSW from the MCU - 102e15.b <- 200059.b
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:1")
@@ -1680,18 +1680,20 @@ static MACHINE_DRIVER_START( berlwall )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* MC68000P12 */
 	MDRV_CPU_PROGRAM_MAP(berlwall,0)
-	MDRV_CPU_VBLANK_INT(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
 	MDRV_MACHINE_RESET(berlwall)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)	// mangled sprites otherwise
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)	// mangled sprites otherwise
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 240-1)
+
 	MDRV_GFXDECODE(1x4bit_1x4bit)
 	MDRV_PALETTE_LENGTH(2048 + 32768)	/* 32768 static colors for the bg */
 
@@ -1725,19 +1727,21 @@ static MACHINE_DRIVER_START( bakubrkr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_12MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(bakubrkr,0)
-	MDRV_CPU_VBLANK_INT(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
-
-	MDRV_SCREEN_REFRESH_RATE(59)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
 	MDRV_MACHINE_RESET(bakubrkr)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)	// mangled sprites otherwise
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)	// mangled sprites otherwise
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 240-1)
+
 	MDRV_GFXDECODE(1x4bit_2x4bit)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -1779,22 +1783,24 @@ static MACHINE_DRIVER_START( blazeon )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,12000000)	/* TMP68HC000-12 */
 	MDRV_CPU_PROGRAM_MAP(blazeon,0)
-	MDRV_CPU_VBLANK_INT(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
+	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
 	MDRV_CPU_ADD(Z80,4000000)	/* D780C-2 */
 	MDRV_CPU_PROGRAM_MAP(blazeon_soundmem,0)
 	MDRV_CPU_IO_MAP(blazeon_soundport,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(blazeon)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1 -8)
+
 	MDRV_GFXDECODE(1x4bit_1x4bit)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -1828,20 +1834,22 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( gtmr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("gtmr", M68000, 16000000)	/* ? Most likely a 68000-HC16 */
+	MDRV_CPU_ADD_TAG("gtmr", M68000, XTAL_16MHz)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(gtmr_readmem,gtmr_writemem)
-	MDRV_CPU_VBLANK_INT(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
 	MDRV_MACHINE_RESET(gtmr)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
+
 	MDRV_GFXDECODE(1x8bit_2x4bit)
 	MDRV_PALETTE_LENGTH(32768)
 
@@ -1851,12 +1859,12 @@ static MACHINE_DRIVER_START( gtmr )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(OKIM6295, 1980000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD(OKIM6295, XTAL_16MHz/8)	/* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 
-	MDRV_SOUND_ADD(OKIM6295, 1980000)
-	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7low) // clock frequency & pin 7 not verified
+	MDRV_SOUND_ADD(OKIM6295, XTAL_16MHz/8)	/* verified on pcb */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_2_pin7low) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 MACHINE_DRIVER_END
 
@@ -1906,7 +1914,7 @@ static MACHINE_DRIVER_START( bonkadv )
 	MDRV_IMPORT_FROM(gtmr)
 	MDRV_CPU_MODIFY("gtmr")
 	MDRV_CPU_PROGRAM_MAP(bonkadv,0)
-	MDRV_CPU_VBLANK_INT(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM + 1 ) // comment above
+	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM + 1 ) // comment above
 
 	MDRV_MACHINE_RESET( bonkadv )
 MACHINE_DRIVER_END
@@ -1920,19 +1928,21 @@ static MACHINE_DRIVER_START( mgcrystl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, XTAL_12MHz) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(mgcrystl,0)
-	MDRV_CPU_VBLANK_INT(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(kaneko16_interrupt,KANEKO16_INTERRUPTS_NUM)
 
 	MDRV_MACHINE_RESET(mgcrystl)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0+16, 256-16-1)
+
 	MDRV_GFXDECODE(1x4bit_2x4bit)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -1988,18 +1998,18 @@ static MACHINE_DRIVER_START( shogwarr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(shogwarr,0)
-	MDRV_CPU_VBLANK_INT(shogwarr_interrupt,SHOGWARR_INTERRUPTS_NUM)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(shogwarr_interrupt,SHOGWARR_INTERRUPTS_NUM)
 
 	MDRV_MACHINE_RESET(shogwarr)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 240-1)
+
 	MDRV_GFXDECODE(1x4bit_1x4bit)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -2387,8 +2397,8 @@ CUSTOM:       KANEKO VU-002 x2
  BZ_BG.U2           57C8200       BG CHR
  BZ_SP1.U20         27C8001       OBJ
  BZ_SP2.U21         27C8001       OBJ
- BZ_SP1.U68 ( == BZ_SP1.U20)
- BZ_SP2.U86 ( == BZ_SP2.U21)
+ BZ_SP1.U68         27C8001       OBJ (same as BZ_SP1.U20 for 2nd sprite chip)
+ BZ_SP2.U86         27C8001       OBJ (same as BZ_SP2.U21 for 2nd sprite chip)
 
 ***************************************************************************/
 

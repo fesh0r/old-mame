@@ -46,45 +46,45 @@ extern VIDEO_UPDATE( tagteam );
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(offset,data);
-	cpunum_set_input_line(Machine, 1,M6502_IRQ_LINE,HOLD_LINE);
+	soundlatch_w(machine,offset,data);
+	cpunum_set_input_line(machine, 1,M6502_IRQ_LINE,HOLD_LINE);
 }
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x2000, 0x2000) AM_READ(input_port_1_r)     /* IN1 */
 	AM_RANGE(0x2001, 0x2001) AM_READ(input_port_0_r)     /* IN0 */
 	AM_RANGE(0x2002, 0x2002) AM_READ(input_port_2_r)     /* DSW2 */
 	AM_RANGE(0x2003, 0x2003) AM_READ(input_port_3_r)     /* DSW1 */
 	AM_RANGE(0x4000, 0x43ff) AM_READ(tagteam_mirrorvideoram_r)
 	AM_RANGE(0x4400, 0x47ff) AM_READ(tagteam_mirrorcolorram_r)
-	AM_RANGE(0x4800, 0x4fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4800, 0x4fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(tagteam_flipscreen_w)
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(tagteam_control_w)
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(sound_command_w)
-//  AM_RANGE(0x2003, 0x2003) AM_WRITE(MWA8_NOP) /* Appears to increment when you're out of the ring */
+//  AM_RANGE(0x2003, 0x2003) AM_WRITE(SMH_NOP) /* Appears to increment when you're out of the ring */
 	AM_RANGE(0x4000, 0x43ff) AM_WRITE(tagteam_mirrorvideoram_w)
 	AM_RANGE(0x4400, 0x47ff) AM_WRITE(tagteam_mirrorcolorram_w)
 	AM_RANGE(0x4800, 0x4bff) AM_WRITE(tagteam_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4c00, 0x4fff) AM_WRITE(tagteam_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x03ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x2007, 0x2007) AM_READ(soundlatch_r)
-	AM_RANGE(0x4000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x03ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(AY8910_write_port_1_w)
@@ -272,21 +272,21 @@ static MACHINE_DRIVER_START( tagteam )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 1500000)	/* 1.5 MHz ?? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(tagteam_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", tagteam_interrupt)
 
 	MDRV_CPU_ADD(M6502, 975000)
 	/* audio CPU */  /* 975 kHz ?? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,16)   /* IRQs are triggered by the main CPU */
-
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3072))
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)   /* IRQs are triggered by the main CPU */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3072))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(tagteam)
 	MDRV_PALETTE_LENGTH(32)
 

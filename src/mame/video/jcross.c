@@ -96,8 +96,8 @@ VIDEO_START( jcross )
 	stuff_palette( machine, 0, 0, 16*8 );
 	stuff_palette( machine, 16*8*3, 16*8, 16*8 );
 
-	bg_tilemap = tilemap_create(get_bg_tilemap_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,64,64);
-	tx_tilemap = tilemap_create(get_tx_tilemap_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tilemap_info,tilemap_scan_cols,8,8,64,64);
+	tx_tilemap = tilemap_create(get_tx_tilemap_info,tilemap_scan_cols,8,8,32,32);
 
 	tilemap_set_transparent_pen(tx_tilemap,0xf);
 	tilemap_set_scrolldx( bg_tilemap,   16, 22 );
@@ -109,7 +109,7 @@ VIDEO_START( jcross )
 **
 ***************************************************************************/
 
-static void draw_status(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_status(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const UINT8 *base =  jcr_textram + 0x400;
 	const gfx_element *gfx = machine->gfx[0];
@@ -136,7 +136,7 @@ static void draw_status(running_machine *machine, mame_bitmap *bitmap, const rec
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int scrollx, int scrolly )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int scrollx, int scrolly )
 {
 	const gfx_element *gfx = machine->gfx[3];
 	const UINT8 *source, *finish;
@@ -181,14 +181,14 @@ VIDEO_UPDATE( jcross )
 
 	if( scroll_attributes & 8 ) sprite_scrolly += 256;
 	if( scroll_attributes & 0x10 ) bg_scrolly += 256;
-	update_palette(machine, 1);
+	update_palette(screen->machine, 1);
 
 
 	tilemap_set_scrollx( bg_tilemap, 0, bg_scrollx );
 	tilemap_set_scrolly( bg_tilemap, 0, bg_scrolly );
-	tilemap_draw( bitmap,cliprect,bg_tilemap,0 ,0);
-	draw_sprites( machine, bitmap,cliprect, sprite_scrollx+23, sprite_scrolly+1 );
-	tilemap_draw( bitmap,cliprect,tx_tilemap,0 ,0);
-	draw_status( machine, bitmap,cliprect );
+	tilemap_draw(bitmap,cliprect,bg_tilemap,0 ,0);
+	draw_sprites(screen->machine, bitmap,cliprect, sprite_scrollx+23, sprite_scrolly+1 );
+	tilemap_draw(bitmap,cliprect,tx_tilemap,0 ,0);
+	draw_status(screen->machine, bitmap,cliprect );
 	return 0;
 }

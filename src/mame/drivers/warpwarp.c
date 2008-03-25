@@ -129,7 +129,7 @@ TODO:
 #include "driver.h"
 #include "deprecat.h"
 #include "sound/custom.h"
-#include "includes/warpwarp.h"
+#include "warpwarp.h"
 #include "geebee.lh"
 #include "sos.lh"
 
@@ -150,7 +150,7 @@ static READ8_HANDLER( geebee_in_r )
 	res = readinputport(offset);
 	if (offset == 3)
 	{
-		res = readinputport(3 + (flip_screen & 1));	// read player 2 input in cocktail mode
+		res = readinputport(3 + (flip_screen_get() & 1));	// read player 2 input in cocktail mode
 		if (handle_joystick)
 		{
 			/* map digital two-way joystick to two fixed VOLIN values */
@@ -176,7 +176,7 @@ static WRITE8_HANDLER( geebee_out6_w )
 			/* n.c. */
 			break;
 		case 3:
-			geebee_sound_w(0,data);
+			geebee_sound_w(machine,0,data);
 			break;
 	}
 }
@@ -232,7 +232,7 @@ static READ8_HANDLER( warpwarp_vol_r )
 {
 	int res;
 
-	res = readinputport(2 + (flip_screen & 1));
+	res = readinputport(2 + (flip_screen_get() & 1));
 	if (handle_joystick)
 	{
 		if (res & 1) return 0x0f;
@@ -255,10 +255,10 @@ static WRITE8_HANDLER( warpwarp_out0_w )
 			warpwarp_ball_v = data;
 			break;
 		case 2:
-			warpwarp_sound_w(0,data);
+			warpwarp_sound_w(machine,0,data);
 			break;
 		case 3:
-			watchdog_reset_w(0,data);
+			watchdog_reset_w(machine,0,data);
 			break;
 	}
 }
@@ -300,19 +300,19 @@ static WRITE8_HANDLER( warpwarp_out3_w )
 
 
 static ADDRESS_MAP_START( readmem_geebee, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x2000, 0x23ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3000, 0x37ff) AM_READ(MRA8_ROM)	/* 3000-33ff in GeeBee */
-	AM_RANGE(0x4000, 0x40ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x2000, 0x23ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x3000, 0x37ff) AM_READ(SMH_ROM)	/* 3000-33ff in GeeBee */
+	AM_RANGE(0x4000, 0x40ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x5000, 0x53ff) AM_READ(geebee_in_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_geebee, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x2000, 0x23ff) AM_WRITE(geebee_videoram_w) AM_BASE(&geebee_videoram)
 	AM_RANGE(0x2400, 0x27ff) AM_WRITE(geebee_videoram_w) /* mirror used by kaiteik due to a bug */
-	AM_RANGE(0x3000, 0x37ff) AM_WRITE(MWA8_ROM)
-    AM_RANGE(0x4000, 0x40ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x3000, 0x37ff) AM_WRITE(SMH_ROM)
+    AM_RANGE(0x4000, 0x40ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x6000, 0x6fff) AM_WRITE(geebee_out6_w)
 	AM_RANGE(0x7000, 0x7fff) AM_WRITE(geebee_out7_w)
 ADDRESS_MAP_END
@@ -328,30 +328,30 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readmem_bombbee, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x2000, 0x23ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4000, 0x47ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4800, 0x4fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x2000, 0x23ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4000, 0x47ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4800, 0x4fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x6000, 0x600f) AM_READ(warpwarp_sw_r)
 	AM_RANGE(0x6010, 0x601f) AM_READ(warpwarp_vol_r)
 	AM_RANGE(0x6020, 0x602f) AM_READ(warpwarp_dsw1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_warpwarp, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x83ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4000, 0x47ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x4800, 0x4fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x83ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4000, 0x47ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4800, 0x4fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xc000, 0xc00f) AM_READ(warpwarp_sw_r)
 	AM_RANGE(0xc010, 0xc01f) AM_READ(warpwarp_vol_r)
 	AM_RANGE(0xc020, 0xc02f) AM_READ(warpwarp_dsw1_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_bombbee, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x2000, 0x23ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x2000, 0x23ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x4000, 0x47ff) AM_WRITE(warpwarp_videoram_w) AM_BASE(&warpwarp_videoram)
-	AM_RANGE(0x4800, 0x4fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4800, 0x4fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x6000, 0x600f) AM_WRITE(warpwarp_out0_w)
 	AM_RANGE(0x6010, 0x601f) AM_WRITE(warpwarp_music1_w)
 	AM_RANGE(0x6020, 0x602f) AM_WRITE(warpwarp_music2_w)
@@ -359,10 +359,10 @@ static ADDRESS_MAP_START( writemem_bombbee, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_warpwarp, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x83ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x83ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x4000, 0x47ff) AM_WRITE(warpwarp_videoram_w) AM_BASE(&warpwarp_videoram)
-	AM_RANGE(0x4800, 0x4fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4800, 0x4fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc00f) AM_WRITE(warpwarp_out0_w)
 	AM_RANGE(0xc010, 0xc01f) AM_WRITE(warpwarp_music1_w)
 	AM_RANGE(0xc020, 0xc02f) AM_WRITE(warpwarp_music2_w)
@@ -837,19 +837,18 @@ static MACHINE_DRIVER_START( geebee )
 	MDRV_CPU_ADD_TAG("main", 8080,XTAL_18_432MHz/9) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(readmem_geebee,writemem_geebee)
 	MDRV_CPU_IO_MAP(readport_geebee,writeport_geebee)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)	/* one interrupt per frame */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(34*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(1k)
-	MDRV_PALETTE_LENGTH(3)
-	MDRV_COLORTABLE_LENGTH(4*2)
+	MDRV_PALETTE_LENGTH(4*2)
 
 	MDRV_PALETTE_INIT(geebee)
 	MDRV_VIDEO_START(geebee)
@@ -869,10 +868,11 @@ static MACHINE_DRIVER_START( navarone )
 	MDRV_IMPORT_FROM(geebee)
 
 	MDRV_GFXDECODE(2k)
-	MDRV_COLORTABLE_LENGTH(2*2)
+	MDRV_PALETTE_LENGTH(2*2+1)
 
 	MDRV_PALETTE_INIT(navarone)
 	MDRV_VIDEO_START(navarone)
+	MDRV_VIDEO_UPDATE(navarone)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( bombbee )
@@ -880,19 +880,18 @@ static MACHINE_DRIVER_START( bombbee )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", 8080,18432000/9) 		/* 18.432 MHz / 9 */
 	MDRV_CPU_PROGRAM_MAP(readmem_bombbee,writemem_bombbee)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION	/* frames per second, vblank duration */)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)	/* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(34*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(color)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(2*256)
+	MDRV_PALETTE_LENGTH(2*256+1)
 
 	MDRV_PALETTE_INIT(warpwarp)
 	MDRV_VIDEO_START(warpwarp)

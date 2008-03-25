@@ -310,10 +310,10 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static VIDEO_START( mwarr )
 {
-	bg_tilemap    = tilemap_create(get_bg_tile_info,   tilemap_scan_cols,TILEMAP_TYPE_PEN,      16, 16,64,16);
-	mlow_tilemap  = tilemap_create(get_mlow_tile_info, tilemap_scan_cols,TILEMAP_TYPE_PEN, 16, 16,64,16);
-	mhigh_tilemap = tilemap_create(get_mhigh_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN, 16, 16,64,16);
-	tx_tilemap    = tilemap_create(get_tx_tile_info,   tilemap_scan_rows,TILEMAP_TYPE_PEN,  8,  8,64,32);
+	bg_tilemap    = tilemap_create(get_bg_tile_info,   tilemap_scan_cols, 16, 16,64,16);
+	mlow_tilemap  = tilemap_create(get_mlow_tile_info, tilemap_scan_cols, 16, 16,64,16);
+	mhigh_tilemap = tilemap_create(get_mhigh_tile_info,tilemap_scan_cols, 16, 16,64,16);
+	tx_tilemap    = tilemap_create(get_tx_tile_info,   tilemap_scan_rows,  8,  8,64,32);
 
 	sprites_buffer = auto_malloc(sizeof(UINT16) * 0x800);
 
@@ -326,7 +326,7 @@ static VIDEO_START( mwarr )
 	tilemap_set_scroll_rows(mhigh_tilemap, 256);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const UINT16 *source = sprites_buffer+0x800-4;
 	const UINT16 *finish = sprites_buffer;
@@ -446,24 +446,25 @@ static VIDEO_UPDATE( mwarr )
 	tilemap_draw(bitmap,cliprect,mlow_tilemap, 0,0x02);
 	tilemap_draw(bitmap,cliprect,mhigh_tilemap,0,0x04);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,   0,0x10);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }
 
 static MACHINE_DRIVER_START( mwarr )
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(mwarr_map,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(54)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_GFXDECODE(mwarr)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(54)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8+1, 48*8-1-8-1, 0, 30*8-1)
+
 	MDRV_PALETTE_LENGTH(0x800)
 
 	MDRV_VIDEO_START(mwarr)

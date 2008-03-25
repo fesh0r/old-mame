@@ -39,11 +39,13 @@
 #include "starcas.lh"
 #include "solarq.lh"
 
+#define MASTER_CLOCK			XTAL_19_923MHz
+
+
 
 static UINT16 *rambase;
 
 static UINT8 coin_detected;
-static UINT8 coin_last_input;
 static UINT8 coin_last_reset;
 
 static UINT8 mux_select;
@@ -59,7 +61,6 @@ static UINT8 mux_select;
 static MACHINE_START( cinemat )
 {
 	state_save_register_global(coin_detected);
-	state_save_register_global(coin_last_input);
 	state_save_register_global(coin_last_reset);
 	state_save_register_global(mux_select);
 }
@@ -69,7 +70,6 @@ MACHINE_RESET( cinemat )
 {
 	/* reset the coin states */
 	coin_detected = 0;
-	coin_last_input = 0x80;
 	coin_last_reset = 0;
 
 	/* reset mux select */
@@ -104,14 +104,11 @@ static READ8_HANDLER( switches_r )
  *
  *************************************/
 
-static INTERRUPT_GEN( check_coins )
+static INPUT_CHANGED( coin_inserted )
 {
-	UINT8 new_input = readinputportbytag("SWITCHES") & 0x80;
-
 	/* on the falling edge of a new coin, set the coin_detected flag */
-	if (coin_last_input != new_input && new_input == 0x00)
+	if (newval == 0)
 		coin_detected = 1;
-	coin_last_input = new_input;
 }
 
 
@@ -140,7 +137,7 @@ static WRITE8_HANDLER( coin_reset_w )
 static WRITE8_HANDLER( mux_select_w )
 {
 	mux_select = data;
-	cinemat_sound_control_w(0x07, data);
+	cinemat_sound_control_w(machine, 0x07, data);
 }
 
 
@@ -271,8 +268,12 @@ static READ8_HANDLER( boxingb_dial_r )
 
 static READ8_HANDLER( qb3_frame_r )
 {
+	attotime next_update = video_screen_get_time_until_update(machine->primary_screen);
+	attotime frame_period = video_screen_get_frame_period(machine->primary_screen);
+	int percent = next_update.attoseconds / (frame_period.attoseconds / 100);
+
 	/* note this is just an approximation... */
-	return cpu_scalebyfcount(100) < 90;
+	return (percent >= 10);
 }
 
 
@@ -290,23 +291,23 @@ static WRITE8_HANDLER( qb3_ram_bank_w )
  *************************************/
 
 static ADDRESS_MAP_START( program_map_4k, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS(AMEF_ABITS(12))
+	ADDRESS_MAP_GLOBAL_MASK(0xfff)
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( program_map_8k, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS(AMEF_ABITS(14))
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x0fff) AM_MIRROR(0x1000) AM_ROM
 	AM_RANGE(0x2000, 0x2fff) AM_MIRROR(0x1000) AM_ROM AM_REGION(REGION_CPU1, 0x1000)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( program_map_16k, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS(AMEF_ABITS(14))
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( program_map_32k, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS(AMEF_ABITS(15))
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 ADDRESS_MAP_END
 
@@ -370,7 +371,7 @@ static INPUT_PORTS_START( spacewar )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -415,7 +416,7 @@ static INPUT_PORTS_START( barrier )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -448,7 +449,7 @@ static INPUT_PORTS_START( speedfrk )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START_TAG("WHEEL")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_RESET
@@ -493,7 +494,7 @@ static INPUT_PORTS_START( starhawk )
 	PORT_DIPNAME( 0x40,	0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -537,7 +538,7 @@ static INPUT_PORTS_START( sundance )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START_TAG("PAD1")
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME("P1 Pad 1") PORT_CODE(KEYCODE_7_PAD) PORT_PLAYER(1)
@@ -593,7 +594,7 @@ static INPUT_PORTS_START( tailg )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START_TAG("ANALOGX")
 	PORT_BIT( 0xfff, 0x800, IPT_AD_STICK_X ) PORT_MINMAX(0x200,0xe00) PORT_SENSITIVITY(100) PORT_KEYDELTA(50)
@@ -638,7 +639,7 @@ static INPUT_PORTS_START( warrior )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -674,7 +675,7 @@ static INPUT_PORTS_START( armora )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x40, IP_ACTIVE_HIGH )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -710,7 +711,7 @@ static INPUT_PORTS_START( ripoff )
 	PORT_DIPSETTING(	0x00, "Individual" )
 	PORT_DIPSETTING(	0x20, "Combined" )
 	PORT_SERVICE( 0x40,	IP_ACTIVE_LOW )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -747,7 +748,7 @@ static INPUT_PORTS_START( starcas )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x40, IP_ACTIVE_HIGH )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -781,7 +782,7 @@ static INPUT_PORTS_START( solarq )
 	PORT_DIPSETTING(	0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x40,	IP_ACTIVE_HIGH )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -817,7 +818,7 @@ static INPUT_PORTS_START( boxingb )
 	PORT_DIPSETTING(	0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x40,	IP_ACTIVE_LOW )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START_TAG("DIAL")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_REVERSE PORT_SENSITIVITY(100) PORT_KEYDELTA(5)
@@ -859,7 +860,7 @@ static INPUT_PORTS_START( wotw )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -901,7 +902,7 @@ static INPUT_PORTS_START( demon )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -947,7 +948,7 @@ static INPUT_PORTS_START( qb3 )
 	PORT_DIPSETTING(	0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x40,	IP_ACTIVE_LOW )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
 INPUT_PORTS_END
 
 
@@ -961,15 +962,13 @@ INPUT_PORTS_END
 static const struct CCPUConfig config_nojmi =
 {
 	joystick_read,
-	cinemat_vector_callback,
-	0
+	cinemat_vector_callback
 };
 
 static const struct CCPUConfig config_jmi =
 {
 	NULL,
-	cinemat_vector_callback,
-	0
+	cinemat_vector_callback
 };
 
 
@@ -983,28 +982,25 @@ static const struct CCPUConfig config_jmi =
 static MACHINE_DRIVER_START( cinemat_nojmi_4k )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", CCPU, 5000000)
+	MDRV_CPU_ADD_TAG("main", CCPU, MASTER_CLOCK/4)
 	MDRV_CPU_CONFIG(config_nojmi)
 	MDRV_CPU_PROGRAM_MAP(program_map_4k,0)
 	MDRV_CPU_DATA_MAP(data_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT(check_coins,1)
 
-	MDRV_SCREEN_REFRESH_RATE(38)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_START(cinemat)
 	MDRV_MACHINE_RESET(cinemat)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
-	MDRV_SCREEN_SIZE(400, 300)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
+
+	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_REFRESH_RATE(MASTER_CLOCK/4/16/16/16/16/2)
+	MDRV_SCREEN_SIZE(1024, 768)
 	MDRV_SCREEN_VISIBLE_AREA(0, 1023, 0, 767)
-	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(cinemat_bilevel)
-	MDRV_VIDEO_EOF(cinemat)
-	MDRV_VIDEO_UPDATE(vector)
+	MDRV_VIDEO_UPDATE(cinemat)
 MACHINE_DRIVER_END
 
 
@@ -1116,8 +1112,6 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( solarq )
 	MDRV_IMPORT_FROM(cinemat_jmi_16k)
 	MDRV_IMPORT_FROM(solarq_sound)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_VIDEO_START(cinemat_64level)
 MACHINE_DRIVER_END
 
@@ -1125,6 +1119,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( boxingb )
 	MDRV_IMPORT_FROM(cinemat_jmi_32k)
 	MDRV_IMPORT_FROM(boxingb_sound)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 1024, 0, 788)
 	MDRV_VIDEO_START(cinemat_color)
 MACHINE_DRIVER_END
@@ -1132,6 +1127,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( wotw )
 	MDRV_IMPORT_FROM(cinemat_jmi_16k)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 1120, 0, 767)
 	MDRV_IMPORT_FROM(wotw_sound)
 MACHINE_DRIVER_END
@@ -1147,6 +1143,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( demon )
 	MDRV_IMPORT_FROM(cinemat_jmi_16k)
 	MDRV_IMPORT_FROM(demon_sound)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 1024, 0, 805)
 MACHINE_DRIVER_END
 
@@ -1156,6 +1153,7 @@ static MACHINE_DRIVER_START( qb3 )
 	MDRV_IMPORT_FROM(qb3_sound)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_DATA_MAP(data_map_qb3,0)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 1120, 0, 780)
 	MDRV_VIDEO_START(cinemat_qb3color)
 MACHINE_DRIVER_END

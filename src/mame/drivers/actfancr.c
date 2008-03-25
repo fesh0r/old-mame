@@ -84,81 +84,56 @@ static READ8_HANDLER( triothep_control_r )
 
 static WRITE8_HANDLER( actfancr_sound_w )
 {
-	soundlatch_w(0,data & 0xff);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine,0,data & 0xff);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /******************************************************************************/
 
-static ADDRESS_MAP_START( actfan_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x02ffff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x062000, 0x063fff) AM_READ(actfancr_pf1_data_r)
-	AM_RANGE(0x072000, 0x0727ff) AM_READ(actfancr_pf2_data_r)
-	AM_RANGE(0x100000, 0x1007ff) AM_READ(MRA8_RAM)
+static ADDRESS_MAP_START( actfan_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x000000, 0x02ffff) AM_ROM
+	AM_RANGE(0x060000, 0x06001f) AM_WRITE(actfancr_pf1_control_w)
+	AM_RANGE(0x062000, 0x063fff) AM_READWRITE(actfancr_pf1_data_r, actfancr_pf1_data_w) AM_BASE(&actfancr_pf1_data)
+	AM_RANGE(0x070000, 0x07001f) AM_WRITE(actfancr_pf2_control_w)
+	AM_RANGE(0x072000, 0x0727ff) AM_READWRITE(actfancr_pf2_data_r, actfancr_pf2_data_w) AM_BASE(&actfancr_pf2_data)
+	AM_RANGE(0x100000, 0x1007ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x110000, 0x110001) AM_WRITE(buffer_spriteram_w)
+	AM_RANGE(0x120000, 0x1205ff) AM_READWRITE(SMH_RAM, paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0x130000, 0x130003) AM_READ(actfan_control_1_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(actfan_control_0_r)
-	AM_RANGE(0x120000, 0x1205ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1f0000, 0x1f3fff) AM_READ(MRA8_RAM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( actfan_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x02ffff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x060000, 0x06001f) AM_WRITE(actfancr_pf1_control_w)
-	AM_RANGE(0x062000, 0x063fff) AM_WRITE(actfancr_pf1_data_w) AM_BASE(&actfancr_pf1_data)
-	AM_RANGE(0x070000, 0x07001f) AM_WRITE(actfancr_pf2_control_w)
-	AM_RANGE(0x072000, 0x0727ff) AM_WRITE(actfancr_pf2_data_w) AM_BASE(&actfancr_pf2_data)
-	AM_RANGE(0x100000, 0x1007ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x110000, 0x110001) AM_WRITE(buffer_spriteram_w)
-	AM_RANGE(0x120000, 0x1205ff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0x150000, 0x150001) AM_WRITE(actfancr_sound_w)
-	AM_RANGE(0x1f0000, 0x1f3fff) AM_WRITE(MWA8_RAM) AM_BASE(&actfancr_ram) /* Main ram */
+	AM_RANGE(0x1f0000, 0x1f3fff) AM_RAM AM_BASE(&actfancr_ram) /* Main ram */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( triothep_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x044000, 0x045fff) AM_READ(actfancr_pf2_data_r)
-	AM_RANGE(0x064000, 0x0647ff) AM_READ(actfancr_pf1_data_r)
-	AM_RANGE(0x120000, 0x1207ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x130000, 0x1305ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x140000, 0x140001) AM_READ(MRA8_NOP) /* Value doesn't matter */
-	AM_RANGE(0x1f0000, 0x1f3fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1ff000, 0x1ff001) AM_READ(triothep_control_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( triothep_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA8_ROM)
+static ADDRESS_MAP_START( triothep_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x040000, 0x04001f) AM_WRITE(actfancr_pf2_control_w)
-	AM_RANGE(0x044000, 0x045fff) AM_WRITE(actfancr_pf2_data_w) AM_BASE(&actfancr_pf2_data)
-	AM_RANGE(0x046400, 0x0467ff) AM_WRITE(MWA8_NOP) /* Pf2 rowscroll - is it used? */
+	AM_RANGE(0x044000, 0x045fff) AM_READWRITE(actfancr_pf2_data_r, actfancr_pf2_data_w) AM_BASE(&actfancr_pf2_data)
+	AM_RANGE(0x046400, 0x0467ff) AM_WRITE(SMH_NOP) /* Pf2 rowscroll - is it used? */
 	AM_RANGE(0x060000, 0x06001f) AM_WRITE(actfancr_pf1_control_w)
-	AM_RANGE(0x064000, 0x0647ff) AM_WRITE(actfancr_pf1_data_w) AM_BASE(&actfancr_pf1_data)
-	AM_RANGE(0x066400, 0x0667ff) AM_WRITE(MWA8_RAM) AM_BASE(&actfancr_pf1_rowscroll_data)
+	AM_RANGE(0x064000, 0x0647ff) AM_READWRITE(actfancr_pf1_data_r, actfancr_pf1_data_w) AM_BASE(&actfancr_pf1_data)
+	AM_RANGE(0x066400, 0x0667ff) AM_WRITE(SMH_RAM) AM_BASE(&actfancr_pf1_rowscroll_data)
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(actfancr_sound_w)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(buffer_spriteram_w)
-	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x130000, 0x1305ff) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
-	AM_RANGE(0x1f0000, 0x1f3fff) AM_WRITE(MWA8_RAM) AM_BASE(&actfancr_ram) /* Main ram */
-	AM_RANGE(0x1ff000, 0x1ff001) AM_WRITE(triothep_control_select_w)
+	AM_RANGE(0x120000, 0x1207ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x130000, 0x1305ff) AM_READWRITE(SMH_RAM, paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0x140000, 0x140001) AM_READNOP /* Value doesn't matter */
+	AM_RANGE(0x1f0000, 0x1f3fff) AM_RAM AM_BASE(&actfancr_ram) /* Main ram */
+	AM_RANGE(0x1ff000, 0x1ff001) AM_READWRITE(triothep_control_r, triothep_control_select_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
-static ADDRESS_MAP_START( dec0_s_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3000, 0x3000) AM_READ(soundlatch_r)
-	AM_RANGE(0x3800, 0x3800) AM_READ(OKIM6295_status_0_r)
-	AM_RANGE(0x4000, 0xffff) AM_READ(MRA8_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( dec0_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_RAM)
+static ADDRESS_MAP_START( dec0_s_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x07ff) AM_RAM
 	AM_RANGE(0x0800, 0x0800) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x0801, 0x0801) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x1000, 0x1000) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x1001, 0x1001) AM_WRITE(YM3812_write_port_0_w)
-	AM_RANGE(0x3800, 0x3800) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x3000, 0x3000) AM_READ(soundlatch_r)
+	AM_RANGE(0x3800, 0x3800) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
+	AM_RANGE(0x4000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 /******************************************************************************/
@@ -205,9 +180,7 @@ static INPUT_PORTS_START( actfancr )
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW1:5")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x10, "SW1:5" )		/* Listed as "Unused" */
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
@@ -229,18 +202,12 @@ static INPUT_PORTS_START( actfancr )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:5")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x10, "SW2:5" )		/* Listed as "Unused" */
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SW2:6")
 	PORT_DIPSETTING(    0x20, "800000" )
 	PORT_DIPSETTING(    0x00, DEF_STR( None ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:7")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:1")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x40, "SW2:7" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW2:8" )		/* Listed as "Unused" */
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( triothep )
@@ -285,9 +252,7 @@ static INPUT_PORTS_START( triothep )
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW1:5")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x10, "SW1:5" )		/* Listed as "Unused" */
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
@@ -312,15 +277,9 @@ static INPUT_PORTS_START( triothep )
 	PORT_DIPNAME( 0x10, 0x10, "Bonus Lives" )			PORT_DIPLOCATION("SW2:5")
 	PORT_DIPSETTING(    0x00, "2" )
 	PORT_DIPSETTING(    0x10, "3" )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:6")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:7")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:8")	/* Listed as "Unused" in the manual */
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x20, 0x20, "SW2:6" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x40, "SW2:7" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW2:8" )		/* Listed as "Unused" */
 INPUT_PORTS_END
 
 /******************************************************************************/
@@ -392,18 +351,19 @@ static MACHINE_DRIVER_START( actfancr )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(H6280,21477200/3) /* Should be accurate */
-	MDRV_CPU_PROGRAM_MAP(actfan_readmem,actfan_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1) /* VBL */
+	MDRV_CPU_PROGRAM_MAP(actfan_map,0)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* VBL */
 
 	MDRV_CPU_ADD(M6502, 1500000)
 	/* audio CPU */ /* Should be accurate */
-	MDRV_CPU_PROGRAM_MAP(dec0_s_readmem,dec0_s_writemem)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
+	MDRV_CPU_PROGRAM_MAP(dec0_s_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
@@ -435,18 +395,19 @@ static MACHINE_DRIVER_START( triothep )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(H6280,XTAL_21_4772MHz/3) /* XIN=21.4772Mhz, verified on pcb */
-	MDRV_CPU_PROGRAM_MAP(triothep_readmem,triothep_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1) /* VBL */
+	MDRV_CPU_PROGRAM_MAP(triothep_map,0)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* VBL */
 
 	MDRV_CPU_ADD(M6502, XTAL_12MHz/8) /* verified on pcb */
 	/* audio CPU */ /* Should be accurate */
-	MDRV_CPU_PROGRAM_MAP(dec0_s_readmem,dec0_s_writemem)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
+	MDRV_CPU_PROGRAM_MAP(dec0_s_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)

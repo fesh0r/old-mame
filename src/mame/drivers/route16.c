@@ -68,6 +68,7 @@
  ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/dac.h"
 #include "sound/sn76477.h"
 #include "sound/ay8910.h"
@@ -225,7 +226,7 @@ static WRITE8_HANDLER ( speakres_out2_w )
 
 static ADDRESS_MAP_START( route16_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-  /*AM_RANGE(0x3000, 0x3001) AM_READWRITE(MRA8_NOP, MWA8_NOP)   protection device */
+  /*AM_RANGE(0x3000, 0x3001) AM_READWRITE(SMH_NOP, SMH_NOP)   protection device */
 	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(sharedram_r, route16_sharedram_w) AM_BASE(&sharedram)
 	AM_RANGE(0x4800, 0x4800) AM_READWRITE(input_port_0_r, route16_out0_w)
 	AM_RANGE(0x5000, 0x5000) AM_READWRITE(input_port_1_r, route16_out1_w)
@@ -294,7 +295,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( cpu1_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(9) )
+	ADDRESS_MAP_GLOBAL_MASK(0x1ff)
 	AM_RANGE(0x0000, 0x0000) AM_MIRROR(0x00ff) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x0100, 0x0100) AM_MIRROR(0x00ff) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END
@@ -609,21 +610,20 @@ static MACHINE_DRIVER_START( route16 )
 	MDRV_CPU_ADD_TAG("cpu1", Z80, 2500000)	/* 10MHz / 4 = 2.5MHz */
 	MDRV_CPU_PROGRAM_MAP(route16_cpu1_map,0)
 	MDRV_CPU_IO_MAP(cpu1_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD_TAG("cpu2", Z80, 2500000)	/* 10MHz / 4 = 2.5MHz */
 	MDRV_CPU_PROGRAM_MAP(route16_cpu2_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(route16)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
 	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)	/* frames per second, vblank duration */
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)	/* frames per second, vblank duration */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -682,7 +682,7 @@ static MACHINE_DRIVER_START( spacecho )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(speakres)
 	MDRV_CPU_MODIFY("cpu2")
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,48)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,48)
 MACHINE_DRIVER_END
 
 

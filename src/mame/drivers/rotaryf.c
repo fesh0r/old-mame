@@ -11,6 +11,7 @@ driver by Barry Rodewald
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/i8085/i8085.h"
 
 
@@ -27,7 +28,7 @@ static size_t rotaryf_videoram_size;
 
 static INTERRUPT_GEN( rotaryf_interrupt )
 {
-	if (video_screen_get_vblank(0))
+	if (video_screen_get_vblank(machine->primary_screen))
 		cpunum_set_input_line(machine, 0, I8085_RST55_LINE, HOLD_LINE);
 	else
 		cpunum_set_input_line(machine, 0, I8085_RST75_LINE, HOLD_LINE);
@@ -151,14 +152,12 @@ static MACHINE_DRIVER_START( rotaryf )
 	MDRV_CPU_ADD_TAG("main",8085A,4000000) /* 8080? */ /* 2 MHz? */
 	MDRV_CPU_PROGRAM_MAP(rotaryf_map,0)
 	MDRV_CPU_IO_MAP(rotaryf_io_map,0)
-	MDRV_CPU_VBLANK_INT(rotaryf_interrupt,5)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT_HACK(rotaryf_interrupt,5)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(rotaryf)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(32*8, 262)		/* vert size is a guess, taken from mw8080bw */
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 30*8-1, 0*8, 32*8-1)

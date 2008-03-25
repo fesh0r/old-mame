@@ -59,12 +59,12 @@ VIDEO_START( simpsons )
 
 static READ8_HANDLER( simpsons_K052109_r )
 {
-	return K052109_r(offset + 0x2000);
+	return K052109_r(machine,offset + 0x2000);
 }
 
 static WRITE8_HANDLER( simpsons_K052109_w )
 {
-	K052109_w(offset + 0x2000,data);
+	K052109_w(machine,offset + 0x2000,data);
 }
 
 static READ8_HANDLER( simpsons_K053247_r )
@@ -103,7 +103,7 @@ void simpsons_video_banking(int bank)
 {
 	if (bank & 1)
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MRA8_BANK5, paletteram_xBBBBBGGGGGRRRRR_be_w);
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK5, paletteram_xBBBBBGGGGGRRRRR_be_w);
 		memory_set_bankptr(5, paletteram);
 	}
 	else
@@ -162,11 +162,11 @@ VIDEO_UPDATE( simpsons )
 	sortlayers(layer,layerpri);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[16 * bg_colorbase],cliprect);
+	fillbitmap(bitmap,16 * bg_colorbase,cliprect);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[0]],0,1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[layer[2]],0,4);
 
-	K053247_sprites_draw(machine, bitmap,cliprect);
+	K053247_sprites_draw(screen->machine, bitmap,cliprect);
 	return 0;
 }

@@ -264,8 +264,8 @@ WRITE8_HANDLER(pc_page_w)
 
 
 
-READ16_HANDLER(pc_page16le_r) { return read16le_with_read8_handler(pc_page_r, offset, mem_mask); }
-WRITE16_HANDLER(pc_page16le_w) { write16le_with_write8_handler(pc_page_w, offset, data, mem_mask); }
+READ16_HANDLER(pc_page16le_r) { return read16le_with_read8_handler(pc_page_r, machine, offset, mem_mask); }
+WRITE16_HANDLER(pc_page16le_w) { write16le_with_write8_handler(pc_page_w, machine, offset, data, mem_mask); }
 
 
 
@@ -319,14 +319,14 @@ WRITE8_HANDLER(at_page8_w)
 
 READ32_HANDLER(at_page32_r)
 {
-	return read32le_with_read8_handler(at_page8_r, offset, mem_mask);
+	return read32le_with_read8_handler(at_page8_r, machine, offset, mem_mask);
 }
 
 
 
 WRITE32_HANDLER(at_page32_w)
 {
-	write32le_with_write8_handler(at_page8_w, offset, data, mem_mask);
+	write32le_with_write8_handler(at_page8_w, machine, offset, data, mem_mask);
 }
 
 
@@ -525,14 +525,12 @@ static TIMER_CALLBACK( pc_keyb_timer )
 
 void pc_keyb_set_clock(int on)
 {
-	attotime keyb_delay = STATIC_ATTOTIME_IN_MSEC(5);
-
 	on = on ? 1 : 0;
 
 	if (pc_keyb.on != on)
 	{
 		if (on)
-			timer_adjust(pc_keyboard_timer, keyb_delay, 0, attotime_zero);
+			timer_adjust_oneshot(pc_keyboard_timer, ATTOTIME_IN_MSEC(5), 0);
 		else
 			timer_reset(pc_keyboard_timer, attotime_never);
 

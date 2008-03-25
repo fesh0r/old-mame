@@ -21,7 +21,7 @@ static TILE_GET_INFO( get_speedspn_tile_info )
 VIDEO_START(speedspn)
 {
 	speedspn_vidram = auto_malloc(0x1000 * 2);
-	speedspn_tilemap = tilemap_create(get_speedspn_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	speedspn_tilemap = tilemap_create(get_speedspn_tile_info,tilemap_scan_cols, 8, 8,64,32);
 }
 
 WRITE8_HANDLER( speedspn_vidram_w )
@@ -58,7 +58,7 @@ WRITE8_HANDLER(speedspn_global_display_w)
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const gfx_element *gfx = machine->gfx[1];
 	UINT8 *source = speedspn_vidram+ 0x1000;
@@ -94,7 +94,7 @@ VIDEO_UPDATE(speedspn)
 {
 	if (speedspn_display_disable)
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -108,6 +108,6 @@ VIDEO_UPDATE(speedspn)
 #endif
 	tilemap_set_scrollx(speedspn_tilemap,0, 0x100); // verify
 	tilemap_draw(bitmap,cliprect,speedspn_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

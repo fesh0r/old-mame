@@ -93,7 +93,7 @@ WRITE16_HANDLER( bestbest_flipscreen_w )
 
 VIDEO_START( suna16 )
 {
-	paletteram16 = auto_malloc( machine->drv->total_colors * sizeof(UINT16) );
+	paletteram16 = auto_malloc( machine->config->total_colors * sizeof(UINT16) );
 }
 
 READ16_HANDLER( suna16_paletteram16_r )
@@ -117,12 +117,12 @@ WRITE16_HANDLER( suna16_paletteram16_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT16 *sprites, int gfx)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT16 *sprites, int gfx)
 {
 	int offs;
 
-	int max_x	=	machine->screen[0].width  - 8;
-	int max_y	=	machine->screen[0].height - 8;
+	int max_x = video_screen_get_width(machine->primary_screen) - 8;
+	int max_y = video_screen_get_height(machine->primary_screen) - 8;
 
 	for ( offs = 0xfc00/2; offs < 0x10000/2 ; offs += 4/2 )
 	{
@@ -183,7 +183,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 				if (flipx)	tile_flipx = !tile_flipx;
 
-				if (flip_screen)
+				if (flip_screen_get())
 				{
 					sx = max_x - sx;
 					sy = max_y - sy;
@@ -220,8 +220,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( suna16 )
 {
 	/* Suna Quiz indicates the background is the last pen */
-	fillbitmap(bitmap,machine->pens[0xff],cliprect);
-	draw_sprites(machine, bitmap, cliprect, spriteram16, 0);
+	fillbitmap(bitmap,0xff,cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect, spriteram16, 0);
 	return 0;
 }
 
@@ -239,8 +239,8 @@ if (input_code_pressed(KEYCODE_Z))
 #endif
 
 	/* Suna Quiz indicates the background is the last pen */
-	fillbitmap(bitmap,machine->pens[0xff],cliprect);
-	if (layers_ctrl & 1)	draw_sprites(machine, bitmap, cliprect, spriteram16,   0);
-	if (layers_ctrl & 2)	draw_sprites(machine, bitmap, cliprect, spriteram16_2, 1);
+	fillbitmap(bitmap,0xff,cliprect);
+	if (layers_ctrl & 1)	draw_sprites(screen->machine, bitmap, cliprect, spriteram16,   0);
+	if (layers_ctrl & 2)	draw_sprites(screen->machine, bitmap, cliprect, spriteram16_2, 1);
 	return 0;
 }

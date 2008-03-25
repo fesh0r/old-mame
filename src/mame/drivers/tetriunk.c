@@ -75,7 +75,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tetriunk_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x0ffff) AM_RAM
-	AM_RANGE(0xb0000, 0xbffff) AM_READ(MRA8_RAM) AM_WRITE(txtram_w)
+	AM_RANGE(0xb0000, 0xbffff) AM_READ(SMH_RAM) AM_WRITE(txtram_w)
 	AM_RANGE(0xf0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -119,9 +119,9 @@ static VIDEO_UPDATE(tetriunk)
 			int color2 = (tetriunk_attribram[count<<1]>>4)&7;
 			if(color2!=0)
 			{
-				drawgfx(bitmap,machine->gfx[0],0x100,color2,0,0,x<<3,y<<3,cliprect,TRANSPARENCY_NONE,0);
+				drawgfx(bitmap,screen->machine->gfx[0],0x100,color2,0,0,x<<3,y<<3,cliprect,TRANSPARENCY_NONE,0);
 			}
-			drawgfx(bitmap,machine->gfx[0],tile&0xff,color,0,0,x<<3,y<<3,cliprect,TRANSPARENCY_PEN,0);
+			drawgfx(bitmap,screen->machine->gfx[0],tile&0xff,color,0,0,x<<3,y<<3,cliprect,TRANSPARENCY_PEN,0);
 			count++;
 		}
 	}
@@ -180,14 +180,15 @@ static MACHINE_DRIVER_START( tetriunk )
 	MDRV_CPU_ADD(I8088, 8000000)
 	MDRV_CPU_PROGRAM_MAP(tetriunk_mem, 0)
 	MDRV_CPU_IO_MAP(tetriunk_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320,200)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 200-1)
+
 	MDRV_GFXDECODE(tetriunk)
 	MDRV_PALETTE_LENGTH(256)
 	MDRV_PALETTE_INIT(tetrisunk)

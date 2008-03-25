@@ -217,10 +217,10 @@ WRITE8_HANDLER( clshroad_vram_1_w )
 VIDEO_START( firebatl )
 {
 	/* These 2 use the graphics and scroll value */
-	tilemap_0a = tilemap_create(get_tile_info_0a,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,0x20,0x10);
-	tilemap_0b = tilemap_create(get_tile_info_0b,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,0x20,0x10);
+	tilemap_0a = tilemap_create(get_tile_info_0a,tilemap_scan_rows,16,16,0x20,0x10);
+	tilemap_0b = tilemap_create(get_tile_info_0b,tilemap_scan_rows,16,16,0x20,0x10);
 	/* Text (No scrolling) */
-	tilemap_1  = tilemap_create(get_tile_info_fb1,tilemap_scan_rows_extra,TILEMAP_TYPE_PEN,8,8,0x24,0x20);
+	tilemap_1  = tilemap_create(get_tile_info_fb1,tilemap_scan_rows_extra,8,8,0x24,0x20);
 
 	tilemap_set_scroll_rows( tilemap_0a, 1);
 	tilemap_set_scroll_rows( tilemap_0b, 1);
@@ -240,10 +240,10 @@ VIDEO_START( firebatl )
 VIDEO_START( clshroad )
 {
 	/* These 2 use the graphics and scroll value */
-	tilemap_0a = tilemap_create(get_tile_info_0a,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,0x20,0x10);
-	tilemap_0b = tilemap_create(get_tile_info_0b,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,0x20,0x10);
+	tilemap_0a = tilemap_create(get_tile_info_0a,tilemap_scan_rows,16,16,0x20,0x10);
+	tilemap_0b = tilemap_create(get_tile_info_0b,tilemap_scan_rows,16,16,0x20,0x10);
 	/* Text (No scrolling) */
-	tilemap_1  = tilemap_create(get_tile_info_1,tilemap_scan_rows_extra,TILEMAP_TYPE_PEN,8,8,0x24,0x20);
+	tilemap_1  = tilemap_create(get_tile_info_1,tilemap_scan_rows_extra,8,8,0x24,0x20);
 
 	tilemap_set_scroll_rows( tilemap_0a, 1);
 	tilemap_set_scroll_rows( tilemap_0b, 1);
@@ -290,7 +290,7 @@ Offset:     Format:     Value:
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i;
 
@@ -305,7 +305,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int flipy	=	0;
 
 		x -= 0x4a/2;
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			y = 240 - y;
 			flipx = !flipx;
@@ -341,7 +341,7 @@ VIDEO_UPDATE( clshroad )
 
 	tilemap_draw(bitmap,cliprect,tilemap_0a,0,0);	// Opaque
 	tilemap_draw(bitmap,cliprect,tilemap_0b,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tilemap_1,0,0);
 	return 0;
 }

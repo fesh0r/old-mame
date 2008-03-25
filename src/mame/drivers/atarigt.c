@@ -77,7 +77,7 @@ static MACHINE_RESET( atarigt )
 {
 	atarigen_eeprom_reset();
 	atarigen_interrupt_reset(update_interrupts);
-	atarigen_scanline_timer_reset(0, atarigt_scanline_update, 8);
+	atarigen_scanline_timer_reset(machine->primary_screen, atarigt_scanline_update, 8);
 }
 
 
@@ -93,7 +93,7 @@ static void cage_irq_callback(int reason)
 	if (reason)
 		atarigen_sound_int_gen(Machine, 0);
 	else
-		atarigen_sound_int_ack_w(0,0,0);
+		atarigen_sound_int_ack_w(Machine,0,0,0);
 }
 
 
@@ -628,7 +628,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xe08000, 0xe08003) AM_WRITE(latch_w)
 	AM_RANGE(0xe0a000, 0xe0a003) AM_WRITE(atarigen_scanline_int_ack32_w)
 	AM_RANGE(0xe0c000, 0xe0c003) AM_WRITE(atarigen_video_int_ack32_w)
-	AM_RANGE(0xe0e000, 0xe0e003) AM_WRITE(MWA32_NOP)//watchdog_reset_w },
+	AM_RANGE(0xe0e000, 0xe0e003) AM_WRITE(SMH_NOP)//watchdog_reset_w },
 	AM_RANGE(0xe80000, 0xe80003) AM_READ(inputs_01_r)
 	AM_RANGE(0xe82000, 0xe82003) AM_READ(special_port2_r)
 	AM_RANGE(0xe82004, 0xe82007) AM_READ(special_port3_r)
@@ -807,18 +807,18 @@ static MACHINE_DRIVER_START( atarigt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, ATARI_CLOCK_50MHz/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(atarigen_video_int_gen,1)
+	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 	MDRV_CPU_PERIODIC_INT(atarigen_scanline_int_gen, 250)
 
 	MDRV_MACHINE_RESET(atarigt)
 	MDRV_NVRAM_HANDLER(atarigen)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_GFXDECODE(atarigt)
 	MDRV_PALETTE_LENGTH(32768)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses a pair of GALs to determine H and V parameters */
@@ -1087,7 +1087,7 @@ static WRITE32_HANDLER( tmek_pf_w )
 	if (pc == 0x25834 || pc == 0x25860)
 		logerror("%06X:PFW@%06X = %08X & %08X (src=%06X)\n", activecpu_get_pc(), 0xd72000 + offset*4, data, ~mem_mask, (UINT32)activecpu_get_reg(M68K_A3) - 2);
 
-	atarigen_playfield32_w(offset, data, mem_mask);
+	atarigen_playfield32_w(machine, offset, data, mem_mask);
 }
 
 static DRIVER_INIT( tmek )

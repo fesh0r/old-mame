@@ -51,13 +51,13 @@ MACHINE_RESET( taitosj )
 {
 	/* set the default ROM bank (many games only have one bank and */
 	/* never write to the bank selector register) */
-    taitosj_bankswitch_w(0, 0);
+    taitosj_bankswitch_w(machine, 0, 0);
 
 
 	zaccept = 1;
 	zready = 0;
 	busreq = 0;
- 	if (machine->drv->cpu[2].type != CPU_DUMMY)
+ 	if (machine->config->cpu[2].type != CPU_DUMMY)
 	cpunum_set_input_line(machine, 2,0,CLEAR_LINE);
 
 	spacecr_prot_value = 0;
@@ -311,11 +311,11 @@ WRITE8_HANDLER( alpine_protection_w )
 
 WRITE8_HANDLER( alpinea_bankswitch_w )
 {
-    taitosj_bankswitch_w(offset, data);
+    taitosj_bankswitch_w(machine, offset, data);
 	protection_value = data >> 2;
 }
 
 READ8_HANDLER( alpine_port_2_r )
 {
-	return input_port_2_r(offset) | protection_value;
+	return input_port_2_r(machine,offset) | protection_value;
 }

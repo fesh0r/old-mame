@@ -132,8 +132,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 ***************************************************************************/
 VIDEO_START( 1942 )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,     16,16,32,16);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,     16,16,32,16);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
@@ -198,7 +198,7 @@ WRITE8_HANDLER( c1942_c804_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -214,7 +214,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		sx = spriteram[offs + 3] - 0x10 * (spriteram[offs + 1] & 0x10);
 		sy = spriteram[offs + 2];
 		dir = 1;
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -229,7 +229,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		{
 			drawgfx(bitmap,machine->gfx[2],
 					code + i,col,
-					flip_screen,flip_screen,
+					flip_screen_get(),flip_screen_get(),
 					sx,sy + 16 * i * dir,
 					cliprect,TRANSPARENCY_PEN,15);
 
@@ -243,7 +243,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( 1942 )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;
 }

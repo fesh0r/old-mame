@@ -65,7 +65,7 @@ static WRITE8_HANDLER( poolshrk_watchdog_w )
 {
 	if ((offset & 3) == 3)
 	{
-		watchdog_reset_w(0, 0);
+		watchdog_reset_w(machine, 0, 0);
 	}
 }
 
@@ -82,7 +82,7 @@ static READ8_HANDLER( poolshrk_input_r )
 
 	if ((offset & 3) == 3)
 	{
-		watchdog_reset_r(0);
+		watchdog_reset_r(machine, 0);
 	}
 
 	return val;
@@ -98,11 +98,11 @@ static READ8_HANDLER( poolshrk_irq_reset_r )
 
 
 static ADDRESS_MAP_START( poolshrk_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x00ff) AM_MIRROR(0x2300) AM_RAM
-	AM_RANGE(0x0400, 0x07ff) AM_MIRROR(0x2000) AM_WRITE(MWA8_RAM) AM_BASE(&poolshrk_playfield_ram)
-	AM_RANGE(0x0800, 0x080f) AM_MIRROR(0x23f0) AM_WRITE(MWA8_RAM) AM_BASE(&poolshrk_hpos_ram)
-	AM_RANGE(0x0c00, 0x0c0f) AM_MIRROR(0x23f0) AM_WRITE(MWA8_RAM) AM_BASE(&poolshrk_vpos_ram)
+	AM_RANGE(0x0400, 0x07ff) AM_MIRROR(0x2000) AM_WRITE(SMH_RAM) AM_BASE(&poolshrk_playfield_ram)
+	AM_RANGE(0x0800, 0x080f) AM_MIRROR(0x23f0) AM_WRITE(SMH_RAM) AM_BASE(&poolshrk_hpos_ram)
+	AM_RANGE(0x0c00, 0x0c0f) AM_MIRROR(0x23f0) AM_WRITE(SMH_RAM) AM_BASE(&poolshrk_vpos_ram)
 	AM_RANGE(0x1000, 0x13ff) AM_MIRROR(0x2000) AM_READWRITE(poolshrk_input_r, poolshrk_watchdog_w)
 	AM_RANGE(0x1400, 0x17ff) AM_MIRROR(0x2000) AM_WRITE(poolshrk_scratch_sound_w)
 	AM_RANGE(0x1800, 0x1bff) AM_MIRROR(0x2000) AM_WRITE(poolshrk_score_sound_w)
@@ -216,15 +216,15 @@ static MACHINE_DRIVER_START( poolshrk )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6800, 11055000 / 8) /* ? */
 	MDRV_CPU_PROGRAM_MAP(poolshrk_cpu_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(1, 255, 24, 255)
+
 	MDRV_GFXDECODE(poolshrk)
 	MDRV_PALETTE_LENGTH(4)
 	MDRV_PALETTE_INIT(poolshrk)

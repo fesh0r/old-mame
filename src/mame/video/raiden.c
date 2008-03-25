@@ -69,9 +69,9 @@ static TILE_GET_INFO( get_text_tile_info )
 
 VIDEO_START( raiden )
 {
-	bg_layer = tilemap_create(get_back_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,     16,16,32,32);
-	fg_layer = tilemap_create(get_fore_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,32,32);
-	tx_layer = tilemap_create(get_text_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_layer = tilemap_create(get_back_tile_info,tilemap_scan_cols,     16,16,32,32);
+	fg_layer = tilemap_create(get_fore_tile_info,tilemap_scan_cols,16,16,32,32);
+	tx_layer = tilemap_create(get_text_tile_info,tilemap_scan_cols,8,8,32,32);
 	alternate=0;
 
 	tilemap_set_transparent_pen(fg_layer,15);
@@ -80,9 +80,9 @@ VIDEO_START( raiden )
 
 VIDEO_START( raidena )
 {
-	bg_layer = tilemap_create(get_back_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,     16,16,32,32);
-	fg_layer = tilemap_create(get_fore_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,32,32);
-	tx_layer = tilemap_create(get_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_layer = tilemap_create(get_back_tile_info,tilemap_scan_cols,     16,16,32,32);
+	fg_layer = tilemap_create(get_fore_tile_info,tilemap_scan_cols,16,16,32,32);
+	tx_layer = tilemap_create(get_text_tile_info,tilemap_scan_rows,8,8,32,32);
 	alternate=1;
 
 	tilemap_set_transparent_pen(fg_layer,15);
@@ -100,7 +100,7 @@ WRITE16_HANDLER( raiden_control_w )
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int pri_mask)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int pri_mask)
 {
 	int offs,fx,fy,x,y,color,sprite;
 
@@ -152,11 +152,11 @@ VIDEO_UPDATE( raiden )
 	tilemap_draw(bitmap,cliprect,bg_layer,0,0);
 
 	/* Draw sprites underneath foreground */
-	draw_sprites(machine,bitmap,cliprect,0x40);
+	draw_sprites(screen->machine,bitmap,cliprect,0x40);
 	tilemap_draw(bitmap,cliprect,fg_layer,0,0);
 
 	/* Rest of sprites */
-	draw_sprites(machine,bitmap,cliprect,0x80);
+	draw_sprites(screen->machine,bitmap,cliprect,0x80);
 
 	/* Text layer */
 	tilemap_draw(bitmap,cliprect,tx_layer,0,0);

@@ -280,7 +280,7 @@ VIDEO_START( glfgreat )
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 
-	roz_tilemap = tilemap_create(glfgreat_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,512,512);
+	roz_tilemap = tilemap_create(glfgreat_get_roz_tile_info,tilemap_scan_rows,16,16,512,512);
 
 	tilemap_set_transparent_pen(roz_tilemap,0);
 
@@ -301,7 +301,7 @@ VIDEO_START( prmrsocr )
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,prmrsocr_sprite_callback);
 
-	roz_tilemap = tilemap_create(prmrsocr_get_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,512,256);
+	roz_tilemap = tilemap_create(prmrsocr_get_roz_tile_info,tilemap_scan_rows,16,16,512,256);
 
 	tilemap_set_transparent_pen(roz_tilemap,0);
 
@@ -345,7 +345,7 @@ WRITE16_HANDLER( tmnt_0a0000_w )
 		last = data & 0x08;
 
 		/* bit 5 = irq enable */
-		interrupt_enable_w(0,data & 0x20);
+		interrupt_enable_w(machine,0,data & 0x20);
 
 		/* bit 7 = enable char ROM reading through the video RAM */
 		K052109_set_RMRD_line((data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
@@ -653,7 +653,7 @@ VIDEO_UPDATE( lgtnfght )
 	sortlayers(sorted_layer,layerpri);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[16 * bg_colorbase],cliprect);
+	fillbitmap(bitmap,16 * bg_colorbase,cliprect);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[0]],0,1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[2]],0,4);
@@ -698,7 +698,7 @@ VIDEO_UPDATE( glfgreat )
 	/* not sure about the 053936 priority, but it seems to work */
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[16 * bg_colorbase],cliprect);
+	fillbitmap(bitmap,16 * bg_colorbase,cliprect);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[0]],0,1);
 	if (layerpri[0] >= 0x30 && layerpri[1] < 0x30)
 	{
@@ -751,21 +751,21 @@ VIDEO_UPDATE( tmnt2 )
 
 		// dim all colors before it
 		for (i=0; i<cb; i++)
-			palette_set_brightness(machine,i,brt);
+			palette_set_brightness(screen->machine,i,brt);
 
 		// reset all colors in range
 		for (i=cb; i<ce; i++)
-			palette_set_brightness(machine,i,1.0);
+			palette_set_brightness(screen->machine,i,1.0);
 
 		// dim all colors after it
 		for (i=ce; i<2048; i++)
-			palette_set_brightness(machine,i,brt);
+			palette_set_brightness(screen->machine,i,brt);
 
 		// toggle shadow/highlight
 		if (~dim_c & 0x10)
-			palette_set_shadow_mode(machine, 1);
+			palette_set_shadow_mode(screen->machine, 1);
 		else
-			palette_set_shadow_mode(machine, 0);
+			palette_set_shadow_mode(screen->machine, 0);
 	}
 
 	VIDEO_UPDATE_CALL(lgtnfght);
@@ -793,7 +793,7 @@ VIDEO_UPDATE( thndrx2 )
 	sortlayers(sorted_layer,layerpri);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[16 * bg_colorbase],cliprect);
+	fillbitmap(bitmap,16 * bg_colorbase,cliprect);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[0]],0,1);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[1]],0,2);
 	tilemap_draw(bitmap,cliprect,K052109_tilemap[sorted_layer[2]],0,4);

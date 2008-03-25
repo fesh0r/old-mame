@@ -127,6 +127,7 @@ static UINT8 *empty_tiles;
 
 
 /* 8x8x4 tiles only */
+#ifdef UNUSED_FUNCTON
 INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_index,int layer,UINT16 *vram)
 {
 	UINT16 code;
@@ -159,7 +160,7 @@ INLINE void get_tile_info(running_machine *machine,tile_data *tileinfo,int tile_
 				(((tile & 0x0ff00000) >> 20) ^ 0x0f) + 0x100,
 				TILE_FLIPXY((code & 0x6000) >> 13));
 }
-
+#endif
 
 /* 8x8x4 or 8x8x8 tiles. It's the tile's color that decides: if its low 4
    bits are high ($f,$1f,$2f etc) the tile is 8bpp, otherwise it's 4bpp */
@@ -204,6 +205,7 @@ INLINE void get_tile_info_8bit(running_machine *machine,tile_data *tileinfo,int 
 
 /* 16x16x4 or 16x16x8 tiles. It's the tile's color that decides: if its low 4
    bits are high ($f,$1f,$2f etc) the tile is 8bpp, otherwise it's 4bpp */
+#ifdef UNUSED_FUNCTON
 INLINE void get_tile_info_16x16_8bit(running_machine *machine,tile_data *tileinfo,int tile_index,int layer,UINT16 *vram)
 {
 	UINT16 code;
@@ -242,7 +244,7 @@ INLINE void get_tile_info_16x16_8bit(running_machine *machine,tile_data *tileinf
 				(((tile & 0x0ff00000) >> 20) ^ 0x0f) + 0x100,
 				TILE_FLIPXY((code & 0x6000) >> 13));
 }
-
+#endif
 
 INLINE void hyprduel_vram_w(offs_t offset,UINT16 data,UINT16 mem_mask,int layer,UINT16 *vram)
 {
@@ -318,9 +320,9 @@ VIDEO_START( hyprduel_14220 )
 	hypr_tiletable_old = auto_malloc(hyprduel_tiletable_size);
 	dirtyindex = auto_malloc(hyprduel_tiletable_size/4);
 
-	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,WIN_NX,WIN_NY);
-	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,WIN_NX,WIN_NY);
-	bg_tilemap[2] = tilemap_create(get_tile_info_2_8bit,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[0] = tilemap_create(get_tile_info_0_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[1] = tilemap_create(get_tile_info_1_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
+	bg_tilemap[2] = tilemap_create(get_tile_info_2_8bit,tilemap_scan_rows,8,8,WIN_NX,WIN_NY);
 
 	tilemap_set_transparent_pen(bg_tilemap[0],0);
 	tilemap_set_transparent_pen(bg_tilemap[1],0);
@@ -390,15 +392,15 @@ VIDEO_START( hyprduel_14220 )
 
 /* Draw sprites */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const int region		=	REGION_GFX1;
 
 	UINT8 *base_gfx	=	memory_region(region);
 	UINT8 *gfx_max	=	base_gfx + memory_region_length(region);
 
-	int max_x				=	machine->screen[0].width;
-	int max_y				=	machine->screen[0].height;
+	int max_x = video_screen_get_width(machine->primary_screen);
+	int max_y = video_screen_get_height(machine->primary_screen);
 
 	int max_sprites			=	spriteram_size / 8;
 	int sprites				=	hyprduel_videoregs[0x00/2] % max_sprites;
@@ -459,7 +461,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 			gfxdata		=	base_gfx + (8*8*4/8) * (((attr & 0x000f) << 16) + code);
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				flipx = !flipx;		x = max_x - x - width;
 				flipy = !flipy;		y = max_y - y - height;
@@ -542,7 +544,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 ***************************************************************************/
 
 /* Draw all the layers that match the given priority */
-static void draw_layers(mame_bitmap *bitmap, const rectangle *cliprect, int pri, int layers_ctrl)
+static void draw_layers(bitmap_t *bitmap, const rectangle *cliprect, int pri, int layers_ctrl)
 {
 	UINT16 layers_pri = hyprduel_videoregs[0x10/2];
 	int layer;
@@ -630,12 +632,12 @@ VIDEO_UPDATE( hyprduel )
 		}
 	}
 
-	hyprduel_sprite_xoffs	=	hyprduel_videoregs[0x06/2] - machine->screen[0].width  / 2;
-	hyprduel_sprite_yoffs	=	hyprduel_videoregs[0x04/2] - machine->screen[0].height / 2;
+	hyprduel_sprite_xoffs	=	hyprduel_videoregs[0x06/2] - video_screen_get_width(screen)  / 2;
+	hyprduel_sprite_yoffs	=	hyprduel_videoregs[0x04/2] - video_screen_get_height(screen) / 2;
 
 	/* The background color is selected by a register */
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[((hyprduel_videoregs[0x12/2] & 0x0fff) ^ 0x0ff) + 0x1000],cliprect);
+	fillbitmap(bitmap,((hyprduel_videoregs[0x12/2] & 0x0fff) ^ 0x0ff) + 0x1000,cliprect);
 
 	/*  Screen Control Register:
 
@@ -676,6 +678,6 @@ if (input_code_pressed(KEYCODE_Z))
 		draw_layers(bitmap,cliprect,pri,layers_ctrl);
 
 	if (layers_ctrl & 0x08)
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

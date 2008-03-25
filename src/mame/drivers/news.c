@@ -19,22 +19,22 @@ driver by David Haywood
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x8fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc000, 0xc000) AM_READ(input_port_0_r)
 	AM_RANGE(0xc001, 0xc001) AM_READ(input_port_1_r)
 	AM_RANGE(0xc002, 0xc002) AM_READ(OKIM6295_status_0_r)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)	/* 4000-7fff is written to during startup, probably leftover code */
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)	/* 4000-7fff is written to during startup, probably leftover code */
 	AM_RANGE(0x8000, 0x87ff) AM_WRITE(news_fgram_w) AM_BASE(&news_fgram)
 	AM_RANGE(0x8800, 0x8fff) AM_WRITE(news_bgram_w) AM_BASE(&news_bgram)
 	AM_RANGE(0x9000, 0x91ff) AM_WRITE(paletteram_xxxxRRRRGGGGBBBB_be_w) AM_BASE(&paletteram)
 	AM_RANGE(0xc002, 0xc002) AM_WRITE(OKIM6295_data_0_w) /* ?? */
 	AM_RANGE(0xc003, 0xc003) AM_WRITE(news_bgpic_w)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -123,16 +123,16 @@ static MACHINE_DRIVER_START( news )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,8000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-16-1)
+
 	MDRV_GFXDECODE(news)
 	MDRV_PALETTE_LENGTH(0x100)
 

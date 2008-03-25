@@ -45,7 +45,7 @@ WRITE8_HANDLER( djboy_videoram_w )
 
 VIDEO_START( djboy )
 {
-	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
+	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,16,16,64,32);
 	pandora_start(0,0,0);
 }
 
@@ -74,7 +74,7 @@ VIDEO_UPDATE( djboy )
 	scroll = djboy_scrolly | ((djboy_videoreg&0x20)<<3);
 	tilemap_set_scrolly( background, 0, scroll );
 	tilemap_draw( bitmap, cliprect,background,0,0 );
-	pandora_update(machine,bitmap,cliprect);
+	pandora_update(screen->machine,bitmap,cliprect);
 	return 0;
 }
 

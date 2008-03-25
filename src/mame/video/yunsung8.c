@@ -167,10 +167,10 @@ static TILE_GET_INFO( get_tile_info_1 )
 VIDEO_START( yunsung8 )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 8,8, DIM_NX_0, DIM_NY_0 );
+								 8,8, DIM_NX_0, DIM_NY_0 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 8,8, DIM_NX_1, DIM_NY_1 );
+								 8,8, DIM_NX_1, DIM_NY_1 );
 
 		tilemap_set_transparent_pen(tilemap_1,0);
 }
@@ -200,7 +200,7 @@ if (input_code_pressed(KEYCODE_Z))
 #endif
 
 	if (layers_ctrl&1)	tilemap_draw(bitmap,cliprect, tilemap_0, 0,0);
-	else				fillbitmap(bitmap,machine->pens[0],cliprect);
+	else				fillbitmap(bitmap,0,cliprect);
 
 	if (layers_ctrl&2)	tilemap_draw(bitmap,cliprect, tilemap_1, 0,0);
 	return 0;

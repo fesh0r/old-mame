@@ -106,8 +106,8 @@ static WRITE16_HANDLER( sound_command_w )
 	if (ACCESSING_LSB)
 	{
 		pending_command = 1;
-		soundlatch_w(offset,data & 0xff);
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(machine,offset,data & 0xff);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -135,14 +135,14 @@ static WRITE8_HANDLER( suprslam_sh_bankswitch_w )
 /*** MEMORY MAPS *************************************************************/
 
 static ADDRESS_MAP_START( suprslam_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0xfb0000, 0xfb1fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xfc0000, 0xfcffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xfd0000, 0xfdffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xfe0000, 0xfe0fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xff0000, 0xff1fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xff8000, 0xff8fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xffa000, 0xffafff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0xfb0000, 0xfb1fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xfc0000, 0xfcffff) AM_READ(SMH_RAM)
+	AM_RANGE(0xfd0000, 0xfdffff) AM_READ(SMH_RAM)
+	AM_RANGE(0xfe0000, 0xfe0fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xff0000, 0xff1fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xff8000, 0xff8fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xffa000, 0xffafff) AM_READ(SMH_RAM)
 	AM_RANGE(0xfff000, 0xfff001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0xfff002, 0xfff003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0xfff004, 0xfff005) AM_READ(input_port_2_word_r)
@@ -151,41 +151,41 @@ static ADDRESS_MAP_START( suprslam_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( suprslam_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0xfb0000, 0xfb1fff) AM_WRITE(MWA16_RAM) AM_BASE(&suprslam_spriteram)
-	AM_RANGE(0xfc0000, 0xfcffff) AM_WRITE(MWA16_RAM) AM_BASE(&suprslam_sp_videoram)
-	AM_RANGE(0xfd0000, 0xfdffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xfb0000, 0xfb1fff) AM_WRITE(SMH_RAM) AM_BASE(&suprslam_spriteram)
+	AM_RANGE(0xfc0000, 0xfcffff) AM_WRITE(SMH_RAM) AM_BASE(&suprslam_sp_videoram)
+	AM_RANGE(0xfd0000, 0xfdffff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xfe0000, 0xfe0fff) AM_WRITE(suprslam_screen_videoram_w) AM_BASE(&suprslam_screen_videoram)
 	AM_RANGE(0xff0000, 0xff1fff) AM_WRITE(suprslam_bg_videoram_w) AM_BASE(&suprslam_bg_videoram)
-//  AM_RANGE(0xff2000, 0xff203f) AM_WRITE(MWA16_RAM) /* ?? */
-	AM_RANGE(0xff8000, 0xff8fff) AM_WRITE(MWA16_RAM) AM_BASE(&K053936_0_linectrl)
+//  AM_RANGE(0xff2000, 0xff203f) AM_WRITE(SMH_RAM) /* ?? */
+	AM_RANGE(0xff8000, 0xff8fff) AM_WRITE(SMH_RAM) AM_BASE(&K053936_0_linectrl)
 	AM_RANGE(0xff9000, 0xff9001) AM_WRITE(sound_command_w)
 	AM_RANGE(0xffa000, 0xffafff) AM_WRITE(paletteram16_xGGGGGBBBBBRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xffd000, 0xffd01f) AM_WRITE(MWA16_RAM) AM_BASE(&K053936_0_ctrl)
+	AM_RANGE(0xffd000, 0xffd01f) AM_WRITE(SMH_RAM) AM_BASE(&K053936_0_ctrl)
 	AM_RANGE(0xffe000, 0xffe001) AM_WRITE(suprslam_bank_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x0000, 0x77ff) AM_READ(SMH_ROM)
+	AM_RANGE(0x7800, 0x7fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x77ff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x7800, 0x7fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( suprslam_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 	AM_RANGE(0x08, 0x08) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0x0a, 0x0a) AM_READ(YM2610_status_port_0_B_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( suprslam_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(suprslam_sh_bankswitch_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(pending_command_clear_w)
 	AM_RANGE(0x08, 0x08) AM_WRITE(YM2610_control_port_0_A_w)
@@ -329,22 +329,24 @@ static const struct YM2610interface ym2610_interface =
 static MACHINE_DRIVER_START( suprslam )
 	MDRV_CPU_ADD(M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(suprslam_readmem,suprslam_writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)
 	/* audio CPU */	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(suprslam_sound_readport,suprslam_sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2300) /* hand-tuned */)
-
 	MDRV_GFXDECODE(suprslam)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2300) /* hand-tuned */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
+
 	MDRV_PALETTE_LENGTH(0x800)
 
 	MDRV_VIDEO_START(suprslam)

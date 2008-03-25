@@ -112,7 +112,7 @@ static WRITE8_HANDLER( panic_sound_output_w )
 
 static WRITE8_HANDLER( panic_sound_output2_w )
 {
-	panic_sound_output_w(offset+15, data);
+	panic_sound_output_w(machine, offset+15, data);
 }
 
 static WRITE8_HANDLER( cosmicg_output_w )
@@ -189,8 +189,8 @@ static INTERRUPT_GEN( panic_interrupt )
         /* mostly not noticed since sound is */
 		/* only enabled if game in progress! */
 
-    	if ((input_port_3_r(0) & 0xc0) != 0xc0)
-        	panic_sound_output_w(17,1);
+    	if ((input_port_3_r(machine,0) & 0xc0) != 0xc0)
+        	panic_sound_output_w(machine,17,1);
 
 		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xcf);	/* RST 08h */
     }
@@ -228,16 +228,16 @@ static INTERRUPT_GEN( cosmicg_interrupt )
 static INTERRUPT_GEN( magspot_interrupt )
 {
 	/* Coin 1 causes an IRQ, Coin 2 an NMI */
-	if (input_port_4_r(0) & 0x01)
+	if (input_port_4_r(machine,0) & 0x01)
   		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
-	else if (input_port_4_r(0) & 0x02)
+	else if (input_port_4_r(machine,0) & 0x02)
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static INTERRUPT_GEN( nomnlnd_interrupt )
 {
 	/* Coin causes an NMI */
-	if (input_port_4_r(0) & 0x01)
+	if (input_port_4_r(machine,0) & 0x01)
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
@@ -252,12 +252,12 @@ static READ8_HANDLER( cosmicg_port_0_r )
 {
 	/* The top four address lines from the CRTC are bits 0-3 */
 
-	return (input_port_0_r(0) & 0xf0) | ((video_screen_get_vpos(0) & 0xf0) >> 4);
+	return (input_port_0_r(machine,0) & 0xf0) | ((video_screen_get_vpos(machine->primary_screen) & 0xf0) >> 4);
 }
 
 static READ8_HANDLER( magspot_coinage_dip_r )
 {
-	return (input_port_5_r(0) & (1 << (7 - offset))) ? 0 : 1;
+	return (input_port_5_r(machine,0) & (1 << (7 - offset))) ? 0 : 1;
 }
 
 
@@ -266,12 +266,12 @@ static READ8_HANDLER( magspot_coinage_dip_r )
 static READ8_HANDLER( nomnlnd_port_0_1_r )
 {
 	int control;
-    int fire = input_port_3_r(0);
+    int fire = input_port_3_r(machine,0);
 
 	if (offset)
-		control = input_port_1_r(0);
+		control = input_port_1_r(machine,0);
     else
-		control = input_port_0_r(0);
+		control = input_port_0_r(machine,0);
 
     /* If firing - stop tank */
 
@@ -296,8 +296,8 @@ static WRITE8_HANDLER( flip_screen_w )
 
 
 static ADDRESS_MAP_START( panic_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x6800, 0x6800) AM_READ(input_port_0_r) /* IN1 */
 	AM_RANGE(0x6801, 0x6801) AM_READ(input_port_1_r) /* IN2 */
 	AM_RANGE(0x6802, 0x6802) AM_READ(input_port_2_r) /* DSW */
@@ -305,9 +305,9 @@ static ADDRESS_MAP_START( panic_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( panic_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x6000, 0x601f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x6000, 0x601f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x7000, 0x700b) AM_WRITE(panic_sound_output_w)
 	AM_RANGE(0x700c, 0x700e) AM_WRITE(cosmic_color_register_w)
 	AM_RANGE(0x700f, 0x700f) AM_WRITE(flip_screen_w)
@@ -316,8 +316,8 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( cosmica_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x6800, 0x6800) AM_READ(input_port_0_r) /* IN1 */
 	AM_RANGE(0x6801, 0x6801) AM_READ(input_port_1_r) /* IN2 */
 	AM_RANGE(0x6802, 0x6802) AM_READ(input_port_2_r) /* DSW */
@@ -325,22 +325,22 @@ static ADDRESS_MAP_START( cosmica_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cosmica_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x6000, 0x601f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x5fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x6000, 0x601f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x700c, 0x700d) AM_WRITE(cosmic_color_register_w)
 	AM_RANGE(0x700f, 0x700f) AM_WRITE(flip_screen_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( cosmicg_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cosmicg_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cosmicg_readport, ADDRESS_SPACE_IO, 8 )
@@ -355,22 +355,22 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( magspot_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x2fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x3800, 0x3807) AM_READ(magspot_coinage_dip_r)
 	AM_RANGE(0x5000, 0x5000) AM_READ(input_port_0_r)
 	AM_RANGE(0x5001, 0x5001) AM_READ(input_port_1_r)
 	AM_RANGE(0x5002, 0x5002) AM_READ(input_port_2_r)
 	AM_RANGE(0x5003, 0x5003) AM_READ(input_port_3_r)
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magspot_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x2fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x401f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x2fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x401f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x4800, 0x4800) AM_WRITE(DAC_0_data_w)
 	AM_RANGE(0x480c, 0x480d) AM_WRITE(cosmic_color_register_w)
 	AM_RANGE(0x480f, 0x480f) AM_WRITE(flip_screen_w)
-	AM_RANGE(0x6000, 0x7fff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x6000, 0x7fff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 
@@ -989,10 +989,9 @@ static MACHINE_DRIVER_START( cosmic )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80,10816000/6)	/* 1.802 MHz*/
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 28*8-1)
@@ -1006,7 +1005,7 @@ static MACHINE_DRIVER_START( panic )
 	MDRV_CPU_MODIFY("main")
 
 	MDRV_CPU_PROGRAM_MAP(panic_readmem,panic_writemem)
-	MDRV_CPU_VBLANK_INT(panic_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(panic_interrupt,2)
 
 	/* video hardware */
 	MDRV_GFXDECODE(panic)
@@ -1034,7 +1033,7 @@ static MACHINE_DRIVER_START( cosmica )
 	MDRV_CPU_MODIFY("main")
 
 	MDRV_CPU_PROGRAM_MAP(cosmica_readmem,cosmica_writemem)
-	MDRV_CPU_VBLANK_INT(cosmica_interrupt,32)
+	MDRV_CPU_VBLANK_INT_HACK(cosmica_interrupt,32)
 
 	/* video hardware */
 	MDRV_GFXDECODE(cosmica)
@@ -1055,15 +1054,15 @@ static MACHINE_DRIVER_START( cosmicg )
             1.5MHz.  So, if someone can check this... */
 	MDRV_CPU_PROGRAM_MAP(cosmicg_readmem,cosmicg_writemem)
 	MDRV_CPU_IO_MAP(cosmicg_readport,cosmicg_writeport)
-	MDRV_CPU_VBLANK_INT(cosmicg_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", cosmicg_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 28*8-1)
+
     MDRV_PALETTE_LENGTH(16)
 
 	MDRV_PALETTE_INIT(cosmicg)
@@ -1088,7 +1087,7 @@ static MACHINE_DRIVER_START( magspot )
 	MDRV_CPU_MODIFY("main")
 
 	MDRV_CPU_PROGRAM_MAP(magspot_readmem,magspot_writemem)
-	MDRV_CPU_VBLANK_INT(magspot_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", magspot_interrupt)
 
 	/* video hardware */
 	MDRV_GFXDECODE(panic)
@@ -1122,7 +1121,7 @@ static MACHINE_DRIVER_START( nomnlnd )
 	MDRV_CPU_MODIFY("main")
 
 	MDRV_CPU_PROGRAM_MAP(magspot_readmem,magspot_writemem)
-	MDRV_CPU_VBLANK_INT(nomnlnd_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", nomnlnd_interrupt)
 
 	/* video hardware */
 	MDRV_GFXDECODE(panic)
@@ -1486,7 +1485,7 @@ static DRIVER_INIT( devzone )
 static DRIVER_INIT( nomnlnd )
 {
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x5001, 0, 0, nomnlnd_port_0_1_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4800, 0, 0, MWA8_NOP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4800, 0, 0, SMH_NOP);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4807, 0x4807, 0, 0, cosmic_background_enable_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x480a, 0x480a, 0, 0, DAC_0_data_w);
 }

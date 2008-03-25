@@ -106,7 +106,7 @@ static struct sprite *sprite_list_create(int num_sprites)
 
 static void get_sprite_info(running_machine *machine)
 {
-	const pen_t *base_pal = machine->remapped_colortable;
+	const pen_t *base_pal = machine->pens;
 	UINT8 *base_gfx = memory_region(REGION_GFX1);
 	int gfx_max     = memory_region_length(REGION_GFX1);
 
@@ -198,7 +198,7 @@ static void sortsprite(int *idx_array, int *key_array, int size)
 }
 
 // draws a 8bpp palette sprites on a 16bpp direct RGB target (sub-par implementation)
-static void do_blit_zoom16(mame_bitmap *bitmap, const rectangle *cliprect, struct sprite *sprite)
+static void do_blit_zoom16(bitmap_t *bitmap, const rectangle *cliprect, struct sprite *sprite)
 {
 #define PRECISION_X 20
 #define PRECISION_Y 20
@@ -332,7 +332,7 @@ static void do_blit_zoom16(mame_bitmap *bitmap, const rectangle *cliprect, struc
 	}
 }
 
-static void sprite_draw(mame_bitmap *bitmap, const rectangle *cliprect)
+static void sprite_draw(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i;
 
@@ -535,7 +535,7 @@ WRITE16_HANDLER( wecleman_pageram_w )
 
 ------------------------------------------------------------------------*/
 
-static void wecleman_draw_road(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void wecleman_draw_road(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 // must be powers of 2
 #define XSIZE 512
@@ -566,7 +566,7 @@ static void wecleman_draw_road(running_machine *machine, mame_bitmap *bitmap, co
 	int scrollx, sy, sx;
 	int mdy, tdy, i;
 
-	rgb_ptr = machine->remapped_colortable;
+	rgb_ptr = machine->pens;
 
 	if (priority == 0x02)
 	{
@@ -644,7 +644,7 @@ static void wecleman_draw_road(running_machine *machine, mame_bitmap *bitmap, co
 ------------------------------------------------------------------------*/
 
 // blends two 8x8x16bpp direct RGB tilemaps
-static void draw_cloud(running_machine *machine, mame_bitmap *bitmap,
+static void draw_cloud(running_machine *machine, bitmap_t *bitmap,
 				 gfx_element *gfx,
 				 UINT16 *tm_base,
 				 int x0, int y0,				// target coordinate
@@ -683,7 +683,7 @@ static void draw_cloud(running_machine *machine, mame_bitmap *bitmap,
 	dst_pitch = bitmap->rowpixels;
 	dst_base = (UINT16 *)bitmap->base + (y0+dy)*dst_pitch + (x0+dx);
 
-	pal_base = machine->remapped_colortable + pal_offset * gfx->color_granularity;
+	pal_base = machine->pens + pal_offset * gfx->color_granularity;
 
 	alpha <<= 6;
 
@@ -780,16 +780,17 @@ static void draw_cloud(running_machine *machine, mame_bitmap *bitmap,
 
 ------------------------------------------------------------------------*/
 
-static void hotchase_draw_road(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void hotchase_draw_road(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 /* Referred to what's in the ROMs */
 #define XSIZE 512
 #define YSIZE 512
 
 	int sx, sy;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 	/* Let's draw from the top to the bottom of the visible screen */
-	for (sy = machine->screen[0].visarea.min_y;sy <= machine->screen[0].visarea.max_y;sy++)
+	for (sy = visarea->min_y;sy <= visarea->max_y;sy++)
 	{
 		int code    = wecleman_roadram[sy*4/2+2/2] + (wecleman_roadram[sy*4/2+0/2] << 16);
 		int color   = ((code & 0x00f00000) >> 20) + 0x70;
@@ -887,7 +888,7 @@ VIDEO_START( wecleman )
 	UINT8 *buffer;
 	int i, j;
 
-	assert(machine->screen[0].format == BITMAP_FORMAT_RGB15);
+	assert(video_screen_get_format(machine->primary_screen) == BITMAP_FORMAT_RGB15);
 	buffer = auto_malloc(0x12c00);	// working buffer for sprite operations
 
 	gameid = 0;
@@ -922,19 +923,19 @@ VIDEO_START( wecleman )
 
 	bg_tilemap = tilemap_create(wecleman_get_bg_tile_info,
 								tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	/* We draw part of the road below */
+									/* We draw part of the road below */
 								8,8,
 								PAGE_NX * 2, PAGE_NY * 2 );
 
 	fg_tilemap = tilemap_create(wecleman_get_fg_tile_info,
 								tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,
+
 								8,8,
 								PAGE_NX * 2, PAGE_NY * 2);
 
 	txt_tilemap = tilemap_create(wecleman_get_txt_tile_info,
 								 tilemap_scan_rows,
-								 TILEMAP_TYPE_PEN,
+
 								 8,8,
 								 PAGE_NX * 1, PAGE_NY * 1);
 
@@ -1022,7 +1023,7 @@ VIDEO_UPDATE ( wecleman )
 	int cloud_sx, cloud_sy;
 	int i, j, k;
 
-	mrct = machine->remapped_colortable;
+	mrct = screen->machine->pens;
 
 	video_on = wecleman_irqctrl & 0x40;
 
@@ -1054,12 +1055,12 @@ VIDEO_UPDATE ( wecleman )
 	/* palette hacks! */
 	((pen_t *)mrct)[0x27] = mrct[0x24];
 
-	get_sprite_info(machine);
+	get_sprite_info(screen->machine);
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	/* Draw the road (lines which have priority 0x02) */
-	if (video_on) wecleman_draw_road(machine, bitmap, cliprect, 0x02);
+	if (video_on) wecleman_draw_road(screen->machine, bitmap, cliprect, 0x02);
 
 	/* Draw the background */
 	if (video_on) tilemap_draw(bitmap,cliprect, bg_tilemap, 0, 0);
@@ -1071,9 +1072,9 @@ VIDEO_UPDATE ( wecleman )
 		((pen_t *)mrct)[0] = ((pen_t *)mrct)[0x40] = ((pen_t *)mrct)[0x200] = ((pen_t *)mrct)[0x205];
 
 		if (video_on)
-			draw_cloud(machine,
+			draw_cloud(screen->machine,
 			bitmap,
-			machine->gfx[0],
+			screen->machine->gfx[0],
 			wecleman_pageram+0x1800,
 			BMP_PAD, BMP_PAD,
 			41, 20,
@@ -1093,7 +1094,7 @@ VIDEO_UPDATE ( wecleman )
 	if (video_on) tilemap_draw(bitmap,cliprect, fg_tilemap, 0, 0);
 
 	/* Draw the road (lines which have priority 0x04) */
-	if (video_on) wecleman_draw_road(machine, bitmap,cliprect, 0x04);
+	if (video_on) wecleman_draw_road(screen->machine, bitmap,cliprect, 0x04);
 
 	/* Draw the sprites */
 	if (video_on) sprite_draw(bitmap,cliprect);
@@ -1115,15 +1116,15 @@ VIDEO_UPDATE( hotchase )
 
 	set_led_status(0, wecleman_selected_ip & 0x04);	// Start lamp
 
-	get_sprite_info(machine);
+	get_sprite_info(screen->machine);
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	/* Draw the background */
 	if (video_on) K051316_zoom_draw_0(bitmap,cliprect, 0, 0);
 
 	/* Draw the road */
-	if (video_on) hotchase_draw_road(machine, bitmap, cliprect);
+	if (video_on) hotchase_draw_road(screen->machine, bitmap, cliprect);
 
 	/* Draw the sprites */
 	if (video_on) sprite_draw(bitmap,cliprect);

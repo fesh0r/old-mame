@@ -264,8 +264,8 @@ Notes:
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/mips/psx.h"
 #include "includes/psx.h"
 #include "machine/at28c16.h"
@@ -765,7 +765,7 @@ ADDRESS_MAP_END
 static const struct
 {
 	const char *s_name;
-	read32_handler keycus_r;
+	read32_machine_func keycus_r;
 	int n_daughterboard;
 } namcos11_config_table[] =
 {
@@ -798,7 +798,7 @@ static DRIVER_INIT( namcos11 )
 	emu_timer *timer;
 
 	timer = timer_alloc( mcu_timer , NULL);
-	timer_adjust( timer, ATTOTIME_IN_HZ( 600 ), 0, ATTOTIME_IN_HZ( 600 ) );
+	timer_adjust_periodic( timer, ATTOTIME_IN_HZ( 600 ), 0, ATTOTIME_IN_HZ( 600 ) );
 
 	psx_driver_init();
 	namcoc7x_on_driver_init();
@@ -817,14 +817,14 @@ static DRIVER_INIT( namcos11 )
 			{
 				int bank;
 
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f000000, 0x1f0fffff, 0, 0, MRA32_BANK1 );
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f100000, 0x1f1fffff, 0, 0, MRA32_BANK2 );
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f200000, 0x1f2fffff, 0, 0, MRA32_BANK3 );
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f300000, 0x1f3fffff, 0, 0, MRA32_BANK4 );
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f400000, 0x1f4fffff, 0, 0, MRA32_BANK5 );
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f500000, 0x1f5fffff, 0, 0, MRA32_BANK6 );
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f600000, 0x1f6fffff, 0, 0, MRA32_BANK7 );
-				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f700000, 0x1f7fffff, 0, 0, MRA32_BANK8 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f000000, 0x1f0fffff, 0, 0, SMH_BANK1 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f100000, 0x1f1fffff, 0, 0, SMH_BANK2 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f200000, 0x1f2fffff, 0, 0, SMH_BANK3 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f300000, 0x1f3fffff, 0, 0, SMH_BANK4 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f400000, 0x1f4fffff, 0, 0, SMH_BANK5 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f500000, 0x1f5fffff, 0, 0, SMH_BANK6 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f600000, 0x1f6fffff, 0, 0, SMH_BANK7 );
+				memory_install_read32_handler( 0, ADDRESS_SPACE_PROGRAM, 0x1f700000, 0x1f7fffff, 0, 0, SMH_BANK8 );
 
 				for( bank = 0; bank < 8; bank++ )
 				{
@@ -841,13 +841,13 @@ static DRIVER_INIT( namcos11 )
 					m_n_bankoffset = 0;
 					memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f080000, 0x1f080003, 0, 0, bankswitch_rom64_upper_w );
 					memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fa10020, 0x1fa1002f, 0, 0, bankswitch_rom64_w );
-					memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fa10020, 0x1fa1002f, 0, 0, MRA32_NOP );
+					memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fa10020, 0x1fa1002f, 0, 0, SMH_NOP );
 					state_save_register_global( m_n_bankoffset );
 				}
 			}
 			else
 			{
-				memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fa10020, 0x1fa1002f, 0, 0, MWA32_NOP );
+				memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fa10020, 0x1fa1002f, 0, 0, SMH_NOP );
 			}
 			break;
 		}
@@ -877,19 +877,19 @@ static MACHINE_DRIVER_START( coh100 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( namcos11_map, 0 )
-	MDRV_CPU_VBLANK_INT( namcos11_vblank, 1 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", namcos11_vblank)
 
 	MDRV_MACHINE_RESET( namcos11 )
 	MDRV_NVRAM_HANDLER( at28c16_0 )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE( 60 )
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 1024, 1024 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
+
 	MDRV_PALETTE_LENGTH( 65536 )
 
 	MDRV_PALETTE_INIT( psx )
@@ -912,7 +912,7 @@ static INPUT_PORTS_START( namcos11 )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_OTHER ) PORT_NAME( "Test Switch" ) PORT_CODE( KEYCODE_F2 )
+	PORT_SERVICE( 0x04, IP_ACTIVE_HIGH )
 	PORT_DIPNAME( 0x02, 0x00, "DIP1 (Test)" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( On ) )

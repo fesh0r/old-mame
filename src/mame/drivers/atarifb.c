@@ -103,6 +103,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "atarifb.h"
 #include "sound/discrete.h"
 
@@ -148,19 +149,19 @@ static PALETTE_INIT( atarifb )
  *************************************/
 
 static ADDRESS_MAP_START( atarifb_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
-	AM_RANGE(0x0200, 0x025f) AM_READWRITE(MRA8_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
+	AM_RANGE(0x0200, 0x025f) AM_READWRITE(SMH_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
 	AM_RANGE(0x0260, 0x039f) AM_RAM
-	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(MRA8_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
-	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(MRA8_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
+	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(SMH_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
+	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(SMH_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
 	AM_RANGE(0x13c0, 0x13ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(MWA8_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(SMH_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(atarifb_out1_w) /* OUT 1 */
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(atarifb_out2_w) /* OUT 2 */
 	AM_RANGE(0x2003, 0x2003) AM_WRITE(atarifb_out3_w) /* OUT 3 */
-	AM_RANGE(0x3000, 0x3000) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(MWA8_NOP) /* Interrupt Acknowledge */
+	AM_RANGE(0x3000, 0x3000) AM_READ(SMH_RAM)
+	AM_RANGE(0x3000, 0x3000) AM_WRITE(SMH_NOP) /* Interrupt Acknowledge */
 	AM_RANGE(0x4000, 0x4000) AM_READ(atarifb_in0_r)
 	AM_RANGE(0x4002, 0x4002) AM_READ(atarifb_in2_r)
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(watchdog_reset_w)
@@ -169,19 +170,19 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( atarifb4_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
-	AM_RANGE(0x0200, 0x025f) AM_READWRITE(MRA8_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
+	AM_RANGE(0x0200, 0x025f) AM_READWRITE(SMH_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
 	AM_RANGE(0x0260, 0x039f) AM_RAM
-	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(MRA8_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
-	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(MRA8_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
+	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(SMH_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
+	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(SMH_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
 	AM_RANGE(0x13c0, 0x13ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(MWA8_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(SMH_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(atarifb4_out1_w) /* OUT 1 */
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(atarifb_out2_w) /* OUT 2 */
 	AM_RANGE(0x2003, 0x2003) AM_WRITE(atarifb_out3_w) /* OUT 3 */
-	AM_RANGE(0x3000, 0x3000) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(MWA8_NOP) /* Interrupt Acknowledge */
+	AM_RANGE(0x3000, 0x3000) AM_READ(SMH_RAM)
+	AM_RANGE(0x3000, 0x3000) AM_WRITE(SMH_NOP) /* Interrupt Acknowledge */
 	AM_RANGE(0x4000, 0x4000) AM_READ(atarifb4_in0_r)
 	AM_RANGE(0x4001, 0x4001) AM_READ(input_port_1_r)
 	AM_RANGE(0x4002, 0x4002) AM_READ(atarifb4_in2_r)
@@ -191,19 +192,19 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( abaseb_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
-	AM_RANGE(0x0200, 0x025f) AM_READWRITE(MRA8_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
+	AM_RANGE(0x0200, 0x025f) AM_READWRITE(SMH_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
 	AM_RANGE(0x0260, 0x039f) AM_RAM
-	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(MRA8_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
-	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(MRA8_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
+	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(SMH_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
+	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(SMH_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
 	AM_RANGE(0x13c0, 0x13ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(MWA8_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
+	AM_RANGE(0x2000, 0x2000) AM_WRITE(SMH_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(abaseb_out1_w) /* OUT 1 */
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(atarifb_out2_w) /* OUT 2 */
 	AM_RANGE(0x2003, 0x2003) AM_WRITE(atarifb_out3_w) /* OUT 3 */
-	AM_RANGE(0x3000, 0x3000) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(MWA8_NOP) /* Interrupt Acknowledge */
+	AM_RANGE(0x3000, 0x3000) AM_READ(SMH_RAM)
+	AM_RANGE(0x3000, 0x3000) AM_WRITE(SMH_NOP) /* Interrupt Acknowledge */
 	AM_RANGE(0x4000, 0x4000) AM_READ(atarifb_in0_r)
 	AM_RANGE(0x4002, 0x4002) AM_READ(atarifb_in2_r)
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(watchdog_reset_w)
@@ -212,17 +213,17 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( soccer_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x01ff) AM_RAM
-	AM_RANGE(0x0200, 0x025f) AM_READWRITE(MRA8_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
+	AM_RANGE(0x0200, 0x025f) AM_READWRITE(SMH_RAM, atarifb_alpha1_videoram_w) AM_BASE(&atarifb_alphap1_videoram)
 	AM_RANGE(0x0260, 0x039f) AM_RAM
-	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(MRA8_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
-	AM_RANGE(0x0800, 0x0bbf) AM_READWRITE(MRA8_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
+	AM_RANGE(0x03a0, 0x03ff) AM_READWRITE(SMH_RAM, atarifb_alpha2_videoram_w) AM_BASE(&atarifb_alphap2_videoram)
+	AM_RANGE(0x0800, 0x0bbf) AM_READWRITE(SMH_RAM, atarifb_field_videoram_w) AM_BASE(&atarifb_field_videoram)
 	AM_RANGE(0x0bc0, 0x0bff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(MWA8_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
+	AM_RANGE(0x1000, 0x1000) AM_WRITE(SMH_RAM) AM_BASE(&atarifb_scroll_register) /* OUT 0 */
 	AM_RANGE(0x1001, 0x1001) AM_WRITE(soccer_out1_w) /* OUT 1 */
 	AM_RANGE(0x1002, 0x1002) AM_WRITE(soccer_out2_w) /* OUT 2 */
-	AM_RANGE(0x1004, 0x1004) AM_WRITE(MWA8_NOP) /* Interrupt Acknowledge */
+	AM_RANGE(0x1004, 0x1004) AM_WRITE(SMH_NOP) /* Interrupt Acknowledge */
 	AM_RANGE(0x1005, 0x1005) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x1800, 0x1800) AM_READ(atarifb4_in0_r)
 	AM_RANGE(0x1801, 0x1801) AM_READ(input_port_1_r)
@@ -248,15 +249,13 @@ static INPUT_PORTS_START( atarifb )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW,  IPT_COIN1 )
 
 	PORT_START_TAG("IN1")
-	PORT_DIPNAME( 0x03, 0x00, "Time per coin" )
+	PORT_DIPNAME( 0x03, 0x00, "Time Per Coin" )		PORT_DIPLOCATION("K10:1,2")
 	PORT_DIPSETTING(	0x00, "1:30" )
 	PORT_DIPSETTING(	0x01, "2:00" )
 	PORT_DIPSETTING(	0x02, "2:30" )
 	PORT_DIPSETTING(	0x03, "3:00" )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, "Atari logo" )
+	PORT_DIPUNUSED_DIPLOC( 0x04, 0x04, "K10:3" )	/* Listed as "Unused" */
+	PORT_DIPNAME( 0x08, 0x00, "Atari Logo" )		PORT_DIPLOCATION("K10:4") /* Listed as "Unused" */
 	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -295,15 +294,13 @@ static INPUT_PORTS_START( atarifb4 )
 	PORT_BIT ( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
 	PORT_START_TAG("IN2")
-	PORT_DIPNAME( 0x03, 0x00, "Time per coin" )
+	PORT_DIPNAME( 0x03, 0x00, "Time Per Coin" )		PORT_DIPLOCATION("K10:1,2")
 	PORT_DIPSETTING(	0x00, "1:30" )
 	PORT_DIPSETTING(	0x01, "2:00" )
 	PORT_DIPSETTING(	0x02, "2:30" )
 	PORT_DIPSETTING(	0x03, "3:00" )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, "Atari logo" )
+	PORT_DIPUNUSED_DIPLOC( 0x04, 0x04, "K10:3" )	/* Listed as "Unused" */
+	PORT_DIPNAME( 0x08, 0x00, "Atari Logo" )		PORT_DIPLOCATION("K10:4") /* Listed as "Unused" */
 	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_START1 )
@@ -354,17 +351,13 @@ static INPUT_PORTS_START( abaseb )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW,  IPT_COIN1 )
 
 	PORT_START_TAG("IN1")
-	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("K10:1,2")
 	PORT_DIPSETTING(	0x00, DEF_STR( Hardest ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Hard ) )
-	PORT_DIPSETTING(	0x02, "Fair" )
-	PORT_DIPSETTING(	0x03, DEF_STR( Easy ) )
-	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x04, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x00, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x08, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x02, DEF_STR( Easy ) )
+	PORT_DIPSETTING(	0x03, DEF_STR( Easiest ) )
+	PORT_DIPUNUSED_DIPLOC( 0x04, 0x04, "K10:3" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x08, 0x08, "K10:4" )		/* Listed as "Unused" */
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
@@ -403,11 +396,11 @@ static INPUT_PORTS_START( soccer )
 	PORT_BIT ( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
 	PORT_START_TAG("IN2")
-	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("2/4 Player Toggle")
-	PORT_DIPNAME( 0x02, 0x00, "Rule Switch" )
+	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("2/4 Player Toggle") PORT_DIPLOCATION("SW2:4") /* Listed as "Unused" */
+	PORT_DIPNAME( 0x02, 0x00, "Rule Switch" )		PORT_DIPLOCATION("SW2:3") /* Listed as "Unused" */
 	PORT_DIPSETTING(	0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x02, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Language ) )
+	PORT_DIPNAME( 0x0c, 0x00, DEF_STR( Language ) )	PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(	0x00, DEF_STR( English ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( German ) )
 	PORT_DIPSETTING(	0x08, DEF_STR( French ) )
@@ -450,7 +443,7 @@ static INPUT_PORTS_START( soccer )
 	/* The lower 4 bits are the input */
 
 	PORT_START_TAG("IN11")
-	PORT_DIPNAME( 0x07, 0x00, "Time per coin" )
+	PORT_DIPNAME( 0x07, 0x00, "Time per coin" )		PORT_DIPLOCATION("SW1:1,2,3")
 	PORT_DIPSETTING(	0x00, "1:00" )
 	PORT_DIPSETTING(	0x01, "1:20" )
 	PORT_DIPSETTING(	0x02, "1:40" )
@@ -459,18 +452,18 @@ static INPUT_PORTS_START( soccer )
 	PORT_DIPSETTING(	0x05, "3:00" )
 	PORT_DIPSETTING(	0x06, "3:30" )
 	PORT_DIPSETTING(	0x07, "4:00" )
-	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Coin_B ) )	PORT_DIPLOCATION("SW1:4,5")
 	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(	0x08, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(	0x10, DEF_STR( 1C_5C ) )
 	PORT_DIPSETTING(	0x18, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Coin_A ) )	PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(	0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(	0x20, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Coinage ) )
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Coinage ) )	PORT_DIPLOCATION("SW1:7")
 	PORT_DIPSETTING(	0x00, "1 Coin Minimum" )
 	PORT_DIPSETTING(	0x40, "2 Coin Minimum" )
-	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) /* unused on schematics */
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW1:8" )	/* Listed as "Unused" */
 INPUT_PORTS_END
 
 
@@ -569,13 +562,12 @@ static MACHINE_DRIVER_START( atarifb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, 750000)
 	MDRV_CPU_PROGRAM_MAP(atarifb_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2037)	/* 16.3ms * 1/8 = 2037.5. Is it 1/8th or 3/32nds? (1528?) */)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2037)	/* 16.3ms * 1/8 = 2037.5. Is it 1/8th or 3/32nds? (1528?) */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(38*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 38*8-1, 1*8, 31*8-1)
@@ -591,7 +583,7 @@ static MACHINE_DRIVER_START( atarifb )
 
 	MDRV_SOUND_ADD_TAG("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(atarifb)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.18)
 MACHINE_DRIVER_END
 
 
@@ -608,6 +600,7 @@ static MACHINE_DRIVER_START( abaseb )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(atarifb)
+	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(abaseb_map,0)
 
 	/* video hardware */
@@ -616,7 +609,7 @@ static MACHINE_DRIVER_START( abaseb )
 	/* sound hardware */
 	MDRV_SOUND_REPLACE("discrete", DISCRETE, 0)
 	MDRV_SOUND_CONFIG_DISCRETE(abaseb)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.24)
 MACHINE_DRIVER_END
 
 
@@ -628,6 +621,7 @@ static MACHINE_DRIVER_START( soccer )
 	MDRV_CPU_PROGRAM_MAP(soccer_map,0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 38*8-1, 2*8, 32*8-1)
 	MDRV_GFXDECODE(soccer)
 	MDRV_VIDEO_UPDATE(soccer)

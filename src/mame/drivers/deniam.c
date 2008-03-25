@@ -56,8 +56,8 @@ static WRITE16_HANDLER( sound_command_w )
 {
 	if (ACCESSING_MSB)
 	{
-		soundlatch_w(offset,(data >> 8) & 0xff);
-		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		soundlatch_w(machine,offset,(data >> 8) & 0xff);
+		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
@@ -81,60 +81,60 @@ static MACHINE_RESET( deniam )
 static WRITE16_HANDLER( YM3812_control_port_0_msb_w )
 {
 	if (ACCESSING_MSB)
-		YM3812_control_port_0_w(0,(data >> 8) & 0xff);
+		YM3812_control_port_0_w(machine,0,(data >> 8) & 0xff);
 }
 
 static WRITE16_HANDLER( YM3812_write_port_0_msb_w )
 {
 	if (ACCESSING_MSB)
-		YM3812_write_port_0_w(0,(data >> 8) & 0xff);
+		YM3812_write_port_0_w(machine,0,(data >> 8) & 0xff);
 }
 
 
 
 static ADDRESS_MAP_START( deniam16b_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x400000, 0x40ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x410000, 0x410fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x400000, 0x40ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x410000, 0x410fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc40002, 0xc40003) AM_READ(deniam_coinctrl_r)
 	AM_RANGE(0xc44000, 0xc44001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0xc44002, 0xc44003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0xc44004, 0xc44005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0xc44006, 0xc44007) AM_READ(MRA16_NOP)	/* unused? */
+	AM_RANGE(0xc44006, 0xc44007) AM_READ(SMH_NOP)	/* unused? */
 	AM_RANGE(0xc4400a, 0xc4400b) AM_READ(input_port_3_word_r)
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( deniam16b_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x400000, 0x40ffff) AM_WRITE(deniam_videoram_w) AM_BASE(&deniam_videoram)
 	AM_RANGE(0x410000, 0x410fff) AM_WRITE(deniam_textram_w) AM_BASE(&deniam_textram)
-	AM_RANGE(0x440000, 0x4407ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x440000, 0x4407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x840000, 0x840fff) AM_WRITE(deniam_palette_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xc40000, 0xc40001) AM_WRITE(sound_command_w)
 	AM_RANGE(0xc40002, 0xc40003) AM_WRITE(deniam_coinctrl_w)
-	AM_RANGE(0xc40004, 0xc40005) AM_WRITE(MWA16_NOP)	/* irq ack? */
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0xc40004, 0xc40005) AM_WRITE(SMH_NOP)	/* irq ack? */
+	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xf7ff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xf7ff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xf7ff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xf7ff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_READ(soundlatch_r)
 	AM_RANGE(0x05, 0x05) AM_READ(OKIM6295_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(OKIM6295_data_0_w)
@@ -144,32 +144,32 @@ ADDRESS_MAP_END
 
 /* identical to 16b, but handles sound directly */
 static ADDRESS_MAP_START( deniam16c_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x400000, 0x40ffff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x410000, 0x410fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x400000, 0x40ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x410000, 0x410fff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc40000, 0xc40001) AM_READ(OKIM6295_status_0_lsb_r)
 	AM_RANGE(0xc40002, 0xc40003) AM_READ(deniam_coinctrl_r)
 	AM_RANGE(0xc44000, 0xc44001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0xc44002, 0xc44003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0xc44004, 0xc44005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0xc44006, 0xc44007) AM_READ(MRA16_NOP)	/* unused? */
+	AM_RANGE(0xc44006, 0xc44007) AM_READ(SMH_NOP)	/* unused? */
 	AM_RANGE(0xc4400a, 0xc4400b) AM_READ(input_port_3_word_r)
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( deniam16c_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x400000, 0x40ffff) AM_WRITE(deniam_videoram_w) AM_BASE(&deniam_videoram)
 	AM_RANGE(0x410000, 0x410fff) AM_WRITE(deniam_textram_w) AM_BASE(&deniam_textram)
-	AM_RANGE(0x440000, 0x4407ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x440000, 0x4407ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x840000, 0x840fff) AM_WRITE(deniam_palette_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xc40000, 0xc40001) AM_WRITE(OKIM6295_data_0_lsb_w)
 	AM_RANGE(0xc40002, 0xc40003) AM_WRITE(deniam_coinctrl_w)
-	AM_RANGE(0xc40004, 0xc40005) AM_WRITE(MWA16_NOP)	/* irq ack? */
+	AM_RANGE(0xc40004, 0xc40005) AM_WRITE(SMH_NOP)	/* irq ack? */
 	AM_RANGE(0xc40006, 0xc40007) AM_WRITE(deniam16c_oki_rom_bank_w)
 	AM_RANGE(0xc40008, 0xc40009) AM_WRITE(YM3812_control_port_0_msb_w)
 	AM_RANGE(0xc4000a, 0xc4000b) AM_WRITE(YM3812_write_port_0_msb_w)
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -178,7 +178,7 @@ static INPUT_PORTS_START( karianx )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
@@ -233,7 +233,7 @@ static INPUT_PORTS_START( logicpr2 )
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
@@ -308,7 +308,7 @@ GFXDECODE_END
 static void irqhandler(int linestate)
 {
 	/* system 16c doesn't have the sound CPU */
-	if (Machine->drv->cpu[1].type != CPU_DUMMY)
+	if (Machine->config->cpu[1].type != CPU_DUMMY)
 		cpunum_set_input_line(Machine, 1,0,linestate);
 }
 
@@ -324,22 +324,22 @@ static MACHINE_DRIVER_START( deniam16b )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,25000000/2)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(deniam16b_readmem,deniam16b_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD(Z80,25000000/4)	/* (makes logicpro music tempo correct) */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(deniam)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(24*8, 64*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(deniam)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -363,18 +363,18 @@ static MACHINE_DRIVER_START( deniam16c )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,25000000/2)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(deniam16c_readmem,deniam16c_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_MACHINE_RESET(deniam)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(24*8, 64*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(deniam)
 	MDRV_PALETTE_LENGTH(2048)
 

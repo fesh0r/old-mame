@@ -254,8 +254,8 @@ static VIDEO_UPDATE( bfcobra )
 			UINT8 x_offset = x + h_scroll;
 			UINT8 pen = *(src + x_offset);
 
-			//*dest++ = machine->pens[pen & ramdac.mask];
-			*dest++ = machine->pens[pen];
+			//*dest++ = screen->machine->pens[pen & ramdac.mask];
+			*dest++ = screen->machine->pens[pen];
 		}
 	}
 
@@ -1083,14 +1083,14 @@ static MACHINE_RESET( bfcobra )
 ***************************************************************************/
 
 static ADDRESS_MAP_START( z80_prog_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_BANK4)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK1)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK2, MWA8_BANK2)
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(MRA8_BANK3, MWA8_BANK3)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_BANK4)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK2, SMH_BANK2)
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK3, SMH_BANK3)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_io_map, ADDRESS_SPACE_IO, 8 )
-ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x23) AM_READWRITE(chipset_r, chipset_w)
 	AM_RANGE(0x24, 0x24) AM_WRITE(acia6850_0_ctrl_w)
 	AM_RANGE(0x25, 0x25) AM_WRITE(acia6850_0_data_w)
@@ -1231,8 +1231,8 @@ static ADDRESS_MAP_START( m6809_prog_map, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE(0x340A, 0x340A) AM_NOP
 //  AM_RANGE(0x3600, 0x3600) AM_NOP
 	AM_RANGE(0x3801, 0x3801) AM_READWRITE(upd7759_r, upd7759_w)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(MWA8_NOP)	/* Watchdog */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP)	/* Watchdog */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( bfcobra )
@@ -1497,7 +1497,7 @@ static MACHINE_DRIVER_START( bfcobra )
 	MDRV_CPU_ADD(Z80, Z80_XTAL)
 	MDRV_CPU_PROGRAM_MAP(z80_prog_map, 0)
 	MDRV_CPU_IO_MAP(z80_io_map, 0)
-	MDRV_CPU_VBLANK_INT(vblank_gen, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_gen)
 
 	MDRV_CPU_ADD(M6809, M6809_XTAL)
 	MDRV_CPU_PROGRAM_MAP(m6809_prog_map, 0)
@@ -1508,8 +1508,9 @@ static MACHINE_DRIVER_START( bfcobra )
 	MDRV_MACHINE_RESET(bfcobra)
 
 	/* TODO */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)

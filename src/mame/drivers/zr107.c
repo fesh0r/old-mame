@@ -70,8 +70,8 @@ VIDEO_UPDATE( gticlub );
 // defined in drivers/nwk-tr.c
 int K001604_vh_start(running_machine *machine, int chip);
 void K001604_tile_update(running_machine *machine, int chip);
-void K001604_draw_front_layer(int chip, mame_bitmap *bitmap, const rectangle *cliprect);
-void K001604_draw_back_layer(int chip, mame_bitmap *bitmap, const rectangle *cliprect);
+void K001604_draw_front_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect);
+void K001604_draw_back_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect);
 READ32_HANDLER(K001604_tile_r);
 READ32_HANDLER(K001604_char_r);
 WRITE32_HANDLER(K001604_tile_w);
@@ -84,16 +84,16 @@ READ32_HANDLER(K001604_reg_r);
 
 static VIDEO_START( jetwave )
 {
-	K001005_init();
+	K001005_init(machine);
 	K001604_vh_start(machine, 0);
 }
 
 
 static VIDEO_UPDATE( jetwave )
 {
-	fillbitmap(bitmap, machine->remapped_colortable[0], cliprect);
+	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
 
-	K001604_tile_update(machine, 0);
+	K001604_tile_update(screen->machine, 0);
 	K001005_draw(bitmap, cliprect);
 
 	K001604_draw_front_layer(0, bitmap, cliprect);
@@ -133,12 +133,12 @@ static VIDEO_START( zr107 )
 	};
 
 	K056832_vh_start(machine, REGION_GFX2, K056832_BPP_8, 1, scrolld, game_tile_callback, 0);
-	K001005_init();
+	K001005_init(machine);
 }
 
 static VIDEO_UPDATE( zr107 )
 {
-	fillbitmap(bitmap, machine->remapped_colortable[0], cliprect);
+	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
 
 	K056832_set_LayerOffset(0, -29, -27);
 	K056832_set_LayerOffset(1, -29, -27);
@@ -149,9 +149,9 @@ static VIDEO_UPDATE( zr107 )
 	K056832_set_LayerOffset(6, -29, -27);
 	K056832_set_LayerOffset(7, -29, -27);
 
-	K056832_tilemap_draw(machine, bitmap, cliprect, 1, 0, 0);
+	K056832_tilemap_draw(screen->machine, bitmap, cliprect, 1, 0, 0);
 	K001005_draw(bitmap, cliprect);
-	K056832_tilemap_draw(machine, bitmap, cliprect, 0, 0, 0);
+	K056832_tilemap_draw(screen->machine, bitmap, cliprect, 0, 0, 0);
 
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
 	draw_7segment_led(bitmap, 9, 3, led_reg1);
@@ -305,7 +305,7 @@ static ADDRESS_MAP_START( zr107_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x74000000, 0x74003fff) AM_MIRROR(0x80000000) AM_READWRITE(K056832_ram_long_r, K056832_ram_long_w)
 	AM_RANGE(0x74020000, 0x7402003f) AM_MIRROR(0x80000000) AM_READWRITE(K056832_long_r, K056832_long_w)
 	AM_RANGE(0x74060000, 0x7406003f) AM_MIRROR(0x80000000) AM_READWRITE(ccu_r, ccu_w)
-	AM_RANGE(0x74080000, 0x74081fff) AM_MIRROR(0x80000000) AM_READWRITE(MRA32_RAM, paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74080000, 0x74081fff) AM_MIRROR(0x80000000) AM_READWRITE(SMH_RAM, paletteram32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x740a0000, 0x740a3fff) AM_MIRROR(0x80000000) AM_READ(K056832_rom_long_r)
 	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)		/* 21N 21K 23N 23K */
 	AM_RANGE(0x78010000, 0x7801ffff) AM_MIRROR(0x80000000) AM_WRITE(cgboard_dsp_shared_w_ppc)
@@ -331,7 +331,7 @@ static WRITE32_HANDLER( jetwave_palette_w )
 static ADDRESS_MAP_START( jetwave_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_MIRROR(0x80000000) AM_RAM		/* Work RAM */
 	AM_RANGE(0x74000000, 0x740000ff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_reg_r, K001604_reg_w)
-	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_READWRITE(MRA32_RAM, jetwave_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_READWRITE(SMH_RAM, jetwave_palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x74020000, 0x7403ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_tile_r, K001604_tile_w)
 	AM_RANGE(0x74040000, 0x7407ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_char_r, K001604_char_w)
 	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)		/* 21N 21K 23N 23K */
@@ -358,9 +358,9 @@ static READ16_HANDLER( dual539_r )
 	UINT16 ret = 0;
 
 	if (ACCESSING_LSB16)
-		ret |= K054539_1_r(offset);
+		ret |= K054539_1_r(machine, offset);
 	if (ACCESSING_MSB16)
-		ret |= K054539_0_r(offset)<<8;
+		ret |= K054539_0_r(machine, offset)<<8;
 
 	return ret;
 }
@@ -368,9 +368,9 @@ static READ16_HANDLER( dual539_r )
 static WRITE16_HANDLER( dual539_w )
 {
 	if (ACCESSING_LSB16)
-		K054539_1_w(offset, data);
+		K054539_1_w(machine, offset, data);
 	if (ACCESSING_MSB16)
-		K054539_0_w(offset, data>>8);
+		K054539_0_w(machine, offset, data>>8);
 }
 
 static ADDRESS_MAP_START( sound_memmap, ADDRESS_SPACE_PROGRAM, 16 )
@@ -427,7 +427,7 @@ static INPUT_PORTS_START( midnrun )
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -470,7 +470,7 @@ static INPUT_PORTS_START( windheat )
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -513,7 +513,7 @@ static INPUT_PORTS_START( jetwave )
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -573,7 +573,7 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_CONFIG(zr107_ppc_cfg)
 	MDRV_CPU_PROGRAM_MAP(zr107_map, 0)
-	MDRV_CPU_VBLANK_INT(zr107_vblank, 1)
+	MDRV_CPU_VBLANK_INT("main", zr107_vblank)
 
 	MDRV_CPU_ADD(M68000, 64000000/8)	/* 8MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
@@ -582,17 +582,18 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(500)
 
 	MDRV_NVRAM_HANDLER(93C46)
 	MDRV_MACHINE_RESET(zr107)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(zr107)
@@ -617,7 +618,7 @@ static MACHINE_DRIVER_START( jetwave )
 	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_CONFIG(zr107_ppc_cfg)
 	MDRV_CPU_PROGRAM_MAP(jetwave_map, 0)
-	MDRV_CPU_VBLANK_INT(zr107_vblank, 1)
+	MDRV_CPU_VBLANK_INT("main", zr107_vblank)
 
 	MDRV_CPU_ADD(M68000, 64000000/8)	/* 8MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
@@ -626,17 +627,18 @@ static MACHINE_DRIVER_START( jetwave )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(500)
 
 	MDRV_NVRAM_HANDLER(93C46)
 	MDRV_MACHINE_RESET(zr107)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(jetwave)

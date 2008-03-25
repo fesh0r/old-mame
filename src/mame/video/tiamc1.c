@@ -141,10 +141,10 @@ static TILE_GET_INFO( get_bg2_tile_info )
 VIDEO_START( tiamc1 )
 {
 	bg_tilemap1 = tilemap_create(get_bg1_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	bg_tilemap2 = tilemap_create(get_bg2_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tiamc1_bg_vshift = 0;
 	tiamc1_bg_hshift = 0;
@@ -154,7 +154,7 @@ VIDEO_START( tiamc1 )
 	state_save_register_global(tiamc1_bg_hshift);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -202,7 +202,7 @@ VIDEO_UPDATE( tiamc1 )
 		tilemap_draw(bitmap, cliprect, bg_tilemap1, 0, 0);
 
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
 	return 0;
 }

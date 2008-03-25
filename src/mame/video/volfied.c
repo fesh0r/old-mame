@@ -70,7 +70,7 @@ WRITE16_HANDLER( volfied_sprite_ctrl_w )
                 SCREEN REFRESH
 *******************************************************/
 
-static void refresh_pixel_layer(running_machine *machine, mame_bitmap *bitmap)
+static void refresh_pixel_layer(running_machine *machine, bitmap_t *bitmap)
 {
 	int x, y;
 
@@ -95,15 +95,15 @@ static void refresh_pixel_layer(running_machine *machine, mame_bitmap *bitmap)
     *********************************************************/
 
 	UINT16* p = video_ram;
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
 	if (video_ctrl & 1)
-	{
 		p += 0x20000;
-	}
 
-	for (y = 0; y < machine->screen[0].height; y++)
+	for (y = 0; y < height; y++)
 	{
-		for (x = 1; x < machine->screen[0].width + 1; x++) // Hmm, 1 pixel offset is needed to align properly with sprites
+		for (x = 1; x < width + 1; x++) // Hmm, 1 pixel offset is needed to align properly with sprites
 		{
 			int color = (p[x] << 2) & 0x700;
 
@@ -112,16 +112,12 @@ static void refresh_pixel_layer(running_machine *machine, mame_bitmap *bitmap)
 				color |= 0x800 | ((p[x] >> 9) & 0xf);
 
 				if (p[x] & 0x2000)
-				{
 					color &= ~0xf;	  /* hack */
-				}
 			}
 			else
-			{
 				color |= p[x] & 0xf;
-			}
 
-			*BITMAP_ADDR16(bitmap, y, x - 1) = machine->pens[color];
+			*BITMAP_ADDR16(bitmap, y, x - 1) = color;
 		}
 
 		p += 512;
@@ -131,9 +127,7 @@ static void refresh_pixel_layer(running_machine *machine, mame_bitmap *bitmap)
 VIDEO_UPDATE( volfied )
 {
 	fillbitmap(priority_bitmap, 0, cliprect);
-
-	refresh_pixel_layer(machine, bitmap);
-
-	PC090OJ_draw_sprites(machine, bitmap, cliprect, 0);
+	refresh_pixel_layer(screen->machine, bitmap);
+	PC090OJ_draw_sprites(screen->machine, bitmap, cliprect, 0);
 	return 0;
 }

@@ -49,7 +49,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "astrof.h"
 
 
@@ -70,8 +69,6 @@ static size_t astrof_videoram_size;
 static UINT8 *astrof_colorram;
 static UINT8 *tomahawk_protection;
 
-static emu_timer *irq_timer;
-
 static UINT8 *astrof_color;
 static UINT8 astrof_palette_bank;
 static UINT8 red_on;
@@ -88,31 +85,17 @@ static UINT16 abattle_count;
  *
  *************************************/
 
-static READ8_HANDLER( irq_ack_r )
+static READ8_HANDLER( irq_clear_r )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 
 	return 0;
 }
 
 
-static TIMER_CALLBACK( irq_callback )
+static TIMER_DEVICE_CALLBACK( irq_callback )
 {
-	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
-
-	timer_adjust(irq_timer, video_screen_get_time_until_pos(0, VBSTART, 0), 0, attotime_zero);
-}
-
-
-static void create_irq_timer(void)
-{
-	irq_timer = timer_alloc(irq_callback, NULL);
-}
-
-
-static void start_irq_timer(void)
-{
-	timer_adjust(irq_timer, video_screen_get_time_until_pos(0, VBSTART, 0), 0, attotime_zero);
+	cpunum_set_input_line(timer->machine, 0, 0, ASSERT_LINE);
 }
 
 
@@ -123,21 +106,18 @@ static void start_irq_timer(void)
  *
  *************************************/
 
-static INTERRUPT_GEN( coin_nmi )
+static INPUT_CHANGED( coin_inserted )
 {
-	UINT32 coin = readinputportbytag("COIN");
-	UINT32 service = readinputportbytag("SERVICE");
+	/* coin insertion causes an NMI */
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	coin_counter_w(0, newval);
+}
 
-	/* both the coin input and the serice credit generates an NMI */
-	if (coin || service)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 
-	/* the coin input is also connected to the coin counter */
-	if (coin)
-	{
-		coin_counter_w(0, 1);
-		coin_counter_w(0, 0);
-	}
+static INPUT_CHANGED( service_coin_inserted )
+{
+	/* service coin insertion causes an NMI */
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -251,7 +231,7 @@ static WRITE8_HANDLER( video_control_1_w )
 	/* D2 - not connected in the schematics, but at one point Astro Fighter sets it to 1 */
 	/* D3-D7 - not connected */
 
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 }
 
 
@@ -272,7 +252,7 @@ static void astrof_set_video_control_2(UINT8 data)
 static WRITE8_HANDLER( astrof_video_control_2_w )
 {
 	astrof_set_video_control_2(data);
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 }
 
 
@@ -290,7 +270,7 @@ static void spfghmk2_set_video_control_2(UINT8 data)
 static WRITE8_HANDLER( spfghmk2_video_control_2_w )
 {
 	spfghmk2_set_video_control_2(data);
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 }
 
 
@@ -307,11 +287,11 @@ static void tomahawk_set_video_control_2(UINT8 data)
 static WRITE8_HANDLER( tomahawk_video_control_2_w )
 {
 	tomahawk_set_video_control_2(data);
-	video_screen_update_partial(0, video_screen_get_vpos(0));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 }
 
 
-static void video_update_common(mame_bitmap *bitmap, const rectangle *cliprect, pen_t *pens)
+static void video_update_common(bitmap_t *bitmap, const rectangle *cliprect, pen_t *pens)
 {
 	offs_t offs;
 
@@ -389,7 +369,7 @@ static VIDEO_UPDATE( tomahawk )
 static READ8_HANDLER( shoot_r )
 {
 	/* not really sure about this */
-	return mame_rand(Machine) & 8;
+	return mame_rand(machine) & 8;
 }
 
 
@@ -425,8 +405,6 @@ static READ8_HANDLER( tomahawk_protection_r )
 
 static MACHINE_START( astrof )
 {
-	create_irq_timer();
-
 	/* the 74175 outputs all HI's if not otherwise set */
 	astrof_set_video_control_2(0xff);
 
@@ -451,8 +429,6 @@ static MACHINE_START( abattle )
 
 static MACHINE_START( spfghmk2 )
 {
-	create_irq_timer();
-
 	/* the 74175 outputs all HI's if not otherwise set */
 	spfghmk2_set_video_control_2(0xff);
 
@@ -468,8 +444,6 @@ static MACHINE_START( spfghmk2 )
 
 static MACHINE_START( tomahawk )
 {
-	create_irq_timer();
-
 	/* the 74175 outputs all HI's if not otherwise set */
 	tomahawk_set_video_control_2(0xff);
 
@@ -487,16 +461,8 @@ static MACHINE_START( tomahawk )
  *
  *************************************/
 
-static MACHINE_RESET( astrof )
-{
-	start_irq_timer();
-}
-
-
 static MACHINE_RESET( abattle )
 {
-	MACHINE_RESET_CALL(astrof);
-
 	abattle_count = 0;
 }
 
@@ -514,14 +480,14 @@ static ADDRESS_MAP_START( astrof_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x5fff) AM_RAM AM_WRITE(astrof_videoram_w) AM_BASE(&astrof_videoram) AM_SIZE(&astrof_videoram_size)
 	AM_RANGE(0x6000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0x8002) AM_MIRROR(0x1ff8) AM_NOP
-	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, MWA8_RAM) AM_BASE(&astrof_color)
-	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, video_control_1_w)
-	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, astrof_video_control_2_w)
-	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, astrof_audio_1_w)
-	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, astrof_audio_2_w)
-	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READWRITE(port_tag_to_handler("IN"), MWA8_NOP)
-	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READWRITE(port_tag_to_handler("DSW"), MWA8_NOP)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_ack_r, MWA8_NOP)
+	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&astrof_color)
+	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, video_control_1_w)
+	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, astrof_video_control_2_w)
+	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, astrof_audio_1_w)
+	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, astrof_audio_2_w)
+	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READ_PORT("IN") AM_WRITENOP
+	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READ_PORT("DSW") AM_WRITENOP
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_clear_r, SMH_NOP)
 	AM_RANGE(0xa003, 0xa007) AM_MIRROR(0x1ff8) AM_NOP
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -533,14 +499,14 @@ static ADDRESS_MAP_START( spfghmk2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x5fff) AM_RAM AM_WRITE(astrof_videoram_w) AM_BASE(&astrof_videoram) AM_SIZE(&astrof_videoram_size)
 	AM_RANGE(0x6000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0x8002) AM_MIRROR(0x1ff8) AM_NOP
-	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, MWA8_RAM) AM_BASE(&astrof_color)
-	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, video_control_1_w)
-	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, spfghmk2_video_control_2_w)
-	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, spfghmk2_audio_w)
+	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&astrof_color)
+	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, video_control_1_w)
+	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, spfghmk2_video_control_2_w)
+	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, spfghmk2_audio_w)
 	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_NOP
-	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READWRITE(port_tag_to_handler("IN"), MWA8_NOP)
-	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READWRITE(port_tag_to_handler("DSW"), MWA8_NOP)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_ack_r, MWA8_NOP)
+	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READ_PORT("IN") AM_WRITENOP
+	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READ_PORT("DSW") AM_WRITENOP
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_clear_r, SMH_NOP)
 	AM_RANGE(0xa003, 0xa007) AM_MIRROR(0x1ff8) AM_NOP
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -552,15 +518,15 @@ static ADDRESS_MAP_START( tomahawk_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x5fff) AM_RAM AM_WRITE(tomahawk_videoram_w) AM_BASE(&astrof_videoram) AM_SIZE(&astrof_videoram_size)
 	AM_RANGE(0x6000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0x8002) AM_MIRROR(0x1ff8) AM_NOP
-	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, MWA8_RAM) AM_BASE(&astrof_color)
-	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, video_control_1_w)
-	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, tomahawk_video_control_2_w)
-	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, tomahawk_audio_w)
-	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READWRITE(MRA8_NOP, MWA8_RAM) AM_BASE(&tomahawk_protection)
-	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READ_PORT("IN") AM_WRITE(MWA8_NOP)
-	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READ_PORT("DSW") AM_WRITE(MWA8_NOP)
-	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_ack_r, MWA8_NOP)
-	AM_RANGE(0xa003, 0xa003) AM_MIRROR(0x1ff8) AM_READWRITE(tomahawk_protection_r, MWA8_NOP)
+	AM_RANGE(0x8003, 0x8003) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&astrof_color)
+	AM_RANGE(0x8004, 0x8004) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, video_control_1_w)
+	AM_RANGE(0x8005, 0x8005) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, tomahawk_video_control_2_w)
+	AM_RANGE(0x8006, 0x8006) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, tomahawk_audio_w)
+	AM_RANGE(0x8007, 0x8007) AM_MIRROR(0x1ff8) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&tomahawk_protection)
+	AM_RANGE(0xa000, 0xa000) AM_MIRROR(0x1ff8) AM_READ_PORT("IN") AM_WRITE(SMH_NOP)
+	AM_RANGE(0xa001, 0xa001) AM_MIRROR(0x1ff8) AM_READ_PORT("DSW") AM_WRITE(SMH_NOP)
+	AM_RANGE(0xa002, 0xa002) AM_MIRROR(0x1ff8) AM_READWRITE(irq_clear_r, SMH_NOP)
+	AM_RANGE(0xa003, 0xa003) AM_MIRROR(0x1ff8) AM_READWRITE(tomahawk_protection_r, SMH_NOP)
 	AM_RANGE(0xa004, 0xa007) AM_MIRROR(0x1ff8) AM_NOP
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -614,11 +580,8 @@ static INPUT_PORTS_START( astrof )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("COIN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
-
-	PORT_START_TAG("SERVICE")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_IMPULSE(1)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_CHANGED(service_coin_inserted, 0)
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("FLIP")
@@ -657,7 +620,7 @@ static INPUT_PORTS_START( abattle )
 	PORT_DIPSETTING(    0x00, "5000" )
 	PORT_DIPSETTING(    0x10, "7000" )
 	PORT_DIPSETTING(    0x20, "10000" )
-	PORT_DIPSETTING(    0x30, DEF_STR( None ) )\
+	PORT_DIPSETTING(    0x30, DEF_STR( None ) )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW:7")
 	PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
@@ -676,11 +639,8 @@ static INPUT_PORTS_START( abattle )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("COIN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
-
-	PORT_START_TAG("SERVICE")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_IMPULSE(1)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_CHANGED(service_coin_inserted, 0)
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("FLIP")
@@ -739,11 +699,8 @@ static INPUT_PORTS_START( spfghmk2 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("COIN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
-
-	PORT_START_TAG("SERVICE")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_IMPULSE(1)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_CHANGED(service_coin_inserted, 0)
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("FLIP")
@@ -802,11 +759,8 @@ static INPUT_PORTS_START( spfgmk22 )
 	PORT_BIT( 0xf8, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("COIN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
-
-	PORT_START_TAG("SERVICE")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_IMPULSE(1)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_CHANGED(service_coin_inserted, 0)
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("FLIP")
@@ -856,11 +810,8 @@ static INPUT_PORTS_START( tomahawk )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )
 
 	PORT_START_TAG("COIN")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
-
-	PORT_START_TAG("SERVICE")
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_IMPULSE(1)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_CHANGED(service_coin_inserted, 0)
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("FLIP")
@@ -882,18 +833,14 @@ static MACHINE_DRIVER_START( base )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, MAIN_CPU_CLOCK)
-	MDRV_CPU_VBLANK_INT(coin_nmi,1)
-
-	MDRV_MACHINE_RESET(astrof)
+	MDRV_TIMER_ADD_SCANLINE("VBLANK", irq_callback, "main", VBSTART, 0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_START(astrof)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-
 MACHINE_DRIVER_END
 
 
@@ -911,7 +858,6 @@ static MACHINE_DRIVER_START( astrof )
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(astrof_audio)
-
 MACHINE_DRIVER_END
 
 
@@ -922,7 +868,6 @@ static MACHINE_DRIVER_START( abattle )
 
 	MDRV_MACHINE_START(abattle)
 	MDRV_MACHINE_RESET(abattle)
-
 MACHINE_DRIVER_END
 
 
@@ -940,7 +885,6 @@ static MACHINE_DRIVER_START( spfghmk2 )
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(spfghmk2_audio)
-
 MACHINE_DRIVER_END
 
 
@@ -958,7 +902,6 @@ static MACHINE_DRIVER_START( tomahawk )
 
 	/* audio hardware */
 	MDRV_IMPORT_FROM(tomahawk_audio)
-
 MACHINE_DRIVER_END
 
 

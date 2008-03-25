@@ -181,15 +181,15 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 static WRITE16_HANDLER( warriorb_sound_w )
 {
 	if (offset == 0)
-		taitosound_port_w (0, data & 0xff);
+		taitosound_port_w (machine, 0, data & 0xff);
 	else if (offset == 1)
-		taitosound_comm_w (0, data & 0xff);
+		taitosound_comm_w (machine, 0, data & 0xff);
 }
 
 static READ16_HANDLER( warriorb_sound_r )
 {
 	if (offset == 1)
-		return ((taitosound_comm_r (0) & 0xff));
+		return ((taitosound_comm_r (machine,0) & 0xff));
 	else return 0;
 }
 
@@ -213,62 +213,62 @@ static WRITE8_HANDLER( warriorb_pancontrol )
 ***********************************************************/
 
 static ADDRESS_MAP_START( darius2d_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)	/* main ram */
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM)	/* main ram */
 	AM_RANGE(0x200000, 0x213fff) AM_READ(TC0100SCN_word_0_r)	/* tilemaps (1st screen) */
 	AM_RANGE(0x220000, 0x22000f) AM_READ(TC0100SCN_ctrl_word_0_r)
 	AM_RANGE(0x240000, 0x253fff) AM_READ(TC0100SCN_word_1_r)	/* tilemaps (2nd screen) */
 	AM_RANGE(0x260000, 0x26000f) AM_READ(TC0100SCN_ctrl_word_1_r)
 	AM_RANGE(0x400000, 0x400007) AM_READ(TC0110PCR_word_r)		/* palette (1st screen) */
 	AM_RANGE(0x420000, 0x420007) AM_READ(TC0110PCR_word_1_r)	/* palette (2nd screen) */
-	AM_RANGE(0x600000, 0x6013ff) AM_READ(MRA16_RAM)	/* sprite ram */
+	AM_RANGE(0x600000, 0x6013ff) AM_READ(SMH_RAM)	/* sprite ram */
 	AM_RANGE(0x800000, 0x80000f) AM_READ(TC0220IOC_halfword_r)
 	AM_RANGE(0x830000, 0x830003) AM_READ(warriorb_sound_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darius2d_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x200000, 0x213fff) AM_WRITE(TC0100SCN_dual_screen_w)	/* tilemaps (all screens) */
-	AM_RANGE(0x214000, 0x2141ff) AM_WRITE(MWA16_NOP)	/* error in screen clearing code ? */
+	AM_RANGE(0x214000, 0x2141ff) AM_WRITE(SMH_NOP)	/* error in screen clearing code ? */
 	AM_RANGE(0x220000, 0x22000f) AM_WRITE(TC0100SCN_ctrl_word_0_w)
 	AM_RANGE(0x240000, 0x253fff) AM_WRITE(TC0100SCN_word_1_w)	/* tilemaps (2nd screen) */
 	AM_RANGE(0x260000, 0x26000f) AM_WRITE(TC0100SCN_ctrl_word_1_w)
 	AM_RANGE(0x400000, 0x400007) AM_WRITE(TC0110PCR_step1_word_w)		/* palette (1st screen) */
 	AM_RANGE(0x420000, 0x420007) AM_WRITE(TC0110PCR_step1_word_1_w)	/* palette (2nd screen) */
-	AM_RANGE(0x600000, 0x6013ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x600000, 0x6013ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x800000, 0x80000f) AM_WRITE(TC0220IOC_halfword_w)
-//  AM_RANGE(0x820000, 0x820001) AM_WRITE(MWA16_NOP)    // ???
+//  AM_RANGE(0x820000, 0x820001) AM_WRITE(SMH_NOP)    // ???
 	AM_RANGE(0x830000, 0x830003) AM_WRITE(warriorb_sound_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( warriorb_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x200000, 0x213fff) AM_READ(MRA16_RAM)	/* main ram */
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x200000, 0x213fff) AM_READ(SMH_RAM)	/* main ram */
 	AM_RANGE(0x300000, 0x313fff) AM_READ(TC0100SCN_word_0_r)	/* tilemaps (1st screen) */
 	AM_RANGE(0x320000, 0x32000f) AM_READ(TC0100SCN_ctrl_word_0_r)
 	AM_RANGE(0x340000, 0x353fff) AM_READ(TC0100SCN_word_1_r)	/* tilemaps (2nd screen) */
 	AM_RANGE(0x360000, 0x36000f) AM_READ(TC0100SCN_ctrl_word_1_r)
 	AM_RANGE(0x400000, 0x400007) AM_READ(TC0110PCR_word_r)		/* palette (1st screen) */
 	AM_RANGE(0x420000, 0x420007) AM_READ(TC0110PCR_word_1_r)	/* palette (2nd screen) */
-	AM_RANGE(0x600000, 0x6013ff) AM_READ(MRA16_RAM)	/* sprite ram */
+	AM_RANGE(0x600000, 0x6013ff) AM_READ(SMH_RAM)	/* sprite ram */
 	AM_RANGE(0x800000, 0x80000f) AM_READ(TC0510NIO_halfword_r)
 	AM_RANGE(0x830000, 0x830003) AM_READ(warriorb_sound_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( warriorb_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x200000, 0x213fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x200000, 0x213fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x300000, 0x313fff) AM_WRITE(TC0100SCN_dual_screen_w)	/* tilemaps (all screens) */
 	AM_RANGE(0x320000, 0x32000f) AM_WRITE(TC0100SCN_ctrl_word_0_w)
 	AM_RANGE(0x340000, 0x353fff) AM_WRITE(TC0100SCN_word_1_w)	/* tilemaps (2nd screen) */
 	AM_RANGE(0x360000, 0x36000f) AM_WRITE(TC0100SCN_ctrl_word_1_w)
 	AM_RANGE(0x400000, 0x400007) AM_WRITE(TC0110PCR_step1_word_w)		/* palette (1st screen) */
 	AM_RANGE(0x420000, 0x420007) AM_WRITE(TC0110PCR_step1_word_1_w)	/* palette (2nd screen) */
-	AM_RANGE(0x600000, 0x6013ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x600000, 0x6013ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x800000, 0x80000f) AM_WRITE(TC0510NIO_halfword_w)
-//  AM_RANGE(0x820000, 0x820001) AM_WRITE(MWA16_NOP)    // ? uses bits 0,2,3
+//  AM_RANGE(0x820000, 0x820001) AM_WRITE(SMH_NOP)    // ? uses bits 0,2,3
 	AM_RANGE(0x830000, 0x830003) AM_WRITE(warriorb_sound_w)
 ADDRESS_MAP_END
 
@@ -276,20 +276,20 @@ ADDRESS_MAP_END
 /***************************************************************************/
 
 static ADDRESS_MAP_START( z80_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_BANK10)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK10)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(YM2610_status_port_0_A_r)
 	AM_RANGE(0xe001, 0xe001) AM_READ(YM2610_read_port_0_r)
 	AM_RANGE(0xe002, 0xe002) AM_READ(YM2610_status_port_0_B_r)
-	AM_RANGE(0xe200, 0xe200) AM_READ(MRA8_NOP)
+	AM_RANGE(0xe200, 0xe200) AM_READ(SMH_NOP)
 	AM_RANGE(0xe201, 0xe201) AM_READ(taitosound_slave_comm_r)
-	AM_RANGE(0xea00, 0xea00) AM_READ(MRA8_NOP)
+	AM_RANGE(0xea00, 0xea00) AM_READ(SMH_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( z80_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(YM2610_control_port_0_A_w)
 	AM_RANGE(0xe001, 0xe001) AM_WRITE(YM2610_data_port_0_A_w)
 	AM_RANGE(0xe002, 0xe002) AM_WRITE(YM2610_control_port_0_B_w)
@@ -297,8 +297,8 @@ static ADDRESS_MAP_START( z80_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe200, 0xe200) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xe201, 0xe201) AM_WRITE(taitosound_slave_comm_w)
 	AM_RANGE(0xe400, 0xe403) AM_WRITE(warriorb_pancontrol) /* pan */
-	AM_RANGE(0xee00, 0xee00) AM_WRITE(MWA8_NOP) /* ? */
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(MWA8_NOP) /* ? */
+	AM_RANGE(0xee00, 0xee00) AM_WRITE(SMH_NOP) /* ? */
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP) /* ? */
 	AM_RANGE(0xf200, 0xf200) AM_WRITE(sound_bankswitch_w)
 ADDRESS_MAP_END
 
@@ -488,7 +488,7 @@ static MACHINE_DRIVER_START( darius2d )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz ??? (Might well be 16!) */
 	MDRV_CPU_PROGRAM_MAP(darius2d_readmem,darius2d_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
 
 	MDRV_CPU_ADD(Z80,16000000/4)
 	/* audio CPU */	/* 4 MHz ? */
@@ -498,22 +498,21 @@ static MACHINE_DRIVER_START( darius2d )
 	MDRV_MACHINE_RESET( taito_dualscreen )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(warriorb)
 	MDRV_PALETTE_LENGTH(4096*2)
 	MDRV_DEFAULT_LAYOUT(layout_dualhsxs)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 3*8, 32*8-1)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 3*8, 32*8-1)
 
@@ -548,7 +547,7 @@ static MACHINE_DRIVER_START( warriorb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(warriorb_readmem,warriorb_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("left", irq4_line_hold)
 
 	MDRV_CPU_ADD(Z80,16000000/4)
 	/* audio CPU */	/* 4 MHz ? */
@@ -558,22 +557,21 @@ static MACHINE_DRIVER_START( warriorb )
 	MDRV_MACHINE_RESET( taito_dualscreen )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(warriorb)
 	MDRV_PALETTE_LENGTH(4096*2)
 	MDRV_DEFAULT_LAYOUT(layout_dualhsxs)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
 

@@ -26,7 +26,7 @@ PALETTE_INIT( fastlane )
 }
 
 
-static void set_pens(running_machine *machine)
+static void set_pens(colortable_t *colortable)
 {
 	int i;
 
@@ -36,7 +36,7 @@ static void set_pens(running_machine *machine)
 
 		rgb_t color = MAKE_RGB(pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
 
-		colortable_palette_set_color(machine->colortable, i >> 1, color);
+		colortable_palette_set_color(colortable, i >> 1, color);
 	}
 }
 
@@ -106,15 +106,15 @@ static TILE_GET_INFO( get_tile_info1 )
 
 VIDEO_START( fastlane )
 {
-	layer0 = tilemap_create(get_tile_info0,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	layer1 = tilemap_create(get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	layer0 = tilemap_create(get_tile_info0,tilemap_scan_rows,8,8,32,32);
+	layer1 = tilemap_create(get_tile_info1,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_scroll_rows( layer0, 32 );
 
-	clip0 = machine->screen[0].visarea;
+	clip0 = *video_screen_get_visible_area(machine->primary_screen);
 	clip0.min_x += 40;
 
-	clip1 = machine->screen[0].visarea;
+	clip1 = *video_screen_get_visible_area(machine->primary_screen);
 	clip1.max_x = 39;
 	clip1.min_x = 0;
 }
@@ -153,7 +153,7 @@ VIDEO_UPDATE( fastlane )
 	sect_rect(&finalclip0, cliprect);
 	sect_rect(&finalclip1, cliprect);
 
-	set_pens(machine);
+	set_pens(screen->machine->colortable);
 
 	/* set scroll registers */
 	xoffs = K007121_ctrlram[0][0x00];
@@ -163,7 +163,7 @@ VIDEO_UPDATE( fastlane )
 	tilemap_set_scrolly( layer0, 0, K007121_ctrlram[0][0x02] );
 
 	tilemap_draw(bitmap,&finalclip0,layer0,0,0);
-	K007121_sprites_draw(0,bitmap,machine->gfx,machine->colortable,cliprect,spriteram,0,40,0,-1);
+	K007121_sprites_draw(0,bitmap,screen->machine->gfx,screen->machine->colortable,cliprect,spriteram,0,40,0,-1);
 	tilemap_draw(bitmap,&finalclip1,layer1,0,0);
 	return 0;
 }

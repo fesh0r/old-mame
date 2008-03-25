@@ -47,16 +47,15 @@ static INT32 gp2_irq_control;
 static READ16_HANDLER( i_port1_r )
 {
 	if (control & 0x0080)
-		return input_port_0_word_r(0,0);
+		return input_port_0_word_r(machine,0,0);
 	else
-		return input_port_1_word_r(0,0);
+		return input_port_1_word_r(machine,0,0);
 }
 
 static READ16_HANDLER( i_port2_r )
 {
 	/* bit 0-1  battery power sensor: 3=good, 2=low, other=bad */
-
-	return (input_port_2_word_r(0,0) & 0xfffc) | 0x0003;
+	return (input_port_2_word_r(machine,0,0) & 0xfffc) | 0x0003;
 }
 
 
@@ -129,7 +128,7 @@ static WRITE16_HANDLER( gp2_control_w )
 static READ16_HANDLER( v_rom_r )
 {
 	UINT8 *mem8 = memory_region(REGION_GFX1);
-	int bank = K056832_word_r(0x34/2, 0xffff);
+	int bank = K056832_word_r(machine, 0x34/2, 0xffff);
 
 	offset += bank * 0x800 * 4;
 
@@ -143,33 +142,33 @@ static READ16_HANDLER( v_rom_r )
 static READ16_HANDLER( gp2_vram_r )
 {
 	if (offset < 0x1000/2)
-		return K056832_ram_word_r(offset*2+1, mem_mask);
+		return K056832_ram_word_r(machine, offset*2+1, mem_mask);
 	else
-		return K056832_ram_word_r((offset-0x1000/2)*2, mem_mask);
+		return K056832_ram_word_r(machine, (offset-0x1000/2)*2, mem_mask);
 }
 
 static READ16_HANDLER( gp2_vram_mirror_r )
 {
 	if (offset < 0x1000/2)
-		return K056832_ram_word_r(offset*2, mem_mask);
+		return K056832_ram_word_r(machine, offset*2, mem_mask);
 	else
-		return K056832_ram_word_r((offset-0x1000/2)*2+1, mem_mask);
+		return K056832_ram_word_r(machine, (offset-0x1000/2)*2+1, mem_mask);
 }
 
 static WRITE16_HANDLER( gp2_vram_w )
 {
 	if (offset < 0x1000/2)
-		K056832_ram_word_w(offset*2+1, data, mem_mask);
+		K056832_ram_word_w(machine, offset*2+1, data, mem_mask);
 	else
-		K056832_ram_word_w((offset-0x1000/2)*2, data, mem_mask);
+		K056832_ram_word_w(machine, (offset-0x1000/2)*2, data, mem_mask);
 }
 
 static WRITE16_HANDLER( gp2_vram_mirror_w )
 {
 	if (offset < 0x1000/2)
-		K056832_ram_word_w(offset*2, data, mem_mask);
+		K056832_ram_word_w(machine, offset*2, data, mem_mask);
 	else
-		K056832_ram_word_w((offset-0x1000/2)*2+1, data, mem_mask);
+		K056832_ram_word_w(machine, (offset-0x1000/2)*2+1, data, mem_mask);
 }
 
 
@@ -196,7 +195,7 @@ static WRITE16_HANDLER( sndram_w )
 static READ16_HANDLER( k054539_word_r )
 {
 	if (ACCESSING_LSB16)
-		return K054539_0_r(offset);
+		return K054539_0_r(machine, offset);
 
 	return 0;
 }
@@ -204,7 +203,7 @@ static READ16_HANDLER( k054539_word_r )
 static WRITE16_HANDLER( k054539_word_w )
 {
 	if (ACCESSING_LSB16)
-		K054539_0_w(offset, data);
+		K054539_0_w(machine, offset, data);
 }
 
 /*************/
@@ -215,23 +214,23 @@ static WRITE16_HANDLER( k054539_word_w )
 static READ16_HANDLER( ide_std_r )
 {
 	if (offset & 0x01)
-		return ide_controller16_0_r(IDE_STD_OFFSET + offset/2, 0x00ff) >> 8;
+		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset/2, 0x00ff) >> 8;
 	else
-		return ide_controller16_0_r(IDE_STD_OFFSET + offset/2, 0x0000);
+		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset/2, 0x0000);
 }
 
 static WRITE16_HANDLER( ide_std_w )
 {
 	if (offset & 0x01)
-		ide_controller16_0_w(IDE_STD_OFFSET + offset/2, data << 8, 0x00ff);
+		ide_controller16_0_w(machine, IDE_STD_OFFSET + offset/2, data << 8, 0x00ff);
 	else
-		ide_controller16_0_w(IDE_STD_OFFSET + offset/2, data, 0x0000);
+		ide_controller16_0_w(machine, IDE_STD_OFFSET + offset/2, data, 0x0000);
 }
 
 static READ16_HANDLER( ide_alt_r )
 {
 	if (offset == 0)
-		return ide_controller16_0_r(IDE_ALT_OFFSET, 0xff00);
+		return ide_controller16_0_r(machine, IDE_ALT_OFFSET, 0xff00);
 
 	return 0;
 }
@@ -239,7 +238,7 @@ static READ16_HANDLER( ide_alt_r )
 static WRITE16_HANDLER( ide_alt_w )
 {
 	if (offset == 0)
-		ide_controller16_0_w(IDE_ALT_OFFSET, data, 0xff00);
+		ide_controller16_0_w(machine, IDE_ALT_OFFSET, data, 0xff00);
 }
 
 
@@ -261,9 +260,9 @@ static READ16_HANDLER( gp2_ide_std_r )
 					break;
 			}
 		}
-		return ide_controller16_0_r(IDE_STD_OFFSET + offset/2, 0x00ff) >> 8;
+		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset/2, 0x00ff) >> 8;
 	} else {
-		return ide_controller16_0_r(IDE_STD_OFFSET + offset/2, 0x0000);
+		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset/2, 0x0000);
 	}
 }
 
@@ -341,10 +340,10 @@ static void gp2_ide_interrupt(int state)
  *************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)				/* work ram */
-	AM_RANGE(0x180000, 0x183fff) AM_READ(MRA16_RAM)				/* backup ram */
-	AM_RANGE(0x280000, 0x280fff) AM_READ(MRA16_RAM)				/* color ram */
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM)				/* work ram */
+	AM_RANGE(0x180000, 0x183fff) AM_READ(SMH_RAM)				/* backup ram */
+	AM_RANGE(0x280000, 0x280fff) AM_READ(SMH_RAM)				/* color ram */
 	AM_RANGE(0x320000, 0x32001f) AM_READ(K053252_word_r)		/* ccu */
 	AM_RANGE(0x330000, 0x330001) AM_READ(i_port2_r)				/* battery power & service sw */
 	AM_RANGE(0x340000, 0x340001) AM_READ(i_port1_r)				/* inputport */
@@ -358,16 +357,16 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM) AM_BASE(&workram) 	/* work ram */
-	AM_RANGE(0x180000, 0x183fff) AM_WRITE(MWA16_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)	/* backup ram */
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM) AM_BASE(&workram) 	/* work ram */
+	AM_RANGE(0x180000, 0x183fff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)	/* backup ram */
 	AM_RANGE(0x280000, 0x280fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x300000, 0x30003f) AM_WRITE(K056832_word_w)		/* video reg */
 	AM_RANGE(0x320000, 0x32001f) AM_WRITE(K053252_word_w)		/* ccu */
-	AM_RANGE(0x350000, 0x350001) AM_WRITE(MWA16_NOP)			/* unknown */
-	AM_RANGE(0x360000, 0x360001) AM_WRITE(MWA16_NOP)			/* unknown */
+	AM_RANGE(0x350000, 0x350001) AM_WRITE(SMH_NOP)			/* unknown */
+	AM_RANGE(0x360000, 0x360001) AM_WRITE(SMH_NOP)			/* unknown */
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(gp_control_w)			/* control reg */
-	AM_RANGE(0x380000, 0x380001) AM_WRITE(MWA16_NOP)			/* Watchdog */
+	AM_RANGE(0x380000, 0x380001) AM_WRITE(SMH_NOP)			/* Watchdog */
 	AM_RANGE(0x800000, 0x80045f) AM_WRITE(k054539_word_w)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_WRITE(K056832_ram_word_w)	/* vram */
 	AM_RANGE(0x882000, 0x883fff) AM_WRITE(K056832_ram_word_w)	/* vram (mirror) */
@@ -378,10 +377,10 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( gp2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x110fff) AM_READ(MRA16_RAM)				/* work ram */
-	AM_RANGE(0x180000, 0x183fff) AM_READ(MRA16_RAM)				/* backup ram */
-	AM_RANGE(0x280000, 0x280fff) AM_READ(MRA16_RAM)				/* color ram */
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x110fff) AM_READ(SMH_RAM)				/* work ram */
+	AM_RANGE(0x180000, 0x183fff) AM_READ(SMH_RAM)				/* backup ram */
+	AM_RANGE(0x280000, 0x280fff) AM_READ(SMH_RAM)				/* color ram */
 	AM_RANGE(0x320000, 0x32001f) AM_READ(K053252_word_r)		/* ccu */
 	AM_RANGE(0x330000, 0x330001) AM_READ(i_port2_r)				/* battery power & service */
 	AM_RANGE(0x340000, 0x340001) AM_READ(i_port1_r)				/* inputport */
@@ -395,16 +394,16 @@ static ADDRESS_MAP_START( gp2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gp2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x110fff) AM_WRITE(MWA16_RAM) AM_BASE(&workram)	/* work ram */
-	AM_RANGE(0x180000, 0x183fff) AM_WRITE(MWA16_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)	/* backup ram */
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x110fff) AM_WRITE(SMH_RAM) AM_BASE(&workram)	/* work ram */
+	AM_RANGE(0x180000, 0x183fff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)	/* backup ram */
 	AM_RANGE(0x280000, 0x280fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x300000, 0x30003f) AM_WRITE(K056832_word_w)		/* video reg */
 	AM_RANGE(0x320000, 0x32001f) AM_WRITE(K053252_word_w)		/* ccu */
-	AM_RANGE(0x350000, 0x350001) AM_WRITE(MWA16_NOP)			/* unknown */
-	AM_RANGE(0x360000, 0x360001) AM_WRITE(MWA16_NOP)			/* unknown */
+	AM_RANGE(0x350000, 0x350001) AM_WRITE(SMH_NOP)			/* unknown */
+	AM_RANGE(0x360000, 0x360001) AM_WRITE(SMH_NOP)			/* unknown */
 	AM_RANGE(0x370000, 0x370001) AM_WRITE(gp2_control_w)		/* control reg */
-	AM_RANGE(0x380000, 0x380001) AM_WRITE(MWA16_NOP)			/* Watchdog */
+	AM_RANGE(0x380000, 0x380001) AM_WRITE(SMH_NOP)			/* Watchdog */
 	AM_RANGE(0x800000, 0x80045f) AM_WRITE(k054539_word_w)		/* sound regs */
 	AM_RANGE(0x880000, 0x881fff) AM_WRITE(gp2_vram_w)			/* vram */
 	AM_RANGE(0x89f000, 0x8a0fff) AM_WRITE(gp2_vram_mirror_w)	/* vram (mirror) */
@@ -438,7 +437,7 @@ static INPUT_PORTS_START( qdrmfgp )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* SERVICE */
-	PORT_BIT(0x2000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)	/* TEST SW */
+	PORT_SERVICE_NO_TOGGLE( 0x2000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN1 )
 
@@ -518,7 +517,7 @@ static INPUT_PORTS_START( qdrmfgp2 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* SERVICE */
-	PORT_BIT(0x2000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)	/* TEST */
+	PORT_SERVICE_NO_TOGGLE( 0x2000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN1 )
 
@@ -676,20 +675,20 @@ static MACHINE_DRIVER_START( qdrmfgp )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 32000000/2)	/*  16.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(qdrmfgp_interrupt, 2)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(qdrmfgp_interrupt, 2)
 
 	MDRV_MACHINE_START(qdrmfgp)
 	MDRV_MACHINE_RESET(qdrmfgp)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(40, 40+384-1, 16, 16+224-1)
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(qdrmfgp)
@@ -709,20 +708,20 @@ static MACHINE_DRIVER_START( qdrmfgp2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 32000000/2)	/*  16.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(gp2_readmem,gp2_writemem)
-	MDRV_CPU_VBLANK_INT(qdrmfgp2_interrupt, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", qdrmfgp2_interrupt)
 
 	MDRV_MACHINE_START(qdrmfgp)
 	MDRV_MACHINE_RESET(qdrmfgp2)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(40, 40+384-1, 16, 16+224-1)
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(qdrmfgp2)

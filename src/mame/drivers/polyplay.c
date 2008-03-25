@@ -166,14 +166,14 @@ static ADDRESS_MAP_START( polyplay_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM
 	AM_RANGE(0x1000, 0x8fff) AM_ROM
 	AM_RANGE(0xe800, 0xebff) AM_ROM
-	AM_RANGE(0xec00, 0xf7ff) AM_READWRITE(MRA8_RAM, polyplay_characterram_w) AM_BASE(&polyplay_characterram)
+	AM_RANGE(0xec00, 0xf7ff) AM_READWRITE(SMH_RAM, polyplay_characterram_w) AM_BASE(&polyplay_characterram)
 	AM_RANGE(0xf800, 0xffff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 
 /* port mapping */
 static ADDRESS_MAP_START( polyplay_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x81) AM_WRITE(polyplay_sound_channel)
 	AM_RANGE(0x82, 0x82) AM_WRITE(polyplay_start_timer2)
 	AM_RANGE(0x83, 0x83) AM_READ(polyplay_random_read)
@@ -245,10 +245,10 @@ static WRITE8_HANDLER( polyplay_sound_channel )
 static WRITE8_HANDLER( polyplay_start_timer2 )
 {
 	if (data == 0x03)
-		timer_adjust(polyplay_timer, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(polyplay_timer, attotime_never, 0);
 
 	if (data == 0xb5)
-		timer_adjust(polyplay_timer, ATTOTIME_IN_HZ(40), 0, ATTOTIME_IN_HZ(40));
+		timer_adjust_periodic(polyplay_timer, ATTOTIME_IN_HZ(40), 0, ATTOTIME_IN_HZ(40));
 }
 
 static READ8_HANDLER( polyplay_random_read )
@@ -294,17 +294,17 @@ static MACHINE_DRIVER_START( polyplay )
 	MDRV_CPU_PROGRAM_MAP(polyplay_map,0)
 	MDRV_CPU_IO_MAP(polyplay_io_map,0)
 	MDRV_CPU_PERIODIC_INT(periodic_interrupt,75)
-	MDRV_CPU_VBLANK_INT(coin_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_CPU_VBLANK_INT("main", coin_interrupt)
 
 	MDRV_MACHINE_RESET(polyplay)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(polyplay)
 	MDRV_PALETTE_LENGTH(10)
 

@@ -86,6 +86,7 @@ static WRITE8_HANDLER( ram_bank_w )
 }
 
 
+
 /*************************************
  *
  *  Video system
@@ -114,19 +115,17 @@ static PALETTE_INIT( safarir )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors / 2; i++)
 	{
-		palette_set_color_rgb(machine, i, pal1bit(i >> 2), pal1bit(i >> 1), pal1bit(i >> 0));
-
-		colortable[(i * 2) + 0] = 0;
-		colortable[(i * 2) + 1] = i;
+		palette_set_color(machine, (i * 2) + 0, RGB_BLACK);
+		palette_set_color(machine, (i * 2) + 1, MAKE_RGB(pal1bit(i >> 2), pal1bit(i >> 1), pal1bit(i >> 0)));
 	}
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
 {
 	int color;
-	UINT8 code = ram_r(tile_index | 0x400);
+	UINT8 code = ram_r(machine,tile_index | 0x400);
 
 	/* this is wrong */
 	if (code & 0x80)
@@ -141,7 +140,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 static TILE_GET_INFO( get_fg_tile_info )
 {
 	int color, flags;
-	UINT8 code = ram_r(tile_index);
+	UINT8 code = ram_r(machine,tile_index);
 
 	if (code & 0x80)
 		color = 7;	/* white */
@@ -156,8 +155,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( safarir )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -203,12 +202,12 @@ static MACHINE_START( safarir )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x17ff) AM_ROM
 	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(ram_r, ram_w) AM_SIZE(&ram_size)
-	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_READWRITE(MRA8_NOP, ram_bank_w)
-	AM_RANGE(0x2c00, 0x2cff) AM_MIRROR(0x03ff) AM_READWRITE(MRA8_NOP, MWA8_RAM) AM_BASE(&bg_scroll)
+	AM_RANGE(0x2800, 0x2800) AM_MIRROR(0x03ff) AM_READWRITE(SMH_NOP, ram_bank_w)
+	AM_RANGE(0x2c00, 0x2cff) AM_MIRROR(0x03ff) AM_READWRITE(SMH_NOP, SMH_RAM) AM_BASE(&bg_scroll)
 	AM_RANGE(0x3000, 0x30ff) AM_MIRROR(0x03ff) AM_WRITENOP	/* goes to SN76477 */
 	AM_RANGE(0x3400, 0x3400) AM_MIRROR(0x03ff) AM_WRITENOP 	/* cleared at the beginning */
-	AM_RANGE(0x3800, 0x38ff) AM_MIRROR(0x03ff) AM_READWRITE(input_port_0_r, MWA8_NOP)
-	AM_RANGE(0x3c00, 0x3cff) AM_MIRROR(0x03ff) AM_READWRITE(input_port_1_r, MWA8_NOP)
+	AM_RANGE(0x3800, 0x38ff) AM_MIRROR(0x03ff) AM_READWRITE(input_port_0_r, SMH_NOP)
+	AM_RANGE(0x3c00, 0x3cff) AM_MIRROR(0x03ff) AM_READWRITE(input_port_1_r, SMH_NOP)
 ADDRESS_MAP_END
 
 
@@ -269,15 +268,13 @@ static MACHINE_DRIVER_START( safarir )
 	MDRV_MACHINE_START(safarir)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_START(safarir)
 	MDRV_VIDEO_UPDATE(safarir)
-	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(safarir)
-	MDRV_COLORTABLE_LENGTH(2*8)
+	MDRV_PALETTE_LENGTH(2*8)
 	MDRV_GFXDECODE(safarir)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 26*8-1)

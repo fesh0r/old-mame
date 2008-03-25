@@ -52,6 +52,7 @@ void v70_get_info(UINT32 state, cpuinfo *info);
 void i8035_get_info(UINT32 state, cpuinfo *info);
 void i8039_get_info(UINT32 state, cpuinfo *info);
 void i8048_get_info(UINT32 state, cpuinfo *info);
+void i8749_get_info(UINT32 state, cpuinfo *info);
 void n7751_get_info(UINT32 state, cpuinfo *info);
 void mb8884_get_info(UINT32 state, cpuinfo *info);
 void m58715_get_info(UINT32 state, cpuinfo *info);
@@ -93,6 +94,7 @@ void tms9989_get_info(UINT32 state, cpuinfo *info);
 void tms9995_get_info(UINT32 state, cpuinfo *info);
 void tms99105a_get_info(UINT32 state, cpuinfo *info);
 void tms99110a_get_info(UINT32 state, cpuinfo *info);
+void tms99000_get_info(UINT32 state, cpuinfo *info);
 void z8000_get_info(UINT32 state, cpuinfo *info);
 void tms32010_get_info(UINT32 state, cpuinfo *info);
 void tms32025_get_info(UINT32 state, cpuinfo *info);
@@ -111,6 +113,9 @@ void psxcpu_get_info(UINT32 state, cpuinfo *info);
 void asap_get_info(UINT32 state, cpuinfo *info);
 void upd7810_get_info(UINT32 state, cpuinfo *info);
 void upd7807_get_info(UINT32 state, cpuinfo *info);
+void upd7801_get_info(UINT32 state, cpuinfo *info);
+void upd78c05_get_info(UINT32 state, cpuinfo *info);
+void upd78c06_get_info(UINT32 state, cpuinfo *info);
 void jaguargpu_get_info(UINT32 state, cpuinfo *info);
 void jaguardsp_get_info(UINT32 state, cpuinfo *info);
 void r3000be_get_info(UINT32 state, cpuinfo *info);
@@ -206,7 +211,7 @@ void mb8842_get_info(UINT32 state, cpuinfo *info);
 void mb8843_get_info(UINT32 state, cpuinfo *info);
 void mb8844_get_info(UINT32 state, cpuinfo *info);
 void mb86233_get_info(UINT32 state, cpuinfo *info);
-void ssp1610_get_info(UINT32 state, cpuinfo *info);
+void ssp1601_get_info(UINT32 state, cpuinfo *info);
 void minx_get_info(UINT32 state, cpuinfo *info);
 
 
@@ -368,6 +373,9 @@ static const struct
 #if (HAS_I8048)
 	{ CPU_I8048, i8048_get_info },
 #endif
+#if (HAS_I8749)
+	{ CPU_I8749, i8749_get_info },
+#endif
 #if (HAS_N7751)
 	{ CPU_N7751, n7751_get_info },
 #endif
@@ -491,6 +499,9 @@ static const struct
 #if (HAS_TMS99110A)
 	{ CPU_TMS99110A, tms99110a_get_info },
 #endif
+#if (HAS_TMS99000)
+	{ CPU_TMS99000, tms99000_get_info },
+#endif
 #if (HAS_Z8000)
 	{ CPU_Z8000, z8000_get_info },
 #endif
@@ -544,6 +555,11 @@ static const struct
 #endif
 #if (HAS_UPD7807)
 	{ CPU_UPD7807, upd7807_get_info },
+#endif
+#if (HAS_UPD7801)
+	{ CPU_UPD7801, upd7801_get_info },
+	{ CPU_UPD78C05, upd78c05_get_info },
+	{ CPU_UPD78C06, upd78c06_get_info },
 #endif
 #if (HAS_JAGUAR)
 	{ CPU_JAGUARGPU, jaguargpu_get_info },
@@ -802,8 +818,8 @@ static const struct
 #if (HAS_MB86233)
 	{ CPU_MB86233, mb86233_get_info },
 #endif
-#if (HAS_SSP1610)
-	{ CPU_SSP1610, ssp1610_get_info },
+#if (HAS_SSP1601)
+	{ CPU_SSP1601, ssp1601_get_info },
 #endif
 #if (HAS_MINX)
 	{ CPU_MINX, minx_get_info },
@@ -1012,7 +1028,7 @@ void cpuintrf_init(running_machine *machine)
 		/* loop over all defined CPUs */
 		for (totalcpu = 0; totalcpu < CPU_COUNT; totalcpu++)
 		{
-			cpu_type cputype = machine->drv->cpu[totalcpu].type;
+			cpu_type cputype = machine->config->cpu[totalcpu].type;
 			char familyname[256];
 			int j;
 

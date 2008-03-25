@@ -23,7 +23,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "rampart.h"
 #include "sound/okim6295.h"
@@ -53,11 +52,11 @@ static void update_interrupts(running_machine *machine)
 }
 
 
-static void scanline_update(running_machine *machine, int scrnum, int scanline)
+static void scanline_update(const device_config *screen, int scanline)
 {
 	/* generate 32V signals */
 	if ((scanline & 32) == 0)
-		atarigen_scanline_int_gen(machine, 0);
+		atarigen_scanline_int_gen(screen->machine, 0);
 }
 
 
@@ -73,7 +72,7 @@ static MACHINE_RESET( rampart )
 	atarigen_eeprom_reset();
 	atarigen_slapstic_reset();
 	atarigen_interrupt_reset(update_interrupts);
-	atarigen_scanline_timer_reset(0, scanline_update, 32);
+	atarigen_scanline_timer_reset(machine->primary_screen, scanline_update, 32);
 }
 
 
@@ -86,14 +85,14 @@ static MACHINE_RESET( rampart )
 
 static READ16_HANDLER( adpcm_r )
 {
-	return (OKIM6295_status_0_r(offset) << 8) | 0x00ff;
+	return (OKIM6295_status_0_r(machine, offset) << 8) | 0x00ff;
 }
 
 
 static WRITE16_HANDLER( adpcm_w )
 {
 	if (ACCESSING_MSB)
-		OKIM6295_data_0_w(offset, (data >> 8) & 0xff);
+		OKIM6295_data_0_w(machine, offset, (data >> 8) & 0xff);
 }
 
 
@@ -109,9 +108,9 @@ static WRITE16_HANDLER( ym2413_w )
 	if (ACCESSING_MSB)
 	{
 		if (offset & 1)
-			YM2413_data_port_0_w(0, (data >> 8) & 0xff);
+			YM2413_data_port_0_w(machine, 0, (data >> 8) & 0xff);
 		else
-			YM2413_register_port_0_w(0, (data >> 8) & 0xff);
+			YM2413_register_port_0_w(machine, 0, (data >> 8) & 0xff);
 	}
 }
 
@@ -153,10 +152,10 @@ static WRITE16_HANDLER( latch_w )
 	/* lower byte being modified? */
 	if (ACCESSING_LSB)
 	{
-		atarigen_set_oki6295_vol(Machine, (data & 0x0020) ? 100 : 0);
+		atarigen_set_oki6295_vol(machine, (data & 0x0020) ? 100 : 0);
 		if (!(data & 0x0010))
 			sndti_reset(SOUND_OKIM6295, 0);
-		atarigen_set_ym2413_vol(Machine, ((data >> 1) & 7) * 100 / 7);
+		atarigen_set_ym2413_vol(machine, ((data >> 1) & 7) * 100 / 7);
 		if (!(data & 0x0001))
 			sndti_reset(SOUND_YM2413, 0);
 	}
@@ -172,15 +171,15 @@ static WRITE16_HANDLER( latch_w )
 
 /* full memory map deduced from schematics and GALs */
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(23) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fffff)
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
-	AM_RANGE(0x140000, 0x147fff) AM_MIRROR(0x438000) AM_ROM
+	AM_RANGE(0x140000, 0x147fff) AM_MIRROR(0x438000) AM_ROM /* slapstic goes here */
 	AM_RANGE(0x200000, 0x21ffff) AM_RAM AM_BASE(&rampart_bitmap)
 	AM_RANGE(0x220000, 0x3bffff) AM_WRITENOP	/* the code blasts right through this when initializing */
-	AM_RANGE(0x3c0000, 0x3c07ff) AM_MIRROR(0x019800) AM_READWRITE(MRA16_RAM, atarigen_expanded_666_paletteram_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x3e0000, 0x3e07ff) AM_MIRROR(0x010000) AM_READWRITE(MRA16_RAM, atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
+	AM_RANGE(0x3c0000, 0x3c07ff) AM_MIRROR(0x019800) AM_READWRITE(SMH_RAM, atarigen_expanded_666_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e07ff) AM_MIRROR(0x010000) AM_READWRITE(SMH_RAM, atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
 	AM_RANGE(0x3e0800, 0x3e3f3f) AM_MIRROR(0x010000) AM_RAM
-	AM_RANGE(0x3e3f40, 0x3e3f7f) AM_MIRROR(0x010000) AM_READWRITE(MRA16_RAM, atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
+	AM_RANGE(0x3e3f40, 0x3e3f7f) AM_MIRROR(0x010000) AM_READWRITE(SMH_RAM, atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
 	AM_RANGE(0x3e3f80, 0x3effff) AM_MIRROR(0x010000) AM_RAM
 	AM_RANGE(0x460000, 0x460001) AM_MIRROR(0x019ffe) AM_READWRITE(adpcm_r, adpcm_w)
 	AM_RANGE(0x480000, 0x480003) AM_MIRROR(0x019ffc) AM_WRITE(ym2413_w)
@@ -385,18 +384,18 @@ static MACHINE_DRIVER_START( rampart )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, MASTER_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
-	MDRV_CPU_VBLANK_INT(atarigen_video_int_gen,1)
+	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 
 	MDRV_MACHINE_RESET(rampart)
 	MDRV_NVRAM_HANDLER(atarigen)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_GFXDECODE(rampart)
 	MDRV_PALETTE_LENGTH(512)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS-2 chip to generate video signals */

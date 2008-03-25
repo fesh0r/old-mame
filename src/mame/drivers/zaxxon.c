@@ -355,11 +355,11 @@ static UINT16 razmataz_counter;
  *
  *************************************/
 
-static void service_switch(void *param, UINT32 oldval, UINT32 newval)
+static INPUT_CHANGED( service_switch )
 {
 	/* pressing the service switch sends an NMI */
 	if (newval)
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -387,9 +387,6 @@ static WRITE8_HANDLER( int_enable_w )
 
 static MACHINE_START( zaxxon )
 {
-	/* request a callback if the service switch is pressed */
-	input_port_set_changed_callback(port_tag_to_index("SERVICESW"), 0x01, service_switch, NULL);
-
 	/* register for save states */
 	state_save_register_global(int_enabled);
 }
@@ -478,7 +475,7 @@ static WRITE8_HANDLER( zaxxon_coin_lockout_w )
 static ADDRESS_MAP_START( zaxxon_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6000, 0x6fff) AM_RAM
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x1c00) AM_READWRITE(MRA8_RAM, zaxxon_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x1c00) AM_READWRITE(SMH_RAM, zaxxon_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xa000, 0xa0ff) AM_MIRROR(0x1f00) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xc000, 0xc000) AM_MIRROR(0x18fc) AM_READ_PORT("SW00")
 	AM_RANGE(0xc001, 0xc001) AM_MIRROR(0x18fc) AM_READ_PORT("SW01")
@@ -501,8 +498,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( congo_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
-	AM_RANGE(0xa000, 0xa3ff) AM_MIRROR(0x1800) AM_READWRITE(MRA8_RAM, zaxxon_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xa400, 0xa7ff) AM_MIRROR(0x1800) AM_READWRITE(MRA8_RAM, congo_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xa000, 0xa3ff) AM_MIRROR(0x1800) AM_READWRITE(SMH_RAM, zaxxon_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xa400, 0xa7ff) AM_MIRROR(0x1800) AM_READWRITE(SMH_RAM, congo_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xc000, 0xc000) AM_MIRROR(0x1fc4) AM_READ_PORT("SW00")
 	AM_RANGE(0xc001, 0xc001) AM_MIRROR(0x1fc4) AM_READ_PORT("SW01")
 	AM_RANGE(0xc002, 0xc002) AM_MIRROR(0x1fc4) AM_READ_PORT("DSW02")
@@ -567,7 +564,7 @@ static INPUT_PORTS_START( zaxxon )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE1 ) PORT_IMPULSE(1)
 
 	PORT_START_TAG("SERVICESW")
-	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH )
+	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH ) PORT_CHANGED(service_switch, 0)
 
 	PORT_START_TAG("DSW02")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Bonus_Life ) ) PORT_DIPLOCATION("SW1:!1,!2")
@@ -718,7 +715,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( razmataz )
 	PORT_START_TAG("SW00")
-	PORT_BIT( 0xff, 0x00, IPT_SPECIAL) PORT_CUSTOM(razmataz_dial_r, 0)
+	PORT_BIT( 0xff, 0x00, IPT_SPECIAL) PORT_CUSTOM(razmataz_dial_r, (void *)0)
 
 	PORT_START_TAG("DIAL0")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_RESET PORT_PLAYER(1)
@@ -733,7 +730,7 @@ static INPUT_PORTS_START( razmataz )
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("SW08")
-	PORT_BIT( 0xff, 0x00, IPT_SPECIAL) PORT_CUSTOM(razmataz_dial_r, 1)
+	PORT_BIT( 0xff, 0x00, IPT_SPECIAL) PORT_CUSTOM(razmataz_dial_r, (void *)1)
 
 	PORT_START_TAG("DIAL1")
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_RESET PORT_PLAYER(2)
@@ -935,16 +932,15 @@ static MACHINE_DRIVER_START( root )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, MASTER_CLOCK/16)
 	MDRV_CPU_PROGRAM_MAP(zaxxon_map, 0)
-	MDRV_CPU_VBLANK_INT(vblank_int, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_int)
 
 	MDRV_MACHINE_START(zaxxon)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(zaxxon)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
 

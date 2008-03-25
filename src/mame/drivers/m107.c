@@ -19,6 +19,7 @@
 #include "machine/irem_cpu.h"
 #include "sound/2151intf.h"
 #include "sound/iremga20.h"
+#include "cpu/nec/nec.h"
 
 
 #define M107_IRQ_0 ((m107_irq_vectorbase+0)/4) /* VBL interrupt*/
@@ -51,7 +52,7 @@ static MACHINE_START( m107 )
 
 static MACHINE_RESET( m107 )
 {
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_never);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 /*****************************************************************************/
@@ -63,21 +64,21 @@ static TIMER_CALLBACK( m107_scanline_interrupt )
 	/* raster interrupt */
 	if (scanline == m107_raster_irq_position)
 	{
-		video_screen_update_partial(0, scanline);
+		video_screen_update_partial(machine->primary_screen, scanline);
 		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, M107_IRQ_2);
 	}
 
 	/* VBLANK interrupt */
-	else if (scanline == machine->screen[0].visarea.max_y + 1)
+	else if (scanline == video_screen_get_visible_area(machine->primary_screen)->max_y + 1)
 	{
-		video_screen_update_partial(0, scanline);
+		video_screen_update_partial(machine->primary_screen, scanline);
 		cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, M107_IRQ_0);
 	}
 
 	/* adjust for next scanline */
-	if (++scanline >= machine->screen[0].height)
+	if (++scanline >= video_screen_get_height(machine->primary_screen))
 		scanline = 0;
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_never);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -121,7 +122,7 @@ static TIMER_CALLBACK( setvector_callback )
 static WRITE16_HANDLER( m107_soundlatch_w )
 {
 	timer_call_after_resynch(NULL, V30_ASSERT,setvector_callback);
-	soundlatch_w(0, data & 0xff);
+	soundlatch_w(machine, 0, data & 0xff);
 //      logerror("soundlatch_w %02x\n",data);
 }
 
@@ -134,7 +135,7 @@ static READ16_HANDLER( m107_sound_status_r )
 
 static READ16_HANDLER( m107_soundlatch_r )
 {
-	return soundlatch_r(offset) | 0xff00;
+	return soundlatch_r(machine, offset) | 0xff00;
 }
 
 static WRITE16_HANDLER( m107_sound_irq_ack_w )
@@ -153,10 +154,10 @@ static WRITE16_HANDLER( m107_sound_status_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x9ffff) AM_ROM
 	AM_RANGE(0xa0000, 0xbffff) AM_ROMBANK(1)
-	AM_RANGE(0xd0000, 0xdffff) AM_READWRITE(MRA16_RAM, m107_vram_w) AM_BASE(&m107_vram_data)
+	AM_RANGE(0xd0000, 0xdffff) AM_READWRITE(SMH_RAM, m107_vram_w) AM_BASE(&m107_vram_data)
 	AM_RANGE(0xe0000, 0xeffff) AM_RAM /* System ram */
 	AM_RANGE(0xf8000, 0xf8fff) AM_RAM AM_BASE(&spriteram16)
-	AM_RANGE(0xf9000, 0xf9fff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xf9000, 0xf9fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -168,19 +169,19 @@ static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 16 )
 	AM_RANGE(0x08, 0x09) AM_READ(m107_sound_status_r)	/* answer from sound CPU */
 	AM_RANGE(0x00, 0x01) AM_WRITE(m107_soundlatch_w)
 	AM_RANGE(0x02, 0x03) AM_WRITE(m107_coincounter_w)
-	AM_RANGE(0x04, 0x05) AM_WRITE(MWA16_NOP) /* ??? 0008 */
+	AM_RANGE(0x04, 0x05) AM_WRITE(SMH_NOP) /* ??? 0008 */
 	AM_RANGE(0x06, 0x07) AM_WRITE(bankswitch_w)
 	AM_RANGE(0x80, 0x9f) AM_WRITE(m107_control_w)
-	AM_RANGE(0xa0, 0xaf) AM_WRITE(MWA16_NOP) /* Written with 0's in interrupt */
+	AM_RANGE(0xa0, 0xaf) AM_WRITE(SMH_NOP) /* Written with 0's in interrupt */
 	AM_RANGE(0xb0, 0xb1) AM_WRITE(m107_spritebuffer_w)
-	AM_RANGE(0xc0, 0xc3) AM_READ(MRA16_NOP) /* Only wpksoc: ticket related? */
+	AM_RANGE(0xc0, 0xc3) AM_READ(SMH_NOP) /* Only wpksoc: ticket related? */
 ADDRESS_MAP_END
 
 /******************************************************************************/
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x1ffff) AM_ROM
-	AM_RANGE(0x9ff00, 0x9ffff) AM_WRITE(MWA16_NOP) /* Irq controller? */
+	AM_RANGE(0x9ff00, 0x9ffff) AM_WRITE(SMH_NOP) /* Irq controller? */
 	AM_RANGE(0xa0000, 0xa3fff) AM_RAM
 	AM_RANGE(0xa8000, 0xa803f) AM_READWRITE(IremGA20_r, IremGA20_w)
 	AM_RANGE(0xa8040, 0xa8041) AM_WRITE(YM2151_register_port_0_lsb_w)
@@ -475,6 +476,8 @@ static const struct IremGA20_interface iremGA20_interface =
 
 /***************************************************************************/
 
+static const nec_config firebarr_config ={ rtypeleo_decryption_table, };
+
 static MACHINE_DRIVER_START( firebarr )
 
 	/* basic machine hardware */
@@ -482,20 +485,21 @@ static MACHINE_DRIVER_START( firebarr )
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
 
-	MDRV_CPU_ADD(V30, 14318000/2)
-	/* audio CPU */	/* 14.318 MHz */
+	MDRV_CPU_ADD_TAG("sound", V30, 14318000/2)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
+	MDRV_CPU_CONFIG(firebarr_config)
 
 	MDRV_MACHINE_START(m107)
 	MDRV_MACHINE_RESET(m107)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(80, 511-112, 8, 247) /* 320 x 240 */
+
 	MDRV_GFXDECODE(firebarr)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -516,15 +520,26 @@ static MACHINE_DRIVER_START( firebarr )
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
 
-
+static const nec_config dsoccr94_config ={ dsoccr94_decryption_table, };
 static MACHINE_DRIVER_START( dsoccr94 )
 	MDRV_IMPORT_FROM(firebarr)
 
 	/* basic machine hardware */
 	MDRV_CPU_REPLACE("main", V33, 20000000/2)	/* NEC V33, Could be 28MHz clock? */
 
+	MDRV_CPU_MODIFY("sound")
+	MDRV_CPU_CONFIG(dsoccr94_config)
+
 	/* video hardware */
 	MDRV_GFXDECODE(m107)
+MACHINE_DRIVER_END
+
+
+static const nec_config wpksoc_config ={ leagueman_decryption_table, };
+static MACHINE_DRIVER_START( wpksoc )
+	MDRV_IMPORT_FROM(firebarr)
+	MDRV_CPU_MODIFY("sound")
+	MDRV_CPU_CONFIG(wpksoc_config)
 MACHINE_DRIVER_END
 
 /***************************************************************************/
@@ -632,8 +647,6 @@ static DRIVER_INIT( firebarr )
 	RAM = memory_region(REGION_CPU2);
 	memcpy(RAM+0xffff0,RAM+0x1fff0,0x10); /* Sound cpu Start vector */
 
-	irem_cpu_decrypt(1,rtypeleo_decryption_table);
-
 	m107_irq_vectorbase=0x20;
 	m107_spritesystem = 1;
 }
@@ -647,8 +660,6 @@ static DRIVER_INIT( dsoccr94 )
 
 	RAM = memory_region(REGION_CPU2);
 	memcpy(RAM+0xffff0,RAM+0x1fff0,0x10); /* Sound cpu Start vector */
-
-	irem_cpu_decrypt(1,dsoccr94_decryption_table);
 
 	m107_irq_vectorbase=0x80;
 	m107_spritesystem = 0;
@@ -664,7 +675,6 @@ static DRIVER_INIT( wpksoc )
 	RAM = memory_region(REGION_CPU2);
 	memcpy(RAM+0xffff0,RAM+0x1fff0,0x10); /* Sound cpu Start vector */
 
-	irem_cpu_decrypt(1,leagueman_decryption_table);
 
 	m107_irq_vectorbase=0x80;
 	m107_spritesystem = 0;
@@ -672,6 +682,6 @@ static DRIVER_INIT( wpksoc )
 
 /***************************************************************************/
 
-GAME( 1993, firebarr, 0, firebarr, firebarr, firebarr, ROT270, "Irem", "Fire Barrel (Japan)", GAME_NO_SOUND | GAME_IMPERFECT_GRAPHICS )
+GAME( 1993, firebarr, 0, firebarr, firebarr, firebarr, ROT270, "Irem", "Fire Barrel (Japan)", GAME_IMPERFECT_SOUND | GAME_IMPERFECT_GRAPHICS )
 GAME( 1994, dsoccr94, 0, dsoccr94, dsoccr94, dsoccr94, ROT0,   "Irem (Data East Corporation license)", "Dream Soccer '94", 0 )
-GAME( 1995, wpksoc,   0, firebarr, wpksoc,   wpksoc,   ROT0,   "Jaleco", "World PK Soccer", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )
+GAME( 1995, wpksoc,   0, wpksoc,   wpksoc,   wpksoc,   ROT0,   "Jaleco", "World PK Soccer", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )

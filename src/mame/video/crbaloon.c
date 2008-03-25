@@ -36,7 +36,7 @@ PALETTE_INIT( crbaloon )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		UINT8 pen;
 		int h, r, g, b;
@@ -78,7 +78,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( crbaloon )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows_flip_xy, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows_flip_xy,  8, 8, 32, 32);
 
 	state_save_register_global(crbaloon_collision_address);
 	state_save_register_global(crbaloon_collision_address_clear);
@@ -98,7 +98,7 @@ void crbaloon_set_clear_collision_address(int _crbaloon_collision_address_clear)
 
 
 
-static void draw_sprite_and_check_collision(running_machine *machine, mame_bitmap *bitmap)
+static void draw_sprite_and_check_collision(running_machine *machine, bitmap_t *bitmap)
 {
 	int y;
 	UINT8 code = crbaloon_spriteram[0] & 0x0f;
@@ -108,7 +108,7 @@ static void draw_sprite_and_check_collision(running_machine *machine, mame_bitma
 	UINT8 *gfx = memory_region(REGION_GFX2) + (code << 7);
 
 
-	if (flip_screen)
+	if (flip_screen_get())
 		sy += 32;
 
 	/* assume no collision */
@@ -154,7 +154,7 @@ VIDEO_UPDATE( crbaloon )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 
-	draw_sprite_and_check_collision(machine, bitmap);
+	draw_sprite_and_check_collision(screen->machine, bitmap);
 
 	return 0;
 }

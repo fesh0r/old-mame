@@ -44,7 +44,7 @@ static TILE_GET_INFO( get_playfield_tile_info )
 
 VIDEO_START( blstroid )
 {
-	static const struct atarimo_desc modesc =
+	static const atarimo_desc modesc =
 	{
 		1,					/* index to which gfx system */
 		1,					/* number of motion object banks */
@@ -82,7 +82,7 @@ VIDEO_START( blstroid )
 	};
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows,  16,8, 64,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
@@ -99,7 +99,7 @@ VIDEO_START( blstroid )
 static TIMER_CALLBACK( irq_off )
 {
 	/* clear the interrupt */
-	atarigen_scanline_int_ack_w(0, 0, 0);
+	atarigen_scanline_int_ack_w(machine, 0, 0, 0);
 }
 
 
@@ -107,11 +107,11 @@ static TIMER_CALLBACK( irq_on )
 {
 	/* generate the interrupt */
 	atarigen_scanline_int_gen(machine, 0);
-	atarigen_update_interrupts();
+	atarigen_update_interrupts(machine);
 }
 
 
-void blstroid_scanline_update(running_machine *machine, int scrnum, int scanline)
+void blstroid_scanline_update(const device_config *screen, int scanline)
 {
 	int offset = (scanline / 8) * 64 + 40;
 
@@ -119,18 +119,21 @@ void blstroid_scanline_update(running_machine *machine, int scrnum, int scanline
 	if (offset < 0x1000)
 		if (atarigen_playfield[offset] & 0x8000)
 		{
+			int width, vpos;
 			attotime period_on;
 			attotime period_off;
 
-			/* fix me - the only thing this IRQ does it tweak the starting MO link */
+			/* FIXME: - the only thing this IRQ does it tweak the starting MO link */
 			/* unfortunately, it does it too early for the given MOs! */
 			/* perhaps it is not actually hooked up on the real PCB... */
 			return;
 
 			/* set a timer to turn the interrupt on at HBLANK of the 7th scanline */
 			/* and another to turn it off one scanline later */
-			period_on  = video_screen_get_time_until_pos(scrnum, video_screen_get_vpos(scrnum) + 7, machine->screen[scrnum].width * 0.9);
-			period_off = video_screen_get_time_until_pos(scrnum, video_screen_get_vpos(scrnum) + 8, machine->screen[scrnum].width * 0.9);
+			width = video_screen_get_width(screen);
+			vpos  = video_screen_get_vpos(screen);
+			period_on  = video_screen_get_time_until_pos(screen, vpos + 7, width * 0.9);
+			period_off = video_screen_get_time_until_pos(screen, vpos + 8, width * 0.9);
 
 			timer_set(period_on, NULL,  0, irq_on);
 			timer_set(period_off, NULL, 0, irq_off);
@@ -147,15 +150,15 @@ void blstroid_scanline_update(running_machine *machine, int scrnum, int scanline
 
 VIDEO_UPDATE( blstroid )
 {
-	struct atarimo_rect_list rectlist;
-	mame_bitmap *mobitmap;
+	atarimo_rect_list rectlist;
+	bitmap_t *mobitmap;
 	int x, y, r;
 
 	/* draw the playfield */
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 0, 0);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
+	mobitmap = atarimo_render(0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{

@@ -163,17 +163,17 @@ WRITE16_HANDLER( gaiden_flip_w );
 
 static WRITE16_HANDLER( gaiden_sound_command_w )
 {
-	if (ACCESSING_LSB) soundlatch_w(0,data & 0xff);	/* Ninja Gaiden */
-	if (ACCESSING_MSB) soundlatch_w(0,data >> 8);	/* Tecmo Knight */
-	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	if (ACCESSING_LSB) soundlatch_w(machine,0,data & 0xff);	/* Ninja Gaiden */
+	if (ACCESSING_MSB) soundlatch_w(machine,0,data >> 8);	/* Tecmo Knight */
+	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 static WRITE16_HANDLER( drgnbowl_sound_command_w )
 {
 	if (ACCESSING_MSB)
 	{
-		soundlatch_w(0,data >> 8);
-		cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+		soundlatch_w(machine,0,data >> 8);
+		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 	}
 }
 
@@ -378,26 +378,26 @@ static READ16_HANDLER( raiga_protection_r )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x060000, 0x063fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x070000, 0x070fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x060000, 0x063fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x070000, 0x070fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x072000, 0x073fff) AM_READ(gaiden_videoram2_r)
 	AM_RANGE(0x074000, 0x075fff) AM_READ(gaiden_videoram3_r)
-	AM_RANGE(0x076000, 0x077fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x078000, 0x0787ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x078800, 0x079fff) AM_READ(MRA16_NOP)   /* extra portion of palette RAM, not really used */
+	AM_RANGE(0x076000, 0x077fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x078000, 0x0787ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x078800, 0x079fff) AM_READ(SMH_NOP)   /* extra portion of palette RAM, not really used */
 	AM_RANGE(0x07a000, 0x07a001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x07a002, 0x07a003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x07a004, 0x07a005) AM_READ(input_port_2_word_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x060000, 0x063fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x060000, 0x063fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x070000, 0x070fff) AM_WRITE(gaiden_videoram_w) AM_BASE(&gaiden_videoram)
 	AM_RANGE(0x072000, 0x073fff) AM_WRITE(gaiden_videoram2_w) AM_BASE(&gaiden_videoram2)
 	AM_RANGE(0x074000, 0x075fff) AM_WRITE(gaiden_videoram3_w) AM_BASE(&gaiden_videoram3)
-	AM_RANGE(0x076000, 0x077fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x076000, 0x077fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x078000, 0x079fff) AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x07a104, 0x07a105) AM_WRITE(gaiden_txscrolly_w)
 	AM_RANGE(0x07a10c, 0x07a10d) AM_WRITE(gaiden_txscrollx_w)
@@ -407,18 +407,18 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x07a30c, 0x07a30d) AM_WRITE(gaiden_bgscrollx_w)
 	AM_RANGE(0x07a800, 0x07a801) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x07a802, 0x07a803) AM_WRITE(gaiden_sound_command_w)
-	AM_RANGE(0x07a806, 0x07a807) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x07a806, 0x07a807) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x07a808, 0x07a809) AM_WRITE(gaiden_flip_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( drgnbowl_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x060000, 0x063fff) AM_RAM
-	AM_RANGE(0x070000, 0x070fff) AM_READWRITE(MRA16_RAM, gaiden_videoram_w) AM_BASE(&gaiden_videoram)
-	AM_RANGE(0x072000, 0x073fff) AM_READWRITE(MRA16_RAM, gaiden_videoram2_w) AM_BASE(&gaiden_videoram2)
-	AM_RANGE(0x074000, 0x075fff) AM_READWRITE(MRA16_RAM, gaiden_videoram3_w) AM_BASE(&gaiden_videoram3)
+	AM_RANGE(0x070000, 0x070fff) AM_READWRITE(SMH_RAM, gaiden_videoram_w) AM_BASE(&gaiden_videoram)
+	AM_RANGE(0x072000, 0x073fff) AM_READWRITE(SMH_RAM, gaiden_videoram2_w) AM_BASE(&gaiden_videoram2)
+	AM_RANGE(0x074000, 0x075fff) AM_READWRITE(SMH_RAM, gaiden_videoram3_w) AM_BASE(&gaiden_videoram3)
 	AM_RANGE(0x076000, 0x077fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x078000, 0x079fff) AM_READWRITE(MRA16_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x078000, 0x079fff) AM_READWRITE(SMH_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x07a000, 0x07a001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x07a002, 0x07a003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x07a004, 0x07a005) AM_READ(input_port_2_word_r)
@@ -431,24 +431,24 @@ static ADDRESS_MAP_START( drgnbowl_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_ROM) 	/* raiga only */
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xdfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_ROM) 	/* raiga only */
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf800, 0xf800) AM_READ(OKIM6295_status_0_r)
-	AM_RANGE(0xfc00, 0xfc00) AM_READ(MRA8_NOP)	/* ?? */
+	AM_RANGE(0xfc00, 0xfc00) AM_READ(SMH_NOP)	/* ?? */
 	AM_RANGE(0xfc20, 0xfc20) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_ROM) 	/* raiga only */
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xdfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xe000, 0xefff) AM_WRITE(SMH_ROM) 	/* raiga only */
+	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(OKIM6295_data_0_w)
 	AM_RANGE(0xf810, 0xf810) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0xf811, 0xf811) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0xf820, 0xf820) AM_WRITE(YM2203_control_port_1_w)
 	AM_RANGE(0xf821, 0xf821) AM_WRITE(YM2203_write_port_1_w)
-	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(MWA8_NOP)	/* ?? */
+	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(SMH_NOP)	/* ?? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( drgnbowl_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -457,7 +457,7 @@ static ADDRESS_MAP_START( drgnbowl_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( drgnbowl_sound_port_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
@@ -481,17 +481,17 @@ static INPUT_PORTS_START( shadoww )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
-	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	/* Dip Switches order fits the first screen */
@@ -914,10 +914,17 @@ static const gfx_layout spritelayout =
 };
 
 static GFXDECODE_START( gaiden )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,        256, 4096 - 256 )	/* tiles 8x8  */
-	GFXDECODE_ENTRY( REGION_GFX2, 0, tile2layout,       768, 4096 - 768 )	/* tiles 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX3, 0, tile2layout,       512, 4096 - 512 )	/* tiles 16x16 */
-	GFXDECODE_ENTRY( REGION_GFX4, 0, spritelayout,        0, 4096 -   0 )	/* sprites 8x8 */
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,        0x100, 16 )	/* tiles 8x8  */
+	GFXDECODE_ENTRY( REGION_GFX2, 0, tile2layout,       0x300, 16 )	/* tiles 16x16 */
+	GFXDECODE_ENTRY( REGION_GFX3, 0, tile2layout,       0x200, 16 )	/* tiles 16x16 */
+	GFXDECODE_ENTRY( REGION_GFX4, 0, spritelayout,      0x000, 16 )	/* sprites 8x8 */
+GFXDECODE_END
+
+static GFXDECODE_START( raiga )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, tilelayout,        0x100, 16 )	/* tiles 8x8  */
+	GFXDECODE_ENTRY( REGION_GFX2, 0, tile2layout,       0x300, 16 )	/* tiles 16x16 */
+	GFXDECODE_ENTRY( REGION_GFX3, 0, tile2layout,       0x200, 16 + 128 ) /* tiles 16x16 (only colors 0x00-x0f and 0x80-0x8f are used) */
+	GFXDECODE_ENTRY( REGION_GFX4, 0, spritelayout,      0x000, 16 + 128 ) /* sprites 8x8 (only colors 0x00-x0f and 0x80-0x8f are used) */
 GFXDECODE_END
 
 static const gfx_layout drgnbowl_tile2layout =
@@ -965,22 +972,23 @@ static MACHINE_DRIVER_START( shadoww )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 18432000/2)	/* 9.216 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 								/* IRQs are triggered by the YM2203 */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(raiga)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(gaiden)
 	MDRV_PALETTE_LENGTH(4096)
 
@@ -1011,10 +1019,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( raiga )
 	MDRV_IMPORT_FROM(shadoww)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 
 	MDRV_VIDEO_START(raiga)
 	MDRV_VIDEO_UPDATE(raiga)
+	MDRV_GFXDECODE(raiga)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( drgnbowl )
@@ -1022,21 +1032,21 @@ static MACHINE_DRIVER_START( drgnbowl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 20000000/2)	/* 10 MHz */
 	MDRV_CPU_PROGRAM_MAP(drgnbowl_map,0)
-	MDRV_CPU_VBLANK_INT(irq5_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq5_line_hold)
 
 	MDRV_CPU_ADD(Z80, 12000000/2)	/* 6 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(drgnbowl_sound_map,0)
 	MDRV_CPU_IO_MAP(drgnbowl_sound_port_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(drgnbowl)
 	MDRV_PALETTE_LENGTH(4096)
 

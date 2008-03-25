@@ -145,10 +145,9 @@ static void starfield_init(running_machine *machine)
 	int generator = 0;
 	int x,y;
 	int set = 0;
-	int width, height;
 
-	width = machine->screen[0].width;
-	height = machine->screen[0].height;
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
 	total_stars = 0;
 
@@ -172,7 +171,7 @@ static void starfield_init(running_machine *machine)
 				if ( color && total_stars < MAX_STARS ) {
 					stars[total_stars].x = x;
 					stars[total_stars].y = y;
-					stars[total_stars].col = machine->pens[color];
+					stars[total_stars].col = color;
 					stars[total_stars].set = set++;
 
 					if ( set == 3 )
@@ -195,7 +194,7 @@ static void starfield_init(running_machine *machine)
 
 VIDEO_START( gaplus )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,36,28);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan,8,8,36,28);
 
 	colortable_configure_tilemap_groups(machine->colortable, bg_tilemap, machine->gfx[0], 0xff);
 
@@ -239,13 +238,12 @@ WRITE8_HANDLER( gaplus_starfield_control_w )
 
 ***************************************************************************/
 
-static void starfield_render(running_machine *machine, mame_bitmap *bitmap)
+static void starfield_render(running_machine *machine, bitmap_t *bitmap)
 {
 	int i;
-	int width, height;
 
-	width = machine->screen[0].width;
-	height = machine->screen[0].height;
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
 	/* check if we're running */
 	if ( ( gaplus_starfield_control[0] & 1 ) == 0 )
@@ -266,7 +264,7 @@ static void starfield_render(running_machine *machine, mame_bitmap *bitmap)
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -291,7 +289,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			int duplicate = spriteram_3[offs] & 0x80;
 			int x,y;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				flipx ^= 1;
 				flipy ^= 1;
@@ -322,14 +320,14 @@ VIDEO_UPDATE( gaplus )
 	/* flip screen control is embedded in RAM */
 	flip_screen_set(gaplus_spriteram[0x1f7f-0x800] & 1);
 
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
-	starfield_render(machine, bitmap);
+	starfield_render(screen->machine, bitmap);
 
 	/* draw the low priority characters */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
 	/* draw the high priority characters */
 	/* (I don't know if this feature is used by Gaplus, but it's shown in the schematics) */
@@ -341,10 +339,9 @@ VIDEO_UPDATE( gaplus )
 VIDEO_EOF( gaplus )	/* update starfields */
 {
 	int i;
-	int width, height;
 
-	width = machine->screen[0].width;
-	height = machine->screen[0].height;
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
 	/* check if we're running */
 	if ( ( gaplus_starfield_control[0] & 1 ) == 0 )

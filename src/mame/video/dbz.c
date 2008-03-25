@@ -97,8 +97,8 @@ VIDEO_START( dbz )
 	K056832_vh_start(machine, REGION_GFX1, K056832_BPP_4, 1, NULL, dbz_tile_callback, 1);
 	K053247_vh_start(machine, REGION_GFX2, -52, 16, NORMAL_PLANE_ORDER, dbz_sprite_callback);
 
-	dbz_bg1_tilemap = tilemap_create(get_dbz_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,64,32);
-	dbz_bg2_tilemap = tilemap_create(get_dbz_bg2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16,64,32);
+	dbz_bg1_tilemap = tilemap_create(get_dbz_bg1_tile_info,tilemap_scan_rows, 16, 16,64,32);
+	dbz_bg2_tilemap = tilemap_create(get_dbz_bg2_tile_info,tilemap_scan_rows, 16, 16,64,32);
 
 	tilemap_set_transparent_pen(dbz_bg1_tilemap,0);
 	tilemap_set_transparent_pen(dbz_bg2_tilemap,0);
@@ -175,20 +175,14 @@ VIDEO_UPDATE( dbz )
 		}
 
 		if(layer[plane] == 4)
-		{
 			K053936_1_zoom_draw(bitmap,cliprect,dbz_bg1_tilemap,flag,pri);
-		}
 		else if(layer[plane] == 5)
-		{
 			K053936_0_zoom_draw(bitmap,cliprect,dbz_bg2_tilemap,flag,pri);
-		}
 		else
-		{
-			K056832_tilemap_draw(machine, bitmap,cliprect,layer[plane],flag,pri);
-		}
+			K056832_tilemap_draw(screen->machine, bitmap,cliprect,layer[plane],flag,pri);
 	}
 
-	K053247_sprites_draw(machine, bitmap, cliprect);
+	K053247_sprites_draw(screen->machine, bitmap, cliprect);
 	return 0;
 }
 

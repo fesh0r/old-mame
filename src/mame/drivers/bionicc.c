@@ -57,6 +57,8 @@ ToDo:
 #include "deprecat.h"
 #include "sound/2151intf.h"
 
+#define MASTER_CLOCK		XTAL_24MHz
+#define EXO3_F0_CLK			XTAL_14_31818MHz
 
 WRITE16_HANDLER( bionicc_fgvideoram_w );
 WRITE16_HANDLER( bionicc_bgvideoram_w );
@@ -110,7 +112,7 @@ static UINT16 soundcommand;
 static WRITE16_HANDLER( hacked_soundcommand_w )
 {
 	COMBINE_DATA(&soundcommand);
-	soundlatch_w(0,soundcommand & 0xff);
+	soundlatch_w(machine,0,soundcommand & 0xff);
 }
 
 static READ16_HANDLER( hacked_soundcommand_r )
@@ -142,26 +144,26 @@ static INTERRUPT_GEN( bionicc_interrupt )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)                /* 68000 ROM */
-	AM_RANGE(0xfe0000, 0xfe07ff) AM_READ(MRA16_RAM)                /* RAM? */
-	AM_RANGE(0xfe0800, 0xfe0cff) AM_READ(MRA16_RAM)                /* sprites */
-	AM_RANGE(0xfe0d00, 0xfe3fff) AM_READ(MRA16_RAM)                /* RAM? */
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)                /* 68000 ROM */
+	AM_RANGE(0xfe0000, 0xfe07ff) AM_READ(SMH_RAM)                /* RAM? */
+	AM_RANGE(0xfe0800, 0xfe0cff) AM_READ(SMH_RAM)                /* sprites */
+	AM_RANGE(0xfe0d00, 0xfe3fff) AM_READ(SMH_RAM)                /* RAM? */
 	AM_RANGE(0xfe4000, 0xfe4001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0xfe4002, 0xfe4003) AM_READ(input_port_1_word_r)
-	AM_RANGE(0xfec000, 0xfecfff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xff0000, 0xff3fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xff4000, 0xff7fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xff8000, 0xff87ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xffc000, 0xfffff7) AM_READ(MRA16_RAM)                /* working RAM */
+	AM_RANGE(0xfec000, 0xfecfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xff0000, 0xff3fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xff4000, 0xff7fff) AM_READ(SMH_RAM)
+	AM_RANGE(0xff8000, 0xff87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xffc000, 0xfffff7) AM_READ(SMH_RAM)                /* working RAM */
 	AM_RANGE(0xfffff8, 0xfffff9) AM_READ(hacked_soundcommand_r)      /* hack */
 	AM_RANGE(0xfffffa, 0xffffff) AM_READ(hacked_controls_r)      /* hack */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0xfe0000, 0xfe07ff) AM_WRITE(MWA16_RAM)	/* RAM? */
-	AM_RANGE(0xfe0800, 0xfe0cff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xfe0d00, 0xfe3fff) AM_WRITE(MWA16_RAM)              /* RAM? */
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xfe0000, 0xfe07ff) AM_WRITE(SMH_RAM)	/* RAM? */
+	AM_RANGE(0xfe0800, 0xfe0cff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xfe0d00, 0xfe3fff) AM_WRITE(SMH_RAM)              /* RAM? */
 	AM_RANGE(0xfe4000, 0xfe4001) AM_WRITE(bionicc_gfxctrl_w)	/* + coin counters */
 	AM_RANGE(0xfe8010, 0xfe8017) AM_WRITE(bionicc_scroll_w)
 	AM_RANGE(0xfe801a, 0xfe801b) AM_WRITE(bionicc_mpu_trigger_w)	/* ??? not sure, but looks like it */
@@ -169,24 +171,24 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff0000, 0xff3fff) AM_WRITE(bionicc_fgvideoram_w) AM_BASE(&bionicc_fgvideoram)
 	AM_RANGE(0xff4000, 0xff7fff) AM_WRITE(bionicc_bgvideoram_w) AM_BASE(&bionicc_bgvideoram)
 	AM_RANGE(0xff8000, 0xff87ff) AM_WRITE(bionicc_paletteram_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xffc000, 0xfffff7) AM_WRITE(MWA16_RAM)	/* working RAM */
+	AM_RANGE(0xffc000, 0xfffff7) AM_WRITE(SMH_RAM)	/* working RAM */
 	AM_RANGE(0xfffff8, 0xfffff9) AM_WRITE(hacked_soundcommand_w)      /* hack */
 	AM_RANGE(0xfffffa, 0xffffff) AM_WRITE(hacked_controls_w)	/* hack */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8001, 0x8001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -200,7 +202,7 @@ static INPUT_PORTS_START( bionicc )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN1 )
 
 	PORT_START
-	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SWB:1,2,3")
 	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0002, DEF_STR( 2C_1C ) )
@@ -209,7 +211,7 @@ static INPUT_PORTS_START( bionicc )
 	PORT_DIPSETTING(      0x0005, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0004, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(      0x0003, DEF_STR( 1C_6C ) )
-	PORT_DIPNAME( 0x0038, 0x0038, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x0038, 0x0038, DEF_STR( Coin_B ) )		PORT_DIPLOCATION("SWB:4,5,6")
 	PORT_DIPSETTING(      0x0000, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(      0x0008, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0010, DEF_STR( 2C_1C ) )
@@ -218,29 +220,29 @@ static INPUT_PORTS_START( bionicc )
 	PORT_DIPSETTING(      0x0028, DEF_STR( 1C_3C ) )
 	PORT_DIPSETTING(      0x0020, DEF_STR( 1C_4C ) )
 	PORT_DIPSETTING(      0x0018, DEF_STR( 1C_6C ) )
-	PORT_SERVICE( 0x0040, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) )
+	PORT_SERVICE_DIPLOC(  0x0040, IP_ACTIVE_LOW, "SWB:7" )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) )	PORT_DIPLOCATION("SWB:8")
 	PORT_DIPSETTING(      0x0080, DEF_STR( Off ))
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )		PORT_DIPLOCATION("SWA:1,2")
 	PORT_DIPSETTING(      0x0300, "3" )
 	PORT_DIPSETTING(      0x0200, "4" )
 	PORT_DIPSETTING(      0x0100, "5" )
 	PORT_DIPSETTING(      0x0000, "7" )
-	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Cabinet ) )
+	PORT_DIPNAME( 0x0400, 0x0400, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("SWA:3")
 	PORT_DIPSETTING(      0x0400, DEF_STR( Upright ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Cocktail ) )
-	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Bonus_Life ) )
+	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Bonus_Life ) )	PORT_DIPLOCATION("SWA:4,5")
 	PORT_DIPSETTING(      0x1800, "20K, 40K, every 60K")
 	PORT_DIPSETTING(      0x1000, "30K, 50K, every 70K" )
 	PORT_DIPSETTING(      0x0800, "20K and 60K only")
 	PORT_DIPSETTING(      0x0000, "30K and 70K only" )
-	PORT_DIPNAME( 0x6000, 0x4000, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x6000, 0x4000, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SWA:6,7")
 	PORT_DIPSETTING(      0x4000, DEF_STR( Easy ) )
 	PORT_DIPSETTING(      0x6000, DEF_STR( Medium ))
 	PORT_DIPSETTING(      0x2000, DEF_STR( Hard ))
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
-	PORT_DIPNAME( 0x8000, 0x8000, "Freeze" )
+	PORT_DIPNAME( 0x8000, 0x8000, "Freeze" )				PORT_DIPLOCATION("SWA:8") /* Listed as "Unused" */
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ))
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
@@ -343,20 +345,25 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( bionicc )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 10000000) /* ?? MHz ? */
+	MDRV_CPU_ADD(M68000, MASTER_CLOCK / 2) /* 12 MHz - verified in schematics */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(bionicc_interrupt,8)
+	MDRV_CPU_VBLANK_INT_HACK(bionicc_interrupt,8)
 
-	MDRV_CPU_ADD(Z80, 4000000)
-	/* audio CPU */  /* 4 MHz ??? TODO: find real FRQ */
+	/* audio CPU */
+	MDRV_CPU_ADD(Z80, EXO3_F0_CLK / 4)   /* EXO3 C,B=GND, A=5V ==> Divisor 2^2 */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,4)	/* ??? */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	/* FIXME: interrupt timing
+     * schematics indicate that nmi_line is set on  M680000 access with AB1=1
+     * and IOCS=0 (active low), see pages A-1/10, A-4/10 in schematics
+     */
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,4)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)

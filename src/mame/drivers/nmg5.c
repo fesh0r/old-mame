@@ -245,8 +245,8 @@ static WRITE16_HANDLER( nmg5_soundlatch_w )
 {
 	if (ACCESSING_LSB)
 	{
-		soundlatch_w(0,data & 0xff);
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		soundlatch_w(machine,0,data & 0xff);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -301,7 +301,7 @@ static ADDRESS_MAP_START( nmg5_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x18000a, 0x18000b) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x18000c, 0x18000d) AM_READ(input_port_2_word_r)
 	AM_RANGE(0x18000e, 0x18000f) AM_WRITE(priority_reg_w)
-	AM_RANGE(0x300002, 0x300009) AM_WRITE(MWA16_RAM) AM_BASE(&scroll_ram)
+	AM_RANGE(0x300002, 0x300009) AM_WRITE(SMH_RAM) AM_BASE(&scroll_ram)
 	AM_RANGE(0x30000a, 0x30000f) AM_WRITENOP
 	AM_RANGE(0x320000, 0x321fff) AM_RAM AM_WRITE(bg_videoram_w) AM_BASE(&bg_videoram)
 	AM_RANGE(0x322000, 0x323fff) AM_RAM AM_WRITE(fg_videoram_w) AM_BASE(&fg_videoram)
@@ -321,7 +321,7 @@ static ADDRESS_MAP_START( pclubys_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x48000a, 0x48000b) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x48000c, 0x48000d) AM_READ(input_port_2_word_r)
 	AM_RANGE(0x48000e, 0x48000f) AM_WRITE(priority_reg_w)
-	AM_RANGE(0x500002, 0x500009) AM_WRITE(MWA16_RAM) AM_BASE(&scroll_ram)
+	AM_RANGE(0x500002, 0x500009) AM_WRITE(SMH_RAM) AM_BASE(&scroll_ram)
 	AM_RANGE(0x520000, 0x521fff) AM_RAM AM_WRITE(bg_videoram_w) AM_BASE(&bg_videoram)
 	AM_RANGE(0x522000, 0x523fff) AM_RAM AM_WRITE(fg_videoram_w) AM_BASE(&fg_videoram)
 	AM_RANGE(0x800000, 0x80ffff) AM_RAM AM_BASE(&nmg5_bitmap)
@@ -344,7 +344,7 @@ static ADDRESS_MAP_START( pclubys_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(oki_banking_w)
 	AM_RANGE(0x10, 0x10) AM_READWRITE(YM3812_status_port_0_r, YM3812_control_port_0_w)
 	AM_RANGE(0x11, 0x11) AM_WRITE(YM3812_write_port_0_w)
@@ -799,13 +799,13 @@ static TILE_GET_INFO( bg_get_tile_info ) { get_tile_info(machine,tileinfo,tile_i
 
 static VIDEO_START( nmg5 )
 {
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,64,64);
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,8,8,64,64);
+	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -841,7 +841,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 	}
 }
 
-static void draw_bitmap(mame_bitmap *bitmap)
+static void draw_bitmap(bitmap_t *bitmap)
 {
 	int yyy=256;
 	int xxx=512/4;
@@ -881,33 +881,33 @@ static VIDEO_UPDATE( nmg5 )
 
 	if(priority_reg == 0)
 	{
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 		draw_bitmap(bitmap);
 	}
 	else if(priority_reg == 1)
 	{
 		draw_bitmap(bitmap);
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	}
 	else if(priority_reg == 2)
 	{
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 		draw_bitmap(bitmap);
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	}
 	else if(priority_reg == 3)
 	{
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 		draw_bitmap(bitmap);
 	}
 	else if(priority_reg == 7)
 	{
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 		draw_bitmap(bitmap);
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 	}
 	return 0;
 }
@@ -985,24 +985,24 @@ static MACHINE_DRIVER_START( nmg5 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(nmg5_map,0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)		/* 4 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(nmg5_sound_map,0)
 	MDRV_CPU_IO_MAP(sound_io_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_START(nmg5)
 	MDRV_MACHINE_RESET(nmg5)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
+
 	MDRV_GFXDECODE(nmg5)
 	MDRV_PALETTE_LENGTH(0x400)
 
@@ -1050,6 +1050,7 @@ static MACHINE_DRIVER_START( searchp2 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(nmg5)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(55) // !
 
 	MDRV_GFXDECODE(pclubys)

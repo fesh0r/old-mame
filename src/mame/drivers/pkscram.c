@@ -49,14 +49,14 @@ static WRITE16_HANDLER( pkscramble_YM2203_w )
 {
 	switch (offset)
 	{
-		case 0: YM2203_control_port_0_w(0,data & 0xff);break;
-		case 1: YM2203_write_port_0_w(0,data & 0xff);break;
+		case 0: YM2203_control_port_0_w(machine,0,data & 0xff);break;
+		case 1: YM2203_write_port_0_w(machine,0,data & 0xff);break;
 	}
 }
 
 static READ16_HANDLER( pkscramble_YM2203_r )
 {
-	return YM2203_status_port_0_r(0);
+	return YM2203_status_port_0_r(machine,0);
 }
 
 // input bit 0x20 in port1 should stay low until bit 0x20 is written here, then
@@ -95,7 +95,7 @@ static WRITE16_HANDLER( pkscramble_output_w )
 }
 
 static ADDRESS_MAP_START( pkscramble_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(19) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ffff)
 	AM_RANGE(0x000000, 0x01ffff) AM_ROM
 	AM_RANGE(0x040000, 0x0400ff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x041000, 0x043fff) AM_RAM // main ram
@@ -212,23 +212,23 @@ static TIMER_CALLBACK( scanline_callback )
 	{
     	if (out&0x2000)
     		cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
-		timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, param+1, 0), param+1, attotime_zero);
+		timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, param+1, 0), param+1);
 		interrupt_line_active = 1;
 	}
 	else
 	{
 		if (interrupt_line_active)
 	    	cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
-		timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, interrupt_scanline, 0), interrupt_scanline, attotime_zero);
+		timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, interrupt_scanline, 0), interrupt_scanline);
 		interrupt_line_active = 0;
 	}
 }
 
 static VIDEO_START( pkscramble )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8, 8,32,32);
-	md_tilemap = tilemap_create(get_md_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8,32,32);
+	md_tilemap = tilemap_create(get_md_tile_info, tilemap_scan_rows, 8, 8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(md_tilemap,15);
 	tilemap_set_transparent_pen(fg_tilemap,15);
@@ -275,7 +275,7 @@ static MACHINE_RESET( pkscramble)
 	out = 0;
 	interrupt_line_active=0;
 	scanline_timer = timer_alloc(scanline_callback, NULL);
-	timer_adjust(scanline_timer, video_screen_get_time_until_pos(0, interrupt_scanline, 0), interrupt_scanline, attotime_zero);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, interrupt_scanline, 0), interrupt_scanline);
 
 	state_save_register_global(out);
 	state_save_register_global(interrupt_line_active);
@@ -285,20 +285,20 @@ static MACHINE_DRIVER_START( pkscramble )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 8000000 )
 	MDRV_CPU_PROGRAM_MAP(pkscramble_map,0)
-	//MDRV_CPU_VBLANK_INT(irq1_line_hold,1) /* only valid irq */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	//MDRV_CPU_VBLANK_INT("main", irq1_line_hold) /* only valid irq */
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	MDRV_MACHINE_RESET(pkscramble)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 24*8-1)
+
 	MDRV_PALETTE_LENGTH(0x800)
 	MDRV_GFXDECODE(pkscram)
 

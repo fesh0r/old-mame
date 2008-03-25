@@ -158,6 +158,7 @@ Stephh's notes (based on the games Z80 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/discrete.h"
 
@@ -186,24 +187,23 @@ VIDEO_UPDATE( kungfut );
 static WRITE8_HANDLER( sound_command_w )
 {
 	static int dsc0=1, dsc1=1;
-
 	switch (offset)
 	{
 		// 0x90 triggers a jump to non-existant address(development system?) and must be filtered
 		case 0x00:
-			if (data != 0x90) soundlatch_w(0, data);
+			if (data != 0x90) soundlatch_w(machine, 0, data);
 		break;
 
 		// explosion sound trigger(analog?)
 		case 0x08:
-			discrete_sound_w(STINGER_BOOM_EN1, dsc1);
-			discrete_sound_w(STINGER_BOOM_EN2, dsc1^=1);
+			discrete_sound_w(machine, STINGER_BOOM_EN1, dsc1);
+			discrete_sound_w(machine, STINGER_BOOM_EN2, dsc1^=1);
 		break;
 
 		// player shot sound trigger(analog?)
 		case 0x0a:
-			discrete_sound_w(STINGER_SHOT_EN1, dsc0);
-			discrete_sound_w(STINGER_SHOT_EN2, dsc0^=1);
+			discrete_sound_w(machine, STINGER_SHOT_EN1, dsc0);
+			discrete_sound_w(machine, STINGER_SHOT_EN2, dsc0^=1);
 		break;
 	}
 }
@@ -226,10 +226,10 @@ static WRITE8_HANDLER( wiz_coin_counter_w )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xd85f) AM_READ(MRA8_RAM)
-	AM_RANGE(0xe000, 0xe85f) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xd85f) AM_READ(SMH_RAM)
+	AM_RANGE(0xe000, 0xe85f) AM_READ(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_2_r)	/* DSW0 */
 	AM_RANGE(0xf008, 0xf008) AM_READ(input_port_3_r)	/* DSW1 */
 	AM_RANGE(0xf010, 0xf010) AM_READ(input_port_0_r)	/* IN0 */
@@ -238,38 +238,38 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc800, 0xc801) AM_WRITE(wiz_coin_counter_w)
-	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(MWA8_RAM) AM_BASE(&wiz_videoram2)
-	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(MWA8_RAM) AM_BASE(&wiz_colorram2)
-	AM_RANGE(0xd800, 0xd83f) AM_WRITE(MWA8_RAM) AM_BASE(&wiz_attributesram2)
-	AM_RANGE(0xd840, 0xd85f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xe400, 0xe7ff) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
-	AM_RANGE(0xe800, 0xe83f) AM_WRITE(MWA8_RAM) AM_BASE(&wiz_attributesram)
-	AM_RANGE(0xe840, 0xe85f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(MWA8_RAM) AM_BASE(&wiz_sprite_bank)
+	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(SMH_RAM) AM_BASE(&wiz_videoram2)
+	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(SMH_RAM) AM_BASE(&wiz_colorram2)
+	AM_RANGE(0xd800, 0xd83f) AM_WRITE(SMH_RAM) AM_BASE(&wiz_attributesram2)
+	AM_RANGE(0xd840, 0xd85f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram_2) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xe000, 0xe3ff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xe400, 0xe7ff) AM_WRITE(SMH_RAM) AM_BASE(&colorram)
+	AM_RANGE(0xe800, 0xe83f) AM_WRITE(SMH_RAM) AM_BASE(&wiz_attributesram)
+	AM_RANGE(0xe840, 0xe85f) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_RAM) AM_BASE(&wiz_sprite_bank)
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0xf002, 0xf003) AM_WRITE(wiz_palettebank_w)
 	AM_RANGE(0xf004, 0xf005) AM_WRITE(wiz_char_bank_select_w)
 	AM_RANGE(0xf006, 0xf006) AM_WRITE(wiz_flipx_w)
 	AM_RANGE(0xf007, 0xf007) AM_WRITE(wiz_flipy_w)
-	AM_RANGE(0xf008, 0xf00f) AM_WRITE(MWA8_NOP)			// initialized by Stinger/Scion
+	AM_RANGE(0xf008, 0xf00f) AM_WRITE(SMH_NOP)			// initialized by Stinger/Scion
 	AM_RANGE(0xf800, 0xf80f) AM_WRITE(sound_command_w)	// sound registers
 	AM_RANGE(0xf818, 0xf818) AM_WRITE(wiz_bgcolor_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x2000, 0x23ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x2000, 0x23ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x3000, 0x3000) AM_READ(soundlatch_r)	/* Stinger/Scion */
 	AM_RANGE(0x7000, 0x7000) AM_READ(soundlatch_r)	/* Wiz */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x2000, 0x23ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x2000, 0x23ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(interrupt_enable_w)			/* Stinger/Scion */
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(AY8910_control_port_2_w)
 	AM_RANGE(0x4001, 0x4001) AM_WRITE(AY8910_write_port_2_w)
@@ -706,21 +706,21 @@ static MACHINE_DRIVER_START( wiz )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 18432000/6)	/* 3.072 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(Z80, 14318000/8)	/* ? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,4)	/* ??? */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION	/* frames per second, vblank duration */)
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,4)	/* ??? */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */	/* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(wiz)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -772,6 +772,7 @@ static MACHINE_DRIVER_START( scion )
 	MDRV_IMPORT_FROM(stinger)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(2*8, 32*8-1, 2*8, 30*8-1)
 
 MACHINE_DRIVER_END
@@ -1057,7 +1058,7 @@ static DRIVER_INIT( stinger )
 
 static DRIVER_INIT( scion )
 {
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4001, 0, 0, MWA8_NOP);
+	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4001, 0, 0, SMH_NOP);
 }
 
 

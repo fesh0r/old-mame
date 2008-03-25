@@ -61,7 +61,7 @@ static WRITE8_HANDLER( contra_coin_counter_w )
 
 static WRITE8_HANDLER( cpu_sound_command_w )
 {
-	soundlatch_w(offset,data);
+	soundlatch_w(machine,offset,data);
 }
 
 
@@ -75,10 +75,10 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0015, 0x0015) AM_READ(input_port_4_r)		/* DIPSW2 */
 	AM_RANGE(0x0016, 0x0016) AM_READ(input_port_5_r)		/* DIPSW3 */
 
-	AM_RANGE(0x0c00, 0x0cff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1000, 0x5fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0c00, 0x0cff) AM_READ(SMH_RAM)
+	AM_RANGE(0x1000, 0x5fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK1)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -86,37 +86,37 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0018, 0x0018) AM_WRITE(contra_coin_counter_w)
 	AM_RANGE(0x001a, 0x001a) AM_WRITE(contra_sh_irqtrigger_w)
 	AM_RANGE(0x001c, 0x001c) AM_WRITE(cpu_sound_command_w)
-	AM_RANGE(0x001e, 0x001e) AM_WRITE(MWA8_NOP)	/* ? */
+	AM_RANGE(0x001e, 0x001e) AM_WRITE(SMH_NOP)	/* ? */
 	AM_RANGE(0x0060, 0x0067) AM_WRITE(contra_K007121_ctrl_1_w)
-	AM_RANGE(0x0c00, 0x0cff) AM_WRITE(MWA8_RAM) AM_BASE(&paletteram)
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0c00, 0x0cff) AM_WRITE(SMH_RAM) AM_BASE(&paletteram)
+	AM_RANGE(0x1000, 0x1fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x2000, 0x23ff) AM_WRITE(contra_fg_cram_w) AM_BASE(&contra_fg_cram)
 	AM_RANGE(0x2400, 0x27ff) AM_WRITE(contra_fg_vram_w) AM_BASE(&contra_fg_vram)
 	AM_RANGE(0x2800, 0x2bff) AM_WRITE(contra_text_cram_w) AM_BASE(&contra_text_cram)
 	AM_RANGE(0x2c00, 0x2fff) AM_WRITE(contra_text_vram_w) AM_BASE(&contra_text_vram)
-	AM_RANGE(0x3000, 0x37ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)/* 2nd bank is at 0x5000 */
-	AM_RANGE(0x3800, 0x3fff) AM_WRITE(MWA8_RAM) // second sprite buffer
+	AM_RANGE(0x3000, 0x37ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)/* 2nd bank is at 0x5000 */
+	AM_RANGE(0x3800, 0x3fff) AM_WRITE(SMH_RAM) // second sprite buffer
 	AM_RANGE(0x4000, 0x43ff) AM_WRITE(contra_bg_cram_w) AM_BASE(&contra_bg_cram)
 	AM_RANGE(0x4400, 0x47ff) AM_WRITE(contra_bg_vram_w) AM_BASE(&contra_bg_vram)
-	AM_RANGE(0x4800, 0x5fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4800, 0x5fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x6000, 0x6fff) AM_WRITE(SMH_ROM)
  	AM_RANGE(0x7000, 0x7000) AM_WRITE(contra_bankswitch_w)
-	AM_RANGE(0x7001, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x7001, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0000) AM_READ(soundlatch_r)
 	AM_RANGE(0x2001, 0x2001) AM_READ(YM2151_status_port_0_r)
-	AM_RANGE(0x6000, 0x67ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x6000, 0x67ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x2001, 0x2001) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(MWA8_NOP) /* read triggers irq reset and latch read (in the hardware only). */
-	AM_RANGE(0x6000, 0x67ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0x4000) AM_WRITE(SMH_NOP) /* read triggers irq reset and latch read (in the hardware only). */
+	AM_RANGE(0x6000, 0x67ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -249,21 +249,22 @@ static MACHINE_DRIVER_START( contra )
 	/* basic machine hardware */
  	MDRV_CPU_ADD(M6809, 1500000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
  	MDRV_CPU_ADD(M6809, 2000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough for the sound CPU to read all commands */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(37*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 35*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(contra)
 	MDRV_PALETTE_LENGTH(2*8*16*16)
 
@@ -280,32 +281,35 @@ static MACHINE_DRIVER_START( contra )
 MACHINE_DRIVER_END
 
 
-
-#if 0
-	/* bootleg versions use smaller gfx ROMs, but the data is the same */
-	ROM_LOAD( "g-7.rom",      0x00000, 0x10000, CRC(57f467d2) )
-	ROM_LOAD( "g-10.rom",     0x10000, 0x10000, CRC(e6db9685) )
-	ROM_LOAD( "g-9.rom",      0x20000, 0x10000, CRC(875c61de) )
-	ROM_LOAD( "g-8.rom",      0x30000, 0x10000, CRC(642765d6) )
-	ROM_LOAD( "g-15.rom",     0x40000, 0x10000, CRC(daa2324b) )
-	ROM_LOAD( "g-16.rom",     0x50000, 0x10000, CRC(e27cc835) )
-	ROM_LOAD( "g-17.rom",     0x60000, 0x10000, CRC(ce4330b9) )
-	ROM_LOAD( "g-18.rom",     0x70000, 0x10000, CRC(1571ce42) )
-	ROM_LOAD( "g-4.rom",      0x80000, 0x10000, CRC(2cc7e52c) )
-	ROM_LOAD( "g-5.rom",      0x90000, 0x10000, CRC(e01a5b9c) )
-	ROM_LOAD( "g-6.rom",      0xa0000, 0x10000, CRC(aeea6744) )
-	ROM_LOAD( "g-14.rom",     0xb0000, 0x10000, CRC(fca77c5a) )
-	ROM_LOAD( "g-11.rom",     0xc0000, 0x10000, CRC(bd9ba92c) )
-	ROM_LOAD( "g-12.rom",     0xd0000, 0x10000, CRC(d0be7ec2) )
-	ROM_LOAD( "g-13.rom",     0xe0000, 0x10000, CRC(2b513d12) )
-#endif
-
-
 ROM_START( contra )
 	ROM_REGION( 0x28000, REGION_CPU1, 0 )	/* 64k for code + 96k for banked ROMs */
+	ROM_LOAD( "633m03.18a",   0x20000, 0x08000, CRC(d045e1da) SHA1(ec781e98a6efb14861223250c6239b06ec98ed0b) )
+	ROM_CONTINUE(             0x08000, 0x08000 )
+	ROM_LOAD( "633i02.17a",   0x10000, 0x10000, CRC(b2f7bd9a) SHA1(6c29568419bc49f0be3995b0c34edd9038f6f8d9) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for SOUND code */
+	ROM_LOAD( "633e01.12a",   0x08000, 0x08000, CRC(d1549255) SHA1(d700c7de36746ba247e3a5d0410b7aa036aa4073) )
+
+	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "633e04.7d",    0x00000, 0x40000, CRC(14ddc542) SHA1(c7d8592672a6e50c2fe6b0670001c340022f16f9) )
+	ROM_LOAD16_BYTE( "633e05.7f",    0x00001, 0x40000, CRC(42185044) SHA1(a6e2598d766e6995c1a912e4a04987e6f4d547ff) )
+
+	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )
+	ROM_LOAD16_BYTE( "633e06.16d",   0x00000, 0x40000, CRC(9cf6faae) SHA1(9ab79c06cb541ce6fdac322886b8a14a2f3f5cf7) )
+	ROM_LOAD16_BYTE( "633e07.16f",   0x00001, 0x40000, CRC(f2d06638) SHA1(0fa0fbfc53ab5c31b9de22f90153d9af37ff22ce) )
+
+	ROM_REGION( 0x0500, REGION_PROMS, 0 )
+	ROM_LOAD( "633e08.10g",   0x0000, 0x0100, CRC(9f0949fa) SHA1(7c8fefdcae4523d008a7d39062194c7a80aa3500) )	/* 007121 #0 sprite lookup table */
+	ROM_LOAD( "633e09.12g",   0x0100, 0x0100, CRC(14ca5e19) SHA1(eeee2f8b3d1e4acf47de1e74c4e507ff924591e7) )	/* 007121 #0 char lookup table */
+	ROM_LOAD( "633f10.18g",   0x0200, 0x0100, CRC(2b244d84) SHA1(c3bde7afb501bae58d07721c637dc06938c22150) )	/* 007121 #1 sprite lookup table */
+	ROM_LOAD( "633f11.20g",   0x0300, 0x0100, CRC(14ca5e19) SHA1(eeee2f8b3d1e4acf47de1e74c4e507ff924591e7) )	/* 007121 #1 char lookup table */
+ROM_END
+
+ROM_START( contra1 )
+	ROM_REGION( 0x28000, REGION_CPU1, 0 )	/* 64k for code + 96k for banked ROMs */
 	ROM_LOAD( "633e03.18a",   0x20000, 0x08000, CRC(7fc0d8cf) SHA1(cf1cf15646a4e5dc72671e957bc51ca44d30995c) )
-	ROM_CONTINUE(			  0x08000, 0x08000 )
-	ROM_LOAD( "633e02.17a",   0x10000, 0x10000, CRC(b2f7bd9a) SHA1(6c29568419bc49f0be3995b0c34edd9038f6f8d9) )
+	ROM_CONTINUE(             0x08000, 0x08000 )
+	ROM_LOAD( "633i02.17a",   0x10000, 0x10000, CRC(b2f7bd9a) SHA1(6c29568419bc49f0be3995b0c34edd9038f6f8d9) )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for SOUND code */
 	ROM_LOAD( "633e01.12a",   0x08000, 0x08000, CRC(d1549255) SHA1(d700c7de36746ba247e3a5d0410b7aa036aa4073) )
@@ -327,20 +331,34 @@ ROM_END
 
 ROM_START( contrab )
 	ROM_REGION( 0x28000, REGION_CPU1, 0 )	/* 64k for code + 96k for banked ROMs */
-	ROM_LOAD( "contra.20",    0x20000, 0x08000, CRC(d045e1da) SHA1(ec781e98a6efb14861223250c6239b06ec98ed0b) )
+	ROM_LOAD( "633m03.18a",   0x20000, 0x08000, CRC(d045e1da) SHA1(ec781e98a6efb14861223250c6239b06ec98ed0b) )
 	ROM_CONTINUE(             0x08000, 0x08000 )
-	ROM_LOAD( "633e02.17a",   0x10000, 0x10000, CRC(b2f7bd9a) SHA1(6c29568419bc49f0be3995b0c34edd9038f6f8d9) )
+	ROM_LOAD( "633i02.17a",   0x10000, 0x10000, CRC(b2f7bd9a) SHA1(6c29568419bc49f0be3995b0c34edd9038f6f8d9) )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )	/* 64k for SOUND code */
 	ROM_LOAD( "633e01.12a",   0x08000, 0x08000, CRC(d1549255) SHA1(d700c7de36746ba247e3a5d0410b7aa036aa4073) )
 
 	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD16_BYTE( "633e04.7d",    0x00000, 0x40000, CRC(14ddc542) SHA1(c7d8592672a6e50c2fe6b0670001c340022f16f9) )
-	ROM_LOAD16_BYTE( "633e05.7f",    0x00001, 0x40000, CRC(42185044) SHA1(a6e2598d766e6995c1a912e4a04987e6f4d547ff) )
+	/* bootleg versions use smaller gfx ROMs, but the data is the same */
+	ROM_LOAD( "g-7.rom",      0x00000, 0x10000, CRC(57f467d2) SHA1(e30be315980f421143d1357174af678362836285) )
+	ROM_LOAD( "g-10.rom",     0x10000, 0x10000, CRC(e6db9685) SHA1(4d5ccfe95b082fe9830e7a316f88fd6f02464900) )
+	ROM_LOAD( "g-9.rom",      0x20000, 0x10000, CRC(875c61de) SHA1(e8dc42fef810a9f5471d96cb5297eb29296ba472) )
+	ROM_LOAD( "g-8.rom",      0x30000, 0x10000, CRC(642765d6) SHA1(d1563a392b8d8409f0f2159c2e82cd34b9ca2900) )
+	ROM_LOAD( "g-15.rom",     0x40000, 0x10000, CRC(daa2324b) SHA1(8a5fb8b79957291dc952e19e6973c64bb7230816) )
+	ROM_LOAD( "g-16.rom",     0x50000, 0x10000, CRC(e27cc835) SHA1(cb980b1fed110c7e4ef21fa11f44e5aea100881b) )
+	ROM_LOAD( "g-17.rom",     0x60000, 0x10000, CRC(ce4330b9) SHA1(0a2bd31baa0bc5e3745ee5ddac995557a551d58c) )
+	ROM_LOAD( "g-18.rom",     0x70000, 0x10000, CRC(1571ce42) SHA1(04082ed78b5e7f20b99d6edfb6c363574abd6158) )
 
 	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD16_BYTE( "633e06.16d",   0x00000, 0x40000, CRC(9cf6faae) SHA1(9ab79c06cb541ce6fdac322886b8a14a2f3f5cf7) )
-	ROM_LOAD16_BYTE( "633e07.16f",   0x00001, 0x40000, CRC(f2d06638) SHA1(0fa0fbfc53ab5c31b9de22f90153d9af37ff22ce) )
+	/* bootleg versions use smaller gfx ROMs, but the data is the same */
+	ROM_LOAD( "g-4.rom",      0x00000, 0x10000, CRC(2cc7e52c) SHA1(7598a63346bf06dd34fd643fdff53fc3de6768a6) )
+	ROM_LOAD( "g-5.rom",      0x10000, 0x10000, CRC(e01a5b9c) SHA1(58c99cf99f209c584da757320a2f107244056d4c) )
+	ROM_LOAD( "g-6.rom",      0x20000, 0x10000, CRC(aeea6744) SHA1(220b42f707db99967bdcbd9ac66fcc83675a72aa) )
+	ROM_LOAD( "g-14.rom",     0x30000, 0x10000, CRC(765afdc7) SHA1(b7f6871cb154ee7e42e683bce08b73b00e61b0bc) )
+	ROM_LOAD( "g-11.rom",     0x40000, 0x10000, CRC(bd9ba92c) SHA1(e7f65ed20cd7754cc476e8fab7e56105cedcdb98) )
+	ROM_LOAD( "g-12.rom",     0x50000, 0x10000, CRC(d0be7ec2) SHA1(5aa829b8ffbe3f5f92ba672b1c24bfb7836ba1a3) )
+	ROM_LOAD( "g-13.rom",     0x60000, 0x10000, CRC(2b513d12) SHA1(152ebd849751cc2e95513134ce773a6b2eeb320e) )
+	/* This last section, 0x70000-0x7ffff is empty */
 
 	ROM_REGION( 0x0500, REGION_PROMS, 0 )
 	ROM_LOAD( "633e08.10g",   0x0000, 0x0100, CRC(9f0949fa) SHA1(7c8fefdcae4523d008a7d39062194c7a80aa3500) )	/* 007121 #0 sprite lookup table */
@@ -384,12 +402,27 @@ ROM_START( contrajb )
 	ROM_LOAD( "633e01.12a",   0x08000, 0x08000, CRC(d1549255) SHA1(d700c7de36746ba247e3a5d0410b7aa036aa4073) )
 
 	ROM_REGION( 0x80000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD16_BYTE( "633e04.7d",    0x00000, 0x40000, CRC(14ddc542) SHA1(c7d8592672a6e50c2fe6b0670001c340022f16f9) )
-	ROM_LOAD16_BYTE( "633e05.7f",    0x00001, 0x40000, CRC(42185044) SHA1(a6e2598d766e6995c1a912e4a04987e6f4d547ff) )
+	/* bootleg versions use smaller gfx ROMs, but the data is the same */
+	ROM_LOAD( "g-7.rom",      0x00000, 0x10000, CRC(57f467d2) SHA1(e30be315980f421143d1357174af678362836285) )
+	ROM_LOAD( "g-10.rom",     0x10000, 0x10000, CRC(e6db9685) SHA1(4d5ccfe95b082fe9830e7a316f88fd6f02464900) )
+	ROM_LOAD( "g-9.rom",      0x20000, 0x10000, CRC(875c61de) SHA1(e8dc42fef810a9f5471d96cb5297eb29296ba472) )
+	ROM_LOAD( "g-8.rom",      0x30000, 0x10000, CRC(642765d6) SHA1(d1563a392b8d8409f0f2159c2e82cd34b9ca2900) )
+	ROM_LOAD( "g-15.rom",     0x40000, 0x10000, CRC(daa2324b) SHA1(8a5fb8b79957291dc952e19e6973c64bb7230816) )
+	ROM_LOAD( "g-16.rom",     0x50000, 0x10000, CRC(e27cc835) SHA1(cb980b1fed110c7e4ef21fa11f44e5aea100881b) )
+	ROM_LOAD( "g-17.rom",     0x60000, 0x10000, CRC(ce4330b9) SHA1(0a2bd31baa0bc5e3745ee5ddac995557a551d58c) )
+	ROM_LOAD( "g-18.rom",     0x70000, 0x10000, CRC(1571ce42) SHA1(04082ed78b5e7f20b99d6edfb6c363574abd6158) )
 
 	ROM_REGION( 0x80000, REGION_GFX2, ROMREGION_DISPOSE )
-	ROM_LOAD16_BYTE( "633e06.16d",   0x00000, 0x40000, CRC(9cf6faae) SHA1(9ab79c06cb541ce6fdac322886b8a14a2f3f5cf7) )
-	ROM_LOAD16_BYTE( "633e07.16f",   0x00001, 0x40000, CRC(f2d06638) SHA1(0fa0fbfc53ab5c31b9de22f90153d9af37ff22ce) )
+	/* bootleg versions use smaller gfx ROMs, but the data is the same */
+	ROM_LOAD( "g-4.rom",      0x00000, 0x10000, CRC(2cc7e52c) SHA1(7598a63346bf06dd34fd643fdff53fc3de6768a6) )
+	ROM_LOAD( "g-5.rom",      0x10000, 0x10000, CRC(e01a5b9c) SHA1(58c99cf99f209c584da757320a2f107244056d4c) )
+	ROM_LOAD( "g-6.rom",      0x20000, 0x10000, CRC(aeea6744) SHA1(220b42f707db99967bdcbd9ac66fcc83675a72aa) )
+	ROM_LOAD( "g-14.rom",     0x30000, 0x10000, CRC(765afdc7) SHA1(b7f6871cb154ee7e42e683bce08b73b00e61b0bc) )
+	ROM_LOAD( "g-11.rom",     0x40000, 0x10000, CRC(bd9ba92c) SHA1(e7f65ed20cd7754cc476e8fab7e56105cedcdb98) )
+	ROM_LOAD( "g-12.rom",     0x50000, 0x10000, CRC(d0be7ec2) SHA1(5aa829b8ffbe3f5f92ba672b1c24bfb7836ba1a3) )
+	ROM_LOAD( "g-13.rom",     0x60000, 0x10000, CRC(2b513d12) SHA1(152ebd849751cc2e95513134ce773a6b2eeb320e) )
+	/* This last section, 0x70000-0x7ffff is empty */
+
 
 	ROM_REGION( 0x0400, REGION_PROMS, 0 )
 	ROM_LOAD( "633e08.10g",   0x0000, 0x0100, CRC(9f0949fa) SHA1(7c8fefdcae4523d008a7d39062194c7a80aa3500) )	/* 007121 #0 sprite lookup table */
@@ -448,8 +481,9 @@ ROM_END
 
 
 
-GAME( 1987, contra,   0,      contra, contra, 0, ROT90, "Konami", "Contra (US)", 0 )
-GAME( 1987, contrab,  contra, contra, contra, 0, ROT90, "bootleg", "Contra (US bootleg)", 0 )
+GAME( 1987, contra,   0,      contra, contra, 0, ROT90, "Konami", "Contra (US, Set 1)", 0 )
+GAME( 1987, contra1,  contra, contra, contra, 0, ROT90, "Konami", "Contra (US, Set 2)", 0 )
+GAME( 1987, contrab,  contra, contra, contra, 0, ROT90, "bootleg", "Contra (bootleg)", 0 )
 GAME( 1987, contraj,  contra, contra, contra, 0, ROT90, "Konami", "Contra (Japan)", 0 )
 GAME( 1987, contrajb, contra, contra, contra, 0, ROT90, "bootleg", "Contra (Japan bootleg)", 0 )
 GAME( 1987, gryzor,   contra, contra, contra, 0, ROT90, "Konami", "Gryzor (Set 1)", 0 )

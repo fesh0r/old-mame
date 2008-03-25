@@ -175,7 +175,7 @@ static VIDEO_START( looping )
 {
 	looping_state *state = machine->driver_data;
 
-	state->bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 32,32);
+	state->bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows, 8,8, 32,32);
 
 	tilemap_set_scroll_cols(state->bg_tilemap, 0x20);
 }
@@ -192,7 +192,7 @@ static WRITE8_HANDLER( flip_screen_x_w )
 {
 	looping_state *state = Machine->driver_data;
 	flip_screen_x_set(~data & 0x01);
-	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen ? 128 : 0);
+	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get() ? 128 : 0);
 }
 
 
@@ -200,7 +200,7 @@ static WRITE8_HANDLER( flip_screen_y_w )
 {
 	looping_state *state = Machine->driver_data;
 	flip_screen_y_set(~data & 0x01);
-	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen ? 128 : 0);
+	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get() ? 128 : 0);
 }
 
 
@@ -241,7 +241,7 @@ static WRITE8_HANDLER( looping_colorram_w )
  *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const UINT8 *source;
 	looping_state *state = machine->driver_data;
@@ -255,13 +255,13 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int code  = source[1] & 0x3f;
 		int color = source[2];
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 240 - sx;
 			flipx = !flipx;
 		}
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -274,10 +274,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 static VIDEO_UPDATE( looping )
 {
-	looping_state *state = machine->driver_data;
+	looping_state *state = screen->machine->driver_data;
 	tilemap_draw(bitmap, cliprect, state->bg_tilemap, 0, 0);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -312,21 +312,21 @@ static INTERRUPT_GEN( looping_interrupt )
 static WRITE8_HANDLER( level2_irq_set )
 {
 	if (!(data & 1))
-		cpunum_set_input_line_and_vector(Machine, 0, 0, ASSERT_LINE, 4);
+		cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, 4);
 }
 
 
 static WRITE8_HANDLER( main_irq_ack_w )
 {
 	if (data == 0)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
 static WRITE8_HANDLER( looping_souint_clr )
 {
 	if (data == 0)
-		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 
@@ -338,8 +338,8 @@ static void looping_spcint(int state)
 
 static WRITE8_HANDLER( looping_soundlatch_w )
 {
-	soundlatch_w(offset, data);
-	cpunum_set_input_line_and_vector(Machine, 1, 0, ASSERT_LINE, 4);
+	soundlatch_w(machine, offset, data);
+	cpunum_set_input_line_and_vector(machine, 1, 0, ASSERT_LINE, 4);
 }
 
 
@@ -461,9 +461,9 @@ static READ8_HANDLER( protection_r )
 static ADDRESS_MAP_START( looping_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 
-	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(MRA8_RAM, looping_videoram_w) AM_BASE_MEMBER(looping_state, videoram)
+	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(SMH_RAM, looping_videoram_w) AM_BASE_MEMBER(looping_state, videoram)
 
-	AM_RANGE(0x9800, 0x983f) AM_MIRROR(0x0700) AM_READWRITE(MRA8_RAM, looping_colorram_w) AM_BASE_MEMBER(looping_state, colorram)
+	AM_RANGE(0x9800, 0x983f) AM_MIRROR(0x0700) AM_READWRITE(SMH_RAM, looping_colorram_w) AM_BASE_MEMBER(looping_state, colorram)
 	AM_RANGE(0x9840, 0x987f) AM_MIRROR(0x0700) AM_RAM AM_BASE_MEMBER(looping_state, spriteram)
 	AM_RANGE(0x9880, 0x98ff) AM_MIRROR(0x0700) AM_RAM
 
@@ -494,14 +494,14 @@ ADDRESS_MAP_END
 
 /* complete memory map derived from schematics */
 static ADDRESS_MAP_START( looping_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x37ff) AM_ROM
 	AM_RANGE(0x3800, 0x3bff) AM_RAM
 	AM_RANGE(0x3c00, 0x3c00) AM_MIRROR(0x00f4) AM_READWRITE(AY8910_read_port_0_r, AY8910_control_port_0_w)
-	AM_RANGE(0x3c02, 0x3c02) AM_MIRROR(0x00f4) AM_READWRITE(MRA8_NOP, AY8910_write_port_0_w)
+	AM_RANGE(0x3c02, 0x3c02) AM_MIRROR(0x00f4) AM_READWRITE(SMH_NOP, AY8910_write_port_0_w)
 	AM_RANGE(0x3c03, 0x3c03) AM_MIRROR(0x00f6) AM_NOP
-	AM_RANGE(0x3e00, 0x3e00) AM_MIRROR(0x00f4) AM_READWRITE(MRA8_NOP, tms5220_data_w)
-	AM_RANGE(0x3e02, 0x3e02) AM_MIRROR(0x00f4) AM_READWRITE(tms5220_status_r, MWA8_NOP)
+	AM_RANGE(0x3e00, 0x3e00) AM_MIRROR(0x00f4) AM_READWRITE(SMH_NOP, tms5220_data_w)
+	AM_RANGE(0x3e02, 0x3e02) AM_MIRROR(0x00f4) AM_READWRITE(tms5220_status_r, SMH_NOP)
 	AM_RANGE(0x3e03, 0x3e03) AM_MIRROR(0x00f6) AM_NOP
 ADDRESS_MAP_END
 
@@ -581,7 +581,7 @@ static MACHINE_DRIVER_START( looping )
 	MDRV_CPU_ADD(TMS9995, MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(looping_map,0)
 	MDRV_CPU_IO_MAP(looping_io_map,0)
-	MDRV_CPU_VBLANK_INT(looping_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", looping_interrupt)
 
 	MDRV_CPU_ADD(TMS9980, SOUND_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(looping_sound_map,0)
@@ -594,9 +594,10 @@ static MACHINE_DRIVER_START( looping )
 	MDRV_MACHINE_START(looping)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
+
 	MDRV_GFXDECODE(looping)
 	MDRV_PALETTE_LENGTH(32)
 

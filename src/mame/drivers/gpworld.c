@@ -59,7 +59,7 @@ static laserdisc_info *discinfo;
 
 
 /* VIDEO GOODS */
-static void gpworld_draw_tiles(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void gpworld_draw_tiles(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	UINT8 characterX, characterY;
 
@@ -76,9 +76,9 @@ static void gpworld_draw_tiles(running_machine *machine, mame_bitmap *bitmap,con
 	}
 }
 
-INLINE void draw_pixel(mame_bitmap *bitmap,const rectangle *cliprect,int x,int y,int color)
+INLINE void draw_pixel(bitmap_t *bitmap,const rectangle *cliprect,int x,int y,int color)
 {
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		x = bitmap->width - x - 1;
 		y = bitmap->height - y - 1;
@@ -93,7 +93,7 @@ INLINE void draw_pixel(mame_bitmap *bitmap,const rectangle *cliprect,int x,int y
 	*BITMAP_ADDR32(bitmap, y, x) = color;
 }
 
-static void gpworld_draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect)
+static void gpworld_draw_sprites(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const int SPR_Y_TOP     = 0;
 	const int SPR_Y_BOTTOM  = 1;
@@ -206,7 +206,7 @@ static VIDEO_UPDATE( gpworld )
 {
 	fillbitmap(bitmap, 0, cliprect);
 
-	gpworld_draw_tiles(machine, bitmap, cliprect);
+	gpworld_draw_tiles(screen->machine, bitmap, cliprect);
 	gpworld_draw_sprites(bitmap, cliprect);
 
 	/* display disc information */
@@ -279,7 +279,7 @@ ADDRESS_MAP_END
 
 /* I/O MAP */
 static ADDRESS_MAP_START( mainport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01,0x01) AM_WRITE(misc_io_write)
 	AM_RANGE(0x80,0x80) AM_READ_PORT("IN0")
 	AM_RANGE(0x81,0x81) AM_READ_PORT("IN1")
@@ -434,16 +434,16 @@ static MACHINE_DRIVER_START( gpworld )
 	MDRV_CPU_ADD(Z80, GUESSED_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 	MDRV_CPU_IO_MAP(mainport,0)
-	MDRV_CPU_VBLANK_INT(vblank_callback_gpworld, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_callback_gpworld)
 
 	MDRV_MACHINE_START(gpworld)
 
 /*  video */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
 

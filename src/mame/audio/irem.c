@@ -38,9 +38,9 @@ static SOUND_START( irem_audio )
 WRITE8_HANDLER( irem_sound_cmd_w )
 {
 	if ((data & 0x80) == 0)
-		soundlatch_w(0, data & 0x7f);
+		soundlatch_w(machine, 0, data & 0x7f);
 	else
-		cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
 }
 
 
@@ -59,6 +59,7 @@ static WRITE8_HANDLER( m6803_port1_w )
 
 static WRITE8_HANDLER( m6803_port2_w )
 {
+
 	/* write latch */
 	if ((port2 & 0x01) && !(data & 0x01))
 	{
@@ -67,17 +68,17 @@ static WRITE8_HANDLER( m6803_port2_w )
 		{
 			/* PSG 0 or 1? */
 			if (port2 & 0x08)
-				AY8910_control_port_0_w(0,port1);
+				AY8910_control_port_0_w(machine, 0, port1);
 			if (port2 & 0x10)
-				AY8910_control_port_1_w(0,port1);
+				AY8910_control_port_1_w(machine, 0, port1);
 		}
 		else
 		{
 			/* PSG 0 or 1? */
 			if (port2 & 0x08)
-				AY8910_write_port_0_w(0,port1);
+				AY8910_write_port_0_w(machine, 0, port1);
 			if (port2 & 0x10)
-				AY8910_write_port_1_w(0,port1);
+				AY8910_write_port_1_w(machine, 0, port1);
 		}
 	}
 	port2 = data;
@@ -95,9 +96,9 @@ static READ8_HANDLER( m6803_port1_r )
 {
 	/* PSG 0 or 1? */
 	if (port2 & 0x08)
-		return AY8910_read_port_0_r(0);
+		return AY8910_read_port_0_r(machine, 0);
 	if (port2 & 0x10)
-		return AY8910_read_port_1_r(0);
+		return AY8910_read_port_1_r(machine, 0);
 	return 0xff;
 }
 
@@ -226,7 +227,7 @@ static const struct MSM5205interface irem_msm5205_interface_2 =
 /* complete address map verified from Moon Patrol/10 Yard Fight schematics */
 /* large map uses 8k ROMs, small map uses 4k ROMs; this is selected via a jumper */
 static ADDRESS_MAP_START( m52_small_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x0fff) AM_WRITE(m52_adpcm_w)
 	AM_RANGE(0x1000, 0x1fff) AM_WRITE(sound_irq_ack_w)
 	AM_RANGE(0x2000, 0x7fff) AM_ROM
@@ -260,7 +261,7 @@ ADDRESS_MAP_END
  *
  *************************************/
 
-MACHINE_DRIVER_START( irem_audio_base )
+static MACHINE_DRIVER_START( irem_audio_base )
 
 	MDRV_SOUND_START(irem_audio)
 
@@ -273,19 +274,19 @@ MACHINE_DRIVER_START( irem_audio_base )
 
 	MDRV_SOUND_ADD(AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_ay8910_interface_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
 	MDRV_SOUND_ADD(AY8910, XTAL_3_579545MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_ay8910_interface_2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.15)
 
 	MDRV_SOUND_ADD(MSM5205, XTAL_384kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_msm5205_interface_1)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MDRV_SOUND_ADD(MSM5205, XTAL_384kHz) /* verified on pcb */
 	MDRV_SOUND_CONFIG(irem_msm5205_interface_2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
 

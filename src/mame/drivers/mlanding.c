@@ -13,7 +13,7 @@
 static UINT16 * ml_tileram;
 static UINT16 * ml_spriteram;
 static UINT16 * ml_unk;
-static mame_bitmap *ml_bitmap[8];
+static bitmap_t *ml_bitmap[8];
 #define ML_CHARS 0x2000
 static UINT8 dirtychar[ML_CHARS];
 static int status_bit;
@@ -135,7 +135,7 @@ static ADDRESS_MAP_START( mlanding_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x1d0000, 0x1d0001) AM_WRITENOP
 	AM_RANGE(0x1d0002, 0x1d0003) AM_NOP //sound reset ??
 
-	AM_RANGE(0x2d0000, 0x2d0001) AM_READ(MRA16_NOP) AM_WRITE(taitosound_port16_lsb_w)
+	AM_RANGE(0x2d0000, 0x2d0001) AM_READ(SMH_NOP) AM_WRITE(taitosound_port16_lsb_w)
 	AM_RANGE(0x2d0002, 0x2d0003) AM_READ(taitosound_comm16_msb_r) AM_WRITE(taitosound_comm16_lsb_w)
 
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM AM_BASE(&ml_unk)//AM_SHARE(2)
@@ -169,11 +169,11 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mlanding_z80_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x9001, 0x9001) AM_READ(YM2151_status_port_0_r) AM_WRITE(YM2151_data_port_0_w)
-	AM_RANGE(0x9002, 0x9100) AM_READ(MRA8_RAM)
+	AM_RANGE(0x9002, 0x9100) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(taitosound_slave_port_w)
 	AM_RANGE(0xa001, 0xa001) AM_READ(taitosound_slave_comm_r) AM_WRITE(taitosound_slave_comm_w)
 
@@ -205,14 +205,14 @@ static VIDEO_START(mlanding)
 	}
 
 	for	(i=0;i<8;i++)
-		ml_bitmap[i] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+		ml_bitmap[i] = video_screen_auto_bitmap_alloc(machine->primary_screen);
 }
 
 static VIDEO_UPDATE(mlanding)
 {
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
-	updateChars(machine);
+	updateChars(screen->machine);
 
 	{
 		int i,dx,dy,j,k,num;
@@ -245,7 +245,7 @@ static VIDEO_UPDATE(mlanding)
 				//test
 					if(code)
 					{
-						drawgfx(ml_bitmap[num],machine->gfx[0],
+						drawgfx(ml_bitmap[num],screen->machine->gfx[0],
 							code++,
 							0,
 							0,0,
@@ -363,26 +363,27 @@ static MACHINE_DRIVER_START( mlanding )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000 )		/* 12 MHz ??? (guess) */
 	MDRV_CPU_PROGRAM_MAP(mlanding_mem, 0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000 )		/* 4 MHz ??? (guess) */
 	MDRV_CPU_PROGRAM_MAP(mlanding_z80_mem,0)
 
 	MDRV_CPU_ADD(M68000, 12000000 )		/* 12 MHz ??? (guess) */
 	MDRV_CPU_PROGRAM_MAP(mlanding_sub_mem,0)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,7)
+	MDRV_CPU_VBLANK_INT_HACK(irq6_line_hold,7)
 
 	MDRV_CPU_ADD(Z80, 4000000 )		/* 4 MHz ??? (guess) */
 	MDRV_CPU_PROGRAM_MAP(mlanding_z80_sub_mem,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(512, 512)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 14*8, 511)
+
 	MDRV_GFXDECODE(mlanding)
 	MDRV_PALETTE_LENGTH(512*16)
 

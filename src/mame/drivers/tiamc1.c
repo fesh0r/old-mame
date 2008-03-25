@@ -160,7 +160,7 @@ static MACHINE_RESET( tiamc1 )
 	tiamc1_spriteram_n = video_ram + 0x3020;
 	tiamc1_spriteram_a = video_ram + 0x3030;
 
-	tiamc1_bankswitch_w(0, 0);
+	tiamc1_bankswitch_w(machine, 0, 0);
 
 	state_save_register_global_pointer(video_ram, 0x3040);
 }
@@ -173,18 +173,18 @@ static WRITE8_HANDLER( tiamc1_control_w )
 
 
 static ADDRESS_MAP_START( tiamc1_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xdfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xdfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tiamc1_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(tiamc1_videoram_w)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( tiamc1_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x4f) AM_WRITE(tiamc1_sprite_y_w) /* sprites Y */
 	AM_RANGE(0x50, 0x5f) AM_WRITE(tiamc1_sprite_x_w) /* sprites X */
 	AM_RANGE(0x60, 0x6f) AM_WRITE(tiamc1_sprite_n_w) /* sprites # */
@@ -202,7 +202,7 @@ static ADDRESS_MAP_START( tiamc1_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tiamc1_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xd0, 0xd0) AM_READ(input_port_0_r)
 	AM_RANGE(0xd1, 0xd1) AM_READ(input_port_1_r)
 	AM_RANGE(0xd2, 0xd2) AM_READ(input_port_2_r)
@@ -279,17 +279,18 @@ static MACHINE_DRIVER_START( tiamc1 )
 	MDRV_CPU_PROGRAM_MAP(tiamc1_readmem,tiamc1_writemem)
 	MDRV_CPU_IO_MAP(tiamc1_readport,tiamc1_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1600))
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_MACHINE_RESET(tiamc1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1600))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
+
 	MDRV_GFXDECODE(tiamc1)
 	MDRV_PALETTE_LENGTH(16)
 

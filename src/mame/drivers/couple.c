@@ -36,7 +36,7 @@ Provided to you by Thierry (ShinobiZ) & Gerald (COY)
 #include "driver.h"
 #include "machine/8255ppi.h"
 #include "sound/ay8910.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 
 static tilemap *bg_tilemap;
 static UINT8 *vram_lo,*vram_hi;
@@ -65,7 +65,7 @@ static TILE_GET_INFO( get_tile_info )
 
 static VIDEO_START( couple )
 {
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,64,32);
 }
 
 static VIDEO_UPDATE( couple )
@@ -146,15 +146,15 @@ static ADDRESS_MAP_START( merit_mem, ADDRESS_SPACE_PROGRAM, 8 )
 //  AM_RANGE( 0xc000, 0xc00f ) AM_READ(dummy_inputs_r)
 //  AM_RANGE( 0xc008, 0xc008 ) AM_READ(input_port_0_r)
 //  AM_RANGE( 0xc00a, 0xc00a ) AM_READ(input_port_1_r)
-  	AM_RANGE( 0xe000, 0xe000 ) AM_WRITE(crtc6845_address_w)
-  	AM_RANGE( 0xe001, 0xe001 ) AM_WRITE(crtc6845_register_w)
-	AM_RANGE( 0xe800, 0xefff ) AM_READWRITE(MRA8_RAM, couple_vram_hi_w) AM_BASE(&vram_hi)
-	AM_RANGE( 0xf000, 0xf7ff ) AM_READWRITE(MRA8_RAM, couple_vram_lo_w) AM_BASE(&vram_lo)
+  	AM_RANGE( 0xe000, 0xe000 ) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+  	AM_RANGE( 0xe001, 0xe001 ) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE( 0xe800, 0xefff ) AM_READWRITE(SMH_RAM, couple_vram_hi_w) AM_BASE(&vram_hi)
+	AM_RANGE( 0xf000, 0xf7ff ) AM_READWRITE(SMH_RAM, couple_vram_lo_w) AM_BASE(&vram_lo)
 	AM_RANGE( 0xf800, 0xfbff ) AM_RAM /*extra VRAM?*/
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( merit_io, ADDRESS_SPACE_IO, 8 )
-//  ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+//  ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xc00c, 0xc00c) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xc10c, 0xc10c) AM_WRITE(AY8910_write_port_0_w)
 ADDRESS_MAP_END
@@ -433,23 +433,26 @@ static MACHINE_DRIVER_START( couple )
 	MDRV_CPU_ADD(Z80,18432000/6)		 /* ?? */
 	MDRV_CPU_PROGRAM_MAP(merit_mem,0)
 	MDRV_CPU_IO_MAP(merit_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(couple)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(couple)
 	MDRV_PALETTE_LENGTH(0x100)
 	MDRV_PALETTE_INIT(couple)
 
 	MDRV_VIDEO_START(couple)
 	MDRV_VIDEO_UPDATE(couple)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 

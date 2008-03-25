@@ -69,13 +69,12 @@ AH
 
 #define SET_VISIBLE_AREA(_x_,_y_) \
 	{ \
-	screen_state *state = &machine->screen[0]; \
-	rectangle visarea = state->visarea; \
+	rectangle visarea = *video_screen_get_visible_area(machine->primary_screen); \
 	visarea.min_x = 0; \
 	visarea.max_x = _x_-1; \
 	visarea.min_y = 0; \
 	visarea.max_y = _y_-1; \
-	video_screen_configure(0, _x_, _y_, &visarea, state->refresh ); \
+	video_screen_configure(machine->primary_screen, _x_, _y_, &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds ); \
 	} \
 
 
@@ -89,7 +88,7 @@ static UINT8 hv_blank;
 #define RES_320x200 0
 #define RES_640x200 1
 
-static void cga_alphanumeric_tilemap(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,UINT16 size,UINT32 map_offs);
+static void cga_alphanumeric_tilemap(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,UINT16 size,UINT32 map_offs);
 
 static VIDEO_START( filetto )
 {
@@ -109,7 +108,7 @@ static READ8_HANDLER( vga_hvretrace_r )
 
 
 /*Basic Graphic mode */
-static void cga_graphic_bitmap(running_machine *machine,mame_bitmap *bitmap,const rectangle *cliprect,UINT16 size,UINT32 map_offs)
+static void cga_graphic_bitmap(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect,UINT16 size,UINT32 map_offs)
 {
 	static UINT16 x,y,pen = 0;
 	static UINT32 offs;
@@ -197,7 +196,7 @@ static void cga_graphic_bitmap(running_machine *machine,mame_bitmap *bitmap,cons
 
 
 
-static void cga_alphanumeric_tilemap(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,UINT16 size,UINT32 map_offs)
+static void cga_alphanumeric_tilemap(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,UINT16 size,UINT32 map_offs)
 {
 	static UINT32 offs,x,y,max_x,max_y;
 
@@ -245,21 +244,21 @@ static VIDEO_UPDATE( filetto )
             xxxx xx1x  Select graphics
             xxxx xxx1  80x25 text
             */
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 	if(vga_mode[0] & 8)
 	{
 		if(vga_mode[0] & 2)
-			cga_graphic_bitmap(machine,bitmap,cliprect,0,0x18000);
+			cga_graphic_bitmap(screen->machine,bitmap,cliprect,0,0x18000);
 		else
 		{
 			switch(vga_mode[0] & 1)
 			{
 				case 0x00:
-					cga_alphanumeric_tilemap(machine,bitmap,cliprect,RES_320x200,0x18000);
+					cga_alphanumeric_tilemap(screen->machine,bitmap,cliprect,RES_320x200,0x18000);
 					break;
 				case 0x01:
-					cga_alphanumeric_tilemap(machine,bitmap,cliprect,RES_640x200,0x18000);
+					cga_alphanumeric_tilemap(screen->machine,bitmap,cliprect,RES_640x200,0x18000);
 					break;
 			}
 		}
@@ -538,8 +537,8 @@ static ADDRESS_MAP_START( filetto_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00400, 0x007ff) AM_RAM AM_BASE(&work_ram)
 	AM_RANGE(0x00800, 0x9ffff) AM_RAM //work RAM 640KB
 //  AM_RANGE(0xa0000, 0xb7fff) AM_RAM //VGA RAM
-	AM_RANGE(0xa0000, 0xbffff) AM_READWRITE(MRA8_RAM,vga_vram_w) AM_BASE(&vga_vram)//VGA RAM
-	AM_RANGE(0xc0000, 0xcffff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0xa0000, 0xbffff) AM_READWRITE(SMH_RAM,vga_vram_w) AM_BASE(&vga_vram)//VGA RAM
+	AM_RANGE(0xc0000, 0xcffff) AM_READ(SMH_BANK1)
 
 	AM_RANGE(0xf0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
@@ -738,17 +737,17 @@ static MACHINE_DRIVER_START( filetto )
 	MDRV_CPU_ADD_TAG("main", I8088, 8000000)
 	MDRV_CPU_PROGRAM_MAP(filetto_map,0)
 	MDRV_CPU_IO_MAP(filetto_io,0)
-	MDRV_CPU_VBLANK_INT(filetto_irq,200)
+	MDRV_CPU_VBLANK_INT_HACK(filetto_irq,200)
 
 	MDRV_GFXDECODE(filetto)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 640-1, 0*8, 480-1)
+
 	MDRV_PALETTE_LENGTH(0x100)
 
 	MDRV_MACHINE_RESET(filetto)

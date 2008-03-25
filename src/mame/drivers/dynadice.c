@@ -60,14 +60,14 @@ static WRITE8_HANDLER( sound_control_w )
     D3 - /Reset
 
 */
-	if ((data &7)==7) AY8910_control_port_0_w(0,ay_data);
-	if ((data &7)==6) AY8910_write_port_0_w(0,ay_data);
+	if ((data &7)==7) AY8910_control_port_0_w(machine,0,ay_data);
+	if ((data &7)==6) AY8910_write_port_0_w(machine,0,ay_data);
 }
 
 
 static ADDRESS_MAP_START( dynadice_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x2000, 0x23ff) AM_READWRITE(MRA8_RAM, dynadice_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x2000, 0x23ff) AM_READWRITE(SMH_RAM, dynadice_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x4000, 0x40ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 ADDRESS_MAP_END
 
@@ -75,9 +75,9 @@ static ADDRESS_MAP_START( dynadice_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x50, 0x50) AM_READ(input_port_0_r)
 	AM_RANGE(0x51, 0x51) AM_READ(input_port_1_r)
 	AM_RANGE(0x52, 0x52) AM_READ(input_port_2_r)
-	AM_RANGE(0x62, 0x62) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x62, 0x62) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x63, 0x63) AM_WRITE(soundlatch_w)
-	AM_RANGE(0x70, 0x77) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x70, 0x77) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dynadice_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -86,7 +86,7 @@ static ADDRESS_MAP_START( dynadice_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dynadice_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch_r)
 	AM_RANGE(0x01, 0x01) AM_WRITE(soundlatch_clear_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(sound_data_w)
@@ -174,8 +174,8 @@ static TILE_GET_INFO( get_tile_info )
 static VIDEO_START( dynadice )
 {
 	/* pacman - style videoram layout */
-	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	top_tilemap = tilemap_create(get_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,2,32);
+	bg_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
+	top_tilemap = tilemap_create(get_tile_info,tilemap_scan_cols,8,8,2,32);
 	tilemap_set_scrollx(bg_tilemap, 0, -16 );
 }
 
@@ -205,13 +205,12 @@ static MACHINE_DRIVER_START( dynadice )
 	MDRV_CPU_PROGRAM_MAP(dynadice_sound_map,0)
 	MDRV_CPU_IO_MAP(dynadice_sound_io_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256+16, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 3*8, 28*8-1)

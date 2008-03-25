@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "video/taitoic.h"
 #include "includes/taito_f2.h"
 
@@ -370,11 +369,11 @@ WRITE16_HANDLER( koshien_spritebank_w )
 	spritebank_buffered[7] = spritebank_buffered[6] + 0x400;
 }
 
-static void taito_f2_tc360_spritemixdraw( mame_bitmap *dest_bmp,const gfx_element *gfx,
+static void taito_f2_tc360_spritemixdraw( bitmap_t *dest_bmp,const gfx_element *gfx,
 		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int scalex, int scaley)
 {
-	const pen_t *pal = &Machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
+	int pal_base = gfx->color_base + gfx->color_granularity * (color % gfx->total_colors);
 	UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
 
 	int sprite_screen_height = (scaley*gfx->height+0x8000)>>16;
@@ -480,15 +479,15 @@ static void taito_f2_tc360_spritemixdraw( mame_bitmap *dest_bmp,const gfx_elemen
 						// Blend mode 1 - Sprite under tilemap, use sprite palette with tilemap data
 						if ((f2_spriteblendmode&0xc0)==0xc0 && sprite_priority==(tilemap_priority-1))
 						{
-							dest[x]=(pal[c]&0xfff0)|(dest[x]&0xf);
+							dest[x]=((pal_base+c)&0xfff0)|(dest[x]&0xf);
 						}
 						// Blend mode 1 - Sprite over tilemap, use sprite data with tilemap palette
 						else if ((f2_spriteblendmode&0xc0)==0xc0 && sprite_priority==(tilemap_priority+1))
 						{
 							if (dest[x]&0xf)
-								dest[x]=(dest[x]&0xfff0)|(pal[c]&0xf);
+								dest[x]=(dest[x]&0xfff0)|((pal_base+c)&0xf);
 							else
-								dest[x]=pal[c];
+								dest[x]=pal_base+c;
 						}
 						// Blend mode 2 - Sprite under tilemap, use sprite data with tilemap palette
 						else if ((f2_spriteblendmode&0xc0)==0x80 && sprite_priority==(tilemap_priority-1))
@@ -498,13 +497,13 @@ static void taito_f2_tc360_spritemixdraw( mame_bitmap *dest_bmp,const gfx_elemen
 						// Blend mode 2 - Sprite over tilemap, alternate sprite palette, confirmed in Pulirula level 2
 						else if ((f2_spriteblendmode&0xc0)==0x80 && sprite_priority==(tilemap_priority+1))
 						{
-							dest[x]=(pal[c]&0xffef); // Pulirula level 2, Liquid Kids attract mode
+							dest[x]=((pal_base+c)&0xffef); // Pulirula level 2, Liquid Kids attract mode
 						}
 						// No blending
 						else
 						{
 							if (sprite_priority>tilemap_priority) // Ninja Kids confirms tilemap takes priority in equal value case
-								dest[x]=pal[c];
+								dest[x]=pal_base+c;
 						}
 						pri[x] |= 0x80;
 					}
@@ -518,7 +517,7 @@ static void taito_f2_tc360_spritemixdraw( mame_bitmap *dest_bmp,const gfx_elemen
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int *primasks,int uses_tc360_mixer)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int *primasks,int uses_tc360_mixer)
 {
 	/*
         Sprite format:
@@ -1052,8 +1051,8 @@ VIDEO_UPDATE( ssi )
 	/* SSI only uses sprites, the tilemap registers are not even initialized.
        (they are in Majestic 12, but the tilemaps are not used anyway) */
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);
-	draw_sprites(machine, bitmap,cliprect,NULL, 0);
+	fillbitmap(bitmap,0,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
 	return 0;
 }
 
@@ -1062,14 +1061,14 @@ VIDEO_UPDATE( yesnoj )
 {
 	taitof2_handle_sprite_buffering();
 
-	TC0100SCN_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* wrong color? */
-	draw_sprites(machine, bitmap,cliprect,NULL, 0);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0)^1,0,0);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,2,0,0);
+	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
+	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0)^1,0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,2,0,0);
 	return 0;
 }
 
@@ -1078,14 +1077,14 @@ VIDEO_UPDATE( taitof2 )
 {
 	taitof2_handle_sprite_buffering();
 
-	TC0100SCN_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* wrong color? */
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0)^1,0,0);
-	draw_sprites(machine, bitmap,cliprect,NULL, 0);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,2,0,0);
+	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0),0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,TC0100SCN_bottomlayer(0)^1,0,0);
+	draw_sprites(screen->machine, bitmap,cliprect,NULL, 0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,2,0,0);
 	return 0;
 }
 
@@ -1096,7 +1095,7 @@ VIDEO_UPDATE( taitof2_pri )
 
 	taitof2_handle_sprite_buffering();
 
-	TC0100SCN_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
 
 	layer[0] = TC0100SCN_bottomlayer(0);
 	layer[1] = layer[0]^1;
@@ -1113,19 +1112,19 @@ VIDEO_UPDATE( taitof2_pri )
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* wrong color? */
+	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
 
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[0],0,1);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[1],0,2);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[2],0,4);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0],0,1);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[1],0,2);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[2],0,4);
 
-	draw_sprites(machine, bitmap,cliprect,NULL,1);
+	draw_sprites(screen->machine, bitmap,cliprect,NULL,1);
 	return 0;
 }
 
 
 
-static void draw_roz_layer(mame_bitmap *bitmap,const rectangle *cliprect,UINT32 priority)
+static void draw_roz_layer(bitmap_t *bitmap,const rectangle *cliprect,UINT32 priority)
 {
 	if (has_TC0280GRD())
 		TC0280GRD_zoom_draw(bitmap,cliprect,f2_pivot_xdisp,f2_pivot_ydisp,priority);
@@ -1151,7 +1150,7 @@ VIDEO_UPDATE( taitof2_pri_roz )
 	if (has_TC0430GRW())
 		TC0430GRW_tilemap_update(roz_base_color);
 
-	TC0100SCN_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
 
 	rozpri = (TC0360PRI_regs[1] & 0xc0) >> 6;
 	rozpri = (TC0360PRI_regs[8 + rozpri/2] >> 4*(rozpri & 1)) & 0x0f;
@@ -1172,7 +1171,7 @@ VIDEO_UPDATE( taitof2_pri_roz )
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* wrong color? */
+	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
 
 	drawn=0;
 	for (i=0; i<16; i++)
@@ -1188,14 +1187,14 @@ VIDEO_UPDATE( taitof2_pri_roz )
 		{
 			if (tilepri[layer[j]]==i)
 			{
-				TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[j],0,1<<drawn);
+				TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[j],0,1<<drawn);
 				f2_tilepri[drawn]=i;
 				drawn++;
 			}
 		}
 	}
 
-	draw_sprites(machine, bitmap,cliprect,NULL,1);
+	draw_sprites(screen->machine, bitmap,cliprect,NULL,1);
 	return 0;
 }
 
@@ -1212,7 +1211,7 @@ VIDEO_UPDATE( thundfox )
 
 	taitof2_handle_sprite_buffering();
 
-	TC0100SCN_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
 
 	layer[0][0] = TC0100SCN_bottomlayer(0);
 	layer[0][1] = layer[0][0]^1;
@@ -1235,7 +1234,7 @@ VIDEO_UPDATE( thundfox )
 
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* wrong color? */
+	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
 
 
 	/*
@@ -1253,17 +1252,17 @@ VIDEO_UPDATE( thundfox )
 			pick = 0;
 		else pick = 1;
 
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,pick,layer[pick][drawn[pick]],0,1<<(drawn[pick]+2*pick));
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,pick,layer[pick][drawn[pick]],0,1<<(drawn[pick]+2*pick));
 		drawn[pick]++;
 	}
 	while (drawn[0] < 2)
 	{
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[0][drawn[0]],0,1<<drawn[0]);
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0][drawn[0]],0,1<<drawn[0]);
 		drawn[0]++;
 	}
 	while (drawn[1] < 2)
 	{
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,1,layer[1][drawn[1]],0,1<<(drawn[1]+2));
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,1,layer[1][drawn[1]],0,1<<(drawn[1]+2));
 		drawn[1]++;
 	}
 
@@ -1279,7 +1278,7 @@ VIDEO_UPDATE( thundfox )
 			if (spritepri[i] < tilepri[1][1]) primasks[i] |= 0xff00;
 		}
 
-		draw_sprites(machine, bitmap,cliprect,primasks,0);
+		draw_sprites(screen->machine, bitmap,cliprect,primasks,0);
 	}
 
 
@@ -1291,13 +1290,13 @@ VIDEO_UPDATE( thundfox )
 
 	if (tilepri[0][2] < tilepri[1][2])
 	{
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[0][2],0,0);
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,1,layer[1][2],0,0);
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0][2],0,0);
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,1,layer[1][2],0,0);
 	}
 	else
 	{
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,1,layer[1][2],0,0);
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,layer[0][2],0,0);
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,1,layer[1][2],0,0);
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,layer[0][2],0,0);
 	}
 	return 0;
 }
@@ -1339,7 +1338,7 @@ VIDEO_UPDATE( metalb )
 
 	taitof2_handle_sprite_buffering();
 
-	TC0480SCP_tilemap_update(machine);
+	TC0480SCP_tilemap_update(screen->machine);
 
 	priority = TC0480SCP_get_bg_priority();
 
@@ -1368,7 +1367,7 @@ VIDEO_UPDATE( metalb )
 	f2_spriteblendmode = TC0360PRI_regs[0]&0xc0;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
@@ -1376,7 +1375,7 @@ VIDEO_UPDATE( metalb )
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[3],0,8);
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,16);
 
-	draw_sprites(machine, bitmap,cliprect,NULL,1);
+	draw_sprites(screen->machine, bitmap,cliprect,NULL,1);
 	return 0;
 }
 
@@ -1391,7 +1390,7 @@ VIDEO_UPDATE( deadconx )
 
 	taitof2_handle_sprite_buffering();
 
-	TC0480SCP_tilemap_update(machine);
+	TC0480SCP_tilemap_update(screen->machine);
 
 	priority = TC0480SCP_get_bg_priority();
 
@@ -1415,7 +1414,7 @@ VIDEO_UPDATE( deadconx )
 	spritepri[3] = TC0360PRI_regs[7] >> 4;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
@@ -1434,7 +1433,7 @@ VIDEO_UPDATE( deadconx )
 			if (spritepri[i] < tilepri[(layer[3])]) primasks[i] |= 0xff00;
 		}
 
-		draw_sprites(machine, bitmap,cliprect,primasks,0);
+		draw_sprites(screen->machine, bitmap,cliprect,primasks,0);
 	}
 
 	/*

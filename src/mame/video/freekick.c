@@ -19,7 +19,7 @@ static TILE_GET_INFO( get_freek_tile_info )
 
 VIDEO_START(freekick)
 {
-	freek_tilemap = tilemap_create(get_freek_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	freek_tilemap = tilemap_create(get_freek_tile_info,tilemap_scan_rows, 8, 8,32,32);
 }
 
 
@@ -30,7 +30,7 @@ WRITE8_HANDLER( freek_videoram_w )
 	tilemap_mark_tile_dirty(freek_tilemap,offset&0x3ff);
 }
 
-static void gigas_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void gigas_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -44,12 +44,12 @@ static void gigas_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 		int flipy = 0;
 		int color = spriteram[offs + 1] & 0x1f;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			xpos = 240 - xpos;
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			ypos = 256 - ypos;
 			flipy = !flipy;
@@ -65,7 +65,7 @@ static void gigas_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 }
 
 
-static void pbillrd_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void pbillrd_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -79,12 +79,12 @@ static void pbillrd_draw_sprites(running_machine *machine, mame_bitmap *bitmap, 
 		int flipy = 0;//spriteram[offs + 0] & 0x40;
 		int color = spriteram[offs + 1] & 0x0f;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			xpos = 240 - xpos;
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			ypos = 256 - ypos;
 			flipy = !flipy;
@@ -101,7 +101,7 @@ static void pbillrd_draw_sprites(running_machine *machine, mame_bitmap *bitmap, 
 
 
 
-static void freekick_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void freekick_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -115,12 +115,12 @@ static void freekick_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 		int flipy = spriteram[offs + 2] & 0x40;
 		int color = spriteram[offs + 2] & 0x1f;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			xpos = 240 - xpos;
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			ypos = 256 - ypos;
 			flipy = !flipy;
@@ -138,20 +138,20 @@ static void freekick_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 VIDEO_UPDATE(gigas)
 {
 	tilemap_draw(bitmap,cliprect,freek_tilemap,0,0);
-	gigas_draw_sprites(machine,bitmap,cliprect);
+	gigas_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
 VIDEO_UPDATE(pbillrd)
 {
 	tilemap_draw(bitmap,cliprect,freek_tilemap,0,0);
-	pbillrd_draw_sprites(machine,bitmap,cliprect);
+	pbillrd_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
 VIDEO_UPDATE(freekick)
 {
 	tilemap_draw(bitmap,cliprect,freek_tilemap,0,0);
-	freekick_draw_sprites(machine,bitmap,cliprect);
+	freekick_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

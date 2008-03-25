@@ -69,9 +69,9 @@ static void gcpinbal_core_vh_start (void)
 	int xoffs = 0;
 	int yoffs = 0;
 
-	gcpinbal_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	gcpinbal_tilemap[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	gcpinbal_tilemap[2] = tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	gcpinbal_tilemap[0] = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,16,16,32,32);
+	gcpinbal_tilemap[1] = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,16,16,32,32);
+	gcpinbal_tilemap[2] = tilemap_create(get_fg_tile_info, tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen( gcpinbal_tilemap[0],0 );
 	tilemap_set_transparent_pen( gcpinbal_tilemap[1],0 );
@@ -193,7 +193,7 @@ WRITE16_HANDLER( gcpinbal_ctrl_word_w )
 
 ****************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int y_offs)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int y_offs)
 {
 	int offs,chain_pos;
 	int x,y,curx,cury;
@@ -318,7 +318,7 @@ VIDEO_UPDATE( gcpinbal )
 	}
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 	layer[0] = 0;
 	layer[1] = 1;
@@ -341,7 +341,7 @@ VIDEO_UPDATE( gcpinbal )
 	tilemap_draw(bitmap,cliprect,gcpinbal_tilemap[layer[2]],0,4);
 
 
-	draw_sprites(machine, bitmap,cliprect,16);
+	draw_sprites(screen->machine, bitmap,cliprect,16);
 
 #if 0
 	{

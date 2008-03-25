@@ -44,6 +44,8 @@ EMUOBJS = \
 	$(EMUOBJ)/cpuexec.o \
 	$(EMUOBJ)/cpuint.o \
 	$(EMUOBJ)/cpuintrf.o \
+	$(EMUOBJ)/crsshair.o \
+	$(EMUOBJ)/devintrf.o \
 	$(EMUOBJ)/drawgfx.o \
 	$(EMUOBJ)/driver.o \
 	$(EMUOBJ)/emuopts.o \
@@ -56,6 +58,7 @@ EMUOBJS = \
 	$(EMUOBJ)/inptport.o \
 	$(EMUOBJ)/mame.o \
 	$(EMUOBJ)/mamecore.o \
+	$(EMUOBJ)/mconfig.o \
 	$(EMUOBJ)/memory.o \
 	$(EMUOBJ)/output.o \
 	$(EMUOBJ)/render.o \
@@ -75,6 +78,7 @@ EMUOBJS = \
 	$(EMUOBJ)/uimenu.o \
 	$(EMUOBJ)/validity.o \
 	$(EMUOBJ)/video.o \
+	$(EMUOBJ)/watchdog.o
 
 ifdef PROFILER
 EMUOBJS += \
@@ -166,8 +170,8 @@ EMUMACHINEOBJS = \
 
 EMUVIDEOOBJS = \
  	$(EMUVIDEO)/cdp1869.o \
- 	$(EMUVIDEO)/crtc6845.o \
 	$(EMUVIDEO)/generic.o \
+ 	$(EMUVIDEO)/mc6845.o \
 	$(EMUVIDEO)/poly.o \
 	$(EMUVIDEO)/resnet.o \
 	$(EMUVIDEO)/s2636.o \

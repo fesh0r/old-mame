@@ -144,6 +144,7 @@ REF. 970429
 
 #include "driver.h"
 #include "deprecat.h"
+#include "memconv.h"
 #include "gaelco3d.h"
 #include "cpu/tms32031/tms32031.h"
 #include "cpu/adsp2100/adsp2100.h"
@@ -252,7 +253,7 @@ static WRITE16_HANDLER( irq_ack_w )
 {
 	cpunum_set_input_line(Machine, 0, 2, CLEAR_LINE);
 }
-static WRITE32_HANDLER( irq_ack_020_w ) { if ((mem_mask & 0xffff0000) != 0xffff0000) irq_ack_w(offset, data >> 16, mem_mask >> 16); }
+static WRITE32_HANDLER( irq_ack_020_w ) { if ((mem_mask & 0xffff0000) != 0xffff0000) irq_ack_w(machine, offset, data >> 16, mem_mask >> 16); }
 
 
 
@@ -270,7 +271,7 @@ static READ16_HANDLER( eeprom_data_r )
 	logerror("eeprom_data_r(%02X)\n", result);
 	return result;
 }
-static READ32_HANDLER( eeprom_data_020_r ) { return eeprom_data_r(offset, mem_mask) << 16; }
+static READ32_HANDLER( eeprom_data_020_r ) { return eeprom_data_r(machine, offset, mem_mask) << 16; }
 
 
 static WRITE16_HANDLER( eeprom_data_w )
@@ -278,7 +279,7 @@ static WRITE16_HANDLER( eeprom_data_w )
 	if (!(mem_mask & 0xff))
 		EEPROM_write_bit(data & 0x01);
 }
-static WRITE32_HANDLER( eeprom_data_020_w ) { if ((mem_mask & 0xffff) != 0xffff) eeprom_data_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( eeprom_data_020_w ) { if ((mem_mask & 0xffff) != 0xffff) eeprom_data_w(machine, offset, data, mem_mask); }
 
 
 static WRITE16_HANDLER( eeprom_clock_w )
@@ -286,7 +287,7 @@ static WRITE16_HANDLER( eeprom_clock_w )
 	if (!(mem_mask & 0xff))
 		EEPROM_set_clock_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
 }
-static WRITE32_HANDLER( eeprom_clock_020_w ) { if ((mem_mask & 0xffff) != 0xffff) eeprom_clock_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( eeprom_clock_020_w ) { if ((mem_mask & 0xffff) != 0xffff) eeprom_clock_w(machine, offset, data, mem_mask); }
 
 
 static WRITE16_HANDLER( eeprom_cs_w )
@@ -294,7 +295,7 @@ static WRITE16_HANDLER( eeprom_cs_w )
 	if (!(mem_mask & 0xff))
 		EEPROM_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 }
-static WRITE32_HANDLER( eeprom_cs_020_w ) { if ((mem_mask & 0xffff) != 0xffff) eeprom_cs_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( eeprom_cs_020_w ) { if ((mem_mask & 0xffff) != 0xffff) eeprom_cs_w(machine, offset, data, mem_mask); }
 
 
 
@@ -318,7 +319,7 @@ static WRITE16_HANDLER( sound_data_w )
 	if (!(mem_mask & 0xff))
 		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_w);
 }
-static WRITE32_HANDLER( sound_data_020_w ) { if ((mem_mask & 0xffff0000) != 0xffff0000) sound_data_w(offset, data >> 16, mem_mask >> 16); }
+static WRITE32_HANDLER( sound_data_020_w ) { if ((mem_mask & 0xffff0000) != 0xffff0000) sound_data_w(machine, offset, data >> 16, mem_mask >> 16); }
 
 
 static READ16_HANDLER( sound_data_r )
@@ -336,7 +337,7 @@ static READ16_HANDLER( sound_status_r )
 		return sound_status;
 	return 0xffff;
 }
-static READ32_HANDLER( sound_status_020_r ) { if ((mem_mask & 0x0000ffff) != 0x0000ffff) return sound_status_r(offset, mem_mask); return ~0; }
+static READ32_HANDLER( sound_status_020_r ) { if ((mem_mask & 0x0000ffff) != 0x0000ffff) return sound_status_r(machine, offset, mem_mask); return ~0; }
 
 
 static WRITE16_HANDLER( sound_status_w )
@@ -382,7 +383,7 @@ static WRITE16_HANDLER( analog_port_clock_w )
 	else
 		logerror("%06X:analog_port_clock_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, ~mem_mask);
 }
-static WRITE32_HANDLER( analog_port_clock_020_w ) { if ((mem_mask & 0xffff) != 0xffff) analog_port_clock_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( analog_port_clock_020_w ) { if ((mem_mask & 0xffff) != 0xffff) analog_port_clock_w(machine, offset, data, mem_mask); }
 
 
 static WRITE16_HANDLER( analog_port_latch_w )
@@ -401,7 +402,7 @@ static WRITE16_HANDLER( analog_port_latch_w )
 	else
 		logerror("%06X:analog_port_latch_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, ~mem_mask);
 }
-static WRITE32_HANDLER( analog_port_latch_020_w ) { if ((mem_mask & 0xffff) != 0xffff) analog_port_latch_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( analog_port_latch_020_w ) { if ((mem_mask & 0xffff) != 0xffff) analog_port_latch_w(machine, offset, data, mem_mask); }
 
 
 
@@ -445,7 +446,7 @@ static WRITE16_HANDLER( tms_reset_w )
 	logerror("%06X:tms_reset_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, ~mem_mask);
 		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data == 0xffff) ? CLEAR_LINE : ASSERT_LINE);
 }
-static WRITE32_HANDLER( tms_reset_020_w ) { if ((mem_mask & 0xffff) != 0xffff) tms_reset_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( tms_reset_020_w ) { if ((mem_mask & 0xffff) != 0xffff) tms_reset_w(machine, offset, data, mem_mask); }
 
 
 static WRITE16_HANDLER( tms_irq_w )
@@ -456,14 +457,14 @@ static WRITE16_HANDLER( tms_irq_w )
 	if (!(mem_mask & 0xff))
 		cpunum_set_input_line(Machine, 1, 0, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 }
-static WRITE32_HANDLER( tms_irq_020_w ) { if ((mem_mask & 0xffff) != 0xffff) tms_irq_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( tms_irq_020_w ) { if ((mem_mask & 0xffff) != 0xffff) tms_irq_w(machine, offset, data, mem_mask); }
 
 
 static WRITE16_HANDLER( tms_control3_w )
 {
 	logerror("%06X:tms_control3_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, ~mem_mask);
 }
-static WRITE32_HANDLER( tms_control3_020_w ) { if ((mem_mask & 0xffff) != 0xffff) tms_control3_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( tms_control3_020_w ) { if ((mem_mask & 0xffff) != 0xffff) tms_control3_w(machine, offset, data, mem_mask); }
 
 
 static WRITE16_HANDLER( tms_comm_w )
@@ -471,11 +472,7 @@ static WRITE16_HANDLER( tms_comm_w )
 	COMBINE_DATA(&tms_comm_base[offset ^ tms_offset_xor]);
 	logerror("%06X:tms_comm_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset*2, data, ~mem_mask);
 }
-static WRITE32_HANDLER( tms_comm_020_w )
-{
-	if ((mem_mask & 0xffff0000) != 0xffff0000) tms_comm_w(offset * 2 + 0, data >> 16, mem_mask >> 16);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff) tms_comm_w(offset * 2 + 1, data, mem_mask);
-}
+static WRITE32_HANDLER( tms_comm_020_w ) { write32be_with_16be_handler(tms_comm_w, machine, offset, data, mem_mask); }
 
 
 
@@ -528,7 +525,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			if ((data & 0x0800) == 0)
 			{
 				dmadac_enable(0, SOUND_CHANNELS, 0);
-				timer_adjust(adsp_autobuffer_timer, attotime_never, 0, attotime_never);
+				timer_adjust_oneshot(adsp_autobuffer_timer, attotime_never, 0);
 			}
 			break;
 
@@ -537,7 +534,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			if ((data & 0x0002) == 0)
 			{
 				dmadac_enable(0, SOUND_CHANNELS, 0);
-				timer_adjust(adsp_autobuffer_timer, attotime_never, 0, attotime_never);
+				timer_adjust_oneshot(adsp_autobuffer_timer, attotime_never, 0);
 			}
 			break;
 
@@ -644,7 +641,7 @@ static void adsp_tx_callback(int port, INT32 data)
 			/* fire off a timer wich will hit every half-buffer */
 			sample_period = attotime_div(attotime_mul(sample_period, adsp_size), SOUND_CHANNELS * adsp_incs);
 
-			timer_adjust(adsp_autobuffer_timer, sample_period, 0, sample_period);
+			timer_adjust_periodic(adsp_autobuffer_timer, sample_period, 0, sample_period);
 
 			return;
 		}
@@ -656,7 +653,7 @@ static void adsp_tx_callback(int port, INT32 data)
 	dmadac_enable(0, SOUND_CHANNELS, 0);
 
 	/* remove timer */
-	timer_adjust(adsp_autobuffer_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(adsp_autobuffer_timer, attotime_never, 0);
 }
 
 
@@ -711,7 +708,7 @@ static WRITE16_HANDLER( led_0_w )
 	if (!(mem_mask & 0xff))
 		set_led_status(0, data != 0);
 }
-static WRITE32_HANDLER( led_0_020_w ) { if ((mem_mask & 0xffff) != 0xffff) led_0_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( led_0_020_w ) { if ((mem_mask & 0xffff) != 0xffff) led_0_w(machine, offset, data, mem_mask); }
 
 
 static WRITE16_HANDLER( led_1_w )
@@ -720,7 +717,7 @@ static WRITE16_HANDLER( led_1_w )
 	if (!(mem_mask & 0xff))
 		set_led_status(1, data != 0);
 }
-static WRITE32_HANDLER( led_1_020_w ) { if ((mem_mask & 0xffff) != 0xffff) led_1_w(offset, data, mem_mask); }
+static WRITE32_HANDLER( led_1_020_w ) { if ((mem_mask & 0xffff) != 0xffff) led_1_w(machine, offset, data, mem_mask); }
 
 
 
@@ -731,9 +728,9 @@ static WRITE32_HANDLER( led_1_020_w ) { if ((mem_mask & 0xffff) != 0xffff) led_1
  *************************************/
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x1fffff) AM_ROM
-	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(MRA16_RAM, gaelco3d_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(SMH_RAM, gaelco3d_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x51000c, 0x51000d) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x51001c, 0x51001d) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x51002c, 0x51002d) AM_READ(input_port_2_word_r)
@@ -760,7 +757,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main020_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x1fffff) AM_ROM
-	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(MRA32_RAM, gaelco3d_paletteram_020_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(SMH_RAM, gaelco3d_paletteram_020_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x51000c, 0x51000f) AM_READ(input_port_0_020_r)
 	AM_RANGE(0x51001c, 0x51001f) AM_READ(input_port_1_020_r)
 	AM_RANGE(0x51002c, 0x51002f) AM_READ(input_port_2_020_r)
@@ -836,10 +833,10 @@ static INPUT_PORTS_START( speedup )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)	// checked after reading analog from port 1
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)	// checked after reading analog from port 2
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)	// checked after reading analog from port 3
-	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 0)
-	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 1)
-	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 2)
-	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 3)
+	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)0)
+	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)1)
+	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)2)
+	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)3)
 
 	PORT_START
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_COIN1 )	// verified
@@ -875,10 +872,10 @@ static INPUT_PORTS_START( surfplnt )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE_NO_TOGGLE( 0x0800, IP_ACTIVE_LOW )
-	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 0)
-	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 1)
-	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 2)
-	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 3)
+	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)0)
+	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)1)
+	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)2)
+	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)3)
 
 	PORT_START
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -909,10 +906,10 @@ static INPUT_PORTS_START( radikalb )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_SERVICE_NO_TOGGLE( 0x0800, IP_ACTIVE_LOW )
-	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 0)
-	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 1)
-	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 2)
-	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, 3)
+	PORT_BIT( 0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)0)
+	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)1)
+	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)2)
+	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL) PORT_CUSTOM(analog_bit_r, (void *)3)
 
 	PORT_START
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -943,7 +940,7 @@ static MACHINE_DRIVER_START( gaelco3d )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 15000000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(vblank_gen, 1)
+	MDRV_CPU_VBLANK_INT("main", vblank_gen)
 
 	MDRV_CPU_ADD_TAG("tms", TMS32031, 60000000)
 	MDRV_CPU_PROGRAM_MAP(tms_map,0)
@@ -953,19 +950,19 @@ static MACHINE_DRIVER_START( gaelco3d )
 	MDRV_CPU_PROGRAM_MAP(adsp_program_map,0)
 	MDRV_CPU_DATA_MAP(adsp_data_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(gaelco3d)
 	MDRV_NVRAM_HANDLER(93C66B)
 
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(576, 432)
 	MDRV_SCREEN_VISIBLE_AREA(0, 575, 0, 431)
+
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(gaelco3d)

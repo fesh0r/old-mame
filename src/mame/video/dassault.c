@@ -5,12 +5,11 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "deco16ic.h"
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect, int pf_priority)
+static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect, int pf_priority)
 {
 	int x,y,sprite,colour,multi,fx,fy,inc,flash,mult;
 	int offs, bank, gfxbank;
@@ -46,7 +45,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 
 			y = spritebase[offs];
 			flash=y&0x1000;
-			if (flash && (cpu_getcurrentframe() & 1)) continue;
+			if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 			colour = (x >> 9) &0x1f;
 			if (y&0x8000) colour+=32;
 
@@ -72,7 +71,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 				inc = 1;
 			}
 
-			if (flip_screen) {
+			if (flip_screen_get()) {
 				y=240-y;
 				x=304-x;
 				if (fx) fx=0; else fx=1;
@@ -173,7 +172,7 @@ VIDEO_UPDATE( dassault )
 	/* Draw playfields/update priority bitmap */
 	deco16_clear_sprite_priority_bitmap();
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[3072],cliprect);
+	fillbitmap(bitmap,screen->machine->pens[3072],cliprect);
 	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 
 	/* The middle playfields can be swapped priority-wise */
@@ -191,7 +190,7 @@ VIDEO_UPDATE( dassault )
 	}
 
 	/* Draw sprites - two sprite generators, with selectable priority */
-	draw_sprites(machine,bitmap,cliprect,deco16_priority);
+	draw_sprites(screen->machine,bitmap,cliprect,deco16_priority);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
 }

@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "deco16ic.h"
 
 static UINT16 * rohga_spriteram;
@@ -70,7 +69,7 @@ VIDEO_START( nitrobal )
 
 /******************************************************************************/
 
-static void rohga_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, const UINT16 *spriteptr, int is_schmeisr)
+static void rohga_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, const UINT16 *spriteptr, int is_schmeisr)
 {
 	int offs;
 
@@ -92,7 +91,7 @@ static void rohga_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 
 		y = spriteptr[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		// Sprite colour is different between Rohga (6bpp) and Schmeisr (4bpp plus wire mods on pcb)
 		if (is_schmeisr)
@@ -124,7 +123,7 @@ static void rohga_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 			inc = 1;
 		}
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			x=304-x;
 			y=240-y;
 			if (fx) fx=0; else fx=1;
@@ -147,7 +146,7 @@ static void rohga_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 	}
 }
 
-static void wizdfire_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT16 *spriteptr, int mode, int bank)
+static void wizdfire_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT16 *spriteptr, int mode, int bank)
 {
 	int offs;
 
@@ -191,7 +190,7 @@ static void wizdfire_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 		y = spriteptr[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 		colour = (x >> 9) &0x1f;
 
 		if (bank==4 && colour&0x10) {
@@ -217,7 +216,7 @@ static void wizdfire_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 			inc = 1;
 		}
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			x=304-x;
 			y=240-y;
 			if (fx) fx=0; else fx=1;
@@ -244,7 +243,7 @@ static void wizdfire_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 	}
 }
 
-static void nitrobal_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, const UINT16 *spriteptr, int gfxbank)
+static void nitrobal_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, const UINT16 *spriteptr, int gfxbank)
 {
 	int offs,end,inc;
 
@@ -298,7 +297,7 @@ Sprites 2:
 		w = (spriteptr[offs+2]&0x0f00)>> 8;
 
 		sy = spriteptr[offs];
-		if ((sy&0x2000) && (cpu_getcurrentframe() & 1)) {
+		if ((sy&0x2000) && (video_screen_get_frame_number(machine->primary_screen) & 1)) {
 			offs+=inc;
 			continue;
 		}
@@ -395,7 +394,7 @@ sprite 2:
 		fx = (spriteptr[offs+0]&0x4000);
 		fy = (spriteptr[offs+0]&0x8000);
 
-		if (!flip_screen) { /* Inverted from Mutant Fighter! */
+		if (!flip_screen_get()) { /* Inverted from Mutant Fighter! */
 			if (fx) fx=0; else fx=1;
 			if (fy) fy=0; else fy=1;
 
@@ -436,7 +435,7 @@ sprite 2:
 
 /******************************************************************************/
 
-static void update_rohga(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int is_schmeisr)
+static void update_rohga(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int is_schmeisr)
 {
 	/* Update playfields */
 	flip_screen_set( deco16_pf12_control[0]&0x80 );
@@ -481,7 +480,7 @@ static void update_rohga(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( rohga )
 {
-	update_rohga(machine, bitmap, cliprect, 0);
+	update_rohga(screen->machine, bitmap, cliprect, 0);
 	return 0;
 }
 
@@ -489,7 +488,7 @@ VIDEO_UPDATE( schmeisr )
 {
 	// The Schmeisr pcb has wire mods which seem to remap sprite palette indices.
 	// Otherwise video update is the same as Rohga.
-	update_rohga(machine, bitmap, cliprect, 1);
+	update_rohga(screen->machine, bitmap, cliprect, 1);
 	return 0;
 }
 
@@ -501,12 +500,12 @@ VIDEO_UPDATE( wizdfire )
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields - Palette of 2nd playfield chip visible if playfields turned off */
-	fillbitmap(bitmap,machine->pens[512],&machine->screen[0].visarea);
+	fillbitmap(bitmap,screen->machine->pens[512],cliprect);
 
 	deco16_tilemap_4_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
-	wizdfire_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16,4,3);
+	wizdfire_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,4,3);
 	deco16_tilemap_2_draw(bitmap,cliprect,0,0);
-	wizdfire_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16,3,3);
+	wizdfire_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,3,3);
 
 	if ((deco16_priority&0x1f)==0x1f) /* Wizdfire has bit 0x40 always set, Dark Seal 2 doesn't?! */
 		deco16_tilemap_3_draw(bitmap,cliprect,TILEMAP_DRAW_ALPHA,0);
@@ -514,9 +513,9 @@ VIDEO_UPDATE( wizdfire )
 		deco16_tilemap_3_draw(bitmap,cliprect,0,0);
 
 	/* See notes in wizdfire_draw_sprites about this */
-	wizdfire_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16,0,3);
-	wizdfire_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16_2,2,4);
-	wizdfire_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16_2,1,4);
+	wizdfire_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,0,3);
+	wizdfire_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16_2,2,4);
+	wizdfire_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16_2,1,4);
 
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;
@@ -530,7 +529,7 @@ VIDEO_UPDATE( nitrobal )
 	deco16_pf34_update(deco16_pf3_rowscroll,deco16_pf4_rowscroll);
 
 	/* Draw playfields - Palette of 2nd playfield chip visible if playfields turned off */
-	fillbitmap(bitmap,machine->pens[512],&machine->screen[0].visarea);
+	fillbitmap(bitmap,screen->machine->pens[512],cliprect);
 	fillbitmap(priority_bitmap,0,NULL);
 	deco16_clear_sprite_priority_bitmap();
 
@@ -538,8 +537,8 @@ VIDEO_UPDATE( nitrobal )
 	deco16_tilemap_34_combine_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 
 	deco16_tilemap_2_draw(bitmap,cliprect,0,16);
-	nitrobal_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16,3);
-	nitrobal_draw_sprites(machine,bitmap,cliprect,buffered_spriteram16_2,4);
+	nitrobal_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16,3);
+	nitrobal_draw_sprites(screen->machine,bitmap,cliprect,buffered_spriteram16_2,4);
 
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 	return 0;

@@ -20,7 +20,7 @@ static int ojankohs_flipscreen;
 static int ojankohs_scrollx, ojankohs_scrolly;
 static tilemap *ojankohs_tilemap;
 static int ojankoc_screen_refresh;
-static mame_bitmap *ojankoc_tmpbitmap;
+static bitmap_t *ojankoc_tmpbitmap;
 
 WRITE8_HANDLER( ojankoc_videoram_w );
 
@@ -36,24 +36,24 @@ PALETTE_INIT( ojankoy )
 	int i;
 	int bit0, bit1, bit2, bit3, bit4, r, g, b;
 
-	for (i = 0; i < machine->drv->total_colors; i++) {
+	for (i = 0; i < machine->config->total_colors; i++) {
 		bit0 = (color_prom[0] >> 2) & 0x01;
 		bit1 = (color_prom[0] >> 3) & 0x01;
 		bit2 = (color_prom[0] >> 4) & 0x01;
 		bit3 = (color_prom[0] >> 5) & 0x01;
 		bit4 = (color_prom[0] >> 6) & 0x01;
 		r = 0x08 * bit0 + 0x11 * bit1 + 0x21 * bit2 + 0x43 * bit3 + 0x82 * bit4;
-		bit0 = (color_prom[machine->drv->total_colors] >> 5) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 6) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 7) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 5) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 6) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 7) & 0x01;
 		bit3 = (color_prom[0] >> 0) & 0x01;
 		bit4 = (color_prom[0] >> 1) & 0x01;
 		g = 0x08 * bit0 + 0x11 * bit1 + 0x21 * bit2 + 0x43 * bit3 + 0x82 * bit4;
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
-		bit4 = (color_prom[machine->drv->total_colors] >> 4) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[machine->config->total_colors] >> 3) & 0x01;
+		bit4 = (color_prom[machine->config->total_colors] >> 4) & 0x01;
 		b = 0x08 * bit0 + 0x11 * bit1 + 0x21 * bit2 + 0x43 * bit3 + 0x82 * bit4;
 
 		palette_set_color(machine, i, MAKE_RGB(r, g, b));
@@ -209,7 +209,7 @@ static TILE_GET_INFO( ojankoy_get_tile_info )
 
 ******************************************************************************/
 
-void ojankoc_flipscreen(int data)
+void ojankoc_flipscreen(running_machine *machine, int data)
 {
 	static int ojankoc_flipscreen_old = 0;
 	int x, y;
@@ -223,13 +223,13 @@ void ojankoc_flipscreen(int data)
 		for (x = 0; x < 0x100; x++) {
 			color1 = ojankohs_videoram[0x0000 + ((y * 256) + x)];
 			color2 = ojankohs_videoram[0x3fff - ((y * 256) + x)];
-			ojankoc_videoram_w(0x0000 + ((y * 256) + x), color2);
-			ojankoc_videoram_w(0x3fff - ((y * 256) + x), color1);
+			ojankoc_videoram_w(machine, 0x0000 + ((y * 256) + x), color2);
+			ojankoc_videoram_w(machine, 0x3fff - ((y * 256) + x), color1);
 
 			color1 = ojankohs_videoram[0x4000 + ((y * 256) + x)];
 			color2 = ojankohs_videoram[0x7fff - ((y * 256) + x)];
-			ojankoc_videoram_w(0x4000 + ((y * 256) + x), color2);
-			ojankoc_videoram_w(0x7fff - ((y * 256) + x), color1);
+			ojankoc_videoram_w(machine, 0x4000 + ((y * 256) + x), color2);
+			ojankoc_videoram_w(machine, 0x7fff - ((y * 256) + x), color1);
 		}
 	}
 
@@ -263,7 +263,7 @@ WRITE8_HANDLER( ojankoc_videoram_w )
 		px = x + (i ^ xx);
 		py = y;
 
-		*BITMAP_ADDR16(ojankoc_tmpbitmap, py, px) = Machine->pens[color];
+		*BITMAP_ADDR16(ojankoc_tmpbitmap, py, px) = color;
 
 		color1 >>= 1;
 		color2 >>= 1;
@@ -279,7 +279,7 @@ WRITE8_HANDLER( ojankoc_videoram_w )
 
 VIDEO_START( ojankohs )
 {
-	ojankohs_tilemap = tilemap_create(ojankohs_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 4, 64, 64);
+	ojankohs_tilemap = tilemap_create(ojankohs_get_tile_info, tilemap_scan_rows,  8, 4, 64, 64);
 	ojankohs_videoram = auto_malloc(0x2000);
 	ojankohs_colorram = auto_malloc(0x1000);
 	ojankohs_paletteram = auto_malloc(0x800);
@@ -287,7 +287,7 @@ VIDEO_START( ojankohs )
 
 VIDEO_START( ojankoy )
 {
-	ojankohs_tilemap = tilemap_create(ojankoy_get_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 4, 64, 64);
+	ojankohs_tilemap = tilemap_create(ojankoy_get_tile_info, tilemap_scan_rows,  8, 4, 64, 64);
 	ojankohs_videoram = auto_malloc(0x2000);
 	ojankohs_colorram = auto_malloc(0x1000);
 	ojankohs_paletteram = auto_malloc(0x800);
@@ -295,7 +295,7 @@ VIDEO_START( ojankoy )
 
 VIDEO_START( ojankoc )
 {
-	ojankoc_tmpbitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	ojankoc_tmpbitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	ojankohs_videoram = auto_malloc(0x8000);
 	ojankohs_paletteram = auto_malloc(0x20);
 }
@@ -324,7 +324,7 @@ VIDEO_UPDATE( ojankoc )
 	{
 		/* redraw bitmap */
 		for (offs = 0; offs < 0x8000; offs++) {
-			ojankoc_videoram_w(offs, ojankohs_videoram[offs]);
+			ojankoc_videoram_w(screen->machine, offs, ojankohs_videoram[offs]);
 		}
 		ojankoc_screen_refresh = 0;
 	}

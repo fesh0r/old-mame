@@ -64,17 +64,17 @@ static WRITE8_HANDLER( blktiger_coinlockout_w )
 
 static ADDRESS_MAP_START( mem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_ROM)
 	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(blktiger_bgvideoram_r, blktiger_bgvideoram_w)
-	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(MRA8_RAM, blktiger_txvideoram_w) AM_BASE(&blktiger_txvideoram)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_RAM, paletteram_xxxxBBBBRRRRGGGG_split1_w) AM_BASE(&paletteram)
-	AM_RANGE(0xdc00, 0xdfff) AM_READWRITE(MRA8_RAM, paletteram_xxxxBBBBRRRRGGGG_split2_w) AM_BASE(&paletteram_2)
+	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(SMH_RAM, blktiger_txvideoram_w) AM_BASE(&blktiger_txvideoram)
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, paletteram_xxxxBBBBRRRRGGGG_split1_w) AM_BASE(&paletteram)
+	AM_RANGE(0xdc00, 0xdfff) AM_READWRITE(SMH_RAM, paletteram_xxxxBBBBRRRRGGGG_split2_w) AM_BASE(&paletteram_2)
 	AM_RANGE(0xe000, 0xfdff) AM_RAM
 	AM_RANGE(0xfe00, 0xffff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")	AM_WRITE(soundlatch_w)
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")	AM_WRITE(blktiger_bankswitch_w)
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2")
@@ -82,7 +82,7 @@ static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x04, 0x04) AM_READ_PORT("DSW1")	AM_WRITE(blktiger_video_control_w)
 	AM_RANGE(0x05, 0x05) AM_READ_PORT("FREEZE")
 	AM_RANGE(0x06, 0x06) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x07, 0x07) AM_READ(blktiger_protection_r)	AM_WRITE(MWA8_NOP) /* Software protection (7) */
+	AM_RANGE(0x07, 0x07) AM_READ(blktiger_protection_r)	AM_WRITE(SMH_NOP) /* Software protection (7) */
 	AM_RANGE(0x08, 0x09) AM_WRITE(blktiger_scrollx_w)
 	AM_RANGE(0x0a, 0x0b) AM_WRITE(blktiger_scrolly_w)
 	AM_RANGE(0x0c, 0x0c) AM_WRITE(blktiger_video_enable_w)
@@ -255,21 +255,24 @@ static MACHINE_DRIVER_START( blktiger )
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz (?) */
 	MDRV_CPU_PROGRAM_MAP(mem_map, 0)
 	MDRV_CPU_IO_MAP(port_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_mem_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_START(blktiger)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(blktiger)
 	MDRV_PALETTE_LENGTH(1024)
 

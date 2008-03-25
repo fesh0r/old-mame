@@ -114,13 +114,13 @@ VIDEO_START( atarig1 )
 	atarigen_blend_gfx(machine, 0, 2, 0x0f, 0x10);
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows,  8,8, 64,64);
 
 	/* initialize the motion objects */
 	atarirle_init(0, atarig1_pitfight ? &modesc_pitfight : &modesc_hydra);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,32);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 
 	/* reset statics */
@@ -147,14 +147,14 @@ VIDEO_START( atarig1 )
 
 WRITE16_HANDLER( atarig1_mo_control_w )
 {
-	logerror("MOCONT = %d (scan = %d)\n", data, video_screen_get_vpos(0));
+	logerror("MOCONT = %d (scan = %d)\n", data, video_screen_get_vpos(machine->primary_screen));
 
 	/* set the control value */
 	COMBINE_DATA(&current_control);
 }
 
 
-void atarig1_scanline_update(running_machine *machine, int scrnum, int scanline)
+void atarig1_scanline_update(const device_config *screen, int scanline)
 {
 	UINT16 *base = &atarigen_alpha[(scanline / 8) * 64 + 48];
 	int i;
@@ -164,7 +164,7 @@ void atarig1_scanline_update(running_machine *machine, int scrnum, int scanline)
 	/* keep in range */
 	if (base >= &atarigen_alpha[0x800])
 		return;
-	video_screen_update_partial(0, scanline - 1);
+	video_screen_update_partial(screen, MAX(scanline - 1, 0));
 
 	/* update the playfield scrolls */
 	for (i = 0; i < 8; i++)
@@ -178,7 +178,7 @@ void atarig1_scanline_update(running_machine *machine, int scrnum, int scanline)
 			int newscroll = ((word >> 6) + pfscroll_xoffset) & 0x1ff;
 			if (newscroll != playfield_xscroll)
 			{
-				video_screen_update_partial(0, scanline + i - 1);
+				video_screen_update_partial(screen, MAX(scanline + i - 1, 0));
 				tilemap_set_scrollx(atarigen_playfield_tilemap, 0, newscroll);
 				playfield_xscroll = newscroll;
 			}
@@ -192,13 +192,13 @@ void atarig1_scanline_update(running_machine *machine, int scrnum, int scanline)
 			int newbank = word & 7;
 			if (newscroll != playfield_yscroll)
 			{
-				video_screen_update_partial(0, scanline + i - 1);
+				video_screen_update_partial(screen, MAX(scanline + i - 1, 0));
 				tilemap_set_scrolly(atarigen_playfield_tilemap, 0, newscroll);
 				playfield_yscroll = newscroll;
 			}
 			if (newbank != playfield_tile_bank)
 			{
-				video_screen_update_partial(0, scanline + i - 1);
+				video_screen_update_partial(screen, MAX(scanline + i - 1, 0));
 				tilemap_mark_all_tiles_dirty(atarigen_playfield_tilemap);
 				playfield_tile_bank = newbank;
 			}

@@ -43,9 +43,9 @@ static TILE_GET_INFO( get_bg0_tile_info )
 
 static VIDEO_START( cultures )
 {
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,512,512);
-	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,512,512);
-	bg0_tilemap = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8, 64,128);
+	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,8,8,512,512);
+	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,8,8,512,512);
+	bg0_tilemap = tilemap_create(get_bg0_tile_info,tilemap_scan_rows,8,8, 64,128);
 
 	tilemap_set_transparent_pen(bg1_tilemap,0);
 	tilemap_set_transparent_pen(bg0_tilemap,0);
@@ -91,7 +91,7 @@ static VIDEO_UPDATE( cultures )
 		tilemap_draw(bitmap, cliprect, bg1_tilemap, 0, 0);
 	}
 	else
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	return 0;
 }
@@ -152,7 +152,7 @@ static ADDRESS_MAP_START( cultures_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cultures_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_RAM //?
 	AM_RANGE(0x10, 0x13) AM_RAM //?
 	AM_RANGE(0x20, 0x23) AM_RAM AM_BASE(&bg0_regs_x)
@@ -360,16 +360,16 @@ static MACHINE_DRIVER_START( cultures )
 	MDRV_CPU_ADD(Z80, MCLK/2) /* 8.000 MHz */
 	MDRV_CPU_PROGRAM_MAP(cultures_map,0)
 	MDRV_CPU_IO_MAP(cultures_io_map,0)
-	MDRV_CPU_VBLANK_INT(cultures_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", cultures_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(culture)
 	MDRV_PALETTE_LENGTH(256)
 

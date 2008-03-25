@@ -50,7 +50,7 @@ static TILE_GET_INFO( get_bg_tile_info ){
 
 VIDEO_START( shangkid )
 {
-	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	background = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64,32);
 }
 
 WRITE8_HANDLER( shangkid_videoram_w )
@@ -59,7 +59,7 @@ WRITE8_HANDLER( shangkid_videoram_w )
 	tilemap_mark_tile_dirty( background, offset&0x7ff );
 }
 
-static void draw_sprite(running_machine *machine, const UINT8 *source, mame_bitmap *bitmap, const rectangle *cliprect ){
+static void draw_sprite(running_machine *machine, const UINT8 *source, bitmap_t *bitmap, const rectangle *cliprect ){
 	const gfx_element *gfx;
 	int transparent_pen;
 	int bank_index;
@@ -152,7 +152,7 @@ static void draw_sprite(running_machine *machine, const UINT8 *source, mame_bitm
 	}
 }
 
-static void shangkid_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void shangkid_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	const UINT8 *source, *finish;
 
@@ -172,7 +172,7 @@ VIDEO_UPDATE( shangkid )
 	tilemap_set_scrolly( background,0,shangkid_videoreg[2]+0x10 );
 
 	tilemap_draw( bitmap,cliprect,background,0,0 );
-	shangkid_draw_sprites( machine, bitmap,cliprect );
+	shangkid_draw_sprites(screen->machine, bitmap,cliprect );
 	tilemap_draw( bitmap,cliprect,background,1,0 ); /* high priority tiles */
 	return 0;
 }
@@ -181,30 +181,39 @@ VIDEO_UPDATE( shangkid )
 PALETTE_INIT( dynamski )
 {
 	int i;
-	#define TOTAL_COLORS(gfxn) (machine->gfx[gfxn]->total_colors * machine->gfx[gfxn]->color_granularity)
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x20);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x20; i++)
 	{
-		int data = color_prom[i] + 256 * color_prom[i+32];
-		palette_set_color_rgb(machine,i,pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
+		UINT16 data = (color_prom[i | 0x20] << 8) | color_prom[i];
+		rgb_t color = MAKE_RGB(pal5bit(data >> 1), pal5bit(data >> 6), pal5bit(data >> 11));
+
+		colortable_palette_set_color(machine->colortable, i, color);
 	}
 
-	color_prom += 2*machine->drv->total_colors;
 	/* color_prom now points to the beginning of the lookup table */
-
-	/* sprites */
-	for (i = 0;i < TOTAL_COLORS(1);i++)
-		COLOR(1,i) = (color_prom[i] & 0x0f) + 0x10;
-	color_prom += 0x100;
+	color_prom += 0x40;
 
 	/* characters */
-	for (i = 0;i < TOTAL_COLORS(0);i++)
-		COLOR(0,i) = (color_prom[i] & 0x0f);
+	for (i = 0; i < 0x40; i++)
+	{
+		UINT8 ctabentry = color_prom[i] & 0x0f;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
+
+	/* sprites */
+	for (i = 0x40; i < 0x80; i++)
+	{
+		UINT8 ctabentry = (color_prom[(i - 0x40) + 0x100] & 0x0f) | 0x10;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 }
 
 
-static void dynamski_draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri )
+static void dynamski_draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri )
 {
 	int i;
 	int sx,sy;
@@ -258,7 +267,7 @@ static void dynamski_draw_background(running_machine *machine, mame_bitmap *bitm
 	}
 }
 
-static void dynamski_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void dynamski_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int i;
 	int sx,sy;
@@ -291,8 +300,8 @@ static void dynamski_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 VIDEO_UPDATE( dynamski )
 {
-	dynamski_draw_background( machine, bitmap,cliprect, 0 );
-	dynamski_draw_sprites(machine, bitmap,cliprect );
-	dynamski_draw_background( machine, bitmap,cliprect, 1 );
+	dynamski_draw_background(screen->machine, bitmap,cliprect, 0 );
+	dynamski_draw_sprites(screen->machine, bitmap,cliprect );
+	dynamski_draw_background(screen->machine, bitmap,cliprect, 1 );
 	return 0;
 }

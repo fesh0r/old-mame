@@ -12,7 +12,7 @@ WRITE8_HANDLER( pokechmp_videoram_w )
 
 WRITE8_HANDLER( pokechmp_flipscreen_w )
 {
-	if (flip_screen != (data & 0x80))
+	if (flip_screen_get() != (data & 0x80))
 	{
 		flip_screen_set(data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -30,10 +30,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( pokechmp )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -49,7 +49,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 			flipx = spriteram[offs+1] & 0x04;
 			flipy = spriteram[offs+1] & 0x02;
-			if (flip_screen) {
+			if (flip_screen_get()) {
 				sx=240-sx;
 				sy=240-sy;
 				if (flipx) flipx=0; else flipx=1;
@@ -69,6 +69,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( pokechmp )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

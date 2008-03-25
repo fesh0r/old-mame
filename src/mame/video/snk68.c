@@ -80,21 +80,21 @@ static TILE_GET_INFO( get_ikari3_tile_info )
 
 VIDEO_START( pow )
 {
-	fix_tilemap = tilemap_create(get_pow_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32,32);
+	fix_tilemap = tilemap_create(get_pow_tile_info,tilemap_scan_cols,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
 
 VIDEO_START( searchar )
 {
-	fix_tilemap = tilemap_create(get_sar_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32,32);
+	fix_tilemap = tilemap_create(get_sar_tile_info,tilemap_scan_cols,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
 
 VIDEO_START( ikari3 )
 {
-	fix_tilemap = tilemap_create(get_ikari3_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32,32);
+	fix_tilemap = tilemap_create(get_ikari3_tile_info,tilemap_scan_cols,8,8,32,32);
 
 	tilemap_set_transparent_pen(fix_tilemap,0);
 }
@@ -143,7 +143,7 @@ WRITE16_HANDLER( pow_video16_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int j,int pos)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int j,int pos)
 {
 	int offs,mx,my,color,tile,fx,fy,i;
 
@@ -160,7 +160,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		my=0x200 - my;
 		my-=0x200;
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			mx=240-mx;
 			my=240-my;
 		}
@@ -174,7 +174,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				fx=tile&0x4000;
 				tile&=0x3fff;
 
-				if (flip_screen) {
+				if (flip_screen_get()) {
 					if (fx) fx=0; else fx=1;
 					if (fy) fy=0; else fy=1;
 				}
@@ -187,7 +187,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 					cliprect,TRANSPARENCY_PEN,0);
 			}
 
-			if (flip_screen) {
+			if (flip_screen_get()) {
 				my-=16;
 				if (my < -0x100) my+=0x200;
 			}
@@ -202,22 +202,22 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( pow )
 {
-	fillbitmap(bitmap,machine->pens[2047],cliprect);
+	fillbitmap(bitmap,2047,cliprect);
 
 	/* This appears to be correct priority */
-	draw_sprites(machine, bitmap,cliprect,1,0x000);
-	draw_sprites(machine, bitmap,cliprect,1,0x800);
-	draw_sprites(machine, bitmap,cliprect,2,0x000);
-	draw_sprites(machine, bitmap,cliprect,2,0x800);
-	draw_sprites(machine, bitmap,cliprect,0,0x000); //AT: (pow37b5yel)
-	draw_sprites(machine, bitmap,cliprect,0,0x800);
+	draw_sprites(screen->machine, bitmap,cliprect,1,0x000);
+	draw_sprites(screen->machine, bitmap,cliprect,1,0x800);
+	draw_sprites(screen->machine, bitmap,cliprect,2,0x000);
+	draw_sprites(screen->machine, bitmap,cliprect,2,0x800);
+	draw_sprites(screen->machine, bitmap,cliprect,0,0x000); //AT: (pow37b5yel)
+	draw_sprites(screen->machine, bitmap,cliprect,0,0x800);
 
 	tilemap_draw(bitmap,cliprect,fix_tilemap,0,0);
 	return 0;
 }
 
 
-static void draw_sprites2(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int j, int z, int pos)
+static void draw_sprites2(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int j, int z, int pos)
 {
 	int offs,mx,my,color,tile,fx,fy,i;
 
@@ -237,7 +237,7 @@ static void draw_sprites2(running_machine *machine, mame_bitmap *bitmap, const r
 		my=0x200 - my;
 		my-=0x200;
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			mx=240-mx;
 			my=240-my;
 		}
@@ -254,7 +254,7 @@ static void draw_sprites2(running_machine *machine, mame_bitmap *bitmap, const r
 					fx=tile&0x8000;
 				}
 
-				if (flip_screen) {
+				if (flip_screen_get()) {
 					if (fx) fx=0; else fx=1;
 					if (fy) fy=0; else fy=1;
 				}
@@ -269,7 +269,7 @@ static void draw_sprites2(running_machine *machine, mame_bitmap *bitmap, const r
 					mx,my,
 					cliprect,TRANSPARENCY_PEN,0);
 			}
-			if (flip_screen) {
+			if (flip_screen_get()) {
 				my-=16;
 				if (my < -0x100) my+=0x200;
 			}
@@ -284,15 +284,15 @@ static void draw_sprites2(running_machine *machine, mame_bitmap *bitmap, const r
 
 VIDEO_UPDATE( searchar )
 {
-	fillbitmap(bitmap,machine->pens[2047],cliprect);
+	fillbitmap(bitmap,2047,cliprect);
 
 	/* This appears to be correct priority */
-	draw_sprites2(machine, bitmap,cliprect,8,0x2000,0x000);
-	draw_sprites2(machine, bitmap,cliprect,8,0x2000,0x800);
-	draw_sprites2(machine, bitmap,cliprect,12,0x3000,0x000);
-	draw_sprites2(machine, bitmap,cliprect,12,0x3000,0x800);
-	draw_sprites2(machine, bitmap,cliprect,4,0x1000,0x000);
-	draw_sprites2(machine, bitmap,cliprect,4,0x1000,0x800);
+	draw_sprites2(screen->machine, bitmap,cliprect,8,0x2000,0x000);
+	draw_sprites2(screen->machine, bitmap,cliprect,8,0x2000,0x800);
+	draw_sprites2(screen->machine, bitmap,cliprect,12,0x3000,0x000);
+	draw_sprites2(screen->machine, bitmap,cliprect,12,0x3000,0x800);
+	draw_sprites2(screen->machine, bitmap,cliprect,4,0x1000,0x000);
+	draw_sprites2(screen->machine, bitmap,cliprect,4,0x1000,0x800);
 
 	tilemap_draw(bitmap,cliprect,fix_tilemap,0,0);
 	return 0;

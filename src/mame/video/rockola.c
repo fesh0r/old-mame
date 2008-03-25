@@ -9,18 +9,20 @@
 #include "driver.h"
 #include "deprecat.h"
 
+
 UINT8 *rockola_videoram2;
 UINT8 *rockola_charram;
 
 static int charbank;
 static int backcolor;
 
-static tilemap *bg_tilemap, *fg_tilemap;
+static tilemap *bg_tilemap;
+static tilemap *fg_tilemap;
 
 static rgb_t palette[64];
 
 #define TOTAL_COLORS(gfxn) (Machine->gfx[gfxn]->total_colors * Machine->gfx[gfxn]->color_granularity)
-#define COLOR(gfxn,offs) (Machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs)
+#define COLOR(gfxn,offs) (Machine->config->gfxdecodeinfo[gfxn].color_codes_start + offs)
 
 
 
@@ -35,7 +37,7 @@ PALETTE_INIT( rockola )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -110,6 +112,7 @@ WRITE8_HANDLER( rockola_charram_w )
 	}
 }
 
+
 WRITE8_HANDLER( rockola_flipscreen_w )
 {
 	int bank;
@@ -138,7 +141,7 @@ WRITE8_HANDLER( rockola_flipscreen_w )
 
 	/* bit 7 flips screen */
 
-	if (flip_screen != (data & 0x80))
+	if (flip_screen_get() != (data & 0x80))
 	{
 		flip_screen_set(data & 0x80);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -176,19 +179,16 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( rockola )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
-
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
 
 VIDEO_UPDATE( rockola )
 {
-	tilemap_draw(bitmap, &machine->screen[0].visarea, bg_tilemap, 0, 0);
-	tilemap_draw(bitmap, &machine->screen[0].visarea, fg_tilemap, 0, 0);
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
+	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }
 
@@ -198,7 +198,7 @@ PALETTE_INIT( satansat )
 {
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -249,7 +249,7 @@ WRITE8_HANDLER( satansat_b002_w )
 {
 	/* bit 0 flips screen */
 
-	if (flip_screen != (data & 0x01))
+	if (flip_screen_get() != (data & 0x01))
 	{
 		flip_screen_set(data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -259,7 +259,7 @@ WRITE8_HANDLER( satansat_b002_w )
 	/* it controls only IRQs, not NMIs. Here I am affecting both, which */
 	/* is wrong. */
 
-	interrupt_enable_w(0,data & 0x02);
+	interrupt_enable_w(machine,0,data & 0x02);
 
 	/* other bits unused */
 }
@@ -299,11 +299,8 @@ static TILE_GET_INFO( satansat_get_fg_tile_info )
 
 VIDEO_START( satansat )
 {
-	bg_tilemap = tilemap_create(satansat_get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
-
-	fg_tilemap = tilemap_create(satansat_get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(satansat_get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
+	fg_tilemap = tilemap_create(satansat_get_fg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }

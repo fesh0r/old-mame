@@ -46,7 +46,7 @@ PALETTE_INIT( brkthru )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -61,10 +61,10 @@ PALETTE_INIT( brkthru )
 		bit2 = (color_prom[0] >> 6) & 0x01;
 		bit3 = (color_prom[0] >> 7) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -117,8 +117,8 @@ WRITE8_HANDLER( brkthru_fgram_w )
 
 VIDEO_START( brkthru )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,32,16);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,32,16);
 
 	tilemap_set_transparent_pen( fg_tilemap, 0 );
 	tilemap_set_transparent_pen( bg_tilemap, 0 );
@@ -163,7 +163,7 @@ WRITE8_HANDLER( brkthru_1800_w )
 
 
 #if 0
-static void show_register( mame_bitmap *bitmap, int x, int y, UINT32 data )
+static void show_register( bitmap_t *bitmap, int x, int y, UINT32 data )
 {
 	char buf[5];
 
@@ -173,7 +173,7 @@ static void show_register( mame_bitmap *bitmap, int x, int y, UINT32 data )
 #endif
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int prio )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int prio )
 {
 	int offs;
 	/* Draw the sprites. Note that it is important to draw them exactly in this */
@@ -266,13 +266,13 @@ VIDEO_UPDATE( brkthru )
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_OPAQUE,0);
 
 	/* low priority sprites */
-	draw_sprites(machine, bitmap, cliprect, 0x01 );
+	draw_sprites(screen->machine, bitmap, cliprect, 0x01 );
 
 	/* draw background over low priority sprites */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 
 	/* high priority sprites */
-	draw_sprites(machine, bitmap, cliprect, 0x09 );
+	draw_sprites(screen->machine, bitmap, cliprect, 0x09 );
 
 	/* fg layer */
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);

@@ -86,7 +86,7 @@ static void timer_handler(void *param,int c,int count,int clock)
 	{	/* Start FM Timer */
 		attotime period = attotime_mul(ATTOTIME_IN_HZ(clock), count);
 		if (!timer_enable(info->timer[c], 1))
-			timer_adjust(info->timer[c], period, 0, attotime_zero);
+			timer_adjust_oneshot(info->timer[c], period, 0);
 	}
 }
 
@@ -296,17 +296,17 @@ WRITE16_HANDLER( YM2203_write_port_4_lsb_w )
 WRITE8_HANDLER( YM2203_word_0_w )
 {
 	if (offset)
-		YM2203_write_port_0_w(0,data);
+		YM2203_write_port_0_w(machine,0,data);
 	else
-		YM2203_control_port_0_w(0,data);
+		YM2203_control_port_0_w(machine,0,data);
 }
 
 WRITE8_HANDLER( YM2203_word_1_w )
 {
 	if (offset)
-		YM2203_write_port_1_w(0,data);
+		YM2203_write_port_1_w(machine,0,data);
 	else
-		YM2203_control_port_1_w(0,data);
+		YM2203_control_port_1_w(machine,0,data);
 }
 
 

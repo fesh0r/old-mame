@@ -49,7 +49,7 @@ static tilemap *bg_tilemap[2][4];
 
 ***************************************************************************/
 
-static void mrokumei_handleblit( int rom_base )
+static void mrokumei_handleblit( running_machine *machine, int rom_base )
 {
 	int i;
 	int DestParam;
@@ -117,7 +117,7 @@ static void mrokumei_handleblit( int rom_base )
 			} /* i!=0 */
 
 			if (data)	/* 00 is a nop */
-				mrokumei_videoram_w( BaseAddr + DestAddr, data );
+				mrokumei_videoram_w( machine, BaseAddr + DestAddr, data );
 
 			if (homedata_vreg[1] & 0x80)	/* flip screen */
 			{
@@ -136,7 +136,7 @@ finish:
 	cpunum_set_input_line(Machine, 0,M6809_FIRQ_LINE,HOLD_LINE);
 }
 
-static void reikaids_handleblit( int rom_base )
+static void reikaids_handleblit( running_machine *machine, int rom_base )
 {
 	int i;
 	UINT16 DestParam;
@@ -221,7 +221,7 @@ static void reikaids_handleblit( int rom_base )
 						addr ^= 0x007c;
 					}
 
-					reikaids_videoram_w( addr, dat );
+					reikaids_videoram_w( machine, addr, dat );
 				}
 			}
 
@@ -236,7 +236,7 @@ finish:
 	cpunum_set_input_line(Machine, 0,M6809_FIRQ_LINE,HOLD_LINE);
 }
 
-static void pteacher_handleblit( int rom_base )
+static void pteacher_handleblit( running_machine *machine, int rom_base )
 {
 	int i;
 	int DestParam;
@@ -309,7 +309,7 @@ static void pteacher_handleblit( int rom_base )
 				if ((addr & 0x2080) == 0)
 				{
 					addr = ((addr & 0xc000) >> 2) | ((addr & 0x1f00) >> 1) | (addr & 0x7f);
-					pteacher_videoram_w( addr, data );
+					pteacher_videoram_w( machine, addr, data );
 				}
 			}
 
@@ -503,10 +503,10 @@ static TILE_GET_INFO( lemnangl_get_info1_1 ) { lemnangl_info( machine, tileinfo,
 
 VIDEO_START( mrokumei )
 {
-	bg_tilemap[0][0] = tilemap_create( mrokumei_get_info0_0, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8, 8, 64,32 );
-	bg_tilemap[0][1] = tilemap_create( mrokumei_get_info0_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64,32 );
-	bg_tilemap[1][0] = tilemap_create( mrokumei_get_info1_0, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8, 8, 64,32 );
-	bg_tilemap[1][1] = tilemap_create( mrokumei_get_info1_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64,32 );
+	bg_tilemap[0][0] = tilemap_create( mrokumei_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[0][1] = tilemap_create( mrokumei_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[1][0] = tilemap_create( mrokumei_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[1][1] = tilemap_create( mrokumei_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0);
 	tilemap_set_transparent_pen(bg_tilemap[1][1],0);
@@ -514,14 +514,14 @@ VIDEO_START( mrokumei )
 
 VIDEO_START( reikaids )
 {
-	bg_tilemap[0][0] = tilemap_create( reikaids_get_info0_0, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
-	bg_tilemap[0][1] = tilemap_create( reikaids_get_info0_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
-	bg_tilemap[0][2] = tilemap_create( reikaids_get_info0_2, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
-	bg_tilemap[0][3] = tilemap_create( reikaids_get_info0_3, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
-	bg_tilemap[1][0] = tilemap_create( reikaids_get_info1_0, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
-	bg_tilemap[1][1] = tilemap_create( reikaids_get_info1_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
-	bg_tilemap[1][2] = tilemap_create( reikaids_get_info1_2, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
-	bg_tilemap[1][3] = tilemap_create( reikaids_get_info1_3, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32 );
+	bg_tilemap[0][0] = tilemap_create( reikaids_get_info0_0, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[0][1] = tilemap_create( reikaids_get_info0_1, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[0][2] = tilemap_create( reikaids_get_info0_2, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[0][3] = tilemap_create( reikaids_get_info0_3, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][0] = tilemap_create( reikaids_get_info1_0, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][1] = tilemap_create( reikaids_get_info1_1, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][2] = tilemap_create( reikaids_get_info1_2, tilemap_scan_rows,  8, 8, 32, 32 );
+	bg_tilemap[1][3] = tilemap_create( reikaids_get_info1_3, tilemap_scan_rows,  8, 8, 32, 32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][0],0xff);
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0xff);
@@ -535,10 +535,10 @@ VIDEO_START( reikaids )
 
 VIDEO_START( pteacher )
 {
-	bg_tilemap[0][0] = tilemap_create( pteacher_get_info0_0, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8, 8, 64,32 );
-	bg_tilemap[0][1] = tilemap_create( pteacher_get_info0_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64,32 );
-	bg_tilemap[1][0] = tilemap_create( pteacher_get_info1_0, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8, 8, 64,32 );
-	bg_tilemap[1][1] = tilemap_create( pteacher_get_info1_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64,32 );
+	bg_tilemap[0][0] = tilemap_create( pteacher_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[0][1] = tilemap_create( pteacher_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[1][0] = tilemap_create( pteacher_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[1][1] = tilemap_create( pteacher_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0xff);
 	tilemap_set_transparent_pen(bg_tilemap[1][1],0xff);
@@ -546,10 +546,10 @@ VIDEO_START( pteacher )
 
 VIDEO_START( lemnangl )
 {
-	bg_tilemap[0][0] = tilemap_create( lemnangl_get_info0_0, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8, 8, 64,32 );
-	bg_tilemap[0][1] = tilemap_create( lemnangl_get_info0_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64,32 );
-	bg_tilemap[1][0] = tilemap_create( lemnangl_get_info1_0, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8, 8, 64,32 );
-	bg_tilemap[1][1] = tilemap_create( lemnangl_get_info1_1, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64,32 );
+	bg_tilemap[0][0] = tilemap_create( lemnangl_get_info0_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[0][1] = tilemap_create( lemnangl_get_info0_1, tilemap_scan_rows,  8, 8, 64,32 );
+	bg_tilemap[1][0] = tilemap_create( lemnangl_get_info1_0, tilemap_scan_rows,       8, 8, 64,32 );
+	bg_tilemap[1][1] = tilemap_create( lemnangl_get_info1_1, tilemap_scan_rows,  8, 8, 64,32 );
 
 	tilemap_set_transparent_pen(bg_tilemap[0][1],0x0f);
 	tilemap_set_transparent_pen(bg_tilemap[1][1],0x0f);
@@ -651,7 +651,7 @@ WRITE8_HANDLER( pteacher_blitter_bank_w )
 
 WRITE8_HANDLER( mrokumei_blitter_start_w )
 {
-	if (data & 0x80) mrokumei_handleblit(((blitter_bank & 0x04) >> 2) * 0x10000);
+	if (data & 0x80) mrokumei_handleblit(machine, ((blitter_bank & 0x04) >> 2) * 0x10000);
 
 	/* bit 0 = bank switch; used by hourouki to access the
        optional service mode ROM (not available in current dump) */
@@ -659,12 +659,12 @@ WRITE8_HANDLER( mrokumei_blitter_start_w )
 
 WRITE8_HANDLER( reikaids_blitter_start_w )
 {
-	reikaids_handleblit((blitter_bank & 3) * 0x10000);
+	reikaids_handleblit(machine, (blitter_bank & 3) * 0x10000);
 }
 
 WRITE8_HANDLER( pteacher_blitter_start_w )
 {
-	pteacher_handleblit((blitter_bank >> 5) * 0x10000 & (memory_region_length(REGION_USER1) - 1));
+	pteacher_handleblit(machine, (blitter_bank >> 5) * 0x10000 & (memory_region_length(REGION_USER1) - 1));
 }
 
 
@@ -682,7 +682,7 @@ VIDEO_UPDATE( mrokumei )
 	/* blank screen */
 	if (homedata_vreg[0x3] == 0xc1 && homedata_vreg[0x4] == 0xc0 && homedata_vreg[0x5] == 0xff)
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -709,7 +709,7 @@ VIDEO_UPDATE( mrokumei )
 			width = 54;
 			break;
 	}
-	video_screen_set_visarea(0, 0*8, width*8-1, 2*8, 30*8-1);
+	video_screen_set_visarea(screen, 0*8, width*8-1, 2*8, 30*8-1);
 
 	tilemap_set_scrollx(bg_tilemap[homedata_visible_page][0],0,homedata_vreg[0xc] << 1);
 
@@ -744,7 +744,7 @@ VIDEO_UPDATE( reikaids )
     }
 
 
-    fillbitmap(bitmap,get_black_pen(machine),cliprect);
+    fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
     pri = (blitter_bank & 0x70) >> 4;
     for (i = 0;i < 4;i++)
@@ -790,7 +790,7 @@ VIDEO_UPDATE( reikaids )
 	}
 
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	pri = (blitter_bank & 0x70) >> 4;
 	for (i = 0;i < 4;i++)
@@ -807,7 +807,7 @@ VIDEO_UPDATE( pteacher )
 	/* blank screen */
 	if (homedata_vreg[0x3] == 0xc1 && homedata_vreg[0x4] == 0xc0 && homedata_vreg[0x5] == 0xff)
 	{
-		fillbitmap(bitmap,get_black_pen(machine),cliprect);
+		fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 		return 0;
 	}
 
@@ -847,24 +847,24 @@ VIDEO_UPDATE( pteacher )
 		if (homedata_vreg[0x4] == 0xae || homedata_vreg[0x4] == 0xb8)
 		{
 			/* kludge for mjkinjas */
-			video_screen_set_visarea(0, 0*8, 42*8-1, 2*8, 30*8-1);
+			video_screen_set_visarea(screen, 0*8, 42*8-1, 2*8, 30*8-1);
 			scroll_low = 0;
 		}
 		else
 		{
 			if (homedata_vreg[0x3] == 0xa6)
-				video_screen_set_visarea(0, 0*8, 33*8-1, 2*8, 30*8-1);
+				video_screen_set_visarea(screen, 0*8, 33*8-1, 2*8, 30*8-1);
 			else
-				video_screen_set_visarea(0, 0*8, 35*8-1, 2*8, 30*8-1);
+				video_screen_set_visarea(screen, 0*8, 35*8-1, 2*8, 30*8-1);
 			scroll_low = (11 - (homedata_vreg[0x4] & 0x0f)) * 8 / 12;
 		}
 	}
 	else
 	{
 		if (homedata_vreg[0x3] == 0xa6)
-			video_screen_set_visarea(0, 0*8, 51*8-1, 2*8, 30*8-1);
+			video_screen_set_visarea(screen, 0*8, 51*8-1, 2*8, 30*8-1);
 		else
-			video_screen_set_visarea(0, 0*8, 54*8-1, 2*8, 30*8-1);
+			video_screen_set_visarea(screen, 0*8, 54*8-1, 2*8, 30*8-1);
 		scroll_low = 7 - (homedata_vreg[0x4] & 0x0f);
 	}
 	scroll_high = homedata_vreg[0xb] >> 2;

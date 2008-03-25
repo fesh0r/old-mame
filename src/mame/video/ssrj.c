@@ -232,15 +232,15 @@ static const int fakecols[4*4][8][3]=
 
 VIDEO_START( ssrj )
 {
-	tilemap1 = tilemap_create( get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32 );
-	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32 );
-	tilemap4 = tilemap_create( get_tile_info4,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32 );
+	tilemap1 = tilemap_create( get_tile_info1,tilemap_scan_rows,8,8,32,32 );
+	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,8,8,32,32 );
+	tilemap4 = tilemap_create( get_tile_info4,tilemap_scan_rows,8,8,32,32 );
 	tilemap_set_transparent_pen(tilemap2,0);
 	tilemap_set_transparent_pen(tilemap4,0);
 }
 
 
-static void draw_objects(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_objects(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int i,j,k,x,y;
 
@@ -282,7 +282,7 @@ VIDEO_UPDATE( ssrj )
 	tilemap_set_scrolly(tilemap1 , 0, 0xff-ssrj_scrollram[2] );
 	tilemap_set_scrollx(tilemap1 , 0, ssrj_scrollram[0] );
 	tilemap_draw(bitmap,cliprect,tilemap1, 0,0);
-	draw_objects(machine, bitmap,cliprect);
+	draw_objects(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tilemap2, 0,0);
 
 	if(ssrj_scrollram[0x101]==0xb)tilemap_draw(bitmap,cliprect,tilemap4, 0,0);/* hack to display 4th tilemap */

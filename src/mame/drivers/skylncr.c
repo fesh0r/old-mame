@@ -72,10 +72,10 @@ static VIDEO_START( skylncr )
 {
 
 	tmap = tilemap_create(	get_tile_info, tilemap_scan_rows,
-							TILEMAP_TYPE_PEN, 8,8, 0x40,0x20	);
+							8,8, 0x40,0x20	);
 
 	tmap2 = tilemap_create(	get_tile_info2, skylncr_tilemap_scan_pages,
-							TILEMAP_TYPE_PEN, 8,32,
+							8,32,
 							TILES_PER_PAGE_X*PAGES_PER_TMAP_X,TILES_PER_PAGE_Y*PAGES_PER_TMAP_Y );
 
 	tilemap_set_transparent_pen(tmap,  0);
@@ -84,7 +84,7 @@ static VIDEO_START( skylncr )
 
 static VIDEO_UPDATE( skylncr )
 {
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 	tilemap_draw(bitmap,cliprect, tmap2, 0, 0);
 	tilemap_draw(bitmap,cliprect, tmap, 0, 0);
 	return 0;
@@ -151,11 +151,11 @@ static ADDRESS_MAP_START( mem_map_skylncr, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
 
-	AM_RANGE(0x8800, 0x8fff) AM_READWRITE( MRA8_RAM, skylncr_videoram_w ) AM_BASE( &skylncr_videoram )
-	AM_RANGE(0x9000, 0x97ff) AM_READWRITE( MRA8_RAM, skylncr_colorram_w ) AM_BASE( &skylncr_colorram )
+	AM_RANGE(0x8800, 0x8fff) AM_READWRITE( SMH_RAM, skylncr_videoram_w ) AM_BASE( &skylncr_videoram )
+	AM_RANGE(0x9000, 0x97ff) AM_READWRITE( SMH_RAM, skylncr_colorram_w ) AM_BASE( &skylncr_colorram )
 
-	AM_RANGE(0x9800, 0x9fff) AM_READWRITE( MRA8_RAM, skylncr_videoram2_w ) AM_BASE( &skylncr_videoram2 )
-	AM_RANGE(0xa000, 0xa7ff) AM_READWRITE( MRA8_RAM, skylncr_colorram2_w ) AM_BASE( &skylncr_colorram2 )
+	AM_RANGE(0x9800, 0x9fff) AM_READWRITE( SMH_RAM, skylncr_videoram2_w ) AM_BASE( &skylncr_videoram2 )
+	AM_RANGE(0xa000, 0xa7ff) AM_READWRITE( SMH_RAM, skylncr_colorram2_w ) AM_BASE( &skylncr_colorram2 )
 
 AM_RANGE(0xaa55, 0xaa55) AM_READ( ret_ff )
 
@@ -172,7 +172,7 @@ static WRITE8_HANDLER( skylncr_coin_w )
 }
 
 static ADDRESS_MAP_START( io_map_skylncr, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	AM_RANGE(0x00, 0x00) AM_READ( input_port_0_r )
 	AM_RANGE(0x01, 0x01) AM_READ( input_port_1_r )
@@ -429,16 +429,16 @@ static MACHINE_DRIVER_START( skylncr )
 	MDRV_CPU_ADD(Z80, 12000000/4)
 	MDRV_CPU_PROGRAM_MAP(mem_map_skylncr,0)
 	MDRV_CPU_IO_MAP(io_map_skylncr,0)
-	MDRV_CPU_VBLANK_INT(skylncr_vblank_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", skylncr_vblank_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
+
 	MDRV_GFXDECODE(skylncr)
 	MDRV_PALETTE_LENGTH(0x200)
 

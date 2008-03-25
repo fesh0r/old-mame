@@ -303,13 +303,13 @@ static WRITE32_HANDLER( timers_w )
 
 	model2_timerorig[offset] = model2_timervals[offset];
 	period = attotime_mul(ATTOTIME_IN_HZ(25000000), model2_timerorig[offset]);
-	timer_adjust(model2_timers[offset], period, 0, attotime_zero);
+	timer_adjust_oneshot(model2_timers[offset], period, 0);
 	model2_timerrun[offset] = 1;
 }
 
 static void model2_timer_exp(int tnum, int bit)
 {
-	timer_adjust(model2_timers[tnum], attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(model2_timers[tnum], attotime_never, 0);
 
 	model2_intreq |= (1<<bit);
 	if (model2_intena & (1<<bit))
@@ -348,10 +348,10 @@ static MACHINE_RESET(model2_common)
 	model2_timers[2] = timer_alloc(model2_timer_2_cb, NULL);
 	model2_timers[3] = timer_alloc(model2_timer_3_cb, NULL);
 
-	timer_adjust(model2_timers[0], attotime_never, 0, attotime_never);
-	timer_adjust(model2_timers[1], attotime_never, 0, attotime_never);
-	timer_adjust(model2_timers[2], attotime_never, 0, attotime_never);
-	timer_adjust(model2_timers[3], attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(model2_timers[0], attotime_never, 0);
+	timer_adjust_oneshot(model2_timers[1], attotime_never, 0);
+	timer_adjust_oneshot(model2_timers[2], attotime_never, 0);
+	timer_adjust_oneshot(model2_timers[3], attotime_never, 0);
 }
 
 static MACHINE_RESET(model2o)
@@ -483,7 +483,7 @@ static READ32_HANDLER(fifoctl_r)
 
 static READ32_HANDLER(videoctl_r)
 {
-	return (cpu_getcurrentframe() & 1)<<2;
+	return (video_screen_get_frame_number(machine->primary_screen) & 1)<<2;
 }
 
 
@@ -944,7 +944,7 @@ static WRITE32_HANDLER( model2_serial_w )
 {
 	if (((mem_mask & 0xff) == 0) && (offset == 0))
 	{
-		SCSP_MidiIn(0, data&0xff, 0);
+		SCSP_MidiIn(machine, 0, data&0xff, 0);
 
 		// give the 68k time to notice
 		cpu_spinuntil_time(ATTOTIME_IN_USEC(40));
@@ -1280,7 +1280,7 @@ static ADDRESS_MAP_START( model2_base_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x01100000, 0x0110ffff) AM_READWRITE(sys24_tile32_r, sys24_tile32_w) AM_MIRROR(0x10000)
 	AM_RANGE(0x01180000, 0x011fffff) AM_READWRITE(sys24_char32_r, sys24_char32_w) AM_MIRROR(0x100000)
 
-	AM_RANGE(0x01800000, 0x01803fff) AM_READWRITE(MRA32_RAM, pal32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x01800000, 0x01803fff) AM_READWRITE(SMH_RAM, pal32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x01810000, 0x0181bfff) AM_RAM AM_BASE(&model2_colorxlat)
 	AM_RANGE(0x0181c000, 0x0181c003) AM_WRITE(model2_3d_zclip_w)
 	AM_RANGE(0x01a10000, 0x01a1ffff) AM_READWRITE(network_r, network_w)
@@ -1311,9 +1311,9 @@ static ADDRESS_MAP_START( model2o_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2o_serial_w )
 
-	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
-	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
-	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(MRA32_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
+	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(SMH_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
+	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(SMH_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
+	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(SMH_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
 
 	AM_RANGE(0x01c00000, 0x01c00007) AM_READ(analog_r)
 	AM_RANGE(0x01c00010, 0x01c00013) AM_READ(ctrl10_r)
@@ -1338,9 +1338,9 @@ static ADDRESS_MAP_START( model2a_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2_serial_w )
 
-	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
-	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(MRA32_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
-	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(MRA32_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
+	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(SMH_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
+	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(SMH_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
+	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(SMH_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
 
 	AM_RANGE(0x01c00000, 0x01c00003) AM_READWRITE(ctrl0_r, ctrl0_w)
 	AM_RANGE(0x01c00004, 0x01c00007) AM_READ(ctrl1_r)
@@ -1425,7 +1425,7 @@ static INPUT_PORTS_START( model2 )
 	PORT_START
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_START2 )
@@ -1443,7 +1443,7 @@ static INPUT_PORTS_START( desert )
 	PORT_START
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1) // VR 1 (Blue)
@@ -1474,7 +1474,7 @@ static INPUT_PORTS_START( daytona )
 	PORT_START
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1) // VR 1 (Red)
@@ -1507,7 +1507,7 @@ static INPUT_PORTS_START( bel )
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("1P Push Switch") PORT_CODE(KEYCODE_7)
@@ -1578,12 +1578,12 @@ static READ16_HANDLER( m1_snd_v60_ready_r )
 
 static READ16_HANDLER( m1_snd_mpcm0_r )
 {
-	return MultiPCM_reg_0_r(0);
+	return MultiPCM_reg_0_r(machine, 0);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm0_w )
 {
-	MultiPCM_reg_0_w(offset, data);
+	MultiPCM_reg_0_w(machine, offset, data);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm0_bnk_w )
@@ -1593,12 +1593,12 @@ static WRITE16_HANDLER( m1_snd_mpcm0_bnk_w )
 
 static READ16_HANDLER( m1_snd_mpcm1_r )
 {
-	return MultiPCM_reg_1_r(0);
+	return MultiPCM_reg_1_r(machine, 0);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm1_w )
 {
-	MultiPCM_reg_1_w(offset, data);
+	MultiPCM_reg_1_w(machine, offset, data);
 }
 
 static WRITE16_HANDLER( m1_snd_mpcm1_bnk_w )
@@ -1608,7 +1608,7 @@ static WRITE16_HANDLER( m1_snd_mpcm1_bnk_w )
 
 static READ16_HANDLER( m1_snd_ym_r )
 {
-	return YM3438_status_port_0_A_r(0);
+	return YM3438_status_port_0_A_r(machine, 0);
 }
 
 static WRITE16_HANDLER( m1_snd_ym_w )
@@ -1616,19 +1616,19 @@ static WRITE16_HANDLER( m1_snd_ym_w )
 	switch (offset)
 	{
 		case 0:
-			YM3438_control_port_0_A_w(0, data);
+			YM3438_control_port_0_A_w(machine, 0, data);
 			break;
 
 		case 1:
-			YM3438_data_port_0_A_w(0, data);
+			YM3438_data_port_0_A_w(machine, 0, data);
 			break;
 
 		case 2:
-			YM3438_control_port_0_B_w(0, data);
+			YM3438_control_port_0_B_w(machine, 0, data);
 			break;
 
 		case 3:
-			YM3438_data_port_0_B_w(0, data);
+			YM3438_data_port_0_B_w(machine, 0, data);
 			break;
 	}
 }
@@ -1681,8 +1681,8 @@ static ADDRESS_MAP_START( model2_snd, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(model2snd_ctrl)
 	AM_RANGE(0x600000, 0x67ffff) AM_ROM AM_REGION(REGION_CPU2, 0x80000)
 	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION(REGION_SOUND1, 0)
-	AM_RANGE(0xa00000, 0xdfffff) AM_READ(MRA16_BANK4)
-	AM_RANGE(0xe00000, 0xffffff) AM_READ(MRA16_BANK5)
+	AM_RANGE(0xa00000, 0xdfffff) AM_READ(SMH_BANK4)
+	AM_RANGE(0xe00000, 0xffffff) AM_READ(SMH_BANK5)
 ADDRESS_MAP_END
 
 static int scsp_last_line = 0;
@@ -1789,7 +1789,7 @@ static const struct mb86233_config tgp_config =
 static MACHINE_DRIVER_START( model2o )
 	MDRV_CPU_ADD(I960, 25000000)
 	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2o_mem)
- 	MDRV_CPU_VBLANK_INT(model2_interrupt,2)
+ 	MDRV_CPU_VBLANK_INT_HACK(model2_interrupt,2)
 
 	MDRV_CPU_ADD(M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(model1_snd, 0)
@@ -1798,16 +1798,18 @@ static MACHINE_DRIVER_START( model2o )
 	MDRV_CPU_CONFIG(tgp_config)
 	MDRV_CPU_PROGRAM_MAP(copro_tgp_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(model2o)
 	MDRV_NVRAM_HANDLER( model2 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(model2)
@@ -1834,7 +1836,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( model2a )
 	MDRV_CPU_ADD(I960, 25000000)
 	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2a_crx_mem)
- 	MDRV_CPU_VBLANK_INT(model2_interrupt,2)
+ 	MDRV_CPU_VBLANK_INT_HACK(model2_interrupt,2)
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model2_snd, 0)
@@ -1843,16 +1845,18 @@ static MACHINE_DRIVER_START( model2a )
 	MDRV_CPU_CONFIG(tgp_config)
 	MDRV_CPU_PROGRAM_MAP(copro_tgp_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(model2)
 	MDRV_NVRAM_HANDLER( model2 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(model2)
@@ -1876,7 +1880,7 @@ static const sharc_config sharc_cfg =
 static MACHINE_DRIVER_START( model2b )
 	MDRV_CPU_ADD(I960, 25000000)
 	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2b_crx_mem)
- 	MDRV_CPU_VBLANK_INT(model2_interrupt,2)
+ 	MDRV_CPU_VBLANK_INT_HACK(model2_interrupt,2)
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model2_snd, 0)
@@ -1891,16 +1895,18 @@ static MACHINE_DRIVER_START( model2b )
 
 	MDRV_INTERLEAVE(300)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(model2b)
 	MDRV_NVRAM_HANDLER( model2 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)
+
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(model2)
@@ -1918,18 +1924,19 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( model2c )
 	MDRV_CPU_ADD(I960, 25000000)
 	MDRV_CPU_PROGRAM_MAP(model2_base_mem, model2c_crx_mem)
- 	MDRV_CPU_VBLANK_INT(model2c_interrupt,3)
+ 	MDRV_CPU_VBLANK_INT_HACK(model2c_interrupt,3)
 
 	MDRV_CPU_ADD(M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(model2_snd, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(model2c)
 	MDRV_NVRAM_HANDLER( model2 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(62*8, 48*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 62*8-1, 0*8, 48*8-1)

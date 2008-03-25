@@ -5,8 +5,8 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "profiler.h"
 #include "deprecat.h"
+#include "profiler.h"
 #include "cpu/m6809/m6809.h"
 #include "irobot.h"
 
@@ -27,7 +27,7 @@
 
 #define IR_CPU_STATE \
 	logerror(\
-			"pc: %4x, scanline: %d\n", activecpu_get_previouspc(), video_screen_get_vpos(0))
+			"pc: %4x, scanline: %d\n", activecpu_get_previouspc(), video_screen_get_vpos(Machine->primary_screen))
 
 
 UINT8 irobot_vg_clear;
@@ -113,7 +113,7 @@ WRITE8_HANDLER( irobot_statwr_w )
 		else
 			logerror("vg start [busy!] ");
 		IR_CPU_STATE;
-		timer_adjust(irvg_timer, ATTOTIME_IN_MSEC(10), 0, attotime_zero);
+		timer_adjust_oneshot(irvg_timer, ATTOTIME_IN_MSEC(10), 0);
 #endif
 		irvg_running=1;
 	}
@@ -186,7 +186,7 @@ static TIMER_CALLBACK( scanline_callback )
     /* set a callback for the next 32-scanline increment */
     scanline += 32;
     if (scanline >= 256) scanline = 0;
-    timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, scanline_callback);
+    timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, scanline_callback);
 }
 
 static TIMER_CALLBACK( irmb_done_callback );
@@ -207,10 +207,10 @@ MACHINE_RESET( irobot )
 	irmb_timer = timer_alloc(irmb_done_callback, NULL);
 
 	/* set an initial timer to go off on scanline 0 */
-	timer_set(video_screen_get_time_until_pos(0, 0, 0), NULL, 0, scanline_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 0, 0), NULL, 0, scanline_callback);
 
-	irobot_rom_banksel_w(0,0);
-	irobot_out0_w(0,0);
+	irobot_rom_banksel_w(machine,0,0);
+	irobot_out0_w(machine,0,0);
 	irobot_combase = comRAM[0];
 	irobot_combase_mb = comRAM[1];
 	irobot_outx = 0;
@@ -851,7 +851,7 @@ default:	case 0x3f:	IXOR(irmb_din(curop), 0);							break;
 #if IR_TIMING
 	if (irmb_running == 0)
 	{
-		timer_adjust(irmb_timer, attotime_mul(ATTOTIME_IN_HZ(12000000), icount), 0, attotime_zero);
+		timer_adjust_oneshot(irmb_timer, attotime_mul(ATTOTIME_IN_HZ(12000000), icount), 0);
 		logerror("mb start ");
 		IR_CPU_STATE;
 	}
@@ -859,7 +859,7 @@ default:	case 0x3f:	IXOR(irmb_din(curop), 0);							break;
 	{
 		logerror("mb start [busy!] ");
 		IR_CPU_STATE;
-		timer_adjust(irmb_timer, attotime_mul(ATTOTIME_IN_NSEC(200), icount), 0, attotime_zero);
+		timer_adjust_oneshot(irmb_timer, attotime_mul(ATTOTIME_IN_NSEC(200), icount), 0);
 	}
 #else
 	cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);

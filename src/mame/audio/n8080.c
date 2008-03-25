@@ -155,7 +155,7 @@ static void start_mono_flop(int n, attotime expire)
 
 	update_SN76477_status();
 
-	timer_adjust(sound_timer[n], expire, n, attotime_zero);
+	timer_adjust_oneshot(sound_timer[n], expire, n);
 }
 
 
@@ -165,7 +165,7 @@ static void stop_mono_flop(int n)
 
 	update_SN76477_status();
 
-	timer_adjust(sound_timer[n], attotime_never, n, attotime_never);
+	timer_adjust_oneshot(sound_timer[n], attotime_never, n);
 }
 
 
@@ -323,7 +323,7 @@ static void delayed_sound_2(int data)
 
 	if (n8080_hardware == 1)
 	{
-		flip_screen = data & 0x20;
+		flip_screen_set_no_update(data & 0x20);
 	}
 	if (n8080_hardware == 3)
 	{
@@ -517,7 +517,7 @@ static MACHINE_RESET( helifire_sound )
 
 
 static ADDRESS_MAP_START( n8080_sound_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(10) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3ff)
 	AM_RANGE(0x0000, 0x03ff) AM_ROM
 ADDRESS_MAP_END
 

@@ -73,7 +73,7 @@ static READ8_HANDLER(input_r)
 	if(inputcnt<0){		return 0;	}
 	if(!inputcnt)
 	{
-		int key=input_port_2_word_r(0,0);
+		int key=input_port_2_word_r(machine,0,0);
 		int keyval=0; //we must return 0 (0x2 in 2nd read) to clear 4 bit at $6600 and allow next read
 
 		if(key)
@@ -104,7 +104,7 @@ static READ8_HANDLER(io_r)
 {
 	if(!offset)
 	{
-			return input_port_1_r(0)^ioram[4]; //coin
+			return input_port_1_r(machine,0)^ioram[4]; //coin
 	}
 	return 0;
 }
@@ -127,7 +127,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_WRITENOP //unknown , many writes
 	AM_RANGE(0x03, 0x03) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE(0x07, 0x07) AM_WRITE(AY8910_control_port_0_w)
@@ -211,7 +211,7 @@ static PALETTE_INIT( koikoi ) //wrong
 
 static VIDEO_START(koikoi)
 {
-	koikoi_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	koikoi_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 }
 
 static VIDEO_UPDATE(koikoi)
@@ -252,16 +252,16 @@ static MACHINE_DRIVER_START( koikoi )
 	MDRV_CPU_ADD(Z80,KOIKOI_CRYSTAL/4)	/* ?? */
 	MDRV_CPU_PROGRAM_MAP(readmem, 0)
 	MDRV_CPU_IO_MAP(readport, 0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(koikoi)
 	MDRV_PALETTE_LENGTH(8*32)
 	MDRV_PALETTE_INIT(koikoi)

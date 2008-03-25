@@ -135,7 +135,7 @@ static READ16_HANDLER( exterm_host_data_r )
  *
  *************************************/
 
-static UINT16 exterm_trackball_port_r(int which, UINT16 mem_mask)
+static UINT16 exterm_trackball_port_r(running_machine *machine, int which, UINT16 mem_mask)
 {
 	UINT16 port;
 
@@ -156,8 +156,8 @@ static UINT16 exterm_trackball_port_r(int which, UINT16 mem_mask)
 	aimpos[which] = (aimpos[which] + trackball_diff) & 0x3f;
 
 	/* Combine it with the standard input bits */
-	port = which ? input_port_1_word_r(0, mem_mask) :
-				   input_port_0_word_r(0, mem_mask);
+	port = which ? input_port_1_word_r(machine, 0, mem_mask) :
+				   input_port_0_word_r(machine, 0, mem_mask);
 
 	return (port & 0xc0ff) | (aimpos[which] << 8);
 }
@@ -165,13 +165,13 @@ static UINT16 exterm_trackball_port_r(int which, UINT16 mem_mask)
 
 static READ16_HANDLER( exterm_input_port_0_r )
 {
-	return exterm_trackball_port_r(0, mem_mask);
+	return exterm_trackball_port_r(machine, 0, mem_mask);
 }
 
 
 static READ16_HANDLER( exterm_input_port_1_r )
 {
-	return exterm_trackball_port_r(1, mem_mask);
+	return exterm_trackball_port_r(machine, 1, mem_mask);
 }
 
 
@@ -246,9 +246,9 @@ static WRITE8_HANDLER( ym2151_data_latch_w )
 {
 	/* bit 7 of the sound control selects which port */
 	if (sound_control & 0x80)
-		YM2151_data_port_0_w(offset, data);
+		YM2151_data_port_0_w(machine, offset, data);
 	else
-		YM2151_register_port_0_w(offset, data);
+		YM2151_register_port_0_w(machine, offset, data);
 }
 
 
@@ -258,7 +258,7 @@ static WRITE8_HANDLER( sound_nmi_rate_w )
 	/* this value is latched into up-counters, which are clocked at the */
 	/* input clock / 256 */
 	attotime nmi_rate = attotime_mul(ATTOTIME_IN_HZ(4000000), 4096 * (256 - data));
-	timer_adjust(sound_nmi_timer, nmi_rate, 0, nmi_rate);
+	timer_adjust_periodic(sound_nmi_timer, nmi_rate, 0, nmi_rate);
 }
 
 
@@ -325,7 +325,7 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x01500000, 0x0153ffff) AM_MIRROR(0xfc000000) AM_WRITE(exterm_output_port_0_w)
 	AM_RANGE(0x01580000, 0x015bffff) AM_MIRROR(0xfc000000) AM_WRITE(sound_latch_w)
 	AM_RANGE(0x015c0000, 0x015fffff) AM_MIRROR(0xfc000000) AM_WRITE(watchdog_reset16_w)
-	AM_RANGE(0x01800000, 0x01807fff) AM_MIRROR(0xfc7f8000) AM_READWRITE(MRA16_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x01800000, 0x01807fff) AM_MIRROR(0xfc7f8000) AM_READWRITE(SMH_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x02800000, 0x02807fff) AM_MIRROR(0xfc7f8000) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x03000000, 0x03ffffff) AM_MIRROR(0xfc000000) AM_ROM AM_REGION(REGION_USER1, 0)
 ADDRESS_MAP_END
@@ -445,7 +445,7 @@ INPUT_PORTS_END
 static const tms34010_config master_config =
 {
 	FALSE,						/* halt on reset */
-	0,							/* the screen operated on */
+	"main",						/* the screen operated on */
 	40000000/8,					/* pixel clock */
 	1,							/* pixels per clock */
 	exterm_scanline_update,		/* scanline updater */
@@ -457,7 +457,7 @@ static const tms34010_config master_config =
 static const tms34010_config slave_config =
 {
 	TRUE,						/* halt on reset */
-	0,							/* the screen operated on */
+	"main",						/* the screen operated on */
 	40000000/8,					/* pixel clock */
 	1,							/* pixels per clock */
 	NULL,						/* scanline updater */
@@ -497,10 +497,9 @@ static MACHINE_DRIVER_START( exterm )
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_PALETTE_LENGTH(2048+32768)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(40000000/8, 318, 0, 256, 264, 0, 240)
 

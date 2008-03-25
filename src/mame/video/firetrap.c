@@ -47,7 +47,7 @@ PALETTE_INIT( firetrap )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -62,10 +62,10 @@ PALETTE_INIT( firetrap )
 		bit2 = (color_prom[i] >> 6) & 0x01;
 		bit3 = (color_prom[i] >> 7) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[i + machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[i + machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[i + machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[i + machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[i + machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[i + machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[i + machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[i + machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -136,9 +136,9 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 VIDEO_START( firetrap )
 {
-	fg_tilemap  = tilemap_create(get_fg_tile_info, get_fg_memory_offset,TILEMAP_TYPE_PEN, 8, 8,32,32);
-	bg1_tilemap = tilemap_create(get_bg1_tile_info,get_bg_memory_offset,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,get_bg_memory_offset,TILEMAP_TYPE_PEN,     16,16,32,32);
+	fg_tilemap  = tilemap_create(get_fg_tile_info, get_fg_memory_offset, 8, 8,32,32);
+	bg1_tilemap = tilemap_create(get_bg1_tile_info,get_bg_memory_offset,16,16,32,32);
+	bg2_tilemap = tilemap_create(get_bg2_tile_info,get_bg_memory_offset,     16,16,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg1_tilemap,0);
@@ -209,7 +209,7 @@ WRITE8_HANDLER( firetrap_bg2_scrolly_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -227,7 +227,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		color = ((spriteram[offs + 1] & 0x08) >> 2) | (spriteram[offs + 1] & 0x01);
 		flipx = spriteram[offs + 1] & 0x04;
 		flipy = spriteram[offs + 1] & 0x02;
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -237,7 +237,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		if (spriteram[offs + 1] & 0x10)	/* double width */
 		{
-			if (flip_screen) sy -= 16;
+			if (flip_screen_get()) sy -= 16;
 
 			drawgfx(bitmap,machine->gfx[3],
 					code & ~1,
@@ -290,7 +290,7 @@ VIDEO_UPDATE( firetrap )
 {
 	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;
 }

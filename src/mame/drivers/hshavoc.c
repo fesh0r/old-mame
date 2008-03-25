@@ -94,38 +94,38 @@ static INPUT_PORTS_START( hshavoc )
 INPUT_PORTS_END
 
 static ADDRESS_MAP_START( topshoot_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)					/* Cartridge Program Rom */
-	AM_RANGE(0x202000, 0x2023ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)					/* Cartridge Program Rom */
+	AM_RANGE(0x202000, 0x2023ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa00000, 0xa0ffff) AM_READ(genesis_68k_to_z80_r)
 	AM_RANGE(0xc00000, 0xc0001f) AM_READ(genesis_vdp_r)				/* VDP Access */
-	AM_RANGE(0xe00000, 0xe1ffff) AM_READ(MRA16_BANK3)
-	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(MRA16_BANK4)
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(MRA16_RAM)					/* Main Ram */
+	AM_RANGE(0xe00000, 0xe1ffff) AM_READ(SMH_BANK3)
+	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_BANK4)
+	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)					/* Main Ram */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( topshoot_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)					/* Cartridge Program Rom */
-//  AM_RANGE(0x200000, 0x20007f) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x200000, 0x2023ff) AM_WRITE(MWA16_RAM) // tested
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)					/* Cartridge Program Rom */
+//  AM_RANGE(0x200000, 0x20007f) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x200000, 0x2023ff) AM_WRITE(SMH_RAM) // tested
 	AM_RANGE(0xa10000, 0xa1001f) AM_WRITE(genesis_io_w) AM_BASE(&genesis_io_ram)				/* Genesis Input */
 	AM_RANGE(0xa11000, 0xa11203) AM_WRITE(genesis_ctrl_w)
 	AM_RANGE(0xa00000, 0xa0ffff) AM_WRITE(genesis_68k_to_z80_w)
 	AM_RANGE(0xc00000, 0xc0001f) AM_WRITE(genesis_vdp_w)				/* VDP Access */
-	AM_RANGE(0xfe0000, 0xfeffff) AM_WRITE(MWA16_BANK4)
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA16_RAM) AM_BASE(&genesis_68k_ram)/* Main Ram */
+	AM_RANGE(0xfe0000, 0xfeffff) AM_WRITE(SMH_BANK4)
+	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&genesis_68k_ram)/* Main Ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( genesis_z80_readmem, ADDRESS_SPACE_PROGRAM, 8 )
- 	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_BANK1)
- 	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_BANK2) /* mirror */
+ 	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_BANK1)
+ 	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_BANK2) /* mirror */
 	AM_RANGE(0x4000, 0x7fff) AM_READ(genesis_z80_r)
 	AM_RANGE(0x8000, 0xffff) AM_READ(genesis_z80_bank_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( genesis_z80_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_BANK1) AM_BASE(&genesis_z80_ram)
- 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_BANK2) /* mirror */
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_BANK1) AM_BASE(&genesis_z80_ram)
+ 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_BANK2) /* mirror */
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(genesis_z80_w)
  // AM_RANGE(0x8000, 0xffff) AM_WRITE(genesis_z80_bank_w)
 ADDRESS_MAP_END
@@ -134,13 +134,11 @@ ADDRESS_MAP_END
 static MACHINE_DRIVER_START( genesis_base )
 	/*basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK / 7)
-	MDRV_CPU_VBLANK_INT(genesis_vblank_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK / 15)
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1) /* from vdp at scanline 0xe0 */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
 	MDRV_INTERLEAVE(100)
 
@@ -148,10 +146,14 @@ static MACHINE_DRIVER_START( genesis_base )
 	MDRV_MACHINE_RESET(genesis)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(342,262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 223)
+
 	MDRV_PALETTE_LENGTH(64)
 
 	MDRV_VIDEO_START(genesis)
@@ -190,10 +192,12 @@ ROM_START( hshavoc )
 	ROM_LOAD( "pic16c57",  0x00, 0x01, NO_DUMP ) // protected
 ROM_END
 
+#ifdef UNUSED_DEFINITION
 ROM_START( hshavoc2 ) /* Genesis Version, for reference */
 	ROM_REGION( 0x200000, REGION_CPU1, 0 )
 	ROM_LOAD( "hsh.rom", 0x000000, 0x100000, CRC(17be551c) SHA1(0dc1969098716ba332978b89356f62961417682b) )
 ROM_END
+#endif
 
 static READ16_HANDLER( vdp_fake_r )
 {

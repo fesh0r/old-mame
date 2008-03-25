@@ -87,7 +87,7 @@ VIDEO_START( taitoair )
   Screen refresh
 ***************************************************************************/
 
-static void draw_sprites(mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void draw_sprites(bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	/* Y chain size is 16/32?/64/64? pixels. X chain size
        is always 64 pixels. */
@@ -217,7 +217,7 @@ struct poly {
 	int col;
 };
 
-static void fill_slope(mame_bitmap *bitmap, int color, INT32 x1, INT32 x2, INT32 sl1, INT32 sl2, INT32 y1, INT32 y2, INT32 *nx1, INT32 *nx2)
+static void fill_slope(bitmap_t *bitmap, int color, INT32 x1, INT32 x2, INT32 sl1, INT32 sl2, INT32 y1, INT32 y2, INT32 *nx1, INT32 *nx2)
 {
 	if(y1 > view.y2)
 		return;
@@ -280,7 +280,7 @@ static void fill_slope(mame_bitmap *bitmap, int color, INT32 x1, INT32 x2, INT32
 	*nx2 = x2;
 }
 
-static void fill_poly(mame_bitmap *bitmap, const struct poly *q)
+static void fill_poly(bitmap_t *bitmap, const struct poly *q)
 {
 	INT32 sl1, sl2, cury, limy, x1, x2;
 	int pmin, pmax, i, ps1, ps2;
@@ -364,27 +364,27 @@ static void fill_poly(mame_bitmap *bitmap, const struct poly *q)
 
 VIDEO_UPDATE( taitoair )
 {
-	TC0080VCO_tilemap_update(machine);
+	TC0080VCO_tilemap_update(screen->machine);
 
-	fillbitmap(bitmap, machine->pens[0x41], cliprect);
+	fillbitmap(bitmap, 0x41, cliprect);
 
 #ifdef MAME_DEBUG
 	if ( !input_code_pressed(KEYCODE_A) )
-		TC0080VCO_tilemap_draw(machine,bitmap,cliprect,0,0,0);
+		TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,0,0,0);
 	if ( !input_code_pressed(KEYCODE_S) )
 		draw_sprites(bitmap,cliprect,0);
 	if ( !input_code_pressed(KEYCODE_D) )
-		TC0080VCO_tilemap_draw(machine,bitmap,cliprect,1,0,0);
+		TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,1,0,0);
 	if ( !input_code_pressed(KEYCODE_F) )
 		draw_sprites(bitmap,cliprect,1);
 #else
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,0,0,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,0,0,0);
 	draw_sprites (bitmap,cliprect,0);
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,1,0,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,1,0,0);
 	draw_sprites (bitmap,cliprect,1);
 #endif
 
-	TC0080VCO_tilemap_draw(machine,bitmap,cliprect,2,0,0);
+	TC0080VCO_tilemap_draw(screen->machine,bitmap,cliprect,2,0,0);
 
 	if(taitoair_line_ram[0x3fff]) {
 		int adr = 0x3fff;

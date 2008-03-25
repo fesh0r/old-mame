@@ -80,7 +80,7 @@ Heavy use is made of sprite zooming.
 
 ***************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,const int *primasks,int x_offs,int y_offs)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,const int *primasks,int x_offs,int y_offs)
 {
 	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
 	int offs, data, tilenum, color, flipx, flipy;
@@ -274,8 +274,8 @@ VIDEO_UPDATE( undrfire )
 	}
 #endif
 
-	TC0100SCN_tilemap_update(machine);
-	TC0480SCP_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
+	TC0480SCP_tilemap_update(screen->machine);
 
 	priority = TC0480SCP_get_bg_priority();
 
@@ -290,7 +290,7 @@ VIDEO_UPDATE( undrfire )
 	pivlayer[2] = 2;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* wrong color? */
+	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
 
 
 /* The "PIV" chip seems to be a renamed TC0100SCN. It has a
@@ -299,8 +299,8 @@ VIDEO_UPDATE( undrfire )
    pointless - it's always hidden by other layers. Does it
    serve some blending pupose ? */
 
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,pivlayer[0],0,0);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,pivlayer[1],0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[0],0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[1],0,0);
 
 #ifdef MAME_DEBUG
 	if (dislayer[layer[0]]==0)
@@ -330,26 +330,26 @@ VIDEO_UPDATE( undrfire )
 		if ((TC0480SCP_pri_reg &0x3) == 3)	/* on road levels kludge sprites up 1 priority */
 		{
 			static const int primasks[4] = {0xfff0, 0xff00, 0x0, 0x0};
-			draw_sprites(machine, bitmap,cliprect,primasks,44,-574);
+			draw_sprites(screen->machine, bitmap,cliprect,primasks,44,-574);
 		}
 		else
 		{
 			static const int primasks[4] = {0xfffc, 0xfff0, 0xff00, 0x0};
-			draw_sprites(machine, bitmap,cliprect,primasks,44,-574);
+			draw_sprites(screen->machine, bitmap,cliprect,primasks,44,-574);
 		}
 	}
 
 #ifdef MAME_DEBUG
 	if (dislayer[5]==0)
 #endif
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,pivlayer[2],0,0);	/* piv text layer */
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[2],0,0);	/* piv text layer */
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,0);	/* TC0480SCP text layer */
 
 	/* See if we should draw artificial gun targets */
 	/* (not yet implemented...) */
 
-	if (input_port_7_word_r(0,0) & 0x1)	/* Fake DSW */
+	if (input_port_7_word_r(screen->machine,0,0) & 0x1)	/* Fake DSW */
 	{
 		popmessage("Gunsights on");
 	}

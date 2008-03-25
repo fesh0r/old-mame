@@ -216,17 +216,17 @@ static MACHINE_DRIVER_START( pooyan )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, MASTER_CLOCK/3/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(pooyan_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", pooyan_interrupt)
 
 	MDRV_MACHINE_START(pooyan)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(pooyan)
 	MDRV_PALETTE_LENGTH(16*16+16*16)
 
@@ -267,8 +267,8 @@ ROM_START( pooyan )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "pooyan.pr1",   0x0000, 0x0020, CRC(a06a6d0e) SHA1(ae131320b66d76d4bc9108da6708f6f874b2e123) ) /* palette */
-	ROM_LOAD( "pooyan.pr2",   0x0020, 0x0100, CRC(82748c0b) SHA1(9ce8eb92e482eba5a9077e9db99841d65b011346) ) /* sprites */
-	ROM_LOAD( "pooyan.pr3",   0x0120, 0x0100, CRC(8cd4cd60) SHA1(e0188ecd5b53a8e6e28c1de80def676740772334) ) /* characters */
+	ROM_LOAD( "pooyan.pr3",   0x0020, 0x0100, CRC(8cd4cd60) SHA1(e0188ecd5b53a8e6e28c1de80def676740772334) ) /* characters */
+	ROM_LOAD( "pooyan.pr2",   0x0120, 0x0100, CRC(82748c0b) SHA1(9ce8eb92e482eba5a9077e9db99841d65b011346) ) /* sprites */
 ROM_END
 
 ROM_START( pooyans )
@@ -292,8 +292,8 @@ ROM_START( pooyans )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "pooyan.pr1",   0x0000, 0x0020, CRC(a06a6d0e) SHA1(ae131320b66d76d4bc9108da6708f6f874b2e123) ) /* palette */
-	ROM_LOAD( "pooyan.pr2",   0x0020, 0x0100, CRC(82748c0b) SHA1(9ce8eb92e482eba5a9077e9db99841d65b011346) ) /* sprites */
-	ROM_LOAD( "pooyan.pr3",   0x0120, 0x0100, CRC(8cd4cd60) SHA1(e0188ecd5b53a8e6e28c1de80def676740772334) ) /* characters */
+	ROM_LOAD( "pooyan.pr3",   0x0020, 0x0100, CRC(8cd4cd60) SHA1(e0188ecd5b53a8e6e28c1de80def676740772334) ) /* characters */
+	ROM_LOAD( "pooyan.pr2",   0x0120, 0x0100, CRC(82748c0b) SHA1(9ce8eb92e482eba5a9077e9db99841d65b011346) ) /* sprites */
 ROM_END
 
 ROM_START( pootan )
@@ -317,8 +317,8 @@ ROM_START( pootan )
 
 	ROM_REGION( 0x0220, REGION_PROMS, 0 )
 	ROM_LOAD( "pooyan.pr1",   0x0000, 0x0020, CRC(a06a6d0e) SHA1(ae131320b66d76d4bc9108da6708f6f874b2e123) ) /* palette */
-	ROM_LOAD( "pooyan.pr2",   0x0020, 0x0100, CRC(82748c0b) SHA1(9ce8eb92e482eba5a9077e9db99841d65b011346) ) /* sprites */
-	ROM_LOAD( "pooyan.pr3",   0x0120, 0x0100, CRC(8cd4cd60) SHA1(e0188ecd5b53a8e6e28c1de80def676740772334) ) /* characters */
+	ROM_LOAD( "pooyan.pr3",   0x0020, 0x0100, CRC(8cd4cd60) SHA1(e0188ecd5b53a8e6e28c1de80def676740772334) ) /* characters */
+	ROM_LOAD( "pooyan.pr2",   0x0120, 0x0100, CRC(82748c0b) SHA1(9ce8eb92e482eba5a9077e9db99841d65b011346) ) /* sprites */
 ROM_END
 
 

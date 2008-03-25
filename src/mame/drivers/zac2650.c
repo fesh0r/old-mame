@@ -14,6 +14,7 @@
 
 #include "tinv2650.lh"
 
+extern UINT8 *zac2650_s2636_0_ram;
 WRITE8_HANDLER( tinvader_videoram_w );
 static WRITE8_HANDLER( tinvader_sound_w );
 READ8_HANDLER( zac_s2636_r );
@@ -22,31 +23,20 @@ READ8_HANDLER( tinvader_port_0_r );
 VIDEO_START( tinvader );
 VIDEO_UPDATE( tinvader );
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x17ff) AM_READ(MRA8_ROM)
-    AM_RANGE(0x1800, 0x1bff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1c00, 0x1cff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1d00, 0x1dff) AM_READ(MRA8_RAM)
-    AM_RANGE(0x1e80, 0x1e80) AM_READ(tinvader_port_0_r)
-    AM_RANGE(0x1e81, 0x1e81) AM_READ(input_port_1_r)
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x17ff) AM_ROM
+	AM_RANGE(0x1800, 0x1bff) AM_READWRITE(SMH_RAM, tinvader_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x1c00, 0x1cff) AM_RAM
+	AM_RANGE(0x1d00, 0x1dff) AM_RAM
+	AM_RANGE(0x1e80, 0x1e80) AM_READWRITE(tinvader_port_0_r, tinvader_sound_w)
+	AM_RANGE(0x1e81, 0x1e81) AM_READ(input_port_1_r)
     AM_RANGE(0x1e82, 0x1e82) AM_READ(input_port_2_r)
-	AM_RANGE(0x1e85, 0x1e85) AM_READ(input_port_4_r)			/* Dodgem Only */
-	AM_RANGE(0x1e86, 0x1e86) AM_READ(input_port_5_r)			/* Dodgem Only */
-    AM_RANGE(0x1f00, 0x1fff) AM_READ(zac_s2636_r)			/* S2636 Chip */
+	AM_RANGE(0x1e85, 0x1e85) AM_READ(input_port_4_r)					/* Dodgem Only */
+	AM_RANGE(0x1e86, 0x1e86) AM_READWRITE(input_port_5_r, SMH_NOP)		/* Dodgem Only */
+	AM_RANGE(0x1f00, 0x1fff) AM_READWRITE(zac_s2636_r, SMH_RAM) AM_BASE(&zac2650_s2636_0_ram)
 ADDRESS_MAP_END
 
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x17ff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x1800, 0x1bff) AM_WRITE(tinvader_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x1c00, 0x1cff) AM_WRITE(MWA8_RAM)
-    AM_RANGE(0x1d00, 0x1dff) AM_WRITE(MWA8_RAM)
-    AM_RANGE(0x1e80, 0x1e80) AM_WRITE(tinvader_sound_w)
-	AM_RANGE(0x1e86, 0x1e86) AM_WRITE(MWA8_NOP)				/* Dodgem Only */
-	AM_RANGE(0x1f00, 0x1fff) AM_WRITE(MWA8_RAM) AM_BASE(&s2636_1_ram)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
+static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
     AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(input_port_3_r)
 ADDRESS_MAP_END
 
@@ -236,12 +226,10 @@ INPUT_PORTS_END
 
 static PALETTE_INIT( zac2650 )
 {
-	palette_set_color(machine,0,MAKE_RGB(0x00,0x00,0x00)); /* BLACK */
-	palette_set_color(machine,1,MAKE_RGB(0xff,0xff,0xff)); /* WHITE */
-	colortable[0] = 0;
-	colortable[1] = 1;
-	colortable[2] = 0;
-	colortable[3] = 0;
+	palette_set_color(machine,0,RGB_BLACK);
+	palette_set_color(machine,1,RGB_WHITE);
+	palette_set_color(machine,2,RGB_BLACK);
+	palette_set_color(machine,3,RGB_BLACK);
 }
 
 /************************************************************************************************
@@ -321,20 +309,19 @@ static MACHINE_DRIVER_START( tinvader )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(S2650, 3800000/4)
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_IO_MAP(readport,0)
-
-	MDRV_SCREEN_REFRESH_RATE(55)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1041))
+	MDRV_CPU_PROGRAM_MAP(main_map, 0)
+	MDRV_CPU_IO_MAP(port_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(55)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1041))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(30*24, 32*24)
 	MDRV_SCREEN_VISIBLE_AREA(0, 719, 0, 767)
+
 	MDRV_GFXDECODE(tinvader)
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_COLORTABLE_LENGTH(4)
+	MDRV_PALETTE_LENGTH(4)
 
 	MDRV_PALETTE_INIT(zac2650)
 	MDRV_VIDEO_START(tinvader)

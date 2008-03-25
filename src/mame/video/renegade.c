@@ -70,8 +70,8 @@ static void all_tiles_dirty(void)
 
 VIDEO_START( renegade )
 {
-	bg_tilemap = tilemap_create(get_bg_tilemap_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,     16, 16, 64, 16);
-	fg_tilemap = tilemap_create(get_fg_tilemap_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,  8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tilemap_info, tilemap_scan_rows,      16, 16, 64, 16);
+	fg_tilemap = tilemap_create(get_fg_tilemap_info, tilemap_scan_rows,   8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 	tilemap_set_scrolldx(bg_tilemap, 256, 0);
@@ -80,7 +80,7 @@ VIDEO_START( renegade )
 	state_save_register_func_postload(all_tiles_dirty);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT8 *source = spriteram;
 	UINT8 *finish = source + 96 * 4;
@@ -101,7 +101,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			if (sx > 248)
 				sx -= 256;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 240 - sx;
 				sy = 240 - sy;
@@ -114,18 +114,18 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				drawgfx(bitmap, machine->gfx[sprite_bank],
 					sprite_number + 1,
 					color,
-					xflip, flip_screen,
-					sx, sy + (flip_screen ? -16 : 16),
+					xflip, flip_screen_get(),
+					sx, sy + (flip_screen_get() ? -16 : 16),
 					cliprect, TRANSPARENCY_PEN, 0);
 			}
 			else
 			{
-				sy += (flip_screen ? -16 : 16);
+				sy += (flip_screen_get() ? -16 : 16);
 			}
 			drawgfx(bitmap, machine->gfx[sprite_bank],
 				sprite_number,
 				color,
-				xflip, flip_screen,
+				xflip, flip_screen_get(),
 				sx, sy,
 				cliprect, TRANSPARENCY_PEN, 0);
 		}
@@ -137,7 +137,7 @@ VIDEO_UPDATE( renegade )
 {
 	tilemap_set_scrollx(bg_tilemap, 0, renegade_scrollx);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0 , 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0 , 0);
 	return 0;
 }

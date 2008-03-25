@@ -101,7 +101,7 @@ static WRITE32_HANDLER( darkhors_tmapram2_w )
 	tilemap_mark_tile_dirty(darkhors_tmap2, offset);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT32 *s		=	spriteram32;
 	UINT32 *end		=	spriteram32 + 0x02000/4;
@@ -139,10 +139,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 static VIDEO_START( darkhors )
 {
 	darkhors_tmap			=	tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-												TILEMAP_TYPE_PEN, 16,16, 0x40,0x40	);
+												16,16, 0x40,0x40	);
 
 	darkhors_tmap2			=	tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-												TILEMAP_TYPE_PEN, 16,16, 0x40,0x40	);
+												16,16, 0x40,0x40	);
 
 	tilemap_set_transparent_pen(darkhors_tmap, 0);
 	tilemap_set_transparent_pen(darkhors_tmap2, 0);
@@ -165,7 +165,7 @@ static VIDEO_UPDATE( darkhors )
 	}
 #endif
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	tilemap_set_scrollx(darkhors_tmap,0, (darkhors_tmapscroll[0] >> 16) - 5);
 	tilemap_set_scrolly(darkhors_tmap,0, (darkhors_tmapscroll[0] & 0xffff) - 0xff );
@@ -175,7 +175,7 @@ static VIDEO_UPDATE( darkhors )
 	tilemap_set_scrolly(darkhors_tmap2,0, (darkhors_tmapscroll2[0] & 0xffff) - 0xff );
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect, darkhors_tmap2, 0, 0);
 
-	if (layers_ctrl & 4)	draw_sprites(machine,bitmap,cliprect);
+	if (layers_ctrl & 4)	draw_sprites(screen->machine,bitmap,cliprect);
 
 #if DARKHORS_DEBUG
 #if 0
@@ -258,19 +258,19 @@ static WRITE32_HANDLER( darkhors_eeprom_w )
 static WRITE32_HANDLER( OKIM6295_data_0_msb32_w )
 {
 	if (ACCESSING_MSB32)
-		OKIM6295_data_0_msb_w(offset, data >> 16, mem_mask >> 16);
+		OKIM6295_data_0_msb_w(machine, offset, data >> 16, mem_mask >> 16);
 }
 
 static READ32_HANDLER( OKIM6295_status_0_msb32_r )
 {
-	return OKIM6295_status_0_msb_r(offset, mem_mask >> 16) << 16;
+	return OKIM6295_status_0_msb_r(machine, offset, mem_mask >> 16) << 16;
 }
 
 static WRITE32_HANDLER( paletteram32_xBBBBBGGGGGRRRRR_dword_w )
 {
 	paletteram16 = (UINT16 *)paletteram32;
-	if (ACCESSING_MSW32)	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset*2, data >> 16, mem_mask >> 16);
-	if (ACCESSING_LSW32)	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset*2+1, data, mem_mask);
+	if (ACCESSING_MSW32)	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset*2, data >> 16, mem_mask >> 16);
+	if (ACCESSING_LSW32)	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine, offset*2+1, data, mem_mask);
 }
 
 static UINT32 input_sel;
@@ -313,35 +313,35 @@ static WRITE32_HANDLER( darkhors_unk1_w )
 }
 
 static ADDRESS_MAP_START( darkhors_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ( MRA32_ROM					)
-	AM_RANGE(0x400000, 0x41ffff) AM_READ( MRA32_RAM					)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ( SMH_ROM					)
+	AM_RANGE(0x400000, 0x41ffff) AM_READ( SMH_RAM					)
 	AM_RANGE(0x4e0080, 0x4e0083) AM_READ( darkhors_eeprom_r			)
 	AM_RANGE(0x580000, 0x580003) AM_READ( input_port_0_dword_r		)
 	AM_RANGE(0x580004, 0x580007) AM_READ( input_port_1_dword_r		)
 	AM_RANGE(0x580008, 0x58000b) AM_READ( darkhors_input_sel_r		)
 	AM_RANGE(0x580084, 0x580087) AM_READ( OKIM6295_status_0_msb32_r	)
-	AM_RANGE(0x580200, 0x580203) AM_READ( MRA32_NOP					)
+	AM_RANGE(0x580200, 0x580203) AM_READ( SMH_NOP					)
 	AM_RANGE(0x580400, 0x580403) AM_READ( input_port_2_dword_r		)
 	AM_RANGE(0x580420, 0x580423) AM_READ( input_port_3_dword_r		)
-	AM_RANGE(0x800000, 0x87ffff) AM_READ( MRA32_RAM					)
+	AM_RANGE(0x800000, 0x87ffff) AM_READ( SMH_RAM					)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( darkhors_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE( MWA32_ROM				)
-	AM_RANGE(0x400000, 0x41ffff) AM_WRITE( MWA32_RAM				)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE( SMH_ROM				)
+	AM_RANGE(0x400000, 0x41ffff) AM_WRITE( SMH_RAM				)
 	AM_RANGE(0x490040, 0x490043) AM_WRITE( darkhors_eeprom_w		)
 	AM_RANGE(0x58000c, 0x58000f) AM_WRITE( darkhors_input_sel_w		)
 	AM_RANGE(0x4e0080, 0x4e0083) AM_WRITE( darkhors_unk1_w			)
 	AM_RANGE(0x580084, 0x580087) AM_WRITE( OKIM6295_data_0_msb32_w	)
-	AM_RANGE(0x800000, 0x86bfff) AM_WRITE( MWA32_RAM				)
+	AM_RANGE(0x800000, 0x86bfff) AM_WRITE( SMH_RAM				)
 	AM_RANGE(0x86c000, 0x86ffff) AM_WRITE( darkhors_tmapram_w		)	AM_BASE(&darkhors_tmapram)
 	AM_RANGE(0x870000, 0x873fff) AM_WRITE( darkhors_tmapram2_w		)	AM_BASE(&darkhors_tmapram2)
-	AM_RANGE(0x874000, 0x87dfff) AM_WRITE( MWA32_RAM				)
-	AM_RANGE(0x87e000, 0x87ffff) AM_WRITE( MWA32_RAM				)	AM_BASE(&spriteram32)
+	AM_RANGE(0x874000, 0x87dfff) AM_WRITE( SMH_RAM				)
+	AM_RANGE(0x87e000, 0x87ffff) AM_WRITE( SMH_RAM				)	AM_BASE(&spriteram32)
 	AM_RANGE(0x880000, 0x89ffff) AM_WRITE( paletteram32_xBBBBBGGGGGRRRRR_dword_w)	AM_BASE(&paletteram32)
-	AM_RANGE(0x8a0000, 0x8bffff) AM_WRITE( MWA32_RAM				)	// this should still be palette ram!
-	AM_RANGE(0x8c0120, 0x8c012f) AM_WRITE( MWA32_RAM				) AM_BASE(&darkhors_tmapscroll)
-	AM_RANGE(0x8c0130, 0x8c013f) AM_WRITE( MWA32_RAM				) AM_BASE(&darkhors_tmapscroll2)
+	AM_RANGE(0x8a0000, 0x8bffff) AM_WRITE( SMH_RAM				)	// this should still be palette ram!
+	AM_RANGE(0x8c0120, 0x8c012f) AM_WRITE( SMH_RAM				) AM_BASE(&darkhors_tmapscroll)
+	AM_RANGE(0x8c0130, 0x8c013f) AM_WRITE( SMH_RAM				) AM_BASE(&darkhors_tmapscroll2)
 ADDRESS_MAP_END
 
 
@@ -600,18 +600,18 @@ static INTERRUPT_GEN( darkhors )
 static MACHINE_DRIVER_START( darkhors )
 	MDRV_CPU_ADD(M68EC020, 12000000) // 36MHz/3 ??
 	MDRV_CPU_PROGRAM_MAP(darkhors_readmem,darkhors_writemem)
-	MDRV_CPU_VBLANK_INT(darkhors,3)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(darkhors,3)
 
 	MDRV_NVRAM_HANDLER(darkhors)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(0x190, 0x100)
 	MDRV_SCREEN_VISIBLE_AREA(0, 0x190-1, 8, 0x100-8-1)
+
 	MDRV_GFXDECODE(darkhors)
 	MDRV_PALETTE_LENGTH(0x10000)
 

@@ -34,7 +34,7 @@ WRITE16_HANDLER( taotaido_sprite_character_bank_select_w )
 /* sprites are like the other video system / psikyo games, we can merge this with aerofgt and plenty of other
    things eventually */
 
-static void draw_sprite(running_machine *machine, UINT16 spriteno, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprite(running_machine *machine, UINT16 spriteno, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	/*- SPR RAM Format -**
 
@@ -118,7 +118,7 @@ static void draw_sprite(running_machine *machine, UINT16 spriteno, mame_bitmap *
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	/* first part of sprite ram is the list of sprites to draw, terminated with 0x4000 */
 	UINT16 *source = taotaido_spriteram_older;
@@ -191,7 +191,7 @@ static TILEMAP_MAPPER( taotaido_tilemap_scan_rows )
 
 VIDEO_START(taotaido)
 {
-	bg_tilemap = tilemap_create(taotaido_bg_tile_info,taotaido_tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,128,64);
+	bg_tilemap = tilemap_create(taotaido_bg_tile_info,taotaido_tilemap_scan_rows,     16,16,128,64);
 
 	taotaido_spriteram_old = auto_malloc(0x2000);
 	taotaido_spriteram_older = auto_malloc(0x2000);
@@ -210,10 +210,11 @@ VIDEO_UPDATE(taotaido)
 	int line;
 	rectangle clip;
 
-	clip.min_x = machine->screen[0].visarea.min_x;
-	clip.max_x = machine->screen[0].visarea.max_x;
-	clip.min_y = machine->screen[0].visarea.min_y;
-	clip.max_y = machine->screen[0].visarea.max_y;
+	const rectangle *visarea = video_screen_get_visible_area(screen);
+	clip.min_x = visarea->min_x;
+	clip.max_x = visarea->max_x;
+	clip.min_y = visarea->min_y;
+	clip.max_y = visarea->max_y;
 
 	for (line = 0; line < 224;line++)
 	{
@@ -225,7 +226,7 @@ VIDEO_UPDATE(taotaido)
 		tilemap_draw(bitmap,&clip,bg_tilemap,0,0);
 	}
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }
 

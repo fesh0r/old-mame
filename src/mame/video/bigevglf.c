@@ -19,7 +19,7 @@ static UINT32 plane_visible = 0;
 static UINT8 *vidram;
 
 
-static mame_bitmap *tmp_bitmap[4];
+static bitmap_t *tmp_bitmap[4];
 
 WRITE8_HANDLER(bigevglf_palette_w)
 {
@@ -62,14 +62,14 @@ READ8_HANDLER( bigevglf_vidram_r )
 
 VIDEO_START( bigevglf )
 {
-	tmp_bitmap[0] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	tmp_bitmap[1] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	tmp_bitmap[2] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	tmp_bitmap[3] = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	tmp_bitmap[0] = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmp_bitmap[1] = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmp_bitmap[2] = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmp_bitmap[3] = video_screen_auto_bitmap_alloc(machine->primary_screen);
 	vidram = auto_malloc(0x100*0x100 * 4);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i,j;
 	for (i = 0xc0-4; i >= 0; i-=4)
@@ -91,6 +91,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( bigevglf )
 {
 	copybitmap(bitmap,tmp_bitmap[ plane_visible ],0,0,0,0,cliprect);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

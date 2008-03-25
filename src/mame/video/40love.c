@@ -16,8 +16,8 @@ static UINT8 fortyl_xoffset = 128;
 static UINT8 *fortyl_pixram1;
 static UINT8 *fortyl_pixram2;
 
-static mame_bitmap *pixel_bitmap1;
-static mame_bitmap *pixel_bitmap2;
+static bitmap_t *pixel_bitmap1;
+static bitmap_t *pixel_bitmap2;
 
 static tilemap *background;
 
@@ -31,7 +31,7 @@ PALETTE_INIT( fortyl )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -43,17 +43,17 @@ PALETTE_INIT( fortyl )
 		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		/* green component */
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[machine->config->total_colors] >> 3) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		/* blue component */
-		bit0 = (color_prom[2*machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[2*machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[2*machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[2*machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[2*machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -107,10 +107,10 @@ VIDEO_START( fortyl )
 	fortyl_pixram1 = auto_malloc(0x4000);
 	fortyl_pixram2 = auto_malloc(0x4000);
 
-	pixel_bitmap1 = auto_bitmap_alloc(256,256,machine->screen[0].format);
-	pixel_bitmap2 = auto_bitmap_alloc(256,256,machine->screen[0].format);
+	pixel_bitmap1 = auto_bitmap_alloc(256,256,video_screen_get_format(machine->primary_screen));
+	pixel_bitmap2 = auto_bitmap_alloc(256,256,video_screen_get_format(machine->primary_screen));
 
-	background  = tilemap_create(get_bg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN, 8,8,64,32);
+	background  = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8,8,64,32);
 
 	tilemap_set_scroll_rows(background,32);
 	tilemap_set_transparent_pen(background,0);
@@ -256,7 +256,7 @@ spriteram format (4 bytes per sprite):
     offset  3   xxxxxxxx    x position
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 
@@ -319,7 +319,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 	}
 }
 
-static void draw_pixram( mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_pixram( bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs;
 	int f = fortyl_flipscreen ^ 1;
@@ -345,6 +345,6 @@ VIDEO_UPDATE( fortyl )
 	tilemap_set_scrolldy(background,-fortyl_video_ctrl[1]+1,-fortyl_video_ctrl[1]-1 );
 	tilemap_draw(bitmap,cliprect,background,0,0);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

@@ -25,6 +25,8 @@
 /* invalid logical index */
 #define INVALID_LOGICAL_INDEX			((tilemap_logical_index)~0)
 
+/* maximum index in each array */
+#define MAX_PEN_TO_FLAGS				256
 
 
 /***************************************************************************
@@ -45,18 +47,18 @@ typedef enum
 
 
 /* internal blitting callbacks */
-typedef void (*blitmask_t)(void *dest, const UINT16 *source, const UINT8 *maskptr, int mask, int value, int count, UINT8 *pri, UINT32 pcode);
-typedef void (*blitopaque_t)(void *dest, const UINT16 *source, int count, UINT8 *pri, UINT32 pcode);
+typedef void (*blitmask_func)(void *dest, const UINT16 *source, const UINT8 *maskptr, int mask, int value, int count, UINT8 *pri, UINT32 pcode);
+typedef void (*blitopaque_func)(void *dest, const UINT16 *source, int count, UINT8 *pri, UINT32 pcode);
 
 
 /* blitting parameters for rendering */
 typedef struct _blit_parameters blit_parameters;
 struct _blit_parameters
 {
-	mame_bitmap *		bitmap;
+	bitmap_t *			bitmap;
 	rectangle			cliprect;
-	blitmask_t 			draw_masked;
-	blitopaque_t 		draw_opaque;
+	blitmask_func 		draw_masked;
+	blitopaque_func		draw_opaque;
 	UINT32 				tilemap_priority_code;
 	UINT8				mask;
 	UINT8				value;
@@ -69,7 +71,6 @@ struct _tilemap
 	tilemap *					next;				/* pointer to next tilemap */
 
 	/* basic tilemap metrics */
-	tilemap_type 				type;				/* type of tilemap */
 	UINT32						rows;				/* number of tile rows */
 	UINT32						cols;				/* number of tile columns */
 	UINT32						tilewidth;			/* width of a single tile in pixels */
@@ -78,14 +79,14 @@ struct _tilemap
 	UINT32						height;				/* height of the full tilemap in pixels */
 
 	/* logical <-> memory mappings */
-	tilemap_mapper_callback		mapper;				/* callback to map a row/column to a memory index */
+	tilemap_mapper_func		mapper;				/* callback to map a row/column to a memory index */
 	tilemap_logical_index *		memory_to_logical;	/* map from memory index to logical index */
 	tilemap_logical_index		max_logical_index;	/* maximum valid logical index */
 	tilemap_memory_index *		logical_to_memory;	/* map from logical index to memory index */
 	tilemap_memory_index		max_memory_index;	/* maximum valid memory index */
 
 	/* callback to interpret video RAM for the tilemap */
-	tile_get_info_callback		tile_get_info;		/* callback to get information about a tile */
+	tile_get_info_func		tile_get_info;		/* callback to get information about a tile */
 	tile_data					tileinfo;			/* structure to hold the data for a tile */
 	void *						user_data;			/* user data value passed to the callback */
 
@@ -107,13 +108,12 @@ struct _tilemap
 	INT32						dy_flipped;			/* global vertical scroll offset when flipped */
 
 	/* pixel data */
-	mame_bitmap *				pixmap;				/* cached pixel data */
+	bitmap_t *					pixmap;				/* cached pixel data */
 
 	/* transparency mapping */
-	mame_bitmap *				flagsmap;			/* per-pixel flags */
+	bitmap_t *					flagsmap;			/* per-pixel flags */
 	UINT8 *						tileflags;			/* per-tile flags */
 	UINT8 *						pen_to_flags; 		/* mapping of pens to flags */
-	UINT32						max_pen_to_flags;	/* maximum index in each array */
 };
 
 
@@ -122,7 +122,7 @@ struct _tilemap
     GLOBAL VARIABLES
 ***************************************************************************/
 
-mame_bitmap *			priority_bitmap;
+bitmap_t *				priority_bitmap;
 
 static tilemap *		tilemap_list;
 static tilemap **		tilemap_tailptr;
@@ -149,12 +149,10 @@ static void mappings_update(tilemap *tmap);
 static void pixmap_update(tilemap *tmap, const rectangle *cliprect);
 static void tile_update(tilemap *tmap, tilemap_logical_index logindex, UINT32 cached_col, UINT32 cached_row);
 static UINT8 tile_draw(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0, UINT32 palette_base, UINT8 category, UINT8 group, UINT8 flags);
-static UINT8 tile_draw_colortable(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0, UINT32 palette_base, UINT8 category, UINT8 group, UINT8 flags);
-static UINT8 tile_draw_colortrans(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0, UINT32 palette_base, UINT8 category, UINT8 group, UINT8 flags);
 static UINT8 tile_apply_bitmask(tilemap *tmap, const UINT8 *maskdata, UINT32 x0, UINT32 y0, UINT8 category, UINT8 flags);
 
 /* drawing helpers */
-static void configure_blit_parameters(blit_parameters *blit, tilemap *tmap, mame_bitmap *dest, const rectangle *cliprect, UINT32 flags, UINT8 priority, UINT8 priority_mask);
+static void configure_blit_parameters(blit_parameters *blit, tilemap *tmap, bitmap_t *dest, const rectangle *cliprect, UINT32 flags, UINT8 priority, UINT8 priority_mask);
 static void tilemap_draw_instance(tilemap *tmap, const blit_parameters *blit, int xpos, int ypos);
 static void tilemap_draw_roz_core(tilemap *tmap, const blit_parameters *blit,
 		UINT32 startx, UINT32 starty, int incxx, int incxy, int incyx, int incyy, int wraparound);
@@ -265,8 +263,11 @@ INLINE tilemap *indexed_tilemap(int index)
 
 void tilemap_init(running_machine *machine)
 {
-	screen_width	= machine->screen[0].width;
-	screen_height	= machine->screen[0].height;
+	if (machine->primary_screen == NULL)
+		return;
+
+	screen_width  = video_screen_get_width(machine->primary_screen);
+	screen_height = video_screen_get_height(machine->primary_screen);
 
 	if (screen_width != 0 && screen_height != 0)
 	{
@@ -289,7 +290,7 @@ void tilemap_init(running_machine *machine)
     tilemap_create - allocate a new tilemap
 -------------------------------------------------*/
 
-tilemap *tilemap_create(tile_get_info_callback tile_get_info, tilemap_mapper_callback mapper, tilemap_type type, int tilewidth, int tileheight, int cols, int rows)
+tilemap *tilemap_create(tile_get_info_func tile_get_info, tilemap_mapper_func mapper, int tilewidth, int tileheight, int cols, int rows)
 {
 	tilemap *tmap;
 	int group;
@@ -299,7 +300,6 @@ tilemap *tilemap_create(tile_get_info_callback tile_get_info, tilemap_mapper_cal
 	memset(tmap, 0, sizeof(tilemap));
 
 	/* fill in the basic metrics */
-	tmap->type = type;
 	tmap->rows = rows;
 	tmap->cols = cols;
 	tmap->tilewidth = tilewidth;
@@ -332,8 +332,7 @@ tilemap *tilemap_create(tile_get_info_callback tile_get_info, tilemap_mapper_cal
 	/* allocate transparency mapping data */
 	tmap->tileflags = malloc_or_die(tmap->max_logical_index);
 	tmap->flagsmap = bitmap_alloc(tmap->width, tmap->height, BITMAP_FORMAT_INDEXED8);
-	tmap->max_pen_to_flags = (tmap->type != TILEMAP_TYPE_COLORTABLE) ? 256 : Machine->drv->color_table_len;
-	tmap->pen_to_flags = malloc_or_die(sizeof(tmap->pen_to_flags[0]) * tmap->max_pen_to_flags * TILEMAP_NUM_GROUPS);
+	tmap->pen_to_flags = malloc_or_die(sizeof(tmap->pen_to_flags[0]) * MAX_PEN_TO_FLAGS * TILEMAP_NUM_GROUPS);
 	for (group = 0; group < TILEMAP_NUM_GROUPS; group++)
 		tilemap_map_pens_to_layer(tmap, group, 0, 0, TILEMAP_PIXEL_LAYER0);
 
@@ -487,7 +486,7 @@ void tilemap_mark_all_tiles_dirty(tilemap *tmap)
 
 void tilemap_map_pens_to_layer(tilemap *tmap, int group, pen_t pen, pen_t mask, UINT8 layermask)
 {
-	UINT8 *array = tmap->pen_to_flags + group * tmap->max_pen_to_flags;
+	UINT8 *array = tmap->pen_to_flags + group * MAX_PEN_TO_FLAGS;
 	pen_t start, stop, cur;
 	UINT8 changed = FALSE;
 
@@ -501,7 +500,7 @@ void tilemap_map_pens_to_layer(tilemap *tmap, int group, pen_t pen, pen_t mask, 
 	stop = start | ~mask;
 
 	/* clamp to the number of entries actually there */
-	stop = MIN(stop, tmap->max_pen_to_flags - 1);
+	stop = MIN(stop, MAX_PEN_TO_FLAGS - 1);
 
 	/* iterate and set */
 	for (cur = start; cur <= stop; cur++)
@@ -697,7 +696,7 @@ int tilemap_get_scrolly(tilemap *tmap, int which)
     (updated) internal pixmap for a tilemap
 -------------------------------------------------*/
 
-mame_bitmap *tilemap_get_pixmap(tilemap *tmap)
+bitmap_t *tilemap_get_pixmap(tilemap *tmap)
 {
 	/* ensure all the tiles are up-to-date and then return the pixmap */
 	pixmap_update(tmap, NULL);
@@ -710,7 +709,7 @@ mame_bitmap *tilemap_get_pixmap(tilemap *tmap)
     (updated) internal flagsmap for a tilemap
 -------------------------------------------------*/
 
-mame_bitmap *tilemap_get_flagsmap(tilemap *tmap)
+bitmap_t *tilemap_get_flagsmap(tilemap *tmap)
 {
 	/* ensure all the tiles are up-to-date and then return the pixmap */
 	pixmap_update(tmap, NULL);
@@ -742,7 +741,7 @@ UINT8 *tilemap_get_tile_flags(tilemap *tmap)
     priority/priority_mask to the priority bitmap
 -------------------------------------------------*/
 
-void tilemap_draw_primask(mame_bitmap *dest, const rectangle *cliprect, tilemap *tmap, UINT32 flags, UINT8 priority, UINT8 priority_mask)
+void tilemap_draw_primask(bitmap_t *dest, const rectangle *cliprect, tilemap *tmap, UINT32 flags, UINT8 priority, UINT8 priority_mask)
 {
 	rectangle original_cliprect;
 	blit_parameters blit;
@@ -860,7 +859,7 @@ profiler_mark(PROFILER_END);
     priority_mask to the priority bitmap
 -------------------------------------------------*/
 
-void tilemap_draw_roz_primask(mame_bitmap *dest, const rectangle *cliprect, tilemap *tmap,
+void tilemap_draw_roz_primask(bitmap_t *dest, const rectangle *cliprect, tilemap *tmap,
 		UINT32 startx, UINT32 starty, int incxx, int incxy, int incyx, int incyy,
 		int wraparound, UINT32 flags, UINT8 priority, UINT8 priority_mask)
 {
@@ -937,7 +936,7 @@ void tilemap_size_by_index(int number, UINT32 *width, UINT32 *height)
     priority)
 -------------------------------------------------*/
 
-void tilemap_draw_by_index(mame_bitmap *dest, int number, UINT32 scrollx, UINT32 scrolly)
+void tilemap_draw_by_index(bitmap_t *dest, int number, UINT32 scrollx, UINT32 scrolly)
 {
 	tilemap *tmap = indexed_tilemap(number);
 	blit_parameters blit;
@@ -1250,15 +1249,7 @@ profiler_mark(PROFILER_TILEMAP_UPDATE);
 	flags = tmap->tileinfo.flags ^ (tmap->attributes & 0x03);
 
 	/* draw the tile, using either direct or transparent */
-	if (Machine->game_colortable != NULL)
-	{
-		if (tmap->type != TILEMAP_TYPE_COLORTABLE)
-			tmap->tileflags[logindex] = tile_draw_colortable(tmap, tmap->tileinfo.pen_data, x0, y0, tmap->tileinfo.palette_base, tmap->tileinfo.category, tmap->tileinfo.group, flags);
-		else
-			tmap->tileflags[logindex] = tile_draw_colortrans(tmap, tmap->tileinfo.pen_data, x0, y0, tmap->tileinfo.palette_base, tmap->tileinfo.category, tmap->tileinfo.group, flags);
-	}
-	else
-		tmap->tileflags[logindex] = tile_draw(tmap, tmap->tileinfo.pen_data, x0, y0, tmap->tileinfo.palette_base, tmap->tileinfo.category, tmap->tileinfo.group, flags);
+	tmap->tileflags[logindex] = tile_draw(tmap, tmap->tileinfo.pen_data, x0, y0, tmap->tileinfo.palette_base, tmap->tileinfo.category, tmap->tileinfo.group, flags);
 
 	/* if mask data is specified, apply it */
 	if ((flags & (TILE_FORCE_LAYER0 | TILE_FORCE_LAYER1 | TILE_FORCE_LAYER2)) == 0 && tmap->tileinfo.mask_data != NULL)
@@ -1277,9 +1268,9 @@ profiler_mark(PROFILER_END);
 
 static UINT8 tile_draw(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0, UINT32 palette_base, UINT8 category, UINT8 group, UINT8 flags)
 {
-	const UINT8 *penmap = tmap->pen_to_flags + group * tmap->max_pen_to_flags;
-	mame_bitmap *flagsmap = tmap->flagsmap;
-	mame_bitmap *pixmap = tmap->pixmap;
+	const UINT8 *penmap = tmap->pen_to_flags + group * MAX_PEN_TO_FLAGS;
+	bitmap_t *flagsmap = tmap->flagsmap;
+	bitmap_t *pixmap = tmap->pixmap;
 	int height = tmap->tileheight;
 	int width = tmap->tilewidth;
 	UINT8 andmask = ~0, ormask = 0;
@@ -1366,203 +1357,6 @@ static UINT8 tile_draw(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0
 
 
 /*-------------------------------------------------
-    tile_draw_colortable - draw a single tile to
-    the tilemap's internal pixmap, using the pen
-    as the pen_to_flags lookup value, and using
-    the machine's remapped_colortable
--------------------------------------------------*/
-
-static UINT8 tile_draw_colortable(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0, UINT32 palette_base, UINT8 category, UINT8 group, UINT8 flags)
-{
-	const UINT8 *penmap = tmap->pen_to_flags + group * tmap->max_pen_to_flags;
-	const pen_t *palette_lookup = Machine->remapped_colortable + palette_base;
-	mame_bitmap *flagsmap = tmap->flagsmap;
-	mame_bitmap *pixmap = tmap->pixmap;
-	int height = tmap->tileheight;
-	int width = tmap->tilewidth;
-	UINT8 andmask = ~0, ormask = 0;
-	int dx0 = 1, dy0 = 1;
-	int tx, ty;
-
-	/* OR in the force layer flags */
-	category |= flags & (TILE_FORCE_LAYER0 | TILE_FORCE_LAYER1 | TILE_FORCE_LAYER2);
-
-	/* if we're vertically flipped, point to the bottom row and work backwards */
-	if (flags & TILE_FLIPY)
-	{
-		y0 += height - 1;
-		dy0 = -1;
-	}
-
-	/* if we're horizontally flipped, point to the rightmost column and work backwards */
-	if (flags & TILE_FLIPX)
-	{
-		x0 += width - 1;
-		dx0 = -1;
-	}
-
-	/* in 4bpp mode, we draw in groups of 2 pixels, so halve the width now */
-	if (flags & TILE_4BPP)
-	{
-		assert(width % 2 == 0);
-		width /= 2;
-	}
-
-	/* iterate over rows */
-	for (ty = 0; ty < height; ty++)
-	{
-		UINT16 *pixptr = BITMAP_ADDR16(pixmap, y0, x0);
-		UINT8 *flagsptr = BITMAP_ADDR8(flagsmap, y0, x0);
-		int xoffs = 0;
-
-		/* pre-advance to the next row */
-		y0 += dy0;
-
-		/* 8bpp data */
-		if (!(flags & TILE_4BPP))
-		{
-			for (tx = 0; tx < width; tx++)
-			{
-				UINT8 pen = *pendata++;
-				UINT8 map = penmap[pen];
-				pixptr[xoffs] = palette_lookup[pen];
-				flagsptr[xoffs] = map | category;
-				andmask &= map;
-				ormask |= map;
-				xoffs += dx0;
-			}
-		}
-
-		/* 4bpp data */
-		else
-		{
-			for (tx = 0; tx < width; tx++)
-			{
-				UINT8 data = *pendata++;
-				pen_t pen;
-				UINT8 map;
-
-				pen = data & 0x0f;
-				map = penmap[pen];
-				pixptr[xoffs] = palette_lookup[pen];
-				flagsptr[xoffs] = map | category;
-				andmask &= map;
-				ormask |= map;
-				xoffs += dx0;
-
-				pen = data >> 4;
-				map = penmap[pen];
-				pixptr[xoffs] = palette_lookup[pen];
-				flagsptr[xoffs] = map | category;
-				andmask &= map;
-				ormask |= map;
-				xoffs += dx0;
-			}
-		}
-	}
-	return andmask ^ ormask;
-}
-
-
-/*-------------------------------------------------
-    tile_draw_colortrans - draw a single tile to
-    the tilemap's internal pixmap, using the
-    remapped pen as the pen_to_flags lookup value
--------------------------------------------------*/
-
-static UINT8 tile_draw_colortrans(tilemap *tmap, const UINT8 *pendata, UINT32 x0, UINT32 y0, UINT32 palette_base, UINT8 category, UINT8 group, UINT8 flags)
-{
-	const UINT8 *penmap = tmap->pen_to_flags + group * tmap->max_pen_to_flags;
-	const pen_t *palette_lookup = Machine->remapped_colortable + palette_base;
-	mame_bitmap *flagsmap = tmap->flagsmap;
-	mame_bitmap *pixmap = tmap->pixmap;
-	int height = tmap->tileheight;
-	int width = tmap->tilewidth;
-	UINT8 andmask = ~0, ormask = 0;
-	int dx0 = 1, dy0 = 1;
-	int tx, ty;
-
-	/* OR in the force layer flags */
-	category |= flags & (TILE_FORCE_LAYER0 | TILE_FORCE_LAYER1 | TILE_FORCE_LAYER2);
-
-	/* if we're vertically flipped, point to the bottom row and work backwards */
-	if (flags & TILE_FLIPY)
-	{
-		y0 += height - 1;
-		dy0 = -1;
-	}
-
-	/* if we're horizontally flipped, point to the rightmost column and work backwards */
-	if (flags & TILE_FLIPX)
-	{
-		x0 += width - 1;
-		dx0 = -1;
-	}
-
-	/* in 4bpp mode, we draw in groups of 2 pixels, so halve the width now */
-	if (flags & TILE_4BPP)
-	{
-		assert(width % 2 == 0);
-		width /= 2;
-	}
-
-	/* iterate over rows */
-	for (ty = 0; ty < height; ty++)
-	{
-		UINT16 *pixptr = BITMAP_ADDR16(pixmap, y0, x0);
-		UINT8 *flagsptr = BITMAP_ADDR8(flagsmap, y0, x0);
-		int xoffs = 0;
-
-		/* pre-advance to the next row */
-		y0 += dy0;
-
-		/* 8bpp data */
-		if (!(flags & TILE_4BPP))
-		{
-			for (tx = 0; tx < width; tx++)
-			{
-				pen_t pen = palette_lookup[*pendata++];
-				UINT8 map = penmap[pen];
-				pixptr[xoffs] = pen;
-				flagsptr[xoffs] = map | category;
-				andmask &= map;
-				ormask |= map;
-				xoffs += dx0;
-			}
-		}
-
-		/* 4bpp data */
-		else
-		{
-			for (tx = 0; tx < width; tx++)
-			{
-				UINT8 data = *pendata++;
-				pen_t pen;
-				UINT8 map;
-
-				pen = palette_lookup[data & 0x0f];
-				map = penmap[pen];
-				pixptr[xoffs] = pen;
-				flagsptr[xoffs] = map | category;
-				andmask &= map;
-				ormask |= map;
-				xoffs += dx0;
-
-				pen = palette_lookup[data >> 4];
-				map = penmap[pen];
-				pixptr[xoffs] = pen;
-				flagsptr[xoffs] = map | category;
-				andmask &= map;
-				ormask |= map;
-				xoffs += dx0;
-			}
-		}
-	}
-	return andmask ^ ormask;
-}
-
-
-/*-------------------------------------------------
     tile_apply_bitmask - apply a bitmask to an
     already-rendered tile by modifying the
     flagsmap appropriately
@@ -1570,7 +1364,7 @@ static UINT8 tile_draw_colortrans(tilemap *tmap, const UINT8 *pendata, UINT32 x0
 
 static UINT8 tile_apply_bitmask(tilemap *tmap, const UINT8 *maskdata, UINT32 x0, UINT32 y0, UINT8 category, UINT8 flags)
 {
-	mame_bitmap *flagsmap = tmap->flagsmap;
+	bitmap_t *flagsmap = tmap->flagsmap;
 	int height = tmap->tileheight;
 	int width = tmap->tilewidth;
 	UINT8 andmask = ~0, ormask = 0;
@@ -1630,7 +1424,7 @@ static UINT8 tile_apply_bitmask(tilemap *tmap, const UINT8 *maskdata, UINT32 x0,
     and indexed drawing code
 -------------------------------------------------*/
 
-static void configure_blit_parameters(blit_parameters *blit, tilemap *tmap, mame_bitmap *dest, const rectangle *cliprect, UINT32 flags, UINT8 priority, UINT8 priority_mask)
+static void configure_blit_parameters(blit_parameters *blit, tilemap *tmap, bitmap_t *dest, const rectangle *cliprect, UINT32 flags, UINT8 priority, UINT8 priority_mask)
 {
 	/* start with nothing */
 	memset(blit, 0, sizeof(*blit));
@@ -1715,7 +1509,7 @@ static void configure_blit_parameters(blit_parameters *blit, tilemap *tmap, mame
 
 static void tilemap_draw_instance(tilemap *tmap, const blit_parameters *blit, int xpos, int ypos)
 {
-	mame_bitmap *dest = blit->bitmap;
+	bitmap_t *dest = blit->bitmap;
 	const UINT16 *source_baseaddr;
 	const UINT8 *mask_baseaddr;
 	void *dest_baseaddr = NULL;
@@ -1893,10 +1687,10 @@ do {																		\
 static void tilemap_draw_roz_core(tilemap *tmap, const blit_parameters *blit,
 		UINT32 startx, UINT32 starty, int incxx, int incxy, int incyx, int incyy, int wraparound)
 {
-	const pen_t *clut = &Machine->remapped_colortable[blit->tilemap_priority_code >> 16];
-	mame_bitmap *destbitmap = blit->bitmap;
-	mame_bitmap *srcbitmap = tmap->pixmap;
-	mame_bitmap *flagsmap = tmap->flagsmap;
+	const pen_t *clut = &Machine->pens[blit->tilemap_priority_code >> 16];
+	bitmap_t *destbitmap = blit->bitmap;
+	bitmap_t *srcbitmap = tmap->pixmap;
+	bitmap_t *flagsmap = tmap->flagsmap;
 	const int xmask = srcbitmap->width-1;
 	const int ymask = srcbitmap->height-1;
 	const int widthshifted = srcbitmap->width << 16;
@@ -2191,7 +1985,7 @@ static void scanline_draw_masked_ind16(void *_dest, const UINT16 *source, const 
 
 static void scanline_draw_opaque_rgb16(void *_dest, const UINT16 *source, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT16 *dest = _dest;
 	int i;
 
@@ -2221,7 +2015,7 @@ static void scanline_draw_opaque_rgb16(void *_dest, const UINT16 *source, int co
 
 static void scanline_draw_masked_rgb16(void *_dest, const UINT16 *source, const UINT8 *maskptr, int mask, int value, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT16 *dest = _dest;
 	int i;
 
@@ -2253,7 +2047,7 @@ static void scanline_draw_masked_rgb16(void *_dest, const UINT16 *source, const 
 
 static void scanline_draw_opaque_rgb16_alpha(void *_dest, const UINT16 *source, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT16 *dest = _dest;
 	int i;
 
@@ -2284,7 +2078,7 @@ static void scanline_draw_opaque_rgb16_alpha(void *_dest, const UINT16 *source, 
 
 static void scanline_draw_masked_rgb16_alpha(void *_dest, const UINT16 *source, const UINT8 *maskptr, int mask, int value, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT16 *dest = _dest;
 	int i;
 
@@ -2316,7 +2110,7 @@ static void scanline_draw_masked_rgb16_alpha(void *_dest, const UINT16 *source, 
 
 static void scanline_draw_opaque_rgb32(void *_dest, const UINT16 *source, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT32 *dest = _dest;
 	int i;
 
@@ -2346,7 +2140,7 @@ static void scanline_draw_opaque_rgb32(void *_dest, const UINT16 *source, int co
 
 static void scanline_draw_masked_rgb32(void *_dest, const UINT16 *source, const UINT8 *maskptr, int mask, int value, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT32 *dest = _dest;
 	int i;
 
@@ -2378,7 +2172,7 @@ static void scanline_draw_masked_rgb32(void *_dest, const UINT16 *source, const 
 
 static void scanline_draw_opaque_rgb32_alpha(void *_dest, const UINT16 *source, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT32 *dest = _dest;
 	int i;
 
@@ -2409,7 +2203,7 @@ static void scanline_draw_opaque_rgb32_alpha(void *_dest, const UINT16 *source, 
 
 static void scanline_draw_masked_rgb32_alpha(void *_dest, const UINT16 *source, const UINT8 *maskptr, int mask, int value, int count, UINT8 *pri, UINT32 pcode)
 {
-	const pen_t *clut = &Machine->remapped_colortable[pcode >> 16];
+	const pen_t *clut = &Machine->pens[pcode >> 16];
 	UINT32 *dest = _dest;
 	int i;
 

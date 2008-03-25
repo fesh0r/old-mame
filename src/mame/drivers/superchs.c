@@ -116,7 +116,7 @@ static READ32_HANDLER( superchs_input_r )
 	switch (offset)
 	{
 		case 0x00:
-			return (input_port_0_word_r(0,0) << 16) | input_port_1_word_r(0,0) |
+			return (input_port_0_word_r(machine,0,0) << 16) | input_port_1_word_r(machine,0,0) |
 				  (EEPROM_read_bit() << 7);
 
 		case 0x01:
@@ -145,7 +145,7 @@ static WRITE32_HANDLER( superchs_input_w )
 		{
 			if (ACCESSING_MSB32)	/* $300000 is watchdog */
 			{
-				watchdog_reset_w(0,data >> 24);
+				watchdog_reset(machine);
 			}
 
 			if (ACCESSING_LSB32)
@@ -177,12 +177,12 @@ static WRITE32_HANDLER( superchs_input_w )
 
 static READ32_HANDLER( superchs_stick_r )
 {
-	int fake = input_port_6_word_r(0,0);
+	int fake = input_port_6_word_r(machine,0,0);
 	int accel;
 
 	if (!(fake &0x10))	/* Analogue steer (the real control method) */
 	{
-		steer = input_port_2_word_r(0,0);
+		steer = input_port_2_word_r(machine,0,0);
 	}
 	else	/* Digital steer, with smoothing - speed depends on how often stick_r is called */
 	{
@@ -207,13 +207,13 @@ static READ32_HANDLER( superchs_stick_r )
 	}
 
 	/* Accelerator is an analogue input but the game treats it as digital (on/off) */
-	if (input_port_6_word_r(0,0) & 0x1)	/* pressing B1 */
+	if (input_port_6_word_r(machine,0,0) & 0x1)	/* pressing B1 */
 		accel = 0x0;
 	else
 		accel = 0xff;
 
 	/* Todo: Verify brake - and figure out other input */
-	return (steer << 24) | (accel << 16) | (input_port_4_word_r(0,0) << 8) | input_port_5_word_r(0,0);
+	return (steer << 24) | (accel << 16) | (input_port_4_word_r(machine,0,0) << 8) | input_port_5_word_r(machine,0,0);
 }
 
 static WRITE32_HANDLER( superchs_stick_w )
@@ -230,45 +230,45 @@ static WRITE32_HANDLER( superchs_stick_w )
 ***********************************************************/
 
 static ADDRESS_MAP_START( superchs_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA32_ROM)
-	AM_RANGE(0x100000, 0x11ffff) AM_READ(MRA32_RAM)	/* main CPUA ram */
-	AM_RANGE(0x140000, 0x141fff) AM_READ(MRA32_RAM)	/* Sprite ram */
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x11ffff) AM_READ(SMH_RAM)	/* main CPUA ram */
+	AM_RANGE(0x140000, 0x141fff) AM_READ(SMH_RAM)	/* Sprite ram */
 	AM_RANGE(0x180000, 0x18ffff) AM_READ(TC0480SCP_long_r)
 	AM_RANGE(0x1b0000, 0x1b002f) AM_READ(TC0480SCP_ctrl_long_r)
-	AM_RANGE(0x200000, 0x20ffff) AM_READ(MRA32_RAM)	/* Shared ram */
-	AM_RANGE(0x280000, 0x287fff) AM_READ(MRA32_RAM)	/* Palette ram */
-	AM_RANGE(0x2c0000, 0x2c07ff) AM_READ(MRA32_RAM)	/* Sound shared ram */
+	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM)	/* Shared ram */
+	AM_RANGE(0x280000, 0x287fff) AM_READ(SMH_RAM)	/* Palette ram */
+	AM_RANGE(0x2c0000, 0x2c07ff) AM_READ(SMH_RAM)	/* Sound shared ram */
 	AM_RANGE(0x300000, 0x300007) AM_READ(superchs_input_r)
 	AM_RANGE(0x340000, 0x340003) AM_READ(superchs_stick_r)	/* stick coord read */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( superchs_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA32_ROM)
-	AM_RANGE(0x100000, 0x11ffff) AM_WRITE(MWA32_RAM) AM_BASE(&superchs_ram)
-	AM_RANGE(0x140000, 0x141fff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x11ffff) AM_WRITE(SMH_RAM) AM_BASE(&superchs_ram)
+	AM_RANGE(0x140000, 0x141fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x180000, 0x18ffff) AM_WRITE(TC0480SCP_long_w)
 	AM_RANGE(0x1b0000, 0x1b002f) AM_WRITE(TC0480SCP_ctrl_long_w)
-	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(MWA32_RAM) AM_BASE(&shared_ram)
+	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(SMH_RAM) AM_BASE(&shared_ram)
 	AM_RANGE(0x240000, 0x240003) AM_WRITE(cpua_ctrl_w)
 	AM_RANGE(0x280000, 0x287fff) AM_WRITE(superchs_palette_w) AM_BASE(&paletteram32)
-	AM_RANGE(0x2c0000, 0x2c07ff) AM_WRITE(MWA32_RAM) AM_BASE(&f3_shared_ram)
+	AM_RANGE(0x2c0000, 0x2c07ff) AM_WRITE(SMH_RAM) AM_BASE(&f3_shared_ram)
 	AM_RANGE(0x300000, 0x300007) AM_WRITE(superchs_input_w)	/* eerom etc. */
 	AM_RANGE(0x340000, 0x340003) AM_WRITE(superchs_stick_w)	/* stick int request */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( superchs_cpub_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x200000, 0x20ffff) AM_READ(MRA16_RAM)	/* local ram */
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x200000, 0x20ffff) AM_READ(SMH_RAM)	/* local ram */
 	AM_RANGE(0x800000, 0x80ffff) AM_READ(shared_ram_r)
-	AM_RANGE(0xa00000, 0xa001ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0xa00000, 0xa001ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( superchs_cpub_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x600000, 0x60ffff) AM_WRITE(TC0480SCP_word_w) /* Only written upon errors */
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(shared_ram_w)
-	AM_RANGE(0xa00000, 0xa001ff) AM_WRITE(MWA16_RAM)	/* Extra road control?? */
+	AM_RANGE(0xa00000, 0xa001ff) AM_WRITE(SMH_RAM)	/* Extra road control?? */
 ADDRESS_MAP_END
 
 /***********************************************************/
@@ -279,7 +279,7 @@ static INPUT_PORTS_START( superchs )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_BUTTON6 ) PORT_PLAYER(1)	/* Freeze input */
-	PORT_BIT(0x0010, IP_ACTIVE_LOW,  IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0010, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW,  IPT_SERVICE1 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW,  IPT_COIN2 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW,  IPT_COIN1 )
@@ -417,27 +417,28 @@ static MACHINE_DRIVER_START( superchs )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(superchs_readmem,superchs_writemem)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)/* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)/* VBL */
 
 	TAITO_F3_SOUND_SYSTEM_CPU(16000000)
 
 
 	MDRV_CPU_ADD(M68000, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(superchs_cpub_readmem,superchs_cpub_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)/* VBL */
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)/* VBL */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(8)	/* CPU slices - Need to interleave Cpu's 1 & 3 */
 
 	MDRV_MACHINE_RESET(superchs)
 	MDRV_NVRAM_HANDLER(superchs)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(superchs)
 	MDRV_PALETTE_LENGTH(8192)
 

@@ -56,7 +56,7 @@ static TILE_GET_INFO( crzrally_get_tile_info )
 
 VIDEO_START( holeland )
 {
-	bg_tilemap = tilemap_create(holeland_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	bg_tilemap = tilemap_create(holeland_get_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transmask(bg_tilemap,0,0xff,0x00); /* split type 0 is totally transparent in front half */
 	tilemap_set_transmask(bg_tilemap,1,0x01,0xfe); /* split type 1 has pen 0? transparent in front half */
@@ -64,7 +64,7 @@ VIDEO_START( holeland )
 
 VIDEO_START( crzrally )
 {
-	bg_tilemap = tilemap_create(crzrally_get_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(crzrally_get_tile_info,tilemap_scan_cols,8,8,32,32);
 }
 
 WRITE8_HANDLER( holeland_videoram_w )
@@ -102,7 +102,7 @@ WRITE8_HANDLER( holeland_flipscreen_w )
 }
 
 
-static void holeland_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void holeland_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,code,sx,sy,color,flipx, flipy;
 
@@ -120,13 +120,13 @@ static void holeland_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 		flipx = spriteram[offs+3] & 0x04;
 		flipy = spriteram[offs+3] & 0x08;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			flipx = !flipx;
 			sx = 240 - sx;
 		}
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			flipy = !flipy;
 			sy = 240 - sy;
@@ -141,7 +141,7 @@ static void holeland_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 	}
 }
 
-static void crzrally_draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void crzrally_draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,code,sx,sy,color,flipx, flipy;
 
@@ -158,13 +158,13 @@ static void crzrally_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 		flipx = spriteram[offs+3] & 0x04;
 		flipy = spriteram[offs+3] & 0x08;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			flipx = !flipx;
 			sx = 240 - sx;
 		}
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			flipy = !flipy;
 			sy = 240 - sy;
@@ -183,7 +183,7 @@ VIDEO_UPDATE( holeland )
 {
 /*tilemap_mark_all_tiles_dirty(bg_tilemap); */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	holeland_draw_sprites(machine, bitmap,cliprect);
+	holeland_draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	return 0;
 }
@@ -191,6 +191,6 @@ VIDEO_UPDATE( holeland )
 VIDEO_UPDATE( crzrally )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	crzrally_draw_sprites(machine, bitmap,cliprect);
+	crzrally_draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

@@ -11,6 +11,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/n8080.h"
 
 static unsigned shift_data;
@@ -35,7 +36,7 @@ static READ8_HANDLER( n8080_shift_r )
 
 static INTERRUPT_GEN( interrupt )
 {
-	if (video_screen_get_vblank(0))
+	if (video_screen_get_vblank(machine->primary_screen))
 		cpunum_set_input_line_and_vector(machine, 0, 0, PULSE_LINE, 0xcf);  /* RST $08 */
 	else
 		cpunum_set_input_line_and_vector(machine, 0, 0, PULSE_LINE, 0xd7);  /* RST $10 */
@@ -43,7 +44,7 @@ static INTERRUPT_GEN( interrupt )
 
 
 static ADDRESS_MAP_START( main_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x7fff) AM_RAM AM_BASE(&videoram)
 ADDRESS_MAP_END
@@ -57,7 +58,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(3) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
@@ -78,15 +79,15 @@ static MACHINE_DRIVER_START( spacefev )
 	MDRV_CPU_ADD(8080, 20160000 / 10)
 	MDRV_CPU_PROGRAM_MAP(main_cpu_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
-	MDRV_CPU_VBLANK_INT(interrupt, 2)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT_HACK(interrupt, 2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 16, 239)
+
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(n8080)
 	MDRV_VIDEO_START(spacefev)
@@ -103,15 +104,15 @@ static MACHINE_DRIVER_START( sheriff )
 	MDRV_CPU_ADD(8080, 20160000 / 10)
 	MDRV_CPU_PROGRAM_MAP(main_cpu_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
-	MDRV_CPU_VBLANK_INT(interrupt, 2)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT_HACK(interrupt, 2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 16, 239)
+
 	MDRV_PALETTE_LENGTH(8)
 	MDRV_PALETTE_INIT(n8080)
 	MDRV_VIDEO_START(sheriff)
@@ -128,15 +129,15 @@ static MACHINE_DRIVER_START( helifire )
 	MDRV_CPU_ADD(8080, 20160000 / 10)
 	MDRV_CPU_PROGRAM_MAP(helifire_main_cpu_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
-	MDRV_CPU_VBLANK_INT(interrupt, 2)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT_HACK(interrupt, 2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 16, 239)
+
 	MDRV_PALETTE_LENGTH(8 + 0x400)
 	MDRV_PALETTE_INIT(helifire)
 	MDRV_VIDEO_START(helifire)

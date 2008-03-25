@@ -80,8 +80,8 @@ static WRITE8_HANDLER ( funybubl_cpurombank_w )
 
 static WRITE8_HANDLER( funybubl_soundcommand_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1,0, HOLD_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1,0, HOLD_LINE);
 }
 
 static WRITE8_HANDLER( funybubl_oki_bank_sw )
@@ -91,53 +91,53 @@ static WRITE8_HANDLER( funybubl_oki_bank_sw )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK2)	// banked port 1?
-	AM_RANGE(0xc400, 0xc7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xc800, 0xcfff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xd000, 0xdfff) AM_READ(MRA8_BANK1)	// banked port 0?
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK2)	// banked port 1?
+	AM_RANGE(0xc400, 0xc7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xc800, 0xcfff) AM_READ(SMH_RAM)
+	AM_RANGE(0xd000, 0xdfff) AM_READ(SMH_BANK1)	// banked port 0?
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc400, 0xcfff) AM_WRITE(funybubl_paldatawrite) AM_BASE(&funybubl_paletteram) // palette
-	AM_RANGE(0xd000, 0xdfff) AM_WRITE(MWA8_BANK1)	// banked port 0?
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xd000, 0xdfff) AM_WRITE(SMH_BANK1)	// banked port 0?
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
 	AM_RANGE(0x03, 0x03) AM_READ(input_port_3_r)
-	AM_RANGE(0x06, 0x06) AM_READ(MRA8_NOP)		/* Nothing is done with the data read */
+	AM_RANGE(0x06, 0x06) AM_READ(SMH_NOP)		/* Nothing is done with the data read */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(funybubl_vidram_bank_w)	// vidram bank
 	AM_RANGE(0x01, 0x01) AM_WRITE(funybubl_cpurombank_w)		// rom bank?
 	AM_RANGE(0x03, 0x03) AM_WRITE(funybubl_soundcommand_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(MWA8_NOP)		/* Written directly after IO port 0 */
-	AM_RANGE(0x07, 0x07) AM_WRITE(MWA8_NOP)		/* Reset something on startup - Sound CPU ?? */
+	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)		/* Written directly after IO port 0 */
+	AM_RANGE(0x07, 0x07) AM_WRITE(SMH_NOP)		/* Reset something on startup - Sound CPU ?? */
 ADDRESS_MAP_END
 
 
 /* Sound CPU */
 
 static ADDRESS_MAP_START( soundreadmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x9800, 0x9800) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( soundwritemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(funybubl_oki_bank_sw)
 	AM_RANGE(0x9800, 0x9800) AM_WRITE(OKIM6295_data_0_w)
 ADDRESS_MAP_END
@@ -248,16 +248,15 @@ static MACHINE_DRIVER_START( funybubl )
 	MDRV_CPU_ADD(Z80,12000000/2)		 /* 6 MHz?? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,8000000/2)		 /* 4 MHz?? */
 	MDRV_CPU_PROGRAM_MAP(soundreadmem,soundwritemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(12*8, 512-12*8-1, 16, 256-16-1)

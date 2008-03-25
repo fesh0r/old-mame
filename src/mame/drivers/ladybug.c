@@ -51,6 +51,8 @@ TODO:
 #include "sound/sn76496.h"
 
 
+extern UINT8 *sraider_grid_data;
+
 WRITE8_HANDLER( ladybug_videoram_w );
 WRITE8_HANDLER( ladybug_colorram_w );
 WRITE8_HANDLER( ladybug_flipscreen_w );
@@ -74,44 +76,75 @@ READ8_HANDLER( sraider_sound_high_r );
 WRITE8_HANDLER( sraider_io_w );
 WRITE8_HANDLER( sraider_misc_w );
 
-//extern UINT8 sraider_grid_status;
-//extern UINT8 sraider_0x30, sraider_0x38;
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x6000, 0x6fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0x8fff) AM_READ(MRA8_NOP)
-	AM_RANGE(0x9000, 0x9000) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x9001, 0x9001) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x9002, 0x9002) AM_READ(input_port_3_r)	/* DSW0 */
-	AM_RANGE(0x9003, 0x9003) AM_READ(input_port_4_r)	/* DSW1 */
-	AM_RANGE(0xd000, 0xd7ff) AM_READ(MRA8_RAM)	/* video and color RAM */
-	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_2_r)	/* IN2 */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x6000, 0x6fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x7000, 0x73ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+static ADDRESS_MAP_START( ladybug_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x5fff) AM_ROM
+	AM_RANGE(0x6000, 0x6fff) AM_RAM
+	AM_RANGE(0x7000, 0x73ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x8000, 0x8fff) AM_READ(SMH_NOP)
+	AM_RANGE(0x9000, 0x9000) AM_READ(input_port_0_r)
+	AM_RANGE(0x9001, 0x9001) AM_READ(input_port_1_r)
+	AM_RANGE(0x9002, 0x9002) AM_READ(input_port_3_r)
+	AM_RANGE(0x9003, 0x9003) AM_READ(input_port_4_r)
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(ladybug_flipscreen_w)
 	AM_RANGE(0xb000, 0xbfff) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SN76496_1_w)
-	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(ladybug_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(ladybug_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(SMH_RAM, ladybug_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(SMH_RAM, ladybug_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_2_r)	/* IN2 */
 ADDRESS_MAP_END
 
-/***************************************************************************
 
-  Lady Bug doesn't have VBlank interrupts.
-  Interrupts are still used by the game: but they are related to coin
-  slots. Left slot generates a NMI, Right slot an IRQ.
+static ADDRESS_MAP_START( sraider_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x5fff) AM_ROM
+	AM_RANGE(0x6000, 0x6fff) AM_RAM
+	AM_RANGE(0x7000, 0x73ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x8005, 0x8005) AM_READ(sraider_8005_r)  // protection check?
+	AM_RANGE(0x8006, 0x8006) AM_WRITE(sraider_sound_low_w)
+	AM_RANGE(0x8007, 0x8007) AM_WRITE(sraider_sound_high_w)
+	AM_RANGE(0x9000, 0x9000) AM_READ(input_port_0_r)
+	AM_RANGE(0x9001, 0x9001) AM_READ(input_port_1_r)
+	AM_RANGE(0x9002, 0x9002) AM_READ(input_port_2_r)
+	AM_RANGE(0x9003, 0x9003) AM_READ(input_port_3_r)
+	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(ladybug_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(ladybug_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xe000, 0xe000) AM_WRITE(SMH_NOP)  //unknown 0x10 when in attract, 0x20 when coined/playing
+ADDRESS_MAP_END
 
-***************************************************************************/
-static INTERRUPT_GEN( ladybug_interrupt )
+
+static ADDRESS_MAP_START( sraider_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x5fff) AM_ROM
+	AM_RANGE(0x6000, 0x63ff) AM_RAM
+	AM_RANGE(0x8000, 0x8000) AM_READ(sraider_sound_low_r)
+	AM_RANGE(0xa000, 0xa000) AM_READ(sraider_sound_high_r)
+	AM_RANGE(0xc000, 0xc000) AM_READ(SMH_NOP) //some kind of sync
+	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(SMH_RAM) AM_BASE(&sraider_grid_data)
+	AM_RANGE(0xe800, 0xe800) AM_WRITE(sraider_io_w)
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START( sraider_cpu2_io_map, ADDRESS_SPACE_IO, 8 )
+  	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_WRITE(SN76496_0_w)
+	AM_RANGE(0x08, 0x08) AM_WRITE(SN76496_1_w)
+	AM_RANGE(0x10, 0x10) AM_WRITE(SN76496_2_w)
+	AM_RANGE(0x18, 0x18) AM_WRITE(SN76496_3_w)
+	AM_RANGE(0x20, 0x20) AM_WRITE(SN76496_4_w)
+	AM_RANGE(0x28, 0x3f) AM_WRITE(sraider_misc_w)  // lots unknown
+ADDRESS_MAP_END
+
+
+
+static INPUT_CHANGED( coin1_inserted )
 {
-	if (readinputport(5) & 1)	/* Left Coin */
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
-	else if (readinputport(5) & 2)	/* Right Coin */
+	/* left coin insertion causes an NMI */
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+}
+
+static INPUT_CHANGED( coin2_inserted )
+{
+	/* right coin insertion causes an IRQ */
+	if (newval)
 		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
@@ -211,14 +244,9 @@ static INPUT_PORTS_START( ladybug )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 	/* settings 0x00 thru 0x50 all give 1 Coin/1 Credit */
 
-	PORT_START_TAG("FAKE")	/* FAKE */
-	/* The coin slots are not memory mapped. Coin Left causes a NMI, */
-	/* Coin Right an IRQ. This fake input port is used by the interrupt */
-	/* handler to be notified of coin insertions. We use IMPULSE to */
-	/* trigger exactly one interrupt, without having to check when the */
-	/* user releases the key. */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(1)
+	PORT_START_TAG("COIN")	/* FAKE */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin1_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED(coin2_inserted, 0)
 
 	PORT_START_TAG(LADYBUG_P1_CONTROL_PORT_TAG)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
@@ -318,14 +346,9 @@ static INPUT_PORTS_START( snapjack )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 	/* settings 0x00 thru 0x04 all give 1 Coin/1 Credit */
 
-	PORT_START_TAG("FAKE")
-	/* The coin slots are not memory mapped. Coin Left causes a NMI, */
-	/* Coin Right an IRQ. This fake input port is used by the interrupt */
-	/* handler to be notified of coin insertions. We use IMPULSE to */
-	/* trigger exactly one interrupt, without having to check when the */
-	/* user releases the key. */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(1)
+	PORT_START_TAG("COIN")	/* FAKE */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin1_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED(coin2_inserted, 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( cavenger )
@@ -407,14 +430,9 @@ static INPUT_PORTS_START( cavenger )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 	/* settings 0x00 thru 0x50 all give 1 Coin/1 Credit */
 
-	PORT_START_TAG("FAKE")
-	/* The coin slots are not memory mapped. Coin Left causes a NMI, */
-	/* Coin Right an IRQ. This fake input port is used by the interrupt */
-	/* handler to be notified of coin insertions. We use IMPULSE to */
-	/* trigger exactly one interrupt, without having to check when the */
-	/* user releases the key. */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(1)
+	PORT_START_TAG("COIN")	/* FAKE */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin1_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED(coin2_inserted, 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( dorodon )
@@ -498,14 +516,9 @@ static INPUT_PORTS_START( dorodon )
 	PORT_DIPSETTING(    0xb0, DEF_STR( 1C_5C ) )
 	/* settings 0x00 thru 0x50 all give 1 Coin/1 Credit */
 
-	PORT_START_TAG("FAKE")
-	/* The coin slots are not memory mapped. Coin Left causes a NMI, */
-	/* Coin Right an IRQ. This fake input port is used by the interrupt */
-	/* handler to be notified of coin insertions. We use IMPULSE to */
-	/* trigger exactly one interrupt, without having to check when the */
-	/* user releases the key. */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(1)
+	PORT_START_TAG("COIN")	/* FAKE */
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin1_inserted, 0)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_CHANGED(coin2_inserted, 0)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sraider )
@@ -631,7 +644,7 @@ static const gfx_layout gridlayout2 =
 {
 	8,8,	/* 8*8 characters */
 	512,	/* 512 characters */
-	1,	/* 2 bits per pixel */
+	1,	/* 1 bit per pixel */
 	{ 0 },
 	{ 7, 6, 5, 4, 3, 2, 1, 0 },
 	{ 7*8, 6*8, 5*8, 4*8, 3*8, 2*8, 1*8, 0*8 },
@@ -645,11 +658,11 @@ static GFXDECODE_START( ladybug )
 GFXDECODE_END
 
 static GFXDECODE_START( sraider )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,      0,  8 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,  4*8, 16 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout2, 4*8, 16 )
-	GFXDECODE_ENTRY( REGION_USER1, 0, gridlayout, 32+64, 1 )
-	GFXDECODE_ENTRY( REGION_USER1, 0, gridlayout2, 32+64, 1 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,              0,  8 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,          4*8, 16 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout2,         4*8, 16 )
+	GFXDECODE_ENTRY( REGION_GFX3, 0, gridlayout,    4*8+4*16+32,  1 )
+	GFXDECODE_ENTRY( REGION_GFX3, 0, gridlayout2,   4*8+4*16+32,  1 )
 GFXDECODE_END
 
 
@@ -657,20 +670,18 @@ static MACHINE_DRIVER_START( ladybug )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(ladybug_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_PROGRAM_MAP(ladybug_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 28*8-1)
+
 	MDRV_GFXDECODE(ladybug)
-	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(4*24)
+	MDRV_PALETTE_LENGTH(4*8+4*16)
 
 	MDRV_PALETTE_INIT(ladybug)
 	MDRV_VIDEO_START(ladybug)
@@ -687,67 +698,28 @@ static MACHINE_DRIVER_START( ladybug )
 MACHINE_DRIVER_END
 
 
-static ADDRESS_MAP_START( sraider_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_ROM
-	AM_RANGE(0x6000, 0x6fff) AM_RAM
-	AM_RANGE(0x7000, 0x73ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x8005, 0x8005) AM_READ(sraider_8005_r)  // protection check?
-	AM_RANGE(0x8006, 0x8006) AM_WRITE(sraider_sound_low_w)
-	AM_RANGE(0x8007, 0x8007) AM_WRITE(sraider_sound_high_w)
-	AM_RANGE(0x9000, 0x9000) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x9001, 0x9001) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x9002, 0x9002) AM_READ(input_port_2_r)	/* DSW0 */
-	AM_RANGE(0x9003, 0x9003) AM_READ(input_port_3_r)	/* DSW1 */
-	AM_RANGE(0xd000, 0xd3ff) AM_WRITE(ladybug_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xd400, 0xd7ff) AM_WRITE(ladybug_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xe000, 0xe000) AM_WRITE(MWA8_NOP)  //unknown
-		// 0x10 when in attract, 0x20 when coined/playing
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sraider_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_ROM
-	AM_RANGE(0x6000, 0x63ff) AM_RAM
-	AM_RANGE(0x8000, 0x8000) AM_READ(sraider_sound_low_r)
-	AM_RANGE(0xa000, 0xa000) AM_READ(sraider_sound_high_r)
-	AM_RANGE(0xc000, 0xc000) AM_READ(MRA8_NOP) //some kind of sync
-	AM_RANGE(0xe000, 0xe0ff) AM_WRITE(sraider_grid_data_w)
-	AM_RANGE(0xe800, 0xe800) AM_WRITE(sraider_io_w)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sraider_cpu2_io, ADDRESS_SPACE_IO, 8 )
-  	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_WRITE(SN76496_0_w)
-	AM_RANGE(0x08, 0x08) AM_WRITE(SN76496_1_w)
-	AM_RANGE(0x10, 0x10) AM_WRITE(SN76496_2_w)
-	AM_RANGE(0x18, 0x18) AM_WRITE(SN76496_3_w)
-	AM_RANGE(0x20, 0x20) AM_WRITE(SN76496_4_w)
-	AM_RANGE(0x28, 0x3f) AM_WRITE(sraider_misc_w)  // lots unknown
-ADDRESS_MAP_END
-
-
 static MACHINE_DRIVER_START( sraider )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sraider_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz */
 	MDRV_CPU_PROGRAM_MAP(sraider_cpu2_map,0)
-	MDRV_CPU_IO_MAP(sraider_cpu2_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_IO_MAP(sraider_cpu2_io_map,0)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 28*8-1)
+
 	MDRV_GFXDECODE(sraider)
-	MDRV_PALETTE_LENGTH(65)
-	MDRV_COLORTABLE_LENGTH(32+64+2)
+	MDRV_PALETTE_LENGTH(4*8+4*16+32+2)
 
 	MDRV_PALETTE_INIT(sraider)
 	MDRV_VIDEO_START(sraider)
@@ -896,25 +868,22 @@ ROM_START( cavenger )
 ROM_END
 
 ROM_START( dorodon )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64K for data, 64K for encrypted opcodes */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "dorodon.0",   0x0000, 0x2000, CRC(460aaf26) SHA1(c4ea41cba4ac2d93fedec3c117a4470fee2a910f) )
 	ROM_LOAD( "dorodon.1",   0x2000, 0x2000, CRC(d2451eb6) SHA1(4154bfe50b7f75444d3f0c9be6bd2475fdba1938) )
 	ROM_LOAD( "dorodon.2",   0x4000, 0x2000, CRC(d3c6ee6c) SHA1(6971ecdc968810c19f8601efc3d389450156bb22) )
 
-	/* Characters */
 	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "dorodon.5",   0x0000, 0x1000, CRC(5eee2b85) SHA1(55ac9566e805d103b6916f51c764e2601cc1f715) )
 	ROM_LOAD( "dorodon.6",   0x1000, 0x1000, CRC(395ac25a) SHA1(d8a55e42b8c5d957c2e6a3181d7ac10c6a448f46) )
 
-	/* Sprites */
 	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "dorodon.4",   0x0000, 0x1000, CRC(d70bb50a) SHA1(b9d46862f288c49bb8b660da87b63bd4ecb36379) )
 	ROM_LOAD( "dorodon.3",   0x1000, 0x1000, CRC(e44e59e6) SHA1(ff730152804d75ddb9fb19e8ec33cc764d8a50e8) )
 
-	/* Opcode Decryption PROMS */
 	ROM_REGION( 0x0100, REGION_USER1, ROMREGION_DISPOSE )
-	ROM_LOAD_NIB_HIGH( "dorodon.bp4",0x0000,0x0100,CRC(f865c135) SHA1(1202f83bfa50afa5a5d24401efa8bf058e7e30b5) )
-	ROM_LOAD_NIB_LOW(  "dorodon.bp3",0x0000,0x0100,CRC(47b2f0bb) SHA1(640720aa5c1119080c6da928f6d1b0e76b989742) )
+	ROM_LOAD_NIB_HIGH( "dorodon.bp4", 0x0000, 0x0100, CRC(f865c135) SHA1(1202f83bfa50afa5a5d24401efa8bf058e7e30b5) )
+	ROM_LOAD_NIB_LOW(  "dorodon.bp3", 0x0000, 0x0100, CRC(47b2f0bb) SHA1(640720aa5c1119080c6da928f6d1b0e76b989742) )
 
 	ROM_REGION( 0x0060, REGION_PROMS, 0 )
 	ROM_LOAD( "dorodon.bp0", 0x0000, 0x0020, CRC(8fcf0bc8) SHA1(392d22731b3e4bc663d6e4385f6069ee2b4ee029) ) /* palette */
@@ -923,25 +892,22 @@ ROM_START( dorodon )
 ROM_END
 
 ROM_START( dorodon2 )
-	ROM_REGION( 0x10000, REGION_CPU1, 0 ) /* 64K for data, 64K for encrypted opcodes */
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "1.3fg",        0x0000, 0x2000, CRC(4d05d6f8) SHA1(db12ad04295f0ce112b6e90fde94a53ed1d6c3b9) )
 	ROM_LOAD( "2.3h",         0x2000, 0x2000, CRC(27b43b09) SHA1(12a8a6b8665bb9d1967ec631a794aab564a50570) )
 	ROM_LOAD( "3.3k",         0x4000, 0x2000, CRC(38d2f295) SHA1(b4d2cfd6e9f03c3ef18dcf67326f4106749b62b1) )
 
-	/* Characters */
 	ROM_REGION( 0x2000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "6.6a",        0x0000, 0x1000, CRC(2a2d8b9c) SHA1(ba3ce8ed6cafa711bf4c6ed260dd15b38adbd6cc) )
 	ROM_LOAD( "7.6bc",       0x1000, 0x1000, CRC(d14f95fa) SHA1(e9ba87602d779d833b8152c077c692e67ef696cc) )
 
-	/* Sprites */
 	ROM_REGION( 0x2000, REGION_GFX2, ROMREGION_DISPOSE )
 	ROM_LOAD( "5.3t",        0x0000, 0x1000, CRC(54c04f58) SHA1(342ef914e6f8bf37472d146bb5e9fb67056d7fc5) )
 	ROM_LOAD( "4.3r",        0x1000, 0x1000, CRC(1ebb6493) SHA1(30367d7594118e0fa8620e5d20c66a650ca82c86) )
 
-	/* Opcode Decryption PROMS (from other romset) */
 	ROM_REGION( 0x0100, REGION_USER1, ROMREGION_DISPOSE )
-	ROM_LOAD_NIB_HIGH( "dorodon.bp4",0x0000,0x0100,CRC(f865c135) SHA1(1202f83bfa50afa5a5d24401efa8bf058e7e30b5) )
-	ROM_LOAD_NIB_LOW(  "dorodon.bp3",0x0000,0x0100,CRC(47b2f0bb) SHA1(640720aa5c1119080c6da928f6d1b0e76b989742) )
+	ROM_LOAD_NIB_HIGH( "dorodon.bp4", 0x0000, 0x0100, CRC(f865c135) SHA1(1202f83bfa50afa5a5d24401efa8bf058e7e30b5) )
+	ROM_LOAD_NIB_LOW(  "dorodon.bp3", 0x0000, 0x0100, CRC(47b2f0bb) SHA1(640720aa5c1119080c6da928f6d1b0e76b989742) )
 
 	/* (from other romset - I think these are correct, they match the Starcade video) */
 	ROM_REGION( 0x0060, REGION_PROMS, 0 )
@@ -969,20 +935,19 @@ ROM_START( sraider )
     ROM_LOAD( "sraid-s7.m2",  0x0000, 0x1000, CRC(299f8e07) SHA1(1de71f251286088487da7285d6f8070147002af5) )
 	ROM_LOAD( "sraid-s8.n2",  0x1000, 0x1000, CRC(57ba8888) SHA1(2aa1a5f682d146a55a96e471bb78e5c60da02bf9) )
 
+	ROM_REGION( 0x1000, REGION_GFX3, ROMREGION_DISPOSE )	/* fixed portion of the grid */
+	ROM_LOAD( "sraid-s9.f6",  0x0000, 0x1000, CRC(2380b90f) SHA1(0310554e3f2ec973c2bb6e816d04e5c0c1e0a0b9) )
+
 	ROM_REGION( 0x0060, REGION_PROMS, 0 )
 	ROM_LOAD( "srpr10-1.a2",  0x0000, 0x0020, CRC(121fdb99) SHA1(3bc092da40beb129a4df3db2f55d22bbbcf7bad8) )
 	ROM_LOAD( "srpr10-2.l3",  0x0020, 0x0020, CRC(88b67e70) SHA1(e21ee2939e96dffee101bd92c62ed975b6b64001) )
 	ROM_LOAD( "srpr10-3.c1",  0x0040, 0x0020, CRC(27fa3a50) SHA1(7cf59b7a37c156640d6ea91554d1c4276c1780e0) ) /* ?? */
-
-	/* fixed portion of the grid */
-	ROM_REGION( 0x1000, REGION_USER1, 0 )
-	ROM_LOAD( "sraid-s9.f6",  0x0000, 0x1000, CRC(2380b90f) SHA1(0310554e3f2ec973c2bb6e816d04e5c0c1e0a0b9) )
 ROM_END
 
 
 static DRIVER_INIT( dorodon )
 {
-	/* Decode the opcodes */
+	/* decode the opcodes */
 
 	offs_t i;
 	UINT8 *decrypted = auto_malloc(0x6000);
@@ -991,15 +956,10 @@ static DRIVER_INIT( dorodon )
 
 	memory_set_decrypted_region(0, 0x0000, 0x5fff, decrypted);
 
-	for (i = 0;i < 0x6000;i++)
-	{
+	for (i = 0; i < 0x6000; i++)
 		decrypted[i] = table[rom[i]];
-	}
 }
 
-static DRIVER_INIT( sraider )
-{
-}
 
 GAME( 1981, cavenger, 0,       ladybug, cavenger, 0,       ROT0,   "Universal", "Cosmic Avenger", 0 )
 GAME( 1981, ladybug,  0,       ladybug, ladybug,  0,       ROT270, "Universal", "Lady Bug", 0 )
@@ -1008,4 +968,4 @@ GAME( 1981, ladybgb2, ladybug, ladybug, ladybug,  0,       ROT270, "bootleg",   
 GAME( 1982, dorodon,  0,       ladybug, dorodon,  dorodon, ROT270, "Falcon",    "Dorodon (set 1)", 0 )
 GAME( 1982, dorodon2, dorodon, ladybug, dorodon,  dorodon, ROT270, "Falcon",    "Dorodon (set 2)", 0 )
 GAME( 1982, snapjack, 0,       ladybug, snapjack, 0,       ROT0,   "Universal", "Snap Jack", 0 )
-GAME( 1982, sraider,  0,       sraider, sraider,  sraider, ROT270, "Universal", "Space Raider", 0 )
+GAME( 1982, sraider,  0,       sraider, sraider,  0,       ROT270, "Universal", "Space Raider", 0 )

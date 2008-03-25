@@ -47,7 +47,7 @@ static void program_write_qword_masked_32le(offs_t offset, UINT64 data, UINT64 m
     PRIVATE GLOBAL VARIABLES
 ***************************************************************************/
 
-static const memory_handlers be_memory =
+static const memory_accessors be_memory =
 {
 	program_read_byte_32be,
 	program_read_word_32be,
@@ -64,7 +64,7 @@ static const memory_handlers be_memory =
 	program_write_qword_masked_32be
 };
 
-static const memory_handlers le_memory =
+static const memory_accessors le_memory =
 {
 	program_read_byte_32le,
 	program_read_word_32le,
@@ -185,10 +185,10 @@ void mips3com_update_cycle_counting(mips3_state *mips)
 		UINT32 compare = mips->cpr[0][COP0_Compare];
 		UINT32 cyclesleft = compare - count;
 		attotime newtime = ATTOTIME_IN_CYCLES(((INT64)cyclesleft * 2), cpu_getactivecpu());
-		timer_adjust(mips->compare_int_timer, newtime, cpu_getactivecpu(), attotime_zero);
+		timer_adjust_oneshot(mips->compare_int_timer, newtime, cpu_getactivecpu());
 	}
 	else
-		timer_adjust(mips->compare_int_timer, attotime_never, cpu_getactivecpu(), attotime_zero);
+		timer_adjust_oneshot(mips->compare_int_timer, attotime_never, cpu_getactivecpu());
 }
 
 

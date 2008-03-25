@@ -43,42 +43,42 @@ GFXDECODE_END
 
 static READ8_HANDLER(frogger_ppi8255_0_r)
 {
-	return ppi8255_0_r(offset >> 1);
+	return ppi8255_0_r(machine, offset >> 1);
 }
 
 static READ8_HANDLER(frogger_ppi8255_1_r)
 {
-	return ppi8255_1_r(offset >> 1);
+	return ppi8255_1_r(machine, offset >> 1);
 }
 
 static WRITE8_HANDLER(frogger_ppi8255_0_w)
 {
-	ppi8255_0_w(offset >> 1, data);
+	ppi8255_0_w(machine, offset >> 1, data);
 }
 
 static WRITE8_HANDLER(frogger_ppi8255_1_w)
 {
-	ppi8255_1_w(offset >> 1, data);
+	ppi8255_1_w(machine, offset >> 1, data);
 }
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x8800, 0x8800) AM_READ(watchdog_reset_r)
-	AM_RANGE(0xa800, 0xabff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xb000, 0xb0ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xa800, 0xabff) AM_READ(SMH_RAM)
+	AM_RANGE(0xb000, 0xb0ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd000, 0xd007) AM_READ(frogger_ppi8255_1_r)
 	AM_RANGE(0xe000, 0xe007) AM_READ(frogger_ppi8255_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa800, 0xabff) AM_WRITE(galaxian_videoram_w) AM_BASE(&galaxian_videoram)
 	AM_RANGE(0xb000, 0xb03f) AM_WRITE(galaxian_attributesram_w) AM_BASE(&galaxian_attributesram)
-	AM_RANGE(0xb040, 0xb05f) AM_WRITE(MWA8_RAM) AM_BASE(&galaxian_spriteram) AM_SIZE(&galaxian_spriteram_size)
-	AM_RANGE(0xb060, 0xb0ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xb040, 0xb05f) AM_WRITE(SMH_RAM) AM_BASE(&galaxian_spriteram) AM_SIZE(&galaxian_spriteram_size)
+	AM_RANGE(0xb060, 0xb0ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xb808, 0xb808) AM_WRITE(galaxian_nmi_enable_w)
 	AM_RANGE(0xb80c, 0xb80c) AM_WRITE(galaxian_flip_screen_y_w)
 	AM_RANGE(0xb810, 0xb810) AM_WRITE(galaxian_flip_screen_x_w)
@@ -90,11 +90,11 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( froggrmc_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x9000, 0x93ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x5fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x9000, 0x93ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x9400, 0x97ff) AM_READ(galaxian_videoram_r)
-	AM_RANGE(0x9800, 0x98ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x9800, 0x98ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
 	AM_RANGE(0xa800, 0xa800) AM_READ(input_port_1_r)
 	AM_RANGE(0xb000, 0xb000) AM_READ(input_port_2_r)
@@ -103,12 +103,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( froggrmc_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9000, 0x93ff) AM_WRITE(galaxian_videoram_w) AM_BASE(&galaxian_videoram)
 	AM_RANGE(0x9800, 0x983f) AM_WRITE(galaxian_attributesram_w) AM_BASE(&galaxian_attributesram)
-	AM_RANGE(0x9840, 0x985f) AM_WRITE(MWA8_RAM) AM_BASE(&galaxian_spriteram) AM_SIZE(&galaxian_spriteram_size)
-	AM_RANGE(0x9860, 0x98ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x9840, 0x985f) AM_WRITE(SMH_RAM) AM_BASE(&galaxian_spriteram) AM_SIZE(&galaxian_spriteram_size)
+	AM_RANGE(0x9860, 0x98ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(soundlatch_w)
 	AM_RANGE(0xb000, 0xb000) AM_WRITE(galaxian_nmi_enable_w)
 	AM_RANGE(0xb001, 0xb001) AM_WRITE(froggrmc_sh_irqtrigger_w)
@@ -118,24 +118,24 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( frogger_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( frogger_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
     AM_RANGE(0x6000, 0x6fff) AM_WRITE(frogger_filter_w)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( frogger_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_READ(AY8910_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( frogger_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END
@@ -236,8 +236,6 @@ static MACHINE_DRIVER_START( frogger )
 	MDRV_CPU_ADD_TAG("main", Z80, 18432000/6)	/* 3.072 MHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(16000.0/132/2)
-
 	MDRV_CPU_ADD(Z80,14318000/8)
 	/* audio CPU */ /* 1.78975 MHz */
 	MDRV_CPU_PROGRAM_MAP(frogger_sound_readmem,frogger_sound_writemem)
@@ -246,10 +244,12 @@ static MACHINE_DRIVER_START( frogger )
 	MDRV_MACHINE_RESET(scramble)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_REFRESH_RATE(16000.0/132/2)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(frogger)
 	MDRV_PALETTE_LENGTH(32+64+2+1)	/* 32 for characters, 64 for stars, 2 for bullets, 1 for background */
 
@@ -273,7 +273,6 @@ static MACHINE_DRIVER_START( froggrmc )
 	MDRV_CPU_PROGRAM_MAP(froggrmc_readmem,froggrmc_writemem)
 
 	MDRV_VIDEO_START(froggers)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
 MACHINE_DRIVER_END
 
 

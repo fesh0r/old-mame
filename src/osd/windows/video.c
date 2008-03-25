@@ -7,9 +7,6 @@
 //
 //============================================================
 
-// needed for multimonitor
-#define _WIN32_WINNT 0x501
-
 // standard windows headers
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -30,7 +27,6 @@
 #include "render.h"
 #include "rendutil.h"
 #include "ui.h"
-#include "deprecat.h"
 
 // MAMEOS headers
 #include "winmain.h"
@@ -62,7 +58,7 @@ win_video_config video_config;
 win_monitor_info *win_monitor_list;
 static win_monitor_info *primary_monitor;
 
-static mame_bitmap *effect_bitmap;
+static bitmap_t *effect_bitmap;
 
 
 
@@ -77,8 +73,8 @@ static win_monitor_info *pick_monitor(int index);
 
 static void check_osd_inputs(void);
 
-static void extract_video_config(void);
-static void load_effect_overlay(const char *filename);
+static void extract_video_config(running_machine *machine);
+static void load_effect_overlay(running_machine *machine, const char *filename);
 static float get_aspect(const char *name, int report_error);
 static void get_resolution(const char *name, win_window_config *config, int report_error);
 
@@ -96,7 +92,7 @@ void winvideo_init(running_machine *machine)
 	add_exit_callback(machine, video_exit);
 
 	// extract data from the options
-	extract_video_config();
+	extract_video_config(machine);
 
 	// set up monitors first
 	init_monitors();
@@ -203,7 +199,7 @@ win_monitor_info *winvideo_monitor_from_handle(HMONITOR hmonitor)
 //  osd_update
 //============================================================
 
-void osd_update(int skip_redraw)
+void osd_update(running_machine *machine, int skip_redraw)
 {
 	win_window_info *window;
 
@@ -375,7 +371,7 @@ static void check_osd_inputs(void)
 //  extract_video_config
 //============================================================
 
-static void extract_video_config(void)
+static void extract_video_config(running_machine *machine)
 {
 	const char *stemp;
 
@@ -391,7 +387,7 @@ static void extract_video_config(void)
 #endif
 	stemp                      = options_get_string(mame_options(), WINOPTION_EFFECT);
 	if (strcmp(stemp, "none") != 0)
-		load_effect_overlay(stemp);
+		load_effect_overlay(machine, stemp);
 
 	// per-window options: extract the data
 	get_resolution(WINOPTION_RESOLUTION0, &video_config.window[0], TRUE);
@@ -449,10 +445,10 @@ static void extract_video_config(void)
 //  load_effect_overlay
 //============================================================
 
-static void load_effect_overlay(const char *filename)
+static void load_effect_overlay(running_machine *machine, const char *filename)
 {
+	const device_config *screen;
 	char *tempstr = malloc_or_die(strlen(filename) + 5);
-	int scrnum;
 	char *dest;
 
 	// append a .PNG extension
@@ -472,9 +468,8 @@ static void load_effect_overlay(const char *filename)
 	}
 
 	// set the overlay on all screens
-	for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
-		if (Machine->drv->screen[scrnum].tag != NULL)
-			render_container_set_overlay(render_container_get_screen(scrnum), effect_bitmap);
+	for (screen = video_screen_first(machine->config); screen != NULL; screen = video_screen_next(screen))
+		render_container_set_overlay(render_container_get_screen(screen), effect_bitmap);
 
 	free(tempstr);
 }

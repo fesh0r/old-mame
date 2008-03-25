@@ -63,7 +63,7 @@ static NVRAM_HANDLER( magicstk )
 
 static READ16_HANDLER( magicstk_port2_r )
 {
-	return (input_port_2_r(0) & 0xfe) | EEPROM_read_bit();
+	return (input_port_2_r(machine,0) & 0xfe) | EEPROM_read_bit();
 }
 
 static WRITE16_HANDLER( magicstk_coin_eeprom_w )
@@ -110,7 +110,7 @@ static ADDRESS_MAP_START( magicstk_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x094000, 0x094001) AM_WRITENOP
 	AM_RANGE(0x094002, 0x094003) AM_WRITENOP
 	AM_RANGE(0x094004, 0x094005) AM_WRITE(tile_banking_w)
-	AM_RANGE(0x098180, 0x09917f) AM_READWRITE(MRA16_RAM, magicstk_bgvideoram_w) AM_BASE(&magicstk_videoram)
+	AM_RANGE(0x098180, 0x09917f) AM_READWRITE(SMH_RAM, magicstk_bgvideoram_w) AM_BASE(&magicstk_videoram)
 	AM_RANGE(0x0c2010, 0x0c2011) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x0c2012, 0x0c2013) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x0c2014, 0x0c2015) AM_READWRITE(magicstk_port2_r, magicstk_coin_eeprom_w)
@@ -129,7 +129,7 @@ static ADDRESS_MAP_START( powerbal_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x094000, 0x094001) AM_WRITENOP
 	AM_RANGE(0x094002, 0x094003) AM_WRITENOP
 	AM_RANGE(0x094004, 0x094005) AM_WRITE(tile_banking_w)
-	AM_RANGE(0x098000, 0x098fff) AM_READWRITE(MRA16_RAM, magicstk_bgvideoram_w) AM_BASE(&magicstk_videoram)
+	AM_RANGE(0x098000, 0x098fff) AM_READWRITE(SMH_RAM, magicstk_bgvideoram_w) AM_BASE(&magicstk_videoram)
 	AM_RANGE(0x099000, 0x09bfff) AM_RAM // not used
 	AM_RANGE(0x0c2010, 0x0c2011) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x0c2012, 0x0c2013) AM_READ(input_port_1_word_r)
@@ -335,7 +335,7 @@ static TILE_GET_INFO( powerbal_get_bg_tile_info )
 	SET_TILE_INFO(1,code,colr >> 12,0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 	int height = machine->gfx[0]->height;
@@ -364,7 +364,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 static VIDEO_START( powerbal )
 {
-	bg_tilemap = tilemap_create(powerbal_get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	bg_tilemap = tilemap_create(powerbal_get_bg_tile_info,tilemap_scan_rows,8, 8,64,32);
 
 	xoffset = -20;
 
@@ -374,7 +374,7 @@ static VIDEO_START( powerbal )
 static VIDEO_UPDATE( powerbal )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -413,16 +413,16 @@ static MACHINE_DRIVER_START( powerbal )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(powerbal_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(61)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(128*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(powerbal)
 	MDRV_PALETTE_LENGTH(512)
 
@@ -441,18 +441,18 @@ static MACHINE_DRIVER_START( magicstk )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12 MHz */
 	MDRV_CPU_PROGRAM_MAP(magicstk_main_map, 0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(61)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_NVRAM_HANDLER(magicstk)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(61)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(128*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(powerbal)
 	MDRV_PALETTE_LENGTH(512)
 

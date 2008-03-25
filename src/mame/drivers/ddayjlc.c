@@ -114,7 +114,7 @@ static const UINT8 protData[0x10]=
 
 static READ8_HANDLER(prot_r)
 {
-	return (input_port_1_r(0)&0x1f)|protData[protAdr];
+	return (input_port_1_r(machine,0)&0x1f)|protData[protAdr];
 }
 
 static WRITE8_HANDLER(prot_w)
@@ -171,8 +171,8 @@ static WRITE8_HANDLER(bg2_w)
 
 static WRITE8_HANDLER( sound_w )
 {
-	soundlatch_w(offset,data);
-	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+	soundlatch_w(machine,offset,data);
+	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( i8257_CH0_w )
@@ -208,8 +208,8 @@ static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x8fff) AM_RAM AM_BASE(&mainram)
 	AM_RANGE(0x9000, 0x93ff) AM_RAM AM_BASE(&spriteram)
-	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(MRA8_RAM, ddayjlc_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x9800, 0x9fff) AM_READWRITE(MRA8_RAM, ddayjlc_bgram_w) AM_BASE(&bgram) /* 9800-981f - videoregs */
+	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(SMH_RAM, ddayjlc_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x9800, 0x9fff) AM_READWRITE(SMH_RAM, ddayjlc_bgram_w) AM_BASE(&bgram) /* 9800-981f - videoregs */
 	AM_RANGE(0xa000, 0xdfff) AM_ROMBANK(1) AM_WRITENOP
 	AM_RANGE(0xe000, 0xe003) AM_WRITE(i8257_CH0_w)
 	AM_RANGE(0xe008, 0xe008) AM_WRITENOP
@@ -342,7 +342,7 @@ static TILE_GET_INFO( get_tile_info_bg )
 
 static VIDEO_START( ddayjlc )
 {
-	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,8,8,32,32);
 }
 
 static VIDEO_UPDATE( ddayjlc )
@@ -361,7 +361,7 @@ static VIDEO_UPDATE( ddayjlc )
 
 		code=(code&0x7f)|((flags&0x30)<<3);
 
-		drawgfx(bitmap, machine->gfx[0], code, 1, xflip, yflip, x, y, cliprect, TRANSPARENCY_PEN, 0);
+		drawgfx(bitmap, screen->machine->gfx[0], code, 1, xflip, yflip, x, y, cliprect, TRANSPARENCY_PEN, 0);
 	}
 
 	{
@@ -371,9 +371,9 @@ static VIDEO_UPDATE( ddayjlc )
 			{
 				c=videoram[y*32+x];
 				if(x>1&&x<30)
-					drawgfx(bitmap, machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8, cliprect, TRANSPARENCY_PEN, 0);
+					drawgfx(bitmap, screen->machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8, cliprect, TRANSPARENCY_PEN, 0);
 				else
-					drawgfx(bitmap, machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8, cliprect, TRANSPARENCY_NONE, 0);
+					drawgfx(bitmap, screen->machine->gfx[1], c+char_bank*0x100, 1, 0, 0, x*8, y*8, cliprect, TRANSPARENCY_NONE, 0);
 		}
 	}
 	return 0;
@@ -399,20 +399,19 @@ static INTERRUPT_GEN( ddayjlc_snd_interrupt )
 static MACHINE_DRIVER_START( ddayjlc )
 	MDRV_CPU_ADD(Z80,12000000/3)
 	MDRV_CPU_PROGRAM_MAP(main_cpu,0)
-	MDRV_CPU_VBLANK_INT(ddayjlc_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", ddayjlc_interrupt)
 
 	MDRV_CPU_ADD(Z80, 12000000/4)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu,0)
-	MDRV_CPU_VBLANK_INT(ddayjlc_snd_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", ddayjlc_snd_interrupt)
 
 	MDRV_INTERLEAVE(100)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)

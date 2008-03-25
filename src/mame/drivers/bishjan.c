@@ -68,10 +68,10 @@ static TILE_GET_INFO( get_tile_info2 )	{	SET_TILE_INFO(0, bishjan_videoram2[ til
 static VIDEO_START(bishjan)
 {
 	tmap1 = tilemap_create(	get_tile_info1, tilemap_scan_rows,
-							TILEMAP_TYPE_PEN, 8,8, 0x80,0x40	);
+							 8,8, 0x80,0x40	);
 
 	tmap2 = tilemap_create(	get_tile_info2, tilemap_scan_rows,
-							TILEMAP_TYPE_PEN, 8,8, 0x80,0x40	);
+							 8,8, 0x80,0x40	);
 
 	tilemap_set_transparent_pen(tmap1, 0);
 	tilemap_set_transparent_pen(tmap2, 0);
@@ -108,7 +108,7 @@ if (input_code_pressed(KEYCODE_Z))
 	tilemap_set_scrollx( tmap1, 0, scroll1_x);	tilemap_set_scrolly( tmap1, 0, scroll1_y );
 	tilemap_set_scrollx( tmap2, 0, scroll2_x);	tilemap_set_scrolly( tmap2, 0, scroll2_y );
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, tmap1, 0, 0);
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect, tmap2, 0, 0);
@@ -208,7 +208,7 @@ static READ16_HANDLER( bishjan_unk_r )
 		(mame_rand(Machine) & 0x9800)	|	// bit 7 eeprom?
 		(((bishjan_sel==0x12) ? 0x40:0x00) << 8) |
 //      (mame_rand() & 0xff);
-//      (((cpu_getcurrentframe()%60)==0)?0x18:0x00);
+//      (((video_screen_get_frame_number(machine->primary_screen)%60)==0)?0x18:0x00);
 		0x18;
 }
 
@@ -228,7 +228,7 @@ static READ16_HANDLER( bishjan_input_r )
 
 	return	(res << 8) |
 			readinputport(3) |
-			((bishjan_hopper && !(cpu_getcurrentframe()%10)) ? 0x00 : 0x04)	// bit 2: hopper sensor
+			((bishjan_hopper && !(video_screen_get_frame_number(machine->primary_screen)%10)) ? 0x00 : 0x04)	// bit 2: hopper sensor
 	;
 }
 
@@ -257,7 +257,7 @@ static WRITE16_HANDLER( bishjan_coin_w )
 */
 
 static ADDRESS_MAP_START( bishjan_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(24) )
+	ADDRESS_MAP_GLOBAL_MASK(0xffffff)
 
 	AM_RANGE( 0x000000, 0x07ffff ) AM_ROM AM_REGION(REGION_CPU1, 0)
 	AM_RANGE( 0x080000, 0x0fffff ) AM_ROM AM_REGION(REGION_CPU1, 0)
@@ -265,28 +265,28 @@ static ADDRESS_MAP_START( bishjan_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE( 0x200000, 0x207fff ) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)	// battery
 
 	AM_RANGE( 0x412000, 0x412fff ) AM_READ( bishjan_tmap2_lo_r )	//?
-	AM_RANGE( 0x413000, 0x413fff ) AM_READ( MRA16_RAM ) AM_SHARE(1)
+	AM_RANGE( 0x413000, 0x413fff ) AM_READ( SMH_RAM ) AM_SHARE(1)
 	AM_RANGE( 0x416000, 0x416fff ) AM_READ( bishjan_tmap1_lo_r )	//?
-	AM_RANGE( 0x417000, 0x417fff ) AM_READ( MRA16_RAM ) AM_SHARE(1)
+	AM_RANGE( 0x417000, 0x417fff ) AM_READ( SMH_RAM ) AM_SHARE(1)
 	AM_RANGE( 0x422000, 0x422fff ) AM_READ( bishjan_tmap2_hi_r )	//?
-	AM_RANGE( 0x423000, 0x423fff ) AM_READ( MRA16_RAM ) AM_SHARE(2)
+	AM_RANGE( 0x423000, 0x423fff ) AM_READ( SMH_RAM ) AM_SHARE(2)
 	AM_RANGE( 0x426000, 0x426fff ) AM_READ( bishjan_tmap1_hi_r )
-	AM_RANGE( 0x427000, 0x427fff ) AM_READ( MRA16_RAM ) AM_SHARE(2)
+	AM_RANGE( 0x427000, 0x427fff ) AM_READ( SMH_RAM ) AM_SHARE(2)
 	AM_RANGE( 0x430000, 0x431fff ) AM_WRITE( bishjan_tmap2_w )
 	AM_RANGE( 0x432000, 0x432fff ) AM_WRITE( bishjan_tmap2_w )		//?
-	AM_RANGE( 0x433000, 0x433fff ) AM_WRITE( MWA16_RAM ) AM_SHARE(1)
+	AM_RANGE( 0x433000, 0x433fff ) AM_WRITE( SMH_RAM ) AM_SHARE(1)
 	AM_RANGE( 0x434000, 0x435fff ) AM_WRITE( bishjan_tmap1_w )
 	AM_RANGE( 0x436000, 0x436fff ) AM_WRITE( bishjan_tmap1_w )		//?
-	AM_RANGE( 0x437000, 0x437fff ) AM_WRITE( MWA16_RAM ) AM_SHARE(2)
+	AM_RANGE( 0x437000, 0x437fff ) AM_WRITE( SMH_RAM ) AM_SHARE(2)
 
-	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( MRA16_NOP, bishjan_sel_w )
+	AM_RANGE( 0x600000, 0x600001 ) AM_READWRITE( SMH_NOP, bishjan_sel_w )
 	AM_RANGE( 0x600060, 0x600061 ) AM_WRITE( colordac_w )
-	AM_RANGE( 0x600062, 0x600063 ) AM_WRITE( MWA16_NOP )	// ff to 600062
+	AM_RANGE( 0x600062, 0x600063 ) AM_WRITE( SMH_NOP )	// ff to 600062
 	AM_RANGE( 0x6000a0, 0x6000a1 ) AM_WRITE( bishjan_low_w )
 
-	AM_RANGE( 0xa0001e, 0xa0001f ) AM_WRITE( MWA16_RAM ) AM_BASE( &bishjan_layers )
+	AM_RANGE( 0xa0001e, 0xa0001f ) AM_WRITE( SMH_RAM ) AM_BASE( &bishjan_layers )
 
-	AM_RANGE( 0xa00020, 0xa00025 ) AM_WRITE( MWA16_RAM ) AM_BASE( &bishjan_scroll )
+	AM_RANGE( 0xa00020, 0xa00025 ) AM_WRITE( SMH_RAM ) AM_BASE( &bishjan_scroll )
 
 	AM_RANGE( 0xc00000, 0xc00001 ) AM_READ( input_port_1_word_r )	// c00001 sw1
 	AM_RANGE( 0xc00002, 0xc00003 ) AM_READWRITE( input_port_2_word_r, bishjan_input_w )	// in c
@@ -442,18 +442,19 @@ static INTERRUPT_GEN( bishjan_interrupt )
 static MACHINE_DRIVER_START( bishjan )
 	MDRV_CPU_ADD(H83044, 44100000/3)
 	MDRV_CPU_PROGRAM_MAP( bishjan_map, 0 )
-	MDRV_CPU_VBLANK_INT(bishjan_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(bishjan_interrupt,2)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 512, 256 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 512-1, 0, 256-16-1 )
+	MDRV_SCREEN_REFRESH_RATE( 60 )
+
 	MDRV_GFXDECODE(bishjan)
 	MDRV_PALETTE_LENGTH( 256 )
-	MDRV_SCREEN_REFRESH_RATE( 60 )
 
 	MDRV_VIDEO_START( bishjan )
 	MDRV_VIDEO_UPDATE( bishjan )

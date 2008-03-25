@@ -159,7 +159,7 @@ static WRITE8_HANDLER( _20pacgal_coin_counter_w )
  *
  *************************************/
 
-WRITE8_HANDLER( rom_bank_select_w )
+static WRITE8_HANDLER( rom_bank_select_w )
 {
 	_20pacgal_state *state = Machine->driver_data;
 
@@ -170,7 +170,7 @@ WRITE8_HANDLER( rom_bank_select_w )
 }
 
 
-WRITE8_HANDLER( rom_48000_w )
+static WRITE8_HANDLER( rom_48000_w )
 {
 	_20pacgal_state *state = Machine->driver_data;
 
@@ -200,12 +200,12 @@ static ADDRESS_MAP_START( 20pacgal_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x45040, 0x4505f) AM_WRITE(pacman_sound_w) AM_BASE(&namco_soundregs)
 	AM_RANGE(0x44800, 0x45eff) AM_RAM
 	AM_RANGE(0x45f00, 0x45fff) AM_WRITE(_20pacgal_wavedata_w) AM_BASE(&namco_wavedata)
-	AM_RANGE(0x46000, 0x46fff) AM_WRITE(MWA8_RAM) AM_BASE_MEMBER(_20pacgal_state, char_gfx_ram)
+	AM_RANGE(0x46000, 0x46fff) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, char_gfx_ram)
 	AM_RANGE(0x47100, 0x47100) AM_RAM	/* leftover from original Galaga code */
-	AM_RANGE(0x48000, 0x49fff) AM_READWRITE(MRA8_ROM, rom_48000_w)	/* this should be a mirror of 08000-09ffff */
-	AM_RANGE(0x4c000, 0x4dfff) AM_WRITE(MWA8_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_gfx_ram)
-	AM_RANGE(0x4e000, 0x4e17f) AM_WRITE(MWA8_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_ram)
-	AM_RANGE(0x4ff00, 0x4ffff) AM_WRITE(MWA8_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_color_lookup)
+	AM_RANGE(0x48000, 0x49fff) AM_READWRITE(SMH_ROM, rom_48000_w)	/* this should be a mirror of 08000-09ffff */
+	AM_RANGE(0x4c000, 0x4dfff) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_gfx_ram)
+	AM_RANGE(0x4e000, 0x4e17f) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_ram)
+	AM_RANGE(0x4ff00, 0x4ffff) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, sprite_color_lookup)
 ADDRESS_MAP_END
 
 
@@ -217,21 +217,21 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( 20pacgal_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x3f) AM_NOP /* Z180 internal registers */
 	AM_RANGE(0x40, 0x7f) AM_NOP	/* Z180 internal registers */
 	AM_RANGE(0x80, 0x80) AM_READ(input_port_0_r)
 	AM_RANGE(0x81, 0x81) AM_READ(input_port_1_r)
 	AM_RANGE(0x82, 0x82) AM_READ(input_port_2_r)
 	AM_RANGE(0x80, 0x80) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x81, 0x81) AM_WRITE(MWA8_NOP)				/* ??? pulsed by the timer irq */
+	AM_RANGE(0x81, 0x81) AM_WRITE(SMH_NOP)				/* ??? pulsed by the timer irq */
 	AM_RANGE(0x82, 0x82) AM_WRITE(irqack_w)
-	AM_RANGE(0x85, 0x86) AM_WRITE(MWA8_NOP)				/* stars: rng seed (lo/hi) */
+	AM_RANGE(0x85, 0x86) AM_WRITE(SMH_NOP)				/* stars: rng seed (lo/hi) */
 	AM_RANGE(0x87, 0x87) AM_READWRITE(eeprom_r, eeprom_w)
 	AM_RANGE(0x88, 0x88) AM_WRITE(rom_bank_select_w)
 	AM_RANGE(0x89, 0x89) AM_WRITE(_20pacgal_dac_w)
-	AM_RANGE(0x8a, 0x8a) AM_WRITE(MWA8_NOP)				/* stars: bits 3-4 = active set; bit 5 = enable */
-	AM_RANGE(0x8b, 0x8b) AM_WRITE(MWA8_RAM) AM_BASE_MEMBER(_20pacgal_state, flip_screen)
+	AM_RANGE(0x8a, 0x8a) AM_WRITE(SMH_NOP)				/* stars: bits 3-4 = active set; bit 5 = enable */
+	AM_RANGE(0x8b, 0x8b) AM_WRITE(SMH_RAM) AM_BASE_MEMBER(_20pacgal_state, flip)
 	AM_RANGE(0x8f, 0x8f) AM_WRITE(_20pacgal_coin_counter_w)
 ADDRESS_MAP_END
 
@@ -272,7 +272,7 @@ static INPUT_PORTS_START( 20pacgal )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 INPUT_PORTS_END
 
 
@@ -291,7 +291,7 @@ static MACHINE_DRIVER_START( 20pacgal )
 	MDRV_CPU_ADD(Z180, MAIN_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(20pacgal_map,0)
 	MDRV_CPU_IO_MAP(20pacgal_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_assert,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_assert)
 
 	MDRV_NVRAM_HANDLER(eeprom)
 

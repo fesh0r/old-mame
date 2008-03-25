@@ -126,10 +126,10 @@ static TILE_GET_INFO( get_tile_info3 ) { get_tile_info(machine,tileinfo,tile_ind
 
 VIDEO_START( namcos86 )
 {
-	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg_tilemap[2] = tilemap_create(get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg_tilemap[3] = tilemap_create(get_tile_info3,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap[0] = tilemap_create(get_tile_info0,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[1] = tilemap_create(get_tile_info1,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[2] = tilemap_create(get_tile_info2,tilemap_scan_rows,8,8,64,32);
+	bg_tilemap[3] = tilemap_create(get_tile_info3,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_transparent_pen(bg_tilemap[0],7);
 	tilemap_set_transparent_pen(bg_tilemap[1],7);
@@ -262,7 +262,7 @@ sprite format:
 15   xxxxxxxx  Y position
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const UINT8 *source = &spriteram[0x0800-0x20];	/* the last is NOT a sprite */
 	const UINT8 *finish = &spriteram[0];
@@ -300,7 +300,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx += sprite_xoffs;
 		sy -= sprite_yoffs;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = -sx - sizex;
 			sy = -sy - sizey;
@@ -335,7 +335,7 @@ static void set_scroll(int layer)
 
 	scrollx = xscroll[layer] - xdisp[layer];
 	scrolly = yscroll[layer] + 9;
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		scrollx = -scrollx;
 		scrolly = -scrolly;
@@ -351,8 +351,8 @@ VIDEO_UPDATE( namcos86 )
 
 	/* flip screen is embedded in the sprite control registers */
 	/* can't use flip_screen_set() because the visible area is asymmetrical */
-	flip_screen = spriteram[0x07f6] & 1;
-	tilemap_set_flip(ALL_TILEMAPS,flip_screen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
+	flip_screen_set_no_update(spriteram[0x07f6] & 1);
+	tilemap_set_flip(ALL_TILEMAPS,flip_screen_get() ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 	set_scroll(0);
 	set_scroll(1);
 	set_scroll(2);
@@ -360,7 +360,7 @@ VIDEO_UPDATE( namcos86 )
 
 	fillbitmap(priority_bitmap, 0, cliprect);
 
-	fillbitmap(bitmap,machine->remapped_colortable[machine->gfx[0]->color_base + 8*backcolor+7],cliprect);
+	fillbitmap(bitmap,screen->machine->gfx[0]->color_base + 8*backcolor+7,cliprect);
 
 	for (layer = 0;layer < 8;layer++)
 	{
@@ -373,7 +373,7 @@ VIDEO_UPDATE( namcos86 )
 		}
 	}
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 

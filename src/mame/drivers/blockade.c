@@ -67,7 +67,7 @@ static INTERRUPT_GEN( blockade_interrupt )
 {
 	cpunum_resume(0, SUSPEND_ANY_REASON);
 
-	if ((input_port_0_r(0) & 0x80) == 0)
+	if ((input_port_0_r(machine,0) & 0x80) == 0)
 	{
 		just_been_reset = 1;
 		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
@@ -78,7 +78,7 @@ static READ8_HANDLER( blockade_input_port_0_r )
 {
     /* coin latch is bit 7 */
 
-    UINT8 temp = (input_port_0_r(0)&0x7f);
+    UINT8 temp = (input_port_0_r(machine,0)&0x7f);
     return (coin_latch<<7) | (temp);
 }
 
@@ -116,15 +116,15 @@ static WRITE8_HANDLER( blockade_coin_latch_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_ROM) AM_MIRROR(0x6000)
-    AM_RANGE(0x8000, 0x83ff) AM_READ(MRA8_RAM) AM_MIRROR(0x6c00)
-    AM_RANGE(0x9000, 0x90ff) AM_READ(MRA8_RAM) AM_MIRROR(0x6f00)
+    AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_ROM) AM_MIRROR(0x6000)
+    AM_RANGE(0x8000, 0x83ff) AM_READ(SMH_RAM) AM_MIRROR(0x6c00)
+    AM_RANGE(0x9000, 0x90ff) AM_READ(SMH_RAM) AM_MIRROR(0x6f00)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_ROM) AM_MIRROR(0x6000)
+    AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_ROM) AM_MIRROR(0x6000)
     AM_RANGE(0x8000, 0x83ff) AM_WRITE(blockade_videoram_w) AM_BASE(&videoram) AM_MIRROR(0x6c00)
-    AM_RANGE(0x9000, 0x90ff) AM_WRITE(MWA8_RAM) AM_MIRROR(0x6f00)
+    AM_RANGE(0x9000, 0x90ff) AM_WRITE(SMH_RAM) AM_MIRROR(0x6f00)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
@@ -458,16 +458,16 @@ static MACHINE_DRIVER_START( blockade )
 	MDRV_CPU_ADD(8080, 2079000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(blockade_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", blockade_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(blockade)
 	MDRV_PALETTE_LENGTH(2)
 

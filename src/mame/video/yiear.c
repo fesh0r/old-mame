@@ -34,7 +34,7 @@ PALETTE_INIT( yiear )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -71,7 +71,7 @@ WRITE8_HANDLER( yiear_control_w )
 {
 	/* bit 0 flips screen */
 
-	if (flip_screen != (data & 0x01))
+	if (flip_screen_get() != (data & 0x01))
 	{
 		flip_screen_set(data & 0x01);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -83,7 +83,7 @@ WRITE8_HANDLER( yiear_control_w )
 
 	/* bit 2 is IRQ enable */
 
-	interrupt_enable_w(0, data & 0x04);
+	interrupt_enable_w(machine, 0, data & 0x04);
 
 	/* bits 3 and 4 are coin counters */
 
@@ -105,10 +105,10 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( yiear )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -122,7 +122,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sy = 240 - spriteram[offs + 1];
 		int sx = spriteram_2[offs];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -145,6 +145,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( yiear )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

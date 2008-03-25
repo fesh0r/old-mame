@@ -15,6 +15,7 @@
 *******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
 
@@ -88,40 +89,40 @@ static READ8_HANDLER( deco16_io_r )
  *************************************/
 
 static ADDRESS_MAP_START( prosport_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0200, 0x021f) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1000, 0x2fff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0200, 0x021f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x1000, 0x2fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x8000, 0x800f) AM_READ(deco16_io_r)
-	AM_RANGE(0x4000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prosport_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0200, 0x021f) AM_WRITE(prosport_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1200, 0x1fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1200, 0x1fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x3000, 0x37ff) AM_WRITE(liberate_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x3800, 0x3fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
+	AM_RANGE(0x3800, 0x3fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)
 	AM_RANGE(0x8000, 0x800f) AM_WRITE(deco16_io_w)
-	AM_RANGE(0x4000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( liberate_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1000, 0x3fff) AM_READ(MRA8_ROM) /* Mirror of main rom */
+	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x1000, 0x3fff) AM_READ(SMH_ROM) /* Mirror of main rom */
 	AM_RANGE(0x4000, 0x7fff) AM_READ(deco16_bank_r)
 	AM_RANGE(0x8000, 0x800f) AM_READ(deco16_io_r)
-	AM_RANGE(0x6200, 0x67ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x6200, 0x67ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( liberate_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1000, 0x3fff) AM_WRITE(MWA8_ROM) /* Mirror of main rom */
+	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1000, 0x3fff) AM_WRITE(SMH_ROM) /* Mirror of main rom */
 	AM_RANGE(0x4000, 0x47ff) AM_WRITE(liberate_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x4800, 0x4fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
-	AM_RANGE(0x6200, 0x67ff) AM_WRITE(MWA8_RAM) AM_BASE(&scratchram)
+	AM_RANGE(0x4800, 0x4fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)
+	AM_RANGE(0x6200, 0x67ff) AM_WRITE(SMH_RAM) AM_BASE(&scratchram)
 	AM_RANGE(0x8000, 0x800f) AM_WRITE(deco16_io_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( deco16_readport, ADDRESS_SPACE_IO, 8 )
@@ -134,25 +135,25 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( liberatb_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00fe, 0x00fe) AM_READ(input_port_0_r)
-	AM_RANGE(0x0000, 0x0fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1000, 0x3fff) AM_READ(MRA8_ROM) /* Mirror of main rom */
+	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x1000, 0x3fff) AM_READ(SMH_ROM) /* Mirror of main rom */
 	AM_RANGE(0x4000, 0x7fff) AM_READ(deco16_bank_r)
 	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_1_r)
 	AM_RANGE(0xf001, 0xf001) AM_READ(input_port_2_r)
 	AM_RANGE(0xf002, 0xf002) AM_READ(input_port_3_r)
 	AM_RANGE(0xf003, 0xf003) AM_READ(input_port_4_r)
 	AM_RANGE(0xf004, 0xf004) AM_READ(input_port_5_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( liberatb_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1000, 0x3fff) AM_WRITE(MWA8_ROM) /* Mirror of main rom */
+	AM_RANGE(0x0000, 0x0fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1000, 0x3fff) AM_WRITE(SMH_ROM) /* Mirror of main rom */
 	AM_RANGE(0x4000, 0x47ff) AM_WRITE(liberate_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x4800, 0x4fff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram)
-	AM_RANGE(0x6200, 0x67ff) AM_WRITE(MWA8_RAM) AM_BASE(&scratchram)
+	AM_RANGE(0x4800, 0x4fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram)
+	AM_RANGE(0x6200, 0x67ff) AM_WRITE(SMH_RAM) AM_BASE(&scratchram)
 	AM_RANGE(0xf000, 0xf00f) AM_WRITE(deco16_io_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 /*************************************
@@ -163,34 +164,34 @@ ADDRESS_MAP_END
 
 #if 0
 static ADDRESS_MAP_START( prosoccr_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x01ff) AM_READ(MRA8_RAM)
+    AM_RANGE(0x0000, 0x01ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
-    AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)
+    AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( prosoccr_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x01ff) AM_WRITE(MWA8_RAM)
+    AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(AY8910_write_port_1_w)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_control_port_1_w)
-    AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)
+    AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 #endif
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x01ff) AM_READ(MRA8_RAM)
+    AM_RANGE(0x0000, 0x01ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xb000, 0xb000) AM_READ(soundlatch_r)
-    AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_ROM)
+    AM_RANGE(0xc000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-    AM_RANGE(0x0000, 0x01ff) AM_WRITE(MWA8_RAM)
+    AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(AY8910_write_port_1_w)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(AY8910_control_port_1_w)
-    AM_RANGE(0xc000, 0xffff) AM_WRITE(MWA8_ROM)
+    AM_RANGE(0xc000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 /*************************************
@@ -519,22 +520,23 @@ static MACHINE_DRIVER_START( liberate )
 	MDRV_CPU_ADD_TAG("main",DECO16, 2000000)
 	MDRV_CPU_PROGRAM_MAP(liberate_readmem,liberate_writemem)
 	MDRV_CPU_IO_MAP(deco16_readport,deco16_writeport)
-	MDRV_CPU_VBLANK_INT(deco16_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", deco16_interrupt)
 
 	MDRV_CPU_ADD_TAG("sound",M6502, 1500000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,16)
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 529ms Vblank duration?? */)
 	MDRV_INTERLEAVE(200)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 529ms Vblank duration?? */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(liberate)
 	MDRV_PALETTE_LENGTH(33)
 	MDRV_PALETTE_INIT(liberate)
@@ -557,7 +559,7 @@ static MACHINE_DRIVER_START( liberatb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 2000000)
 	MDRV_CPU_PROGRAM_MAP(liberatb_readmem,liberatb_writemem)
-	MDRV_CPU_VBLANK_INT(deco16_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", deco16_interrupt)
 
 	MDRV_IMPORT_FROM(liberate)
 	MDRV_CPU_REMOVE("main")
@@ -594,17 +596,18 @@ static MACHINE_DRIVER_START( prosport )
 	MDRV_CPU_ADD(M6502, 1500000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,16)
+	MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 529ms Vblank duration?? */)
 	MDRV_INTERLEAVE(200)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529) /* 529ms Vblank duration?? */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(prosport)
 	MDRV_PALETTE_LENGTH(256)
 

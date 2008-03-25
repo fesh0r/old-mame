@@ -40,7 +40,9 @@ static struct
 
 UINT8* saa5050_vidram;  /* Video RAM for SAA 5050 */
 
-static mame_bitmap* collision_bitmap;
+static s2636_t *s2636_0, *s2636_1;
+UINT8 *malzak_s2636_0_ram;
+UINT8 *malzak_s2636_1_ram;
 
 int malzak_x;
 int malzak_y;
@@ -54,9 +56,14 @@ static struct playfield
 
 VIDEO_START( malzak )
 {
-	collision_bitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,BITMAP_FORMAT_INDEXED8);
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
-	saa5050_vidram = auto_malloc(0x800);
+	/* configure the S2636 chips */
+//  s2636_0 = s2636_config(malzak_s2636_0_ram, height, width, -8, -16);
+//  s2636_1 = s2636_config(malzak_s2636_1_ram, height, width, -9, -16);
+	s2636_0 = s2636_config(malzak_s2636_0_ram, height, width,  0, -16);
+	s2636_1 = s2636_config(malzak_s2636_1_ram, height, width,  0, -16);
 }
 
 VIDEO_UPDATE( malzak )
@@ -64,6 +71,8 @@ VIDEO_UPDATE( malzak )
 	int code, colour;
 	int sx, sy;
 	int x,y;
+	bitmap_t *s2636_0_bitmap;
+	bitmap_t *s2636_1_bitmap;
 
 	fillbitmap(bitmap,0,0);
 
@@ -169,15 +178,15 @@ VIDEO_UPDATE( malzak )
 			{
 				if (saa5050_state.saa5050_flags & SAA5050_DBLHI)
 				{
-					drawgfx (bitmap, machine->gfx[4], code, colour, 0, 0,
-						sx * 6, sy * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
-					drawgfx (bitmap, machine->gfx[5], code, colour, 0, 0,
-						sx * 6, (sy + 1) * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+					drawgfx (bitmap, screen->machine->gfx[2], code, colour, 0, 0,
+						sx * 6, sy * 10, cliprect, TRANSPARENCY_NONE, 0);
+					drawgfx (bitmap, screen->machine->gfx[3], code, colour, 0, 0,
+						sx * 6, (sy + 1) * 10, cliprect, TRANSPARENCY_NONE, 0);
 				}
 				else
 				{
-					drawgfx (bitmap, machine->gfx[3], code, colour, 0, 0,
-						sx * 6, sy * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+					drawgfx (bitmap, screen->machine->gfx[1], code, colour, 0, 0,
+						sx * 6, sy * 10, cliprect, TRANSPARENCY_NONE, 0);
 				}
 			}
 		}
@@ -204,21 +213,40 @@ VIDEO_UPDATE( malzak )
 			if(sx < -15)
 				sx+=256;
 
-			drawgfx(bitmap,machine->gfx[0],field[x*16 + y].code,7,0,0,
-				sx, sy, &machine->screen[0].visarea, TRANSPARENCY_PEN, 0);
+			drawgfx(bitmap,screen->machine->gfx[0],field[x*16 + y].code,7,0,0,
+				sx, sy, cliprect, TRANSPARENCY_PEN, 0);
 		}
 
-	// S2636 - Sprites / Collision detection (x2)
+    /* update the S2636 chips */
+	s2636_0_bitmap = s2636_update(s2636_0, cliprect);
+	s2636_1_bitmap = s2636_update(s2636_1, cliprect);
 
-	s2636_x_offset = -16;
-//  s2636_y_offset = -8;
+	/* copy the S2636 images into the main bitmap */
+	{
+		int y;
 
-	s2636_update_bitmap(machine,bitmap,s2636_1_ram,1,collision_bitmap);
-	s2636_update_bitmap(machine,bitmap,s2636_2_ram,2,collision_bitmap);
+		for (y = cliprect->min_y; y <= cliprect->max_y; y++)
+		{
+			int x;
+
+			for (x = cliprect->min_x; x <= cliprect->max_x; x++)
+			{
+				int pixel0 = *BITMAP_ADDR16(s2636_0_bitmap, y, x);
+				int pixel1 = *BITMAP_ADDR16(s2636_1_bitmap, y, x);
+
+				if (S2636_IS_PIXEL_DRAWN(pixel0))
+					*BITMAP_ADDR16(bitmap, y, x) = S2636_PIXEL_COLOR(pixel0);
+
+				if (S2636_IS_PIXEL_DRAWN(pixel1))
+					*BITMAP_ADDR16(bitmap, y, x) = S2636_PIXEL_COLOR(pixel1);
+			}
+		}
+	}
+
 	return 0;
 }
 
-WRITE8_HANDLER( playfield_w )
+WRITE8_HANDLER( malzak_playfield_w )
 {
 	int tile = ((malzak_x / 16) * 16) + (offset / 16);
 

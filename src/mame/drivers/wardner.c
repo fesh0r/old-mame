@@ -125,7 +125,6 @@ out:
 
 #include "driver.h"
 #include "deprecat.h"
-#include "video/crtc6845.h"
 #include "cpu/tms32010/tms32010.h"
 #include "twincobr.h"
 #include "sound/3812intf.h"
@@ -145,7 +144,7 @@ static WRITE8_HANDLER( wardner_ramrom_bank_sw )
 
 		if (data)
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, MRA8_BANK1);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_BANK1);
 			switch (data)
 			{
 				case 2:  bankaddress = 0x10000; break;
@@ -162,9 +161,9 @@ static WRITE8_HANDLER( wardner_ramrom_bank_sw )
 		else
 		{
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, wardner_sprite_r);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xadff, 0, 0, MRA8_BANK4);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xae00, 0xafff, 0, 0, MRA8_BANK2);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0, MRA8_BANK3);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xadff, 0, 0, SMH_BANK4);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xae00, 0xafff, 0, 0, SMH_BANK2);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0, SMH_BANK3);
 			memory_set_bankptr(1, &RAM[0x0000]);
 			memory_set_bankptr(2, rambase_ae00);
 			memory_set_bankptr(3, rambase_c000);
@@ -175,8 +174,8 @@ static WRITE8_HANDLER( wardner_ramrom_bank_sw )
 
 void wardner_restore_bank(void)
 {
-	wardner_ramrom_bank_sw(0,1);	/* Dummy value to ensure restoration */
-	wardner_ramrom_bank_sw(0,wardner_membank);
+	wardner_ramrom_bank_sw(Machine,0,1);	/* Dummy value to ensure restoration */
+	wardner_ramrom_bank_sw(Machine,0,wardner_membank);
 }
 
 
@@ -186,7 +185,7 @@ static ADDRESS_MAP_START( main_program_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x6fff) AM_ROM
 	AM_RANGE(0x7000, 0x7fff) AM_RAM
 
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK1) /* Overlapped RAM/Banked ROM - See below */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1) /* Overlapped RAM/Banked ROM - See below */
 
 	AM_RANGE(0x8000, 0x8fff) AM_WRITE(wardner_sprite_w) AM_BASE((void *)&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x9000, 0x9fff) AM_ROM
@@ -198,7 +197,7 @@ static ADDRESS_MAP_START( main_program_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(wardner_CRTC_reg_sel_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(wardner_CRTC_data_w)
 	AM_RANGE(0x10, 0x13) AM_WRITE(wardner_txscroll_w)		/* scroll text layer */
@@ -231,7 +230,7 @@ static ADDRESS_MAP_START( sound_program_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(YM3812_status_port_0_r, YM3812_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM3812_write_port_0_w)
 ADDRESS_MAP_END
@@ -469,7 +468,7 @@ static MACHINE_DRIVER_START( wardner )
 	MDRV_CPU_ADD(Z80,24000000/4)			/* 6MHz ??? - Real board crystal is 24MHz */
 	MDRV_CPU_PROGRAM_MAP(main_program_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
-	MDRV_CPU_VBLANK_INT(wardner_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", wardner_interrupt)
 
 	MDRV_CPU_ADD(Z80,24000000/7)			/* 3.43MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_program_map, 0)
@@ -480,17 +479,20 @@ static MACHINE_DRIVER_START( wardner )
 	/* Data Map is internal to the CPU */
 	MDRV_CPU_IO_MAP(DSP_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(56)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)					/* 100 CPU slices per frame */
 
 	MDRV_MACHINE_RESET(wardner)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(wardner)
 	MDRV_PALETTE_LENGTH(1792)
 

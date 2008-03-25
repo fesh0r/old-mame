@@ -10,29 +10,32 @@ Atari Ultra Tank video emulation
 
 static tilemap* playfield;
 
-static mame_bitmap* helper;
+static bitmap_t* helper;
 
 int ultratnk_collision[4];
 
 
 PALETTE_INIT( ultratnk )
 {
-	palette_set_color(machine, 0, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 1, MAKE_RGB(0xa4, 0xa4, 0xa4));
-	palette_set_color(machine, 2, MAKE_RGB(0x5b, 0x5b, 0x5b));
-	palette_set_color(machine, 3, MAKE_RGB(0xff, 0xff, 0xff));
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 4);
 
-	colortable[0] = color_prom[0x00] & 3;
-	colortable[2] = color_prom[0x00] & 3;
-	colortable[4] = color_prom[0x00] & 3;
-	colortable[6] = color_prom[0x00] & 3;
-	colortable[8] = color_prom[0x00] & 3;
+	colortable_palette_set_color(machine->colortable, 0, MAKE_RGB(0x00, 0x00, 0x00));
+	colortable_palette_set_color(machine->colortable, 1, MAKE_RGB(0xa4, 0xa4, 0xa4));
+	colortable_palette_set_color(machine->colortable, 2, MAKE_RGB(0x5b, 0x5b, 0x5b));
+	colortable_palette_set_color(machine->colortable, 3, MAKE_RGB(0xff, 0xff, 0xff));
 
-	colortable[1] = color_prom[0x01] & 3;
-	colortable[3] = color_prom[0x02] & 3;
-	colortable[5] = color_prom[0x04] & 3;
-	colortable[7] = color_prom[0x08] & 3;
-	colortable[9] = color_prom[0x10] & 3;
+	colortable_entry_set_value(machine->colortable, 0, color_prom[0x00] & 3);
+	colortable_entry_set_value(machine->colortable, 2, color_prom[0x00] & 3);
+	colortable_entry_set_value(machine->colortable, 4, color_prom[0x00] & 3);
+	colortable_entry_set_value(machine->colortable, 6, color_prom[0x00] & 3);
+	colortable_entry_set_value(machine->colortable, 8, color_prom[0x00] & 3);
+
+	colortable_entry_set_value(machine->colortable, 1, color_prom[0x01] & 3);
+	colortable_entry_set_value(machine->colortable, 3, color_prom[0x02] & 3);
+	colortable_entry_set_value(machine->colortable, 5, color_prom[0x04] & 3);
+	colortable_entry_set_value(machine->colortable, 7, color_prom[0x08] & 3);
+	colortable_entry_set_value(machine->colortable, 9, color_prom[0x10] & 3);
 }
 
 
@@ -41,21 +44,17 @@ static TILE_GET_INFO( ultratnk_tile_info )
 	UINT8 code = videoram[tile_index];
 
 	if (code & 0x20)
-	{
 		SET_TILE_INFO(0, code, code >> 6, 0);
-	}
 	else
-	{
 		SET_TILE_INFO(0, code, 4, 0);
-	}
 }
 
 
 VIDEO_START( ultratnk )
 {
-	helper = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	helper = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	playfield = tilemap_create(ultratnk_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	playfield = tilemap_create(ultratnk_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 
@@ -75,13 +74,11 @@ VIDEO_UPDATE( ultratnk )
 		UINT8 code = videoram[0x398 + 2 * i + 1];
 
 		if (code & 4)
-		{
 			bank = 32;
-		}
 
 		if (!(attr & 0x80))
 		{
-			drawgfx(bitmap, machine->gfx[1],
+			drawgfx(bitmap, screen->machine->gfx[1],
 				(code >> 3) | bank,
 				i,
 				0, 0,
@@ -97,9 +94,8 @@ VIDEO_UPDATE( ultratnk )
 
 VIDEO_EOF( ultratnk )
 {
-	UINT16 BG = machine->remapped_colortable[machine->gfx[0]->color_base];
-
 	int i;
+	UINT16 BG = colortable_entry_get_value(machine->colortable, 0);
 
 	/* check for sprite-playfield collisions */
 
@@ -121,14 +117,12 @@ VIDEO_EOF( ultratnk )
 		rect.max_x = horz - 15 + machine->gfx[1]->width - 1;
 		rect.max_y = vert - 15 + machine->gfx[1]->height - 1;
 
-		sect_rect(&rect, &machine->screen[0].visarea);
+		sect_rect(&rect, video_screen_get_visible_area(machine->primary_screen));
 
 		tilemap_draw(helper, &rect, playfield, 0, 0);
 
 		if (code & 4)
-		{
 			bank = 32;
-		}
 
 		drawgfx(helper, machine->gfx[1],
 			(code >> 3) | bank,
@@ -139,21 +133,15 @@ VIDEO_EOF( ultratnk )
 			&rect, TRANSPARENCY_PEN, 1);
 
 		for (y = rect.min_y; y <= rect.max_y; y++)
-		{
 			for (x = rect.min_x; x <= rect.max_x; x++)
-			{
-				if (*BITMAP_ADDR16(helper, y, x) != BG)
-				{
+				if (colortable_entry_get_value(machine->colortable, *BITMAP_ADDR16(helper, y, x)) != BG)
 					ultratnk_collision[i] = 1;
-				}
-			}
-		}
 	}
 
 	/* update sound status */
 
-	discrete_sound_w(ULTRATNK_MOTOR_DATA_1, videoram[0x391] & 15);
-	discrete_sound_w(ULTRATNK_MOTOR_DATA_2, videoram[0x393] & 15);
+	discrete_sound_w(machine, ULTRATNK_MOTOR_DATA_1, videoram[0x391] & 15);
+	discrete_sound_w(machine, ULTRATNK_MOTOR_DATA_2, videoram[0x393] & 15);
 }
 
 

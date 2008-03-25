@@ -23,7 +23,7 @@ static TILE_GET_INFO( get_tile_info )
 VIDEO_START( poolshrk )
 {
 	bg_tilemap = tilemap_create(get_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
@@ -35,7 +35,7 @@ VIDEO_UPDATE( poolshrk )
 
 	tilemap_mark_all_tiles_dirty(bg_tilemap);
 
-	fillbitmap(bitmap, machine->pens[0], cliprect);
+	fillbitmap(bitmap, 0, cliprect);
 
 	/* draw sprites */
 
@@ -44,7 +44,7 @@ VIDEO_UPDATE( poolshrk )
 		int hpos = poolshrk_hpos_ram[i];
 		int vpos = poolshrk_vpos_ram[i];
 
-		drawgfx(bitmap, machine->gfx[0], i, (i == 0) ? 0 : 1, 0, 0,
+		drawgfx(bitmap, screen->machine->gfx[0], i, (i == 0) ? 0 : 1, 0, 0,
 			248 - hpos, vpos - 15, cliprect, TRANSPARENCY_PEN, 0);
 	}
 

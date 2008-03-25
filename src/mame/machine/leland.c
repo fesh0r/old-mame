@@ -368,11 +368,11 @@ MACHINE_START( leland )
 
 MACHINE_RESET( leland )
 {
-	timer_adjust(master_int_timer, video_screen_get_time_until_pos(0, 8, 0), 8, attotime_zero);
+	timer_adjust_oneshot(master_int_timer, video_screen_get_time_until_pos(machine->primary_screen, 8, 0), 8);
 
 	/* reset globals */
 	leland_gfx_control = 0x00;
-	leland_sound_port_w(0, 0xff);
+	leland_sound_port_w(machine, 0, 0xff);
 	wcol_enable = 0;
 
 	dangerz_x = 512;
@@ -403,7 +403,7 @@ MACHINE_RESET( leland )
 		memory_set_bankptr(3, &slave_base[0x10000]);
 
 	/* if we have an I80186 CPU, reset it */
-	if (machine->drv->cpu[2].type == CPU_I80186)
+	if (machine->config->cpu[2].type == CPU_I80186)
 		leland_80186_sound_init();
 }
 
@@ -422,7 +422,7 @@ MACHINE_START( ataxx )
 MACHINE_RESET( ataxx )
 {
 	memset(extra_tram, 0, ATAXX_EXTRA_TRAM_SIZE);
-	timer_adjust(master_int_timer, video_screen_get_time_until_pos(0, 8, 0), 8, attotime_zero);
+	timer_adjust_oneshot(master_int_timer, video_screen_get_time_until_pos(machine->primary_screen, 8, 0), 8);
 
 	/* initialize the XROM */
 	xrom_length = memory_region_length(REGION_USER1);
@@ -474,7 +474,7 @@ static TIMER_CALLBACK( leland_interrupt_callback )
 	scanline += 16;
 	if (scanline > 248)
 		scanline = 8;
-	timer_adjust(master_int_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(master_int_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -486,7 +486,7 @@ static TIMER_CALLBACK( ataxx_interrupt_callback )
 	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 
 	/* set a timer for the next one */
-	timer_adjust(master_int_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(master_int_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 
@@ -515,7 +515,7 @@ WRITE8_HANDLER( leland_master_alt_bankswitch_w )
 	(*leland_update_master_bank)();
 
 	/* sound control is in the rest */
-	leland_80186_control_w(offset, data);
+	leland_80186_control_w(machine, offset, data);
 }
 
 
@@ -1156,12 +1156,12 @@ READ8_HANDLER( leland_master_input_r )
 
 		case 0x02:	/* /GIN2 */
 		case 0x12:
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 			break;
 
 		case 0x03:	/* /IGID */
 		case 0x13:
-			result = AY8910_read_port_0_r(offset);
+			result = AY8910_read_port_0_r(machine, offset);
 			break;
 
 		case 0x10:	/* /GIN0 */
@@ -1187,10 +1187,10 @@ WRITE8_HANDLER( leland_master_output_w )
 	switch (offset)
 	{
 		case 0x09:	/* /MCONT */
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 			wcol_enable = (data & 0x02);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(Machine, 1, 0, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, 0, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 
 			if (LOG_EEPROM) logerror("%04X:EE write %d%d%d\n", safe_activecpu_get_pc(),
 					(data >> 6) & 1, (data >> 5) & 1, (data >> 4) & 1);
@@ -1200,18 +1200,18 @@ WRITE8_HANDLER( leland_master_output_w )
 			break;
 
 		case 0x0a:	/* /OGIA */
-			AY8910_control_port_0_w(0, data);
+			AY8910_control_port_0_w(machine, 0, data);
 			break;
 
 		case 0x0b:	/* /OGID */
-			AY8910_write_port_0_w(0, data);
+			AY8910_write_port_0_w(machine, 0, data);
 			break;
 
 		case 0x0c:	/* /BKXL */
 		case 0x0d:	/* /BKXH */
 		case 0x0e:	/* /BKYL */
 		case 0x0f:	/* /BKYH */
-			leland_scroll_w(offset - 0x0c, data);
+			leland_scroll_w(machine, offset - 0x0c, data);
 			break;
 
 		default:
@@ -1253,7 +1253,7 @@ WRITE8_HANDLER( ataxx_master_output_w )
 		case 0x01:	/* /BKXH */
 		case 0x02:	/* /BKYL */
 		case 0x03:	/* /BKYH */
-			leland_scroll_w(offset, data);
+			leland_scroll_w(machine, offset, data);
 			break;
 
 		case 0x04:	/* /MBNK */
@@ -1265,13 +1265,13 @@ WRITE8_HANDLER( ataxx_master_output_w )
 			break;
 
 		case 0x05:	/* /SLV0 */
-			cpunum_set_input_line(Machine, 1, 0, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, 0, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, (data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x08:	/*  */
-			timer_adjust(master_int_timer, video_screen_get_time_until_pos(0, data + 1, 0), data + 1, attotime_zero);
+			timer_adjust_oneshot(master_int_timer, video_screen_get_time_until_pos(machine->primary_screen, data + 1, 0), data + 1);
 			break;
 
 		default:
@@ -1291,7 +1291,7 @@ WRITE8_HANDLER( ataxx_master_output_w )
 WRITE8_HANDLER( leland_gated_paletteram_w )
 {
 	if (wcol_enable)
-		paletteram_BBGGGRRR_w(offset, data);
+		paletteram_BBGGGRRR_w(machine, offset, data);
 }
 
 
@@ -1306,9 +1306,9 @@ READ8_HANDLER( leland_gated_paletteram_r )
 WRITE8_HANDLER( ataxx_paletteram_and_misc_w )
 {
 	if (wcol_enable)
-		paletteram_xxxxRRRRGGGGBBBB_le_w(offset, data);
+		paletteram_xxxxRRRRGGGGBBBB_le_w(machine, offset, data);
 	else if (offset == 0x7f8 || offset == 0x7f9)
-		leland_master_video_addr_w(offset - 0x7f8, data);
+		leland_master_video_addr_w(machine, offset - 0x7f8, data);
 	else if (offset == 0x7fc)
 	{
 		xrom1_addr = (xrom1_addr & 0xff00) | (data & 0x00ff);
@@ -1371,7 +1371,7 @@ READ8_HANDLER( leland_sound_port_r )
 WRITE8_HANDLER( leland_sound_port_w )
 {
     /* update the graphics banking */
-   	leland_gfx_port_w(0, data);
+   	leland_gfx_port_w(machine, 0, data);
 
 	/* set the new value */
     leland_gfx_control = data;
@@ -1456,7 +1456,7 @@ WRITE8_HANDLER( ataxx_slave_banksw_w )
 
 READ8_HANDLER( leland_raster_r )
 {
-	return video_screen_get_vpos(0);
+	return video_screen_get_vpos(machine->primary_screen);
 }
 
 

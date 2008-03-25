@@ -47,8 +47,8 @@ static int control_port_select;
 static WRITE8_HANDLER( battlera_sound_w )
 {
 	if (offset==0) {
-		soundlatch_w(0,data);
-		cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
+		soundlatch_w(machine,0,data);
+		cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 	}
 }
 
@@ -75,19 +75,19 @@ static READ8_HANDLER( control_data_r )
 /******************************************************************************/
 
 static ADDRESS_MAP_START( battlera_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x100000, 0x10ffff) AM_READ(HuC6270_debug_r) /* Cheat to view vram data */
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK8)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK8)
 	AM_RANGE(0x1fe000, 0x1fe001) AM_READ(HuC6270_register_r)
 	AM_RANGE(0x1ff000, 0x1ff001) AM_READ(control_data_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( battlera_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(HuC6270_debug_w) /* Cheat to edit vram data */
 	AM_RANGE(0x1e0800, 0x1e0801) AM_WRITE(battlera_sound_w)
 	AM_RANGE(0x1e1000, 0x1e13ff) AM_WRITE(battlera_palette_w) AM_BASE(&paletteram)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK8) /* Main ram */
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK8) /* Main ram */
 	AM_RANGE(0x1fe000, 0x1fe001) AM_WRITE(HuC6270_register_w)
 	AM_RANGE(0x1fe002, 0x1fe003) AM_WRITE(HuC6270_data_w)
 	AM_RANGE(0x1ff000, 0x1ff001) AM_WRITE(control_data_w)
@@ -104,8 +104,8 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( YM2203_w )
 {
 	switch (offset) {
-	case 0: YM2203_control_port_0_w(0,data); break;
-	case 1: YM2203_write_port_0_w(0,data); break;
+	case 0: YM2203_control_port_0_w(machine,0,data); break;
+	case 1: YM2203_write_port_0_w(machine,0,data); break;
 	}
 }
 
@@ -134,17 +134,17 @@ static WRITE8_HANDLER( battlera_adpcm_reset_w )
 }
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x000000, 0x00ffff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(MRA8_BANK7) /* Main ram */
+	AM_RANGE(0x000000, 0x00ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_READ(SMH_BANK7) /* Main ram */
 	AM_RANGE(0x1ff000, 0x1ff001) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
- 	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(MWA8_ROM)
+ 	AM_RANGE(0x000000, 0x00ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x040000, 0x040001) AM_WRITE(YM2203_w)
 	AM_RANGE(0x080000, 0x080001) AM_WRITE(battlera_adpcm_data_w)
 	AM_RANGE(0x1fe800, 0x1fe80f) AM_WRITE(C6280_0_w)
-	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(MWA8_BANK7) /* Main ram */
+	AM_RANGE(0x1f0000, 0x1f1fff) AM_WRITE(SMH_BANK7) /* Main ram */
 	AM_RANGE(0x1ff000, 0x1ff001) AM_WRITE(battlera_adpcm_reset_w)
 	AM_RANGE(0x1ff400, 0x1ff403) AM_WRITE(H6280_irq_status_w)
 ADDRESS_MAP_END
@@ -179,52 +179,40 @@ static INPUT_PORTS_START( battlera )
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )		PORT_DIPLOCATION("SW1:1,2")
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Coin_B ) )		PORT_DIPLOCATION("SW1:3,4")
 	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x10, "SW1:5" )		/* Listed as "Unused" */
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )	PORT_DIPLOCATION("SW1:6")
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x40, "SW1:7" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW1:8" )		/* Listed as "Unused" */
 
 	PORT_START_TAG("DSW2")
-	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )		PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(    0x01, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x00, "Infinite (Cheat)")
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
+	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:3,4")
 	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Very_Hard ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Allow_Continue ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Allow_Continue ) ) PORT_DIPLOCATION("SW2:5")
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x20, 0x20, "SW2:6" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x40, 0x40, "SW2:7" )		/* Listed as "Unused" */
+	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW2:8" )		/* Listed as "Unused" */
 INPUT_PORTS_END
 
 /******************************************************************************/
@@ -274,17 +262,16 @@ static MACHINE_DRIVER_START( battlera )
 	MDRV_CPU_ADD(H6280,21477200/3)
 	MDRV_CPU_PROGRAM_MAP(battlera_readmem,battlera_writemem)
 	MDRV_CPU_IO_MAP(0,battlera_portwrite)
-	MDRV_CPU_VBLANK_INT(battlera_interrupt,256) /* 8 prelines, 232 lines, 16 vblank? */
+	MDRV_CPU_VBLANK_INT_HACK(battlera_interrupt,256) /* 8 prelines, 232 lines, 16 vblank? */
 
 	MDRV_CPU_ADD(H6280,21477200/3)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 1*8, 30*8-1)

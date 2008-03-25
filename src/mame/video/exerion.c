@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "video/resnet.h"
 #include "exerion.h"
 
 
@@ -46,51 +47,64 @@ static UINT8 *background_mixer;
 
 PALETTE_INIT( exerion )
 {
+	static const int resistances_rg[3] = { 1000, 470, 220 };
+	static const int resistances_b [2] = { 470, 220 };
+	double rweights[3], gweights[3], bweights[2];
 	int i;
 
-	for (i = 0; i < machine->drv->total_colors; i++)
+	/* compute the color output resistor weights */
+	compute_resistor_weights(0,	255, -1.0,
+			3, &resistances_rg[0], rweights, 0, 0,
+			3, &resistances_rg[0], gweights, 0, 0,
+			2, &resistances_b[0],  bweights, 0, 0);
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x20);
+
+	/* create a lookup table for the palette */
+	for (i = 0; i < 0x20; i++)
 	{
-		int bit0, bit1, bit2, r, g, b;
+		int bit0, bit1, bit2;
+		int r, g, b;
 
 		/* red component */
-		bit0 = (*color_prom >> 0) & 0x01;
-		bit1 = (*color_prom >> 1) & 0x01;
-		bit2 = (*color_prom >> 2) & 0x01;
-		r = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		/* green component */
-		bit0 = (*color_prom >> 3) & 0x01;
-		bit1 = (*color_prom >> 4) & 0x01;
-		bit2 = (*color_prom >> 5) & 0x01;
-		g = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
-		/* blue component */
-		bit0 = 0;
-		bit1 = (*color_prom >> 6) & 0x01;
-		bit2 = (*color_prom >> 7) & 0x01;
-		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
+		bit0 = (color_prom[i] >> 0) & 0x01;
+		bit1 = (color_prom[i] >> 1) & 0x01;
+		bit2 = (color_prom[i] >> 2) & 0x01;
+		r = combine_3_weights(rweights, bit0, bit1, bit2);
 
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
-		color_prom++;
+		/* green component */
+		bit0 = (color_prom[i] >> 3) & 0x01;
+		bit1 = (color_prom[i] >> 4) & 0x01;
+		bit2 = (color_prom[i] >> 5) & 0x01;
+		g = combine_3_weights(gweights, bit0, bit1, bit2);
+
+		/* blue component */
+		bit0 = (color_prom[i] >> 6) & 0x01;
+		bit1 = (color_prom[i] >> 7) & 0x01;
+		b = combine_2_weights(bweights, bit0, bit1);
+
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 	}
 
-	/* color_prom now points to the beginning of the char lookup table */
+	/* color_prom now points to the beginning of the lookup table */
+	color_prom += 0x20;
 
-	/* fg chars */
-	for (i = 0; i < 256; i++)
-		colortable[i + 0x000] = 16 + (color_prom[(i & 0xc0) | ((i & 3) << 4) | ((i >> 2) & 15)] & 15);
-	color_prom += 256;
-
-	/* color_prom now points to the beginning of the sprite lookup table */
-
-	/* sprites */
-	for (i = 0; i < 256; i++)
-		colortable[i + 0x100] = 16 + (color_prom[(i & 0xc0) | ((i & 3) << 4) | ((i >> 2) & 15)] & 15);
-	color_prom += 256;
+	/* fg chars and sprites */
+	for (i = 0; i < 0x200; i++)
+	{
+		UINT8 ctabentry = 0x10 | (color_prom[(i & 0x1c0) | ((i & 3) << 4) | ((i >> 2) & 0x0f)] & 0x0f);
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
 
 	/* bg chars (this is not the full story... there are four layers mixed */
 	/* using another PROM */
-	for (i = 0; i < 256; i++)
-		colortable[i + 0x200] = *color_prom++ & 15;
-}
+	for (i = 0x200; i < 0x300; i++)
+	{
+		UINT8 ctabentry = color_prom[i] & 0x0f;
+		colortable_entry_set_value(machine->colortable, i, ctabentry);
+	}
+ }
 
 
 
@@ -102,9 +116,7 @@ PALETTE_INIT( exerion )
 
 VIDEO_START( exerion )
 {
-	UINT16 *dst;
-	UINT8 *src;
-	int i, x, y;
+	int i;
 
 	/* get pointers to the mixing and lookup PROMs */
 	background_mixer = memory_region(REGION_PROMS) + 0x320;
@@ -132,12 +144,16 @@ VIDEO_START( exerion )
      */
 	for (i = 0; i < 4; i++)
 	{
-		src = memory_region(REGION_GFX3) + i * 0x2000;
-		dst = background_gfx[i];
+		int y;
 
-		for (y = 0; y < 256; y++)
+		UINT8 *src = memory_region(REGION_GFX3) + i * 0x2000;
+		UINT16 *dst = background_gfx[i];
+
+		for (y = 0; y < 0x100; y++)
 		{
-			for (x = 0; x < 128; x += 4)
+			int x;
+
+			for (x = 0; x < 0x80; x += 4)
 			{
 				UINT8 data = *src++;
 				UINT16 val;
@@ -158,7 +174,8 @@ VIDEO_START( exerion )
 				if (val) val |= 0x100 >> i;
 				*dst++ = val << (2 * i);
 			}
-			for (x = 0; x < 128; x++)
+
+			for (; x < 0x100; x++)
 				*dst++ = 0;
 		}
 	}
@@ -192,9 +209,10 @@ WRITE8_HANDLER( exerion_videoreg_w )
 
 WRITE8_HANDLER( exerion_video_latch_w )
 {
+	int scanline = video_screen_get_vpos(machine->primary_screen);
+	if (scanline > 0)
+		video_screen_update_partial(machine->primary_screen, scanline - 1);
 	background_latches[offset] = data;
-
-	video_screen_update_partial(0, video_screen_get_vpos(0) - 1);
 }
 
 
@@ -203,15 +221,13 @@ READ8_HANDLER( exerion_video_timing_r )
 	/* bit 0 is the SNMI signal, which is the negated value of H6, if H7=1 & H8=1 & VBLANK=0, otherwise 1 */
 	/* bit 1 is VBLANK */
 
-	UINT16 hcounter = video_screen_get_hpos(0) + EXERION_HCOUNT_START;
+	UINT16 hcounter = video_screen_get_hpos(machine->primary_screen) + EXERION_HCOUNT_START;
 	UINT8 snmi = 1;
 
-	if (((hcounter & 0x180) == 0x180) && !video_screen_get_vblank(0))
-	{
+	if (((hcounter & 0x180) == 0x180) && !video_screen_get_vblank(machine->primary_screen))
 		snmi = !((hcounter >> 6) & 0x01);
-	}
 
-	return (video_screen_get_vblank(0) << 1) | snmi;
+	return (video_screen_get_vblank(machine->primary_screen) << 1) | snmi;
 }
 
 
@@ -221,7 +237,7 @@ READ8_HANDLER( exerion_video_timing_r )
  *
  *************************************/
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int x, y;
 
@@ -245,8 +261,8 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 		int stop2 = background_latches[10] >> 4;
 		int stop3 = background_latches[11] >> 4;
 		UINT8 *mixer = &background_mixer[(background_latches[12] << 4) & 0xf0];
-		UINT8 scanline[VISIBLE_X_MAX];
-		const pen_t *pens;
+		UINT16 scanline[VISIBLE_X_MAX];
+		pen_t pen_base = 0x200 + ((background_latches[12] >> 4) << 4);
 
 		/* the cocktail flip flag controls whether we count up or down in X */
 		if (!exerion_cocktail_flip)
@@ -277,7 +293,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 				lookupval = mixer[combined >> 8] & 3;
 
 				/* the color index comes from the looked up value combined with the pixel data */
-				scanline[x] = (lookupval << 2) | ((combined >> (2 * lookupval)) & 3);
+				scanline[x] = pen_base | (lookupval << 2) | ((combined >> (2 * lookupval)) & 3);
 
 				/* the start/stop counters are clocked when the low 5 bits of the X counter overflow */
 				if (!(++xoffs0 & 0x1f)) start0++, stop0++;
@@ -314,7 +330,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 				lookupval = mixer[combined >> 8] & 3;
 
 				/* the color index comes from the looked up value combined with the pixel data */
-				scanline[x] = (lookupval << 2) | ((combined >> (2 * lookupval)) & 3);
+				scanline[x] = pen_base | (lookupval << 2) | ((combined >> (2 * lookupval)) & 3);
 
 				/* the start/stop counters are clocked when the low 5 bits of the X counter overflow */
 				if (!(xoffs0-- & 0x1f)) start0++, stop0++;
@@ -325,8 +341,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 		}
 
 		/* draw the scanline */
-		pens = &machine->remapped_colortable[0x200 + (background_latches[12] >> 4) * 16];
-		draw_scanline8(bitmap, cliprect->min_x, y, cliprect->max_x - cliprect->min_x + 1, &scanline[cliprect->min_x], pens, -1);
+		draw_scanline16(bitmap, cliprect->min_x, y, cliprect->max_x - cliprect->min_x + 1, &scanline[cliprect->min_x], NULL, -1);
 	}
 }
 
@@ -342,7 +357,7 @@ VIDEO_UPDATE( exerion )
 	int sx, sy, offs, i;
 
 	/* draw background */
-	draw_background(machine, bitmap, cliprect);
+	draw_background(bitmap, cliprect);
 
 	/* draw sprites */
 	for (i = 0; i < spriteram_size; i += 4)
@@ -359,7 +374,7 @@ VIDEO_UPDATE( exerion )
 		int code2 = code;
 
 		int color = ((flags >> 1) & 0x03) | ((code >> 5) & 0x04) | (code & 0x08) | (sprite_palette * 16);
-		const gfx_element *gfx = doubled ? machine->gfx[2] : machine->gfx[1];
+		const gfx_element *gfx = doubled ? screen->machine->gfx[2] : screen->machine->gfx[1];
 
 		if (exerion_cocktail_flip)
 		{
@@ -378,11 +393,13 @@ VIDEO_UPDATE( exerion )
 				code &= ~0x10, code2 |= 0x10;
 
 			drawgfx(bitmap, gfx, code2, color, xflip, yflip, x, y + gfx->height,
-			        cliprect, TRANSPARENCY_COLOR, 16);
+			        cliprect, TRANSPARENCY_PENS,
+			        colortable_get_transpen_mask(screen->machine->colortable, gfx, color, 0x10));
 		}
 
 		drawgfx(bitmap, gfx, code, color, xflip, yflip, x, y,
-		        cliprect, TRANSPARENCY_COLOR, 16);
+			    cliprect, TRANSPARENCY_PENS,
+			    colortable_get_transpen_mask(screen->machine->colortable, gfx, color, 0x10));
 
 		if (doubled) i += 4;
 	}
@@ -395,7 +412,7 @@ VIDEO_UPDATE( exerion )
 			int y = exerion_cocktail_flip ? (31*8 - 8*sy) : 8*sy;
 
 			offs = sx + sy * 64;
-			drawgfx(bitmap, machine->gfx[0],
+			drawgfx(bitmap, screen->machine->gfx[0],
 				videoram[offs] + 256 * char_bank,
 				((videoram[offs] & 0xf0) >> 4) + char_palette * 16,
 				exerion_cocktail_flip, exerion_cocktail_flip, x, y,

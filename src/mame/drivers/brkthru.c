@@ -67,36 +67,40 @@ PALETTE_INIT( brkthru );
 VIDEO_UPDATE( brkthru );
 
 
-static int nmi_enable;
-
 static WRITE8_HANDLER( brkthru_1803_w )
 {
 	/* bit 0 = NMI enable */
-	nmi_enable = ~data & 1;
+	cpu_interrupt_enable(0, ~data & 1);
 
 	/* bit 1 = ? maybe IRQ acknowledge */
 }
 static WRITE8_HANDLER( darwin_0803_w )
 {
 	/* bit 0 = NMI enable */
-	/*nmi_enable = ~data & 1;*/
+	/*cpu_interrupt_enable(1, ~data & 1);*/
 	logerror("0803 %02X\n",data);
-        nmi_enable = data;
+	cpu_interrupt_enable(0, data & 1);
 	/* bit 1 = ? maybe IRQ acknowledge */
 }
 
 static WRITE8_HANDLER( brkthru_soundlatch_w )
 {
-	soundlatch_w(offset,data);
-	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(machine,offset,data);
+	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+}
+
+static INPUT_CHANGED( coin_inserted )
+{
+	/* coin insertion causes an IRQ */
+	cpunum_set_input_line(machine, 0, 0, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
 
 static ADDRESS_MAP_START( brkthru_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(MRA8_RAM, brkthru_fgram_w) AM_BASE(&brkthru_videoram) AM_SIZE(&brkthru_videoram_size)
+	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_RAM, brkthru_fgram_w) AM_BASE(&brkthru_videoram) AM_SIZE(&brkthru_videoram_size)
 	AM_RANGE(0x0400, 0x0bff) AM_RAM
-	AM_RANGE(0x0c00, 0x0fff) AM_READWRITE(MRA8_RAM, brkthru_bgram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x0c00, 0x0fff) AM_READWRITE(SMH_RAM, brkthru_bgram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x1000, 0x10ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x1100, 0x17ff) AM_RAM
 	AM_RANGE(0x1800, 0x1800) AM_READ(input_port_0_r)	/* player controls, player start */
@@ -113,11 +117,11 @@ ADDRESS_MAP_END
 
 /* same as brktrhu, but xor 0x1000 below 8k */
 static ADDRESS_MAP_START( darwin_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x1000, 0x13ff) AM_READWRITE(MRA8_RAM, brkthru_fgram_w) AM_BASE(&brkthru_videoram) AM_SIZE(&brkthru_videoram_size)
+	AM_RANGE(0x1000, 0x13ff) AM_READWRITE(SMH_RAM, brkthru_fgram_w) AM_BASE(&brkthru_videoram) AM_SIZE(&brkthru_videoram_size)
 	AM_RANGE(0x1400, 0x1bff) AM_RAM
-	AM_RANGE(0x1c00, 0x1fff) AM_READWRITE(MRA8_RAM, brkthru_bgram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x1c00, 0x1fff) AM_READWRITE(SMH_RAM, brkthru_bgram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0000, 0x00ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x0100, 0x01ff) AM_WRITE(MWA8_NOP) /*tidyup, nothing realy here?*/
+	AM_RANGE(0x0100, 0x01ff) AM_WRITE(SMH_NOP) /*tidyup, nothing realy here?*/
 	AM_RANGE(0x0800, 0x0800) AM_READ(input_port_0_r)	/* player controls, player start */
 	AM_RANGE(0x0801, 0x0801) AM_READ(input_port_1_r)	/* cocktail player controls */
 	AM_RANGE(0x0802, 0x0802) AM_READ(input_port_3_r)	/* DSW 0 */
@@ -143,21 +147,6 @@ ADDRESS_MAP_END
 
 
 
-static INTERRUPT_GEN( brkthru_interrupt )
-{
-	if (cpu_getiloops() == 0)
-	{
-		if (nmi_enable)
-			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
-	}
-	else
-	{
-		/* generate IRQ on coin insertion */
-		if ((readinputportbytag("IN2") & 0xe0) != 0xe0)
-			cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
-	}
-}
-
 #define COMMON_IN0\
 	PORT_START_TAG("IN0")\
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 )\
@@ -181,8 +170,8 @@ static INTERRUPT_GEN( brkthru_interrupt )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_VBLANK )	/* used only by the self test */
 
 static INPUT_PORTS_START( brkthru )
-COMMON_IN0
-COMMON_IN1
+	COMMON_IN0
+	COMMON_IN1
 
 	PORT_START_TAG("IN2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
@@ -198,9 +187,9 @@ COMMON_IN1
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Allow_Continue ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Yes ) )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)	/* Manual says Picture Flip=On, Normal=Off */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)	/* Manual says Picture Flip=On, Normal=Off */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
@@ -228,8 +217,8 @@ COMMON_IN1
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( brkthruj )
-COMMON_IN0
-COMMON_IN1
+	COMMON_IN0
+	COMMON_IN1
 
 	PORT_START_TAG("IN2")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
@@ -243,9 +232,9 @@ COMMON_IN1
 	PORT_DIPSETTING(    0x0c, "20000/30000 Points" )
 	PORT_DIPSETTING(    0x08, "20000/40000 Points" )
 	PORT_SERVICE( 0x10, IP_ACTIVE_LOW )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)	/* Manual says Pitcure Flip=On, Normal=Off */
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)	/* Manual says Pitcure Flip=On, Normal=Off */
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
@@ -273,8 +262,8 @@ COMMON_IN1
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( darwin )
-COMMON_IN0
-COMMON_IN1
+	COMMON_IN0
+	COMMON_IN1
 
 	PORT_START_TAG("IN2")	/* modified by Shingo Suzuki 1999/11/02 */
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )
@@ -291,9 +280,9 @@ COMMON_IN1
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(2)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_IMPULSE(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_CHANGED(coin_inserted, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_CHANGED(coin_inserted, 0)
 
 	PORT_START_TAG("DSW0")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
@@ -402,18 +391,17 @@ static MACHINE_DRIVER_START( brkthru )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(brkthru_map,0)
-	MDRV_CPU_VBLANK_INT(brkthru_interrupt,2)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(brkthru)
 	MDRV_PALETTE_LENGTH(256)
 
 	/* not sure; assuming to be the same as darwin */
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK/2, 384, 8, 248, 272, 8, 248)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
@@ -441,17 +429,16 @@ static MACHINE_DRIVER_START( darwin )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)        /* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(darwin_map,0)
-	MDRV_CPU_VBLANK_INT(brkthru_interrupt,2)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(M6809, MASTER_CLOCK/8)		/* 1.5 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(brkthru)
 	MDRV_PALETTE_LENGTH(256)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK/2, 384, 8, 248, 272, 8, 248)
 	/* frames per second, vblank duration
         Horizontal video frequency:

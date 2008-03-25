@@ -110,16 +110,16 @@ VIDEO_START( fuuki32 )
 	buffered_spriteram32_2 = auto_malloc(spriteram_size);
 
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16, 16, 64,32);
+								 16, 16, 64,32);
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16, 16, 64,32);
+								 16, 16, 64,32);
 
 	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,  8,  8, 64,32);
+								  8,  8, 64,32);
 
 	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,  8,  8, 64,32);
+								  8,  8, 64,32);
 
 	tilemap_set_transparent_pen(tilemap_0,0xff);	// 8 bits
 	tilemap_set_transparent_pen(tilemap_1,0xff);	// 8 bits
@@ -159,12 +159,13 @@ VIDEO_START( fuuki32 )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(const device_config *screen, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
-	int max_x		=	machine->screen[0].visarea.max_x+1;
-	int max_y		=	machine->screen[0].visarea.max_y+1;
+	const rectangle *visarea = video_screen_get_visible_area(screen);
+	int max_x =	visarea->max_x+1;
+	int max_y =	visarea->max_y+1;
 
 	UINT32 *src = buffered_spriteram32_2; /* Use spriteram buffered by 2 frames, need palette buffered by one frame? */
 
@@ -210,7 +211,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx = (sx & 0x1ff) - (sx & 0x200);
 		sy = (sy & 0x1ff) - (sy & 0x200);
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{	flipx = !flipx;		sx = max_x - sx - xnum * 16;
 			flipy = !flipy;		sy = max_y - sy - ynum * 16;	}
 
@@ -233,7 +234,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			for (x = xstart; x != xend; x += xinc)
 			{
 				if (xzoom == (16*8) && yzoom == (16*8))
-					pdrawgfx(		bitmap,machine->gfx[0],
+					pdrawgfx(		bitmap,screen->machine->gfx[0],
 									code++,
 									attr & 0x3f,
 									flipx, flipy,
@@ -241,7 +242,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 									cliprect,TRANSPARENCY_PEN,15,
 									pri_mask	);
 				else
-					pdrawgfxzoom(	bitmap,machine->gfx[0],
+					pdrawgfxzoom(	bitmap,screen->machine->gfx[0],
 									code++,
 									attr & 0x3f,
 									flipx, flipy,
@@ -300,7 +301,7 @@ if (input_code_pressed(KEYCODE_X))
 ***************************************************************************/
 
 /* Wrapper to handle bg and bg2 ttogether */
-static void fuuki32_draw_layer(mame_bitmap *bitmap, const rectangle *cliprect, int i, int flag, int pri)
+static void fuuki32_draw_layer(bitmap_t *bitmap, const rectangle *cliprect, int i, int flag, int pri)
 {
 	int buffer = ((fuuki32_vregs[0x1e/4]&0x0000ffff) & 0x40);
 
@@ -344,8 +345,8 @@ VIDEO_UPDATE( fuuki32 )
 
 	/* Layers scrolling */
 
-	scrolly_offs = ((fuuki32_vregs[0xc/4]&0xffff0000)>>16) - (flip_screen ? 0x103 : 0x1f3);
-	scrollx_offs =  (fuuki32_vregs[0xc/4]&0x0000ffff) - (flip_screen ? 0x2c7 : 0x3f6);
+	scrolly_offs = ((fuuki32_vregs[0xc/4]&0xffff0000)>>16) - (flip_screen_get() ? 0x103 : 0x1f3);
+	scrollx_offs =  (fuuki32_vregs[0xc/4]&0x0000ffff) - (flip_screen_get() ? 0x2c7 : 0x3f6);
 
 	layer0_scrolly = ((fuuki32_vregs[0x0/4]&0xffff0000)>>16) + scrolly_offs;
 	layer0_scrollx = ((fuuki32_vregs[0x0/4]&0x0000ffff)) + scrollx_offs;
@@ -373,7 +374,7 @@ VIDEO_UPDATE( fuuki32 )
 	fuuki32_draw_layer(bitmap,cliprect, tm_middle, 0, 2);
 	fuuki32_draw_layer(bitmap,cliprect, tm_front,  0, 4);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen,bitmap,cliprect);
 	return 0;
 }
 

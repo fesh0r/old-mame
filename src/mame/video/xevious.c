@@ -194,9 +194,9 @@ static TILE_GET_INFO( get_fg_tile_info )
 	UINT8 color = ((attr & 0x03) << 4) | ((attr & 0x3c) >> 2);
 	SET_TILE_INFO(
 			0,
-			xevious_fg_videoram[tile_index] | (flip_screen ? 0x100 : 0),
+			xevious_fg_videoram[tile_index] | (flip_screen_get() ? 0x100 : 0),
 			color,
-			TILE_FLIPYX((attr & 0xc0) >> 6) ^ (flip_screen ? TILE_FLIPX : 0));
+			TILE_FLIPYX((attr & 0xc0) >> 6) ^ (flip_screen_get() ? TILE_FLIPX : 0));
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -221,8 +221,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( xevious )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,64,32);
 
 	tilemap_set_scrolldx(bg_tilemap,-20,288+27);
 	tilemap_set_scrolldy(bg_tilemap,-16,-16);
@@ -424,7 +424,7 @@ ROM 3M,3L color replace table for sprite
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,sx,sy;
 
@@ -450,7 +450,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			color = spriteram[offs + 1] & 0x7f;
 			flipx = spriteram_3[offs] & 4;
 			flipy = spriteram_3[offs] & 8;
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				flipx = !flipx;
 				flipy = !flipy;
@@ -510,7 +510,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 VIDEO_UPDATE( xevious )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;
 }

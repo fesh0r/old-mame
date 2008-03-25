@@ -39,77 +39,18 @@ static TIMER_CALLBACK( input_callback )
 		signed char delta = (val - dial[i]) & 15;
 
 		if (delta & 8)
-		{
 			delta |= 0xf0; /* extend sign to 8 bits */
-		}
 
 		steer_flag[i] = (delta != 0);
 
 		if (delta > 0)
-		{
 			steer_dir[i] = 0;
-		}
+
 		if (delta < 0)
-		{
 			steer_dir[i] = 1;
-		}
 
 		dial[i] = val;
 	}
-}
-
-
-static void fill_palette(running_machine *machine, int team)
-{
-	int i;
-
-	for (i = 0; i < 16; i += 8)
-	{
-		if (team)
-		{
-			palette_set_color(machine, i + 0, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-			palette_set_color(machine, i + 1, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-			palette_set_color(machine, i + 2, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-			palette_set_color(machine, i + 3, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-			palette_set_color(machine, i + 4, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-			palette_set_color(machine, i + 5, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-			palette_set_color(machine, i + 6, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-			palette_set_color(machine, i + 7, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-		}
-		else
-		{
-			palette_set_color(machine, i + 0, MAKE_RGB(0xff, 0x00, 0x00)); /* red     */
-			palette_set_color(machine, i + 1, MAKE_RGB(0x00, 0x00, 0xff)); /* blue    */
-			palette_set_color(machine, i + 2, MAKE_RGB(0xff, 0xff, 0x00)); /* yellow  */
-			palette_set_color(machine, i + 3, MAKE_RGB(0x00, 0xff, 0x00)); /* green   */
-			palette_set_color(machine, i + 4, MAKE_RGB(0xff, 0x00, 0xff)); /* magenta */
-			palette_set_color(machine, i + 5, MAKE_RGB(0xe0, 0xc0, 0x70)); /* puce    */
-			palette_set_color(machine, i + 6, MAKE_RGB(0x00, 0xff, 0xff)); /* cyan    */
-			palette_set_color(machine, i + 7, MAKE_RGB(0xff, 0xaa, 0xaa)); /* pink    */
-		}
-	}
-
-	palette_set_color(machine, 16, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 17, MAKE_RGB(0xff, 0xff, 0xff));
-}
-
-
-static PALETTE_INIT( sprint8 )
-{
-	int i;
-
-	fill_palette(machine, 0);
-
-	for (i = 0; i < 16; i++)
-	{
-		colortable[2 * i + 0] = 16;
-		colortable[2 * i + 1] = i;
-	}
-
-	colortable[32] = 16;
-	colortable[33] = 16;
-	colortable[34] = 16;
-	colortable[35] = 17;
 }
 
 
@@ -118,7 +59,7 @@ static MACHINE_RESET( sprint8 )
 	collision_reset = 0;
 	collision_index = 0;
 
-	timer_pulse(video_screen_get_frame_period(0), NULL, 0, input_callback);
+	timer_pulse(video_screen_get_frame_period(machine->primary_screen), NULL, 0, input_callback);
 }
 
 
@@ -151,12 +92,6 @@ static WRITE8_HANDLER( sprint8_lockout_w )
 }
 
 
-static WRITE8_HANDLER( sprint8_team_w )
-{
-	fill_palette(Machine, !(data & 1));
-}
-
-
 static WRITE8_HANDLER( sprint8_int_reset_w )
 {
 	collision_reset = !(data & 1);
@@ -177,35 +112,35 @@ static WRITE8_HANDLER( sprint8_motor_w ) {}
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x00ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1c00, 0x1c00) AM_READ(sprint8_collision_r)
 	AM_RANGE(0x1c01, 0x1c08) AM_READ(sprint8_input_r)
 	AM_RANGE(0x1c09, 0x1c09) AM_READ(input_port_16_r)
 	AM_RANGE(0x1c0a, 0x1c0a) AM_READ(input_port_17_r)
 	AM_RANGE(0x1c0f, 0x1c0f) AM_READ(input_port_18_r)
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x00ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x1800, 0x1bff) AM_WRITE(sprint8_video_ram_w) AM_BASE(&sprint8_video_ram)
-	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE(MWA8_RAM) AM_BASE(&sprint8_pos_h_ram)
-	AM_RANGE(0x1c10, 0x1c1f) AM_WRITE(MWA8_RAM) AM_BASE(&sprint8_pos_v_ram)
-	AM_RANGE(0x1c20, 0x1c2f) AM_WRITE(MWA8_RAM) AM_BASE(&sprint8_pos_d_ram)
+	AM_RANGE(0x1c00, 0x1c0f) AM_WRITE(SMH_RAM) AM_BASE(&sprint8_pos_h_ram)
+	AM_RANGE(0x1c10, 0x1c1f) AM_WRITE(SMH_RAM) AM_BASE(&sprint8_pos_v_ram)
+	AM_RANGE(0x1c20, 0x1c2f) AM_WRITE(SMH_RAM) AM_BASE(&sprint8_pos_d_ram)
 	AM_RANGE(0x1c30, 0x1c37) AM_WRITE(sprint8_lockout_w)
 	AM_RANGE(0x1d00, 0x1d00) AM_WRITE(sprint8_int_reset_w)
 	AM_RANGE(0x1d01, 0x1d01) AM_WRITE(sprint8_crash_w)
 	AM_RANGE(0x1d02, 0x1d02) AM_WRITE(sprint8_explosion_w)
 	AM_RANGE(0x1d03, 0x1d03) AM_WRITE(sprint8_bugle_w)
 	AM_RANGE(0x1d04, 0x1d04) AM_WRITE(sprint8_bug_w)
-	AM_RANGE(0x1d05, 0x1d05) AM_WRITE(sprint8_team_w)
+	AM_RANGE(0x1d05, 0x1d05) AM_WRITE(SMH_RAM) AM_BASE(&sprint8_team)
 	AM_RANGE(0x1d06, 0x1d06) AM_WRITE(sprint8_attract_w)
 	AM_RANGE(0x1e00, 0x1e07) AM_WRITE(sprint8_motor_w)
-	AM_RANGE(0x1f00, 0x1f00) AM_WRITE(MWA8_NOP) /* probably a watchdog, disabled in service mode */
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x1f00, 0x1f00) AM_WRITE(SMH_NOP) /* probably a watchdog, disabled in service mode */
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -532,17 +467,17 @@ static MACHINE_DRIVER_START( sprint8 )
 	MDRV_CPU_ADD(M6800, 11055000 / 11) /* ? */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_MACHINE_RESET(sprint8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 261)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 231)
+
 	MDRV_GFXDECODE(sprint8)
-	MDRV_PALETTE_LENGTH(18)
-	MDRV_COLORTABLE_LENGTH(36)
+	MDRV_PALETTE_LENGTH(36)
 
 	MDRV_PALETTE_INIT(sprint8)
 	MDRV_VIDEO_START(sprint8)

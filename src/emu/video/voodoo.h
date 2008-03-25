@@ -14,11 +14,12 @@ enum
 	VOODOO_1,
 	VOODOO_2,
 	VOODOO_BANSHEE,
-	VOODOO_3
+	VOODOO_3,
+	MAX_VOODOO_TYPES
 };
 
-void voodoo_start(int which, int scrnum, int type, int fbmem_in_mb, int tmem0_in_mb, int tmem1_in_mb);
-int voodoo_update(int which, mame_bitmap *bitmap, const rectangle *cliprect);
+void voodoo_start(int which, const device_config *screen, int type, int fbmem_in_mb, int tmem0_in_mb, int tmem1_in_mb);
+int voodoo_update(int which, bitmap_t *bitmap, const rectangle *cliprect);
 void voodoo_reset(int which);
 void voodoo_exit(int which);
 int voodoo_get_type(int which);

@@ -97,7 +97,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 8  is EEPROM data */
 	/* bit 9  is EEPROM ready */
 	/* bit 11 is service button */
-	res = (EEPROM_read_bit()<<8) | input_port_0_word_r(0,0);
+	res = (EEPROM_read_bit()<<8) | input_port_0_word_r(machine,0,0);
 
 	if (init_eeprom_count)
 	{
@@ -173,7 +173,7 @@ static INTERRUPT_GEN( gijoe_interrupt )
 		gijoe_objdma();
 
 		// 42.7us(clr) + 341.3us(xfer) delay at 6Mhz dotclock
-		timer_adjust(dmadelay_timer, JOE_DMADELAY, 0, attotime_zero);
+		timer_adjust_oneshot(dmadelay_timer, JOE_DMADELAY, 0);
 	}
 
 	// trigger V-blank interrupt
@@ -185,18 +185,18 @@ static WRITE16_HANDLER( sound_cmd_w )
 {
 	if(ACCESSING_LSB) {
 		data &= 0xff;
-		soundlatch_w(0, data);
+		soundlatch_w(machine, 0, data);
 	}
 }
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 }
 
 static READ16_HANDLER( sound_status_r )
 {
-	return soundlatch2_r(0);
+	return soundlatch2_r(machine,0);
 }
 
 static void sound_nmi(void)
@@ -213,15 +213,15 @@ static MACHINE_START( gijoe )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x100fff) AM_READ(MRA16_RAM)			// Sprites
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x100fff) AM_READ(SMH_RAM)			// Sprites
 	AM_RANGE(0x120000, 0x121fff) AM_READ(K056832_ram_word_r)	// Graphic planes
 	AM_RANGE(0x122000, 0x123fff) AM_READ(K056832_ram_word_r)	// Graphic planes mirror read
 	AM_RANGE(0x130000, 0x131fff) AM_READ(K056832_rom_word_r)	// Passthrough to tile roms
-	AM_RANGE(0x180000, 0x18ffff) AM_READ(MRA16_RAM)			// Main RAM.  Spec. 180000-1803ff, 180400-187fff
-	AM_RANGE(0x190000, 0x190fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x180000, 0x18ffff) AM_READ(SMH_RAM)			// Main RAM.  Spec. 180000-1803ff, 180400-187fff
+	AM_RANGE(0x190000, 0x190fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1c0014, 0x1c0015) AM_READ(sound_status_r)
-	AM_RANGE(0x1c0000, 0x1c001f) AM_READ(MRA16_RAM)			// sound regs read fall through
+	AM_RANGE(0x1c0000, 0x1c001f) AM_READ(SMH_RAM)			// sound regs read fall through
 	AM_RANGE(0x1e0000, 0x1e0001) AM_READ(input_port_2_word_r)
 	AM_RANGE(0x1e0002, 0x1e0003) AM_READ(input_port_3_word_r)
 	AM_RANGE(0x1e4000, 0x1e4001) AM_READ(input_port_1_word_r)
@@ -237,34 +237,34 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x100fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x100fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)
 	AM_RANGE(0x110000, 0x110007) AM_WRITE(K053246_word_w)
 	AM_RANGE(0x120000, 0x121fff) AM_WRITE(K056832_ram_word_w)
 	AM_RANGE(0x122000, 0x123fff) AM_WRITE(K056832_ram_word_w)
-	AM_RANGE(0x130000, 0x131fff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x130000, 0x131fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x160000, 0x160007) AM_WRITE(K056832_b_word_w)	// VSCCS (board dependent)
-	AM_RANGE(0x170000, 0x170001) AM_WRITE(MWA16_NOP)			// Watchdog
-	AM_RANGE(0x180000, 0x18ffff) AM_WRITE(MWA16_RAM) AM_BASE(&gijoe_workram)
+	AM_RANGE(0x170000, 0x170001) AM_WRITE(SMH_NOP)			// Watchdog
+	AM_RANGE(0x180000, 0x18ffff) AM_WRITE(SMH_RAM) AM_BASE(&gijoe_workram)
 	AM_RANGE(0x190000, 0x190fff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x1a0000, 0x1a001f) AM_WRITE(K053251_lsb_w)
 	AM_RANGE(0x1b0000, 0x1b003f) AM_WRITE(K056832_word_w)
 	AM_RANGE(0x1c000c, 0x1c000d) AM_WRITE(sound_cmd_w)
-	AM_RANGE(0x1c0000, 0x1c001f) AM_WRITE(MWA16_RAM)			// sound regs write fall through
+	AM_RANGE(0x1c0000, 0x1c001f) AM_WRITE(SMH_RAM)			// sound regs write fall through
 	AM_RANGE(0x1d0000, 0x1d0001) AM_WRITE(sound_irq_w)
 	AM_RANGE(0x1e8000, 0x1e8001) AM_WRITE(control2_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xebff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf000, 0xf7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xebff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf000, 0xf7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf800, 0xfa2f) AM_READ(K054539_0_r)
 	AM_RANGE(0xfc02, 0xfc02) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xebff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xebff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xf000, 0xf7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf800, 0xfa2f) AM_WRITE(K054539_0_w)
 	AM_RANGE(0xfc00, 0xfc00) AM_WRITE(soundlatch2_w)
 ADDRESS_MAP_END
@@ -277,7 +277,7 @@ static INPUT_PORTS_START( gijoe )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW,  IPT_START4 )
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_SPECIAL )  // EEPROM data
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW,  IPT_SPECIAL )  // EEPROM ready (always 1)
-	PORT_BIT(0x0800, IP_ACTIVE_LOW,  IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0800, IP_ACTIVE_LOW )
 
 	PORT_START
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_COIN1 )
@@ -344,23 +344,25 @@ static MACHINE_DRIVER_START( gijoe )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 16000000)	/* Confirmed */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_VBLANK_INT(gijoe_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", gijoe_interrupt)
 
 	MDRV_CPU_ADD(Z80, 8000000)
 	/* audio CPU */	/* Amuse & confirmed. z80e */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_START(gijoe)
 	MDRV_NVRAM_HANDLER(gijoe)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(24, 24+288-1, 16, 16+224-1)
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(gijoe)

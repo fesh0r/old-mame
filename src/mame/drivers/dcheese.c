@@ -134,7 +134,7 @@ static READ16_HANDLER( port_0_r )
 
 static READ16_HANDLER( port_2_r )
 {
-	return (readinputport(2) & 0xff1f) | (!soundlatch_full << 7) | (ticket_dispenser_r(0) >> 2);
+	return (readinputport(2) & 0xff1f) | (!soundlatch_full << 7) | (ticket_dispenser_r(machine, 0) >> 2);
 }
 
 
@@ -147,7 +147,7 @@ static WRITE16_HANDLER( eeprom_control_w )
 		EEPROM_set_cs_line(~data & 8);
 		EEPROM_write_bit(data & 2);
 		EEPROM_set_clock_line(data & 4);
-		ticket_dispenser_w(0, (data & 1) << 7);
+		ticket_dispenser_w(machine, 0, (data & 1) << 7);
 	}
 }
 
@@ -158,8 +158,8 @@ static WRITE16_HANDLER( sound_command_w )
 	{
 		/* write the latch and set the IRQ */
 		soundlatch_full = 1;
-		cpunum_set_input_line(Machine, 1, 0, ASSERT_LINE);
-		soundlatch_w(0, data & 0xff);
+		cpunum_set_input_line(machine, 1, 0, ASSERT_LINE);
+		soundlatch_w(machine, 0, data & 0xff);
 	}
 }
 
@@ -175,8 +175,8 @@ static READ8_HANDLER( sound_command_r )
 {
 	/* read the latch and clear the IRQ */
 	soundlatch_full = 0;
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
-	return soundlatch_r(0);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
+	return soundlatch_r(machine, 0);
 }
 
 
@@ -207,7 +207,7 @@ static WRITE8_HANDLER( bsmt_data_w )
 	if (offset % 2 == 0)
 		sound_msb_latch = data;
 	else
-		BSMT2000_data_0_w(offset/2, (sound_msb_latch << 8) | data, 0);
+		BSMT2000_data_0_w(machine, offset/2, (sound_msb_latch << 8) | data, 0);
 }
 
 
@@ -219,7 +219,7 @@ static WRITE8_HANDLER( bsmt_data_w )
  *************************************/
 
 static ADDRESS_MAP_START( main_cpu_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM
 	AM_RANGE(0x200000, 0x200001) AM_READWRITE(port_0_r, watchdog_reset16_w)
@@ -241,7 +241,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( sound_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(sound_status_r, sound_control_w)
 	AM_RANGE(0x0800, 0x0fff) AM_READ(sound_command_r)
 	AM_RANGE(0x1000, 0x10ff) AM_MIRROR(0x0700) AM_WRITE(bsmt_data_w)
@@ -404,18 +404,19 @@ static MACHINE_DRIVER_START( dcheese )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, MAIN_OSC)
 	MDRV_CPU_PROGRAM_MAP(main_cpu_map,0)
-	MDRV_CPU_VBLANK_INT(dcheese_vblank,1)
+	MDRV_CPU_VBLANK_INT("main", dcheese_vblank)
 
 	MDRV_CPU_ADD(M6809, SOUND_OSC/16)
 	MDRV_CPU_PROGRAM_MAP(sound_cpu_map,0)
 	MDRV_CPU_PERIODIC_INT(irq1_line_hold, 480)	/* accurate for fredmem */
 
 	MDRV_MACHINE_START(dcheese)
-	MDRV_SCREEN_REFRESH_RATE(60)
+
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(360, 262)	/* guess, need to see what the games write to the vid registers */
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
@@ -431,13 +432,14 @@ static MACHINE_DRIVER_START( dcheese )
 
 	MDRV_SOUND_ADD(BSMT2000, SOUND_OSC)
 	MDRV_SOUND_CONFIG(bsmt2000_interface_region_1)
-	MDRV_SOUND_ROUTE(0, "left", 1.8)
-	MDRV_SOUND_ROUTE(1, "right", 1.8)
+	MDRV_SOUND_ROUTE(0, "left", 1.2)
+	MDRV_SOUND_ROUTE(1, "right", 1.2)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( fredmem )
 	MDRV_IMPORT_FROM(dcheese)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 359, 0, 239)
 MACHINE_DRIVER_END
 

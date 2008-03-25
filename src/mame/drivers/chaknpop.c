@@ -68,8 +68,8 @@ static WRITE8_HANDLER ( coinlock_w )
 ***************************************************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x8800, 0x8800) AM_READ(chaknpop_mcu_portA_r)
 	AM_RANGE(0x8801, 0x8801) AM_READ(chaknpop_mcu_portB_r)
 	AM_RANGE(0x8802, 0x8802) AM_READ(chaknpop_mcu_portC_r)
@@ -80,16 +80,16 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x880a, 0x880a) AM_READ(input_port_0_r)		// IN0
 	AM_RANGE(0x880b, 0x880b) AM_READ(input_port_2_r)		// IN2
 	AM_RANGE(0x880c, 0x880c) AM_READ(chaknpop_gfxmode_r)
-	AM_RANGE(0x9000, 0x93ff) AM_READ(MRA8_RAM)			// TX tilemap
-	AM_RANGE(0x9800, 0x983f) AM_READ(MRA8_RAM)			// Color attribute
-	AM_RANGE(0x9840, 0x98ff) AM_READ(MRA8_RAM)			// sprite
-	AM_RANGE(0xa000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_BANK1)			// bitmap plane 1-4
+	AM_RANGE(0x9000, 0x93ff) AM_READ(SMH_RAM)			// TX tilemap
+	AM_RANGE(0x9800, 0x983f) AM_READ(SMH_RAM)			// Color attribute
+	AM_RANGE(0x9840, 0x98ff) AM_READ(SMH_RAM)			// sprite
+	AM_RANGE(0xa000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_BANK1)			// bitmap plane 1-4
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM) AM_BASE(&chaknpop_ram)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM) AM_BASE(&chaknpop_ram)
 	AM_RANGE(0x8800, 0x8800) AM_WRITE(chaknpop_mcu_portA_w)
 	AM_RANGE(0x8801, 0x8801) AM_WRITE(chaknpop_mcu_portB_w)
 	AM_RANGE(0x8802, 0x8802) AM_WRITE(chaknpop_mcu_portC_w)
@@ -101,9 +101,9 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x880D, 0x880D) AM_WRITE(coinlock_w)			// coin lock out
 	AM_RANGE(0x9000, 0x93ff) AM_WRITE(chaknpop_txram_w) AM_BASE(&chaknpop_txram)
 	AM_RANGE(0x9800, 0x983f) AM_WRITE(chaknpop_attrram_w) AM_BASE(&chaknpop_attrram)
-	AM_RANGE(0x9840, 0x98ff) AM_WRITE(MWA8_RAM) AM_BASE(&chaknpop_sprram) AM_SIZE(&chaknpop_sprram_size)
-	AM_RANGE(0xa000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xffff) AM_WRITE(MWA8_BANK1)			// bitmap plane 1-4
+	AM_RANGE(0x9840, 0x98ff) AM_WRITE(SMH_RAM) AM_BASE(&chaknpop_sprram) AM_SIZE(&chaknpop_sprram_size)
+	AM_RANGE(0xa000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xffff) AM_WRITE(SMH_BANK1)			// bitmap plane 1-4
 ADDRESS_MAP_END
 
 static const struct AY8910interface ay8910_interface_1 =
@@ -289,18 +289,18 @@ static MACHINE_DRIVER_START( chaknpop )
 	MDRV_CPU_ADD(Z80, 2350000)
 	//MDRV_CPU_ADD(Z80, 2760000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(chaknpop)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(chaknpop)
 	MDRV_PALETTE_LENGTH(1024)
 

@@ -162,9 +162,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static VIDEO_START( bigfghtr )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,64,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,64,32);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,16,16,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,64,32);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_cols,8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
 	tilemap_set_transparent_pen(tx_tilemap,0xf);
@@ -214,7 +214,7 @@ static WRITE16_HANDLER( bg_scrolly_w )
 
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority )
 {
 	int offs;
 	for (offs = 0;offs < spriteram_size/2;offs += 4)
@@ -256,14 +256,14 @@ static VIDEO_UPDATE( bigfghtr )
 	}
 	else
 	{
-		fillbitmap( bitmap, get_black_pen(machine), cliprect );
+		fillbitmap( bitmap, get_black_pen(screen->machine), cliprect );
 	}
 
-	if( sprite_enable ) draw_sprites(machine, bitmap, cliprect, 2 );
+	if( sprite_enable ) draw_sprites(screen->machine, bitmap, cliprect, 2 );
 	tilemap_draw( bitmap, cliprect, fg_tilemap, 0, 0);
-	if( sprite_enable ) draw_sprites(machine, bitmap, cliprect, 1 );
+	if( sprite_enable ) draw_sprites(screen->machine, bitmap, cliprect, 1 );
 	tilemap_draw( bitmap, cliprect, tx_tilemap, 0, 0);
-	if( sprite_enable ) draw_sprites(machine, bitmap, cliprect, 0 );
+	if( sprite_enable ) draw_sprites(screen->machine, bitmap, cliprect, 0 );
 
 	return 0;
 }
@@ -272,14 +272,14 @@ static VIDEO_UPDATE( bigfghtr )
 
 static VIDEO_EOF( bigfghtr )
 {
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }
 
 
 static WRITE16_HANDLER( sound_command_w )
 {
 	if (ACCESSING_LSB)
-		soundlatch_w(0,((data & 0x7f) << 1) | 1);
+		soundlatch_w(machine,0,((data & 0x7f) << 1) | 1);
 }
 
 static WRITE16_HANDLER( io_w )
@@ -317,7 +317,7 @@ static READ16_HANDLER(sharedram_r)
 			break;
 
 			case 0x46/2:
-				return (input_port_0_word_r(0,0)&0xffff)^0xffff;
+				return (input_port_0_word_r(machine,0,0)&0xffff)^0xffff;
 
 
 		}
@@ -329,10 +329,10 @@ static ADDRESS_MAP_START( mainmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080000, 0x0805ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x080600, 0x080fff) AM_READ(sharedram_r) AM_WRITE(sharedram_w) AM_BASE(&sharedram16)
 	AM_RANGE(0x081000, 0x085fff) AM_RAM //??
-	AM_RANGE(0x086000, 0x086fff) AM_READ(MRA16_RAM) AM_WRITE(bg_videoram_w) AM_BASE(&bg_videoram)
-	AM_RANGE(0x087000, 0x087fff) AM_READ(MRA16_RAM) AM_WRITE(fg_videoram_w) AM_BASE(&fg_videoram)
-	AM_RANGE(0x088000, 0x089fff) AM_READ(MRA16_RAM) AM_WRITE(text_videoram_w) AM_BASE(&text_videoram)
-	AM_RANGE(0x08a000, 0x08afff) AM_READ(MRA16_RAM) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x086000, 0x086fff) AM_READ(SMH_RAM) AM_WRITE(bg_videoram_w) AM_BASE(&bg_videoram)
+	AM_RANGE(0x087000, 0x087fff) AM_READ(SMH_RAM) AM_WRITE(fg_videoram_w) AM_BASE(&fg_videoram)
+	AM_RANGE(0x088000, 0x089fff) AM_READ(SMH_RAM) AM_WRITE(text_videoram_w) AM_BASE(&text_videoram)
+	AM_RANGE(0x08a000, 0x08afff) AM_READ(SMH_RAM) AM_WRITE(paletteram16_xxxxRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x08b000, 0x08bfff) AM_RAM //??
 	AM_RANGE(0x08c000, 0x08c001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x08c002, 0x08c003) AM_READ(input_port_1_word_r)
@@ -357,12 +357,12 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( soundlatch_clear_r )
 {
-	soundlatch_clear_w(0,0);
+	soundlatch_clear_w(machine,0,0);
 	return 0;
 }
 
 static ADDRESS_MAP_START( soundport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x0, 0x0) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x1, 0x1) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0x2, 0x2) AM_WRITE(DAC_0_signed_data_w)
@@ -421,19 +421,20 @@ static MACHINE_DRIVER_START( bigfghtr )
 	MDRV_CPU_ADD(M68000, 8000000) /* 8 MHz?? */
 	MDRV_CPU_PROGRAM_MAP(mainmem,0)
 
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3072000)
 	/* audio CPU */	/* 3.072 MHz???? */
 	MDRV_CPU_PROGRAM_MAP(soundmem,0)
 	MDRV_CPU_IO_MAP(soundport,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,128)
-
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,128)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(12*8, (64-12)*8-1, 1*8, 31*8-1 )

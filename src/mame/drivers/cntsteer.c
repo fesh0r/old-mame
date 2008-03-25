@@ -41,7 +41,7 @@ static int bg_bank = 0;
 static PALETTE_INIT( zerotrgt )
 {
 	int i;
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -82,15 +82,15 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( zerotrgt )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,       TILEMAP_TYPE_PEN,     16,16,64,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows_flip_x,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,       16,16,64,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows_flip_x,8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
 	tilemap_set_flip(bg_tilemap, TILEMAP_FLIPX|TILEMAP_FLIPY);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
 {
 	int offs;
 
@@ -244,8 +244,8 @@ static int scroll=0;
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 
-	draw_sprites(machine,bitmap,cliprect,0);
-	draw_sprites(machine,bitmap,cliprect,1);
+	draw_sprites(screen->machine,bitmap,cliprect,0);
+	draw_sprites(screen->machine,bitmap,cliprect,1);
 
 #if 0
 {
@@ -305,7 +305,7 @@ static WRITE8_HANDLER( cntsteer_int_w )
 
 static WRITE8_HANDLER( cntsteer_sound_w )
 {
- 	soundlatch_w(0,data);
+ 	soundlatch_w(machine,0,data);
 }
 
 static WRITE8_HANDLER( zerotrgt_ctrl_w )
@@ -340,7 +340,7 @@ static ADDRESS_MAP_START( cntsteer_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x1000, 0x11ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x1200, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(MRA8_RAM, cntsteer_foreground_w) AM_BASE(&videoram)
+	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(SMH_RAM, cntsteer_foreground_w) AM_BASE(&videoram)
 	AM_RANGE(0x2800, 0x2fff) AM_RAM
 
 //  { 0x1b00, 0x1b00, input_port_0_r },
@@ -356,7 +356,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cntsteer_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(MRA8_RAM, cntsteer_background_w) AM_BASE(&videoram2)
+	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(SMH_RAM, cntsteer_background_w) AM_BASE(&videoram2)
 	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_0_r)
 	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_1_r)
 	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_2_r)
@@ -378,7 +378,7 @@ static ADDRESS_MAP_START( gekitsui_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x1000, 0x11ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x1200, 0x1fff) AM_RAM
-	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(MRA8_RAM, cntsteer_foreground_w) AM_BASE(&videoram)
+	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(SMH_RAM, cntsteer_foreground_w) AM_BASE(&videoram)
 	AM_RANGE(0x3000, 0x3003) AM_WRITE(zerotrgt_ctrl_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -452,7 +452,7 @@ static WRITE8_HANDLER(scrivi)
 
 static ADDRESS_MAP_START( gekitsui_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(MRA8_RAM, cntsteer_background_w) AM_BASE(&videoram2)
+	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(SMH_RAM, cntsteer_background_w) AM_BASE(&videoram2)
 	AM_RANGE(0x3000, 0x3000) AM_READ(input_port_0_r)
 	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_1_r)
 	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_2_r)
@@ -564,6 +564,7 @@ static INPUT_PORTS_START( cntsteer )
 INPUT_PORTS_END
 
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( zerotrgt )
 	PORT_START
 	PORT_DIPNAME( 0x01, 0x01, "0" )
@@ -637,6 +638,7 @@ static INPUT_PORTS_START( zerotrgt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON5 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON6 )
 INPUT_PORTS_END
+#endif
 
 /***************************************************************************/
 
@@ -716,22 +718,21 @@ static MACHINE_RESET( zerotrgt )
 static MACHINE_DRIVER_START( cntsteer )
 	MDRV_CPU_ADD(M6809, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1) /* ? */
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
 
 	MDRV_CPU_ADD(M6809, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu2_map,0)
-//  MDRV_CPU_VBLANK_INT(nmi_line_pulse,1) /* ? */
+//  MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
 
 //  MDRV_CPU_ADD(M6502, 1500000)        /* ? */
 //  /* audio CPU */
 //  MDRV_CPU_PROGRAM_MAP(sound_map,0)
-//  MDRV_CPU_VBLANK_INT(nmi_line_pulse,16) /* ? */ // should be interrupt, 16?
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+//  MDRV_CPU_VBLANK_INT_HACK(nmi_line_pulse,16) /* ? */ // should be interrupt, 16?
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
@@ -752,23 +753,22 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( zerotrgt )
 	MDRV_CPU_ADD(M6809, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu1_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1) /* ? */
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
 
 	MDRV_CPU_ADD(M6809, 2000000)		 /* ? */
 	MDRV_CPU_PROGRAM_MAP(gekitsui_cpu2_map,0)
-//  MDRV_CPU_VBLANK_INT(nmi_line_pulse,1) /* ? */
+//  MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) /* ? */
 
 	MDRV_CPU_ADD(M6502, 1500000)		/* ? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,16) /* ? */ // should be interrupt, 16?
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_pulse,16) /* ? */ // should be interrupt, 16?
 	MDRV_CPU_PERIODIC_INT(sound_interrupt, 1000)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)

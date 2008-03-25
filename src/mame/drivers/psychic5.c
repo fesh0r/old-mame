@@ -355,7 +355,7 @@ static WRITE8_HANDLER( psychic5_coin_counter_w )
 	// bit 7 toggles flip screen
 	if (data & 0x80)
 	{
-		flip_screen_set(!flip_screen);
+		flip_screen_set(!flip_screen_get());
 	}
 }
 
@@ -369,50 +369,50 @@ static INTERRUPT_GEN( psychic5_interrupt )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(psychic5_paged_ram_r)
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf000, 0xf000) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf001, 0xf001) AM_READ(MRA8_NOP)	// ???
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf000, 0xf000) AM_READ(SMH_RAM)
+	AM_RANGE(0xf001, 0xf001) AM_READ(SMH_NOP)	// ???
 	AM_RANGE(0xf002, 0xf002) AM_READ(psychic5_bankselect_r)
 	AM_RANGE(0xf003, 0xf003) AM_READ(psychic5_vram_page_select_r)
-	AM_RANGE(0xf004, 0xf004) AM_READ(MRA8_NOP)	// ???
-	AM_RANGE(0xf005, 0xf005) AM_READ(MRA8_NOP)	// ???
-	AM_RANGE(0xf006, 0xf1ff) AM_READ(MRA8_NOP)
-	AM_RANGE(0xf200, 0xf7ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xf004, 0xf004) AM_READ(SMH_NOP)	// ???
+	AM_RANGE(0xf005, 0xf005) AM_READ(SMH_NOP)	// ???
+	AM_RANGE(0xf006, 0xf1ff) AM_READ(SMH_NOP)
+	AM_RANGE(0xf200, 0xf7ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_BANK1)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_BANK1)
 	AM_RANGE(0xc000, 0xdfff) AM_WRITE(psychic5_paged_ram_w)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xefff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(soundlatch_w)
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(psychic5_coin_counter_w)
 	AM_RANGE(0xf002, 0xf002) AM_WRITE(psychic5_bankselect_w)
 	AM_RANGE(0xf003, 0xf003) AM_WRITE(psychic5_vram_page_select_w)
-	AM_RANGE(0xf004, 0xf004) AM_WRITE(MWA8_NOP)	// ???
+	AM_RANGE(0xf004, 0xf004) AM_WRITE(SMH_NOP)	// ???
 	AM_RANGE(0xf005, 0xf005) AM_WRITE(psychic5_title_screen_w)
-	AM_RANGE(0xf006, 0xf1ff) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0xf200, 0xf7ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xf006, 0xf1ff) AM_WRITE(SMH_NOP)
+	AM_RANGE(0xf200, 0xf7ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(YM2203_control_port_1_w)
@@ -550,24 +550,25 @@ static MACHINE_DRIVER_START( psychic5 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 6000000)
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(psychic5_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(psychic5_interrupt,2)
 
 	MDRV_CPU_ADD(Z80, 6000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(0,sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(53.8)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-	/* frames per second hand tuned to match game and music speed */
 	MDRV_INTERLEAVE(10)      /* Allow time for 2nd cpu to interleave*/
 	MDRV_MACHINE_RESET(psychic5)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(53.8)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	/* frames per second hand tuned to match game and music speed */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(psychic5)
 	MDRV_PALETTE_LENGTH(768)
 

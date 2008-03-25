@@ -61,9 +61,9 @@ static WRITE8_HANDLER( spcforce_SN76496_select_w )
 {
     spcforce_SN76496_select = data;
 
-	if (~data & 0x40)  SN76496_0_w(0, spcforce_SN76496_latch);
-	if (~data & 0x20)  SN76496_1_w(0, spcforce_SN76496_latch);
-	if (~data & 0x10)  SN76496_2_w(0, spcforce_SN76496_latch);
+	if (~data & 0x40)  SN76496_0_w(machine, 0, spcforce_SN76496_latch);
+	if (~data & 0x20)  SN76496_1_w(machine, 0, spcforce_SN76496_latch);
+	if (~data & 0x10)  SN76496_2_w(machine, 0, spcforce_SN76496_latch);
 }
 
 static READ8_HANDLER( spcforce_t0_r )
@@ -80,35 +80,35 @@ static WRITE8_HANDLER( spcforce_soundtrigger_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x7000, 0x7000) AM_READ(input_port_0_r)
 	AM_RANGE(0x7001, 0x7001) AM_READ(input_port_1_r)
 	AM_RANGE(0x7002, 0x7002) AM_READ(input_port_2_r)
-	AM_RANGE(0x8000, 0x83ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x9000, 0x93ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa000, 0xa3ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x8000, 0x83ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x9000, 0x93ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xa000, 0xa3ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(soundlatch_w)
 	AM_RANGE(0x7001, 0x7001) AM_WRITE(spcforce_soundtrigger_w)
 	AM_RANGE(0x700b, 0x700b) AM_WRITE(spcforce_flip_screen_w)
 	AM_RANGE(0x700e, 0x700e) AM_WRITE(interrupt_enable_w)
-	AM_RANGE(0x700f, 0x700f) AM_WRITE(MWA8_NOP)
-	AM_RANGE(0x8000, 0x83ff) AM_WRITE(MWA8_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x9000, 0x93ff) AM_WRITE(MWA8_RAM) AM_BASE(&colorram)
-	AM_RANGE(0xa000, 0xa3ff) AM_WRITE(MWA8_RAM) AM_BASE(&spcforce_scrollram)
+	AM_RANGE(0x700f, 0x700f) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x8000, 0x83ff) AM_WRITE(SMH_RAM) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x9000, 0x93ff) AM_WRITE(SMH_RAM) AM_BASE(&colorram)
+	AM_RANGE(0xa000, 0xa3ff) AM_WRITE(SMH_RAM) AM_BASE(&spcforce_scrollram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x07ff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
@@ -162,7 +162,7 @@ static INPUT_PORTS_START( spcforce )
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
 	PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_VBLANK )
@@ -206,7 +206,7 @@ static INPUT_PORTS_START( spcforc2 )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_2WAY
 
 	PORT_START      /* IN1 */
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_VBLANK )
 INPUT_PORTS_END
 
@@ -229,7 +229,7 @@ GFXDECODE_END
 
 
 /* 1-bit RGB palette */
-static const UINT16 colortable_source[] =
+static const int colortable_source[] =
 {
 	0, 1, 2, 3, 4, 5, 6, 7,
 	0, 0, 1, 2, 3, 4, 5, 6,	 /* not sure about these, but they are only used */
@@ -240,12 +240,18 @@ static const UINT16 colortable_source[] =
 	0, 3, 4, 5, 6, 7, 0, 1,
 	0, 2, 3, 4, 5, 6, 7, 0
 };
+
 static PALETTE_INIT( spcforce )
 {
 	int i;
-	for (i = 0; i < 8; i++)
-		palette_set_color_rgb(machine, i, pal1bit(i >> 0), pal1bit(i >> 1), pal1bit(i >> 2));
-	memcpy(colortable,colortable_source,sizeof(colortable_source));
+
+	for (i = 0; i < sizeof(colortable_source) / sizeof(colortable_source[0]); i++)
+	{
+		int data = colortable_source[i];
+		rgb_t color = MAKE_RGB(pal1bit(data >> 0), pal1bit(data >> 1), pal1bit(data >> 2));
+
+		palette_set_color(machine, i, color);
+	}
 }
 
 
@@ -255,24 +261,23 @@ static MACHINE_DRIVER_START( spcforce )
 	/* FIXME: The 8085A had a max clock of 6MHz, internally divided by 2! */
 	MDRV_CPU_ADD(8085A, 8000000 * 2)        /* 4.00 MHz??? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq3_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq3_line_hold)
 
 	MDRV_CPU_ADD(I8035,6144000)
 	/* audio CPU */		/* divisor ??? */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(spcforce)
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(sizeof(colortable_source) / sizeof(colortable_source[0]))
+	MDRV_PALETTE_LENGTH(sizeof(colortable_source) / sizeof(colortable_source[0]))
 
 	MDRV_PALETTE_INIT(spcforce)
 	MDRV_VIDEO_UPDATE(spcforce)

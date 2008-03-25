@@ -46,7 +46,7 @@ Pleiads:
 
 static ADDRESS_MAP_START( phoenix_memory_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x4fff) AM_READWRITE(MRA8_BANK1, phoenix_videoram_w)	/* 2 pages selected by bit 0 of the video register */
+	AM_RANGE(0x4000, 0x4fff) AM_READWRITE(SMH_BANK1, phoenix_videoram_w)	/* 2 pages selected by bit 0 of the video register */
 	AM_RANGE(0x5000, 0x53ff) AM_WRITE(phoenix_videoreg_w)
 	AM_RANGE(0x5800, 0x5bff) AM_WRITE(phoenix_scroll_w)
 	AM_RANGE(0x6000, 0x63ff) AM_WRITE(phoenix_sound_control_a_w)
@@ -57,7 +57,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pleiads_memory_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x4fff) AM_READWRITE(MRA8_BANK1, phoenix_videoram_w)	/* 2 pages selected by bit 0 of the video register */
+	AM_RANGE(0x4000, 0x4fff) AM_READWRITE(SMH_BANK1, phoenix_videoram_w)	/* 2 pages selected by bit 0 of the video register */
 	AM_RANGE(0x5000, 0x53ff) AM_WRITE(pleiads_videoreg_w)
 	AM_RANGE(0x5800, 0x5bff) AM_WRITE(phoenix_scroll_w)
 	AM_RANGE(0x6000, 0x63ff) AM_WRITE(pleiads_sound_control_a_w)
@@ -68,7 +68,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( survival_memory_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x4fff) AM_READWRITE(MRA8_BANK1, phoenix_videoram_w)	/* 2 pages selected by bit 0 of the video register */
+	AM_RANGE(0x4000, 0x4fff) AM_READWRITE(SMH_BANK1, phoenix_videoram_w)	/* 2 pages selected by bit 0 of the video register */
 	AM_RANGE(0x5000, 0x53ff) AM_WRITE(phoenix_videoreg_w)
 	AM_RANGE(0x5800, 0x5bff) AM_WRITE(phoenix_scroll_w)
 	AM_RANGE(0x6800, 0x68ff) AM_WRITE(AY8910_control_port_0_w)
@@ -423,13 +423,13 @@ static MACHINE_DRIVER_START( phoenix )
 	MDRV_CPU_ADD_TAG("main", 8085A, CPU_CLOCK)	/* 2.75 MHz */
 	MDRV_CPU_PROGRAM_MAP(phoenix_memory_map, 0)
 
-	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-
 	MDRV_MACHINE_RESET(phoenix)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
+
 	MDRV_GFXDECODE(phoenix)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -489,16 +489,17 @@ static MACHINE_DRIVER_START( survival )
 	MDRV_CPU_ADD_TAG("main", 8085A, CPU_CLOCK)	/* 5.50 MHz */
 	MDRV_CPU_PROGRAM_MAP(survival_memory_map, 0)
 
-	/* schematics fairly identical to phoenix, however the interesting
-     * page is missing
-     */
-	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
-
 	MDRV_MACHINE_RESET(phoenix)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	/* schematics fairly identical to phoenix, however the interesting
+     * page is missing
+     */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS(PIXEL_CLOCK, HTOTAL, HBEND, HBSTART, VTOTAL, VBEND, VBSTART)
+
 	MDRV_GFXDECODE(phoenix)
 	MDRV_PALETTE_LENGTH(256)
 

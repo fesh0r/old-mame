@@ -45,47 +45,29 @@
 */
 
 #include "driver.h"
+#include "memconv.h"
 #include "sound/custom.h"
 #include "includes/amiga.h"
 #include "includes/cubocd32.h"
 
-//READWRITE16BETO32BE(amiga_cia32,amiga_cia_r,amiga_cia_w)
-//READWRITE16BETO32BE(amiga_custom32,amiga_custom_r,amiga_custom_w)
-
 static READ32_HANDLER( amiga_cia32_r )
 {
-	UINT32 result = 0;
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= amiga_cia_r(offset * 2 + 0, mem_mask >> 16) << 16;
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= amiga_cia_r(offset * 2 + 1, mem_mask) << 0;
-	return result;
+	return read32be_with_16be_handler(amiga_cia_r, machine, offset, mem_mask);
 }
 
 static WRITE32_HANDLER( amiga_cia32_w )
 {
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		amiga_cia_w( offset * 2 + 0, data >> 16, mem_mask >> 16);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		amiga_cia_w( offset * 2 + 1, data, mem_mask);
+	write32be_with_16be_handler(amiga_cia_w, machine, offset, data, mem_mask);
 }
 
 static READ32_HANDLER( amiga_custom32_r )
 {
-	UINT32 result = 0;
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= amiga_custom_r(offset * 2 + 0, mem_mask >> 16) << 16;
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= amiga_custom_r(offset * 2 + 1, mem_mask) << 0;
-	return result;
+	return read32be_with_16be_handler(amiga_custom_r, machine, offset, mem_mask);
 }
 
 static WRITE32_HANDLER( amiga_custom32_w )
 {
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		amiga_custom_w( offset * 2 + 0, data >> 16, mem_mask >> 16);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		amiga_custom_w( offset * 2 + 1, data, mem_mask);
+	write32be_with_16be_handler(amiga_custom_w, machine, offset, data, mem_mask);
 }
 
 static WRITE32_HANDLER( aga_overlay_w )
@@ -100,10 +82,10 @@ static WRITE32_HANDLER( aga_overlay_w )
 		/* swap the write handlers between ROM and bank 1 based on the bit */
 		if ((data & 1) == 0)
 			/* overlay disabled, map RAM on 0x000000 */
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, MWA32_BANK1);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, SMH_BANK1);
 		else
 			/* overlay enabled, map Amiga system ROM on 0x000000 */
-			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, MWA32_UNMAP);
+			memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x1fffff, 0, 0, SMH_UNMAP);
 	}
 }
 
@@ -170,7 +152,7 @@ static READ32_HANDLER( dipswitch_r )
 }
 
 static ADDRESS_MAP_START( cd32_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram32) AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0x800000, 0x800003) AM_READ( dipswitch_r )
 	AM_RANGE(0xb80000, 0xb8003f) AM_READWRITE(amiga_akiko32_r, amiga_akiko32_w)
@@ -267,24 +249,25 @@ static MACHINE_DRIVER_START( cd32 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, AMIGA_68EC020_PAL_CLOCK) /* 14.3 Mhz */
 	MDRV_CPU_PROGRAM_MAP(cd32_map,0)
-	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 312)
-
-	MDRV_SCREEN_REFRESH_RATE(59.997)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_RESET(amiga)
 	MDRV_NVRAM_HANDLER(cd32)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59.997)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512*2, 312)
 	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 300+8-1)
+
 	MDRV_PALETTE_LENGTH(4096)
 	MDRV_PALETTE_INIT(amiga)
 
 	MDRV_VIDEO_START(amiga)
-	MDRV_VIDEO_UPDATE(generic_bitmapped)
+	MDRV_VIDEO_UPDATE(amiga)
 
 	/* sound hardware */
     MDRV_SPEAKER_STANDARD_STEREO("left", "right")

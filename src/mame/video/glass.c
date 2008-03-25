@@ -7,14 +7,13 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 UINT16 *glass_spriteram;
 UINT16 *glass_vregs;
 UINT16 *glass_videoram;
 
 static tilemap *pant[2];
-static mame_bitmap *screen_bitmap;
+static bitmap_t *screen_bitmap;
 
 static int glass_blitter_serial_buffer[5];
 static int current_command = 0;
@@ -101,11 +100,11 @@ WRITE16_HANDLER( glass_blitter_w )
 					for (i = 0; i < 320; i++){
 						int color = *gfx;
 						gfx++;
-						*BITMAP_ADDR16(screen_bitmap, j, i) = Machine->pens[color & 0xff];
+						*BITMAP_ADDR16(screen_bitmap, j, i) = color & 0xff;
 					}
 				}
 			} else {
-				fillbitmap(screen_bitmap, Machine->pens[0], 0);
+				fillbitmap(screen_bitmap, 0, 0);
 			}
 		}
 	}
@@ -132,9 +131,9 @@ WRITE16_HANDLER( glass_vram_w )
 
 VIDEO_START( glass )
 {
-	pant[0] = tilemap_create(get_tile_info_glass_screen0,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	pant[1] = tilemap_create(get_tile_info_glass_screen1,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	screen_bitmap = auto_bitmap_alloc (320, 200, machine->screen[0].format);
+	pant[0] = tilemap_create(get_tile_info_glass_screen0,tilemap_scan_rows,16,16,32,32);
+	pant[1] = tilemap_create(get_tile_info_glass_screen1,tilemap_scan_rows,16,16,32,32);
+	screen_bitmap = auto_bitmap_alloc (320, 200, video_screen_get_format(machine->primary_screen));
 
 	tilemap_set_transparent_pen(pant[0],0);
 	tilemap_set_transparent_pen(pant[1],0);
@@ -164,7 +163,7 @@ VIDEO_START( glass )
       3  | xxxxxxxx xxxxxxxx | sprite code
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int i;
 	const gfx_element *gfx = machine->gfx[0];
@@ -203,10 +202,10 @@ VIDEO_UPDATE( glass )
 	tilemap_set_scrollx(pant[1], 0, glass_vregs[3]);
 
 	/* draw layers + sprites */
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	copybitmap(bitmap,screen_bitmap,0,0,0x18,0x24,cliprect);
 	tilemap_draw(bitmap,cliprect,pant[1],0,0);
 	tilemap_draw(bitmap,cliprect,pant[0],0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }

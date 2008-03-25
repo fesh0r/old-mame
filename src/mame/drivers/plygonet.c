@@ -110,8 +110,11 @@ static READ32_HANDLER( polygonet_eeprom_r )
 		return (readinputport(0)<<24);
 	}
 
+	/* FIXME: code will never execute */
+#if 0
 	logerror("unk access to eeprom port (mask %x)\n", mem_mask);
 	return 0;
+#endif
 }
 
 
@@ -163,7 +166,7 @@ static INTERRUPT_GEN(polygonet_interrupt)
 
 static READ32_HANDLER( sound_r )
 {
-	int latch = soundlatch3_r(0);
+	int latch = soundlatch3_r(machine, 0);
 
 	if (latch == 0xe) latch = 0xf;	/* hack: until 54539 NMI disable found */
 
@@ -174,11 +177,11 @@ static WRITE32_HANDLER( sound_w )
 {
 	if (ACCESSING_MSB)
 	{
-		soundlatch_w(0, (data>>8)&0xff);
+		soundlatch_w(machine, 0, (data>>8)&0xff);
 	}
 	else
 	{
-		soundlatch2_w(0, data&0xff);
+		soundlatch2_w(machine, 0, data&0xff);
 	}
 }
 
@@ -607,7 +610,7 @@ ADDRESS_MAP_END
 /**********************************************************************************/
 
 static ADDRESS_MAP_START( dsp56156_p_map, ADDRESS_SPACE_PROGRAM, 16 )
-//  ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+//  ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x7000, 0x7fff) AM_RAM AM_BASE(&dsp56k_p_mirror)   // is it 0x1000 words?
 	AM_RANGE(0x8000, 0x87ff) AM_RAM								// the processor memtests here
 ADDRESS_MAP_END
@@ -644,7 +647,7 @@ static INTERRUPT_GEN(audio_interrupt)
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK2)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK2)
 	AM_RANGE(0xc000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xe22f) AM_READWRITE(K054539_0_r, K054539_0_w)
 	AM_RANGE(0xe230, 0xe3ff) AM_RAM
@@ -654,7 +657,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf002, 0xf002) AM_READ(soundlatch_r)
 	AM_RANGE(0xf003, 0xf003) AM_READ(soundlatch2_r)
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(sound_bankswitch_w)
-	AM_RANGE(0xfff1, 0xfff3) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0xfff1, 0xfff3) AM_WRITE(SMH_NOP)
 ADDRESS_MAP_END
 
 static const struct K054539interface k054539_interface =
@@ -684,7 +687,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( plygonet )
 	MDRV_CPU_ADD(M68EC020, 16000000)	/* 16 MHz (xtal is 32.0 MHz) */
 	MDRV_CPU_PROGRAM_MAP(polygonet_map, 0)
-	MDRV_CPU_VBLANK_INT(polygonet_interrupt, 2)
+	MDRV_CPU_VBLANK_INT_HACK(polygonet_interrupt, 2)
 
 	MDRV_CPU_ADD(DSP56156, 10000000)		/* should be 40.0 MHz */
 	MDRV_CPU_FLAGS(CPU_DISABLE)
@@ -695,17 +698,17 @@ static MACHINE_DRIVER_START( plygonet )
 	MDRV_CPU_PROGRAM_MAP(sound_map, 0)
 	MDRV_CPU_PERIODIC_INT(audio_interrupt, 480)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_GFXDECODE(plygonet)
 	MDRV_NVRAM_HANDLER(polygonet)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 32*8-1 )
+
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(polygonet)
@@ -729,7 +732,7 @@ static INPUT_PORTS_START( polygonet )
 	PORT_START
 
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1)
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN3)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1)
@@ -750,11 +753,10 @@ static INPUT_PORTS_START( polygonet )
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* EEPROM data */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL )	/* EEPROM ready (always 1) */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
-	PORT_DIPNAME(0x10, 0x00, "Monitors")
-	PORT_DIPSETTING(0x00, "1 Monitor")
-	PORT_DIPSETTING(0x10, "2 Monitors")
-//  PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
+	PORT_DIPNAME( 0x10, 0x00, "Monitors" )
+	PORT_DIPSETTING( 0x00, "1 Monitor" )
+	PORT_DIPSETTING( 0x10, "2 Monitors" )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )

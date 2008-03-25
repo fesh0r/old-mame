@@ -184,8 +184,8 @@ VIDEO_START( phoenix )
 
     videoram_pg_index = 0;
 
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
@@ -234,7 +234,7 @@ WRITE8_HANDLER( phoenix_videoreg_w )
 		videoram_pg_index = data & 1;
 		memory_set_bank(1, videoram_pg_index);
 
-		cocktail_mode = videoram_pg_index && (input_port_3_r(0) & 0x01);
+		cocktail_mode = videoram_pg_index && (input_port_3_r(machine,0) & 0x01);
 
 		tilemap_set_flip(ALL_TILEMAPS, cocktail_mode ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -257,7 +257,7 @@ WRITE8_HANDLER( pleiads_videoreg_w )
 		videoram_pg_index = data & 1;
 		memory_set_bank(1, videoram_pg_index);
 
-		cocktail_mode = videoram_pg_index && (input_port_3_r(0) & 0x01);
+		cocktail_mode = videoram_pg_index && (input_port_3_r(machine,0) & 0x01);
 
 		tilemap_set_flip(ALL_TILEMAPS, cocktail_mode ? (TILEMAP_FLIPX | TILEMAP_FLIPY) : 0);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -280,7 +280,7 @@ WRITE8_HANDLER( pleiads_videoreg_w )
 	pleiads_protection_question = data & 0xfc;
 
 	/* send two bits to sound control C (not sure if they are there) */
-	pleiads_sound_control_c_w(offset, data);
+	pleiads_sound_control_c_w(machine, offset, data);
 }
 
 

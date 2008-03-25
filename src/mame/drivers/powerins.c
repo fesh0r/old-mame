@@ -77,7 +77,7 @@ static WRITE16_HANDLER( powerins_soundlatch_w )
 {
 	if (ACCESSING_LSB)
 	{
-		soundlatch_w(0, data & 0xff);
+		soundlatch_w(machine, 0, data & 0xff);
 	}
 }
 static READ8_HANDLER( powerinb_fake_ym2203_r )
@@ -87,33 +87,33 @@ static READ8_HANDLER( powerinb_fake_ym2203_r )
 
 
 static ADDRESS_MAP_START( powerins_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM				)	// ROM
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM				)	// ROM
 	AM_RANGE(0x100000, 0x100001) AM_READ(input_port_0_word_r		)	// Coins + Start Buttons
 	AM_RANGE(0x100002, 0x100003) AM_READ(input_port_1_word_r		)	// P1 + P2
 	AM_RANGE(0x100008, 0x100009) AM_READ(input_port_2_word_r		)	// DSW 1
 	AM_RANGE(0x10000a, 0x10000b) AM_READ(input_port_3_word_r		)	// DSW 2
 	AM_RANGE(0x10003e, 0x10003f) AM_READ(OKIM6295_status_0_lsb_r	)	// OKI Status (used by powerina)
-	AM_RANGE(0x120000, 0x120fff) AM_READ(MRA16_RAM				)	// Palette
-	AM_RANGE(0x130000, 0x130007) AM_READ(MRA16_RAM				)	// VRAM 0 Control
-	AM_RANGE(0x140000, 0x143fff) AM_READ(MRA16_RAM				)	// VRAM 0
-	AM_RANGE(0x170000, 0x170fff) AM_READ(MRA16_RAM				)	// VRAM 1
-	AM_RANGE(0x180000, 0x18ffff) AM_READ(MRA16_RAM				)	// RAM + Sprites
+	AM_RANGE(0x120000, 0x120fff) AM_READ(SMH_RAM				)	// Palette
+	AM_RANGE(0x130000, 0x130007) AM_READ(SMH_RAM				)	// VRAM 0 Control
+	AM_RANGE(0x140000, 0x143fff) AM_READ(SMH_RAM				)	// VRAM 0
+	AM_RANGE(0x170000, 0x170fff) AM_READ(SMH_RAM				)	// VRAM 1
+	AM_RANGE(0x180000, 0x18ffff) AM_READ(SMH_RAM				)	// RAM + Sprites
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( powerins_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM								)	// ROM
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM								)	// ROM
 	AM_RANGE(0x100014, 0x100015) AM_WRITE(powerins_flipscreen_w					)	// Flip Screen
-	AM_RANGE(0x100016, 0x100017) AM_WRITE(MWA16_NOP								)	// ? always 1
+	AM_RANGE(0x100016, 0x100017) AM_WRITE(SMH_NOP								)	// ? always 1
 	AM_RANGE(0x100018, 0x100019) AM_WRITE(powerins_tilebank_w						)	// Tiles Banking (VRAM 0)
 	AM_RANGE(0x10001e, 0x10001f) AM_WRITE(powerins_soundlatch_w					)	// Sound Latch
 	AM_RANGE(0x100030, 0x100031) AM_WRITE(powerins_okibank_w						)	// Sound
 	AM_RANGE(0x10003e, 0x10003f) AM_WRITE(OKIM6295_data_0_lsb_w					)	// used by powerina
 	AM_RANGE(0x120000, 0x120fff) AM_WRITE(powerins_paletteram16_w) AM_BASE(&paletteram16	)	// Palette
-	AM_RANGE(0x130000, 0x130007) AM_WRITE(MWA16_RAM) AM_BASE(&powerins_vctrl_0			)	// VRAM 0 Control
+	AM_RANGE(0x130000, 0x130007) AM_WRITE(SMH_RAM) AM_BASE(&powerins_vctrl_0			)	// VRAM 0 Control
 	AM_RANGE(0x140000, 0x143fff) AM_WRITE(powerins_vram_0_w) AM_BASE(&powerins_vram_0		)	// VRAM 0
 	AM_RANGE(0x170000, 0x170fff) AM_WRITE(powerins_vram_1_w) AM_BASE(&powerins_vram_1		)	// VRAM 1
 	AM_RANGE(0x171000, 0x171fff) AM_WRITE(powerins_vram_1_w						)	// Mirror of VRAM 1?
-	AM_RANGE(0x180000, 0x18ffff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16					)	// RAM + Sprites
+	AM_RANGE(0x180000, 0x18ffff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16					)	// RAM + Sprites
 ADDRESS_MAP_END
 
 /* In powerina there is a hidden test mode screen because it's a bootleg
@@ -121,20 +121,20 @@ ADDRESS_MAP_END
    data written to $10001e "sound code". */
 
 static ADDRESS_MAP_START( readmem_snd, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_snd, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xdfff) AM_WRITE(MWA8_RAM)
-//  AM_RANGE(0xe000, 0xe000) AM_WRITE(MWA8_NOP) // ? written only once ?
-//  AM_RANGE(0xe001, 0xe001) AM_WRITE(MWA8_NOP) // ?
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xdfff) AM_WRITE(SMH_RAM)
+//  AM_RANGE(0xe000, 0xe000) AM_WRITE(SMH_NOP) // ? written only once ?
+//  AM_RANGE(0xe001, 0xe001) AM_WRITE(SMH_NOP) // ?
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( powerins_io_snd, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
@@ -143,8 +143,8 @@ static ADDRESS_MAP_START( powerins_io_snd, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( powerinb_io_snd, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x00, 0x00) AM_READWRITE(powerinb_fake_ym2203_r, MWA8_NOP)
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x00, 0x00) AM_READWRITE(powerinb_fake_ym2203_r, SMH_NOP)
 	AM_RANGE(0x01, 0x01) AM_NOP
 	AM_RANGE(0x80, 0x80) AM_READWRITE(OKIM6295_status_0_r, OKIM6295_data_0_w)
 	AM_RANGE(0x88, 0x88) AM_READWRITE(OKIM6295_status_1_r, OKIM6295_data_1_w)
@@ -164,7 +164,7 @@ static INPUT_PORTS_START( powerins )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_START1   )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_START2   )
-	PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x0020, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
@@ -329,6 +329,7 @@ GFXDECODE_END
 static MACHINE_RESET( powerins )
 {
 	oki_bank = -1;	// samples bank "unitialised"
+	NMK112_init(0);
 }
 
 
@@ -348,23 +349,23 @@ static MACHINE_DRIVER_START( powerins )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 12000000)	/* 12MHz */
 	MDRV_CPU_PROGRAM_MAP(powerins_readmem,powerins_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 6000000) /* 6 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_snd,writemem_snd)
 	MDRV_CPU_IO_MAP(powerins_io_snd,0)
 
-	MDRV_SCREEN_REFRESH_RATE(56)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(powerins)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(56)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0+16, 256-16-1)
+
 	MDRV_GFXDECODE(powerins)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -392,6 +393,7 @@ static MACHINE_DRIVER_START( powerina )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(powerins)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_CPU_REMOVE("sound")
@@ -409,6 +411,7 @@ static MACHINE_DRIVER_START( powerinb )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(powerins)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_CPU_MODIFY("sound") /* 6 MHz */

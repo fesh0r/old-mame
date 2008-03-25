@@ -81,7 +81,7 @@ PALETTE_INIT( ghostb )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -95,10 +95,10 @@ PALETTE_INIT( ghostb )
 		bit2 = (color_prom[i] >> 6) & 0x01;
 		bit3 = (color_prom[i] >> 7) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
-		bit0 = (color_prom[i + machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[i + machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[i + machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[i + machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[i + machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[i + machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[i + machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[i + machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -244,7 +244,7 @@ WRITE8_HANDLER( gondo_scroll_w )
 /******************************************************************************/
 
 /* 'Karnov' sprites, used by Gondomania, Last Mission, Shackled, Ghostbusters */
-static void draw_sprites1(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void draw_sprites1(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	int offs,x,y,sprite,sprite2,colour,extra,fx,fy;
 
@@ -276,7 +276,7 @@ static void draw_sprites1(running_machine* machine, mame_bitmap *bitmap, const r
 		y=(y+16)%0x200;
 		x=256 - x;
 		y=256 - y;
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			y=240-y;
 			x=240-x;
 			if (fx) fx=0; else fx=1;
@@ -307,7 +307,7 @@ static void draw_sprites1(running_machine* machine, mame_bitmap *bitmap, const r
 }
 
 /* 'Dec0' sprites, used by Cobra Command, Oscar */
-static void draw_sprites2(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority)
+static void draw_sprites2(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect, int priority)
 {
 	int offs,x,y,sprite,colour,multi,fx,fy,inc,flash,mult;
 
@@ -319,7 +319,7 @@ static void draw_sprites2(running_machine* machine, mame_bitmap *bitmap, const r
 		x = buffered_spriteram[offs+5]+(buffered_spriteram[offs+4]<<8);
 		colour = ((x & 0xf000) >> 12);
 		flash=x&0x800;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		if (priority==1 &&  (colour&4)) continue;
 		if (priority==2 && !(colour&4)) continue;
@@ -348,7 +348,7 @@ static void draw_sprites2(running_machine* machine, mame_bitmap *bitmap, const r
 			inc = 1;
 		}
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			y=240-y;
 			x=240-x;
 			if (fx) fx=0; else fx=1;
@@ -370,7 +370,7 @@ static void draw_sprites2(running_machine* machine, mame_bitmap *bitmap, const r
 	}
 }
 
-static void srdarwin_draw_sprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect, int pri)
+static void srdarwin_draw_sprites(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect, int pri)
 {
 	int offs;
 
@@ -394,7 +394,7 @@ static void srdarwin_draw_sprites(running_machine* machine, mame_bitmap *bitmap,
 		fx = buffered_spriteram[offs+1] & 0x04;
 		multi = buffered_spriteram[offs+1] & 0x10;
 
-		if (flip_screen) {
+		if (flip_screen_get()) {
 			sy=240-sy;
 			sx=240-sx;
 			if (fx) fx=0; else fx=1;
@@ -405,14 +405,14 @@ static void srdarwin_draw_sprites(running_machine* machine, mame_bitmap *bitmap,
     	drawgfx(bitmap,machine->gfx[1],
         		code,
 				color,
-				fx,flip_screen,
+				fx,flip_screen_get(),
 				sx,sy,
 				cliprect,TRANSPARENCY_PEN,0);
         if (multi)
     		drawgfx(bitmap,machine->gfx[1],
 				code+1,
 				color,
-				fx,flip_screen,
+				fx,flip_screen_get(),
 				sx,sy2,
 				cliprect,TRANSPARENCY_PEN,0);
 	}
@@ -420,7 +420,7 @@ static void srdarwin_draw_sprites(running_machine* machine, mame_bitmap *bitmap,
 
 /* Draw character tiles, each game has different colour masks */
 #if 0
-static void draw_characters(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect, int mask, int shift)
+static void draw_characters(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect, int mask, int shift)
 {
 	int mx,my,tile,color,offs;
 
@@ -451,9 +451,9 @@ VIDEO_UPDATE( cobracom )
 	flip_screen_set(dec8_pf0_control[0]>>7);
 
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,0,0);
-	draw_sprites2(machine,bitmap,cliprect,1);
+	draw_sprites2(screen->machine,bitmap,cliprect,1);
 	tilemap_draw(bitmap,cliprect,dec8_pf1_tilemap,0,0);
-	draw_sprites2(machine,bitmap,cliprect,2);
+	draw_sprites2(screen->machine,bitmap,cliprect,2);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
 }
@@ -511,9 +511,9 @@ static TILE_GET_INFO( get_cobracom_fix_tile_info )
 
 VIDEO_START( cobracom )
 {
-	dec8_pf0_tilemap = tilemap_create(get_bac0_tile_info,bac0_scan_rows,0,16,16,32,32);
-	dec8_pf1_tilemap = tilemap_create(get_bac1_tile_info,bac0_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	dec8_fix_tilemap = tilemap_create(get_cobracom_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	dec8_pf0_tilemap = tilemap_create(get_bac0_tile_info,bac0_scan_rows,16,16,32,32);
+	dec8_pf1_tilemap = tilemap_create(get_bac1_tile_info,bac0_scan_rows,16,16,32,32);
+	dec8_fix_tilemap = tilemap_create(get_cobracom_fix_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(dec8_pf1_tilemap,0);
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
@@ -539,7 +539,7 @@ VIDEO_UPDATE( ghostb )
 	tilemap_set_scrolly( dec8_pf0_tilemap,0, (dec8_pf0_control[0x12]<<8)+dec8_pf0_control[0x13] );
 
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,0,0);
-	draw_sprites1(machine,bitmap,cliprect,0);
+	draw_sprites1(screen->machine,bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
 }
@@ -559,8 +559,8 @@ static TILE_GET_INFO( get_ghostb_fix_tile_info )
 
 VIDEO_START( ghostb )
 {
-	dec8_pf0_tilemap = tilemap_create(get_bac0_tile_info,bac0_scan_rows,0,16,16,32,32);
-	dec8_fix_tilemap = tilemap_create(get_ghostb_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	dec8_pf0_tilemap = tilemap_create(get_bac0_tile_info,bac0_scan_rows,16,16,32,32);
+	dec8_fix_tilemap = tilemap_create(get_ghostb_fix_tile_info,tilemap_scan_rows,8,8,32,32);
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
 
 	game_uses_priority=0;
@@ -578,7 +578,7 @@ VIDEO_UPDATE( oscar )
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER1 | 0,0);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER1 | 1,0);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER0 | 0,0);
-	draw_sprites2(machine,bitmap,cliprect,0);
+	draw_sprites2(screen->machine,bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER0 | 1,0);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
@@ -599,8 +599,8 @@ static TILE_GET_INFO( get_oscar_fix_tile_info )
 
 VIDEO_START( oscar )
 {
-	dec8_pf0_tilemap = tilemap_create(get_bac0_tile_info,bac0_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	dec8_fix_tilemap = tilemap_create(get_oscar_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	dec8_pf0_tilemap = tilemap_create(get_bac0_tile_info,bac0_scan_rows,16,16,32,32);
+	dec8_fix_tilemap = tilemap_create(get_oscar_fix_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
 	tilemap_set_transmask(dec8_pf0_tilemap,0,0x00ff,0xff00); /* Bottom 8 pens */
@@ -617,7 +617,7 @@ VIDEO_UPDATE( lastmiss )
 	tilemap_set_scrolly( dec8_pf0_tilemap,0, ((scroll2[2]<<8)+scroll2[3]) );
 
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,0,0);
-	draw_sprites1(machine,bitmap,cliprect,0);
+	draw_sprites1(screen->machine,bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
 }
@@ -630,7 +630,7 @@ VIDEO_UPDATE( shackled )
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER1 | 0,0);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER1 | 1,0);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER0 | 0,0);
-	draw_sprites1(machine,bitmap,cliprect,0);
+	draw_sprites1(screen->machine,bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER0 | 1,0);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
@@ -672,8 +672,8 @@ static TILE_GET_INFO( get_lastmiss_fix_tile_info )
 
 VIDEO_START( lastmiss )
 {
-	dec8_pf0_tilemap = tilemap_create(get_lastmiss_tile_info,lastmiss_scan_rows,0,16,16,32,32);
-	dec8_fix_tilemap = tilemap_create(get_lastmiss_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	dec8_pf0_tilemap = tilemap_create(get_lastmiss_tile_info,lastmiss_scan_rows,16,16,32,32);
+	dec8_fix_tilemap = tilemap_create(get_lastmiss_fix_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
 	game_uses_priority=0;
@@ -681,8 +681,8 @@ VIDEO_START( lastmiss )
 
 VIDEO_START( shackled )
 {
-	dec8_pf0_tilemap = tilemap_create(get_lastmiss_tile_info,lastmiss_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	dec8_fix_tilemap = tilemap_create(get_lastmiss_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	dec8_pf0_tilemap = tilemap_create(get_lastmiss_tile_info,lastmiss_scan_rows,16,16,32,32);
+	dec8_fix_tilemap = tilemap_create(get_lastmiss_fix_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
 	tilemap_set_transmask(dec8_pf0_tilemap,0,0x000f,0xfff0); /* Bottom 12 pens */
@@ -696,9 +696,9 @@ VIDEO_UPDATE( srdarwin )
 	tilemap_set_scrollx( dec8_pf0_tilemap,0, (scroll2[0]<<8)+scroll2[1] );
 
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER1,0);
-	srdarwin_draw_sprites(machine,bitmap,cliprect,0); //* (srdarwin37b5gre)
+	srdarwin_draw_sprites(screen->machine,bitmap,cliprect,0); //* (srdarwin37b5gre)
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER0,0);
-	srdarwin_draw_sprites(machine,bitmap,cliprect,1);
+	srdarwin_draw_sprites(screen->machine,bitmap,cliprect,1);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
 }
@@ -737,8 +737,8 @@ static TILE_GET_INFO( get_srdarwin_tile_info )
 
 VIDEO_START( srdarwin )
 {
-	dec8_pf0_tilemap = tilemap_create(get_srdarwin_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
-	dec8_fix_tilemap = tilemap_create(get_srdarwin_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	dec8_pf0_tilemap = tilemap_create(get_srdarwin_tile_info,tilemap_scan_rows,16,16,32,16);
+	dec8_fix_tilemap = tilemap_create(get_srdarwin_fix_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
 	tilemap_set_transmask(dec8_pf0_tilemap,0,0xffff,0x0000); //* draw as background only
@@ -755,9 +755,9 @@ VIDEO_UPDATE( gondo )
 	tilemap_set_scrolly( dec8_pf0_tilemap,0, ((scroll2[2]<<8)+scroll2[3]) );
 
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER1,0);
-	draw_sprites1(machine,bitmap,cliprect,2);
+	draw_sprites1(screen->machine,bitmap,cliprect,2);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,TILEMAP_DRAW_LAYER0,0);
-	draw_sprites1(machine,bitmap,cliprect,1);
+	draw_sprites1(screen->machine,bitmap,cliprect,1);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
 }
@@ -768,7 +768,7 @@ VIDEO_UPDATE( garyoret )
 	tilemap_set_scrolly( dec8_pf0_tilemap,0, ((scroll2[2]<<8)+scroll2[3]) );
 
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,0,0);
-	draw_sprites1(machine,bitmap,cliprect,0);
+	draw_sprites1(screen->machine,bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,dec8_pf0_tilemap,1,0);
 	tilemap_draw(bitmap,cliprect,dec8_fix_tilemap,0,0);
 	return 0;
@@ -804,8 +804,8 @@ static TILE_GET_INFO( get_gondo_tile_info )
 
 VIDEO_START( gondo )
 {
-	dec8_fix_tilemap=tilemap_create(get_gondo_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	dec8_pf0_tilemap=tilemap_create(get_gondo_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	dec8_fix_tilemap=tilemap_create(get_gondo_fix_tile_info,tilemap_scan_rows,8,8,32,32);
+	dec8_pf0_tilemap=tilemap_create(get_gondo_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
 	tilemap_set_transmask(dec8_pf0_tilemap,0,0x00ff,0xff00); /* Bottom 8 pens */
@@ -814,8 +814,8 @@ VIDEO_START( gondo )
 
 VIDEO_START( garyoret )
 {
-	dec8_fix_tilemap=tilemap_create(get_gondo_fix_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	dec8_pf0_tilemap=tilemap_create(get_gondo_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
+	dec8_fix_tilemap=tilemap_create(get_gondo_fix_tile_info,tilemap_scan_rows,8,8,32,32);
+	dec8_pf0_tilemap=tilemap_create(get_gondo_tile_info,tilemap_scan_rows,16,16,32,32);
 
 	tilemap_set_transparent_pen(dec8_fix_tilemap,0);
 	game_uses_priority=1;

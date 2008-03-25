@@ -370,7 +370,7 @@ static WRITE32_HANDLER( namcos23_textram_w )
 
 static VIDEO_START( ss23 )
 {
-	bgtilemap = tilemap_create( TextTilemapGetInfo,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64 );
+	bgtilemap = tilemap_create( TextTilemapGetInfo,tilemap_scan_rows,16,16,64,64 );
 	tilemap_set_transparent_pen( bgtilemap, 0xf );
 }
 
@@ -387,7 +387,7 @@ Normalize( UINT32 data )
 }
 
 static void
-DrawLine( mame_bitmap *bitmap, int x0, int y0, int x1, int y1 )
+DrawLine( bitmap_t *bitmap, int x0, int y0, int x1, int y1 )
 {
 	if( x0>=0 && x0<bitmap->width &&
 		x1>=0 && x1<bitmap->width &&
@@ -421,7 +421,7 @@ DrawLine( mame_bitmap *bitmap, int x0, int y0, int x1, int y1 )
 } /* DrawLine */
 
 static void
-DrawPoly( mame_bitmap *bitmap, const UINT32 *pSource, int n, int bNew )
+DrawPoly( bitmap_t *bitmap, const UINT32 *pSource, int n, int bNew )
 {
 	UINT32 flags = *pSource++;
 	UINT32 unk = *pSource++;
@@ -468,7 +468,7 @@ DrawPoly( mame_bitmap *bitmap, const UINT32 *pSource, int n, int bNew )
 
 static VIDEO_UPDATE( ss23 )
 {
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	fillbitmap(priority_bitmap, 0, cliprect);
 
 	tilemap_mark_all_tiles_dirty(bgtilemap);
@@ -653,7 +653,7 @@ static READ16_HANDLER( sharedram_sub_r )
 
 /* H8/3002 MCU stuff */
 static ADDRESS_MAP_START( s23h8rwmap, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x080000, 0x08ffff) AM_READWRITE( sharedram_sub_r, sharedram_sub_w )
 	AM_RANGE(0x280000, 0x287fff) AM_READWRITE( c352_0_r, c352_0_w )
 	AM_RANGE(0x300000, 0x300001) AM_READNOP //( input_port_1_word_r )
@@ -861,15 +861,16 @@ static MACHINE_DRIVER_START( s23 )
 	MDRV_CPU_ADD(H83002, 14745600 )
 	MDRV_CPU_PROGRAM_MAP( s23h8rwmap, 0 )
 	MDRV_CPU_IO_MAP( s23h8iomap, 0 )
-	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 )
+	MDRV_CPU_VBLANK_INT("main", irq1_line_pulse)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*16, 30*16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 64*16-1, 0, 30*16-1)
+
 	MDRV_PALETTE_LENGTH(0x8000)
 
 	MDRV_GFXDECODE(namcos23)
@@ -894,20 +895,21 @@ static MACHINE_DRIVER_START( ss23 )
 	MDRV_CPU_ADD(R4650BE, 166000000)
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(ss23_map, 0)
-	MDRV_CPU_VBLANK_INT(namcos23_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", namcos23_interrupt)
 
 	MDRV_CPU_ADD(H83002, 14745600 )
 	MDRV_CPU_PROGRAM_MAP( s23h8rwmap, 0 )
 	MDRV_CPU_IO_MAP( s23h8iomap, 0 )
-	MDRV_CPU_VBLANK_INT( irq1_line_pulse, 1 )
+	MDRV_CPU_VBLANK_INT("main", irq1_line_pulse)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(48*16, 30*16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 48*16-1, 0, 30*16-1)
+
 	MDRV_PALETTE_LENGTH(0x8000)
 
 	MDRV_GFXDECODE(namcos23)

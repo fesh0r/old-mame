@@ -295,7 +295,7 @@ static int palbank;
 static WRITE8_HANDLER( hnoridur_palbank_w )
 {
 	palbank = data & 0x0f;
-	dynax_blit_palbank_w(0,data);
+	dynax_blit_palbank_w(machine,0,data);
 }
 
 static WRITE8_HANDLER( hnoridur_palette_w )
@@ -338,7 +338,6 @@ static WRITE8_HANDLER( hnoridur_palette_w )
 static WRITE8_HANDLER( yarunara_palette_w )
 {
 	int addr = 512*palbank + offset;
-
 	switch (hnoridur_bank)
 	{
 		case 0x10:
@@ -346,7 +345,7 @@ static WRITE8_HANDLER( yarunara_palette_w )
 			break;
 
 		case 0x1c:	// RTC
-			msm6242_w(offset,data);
+			msm6242_w(machine,offset,data);
 			return;
 
 		default:
@@ -360,7 +359,7 @@ static WRITE8_HANDLER( yarunara_palette_w )
 		int r = br & 0x1f;
 		int g = bg & 0x1f;
 		int b = ((bg & 0xc0)>>3) | ((br & 0xe0)>>5);
-		palette_set_color_rgb(Machine, 256*palbank + ((offset&0xf)|((offset&0x1e0)>>1)) ,pal5bit(r),pal5bit(g),pal5bit(b));
+		palette_set_color_rgb(machine, 256*palbank + ((offset&0xf)|((offset&0x1e0)>>1)) ,pal5bit(r),pal5bit(g),pal5bit(b));
 	}
 }
 
@@ -444,11 +443,11 @@ static MACHINE_RESET( adpcm )
 
 static WRITE8_HANDLER( yarunara_layer_half_w )
 {
-	hanamai_layer_half_w(0,data >> 1);
+	hanamai_layer_half_w(machine,0,data >> 1);
 }
 static WRITE8_HANDLER( yarunara_layer_half2_w )
 {
-	hnoridur_layer_half2_w(0,data >> 1);
+	hnoridur_layer_half2_w(machine,0,data >> 1);
 }
 
 static ADDRESS_MAP_START( sprtmtch_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -460,14 +459,14 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( hnoridur_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x6fff ) AM_ROM
 	AM_RANGE( 0x7000, 0x7fff ) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE( 0x8000, 0xffff ) AM_READWRITE(MRA8_BANK1, hnoridur_palette_w)
+	AM_RANGE( 0x8000, 0xffff ) AM_READWRITE(SMH_BANK1, hnoridur_palette_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcnpshnt_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x5fff ) AM_ROM
 	AM_RANGE( 0x6000, 0x6fff ) AM_RAM
 	AM_RANGE( 0x7000, 0x7fff ) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE( 0x8000, 0xffff ) AM_READWRITE(MRA8_BANK1, hnoridur_palette_w)
+	AM_RANGE( 0x8000, 0xffff ) AM_READWRITE(SMH_BANK1, hnoridur_palette_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nanajign_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -509,7 +508,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( hanamai_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x00 ) AM_WRITE		( dynax_extra_scrollx_w		)	// screen scroll X
 	AM_RANGE( 0x20, 0x20 ) AM_WRITE		( dynax_extra_scrolly_w		)	// screen scroll Y
 	AM_RANGE( 0x41, 0x47 ) AM_WRITE		( dynax_blitter_rev2_w		)	// Blitter
@@ -540,17 +539,17 @@ static ADDRESS_MAP_START( hanamai_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x79, 0x79 ) AM_READWRITE	( YM2203_read_port_0_r,   YM2203_write_port_0_w		)	// 2 x DSW
 	AM_RANGE( 0x7a, 0x7a ) AM_WRITE		( AY8910_control_port_0_w	)	// AY8910
 	AM_RANGE( 0x7b, 0x7b ) AM_WRITE		( AY8910_write_port_0_w		)	//
-//  AM_RANGE( 0x7c, 0x7c ) AM_WRITE     ( MWA8_NOP                  )   // CRT Controller
-//  AM_RANGE( 0x7d, 0x7d ) AM_WRITE     ( MWA8_NOP                  )   //
+//  AM_RANGE( 0x7c, 0x7c ) AM_WRITE     ( SMH_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x7d, 0x7d ) AM_WRITE     ( SMH_NOP                  )   //
 	AM_RANGE( 0x7e, 0x7e ) AM_WRITE		( dynax_blit_romregion_w	)	// Blitter ROM bank
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( hnoridur_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x07 ) AM_WRITE	( dynax_blitter_rev2_w		)	// Blitter
-//  AM_RANGE( 0x10, 0x10 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
-//  AM_RANGE( 0x11, 0x11 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x10, 0x10 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x11, 0x11 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
 	AM_RANGE( 0x20, 0x20 ) AM_WRITE	( hanamai_keyboard_w		)	// keyboard row select
 	AM_RANGE( 0x21, 0x21 ) AM_READ	( input_port_2_r			)	// Coins
 	AM_RANGE( 0x22, 0x22 ) AM_READ	( hanamai_keyboard_1_r		)	// P2
@@ -576,7 +575,7 @@ static ADDRESS_MAP_START( hnoridur_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x50, 0x50 ) AM_WRITE	( dynax_extra_scrollx_w		)	// screen scroll X
 	AM_RANGE( 0x51, 0x51 ) AM_WRITE	( dynax_extra_scrolly_w		)	// screen scroll Y
 	AM_RANGE( 0x54, 0x54 ) AM_WRITE	( hnoridur_rombank_w		)	// BANK ROM Select
-	AM_RANGE( 0x55, 0x55 ) AM_WRITE	( MWA8_NOP					)	// ? VBlank IRQ Ack
+	AM_RANGE( 0x55, 0x55 ) AM_WRITE	( SMH_NOP					)	// ? VBlank IRQ Ack
 	AM_RANGE( 0x56, 0x56 ) AM_WRITE	( dynax_vblank_ack_w		)	// VBlank IRQ Ack
 	AM_RANGE( 0x57, 0x57 ) AM_READ	( ret_ff					)	// ?
 	AM_RANGE( 0x60, 0x60 ) AM_WRITE	( dynax_flipscreen_w		)	// Flip Screen
@@ -657,24 +656,24 @@ static WRITE8_HANDLER( yarunara_rombank_w )
 
 static WRITE8_HANDLER( yarunara_flipscreen_w )
 {
-	dynax_flipscreen_w(0,(data&2)?1:0);
+	dynax_flipscreen_w(machine,0,(data&2)?1:0);
 }
 
 static WRITE8_HANDLER( yarunara_blit_romregion_w )
 {
 	switch(data)
 	{
-		case 0x00:	dynax_blit_romregion_w(0,0);	return;
-		case 0x01:	dynax_blit_romregion_w(0,1);	return;
-		case 0x80:	dynax_blit_romregion_w(0,2);	return;
-		case 0x81:	dynax_blit_romregion_w(0,3);	return;
-		case 0x82:	dynax_blit_romregion_w(0,4);	return;	// mjcomv1
+		case 0x00:	dynax_blit_romregion_w(machine,0,0);	return;
+		case 0x01:	dynax_blit_romregion_w(machine,0,1);	return;
+		case 0x80:	dynax_blit_romregion_w(machine,0,2);	return;
+		case 0x81:	dynax_blit_romregion_w(machine,0,3);	return;
+		case 0x82:	dynax_blit_romregion_w(machine,0,4);	return;	// mjcomv1
 	}
 	logerror("%04x: unmapped romregion=%02X\n",activecpu_get_pc(),data);
 }
 
 static ADDRESS_MAP_START( yarunara_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x01 ) AM_WRITE	( yarunara_input_w			)	// Controls
 	AM_RANGE( 0x02, 0x03 ) AM_READ	( yarunara_input_r			)	//
 	AM_RANGE( 0x11, 0x17 ) AM_WRITE	( dynax_blitter_rev2_w		)	// Blitter
@@ -708,10 +707,10 @@ ADDRESS_MAP_END
 
 // Almost identical to hnoridur
 static ADDRESS_MAP_START( mcnpshnt_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x07 ) AM_WRITE	( dynax_blitter_rev2_w		)	// Blitter
-//  AM_RANGE( 0x10, 0x10 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
-//  AM_RANGE( 0x11, 0x11 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x10, 0x10 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x11, 0x11 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
 	AM_RANGE( 0x20, 0x20 ) AM_WRITE	( hanamai_keyboard_w		)	// keyboard row select
 	AM_RANGE( 0x21, 0x21 ) AM_READ	( input_port_2_r			)	// Coins
 	AM_RANGE( 0x22, 0x22 ) AM_READ	( hanamai_keyboard_1_r		)	// P2
@@ -747,12 +746,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sprtmtch_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x07 ) AM_WRITE		( dynax_blitter_rev2_w		)	// Blitter
 	AM_RANGE( 0x10, 0x10 ) AM_READWRITE	( YM2203_status_port_0_r, YM2203_control_port_0_w	)	// YM2203
 	AM_RANGE( 0x11, 0x11 ) AM_READWRITE	( YM2203_read_port_0_r,   YM2203_write_port_0_w		)	// 2 x DSW
-//  AM_RANGE( 0x12, 0x12 ) AM_WRITE     ( MWA8_NOP                  )   // CRT Controller
-//  AM_RANGE( 0x13, 0x13 ) AM_WRITE     ( MWA8_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x12, 0x12 ) AM_WRITE     ( SMH_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x13, 0x13 ) AM_WRITE     ( SMH_NOP                  )   // CRT Controller
 	AM_RANGE( 0x20, 0x20 ) AM_READ		( input_port_0_r			)	// P1
 	AM_RANGE( 0x21, 0x21 ) AM_READ		( input_port_1_r			)	// P2
 	AM_RANGE( 0x22, 0x22 ) AM_READ		( input_port_2_r			)	// Coins
@@ -776,7 +775,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( mjfriday_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x00 ) AM_WRITE	( dynax_blit_pen_w			)	// Destination Pen
 	AM_RANGE( 0x01, 0x01 ) AM_WRITE	( dynax_blit_palette01_w	)	// Layers Palettes (Low Bits)
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE	( dynax_rombank_w			)	// BANK ROM Select
@@ -788,8 +787,8 @@ static ADDRESS_MAP_START( mjfriday_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x15, 0x15 ) AM_WRITE	( dynax_coincounter_1_w		)	//
 	AM_RANGE( 0x16, 0x17 ) AM_WRITE	( mjdialq2_layer_enable_w	)	// Layers Enable
 	AM_RANGE( 0x41, 0x47 ) AM_WRITE	( dynax_blitter_rev2_w		)	// Blitter
-//  AM_RANGE( 0x50, 0x50 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
-//  AM_RANGE( 0x51, 0x51 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x50, 0x50 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x51, 0x51 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
 	AM_RANGE( 0x60, 0x60 ) AM_WRITE	( hanamai_keyboard_w		)	// keyboard row select
 	AM_RANGE( 0x61, 0x61 ) AM_READ	( input_port_2_r			)	// Coins
 	AM_RANGE( 0x62, 0x62 ) AM_READ	( hanamai_keyboard_1_r		)	// P2
@@ -798,12 +797,12 @@ static ADDRESS_MAP_START( mjfriday_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x67, 0x67 ) AM_READ	( input_port_1_r			)	// DSW
 	AM_RANGE( 0x70, 0x70 ) AM_WRITE	( YM2413_register_port_0_w	)	// YM2413
 	AM_RANGE( 0x71, 0x71 ) AM_WRITE	( YM2413_data_port_0_w		)	//
-//  AM_RANGE( 0x80, 0x80 ) AM_WRITE ( MWA8_NOP                  )   // IRQ ack?
+//  AM_RANGE( 0x80, 0x80 ) AM_WRITE ( SMH_NOP                  )   // IRQ ack?
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( nanajign_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x00 ) AM_WRITE	( adpcm_reset_w				)	// MSM5205 reset
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE	( adpcm_data_w				)	// MSM5205 data
 	AM_RANGE( 0x04, 0x04 ) AM_WRITE	( YM2413_register_port_0_w	)	// YM2413
@@ -817,7 +816,7 @@ static ADDRESS_MAP_START( nanajign_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x14, 0x14 ) AM_READ	( input_port_0_r			)	// DSW1
 	AM_RANGE( 0x15, 0x15 ) AM_READ	( input_port_1_r			)	// DSW2
 	AM_RANGE( 0x16, 0x16 ) AM_READ	( input_port_13_r			)	// DSW3
-//  AM_RANGE( 0x20, 0x21 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x20, 0x21 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
 	AM_RANGE( 0x31, 0x37 ) AM_WRITE	( dynax_blitter_rev2_w		)	// Blitter
 	AM_RANGE( 0x40, 0x40 ) AM_WRITE	( dynax_coincounter_0_w		)	// Coin Counter
 	AM_RANGE( 0x50, 0x50 ) AM_WRITE	( dynax_flipscreen_w		)	// Flip Screen
@@ -877,8 +876,8 @@ static WRITE8_HANDLER( jantouki_rombank_w )
 }
 
 static ADDRESS_MAP_START( jantouki_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-//  AM_RANGE( 0x40, 0x41 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+//  AM_RANGE( 0x40, 0x41 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
 	AM_RANGE( 0x48, 0x48 ) AM_WRITE	( jantouki_rombank_w		)	// BANK ROM Select
 	AM_RANGE( 0x49, 0x49 ) AM_WRITE	( jantouki_soundlatch_w		)	// To Sound CPU
 	AM_RANGE( 0x4a, 0x4a ) AM_READ	( jantouki_soundlatch_ack_r	)	// Soundlatch status
@@ -932,7 +931,7 @@ static READ8_HANDLER( jantouki_soundlatch_status_r )
 }
 
 static ADDRESS_MAP_START( jantouki_sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x00 ) AM_WRITE		( jantouki_sound_rombank_w		)	// BANK ROM Select
 	AM_RANGE( 0x10, 0x10 ) AM_WRITE		( jantouki_sound_vblank_ack_w	)	// VBlank IRQ Ack
 	AM_RANGE( 0x21, 0x21 ) AM_READ		( AY8910_read_port_0_r			)	// AY8910
@@ -955,7 +954,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( mjelctrn_keyboard_1_r )
 {
-	return (hanamai_keyboard_1_r(0) & 0x3f) | (readinputport(15) ? 0x40 : 0);
+	return (hanamai_keyboard_1_r(machine,0) & 0x3f) | (readinputport(15) ? 0x40 : 0);
 }
 
 static READ8_HANDLER( mjelctrn_dsw_r )
@@ -971,7 +970,7 @@ static WRITE8_HANDLER( mjelctrn_blitter_ack_w )
 }
 
 static ADDRESS_MAP_START( mjelctrn_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x00 ) AM_WRITE	( adpcm_reset_w				)	// MSM5205 reset
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE	( adpcm_data_w				)	// MSM5205 data
 	AM_RANGE( 0x04, 0x04 ) AM_WRITE	( YM2413_register_port_0_w	)	// YM2413
@@ -979,8 +978,8 @@ static ADDRESS_MAP_START( mjelctrn_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x08, 0x08 ) AM_WRITE	( AY8910_write_port_0_w		)	// AY8910
 	AM_RANGE( 0x0a, 0x0a ) AM_WRITE	( AY8910_control_port_0_w	)	//
 	AM_RANGE( 0x11, 0x12 ) AM_WRITE	( mjelctrn_blitter_ack_w	)	//?
-//  AM_RANGE( 0x20, 0x20 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
-//  AM_RANGE( 0x21, 0x21 ) AM_WRITE ( MWA8_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x20, 0x20 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
+//  AM_RANGE( 0x21, 0x21 ) AM_WRITE ( SMH_NOP                  )   // CRT Controller
 	AM_RANGE( 0x40, 0x40 ) AM_WRITE	( dynax_coincounter_0_w		)	// Coin Counters
 	AM_RANGE( 0x41, 0x41 ) AM_WRITE	( dynax_coincounter_1_w		)	//
 	AM_RANGE( 0x60, 0x60 ) AM_WRITE	( dynax_extra_scrollx_w		)	// screen scroll X
@@ -1079,7 +1078,7 @@ static READ8_HANDLER( htengoku_coin_r )
 	{
 		case 0x00:	return readinputport(0);
 		case 0x01:	return 0xff;	//?
-		case 0x02:	return 0xbf | ((htengoku_hopper && !(cpu_getcurrentframe()%10)) ? 0 : (1<<6));;	// bit 7 = blitter busy, bit 6 = hopper
+		case 0x02:	return 0xbf | ((htengoku_hopper && !(video_screen_get_frame_number(machine->primary_screen)%10)) ? 0 : (1<<6));;	// bit 7 = blitter busy, bit 6 = hopper
 		case 0x03:	return htengoku_coins;
 	}
 	logerror("%04x: coin_r with select = %02x\n",activecpu_get_pc(),htengoku_select);
@@ -1098,9 +1097,9 @@ static WRITE8_HANDLER( htengoku_blit_romregion_w )
 {
 	switch(data)
 	{
-		case 0x80:	dynax_blit_romregion_w(0,0);	return;
-		case 0x81:	dynax_blit_romregion_w(0,1);	return;
-		case 0x00:	dynax_blit_romregion_w(0,2);	return;
+		case 0x80:	dynax_blit_romregion_w(machine,0,0);	return;
+		case 0x81:	dynax_blit_romregion_w(machine,0,1);	return;
+		case 0x00:	dynax_blit_romregion_w(machine,0,2);	return;
 	}
 	logerror("%04x: unmapped romregion=%02X\n",activecpu_get_pc(),data);
 }
@@ -1111,7 +1110,7 @@ static READ8_HANDLER( unk_r )
 }
 
 static ADDRESS_MAP_START( htengoku_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x07 ) AM_WRITE	( dynax_blitter_rev2_w		)	// Blitter
 	AM_RANGE( 0x20, 0x20 ) AM_WRITE	( htengoku_select_w			)	// Controls
 	AM_RANGE( 0x21, 0x21 ) AM_WRITE ( htengoku_coin_w			)	//
@@ -1328,11 +1327,11 @@ static READ8_HANDLER( tenkai_8000_r )
 	}
 	else if ( (rombank == 0x10) && (offset < 0x10) )
 	{
-		return msm6242_r(offset);
+		return msm6242_r(machine,offset);
 	}
 	else if (rombank == 0x12)
 	{
-		return tenkai_palette_r(offset);
+		return tenkai_palette_r(machine,offset);
 	}
 
 	logerror("%04x: unmapped offset %04X read with rombank=%02X\n",activecpu_get_pc(),offset,rombank);
@@ -1343,12 +1342,12 @@ static WRITE8_HANDLER( tenkai_8000_w )
 {
 	if ( (rombank == 0x10) && (offset < 0x10) )
 	{
-		msm6242_w(offset,data);
+		msm6242_w(machine,offset,data);
 		return;
 	}
 	else if (rombank == 0x12)
 	{
-		tenkai_palette_w(offset,data);
+		tenkai_palette_w(machine,offset,data);
 		return;
 	}
 
@@ -1375,9 +1374,9 @@ static WRITE8_HANDLER( tenkai_blit_romregion_w )
 {
 	switch(data)
 	{
-		case 0x00:	dynax_blit_romregion_w(0,0);	return;
-		case 0x83:	dynax_blit_romregion_w(0,1);	return;
-		case 0x80:	dynax_blit_romregion_w(0,2);	return;
+		case 0x00:	dynax_blit_romregion_w(machine,0,0);	return;
+		case 0x83:	dynax_blit_romregion_w(machine,0,1);	return;
+		case 0x80:	dynax_blit_romregion_w(machine,0,2);	return;
 	}
 	logerror("%04x: unmapped romregion=%02X\n",activecpu_get_pc(),data);
 }
@@ -1404,7 +1403,7 @@ static ADDRESS_MAP_START( tenkai_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x10068, 0x10068 ) AM_WRITE( yarunara_layer_half2_w	)	//
 	AM_RANGE( 0x1006c, 0x1006c ) AM_WRITE( tenkai_6c_w				)	// ?
 	AM_RANGE( 0x10070, 0x10070 ) AM_WRITE( tenkai_70_w				)	// ?
-	AM_RANGE( 0x1007c, 0x1007c ) AM_WRITE( MWA8_NOP					)	// IRQ Ack? (0,2)
+	AM_RANGE( 0x1007c, 0x1007c ) AM_WRITE( SMH_NOP					)	// IRQ Ack? (0,2)
 	AM_RANGE( 0x100c0, 0x100c0 ) AM_WRITE( tenkai_ipsel_w			)
 	AM_RANGE( 0x100c1, 0x100c1 ) AM_WRITE( tenkai_ip_w				)
 	AM_RANGE( 0x100c2, 0x100c3 ) AM_READ ( tenkai_ip_r				)
@@ -2147,7 +2146,7 @@ static INPUT_PORTS_START( mjfriday )
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	// "17B"
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	// "18B"
-	PORT_SERVICE(0x04, IP_ACTIVE_LOW )	// Test (there isn't a dip switch)
+	PORT_SERVICE(0x04, IP_ACTIVE_LOW )				// Test (there isn't a dip switch)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE2 )	// Analyzer
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE3 )	// Memory Reset
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )	// "06B"
@@ -2160,12 +2159,11 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjdialq2 )
 	PORT_START_TAG("DSW0")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( 1C_2C ) )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2186,15 +2184,15 @@ static INPUT_PORTS_START( mjdialq2 )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x07, 0x07, "Time Setting" )
+	PORT_DIPSETTING(    0x07, "08:30" )
+	PORT_DIPSETTING(    0x06, "09:00" )
+	PORT_DIPSETTING(    0x05, "09:30" )
+	PORT_DIPSETTING(    0x04, "10:00" )
+	PORT_DIPSETTING(    0x03, "10:30" )
+	PORT_DIPSETTING(    0x02, "11:00" )
+	PORT_DIPSETTING(    0x01, "11:30" )
+	PORT_DIPSETTING(    0x00, "12:00" )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2204,7 +2202,7 @@ static INPUT_PORTS_START( mjdialq2 )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPNAME( 0x40, 0x40, "Select Special Item" ) /* Allows to select which one of the nine special items you want. */
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
@@ -2214,7 +2212,7 @@ static INPUT_PORTS_START( mjdialq2 )
 	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	// "17B"
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	// "18B"
-	PORT_SERVICE_NO_TOGGLE(0x04, IP_ACTIVE_LOW)	// Test (there isn't a dip switch)
+	PORT_SERVICE_NO_TOGGLE(0x04, IP_ACTIVE_LOW)		// Test (there isn't a dip switch)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE2 )	// Analyzer
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE3 )	// Memory Reset
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )	// "06B"
@@ -2459,7 +2457,7 @@ static INPUT_PORTS_START( mcnpshnt )
 	PORT_DIPSETTING(    0x18, DEF_STR( 1C_1C ) )
 //  PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( 1C_2C ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )	//*
+	PORT_DIPNAME( 0x20, 0x20, "Auto TSUMO" )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Demo_Sounds ) )
@@ -2470,25 +2468,28 @@ static INPUT_PORTS_START( mcnpshnt )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
 	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x07, "0" )
-	PORT_DIPSETTING(    0x06, "1" )
-	PORT_DIPSETTING(    0x05, "2" )
-	PORT_DIPSETTING(    0x04, "3" )
-	PORT_DIPSETTING(    0x03, "4" )
-	PORT_DIPSETTING(    0x02, "5" )
-	PORT_DIPSETTING(    0x01, "6" )
-	PORT_DIPSETTING(    0x00, "7" )
+	PORT_DIPNAME( 0x07, 0x07, "Time Setting" )
+	PORT_DIPSETTING(    0x07, "8:30" )
+	PORT_DIPSETTING(    0x06, "9:00" )
+	PORT_DIPSETTING(    0x05, "9:30" )
+	PORT_DIPSETTING(    0x04, "10:00" )
+	PORT_DIPSETTING(    0x03, "10:30" )
+	PORT_DIPSETTING(    0x02, "11:00" )
+	PORT_DIPSETTING(    0x01, "11:30" )
+	PORT_DIPSETTING(    0x00, "12:00" )
 	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, "Choose Bonus (Cheat)")
+	PORT_DIPNAME( 0x10, 0x10, "Buy Screen Bonus Points" ) /* Sets your points to 100 every time you arrive at the screen for buying special items. */
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )	//*
+	/* make your game last at least 4 or 5 minutes. Continue if necessary. Before the next round you begin,
+    you will get some sort of message in Japanese stating that it is some sort of lucky time of day for you, and
+    you get 100 bonus points (for purchasing items). */
+	PORT_DIPNAME( 0x20, 0x20, "Lucky Time Of Day Bonus" )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )	//*
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
@@ -2624,7 +2625,7 @@ static INPUT_PORTS_START( jantouki )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 	PORT_START_TAG("DSW1")
-	PORT_DIPNAME( 0x07, 0x07, "Hours" )
+	PORT_DIPNAME( 0x07, 0x07, "Time Setting" )
 	PORT_DIPSETTING(    0x07, "08:30" )
 	PORT_DIPSETTING(    0x06, "09:00" )
 	PORT_DIPSETTING(    0x05, "09:30" )
@@ -2636,12 +2637,15 @@ static INPUT_PORTS_START( jantouki )
 	PORT_DIPNAME( 0x08, 0x08, "Moles On Gal's Face" )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, "Choose Game Mode" )
+	PORT_DIPNAME( 0x10, 0x10, "Buy Screen Bonus Points" ) /* Sets your points to 100 every time you arrive at the screen for buying special items. */
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x20, 0x20, "Bonus Coin Every" )
-	PORT_DIPSETTING(    0x00, "30" )
-	PORT_DIPSETTING(    0x20, "150" )
+	/* make your game last at least 4 or 5 minutes. Continue if necessary. Before the next round you begin,
+    you will get some sort of message in Japanese stating that it is some sort of lucky time of day for you, and
+    you get 100 bonus points (for purchasing items). */
+	PORT_DIPNAME( 0x20, 0x20, "Lucky Time Of Day Bonus" )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )	//*
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3077,7 +3081,7 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( neruton )
 	PORT_START_TAG("DSW2") //6a77 (select = 00)
-	PORT_DIPNAME( 0x07, 0x07, "Hours" )
+	PORT_DIPNAME( 0x07, 0x07, "Time Setting" )
 	PORT_DIPSETTING(    0x07, "08:30" )
 	PORT_DIPSETTING(    0x06, "09:00" )
 	PORT_DIPSETTING(    0x05, "09:30" )
@@ -3600,19 +3604,20 @@ static MACHINE_DRIVER_START( hanamai )
 	MDRV_CPU_ADD_TAG("main",Z80,22000000 / 4)	/* 5.5MHz */
 	MDRV_CPU_PROGRAM_MAP(sprtmtch_mem_map,0)
 	MDRV_CPU_IO_MAP(hanamai_io_map,0)
-	MDRV_CPU_VBLANK_INT(sprtmtch_vblank_interrupt,1)	/* IM 0 needs an opcode on the data bus */
+	MDRV_CPU_VBLANK_INT("main", sprtmtch_vblank_interrupt)	/* IM 0 needs an opcode on the data bus */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(adpcm)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1-4, 16+8, 255-8)
+
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(sprtmtch)			// static palette
@@ -3654,19 +3659,20 @@ static MACHINE_DRIVER_START( hnoridur )
 	MDRV_CPU_ADD_TAG("main",Z80,22000000 / 4)	/* 5.5MHz */
 	MDRV_CPU_PROGRAM_MAP(hnoridur_mem_map,0)
 	MDRV_CPU_IO_MAP(hnoridur_io_map,0)
-	MDRV_CPU_VBLANK_INT(sprtmtch_vblank_interrupt,1)	/* IM 0 needs an opcode on the data bus */
+	MDRV_CPU_VBLANK_INT("main", sprtmtch_vblank_interrupt)	/* IM 0 needs an opcode on the data bus */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(adpcm)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1-4, 16, 256-1)
+
 	MDRV_PALETTE_LENGTH(16*256)
 
 	MDRV_VIDEO_START(hnoridur)
@@ -3707,18 +3713,18 @@ static MACHINE_DRIVER_START( sprtmtch )
 	MDRV_CPU_ADD(Z80,22000000 / 4)	/* 5.5MHz */
 	MDRV_CPU_PROGRAM_MAP(sprtmtch_mem_map,0)
 	MDRV_CPU_IO_MAP(sprtmtch_io_map,0)
-	MDRV_CPU_VBLANK_INT(sprtmtch_vblank_interrupt,1)	/* IM 0 needs an opcode on the data bus */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", sprtmtch_vblank_interrupt)	/* IM 0 needs an opcode on the data bus */
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 256-1)
+
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(sprtmtch)			// static palette
@@ -3747,18 +3753,18 @@ static MACHINE_DRIVER_START( mjfriday )
 	MDRV_CPU_ADD_TAG("main",Z80,24000000/4)	/* 6 MHz? */
 	MDRV_CPU_PROGRAM_MAP(sprtmtch_mem_map,0)
 	MDRV_CPU_IO_MAP(mjfriday_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-1)
+
 	MDRV_PALETTE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(sprtmtch)			// static palette
@@ -3822,7 +3828,8 @@ static MACHINE_DRIVER_START( yarunara )
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 336-1, 8, 256-1-8-1)
 MACHINE_DRIVER_END
@@ -3883,33 +3890,32 @@ static MACHINE_DRIVER_START( jantouki )
 	MDRV_CPU_ADD_TAG("main",Z80,22000000 / 4)	/* 5.5MHz */
 	MDRV_CPU_PROGRAM_MAP(jantouki_mem_map,0)
 	MDRV_CPU_IO_MAP(jantouki_io_map,0)
-	MDRV_CPU_VBLANK_INT(jantouki_vblank_interrupt, 1)	/* IM 0 needs an opcode on the data bus */
+	MDRV_CPU_VBLANK_INT("top", jantouki_vblank_interrupt)	/* IM 0 needs an opcode on the data bus */
 
 	MDRV_CPU_ADD_TAG("sound",Z80,22000000 / 4)	/* 5.5MHz */
 	MDRV_CPU_PROGRAM_MAP(jantouki_sound_mem_map,0)
 	MDRV_CPU_IO_MAP(jantouki_sound_io_map,0)
-	MDRV_CPU_VBLANK_INT(jantouki_sound_vblank_interrupt,1)	/* IM 0 needs an opcode on the data bus */
+	MDRV_CPU_VBLANK_INT("top", jantouki_sound_vblank_interrupt)	/* IM 0 needs an opcode on the data bus */
 
 	MDRV_MACHINE_RESET(adpcm)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_PALETTE_LENGTH(512)
 	MDRV_DEFAULT_LAYOUT(layout_dualhuov)
 
-	MDRV_SCREEN_ADD("top", 0x000)
+	MDRV_SCREEN_ADD("top", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 256-1)
 
-	MDRV_SCREEN_ADD("bottom", 0x000)
+	MDRV_SCREEN_ADD("bottom", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 16, 256-1)
 
@@ -3963,7 +3969,7 @@ static MACHINE_DRIVER_START( mjelctrn )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(nanajign_mem_map,0)
 	MDRV_CPU_IO_MAP(mjelctrn_io_map,0)
-	MDRV_CPU_VBLANK_INT(mjelctrn_vblank_interrupt,1)	/* IM 2 needs a vector on the data bus */
+	MDRV_CPU_VBLANK_INT("main", mjelctrn_vblank_interrupt)	/* IM 2 needs a vector on the data bus */
 
 	MDRV_VIDEO_START(mjelctrn)
 MACHINE_DRIVER_END
@@ -4000,7 +4006,7 @@ static MACHINE_DRIVER_START( neruton )
 
 	MDRV_IMPORT_FROM( mjelctrn )
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(neruton_vblank_interrupt,1+10)	/* IM 2 needs a vector on the data bus */
+	MDRV_CPU_VBLANK_INT_HACK(neruton_vblank_interrupt,1+10)	/* IM 2 needs a vector on the data bus */
 
 	MDRV_VIDEO_START(neruton)
 MACHINE_DRIVER_END
@@ -4025,7 +4031,7 @@ static MACHINE_DRIVER_START( majxtal7 )
 
 	MDRV_IMPORT_FROM( neruton )
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(majxtal7_vblank_interrupt,1)	/* IM 2 needs a vector on the data bus */
+	MDRV_CPU_VBLANK_INT("main", majxtal7_vblank_interrupt)	/* IM 2 needs a vector on the data bus */
 
 MACHINE_DRIVER_END
 
@@ -4047,24 +4053,24 @@ static MACHINE_DRIVER_START( htengoku )
 	MDRV_CPU_ADD_TAG("main",Z80,20000000 / 4)
 	MDRV_CPU_PROGRAM_MAP(yarunara_mem_map,0)
 	MDRV_CPU_IO_MAP(htengoku_io_map,0)
-	MDRV_CPU_VBLANK_INT(sprtmtch_vblank_interrupt,1)	/* IM 0 needs an opcode on the data bus */
+	MDRV_CPU_VBLANK_INT("main", sprtmtch_vblank_interrupt)	/* IM 0 needs an opcode on the data bus */
 	MDRV_CPU_PERIODIC_INT(yarunara_clock_interrupt, 60)	// RTC
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 336-1, 0+8, 256-1-8)
+
 	MDRV_PALETTE_LENGTH(16*256)
 
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 	MDRV_VIDEO_START(htengoku)
-	MDRV_VIDEO_UPDATE(ddenlovr)
-	MDRV_VIDEO_EOF(htengoku)
+	MDRV_VIDEO_UPDATE(htengoku)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -4105,18 +4111,18 @@ static MACHINE_DRIVER_START( tenkai )
 	MDRV_CPU_ADD_TAG("main",TMP91640, 21472700 / 2)
 	MDRV_CPU_PROGRAM_MAP(tenkai_map,0)
 	MDRV_CPU_IO_MAP(tenkai_io_map,0)
-	MDRV_CPU_VBLANK_INT(tenkai_interrupt,3)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(tenkai_interrupt,3)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 4, 255-8-4)
+
 	MDRV_PALETTE_LENGTH(16*256)
 
 	MDRV_VIDEO_START(mjelctrn)

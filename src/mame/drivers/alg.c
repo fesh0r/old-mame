@@ -22,7 +22,6 @@
 
 #include "driver.h"
 #include "render.h"
-#include "deprecat.h"
 #include "includes/amiga.h"
 #include "machine/laserdsc.h"
 
@@ -32,6 +31,7 @@ static emu_timer *serial_timer;
 static UINT8 serial_timer_active;
 static UINT16 input_select;
 
+static bitmap_t *amiga_bitmap;
 static render_texture *video_texture;
 static render_texture *overlay_texture;
 
@@ -46,16 +46,18 @@ static TIMER_CALLBACK( response_timer );
  *
  *************************************/
 
-static int get_lightgun_pos(int player, int *x, int *y)
+static int get_lightgun_pos(const device_config *screen, int player, int *x, int *y)
 {
+	const rectangle *visarea = video_screen_get_visible_area(screen);
+
 	int xpos = readinputportbytag_safe((player == 0) ? "GUN1X" : "GUN2X", -1);
 	int ypos = readinputportbytag_safe((player == 0) ? "GUN1Y" : "GUN2Y", -1);
 
 	if (xpos == -1 || ypos == -1)
 		return FALSE;
 
-	*x = Machine->screen[0].visarea.min_x + xpos * (Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x + 1) / 255;
-	*y = Machine->screen[0].visarea.min_y + ypos * (Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y + 1) / 255;
+	*x = visarea->min_x + xpos * (visarea->max_x - visarea->min_x + 1) / 255;
+	*y = visarea->min_y + ypos * (visarea->max_y - visarea->min_y + 1) / 255;
 	return TRUE;
 }
 
@@ -76,11 +78,14 @@ static VIDEO_START( alg )
 	/* configure for cleanup */
 	add_exit_callback(machine, video_cleanup);
 
+	/* allocate Amiga bitmap */
+	amiga_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
+
 	/* standard video start */
 	VIDEO_START_CALL(amiga);
 
 	/* configure pen 4096 as transparent in the renderer and use it for the genlock color */
-	render_container_set_palette_alpha(render_container_get_screen(0), 4096, 0x00);
+	render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), 4096, 0x00);
 	amiga_set_genlock_color(4096);
 }
 
@@ -103,11 +108,17 @@ static void video_cleanup(running_machine *machine)
 
 static VIDEO_UPDATE( alg )
 {
-	/* composite the video */
-	if (!video_skip_this_frame())
+	int y;
+
+	/* update the Amiga video */
+	for (y = cliprect->min_y; y <= cliprect->max_y; y++)
+		amiga_render_scanline(screen->machine, amiga_bitmap, y);
+
+	/* at the end of the frame, composite the video */
+	if (!video_skip_this_frame() && (cliprect->max_y == video_screen_get_visible_area(screen)->max_y))
 	{
-		mame_bitmap *vidbitmap;
-		rectangle fixedvis = machine->screen[screen].visarea;
+		bitmap_t *vidbitmap;
+		rectangle fixedvis = *video_screen_get_visible_area(screen);
 		fixedvis.max_x++;
 		fixedvis.max_y++;
 
@@ -120,17 +131,17 @@ static VIDEO_UPDATE( alg )
 		/* then overlay the Amiga video */
 		if (overlay_texture == NULL)
 			overlay_texture = render_texture_alloc(NULL, NULL);
-		render_texture_set_bitmap(overlay_texture, tmpbitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
+		render_texture_set_bitmap(overlay_texture, amiga_bitmap, &fixedvis, 0, TEXFORMAT_PALETTEA16);
 
 		/* add both quads to the screen */
 		render_container_empty(render_container_get_screen(screen));
 		render_screen_add_quad(screen, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), video_texture, PRIMFLAG_BLENDMODE(BLENDMODE_NONE) | PRIMFLAG_SCREENTEX(1));
 		render_screen_add_quad(screen, 0.0f, 0.0f, 1.0f, 1.0f, MAKE_ARGB(0xff,0xff,0xff,0xff), overlay_texture, PRIMFLAG_BLENDMODE(BLENDMODE_ALPHA) | PRIMFLAG_SCREENTEX(1));
-	}
 
-	/* display disc information */
-	if (discinfo != NULL)
-		popmessage("%s", laserdisc_describe_state(discinfo));
+		/* display disc information */
+		if (discinfo != NULL)
+			popmessage("%s", laserdisc_describe_state(discinfo));
+	}
 
 	return 0;
 }
@@ -178,7 +189,7 @@ static TIMER_CALLBACK( response_timer )
 
 	/* if there's more to come, set another timer */
 	if (laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
-		timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, attotime_zero);
+		timer_adjust_oneshot(serial_timer, amiga_get_serial_char_period(), 0);
 	else
 		serial_timer_active = FALSE;
 }
@@ -192,7 +203,7 @@ static void vsync_callback(void)
 	/* if we have data available, set a timer to read it */
 	if (!serial_timer_active && laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
 	{
-		timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, attotime_zero);
+		timer_adjust_oneshot(serial_timer, amiga_get_serial_char_period(), 0);
 		serial_timer_active = TRUE;
 	}
 }
@@ -206,7 +217,7 @@ static void serial_w(UINT16 data)
 	/* if we have data available, set a timer to read it */
 	if (!serial_timer_active && laserdisc_line_r(discinfo, LASERDISC_LINE_DATA_AVAIL) == ASSERT_LINE)
 	{
-		timer_adjust(serial_timer, amiga_get_serial_char_period(), 0, attotime_zero);
+		timer_adjust_oneshot(serial_timer, amiga_get_serial_char_period(), 0);
 		serial_timer_active = TRUE;
 	}
 }
@@ -232,7 +243,7 @@ static CUSTOM_INPUT( lightgun_pos_r )
 	int x = 0, y = 0;
 
 	/* get the position based on the input select */
-	get_lightgun_pos(input_select, &x, &y);
+	get_lightgun_pos(machine->primary_screen, input_select, &x, &y);
 	return (y << 8) | (x >> 2);
 }
 
@@ -266,11 +277,11 @@ static void alg_cia_0_porta_w(UINT8 data)
 	/* swap the write handlers between ROM and bank 1 based on the bit */
 	if ((data & 1) == 0)
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_BANK1);
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
 
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, MWA16_UNMAP);
+		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
 }
 
 
@@ -315,7 +326,7 @@ static void alg_cia_1_porta_w(UINT8 data)
  *************************************/
 
 static ADDRESS_MAP_START( main_map_r1, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x07ffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram)	AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
 	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)
@@ -328,7 +339,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( main_map_r2, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x07ffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram)	AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
 	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)
@@ -341,7 +352,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( main_map_picmatic, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x07ffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram)	AM_SIZE(&amiga_chip_ram_size)
 	AM_RANGE(0xbfd000, 0xbfefff) AM_READWRITE(amiga_cia_r, amiga_cia_w)
 	AM_RANGE(0xc00000, 0xdfffff) AM_READWRITE(amiga_custom_r, amiga_custom_w) AM_BASE(&amiga_custom_regs)
@@ -384,7 +395,7 @@ static INPUT_PORTS_START( alg )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("P1JOY")		/* referenced by JOY0DAT */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -455,17 +466,17 @@ static MACHINE_DRIVER_START( alg_r1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, AMIGA_68000_NTSC_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map_r1,0)
-	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 262)
-
-	MDRV_SCREEN_REFRESH_RATE(59.97)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	MDRV_MACHINE_START(alg)
 	MDRV_MACHINE_RESET(alg)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_SELF_RENDER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_SELF_RENDER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59.97)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512*2, 262)
 	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 244+8-1)
@@ -506,10 +517,9 @@ static MACHINE_DRIVER_START( picmatic )
 	/* adjust for PAL specs */
 	MDRV_CPU_REPLACE("main", M68000, AMIGA_68000_PAL_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(main_map_picmatic,0)
-	MDRV_CPU_VBLANK_INT(amiga_scanline_callback, 312)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
-
 	MDRV_SCREEN_SIZE(512*2, 312)
 	MDRV_SCREEN_VISIBLE_AREA((129-8)*2, (449+8-1)*2, 44-8, 300+8-1)
 MACHINE_DRIVER_END

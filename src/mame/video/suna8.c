@@ -184,7 +184,7 @@ static void suna8_vh_start_common(int dim)
 
 #if TILEMAPS
 	bg_tilemap = tilemap_create(	get_tile_info, tilemap_scan_cols,
-								TILEMAP_TYPE_PEN,
+
 								8,8,0x20*((suna8_text_dim > 0)?4:8),0x20);
 
 	tilemap_set_transparent_pen(bg_tilemap,15);
@@ -203,13 +203,13 @@ VIDEO_START( suna8_textdim12 )	{ suna8_vh_start_common(12); }
 
 ***************************************************************************/
 
-static void draw_normal_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_normal_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int i;
 	int mx = 0;	// multisprite x counter
 
-	int max_x	=	machine->screen[0].width	- 8;
-	int max_y	=	machine->screen[0].height - 8;
+	int max_x = video_screen_get_width(machine->primary_screen) - 8;
+	int max_y = video_screen_get_height(machine->primary_screen) - 8;
 
 	for (i = 0x1d00; i < 0x2000; i += 4)
 	{
@@ -318,7 +318,7 @@ static void draw_normal_sprites(running_machine *machine, mame_bitmap *bitmap,co
 				if (flipx)	tile_flipx = !tile_flipx;
 				if (flipy)	tile_flipy = !tile_flipy;
 
-				if (flip_screen)
+				if (flip_screen_get())
 				{	sx = max_x - sx;	tile_flipx = !tile_flipx;
 					sy = max_y - sy;	tile_flipy = !tile_flipy;	}
 
@@ -334,12 +334,12 @@ static void draw_normal_sprites(running_machine *machine, mame_bitmap *bitmap,co
 	}
 }
 
-static void draw_text_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_text_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int i;
 
-	int max_x	=	machine->screen[0].width	- 8;
-	int max_y	=	machine->screen[0].height - 8;
+	int max_x = video_screen_get_width(machine->primary_screen) - 8;
+	int max_y = video_screen_get_height(machine->primary_screen) - 8;
 
 	/* Earlier games only */
 	if (!(suna8_text_dim > 0))	return;
@@ -383,7 +383,7 @@ static void draw_text_sprites(running_machine *machine, mame_bitmap *bitmap,cons
 				int sx		=	 x + tx * 8;
 				int sy		=	(y + real_ty * 8) & 0xff;
 
-				if (flip_screen)
+				if (flip_screen_get())
 				{	sx = max_x - sx;	flipx = !flipx;
 					sy = max_y - sy;	flipy = !flipy;	}
 
@@ -410,7 +410,7 @@ static void draw_text_sprites(running_machine *machine, mame_bitmap *bitmap,cons
 VIDEO_UPDATE( suna8 )
 {
 	/* see hardhead, hardhea2 test mode (press button 2 for both players) */
-	fillbitmap(bitmap,machine->pens[0xff],cliprect);
+	fillbitmap(bitmap,0xff,cliprect);
 
 #ifdef MAME_DEBUG
 #if TILEMAPS
@@ -443,8 +443,8 @@ VIDEO_UPDATE( suna8 )
 #endif
 #endif
 	{
-		draw_normal_sprites(machine ,bitmap,cliprect);
-		draw_text_sprites(machine, bitmap,cliprect);
+		draw_normal_sprites(screen->machine ,bitmap,cliprect);
+		draw_text_sprites(screen->machine, bitmap,cliprect);
 	}
 	return 0;
 }

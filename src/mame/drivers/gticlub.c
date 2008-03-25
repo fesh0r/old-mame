@@ -53,9 +53,9 @@ UINT8 gticlub_led_reg0 = 0x7f;
 UINT8 gticlub_led_reg1 = 0x7f;
 
 int K001604_vh_start(running_machine *machine, int chip);
-void K001604_tile_update(int chip);
-void K001604_draw_front_layer(int chip, mame_bitmap *bitmap, const rectangle *cliprect);
-void K001604_draw_back_layer(int chip, mame_bitmap *bitmap, const rectangle *cliprect);
+void K001604_tile_update(running_machine *machine, int chip);
+void K001604_draw_front_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect);
+void K001604_draw_back_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect);
 READ32_HANDLER(K001604_tile_r);
 READ32_HANDLER(K001604_char_r);
 WRITE32_HANDLER(K001604_tile_w);
@@ -89,8 +89,11 @@ static void voodoo_vblank_1(int param)
 
 static VIDEO_START( hangplt )
 {
-	voodoo_start(0, 0, VOODOO_1, 2, 4, 4);
-	voodoo_start(1, 1, VOODOO_1, 2, 4, 4);
+	const device_config *left_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "right");
+
+	voodoo_start(0, left_screen,  VOODOO_1, 2, 4, 4);
+	voodoo_start(1, right_screen, VOODOO_1, 2, 4, 4);
 
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
 	voodoo_set_vblank_callback(1, voodoo_vblank_1);
@@ -102,14 +105,29 @@ static VIDEO_START( hangplt )
 
 static VIDEO_UPDATE( hangplt )
 {
-	fillbitmap(bitmap, machine->remapped_colortable[0], cliprect);
+	const device_config *left_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
 
-	K001604_tile_update(screen);
-//  K001604_draw_back_layer(bitmap, cliprect);
+	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
 
-	voodoo_update(screen, bitmap, cliprect);
+	if (screen == left_screen)
+	{
+		K001604_tile_update(screen->machine, 0);
+	//  K001604_draw_back_layer(bitmap, cliprect);
 
-	K001604_draw_front_layer(screen, bitmap, cliprect);
+		voodoo_update(0, bitmap, cliprect);
+
+		K001604_draw_front_layer(0, bitmap, cliprect);
+	}
+	else if (screen == right_screen)
+	{
+		K001604_tile_update(screen->machine, 1);
+	//  K001604_draw_back_layer(bitmap, cliprect);
+
+		voodoo_update(1, bitmap, cliprect);
+
+		K001604_draw_front_layer(1, bitmap, cliprect);
+	}
 
 	draw_7segment_led(bitmap, 3, 3, gticlub_led_reg0);
 	draw_7segment_led(bitmap, 9, 3, gticlub_led_reg1);
@@ -456,7 +474,7 @@ WRITE32_HANDLER( lanc_ram_w )
 static ADDRESS_MAP_START( gticlub_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_MIRROR(0x80000000) AM_RAM AM_BASE(&work_ram)		/* Work RAM */
 	AM_RANGE(0x74000000, 0x740000ff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_reg_r, K001604_reg_w)
-	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_READWRITE(MRA32_RAM, paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_READWRITE(SMH_RAM, paletteram32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x74020000, 0x7403ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_tile_r, K001604_tile_w)
 	AM_RANGE(0x74040000, 0x7407ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_char_r, K001604_char_w)
 	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)
@@ -563,7 +581,7 @@ static INPUT_PORTS_START( gticlub )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -610,7 +628,7 @@ static INPUT_PORTS_START( slrasslt )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -660,7 +678,7 @@ static INPUT_PORTS_START( thunderh )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -697,7 +715,7 @@ static INPUT_PORTS_START( hangplt )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -755,7 +773,7 @@ static MACHINE_DRIVER_START( gticlub )
 	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_CONFIG(gticlub_ppc_cfg)
 	MDRV_CPU_PROGRAM_MAP(gticlub_map, 0)
-	MDRV_CPU_VBLANK_INT(gticlub_vblank, 1)
+	MDRV_CPU_VBLANK_INT("main", gticlub_vblank)
 
 	MDRV_CPU_ADD(M68000, 64000000/4)	/* 16MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_memmap, 0)
@@ -764,17 +782,18 @@ static MACHINE_DRIVER_START( gticlub )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_NVRAM_HANDLER(gticlub)
 	MDRV_MACHINE_RESET(gticlub)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(512, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 383)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(gticlub)
@@ -812,23 +831,21 @@ static MACHINE_DRIVER_START( hangplt )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(hangplt_sharc1_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_NVRAM_HANDLER(gticlub)
 	MDRV_MACHINE_RESET(hangplt)
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_PALETTE_LENGTH(65536)
 
-	MDRV_SCREEN_ADD("left", 0x000)
+	MDRV_SCREEN_ADD("left", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(512, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 383)
 
-	MDRV_SCREEN_ADD("right", 0x000)
+	MDRV_SCREEN_ADD("right", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(512, 384)

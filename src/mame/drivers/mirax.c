@@ -61,6 +61,7 @@ The End
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static int nSndNum=0x10;
@@ -77,7 +78,7 @@ static VIDEO_UPDATE(mirax)
 	//audio tester
 	if(input_code_pressed_once(KEYCODE_Q))
 	{
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(screen->machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 #endif
 	return 0;
@@ -105,8 +106,8 @@ static WRITE8_HANDLER(ay1_sel)
 {
 	if(activecpu_get_previouspc()==0x309)
 	{
-		AY8910_control_port_0_w(0,nAyCtrl);
-		AY8910_write_port_0_w(0,nAyData);
+		AY8910_control_port_0_w(machine,0,nAyCtrl);
+		AY8910_write_port_0_w(machine,0,nAyData);
 	}
 }
 
@@ -115,8 +116,8 @@ static WRITE8_HANDLER(ay2_sel)
 
 	if(activecpu_get_previouspc()==0x309)
 	{
-		AY8910_control_port_1_w(0,nAyCtrl);
-		AY8910_write_port_1_w(0,nAyData);
+		AY8910_control_port_1_w(machine,0,nAyCtrl);
+		AY8910_write_port_1_w(machine,0,nAyData);
 	}
 }
 
@@ -179,17 +180,16 @@ static MACHINE_DRIVER_START( mirax )
 	MDRV_CPU_ADD(Z80, 12000000) // audio cpu ?
 	MDRV_CPU_PROGRAM_MAP(memory_map,0)
 	MDRV_CPU_IO_MAP(io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 2)
-
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold, 2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(256)
 	MDRV_GFXDECODE(mirax)
 	MDRV_VIDEO_START(mirax)

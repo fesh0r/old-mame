@@ -273,11 +273,11 @@ static VIDEO_UPDATE( supertnk )
 
 static MACHINE_RESET( supertnk )
 {
-	supertnk_bankswitch_0_w(0, 0);
-	supertnk_bankswitch_1_w(0, 0);
+	supertnk_bankswitch_0_w(machine, 0, 0);
+	supertnk_bankswitch_1_w(machine, 0, 0);
 
-	supertnk_bitplane_select_0_w(0, 0);
-	supertnk_bitplane_select_1_w(0, 0);
+	supertnk_bitplane_select_0_w(machine, 0, 0);
+	supertnk_bitplane_select_1_w(machine, 0, 0);
 }
 
 
@@ -308,7 +308,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( supertnk_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x0000) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0x0000, 0x0000) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x0400, 0x0400) AM_WRITE(supertnk_bitplane_select_0_w)
 	AM_RANGE(0x0401, 0x0401) AM_WRITE(supertnk_bitplane_select_1_w)
 	AM_RANGE(0x0402, 0x0402) AM_WRITE(supertnk_bankswitch_0_w)
@@ -413,21 +413,20 @@ static MACHINE_DRIVER_START( supertnk )
 	MDRV_CPU_ADD(TMS9980, 2598750) /* ? to which frequency is the 20.79 Mhz crystal mapped down? */
 	MDRV_CPU_PROGRAM_MAP(supertnk_map,0)
 	MDRV_CPU_IO_MAP(supertnk_io_map,0)
-	MDRV_CPU_VBLANK_INT(supertnk_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", supertnk_interrupt)
 
 	MDRV_MACHINE_RESET(supertnk)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_START(supertnk)
 	MDRV_VIDEO_UPDATE(supertnk)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 
 	/* audio hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

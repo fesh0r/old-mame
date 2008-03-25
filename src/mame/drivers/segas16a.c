@@ -163,10 +163,10 @@ static UINT16 *workram;
 static UINT8 video_control;
 static UINT8 mj_input_num;
 
-static read16_handler custom_io_r;
-static write16_handler custom_io_w;
+static read16_machine_func custom_io_r;
+static write16_machine_func custom_io_w;
 static void (*lamp_changed_w)(UINT8 changed, UINT8 newval);
-static void (*i8751_vblank_hook)(void);
+static void (*i8751_vblank_hook)(running_machine *machine);
 
 static UINT8 n7751_command;
 static UINT32 n7751_rom_address;
@@ -266,7 +266,7 @@ static MACHINE_RESET( system16a )
 
 static TIMER_CALLBACK( delayed_ppi8255_w )
 {
-	ppi8255_0_w(param >> 8, param & 0xff);
+	ppi8255_0_w(machine, param >> 8, param & 0xff);
 }
 
 
@@ -276,7 +276,7 @@ static READ16_HANDLER( standard_io_r )
 	switch (offset & (0x3000/2))
 	{
 		case 0x0000/2:
-			return ppi8255_0_r(offset & 3);
+			return ppi8255_0_r(machine, offset & 3);
 
 		case 0x1000/2:
 			return readinputport(offset & 3);
@@ -308,18 +308,18 @@ static WRITE16_HANDLER( standard_io_w )
 static READ16_HANDLER( misc_io_r )
 {
 	if (custom_io_r)
-		return (*custom_io_r)(offset, mem_mask);
+		return (*custom_io_r)(machine, offset, mem_mask);
 	else
-		return standard_io_r(offset, mem_mask);
+		return standard_io_r(machine, offset, mem_mask);
 }
 
 
 static WRITE16_HANDLER( misc_io_w )
 {
 	if (custom_io_w)
-		(*custom_io_w)(offset, data, mem_mask);
+		(*custom_io_w)(machine, offset, data, mem_mask);
 	else
-		standard_io_w(offset, data, mem_mask);
+		standard_io_w(machine, offset, data, mem_mask);
 }
 
 
@@ -397,7 +397,7 @@ static READ8_HANDLER( sound_data_r )
 {
 	/* assert ACK */
 	ppi8255_set_portC(0, 0x00);
-	return soundlatch_r(offset);
+	return soundlatch_r(machine, offset);
 }
 
 
@@ -491,7 +491,7 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
 {
 	/* if we have a fake 8751 handler, call it on VBLANK */
 	if (i8751_vblank_hook != NULL)
-		(*i8751_vblank_hook)();
+		(*i8751_vblank_hook)(machine);
 }
 
 
@@ -502,7 +502,7 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
  *
  *************************************/
 
-static void bodyslam_i8751_sim(void)
+static void bodyslam_i8751_sim(running_machine *machine)
 {
 	UINT8 flag = workram[0x200/2] >> 8;
 	UINT8 tick = workram[0x200/2] & 0xff;
@@ -510,7 +510,7 @@ static void bodyslam_i8751_sim(void)
 	UINT8 min = workram[0x202/2] & 0xff;
 
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* out of time? set the flag */
 	if (tick == 0 && sec == 0 && min == 0)
@@ -547,18 +547,18 @@ static void bodyslam_i8751_sim(void)
 }
 
 
-static void quartet_i8751_sim(void)
+static void quartet_i8751_sim(running_machine *machine)
 {
 	/* signal a VBLANK to the main CPU */
-	cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* X scroll values */
-	segaic16_textram_0_w(0xff8/2, workram[0x0d14/2], 0);
-	segaic16_textram_0_w(0xffa/2, workram[0x0d18/2], 0);
+	segaic16_textram_0_w(machine, 0xff8/2, workram[0x0d14/2], 0);
+	segaic16_textram_0_w(machine, 0xffa/2, workram[0x0d18/2], 0);
 
 	/* page values */
-	segaic16_textram_0_w(0xe9e/2, workram[0x0d1c/2], 0);
-	segaic16_textram_0_w(0xe9c/2, workram[0x0d1e/2], 0);
+	segaic16_textram_0_w(machine, 0xe9e/2, workram[0x0d1c/2], 0);
+	segaic16_textram_0_w(machine, 0xe9c/2, workram[0x0d1e/2], 0);
 }
 
 
@@ -606,7 +606,7 @@ static READ16_HANDLER( aceattaa_custom_io_r )
 			break;
 	}
 
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
@@ -690,7 +690,7 @@ static READ16_HANDLER( mjleague_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 /*************************************
@@ -702,7 +702,6 @@ static READ16_HANDLER( mjleague_custom_io_r )
 static READ16_HANDLER( pshot16a_custom_io_r )
 {
 	static int read_port = 0;
-
 	switch (offset & (0x3000/2))
 	{
 		case 0x1000/2:
@@ -725,7 +724,7 @@ static READ16_HANDLER( pshot16a_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 /*************************************
@@ -746,7 +745,7 @@ static READ16_HANDLER( sdi_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
@@ -760,7 +759,6 @@ static READ16_HANDLER( sdi_custom_io_r )
 static READ16_HANDLER( sjryuko_custom_io_r )
 {
 	static const char *const portname[] = { "MJ0", "MJ1", "MJ2", "MJ3", "MJ4", "MJ5" };
-
 	switch (offset & (0x3000/2))
 	{
 		case 0x1000/2:
@@ -776,7 +774,7 @@ static READ16_HANDLER( sjryuko_custom_io_r )
 			}
 			break;
 	}
-	return standard_io_r(offset, mem_mask);
+	return standard_io_r(machine, offset, mem_mask);
 }
 
 
@@ -811,12 +809,12 @@ static NVRAM_HANDLER( system16a )
  *************************************/
 
 static ADDRESS_MAP_START( system16a_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_MIRROR(0x380000) AM_ROM
-	AM_RANGE(0x400000, 0x407fff) AM_MIRROR(0xb88000) AM_READWRITE(MRA16_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
-	AM_RANGE(0x410000, 0x410fff) AM_MIRROR(0xb8f000) AM_READWRITE(MRA16_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
+	AM_RANGE(0x400000, 0x407fff) AM_MIRROR(0xb88000) AM_READWRITE(SMH_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
+	AM_RANGE(0x410000, 0x410fff) AM_MIRROR(0xb8f000) AM_READWRITE(SMH_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
 	AM_RANGE(0x440000, 0x4407ff) AM_MIRROR(0x3bf800) AM_RAM AM_BASE(&segaic16_spriteram_0)
-	AM_RANGE(0x840000, 0x840fff) AM_MIRROR(0x3bf000) AM_READWRITE(MRA16_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x840000, 0x840fff) AM_MIRROR(0x3bf000) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xc40000, 0xc43fff) AM_MIRROR(0x39c000) AM_READWRITE(misc_io_r, misc_io_w)
 	AM_RANGE(0xc60000, 0xc6ffff) AM_READ(watchdog_reset16_r)
 	AM_RANGE(0xc70000, 0xc73fff) AM_MIRROR(0x38c000) AM_RAM AM_BASE(&workram)
@@ -831,14 +829,15 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xe800, 0xe800) AM_READ(sound_data_r)
 	AM_RANGE(0xf800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x3f) AM_WRITE(n7751_command_w)
@@ -854,7 +853,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( n7751_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x03ff) AM_ROM
 ADDRESS_MAP_END
 
@@ -875,12 +874,12 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_data_map, ADDRESS_SPACE_DATA, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
 
@@ -1778,7 +1777,7 @@ static MACHINE_DRIVER_START( system16a )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 10000000)
 	MDRV_CPU_PROGRAM_MAP(system16a_map,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)
 	/* audio CPU */
@@ -1790,16 +1789,16 @@ static MACHINE_DRIVER_START( system16a )
 	MDRV_CPU_PROGRAM_MAP(n7751_map,0)
 	MDRV_CPU_IO_MAP(n7751_portmap,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	MDRV_MACHINE_RESET(system16a)
 	MDRV_NVRAM_HANDLER(system16a)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(342,262)	/* to be verified */
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(segas16a)
 	MDRV_PALETTE_LENGTH(2048*3)
 
@@ -1831,12 +1830,12 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( system16a_8751 )
 	MDRV_IMPORT_FROM(system16a)
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(i8751_main_cpu_vblank,1)
+	MDRV_CPU_VBLANK_INT("main", i8751_main_cpu_vblank)
 
 	MDRV_CPU_ADD_TAG("mcu", I8751, 8000000)
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_DATA_MAP(mcu_data_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse)
 MACHINE_DRIVER_END
 
 

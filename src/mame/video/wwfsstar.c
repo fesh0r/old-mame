@@ -106,7 +106,7 @@ static TILE_GET_INFO( get_bg0_tile_info )
  sprite colour marking could probably be improved..
 *******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	/*- SPR RAM Format -**
 
@@ -154,7 +154,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 			number &= ~(chain - 1);
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				flipy = !flipy;
 				flipx = !flipx;
@@ -164,7 +164,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 			for (count=0;count<chain;count++)
 			{
-				if (flip_screen)
+				if (flip_screen_get())
 				{
 					if (!flipy)
 					{
@@ -205,10 +205,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_START( wwfsstar )
 {
-	fg0_tilemap = tilemap_create(get_fg0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	fg0_tilemap = tilemap_create(get_fg0_tile_info,tilemap_scan_rows, 8, 8,32,32);
 	tilemap_set_transparent_pen(fg0_tilemap,0);
 
-	bg0_tilemap = tilemap_create(get_bg0_tile_info,bg0_scan,TILEMAP_TYPE_PEN, 16, 16,32,32);
+	bg0_tilemap = tilemap_create(get_bg0_tile_info,bg0_scan, 16, 16,32,32);
 	tilemap_set_transparent_pen(fg0_tilemap,0);
 }
 
@@ -218,7 +218,7 @@ VIDEO_UPDATE( wwfsstar )
 	tilemap_set_scrollx( bg0_tilemap, 0, wwfsstar_scrollx  );
 
 	tilemap_draw(bitmap,cliprect,bg0_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect );
+	draw_sprites(screen->machine, bitmap,cliprect );
 	tilemap_draw(bitmap,cliprect,fg0_tilemap,0,0);
 
 	return 0;

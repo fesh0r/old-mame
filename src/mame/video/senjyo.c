@@ -118,19 +118,19 @@ static TILE_GET_INFO( get_bg3_tile_info )
 
 VIDEO_START( senjyo )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	if (senjyo)
 	{
-		bg1_tilemap = tilemap_create(senjyo_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,16,32);
-		bg2_tilemap = tilemap_create(get_bg2_tile_info,   tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,16,48);	/* only 16x32 used by Star Force */
-		bg3_tilemap = tilemap_create(get_bg3_tile_info,   tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,16,56);	/* only 16x32 used by Star Force */
+		bg1_tilemap = tilemap_create(senjyo_bg1_tile_info,tilemap_scan_rows,16,16,16,32);
+		bg2_tilemap = tilemap_create(get_bg2_tile_info,   tilemap_scan_rows,16,16,16,48);	/* only 16x32 used by Star Force */
+		bg3_tilemap = tilemap_create(get_bg3_tile_info,   tilemap_scan_rows,16,16,16,56);	/* only 16x32 used by Star Force */
 	}
 	else
 	{
-		bg1_tilemap = tilemap_create(starforc_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,16,32);
-		bg2_tilemap = tilemap_create(get_bg2_tile_info,     tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,16,32);	/* only 16x32 used by Star Force */
-		bg3_tilemap = tilemap_create(get_bg3_tile_info,     tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,16,32);	/* only 16x32 used by Star Force */
+		bg1_tilemap = tilemap_create(starforc_bg1_tile_info,tilemap_scan_rows,16,16,16,32);
+		bg2_tilemap = tilemap_create(get_bg2_tile_info,     tilemap_scan_rows,16,16,16,32);	/* only 16x32 used by Star Force */
+		bg3_tilemap = tilemap_create(get_bg3_tile_info,     tilemap_scan_rows,16,16,16,32);	/* only 16x32 used by Star Force */
 	}
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
@@ -185,35 +185,29 @@ WRITE8_HANDLER( senjyo_bgstripes_w )
 
 ***************************************************************************/
 
-static void draw_bgbitmap(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_bgbitmap(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int x,y,pen,strwid,count;
 
 
 	if (senjyo_bgstripes == 0xff)	/* off */
-	{
-		fillbitmap(bitmap,machine->pens[0],cliprect);
-	}
+		fillbitmap(bitmap,0,cliprect);
 	else
 	{
 		pen = 0;
 		count = 0;
 		strwid = senjyo_bgstripes;
 		if (strwid == 0) strwid = 0x100;
-		if (flip_screen) strwid ^= 0xff;
+		if (flip_screen_get()) strwid ^= 0xff;
 
 		for (x = 0;x < 256;x++)
 		{
-			if (flip_screen)
-			{
+			if (flip_screen_get())
 				for (y = 0;y < 256;y++)
-					*BITMAP_ADDR16(bitmap, y, 255 - x) = machine->pens[384 + pen];
-			}
+					*BITMAP_ADDR16(bitmap, y, 255 - x) = 384 + pen;
 			else
-			{
 				for (y = 0;y < 256;y++)
-					*BITMAP_ADDR16(bitmap, y, x) = machine->pens[384 + pen];
-			}
+					*BITMAP_ADDR16(bitmap, y, x) = 384 + pen;
 
 			count += 0x10;
 			if (count >= strwid)
@@ -225,39 +219,32 @@ static void draw_bgbitmap(running_machine *machine, mame_bitmap *bitmap,const re
 	}
 }
 
-static void draw_radar(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_radar(bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs,x;
 
 	for (offs = 0;offs < 0x400;offs++)
-	{
-		if (senjyo_radarram[offs])
-		{
-			for (x = 0;x < 8;x++)
+		for (x = 0;x < 8;x++)
+			if (senjyo_radarram[offs] & (1 << x))
 			{
-				if (senjyo_radarram[offs] & (1 << x))
+				int sx, sy;
+
+				sx = (8 * (offs % 8) + x) + 256-64;
+				sy = ((offs & 0x1ff) / 8) + 96;
+
+				if (flip_screen_get())
 				{
-					int sx, sy;
-
-					sx = (8 * (offs % 8) + x) + 256-64;
-					sy = ((offs & 0x1ff) / 8) + 96;
-
-					if (flip_screen)
-					{
-						sx = 255 - sx;
-						sy = 255 - sy;
-					}
-
-					if (sy >= cliprect->min_y && sy <= cliprect->max_y &&
-						sx >= cliprect->min_x && sx <= cliprect->max_x)
-						*BITMAP_ADDR16(bitmap, sy, sx) = machine->pens[offs < 0x200 ? 512 : 513];
+					sx = 255 - sx;
+					sy = 255 - sy;
 				}
+
+				if (sy >= cliprect->min_y && sy <= cliprect->max_y &&
+					sx >= cliprect->min_x && sx <= cliprect->max_x)
+					*BITMAP_ADDR16(bitmap, sy, sx) = offs < 0x200 ? 512 : 513;
 			}
-		}
-	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int priority)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int priority)
 {
 	int offs;
 
@@ -280,7 +267,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			flipx = spriteram[offs+1] & 0x40;
 			flipy = spriteram[offs+1] & 0x80;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				flipx = !flipx;
 				flipy = !flipy;
@@ -314,8 +301,8 @@ VIDEO_UPDATE( senjyo )
 
 
 	/* two colors for the radar dots (verified on the real board) */
-	palette_set_color(machine,512,MAKE_RGB(0xff,0x00,0x00));	/* red for enemies */
-	palette_set_color(machine,513,MAKE_RGB(0xff,0xff,0x00));	/* yellow for player */
+	palette_set_color(screen->machine,512,MAKE_RGB(0xff,0x00,0x00));	/* red for enemies */
+	palette_set_color(screen->machine,513,MAKE_RGB(0xff,0xff,0x00));	/* yellow for player */
 
 	{
 		int scrollx,scrolly;
@@ -325,7 +312,7 @@ VIDEO_UPDATE( senjyo )
 
 		scrollx = senjyo_scrollx1[0];
 		scrolly = senjyo_scrolly1[0] + 256 * senjyo_scrolly1[1];
-		if (flip_screen)
+		if (flip_screen_get())
 			scrollx = -scrollx;
 		tilemap_set_scrollx(bg1_tilemap,0,scrollx);
 		tilemap_set_scrolly(bg1_tilemap,0,scrolly);
@@ -337,29 +324,29 @@ VIDEO_UPDATE( senjyo )
 			scrollx = senjyo_scrollx1[0];
 			scrolly = senjyo_scrolly1[0] + 256 * senjyo_scrolly1[1];
 		}
-		if (flip_screen)
+		if (flip_screen_get())
 			scrollx = -scrollx;
 		tilemap_set_scrollx(bg2_tilemap,0,scrollx);
 		tilemap_set_scrolly(bg2_tilemap,0,scrolly);
 
 		scrollx = senjyo_scrollx3[0];
 		scrolly = senjyo_scrolly3[0] + 256 * senjyo_scrolly3[1];
-		if (flip_screen)
+		if (flip_screen_get())
 			scrollx = -scrollx;
 		tilemap_set_scrollx(bg3_tilemap,0,scrollx);
 		tilemap_set_scrolly(bg3_tilemap,0,scrolly);
 	}
 
-	draw_bgbitmap(machine, bitmap,cliprect);
-	draw_sprites(machine, bitmap,cliprect,0);
+	draw_bgbitmap(screen->machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect,0);
 	tilemap_draw(bitmap,cliprect,bg3_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,1);
+	draw_sprites(screen->machine, bitmap,cliprect,1);
 	tilemap_draw(bitmap,cliprect,bg2_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,2);
+	draw_sprites(screen->machine, bitmap,cliprect,2);
 	tilemap_draw(bitmap,cliprect,bg1_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect,3);
+	draw_sprites(screen->machine, bitmap,cliprect,3);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_radar(machine, bitmap,cliprect);
+	draw_radar(bitmap,cliprect);
 
 #if 0
 {

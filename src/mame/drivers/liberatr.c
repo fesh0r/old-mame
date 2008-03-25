@@ -134,6 +134,7 @@
 ******************************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/atari_vg.h"
 #include "sound/pokey.h"
 #include "liberatr.h"
@@ -210,20 +211,20 @@ static ADDRESS_MAP_START( liberatr_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0000) AM_RAM AM_BASE(&liberatr_x)
 	AM_RANGE(0x0001, 0x0001) AM_RAM AM_BASE(&liberatr_y)
 	AM_RANGE(0x0002, 0x0002) AM_READWRITE(liberatr_bitmap_xy_r, liberatr_bitmap_xy_w)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_RAM, liberatr_bitmap_w) AM_BASE(&liberatr_bitmapram) 	/* overlapping for my convenience */
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_RAM, liberatr_bitmap_w) AM_BASE(&liberatr_bitmapram) 	/* overlapping for my convenience */
 	AM_RANGE(0x4000, 0x403f) AM_READ(atari_vg_earom_r)
 	AM_RANGE(0x5000, 0x5000) AM_READ(liberatr_input_port_0_r)
 	AM_RANGE(0x5001, 0x5001) AM_READ(input_port_1_r)
-	AM_RANGE(0x6000, 0x600f) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_base_ram)
-	AM_RANGE(0x6200, 0x621f) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_colorram)
+	AM_RANGE(0x6000, 0x600f) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_base_ram)
+	AM_RANGE(0x6200, 0x621f) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_colorram)
 	AM_RANGE(0x6400, 0x6400) AM_WRITENOP
 	AM_RANGE(0x6600, 0x6600) AM_WRITE(atari_vg_earom_ctrl_w)
-	AM_RANGE(0x6800, 0x6800) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_planet_frame)
+	AM_RANGE(0x6800, 0x6800) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_planet_frame)
 	AM_RANGE(0x6a00, 0x6a00) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x6c00, 0x6c01) AM_WRITE(liberatr_led_w)
 	AM_RANGE(0x6c04, 0x6c04) AM_WRITE(liberatr_trackball_reset_w)
 	AM_RANGE(0x6c05, 0x6c06) AM_WRITE(liberatr_coin_counter_w)
-	AM_RANGE(0x6c07, 0x6c07) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_planet_select)
+	AM_RANGE(0x6c07, 0x6c07) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_planet_select)
 	AM_RANGE(0x6e00, 0x6e3f) AM_WRITE(atari_vg_earom_w)
 	AM_RANGE(0x7000, 0x701f) AM_READWRITE(pokey2_r, pokey2_w)
 	AM_RANGE(0x7800, 0x781f) AM_READWRITE(pokey1_r, pokey1_w)
@@ -243,20 +244,20 @@ static ADDRESS_MAP_START( liberat2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0000) AM_RAM AM_BASE(&liberatr_x)
 	AM_RANGE(0x0001, 0x0001) AM_RAM AM_BASE(&liberatr_y)
 	AM_RANGE(0x0002, 0x0002) AM_READWRITE(liberatr_bitmap_xy_r, liberatr_bitmap_xy_w)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_RAM, liberatr_bitmap_w) AM_BASE(&liberatr_bitmapram) 	/* overlapping for my convenience */
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_RAM, liberatr_bitmap_w) AM_BASE(&liberatr_bitmapram) 	/* overlapping for my convenience */
 	AM_RANGE(0x4000, 0x4000) AM_READ(liberatr_input_port_0_r)
 	AM_RANGE(0x4001, 0x4001) AM_READ(input_port_1_r)
-	AM_RANGE(0x4000, 0x400f) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_base_ram)
-	AM_RANGE(0x4200, 0x421f) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_colorram)
+	AM_RANGE(0x4000, 0x400f) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_base_ram)
+	AM_RANGE(0x4200, 0x421f) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_colorram)
 	AM_RANGE(0x4400, 0x4400) AM_WRITENOP
 	AM_RANGE(0x4600, 0x4600) AM_WRITE(atari_vg_earom_ctrl_w)
 	AM_RANGE(0x4800, 0x483f) AM_READ(atari_vg_earom_r)
-	AM_RANGE(0x4800, 0x4800) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_planet_frame)
+	AM_RANGE(0x4800, 0x4800) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_planet_frame)
 	AM_RANGE(0x4a00, 0x4a00) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x4c00, 0x4c01) AM_WRITE(liberatr_led_w)
 	AM_RANGE(0x4c04, 0x4c04) AM_WRITE(liberatr_trackball_reset_w)
 	AM_RANGE(0x4c05, 0x4c06) AM_WRITE(liberatr_coin_counter_w)
-	AM_RANGE(0x4c07, 0x4c07) AM_WRITE(MWA8_RAM) AM_BASE(&liberatr_planet_select)
+	AM_RANGE(0x4c07, 0x4c07) AM_WRITE(SMH_RAM) AM_BASE(&liberatr_planet_select)
 	AM_RANGE(0x4e00, 0x4e3f) AM_WRITE(atari_vg_earom_w)
 	AM_RANGE(0x5000, 0x501f) AM_READWRITE(pokey2_r, pokey2_w)
 	AM_RANGE(0x5800, 0x581f) AM_READWRITE(pokey1_r, pokey1_w)
@@ -383,15 +384,14 @@ static MACHINE_DRIVER_START( liberatr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, MASTER_CLOCK/16) /* 1.25Mhz divided from 20Mhz master clock */
 	MDRV_CPU_PROGRAM_MAP(liberatr_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
 
 	MDRV_NVRAM_HANDLER(atari_vg)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(256,256)
 	MDRV_SCREEN_VISIBLE_AREA(8, 247, 13, 244)

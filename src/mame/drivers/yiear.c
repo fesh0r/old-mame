@@ -86,32 +86,27 @@ static INTERRUPT_GEN( yiear_nmi_interrupt )
 }
 
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0000) AM_READ(yiear_speech_r)
+	AM_RANGE(0x4000, 0x4000) AM_WRITE(yiear_control_w)
+	AM_RANGE(0x4800, 0x4800) AM_WRITE(konami_SN76496_latch_w)
+	AM_RANGE(0x4900, 0x4900) AM_WRITE(konami_SN76496_0_w)
+	AM_RANGE(0x4a00, 0x4a00) AM_WRITE(yiear_VLM5030_control_w)
+	AM_RANGE(0x4b00, 0x4b00) AM_WRITE(VLM5030_data_w)
 	AM_RANGE(0x4c00, 0x4c00) AM_READ(input_port_3_r)
 	AM_RANGE(0x4d00, 0x4d00) AM_READ(input_port_4_r)
 	AM_RANGE(0x4e00, 0x4e00) AM_READ(input_port_0_r)
 	AM_RANGE(0x4e01, 0x4e01) AM_READ(input_port_1_r)
 	AM_RANGE(0x4e02, 0x4e02) AM_READ(input_port_2_r)
 	AM_RANGE(0x4e03, 0x4e03) AM_READ(input_port_5_r)
-	AM_RANGE(0x5000, 0x5fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4f00, 0x4f00) AM_WRITE(watchdog_reset_w)
+	AM_RANGE(0x5000, 0x502f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x5400, 0x542f) AM_RAM AM_BASE(&spriteram_2)
+	AM_RANGE(0x5800, 0x5fff) AM_WRITE(yiear_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x5000, 0x5fff) AM_RAM
+	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x4000, 0x4000) AM_WRITE(yiear_control_w)
-	AM_RANGE(0x4800, 0x4800) AM_WRITE(konami_SN76496_latch_w)
-	AM_RANGE(0x4900, 0x4900) AM_WRITE(konami_SN76496_0_w)
-	AM_RANGE(0x4a00, 0x4a00) AM_WRITE(yiear_VLM5030_control_w)
-	AM_RANGE(0x4b00, 0x4b00) AM_WRITE(VLM5030_data_w)
-	AM_RANGE(0x4f00, 0x4f00) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x502f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x5030, 0x53ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x5400, 0x542f) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram_2)
-	AM_RANGE(0x5430, 0x57ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x5800, 0x5fff) AM_WRITE(yiear_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
-ADDRESS_MAP_END
 
 
 
@@ -260,18 +255,18 @@ static MACHINE_DRIVER_START( yiear )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6809,18432000/16)	/* ???? */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	/* vblank */
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 	MDRV_CPU_PERIODIC_INT(yiear_nmi_interrupt,500)	/* music tempo (correct frequency unknown) */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(yiear)
 	MDRV_PALETTE_LENGTH(32)
 

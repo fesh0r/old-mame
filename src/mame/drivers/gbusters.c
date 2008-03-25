@@ -44,7 +44,7 @@ static READ8_HANDLER( bankedram_r )
 static WRITE8_HANDLER( bankedram_w )
 {
 	if (palette_selected)
-		paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
+		paletteram_xBBBBBGGGGGRRRRR_be_w(machine,offset,data);
 	else
 		ram[offset] = data;
 }
@@ -127,10 +127,10 @@ static ADDRESS_MAP_START( gbusters_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1f94, 0x1f94) AM_READ(input_port_0_r)		/* DIPSW #1 */
 	AM_RANGE(0x1f95, 0x1f95) AM_READ(input_port_1_r)		/* DIPSW #2 */
 	AM_RANGE(0x0000, 0x3fff) AM_READ(K052109_051960_r)	/* tiles + sprites (RAM H21, G21 & H6) */
-	AM_RANGE(0x4000, 0x57ff) AM_READ(MRA8_RAM)			/* RAM I12 */
+	AM_RANGE(0x4000, 0x57ff) AM_READ(SMH_RAM)			/* RAM I12 */
 	AM_RANGE(0x5800, 0x5fff) AM_READ(bankedram_r)		/* palette + work RAM (RAM D16 & C16) */
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_BANK1)			/* banked ROM */
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)			/* ROM 878n02.rom */
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_BANK1)			/* banked ROM */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)			/* ROM 878n02.rom */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gbusters_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -141,23 +141,23 @@ static ADDRESS_MAP_START( gbusters_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1f98, 0x1f98) AM_WRITE(gbusters_1f98_w)			/* enable gfx ROM read through VRAM */
 	AM_RANGE(0x1f9c, 0x1f9c) AM_WRITE(gbusters_unknown_w)			/* ??? */
 	AM_RANGE(0x0000, 0x3fff) AM_WRITE(K052109_051960_w)			/* tiles + sprites (RAM H21, G21 & H6) */
-	AM_RANGE(0x4000, 0x57ff) AM_WRITE(MWA8_RAM)					/* RAM I12 */
+	AM_RANGE(0x4000, 0x57ff) AM_WRITE(SMH_RAM)					/* RAM I12 */
 	AM_RANGE(0x5800, 0x5fff) AM_WRITE(bankedram_w) AM_BASE(&ram)			/* palette + work RAM (RAM D16 & C16) */
-	AM_RANGE(0x6000, 0x7fff) AM_WRITE(MWA8_ROM)					/* banked ROM */
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)					/* ROM 878n02.rom */
+	AM_RANGE(0x6000, 0x7fff) AM_WRITE(SMH_ROM)					/* banked ROM */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)					/* ROM 878n02.rom */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gbusters_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)				/* ROM 878h01.rom */
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)				/* RAM */
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)				/* ROM 878h01.rom */
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)				/* RAM */
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)			/* soundlatch_r */
 	AM_RANGE(0xb000, 0xb00d) AM_READ(K007232_read_port_0_r)	/* 007232 registers */
 	AM_RANGE(0xc001, 0xc001) AM_READ(YM2151_status_port_0_r)	/* YM 2151 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gbusters_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)					/* ROM 878h01.rom */
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)					/* RAM */
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)					/* ROM 878h01.rom */
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)					/* RAM */
 	AM_RANGE(0xb000, 0xb00d) AM_WRITE(K007232_write_port_0_w)		/* 007232 registers */
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2151_register_port_0_w)	/* YM 2151 */
 	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2151_data_port_0_w)		/* YM 2151 */
@@ -299,22 +299,24 @@ static MACHINE_DRIVER_START( gbusters )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(KONAMI, 3000000)	/* Konami custom 052526 */
 	MDRV_CPU_PROGRAM_MAP(gbusters_readmem,gbusters_writemem)
-	MDRV_CPU_VBLANK_INT(gbusters_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", gbusters_interrupt)
 
 	MDRV_CPU_ADD(Z80, 3579545)
 	/* audio CPU */		/* ? */
 	MDRV_CPU_PROGRAM_MAP(gbusters_readmem_sound,gbusters_writemem_sound)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(gbusters)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(1024)
 
 	MDRV_VIDEO_START(gbusters)

@@ -68,43 +68,43 @@ static WRITE16_HANDLER( wwfwfest_flipscreen_w )
 *******************************************************************************/
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)	/* Rom */
-	AM_RANGE(0x0c0000, 0x0c1fff) AM_READ(MRA16_RAM)	/* FG0 Ram */
-	AM_RANGE(0x0c2000, 0x0c3fff) AM_READ(MRA16_RAM)	/* SPR Ram */
-	AM_RANGE(0x080000, 0x080fff) AM_READ(MRA16_RAM)	/* BG0 Ram */
-	AM_RANGE(0x082000, 0x082fff) AM_READ(MRA16_RAM)	/* BG1 Ram */
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)	/* Rom */
+	AM_RANGE(0x0c0000, 0x0c1fff) AM_READ(SMH_RAM)	/* FG0 Ram */
+	AM_RANGE(0x0c2000, 0x0c3fff) AM_READ(SMH_RAM)	/* SPR Ram */
+	AM_RANGE(0x080000, 0x080fff) AM_READ(SMH_RAM)	/* BG0 Ram */
+	AM_RANGE(0x082000, 0x082fff) AM_READ(SMH_RAM)	/* BG1 Ram */
 	AM_RANGE(0x140020, 0x140027) AM_READ(wwfwfest_inputs_read)	/* Inputs */
 	AM_RANGE(0x180000, 0x18ffff) AM_READ(wwfwfest_paletteram16_xxxxBBBBGGGGRRRR_word_r)	/* BG0 Ram */
-	AM_RANGE(0x1c0000, 0x1c3fff) AM_READ(MRA16_RAM)	/* Work Ram */
+	AM_RANGE(0x1c0000, 0x1c3fff) AM_READ(SMH_RAM)	/* Work Ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)	/* Rom */
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)	/* Rom */
 	AM_RANGE(0x0c0000, 0x0c1fff) AM_WRITE(wwfwfest_fg0_videoram_w) AM_BASE(&wwfwfest_fg0_videoram)	/* FG0 Ram - 4 bytes per tile */
-	AM_RANGE(0x0c2000, 0x0c3fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	/* SPR Ram */
+	AM_RANGE(0x0c2000, 0x0c3fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	/* SPR Ram */
 	AM_RANGE(0x080000, 0x080fff) AM_WRITE(wwfwfest_bg0_videoram_w) AM_BASE(&wwfwfest_bg0_videoram)	/* BG0 Ram - 4 bytes per tile */
 	AM_RANGE(0x082000, 0x082fff) AM_WRITE(wwfwfest_bg1_videoram_w) AM_BASE(&wwfwfest_bg1_videoram)	/* BG1 Ram - 2 bytes per tile */
 	AM_RANGE(0x100000, 0x100007) AM_WRITE(wwfwfest_scroll_write)
 	AM_RANGE(0x10000a, 0x10000b) AM_WRITE(wwfwfest_flipscreen_w)
-	AM_RANGE(0x140000, 0x140001) AM_WRITE(MWA16_NOP) /* Irq 3 ack */
-	AM_RANGE(0x140002, 0x140003) AM_WRITE(MWA16_NOP) /* Irq 2 ack */
+	AM_RANGE(0x140000, 0x140001) AM_WRITE(SMH_NOP) /* Irq 3 ack */
+	AM_RANGE(0x140002, 0x140003) AM_WRITE(SMH_NOP) /* Irq 2 ack */
 	AM_RANGE(0x14000C, 0x14000D) AM_WRITE(wwfwfest_soundwrite)
 	AM_RANGE(0x140010, 0x140011) AM_WRITE(wwfwfest_1410_write)
 	AM_RANGE(0x180000, 0x18ffff) AM_WRITE(wwfwfest_paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x1c0000, 0x1c3fff) AM_WRITE(MWA16_RAM)	/* Work Ram */
+	AM_RANGE(0x1c0000, 0x1c3fff) AM_WRITE(SMH_RAM)	/* Work Ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc801, 0xc801) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0xd800, 0xd800) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc800, 0xc800) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0xc801, 0xc801) AM_WRITE(YM2151_data_port_0_w)
 	AM_RANGE(0xd800, 0xd800) AM_WRITE(OKIM6295_data_0_w)
@@ -128,7 +128,7 @@ static READ16_HANDLER( wwfwfest_paletteram16_xxxxBBBBGGGGRRRR_word_r )
 static WRITE16_HANDLER( wwfwfest_paletteram16_xxxxBBBBGGGGRRRR_word_w )
 {
 	offset = (offset & 0x000f) | (offset & 0x7fc0) >> 2;
-	paletteram16_xxxxBBBBGGGGRRRR_word_w (offset, data, mem_mask);
+	paletteram16_xxxxBBBBGGGGRRRR_word_w (machine, offset, data, mem_mask);
 }
 
 /*- Priority Control -*/
@@ -199,8 +199,8 @@ static WRITE8_HANDLER( oki_bankswitch_w )
 
 static WRITE16_HANDLER ( wwfwfest_soundwrite )
 {
-	soundlatch_w(1,data & 0xff);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE );
+	soundlatch_w(machine,1,data & 0xff);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE );
 }
 
 /*******************************************************************************
@@ -393,7 +393,7 @@ static const struct YM2151interface ym2151_interface =
 
 static VIDEO_EOF( wwfwfest )
 {
-	buffer_spriteram16_w(0,0,0);
+	buffer_spriteram16_w(machine,0,0,0);
 }
 
 /*******************************************************************************
@@ -405,20 +405,22 @@ static MACHINE_DRIVER_START( wwfwfest )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 24000000/2)	/* 24 crystal, 12 rated chip */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(wwfwfest_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(wwfwfest_interrupt,2)
 
 	MDRV_CPU_ADD(Z80, 3579545)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(readmem_sound,writemem_sound)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(wwfwfest)
 	MDRV_PALETTE_LENGTH(8192)
 

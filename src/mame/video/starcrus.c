@@ -4,10 +4,10 @@
 #include "driver.h"
 #include "sound/samples.h"
 
-static mame_bitmap *ship1_vid;
-static mame_bitmap *ship2_vid;
-static mame_bitmap *proj1_vid;
-static mame_bitmap *proj2_vid;
+static bitmap_t *ship1_vid;
+static bitmap_t *ship2_vid;
+static bitmap_t *proj1_vid;
+static bitmap_t *proj2_vid;
 
 static int s1_x = 0;
 static int s1_y = 0;
@@ -55,11 +55,11 @@ WRITE8_HANDLER( starcrus_p2_y_w ) { p2_y = data^0xff; }
 
 VIDEO_START( starcrus )
 {
-	ship1_vid = auto_bitmap_alloc(16,16,machine->screen[0].format);
-	ship2_vid = auto_bitmap_alloc(16,16,machine->screen[0].format);
+	ship1_vid = auto_bitmap_alloc(16,16,video_screen_get_format(machine->primary_screen));
+	ship2_vid = auto_bitmap_alloc(16,16,video_screen_get_format(machine->primary_screen));
 
-	proj1_vid = auto_bitmap_alloc(16,16,machine->screen[0].format);
-	proj2_vid = auto_bitmap_alloc(16,16,machine->screen[0].format);
+	proj1_vid = auto_bitmap_alloc(16,16,video_screen_get_format(machine->primary_screen));
+	proj2_vid = auto_bitmap_alloc(16,16,video_screen_get_format(machine->primary_screen));
 }
 
 WRITE8_HANDLER( starcrus_ship_parm_1_w )
@@ -197,8 +197,8 @@ static int collision_check_s1s2(running_machine *machine)
     clip.min_y=0;
     clip.max_y=15;
 
-    fillbitmap(ship1_vid,machine->pens[0],&clip);
-    fillbitmap(ship2_vid,machine->pens[0],&clip);
+    fillbitmap(ship1_vid,0,&clip);
+    fillbitmap(ship2_vid,0,&clip);
 
 	/* origin is with respect to ship1 */
 
@@ -229,17 +229,10 @@ static int collision_check_s1s2(running_machine *machine)
 
     /* Now check for collisions */
     for (sy=0;sy<16;sy++)
-    {
         for (sx=0;sx<16;sx++)
-        {
-        	if (*BITMAP_ADDR16(ship1_vid, sy, sx)==machine->pens[1])
-           	{
-        		/* Condition 1 - ship 1 = ship 2 */
-				if (*BITMAP_ADDR16(ship2_vid, sy, sx)==machine->pens[1])
-                	return 1;
-			}
-        }
-    }
+       		/* Condition 1 - ship 1 = ship 2 */
+        	if ((*BITMAP_ADDR16(ship1_vid, sy, sx)==1) && (*BITMAP_ADDR16(ship2_vid, sy, sx)==1))
+                return 1;
 
     return 0;
 }
@@ -262,8 +255,8 @@ static int collision_check_p1p2(running_machine *machine)
     clip.min_y=0;
     clip.max_y=15;
 
-    fillbitmap(proj1_vid,machine->pens[0],&clip);
-    fillbitmap(proj2_vid,machine->pens[0],&clip);
+    fillbitmap(proj1_vid,0,&clip);
+    fillbitmap(proj2_vid,0,&clip);
 
 	/* origin is with respect to proj1 */
 
@@ -300,17 +293,10 @@ static int collision_check_p1p2(running_machine *machine)
 
     /* Now check for collisions */
     for (sy=0;sy<16;sy++)
-    {
         for (sx=0;sx<16;sx++)
-        {
-        	if (*BITMAP_ADDR16(proj1_vid, sy, sx)==machine->pens[1])
-           	{
-        		/* Condition 1 - proj 1 = proj 2 */
-				if (*BITMAP_ADDR16(proj2_vid, sy, sx)==machine->pens[1])
-                	return 1;
-			}
-        }
-    }
+       		/* Condition 1 - proj 1 = proj 2 */
+        	if ((*BITMAP_ADDR16(proj1_vid, sy, sx)==1) && (*BITMAP_ADDR16(proj2_vid, sy, sx)==1))
+                return 1;
 
     return 0;
 }
@@ -333,9 +319,9 @@ static int collision_check_s1p1p2(running_machine *machine)
     clip.min_y=0;
     clip.max_y=15;
 
-    fillbitmap(ship1_vid,machine->pens[0],&clip);
-    fillbitmap(proj1_vid,machine->pens[0],&clip);
-    fillbitmap(proj2_vid,machine->pens[0],&clip);
+    fillbitmap(ship1_vid,0,&clip);
+    fillbitmap(proj1_vid,0,&clip);
+    fillbitmap(proj2_vid,0,&clip);
 
 	/* origin is with respect to ship1 */
 
@@ -383,20 +369,16 @@ static int collision_check_s1p1p2(running_machine *machine)
 
     /* Now check for collisions */
     for (sy=0;sy<16;sy++)
-    {
         for (sx=0;sx<16;sx++)
-        {
-        	if (*BITMAP_ADDR16(ship1_vid, sy, sx)==machine->pens[1])
+        	if (*BITMAP_ADDR16(ship1_vid, sy, sx)==1)
            	{
         		/* Condition 1 - ship 1 = proj 1 */
-				if (*BITMAP_ADDR16(proj1_vid, sy, sx)==machine->pens[1])
+				if (*BITMAP_ADDR16(proj1_vid, sy, sx)==1)
                 	return 1;
         		/* Condition 2 - ship 1 = proj 2 */
-        		if (*BITMAP_ADDR16(proj2_vid, sy, sx)==machine->pens[1])
+        		if (*BITMAP_ADDR16(proj2_vid, sy, sx)==1)
                 	return 1;
             }
-        }
-    }
 
     return 0;
 }
@@ -419,9 +401,9 @@ static int collision_check_s2p1p2(running_machine *machine)
     clip.min_y=0;
     clip.max_y=15;
 
-    fillbitmap(ship2_vid,machine->pens[0],&clip);
-    fillbitmap(proj1_vid,machine->pens[0],&clip);
-    fillbitmap(proj2_vid,machine->pens[0],&clip);
+    fillbitmap(ship2_vid,0,&clip);
+    fillbitmap(proj1_vid,0,&clip);
+    fillbitmap(proj2_vid,0,&clip);
 
 	/* origin is with respect to ship2 */
 
@@ -469,31 +451,27 @@ static int collision_check_s2p1p2(running_machine *machine)
 
     /* Now check for collisions */
     for (sy=0;sy<16;sy++)
-    {
         for (sx=0;sx<16;sx++)
-        {
-        	if (*BITMAP_ADDR16(ship2_vid, sy, sx)==machine->pens[1])
+        	if (*BITMAP_ADDR16(ship2_vid, sy, sx)==1)
            	{
         		/* Condition 1 - ship 2 = proj 1 */
-				if (*BITMAP_ADDR16(proj1_vid, sy, sx)==machine->pens[1])
+				if (*BITMAP_ADDR16(proj1_vid, sy, sx)==1)
                 	return 1;
         		/* Condition 2 - ship 2 = proj 2 */
-        		if (*BITMAP_ADDR16(proj2_vid, sy, sx)==machine->pens[1])
+        		if (*BITMAP_ADDR16(proj2_vid, sy, sx)==1)
                 	return 1;
             }
-        }
-    }
 
     return 0;
 }
 
 VIDEO_UPDATE( starcrus )
 {
-    fillbitmap(bitmap,machine->pens[0],cliprect);
+    fillbitmap(bitmap,0,cliprect);
 
 	/* Draw ship 1 */
     drawgfx(bitmap,
-            machine->gfx[8+((s1_sprite&0x04)>>2)],
+            screen->machine->gfx[8+((s1_sprite&0x04)>>2)],
             (s1_sprite&0x03)^0x03,
             0,
             (s1_sprite&0x08)>>3,(s1_sprite&0x10)>>4,
@@ -504,7 +482,7 @@ VIDEO_UPDATE( starcrus )
 
 	/* Draw ship 2 */
     drawgfx(bitmap,
-            machine->gfx[10+((s2_sprite&0x04)>>2)],
+            screen->machine->gfx[10+((s2_sprite&0x04)>>2)],
             (s2_sprite&0x03)^0x03,
             0,
             (s2_sprite&0x08)>>3,(s2_sprite&0x10)>>4,
@@ -515,7 +493,7 @@ VIDEO_UPDATE( starcrus )
 
 	/* Draw score/projectile 1 */
 	drawgfx(bitmap,
-            machine->gfx[(p1_sprite&0x0c)>>2],
+            screen->machine->gfx[(p1_sprite&0x0c)>>2],
             (p1_sprite&0x03)^0x03,
             0,
             0,0,
@@ -526,7 +504,7 @@ VIDEO_UPDATE( starcrus )
 
 	/* Draw score/projectile 2 */
 	drawgfx(bitmap,
-            machine->gfx[4+((p2_sprite&0x0c)>>2)],
+            screen->machine->gfx[4+((p2_sprite&0x0c)>>2)],
             (p2_sprite&0x03)^0x03,
             0,
             0,0,
@@ -536,28 +514,28 @@ VIDEO_UPDATE( starcrus )
             0);
 
     /* Collision detection */
-	if (cliprect->max_y == machine->screen[screen].visarea.max_y)
+	if (cliprect->max_y == video_screen_get_visible_area(screen)->max_y)
 	{
 		collision_reg = 0x00;
 
 		/* Check for collisions between ship1 and ship2 */
-		if (collision_check_s1s2(machine))
+		if (collision_check_s1s2(screen->machine))
 		{
 			collision_reg |= 0x08;
 		}
 		/* Check for collisions between ship1 and projectiles */
-		if (collision_check_s1p1p2(machine))
+		if (collision_check_s1p1p2(screen->machine))
 		{
 			collision_reg |= 0x02;
 		}
 		/* Check for collisions between ship1 and projectiles */
-		if (collision_check_s2p1p2(machine))
+		if (collision_check_s2p1p2(screen->machine))
 		{
 			collision_reg |= 0x01;
 		}
 		/* Check for collisions between ship1 and projectiles */
 		/* Note: I don't think this is used by the game */
-		if (collision_check_p1p2(machine))
+		if (collision_check_p1p2(screen->machine))
 		{
 			collision_reg |= 0x04;
 		}

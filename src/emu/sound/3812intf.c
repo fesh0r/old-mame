@@ -17,6 +17,7 @@
 *
 ******************************************************************************/
 #include "sndintrf.h"
+#include "deprecat.h"
 #include "streams.h"
 #include "cpuintrf.h"
 #include "3812intf.h"
@@ -60,7 +61,7 @@ static void TimerHandler_3812(void *param,int c,attotime period)
 	}
 	else
 	{	/* Start FM Timer */
-		timer_adjust(info->timer[c], period, 0, attotime_zero);
+		timer_adjust_oneshot(info->timer[c], period, 0);
 	}
 }
 
@@ -229,7 +230,7 @@ static void TimerHandler_3526(void *param,int c,attotime period)
 	}
 	else
 	{	/* Start FM Timer */
-		timer_adjust(info->timer[c], period, 0, attotime_zero);
+		timer_adjust_oneshot(info->timer[c], period, 0);
 	}
 }
 
@@ -394,7 +395,7 @@ static void TimerHandler_8950(void *param,int c,attotime period)
 	}
 	else
 	{	/* Start FM Timer */
-		timer_adjust(info->timer[c], period, 0, attotime_zero);
+		timer_adjust_oneshot(info->timer[c], period, 0);
 	}
 }
 
@@ -403,7 +404,7 @@ static unsigned char Y8950PortHandler_r(void *param)
 {
 	struct y8950_info *info = param;
 	if (info->intf->portread)
-		return info->intf->portread(info->index);
+		return info->intf->portread(Machine,info->index);
 	return 0;
 }
 
@@ -411,14 +412,14 @@ static void Y8950PortHandler_w(void *param,unsigned char data)
 {
 	struct y8950_info *info = param;
 	if (info->intf->portwrite)
-		info->intf->portwrite(info->index,data);
+		info->intf->portwrite(Machine,info->index,data);
 }
 
 static unsigned char Y8950KeyboardHandler_r(void *param)
 {
 	struct y8950_info *info = param;
 	if (info->intf->keyboardread)
-		return info->intf->keyboardread(info->index);
+		return info->intf->keyboardread(Machine,info->index);
 	return 0;
 }
 
@@ -426,7 +427,7 @@ static void Y8950KeyboardHandler_w(void *param,unsigned char data)
 {
 	struct y8950_info *info = param;
 	if (info->intf->keyboardwrite)
-		info->intf->keyboardwrite(info->index,data);
+		info->intf->keyboardwrite(Machine,info->index,data);
 }
 
 static void y8950_stream_update(void *param, stream_sample_t **inputs, stream_sample_t **buffer, int length)

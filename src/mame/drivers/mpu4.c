@@ -373,7 +373,7 @@ static void update_lamps(void)
 		mpu4_draw_led(8, pled_segs[0]);
 		mpu4_draw_led(9, pled_segs[1]);
 	}
-
+	draw_lamps();
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -452,6 +452,11 @@ static void cpu0_irq(int state)
 static WRITE8_HANDLER( bankswitch_w )
 {
 	memory_set_bank(1,data & 0x07);
+}
+
+static READ8_HANDLER( bankswitch_r )
+{
+	return memory_get_bank(1);
 }
 
 // IC2 6840 PTM handler ///////////////////////////////////////////////////////
@@ -570,7 +575,6 @@ static void ic23_update(void)
 	{
 		input_strobe = 0x00;
 	}
-	draw_lamps();
 }
 /*---------------------------------------
    IC24 emulation
@@ -594,7 +598,7 @@ static void ic24_setup(void)
 		{
 			ic23_active=1;
 			ic24_output(0);
-			timer_adjust(ic24_timer, double_to_attotime(duration), 0, attotime_zero);
+			timer_adjust_oneshot(ic24_timer, double_to_attotime(duration), 0);
 		}
 	}
 }
@@ -715,7 +719,7 @@ BDIR BC1       |
 */
 /* PSG function selected */
 
-static void update_ay(void)
+static void update_ay(running_machine *machine)
 {
 	if (!pia_get_output_cb2(2))
 	{
@@ -733,13 +737,13 @@ static void update_ay(void)
 		  	}
 		  	case 0x02:
 			{/* CA2 = 0 CB2 = 1? : Write to selected PSG register and write data to Port A */
-	  			AY8910_write_port_0_w(0, pia_get_output_a(3));
+	  			AY8910_write_port_0_w(machine, 0, pia_get_output_a(3));
 				LOG(("AY Chip Write \n"));
 				break;
 	  		}
 		  	case 0x03:
 			{/* CA2 = 1 CB2 = 1? : The register will now be selected and the user can read from or write to it.  The register will remain selected until another is chosen.*/
-	  			AY8910_control_port_0_w(0, pia_get_output_a(3));
+	  			AY8910_control_port_0_w(machine, 0, pia_get_output_a(3));
 				LOG(("AY Chip Select \n"));
 				break;
 	  		}
@@ -754,7 +758,7 @@ static void update_ay(void)
 
 static WRITE8_HANDLER( pia_ic5_cb2_w )
 {
-    update_ay();
+    update_ay(machine);
 }
 
 static const pia6821_interface pia_ic5_intf =
@@ -789,7 +793,7 @@ static WRITE8_HANDLER( pia_ic6_porta_w )
 	if (mod_number <4)
 	{
 	  	aydata = data;
-	    update_ay();
+	    update_ay(machine);
 	}
 }
 
@@ -800,7 +804,7 @@ static WRITE8_HANDLER( pia_ic6_ca2_w )
 	{
 		if ( data ) ay8913_address |=  0x01;
 		else        ay8913_address &= ~0x01;
-		update_ay();
+		update_ay(machine);
 	}
 }
 
@@ -811,7 +815,7 @@ static WRITE8_HANDLER( pia_ic6_cb2_w )
 	{
 		if ( data ) ay8913_address |=  0x02;
 		else        ay8913_address &= ~0x02;
-		update_ay();
+		update_ay(machine);
 	}
 }
 
@@ -1309,7 +1313,7 @@ static READ8_HANDLER( characteriser_r )
 }
 
 // generate a 50 Hz signal (based on an RC time) //////////////////////////
-static INTERRUPT_GEN( gen_50hz )
+static TIMER_DEVICE_CALLBACK( gen_50hz )
 {
 	// Although reported as a '50Hz' signal, the fact that both rising and
 	// falling edges of the pulse are used, the timer actually gives a 100Hz
@@ -1321,37 +1325,22 @@ static INTERRUPT_GEN( gen_50hz )
 
 static ADDRESS_MAP_START( mod2_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x0800, 0x0810) AM_READWRITE(characteriser_r,characteriser_w)
 
-	AM_RANGE(0x0800, 0x0810) AM_WRITE(characteriser_w)
-	AM_RANGE(0x0800, 0x0810) AM_READ( characteriser_r)
+	AM_RANGE(0x0850, 0x0850) AM_READWRITE(bankswitch_r,bankswitch_w)	// write bank (rom page select)
 
-	AM_RANGE(0x0850, 0x0850) AM_WRITE(bankswitch_w)	// write bank (rom page select)
+//  AM_RANGE(0x08E0, 0x08E7) AM_READWRITE(68681_duart_r,68681_duart_w)
 
-//  AM_RANGE(0x08E0, 0x08E7) AM_READ( 68681_duart_r)
-//  AM_RANGE(0x08E0, 0x08E7) AM_WRITE( 68681_duart_w)
+	AM_RANGE(0x0900, 0x0907) AM_READWRITE(ptm6840_0_r,ptm6840_0_w)  // 6840PTM
 
-	AM_RANGE(0x0900, 0x0907) AM_READ( ptm6840_0_r)  // 6840PTM
-	AM_RANGE(0x0900, 0x0907) AM_WRITE(ptm6840_0_w)
+	AM_RANGE(0x0A00, 0x0A03) AM_READWRITE(pia_0_r,pia_0_w)	  	// PIA6821 IC3
+	AM_RANGE(0x0B00, 0x0B03) AM_READWRITE(pia_1_r,pia_1_w)	  	// PIA6821 IC4
+	AM_RANGE(0x0C00, 0x0C03) AM_READWRITE(pia_2_r,pia_2_w)	  	// PIA6821 IC5
+	AM_RANGE(0x0D00, 0x0D03) AM_READWRITE(pia_3_r,pia_3_w)		// PIA6821 IC6
+	AM_RANGE(0x0E00, 0x0E03) AM_READWRITE(pia_4_r,pia_4_w)		// PIA6821 IC7
+	AM_RANGE(0x0F00, 0x0F03) AM_READWRITE(pia_5_r,pia_5_w)		// PIA6821 IC8
 
-	AM_RANGE(0x0A00, 0x0A03) AM_WRITE(pia_0_w)		// PIA6821 IC3
-	AM_RANGE(0x0A00, 0x0A03) AM_READ( pia_0_r)
-
-	AM_RANGE(0x0B00, 0x0B03) AM_WRITE(pia_1_w)		// PIA6821 IC4
-	AM_RANGE(0x0B00, 0x0B03) AM_READ( pia_1_r)
-
-	AM_RANGE(0x0C00, 0x0C03) AM_WRITE(pia_2_w)		// PIA6821 IC5
-	AM_RANGE(0x0C00, 0x0C03) AM_READ( pia_2_r)
-
-	AM_RANGE(0x0D00, 0x0D03) AM_WRITE(pia_3_w)		// PIA6821 IC6
-	AM_RANGE(0x0D00, 0x0D03) AM_READ( pia_3_r)
-
-	AM_RANGE(0x0E00, 0x0E03) AM_WRITE(pia_4_w)		// PIA6821 IC7
-	AM_RANGE(0x0E00, 0x0E03) AM_READ( pia_4_r)
-
-	AM_RANGE(0x0F00, 0x0F03) AM_WRITE(pia_5_w)		// PIA6821 IC8
-	AM_RANGE(0x0F00, 0x0F03) AM_READ( pia_5_r)
-
-	AM_RANGE(0x1000, 0xffff) AM_READ(MRA8_BANK1)	// 64k  paged ROM (4 pages)
+	AM_RANGE(0x1000, 0xffff) AM_READ(SMH_BANK1)	// 64k  paged ROM (4 pages)
 ADDRESS_MAP_END
 
 // machine driver for barcrest mpu4 board /////////////////////////////////
@@ -1363,7 +1352,7 @@ static MACHINE_DRIVER_START( mpu4mod2 )
 	MDRV_CPU_ADD_TAG("main", M6809, MPU4_MASTER_CLOCK/4)
 	MDRV_CPU_PROGRAM_MAP(mod2_memmap,0)
 
-	MDRV_CPU_PERIODIC_INT(gen_50hz, 100)
+	MDRV_TIMER_ADD_PERIODIC("50HZ",gen_50hz, HZ(100))
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD_TAG("AY8913",AY8913, MPU4_MASTER_CLOCK/4)
@@ -1373,10 +1362,6 @@ static MACHINE_DRIVER_START( mpu4mod2 )
 
 	/* video hardware */
 	MDRV_DEFAULT_LAYOUT(layout_mpu4)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_NONE)
-	/* dummy values */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 MACHINE_DRIVER_END
 
 	const UINT8 MPU4_chr_lut[72]= {	0x00,0x1A,0x04,0x10,0x18,0x0F,0x13,0x1B,

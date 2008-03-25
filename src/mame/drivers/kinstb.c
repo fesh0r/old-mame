@@ -74,7 +74,7 @@ static WRITE8_HANDLER(sharedram_w)
 static ADDRESS_MAP_START( kinstb_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x000000, 0x2fffff) AM_READWRITE(snes_r_bank1, snes_w_bank1)	/* I/O and ROM (repeats for each bank) */
 	AM_RANGE(0x300000, 0x3fffff) AM_READWRITE(snes_r_bank2, snes_w_bank2)	/* I/O and ROM (repeats for each bank) */
-	AM_RANGE(0x400000, 0x5fffff) AM_READWRITE(snes_r_bank3, MWA8_ROM)	/* ROM (and reserved in Mode 20) */
+	AM_RANGE(0x400000, 0x5fffff) AM_READWRITE(snes_r_bank3, SMH_ROM)	/* ROM (and reserved in Mode 20) */
 	AM_RANGE(0x600000, 0x6fffff) AM_READWRITE(snes_r_bank6, snes_w_bank6)	/* used by Mode 20 DSP-1 */
 	AM_RANGE(0x700000, 0x77ffff) AM_READWRITE(snes_r_sram, snes_w_sram)	/* 256KB Mode 20 save ram + reserved from 0x8000 - 0xffff */
 	AM_RANGE(0x781000, 0x7810ff) AM_READWRITE(sharedram_r, sharedram_w) /*shared with some device - mcu ? */
@@ -84,12 +84,12 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( spc_ram_100_r )
 {
-	return spc_ram_r(offset + 0x100);
+	return spc_ram_r(machine, offset + 0x100);
 }
 
 static WRITE8_HANDLER( spc_ram_100_w )
 {
-	spc_ram_w(offset + 0x100, data);
+	spc_ram_w(machine, offset + 0x100, data);
 }
 
 static ADDRESS_MAP_START( spc_mem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -206,21 +206,6 @@ INPUT_PORTS_END
 static const struct CustomSound_interface snes_sound_interface =
 { snes_sh_start };
 
-static GFXDECODE_START( kinstb )
-GFXDECODE_END
-
-static PALETTE_INIT( snes )
-{
-	int i;
-
-	for( i = 0; i < 32768; i++ )
-		palette_set_color_rgb( machine, i, pal5bit(i >> 0), pal5bit(i >> 5), pal5bit(i >> 10) );
-
-	/* The colortable can be black */
-	for( i = 0; i < 256; i++ )
-		colortable[i] = 0;
-}
-
 static MACHINE_DRIVER_START( kinstb )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", G65816, 3580000)	/* 2.68Mhz, also 3.58Mhz */
@@ -229,7 +214,6 @@ static MACHINE_DRIVER_START( kinstb )
 	MDRV_CPU_ADD_TAG("sound", SPC700, 2048000/2)	/* 2.048 Mhz, but internal divider */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(spc_mem, 0)
-	MDRV_CPU_VBLANK_INT(NULL, 0)
 
 	MDRV_INTERLEAVE(400)
 
@@ -239,14 +223,9 @@ static MACHINE_DRIVER_START( kinstb )
 	/* video hardware */
 	MDRV_VIDEO_UPDATE( snes )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_GFXDECODE(kinstb)
-	MDRV_PALETTE_LENGTH(32768)
-	MDRV_COLORTABLE_LENGTH(257)
-	MDRV_PALETTE_INIT( snes )
 
-	MDRV_SCREEN_ADD("main", 0)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(DOTCLK_NTSC, SNES_HTOTAL, 0, SNES_SCR_WIDTH, SNES_VTOTAL_NTSC, 0, SNES_SCR_HEIGHT_NTSC)
 
 	/* sound hardware */

@@ -9,8 +9,6 @@ driver by Phil Stroffolino
 Known Issues:
     Mad Crasher fails the ROM test, but ROMs are verified to be good (reason's unknown)
     Mad Crasher sound effects aren't being played (fixed)
-    Vanguard II crashes under dos with sound enabled (cannot verify)
-    Marvin's maze crashes under dos with sound enabled, hangs with sound disabled (cannot verify)
 
 
 Change Log
@@ -110,26 +108,26 @@ static void init_sound( int busy_bit )
 static WRITE8_HANDLER( sound_command_w )
 {
 	sound_cpu_busy = snk_sound_busy_bit;
-	soundlatch_w(0, data);
-	cpunum_set_input_line(Machine, 2, 0, HOLD_LINE);
+	soundlatch_w(machine, 0, data);
+	cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( sound_command_r )
 {
 	sound_cpu_busy = 0;
-	return(soundlatch_r(0));
+	return(soundlatch_r(machine,0));
 }
 
 static READ8_HANDLER( sound_nmi_ack_r )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
 	return 0;
 }
 
 /* this input port has one of its bits mapped to sound CPU status */
 static READ8_HANDLER( marvins_port_0_r )
 {
-	return(input_port_0_r(0) | sound_cpu_busy);
+	return(input_port_0_r(machine,0) | sound_cpu_busy);
 }
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -145,7 +143,7 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READNOP
 ADDRESS_MAP_END
 
@@ -170,21 +168,21 @@ static ADDRESS_MAP_START( marvins_cpuA_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8300, 0x8300) AM_WRITE(sound_command_w)
 	AM_RANGE(0x8400, 0x8400) AM_READ(input_port_3_r)		/* dipswitch#1 */
 	AM_RANGE(0x8500, 0x8500) AM_READ(input_port_4_r)		/* dipswitch#2 */
-	AM_RANGE(0x8600, 0x8600) AM_WRITE(MWA8_RAM)	// video attribute
+	AM_RANGE(0x8600, 0x8600) AM_RAM	// video attribute
 	AM_RANGE(0x8700, 0x8700) AM_READWRITE(snk_cpuB_nmi_trigger_r, snk_cpuA_nmi_ack_w)
 	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_BASE(&spriteram) AM_SHARE(1)
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_RAM, marvins_background_ram_w) AM_SHARE(2) AM_BASE(&spriteram_3)
-	AM_RANGE(0xe000, 0xefff) AM_READWRITE(MRA8_RAM, marvins_foreground_ram_w) AM_SHARE(3) AM_BASE(&spriteram_2)
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(MRA8_RAM, marvins_text_ram_w) AM_SHARE(4) AM_BASE(&videoram)
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, marvins_background_ram_w) AM_SHARE(2) AM_BASE(&spriteram_3)
+	AM_RANGE(0xe000, 0xefff) AM_READWRITE(SMH_RAM, marvins_foreground_ram_w) AM_SHARE(3) AM_BASE(&spriteram_2)
+	AM_RANGE(0xf000, 0xffff) AM_READWRITE(SMH_RAM, marvins_text_ram_w) AM_SHARE(4) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( marvins_cpuB_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x8700, 0x8700) AM_READWRITE(snk_cpuA_nmi_trigger_r, snk_cpuB_nmi_ack_w)
 	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_RAM, marvins_background_ram_w) AM_SHARE(2)
-	AM_RANGE(0xe000, 0xefff) AM_READWRITE(MRA8_RAM, marvins_foreground_ram_w) AM_SHARE(3)
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(MRA8_RAM, marvins_text_ram_w) AM_SHARE(4)
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, marvins_background_ram_w) AM_SHARE(2)
+	AM_RANGE(0xe000, 0xefff) AM_READWRITE(SMH_RAM, marvins_foreground_ram_w) AM_SHARE(3)
+	AM_RANGE(0xf000, 0xffff) AM_READWRITE(SMH_RAM, marvins_text_ram_w) AM_SHARE(4)
 ADDRESS_MAP_END
 
 
@@ -196,24 +194,24 @@ static ADDRESS_MAP_START( madcrash_cpuA_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8300, 0x8300) AM_WRITE(sound_command_w)
 	AM_RANGE(0x8400, 0x8400) AM_READ(input_port_3_r)		/* dipswitch#1 */
 	AM_RANGE(0x8500, 0x8500) AM_READ(input_port_4_r)		/* dipswitch#2 */
-	AM_RANGE(0x8600, 0x86ff) AM_WRITE(MWA8_RAM)	// video attribute
+	AM_RANGE(0x8600, 0x86ff) AM_RAM	// video attribute
 	AM_RANGE(0x8700, 0x8700) AM_READWRITE(snk_cpuB_nmi_trigger_r, snk_cpuA_nmi_ack_w)
 //  AM_RANGE(0xc800, 0xc800) AM_WRITE(marvins_palette_bank_w)   // palette bank switch (c8f1 for Vanguard)
 	AM_RANGE(0xc800, 0xc8ff) AM_RAM
 	AM_RANGE(0xc000, 0xcfff) AM_RAM AM_BASE(&spriteram) AM_SHARE(1)
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_RAM, marvins_background_ram_w) AM_SHARE(2) AM_BASE(&spriteram_3)
-	AM_RANGE(0xe000, 0xefff) AM_READWRITE(MRA8_RAM, marvins_foreground_ram_w) AM_SHARE(3) AM_BASE(&spriteram_2)
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(MRA8_RAM, marvins_text_ram_w) AM_SHARE(4) AM_BASE(&videoram)
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, marvins_background_ram_w) AM_SHARE(2) AM_BASE(&spriteram_3)
+	AM_RANGE(0xe000, 0xefff) AM_READWRITE(SMH_RAM, marvins_foreground_ram_w) AM_SHARE(3) AM_BASE(&spriteram_2)
+	AM_RANGE(0xf000, 0xffff) AM_READWRITE(SMH_RAM, marvins_text_ram_w) AM_SHARE(4) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( madcrash_cpuB_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8700, 0x8700) AM_WRITE(snk_cpuB_nmi_ack_w)	/* Vangaurd II */
 	AM_RANGE(0x0000, 0x9fff) AM_ROM
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(snk_cpuB_nmi_ack_w)	/* Mad Crasher */
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(MRA8_RAM, marvins_foreground_ram_w) AM_SHARE(3)
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_RAM, marvins_text_ram_w) AM_SHARE(4)
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(SMH_RAM, marvins_foreground_ram_w) AM_SHARE(3)
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, marvins_text_ram_w) AM_SHARE(4)
 	AM_RANGE(0xe000, 0xefff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(MRA8_RAM, marvins_background_ram_w) AM_SHARE(2)
+	AM_RANGE(0xf000, 0xffff) AM_READWRITE(SMH_RAM, marvins_background_ram_w) AM_SHARE(2)
 ADDRESS_MAP_END
 
 
@@ -413,9 +411,9 @@ static INPUT_PORTS_START( madcrash )
 	PORT_DIPNAME( 0x01, 0x01, "Unused SW 1-0" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Cocktail ) )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x04, "3" )
 	PORT_DIPSETTING(    0x00, "5" )
@@ -513,11 +511,11 @@ static MACHINE_DRIVER_START( marvins )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(marvins_cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(marvins_cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4.0 MHz */
 	/* audio CPU */
@@ -525,15 +523,18 @@ static MACHINE_DRIVER_START( marvins )
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_assert, 244)	// schematics show a separate 244Hz timer
 
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256+32, 224)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255+32,0, 223)
+
 	MDRV_GFXDECODE(marvins)
 	MDRV_PALETTE_LENGTH((16+2)*16)
 
@@ -560,11 +561,11 @@ static MACHINE_DRIVER_START( vangrd2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(madcrash_cpuA_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD_TAG("sub", Z80, 3360000)	/* 3.36 MHz */
 	MDRV_CPU_PROGRAM_MAP(madcrash_cpuB_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4.0 MHz */
 	/* audio CPU */
@@ -572,15 +573,18 @@ static MACHINE_DRIVER_START( vangrd2 )
 	MDRV_CPU_IO_MAP(sound_portmap,0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_assert, 244)
 
-	MDRV_SCREEN_REFRESH_RATE(60.606060)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60.606060)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256+32, 224)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255+32,0, 223)
+
 	MDRV_GFXDECODE(marvins)
 	MDRV_PALETTE_LENGTH((16+2)*16)
 
@@ -608,14 +612,15 @@ static MACHINE_DRIVER_START( madcrash )
 	MDRV_IMPORT_FROM( vangrd2 )
 
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(0, 0)
+	MDRV_CPU_VBLANK_INT_HACK(0, 0)
 
 	MDRV_CPU_MODIFY("sub")
-	MDRV_CPU_VBLANK_INT(snk_irq_BA, 1)
+	MDRV_CPU_VBLANK_INT("main", snk_irq_BA)
 
 	MDRV_INTERLEAVE(300)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(16, 16+256-1, 0, 0+216-1)
 MACHINE_DRIVER_END
 

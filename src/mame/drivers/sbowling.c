@@ -62,12 +62,12 @@ static TILE_GET_INFO( get_sb_tile_info )
 
 static void plot_pixel_sbw(int x, int y, int col)
 {
-	if (flip_screen)
+	if (flip_screen_get())
 	{
 		y = 255-y;
 		x = 247-x;
 	}
-	*BITMAP_ADDR16(tmpbitmap, y, x) = Machine->pens[col];
+	*BITMAP_ADDR16(tmpbitmap, y, x) = col;
 }
 
 static WRITE8_HANDLER( sbw_videoram_w )
@@ -94,7 +94,7 @@ static WRITE8_HANDLER( sbw_videoram_w )
 
 static VIDEO_UPDATE(sbowling)
 {
-	fillbitmap(bitmap,machine->pens[0x18],cliprect);
+	fillbitmap(bitmap,0x18,cliprect);
 	tilemap_draw(bitmap,cliprect,sb_tilemap,0,0);
 	copybitmap_trans(bitmap,tmpbitmap,0,0,0,0,cliprect, color_prom_address);
 	return 0;
@@ -102,8 +102,8 @@ static VIDEO_UPDATE(sbowling)
 
 static VIDEO_START(sbowling)
 {
-	tmpbitmap = auto_bitmap_alloc(32*8,32*8,machine->screen[0].format);
-	sb_tilemap = tilemap_create(get_sb_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	tmpbitmap = auto_bitmap_alloc(32*8,32*8,video_screen_get_format(machine->primary_screen));
+	sb_tilemap = tilemap_create(get_sb_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 static WRITE8_HANDLER( pix_shift_w )
@@ -133,7 +133,7 @@ static READ8_HANDLER( pix_data_r )
 
 static INTERRUPT_GEN( sbw_interrupt )
 {
-	int vector = video_screen_get_vblank(0) ? 0xcf : 0xd7;	/* RST 08h/10h */
+	int vector = video_screen_get_vblank(machine->primary_screen) ? 0xcf : 0xd7;	/* RST 08h/10h */
 
 	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, vector);
 }
@@ -153,7 +153,7 @@ static WRITE8_HANDLER (system_w)
 	{
 		int offs;
 		for (offs = 0;offs < videoram_size; offs++)
-			sbw_videoram_w(offs, videoram[offs]);
+			sbw_videoram_w(machine, offs, videoram[offs]);
 	}
 	sbw_system = data;
 }
@@ -177,14 +177,14 @@ static WRITE8_HANDLER(graph_control_w)
 static READ8_HANDLER (controls_r)
 {
 	if(sbw_system&2)
-		return input_port_2_r(0);
+		return input_port_2_r(machine,0);
 	else
-		return input_port_3_r(0);
+		return input_port_3_r(machine,0);
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x2fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_RAM, sbw_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_RAM, sbw_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xf800, 0xf800) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0xf801, 0xf801) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0xfc00, 0xffff) AM_RAM
@@ -195,7 +195,7 @@ static ADDRESS_MAP_START( port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READWRITE(input_port_0_r, watchdog_reset_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(controls_r, pix_data_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(pix_data_r, pix_shift_w)
-	AM_RANGE(0x03, 0x03) AM_READWRITE(input_port_1_r, MWA8_NOP)
+	AM_RANGE(0x03, 0x03) AM_READWRITE(input_port_1_r, SMH_NOP)
 	AM_RANGE(0x04, 0x04) AM_READWRITE(input_port_4_r, system_w)
 	AM_RANGE(0x05, 0x05) AM_READWRITE(input_port_5_r, graph_control_w)
 ADDRESS_MAP_END
@@ -301,7 +301,7 @@ static PALETTE_INIT( sbowling )
 		3,	resistances_rg, outputs_g,	0,	100,
 		2,	resistances_b,  outputs_b,	0,	100);
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -331,15 +331,16 @@ static MACHINE_DRIVER_START( sbowling )
 	MDRV_CPU_ADD(8080, 19968000/10 )
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(port_map,0)
-	MDRV_CPU_VBLANK_INT(sbw_interrupt, 2)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT_HACK(sbw_interrupt, 2)
 	MDRV_GFXDECODE(sbowling)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 262)		/* vert size taken from mw8080bw */
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 4*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(0x400)
 	MDRV_PALETTE_INIT(sbowling)
 	MDRV_VIDEO_START(sbowling)

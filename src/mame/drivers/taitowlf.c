@@ -37,7 +37,7 @@ static VIDEO_START(taitowlf)
 	}
 }
 
-static void draw_char(mame_bitmap *bitmap, const rectangle *cliprect, const gfx_element *gfx, int ch, int att, int x, int y)
+static void draw_char(bitmap_t *bitmap, const rectangle *cliprect, const gfx_element *gfx, int ch, int att, int x, int y)
 {
 	int i,j;
 	UINT8 *dp;
@@ -51,13 +51,9 @@ static void draw_char(mame_bitmap *bitmap, const rectangle *cliprect, const gfx_
 		{
 			UINT8 pen = dp[index++];
 			if (pen)
-			{
-				p[i] = Machine->remapped_colortable[gfx->color_base + (att & 0xf)];
-			}
+				p[i] = gfx->color_base + (att & 0xf);
 			else
-			{
-				p[i] = Machine->remapped_colortable[gfx->color_base  + ((att >> 4) & 0x7)];
-			}
+				p[i] = gfx->color_base  + ((att >> 4) & 0x7);
 		}
 	}
 }
@@ -65,7 +61,7 @@ static void draw_char(mame_bitmap *bitmap, const rectangle *cliprect, const gfx_
 static VIDEO_UPDATE(taitowlf)
 {
 	int i, j;
-	const gfx_element *gfx = machine->gfx[0];
+	const gfx_element *gfx = screen->machine->gfx[0];
 	UINT32 *cga = cga_ram;
 	int index = 0;
 
@@ -90,22 +86,22 @@ static VIDEO_UPDATE(taitowlf)
 
 static READ8_HANDLER(at_dma8237_1_r)
 {
-	return dma8237_1_r(offset / 2);
+	return dma8237_1_r(machine, offset / 2);
 }
 
 static WRITE8_HANDLER(at_dma8237_1_w)
 {
-	dma8237_1_w(offset / 2, data);
+	dma8237_1_w(machine, offset / 2, data);
 }
 
 static READ32_HANDLER(at32_dma8237_1_r)
 {
-	return read32le_with_read8_handler(at_dma8237_1_r, offset, mem_mask);
+	return read32le_with_read8_handler(at_dma8237_1_r, machine, offset, mem_mask);
 }
 
 static WRITE32_HANDLER(at32_dma8237_1_w)
 {
-	write32le_with_write8_handler(at_dma8237_1_w, offset, data, mem_mask);
+	write32le_with_write8_handler(at_dma8237_1_w, machine, offset, data, mem_mask);
 }
 
 
@@ -273,23 +269,23 @@ static WRITE32_HANDLER( pnp_data_w )
 
 static READ32_HANDLER( ide0_r )
 {
-	return ide_controller32_0_r(0x1f0/4 + offset, mem_mask);
+	return ide_controller32_0_r(machine, 0x1f0/4 + offset, mem_mask);
 }
 
 static WRITE32_HANDLER( ide0_w )
 {
-	ide_controller32_0_w(0x1f0/4 + offset, data, mem_mask);
+	ide_controller32_0_w(machine, 0x1f0/4 + offset, data, mem_mask);
 }
 
 static READ32_HANDLER( fdc_r )
 {
-	return ide_controller32_0_r(0x3f0/4 + offset, mem_mask);
+	return ide_controller32_0_r(machine, 0x3f0/4 + offset, mem_mask);
 }
 
 static WRITE32_HANDLER( fdc_w )
 {
 	//mame_printf_debug("FDC: write %08X, %08X, %08X\n", data, offset, mem_mask);
-	ide_controller32_0_w(0x3f0/4 + offset, data, mem_mask);
+	ide_controller32_0_w(machine, 0x3f0/4 + offset, data, mem_mask);
 }
 
 
@@ -418,18 +414,18 @@ static MACHINE_DRIVER_START(taitowlf)
 	MDRV_CPU_PROGRAM_MAP(taitowlf_map, 0)
 	MDRV_CPU_IO_MAP(taitowlf_io, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(taitowlf)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 199)
+
 	MDRV_GFXDECODE(CGA)
 	MDRV_PALETTE_LENGTH(16)
 
@@ -533,4 +529,4 @@ ROM_END
 
 /*****************************************************************************/
 
-GAME(1997, pf2012, 0,	taitowlf, taitowlf, taitowlf,	ROT0,   "Taito",  "Psychic Force 2012", GAME_NOT_WORKING | GAME_NO_SOUND);
+GAME(1997, pf2012, 0,	taitowlf, taitowlf, taitowlf,	ROT0,   "Taito",  "Psychic Force 2012", GAME_NOT_WORKING | GAME_NO_SOUND)

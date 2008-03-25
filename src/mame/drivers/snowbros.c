@@ -83,8 +83,8 @@ static WRITE16_HANDLER( snowbros_flipscreen_w )
 static VIDEO_UPDATE( snowbros )
 {
 	/* This clears & redraws the entire screen each pass */
-	fillbitmap(bitmap,0xf0,&machine->screen[0].visarea);
-	pandora_update(machine,bitmap,cliprect);
+	fillbitmap(bitmap,0xf0,cliprect);
+	pandora_update(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -111,7 +111,7 @@ static INTERRUPT_GEN( snowbros_interrupt )
 
 static INTERRUPT_GEN( snowbro3_interrupt )
 {
-	int status = OKIM6295_status_0_r(0);
+	int status = OKIM6295_status_0_r(machine,0);
 
 	cpunum_set_input_line(machine, 0, cpu_getiloops() + 2, HOLD_LINE);	/* IRQs 4, 3, and 2 */
 
@@ -119,8 +119,8 @@ static INTERRUPT_GEN( snowbro3_interrupt )
 	{
 		if ((status&0x08)==0x00)
 		{
-			OKIM6295_data_0_w(0,0x80|sb3_music);
-			OKIM6295_data_0_w(0,0x00|0x82);
+			OKIM6295_data_0_w(machine,0,0x80|sb3_music);
+			OKIM6295_data_0_w(machine,0,0x00|0x82);
 		}
 
 	}
@@ -128,7 +128,7 @@ static INTERRUPT_GEN( snowbro3_interrupt )
 	{
 		if ((status&0x08)==0x08)
 		{
-			OKIM6295_data_0_w(0,0x40);		/* Stop playing music */
+			OKIM6295_data_0_w(machine,0,0x40);		/* Stop playing music */
 		}
 	}
 
@@ -139,7 +139,7 @@ static INTERRUPT_GEN( snowbro3_interrupt )
 
 static READ16_HANDLER( snowbros_68000_sound_r )
 {
-	return soundlatch_r(offset);
+	return soundlatch_r(machine,offset);
 }
 
 
@@ -147,61 +147,61 @@ static WRITE16_HANDLER( snowbros_68000_sound_w )
 {
 	if (ACCESSING_LSB)
 	{
-		soundlatch_w(offset,data & 0xff);
-		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		soundlatch_w(machine,offset,data & 0xff);
+		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
 static WRITE16_HANDLER( semicom_soundcmd_w )
 {
-	if (ACCESSING_LSB) soundlatch_w(0,data & 0xff);
+	if (ACCESSING_LSB) soundlatch_w(machine,0,data & 0xff);
 }
 
 
 /* Snow Bros Memory Map */
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x300000, 0x300001) AM_READ(snowbros_68000_sound_r)
 	AM_RANGE(0x500000, 0x500001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x500002, 0x500003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x500004, 0x500005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x600000, 0x6001ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x600000, 0x6001ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x700000, 0x701fff) AM_READ(pandora_spriteram_LSB_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(snowbros_68000_sound_w)
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(snowbros_flipscreen_w)
 	AM_RANGE(0x600000, 0x6001ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x700000, 0x701fff) AM_WRITE(pandora_spriteram_LSB_w)
-	AM_RANGE(0x800000, 0x800001) AM_WRITE(MWA16_NOP)	/* IRQ 4 acknowledge? */
-	AM_RANGE(0x900000, 0x900001) AM_WRITE(MWA16_NOP)	/* IRQ 3 acknowledge? */
-	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(MWA16_NOP)	/* IRQ 2 acknowledge? */
+	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP)	/* IRQ 4 acknowledge? */
+	AM_RANGE(0x900000, 0x900001) AM_WRITE(SMH_NOP)	/* IRQ 3 acknowledge? */
+	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(SMH_NOP)	/* IRQ 2 acknowledge? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_READ(YM3812_status_port_0_r)
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM3812_control_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(soundlatch_w)	/* goes back to the main CPU, checked during boot */
@@ -210,74 +210,74 @@ ADDRESS_MAP_END
 /* Winter Bobble - bootleg GFX chip */
 
 static ADDRESS_MAP_START( wintbob_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x300000, 0x300001) AM_READ(snowbros_68000_sound_r)
 	AM_RANGE(0x500000, 0x500001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x500002, 0x500003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x500004, 0x500005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x600000, 0x6001ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x700000, 0x701fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x600000, 0x6001ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x700000, 0x701fff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wintbob_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(snowbros_68000_sound_w)
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(snowbros_flipscreen_w)
 	AM_RANGE(0x600000, 0x6001ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x700000, 0x701fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x800000, 0x800001) AM_WRITE(MWA16_NOP)	/* IRQ 4 acknowledge? */
-	AM_RANGE(0x900000, 0x900001) AM_WRITE(MWA16_NOP)	/* IRQ 3 acknowledge? */
-	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(MWA16_NOP)	/* IRQ 2 acknowledge? */
+	AM_RANGE(0x700000, 0x701fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP)	/* IRQ 4 acknowledge? */
+	AM_RANGE(0x900000, 0x900001) AM_WRITE(SMH_NOP)	/* IRQ 3 acknowledge? */
+	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(SMH_NOP)	/* IRQ 2 acknowledge? */
 ADDRESS_MAP_END
 
 /* Honey Dolls */
 
 static ADDRESS_MAP_START( honeydol_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM)
 	AM_RANGE(0x900000, 0x900001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x900002, 0x900003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x900004, 0x900005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0xa00000, 0xa007ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0xb00000, 0xb01fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0xa00000, 0xa007ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xb00000, 0xb01fff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( honeydol_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM) AM_BASE(&hyperpac_ram)
-	AM_RANGE(0x200000, 0x200001) AM_WRITE(MWA16_NOP)	/* ?*/
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM) AM_BASE(&hyperpac_ram)
+	AM_RANGE(0x200000, 0x200001) AM_WRITE(SMH_NOP)	/* ?*/
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(snowbros_68000_sound_w)	/* ?*/
 	AM_RANGE(0xa00000, 0xa007ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xb00000, 0xb01fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x400000, 0x400001) AM_WRITE(MWA16_NOP)	/* IRQ 4 acknowledge? */
-	AM_RANGE(0x500000, 0x500001) AM_WRITE(MWA16_NOP)	/* IRQ 3 acknowledge? */
-	AM_RANGE(0x600000, 0x600001) AM_WRITE(MWA16_NOP)	/* IRQ 2 acknowledge? */
-	AM_RANGE(0x800000, 0x800001) AM_WRITE(MWA16_NOP)	/* ?*/
+	AM_RANGE(0xb00000, 0xb01fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x400000, 0x400001) AM_WRITE(SMH_NOP)	/* IRQ 4 acknowledge? */
+	AM_RANGE(0x500000, 0x500001) AM_WRITE(SMH_NOP)	/* IRQ 3 acknowledge? */
+	AM_RANGE(0x600000, 0x600001) AM_WRITE(SMH_NOP)	/* IRQ 2 acknowledge? */
+	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP)	/* ?*/
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( honeydol_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xe010, 0xe010) AM_READ(OKIM6295_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( honeydol_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe010, 0xe010) AM_WRITE(OKIM6295_data_0_w)
 	ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( honeydol_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_READ(YM3812_status_port_0_r) // not connected?
 	AM_RANGE(0x04, 0x04) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( honeydol_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_WRITE(YM3812_control_port_0_w) // not connected?
 	AM_RANGE(0x03, 0x03) AM_WRITE(YM3812_write_port_0_w) // not connected?
 	AM_RANGE(0x04, 0x04) AM_WRITE(soundlatch_w)	/* goes back to the main CPU, checked during boot */
@@ -289,45 +289,45 @@ static WRITE16_HANDLER( twinadv_68000_sound_w )
 {
 	if (ACCESSING_LSB)
 	{
-		soundlatch_w(offset,data & 0xff);
-		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		soundlatch_w(machine,offset,data & 0xff);
+		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	}
 }
 
 static ADDRESS_MAP_START( twinadv_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM)
 	AM_RANGE(0x300000, 0x300001) AM_READ(snowbros_68000_sound_r)
 	AM_RANGE(0x500000, 0x500001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x500002, 0x500003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x500004, 0x500005) AM_READ(input_port_2_word_r)
-	AM_RANGE(0x600000, 0x6001ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x700000, 0x701fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x600000, 0x6001ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x700000, 0x701fff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( twinadv_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(twinadv_68000_sound_w)
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(snowbros_flipscreen_w)
 	AM_RANGE(0x600000, 0x6001ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x700000, 0x701fff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x800000, 0x800001) AM_WRITE(MWA16_NOP)	/* IRQ 4 acknowledge? */
-	AM_RANGE(0x900000, 0x900001) AM_WRITE(MWA16_NOP)	/* IRQ 3 acknowledge? */
-	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(MWA16_NOP)	/* IRQ 2 acknowledge? */
+	AM_RANGE(0x700000, 0x701fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP)	/* IRQ 4 acknowledge? */
+	AM_RANGE(0x900000, 0x900001) AM_WRITE(SMH_NOP)	/* IRQ 3 acknowledge? */
+	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(SMH_NOP)	/* IRQ 2 acknowledge? */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( twinadv_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 //  AM_RANGE(0xe010, 0xe010) AM_READ(OKIM6295_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( twinadv_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 //  AM_RANGE(0xe010, 0xe010) AM_WRITE(OKIM6295_data_0_w)
 ADDRESS_MAP_END
 
@@ -341,13 +341,13 @@ static WRITE8_HANDLER( twinadv_oki_bank_w )
 }
 
 static ADDRESS_MAP_START( twinadv_sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_READ(soundlatch_r)
 	AM_RANGE(0x06, 0x06) AM_READ(OKIM6295_status_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( twinadv_sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x02, 0x02) AM_WRITE(soundlatch_w) // back to 68k?
 	AM_RANGE(0x04, 0x04) AM_WRITE(twinadv_oki_bank_w) // oki bank?
 	AM_RANGE(0x06, 0x06) AM_WRITE(OKIM6295_data_0_w)
@@ -362,40 +362,40 @@ sound hardware is also different
 */
 
 static ADDRESS_MAP_START( hyperpac_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x500000, 0x500001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x500002, 0x500003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x500004, 0x500005) AM_READ(input_port_2_word_r)
 
-	AM_RANGE(0x600000, 0x6001ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x600000, 0x6001ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x700000, 0x701fff) AM_READ(pandora_spriteram_LSB_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hyperpac_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(MWA16_RAM) AM_BASE(&hyperpac_ram)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM) AM_BASE(&hyperpac_ram)
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(semicom_soundcmd_w)
 //  AM_RANGE(0x400000, 0x400001) ???
 	AM_RANGE(0x600000, 0x6001ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x700000, 0x701fff) AM_WRITE(pandora_spriteram_LSB_w)
 
-	AM_RANGE(0x800000, 0x800001) AM_WRITE(MWA16_NOP)	/* IRQ 4 acknowledge? */
-	AM_RANGE(0x900000, 0x900001) AM_WRITE(MWA16_NOP)	/* IRQ 3 acknowledge? */
-	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(MWA16_NOP)	/* IRQ 2 acknowledge? */
+	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP)	/* IRQ 4 acknowledge? */
+	AM_RANGE(0x900000, 0x900001) AM_WRITE(SMH_NOP)	/* IRQ 3 acknowledge? */
+	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(SMH_NOP)	/* IRQ 2 acknowledge? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hyperpac_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xcfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xd000, 0xd7ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0xcfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xd000, 0xd7ff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf001, 0xf001) AM_READ(YM2151_status_port_0_r)
 	AM_RANGE(0xf008, 0xf008) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hyperpac_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xcfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0xcfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xd000, 0xd7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(YM2151_data_port_0_w)
 	AM_RANGE(0xf002, 0xf002) AM_WRITE(OKIM6295_data_0_w)
@@ -453,24 +453,24 @@ static void sb3_play_music(int data)
 	}
 }
 
-static void sb3_play_sound (int data)
+static void sb3_play_sound (running_machine *machine, int data)
 {
-	int status = OKIM6295_status_0_r(0);
+	int status = OKIM6295_status_0_r(machine,0);
 
 	if ((status&0x01)==0x00)
 	{
-		OKIM6295_data_0_w(0,0x80|data);
-		OKIM6295_data_0_w(0,0x00|0x12);
+		OKIM6295_data_0_w(machine,0,0x80|data);
+		OKIM6295_data_0_w(machine,0,0x00|0x12);
 	}
 	else if ((status&0x02)==0x00)
 	{
-		OKIM6295_data_0_w(0,0x80|data);
-		OKIM6295_data_0_w(0,0x00|0x22);
+		OKIM6295_data_0_w(machine,0,0x80|data);
+		OKIM6295_data_0_w(machine,0,0x00|0x22);
 	}
 	else if ((status&0x04)==0x00)
 	{
-		OKIM6295_data_0_w(0,0x80|data);
-		OKIM6295_data_0_w(0,0x00|0x42);
+		OKIM6295_data_0_w(machine,0,0x80|data);
+		OKIM6295_data_0_w(machine,0,0x00|0x42);
 	}
 
 
@@ -481,7 +481,7 @@ static WRITE16_HANDLER( sb3_sound_w )
 	if (data == 0x00fe)
 	{
 		sb3_music_is_playing = 0;
-		OKIM6295_data_0_w(0,0x78);		/* Stop sounds */
+		OKIM6295_data_0_w(machine,0,0x78);		/* Stop sounds */
 	}
 	else /* the alternating 0x00-0x2f or 0x30-0x5f might be something to do with the channels */
 	{
@@ -489,7 +489,7 @@ static WRITE16_HANDLER( sb3_sound_w )
 
 		if (data <= 0x21)
 		{
-			sb3_play_sound(data);
+			sb3_play_sound(machine, data);
 		}
 
 		if (data>=0x22 && data<=0x31)
@@ -499,7 +499,7 @@ static WRITE16_HANDLER( sb3_sound_w )
 
 		if ((data>=0x30) && (data<=0x51))
 		{
-			sb3_play_sound(data-0x30);
+			sb3_play_sound(machine, data-0x30);
 		}
 
 		if (data>=0x52 && data<=0x5f)
@@ -513,53 +513,53 @@ static WRITE16_HANDLER( sb3_sound_w )
 
 
 static ADDRESS_MAP_START( readmem3, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE( 0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE( 0x100000, 0x103fff) AM_READ(MRA16_RAM)
+	AM_RANGE( 0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE( 0x100000, 0x103fff) AM_READ(SMH_RAM)
 	AM_RANGE( 0x300000, 0x300001) AM_READ(sb3_sound_r) // ?
 	AM_RANGE( 0x500000, 0x500001) AM_READ(input_port_0_word_r)
 	AM_RANGE( 0x500002, 0x500003) AM_READ(input_port_1_word_r)
 	AM_RANGE( 0x500004, 0x500005) AM_READ(input_port_2_word_r)
-	AM_RANGE( 0x600000, 0x6003ff) AM_READ(MRA16_RAM)
-	AM_RANGE( 0x700000, 0x7021ff) AM_READ(MRA16_RAM)
+	AM_RANGE( 0x600000, 0x6003ff) AM_READ(SMH_RAM)
+	AM_RANGE( 0x700000, 0x7021ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem3, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE( 0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE( 0x100000, 0x103fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE( 0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE( 0x100000, 0x103fff) AM_WRITE(SMH_RAM)
 	AM_RANGE( 0x200000, 0x200001) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE( 0x300000, 0x300001) AM_WRITE(sb3_sound_w)  // ?
 	AM_RANGE( 0x400000, 0x400001) AM_WRITE(snowbros_flipscreen_w)
 	AM_RANGE( 0x600000, 0x6003ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE (&paletteram16)
-	AM_RANGE( 0x700000, 0x7021ff) AM_WRITE(MWA16_RAM) AM_BASE( &spriteram16) AM_SIZE( &spriteram_size )
-	AM_RANGE( 0x800000, 0x800001) AM_WRITE(MWA16_NOP) 	/* IRQ 4 acknowledge? */
-	AM_RANGE( 0x900000, 0x900001) AM_WRITE(MWA16_NOP) 	/* IRQ 3 acknowledge? */
-	AM_RANGE( 0xa00000, 0xa00001) AM_WRITE(MWA16_NOP) 	/* IRQ 2 acknowledge? */
+	AM_RANGE( 0x700000, 0x7021ff) AM_WRITE(SMH_RAM) AM_BASE( &spriteram16) AM_SIZE( &spriteram_size )
+	AM_RANGE( 0x800000, 0x800001) AM_WRITE(SMH_NOP) 	/* IRQ 4 acknowledge? */
+	AM_RANGE( 0x900000, 0x900001) AM_WRITE(SMH_NOP) 	/* IRQ 3 acknowledge? */
+	AM_RANGE( 0xa00000, 0xa00001) AM_WRITE(SMH_NOP) 	/* IRQ 2 acknowledge? */
 ADDRESS_MAP_END
 
 /* Final Tetris */
 
 static ADDRESS_MAP_START( finalttr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x0fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x500000, 0x500001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x500002, 0x500003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x500004, 0x500005) AM_READ(input_port_2_word_r)
 
-	AM_RANGE(0x600000, 0x6001ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x600000, 0x6001ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x700000, 0x701fff) AM_READ(pandora_spriteram_LSB_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( finalttr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x100000, 0x103fff) AM_WRITE(MWA16_RAM) AM_BASE(&hyperpac_ram)
+	AM_RANGE(0x000000, 0x0fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x100000, 0x103fff) AM_WRITE(SMH_RAM) AM_BASE(&hyperpac_ram)
 	AM_RANGE(0x300000, 0x300001) AM_WRITE(semicom_soundcmd_w)
 //  AM_RANGE(0x400000, 0x400001) ???
 	AM_RANGE(0x600000, 0x6001ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x700000, 0x701fff) AM_WRITE(pandora_spriteram_LSB_w)
 
-	AM_RANGE(0x800000, 0x800001) AM_WRITE(MWA16_NOP)	/* IRQ 4 acknowledge? */
-	AM_RANGE(0x900000, 0x900001) AM_WRITE(MWA16_NOP)	/* IRQ 3 acknowledge? */
-	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(MWA16_NOP)	/* IRQ 2 acknowledge? */
+	AM_RANGE(0x800000, 0x800001) AM_WRITE(SMH_NOP)	/* IRQ 4 acknowledge? */
+	AM_RANGE(0x900000, 0x900001) AM_WRITE(SMH_NOP)	/* IRQ 3 acknowledge? */
+	AM_RANGE(0xa00000, 0xa00001) AM_WRITE(SMH_NOP)	/* IRQ 2 acknowledge? */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( snowbros )
@@ -1558,21 +1558,21 @@ static MACHINE_DRIVER_START( snowbros )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 8000000) /* 8 Mhz - confirmed */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(snowbros_interrupt,3)
+	MDRV_CPU_VBLANK_INT_HACK(snowbros_interrupt,3)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 6000000) /* 6 MHz - confirmed */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport,sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(57.5) /* ~57.5 - confirmed */
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57.5) /* ~57.5 - confirmed */
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(snowbros)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -1656,21 +1656,21 @@ static MACHINE_DRIVER_START( honeydol )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 16000000)
 	MDRV_CPU_PROGRAM_MAP(honeydol_readmem,honeydol_writemem)
-	MDRV_CPU_VBLANK_INT(snowbros_interrupt,3)
+	MDRV_CPU_VBLANK_INT_HACK(snowbros_interrupt,3)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(honeydol_sound_readmem,honeydol_sound_writemem)
 	MDRV_CPU_IO_MAP(honeydol_sound_readport,honeydol_sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(57.5)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57.5)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(honeydol)
 	MDRV_PALETTE_LENGTH(0x800/2)
 
@@ -1696,22 +1696,22 @@ static MACHINE_DRIVER_START( twinadv )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 16000000) // or 12
 	MDRV_CPU_PROGRAM_MAP(twinadv_readmem,twinadv_writemem)
-	MDRV_CPU_VBLANK_INT(snowbros_interrupt,3)
+	MDRV_CPU_VBLANK_INT_HACK(snowbros_interrupt,3)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(twinadv_sound_readmem,twinadv_sound_writemem)
 	MDRV_CPU_IO_MAP(twinadv_sound_readport,twinadv_sound_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(57.5)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57.5)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(twinadv)
 	MDRV_PALETTE_LENGTH(0x100)
 
@@ -1757,12 +1757,12 @@ static MACHINE_DRIVER_START( finalttr )
 
 	MDRV_SOUND_REPLACE("3812", YM2151, 4000000)
 	MDRV_SOUND_CONFIG(ym2151_interface)
-	MDRV_SOUND_ROUTE(0, "mono", 0.20)
-	MDRV_SOUND_ROUTE(1, "mono", 0.20)
+	MDRV_SOUND_ROUTE(0, "mono", 0.08)
+	MDRV_SOUND_ROUTE(1, "mono", 0.08)
 
 	MDRV_SOUND_REPLACE("oki", OKIM6295, 999900)
 	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 MACHINE_DRIVER_END
 
 
@@ -1777,16 +1777,16 @@ static MACHINE_DRIVER_START( snowbro3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 16000000) /* 16mhz or 12mhz ? */
 	MDRV_CPU_PROGRAM_MAP(readmem3,writemem3)
-	MDRV_CPU_VBLANK_INT(snowbro3_interrupt,3)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(snowbro3_interrupt,3)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(sb3)
 	MDRV_PALETTE_LENGTH(512)
 

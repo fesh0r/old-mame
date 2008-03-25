@@ -19,7 +19,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "machine/asic65.h"
 #include "audio/atarijsa.h"
@@ -70,7 +69,7 @@ static MACHINE_RESET( atarig42 )
 {
 	atarigen_eeprom_reset();
 	atarigen_interrupt_reset(update_interrupts);
-	atarigen_scanline_timer_reset(0, atarig42_scanline_update, 8);
+	atarigen_scanline_timer_reset(machine->primary_screen, atarig42_scanline_update, 8);
 	atarijsa_reset();
 }
 
@@ -120,7 +119,7 @@ static WRITE16_HANDLER( io_latch_w )
 	if (ACCESSING_LSB)
 	{
 		/* bit 4 resets the sound CPU */
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 		if (!(data & 0x10)) atarijsa_reset();
 
 		/* bit 5 is /XRESET, probably related to the ASIC */
@@ -365,7 +364,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xf60000, 0xf60001) AM_READ(asic65_r)
 	AM_RANGE(0xf80000, 0xf80003) AM_WRITE(asic65_data_w)
 	AM_RANGE(0xfa0000, 0xfa0fff) AM_READWRITE(atarigen_eeprom_r, atarigen_eeprom_w) AM_BASE(&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
-	AM_RANGE(0xfc0000, 0xfc0fff) AM_READWRITE(MRA16_RAM, atarigen_666_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xfc0000, 0xfc0fff) AM_READWRITE(SMH_RAM, atarigen_666_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xff0fff) AM_WRITE(atarirle_0_spriteram_w) AM_BASE(&atarirle_0_spriteram)
 	AM_RANGE(0xff2000, 0xff5fff) AM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
 	AM_RANGE(0xff6000, 0xff6fff) AM_WRITE(atarigen_alpha_w) AM_BASE(&atarigen_alpha)
@@ -518,7 +517,7 @@ static MACHINE_DRIVER_START( atarig42 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, ATARI_CLOCK_14MHz)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(atarigen_video_int_gen,1)
+	MDRV_CPU_VBLANK_INT("main", atarigen_video_int_gen)
 
 	/* ASIC65 */
 	MDRV_IMPORT_FROM(asic65)
@@ -527,11 +526,11 @@ static MACHINE_DRIVER_START( atarig42 )
 	MDRV_NVRAM_HANDLER(atarigen)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_GFXDECODE(atarig42)
 	MDRV_PALETTE_LENGTH(2048)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/* note: these parameters are from published specs, not derived */
 	/* the board uses an SOS chip to generate video signals */

@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "video/segaic24.h"
 
 #define LOG_TGP_VIDEO 0
@@ -142,7 +141,7 @@ static void project_point_direct(struct point *p)
 }
 
 
-static void draw_hline(mame_bitmap *bitmap, int x1, int x2, int y, int color)
+static void draw_hline(bitmap_t *bitmap, int x1, int x2, int y, int color)
 {
 	UINT16 *base = BITMAP_ADDR16(bitmap, y, 0);
 	while(x1 <= x2) {
@@ -151,7 +150,7 @@ static void draw_hline(mame_bitmap *bitmap, int x1, int x2, int y, int color)
 	}
 }
 
-static void draw_hline_moired(mame_bitmap *bitmap, int x1, int x2, int y, int color)
+static void draw_hline_moired(bitmap_t *bitmap, int x1, int x2, int y, int color)
 {
 	UINT16 *base = BITMAP_ADDR16(bitmap, y, 0);
 	while(x1 <= x2) {
@@ -161,7 +160,7 @@ static void draw_hline_moired(mame_bitmap *bitmap, int x1, int x2, int y, int co
 	}
 }
 
-static void fill_slope(mame_bitmap *bitmap, int color, INT32 x1, INT32 x2, INT32 sl1, INT32 sl2, INT32 y1, INT32 y2, INT32 *nx1, INT32 *nx2)
+static void fill_slope(bitmap_t *bitmap, int color, INT32 x1, INT32 x2, INT32 sl1, INT32 sl2, INT32 y1, INT32 y2, INT32 *nx1, INT32 *nx2)
 {
 	if(y1 > view.y2)
 		return;
@@ -221,7 +220,7 @@ static void fill_slope(mame_bitmap *bitmap, int color, INT32 x1, INT32 x2, INT32
 	*nx2 = x2;
 }
 
-static void fill_line(mame_bitmap *bitmap, int color, INT32 y, INT32 x1, INT32 x2)
+static void fill_line(bitmap_t *bitmap, int color, INT32 y, INT32 x1, INT32 x2)
 {
 	int xx1 = x1>>FRAC_SHIFT;
 	int xx2 = x2>>FRAC_SHIFT;
@@ -242,7 +241,7 @@ static void fill_line(mame_bitmap *bitmap, int color, INT32 y, INT32 x1, INT32 x
 	}
 }
 
-static void fill_quad(mame_bitmap *bitmap, const struct quad *q)
+static void fill_quad(bitmap_t *bitmap, const struct quad *q)
 {
 	INT32 sl1, sl2, cury, limy, x1, x2;
 	int pmin, pmax, i, ps1, ps2;
@@ -343,7 +342,7 @@ static void fill_quad(mame_bitmap *bitmap, const struct quad *q)
 		fill_line(bitmap, color, cury, x1, x2);
 }
 #if 0
-static void draw_line(mame_bitmap *bitmap, int color, int x1, int y1, int x2, int y2)
+static void draw_line(bitmap_t *bitmap, int color, int x1, int y1, int x2, int y2)
 {
 	int s1x, s1y, s2x, s2y;
 	int d1, d2;
@@ -440,7 +439,7 @@ static void unsort_quads(void)
 }
 
 
-static void draw_quads(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_quads(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int count = quadpt - quaddb;
 	int i;
@@ -460,10 +459,10 @@ static void draw_quads(mame_bitmap *bitmap, const rectangle *cliprect)
 
 		fill_quad(bitmap, q);
 #if 0
-		draw_line(bitmap, get_black_pen(machine), q->p[0]->s.x, q->p[0]->s.y, q->p[1]->s.x, q->p[1]->s.y);
-		draw_line(bitmap, get_black_pen(machine), q->p[1]->s.x, q->p[1]->s.y, q->p[2]->s.x, q->p[2]->s.y);
-		draw_line(bitmap, get_black_pen(machine), q->p[2]->s.x, q->p[2]->s.y, q->p[3]->s.x, q->p[3]->s.y);
-		draw_line(bitmap, get_black_pen(machine), q->p[3]->s.x, q->p[3]->s.y, q->p[0]->s.x, q->p[0]->s.y);
+		draw_line(bitmap, get_black_pen(screen->machine), q->p[0]->s.x, q->p[0]->s.y, q->p[1]->s.x, q->p[1]->s.y);
+		draw_line(bitmap, get_black_pen(screen->machine), q->p[1]->s.x, q->p[1]->s.y, q->p[2]->s.x, q->p[2]->s.y);
+		draw_line(bitmap, get_black_pen(screen->machine), q->p[2]->s.x, q->p[2]->s.y, q->p[3]->s.x, q->p[3]->s.y);
+		draw_line(bitmap, get_black_pen(screen->machine), q->p[3]->s.x, q->p[3]->s.y, q->p[0]->s.x, q->p[0]->s.y);
 #endif
 	}
 
@@ -694,7 +693,9 @@ static float max4f(float a, float b, float c, float d)
 	return m;
 }
 
+#ifdef UNUSED_DEFINITION
 static const UINT8 num_of_times[]={1,1,1,1,2,2,2,3};
+#endif
 static float compute_specular(struct vector *normal, struct vector *light,float diffuse,int lmode)
 {
 #if 0
@@ -1108,7 +1109,7 @@ static UINT16 *skip_direct(UINT16 *list)
 	return list+2;
 }
 
-static void draw_objects(mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_objects(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	if(quadpt != quaddb) {
 		LOG_TGP(("VIDEO: sort&draw\n"));
@@ -1120,7 +1121,7 @@ static void draw_objects(mame_bitmap *bitmap, const rectangle *cliprect)
 	pointpt = pointdb;
 }
 
-static UINT16 *draw_direct(UINT16 *list, mame_bitmap *bitmap, const rectangle *cliprect)
+static UINT16 *draw_direct(UINT16 *list, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT16 *res;
 
@@ -1150,9 +1151,9 @@ static int get_list_number(void)
 	return listctl[0] & 0x40 ? 0 : 1;
 }
 
-static void end_frame(void)
+static void end_frame(running_machine *machine)
 {
-	if((listctl[0] & 4) && (cpu_getcurrentframe() & 1))
+	if((listctl[0] & 4) && (video_screen_get_frame_number(machine->primary_screen) & 1))
 		listctl[0] ^= 0x40;
 }
 
@@ -1170,7 +1171,7 @@ WRITE16_HANDLER( model1_listctl_w )
 	LOG_TGP(("VIDEO: control=%08x\n", (listctl[1]<<16)|listctl[0]));
 }
 
-static void tgp_render(mame_bitmap *bitmap, const rectangle *cliprect)
+static void tgp_render(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	render_done = 1;
 	if((listctl[1] & 0x1f) == 0x1f) {
@@ -1457,7 +1458,7 @@ VIDEO_START(model1)
 
 VIDEO_UPDATE(model1)
 {
-	sys24_tile_update(machine);
+	sys24_tile_update(screen->machine);
 #if 0
 	{
 		int mod = 0;
@@ -1505,19 +1506,19 @@ VIDEO_UPDATE(model1)
 	ayys = sin(ayy);
 
 	fillbitmap(priority_bitmap, 0, NULL);
-	fillbitmap(bitmap, machine->pens[0], &machine->screen[0].visarea);
+	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
 
-	sys24_tile_draw(machine, bitmap, cliprect, 6, 0, 0);
-	sys24_tile_draw(machine, bitmap, cliprect, 4, 0, 0);
-	sys24_tile_draw(machine, bitmap, cliprect, 2, 0, 0);
-	sys24_tile_draw(machine, bitmap, cliprect, 0, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 6, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 4, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 2, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 0, 0, 0);
 
 	tgp_render(bitmap, cliprect);
 
-	sys24_tile_draw(machine, bitmap, cliprect, 7, 0, 0);
-	sys24_tile_draw(machine, bitmap, cliprect, 5, 0, 0);
-	sys24_tile_draw(machine, bitmap, cliprect, 3, 0, 0);
-	sys24_tile_draw(machine, bitmap, cliprect, 1, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 7, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 5, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 3, 0, 0);
+	sys24_tile_draw(screen->machine, bitmap, cliprect, 1, 0, 0);
 
 	return 0;
 }
@@ -1525,6 +1526,6 @@ VIDEO_UPDATE(model1)
 VIDEO_EOF(model1)
 {
 	tgp_scan();
-	end_frame();
+	end_frame(machine);
 	LOG_TGP(("TGP: vsync\n"));
 }

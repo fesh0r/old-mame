@@ -6,18 +6,20 @@
 
 #include "driver.h"
 #include "deprecat.h"
+#include "debugger.h"
 #include "dc.h"
 #include "cpu/sh4/sh4.h"
+#include "sound/aica.h"
 
 #define DEBUG_REGISTERS	(1)
 
 #if DEBUG_REGISTERS
 
-#define DEBUG_SYSCTRL	(1)
+#define DEBUG_SYSCTRL	(0)
 #define DEBUG_MAPLE	(0)
 
 #if DEBUG_SYSCTRL
-static const char *sysctrl_names[] =
+static const char *const sysctrl_names[] =
 {
 	"CH2 DMA dest",
 	"CH2 DMA length",
@@ -71,7 +73,7 @@ static const char *sysctrl_names[] =
 #endif
 
 #if DEBUG_MAPLE
-static const char *maple_names[] =
+static const char *const maple_names[] =
 {
 	"5f6c00",
 	"DMA command table addr",
@@ -116,11 +118,16 @@ enum
 	MAPLE_STATUS = 0x21,
 };
 
-UINT32 sysctrl_regs[0x200/4];
+UINT32 dc_sysctrl_regs[0x200/4];
+UINT32 dc_coin_counts[2];
 static UINT32 maple_regs[0x100/4];
 static UINT32 dc_rtcregister[4];
+static UINT32 g1bus_regs[0x100/4];
+extern UINT32 dma_offset;
+static UINT8 maple0x86data1[0x80];
+static UINT8 maple0x86data2[0x400];
 
-static UINT32 maple0x82answer[]=
+static const UINT32 maple0x82answer[]=
 {
 	0x07200083,0x2d353133,0x39343136,0x20202020,0x59504f43,0x48474952,0x45532054,0x45204147,
 	0x05200083,0x5245544e,0x53495250,0x43205345,0x544c2c4f,0x20202e44,0x38393931,0x5c525043
@@ -137,7 +144,10 @@ INLINE int decode_reg_64(UINT32 offset, UINT64 mem_mask, UINT64 *shift)
 	// non 32-bit accesses have not yet been seen here, we need to know when they are
 	if ((mem_mask != U64(0x00000000ffffffff)) && (mem_mask != U64(0xffffffff00000000)))
 	{
-		assert_always(0, "Wrong mask!\n");
+		mame_printf_verbose("Wrong mask! (PC=%x)\n", activecpu_get_pc());
+		#ifdef ENABLE_DEBUGGER
+//      mame_debug_break();
+		#endif
 	}
 
 	if (mem_mask == U64(0x00000000ffffffff))
@@ -153,25 +163,25 @@ int compute_interrupt_level(void)
 {
 	UINT32 ln,lx,le;
 
-	ln=sysctrl_regs[SB_ISTNRM] & sysctrl_regs[SB_IML6NRM];
-	lx=sysctrl_regs[SB_ISTEXT] & sysctrl_regs[SB_IML6EXT];
-	le=sysctrl_regs[SB_ISTERR] & sysctrl_regs[SB_IML6ERR];
+	ln=dc_sysctrl_regs[SB_ISTNRM] & dc_sysctrl_regs[SB_IML6NRM];
+	lx=dc_sysctrl_regs[SB_ISTEXT] & dc_sysctrl_regs[SB_IML6EXT];
+	le=dc_sysctrl_regs[SB_ISTERR] & dc_sysctrl_regs[SB_IML6ERR];
 	if (ln | lx | le)
 	{
 		return 6;
 	}
 
-	ln=sysctrl_regs[SB_ISTNRM] & sysctrl_regs[SB_IML4NRM];
-	lx=sysctrl_regs[SB_ISTEXT] & sysctrl_regs[SB_IML4EXT];
-	le=sysctrl_regs[SB_ISTERR] & sysctrl_regs[SB_IML4ERR];
+	ln=dc_sysctrl_regs[SB_ISTNRM] & dc_sysctrl_regs[SB_IML4NRM];
+	lx=dc_sysctrl_regs[SB_ISTEXT] & dc_sysctrl_regs[SB_IML4EXT];
+	le=dc_sysctrl_regs[SB_ISTERR] & dc_sysctrl_regs[SB_IML4ERR];
 	if (ln | lx | le)
 	{
 		return 4;
 	}
 
-	ln=sysctrl_regs[SB_ISTNRM] & sysctrl_regs[SB_IML2NRM];
-	lx=sysctrl_regs[SB_ISTEXT] & sysctrl_regs[SB_IML2EXT];
-	le=sysctrl_regs[SB_ISTERR] & sysctrl_regs[SB_IML2ERR];
+	ln=dc_sysctrl_regs[SB_ISTNRM] & dc_sysctrl_regs[SB_IML2NRM];
+	lx=dc_sysctrl_regs[SB_ISTEXT] & dc_sysctrl_regs[SB_IML2EXT];
+	le=dc_sysctrl_regs[SB_ISTERR] & dc_sysctrl_regs[SB_IML2ERR];
 	if (ln | lx | le)
 	{
 		return 2;
@@ -184,26 +194,26 @@ void update_interrupt_status(void)
 {
 int level;
 
-	if (sysctrl_regs[SB_ISTERR])
+	if (dc_sysctrl_regs[SB_ISTERR])
 	{
-		sysctrl_regs[SB_ISTNRM] |= 0x80000000;
+		dc_sysctrl_regs[SB_ISTNRM] |= IST_ERROR;
 	}
 	else
 	{
-		sysctrl_regs[SB_ISTNRM] &= 0x7fffffff;
+		dc_sysctrl_regs[SB_ISTNRM] &= ~IST_ERROR;
 	}
 
-	if (sysctrl_regs[SB_ISTEXT])
+	if (dc_sysctrl_regs[SB_ISTEXT])
 	{
-		sysctrl_regs[SB_ISTNRM] |= 0x40000000;
+		dc_sysctrl_regs[SB_ISTNRM] |= IST_G1G2EXTSTAT;
 	}
 	else
 	{
-		sysctrl_regs[SB_ISTNRM] &= 0xbfffffff;
+		dc_sysctrl_regs[SB_ISTNRM] &= ~IST_G1G2EXTSTAT;
 	}
 
 	level=compute_interrupt_level();
-	cpunum_set_info_int(0,CPUINFO_INT_SH4_IRLn_INPUT,15-level);
+	cpunum_set_info_int(0, CPUINFO_INT_SH4_IRLn_INPUT, 15-level);
 }
 
 READ64_HANDLER( dc_sysctrl_r )
@@ -214,13 +224,13 @@ READ64_HANDLER( dc_sysctrl_r )
 	reg = decode_reg_64(offset, mem_mask, &shift);
 
 	#if DEBUG_SYSCTRL
-	if ((reg != 0x40) && (reg != 0x42))	// filter out IRQ status reads
+	if ((reg != 0x40) && (reg != 0x41) && (reg != 0x42) && (reg != 0x23) && (reg > 2))	// filter out IRQ status reads
 	{
-		mame_printf_verbose("SYSCTRL: read %x @ %x (reg %x: %s), mask %llx (PC=%x)\n", sysctrl_regs[reg], offset, reg, sysctrl_names[reg], mem_mask, activecpu_get_pc());
+		mame_printf_verbose("SYSCTRL: [%08x] read %x @ %x (reg %x: %s), mask %llx (PC=%x)\n", 0x5f6800+reg*4, dc_sysctrl_regs[reg], offset, reg, sysctrl_names[reg], mem_mask, activecpu_get_pc());
 	}
 	#endif
 
-	return (UINT64)sysctrl_regs[reg] << shift;
+	return (UINT64)dc_sysctrl_regs[reg] << shift;
 }
 
 WRITE64_HANDLER( dc_sysctrl_w )
@@ -232,42 +242,45 @@ WRITE64_HANDLER( dc_sysctrl_w )
 
 	reg = decode_reg_64(offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
-	old = sysctrl_regs[reg];
-	sysctrl_regs[reg] = dat; // 5f6800+off*4=dat
+	old = dc_sysctrl_regs[reg];
+	dc_sysctrl_regs[reg] = dat; // 5f6800+off*4=dat
 	switch (reg)
 	{
 		case SB_C2DST:
-			ddtdata.destination=sysctrl_regs[SB_C2DSTAT];
-			ddtdata.length=sysctrl_regs[SB_C2DLEN];
+			ddtdata.destination=dc_sysctrl_regs[SB_C2DSTAT];
+			ddtdata.length=dc_sysctrl_regs[SB_C2DLEN];
 			ddtdata.size=1;
 			ddtdata.direction=0;
 			ddtdata.channel=2;
 			ddtdata.mode=25; //011001
 			cpunum_set_info_ptr(0,CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA,&ddtdata);
-			sysctrl_regs[SB_C2DSTAT]=sysctrl_regs[SB_C2DSTAT]+ddtdata.length;
-			sysctrl_regs[SB_C2DLEN]=0;
-			sysctrl_regs[SB_C2DST]=0;
-			sysctrl_regs[SB_ISTNRM] |= (1 << 19);
+			#if DEBUG_SYSCTRL
+			mame_printf_verbose("SYSCTRL: Ch2 dma %x from %08x to %08x (lmmode0=%d lmmode1=%d)\n", dc_sysctrl_regs[SB_C2DLEN], ddtdata.source-ddtdata.length, dc_sysctrl_regs[SB_C2DSTAT],dc_sysctrl_regs[SB_LMMODE0],dc_sysctrl_regs[SB_LMMODE1]);
+			#endif
+			dc_sysctrl_regs[SB_C2DSTAT]=dc_sysctrl_regs[SB_C2DSTAT]+ddtdata.length;
+			dc_sysctrl_regs[SB_C2DLEN]=0;
+			dc_sysctrl_regs[SB_C2DST]=0;
+			dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_CH2;
 			break;
 
 		case SB_ISTNRM:
-			sysctrl_regs[SB_ISTNRM] = old & ~(dat | 0xC0000000); // bits 31,30 ro
+			dc_sysctrl_regs[SB_ISTNRM] = old & ~(dat | 0xC0000000); // bits 31,30 ro
 			break;
 
 		case SB_ISTEXT:
-			sysctrl_regs[SB_ISTEXT] = old;
+			dc_sysctrl_regs[SB_ISTEXT] = old;
 			break;
 
 		case SB_ISTERR:
-			sysctrl_regs[SB_ISTERR] = old & ~dat;
+			dc_sysctrl_regs[SB_ISTERR] = old & ~dat;
 			break;
 	}
 	update_interrupt_status();
 
 	#if DEBUG_SYSCTRL
-	if ((reg != 0x40) && (reg != 0x42))	// filter out IRQ acks
+	if ((reg != 0x40) && (reg != 0x42) && (reg > 2))	// filter out IRQ acks and ch2 dma
 	{
-		mame_printf_verbose("SYSCTRL: write %llx to %x (reg %x: %s), mask %llx\n", data>>shift, offset, reg, sysctrl_names[reg], mem_mask);
+		mame_printf_verbose("SYSCTRL: write %llx to %x (reg %x), mask %llx\n", data>>shift, offset, reg, /*sysctrl_names[reg],*/ mem_mask);
 	}
 	#endif
 }
@@ -279,6 +292,9 @@ READ64_HANDLER( dc_maple_r )
 
 	reg = decode_reg_64(offset, mem_mask, &shift);
 
+	#if DEBUG_MAPLE
+	mame_printf_verbose("MAPLE:  Unmapped read %08x\n", 0x5f6c00+reg*4);
+	#endif
 	return (UINT64)maple_regs[reg] << shift;
 }
 
@@ -290,15 +306,18 @@ WRITE64_HANDLER( dc_maple_w )
 	struct sh4_ddt_dma ddtdata;
 	UINT32 buff[512];
 	UINT32 endflag,port,pattern,length,command,dap,sap,destination;
+	UINT32 subcommand;
+	static int jvs_command = 0,jvs_address = 0;
 	int chk;
 	int a;
+	int off,len;
 
 	reg = decode_reg_64(offset, mem_mask, &shift);
 	dat = (UINT32)(data >> shift);
 	old = maple_regs[reg];
 
 	#if DEBUG_MAPLE
-	mame_printf_verbose("MAPLE: write %llx to %x (reg %x: %s), mask %llx\n", data >> shift, offset, reg, maple_names[reg], mem_mask);
+	mame_printf_verbose("MAPLE: [%08x=%x] write %llx to %x (reg %x: %s), mask %llx\n", 0x5f6c00+reg*4, dat, data >> shift, offset, reg, maple_names[reg], mem_mask);
 	#endif
 
 	maple_regs[reg] = dat; // 5f6c00+reg*4=dat
@@ -314,13 +333,13 @@ WRITE64_HANDLER( dc_maple_w )
 				dat=maple_regs[SB_MDSTAR];
 				while (1) // do transfers
 				{
-					ddtdata.source=dat;
-					ddtdata.length=3;
-					ddtdata.size=4;
-					ddtdata.buffer=buff;
-					ddtdata.direction=0;
-					ddtdata.channel= -1;
-					ddtdata.mode= -1;
+					ddtdata.source=dat;		// source address
+					ddtdata.length=3;		// words to transfer
+					ddtdata.size=4;			// bytes per word
+					ddtdata.buffer=buff;	// destination buffer
+					ddtdata.direction=0;	// 0 source to buffer, 1 buffer to source
+					ddtdata.channel= -1;	// not used
+					ddtdata.mode= -1;		// copy from/to buffer
 					cpunum_set_info_ptr(0, CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA, &ddtdata);
 
 					maple_regs[reg] = 0;
@@ -340,12 +359,13 @@ WRITE64_HANDLER( dc_maple_w )
 						switch (command)
 						{
 							case 1:
-								ddtdata.length=1;
-								break;
 							case 3:
 								ddtdata.length=1;
+								#if DEBUG_MAPLE
+								mame_printf_verbose("MAPLE: transfer command %d port %d\n", command, port);
+								#endif
 								break;
-							case 0x80: // compute checksum
+							case 0x80: // get data and compute checksum
 								ddtdata.length=length;
 								ddtdata.direction=0;
 								ddtdata.channel= -1;
@@ -359,7 +379,7 @@ WRITE64_HANDLER( dc_maple_w )
 									chk=chk+(signed char)((buff[a] >> 16) & 255);
 									chk=chk+(signed char)((buff[a] >> 24) & 255);
 								}
-								chk=chk+(buff[0] & 255);
+								chk=chk+(buff[0] & 255); // address (big endian !) last is 0xffffffff
 								chk=chk+((buff[0] >> 8) & 255);
 								chk=chk+((buff[0] >> 16) & 255);
 								chk=chk+((buff[0] >> 24) & 255);
@@ -380,63 +400,202 @@ WRITE64_HANDLER( dc_maple_w )
 								ddtdata.mode=-1;
 								cpunum_set_info_ptr(0,CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA,&ddtdata);
 
-								if ((buff[0] & 0xff) == 3)
+								subcommand = buff[0] & 0xff;
+								if (subcommand == 3) // read data
 								{
-									buff[1]=0x14131211;
-									for (a=0;a < 31;a++)
+									for (a=0;a < 0x80;a+=4)
 									{
-										buff[2+a]=buff[1+a]+0x04040404;
+										buff[1+a/4]=(maple0x86data1[a+3] << 24)+(maple0x86data1[a+2] << 16)+(maple0x86data1[a+1] << 8)+maple0x86data1[a];
 									}
-									buff[1]=0x1413b1b9; // put checksum
-									buff[5]=0x8ab82221; // put checksum
 									ddtdata.length=0x84/4;
 								}
-								else if (((buff[0] & 0xff) == 0x31) || ((buff[0] & 0xff) == 0xb) || ((buff[0] & 0xff) == 0x1))
+								else if (subcommand == 0xb) // store data
+								{
+									off=(buff[0] >> 8) & 0xff;
+									len=(buff[0] >> 16) & 0xff;
+									for (a=0;a < len;a++)
+										maple0x86data1[off+a]=(buff[1+a/4] >> (a & 3) * 8) & 255;
+								}
+								else if ((subcommand == 0x31) || (subcommand == 0x1))
 								{
 									ddtdata.length=1;
 								}
-								else if ((buff[0] & 0xff) == 0x17) // send command into jvs serial bus !!!
+								else if (subcommand == 0x17) // send command into jvs serial bus !!!
 								{
-									// 17,*c295407 (77),*c295404,*c295405,*c295406,0,ff,2,f0,d9, 0
-									// 17,*c295407 (77),*c295404,*c295405,*c295406,0,ff,2,f1,01, 0
-									// 17,*c295407 (77),*c295404,*c295405,*c295406,0,01,1,10,    01,0
-									switch (buff[2] & 0xff) // jvs command
-									{
-										case 0xf0:
-										case 0xf1:
-										case 0x10:
-											break;
-									}
-									buff[1]=0xe4e3e2e1;
-									ddtdata.length=2;
+									// Examples:
+									// 17,*c295407 (77),*c295404,*c295405,*c295406,0,ff,2,f0,d9, 0 // ff broadcast
+									// 17,*c295407 (77),*c295404,*c295405,*c295406,0,ff,2,f1,01, 0 // 01 can be any from 01 to 0x1f
+									// 17,*c295407 (77),*c295404,*c295405,*c295406,0,01,1,10,    01,0 // 01 is address
+									// Currently:
+									// 17,?,?,?,?,?,slave address,length,jvs command bytes...
+									jvs_address = (buff[1] >> 16) & 0xff; // slave address
+									jvs_command = buff[2] & 0xff; // jvs command
+									#if DEBUG_MAPLE
+									mame_printf_verbose("MAPLE: sent jvs command %d\n", jvs_command);
+									#endif
+									buff[1] = 0xe4e3e2e1;
+									ddtdata.length = 2;
 								}
-								else if ((buff[0] & 0xff) == 0x15)
+								else if (subcommand == 0x15) // get response from previous jvs command
 								{
+									int tocopy, pos;
 									// 15,0,0,0
-									buff[1]=0xA4A3A2A1;
-									for (a=0;a < 7;a++)
-									{
-										buff[2+a]=buff[1+a]+0x04040404;
-									}
-									buff[1]=buff[1] | 0x0c000000;
-									buff[2]=buff[2] & 0xFFCFFFFF;
+									maple0x86data2[0] = 0xa0;
+									for (a=1;a < 32;a++)
+										maple0x86data2[a] = maple0x86data2[a-1] + 1;
+									maple0x86data2[3] = maple0x86data2[3] | 0x0c;
+									maple0x86data2[6] = maple0x86data2[6] & 0xcf;
 
-									a=readinputport(0); // mettere qui tasti
-									buff[2]=buff[2] | (a << 20);
-									*(((unsigned char *)buff)+0x18)=0;
-									*(((unsigned char *)buff)+0x1d)=1;
-									*(((unsigned char *)buff)+0x16)=0x8e;
-									ddtdata.length=9;
+									a = readinputportbytag("IN0"); // put keys here
+									maple0x86data2[6] = maple0x86data2[6] | (a << 4);
+									pos = 0x11;
+									tocopy = 17;
+									for (;;)
+									{
+										if (jvs_command)
+											maple0x86data2[pos+2] = jvs_address;
+										else
+											maple0x86data2[pos+2] = 0;
+										maple0x86data2[pos+3] = 0;
+										maple0x86data2[pos+8] = 1;
+										maple0x86data2[pos+1] = 0x8e;
+										maple0x86data2[pos+9] = 1;
+										// 4 + 1 + 0x10 + ?,8e,addr,0,?,?,addr?,len,status,report1,jvsbytes...
+										ddtdata.length=11;
+										tocopy += 10;
+										switch (jvs_command)
+										{
+											case 0xf0: // reset
+											case 0xf1: // set address
+												break;
+											case 0x10:
+												strcpy((char *)(maple0x86data2+0x11+10), "MAME test JVS I/O board"); // name
+												maple0x86data2[pos+7]=24+2;
+												tocopy += 24;
+												break;
+											case 0x11:
+												maple0x86data2[pos+10]=0x13; // version bcd
+												maple0x86data2[pos+7]=1+2;
+												tocopy += 1;
+												break;
+											case 0x12:
+												maple0x86data2[pos+10]=0x30; // version bcd
+												maple0x86data2[pos+7]=1+2;
+												tocopy += 1;
+												break;
+											case 0x13:
+												maple0x86data2[pos+10]=0x10; // version bcd
+												maple0x86data2[pos+7]=1+2;
+												tocopy += 1;
+												break;
+											case 0x14:
+												// four bytes for every available function
+												// first function
+												maple0x86data2[pos+10]=1;
+												maple0x86data2[pos+11]=2; // number of players
+												maple0x86data2[pos+12]=9; // switches per player (27 = mahjong)
+												maple0x86data2[pos+13]=0;
+												// second function
+												maple0x86data2[pos+14]=2;
+												maple0x86data2[pos+15]=2; // number of coin slots
+												maple0x86data2[pos+16]=0;
+												maple0x86data2[pos+17]=0;
+												// third function
+												maple0x86data2[pos+18]=3;
+												maple0x86data2[pos+19]=2; // analog channels
+												maple0x86data2[pos+20]=8; // bits per channel
+												maple0x86data2[pos+21]=0;
+												// no more functions
+												maple0x86data2[pos+22]=0;
+												maple0x86data2[pos+7]=13+2;
+												tocopy += 13;
+												break;
+											case 0x21:
+												maple0x86data2[pos+10]=0; // bits 7-6 status bits 5-0 higer bits of coin count
+												maple0x86data2[pos+11]=0; // lower bits of coin count
+												maple0x86data2[pos+12]=0; // like previuos two but for second coin slot
+												maple0x86data2[pos+13]=0;
+												maple0x86data2[pos+7]=4+2;
+												tocopy += 4;
+												break;
+											case -1: // special case to read controls
+											case -2:
+												// report1,jvsbytes repeated for each function
+												// first function
+												maple0x86data2[pos+ 9]=1; // report
+												maple0x86data2[pos+10]=0; // bits TEST TILT1 TILT2 TILT3 ? ? ? ?
+												maple0x86data2[pos+11]=readinputportbytag("IN1"); // bits 1Pstart 1Pservice 1Pup 1Pdown 1Pleft 1Pright 1Ppush1 1Ppush2
+												maple0x86data2[pos+12]=readinputportbytag("IN2"); // bits 1Ppush3 1Ppush4 1Ppush5 1Ppush6 1Ppush7 1Ppush8 ...
+												maple0x86data2[pos+13]=readinputportbytag("IN3"); // bits 2Pstart 2Pservice 2Pup 2Pdown 2Pleft 2Pright 2Ppush1 2Ppush2
+												maple0x86data2[pos+14]=readinputportbytag("IN4"); // bits 2Ppush3 2Ppush4 2Ppush5 2Ppush6 2Ppush7 2Ppush8 ...
+												// second function
+												maple0x86data2[pos+15]=1; // report
+												maple0x86data2[pos+16]=(dc_coin_counts[0] >> 8) & 0xff; // 1CONDITION, 1SLOT COIN(bit13-8)
+												maple0x86data2[pos+17]=dc_coin_counts[0] & 0xff; // 1SLOT COIN(bit7-0)
+												maple0x86data2[pos+18]=(dc_coin_counts[1] >> 8) & 0xff; // 2CONDITION, 2SLOT COIN(bit13-8)
+												maple0x86data2[pos+19]=dc_coin_counts[1] & 0xff; // 2SLOT COIN(bit7-0)
+												// third function
+												maple0x86data2[pos+20]=1; // report
+												maple0x86data2[pos+21]=0xff; // channel 1 bits 7-0
+												maple0x86data2[pos+22]=0; // channel 1
+												maple0x86data2[pos+23]=0; // channel 2 bits 7-0
+												maple0x86data2[pos+24]=0xff; // channel 2
+												if (jvs_command == -1)
+												{
+													// ?
+													maple0x86data2[pos+25]=0;
+													maple0x86data2[pos+26]=0;
+													maple0x86data2[pos+7]=17+2;
+													tocopy += 17;
+												}
+												else
+												{
+													maple0x86data2[pos+7]=15+2;
+													tocopy += 15;
+												}
+												break;
+										}
+										if (jvs_command == -1)
+										{
+											maple0x86data2[pos+4]=maple0x86data2[pos+7]+5;
+											pos = pos+maple0x86data2[pos+4]+3;
+											jvs_command = 0;
+											continue;
+										}
+										else
+										{
+											maple0x86data2[pos+4]=maple0x86data2[pos+7]-1;
+											break;
+										}
+									}
+									for (a=0;a < tocopy;a=a+4)
+										buff[1+a/4] = maple0x86data2[a] | (maple0x86data2[a+1] << 8) | (maple0x86data2[a+2] << 16) | (maple0x86data2[a+3] << 24);
+									jvs_command=0;
+									ddtdata.length = (tocopy+7)/4;
 								}
-								else if ((buff[0] & 0xff) == 0x21)
+								else if (subcommand == 0x21)
 								{
 									// 21,*c295407 (77),*c295404,*c295405,*c295406,0,1,0
-									ddtdata.length=1;
+									jvs_address = (buff[1] >> 16) & 0xff; // slave address
+									jvs_command = -2;
+									ddtdata.length=2;
 								}
-								else //0x27
+								else if (subcommand == 0x27) //0x27
 								{
-									ddtdata.length=1;
+									// 27,*c295407 (77),*c295404,*c295405,*c295406,0,01,1,0,0,0
+									jvs_address = (buff[1] >> 16) & 0xff; // slave address
+									jvs_command = -1;
+									ddtdata.length=2;
 								}
+								else // 0x13
+								{
+									ddtdata.length=2;
+								}
+								break;
+							default:
+								#if DEBUG_MAPLE
+								mame_printf_verbose("MAPLE: unknown transfer command %d port %d\n", command, port);
+								#endif
 								break;
 						}
 					}
@@ -459,9 +618,15 @@ WRITE64_HANDLER( dc_maple_w )
 		}
 		break;
 	}
-#if DEBUG_MAPLE
-	mame_printf_verbose("MAPLE: write %llx to %x, mask %llx\n", data, offset, mem_mask);
-#endif
+}
+
+INPUT_CHANGED( dc_coin_slots_callback )
+{
+	UINT32 *counter = param;
+
+	/* check for a 0 -> 1 transition */
+	if (!oldval && newval)
+		*counter += 1;
 }
 
 READ64_HANDLER( dc_gdrom_r )
@@ -500,75 +665,138 @@ WRITE64_HANDLER( dc_gdrom_w )
 		off=offset << 1;
 	}
 
-	mame_printf_verbose("GDROM: write %llx to %x, mask %llx\n", data, offset, mem_mask);
+	mame_printf_verbose("GDROM: [%08x=%x]write %llx to %x, mask %llx\n", 0x5f7000+off*4, dat, data, offset, mem_mask);
 }
 
 READ64_HANDLER( dc_g1_ctrl_r )
 {
-	return 0;
+	int reg;
+	UINT64 shift;
+
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	mame_printf_verbose("G1CTRL:  Unmapped read %08x\n", 0x5f7400+reg*4);
+	return (UINT64)g1bus_regs[reg] << shift;
 }
 
 WRITE64_HANDLER( dc_g1_ctrl_w )
 {
-	mame_printf_verbose("G1CTRL: write %llx to %x, mask %llx\n", data, offset, mem_mask);
+	int reg;
+	UINT64 shift;
+	UINT32 old,dat;
+	struct sh4_ddt_dma ddtdata;
+	UINT8 *ROM = (UINT8 *)memory_region(REGION_USER1);
+
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	dat = (UINT32)(data >> shift);
+	old = g1bus_regs[reg];
+
+	g1bus_regs[reg] = dat; // 5f6c00+reg*4=dat
+	mame_printf_verbose("G1CTRL: [%08x=%x] write %llx to %x, mask %llx\n", 0x5f7400+reg*4, dat, data, offset, mem_mask);
+	switch (reg)
+	{
+	case SB_GDST:
+		if (!(old & 1) && (dat & 1)) // 0 -> 1
+		{
+			if ((g1bus_regs[SB_GDEN] == 0) || (g1bus_regs[SB_GDDIR] == 0))
+			{
+				mame_printf_verbose("G1CTRL: unsupported transfer\n");
+				return;
+			}
+			ddtdata.destination=g1bus_regs[SB_GDSTAR];		// destination address
+			ddtdata.length=g1bus_regs[SB_GDLEN] >> 5;		// words to transfer
+			ddtdata.size=32;			// bytes per word
+			ddtdata.buffer=ROM+dma_offset;	// buffer address
+			ddtdata.direction=1;	// 0 source to buffer, 1 buffer to destination
+			ddtdata.channel= -1;	// not used
+			ddtdata.mode= -1;		// copy from/to buffer
+			mame_printf_verbose("G1CTRL: transfer %x from ROM %08x to sdram %08x\n", g1bus_regs[SB_GDLEN], dma_offset, g1bus_regs[SB_GDSTAR]);
+			cpunum_set_info_ptr(0, CPUINFO_PTR_SH4_EXTERNAL_DDT_DMA, &ddtdata);
+			g1bus_regs[SB_GDST]=0;
+			dc_sysctrl_regs[SB_ISTNRM] |= IST_DMA_GDROM;
+		}
+		break;
+	}
 }
 
 READ64_HANDLER( dc_g2_ctrl_r )
 {
+	int reg;
+	UINT64 shift;
+
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	mame_printf_verbose("G2CTRL:  Unmapped read %08x\n", 0x5f7800+reg*4);
 	return 0;
 }
 
 WRITE64_HANDLER( dc_g2_ctrl_w )
 {
-	mame_printf_verbose("G2CTRL: write %llx to %x, mask %llx\n", data, offset, mem_mask);
+	int reg;
+	UINT64 shift;
+	UINT32 dat;
+
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	dat = (UINT32)(data >> shift);
+	mame_printf_verbose("G2CTRL: [%08x=%x] write %llx to %x, mask %llx\n", 0x5f7800+reg*4, dat, data, offset, mem_mask);
 }
 
 READ64_HANDLER( dc_modem_r )
 {
+	int reg;
+	UINT64 shift;
+
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	mame_printf_verbose("MODEM:  Unmapped read %08x\n", 0x600000+reg*4);
 	return 0;
 }
 
 WRITE64_HANDLER( dc_modem_w )
 {
-	mame_printf_verbose("MODEM: write %llx to %x, mask %llx\n", data, offset, mem_mask);
+	int reg;
+	UINT64 shift;
+	UINT32 dat;
+
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	dat = (UINT32)(data >> shift);
+	mame_printf_verbose("MODEM: [%08x=%x] write %llx to %x, mask %llx\n", 0x600000+reg*4, dat, data, offset, mem_mask);
 }
 
 READ64_HANDLER( dc_rtc_r )
 {
+	int reg;
+	UINT64 shift;
+
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	mame_printf_verbose("RTC:  Unmapped read %08x\n", 0x710000+reg*4);
 	return 0;
 }
 
 WRITE64_HANDLER( dc_rtc_w )
 {
-UINT32 dat,off;
-UINT32 old;
+	int reg;
+	UINT64 shift;
+	UINT32 old,dat;
 
-	if ((int)mem_mask & 1) {
-		dat=(UINT32)(data >> 32);
-		off=(offset << 1) | 1;
-	} else {
-		dat=(UINT32)data;
-		off=offset << 1;
+	reg = decode_reg_64(offset, mem_mask, &shift);
+	dat = (UINT32)(data >> shift);
+	old = dc_rtcregister[reg];
+	dc_rtcregister[reg] = dat & 0xFFFF; // 5f6c00+off*4=dat
+	switch (reg)
+	{
+	case RTC1:
+		if (dc_rtcregister[RTC3])
+			dc_rtcregister[RTC3] = 0;
+		else
+			dc_rtcregister[reg] = old;
+		break;
+	case RTC2:
+		if (dc_rtcregister[RTC3] == 0)
+			dc_rtcregister[reg] = old;
+		break;
+	case RTC3:
+		dc_rtcregister[RTC3] &= 1;
+		break;
 	}
-	old = dc_rtcregister[off];
-	dc_rtcregister[off] = dat & 0xFFFF; // 5f6c00+off*4=dat
-/*  switch (off)
-    {
-    case RTC1:
-        if (dc_rtcregister[RTC3])
-            dc_rtcregister[RTC3] = 0;
-        else
-            dc_rtcregister[off] = old;
-        break;
-    case RTC2:
-        if (dc_rtcregister[RTC3] == 0)
-            dc_rtcregister[off] = old;
-        break;
-    case RTC3:
-        dc_rtcregister[RTC3] &= 1;
-        break;
-    }*/
-	mame_printf_verbose("RTC: write %llx to %x, mask %llx\n", data, offset, mem_mask);
+	mame_printf_verbose("RTC: [%08x=%x] write %llx to %x, mask %llx\n", 0x710000 + reg*4, dat, data, offset, mem_mask);
 }
 
 /*static void dc_rtc_increment(void)
@@ -578,16 +806,31 @@ UINT32 old;
         dc_rtcregister[RTC1] = (dc_rtcregister[RTC1] + 1) & 0xFFFF;
 }*/
 
+MACHINE_START( dc )
+{
+}
+
 MACHINE_RESET( dc )
 {
+	int a;
+
 	/* halt the ARM7 */
 	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 
-	memset(sysctrl_regs, 0, sizeof(sysctrl_regs));
+	memset(dc_sysctrl_regs, 0, sizeof(dc_sysctrl_regs));
 	memset(maple_regs, 0, sizeof(maple_regs));
 	memset(dc_rtcregister, 0, sizeof(dc_rtcregister));
+	memset(dc_coin_counts, 0, sizeof(dc_coin_counts));
 
-	sysctrl_regs[SB_SBREV] = 0x0b;
+	dc_sysctrl_regs[SB_SBREV] = 0x0b;
+	for (a=0;a < 0x80;a++)
+		maple0x86data1[a]=0x11+a;
+
+	// checksums
+	maple0x86data1[0]=0xb9;
+	maple0x86data1[1]=0xb1;
+	maple0x86data1[18]=0xb8;
+	maple0x86data1[19]=0x8a;
 }
 
 READ64_HANDLER( dc_aica_reg_r )
@@ -597,8 +840,9 @@ READ64_HANDLER( dc_aica_reg_r )
 
 	reg = decode_reg_64(offset, mem_mask, &shift);
 
-//  logerror("dc_aica_reg_r:  Unmapped read %08x\n", 0x700000+reg*4);
-	return 0;
+//  mame_printf_verbose("AICA REG: [%08x] read %llx, mask %llx\n", 0x700000+reg*4, (UINT64)offset, mem_mask);
+
+	return (UINT64) AICA_0_r(machine, offset*2, 0x0000)<<shift;
 }
 
 WRITE64_HANDLER( dc_aica_reg_w )
@@ -623,5 +867,19 @@ WRITE64_HANDLER( dc_aica_reg_w )
 			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 		}
         }
-	mame_printf_verbose("AICA REG: write %llx to %x, mask %llx\n", data, offset, mem_mask);
+
+	AICA_0_w(machine, offset*2, dat, shift ? ((mem_mask>>32)&0xffff) : (mem_mask & 0xffff));
+
+//  mame_printf_verbose("AICA REG: [%08x=%x] write %llx to %x, mask %llx\n", 0x700000+reg*4, dat, data, offset, mem_mask);
 }
+
+READ32_HANDLER( dc_arm_aica_r )
+{
+	return AICA_0_r(machine, offset*2, 0x0000);
+}
+
+WRITE32_HANDLER( dc_arm_aica_w )
+{
+	AICA_0_w(machine, offset*2, data, mem_mask&0xffff);
+}
+

@@ -223,24 +223,24 @@ static ADDRESS_MAP_START( galpani2_mem1, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM AM_BASE(&galpani2_ram				)		// Work RAM
 	AM_RANGE(0x300000, 0x301fff) AM_RAM												// ?
 	AM_RANGE(0x302000, 0x303fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x304000, 0x30401f) AM_READWRITE(MRA16_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
-//  AM_RANGE(0x308000, 0x308001) AM_WRITE(MWA16_NOP                             )   // ? 0 at startup
-	AM_RANGE(0x30c000, 0x30c001) AM_WRITE(MWA16_NOP								)	// ? hblank effect ?
-	AM_RANGE(0x310000, 0x3101ff) AM_READWRITE(MRA16_RAM, galpani2_palette_0_w) AM_BASE(&galpani2_palette_0	)	// ?
-	AM_RANGE(0x314000, 0x314001) AM_WRITE(MWA16_NOP								)	// ? flip backgrounds ?
+	AM_RANGE(0x304000, 0x30401f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
+//  AM_RANGE(0x308000, 0x308001) AM_WRITE(SMH_NOP                             )   // ? 0 at startup
+	AM_RANGE(0x30c000, 0x30c001) AM_WRITE(SMH_NOP								)	// ? hblank effect ?
+	AM_RANGE(0x310000, 0x3101ff) AM_READWRITE(SMH_RAM, galpani2_palette_0_w) AM_BASE(&galpani2_palette_0	)	// ?
+	AM_RANGE(0x314000, 0x314001) AM_WRITE(SMH_NOP								)	// ? flip backgrounds ?
 	AM_RANGE(0x318000, 0x318001) AM_READWRITE(galpani2_eeprom_r, galpani2_eeprom_w	)	// EEPROM
 	AM_RANGE(0x380000, 0x387fff) AM_RAM												// Palette?
-	AM_RANGE(0x388000, 0x38ffff) AM_READWRITE(MRA16_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
-	AM_RANGE(0x400000, 0x43ffff) AM_READWRITE(MRA16_RAM, galpani2_bg8_0_w) AM_BASE(&galpani2_bg8_0	)	// Background 0
+	AM_RANGE(0x388000, 0x38ffff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
+	AM_RANGE(0x400000, 0x43ffff) AM_READWRITE(SMH_RAM, galpani2_bg8_0_w) AM_BASE(&galpani2_bg8_0	)	// Background 0
 	AM_RANGE(0x440000, 0x440001) AM_RAM AM_BASE(&galpani2_bg8_0_scrollx	)			// Background 0 Scroll X
 	AM_RANGE(0x480000, 0x480001) AM_RAM AM_BASE(&galpani2_bg8_0_scrolly	)			// Background 0 Scroll Y
-	AM_RANGE(0x4c0000, 0x4c0001) AM_WRITE(MWA16_NOP								)	// ? 0 at startup only
-	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(MRA16_RAM, galpani2_bg8_1_w) AM_BASE(&galpani2_bg8_1	)	// Background 1
+	AM_RANGE(0x4c0000, 0x4c0001) AM_WRITE(SMH_NOP								)	// ? 0 at startup only
+	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(SMH_RAM, galpani2_bg8_1_w) AM_BASE(&galpani2_bg8_1	)	// Background 1
 	AM_RANGE(0x540000, 0x540001) AM_RAM AM_BASE(&galpani2_bg8_1_scrollx	)			// Background 1 Scroll X
 	AM_RANGE(0x580000, 0x580001) AM_RAM AM_BASE(&galpani2_bg8_1_scrolly	)			// Background 1 Scroll Y
-	AM_RANGE(0x5c0000, 0x5c0001) AM_WRITE(MWA16_NOP								)	// ? 0 at startup only
-	AM_RANGE(0x600000, 0x600001) AM_WRITE(MWA16_NOP								)	// Watchdog
-//  AM_RANGE(0x640000, 0x640001) AM_WRITE(MWA16_NOP                             )   // ? 0 before resetting and at startup
+	AM_RANGE(0x5c0000, 0x5c0001) AM_WRITE(SMH_NOP								)	// ? 0 at startup only
+	AM_RANGE(0x600000, 0x600001) AM_WRITE(SMH_NOP								)	// Watchdog
+//  AM_RANGE(0x640000, 0x640001) AM_WRITE(SMH_NOP                             )   // ? 0 before resetting and at startup
     AM_RANGE(0x680000, 0x680001) AM_WRITE(galpani2_mcu_nmi_w	)					// ? 0 -> 1 -> 0 (lev 5) / 0 -> $10 -> 0
 	AM_RANGE(0x6c0000, 0x6c0001) AM_WRITE(galpani2_coin_lockout_w				)	// Coin + Card Lockout
 	AM_RANGE(0x780000, 0x780001) AM_READ(input_port_0_word_r		)				// Input Ports
@@ -278,15 +278,15 @@ static READ16_HANDLER( galpani2_bankedrom_r )
 static ADDRESS_MAP_START( galpani2_mem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM																// ROM
 	AM_RANGE(0x100000, 0x13ffff) AM_RAM AM_BASE(&galpani2_ram2)										// Work RAM
-	AM_RANGE(0x400000, 0x4fffff) AM_READWRITE(MRA16_RAM, galpani2_bg15_w) AM_BASE(&galpani2_bg15)	// bg15
+	AM_RANGE(0x400000, 0x4fffff) AM_READWRITE(SMH_RAM, galpani2_bg15_w) AM_BASE(&galpani2_bg15)	// bg15
 	AM_RANGE(0x500000, 0x5fffff) AM_RAM																// bg15
-	AM_RANGE(0x600000, 0x600001) AM_WRITE(MWA16_NOP						)	// ? 0 at startup only
-	AM_RANGE(0x640000, 0x640001) AM_WRITE(MWA16_NOP						)	// ? 0 at startup only
-	AM_RANGE(0x680000, 0x680001) AM_WRITE(MWA16_NOP						)	// ? 0 at startup only
-	AM_RANGE(0x6c0000, 0x6c0001) AM_WRITE(MWA16_NOP						)	// ? 0 at startup only
-	AM_RANGE(0x700000, 0x700001) AM_WRITE(MWA16_NOP						)	// Watchdog
-	AM_RANGE(0x780000, 0x780001) AM_WRITE(MWA16_NOP						)	// ? 0 -> 1 -> 0 (lev 5)
-	AM_RANGE(0x7c0000, 0x7c0001) AM_WRITE(MWA16_RAM) AM_BASE(&galpani2_rombank	)	// Rom Bank
+	AM_RANGE(0x600000, 0x600001) AM_WRITE(SMH_NOP						)	// ? 0 at startup only
+	AM_RANGE(0x640000, 0x640001) AM_WRITE(SMH_NOP						)	// ? 0 at startup only
+	AM_RANGE(0x680000, 0x680001) AM_WRITE(SMH_NOP						)	// ? 0 at startup only
+	AM_RANGE(0x6c0000, 0x6c0001) AM_WRITE(SMH_NOP						)	// ? 0 at startup only
+	AM_RANGE(0x700000, 0x700001) AM_WRITE(SMH_NOP						)	// Watchdog
+	AM_RANGE(0x780000, 0x780001) AM_WRITE(SMH_NOP						)	// ? 0 -> 1 -> 0 (lev 5)
+	AM_RANGE(0x7c0000, 0x7c0001) AM_WRITE(SMH_RAM) AM_BASE(&galpani2_rombank	)	// Rom Bank
 	AM_RANGE(0x800000, 0xffffff) AM_READ(galpani2_bankedrom_r		)		// Banked ROM
 ADDRESS_MAP_END
 
@@ -462,23 +462,23 @@ static MACHINE_DRIVER_START( galpani2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 16000000)	/* 16MHz */
 	MDRV_CPU_PROGRAM_MAP(galpani2_mem1, 0)
-	MDRV_CPU_VBLANK_INT(galpani2_interrupt,GALPANI2_INTERRUPTS_NUM)
+	MDRV_CPU_VBLANK_INT_HACK(galpani2_interrupt,GALPANI2_INTERRUPTS_NUM)
 
 	MDRV_CPU_ADD(M68000, 16000000)	/* 16MHz */
 	MDRV_CPU_PROGRAM_MAP(galpani2_mem2, 0)
-	MDRV_CPU_VBLANK_INT(galpani2_interrupt2,GALPANI2_INTERRUPTS_NUM2)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(galpani2_interrupt2,GALPANI2_INTERRUPTS_NUM2)
 
 	MDRV_MACHINE_RESET(galpani2)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320-1, 0, 256-1-16)
+
 	MDRV_GFXDECODE(galpani2)
 	MDRV_PALETTE_LENGTH(0x4000 + 0x200 + 0x8000)	// sprites, bg8, bg15
 

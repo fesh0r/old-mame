@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "profiler.h"
 
 UINT16 *taitob_scroll;
@@ -11,7 +10,7 @@ static tilemap *bg_tilemap, *fg_tilemap, *tx_tilemap;
 static UINT16 bg_rambank[2],fg_rambank[2],tx_rambank;
 
 /* framebuffer is a raw bitmap, remapped as a last step */
-static mame_bitmap *framebuffer[2],*pixel_bitmap;
+static bitmap_t *framebuffer[2],*pixel_bitmap;
 
 static UINT16 pixel_scroll[2];
 
@@ -148,8 +147,8 @@ WRITE16_HANDLER( hitice_pixelram_w )
   {
     /* bit 15 of pixel_scroll[0] is probably flip screen */
 
-	*BITMAP_ADDR16(pixel_bitmap, sy, 2*sx+0) = Machine->pens[b_fg_color_base * 16 + (data & 0xff)];
-	*BITMAP_ADDR16(pixel_bitmap, sy, 2*sx+1) = Machine->pens[b_fg_color_base * 16 + (data & 0xff)];
+	*BITMAP_ADDR16(pixel_bitmap, sy, 2*sx+0) = b_fg_color_base * 16 + (data & 0xff);
+	*BITMAP_ADDR16(pixel_bitmap, sy, 2*sx+1) = b_fg_color_base * 16 + (data & 0xff);
   }
 }
 
@@ -158,12 +157,12 @@ WRITE16_HANDLER( hitice_pixel_scroll_w )
 	COMBINE_DATA(&pixel_scroll[offset]);
 }
 
-static void hitice_clear_pixel_bitmap(void)
+static void hitice_clear_pixel_bitmap(running_machine *machine)
 {
 	int i;
 
     for (i = 0;i < 0x40000;i++)
-		hitice_pixelram_w(i,0,0);
+		hitice_pixelram_w(machine,i,0,0);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -204,13 +203,13 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 static VIDEO_START( taitob_core )
 {
-	framebuffer[0] = auto_bitmap_alloc(512,256,machine->screen[0].format);
-	framebuffer[1] = auto_bitmap_alloc(512,256,machine->screen[0].format);
+	framebuffer[0] = auto_bitmap_alloc(512,256, video_screen_get_format(machine->primary_screen));
+	framebuffer[1] = auto_bitmap_alloc(512,256, video_screen_get_format(machine->primary_screen));
 	pixel_bitmap = NULL;  /* only hitice needs this */
 
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,64,64);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     16,16,64,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,64,64);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(tx_tilemap,0);
@@ -278,7 +277,7 @@ VIDEO_START( hitice )
 {
   VIDEO_START_CALL(taitob_color_order0);
 
-  pixel_bitmap = auto_bitmap_alloc(1024,512,machine->screen[0].format);
+  pixel_bitmap = auto_bitmap_alloc(1024,512,video_screen_get_format(machine->primary_screen));
 
   state_save_register_global_bitmap(pixel_bitmap);
 }
@@ -286,7 +285,7 @@ VIDEO_START( hitice )
 VIDEO_RESET( hitice )
 {
 	/* kludge: clear the bitmap on startup */
-	hitice_clear_pixel_bitmap();
+	hitice_clear_pixel_bitmap(machine);
 }
 
 
@@ -328,7 +327,7 @@ WRITE16_HANDLER( TC0180VCU_framebuffer_word_w )
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 /*  Sprite format: (16 bytes per sprite)
   offs:             bits:
@@ -451,7 +450,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 }
 
 
-static void TC0180VCU_tilemap_draw(mame_bitmap *bitmap,const rectangle *cliprect,tilemap *tmap,int plane)
+static void TC0180VCU_tilemap_draw(bitmap_t *bitmap,const rectangle *cliprect,tilemap *tmap,int plane)
 {
 /*plane = 0 fg tilemap*/
 /*plane = 1 bg tilemap*/
@@ -492,7 +491,7 @@ static void TC0180VCU_tilemap_draw(mame_bitmap *bitmap,const rectangle *cliprect
 }
 
 
-static void draw_framebuffer(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int priority)
+static void draw_framebuffer(bitmap_t *bitmap,const rectangle *cliprect,int priority)
 {
   rectangle myclip = *cliprect;
   int x,y;
@@ -521,7 +520,7 @@ profiler_mark(PROFILER_USER1);
 					UINT16 c = *src++;
 
 					if (c != 0)
-						*dst = machine->pens[b_sp_color_base + c];
+						*dst = b_sp_color_base + c;
 
 					dst--;
 				}
@@ -539,7 +538,7 @@ profiler_mark(PROFILER_USER1);
 					UINT16 c = *src++;
 
 					if (c != 0)
-						*dst = machine->pens[b_sp_color_base + c];
+						*dst = b_sp_color_base + c;
 
 					dst++;
 				}
@@ -563,7 +562,7 @@ profiler_mark(PROFILER_USER1);
 					UINT16 c = *src++;
 
 					if (c != 0 && (c & 0x10) == priority)
-						*dst = machine->pens[b_sp_color_base + c];
+						*dst = b_sp_color_base + c;
 
 					dst--;
 				}
@@ -581,7 +580,7 @@ profiler_mark(PROFILER_USER1);
 					UINT16 c = *src++;
 
 					if (c != 0 && (c & 0x10) == priority)
-						*dst = machine->pens[b_sp_color_base + c];
+						*dst = b_sp_color_base + c;
 
 					dst++;
 				}
@@ -595,14 +594,14 @@ VIDEO_UPDATE( taitob )
 {
   if ((video_control & 0x20) == 0)
   {
-    fillbitmap(bitmap,machine->pens[0],cliprect);
+    fillbitmap(bitmap,0,cliprect);
     return 0;
   }
 
   /* Draw playfields */
   TC0180VCU_tilemap_draw(bitmap,cliprect,bg_tilemap,1);
 
-  draw_framebuffer(machine, bitmap,cliprect,1);
+  draw_framebuffer(bitmap,cliprect,1);
 
   TC0180VCU_tilemap_draw(bitmap,cliprect,fg_tilemap,0);
 
@@ -612,10 +611,10 @@ VIDEO_UPDATE( taitob )
     int scrolly = -pixel_scroll[1]; //+240;
     /* bit 15 of pixel_scroll[0] is probably flip screen */
 
-    copyscrollbitmap_trans(bitmap,pixel_bitmap,1,&scrollx,1,&scrolly,cliprect,machine->pens[b_fg_color_base * 16]);
+    copyscrollbitmap_trans(bitmap,pixel_bitmap,1,&scrollx,1,&scrolly,cliprect,b_fg_color_base * 16);
   }
 
-  draw_framebuffer(machine, bitmap,cliprect,0);
+  draw_framebuffer(bitmap,cliprect,0);
 
   tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
@@ -626,11 +625,11 @@ VIDEO_UPDATE( taitob )
 VIDEO_EOF( taitob )
 {
   if (~video_control & 0x01)
-    fillbitmap(framebuffer[framebuffer_page],0,&machine->screen[0].visarea);
+    fillbitmap(framebuffer[framebuffer_page],0,video_screen_get_visible_area(machine->primary_screen));
 
   if (~video_control & 0x80)
     framebuffer_page ^= 1;
 
-  draw_sprites(machine, framebuffer[framebuffer_page],&machine->screen[0].visarea);
+  draw_sprites(machine, framebuffer[framebuffer_page],video_screen_get_visible_area(machine->primary_screen));
 }
 

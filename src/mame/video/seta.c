@@ -153,6 +153,7 @@ int seta_tiles_offset;
 UINT16 *seta_vram_0, *seta_vctrl_0;
 UINT16 *seta_vram_2, *seta_vctrl_2;
 UINT16 *seta_vregs;
+size_t seta_paletteram_size;
 
 UINT16 *seta_workram; // Used for zombraid crosshair hack
 
@@ -446,18 +447,18 @@ VIDEO_START( seta_2_layers )
 
 	/* layer 0 */
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 
 	/* layer 1 */
 	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 		tilemaps_flip = 0;
 
@@ -479,10 +480,10 @@ VIDEO_START( seta_1_layer )
 
 	/* layer 0 */
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 
 	/* NO layer 1 */
@@ -505,10 +506,10 @@ VIDEO_START( twineagl_1_layer )
 
 	/* layer 0 */
 	tilemap_0 = tilemap_create(	twineagl_get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 	tilemap_1 = tilemap_create(	twineagl_get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 64,32 );
+								 16,16, 64,32 );
 
 
 	/* NO layer 1 */
@@ -562,11 +563,15 @@ VIDEO_START( oisipuzl_2_layers )
 PALETTE_INIT( blandia )
 {
 	int color, pen;
-	for( color = 0; color < 32; color++ )
-		for( pen = 0; pen < 64; pen++ )
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x600);
+
+	for (color = 0; color < 0x20; color++)
+		for (pen = 0; pen < 0x40; pen++)
 		{
-			colortable[color * 64 + pen + 16*32]       = (pen % 16) + color * 0x10 + 16*32*1;
-			colortable[color * 64 + pen + 16*32+64*32] = pen        + 16*32*2;
+			colortable_entry_set_value(machine->colortable, 0x200 + ((color << 6) | pen), 0x200 + ((color << 4) | (pen & 0x0f)));
+			colortable_entry_set_value(machine->colortable, 0xa00 + ((color << 6) | pen), 0x400 + pen);
 		}
 }
 
@@ -577,11 +582,15 @@ PALETTE_INIT( blandia )
 PALETTE_INIT( gundhara )
 {
 	int color, pen;
-	for( color = 0; color < 32; color++ )
-		for( pen = 0; pen < 64; pen++ )
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x600);
+
+	for (color = 0; color < 0x20; color++)
+		for (pen = 0; pen < 0x40; pen++)
 		{
-			colortable[color * 64 + pen + 32*16 + 32*64*0] = (((color&~3) * 16 + pen)%(32*16)) + 32*16*2;
-			colortable[color * 64 + pen + 32*16 + 32*64*1] = (((color&~3) * 16 + pen)%(32*16)) + 32*16*1;
+			colortable_entry_set_value(machine->colortable, 0x200 + ((color << 6) | pen), 0x400 + ((((color & ~3) << 4) + pen) & 0x1ff));
+			colortable_entry_set_value(machine->colortable, 0xa00 + ((color << 6) | pen), 0x200 + ((((color & ~3) << 4) + pen) & 0x1ff));
 		}
 }
 
@@ -591,11 +600,15 @@ PALETTE_INIT( gundhara )
 PALETTE_INIT( jjsquawk )
 {
 	int color, pen;
-	for( color = 0; color < 32; color++ )
-		for( pen = 0; pen < 64; pen++ )
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x600);
+
+	for (color = 0; color < 0x20; color++)
+		for (pen = 0; pen < 0x40; pen++)
 		{
-			colortable[color * 64 + pen + 32*16 + 32*64*0] = ((color * 16 + pen)%(32*16)) + 32*16*2;
-			colortable[color * 64 + pen + 32*16 + 32*64*1] = ((color * 16 + pen)%(32*16)) + 32*16*1;
+			colortable_entry_set_value(machine->colortable, 0x200 + ((color << 6) | pen), 0x400 + (((color << 4) + pen) & 0x1ff));
+			colortable_entry_set_value(machine->colortable, 0xa00 + ((color << 6) | pen), 0x200 + (((color << 4) + pen) & 0x1ff));
 		}
 }
 
@@ -604,9 +617,13 @@ PALETTE_INIT( jjsquawk )
 PALETTE_INIT( zingzip )
 {
 	int color, pen;
-	for( color = 0; color < 32; color++ )
-		for( pen = 0; pen < 64; pen++ )
-			colortable[color * 64 + pen + 32*16*2] = ((color * 16 + pen)%(32*16)) + 32*16*2;
+
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x600);
+
+	for (color = 0; color < 0x20; color++)
+		for (pen = 0; pen < 0x40; pen++)
+			colortable_entry_set_value(machine->colortable, 0x400 + ((color << 6) | pen), 0x400 + (((color << 4) + pen) & 0x1ff));
 }
 
 // color prom
@@ -625,24 +642,62 @@ PALETTE_INIT( usclssic )
 	int color, pen;
 	int x;
 
+	/* allocate the colortable */
+	machine->colortable = colortable_alloc(machine, 0x400);
+
 	/* DECODE PROM */
-	for (x = 0x000; x < 0x200 ; x++)
+	for (x = 0; x < 0x200 ; x++)
 	{
-		int data;
+		UINT16 data = (color_prom[x*2] <<8) | color_prom[x*2+1];
 
-		data = (color_prom[x*2] <<8) | color_prom[x*2+1];
+		rgb_t color = MAKE_RGB(pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 
-		if (x>=0x100) palette_set_color_rgb(machine,x,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
-		else palette_set_color_rgb(machine,x+0x300,pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+		if (x >= 0x100)
+			colortable_palette_set_color(machine->colortable, x + 0x000, color);
+		else
+			colortable_palette_set_color(machine->colortable, x + 0x300, color);
 	}
 
-	for( color = 0; color < 32; color++ )
-		for( pen = 0; pen < 64; pen++ )
-			colortable[color * 64 + pen + 512] =  ((((color & 0x1f) * 16 + pen)%512)+512);
-
+	for (color = 0; color < 0x20; color++)
+		for (pen = 0; pen < 0x40; pen++)
+			colortable_entry_set_value(machine->colortable, 0x200 + ((color << 6) | pen), 0x200 + (((color << 4) + pen) & 0x1ff));
 }
 
 
+static void set_pens(running_machine *machine)
+{
+	offs_t i;
+
+	for (i = 0; i < seta_paletteram_size / 2; i++)
+	{
+		UINT16 data = paletteram16[i];
+
+		rgb_t color = MAKE_RGB(pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+
+		if (machine->colortable != NULL)
+			colortable_palette_set_color(machine->colortable, i, color);
+		else
+			palette_set_color(machine, i, color);
+	}
+}
+
+
+static void usclssic_set_pens(colortable_t *colortable)
+{
+	offs_t i;
+
+	for (i = 0; i < 0x200; i++)
+	{
+		UINT16 data = paletteram16[i];
+
+		rgb_t color = MAKE_RGB(pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+
+		if (i >= 0x100)
+			colortable_palette_set_color(colortable, i - 0x100, color);
+		else
+			colortable_palette_set_color(colortable, i + 0x200, color);
+	}
+}
 
 
 
@@ -655,12 +710,12 @@ PALETTE_INIT( usclssic )
 ***************************************************************************/
 
 
-static void draw_sprites_map(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites_map(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs, col;
 	int xoffs, yoffs;
 
-	int total_color_codes	=	machine->drv->gfxdecodeinfo[0].total_color_codes;
+	int total_color_codes	=	machine->config->gfxdecodeinfo[0].total_color_codes;
 
 	int ctrl	=	spriteram16[ 0x600/2 ];
 	int ctrl2	=	spriteram16[ 0x602/2 ];
@@ -759,12 +814,12 @@ twineagl:   000 027 00 0f   (test mode)
 
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 	int xoffs, yoffs;
 
-	int total_color_codes	=	machine->drv->gfxdecodeinfo[0].total_color_codes;
+	int total_color_codes	=	machine->config->gfxdecodeinfo[0].total_color_codes;
 
 	int ctrl	=	spriteram16[ 0x600/2 ];
 	int ctrl2	=	spriteram16[ 0x602/2 ];
@@ -798,7 +853,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		if (flip)
 		{
-			y = (0x100 - machine->screen[0].height) + max_y - y;
+			y = (0x100 - video_screen_get_height(machine->primary_screen)) + max_y - y;
 			flipx = !flipx;
 			flipy = !flipy;
 		}
@@ -832,14 +887,15 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 /* For games without tilemaps */
 VIDEO_UPDATE( seta_no_layers )
 {
-	fillbitmap(bitmap,machine->pens[0x1f0],cliprect);
-	draw_sprites(machine,bitmap,cliprect);
+	set_pens(screen->machine);
+	fillbitmap(bitmap,0x1f0,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
 
 /* For games with 1 or 2 tilemaps */
-VIDEO_UPDATE( seta )
+static VIDEO_UPDATE( seta_layers )
 {
 	int layers_ctrl = -1;
 	int enab_0, enab_1, x_0, x_1, y_0, y_1;
@@ -847,7 +903,8 @@ VIDEO_UPDATE( seta )
 	int order	= 	0;
 	int flip	=	(spriteram16[ 0x600/2 ] & 0x40) >> 6;
 
-	int vis_dimy = machine->screen[0].visarea.max_y - machine->screen[0].visarea.min_y + 1;
+	const rectangle *visarea = video_screen_get_visible_area(screen);
+	int vis_dimy = visarea->max_y - visarea->min_y + 1;
 
 	flip ^= tilemaps_flip;
 
@@ -921,7 +978,7 @@ if (input_code_pressed(KEYCODE_Z))
 }
 #endif
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	if (order & 1)	// swap the layers?
 	{
@@ -933,7 +990,7 @@ if (input_code_pressed(KEYCODE_Z))
 
 		if (order & 2)	// layer-sprite priority?
 		{
-			if (layers_ctrl & 8)	draw_sprites(machine,bitmap,cliprect);
+			if (layers_ctrl & 8)	draw_sprites(screen->machine,bitmap,cliprect);
 			if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, tilemap_0,  0, 0);
 			if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, tilemap_1,  0, 0);
 		}
@@ -941,7 +998,7 @@ if (input_code_pressed(KEYCODE_Z))
 		{
 			if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, tilemap_0,  0, 0);
 			if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect, tilemap_1,  0, 0);
-			if (layers_ctrl & 8)	draw_sprites(machine, bitmap,cliprect);
+			if (layers_ctrl & 8)	draw_sprites(screen->machine, bitmap,cliprect);
 		}
 	}
 	else
@@ -951,7 +1008,7 @@ if (input_code_pressed(KEYCODE_Z))
 
 		if (order & 2)	// layer-sprite priority?
 		{
-			if (layers_ctrl & 8)	draw_sprites(machine, bitmap,cliprect);
+			if (layers_ctrl & 8)	draw_sprites(screen->machine, bitmap,cliprect);
 
 			if (tilemap_2)
 			{
@@ -967,8 +1024,29 @@ if (input_code_pressed(KEYCODE_Z))
 				if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect, tilemap_3,  0, 0);
 			}
 
-			if (layers_ctrl & 8)	draw_sprites(machine, bitmap,cliprect);
+			if (layers_ctrl & 8)	draw_sprites(screen->machine, bitmap,cliprect);
 		}
 	}
 	return 0;
+}
+
+
+VIDEO_UPDATE( seta )
+{
+	set_pens(screen->machine);
+	return VIDEO_UPDATE_CALL(seta_layers);
+}
+
+
+VIDEO_UPDATE( usclssic )
+{
+	usclssic_set_pens(screen->machine->colortable);
+	return VIDEO_UPDATE_CALL(seta_layers);
+}
+
+
+VIDEO_UPDATE( inttoote )
+{
+	/* no palette to set */
+	return VIDEO_UPDATE_CALL(seta_layers);
 }

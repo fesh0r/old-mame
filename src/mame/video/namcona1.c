@@ -220,7 +220,7 @@ VIDEO_START( namcona1 )
 {
 	int i;
 	gfx_element *gfx0,*gfx1;
-	static const tile_get_info_callback get_info[4] =
+	static const tile_get_info_func get_info[4] =
 	{ tilemap_get_info0, tilemap_get_info1, tilemap_get_info2, tilemap_get_info3 };
 
 	for( i=0; i<NAMCONA1_NUM_TILEMAPS; i++ )
@@ -228,7 +228,7 @@ VIDEO_START( namcona1 )
 		bg_tilemap[i] = tilemap_create(
 			get_info[i],
 			tilemap_scan_rows,
-			TILEMAP_TYPE_PEN,8,8,64,64 );
+			8,8,64,64 );
 
 		tilemap_palette_bank[i] = -1;
 	}
@@ -239,17 +239,17 @@ VIDEO_START( namcona1 )
 
 		gfx0 = allocgfx( &cg_layout );
 		gfx1 = allocgfx( &shape_layout );
-			gfx0->total_colors = machine->drv->total_colors/256;
+			gfx0->total_colors = machine->config->total_colors/256;
 			machine->gfx[0] = gfx0;
 
-			gfx1->total_colors = machine->drv->total_colors/2;
+			gfx1->total_colors = machine->config->total_colors/2;
 			machine->gfx[1] = gfx1;
 } /* namcona1_vh_start */
 
 /*************************************************************************/
 
 static void pdraw_masked_tile(running_machine *machine,
-		mame_bitmap *bitmap,
+		bitmap_t *bitmap,
 		const rectangle *cliprect,
 		unsigned code,
 		int color,
@@ -259,7 +259,7 @@ static void pdraw_masked_tile(running_machine *machine,
 		int bShadow )
 {
 	const gfx_element *gfx,*mask;
-	const pen_t *paldata;
+	pen_t pen_base;
 	UINT8 *gfx_addr;
 	int gfx_pitch;
 	UINT8 *mask_addr;
@@ -278,7 +278,7 @@ static void pdraw_masked_tile(running_machine *machine,
 		mask = machine->gfx[1];
 		code %= gfx->total_elements;
 		color %= gfx->total_colors;
-		paldata = &machine->remapped_colortable[gfx->color_base + gfx->color_granularity * color];
+		pen_base = gfx->color_base + gfx->color_granularity * color;
 		gfx_addr = gfx->gfxdata + code * gfx->char_modulo;
 		gfx_pitch = gfx->line_modulo;
 		mask_addr = mask->gfxdata + code * mask->char_modulo;
@@ -355,7 +355,7 @@ static void pdraw_masked_tile(running_machine *machine,
 								{ /* sprite pixel is opaque */
 									if( priority>=pri[-x] )
 									{
-										dest[-x] = paldata[gfx_addr[x]];
+										dest[-x] = pen_base + gfx_addr[x];
 									}
 									pri[-x] = 0xff;
 								}
@@ -372,7 +372,7 @@ static void pdraw_masked_tile(running_machine *machine,
 								{ /* sprite pixel is opaque */
 									if( priority>=pri[x] )
 									{
-										dest[x] = paldata[gfx_addr[x]];
+										dest[x] = pen_base + gfx_addr[x];
 									}
 									pri[x] = 0xff;
 								}
@@ -387,7 +387,7 @@ static void pdraw_masked_tile(running_machine *machine,
 } /* pdraw_masked_tile */
 
 static void pdraw_opaque_tile(running_machine *machine,
-		mame_bitmap *bitmap,
+		bitmap_t *bitmap,
 		const rectangle *cliprect,
 		unsigned code,
 		int color,
@@ -397,7 +397,7 @@ static void pdraw_opaque_tile(running_machine *machine,
 		int bShadow )
 {
 	const gfx_element *gfx;
-	const pen_t *paldata;
+	pen_t pen_base;
 	UINT8 *gfx_addr;
 	int gfx_pitch;
 	int x,y;
@@ -413,7 +413,7 @@ static void pdraw_opaque_tile(running_machine *machine,
 		gfx = machine->gfx[0];
 		code %= gfx->total_elements;
 		color %= gfx->total_colors;
-		paldata = &machine->remapped_colortable[gfx->color_base + gfx->color_granularity * color];
+		pen_base = gfx->color_base + gfx->color_granularity * color;
 		gfx_addr = gfx->gfxdata + code * gfx->char_modulo;
 		gfx_pitch = gfx->line_modulo;
 
@@ -433,7 +433,7 @@ static void pdraw_opaque_tile(running_machine *machine,
 						{
 							if( priority>=pri[-x] )
 							{
-								dest[-x] = paldata[gfx_addr[x]];
+								dest[-x] = pen_base + gfx_addr[x];
 							}
 							pri[-x] = 0xff;
 						}
@@ -447,7 +447,7 @@ static void pdraw_opaque_tile(running_machine *machine,
 						{
 							if( priority>=pri[x] )
 							{
-								dest[x] = paldata[gfx_addr[x]];
+								dest[x] = pen_base + gfx_addr[x];
 							}
 							pri[x] = 0xff;
 						} /* next x */
@@ -460,12 +460,12 @@ static void pdraw_opaque_tile(running_machine *machine,
 
 static const UINT8 pri_mask[8] = { 0x00,0x01,0x03,0x07,0x0f,0x1f,0x3f,0x7f };
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int which;
 	const UINT16 *source = spriteram16;
 	void (*drawtile)(running_machine *,
-		mame_bitmap *,
+		bitmap_t *,
 		const rectangle *,
 		unsigned code,
 		int color,
@@ -548,16 +548,16 @@ static void draw_pixel_line( UINT16 *pDest, UINT8 *pPri, UINT16 *pSource, const 
 	int x;
 	UINT16 data;
 
-	memset( pPri, 0xff, 38*8 );
 	for( x=0; x<38*8; x+=2 )
 	{
+		pPri[x / 2] = 0xff;
 		data = *pSource++;
 		pDest[x] = paldata[data>>8];
 		pDest[x+1] = paldata[data&0xff];
 	} /* next x */
 } /* draw_pixel_line */
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int which, int primask )
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int which, int primask )
 {
 	/*          scrollx lineselect
      *  tmap0   ffe000  ffe200
@@ -575,7 +575,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 	gfx_element *pGfx;
 
 	pGfx = machine->gfx[0];
-	paldata = &machine->remapped_colortable[pGfx->color_base + pGfx->color_granularity * tilemap_palette_bank[which]];
+	paldata = &machine->pens[pGfx->color_base + pGfx->color_granularity * tilemap_palette_bank[which]];
 
 	/* draw one scanline at a time */
 	clip.min_x = cliprect->min_x;
@@ -635,11 +635,11 @@ VIDEO_UPDATE( namcona1 )
 			/* palette updates are delayed when graphics are disabled */
 			for( which=0; which<0x1000; which++ )
 			{
-				UpdatePalette(machine, which );
+				UpdatePalette(screen->machine, which );
 			}
 			palette_is_dirty = 0;
 		}
-		update_gfx(machine);
+		update_gfx(screen->machine);
 		for( which=0; which<NAMCONA1_NUM_TILEMAPS; which++ )
 		{
 			static int tilemap_color;
@@ -658,11 +658,11 @@ VIDEO_UPDATE( namcona1 )
 			{
 				if( (namcona1_vreg[0x50+which]&0x7) == priority )
 				{
-					draw_background(machine,bitmap,cliprect,which,pri_mask[priority] );
+					draw_background(screen->machine,bitmap,cliprect,which,pri_mask[priority] );
 				}
 			} /* next tilemap */
 		} /* next priority level */
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 	} /* gfx enabled */
 	return 0;
 }

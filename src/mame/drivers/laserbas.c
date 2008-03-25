@@ -35,14 +35,14 @@ static VIDEO_UPDATE(laserbas)
 		for(x=0;x<128;x++)
 		{
 			if (vram2[y*128+x]&0xf)
-				*BITMAP_ADDR16(bitmap, y, x*2) = machine->pens[vram2[y*128+x]&0xf]+16;
+				*BITMAP_ADDR16(bitmap, y, x*2) = (vram2[y*128+x]&0xf)+16;
 			else
-				*BITMAP_ADDR16(bitmap, y, x*2) = machine->pens[vram1[y*128+x]&0xf]+16;
+				*BITMAP_ADDR16(bitmap, y, x*2) = (vram1[y*128+x]&0xf)+16;
 
 			if (vram2[y*128+x]>>4)
-				*BITMAP_ADDR16(bitmap, y, x*2+1) = machine->pens[vram2[y*128+x]>>4]+16;
+				*BITMAP_ADDR16(bitmap, y, x*2+1) = (vram2[y*128+x]>>4)+16;
 			else
-				*BITMAP_ADDR16(bitmap, y, x*2+1) = machine->pens[vram1[y*128+x]>>4]+16;
+				*BITMAP_ADDR16(bitmap, y, x*2+1) = (vram1[y*128+x]>>4)+16;
 		}
 	return 0;
 }
@@ -90,7 +90,7 @@ static ADDRESS_MAP_START( laserbas_memory, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( laserbas_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x1f) AM_WRITE(vrambank_w)
 	AM_RANGE(0x20, 0x20) AM_READ(read_unk) AM_WRITENOP//write = ram/rom bank ? at fc00-f800 ?
 	AM_RANGE(0x21, 0x21) AM_READ(input_port_0_r)
@@ -121,7 +121,7 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( laserbas_interrupt )
 {
-	if(video_screen_get_vblank(0))
+	if(video_screen_get_vblank(machine->primary_screen))
 		 cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	else
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
@@ -131,14 +131,16 @@ static MACHINE_DRIVER_START( laserbas )
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(laserbas_memory,0)
 	MDRV_CPU_IO_MAP(laserbas_io,0)
-	MDRV_CPU_VBLANK_INT(laserbas_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(laserbas_interrupt,2)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_PALETTE_LENGTH(32)
 	MDRV_VIDEO_START(laserbas)
 	MDRV_VIDEO_UPDATE(laserbas)

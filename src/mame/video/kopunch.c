@@ -12,7 +12,7 @@ PALETTE_INIT( kopunch )
 	int i;
 
 	color_prom+=24;	/* first 24 colors are black */
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -91,10 +91,10 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( kopunch )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 16, 16);
+		 8, 8, 16, 16);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
@@ -103,8 +103,8 @@ VIDEO_UPDATE( kopunch )
 {
 	int offs;
 
-	tilemap_draw(bitmap, &machine->screen[0].visarea, bg_tilemap, 0, 0);
-	//tilemap_draw(bitmap, &machine->screen[0].visarea, fg_tilemap, 0, 0);
+	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
+	//tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 
 	for (offs = 1023;offs >= 0;offs--)
 	{
@@ -113,12 +113,12 @@ VIDEO_UPDATE( kopunch )
 		sx = offs % 16;
 		sy = offs / 16;
 
-		drawgfx(bitmap,machine->gfx[1],
+		drawgfx(bitmap,screen->machine->gfx[1],
 				(kopunch_videoram2[offs] & 0x7f) + 128 * gfxbank,
 				0,
 				0,gfxflip,
 				8*(sx+8)+scroll[0],8*(8+(gfxflip ? 15-sy : sy))+scroll[1],
-				&machine->screen[0].visarea,TRANSPARENCY_PEN,0);
+				cliprect,TRANSPARENCY_PEN,0);
 	}
 	return 0;
 }

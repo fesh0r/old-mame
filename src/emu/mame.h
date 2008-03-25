@@ -14,6 +14,7 @@
 
 #include "mamecore.h"
 #include "video.h"
+#include "crsshair.h"
 #include "restrack.h"
 #include "options.h"
 #include <stdarg.h>
@@ -157,12 +158,11 @@ extern const char *const memory_region_names[REGION_MAX];
 ***************************************************************************/
 
 /* output channel callback */
-typedef void (*output_callback)(void *param, const char *format, va_list argptr);
+typedef void (*output_callback_func)(void *param, const char *format, va_list argptr);
 
 
 /* forward type declarations */
 typedef struct _mame_private mame_private;
-typedef struct _video_private video_private;
 typedef struct _palette_private palette_private;
 typedef struct _streams_private streams_private;
 typedef struct _devices_private devices_private;
@@ -174,21 +174,17 @@ struct _running_machine
 {
 	/* game-related information */
 	const game_driver *		gamedrv;			/* points to the definition of the game machine */
-	const machine_config *	drv;				/* points to the constructed machine_config */
+	const machine_config *	config;				/* points to the constructed machine_config */
 	const char *			basename;			/* basename used for game-related paths */
 
 	/* video-related information */
 	gfx_element *			gfx[MAX_GFX_ELEMENTS];/* array of pointers to graphic sets (chars, sprites) */
-	screen_state			screen[MAX_SCREENS];/* current screen state */
+	const device_config *	primary_screen;		/* the primary screen device, or NULL if screenless */
 	palette_t *				palette;			/* global palette object */
 
 	/* palette-related information */
-/* fix me - some games try to modify remapped_colortable directly */
-/* search for "palette hack" to find instances */
 	const pen_t *			pens;				/* remapped palette pen numbers */
 	struct _colortable_t *	colortable;			/* global colortable for remapping */
-	const UINT16 *			game_colortable;	/* lookup table used to map gfx pen numbers to color numbers */
-	const pen_t *			remapped_colortable;/* the above, already remapped through machine->pens */
 	pen_t *					shadow_table;		/* table for looking up a shadowed pen */
 
 	/* audio-related information */
@@ -209,7 +205,6 @@ struct _running_machine
 
 	/* internal core information */
 	mame_private *			mame_data;			/* internal data from mame.c */
-	video_private *			video_data;			/* internal data from video.c */
 	palette_private *		palette_data;		/* internal data from palette.c */
 	streams_private *		streams_data;		/* internal data from streams.c */
 	devices_private *		devices_data;		/* internal data from devices.c */
@@ -344,7 +339,7 @@ UINT32 memory_region_flags(running_machine *machine, int num);
 /* ----- output management ----- */
 
 /* set the output handler for a channel, returns the current one */
-void mame_set_output_channel(output_channel channel, output_callback callback, void *param, output_callback *prevcb, void **prevparam);
+void mame_set_output_channel(output_channel channel, output_callback_func callback, void *param, output_callback_func *prevcb, void **prevparam);
 
 /* built-in default callbacks */
 void mame_file_output_callback(void *param, const char *format, va_list argptr);

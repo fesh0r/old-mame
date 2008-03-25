@@ -147,9 +147,9 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( thepit )
 {
-	thepit_solid_tilemap = tilemap_create(solid_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	thepit_solid_tilemap = tilemap_create(solid_get_tile_info,tilemap_scan_rows,8,8,32,32);
 
-	thepit_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	thepit_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,8,8,32,32);
 	tilemap_set_transparent_pen(thepit_tilemap, 0);
 
 	tilemap_set_scroll_cols(thepit_solid_tilemap, 32);
@@ -219,11 +219,11 @@ READ8_HANDLER( thepit_input_port_0_r )
        horizontal flip switch. (This is how the real PCB does it) */
 	if (thepit_flip_screen_x)
 	{
-		return input_port_3_r(offset);
+		return input_port_3_r(machine,offset);
 	}
 	else
 	{
-		return input_port_0_r(offset);
+		return input_port_0_r(machine,offset);
 	}
 }
 
@@ -236,7 +236,7 @@ READ8_HANDLER( thepit_input_port_0_r )
  *************************************/
 
 static void draw_sprites(running_machine *machine,
-						 mame_bitmap *bitmap,
+						 bitmap_t *bitmap,
 						 const rectangle *cliprect,
 						 int priority_to_draw)
 {
@@ -300,13 +300,13 @@ VIDEO_UPDATE( thepit )
 	tilemap_draw(bitmap, cliprect, thepit_tilemap, 0, 0);
 
 	/* low priority sprites */
-	draw_sprites(machine, bitmap, cliprect, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, 0);
 
 	/* high priority tiles */
 	tilemap_draw(bitmap, cliprect, thepit_solid_tilemap, 1, 1);
 
 	/* high priority sprites */
-	draw_sprites(machine, bitmap, cliprect, 1);
+	draw_sprites(screen->machine, bitmap, cliprect, 1);
 
 	return 0;
 }

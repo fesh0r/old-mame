@@ -31,6 +31,7 @@ D000      Paddle Position and Interrupt Reset
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/samples.h"
 #include "circus.h"
 
@@ -51,25 +52,25 @@ static READ8_HANDLER( ripcord_IN2_r )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x1000, 0x1fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x43ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0x8000) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x01ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x1000, 0x1fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x43ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x8000, 0x8000) AM_READ(SMH_RAM)
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
 	AM_RANGE(0xc000, 0xc000) AM_READ(input_port_1_r) /* DSW */
 	AM_RANGE(0xd000, 0xd000) AM_READ(input_port_2_r) //AT
 	//AM_RANGE(0xd000, 0xd000) AM_READ(ripcord_IN2_r)
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x1000, 0x1fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x2000, 0x2000) AM_WRITE(circus_clown_x_w)
 	AM_RANGE(0x3000, 0x3000) AM_WRITE(circus_clown_y_w)
 	AM_RANGE(0x4000, 0x43ff) AM_WRITE(circus_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(circus_clown_z_w)
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -272,16 +273,16 @@ static MACHINE_DRIVER_START( circus )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502,11289000/16) /* 705.562kHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(circus)
 	MDRV_PALETTE_LENGTH(2)
 
@@ -307,16 +308,16 @@ static MACHINE_DRIVER_START( robotbwl )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502,11289000/16) /* 705.562kHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(robotbwl)
 	MDRV_PALETTE_LENGTH(2)
 
@@ -341,16 +342,16 @@ static MACHINE_DRIVER_START( crash )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502,11289000/16) /* 705.562kHz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
-
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(circus)
 	MDRV_PALETTE_LENGTH(2)
 
@@ -375,16 +376,16 @@ static MACHINE_DRIVER_START( ripcord )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 705562)        /* 11.289MHz / 16 */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	//MDRV_CPU_VBLANK_INT(ripcord_interrupt,1) //AT
-
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
+	//MDRV_CPU_VBLANK_INT("main", ripcord_interrupt) //AT
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3500)  /* frames per second, vblank duration (complete guess) */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 31*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(circus)
 	MDRV_PALETTE_LENGTH(2)
 

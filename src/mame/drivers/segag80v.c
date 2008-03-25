@@ -133,7 +133,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
 #include "audio/segasnd.h"
@@ -179,19 +178,16 @@ static UINT8 spinner_count;
  *
  *************************************/
 
-static void service_switch(void *param, UINT32 oldval, UINT32 newval)
+static INPUT_CHANGED( service_switch )
 {
 	/* pressing the service switch sends an NMI */
 	if (newval)
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
 static MACHINE_START( g80v )
 {
-	/* request a callback if the service switch is pressed */
-	input_port_set_changed_callback(port_tag_to_index("SERVICESW"), 0x01, service_switch, NULL);
-
 	/* register for save states */
 	state_save_register_global_array(mult_data);
 	state_save_register_global(mult_result);
@@ -234,7 +230,7 @@ static offs_t decrypt_offset(offs_t offset)
 }
 
 static WRITE8_HANDLER( mainram_w ) { mainram[decrypt_offset(offset)] = data; }
-static WRITE8_HANDLER( usb_ram_w ) { sega_usb_ram_w(decrypt_offset(offset), data); }
+static WRITE8_HANDLER( usb_ram_w ) { sega_usb_ram_w(machine, decrypt_offset(offset), data); }
 static WRITE8_HANDLER( vectorram_w ) { vectorram[decrypt_offset(offset)] = data; }
 
 
@@ -404,14 +400,14 @@ static WRITE8_HANDLER( unknown_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM		/* CPU board ROM */
 	AM_RANGE(0x0800, 0xbfff) AM_ROM		/* PROM board ROM area */
-	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(MRA8_RAM, mainram_w) AM_BASE(&mainram)
-	AM_RANGE(0xe000, 0xefff) AM_READWRITE(MRA8_RAM, vectorram_w) AM_BASE(&vectorram) AM_SIZE(&vectorram_size)
+	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(SMH_RAM, mainram_w) AM_BASE(&mainram)
+	AM_RANGE(0xe000, 0xefff) AM_READWRITE(SMH_RAM, vectorram_w) AM_BASE(&vectorram) AM_SIZE(&vectorram_size)
 ADDRESS_MAP_END
 
 
 /* complete memory map derived from schematics */
 static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xbc, 0xbc) /* AM_READ ??? */
 	AM_RANGE(0xbd, 0xbe) AM_WRITE(multiply_w)
 	AM_RANGE(0xbe, 0xbe) AM_READ(multiply_r)
@@ -508,7 +504,7 @@ static INPUT_PORTS_START( g80v_generic )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )				/* P1.30 */
 
 	PORT_START_TAG("SERVICESW")
-	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH )
+	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH ) PORT_CHANGED(service_switch, 0)
 INPUT_PORTS_END
 
 
@@ -914,19 +910,16 @@ static MACHINE_DRIVER_START( g80v_base )
 	MDRV_CPU_ADD(Z80, CPU_CLOCK/2)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_START(g80v)
 	MDRV_MACHINE_RESET(g80v)
-	MDRV_SCREEN_REFRESH_RATE(40)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_REFRESH_RATE(40)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(512, 1536, 640-32, 1408+32)
-	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(sega)
 	MDRV_VIDEO_UPDATE(sega)

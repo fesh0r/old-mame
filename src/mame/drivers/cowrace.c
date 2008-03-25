@@ -34,14 +34,14 @@ static TILE_GET_INFO( get_tile_info )
 static VIDEO_START( cowrace )
 {
 	tmap = tilemap_create(	get_tile_info, tilemap_scan_rows,
-							TILEMAP_TYPE_PEN, 8,8, 0x20,0x20	);
+							8,8, 0x20,0x20	);
 
 	tilemap_set_transparent_pen(tmap, 0);
 }
 
 static VIDEO_UPDATE( cowrace )
 {
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 	tilemap_draw(bitmap,cliprect, tmap, 0, 0);
 	return 0;
 }
@@ -89,12 +89,12 @@ AM_RANGE(0x38c2, 0x38c2) AM_READWRITE( ret_ff, cowrace_38c2_w )
 
 	AM_RANGE(0x0000, 0x2fff) AM_ROM
 	AM_RANGE(0x3000, 0x33ff) AM_RAM
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE( MRA8_RAM, cowrace_videoram_w ) AM_BASE( &videoram )
-	AM_RANGE(0x5000, 0x53ff) AM_READWRITE( MRA8_RAM, cowrace_colorram_w ) AM_BASE( &colorram )
+	AM_RANGE(0x4000, 0x43ff) AM_READWRITE( SMH_RAM, cowrace_videoram_w ) AM_BASE( &videoram )
+	AM_RANGE(0x5000, 0x53ff) AM_READWRITE( SMH_RAM, cowrace_colorram_w ) AM_BASE( &colorram )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map_cowrace, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_NOP
 ADDRESS_MAP_END
 
@@ -105,7 +105,7 @@ static ADDRESS_MAP_START( mem_map_sound_cowrace, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map_sound_cowrace, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_READWRITE(YM2203_read_port_0_r,YM2203_write_port_0_w)
 	AM_RANGE(0x41, 0x41) AM_WRITE(YM2203_control_port_0_w)
 ADDRESS_MAP_END
@@ -164,21 +164,21 @@ static MACHINE_DRIVER_START( cowrace )
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(mem_map_cowrace,0)
 	MDRV_CPU_IO_MAP(io_map_cowrace,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(mem_map_sound_cowrace,0)
 	MDRV_CPU_IO_MAP(io_map_sound_cowrace,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)	// NMI by main CPU
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	// NMI by main CPU
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-1)
+
 	MDRV_GFXDECODE(cowrace)
 	MDRV_PALETTE_LENGTH(0x1000)
 

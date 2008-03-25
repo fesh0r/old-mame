@@ -15,7 +15,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "hitme.h"
 #include "sound/discrete.h"
 
@@ -56,13 +55,13 @@ static WRITE8_HANDLER( hitme_vidram_w )
 
 static VIDEO_START(hitme)
 {
-	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8,10, 40,19);
+	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows, 8,10, 40,19);
 }
 
 
 static VIDEO_START(barricad)
 {
-	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8,8, 32,24);
+	hitme_tilemap = tilemap_create(get_hitme_tile_info,tilemap_scan_rows, 8,8, 32,24);
 }
 
 
@@ -136,10 +135,10 @@ static UINT8 read_port_and_t0(int port)
 }
 
 
-static UINT8 read_port_and_t0_and_hblank(int port)
+static UINT8 read_port_and_t0_and_hblank(running_machine *machine, int port)
 {
 	UINT8 val = read_port_and_t0(port);
-	if (video_screen_get_hpos(0) < (Machine->screen[0].width * 9 / 10))
+	if (video_screen_get_hpos(machine->primary_screen) < (video_screen_get_width(machine->primary_screen) * 9 / 10))
 		val ^= 0x04;
 	return val;
 }
@@ -147,7 +146,7 @@ static UINT8 read_port_and_t0_and_hblank(int port)
 
 static READ8_HANDLER( hitme_port_0_r )
 {
-	return read_port_and_t0_and_hblank(0);
+	return read_port_and_t0_and_hblank(machine, 0);
 }
 
 
@@ -159,7 +158,7 @@ static READ8_HANDLER( hitme_port_1_r )
 
 static READ8_HANDLER( hitme_port_2_r )
 {
-	return read_port_and_t0_and_hblank(2);
+	return read_port_and_t0_and_hblank(machine, 2);
 }
 
 
@@ -189,15 +188,15 @@ static WRITE8_HANDLER( output_port_0_w )
 	attotime duration = attotime_make(0, ATTOSECONDS_PER_SECOND * 0.45 * 6.8e-6 * resistance * (data+1));
 	timeout_time = attotime_add(timer_get_time(), duration);
 
-	discrete_sound_w(HITME_DOWNCOUNT_VAL, data);
-	discrete_sound_w(HITME_OUT0, 1);
+	discrete_sound_w(machine, HITME_DOWNCOUNT_VAL, data);
+	discrete_sound_w(machine, HITME_OUT0, 1);
 }
 
 
 static WRITE8_HANDLER( output_port_1_w )
 {
-	discrete_sound_w(HITME_ENABLE_VAL, data);
-	discrete_sound_w(HITME_OUT1, 1);
+	discrete_sound_w(machine, HITME_ENABLE_VAL, data);
+	discrete_sound_w(machine, HITME_OUT1, 1);
 }
 
 
@@ -216,9 +215,9 @@ static WRITE8_HANDLER( output_port_1_w )
 */
 
 static ADDRESS_MAP_START( hitme_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS(AMEF_ABITS(13))
+	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
-	AM_RANGE(0x0c00, 0x0eff) AM_READWRITE(MRA8_RAM, hitme_vidram_w) AM_BASE(&hitme_vidram)
+	AM_RANGE(0x0c00, 0x0eff) AM_READWRITE(SMH_RAM, hitme_vidram_w) AM_BASE(&hitme_vidram)
 	AM_RANGE(0x1000, 0x10ff) AM_MIRROR(0x300) AM_RAM
 	AM_RANGE(0x1400, 0x14ff) AM_READ(hitme_port_0_r)
 	AM_RANGE(0x1500, 0x15ff) AM_READ(hitme_port_1_r)
@@ -303,14 +302,14 @@ static MACHINE_DRIVER_START( hitme )
 	MDRV_CPU_PROGRAM_MAP(hitme_map,0)
 	MDRV_CPU_IO_MAP(hitme_portmap,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 19*10)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 19*10-1)
+
 	MDRV_GFXDECODE(hitme)
 	MDRV_PALETTE_LENGTH(2)
 
@@ -338,8 +337,10 @@ static MACHINE_DRIVER_START( barricad )
 	MDRV_IMPORT_FROM(hitme)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_SIZE(32*8, 24*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 24*8-1)
+
 	MDRV_GFXDECODE(barricad)
 
 	MDRV_VIDEO_START(barricad)

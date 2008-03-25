@@ -6,6 +6,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 
 
 #define NUM_PENS	(8)
@@ -126,7 +127,7 @@ static WRITE8_HANDLER( port_w )
 
 
 static ADDRESS_MAP_START( sstrangr_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(15) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x3fff) AM_RAM AM_BASE(&sstrngr_ram) AM_SIZE(&sstrngr_ram_size)
 	AM_RANGE(0x6000, 0x63ff) AM_ROM
@@ -183,13 +184,12 @@ static MACHINE_DRIVER_START( sstrangr )
 	MDRV_CPU_ADD_TAG("main",8080,1996800)	/* clock is a guess, taken from mw8080bw */
 	MDRV_CPU_PROGRAM_MAP(sstrangr_map,0)
 	MDRV_CPU_IO_MAP(sstrangr_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(sstrangr)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(32*8, 262)		/* vert size is a guess, taken from mw8080bw */
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 4*8, 32*8-1)

@@ -72,9 +72,9 @@ static int brt_r,brt_g,brt_b;
 
 VIDEO_START( ms32 )
 {
-	ms32_tx_tilemap = tilemap_create(get_ms32_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,64);
-	ms32_bg_tilemap = tilemap_create(get_ms32_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	ms32_roz_tilemap = tilemap_create(get_ms32_roz_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,128,128);
+	ms32_tx_tilemap = tilemap_create(get_ms32_tx_tile_info,tilemap_scan_rows,8, 8,64,64);
+	ms32_bg_tilemap = tilemap_create(get_ms32_bg_tile_info,tilemap_scan_rows,16,16,64,64);
+	ms32_roz_tilemap = tilemap_create(get_ms32_roz_tile_info,tilemap_scan_rows,16,16,128,128);
 
 	tilemap_set_transparent_pen(ms32_tx_tilemap,0);
 	tilemap_set_transparent_pen(ms32_bg_tilemap,0);
@@ -89,6 +89,7 @@ VIDEO_START( ms32 )
 	if (!strcmp(machine->gamedrv->name,"47pie2o"))	ms32_reverse_sprite_order = 0;
 	if (!strcmp(machine->gamedrv->name,"hayaosi3"))	ms32_reverse_sprite_order = 0;
 	if (!strcmp(machine->gamedrv->name,"bnstars"))	ms32_reverse_sprite_order = 0;
+	if (!strcmp(machine->gamedrv->name,"wpksocv2"))	ms32_reverse_sprite_order = 0;
 
 	// tp2m32 doesn't set the brightness registers so we need sensible defaults
 	brt[0] = brt[1] = 0xffff;
@@ -238,7 +239,7 @@ WRITE32_HANDLER( ms32_gfxctrl_w )
 
 /* SPRITES based on tetrisp2 for now, readd priority bits later */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT32 *sprram_top, size_t sprram_size)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT32 *sprram_top, size_t sprram_size)
 {
 /***************************************************************************
 
@@ -378,7 +379,7 @@ if (input_code_pressed(KEYCODE_F) && (pri & 1)) color = rand();
 
 
 
-static void draw_roz(mame_bitmap *bitmap, const rectangle *cliprect,int priority)
+static void draw_roz(bitmap_t *bitmap, const rectangle *cliprect,int priority)
 {
 	/* TODO: registers 0x40/4 / 0x44/4 and 0x50/4 / 0x54/4 are used, meaning unknown */
 
@@ -487,16 +488,16 @@ VIDEO_UPDATE( ms32 )
 
 	/* TODO: 0 is correct for gametngk, but break f1superb scrolling grid (text at
        top and bottom of the screen becomes black on black) */
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* bg color */
+	fillbitmap(bitmap,0,cliprect);	/* bg color */
 
 
 	/* priority hack, we really need to figure out what priority ram is I think */
-	if (!strcmp(machine->gamedrv->name,"hayaosi3"))
+	if (!strcmp(screen->machine->gamedrv->name,"hayaosi3"))
 	{
 		tilemap_draw(bitmap,cliprect,ms32_bg_tilemap,0,1);
 		tilemap_draw(bitmap,cliprect,ms32_tx_tilemap,0,4);
 		draw_roz(bitmap,cliprect,4); // this question text needs to appear over the sprites
-		draw_sprites(machine,bitmap,cliprect, ms32_spram, 0x40000);
+		draw_sprites(screen->machine,bitmap,cliprect, ms32_spram, 0x40000);
 
 	}
 	else
@@ -504,7 +505,7 @@ VIDEO_UPDATE( ms32 )
 		tilemap_draw(bitmap,cliprect,ms32_bg_tilemap,0,1);
 		draw_roz(bitmap,cliprect,2);
 		tilemap_draw(bitmap,cliprect,ms32_tx_tilemap,0,4);
-		draw_sprites(machine,bitmap,cliprect, ms32_spram, 0x40000);
+		draw_sprites(screen->machine,bitmap,cliprect, ms32_spram, 0x40000);
 	}
 
 

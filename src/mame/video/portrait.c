@@ -61,8 +61,8 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 VIDEO_START( portrait )
 {
-	background = tilemap_create( get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,      16, 16, 32, 32 );
-	foreground = tilemap_create( get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 16, 16, 32, 32 );
+	background = tilemap_create( get_bg_tile_info, tilemap_scan_rows,       16, 16, 32, 32 );
+	foreground = tilemap_create( get_fg_tile_info, tilemap_scan_rows,  16, 16, 32, 32 );
 
 		tilemap_set_transparent_pen( foreground, 0 );
 }
@@ -90,7 +90,7 @@ PALETTE_INIT( portrait )
 }
 #endif
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT8 *source = spriteram;
 	UINT8 *finish = source + 0x200;
@@ -166,6 +166,6 @@ VIDEO_UPDATE( portrait )
 	tilemap_draw(bitmap, &cliprect_scroll, background, 0, 0);
 	tilemap_draw(bitmap, &cliprect_scroll, foreground, 0, 0);
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }

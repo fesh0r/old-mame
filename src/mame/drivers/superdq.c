@@ -36,7 +36,7 @@ static int superdq_color_bank = 0;
 
 static render_texture *video_texture;
 static render_texture *overlay_texture;
-static mame_bitmap *last_video_bitmap;
+static bitmap_t *last_video_bitmap;
 
 static void video_cleanup(running_machine *machine)
 {
@@ -55,7 +55,7 @@ static TILE_GET_INFO( get_tile_info )
 
 static VIDEO_START( superdq )
 {
-	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	superdq_tilemap = tilemap_create(get_tile_info,tilemap_scan_rows, 8, 8, 32, 32);
 
 	add_exit_callback(machine, video_cleanup);
 }
@@ -66,8 +66,8 @@ static VIDEO_UPDATE( superdq )
 
 	if (!video_skip_this_frame() && discinfo != NULL)
 	{
-		mame_bitmap *vidbitmap;
-		rectangle fixedvis = machine->screen[screen].visarea;
+		bitmap_t *vidbitmap;
+		rectangle fixedvis = *video_screen_get_visible_area(screen);
 		fixedvis.max_x++;
 		fixedvis.max_y++;
 
@@ -120,7 +120,7 @@ static PALETTE_INIT( superdq )
 			2,	&resistances[1], bweights, 220, 0);
 
 	/* initialize the palette with these colors */
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2;
 		int r, g, b;
@@ -187,9 +187,7 @@ static WRITE8_HANDLER( superdq_io_w )
 	superdq_color_bank = ( data & 2 ) ? 1 : 0;
 
 	for( i = 0; i < sizeof( black_color_entries ); i++ )
-	{
-		render_container_set_palette_alpha(render_container_get_screen(0), black_color_entries[i], (data&0x80) ? 0x00 : 0xff );
-	}
+		render_container_set_palette_alpha(render_container_get_screen(machine->primary_screen), black_color_entries[i], (data&0x80) ? 0x00 : 0xff );
 
 	/*
         bit 5 = DISP1?
@@ -223,7 +221,7 @@ static ADDRESS_MAP_START( superdq_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( superdq_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0") AM_WRITE(superdq_ld_w)
 	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
 	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW1")
@@ -338,15 +336,17 @@ static MACHINE_DRIVER_START( superdq )
 	MDRV_CPU_ADD(Z80, MASTER_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(superdq_map,0)
 	MDRV_CPU_IO_MAP(superdq_io,0)
-	MDRV_CPU_VBLANK_INT(superdq_vblank, 1)
+	MDRV_CPU_VBLANK_INT("main", superdq_vblank)
 
 	MDRV_MACHINE_START(superdq)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_SELF_RENDER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_SELF_RENDER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
 

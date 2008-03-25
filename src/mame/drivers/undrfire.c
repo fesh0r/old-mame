@@ -222,13 +222,13 @@ static READ32_HANDLER( undrfire_input_r )
 	{
 		case 0x00:
 		{
-			return (input_port_0_word_r(0,0) << 16) | input_port_1_word_r(0,0) |
+			return (input_port_0_word_r(machine,0,0) << 16) | input_port_1_word_r(machine,0,0) |
 				  (EEPROM_read_bit() << 7) | frame_counter;
 		}
 
 		case 0x01:
 		{
-			return input_port_2_word_r(0,0) | (coin_word << 16);
+			return input_port_2_word_r(machine,0,0) | (coin_word << 16);
 		}
  	}
 
@@ -243,7 +243,7 @@ static WRITE32_HANDLER( undrfire_input_w )
 		{
 			if (ACCESSING_MSB32)	/* $500000 is watchdog */
 			{
-				watchdog_reset_w(0,data >> 24);
+				watchdog_reset(machine);
 			}
 
 			if (ACCESSING_LSB32)
@@ -313,8 +313,8 @@ static READ32_HANDLER( undrfire_lightgun_r )
 
 		case 0x00:	/* P1 */
 		{
-			x = input_port_3_word_r(0,0) << 6;
-			y = input_port_4_word_r(0,0) << 6;
+			x = input_port_3_word_r(machine,0,0) << 6;
+			y = input_port_4_word_r(machine,0,0) << 6;
 
 			return ((x << 24) &0xff000000) | ((x << 8) &0xff0000)
 				 | ((y << 8) &0xff00) | ((y >> 8) &0xff) ;
@@ -322,8 +322,8 @@ static READ32_HANDLER( undrfire_lightgun_r )
 
 		case 0x01:	/* P2 */
 		{
-			x = input_port_5_word_r(0,0) << 6;
-			y = input_port_6_word_r(0,0) << 6;
+			x = input_port_5_word_r(machine,0,0) << 6;
+			y = input_port_6_word_r(machine,0,0) << 6;
 
 			return ((x << 24) &0xff000000) | ((x << 8) &0xff0000)
 				 | ((y << 8) &0xff00) | ((y >> 8) &0xff) ;
@@ -373,39 +373,39 @@ static WRITE32_HANDLER( motor_control_w )
 ***********************************************************/
 
 static ADDRESS_MAP_START( undrfire_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA32_ROM)
-	AM_RANGE(0x200000, 0x21ffff) AM_READ(MRA32_RAM)	/* main CPUA ram */
-	AM_RANGE(0x300000, 0x303fff) AM_READ(MRA32_RAM)	/* sprite ram */
-//  AM_RANGE(0x304000, 0x304003) AM_READ(MRA32_RAM) // debugging
-//  AM_RANGE(0x304400, 0x304403) AM_READ(MRA32_RAM) // debugging
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x200000, 0x21ffff) AM_READ(SMH_RAM)	/* main CPUA ram */
+	AM_RANGE(0x300000, 0x303fff) AM_READ(SMH_RAM)	/* sprite ram */
+//  AM_RANGE(0x304000, 0x304003) AM_READ(SMH_RAM) // debugging
+//  AM_RANGE(0x304400, 0x304403) AM_READ(SMH_RAM) // debugging
 	AM_RANGE(0x500000, 0x500007) AM_READ(undrfire_input_r)
 	AM_RANGE(0x600000, 0x600007) AM_READ(unknown_hardware_r)	/* unknown byte reads at $156e */
-	AM_RANGE(0x700000, 0x7007ff) AM_READ(MRA32_RAM)
+	AM_RANGE(0x700000, 0x7007ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x800000, 0x80ffff) AM_READ(TC0480SCP_long_r)	  /* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_READ(TC0480SCP_ctrl_long_r)	// debugging
 	AM_RANGE(0x900000, 0x90ffff) AM_READ(TC0100SCN_long_r)	/* piv tilemaps */
 	AM_RANGE(0x920000, 0x92000f) AM_READ(TC0100SCN_ctrl_long_r)
-	AM_RANGE(0xa00000, 0xa0ffff) AM_READ(MRA32_RAM)	/* palette ram */
-	AM_RANGE(0xb00000, 0xb003ff) AM_READ(MRA32_RAM)	// ?? single bytes
+	AM_RANGE(0xa00000, 0xa0ffff) AM_READ(SMH_RAM)	/* palette ram */
+	AM_RANGE(0xb00000, 0xb003ff) AM_READ(SMH_RAM)	// ?? single bytes
 	AM_RANGE(0xf00000, 0xf00007) AM_READ(undrfire_lightgun_r)	/* stick coords read at $11b2-bc */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( undrfire_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA32_ROM)
-	AM_RANGE(0x200000, 0x21ffff) AM_WRITE(MWA32_RAM) AM_BASE(&undrfire_ram)
-	AM_RANGE(0x300000, 0x303fff) AM_WRITE(MWA32_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
-//  AM_RANGE(0x304000, 0x304003) AM_WRITE(MWA32_RAM)    // ??? doesn't change
-//  AM_RANGE(0x304400, 0x304403) AM_WRITE(MWA32_RAM)    // ??? doesn't change
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x200000, 0x21ffff) AM_WRITE(SMH_RAM) AM_BASE(&undrfire_ram)
+	AM_RANGE(0x300000, 0x303fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
+//  AM_RANGE(0x304000, 0x304003) AM_WRITE(SMH_RAM)    // ??? doesn't change
+//  AM_RANGE(0x304400, 0x304403) AM_WRITE(SMH_RAM)    // ??? doesn't change
 	AM_RANGE(0x400000, 0x400003) AM_WRITE(motor_control_w)	/* gun vibration */
 	AM_RANGE(0x500000, 0x500007) AM_WRITE(undrfire_input_w)	/* eerom etc. */
 	AM_RANGE(0x600000, 0x600007) AM_WRITE(unknown_int_req_w)	/* int request for unknown hardware */
-	AM_RANGE(0x700000, 0x7007ff) AM_WRITE(MWA32_RAM) AM_BASE(&f3_shared_ram)
+	AM_RANGE(0x700000, 0x7007ff) AM_WRITE(SMH_RAM) AM_BASE(&f3_shared_ram)
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(TC0480SCP_long_w)	  /* tilemaps */
 	AM_RANGE(0x830000, 0x83002f) AM_WRITE(TC0480SCP_ctrl_long_w)
 	AM_RANGE(0x900000, 0x90ffff) AM_WRITE(TC0100SCN_long_w)	/* piv tilemaps */
 	AM_RANGE(0x920000, 0x92000f) AM_WRITE(TC0100SCN_ctrl_long_w)
 	AM_RANGE(0xa00000, 0xa0ffff) AM_WRITE(color_ram_w) AM_BASE(&paletteram32)
-	AM_RANGE(0xb00000, 0xb003ff) AM_WRITE(MWA32_RAM)	// single bytes, blending ??
+	AM_RANGE(0xb00000, 0xb003ff) AM_WRITE(SMH_RAM)	// single bytes, blending ??
 	AM_RANGE(0xd00000, 0xd00003) AM_WRITE(rotate_control_w)	/* perhaps port based rotate control? */
 ADDRESS_MAP_END
 
@@ -551,21 +551,21 @@ static MACHINE_DRIVER_START( undrfire )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68EC020, 16000000)	/* 16 MHz */
 	MDRV_CPU_PROGRAM_MAP(undrfire_readmem,undrfire_writemem)
-	MDRV_CPU_VBLANK_INT(undrfire_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", undrfire_interrupt)
 
 	TAITO_F3_SOUND_SYSTEM_CPU(16000000)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET(undrfire)
 	MDRV_NVRAM_HANDLER(undrfire)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*8-1, 3*8, 32*8-1)
+
 	MDRV_GFXDECODE(undrfire)
 	MDRV_PALETTE_LENGTH(16384)
 

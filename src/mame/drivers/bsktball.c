@@ -22,6 +22,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "bsktball.h"
 #include "sound/discrete.h"
 
@@ -71,14 +72,14 @@ static PALETTE_INIT( bsktball )
  *************************************/
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(14) )
+	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x01ff) AM_RAM /* Zero Page RAM */
 	AM_RANGE(0x0800, 0x0800) AM_READ(bsktball_in0_r)
 	AM_RANGE(0x0802, 0x0802) AM_READ(input_port_5_r)
 	AM_RANGE(0x0803, 0x0803) AM_READ(input_port_6_r)
-	AM_RANGE(0x1000, 0x1000) AM_WRITE(MWA8_NOP) /* Timer Reset */
+	AM_RANGE(0x1000, 0x1000) AM_WRITE(SMH_NOP) /* Timer Reset */
 	AM_RANGE(0x1010, 0x1010) AM_WRITE(bsktball_bounce_w) /* Crowd Amp / Bounce */
-	AM_RANGE(0x1022, 0x1023) AM_WRITE(MWA8_NOP) /* Coin Counter */
+	AM_RANGE(0x1022, 0x1023) AM_WRITE(SMH_NOP) /* Coin Counter */
 	AM_RANGE(0x1024, 0x1025) AM_WRITE(bsktball_led1_w) /* LED 1 */
 	AM_RANGE(0x1026, 0x1027) AM_WRITE(bsktball_led2_w) /* LED 2 */
 	AM_RANGE(0x1028, 0x1029) AM_WRITE(bsktball_ld1_w) /* LD 1 */
@@ -86,7 +87,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x102c, 0x102d) AM_WRITE(bsktball_noise_reset_w) /* Noise Reset */
 	AM_RANGE(0x102e, 0x102f) AM_WRITE(bsktball_nmion_w) /* NMI On */
 	AM_RANGE(0x1030, 0x1030) AM_WRITE(bsktball_note_w) /* Music Ckt Note Dvsr */
-	AM_RANGE(0x1800, 0x1bbf) AM_READWRITE(MRA8_RAM, bsktball_videoram_w) AM_BASE(&videoram) /* DISPLAY */
+	AM_RANGE(0x1800, 0x1bbf) AM_READWRITE(SMH_RAM, bsktball_videoram_w) AM_BASE(&videoram) /* DISPLAY */
 	AM_RANGE(0x1bc0, 0x1bff) AM_RAM AM_BASE(&bsktball_motion)
 	AM_RANGE(0x1c00, 0x1cff) AM_RAM
 	AM_RANGE(0x2000, 0x3fff) AM_ROM /* PROGRAM */
@@ -210,16 +211,16 @@ static MACHINE_DRIVER_START( bsktball )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502,750000)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(bsktball_interrupt,8)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(bsktball_interrupt,8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(bsktball)
 	MDRV_PALETTE_LENGTH(2*4 + 4*4*4*4)
 

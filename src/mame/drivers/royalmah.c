@@ -221,26 +221,26 @@ static WRITE8_HANDLER( input_port_select_w )
 
 static READ8_HANDLER( royalmah_player_1_port_r )
 {
-	int ret = (input_port_0_r(offset) & 0xc0) | 0x3f;
+	int ret = (input_port_0_r(machine,offset) & 0xc0) | 0x3f;
 
-	if ((input_port_select & 0x01) == 0)  ret &= input_port_0_r(offset);
-	if ((input_port_select & 0x02) == 0)  ret &= input_port_1_r(offset);
-	if ((input_port_select & 0x04) == 0)  ret &= input_port_2_r(offset);
-	if ((input_port_select & 0x08) == 0)  ret &= input_port_3_r(offset);
-	if ((input_port_select & 0x10) == 0)  ret &= input_port_4_r(offset);
+	if ((input_port_select & 0x01) == 0)  ret &= input_port_0_r(machine,offset);
+	if ((input_port_select & 0x02) == 0)  ret &= input_port_1_r(machine,offset);
+	if ((input_port_select & 0x04) == 0)  ret &= input_port_2_r(machine,offset);
+	if ((input_port_select & 0x08) == 0)  ret &= input_port_3_r(machine,offset);
+	if ((input_port_select & 0x10) == 0)  ret &= input_port_4_r(machine,offset);
 
 	return ret;
 }
 
 static READ8_HANDLER( royalmah_player_2_port_r )
 {
-	int ret = (input_port_5_r(offset) & 0xc0) | 0x3f;
+	int ret = (input_port_5_r(machine,offset) & 0xc0) | 0x3f;
 
-	if ((input_port_select & 0x01) == 0)  ret &= input_port_5_r(offset);
-	if ((input_port_select & 0x02) == 0)  ret &= input_port_6_r(offset);
-	if ((input_port_select & 0x04) == 0)  ret &= input_port_7_r(offset);
-	if ((input_port_select & 0x08) == 0)  ret &= input_port_8_r(offset);
-	if ((input_port_select & 0x10) == 0)  ret &= input_port_9_r(offset);
+	if ((input_port_select & 0x01) == 0)  ret &= input_port_5_r(machine,offset);
+	if ((input_port_select & 0x02) == 0)  ret &= input_port_6_r(machine,offset);
+	if ((input_port_select & 0x04) == 0)  ret &= input_port_7_r(machine,offset);
+	if ((input_port_select & 0x08) == 0)  ret &= input_port_8_r(machine,offset);
+	if ((input_port_select & 0x10) == 0)  ret &= input_port_9_r(machine,offset);
 
 	return ret;
 }
@@ -355,27 +355,27 @@ static WRITE8_HANDLER ( dynax_bank_w )
 
 
 static ADDRESS_MAP_START( royalmah_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x6fff ) AM_READWRITE( MRA8_ROM, royalmah_rom_w )
+	AM_RANGE( 0x0000, 0x6fff ) AM_READWRITE( SMH_ROM, royalmah_rom_w )
 	AM_RANGE( 0x7000, 0x7fff ) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE( 0x8000, 0xffff ) AM_READ( MRA8_BANK1 )	// banked ROMs not present in royalmah
-	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( MWA8_RAM ) AM_BASE(&videoram)
+	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK1 )	// banked ROMs not present in royalmah
+	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( SMH_RAM ) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( mjapinky_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x6fff ) AM_READWRITE( MRA8_ROM, royalmah_rom_w )
+	AM_RANGE( 0x0000, 0x6fff ) AM_READWRITE( SMH_ROM, royalmah_rom_w )
 	AM_RANGE( 0x7000, 0x77ff ) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE( 0x7800, 0x7fff ) AM_RAM
 	AM_RANGE( 0x8000, 0x8000 ) AM_READ( mjapinky_dsw_r )
-	AM_RANGE( 0x8000, 0xffff ) AM_READ( MRA8_BANK1 )
-	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( MWA8_RAM ) AM_BASE(&videoram)
+	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK1 )
+	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( SMH_RAM ) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 
 
 
 static ADDRESS_MAP_START( royalmah_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE( AY8910_control_port_0_w )
@@ -384,7 +384,7 @@ static ADDRESS_MAP_START( royalmah_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ippatsu_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE( AY8910_control_port_0_w )
@@ -395,7 +395,7 @@ static ADDRESS_MAP_START( ippatsu_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( suzume_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE( AY8910_control_port_0_w )
@@ -406,7 +406,7 @@ static ADDRESS_MAP_START( suzume_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dondenmj_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE(AY8910_control_port_0_w)
@@ -418,7 +418,7 @@ static ADDRESS_MAP_START( dondenmj_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mjdiplob_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE( AY8910_control_port_0_w )
@@ -430,7 +430,7 @@ static ADDRESS_MAP_START( mjdiplob_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( tontonb_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE( AY8910_control_port_0_w )
@@ -442,7 +442,7 @@ static ADDRESS_MAP_START( tontonb_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( majs101b_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE( AY8910_control_port_0_w )
@@ -452,7 +452,7 @@ static ADDRESS_MAP_START( majs101b_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mjderngr_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x03, 0x03 ) AM_WRITE( AY8910_control_port_0_w )
@@ -466,7 +466,7 @@ static ADDRESS_MAP_START( mjderngr_iomap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mjapinky_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x00 ) AM_WRITE( mjapinky_bank_w )
 	AM_RANGE( 0x01, 0x01 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x02, 0x02 ) AM_WRITE( AY8910_write_port_0_w )
@@ -484,8 +484,8 @@ static ADDRESS_MAP_START( janptr96_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x5fff) AM_ROM
 	AM_RANGE( 0x6000, 0x6fff ) AM_RAMBANK(3)	// nvram
 	AM_RANGE( 0x7000, 0x7fff ) AM_RAMBANK(2)	// banked nvram
-	AM_RANGE( 0x8000, 0xffff ) AM_READ(MRA8_BANK1)
-	AM_RANGE( 0x8000, 0xffff ) AM_WRITE(MWA8_RAM) AM_BASE(&videoram)
+	AM_RANGE( 0x8000, 0xffff ) AM_READ(SMH_BANK1)
+	AM_RANGE( 0x8000, 0xffff ) AM_WRITE(SMH_RAM) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 static WRITE8_HANDLER( janptr96_dswsel_w )
@@ -535,7 +535,7 @@ static WRITE8_HANDLER( janptr96_coin_counter_w )
 }
 
 static ADDRESS_MAP_START( janptr96_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x00 ) AM_WRITE( janptr96_rombank_w )	// BANK ROM Select
 	AM_RANGE( 0x1e, 0x1e ) AM_READWRITE( janptr96_dswsel_r, janptr96_dswsel_w )
 	AM_RANGE( 0x1c, 0x1c ) AM_READ( janptr96_dsw_r )
@@ -574,7 +574,7 @@ static READ8_HANDLER( mjifb_rom_io_r )
 	{
 		case 0x8000:	return readinputport(14);		// dsw 4
 		case 0x8200:	return readinputport(13);		// dsw 3
-		case 0x9001:	return AY8910_read_port_0_r(0);	// inputs
+		case 0x9001:	return AY8910_read_port_0_r(machine,0);	// inputs
 		case 0x9011:	return readinputport(10);
 	}
 
@@ -595,12 +595,12 @@ static WRITE8_HANDLER( mjifb_rom_io_w )
 	switch(offset)
 	{
 		case 0x8e00:	palette_base = data & 0x1f;	return;
-		case 0x9002:	AY8910_write_port_0_w(0,data);			return;
-		case 0x9003:	AY8910_control_port_0_w(0,data);		return;
+		case 0x9002:	AY8910_write_port_0_w(machine,0,data);			return;
+		case 0x9003:	AY8910_control_port_0_w(machine,0,data);		return;
 		case 0x9010:
-			mjifb_coin_counter_w(0,data);
+			mjifb_coin_counter_w(machine,0,data);
 			return;
-		case 0x9011:	input_port_select_w(0,data);	return;
+		case 0x9011:	input_port_select_w(machine,0,data);	return;
 		case 0x9013:
 //          if (data)   popmessage("%02x",data);
 			return;
@@ -618,8 +618,8 @@ static ADDRESS_MAP_START( mjifb_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x6fff ) AM_ROM
 	AM_RANGE( 0x7000, 0x7fff ) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE( 0x8000, 0xbfff ) AM_READWRITE(mjifb_rom_io_r, mjifb_rom_io_w) AM_BASE(&videoram)
-	AM_RANGE( 0xc000, 0xffff ) AM_READWRITE(MRA8_ROM, mjifb_videoram_w)
-//  AM_RANGE( 0xc000, 0xffff ) AM_READWRITE(MRA8_ROM, MWA8_RAM)  This should, but doesn't work
+	AM_RANGE( 0xc000, 0xffff ) AM_READWRITE(SMH_ROM, mjifb_videoram_w)
+//  AM_RANGE( 0xc000, 0xffff ) AM_READWRITE(SMH_ROM, SMH_RAM)  This should, but doesn't work
 ADDRESS_MAP_END
 
 static READ8_HANDLER( mjifb_p3_r )
@@ -681,7 +681,7 @@ static READ8_HANDLER( mjdejavu_rom_io_r )
 	{
 		case 0x8000:	return readinputport(14);		// dsw 2
 		case 0x8001:	return readinputport(13);		// dsw 1
-		case 0x9001:	return AY8910_read_port_0_r(0);	// inputs
+		case 0x9001:	return AY8910_read_port_0_r(machine,0);	// inputs
 		case 0x9011:	return readinputport(10);
 	}
 
@@ -700,11 +700,11 @@ static WRITE8_HANDLER( mjdejavu_rom_io_w )
 	offset += 0x8000;
 	switch(offset)
 	{
-		case 0x8802:	palette_base = data & 0x1f;			return;
-		case 0x9002:	AY8910_write_port_0_w(0,data);		return;
-		case 0x9003:	AY8910_control_port_0_w(0,data);	return;
-		case 0x9010:	mjifb_coin_counter_w(0,data);		return;
-		case 0x9011:	input_port_select_w(0,data);		return;
+		case 0x8802:	palette_base = data & 0x1f;					return;
+		case 0x9002:	AY8910_write_port_0_w(machine,0,data);		return;
+		case 0x9003:	AY8910_control_port_0_w(machine,0,data);	return;
+		case 0x9010:	mjifb_coin_counter_w(machine,0,data);		return;
+		case 0x9011:	input_port_select_w(machine,0,data);		return;
 		case 0x9013:
 //          if (data)   popmessage("%02x",data);
 			return;
@@ -717,7 +717,7 @@ static ADDRESS_MAP_START( mjdejavu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x0000, 0x6fff ) AM_ROM
 	AM_RANGE( 0x7000, 0x7fff ) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE( 0x8000, 0xbfff ) AM_READWRITE(mjdejavu_rom_io_r, mjdejavu_rom_io_w) AM_BASE(&videoram)
-	AM_RANGE( 0xc000, 0xffff ) AM_READWRITE(MRA8_ROM, mjifb_videoram_w)
+	AM_RANGE( 0xc000, 0xffff ) AM_READWRITE(SMH_ROM, mjifb_videoram_w)
 ADDRESS_MAP_END
 
 
@@ -758,8 +758,8 @@ static ADDRESS_MAP_START( mjtensin_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x6ff1, 0x6ff1 ) AM_WRITE( mjderngr_palbank_w )
 	AM_RANGE( 0x6ff3, 0x6ff3 ) AM_WRITE( mjtensin_6ff3_w )
 	AM_RANGE( 0x7000, 0x7fff ) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE( 0x8000, 0xffff ) AM_READ( MRA8_BANK1 )
-	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( MWA8_RAM ) AM_BASE(&videoram)
+	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK1 )
+	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( SMH_RAM ) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mjtensin_iomap, ADDRESS_SPACE_IO, 8 )
@@ -821,7 +821,7 @@ static ADDRESS_MAP_START( cafetime_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x7fc2, 0x7fc2 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x7fc3, 0x7fc3 ) AM_WRITE( AY8910_control_port_0_w )
 	AM_RANGE( 0x7fd0, 0x7fd0 ) AM_WRITE( janptr96_coin_counter_w )
-	AM_RANGE( 0x7fd1, 0x7fd1 ) AM_READWRITE( input_port_10_r, MWA8_NOP )
+	AM_RANGE( 0x7fd1, 0x7fd1 ) AM_READWRITE( input_port_10_r, SMH_NOP )
 	AM_RANGE( 0x7fd3, 0x7fd3 ) AM_WRITE( input_port_select_w )
 	AM_RANGE( 0x7fe0, 0x7fe0 ) AM_READ( cafetime_dsw_r )
 	AM_RANGE( 0x7fe1, 0x7fe1 ) AM_WRITE( cafetime_dsw_w )
@@ -829,8 +829,8 @@ static ADDRESS_MAP_START( cafetime_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x7fe3, 0x7fe3 ) AM_WRITE( cafetime_7fe3_w )
 	AM_RANGE( 0x7fe4, 0x7fe4 ) AM_READ( cafetime_7fe4_r )
 	AM_RANGE( 0x7ff0, 0x7fff ) AM_READWRITE( msm6242_r, msm6242_w )
-	AM_RANGE( 0x8000, 0xffff ) AM_READ( MRA8_BANK1 )
-	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( MWA8_RAM ) AM_BASE(&videoram)
+	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK1 )
+	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( SMH_RAM ) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 
@@ -2437,24 +2437,24 @@ static INPUT_PORTS_START( mjifb )
 	PORT_DIPNAME( 0x02, 0x02, "Unknown 3-1" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, "Unknown 3-2" )
+	PORT_DIPNAME( 0x04, 0x04, "F-Rate" )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x08, 0x08, "Unknown 3-3" )
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, "Unknown 3-4" )
+	PORT_DIPNAME( 0x10, 0x10, "Bye-Byte Bonus" )
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, "Unknown 3-5" )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, "Unknown 3-6" )
+	PORT_DIPNAME( 0x40, 0x40, "Auto-Mode After Reached" )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x80, "Unknown 3-7" )
-	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Background Color" )
+	PORT_DIPSETTING(    0x80, "Black" )
+	PORT_DIPSETTING(    0x00, "Blue" )
 
 	PORT_START	// IN14 - DSW4 ($8000)
 	PORT_DIPNAME( 0x01, 0x01, "Unknown 4-0" )
@@ -2466,16 +2466,16 @@ static INPUT_PORTS_START( mjifb )
 	PORT_DIPNAME( 0x04, 0x04, "Unknown 4-2" )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x08, 0x08, "Unknown 4-3" )
-	PORT_DIPSETTING(    0x08, "129" )
-	PORT_DIPSETTING(    0x00, "212" )
+	PORT_DIPNAME( 0x08, 0x08, "Flip-Flop" )
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x40, 0x40, "Unknown 4-6" )
+	PORT_DIPNAME( 0x40, 0x40, "Animation" )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, "Full Tests" )
@@ -3315,22 +3315,21 @@ static MACHINE_DRIVER_START( royalmah )
 	MDRV_CPU_ADD_TAG("main", Z80, 3000000)        /* 3.00 MHz ? */
 	MDRV_CPU_PROGRAM_MAP(royalmah_map,0)
 	MDRV_CPU_IO_MAP(royalmah_iomap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_VIDEO_UPDATE(royalmah)
 	MDRV_PALETTE_LENGTH(16*2)
 	MDRV_PALETTE_INIT(royalmah)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 0, 255)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -3362,7 +3361,7 @@ static MACHINE_DRIVER_START( suzume )
 	MDRV_IMPORT_FROM(dondenmj)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(suzume_iomap,0)
-	MDRV_CPU_VBLANK_INT(suzume_irq,1)
+	MDRV_CPU_VBLANK_INT("main", suzume_irq)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( tontonb )
@@ -3416,8 +3415,9 @@ static MACHINE_DRIVER_START( janptr96 )
 	MDRV_CPU_REPLACE("main",Z80,24000000/4)	/* 6 MHz? */
 	MDRV_CPU_PROGRAM_MAP(janptr96_map,0)
 	MDRV_CPU_IO_MAP(janptr96_iomap,0)
-	MDRV_CPU_VBLANK_INT(janptr96_interrupt,3)	/* IM 2 needs a vector on the data bus */
+	MDRV_CPU_VBLANK_INT_HACK(janptr96_interrupt,3)	/* IM 2 needs a vector on the data bus */
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 9, 255-8)
 MACHINE_DRIVER_END
 
@@ -3427,8 +3427,9 @@ static MACHINE_DRIVER_START( mjifb )
 	MDRV_CPU_REPLACE("main",TMP90841, 8000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(mjifb_map,0)
 	MDRV_CPU_IO_MAP(mjifb_iomap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 8, 255-8)
 MACHINE_DRIVER_END
 
@@ -3438,8 +3439,9 @@ static MACHINE_DRIVER_START( mjdejavu )
 	MDRV_CPU_REPLACE("main",TMP90841, 8000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(mjdejavu_map,0)
 	MDRV_CPU_IO_MAP(mjifb_iomap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 8, 255-8)
 MACHINE_DRIVER_END
 
@@ -3458,8 +3460,9 @@ static MACHINE_DRIVER_START( mjtensin )
 	MDRV_CPU_REPLACE("main",TMP90841, 12000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(mjtensin_map,0)
 	MDRV_CPU_IO_MAP(mjtensin_iomap,0)
-	MDRV_CPU_VBLANK_INT( mjtensin_interrupt,2 )
+	MDRV_CPU_VBLANK_INT_HACK( mjtensin_interrupt,2 )
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 8, 255-8)
 MACHINE_DRIVER_END
 
@@ -3468,8 +3471,9 @@ static MACHINE_DRIVER_START( cafetime )
 	MDRV_CPU_REPLACE("main",TMP90841, 12000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(cafetime_map,0)
 	MDRV_CPU_IO_MAP(cafetime_iomap,0)
-	MDRV_CPU_VBLANK_INT(mjtensin_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(mjtensin_interrupt,2)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 8, 255-8)
 MACHINE_DRIVER_END
 

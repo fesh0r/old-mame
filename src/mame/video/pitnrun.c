@@ -24,7 +24,7 @@ static int pitnrun_ha;
 static int pitnrun_scroll;
 static int pitnrun_char_bank;
 static int pitnrun_color_select;
-static mame_bitmap *tmp_bitmap[4];
+static bitmap_t *tmp_bitmap[4];
 static tilemap *bg, *fg;
 UINT8* pitnrun_videoram2;
 
@@ -177,17 +177,17 @@ PALETTE_INIT (pitnrun)
 
 VIDEO_START(pitnrun)
 {
-	fg = tilemap_create( get_tile_info1,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32 );
-	bg = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32*4,32 );
+	fg = tilemap_create( get_tile_info1,tilemap_scan_rows,8,8,32,32 );
+	bg = tilemap_create( get_tile_info2,tilemap_scan_rows,8,8,32*4,32 );
 	tilemap_set_transparent_pen( fg, 0 );
-	tmp_bitmap[0] = auto_bitmap_alloc(128,128,machine->screen[0].format);
-	tmp_bitmap[1] = auto_bitmap_alloc(128,128,machine->screen[0].format);
-	tmp_bitmap[2] = auto_bitmap_alloc(128,128,machine->screen[0].format);
-	tmp_bitmap[3] = auto_bitmap_alloc(128,128,machine->screen[0].format);
+	tmp_bitmap[0] = auto_bitmap_alloc(128,128,video_screen_get_format(machine->primary_screen));
+	tmp_bitmap[1] = auto_bitmap_alloc(128,128,video_screen_get_format(machine->primary_screen));
+	tmp_bitmap[2] = auto_bitmap_alloc(128,128,video_screen_get_format(machine->primary_screen));
+	tmp_bitmap[3] = auto_bitmap_alloc(128,128,video_screen_get_format(machine->primary_screen));
 	pitnrun_spotlights();
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int sx, sy, flipx, flipy, offs,pal;
 
@@ -201,12 +201,12 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		flipy = (spriteram[offs+1]&0x80)>>7;
 		flipx = (spriteram[offs+1]&0x40)>>6;
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 		{
 			sx = 256 - sx;
 			flipx = !flipx;
 		}
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 		{
 			sy = 240 - sy;
 			flipy = !flipy;
@@ -256,10 +256,10 @@ VIDEO_UPDATE( pitnrun )
 		dx=128-pitnrun_h_heed+((pitnrun_ha&8)<<5)+3;
 		dy=128-pitnrun_v_heed+((pitnrun_ha&0x10)<<4);
 
-		if (flip_screen_x)
+		if (flip_screen_x_get())
 			dx=128-dx+16;
 
-		if (flip_screen_y)
+		if (flip_screen_y_get())
 			dy=128-dy;
 
 		myclip.min_x=dx;
@@ -277,10 +277,10 @@ VIDEO_UPDATE( pitnrun )
 		tilemap_draw(bitmap,&myclip,bg, 0,0);
 	}
 
-	draw_sprites(machine,bitmap,&myclip);
+	draw_sprites(screen->machine,bitmap,&myclip);
 
 	if(pitnrun_ha&4)
-		copybitmap_trans(bitmap,tmp_bitmap[pitnrun_ha&3],flip_screen_x,flip_screen_y,dx,dy,&myclip, 1);
+		copybitmap_trans(bitmap,tmp_bitmap[pitnrun_ha&3],flip_screen_x_get(),flip_screen_y_get(),dx,dy,&myclip, 1);
 	tilemap_draw(bitmap,cliprect,fg, 0,0);
 	return 0;
 }

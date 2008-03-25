@@ -96,7 +96,7 @@ static WRITE8_HANDLER( prot_w )
 
 
 static ADDRESS_MAP_START( wink_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 /*
 i/o 00-1F is used by the video circuits.
 it is used to select access to the palet-ram address-bus.
@@ -132,7 +132,7 @@ static ADDRESS_MAP_START( wink_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wink_sound_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0x80, 0x80) AM_WRITE(AY8910_control_port_0_w)
 ADDRESS_MAP_END
@@ -270,7 +270,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( wink )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
 static VIDEO_UPDATE( wink )
@@ -320,24 +320,24 @@ static MACHINE_DRIVER_START( wink )
 	MDRV_CPU_ADD(Z80, 12000000 / 4)
 	MDRV_CPU_PROGRAM_MAP(wink_map,0)
 	MDRV_CPU_IO_MAP(wink_io,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(Z80, 12000000 / 8)
 	MDRV_CPU_PROGRAM_MAP(wink_sound_map,0)
 	MDRV_CPU_IO_MAP(wink_sound_io,0)
 	MDRV_CPU_PERIODIC_INT(wink_sound, 15625)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(generic_1fill)
 	MDRV_MACHINE_RESET(wink)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 32*8-1)
+
 	MDRV_GFXDECODE(wink)
 	MDRV_PALETTE_LENGTH(32)
 

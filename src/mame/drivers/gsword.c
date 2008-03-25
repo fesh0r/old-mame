@@ -331,12 +331,12 @@ static WRITE8_HANDLER( josvolly_nmi_enable_w )
 
 static WRITE8_HANDLER( gsword_AY8910_control_port_0_w )
 {
-	AY8910_control_port_0_w(offset,data);
+	AY8910_control_port_0_w(machine,offset,data);
 	fake8910_0 = data;
 }
 static WRITE8_HANDLER( gsword_AY8910_control_port_1_w )
 {
-	AY8910_control_port_1_w(offset,data);
+	AY8910_control_port_1_w(machine,offset,data);
 	fake8910_1 = data;
 }
 
@@ -358,31 +358,31 @@ static WRITE8_HANDLER( gsword_adpcm_data_w )
 
 static WRITE8_HANDLER( adpcm_soundcommand_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( cpu1_map, 0 , 8 )
 	AM_RANGE(0x0000, 0x8fff) AM_ROM
 	AM_RANGE(0x9000, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xa37f) AM_RAM
-	AM_RANGE(0xa380, 0xa3ff) AM_WRITE(MWA8_RAM) AM_READ(MRA8_RAM) AM_BASE(&gsword_spritetile_ram)
+	AM_RANGE(0xa380, 0xa3ff) AM_WRITE(SMH_RAM) AM_READ(SMH_RAM) AM_BASE(&gsword_spritetile_ram)
 	AM_RANGE(0xa400, 0xa77f) AM_RAM
-	AM_RANGE(0xa780, 0xa7ff) AM_WRITE(MWA8_RAM) AM_READ(MRA8_RAM) AM_BASE(&gsword_spritexy_ram) AM_SIZE(&gsword_spritexy_size)
+	AM_RANGE(0xa780, 0xa7ff) AM_WRITE(SMH_RAM) AM_READ(SMH_RAM) AM_BASE(&gsword_spritexy_ram) AM_SIZE(&gsword_spritexy_size)
 	AM_RANGE(0xa980, 0xa980) AM_WRITE(gsword_charbank_w)
 	AM_RANGE(0xaa80, 0xaa80) AM_WRITE(gsword_videoctrl_w)	/* flip screen, char palette bank */
 	AM_RANGE(0xab00, 0xab00) AM_WRITE(gsword_scroll_w)
-	AM_RANGE(0xab80, 0xabff) AM_WRITE(MWA8_RAM) AM_BASE(&gsword_spriteattrib_ram)
-	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(gsword_videoram_w) AM_READ(MRA8_RAM) AM_BASE(&videoram)
+	AM_RANGE(0xab80, 0xabff) AM_WRITE(SMH_RAM) AM_BASE(&gsword_spriteattrib_ram)
+	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(gsword_videoram_w) AM_READ(SMH_RAM) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cpu1_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7e, 0x7f) AM_WRITE(TAITO8741_0_w)  AM_READ(TAITO8741_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( josvolly_cpu1_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7e, 0x7f) AM_WRITE(josvolly_8741_0_w)  AM_READ(josvolly_8741_0_r)
 ADDRESS_MAP_END
 
@@ -394,7 +394,7 @@ static ADDRESS_MAP_START( cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cpu2_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x01) AM_WRITE(TAITO8741_2_w) AM_READ(TAITO8741_2_r)
 	AM_RANGE(0x20, 0x21) AM_WRITE(TAITO8741_3_w) AM_READ(TAITO8741_3_r)
 	AM_RANGE(0x40, 0x41) AM_WRITE(TAITO8741_1_w) AM_READ(TAITO8741_1_r)
@@ -403,9 +403,9 @@ static ADDRESS_MAP_START( cpu2_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x80, 0x80) AM_WRITE(gsword_AY8910_control_port_1_w) AM_READ(gsword_fake_1_r)
 	AM_RANGE(0x81, 0x81) AM_WRITE(AY8910_write_port_1_w)          AM_READ(AY8910_read_port_1_r)
 //
-	AM_RANGE(0xe0, 0xe0) AM_READ(MRA8_NOP) /* ?? */
-	AM_RANGE(0xa0, 0xa0) AM_WRITE(MWA8_NOP) /* ?? */
-	AM_RANGE(0xe0, 0xe0) AM_WRITE(MWA8_NOP) /* watch dog ?*/
+	AM_RANGE(0xe0, 0xe0) AM_READ(SMH_NOP) /* ?? */
+	AM_RANGE(0xa0, 0xa0) AM_WRITE(SMH_NOP) /* ?? */
+	AM_RANGE(0xe0, 0xe0) AM_WRITE(SMH_NOP) /* watch dog ?*/
 ADDRESS_MAP_END
 
 //
@@ -431,7 +431,7 @@ static ADDRESS_MAP_START( josvolly_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( josvolly_cpu2_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(gsword_AY8910_control_port_0_w) AM_READ(gsword_fake_0_r)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)          AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x40, 0x40) AM_WRITE(gsword_AY8910_control_port_1_w) AM_READ(gsword_fake_1_r)
@@ -691,19 +691,17 @@ static MACHINE_DRIVER_START( gsword )
 	MDRV_CPU_ADD(Z80, XTAL_18MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu1_map,0)
 	MDRV_CPU_IO_MAP(cpu1_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, XTAL_18MHz/6) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(cpu2_map,0)
 	MDRV_CPU_IO_MAP(cpu2_io_map,0)
-	MDRV_CPU_VBLANK_INT(gsword_snd_interrupt,4)
+	MDRV_CPU_VBLANK_INT_HACK(gsword_snd_interrupt,4)
 
 	MDRV_CPU_ADD(Z80, XTAL_18MHz/6) /* verified on pcb */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(cpu3_map,0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(200) /* Allow time for 2nd cpu to interleave*/
 
 	MDRV_MACHINE_RESET(gsword)
@@ -714,13 +712,15 @@ static MACHINE_DRIVER_START( gsword )
 #endif
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(gsword)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(64*4+64*4)
+	MDRV_PALETTE_LENGTH(64*4+64*4)
 
 	MDRV_PALETTE_INIT(gsword)
 	MDRV_VIDEO_START(gsword)
@@ -747,28 +747,27 @@ static MACHINE_DRIVER_START( josvolly )
 	MDRV_CPU_ADD(Z80, 18000000/6) /* ? */
 	MDRV_CPU_PROGRAM_MAP(cpu1_map,0)
 	MDRV_CPU_IO_MAP(josvolly_cpu1_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)
 
 	MDRV_CPU_ADD(Z80, 12000000/4) /* ? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(josvolly_cpu2_map,0)
 	MDRV_CPU_IO_MAP(josvolly_cpu2_io_map,0)
-//  MDRV_CPU_VBLANK_INT(gsword_snd_interrupt,1)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+//  MDRV_CPU_VBLANK_INT("main", gsword_snd_interrupt)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_MACHINE_RESET(josvolly)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 
 	MDRV_GFXDECODE(gsword)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(64*4+64*4)
+	MDRV_PALETTE_LENGTH(64*4+64*4)
 
 	MDRV_PALETTE_INIT(josvolly)
 	MDRV_VIDEO_START(gsword)
@@ -957,10 +956,7 @@ static DRIVER_INIT( gsword2 )
 #endif
 }
 
-static DRIVER_INIT(josvolly)
-{
-}
 
-GAME( 1984, gsword,   0,      gsword,   gsword, gsword,  ROT0,  "Taito Corporation", "Great Swordsman (World?)", 0 )
-GAME( 1984, gsword2,  gsword, gsword,   gsword, gsword2, ROT0,  "Taito Corporation", "Great Swordsman (Japan?)", 0 )
-GAME( 1983, josvolly, 0,      josvolly, josvolly, josvolly,       ROT90, "Taito Corporation", "Joshi Volleyball", GAME_UNEMULATED_PROTECTION|GAME_IMPERFECT_GRAPHICS|GAME_IMPERFECT_SOUND )
+GAME( 1983, josvolly, 0,      josvolly, josvolly, 0,       ROT90, "Taito Corporation", "Joshi Volleyball", GAME_UNEMULATED_PROTECTION | GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1984, gsword,   0,      gsword,   gsword,   gsword,  ROT0,  "Taito Corporation", "Great Swordsman (World?)", 0 )
+GAME( 1984, gsword2,  gsword, gsword,   gsword,   gsword2, ROT0,  "Taito Corporation", "Great Swordsman (Japan?)", 0 )

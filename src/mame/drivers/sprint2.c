@@ -103,9 +103,9 @@ static INTERRUPT_GEN( sprint2 )
 		}
 	}
 
-	discrete_sound_w(SPRINT2_MOTORSND1_DATA, sprint2_video_ram[0x394] & 15);	// also DOMINOS_FREQ_DATA
-	discrete_sound_w(SPRINT2_MOTORSND2_DATA, sprint2_video_ram[0x395] & 15);
-	discrete_sound_w(SPRINT2_CRASHSND_DATA, sprint2_video_ram[0x396] & 15);	// also DOMINOS_AMP_DATA
+	discrete_sound_w(machine, SPRINT2_MOTORSND1_DATA, sprint2_video_ram[0x394] & 15);	// also DOMINOS_FREQ_DATA
+	discrete_sound_w(machine, SPRINT2_MOTORSND2_DATA, sprint2_video_ram[0x395] & 15);
+	discrete_sound_w(machine, SPRINT2_CRASHSND_DATA, sprint2_video_ram[0x396] & 15);	// also DOMINOS_AMP_DATA
 
 	/* interrupts and watchdog are disabled during service mode */
 
@@ -113,29 +113,6 @@ static INTERRUPT_GEN( sprint2 )
 
 	if (!service_mode())
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
-}
-
-
-static PALETTE_INIT( sprint2 )
-{
-	palette_set_color(machine, 0, MAKE_RGB(0x00, 0x00, 0x00));
-	palette_set_color(machine, 1, MAKE_RGB(0x5b, 0x5b, 0x5b));
-	palette_set_color(machine, 2, MAKE_RGB(0xa4, 0xa4, 0xa4));
-	palette_set_color(machine, 3, MAKE_RGB(0xff, 0xff, 0xff));
-
-	colortable[0x0] = 1;	/* black playfield */
-	colortable[0x1] = 0;
-	colortable[0x2] = 1;	/* white playfield */
-	colortable[0x3] = 3;
-
-	colortable[0x4] = 1;	/* car #1 */
-	colortable[0x5] = 3;
-	colortable[0x6] = 1;	/* car #2 */
-	colortable[0x7] = 0;
-	colortable[0x8] = 1;	/* car #3 */
-	colortable[0x9] = 2;
-	colortable[0xa] = 1;	/* car #4 */
-	colortable[0xb] = 2;
 }
 
 
@@ -189,21 +166,16 @@ static READ8_HANDLER( sprint2_sync_r )
 	UINT8 val = 0;
 
 	if (attract != 0)
-	{
 		val |= 0x10;
-	}
-	if (video_screen_get_vpos(0) == 261)
-	{
+
+	if (video_screen_get_vpos(machine->primary_screen) == 261)
 		val |= 0x20; /* VRESET */
-	}
-	if (video_screen_get_vpos(0) >= 224)
-	{
+
+	if (video_screen_get_vpos(machine->primary_screen) >= 224)
 		val |= 0x40; /* VBLANK */
-	}
-	if (video_screen_get_vpos(0) >= 131)
-	{
+
+	if (video_screen_get_vpos(machine->primary_screen) >= 131)
 		val |= 0x80; /* 60 Hz? */
-	}
 
 	return val;
 }
@@ -240,25 +212,25 @@ static WRITE8_HANDLER( sprint2_attract_w )
 	attract = offset & 1;
 
 	// also DOMINOS_ATTRACT_EN
-	discrete_sound_w(SPRINT2_ATTRACT_EN, attract);
+	discrete_sound_w(machine, SPRINT2_ATTRACT_EN, attract);
 }
 
 
 static WRITE8_HANDLER( sprint2_noise_reset_w )
 {
-	discrete_sound_w(SPRINT2_NOISE_RESET, 0);
+	discrete_sound_w(machine, SPRINT2_NOISE_RESET, 0);
 }
 
 
 static WRITE8_HANDLER( sprint2_skid1_w )
 {
 	// also DOMINOS_TUMBLE_EN
-	discrete_sound_w(SPRINT2_SKIDSND1_EN, offset & 1);
+	discrete_sound_w(machine, SPRINT2_SKIDSND1_EN, offset & 1);
 }
 
 static WRITE8_HANDLER( sprint2_skid2_w )
 {
-	discrete_sound_w(SPRINT2_SKIDSND2_EN, offset & 1);
+	discrete_sound_w(machine, SPRINT2_SKIDSND2_EN, offset & 1);
 }
 
 
@@ -274,7 +246,7 @@ static WRITE8_HANDLER( sprint2_lamp2_w )
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_READ(sprint2_wram_r)
-	AM_RANGE(0x0400, 0x07ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0400, 0x07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0818, 0x081f) AM_READ(sprint2_input_A_r)
 	AM_RANGE(0x0828, 0x082f) AM_READ(sprint2_input_B_r)
 	AM_RANGE(0x0830, 0x0837) AM_READ(sprint2_dip_r)
@@ -284,9 +256,9 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c00, 0x0fff) AM_READ(sprint2_sync_r)
 	AM_RANGE(0x1000, 0x13ff) AM_READ(sprint2_collision1_r)
 	AM_RANGE(0x1400, 0x17ff) AM_READ(sprint2_collision2_r)
-	AM_RANGE(0x1800, 0x1800) AM_READ(MRA8_NOP)  /* debugger ROM location? */
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x1800, 0x1800) AM_READ(SMH_NOP)  /* debugger ROM location? */
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -298,15 +270,15 @@ static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c20, 0x0c2f) AM_WRITE(sprint2_skid2_w)
 	AM_RANGE(0x0c30, 0x0c3f) AM_WRITE(sprint2_lamp1_w)
 	AM_RANGE(0x0c40, 0x0c4f) AM_WRITE(sprint2_lamp2_w)
-	AM_RANGE(0x0c60, 0x0c6f) AM_WRITE(MWA8_NOP) /* SPARE */
+	AM_RANGE(0x0c60, 0x0c6f) AM_WRITE(SMH_NOP) /* SPARE */
 	AM_RANGE(0x0c80, 0x0cff) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x0d00, 0x0d7f) AM_WRITE(sprint2_collision_reset1_w)
 	AM_RANGE(0x0d80, 0x0dff) AM_WRITE(sprint2_collision_reset2_w)
 	AM_RANGE(0x0e00, 0x0e7f) AM_WRITE(sprint2_steering_reset1_w)
 	AM_RANGE(0x0e80, 0x0eff) AM_WRITE(sprint2_steering_reset2_w)
 	AM_RANGE(0x0f00, 0x0f7f) AM_WRITE(sprint2_noise_reset_w)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -531,19 +503,18 @@ static MACHINE_DRIVER_START( sprint2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
-	MDRV_CPU_VBLANK_INT(sprint2, 1)
+	MDRV_CPU_VBLANK_INT("main", sprint2)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 223)
+
 	MDRV_GFXDECODE(sprint2)
-	MDRV_PALETTE_LENGTH(4)
-	MDRV_COLORTABLE_LENGTH(12)
+	MDRV_PALETTE_LENGTH(12)
 
 	MDRV_PALETTE_INIT(sprint2)
 	MDRV_VIDEO_START(sprint2)

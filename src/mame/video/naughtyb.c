@@ -67,75 +67,40 @@ static const rectangle rightvisiblearea =
 ***************************************************************************/
 PALETTE_INIT( naughtyb )
 {
-	int i;
-	#define COLOR(gfxn,offs) (colortable[machine->drv->gfxdecodeinfo[gfxn].color_codes_start + offs])
-
 	/* note: there is no resistor on second PROM so we define second resistance as 0 */
 	static const int resistances[2] = { 270, 0 };
-	double weights_r[2], weights_g[2], weights_b[2];
+	double rweights[2], gweights[2], bweights[2];
+	int i;
 
+	/* compute the color output resistor weights */
+	compute_resistor_weights(0,	255, -1.0,
+			2, resistances, rweights, 270, 270,
+			2, resistances, gweights, 270, 270,
+			2, resistances, bweights, 270, 270);
 
-	compute_resistor_weights(0,	255,	-1.0,
-			2,	resistances,	weights_r,	270,	270,
-			2,	resistances,	weights_g,	270,	270,
-			2,	resistances,	weights_b,	270,	270);
-
-
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0; i < 0x100; i++)
 	{
-		int bit0,bit1,r,g,b;
+		int bit0, bit1;
+		int r, g, b;
+		int swapped_i;
 
+		/* red component */
+		bit0 = (color_prom[i | 0x000] >> 0) & 0x01;
+		bit1 = (color_prom[i | 0x100] >> 0) & 0x01;
+		r = combine_2_weights(rweights, bit0, bit1);
 
-		bit0 = (color_prom[0] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
+		/* green component */
+		bit0 = (color_prom[i | 0x000] >> 2) & 0x01;
+		bit1 = (color_prom[i | 0x100] >> 2) & 0x01;
+		g = combine_2_weights(gweights, bit0, bit1);
 
-		/*r = 0x55 * bit0 + 0xaa * bit1;*/
-		r = combine_2_weights(weights_r, bit0, bit1);
+		/* blue component */
+		bit0 = (color_prom[i | 0x000] >> 1) & 0x01;
+		bit1 = (color_prom[i | 0x100] >> 1) & 0x01;
+		b = combine_2_weights(bweights, bit0, bit1);
 
-		bit0 = (color_prom[0] >> 2) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-
-		/*g = 0x55 * bit0 + 0xaa * bit1;*/
-		g = combine_2_weights(weights_g, bit0, bit1);
-
-		bit0 = (color_prom[0] >> 1) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-
-		/*b = 0x55 * bit0 + 0xaa * bit1;*/
-		b = combine_2_weights(weights_b, bit0, bit1);
-
-		palette_set_color(machine,i,MAKE_RGB(r,g,b));
-		color_prom++;
-	}
-
-	/* first bank of characters use colors 0-31, 64-95, 128-159 and 192-223 */
-	for (i = 0;i < 8;i++)
-	{
-		int j;
-
-
-		for (j = 0;j < 4;j++)
-		{
-			COLOR(0,4*i + j*4*8) = i + j*64;
-			COLOR(0,4*i + j*4*8 + 1) = 8 + i + j*64;
-			COLOR(0,4*i + j*4*8 + 2) = 2*8 + i + j*64;
-			COLOR(0,4*i + j*4*8 + 3) = 3*8 + i + j*64;
-		}
-	}
-
-	/* second bank of characters use colors 32-63, 96-127, 160-191 and 224-255 */
-	for (i = 0;i < 8;i++)
-	{
-		int j;
-
-
-		for (j = 0;j < 4;j++)
-		{
-			COLOR(1,4*i + j*4*8) = i + 32 + j*64;
-			COLOR(1,4*i + j*4*8 + 1) = 8 + i + 32 + j*64;
-			COLOR(1,4*i + j*4*8 + 2) = 2*8 + i + 32 + j*64;
-			COLOR(1,4*i + j*4*8 + 3) = 3*8 + i + 32 + j*64;
-		}
+		swapped_i = BITSWAP8(i,5,7,6,2,1,0,4,3);
+		palette_set_color(machine, swapped_i, MAKE_RGB(r, g, b));
 	}
 }
 
@@ -151,7 +116,7 @@ VIDEO_START( naughtyb )
 	palreg = bankreg = 0;
 
 	/* Naughty Boy has a virtual screen twice as large as the visible screen */
-	tmpbitmap = auto_bitmap_alloc(68*8,28*8,machine->screen[0].format);
+	tmpbitmap = auto_bitmap_alloc(68*8,28*8,video_screen_get_format(machine->primary_screen));
 }
 
 
@@ -160,11 +125,10 @@ VIDEO_START( naughtyb )
 WRITE8_HANDLER( naughtyb_videoreg_w )
 {
 	// bits 4+5 control the sound circuit
-
-	pleiads_sound_control_c_w(offset,data);
+	pleiads_sound_control_c_w(machine,offset,data);
 
 	naughtyb_cocktail =
-		( ( input_port_2_r(0) & 0x80 ) &&	// cabinet == cocktail
+		( ( input_port_2_r(machine,0) & 0x80 ) &&	// cabinet == cocktail
 		  ( data & 0x01 ) );				// handling player 2
 	palreg  = (data >> 1) & 0x03;			// pallette sel is bit 1 & 2
 	bankreg = (data >> 2) & 0x01;			// banksel is just bit 2
@@ -173,11 +137,10 @@ WRITE8_HANDLER( naughtyb_videoreg_w )
 WRITE8_HANDLER( popflame_videoreg_w )
 {
 	// bits 4+5 control the sound circuit
-
-	pleiads_sound_control_c_w(offset,data);
+	pleiads_sound_control_c_w(machine,offset,data);
 
 	naughtyb_cocktail =
-		( ( input_port_2_r(0) & 0x80 ) &&	// cabinet == cocktail
+		( ( input_port_2_r(machine,0) & 0x80 ) &&	// cabinet == cocktail
 		  ( data & 0x01 ) );				// handling player 2
 	palreg  = (data >> 1) & 0x03;			// pallette sel is bit 1 & 2
 	bankreg = (data >> 3) & 0x01;			// banksel is just bit 3
@@ -266,14 +229,14 @@ VIDEO_UPDATE( naughtyb )
 			}
 		}
 
-		drawgfx(tmpbitmap,machine->gfx[0],
+		drawgfx(tmpbitmap,screen->machine->gfx[0],
 				naughtyb_videoram2[offs] + 256 * bankreg,
 				(naughtyb_videoram2[offs] >> 5) + 8 * palreg,
 				naughtyb_cocktail,naughtyb_cocktail,
 				8*sx,8*sy,
 				0,TRANSPARENCY_NONE,0);
 
-		drawgfx(tmpbitmap,machine->gfx[1],
+		drawgfx(tmpbitmap,screen->machine->gfx[1],
 				videoram[offs] + 256*bankreg,
 				(videoram[offs] >> 5) + 8 * palreg,
 				naughtyb_cocktail,naughtyb_cocktail,

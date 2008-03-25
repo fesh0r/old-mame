@@ -68,7 +68,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
@@ -89,7 +89,7 @@ static ADDRESS_MAP_START( snd_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( snd_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(soundlatch_r)
 	AM_RANGE(0x04, 0x04) AM_WRITENOP // 0 or 1
 	AM_RANGE(0x08, 0x08) AM_WRITE(snd_irq_w)
@@ -255,13 +255,13 @@ static TILE_GET_INFO( get_fg_tile_info )
 
 static VIDEO_START( dacholer )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int offs,code,attr,sx,sy,flipx,flipy;
 
@@ -276,7 +276,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx = (spriteram[offs+3] - 128) + 256 * (attr & 0x01);
 		sy = 248 - spriteram[offs];
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 240 - sx;
 			sy = 240 - sy;
@@ -297,7 +297,7 @@ static VIDEO_UPDATE(dacholer)
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -337,21 +337,21 @@ static MACHINE_DRIVER_START( dacholer )
 	MDRV_CPU_ADD(Z80, 4000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_IO_MAP(main_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 4000000)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(snd_map, 0)
 	MDRV_CPU_IO_MAP(snd_io_map, 0)
 	MDRV_CPU_PERIODIC_INT(nmi_line_pulse, 120) // too high?
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 16, 256-1-16)
+
 	MDRV_PALETTE_LENGTH(16)
 	MDRV_GFXDECODE(dacholer)
 

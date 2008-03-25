@@ -50,7 +50,7 @@ static TILE_GET_INFO( flyball_get_tile_info )
 VIDEO_START( flyball )
 {
 	flyball_tilemap = tilemap_create(flyball_get_tile_info,
-		flyball_get_memory_offset, TILEMAP_TYPE_PEN, 8, 16, 32, 16);
+		flyball_get_memory_offset,  8, 16, 32, 16);
 }
 
 
@@ -73,23 +73,17 @@ VIDEO_UPDATE( flyball )
 
 	/* draw pitcher */
 
-	drawgfx(bitmap, machine->gfx[1], flyball_pitcher_pic ^ 0xf,
+	drawgfx(bitmap, screen->machine->gfx[1], flyball_pitcher_pic ^ 0xf,
 		0, 1, 0, pitcherx, pitchery, cliprect, TRANSPARENCY_PEN, 1);
 
 	/* draw ball */
 
 	for (y = bally; y < bally + 2; y++)
-	{
 		for (x = ballx; x < ballx + 2; x++)
-		{
-			if (x >= machine->screen[0].visarea.min_x &&
-			    x <= machine->screen[0].visarea.max_x &&
-			    y >= machine->screen[0].visarea.min_y &&
-			    y <= machine->screen[0].visarea.max_y)
-			{
-				*BITMAP_ADDR16(bitmap, y, x) = machine->pens[1];
-			}
-		}
-	}
+			if (x >= cliprect->min_x &&
+			    x <= cliprect->max_x &&
+			    y >= cliprect->min_y &&
+			    y <= cliprect->max_y)
+				*BITMAP_ADDR16(bitmap, y, x) = 1;
 	return 0;
 }

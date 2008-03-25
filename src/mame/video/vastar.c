@@ -72,9 +72,9 @@ static TILE_GET_INFO( get_bg2_tile_info )
 
 VIDEO_START( vastar )
 {
-	fg_tilemap  = tilemap_create(get_fg_tile_info, tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
-	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,32,32);
+	fg_tilemap  = tilemap_create(get_fg_tile_info, tilemap_scan_rows,8,8,32,32);
+	bg1_tilemap = tilemap_create(get_bg1_tile_info,tilemap_scan_rows,8,8,32,32);
+	bg2_tilemap = tilemap_create(get_bg2_tile_info,tilemap_scan_rows,8,8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg1_tilemap,0);
@@ -127,7 +127,7 @@ READ8_HANDLER( vastar_bg2videoram_r )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -146,7 +146,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		flipx = spriteram_3[offs] & 0x02;
 		flipy = spriteram_3[offs] & 0x01;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -154,7 +154,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		if (spriteram_2[offs] & 0x08)	/* double width */
 		{
-			if (!flip_screen)
+			if (!flip_screen_get())
 				sy = 224 - sy;
 
 			drawgfx(bitmap,machine->gfx[2],
@@ -173,7 +173,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		}
 		else
 		{
-			if (!flip_screen)
+			if (!flip_screen_get())
 				sy = 240 - sy;
 
 			drawgfx(bitmap,machine->gfx[1],
@@ -201,14 +201,14 @@ VIDEO_UPDATE( vastar )
 	{
 	case 0:
 		tilemap_draw(bitmap,cliprect, bg1_tilemap, TILEMAP_DRAW_OPAQUE,0);
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 		tilemap_draw(bitmap,cliprect, bg2_tilemap, 0,0);
 		tilemap_draw(bitmap,cliprect, fg_tilemap, 0,0);
 		break;
 
 	case 2:
 		tilemap_draw(bitmap,cliprect, bg1_tilemap, TILEMAP_DRAW_OPAQUE,0);
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 		tilemap_draw(bitmap,cliprect, bg1_tilemap, 0,0);
 		tilemap_draw(bitmap,cliprect, bg2_tilemap, 0,0);
 		tilemap_draw(bitmap,cliprect, fg_tilemap, 0,0);
@@ -218,7 +218,7 @@ VIDEO_UPDATE( vastar )
 		tilemap_draw(bitmap,cliprect, bg1_tilemap, TILEMAP_DRAW_OPAQUE,0);
 		tilemap_draw(bitmap,cliprect, bg2_tilemap, 0,0);
 		tilemap_draw(bitmap,cliprect, fg_tilemap, 0,0);
-		draw_sprites(machine, bitmap,cliprect);
+		draw_sprites(screen->machine, bitmap,cliprect);
 		break;
 
 	default:

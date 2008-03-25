@@ -81,7 +81,7 @@ Heavy use is made of sprite zooming.
 
 ***************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int do_hack,int x_offs,int y_offs)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int do_hack,int x_offs,int y_offs)
 {
 	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
 	int offs, data, tilenum, color, flipx, flipy;
@@ -224,8 +224,8 @@ VIDEO_UPDATE( groundfx )
 	UINT8 pivlayer[3];
 	UINT16 priority;
 
-	TC0100SCN_tilemap_update(machine);
-	TC0480SCP_tilemap_update(machine);
+	TC0100SCN_tilemap_update(screen->machine);
+	TC0480SCP_tilemap_update(screen->machine);
 
 	priority = TC0480SCP_get_bg_priority();
 
@@ -240,10 +240,10 @@ VIDEO_UPDATE( groundfx )
 	pivlayer[2] = 2;
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0],cliprect);	/* wrong color? */
+	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
 
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,pivlayer[0],0,0);
-	TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,pivlayer[1],0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[0],0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[1],0,0);
 
 	/*  BIG HACK!
 
@@ -261,21 +261,21 @@ VIDEO_UPDATE( groundfx )
         it's contents the usual way.
 
     */
-	if (TC0100SCN_long_r(0x4090/4,0) || TC0480SCP_long_r(0x20/4,0)==0x240866) { /* Anything in text layer - really stupid hack */
+	if (TC0100SCN_long_r(screen->machine,0x4090/4,0) || TC0480SCP_long_r(screen->machine,0x20/4,0)==0x240866) { /* Anything in text layer - really stupid hack */
 		TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
 		TC0480SCP_tilemap_draw(bitmap,cliprect,layer[2],0,4);
 		TC0480SCP_tilemap_draw(bitmap,cliprect,layer[3],0,8);
 //      TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,pivlayer[2],0,0);
-		if (TC0480SCP_long_r(0x20/4,0)!=0x240866) /* Stupid hack for start of race */
+		if (TC0480SCP_long_r(screen->machine,0x20/4,0)!=0x240866) /* Stupid hack for start of race */
 			TC0480SCP_tilemap_draw(bitmap,&hack_cliprect,layer[0],0,0);
-		draw_sprites(machine,bitmap,cliprect,1,44,-574);
+		draw_sprites(screen->machine,bitmap,cliprect,1,44,-574);
 	} else {
 		TC0480SCP_tilemap_draw(bitmap,cliprect,layer[0],0,1);
 		TC0480SCP_tilemap_draw(bitmap,cliprect,layer[1],0,2);
 		TC0480SCP_tilemap_draw(bitmap,cliprect,layer[2],0,4);
 		TC0480SCP_tilemap_draw(bitmap,cliprect,layer[3],0,8);
-		TC0100SCN_tilemap_draw(machine,bitmap,cliprect,0,pivlayer[2],0,0);
-		draw_sprites(machine,bitmap,cliprect,0,44,-574);
+		TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[2],0,0);
+		draw_sprites(screen->machine,bitmap,cliprect,0,44,-574);
 	}
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,0);	/* TC0480SCP text layer */

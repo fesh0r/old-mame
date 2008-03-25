@@ -95,7 +95,7 @@ static UINT32 *rabbit_viewregs10;
 static UINT32 *rabbit_tilemap_regs[4];
 static UINT32 *rabbit_spriteregs;
 static UINT32 *rabbit_blitterregs;
-static mame_bitmap *rabbit_sprite_bitmap;
+static bitmap_t *rabbit_sprite_bitmap;
 static rectangle rabbit_sprite_clip;
 
 static int rabbit_vblirqlevel, rabbit_bltirqlevel, rabbit_banking;
@@ -214,7 +214,7 @@ sprites invisible at the end of a round in rabbit, why?
 
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int xpos,ypos,tileno,xflip,yflip, colr;
 	const gfx_element *gfx = machine->gfx[1];
@@ -253,7 +253,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 /* the sprite bitmap can probably be handled better than this ... */
-static void rabbit_clearspritebitmap( mame_bitmap *bitmap, const rectangle *cliprect )
+static void rabbit_clearspritebitmap( bitmap_t *bitmap, const rectangle *cliprect )
 {
 	int startx, starty;
 	int y;
@@ -280,7 +280,7 @@ static void rabbit_clearspritebitmap( mame_bitmap *bitmap, const rectangle *clip
 }
 
 /* todo: fix zoom, its inaccurate and this code is ugly */
-static void draw_sprite_bitmap( mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprite_bitmap( bitmap_t *bitmap, const rectangle *cliprect )
 {
 
 	UINT32 x,y;
@@ -346,15 +346,15 @@ static VIDEO_START(rabbit)
 	memset(rabbit_tilemap_ram[2], 0, 0x20000);
 	memset(rabbit_tilemap_ram[3], 0, 0x20000);
 
-	rabbit_tilemap[0] = tilemap_create(get_rabbit_tilemap0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     16, 16, 128,32);
-	rabbit_tilemap[1] = tilemap_create(get_rabbit_tilemap1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     16, 16, 128,32);
-	rabbit_tilemap[2] = tilemap_create(get_rabbit_tilemap2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     16, 16, 128,32);
-	rabbit_tilemap[3] = tilemap_create(get_rabbit_tilemap3_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     8, 8, 128,32);
+	rabbit_tilemap[0] = tilemap_create(get_rabbit_tilemap0_tile_info,tilemap_scan_rows,16, 16, 128,32);
+	rabbit_tilemap[1] = tilemap_create(get_rabbit_tilemap1_tile_info,tilemap_scan_rows,16, 16, 128,32);
+	rabbit_tilemap[2] = tilemap_create(get_rabbit_tilemap2_tile_info,tilemap_scan_rows,16, 16, 128,32);
+	rabbit_tilemap[3] = tilemap_create(get_rabbit_tilemap3_tile_info,tilemap_scan_rows, 8,  8, 128,32);
 	tilemap_set_transparent_pen(rabbit_tilemap[0],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[1],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[2],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[3],0x0);
-	rabbit_sprite_bitmap = auto_bitmap_alloc(0x1000,0x1000,machine->screen[0].format);
+	rabbit_sprite_bitmap = auto_bitmap_alloc(0x1000,0x1000,video_screen_get_format(machine->primary_screen));
 	rabbit_sprite_clip.min_x = 0;
 	rabbit_sprite_clip.max_x = 0x1000-1;
 	rabbit_sprite_clip.min_y = 0;
@@ -383,7 +383,7 @@ each line represents the differences on each tilemap for unknown variables
 
 */
 
-static void rabbit_drawtilemap( mame_bitmap *bitmap, const rectangle *cliprect, int whichtilemap )
+static void rabbit_drawtilemap( bitmap_t *bitmap, const rectangle *cliprect, int whichtilemap )
 {
 	INT32 startx, starty, incxx, incxy, incyx, incyy, tran;
 
@@ -410,7 +410,7 @@ static VIDEO_UPDATE(rabbit)
 {
 	int prilevel;
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 //  popmessage("%08x %08x", rabbit_viewregs0[0], rabbit_viewregs0[1]);
 //  popmessage("%08x %08x %08x %08x %08x %08x", rabbit_tilemap_regs[0][0],rabbit_tilemap_regs[0][1],rabbit_tilemap_regs[0][2],rabbit_tilemap_regs[0][3],rabbit_tilemap_regs[0][4],rabbit_tilemap_regs[0][5]);
@@ -436,7 +436,7 @@ static VIDEO_UPDATE(rabbit)
 		if (prilevel == 0x09) // should it be selectable?
 		{
 			rabbit_clearspritebitmap(bitmap,cliprect);
-			draw_sprites(machine,bitmap,cliprect);  // render to bitmap
+			draw_sprites(screen->machine,bitmap,cliprect);  // render to bitmap
 			draw_sprite_bitmap(bitmap,cliprect); // copy bitmap to screen
 		}
 	}
@@ -502,20 +502,20 @@ static READ32_HANDLER( randomrabbits )
 }
 
 static ADDRESS_MAP_START( rabbit_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA32_ROM)
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x200000, 0x200003) AM_READ(rabbit_input_r)
 	AM_RANGE(0x400010, 0x400013) AM_READ(randomrabbits) // gfx chip status?
 	AM_RANGE(0x400980, 0x400983) AM_READ(randomrabbits) // sound chip status?
 	AM_RANGE(0x400984, 0x400987) AM_READ(randomrabbits) // sound chip status?
-	AM_RANGE(0x440000, 0x47ffff) AM_READ(MRA32_BANK1) // roms read from here during testing
+	AM_RANGE(0x440000, 0x47ffff) AM_READ(SMH_BANK1) // roms read from here during testing
 	/* tilemaps */
 	AM_RANGE(0x480000, 0x483fff) AM_READ(rabbit_tilemap0_r)
 	AM_RANGE(0x484000, 0x487fff) AM_READ(rabbit_tilemap1_r)
 	AM_RANGE(0x488000, 0x48bfff) AM_READ(rabbit_tilemap2_r)
 	AM_RANGE(0x48c000, 0x48ffff) AM_READ(rabbit_tilemap3_r)
-	AM_RANGE(0x494000, 0x49ffff) AM_READ(MRA32_RAM)
-	AM_RANGE(0x4a0000, 0x4affff) AM_READ(MRA32_RAM) /* palette */
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(MRA32_RAM)
+	AM_RANGE(0x494000, 0x49ffff) AM_READ(SMH_RAM)
+	AM_RANGE(0x4a0000, 0x4affff) AM_READ(SMH_RAM) /* palette */
+	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 /* rom bank is used when testing roms, not currently hooked up */
@@ -736,41 +736,41 @@ static WRITE32_HANDLER( rabbit_eeprom_write )
 }
 
 static ADDRESS_MAP_START( rabbit_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x000003) AM_WRITE(MWA32_NOP) // bug in code / emulation?
-	AM_RANGE(0x000010, 0x000013) AM_WRITE(MWA32_NOP) // bug in code / emulation?
-	AM_RANGE(0x000024, 0x000027) AM_WRITE(MWA32_NOP) // bug in code / emulation?
-	AM_RANGE(0x00719C, 0x00719F) AM_WRITE(MWA32_NOP) // bug in code / emulation?
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA32_ROM)
+	AM_RANGE(0x000000, 0x000003) AM_WRITE(SMH_NOP) // bug in code / emulation?
+	AM_RANGE(0x000010, 0x000013) AM_WRITE(SMH_NOP) // bug in code / emulation?
+	AM_RANGE(0x000024, 0x000027) AM_WRITE(SMH_NOP) // bug in code / emulation?
+	AM_RANGE(0x00719C, 0x00719F) AM_WRITE(SMH_NOP) // bug in code / emulation?
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x200000, 0x200003) AM_WRITE(rabbit_eeprom_write)
 	/* this lot are probably gfxchip/blitter etc. related */
-	AM_RANGE(0x400010, 0x400013) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs0 )
-	AM_RANGE(0x400100, 0x400117) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[0] ) // tilemap regs1
-	AM_RANGE(0x400120, 0x400137) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[1] ) // tilemap regs2
-	AM_RANGE(0x400140, 0x400157) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[2] ) // tilemap regs3
-	AM_RANGE(0x400160, 0x400177) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[3] ) // tilemap regs4
-	AM_RANGE(0x400200, 0x40021b) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_spriteregs ) // sprregs?
+	AM_RANGE(0x400010, 0x400013) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs0 )
+	AM_RANGE(0x400100, 0x400117) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[0] ) // tilemap regs1
+	AM_RANGE(0x400120, 0x400137) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[1] ) // tilemap regs2
+	AM_RANGE(0x400140, 0x400157) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[2] ) // tilemap regs3
+	AM_RANGE(0x400160, 0x400177) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[3] ) // tilemap regs4
+	AM_RANGE(0x400200, 0x40021b) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_spriteregs ) // sprregs?
 	AM_RANGE(0x400300, 0x400303) AM_WRITE(rabbit_rombank_w) // used during rom testing, rombank/area select + something else?
-	AM_RANGE(0x400400, 0x400413) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs6 ) // some global controls? (brightness etc.?)
-	AM_RANGE(0x400500, 0x400503) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs7 )
+	AM_RANGE(0x400400, 0x400413) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs6 ) // some global controls? (brightness etc.?)
+	AM_RANGE(0x400500, 0x400503) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs7 )
 	AM_RANGE(0x400700, 0x40070f) AM_WRITE(rabbit_blitter_w) AM_BASE( &rabbit_blitterregs )
-	AM_RANGE(0x400800, 0x40080f) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs9 ) // never changes?
+	AM_RANGE(0x400800, 0x40080f) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs9 ) // never changes?
 	AM_RANGE(0x400900, 0x40098f) AM_WRITE(rabbit_audio_w)
 	/* hmm */
-	AM_RANGE(0x479700, 0x479713) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs10 )
+	AM_RANGE(0x479700, 0x479713) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs10 )
 	/* tilemaps */
 	AM_RANGE(0x480000, 0x483fff) AM_WRITE(rabbit_tilemap0_w)
 	AM_RANGE(0x484000, 0x487fff) AM_WRITE(rabbit_tilemap1_w)
 	AM_RANGE(0x488000, 0x48bfff) AM_WRITE(rabbit_tilemap2_w)
 	AM_RANGE(0x48c000, 0x48ffff) AM_WRITE(rabbit_tilemap3_w)
-	AM_RANGE(0x494000, 0x497fff) AM_WRITE(MWA32_RAM) AM_BASE(&rabbit_spriteram) // sprites?
+	AM_RANGE(0x494000, 0x497fff) AM_WRITE(SMH_RAM) AM_BASE(&rabbit_spriteram) // sprites?
 	AM_RANGE(0x4a0000, 0x4affff) AM_WRITE(rabbit_paletteram_dword_w) AM_BASE(&paletteram32)
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 /* tmmjprd has a different memory map */
 
 static ADDRESS_MAP_START( tmmjprd_readmem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_READ(MRA32_ROM)
+	AM_RANGE(0x000000, 0x1fffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x200010, 0x200013) AM_READ(randomrabbits) // gfx chip status?
 	AM_RANGE(0x200980, 0x200983) AM_READ(randomrabbits) // sound chip status?
 	AM_RANGE(0x200984, 0x200987) AM_READ(randomrabbits) // sound chip status?
@@ -778,9 +778,9 @@ static ADDRESS_MAP_START( tmmjprd_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x284000, 0x287fff) AM_READ(rabbit_tilemap1_r)
 	AM_RANGE(0x288000, 0x28bfff) AM_READ(rabbit_tilemap2_r)
 	AM_RANGE(0x28c000, 0x28ffff) AM_READ(rabbit_tilemap3_r)
-	AM_RANGE(0x290000, 0x29ffff) AM_READ(MRA32_RAM)
+	AM_RANGE(0x290000, 0x29ffff) AM_READ(SMH_RAM)
 	AM_RANGE(0x400000, 0x400003) AM_READ(tmmjprd_input_r)
-	AM_RANGE(0xf00000, 0xffffff) AM_READ(MRA32_RAM)
+	AM_RANGE(0xf00000, 0xffffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static WRITE32_HANDLER( tmmjprd_paletteram_dword_w )
@@ -797,32 +797,32 @@ static WRITE32_HANDLER( tmmjprd_paletteram_dword_w )
 
 
 static ADDRESS_MAP_START( tmmjprd_writemem, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(MWA32_ROM)
+	AM_RANGE(0x000000, 0x1fffff) AM_WRITE(SMH_ROM)
 /* check these are used .. */
-//  AM_RANGE(0x200010, 0x200013) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs0 )
-	AM_RANGE(0x200100, 0x200117) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[0] ) // tilemap regs1
-	AM_RANGE(0x200120, 0x200137) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[1] ) // tilemap regs2
-	AM_RANGE(0x200140, 0x200157) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[2] ) // tilemap regs3
-	AM_RANGE(0x200160, 0x200177) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_tilemap_regs[3] ) // tilemap regs4
-	AM_RANGE(0x200200, 0x20021b) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_spriteregs ) // sprregs?
+//  AM_RANGE(0x200010, 0x200013) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs0 )
+	AM_RANGE(0x200100, 0x200117) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[0] ) // tilemap regs1
+	AM_RANGE(0x200120, 0x200137) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[1] ) // tilemap regs2
+	AM_RANGE(0x200140, 0x200157) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[2] ) // tilemap regs3
+	AM_RANGE(0x200160, 0x200177) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_tilemap_regs[3] ) // tilemap regs4
+	AM_RANGE(0x200200, 0x20021b) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_spriteregs ) // sprregs?
 //  AM_RANGE(0x200300, 0x200303) AM_WRITE(rabbit_rombank_w) // used during rom testing, rombank/area select + something else?
-//  AM_RANGE(0x200400, 0x200413) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs6 ) // some global controls? (brightness etc.?)
-//  AM_RANGE(0x200500, 0x200503) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs7 )
+//  AM_RANGE(0x200400, 0x200413) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs6 ) // some global controls? (brightness etc.?)
+//  AM_RANGE(0x200500, 0x200503) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs7 )
 //  AM_RANGE(0x200700, 0x20070f) AM_WRITE(rabbit_blitter_w) AM_BASE( &rabbit_blitterregs )
-//  AM_RANGE(0x200800, 0x20080f) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs9 ) // never changes?
+//  AM_RANGE(0x200800, 0x20080f) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs9 ) // never changes?
 //  AM_RANGE(0x200900, 0x20098f) AM_WRITE(rabbit_audio_w)
 	/* hmm */
-//  AM_RANGE(0x279700, 0x279713) AM_WRITE(MWA32_RAM) AM_BASE( &rabbit_viewregs10 )
+//  AM_RANGE(0x279700, 0x279713) AM_WRITE(SMH_RAM) AM_BASE( &rabbit_viewregs10 )
 	/* tilemaps */
 	AM_RANGE(0x280000, 0x283fff) AM_WRITE(rabbit_tilemap0_w)
 	AM_RANGE(0x284000, 0x287fff) AM_WRITE(rabbit_tilemap1_w)
 	AM_RANGE(0x288000, 0x28bfff) AM_WRITE(rabbit_tilemap2_w)
 	AM_RANGE(0x28c000, 0x28ffff) AM_WRITE(rabbit_tilemap3_w)
 	/* ?? is palette ram shared with sprites in this case or just a different map */
-	AM_RANGE(0x290000, 0x29bfff) AM_WRITE(MWA32_RAM) AM_BASE(&rabbit_spriteram)
+	AM_RANGE(0x290000, 0x29bfff) AM_WRITE(SMH_RAM) AM_BASE(&rabbit_spriteram)
 	AM_RANGE(0x29c000, 0x29ffff) AM_WRITE(tmmjprd_paletteram_dword_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x400000, 0x400003) AM_WRITE(rabbit_eeprom_write)
-	AM_RANGE(0xf00000, 0xffffff) AM_WRITE(MWA32_RAM)
+	AM_RANGE(0xf00000, 0xffffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( rabbit )
@@ -1068,7 +1068,7 @@ static INTERRUPT_GEN( rabbit_interrupts )
 static MACHINE_DRIVER_START( rabbit )
 	MDRV_CPU_ADD_TAG("main",M68EC020,24000000) /* 24 MHz */
 	MDRV_CPU_PROGRAM_MAP(rabbit_readmem,rabbit_writemem)
-	MDRV_CPU_VBLANK_INT(rabbit_interrupts,262)
+	MDRV_CPU_VBLANK_INT_HACK(rabbit_interrupts,262)
 	/* (rabbit) */
 /*  lev 1 : 0x64 : 0000 027c -
     lev 2 : 0x68 : 0000 3106 - unused?
@@ -1078,15 +1078,15 @@ static MACHINE_DRIVER_START( rabbit )
     lev 6 : 0x78 : 0000 0204 -
     lev 7 : 0x7c : 0000 3106 - unused?
 */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_NVRAM_HANDLER(93C46)
 
 	MDRV_GFXDECODE(rabbit)
 
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*16, 64*16)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 28*8-1)
@@ -1136,15 +1136,15 @@ static VIDEO_START(tmmjprd)
 	memset(rabbit_tilemap_ram[2], 0, 0x20000);
 	memset(rabbit_tilemap_ram[3], 0, 0x20000);
 
-	rabbit_tilemap[0] = tilemap_create(get_tmmjprd_tilemap0_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     8, 8, 64, 64);
-	rabbit_tilemap[1] = tilemap_create(get_tmmjprd_tilemap1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     16, 16, 64, 64);
-	rabbit_tilemap[2] = tilemap_create(get_tmmjprd_tilemap2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     16, 16, 64, 64);
-	rabbit_tilemap[3] = tilemap_create(get_tmmjprd_tilemap3_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN ,     16, 16, 64, 64);
+	rabbit_tilemap[0] = tilemap_create(get_tmmjprd_tilemap0_tile_info,tilemap_scan_rows, 8, 8, 64, 64);
+	rabbit_tilemap[1] = tilemap_create(get_tmmjprd_tilemap1_tile_info,tilemap_scan_rows,16, 16, 64, 64);
+	rabbit_tilemap[2] = tilemap_create(get_tmmjprd_tilemap2_tile_info,tilemap_scan_rows,16, 16, 64, 64);
+	rabbit_tilemap[3] = tilemap_create(get_tmmjprd_tilemap3_tile_info,tilemap_scan_rows,16, 16, 64, 64);
 	tilemap_set_transparent_pen(rabbit_tilemap[0],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[1],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[2],0x0);
 	tilemap_set_transparent_pen(rabbit_tilemap[3],0x0);
-	rabbit_sprite_bitmap = auto_bitmap_alloc(0x1000,0x1000,machine->screen[0].format);
+	rabbit_sprite_bitmap = auto_bitmap_alloc(0x1000,0x1000,video_screen_get_format(machine->primary_screen));
 	rabbit_sprite_clip.min_x = 0;
 	rabbit_sprite_clip.max_x = 0x1000-1;
 	rabbit_sprite_clip.min_y = 0;
@@ -1172,7 +1172,7 @@ static VIDEO_UPDATE( tmmjprd )
 
 //  popmessage("%08x %08x %08x %08x %08x", rabbit_viewregs10[0],rabbit_viewregs10[1],rabbit_viewregs10[2],rabbit_viewregs10[3],rabbit_viewregs10[4]);
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	tilemap_draw(bitmap,cliprect,rabbit_tilemap[3],0,0);
 	tilemap_draw(bitmap,cliprect,rabbit_tilemap[1],0,0); //same as 3?
 	tilemap_draw(bitmap,cliprect,rabbit_tilemap[2],0,0);
@@ -1197,7 +1197,7 @@ static MACHINE_DRIVER_START( tmmjprd )
 	MDRV_IMPORT_FROM(rabbit)
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(tmmjprd_readmem,tmmjprd_writemem)
-	MDRV_CPU_VBLANK_INT(tmmjprd_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(tmmjprd_interrupt,2)
 
 	MDRV_VIDEO_START(tmmjprd)
 	MDRV_VIDEO_UPDATE(tmmjprd)

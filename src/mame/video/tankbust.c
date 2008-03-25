@@ -83,10 +83,10 @@ static TILE_GET_INFO( get_txt_tile_info )
 VIDEO_START( tankbust )
 {
 	/* not scrollable */
-	txt_tilemap = tilemap_create(get_txt_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+	txt_tilemap = tilemap_create(get_txt_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
 
 	/* scrollable */
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,  8, 8, 64, 32);
 
 
 	tilemap_set_transparent_pen(txt_tilemap, 0);
@@ -184,7 +184,7 @@ spriteram format (4 bytes per sprite):
     offset  3   xxxxxxxx    x position (8 LSB bits)
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -245,7 +245,7 @@ VIDEO_UPDATE( tankbust )
 #endif
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 1, 0);
 
 	tilemap_draw(bitmap, cliprect, txt_tilemap, 0,0);

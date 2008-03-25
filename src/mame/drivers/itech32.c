@@ -10,7 +10,7 @@
         * Time Killers (2 sets)
         * Bloodstorm (4 sets)
         * Hard Yardage (2 sets)
-        * Pairs (2 sets)
+        * Pairs (3 sets)
         * Driver's Edge (1 set)
         * World Class Bowling (8 sets)
         * Street Fighter: The Movie (4 sets)
@@ -23,7 +23,7 @@
         * Golden Tee Classic (3 Sets)
 
     Known issues:
-        * volume controls don't work in the Golden Tee games
+        * volume controls do not work in the Golden Tee games
         * Driver's Edge accesses many uninitialized RAM locations;
             requires hack to make steering in attract mode work
 
@@ -302,7 +302,7 @@ static INTERRUPT_GEN( generate_int1 )
 {
 	/* signal the NMI */
 	itech32_update_interrupts(1, -1, -1);
-	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(0));
+	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(machine->primary_screen));
 }
 
 
@@ -393,7 +393,7 @@ static READ32_HANDLER( trackball32_4bit_r )
 	static attotime lasttime;
 	attotime curtime = timer_get_time();
 
-	if (attotime_compare(attotime_sub(curtime, lasttime), video_screen_get_scan_period(0)) > 0)
+	if (attotime_compare(attotime_sub(curtime, lasttime), video_screen_get_scan_period(machine->primary_screen)) > 0)
 	{
 		int upper, lower;
 		int dx, dy;
@@ -432,7 +432,7 @@ static READ32_HANDLER( trackball32_4bit_p2_r )
 	static attotime lasttime;
 	attotime curtime = timer_get_time();
 
-	if (attotime_compare(attotime_sub(curtime, lasttime), video_screen_get_scan_period(0)) > 0)
+	if (attotime_compare(attotime_sub(curtime, lasttime), video_screen_get_scan_period(machine->primary_screen)) > 0)
 	{
 		int upper, lower;
 		int dx, dy;
@@ -466,8 +466,8 @@ static READ32_HANDLER( trackball32_4bit_p2_r )
 
 static READ32_HANDLER( trackball32_4bit_combined_r )
 {
-	return trackball32_4bit_r(offset, mem_mask) |
-			(trackball32_4bit_p2_r(offset, mem_mask) << 8);
+	return trackball32_4bit_r(machine, offset, mem_mask) |
+			(trackball32_4bit_p2_r(machine, offset, mem_mask) << 8);
 }
 
 
@@ -601,7 +601,7 @@ static WRITE8_HANDLER( drivedge_portb_out )
 	set_led_status(1, data & 0x01);
 	set_led_status(2, data & 0x02);
 	set_led_status(3, data & 0x04);
-	ticket_dispenser_w(0, (data & 0x10) << 3);
+	ticket_dispenser_w(machine, 0, (data & 0x10) << 3);
 	coin_counter_w(0, (data & 0x20) >> 5);
 }
 
@@ -619,7 +619,7 @@ static WRITE8_HANDLER( pia_portb_out )
 	/* bit 4 controls the ticket dispenser */
 	/* bit 5 controls the coin counter */
 	/* bit 6 controls the diagnostic sound LED */
-	ticket_dispenser_w(0, (data & 0x10) << 3);
+	ticket_dispenser_w(machine, 0, (data & 0x10) << 3);
 	coin_counter_w(0, (data & 0x20) >> 5);
 }
 
@@ -759,32 +759,32 @@ static READ32_HANDLER( drivedge_tms2_speedup_r )
 
 static READ32_HANDLER( input_port_0_msw_r )
 {
-	return input_port_0_word_r(offset,0) << 16;
+	return input_port_0_word_r(machine,offset,0) << 16;
 }
 
 static READ32_HANDLER( input_port_1_msw_r )
 {
-	return input_port_1_word_r(offset,0) << 16;
+	return input_port_1_word_r(machine,offset,0) << 16;
 }
 
 static READ32_HANDLER( input_port_2_msw_r )
 {
-	return input_port_2_word_r(offset,0) << 16;
+	return input_port_2_word_r(machine,offset,0) << 16;
 }
 
 static READ32_HANDLER( input_port_3_msw_r )
 {
-	return input_port_3_word_r(offset,0) << 16;
+	return input_port_3_word_r(machine,offset,0) << 16;
 }
 
 static READ32_HANDLER( input_port_4_msw_r )
 {
-	return special_port4_r(offset,0) << 16;
+	return special_port4_r(machine,offset,0) << 16;
 }
 
 static WRITE32_HANDLER( int1_ack32_w )
 {
-	int1_ack_w(offset, data, mem_mask);
+	int1_ack_w(machine, offset, data, mem_mask);
 }
 
 
@@ -858,7 +858,7 @@ static ADDRESS_MAP_START( timekill_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x078000, 0x078001) AM_WRITE(sound_data_w)
 	AM_RANGE(0x080000, 0x08007f) AM_READWRITE(itech32_video_r, itech32_video_w) AM_BASE(&itech32_video)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_WRITE(int1_ack_w)
-	AM_RANGE(0x0c0000, 0x0c7fff) AM_READWRITE(MRA16_RAM, timekill_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x0c0000, 0x0c7fff) AM_READWRITE(SMH_RAM, timekill_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x100000, 0x17ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&main_rom)
 ADDRESS_MAP_END
 
@@ -876,7 +876,7 @@ static ADDRESS_MAP_START( bloodstm_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x400001) AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x480000, 0x480001) AM_WRITE(sound_data_w)
 	AM_RANGE(0x500000, 0x5000ff) AM_READWRITE(bloodstm_video_r, bloodstm_video_w) AM_BASE(&itech32_video)
-	AM_RANGE(0x580000, 0x59ffff) AM_READWRITE(MRA16_RAM, bloodstm_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x580000, 0x59ffff) AM_READWRITE(SMH_RAM, bloodstm_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x700000, 0x700001) AM_WRITE(bloodstm_plane_w)
 	AM_RANGE(0x780000, 0x780001) AM_READ(input_port_5_word_r)
 	AM_RANGE(0x800000, 0x87ffff) AM_MIRROR(0x780000) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&main_rom)
@@ -936,31 +936,31 @@ AM_RANGE(0x000c00, 0x007fff) AM_MIRROR(0x40000) AM_READWRITE(test2_r, test2_w)
 	AM_RANGE(0x084000, 0x084003) AM_READWRITE(sound_data32_r, sound_data32_w)
 //  AM_RANGE(0x086000, 0x08623f) AM_RAM -- networking -- first 0x40 bytes = our data, next 0x40*8 bytes = their data, r/w on IRQ2
 	AM_RANGE(0x088000, 0x088003) AM_READ(drivedge_steering_r)
-	AM_RANGE(0x08a000, 0x08a003) AM_READWRITE(drivedge_gas_r, MWA32_NOP)
-	AM_RANGE(0x08c000, 0x08c003) AM_READWRITE(input_port_0_msw_r, MWA32_NOP)
-	AM_RANGE(0x08e000, 0x08e003) AM_READWRITE(input_port_1_msw_r, MWA32_NOP)
+	AM_RANGE(0x08a000, 0x08a003) AM_READWRITE(drivedge_gas_r, SMH_NOP)
+	AM_RANGE(0x08c000, 0x08c003) AM_READWRITE(input_port_0_msw_r, SMH_NOP)
+	AM_RANGE(0x08e000, 0x08e003) AM_READWRITE(input_port_1_msw_r, SMH_NOP)
 	AM_RANGE(0x100000, 0x10000f) AM_WRITE(drivedge_zbuf_control_w) AM_BASE(&drivedge_zbuf_control)
 	AM_RANGE(0x180000, 0x180003) AM_WRITE(drivedge_color0_w)
-	AM_RANGE(0x1a0000, 0x1bffff) AM_READWRITE(MRA32_RAM, drivedge_paletteram_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x1a0000, 0x1bffff) AM_READWRITE(SMH_RAM, drivedge_paletteram_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x1c0000, 0x1c0003) AM_WRITENOP
 	AM_RANGE(0x1e0000, 0x1e0113) AM_READWRITE(itech020_video_r, itech020_video_w) AM_BASE((UINT32 **)&itech32_video)
 	AM_RANGE(0x1e4000, 0x1e4003) AM_WRITE(tms_reset_assert_w)
 	AM_RANGE(0x1ec000, 0x1ec003) AM_WRITE(tms_reset_clear_w)
 	AM_RANGE(0x200000, 0x200003) AM_READ(input_port_2_msw_r)
-	AM_RANGE(0x280000, 0x280fff) AM_READWRITE(MRA32_RAM, tms1_68k_ram_w) AM_SHARE(1)
-	AM_RANGE(0x300000, 0x300fff) AM_READWRITE(MRA32_RAM, tms2_68k_ram_w) AM_SHARE(2)
+	AM_RANGE(0x280000, 0x280fff) AM_READWRITE(SMH_RAM, tms1_68k_ram_w) AM_SHARE(1)
+	AM_RANGE(0x300000, 0x300fff) AM_READWRITE(SMH_RAM, tms2_68k_ram_w) AM_SHARE(2)
 	AM_RANGE(0x380000, 0x380003) AM_WRITENOP // AM_WRITE(watchdog_reset16_w)
 	AM_RANGE(0x600000, 0x607fff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE((UINT32 **)&main_rom)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( drivedge_tms1_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x001fff) AM_RAM AM_BASE(&tms1_boot)
-	AM_RANGE(0x008000, 0x0083ff) AM_MIRROR(0x400) AM_READWRITE(MRA32_RAM, tms1_trigger_w) AM_SHARE(1) AM_BASE(&tms1_ram)
+	AM_RANGE(0x008000, 0x0083ff) AM_MIRROR(0x400) AM_READWRITE(SMH_RAM, tms1_trigger_w) AM_SHARE(1) AM_BASE(&tms1_ram)
 	AM_RANGE(0x080000, 0x0bffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( drivedge_tms2_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x008000, 0x0083ff) AM_MIRROR(0x8400) AM_READWRITE(MRA32_RAM, tms2_trigger_w) AM_SHARE(2) AM_BASE(&tms2_ram)
+	AM_RANGE(0x008000, 0x0083ff) AM_MIRROR(0x8400) AM_READWRITE(SMH_RAM, tms2_trigger_w) AM_SHARE(2) AM_BASE(&tms2_ram)
 	AM_RANGE(0x080000, 0x08ffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -979,11 +979,11 @@ static ADDRESS_MAP_START( itech020_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x480000, 0x480003) AM_WRITE(sound_data32_w)
 	AM_RANGE(0x500000, 0x5000ff) AM_READWRITE(itech020_video_r, itech020_video_w) AM_BASE((UINT32 **)&itech32_video)
 	AM_RANGE(0x578000, 0x57ffff) AM_READNOP				/* touched by protection */
-	AM_RANGE(0x580000, 0x59ffff) AM_READWRITE(MRA32_RAM, itech020_paletteram_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x580000, 0x59ffff) AM_READWRITE(SMH_RAM, itech020_paletteram_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x600000, 0x603fff) AM_RAM AM_BASE(&nvram) AM_SIZE(&nvram_size)
 /* ? */	AM_RANGE(0x61ff00, 0x61ffff) AM_WRITENOP			/* Unknown Writes */
-	AM_RANGE(0x680000, 0x680003) AM_READWRITE(itech020_prot_result_r, MWA32_NOP)
-/* ! */	AM_RANGE(0x680800, 0x68083f) AM_READWRITE(MRA32_RAM, MWA32_NOP) /* Serial DUART Channel A/B & Top LED sign - To Do! */
+	AM_RANGE(0x680000, 0x680003) AM_READWRITE(itech020_prot_result_r, SMH_NOP)
+/* ! */	AM_RANGE(0x680800, 0x68083f) AM_READWRITE(SMH_RAM, SMH_NOP) /* Serial DUART Channel A/B & Top LED sign - To Do! */
 	AM_RANGE(0x700000, 0x700003) AM_WRITE(itech020_plane_w)
 	AM_RANGE(0x800000, 0xbfffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE((UINT32 **)&main_rom)
 ADDRESS_MAP_END
@@ -1017,7 +1017,7 @@ static ADDRESS_MAP_START( sound_020_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x083f) AM_MIRROR(0x80) AM_READWRITE(ES5506_data_0_r, ES5506_data_0_w)
 	AM_RANGE(0x0c00, 0x0c00) AM_WRITE(sound_bank_w)
 	AM_RANGE(0x1400, 0x1400) AM_WRITE(firq_clear_w)
-	AM_RANGE(0x1800, 0x1800) AM_READWRITE(sound_data_buffer_r, MWA8_NOP)
+	AM_RANGE(0x1800, 0x1800) AM_READWRITE(sound_data_buffer_r, SMH_NOP)
 	AM_RANGE(0x2000, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0x7fff) AM_ROMBANK(1)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
@@ -1262,10 +1262,10 @@ static INPUT_PORTS_START( wcbowl )
 	PORT_BIT( 0x00f0, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("TRACKX1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
 
 	PORT_START_TAG("TRACKY1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
 INPUT_PORTS_END
 
 
@@ -1288,10 +1288,10 @@ static INPUT_PORTS_START( wcbowln ) /* WCB version 1.66 supports cocktail mode *
 	PORT_DIPSETTING(      0x0040, DEF_STR( On ) )
 
 	PORT_START_TAG("TRACKX2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
 
 	PORT_START_TAG("TRACKY2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
@@ -1347,16 +1347,16 @@ static INPUT_PORTS_START( shufshot ) /* ShuffleShot v1.39 & v1.40 support cockta
 	PORT_DIPSETTING(      0x0020, DEF_STR( Cocktail ) )
 
 	PORT_START_TAG("TRACKX1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
 
 	PORT_START_TAG("TRACKY1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
 
 	PORT_START_TAG("TRACKX2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
 
 	PORT_START_TAG("TRACKY2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
@@ -1383,16 +1383,16 @@ static INPUT_PORTS_START( shufbowl )
 	PORT_DIPSETTING(      0x0040, DEF_STR( On ) )
 
 	PORT_START_TAG("TRACKX1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
 
 	PORT_START_TAG("TRACKY1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
 
 	PORT_START_TAG("TRACKX2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
 
 	PORT_START_TAG("TRACKY2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
@@ -1423,16 +1423,16 @@ static INPUT_PORTS_START( gt3d )
 	PORT_DIPSETTING(      0x0040, "Two Trackballs" )
 
 	PORT_START_TAG("TRACKX1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_PLAYER(1)
 
 	PORT_START_TAG("TRACKY1")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_PLAYER(1)
 
 	PORT_START_TAG("TRACKX2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_REVERSE PORT_COCKTAIL PORT_PLAYER(2)
 
 	PORT_START_TAG("TRACKY2")
-    PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
+	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(25) PORT_KEYDELTA(32) PORT_COCKTAIL PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
@@ -1561,7 +1561,7 @@ static MACHINE_DRIVER_START( timekill )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(timekill_map,0)
-	MDRV_CPU_VBLANK_INT(generate_int1,1)
+	MDRV_CPU_VBLANK_INT("main", generate_int1)
 
 	MDRV_CPU_ADD_TAG("sound", M6809, SOUND_CLOCK/8)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
@@ -1570,10 +1570,10 @@ static MACHINE_DRIVER_START( timekill )
 	MDRV_NVRAM_HANDLER(itech32)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_PALETTE_LENGTH(8192)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(VIDEO_CLOCK, 508, 0, 384, 262, 0, 256)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
@@ -1609,7 +1609,7 @@ static MACHINE_DRIVER_START( drivedge )
 
 	MDRV_CPU_REPLACE("main", M68EC020, CPU020_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(drivedge_map,0)
-	MDRV_CPU_VBLANK_INT(NULL,0)
+	MDRV_CPU_VBLANK_INT_HACK(NULL,0)
 
 	MDRV_CPU_ADD(TMS32031, TMS_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(drivedge_tms1_map,0)
@@ -1634,7 +1634,7 @@ static MACHINE_DRIVER_START( sftm )
 
 	MDRV_CPU_MODIFY("sound")
 	MDRV_CPU_PROGRAM_MAP(sound_020_map,0)
-	MDRV_CPU_VBLANK_INT(irq1_line_assert,4)
+	MDRV_CPU_VBLANK_INT_HACK(irq1_line_assert,4)
 
 	MDRV_NVRAM_HANDLER(itech020)
 MACHINE_DRIVER_END
@@ -2045,10 +2045,10 @@ ROM_END
 
 ROM_START( wcbwl140 )	/* Version 1.40 Tournament (PCB P/N 1082 Rev 2) */
 	ROM_REGION32_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD32_BYTE( "wcbtprm0.140", 0x00000, 0x20000, CRC(9d31ceb1) SHA1(d147976a763ba1e18d861351b12c5d275b94a562) )
-	ROM_LOAD32_BYTE( "wcbtprm1.140", 0x00001, 0x20000, CRC(c6669452) SHA1(ba58da7bee5120682e2306454da287c969014899) )
-	ROM_LOAD32_BYTE( "wcbtprm2.140", 0x00002, 0x20000, CRC(d2fc4d09) SHA1(17983759ad6137a2e67b8414ea58880865311534) )
-	ROM_LOAD32_BYTE( "wcbtprm3.140", 0x00003, 0x20000, CRC(c41258a4) SHA1(182e8a25bdb126a4de8a44a1c26fd8b66f06d66e) )
+	ROM_LOAD32_BYTE( "wcbfprm0.140", 0x00000, 0x20000, CRC(9d31ceb1) SHA1(d147976a763ba1e18d861351b12c5d275b94a562) ) /* Labeled "WCBF PROM0 1.40" ect */
+	ROM_LOAD32_BYTE( "wcbfprm1.140", 0x00001, 0x20000, CRC(c6669452) SHA1(ba58da7bee5120682e2306454da287c969014899) )
+	ROM_LOAD32_BYTE( "wcbfprm2.140", 0x00002, 0x20000, CRC(d2fc4d09) SHA1(17983759ad6137a2e67b8414ea58880865311534) )
+	ROM_LOAD32_BYTE( "wcbfprm3.140", 0x00003, 0x20000, CRC(c41258a4) SHA1(182e8a25bdb126a4de8a44a1c26fd8b66f06d66e) )
 
 	ROM_REGION( 0x28000, REGION_CPU2, 0 )
 	ROM_LOAD( "wcb_snd.u88", 0x10000, 0x18000, CRC(e97a6d28) SHA1(96d7b7856918abcc460083f2a46582ba2a689288) ) /* Actual version is 4.01 but may be labeled V4.0 or V4.01 */
@@ -2176,7 +2176,7 @@ ROM_END
 
 
 ROM_START( wcbwl15 )	/* Version 1.5 (3-tier board set: P/N 1059 Rev 3, P/N 1079 Rev 1 & P/N 1060 Rev 0) */
-	/* v1.0 for this platform have been confirmed, but not dumped */
+	/* v1.0 for this platform has been confirmed, but not dumped */
 	ROM_REGION16_BE( 0x80000, REGION_USER1, 0 )
 	ROM_LOAD16_BYTE( "wcb_v15.u83", 0x00000, 0x20000, CRC(3ca9ab85) SHA1(364946dceb3f7279b7d67d9d685a98ba7f4901aa) ) /* Labeled as "WCB V1.5 (U83)" */
 	ROM_LOAD16_BYTE( "wcb_v15.u88", 0x00001, 0x20000, CRC(d43e6fad) SHA1(fd72f6945e7f5ef86dc28503749d18086dd29906) ) /* Labeled as "WCB V1.5 (U88)" */
@@ -3104,12 +3104,12 @@ ROM_START( gt97v120 ) /* Version 1.20 */
 ROM_END
 
 
-ROM_START( gt97t240 ) /* Version 2.40 Tournament Edition (PCB P/N 1082 Rev 2) */
+ROM_START( gt97t243 ) /* Version 2.43 Tournament Edition (PCB P/N 1082 Rev 2) */
 	ROM_REGION32_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD32_BYTE( "gt97prm0.240", 0x00000, 0x100000, CRC(88a386d0) SHA1(003dbf784125b1a442f85e18f8161695dcacc3a8) )
-	ROM_LOAD32_BYTE( "gt97prm1.240", 0x00001, 0x100000, CRC(b0d751aa) SHA1(7e6ab9c2bb0bd4f50360655c59f48c44f6135f4f) )
-	ROM_LOAD32_BYTE( "gt97prm2.240", 0x00002, 0x100000, CRC(451be534) SHA1(2f78cdba607c4b936b5cbdb520757d038d9aa7a3) )
-	ROM_LOAD32_BYTE( "gt97prm3.240", 0x00003, 0x100000, CRC(70da8ca5) SHA1(baf56d04c5d75165fc9f3269650847e46bbbe2d3) )
+	ROM_LOAD32_BYTE( "gt97prm0.243", 0x00000, 0x100000, CRC(b8de60f1) SHA1(06b1f8b9d0b878d5a19e6756957e2df19e013ad6) )
+	ROM_LOAD32_BYTE( "gt97prm1.243", 0x00001, 0x100000, CRC(8152e5d3) SHA1(2a4f8acc6a4e33864c97d5974e2230b1cf3632ea) )
+	ROM_LOAD32_BYTE( "gt97prm2.243", 0x00002, 0x100000, CRC(b80061be) SHA1(9a6a6281690b3bd2eabb081467bfda074639fa6a) )
+	ROM_LOAD32_BYTE( "gt97prm3.243", 0x00003, 0x100000, CRC(d184968d) SHA1(eecd4e9d060e4b8feabca715d3d7f9738641cfcc) )
 
 	ROM_REGION( 0x28000, REGION_CPU2, 0 )
 	ROM_LOAD( "gt_nr.u88", 0x10000, 0x18000, CRC(2cee9e98) SHA1(02edac7abab2335c1cd824d1d9b26aa32238a2de) )
@@ -3135,12 +3135,12 @@ ROM_START( gt97t240 ) /* Version 2.40 Tournament Edition (PCB P/N 1082 Rev 2) */
 ROM_END
 
 
-ROM_START( gt97t243 ) /* Version 2.43 Tournament Edition (PCB P/N 1082 Rev 2) */
+ROM_START( gt97t240 ) /* Version 2.40 Tournament Edition (PCB P/N 1082 Rev 2) */
 	ROM_REGION32_BE( CODE_SIZE, REGION_USER1, 0 )
-	ROM_LOAD32_BYTE( "gt97prm0.243", 0x00000, 0x100000, CRC(b8de60f1) SHA1(06b1f8b9d0b878d5a19e6756957e2df19e013ad6) )
-	ROM_LOAD32_BYTE( "gt97prm1.243", 0x00001, 0x100000, CRC(8152e5d3) SHA1(2a4f8acc6a4e33864c97d5974e2230b1cf3632ea) )
-	ROM_LOAD32_BYTE( "gt97prm2.243", 0x00002, 0x100000, CRC(b80061be) SHA1(9a6a6281690b3bd2eabb081467bfda074639fa6a) )
-	ROM_LOAD32_BYTE( "gt97prm3.243", 0x00003, 0x100000, CRC(d184968d) SHA1(eecd4e9d060e4b8feabca715d3d7f9738641cfcc) )
+	ROM_LOAD32_BYTE( "gt97prm0.240", 0x00000, 0x100000, CRC(88a386d0) SHA1(003dbf784125b1a442f85e18f8161695dcacc3a8) )
+	ROM_LOAD32_BYTE( "gt97prm1.240", 0x00001, 0x100000, CRC(b0d751aa) SHA1(7e6ab9c2bb0bd4f50360655c59f48c44f6135f4f) )
+	ROM_LOAD32_BYTE( "gt97prm2.240", 0x00002, 0x100000, CRC(451be534) SHA1(2f78cdba607c4b936b5cbdb520757d038d9aa7a3) )
+	ROM_LOAD32_BYTE( "gt97prm3.240", 0x00003, 0x100000, CRC(70da8ca5) SHA1(baf56d04c5d75165fc9f3269650847e46bbbe2d3) )
 
 	ROM_REGION( 0x28000, REGION_CPU2, 0 )
 	ROM_LOAD( "gt_nr.u88", 0x10000, 0x18000, CRC(2cee9e98) SHA1(02edac7abab2335c1cd824d1d9b26aa32238a2de) )
@@ -3742,9 +3742,9 @@ static DRIVER_INIT( wcbowl )
 
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x680000, 0x680001, 0, 0, trackball_r);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x578000, 0x57ffff, 0, 0, MRA16_NOP);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x578000, 0x57ffff, 0, 0, SMH_NOP);
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x680080, 0x680081, 0, 0, wcbowl_prot_result_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x680080, 0x680081, 0, 0, MWA16_NOP);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x680080, 0x680081, 0, 0, SMH_NOP);
 }
 
 
@@ -3807,9 +3807,9 @@ static DRIVER_INIT( wcbowln )	/* PIC 16C54 labeled as ITBWL-3 */
 	init_shuffle_bowl_common(machine, 0x1116);
 }
 
-static DRIVER_INIT( wcbowlt )	/* PIC 16C54 labeled as ITBWL-4 */
+static DRIVER_INIT( wcbowlt )	/* PIC 16C54 labeled as ITBWL-3 */
 {
-	/* Tournament Version */
+	/* Tournament Version, Same protection memory address as WCB Deluxe, but uses the standard WCB pic ITBWL-3 */
 	init_shuffle_bowl_common(machine, 0x111a);
 
 	timekeeper_init( 0, TIMEKEEPER_M48T02, NULL );
@@ -3832,7 +3832,7 @@ static DRIVER_INIT( gt3d )
 {
 	/*
         This is the 3 tier PCB with the short ROM board:
-        Known GT versions on this board:  GT3D v1.4 through v1.92S
+        Known (dumped) GT versions on this board:  GT3D v1.4 through v1.92S
 
         Hacked versions of this PCB have been found with GT97
         through GTClassic. This is _NOT_ a factory modification
@@ -3859,7 +3859,7 @@ static DRIVER_INIT( aama )
 static DRIVER_INIT( aamat )
 {
 	/*
-        Tournament Version
+        Tournament Version - So install needed handler for the TimeKeeper ram
     */
 	DRIVER_INIT_CALL(aama);
 	timekeeper_init( 0, TIMEKEEPER_M48T02, NULL );
@@ -3909,7 +3909,7 @@ static DRIVER_INIT( gtclassp )
         move.b      680002,d0       ; Read protection result
         andi.b      #$C0,d0
         cmpi.b      #$80,d0
-Label1  bne.s       Label1          ; Infinite loop if retsult isn't 0x80
+Label1  bne.s       Label1          ; Infinite loop if result isn't 0x80
         rts                         ; Otherwise just return to the game :-)
 
     */
@@ -3948,7 +3948,7 @@ GAME( 1995, sftmj,    sftm,     sftm,     sftm,     sftm,     ROT0, "Capcom/Incr
 GAME( 1997, shufshot, 0,        sftm,     shufshot, shufshot, ROT0, "Strata/Incredible Technologies", "Shuffleshot (v1.40)" , 0) /* PIC 16C54 labeled as ITSHF-1 */
 GAME( 1997, sshot139, shufshot, sftm,     shufshot, shufshot, ROT0, "Strata/Incredible Technologies", "Shuffleshot (v1.39)" , 0) /* PIC 16C54 labeled as ITSHF-1 */
 GAME( 1997, sshot137, shufshot, sftm,     shufbowl, shufshot, ROT0, "Strata/Incredible Technologies", "Shuffleshot (v1.37)" , 0) /* PIC 16C54 labeled as ITSHF-1 */
-GAME( 1997, wcbwl140, wcbowldx, tourny,   wcbowldx, wcbowlt,  ROT0, "Incredible Technologies",        "World Class Bowling Tournament (v1.40)" , 0) /* PIC 16C54 labeled as ITBWL-4 */
+GAME( 1997, wcbwl140, wcbowldx, tourny,   wcbowldx, wcbowlt,  ROT0, "Incredible Technologies",        "World Class Bowling Tournament (v1.40)" , 0) /* PIC 16C54 labeled as ITBWL-3 */
 GAME( 1999, wcbowldx, 0,        sftm,     wcbowldx, shufshot, ROT0, "Incredible Technologies",        "World Class Bowling Deluxe (v2.00)" , 0) /* PIC 16C54 labeled as ITBWL-4 */
 
 /*
@@ -3969,7 +3969,7 @@ GAME( 1999, wcbowldx, 0,        sftm,     wcbowldx, shufshot, ROT0, "Incredible 
         Sound P/N 1078 Rev 1 or P/N 1066 Rev 2
     n = Non-tournament (AAMA 676266+) PCB P/N 1082 Rev 2 - Applies only for GT3D
     t = Tournament PCB P/N 1082 Rev 2, with necessary chips on board:
-        Philips SCN68681 (DUART) & ST Timekeeper (M48T02-120PC1)
+        Philips SCN68681 (DUART) & ST Timekeeper (M48T02-120PC1) with an additional 3.6864MHz OSC
 
     NOTE: Due to various different upgrade packages from IT, the 3 tier boards can end up with any combination
         of rom boards and sound boards.  For historical reasons, GTG3 3 tier S versions will use the oldest
@@ -4009,8 +4009,8 @@ GAME( 1997, gt97v122, gt97,     sftm,    gt97o, aama,     ROT0, "Incredible Tech
 GAME( 1997, gt97v121, gt97,     sftm,    gt97o, aama,     ROT0, "Incredible Technologies", "Golden Tee '97 (v1.21)" , 0) /* PIC 16C54 labeled as ITGFS-3 */
 GAME( 1997, gt97s121, gt97,     sftm,    gt97s, s_ver,    ROT0, "Incredible Technologies", "Golden Tee '97 (v1.21S)" , 0) /* PIC 16C54 labeled as ITGFM-3 */
 GAME( 1997, gt97v120, gt97,     sftm,    gt97o, aama,     ROT0, "Incredible Technologies", "Golden Tee '97 (v1.20)" , 0) /* PIC 16C54 labeled as ITGFS-3 */
-GAME( 1997, gt97t240, gt97,     tourny,  gt97o, aamat,    ROT0, "Incredible Technologies", "Golden Tee '97 Tournament (v2.40)" , 0) /* PIC 16C54 labeled as ITGFS-3 */
 GAME( 1997, gt97t243, gt97,     tourny,  gt97o, aamat,    ROT0, "Incredible Technologies", "Golden Tee '97 Tournament (v2.43)" , 0) /* PIC 16C54 labeled as ITGFS-3 */
+GAME( 1997, gt97t240, gt97,     tourny,  gt97o, aamat,    ROT0, "Incredible Technologies", "Golden Tee '97 Tournament (v2.40)" , 0) /* PIC 16C54 labeled as ITGFS-3 */
 
 GAME( 1998, gt98,     0,        sftm,    aama,  aama,     ROT0, "Incredible Technologies", "Golden Tee '98 (v1.10)" , 0) /* PIC 16C54 labeled as ITGF98 */
 GAME( 1998, gt98v100, gt98,     sftm,    gt98,  aama,     ROT0, "Incredible Technologies", "Golden Tee '98 (v1.00)" , 0) /* PIC 16C54 labeled as ITGF98 */

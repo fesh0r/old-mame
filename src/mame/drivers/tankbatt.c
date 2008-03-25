@@ -151,28 +151,28 @@ static WRITE8_HANDLER( tankbatt_sh_fire_w )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x01ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0c00, 0x0c07) AM_READ(tankbatt_in0_r)
 	AM_RANGE(0x0c08, 0x0c0f) AM_READ(tankbatt_in1_r)
 	AM_RANGE(0x0c18, 0x0c1f) AM_READ(tankbatt_dsw_r)
-	AM_RANGE(0x0200, 0x0bff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x6000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_ROM)	/* for the reset / interrupt vectors */
+	AM_RANGE(0x0200, 0x0bff) AM_READ(SMH_RAM)
+	AM_RANGE(0x6000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_ROM)	/* for the reset / interrupt vectors */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0010, 0x01ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0010, 0x01ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x0800, 0x0bff) AM_WRITE(tankbatt_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x0000, 0x000f) AM_WRITE(MWA8_RAM) AM_BASE(&tankbatt_bulletsram) AM_SIZE(&tankbatt_bulletsram_size)
-	AM_RANGE(0x0c18, 0x0c18) AM_WRITE(MWA8_NOP) /* watchdog ?? */
+	AM_RANGE(0x0000, 0x000f) AM_WRITE(SMH_RAM) AM_BASE(&tankbatt_bulletsram) AM_SIZE(&tankbatt_bulletsram_size)
+	AM_RANGE(0x0c18, 0x0c18) AM_WRITE(SMH_NOP) /* watchdog ?? */
 	AM_RANGE(0x0c00, 0x0c01) AM_WRITE(tankbatt_led_w)
 	AM_RANGE(0x0c0a, 0x0c0a) AM_WRITE(tankbatt_interrupt_enable_w)
 	AM_RANGE(0x0c0b, 0x0c0b) AM_WRITE(tankbatt_sh_engine_w)
 	AM_RANGE(0x0c0c, 0x0c0c) AM_WRITE(tankbatt_sh_fire_w)
 	AM_RANGE(0x0c0d, 0x0c0d) AM_WRITE(tankbatt_sh_expl_w)
 	AM_RANGE(0x0c0f, 0x0c0f) AM_WRITE(tankbatt_demo_interrupt_enable_w)
-	AM_RANGE(0x0200, 0x07ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0200, 0x07ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static INTERRUPT_GEN( tankbatt_interrupt )
@@ -252,8 +252,8 @@ static const gfx_layout bulletlayout =
 
 
 static GFXDECODE_START( tankbatt )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 64 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, bulletlayout, 0, 64 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, charlayout,   0, 256 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, bulletlayout, 0, 256 )
 GFXDECODE_END
 
 
@@ -281,19 +281,18 @@ static MACHINE_DRIVER_START( tankbatt )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 1000000)	/* 1 MHz ???? */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(tankbatt_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", tankbatt_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(tankbatt)
-	MDRV_PALETTE_LENGTH(65)
-	MDRV_COLORTABLE_LENGTH(128)
+	MDRV_PALETTE_LENGTH(256*2)
 
 	MDRV_PALETTE_INIT(tankbatt)
 	MDRV_VIDEO_START(tankbatt)

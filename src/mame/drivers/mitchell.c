@@ -193,7 +193,7 @@ static READ8_HANDLER( pang_port5_r )
 		if (pang_port5_kludge)	/* hack... music doesn't work otherwise */
 			bit ^= 0x08;
 
-	return (input_port_0_r(0) & 0x76) | bit;
+	return (input_port_0_r(machine,0) & 0x76) | bit;
 }
 
 static WRITE8_HANDLER( eeprom_cs_w )
@@ -307,11 +307,11 @@ static READ8_HANDLER( input_r )
 			return readinputport(1 + offset);
 			break;
 		case 1:	/* Mahjong games */
-			if (offset) return mahjong_input_r(offset-1);
+			if (offset) return mahjong_input_r(machine,offset-1);
 			else return readinputport(1);
 			break;
 		case 2:	/* Block Block - dial control */
-			if (offset) return block_input_r(offset-1);
+			if (offset) return block_input_r(machine,offset-1);
 			else return readinputport(1);
 			break;
 		case 3:	/* Super Pang - simulate START 1 press to initialize EEPROM */
@@ -335,10 +335,10 @@ static WRITE8_HANDLER( input_w )
 logerror("PC %04x: write %02x to port 01\n",activecpu_get_pc(),data);
 			break;
 		case 1:
-			mahjong_input_select_w(offset,data);
+			mahjong_input_select_w(machine,offset,data);
 			break;
 		case 2:
-			block_dial_control_w(offset,data);
+			block_dial_control_w(machine,offset,data);
 			break;
 	}
 }
@@ -352,43 +352,43 @@ logerror("PC %04x: write %02x to port 01\n",activecpu_get_pc(),data);
 ***************************************************************************/
 
 static ADDRESS_MAP_START( mgakuen_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(mgakuen_paletteram_r)	/* palette RAM */
 	AM_RANGE(0xc800, 0xcfff) AM_READ(pang_colorram_r)	/* Attribute RAM */
 	AM_RANGE(0xd000, 0xdfff) AM_READ(mgakuen_videoram_r)	/* char RAM */
-	AM_RANGE(0xe000, 0xefff) AM_READ(MRA8_RAM)	/* Work RAM */
+	AM_RANGE(0xe000, 0xefff) AM_READ(SMH_RAM)	/* Work RAM */
 	AM_RANGE(0xf000, 0xffff) AM_READ(mgakuen_objram_r)	/* OBJ RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mgakuen_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(mgakuen_paletteram_w)
 	AM_RANGE(0xc800, 0xcfff) AM_WRITE(pang_colorram_w) AM_BASE(&pang_colorram)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(mgakuen_videoram_w) AM_BASE(&pang_videoram) AM_SIZE(&pang_videoram_size)
-	AM_RANGE(0xe000, 0xefff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xefff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xffff) AM_WRITE(mgakuen_objram_w)	/* OBJ RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc000, 0xc7ff) AM_READ(pang_paletteram_r)	/* Banked palette RAM */
 	AM_RANGE(0xc800, 0xcfff) AM_READ(pang_colorram_r)	/* Attribute RAM */
 	AM_RANGE(0xd000, 0xdfff) AM_READ(pang_videoram_r)	/* Banked char / OBJ RAM */
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_RAM)	/* Work RAM */
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_RAM)	/* Work RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(pang_paletteram_w)
 	AM_RANGE(0xc800, 0xcfff) AM_WRITE(pang_colorram_w) AM_BASE(&pang_colorram)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(pang_videoram_w) AM_BASE(&pang_videoram) AM_SIZE(&pang_videoram_size)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x02) AM_READ(input_r)	/* Super Pang needs a kludge to initialize EEPROM.
                         The Mahjong games and Block Block need special input treatment */
 	AM_RANGE(0x03, 0x03) AM_READ(input_port_12_r)	/* mgakuen only */
@@ -397,14 +397,14 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(pang_gfxctrl_w)    /* Palette bank, layer enable, coin counters, more */
 	AM_RANGE(0x01, 0x01) AM_WRITE(input_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(pang_bankswitch_w)      /* Code bank register */
 	AM_RANGE(0x03, 0x03) AM_WRITE(YM2413_data_port_0_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(YM2413_register_port_0_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(MWA8_NOP)	/* watchdog? irq ack? */
+	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)	/* watchdog? irq ack? */
 	AM_RANGE(0x07, 0x07) AM_WRITE(pang_video_bank_w)      /* Video RAM bank register */
 	AM_RANGE(0x08, 0x08) AM_WRITE(eeprom_cs_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(eeprom_clock_w)
@@ -416,23 +416,23 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( spangb_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_NOP)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_NOP)
 	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(pang_paletteram_r, pang_paletteram_w)	/* Banked palette RAM */
 	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(pang_colorram_r, pang_colorram_w)	AM_BASE(&pang_colorram)/* Attribute RAM */
 	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(pang_videoram_r, pang_videoram_w)	AM_BASE(&pang_videoram) AM_SIZE(&pang_videoram_size) /* Banked char / OBJ RAM */
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_RAM)	/* Work RAM */
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_RAM)	/* Work RAM */
 	AM_RANGE(0xe000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( spangb_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x02) AM_READ(input_r)	/* Super Pang needs a kludge to initialize EEPROM. */
 	AM_RANGE(0x00, 0x00) AM_WRITE(pang_gfxctrl_w)    /* Palette bank, layer enable, coin counters, more */
 	AM_RANGE(0x02, 0x02) AM_WRITE(pang_bankswitch_w)      /* Code bank register */
 	AM_RANGE(0x03, 0x03) AM_WRITE(YM2413_data_port_0_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(YM2413_register_port_0_w)
 	AM_RANGE(0x05, 0x05) AM_READ(pang_port5_r)
-	AM_RANGE(0x06, 0x06) AM_WRITE(MWA8_NOP)	/* watchdog? irq ack? */
+	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)	/* watchdog? irq ack? */
 	AM_RANGE(0x07, 0x07) AM_WRITE(pang_video_bank_w)      /* Video RAM bank register */
 	AM_RANGE(0x08, 0x08) AM_WRITE(eeprom_cs_w)
 	AM_RANGE(0x10, 0x10) AM_WRITE(eeprom_clock_w)
@@ -457,7 +457,7 @@ static ADDRESS_MAP_START( spangb_sound_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( spangb_sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 ADDRESS_MAP_END
 
 /**** Monsters World ****/
@@ -468,30 +468,30 @@ static WRITE8_HANDLER( oki_banking_w )
 }
 
 static ADDRESS_MAP_START( mstworld_sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x9800, 0x9800) AM_READ(OKIM6295_status_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mstworld_sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(oki_banking_w)
 	AM_RANGE(0x9800, 0x9800) AM_WRITE(OKIM6295_data_0_w)
 ADDRESS_MAP_END
 
 static WRITE8_HANDLER(mstworld_sound_w)
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 }
 
 extern WRITE8_HANDLER( mstworld_gfxctrl_w );
 extern WRITE8_HANDLER( mstworld_video_bank_w );
 
 static ADDRESS_MAP_START( mstworld_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_1_r)	/* coins */
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_2_r)	/* p1 */
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_3_r)	/* p2 */
@@ -502,11 +502,11 @@ static ADDRESS_MAP_START( mstworld_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mstworld_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(mstworld_gfxctrl_w)    /* Palette bank, layer enable, coin counters, more */
 	AM_RANGE(0x02, 0x02) AM_WRITE(pang_bankswitch_w)      /* Code bank register */
 	AM_RANGE(0x03, 0x03) AM_WRITE(mstworld_sound_w)      /* write to sound cpu */
-	AM_RANGE(0x06, 0x06) AM_WRITE(MWA8_NOP)	/* watchdog? irq ack? */
+	AM_RANGE(0x06, 0x06) AM_WRITE(SMH_NOP)	/* watchdog? irq ack? */
 	AM_RANGE(0x07, 0x07) AM_WRITE(mstworld_video_bank_w)      /* Video RAM bank register */
 ADDRESS_MAP_END
 
@@ -684,7 +684,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( marukin )
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -804,7 +804,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( pkladies )
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -926,7 +926,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( pang )
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -966,7 +966,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( spangbl )
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -1007,7 +1007,7 @@ static INPUT_PORTS_START( mstworld )
 	/* this port may not have the same role */
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) // useless, all text removed!
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -1123,7 +1123,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( qtono1 )
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -1163,7 +1163,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( block )
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -1205,7 +1205,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( blockjoy )
 	PORT_START      /* DSW */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
-	PORT_BIT(0x02, 0x02, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* USED - handled in port5_r */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* unused? */
@@ -1331,16 +1331,16 @@ static MACHINE_DRIVER_START( mgakuen )
 	MDRV_CPU_ADD(Z80, 6000000)	/* ??? */
 	MDRV_CPU_PROGRAM_MAP(mgakuen_readmem,mgakuen_writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* ??? one extra irq seems to be needed for music (see input5_r) */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ??? one extra irq seems to be needed for music (see input5_r) */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
+
 	MDRV_GFXDECODE(mgakuen)
 	MDRV_PALETTE_LENGTH(1024)	/* less colors than the others */
 
@@ -1365,18 +1365,18 @@ static MACHINE_DRIVER_START( pang )
 	MDRV_CPU_ADD_TAG("main",Z80, 8000000)	/* (verified on pcb) */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* ??? one extra irq seems to be needed for music (see input5_r) */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ??? one extra irq seems to be needed for music (see input5_r) */
 
 	MDRV_NVRAM_HANDLER(mitchell)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
+
 	MDRV_GFXDECODE(mitchell)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -1436,13 +1436,13 @@ static MACHINE_DRIVER_START( spangbl )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(spangb_memmap,0)
 	MDRV_CPU_IO_MAP(spangb_portmap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD_TAG("sound",Z80, 8000000)
 	MDRV_CPU_PROGRAM_MAP(spangb_sound_memmap,0 )
 	MDRV_CPU_IO_MAP(spangb_sound_portmap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-//  MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+//  MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_GFXDECODE(spangbl)
 
@@ -1464,20 +1464,20 @@ static MACHINE_DRIVER_START( mstworld )
 
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(mstworld_readport,mstworld_writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80,6000000)		 /* 6 MHz? */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(mstworld_sound_readmem,mstworld_sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
+
 	MDRV_GFXDECODE(mstworld)
 	MDRV_PALETTE_LENGTH(2048)
 
@@ -1499,18 +1499,18 @@ static MACHINE_DRIVER_START( marukin )
 	MDRV_CPU_ADD(Z80, 8000000)	/* Super Pang says 8MHZ ORIGINAL BOARD */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* ??? one extra irq seems to be needed for music (see input5_r) */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ??? one extra irq seems to be needed for music (see input5_r) */
 
 	MDRV_NVRAM_HANDLER(mitchell)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, (64-8)*8-1, 1*8, 31*8-1 )
+
 	MDRV_GFXDECODE(marukin)
 	MDRV_PALETTE_LENGTH(2048)
 

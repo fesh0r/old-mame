@@ -283,6 +283,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
@@ -486,7 +487,7 @@ static WRITE8_HANDLER( dotron_op4_w )
 
 	/* bit 4 = SEL0 (J1-8) on squawk n talk board */
 	/* bits 3-0 = MD3-0 connected to squawk n talk (J1-4,3,2,1) */
-	squawkntalk_data_w(offset, data);
+	squawkntalk_data_w(machine, offset, data);
 }
 
 
@@ -567,7 +568,7 @@ static WRITE8_HANDLER( nflfoot_op4_w )
 
 	/* bit 4 = SEL0 (J1-8) on squawk n talk board */
 	/* bits 3-0 = MD3-0 connected to squawk n talk (J1-4,3,2,1) */
-	squawkntalk_data_w(offset, data);
+	squawkntalk_data_w(machine, offset, data);
 }
 
 
@@ -594,7 +595,7 @@ static WRITE8_HANDLER( demoderb_op4_w )
 {
 	if (data & 0x40) input_mux = 1;
 	if (data & 0x80) input_mux = 0;
-	turbocs_data_w(offset, data);
+	turbocs_data_w(machine, offset, data);
 }
 
 
@@ -607,21 +608,22 @@ static WRITE8_HANDLER( demoderb_op4_w )
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( cpu_90009_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x6fff) AM_ROM
 	AM_RANGE(0x7000, 0x77ff) AM_MIRROR(0x0800) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xf000, 0xf1ff) AM_MIRROR(0x0200) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xf400, 0xf41f) AM_MIRROR(0x03e0) AM_WRITE(paletteram_xxxxRRRRBBBBGGGG_split1_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf800, 0xf81f) AM_MIRROR(0x03e0) AM_WRITE(paletteram_xxxxRRRRBBBBGGGG_split2_w) AM_BASE(&paletteram_2)
-	AM_RANGE(0xfc00, 0xffff) AM_READWRITE(MRA8_RAM, mcr_90009_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xfc00, 0xffff) AM_READWRITE(SMH_RAM, mcr_90009_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 /* upper I/O map determined by PAL; only SSIO ports are verified from schematics */
 static ADDRESS_MAP_START( cpu_90009_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	SSIO_INPUT_PORTS
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xe8, 0xe8) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0xe8, 0xe8) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf0, 0xf3) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 ADDRESS_MAP_END
 
@@ -635,19 +637,20 @@ ADDRESS_MAP_END
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( cpu_90010_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_MIRROR(0x1800) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe000, 0xe1ff) AM_MIRROR(0x1600) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe800, 0xefff) AM_MIRROR(0x1000) AM_READWRITE(MRA8_RAM, mcr_90010_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xe800, 0xefff) AM_MIRROR(0x1000) AM_READWRITE(SMH_RAM, mcr_90010_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 /* upper I/O map determined by PAL; only SSIO ports are verified from schematics */
 static ADDRESS_MAP_START( cpu_90010_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	SSIO_INPUT_PORTS
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xe8, 0xe8) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0xe8, 0xe8) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf0, 0xf3) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 ADDRESS_MAP_END
 
@@ -661,20 +664,21 @@ ADDRESS_MAP_END
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( cpu_91490_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0xdfff) AM_ROM
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe800, 0xe9ff) AM_MIRROR(0x0200) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, mcr_91490_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, mcr_91490_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xf800, 0xf87f) AM_MIRROR(0x0780) AM_WRITE(mcr_91490_paletteram_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
 /* upper I/O map determined by PAL; only SSIO ports are verified from schematics */
 static ADDRESS_MAP_START( cpu_91490_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	SSIO_INPUT_PORTS
 	AM_RANGE(0xe0, 0xe0) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xe8, 0xe8) AM_WRITE(MWA8_NOP)
+	AM_RANGE(0xe8, 0xe8) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xf0, 0xf3) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 ADDRESS_MAP_END
 
@@ -688,14 +692,15 @@ ADDRESS_MAP_END
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( ipu_91695_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0xe000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 /* I/O verified from schematics */
 static ADDRESS_MAP_START( ipu_91695_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_MIRROR(0xe0) AM_READWRITE(mcr_ipu_pio_0_r, mcr_ipu_pio_0_w)
 	AM_RANGE(0x04, 0x07) AM_MIRROR(0xe0) AM_READWRITE(mcr_ipu_sio_r, mcr_ipu_sio_w)
 	AM_RANGE(0x08, 0x0b) AM_MIRROR(0xe0) AM_READWRITE(z80ctc_1_r, z80ctc_1_w)
@@ -1507,20 +1512,23 @@ static MACHINE_DRIVER_START( mcr_90009 )
 	MDRV_CPU_CONFIG(mcr_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(cpu_90009_map,0)
 	MDRV_CPU_IO_MAP(cpu_90009_portmap,0)
-	MDRV_CPU_VBLANK_INT(mcr_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(mcr_interrupt,2)
 
-	MDRV_SCREEN_REFRESH_RATE(30)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_30HZ_VBLANK_DURATION)
 	MDRV_WATCHDOG_VBLANK_INIT(16)
 	MDRV_MACHINE_START(mcr)
 	MDRV_MACHINE_RESET(mcr)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 30*16)
 	MDRV_SCREEN_VISIBLE_AREA(0*16, 32*16-1, 0*16, 30*16-1)
+
 	MDRV_GFXDECODE(mcr)
 	MDRV_PALETTE_LENGTH(32)
 
@@ -1592,7 +1600,7 @@ static MACHINE_DRIVER_START( mcr_91490_ipu )
 	MDRV_CPU_CONFIG(mcr_ipu_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(ipu_91695_map,0)
 	MDRV_CPU_IO_MAP(ipu_91695_portmap,0)
-	MDRV_CPU_VBLANK_INT(mcr_ipu_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(mcr_ipu_interrupt,2)
 MACHINE_DRIVER_END
 
 

@@ -46,7 +46,7 @@ PALETTE_INIT( hcastle )
 }
 
 
-static void set_pens(running_machine *machine)
+static void set_pens(colortable_t *colortable)
 {
 	int i;
 
@@ -56,7 +56,7 @@ static void set_pens(running_machine *machine)
 
 		rgb_t color = MAKE_RGB(pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
 
-		colortable_palette_set_color(machine->colortable, i >> 1, color);
+		colortable_palette_set_color(colortable, i >> 1, color);
 	}
 }
 
@@ -128,8 +128,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( hcastle )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan,TILEMAP_TYPE_PEN,     8,8,64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan,     8,8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 }
@@ -177,7 +177,7 @@ WRITE8_HANDLER( hcastle_pf1_control_w )
 	{
 		tilemap_set_flip(fg_tilemap, (data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 	}
-	K007121_ctrl_0_w(offset,data);
+	K007121_ctrl_0_w(machine,offset,data);
 }
 
 WRITE8_HANDLER( hcastle_pf2_control_w )
@@ -193,12 +193,12 @@ WRITE8_HANDLER( hcastle_pf2_control_w )
 	{
 		tilemap_set_flip(bg_tilemap, (data & 0x08) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 	}
-	K007121_ctrl_1_w(offset,data);
+	K007121_ctrl_1_w(machine,offset,data);
 }
 
 /*****************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT8 *sbank, int bank )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT8 *sbank, int bank )
 {
 	int bank_base = (bank == 0) ? 0x4000 * (gfx_bank & 1) : 0;
 	K007121_sprites_draw(bank,bitmap,machine->gfx,machine->colortable,cliprect,sbank,(K007121_ctrlram[bank][6]&0x30)*2,0,bank_base,-1);
@@ -210,7 +210,7 @@ VIDEO_UPDATE( hcastle )
 {
 	static int old_pf1,old_pf2;
 
-	set_pens(machine);
+	set_pens(screen->machine->colortable);
 
 	pf1_bankbase = 0x0000;
 	pf2_bankbase = 0x4000 * ((gfx_bank & 2) >> 1);
@@ -237,16 +237,16 @@ VIDEO_UPDATE( hcastle )
 	if ((gfx_bank & 0x04) == 0)
 	{
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-		draw_sprites( machine,bitmap,cliprect, buffered_spriteram, 0 );
-		draw_sprites( machine,bitmap,cliprect, buffered_spriteram_2, 1 );
+		draw_sprites(screen->machine,bitmap,cliprect, buffered_spriteram, 0 );
+		draw_sprites(screen->machine,bitmap,cliprect, buffered_spriteram_2, 1 );
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	}
 	else
 	{
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 		tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
-		draw_sprites( machine,bitmap,cliprect, buffered_spriteram, 0 );
-		draw_sprites( machine,bitmap,cliprect, buffered_spriteram_2, 1 );
+		draw_sprites(screen->machine,bitmap,cliprect, buffered_spriteram, 0 );
+		draw_sprites(screen->machine,bitmap,cliprect, buffered_spriteram_2, 1 );
 	}
 	return 0;
 }

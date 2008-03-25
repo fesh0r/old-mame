@@ -638,9 +638,7 @@ static READ16_HANDLER( HD63484_data_r )
 	int res;
 
 	if (regno == 0x80)
-	{
-		res = video_screen_get_vpos(0);
-	}
+		res = video_screen_get_vpos(machine->primary_screen);
 	else if (regno == 0)
 	{
 logerror("%05x: HD63484 read FIFO\n",activecpu_get_pc());
@@ -663,7 +661,7 @@ static PALETTE_INIT( shanghai )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -704,7 +702,7 @@ static VIDEO_UPDATE( shanghai )
 		for (x = 0;x < 384;x++)
 		{
 			b &= (HD63484_RAM_SIZE-1);
-			*BITMAP_ADDR16(bitmap, y, x) = machine->pens[HD63484_ram[b]];
+			*BITMAP_ADDR16(bitmap, y, x) = HD63484_ram[b];
 			b++;
 		}
 	}
@@ -724,7 +722,7 @@ static VIDEO_UPDATE( shanghai )
 			{
 				b &= (HD63484_RAM_SIZE-1);
 				if (x <= w && x + sx >= 0 && x+sx < 384)
-					*BITMAP_ADDR16(bitmap, y, x+sx) = machine->pens[HD63484_ram[b]];
+					*BITMAP_ADDR16(bitmap, y, x+sx) = HD63484_ram[b];
 
 				b++;
 			}
@@ -802,7 +800,7 @@ static ADDRESS_MAP_START( kothello_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x07fff) AM_RAM
 	AM_RANGE(0x08010, 0x08011) AM_READWRITE(kothello_HD63484_status_r, HD63484_address_w)
 	AM_RANGE(0x08012, 0x08013) AM_READWRITE(HD63484_data_r, HD63484_data_w)
-	AM_RANGE(0x09010, 0x0901f) AM_READWRITE(shanghai_rand_r, MWA16_NOP) // unknown, sub cpu communication ?
+	AM_RANGE(0x09010, 0x0901f) AM_READWRITE(shanghai_rand_r, SMH_NOP) // unknown, sub cpu communication ?
 	AM_RANGE(0x0a000, 0x0a1ff) AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0b010, 0x0b01f) AM_READWRITE(seibu_main_word_r, seibu_main_word_w)
 	AM_RANGE(0x80000, 0xfffff) AM_ROM
@@ -986,15 +984,15 @@ static MACHINE_DRIVER_START( shanghai )
 	MDRV_CPU_ADD(V30,16000000/2)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(shanghai_map,0)
 	MDRV_CPU_IO_MAP(shanghai_portmap,0)
-	MDRV_CPU_VBLANK_INT(shanghai_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(30)
+	MDRV_CPU_VBLANK_INT("main", shanghai_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(384, 280)
 	MDRV_SCREEN_VISIBLE_AREA(0, 384-1, 0, 280-1)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_PALETTE_INIT(shanghai)
@@ -1019,15 +1017,15 @@ static MACHINE_DRIVER_START( shangha2 )
 	MDRV_CPU_ADD(V30,16000000/2)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(shangha2_map,0)
 	MDRV_CPU_IO_MAP(shangha2_portmap,0)
-	MDRV_CPU_VBLANK_INT(shanghai_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(30)
+	MDRV_CPU_VBLANK_INT("main", shanghai_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(384, 280)
 	MDRV_SCREEN_VISIBLE_AREA(0, 384-1, 0, 280-1)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(shanghai)
@@ -1050,20 +1048,21 @@ static MACHINE_DRIVER_START( kothello )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(V30,16000000/2)	/* ? */
 	MDRV_CPU_PROGRAM_MAP(kothello_map, 0)
-	MDRV_CPU_VBLANK_INT(shanghai_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", shanghai_interrupt)
 
 	SEIBU3A_SOUND_SYSTEM_CPU(14318180/4)
 
-	MDRV_SCREEN_REFRESH_RATE(30)
 	MDRV_INTERLEAVE(200)
 
 	MDRV_MACHINE_RESET(seibu_sound_1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(30)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(384, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 384-1, 0, 280-1)
+
 	MDRV_PALETTE_LENGTH(256)
 
 	MDRV_VIDEO_START(shanghai)

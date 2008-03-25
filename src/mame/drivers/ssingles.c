@@ -23,7 +23,7 @@
 
 #include "driver.h"
 #include "sound/ay8910.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 
 static UINT8 *ssingles_videoram;
 static UINT8 *ssingles_colorram;
@@ -46,8 +46,7 @@ static const UINT8 ssingles_colors[NUM_PENS*3]=
 	0x00,0x00,0x00,	0xff,0x00,0xff,	0x80,0x00,0x80,	0x40,0x00,0x40
 };
 
-static void update_row(mame_bitmap *bitmap, const rectangle *cliprect,
-		UINT16 ma, UINT8 ra, UINT16 y, UINT8 x_count, void *param)
+static MC6845_UPDATE_ROW( update_row )
 {
 	int cx,x;
 	UINT32 tile_address;
@@ -83,13 +82,15 @@ static void update_row(mame_bitmap *bitmap, const rectangle *cliprect,
 	}
 }
 
-static const crtc6845_interface crtc6845_intf =
+static const mc6845_interface mc6845_intf =
 {
-		0,
+		"main",
 		1000000, /* ? MHz */
 		8,
 		NULL,
 		update_row,
+		NULL,
+		NULL,
 		NULL,
 		NULL
 };
@@ -104,10 +105,9 @@ static WRITE8_HANDLER(ssingles_colorram_w)
 	ssingles_colorram[offset]=data;
 }
 
+
 static VIDEO_START(ssingles)
 {
-	crtc6845_config(0, &crtc6845_intf);
-
 	{
 		int i;
 		for(i=0;i<NUM_PENS;++i)
@@ -115,6 +115,15 @@ static VIDEO_START(ssingles)
 			pens[i]=MAKE_RGB(ssingles_colors[3*i], ssingles_colors[3*i+1], ssingles_colors[3*i+2]);
 		}
 	}
+}
+
+
+static VIDEO_UPDATE( ssingles )
+{
+	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	mc6845_update(mc6845, bitmap, cliprect);
+
+	return 0;
 }
 
 
@@ -137,7 +146,7 @@ static WRITE8_HANDLER(c001_w)
 static READ8_HANDLER(controls_r)
 {
 	int data=7;
-	switch(input_port_1_r(0)) //multiplexed
+	switch(input_port_1_r(machine,0)) //multiplexed
 	{
 		case 0x01: data=1; break;
 		case 0x02: data=2; break;
@@ -147,13 +156,13 @@ static READ8_HANDLER(controls_r)
 		case 0x20: data=6; break;
 		case 0x40: data=0; break;
 	}
-	return (input_port_0_r(0)&(~0x1c))|(data<<2);
+	return (input_port_0_r(machine,0)&(~0x1c))|(data<<2);
 }
 
 static ADDRESS_MAP_START( ssingles_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x00ff) AM_WRITE(ssingles_videoram_w)
 	AM_RANGE(0x0800, 0x08ff) AM_WRITE(ssingles_colorram_w)
-	AM_RANGE(0x0000, 0x1fff) AM_READ( MRA8_ROM )
+	AM_RANGE(0x0000, 0x1fff) AM_READ( SMH_ROM )
 	AM_RANGE(0xc000, 0xc000) AM_READ( c000_r )
 	AM_RANGE(0xc001, 0xc001) AM_READWRITE( c001_r, c001_w )
 	AM_RANGE(0x6000, 0xbfff) AM_ROM
@@ -161,7 +170,7 @@ static ADDRESS_MAP_START( ssingles_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ssingles_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x06, 0x06) AM_WRITE(AY8910_control_port_1_w)
@@ -171,8 +180,8 @@ static ADDRESS_MAP_START( ssingles_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x18, 0x18) AM_READ(input_port_3_r)
 	AM_RANGE(0x1c, 0x1c) AM_READ(controls_r)
 	AM_RANGE(0x1a, 0x1a) AM_WRITENOP //video/crt related
-	AM_RANGE(0xfe, 0xfe) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0xff, 0xff) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0xfe, 0xfe) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xff, 0xff) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 
 ADDRESS_MAP_END
 
@@ -251,19 +260,19 @@ static MACHINE_DRIVER_START( ssingles )
 	MDRV_CPU_ADD(Z80,4000000)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(ssingles_map,0)
 	MDRV_CPU_IO_MAP(ssingles_io_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_RAW_PARAMS(4000000, 256, 0, 256, 256, 0, 256)	/* temporary, CRTC will configure screen */
 
 	MDRV_PALETTE_LENGTH(4) //guess
 
 	MDRV_VIDEO_START(ssingles)
-	MDRV_VIDEO_UPDATE(crtc6845)
+	MDRV_VIDEO_UPDATE(ssingles)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG(mc6845_intf)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")

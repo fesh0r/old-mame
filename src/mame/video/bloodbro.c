@@ -59,9 +59,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( bloodbro )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,     16,16,32,16);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,16);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     16,16,32,16);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,32,16);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,15);
@@ -143,7 +143,7 @@ WRITE16_HANDLER( bloodbro_txvideoram_w )
    -------X XXXXXXXX
    -------- YYYYYYYY */
 
-static void bloodbro_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void bloodbro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 	for (offs = 0;offs < spriteram_size/2;offs += 4)
@@ -190,7 +190,7 @@ static void bloodbro_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
    -------X XXXXXXXX
 */
 
-static void weststry_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void weststry_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -237,7 +237,7 @@ VIDEO_UPDATE( bloodbro )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
-	bloodbro_draw_sprites(machine,bitmap,cliprect);
+	bloodbro_draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
@@ -253,7 +253,7 @@ VIDEO_UPDATE( weststry )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
-	weststry_draw_sprites(machine,bitmap,cliprect);
+	weststry_draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
@@ -270,7 +270,7 @@ VIDEO_UPDATE( skysmash )
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,1);
-	bloodbro_draw_sprites(machine,bitmap,cliprect);
+	bloodbro_draw_sprites(screen->machine,bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }

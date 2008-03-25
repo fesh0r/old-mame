@@ -123,16 +123,16 @@ WRITE16_HANDLER( lordgun_vram_3_w )
 VIDEO_START( lordgun )
 {
 	tilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 8,8, 0x100, 0x40 );
+								 8,8, 0x100, 0x40 );
 
 	tilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 16,16, 0x80,0x20 );
+								 16,16, 0x80,0x20 );
 
 	tilemap_2 = tilemap_create(	get_tile_info_2, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 32,32, 0x40,0x40 );
+								 32,32, 0x40,0x40 );
 
 	tilemap_3 = tilemap_create(	get_tile_info_3, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN, 8,8, 0x40,0x20 );
+								 8,8, 0x40,0x20 );
 
 	tilemap_set_scroll_rows(tilemap_0,1);
 	tilemap_set_scroll_cols(tilemap_0,1);
@@ -199,15 +199,17 @@ static void lorddgun_calc_gun_scr(int i)
 
 void lordgun_update_gun(int i)
 {
+	const rectangle *visarea = video_screen_get_visible_area(Machine->primary_screen);
+
 	lordgun_gun[i].hw_x = readinputport(5+i);
 	lordgun_gun[i].hw_y = readinputport(7+i);
 
 	lorddgun_calc_gun_scr(i);
 
-	if (	(lordgun_gun[i].scr_x < Machine->screen[0].visarea.min_x)	||
-			(lordgun_gun[i].scr_x > Machine->screen[0].visarea.max_x)	||
-			(lordgun_gun[i].scr_y < Machine->screen[0].visarea.min_y)	||
-			(lordgun_gun[i].scr_y > Machine->screen[0].visarea.max_y)	)
+	if (	(lordgun_gun[i].scr_x < visarea->min_x)	||
+			(lordgun_gun[i].scr_x > visarea->max_x)	||
+			(lordgun_gun[i].scr_y < visarea->min_y)	||
+			(lordgun_gun[i].scr_y > visarea->max_y)	)
 		lordgun_gun[i].hw_x = lordgun_gun[i].hw_y = 0;
 }
 
@@ -218,7 +220,7 @@ void lordgun_update_gun(int i)
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT16 *s		=	spriteram16;
 	UINT16 *end		=	spriteram16 + spriteram_size/2;
@@ -277,7 +279,7 @@ if (input_code_pressed(KEYCODE_Z))
 
 	if (lordgun_whitescreen)
 	{
-		fillbitmap( bitmap, get_white_pen(machine), cliprect );
+		fillbitmap( bitmap, get_white_pen(screen->machine), cliprect );
 		return 0;
 	}
 
@@ -294,12 +296,12 @@ if (input_code_pressed(KEYCODE_Z))
 	tilemap_set_scrollx( tilemap_3, 0, *lordgun_scroll_x_3 );
 	tilemap_set_scrolly( tilemap_3, 0, *lordgun_scroll_y_3 );
 
-	fillbitmap( bitmap, machine->pens[0], cliprect );
+	fillbitmap( bitmap, 0, cliprect );
 
 	if (layers_ctrl & 4)	tilemap_draw(bitmap, cliprect, tilemap_2, 0, 0);
 	if (layers_ctrl & 1)	tilemap_draw(bitmap, cliprect, tilemap_0, 0, 0);
 	if (layers_ctrl & 2)	tilemap_draw(bitmap, cliprect, tilemap_1, 0, 0);
-	if (layers_ctrl & 16)	draw_sprites(machine, bitmap, cliprect);
+	if (layers_ctrl & 16)	draw_sprites(screen->machine, bitmap, cliprect);
 	if (layers_ctrl & 8)	tilemap_draw(bitmap, cliprect, tilemap_3, 0, 0);
 
 	return 0;

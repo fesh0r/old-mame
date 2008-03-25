@@ -204,7 +204,7 @@ static ADDRESS_MAP_START( main_program_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x02ffff) AM_ROM
 	AM_RANGE(0x030000, 0x033fff) AM_RAM		/* 68K and DSP shared RAM */
 	AM_RANGE(0x040000, 0x040fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x050000, 0x050dff) AM_READWRITE(MRA16_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x050000, 0x050dff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x060000, 0x060001) AM_WRITE(twincobr_crtc_reg_sel_w)	/* 6845 CRT controller */
 	AM_RANGE(0x060002, 0x060003) AM_WRITE(twincobr_crtc_data_w)		/* 6845 CRT controller */
 	AM_RANGE(0x070000, 0x070003) AM_WRITE(twincobr_txscroll_w)	/* text layer scroll */
@@ -236,7 +236,7 @@ static ADDRESS_MAP_START( sound_program_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(YM3812_status_port_0_r, YM3812_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0x10, 0x10) AM_READ(input_port_5_r)		/* Twin Cobra - Coin/Start */
@@ -651,7 +651,7 @@ static MACHINE_DRIVER_START( twincobr )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,28000000/4)			/* 7.0MHz - Main board Crystal is 28MHz */
 	MDRV_CPU_PROGRAM_MAP(main_program_map, 0)
-	MDRV_CPU_VBLANK_INT(twincobr_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", twincobr_interrupt)
 
 	MDRV_CPU_ADD(Z80,28000000/8)			/* 3.5MHz */
 	MDRV_CPU_PROGRAM_MAP(sound_program_map, 0)
@@ -662,17 +662,20 @@ static MACHINE_DRIVER_START( twincobr )
 	/* Data Map is internal to the CPU */
 	MDRV_CPU_IO_MAP(DSP_io_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE( (28000000.0 / 4) / (446 * 286) )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_MACHINE_RESET(twincobr)	/* Reset fshark bootleg 8741 MCU data */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_BUFFERS_SPRITERAM)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE( (28000000.0 / 4) / (446 * 286) )
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
+
 	MDRV_GFXDECODE(twincobr)
 	MDRV_PALETTE_LENGTH(1792)
 

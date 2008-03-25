@@ -67,7 +67,7 @@ WRITE8_HANDLER( skyfox_vregs_w )
 	switch (offset)
 	{
 		case 0:	skyfox_bg_ctrl = data;	break;
-		case 1:	soundlatch_w(0,data);	break;
+		case 1:	soundlatch_w(machine,0,data);	break;
 		case 2:	break;
 		case 3:	break;
 		case 4:	break;
@@ -164,12 +164,12 @@ Offset:         Value:
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
-	int width	=	machine->screen[0].width;
-	int height	=	machine->screen[0].height;
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
 	/* The 32x32 tiles in the 80-ff range are bankswitched */
 	int shift	=	(skyfox_bg_ctrl & 0x80) ? (4-1) : 4;
@@ -243,7 +243,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 ***************************************************************************/
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background(bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT8 *RAM	=	memory_region(REGION_GFX2);
 	int x,y,i;
@@ -271,7 +271,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 		for (j = 0 ; j <= ((pen&0x80)?0:3); j++)
 			*BITMAP_ADDR16(bitmap,
 						   ( ((j/2)&1) + y ) % 256,
-						   ( (j&1)     + x ) % 512) = machine->pens[256+(pen&0x7f)];
+						   ( (j&1)     + x ) % 512) = 256+(pen&0x7f);
 	}
 }
 
@@ -287,8 +287,8 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 
 VIDEO_UPDATE( skyfox )
 {
-	fillbitmap(bitmap,machine->pens[255],cliprect);	// the bg is black
-	draw_background(machine, bitmap, cliprect);
-	draw_sprites(machine, bitmap, cliprect);
+	fillbitmap(bitmap,255,cliprect);	// the bg is black
+	draw_background(bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

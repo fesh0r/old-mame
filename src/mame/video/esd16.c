@@ -133,14 +133,14 @@ WRITE16_HANDLER( esd16_tilemap0_color_w )
 VIDEO_START( esd16 )
 {
 	esdtilemap_0 = tilemap_create(	get_tile_info_0, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,			8,8,	0x80,0x40);
+											8,8,	0x80,0x40);
 
 	esdtilemap_1 = tilemap_create(	get_tile_info_1, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	8,8,	0x80,0x40);
+									8,8,	0x80,0x40);
 
 	/* hedpanic changes tilemap 1 to 16x16 at various times */
 	esdtilemap_1_16x16 = tilemap_create(	get_tile_info_1_16x16, tilemap_scan_rows,
-								TILEMAP_TYPE_PEN,	16,16,	0x40,0x40);
+									16,16,	0x40,0x40);
 
 	tilemap_set_scrolldx(esdtilemap_0, -0x60 + 2, -0x60     );
 	tilemap_set_scrolldx(esdtilemap_1, -0x60    , -0x60 + 2 );
@@ -179,12 +179,12 @@ VIDEO_START( esd16 )
 
 ***************************************************************************/
 
-static void esd16_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void esd16_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
-	int max_x		=	machine->screen[0].width;
-	int max_y		=	machine->screen[0].height;
+	int max_x = video_screen_get_width(machine->primary_screen);
+	int max_y = video_screen_get_height(machine->primary_screen);
 
 	for ( offs = spriteram_size/2 - 8/2; offs >= 0 ; offs -= 8/2 )
 	{
@@ -215,7 +215,7 @@ static void esd16_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 		sy	 =	0x100 - ((sy & 0xff)  - (sy & 0x100));
 		sy	-=	dimy*16;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{	flipx = !flipx;		sx = max_x - sx -    1 * 16 + 2;	// small offset
 			flipy = !flipy;		sy = max_y - sy - dimy * 16;	}
 
@@ -235,12 +235,12 @@ static void esd16_draw_sprites(running_machine *machine, mame_bitmap *bitmap, co
 }
 
 /* note, check if i can re-merge this with the other or if its really different */
-static void hedpanic_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void hedpanic_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
-	int max_x		=	machine->screen[0].width;
-	int max_y		=	machine->screen[0].height;
+	int max_x = video_screen_get_width(machine->primary_screen);
+	int max_y = video_screen_get_height(machine->primary_screen);
 
 	for ( offs = spriteram_size/2 - 8/2; offs >= 0 ; offs -= 8/2 )
 	{
@@ -274,7 +274,7 @@ static void hedpanic_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 		sy = 0x1ff-sy;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{	flipx = !flipx;		sx = max_x - sx -    1 * 16 + 2;	// small offset
 			flipy = !flipy;		sy = max_y - sy - dimy * 16;	}
 
@@ -325,11 +325,11 @@ if ( input_code_pressed(KEYCODE_Z) )
 #endif
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,esdtilemap_0,0,0);
-	else					fillbitmap(bitmap,machine->pens[0],cliprect);
+	else					fillbitmap(bitmap,0,cliprect);
 
 	if (layers_ctrl & 2)	tilemap_draw(bitmap,cliprect,esdtilemap_1,0,1);
 
-	if (layers_ctrl & 4)	esd16_draw_sprites(machine,bitmap,cliprect);
+	if (layers_ctrl & 4)	esd16_draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -353,7 +353,7 @@ if ( input_code_pressed(KEYCODE_Z) )
 #endif
 
 	if (layers_ctrl & 1)	tilemap_draw(bitmap,cliprect,esdtilemap_0,0,0);
-	else					fillbitmap(bitmap,machine->pens[0],cliprect);
+	else					fillbitmap(bitmap,0,cliprect);
 
 	if (layers_ctrl & 2)
 	{
@@ -372,7 +372,7 @@ if ( input_code_pressed(KEYCODE_Z) )
 
 	}
 
-	if (layers_ctrl & 4)	hedpanic_draw_sprites(machine,bitmap,cliprect);
+	if (layers_ctrl & 4)	hedpanic_draw_sprites(screen->machine,bitmap,cliprect);
 
 
 //  popmessage("%04x %04x %04x %04x %04x",head_unknown1[0],head_layersize[0],head_unknown3[0],head_unknown4[0],head_unknown5[0]);

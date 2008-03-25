@@ -7,7 +7,9 @@
 #include "driver.h"
 #include "video/s2636.h"
 
-static mame_bitmap *spritebitmap;
+
+UINT8 *zac2650_s2636_0_ram;
+static bitmap_t *spritebitmap;
 
 static int CollisionBackground;
 static int CollisionSprite;
@@ -29,13 +31,13 @@ WRITE8_HANDLER( tinvader_videoram_w )
 
 READ8_HANDLER( zac_s2636_r )
 {
-	if(offset!=0xCB) return s2636_1_ram[offset];
+	if(offset!=0xCB) return zac2650_s2636_0_ram[offset];
     else return CollisionSprite;
 }
 
 READ8_HANDLER( tinvader_port_0_r )
 {
-	return input_port_0_r(0) - CollisionBackground;
+	return input_port_0_r(machine,0) - CollisionBackground;
 }
 
 /*****************************************/
@@ -46,11 +48,12 @@ static int SpriteCollision(running_machine *machine, int first,int second)
 {
 	int Checksum=0;
 	int x,y;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-    if((s2636_1_ram[first * 0x10 + 10] < 0xf0) && (s2636_1_ram[second * 0x10 + 10] < 0xf0))
+    if((zac2650_s2636_0_ram[first * 0x10 + 10] < 0xf0) && (zac2650_s2636_0_ram[second * 0x10 + 10] < 0xf0))
     {
-    	int fx     = (s2636_1_ram[first * 0x10 + 10] * 4)-22;
-        int fy     = (s2636_1_ram[first * 0x10 + 12] * 3)+3;
+    	int fx     = (zac2650_s2636_0_ram[first * 0x10 + 10] * 4)-22;
+        int fy     = (zac2650_s2636_0_ram[first * 0x10 + 12] * 3)+3;
 		int expand = (first==1) ? 2 : 1;
 
         /* Draw first sprite */
@@ -68,10 +71,10 @@ static int SpriteCollision(running_machine *machine, int first,int second)
 	    {
 		    for (y = fy; y < fy + machine->gfx[expand]->height; y++)
             {
-			    if ((x < machine->screen[0].visarea.min_x) ||
-			        (x > machine->screen[0].visarea.max_x) ||
-			        (y < machine->screen[0].visarea.min_y) ||
-			        (y > machine->screen[0].visarea.max_y))
+			    if ((x < visarea->min_x) ||
+			        (x > visarea->max_x) ||
+			        (y < visarea->min_y) ||
+			        (y > visarea->max_y))
 			    {
 				    continue;
 			    }
@@ -86,7 +89,7 @@ static int SpriteCollision(running_machine *machine, int first,int second)
 			    second * 2,
 			    1,
 			    0,0,
-			    (s2636_1_ram[second * 0x10 + 10] * 4)-22,(s2636_1_ram[second * 0x10 + 12] * 3) + 3,
+			    (zac2650_s2636_0_ram[second * 0x10 + 10] * 4)-22,(zac2650_s2636_0_ram[second * 0x10 + 12] * 3) + 3,
 			    0, TRANSPARENCY_PEN, 0);
 
         /* Remove fingerprint */
@@ -95,10 +98,10 @@ static int SpriteCollision(running_machine *machine, int first,int second)
 	    {
 		    for (y = fy; y < fy + machine->gfx[expand]->height; y++)
             {
-			    if ((x < machine->screen[0].visarea.min_x) ||
-			        (x > machine->screen[0].visarea.max_x) ||
-			        (y < machine->screen[0].visarea.min_y) ||
-			        (y > machine->screen[0].visarea.max_y))
+			    if ((x < visarea->min_x) ||
+			        (x > visarea->max_x) ||
+			        (y < visarea->min_y) ||
+			        (y > visarea->max_y))
 			    {
 				    continue;
 			    }
@@ -130,15 +133,16 @@ static TILE_GET_INFO( get_bg_tile_info )
 VIDEO_START( tinvader )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 24, 24, 32, 32);
+		 24, 24, 32, 32);
 
-	spritebitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	tmpbitmap = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	spritebitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	tmpbitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap)
 {
 	int offs;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
     /* -------------------------------------------------------------- */
     /* There seems to be a strange setup with this board, in that it  */
@@ -154,23 +158,23 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
     CollisionBackground = 0;	/* Read from 0x1e80 bit 7 */
 
 	// for collision detection checking
-	copybitmap(tmpbitmap,bitmap,0,0,0,0,&machine->screen[0].visarea);
+	copybitmap(tmpbitmap,bitmap,0,0,0,0,visarea);
 
     for(offs=0;offs<0x50;offs+=0x10)
     {
-    	if((s2636_1_ram[offs+10]<0xF0) && (offs!=0x30))
+    	if((zac2650_s2636_0_ram[offs+10]<0xF0) && (offs!=0x30))
 		{
             int spriteno = (offs / 8);
-			int expand   = ((s2636_1_ram[0xc0] & (spriteno*2))!=0) ? 2 : 1;
-            int bx       = (s2636_1_ram[offs+10] * 4) - 22;
-            int by       = (s2636_1_ram[offs+12] * 3) + 3;
+			int expand   = ((zac2650_s2636_0_ram[0xc0] & (spriteno*2))!=0) ? 2 : 1;
+            int bx       = (zac2650_s2636_0_ram[offs+10] * 4) - 22;
+            int by       = (zac2650_s2636_0_ram[offs+12] * 3) + 3;
             int x,y;
 
 			/* 16x8 version */
-			decodechar(machine->gfx[1],spriteno,s2636_1_ram);
+			decodechar(machine->gfx[1],spriteno,zac2650_s2636_0_ram);
 
 			/* 16x16 version */
-			decodechar(machine->gfx[2],spriteno,s2636_1_ram);
+			decodechar(machine->gfx[2],spriteno,zac2650_s2636_0_ram);
 
             /* Sprite->Background collision detection */
 			drawgfx(bitmap,machine->gfx[expand],
@@ -184,10 +188,10 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
 	        {
 		        for (y = by; y < by + machine->gfx[expand]->height; y++)
                 {
-			        if ((x < machine->screen[0].visarea.min_x) ||
-			            (x > machine->screen[0].visarea.max_x) ||
-			            (y < machine->screen[0].visarea.min_y) ||
-			            (y > machine->screen[0].visarea.max_y))
+			        if ((x < visarea->min_x) ||
+			            (x > visarea->max_x) ||
+			            (y < visarea->min_y) ||
+			            (y > visarea->max_y))
 			        {
 				        continue;
 			        }
@@ -222,6 +226,6 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap)
 VIDEO_UPDATE( tinvader )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap);
+	draw_sprites(screen->machine, bitmap);
 	return 0;
 }

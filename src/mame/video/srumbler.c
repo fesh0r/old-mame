@@ -51,8 +51,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( srumbler )
 {
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,    16,16,64,64);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,8,8,64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,    16,16,64,64);
 
 	tilemap_set_transparent_pen(fg_tilemap,3);
 
@@ -112,7 +112,7 @@ WRITE8_HANDLER( srumbler_scroll_w )
 
 ***************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -142,7 +142,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx = buffered_spriteram[offs + 3] + 0x100 * ( attr & 0x01);
 		flipy = attr & 0x02;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 496 - sx;
 			sy = 240 - sy;
@@ -152,7 +152,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		drawgfx(bitmap,machine->gfx[2],
 				code,
 				colour,
-				flip_screen,flipy,
+				flip_screen_get(),flipy,
 				sx, sy,
 				cliprect,TRANSPARENCY_PEN,15);
 	}
@@ -162,7 +162,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( srumbler )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER1,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,bg_tilemap,TILEMAP_DRAW_LAYER0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;
@@ -170,5 +170,5 @@ VIDEO_UPDATE( srumbler )
 
 VIDEO_EOF( srumbler )
 {
-	buffer_spriteram_w(0,0);
+	buffer_spriteram_w(machine,0,0);
 }

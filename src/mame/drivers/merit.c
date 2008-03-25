@@ -183,8 +183,8 @@ static ADDRESS_MAP_START( pitboss_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa002, 0xa002) AM_NOP //dips ?
 //  AM_RANGE(0xc000, 0xc002) AM_NOP
 	AM_RANGE(0xe000, 0xe001) AM_WRITENOP // 6845 crt
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, phrcraze_bg_w) AM_BASE(&videoram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, phrcraze_bg_w) AM_BASE(&videoram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(palette_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -194,8 +194,8 @@ static ADDRESS_MAP_START( bigappg_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc004, 0xc007) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
 	AM_RANGE(0xc008, 0xc00b) AM_READWRITE(ppi8255_1_r, ppi8255_1_w)
 	AM_RANGE(0xe000, 0xe001) AM_WRITENOP // 6845 crt
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, phrcraze_bg_w) AM_BASE(&videoram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, phrcraze_bg_w) AM_BASE(&videoram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(palette_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -209,8 +209,8 @@ static ADDRESS_MAP_START( trvwhiz_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xa003) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
 	AM_RANGE(0xc000, 0xc003) AM_READWRITE(ppi8255_1_r, ppi8255_1_w)
 	AM_RANGE(0xe000, 0xe001) AM_WRITENOP // 6845 crt
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, phrcraze_bg_w) AM_BASE(&videoram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, phrcraze_bg_w) AM_BASE(&videoram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(palette_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -229,8 +229,8 @@ static ADDRESS_MAP_START( phrcraze_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd600, 0xd6ff) AM_WRITE(low_offset_w)
 	AM_RANGE(0xda00, 0xdaff) AM_WRITE(med_offset_w)
 	AM_RANGE(0xe000, 0xe001) AM_WRITENOP // 6845 crt
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, phrcraze_bg_w) AM_BASE(&videoram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, phrcraze_bg_w) AM_BASE(&videoram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(palette_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -249,8 +249,8 @@ static ADDRESS_MAP_START( tictac_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd600, 0xd6ff) AM_WRITE(low_offset_w)
 	AM_RANGE(0xda00, 0xdaff) AM_WRITE(med_offset_w)
 	AM_RANGE(0xe000, 0xe001) AM_WRITENOP // 6845 crt
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, phrcraze_bg_w) AM_BASE(&videoram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, phrcraze_bg_w) AM_BASE(&videoram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(palette_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -269,8 +269,8 @@ static ADDRESS_MAP_START( trvwhziv_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd600, 0xd6ff) AM_WRITE(low_offset_w)
 	AM_RANGE(0xda00, 0xdaff) AM_WRITE(med_offset_w)
 	AM_RANGE(0xe000, 0xe001) AM_WRITENOP // 6845 crt
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(MRA8_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(MRA8_RAM, phrcraze_bg_w) AM_BASE(&videoram)
+	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, phrcraze_attr_w) AM_BASE(&phrcraze_attr)
+	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, phrcraze_bg_w) AM_BASE(&videoram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(palette_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -732,7 +732,7 @@ static TILE_GET_INFO( get_tile_info_bg )
 
 static VIDEO_START( merit )
 {
-	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32);
+	bg_tilemap = tilemap_create(get_tile_info_bg,tilemap_scan_rows,8,8,64,32);
 }
 
 static VIDEO_UPDATE( merit )
@@ -797,16 +797,15 @@ static MACHINE_DRIVER_START( pitboss )
 	MDRV_CPU_ADD_TAG("main",Z80,2500000)		 /* ?? */
 	MDRV_CPU_PROGRAM_MAP(pitboss_map,0)
 	MDRV_CPU_IO_MAP(trvwhiz_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_NVRAM_HANDLER(generic_0fill)
 	MDRV_MACHINE_RESET(merit)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 64*8-1, 1*8, 32*8-1)
@@ -822,7 +821,7 @@ static MACHINE_DRIVER_START( pitboss )
 
 	MDRV_SOUND_ADD(AY8910, 2500000)
 	MDRV_SOUND_CONFIG(merit_ay8912_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.33)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( bigappg )

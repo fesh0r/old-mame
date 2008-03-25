@@ -18,7 +18,7 @@ static PALETTE_INIT( cm )
 {
 	int i;
 
-	for ( i = 0; i < machine->drv->total_colors; i++ )
+	for ( i = 0; i < machine->config->total_colors; i++ )
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -30,17 +30,17 @@ static PALETTE_INIT( cm )
 		r = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		// green component
-		bit0 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 3) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 2) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 1) & 0x01;
+		bit3 = (color_prom[machine->config->total_colors] >> 0) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		// blue component
-		bit0 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
-		bit1 = (color_prom[2*machine->drv->total_colors] >> 2) & 0x01;
-		bit2 = (color_prom[2*machine->drv->total_colors] >> 1) & 0x01;
-		bit3 = (color_prom[2*machine->drv->total_colors] >> 0) & 0x01;
+		bit0 = (color_prom[2*machine->config->total_colors] >> 3) & 0x01;
+		bit1 = (color_prom[2*machine->config->total_colors] >> 2) & 0x01;
+		bit2 = (color_prom[2*machine->config->total_colors] >> 1) & 0x01;
+		bit3 = (color_prom[2*machine->config->total_colors] >> 0) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x43 * bit2 + 0x8f * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -71,7 +71,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 }
 
 #if 0
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	// THIS IS COMPLETELY WRONG AND ONLY A PLACEHOLDER, IT HAS BEEN DISABLED TO KEEP THE COMPILER HAPPY
 	int offs;
@@ -89,7 +89,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			int flipy = attr & 0x20;
 
 			drawgfx(bitmap, machine->gfx[1], code, color, flipx, flipy, sx, sy,
-				cliprect, TRANSPARENCY_COLOR, 0);
+				cliprect, TRANSPARENCY_PEN, 0);
 		}
 	}
 }
@@ -98,13 +98,13 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 static VIDEO_START(cm)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		8, 8, 64, 32);
 }
 
 static VIDEO_UPDATE(cm)
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-//  draw_sprites(machine, bitmap, cliprect);
+//  draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -139,7 +139,7 @@ static ADDRESS_MAP_START( cm_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cm_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01, 0x01) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(AY8910_control_port_0_w)
@@ -374,15 +374,15 @@ static MACHINE_DRIVER_START( cmv801 )
 	MDRV_CPU_ADD(Z80, 8000000/2)	// ???
 	MDRV_CPU_PROGRAM_MAP(cm_map, 0)
 	MDRV_CPU_IO_MAP(cm_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	//MDRV_NVRAM_HANDLER(cmv801)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 64*8-1, 2*8, 30*8-1)

@@ -24,8 +24,8 @@ extern VIDEO_UPDATE( solomon );
 
 static WRITE8_HANDLER( solomon_sh_command_w )
 {
-	soundlatch_w(offset,data);
-	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(machine,offset,data);
+	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 /* this is checked on the title screen and when you reach certain scores in the game
@@ -53,12 +53,12 @@ static READ8_HANDLER( solomon_0xe603_r )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
-	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(MRA8_RAM, solomon_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(MRA8_RAM, solomon_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_RAM, solomon_colorram2_w) AM_BASE(&solomon_colorram2)
-	AM_RANGE(0xdc00, 0xdfff) AM_READWRITE(MRA8_RAM, solomon_videoram2_w) AM_BASE(&solomon_videoram2)
+	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(SMH_RAM, solomon_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(SMH_RAM, solomon_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, solomon_colorram2_w) AM_BASE(&solomon_colorram2)
+	AM_RANGE(0xdc00, 0xdfff) AM_READWRITE(SMH_RAM, solomon_videoram2_w) AM_BASE(&solomon_videoram2)
 	AM_RANGE(0xe000, 0xe07f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe400, 0xe5ff) AM_READWRITE(MRA8_RAM, paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe400, 0xe5ff) AM_READWRITE(SMH_RAM, paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe600, 0xe600) AM_READ(input_port_0_r)
 	AM_RANGE(0xe601, 0xe601) AM_READ(input_port_1_r)
 	AM_RANGE(0xe602, 0xe602) AM_READ(input_port_2_r)
@@ -75,11 +75,11 @@ static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM
 	AM_RANGE(0x8000, 0x8000) AM_READ(soundlatch_r)
-	AM_RANGE(0xffff, 0xffff) AM_WRITE(MWA8_NOP)	/* watchdog? */
+	AM_RANGE(0xffff, 0xffff) AM_WRITE(SMH_NOP)	/* watchdog? */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x10) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x11, 0x11) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x20, 0x20) AM_WRITE(AY8910_control_port_1_w)
@@ -206,21 +206,22 @@ static MACHINE_DRIVER_START( solomon )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4.0 MHz (?????) */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(Z80, 3072000)
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,2)	/* ??? */
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* ??? */
 						/* NMIs are caused by the main CPU */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(solomon)
 	MDRV_PALETTE_LENGTH(256)
 

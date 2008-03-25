@@ -62,7 +62,7 @@ PALETTE_INIT( wiz )
 	int i;
 
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,bit3,r,g,b;
 
@@ -72,15 +72,15 @@ PALETTE_INIT( wiz )
 		bit2 = (color_prom[0] >> 2) & 0x01;
 		bit3 = (color_prom[0] >> 3) & 0x01;
 		r = 0x0e * bit0 + 0x1f * bit1 + 0x42 * bit2 + 0x90 * bit3;
-		bit0 = (color_prom[machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[machine->config->total_colors] >> 3) & 0x01;
 		g = 0x0e * bit0 + 0x1f * bit1 + 0x42 * bit2 + 0x90 * bit3;
-		bit0 = (color_prom[2*machine->drv->total_colors] >> 0) & 0x01;
-		bit1 = (color_prom[2*machine->drv->total_colors] >> 1) & 0x01;
-		bit2 = (color_prom[2*machine->drv->total_colors] >> 2) & 0x01;
-		bit3 = (color_prom[2*machine->drv->total_colors] >> 3) & 0x01;
+		bit0 = (color_prom[2*machine->config->total_colors] >> 0) & 0x01;
+		bit1 = (color_prom[2*machine->config->total_colors] >> 1) & 0x01;
+		bit2 = (color_prom[2*machine->config->total_colors] >> 2) & 0x01;
+		bit3 = (color_prom[2*machine->config->total_colors] >> 3) & 0x01;
 		b = 0x0e * bit0 + 0x1f * bit1 + 0x42 * bit2 + 0x90 * bit3;
 
 		palette_set_color(machine,i,MAKE_RGB(r,g,b));
@@ -116,7 +116,7 @@ WRITE8_HANDLER( wiz_flipy_w )
 	flipy = data;
 }
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int bank, int colortype)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int bank, int colortype)
 {
 	int offs;
 
@@ -156,7 +156,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 	}
 }
 
-static void draw_foreground(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int colortype)
+static void draw_foreground(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int colortype)
 {
 	int offs;
 
@@ -195,7 +195,7 @@ static void draw_foreground(running_machine *machine, mame_bitmap *bitmap, const
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,
 						 const rectangle *cliprect, UINT8* sprite_ram,
                          int bank)
 {
@@ -226,11 +226,11 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 VIDEO_UPDATE( kungfut )
 {
-	fillbitmap(bitmap,machine->pens[bgpen],cliprect);
-	draw_background(machine, bitmap, cliprect, 2 + char_bank[0] , 0);
-	draw_foreground(machine, bitmap, cliprect, 0);
-	draw_sprites(machine, bitmap, cliprect, spriteram_2, 4);
-	draw_sprites(machine, bitmap, cliprect, spriteram  , 5);
+	fillbitmap(bitmap,bgpen,cliprect);
+	draw_background(screen->machine, bitmap, cliprect, 2 + char_bank[0] , 0);
+	draw_foreground(screen->machine, bitmap, cliprect, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, spriteram_2, 4);
+	draw_sprites(screen->machine, bitmap, cliprect, spriteram  , 5);
 	return 0;
 }
 
@@ -239,26 +239,26 @@ VIDEO_UPDATE( wiz )
 	int bank;
 	const rectangle* visible_area;
 
-	fillbitmap(bitmap,machine->pens[bgpen],cliprect);
-	draw_background(machine, bitmap, cliprect, 2 + ((char_bank[0] << 1) | char_bank[1]), 0);
-	draw_foreground(machine, bitmap, cliprect, 0);
+	fillbitmap(bitmap,bgpen,cliprect);
+	draw_background(screen->machine, bitmap, cliprect, 2 + ((char_bank[0] << 1) | char_bank[1]), 0);
+	draw_foreground(screen->machine, bitmap, cliprect, 0);
 
 	visible_area = flipx ? &spritevisibleareaflipx : &spritevisiblearea;
 
     bank = 7 + *wiz_sprite_bank;
 
-	draw_sprites(machine, bitmap, visible_area, spriteram_2, 6);
-	draw_sprites(machine, bitmap, visible_area, spriteram  , bank);
+	draw_sprites(screen->machine, bitmap, visible_area, spriteram_2, 6);
+	draw_sprites(screen->machine, bitmap, visible_area, spriteram  , bank);
 	return 0;
 }
 
 
 VIDEO_UPDATE( stinger )
 {
-	fillbitmap(bitmap,machine->pens[bgpen],cliprect);
-	draw_background(machine, bitmap, cliprect, 2 + char_bank[0], 1);
-	draw_foreground(machine, bitmap, cliprect, 1);
-	draw_sprites(machine, bitmap, cliprect, spriteram_2, 4);
-	draw_sprites(machine, bitmap, cliprect, spriteram  , 5);
+	fillbitmap(bitmap,bgpen,cliprect);
+	draw_background(screen->machine, bitmap, cliprect, 2 + char_bank[0], 1);
+	draw_foreground(screen->machine, bitmap, cliprect, 1);
+	draw_sprites(screen->machine, bitmap, cliprect, spriteram_2, 4);
+	draw_sprites(screen->machine, bitmap, cliprect, spriteram  , 5);
 	return 0;
 }

@@ -167,14 +167,14 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc014, 0xc014) AM_WRITE(gundealr_flipscreen_w)
 	AM_RANGE(0xc016, 0xc016) AM_WRITE(yamyam_bankswitch_w)
 	AM_RANGE(0xc020, 0xc023) AM_WRITE(gundealr_fg_scroll_w)	/* Gun Dealer only */
-	AM_RANGE(0xc400, 0xc7ff) AM_READWRITE(MRA8_RAM, gundealr_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(MRA8_RAM, gundealr_bg_videoram_w) AM_BASE(&gundealr_bg_videoram)
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_RAM, gundealr_fg_videoram_w) AM_BASE(&gundealr_fg_videoram)
+	AM_RANGE(0xc400, 0xc7ff) AM_READWRITE(SMH_RAM, gundealr_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(SMH_RAM, gundealr_bg_videoram_w) AM_BASE(&gundealr_bg_videoram)
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, gundealr_fg_videoram_w) AM_BASE(&gundealr_fg_videoram)
 	AM_RANGE(0xe000, 0xffff) AM_RAM AM_BASE(&rambase)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(YM2203_read_port_0_r, YM2203_write_port_0_w)
 ADDRESS_MAP_END
@@ -465,16 +465,16 @@ static MACHINE_DRIVER_START( gundealr )
 	MDRV_CPU_ADD(Z80, 8000000)	/* 8 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
-	MDRV_CPU_VBLANK_INT(yamyam_interrupt,4)	/* ? */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(yamyam_interrupt,4)	/* ? */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(gundealr)
 	MDRV_PALETTE_LENGTH(512)
 

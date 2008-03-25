@@ -45,6 +45,7 @@ PS4  J8648       PS4  J8635
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/2203intf.h"
@@ -71,7 +72,7 @@ VIDEO_UPDATE( kikikai );
 //AT
 static READ8_HANDLER( kiki_2203_r )
 {
-	return(YM2203_status_port_0_r(0) & 0x7f);
+	return(YM2203_status_port_0_r(machine,0) & 0x7f);
 }
 //ZT
 
@@ -90,63 +91,63 @@ static WRITE8_HANDLER( shared_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)  /* banked roms */
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)  /* banked roms */
 	AM_RANGE(0xc000, 0xe7ff) AM_READ(shared_r)   /* shared with sound cpu */
-	AM_RANGE(0xe800, 0xe8ff) AM_READ(MRA8_RAM)    /* protection ram */
-	AM_RANGE(0xe900, 0xefff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xe800, 0xe8ff) AM_READ(SMH_RAM)    /* protection ram */
+	AM_RANGE(0xe900, 0xefff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf010, 0xf010) AM_READ(input_port_5_r)
-	AM_RANGE(0xf800, 0xffff) AM_READ(MRA8_RAM)    /* communication ram - to connect 4 players's subboard */
+	AM_RANGE(0xf800, 0xffff) AM_READ(SMH_RAM)    /* communication ram - to connect 4 players's subboard */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xe7ff) AM_WRITE(shared_w) AM_BASE(&shared)  /* shared with sound cpu */
-	AM_RANGE(0xc000, 0xd4ff) AM_WRITE(MWA8_RAM) AM_BASE(&mexico86_videoram) //AT: corrected size
-	AM_RANGE(0xd500, 0xd7ff) AM_WRITE(MWA8_RAM) AM_BASE(&mexico86_objectram) AM_SIZE(&mexico86_objectram_size)
-	AM_RANGE(0xe800, 0xe8ff) AM_WRITE(MWA8_RAM) AM_BASE(&mexico86_protection_ram)  /* shared with mcu */
-	AM_RANGE(0xe900, 0xefff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc000, 0xd4ff) AM_WRITE(SMH_RAM) AM_BASE(&mexico86_videoram) //AT: corrected size
+	AM_RANGE(0xd500, 0xd7ff) AM_WRITE(SMH_RAM) AM_BASE(&mexico86_objectram) AM_SIZE(&mexico86_objectram_size)
+	AM_RANGE(0xe800, 0xe8ff) AM_WRITE(SMH_RAM) AM_BASE(&mexico86_protection_ram)  /* shared with mcu */
+	AM_RANGE(0xe900, 0xefff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(mexico86_bankswitch_w)  /* program and gfx ROM banks */
 	AM_RANGE(0xf008, 0xf008) AM_WRITE(mexico86_f008_w)    /* cpu reset lines + other unknown stuff */
-	AM_RANGE(0xf018, 0xf018) AM_WRITE(MWA8_NOP)    // watchdog_reset_w },
-	AM_RANGE(0xf800, 0xffff) AM_WRITE(MWA8_RAM)    /* communication ram */
+	AM_RANGE(0xf018, 0xf018) AM_WRITE(SMH_NOP)    // watchdog_reset_w },
+	AM_RANGE(0xf800, 0xffff) AM_WRITE(SMH_RAM)    /* communication ram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0xa7ff) AM_READ(shared_r)
-	AM_RANGE(0xa800, 0xbfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xa800, 0xbfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xc000, 0xc000) AM_READ(kiki_2203_r) //AT
 	AM_RANGE(0xc001, 0xc001) AM_READ(YM2203_read_port_0_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x8000, 0xa7ff) AM_WRITE(shared_w)
-	AM_RANGE(0xa800, 0xbfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xa800, 0xbfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2203_control_port_0_w)
 	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2203_write_port_0_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m68705_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_READ(mexico86_68705_portA_r)
 	AM_RANGE(0x0001, 0x0001) AM_READ(mexico86_68705_portB_r)
 	AM_RANGE(0x0002, 0x0002) AM_READ(input_port_0_r) /* COIN */
-	AM_RANGE(0x0010, 0x007f) AM_READ(MRA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_READ(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( m68705_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x0000, 0x0000) AM_WRITE(mexico86_68705_portA_w)
 	AM_RANGE(0x0001, 0x0001) AM_WRITE(mexico86_68705_portB_w)
 	AM_RANGE(0x0004, 0x0004) AM_WRITE(mexico86_68705_ddrA_w)
 	AM_RANGE(0x0005, 0x0005) AM_WRITE(mexico86_68705_ddrB_w)
-	AM_RANGE(0x000a, 0x000a) AM_WRITE(MWA8_NOP)    /* looks like a bug in the code, writes to */
+	AM_RANGE(0x000a, 0x000a) AM_WRITE(SMH_NOP)    /* looks like a bug in the code, writes to */
 									/* 0x0a (=10dec) instead of 0x10 */
-	AM_RANGE(0x0010, 0x007f) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x0080, 0x07ff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0010, 0x007f) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x0080, 0x07ff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -385,26 +386,27 @@ static MACHINE_DRIVER_START( mexico86 )
 
 	MDRV_CPU_ADD(Z80, 24000000/4)      /* 6 MHz, Uses clock divided 24MHz OSC */
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD_TAG("mcu", M68705, 4000000) /* xtal is 4MHz, divided by 4 internally */
 	MDRV_CPU_PROGRAM_MAP(m68705_readmem,m68705_writemem)
-	MDRV_CPU_VBLANK_INT(mexico86_m68705_interrupt,2)
+	MDRV_CPU_VBLANK_INT_HACK(mexico86_m68705_interrupt,2)
 
 	MDRV_CPU_ADD_TAG("sub", Z80, 8000000/2)      /* 4 MHz, Uses 8Mhz OSC */
 	MDRV_CPU_PROGRAM_MAP(sub_cpu_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION  /* frames per second, vblank duration */)
 	MDRV_INTERLEAVE(100)    /* 100 CPU slices per frame - an high value to ensure proper */
 							/* synchronization of the CPUs */
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0)  /* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(mexico86)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -440,7 +442,7 @@ static MACHINE_DRIVER_START( kikikai )
 	MDRV_IMPORT_FROM(knightb)
 
 	MDRV_CPU_MODIFY("main")
-	MDRV_CPU_VBLANK_INT(kikikai_interrupt, 1) // IRQs should be triggered by the MCU, but we don't have it
+	MDRV_CPU_VBLANK_INT("main", kikikai_interrupt) // IRQs should be triggered by the MCU, but we don't have it
 
 	MDRV_CPU_REMOVE("mcu")	// we don't have code for the 68701
 

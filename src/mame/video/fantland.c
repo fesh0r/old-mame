@@ -60,7 +60,7 @@
 
 #include "driver.h"
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	UINT8	*indx_ram	=	spriteram + 0x2000,	// this ram contains indexes into offs_ram
 			*offs_ram	=	spriteram + 0x2400,	// this ram contains x,y offsets or indexes into spriteram_2
@@ -68,7 +68,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			*ram2		=	indx_ram;			// current sprite pointer in indx_ram
 
 	// wheelrun is the only game with a smaller visible area
-	int special = (machine->screen[0].visarea.max_y - machine->screen[0].visarea.min_y + 1) < 0x100;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
+	int special = (visarea->max_y - visarea->min_y + 1) < 0x100;
 
 	for ( ; ram < indx_ram; ram += 8,ram2++)
 	{
@@ -137,8 +138,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 VIDEO_UPDATE( fantland )
 {
-	fillbitmap(bitmap,machine->pens[0],cliprect);
-	draw_sprites(machine,bitmap,cliprect);
+	fillbitmap(bitmap,0,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 
 	return 0;
 }

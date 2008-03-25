@@ -24,82 +24,82 @@ VIDEO_UPDATE( ultraman );
 
 static READ16_HANDLER( ultraman_K051937_r )
 {
-	return K051937_r(offset);
+	return K051937_r(machine, offset);
 }
 
 static READ16_HANDLER( ultraman_K051960_r )
 {
-	return K051960_r(offset);
+	return K051960_r(machine, offset);
 }
 
 static READ16_HANDLER( ultraman_K051316_0_r )
 {
-	return K051316_0_r(offset);
+	return K051316_0_r(machine, offset);
 }
 
 static READ16_HANDLER( ultraman_K051316_1_r )
 {
-	return K051316_1_r(offset);
+	return K051316_1_r(machine, offset);
 }
 
 static READ16_HANDLER( ultraman_K051316_2_r )
 {
-	return K051316_2_r(offset);
+	return K051316_2_r(machine, offset);
 }
 
 static WRITE16_HANDLER( ultraman_K051316_0_w )
 {
 	if (ACCESSING_LSB)
-		K051316_0_w(offset, data & 0xff);
+		K051316_0_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( ultraman_K051316_1_w )
 {
 	if (ACCESSING_LSB)
-		K051316_1_w(offset, data & 0xff);
+		K051316_1_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( ultraman_K051316_2_w )
 {
 	if (ACCESSING_LSB)
-		K051316_2_w(offset, data & 0xff);
+		K051316_2_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( ultraman_K051316_ctrl_0_w )
 {
 	if (ACCESSING_LSB)
-		K051316_ctrl_0_w(offset, data & 0xff);
+		K051316_ctrl_0_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( ultraman_K051316_ctrl_1_w )
 {
 	if (ACCESSING_LSB)
-		K051316_ctrl_1_w(offset, data & 0xff);
+		K051316_ctrl_1_w(machine, offset, data & 0xff);
 
 }
 
 static WRITE16_HANDLER( ultraman_K051316_ctrl_2_w )
 {
 	if (ACCESSING_LSB)
-		K051316_ctrl_2_w(offset, data & 0xff);
+		K051316_ctrl_2_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( ultraman_K051937_w )
 {
 	if (ACCESSING_LSB)
-		K051937_w(offset, data & 0xff);
+		K051937_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( ultraman_K051960_w )
 {
 	if (ACCESSING_LSB)
-		K051960_w(offset, data & 0xff);
+		K051960_w(machine, offset, data & 0xff);
 }
 
 static WRITE16_HANDLER( sound_cmd_w )
 {
 	if (ACCESSING_LSB)
-		soundlatch_w(0,data & 0xff);
+		soundlatch_w(machine,0,data & 0xff);
 }
 
 static WRITE16_HANDLER( sound_irq_trigger_w )
@@ -111,9 +111,9 @@ static WRITE16_HANDLER( sound_irq_trigger_w )
 
 
 static ADDRESS_MAP_START( ultraman_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)				/* ROM */
-	AM_RANGE(0x080000, 0x08ffff) AM_READ(MRA16_RAM)				/* RAM */
-	AM_RANGE(0x180000, 0x183fff) AM_READ(MRA16_RAM)				/* Palette */
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)				/* ROM */
+	AM_RANGE(0x080000, 0x08ffff) AM_READ(SMH_RAM)				/* RAM */
+	AM_RANGE(0x180000, 0x183fff) AM_READ(SMH_RAM)				/* Palette */
 	AM_RANGE(0x1c0000, 0x1c0001) AM_READ(input_port_0_word_r)	/* Coins + Service */
 	AM_RANGE(0x1c0002, 0x1c0003) AM_READ(input_port_1_word_r)	/* 1P controls */
 	AM_RANGE(0x1c0004, 0x1c0005) AM_READ(input_port_2_word_r)	/* 2P controls */
@@ -127,8 +127,8 @@ static ADDRESS_MAP_START( ultraman_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ultraman_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)					/* ROM */
-	AM_RANGE(0x080000, 0x08ffff) AM_WRITE(MWA16_RAM)					/* RAM */
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)					/* ROM */
+	AM_RANGE(0x080000, 0x08ffff) AM_WRITE(SMH_RAM)					/* RAM */
 	AM_RANGE(0x180000, 0x183fff) AM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)/* Palette */
 	AM_RANGE(0x1c0018, 0x1c0019) AM_WRITE(ultraman_gfxctrl_w)	/* counters + gfx ctrl */
 	AM_RANGE(0x1c0020, 0x1c0021) AM_WRITE(sound_cmd_w)
@@ -145,25 +145,25 @@ static ADDRESS_MAP_START( ultraman_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ultraman_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)					/* ROM */
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_RAM)					/* RAM */
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)					/* ROM */
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_RAM)					/* RAM */
 	AM_RANGE(0xc000, 0xc000) AM_READ(soundlatch_r)				/* Sound latch read */
 	AM_RANGE(0xe000, 0xe000) AM_READ(OKIM6295_status_0_r)		/* M6295 */
 	AM_RANGE(0xf001, 0xf001) AM_READ(YM2151_status_port_0_r)		/* YM2151 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ultraman_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)					/* ROM */
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_RAM)					/* RAM */
-//  AM_RANGE(0xd000, 0xd000) AM_WRITE(MWA8_NOP)                 /* ??? */
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)					/* ROM */
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_RAM)					/* RAM */
+//  AM_RANGE(0xd000, 0xd000) AM_WRITE(SMH_NOP)                 /* ??? */
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(OKIM6295_data_0_w)			/* M6295 */
 	AM_RANGE(0xf000, 0xf000) AM_WRITE(YM2151_register_port_0_w)	/* YM2151 */
 	AM_RANGE(0xf001, 0xf001) AM_WRITE(YM2151_data_port_0_w)		/* YM2151 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ultraman_writeport_sound, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-//  AM_RANGE(0x00, 0x00) AM_WRITE(MWA8_NOP)                     /* ??? */
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+//  AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP)                     /* ??? */
 ADDRESS_MAP_END
 
 
@@ -267,22 +267,25 @@ static MACHINE_DRIVER_START( ultraman )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000,24000000/2)		/* 12 MHz? */
 	MDRV_CPU_PROGRAM_MAP(ultraman_readmem,ultraman_writemem)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD(Z80,24000000/6)
 	/* audio CPU */		/* 4 MHz? */
 	MDRV_CPU_PROGRAM_MAP(ultraman_readmem_sound,ultraman_writemem_sound)
 	MDRV_CPU_IO_MAP(0,ultraman_writeport_sound)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(8192)
 
 	MDRV_VIDEO_START(ultraman)

@@ -13,18 +13,17 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
-#include "includes/lemmings.h"
+#include "lemmings.h"
 
 UINT16 *lemmings_pixel_0_data,*lemmings_pixel_1_data,*lemmings_vram_data,*lemmings_control_data;
 static UINT16 *sprite_triple_buffer_0,*sprite_triple_buffer_1;
 static UINT8 *vram_buffer, *vram_dirty;
-static mame_bitmap *bitmap0;
+static bitmap_t *bitmap0;
 static tilemap *vram_tilemap;
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT16 *spritedata, int gfxbank, UINT16 pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT16 *spritedata, int gfxbank, UINT16 pri)
 {
 	int offs;
 
@@ -39,7 +38,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 		y = spritedata[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spritedata[offs+2];
 		colour = (x >>9) & 0xf;
@@ -94,8 +93,8 @@ static TILE_GET_INFO( get_tile_info )
 
 VIDEO_START( lemmings )
 {
-	bitmap0 = auto_bitmap_alloc(2048,256,machine->screen[0].format);
-	vram_tilemap = tilemap_create(get_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,64,32);
+	bitmap0 = auto_bitmap_alloc(2048,256,video_screen_get_format(machine->primary_screen));
+	vram_tilemap = tilemap_create(get_tile_info,tilemap_scan_cols,8,8,64,32);
 
 	vram_buffer = (UINT8*)auto_malloc(2048*64); /* 64 bytes per VRAM character */
 	vram_dirty = (UINT8*)auto_malloc(2048);
@@ -130,8 +129,8 @@ WRITE16_HANDLER( lemmings_pixel_0_w )
 	if (sx>2047 || sy>255)
 		return;
 
-	*BITMAP_ADDR16(bitmap0, sy, sx+0) = Machine->pens[((src>>8)&0xf)|0x100];
-	*BITMAP_ADDR16(bitmap0, sy, sx+1) = Machine->pens[((src>>0)&0xf)|0x100];
+	*BITMAP_ADDR16(bitmap0, sy, sx+0) = ((src>>8)&0xf)|0x100;
+	*BITMAP_ADDR16(bitmap0, sy, sx+1) = ((src>>0)&0xf)|0x100;
 }
 
 WRITE16_HANDLER( lemmings_pixel_1_w )
@@ -172,14 +171,14 @@ VIDEO_UPDATE( lemmings )
 	/* Decode any characters that have changed in vram */
 	for (i=0; i<2048; i++) {
 		if (vram_dirty[i]) {
-			decodechar(machine->gfx[2],i,vram_buffer);
+			decodechar(screen->machine->gfx[2],i,vram_buffer);
 			tilemap_mark_tile_dirty(vram_tilemap,i);
 			vram_dirty[i]=0;
 		}
 	}
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
-	draw_sprites(machine,bitmap,cliprect,sprite_triple_buffer_1,1,0x0000);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect,sprite_triple_buffer_1,1,0x0000);
 
 	/* Pixel layer can be windowed in hardware (two player mode) */
 	if ((lemmings_control_data[6]&2)==0) {
@@ -192,9 +191,9 @@ VIDEO_UPDATE( lemmings )
 		rect.min_x=160;
 		copyscrollbitmap_trans(bitmap,bitmap0,1,&x1,1,&y,&rect,0x100);
 	}
-	draw_sprites(machine,bitmap,cliprect,sprite_triple_buffer_0,0,0x0000);
-	draw_sprites(machine,bitmap,cliprect,sprite_triple_buffer_1,1,0x2000);
+	draw_sprites(screen->machine,bitmap,cliprect,sprite_triple_buffer_0,0,0x0000);
+	draw_sprites(screen->machine,bitmap,cliprect,sprite_triple_buffer_1,1,0x2000);
 	tilemap_draw(bitmap,cliprect,vram_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect,sprite_triple_buffer_0,0,0x2000);
+	draw_sprites(screen->machine,bitmap,cliprect,sprite_triple_buffer_0,0,0x2000);
 	return 0;
 }

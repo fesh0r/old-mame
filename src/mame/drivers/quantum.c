@@ -120,18 +120,18 @@ static WRITE16_HANDLER( led_w )
 static WRITE16_HANDLER( pokey_word_w )
 {
 	if (offset & 0x10) /* A5 selects chip */
-		pokey2_w(offset & 0x0f, data);
+		pokey2_w(machine, offset & 0x0f, data);
 	else
-		pokey1_w(offset & 0x0f, data);
+		pokey1_w(machine, offset & 0x0f, data);
 }
 
 
 static READ16_HANDLER( pokey_word_r )
 {
 	if (offset & 0x10)
-		return pokey2_r(offset & 0x0f);
+		return pokey2_r(machine, offset & 0x0f);
 	else
-		return pokey1_r(offset & 0x0f);
+		return pokey1_r(machine, offset & 0x0f);
 }
 
 
@@ -149,12 +149,12 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x900000, 0x9001ff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x940000, 0x940001) AM_READ(trackball_r) /* trackball */
 	AM_RANGE(0x948000, 0x948001) AM_READ(switches_r)
-	AM_RANGE(0x950000, 0x95001f) AM_WRITE(MWA16_RAM) AM_BASE(&quantum_colorram)
+	AM_RANGE(0x950000, 0x95001f) AM_WRITE(SMH_RAM) AM_BASE(&quantum_colorram)
 	AM_RANGE(0x958000, 0x958001) AM_WRITE(led_w)
-	AM_RANGE(0x960000, 0x960001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x960000, 0x960001) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x968000, 0x968001) AM_WRITE(avgdvg_reset_word_w)
     AM_RANGE(0x970000, 0x970001) AM_WRITE(avgdvg_go_word_w)
-	AM_RANGE(0x978000, 0x978001) AM_READWRITE(MRA16_NOP, watchdog_reset16_w)
+	AM_RANGE(0x978000, 0x978001) AM_READWRITE(SMH_NOP, watchdog_reset16_w)
 ADDRESS_MAP_END
 
 
@@ -241,17 +241,13 @@ static MACHINE_DRIVER_START( quantum )
 	MDRV_CPU_PROGRAM_MAP(main_map, 0)
 	MDRV_CPU_PERIODIC_INT(irq1_line_hold, (double)MASTER_CLOCK / 4096 / 12)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_VECTOR )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_ADD("main", VECTOR)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(400, 300)
 	MDRV_SCREEN_VISIBLE_AREA(0, 900, 0, 600)
-	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_START(avg_quantum)
 	MDRV_VIDEO_UPDATE(vector)

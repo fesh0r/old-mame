@@ -104,7 +104,7 @@ static TIMER_CALLBACK( vdp_reload_counter )
 		{
 			scanline_int = 1;
 			update_interrupts(machine);
-			timer_set(video_screen_get_time_until_pos(0, scanline + 1, 0), NULL, 0, vdp_int4_off);
+			timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline + 1, 0), NULL, 0, vdp_int4_off);
 		}
 
 	/* advance to the next scanline */
@@ -115,7 +115,7 @@ static TIMER_CALLBACK( vdp_reload_counter )
 		scanline = 0;
 
 	/* set a timer */
-	timer_adjust(scan_timer, video_screen_get_time_until_pos(0, scanline, 320), scanline, attotime_zero);
+	timer_adjust_oneshot(scan_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 320), scanline);
 }
 
 
@@ -135,7 +135,7 @@ INTERRUPT_GEN( genesis_vblank_interrupt )
 	update_interrupts(machine);
 
 	/* set a timer to turn it off */
-	timer_set(video_screen_get_time_until_pos(0, video_screen_get_vpos(0), 22), NULL, 0, vdp_int6_off);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), 22), NULL, 0, vdp_int6_off);
 }
 
 
@@ -158,7 +158,7 @@ MACHINE_START( genesis )
 MACHINE_RESET( genesis )
 {
 	/* C2 doesn't have a Z80, so we can't just assume */
-	if (machine->drv->cpu[1].type == CPU_Z80)
+	if (machine->config->cpu[1].type == CPU_Z80)
 	{
 	    /* the following ensures that the Z80 begins without running away from 0 */
 		/* 0x76 is just a forced 'halt' as soon as the CPU is initially run */
@@ -174,7 +174,7 @@ MACHINE_RESET( genesis )
 
 	/* set the first scanline 0 timer to go off */
 	scan_timer = timer_alloc(vdp_reload_counter, NULL);
-	timer_adjust(scan_timer, video_screen_get_time_until_pos(0, 0, 320), 0, attotime_zero);
+	timer_adjust_oneshot(scan_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 320), 0);
 }
 
 
@@ -271,11 +271,11 @@ READ16_HANDLER ( genesis_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_MSB)	 return YM3438_status_port_0_A_r(0) << 8;
-			else 				 return YM3438_read_port_0_r(0);
+			if (ACCESSING_MSB)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
+			else 				 return YM3438_read_port_0_r(machine, 0);
 			break;
 		case 2:
-			if (ACCESSING_MSB)	return YM3438_status_port_0_B_r(0) << 8;
+			if (ACCESSING_MSB)	return YM3438_status_port_0_B_r(machine, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -331,11 +331,11 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_MSB)	 return YM3438_status_port_0_A_r(0) << 8;
-			else 				 return YM3438_read_port_0_r(0);
+			if (ACCESSING_MSB)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
+			else 				 return YM3438_read_port_0_r(machine, 0);
 			break;
 		case 2:
-			if (ACCESSING_MSB)	return YM3438_status_port_0_B_r(0) << 8;
+			if (ACCESSING_MSB)	return YM3438_status_port_0_B_r(machine, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -383,12 +383,12 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_MSB)	YM3438_control_port_0_A_w	(0,	(data >> 8) & 0xff);
-			else 				YM3438_data_port_0_A_w		(0,	(data >> 0) & 0xff);
+			if (ACCESSING_MSB)	YM3438_control_port_0_A_w	(machine, 0,	(data >> 8) & 0xff);
+			else 				YM3438_data_port_0_A_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 		case 2:
-			if (ACCESSING_MSB)	YM3438_control_port_0_B_w	(0,	(data >> 8) & 0xff);
-			else 				YM3438_data_port_0_B_w		(0,	(data >> 0) & 0xff);
+			if (ACCESSING_MSB)	YM3438_control_port_0_B_w	(machine, 0,	(data >> 8) & 0xff);
+			else 				YM3438_data_port_0_B_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 		}
 	}
@@ -412,8 +412,8 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 
 		if ( (offset >= 0x10) && (offset <=0x17) )
 		{
-			if (ACCESSING_LSB) SN76496_0_w(0, data & 0xff);
-			if (ACCESSING_MSB) SN76496_0_w(0, (data >>8) & 0xff);
+			if (ACCESSING_LSB) SN76496_0_w(machine, 0, data & 0xff);
+			if (ACCESSING_MSB) SN76496_0_w(machine, 0, (data >>8) & 0xff);
 		}
 
 	}
@@ -622,23 +622,23 @@ WRITE16_HANDLER ( genesis_io_w )
 
 #if 0
 static ADDRESS_MAP_START( genesis_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x3fffff) AM_READ(MRA16_ROM)					/* Cartridge Program Rom */
+	AM_RANGE(0x000000, 0x3fffff) AM_READ(SMH_ROM)					/* Cartridge Program Rom */
 	AM_RANGE(0xa10000, 0xa1001f) AM_READ(genesis_io_r)				/* Genesis Input */
 	AM_RANGE(0xa00000, 0xa0ffff) AM_READ(genesis_68k_to_z80_r)
 	AM_RANGE(0xc00000, 0xc0001f) AM_READ(genesis_vdp_r)				/* VDP Access */
-	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(MRA16_BANK3)				/* Main Ram */
-	AM_RANGE(0xff0000, 0xffffff) AM_READ(MRA16_RAM)					/* Main Ram */
+	AM_RANGE(0xfe0000, 0xfeffff) AM_READ(SMH_BANK3)				/* Main Ram */
+	AM_RANGE(0xff0000, 0xffffff) AM_READ(SMH_RAM)					/* Main Ram */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( genesis_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x3fffff) AM_WRITE(MWA16_ROM)					/* Cartridge Program Rom */
+	AM_RANGE(0x000000, 0x3fffff) AM_WRITE(SMH_ROM)					/* Cartridge Program Rom */
 	AM_RANGE(0xa10000, 0xa1001f) AM_WRITE(genesis_io_w) AM_BASE(&genesis_io_ram)				/* Genesis Input */
 	AM_RANGE(0xa11000, 0xa11203) AM_WRITE(genesis_ctrl_w)
 	AM_RANGE(0xa00000, 0xa0ffff) AM_WRITE(genesis_68k_to_z80_w)
 	AM_RANGE(0xc00000, 0xc0001f) AM_WRITE(genesis_vdp_w)				/* VDP Access */
-	AM_RANGE(0xfe0000, 0xfeffff) AM_WRITE(MWA16_BANK3)				/* Main Ram */
-	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(MWA16_RAM) AM_BASE(&genesis_68k_ram)/* Main Ram */
+	AM_RANGE(0xfe0000, 0xfeffff) AM_WRITE(SMH_BANK3)				/* Main Ram */
+	AM_RANGE(0xff0000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&genesis_68k_ram)/* Main Ram */
 ADDRESS_MAP_END
 #endif
 
@@ -677,9 +677,9 @@ READ8_HANDLER ( genesis_z80_r )
 	{
 		switch (offset & 3)
 		{
-		case 0: return YM3438_status_port_0_A_r(0);
-		case 1: return YM3438_read_port_0_r(0);
-		case 2: return YM3438_status_port_0_B_r(0);
+		case 0: return YM3438_status_port_0_A_r(machine, 0);
+		case 1: return YM3438_read_port_0_r(machine, 0);
+		case 2: return YM3438_status_port_0_B_r(machine, 0);
 		case 3: return 0;
 		}
 	}
@@ -714,13 +714,13 @@ WRITE8_HANDLER ( genesis_z80_w )
 	{
 		switch (offset & 3)
 		{
-		case 0: YM3438_control_port_0_A_w	(0,	data);
+		case 0: YM3438_control_port_0_A_w	(machine, 0,	data);
 			break;
-		case 1: YM3438_data_port_0_A_w		(0, data);
+		case 1: YM3438_data_port_0_A_w		(machine, 0, data);
 			break;
-		case 2: YM3438_control_port_0_B_w	(0,	data);
+		case 2: YM3438_control_port_0_B_w	(machine, 0,	data);
 			break;
-		case 3: YM3438_data_port_0_B_w		(0,	data);
+		case 3: YM3438_data_port_0_B_w		(machine, 0,	data);
 			break;
 		}
 	}
@@ -728,7 +728,7 @@ WRITE8_HANDLER ( genesis_z80_w )
 	/* Bank Register */
 	if ((offset >= 0x6000) && (offset <= 0x60ff))
 	{
-		genesis_bank_select_w(offset & 0xff, data);
+		genesis_bank_select_w(machine, offset & 0xff, data);
 	}
 
 	/* Unused / Illegal */
@@ -765,15 +765,15 @@ READ8_HANDLER ( genesis_z80_bank_r )
 
 #if 0
 static ADDRESS_MAP_START( genesis_z80_readmem, ADDRESS_SPACE_PROGRAM, 8 )
- 	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_BANK1)
- 	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_BANK2) /* mirror */
+ 	AM_RANGE(0x0000, 0x1fff) AM_READ(SMH_BANK1)
+ 	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_BANK2) /* mirror */
 	AM_RANGE(0x4000, 0x7fff) AM_READ(genesis_z80_r)
 	AM_RANGE(0x8000, 0xffff) AM_READ(genesis_z80_bank_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( genesis_z80_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_WRITE(MWA8_BANK1) AM_BASE(&genesis_z80_ram)
- 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_BANK2) /* mirror */
+	AM_RANGE(0x0000, 0x1fff) AM_WRITE(SMH_BANK1) AM_BASE(&genesis_z80_ram)
+ 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_BANK2) /* mirror */
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(genesis_z80_w)
  // AM_RANGE(0x8000, 0xffff) AM_WRITE(genesis_z80_bank_w)
 ADDRESS_MAP_END
@@ -782,13 +782,11 @@ static MACHINE_DRIVER_START( genesis_base )
 	/*basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK / 7)
 	MDRV_CPU_PROGRAM_MAP(genesis_readmem, genesis_writemem)
-	MDRV_CPU_VBLANK_INT(genesis_vblank_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", genesis_vblank_interrupt)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, MASTER_CLOCK / 15)
 	MDRV_CPU_PROGRAM_MAP(genesis_z80_readmem, genesis_z80_writemem)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1) /* from vdp at scanline 0xe0 */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) /* from vdp at scanline 0xe0 */
 
 	MDRV_INTERLEAVE(100)
 
@@ -796,10 +794,14 @@ static MACHINE_DRIVER_START( genesis_base )
 	MDRV_MACHINE_RESET(genesis)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS | VIDEO_HAS_HIGHLIGHTS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(342,262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 223)
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(genesis)

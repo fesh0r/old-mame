@@ -54,7 +54,7 @@ static tilemap *bg_tilemap;
 static UINT8 egghunt_okibanking;
 static UINT8 egghunt_gfx_banking;
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int flipscreen = 0;
 	int offs,sx,sy;
@@ -145,7 +145,7 @@ static WRITE8_HANDLER( egghunt_atram_w )
 
 static VIDEO_START(egghunt)
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,8,8,64, 32);
 	egghunt_bgram = auto_malloc(0x1000);
 	egghunt_spram = auto_malloc(0x1000);
 }
@@ -153,7 +153,7 @@ static VIDEO_START(egghunt)
 static VIDEO_UPDATE(egghunt)
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -173,8 +173,8 @@ static WRITE8_HANDLER( egghunt_vidram_bank_w )
 
 static WRITE8_HANDLER( egghunt_soundlatch_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 }
 
 static READ8_HANDLER( egghunt_okibanking_r )
@@ -189,22 +189,22 @@ static WRITE8_HANDLER( egghunt_okibanking_w )
 }
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xd000, 0xdfff) AM_READ(egghunt_bgram_r)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc7ff) AM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xc800, 0xcfff) AM_WRITE(egghunt_atram_w) AM_BASE(&egghunt_atram)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITE(egghunt_bgram_w)
-	AM_RANGE(0xe000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x01, 0x01) AM_READ(input_port_1_r)
 	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
@@ -214,7 +214,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(egghunt_vidram_bank_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(egghunt_gfx_banking_w)
 	AM_RANGE(0x03, 0x03) AM_WRITE(egghunt_soundlatch_w)
@@ -224,17 +224,17 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0xe000, 0xe000) AM_READ(soundlatch_r)
 	AM_RANGE(0xe004, 0xe004) AM_READ(OKIM6295_status_0_r)
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xe001, 0xe001) AM_READWRITE(egghunt_okibanking_r, egghunt_okibanking_w)
 	AM_RANGE(0xe004, 0xe004) AM_WRITE(OKIM6295_data_0_w)
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -389,21 +389,21 @@ static MACHINE_DRIVER_START( egghunt )
 	MDRV_CPU_ADD(Z80,12000000/2)		 /* 6 MHz ?*/
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1) // or 2 like mitchell.c?
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold) // or 2 like mitchell.c?
 
 	MDRV_CPU_ADD(Z80,12000000/2)		 /* 6 MHz ?*/
 	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(egghunt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8*8, 56*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(egghunt)
 	MDRV_PALETTE_LENGTH(0x800)
 

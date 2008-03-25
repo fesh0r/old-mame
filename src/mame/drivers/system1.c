@@ -97,26 +97,26 @@ static WRITE8_HANDLER( outport24_w )
 static WRITE8_HANDLER( hvymetal_videomode_w )
 {
 	memory_set_bank(1, ((data & 0x04)>>2) + ((data & 0x40)>>5));
-	system1_videomode_w(0, data);
+	system1_videomode_w(machine, 0, data);
 }
 
 static WRITE8_HANDLER( brain_videomode_w )
 {
 	memory_set_bank(1, ((data & 0x04)>>2) + ((data & 0x40)>>5));
-	system1_videomode_w(0, data);
+	system1_videomode_w(machine, 0, data);
 }
 
 static WRITE8_HANDLER( chplft_videomode_w )
 {
 	memory_set_bank(1, (data & 0x0c)>>2);
-	system1_videomode_w(0, data);
+	system1_videomode_w(machine, 0, data);
 }
 
 
 static WRITE8_HANDLER( system1_soundport_w )
 {
-	soundlatch_w(0,data);
-	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	soundlatch_w(machine,0,data);
+	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 	/* spin for a while to let the Z80 read the command (fixes hanging sound in Regulus) */
 	cpu_spinuntil_time(ATTOTIME_IN_USEC(50));
 }
@@ -124,70 +124,70 @@ static WRITE8_HANDLER( system1_soundport_w )
 
 
 static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_ROM)
+	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM)	// ROM
-	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM)	// ROM
+	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd800, 0xddff) AM_WRITE(system1_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(system1_backgroundram_w) AM_BASE(&system1_backgroundram) AM_SIZE(&system1_backgroundram_size)
-	AM_RANGE(0xe800, 0xeeff) AM_WRITE(MWA8_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
-	AM_RANGE(0xefbd, 0xefbd) AM_WRITE(MWA8_RAM) AM_BASE(&system1_scroll_y)
-	AM_RANGE(0xeffc, 0xeffd) AM_WRITE(MWA8_RAM) AM_BASE(&system1_scroll_x)
+	AM_RANGE(0xe800, 0xeeff) AM_WRITE(SMH_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
+	AM_RANGE(0xefbd, 0xefbd) AM_WRITE(SMH_RAM) AM_BASE(&system1_scroll_y)
+	AM_RANGE(0xeffc, 0xeffd) AM_WRITE(SMH_RAM) AM_BASE(&system1_scroll_x)
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(system1_background_collisionram_w) AM_BASE(&system1_background_collisionram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(system1_sprites_collisionram_w) AM_BASE(&system1_sprites_collisionram)
 
 	/* these are required to make various games work (teddybb, imsorry, raflesia) */
 	/* these may actually be backed by RAM, or may be mirrors of other RAM areas */
-	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xde00, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xef00, 0xefbc) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xefbe, 0xeffb) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xeffe, 0xefff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xf400, 0xf7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xfc00, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xde00, 0xdfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xef00, 0xefbc) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xefbe, 0xeffb) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xeffe, 0xefff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xf400, 0xf7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xfc00, 0xffff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( blckgalb_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM) // ROM
-	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM) // ROM
+	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd800, 0xddff) AM_WRITE(system1_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe800, 0xeeff) AM_WRITE(system1_backgroundram_w) AM_BASE(&system1_backgroundram) AM_SIZE(&system1_backgroundram_size)
-	AM_RANGE(0xe000, 0xe6ff) AM_WRITE(MWA8_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
-	AM_RANGE(0xe7bd, 0xe7bd) AM_WRITE(MWA8_RAM) AM_BASE(&system1_scroll_y)	// ???
-	AM_RANGE(0xe7c0, 0xe7c1) AM_WRITE(MWA8_RAM) AM_BASE(&system1_scroll_x)
+	AM_RANGE(0xe000, 0xe6ff) AM_WRITE(SMH_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
+	AM_RANGE(0xe7bd, 0xe7bd) AM_WRITE(SMH_RAM) AM_BASE(&system1_scroll_y)	// ???
+	AM_RANGE(0xe7c0, 0xe7c1) AM_WRITE(SMH_RAM) AM_BASE(&system1_scroll_x)
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(system1_background_collisionram_w) AM_BASE(&system1_background_collisionram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(system1_sprites_collisionram_w) AM_BASE(&system1_sprites_collisionram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( brain_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xffff) AM_READ(MRA8_RAM) AM_BASE(&system1_ram)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xffff) AM_READ(SMH_RAM) AM_BASE(&system1_ram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wbml_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_READ(MRA8_BANK1)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_RAM) AM_BASE(&system1_ram)
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM) AM_BASE(&system1_ram)
 	AM_RANGE(0xe000, 0xefff) AM_READ(wbml_paged_videoram_r)
-	AM_RANGE(0xf000, 0xf3ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xf800, 0xfbff) AM_READ(MRA8_RAM)
+	AM_RANGE(0xf000, 0xf3ff) AM_READ(SMH_RAM)
+	AM_RANGE(0xf800, 0xfbff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wbml_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM) // ROM
-	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(MWA8_RAM) // mirror?
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM) // ROM
+	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(SMH_RAM) // mirror?
 	AM_RANGE(0xd800, 0xddff) AM_WRITE(system1_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe000, 0xefff) AM_WRITE(wbml_paged_videoram_w)
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(system1_background_collisionram_w) AM_BASE(&system1_background_collisionram)
@@ -195,51 +195,51 @@ static ADDRESS_MAP_START( wbml_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( chplft_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0xc000, 0xcfff) AM_WRITE(MWA8_RAM) // ROM
-	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SMH_RAM) // ROM
+	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd800, 0xddff) AM_WRITE(system1_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe7c0, 0xe7ff) AM_WRITE(choplifter_scroll_x_w) AM_BASE(&system1_scrollx_ram)
-	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(MWA8_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
+	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(SMH_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
 	AM_RANGE(0xe800, 0xeeff) AM_WRITE(system1_backgroundram_w) AM_BASE(&system1_backgroundram) AM_SIZE(&system1_backgroundram_size)
 	AM_RANGE(0xf000, 0xf3ff) AM_WRITE(system1_background_collisionram_w) AM_BASE(&system1_background_collisionram)
 	AM_RANGE(0xf800, 0xfbff) AM_WRITE(system1_sprites_collisionram_w) AM_BASE(&system1_sprites_collisionram)
 
 	 /* needed for P.O.S.T. */
-	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xde00, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xef00, 0xefff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xde00, 0xdfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xef00, 0xefff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nobo_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xc000, 0xc3ff) AM_WRITE(system1_background_collisionram_w) AM_BASE(&system1_background_collisionram)
 	AM_RANGE(0xc800, 0xcbff) AM_WRITE(system1_sprites_collisionram_w) AM_BASE(&system1_sprites_collisionram)
-	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(MWA8_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xd000, 0xd1ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
+	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xd800, 0xddff) AM_WRITE(system1_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0xde00, 0xdfff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xde00, 0xdfff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xe000, 0xe7ff) AM_WRITE(system1_backgroundram_w) AM_BASE(&system1_backgroundram) AM_SIZE(&system1_backgroundram_size)
-	AM_RANGE(0xe800, 0xeeff) AM_WRITE(MWA8_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
-	AM_RANGE(0xefbd, 0xefbd) AM_WRITE(MWA8_RAM) AM_BASE(&system1_scroll_y)
-	AM_RANGE(0xeffc, 0xeffd) AM_WRITE(MWA8_RAM) AM_BASE(&system1_scroll_x)
-	AM_RANGE(0xf000, 0xffff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xe800, 0xeeff) AM_WRITE(SMH_RAM) AM_BASE(&system1_videoram) AM_SIZE(&system1_videoram_size)
+	AM_RANGE(0xefbd, 0xefbd) AM_WRITE(SMH_RAM) AM_BASE(&system1_scroll_y)
+	AM_RANGE(0xeffc, 0xeffd) AM_WRITE(SMH_RAM) AM_BASE(&system1_scroll_x)
+	AM_RANGE(0xf000, 0xffff) AM_WRITE(SMH_RAM)
 
 	/* These addresses are written during P.O.S.T. but don't seem to be used after */
-	AM_RANGE(0xc400, 0xc7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xcc00, 0xcfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xde00, 0xdfff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xef00, 0xefbc) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xefbe, 0xeffb) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0xeffe, 0xefff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0xc400, 0xc7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xcc00, 0xcfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xd200, 0xd7ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xde00, 0xdfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xef00, 0xefbc) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xefbe, 0xeffb) AM_WRITE(SMH_RAM)
+	AM_RANGE(0xeffe, 0xefff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r) /* joy1 */
 	AM_RANGE(0x04, 0x04) AM_READ(input_port_1_r) /* joy2 */
 	AM_RANGE(0x08, 0x08) AM_READ(input_port_2_r) /* coin,start */
@@ -257,7 +257,7 @@ static ADDRESS_MAP_START( readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x14, 0x14) AM_WRITE(system1_soundport_w)    /* sound commands */
 	AM_RANGE(0x15, 0x15) AM_WRITE(system1_videomode_w)    /* video control and (in some games) bank switching */
 	AM_RANGE(0x18, 0x18) AM_WRITE(system1_soundport_w)    /* mirror address */
@@ -265,7 +265,7 @@ static ADDRESS_MAP_START( writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wbml_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r) /* joy1 */
 	AM_RANGE(0x04, 0x04) AM_READ(input_port_1_r) /* joy2 */
 	AM_RANGE(0x08, 0x08) AM_READ(input_port_2_r) /* coin,start */
@@ -279,7 +279,7 @@ static ADDRESS_MAP_START( wbml_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sht_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r) /* joy1 */
 //  AM_RANGE(0x04, 0x04) AM_READ(input_port_1_r) /* joy2 */
 	AM_RANGE(0x08, 0x08) AM_READ(input_port_2_r) /* coin,start */
@@ -304,7 +304,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( nobo_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)	/* Player 1 inputs */
 	AM_RANGE(0x04, 0x04) AM_READ(input_port_1_r)	/* Player 2 inputs */
 	AM_RANGE(0x08, 0x08) AM_READ(input_port_2_r)	/* System inputs */
@@ -318,20 +318,20 @@ static ADDRESS_MAP_START( nobo_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( wbml_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x14, 0x14) AM_WRITE(system1_soundport_w)    /* sound commands */
 	AM_RANGE(0x15, 0x15) AM_WRITE(chplft_videomode_w)
 	AM_RANGE(0x16, 0x16) AM_WRITE(wbml_videoram_bank_latch_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hvymetal_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x18, 0x18) AM_WRITE(system1_soundport_w)    /* sound commands */
 	AM_RANGE(0x19, 0x19) AM_WRITE(hvymetal_videomode_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( brain_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x18, 0x18) AM_WRITE(system1_soundport_w)    /* sound commands */
 	AM_RANGE(0x19, 0x19) AM_WRITE(brain_videomode_w)
 ADDRESS_MAP_END
@@ -375,7 +375,7 @@ static WRITE8_HANDLER(mcuenable_hack_w)
 }
 
 static ADDRESS_MAP_START( sht_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10,0x10) AM_WRITE(mcuenable_hack_w)
 
 	AM_RANGE(0x14, 0x14) AM_WRITE(system1_soundport_w)    /* sound commands */
@@ -386,13 +386,13 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( chplft_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x14, 0x14) AM_WRITE(system1_soundport_w)    /* sound commands */
 	AM_RANGE(0x15, 0x15) AM_WRITE(chplft_videomode_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( nobo_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x14, 0x14) AM_WRITE(system1_soundport_w)	/* sound commands ? */
 	AM_RANGE(0x15, 0x15) AM_WRITE(brain_videomode_w)	/* video control + bank switching */
 	AM_RANGE(0x16, 0x16) AM_WRITE(outport16_w)			/* Used - check code at 0x05cb */
@@ -413,7 +413,7 @@ ADDRESS_MAP_END
 #define IN0_PORT \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 ) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 ) \
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) \
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW ) \
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 ) \
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 ) \
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 ) \
@@ -955,7 +955,7 @@ static INPUT_PORTS_START( wmatch )
 	PORT_START  /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
@@ -2316,7 +2316,7 @@ static INPUT_PORTS_START( noboranb )
 	PORT_START  /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
@@ -2486,23 +2486,25 @@ static MACHINE_DRIVER_START( system1 )
 	MDRV_CPU_ADD_TAG("main", Z80, 4000000)	/* My Hero has 2 OSCs 8 & 20 MHz (Cabbe Info) */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD_TAG("sound", Z80, 4000000)
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,4)		 /* NMIs are caused by the main CPU */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)		 /* NMIs are caused by the main CPU */
 
 	MDRV_MACHINE_RESET(system1)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER|VIDEO_ALWAYS_UPDATE)// hw collisions
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)// hw collisions
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(system1)
 	MDRV_PALETTE_LENGTH(1536)
 
@@ -2527,6 +2529,7 @@ static MACHINE_DRIVER_START( small )
 	MDRV_IMPORT_FROM( system1 )
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0*8+8, 32*8-1-8, 0*8, 28*8-1)
 
 MACHINE_DRIVER_END
@@ -2611,6 +2614,7 @@ static MACHINE_DRIVER_START( shtngmst )
 	MDRV_MACHINE_RESET(system1_banked)
 
 	/* video hardware - same as small - left / right 8 pixels clipped */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0*8+8, 32*8-1-8, 0*8, 28*8-1)
 
 	MDRV_VIDEO_UPDATE(choplifter)
@@ -2630,6 +2634,7 @@ static MACHINE_DRIVER_START( noboranb )
 	MDRV_MACHINE_RESET(system1_banked)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 0*8, 28*8-1)
 
 MACHINE_DRIVER_END
@@ -2652,6 +2657,7 @@ static MACHINE_DRIVER_START( ufosensi )
 	MDRV_IMPORT_FROM( wbml )
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 1*8, 27*8-1)
 
 	/* video hardware */
@@ -3134,6 +3140,31 @@ ROM_START( pitfall2 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_LOAD( "epr6456a.116",	0x0000, 0x4000, CRC(bcc8406b) SHA1(2e5c76886fce2c9863db7a914b85b088971aceef) ) /* encrypted */
 	ROM_LOAD( "epr6457a.109",	0x4000, 0x4000, CRC(a016fd2a) SHA1(866f82066466bc5eaf6ab1b6f85a1c173692a1f7) ) /* encrypted */
+	ROM_LOAD( "epr6458a.96",	0x8000, 0x4000, CRC(5c30b3e8) SHA1(9048091ebf054d0ba0c6a92520ddfac38a479034) )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
+	ROM_LOAD( "epr-6462.120",	0x0000, 0x2000, CRC(86bb9185) SHA1(89add2e3784e8f5a20b895fb2c4466bdd6c34b0c) )
+
+	ROM_REGION( 0xc000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "epr6474a.62",	0x0000, 0x2000, CRC(9f1711b9) SHA1(c652010a8b19828f81fd101aa1ea781e250c4ec2) )
+	ROM_LOAD( "epr6473a.61",	0x2000, 0x2000, CRC(8e53b8dd) SHA1(23e04589f2b523d6b8e46d16f40e59685e27f522) )
+	ROM_LOAD( "epr6472a.64",	0x4000, 0x2000, CRC(e0f34a11) SHA1(b7a96a1867f8bd3cc1251b5fd12991c406e62a37) )
+	ROM_LOAD( "epr6471a.63",	0x6000, 0x2000, CRC(d5bc805c) SHA1(520afa7617e8dfd09bf469c01ac606a4a3acdc5e) )
+	ROM_LOAD( "epr6470a.66",	0x8000, 0x2000, CRC(1439729f) SHA1(54ea6ef54be6dcc2a5d00f7f817fd8836a02b3b9) )
+	ROM_LOAD( "epr6469a.65",	0xa000, 0x2000, CRC(e4ac6921) SHA1(f95e3b368c2c6dbf8265fb314d73019fe7dcce22) )
+
+	ROM_REGION( 0x8000, REGION_GFX2, 0 ) /* 32k for sprites data */
+	ROM_LOAD( "epr6454a.117",	0x0000, 0x4000, CRC(a5d96780) SHA1(e0571f6fd031bbe2d971c3be7b96a017b0ea4be9) )
+	ROM_LOAD( "epr-6455.05",	0x4000, 0x4000, CRC(32ee64a1) SHA1(21743f78735fc9105fbbfac420bdaa2965b4b56f) )
+
+	ROM_REGION( 0x0100, REGION_USER1, 0 ) /* misc PROMs, but not color so don't use REGION_PROMS! */
+	ROM_LOAD( "pr-5317.76",		0x0000, 0x0100, CRC(648350b8) SHA1(c7986aa9127ef5b50b845434cb4e81dff9861cd2) ) /* timing? (not used) */
+ROM_END
+
+ROM_START( pitfalla )
+	ROM_REGION( 0x10000, REGION_CPU1, 0 )
+	ROM_LOAD( "epr-6505",	0x0000, 0x4000, CRC(b6769739) SHA1(e1b8401c20f77f8ec799b19d7bc94ae4f9ed702f) ) /* encrypted */
+	ROM_LOAD( "epr-6506",	0x4000, 0x4000, CRC(1ce6aec4) SHA1(69b54c4569ccfb1166a901e7044ae1026db01a82) ) /* encrypted */
 	ROM_LOAD( "epr6458a.96",	0x8000, 0x4000, CRC(5c30b3e8) SHA1(9048091ebf054d0ba0c6a92520ddfac38a479034) )
 
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )
@@ -4783,7 +4814,7 @@ static READ8_HANDLER( dakkochn_port_04_r )
 static WRITE8_HANDLER( dakkochn_port_15_w )
 {
 	dakkochn_control = data; // check if any control multiplex bits are in here!
-	chplft_videomode_w(offset,data);
+	chplft_videomode_w(machine,offset,data);
 }
 
 static DRIVER_INIT( dakkochn )
@@ -4899,6 +4930,7 @@ GAME( 1984, thetogyu, bullfgt,  system1,  bullfgt,  bullfgtj, ROT0,   "Coreland 
 GAME( 1984, spatter,  0,        small,    spatter,  spatter,  ROT0,   "Sega",            "Spatter", GAME_SUPPORTS_SAVE )
 GAME( 1984, ssanchan, spatter,  small,    spatter,  spatter,  ROT0,   "Sega",            "Sanrin San Chan (Japan)", GAME_SUPPORTS_SAVE )
 GAME( 1985, pitfall2, 0,        pitfall2, pitfall2, pitfall2, ROT0,   "Sega",            "Pitfall II (315-5093)", GAME_SUPPORTS_SAVE )
+GAME( 1985, pitfalla, pitfall2, pitfall2, pitfall2, pitfall2, ROT0,   "Sega",            "Pitfall II (315-5093, Flicky Conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1985, pitfallu, pitfall2, pitfall2, pitfallu, 0,        ROT0,   "Sega",            "Pitfall II (not encrypted)", GAME_SUPPORTS_SAVE )
 GAME( 1985, seganinj, 0,        system1,  seganinj, seganinj, ROT0,   "Sega",            "Sega Ninja (315-5102)", GAME_SUPPORTS_SAVE )
 GAME( 1985, seganinu, seganinj, system1,  seganinj, 0,        ROT0,   "Sega",            "Sega Ninja (not encrypted)", GAME_SUPPORTS_SAVE )
@@ -4929,7 +4961,7 @@ GAME( 1986, wboyo,    wboy,     system1,  wboy,     hvymetal, ROT0,   "Sega (Esc
 GAME( 1986, wboy2,    wboy,     system1,  wboy,     wboy2,    ROT0,   "Sega (Escape license)", "Wonder Boy (set 2, 315-5178)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wboy2u,   wboy,     system1,  wboy,     0,        ROT0,   "Sega (Escape license)", "Wonder Boy (set 2, not encrypted)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wboy3,    wboy,     system1,  wboy3,    hvymetal, ROT0,   "Sega (Escape license)", "Wonder Boy (set 3, 315-5135)", GAME_SUPPORTS_SAVE )
-GAME( 1986, wboy4,    wboy,     system1,  wboy,     4dwarrio, ROT0,   "Sega (Escape license)", "Wonder Boy (set 4, 315-5162)", GAME_SUPPORTS_SAVE )
+GAME( 1986, wboy4,    wboy,     system1,  wboy,     4dwarrio, ROT0,   "Sega (Escape license)", "Wonder Boy (315-5162, 4-D Warriors Conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wboyu,    wboy,     system1,  wboyu,    0,        ROT0,   "Sega (Escape license)", "Wonder Boy (not encrypted)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wboysys2, wboy,     wbml,     wboysys2, wboy,     ROT0,   "Sega (Escape license)", "Wonder Boy (system 2)", GAME_SUPPORTS_SAVE )
 GAME( 1986, wbdeluxe, wboy,     system1,  wbdeluxe, 0,        ROT0,   "Sega (Escape license)", "Wonder Boy Deluxe", GAME_SUPPORTS_SAVE )

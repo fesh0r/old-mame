@@ -63,8 +63,8 @@ VIDEO_START( kyugo )
 	color_codes = memory_region(REGION_PROMS) + 0x300;
 
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,32);
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN,      8,8, 64,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,  8,8, 64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,       8,8, 64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 
@@ -162,7 +162,7 @@ WRITE8_HANDLER( kyugo_flipscreen_w )
  *
  *************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	/* sprite information is scattered through memory */
 	/* and uses a portion of the text layer memory (outside the visible area) */
@@ -226,7 +226,7 @@ VIDEO_UPDATE( kyugo )
 	tilemap_set_scrolly(bg_tilemap,0,scroll_y);
 
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

@@ -146,22 +146,22 @@ READ8_HANDLER( tms57002_data_r )
 
 READ16_HANDLER( tms57002_data_word_r )
 {
-	return(tms57002_data_r(0));
+	return(tms57002_data_r(machine,0));
 }
 
 READ16_HANDLER( tms57002_status_word_r )
 {
-	return(tms57002_status_r(0));
+	return(tms57002_status_r(machine,0));
 }
 
 WRITE16_HANDLER( tms57002_control_word_w )
 {
-	tms57002_control_w(0, data);
+	tms57002_control_w(machine, 0, data);
 }
 
 WRITE16_HANDLER( tms57002_data_word_w )
 {
-	tms57002_data_w(0, data);
+	tms57002_data_w(machine, 0, data);
 }
 
 
@@ -208,7 +208,7 @@ void K053936GP_set_cliprect(int chip, int minx, int maxx, int miny, int maxy)
 	cliprect->max_y = maxy;
 }
 
-INLINE void K053936GP_copyroz32clip( mame_bitmap *dst_bitmap, mame_bitmap *src_bitmap,
+INLINE void K053936GP_copyroz32clip( bitmap_t *dst_bitmap, bitmap_t *src_bitmap,
 		const rectangle *dst_cliprect, const rectangle *src_cliprect,
 		UINT32 _startx,UINT32 _starty,int _incxx,int _incxy,int _incyx,int _incyy,
 		int tilebpp, int blend, int clip )
@@ -257,7 +257,7 @@ INLINE void K053936GP_copyroz32clip( mame_bitmap *dst_bitmap, mame_bitmap *src_b
 	ecx = tx = -tx;
 
 	tilebpp = (tilebpp-1) & 7;
-	pal_base = Machine->remapped_colortable;
+	pal_base = Machine->pens;
 	cmask = colormask[tilebpp];
 
 	src_pitch = src_bitmap->rowpixels;
@@ -359,10 +359,10 @@ INLINE void K053936GP_copyroz32clip( mame_bitmap *dst_bitmap, mame_bitmap *src_b
 
 // adpoted from generic K053936_zoom_draw()
 static void K053936GP_zoom_draw(int chip, UINT16 *ctrl, UINT16 *linectrl,
-		mame_bitmap *bitmap, const rectangle *cliprect, tilemap *tmap,
+		bitmap_t *bitmap, const rectangle *cliprect, tilemap *tmap,
 		int tilebpp, int blend)
 {
-	mame_bitmap *src_bitmap;
+	bitmap_t *src_bitmap;
 	rectangle *src_cliprect;
 	UINT16 *lineaddr;
 
@@ -427,13 +427,13 @@ static void K053936GP_zoom_draw(int chip, UINT16 *ctrl, UINT16 *linectrl,
 	}
 }
 
-void K053936GP_0_zoom_draw(mame_bitmap *bitmap, const rectangle *cliprect,
+void K053936GP_0_zoom_draw(bitmap_t *bitmap, const rectangle *cliprect,
 		tilemap *tmap, int tilebpp, int blend)
 {
 	K053936GP_zoom_draw(0,K053936_0_ctrl,K053936_0_linectrl,bitmap,cliprect,tmap,tilebpp,blend);
 }
 
-void K053936GP_1_zoom_draw(mame_bitmap *bitmap, const rectangle *cliprect,
+void K053936GP_1_zoom_draw(bitmap_t *bitmap, const rectangle *cliprect,
 		tilemap *tmap, int tilebpp, int blend)
 {
 	K053936GP_zoom_draw(1,K053936_1_ctrl,K053936_1_linectrl,bitmap,cliprect,tmap,tilebpp,blend);
@@ -457,7 +457,7 @@ void K053936GP_1_zoom_draw(mame_bitmap *bitmap, const rectangle *cliprect,
     pri     : 0 = topmost, 255 = backmost (pixel priority)
 */
 
-INLINE void zdrawgfxzoom32GP( mame_bitmap *bitmap, const gfx_element *gfx, const rectangle *cliprect,
+INLINE void zdrawgfxzoom32GP( bitmap_t *bitmap, const gfx_element *gfx, const rectangle *cliprect,
 		UINT32 code, UINT32 color, int flipx, int flipy, int sx, int sy,
 		int scalex, int scaley, int alpha, int drawmode, int zcode, int pri)
 {
@@ -522,7 +522,7 @@ INLINE void zdrawgfxzoom32GP( mame_bitmap *bitmap, const gfx_element *gfx, const
 	src_fh    = 16;
 	src_base  = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
 
-	pal_base  = Machine->remapped_colortable + gfx->color_base + (color % gfx->total_colors) * granularity;
+	pal_base  = Machine->pens + gfx->color_base + (color % gfx->total_colors) * granularity;
 	shd_base  = Machine->shadow_table;
 
 	dst_ptr   = bitmap->base;
@@ -1119,17 +1119,16 @@ int K055555GX_decode_osmixcolor(int layer, int *color) // (see p.63, p.49-50 and
 	return(emx);
 }
 
-static void gx_wipezbuf(int noshadow)
+static void gx_wipezbuf(running_machine *machine, int noshadow)
 {
-	UINT8  *zptr;
-	int w, h;
-	register int ecx;
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-	w = Machine->screen[0].visarea.max_x - Machine->screen[0].visarea.min_x + 1;
-	h = Machine->screen[0].visarea.max_y - Machine->screen[0].visarea.min_y + 1;
+	int w = visarea->max_x - visarea->min_x + 1;
+	int h = visarea->max_y - visarea->min_y + 1;
 
-	zptr = gx_objzbuf;
-	ecx = h;
+	UINT8 *zptr = gx_objzbuf;
+	int ecx = h;
+
 	do { memset(zptr, -1, w); zptr += GX_ZBUFW; } while (--ecx);
 
 	if (!noshadow)
@@ -1226,7 +1225,7 @@ void konamigx_objdma(void)
 	if (gx_objdma && gx_spriteram && K053247_ram) memcpy(gx_spriteram, K053247_ram, 0x1000);
 }
 
-void konamigx_mixer(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect,
+void konamigx_mixer(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect,
 					tilemap *sub1, int sub1flags,
 					tilemap *sub2, int sub2flags,
 					int mixerflags)
@@ -1265,7 +1264,7 @@ void konamigx_mixer(running_machine *machine, mame_bitmap *bitmap, const rectang
 	if (mixerflags & GXMIX_NOZBUF)
 		mixerflags |= GXMIX_NOSHADOW;
 	else
-		gx_wipezbuf(mixerflags & GXMIX_NOSHADOW);
+		gx_wipezbuf(machine, mixerflags & GXMIX_NOSHADOW);
 
 	// cache global parameters
 	konamigx_precache_registers();
@@ -1551,7 +1550,7 @@ void konamigx_mixer(running_machine *machine, mame_bitmap *bitmap, const rectang
 	}
 
 	// traverse draw list
-	screenwidth = Machine->screen[0].width;
+	screenwidth = video_screen_get_width(machine->primary_screen);
 
 	for (count=0; count<nobj; count++)
 	{

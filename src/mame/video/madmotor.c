@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 UINT16 *madmotor_pf1_rowscroll;
 UINT16 *madmotor_pf1_data,*madmotor_pf2_data,*madmotor_pf3_data;
@@ -114,10 +113,10 @@ static TILE_GET_INFO( get_pf3a_tile_info )
 
 VIDEO_START( madmotor )
 {
-	madmotor_pf1_tilemap = tilemap_create(get_pf1_tile_info, pf1_scan, TILEMAP_TYPE_PEN, 8, 8, 64,64);
-	madmotor_pf2_tilemap = tilemap_create(get_pf2_tile_info, pf2_scan, TILEMAP_TYPE_PEN,16,16, 32,32);
-	madmotor_pf3_tilemap = tilemap_create(get_pf3_tile_info, pf3_scan, TILEMAP_TYPE_PEN,     16,16, 32,64);
-	madmotor_pf3a_tilemap= tilemap_create(get_pf3a_tile_info,pf3a_scan,TILEMAP_TYPE_PEN,     16,16,128,16);
+	madmotor_pf1_tilemap = tilemap_create(get_pf1_tile_info, pf1_scan,  8, 8, 64,64);
+	madmotor_pf2_tilemap = tilemap_create(get_pf2_tile_info, pf2_scan, 16,16, 32,32);
+	madmotor_pf3_tilemap = tilemap_create(get_pf3_tile_info, pf3_scan,      16,16, 32,64);
+	madmotor_pf3a_tilemap= tilemap_create(get_pf3a_tile_info,pf3a_scan,     16,16,128,16);
 
 	tilemap_set_transparent_pen(madmotor_pf1_tilemap,0);
 	tilemap_set_transparent_pen(madmotor_pf2_tilemap,0);
@@ -191,7 +190,7 @@ WRITE16_HANDLER( madmotor_pf1_rowscroll_w )
 
 /******************************************************************************/
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int pri_mask,int pri_val)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int pri_mask,int pri_val)
 {
 	int offs;
 
@@ -244,7 +243,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			for (y = 0;y < h;y++)
 			{
 				if ((color & pri_mask) == pri_val &&
-							(!flash || (cpu_getcurrentframe() & 1)))
+							(!flash || (video_screen_get_frame_number(machine->primary_screen) & 1)))
 					drawgfx(bitmap,machine->gfx[3],
 							code - y * incy + h * x,
 							color,
@@ -292,7 +291,7 @@ VIDEO_UPDATE( madmotor )
 	else
 		tilemap_draw(bitmap,cliprect,madmotor_pf3a_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,madmotor_pf2_tilemap,0,0);
-	draw_sprites(machine,bitmap,cliprect,0x00,0x00);
+	draw_sprites(screen->machine,bitmap,cliprect,0x00,0x00);
 	tilemap_draw(bitmap,cliprect,madmotor_pf1_tilemap,0,0);
 	return 0;
 }

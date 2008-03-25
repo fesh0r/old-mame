@@ -45,7 +45,7 @@ READ16_HANDLER( ddragon3_scroll16_r )
 		case 1: return ddragon3_fg_scrolly;
 		case 2: return ddragon3_bg_scrollx;
 		case 3: return ddragon3_bg_scrolly;
-		case 5: return flip_screen;
+		case 5: return flip_screen_get();
 		case 6: return ddragon3_bg_tilebase;
 	}
 
@@ -94,10 +94,10 @@ VIDEO_START( ddragon3 )
     state_save_register_global(ddragon3_bg_tilebase);
 
     bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 16, 16, 32, 32);
+		 16, 16, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 16, 16, 32, 32);
+		 16, 16, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
@@ -128,7 +128,7 @@ VIDEO_START( ddragon3 )
  *   6,7| unused
  */
 
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	UINT16 *source = spriteram16;
 	UINT16 *finish = source + 0x800;
@@ -153,7 +153,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 			if (attr & 0x02) sy = 239 + (0x100 - sy); else sy = 240 - sy;
 			if (sx > 0x17f) sx = 0 - (0x200 - sx);
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 304 - sx;
 				sy = 224 - sy;
@@ -164,7 +164,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap, const re
 			for (i = 0; i <= height; i++)
 			{
 				drawgfx(bitmap, machine->gfx[1], code + i, color, flipx, flipy,
-					sx, sy + (flip_screen ? (i * 16) : (-i * 16)), cliprect,
+					sx, sy + (flip_screen_get() ? (i * 16) : (-i * 16)), cliprect,
 					TRANSPARENCY_PEN, 0);
 			}
 		}
@@ -184,18 +184,18 @@ VIDEO_UPDATE( ddragon3 )
 	{
 		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 		tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 	}
 	else if ((ddragon3_vreg & 0x60) == 0x60)
 	{
 		tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 	}
 	else
 	{
 		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 		tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	}
 	return 0;
@@ -211,14 +211,14 @@ VIDEO_UPDATE( ctribe )
 	if(ddragon3_vreg & 8)
 	{
 		tilemap_draw(bitmap, cliprect, fg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
 	}
 	else
 	{
 		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
 		tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
-		draw_sprites(machine, bitmap, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect);
 	}
 	return 0;
 }

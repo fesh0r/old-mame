@@ -761,7 +761,7 @@ VIDEO_START( atari )
 	LOG(("atari prio_init\n"));
     prio_init();
 
-	for( i = 0; i < machine->screen[0].height; i++ )
+	for( i = 0; i < video_screen_get_height(machine->primary_screen); i++ )
     {
 		antic.video[i] = auto_malloc(sizeof(VIDEO));
 		memset(antic.video[i], 0, sizeof(VIDEO));
@@ -796,7 +796,7 @@ VIDEO_UPDATE( atari )
 	return 0;
 }
 
-static renderer_function antic_renderer = antic_mode_0_xx;
+static atari_renderer_func antic_renderer = antic_mode_0_xx;
 
 static void artifacts_gfx(UINT8 *src, UINT8 *dst, int width)
 {
@@ -804,10 +804,10 @@ static void artifacts_gfx(UINT8 *src, UINT8 *dst, int width)
 	UINT8 n, bits = 0;
 	UINT8 b = gtia.w.colbk & 0xf0;
 	UINT8 c = gtia.w.colpf1 & 0x0f;
-	UINT8 atari_A = Machine->remapped_colortable[((b+0x30)&0xf0)+c];
-	UINT8 atari_B = Machine->remapped_colortable[((b+0x70)&0xf0)+c];
-	UINT8 atari_C = Machine->remapped_colortable[b+c];
-	UINT8 atari_D = Machine->remapped_colortable[gtia.w.colbk];
+	UINT8 atari_A = ((b+0x30)&0xf0)+c;
+	UINT8 atari_B = ((b+0x70)&0xf0)+c;
+	UINT8 atari_C = b+c;
+	UINT8 atari_D = gtia.w.colbk;
 
 	for( x = 0; x < width * 4; x++ )
 	{
@@ -878,10 +878,10 @@ static void artifacts_txt(UINT8 * src, UINT8 * dst, int width)
 	UINT8 n, bits = 0;
 	UINT8 b = gtia.w.colpf2 & 0xf0;
 	UINT8 c = gtia.w.colpf1 & 0x0f;
-	UINT8 atari_A = Machine->remapped_colortable[((b+0x30)&0xf0)+c];
-	UINT8 atari_B = Machine->remapped_colortable[((b+0x70)&0xf0)+c];
-	UINT8 atari_C = Machine->remapped_colortable[b+c];
-	UINT8 atari_D = Machine->remapped_colortable[gtia.w.colpf2];
+	UINT8 atari_A = ((b+0x30)&0xf0)+c;
+	UINT8 atari_B = ((b+0x70)&0xf0)+c;
+	UINT8 atari_C = b+c;
+	UINT8 atari_D = gtia.w.colpf2;
 
 	for( x = 0; x < width * 4; x++ )
 	{
@@ -955,7 +955,7 @@ static void antic_linerefresh(void)
 	UINT32 scanline[4 + (HCHARS * 2) + 4];
 
 	/* increment the scanline */
-    if( ++antic.scanline == Machine->screen[0].height )
+    if( ++antic.scanline == video_screen_get_height(Machine->primary_screen) )
     {
         /* and return to the top if the frame was complete */
         antic.scanline = 0;
@@ -1052,17 +1052,17 @@ static void antic_linerefresh(void)
 	dst[2] = antic.color_lookup[PBK] | antic.color_lookup[PBK] << 16;
 	dst[3] = antic.color_lookup[PBK] | antic.color_lookup[PBK] << 16;
 
-	draw_scanline8(tmpbitmap, 12, y, sizeof(scanline), (const UINT8 *) scanline, Machine->pens, -1);
+	draw_scanline8(tmpbitmap, 12, y, sizeof(scanline), (const UINT8 *) scanline, NULL, -1);
 }
 
 static int cycle(void)
 {
-	return video_screen_get_hpos(0) * CYCLES_PER_LINE / Machine->screen[0].width;
+	return video_screen_get_hpos(Machine->primary_screen) * CYCLES_PER_LINE / video_screen_get_width(Machine->primary_screen);
 }
 
-static void after(int cycles, timer_callback function, const char *funcname)
+static void after(int cycles, timer_fired_func function, const char *funcname)
 {
-    attotime duration = attotime_make(0, attotime_to_attoseconds(video_screen_get_scan_period(0)) * cycles / CYCLES_PER_LINE);
+    attotime duration = attotime_make(0, attotime_to_attoseconds(video_screen_get_scan_period(Machine->primary_screen)) * cycles / CYCLES_PER_LINE);
     (void)funcname;
 	LOG(("           after %3d (%5.1f us) %s\n", cycles, attotime_to_double(duration) * 1.0e6, funcname));
 	timer_set(duration, NULL, 0, function);
@@ -1083,7 +1083,7 @@ static TIMER_CALLBACK( antic_issue_dli )
 }
 
 
-static const renderer_function renderer[2][19][5] = {
+static const atari_renderer_func renderer[2][19][5] = {
 	/*   no playfield    narrow          normal          wide         */
 	{
 		{antic_mode_0_xx,antic_mode_0_xx,antic_mode_0_xx,antic_mode_0_xx},
@@ -1198,16 +1198,16 @@ static TIMER_CALLBACK( antic_scanline_render )
             if( antic.w.dmactl & DMA_MISSILE )
             {
                 antic.steal_cycles += 1;
-                atari_gtia_w(0x11, RDPMGFXD(3*256));
+                atari_gtia_w(machine, 0x11, RDPMGFXD(3*256));
             }
             /* transport player data to GTIA ? */
             if( antic.w.dmactl & DMA_PLAYER )
             {
                 antic.steal_cycles += 4;
-                atari_gtia_w(0x0d, RDPMGFXD(4*256));
-                atari_gtia_w(0x0e, RDPMGFXD(5*256));
-                atari_gtia_w(0x0f, RDPMGFXD(6*256));
-                atari_gtia_w(0x10, RDPMGFXD(7*256));
+                atari_gtia_w(machine, 0x0d, RDPMGFXD(4*256));
+                atari_gtia_w(machine, 0x0e, RDPMGFXD(5*256));
+                atari_gtia_w(machine, 0x0f, RDPMGFXD(6*256));
+                atari_gtia_w(machine, 0x10, RDPMGFXD(7*256));
             }
         }
         else
@@ -1217,17 +1217,17 @@ static TIMER_CALLBACK( antic_scanline_render )
             {
 				if( (antic.scanline & 1) == 0 ) 	 /* even line ? */
 					antic.steal_cycles += 1;
-                atari_gtia_w(0x11, RDPMGFXS(3*128));
+                atari_gtia_w(machine, 0x11, RDPMGFXS(3*128));
             }
             /* transport player data to GTIA ? */
             if( antic.w.dmactl & DMA_PLAYER )
             {
 				if( (antic.scanline & 1) == 0 ) 	 /* even line ? */
 					antic.steal_cycles += 4;
-                atari_gtia_w(0x0d, RDPMGFXS(4*128));
-                atari_gtia_w(0x0e, RDPMGFXS(5*128));
-                atari_gtia_w(0x0f, RDPMGFXS(6*128));
-                atari_gtia_w(0x10, RDPMGFXS(7*128));
+                atari_gtia_w(machine, 0x0d, RDPMGFXS(4*128));
+                atari_gtia_w(machine, 0x0e, RDPMGFXS(5*128));
+                atari_gtia_w(machine, 0x0f, RDPMGFXS(6*128));
+                atari_gtia_w(machine, 0x10, RDPMGFXS(7*128));
             }
         }
     }
@@ -1359,7 +1359,7 @@ static void antic_scanline_dma(int param)
                         /* produce empty scanlines until vblank start */
 						antic.modelines = VBL_START + 1 - antic.scanline;
 						if( antic.modelines < 0 )
-							antic.modelines = Machine->screen[0].height - antic.scanline;
+							antic.modelines = video_screen_get_height(Machine->primary_screen) - antic.scanline;
 						LOG(("           JVB $%04x\n", antic.dpage|antic.doffs));
 					}
 					else
@@ -1523,7 +1523,7 @@ static void generic_atari_interrupt(void (*handle_keyboard)(void), int button_co
 		handle_keyboard();
 
 		/* do nothing new for the rest of the frame */
-		antic.modelines = Machine->screen[0].height - VBL_START;
+		antic.modelines = video_screen_get_height(Machine->primary_screen) - VBL_START;
 		antic_renderer = antic_mode_0_xx;
 
 		/* if the CPU want's to be interrupted at vertical blank... */

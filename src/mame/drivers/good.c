@@ -70,8 +70,8 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 static VIDEO_START( good )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16, 32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 16, 16, 32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows, 16, 16, 32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows, 16, 16, 32,32);
 	tilemap_set_transparent_pen(fg_tilemap,0xf);
 }
 
@@ -91,10 +91,10 @@ static ADDRESS_MAP_START( good_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x280002, 0x280003) AM_READ( input_port_1_word_r )
 	AM_RANGE(0x280004, 0x280005) AM_READ( input_port_2_word_r )
 
-	AM_RANGE(0x800000, 0x8007ff) AM_READWRITE(MRA16_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x800000, 0x8007ff) AM_READWRITE(SMH_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 
-	AM_RANGE(0x820000, 0x820fff) AM_READWRITE(MRA16_RAM, fg_tilemapram_w) AM_BASE(&fg_tilemapram)
-	AM_RANGE(0x822000, 0x822fff) AM_READWRITE(MRA16_RAM, bg_tilemapram_w) AM_BASE(&bg_tilemapram)
+	AM_RANGE(0x820000, 0x820fff) AM_READWRITE(SMH_RAM, fg_tilemapram_w) AM_BASE(&fg_tilemapram)
+	AM_RANGE(0x822000, 0x822fff) AM_READWRITE(SMH_RAM, bg_tilemapram_w) AM_BASE(&bg_tilemapram)
 
 	AM_RANGE(0xff0000, 0xffefff) AM_RAM
 ADDRESS_MAP_END
@@ -273,17 +273,18 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( good )
 	MDRV_CPU_ADD_TAG("main", M68000, 16000000 /2)
 	MDRV_CPU_PROGRAM_MAP(good_map,0)
-	MDRV_CPU_VBLANK_INT(irq2_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq2_line_hold)
 
 	MDRV_GFXDECODE(good)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*16, 32*16)
 	MDRV_SCREEN_VISIBLE_AREA(1*16, 23*16-1, 0*16, 14*16-1)
+
 	MDRV_PALETTE_LENGTH(0x400)
 
 	MDRV_VIDEO_START(good)

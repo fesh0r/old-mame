@@ -82,7 +82,7 @@ GFXDECODE_END
 
 static ADDRESS_MAP_START( homerun_memmap, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
-	AM_RANGE(0x4000, 0x7fff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x4000, 0x7fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0x8000, 0x9fff) AM_RAM AM_WRITE(homerun_videoram_w) AM_BASE(&homerun_videoram)
 	AM_RANGE(0xa000, 0xa0ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xb000, 0xb0ff) AM_WRITE(homerun_color_w)
@@ -91,16 +91,16 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER(homerun_40_r)
 {
-	if(video_screen_get_vpos(0)>116)
-		return input_port_0_r(0)|0x40;
+	if(video_screen_get_vpos(machine->primary_screen)>116)
+		return readinputport(0)|0x40;
 	else
-		return input_port_0_r(0);
+		return readinputport(0);
 }
 
 static ADDRESS_MAP_START( homerun_iomap, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	AM_RANGE(0x10, 0x10) AM_WRITE(MWA8_NOP) /* ?? */
-	AM_RANGE(0x20, 0x20) AM_WRITE(MWA8_NOP) /* ?? */
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x10, 0x10) AM_WRITE(SMH_NOP) /* ?? */
+	AM_RANGE(0x20, 0x20) AM_WRITE(SMH_NOP) /* ?? */
 	AM_RANGE(0x30, 0x33) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
 	AM_RANGE(0x40, 0x40) AM_READ(homerun_40_r)
 	AM_RANGE(0x50, 0x50) AM_READ(input_port_2_r)
@@ -189,17 +189,17 @@ static MACHINE_DRIVER_START( homerun )
 	MDRV_CPU_ADD(Z80, 5000000)
 	MDRV_CPU_PROGRAM_MAP(homerun_memmap, 0)
 	MDRV_CPU_IO_MAP(homerun_iomap, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_RESET(homerun)
 
 	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 256-25)
+
 	MDRV_GFXDECODE(homerun)
 	MDRV_PALETTE_LENGTH(16*4)
 

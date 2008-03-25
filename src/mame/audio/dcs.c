@@ -478,18 +478,18 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( dcs2_2115_program_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x03ff) AM_RAM	AM_BASE(&dcs_internal_program_ram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dcs2_2104_program_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x01ff) AM_RAM	AM_BASE(&dcs_internal_program_ram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( dcs2_2115_data_map, ADDRESS_SPACE_DATA, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0400, 0x0400) AM_READWRITE(input_latch_r, input_latch_ack_w)
 	AM_RANGE(0x0401, 0x0401) AM_WRITE(output_latch_w)
 	AM_RANGE(0x0402, 0x0402) AM_READWRITE(output_control_r, output_control_w)
@@ -501,7 +501,7 @@ static ADDRESS_MAP_START( dcs2_2115_data_map, ADDRESS_SPACE_DATA, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dcs2_2104_data_map, ADDRESS_SPACE_DATA, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0400, 0x0400) AM_READWRITE(input_latch_r, input_latch_ack_w)
 	AM_RANGE(0x0401, 0x0401) AM_WRITE(output_latch_w)
 	AM_RANGE(0x0402, 0x0402) AM_READWRITE(output_control_r, output_control_w)
@@ -521,13 +521,13 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( dsio_program_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_RAM	AM_BASE(&dcs_internal_program_ram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( dsio_data_map, ADDRESS_SPACE_DATA, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x03ff) AM_RAMBANK(20)
 	AM_RANGE(0x0400, 0x3fdf) AM_RAM
 	AM_RANGE(0x3fe0, 0x3fff) AM_READWRITE(adsp_control_r, adsp_control_w)
@@ -535,7 +535,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( dsio_io_map, ADDRESS_SPACE_IO, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0400, 0x0400) AM_READWRITE(input_latch_r, input_latch_ack_w)
 	AM_RANGE(0x0401, 0x0401) AM_WRITE(output_latch_w)
 	AM_RANGE(0x0402, 0x0402) AM_READWRITE(output_control_r, output_control_w)
@@ -553,13 +553,13 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( denver_program_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_RAM	AM_BASE(&dcs_internal_program_ram)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( denver_data_map, ADDRESS_SPACE_DATA, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_RAMBANK(20)
 	AM_RANGE(0x0800, 0x3fdf) AM_RAM
 	AM_RANGE(0x3fe0, 0x3fff) AM_READWRITE(adsp_control_r, adsp_control_w)
@@ -567,7 +567,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( denver_io_map, ADDRESS_SPACE_IO, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0400, 0x0400) AM_READWRITE(input_latch_r, input_latch_ack_w)
 	AM_RANGE(0x0401, 0x0401) AM_WRITE(output_latch_w)
 	AM_RANGE(0x0402, 0x0402) AM_READWRITE(output_control_r, output_control_w)
@@ -832,11 +832,11 @@ static TIMER_CALLBACK( dcs_reset )
 	/* reset timers */
 	dcs.timer_enable = 0;
 	dcs.timer_scale = 1;
-	timer_adjust(dcs.internal_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(dcs.internal_timer, attotime_never, 0);
 
 	/* start the SPORT0 timer */
 	if (dcs.sport_timer)
-		timer_adjust(dcs.sport_timer, ATTOTIME_IN_HZ(1000), 0, ATTOTIME_IN_HZ(1000));
+		timer_adjust_periodic(dcs.sport_timer, ATTOTIME_IN_HZ(1000), 0, ATTOTIME_IN_HZ(1000));
 
 	/* reset the HLE transfer states */
 	transfer.dcs_state = transfer.state = 0;
@@ -1077,30 +1077,30 @@ static void sdrc_remap_memory(void)
 	/* if SRAM disabled, clean it out */
 	if (SDRC_SM_EN == 0)
 	{
-		memory_install_read32_handler (dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, MRA32_UNMAP);
-		memory_install_write32_handler(dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, MWA32_UNMAP);
-		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x37ff, 0, 0, MRA16_UNMAP);
-		memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x37ff, 0, 0, MWA16_UNMAP);
+		memory_install_read32_handler (dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_UNMAP);
+		memory_install_write32_handler(dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_UNMAP);
+		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x37ff, 0, 0, SMH_UNMAP);
+		memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x37ff, 0, 0, SMH_UNMAP);
 	}
 
 	/* otherwise, map the SRAM */
 	else
 	{
 		/* first start with a clean program map */
-		memory_install_read32_handler (dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, MRA32_BANK21);
-		memory_install_write32_handler(dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, MWA32_BANK21);
+		memory_install_read32_handler (dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_BANK21);
+		memory_install_write32_handler(dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_BANK21);
 		memory_set_bankptr(21, dcs_sram + 0x4800);
 
 		/* set up the data map based on the SRAM banking */
 		/* map 0: ram from 0800-37ff */
 		if (SDRC_SM_BK == 0)
 		{
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, MRA16_BANK22);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, MWA16_BANK22);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, MRA16_BANK23);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, MWA16_BANK23);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, MRA16_BANK24);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, MWA16_BANK24);
+			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_BANK22);
+			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_BANK22);
+			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
+			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
+			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
+			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
 			memory_set_bankptr(22, dcs_sram + 0x0000);
 			memory_set_bankptr(23, dcs_sram + 0x1000);
 			memory_set_bankptr(24, dcs_sram + 0x2000);
@@ -1109,12 +1109,12 @@ static void sdrc_remap_memory(void)
 		/* map 1: nothing from 0800-17ff, alternate RAM at 1800-27ff, same RAM at 2800-37ff */
 		else
 		{
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, MRA16_UNMAP);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, MWA16_UNMAP);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, MRA16_BANK23);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, MWA16_BANK23);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, MRA16_BANK24);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, MWA16_BANK24);
+			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_UNMAP);
+			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_UNMAP);
+			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
+			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
+			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
+			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
 			memory_set_bankptr(23, dcs_sram + 0x3000);
 			memory_set_bankptr(24, dcs_sram + 0x2000);
 		}
@@ -1125,15 +1125,15 @@ static void sdrc_remap_memory(void)
 	{
 		int baseaddr = (SDRC_ROM_ST == 0) ? 0x0000 : (SDRC_ROM_ST == 1) ? 0x3000 : 0x3400;
 		int pagesize = (SDRC_ROM_SZ == 0 && SDRC_ROM_ST != 0) ? 4096 : 1024;
-		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + pagesize - 1, 0, 0, MRA16_BANK25);
+		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + pagesize - 1, 0, 0, SMH_BANK25);
 	}
 
 	/* map the DRAM page as bank 26 */
 	if (SDRC_DM_ST != 0)
 	{
 		int baseaddr = (SDRC_DM_ST == 1) ? 0x0000 : (SDRC_DM_ST == 2) ? 0x3000 : 0x3400;
-		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + 0x3ff, 0, 0, MRA16_BANK26);
-		memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + 0x3ff, 0, 0, MWA16_BANK26);
+		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + 0x3ff, 0, 0, SMH_BANK26);
+		memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + 0x3ff, 0, 0, SMH_BANK26);
 	}
 
 	/* update the bank pointers */
@@ -1572,7 +1572,7 @@ static WRITE16_HANDLER( input_latch_ack_w )
 static READ16_HANDLER( input_latch_r )
 {
 	if (dcs.auto_ack)
-		input_latch_ack_w(0,0,0);
+		input_latch_ack_w(machine,0,0,0);
 	if (LOG_DCS_IO)
 		logerror("%08X:input_latch_r(%04X)\n", activecpu_get_pc(), dcs.input_data);
 	return dcs.input_data;
@@ -1716,7 +1716,7 @@ static TIMER_CALLBACK( internal_timer_callback )
 
 	/* set the next timer, but only if it's for a reasonable number */
 	if (!dcs.timer_ignore && (dcs.timer_period > 10 || dcs.timer_scale > 1))
-		timer_adjust(dcs.internal_timer, ATTOTIME_IN_CYCLES(target_cycles, dcs.cpunum), 0, attotime_zero);
+		timer_adjust_oneshot(dcs.internal_timer, ATTOTIME_IN_CYCLES(target_cycles, dcs.cpunum), 0);
 	cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_TIMER, PULSE_LINE);
 }
 
@@ -1751,7 +1751,7 @@ static void reset_timer(void)
 
 	/* adjust the timer if not optimized */
 	if (!dcs.timer_ignore)
-		timer_adjust(dcs.internal_timer, ATTOTIME_IN_CYCLES(dcs.timer_scale * (dcs.timer_start_count + 1), dcs.cpunum), 0, attotime_zero);
+		timer_adjust_oneshot(dcs.internal_timer, ATTOTIME_IN_CYCLES(dcs.timer_scale * (dcs.timer_start_count + 1), dcs.cpunum), 0);
 }
 
 
@@ -1767,7 +1767,7 @@ static void timer_enable_callback(int enable)
 	else
 	{
 //      mame_printf_debug("Timer disabled\n");
-		timer_adjust(dcs.internal_timer, attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(dcs.internal_timer, attotime_never, 0);
 	}
 }
 
@@ -1846,7 +1846,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			if ((data & 0x0800) == 0)
 			{
 				dmadac_enable(0, dcs.channels, 0);
-				timer_adjust(dcs.reg_timer, attotime_never, 0, attotime_never);
+				timer_adjust_oneshot(dcs.reg_timer, attotime_never, 0);
 			}
 			break;
 
@@ -1855,7 +1855,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			if ((data & 0x0002) == 0)
 			{
 				dmadac_enable(0, dcs.channels, 0);
-				timer_adjust(dcs.reg_timer, attotime_never, 0, attotime_never);
+				timer_adjust_oneshot(dcs.reg_timer, attotime_never, 0);
 			}
 			break;
 
@@ -1966,7 +1966,7 @@ static void recompute_sample_rate(void)
 	if (dcs.incs)
 	{
 		attotime period = attotime_div(attotime_mul(sample_period, dcs.size), (2 * dcs.channels * dcs.incs));
-		timer_adjust(dcs.reg_timer, period, 0, period);
+		timer_adjust_periodic(dcs.reg_timer, period, 0, period);
 	}
 }
 
@@ -2019,7 +2019,7 @@ static void sound_tx_callback(int port, INT32 data)
 	dmadac_enable(0, dcs.channels, 0);
 
 	/* remove timer */
-	timer_adjust(dcs.reg_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(dcs.reg_timer, attotime_never, 0);
 }
 
 
@@ -2068,7 +2068,7 @@ static TIMER_CALLBACK( transfer_watchdog_callback )
 		for ( ; transfer.fifo_entries; transfer.fifo_entries--)
 			preprocess_write((*dcs.fifo_data_r)());
 	}
-	timer_adjust(transfer.watchdog, ATTOTIME_IN_MSEC(1), transfer.writes_left, attotime_zero);
+	timer_adjust_oneshot(transfer.watchdog, ATTOTIME_IN_MSEC(1), transfer.writes_left);
 }
 
 
@@ -2080,7 +2080,7 @@ static TIMER_CALLBACK( s1_ack_callback2 )
 		timer_set(ATTOTIME_IN_USEC(1), NULL, param, s1_ack_callback2);
 		return;
 	}
-	output_latch_w(0, 0x000a, 0);
+	output_latch_w(machine, 0, 0x000a, 0);
 }
 
 
@@ -2092,7 +2092,7 @@ static TIMER_CALLBACK( s1_ack_callback1 )
 		timer_set(ATTOTIME_IN_USEC(1), NULL, param, s1_ack_callback1);
 		return;
 	}
-	output_latch_w(0, param, 0);
+	output_latch_w(machine, 0, param, 0);
 
 	/* chain to the next word we need to write back */
 	timer_set(ATTOTIME_IN_USEC(1), NULL, 0, s1_ack_callback2);
@@ -2230,8 +2230,8 @@ static TIMER_CALLBACK( s2_ack_callback )
 		timer_set(ATTOTIME_IN_USEC(1), NULL, param, s2_ack_callback);
 		return;
 	}
-	output_latch_w(0, param, 0);
-	output_control_w(0, (dcs.output_control & ~0xff00) | 0x0300, 0);
+	output_latch_w(machine, 0, param, 0);
+	output_control_w(machine, 0, (dcs.output_control & ~0xff00) | 0x0300, 0);
 }
 
 
@@ -2298,7 +2298,7 @@ static int preprocess_stage_2(UINT16 data)
 			transfer.sum = 0;
 			if (transfer.hle_enabled)
 			{
-				timer_adjust(transfer.watchdog, ATTOTIME_IN_MSEC(1), transfer.writes_left, attotime_zero);
+				timer_adjust_oneshot(transfer.watchdog, ATTOTIME_IN_MSEC(1), transfer.writes_left);
 				return 1;
 			}
 			break;
@@ -2325,7 +2325,7 @@ static int preprocess_stage_2(UINT16 data)
 				if (transfer.state == 0)
 				{
 					timer_set(ATTOTIME_IN_USEC(1), NULL, transfer.sum, s2_ack_callback);
-					timer_adjust(transfer.watchdog, attotime_never, 0, attotime_never);
+					timer_adjust_oneshot(transfer.watchdog, attotime_never, 0);
 				}
 				return 1;
 			}

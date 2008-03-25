@@ -48,7 +48,7 @@ static UINT8 *finalgdr_backupram;
 static READ16_HANDLER( oki_r )
 {
 	if(offset)
-		return OKIM6295_status_0_r(0);
+		return OKIM6295_status_0_r(machine, 0);
 	else
 		return 0;
 }
@@ -56,23 +56,23 @@ static READ16_HANDLER( oki_r )
 static WRITE16_HANDLER( oki_w )
 {
 	if(offset)
-		OKIM6295_data_0_w(0, data);
+		OKIM6295_data_0_w(machine, 0, data);
 }
 
 static READ32_HANDLER( oki32_r )
 {
-	return OKIM6295_status_0_r(0) << 8;
+	return OKIM6295_status_0_r(machine, 0) << 8;
 }
 
 static WRITE32_HANDLER( oki32_w )
 {
-	OKIM6295_data_0_w(0, (data >> 8) & 0xff);
+	OKIM6295_data_0_w(machine, 0, (data >> 8) & 0xff);
 }
 
 static READ16_HANDLER( ym2151_status_r )
 {
 	if(offset)
-		return YM2151_status_port_0_r(0);
+		return YM2151_status_port_0_r(machine, 0);
 	else
 		return 0;
 }
@@ -80,28 +80,28 @@ static READ16_HANDLER( ym2151_status_r )
 static WRITE16_HANDLER( ym2151_data_w )
 {
 	if(offset)
-		YM2151_data_port_0_w(0, data);
+		YM2151_data_port_0_w(machine, 0, data);
 }
 
 static WRITE16_HANDLER( ym2151_register_w )
 {
 	if(offset)
-		YM2151_register_port_0_w(0, data);
+		YM2151_register_port_0_w(machine, 0, data);
 }
 
 static READ32_HANDLER( ym2151_status32_r )
 {
-	return YM2151_status_port_0_r(0) << 8;
+	return YM2151_status_port_0_r(machine, 0) << 8;
 }
 
 static WRITE32_HANDLER( ym2151_data32_w )
 {
-	YM2151_data_port_0_w(0, (data >> 8) & 0xff);
+	YM2151_data_port_0_w(machine, 0, (data >> 8) & 0xff);
 }
 
 static WRITE32_HANDLER( ym2151_register32_w )
 {
-	YM2151_register_port_0_w(0, (data >> 8) & 0xff);
+	YM2151_register_port_0_w(machine, 0, (data >> 8) & 0xff);
 }
 
 static READ16_HANDLER( eeprom_r )
@@ -352,16 +352,16 @@ Offset+3
 -------x xxxxxxxx X offs
 */
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, int scrnum)
+static void draw_sprites(const device_config *screen, bitmap_t *bitmap)
 {
-	const gfx_element *gfx = machine->gfx[0];
+	const gfx_element *gfx = screen->machine->gfx[0];
 	UINT32 cnt;
 	int block, offs;
 	int code,color,x,y,fx,fy;
 	rectangle clip;
 
-	clip.min_x = machine->screen[scrnum].visarea.min_x;
-	clip.max_x = machine->screen[scrnum].visarea.max_x;
+	clip.min_x = video_screen_get_visible_area(screen)->min_x;
+	clip.max_x = video_screen_get_visible_area(screen)->max_x;
 
 	for (block=0; block<0x8000; block+=0x800)
 	{
@@ -429,8 +429,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, int scrn
 
 static VIDEO_UPDATE( common )
 {
-	fillbitmap(bitmap,machine->pens[0],cliprect);
-	draw_sprites(machine, bitmap, screen);
+	fillbitmap(bitmap,0,cliprect);
+	draw_sprites(screen, bitmap);
 	return 0;
 }
 
@@ -584,15 +584,14 @@ ADDRESS_MAP_END
 static MACHINE_DRIVER_START( common )
 	MDRV_CPU_ADD_TAG("main", E116T, 50000000)	/* 50 MHz */
 	MDRV_CPU_PROGRAM_MAP(common_map,0)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
 	MDRV_NVRAM_HANDLER(93C46_vamphalf)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 512)
 	MDRV_SCREEN_VISIBLE_AREA(31, 350, 16, 255)

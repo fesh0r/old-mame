@@ -256,10 +256,10 @@ static TILE_GET_INFO( get_pf4_tile_info )
 
 static void toaplan1_create_tilemaps(void)
 {
-	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	pf3_tilemap = tilemap_create(get_pf3_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	pf4_tilemap = tilemap_create(get_pf4_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
+	pf1_tilemap = tilemap_create(get_pf1_tile_info,tilemap_scan_rows,8,8,64,64);
+	pf2_tilemap = tilemap_create(get_pf2_tile_info,tilemap_scan_rows,8,8,64,64);
+	pf3_tilemap = tilemap_create(get_pf3_tile_info,tilemap_scan_rows,8,8,64,64);
+	pf4_tilemap = tilemap_create(get_pf4_tile_info,tilemap_scan_rows,8,8,64,64);
 
 	tilemap_set_transparent_pen(pf1_tilemap,0);
 	tilemap_set_transparent_pen(pf2_tilemap,0);
@@ -319,12 +319,12 @@ static void toaplan1_set_scrolls(void)
 
 static void rallybik_flipscreen(void)
 {
-	rallybik_bcu_flipscreen_w(0, bcu_flipscreen, 0);
+	rallybik_bcu_flipscreen_w(Machine, 0, bcu_flipscreen, 0);
 }
 
 static void toaplan1_flipscreen(void)
 {
-	toaplan1_bcu_flipscreen_w(0, bcu_flipscreen, 0);
+	toaplan1_bcu_flipscreen_w(Machine, 0, bcu_flipscreen, 0);
 }
 
 
@@ -430,7 +430,7 @@ VIDEO_START( toaplan1 )
 
 READ16_HANDLER( toaplan1_frame_done_r )
 {
-	return video_screen_get_vblank(0);
+	return video_screen_get_vblank(machine->primary_screen);
 }
 
 WRITE16_HANDLER( toaplan1_tile_offsets_w )
@@ -532,7 +532,7 @@ READ16_HANDLER( toaplan1_colorram1_r )
 WRITE16_HANDLER( toaplan1_colorram1_w )
 {
 	COMBINE_DATA(&toaplan1_colorram1[offset]);
-	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset, data, mem_mask);
+	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine,offset, data, mem_mask);
 }
 
 /* sprite palette */
@@ -544,7 +544,7 @@ READ16_HANDLER( toaplan1_colorram2_r )
 WRITE16_HANDLER( toaplan1_colorram2_w )
 {
 	COMBINE_DATA(&toaplan1_colorram2[offset]);
-	paletteram16_xBBBBBGGGGGRRRRR_word_w(offset+(toaplan1_colorram1_size/2), data, mem_mask);
+	paletteram16_xBBBBBGGGGGRRRRR_word_w(machine,offset+(toaplan1_colorram1_size/2), data, mem_mask);
 }
 
 READ16_HANDLER( toaplan1_spriteram16_r )
@@ -600,7 +600,7 @@ WRITE16_HANDLER( toaplan1_bcu_control_w )
 	if (toaplan1_unk_reset_port && toaplan1_reset)
 	{
 		toaplan1_reset = 0;
-		toaplan1_reset_sound(0,0,0);
+		toaplan1_reset_sound(machine,0,0,0);
 	}
 }
 
@@ -650,7 +650,7 @@ READ16_HANDLER( toaplan1_tileram16_r )
 
 READ16_HANDLER( rallybik_tileram16_r )
 {
-	UINT16 data = toaplan1_tileram16_r(offset, mem_mask);
+	UINT16 data = toaplan1_tileram16_r(machine, offset, mem_mask);
 
 	if (offset == 0)	/* some bit lines may be stuck to others */
 	{
@@ -942,11 +942,11 @@ static void toaplan1_log_vram(void)
 ***************************************************************************/
 
 // custom function to draw a single sprite. needed to keep correct sprites - sprites and sprites - tilemaps priorities
-static void toaplan1_draw_sprite_custom(mame_bitmap *dest_bmp,const gfx_element *gfx,
+static void toaplan1_draw_sprite_custom(bitmap_t *dest_bmp,const gfx_element *gfx,
 		UINT32 code,UINT32 color,int flipx,int flipy,int sx,int sy,
 		const rectangle *clip,int priority)
 {
-	const pen_t *pal = &Machine->remapped_colortable[gfx->color_base + gfx->color_granularity * (color % gfx->total_colors)];
+	int pal_base = gfx->color_base + gfx->color_granularity * (color % gfx->total_colors);
 	UINT8 *source_base = gfx->gfxdata + (code % gfx->total_elements) * gfx->char_modulo;
 
 	int sprite_screen_height = ((1<<16)*gfx->height+0x8000)>>16;
@@ -1028,7 +1028,7 @@ static void toaplan1_draw_sprite_custom(mame_bitmap *dest_bmp,const gfx_element 
 					if( c != 0 )
 					{
 						if (pri[x] < priority)
-							dest[x] = pal[c];
+							dest[x] = pal_base+c;
 						pri[x] = 0xff; // mark it "already drawn"
 					}
 					x_index += dx;
@@ -1041,7 +1041,7 @@ static void toaplan1_draw_sprite_custom(mame_bitmap *dest_bmp,const gfx_element 
 }
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
 	UINT16 *source = (UINT16 *)(buffered_spriteram16);
 	UINT16 *size   = (UINT16 *)(toaplan1_buffered_spritesizeram16);
@@ -1107,7 +1107,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void rallybik_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority )
+static void rallybik_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority )
 {
 	int offs;
 
@@ -1141,7 +1141,7 @@ static void rallybik_draw_sprites(running_machine *machine, mame_bitmap *bitmap,
 
 
 /***************************************************************************
-    Draw the game screen in the given mame_bitmap.
+    Draw the game screen in the given bitmap_t.
 ***************************************************************************/
 
 VIDEO_UPDATE( rallybik )
@@ -1152,7 +1152,7 @@ VIDEO_UPDATE( rallybik )
 	toaplan1_log_vram();
 #endif
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 0,0);
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 1,0);
@@ -1163,7 +1163,7 @@ VIDEO_UPDATE( rallybik )
 		tilemap_draw(bitmap,cliprect,pf3_tilemap,priority,0);
 		tilemap_draw(bitmap,cliprect,pf2_tilemap,priority,0);
 		tilemap_draw(bitmap,cliprect,pf1_tilemap,priority,0);
-		rallybik_draw_sprites(machine, bitmap,cliprect,priority << 8);
+		rallybik_draw_sprites(screen->machine, bitmap,cliprect,priority << 8);
 	}
 	return 0;
 }
@@ -1177,7 +1177,7 @@ VIDEO_UPDATE( toaplan1 )
 #endif
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0x120],cliprect);
+	fillbitmap(bitmap,0x120,cliprect);
 
 	tilemap_draw(bitmap,cliprect,pf4_tilemap,TILEMAP_DRAW_OPAQUE,0);
 	for (priority = 8; priority < 16; priority++)
@@ -1191,7 +1191,7 @@ VIDEO_UPDATE( toaplan1 )
 		tilemap_draw_primask(bitmap,cliprect,pf1_tilemap,priority,priority,0);
 	}
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }
 
@@ -1204,7 +1204,7 @@ VIDEO_UPDATE( demonwld )
 #endif
 
 	fillbitmap(priority_bitmap,0,cliprect);
-	fillbitmap(bitmap,machine->pens[0x120],cliprect);
+	fillbitmap(bitmap,0x120,cliprect);
 
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 0,0);
 	tilemap_draw(bitmap,cliprect,pf1_tilemap,TILEMAP_DRAW_OPAQUE | 1,0);
@@ -1217,7 +1217,7 @@ VIDEO_UPDATE( demonwld )
 		tilemap_draw_primask(bitmap,cliprect,pf1_tilemap,priority,priority,0);
 	}
 
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	return 0;
 }
 
@@ -1230,18 +1230,18 @@ VIDEO_UPDATE( demonwld )
 
 VIDEO_EOF( rallybik )
 {
-	buffer_spriteram16_w(0, 0, 0);
+	buffer_spriteram16_w(machine, 0, 0, 0);
 }
 
 VIDEO_EOF( toaplan1 )
 {
-	buffer_spriteram16_w(0, 0, 0);
+	buffer_spriteram16_w(machine, 0, 0, 0);
 	memcpy(toaplan1_buffered_spritesizeram16, toaplan1_spritesizeram16, TOAPLAN1_SPRITESIZERAM_SIZE);
 }
 
 VIDEO_EOF( samesame )
 {
-	buffer_spriteram16_w(0, 0, 0);
+	buffer_spriteram16_w(machine, 0, 0, 0);
 	memcpy(toaplan1_buffered_spritesizeram16, toaplan1_spritesizeram16, TOAPLAN1_SPRITESIZERAM_SIZE);
 	cpunum_set_input_line(machine, 0, MC68000_IRQ_2, HOLD_LINE);	/* Frame done */
 }

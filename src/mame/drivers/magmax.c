@@ -17,7 +17,7 @@ PALETTE_INIT( magmax );
 VIDEO_UPDATE( magmax );
 VIDEO_START( magmax );
 
-extern UINT16 magmax_vreg;
+extern UINT16 *magmax_vreg;
 extern UINT16 *magmax_scroll_x;
 extern UINT16 *magmax_scroll_y;
 
@@ -69,7 +69,7 @@ static TIMER_CALLBACK( scanline_callback )
 	scanline += 128;
 	scanline &= 255;
 
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, scanline, 0), scanline, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), scanline);
 }
 
 static MACHINE_START( magmax )
@@ -86,7 +86,7 @@ static MACHINE_START( magmax )
 
 static MACHINE_RESET( magmax )
 {
-	timer_adjust(interrupt_timer, video_screen_get_time_until_pos(0, 64, 0), 64, attotime_zero);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, 64, 0), 64);
 
 #if 0
 	{
@@ -187,16 +187,16 @@ static WRITE16_HANDLER( magmax_vreg_w )
 	/* bit4 - sprite bank LSB (DP0) */
 	/* bit5 - sprite bank MSB (DP1) */
 	/* bit6 - BG display enable (BE)*/
-	COMBINE_DATA(&magmax_vreg);
+	COMBINE_DATA(magmax_vreg);
 }
 
 
 
 static ADDRESS_MAP_START( magmax_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x013fff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x018000, 0x018fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x020000, 0x0207ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x028000, 0x0281ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x013fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x018000, 0x018fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x020000, 0x0207ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x028000, 0x0281ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x030000, 0x030001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x030002, 0x030003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x030004, 0x030005) AM_READ(input_port_2_word_r)
@@ -204,35 +204,35 @@ static ADDRESS_MAP_START( magmax_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x013fff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x018000, 0x018fff) AM_WRITE(MWA16_RAM)
-	AM_RANGE(0x020000, 0x0207ff) AM_WRITE(MWA16_RAM) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
-	AM_RANGE(0x028000, 0x0281ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x030010, 0x030011) AM_WRITE(magmax_vreg_w)
-	AM_RANGE(0x030012, 0x030013) AM_WRITE(MWA16_RAM) AM_BASE(&magmax_scroll_x)
-	AM_RANGE(0x030014, 0x030015) AM_WRITE(MWA16_RAM) AM_BASE(&magmax_scroll_y)
+	AM_RANGE(0x000000, 0x013fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x018000, 0x018fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x020000, 0x0207ff) AM_WRITE(SMH_RAM) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x028000, 0x0281ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x030010, 0x030011) AM_WRITE(magmax_vreg_w) AM_BASE(&magmax_vreg)
+	AM_RANGE(0x030012, 0x030013) AM_WRITE(SMH_RAM) AM_BASE(&magmax_scroll_x)
+	AM_RANGE(0x030014, 0x030015) AM_WRITE(SMH_RAM) AM_BASE(&magmax_scroll_y)
 	AM_RANGE(0x03001c, 0x03001d) AM_WRITE(magmax_sound_w)
-	AM_RANGE(0x03001e, 0x03001f) AM_WRITE(MWA16_NOP)	/* IRQ ack */
+	AM_RANGE(0x03001e, 0x03001f) AM_WRITE(SMH_NOP)	/* IRQ ack */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_soundreadmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
+	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0x4000) AM_READ(magmax_sound_irq_ack)
-	AM_RANGE(0x6000, 0x67ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x6000, 0x67ff) AM_READ(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_soundwritemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x6000, 0x67ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x6000, 0x67ff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_soundreadport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x06, 0x06) AM_READ(magmax_sound_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( magmax_soundwriteport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(AY8910_control_port_1_w)
@@ -363,29 +363,29 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( magmax )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)	/* 8 MHz */
+	MDRV_CPU_ADD(M68000, XTAL_16MHz/2)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(magmax_readmem,magmax_writemem)
-	MDRV_CPU_VBLANK_INT(irq1_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq1_line_hold)
 
-	MDRV_CPU_ADD(Z80,10000000/4)
-	/* audio CPU */	/* 2.5 MHz */
+	MDRV_CPU_ADD(Z80,XTAL_20MHz/8) /* verified on pcb */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(magmax_soundreadmem,magmax_soundwritemem)
 	MDRV_CPU_IO_MAP(magmax_soundreadport,magmax_soundwriteport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_START(magmax)
 	MDRV_MACHINE_RESET(magmax)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(magmax)
-	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(1*16 + 16*16)
+	MDRV_PALETTE_LENGTH(1*16 + 16*16 + 256)
 
 	MDRV_PALETTE_INIT(magmax)
 	MDRV_VIDEO_START(magmax)
@@ -394,20 +394,20 @@ static MACHINE_DRIVER_START( magmax )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 10000000/8)
+	MDRV_SOUND_ADD(AY8910, XTAL_20MHz/16) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(AY8910, 10000000/8)
+	MDRV_SOUND_ADD(AY8910, XTAL_20MHz/16) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
-	MDRV_SOUND_ADD(AY8910, 10000000/8)
+	MDRV_SOUND_ADD(AY8910, XTAL_20MHz/16) /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 MACHINE_DRIVER_END
 
 
 ROM_START( magmax )
-	ROM_REGION( 0x14000, REGION_CPU1, 0 ) /* 68000 (main) cpu code */
+	ROM_REGION( 0x14000, REGION_CPU1, 0 )
 	ROM_LOAD16_BYTE( "1.3b", 0x00001, 0x4000, CRC(33793cbb) SHA1(a0bc0e4be434d9fc8115de8d63c92e942334bc85) )
 	ROM_LOAD16_BYTE( "6.3d", 0x00000, 0x4000, CRC(677ef450) SHA1(9003ff1c1c455970c1bd036b0b5e44dae2e379a5) )
 	ROM_LOAD16_BYTE( "2.5b", 0x08001, 0x4000, CRC(1a0c84df) SHA1(77ff21de33392a148d7ca69a77acc654260af0db) )
@@ -415,7 +415,7 @@ ROM_START( magmax )
 	ROM_LOAD16_BYTE( "3.6b", 0x10001, 0x2000, CRC(d06e6cae) SHA1(94047b2bcf030d34295ff8107f95097ce57efe6b) )
 	ROM_LOAD16_BYTE( "8.6d", 0x10000, 0x2000, CRC(790a82be) SHA1(9a25d5a7c87aeef5e736b0f2fb8dde1c9be70039) )
 
-	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* Z80 (sound) cpu code */
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )
 	ROM_LOAD( "15.17b", 0x00000, 0x2000, CRC(19e7b983) SHA1(b1cd0b728e7cce87d9b1039be179d0915d939a4f) )
 	ROM_LOAD( "16.18b", 0x02000, 0x2000, CRC(055e3126) SHA1(8c9b03eb7588512ef17f8c1b731a2fd7cf372bf8) )
 

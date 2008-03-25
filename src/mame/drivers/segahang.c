@@ -138,7 +138,7 @@ static INTERRUPT_GEN( hangon_irq )
 
 static TIMER_CALLBACK( delayed_ppi8255_w )
 {
-	ppi8255_0_w(param >> 8, param & 0xff);
+	ppi8255_0_w(machine, param >> 8, param & 0xff);
 }
 
 
@@ -147,20 +147,20 @@ static READ16_HANDLER( hangon_io_r )
 	switch (offset & 0x3020/2)
 	{
 		case 0x0000/2: /* PPI @ 4B */
-			return ppi8255_0_r(offset & 3);
+			return ppi8255_0_r(machine, offset & 3);
 
 		case 0x1000/2: /* Input ports and DIP switches */
 			return readinputport(offset & 3);
 
 		case 0x3000/2: /* PPI @ 4C */
-			return ppi8255_1_r(offset & 3);
+			return ppi8255_1_r(machine, offset & 3);
 
 		case 0x3020/2: /* ADC0804 data output */
 			return readinputport(4 + adc_select);
 	}
 
 	logerror("%06X:hangon_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(0,0);
+	return segaic16_open_bus_r(machine,0,0);
 }
 
 
@@ -176,7 +176,7 @@ static WRITE16_HANDLER( hangon_io_w )
 				return;
 
 			case 0x3000/2: /* PPI @ 4C */
-				ppi8255_1_w(offset & 3, data & 0xff);
+				ppi8255_1_w(machine, offset & 3, data & 0xff);
 				return;
 
 			case 0x3020/2: /* ADC0804 */
@@ -192,21 +192,21 @@ static READ16_HANDLER( sharrier_io_r )
 	switch (offset & 0x0030/2)
 	{
 		case 0x0000/2:
-			return ppi8255_0_r(offset & 3);
+			return ppi8255_0_r(machine, offset & 3);
 
 		case 0x0010/2: /* Input ports and DIP switches */
 			return readinputport(offset & 3);
 
 		case 0x0020/2: /* PPI @ 4C */
 			if (offset == 2) return 0;
-			return ppi8255_1_r(offset & 3);
+			return ppi8255_1_r(machine, offset & 3);
 
 		case 0x0030/2: /* ADC0804 data output */
 			return readinputport(4 + adc_select);
 	}
 
 	logerror("%06X:sharrier_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(0,0);
+	return segaic16_open_bus_r(machine,0,0);
 }
 
 
@@ -222,7 +222,7 @@ static WRITE16_HANDLER( sharrier_io_w )
 				return;
 
 			case 0x0020/2: /* PPI @ 4C */
-				ppi8255_1_w(offset & 3, data & 0xff);
+				ppi8255_1_w(machine, offset & 3, data & 0xff);
 				return;
 
 			case 0x0030/2: /* ADC0804 */
@@ -347,7 +347,7 @@ static READ8_HANDLER( sound_data_r )
 {
 	/* assert ACK */
 	ppi8255_set_portC(0, 0x00);
-	return soundlatch_r(offset);
+	return soundlatch_r(machine, offset);
 }
 
 
@@ -359,13 +359,13 @@ static READ8_HANDLER( sound_data_r )
  *************************************/
 
 static ADDRESS_MAP_START( hangon_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x20c000, 0x20ffff) AM_RAM
-	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(MRA16_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
-	AM_RANGE(0x410000, 0x410fff) AM_READWRITE(MRA16_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
+	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(SMH_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
+	AM_RANGE(0x410000, 0x410fff) AM_READWRITE(SMH_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
 	AM_RANGE(0x600000, 0x6007ff) AM_RAM AM_BASE(&segaic16_spriteram_0)
-	AM_RANGE(0xa00000, 0xa00fff) AM_READWRITE(MRA16_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xa00000, 0xa00fff) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xc00000, 0xc3ffff) AM_ROM AM_REGION(REGION_CPU2, 0)
 	AM_RANGE(0xc68000, 0xc68fff) AM_RAM AM_SHARE(1) AM_BASE(&segaic16_roadram_0)
 	AM_RANGE(0xc7c000, 0xc7ffff) AM_RAM AM_SHARE(2)
@@ -374,12 +374,12 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sharrier_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x040000, 0x043fff) AM_RAM AM_BASE(&workram)
-	AM_RANGE(0x100000, 0x107fff) AM_READWRITE(MRA16_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
-	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(MRA16_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
-	AM_RANGE(0x110000, 0x110fff) AM_READWRITE(MRA16_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x100000, 0x107fff) AM_READWRITE(SMH_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
+	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(SMH_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
+	AM_RANGE(0x110000, 0x110fff) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x124000, 0x127fff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0x130000, 0x130fff) AM_RAM AM_BASE(&segaic16_spriteram_0)
 	AM_RANGE(0x140000, 0x14ffff) AM_READWRITE(sharrier_io_r, sharrier_io_w)
@@ -395,7 +395,8 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(19) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0x7ffff)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x068000, 0x068fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x07c000, 0x07ffff) AM_RAM AM_SHARE(2)
@@ -410,7 +411,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( sound_map_2203, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_MIRROR(0x0800) AM_RAM
 	AM_RANGE(0xd000, 0xd000) AM_MIRROR(0x0ffe) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
@@ -419,27 +420,30 @@ static ADDRESS_MAP_START( sound_map_2203, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap_2203, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_READ(sound_data_r)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_map_2151, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0xf000, 0xf0ff) AM_MIRROR(0x700) AM_READWRITE(SegaPCM_r, SegaPCM_w)
 	AM_RANGE(0xf800, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap_2151, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_WRITE(YM2151_register_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_READ(sound_data_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_portmap_2203x2, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_READWRITE(YM2203_status_port_0_r, YM2203_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_WRITE(YM2203_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_MIRROR(0x3f) AM_READ(sound_data_r)
@@ -456,12 +460,12 @@ ADDRESS_MAP_END
  *************************************/
 
 static ADDRESS_MAP_START( mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mcu_data_map, ADDRESS_SPACE_DATA, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 ADDRESS_MAP_END
 
 
@@ -845,22 +849,19 @@ static MACHINE_DRIVER_START( hangon_base )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, MASTER_CLOCK_25MHz/4)
 	MDRV_CPU_PROGRAM_MAP(hangon_map,0)
-	MDRV_CPU_VBLANK_INT(irq4_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
 	MDRV_CPU_ADD_TAG("sub", M68000, MASTER_CLOCK_25MHz/4)
 	MDRV_CPU_PROGRAM_MAP(sub_map,0)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_MACHINE_RESET(hangon)
 	MDRV_INTERLEAVE(100)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(segahang)
 	MDRV_PALETTE_LENGTH(2048*3)
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_25MHz/4, 400, 0, 320, 262, 0, 224)
 
@@ -875,7 +876,7 @@ static MACHINE_DRIVER_START( sharrier_base )
 	/* basic machine hardware */
 	MDRV_CPU_REPLACE("main", M68000, MASTER_CLOCK_10MHz)
 	MDRV_CPU_PROGRAM_MAP(sharrier_map,0)
-	MDRV_CPU_VBLANK_INT(i8751_main_cpu_vblank,1)
+	MDRV_CPU_VBLANK_INT("main", i8751_main_cpu_vblank)
 
 	MDRV_CPU_REPLACE("sub", M68000, MASTER_CLOCK_10MHz)
 
@@ -1002,7 +1003,7 @@ static MACHINE_DRIVER_START( sharrier )
 	MDRV_CPU_ADD_TAG("mcu", I8751, 8000000)
 	MDRV_CPU_PROGRAM_MAP(mcu_map,0)
 	MDRV_CPU_DATA_MAP(mcu_data_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse)
 MACHINE_DRIVER_END
 
 

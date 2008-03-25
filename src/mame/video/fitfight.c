@@ -16,7 +16,7 @@ static tilemap *fof_txt_tilemap;
 
 extern char bbprot_kludge;
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int layer )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int layer )
 {
 	const gfx_element *gfx = machine->gfx[3];
 	UINT16 *source = fitfight_spriteram;
@@ -103,13 +103,13 @@ WRITE16_HANDLER( fof_txt_tileram_w )
 
 VIDEO_START(fitfight)
 {
-	fof_bak_tilemap = tilemap_create(get_fof_bak_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,128, 32);
+	fof_bak_tilemap = tilemap_create(get_fof_bak_tile_info,tilemap_scan_cols,8,8,128, 32);
 	/* opaque */
 
-	fof_mid_tilemap = tilemap_create(get_fof_mid_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,128, 32);
+	fof_mid_tilemap = tilemap_create(get_fof_mid_tile_info,tilemap_scan_cols,8,8,128, 32);
 	tilemap_set_transparent_pen(fof_mid_tilemap,0);
 
-	fof_txt_tilemap = tilemap_create(get_fof_txt_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,8,8,128, 32);
+	fof_txt_tilemap = tilemap_create(get_fof_txt_tile_info,tilemap_scan_cols,8,8,128, 32);
 	tilemap_set_transparent_pen(fof_txt_tilemap,0);
 }
 
@@ -123,7 +123,7 @@ VIDEO_UPDATE(fitfight)
 	vblank = (fof_700000[0] & 0x8000);
 
 	if (vblank > 0)
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	else {
 //      if (input_code_pressed(KEYCODE_Q))
 //          scrollbak = ((fof_a00000[0]&0xff00) >> 5) - ((fof_700000[0] & 0x0038) >> 3);
@@ -139,7 +139,7 @@ VIDEO_UPDATE(fitfight)
 		tilemap_set_scrolly(fof_bak_tilemap,0, fof_a00000[0]&0xff);
 		tilemap_draw(bitmap,cliprect,fof_bak_tilemap,0,0);
 
-		draw_sprites(machine,bitmap,cliprect,0);
+		draw_sprites(screen->machine,bitmap,cliprect,0);
 
 //      if (input_code_pressed(KEYCODE_A))
 //          scrollmid = ((fof_900000[0]&0xff00) >> 5) - ((fof_700000[0] & 0x01c0) >> 6);
@@ -156,7 +156,7 @@ VIDEO_UPDATE(fitfight)
 //      if (!input_code_pressed(KEYCODE_F))
 			tilemap_draw(bitmap,cliprect,fof_mid_tilemap,0,0);
 
-		draw_sprites(machine,bitmap,cliprect,1);
+		draw_sprites(screen->machine,bitmap,cliprect,1);
 
 		tilemap_draw(bitmap,cliprect,fof_txt_tilemap,0,0);
 	}

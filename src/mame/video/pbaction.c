@@ -41,7 +41,7 @@ WRITE8_HANDLER( pbaction_colorram2_w )
 WRITE8_HANDLER( pbaction_scroll_w )
 {
 	scroll = data - 3;
-	if (flip_screen) scroll = -scroll;
+	if (flip_screen_get()) scroll = -scroll;
 	tilemap_set_scrollx(bg_tilemap, 0, scroll);
 	tilemap_set_scrollx(fg_tilemap, 0, scroll);
 }
@@ -74,15 +74,15 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( pbaction )
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -100,7 +100,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 			sy = 241-spriteram[offs+2];
 		flipx = spriteram[offs+1] & 0x40;
 		flipy =	spriteram[offs+1] & 0x80;
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			if (spriteram[offs] & 0x80)
 			{
@@ -120,7 +120,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 				spriteram[offs],
 				spriteram[offs + 1] & 0x0f,
 				flipx,flipy,
-				sx + (flip_screen ? scroll : -scroll), sy,
+				sx + (flip_screen_get() ? scroll : -scroll), sy,
 				cliprect,TRANSPARENCY_PEN,0);
 	}
 }
@@ -128,7 +128,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( pbaction )
 {
 	tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

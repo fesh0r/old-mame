@@ -153,10 +153,10 @@ VIDEO_START(macrossp)
 	memset(spriteram_old,0,spriteram_size);
 	memset(spriteram_old2,0,spriteram_size);
 
-	macrossp_text_tilemap = tilemap_create(get_macrossp_text_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	macrossp_scra_tilemap = tilemap_create(get_macrossp_scra_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	macrossp_scrb_tilemap = tilemap_create(get_macrossp_scrb_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	macrossp_scrc_tilemap = tilemap_create(get_macrossp_scrc_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
+	macrossp_text_tilemap = tilemap_create(get_macrossp_text_tile_info,tilemap_scan_rows,16,16,64,64);
+	macrossp_scra_tilemap = tilemap_create(get_macrossp_scra_tile_info,tilemap_scan_rows,16,16,64,64);
+	macrossp_scrb_tilemap = tilemap_create(get_macrossp_scrb_tile_info,tilemap_scan_rows,16,16,64,64);
+	macrossp_scrc_tilemap = tilemap_create(get_macrossp_scrc_tile_info,tilemap_scan_rows,16,16,64,64);
 
 	tilemap_set_transparent_pen(macrossp_text_tilemap,0);
 	tilemap_set_transparent_pen(macrossp_scra_tilemap,0);
@@ -173,7 +173,7 @@ VIDEO_START(macrossp)
 
 
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, int priority )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int priority )
 {
 	const gfx_element *gfx = machine->gfx[0];
 //  UINT32 *source = macrossp_spriteram;
@@ -299,7 +299,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 }
 
 
-static void draw_layer(mame_bitmap *bitmap, const rectangle *cliprect, int layer)
+static void draw_layer(bitmap_t *bitmap, const rectangle *cliprect, int layer)
 {
 	tilemap *tm;
 	UINT32 *vr;
@@ -370,7 +370,7 @@ VIDEO_UPDATE(macrossp)
 	int layers[3],layerpri[3];
 
 
-	fillbitmap(bitmap,get_black_pen(machine),cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 
 	layers[0] = 0;
 	layerpri[0] = (macrossp_scra_videoregs[0] & 0x0000c000) >> 14;
@@ -382,12 +382,12 @@ VIDEO_UPDATE(macrossp)
 	sortlayers(layers, layerpri);
 
 	draw_layer(bitmap,cliprect,layers[0]);
-	draw_sprites(machine,bitmap,cliprect,0);
+	draw_sprites(screen->machine,bitmap,cliprect,0);
 	draw_layer(bitmap,cliprect,layers[1]);
-	draw_sprites(machine,bitmap,cliprect,1);
+	draw_sprites(screen->machine,bitmap,cliprect,1);
 	draw_layer(bitmap,cliprect,layers[2]);
-	draw_sprites(machine,bitmap,cliprect,2);
-	draw_sprites(machine,bitmap,cliprect,3);
+	draw_sprites(screen->machine,bitmap,cliprect,2);
+	draw_sprites(screen->machine,bitmap,cliprect,3);
 	tilemap_draw(bitmap,cliprect,macrossp_text_tilemap,0,0);
 
 #if 0

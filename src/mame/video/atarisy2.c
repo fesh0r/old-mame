@@ -79,7 +79,7 @@ static TILE_GET_INFO( get_playfield_tile_info )
 
 VIDEO_START( atarisy2 )
 {
-	static const struct atarimo_desc modesc =
+	static const atarimo_desc modesc =
 	{
 		1,					/* index to which gfx system */
 		1,					/* number of motion object banks */
@@ -124,13 +124,13 @@ VIDEO_START( atarisy2 )
 	atarigen_playfield = &vram[0x2000];
 
 	/* initialize the playfield */
-	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 128,64);
+	atarigen_playfield_tilemap = tilemap_create(get_playfield_tile_info, tilemap_scan_rows,  8,8, 128,64);
 
 	/* initialize the motion objects */
 	atarimo_init(machine, 0, &modesc);
 
 	/* initialize the alphanumerics */
-	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows, TILEMAP_TYPE_PEN, 8,8, 64,48);
+	atarigen_alpha_tilemap = tilemap_create(get_alpha_tile_info, tilemap_scan_rows,  8,8, 64,48);
 	tilemap_set_transparent_pen(atarigen_alpha_tilemap, 0);
 
 	/* reset the statics */
@@ -159,7 +159,7 @@ WRITE16_HANDLER( atarisy2_xscroll_w )
 
 	/* if anything has changed, force a partial update */
 	if (newscroll != oldscroll)
-		video_screen_update_partial(0, video_screen_get_vpos(0));
+		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 
 	/* update the playfield scrolling - hscroll is clocked on the following scanline */
 	tilemap_set_scrollx(atarigen_playfield_tilemap, 0, newscroll >> 6);
@@ -190,13 +190,13 @@ WRITE16_HANDLER( atarisy2_yscroll_w )
 
 	/* if anything has changed, force a partial update */
 	if (newscroll != oldscroll)
-		video_screen_update_partial(0, video_screen_get_vpos(0));
+		video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 
 	/* if bit 4 is zero, the scroll value is clocked in right away */
 	if (!(newscroll & 0x10))
-		tilemap_set_scrolly(atarigen_playfield_tilemap, 0, (newscroll >> 6) - video_screen_get_vpos(0));
+		tilemap_set_scrolly(atarigen_playfield_tilemap, 0, (newscroll >> 6) - video_screen_get_vpos(machine->primary_screen));
 	else
-		timer_adjust(yscroll_reset_timer, video_screen_get_time_until_pos(0, 0, 0), newscroll >> 6, attotime_zero);
+		timer_adjust_oneshot(yscroll_reset_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), newscroll >> 6);
 
 	/* update the playfield banking */
 	if (playfield_tile_bank[1] != (newscroll & 0x0f) * 0x400)
@@ -301,8 +301,8 @@ WRITE16_HANDLER( atarisy2_videoram_w )
 	{
 		/* force an update if the link of object 0 is about to change */
 		if (offs == 0x0c03)
-			video_screen_update_partial(0, video_screen_get_vpos(0));
-		atarimo_0_spriteram_w(offs - 0x0c00, data, mem_mask);
+			video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
+		atarimo_0_spriteram_w(machine, offs - 0x0c00, data, mem_mask);
 	}
 
 	/* playfieldram? */
@@ -330,8 +330,8 @@ WRITE16_HANDLER( atarisy2_videoram_w )
 
 VIDEO_UPDATE( atarisy2 )
 {
-	struct atarimo_rect_list rectlist;
-	mame_bitmap *mobitmap;
+	atarimo_rect_list rectlist;
+	bitmap_t *mobitmap;
 	int x, y, r;
 
 	/* draw the playfield */
@@ -342,7 +342,7 @@ VIDEO_UPDATE( atarisy2 )
 	tilemap_draw(bitmap, cliprect, atarigen_playfield_tilemap, 3, 3);
 
 	/* draw and merge the MO */
-	mobitmap = atarimo_render(machine, 0, cliprect, &rectlist);
+	mobitmap = atarimo_render(0, cliprect, &rectlist);
 	for (r = 0; r < rectlist.numrects; r++, rectlist.rect++)
 		for (y = rectlist.rect->min_y; y <= rectlist.rect->max_y; y++)
 		{

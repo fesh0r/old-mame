@@ -60,9 +60,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( sf )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,     16,16,2048,16);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,TILEMAP_TYPE_PEN,16,16,2048,16);
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,  64,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_cols,     16,16,2048,16);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_cols,16,16,2048,16);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,  64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,15);
 	tilemap_set_transparent_pen(tx_tilemap,3);
@@ -130,7 +130,7 @@ INLINE int sf_invert(int nb)
 	return nb ^ delta[(nb >> 3) & 3];
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -148,7 +148,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		{
 			int c1,c2,c3,c4,t;
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 480 - sx;
 				sy = 224 - sy;
@@ -203,7 +203,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 		}
 		else
 		{
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 496 - sx;
 				sy = 240 - sy;
@@ -228,12 +228,12 @@ VIDEO_UPDATE( sf )
 	if (sf_active & 0x20)
 		tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	else
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 
 	if (sf_active & 0x80)
-		draw_sprites(machine,bitmap,cliprect);
+		draw_sprites(screen->machine,bitmap,cliprect);
 
 	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;

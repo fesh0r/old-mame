@@ -21,7 +21,7 @@ MBL-00.7A    [2e258b7b]
 MBL-01.11A   [895be69a]
 MBL-02.12A   [474f6104]
 
-MBL-03.10A   [afccbc3c]
+MBL-03.10A   [4a599703]
 
 MBL-04.12K   [b533123d]
 
@@ -39,7 +39,7 @@ MR_01-.3A    [a0b758aa]
 
 #include "deco16ic.h"
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 
@@ -52,7 +52,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 
 		y = spriteram16[offs];
 		flash=y&0x1000;
-		if (flash && (cpu_getcurrentframe() & 1)) continue;
+		if (flash && (video_screen_get_frame_number(machine->primary_screen) & 1)) continue;
 
 		x = spriteram16[offs+2];
 		colour = (x >>9) & 0x1f;
@@ -79,7 +79,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap,const rec
 			inc = 1;
 		}
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			y=240-y;
 			x=304-x;
@@ -121,12 +121,12 @@ static VIDEO_UPDATE(mirage)
 	flip_screen_set( deco16_pf12_control[0]&0x80 );
 	deco16_pf12_update(deco16_pf1_rowscroll,deco16_pf2_rowscroll);
 
-	fillbitmap(bitmap,machine->pens[256],cliprect); /* not verified */
+	fillbitmap(bitmap,256,cliprect); /* not verified */
 
 	deco16_tilemap_2_draw(bitmap,cliprect,TILEMAP_DRAW_OPAQUE,0);
 	deco16_tilemap_1_draw(bitmap,cliprect,0,0);
 
-	draw_sprites(machine,bitmap,cliprect);
+	draw_sprites(screen->machine,bitmap,cliprect);
 	return 0;
 }
 
@@ -148,60 +148,60 @@ static READ16_HANDLER( mirage_input_r )
 }
 
 static ADDRESS_MAP_START( mirage_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(MRA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_ROM)
 
-	AM_RANGE(0x100000, 0x101fff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x102000, 0x103fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x100000, 0x101fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x102000, 0x103fff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x110000, 0x110bff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x112000, 0x112bff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x110000, 0x110bff) AM_READ(SMH_RAM)
+	AM_RANGE(0x112000, 0x112bff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x120000, 0x1207ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x120000, 0x1207ff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x130000, 0x1307ff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x130000, 0x1307ff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x140006, 0x140007) AM_READ(random_readers)
 
-	AM_RANGE(0x150006, 0x150007) AM_READ(MRA16_NOP)
+	AM_RANGE(0x150006, 0x150007) AM_READ(SMH_NOP)
 
 	AM_RANGE(0x16c006, 0x16c007) AM_READ(mirage_input_r)
 
 	AM_RANGE(0x16e002, 0x16e003) AM_READ(mirage_controls_r)
 
-	AM_RANGE(0x170000, 0x173fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x170000, 0x173fff) AM_READ(SMH_RAM)
 
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mirage_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(MWA16_ROM)
+	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM)
 
 	/* tilemaps */
 	AM_RANGE(0x100000, 0x101fff) AM_WRITE(deco16_pf1_data_w) AM_BASE(&deco16_pf1_data) // 0x100000 - 0x101fff tested
 	AM_RANGE(0x102000, 0x103fff) AM_WRITE(deco16_pf2_data_w) AM_BASE(&deco16_pf2_data) // 0x102000 - 0x102fff tested
 	/* linescroll */
-	AM_RANGE(0x110000, 0x110bff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf1_rowscroll)
-	AM_RANGE(0x112000, 0x112bff) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf2_rowscroll)
+	AM_RANGE(0x110000, 0x110bff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf1_rowscroll)
+	AM_RANGE(0x112000, 0x112bff) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf2_rowscroll)
 
-	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(MWA16_RAM) AM_BASE(&spriteram16)
+	AM_RANGE(0x120000, 0x1207ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)
 
 	AM_RANGE(0x130000, 0x1307ff) AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 
-	AM_RANGE(0x150000, 0x150001) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x150002, 0x150003) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x150000, 0x150001) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x150002, 0x150003) AM_WRITE(SMH_NOP)
 
-	AM_RANGE(0x160000, 0x160001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x160000, 0x160001) AM_WRITE(SMH_NOP)
 
-	AM_RANGE(0x168000, 0x16800f) AM_WRITE(MWA16_RAM) AM_BASE(&deco16_pf12_control)
+	AM_RANGE(0x168000, 0x16800f) AM_WRITE(SMH_RAM) AM_BASE(&deco16_pf12_control)
 
-	AM_RANGE(0x16a000, 0x16a001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x16a000, 0x16a001) AM_WRITE(SMH_NOP)
 
-	AM_RANGE(0x16c000, 0x16c001) AM_WRITE(MWA16_NOP)
-	AM_RANGE(0x16c002, 0x16c003) AM_WRITE(MWA16_NOP) // input multiplex?
-	AM_RANGE(0x16c004, 0x16c005) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x16c000, 0x16c001) AM_WRITE(SMH_NOP)
+	AM_RANGE(0x16c002, 0x16c003) AM_WRITE(SMH_NOP) // input multiplex?
+	AM_RANGE(0x16c004, 0x16c005) AM_WRITE(SMH_NOP)
 
-	AM_RANGE(0x16e000, 0x16e001) AM_WRITE(MWA16_NOP)
+	AM_RANGE(0x16e000, 0x16e001) AM_WRITE(SMH_NOP)
 
-	AM_RANGE(0x170000, 0x173fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x170000, 0x173fff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -213,16 +213,14 @@ static INPUT_PORTS_START( mirage )
     PORT_DIPNAME( 0x0004, 0x0004, DEF_STR( Unknown ) )
     PORT_DIPSETTING(      0x0004, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0008, 0x0008, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0008, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_VBLANK )
-    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) ) // eeprom read?
+	PORT_SERVICE( 0x0008, IP_ACTIVE_LOW )
+	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_VBLANK )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Flip_Screen ) )
     PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
     PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+    PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+    PORT_DIPSETTING(      0x0040, DEF_STR( On ) )
     PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
     PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -252,7 +250,7 @@ static INPUT_PORTS_START( mirage )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
 	PORT_START_TAG("MIRAGE0")
-    PORT_DIPNAME( 0x0001, 0x0001, "TEST?" )
+	PORT_BIT(  0x0001, IP_ACTIVE_LOW, IPT_SERVICE1 ) /* Inputs start here???? */
     PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
     PORT_DIPNAME( 0x0002, 0x0002, DEF_STR( Unknown ) )
@@ -267,7 +265,7 @@ static INPUT_PORTS_START( mirage )
     PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
     PORT_DIPSETTING(      0x0010, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
+    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) ) /* Makes selections in "Test Mode" when changing from "Off" to "On" */
     PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
     PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
     PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
@@ -351,16 +349,16 @@ static MACHINE_DRIVER_START( mirage )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 28000000/2)
 	MDRV_CPU_PROGRAM_MAP(mirage_readmem,mirage_writemem)
-	MDRV_CPU_VBLANK_INT(irq6_line_hold,1)
-
-	MDRV_SCREEN_REFRESH_RATE(58)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
+	MDRV_CPU_VBLANK_INT("main", irq6_line_hold)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(58)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(529))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(mirage)
 	MDRV_PALETTE_LENGTH(1024)
 
@@ -392,8 +390,8 @@ ROM_START( mirage )
   	ROM_LOAD16_BYTE( "mbl-01.11a", 0x000001, 0x200000, CRC(895be69a) SHA1(541d8f37fb4cf99312b80a0eb0d729fbbeab5f4f) )
 	ROM_LOAD16_BYTE( "mbl-02.12a", 0x000000, 0x200000, CRC(474f6104) SHA1(ff81b32b90192c3d5f27c436a9246aa6caaeeeee) )
 
-	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* M6295 samples (scrambled? bad?) */
-	ROM_LOAD( "mbl-03.10a", 0x000000, 0x200000, BAD_DUMP CRC(afccbc3c) SHA1(457b7fbd22e723e69b65a989ee9957354b673176) ) // dumped in wrong mode, missing every other byte
+	ROM_REGION( 0x200000, REGION_SOUND1, 0 )	/* M6295 samples */
+	ROM_LOAD( "mbl-03.10a", 0x000000, 0x200000, CRC(4a599703) SHA1(b49e84faa2d6acca952740d30fc8d1a33ac47e79) )
 
 	ROM_REGION( 0x200000, REGION_SOUND2, 0 )	/* M6295 samples */
 	ROM_LOAD( "mbl-04.12k", 0x000000, 0x100000, CRC(b533123d) SHA1(2cb2f11331d00c2d282113932ed2836805f4fc6e) )

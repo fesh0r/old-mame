@@ -41,7 +41,7 @@ PALETTE_INIT( ampoker2 )
       76543210
       RRRGGGBB
 */
-	for (i = 0; i < machine->drv->total_colors; i++)
+	for (i = 0; i < machine->config->total_colors; i++)
 	{
 		int bit0, bit1, bit2, r, g, b;
 
@@ -102,13 +102,13 @@ static TILE_GET_INFO( s2k_get_bg_tile_info )
 VIDEO_START(ampoker2)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		 8, 8, 64, 32);
 }
 
 VIDEO_START(sigma2k)
 {
 	bg_tilemap = tilemap_create(s2k_get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 64, 32);
+		 8, 8, 64, 32);
 }
 
 VIDEO_UPDATE(ampoker2)

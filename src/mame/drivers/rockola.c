@@ -265,7 +265,7 @@ Stephh's notes (based on the games M6502 code and some tests) :
 #include "driver.h"
 #include "deprecat.h"
 #include "cpu/m6502/m6502.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "sound/sn76477.h"
 #include "sound/custom.h"
 #include "sound/samples.h"
@@ -285,24 +285,24 @@ Stephh's notes (based on the games M6502 code and some tests) :
 extern UINT8 *rockola_videoram2;
 extern UINT8 *rockola_charram;
 
-extern WRITE8_HANDLER( rockola_videoram_w );
-extern WRITE8_HANDLER( rockola_videoram2_w );
-extern WRITE8_HANDLER( rockola_colorram_w );
-extern WRITE8_HANDLER( rockola_charram_w );
-extern WRITE8_HANDLER( rockola_flipscreen_w );
-extern WRITE8_HANDLER( rockola_scrollx_w );
-extern WRITE8_HANDLER( rockola_scrolly_w );
+WRITE8_HANDLER( rockola_videoram_w );
+WRITE8_HANDLER( rockola_videoram2_w );
+WRITE8_HANDLER( rockola_colorram_w );
+WRITE8_HANDLER( rockola_charram_w );
+WRITE8_HANDLER( rockola_flipscreen_w );
+WRITE8_HANDLER( rockola_scrollx_w );
+WRITE8_HANDLER( rockola_scrolly_w );
 
-extern PALETTE_INIT( rockola );
-extern VIDEO_START( rockola );
-extern VIDEO_UPDATE( rockola );
+PALETTE_INIT( rockola );
+VIDEO_START( rockola );
+VIDEO_UPDATE( rockola );
 
-extern WRITE8_HANDLER( satansat_charram_w );
-extern WRITE8_HANDLER( satansat_b002_w );
-extern WRITE8_HANDLER( satansat_backcolor_w );
+WRITE8_HANDLER( satansat_charram_w );
+WRITE8_HANDLER( satansat_b002_w );
+WRITE8_HANDLER( satansat_backcolor_w );
 
-extern PALETTE_INIT( satansat );
-extern VIDEO_START( satansat );
+PALETTE_INIT( satansat );
+VIDEO_START( satansat );
 
 /* audio */
 
@@ -337,7 +337,7 @@ static void sasuke_start_counter(void)
 	sasuke_counter = 0;
 
 	sasuke_timer = timer_alloc(sasuke_update_counter, NULL);
-	timer_adjust(sasuke_timer, attotime_zero, 0, ATTOTIME_IN_HZ(11289000/8));	// 1.4 MHz
+	timer_adjust_periodic(sasuke_timer, attotime_zero, 0, ATTOTIME_IN_HZ(11289000/8));	// 1.4 MHz
 }
 
 
@@ -370,8 +370,8 @@ static ADDRESS_MAP_START( sasuke_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_WRITE(rockola_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_WRITE(rockola_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1000, 0x1fff) AM_RAM AM_WRITE(rockola_charram_w) AM_BASE(&rockola_charram)
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x3001, 0x3001) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x3000, 0x3000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x3001, 0x3001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x4000, 0x8fff) AM_ROM
 	AM_RANGE(0xb000, 0xb001) AM_WRITE(sasuke_sound_w)
 	AM_RANGE(0xb002, 0xb002) AM_WRITE(satansat_b002_w)	/* flip screen & irq enable */
@@ -389,8 +389,8 @@ static ADDRESS_MAP_START( satansat_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_WRITE(rockola_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_WRITE(rockola_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1000, 0x1fff) AM_RAM AM_WRITE(rockola_charram_w) AM_BASE(&rockola_charram)
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x3001, 0x3001) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x3000, 0x3000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x3001, 0x3001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x4000, 0x97ff) AM_ROM
 	AM_RANGE(0xb000, 0xb001) AM_WRITE(satansat_sound_w)
 	AM_RANGE(0xb002, 0xb002) AM_WRITE(satansat_b002_w)	/* flip screen & irq enable */
@@ -408,8 +408,8 @@ static ADDRESS_MAP_START( vanguard_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_WRITE(rockola_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_WRITE(rockola_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1000, 0x1fff) AM_RAM AM_WRITE(rockola_charram_w) AM_BASE(&rockola_charram)
-	AM_RANGE(0x3000, 0x3000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x3001, 0x3001) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x3000, 0x3000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x3001, 0x3001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x3100, 0x3102) AM_WRITE(vanguard_sound_w)
 	AM_RANGE(0x3103, 0x3103) AM_WRITE(rockola_flipscreen_w)
 	AM_RANGE(0x3104, 0x3104) AM_READ_PORT("IN0")
@@ -429,8 +429,8 @@ static ADDRESS_MAP_START( fantasy_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0bff) AM_RAM AM_WRITE(rockola_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_WRITE(rockola_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1000, 0x1fff) AM_RAM AM_WRITE(rockola_charram_w) AM_BASE(&rockola_charram)
-	AM_RANGE(0x2000, 0x2000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0x2001, 0x2001) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0x2000, 0x2000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0x2001, 0x2001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0x2100, 0x2103) AM_WRITE(fantasy_sound_w)
 	AM_RANGE(0x2104, 0x2104) AM_READ_PORT("IN0")
 	AM_RANGE(0x2105, 0x2105) AM_READ_PORT("IN1")
@@ -450,8 +450,8 @@ static ADDRESS_MAP_START( pballoon_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0c00, 0x0fff) AM_RAM AM_WRITE(rockola_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1000, 0x1fff) AM_RAM AM_WRITE(rockola_charram_w) AM_BASE(&rockola_charram)
 	AM_RANGE(0x3000, 0x9fff) AM_ROM
-	AM_RANGE(0xb000, 0xb000) AM_WRITE(crtc6845_address_w)
-	AM_RANGE(0xb001, 0xb001) AM_WRITE(crtc6845_register_w)
+	AM_RANGE(0xb000, 0xb000) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xb001, 0xb001) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	AM_RANGE(0xb100, 0xb103) AM_WRITE(fantasy_sound_w)
 	AM_RANGE(0xb104, 0xb104) AM_READ_PORT("IN0")
 	AM_RANGE(0xb105, 0xb105) AM_READ_PORT("IN1")
@@ -1079,24 +1079,27 @@ static MACHINE_DRIVER_START( sasuke )
 	// basic machine hardware
 	MDRV_CPU_ADD_TAG("main", M6502, 11289000/16) // 700 kHz
 	MDRV_CPU_PROGRAM_MAP(sasuke_map, 0)
-	MDRV_CPU_VBLANK_INT(satansat_interrupt, 2)
-
-	MDRV_SCREEN_REFRESH_RATE((11289000.0 / 16) / (45 * 32 * 8))
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(satansat_interrupt, 2)
 
 	MDRV_MACHINE_RESET(sasuke)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE((11289000.0 / 16) / (45 * 32 * 8))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(sasuke)
 	MDRV_PALETTE_LENGTH(32)
 
 	MDRV_PALETTE_INIT(satansat)
 	MDRV_VIDEO_START(satansat)
 	MDRV_VIDEO_UPDATE(rockola)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1151,24 +1154,27 @@ static MACHINE_DRIVER_START( vanguard )
 	//MDRV_CPU_ADD_TAG("main", M6502, 11289000/8)   // 1.4 MHz
 	MDRV_CPU_ADD_TAG("main", M6502, 930000)		// adjusted
 	MDRV_CPU_PROGRAM_MAP(vanguard_map, 0)
-	MDRV_CPU_VBLANK_INT(rockola_interrupt, 2)
-
-	MDRV_SCREEN_REFRESH_RATE((11289000.0 / 16) / (45 * 32 * 8))
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(rockola_interrupt, 2)
 
 	MDRV_MACHINE_RESET(vanguard)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE((11289000.0 / 16) / (45 * 32 * 8))
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(vanguard)
 	MDRV_PALETTE_LENGTH(64)
 
 	MDRV_PALETTE_INIT(rockola)
 	MDRV_VIDEO_START(rockola)
 	MDRV_VIDEO_UPDATE(rockola)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1225,6 +1231,7 @@ static MACHINE_DRIVER_START( pballoon )
 	MDRV_MACHINE_RESET(pballoon)
 
 	// video hardware
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
 MACHINE_DRIVER_END
 

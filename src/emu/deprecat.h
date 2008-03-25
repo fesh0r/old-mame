@@ -34,17 +34,21 @@ extern running_machine *Machine;
 
 /*************************************
  *
- *  Video timing
+ *  Old way of allowing "VBLANK"
+ *  interrupts to fire more than once
+ *  a frame.
  *
- *  These functions are no longer considered
- *  to be the authority on scanline timing.
- *  Please use the video_screen_* functions
- *  in video.c for newer drivers.
+ *  These should be replaced with
+ *  scanline based interrupts as
+ *  it makes no sense to have more
+ *  than one VBLANK interrupt
+ *  per frame.
  *
  *************************************/
 
-/* Returns the number of the video frame we are currently playing */
-int cpu_getcurrentframe(void);
+#define MDRV_CPU_VBLANK_INT_HACK(_func, _rate) \
+	TOKEN_UINT32_PACK2(MCONFIG_TOKEN_CPU_VBLANK_INT_HACK, 8, _rate, 24), \
+	TOKEN_PTR(interrupt, _func),
 
 
 
@@ -60,9 +64,6 @@ int cpu_getcurrentframe(void);
    an interrupt handler, add 1 to the result, i.e. if it returns 0, it means
    that the interrupt handler will be called once. */
 int cpu_getiloops(void);
-
-/* Scales a given value by the ratio of fcount / fperiod */
-int cpu_scalebyfcount(int value);
 
 
 #endif	/* __DEPRECAT_H__ */

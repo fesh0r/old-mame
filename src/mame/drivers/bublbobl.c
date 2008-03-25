@@ -377,7 +377,7 @@ ADDRESS_MAP_END
 
 // The 68705 is from a bootleg, the original MCU is a 6801U4
 static ADDRESS_MAP_START( bootlegmcu_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(11) )
+	ADDRESS_MAP_GLOBAL_MASK(0x7ff)
 	AM_RANGE(0x000, 0x000) AM_READWRITE(bublbobl_68705_portA_r, bublbobl_68705_portA_w)
 	AM_RANGE(0x001, 0x001) AM_READWRITE(bublbobl_68705_portB_r, bublbobl_68705_portB_w)
 	AM_RANGE(0x002, 0x002) AM_READ(input_port_0_r)	// COIN
@@ -736,25 +736,27 @@ static MACHINE_DRIVER_START( tokio )
 	// basic machine hardware
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(tokio_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(tokio_slave_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/8)
 	/* audio CPU */	// 3 MHz
 	MDRV_CPU_PROGRAM_MAP(tokio_sound_map, 0) // NMIs are triggered by the main CPU, IRQs are triggered by the YM2203
 
-	MDRV_SCREEN_REFRESH_RATE(VSYNC)	// 59.185606 Hz
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(VBLANK)) 	// 2560 us
 	MDRV_INTERLEAVE(100) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(VSYNC)	// 59.185606 Hz
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(VBLANK)) 	// 2560 us
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(bublbobl)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -779,7 +781,7 @@ static MACHINE_DRIVER_START( bublbobl )
 
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/4)	// 6 MHz
 	MDRV_CPU_PROGRAM_MAP(slave_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, MAIN_XTAL/8)
 	/* audio CPU */	// 3 MHz
@@ -787,17 +789,19 @@ static MACHINE_DRIVER_START( bublbobl )
 
 	MDRV_CPU_ADD_TAG("mcu", M6801, 4000000)	// actually 6801U4  // xtal is 4MHz, divided by 4 internally
 	MDRV_CPU_PROGRAM_MAP(mcu_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_pulse, 1) // comes from the same clock that latches the INT pin on the second Z80
+	MDRV_CPU_VBLANK_INT("main", irq0_line_pulse) // comes from the same clock that latches the INT pin on the second Z80
 
-	MDRV_SCREEN_REFRESH_RATE(VSYNC)	// 59.185606 Hz
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(VBLANK)) 	// 2560 us
 	MDRV_INTERLEAVE(100) // 100 CPU slices per frame - a high value to ensure proper synchronization of the CPUs
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(VSYNC)	// 59.185606 Hz
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(VBLANK)) 	// 2560 us
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(bublbobl)
 	MDRV_PALETTE_LENGTH(256)
 
@@ -821,7 +825,7 @@ static MACHINE_DRIVER_START( boblbobl )
 	// basic machine hardware
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(bootleg_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)	// interrupt mode 1, unlike Bubble Bobble
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)	// interrupt mode 1, unlike Bubble Bobble
 
 	MDRV_CPU_REMOVE("mcu")
 MACHINE_DRIVER_END
@@ -833,7 +837,7 @@ static MACHINE_DRIVER_START( bub68705 )
 
 	MDRV_CPU_ADD_TAG("mcu", M68705, 4000000)	// xtal is 4MHz, divided by 4 internally
 	MDRV_CPU_PROGRAM_MAP(bootlegmcu_map, 0)
-	MDRV_CPU_VBLANK_INT(bublbobl_m68705_interrupt, 2) // ??? should come from the same clock which latches the INT pin on the second Z80
+	MDRV_CPU_VBLANK_INT_HACK(bublbobl_m68705_interrupt, 2) // ??? should come from the same clock which latches the INT pin on the second Z80
 MACHINE_DRIVER_END
 
 

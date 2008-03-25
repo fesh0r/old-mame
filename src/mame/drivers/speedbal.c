@@ -51,6 +51,7 @@ c1  ??
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/3812intf.h"
 
 
@@ -81,7 +82,7 @@ static ADDRESS_MAP_START( main_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( main_cpu_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
 	AM_RANGE(0x10, 0x10) AM_READ(input_port_1_r)
 	AM_RANGE(0x20, 0x20) AM_READ(input_port_2_r)
@@ -98,7 +99,7 @@ static ADDRESS_MAP_START( sound_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_cpu_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(YM3812_status_port_0_r, YM3812_control_port_0_w)
 	AM_RANGE(0x01, 0x01) AM_WRITE(YM3812_write_port_0_w)
 	AM_RANGE(0x40, 0x40) AM_WRITENOP
@@ -230,21 +231,21 @@ static MACHINE_DRIVER_START( speedbal )
 	MDRV_CPU_ADD(Z80, 4000000)	/* 4 MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(main_cpu_map,0)
 	MDRV_CPU_IO_MAP(main_cpu_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_CPU_ADD(Z80, 2660000)	/* 2.66 MHz ???  Maybe yes */
 	MDRV_CPU_PROGRAM_MAP(sound_cpu_map,0)
 	MDRV_CPU_IO_MAP(sound_cpu_io_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,8)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,8)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(speedbal)
 	MDRV_PALETTE_LENGTH(768)
 

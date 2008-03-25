@@ -30,7 +30,7 @@ UINT16 *galpani2_bg8_regs_0,    *galpani2_bg8_regs_1;
 UINT16 *galpani2_bg8_0_scrollx, *galpani2_bg8_1_scrollx;
 UINT16 *galpani2_bg8_0_scrolly, *galpani2_bg8_1_scrolly;
 
-static mame_bitmap *galpani2_bg8_bitmap_0, *galpani2_bg8_bitmap_1;
+static bitmap_t *galpani2_bg8_bitmap_0, *galpani2_bg8_bitmap_1;
 
 #define galpani2_BG8_REGS_R( _n_ ) \
 READ16_HANDLER( galpani2_bg8_regs_##_n_##_r ) \
@@ -65,7 +65,7 @@ WRITE16_HANDLER( galpani2_bg8_##_n_##_w ) \
 	pen	=	newword & 0xff; \
 	x	=	(offset % 512);	/* 512 x 256 */ \
 	y	=	(offset / 512); \
-	*BITMAP_ADDR16(galpani2_bg8_bitmap_##_n_, y, x) = Machine->pens[0x4000 + pen]; \
+	*BITMAP_ADDR16(galpani2_bg8_bitmap_##_n_, y, x) = 0x4000 + pen; \
 }
 
 #define galpani2_BG8_PALETTE_W( _n_ ) \
@@ -98,7 +98,7 @@ galpani2_BG8_PALETTE_W( 1 )
 
 UINT16 *galpani2_bg15;
 
-static mame_bitmap *galpani2_bg15_bitmap;
+static bitmap_t *galpani2_bg15_bitmap;
 
 /* 8 horizontal pages of 256x256 pixels? */
 WRITE16_HANDLER( galpani2_bg15_w )
@@ -108,7 +108,7 @@ WRITE16_HANDLER( galpani2_bg15_w )
 	int x = (offset % 256) + (offset / (256*256)) * 256 ;
 	int y = (offset / 256) % 256;
 
-	*BITMAP_ADDR16(galpani2_bg15_bitmap, y, x) = Machine->pens[0x4200 + (newword & 0x7fff)];
+	*BITMAP_ADDR16(galpani2_bg15_bitmap, y, x) = 0x4200 + (newword & 0x7fff);
 }
 
 
@@ -164,7 +164,7 @@ if (input_code_pressed(KEYCODE_Z))
 	if (msk != 0) layers_ctrl &= msk;	}
 #endif
 
-	fillbitmap(bitmap,machine->pens[0],cliprect);
+	fillbitmap(bitmap,0,cliprect);
 	fillbitmap(priority_bitmap,0,cliprect);
 
 	if (layers_ctrl & 0x1)
@@ -173,7 +173,7 @@ if (input_code_pressed(KEYCODE_Z))
 		int y = 0;
 		copyscrollbitmap_trans(bitmap, galpani2_bg15_bitmap,
 							   1, &x, 1, &y,
-							   cliprect,machine->pens[0x4200 + 0]);
+							   cliprect,0x4200 + 0);
 	}
 
 /*  test mode:
@@ -188,7 +188,7 @@ if (input_code_pressed(KEYCODE_Z))
 		int y = - ( *galpani2_bg8_0_scrolly + 0x200 - 0x1be );
 		copyscrollbitmap_trans(bitmap, galpani2_bg8_bitmap_0,
 							   1, &x, 1, &y,
-							   cliprect,machine->pens[0x4000 + 0]);
+							   cliprect,0x4000 + 0);
 	}
 
 	if (layers_ctrl & 0x4)
@@ -197,9 +197,9 @@ if (input_code_pressed(KEYCODE_Z))
 		int y = - ( *galpani2_bg8_1_scrolly + 0x200 - 0x1be );
 		copyscrollbitmap_trans(bitmap, galpani2_bg8_bitmap_1,
 							   1, &x, 1, &y,
-							   cliprect,machine->pens[0x4000 + 0]);
+							   cliprect,0x4000 + 0);
 	}
 
-	if (layers_ctrl & 0x8)	kaneko16_draw_sprites(machine, bitmap, cliprect);
+	if (layers_ctrl & 0x8)	kaneko16_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

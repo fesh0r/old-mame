@@ -89,8 +89,8 @@ static int jpeg_y=0;
 static int tmp_counter;
 static int clr_offset=0;
 
-static mame_bitmap *sliver_bitmap_fg;
-static mame_bitmap *sliver_bitmap_bg;
+static bitmap_t *sliver_bitmap_fg;
+static bitmap_t *sliver_bitmap_bg;
 
 static UINT16 tempbuf[8];
 
@@ -385,8 +385,8 @@ static WRITE16_HANDLER(io_data_w)
 
 static WRITE16_HANDLER(sound_w)
 {
-		soundlatch_w(0,data & 0xff);
-		cpunum_set_input_line(Machine, 1, I8051_INT0_LINE, HOLD_LINE);
+		soundlatch_w(machine,0,data & 0xff);
+		cpunum_set_input_line(machine, 1, I8051_INT0_LINE, HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( sliver_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -394,7 +394,7 @@ static ADDRESS_MAP_START( sliver_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(sliver_RAMDAC_offset_w)
 	AM_RANGE(0x100002, 0x100003) AM_WRITE(sliver_RAMDAC_color_w)
-	AM_RANGE(0x100004, 0x100005) AM_WRITE(MWA16_NOP)//RAMDAC
+	AM_RANGE(0x100004, 0x100005) AM_WRITE(SMH_NOP)//RAMDAC
 
 	AM_RANGE(0x300002, 0x300003) AM_NOP // bit 0 tested, writes 0xe0 and 0xc0 - both r and w at the end of interrupt code
 
@@ -441,8 +441,8 @@ ADDRESS_MAP_END
 
 static VIDEO_START(sliver)
 {
-	sliver_bitmap_bg = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
-	sliver_bitmap_fg = auto_bitmap_alloc(machine->screen[0].width,machine->screen[0].height,machine->screen[0].format);
+	sliver_bitmap_bg = video_screen_auto_bitmap_alloc(machine->primary_screen);
+	sliver_bitmap_fg = video_screen_auto_bitmap_alloc(machine->primary_screen);
 }
 
 static VIDEO_UPDATE(sliver)
@@ -533,19 +533,18 @@ static INTERRUPT_GEN( sliver_int )
 static MACHINE_DRIVER_START( sliver )
 	MDRV_CPU_ADD_TAG("main", M68000, 12000000)
 	MDRV_CPU_PROGRAM_MAP(sliver_map,0)
-	MDRV_CPU_VBLANK_INT(sliver_int,3)
+	MDRV_CPU_VBLANK_INT_HACK(sliver_int,3)
 
 	MDRV_CPU_ADD(I8051, 8000000)
 	MDRV_CPU_PROGRAM_MAP(soundmem_prg,0)
 	MDRV_CPU_DATA_MAP(soundmem_data,0)
 	MDRV_CPU_IO_MAP(soundmem_io,0)
 
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 384-1-16, 0*8, 240-1)
 

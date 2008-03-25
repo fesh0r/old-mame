@@ -409,17 +409,17 @@ static WRITE8_HANDLER( time_w )
 
 static READ8_HANDLER( psg_4015_r )
 {
-	return NESPSG_0_r(0x15);
+	return NESPSG_0_r(machine, 0x15);
 }
 
 static WRITE8_HANDLER( psg_4015_w )
 {
-	NESPSG_0_w(0x15, data);
+	NESPSG_0_w(machine, 0x15, data);
 }
 
 static WRITE8_HANDLER( psg_4017_w )
 {
-	NESPSG_0_w(0x17, data);
+	NESPSG_0_w(machine, 0x17, data);
 }
 
 /******************************************************************************/
@@ -435,7 +435,7 @@ static ADDRESS_MAP_START( bios_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bios_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(pc10_port_0_r, pc10_SDCS_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(input_port_1_r, pc10_CNTRLMASK_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(input_port_2_r, pc10_DISPMASK_w)
@@ -735,7 +735,7 @@ static MACHINE_DRIVER_START( playch10 )
 	MDRV_CPU_ADD(Z80, 8000000/2)	// 4 MHz
 	MDRV_CPU_PROGRAM_MAP(bios_map, 0)
 	MDRV_CPU_IO_MAP(bios_io_map, 0)
-	MDRV_CPU_VBLANK_INT(playch10_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("top", playch10_interrupt)
 
 	MDRV_CPU_ADD(N2A03, N2A03_DEFAULTCLOCK)
 	MDRV_CPU_PROGRAM_MAP(cart_map, 0)
@@ -743,18 +743,17 @@ static MACHINE_DRIVER_START( playch10 )
 	MDRV_MACHINE_RESET(pc10)
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_GFXDECODE(playch10)
 	MDRV_PALETTE_LENGTH(256+8*4*16)
 	MDRV_DEFAULT_LAYOUT(layout_dualhuov)
 
-	MDRV_SCREEN_ADD("top", 0x000)
+	MDRV_SCREEN_ADD("top", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(32*8, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*8, 30*8-1)
 
-	MDRV_SCREEN_ADD("bottom", 0x000)
+	MDRV_SCREEN_ADD("bottom", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_SIZE(32*8, 262)

@@ -221,12 +221,10 @@ static VIDEO_UPDATE( kinst )
 		/* loop over columns */
 		for (x = cliprect->min_x; x < cliprect->max_x; x += 2)
 		{
-			/* data is BGR; convert to RGB */
 			UINT32 data = *src++;
-			data = (data & 0x03e003e0) | ((data << 10) & 0x7c007c00) | ((data >> 10) & 0x001f001f);
 
 			/* store two pixels */
-			*dest++ = data & 0x7fff;
+			*dest++ = (data >>  0) & 0x7fff;
 			*dest++ = (data >> 16) & 0x7fff;
 		}
 	}
@@ -275,25 +273,25 @@ static const struct ide_interface ide_intf =
 
 static READ32_HANDLER( ide_controller_r )
 {
-	return midway_ide_asic_r(offset / 2, mem_mask);
+	return midway_ide_asic_r(machine, offset / 2, mem_mask);
 }
 
 
 static WRITE32_HANDLER( ide_controller_w )
 {
-	midway_ide_asic_w(offset / 2, data, mem_mask);
+	midway_ide_asic_w(machine, offset / 2, data, mem_mask);
 }
 
 
 static READ32_HANDLER( ide_controller_extra_r )
 {
-	return ide_controller32_0_r(0x3f6/4, 0xff00ffff) >> 16;
+	return ide_controller32_0_r(machine, 0x3f6/4, 0xff00ffff) >> 16;
 }
 
 
 static WRITE32_HANDLER( ide_controller_extra_w )
 {
-	ide_controller32_0_w(0x3f6/4, data << 16, 0xff00ffff);
+	ide_controller32_0_w(machine, 0x3f6/4, data << 16, 0xff00ffff);
 }
 
 
@@ -410,7 +408,7 @@ static READ32_HANDLER( kinst_speedup_r )
  *************************************/
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE(&rambase)
 	AM_RANGE(0x08000000, 0x087fffff) AM_RAM AM_BASE(&rambase2)
 	AM_RANGE(0x10000080, 0x100000ff) AM_READWRITE(kinst_control_r, kinst_control_w) AM_BASE(&kinst_control)
@@ -442,7 +440,7 @@ static INPUT_PORTS_START( kinst )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_COIN4 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SPECIAL )	/* door */
@@ -546,7 +544,7 @@ static INPUT_PORTS_START( kinst2 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_COIN1 )
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x1000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_COIN4 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SPECIAL )	/* door */
@@ -657,19 +655,22 @@ static MACHINE_DRIVER_START( kinst )
 	MDRV_CPU_ADD(R4600LE, MASTER_CLOCK*2)
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
-	MDRV_CPU_VBLANK_INT(irq0_start,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_start)
 
 	MDRV_MACHINE_START(kinst)
 	MDRV_MACHINE_RESET(kinst)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK )
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK )
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 240)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 239)
+
+	MDRV_PALETTE_INIT(BBBBB_GGGGG_RRRRR)
 	MDRV_PALETTE_LENGTH(32768)
 
 	MDRV_VIDEO_UPDATE(kinst)

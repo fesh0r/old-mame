@@ -17,7 +17,7 @@ UINT16 *tecmo16_colorram2;
 UINT16 *tecmo16_charram;
 
 static tilemap *fg_tilemap,*bg_tilemap,*tx_tilemap;
-static mame_bitmap *sprite_bitmap, *tile_bitmap_bg, *tile_bitmap_fg;
+static bitmap_t *sprite_bitmap, *tile_bitmap_bg, *tile_bitmap_fg;
 
 static int flipscreen, game_is_riot;
 
@@ -64,16 +64,19 @@ static TILE_GET_INFO( tx_get_tile_info )
 
 VIDEO_START( fstarfrc )
 {
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
+
 	/* set up tile layers */
-	tile_bitmap_bg = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
-	tile_bitmap_fg = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	tile_bitmap_bg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
+	tile_bitmap_fg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
 	/* set up sprites */
-	sprite_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	sprite_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,32,32);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,16,16,32,32);
+	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,16,16,32,32);
+	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
@@ -86,16 +89,19 @@ VIDEO_START( fstarfrc )
 
 VIDEO_START( ginkun )
 {
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
+
 	/* set up tile layers */
-	tile_bitmap_bg = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
-	tile_bitmap_fg = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	tile_bitmap_bg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
+	tile_bitmap_fg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
 	/* set up sprites */
-	sprite_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	sprite_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
@@ -106,16 +112,19 @@ VIDEO_START( ginkun )
 
 VIDEO_START( riot )
 {
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
+
 	/* set up tile layers */
-	tile_bitmap_bg = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
-	tile_bitmap_fg = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	tile_bitmap_bg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
+	tile_bitmap_fg = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
 	/* set up sprites */
-	sprite_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	sprite_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 
-	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
-	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,32);
-	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,64,32);
+	fg_tilemap = tilemap_create(fg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	bg_tilemap = tilemap_create(bg_get_tile_info,tilemap_scan_rows,16,16,64,32);
+	tx_tilemap = tilemap_create(tx_get_tile_info,tilemap_scan_rows, 8, 8,64,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_transparent_pen(bg_tilemap,0);
@@ -212,7 +221,7 @@ WRITE16_HANDLER( tecmo16_scroll_char_y_w )
 
 /* mix & blend the paletted 16-bit tile and sprite bitmaps into an RGB 32-bit bitmap */
 static void blendbitmaps(running_machine *machine,
-		mame_bitmap *dest,mame_bitmap *src1,mame_bitmap *src2,mame_bitmap *src3,
+		bitmap_t *dest,bitmap_t *src1,bitmap_t *src2,bitmap_t *src3,
 		int sx,int sy,const rectangle *clip)
 {
 	int ox;
@@ -320,7 +329,7 @@ static void blendbitmaps(running_machine *machine,
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap_bg, mame_bitmap *bitmap_fg, mame_bitmap *bitmap_sp, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap_bg, bitmap_t *bitmap_fg, bitmap_t *bitmap_sp, const rectangle *cliprect)
 {
 	int offs;
 	static const UINT8 layout[8][8] =
@@ -335,7 +344,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap_bg, mame_
 		{42,43,46,47,58,59,62,63}
 	};
 
-	mame_bitmap *bitmap = bitmap_bg;
+	bitmap_t *bitmap = bitmap_bg;
 
 	for (offs = spriteram_size/2 - 8;offs >= 0;offs -= 8)
 	{
@@ -499,9 +508,9 @@ VIDEO_UPDATE( tecmo16 )
 	tilemap_draw(tile_bitmap_fg, cliprect,tx_tilemap, 0, 4);
 
 	/* draw sprites into a 16-bit bitmap */
-	draw_sprites(machine, tile_bitmap_bg, tile_bitmap_fg, sprite_bitmap, cliprect);
+	draw_sprites(screen->machine, tile_bitmap_bg, tile_bitmap_fg, sprite_bitmap, cliprect);
 
 	/* mix & blend the tilemaps and sprites into a 32-bit bitmap */
-	blendbitmaps(machine, bitmap, tile_bitmap_bg, tile_bitmap_fg, sprite_bitmap, 0, 0, cliprect);
+	blendbitmaps(screen->machine, bitmap, tile_bitmap_bg, tile_bitmap_fg, sprite_bitmap, 0, 0, cliprect);
 	return 0;
 }

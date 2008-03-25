@@ -81,7 +81,7 @@ struct _z80ctc
 	attotime period16;			/* 16/system clock */
 	attotime period256;		/* 256/system clock */
 	void (*intr)(int which);	/* interrupt callback */
-	write8_handler zc[4];		/* zero crossing callbacks */
+	write8_machine_func zc[4];		/* zero crossing callbacks */
 	UINT8 notimer;				/* no timer masks */
 	UINT16 mode[4];				/* current mode */
 	UINT16 tconst[4];			/* time constant */
@@ -132,8 +132,8 @@ static TIMER_CALLBACK( timercallback )
 	/* generate the clock pulse */
 	if (ctc->zc[ch])
 	{
-		(*ctc->zc[ch])(0,1);
-		(*ctc->zc[ch])(0,0);
+		(*ctc->zc[ch])(machine,0,1);
+		(*ctc->zc[ch])(machine,0,0);
 	}
 
 	/* reset the down counter */
@@ -188,7 +188,7 @@ void z80ctc_reset(int which)
 	{
 		ctc->mode[i] = RESET_ACTIVE;
 		ctc->tconst[i] = 0x100;
-		timer_adjust(ctc->timer[i], attotime_never, 0, attotime_never);
+		timer_adjust_oneshot(ctc->timer[i], attotime_never, 0);
 		ctc->int_state[i] = 0;
 	}
 	interrupt_check(which);
@@ -256,10 +256,10 @@ void z80ctc_w(int which, int ch, UINT8 data)
 					attotime period = ((mode & PRESCALER) == PRESCALER_16) ? ctc->period16 : ctc->period256;
 					period = attotime_mul(period, ctc->tconst[ch]);
 
-					timer_adjust(ctc->timer[ch], period, (which << 2) + ch, period);
+					timer_adjust_periodic(ctc->timer[ch], period, (which << 2) + ch, period);
 				}
 				else
-					timer_adjust(ctc->timer[ch], attotime_never, 0, attotime_never);
+					timer_adjust_oneshot(ctc->timer[ch], attotime_never, 0);
 			}
 
 			/* else set the bit indicating that we're waiting for the appropriate trigger */
@@ -298,7 +298,7 @@ void z80ctc_w(int which, int ch, UINT8 data)
 		/* if we're being reset, clear out any pending timers for this channel */
 		if ((data & RESET) == RESET_ACTIVE)
 		{
-			timer_adjust(ctc->timer[ch], attotime_never, 0, attotime_zero);
+			timer_adjust_oneshot(ctc->timer[ch], attotime_never, 0);
 			/* note that we don't clear the interrupt state here! */
 		}
 
@@ -371,13 +371,13 @@ void z80ctc_trg_w(int which, int ch, UINT8 data)
 					period = attotime_mul(period, ctc->tconst[ch]);
 
 					VPRINTF(("CTC period %s\n", attotime_string(period, 9)));
-					timer_adjust(ctc->timer[ch], period, (which << 2) + ch, period);
+					timer_adjust_periodic(ctc->timer[ch], period, (which << 2) + ch, period);
 				}
 				else
 				{
 					VPRINTF(("CTC disabled\n"));
 
-					timer_adjust(ctc->timer[ch], attotime_never, 0, attotime_never);
+					timer_adjust_oneshot(ctc->timer[ch], attotime_never, 0);
 				}
 			}
 

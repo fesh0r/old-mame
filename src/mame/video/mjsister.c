@@ -8,7 +8,6 @@ Video hardware
 *****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 int mjsister_screen_redraw;
 int mjsister_flip_screen;
@@ -17,15 +16,15 @@ int mjsister_video_enable;
 int mjsister_vrambank;
 int mjsister_colorbank;
 
-static mame_bitmap *mjsister_tmpbitmap0, *mjsister_tmpbitmap1;
+static bitmap_t *mjsister_tmpbitmap0, *mjsister_tmpbitmap1;
 static UINT8 *mjsister_videoram0, *mjsister_videoram1;
 
 /****************************************************************************/
 
 VIDEO_START( mjsister )
 {
-	mjsister_tmpbitmap0 = auto_bitmap_alloc(256,256,machine->screen[0].format);
-	mjsister_tmpbitmap1 = auto_bitmap_alloc(256,256,machine->screen[0].format);
+	mjsister_tmpbitmap0 = auto_bitmap_alloc(256,256,video_screen_get_format(machine->primary_screen));
+	mjsister_tmpbitmap1 = auto_bitmap_alloc(256,256,video_screen_get_format(machine->primary_screen));
 	mjsister_videoram0 = auto_malloc(0x8000);
 	mjsister_videoram1 = auto_malloc(0x8000);
 }
@@ -40,8 +39,8 @@ static void mjsister_plot0(int offset,UINT8 data)
 	c1 = (data & 0x0f)        + mjsister_colorbank * 0x20;
 	c2 = ((data & 0xf0) >> 4) + mjsister_colorbank * 0x20;
 
-	*BITMAP_ADDR16(mjsister_tmpbitmap0, y, x*2+0) = Machine->pens[c1];
-	*BITMAP_ADDR16(mjsister_tmpbitmap0, y, x*2+1) = Machine->pens[c2];
+	*BITMAP_ADDR16(mjsister_tmpbitmap0, y, x*2+0) = c1;
+	*BITMAP_ADDR16(mjsister_tmpbitmap0, y, x*2+1) = c2;
 }
 
 static void mjsister_plot1(int offset,UINT8 data)
@@ -59,8 +58,8 @@ static void mjsister_plot1(int offset,UINT8 data)
 	if (c2)
 		c2 += mjsister_colorbank * 0x20 + 0x10;
 
-	*BITMAP_ADDR16(mjsister_tmpbitmap1, y, x*2+0) = Machine->pens[c1];
-	*BITMAP_ADDR16(mjsister_tmpbitmap1, y, x*2+1) = Machine->pens[c2];
+	*BITMAP_ADDR16(mjsister_tmpbitmap1, y, x*2+0) = c1;
+	*BITMAP_ADDR16(mjsister_tmpbitmap1, y, x*2+1) = c2;
 }
 
 WRITE8_HANDLER( mjsister_videoram_w )
@@ -98,15 +97,13 @@ VIDEO_UPDATE( mjsister )
 	if (mjsister_video_enable)
 	{
 		for (i=0; i<256; i++)
-		{
 			for (j=0; j<4; j++)
-				*BITMAP_ADDR16(bitmap, i, 256+j) = machine->pens[mjsister_colorbank * 0x20];
-		}
+				*BITMAP_ADDR16(bitmap, i, 256+j) = mjsister_colorbank * 0x20;
 
 		copybitmap      (bitmap,mjsister_tmpbitmap0,f,f,0,0,cliprect);
 		copybitmap_trans(bitmap,mjsister_tmpbitmap1,f,f,2,0,cliprect,0);
 	}
 	else
-		fillbitmap(bitmap, get_black_pen(machine), &machine->screen[0].visarea);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	return 0;
 }

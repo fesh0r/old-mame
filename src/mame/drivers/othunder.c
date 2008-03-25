@@ -385,7 +385,7 @@ if (data & 4)
 				break;
 
 			default:
-				TC0220IOC_w(offset,data & 0xff);
+				TC0220IOC_w(machine,offset,data & 0xff);
 		}
 	}
 }
@@ -403,7 +403,7 @@ static READ16_HANDLER( othunder_TC0220IOC_r )
 			return eeprom_r();
 
 		default:
-			return TC0220IOC_r( offset );
+			return TC0220IOC_r( machine, offset );
 	}
 }
 
@@ -457,15 +457,15 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 static WRITE16_HANDLER( othunder_sound_w )
 {
 	if (offset == 0)
-		taitosound_port_w (0, data & 0xff);
+		taitosound_port_w (machine, 0, data & 0xff);
 	else if (offset == 1)
-		taitosound_comm_w (0, data & 0xff);
+		taitosound_comm_w (machine, 0, data & 0xff);
 }
 
 static READ16_HANDLER( othunder_sound_r )
 {
 	if (offset == 1)
-		return ((taitosound_comm_r (0) & 0xff));
+		return ((taitosound_comm_r (machine, 0) & 0xff));
 	else return 0;
 }
 
@@ -508,7 +508,7 @@ static ADDRESS_MAP_START( othunder_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080000, 0x08ffff) AM_RAM
 	AM_RANGE(0x090000, 0x09000f) AM_READWRITE(othunder_TC0220IOC_r, othunder_TC0220IOC_w)
 //  AM_RANGE(0x090006, 0x090007) AM_WRITE(eeprom_w)
-//  AM_RANGE(0x09000c, 0x09000d) AM_WRITE(MWA16_NOP)   /* ?? (keeps writing 0x77) */
+//  AM_RANGE(0x09000c, 0x09000d) AM_WRITE(SMH_NOP)   /* ?? (keeps writing 0x77) */
 	AM_RANGE(0x100000, 0x100007) AM_READWRITE(TC0110PCR_word_r, TC0110PCR_step1_rbswap_word_w)	/* palette */
 	AM_RANGE(0x200000, 0x20ffff) AM_READWRITE(TC0100SCN_word_0_r, TC0100SCN_word_0_w)	/* tilemaps */
 	AM_RANGE(0x220000, 0x22000f) AM_READWRITE(TC0100SCN_ctrl_word_0_r, TC0100SCN_ctrl_word_0_w)
@@ -529,13 +529,13 @@ static ADDRESS_MAP_START( z80_sound_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe001, 0xe001) AM_READWRITE(YM2610_read_port_0_r, YM2610_data_port_0_A_w)
 	AM_RANGE(0xe002, 0xe002) AM_READWRITE(YM2610_status_port_0_B_r, YM2610_control_port_0_B_w)
 	AM_RANGE(0xe003, 0xe003) AM_WRITE(YM2610_data_port_0_B_w)
-	AM_RANGE(0xe200, 0xe200) AM_READWRITE(MRA8_NOP, taitosound_slave_port_w)
+	AM_RANGE(0xe200, 0xe200) AM_READWRITE(SMH_NOP, taitosound_slave_port_w)
 	AM_RANGE(0xe201, 0xe201) AM_READWRITE(taitosound_slave_comm_r, taitosound_slave_comm_w)
 	AM_RANGE(0xe400, 0xe403) AM_WRITE(othunder_TC0310FAM_w) /* pan */
-	AM_RANGE(0xe600, 0xe600) AM_WRITE(MWA8_NOP) /* ? */
+	AM_RANGE(0xe600, 0xe600) AM_WRITE(SMH_NOP) /* ? */
 	AM_RANGE(0xea00, 0xea00) AM_READ(input_port_9_r)	/* rotary input */
-	AM_RANGE(0xee00, 0xee00) AM_WRITE(MWA8_NOP) /* ? */
-	AM_RANGE(0xf000, 0xf000) AM_WRITE(MWA8_NOP) /* ? */
+	AM_RANGE(0xee00, 0xee00) AM_WRITE(SMH_NOP) /* ? */
+	AM_RANGE(0xf000, 0xf000) AM_WRITE(SMH_NOP) /* ? */
 	AM_RANGE(0xf200, 0xf200) AM_WRITE(sound_bankswitch_w)
 ADDRESS_MAP_END
 
@@ -704,24 +704,24 @@ static MACHINE_DRIVER_START( othunder )
 //  MDRV_CPU_ADD(M68000, 24000000/2 )   /* 12 MHz */
 	MDRV_CPU_ADD(M68000, 13000000 )	/* fixes garbage graphics on startup */
 	MDRV_CPU_PROGRAM_MAP(othunder_map,0)
-	MDRV_CPU_VBLANK_INT(vblank_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", vblank_interrupt)
 
 	MDRV_CPU_ADD(Z80,16000000/4 )	/* 4 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(z80_sound_map,0)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 
 	MDRV_NVRAM_HANDLER(othunder)
 	MDRV_MACHINE_START(othunder)
 	MDRV_MACHINE_RESET(othunder)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 2*8, 32*8-1)
+
 	MDRV_GFXDECODE(othunder)
 	MDRV_PALETTE_LENGTH(4096)
 

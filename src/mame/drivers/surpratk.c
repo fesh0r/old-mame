@@ -39,7 +39,7 @@ static READ8_HANDLER( bankedram_r )
 			return paletteram[offset];
 	}
 	else if (videobank & 0x01)
-		return K053245_r(offset);
+		return K053245_r(machine,offset);
 	else
 		return ram[offset];
 }
@@ -49,12 +49,12 @@ static WRITE8_HANDLER( bankedram_w )
 	if (videobank & 0x02)
 	{
 		if (videobank & 0x04)
-			paletteram_xBBBBBGGGGGRRRRR_be_w(offset + 0x0800,data);
+			paletteram_xBBBBBGGGGGRRRRR_be_w(machine,offset + 0x0800,data);
 		else
-			paletteram_xBBBBBGGGGGRRRRR_be_w(offset,data);
+			paletteram_xBBBBBGGGGGRRRRR_be_w(machine,offset,data);
 	}
 	else if (videobank & 0x01)
-		K053245_w(offset,data);
+		K053245_w(machine,offset,data);
 	else
 		ram[offset] = data;
 }
@@ -87,8 +87,8 @@ static WRITE8_HANDLER( surpratk_5fc0_w )
 
 static ADDRESS_MAP_START( surpratk_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(bankedram_r)
-	AM_RANGE(0x0800, 0x1fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_BANK1)			/* banked ROM */
+	AM_RANGE(0x0800, 0x1fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_BANK1)			/* banked ROM */
 	AM_RANGE(0x5f8c, 0x5f8c) AM_READ(input_port_0_r)
 	AM_RANGE(0x5f8d, 0x5f8d) AM_READ(input_port_1_r)
 	AM_RANGE(0x5f8e, 0x5f8e) AM_READ(input_port_4_r)
@@ -98,13 +98,13 @@ static ADDRESS_MAP_START( surpratk_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5fa0, 0x5faf) AM_READ(K053244_r)
 	AM_RANGE(0x5fc0, 0x5fc0) AM_READ(watchdog_reset_r)
 	AM_RANGE(0x4000, 0x7fff) AM_READ(K052109_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)			/* ROM */
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)			/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( surpratk_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(bankedram_w) AM_BASE(&ram)
-	AM_RANGE(0x0800, 0x1fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_ROM)					/* banked ROM */
+	AM_RANGE(0x0800, 0x1fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_ROM)					/* banked ROM */
 	AM_RANGE(0x5fa0, 0x5faf) AM_WRITE(K053244_w)
 	AM_RANGE(0x5fb0, 0x5fbf) AM_WRITE(K053251_w)
 	AM_RANGE(0x5fc0, 0x5fc0) AM_WRITE(surpratk_5fc0_w)
@@ -112,7 +112,7 @@ static ADDRESS_MAP_START( surpratk_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5fd1, 0x5fd1) AM_WRITE(YM2151_data_port_0_w)
 	AM_RANGE(0x5fc4, 0x5fc4) AM_WRITE(surpratk_videobank_w)
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE(K052109_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)					/* ROM */
+	AM_RANGE(0x8000, 0xffff) AM_WRITE(SMH_ROM)					/* ROM */
 ADDRESS_MAP_END
 
 
@@ -239,18 +239,20 @@ static MACHINE_DRIVER_START( surpratk )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(KONAMI, 3000000)	/* 053248 */
 	MDRV_CPU_PROGRAM_MAP(surpratk_readmem,surpratk_writemem)
-	MDRV_CPU_VBLANK_INT(surpratk_interrupt,1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", surpratk_interrupt)
 
 	MDRV_MACHINE_RESET(surpratk)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
+
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(surpratk)

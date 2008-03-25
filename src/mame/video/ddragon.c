@@ -105,8 +105,8 @@ static TILE_GET_INFO( get_fg_16color_tile_info )
 
 VIDEO_START( ddragon )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,  TILEMAP_TYPE_PEN,     16,16,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,  16,16,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows, 8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_scrolldx(fg_tilemap, 0, 384 - 256);
@@ -120,8 +120,8 @@ VIDEO_START( ddragon )
 
 VIDEO_START( chinagat )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,  TILEMAP_TYPE_PEN,     16,16,32,32);
-	fg_tilemap = tilemap_create(get_fg_16color_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN, 8, 8,32,32);
+	bg_tilemap = tilemap_create(get_bg_tile_info,background_scan,16,16,32,32);
+	fg_tilemap = tilemap_create(get_fg_16color_tile_info,tilemap_scan_rows,8, 8,32,32);
 
 	tilemap_set_transparent_pen(fg_tilemap,0);
 	tilemap_set_scrolldy(fg_tilemap, -8, -8);
@@ -161,7 +161,7 @@ WRITE8_HANDLER( ddragon_fgvideoram_w )
 					(which+order),color,flipx,flipy,sx,sy, \
 					cliprect,TRANSPARENCY_PEN,0);
 
-static void draw_sprites(running_machine* machine, mame_bitmap *bitmap,const rectangle *cliprect)
+static void draw_sprites(running_machine* machine, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	const gfx_element *gfx = machine->gfx[1];
 
@@ -203,7 +203,7 @@ static void draw_sprites(running_machine* machine, mame_bitmap *bitmap,const rec
 				which = src[i+3] + ( ( src[i+2] & 0x0f ) << 8 );
 			}
 
-			if (flip_screen)
+			if (flip_screen_get())
 			{
 				sx = 240 - sx;
 				sy = 256 - sy;
@@ -253,7 +253,7 @@ VIDEO_UPDATE( ddragon )
 	tilemap_set_scrolly(bg_tilemap,0,scrolly);
 
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	draw_sprites(machine, bitmap,cliprect);
+	draw_sprites(screen->machine, bitmap,cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0,0);
 	return 0;
 }

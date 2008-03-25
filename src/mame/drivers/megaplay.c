@@ -126,7 +126,7 @@ static UINT32 readpos = 1;  // serial bank selection position (9-bit)
     PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6400 bit 4") PORT_CODE(KEYCODE_T) \
     PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6400 bit 5") PORT_CODE(KEYCODE_Y) \
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN ) PORT_NAME("0x6400 bit 6") PORT_CODE(KEYCODE_U) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 
 #define MEGAPLAY_COIN \
 	PORT_START \
@@ -184,7 +184,6 @@ static INPUT_PORTS_START ( megaplay )
 	MEGAPLAY_COIN
 	MEGAPLAY_DSWA
 	MEGAPLAY_DSWB
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_sonic )
@@ -201,7 +200,6 @@ static INPUT_PORTS_START ( mp_sonic )
     PORT_DIPSETTING( 0x01, "3" )
     PORT_DIPSETTING( 0x02, "2" )
     PORT_DIPSETTING( 0x03, "1" )
-
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW3:3,4")
     PORT_DIPSETTING( 0x00, DEF_STR( Hardest ) )
     PORT_DIPSETTING( 0x04, DEF_STR( Hard ) )
@@ -212,7 +210,6 @@ static INPUT_PORTS_START ( mp_sonic )
 //  PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 5") PORT_CODE(KEYCODE_H)
 //  PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 6") PORT_CODE(KEYCODE_J)
 //  PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 7") PORT_CODE(KEYCODE_K)
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_gaxe2 )
@@ -227,27 +224,23 @@ static INPUT_PORTS_START ( mp_gaxe2 )
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, DEF_STR( Normal ) )
     PORT_DIPSETTING( 0x00, DEF_STR( Hard ) )
-
 	PORT_DIPNAME( 0x02, 0x00, "Life" ) PORT_DIPLOCATION("SW3:2")
     PORT_DIPSETTING( 0x02, "1" )
     PORT_DIPSETTING( 0x00, "2" )
-
 	PORT_DIPNAME( 0x04, 0x04, "Initial Players" ) PORT_DIPLOCATION("SW3:3")
     PORT_DIPSETTING( 0x00, "1" )
     PORT_DIPSETTING( 0x04, "2" )
-
 	PORT_DIPNAME( 0x08, 0x00, "Timer" ) PORT_DIPLOCATION("SW3:4")
     PORT_DIPSETTING( 0x08, DEF_STR( Off )  )
     PORT_DIPSETTING( 0x00, DEF_STR( On ) )
-
     // Who knows...
 //  PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 4") PORT_CODE(KEYCODE_G)
 //  PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 5") PORT_CODE(KEYCODE_H)
 //  PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 6") PORT_CODE(KEYCODE_J)
 //  PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 7") PORT_CODE(KEYCODE_K)
-
 INPUT_PORTS_END
 
+#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START ( mp_col3 )
 	GENESIS_PORTS
 	MEGAPLAY_TEST
@@ -260,24 +253,21 @@ static INPUT_PORTS_START ( mp_col3 )
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Language ) ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, DEF_STR( English ) )
     PORT_DIPSETTING( 0x00, DEF_STR( Japanese ) )
-
 	PORT_DIPNAME( 0x02, 0x02, "2P Mode Games" ) PORT_DIPLOCATION("SW3:2")
     PORT_DIPSETTING( 0x02, "1" )
     PORT_DIPSETTING( 0x00, "3" )
-
 	PORT_DIPNAME( 0x0c, 0x0c, "Speed / Difficulty" ) PORT_DIPLOCATION("SW3:3,4")
     PORT_DIPSETTING( 0x08, "Slow"  )
     PORT_DIPSETTING( 0x0c, "Middle"  )
     PORT_DIPSETTING( 0x04, "Fast"  )
     PORT_DIPSETTING( 0x00, "Max"  )
-
     // Who knows...
 //  PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 4") PORT_CODE(KEYCODE_G)
 //  PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 5") PORT_CODE(KEYCODE_H)
 //  PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 6") PORT_CODE(KEYCODE_J)
 //  PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN ) PORT_NAME("0x6201 bit 7") PORT_CODE(KEYCODE_K)
-
 INPUT_PORTS_END
+#endif
 
 static INPUT_PORTS_START ( mp_twc )
 	GENESIS_PORTS
@@ -291,7 +281,6 @@ static INPUT_PORTS_START ( mp_twc )
 	PORT_DIPNAME( 0x01, 0x01, "Time" ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, DEF_STR( Normal ) )
     PORT_DIPSETTING( 0x00, "Short" )
-
 	PORT_DIPNAME( 0x0e, 0x08, "Level" ) PORT_DIPLOCATION("SW3:2,3,4")
     PORT_DIPSETTING( 0x00, "0" )
     PORT_DIPSETTING( 0x02, "0" )
@@ -301,7 +290,6 @@ static INPUT_PORTS_START ( mp_twc )
     PORT_DIPSETTING( 0x0a, "2" )
     PORT_DIPSETTING( 0x0c, "1" )
     PORT_DIPSETTING( 0x0e, "0" )
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_sor2 )
@@ -318,13 +306,11 @@ static INPUT_PORTS_START ( mp_sor2 )
     PORT_DIPSETTING( 0x01, "3" )
     PORT_DIPSETTING( 0x02, "2" )
     PORT_DIPSETTING( 0x03, "1" )
-
 	PORT_DIPNAME( 0xc, 0x0c, DEF_STR ( Difficulty ) ) PORT_DIPLOCATION("SW3:3,4")
     PORT_DIPSETTING( 0x00, DEF_STR ( Hardest ) )
     PORT_DIPSETTING( 0x04, DEF_STR ( Hard ) )
     PORT_DIPSETTING( 0x08, DEF_STR ( Easy ) )
     PORT_DIPSETTING( 0x0c, DEF_STR ( Normal ) )
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_bio )
@@ -341,13 +327,11 @@ static INPUT_PORTS_START ( mp_bio )
     PORT_DIPSETTING( 0x01, "4" )
     PORT_DIPSETTING( 0x02, "2" )
     PORT_DIPSETTING( 0x03, "3" )
-
 	PORT_DIPNAME( 0xc, 0x0c, DEF_STR ( Difficulty ) ) PORT_DIPLOCATION("SW3:3,4")
     PORT_DIPSETTING( 0x00, DEF_STR ( Hardest ) )
     PORT_DIPSETTING( 0x04, DEF_STR ( Hard ) )
     PORT_DIPSETTING( 0x08, DEF_STR ( Easy ) )
     PORT_DIPSETTING( 0x0c, DEF_STR ( Normal ) )
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_gslam )
@@ -368,12 +352,9 @@ static INPUT_PORTS_START ( mp_gslam )
     PORT_DIPSETTING( 0x05, "2:30" )
     PORT_DIPSETTING( 0x06, "2:00" )
     PORT_DIPSETTING( 0x07, "1:30" )
-
-
 	PORT_DIPNAME( 0x08, 0x08, "2P-Play Continue" ) PORT_DIPLOCATION("SW3:4")
     PORT_DIPSETTING( 0x00, "1 Credit" )
     PORT_DIPSETTING( 0x08, "2 Credits" )
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_mazin )
@@ -388,19 +369,15 @@ static INPUT_PORTS_START ( mp_mazin )
 	PORT_DIPNAME( 0x01, 0x01, "Initial Player" ) PORT_DIPLOCATION("SW3:1")
     PORT_DIPSETTING( 0x01, "2" )
     PORT_DIPSETTING( 0x00, "1" )
-
 	PORT_DIPNAME( 0x02, 0x02, "Initial Player" ) PORT_DIPLOCATION("SW3:2")
     PORT_DIPSETTING( 0x02, "1" )
     PORT_DIPSETTING( 0x00, "4" )
-
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR ( Difficulty ) ) PORT_DIPLOCATION("SW3:3")
     PORT_DIPSETTING( 0x04, DEF_STR ( Hard ) )
     PORT_DIPSETTING( 0x00, DEF_STR ( Normal ) )
-
 	PORT_DIPNAME( 0x08, 0x08, "Title" ) PORT_DIPLOCATION("SW3:4")
     PORT_DIPSETTING( 0x08, "EUROPE" )
     PORT_DIPSETTING( 0x00, "U.S.A" )
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START ( mp_soni2 )
@@ -417,13 +394,11 @@ static INPUT_PORTS_START ( mp_soni2 )
     PORT_DIPSETTING( 0x01, "3" )
     PORT_DIPSETTING( 0x02, "2" )
     PORT_DIPSETTING( 0x03, "1" )
-
 	PORT_DIPNAME( 0x0c, 0x0c, "Initial Players (Dual mode)" ) PORT_DIPLOCATION("SW3:3,4")
     PORT_DIPSETTING( 0x00, "4" )
     PORT_DIPSETTING( 0x04, "2" )
     PORT_DIPSETTING( 0x08, "1" )
     PORT_DIPSETTING( 0x0c, "3" )
-
 INPUT_PORTS_END
 
 /*MEGAPLAY specific*/
@@ -465,7 +440,7 @@ static READ8_HANDLER( bank_r )
 	UINT8* game = memory_region(REGION_CPU1);
 
 	if(game_banksel == 0x142) // Genesis I/O
-		return megaplay_genesis_io_r((offset & 0x1f) / 2, 0xffff);
+		return megaplay_genesis_io_r(machine, (offset & 0x1f) / 2, 0xffff);
 
 	if(bios_mode & MP_ROM)
 	{
@@ -498,7 +473,7 @@ static READ8_HANDLER( bank_r )
 static WRITE8_HANDLER ( bank_w )
 {
 	if(game_banksel == 0x142) // Genesis I/O
-		genesis_io_w((offset & 0x1f) / 2, data, 0xffff);
+		genesis_io_w(machine, (offset & 0x1f) / 2, data, 0xffff);
 
 	if(offset <= 0x1fff && (bios_width & 0x08))
 		ic37_ram[(0x2000 * (bios_bank & 0x03)) + offset] = data;
@@ -586,9 +561,9 @@ static WRITE8_HANDLER( megaplay_game_w )
 }
 
 static ADDRESS_MAP_START( megaplay_bios_readmem, ADDRESS_SPACE_PROGRAM, 8 )
- 	AM_RANGE(0x0000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x4000, 0x4fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x5000, 0x5fff) AM_READ(MRA8_RAM)
+ 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0x4000, 0x4fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x5000, 0x5fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x6200, 0x6200) AM_READ(input_port_7_r)
 	AM_RANGE(0x6201, 0x6201) AM_READ(input_port_8_r)
 	AM_RANGE(0x6400, 0x6400) AM_READ(input_port_5_r)
@@ -599,14 +574,14 @@ static ADDRESS_MAP_START( megaplay_bios_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6403, 0x6403) AM_READ(megaplay_bios_gamesel_r)
 	AM_RANGE(0x6404, 0x6404) AM_READ(megaplay_bios_6404_r)
 	AM_RANGE(0x6600, 0x6600) AM_READ(megaplay_bios_6600_r)
-	AM_RANGE(0x6800, 0x77ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x6800, 0x77ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x8000, 0xffff) AM_READ(bank_r)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( megaplay_bios_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x4000, 0x4fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x5000, 0x5fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x4000, 0x4fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x5000, 0x5fff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(megaplay_game_w)
 	AM_RANGE(0x6203, 0x6203) AM_WRITE(megaplay_bios_banksel_w)
 	AM_RANGE(0x6204, 0x6204) AM_WRITE(megaplay_bios_width_w)
@@ -614,8 +589,8 @@ static ADDRESS_MAP_START( megaplay_bios_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6403, 0x6403) AM_WRITE(megaplay_bios_gamesel_w)
 	AM_RANGE(0x6404, 0x6404) AM_WRITE(megaplay_bios_6404_w)
 	AM_RANGE(0x6600, 0x6600) AM_WRITE(megaplay_bios_6600_w)
-	AM_RANGE(0x6001, 0x67ff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x6800, 0x77ff) AM_WRITE(MWA8_RAM) AM_BASE(&ic3_ram)
+	AM_RANGE(0x6001, 0x67ff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x6800, 0x77ff) AM_WRITE(SMH_RAM) AM_BASE(&ic3_ram)
 	AM_RANGE(0x8000, 0xffff) AM_WRITE(bank_w)
 ADDRESS_MAP_END
 
@@ -651,14 +626,14 @@ static WRITE8_HANDLER (megaplay_bios_port_be_bf_w)
 }
 
 static ADDRESS_MAP_START( megaplay_bios_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0xdc, 0xdc) AM_READ(megatech_bios_port_dc_r)  // player inputs
 //  AM_RANGE(0xdd, 0xdd) AM_READ(megatech_bios_port_dd_r)  // other player 2 inputs
 	AM_RANGE(0xbe, 0xbf) AM_READ(megaplay_bios_port_be_bf_r)			/* VDP */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( megaplay_bios_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 //  AM_RANGE(0x3f, 0x3f) AM_WRITE(megatech_bios_port_ctrl_w)
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(SN76496_1_w)	/* SN76489 */
 	AM_RANGE(0xbe, 0xbf) AM_WRITE(megaplay_bios_port_be_bf_w)			/* VDP */
@@ -701,7 +676,7 @@ static MACHINE_DRIVER_START( mpnew )
 	MDRV_CPU_ADD_TAG("megaplay_bios", Z80, MASTER_CLOCK / 15) /* ?? */
 	MDRV_CPU_PROGRAM_MAP(megaplay_bios_readmem, megaplay_bios_writemem)
 	MDRV_CPU_IO_MAP(megaplay_bios_readport,megaplay_bios_writeport)
-	MDRV_CPU_VBLANK_INT(megaplay_bios_irq, 262)
+	MDRV_CPU_VBLANK_INT_HACK(megaplay_bios_irq, 262)
 
 	MDRV_INTERLEAVE(100)
 
@@ -1019,8 +994,8 @@ static DRIVER_INIT (megaplay)
 	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa10000, 0xa1001f, 0, 0, OLD_megaplay_genesis_io_w);
 
 	/* megaplay has ram shared with the bios cpu here */
-	memory_install_read8_handler(1,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MRA8_BANK7);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MWA8_BANK7);
+	memory_install_read8_handler(1,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK7);
+	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK7);
 	memory_set_bankptr(7, &ic36_ram[0]);
 
 	/* instead of a RAM mirror the 68k sees the extra ram of the 2nd z80 too */

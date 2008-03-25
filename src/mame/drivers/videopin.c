@@ -58,22 +58,20 @@ static TIMER_CALLBACK( interrupt_callback )
 	scanline = scanline + 32;
 
 	if (scanline >= 263)
-	{
 		scanline = 32;
-	}
 
-	timer_set(video_screen_get_time_until_pos(0, scanline, 0), NULL, scanline, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, interrupt_callback);
 }
 
 
 static MACHINE_RESET( videopin )
 {
-	timer_set(video_screen_get_time_until_pos(0, 32, 0), NULL, 32, interrupt_callback);
+	timer_set(video_screen_get_time_until_pos(machine->primary_screen, 32, 0), NULL, 32, interrupt_callback);
 
 	/* both output latches are cleared on reset */
 
-	videopin_out1_w(0, 0);
-	videopin_out2_w(0, 0);
+	videopin_out1_w(machine, 0, 0);
+	videopin_out2_w(machine, 0, 0);
 }
 
 
@@ -113,7 +111,7 @@ static READ8_HANDLER( videopin_misc_r )
 
 static WRITE8_HANDLER( videopin_led_w )
 {
-	int i = (video_screen_get_vpos(0) >> 5) & 7;
+	int i = (video_screen_get_vpos(machine->primary_screen) >> 5) & 7;
 	static const char *const matrix[8][4] =
 	{
 		{ "LED26", "LED18", "LED11", "LED13" },
@@ -134,7 +132,7 @@ static WRITE8_HANDLER( videopin_led_w )
 	if (i == 7)
 		set_led_status(0, data & 8);   /* start button */
 
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -152,12 +150,12 @@ static WRITE8_HANDLER( videopin_out1_w )
 	mask = ~data & 0x10;
 
 	if (mask)
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 
 	coin_lockout_global_w(~data & 0x08);
 
 	/* Convert octave data to divide value and write to sound */
-	discrete_sound_w(VIDEOPIN_OCTAVE_DATA, (0x01 << (~data & 0x07)) & 0xfe);
+	discrete_sound_w(machine, VIDEOPIN_OCTAVE_DATA, (0x01 << (~data & 0x07)) & 0xfe);
 }
 
 
@@ -174,17 +172,17 @@ static WRITE8_HANDLER( videopin_out2_w )
 
 	coin_counter_w(0, data & 0x10);
 
-	discrete_sound_w(VIDEOPIN_BELL_EN, data & 0x40);	// Bell
-	discrete_sound_w(VIDEOPIN_BONG_EN, data & 0x20);	// Bong
-	discrete_sound_w(VIDEOPIN_ATTRACT_EN, data & 0x80);	// Attract
-	discrete_sound_w(VIDEOPIN_VOL_DATA, data & 0x07);		// Vol0,1,2
+	discrete_sound_w(machine, VIDEOPIN_BELL_EN, data & 0x40);	// Bell
+	discrete_sound_w(machine, VIDEOPIN_BONG_EN, data & 0x20);	// Bong
+	discrete_sound_w(machine, VIDEOPIN_ATTRACT_EN, data & 0x80);	// Attract
+	discrete_sound_w(machine, VIDEOPIN_VOL_DATA, data & 0x07);		// Vol0,1,2
 }
 
 
 static WRITE8_HANDLER( videopin_note_dvsr_w )
 {
 	/* note data */
-	discrete_sound_w(VIDEOPIN_NOTE_DATA, ~data &0xff);
+	discrete_sound_w(machine, VIDEOPIN_NOTE_DATA, ~data &0xff);
 }
 
 
@@ -195,17 +193,17 @@ static WRITE8_HANDLER( videopin_note_dvsr_w )
  *************************************/
 
 static ADDRESS_MAP_START( videopin_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0800, 0x0800) AM_READ(videopin_misc_r)
 	AM_RANGE(0x1000, 0x1000) AM_READ(input_port_0_r)
 	AM_RANGE(0x1800, 0x1800) AM_READ(input_port_1_r)
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_ROM)   /* mirror for 6502 vectors */
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_ROM)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_ROM)   /* mirror for 6502 vectors */
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( videopin_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x01ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x0200, 0x07ff) AM_WRITE(videopin_video_ram_w) AM_BASE(&videopin_video_ram)
 	AM_RANGE(0x0800, 0x0800) AM_WRITE(videopin_note_dvsr_w)
 	AM_RANGE(0x0801, 0x0801) AM_WRITE(videopin_led_w)
@@ -213,7 +211,7 @@ static ADDRESS_MAP_START( videopin_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0804, 0x0804) AM_WRITE(videopin_ball_w)
 	AM_RANGE(0x0805, 0x0805) AM_WRITE(videopin_out1_w)
 	AM_RANGE(0x0806, 0x0806) AM_WRITE(videopin_out2_w)
-	AM_RANGE(0x2000, 0x3fff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x2000, 0x3fff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
 
@@ -335,14 +333,15 @@ static MACHINE_DRIVER_START( videopin )
 	MDRV_CPU_ADD(M6502, 12096000 / 16)
 	MDRV_CPU_PROGRAM_MAP(videopin_readmem, videopin_writemem)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_MACHINE_RESET(videopin)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(304, 263)
 	MDRV_SCREEN_VISIBLE_AREA(0, 303, 0, 255)
+
 	MDRV_GFXDECODE(videopin)
 	MDRV_PALETTE_LENGTH(2)
 

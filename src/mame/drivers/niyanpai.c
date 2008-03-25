@@ -84,26 +84,26 @@ static void niyanpai_soundbank_w(int data)
 	memory_set_bankptr(1, &SNDROM[0x08000 + (0x8000 * (data & 0x03))]);
 }
 
-static int niyanpai_sound_r(int offset)
+static int niyanpai_sound_r(running_machine *machine, int offset)
 {
-	return soundlatch_r(0);
+	return soundlatch_r(machine, 0);
 }
 
 static WRITE16_HANDLER( niyanpai_sound_w )
 {
-	soundlatch_w(0, ((data >> 8) & 0xff));
+	soundlatch_w(machine, 0, ((data >> 8) & 0xff));
 }
 
-static void niyanpai_soundclr_w(int offset, int data)
+static void niyanpai_soundclr_w(running_machine *machine, int offset, int data)
 {
-	soundlatch_clear_w(0, 0);
+	soundlatch_clear_w(machine, 0, 0);
 }
 
 
 /* TMPZ84C011 PIO emulation */
 static UINT8 pio_dir[5], pio_latch[5];
 
-static int tmpz84c011_pio_r(int offset)
+static int tmpz84c011_pio_r(running_machine *machine, int offset)
 {
 	int portdata;
 
@@ -119,7 +119,7 @@ static int tmpz84c011_pio_r(int offset)
 			portdata = 0xff;
 			break;
 		case 3:			/* PD_0 */
-			portdata = niyanpai_sound_r(0);
+			portdata = niyanpai_sound_r(machine, 0);
 			break;
 		case 4:			/* PE_0 */
 			portdata = 0xff;
@@ -134,7 +134,7 @@ static int tmpz84c011_pio_r(int offset)
 	return portdata;
 }
 
-static void tmpz84c011_pio_w(int offset, int data)
+static void tmpz84c011_pio_w(running_machine *machine, int offset, int data)
 {
 	switch (offset)
 	{
@@ -142,15 +142,15 @@ static void tmpz84c011_pio_w(int offset, int data)
 			niyanpai_soundbank_w(data & 0x03);
 			break;
 		case 1:			/* PB_0 */
-			DAC_1_WRITE(0, data);
+			DAC_1_WRITE(machine, 0, data);
 			break;
 		case 2:			/* PC_0 */
-			DAC_0_WRITE(0, data);
+			DAC_0_WRITE(machine, 0, data);
 			break;
 		case 3:			/* PD_0 */
 			break;
 		case 4:			/* PE_0 */
-			if (!(data & 0x01)) niyanpai_soundclr_w(0, 0);
+			if (!(data & 0x01)) niyanpai_soundclr_w(machine, 0, 0);
 			break;
 
 		default:
@@ -160,17 +160,17 @@ static void tmpz84c011_pio_w(int offset, int data)
 }
 
 /* CPU interface */
-static READ8_HANDLER( tmpz84c011_0_pa_r )	{ return (tmpz84c011_pio_r(0) & ~pio_dir[0]) | (pio_latch[0] & pio_dir[0]); }
-static READ8_HANDLER( tmpz84c011_0_pb_r )	{ return (tmpz84c011_pio_r(1) & ~pio_dir[1]) | (pio_latch[1] & pio_dir[1]); }
-static READ8_HANDLER( tmpz84c011_0_pc_r )	{ return (tmpz84c011_pio_r(2) & ~pio_dir[2]) | (pio_latch[2] & pio_dir[2]); }
-static READ8_HANDLER( tmpz84c011_0_pd_r )	{ return (tmpz84c011_pio_r(3) & ~pio_dir[3]) | (pio_latch[3] & pio_dir[3]); }
-static READ8_HANDLER( tmpz84c011_0_pe_r )	{ return (tmpz84c011_pio_r(4) & ~pio_dir[4]) | (pio_latch[4] & pio_dir[4]); }
+static READ8_HANDLER( tmpz84c011_0_pa_r )	{ return (tmpz84c011_pio_r(machine,0) & ~pio_dir[0]) | (pio_latch[0] & pio_dir[0]); }
+static READ8_HANDLER( tmpz84c011_0_pb_r )	{ return (tmpz84c011_pio_r(machine,1) & ~pio_dir[1]) | (pio_latch[1] & pio_dir[1]); }
+static READ8_HANDLER( tmpz84c011_0_pc_r )	{ return (tmpz84c011_pio_r(machine,2) & ~pio_dir[2]) | (pio_latch[2] & pio_dir[2]); }
+static READ8_HANDLER( tmpz84c011_0_pd_r )	{ return (tmpz84c011_pio_r(machine,3) & ~pio_dir[3]) | (pio_latch[3] & pio_dir[3]); }
+static READ8_HANDLER( tmpz84c011_0_pe_r )	{ return (tmpz84c011_pio_r(machine,4) & ~pio_dir[4]) | (pio_latch[4] & pio_dir[4]); }
 
-static WRITE8_HANDLER( tmpz84c011_0_pa_w )	{ pio_latch[0] = data; tmpz84c011_pio_w(0, data); }
-static WRITE8_HANDLER( tmpz84c011_0_pb_w )	{ pio_latch[1] = data; tmpz84c011_pio_w(1, data); }
-static WRITE8_HANDLER( tmpz84c011_0_pc_w )	{ pio_latch[2] = data; tmpz84c011_pio_w(2, data); }
-static WRITE8_HANDLER( tmpz84c011_0_pd_w )	{ pio_latch[3] = data; tmpz84c011_pio_w(3, data); }
-static WRITE8_HANDLER( tmpz84c011_0_pe_w )	{ pio_latch[4] = data; tmpz84c011_pio_w(4, data); }
+static WRITE8_HANDLER( tmpz84c011_0_pa_w )	{ pio_latch[0] = data; tmpz84c011_pio_w(machine, 0, data); }
+static WRITE8_HANDLER( tmpz84c011_0_pb_w )	{ pio_latch[1] = data; tmpz84c011_pio_w(machine, 1, data); }
+static WRITE8_HANDLER( tmpz84c011_0_pc_w )	{ pio_latch[2] = data; tmpz84c011_pio_w(machine, 2, data); }
+static WRITE8_HANDLER( tmpz84c011_0_pd_w )	{ pio_latch[3] = data; tmpz84c011_pio_w(machine, 3, data); }
+static WRITE8_HANDLER( tmpz84c011_0_pe_w )	{ pio_latch[4] = data; tmpz84c011_pio_w(machine, 4, data); }
 
 static READ8_HANDLER( tmpz84c011_0_dir_pa_r )	{ return pio_dir[0]; }
 static READ8_HANDLER( tmpz84c011_0_dir_pb_r )	{ return pio_dir[1]; }
@@ -215,7 +215,7 @@ static MACHINE_RESET( niyanpai )
 	for (i = 0; i < 5; i++)
 	{
 		pio_dir[i] = pio_latch[i] = 0;
-		tmpz84c011_pio_w(i, 0);
+		tmpz84c011_pio_w(machine, i, 0);
 	}
 }
 
@@ -295,7 +295,7 @@ static READ16_HANDLER( musobana_inputport_1_r )
 	//  bit 2   motor on
 	//  bit 3   coin lock
 
-	if (tmp68301_parallel_interface_r(0x0005, 0x00ff) & 0x0004) musobana_outcoin_flag ^= 1;
+	if (tmp68301_parallel_interface_r(machine, 0x0005, 0x00ff) & 0x0004) musobana_outcoin_flag ^= 1;
 	else musobana_outcoin_flag = 1;
 
 	return (((readinputport(2) & 0xdf) | ((musobana_outcoin_flag & 0x01) << 5)) << 8);
@@ -308,13 +308,13 @@ static WRITE16_HANDLER ( musobana_inputport_w )
 
 
 static ADDRESS_MAP_START( niyanpai_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x040000, 0x040fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x040000, 0x040fff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x0a0000, 0x0a08ff) AM_READ(niyanpai_palette_r)
-	AM_RANGE(0x0a0900, 0x0a11ff) AM_READ(MRA16_RAM)				// palette work ram?
+	AM_RANGE(0x0a0900, 0x0a11ff) AM_READ(SMH_RAM)				// palette work ram?
 
-	AM_RANGE(0x0bf800, 0x0bffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0bf800, 0x0bffff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x240400, 0x240403) AM_READ(niyanpai_blitter_0_r)
 	AM_RANGE(0x240600, 0x240603) AM_READ(niyanpai_blitter_1_r)
@@ -332,19 +332,19 @@ static ADDRESS_MAP_START( niyanpai_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( niyanpai_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x040000, 0x040fff) AM_WRITE(MWA16_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x040000, 0x040fff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 
 	AM_RANGE(0x0a0000, 0x0a08ff) AM_WRITE(niyanpai_palette_w)
-	AM_RANGE(0x0a0900, 0x0a11ff) AM_WRITE(MWA16_RAM)			// palette work ram?
+	AM_RANGE(0x0a0900, 0x0a11ff) AM_WRITE(SMH_RAM)			// palette work ram?
 
-	AM_RANGE(0x0bf800, 0x0bffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x0bf800, 0x0bffff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(niyanpai_sound_w)
 
-	AM_RANGE(0x200200, 0x200201) AM_WRITE(MWA16_NOP)			// unknown
-	AM_RANGE(0x240000, 0x240009) AM_WRITE(MWA16_NOP)			// unknown
-	AM_RANGE(0x240200, 0x2403ff) AM_WRITE(MWA16_NOP)			// unknown
+	AM_RANGE(0x200200, 0x200201) AM_WRITE(SMH_NOP)			// unknown
+	AM_RANGE(0x240000, 0x240009) AM_WRITE(SMH_NOP)			// unknown
+	AM_RANGE(0x240200, 0x2403ff) AM_WRITE(SMH_NOP)			// unknown
 
 	AM_RANGE(0x240400, 0x24041f) AM_WRITE(niyanpai_blitter_0_w)
 	AM_RANGE(0x240420, 0x24043f) AM_WRITE(niyanpai_clut_0_w)
@@ -367,14 +367,14 @@ static ADDRESS_MAP_START( niyanpai_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( musobana_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x040000, 0x040fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x040000, 0x040fff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x0a0000, 0x0a08ff) AM_READ(niyanpai_palette_r)
-	AM_RANGE(0x0a0900, 0x0a11ff) AM_READ(MRA16_RAM)				// palette work ram?
+	AM_RANGE(0x0a0900, 0x0a11ff) AM_READ(SMH_RAM)				// palette work ram?
 
-	AM_RANGE(0x0a8000, 0x0a87ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0bf800, 0x0bffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0a8000, 0x0a87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0bf800, 0x0bffff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x240400, 0x240403) AM_READ(niyanpai_blitter_0_r)
 	AM_RANGE(0x240600, 0x240603) AM_READ(niyanpai_blitter_1_r)
@@ -392,20 +392,20 @@ static ADDRESS_MAP_START( musobana_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( musobana_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x040000, 0x040fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x040000, 0x040fff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x0a0000, 0x0a08ff) AM_WRITE(niyanpai_palette_w)
-	AM_RANGE(0x0a0900, 0x0a11ff) AM_WRITE(MWA16_RAM)			// palette work ram?
+	AM_RANGE(0x0a0900, 0x0a11ff) AM_WRITE(SMH_RAM)			// palette work ram?
 
-	AM_RANGE(0x0a8000, 0x0a87ff) AM_WRITE(MWA16_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x0bf800, 0x0bffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x0a8000, 0x0a87ff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x0bf800, 0x0bffff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(niyanpai_sound_w)
 
 	AM_RANGE(0x200200, 0x200201) AM_WRITE(musobana_inputport_w)	// inputport select
-	AM_RANGE(0x240000, 0x240009) AM_WRITE(MWA16_NOP)			// unknown
-	AM_RANGE(0x240200, 0x2403ff) AM_WRITE(MWA16_NOP)			// unknown
+	AM_RANGE(0x240000, 0x240009) AM_WRITE(SMH_NOP)			// unknown
+	AM_RANGE(0x240200, 0x2403ff) AM_WRITE(SMH_NOP)			// unknown
 
 	AM_RANGE(0x240400, 0x24041f) AM_WRITE(niyanpai_blitter_0_w)
 	AM_RANGE(0x240420, 0x24043f) AM_WRITE(niyanpai_clut_0_w)
@@ -428,15 +428,15 @@ static ADDRESS_MAP_START( musobana_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mhhonban_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_READ(MRA16_ROM)
-	AM_RANGE(0x040000, 0x040fff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
+	AM_RANGE(0x040000, 0x040fff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x060000, 0x0608ff) AM_READ(niyanpai_palette_r)
-	AM_RANGE(0x060900, 0x0611ff) AM_READ(MRA16_RAM)				// palette work ram?
-	AM_RANGE(0x07f800, 0x07ffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x060900, 0x0611ff) AM_READ(SMH_RAM)				// palette work ram?
+	AM_RANGE(0x07f800, 0x07ffff) AM_READ(SMH_RAM)
 
-	AM_RANGE(0x0a8000, 0x0a87ff) AM_READ(MRA16_RAM)
-	AM_RANGE(0x0bf000, 0x0bffff) AM_READ(MRA16_RAM)
+	AM_RANGE(0x0a8000, 0x0a87ff) AM_READ(SMH_RAM)
+	AM_RANGE(0x0bf000, 0x0bffff) AM_READ(SMH_RAM)
 
 	AM_RANGE(0x240400, 0x240403) AM_READ(niyanpai_blitter_0_r)
 	AM_RANGE(0x240600, 0x240603) AM_READ(niyanpai_blitter_1_r)
@@ -454,21 +454,21 @@ static ADDRESS_MAP_START( mhhonban_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mhhonban_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(MWA16_ROM)
-	AM_RANGE(0x040000, 0x040fff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x040000, 0x040fff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x060000, 0x0608ff) AM_WRITE(niyanpai_palette_w)
-	AM_RANGE(0x060900, 0x0611ff) AM_WRITE(MWA16_RAM)			// palette work ram?
-	AM_RANGE(0x07f800, 0x07ffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x060900, 0x0611ff) AM_WRITE(SMH_RAM)			// palette work ram?
+	AM_RANGE(0x07f800, 0x07ffff) AM_WRITE(SMH_RAM)
 
-	AM_RANGE(0x0a8000, 0x0a87ff) AM_WRITE(MWA16_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x0bf000, 0x0bffff) AM_WRITE(MWA16_RAM)
+	AM_RANGE(0x0a8000, 0x0a87ff) AM_WRITE(SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x0bf000, 0x0bffff) AM_WRITE(SMH_RAM)
 
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(niyanpai_sound_w)
 
 	AM_RANGE(0x200200, 0x200201) AM_WRITE(musobana_inputport_w)	// inputport select
-	AM_RANGE(0x240000, 0x240009) AM_WRITE(MWA16_NOP)			// unknown
-	AM_RANGE(0x240200, 0x2403ff) AM_WRITE(MWA16_NOP)			// unknown
+	AM_RANGE(0x240000, 0x240009) AM_WRITE(SMH_NOP)			// unknown
+	AM_RANGE(0x240200, 0x2403ff) AM_WRITE(SMH_NOP)			// unknown
 
 	AM_RANGE(0x240400, 0x24041f) AM_WRITE(niyanpai_blitter_0_w)
 	AM_RANGE(0x240420, 0x24043f) AM_WRITE(niyanpai_clut_0_w)
@@ -492,19 +492,19 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_BANK1)
+	AM_RANGE(0x0000, 0x77ff) AM_READ(SMH_ROM)
+	AM_RANGE(0x7800, 0x7fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_BANK1)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x77ff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x7800, 0x7fff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x77ff) AM_WRITE(SMH_ROM)
+	AM_RANGE(0x7800, 0x7fff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x13) AM_READ(z80ctc_0_r)
 	AM_RANGE(0x50, 0x50) AM_READ(tmpz84c011_0_pa_r)
 	AM_RANGE(0x51, 0x51) AM_READ(tmpz84c011_0_pb_r)
@@ -519,7 +519,7 @@ static ADDRESS_MAP_START( sound_readport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x13) AM_WRITE(z80ctc_0_w)
 	AM_RANGE(0x50, 0x50) AM_WRITE(tmpz84c011_0_pa_w)
 	AM_RANGE(0x51, 0x51) AM_WRITE(tmpz84c011_0_pb_w)
@@ -852,7 +852,7 @@ static MACHINE_DRIVER_START( niyanpai )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 12288000/2)	/* TMP68301, 6.144 MHz */
 	MDRV_CPU_PROGRAM_MAP(niyanpai_readmem,niyanpai_writemem)
-	MDRV_CPU_VBLANK_INT(niyanpai_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", niyanpai_interrupt)
 
 	MDRV_CPU_ADD(Z80, 8000000/1)					/* TMPZ84C011, 8.00 MHz */
 	MDRV_CPU_CONFIG(daisy_chain_sound)
@@ -860,17 +860,17 @@ static MACHINE_DRIVER_START( niyanpai )
 	MDRV_CPU_PROGRAM_MAP(sound_readmem, sound_writemem)
 	MDRV_CPU_IO_MAP(sound_readport, sound_writeport)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(niyanpai)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(1024, 512)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 240-1)
+
 	MDRV_PALETTE_LENGTH(768)
 
 	MDRV_VIDEO_START(niyanpai)

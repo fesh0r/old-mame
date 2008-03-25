@@ -248,21 +248,21 @@ int K001604_vh_start(running_machine *machine, int chip)
 	{
 		int roz_tile_size = K001604_roz_size[chip] ? 16 : 8;
 		int roz_width = K001604_layer_size ? 64 : 128;
-		K001604_layer_8x8[chip][0] = tilemap_create(K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_0, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
-		K001604_layer_8x8[chip][1] = tilemap_create(K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_1, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][0] = tilemap_create(K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_0, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][1] = tilemap_create(K001604_0_tile_info_layer_8x8, K001604_scan_layer_8x8_1, 8, 8, 64, 64);
 
-		K001604_layer_roz[chip][0] = tilemap_create(K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_0, TILEMAP_TYPE_PEN, roz_tile_size, roz_tile_size, roz_width, 64);
-		K001604_layer_roz[chip][1] = tilemap_create(K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_1, TILEMAP_TYPE_PEN, roz_tile_size, roz_tile_size, 64, 64);
+		K001604_layer_roz[chip][0] = tilemap_create(K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_0, roz_tile_size, roz_tile_size, roz_width, 64);
+		K001604_layer_roz[chip][1] = tilemap_create(K001604_0_tile_info_layer_roz, K001604_scan_layer_roz_1, roz_tile_size, roz_tile_size, 64, 64);
 	}
 	else
 	{
 		int roz_tile_size = K001604_roz_size[chip] ? 16 : 8;
 		int roz_width = K001604_layer_size ? 64 : 128;
-		K001604_layer_8x8[chip][0] = tilemap_create(K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_0, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
-		K001604_layer_8x8[chip][1] = tilemap_create(K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_1, TILEMAP_TYPE_PEN, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][0] = tilemap_create(K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_0, 8, 8, 64, 64);
+		K001604_layer_8x8[chip][1] = tilemap_create(K001604_1_tile_info_layer_8x8, K001604_scan_layer_8x8_1, 8, 8, 64, 64);
 
-		K001604_layer_roz[chip][0] = tilemap_create(K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_0, TILEMAP_TYPE_PEN, roz_tile_size, roz_tile_size, roz_width, 64);
-		K001604_layer_roz[chip][1] = tilemap_create(K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_1, TILEMAP_TYPE_PEN, roz_tile_size, roz_tile_size, 64, 64);
+		K001604_layer_roz[chip][0] = tilemap_create(K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_0, roz_tile_size, roz_tile_size, roz_width, 64);
+		K001604_layer_roz[chip][1] = tilemap_create(K001604_1_tile_info_layer_roz, K001604_scan_layer_roz_1, roz_tile_size, roz_tile_size, 64, 64);
 	}
 
 	tilemap_set_transparent_pen(K001604_layer_8x8[chip][0], 0);
@@ -279,16 +279,8 @@ int K001604_vh_start(running_machine *machine, int chip)
 	machine->gfx[K001604_gfx_index[chip][1]] = allocgfx(&K001604_char_layout_layer_16x16);
 	decodegfx(machine->gfx[K001604_gfx_index[chip][1]], (UINT8*)&K001604_char_ram[chip][0], 0, machine->gfx[K001604_gfx_index[chip][1]]->total_elements);
 
-	if (machine->drv->color_table_len)
-	{
-		machine->gfx[K001604_gfx_index[chip][0]]->total_colors = machine->drv->color_table_len / 16;
-		machine->gfx[K001604_gfx_index[chip][1]]->total_colors = machine->drv->color_table_len / 16;
-	}
-	else
-	{
-		machine->gfx[K001604_gfx_index[chip][0]]->total_colors = machine->drv->total_colors / 16;
-		machine->gfx[K001604_gfx_index[chip][1]]->total_colors = machine->drv->total_colors / 16;
-	}
+	machine->gfx[K001604_gfx_index[chip][0]]->total_colors = machine->config->total_colors / 16;
+	machine->gfx[K001604_gfx_index[chip][1]]->total_colors = machine->config->total_colors / 16;
 
 	return 0;
 }
@@ -337,7 +329,7 @@ void K001604_tile_update(running_machine *machine, int chip)
 	}
 }
 
-void K001604_draw_back_layer(int chip, mame_bitmap *bitmap, const rectangle *cliprect)
+void K001604_draw_back_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int layer;
 	int num_layers;
@@ -371,7 +363,7 @@ void K001604_draw_back_layer(int chip, mame_bitmap *bitmap, const rectangle *cli
 	}
 }
 
-void K001604_draw_front_layer(int chip, mame_bitmap *bitmap, const rectangle *cliprect)
+void K001604_draw_front_layer(int chip, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	//tilemap_draw(bitmap, cliprect, K001604_layer_8x8[chip][1], 0,0);
 	tilemap_draw(bitmap, cliprect, K001604_layer_8x8[chip][0], 0,0);
@@ -536,7 +528,7 @@ static void voodoo_vblank_0(int param)
 
 static VIDEO_START( nwktr )
 {
-	voodoo_start(0, 0, VOODOO_1, 2, 2, 2);
+	voodoo_start(0, machine->primary_screen, VOODOO_1, 2, 2, 2);
 	voodoo_set_vblank_callback(0, voodoo_vblank_0);
 
 	K001604_vh_start(machine, 0);
@@ -545,11 +537,11 @@ static VIDEO_START( nwktr )
 
 static VIDEO_UPDATE( nwktr )
 {
-	fillbitmap(bitmap, machine->remapped_colortable[0], cliprect);
+	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
 
 	voodoo_update(0, bitmap, cliprect);
 
-	K001604_tile_update(machine, 0);
+	K001604_tile_update(screen->machine, 0);
 	K001604_draw_front_layer(0, bitmap, cliprect);
 
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
@@ -766,7 +758,7 @@ static WRITE32_HANDLER( lanc2_w )
 static ADDRESS_MAP_START( nwktr_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x003fffff) AM_MIRROR(0x80000000) AM_RAM AM_BASE(&work_ram)		/* Work RAM */
 	AM_RANGE(0x74000000, 0x740000ff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_reg_r, K001604_reg_w)
-	AM_RANGE(0x74010000, 0x74017fff) AM_MIRROR(0x80000000) AM_READWRITE(MRA32_RAM, paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74010000, 0x74017fff) AM_MIRROR(0x80000000) AM_READWRITE(SMH_RAM, paletteram32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x74020000, 0x7403ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_tile_r, K001604_tile_w)
 	AM_RANGE(0x74040000, 0x7407ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_char_r, K001604_char_w)
 	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)
@@ -838,7 +830,7 @@ static INPUT_PORTS_START( nwktr )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2)
+	PORT_SERVICE_NO_TOGGLE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
@@ -918,17 +910,18 @@ static MACHINE_DRIVER_START( nwktr )
 	MDRV_CPU_CONFIG(sharc_cfg)
 	MDRV_CPU_DATA_MAP(sharc_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_INTERLEAVE(100)
 
 	MDRV_MACHINE_RESET(nwktr)
 	MDRV_NVRAM_HANDLER( timekeeper_0 )
 
  	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(512, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 383)
+
 	MDRV_PALETTE_LENGTH(65536)
 
 	MDRV_VIDEO_START(nwktr)

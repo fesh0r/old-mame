@@ -40,16 +40,16 @@ static READ8_HANDLER( bankedram_r )
 	else
 	{
 		if (zoomreadroms)
-			return K051316_rom_0_r(offset);
+			return K051316_rom_0_r(machine,offset);
 		else
-			return K051316_0_r(offset);
+			return K051316_0_r(machine,offset);
 	}
 }
 
 static WRITE8_HANDLER( bankedram_w )
 {
 	if (videobank) ram[offset] = data;
-	else K051316_0_w(offset,data);
+	else K051316_0_w(machine,offset,data);
 }
 
 static WRITE8_HANDLER( k88games_5f84_w )
@@ -120,10 +120,16 @@ static WRITE8_HANDLER( speech_msg_w )
 	upd7759_port_w( speech_chip, data );
 }
 
-static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READ(MRA8_RAM) AM_BASE(&banked_rom)	/* banked ROM + palette RAM */
-	AM_RANGE(0x2000, 0x37ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0x3800, 0x3fff) AM_READ(bankedram_r)
+static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x0fff) AM_RAM	AM_BASE(&banked_rom) /* banked ROM + palette RAM */
+	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(SMH_RAM, paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram_1000)	/* banked ROM + palette RAM */
+	AM_RANGE(0x2000, 0x2fff) AM_RAM
+	AM_RANGE(0x3000, 0x37ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x3800, 0x3fff) AM_READWRITE(bankedram_r, bankedram_w) AM_BASE(&ram)
+	AM_RANGE(0x5f84, 0x5f84) AM_WRITE(k88games_5f84_w)
+	AM_RANGE(0x5f88, 0x5f88) AM_WRITE(watchdog_reset_w)
+	AM_RANGE(0x5f8c, 0x5f8c) AM_WRITE(soundlatch_w)
+	AM_RANGE(0x5f90, 0x5f90) AM_WRITE(k88games_sh_irqtrigger_w)
 	AM_RANGE(0x5f94, 0x5f94) AM_READ(input_port_0_r)
 //  AM_RANGE(0x5f95, 0x5f95) AM_READ(input_port_1_r)
 //  AM_RANGE(0x5f96, 0x5f96) AM_READ(input_port_2_r)
@@ -131,38 +137,18 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5f96, 0x5f96) AM_READ(cheat2_r)	/* P3 and P4 IO and handle fake button for cheating */
 	AM_RANGE(0x5f97, 0x5f97) AM_READ(input_port_3_r)
 	AM_RANGE(0x5f9b, 0x5f9b) AM_READ(input_port_4_r)
-	AM_RANGE(0x4000, 0x7fff) AM_READ(K052109_051960_r)
-	AM_RANGE(0x8000, 0xffff) AM_READ(MRA8_ROM)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_WRITE(MWA8_RAM)	/* banked ROM */
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram_1000)	/* banked ROM + palette RAM */
-	AM_RANGE(0x2000, 0x2fff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x3000, 0x37ff) AM_WRITE(MWA8_RAM) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0x3800, 0x3fff) AM_WRITE(bankedram_w) AM_BASE(&ram)
-	AM_RANGE(0x5f84, 0x5f84) AM_WRITE(k88games_5f84_w)
-	AM_RANGE(0x5f88, 0x5f88) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5f8c, 0x5f8c) AM_WRITE(soundlatch_w)
-	AM_RANGE(0x5f90, 0x5f90) AM_WRITE(k88games_sh_irqtrigger_w)
 	AM_RANGE(0x5fc0, 0x5fcf) AM_WRITE(K051316_ctrl_0_w)
-	AM_RANGE(0x4000, 0x7fff) AM_WRITE(K052109_051960_w)
-	AM_RANGE(0x8000, 0xffff) AM_WRITE(MWA8_ROM)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(K052109_051960_r, K052109_051960_w)
+	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( sound_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)
-	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
-	AM_RANGE(0xc001, 0xc001) AM_READ(YM2151_status_port_0_r)
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)
+static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x0000, 0x7fff) AM_ROM
+	AM_RANGE(0x8000, 0x87ff) AM_RAM
 	AM_RANGE(0x9000, 0x9000) AM_WRITE(speech_msg_w)
+	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2151_register_port_0_w)
-	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2151_data_port_0_w)
+	AM_RANGE(0xc001, 0xc001) AM_READWRITE(YM2151_status_port_0_r, YM2151_data_port_0_w)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(speech_control_w)
 ADDRESS_MAP_END
 
@@ -250,20 +236,14 @@ static INPUT_PORTS_START( 88games )
 //  PORT_DIPSETTING(    0x00, "Disabled" )
 
 	PORT_START_TAG("DSW2")
-	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:1")
-	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x01, 0x01, "SW2:1" )
 	PORT_DIPNAME( 0x06, 0x02, DEF_STR( Cabinet ) )		PORT_DIPLOCATION("SW2:2,3")
 	PORT_DIPSETTING(    0x06, DEF_STR( Cocktail ) )
 	PORT_DIPSETTING(    0x04, "Cocktail (A)" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, "Upright (D)" )
-	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:4")
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Unused ) )		PORT_DIPLOCATION("SW2:5")
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPUNUSED_DIPLOC( 0x08, 0x08, "SW2:4" )
+	PORT_DIPUNUSED_DIPLOC( 0x10, 0x10, "SW2:5" )
 	PORT_DIPNAME( 0x60, 0x60, DEF_STR( Difficulty ) )	PORT_DIPLOCATION("SW2:6,7")
 	PORT_DIPSETTING(    0x60, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Normal ) )
@@ -292,21 +272,21 @@ static MACHINE_DRIVER_START( 88games )
 
 	/* basic machine hardware */
 	MDRV_CPU_ADD(KONAMI, 3000000) /* ? */
-	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
-	MDRV_CPU_VBLANK_INT(k88games_interrupt,1)
+	MDRV_CPU_PROGRAM_MAP(main_map,0)
+	MDRV_CPU_VBLANK_INT("main", k88games_interrupt)
 
 	MDRV_CPU_ADD(Z80, 3579545)
-	/* audio CPU */
-	MDRV_CPU_PROGRAM_MAP(sound_readmem,sound_writemem)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 
 	MDRV_MACHINE_RESET(88games)
 	MDRV_NVRAM_HANDLER(generic_0fill)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_HAS_SHADOWS)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_HAS_SHADOWS)
+
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )

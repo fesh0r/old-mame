@@ -160,7 +160,7 @@ WRITE8_HANDLER( lrescue_sh_port_2_w )
 WRITE8_HANDLER( cosmo_sh_port_2_w )
 {
 	/* inverted flip screen bit */
-	invadpt2_sh_port_2_w(offset, data ^ 0x20);
+	invadpt2_sh_port_2_w(machine, offset, data ^ 0x20);
 }
 
 
@@ -277,7 +277,7 @@ WRITE8_HANDLER( indianbt_sh_port_2_w )
 
 WRITE8_HANDLER( indianbt_sh_port_3_w )
 {
-	discrete_sound_w(INDIANBT_MUSIC_DATA, data);
+	discrete_sound_w(machine, INDIANBT_MUSIC_DATA, data);
 }
 
 
@@ -595,46 +595,47 @@ DISCRETE_SOUND_END
 
 WRITE8_HANDLER( polaris_sh_port_1_w )
 {
-	discrete_sound_w(POLARIS_MUSIC_DATA, data);
+	discrete_sound_w(machine, POLARIS_MUSIC_DATA, data);
 }
 
 WRITE8_HANDLER( polaris_sh_port_2_w )
 {
 	/* 0x01 - SX0 - Shot */
-	discrete_sound_w(POLARIS_SX0_EN, data & 0x01);
+	discrete_sound_w(machine, POLARIS_SX0_EN, data & 0x01);
 
 	/* 0x02 - SX1 - Ship Hit (Sub) */
-	discrete_sound_w(POLARIS_SX1_EN, data & 0x02);
+	discrete_sound_w(machine, POLARIS_SX1_EN, data & 0x02);
 
 	/* 0x04 - SX2 - Ship */
-	discrete_sound_w(POLARIS_SX2_EN, data & 0x04);
+	discrete_sound_w(machine, POLARIS_SX2_EN, data & 0x04);
 
 	/* 0x08 - SX3 - Explosion */
-	discrete_sound_w(POLARIS_SX3_EN, data & 0x08);
+	discrete_sound_w(machine, POLARIS_SX3_EN, data & 0x08);
 
 	/* 0x10 - SX4 */
 
 	/* 0x20 - SX5 - Sound Enable */
-	discrete_sound_w(POLARIS_SX5_EN, data & 0x20);
+	discrete_sound_w(machine, POLARIS_SX5_EN, data & 0x20);
 }
 
 WRITE8_HANDLER( polaris_sh_port_3_w )
 {
+
 	coin_lockout_global_w(data & 0x04);  /* SX8 */
 
 	c8080bw_flip_screen_w(data & 0x20);  /* SX11 */
 
 	/* 0x01 - SX6 - Plane Down */
-	discrete_sound_w(POLARIS_SX6_EN, data & 0x01);
+	discrete_sound_w(machine, POLARIS_SX6_EN, data & 0x01);
 
 	/* 0x02 - SX7 - Plane Up */
-	discrete_sound_w(POLARIS_SX7_EN, data & 0x02);
+	discrete_sound_w(machine, POLARIS_SX7_EN, data & 0x02);
 
 	/* 0x08 - SX9 - Hit */
-	discrete_sound_w(POLARIS_SX9_EN, data & 0x08);
+	discrete_sound_w(machine, POLARIS_SX9_EN, data & 0x08);
 
 	/* 0x10 - SX10 - Hit */
-	discrete_sound_w(POLARIS_SX10_EN, data & 0x10);
+	discrete_sound_w(machine, POLARIS_SX10_EN, data & 0x10);
 }
 
 
@@ -783,8 +784,8 @@ WRITE8_HANDLER( schaser_sh_port_1_w )
        bit 4 - Effect Sound C (SX4)
        bit 5 - Explosion (SX5) */
 
-	discrete_sound_w(SCHASER_DOT_EN, data & 0x01);
-	discrete_sound_w(SCHASER_DOT_SEL, data & 0x02);
+	discrete_sound_w(machine, SCHASER_DOT_EN, data & 0x01);
+	discrete_sound_w(machine, SCHASER_DOT_SEL, data & 0x02);
 
 	/* The effect is a variable rate 555 timer.  A diode/resistor array is used to
      * select the frequency.  Because of the diode voltage drop, we can not use the
@@ -800,13 +801,13 @@ WRITE8_HANDLER( schaser_sh_port_1_w )
 			if (attotime_compare(schaser_effect_555_time_remain, attotime_zero) != 0)
 			{
 				/* timer re-enabled, use up remaining 555 high time */
-				timer_adjust(schaser_effect_555_timer, schaser_effect_555_time_remain, effect, attotime_zero);
+				timer_adjust_oneshot(schaser_effect_555_timer, schaser_effect_555_time_remain, effect);
 			}
 			else if (!schaser_effect_555_is_low)
 			{
 				/* set 555 high time */
 				attotime new_time = attotime_make(0, ATTOSECONDS_PER_SECOND * .8873 * schaser_effect_rc[effect]);
-				timer_adjust(schaser_effect_555_timer, new_time, effect, attotime_zero);
+				timer_adjust_oneshot(schaser_effect_555_timer, new_time, effect);
 			}
 		}
 		else
@@ -815,7 +816,7 @@ WRITE8_HANDLER( schaser_sh_port_1_w )
 			if (!schaser_effect_555_is_low)
 			{
 				schaser_effect_555_time_remain = timer_timeleft(schaser_effect_555_timer);
-				timer_adjust(schaser_effect_555_timer, attotime_never, 0, attotime_never);
+				timer_adjust_oneshot(schaser_effect_555_timer, attotime_never, 0);
 			}
 		}
 		last_effect = effect;
@@ -844,9 +845,9 @@ WRITE8_HANDLER( schaser_sh_port_2_w )
        bit 4 - Field Control B (SX10)
        bit 5 - Flip Screen */
 
-	discrete_sound_w(SCHASER_MUSIC_BIT, data & 0x01);
+	discrete_sound_w(machine, SCHASER_MUSIC_BIT, data & 0x01);
 
-	discrete_sound_w(SCHASER_SND_EN, data & 0x02);
+	discrete_sound_w(machine, SCHASER_SND_EN, data & 0x02);
 	sound_global_enable(data & 0x02);
 
 	coin_lockout_global_w(data & 0x04);
@@ -874,7 +875,7 @@ static TIMER_CALLBACK( schaser_effect_555_cb )
 		else
 			new_time = attotime_never;
 	}
-	timer_adjust(schaser_effect_555_timer, new_time, effect, attotime_zero);
+	timer_adjust_oneshot(schaser_effect_555_timer, new_time, effect);
 	SN76477_enable_w(0, !(schaser_effect_555_is_low || schaser_explosion));
 	SN76477_one_shot_cap_voltage_w(0, !(schaser_effect_555_is_low || schaser_explosion) ? 0 : SN76477_EXTERNAL_VOLTAGE_DISCONNECT);
 }
@@ -891,9 +892,9 @@ MACHINE_START( schaser )
 MACHINE_RESET( schaser )
 {
 	schaser_effect_555_is_low = 0;
-	timer_adjust(schaser_effect_555_timer, attotime_never, 0, attotime_never);
-	schaser_sh_port_1_w(0, 0);
-	schaser_sh_port_2_w(0, 0);
+	timer_adjust_oneshot(schaser_effect_555_timer, attotime_never, 0);
+	schaser_sh_port_1_w(machine, 0, 0);
+	schaser_sh_port_2_w(machine, 0, 0);
 	schaser_effect_555_time_remain = attotime_zero;
 
 	MACHINE_RESET_CALL(mw8080bw);

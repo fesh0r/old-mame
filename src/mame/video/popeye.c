@@ -14,7 +14,7 @@ UINT8 *popeye_palettebank;
 static UINT8 *popeye_bitmapram;
 static size_t popeye_bitmapram_size = 0x2000;
 
-static mame_bitmap *tmpbitmap2;
+static bitmap_t *tmpbitmap2;
 static int invertmask;
 static int bitmap_type;
 enum { TYPE_SKYSKIPR, TYPE_POPEYE };
@@ -58,13 +58,12 @@ static tilemap *fg_tilemap;
   The bootleg is the same, but the outputs are not inverted.
 
 ***************************************************************************/
-static void convert_color_prom(running_machine *machine,UINT16 *colortable,const UINT8 *color_prom)
+static void convert_color_prom(running_machine *machine,const UINT8 *color_prom)
 {
-	int i,pal_index;
+	int i;
 
 
 	/* palette entries 0-15 are directly used by the background and changed at runtime */
-	pal_index = 16;
 	color_prom += 32;
 
 	/* characters */
@@ -72,7 +71,6 @@ static void convert_color_prom(running_machine *machine,UINT16 *colortable,const
 	{
 		int prom_offs = i | ((i & 8) << 1);	/* address bits 3 and 4 are tied together */
 		int bit0,bit1,bit2,r,g,b;
-
 
 		/* red component */
 		bit0 = ((color_prom[prom_offs] ^ invertmask) >> 0) & 0x01;
@@ -90,7 +88,7 @@ static void convert_color_prom(running_machine *machine,UINT16 *colortable,const
 		bit2 = ((color_prom[prom_offs] ^ invertmask) >> 7) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,pal_index++,MAKE_RGB(r,g,b));
+		palette_set_color(machine,16 + (2 * i) + 1,MAKE_RGB(r,g,b));
 	}
 
 	color_prom += 32;
@@ -117,23 +115,9 @@ static void convert_color_prom(running_machine *machine,UINT16 *colortable,const
 		bit2 = ((color_prom[256] ^ invertmask) >> 3) & 0x01;
 		b = 0x21 * bit0 + 0x47 * bit1 + 0x97 * bit2;
 
-		palette_set_color(machine,pal_index++,MAKE_RGB(r,g,b));
+		palette_set_color(machine,48+i,MAKE_RGB(r,g,b));
 
 		color_prom++;
-	}
-
-
-	/* palette entries 0-15 are directly used by the background */
-
-	for (i = 0;i < 16;i++)	/* characters */
-	{
-		*(colortable++) = 0;	/* since chars are transparent, the PROM only */
-								/* stores the non transparent color */
-		*(colortable++) = i + 16;
-	}
-	for (i = 0;i < 256;i++)	/* sprites */
-	{
-		*(colortable++) = i + 16+16;
 	}
 }
 
@@ -141,14 +125,14 @@ PALETTE_INIT( popeye )
 {
 	invertmask = 0xff;
 
-	convert_color_prom(machine,colortable,color_prom);
+	convert_color_prom(machine,color_prom);
 }
 
 PALETTE_INIT( popeyebl )
 {
 	invertmask = 0x00;
 
-	convert_color_prom(machine,colortable,color_prom);
+	convert_color_prom(machine,color_prom);
 }
 
 static void set_background_palette(running_machine *machine,int bank)
@@ -212,10 +196,10 @@ WRITE8_HANDLER( popeye_bitmap_w )
 		sx = 8 * (offset % 128);
 		sy = 8 * (offset / 128);
 
-		if (flip_screen)
+		if (flip_screen_get())
 			sy = 512-8 - sy;
 
-		colour = Machine->pens[data & 0x0f];
+		colour = data & 0x0f;
 		for (y = 0; y < 8; y++)
 		{
 			for (x = 0; x < 8; x++)
@@ -229,10 +213,10 @@ WRITE8_HANDLER( popeye_bitmap_w )
 		sx = 8 * (offset % 64);
 		sy = 4 * (offset / 64);
 
-		if (flip_screen)
+		if (flip_screen_get())
 			sy = 512-4 - sy;
 
-		colour = Machine->pens[data & 0x0f];
+		colour = data & 0x0f;
 		for (y = 0; y < 4; y++)
 		{
 			for (x = 0; x < 8; x++)
@@ -249,7 +233,7 @@ WRITE8_HANDLER( skyskipr_bitmap_w )
 	if (data & 0x80)
 		offset |= 0x40;
 
-	popeye_bitmap_w(offset,data);
+	popeye_bitmap_w(machine,offset,data);
 }
 
 static TILE_GET_INFO( get_fg_tile_info )
@@ -263,48 +247,42 @@ static TILE_GET_INFO( get_fg_tile_info )
 VIDEO_START( skyskipr )
 {
 	popeye_bitmapram = auto_malloc(popeye_bitmapram_size);
-
-	tmpbitmap2 = auto_bitmap_alloc(1024,1024,machine->screen[0].format);	/* actually 1024x512 but not rolling over vertically? */
+	tmpbitmap2 = auto_bitmap_alloc(1024,1024,video_screen_get_format(machine->primary_screen));	/* actually 1024x512 but not rolling over vertically? */
 
 	bitmap_type = TYPE_SKYSKIPR;
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 16, 16, 32, 32);
-
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
 
 VIDEO_START( popeye )
 {
 	popeye_bitmapram = auto_malloc(popeye_bitmapram_size);
-
-	tmpbitmap2 = auto_bitmap_alloc(512,512,machine->screen[0].format);
+	tmpbitmap2 = auto_bitmap_alloc(512,512,video_screen_get_format(machine->primary_screen));
 
 	bitmap_type = TYPE_POPEYE;
 
-	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 16, 16, 32, 32);
-
+	fg_tilemap = tilemap_create(get_fg_tile_info, tilemap_scan_rows, 16, 16, 32, 32);
 	tilemap_set_transparent_pen(fg_tilemap, 0);
 }
 
-static void draw_background(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 	static int lastflip = 0;
 
-	if (lastflip != flip_screen)
+	if (lastflip != flip_screen_get())
 	{
 		for (offs = 0;offs < popeye_bitmapram_size;offs++)
-			popeye_bitmap_w(offs,popeye_bitmapram[offs]);
+			popeye_bitmap_w(machine,offs,popeye_bitmapram[offs]);
 
-		lastflip = flip_screen;
+		lastflip = flip_screen_get();
 	}
 
 	set_background_palette(machine, (*popeye_palettebank & 0x08) >> 3);
 
 	if (popeye_background_pos[1] == 0)	/* no background */
-		fillbitmap(bitmap,machine->pens[0],cliprect);
+		fillbitmap(bitmap,0,cliprect);
 	else
 	{
 		/* copy the background graphics */
@@ -314,7 +292,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 		if (bitmap_type == TYPE_SKYSKIPR)
 			scrollx = 2*scrollx - 512;
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			if (bitmap_type == TYPE_POPEYE)
 				scrollx = -scrollx;
@@ -325,7 +303,7 @@ static void draw_background(running_machine *machine, mame_bitmap *bitmap, const
 	}
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -360,7 +338,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		sx = 2*(spriteram[offs])-8;
 		sy = 2*(256-spriteram[offs + 1]);
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			flipx = !flipx;
 			flipy = !flipy;
@@ -380,8 +358,8 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( popeye )
 {
-	draw_background(machine, bitmap, cliprect);
-	draw_sprites(machine, bitmap, cliprect);
+	draw_background(screen->machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 	tilemap_draw(bitmap, cliprect, fg_tilemap, 0, 0);
 	return 0;
 }

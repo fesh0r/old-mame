@@ -25,7 +25,7 @@ WRITE8_HANDLER( jack_colorram_w )
 WRITE8_HANDLER( jack_paletteram_w )
 {
 	/* RGB output is inverted */
-	paletteram_BBGGGRRR_w(offset,~data);
+	paletteram_BBGGGRRR_w(machine,offset,~data);
 }
 
 READ8_HANDLER( jack_flipscreen_r )
@@ -55,10 +55,10 @@ static UINT32 tilemap_scan_cols_flipy( UINT32 col, UINT32 row, UINT32 num_cols, 
 
 VIDEO_START( jack )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flipy, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_cols_flipy,  8, 8, 32, 32);
 }
 
-static void jack_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void jack_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -73,7 +73,7 @@ static void jack_draw_sprites(running_machine *machine, mame_bitmap *bitmap, con
 		flipx = (spriteram[offs + 3] & 0x80);
 		flipy = (spriteram[offs + 3] & 0x40);
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;
@@ -93,7 +93,7 @@ static void jack_draw_sprites(running_machine *machine, mame_bitmap *bitmap, con
 VIDEO_UPDATE( jack )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	jack_draw_sprites(machine, bitmap, cliprect);
+	jack_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }
 
@@ -106,7 +106,7 @@ PALETTE_INIT( joinem )
 {
 	int i;
 
-	for (i = 0;i < machine->drv->total_colors;i++)
+	for (i = 0;i < machine->config->total_colors;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 		bit0 = (color_prom[i] >> 0) & 0x01;
@@ -136,10 +136,10 @@ static TILE_GET_INFO( joinem_get_bg_tile_info )
 
 VIDEO_START( joinem )
 {
-	bg_tilemap = tilemap_create(joinem_get_bg_tile_info, tilemap_scan_cols_flipy, TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+	bg_tilemap = tilemap_create(joinem_get_bg_tile_info, tilemap_scan_cols_flipy,  8, 8, 32, 32);
 }
 
-static void joinem_draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void joinem_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	int offs;
 
@@ -154,7 +154,7 @@ static void joinem_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
 		flipx = (spriteram[offs + 3] & 0x80);
 		flipy = (spriteram[offs + 3] & 0x40);
 
-		if (flip_screen)
+		if (flip_screen_get())
 		{
 			sx = 248 - sx;
 			sy = 248 - sy;
@@ -174,6 +174,6 @@ static void joinem_draw_sprites(running_machine *machine, mame_bitmap *bitmap, c
 VIDEO_UPDATE( joinem )
 {
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
-	joinem_draw_sprites(machine, bitmap, cliprect);
+	joinem_draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

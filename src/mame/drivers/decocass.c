@@ -72,28 +72,28 @@ INLINE int swap_bits_5_6(int data)
 }
 
 static WRITE8_HANDLER( ram_w )        { decrypted[0x0000 + offset] = swap_bits_5_6(data); decocass_rambase[0x0000 + offset] = data;  }
-static WRITE8_HANDLER( charram_w )    { decrypted[0x6000 + offset] = swap_bits_5_6(data); decocass_charram_w(offset, data); }
-static WRITE8_HANDLER( fgvideoram_w ) { decrypted[0xc000 + offset] = swap_bits_5_6(data); decocass_fgvideoram_w(offset, data); }
-static WRITE8_HANDLER( fgcolorram_w ) { decrypted[0xc400 + offset] = swap_bits_5_6(data); decocass_colorram_w(offset, data); }
-static WRITE8_HANDLER( tileram_w )    { decrypted[0xd000 + offset] = swap_bits_5_6(data); decocass_tileram_w(offset, data); }
-static WRITE8_HANDLER( objectram_w )  { decrypted[0xd800 + offset] = swap_bits_5_6(data); decocass_objectram_w(offset, data); }
+static WRITE8_HANDLER( charram_w )    { decrypted[0x6000 + offset] = swap_bits_5_6(data); decocass_charram_w(machine, offset, data); }
+static WRITE8_HANDLER( fgvideoram_w ) { decrypted[0xc000 + offset] = swap_bits_5_6(data); decocass_fgvideoram_w(machine, offset, data); }
+static WRITE8_HANDLER( fgcolorram_w ) { decrypted[0xc400 + offset] = swap_bits_5_6(data); decocass_colorram_w(machine, offset, data); }
+static WRITE8_HANDLER( tileram_w )    { decrypted[0xd000 + offset] = swap_bits_5_6(data); decocass_tileram_w(machine, offset, data); }
+static WRITE8_HANDLER( objectram_w )  { decrypted[0xd800 + offset] = swap_bits_5_6(data); decocass_objectram_w(machine, offset, data); }
 
-static WRITE8_HANDLER( mirrorvideoram_w ) { offset = ((offset >> 5) & 0x1f) | ((offset & 0x1f) << 5); fgvideoram_w(offset, data); }
-static WRITE8_HANDLER( mirrorcolorram_w ) { offset = ((offset >> 5) & 0x1f) | ((offset & 0x1f) << 5); fgcolorram_w(offset, data); }
+static WRITE8_HANDLER( mirrorvideoram_w ) { offset = ((offset >> 5) & 0x1f) | ((offset & 0x1f) << 5); fgvideoram_w(machine, offset, data); }
+static WRITE8_HANDLER( mirrorcolorram_w ) { offset = ((offset >> 5) & 0x1f) | ((offset & 0x1f) << 5); fgcolorram_w(machine, offset, data); }
 static READ8_HANDLER( mirrorvideoram_r ) { offset = ((offset >> 5) & 0x1f) | ((offset & 0x1f) << 5); return decocass_fgvideoram[offset]; }
 static READ8_HANDLER( mirrorcolorram_r ) { offset = ((offset >> 5) & 0x1f) | ((offset & 0x1f) << 5); return decocass_colorram[offset]; }
 
 
 static ADDRESS_MAP_START( decocass_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x5fff) AM_READWRITE(MRA8_RAM, ram_w) AM_BASE(&decocass_rambase)
-	AM_RANGE(0x6000, 0xbfff) AM_READWRITE(MRA8_RAM, charram_w) AM_BASE(&decocass_charram) /* still RMS3 RAM */
-	AM_RANGE(0xc000, 0xc3ff) AM_READWRITE(MRA8_RAM, fgvideoram_w) AM_BASE(&decocass_fgvideoram) AM_SIZE(&decocass_fgvideoram_size)  /* DSP3 RAM */
-	AM_RANGE(0xc400, 0xc7ff) AM_READWRITE(MRA8_RAM, fgcolorram_w) AM_BASE(&decocass_colorram) AM_SIZE(&decocass_colorram_size)
+	AM_RANGE(0x0000, 0x5fff) AM_READWRITE(SMH_RAM, ram_w) AM_BASE(&decocass_rambase)
+	AM_RANGE(0x6000, 0xbfff) AM_READWRITE(SMH_RAM, charram_w) AM_BASE(&decocass_charram) /* still RMS3 RAM */
+	AM_RANGE(0xc000, 0xc3ff) AM_READWRITE(SMH_RAM, fgvideoram_w) AM_BASE(&decocass_fgvideoram) AM_SIZE(&decocass_fgvideoram_size)  /* DSP3 RAM */
+	AM_RANGE(0xc400, 0xc7ff) AM_READWRITE(SMH_RAM, fgcolorram_w) AM_BASE(&decocass_colorram) AM_SIZE(&decocass_colorram_size)
 	AM_RANGE(0xc800, 0xcbff) AM_READWRITE(mirrorvideoram_r, mirrorvideoram_w)
 	AM_RANGE(0xcc00, 0xcfff) AM_READWRITE(mirrorcolorram_r, mirrorcolorram_w)
-	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(MRA8_RAM, tileram_w) AM_BASE(&decocass_tileram) AM_SIZE(&decocass_tileram_size)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_RAM, objectram_w) AM_BASE(&decocass_objectram) AM_SIZE(&decocass_objectram_size)
-	AM_RANGE(0xe000, 0xe0ff) AM_READWRITE(MRA8_RAM, decocass_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(SMH_RAM, tileram_w) AM_BASE(&decocass_tileram) AM_SIZE(&decocass_tileram_size)
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, objectram_w) AM_BASE(&decocass_objectram) AM_SIZE(&decocass_objectram_size)
+	AM_RANGE(0xe000, 0xe0ff) AM_READWRITE(SMH_RAM, decocass_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xe300, 0xe300) AM_READWRITE(input_port_7_r, decocass_watchdog_count_w)
 	AM_RANGE(0xe301, 0xe301) AM_READWRITE(input_port_8_r, decocass_watchdog_flip_w)
 	AM_RANGE(0xe302, 0xe302) AM_WRITE(decocass_color_missiles_w)
@@ -393,17 +393,18 @@ static MACHINE_DRIVER_START( decocass )
 	MDRV_CPU_PROGRAM_MAP(decocass_mcu_map,0)
 	MDRV_CPU_IO_MAP(decocass_mcu_portmap,0)
 
-	MDRV_SCREEN_REFRESH_RATE(57)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3072)		/* frames per second, vblank duration */)
 	MDRV_INTERLEAVE(7)				/* interleave CPUs */
 
 	MDRV_MACHINE_RESET(decocass)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(57)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(3072)		/* frames per second, vblank duration */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 31*8-1, 1*8, 31*8-1)
+
 	MDRV_GFXDECODE(decocass)
 	MDRV_PALETTE_LENGTH(32+2*8+2*4)
 
@@ -651,6 +652,7 @@ static MACHINE_DRIVER_START( czeroize )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(decocass)
 	MDRV_MACHINE_RESET(czeroize)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(1*8, 32*8-1, 1*8, 31*8-1)
 MACHINE_DRIVER_END
 
@@ -1136,7 +1138,7 @@ static DRIVER_INIT( decocrom )
 		decrypted2[i] = swap_bits_5_6(rom[i]);
 
 	/* convert charram to a banked ROM */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xafff, 0, 0, MRA8_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xafff, 0, 0, SMH_BANK1);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xafff, 0, 0, decocass_de0091_w);
 	memory_configure_bank(1, 0, 1, decocass_charram, 0);
 	memory_configure_bank(1, 1, 1, memory_region(REGION_USER3), 0);

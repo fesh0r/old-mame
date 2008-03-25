@@ -62,7 +62,7 @@ static VIDEO_UPDATE(chinsan)
 			int tileno,colour;
 			tileno = chinsan_video[count] | (chinsan_video[count+0x800]<<8);
 			colour = chinsan_video[count+0x1000]>>3;
-			drawgfx(bitmap,machine->gfx[0],tileno,colour,0,0,x*8,y*8,cliprect,TRANSPARENCY_NONE,0);
+			drawgfx(bitmap,screen->machine->gfx[0],tileno,colour,0,0,x*8,y*8,cliprect,TRANSPARENCY_NONE,0);
 			count++;
 		}
 	}
@@ -190,7 +190,7 @@ static ADDRESS_MAP_START( chinsan_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( chinsan_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(chinsan_port00_w)
 	AM_RANGE(0x01, 0x01) AM_READ(chinsan_input_port_0_r)
 	AM_RANGE(0x02, 0x02) AM_READ(chinsan_input_port_1_r)
@@ -461,17 +461,18 @@ static MACHINE_DRIVER_START( chinsan )
 	MDRV_CPU_ADD(Z80,10000000/2)		 /* ? MHz */
 	MDRV_CPU_PROGRAM_MAP(chinsan_map,0)
 	MDRV_CPU_IO_MAP(chinsan_io,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_RESET( chinsan )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_VISIBLE_AREA(24, 512-24-1, 16, 256-16-1)
+
 	MDRV_GFXDECODE(chinsan)
 	MDRV_PALETTE_LENGTH(0x100)
 

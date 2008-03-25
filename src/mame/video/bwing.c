@@ -118,7 +118,7 @@ WRITE8_HANDLER( bwing_scrollreg_w )
 			}
 
 			#if BW_DEBUG
-				logerror("(%1d)%04x: w=%02x a=%04x f=%d\n",cpu_getactivecpu(),activecpu_get_pc(),data,0x1b00+offset,cpu_getcurrentframe());
+				logerror("(%1d)%04x: w=%02x a=%04x f=%d\n",cpu_getactivecpu(),activecpu_get_pc(),data,0x1b00+offset,video_screen_get_frame_number(machine->primary_screen));
 			#endif
 		break;
 	}
@@ -197,9 +197,9 @@ VIDEO_START( bwing )
 	UINT32 *dwptr;
 	int i;
 
-	charmap = tilemap_create(get_charinfo,tilemap_scan_cols,TILEMAP_TYPE_PEN, 8, 8,32,32);
-	fgmap = tilemap_create(get_fgtileinfo,bwing_scan_cols,TILEMAP_TYPE_PEN,16,16,64,64);
-	bgmap = tilemap_create(get_bgtileinfo,bwing_scan_cols,TILEMAP_TYPE_PEN,16,16,64,64);
+	charmap = tilemap_create(get_charinfo,tilemap_scan_cols, 8, 8,32,32);
+	fgmap = tilemap_create(get_fgtileinfo,bwing_scan_cols,16,16,64,64);
+	bgmap = tilemap_create(get_bgtileinfo,bwing_scan_cols,16,16,64,64);
 	srxlat = auto_malloc(0x8000);
 
 	scrollmap[0] = fgmap;
@@ -228,7 +228,7 @@ VIDEO_START( bwing )
 //****************************************************************************
 // Realtime
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bmp, const rectangle *clip, UINT8 *ram, int pri)
+static void draw_sprites(running_machine *machine, bitmap_t *bmp, const rectangle *clip, UINT8 *ram, int pri)
 {
 	int attrib, fx, fy, code, x, y, color, i;
 	gfx_element *gfx = machine->gfx[1];
@@ -274,10 +274,10 @@ VIDEO_UPDATE( bwing )
 		tilemap_draw(bitmap, cliprect, bgmap, 0, 0);
 	}
 	else
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	// draw low priority sprites
-	draw_sprites(machine, bitmap, cliprect, buffered_spriteram, 0);
+	draw_sprites(screen->machine, bitmap, cliprect, buffered_spriteram, 0);
 
 	// draw foreground
 	if (!(mapmask & 2))
@@ -291,7 +291,7 @@ VIDEO_UPDATE( bwing )
 	}
 
 	// draw high priority sprites
-	draw_sprites(machine, bitmap, cliprect, buffered_spriteram, 1);
+	draw_sprites(screen->machine, bitmap, cliprect, buffered_spriteram, 1);
 
 	// draw text layer
 //  if (mapmask & 4)

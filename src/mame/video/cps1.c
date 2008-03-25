@@ -177,7 +177,6 @@ The games seem to use them to mark platforms, kill zones and no-go areas.
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cps1.h"
 
 #define VERBOSE 0
@@ -538,7 +537,7 @@ READ16_HANDLER( cps1_output_r )
 
 	/* Pang 3 EEPROM interface */
 	if (cps1_game_config->kludge == 5 && offset == 0x7a/2)
-		return cps1_eeprom_port_r(0,mem_mask);
+		return cps1_eeprom_port_r(machine,0,mem_mask);
 
 	return cps1_output[offset];
 }
@@ -548,7 +547,7 @@ WRITE16_HANDLER( cps1_output_w )
 	/* Pang 3 EEPROM interface */
 	if (cps1_game_config->kludge == 5 && offset == 0x7a/2)
 	{
-		cps1_eeprom_port_w(0,data,mem_mask);
+		cps1_eeprom_port_w(machine,0,data,mem_mask);
 		return;
 	}
 
@@ -1142,9 +1141,9 @@ static VIDEO_START( cps )
 
     MACHINE_RESET_CALL(cps);
 
-	cps1_bg_tilemap[0] = tilemap_create(get_tile0_info,tilemap0_scan,TILEMAP_TYPE_PEN, 8, 8,64,64);
-	cps1_bg_tilemap[1] = tilemap_create(get_tile1_info,tilemap1_scan,TILEMAP_TYPE_PEN,16,16,64,64);
-	cps1_bg_tilemap[2] = tilemap_create(get_tile2_info,tilemap2_scan,TILEMAP_TYPE_PEN,32,32,64,64);
+	cps1_bg_tilemap[0] = tilemap_create(get_tile0_info,tilemap0_scan, 8, 8,64,64);
+	cps1_bg_tilemap[1] = tilemap_create(get_tile1_info,tilemap1_scan,16,16,64,64);
+	cps1_bg_tilemap[2] = tilemap_create(get_tile2_info,tilemap2_scan,32,32,64,64);
 
 	/* front masks will change at runtime to handle sprite occluding */
 	cps1_update_transmasks();
@@ -1302,11 +1301,11 @@ static void cps1_find_last_sprite(void)    /* Find the offset of last sprite */
 }
 
 
-static void cps1_render_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void cps1_render_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
 #define DRAWSPRITE(CODE,COLOR,FLIPX,FLIPY,SX,SY)					\
 {																	\
-	if (flip_screen)												\
+	if (flip_screen_get())											\
 		pdrawgfx(bitmap,machine->gfx[2],							\
 				CODE,												\
 				COLOR,												\
@@ -1385,7 +1384,8 @@ static void cps1_render_sprites(running_machine *machine, mame_bitmap *bitmap, c
 								sy = (y+nys*16) & 0x1ff;
 
 								DRAWSPRITE(
-										code+(nx-1)-nxs+0x10*(ny-1-nys),
+//                                      code+(nx-1)-nxs+0x10*(ny-1-nys),
+										(code & ~0xf) + ((code + (nx-1) - nxs) & 0xf) + 0x10*(ny-1-nys),
 										(col&0x1f) + palette_basecolor[0],
 										1,1,
 										sx,sy);
@@ -1402,7 +1402,8 @@ static void cps1_render_sprites(running_machine *machine, mame_bitmap *bitmap, c
 								sy = (y+nys*16) & 0x1ff;
 
 								DRAWSPRITE(
-										code+nxs+0x10*(ny-1-nys),
+//                                      code+nxs+0x10*(ny-1-nys),
+										(code & ~0xf) + ((code + nxs) & 0xf) + 0x10*(ny-1-nys),
 										(col&0x1f) + palette_basecolor[0],
 										0,1,
 										sx,sy);
@@ -1422,7 +1423,8 @@ static void cps1_render_sprites(running_machine *machine, mame_bitmap *bitmap, c
 								sy = (y+nys*16) & 0x1ff;
 
 								DRAWSPRITE(
-										code+(nx-1)-nxs+0x10*nys,
+//                                      code+(nx-1)-nxs+0x10*nys,
+										(code & ~0xf) + ((code + (nx-1) - nxs) & 0xf) + 0x10*nys,
 										(col&0x1f) + palette_basecolor[0],
 										1,0,
 										sx,sy);
@@ -1439,7 +1441,8 @@ static void cps1_render_sprites(running_machine *machine, mame_bitmap *bitmap, c
 								sy = (y+nys*16) & 0x1ff;
 
 								DRAWSPRITE(
-										code+nxs+0x10*nys,
+//                                      code+nxs+0x10*nys,
+										(code & ~0xf) + ((code + nxs) & 0xf) + 0x10*nys,	// fix 00406: qadj: When playing as the ninja, there is one broekn frame in his animation loop when walking.
 										(col&0x1f) + palette_basecolor[0],
 										0,0,
 										sx,sy);
@@ -1545,11 +1548,11 @@ static void cps2_find_last_sprite(void)    /* Find the offset of last sprite */
 #undef DRAWSPRITE
 }
 
-static void cps2_render_sprites(running_machine *machine, mame_bitmap *bitmap,const rectangle *cliprect,int *primasks)
+static void cps2_render_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int *primasks)
 {
 #define DRAWSPRITE(CODE,COLOR,FLIPX,FLIPY,SX,SY)									\
 {																					\
-	if (flip_screen)																\
+	if (flip_screen_get())															\
 		pdrawgfx(bitmap,machine->gfx[2],											\
 				CODE,																\
 				COLOR,																\
@@ -1692,7 +1695,7 @@ static void cps2_render_sprites(running_machine *machine, mame_bitmap *bitmap,co
 
 
 
-static void cps1_render_stars(running_machine *machine,mame_bitmap *bitmap,const rectangle *cliprect)
+static void cps1_render_stars(const device_config *screen, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
 	UINT8 *stars_rom = memory_region(REGION_GFX2);
@@ -1716,17 +1719,17 @@ static void cps1_render_stars(running_machine *machine,mame_bitmap *bitmap,const
 				int sy = (offs % 256);
 				sx = (sx - stars2x + (col & 0x1f)) & 0x1ff;
 				sy = (sy - stars2y) & 0xff;
-				if (flip_screen)
+				if (flip_screen_get())
 				{
 					sx = 511 - sx;
 					sy = 255 - sy;
 				}
 
-				col = ((col & 0xe0) >> 1) + (cpu_getcurrentframe()/16 & 0x0f);
+				col = ((col & 0xe0) >> 1) + (video_screen_get_frame_number(screen)/16 & 0x0f);
 
 				if (sx >= cliprect->min_x && sx <= cliprect->max_x &&
 					sy >= cliprect->min_y && sy <= cliprect->max_y)
-					*BITMAP_ADDR16(bitmap, sy, sx) = machine->pens[0xa00+col];
+					*BITMAP_ADDR16(bitmap, sy, sx) = 0xa00 + col;
 			}
 		}
 	}
@@ -1742,24 +1745,24 @@ static void cps1_render_stars(running_machine *machine,mame_bitmap *bitmap,const
 				int sy = (offs % 256);
 				sx = (sx - stars1x + (col & 0x1f)) & 0x1ff;
 				sy = (sy - stars1y) & 0xff;
-				if (flip_screen)
+				if (flip_screen_get())
 				{
 					sx = 511 - sx;
 					sy = 255 - sy;
 				}
 
-				col = ((col & 0xe0) >> 1) + (cpu_getcurrentframe()/16 & 0x0f);
+				col = ((col & 0xe0) >> 1) + (video_screen_get_frame_number(screen)/16 & 0x0f);
 
 				if (sx >= cliprect->min_x && sx <= cliprect->max_x &&
 					sy >= cliprect->min_y && sy <= cliprect->max_y)
-					*BITMAP_ADDR16(bitmap, sy, sx) = machine->pens[0x800+col];
+					*BITMAP_ADDR16(bitmap, sy, sx) = 0x800 + col;
 			}
 		}
 	}
 }
 
 
-static void cps1_render_layer(running_machine *machine,mame_bitmap *bitmap,const rectangle *cliprect,int layer,int primask)
+static void cps1_render_layer(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect,int layer,int primask)
 {
 	switch (layer)
 	{
@@ -1774,7 +1777,7 @@ static void cps1_render_layer(running_machine *machine,mame_bitmap *bitmap,const
 	}
 }
 
-static void cps1_render_high_layer(mame_bitmap *bitmap, const rectangle *cliprect, int layer)
+static void cps1_render_high_layer(bitmap_t *bitmap, const rectangle *cliprect, int layer)
 {
 	switch (layer)
 	{
@@ -1816,7 +1819,7 @@ VIDEO_UPDATE( cps1 )
         cps2_find_last_sprite();
     }
 	/* Build palette */
-	cps1_build_palette(machine);
+	cps1_build_palette(screen->machine);
 
 	cps1_update_transmasks();
 
@@ -1846,9 +1849,9 @@ VIDEO_UPDATE( cps1 )
 
 
 	/* Blank screen */
-	fillbitmap(bitmap,machine->pens[4095],cliprect);
+	fillbitmap(bitmap,4095,cliprect);
 
-	cps1_render_stars(machine,bitmap,cliprect);
+	cps1_render_stars(screen, bitmap,cliprect);
 
 	/* Draw layers (0 = sprites, 1-3 = tilemaps) */
 	l0 = (layercontrol >> 0x06) & 03;
@@ -1859,13 +1862,13 @@ VIDEO_UPDATE( cps1 )
 
 	if (cps_version == 1)
 	{
-		cps1_render_layer(machine,bitmap,cliprect,l0,0);
+		cps1_render_layer(screen->machine,bitmap,cliprect,l0,0);
 		if (l1 == 0) cps1_render_high_layer(bitmap,cliprect,l0); /* prepare mask for sprites */
-		cps1_render_layer(machine,bitmap,cliprect,l1,0);
+		cps1_render_layer(screen->machine,bitmap,cliprect,l1,0);
 		if (l2 == 0) cps1_render_high_layer(bitmap,cliprect,l1); /* prepare mask for sprites */
-		cps1_render_layer(machine,bitmap,cliprect,l2,0);
+		cps1_render_layer(screen->machine,bitmap,cliprect,l2,0);
 		if (l3 == 0) cps1_render_high_layer(bitmap,cliprect,l2); /* prepare mask for sprites */
-		cps1_render_layer(machine,bitmap,cliprect,l3,0);
+		cps1_render_layer(screen->machine,bitmap,cliprect,l3,0);
 	}
 	else
 	{
@@ -1916,10 +1919,10 @@ if (0 && input_code_pressed(KEYCODE_Z))
 			}
 		}
 
-		cps1_render_layer(machine,bitmap,cliprect,l0,1);
-		cps1_render_layer(machine,bitmap,cliprect,l1,2);
-		cps1_render_layer(machine,bitmap,cliprect,l2,4);
-		cps2_render_sprites(machine,bitmap,cliprect,primasks);
+		cps1_render_layer(screen->machine,bitmap,cliprect,l0,1);
+		cps1_render_layer(screen->machine,bitmap,cliprect,l1,2);
+		cps1_render_layer(screen->machine,bitmap,cliprect,l2,4);
+		cps2_render_sprites(screen->machine,bitmap,cliprect,primasks);
 	}
 
 #if CPS1_DUMP_VIDEO

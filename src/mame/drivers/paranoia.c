@@ -34,6 +34,7 @@ HuC6280A (Hudson)
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/pcecommn.h"
 #include "video/vdc.h"
 #include "cpu/h6280/h6280.h"
@@ -120,7 +121,7 @@ static WRITE8_HANDLER(paranoia_z80_io_37_w)
 }
 
 static ADDRESS_MAP_START(paranoia_z80_io_map, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x01, 0x01 ) AM_READ( paranoia_z80_io_01_r )
 	AM_RANGE( 0x02, 0x02 ) AM_READ( paranoia_z80_io_02_r )
 	AM_RANGE( 0x17, 0x17 ) AM_WRITE( paranoia_z80_io_17_w )
@@ -132,10 +133,8 @@ static MACHINE_DRIVER_START( paranoia )
 	MDRV_CPU_ADD(H6280, PCE_MAIN_CLOCK/3)
 	MDRV_CPU_PROGRAM_MAP(pce_mem, 0)
 	MDRV_CPU_IO_MAP(pce_io, 0)
-	MDRV_CPU_VBLANK_INT(pce_interrupt, VDC_LPF)
+	MDRV_CPU_VBLANK_INT_HACK(pce_interrupt, VDC_LPF)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_CPU_ADD(8085A, 18000000/3)
@@ -147,14 +146,14 @@ static MACHINE_DRIVER_START( paranoia )
 	MDRV_CPU_IO_MAP(paranoia_z80_io_map,0)
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_ADD("main",0)
 	MDRV_SCREEN_RAW_PARAMS(PCE_MAIN_CLOCK/2, VDC_WPF, 70, 70 + 512 + 32, VDC_LPF, 14, 14+242)
+
 	/* MDRV_GFXDECODE( pce_gfxdecodeinfo ) */
 	MDRV_PALETTE_LENGTH(1024)
 	MDRV_PALETTE_INIT( vce )
-	MDRV_COLORTABLE_LENGTH(1024)
 
 	MDRV_VIDEO_START( pce )
 	MDRV_VIDEO_UPDATE( pce )
@@ -183,6 +182,6 @@ ROM_END
 static DRIVER_INIT(paranoia)
 {
 	DRIVER_INIT_CALL(pce);
-};
+}
 
 GAME( 1990, paranoia, 0, paranoia, paranoia, paranoia, ROT0, "Naxat Soft", "Paranoia", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )

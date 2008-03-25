@@ -78,58 +78,58 @@ static WRITE8_HANDLER( flkatck_ls138_w )
 {
 	switch ((offset & 0x1c) >> 2){
 		case 0x04:	/* bankswitch */
-			flkatck_bankswitch_w(0, data);
+			flkatck_bankswitch_w(machine, 0, data);
 			break;
 		case 0x05:	/* sound code number */
-			soundlatch_w(0, data);
+			soundlatch_w(machine, 0, data);
 			break;
 		case 0x06:	/* Cause interrupt on audio CPU */
-			cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+			cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 			break;
 		case 0x07:	/* watchdog reset */
-			watchdog_reset_w(0, data);
+			watchdog_reset_w(machine, 0, data);
 			break;
 	}
 }
 
 static ADDRESS_MAP_START( flkatck_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READ(MRA8_RAM)
+	AM_RANGE(0x0000, 0x03ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0400, 0x041f) AM_READ(flkatck_ls138_r)			/* inputs + DIPS */
-	AM_RANGE(0x0800, 0x0bff) AM_READ(MRA8_RAM)		/* palette */
-	AM_RANGE(0x1000, 0x1fff) AM_READ(MRA8_RAM)					/* RAM */
-	AM_RANGE(0x2000, 0x3fff) AM_READ(MRA8_RAM)		/* Video RAM (007121) */
-	AM_RANGE(0x4000, 0x5fff) AM_READ(MRA8_BANK1)					/* banked ROM */
-	AM_RANGE(0x6000, 0xffff) AM_READ(MRA8_ROM)					/* ROM */
+	AM_RANGE(0x0800, 0x0bff) AM_READ(SMH_RAM)		/* palette */
+	AM_RANGE(0x1000, 0x1fff) AM_READ(SMH_RAM)					/* RAM */
+	AM_RANGE(0x2000, 0x3fff) AM_READ(SMH_RAM)		/* Video RAM (007121) */
+	AM_RANGE(0x4000, 0x5fff) AM_READ(SMH_BANK1)					/* banked ROM */
+	AM_RANGE(0x6000, 0xffff) AM_READ(SMH_ROM)					/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( flkatck_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0007) AM_WRITE(flkatck_k007121_regs_w) 	/* 007121 registers */
-	AM_RANGE(0x0000, 0x03ff) AM_WRITE(MWA8_RAM)
+	AM_RANGE(0x0000, 0x03ff) AM_WRITE(SMH_RAM)
 	AM_RANGE(0x0400, 0x041f) AM_WRITE(flkatck_ls138_w)			/* bankswitch + counters + sound command */
 	AM_RANGE(0x0800, 0x0bff) AM_WRITE(paletteram_xBBBBBGGGGGRRRRR_le_w) AM_BASE(&paletteram)/* palette */
-	AM_RANGE(0x1000, 0x1fff) AM_WRITE(MWA8_RAM)					/* RAM */
+	AM_RANGE(0x1000, 0x1fff) AM_WRITE(SMH_RAM)					/* RAM */
 	AM_RANGE(0x2000, 0x3fff) AM_WRITE(flkatck_k007121_w) AM_BASE(&k007121_ram)			/* Video RAM (007121) */
-	AM_RANGE(0x4000, 0x5fff) AM_WRITE(MWA8_BANK1)					/* banked ROM */
-	AM_RANGE(0x6000, 0xffff) AM_WRITE(MWA8_ROM)					/* ROM */
+	AM_RANGE(0x4000, 0x5fff) AM_WRITE(SMH_BANK1)					/* banked ROM */
+	AM_RANGE(0x6000, 0xffff) AM_WRITE(SMH_ROM)					/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( flkatck_readmem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_READ(MRA8_ROM)				/* ROM */
-	AM_RANGE(0x8000, 0x87ff) AM_READ(MRA8_RAM)				/* RAM */
-	AM_RANGE(0x9000, 0x9000) AM_READ(MRA8_RAM)				/* ??? */
-	AM_RANGE(0x9001, 0x9001) AM_READ(MRA8_RAM)				/* ??? */
-	AM_RANGE(0x9004, 0x9004) AM_READ(MRA8_RAM)				/* ??? */
+	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)				/* ROM */
+	AM_RANGE(0x8000, 0x87ff) AM_READ(SMH_RAM)				/* RAM */
+	AM_RANGE(0x9000, 0x9000) AM_READ(SMH_RAM)				/* ??? */
+	AM_RANGE(0x9001, 0x9001) AM_READ(SMH_RAM)				/* ??? */
+	AM_RANGE(0x9004, 0x9004) AM_READ(SMH_RAM)				/* ??? */
 	AM_RANGE(0xa000, 0xa000) AM_READ(soundlatch_r)			/* soundlatch_r */
 	AM_RANGE(0xb000, 0xb00d) AM_READ(K007232_read_port_0_r)	/* 007232 registers */
 	AM_RANGE(0xc001, 0xc001) AM_READ(YM2151_status_port_0_r) /* YM2151 */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( flkatck_writemem_sound, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x7fff) AM_WRITE(MWA8_ROM)					/* ROM */
-	AM_RANGE(0x8000, 0x87ff) AM_WRITE(MWA8_RAM)					/* RAM */
-	AM_RANGE(0x9000, 0x9000) AM_WRITE(MWA8_RAM)					/* ??? */
-	AM_RANGE(0x9001, 0x9001) AM_WRITE(MWA8_RAM)					/* ??? */
-	AM_RANGE(0x9006, 0x9006) AM_WRITE(MWA8_RAM)					/* ??? */
+	AM_RANGE(0x0000, 0x7fff) AM_WRITE(SMH_ROM)					/* ROM */
+	AM_RANGE(0x8000, 0x87ff) AM_WRITE(SMH_RAM)					/* RAM */
+	AM_RANGE(0x9000, 0x9000) AM_WRITE(SMH_RAM)					/* ??? */
+	AM_RANGE(0x9001, 0x9001) AM_WRITE(SMH_RAM)					/* ??? */
+	AM_RANGE(0x9006, 0x9006) AM_WRITE(SMH_RAM)					/* ??? */
 	AM_RANGE(0xb000, 0xb00d) AM_WRITE(K007232_write_port_0_w) 	/* 007232 registers */
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(YM2151_register_port_0_w)	/* YM2151 */
 	AM_RANGE(0xc001, 0xc001) AM_WRITE(YM2151_data_port_0_w)		/* YM2151 */
@@ -273,22 +273,23 @@ static MACHINE_DRIVER_START( flkatck )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(HD6309,3000000*4) /* HD63C09EP, 24/8 MHz */
 	MDRV_CPU_PROGRAM_MAP(flkatck_readmem,flkatck_writemem)
-	MDRV_CPU_VBLANK_INT(flkatck_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", flkatck_interrupt)
 
 	MDRV_CPU_ADD(Z80,3579545)	/* NEC D780C-1, 3.579545 MHz */
 	MDRV_CPU_PROGRAM_MAP(flkatck_readmem_sound,flkatck_writemem_sound)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(10)
 
 	MDRV_MACHINE_RESET(flkatck)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(37*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 35*8-1, 2*8, 30*8-1)
+
 	MDRV_GFXDECODE(flkatck)
 	MDRV_PALETTE_LENGTH(512)
 

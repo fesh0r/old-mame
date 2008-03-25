@@ -95,13 +95,13 @@ WRITE8_HANDLER( gottlieb_video_outputs_w )
 
 	background_priority = data & 0x01;
 
-	if (flip_screen_x != (data & 0x02))
+	if (flip_screen_x_get() != (data & 0x02))
 	{
 		flip_screen_x_set(data & 0x02);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 	}
 
-	if (flip_screen_y != (data & 0x04))
+	if (flip_screen_y_get() != (data & 0x04))
 	{
 		flip_screen_y_set(data & 0x04);
 		tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -158,7 +158,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 static void gottlieb_video_start_common(void)
 {
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
-		TILEMAP_TYPE_PEN, 8, 8, 32, 32);
+		 8, 8, 32, 32);
 
 	tilemap_set_transparent_pen(bg_tilemap, 0);
 }
@@ -175,7 +175,7 @@ VIDEO_START( vidvince )
 	gottlieb_video_start_common();
 }
 
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect)
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
     int offs;
 
@@ -187,13 +187,13 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 		int sy = (spriteram[offs]) - 13;
 		int code = (255 ^ spriteram[offs + 2]) + 256 * spritebank;
 
-		if (flip_screen_x) sx = 233 - sx;
-		if (flip_screen_y) sy = 244 - sy;
+		if (flip_screen_x_get()) sx = 233 - sx;
+		if (flip_screen_y_get()) sy = 244 - sy;
 
 		if (spriteram[offs] || spriteram[offs + 1])	/* needed to avoid garbage on screen */
 			drawgfx(bitmap, machine->gfx[1],
 				code, 0,
-				flip_screen_x, flip_screen_y,
+				flip_screen_x_get(), flip_screen_y_get(),
 				sx,sy,
 				cliprect,
 				TRANSPARENCY_PEN, 0);
@@ -203,19 +203,14 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 VIDEO_UPDATE( gottlieb )
 {
 	if (!background_priority)
-	{
 		tilemap_draw(bitmap, cliprect, bg_tilemap, TILEMAP_DRAW_OPAQUE, 0);
-	}
 	else
-	{
-		fillbitmap(bitmap, machine->pens[0], cliprect);
-	}
+		fillbitmap(bitmap, 0, cliprect);
 
-	draw_sprites(machine, bitmap, cliprect);
+	draw_sprites(screen->machine, bitmap, cliprect);
 
 	if (background_priority)
-	{
 		tilemap_draw(bitmap, cliprect, bg_tilemap, 0, 0);
-	}
+
 	return 0;
 }

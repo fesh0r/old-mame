@@ -63,8 +63,8 @@ static UINT8 ssio_duty_cycle[2][3];
 static UINT8 ssio_ayvolume_lookup[16];
 static UINT8 ssio_custom_input_mask[5];
 static UINT8 ssio_custom_output_mask[2];
-static read8_handler ssio_custom_input[5];
-static write8_handler ssio_custom_output[2];
+static read8_machine_func ssio_custom_input[5];
+static write8_machine_func ssio_custom_output[2];
 
 /* Chip Squeak Deluxe-specific globals */
 static UINT8 csdeluxe_sound_cpu;
@@ -417,7 +417,7 @@ READ8_HANDLER( ssio_input_port_r )
 	UINT8 result = readinputportbytag_safe(port[offset], 0xff);
 	if (ssio_custom_input[offset])
 		result = (result & ~ssio_custom_input_mask[offset]) |
-		         ((*ssio_custom_input[offset])(offset) & ssio_custom_input_mask[offset]);
+		         ((*ssio_custom_input[offset])(machine, offset) & ssio_custom_input_mask[offset]);
 	return result;
 }
 
@@ -425,18 +425,18 @@ WRITE8_HANDLER( ssio_output_port_w )
 {
 	int which = offset >> 2;
 	if (which == 0)
-		mcr_control_port_w(offset, data);
+		mcr_control_port_w(machine, offset, data);
 	if (ssio_custom_output[which])
-		(*ssio_custom_output[which])(offset, data & ssio_custom_output_mask[which]);
+		(*ssio_custom_output[which])(machine, offset, data & ssio_custom_output_mask[which]);
 }
 
-void ssio_set_custom_input(int which, int mask, read8_handler handler)
+void ssio_set_custom_input(int which, int mask, read8_machine_func handler)
 {
 	ssio_custom_input[which] = handler;
 	ssio_custom_input_mask[which] = mask;
 }
 
-void ssio_set_custom_output(int which, int mask, write8_handler handler)
+void ssio_set_custom_output(int which, int mask, write8_machine_func handler)
 {
 	ssio_custom_output[which/4] = handler;
 	ssio_custom_output_mask[which/4] = mask;
@@ -465,7 +465,7 @@ static const struct AY8910interface ssio_ay8910_interface_2 =
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( ssio_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM
 	AM_RANGE(0x9000, 0x9003) AM_MIRROR(0x0ffc) AM_READ(ssio_data_r)
@@ -475,7 +475,7 @@ static ADDRESS_MAP_START( ssio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb000, 0xb000) AM_MIRROR(0x0ffc) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0xb001, 0xb001) AM_MIRROR(0x0ffc) AM_READ(AY8910_read_port_1_r)
 	AM_RANGE(0xb002, 0xb002) AM_MIRROR(0x0ffc) AM_WRITE(AY8910_write_port_1_w)
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(MRA8_NOP, ssio_status_w)
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(SMH_NOP, ssio_status_w)
 	AM_RANGE(0xd000, 0xdfff) AM_WRITENOP	/* low bit controls yellow LED */
 	AM_RANGE(0xe000, 0xefff) AM_READ(ssio_irq_clear)
 	AM_RANGE(0xf000, 0xffff) AM_READ_PORT("SSIO.DIP")	/* 6 DIP switches */
@@ -535,8 +535,8 @@ static void csdeluxe_irq(int state)
 
 static TIMER_CALLBACK( csdeluxe_delayed_data_w )
 {
-	pia_0_portb_w(0, param & 0x0f);
-	pia_0_ca1_w(0, ~param & 0x10);
+	pia_0_portb_w(machine, 0, param & 0x0f);
+	pia_0_ca1_w(machine, 0, ~param & 0x10);
 
 	/* oftentimes games will write one nibble at a time; the sync on this is very */
 	/* important, so we boost the interleave briefly while this happens */
@@ -550,17 +550,17 @@ static READ16_HANDLER( csdeluxe_pia_r )
 	/* using the MOVEP instruction outputs the same value on the high and */
 	/* low bytes. */
 	if (ACCESSING_MSB)
-		return pia_0_alt_r(offset) << 8;
+		return pia_0_alt_r(machine, offset) << 8;
 	else
-		return pia_0_alt_r(offset);
+		return pia_0_alt_r(machine, offset);
 }
 
 static WRITE16_HANDLER( csdeluxe_pia_w )
 {
 	if (ACCESSING_MSB)
-		pia_0_alt_w(offset, data >> 8);
+		pia_0_alt_w(machine, offset, data >> 8);
 	else
-		pia_0_alt_w(offset, data);
+		pia_0_alt_w(machine, offset, data);
 }
 
 
@@ -585,7 +585,8 @@ void csdeluxe_reset_w(int state)
 
 /* address map determined by PAL; not verified */
 static ADDRESS_MAP_START( csdeluxe_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(17) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0x1ffff)
 	AM_RANGE(0x000000, 0x007fff) AM_ROM
 	AM_RANGE(0x018000, 0x018007) AM_READWRITE(csdeluxe_pia_r, csdeluxe_pia_w)
 	AM_RANGE(0x01c000, 0x01cfff) AM_RAM
@@ -657,8 +658,8 @@ static void soundsgood_irq(int state)
 
 static TIMER_CALLBACK( soundsgood_delayed_data_w )
 {
-	pia_1_portb_w(0, (param >> 1) & 0x0f);
-	pia_1_ca1_w(0, ~param & 0x01);
+	pia_1_portb_w(machine, 0, (param >> 1) & 0x0f);
+	pia_1_ca1_w(machine, 0, ~param & 0x01);
 
 	/* oftentimes games will write one nibble at a time; the sync on this is very */
 	/* important, so we boost the interleave briefly while this happens */
@@ -688,7 +689,8 @@ void soundsgood_reset_w(int state)
 
 /* address map determined by PAL; not verified */
 static ADDRESS_MAP_START( soundsgood_map, ADDRESS_SPACE_PROGRAM, 16 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) | AMEF_ABITS(19) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0x7ffff)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x060000, 0x060007) AM_READWRITE(pia_1_msb_alt_r, pia_1_msb_alt_w)
 	AM_RANGE(0x070000, 0x070fff) AM_RAM
@@ -750,8 +752,8 @@ static void turbocs_irq(int state)
 
 static TIMER_CALLBACK( turbocs_delayed_data_w )
 {
-	pia_0_portb_w(0, (param >> 1) & 0x0f);
-	pia_0_ca1_w(0, ~param & 0x01);
+	pia_0_portb_w(machine, 0, (param >> 1) & 0x0f);
+	pia_0_ca1_w(machine, 0, ~param & 0x01);
 
 	/* oftentimes games will write one nibble at a time; the sync on this is very */
 	/* important, so we boost the interleave briefly while this happens */
@@ -780,7 +782,7 @@ void turbocs_reset_w(int state)
 
 /* address map verified from schematics */
 static ADDRESS_MAP_START( turbocs_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x07ff) AM_MIRROR(0x3800) AM_RAM
 	AM_RANGE(0x4000, 0x4003) AM_MIRROR(0x3ffc) AM_READWRITE(pia_0_alt_r, pia_0_alt_w)
 	AM_RANGE(0x8000, 0xffff) AM_ROM
@@ -813,10 +815,10 @@ MACHINE_DRIVER_START(turbo_chip_squeak_plus_sounds_good)
 	MDRV_IMPORT_FROM(sounds_good)
 
 	MDRV_SOUND_REPLACE("tcs", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_SOUND_REPLACE("sg", DAC, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
 
@@ -853,21 +855,21 @@ static WRITE8_HANDLER( squawkntalk_portb2_w )
 	/* write strobe -- pass the current command to the TMS5200 */
 	if (((data ^ squawkntalk_tms_strobes) & 0x02) && !(data & 0x02))
 	{
-		tms5220_data_w(offset, squawkntalk_tms_command);
+		tms5220_data_w(machine, offset, squawkntalk_tms_command);
 
 		/* DoT expects the ready line to transition on a command/write here, so we oblige */
-		pia_1_ca2_w(0, 1);
-		pia_1_ca2_w(0, 0);
+		pia_1_ca2_w(machine, 0, 1);
+		pia_1_ca2_w(machine, 0, 0);
 	}
 
 	/* read strobe -- read the current status from the TMS5200 */
 	else if (((data ^ squawkntalk_tms_strobes) & 0x01) && !(data & 0x01))
 	{
-		pia_1_porta_w(0, tms5220_status_r(offset));
+		pia_1_porta_w(machine, 0, tms5220_status_r(machine, offset));
 
 		/* DoT expects the ready line to transition on a command/write here, so we oblige */
-		pia_1_ca2_w(0, 1);
-		pia_1_ca2_w(0, 0);
+		pia_1_ca2_w(machine, 0, 1);
+		pia_1_ca2_w(machine, 0, 0);
 	}
 
 	/* remember the state */
@@ -883,8 +885,8 @@ static void squawkntalk_irq(int state)
 
 static TIMER_CALLBACK( squawkntalk_delayed_data_w )
 {
-	pia_0_porta_w(0, ~param & 0x0f);
-	pia_0_cb1_w(0, ~param & 0x10);
+	pia_0_porta_w(machine, 0, ~param & 0x0f);
+	pia_0_cb1_w(machine, 0, ~param & 0x10);
 }
 
 
@@ -906,7 +908,7 @@ void squawkntalk_reset_w(int state)
 /* note that jumpers control the ROM sizes; if these are changed, use the alternate */
 /* address map below */
 static ADDRESS_MAP_START( squawkntalk_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x007f) AM_RAM		/* internal RAM */
 	AM_RANGE(0x0080, 0x0083) AM_MIRROR(0x4f6c) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0x0090, 0x0093) AM_MIRROR(0x4f6c) AM_READWRITE(pia_1_r, pia_1_w)
@@ -918,7 +920,7 @@ ADDRESS_MAP_END
 /* ROM size of 2k */
 #ifdef UNUSED_FUNCTION
 ADDRESS_MAP_START( squawkntalk_alt_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x007f) AM_RAM		/* internal RAM */
 	AM_RANGE(0x0080, 0x0083) AM_MIRROR(0x676c) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0x0090, 0x0093) AM_MIRROR(0x676c) AM_READWRITE(pia_1_r, pia_1_w)

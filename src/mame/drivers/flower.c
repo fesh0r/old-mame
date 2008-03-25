@@ -80,9 +80,9 @@ static WRITE8_HANDLER( sn_nmi_enable_w )
 
 static WRITE8_HANDLER( sound_command_w )
 {
-	soundlatch_w(0,data);
+	soundlatch_w(machine,0,data);
 	if (sn_nmi_enable)
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( flower_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
@@ -95,11 +95,11 @@ static ADDRESS_MAP_START( flower_cpu1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa103, 0xa103) AM_READ(input_port_1_r)
 	AM_RANGE(0xc000, 0xddff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xde00, 0xdfff) AM_RAM AM_SHARE(2) AM_BASE(&spriteram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(MRA8_RAM, flower_textram_w) AM_SHARE(3) AM_BASE(&flower_textram)
+	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, flower_textram_w) AM_SHARE(3) AM_BASE(&flower_textram)
 	AM_RANGE(0xe000, 0xefff) AM_RAM //only cleared?
-	AM_RANGE(0xf000, 0xf1ff) AM_READWRITE(MRA8_RAM, flower_bg0ram_w)  AM_SHARE(4) AM_BASE(&flower_bg0ram)
+	AM_RANGE(0xf000, 0xf1ff) AM_READWRITE(SMH_RAM, flower_bg0ram_w)  AM_SHARE(4) AM_BASE(&flower_bg0ram)
 	AM_RANGE(0xf200, 0xf200) AM_RAM AM_SHARE(5) AM_BASE(&flower_bg0_scroll)
-	AM_RANGE(0xf800, 0xf9ff) AM_READWRITE(MRA8_RAM, flower_bg1ram_w)  AM_SHARE(6) AM_BASE(&flower_bg1ram)
+	AM_RANGE(0xf800, 0xf9ff) AM_READWRITE(SMH_RAM, flower_bg1ram_w)  AM_SHARE(6) AM_BASE(&flower_bg1ram)
 	AM_RANGE(0xfa00, 0xfa00) AM_RAM AM_SHARE(7) AM_BASE(&flower_bg1_scroll)
 ADDRESS_MAP_END
 
@@ -112,10 +112,10 @@ static ADDRESS_MAP_START( flower_cpu2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa400, 0xa400) AM_WRITE(sound_command_w)
 	AM_RANGE(0xc000, 0xddff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xde00, 0xdfff) AM_RAM AM_SHARE(2)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(MRA8_RAM, flower_textram_w) AM_SHARE(3)
-	AM_RANGE(0xf000, 0xf1ff) AM_READWRITE(MRA8_RAM, flower_bg0ram_w)  AM_SHARE(4)
+	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, flower_textram_w) AM_SHARE(3)
+	AM_RANGE(0xf000, 0xf1ff) AM_READWRITE(SMH_RAM, flower_bg0ram_w)  AM_SHARE(4)
 	AM_RANGE(0xf200, 0xf200) AM_RAM AM_SHARE(5)
-	AM_RANGE(0xf800, 0xf9ff) AM_READWRITE(MRA8_RAM, flower_bg1ram_w)  AM_SHARE(6)
+	AM_RANGE(0xf800, 0xf9ff) AM_READWRITE(SMH_RAM, flower_bg1ram_w)  AM_SHARE(6)
 	AM_RANGE(0xfa00, 0xfa00) AM_RAM AM_SHARE(7)
 ADDRESS_MAP_END
 
@@ -235,31 +235,30 @@ static MACHINE_DRIVER_START( flower )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(Z80,8000000)
 	MDRV_CPU_PROGRAM_MAP(flower_cpu1,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,10)
-//  MDRV_CPU_VBLANK_INT(nmi_line_pulse,1) //nmis stuff up the writes to shared ram
+	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,10)
+//  MDRV_CPU_VBLANK_INT("main", nmi_line_pulse) //nmis stuff up the writes to shared ram
 
 	MDRV_CPU_ADD(Z80,8000000)
 	MDRV_CPU_PROGRAM_MAP(flower_cpu2,0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold,1)
-//  MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
+//  MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(Z80,8000000)
 	MDRV_CPU_PROGRAM_MAP(flower_sound_cpu,0)
 	MDRV_CPU_PERIODIC_INT(sn_irq, 90)	/* periodic interrupt, don't know about the frequency */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(34*8, 33*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 34*8-1, 0*8, 28*8-1)
+
 	MDRV_GFXDECODE(flower)
 
 	MDRV_PALETTE_INIT(flower)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(384)
 
 	MDRV_VIDEO_START(flower)
 	MDRV_VIDEO_UPDATE(flower)

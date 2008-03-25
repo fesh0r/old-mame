@@ -22,7 +22,7 @@
                              Enabled DSP again.
     * December 16, 2007 (kingshriek) Many EG bug fixes, implemented effects mixer,
                              implemented FM.
-    * January 5, 2007   (kingshriek+RB) Working, good-sounding FM, removed obsolete non-USEDSP code.
+    * January 5, 2008   (kingshriek+RB) Working, good-sounding FM, removed obsolete non-USEDSP code.
 */
 
 #include "sndintrf.h"
@@ -712,7 +712,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 			break;
 		case 0x6:
 		case 0x7:
-			SCSP_MidiIn(0, SCSP->udata.data[0x6/2]&0xff, 0);
+			SCSP_MidiIn(Machine, 0, SCSP->udata.data[0x6/2]&0xff, 0);
 			break;
 		case 0x12:
 		case 0x13:
@@ -735,7 +735,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 					time = (44100 / SCSP->TimPris[0]) / (255-(SCSP->udata.data[0x18/2]&0xff));
 					if (time)
 					{
-						timer_adjust(SCSP->timerA, ATTOTIME_IN_HZ(time), 0, attotime_never);
+						timer_adjust_oneshot(SCSP->timerA, ATTOTIME_IN_HZ(time), 0);
 					}
 				}
 			}
@@ -754,7 +754,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 					time = (44100 / SCSP->TimPris[1]) / (255-(SCSP->udata.data[0x1A/2]&0xff));
 					if (time)
 					{
-						timer_adjust(SCSP->timerB, ATTOTIME_IN_HZ(time), 0, attotime_never);
+						timer_adjust_oneshot(SCSP->timerB, ATTOTIME_IN_HZ(time), 0);
 					}
 				}
 			}
@@ -773,7 +773,7 @@ static void SCSP_UpdateReg(struct _SCSP *SCSP, int reg)
 					time = (44100 / SCSP->TimPris[2]) / (255-(SCSP->udata.data[0x1C/2]&0xff));
 					if (time)
 					{
-						timer_adjust(SCSP->timerC, ATTOTIME_IN_HZ(time), 0, attotime_never);
+						timer_adjust_oneshot(SCSP->timerC, ATTOTIME_IN_HZ(time), 0);
 					}
 				}
 			}

@@ -91,8 +91,8 @@ static TILE_GET_INFO( get_tile_info2 )
 static VIDEO_START ( pipeline )
 {
 	palram=auto_malloc(0x1000);
-	tilemap1 = tilemap_create( get_tile_info,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32 );
-	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,32 );
+	tilemap1 = tilemap_create( get_tile_info,tilemap_scan_rows,8,8,64,32 );
+	tilemap2 = tilemap_create( get_tile_info2,tilemap_scan_rows,8,8,64,32 );
 	tilemap_set_transparent_pen(tilemap2,0);
 }
 
@@ -217,8 +217,8 @@ static WRITE8_HANDLER(protection_w)
 static ADDRESS_MAP_START( cpu0_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0x8800, 0x97ff) AM_READWRITE(MRA8_RAM, vram1_w) AM_BASE(&vram1)
-	AM_RANGE(0x9800, 0xa7ff) AM_READWRITE(MRA8_RAM, vram2_w) AM_BASE(&vram2)
+	AM_RANGE(0x8800, 0x97ff) AM_READWRITE(SMH_RAM, vram1_w) AM_BASE(&vram1)
+	AM_RANGE(0x9800, 0xa7ff) AM_READWRITE(SMH_RAM, vram2_w) AM_BASE(&vram2)
 	AM_RANGE(0xb800, 0xb803) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
 	AM_RANGE(0xb810, 0xb813) AM_READWRITE(ppi8255_1_r, ppi8255_1_w)
 	AM_RANGE(0xb830, 0xb830) AM_NOP
@@ -232,7 +232,7 @@ static ADDRESS_MAP_START( cpu1_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sound_port, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_READ(z80ctc_0_r) AM_WRITE(z80ctc_0_w)
 	AM_RANGE(0x06, 0x07) AM_NOP
 ADDRESS_MAP_END
@@ -357,7 +357,7 @@ static MACHINE_DRIVER_START( pipeline )
 
 	MDRV_CPU_ADD(Z80, 7372800/2)
 	MDRV_CPU_PROGRAM_MAP(cpu0_mem, 0)
-	MDRV_CPU_VBLANK_INT(nmi_line_pulse,1)
+	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
 	MDRV_CPU_ADD(Z80, 7372800/2)
 	MDRV_CPU_CONFIG(daisy_chain_sound)
@@ -367,14 +367,14 @@ static MACHINE_DRIVER_START( pipeline )
 	MDRV_CPU_ADD(M68705, 7372800/2)
 	MDRV_CPU_PROGRAM_MAP(mcu_mem, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 512)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 16, 239)
+
 	MDRV_GFXDECODE(pipeline)
 
 	MDRV_MACHINE_RESET(pipeline)

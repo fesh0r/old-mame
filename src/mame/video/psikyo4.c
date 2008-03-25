@@ -32,7 +32,7 @@ HgKairak: 86010000 1f201918 a0000000 Large Screen
 extern UINT32 *psikyo4_vidregs;
 
 /* --- SPRITES --- */
-static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const rectangle *cliprect, UINT32 scr )
+static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT32 scr )
 {
 	/*- Sprite Format 0x0000 - 0x2bff -**
 
@@ -98,7 +98,7 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 			if((!scr && flipscreen1) || (scr && flipscreen2))
 			{
-				ypos = machine->screen[0].visarea.max_y+1 - ypos - high*16; /* Screen Height depends on game */
+				ypos = video_screen_get_visible_area(machine->primary_screen)->max_y+1 - ypos - high*16; /* Screen Height depends on game */
 				xpos = 40*8 - xpos - wide*16;
 				flipx = !flipx;
 				flipy = !flipy;
@@ -125,15 +125,18 @@ static void draw_sprites(running_machine *machine, mame_bitmap *bitmap, const re
 
 VIDEO_UPDATE( psikyo4 )
 {
-	if (screen==0)
+	const device_config *left_screen  = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
+	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
+
+	if (screen == left_screen)
 	{
-		fillbitmap(bitmap, machine->pens[0x1000], cliprect);
-		draw_sprites(machine, bitmap, cliprect, 0x0000);
+		fillbitmap(bitmap, 0x1000, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect, 0x0000);
 	}
-	else if (screen==1)
+	if (screen == right_screen)
 	{
-		fillbitmap(bitmap, machine->pens[0x1001], cliprect);
-		draw_sprites(machine, bitmap, cliprect, 0x2000);
+		fillbitmap(bitmap, 0x1001, cliprect);
+		draw_sprites(screen->machine, bitmap, cliprect, 0x2000);
 	}
 	return 0;
 }
