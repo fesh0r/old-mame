@@ -360,18 +360,18 @@ static const options_entry regSettings[] =
     { MUIOPTION_UI_KEY_QUIT,				"KEYCODE_LALT KEYCODE_Q",     0, NULL },
 
 	{ NULL,									NULL,       OPTION_HEADER,     "NAVIGATION JOYSTICK CODES" },
-	{ MUIOPTION_UI_JOY_UP,					"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_DOWN,				"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_LEFT,				"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_RIGHT,				"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_START,				"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_PGUP,				"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_PGDWN,				"",         0,                 NULL },
+	{ MUIOPTION_UI_JOY_UP,					"1,1,1,1",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_DOWN,				"1,1,1,2",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_LEFT,				"1,1,2,1",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_RIGHT,				"1,1,2,2",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_START,				"1,0,1,0",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_PGUP,				"2,1,2,1",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_PGDWN,				"2,1,2,2",  0,                 NULL },
 	{ MUIOPTION_UI_JOY_HOME,				"0,0,0,0",  0,                 NULL },
 	{ MUIOPTION_UI_JOY_END,					"0,0,0,0",  0,                 NULL },
-	{ MUIOPTION_UI_JOY_SS_CHANGE,			"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_HISTORY_UP,			"",         0,                 NULL },
-	{ MUIOPTION_UI_JOY_HISTORY_DOWN,		"",         0,                 NULL },
+	{ MUIOPTION_UI_JOY_SS_CHANGE,			"2,0,3,0",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_HISTORY_UP,			"2,0,4,0",  0,                 NULL },
+	{ MUIOPTION_UI_JOY_HISTORY_DOWN,		"2,0,1,0",  0,                 NULL },
 	{ MUIOPTION_UI_JOY_EXEC,				"0,0,0,0",  0,                 NULL },
 
 #ifndef MESS
@@ -2709,16 +2709,18 @@ core_options * load_options(OPTIONS_TYPE opt_type, int game_num)
 	{
 		const game_driver *parent = driver_get_clone(driver);
 		const game_driver *gparent = (parent != NULL) ? driver_get_clone(parent) : NULL;
+
 		astring *basename;
 		astring *srcname;
-		machine_config drv;
-
-		/* expand the machine driver to look at the info */
-		expand_machine_driver(driver->drv, &drv);
+		machine_config *config = machine_config_alloc(driver->machine_config);
 
 		/* parse "vector.ini" for vector games */
-		if (drv.video_attributes & VIDEO_TYPE_VECTOR)
+		if (isDriverVector(config))
+		{
 			ui_parse_ini_file(opts, "vector");
+		}
+
+		machine_config_free(config);
 
 		if (opt_type == OPTIONS_VECTOR)
 		{
@@ -2797,10 +2799,6 @@ void save_options(OPTIONS_TYPE opt_type, core_options *opts, int game_num)
 	} else if (driver != NULL)
 	{
 		astring *basename, *srcname;
-		machine_config drv;
-
-		/* expand the machine driver to look at the info */
-		expand_machine_driver(driver->drv, &drv);
 
 		switch (opt_type)
 		{

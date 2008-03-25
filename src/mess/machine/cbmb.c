@@ -19,7 +19,6 @@
 #include "includes/vc20tape.h"
 #include "includes/cbmieeeb.h"
 #include "video/vic6567.h"
-#include "video/crtc6845.h"
 
 
 static TIMER_CALLBACK(cbmb_frame_interrupt);
@@ -158,14 +157,14 @@ static int cbmb_keyboard_line_c(void)
 	return data^0xff;
 }
 
-static void cbmb_irq (int level)
+static void cbmb_irq (running_machine *machine, int level)
 {
 	static int old_level = 0;
 
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos6509", ("irq %s\n", level ? "start" : "end"));
-		cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
+		cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -189,10 +188,14 @@ static void cbmb_cia_port_a_w(UINT8 data)
 	cbm_ieee_data_w(0, data);
 }
 
+static void cbmb_tpi6525_0_irq2_level( int level ) {
+	tpi6525_0_irq2_level( Machine, level );
+}
+
 static const cia6526_interface cbmb_cia =
 {
 	CIA6526,
-	tpi6525_0_irq2_level,
+	cbmb_tpi6525_0_irq2_level,
 	0.0, 60,
 
 	{
@@ -219,7 +222,7 @@ static int cbmb_dma_read_color(int offset)
 	return cbmb_colorram[offset&0x3ff];
 }
 
-static void cbmb_change_font(int level)
+static void cbmb_change_font(running_machine *machine, int level)
 {
 	cbmb_vh_set_font(level);
 }
@@ -248,26 +251,11 @@ static void cbmb_common_driver_init (void)
 	cbm_ieee_open();
 }
 
-static void cbmb_display_enable_changed(int display_enabled) {
-}
-
-//static const struct mscrtc6845_config cbm600_crtc= { 1600000 /*?*/, cbmb_vh_cursor };
-static const crtc6845_interface cbm600_crtc = {
-	0,
-	1600000 /*?*/,
-	8 /*?*/,
-	NULL,
-	cbm600_update_row,
-	NULL,
-	cbmb_display_enable_changed
-};
-
 void cbm600_driver_init (void)
 {
 	cbmb_common_driver_init ();
 	cbm_ntsc = 1;
 	cbm600_vh_init();
-	crtc6845_config( 0, &cbm600_crtc);
 }
 
 void cbm600pal_driver_init (void)
@@ -275,26 +263,13 @@ void cbm600pal_driver_init (void)
 	cbmb_common_driver_init ();
 	cbm_ntsc = 0;
 	cbm600_vh_init();
-	crtc6845_config( 0, &cbm600_crtc);
 }
 
 void cbm600hu_driver_init (void)
 {
 	cbmb_common_driver_init ();
 	cbm_ntsc = 0;
-	crtc6845_config( 0, &cbm600_crtc);
 }
-
-//static const struct mscrtc6845_config cbm700_crtc= { 2000000 /*?*/, cbmb_vh_cursor };
-static const crtc6845_interface cbm700_crtc = {
-	0,
-	2000000 /*?*/,
-	9 /*?*/,
-	NULL,
-	cbm700_update_row,
-	NULL,
-	cbmb_display_enable_changed
-};
 
 void cbm700_driver_init (void)
 {
@@ -302,7 +277,6 @@ void cbm700_driver_init (void)
 	cbm700 = 1;
 	cbm_ntsc = 0;
 	cbm700_vh_init();
-	crtc6845_config( 0, &cbm700_crtc);
 }
 
 void cbm500_driver_init (void)
@@ -339,7 +313,7 @@ static TIMER_CALLBACK(cbmb_frame_interrupt)
 {
 	static int level = 0;
 
-	tpi6525_0_irq0_level(level);
+	tpi6525_0_irq0_level(machine, level);
 	level=!level;
 	if (level) return ;
 

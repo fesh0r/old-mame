@@ -3,7 +3,7 @@
 #include "cpu/cdp1802/cdp1802.h"
 #include "video/cdp1861.h"
 
-static mame_bitmap *cdptmpbitmap;
+static bitmap_t *cdptmpbitmap;
 
 static emu_timer *cdp1861_int_timer;
 static emu_timer *cdp1861_efx_timer;
@@ -21,7 +21,7 @@ int cdp1861_efx;
 
 static TIMER_CALLBACK(cdp1861_int_tick)
 {
-	int scanline = video_screen_get_vpos(0);
+	int scanline = video_screen_get_vpos(machine->primary_screen);
 
 	if (scanline == CDP1861_SCANLINE_INT_START)
 	{
@@ -30,7 +30,7 @@ static TIMER_CALLBACK(cdp1861_int_tick)
 			cpunum_set_input_line(machine, 0, CDP1802_INPUT_LINE_INT, HOLD_LINE);
 		}
 
-		timer_adjust(cdp1861_int_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_INT_END, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_int_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_INT_END, 0), 0);
 	}
 	else
 	{
@@ -39,41 +39,41 @@ static TIMER_CALLBACK(cdp1861_int_tick)
 			cpunum_set_input_line(machine, 0, CDP1802_INPUT_LINE_INT, CLEAR_LINE);
 		}
 
-		timer_adjust(cdp1861_int_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_INT_START, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_int_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_INT_START, 0), 0);
 	}
 }
 
 static TIMER_CALLBACK(cdp1861_efx_tick)
 {
-	int scanline = video_screen_get_vpos(0);
+	int scanline = video_screen_get_vpos(machine->primary_screen);
 
 	switch (scanline)
 	{
 	case CDP1861_SCANLINE_EFX_TOP_START:
 		cdp1861_efx = ASSERT_LINE;
-		timer_adjust(cdp1861_efx_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_EFX_TOP_END, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_efx_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_EFX_TOP_END, 0), 0);
 		break;
 
 	case CDP1861_SCANLINE_EFX_TOP_END:
 		cdp1861_efx = CLEAR_LINE;
-		timer_adjust(cdp1861_efx_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_EFX_BOTTOM_START, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_efx_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_EFX_BOTTOM_START, 0), 0);
 		break;
 
 	case CDP1861_SCANLINE_EFX_BOTTOM_START:
 		cdp1861_efx = ASSERT_LINE;
-		timer_adjust(cdp1861_efx_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_EFX_BOTTOM_END, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_efx_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_EFX_BOTTOM_END, 0), 0);
 		break;
 
 	case CDP1861_SCANLINE_EFX_BOTTOM_END:
 		cdp1861_efx = CLEAR_LINE;
-		timer_adjust(cdp1861_efx_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_EFX_TOP_START, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_efx_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_EFX_TOP_START, 0), 0);
 		break;
 	}
 }
 
 static TIMER_CALLBACK(cdp1861_dma_tick)
 {
-	int scanline = video_screen_get_vpos(0);
+	int scanline = video_screen_get_vpos(machine->primary_screen);
 
 	if (cdp1861.dmaout)
 	{
@@ -85,7 +85,7 @@ static TIMER_CALLBACK(cdp1861_dma_tick)
 			}
 		}
 
-		timer_adjust(cdp1861_dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_WAIT, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_WAIT, 0), 0);
 
 		cdp1861.dmaout = 0;
 	}
@@ -99,7 +99,7 @@ static TIMER_CALLBACK(cdp1861_dma_tick)
 			}
 		}
 
-		timer_adjust(cdp1861_dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_ACTIVE, 0), 0, attotime_zero);
+		timer_adjust_oneshot(cdp1861_dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_ACTIVE, 0), 0);
 
 		cdp1861.dmaout = 1;
 	}
@@ -107,8 +107,8 @@ static TIMER_CALLBACK(cdp1861_dma_tick)
 
 void cdp1861_dma_w(UINT8 data)
 {
-	int sx = video_screen_get_hpos(0) + 4;
-	int y = video_screen_get_vpos(0);
+	int sx = video_screen_get_hpos(Machine->primary_screen) + 4;
+	int y = video_screen_get_vpos(Machine->primary_screen);
 	int x;
 
 	for (x = 0; x < 8; x++)
@@ -121,9 +121,9 @@ void cdp1861_dma_w(UINT8 data)
 
 MACHINE_RESET( cdp1861 )
 {
-	timer_adjust(cdp1861_int_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_INT_START, 0), 0, attotime_zero);
-	timer_adjust(cdp1861_efx_timer, video_screen_get_time_until_pos(0, CDP1861_SCANLINE_EFX_TOP_START, 0), 0, attotime_zero);
-	timer_adjust(cdp1861_dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_START, 0), 0, attotime_zero);
+	timer_adjust_oneshot(cdp1861_int_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_INT_START, 0), 0);
+	timer_adjust_oneshot(cdp1861_efx_timer, video_screen_get_time_until_pos(machine->primary_screen, CDP1861_SCANLINE_EFX_TOP_START, 0), 0);
+	timer_adjust_oneshot(cdp1861_dma_timer, ATTOTIME_IN_CYCLES(CDP1861_CYCLES_DMA_START, 0), 0);
 
 	cdp1861.disp = 0;
 	cdp1861.dmaout = 0;
@@ -143,18 +143,22 @@ READ8_HANDLER( cdp1861_dispon_r )
 WRITE8_HANDLER( cdp1861_dispoff_w )
 {
 	cdp1861.disp = 0;
-	cpunum_set_input_line(Machine, 0, CDP1802_INPUT_LINE_INT, CLEAR_LINE);
-	cpunum_set_input_line(Machine, 0, CDP1802_INPUT_LINE_DMAOUT, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, CDP1802_INPUT_LINE_INT, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, CDP1802_INPUT_LINE_DMAOUT, CLEAR_LINE);
 }
 
 VIDEO_START( cdp1861 )
 {
+	const device_config *screen = video_screen_first(machine->config);
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
+
 	cdp1861_int_timer = timer_alloc(cdp1861_int_tick, NULL);
 	cdp1861_efx_timer = timer_alloc(cdp1861_efx_tick, NULL);
 	cdp1861_dma_timer = timer_alloc(cdp1861_dma_tick, NULL);
 
 	/* allocate the temporary bitmap */
-	cdptmpbitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, machine->screen[0].format);
+	cdptmpbitmap = auto_bitmap_alloc(width, height, video_screen_get_format(screen));
 
 	/* ensure the contents of the bitmap are saved */
 	state_save_register_bitmap("video", 0, "cdptmpbitmap", cdptmpbitmap);
@@ -171,7 +175,7 @@ VIDEO_UPDATE( cdp1861 )
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	}
 
 	return 0;

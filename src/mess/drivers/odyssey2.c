@@ -10,6 +10,7 @@
 #include "cpu/i8039/i8039.h"
 #include "includes/odyssey2.h"
 #include "devices/cartslot.h"
+#include "sound/sp0256.h"
 
 static ADDRESS_MAP_START( odyssey2_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x03FF) AM_ROM
@@ -22,7 +23,17 @@ static ADDRESS_MAP_START( odyssey2_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE( I8039_p1,	 I8039_p1)	AM_READWRITE( odyssey2_getp1, odyssey2_putp1 )
 	AM_RANGE( I8039_p2,	 I8039_p2)	AM_READWRITE( odyssey2_getp2, odyssey2_putp2 )
 	AM_RANGE( I8039_bus, I8039_bus)	AM_READWRITE( odyssey2_getbus, odyssey2_putbus )
+	AM_RANGE( I8039_t0,  I8039_t0)  AM_READ( odyssey2_t0_r )
 	AM_RANGE( I8039_t1,  I8039_t1)	AM_READ( odyssey2_t1_r )
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( g7400_io , ADDRESS_SPACE_IO, 8)
+	AM_RANGE( 0x00,      0xff)      AM_READWRITE( g7400_bus_r, g7400_bus_w)
+	AM_RANGE( I8039_p1,  I8039_p1)  AM_READWRITE( odyssey2_getp1, odyssey2_putp1 )
+	AM_RANGE( I8039_p2,  I8039_p2)  AM_READWRITE( odyssey2_getp2, odyssey2_putp2 )
+	AM_RANGE( I8039_bus, I8039_bus) AM_READWRITE( odyssey2_getbus, odyssey2_putbus )
+	AM_RANGE( I8039_t0,  I8039_t0)  AM_READ( odyssey2_t0_r )
+	AM_RANGE( I8039_t1,  I8039_t1)  AM_READ( odyssey2_t1_r )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( odyssey2 )
@@ -139,27 +150,28 @@ static GFXDECODE_START( odyssey2 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, odyssey2_spritelayout, 0, 2 )
 GFXDECODE_END
 
+static const struct sp0256_interface the_voice_sp0256 = {
+	the_voice_lrq_callback,
+	0,
+	REGION_SOUND1
+};
+
 static MACHINE_DRIVER_START( odyssey2 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD(I8048, 1790000/5)         /* 1.79 MHz */
+	MDRV_CPU_ADD(I8048, ( ( XTAL_7_15909MHz * 3 ) / 4 ) )
 	MDRV_CPU_PROGRAM_MAP(odyssey2_mem, 0)
 	MDRV_CPU_IO_MAP(odyssey2_io, 0)
-	MDRV_CPU_VBLANK_INT(odyssey2_line, 262)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( odyssey2 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS( XTAL_7_15909MHz/2, I824X_LINE_CLOCKS, I824X_START_ACTIVE_SCAN, I824X_END_ACTIVE_SCAN, 262, I824X_START_Y, I824X_START_Y + I824X_SCREEN_HEIGHT )
 
-	MDRV_SCREEN_SIZE(320,300)
-	MDRV_SCREEN_VISIBLE_AREA(0,160-1,0,240-1)
 	MDRV_GFXDECODE( odyssey2 )
 	MDRV_PALETTE_LENGTH(24)
-	MDRV_COLORTABLE_LENGTH(2)
 	MDRV_PALETTE_INIT( odyssey2 )
 
 	MDRV_VIDEO_START( odyssey2 )
@@ -167,7 +179,71 @@ static MACHINE_DRIVER_START( odyssey2 )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_ADD(CUSTOM, XTAL_7_15909MHz/2)
+	MDRV_SOUND_CONFIG(odyssey2_sound_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_SOUND_ADD(SP0256, 3120000)
+	MDRV_SOUND_CONFIG(the_voice_sp0256)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( videopac )
+	/* basic machine hardware */
+	MDRV_CPU_ADD(I8048, ( XTAL_17_73447MHz / 3 ) )
+	MDRV_CPU_PROGRAM_MAP(odyssey2_mem, 0)
+	MDRV_CPU_IO_MAP(odyssey2_io, 0)
+	MDRV_INTERLEAVE(1)
+
+	MDRV_MACHINE_RESET( odyssey2 )
+
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS( XTAL_17_73447MHz/5, I824X_LINE_CLOCKS, I824X_START_ACTIVE_SCAN, I824X_END_ACTIVE_SCAN, 312, I824X_START_Y, I824X_START_Y + I824X_SCREEN_HEIGHT )
+
+	MDRV_GFXDECODE( odyssey2 )
+	MDRV_PALETTE_LENGTH(24)
+	MDRV_PALETTE_INIT( odyssey2 )
+
+	MDRV_VIDEO_START( odyssey2 )
+	MDRV_VIDEO_UPDATE( odyssey2 )
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(CUSTOM, XTAL_17_73447MHz/5)
+	MDRV_SOUND_CONFIG(odyssey2_sound_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	MDRV_SOUND_ADD(SP0256, 3120000)
+	MDRV_SOUND_CONFIG(the_voice_sp0256)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( g7400 )
+	/* basic machine hardware */
+	MDRV_CPU_ADD(I8048, 5911000 )
+	MDRV_CPU_PROGRAM_MAP(odyssey2_mem, 0)
+	MDRV_CPU_IO_MAP(g7400_io, 0)
+	MDRV_INTERLEAVE(1)
+
+	MDRV_MACHINE_RESET( odyssey2 )
+
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
+	MDRV_SCREEN_RAW_PARAMS( 3547000*2, 448, 96, 416, 312, 39, 289 )	/* EF9340 doubles the input clock into dot clocks internally */
+
+	MDRV_GFXDECODE( odyssey2 )
+	MDRV_PALETTE_LENGTH(24)
+	MDRV_PALETTE_INIT( odyssey2 )
+
+	MDRV_VIDEO_START( odyssey2 )
+//	MDRV_VIDEO_UPDATE( odyssey2 )
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(CUSTOM, 3547000)
 	MDRV_SOUND_CONFIG(odyssey2_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
@@ -175,23 +251,60 @@ MACHINE_DRIVER_END
 ROM_START (odyssey2)
     ROM_REGION(0x10000,REGION_CPU1,0)    /* safer for the memory handler/bankswitching??? */
     ROM_LOAD ("o2bios.rom", 0x0000, 0x0400, CRC(8016a315) SHA1(b2e1955d957a475de2411770452eff4ea19f4cee))
-    ROM_REGION(0x100, REGION_GFX1, 0)
+    ROM_REGION(0x100, REGION_GFX1, ROMREGION_ERASEFF)
 
-    ROM_REGION(0x2000, REGION_USER1, 0)
-	ROM_CART_LOAD(0, "bin", 0x0000, 0x2000, ROM_MIRROR)
+    ROM_REGION(0x4000, REGION_USER1, 0)
+	ROM_CART_LOAD(0, "bin,rom", 0x0000, 0x4000, ROM_MIRROR)
+
+	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
+	/* SP0256B-019 mask rom */
+	ROM_LOAD( "0256b019.bin",   0x1000, 0x0800, CRC(19355075) SHA1(13bc08f08d161c30ff386d1f0d15676d82afde63) )
+	/* External ROM from The Voice */
+	ROM_LOAD( "sp128_03.bin",   0x4000, 0x4000, CRC(66041b03) SHA1(31acbaf1ae92b3efbb5093d63b0472170699da85) )
+	/* Additional rom from S.I.D. the Spellbinder */
+	ROM_LOAD( "sp128_04.bin",   0x8000, 0x4000, CRC(6780c7d3) SHA1(2e44233f25d07e35500ef79c9c542e974c94390a) )
 ROM_END
 
-static void odyssey2_cartslot_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+ROM_START (videopac)
+	ROM_REGION(0x10000,REGION_CPU1,0)    /* safer for the memory handler/bankswitching??? */
+	ROM_SYSTEM_BIOS( 0, "g7000", "g7000" )
+	ROMX_LOAD ("o2bios.rom", 0x0000, 0x0400, CRC(8016a315) SHA1(b2e1955d957a475de2411770452eff4ea19f4cee), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS( 1, "c52", "c52" )
+	ROMX_LOAD ("c52.bin", 0x0000, 0x0400, CRC(a318e8d6) SHA1(a6120aed50831c9c0d95dbdf707820f601d9452e), ROM_BIOS(2))
+	ROM_REGION(0x100, REGION_GFX1, ROMREGION_ERASEFF)
+
+	ROM_REGION(0x4000, REGION_USER1, 0)
+	ROM_CART_LOAD(0, "bin,rom", 0x0000, 0x4000, ROM_MIRROR)
+
+	ROM_REGION( 0x10000, REGION_SOUND1, 0 )
+	/* SP0256B-019 mask rom */
+	ROM_LOAD( "0256b019.bin",   0x1000, 0x0800, CRC(19355075) SHA1(13bc08f08d161c30ff386d1f0d15676d82afde63) )
+	/* External ROM from The Voice */
+	ROM_LOAD( "sp128_03.bin",   0x4000, 0x4000, CRC(66041b03) SHA1(31acbaf1ae92b3efbb5093d63b0472170699da85) )
+	/* Additional rom from S.I.D. the Spellbinder */
+	ROM_LOAD( "sp128_04.bin",   0x8000, 0x4000, CRC(6780c7d3) SHA1(2e44233f25d07e35500ef79c9c542e974c94390a) )
+ROM_END
+
+ROM_START (g7400)
+	ROM_REGION(0x10000,REGION_CPU1,0)    /* safer for the memory handler/bankswitching??? */
+	ROM_LOAD ("g7400.bin", 0x0000, 0x0400, CRC(e20a9f41) SHA1(5130243429b40b01a14e1304d0394b8459a6fbae))
+	ROM_REGION(0x100, REGION_GFX1, ROMREGION_ERASEFF)
+
+	ROM_REGION(0x4000, REGION_USER1, 0)
+	ROM_CART_LOAD(0, "bin,rom", 0x0000, 0x4000, ROM_MIRROR)
+ROM_END
+
+static void odyssey2_cartslot_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_VERIFY:						info->imgverify = odyssey2_cart_verify; break;
+		case MESS_DEVINFO_PTR_VERIFY:						info->imgverify = odyssey2_cart_verify; break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -202,5 +315,8 @@ SYSTEM_CONFIG_START(odyssey2)
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME      PARENT   COMPAT  MACHINE   INPUT     INIT      CONFIG    COMPANY     FULLNAME     FLAGS */
-COMP( 1982, odyssey2, 0,		0,		odyssey2, odyssey2, odyssey2, odyssey2, "Magnavox", "Odyssey 2", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND )
-/* philips g7000/videopac */
+COMP( 1978, odyssey2, 0,		0,		odyssey2, odyssey2, odyssey2, odyssey2, "Magnavox", "Odyssey 2", GAME_IMPERFECT_SOUND )
+COMP( 1979, videopac, odyssey2,	0,		videopac, odyssey2, odyssey2, odyssey2, "Philips", "Videopac G7000/C52", GAME_IMPERFECT_SOUND )
+COMP( 1983, g7400, odyssey2, 0,			g7400,    odyssey2, odyssey2, odyssey2, "Philips", "Videopac Plus G7400", GAME_NOT_WORKING )
+
+

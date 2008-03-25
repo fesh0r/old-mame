@@ -765,12 +765,12 @@ static casserr_t mo5_k5_load( cassette_image *cass )
 			cassette_image_read( cass, block, pos, 6 );
 			if ( ! memcmp( block, "DCMOTO", 6 ) )
 			{
-				LOG (( "mo5_k5_load: DCMOTO signature found at off=$%x\n", pos ));
+				LOG (( "mo5_k5_load: DCMOTO signature found at off=$%x\n", (int)pos ));
 				pos += 6;
 			}
 			else if ( ! memcmp( block, "DCMO", 4 ) )
 			{
-				LOG (( "mo5_k5_load: DCMO* signature found at off=$%x\n", pos ));
+				LOG (( "mo5_k5_load: DCMO* signature found at off=$%x\n", (int)pos ));
 				pos += 5;
 			}
 		}
@@ -857,7 +857,7 @@ static casserr_t mo5_k5_load( cassette_image *cass )
 	{
 		invalid++;
 		K5_FILL_0( 1200 );
-		LOG (( "mo5_k5_load: trailing trash off=$%x size=%i hbitstart=%i\n", (int) pos, (int) size-pos, hbitsize ));
+		LOG (( "mo5_k5_load: trailing trash off=$%x size=%i hbitstart=%i\n", (int) pos, (int) (size-pos), hbitsize ));
 		for ( ; pos < size; pos++ )
 		{
 			cassette_image_read( cass, &in, pos, 1 );
@@ -867,13 +867,13 @@ static casserr_t mo5_k5_load( cassette_image *cass )
 				cassette_image_read( cass, block, pos, 6 );
 				if ( ! memcmp( block, "DCMOTO", 6 ) )
 				{
-					LOG (( "mo5_k5_load: DCMOTO signature found at off=$%x\n", pos ));
+					LOG (( "mo5_k5_load: DCMOTO signature found at off=$%x\n", (int)pos ));
 					pos += 6;
 					cassette_image_read( cass, &in, pos, 1 );
 				}
 				else if ( ! memcmp( block, "DCMO", 4 ) )
 				{
-					LOG (( "mo5_k5_load: DCMO* signature found at off=$%x\n", pos ));
+					LOG (( "mo5_k5_load: DCMO* signature found at off=$%x\n", (int)pos ));
 					pos += 5;
 					cassette_image_read( cass, &in, pos, 1 );
 				}
@@ -986,44 +986,45 @@ const struct CassetteFormat *const mo5_cassette_formats[] =
 
 /********************* devices ************************/
 
-void to7_cassette_getinfo( const device_class *devclass, UINT32 state, union devinfo *info )
+void to7_cassette_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
 {
 	switch ( state )
 	{
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 1;
 		break;
-	case DEVINFO_PTR_CASSETTE_FORMATS:
+	case MESS_DEVINFO_PTR_CASSETTE_FORMATS:
 		info->p = (void *) to7_cassette_formats;
 		break;
-	case DEVINFO_INT_CASSETTE_DEFAULT_STATE:
+	case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:
 		info->i =
 			CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED;
 		break;
-	case DEVINFO_STR_DEV_FILE:
+	case MESS_DEVINFO_STR_DEV_FILE:
 		strcpy( info->s = device_temp_str(), __FILE__ );
 		break;
 	default:
 		cassette_device_getinfo( devclass, state, info );
+		break;
 	}
 }
 
 
-void mo5_cassette_getinfo( const device_class *devclass, UINT32 state, union devinfo *info )
+void mo5_cassette_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
 {
 	switch ( state )
 	{
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 1;
 		break;
-	case DEVINFO_PTR_CASSETTE_FORMATS:
+	case MESS_DEVINFO_PTR_CASSETTE_FORMATS:
 		info->p = (void *) mo5_cassette_formats;
 		break;
-	case DEVINFO_INT_CASSETTE_DEFAULT_STATE:
+	case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:
 		info->i =
 			CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED;
 		break;
-	case DEVINFO_STR_DEV_FILE:
+	case MESS_DEVINFO_STR_DEV_FILE:
 		strcpy( info->s = device_temp_str(), __FILE__ );
 		break;
 	default:

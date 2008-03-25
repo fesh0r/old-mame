@@ -208,31 +208,31 @@ static ADDRESS_MAP_START(ultimax_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x8000, 0x9fff) AM_ROM AM_BASE(&c64_roml)
 	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(vic2_port_r, vic2_port_w)
 	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(sid6581_0_port_r, sid6581_0_port_w)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_RAM, c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
+	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, c64_colorram_write) AM_BASE(&c64_colorram) /* colorram  */
 	AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(cia_0_r, cia_0_w)
 	AM_RANGE(0xe000, 0xffff) AM_ROM AM_BASE( &c64_romh)	   /* ram or kernel rom */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(c64_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x7fff) AM_RAM AM_BASE(&c64_memory)
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK2)	   /* ram or external roml */
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(MRA8_BANK3, MWA8_RAM)	   /* ram or basic rom or external romh */
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(SMH_BANK1, SMH_BANK2)	   /* ram or external roml */
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_RAM)	   /* ram or basic rom or external romh */
 	AM_RANGE(0xc000, 0xcfff) AM_RAM
 	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(c64_ioarea_r, c64_ioarea_w)
 //#if 1
-//  AM_RANGE(0xd000, 0xdfff) AM_READWRITE(MRA8_BANK5, MWA8_BANK6)
+//  AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_BANK5, SMH_BANK6)
 //#else
 ///* dram */
 ///* or character rom */
-//  AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(MRA8_BANK9, vic2_port_w)
-//  AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(MRA8_BANK10, sid6581_0_port_w)
-//  AM_RANGE(0xd800, 0xdbff) AM_READWRITE(MRA8_BANK11, c64_colorram_write)         /* colorram  */
-//  AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(MRA8_BANK12, cia_0_w)
-//  AM_RANGE(0xdd00, 0xddff) AM_READWRITE(MRA8_BANK13, cia_1_w)
-//  AM_RANGE(0xde00, 0xdeff) AM_READ(MRA8_BANK14)          /* csline expansion port */
-//  AM_RANGE(0xdf00, 0xdfff) AM_READ(MRA8_BANK15)          /* csline expansion port */
+//  AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(SMH_BANK9, vic2_port_w)
+//  AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(SMH_BANK10, sid6581_0_port_w)
+//  AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_BANK11, c64_colorram_write)         /* colorram  */
+//  AM_RANGE(0xdc00, 0xdcff) AM_READWRITE(SMH_BANK12, cia_0_w)
+//  AM_RANGE(0xdd00, 0xddff) AM_READWRITE(SMH_BANK13, cia_1_w)
+//  AM_RANGE(0xde00, 0xdeff) AM_READ(SMH_BANK14)          /* csline expansion port */
+//  AM_RANGE(0xdf00, 0xdfff) AM_READ(SMH_BANK15)          /* csline expansion port */
 //#endif
-	AM_RANGE(0xe000, 0xffff) AM_READWRITE(MRA8_BANK7, MWA8_BANK8)	   /* ram or kernel rom or external romh */
+	AM_RANGE(0xe000, 0xffff) AM_READWRITE(SMH_BANK7, SMH_BANK8)	   /* ram or kernel rom or external romh */
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START(c64_keyboard)
@@ -544,7 +544,7 @@ static PALETTE_INIT( pet64 )
 }
 
 ROM_START (ultimax)
-	ROM_REGION (0x10000, REGION_CPU1, 0)
+	ROM_REGION (0x10000, REGION_CPU1, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START (c64gs)
@@ -706,16 +706,17 @@ static MACHINE_DRIVER_START( c64 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6510, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(c64_mem, 0)
-	MDRV_CPU_VBLANK_INT(c64_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC2_HRETRACERATE)
-	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( c64 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( vh_vic2 )
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -748,6 +749,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( c64pal )
 	MDRV_IMPORT_FROM( c64 )
 	MDRV_CPU_REPLACE( "main", M6510, VIC6569_CLOCK)
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
 
 	MDRV_SOUND_REPLACE("sid", SID6581, VIC6569_CLOCK)
@@ -776,29 +779,29 @@ MACHINE_DRIVER_END
 #define rom_max rom_ultimax
 #define rom_cbm4064 rom_pet64
 
-static void c64_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void c64_cbmcartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,80"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,80"); break;
 
 		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void c64_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void c64_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg,t64"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg,t64"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c64; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c64; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
@@ -817,15 +820,15 @@ SYSTEM_CONFIG_START(sx64)
 	CONFIG_DEVICE(vc1541_device_getinfo)
 SYSTEM_CONFIG_END
 
-static void ultimax_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ultimax_cbmcartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,e0,f0"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,e0,f0"); break;
 
 		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
 	}

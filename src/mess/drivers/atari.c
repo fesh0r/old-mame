@@ -7,13 +7,13 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/atari.h"
 #include "devices/cartslot.h"
 #include "sound/pokey.h"
 #include "machine/6821pia.h"
 #include "video/gtia.h"
-#include "mslegacy.h"
 
 /******************************************************************************
     Atari 800 memory map (preliminary)
@@ -206,7 +206,7 @@
 
 static ADDRESS_MAP_START(a400_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x9fff) AM_NOP	/* RAM installed at runtime */
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_BANK1)
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
@@ -220,7 +220,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(a800_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x9fff) AM_NOP	/* RAM installed at runtime */
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_BANK1)
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
@@ -234,17 +234,17 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(a800xl_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x4fff) AM_RAM
-	AM_RANGE(0x5000, 0x57ff) AM_READWRITE(MRA8_BANK2, MWA8_BANK2)
+	AM_RANGE(0x5000, 0x57ff) AM_READWRITE(SMH_BANK2, SMH_BANK2)
 	AM_RANGE(0x5800, 0x9fff) AM_RAM
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(MRA8_BANK1, MWA8_BANK1)
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK3)
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(SMH_BANK3, SMH_BANK3)
 	AM_RANGE(0xd000, 0xd0ff) AM_READWRITE(atari_gtia_r, atari_gtia_w)
 	AM_RANGE(0xd100, 0xd1ff) AM_NOP
 	AM_RANGE(0xd200, 0xd2ff) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0xd300, 0xd3ff) AM_READWRITE(pia_0_alt_r, pia_0_alt_w)
 	AM_RANGE(0xd400, 0xd4ff) AM_READWRITE(atari_antic_r, atari_antic_w)
 	AM_RANGE(0xd500, 0xd7ff) AM_NOP
-	AM_RANGE(0xd800, 0xffff) AM_READWRITE(MRA8_BANK4, MWA8_BANK4)
+	AM_RANGE(0xd800, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK4)
 ADDRESS_MAP_END
 
 
@@ -664,8 +664,11 @@ static const unsigned short atari_colortable[] =
 /* Initialise the palette */
 static PALETTE_INIT( atari )
 {
-	palette_set_colors_rgb(machine, 0, atari_palette, sizeof(atari_palette) / 3);
-	memcpy(colortable,atari_colortable,sizeof(atari_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(atari_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, atari_palette[i*3], atari_palette[i*3+1], atari_palette[i*3+2]);
+	}
 }
 
 
@@ -704,14 +707,13 @@ static const struct POKEYinterface pokey_interface =
 static MACHINE_DRIVER_START( atari_common_nodac )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6510, FREQ_17_EXACT)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1))
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VISIBLE_AREA(MIN_X, MAX_X, MIN_Y, MAX_Y)
 	MDRV_PALETTE_LENGTH(sizeof(atari_palette) / sizeof(atari_palette[0]) / 3)
-	MDRV_COLORTABLE_LENGTH(sizeof(atari_colortable) / sizeof(atari_colortable[0]))
 	MDRV_PALETTE_INIT(atari)
 
 	MDRV_VIDEO_START(atari)
@@ -737,9 +739,11 @@ static MACHINE_DRIVER_START( a400 )
 
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(a400_mem, 0)
-	MDRV_CPU_VBLANK_INT(a400_interrupt, TOTAL_LINES_60HZ)
+	MDRV_CPU_VBLANK_INT_HACK(a400_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a400 )
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -750,9 +754,11 @@ static MACHINE_DRIVER_START( a400pal )
 
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(a400_mem, 0)
-	MDRV_CPU_VBLANK_INT(a400_interrupt, TOTAL_LINES_50HZ)
+	MDRV_CPU_VBLANK_INT_HACK(a400_interrupt, TOTAL_LINES_50HZ)
 
 	MDRV_MACHINE_START( a400 )
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_50HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)
 MACHINE_DRIVER_END
@@ -763,9 +769,11 @@ static MACHINE_DRIVER_START( a800 )
 
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(a800_mem, 0)
-	MDRV_CPU_VBLANK_INT(a800_interrupt, TOTAL_LINES_60HZ)
+	MDRV_CPU_VBLANK_INT_HACK(a800_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a800 )
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -776,9 +784,11 @@ static MACHINE_DRIVER_START( a800pal )
 
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(a800_mem, 0)
-	MDRV_CPU_VBLANK_INT(a800_interrupt, TOTAL_LINES_50HZ)
+	MDRV_CPU_VBLANK_INT_HACK(a800_interrupt, TOTAL_LINES_50HZ)
 
 	MDRV_MACHINE_START( a800 )
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_50HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_50HZ)
 MACHINE_DRIVER_END
@@ -789,9 +799,11 @@ static MACHINE_DRIVER_START( a800xl )
 
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(a800xl_mem, 0)
-	MDRV_CPU_VBLANK_INT(a800xl_interrupt, TOTAL_LINES_60HZ)
+	MDRV_CPU_VBLANK_INT_HACK(a800xl_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a800xl )
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -802,9 +814,11 @@ static MACHINE_DRIVER_START( a5200 )
 
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(a5200_mem, 0)
-	MDRV_CPU_VBLANK_INT(a5200_interrupt, TOTAL_LINES_60HZ)
+	MDRV_CPU_VBLANK_INT_HACK(a5200_interrupt, TOTAL_LINES_60HZ)
 
 	MDRV_MACHINE_START( a5200 )
+
+	MDRV_SCREEN_MODIFY( "main" )
 	MDRV_SCREEN_REFRESH_RATE(FRAME_RATE_60HZ)
 	MDRV_SCREEN_SIZE(HWIDTH*8, TOTAL_LINES_60HZ)
 MACHINE_DRIVER_END
@@ -850,23 +864,23 @@ ROM_START(a5200a)
 	ROM_LOAD("5200a.rom", 0xf800, 0x0800, CRC(c2ba2613) SHA1(1d2a3f00109d75d2d79fecb565775eb95b7d04d5))
 ROM_END
 
-static void atari_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void atari_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_a800_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_a800_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "atr,dsk,xfd"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "atr,dsk,xfd"); break;
 	}
 }
 
@@ -874,20 +888,20 @@ SYSTEM_CONFIG_START(atari)
 	CONFIG_DEVICE(atari_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-static void a400_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void a400_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_a800_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a800_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_a800_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a800_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -899,20 +913,20 @@ SYSTEM_CONFIG_START(a400)
 	CONFIG_DEVICE(a400_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void a800_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void a800_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_a800_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a800_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_a800_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a800_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -924,20 +938,20 @@ SYSTEM_CONFIG_START(a800)
 	CONFIG_DEVICE(a800_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void a5200_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void a5200_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_a5200_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a5200_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_a5200_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_a5200_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin,a52"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin,a52"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}

@@ -13,7 +13,6 @@
 #include "driver.h"
 #include "devices/flopdrv.h"
 #include "utils.h"
-#include "mslegacy.h"
 #include "image.h"
 #include "hash.h"
 #include "messopts.h"
@@ -129,7 +128,7 @@ void devices_init(running_machine *machine)
 	mess_image *image;
 
 	/* initialize natural keyboard support */
-	inputx_init();
+	inputx_init(machine);
 
 	/* allocate the IODevice struct */
 	machine->devices = (struct IODevice *) devices_allocate(machine->gamedrv);
@@ -141,10 +140,10 @@ void devices_init(running_machine *machine)
 	ram_init(machine->gamedrv);
 
 	/* init all devices */
-	image_init();
+	image_init(machine);
 
 	/* make sure that any required devices have been allocated */
-	for (dev = machine->devices; dev->type < IO_COUNT; dev++)
+	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
 	{
 		for (id = 0; id < dev->count; id++)
 		{

@@ -26,7 +26,6 @@
 #include "includes/zx.h"
 #include "devices/cassette.h"
 #include "formats/zx81_p.h"
-#include "mslegacy.h"
 
 /* Memory Maps */
 
@@ -353,28 +352,31 @@ static const unsigned char ts1000_palette[] =
 	  0,  0,  0,	/* black */
 };
 
-static const unsigned short zx_colortable[] =
-{
-	0, 1,							   /* white on black */
-	1, 0							   /* black on white */
-};
-
 static PALETTE_INIT( zx80 )
 {
-	palette_set_colors_rgb(machine, 0, zx80_palette, sizeof(zx80_palette) / 3);
-	memcpy(colortable, zx_colortable, sizeof (zx_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(zx80_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, zx80_palette[i*3], zx80_palette[i*3+1], zx80_palette[i*3+2]);
+	}
 }
 
 static PALETTE_INIT( zx81 )
 {
-	palette_set_colors_rgb(machine, 0, zx81_palette, sizeof(zx81_palette) / 3);
-	memcpy(colortable, zx_colortable, sizeof (zx_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(zx81_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, zx81_palette[i*3], zx81_palette[i*3+1], zx81_palette[i*3+2]);
+	}
 }
 
 static PALETTE_INIT( ts1000 )
 {
-	palette_set_colors_rgb(machine, 0, ts1000_palette, sizeof(ts1000_palette) / 3);
-	memcpy(colortable, zx_colortable, sizeof (zx_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(ts1000_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, ts1000_palette[i*3], ts1000_palette[i*3+1], ts1000_palette[i*3+2]);
+	}
 }
 
 
@@ -398,19 +400,18 @@ static MACHINE_DRIVER_START( zx80 )
 	MDRV_CPU_ADD_TAG("main", Z80, ZX81_CPU_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(zx80_map, 0)
 	MDRV_CPU_IO_MAP(zx80_io_map, 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(ZX81_PAL_FRAMES_PER_SECOND)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(ZX81_VBLANK_DURATION))
 
 	MDRV_MACHINE_RESET(zx80)
 
     // video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(ZX81_PIXELS_PER_SCANLINE, ZX81_PAL_SCANLINES)
 	MDRV_SCREEN_VISIBLE_AREA(0, ZX81_PIXELS_PER_SCANLINE-1, 0, ZX81_PAL_SCANLINES-1)
 	MDRV_GFXDECODE(zx80)
 	MDRV_PALETTE_LENGTH(6)
-	MDRV_COLORTABLE_LENGTH(4)
 	MDRV_PALETTE_INIT(zx80)
 
 	MDRV_VIDEO_START(zx)
@@ -439,10 +440,11 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( ts1000 )
 	MDRV_IMPORT_FROM(zx81)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(ZX81_NTSC_FRAMES_PER_SECOND)
-
 	MDRV_SCREEN_SIZE(ZX81_PIXELS_PER_SCANLINE, ZX81_NTSC_SCANLINES)
 	MDRV_SCREEN_VISIBLE_AREA(0, ZX81_PIXELS_PER_SCANLINE-1, 0, ZX81_NTSC_SCANLINES-1)
+
 	MDRV_PALETTE_INIT(ts1000)
 MACHINE_DRIVER_END
 
@@ -537,20 +539,20 @@ static const struct CassetteOptions zx81_cassette_options = {
 	44100		/* sample frequency */
 };
 
-static void zx80_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void zx80_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) zx80_o_format; break;
-		case DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &zx81_cassette_options; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) zx80_o_format; break;
+		case MESS_DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &zx81_cassette_options; break;
 
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
@@ -562,20 +564,20 @@ SYSTEM_CONFIG_START(zx80)
 	CONFIG_RAM(16 * 1024)
 SYSTEM_CONFIG_END
 
-static void zx81_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void zx81_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) zx81_p_format; break;
-		case DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &zx81_cassette_options; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) zx81_p_format; break;
+		case MESS_DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &zx81_cassette_options; break;
 
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}

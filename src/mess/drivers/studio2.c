@@ -92,6 +92,7 @@ Notes:
 
     TODO:
 
+	- figure out real cpu clock from schematics
     - cdp1864 video colors
     - discrete sound
     - redump studio2 bios as 4 separate roms
@@ -257,7 +258,7 @@ static MACHINE_DRIVER_START( studio2 )
 
 	// basic machine hardware
 
-	MDRV_CPU_ADD_TAG("main", CDP1802, 3579545/2)
+	MDRV_CPU_ADD_TAG("main", CDP1802, 3579545/2) // the real clock is derived from an oscillator circuit
 	MDRV_CPU_PROGRAM_MAP(studio2_map, 0)
 	MDRV_CPU_IO_MAP(studio2_io_map, 0)
 	MDRV_CPU_CONFIG(studio2_config)
@@ -267,7 +268,7 @@ static MACHINE_DRIVER_START( studio2 )
 
     // video hardware
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(3579545/2, CDP1861_SCREEN_WIDTH, CDP1861_HBLANK_END, CDP1861_HBLANK_START, CDP1861_TOTAL_SCANLINES, CDP1861_SCANLINE_VBLANK_END, CDP1861_SCANLINE_VBLANK_START)
 
@@ -295,7 +296,7 @@ static MACHINE_DRIVER_START( mpt02 )
 
     // video hardware
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
 
@@ -360,17 +361,17 @@ static DEVICE_LOAD( studio2_cart )
 	return INIT_PASS;
 }
 
-static void studio2_cartslot_getinfo( const device_class *devclass, UINT32 state, union devinfo *info )
+static void studio2_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
 {
 	switch( state )
 	{
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 1;
 		break;
-	case DEVINFO_PTR_LOAD:
+	case MESS_DEVINFO_PTR_LOAD:
 		info->load = device_load_studio2_cart;
 		break;
-	case DEVINFO_STR_FILE_EXTENSIONS:
+	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
 		strcpy(info->s = device_temp_str(), "st2");
 		break;
 	default:

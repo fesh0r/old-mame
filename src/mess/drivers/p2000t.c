@@ -31,13 +31,10 @@ Philips P2000 1 Memory map
 #include "cpu/z80/z80.h"
 #include "video/saa5050.h"
 
-/* TODO: Remove dependency on this */
-#include "mslegacy.h"
-
 
 /* port i/o functions */
 static ADDRESS_MAP_START( p2000t_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x0f) AM_READ( p2000t_port_000f_r)
 	AM_RANGE(0x10, 0x1f) AM_WRITE( p2000t_port_101f_w)
 	AM_RANGE(0x20, 0x2f) AM_READ( p2000t_port_202f_r)
@@ -81,26 +78,17 @@ static const gfx_layout p2000m_charlayout =
 	8 * 10
 };
 
-static GFXDECODE_START( p2000m )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, p2000m_charlayout, 0, 128 )
-GFXDECODE_END
-
-static const unsigned char p2000m_palette[2 * 3] =
+PALETTE_INIT( p2000m )
 {
-	0x00, 0x00, 0x00,
-	0xff, 0xff, 0xff
-};
-
-static const unsigned short p2000m_colortable[2 * 2] =
-{
-	1,0, 0,1
-};
-
-static PALETTE_INIT( p2000m )
-{
-	palette_set_colors_rgb(machine, 0, p2000m_palette, sizeof(p2000m_palette) / 3);
-	memcpy(colortable, p2000m_colortable, sizeof (p2000m_colortable));
+	palette_set_color(machine,0,RGB_WHITE); /* white */
+	palette_set_color(machine,1,RGB_BLACK); /* black */
+	palette_set_color(machine,2,RGB_BLACK); /* black */
+	palette_set_color(machine,3,RGB_WHITE); /* white */
 }
+
+static GFXDECODE_START( p2000m )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, p2000m_charlayout, 0, 2 )
+GFXDECODE_END
 
 /* Keyboard input */
 
@@ -210,7 +198,7 @@ static MACHINE_DRIVER_START( p2000t )
 	MDRV_CPU_ADD(Z80, 2500000)
 	MDRV_CPU_PROGRAM_MAP(p2000t_mem, 0)
 	MDRV_CPU_IO_MAP(p2000t_io, 0)
-	MDRV_CPU_VBLANK_INT(p2000_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", p2000_interrupt)
 
     /* video hardware */
 	MDRV_IMPORT_FROM( vh_saa5050 )
@@ -228,19 +216,18 @@ static MACHINE_DRIVER_START( p2000m )
 	MDRV_CPU_ADD(Z80, 2500000)
 	MDRV_CPU_PROGRAM_MAP(p2000m_mem, 0)
 	MDRV_CPU_IO_MAP(p2000t_io, 0)
-	MDRV_CPU_VBLANK_INT(p2000_interrupt, 1)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", p2000_interrupt)
 	MDRV_INTERLEAVE(1)
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80 * 6, 24 * 10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 80 * 6 - 1, 0, 24 * 10 - 1)
 	MDRV_GFXDECODE( p2000m )
-	MDRV_PALETTE_LENGTH(2)
-	MDRV_COLORTABLE_LENGTH(4)
+	MDRV_PALETTE_LENGTH(4)
 	MDRV_PALETTE_INIT(p2000m)
 
 	MDRV_VIDEO_START(p2000m)
@@ -269,7 +256,7 @@ ROM_START(p2000m)
 	ROM_LOAD("p2000.chr", 0x0140, 0x08c0, BAD_DUMP CRC(78c17e3e) SHA1(4e1c59dc484505de1dc0b1ba7e5f70a54b0d4ccc))
 ROM_END
 
-/*      YEAR    NAME        PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY     FULLNAME */
-COMP (	1980,	p2000t,		0,		0,		p2000t,		p2000t,		0,		NULL,	"Philips",	"Philips P2000T" , 0)
-COMP (	1980,	p2000m,		p2000t,	0,		p2000m,		p2000t,		0,		NULL,	"Philips",	"Philips P2000M" , 0)
+/*      YEAR    NAME    PARENT  COMPAT  MACHINE     INPUT       INIT    CONFIG  COMPANY     FULLNAME */
+COMP (	1980,	p2000t,	0,	0,	p2000t,	p2000t,		0,	NULL,	"Philips",	"Philips P2000T" , 0)
+COMP (	1980,	p2000m,	p2000t,	0,	p2000m,	p2000t,		0,	NULL,	"Philips",	"Philips P2000M" , 0)
 

@@ -93,7 +93,7 @@
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
 #include "sound/ay8910.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 
 #define EINSTEIN_SYSTEM_CLOCK 4000000
 
@@ -111,7 +111,6 @@ static int einstein_ctc_trigger = 0;
 /* KEYBOARD */
 static int einstein_keyboard_line = 0;
 static int einstein_keyboard_data = 0x0ff;
-
 
 #define EINSTEIN_DUMP_RAM
 
@@ -227,40 +226,45 @@ static int Einstein_scr_y = 0;
 //  0,// Cursor status
 //};
 
-static void einstein_6845_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
-									 UINT8 ra, UINT16 y, UINT8 x_count, void *param) {
+static MC6845_UPDATE_ROW( einstein_6845_update_row )
+{
 	/* TODO: Verify implementation */
 	unsigned char *data = memory_region(REGION_CPU1) + 0x012000;
 	unsigned char data_byte;
 	int char_code;
 	int i, x;
 
-	for ( i = 0, x = 0; i < x_count; i++, x+=8 ) {
+	for ( i = 0, x = 0; i < x_count; i++, x+=8 )
+	{
 		int w;
 		char_code = einstein_80col_ram[(ma + i)&0x07ff];
 		data_byte = data[(char_code<<3) + ra];
-		for (w=0; w<8;w++) {
+		for (w=0; w<8;w++)
+		{
 			*BITMAP_ADDR16(bitmap, y, x+w) = (data_byte & 0x080) ? 1 : 0;
 			data_byte = data_byte<<1;
 		}
 	}
 }
 
-static void einstein_6845_display_enable_changed(int display_enabled) {
+static MC6845_ON_DE_CHANGED( einstein_6845_display_enable_changed )
+{
 	/* TODO: Implement me properly */
 	if ( display_enabled ) {
 		Einstein_scr_y = ( Einstein_scr_y + 1 ) % 240 /*?*/;
 	}
 }
 
-static const crtc6845_interface einstein_crtc6845_interface = {
-	0,
+static const mc6845_interface einstein_crtc6845_interface = {
+	"main",
 	EINSTEIN_SYSTEM_CLOCK /*?*/,
 	8 /*?*/,
 	NULL,
 	einstein_6845_update_row,
 	NULL,
-	einstein_6845_display_enable_changed
+	einstein_6845_display_enable_changed,
+	NULL,
+	NULL
 };
 
 /* 80 column card init */
@@ -268,9 +272,6 @@ static void	einstein_80col_init(void)
 {
 	/* 2K RAM */
 	einstein_80col_ram = auto_malloc(2048);
-
-	/* initialise 6845 */
-	crtc6845_config( 0, &einstein_crtc6845_interface );
 
 	einstein_80col_state=(1<<2)|(1<<1);
 }
@@ -287,9 +288,9 @@ static  READ8_HANDLER(einstein_80col_r)
 		case 5:
 		case 6:
 		case 7:
-			return einstein_80col_ram_r(offset);
+			return einstein_80col_ram_r(machine, offset);
 		case 0x0c:
-			return einstein_80col_state_r(offset);
+			return einstein_80col_state_r(machine, offset);
 		default:
 			break;
 	}
@@ -309,13 +310,13 @@ static WRITE8_HANDLER(einstein_80col_w)
 		case 5:
 		case 6:
 		case 7:
-			einstein_80col_ram_w(offset,data);
+			einstein_80col_ram_w(machine, offset,data);
 			break;
 		case 8:
-			crtc6845_0_address_w(offset,data);
+			mc6845_address_w( devtag_get_token(machine, MC6845, "crtc"), offset, data );
 			break;
 		case 9:
-			crtc6845_0_register_w(offset,data);
+			mc6845_register_w( devtag_get_token(machine, MC6845, "crtc"), offset, data );
 			break;
 		default:
 			break;
@@ -327,8 +328,8 @@ static TIMER_CALLBACK(einstein_ctc_trigger_callback)
 	einstein_ctc_trigger^=1;
 
 	/* channel 0 and 1 have a 2Mhz input clock for triggering */
-	z80ctc_0_trg0_w(0,einstein_ctc_trigger);
-	z80ctc_0_trg1_w(0,einstein_ctc_trigger);
+	z80ctc_0_trg0_w(machine, 0, einstein_ctc_trigger);
+	z80ctc_0_trg1_w(machine, 0, einstein_ctc_trigger);
 }
 
 /* refresh keyboard data. It is refreshed when the keyboard line is written */
@@ -348,24 +349,24 @@ static void einstein_scan_keyboard(void)
 	einstein_keyboard_data = data;
 }
 
-static void einstein_update_interrupts(void)
+static void einstein_update_interrupts(running_machine *machine)
 {
 	/* NPW 21-Jul-2005 - Not sure how to update this for MAME 0.98u2 */
 /*
     if (einstein_int & einstein_int_mask & EINSTEIN_KEY_INT)
-        cpunum_set_input_line(Machine, 0, Z80_INT_REQ, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, Z80_INT_REQ, PULSE_LINE);
     else
-        cpunum_set_input_line(Machine, 0, Z80_INT_IEO, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, Z80_INT_IEO, PULSE_LINE);
 
     if (einstein_int & einstein_int_mask & EINSTEIN_ADC_INT)
-        cpunum_set_input_line(Machine, 0, Z80_INT_REQ, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, Z80_INT_REQ, PULSE_LINE);
     else
-        cpunum_set_input_line(Machine, 0, Z80_INT_IEO, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, Z80_INT_IEO, PULSE_LINE);
 
     if (einstein_int & einstein_int_mask & EINSTEIN_FIRE_INT)
-        cpunum_set_input_line(Machine, 0, Z80_INT_REQ, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, Z80_INT_REQ, PULSE_LINE);
     else
-        cpunum_set_input_line(Machine, 0, Z80_INT_IEO, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, Z80_INT_IEO, PULSE_LINE);
 */
 }
 
@@ -394,7 +395,7 @@ static TIMER_CALLBACK(einstein_keyboard_timer_callback)
 		einstein_int &= ~EINSTEIN_KEY_INT;
 	}
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(machine);
 }
 
 
@@ -449,6 +450,10 @@ static void einstein_pio_ardy(int data)
 static const z80pio_interface einstein_pio_intf =
 {
 	einstein_pio_interrupt,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 	einstein_pio_ardy,
 	NULL
 };
@@ -458,7 +463,7 @@ static void einstein_keyboard_int_reset(int which)
 {
 	einstein_int_mask &= ~EINSTEIN_KEY_INT;
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(Machine);
 }
 
 
@@ -467,7 +472,7 @@ static void einstein_adc_int_reset(int which)
 {
 	einstein_int_mask &= ~EINSTEIN_ADC_INT;
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(Machine);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -476,7 +481,7 @@ static void einstein_fire_int_reset(int which)
 {
 	einstein_int_mask &= ~EINSTEIN_FIRE_INT;
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(Machine);
 }
 #endif
 
@@ -537,10 +542,10 @@ static  READ8_HANDLER(einstein_vdp_r)
 
 	if (offset & 0x01)
 	{
-		return TMS9928A_register_r(offset & 0x01);
+		return TMS9928A_register_r(machine, offset & 0x01);
 	}
 
-	return TMS9928A_vram_r(offset & 0x01);
+	return TMS9928A_vram_r(machine, offset & 0x01);
 }
 
 static WRITE8_HANDLER(einstein_vdp_w)
@@ -549,11 +554,11 @@ static WRITE8_HANDLER(einstein_vdp_w)
 
 	if (offset & 0x01)
 	{
-		TMS9928A_register_w(offset & 0x01,data);
+		TMS9928A_register_w(machine, offset & 0x01,data);
 		return;
 	}
 
-	TMS9928A_vram_w(offset & 0x01,data);
+	TMS9928A_vram_w(machine, offset & 0x01,data);
 }
 
 static WRITE8_HANDLER(einstein_fdc_w)
@@ -566,25 +571,25 @@ static WRITE8_HANDLER(einstein_fdc_w)
 	{
 		case 0:
 		{
-			wd17xx_command_w(reg, data);
+			wd17xx_command_w(machine, reg, data);
 		}
 		break;
 
 		case 1:
 		{
-			wd17xx_track_w(reg, data);
+			wd17xx_track_w(machine, reg, data);
 		}
 		break;
 
 		case 2:
 		{
-			wd17xx_sector_w(reg, data);
+			wd17xx_sector_w(machine, reg, data);
 		}
 		break;
 
 		case 3:
 		{
-			wd17xx_data_w(reg, data);
+			wd17xx_data_w(machine, reg, data);
 		}
 		break;
 	}
@@ -601,25 +606,25 @@ static  READ8_HANDLER(einstein_fdc_r)
 	{
 		case 0:
 		{
-			return wd17xx_status_r(reg);
+			return wd17xx_status_r(machine, reg);
 		}
 		break;
 
 		case 1:
 		{
-			return wd17xx_track_r(reg);
+			return wd17xx_track_r(machine, reg);
 		}
 		break;
 
 		case 2:
 		{
-			return wd17xx_sector_r(reg);
+			return wd17xx_sector_r(machine, reg);
 		}
 		break;
 
 		case 3:
 		{
-			return wd17xx_data_r(reg);
+			return wd17xx_data_r(machine, reg);
 		}
 		break;
 	}
@@ -670,14 +675,14 @@ static  READ8_HANDLER(einstein_ctc_r)
 {
 	logerror("ctc r: %04x\n",offset);
 
-	return z80ctc_0_r(offset & 0x03);
+	return z80ctc_0_r(machine, offset & 0x03);
 }
 
 static WRITE8_HANDLER(einstein_ctc_w)
 {
 	logerror("ctc w: %04x %02x\n",offset,data);
 
-	z80ctc_0_w(offset & 0x03,data);
+	z80ctc_0_w(machine, offset & 0x03,data);
 }
 
 static WRITE8_HANDLER(einstein_serial_w)
@@ -688,11 +693,11 @@ static WRITE8_HANDLER(einstein_serial_w)
 
 	if ((reg)==0)
 	{
-		msm8251_data_w(reg,data);
+		msm8251_data_w(machine, reg,data);
 		return;
 	}
 
-	msm8251_control_w(reg,data);
+	msm8251_control_w(machine, reg,data);
 }
 
 
@@ -704,10 +709,10 @@ static  READ8_HANDLER(einstein_serial_r)
 
 	if ((reg)==0)
 	{
-		return msm8251_data_r(reg);
+		return msm8251_data_r(machine, reg);
 	}
 
-	return msm8251_status_r(reg);
+	return msm8251_status_r(machine, reg);
 }
 
 /*
@@ -746,13 +751,13 @@ static WRITE8_HANDLER(einstein_psg_w)
 		/* case 0 and 1 are not handled */
 		case 2:
 		{
-			AY8910_control_port_0_w(0, data);
+			AY8910_control_port_0_w(machine, 0, data);
 		}
 		break;
 
 		case 3:
 		{
-			AY8910_write_port_0_w(0, data);
+			AY8910_write_port_0_w(machine, 0, data);
 		}
 		break;
 
@@ -769,7 +774,7 @@ static  READ8_HANDLER(einstein_psg_r)
 	{
 		/* case 0 and 1 are not handled */
 		case 2:
-			return AY8910_read_port_0_r(0);
+			return AY8910_read_port_0_r(machine, 0);
 
 		default:
 			break;
@@ -784,8 +789,8 @@ static  READ8_HANDLER(einstein_psg_r)
 
 
 static ADDRESS_MAP_START( einstein_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x01fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK3)
-	AM_RANGE(0x2000, 0x0ffff) AM_READWRITE(MRA8_BANK2, MWA8_BANK4)
+	AM_RANGE(0x0000, 0x01fff) AM_READWRITE(SMH_BANK1, SMH_BANK3)
+	AM_RANGE(0x2000, 0x0ffff) AM_READWRITE(SMH_BANK2, SMH_BANK4)
 ADDRESS_MAP_END
 
 
@@ -844,7 +849,7 @@ static WRITE8_HANDLER(einstein_rom_w)
 	einstein_page_rom();
 }
 
-static  READ8_HANDLER(einstein_key_int_r)
+static READ8_HANDLER(einstein_key_int_r)
 {
 	int centronics_handshake;
 	int data;
@@ -852,7 +857,7 @@ static  READ8_HANDLER(einstein_key_int_r)
 	/* clear key int. a read of this I/O port will do this or a reset */
 	einstein_int &= ~EINSTEIN_KEY_INT;
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(machine);
 
 	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
 	centronics_handshake = centronics_read_handshake(0);
@@ -915,7 +920,7 @@ static WRITE8_HANDLER(einstein_key_int_w)
 		einstein_int_mask |= EINSTEIN_KEY_INT;
 	}
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(machine);
 }
 
 static WRITE8_HANDLER(einstein_adc_int_w)
@@ -935,7 +940,7 @@ static WRITE8_HANDLER(einstein_adc_int_w)
 		einstein_int_mask |= EINSTEIN_ADC_INT;
 	}
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(machine);
 }
 
 static WRITE8_HANDLER(einstein_fire_int_w)
@@ -956,11 +961,11 @@ static WRITE8_HANDLER(einstein_fire_int_w)
 		einstein_int_mask |= EINSTEIN_FIRE_INT;
 	}
 
-	einstein_update_interrupts();
+	einstein_update_interrupts(machine);
 }
 
 
-static  READ8_HANDLER(einstein2_port_r)
+static READ8_HANDLER(einstein2_port_r)
 {
 	switch (offset & 0x0ff)
 	{
@@ -972,7 +977,7 @@ static  READ8_HANDLER(einstein2_port_r)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			return einstein_psg_r(offset);
+			return einstein_psg_r(machine, offset);
 		case 0x08:
 		case 0x09:
 		case 0x0a:
@@ -981,7 +986,7 @@ static  READ8_HANDLER(einstein2_port_r)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			return einstein_vdp_r(offset);
+			return einstein_vdp_r(machine, offset);
 		case 0x10:
 		case 0x11:
 		case 0x12:
@@ -990,7 +995,7 @@ static  READ8_HANDLER(einstein2_port_r)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			return einstein_serial_r(offset);
+			return einstein_serial_r(machine, offset);
 		case 0x18:
 		case 0x19:
 		case 0x1a:
@@ -999,9 +1004,9 @@ static  READ8_HANDLER(einstein2_port_r)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			return einstein_fdc_r(offset);
+			return einstein_fdc_r(machine, offset);
 		case 0x20:
-			return einstein_key_int_r(offset);
+			return einstein_key_int_r(machine, offset);
 		case 0x28:
 		case 0x29:
 		case 0x2a:
@@ -1010,7 +1015,7 @@ static  READ8_HANDLER(einstein2_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r(offset);
+			return einstein_ctc_r(machine, offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1019,7 +1024,7 @@ static  READ8_HANDLER(einstein2_port_r)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			return einstein_pio_r(offset);
+			return einstein_pio_r(machine, offset);
 		case 0x40:
 		case 0x41:
 		case 0x42:
@@ -1036,7 +1041,7 @@ static  READ8_HANDLER(einstein2_port_r)
 		case 0x4d:
 		case 0x4e:
 		case 0x4f:
-			return einstein_80col_r(offset);
+			return einstein_80col_r(machine, offset);
 
 		default:
 			break;
@@ -1059,7 +1064,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			einstein_psg_w(offset,data);
+			einstein_psg_w(machine, offset,data);
 			return;
 		case 0x08:
 		case 0x09:
@@ -1069,7 +1074,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			einstein_vdp_w(offset,data);
+			einstein_vdp_w(machine, offset,data);
 			return;
 		case 0x10:
 		case 0x11:
@@ -1079,7 +1084,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			einstein_serial_w(offset,data);
+			einstein_serial_w(machine, offset,data);
 			return;
 		case 0x18:
 		case 0x19:
@@ -1089,22 +1094,22 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			einstein_fdc_w(offset,data);
+			einstein_fdc_w(machine, offset,data);
 			return;
 		case 0x20:
-			einstein_key_int_w(offset,data);
+			einstein_key_int_w(machine, offset,data);
 			return;
 		case 0x21:
-			einstein_adc_int_w(offset,data);
+			einstein_adc_int_w(machine, offset,data);
 			return;
 		case 0x23:
-			einstein_drive_w(offset,data);
+			einstein_drive_w(machine, offset,data);
 			return;
 		case 0x24:
-			einstein_rom_w(offset,data);
+			einstein_rom_w(machine, offset,data);
 			return;
 		case 0x25:
-			einstein_fire_int_w(offset,data);
+			einstein_fire_int_w(machine, offset,data);
 			return;
 		case 0x28:
 		case 0x29:
@@ -1114,7 +1119,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w(offset,data);
+			einstein_ctc_w(machine, offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1124,7 +1129,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			einstein_pio_w(offset,data);
+			einstein_pio_w(machine, offset,data);
 			return;
 		case 0x40:
 		case 0x41:
@@ -1142,7 +1147,7 @@ static WRITE8_HANDLER(einstein2_port_w)
 		case 0x4d:
 		case 0x4e:
 		case 0x4f:
-			einstein_80col_w(offset,data);
+			einstein_80col_w(machine, offset,data);
 			return;
 
 		default:
@@ -1165,7 +1170,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			return einstein_psg_r(offset);
+			return einstein_psg_r(machine, offset);
 		case 0x08:
 		case 0x09:
 		case 0x0a:
@@ -1174,7 +1179,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			return einstein_vdp_r(offset);
+			return einstein_vdp_r(machine, offset);
 		case 0x10:
 		case 0x11:
 		case 0x12:
@@ -1183,7 +1188,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			return einstein_serial_r(offset);
+			return einstein_serial_r(machine, offset);
 		case 0x18:
 		case 0x19:
 		case 0x1a:
@@ -1192,9 +1197,9 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			return einstein_fdc_r(offset);
+			return einstein_fdc_r(machine, offset);
 		case 0x20:
-			return einstein_key_int_r(offset);
+			return einstein_key_int_r(machine, offset);
 		case 0x28:
 		case 0x29:
 		case 0x2a:
@@ -1203,7 +1208,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			return einstein_ctc_r(offset);
+			return einstein_ctc_r(machine, offset);
 		case 0x30:
 		case 0x31:
 		case 0x32:
@@ -1212,7 +1217,7 @@ static  READ8_HANDLER(einstein_port_r)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			return einstein_pio_r(offset);
+			return einstein_pio_r(machine, offset);
 
 		default:
 			break;
@@ -1235,7 +1240,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x05:
 		case 0x06:
 		case 0x07:
-			einstein_psg_w(offset,data);
+			einstein_psg_w(machine, offset,data);
 			return;
 		case 0x08:
 		case 0x09:
@@ -1245,7 +1250,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x0d:
 		case 0x0e:
 		case 0x0f:
-			einstein_vdp_w(offset,data);
+			einstein_vdp_w(machine, offset,data);
 			return;
 		case 0x10:
 		case 0x11:
@@ -1255,7 +1260,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x15:
 		case 0x16:
 		case 0x17:
-			einstein_serial_w(offset,data);
+			einstein_serial_w(machine, offset,data);
 			return;
 		case 0x18:
 		case 0x19:
@@ -1265,22 +1270,22 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x1d:
 		case 0x1e:
 		case 0x1f:
-			einstein_fdc_w(offset,data);
+			einstein_fdc_w(machine, offset,data);
 			return;
 		case 0x20:
-			einstein_key_int_w(offset,data);
+			einstein_key_int_w(machine, offset,data);
 			return;
 		case 0x21:
-			einstein_adc_int_w(offset,data);
+			einstein_adc_int_w(machine, offset,data);
 			return;
 		case 0x23:
-			einstein_drive_w(offset,data);
+			einstein_drive_w(machine, offset,data);
 			return;
 		case 0x24:
-			einstein_rom_w(offset,data);
+			einstein_rom_w(machine, offset,data);
 			return;
 		case 0x25:
-			einstein_fire_int_w(offset,data);
+			einstein_fire_int_w(machine, offset,data);
 			return;
 		case 0x28:
 		case 0x29:
@@ -1290,7 +1295,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x2d:
 		case 0x2e:
 		case 0x2f:
-			einstein_ctc_w(offset,data);
+			einstein_ctc_w(machine, offset,data);
 			return;
 		case 0x30:
 		case 0x31:
@@ -1300,7 +1305,7 @@ static WRITE8_HANDLER(einstein_port_w)
 		case 0x35:
 		case 0x36:
 		case 0x37:
-			einstein_pio_w(offset,data);
+			einstein_pio_w(machine, offset,data);
 			return;
 
 		default:
@@ -1418,7 +1423,7 @@ static const TMS9928a_interface tms9928a_interface =
 static MACHINE_START( einstein )
 {
 	TMS9928A_configure(&tms9928a_interface);
-	wd17xx_init(WD_TYPE_177X, NULL, NULL);
+	wd17xx_init(machine, WD_TYPE_177X, NULL, NULL);
 }
 
 static MACHINE_RESET( einstein )
@@ -1627,7 +1632,7 @@ static const struct AY8910interface einstein_ay_interface =
   127*262 = 33274 cycles per frame, vsync len 375 cycles
 */
 
-//static void einstein_80col_plot_char_line(int x,int y, mame_bitmap *bitmap)
+//static void einstein_80col_plot_char_line(int x,int y, bitmap_t *bitmap)
 //{
 //  int w;
 //  if (Einstein_DE)
@@ -1702,8 +1707,10 @@ static const struct AY8910interface einstein_ay_interface =
 
 static VIDEO_UPDATE( einstein2 )
 {
+	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+
 	VIDEO_UPDATE_CALL(tms9928a);
-	VIDEO_UPDATE_CALL(crtc6845);
+	mc6845_update(mc6845, bitmap, cliprect);
 //  VIDEO_UPDATE_CALL(einstein_80col);
 	return 0;
 }
@@ -1714,8 +1721,6 @@ static MACHINE_DRIVER_START( einstein )
 	MDRV_CPU_PROGRAM_MAP(einstein_mem, 0)
 	MDRV_CPU_IO_MAP(einstein_io, 0)
 	MDRV_CPU_CONFIG(einstein_daisy_chain)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( einstein )
@@ -1723,6 +1728,9 @@ static MACHINE_DRIVER_START( einstein )
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1740,8 +1748,13 @@ static MACHINE_DRIVER_START( einstei2 )
 	MDRV_MACHINE_RESET( einstein2 )
 
     /* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_SIZE(640, 400)
 	MDRV_SCREEN_VISIBLE_AREA(0,640-1, 0, 400-1)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG( einstein_crtc6845_interface )
+
 	MDRV_VIDEO_UPDATE( einstein2 )
 MACHINE_DRIVER_END
 
@@ -1763,25 +1776,25 @@ ROM_START(einstei2)
 	ROM_LOAD("charrom.rom",0x012000, 0x0800, NO_DUMP)
 ROM_END
 
-static void einstein_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void einstein_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void einstein_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void einstein_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		default:										legacydsk_device_getinfo(devclass, state, info); break;
 	}
@@ -1795,5 +1808,5 @@ SYSTEM_CONFIG_END
 
 /*     YEAR  NAME       PARENT  COMPAT  MACHINE    INPUT     INIT  CONFIG,   COMPANY   FULLNAME */
 COMP( 1984, einstein,	0,      0,		einstein,  einstein, 0,    einstein, "Tatung", "Tatung Einstein TC-01", 0)
-COMP( 1984, einstei2,	0,      0,		einstei2,  einstein, 0,    einstein, "Tatung", "Tatung Einstein TC-01 + 80 column device", 0)
+COMP( 1984, einstei2,	0,      0,		einstei2,  einstein, 0,    einstein, "Tatung", "Tatung Einstein TC-01 + 80 column device", GAME_NOT_WORKING)
 

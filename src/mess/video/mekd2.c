@@ -10,8 +10,6 @@
 
 #include "driver.h"
 
-#include "includes/mekd2.h"
-
 PALETTE_INIT( mekd2 )
 {
 	int i;
@@ -23,9 +21,6 @@ PALETTE_INIT( mekd2 )
 			24 + (i + 1) * (i + 1) - 1,
 			(i + 1) * (i + 1) / 4,
 			0);
-
-		colortable[2 * i + 0] = 1;
-		colortable[2 * i + 1] = i;
 	}
 
 	palette_set_color_rgb(machine, 16, 0, 0, 0);
@@ -33,45 +28,27 @@ PALETTE_INIT( mekd2 )
 	palette_set_color_rgb(machine, 18, 90, 90, 90);
 	palette_set_color_rgb(machine, 19, 50, 50, 50);
 	palette_set_color_rgb(machine, 20, 255, 255, 255);
-
-	colortable[2 * 16 + 0 * 4 + 0] = 17;
-	colortable[2 * 16 + 0 * 4 + 1] = 18;
-	colortable[2 * 16 + 0 * 4 + 2] = 19;
-	colortable[2 * 16 + 0 * 4 + 3] = 20;
-
-	colortable[2 * 16 + 1 * 4 + 0] = 17;
-	colortable[2 * 16 + 1 * 4 + 1] = 17;
-	colortable[2 * 16 + 1 * 4 + 2] = 19;
-	colortable[2 * 16 + 1 * 4 + 3] = 15;
 }
+
 
 VIDEO_START( mekd2 )
 {
     videoram_size = 6 * 2 + 24;
     videoram = (UINT8*)auto_malloc (videoram_size);
-
-#if 0
-	{
-		char backdrop_name[200];
-	    /* try to load a backdrop for the machine */
-		sprintf(backdrop_name, "%s.png", machine->gamedrv->name);
-		backdrop_load(backdrop_name, 2);
-	}
-#endif
-
-	VIDEO_START_CALL(generic);
 }
+
 
 VIDEO_UPDATE( mekd2 )
 {
+	int width = video_screen_get_width(screen);
     int x, y;
 
     for (x = 0; x < 6; x++)
     {
         int sy = 408;
-        int sx = machine->screen[0].width - 212 + x * 30 + ((x >= 4) ? 6 : 0);
+        int sx = width - 212 + x * 30 + ((x >= 4) ? 6 : 0);
 
-        drawgfx (bitmap, machine->gfx[0],
+        drawgfx (bitmap, screen->machine->gfx[0],
                  videoram[2 * x + 0], videoram[2 * x + 1],
                  0, 0, sx, sy, NULL, TRANSPARENCY_PEN, 0);
     }
@@ -91,13 +68,13 @@ VIDEO_UPDATE( mekd2 )
 				{ 4,  5,  6,  7},
 				{ 0,  1,  2,  3}
             };
-            int sx = machine->screen[0].width - 182 + x * 37;
+            int sx = width - 182 + x * 37;
             int color, code = layout[y][x];
 
             color = (readinputport (code / 7) & (0x40 >> (code % 7))) ? 0 : 1;
 
             videoram[6 * 2 + code] = color;
-            drawgfx (bitmap, machine->gfx[1],
+            drawgfx (bitmap, screen->machine->gfx[1],
                      layout[y][x], color,
                      0, 0, sx, sy, NULL,
                      TRANSPARENCY_NONE, 0);
@@ -106,5 +83,3 @@ VIDEO_UPDATE( mekd2 )
 
 	return 0;
 }
-
-

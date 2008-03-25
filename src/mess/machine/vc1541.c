@@ -320,9 +320,9 @@ static void vc1541_sector_to_gcr(int track, int sector)
 static ADDRESS_MAP_START( vc1541_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
 	AM_RANGE(0x1800, 0x180f) AM_READWRITE(via_2_r, via_2_w)  /* 0 and 1 used in vc20 */
-	AM_RANGE(0x1810, 0x189f) AM_READ( MRA8_NOP) /* for debugger */
+	AM_RANGE(0x1810, 0x189f) AM_READ( SMH_NOP) /* for debugger */
 	AM_RANGE(0x1c00, 0x1c0f) AM_READWRITE(via_3_r, via_3_w)
-	AM_RANGE(0x1c10, 0x1c9f) AM_READ( MRA8_NOP) /* for debugger */
+	AM_RANGE(0x1c10, 0x1c9f) AM_READ( SMH_NOP) /* for debugger */
 	AM_RANGE(0xc000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -355,7 +355,7 @@ static TIMER_CALLBACK(vc1541_timer)
 		vc1541->head.sync=0;
 		if (vc1541->type==TypeVC1541) {
 			cpunum_set_input_line(machine, vc1541->cpunumber, M6502_SET_OVERFLOW, 1);
-			via_3_ca1_w(0,1);
+			via_3_ca1_w(machine, 0,1);
 		}
 		return;
 	}
@@ -379,7 +379,7 @@ static TIMER_CALLBACK(vc1541_timer)
 	}
 	if (vc1541->type==TypeVC1541) {
 		cpunum_set_input_line(machine, vc1541->cpunumber, M6502_SET_OVERFLOW, 0);
-		via_3_ca1_w(0,0);
+		via_3_ca1_w(machine, 0,0);
 	}
 	vc1541->clock=0;
 }
@@ -571,7 +571,7 @@ static WRITE8_HANDLER( vc1541_via1_write_portb )
 				if (attotime_to_double(timer_timeelapsed(vc1541->timer)) > 1.0e29)
 					timer_reset(vc1541->timer, attotime_never);
 				else
-					timer_adjust(vc1541->timer, attotime_zero, 0, double_to_attotime(tme));
+					timer_adjust_periodic(vc1541->timer, attotime_zero, 0, double_to_attotime(tme));
 			}
 			else
 			{
@@ -865,7 +865,7 @@ static WRITE8_HANDLER ( c1551_port_w )
 					if (attotime_to_double(timer_timeelapsed(vc1541->timer)) > 1.0e29)
 						timer_reset(vc1541->timer, attotime_never);
 					else
-						timer_adjust(vc1541->timer, attotime_zero, 0, double_to_attotime(tme));
+						timer_adjust_periodic(vc1541->timer, attotime_zero, 0, double_to_attotime(tme));
 				}
 				else
 				{
@@ -946,7 +946,7 @@ int c1551_config (int id, int mode, C1551_CONFIG *config)
 	/* time should be small enough to allow quitting of the irq
 	   line before the next interrupt is triggered */
 	vc1541->drive.c1551.timer = timer_alloc(c1551_timer, NULL);
-	timer_adjust(vc1541->drive.c1551.timer, attotime_zero, 0, ATTOTIME_IN_HZ(60));
+	timer_adjust_periodic(vc1541->drive.c1551.timer, attotime_zero, 0, ATTOTIME_IN_HZ(60));
 	return 0;
 }
 
@@ -959,57 +959,57 @@ static ADDRESS_MAP_START( c1551_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 
-static void c1551x_write_data (TPI6525 *This, int data)
+static void c1551x_write_data (running_machine *machine, TPI6525 *This, int data)
 {
 	DBG_LOG(1, "c1551 cpu", ("%d write data %.2x\n",
 						 cpu_getactivecpu (), data));
 #ifdef CPU_SYNC
 	cpu_sync();
 #endif
-	tpi6525_0_port_a_w(0,data);
+	tpi6525_0_port_a_w(machine, 0,data);
 }
 
-static int c1551x_read_data (TPI6525 *This)
+static int c1551x_read_data (running_machine *machine, TPI6525 *This)
 {
 	int data=0xff;
 #ifdef CPU_SYNC
 	cpu_sync ();
 #endif
-	data=tpi6525_0_port_a_r(0);
+	data=tpi6525_0_port_a_r(machine, 0);
 	DBG_LOG(2, "c1551 cpu",("%d read data %.2x\n",
 						 cpu_getactivecpu (), data));
 	return data;
 }
 
-static void c1551x_write_handshake (TPI6525 *This, int data)
+static void c1551x_write_handshake (running_machine *machine, TPI6525 *This, int data)
 {
 	DBG_LOG(1, "c1551 cpu",("%d write handshake %.2x\n",
 						 cpu_getactivecpu (), data));
 #ifdef CPU_SYNC
 	cpu_sync();
 #endif
-	tpi6525_0_port_c_w(0,data&0x40?0xff:0x7f);
+	tpi6525_0_port_c_w(machine, 0,data&0x40?0xff:0x7f);
 }
 
-static int c1551x_read_handshake (TPI6525 *This)
+static int c1551x_read_handshake (running_machine *machine, TPI6525 *This)
 {
 	int data=0xff;
 #ifdef CPU_SYNC
 	cpu_sync();
 #endif
-	data=tpi6525_0_port_c_r(0)&8?0x80:0;
+	data=tpi6525_0_port_c_r(machine, 0)&8?0x80:0;
 	DBG_LOG(2, "c1551 cpu",("%d read handshake %.2x\n",
 						 cpu_getactivecpu (), data));
 	return data;
 }
 
-static int c1551x_read_status (TPI6525 *This)
+static int c1551x_read_status (running_machine *machine, TPI6525 *This)
 {
 	int data=0xff;
 #ifdef CPU_SYNC
 	cpu_sync();
 #endif
-	data=tpi6525_0_port_c_r(0)&3;
+	data=tpi6525_0_port_c_r(machine, 0)&3;
 	DBG_LOG(1, "c1551 cpu",("%d read status %.2x\n",
 						 cpu_getactivecpu (), data));
 	return data;
@@ -1017,27 +1017,27 @@ static int c1551x_read_status (TPI6525 *This)
 
 void c1551x_0_write_data (int data)
 {
-	c1551x_write_data(tpi6525, data);
+	c1551x_write_data(Machine, tpi6525, data);
 }
 
 int c1551x_0_read_data (void)
 {
-	return c1551x_read_data(tpi6525);
+	return c1551x_read_data(Machine, tpi6525);
 }
 
 void c1551x_0_write_handshake (int data)
 {
-	c1551x_write_handshake(tpi6525, data);
+	c1551x_write_handshake(Machine, tpi6525, data);
 }
 
 int c1551x_0_read_handshake (void)
 {
-	return c1551x_read_handshake(tpi6525);
+	return c1551x_read_handshake(Machine, tpi6525);
 }
 
 int c1551x_0_read_status (void)
 {
-	return c1551x_read_status(tpi6525);
+	return c1551x_read_status(Machine, tpi6525);
 }
 
 MACHINE_DRIVER_START( cpu_vc1540 )
@@ -1068,38 +1068,38 @@ MACHINE_DRIVER_START( cpu_c1571 )
 MACHINE_DRIVER_END
 
 
-void vc1541_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void vc1541_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:					info->i = IO_FLOPPY; break;
-		case DEVINFO_INT_COUNT:					info->i = 1; break;
-		case DEVINFO_INT_READABLE:				info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:				info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:				info->i = 0; break;
-		case DEVINFO_INT_RESET_ON_LOAD:			info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:					info->i = IO_FLOPPY; break;
+		case MESS_DEVINFO_INT_COUNT:					info->i = 1; break;
+		case MESS_DEVINFO_INT_READABLE:				info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:				info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:				info->i = 0; break;
+		case MESS_DEVINFO_INT_RESET_ON_LOAD:			info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:					info->load = device_load_vc1541; break;
-		case DEVINFO_PTR_UNLOAD:				info->unload = device_unload_vc1541; break;
+		case MESS_DEVINFO_PTR_LOAD:					info->load = device_load_vc1541; break;
+		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = device_unload_vc1541; break;
 		case DEVINFO_PTR_VC1541_CONFIG:			info->f = (genf *) vc1541_config; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "d64"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "d64"); break;
 	}
 }
 
 
 
-void c2031_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void c2031_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	vc1541_device_getinfo(devclass, state, info);
 }
 
 
 
-void c1551_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void c1551_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
@@ -1112,7 +1112,7 @@ void c1551_device_getinfo(const device_class *devclass, UINT32 state, union devi
 
 
 
-void c1571_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void c1571_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	vc1541_device_getinfo(devclass, state, info);
 }

@@ -10,7 +10,6 @@
 
 #include "mess.h"
 #include "device.h"
-#include "mslegacy.h"
 #include "inputx.h"
 
 
@@ -20,7 +19,7 @@
  *
  *************************************/
 
-static int validate_device(const device_class *devclass)
+static int validate_device(const mess_device_class *devclass)
 {
 	int error = 0;
 	int is_invalid, i;
@@ -30,11 +29,11 @@ static int validate_device(const device_class *devclass)
 	char *s1;
 	char *s2;
 	iodevice_t devtype;
-	int (*validity_check)(const device_class *devclass);
+	int (*validity_check)(const mess_device_class *devclass);
 
 	/* critical information */
-	devtype = (iodevice_t) (int) device_get_info_int(devclass, DEVINFO_INT_TYPE);
-	devcount = device_get_info_int(devclass, DEVINFO_INT_COUNT);
+	devtype = (iodevice_t) (int) mess_device_get_info_int(devclass, MESS_DEVINFO_INT_TYPE);
+	devcount = mess_device_get_info_int(devclass, MESS_DEVINFO_INT_COUNT);
 
 	/* sanity check device type */
 	if (devtype >= IO_COUNT)
@@ -58,7 +57,7 @@ static int validate_device(const device_class *devclass)
 	 * 2.  Checks for duplicate extensions
 	 * 3.  Makes sure that all extensions are either lower case chars or numbers
 	 */
-	s = device_get_info_string(devclass, DEVINFO_STR_FILE_EXTENSIONS);
+	s = mess_device_get_info_string(devclass, MESS_DEVINFO_STR_FILE_EXTENSIONS);
 	if (!s)
 	{
 		mame_printf_error("%s: device type '%s' has null file extensions\n", devclass->gamedrv->name, device_typename(devtype));
@@ -126,9 +125,9 @@ static int validate_device(const device_class *devclass)
 			/* fallthrough */
 
 		case IO_CARTSLOT:
-			if (!device_get_info_int(devclass, DEVINFO_INT_READABLE)
-				|| device_get_info_int(devclass, DEVINFO_INT_WRITEABLE)
-				|| device_get_info_int(devclass, DEVINFO_INT_CREATABLE))
+			if (!mess_device_get_info_int(devclass, MESS_DEVINFO_INT_READABLE)
+				|| mess_device_get_info_int(devclass, MESS_DEVINFO_INT_WRITEABLE)
+				|| mess_device_get_info_int(devclass, MESS_DEVINFO_INT_CREATABLE))
 			{
 				mame_printf_error("%s: devices of type '%s' has invalid open modes\n", devclass->gamedrv->name, device_typename(devtype));
 				error = 1;
@@ -140,8 +139,8 @@ static int validate_device(const device_class *devclass)
 	}
 
 	/* check creation options */
-	optcount = device_get_info_int(devclass, DEVINFO_INT_CREATE_OPTCOUNT);
-	if ((optcount < 0) || (optcount >= DEVINFO_CREATE_OPTMAX))
+	optcount = mess_device_get_info_int(devclass, MESS_DEVINFO_INT_CREATE_OPTCOUNT);
+	if ((optcount < 0) || (optcount >= MESS_DEVINFO_CREATE_OPTMAX))
 	{
 		mame_printf_error("%s: device type '%s' has an invalid creation optcount\n", devclass->gamedrv->name, device_typename(devtype));
 		error = 1;
@@ -150,19 +149,19 @@ static int validate_device(const device_class *devclass)
 	{
 		for (i = 0; i < (int) optcount; i++)
 		{
-			if (!device_get_info_string(devclass, DEVINFO_STR_CREATE_OPTNAME + i))
+			if (!mess_device_get_info_string(devclass, MESS_DEVINFO_STR_CREATE_OPTNAME + i))
 			{
 				mame_printf_error("%s: device type '%s' create option #%d: name not present\n",
 					devclass->gamedrv->name, device_typename(devtype), i);
 				error = 1;
 			}
-			if (!device_get_info_string(devclass, DEVINFO_STR_CREATE_OPTDESC + i))
+			if (!mess_device_get_info_string(devclass, MESS_DEVINFO_STR_CREATE_OPTDESC + i))
 			{
 				mame_printf_error("%s: device type '%s' create option #%d: description not present\n",
 					devclass->gamedrv->name, device_typename(devtype), i);
 				error = 1;
 			}
-			if (!device_get_info_string(devclass, DEVINFO_STR_CREATE_OPTEXTS + i))
+			if (!mess_device_get_info_string(devclass, MESS_DEVINFO_STR_CREATE_OPTEXTS + i))
 			{
 				mame_printf_error("%s: device type '%s' create option #%d: extensions not present\n",
 					devclass->gamedrv->name, device_typename(devtype), i);
@@ -172,7 +171,7 @@ static int validate_device(const device_class *devclass)
 	}
 
 	/* is there a custom validity check? */
-	validity_check = (int (*)(const device_class *)) device_get_info_fct(devclass, DEVINFO_PTR_VALIDITY_CHECK);
+	validity_check = (int (*)(const mess_device_class *)) mess_device_get_info_fct(devclass, MESS_DEVINFO_PTR_VALIDITY_CHECK);
 	if (validity_check)
 	{
 		if (validity_check(devclass))
@@ -190,7 +189,7 @@ static int validate_driver_devices(const game_driver *drv)
 	int i;
 	struct SystemConfigurationParamBlock cfg;
 	device_getinfo_handler handlers[64];
-	device_class devclass;
+	mess_device_class devclass;
 	int count_overrides[sizeof(handlers) / sizeof(handlers[0])];
 
 	if (drv->sysconfig_ctor)
@@ -287,7 +286,6 @@ int mess_validitychecks(void)
 	iodevice_t devtype;
 	const char *name;
 	input_port_entry *inputports = NULL;
-	extern int device_valididtychecks(void);
 
 	/* make sure that all of the UI_* strings are set for all devices */
 	for (devtype = 0; devtype < IO_COUNT; devtype++)

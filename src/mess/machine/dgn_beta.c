@@ -120,10 +120,10 @@ static WRITE8_HANDLER(d_pia2_pb_w);
 static void d_pia2_irq_a(int state);
 static void d_pia2_irq_b(int state);
 
-static void cpu0_recalc_irq(int state);
-static void cpu0_recalc_firq(int state);
+static void cpu0_recalc_irq(running_machine *machine, int state);
+static void cpu0_recalc_firq(running_machine *machine, int state);
 
-static void cpu1_recalc_firq(int state);
+static void cpu1_recalc_firq(running_machine *machine, int state);
 
 static	int Keyboard[NoKeyrows];		/* Keyboard bit array */
 static int RowShifter;				/* shift register to select row */
@@ -174,7 +174,7 @@ static const pia6821_interface dgnbeta_pia_intf[] =
 // Info for bank switcher
 struct bank_info_entry
 {
-	write8_handler handler;	// Pointer to write handler
+	write8_machine_func handler;	// Pointer to write handler
 	offs_t start;		// Offset of start of block
 	offs_t end;		// offset of end of block
 };
@@ -239,7 +239,7 @@ static void UpdateBanks(int first, int last)
 {
 	int		Page;
 	UINT8 		*readbank;
-	write8_handler 	writebank;
+	write8_machine_func 	writebank;
 	int		bank_start;
 	int		bank_end;
 	int		MapPage;
@@ -287,7 +287,7 @@ static void UpdateBanks(int first, int last)
 			else
 				readbank=system_rom;
 
-			writebank = MWA8_UNMAP;
+			writebank = SMH_UNMAP;
 		}
 
 		PageRegs[TaskReg][Page].memory=readbank;
@@ -295,7 +295,7 @@ static void UpdateBanks(int first, int last)
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
 		memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
 
-		LOG_BANK_UPDATE(("UpdateBanks:MapPage=$%02X readbank=$%X\n",MapPage,(int)readbank));
+		LOG_BANK_UPDATE(("UpdateBanks:MapPage=$%02X readbank=$%X\n",MapPage,(int)(FPTR)readbank));
 		LOG_BANK_UPDATE(("PageRegsSet Task=%X Page=%x\n",TaskReg,Page));
 		LOG_BANK_UPDATE(("memory_set_bankptr(%X)\n",Page+1));
 		LOG_BANK_UPDATE(("memory_install_write8_handler CPU=0\n"));
@@ -562,16 +562,16 @@ static READ8_HANDLER(d_pia0_pb_r)
 		{
 			switch (Idx)
 			{
-				case 0 : Keyboard[Idx]=input_port_0_r(0); break;
-				case 1 : Keyboard[Idx]=input_port_1_r(0); break;
-				case 2 : Keyboard[Idx]=input_port_2_r(0); break;
-				case 3 : Keyboard[Idx]=input_port_3_r(0); break;
-				case 4 : Keyboard[Idx]=input_port_4_r(0); break;
-				case 5 : Keyboard[Idx]=input_port_5_r(0); break;
-				case 6 : Keyboard[Idx]=input_port_6_r(0); break;
-				case 7 : Keyboard[Idx]=input_port_7_r(0); break;
-				case 8 : Keyboard[Idx]=input_port_8_r(0); break;
-				case 9 : Keyboard[Idx]=input_port_9_r(0); break;
+				case 0 : Keyboard[Idx]=readinputport(0); break;
+				case 1 : Keyboard[Idx]=readinputport(1); break;
+				case 2 : Keyboard[Idx]=readinputport(2); break;
+				case 3 : Keyboard[Idx]=readinputport(3); break;
+				case 4 : Keyboard[Idx]=readinputport(4); break;
+				case 5 : Keyboard[Idx]=readinputport(5); break;
+				case 6 : Keyboard[Idx]=readinputport(6); break;
+				case 7 : Keyboard[Idx]=readinputport(7); break;
+				case 8 : Keyboard[Idx]=readinputport(8); break;
+				case 9 : Keyboard[Idx]=readinputport(9); break;
 			}
 
 			if(Keyboard[Idx]!=0x7F)
@@ -649,12 +649,12 @@ static WRITE8_HANDLER(d_pia0_cb2_w)
 
 static void d_pia0_irq_a(int state)
 {
-	cpu0_recalc_irq(state);
+	cpu0_recalc_irq(Machine, state);
 }
 
 static void d_pia0_irq_b(int state)
 {
-	cpu0_recalc_firq(state);
+	cpu0_recalc_firq(Machine, state);
 }
 
 /* PIA #1 at $FC24-$FC27 I63
@@ -686,7 +686,7 @@ static WRITE8_HANDLER(d_pia1_pa_w)
 			HALT_DMA=CLEAR_LINE;
 
 		LOG_HALT(("DMA_CPU HALT=%d\n",HALT_DMA));
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, HALT_DMA);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, HALT_DMA);
 
 		/* CPU un-halted let it run ! */
 		if (HALT_DMA==CLEAR_LINE)
@@ -729,7 +729,7 @@ static WRITE8_HANDLER(d_pia1_pb_w)
 		else
 			HALT_CPU=ASSERT_LINE;
 		LOG_HALT(("MAIN_CPU HALT=%d\n",HALT_CPU));
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, HALT_CPU);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, HALT_CPU);
 
 		d_pia1_pb_last=data & 0x02;
 
@@ -741,12 +741,12 @@ static WRITE8_HANDLER(d_pia1_pb_w)
 
 static void d_pia1_irq_a(int state)
 {
-	cpu0_recalc_irq(state);
+	cpu0_recalc_irq(Machine, state);
 }
 
 static void d_pia1_irq_b(int state)
 {
-	cpu0_recalc_irq(state);
+	cpu0_recalc_irq(Machine, state);
 }
 
 /* PIA #2 at FCC0-FCC3 I28
@@ -780,13 +780,13 @@ static WRITE8_HANDLER(d_pia2_pa_w)
 		LOG_INTS(("cpu1 NMI : %d\n",NMI));
 		if(!NMI)
 		{
-			cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,ASSERT_LINE);
+			cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,ASSERT_LINE);
 			logerror("cpu_yield()\n");
 			cpu_yield();	/* Let DMA CPU run */
 		}
 		else
 		{
-			cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,CLEAR_LINE);
+			cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,CLEAR_LINE);
 		}
 
 		DMA_NMI_LAST=NMI;	/* Save it for next time */
@@ -845,18 +845,18 @@ static WRITE8_HANDLER(d_pia2_pb_w)
 static void d_pia2_irq_a(int state)
 {
 	logerror("PIA2 IRQ1 state=%02X\n",state);
-	cpu0_recalc_irq(state);
+	cpu0_recalc_irq(Machine, state);
 }
 
 static void d_pia2_irq_b(int state)
 {
 	logerror("PIA2 IRQ2 state=%02X\n",state);
-	cpu0_recalc_irq(state);
+	cpu0_recalc_irq(Machine, state);
 }
 
 /************************************ Recalculate CPU inturrupts ****************************/
 /* CPU 0 */
-static void cpu0_recalc_irq(int state)
+static void cpu0_recalc_irq(running_machine *machine, int state)
 {
 	UINT8 pia0_irq_a = pia_get_irq_a(0);
 	UINT8 pia1_irq_a = pia_get_irq_a(1);
@@ -870,11 +870,11 @@ static void cpu0_recalc_irq(int state)
 	else
 		IRQ = CLEAR_LINE;
 
-	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, IRQ);
+	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, IRQ);
 	LOG_INTS(("cpu0 IRQ : %d\n",IRQ));
 }
 
-static void cpu0_recalc_firq(int state)
+static void cpu0_recalc_firq(running_machine *machine, int state)
 {
 	UINT8 pia0_irq_b = pia_get_irq_b(0);
 	UINT8 FIRQ;
@@ -884,16 +884,16 @@ static void cpu0_recalc_firq(int state)
 	else
 		FIRQ = CLEAR_LINE;
 
-	cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, FIRQ);
+	cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, FIRQ);
 
 	LOG_INTS(("cpu0 FIRQ : %d\n",FIRQ));
 }
 
 /* CPU 1 */
 
-static void cpu1_recalc_firq(int state)
+static void cpu1_recalc_firq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, state);
+	cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, state);
 	LOG_INTS(("cpu1 FIRQ : %d\n",state));
 }
 
@@ -901,7 +901,7 @@ static void cpu1_recalc_firq(int state)
 /* Dragon Beta onboard FDC */
 /********************************************************************************************/
 
-static void dgnbeta_fdc_callback(wd17xx_state_t event, void *param)
+static void dgnbeta_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	/* The INTRQ line goes through pia2 ca1, in exactly the same way as DRQ from DragonDos does */
 	/* DRQ is routed through various logic to the FIRQ inturrupt line on *BOTH* CPUs */
@@ -909,18 +909,18 @@ static void dgnbeta_fdc_callback(wd17xx_state_t event, void *param)
 	switch(event)
 	{
 		case WD17XX_IRQ_CLR:
-			pia_2_ca1_w(0,CLEAR_LINE);
+			pia_2_ca1_w(machine, 0, CLEAR_LINE);
 			break;
 		case WD17XX_IRQ_SET:
-			pia_2_ca1_w(0,ASSERT_LINE);
+			pia_2_ca1_w(machine, 0, ASSERT_LINE);
 			break;
 		case WD17XX_DRQ_CLR:
 			/*wd2797_drq=CLEAR_LINE;*/
-			cpu1_recalc_firq(CLEAR_LINE);
+			cpu1_recalc_firq(machine, CLEAR_LINE);
 			break;
 		case WD17XX_DRQ_SET:
 			/*wd2797_drq=ASSERT_LINE;*/
-			cpu1_recalc_firq(ASSERT_LINE);
+			cpu1_recalc_firq(machine, ASSERT_LINE);
 			break;
 	}
 
@@ -934,17 +934,17 @@ static void dgnbeta_fdc_callback(wd17xx_state_t event, void *param)
 	switch(offset & 0x03)
 	{
 		case 0:
-			result = wd17xx_status_r(0);
+			result = wd17xx_status_r(machine, 0);
 			LOG_DISK(("Disk status=%2.2X\n",result));
 			break;
 		case 1:
-			result = wd17xx_track_r(0);
+			result = wd17xx_track_r(machine, 0);
 			break;
 		case 2:
-			result = wd17xx_sector_r(0);
+			result = wd17xx_sector_r(machine, 0);
 			break;
 		case 3:
-			result = wd17xx_data_r(0);
+			result = wd17xx_data_r(machine, 0);
 			break;
 		default:
 			break;
@@ -962,16 +962,16 @@ WRITE8_HANDLER(dgnbeta_wd2797_w)
 			/* But only for Type 3/4 commands */
 			if(data & 0x80)
 				wd17xx_set_side((data & 0x02) ? 1 : 0);
-			wd17xx_command_w(0, data);
+			wd17xx_command_w(machine, 0, data);
 			break;
 		case 1:
-			wd17xx_track_w(0, data);
+			wd17xx_track_w(machine, 0, data);
 			break;
 		case 2:
-			wd17xx_sector_w(0, data);
+			wd17xx_sector_w(machine, 0, data);
 			break;
 		case 3:
-			wd17xx_data_w(0, data);
+			wd17xx_data_w(machine, 0, data);
 			break;
 	};
 }
@@ -991,16 +991,16 @@ static void ScanInKeyboard(void)
 	{
 		switch (Idx)
 		{
-			case 0 : Row=input_port_0_r(0) /*| 0x33*/; break;
-			case 1 : Row=input_port_1_r(0); break;
-			case 2 : Row=input_port_2_r(0); break;
-			case 3 : Row=input_port_3_r(0); break;
-			case 4 : Row=input_port_4_r(0); break;
-			case 5 : Row=input_port_5_r(0); break;
-			case 6 : Row=input_port_6_r(0); break;
-			case 7 : Row=input_port_7_r(0); break;
-			case 8 : Row=input_port_8_r(0); break;
-			case 9 : Row=input_port_9_r(0); break;
+			case 0 : Row=readinputport(0) /*| 0x33*/; break;
+			case 1 : Row=readinputport(1); break;
+			case 2 : Row=readinputport(2); break;
+			case 3 : Row=readinputport(3); break;
+			case 4 : Row=readinputport(4); break;
+			case 5 : Row=readinputport(5); break;
+			case 6 : Row=readinputport(6); break;
+			case 7 : Row=readinputport(7); break;
+			case 8 : Row=readinputport(8); break;
+			case 9 : Row=readinputport(9); break;
 			default : Row=0x7F; break;
 		}
 		Keyboard[Idx]=Row;
@@ -1014,16 +1014,16 @@ static void ScanInKeyboard(void)
 }
 
 /* VBlank inturrupt */
-void dgn_beta_frame_interrupt (int data)
+void dgn_beta_frame_interrupt (running_machine *machine, int data)
 {
 	/* Set PIA line, so it recognises inturrupt */
 	if (!data)
 	{
-		pia_2_cb2_w(0,ASSERT_LINE);
+		pia_2_cb2_w(machine, 0, ASSERT_LINE);
 	}
 	else
 	{
-		pia_2_cb2_w(0,CLEAR_LINE);
+		pia_2_cb2_w(machine, 0, CLEAR_LINE);
 	}
 	LOG_VIDEO(("Vblank\n"));
 	ScanInKeyboard();
@@ -1034,11 +1034,11 @@ void dgn_beta_line_interrupt (int data)
 //	/* Set PIA line, so it recognises inturrupt */
 //	if (data)
 //	{
-//		pia_0_cb1_w(0,ASSERT_LINE);
+//		pia_0_cb1_w(machine, 0,ASSERT_LINE);
 //	}
 //	else
 //	{
-//		pia_0_cb1_w(0,CLEAR_LINE);
+//		pia_0_cb1_w(machine, 0,CLEAR_LINE);
 //	}
 }
 
@@ -1097,7 +1097,7 @@ MACHINE_START( dgnbeta )
 
 	init_video(machine);
 
-	wd17xx_init(WD_TYPE_179X,dgnbeta_fdc_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_179X,dgnbeta_fdc_callback, NULL);
 #ifdef ENABLE_DEBUGGER
 	cpuintrf_set_dasm_override(0,dgnbeta_dasm_override);
 #endif /* ENABLE_DEBUGGER */

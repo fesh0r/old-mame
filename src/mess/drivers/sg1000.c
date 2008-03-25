@@ -84,7 +84,7 @@ static ADDRESS_MAP_START( sg1000_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sg1000_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
@@ -103,7 +103,7 @@ static ADDRESS_MAP_START( sc3000_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
@@ -113,12 +113,12 @@ ADDRESS_MAP_END
 // SF-7000
 
 static ADDRESS_MAP_START( sf7000_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK2)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK2)
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sf7000_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
@@ -554,62 +554,65 @@ static MACHINE_RESET( sf7000 )
 
 static MACHINE_DRIVER_START( sg1000 )
 	// basic machine hardware
-	MDRV_CPU_ADD(Z80, 10738635/3)
+	MDRV_CPU_ADD(Z80, XTAL_10_738635MHz/3)
 	MDRV_CPU_PROGRAM_MAP(sg1000_map, 0)
 	MDRV_CPU_IO_MAP(sg1000_io_map, 0)
-	MDRV_CPU_VBLANK_INT(sg1000_int, 1)
-	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", sg1000_int)
 
 	MDRV_MACHINE_START( sg1000 )
 
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76489, 10738635/3)
+	MDRV_SOUND_ADD(SN76489, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sc3000 )
 	// basic machine hardware
-	MDRV_CPU_ADD(Z80, 10738635/3)
+	MDRV_CPU_ADD(Z80, XTAL_10_738635MHz/3)
 	MDRV_CPU_PROGRAM_MAP(sc3000_map, 0)
 	MDRV_CPU_IO_MAP(sc3000_io_map, 0)
-	MDRV_CPU_VBLANK_INT(sg1000_int, 1)
-	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", sg1000_int)
 
 	MDRV_MACHINE_START( sc3000 )
 
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76489, 10738635/3)
+	MDRV_SOUND_ADD(SN76489, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sf7000 )
 	// basic machine hardware
-	MDRV_CPU_ADD(Z80, 10738635/3)
+	MDRV_CPU_ADD(Z80, XTAL_10_738635MHz/3)
 	MDRV_CPU_PROGRAM_MAP(sf7000_map, 0)
 	MDRV_CPU_IO_MAP(sf7000_io_map, 0)
-	MDRV_CPU_VBLANK_INT(sg1000_int, 1)
-	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", sg1000_int)
 
 	MDRV_MACHINE_START( sf7000 )
 	MDRV_MACHINE_RESET( sf7000 )
 
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(SN76489, 10738635/3)
+	MDRV_SOUND_ADD(SN76489, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
 
@@ -638,15 +641,15 @@ static void sg1000_map_cartridge_memory(UINT8 *ptr, int size)
 {
 	if (size == 40 * 1024)
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MRA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_UNMAP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_UNMAP);
 		memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
 		memory_set_bank(1, 0);
 	}
 	else if (size == 48 * 1024)
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MWA8_UNMAP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_UNMAP);
 		memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
 		memory_set_bank(1, 0);
 	}
@@ -657,14 +660,14 @@ static void sg1000_map_cartridge_memory(UINT8 *ptr, int size)
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, &tvdraw_axis_w);
 		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8000, 0, 0, &tvdraw_status_r);
 		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, &tvdraw_data_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, MWA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, SMH_NOP);
 	}
 	else if (!strncmp("ASCII 1986", (const char *)&ptr[0x1cc3], 10))
 	{
 		// The Castle
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MRA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_BANK1);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
 	}
 }
 
@@ -680,20 +683,20 @@ static DEVICE_LOAD( sg1000_cart )
 
 	sg1000_map_cartridge_memory(ptr, size);
 
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, MRA8_BANK2);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, MWA8_BANK2);
+	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, SMH_BANK2);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, SMH_BANK2);
 
 	return INIT_PASS;
 }
 
-static void sg1000_cartslot_getinfo( const device_class *devclass, UINT32 state, union devinfo *info )
+static void sg1000_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
 {
 	switch( state )
 	{
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_sg1000_cart; break;
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sg"); break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sg1000_cart; break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sg"); break;
 
 		default:										cartslot_device_getinfo( devclass, state, info ); break;
 	}
@@ -705,28 +708,28 @@ static void sc3000_map_cartridge_memory(UINT8 *ptr)
 	{
 		// SC-3000 BASIC Level III
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MWA8_BANK1);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, MRA8_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, MWA8_BANK2);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK2);
 	}
 	else if (!strncmp("PIANO", (const char *)&ptr[0x0841], 5))
 	{
 		// Sega SC-3000 Music Editor
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MRA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_BANK1);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, MRA8_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, MWA8_BANK2);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
 	}
 	else
 	{
 		// regular cartridges
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, MRA8_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, MWA8_BANK2);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
 	}
 }
 
@@ -746,44 +749,44 @@ static DEVICE_LOAD( sc3000_cart )
 	return INIT_PASS;
 }
 
-static void sc3000_cartslot_getinfo( const device_class *devclass, UINT32 state, union devinfo *info )
+static void sc3000_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
 {
 	switch( state )
 	{
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_sc3000_cart; break;
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sg,sc"); break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sc3000_cart; break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sg,sc"); break;
 
 		default:										cartslot_device_getinfo( devclass, state, info ); break;
 	}
 }
 
-static void sc3000_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sc3000_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void sc3000_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sc3000_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void sf7000_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sf7000_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
@@ -808,13 +811,13 @@ static DEVICE_LOAD( sf7000_floppy )
 	return INIT_FAIL;
 }
 
-static void sf7000_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sf7000_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_sf7000_floppy; break;
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sf7"); break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sf7000_floppy; break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sf7"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
@@ -842,22 +845,22 @@ static DEVICE_LOAD( sf7000_serial )
 	return INIT_FAIL;
 }
 
-static void sf7000_serial_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sf7000_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = serial_device_init; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_sf7000_serial; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = serial_device_unload; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = serial_device_init; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sf7000_serial; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = serial_device_unload; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
 	}
 }
 

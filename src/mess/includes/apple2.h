@@ -46,10 +46,10 @@ struct _apple2_slotdevice
 {
 	const char *name;
 	const char *description;
-	void *(*init)(int slot);
-	void (*reset)(void *token);
-	UINT8 (*read)(void *token, offs_t offset);
-	void (*write)(void *token, offs_t offset, UINT8 data);
+	void *(*init)(running_machine *machine, int slot);
+	void (*reset)(running_machine *machine, void *token);
+	UINT8 (*read)(running_machine *machine, void *token, offs_t offset);
+	void (*write)(running_machine *machine, void *token, offs_t offset, UINT8 data);
 };
 
 typedef struct _apple2_config apple2_config;
@@ -84,12 +84,11 @@ void apple2_setvar(UINT32 val, UINT32 mask);
 
 /*----------- defined in video/apple2.c -----------*/
 
-void apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
+void apple2_video_start(running_machine *machine, const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo);
 VIDEO_START( apple2 );
 VIDEO_START( apple2p );
 VIDEO_START( apple2e );
 VIDEO_UPDATE( apple2 );
-void apple2_video_touch(offs_t offset);
 void apple2_set_fgcolor(int color);
 void apple2_set_bgcolor(int color);
 int apple2_get_fgcolor(void);
@@ -126,9 +125,9 @@ typedef struct _apple2_meminfo apple2_meminfo;
 struct _apple2_meminfo
 {
 	UINT32 read_mem;
-	read8_handler read_handler;
+	read8_machine_func read_handler;
 	UINT32 write_mem;
-	write8_handler write_handler;
+	write8_machine_func write_handler;
 };
 
 typedef struct _apple2_memmap_entry apple2_memmap_entry;

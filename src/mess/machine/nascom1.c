@@ -55,7 +55,7 @@ static struct
  *
  *************************************/
 
-static void nascom2_fdc_callback(wd17xx_state_t event, void *param)
+static void nascom2_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	switch (event)
 	{
@@ -276,31 +276,31 @@ DRIVER_INIT( nascom1 )
 	{
 	case 1 * 1024:
 		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
-			0x1400, 0x9000, 0, 0, MRA8_NOP, MWA8_NOP);
+			0x1400, 0x9000, 0, 0, SMH_NOP, SMH_NOP);
 		break;
 
 	case 16 * 1024:
 		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
-			0x1400, 0x4fff, 0, 0, MRA8_BANK1, MWA8_BANK1);
+			0x1400, 0x4fff, 0, 0, SMH_BANK1, SMH_BANK1);
 		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
-			0x5000, 0xafff, 0, 0, MRA8_NOP, MWA8_NOP);
+			0x5000, 0xafff, 0, 0, SMH_NOP, SMH_NOP);
 		memory_set_bankptr(1, mess_ram);
 		break;
 
 	case 32 * 1024:
 		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
-			0x1400, 0x8fff, 0, 0, MRA8_BANK1, MWA8_BANK1);
+			0x1400, 0x8fff, 0, 0, SMH_BANK1, SMH_BANK1);
 		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
-			0x9000, 0xafff, 0, 0, MRA8_NOP, MWA8_NOP);
+			0x9000, 0xafff, 0, 0, SMH_NOP, SMH_NOP);
 		memory_set_bankptr(1, mess_ram);
 		break;
 
 	case 40 * 1024:
 		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
-			0x1400, 0xafff, 0, 0, MRA8_BANK1, MWA8_BANK1);
+			0x1400, 0xafff, 0, 0, SMH_BANK1, SMH_BANK1);
 		memory_set_bankptr(1, mess_ram);
 		break;
 	}
 
-	wd17xx_init(WD_TYPE_1793, nascom2_fdc_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_1793, nascom2_fdc_callback, NULL);
 }

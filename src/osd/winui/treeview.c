@@ -917,14 +917,16 @@ void CreateCPUFolders(int parent_index)
 	for (jj = 0; jj < nGames; jj++)
 	{
 		int n;
-		machine_config drv;
-		expand_machine_driver(drivers[jj]->drv,&drv);
-		for (n = 0; n < MAX_CPU; n++)
-			if (drv.cpu[n].type != CPU_DUMMY)
+		machine_config *config;
+		config = machine_config_alloc(drivers[jj]->machine_config);
+		for (n = 0; n < MAX_CPU; n++) {
+			if (config->cpu[n].type != CPU_DUMMY)
 			{
 				// cpu type #'s are one-based
-				AddGame(map[drv.cpu[n].type],jj);
+				AddGame(map[config->cpu[n].type],jj);
 			}
+		}
+		machine_config_free(config);
 	}
 }
 
@@ -969,18 +971,21 @@ void CreateSoundFolders(int parent_index)
 	for (jj = 0; jj < nGames; jj++)
 	{
 		int n;
-		machine_config drv;
-		expand_machine_driver(drivers[jj]->drv,&drv);
+		machine_config *config;
+
+		config = machine_config_alloc(drivers[jj]->machine_config);
 		// Additional range and null checking.
-		for (n = 0; n < MAX_SOUND ; n++)
-			if (drv.sound[n].type > SOUND_DUMMY &&
-				drv.sound[n].type < MAX_SOUND)
+		for (n = 0; n < MAX_SOUND ; n++) {
+			if (config->sound[n].type > SOUND_DUMMY &&
+				config->sound[n].type < MAX_SOUND)
 			{
-				if (map[drv.sound[n].type] != NULL) {
+				if (map[config->sound[n].type] != NULL) {
 					// sound type #'s are one-based, though that doesn't affect us here
-					AddGame(map[drv.sound[n].type],jj);
+					AddGame(map[config->sound[n].type],jj);
 				}
 			}
+		}
+		machine_config_free(config);
 	}
 
 }
@@ -1771,18 +1776,18 @@ static void TreeCtrlOnPaint(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		DeleteDC(maskDC);
 		DeleteDC(imageDC);
 		DeleteDC(tempDC);
-		DeleteObject(bmpImage);
-		DeleteObject(maskBitmap);
+		DeleteBitmap(bmpImage);
+		DeleteBitmap(maskBitmap);
 
 		if (GetBackgroundPalette() == NULL)
 		{
-			DeleteObject(hPAL);
-			hPAL = 0;
+			DeletePalette(hPAL);
+			hPAL = NULL;
 		}
 	}
 
 	SelectObject(memDC, hOldBitmap);
-	DeleteObject(bitmap);
+	DeleteBitmap(bitmap);
 	DeleteDC(memDC);
 	EndPaint(hWnd, &ps);
 	ReleaseDC(hWnd, hDC);

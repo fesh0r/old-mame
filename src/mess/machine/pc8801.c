@@ -59,7 +59,7 @@ WRITE8_HANDLER(pc8801_calender)
   /* UOP3 (bit 7 -- not yet) */
 }
 
-static void calender_strobe(void)
+static void calender_strobe(running_machine *machine)
 {
 	mame_system_time systime;
 
@@ -77,7 +77,7 @@ static void calender_strobe(void)
 			break;
 		case 3:
 			/* get the current date/time from the core */
-			mame_get_current_datetime(Machine, &systime);
+			mame_get_current_datetime(machine, &systime);
 
 			calender_reg[4] = (systime.local_time.month + 1) * 16 + systime.local_time.weekday;
 			calender_reg[3] = dec_2_bcd(systime.local_time.mday);
@@ -111,7 +111,7 @@ static int interrupt_level_reg;
 static int interrupt_mask_reg;
 static int interrupt_trig_reg;
 
-static void pc8801_update_interrupt(void)
+static void pc8801_update_interrupt(running_machine *machine)
 {
 	int level, i;
 
@@ -123,7 +123,7 @@ static void pc8801_update_interrupt(void)
 	}
 	if (level >= 0 && level<interrupt_level_reg)
 	{
-		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 }
 
@@ -144,7 +144,7 @@ static int pc8801_interupt_callback (int cpu)
 WRITE8_HANDLER(pc8801_write_interrupt_level)
 {
 	interrupt_level_reg = data&0x0f;
-	pc8801_update_interrupt();
+	pc8801_update_interrupt(machine);
 }
 
 WRITE8_HANDLER(pc8801_write_interrupt_mask)
@@ -153,20 +153,20 @@ WRITE8_HANDLER(pc8801_write_interrupt_mask)
 		| ((data&0x04)>>2) | 0xf8;
 }
 
-static void pc8801_raise_interrupt(int level)
+static void pc8801_raise_interrupt(running_machine *machine, int level)
 {
   interrupt_trig_reg |= interrupt_mask_reg & (1<<level);
-  pc8801_update_interrupt();
+  pc8801_update_interrupt(machine);
 }
 
 INTERRUPT_GEN( pc8801_interrupt )
 {
-	pc8801_raise_interrupt(1);
+	pc8801_raise_interrupt(machine, 1);
 }
 
 static TIMER_CALLBACK(pc8801_timer_interrupt)
 {
-	pc8801_raise_interrupt(2);
+	pc8801_raise_interrupt(machine, 2);
 }
 
 static void pc8801_init_interrupt(void)
@@ -181,7 +181,7 @@ static void pc8801_init_interrupt(void)
 WRITE8_HANDLER(pc88sr_outport_30)
 {
   /* bit 1-5 not implemented yet */
-  pc88sr_disp_30(offset,data);
+  pc88sr_disp_30(machine, offset,data);
 }
 
 WRITE8_HANDLER(pc88sr_outport_40)
@@ -190,11 +190,11 @@ WRITE8_HANDLER(pc88sr_outport_40)
 {
   static int port_save;
 
-  if((port_save&0x02) == 0x00 && (data&0x02) != 0x00) calender_strobe();
+  if((port_save&0x02) == 0x00 && (data&0x02) != 0x00) calender_strobe(machine);
   if((port_save&0x04) == 0x00 && (data&0x04) != 0x00) calender_shift();
   port_save=data;
 
-  if((input_port_17_r(0)&0x40)==0x00) {
+  if((readinputport(17)&0x40)==0x00) {
     data&=0x7f;
   }
   switch(data&0xa0) {
@@ -221,7 +221,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   r = pc8801_is_24KHz ? 0x00 : 0x02;
   r |= use_5FD ? 0x00 : 0x08;
   r |= calender_data() ? 0x10 : 0x00;
-  if(video_screen_get_vblank(0)) r|=0x20;
+  if(video_screen_get_vblank(machine->primary_screen)) r|=0x20;
   return r|0xc0;
 }
 
@@ -241,7 +241,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   int r;
 
   /* read DIP-SW */
-  r=input_port_17_r(0)<<1;
+  r=readinputport(17)<<1;
   /* change bit 0 according BASIC mode */
   if(is_Nbasic) {
     r&=0xfe;
@@ -268,7 +268,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   int r;
 
   /* read DIP-SW */
-  r=input_port_18_r(0)<<1;
+  r=readinputport(18)<<1;
   /* change bit 6 according speed switch */
   if(pc88sr_is_highspeed) {
     r|=0x40;
@@ -394,14 +394,14 @@ void pc8801_update_bank(void)
 		if(ext_w==NULL)
 		{
 			/* read only mode */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, MWA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_NOP);
 		}
 		else
 		{
 			/* r/w mode */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, MWA8_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK2);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
 			if(ext_w!=ext_r) logerror("differnt between read and write bank of extension memory.\n");
 		}
 	}
@@ -411,8 +411,8 @@ void pc8801_update_bank(void)
 		if(RAMmode)
 		{
 			/* RAM */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, MWA8_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK2);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
 			memory_set_bankptr(1, pc8801_mainRAM + 0x0000);
 			memory_set_bankptr(2, pc8801_mainRAM + 0x6000);
 		}
@@ -443,8 +443,8 @@ void pc8801_update_bank(void)
 	}
 
 	/* 0x8000 to 0xffff */
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? MRA8_BANK3 : pc8801_read_textwindow);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? MWA8_BANK3 : pc8801_write_textwindow);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_read_textwindow);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_write_textwindow);
 
 	memory_set_bankptr(4, pc8801_mainRAM + 0x8400);
 
@@ -455,10 +455,10 @@ void pc8801_update_bank(void)
 	}
 	else
 	{
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, MRA8_BANK5);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, MWA8_BANK5);
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, MRA8_BANK6);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, MWA8_BANK6);
+		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
+		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
 
 		memory_set_bankptr(5, pc8801_mainRAM + 0xc000);
 		if(maptvram)
@@ -487,7 +487,7 @@ WRITE8_HANDLER(pc88sr_outport_31)
   RAMmode=((data&0x02)!=0);
   ROMmode=((data&0x04)!=0);
   pc8801_update_bank();
-  pc88sr_disp_31(offset,data);
+  pc88sr_disp_31(machine, offset,data);
 }
 
  READ8_HANDLER(pc88sr_inport_32)
@@ -502,8 +502,8 @@ WRITE8_HANDLER(pc88sr_outport_32)
   maptvram=((data&0x10)==0);
   no4throm2=(data&3);
   enable_FM_IRQ=((data & 0x80) == 0x00);
-  if(FM_IRQ_save && enable_FM_IRQ) pc8801_raise_interrupt(FM_IRQ_LEVEL);
-  pc88sr_disp_32(offset,data);
+  if(FM_IRQ_save && enable_FM_IRQ) pc8801_raise_interrupt(machine, FM_IRQ_LEVEL);
+  pc88sr_disp_32(machine, offset,data);
   pc8801_update_bank();
 }
 
@@ -551,7 +551,7 @@ WRITE8_HANDLER(pc88sr_outport_71)
   pc8801_update_bank();
 }
 
-static void pc8801_init_bank(int hireso)
+static void pc8801_init_bank(running_machine *machine, int hireso)
 {
 	int i,j;
 	int num80,num88,numIO;
@@ -570,10 +570,10 @@ static void pc8801_init_bank(int hireso)
 
 	extmem_ctrl[0]=extmem_ctrl[1]=0;
 	pc8801_update_bank();
-	pc8801_video_init(hireso);
+	pc8801_video_init(machine, hireso);
 
-  if(extmem_mode!=input_port_19_r(0)) {
-    extmem_mode=input_port_19_r(0);
+  if(extmem_mode!=readinputport(19)) {
+    extmem_mode=readinputport(19);
     if(extRAM!=NULL) {
       free(extRAM);
       extRAM=NULL;
@@ -691,17 +691,17 @@ static void fix_V1V2(void)
   }
 }
 
-static void pc88sr_ch_reset (int hireso)
+static void pc88sr_ch_reset (running_machine *machine, int hireso)
 {
   int a;
 
-  a=input_port_16_r(0);
+  a=readinputport(16);
   is_Nbasic = ((a&0x01)==0x00);
   is_V2mode = ((a&0x02)==0x00);
   pc88sr_is_highspeed = ((a&0x04)!=0x00);
   is_8MHz = ((a&0x08)!=0x00);
   fix_V1V2();
-  pc8801_init_bank(hireso);
+  pc8801_init_bank(machine, hireso);
   pc8801_init_5fd();
   pc8801_init_interrupt();
   beep_set_state(0, 0);
@@ -711,12 +711,12 @@ static void pc88sr_ch_reset (int hireso)
 
 MACHINE_RESET( pc88srl )
 {
-  pc88sr_ch_reset(0);
+  pc88sr_ch_reset(machine, 0);
 }
 
 MACHINE_RESET( pc88srh )
 {
-	pc88sr_ch_reset(1);
+	pc88sr_ch_reset(machine, 1);
 }
 
 /* 5 inch floppy drive */
@@ -810,7 +810,7 @@ static const struct nec765_interface pc8801_fdc_interface=
 
 static void pc8801_init_5fd(void)
 {
-	use_5FD = (input_port_18_r(0)&0x80)!=0x00;
+	use_5FD = (readinputport(18)&0x80)!=0x00;
 	ppi8255_init(&pc8801_8255_config);
 	if (!use_5FD)
 		cpunum_suspend(1, SUSPEND_REASON_DISABLE, 1);
@@ -837,7 +837,7 @@ static void pc88sr_init_fmsound(void)
 void pc88sr_sound_interupt(int irq)
 {
   FM_IRQ_save=irq;
-  if(FM_IRQ_save && enable_FM_IRQ) pc8801_raise_interrupt(FM_IRQ_LEVEL);
+  if(FM_IRQ_save && enable_FM_IRQ) pc8801_raise_interrupt(Machine, FM_IRQ_LEVEL);
 }
 
 /*

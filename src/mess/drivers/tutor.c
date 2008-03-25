@@ -73,7 +73,6 @@ TODO :
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/tms9900/tms9900.h"
 #include "video/tms9928a.h"
 #include "devices/cartslot.h"
@@ -290,11 +289,11 @@ static WRITE8_HANDLER(tutor_cassette_w)
 			{
 				tape_interrupt_enable = ! data;
 				if (tape_interrupt_enable)
-					timer_adjust(tape_interrupt_timer, /*ATTOTIME_IN_HZ(44100)*/attotime_zero, 0, ATTOTIME_IN_HZ(44100));
+					timer_adjust_periodic(tape_interrupt_timer, /*ATTOTIME_IN_HZ(44100)*/attotime_zero, 0, ATTOTIME_IN_HZ(44100));
 				else
 				{
-					timer_adjust(tape_interrupt_timer, attotime_never, 0, attotime_zero);
-					cpunum_set_input_line(Machine, 0, 1, CLEAR_LINE);
+					timer_adjust_oneshot(tape_interrupt_timer, attotime_never, 0);
+					cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
 				}
 			}
 			break;
@@ -411,9 +410,9 @@ static ADDRESS_MAP_START(tutor_memmap, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe000, 0xe000) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)	/*VDP data*/
 	AM_RANGE(0xe002, 0xe002) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)/*VDP status*/
 	AM_RANGE(0xe100, 0xe1ff) AM_READWRITE(tutor_mapper_r, tutor_mapper_w)	/*cartridge mapper*/
-	AM_RANGE(0xe200, 0xe200) AM_READWRITE(MRA8_NOP, SN76496_0_w)			/*sound chip*/
+	AM_RANGE(0xe200, 0xe200) AM_READWRITE(SMH_NOP, SN76496_0_w)			/*sound chip*/
 	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(tutor_printer_r, tutor_printer_w)	/*printer*/
-	AM_RANGE(0xee00, 0xeeff) AM_READWRITE(MRA8_NOP, tutor_cassette_w)		/*cassette interface*/
+	AM_RANGE(0xee00, 0xeeff) AM_READWRITE(SMH_NOP, tutor_cassette_w)		/*cassette interface*/
 
 	AM_RANGE(0xf000, 0xffff) AM_NOP	/*free for expansion (and internal processor RAM)*/
 
@@ -561,28 +560,23 @@ static const struct tms9995reset_param tutor_processor_config =
 };
 
 
-
 static MACHINE_DRIVER_START(tutor)
-
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 10.7 MHz */
 	MDRV_CPU_ADD(TMS9995, 10700000)
 	MDRV_CPU_CONFIG(tutor_processor_config)
 	MDRV_CPU_PROGRAM_MAP(tutor_memmap, 0)
 	MDRV_CPU_IO_MAP(tutor_readcru, /*tutor_writecru*/0)
-	MDRV_CPU_VBLANK_INT(tutor_vblank_interrupt, 1)
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
+	MDRV_CPU_VBLANK_INT("main", tutor_vblank_interrupt)
 
 	MDRV_MACHINE_START( tutor )
 	MDRV_MACHINE_RESET( tutor )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -603,51 +597,51 @@ ROM_START(tutor)
 	ROM_LOAD("tutor2.bin", 0x8000, 0x4000, CRC(05f228f5) SHA1(46a14a45f6f9e2c30663a2b87ce60c42768a78d0))      /* BASIC ROM */
 ROM_END
 
-static void tutor_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tutor_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_tutor_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tutor_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_tutor_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tutor_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void tutor_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tutor_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void tutor_parallel_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tutor_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* parallel */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
-		case DEVINFO_INT_READABLE:						info->i = 0; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 

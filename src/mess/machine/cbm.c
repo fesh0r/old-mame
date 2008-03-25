@@ -170,9 +170,9 @@ static DEVICE_UNLOAD(cbm_rom)
 	cbm_rom[id].chip = 0;
 }
 
-static const struct IODevice *cbm_rom_find_device(void)
+static const struct IODevice *cbm_rom_find_device(running_machine *machine)
 {
-	return device_find(Machine->devices, IO_CARTSLOT);
+	return device_find_from_machine(machine, IO_CARTSLOT);
 }
 
 static DEVICE_INIT(cbm_rom)
@@ -199,7 +199,7 @@ static DEVICE_LOAD(cbm_rom)
 	if (i >= sizeof(cbm_rom) / sizeof(cbm_rom[0]))
 		return INIT_FAIL;
 
-	dev = cbm_rom_find_device();
+	dev = cbm_rom_find_device(Machine);
 
 	size = image_length(image);
 
@@ -324,20 +324,20 @@ static DEVICE_LOAD(cbm_rom)
 
 
 
-void cbmcartslot_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void cbmcartslot_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:					info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:					info->i = 2; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "crt"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "crt"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:					info->init = device_init_cbm_rom; break;
-		case DEVINFO_PTR_LOAD:					info->load = device_load_cbm_rom; break;
-		case DEVINFO_PTR_UNLOAD:				info->unload = device_unload_cbm_rom; break;
+		case MESS_DEVINFO_PTR_INIT:					info->init = device_init_cbm_rom; break;
+		case MESS_DEVINFO_PTR_LOAD:					info->load = device_load_cbm_rom; break;
+		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = device_unload_cbm_rom; break;
 
 		default: cartslot_device_getinfo(devclass, state, info);
 	}

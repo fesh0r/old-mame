@@ -206,22 +206,22 @@ static MACHINE_DRIVER_START( compis )
 	MDRV_CPU_ADD_TAG("main", I80186, 8000000)	/* 8 MHz */
 	MDRV_CPU_PROGRAM_MAP(compis_mem, 0)
 	MDRV_CPU_IO_MAP(compis_io, 0)
-	MDRV_CPU_VBLANK_INT(compis_vblank_int, 1)
+	MDRV_CPU_VBLANK_INT("main", compis_vblank_int)
 	MDRV_CPU_CONFIG(i86_address_mask)
 
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET(compis)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 	MDRV_PALETTE_LENGTH(COMPIS_PALETTE_SIZE)
-	MDRV_COLORTABLE_LENGTH(0)
 	MDRV_PALETTE_INIT(compis_gdc)
 
 	MDRV_VIDEO_START(compis_gdc)
@@ -240,28 +240,28 @@ ROM_START (compis)
      ROM_LOAD ("compis.rom", 0xf0000, 0x10000, CRC(89877688) SHA1(7daa1762f24e05472eafc025879da90fe61d0225))
 ROM_END
 
-static void compis_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void compis_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void compis_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void compis_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_compis; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_compis; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}

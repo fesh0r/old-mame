@@ -13,7 +13,6 @@
 
  ******************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/z88.h"
 #include "sound/speaker.h"
 
@@ -31,7 +30,7 @@ static void blink_reset(void)
 }
 
 
-static void z88_interrupt_refresh(void)
+static void z88_interrupt_refresh(running_machine *machine)
 {
 	/* ints enabled? */
 	if ((blink.ints & INT_GINT)!=0)
@@ -45,13 +44,13 @@ static void z88_interrupt_refresh(void)
 			)
 		{
 			logerror("set int\n");
-			cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 			return;
 		}
 	}
 
 	logerror("clear int\n");
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static void z88_update_rtc_interrupt(void)
@@ -102,7 +101,7 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 
 			cpu_trigger(machine, Z88_SNOOZE_TRIGGER);
 
-			z88_interrupt_refresh();
+			z88_interrupt_refresh(machine);
 		}
 	}
 
@@ -169,7 +168,7 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 		z88_update_rtc_interrupt();
 
 		/* refresh */
-		z88_interrupt_refresh();
+		z88_interrupt_refresh(machine);
 	}
 }
 
@@ -177,18 +176,25 @@ static TIMER_CALLBACK(z88_rtc_timer_callback)
 
 static void z88_install_memory_handler_pair(offs_t start, offs_t size, int bank_base, void *read_addr, void *write_addr)
 {
-	read8_handler read_handler;
-	write8_handler write_handler;
+	read8_machine_func read_handler;
+	write8_machine_func write_handler;
 
-	read_handler  = read_addr  ? (read8_handler)  (STATIC_BANK1 + (FPTR)(bank_base - 1 + 0)) : MRA8_ROM;
-	write_handler = write_addr ? (write8_handler) (STATIC_BANK1 + (FPTR)(bank_base - 1 + 1)) : MWA8_UNMAP;
+	/* special case */
+	if (read_addr == NULL)
+		read_addr = &memory_region(REGION_CPU1)[start];
 
+	/* determine the proper pointers to use */
+	read_handler  = (read_addr != NULL)  ? (read8_machine_func)  (STATIC_BANK1 + (FPTR)(bank_base - 1 + 0)) : SMH_UNMAP;
+	write_handler = (write_addr != NULL) ? (write8_machine_func) (STATIC_BANK1 + (FPTR)(bank_base - 1 + 1)) : SMH_UNMAP;
+
+	/* install the handlers */
 	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, read_handler);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, 0, write_handler);
 
-	if (read_addr)
+	/* and set the banks */
+	if (read_addr != NULL)
 		memory_set_bankptr(bank_base + 0, read_addr);
-	if (write_addr)
+	if (write_addr != NULL)
 		memory_set_bankptr(bank_base + 1, write_addr);
 }
 
@@ -290,11 +296,11 @@ static MACHINE_RESET( z88 )
 }
 
 static ADDRESS_MAP_START(z88_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK6)
-	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK7)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK3, MWA8_BANK8)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK4, MWA8_BANK9)
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(MRA8_BANK5, MWA8_BANK10)
+	AM_RANGE(0x0000, 0x1fff) AM_READWRITE(SMH_BANK1, SMH_BANK6)
+	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(SMH_BANK2, SMH_BANK7)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK3, SMH_BANK8)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK4, SMH_BANK9)
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK5, SMH_BANK10)
 ADDRESS_MAP_END
 
 static void blink_pb_w(int offset, int data, int reg_index)
@@ -406,7 +412,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			/* refresh ints */
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh();
+			z88_interrupt_refresh(machine);
 		}
 		return;
 
@@ -420,7 +426,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			/* refresh ints */
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh();
+			z88_interrupt_refresh(machine);
 		}
 		return;
 
@@ -472,7 +478,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			blink.ints = data;
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh();
+			z88_interrupt_refresh(machine);
 		}
 		return;
 
@@ -486,7 +492,7 @@ static WRITE8_HANDLER(z88_port_w)
 
 			blink.ints &= ~blink.ack;
 			z88_update_rtc_interrupt();
-			z88_interrupt_refresh();
+			z88_interrupt_refresh(machine);
 		}
 		return;
 
@@ -496,7 +502,7 @@ static WRITE8_HANDLER(z88_port_w)
 		case 0x0d1:
 		case 0x0d2:
 		case 0x0d3:
-			blink_srx_w(port & 0x03, data);
+			blink_srx_w(machine, port & 0x03, data);
 			return;
 	}
 
@@ -603,7 +609,7 @@ static  READ8_HANDLER(z88_port_r)
 
 
 static ADDRESS_MAP_START( z88_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(16) )
+	ADDRESS_MAP_GLOBAL_MASK(0xFFFF)
 	AM_RANGE(0x0000, 0x0ffff) AM_READWRITE(z88_port_r, z88_port_w)
 ADDRESS_MAP_END
 
@@ -713,19 +719,18 @@ static MACHINE_DRIVER_START( z88 )
 	MDRV_CPU_ADD_TAG("main", Z80, 3276800)
 	MDRV_CPU_PROGRAM_MAP(z88_mem, 0)
 	MDRV_CPU_IO_MAP(z88_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( z88 )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(Z88_SCREEN_WIDTH, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, (Z88_SCREEN_WIDTH - 1), 0, (480 - 1))
 	MDRV_PALETTE_LENGTH(Z88_NUM_COLOURS)
-	MDRV_COLORTABLE_LENGTH(Z88_NUM_COLOURS)
 	MDRV_PALETTE_INIT( z88 )
 
 	MDRV_VIDEO_EOF( z88 )

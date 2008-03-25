@@ -29,9 +29,9 @@
 /* prototypes */
 static void ide_interrupt_callback(int state);
 
-static int ide_cru_r(int offset);
-static void ide_cru_w(int offset, int data);
-static  READ8_HANDLER(ide_mem_r);
+static int ide_cru_r(running_machine *machine, int offset);
+static void ide_cru_w(running_machine *machine, int offset, int data);
+static READ8_HANDLER(ide_mem_r);
 static WRITE8_HANDLER(ide_mem_w);
 
 /* pointer to the IDE RAM area */
@@ -167,7 +167,7 @@ int ti99_ide_save_memcard(void)
 /*
 	Read ide CRU interface
 */
-static int ide_cru_r(int offset)
+static int ide_cru_r(running_machine *machine, int offset)
 {
 	int reply;
 
@@ -191,7 +191,7 @@ static int ide_cru_r(int offset)
 /*
 	Write ide CRU interface
 */
-static void ide_cru_w(int offset, int data)
+static void ide_cru_w(running_machine *machine, int offset, int data)
 {
 	offset &= 7;
 
@@ -369,18 +369,18 @@ static WRITE8_HANDLER(ide_mem_w)
 
 
 
-void ti99_ide_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void ti99_ide_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:						info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case DEVINFO_PTR_IDEDRIVE_INTERFACE: info->p = (void *) &ti99_ide_interface; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_DEV_TAG:					strcpy(info->s = device_temp_str(), "99_ide"); break;
+		case MESS_DEVINFO_STR_DEV_TAG:					strcpy(info->s = device_temp_str(), "99_ide"); break;
 
 		default: ide_harddisk_device_getinfo(devclass, state, info); break;
 	}

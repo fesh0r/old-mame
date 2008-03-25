@@ -108,7 +108,7 @@ static WRITE8_HANDLER( tmc2000_bankswitch_w )
 {
 	memory_set_bank(1, data & 0x01);
 
-	cdp1864_tone_latch_w(0, data);
+	cdp1864_tone_latch_w(machine, 0, data);
 }
 
 /* Memory Maps */
@@ -285,7 +285,7 @@ static MACHINE_DRIVER_START( tmc1800 )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, 1750000)	// 1.75 MHz
+	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(tmc1800_map, 0)
 	MDRV_CPU_IO_MAP(tmc1800_io_map, 0)
 	MDRV_CPU_CONFIG(tmc1800_config)
@@ -295,7 +295,7 @@ static MACHINE_DRIVER_START( tmc1800 )
 
 	// video hardware
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 0, 199)
 
@@ -309,7 +309,7 @@ static MACHINE_DRIVER_START( tmc2000 )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, CDP1864_CLK_FREQ)	// 1.75 MHz
+	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(tmc2000_map, 0)
 	MDRV_CPU_IO_MAP(tmc2000_io_map, 0)
 	MDRV_CPU_CONFIG(tmc2000_config)
@@ -319,7 +319,7 @@ static MACHINE_DRIVER_START( tmc2000 )
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
 
@@ -356,13 +356,13 @@ ROM_END
 
 /* System Configuration */
 
-static void tmc1800_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tmc1800_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
@@ -374,13 +374,13 @@ SYSTEM_CONFIG_START( tmc1800 )
 	CONFIG_DEVICE(tmc1800_cassette_getinfo)
 SYSTEM_CONFIG_END
 
-static void tmc2000_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tmc2000_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}

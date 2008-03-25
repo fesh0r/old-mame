@@ -15,8 +15,7 @@ TODO:
 #include "911_chr.h"
 #include "911_key.h"
 #include "sound/beep.h"
-#include "mslegacy.h"
-#include "deprecat.h"
+
 
 
 #define MAX_VDT 1
@@ -131,10 +130,11 @@ static TIMER_CALLBACK(beep_callback);
 */
 PALETTE_INIT( vdt911 )
 {
-	/*memcpy(palette, & vdt911_palette, sizeof(vdt911_palette));*/
-	palette_set_colors_rgb(machine, 0, vdt911_palette, vdt911_palette_size);
+	int i;
 
-	memcpy(colortable, & vdt911_colortable, sizeof(vdt911_colortable));
+	for ( i = 0; i < vdt911_palette_size; i++ ) {
+		palette_set_color_rgb(machine, i, vdt911_palette[i*3], vdt911_palette[i*3+1], vdt911_palette[i*3+2]);
+	}
 }
 
 /*
@@ -443,7 +443,7 @@ void vdt911_cru_w(int offset, int data, int unit)
 			/* beep enable strobe - not tested */
 			beep_set_state(unit, 1);
 
-			timer_adjust(vdt[unit].beep_timer, ATTOTIME_IN_USEC(300), unit, attotime_zero);
+			timer_adjust_oneshot(vdt[unit].beep_timer, ATTOTIME_IN_USEC(300), unit);
 			break;
 
 		case 0xf:
@@ -468,9 +468,9 @@ WRITE8_HANDLER(vdt911_0_cru_w)
 /*
 	Video refresh
 */
-void vdt911_refresh(mame_bitmap *bitmap, int unit, int x, int y)
+void vdt911_refresh(running_machine *machine, bitmap_t *bitmap, int unit, int x, int y)
 {
-	const gfx_element *gfx = Machine->gfx[vdt[unit].model];
+	const gfx_element *gfx = machine->gfx[vdt[unit].model];
 	int height = (vdt[unit].screen_size == char_960) ? 12 : /*25*/24;
 	int use_8bit_charcodes = USES_8BIT_CHARCODES(unit);
 	int address = 0;
@@ -512,7 +512,7 @@ void vdt911_refresh(mame_bitmap *bitmap, int unit, int x, int y)
 				address++;
 
 				drawgfx(bitmap, gfx, cur_char, color, 0, 0,
-						x+j*7, y+i*10, &Machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+						x+j*7, y+i*10, NULL, TRANSPARENCY_NONE, 0);
 			}
 		}
 }

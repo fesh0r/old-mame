@@ -10,6 +10,7 @@
 #include "includes/aim65.h"
 #include "machine/6522via.h"
 
+
 static int printer_x;
 static int printer_y;
 static int printer_dir;
@@ -83,8 +84,8 @@ static void aim65_printer_cr(void) {
 
 TIMER_CALLBACK(aim65_printer_timer)
 {
-	via_0_cb1_w(0, printer_level);
-	via_0_ca1_w(0, !printer_level);
+	via_0_cb1_w(machine, 0, printer_level);
+	via_0_ca1_w(machine, 0, !printer_level);
 	printer_level = !printer_level;
 	aim65_printer_inc();
 }
@@ -95,8 +96,8 @@ WRITE8_HANDLER( aim65_printer_on )
 	if (!data)
 	{
 		aim65_printer_cr();
-		timer_adjust(print_timer, attotime_zero, 0, ATTOTIME_IN_USEC(10));
-		via_0_cb1_w(0, 0);
+		timer_adjust_periodic(print_timer, attotime_zero, 0, ATTOTIME_IN_USEC(10));
+		via_0_cb1_w(machine, 0, 0);
 		printer_level = 1;
 	}
 	else

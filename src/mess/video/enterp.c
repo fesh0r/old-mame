@@ -18,13 +18,13 @@ VIDEO_START( enterprise )
 }
 
 /***************************************************************************
-  Draw the game screen in the given mame_bitmap.
+  Draw the game screen in the given bitmap_t.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
 VIDEO_UPDATE( enterprise )
 {
-	Nick_DoScreen(tmpbitmap);
+	Nick_DoScreen(screen->machine, tmpbitmap);
 	return VIDEO_UPDATE_CALL(generic_bitmapped);
 }
 

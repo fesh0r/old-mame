@@ -1,6 +1,5 @@
 #include <math.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/vectrex.h"
 #include "video/vector.h"
 #include "machine/6522via.h"
@@ -103,8 +102,8 @@ static void lightpen_trigger(running_machine *machine)
 {
 	if (vectrex_lightpen_port & 1)
 	{
-		via_0_ca1_w (0, 1);
-		via_0_ca1_w (0, 0);
+		via_0_ca1_w(machine, 0, 1);
+		via_0_ca1_w(machine, 0, 0);
 	}
 	if (vectrex_lightpen_port & 2)
 	{
@@ -255,17 +254,15 @@ INLINE void vectrex_solid_line(double int_time, int blank)
  *********************************************************************/
 VIDEO_START( vectrex )
 {
-	int width, height;
+	const device_config *screen = video_screen_first(machine->config);
+	const rectangle *visarea = video_screen_get_visible_area(screen);
 
-	width = machine->screen[0].width;
-	height = machine->screen[0].height;
-
-	x_center=((machine->screen[0].visarea.max_x
-		  -machine->screen[0].visarea.min_x) / 2) << VEC_SHIFT;
-	y_center=((machine->screen[0].visarea.max_y
-		  -machine->screen[0].visarea.min_y) / 2) << VEC_SHIFT;
-	x_max = machine->screen[0].visarea.max_x << VEC_SHIFT;
-	y_max = machine->screen[0].visarea.max_y << VEC_SHIFT;
+	x_center=((visarea->max_x
+		  -visarea->min_x) / 2) << VEC_SHIFT;
+	y_center=((visarea->max_y
+		  -visarea->min_y) / 2) << VEC_SHIFT;
+	x_max = visarea->max_x << VEC_SHIFT;
+	y_max = visarea->max_y << VEC_SHIFT;
 
 	via_config(0, &vectrex_via6522_interface);
 	via_reset();
@@ -274,7 +271,7 @@ VIDEO_START( vectrex )
 	imager_freq = 1;
 
 	imager_timer = timer_alloc(vectrex_imager_right_eye, NULL);
-	timer_adjust(imager_timer, ATTOTIME_IN_HZ(imager_freq), 2, ATTOTIME_IN_HZ(imager_freq));
+	timer_adjust_periodic(imager_timer, ATTOTIME_IN_HZ(imager_freq), 2, ATTOTIME_IN_HZ(imager_freq));
 
 	lp_t = timer_alloc(lightpen_trigger_callback, NULL);
 
@@ -333,7 +330,7 @@ static WRITE8_HANDLER ( v_via_pb_w )
 						+(double)(pen_y-y_int)*(pen_y-y_int);
 					d2=b2-ab*ab/a2;
 					if (d2<2e10 && analog_sig[ASIG_Z]*blank>0)
-						timer_adjust(lp_t, double_to_attotime(ab/a2/(VECTREX_CLOCK*INT_PER_CLOCK)),0,attotime_zero);
+						timer_adjust_oneshot(lp_t, double_to_attotime(ab/a2/(VECTREX_CLOCK*INT_PER_CLOCK)), 0);
 				}
 			}
 		}
@@ -356,7 +353,7 @@ static WRITE8_HANDLER ( v_via_pb_w )
 			vectrex_solid_line(attotime_to_double(timer_get_time())-start_time+RAMP_DELAY, blank);
 			/* Cancel running timer, line already finished */
 			if (lightpen_down)
-				timer_adjust(lp_t,attotime_never,0,attotime_zero);
+				timer_adjust_oneshot(lp_t, attotime_never, 0);
 		}
 	}
 
@@ -365,9 +362,9 @@ static WRITE8_HANDLER ( v_via_pb_w )
 	{
 		/* BDIR active, PSG latches */
 		if (data & 0x08) /* BC1 (do we select a reg or write it ?) */
-			AY8910_control_port_0_w (0, vectrex_via_out[PORTA]);
+			AY8910_control_port_0_w(machine, 0, vectrex_via_out[PORTA]);
 		else
-			AY8910_write_port_0_w (0, vectrex_via_out[PORTA]);
+			AY8910_write_port_0_w(machine, 0, vectrex_via_out[PORTA]);
 	}
 
 	if (!(data & 0x1) && (vectrex_via_out[PORTB] & 0x1))
@@ -431,7 +428,7 @@ static WRITE8_HANDLER ( v_via_cb2_w )
 			start_time = time_now;
 		}
 		if (data & lightpen_check())
-			lightpen_trigger(Machine);
+			lightpen_trigger(machine);
 
 		blank = data;
 	}
@@ -459,18 +456,21 @@ WRITE8_HANDLER( raaspec_led_w )
 
 VIDEO_START( raaspec )
 {
-	x_center=((machine->screen[0].visarea.max_x
-		  -machine->screen[0].visarea.min_x)/2) << VEC_SHIFT;
-	y_center=((machine->screen[0].visarea.max_y
-		  -machine->screen[0].visarea.min_y)/2) << VEC_SHIFT;
-	x_max = machine->screen[0].visarea.max_x << VEC_SHIFT;
-	y_max = machine->screen[0].visarea.max_y << VEC_SHIFT;
+	const device_config *screen = video_screen_first(machine->config);
+	const rectangle *visarea = video_screen_get_visible_area(screen);
+
+	x_center=((visarea->max_x
+		  -visarea->min_x)/2) << VEC_SHIFT;
+	y_center=((visarea->max_y
+		  -visarea->min_y)/2) << VEC_SHIFT;
+	x_max = visarea->max_x << VEC_SHIFT;
+	y_max = visarea->max_y << VEC_SHIFT;
 
 	via_config(0, &spectrum1_via6522_interface);
 	via_reset();
 	z_factor = 2;
 
-	raaspec_led_w (0, 0xff);
+	raaspec_led_w(machine, 0, 0xff);
 
 	VIDEO_START_CALL(vector);
 }

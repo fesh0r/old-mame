@@ -146,18 +146,17 @@ static MACHINE_DRIVER_START( mekd2 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6800, 614400)        /* 614.4 kHz */
 	MDRV_CPU_PROGRAM_MAP(mekd2_mem, 0)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(600, 768)
 	MDRV_SCREEN_VISIBLE_AREA(0, 600-1, 0, 768-1)
 	MDRV_GFXDECODE( mekd2 )
 	MDRV_PALETTE_LENGTH(21 + 32768)
-	MDRV_COLORTABLE_LENGTH(256)
 	MDRV_PALETTE_INIT( mekd2 )
 
 	MDRV_VIDEO_START( mekd2 )
@@ -180,19 +179,19 @@ ROM_START(mekd2)
 		/* space filled with key icons by mekd2_init_driver */
 ROM_END
 
-static void mekd2_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void mekd2_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_mekd2_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_mekd2_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d2"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d2"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}

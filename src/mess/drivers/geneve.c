@@ -198,6 +198,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/v9938.h"
 #include "includes/geneve.h"
 #include "machine/ti99_4x.h"
@@ -445,36 +446,28 @@ static const struct TMS5220interface tms5220interface =
 
 
 static MACHINE_DRIVER_START(geneve_60hz)
-
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 12.0 MHz */
 	MDRV_CPU_ADD(TMS9995, 12000000)
-	/*MDRV_CPU_CONFIG(0)*/
 	MDRV_CPU_PROGRAM_MAP(memmap, 0)
 	MDRV_CPU_IO_MAP(readcru, writecru)
-	MDRV_CPU_VBLANK_INT(geneve_hblank_interrupt, 262)	/* 262.5 in 60Hz, 312.5 in 50Hz */
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
-
-	MDRV_SCREEN_REFRESH_RATE(60)	/* or 50Hz */
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
+	MDRV_CPU_VBLANK_INT_HACK(geneve_hblank_interrupt, 262)	/* 262.5 in 60Hz, 312.5 in 50Hz */
 
 	MDRV_MACHINE_START( geneve )
-        MDRV_MACHINE_RESET( geneve )
+	MDRV_MACHINE_RESET( geneve )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)	/* or 50Hz */
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512 + 32, (212 + 28) * 2)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512 + 32 - 1, 0, (212 + 28) * 2 - 1)
 
-	/*MDRV_GFXDECODE(NULL)*/
 	MDRV_PALETTE_LENGTH(512)
-	MDRV_COLORTABLE_LENGTH(512)
 
 	MDRV_PALETTE_INIT(v9938)
 	MDRV_VIDEO_START(geneve)
-	/*MDRV_VIDEO_EOF(name)*/
 	MDRV_VIDEO_UPDATE(generic_bitmapped)
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -483,7 +476,6 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_SOUND_ADD(TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-
 MACHINE_DRIVER_END
 
 
@@ -533,108 +525,108 @@ ROM_START(genmod)
 	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
 
-static void geneve_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void geneve_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* Used within mflopimg.c. */
-                case DEVINFO_INT_KEEP_DRIVE_GEOMETRY:                                  info->i = 1; break;
+                case MESS_DEVINFO_INT_KEEP_DRIVE_GEOMETRY:                                  info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void geneve_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void geneve_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 3; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
-		case DEVINFO_STR_DEV_TAG:						strcpy(info->s = device_temp_str(), "geneve_hd"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
+		case MESS_DEVINFO_STR_DEV_TAG:						strcpy(info->s = device_temp_str(), "geneve_hd"); break;
 	}
 }
 
-static void geneve_parallel_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void geneve_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* parallel */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 
-static void geneve_serial_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void geneve_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 
-static void geneve_memcard_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void geneve_memcard_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* memcard */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 

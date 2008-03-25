@@ -106,8 +106,8 @@ void apple2_update_memory(void)
 	int i, bank, rbank, wbank;
 	int full_update = 0;
 	apple2_meminfo meminfo;
-	read8_handler rh;
-	write8_handler wh;
+	read8_machine_func rh;
+	write8_machine_func wh;
 	offs_t begin, end_r, end_w;
 	UINT8 *rbase, *wbase, *rom, *slot_ram;
 	UINT32 rom_length, slot_length, offset;
@@ -147,7 +147,7 @@ void apple2_update_memory(void)
 			rbank = (bank_disposition != A2MEM_IO) ? bank : 0;
 			begin = apple2_mem_config.memmap[i].begin;
 			end_r = apple2_mem_config.memmap[i].end;
-			rh = (read8_handler) (STATIC_BANK1 + (FPTR)(rbank - 1));
+			rh = (read8_machine_func) (STATIC_BANK1 + (FPTR)(rbank - 1));
 
 			LOG(("apple2_update_memory():  Updating RD {%06X..%06X} [#%02d] --> %08X\n",
 				begin, end_r, rbank, meminfo.read_mem));
@@ -200,7 +200,7 @@ void apple2_update_memory(void)
 
 			/* did we 'go past the end?' */
 			if (end_r < apple2_mem_config.memmap[i].end)
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, end_r + 1, apple2_mem_config.memmap[i].end, 0, 0, MRA8_NOP);
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, end_r + 1, apple2_mem_config.memmap[i].end, 0, 0, SMH_NOP);
 
 			/* set the memory bank */
 			if (rbase)
@@ -227,7 +227,7 @@ void apple2_update_memory(void)
 				wbank = 0;
 			begin = apple2_mem_config.memmap[i].begin;
 			end_w = apple2_mem_config.memmap[i].end;
-			wh = (write8_handler) (STATIC_BANK1 + (FPTR)(wbank - 1));
+			wh = (write8_machine_func) (STATIC_BANK1 + (FPTR)(wbank - 1));
 
 			LOG(("apple2_update_memory():  Updating WR {%06X..%06X} [#%02d] --> %08X\n",
 				begin, end_w, wbank, meminfo.write_mem));
@@ -251,12 +251,12 @@ void apple2_update_memory(void)
 				if (slot_ram)
 					wbase = &slot_ram[meminfo.write_mem & APPLE2_MEM_MASK];
 				else
-					wh = MWA8_NOP;
+					wh = SMH_NOP;
 			}
 			else if ((meminfo.write_mem & 0xC0000000) == APPLE2_MEM_ROM)
 			{
 				/* ROM */
-				wh = MWA8_NOP;
+				wh = SMH_NOP;
 			}
 			else
 			{
@@ -275,7 +275,7 @@ void apple2_update_memory(void)
 
 			/* did we 'go past the end?' */
 			if (end_w < apple2_mem_config.memmap[i].end)
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, end_w + 1, apple2_mem_config.memmap[i].end, 0, 0, MWA8_NOP);
+				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, end_w + 1, apple2_mem_config.memmap[i].end, 0, 0, SMH_NOP);
 
 			/* set the memory bank */
 			if (wbase)
@@ -299,7 +299,7 @@ void apple2_update_memory(void)
 
 READ8_HANDLER(apple2_c0xx_r)
 {
-	static const read8_handler handlers[] =
+	static const read8_machine_func handlers[] =
 	{
 		apple2_c00x_r,
 		apple2_c01x_r,
@@ -318,13 +318,13 @@ READ8_HANDLER(apple2_c0xx_r)
 	if (offset < 0x80)
 	{
 		if (handlers[offset / 0x10])
-			result = handlers[offset / 0x10](offset % 0x10);
+			result = handlers[offset / 0x10](machine, offset % 0x10);
 	}
 	else
 	{
 		slot = (offset - 0x80) / 0x10;
 		if (a2_config->slots[slot] && a2_config->slots[slot]->read)
-			result = a2_config->slots[slot]->read(a2_slot_tokens[slot], offset % 0x10);
+			result = a2_config->slots[slot]->read(machine, a2_slot_tokens[slot], offset % 0x10);
 	}
 	return result;
 }
@@ -333,7 +333,7 @@ READ8_HANDLER(apple2_c0xx_r)
 
 WRITE8_HANDLER(apple2_c0xx_w)
 {
-	static const write8_handler handlers[] =
+	static const write8_machine_func handlers[] =
 	{
 		apple2_c00x_w,
 		apple2_c01x_w,
@@ -351,13 +351,13 @@ WRITE8_HANDLER(apple2_c0xx_w)
 	if (offset < 0x80)
 	{
 		if (handlers[offset / 0x10])
-			handlers[offset / 0x10](offset % 0x10, data);
+			handlers[offset / 0x10](machine, offset % 0x10, data);
 	}
 	else
 	{
 		slot = (offset - 0x80) / 0x10;
 		if (a2_config->slots[slot] && a2_config->slots[slot]->write)
-			a2_config->slots[slot]->write(a2_slot_tokens[slot], offset % 0x10, data);
+			a2_config->slots[slot]->write(machine, a2_slot_tokens[slot], offset % 0x10, data);
 	}
 }
 
@@ -743,7 +743,7 @@ static void apple2_reset(running_machine *machine)
 		if (a2_config->slots[i])
 		{
 			if (a2_config->slots[i]->reset)
-				a2_config->slots[i]->reset(a2_slot_tokens[i]);
+				a2_config->slots[i]->reset(machine, a2_slot_tokens[i]);
 		}
 	}
 
@@ -764,7 +764,7 @@ INTERRUPT_GEN( apple2_interrupt )
 
 	profiler_mark(PROFILER_A2INT);
 
-	scanline = video_screen_get_vpos(0);
+	scanline = video_screen_get_vpos(machine->primary_screen);
 
 	if (scanline > 190)
 	{
@@ -776,7 +776,7 @@ INTERRUPT_GEN( apple2_interrupt )
 			cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, PULSE_LINE);
 	}
 
-	video_screen_update_partial(0, scanline);
+	video_screen_update_partial(machine->primary_screen, scanline);
 
 	profiler_mark(PROFILER_END);
 }
@@ -794,28 +794,24 @@ static WRITE8_HANDLER ( apple2_mainram0400_w )
 {
 	offset += 0x400;
 	mess_ram[offset] = data;
-	apple2_video_touch(offset);
 }
 
 static WRITE8_HANDLER ( apple2_mainram2000_w )
 {
 	offset += 0x2000;
 	mess_ram[offset] = data;
-	apple2_video_touch(offset);
 }
 
 static WRITE8_HANDLER ( apple2_auxram0400_w )
 {
 	offset += 0x10400;
 	mess_ram[offset] = data;
-	apple2_video_touch(offset);
 }
 
 static WRITE8_HANDLER ( apple2_auxram2000_w )
 {
 	offset += 0x12000;
 	mess_ram[offset] = data;
-	apple2_video_touch(offset);
 }
 
 
@@ -890,7 +886,7 @@ READ8_HANDLER ( apple2_c01x_r )
 		case 0x06:			result |= (a2 & VAR_ALTZP)		? 0x80 : 0x00;	break;
 		case 0x07:			result |= (a2 & VAR_SLOTC3ROM)	? 0x80 : 0x00;	break;
 		case 0x08:			result |= (a2 & VAR_80STORE)	? 0x80 : 0x00;	break;
-		case 0x09:			result |= !video_screen_get_vblank(0)		? 0x80 : 0x00;	break;
+		case 0x09:			result |= !video_screen_get_vblank(machine->primary_screen)		? 0x80 : 0x00;	break;
 		case 0x0A:			result |= (a2 & VAR_TEXT)		? 0x80 : 0x00;	break;
 		case 0x0B:			result |= (a2 & VAR_MIXED)		? 0x80 : 0x00;	break;
 		case 0x0C:			result |= (a2 & VAR_PAGE2)		? 0x80 : 0x00;	break;
@@ -925,7 +921,7 @@ WRITE8_HANDLER( apple2_c01x_w )
 
 READ8_HANDLER( apple2_c02x_r )
 {
-	apple2_c02x_w(offset, 0);
+	apple2_c02x_w(machine, offset, 0);
 	return apple2_getfloatingbusvalue();
 }
 
@@ -972,7 +968,7 @@ READ8_HANDLER ( apple2_c03x_r )
 
 WRITE8_HANDLER ( apple2_c03x_w )
 {
-	apple2_c03x_r(offset);
+	apple2_c03x_r(machine, offset);
 }
 
 
@@ -1002,7 +998,7 @@ READ8_HANDLER ( apple2_c05x_r )
 
 WRITE8_HANDLER ( apple2_c05x_w )
 {
-	apple2_c05x_r(offset);
+	apple2_c05x_r(machine, offset);
 }
 
 
@@ -1083,7 +1079,7 @@ READ8_HANDLER ( apple2_c07x_r )
 
 WRITE8_HANDLER ( apple2_c07x_w )
 {
-	apple2_c07x_r(offset);
+	apple2_c07x_r(machine, offset);
 }
 
 
@@ -1130,7 +1126,7 @@ static READ8_HANDLER ( apple2_c08x_r )
 
 static WRITE8_HANDLER ( apple2_c08x_w )
 {
-	apple2_c08x_r(offset);
+	apple2_c08x_r(machine, offset);
 }
 
 
@@ -1139,17 +1135,17 @@ static WRITE8_HANDLER ( apple2_c08x_w )
  * Language Card
  * ----------------------------------------------------------------------- */
 
-static UINT8 apple2_langcard_read(void *token, offs_t offset)
+static UINT8 apple2_langcard_read(running_machine *machine, void *token, offs_t offset)
 {
-	return apple2_c08x_r(offset);
+	return apple2_c08x_r(machine, offset);
 
 }
 
 
 
-static void apple2_langcard_write(void *token, offs_t offset, UINT8 data)
+static void apple2_langcard_write(running_machine *machine, void *token, offs_t offset, UINT8 data)
 {
-	apple2_c08x_w(offset, data);
+	apple2_c08x_w(machine, offset, data);
 }
 
 
@@ -1170,7 +1166,7 @@ const apple2_slotdevice apple2_slot_langcard =
  * Mockingboard
  * ----------------------------------------------------------------------- */
 
-static void apple2_mockingboard_reset(void *token)
+static void apple2_mockingboard_reset(running_machine *machine, void *token)
 {
 	/* TODO: fix this */
 	/* What follows is pure filth. It abuses the core like an angry pimp on a bad hair day. */
@@ -1185,7 +1181,7 @@ static void apple2_mockingboard_reset(void *token)
 
 
 
-static UINT8 apple2_mockingboard_read(void *token, offs_t offset)
+static UINT8 apple2_mockingboard_read(running_machine *machine, void *token, offs_t offset)
 {
 	static int flip1 = 0, flip2 = 0;
 
@@ -1209,7 +1205,7 @@ static UINT8 apple2_mockingboard_read(void *token, offs_t offset)
 
 
 
-static void apple2_mockingboard_write(void *token, offs_t offset, UINT8 data)
+static void apple2_mockingboard_write(running_machine *machine, void *token, offs_t offset, UINT8 data)
 {
 	static int latch0, latch1;
 
@@ -1227,10 +1223,10 @@ static void apple2_mockingboard_write(void *token, offs_t offset, UINT8 data)
 				case 0x04: /* make inactive */
 					break;
 				case 0x06: /* write data */
-					AY8910_write_port_0_w (0, latch0);
+					AY8910_write_port_0_w (machine, 0, latch0);
 					break;
 				case 0x07: /* set register */
-					AY8910_control_port_0_w (0, latch0);
+					AY8910_control_port_0_w (machine, 0, latch0);
 					break;
 			}
 			break;
@@ -1252,10 +1248,10 @@ static void apple2_mockingboard_write(void *token, offs_t offset, UINT8 data)
 				case 0x04: /* make inactive */
 					break;
 				case 0x06: /* write data */
-					AY8910_write_port_1_w (0, latch1);
+					AY8910_write_port_1_w (machine, 0, latch1);
 					break;
 				case 0x07: /* set register */
-					AY8910_control_port_1_w (0, latch1);
+					AY8910_control_port_1_w (machine, 0, latch1);
 					break;
 			}
 			break;
@@ -1427,10 +1423,10 @@ UINT8 apple2_iwm_getdiskreg(void)
 
 
 
-static void *apple2_fdc_init(int slot, applefdc_t fdc_type)
+static void *apple2_fdc_init(running_machine *machine, int slot, applefdc_t fdc_type)
 {
 	const struct IODevice *dev;
-	struct applefdc_interface intf;
+	applefdc_interface intf;
 
 	apple2_fdc_has_35 = FALSE;
 	apple2_fdc_has_525 = FALSE;
@@ -1445,12 +1441,12 @@ static void *apple2_fdc_init(int slot, applefdc_t fdc_type)
 	intf.read_data = apple2_fdc_read_data;
 	intf.write_data = apple2_fdc_write_data;
 
-	for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
+	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
 	{
 		if (!strcmp(dev->tag, "sonydriv"))
-			apple2_fdc_has_35 = !dev->not_working;
+			apple2_fdc_has_35 = 1;
 		else if (!strcmp(dev->tag, "apple525driv"))
-			apple2_fdc_has_525 = !dev->not_working;
+			apple2_fdc_has_525 = 1;
 	}
 
 	applefdc_init(&intf);
@@ -1459,30 +1455,30 @@ static void *apple2_fdc_init(int slot, applefdc_t fdc_type)
 
 
 
-static void *apple2_fdc_apple2_init(int slot)
+static void *apple2_fdc_apple2_init(running_machine *machine, int slot)
 {
-	return apple2_fdc_init(slot, APPLEFDC_APPLE2);
+	return apple2_fdc_init(machine, slot, APPLEFDC_APPLE2);
 }
 
 
 
-static void *apple2_fdc_iwm_init(int slot)
+static void *apple2_fdc_iwm_init(running_machine *machine, int slot)
 {
-	return apple2_fdc_init(slot, APPLEFDC_IWM);
+	return apple2_fdc_init(machine, slot, APPLEFDC_IWM);
 }
 
 
 
-static UINT8 apple2_fdc_read(void *token, offs_t offset)
+static UINT8 apple2_fdc_read(running_machine *machine, void *token, offs_t offset)
 {
-	return applefdc_r(offset);
+	return applefdc_r(machine, offset);
 }
 
 
 
-static void apple2_fdc_write(void *token, offs_t offset, UINT8 data)
+static void apple2_fdc_write(running_machine *machine, void *token, offs_t offset, UINT8 data)
 {
-	applefdc_w(offset, data);
+	applefdc_w(machine, offset, data);
 }
 
 
@@ -1544,7 +1540,7 @@ void apple2_init_common(running_machine *machine, const apple2_config *config)
 		if (a2_config->slots[i])
 		{
 			if (a2_config->slots[i]->init)
-				token = a2_config->slots[i]->init(i);
+				token = a2_config->slots[i]->init(machine, i);
 			else
 				token = (void *) ~0;
 

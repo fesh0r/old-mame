@@ -68,6 +68,7 @@
 #include "includes/corvushd.h"
 #include <ctype.h>
 
+
 #define VERBOSE 0
 #define VERBOSE_RESPONSES 0
 #define VERSION 1
@@ -1454,7 +1455,7 @@ UINT8 corvus_hdc_init() {
 	c->recv_bytes = 0;							// We aren't waiting on additional data from the host
 
 	c->timeout_timer = timer_alloc(corvus_hdc_callback, NULL);	// Set up a timer to handle the four-second host-to-controller timeout
-	timer_adjust(c->timeout_timer, ATTOTIME_IN_SEC(4), CALLBACK_TIMEOUT, attotime_zero);
+	timer_adjust_oneshot(c->timeout_timer, ATTOTIME_IN_SEC(4), CALLBACK_TIMEOUT);
 	timer_enable(c->timeout_timer, 0);		// Start this timer out disabled
 
 	LOG(("corvus_hdc_init: Attached to drive image: H:%d, C:%d, S:%d\n", info->heads, info->cylinders, info->sectors));

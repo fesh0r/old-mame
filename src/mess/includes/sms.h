@@ -7,8 +7,6 @@
 #ifndef SMS_H_
 #define SMS_H_
 
-#include "deprecat.h"
-
 #define LOG_REG
 #define LOG_PAGING
 //#define LOG_CURLINE
@@ -25,13 +23,13 @@
 #define FLAG_FM				0x00100000
 #define FLAG_REGION_JAPAN		0x00200000
 
-#define IS_GAMEGEAR			( Machine->gamedrv->flags & FLAG_GAMEGEAR )
-#define HAS_BIOS_0400			( Machine->gamedrv->flags & FLAG_BIOS_0400 )
-#define HAS_BIOS_2000			( Machine->gamedrv->flags & FLAG_BIOS_2000 )
-#define HAS_BIOS_FULL			( Machine->gamedrv->flags & FLAG_BIOS_FULL )
-#define HAS_BIOS			( Machine->gamedrv->flags & ( FLAG_BIOS_0400 | FLAG_BIOS_2000 | FLAG_BIOS_FULL ) )
-#define HAS_FM				( Machine->gamedrv->flags & FLAG_FM )
-#define IS_REGION_JAPAN			( Machine->gamedrv->flags & FLAG_REGION_JAPAN )
+#define IS_GAMEGEAR			( machine->gamedrv->flags & FLAG_GAMEGEAR )
+#define HAS_BIOS_0400			( machine->gamedrv->flags & FLAG_BIOS_0400 )
+#define HAS_BIOS_2000			( machine->gamedrv->flags & FLAG_BIOS_2000 )
+#define HAS_BIOS_FULL			( machine->gamedrv->flags & FLAG_BIOS_FULL )
+#define HAS_BIOS			( machine->gamedrv->flags & ( FLAG_BIOS_0400 | FLAG_BIOS_2000 | FLAG_BIOS_FULL ) )
+#define HAS_FM				( machine->gamedrv->flags & FLAG_FM )
+#define IS_REGION_JAPAN			( machine->gamedrv->flags & FLAG_REGION_JAPAN )
 
 
 /*----------- defined in machine/sms.c -----------*/
@@ -56,9 +54,9 @@ WRITE8_HANDLER(gg_sio_w);
 WRITE8_HANDLER(gg_psg_w);
  READ8_HANDLER(gg_input_port_2_r);
 
-void setup_rom(void);
+void setup_rom(running_machine *machine);
 
-void sms_check_pause_button( void );
+void sms_check_pause_button( running_machine *machine );
 
 DEVICE_INIT( sms_cart );
 DEVICE_LOAD( sms_cart );
@@ -72,8 +70,8 @@ READ8_HANDLER(sms_store_select1);
 READ8_HANDLER(sms_store_select2);
 READ8_HANDLER(sms_store_control_r);
 WRITE8_HANDLER(sms_store_control_w);
-void sms_int_callback( int state );
-void sms_store_int_callback( int state );
+void sms_int_callback( running_machine *machine, int state );
+void sms_store_int_callback( running_machine *machine, int state );
 
 #define IO_EXPANSION				(0x80)	/* Expansion slot enable (1= disabled, 0= enabled) */
 #define IO_CARTRIDGE				(0x40)	/* Cartridge slot enable (1= disabled, 0= enabled) */

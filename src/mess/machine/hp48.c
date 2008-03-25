@@ -19,6 +19,14 @@
     13437
  */
 
+enum {
+	HP48_ROM,
+	HP48_CARD1,
+	HP48_CARD2,
+	HP48_RAM,
+	HP48_HDW,
+	HP48_END
+};
 
 
 
@@ -52,51 +60,114 @@ static struct {
 	}
 };
 
+static struct {
+	UINT8	*base;
+	UINT8	type;
+} hp48_banks[129];
+
 // to do support weired comparator settings
 static void hp48_config(void)
 {
-	int begin, end;
+	static const read8_machine_func read_handlers[11] = { 0, SMH_BANK1, SMH_BANK2, SMH_BANK3, SMH_BANK4, SMH_BANK5, SMH_BANK6, SMH_BANK7, SMH_BANK8, SMH_BANK9, SMH_BANK10 };
+	int i, begin_bank, end_bank, begin, end, mem_type, bank;
 
-	// lowest priority first
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0, 0xfffff, 0, 0, MRA8_ROM);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0, 0xfffff, 0, 0, MWA8_NOP);
-	if (hp48s.mem[CARD1].adr!=-1)
-	{
-		begin=hp48s.mem[CARD1].adr&hp48s.mem[CARD1].size&~0xfff;
-		end=begin|(hp48s.mem[CARD1].size^0xff000)|0xfff;
-		if (end!=begin)
-		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MRA8_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MWA8_BANK1);
-			memory_set_bankptr(1, hp48_card1);
-		}
+	/* Determine the current memory map */
+
+	/* Lowest priority is ROM */
+	for ( i = 0; i < 128; i++ ) {
+		hp48_banks[i].base = memory_region( REGION_CPU1 ) + i * 0x2000;
+		hp48_banks[i].type = HP48_ROM;
 	}
-	if (hp48s.mem[CARD2].adr!=-1) {
-		begin=hp48s.mem[CARD2].adr&hp48s.mem[CARD2].size&~0xfff;
-		end=begin|(hp48s.mem[CARD2].size^0xff000)|0xfff;
-		if (end!=begin) {
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MRA8_BANK2);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MWA8_BANK2);
-			memory_set_bankptr(2, hp48_card2);
+	hp48_banks[128].type = HP48_END;
+
+	/* Next priority is CARD1 */
+	if ( hp48s.mem[CARD1].adr != -1 ) {
+		logerror("hp48_config CARD1 should be configured\n");
+		begin_bank = ( ( hp48s.mem[CARD1].adr & ~( hp48s.mem[CARD1].size - 1 ) ) >> 13 ) & 0x7F;
+		end_bank = begin_bank | ( ( hp48s.mem[CARD1].size - 1 ) >> 13 );
+		for ( i = begin_bank; i <= end_bank; i++ ) {
+			hp48_banks[i].base = hp48_card1 + i * 0x2000;
+			hp48_banks[i].type = HP48_CARD1;
 		}
+		logerror("CARD1 begin = %02X, end = %02X\n", begin_bank, end_bank);
 	}
-	if (hp48s.mem[RAM].adr!=-1) {
-		begin=hp48s.mem[RAM].adr&hp48s.mem[RAM].size&~0xfff;
-		end=begin|(hp48s.mem[RAM].size^0xff000)|0xfff;
-		if (end!=begin) {
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MRA8_BANK3);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MWA8_BANK3);
-			memory_set_bankptr(3, hp48_ram);
+
+	/* Next priority is CARD2 */
+	if ( hp48s.mem[CARD2].adr != -1 ) {
+		logerror("hp48_config CARD2 should be configured\n");
+		begin_bank = ( ( hp48s.mem[CARD2].adr & ~( hp48s.mem[CARD2].size - 1 ) ) >> 13 ) & 0x7F;
+		end_bank = begin_bank | ( ( hp48s.mem[CARD2].size - 1 ) >> 13 );
+		for ( i = begin_bank; i <= end_bank; i++ ) {
+			hp48_banks[i].base = hp48_card2 + i * 0x2000;
+			hp48_banks[i].type = HP48_CARD2;
 		}
+		logerror("CARD2 begin = %02X, end = %02X\n", begin_bank, end_bank);
 	}
-	if (hp48s.mem[HDW].adr!=-1)
-	{
+
+	/* Next priority is RAM */
+	if ( hp48s.mem[RAM].adr != -1 ) {
+		logerror("hp48_config RAM should be configured\n");
+		begin_bank = ( ( hp48s.mem[RAM].adr & ~( hp48s.mem[RAM].size - 1 ) ) >> 13 ) & 0x7F;
+		end_bank = begin_bank | ( ( hp48s.mem[RAM].size - 1 ) >> 13 );
+		for ( i = begin_bank; i <= end_bank; i++ ) {
+			hp48_banks[i].base = hp48_ram + i * 0x2000;
+			hp48_banks[i].type = HP48_RAM;
+		}
+		logerror("RAM begin = %02X, end = %02X\n", begin_bank, end_bank);
+	}
+
+	/* Highest priority is HDW */
+
+	/* Set up dynamic bank configuration */
+	bank = 1;
+	begin_bank = end_bank = 0;
+	mem_type = hp48_banks[begin_bank].type;
+	for ( i = 1; i < 129; i++ ) {
+		if ( hp48_banks[i].type != mem_type ) {
+			begin = begin_bank << 13;
+			end = ( end_bank << 13 ) | 0x1FFF;
+
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, read_handlers[bank] );
+			memory_set_bankptr( bank, hp48_banks[begin_bank].base );
+
+			bank++;
+			begin_bank = i;
+			mem_type = hp48_banks[i].type;
+		}
+		end_bank = i;
+	}
+
+	if ( hp48s.mem[HDW].adr != -1 ) {
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, hp48s.mem[HDW].adr&~0x3f,
 								 hp48s.mem[HDW].adr|0x3f, 0, 0, hp48_read);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, hp48s.mem[HDW].adr&~0x3f,
-								  hp48s.mem[HDW].adr|0x3f, 0, 0, hp48_write);
+//		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, hp48s.mem[HDW].adr&~0x3f,
+//								  hp48s.mem[HDW].adr|0x3f, 0, 0, hp48_write);
 	}
-	memory_set_context(0);
+}
+
+WRITE8_HANDLER( hp48_mem_w ) {
+	int	bank = ( offset >> 13 ) & 0x7F;
+	//logerror("hp48_mem_w: offset = %06X, data = %02X\n", offset, data );
+
+	/* Check for write to HDW */
+	if ( hp48s.mem[HDW].adr != -1 && offset >= hp48s.mem[HDW].adr && offset < hp48s.mem[HDW].adr + 0x40 ) {
+		hp48_write( machine, offset & 0x3F, data );
+	} else {
+		switch( hp48_banks[bank].type ) {
+		case HP48_RAM:
+			//logerror("RAM write\n");
+			hp48_banks[bank].base[offset & 0x1FFF] = data;
+			break;
+		case HP48_CARD1:
+			//logerror("CARD1 write\n");
+			hp48_banks[bank].base[offset & 0x1FFF] = data;
+			break;
+		case HP48_CARD2:
+			//logerror("CARD2 write\n");
+			hp48_banks[bank].base[offset & 0x1FFF] = data;
+			break;
+		}
+	}
 }
 
 /* priority on the bus
@@ -114,32 +185,41 @@ void hp48_mem_reset(void)
 
 void hp48_mem_config(int v)
 {
+	logerror("hp48_mem_config called\n");
 	if (hp48s.mem[HDW].adr==-1) {
+		logerror("Configuring HDW at %06X\n", v );
 		hp48s.mem[HDW].adr=v;
 		hp48_config();
 	} else if (hp48s.mem[RAM].adr==-1) {
 		if (hp48s.state==0) {
+			v = 0x100000 - v;
 			hp48s.mem[RAM].size=v;
+			logerror("Setting RAM size to %06X\n", v );
 			hp48s.state++;
 		} else {
+			logerror("Configuring RAM at %06X\n", v );
 			hp48s.mem[RAM].adr=v;
 			hp48s.state=0;
 			hp48_config();
 		}
 	} else if (hp48s.mem[CARD1].adr==-1) {
 		if (hp48s.state==0) {
+			v = 0x100000 - v;
 			hp48s.mem[CARD1].size=v;
 			hp48s.state++;
 		} else {
+			logerror("Configuring CARD1 at %06X\n", v );
 			hp48s.mem[CARD1].adr=v;
 			hp48s.state=0;
 			hp48_config();
 		}
-	} else if (hp48s.mem[CARD1].adr==-1) {
+	} else if (hp48s.mem[CARD2].adr==-1) {
 		if (hp48s.state==0) {
+			v = 0x100000 - v;
 			hp48s.mem[CARD2].size=v;
 			hp48s.state++;
 		} else {
+			logerror("Configuring CARD2 at %06X\n", v );
 			hp48s.mem[CARD2].adr=v;
 			hp48s.state=0;
 			hp48_config();
@@ -420,15 +500,15 @@ int hp48_in(void)
 		if (KEY_PLUS) data|=1;
 	}
 #else
-	if (out&0x100) data|=input_port_0_r(0);
-	if (out&0x080) data|=input_port_1_r(0);
-	if (out&0x040) data|=input_port_2_r(0);
-	if (out&0x020) data|=input_port_3_r(0);
-	if (out&0x010) data|=input_port_4_r(0);
-	if (out&0x008) data|=input_port_5_r(0);
-	if (out&0x004) data|=input_port_6_r(0);
-	if (out&0x002) data|=input_port_7_r(0);
-	if (out&0x001) data|=input_port_8_r(0);
+	if (out&0x100) data|=readinputport(0);
+	if (out&0x080) data|=readinputport(1);
+	if (out&0x040) data|=readinputport(2);
+	if (out&0x020) data|=readinputport(3);
+	if (out&0x010) data|=readinputport(4);
+	if (out&0x008) data|=readinputport(5);
+	if (out&0x004) data|=readinputport(6);
+	if (out&0x002) data|=readinputport(7);
+	if (out&0x001) data|=readinputport(8);
 #endif
 	return data;
 }

@@ -77,7 +77,7 @@ static int display_x;
 static int display_y;
 static int display_update;  // flag to get location at first DE
 
-/* this contains the colours in Machine->pens form.*/
+/* this contains the colours in machine->pens form.*/
 /* this is updated from the eventlist and reflects the current state
 of the render colours - these may be different to the current colour palette values */
 /* colours can be changed at any time and will take effect immediatly */
@@ -87,7 +87,7 @@ int amstrad_CRTC_HS_Counter;
 /* 2 HSYNCS after the VSYNC Counter */
 static int amstrad_CRTC_HS_After_VS_Counter;
 
-static mame_bitmap	*amstrad_bitmap;
+static bitmap_t	*amstrad_bitmap;
 
 static int amstrad_scanline;
 static int border_counter;  // counts length of the soft scroll border extend
@@ -244,7 +244,6 @@ PALETTE_INIT( kccomp )
 
 	for (i=0; i<32; i++)
 	{
-		colortable[i] = i;
 		palette_set_color_rgb(machine, i,
 			kccomp_get_colour_element((color_prom[i]>>2) & 0x03),
 			kccomp_get_colour_element((color_prom[i]>>4) & 0x03),
@@ -277,7 +276,6 @@ PALETTE_INIT( amstrad_plus )
 		b = ( b << 4 ) | ( b );
 
 		palette_set_color_rgb(machine, i+48, g, r, b);
-		colortable[i+48] = i+48;  // take into account the original palette, and sprite palette
 	}
 }
 
@@ -301,13 +299,12 @@ PALETTE_INIT( aleste )
 		b = (b << 6);
 
 		palette_set_color_rgb(machine, i+32, r, g, b);
-		colortable[i+32] = i+32;  // take into account the CPC and MSX palette
 	}
 }
 
-void amstrad_plus_setspritecolour(unsigned int off, int r, int g, int b)
+void amstrad_plus_setspritecolour(running_machine *machine, unsigned int off, int r, int g, int b)
 {
-	palette_set_color_rgb(Machine, (off/2) + 33, r, g, b);
+	palette_set_color_rgb(machine, (off/2) + 33, r, g, b);
 }
 
 static void amstrad_init_lookups(void)
@@ -344,11 +341,11 @@ void amstrad_vh_update_colour(int PenIndex, int hw_colour_index)
 	int val;
 /*  int cpu_cycles = ((cycles_currently_ran()>>2)-1) & 63;
 
-	logerror("color is changed(%d,%d) = %d\n",PenIndex, cpu_cycles, Machine->pens[hw_colour_index]);
+	logerror("color is changed(%d,%d) = %d\n",PenIndex, cpu_cycles, hw_colour_index);
   amstrad_GateArray_colours_ischanged++;
-	amstrad_GateArray_changed_colours[cpu_cycles][PenIndex] = Machine->pens[hw_colour_index];
+	amstrad_GateArray_changed_colours[cpu_cycles][PenIndex] = hw_colour_index;
 */
-	amstrad_GateArray_render_colours[PenIndex] = Machine->pens[hw_colour_index];
+	amstrad_GateArray_render_colours[PenIndex] = hw_colour_index;
 	if(amstrad_system_type != 0)
 	{  // CPC+/GX4000 - normal palette changes through the Gate Array also makes the corresponding change in the ASIC palette
 		val = (amstrad_palette[hw_colour_index] & 0xf00000) >> 16; // red
@@ -363,11 +360,11 @@ void aleste_vh_update_colour(int PenIndex, int hw_colour_index)
 {
 /*  int cpu_cycles = ((cycles_currently_ran()>>2)-1) & 63;
 
-	logerror("color is changed(%d,%d) = %d\n",PenIndex, cpu_cycles, Machine->pens[hw_colour_index]);
+	logerror("color is changed(%d,%d) = %d\n",PenIndex, cpu_cycles, hw_colour_index);
   amstrad_GateArray_colours_ischanged++;
-	amstrad_GateArray_changed_colours[cpu_cycles][PenIndex] = Machine->pens[hw_colour_index];
+	amstrad_GateArray_changed_colours[cpu_cycles][PenIndex] = hw_colour_index;
 */
-	amstrad_GateArray_render_colours[PenIndex] = Machine->pens[hw_colour_index+32];
+	amstrad_GateArray_render_colours[PenIndex] = hw_colour_index+32;
 }
 
 /* Set the new screen mode (0,1,2,4) from the GateArray */
@@ -394,7 +391,7 @@ static void amstrad_draw_screen_disabled(void)
 /* mode 0 - low resolution - 16 colours */
 static void amstrad_plus_draw_screen_enabled_mode_0(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -452,7 +449,7 @@ static void amstrad_plus_draw_screen_enabled_mode_0(void)
 /* mode 1 - medium resolution - 4 colours */
 static void amstrad_plus_draw_screen_enabled_mode_1(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -503,7 +500,7 @@ static void amstrad_plus_draw_screen_enabled_mode_1(void)
 /* mode 2: high resolution - 2 colours */
 static void amstrad_plus_draw_screen_enabled_mode_2(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -543,7 +540,7 @@ static void amstrad_plus_draw_screen_enabled_mode_2(void)
 /* undocumented mode. low resolution - 4 colours */
 static void amstrad_plus_draw_screen_enabled_mode_3(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -601,7 +598,7 @@ static void amstrad_plus_draw_screen_enabled_mode_3(void)
 /* mode 0 - low resolution - 16 colours */
 static void amstrad_draw_screen_enabled_mode_0(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -648,7 +645,7 @@ static void amstrad_draw_screen_enabled_mode_0(void)
 /* mode 1 - medium resolution - 4 colours */
 static void amstrad_draw_screen_enabled_mode_1(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -697,7 +694,7 @@ static void amstrad_draw_screen_enabled_mode_1(void)
 /* mode 2: high resolution - 2 colours */
 static void amstrad_draw_screen_enabled_mode_2(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -740,7 +737,7 @@ static void amstrad_draw_screen_enabled_mode_2(void)
 /* undocumented mode. low resolution - 4 colours */
 static void amstrad_draw_screen_enabled_mode_3(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -786,7 +783,7 @@ static void amstrad_draw_screen_enabled_mode_3(void)
 /* Aleste mode 2: high resolution - 4 colours */
 static void aleste_draw_screen_enabled_mode_2(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -830,7 +827,7 @@ static void aleste_draw_screen_enabled_mode_2(void)
 /* Aleste mode 3 - medium resolution, 16 colours */
 static void aleste_draw_screen_enabled_mode_3(void)
 {
-	mame_bitmap *bitmap = amstrad_bitmap;
+	bitmap_t *bitmap = amstrad_bitmap;
 
 	int ma = amstrad_CRTC_MA; // m6845_memory_address_r(0);
 	int ra = amstrad_CRTC_RA; // m6845_row_address_r(0);
@@ -923,7 +920,7 @@ void amstrad_vh_execute_crtc_cycles(int dummy)
 
   &6422 - &643f   Sprite palette, 12-bit, xxxxGGGGRRRRBBBB, sprite pens 1-15 (0 is always transparent)
 */
-static void amstrad_plus_sprite_draw(mame_bitmap* scr_bitmap)
+static void amstrad_plus_sprite_draw(running_machine *machine, bitmap_t* scr_bitmap)
 {
 	int spr;  // sprite number
 	int xloc,yloc;
@@ -950,9 +947,9 @@ static void amstrad_plus_sprite_draw(mame_bitmap* scr_bitmap)
 			xloc += rect.min_x;
 			yloc = amstrad_plus_asic_ram[sprptr+2] + (amstrad_plus_asic_ram[sprptr+3] << 8);
 			yloc += rect.min_y;
-			decodechar(Machine->gfx[0],spr,amstrad_plus_asic_ram);
-			drawgfxzoom(scr_bitmap,Machine->gfx[0],spr,0,0,0,xloc,yloc,&rect,
-				TRANSPARENCY_COLOR,32,xmag,ymag);
+			decodechar(machine->gfx[0],spr,amstrad_plus_asic_ram);
+			drawgfxzoom(scr_bitmap,machine->gfx[0],spr,0,0,0,xloc,yloc,&rect,
+				TRANSPARENCY_PEN,0,xmag,ymag);
 		}
 	}
 }
@@ -1002,9 +999,9 @@ static void amstrad_plus_dma_parse(int channel, int *addr)
 	switch(command & 0xf000)
 	{
 	case 0x0000:  // Load PSG register
-		AY8910_control_port_0_w(0,(command & 0x0f00) >> 8);
-		AY8910_write_port_0_w(0,command & 0x00ff);
-		AY8910_control_port_0_w(0,prev_reg);
+		AY8910_control_port_0_w(machine, 0,(command & 0x0f00) >> 8);
+		AY8910_write_port_0_w(machine, 0,command & 0x00ff);
+		AY8910_control_port_0_w(machine, 0,prev_reg);
 		logerror("DMA %i: LOAD %i, %i\n",channel,(command & 0x0f00) >> 8, command & 0x00ff);
 		break;
 	case 0x1000:  // Pause for n HSYNCs (0 - 4095)
@@ -1287,7 +1284,7 @@ VIDEO_UPDATE( amstrad )
 	#endif
 		copybitmap(bitmap, amstrad_bitmap, 0,0,0,0,&rect);
 		if(amstrad_plus_asic_enabled != 0)
-			amstrad_plus_sprite_draw(bitmap);
+			amstrad_plus_sprite_draw(screen->machine, bitmap);
 		amstrad_scanline = y_screen_pos - 32;
 		return 0;
 	}

@@ -37,7 +37,6 @@
 #include "driver.h"
 #include "mea8000.h"
 #include "sound/dac.h"
-#include "deprecat.h"
 
 
 #define VERBOSE 0
@@ -83,7 +82,7 @@ static struct
 	/* configuration parameters */
 
 	int channel;                  /* first argument for DAC_data_w */
-	write8_handler req_out_func;  /* 1-bit 'ready' output, not negated */
+	write8_machine_func req_out_func;  /* 1-bit 'ready' output, not negated */
 
 	/* state */
 
@@ -200,7 +199,7 @@ static int mea8000_accept_byte( void )
 		(mea8000.state == MEA8000_STARTED && mea8000.bufpos < 4);
 }
 
-static void mea8000_update_req( void )
+static void mea8000_update_req( running_machine *machine )
 {
 	/* actually, req pulses less than 3us for each new byte,
 	   it goes back up if there space left in the buffer, or stays low if the
@@ -208,7 +207,7 @@ static void mea8000_update_req( void )
 	   frame end to compose a new frame.
 	*/
 	if (mea8000.req_out_func)
-		mea8000.req_out_func(0, mea8000_accept_byte());
+		mea8000.req_out_func(machine, 0, mea8000_accept_byte());
 }
 
 
@@ -233,7 +232,7 @@ static int noise_table[NOISE_LEN];
 
 
 /* precompute tables */
-static void mea8000_init_tables( void )
+static void mea8000_init_tables( running_machine *machine )
 {
 	int i;
 	for (i=0; i<TABLE_LEN; i++)
@@ -244,7 +243,7 @@ static void mea8000_init_tables( void )
 		exp2_table[i] = exp(-2*M_PI*f) * QUANT;
 	}
 	for (i=0; i<NOISE_LEN; i++)
-		noise_table[i] = (mame_rand(Machine) % (2*QUANT)) - QUANT;
+		noise_table[i] = (mame_rand(machine) % (2*QUANT)) - QUANT;
 }
 
 
@@ -520,7 +519,7 @@ static TIMER_CALLBACK( mea8000_timer_expire )
 			LOG(( "%f mea8000_timer_expire: stop frame\n", attotime_to_double(timer_get_time()) ));
 			mea8000_stop_frame();
 		}
-		mea8000_update_req();
+		mea8000_update_req(machine);
 	}
 	else
 	{
@@ -593,7 +592,7 @@ WRITE8_HANDLER ( mea8000_w )
 				mea8000.state = MEA8000_STARTED;
 			}
 		}
-		mea8000_update_req();
+		mea8000_update_req(machine);
 		break;
 
 	case 1: /* command register */
@@ -613,7 +612,7 @@ WRITE8_HANDLER ( mea8000_w )
 		      activecpu_get_previouspc(), attotime_to_double(timer_get_time()), data,
 		      stop, mea8000.cont, mea8000.roe ));
 
-		mea8000_update_req();
+		mea8000_update_req(machine);
 		break;
 	}
 
@@ -628,7 +627,7 @@ WRITE8_HANDLER ( mea8000_w )
 
 
 
-void mea8000_reset ( void )
+void mea8000_reset ( running_machine *machine )
 {
 	int i;
 	LOG (( "mea8000_reset\n" ));
@@ -637,7 +636,7 @@ void mea8000_reset ( void )
 	mea8000.cont = 0;
 	mea8000.roe = 0;
 	mea8000.state = MEA8000_STOPPED;
-	mea8000_update_req();
+	mea8000_update_req(machine);
 	for (i=0; i<4; i++)
 	{
 		mea8000.f[i].last_output = 0;
@@ -652,10 +651,10 @@ void mea8000_reset ( void )
 
 
 
-void mea8000_config ( int channel, write8_handler req_out_func )
+void mea8000_config ( running_machine *machine, int channel, write8_machine_func req_out_func )
 {
 	int i;
-	mea8000_init_tables();
+	mea8000_init_tables(machine);
 	mea8000.channel = channel;
 	mea8000.req_out_func = req_out_func;
 	mea8000.timer = timer_alloc( mea8000_timer_expire , NULL);
@@ -686,5 +685,5 @@ void mea8000_config ( int channel, write8_handler req_out_func )
 	state_save_register_item( "mea8000", 0, mea8000.pitch );
 	state_save_register_item( "mea8000", 0, mea8000.noise );
 
-	mea8000_reset();
+	mea8000_reset(machine);
 }

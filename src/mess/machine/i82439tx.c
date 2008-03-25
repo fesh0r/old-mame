@@ -102,7 +102,7 @@ static UINT32 intel82439tx_pci_read(int function, int offset, UINT32 mem_mask)
 
 
 
-static void intel82439tx_configure_memory(UINT8 val, offs_t begin, offs_t end, int read_bank, write32_handler wh)
+static void intel82439tx_configure_memory(UINT8 val, offs_t begin, offs_t end, int read_bank, write32_machine_func wh)
 {
 	memory_install_read_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, read_bank);
 	if (val & 0x01)
@@ -113,7 +113,7 @@ static void intel82439tx_configure_memory(UINT8 val, offs_t begin, offs_t end, i
 	if (val & 0x02)
 		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, wh);
 	else
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MWA32_ROM);
+		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, SMH_NOP);
 }
 
 

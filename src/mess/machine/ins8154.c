@@ -11,10 +11,8 @@
  ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "ins8154.h"
 
-#define MAX_INS8154   2
 
 #define VERBOSE 1
 #define LOG(x)	do { if (VERBOSE) logerror x; } while (0)
@@ -30,12 +28,10 @@ enum
 };
 
 
-typedef struct _ins8154_state ins8154_state;
-struct _ins8154_state
+struct _ins8154_t
 {
-	/* Pointer to our interface */
-	const ins8154_interface *intf;
-	
+	const ins8154_interface *intf; /* Pointer to our interface */
+
 	UINT8 in_a;  /* Input Latch Port A */
 	UINT8 in_b;  /* Input Latch Port B */
 	UINT8 out_a; /* Output Latch Port A */
@@ -45,47 +41,55 @@ struct _ins8154_state
 	UINT8 odrb;  /* Output Definition Register Port B */
 };
 
-static ins8154_state ins8154[MAX_INS8154];
 
-
-/* Config */
-void ins8154_config(int which, const ins8154_interface *intf)
+static DEVICE_START( ins8154 )
 {
-	assert_always(mame_get_phase(Machine) == MAME_PHASE_INIT,
-		"Can only call ins8154_config at init time!");
-	assert_always(which < MAX_INS8154,
-		"'which' exceeds maximum number of configured INS8154s!");
+	ins8154_t *ins8154 = device->token;
+	char unique_tag[30];
 
-	/* Assign interface */
-	ins8154[which].intf = intf;
+	/* validate arguments */
+	assert(device->machine != NULL);
+	assert(device->tag != NULL);
+	assert(strlen(device->tag) < 20);
 
-	/* Initialize */
-	ins8154_reset(which);
+	/* assign interface */
+	ins8154->intf = device->static_config;
+
+	/* register for state saving */
+	state_save_combine_module_and_tag(unique_tag, "ins8154", device->tag);
+	state_save_register_item(unique_tag, 0, ins8154->in_a);
+	state_save_register_item(unique_tag, 0, ins8154->in_b);
+	state_save_register_item(unique_tag, 0, ins8154->out_a);
+	state_save_register_item(unique_tag, 0, ins8154->out_b);
+	state_save_register_item(unique_tag, 0, ins8154->mdr);
+	state_save_register_item(unique_tag, 0, ins8154->odra);
+	state_save_register_item(unique_tag, 0, ins8154->odrb);
 }
 
 
-/* Reset */
-void ins8154_reset(int which)
+static DEVICE_RESET( ins8154 )
 {
-	ins8154[which].in_a = 0;
-	ins8154[which].in_b = 0;
-	ins8154[which].out_a = 0;
-	ins8154[which].out_b = 0;
-	ins8154[which].mdr = 0;
-	ins8154[which].odra = 0;
-	ins8154[which].odrb = 0;
-}
-
-
-static UINT8 ins8154_read(int which, offs_t offset)
-{
-	ins8154_state *i = &ins8154[which];
-	UINT8 val = 0xff;
+	ins8154_t *ins8154 = device->token;
 	
+	ins8154->in_a = 0;
+	ins8154->in_b = 0;
+	ins8154->out_a = 0;
+	ins8154->out_b = 0;
+	ins8154->mdr = 0;
+	ins8154->odra = 0;
+	ins8154->odrb = 0;
+}
+
+
+READ8_DEVICE_HANDLER( ins8154_r )
+{
+	ins8154_t *i = device->token;
+	UINT8 val = 0xff;
+
 	if (offset > 0x24)
 	{
-		logerror("INS8154 chip #%d (%08x): Read from unknown offset %02x!\n",
-			which, safe_activecpu_get_pc(), offset);
+		logerror("INS8154 (%08x): Read from unknown offset %02x!\n",
+			safe_activecpu_get_pc(), offset);
 		return 0xff;
 	}
 	
@@ -93,13 +97,13 @@ static UINT8 ins8154_read(int which, offs_t offset)
 	{
 	case 0x20:
 		if (i->intf->in_a_func)
-			val = i->intf->in_a_func(0);
+			val = i->intf->in_a_func(device, 0);
 		i->in_a = val;
 		break;
 		
 	case 0x21:
 		if (i->intf->in_b_func)
-			val = i->intf->in_b_func(0);
+			val = i->intf->in_b_func(device, 0);
 		i->in_b = val;
 		break;
 		
@@ -107,13 +111,13 @@ static UINT8 ins8154_read(int which, offs_t offset)
 		if (offset < 0x08)
 		{
 			if (i->intf->in_a_func)
-				val = (i->intf->in_a_func(0) << (8 - offset)) & 0x80;
+				val = (i->intf->in_a_func(device, 0) << (8 - offset)) & 0x80;
 			i->in_a = val;
 		}
 		else
 		{
 			if (i->intf->in_a_func)
-				val = (i->intf->in_a_func(0) << (8 - (offset >> 4))) & 0x80;
+				val = (i->intf->in_a_func(device, 0) << (8 - (offset >> 4))) & 0x80;
 			i->in_b = val;
 		}
 		break;
@@ -122,10 +126,9 @@ static UINT8 ins8154_read(int which, offs_t offset)
 	return val;
 }
 
-
-static void ins8154_write_port_a(int which, int data)
+WRITE8_DEVICE_HANDLER( ins8154_porta_w )
 {
-	ins8154_state *i = &ins8154[which];
+	ins8154_t *i = device->token;
 	
 	i->out_a = data;
 
@@ -133,17 +136,17 @@ static void ins8154_write_port_a(int which, int data)
 	if (i->odra)
 	{
 		if (i->intf->out_a_func)
-			i->intf->out_a_func(0, (data & i->odra) | (i->odra ^ 0xff));
+			i->intf->out_a_func(device, 0, (data & i->odra) | (i->odra ^ 0xff));
 		else
-			logerror("INS8154 chip #%d (%08x): Write to port A but no write handler defined!\n",
-				which, safe_activecpu_get_pc());
+			logerror("INS8154 (%08x): Write to port A but no write handler defined!\n",
+				safe_activecpu_get_pc());
 	}
 }
 
 
-static void ins8154_write_port_b(int which, int data)
+WRITE8_DEVICE_HANDLER( ins8154_portb_w )
 {
-	ins8154_state *i = &ins8154[which];
+	ins8154_t *i = device->token;
 	
 	i->out_b = data;
 	
@@ -151,50 +154,50 @@ static void ins8154_write_port_b(int which, int data)
 	if (i->odrb)
 	{
 		if (i->intf->out_b_func)
-			i->intf->out_b_func(0, (data & i->odrb) | (i->odrb ^ 0xff));
+			i->intf->out_b_func(device, 0, (data & i->odrb) | (i->odrb ^ 0xff));
 		else
-			logerror("INS8154 chip #%d (%08x): Write to port B but no write handler defined!\n",
-				which, safe_activecpu_get_pc());
+			logerror("INS8154 (%08x): Write to port B but no write handler defined!\n",
+				safe_activecpu_get_pc());
 	}
 }
 
 
-static void ins8154_write(int which, offs_t offset, UINT8 data)
+WRITE8_DEVICE_HANDLER( ins8154_w )
 {
-	ins8154_state *i = &ins8154[which];
+	ins8154_t *i = device->token;
 	
 	if (offset > 0x24)
 	{
-		logerror("INS8154 chip %d (%04x): Write %02x to invalid offset %02x!\n",
-			which, safe_activecpu_get_pc(), data, offset);
+		logerror("INS8154 (%04x): Write %02x to invalid offset %02x!\n",
+			safe_activecpu_get_pc(), data, offset);
 		return;
 	}
 	
 	switch (offset)
 	{
 	case 0x20:
-		ins8154_write_port_a(which, data);
+		ins8154_porta_w(device, 0, data);
 		break;
 		
 	case 0x21:
-		ins8154_write_port_b(which, data);
+		ins8154_portb_w(device, 0, data);
 		break;
 		
 	case 0x22:
-		LOG(("INS8154 chip %d (%04x): ODR for port A set to %02x\n",
-			which, safe_activecpu_get_pc(), data));
+		LOG(("INS8154 (%04x): ODR for port A set to %02x\n",
+			safe_activecpu_get_pc(), data));
 		i->odra = data;
 		break;
 		
 	case 0x23:
-		LOG(("INS8154 chip %d (%04x): ODR for port B set to %02x\n",
-			which, safe_activecpu_get_pc(), data));
+		LOG(("INS8154 (%04x): ODR for port B set to %02x\n",
+			safe_activecpu_get_pc(), data));
 		i->odrb = data;
 		break;
 		
 	case 0x24:
-		LOG(("INS8154 chip %d (%04x): MDR set to %02x\n",
-			which, safe_activecpu_get_pc(), data));
+		LOG(("INS8154 (%04x): MDR set to %02x\n",
+			safe_activecpu_get_pc(), data));
 		i->mdr = data;
 		break;
 		
@@ -204,11 +207,11 @@ static void ins8154_write(int which, offs_t offset, UINT8 data)
 			/* Set bit */
 			if (offset < 0x08)
 			{
-				ins8154_write_port_a(which, i->out_a |= offset & 0x07);
+				ins8154_porta_w(device, 0, i->out_a |= offset & 0x07);
 			}
 			else
 			{
-				ins8154_write_port_b(which, i->out_b |= (offset >> 4) & 0x07);
+				ins8154_portb_w(device, 0, i->out_b |= (offset >> 4) & 0x07);
 			}
 		}
 		else
@@ -216,12 +219,12 @@ static void ins8154_write(int which, offs_t offset, UINT8 data)
 			/* Clear bit */
 			if (offset < 0x08)
 			{
-				ins8154_write_port_a(which, i->out_a & ~(offset & 0x07));
+				ins8154_porta_w(device, 0, i->out_a & ~(offset & 0x07));
 			}
 			else
 			{
-				ins8154_write_port_b(which, i->out_b & ~((offset >> 4) & 0x07));
-			}			
+				ins8154_portb_w(device, 0, i->out_b & ~((offset >> 4) & 0x07));
+			}
 		}
 		
 		break;
@@ -229,11 +232,35 @@ static void ins8154_write(int which, offs_t offset, UINT8 data)
 }
 
 
+static DEVICE_SET_INFO( ins8154 )
+{
+	switch (state)
+	{
+		/* no parameters to set */
+	}
+}
 
-/******************* Standard 8-bit CPU interfaces, D0-D7 *******************/
 
-WRITE8_HANDLER( ins8154_0_w ) {	ins8154_write(0, offset, data); }
-WRITE8_HANDLER( ins8154_1_w ) {	ins8154_write(1, offset, data); }
+DEVICE_GET_INFO( ins8154 )
+{
+	switch (state)
+	{
+		/* --- the following bits of info are returned as 64-bit signed integers --- */
+		case DEVINFO_INT_INLINE_CONFIG_BYTES:	info->i = 0;									break;
+		case DEVINFO_INT_CLASS:					info->i = DEVICE_CLASS_PERIPHERAL;				break;
+		case DEVINFO_INT_TOKEN_BYTES:			info->i = sizeof(ins8154_t);					break;
 
-READ8_HANDLER( ins8154_0_r ) { return ins8154_read(0, offset); }
-READ8_HANDLER( ins8154_1_r ) { return ins8154_read(1, offset); }
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case DEVINFO_FCT_SET_INFO:				info->set_info = DEVICE_SET_INFO_NAME(ins8154);	break;
+		case DEVINFO_FCT_START:					info->start = DEVICE_START_NAME(ins8154);		break;
+		case DEVINFO_FCT_STOP:					/* Nothing */									break;
+		case DEVINFO_FCT_RESET:					info->reset = DEVICE_RESET_NAME(ins8154);		break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case DEVINFO_STR_NAME:					info->s = "National Semiconductor INS8154";		break;
+		case DEVINFO_STR_FAMILY:				info->s = "INS8154";							break;
+		case DEVINFO_STR_VERSION:				info->s = "1.0";								break;
+		case DEVINFO_STR_SOURCE_FILE:			info->s = __FILE__;								break;
+		case DEVINFO_STR_CREDITS:				info->s = "Copyright MESS Team";				break;
+	}
+}

@@ -73,7 +73,7 @@ static ADDRESS_MAP_START( at_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000000, 0x09ffff) AM_MIRROR(0xff000000) AM_RAMBANK(10)
 	AM_RANGE(0x0a0000, 0x0affff) AM_NOP
 	AM_RANGE(0x0b0000, 0x0b7fff) AM_NOP
-	AM_RANGE(0x0b8000, 0x0bffff) AM_READWRITE(MRA8_RAM, pc_video_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x0b8000, 0x0bffff) AM_READWRITE(SMH_RAM, pc_video_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0c0000, 0x0c7fff) AM_ROM
 	AM_RANGE(0x0c8000, 0x0c9fff) AM_ROM
 	AM_RANGE(0x0ca000, 0x0cffff) AM_RAM
@@ -82,10 +82,10 @@ static ADDRESS_MAP_START( at_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(24) )
+	ADDRESS_MAP_GLOBAL_MASK(0x00ffffff)
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
 	AM_RANGE(0x000a0000, 0x000b7fff) AM_NOP
-	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(MRA32_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x000c0000, 0x000c7fff) AM_ROM
 	AM_RANGE(0x000c8000, 0x000cffff) AM_ROM
 	AM_RANGE(0x000d0000, 0x000effff) AM_ROM
@@ -96,7 +96,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( at586_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK(10)
 	AM_RANGE(0x000a0000, 0x000b7fff) AM_NOP
-	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(MRA32_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x000b8000, 0x000bffff) AM_READWRITE(SMH_RAM, pc_video_videoram32_w) AM_BASE((UINT32 **) &videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xfffe0000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0x20000)
 ADDRESS_MAP_END
 
@@ -104,22 +104,22 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER(at_dma8237_1_r)
 {
-	return dma8237_1_r(offset / 2);
+	return dma8237_1_r(machine, offset / 2);
 }
 
 static WRITE8_HANDLER(at_dma8237_1_w)
 {
-	dma8237_1_w(offset / 2, data);
+	dma8237_1_w(machine, offset / 2, data);
 }
 
 static READ32_HANDLER(at32_dma8237_1_r)
 {
-	return read32le_with_read8_handler(at_dma8237_1_r, offset, mem_mask);
+	return read32le_with_read8_handler(at_dma8237_1_r, machine, offset, mem_mask);
 }
 
 static WRITE32_HANDLER(at32_dma8237_1_w)
 {
-	write32le_with_write8_handler(at_dma8237_1_w, offset, data, mem_mask);
+	write32le_with_write8_handler(at_dma8237_1_w, machine, offset, data, mem_mask);
 }
 
 
@@ -405,19 +405,15 @@ static const struct YM3812interface ym3812_interface =
 
 
 
-#define MDRV_CPU_ATPC(mem, port, type, clock, vblankfunc)	\
+#define MDRV_CPU_ATPC(mem, port, type, clock)	\
 	MDRV_CPU_ADD_TAG("main", type, clock)					\
 	MDRV_CPU_PROGRAM_MAP(mem##_map, 0)				\
 	MDRV_CPU_IO_MAP(port##_io, 0)					\
-	MDRV_CPU_VBLANK_INT(vblankfunc, 4)						\
 	MDRV_CPU_CONFIG(i286_address_mask)
 
 static MACHINE_DRIVER_START( atcga )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at, at, I80286, 12000000, NULL)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_ATPC(at, at, I80286, 12000000)
 
 	MDRV_MACHINE_START( at )
 	MDRV_MACHINE_RESET( at )
@@ -447,10 +443,10 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ps2m30286 )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at, at, I80286, 12000000, NULL)
+	MDRV_CPU_ATPC(at, at, I80286, 12000000)
 
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	MDRV_IMPORT_FROM( pcvideo_vga )
 
@@ -477,12 +473,13 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atvga )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at, at, I80286, 12000000, NULL)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_ATPC(at, at, I80286, 12000000)
 
 	MDRV_IMPORT_FROM( pcvideo_vga )
+
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	MDRV_MACHINE_START( at )
 	MDRV_MACHINE_RESET( at )
@@ -513,10 +510,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( at386 )
     /* basic machine hardware */
 	/* original at 6 mhz, at03 8 megahertz */
-	MDRV_CPU_ATPC(at386, at386, I386, 12000000, NULL)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_ATPC(at386, at386, I386, 12000000)
 
 	MDRV_MACHINE_START( at )
 	MDRV_MACHINE_RESET( at )
@@ -650,7 +644,7 @@ ROM_START( at386 )
     ROM_LOAD("at386.bin", 0xf0000, 0x10000, CRC(3df9732a) SHA1(def71567dee373dc67063f204ef44ffab9453ead))
 	ROM_RELOAD(0xff0000,0x10000)
 	ROM_REGION(0x08100, REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+    ROM_LOAD("cga.chr",     0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
 ROM_START( at486 )
@@ -659,7 +653,7 @@ ROM_START( at486 )
     ROM_LOAD("at486.bin", 0xf0000, 0x10000, CRC(31214616) SHA1(51b41fa44d92151025fc9ad06e518e906935e689))
 	ROM_RELOAD(0xff0000,0x10000)
 	ROM_REGION(0x08100, REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+    ROM_LOAD("cga.chr",     0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
 ROM_START( at586 )
@@ -671,40 +665,40 @@ ROM_START( at586 )
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
-static void ibmat_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ibmat_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 3; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void ibmat_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ibmat_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void ibmat_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ibmat_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		default:										harddisk_device_getinfo(devclass, state, info); break;
 	}

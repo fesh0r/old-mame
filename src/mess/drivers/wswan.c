@@ -31,6 +31,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/wswan.h"
 #include "devices/cartslot.h"
 #include "sound/custom.h"
@@ -129,8 +130,9 @@ static MACHINE_DRIVER_START( wswan )
 	MDRV_CPU_ADD_TAG("main", V30MZ, 3072000)
 	MDRV_CPU_PROGRAM_MAP(wswan_mem, 0)
 	MDRV_CPU_IO_MAP(wswan_io, 0)
-	MDRV_CPU_VBLANK_INT(wswan_scanline_interrupt, 159)	/* 1 int each scanline */
+	MDRV_CPU_VBLANK_INT_HACK(wswan_scanline_interrupt, 159)	/* 1 int each scanline */
 
+	MDRV_SCREEN_ADD("main", LCD)
 	MDRV_SCREEN_REFRESH_RATE(75)
 	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_INTERLEAVE(1)
@@ -143,13 +145,11 @@ static MACHINE_DRIVER_START( wswan )
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( WSWAN_X_PIXELS, WSWAN_X_PIXELS )
 	MDRV_SCREEN_VISIBLE_AREA(0*8, WSWAN_X_PIXELS - 1, 0, WSWAN_X_PIXELS - 1)
 	MDRV_GFXDECODE(wswan)
 	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(4*16)
 	MDRV_PALETTE_INIT(wswan)
 
 	/* sound hardware */
@@ -169,21 +169,21 @@ static MACHINE_DRIVER_START( wscolor )
 	MDRV_PALETTE_INIT( wscolor )
 MACHINE_DRIVER_END
 
-static void wswan_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void wswan_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:			info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:	info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:			info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:	info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:			info->init = device_init_wswan_cart; break;
-		case DEVINFO_PTR_LOAD:			info->load = device_load_wswan_cart; break;
+		case MESS_DEVINFO_PTR_INIT:			info->init = device_init_wswan_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:			info->load = device_load_wswan_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "ws,wsc,bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "ws,wsc,bin"); break;
 
 		default:				cartslot_device_getinfo(devclass, state, info); break;
 	}

@@ -149,7 +149,6 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "sound/ay8910.h"
 #include "sound/speaker.h"
 #include "formats/tzx_cas.h"
-#include "mslegacy.h"
 
 /* +3 hardware */
 #include "machine/nec765.h"
@@ -191,7 +190,7 @@ static WRITE8_HANDLER(spectrum_port_fe_w)
 	if ((Changed & 0x07)!=0)
 	{
 		/* yes - send event */
-		EventList_AddItemOffset(0x0fe, data & 0x07, ATTOTIME_TO_CYCLES(0,attotime_mul(video_screen_get_scan_period(0), video_screen_get_vpos(0))));
+		EventList_AddItemOffset(0x0fe, data & 0x07, ATTOTIME_TO_CYCLES(0,attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))));
 	}
 
 	if ((Changed & (1<<4))!=0)
@@ -319,25 +318,25 @@ static  READ8_HANDLER(spectrum_port_df_r)
 
 static  READ8_HANDLER ( spectrum_port_r )
 {
-		if ((offset & 1)==0)
-			return spectrum_port_fe_r(offset);
+	if ((offset & 1)==0)
+		return spectrum_port_fe_r(machine, offset);
 
-		if ((offset & 0xff)==0x1f)
-			return spectrum_port_1f_r(offset);
+	if ((offset & 0xff)==0x1f)
+		return spectrum_port_1f_r(machine, offset);
 
-		if ((offset & 0xff)==0x7f)
-			return spectrum_port_7f_r(offset);
+	if ((offset & 0xff)==0x7f)
+		return spectrum_port_7f_r(machine, offset);
 
-		if ((offset & 0xff)==0xdf)
-			return spectrum_port_df_r(offset);
+	if ((offset & 0xff)==0xdf)
+		return spectrum_port_df_r(machine, offset);
 
-		return video_screen_get_vpos(0)<193 ? spectrum_colorram[(video_screen_get_vpos(0)&0xf8)<<2]:0xff;
+	return video_screen_get_vpos(machine->primary_screen)<193 ? spectrum_colorram[(video_screen_get_vpos(machine->primary_screen)&0xf8)<<2]:0xff;
 }
 
 static WRITE8_HANDLER ( spectrum_port_w )
 {
 	if ((offset & 1)==0)
-		spectrum_port_fe_w(offset,data);
+		spectrum_port_fe_w(machine, offset,data);
 	else
 	{
 		logerror("Write %02x to Port: %04x\n", data, offset);
@@ -370,86 +369,86 @@ unsigned char *spectrum_128_screen_location = NULL;
 
 static WRITE8_HANDLER(spectrum_128_port_7ffd_w)
 {
-	   /* D0-D2: RAM page located at 0x0c000-0x0ffff */
-	   /* D3 - Screen select (screen 0 in ram page 5, screen 1 in ram page 7 */
-	   /* D4 - ROM select - which rom paged into 0x0000-0x03fff */
-	   /* D5 - Disable paging */
+   /* D0-D2: RAM page located at 0x0c000-0x0ffff */
+   /* D3 - Screen select (screen 0 in ram page 5, screen 1 in ram page 7 */
+   /* D4 - ROM select - which rom paged into 0x0000-0x03fff */
+   /* D5 - Disable paging */
 
-		/* disable paging? */
-		if (spectrum_128_port_7ffd_data & 0x20)
-				return;
+	/* disable paging? */
+	if (spectrum_128_port_7ffd_data & 0x20)
+			return;
 
-		/* store new state */
-		spectrum_128_port_7ffd_data = data;
+	/* store new state */
+	spectrum_128_port_7ffd_data = data;
 
-		/* update memory */
-		spectrum_128_update_memory();
+	/* update memory */
+	spectrum_128_update_memory();
 }
 
 extern void spectrum_128_update_memory(void)
 {
-		unsigned char *ChosenROM;
-		int ROMSelection;
+	unsigned char *ChosenROM;
+	int ROMSelection;
 
-		if (spectrum_128_port_7ffd_data & 8)
-		{
-				logerror("SCREEN 1: BLOCK 7\n");
-				spectrum_128_screen_location = spectrum_ram + (7<<14);
-		}
-		else
-		{
-				logerror("SCREEN 0: BLOCK 5\n");
-				spectrum_128_screen_location = spectrum_ram + (5<<14);
-		}
+	if (spectrum_128_port_7ffd_data & 8)
+	{
+			logerror("SCREEN 1: BLOCK 7\n");
+			spectrum_128_screen_location = spectrum_ram + (7<<14);
+	}
+	else
+	{
+			logerror("SCREEN 0: BLOCK 5\n");
+			spectrum_128_screen_location = spectrum_ram + (5<<14);
+	}
 
-		/* select ram at 0x0c000-0x0ffff */
-		{
-				int ram_page;
-				unsigned char *ram_data;
+	/* select ram at 0x0c000-0x0ffff */
+	{
+			int ram_page;
+			unsigned char *ram_data;
 
-				ram_page = spectrum_128_port_7ffd_data & 0x07;
-				ram_data = spectrum_ram + (ram_page<<14);
+			ram_page = spectrum_128_port_7ffd_data & 0x07;
+			ram_data = spectrum_ram + (ram_page<<14);
 
-				memory_set_bankptr(4, ram_data);
-				memory_set_bankptr(8, ram_data);
+			memory_set_bankptr(4, ram_data);
+			memory_set_bankptr(8, ram_data);
 
-				logerror("RAM at 0xc000: %02x\n",ram_page);
-		}
+			logerror("RAM at 0xc000: %02x\n",ram_page);
+	}
 
-		/* ROM switching */
-		ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01);
+	/* ROM switching */
+	ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01);
 
-		/* rom 0 is 128K rom, rom 1 is 48 BASIC */
+	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
 
-		ChosenROM = memory_region(REGION_CPU1) + 0x010000 + (ROMSelection<<14);
+	ChosenROM = memory_region(REGION_CPU1) + 0x010000 + (ROMSelection<<14);
 
-		memory_set_bankptr(1, ChosenROM);
+	memory_set_bankptr(1, ChosenROM);
 
-		logerror("rom switch: %02x\n", ROMSelection);
+	logerror("rom switch: %02x\n", ROMSelection);
 }
 
 
 
 static WRITE8_HANDLER(spectrum_128_port_bffd_w)
 {
-		AY8910_write_port_0_w(0, data);
+	AY8910_write_port_0_w(machine, 0, data);
 }
 
 static WRITE8_HANDLER(spectrum_128_port_fffd_w)
 {
-		AY8910_control_port_0_w(0, data);
+	AY8910_control_port_0_w(machine, 0, data);
 }
 
 static  READ8_HANDLER(spectrum_128_port_fffd_r)
 {
-		return AY8910_read_port_0_r(0);
+	return AY8910_read_port_0_r(machine, 0);
 }
 
 static  READ8_HANDLER ( spectrum_128_port_r )
 {
 	 if ((offset & 1)==0)
 	 {
-		 return spectrum_port_fe_r(offset);
+		 return spectrum_port_fe_r(machine, offset);
 	 }
 
 	 if ((offset & 2)==0)
@@ -460,27 +459,27 @@ static  READ8_HANDLER ( spectrum_128_port_r )
 				break;
 
 			case 3:
-				return spectrum_128_port_fffd_r(offset);
+				return spectrum_128_port_fffd_r(machine, offset);
 		}
 	 }
 
 	 /* don't think these are correct! */
 	 if ((offset & 0xff)==0x1f)
-		 return spectrum_port_1f_r(offset);
+		 return spectrum_port_1f_r(machine, offset);
 
 	 if ((offset & 0xff)==0x7f)
-		 return spectrum_port_7f_r(offset);
+		 return spectrum_port_7f_r(machine, offset);
 
 	 if ((offset & 0xff)==0xdf)
-		 return spectrum_port_df_r(offset);
+		 return spectrum_port_df_r(machine, offset);
 
-	 return video_screen_get_vpos(0)<193 ? spectrum_128_screen_location[0x1800|(video_screen_get_vpos(0)&0xf8)<<2]:0xff;
+	 return video_screen_get_vpos(machine->primary_screen)<193 ? spectrum_128_screen_location[0x1800|(video_screen_get_vpos(machine->primary_screen)&0xf8)<<2]:0xff;
 }
 
 static WRITE8_HANDLER ( spectrum_128_port_w )
 {
 		if ((offset & 1)==0)
-				spectrum_port_fe_w(offset,data);
+				spectrum_port_fe_w(machine, offset,data);
 
 		/* Only decodes on A15, A14 & A1 */
 		else if ((offset & 2)==0)
@@ -488,13 +487,13 @@ static WRITE8_HANDLER ( spectrum_128_port_w )
 				switch ((offset>>8) & 0xc0)
 				{
 						case 0x40:
-								spectrum_128_port_7ffd_w(offset, data);
+								spectrum_128_port_7ffd_w(machine, offset, data);
 								break;
 						case 0x80:
-								spectrum_128_port_bffd_w(offset, data);
+								spectrum_128_port_bffd_w(machine, offset, data);
 								break;
 						case 0xc0:
-								spectrum_128_port_fffd_w(offset, data);
+								spectrum_128_port_fffd_w(machine, offset, data);
 								break;
 						default:
 								logerror("Write %02x to 128 port: %04x\n", data, offset);
@@ -513,10 +512,10 @@ static ADDRESS_MAP_START (spectrum_128_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (spectrum_128_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x3fff) AM_READWRITE( MRA8_BANK1, MWA8_BANK5 )
-	AM_RANGE( 0x4000, 0x7fff) AM_READWRITE( MRA8_BANK2, MWA8_BANK6 )
-	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( MRA8_BANK3, MWA8_BANK7 )
-	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( MRA8_BANK4, MWA8_BANK8 )
+	AM_RANGE( 0x0000, 0x3fff) AM_READWRITE( SMH_BANK1, SMH_BANK5 )
+	AM_RANGE( 0x4000, 0x7fff) AM_READWRITE( SMH_BANK2, SMH_BANK6 )
+	AM_RANGE( 0x8000, 0xbfff) AM_READWRITE( SMH_BANK3, SMH_BANK7 )
+	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK4, SMH_BANK8 )
 ADDRESS_MAP_END
 
 static MACHINE_RESET( spectrum_128 )
@@ -566,7 +565,7 @@ static const int spectrum_plus3_memory_selections[]=
 static WRITE8_HANDLER(spectrum_plus3_port_3ffd_w)
 {
 		if (~readinputport(16) & 0x20)
-				nec765_data_w(0,data);
+				nec765_data_w(machine, 0,data);
 }
 
 static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
@@ -574,7 +573,7 @@ static  READ8_HANDLER(spectrum_plus3_port_3ffd_r)
 		if (readinputport(16) & 0x20)
 				return 0xff;
 		else
-				return nec765_data_r(0);
+				return nec765_data_r(machine, 0);
 }
 
 
@@ -583,7 +582,7 @@ static  READ8_HANDLER(spectrum_plus3_port_2ffd_r)
 		if (readinputport(16) & 0x20)
 				return 0xff;
 		else
-				return nec765_status_r(0);
+				return nec765_status_r(machine, 0);
 }
 
 
@@ -636,7 +635,7 @@ void spectrum_plus3_update_memory(void)
 			ChosenROM = memory_region(REGION_CPU1) + 0x010000 + (ROMSelection<<14);
 
 			memory_set_bankptr(1, ChosenROM);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 
 			logerror("rom switch: %02x\n", ROMSelection);
 	}
@@ -656,7 +655,7 @@ void spectrum_plus3_update_memory(void)
 			memory_set_bankptr(1, ram_data);
 			memory_set_bankptr(5, ram_data);
 			/* allow writes to 0x0000-0x03fff */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_BANK5);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK5);
 
 			ram_data = spectrum_ram + (memory_selection[1]<<14);
 			memory_set_bankptr(2, ram_data);
@@ -722,7 +721,7 @@ static  READ8_HANDLER ( spectrum_plus3_port_r )
 {
 	 if ((offset & 1)==0)
 	 {
-		 return spectrum_port_fe_r(offset);
+		 return spectrum_port_fe_r(machine, offset);
 	 }
 
 	 if ((offset & 2)==0)
@@ -740,10 +739,10 @@ static  READ8_HANDLER ( spectrum_plus3_port_r )
 
 					/* +3 fdc status */
 					case 2:
-						return spectrum_plus3_port_2ffd_r(offset);
+						return spectrum_plus3_port_2ffd_r(machine, offset);
 					/* +3 fdc data */
 					case 3:
-						return spectrum_plus3_port_3ffd_r(offset);
+						return spectrum_plus3_port_3ffd_r(machine, offset);
 
 					default:
 						break;
@@ -753,20 +752,20 @@ static  READ8_HANDLER ( spectrum_plus3_port_r )
 
 			/* 128k AY data */
 			case 3:
-				return spectrum_128_port_fffd_r(offset);
+				return spectrum_128_port_fffd_r(machine, offset);
 
 			default:
 				break;
 		 }
 	 }
 
-	 return video_screen_get_vpos(0)<193 ? spectrum_128_screen_location[0x1800|(video_screen_get_vpos(0)&0xf8)<<2]:0xff;
+	 return video_screen_get_vpos(machine->primary_screen)<193 ? spectrum_128_screen_location[0x1800|(video_screen_get_vpos(machine->primary_screen)&0xf8)<<2]:0xff;
 }
 
 static WRITE8_HANDLER ( spectrum_plus3_port_w )
 {
 		if ((offset & 1)==0)
-				spectrum_port_fe_w(offset,data);
+				spectrum_port_fe_w(machine, offset, data);
 
 		/* the following is not decoded exactly, need to check
         what is correct! */
@@ -790,12 +789,12 @@ static WRITE8_HANDLER ( spectrum_plus3_port_w )
 
 						/* +3 memory */
 						case 1:
-							spectrum_plus3_port_1ffd_w(offset, data);
+							spectrum_plus3_port_1ffd_w(machine, offset, data);
 							break;
 
 						/* +3 fdc data */
 						case 3:
-							spectrum_plus3_port_3ffd_w(offset,data);
+							spectrum_plus3_port_3ffd_w(machine, offset, data);
 							break;
 
 						default:
@@ -806,17 +805,17 @@ static WRITE8_HANDLER ( spectrum_plus3_port_w )
 
 				/* 128k memory */
 				case 1:
-					spectrum_plus3_port_7ffd_w(offset, data);
+					spectrum_plus3_port_7ffd_w(machine, offset, data);
 					break;
 
 				/* 128k AY data */
 				case 2:
-					spectrum_128_port_bffd_w(offset, data);
+					spectrum_128_port_bffd_w(machine, offset, data);
 					break;
 
 				/* 128K AY register */
 				case 3:
-					spectrum_128_port_fffd_w(offset, data);
+					spectrum_128_port_fffd_w(machine, offset, data);
 
 				default:
 					break;
@@ -870,7 +869,7 @@ static WRITE8_HANDLER(ts2068_port_f4_w)
 
 static WRITE8_HANDLER(ts2068_port_f5_w)
 {
-		AY8910_control_port_0_w(0, data);
+		AY8910_control_port_0_w(machine, 0, data);
 }
 
 static  READ8_HANDLER(ts2068_port_f6_r)
@@ -881,12 +880,12 @@ static  READ8_HANDLER(ts2068_port_f6_r)
            if both bits are set then OR values
            Bit 0 up, 1 down, 2 left, 3 right, 7 fire active low. Other bits 1
         */
-		return AY8910_read_port_0_r(0);
+		return AY8910_read_port_0_r(machine, 0);
 }
 
 static WRITE8_HANDLER(ts2068_port_f6_w)
 {
-		AY8910_write_port_0_w(0, data);
+		AY8910_write_port_0_w(machine, 0, data);
 }
 
 static  READ8_HANDLER(ts2068_port_ff_r)
@@ -908,24 +907,24 @@ static WRITE8_HANDLER(ts2068_port_ff_w)
 }
 
 
-static  READ8_HANDLER ( ts2068_port_r )
+static READ8_HANDLER ( ts2068_port_r )
 {
-		switch (offset & 0xff)
-		{
-				/* Note: keys only decoded on port #fe not all even ports so
-                   ports #f4 & #f6 correctly read */
-				case 0xf4: return ts2068_port_f4_r(offset);
-				case 0xf6: return ts2068_port_f6_r(offset);
-				case 0xff: return ts2068_port_ff_r(offset);
+	switch (offset & 0xff)
+	{
+		/* Note: keys only decoded on port #fe not all even ports so
+           ports #f4 & #f6 correctly read */
+		case 0xf4: return ts2068_port_f4_r(machine, offset);
+		case 0xf6: return ts2068_port_f6_r(machine, offset);
+		case 0xff: return ts2068_port_ff_r(machine, offset);
 
-				case 0xfe: return spectrum_port_fe_r(offset);
-				case 0x1f: return spectrum_port_1f_r(offset);
-				case 0x7f: return spectrum_port_7f_r(offset);
-				case 0xdf: return spectrum_port_df_r(offset);
-		}
-		logerror("Read from port: %04x\n", offset);
+		case 0xfe: return spectrum_port_fe_r(machine, offset);
+		case 0x1f: return spectrum_port_1f_r(machine, offset);
+		case 0x7f: return spectrum_port_7f_r(machine, offset);
+		case 0xdf: return spectrum_port_df_r(machine, offset);
+	}
+	logerror("Read from port: %04x\n", offset);
 
-		return 0xff;
+	return 0xff;
 }
 
 static WRITE8_HANDLER ( ts2068_port_w )
@@ -935,16 +934,16 @@ static WRITE8_HANDLER ( ts2068_port_w )
    Port #fb is the Thermal printer port and works exactly as the Sinclair
    Printer - ie not yet emulated.
 */
-		switch (offset & 0xff)
-		{
-				case 0xfe: spectrum_port_fe_w(offset,data); break;
-				case 0xf4: ts2068_port_f4_w(offset,data); break;
-				case 0xf5: ts2068_port_f5_w(offset,data); break;
-				case 0xf6: ts2068_port_f6_w(offset,data); break;
-				case 0xff: ts2068_port_ff_w(offset,data); break;
-				default:
-						logerror("Write %02x to Port: %04x\n", data, offset);
-		}
+	switch (offset & 0xff)
+	{
+		case 0xfe: spectrum_port_fe_w(machine, offset,data); break;
+		case 0xf4: ts2068_port_f4_w(machine, offset,data); break;
+		case 0xf5: ts2068_port_f5_w(machine, offset,data); break;
+		case 0xf6: ts2068_port_f6_w(machine, offset,data); break;
+		case 0xff: ts2068_port_ff_w(machine, offset,data); break;
+		default:
+				logerror("Write %02x to Port: %04x\n", data, offset);
+	}
 }
 
 
@@ -970,8 +969,8 @@ static WRITE8_HANDLER ( ts2068_port_w )
 void ts2068_update_memory(void)
 {
 	unsigned char *ChosenROM, *ExROM, *DOCK;
-	read8_handler rh;
-	write8_handler wh;
+	read8_machine_func rh;
+	write8_machine_func wh;
 
 	DOCK = timex_cart_data;
 
@@ -981,8 +980,8 @@ void ts2068_update_memory(void)
 	{
 		if (ts2068_port_ff_data & 0x80)
 		{
-				rh = MRA8_BANK1;
-				wh = MWA8_UNMAP;
+				rh = SMH_BANK1;
+				wh = SMH_UNMAP;
 				memory_set_bankptr(1, ExROM);
 				logerror("0000-1fff EXROM\n");
 		}
@@ -991,16 +990,16 @@ void ts2068_update_memory(void)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(1, DOCK);
-				rh = MRA8_BANK1;
+				rh = SMH_BANK1;
 				if (timex_cart_chunks&0x01)
-					wh = MWA8_BANK9;
+					wh = SMH_BANK9;
 				else
-					wh = MWA8_UNMAP;
+					wh = SMH_UNMAP;
 			}
 			else
 			{
-				rh = MRA8_NOP;
-				wh = MWA8_UNMAP;
+				rh = SMH_NOP;
+				wh = SMH_UNMAP;
 			}
 			logerror("0000-1fff Cartridge\n");
 		}
@@ -1009,8 +1008,8 @@ void ts2068_update_memory(void)
 	{
 		ChosenROM = memory_region(REGION_CPU1) + 0x010000;
 		memory_set_bankptr(1, ChosenROM);
-		rh = MRA8_BANK1;
-		wh = MWA8_UNMAP;
+		rh = SMH_BANK1;
+		wh = SMH_UNMAP;
 		logerror("0000-1fff HOME\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, rh);
@@ -1021,8 +1020,8 @@ void ts2068_update_memory(void)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(2, ExROM);
-			rh = MRA8_BANK2;
-			wh = MWA8_UNMAP;
+			rh = SMH_BANK2;
+			wh = SMH_UNMAP;
 			logerror("2000-3fff EXROM\n");
 		}
 		else
@@ -1030,16 +1029,16 @@ void ts2068_update_memory(void)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(2, DOCK+0x2000);
-				rh = MRA8_BANK2;
+				rh = SMH_BANK2;
 				if (timex_cart_chunks&0x02)
-					wh = MWA8_BANK10;
+					wh = SMH_BANK10;
 				else
-					wh = MWA8_UNMAP;
+					wh = SMH_UNMAP;
 			}
 			else
 			{
-				rh = MRA8_NOP;
-				wh = MWA8_UNMAP;
+				rh = SMH_NOP;
+				wh = SMH_UNMAP;
 			}
 			logerror("2000-3fff Cartridge\n");
 		}
@@ -1048,8 +1047,8 @@ void ts2068_update_memory(void)
 	{
 		ChosenROM = memory_region(REGION_CPU1) + 0x012000;
 		memory_set_bankptr(2, ChosenROM);
-		rh = MRA8_BANK2;
-		wh = MWA8_UNMAP;
+		rh = SMH_BANK2;
+		wh = SMH_UNMAP;
 		logerror("2000-3fff HOME\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, rh);
@@ -1060,8 +1059,8 @@ void ts2068_update_memory(void)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(3, ExROM);
-			rh = MRA8_BANK3;
-			wh = MWA8_UNMAP;
+			rh = SMH_BANK3;
+			wh = SMH_UNMAP;
 			logerror("4000-5fff EXROM\n");
 		}
 		else
@@ -1069,16 +1068,16 @@ void ts2068_update_memory(void)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(3, DOCK+0x4000);
-				rh = MRA8_BANK3;
+				rh = SMH_BANK3;
 				if (timex_cart_chunks&0x04)
-					wh = MWA8_BANK11;
+					wh = SMH_BANK11;
 				else
-					wh = MWA8_UNMAP;
+					wh = SMH_UNMAP;
 			}
 			else
 			{
-				rh = MRA8_NOP;
-				wh = MWA8_UNMAP;
+				rh = SMH_NOP;
+				wh = SMH_UNMAP;
 			}
 			logerror("4000-5fff Cartridge\n");
 		}
@@ -1087,8 +1086,8 @@ void ts2068_update_memory(void)
 	{
 		memory_set_bankptr(3, mess_ram);
 		memory_set_bankptr(11, mess_ram);
-		rh = MRA8_BANK3;
-		wh = MWA8_BANK11;
+		rh = SMH_BANK3;
+		wh = SMH_BANK11;
 		logerror("4000-5fff RAM\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, rh);
@@ -1099,8 +1098,8 @@ void ts2068_update_memory(void)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(4, ExROM);
-			rh = MRA8_BANK4;
-			wh = MWA8_UNMAP;
+			rh = SMH_BANK4;
+			wh = SMH_UNMAP;
 			logerror("6000-7fff EXROM\n");
 		}
 		else
@@ -1108,16 +1107,16 @@ void ts2068_update_memory(void)
 				if (timex_cart_type == TIMEX_CART_DOCK)
 				{
 					memory_set_bankptr(4, DOCK+0x6000);
-					rh = MRA8_BANK4;
+					rh = SMH_BANK4;
 					if (timex_cart_chunks&0x08)
-						wh = MWA8_BANK12;
+						wh = SMH_BANK12;
 					else
-						wh = MWA8_UNMAP;
+						wh = SMH_UNMAP;
 				}
 				else
 				{
-					rh = MRA8_NOP;
-					wh = MWA8_UNMAP;
+					rh = SMH_NOP;
+					wh = SMH_UNMAP;
 				}
 				logerror("6000-7fff Cartridge\n");
 		}
@@ -1126,8 +1125,8 @@ void ts2068_update_memory(void)
 	{
 		memory_set_bankptr(4, mess_ram + 0x2000);
 		memory_set_bankptr(12, mess_ram + 0x2000);
-		rh = MRA8_BANK4;
-		wh = MWA8_BANK12;
+		rh = SMH_BANK4;
+		wh = SMH_BANK12;
 		logerror("6000-7fff RAM\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, rh);
@@ -1138,8 +1137,8 @@ void ts2068_update_memory(void)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(5, ExROM);
-			rh = MRA8_BANK5;
-			wh = MWA8_UNMAP;
+			rh = SMH_BANK5;
+			wh = SMH_UNMAP;
 			logerror("8000-9fff EXROM\n");
 		}
 		else
@@ -1147,16 +1146,16 @@ void ts2068_update_memory(void)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(5, DOCK+0x8000);
-				rh = MRA8_BANK5;
+				rh = SMH_BANK5;
 				if (timex_cart_chunks&0x10)
-					wh = MWA8_BANK13;
+					wh = SMH_BANK13;
 				else
-					wh = MWA8_UNMAP;
+					wh = SMH_UNMAP;
 			}
 			else
 			{
-				rh = MRA8_NOP;
-				wh = MWA8_UNMAP;
+				rh = SMH_NOP;
+				wh = SMH_UNMAP;
 			}
 			logerror("8000-9fff Cartridge\n");
 		}
@@ -1165,8 +1164,8 @@ void ts2068_update_memory(void)
 	{
 		memory_set_bankptr(5, mess_ram + 0x4000);
 		memory_set_bankptr(13, mess_ram + 0x4000);
-		rh = MRA8_BANK5;
-		wh = MWA8_BANK13;
+		rh = SMH_BANK5;
+		wh = SMH_BANK13;
 		logerror("8000-9fff RAM\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0,rh);
@@ -1177,8 +1176,8 @@ void ts2068_update_memory(void)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(6, ExROM);
-			rh = MRA8_BANK6;
-			wh = MWA8_UNMAP;
+			rh = SMH_BANK6;
+			wh = SMH_UNMAP;
 			logerror("a000-bfff EXROM\n");
 		}
 		else
@@ -1186,16 +1185,16 @@ void ts2068_update_memory(void)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(6, DOCK+0xa000);
-				rh = MRA8_BANK6;
+				rh = SMH_BANK6;
 				if (timex_cart_chunks&0x20)
-					wh = MWA8_BANK14;
+					wh = SMH_BANK14;
 				else
-					wh = MWA8_UNMAP;
+					wh = SMH_UNMAP;
 			}
 			else
 			{
-				rh = MRA8_NOP;
-				wh = MWA8_UNMAP;
+				rh = SMH_NOP;
+				wh = SMH_UNMAP;
 			}
 			logerror("a000-bfff Cartridge\n");
 		}
@@ -1204,8 +1203,8 @@ void ts2068_update_memory(void)
 	{
 		memory_set_bankptr(6, mess_ram + 0x6000);
 		memory_set_bankptr(14, mess_ram + 0x6000);
-		rh = MRA8_BANK6;
-		wh = MWA8_BANK14;
+		rh = SMH_BANK6;
+		wh = SMH_BANK14;
 		logerror("a000-bfff RAM\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, rh);
@@ -1216,8 +1215,8 @@ void ts2068_update_memory(void)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(7, ExROM);
-			rh = MRA8_BANK7;
-			wh = MWA8_UNMAP;
+			rh = SMH_BANK7;
+			wh = SMH_UNMAP;
 			logerror("c000-dfff EXROM\n");
 		}
 		else
@@ -1225,16 +1224,16 @@ void ts2068_update_memory(void)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(7, DOCK+0xc000);
-				rh = MRA8_BANK7;
+				rh = SMH_BANK7;
 				if (timex_cart_chunks&0x40)
-					wh = MWA8_BANK15;
+					wh = SMH_BANK15;
 				else
-					wh = MWA8_UNMAP;
+					wh = SMH_UNMAP;
 			}
 			else
 			{
-				rh = MRA8_NOP;
-				wh = MWA8_UNMAP;
+				rh = SMH_NOP;
+				wh = SMH_UNMAP;
 			}
 			logerror("c000-dfff Cartridge\n");
 		}
@@ -1243,8 +1242,8 @@ void ts2068_update_memory(void)
 	{
 		memory_set_bankptr(7, mess_ram + 0x8000);
 		memory_set_bankptr(15, mess_ram + 0x8000);
-		rh = MRA8_BANK7;
-		wh = MWA8_BANK15;
+		rh = SMH_BANK7;
+		wh = SMH_BANK15;
 		logerror("c000-dfff RAM\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, rh);
@@ -1255,8 +1254,8 @@ void ts2068_update_memory(void)
 		if (ts2068_port_ff_data & 0x80)
 		{
 			memory_set_bankptr(8, ExROM);
-			rh = MRA8_BANK8;
-			wh = MWA8_UNMAP;
+			rh = SMH_BANK8;
+			wh = SMH_UNMAP;
 			logerror("e000-ffff EXROM\n");
 		}
 		else
@@ -1264,16 +1263,16 @@ void ts2068_update_memory(void)
 			if (timex_cart_type == TIMEX_CART_DOCK)
 			{
 				memory_set_bankptr(8, DOCK+0xe000);
-				rh = MRA8_BANK8;
+				rh = SMH_BANK8;
 				if (timex_cart_chunks&0x80)
-					wh = MWA8_BANK16;
+					wh = SMH_BANK16;
 				else
-					wh = MWA8_UNMAP;
+					wh = SMH_UNMAP;
 			}
 			else
 			{
-				rh = MRA8_NOP;
-				wh = MWA8_UNMAP;
+				rh = SMH_NOP;
+				wh = SMH_UNMAP;
 			}
 			logerror("e000-ffff Cartridge\n");
 		}
@@ -1282,8 +1281,8 @@ void ts2068_update_memory(void)
 	{
 		memory_set_bankptr(8, mess_ram + 0xa000);
 		memory_set_bankptr(16, mess_ram + 0xa000);
-		rh = MRA8_BANK8;
-		wh = MWA8_BANK16;
+		rh = SMH_BANK8;
+		wh = SMH_BANK16;
 		logerror("e000-ffff RAM\n");
 	}
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, rh);
@@ -1296,14 +1295,14 @@ static ADDRESS_MAP_START (ts2068_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (ts2068_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x1fff) AM_READWRITE( MRA8_BANK1, MWA8_BANK9 )
-	AM_RANGE(0x2000, 0x3fff) AM_READWRITE( MRA8_BANK2, MWA8_BANK10 )
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE( MRA8_BANK3, MWA8_BANK11 )
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE( MRA8_BANK4, MWA8_BANK12 )
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( MRA8_BANK5, MWA8_BANK13 )
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( MRA8_BANK6, MWA8_BANK14 )
-	AM_RANGE(0xc000, 0xdfff) AM_READWRITE( MRA8_BANK7, MWA8_BANK15 )
-	AM_RANGE(0xe000, 0xffff) AM_READWRITE( MRA8_BANK8, MWA8_BANK16 )
+	AM_RANGE(0x0000, 0x1fff) AM_READWRITE( SMH_BANK1, SMH_BANK9 )
+	AM_RANGE(0x2000, 0x3fff) AM_READWRITE( SMH_BANK2, SMH_BANK10 )
+	AM_RANGE(0x4000, 0x5fff) AM_READWRITE( SMH_BANK3, SMH_BANK11 )
+	AM_RANGE(0x6000, 0x7fff) AM_READWRITE( SMH_BANK4, SMH_BANK12 )
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( SMH_BANK5, SMH_BANK13 )
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( SMH_BANK6, SMH_BANK14 )
+	AM_RANGE(0xc000, 0xdfff) AM_READWRITE( SMH_BANK7, SMH_BANK15 )
+	AM_RANGE(0xe000, 0xffff) AM_READWRITE( SMH_BANK8, SMH_BANK16 )
 ADDRESS_MAP_END
 
 
@@ -1330,13 +1329,13 @@ static void tc2048_port_ff_w(int offset, int data)
 static  READ8_HANDLER ( tc2048_port_r )
 {
 		if ((offset & 1)==0)
-				return spectrum_port_fe_r(offset);
+				return spectrum_port_fe_r(machine, offset);
 		switch (offset & 0xff)
 		{
-				case 0xff: return ts2068_port_ff_r(offset);
-				case 0x1f: return spectrum_port_1f_r(offset);
-				case 0x7f: return spectrum_port_7f_r(offset);
-				case 0xdf: return spectrum_port_df_r(offset);
+				case 0xff: return ts2068_port_ff_r(machine, offset);
+				case 0x1f: return spectrum_port_1f_r(machine, offset);
+				case 0x7f: return spectrum_port_7f_r(machine, offset);
+				case 0xdf: return spectrum_port_df_r(machine, offset);
 		}
 
 		logerror("Read from port: %04x\n", offset);
@@ -1346,9 +1345,9 @@ static  READ8_HANDLER ( tc2048_port_r )
 static WRITE8_HANDLER ( tc2048_port_w )
 {
 		if ((offset & 1)==0)
-				spectrum_port_fe_w(offset,data);
+				spectrum_port_fe_w(machine, offset,data);
 		else if ((offset & 0xff)==0xff)
-				tc2048_port_ff_w(offset,data);
+				tc2048_port_ff_w(offset, data);
 		else
 		{
 				logerror("Write %02x to Port: %04x\n", data, offset);
@@ -1363,7 +1362,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (tc2048_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0000, 0x3fff) AM_ROM
-	AM_RANGE( 0x4000, 0xffff) AM_READWRITE( MRA8_BANK1, MWA8_BANK2 )
+	AM_RANGE( 0x4000, 0xffff) AM_READWRITE( SMH_BANK1, SMH_BANK2 )
 ADDRESS_MAP_END
 
 static MACHINE_RESET( tc2048 )
@@ -1419,7 +1418,7 @@ static OPBASE_HANDLER(betadisk_opbase_handler)
 }
 #endif
 
-static void betadisk_wd179x_callback(wd17xx_state_t state, void *param)
+static void betadisk_wd179x_callback(running_machine *machine, wd17xx_state_t state, void *param)
 {
 	switch (state)
 	{
@@ -1480,11 +1479,11 @@ static  READ8_HANDLER(betadisk_r)
 }
 #endif
 
-static void	 betadisk_init(void)
+static void	 betadisk_init(running_machine *machine)
 {
 	betadisk_active = 0;
 	betadisk_status = 0x03f;
-	wd17xx_init(WD_TYPE_179X, betadisk_wd179x_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_179X, betadisk_wd179x_callback, NULL);
 }
 
 /****************************************************************************************************/
@@ -1521,8 +1520,8 @@ static void scorpion_update_memory(void)
 {
 	unsigned char *ChosenROM;
 	int ROMSelection;
-	read8_handler rh;
-	write8_handler wh;
+	read8_machine_func rh;
+	write8_machine_func wh;
 
 	if (spectrum_128_port_7ffd_data & 8)
 	{
@@ -1555,8 +1554,8 @@ static void scorpion_update_memory(void)
 		logerror("RAM at 0x0000\n");
 
 		/* connect page 0 of ram to 0x0000 */
-		rh = MRA8_BANK1;
-		wh = MWA8_BANK5;
+		rh = SMH_BANK1;
+		wh = SMH_BANK5;
 		memory_set_bankptr(1, spectrum_ram+(8<<14));
 		memory_set_bankptr(5, spectrum_ram+(8<<14));
 	}
@@ -1566,8 +1565,8 @@ static void scorpion_update_memory(void)
 		logerror("ROM at 0x0000\n");
 
 		/* connect page 0 of rom to 0x0000 */
-		rh = MRA8_BANK1;
-		wh = MWA8_NOP;
+		rh = SMH_BANK1;
+		wh = SMH_NOP;
 
 		if (scorpion_256_port_1ffd_data & (1<<1))
 		{
@@ -1627,7 +1626,7 @@ static  READ8_HANDLER(scorpion_port_r)
 {
 	 if ((offset & 1)==0)
 	 {
-		 return spectrum_port_fe_r(offset);
+		 return spectrum_port_fe_r(machine, offset);
 	 }
 
 	 /* KT: the following is not decoded exactly, need to check what
@@ -1636,23 +1635,23 @@ static  READ8_HANDLER(scorpion_port_r)
 	 {
 		 switch ((offset>>8) & 0xff)
 		 {
-				case 0xff: return spectrum_128_port_fffd_r(offset);
-				case 0x1f: return spectrum_port_1f_r(offset);
-				case 0x7f: return spectrum_port_7f_r(offset);
-				case 0xdf: return spectrum_port_df_r(offset);
+				case 0xff: return spectrum_128_port_fffd_r(machine, offset);
+				case 0x1f: return spectrum_port_1f_r(machine, offset);
+				case 0x7f: return spectrum_port_7f_r(machine, offset);
+				case 0xdf: return spectrum_port_df_r(machine, offset);
 		 }
 	 }
 #if 0
 	 switch (offset & 0x0ff)
 	 {
 		case 0x01f:
-			return wd17xx_status_r(offset);
+			return wd17xx_status_r(machine, offset);
 		case 0x03f:
-			return wd17xx_track_r(offset);
+			return wd17xx_track_r(machine, offset);
 		case 0x05f:
-			return wd17xx_sector_r(offset);
+			return wd17xx_sector_r(machine, offset);
 		case 0x07f:
-			return wd17xx_data_r(offset);
+			return wd17xx_data_r(machine, offset);
 		case 0x0ff:
 			return betadisk_status;
 	 }
@@ -1668,23 +1667,23 @@ static  READ8_HANDLER(scorpion_port_r)
 static WRITE8_HANDLER(scorpion_port_w)
 {
 	if ((offset & 1)==0)
-		spectrum_port_fe_w(offset,data);
+		spectrum_port_fe_w(machine, offset, data);
 
 	else if ((offset & 2)==0)
 	{
 			switch ((offset>>8) & 0xf0)
 			{
 				case 0x70:
-						scorpion_port_7ffd_w(offset, data);
+						scorpion_port_7ffd_w(machine, offset, data);
 						break;
 				case 0xb0:
-						spectrum_128_port_bffd_w(offset, data);
+						spectrum_128_port_bffd_w(machine, offset, data);
 						break;
 				case 0xf0:
-						spectrum_128_port_fffd_w(offset, data);
+						spectrum_128_port_fffd_w(machine, offset, data);
 						break;
 				case 0x10:
-						scorpion_port_1ffd_w(offset, data);
+						scorpion_port_1ffd_w(machine, offset, data);
 						break;
 				default:
 						logerror("Write %02x to scorpion port: %04x\n", data, offset);
@@ -1721,7 +1720,7 @@ static MACHINE_RESET( scorpion )
 
 	scorpion_update_memory();
 
-	betadisk_init();
+	betadisk_init(machine);
 }
 
 /****************************************************************************************************/
@@ -1757,7 +1756,7 @@ static MACHINE_RESET( pentagon )
 	memory_set_bankptr(3, spectrum_ram + (2<<14));
 	memory_set_bankptr(7, spectrum_ram + (2<<14));
 
-	betadisk_init();
+	betadisk_init(machine);
 }
 
 /****************************************************************************************************/
@@ -1912,42 +1911,57 @@ static INPUT_PORTS_START( spectrum )
 
 INPUT_PORTS_END
 
-static const unsigned char spectrum_palette[16*3] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0xbf,
-	0xbf, 0x00, 0x00, 0xbf, 0x00, 0xbf,
-	0x00, 0xbf, 0x00, 0x00, 0xbf, 0xbf,
-	0xbf, 0xbf, 0x00, 0xbf, 0xbf, 0xbf,
+#define ZX_COL_0	MAKE_RGB(0x00, 0x00, 0x00)
+#define ZX_COL_1	MAKE_RGB(0x00, 0x00, 0xbf)
+#define ZX_COL_2	MAKE_RGB(0xbf, 0x00, 0x00) 
+#define ZX_COL_3	MAKE_RGB(0xbf, 0x00, 0xbf)
+#define ZX_COL_4	MAKE_RGB(0x00, 0xbf, 0x00) 
+#define ZX_COL_5	MAKE_RGB(0x00, 0xbf, 0xbf)
+#define ZX_COL_6	MAKE_RGB(0xbf, 0xbf, 0x00) 
+#define ZX_COL_7	MAKE_RGB(0xbf, 0xbf, 0xbf)
+#define ZX_COL_8	MAKE_RGB(0x00, 0x00, 0x00)
+#define ZX_COL_9	MAKE_RGB(0x00, 0x00, 0xff)
+#define ZX_COL_A	MAKE_RGB(0xff, 0x00, 0x00)
+#define ZX_COL_B	MAKE_RGB(0xff, 0x00, 0xff)
+#define ZX_COL_C	MAKE_RGB(0x00, 0xff, 0x00)
+#define ZX_COL_D	MAKE_RGB(0x00, 0xff, 0xff)
+#define ZX_COL_E	MAKE_RGB(0xff, 0xff, 0x00)
+#define ZX_COL_F	MAKE_RGB(0xff, 0xff, 0xff)
 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
-	0xff, 0x00, 0x00, 0xff, 0x00, 0xff,
-	0x00, 0xff, 0x00, 0x00, 0xff, 0xff,
-	0xff, 0xff, 0x00, 0xff, 0xff, 0xff,
+const rgb_t spectrum_palette[256 + 16] = {
+	ZX_COL_0,ZX_COL_1,ZX_COL_2,ZX_COL_3,ZX_COL_4,ZX_COL_5,ZX_COL_6,ZX_COL_7,ZX_COL_8,ZX_COL_9,ZX_COL_A,ZX_COL_B,ZX_COL_C,ZX_COL_D,ZX_COL_E,ZX_COL_F,
+	
+	ZX_COL_0,ZX_COL_0,ZX_COL_0,ZX_COL_1,ZX_COL_0,ZX_COL_2,ZX_COL_0,ZX_COL_3,ZX_COL_0,ZX_COL_4,ZX_COL_0,ZX_COL_5,ZX_COL_0,ZX_COL_6,ZX_COL_0,ZX_COL_7,
+	ZX_COL_1,ZX_COL_0,ZX_COL_1,ZX_COL_1,ZX_COL_1,ZX_COL_2,ZX_COL_1,ZX_COL_3,ZX_COL_1,ZX_COL_4,ZX_COL_1,ZX_COL_5,ZX_COL_1,ZX_COL_6,ZX_COL_1,ZX_COL_7,
+	ZX_COL_2,ZX_COL_0,ZX_COL_2,ZX_COL_1,ZX_COL_2,ZX_COL_2,ZX_COL_2,ZX_COL_3,ZX_COL_2,ZX_COL_4,ZX_COL_2,ZX_COL_5,ZX_COL_2,ZX_COL_6,ZX_COL_2,ZX_COL_7,	
+	ZX_COL_3,ZX_COL_0,ZX_COL_3,ZX_COL_1,ZX_COL_3,ZX_COL_2,ZX_COL_3,ZX_COL_3,ZX_COL_3,ZX_COL_4,ZX_COL_3,ZX_COL_5,ZX_COL_3,ZX_COL_6,ZX_COL_3,ZX_COL_7,	
+	ZX_COL_4,ZX_COL_0,ZX_COL_4,ZX_COL_1,ZX_COL_4,ZX_COL_2,ZX_COL_4,ZX_COL_3,ZX_COL_4,ZX_COL_4,ZX_COL_4,ZX_COL_5,ZX_COL_4,ZX_COL_6,ZX_COL_4,ZX_COL_7,	
+	ZX_COL_5,ZX_COL_0,ZX_COL_5,ZX_COL_1,ZX_COL_5,ZX_COL_2,ZX_COL_5,ZX_COL_3,ZX_COL_5,ZX_COL_4,ZX_COL_5,ZX_COL_5,ZX_COL_5,ZX_COL_6,ZX_COL_5,ZX_COL_7,
+	ZX_COL_6,ZX_COL_0,ZX_COL_6,ZX_COL_1,ZX_COL_6,ZX_COL_2,ZX_COL_6,ZX_COL_3,ZX_COL_6,ZX_COL_4,ZX_COL_6,ZX_COL_5,ZX_COL_6,ZX_COL_6,ZX_COL_6,ZX_COL_7,
+	ZX_COL_7,ZX_COL_0,ZX_COL_7,ZX_COL_1,ZX_COL_7,ZX_COL_2,ZX_COL_7,ZX_COL_3,ZX_COL_7,ZX_COL_4,ZX_COL_7,ZX_COL_5,ZX_COL_7,ZX_COL_6,ZX_COL_7,ZX_COL_7,	
+	ZX_COL_8,ZX_COL_8,ZX_COL_8,ZX_COL_9,ZX_COL_8,ZX_COL_A,ZX_COL_8,ZX_COL_B,ZX_COL_8,ZX_COL_C,ZX_COL_8,ZX_COL_D,ZX_COL_8,ZX_COL_E,ZX_COL_8,ZX_COL_F,
+	ZX_COL_9,ZX_COL_8,ZX_COL_9,ZX_COL_9,ZX_COL_9,ZX_COL_A,ZX_COL_9,ZX_COL_B,ZX_COL_9,ZX_COL_C,ZX_COL_9,ZX_COL_D,ZX_COL_9,ZX_COL_E,ZX_COL_9,ZX_COL_F,
+	ZX_COL_A,ZX_COL_8,ZX_COL_A,ZX_COL_9,ZX_COL_A,ZX_COL_A,ZX_COL_A,ZX_COL_B,ZX_COL_A,ZX_COL_C,ZX_COL_A,ZX_COL_D,ZX_COL_A,ZX_COL_E,ZX_COL_A,ZX_COL_F,	
+	ZX_COL_B,ZX_COL_8,ZX_COL_B,ZX_COL_9,ZX_COL_B,ZX_COL_A,ZX_COL_B,ZX_COL_B,ZX_COL_B,ZX_COL_C,ZX_COL_B,ZX_COL_D,ZX_COL_B,ZX_COL_E,ZX_COL_B,ZX_COL_F,	
+	ZX_COL_C,ZX_COL_8,ZX_COL_C,ZX_COL_9,ZX_COL_C,ZX_COL_A,ZX_COL_C,ZX_COL_B,ZX_COL_C,ZX_COL_C,ZX_COL_C,ZX_COL_D,ZX_COL_C,ZX_COL_E,ZX_COL_C,ZX_COL_F,	
+	ZX_COL_D,ZX_COL_8,ZX_COL_D,ZX_COL_9,ZX_COL_D,ZX_COL_A,ZX_COL_D,ZX_COL_B,ZX_COL_D,ZX_COL_C,ZX_COL_D,ZX_COL_D,ZX_COL_D,ZX_COL_E,ZX_COL_D,ZX_COL_F,
+	ZX_COL_E,ZX_COL_8,ZX_COL_E,ZX_COL_9,ZX_COL_E,ZX_COL_A,ZX_COL_E,ZX_COL_B,ZX_COL_E,ZX_COL_C,ZX_COL_E,ZX_COL_D,ZX_COL_E,ZX_COL_E,ZX_COL_E,ZX_COL_F,
+	ZX_COL_F,ZX_COL_8,ZX_COL_F,ZX_COL_9,ZX_COL_F,ZX_COL_A,ZX_COL_F,ZX_COL_B,ZX_COL_F,ZX_COL_C,ZX_COL_F,ZX_COL_D,ZX_COL_F,ZX_COL_E,ZX_COL_F,ZX_COL_F
+	};
+
+const rgb_t spectrum_128_palette[16] = {
+	ZX_COL_0,ZX_COL_1,ZX_COL_2,ZX_COL_3,ZX_COL_4,ZX_COL_5,ZX_COL_6,ZX_COL_7,ZX_COL_8,ZX_COL_9,ZX_COL_A,ZX_COL_B,ZX_COL_C,ZX_COL_D,ZX_COL_E,ZX_COL_F
 };
 
-static const unsigned short spectrum_colortable[128*2] = {
-	0,0, 0,1, 0,2, 0,3, 0,4, 0,5, 0,6, 0,7,
-	1,0, 1,1, 1,2, 1,3, 1,4, 1,5, 1,6, 1,7,
-	2,0, 2,1, 2,2, 2,3, 2,4, 2,5, 2,6, 2,7,
-	3,0, 3,1, 3,2, 3,3, 3,4, 3,5, 3,6, 3,7,
-	4,0, 4,1, 4,2, 4,3, 4,4, 4,5, 4,6, 4,7,
-	5,0, 5,1, 5,2, 5,3, 5,4, 5,5, 5,6, 5,7,
-	6,0, 6,1, 6,2, 6,3, 6,4, 6,5, 6,6, 6,7,
-	7,0, 7,1, 7,2, 7,3, 7,4, 7,5, 7,6, 7,7,
-
-	 8,8,  8,9,  8,10,	8,11,  8,12,  8,13,  8,14,	8,15,
-	 9,8,  9,9,  9,10,	9,11,  9,12,  9,13,  9,14,	9,15,
-	10,8, 10,9, 10,10, 10,11, 10,12, 10,13, 10,14, 10,15,
-	11,8, 11,9, 11,10, 11,11, 11,12, 11,13, 11,14, 11,15,
-	12,8, 12,9, 12,10, 12,11, 12,12, 12,13, 12,14, 12,15,
-	13,8, 13,9, 13,10, 13,11, 13,12, 13,13, 13,14, 13,15,
-	14,8, 14,9, 14,10, 14,11, 14,12, 14,13, 14,14, 14,15,
-	15,8, 15,9, 15,10, 15,11, 15,12, 15,13, 15,14, 15,15
-};
 /* Initialise the palette */
 static PALETTE_INIT( spectrum )
 {
-	palette_set_colors_rgb(machine, 0, spectrum_palette, sizeof(spectrum_palette) / 3);
-	memcpy(colortable, spectrum_colortable, sizeof(spectrum_colortable));
+	palette_set_colors(machine, 0, spectrum_palette, ARRAY_LENGTH(spectrum_palette));
+}
+
+static PALETTE_INIT( spectrum_128 )
+{	
+	palette_set_colors(machine, 0, spectrum_128_palette, ARRAY_LENGTH(spectrum_128_palette));
 }
 
 static INTERRUPT_GEN( spec_interrupt )
@@ -1962,21 +1976,20 @@ static MACHINE_DRIVER_START( spectrum )
 	MDRV_CPU_ADD_TAG("main", Z80, 3500000)        /* 3.5 Mhz */
 	MDRV_CPU_PROGRAM_MAP(spectrum_mem, 0)
 	MDRV_CPU_IO_MAP(spectrum_io, 0)
-	MDRV_CPU_VBLANK_INT(spec_interrupt,1)
-	MDRV_SCREEN_REFRESH_RATE(50.08)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", spec_interrupt)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( spectrum )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50.08)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(SPEC_SCREEN_WIDTH, SPEC_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, SPEC_SCREEN_WIDTH-1, 0, SPEC_SCREEN_HEIGHT-1)
 	MDRV_GFXDECODE( spectrum )
-	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(256)
+	MDRV_PALETTE_LENGTH(256 + 16)
 	MDRV_PALETTE_INIT( spectrum )
 
 	MDRV_VIDEO_START( spectrum )
@@ -1998,11 +2011,14 @@ static MACHINE_DRIVER_START( spectrum_128 )
 	MDRV_CPU_REPLACE("main", Z80, 3500000)        /* 3.5 Mhz */
 	MDRV_CPU_PROGRAM_MAP(spectrum_128_mem, 0)
 	MDRV_CPU_IO_MAP(spectrum_128_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(50.021)
 
 	MDRV_MACHINE_RESET( spectrum_128 )
 
     /* video hardware */
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_PALETTE_LENGTH(16)
+	MDRV_PALETTE_INIT( spectrum_128 )
+	MDRV_SCREEN_REFRESH_RATE(50.021)
 	MDRV_VIDEO_START( spectrum_128 )
 	MDRV_VIDEO_UPDATE( spectrum_128 )
 
@@ -2017,6 +2033,7 @@ static MACHINE_DRIVER_START( spectrum_plus3 )
 	MDRV_IMPORT_FROM( spectrum_128 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(spectrum_plus3_io, 0)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50.01)
 
 	MDRV_MACHINE_RESET( spectrum_plus3 )
@@ -2028,12 +2045,12 @@ static MACHINE_DRIVER_START( ts2068 )
 	MDRV_CPU_REPLACE("main", Z80, 3580000)        /* 3.58 Mhz */
 	MDRV_CPU_PROGRAM_MAP(ts2068_mem, 0)
 	MDRV_CPU_IO_MAP(ts2068_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(60)
 
 	MDRV_MACHINE_RESET( ts2068 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(TS2068_SCREEN_WIDTH, TS2068_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, TS2068_SCREEN_WIDTH-1, 0, TS2068_SCREEN_HEIGHT-1)
@@ -2045,6 +2062,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( uk2086 )
 	MDRV_IMPORT_FROM( ts2068 )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
@@ -2054,12 +2072,13 @@ static MACHINE_DRIVER_START( tc2048 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(tc2048_mem, 0)
 	MDRV_CPU_IO_MAP(tc2048_io, 0)
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 
 	MDRV_MACHINE_RESET( tc2048 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(TS2068_SCREEN_WIDTH, SPEC_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, TS2068_SCREEN_WIDTH-1, 0, SPEC_SCREEN_HEIGHT-1)
@@ -2259,44 +2278,44 @@ ROM_START(pentagon)
 	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-static void spectrum_common_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void spectrum_common_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:				info->i = 1; break;
-		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:	info->i = CASSETTE_PLAY | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_DISABLED; break;
-		case DEVINFO_PTR_CASSETTE_FORMATS:		info->p = (void *)tzx_cassette_formats; break;
+		case MESS_DEVINFO_INT_COUNT:				info->i = 1; break;
+		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:	info->i = CASSETTE_PLAY | CASSETTE_SPEAKER_ENABLED | CASSETTE_MOTOR_DISABLED; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:		info->p = (void *)tzx_cassette_formats; break;
 		default:					cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void spectrum_common_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void spectrum_common_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sna,z80,sp"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sna,z80,sp"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_spectrum; break;
+		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_spectrum; break;
 
 		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void spectrum_common_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void spectrum_common_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "scr"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "scr"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_spectrum; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_spectrum; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
@@ -2313,13 +2332,13 @@ SYSTEM_CONFIG_START(spectrum)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 SYSTEM_CONFIG_END
 
-static void specpls3_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void specpls3_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		default:										legacydsk_device_getinfo(devclass, state, info); break;
 	}
@@ -2330,20 +2349,20 @@ SYSTEM_CONFIG_START(specpls3)
 	CONFIG_DEVICE(specpls3_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-static void ts2068_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ts2068_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_timex_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_timex_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_timex_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_timex_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dck"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dck"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}

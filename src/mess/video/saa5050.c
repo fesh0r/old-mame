@@ -9,9 +9,6 @@
 #include "driver.h"
 #include "saa5050.h"
 
-/* TODO: Remove dependency on this */
-#include "mslegacy.h"
-
 static INT8 frame_count;
 
 #define SAA5050_DBLHI	0x0001
@@ -70,12 +67,12 @@ static const gfx_layout saa5050_lolayout =
 };
 
 static GFXDECODE_START( saa5050 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_charlayout, 0, 128 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_hilayout, 0, 128 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_lolayout, 0, 128 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_charlayout, 0, 64 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_hilayout, 0, 64 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, saa5050_lolayout, 0, 64 )
 GFXDECODE_END
 
-static const UINT8 saa5050_palette[8 * 3] =
+static const UINT8 saa5050_colors[8 * 3] =
 {
 	0x00, 0x00, 0x00,	/* black */
 	0xff, 0x00, 0x00,	/* red */
@@ -87,7 +84,7 @@ static const UINT8 saa5050_palette[8 * 3] =
 	0xff, 0xff, 0xff	/* white */
 };
 
-static const UINT16 saa5050_colortable[64 * 2] =	/* bgnd, fgnd */
+static const UINT16 saa5050_palette[64 * 2] =	/* bgnd, fgnd */
 {
 	0,1, 0,1, 0,2, 0,3, 0,4, 0,5, 0,6, 0,7,
 	1,0, 1,1, 1,2, 1,3, 1,4, 1,5, 1,6, 1,7,
@@ -101,14 +98,23 @@ static const UINT16 saa5050_colortable[64 * 2] =	/* bgnd, fgnd */
 
 static PALETTE_INIT( saa5050 )
 {
-	palette_set_colors_rgb(machine, 0, saa5050_palette, sizeof(saa5050_palette) / 3);
-	memcpy(colortable, saa5050_colortable, sizeof (saa5050_colortable));
+	UINT8 i, r, g, b;
+
+	machine->colortable = colortable_alloc(machine, 8);
+
+	for ( i = 0; i < 8; i++ )
+	{
+		r = saa5050_colors[i*3]; g = saa5050_colors[i*3+1]; b = saa5050_colors[i*3+2];
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
+	}
+
+	for(i=0; i<128; i++)
+		colortable_entry_set_value(machine->colortable, i, saa5050_palette[i]);
 }
 
 static VIDEO_START( saa5050 )
 {
 	frame_count = 0;
-	VIDEO_START_CALL(generic);
 }
 
 #ifdef UNUSED_FUNCTION
@@ -219,15 +225,15 @@ static VIDEO_UPDATE( saa5050 )
 				colour = saa5050_state.saa5050_forecol | (saa5050_state.saa5050_backcol << 3);
 			if (saa5050_state.saa5050_flags & SAA5050_DBLHI)
 			{
-				drawgfx (bitmap, machine->gfx[1], code, colour, 0, 0,
-					sx * 6, sy * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
-				drawgfx (bitmap, machine->gfx[2], code, colour, 0, 0,
-					sx * 6, (sy + 1) * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+				drawgfx (bitmap, screen->machine->gfx[1], code, colour, 0, 0,
+					sx * 6, sy * 10, NULL, TRANSPARENCY_NONE, 0);
+				drawgfx (bitmap, screen->machine->gfx[2], code, colour, 0, 0,
+					sx * 6, (sy + 1) * 10, NULL, TRANSPARENCY_NONE, 0);
 			}
 			else
 			{
-				drawgfx (bitmap, machine->gfx[0], code, colour, 0, 0,
-					sx * 6, sy * 10, &machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+				drawgfx (bitmap, screen->machine->gfx[0], code, colour, 0, 0,
+					sx * 6, sy * 10, NULL, TRANSPARENCY_NONE, 0);
 			}
 		}
 		if (saa5050_state.saa5050_flags & SAA5050_DBLHI)
@@ -240,17 +246,16 @@ static VIDEO_UPDATE( saa5050 )
 }
 
 MACHINE_DRIVER_START( vh_saa5050 )
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(SAA5050_VBLANK))
 	MDRV_INTERLEAVE(1)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40 * 6, 24 * 10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 6 - 1, 0, 24 * 10 - 1)
 	MDRV_GFXDECODE( saa5050 )
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(128)
+	MDRV_PALETTE_LENGTH(128)
 	MDRV_PALETTE_INIT(saa5050)
 
 	MDRV_VIDEO_START(saa5050)

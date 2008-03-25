@@ -47,6 +47,7 @@
 #include "machine/ncr5380.h"
 #include "includes/mac.h"
 
+
 #ifdef MAME_DEBUG
 #define LOG_VIA			0
 #define LOG_RTC			0
@@ -106,14 +107,14 @@ static void mac_install_memory(offs_t memory_begin, offs_t memory_end,
 	offs_t memory_size, void *memory_data, int is_rom, int bank)
 {
 	offs_t memory_mask;
-	read16_handler rh;
-	write16_handler wh;
+	read16_machine_func rh;
+	write16_machine_func wh;
 
 	memory_size = MIN(memory_size, (memory_end + 1 - memory_begin));
 	memory_mask = memory_size - 1;
 
-	rh = (read16_handler) (FPTR)bank;
-	wh = is_rom ? MWA16_UNMAP : (write16_handler) (FPTR)bank;
+	rh = (read16_machine_func) (FPTR)bank;
+	wh = is_rom ? SMH_UNMAP : (write16_machine_func) (FPTR)bank;
 
 	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, memory_begin,
 		memory_end, memory_mask, 0, rh);
@@ -137,29 +138,29 @@ static void mac_install_memory(offs_t memory_begin, offs_t memory_end,
 
 static int scc_interrupt, via_interrupt;
 
-static void mac_field_interrupts(void)
+static void mac_field_interrupts(running_machine *machine)
 {
 	if (scc_interrupt)
 		/* SCC interrupt */
-		cpunum_set_input_line(Machine, 0, 2, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, 2, ASSERT_LINE);
 	else if (via_interrupt)
 		/* VIA interrupt */
-		cpunum_set_input_line(Machine, 0, 1, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
 	else
 		/* clear all interrupts */
-		cpunum_set_input_line(Machine, 0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
-static void set_scc_interrupt(int value)
+static void set_scc_interrupt(running_machine *machine, int value)
 {
 	scc_interrupt = value;
-	mac_field_interrupts();
+	mac_field_interrupts(machine);
 }
 
-static void set_via_interrupt(int value)
+static void set_via_interrupt(running_machine *machine, int value)
 {
 	via_interrupt = value;
-	mac_field_interrupts();
+	mac_field_interrupts(machine);
 }
 
 
@@ -490,9 +491,8 @@ static void keyboard_receive(int val)
 		if (keyboard_reply == 0x7B)
 		{
 			/* if NULL, wait until key pressed or timeout */
-			timer_adjust(inquiry_timeout,
-				attotime_make(0, DOUBLE_TO_ATTOSECONDS(0.25)),
-				0, attotime_zero);
+			timer_adjust_oneshot(inquiry_timeout,
+				attotime_make(0, DOUBLE_TO_ATTOSECONDS(0.25)), 0);
 		}
 		break;
 
@@ -557,7 +557,7 @@ static void keyboard_receive(int val)
 
 static int mouse_bit_x = 0, mouse_bit_y = 0;
 
-static void mouse_callback(void)
+static void mouse_callback(running_machine *machine)
 {
 	static int	last_mx = 0, last_my = 0;
 	static int	count_x = 0, count_y = 0;
@@ -631,7 +631,7 @@ static void mouse_callback(void)
 
 	if (x_needs_update || y_needs_update)
 		/* assert Port B External Interrupt on the SCC */
-		mac_scc_mouse_irq( x_needs_update, y_needs_update );
+		mac_scc_mouse_irq( machine, x_needs_update, y_needs_update );
 }
 
 /* *************************************************************************
@@ -693,7 +693,7 @@ READ16_HANDLER ( macplus_scsi_r )
 		reg = R5380_CURDATA_DTACK;
 	}
 
-	return ncr5380_r(reg)<<8;
+	return ncr5380_r(machine, reg)<<8;
 }
 
 WRITE16_HANDLER ( macplus_scsi_w )
@@ -705,7 +705,7 @@ WRITE16_HANDLER ( macplus_scsi_w )
 		reg = R5380_OUTDATA_DTACK;
 	}
 
-	ncr5380_w(reg, data);
+	ncr5380_w(machine, reg, data);
 }
 
 /* *************************************************************************
@@ -716,12 +716,12 @@ WRITE16_HANDLER ( macplus_scsi_w )
 
 static void mac_scc_ack(void)
 {
-	set_scc_interrupt(0);
+	set_scc_interrupt(Machine, 0);
 }
 
 
 
-void mac_scc_mouse_irq( int x, int y)
+void mac_scc_mouse_irq(running_machine *machine, int x, int y)
 {
 	static int last_was_x = 0;
 
@@ -743,7 +743,7 @@ void mac_scc_mouse_irq( int x, int y)
 	}
 
 	//cpunum_set_input_line(machine, 0, 2, ASSERT_LINE);
-	set_scc_interrupt(1);
+	set_scc_interrupt(machine, 1);
 }
 
 
@@ -751,7 +751,7 @@ void mac_scc_mouse_irq( int x, int y)
 READ16_HANDLER ( mac_scc_r )
 {
 	UINT16 result;
-	result = scc_r(offset);
+	result = scc_r(machine, offset);
 	return (result << 8) | result;
 }
 
@@ -759,7 +759,7 @@ READ16_HANDLER ( mac_scc_r )
 
 WRITE16_HANDLER ( mac_scc_w )
 {
-	scc_w(offset, (UINT8) data);
+	scc_w(machine, offset, (UINT8) data);
 }
 
 
@@ -1118,7 +1118,7 @@ READ16_HANDLER ( mac_iwm_r )
 	if (LOG_MAC_IWM)
 		logerror("mac_iwm_r: offset=0x%08x\n", offset);
 
-	result = applefdc_r(offset >> 8);
+	result = applefdc_r(machine, offset >> 8);
 	return (result << 8) | result;
 }
 
@@ -1128,7 +1128,7 @@ WRITE16_HANDLER ( mac_iwm_w )
 		logerror("mac_iwm_w: offset=0x%08x data=0x%04x\n", offset, data);
 
 	if (ACCESSING_LSB)
-		applefdc_w(offset >> 8, data & 0xff);
+		applefdc_w(machine, offset >> 8, data & 0xff);
 }
 
 /* *************************************************************************
@@ -1192,7 +1192,7 @@ static READ8_HANDLER(mac_via_in_b)
 	int val = 0;
 
 	/* video beam in display (! VBLANK && ! HBLANK basically) */
-	if (video_screen_get_vpos(0) >= MAC_V_VIS)
+	if (video_screen_get_vpos(machine->primary_screen) >= MAC_V_VIS)
 		val |= 0x40;
 
 	if (has_adb())
@@ -1249,7 +1249,7 @@ static void mac_via_irq(int state)
 {
 	/* interrupt the 68k (level 1) */
 	//cpunum_set_input_line(machine, 0, 1, state);
-	set_via_interrupt(state);
+	set_via_interrupt(Machine, state);
 }
 
 READ16_HANDLER ( mac_via_r )
@@ -1261,7 +1261,7 @@ READ16_HANDLER ( mac_via_r )
 
 	if (LOG_VIA)
 		logerror("mac_via_r: offset=0x%02x\n", offset);
-	data = via_0_r(offset);
+	data = via_0_r(machine, offset);
 
 	return (data & 0xff) | (data << 8);
 }
@@ -1275,7 +1275,7 @@ WRITE16_HANDLER ( mac_via_w )
 		logerror("mac_via_w: offset=0x%02x data=0x%08x\n", offset, data);
 
 	if (ACCESSING_MSB)
-		via_0_w(offset, (data >> 8) & 0xff);
+		via_0_w(machine, offset, (data >> 8) & 0xff);
 }
 
 
@@ -1299,7 +1299,7 @@ MACHINE_RESET(mac)
 
 	/* initialize floppy */
 	{
-		static const struct applefdc_interface intf =
+		static const applefdc_interface intf =
 		{
 			APPLEFDC_IWM,
 			sony_set_lines,
@@ -1329,7 +1329,7 @@ MACHINE_RESET(mac)
 		timer_set(attotime_zero, NULL, 0, set_memory_overlay_callback);
 
 	mac_scanline_timer = timer_alloc(mac_scanline_tick, NULL);
-	timer_adjust(mac_scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_never);
+	timer_adjust_oneshot(mac_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 
@@ -1465,15 +1465,15 @@ static TIMER_CALLBACK(mac_scanline_tick)
 
 	mac_sh_updatebuffer();
 
-	scanline = video_screen_get_vpos(0);
+	scanline = video_screen_get_vpos(machine->primary_screen);
 	if (scanline == MAC_V_VIS)
 		mac_vblank_irq();
 
 	/* check for mouse changes at 10 irqs per frame */
 	if (!(scanline % 10))
-		mouse_callback();
+		mouse_callback(machine);
 
-	timer_adjust(mac_scanline_timer, video_screen_get_time_until_pos(0, (scanline+1) % MAC_V_TOTAL, 0), 0, attotime_never);
+	timer_adjust_oneshot(mac_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, (scanline+1) % MAC_V_TOTAL, 0), 0);
 
 	cpuintrf_pop_context();
 }

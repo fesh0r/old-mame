@@ -20,22 +20,22 @@ static void ide_get_params(mess_image *image, int *which_bus, int *which_address
 	device_load_handler *parent_load,
 	device_unload_handler *parent_unload)
 {
-	const device_class *devclass = &image_device(image)->devclass;
-	device_class parent_devclass;
+	const mess_device_class *devclass = &image_device(image)->devclass;
+	mess_device_class parent_devclass;
 
 	*which_bus = image_index_in_device(image);
-	*which_address = (int) device_get_info_int(devclass, DEVINFO_INT_IDEDRIVE_ADDRESS);
-	*intf = (struct ide_interface *) device_get_info_ptr(devclass, DEVINFO_PTR_IDEDRIVE_INTERFACE);
+	*which_address = (int) mess_device_get_info_int(devclass, DEVINFO_INT_IDEDRIVE_ADDRESS);
+	*intf = (struct ide_interface *) mess_device_get_info_ptr(devclass, DEVINFO_PTR_IDEDRIVE_INTERFACE);
 
 	parent_devclass = *devclass;
 	parent_devclass.get_info = harddisk_device_getinfo;
 
 	if (parent_init)
-		*parent_init = (device_init_handler) device_get_info_fct(&parent_devclass, DEVINFO_PTR_INIT);
+		*parent_init = (device_init_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_INIT);
 	if (parent_load)
-		*parent_load = (device_load_handler) device_get_info_fct(&parent_devclass, DEVINFO_PTR_LOAD);
+		*parent_load = (device_load_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_LOAD);
 	if (parent_unload)
-		*parent_unload = (device_unload_handler) device_get_info_fct(&parent_devclass, DEVINFO_PTR_UNLOAD);
+		*parent_unload = (device_unload_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_UNLOAD);
 
 	assert(*which_address == 0);
 	assert(*intf);
@@ -121,16 +121,16 @@ static void ide_hd_unload(mess_image *image)
 	ide_hd_validity_check - check this device's validity
 -------------------------------------------------*/
 
-static int ide_hd_validity_check(const device_class *devclass)
+static int ide_hd_validity_check(const mess_device_class *devclass)
 {
 	int error = 0;
 	int which_address;
 	INT64 count;
 	struct ide_interface *intf;
 
-	which_address = (int) device_get_info_int(devclass, DEVINFO_INT_IDEDRIVE_ADDRESS);
-	intf = (struct ide_interface *) device_get_info_ptr(devclass, DEVINFO_PTR_IDEDRIVE_INTERFACE);
-	count = device_get_info_int(devclass, DEVINFO_INT_COUNT);
+	which_address = (int) mess_device_get_info_int(devclass, DEVINFO_INT_IDEDRIVE_ADDRESS);
+	intf = (struct ide_interface *) mess_device_get_info_ptr(devclass, DEVINFO_PTR_IDEDRIVE_INTERFACE);
+	count = mess_device_get_info_int(devclass, MESS_DEVINFO_INT_COUNT);
 
 	if (which_address != 0)
 	{
@@ -159,20 +159,20 @@ static int ide_hd_validity_check(const device_class *devclass)
 	ide_harddisk_device_getinfo - Get info proc
 -------------------------------------------------*/
 
-void ide_harddisk_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void ide_harddisk_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:					info->init = ide_hd_init; break;
-		case DEVINFO_PTR_LOAD:					info->load = ide_hd_load; break;
-		case DEVINFO_PTR_UNLOAD:				info->unload = ide_hd_unload; break;
-		case DEVINFO_PTR_VALIDITY_CHECK:		info->validity_check = ide_hd_validity_check; break;
+		case MESS_DEVINFO_PTR_INIT:					info->init = ide_hd_init; break;
+		case MESS_DEVINFO_PTR_LOAD:					info->load = ide_hd_load; break;
+		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = ide_hd_unload; break;
+		case MESS_DEVINFO_PTR_VALIDITY_CHECK:		info->validity_check = ide_hd_validity_check; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME:					strcpy(info->s = device_temp_str(), "ideharddrive"); break;
-		case DEVINFO_STR_SHORT_NAME:			strcpy(info->s = device_temp_str(), "idehd"); break;
-		case DEVINFO_STR_DESCRIPTION:			strcpy(info->s = device_temp_str(), "IDE Hard Disk"); break;
+		case MESS_DEVINFO_STR_NAME:					strcpy(info->s = device_temp_str(), "ideharddrive"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME:			strcpy(info->s = device_temp_str(), "idehd"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION:			strcpy(info->s = device_temp_str(), "IDE Hard Disk"); break;
 
 		default: harddisk_device_getinfo(devclass, state, info); break;
 	}

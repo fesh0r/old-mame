@@ -3,9 +3,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
-#include "mslegacy.h"
-
 #include "includes/ssystem3.h"
 
 UINT8 ssystem3_led[5]= {0};
@@ -17,33 +14,24 @@ static const unsigned char ssystem3_palette[] =
 	0,12,12
 };
 
-static const unsigned short ssystem3_colortable[1][2] = {
-	{ 0, 1 },
-};
 
 PALETTE_INIT( ssystem3 )
 {
-	palette_set_colors_rgb(machine, 0, ssystem3_palette, sizeof(ssystem3_palette) / 3);
-	memcpy(colortable,ssystem3_colortable,sizeof(ssystem3_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(ssystem3_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, ssystem3_palette[i*3], ssystem3_palette[i*3+1], ssystem3_palette[i*3+2]);
+	}
 }
+
 
 VIDEO_START( ssystem3 )
 {
 	// artwork seams to need this
     videoram_size = 6 * 2 + 24;
     videoram = (UINT8*) auto_malloc (videoram_size);
-
-#if 0
-	{
-		char backdrop_name[200];
-	    /* try to load a backdrop for the machine */
-		sprintf (backdrop_name, "%s.png", machine->gamedrv->name);
-		backdrop_load(backdrop_name, 3);
-	}
-#endif
-
-	VIDEO_START_CALL(generic);
 }
+
 
 static const char led[]={
 	"    aaaaaaaaaaaa\r"
@@ -74,7 +62,7 @@ static const char led[]={
     "  dddddddddddd"
 };
 
-static void ssystem3_draw_7segment(mame_bitmap *bitmap,int value, int x, int y)
+static void ssystem3_draw_7segment(running_machine *machine, bitmap_t *bitmap,int value, int x, int y)
 {
 	int i, xi, yi, mask, color;
 
@@ -95,7 +83,7 @@ static void ssystem3_draw_7segment(mame_bitmap *bitmap,int value, int x, int y)
 		}
 
 		if (mask!=0) {
-			color=Machine->pens[(value&mask)?1:0];
+			color=machine->pens[(value&mask)?1:0];
 			*BITMAP_ADDR16(bitmap, y+yi, x+xi) = color;
 		}
 		if (led[i]!='\r') xi++;
@@ -153,7 +141,7 @@ static const char single_led[]=
 " 55555555   55555555          000000   000000   00   00   00  00         000000      00     00  00    00   0000000"
 ;
 
-static void ssystem3_draw_led(mame_bitmap *bitmap,INT16 color, int x, int y, int ch)
+static void ssystem3_draw_led(bitmap_t *bitmap,INT16 color, int x, int y, int ch)
 {
 	int j, xi=0;
 	for (j=0; single_led[j]; j++) {
@@ -180,23 +168,23 @@ VIDEO_UPDATE( ssystem3 )
 	int i;
 
 	for (i=0; i<4; i++) {
-		ssystem3_draw_7segment(bitmap, ssystem3_led[i]&0x7f, ssystem3_led_pos[i].x,
+		ssystem3_draw_7segment(screen->machine, bitmap, ssystem3_led[i]&0x7f, ssystem3_led_pos[i].x,
 							   ssystem3_led_pos[i].y);
 	}
 
-	ssystem3_draw_led(bitmap, machine->pens[ssystem3_led[4]&8?1:0],
+	ssystem3_draw_led(bitmap, screen->machine->pens[ssystem3_led[4]&8?1:0],
 				 ssystem3_led_pos[4].x, ssystem3_led_pos[4].y, '0');
-	ssystem3_draw_led(bitmap, machine->pens[ssystem3_led[4]&8?1:0],
+	ssystem3_draw_led(bitmap, screen->machine->pens[ssystem3_led[4]&8?1:0],
 				 ssystem3_led_pos[4].x, ssystem3_led_pos[4].y, '1');
-	ssystem3_draw_led(bitmap, machine->pens[ssystem3_led[4]&8?1:0],
+	ssystem3_draw_led(bitmap, screen->machine->pens[ssystem3_led[4]&8?1:0],
 				 ssystem3_led_pos[4].x, ssystem3_led_pos[4].y, '2');
-	ssystem3_draw_led(bitmap, machine->pens[ssystem3_led[4]&8?1:0],
+	ssystem3_draw_led(bitmap, screen->machine->pens[ssystem3_led[4]&8?1:0],
 				 ssystem3_led_pos[4].x, ssystem3_led_pos[4].y, '3');
-	ssystem3_draw_led(bitmap, machine->pens[ssystem3_led[4]&8?1:0],
+	ssystem3_draw_led(bitmap, screen->machine->pens[ssystem3_led[4]&8?1:0],
 				 ssystem3_led_pos[4].x, ssystem3_led_pos[4].y, '4');
-	ssystem3_draw_led(bitmap, machine->pens[ssystem3_led[4]&8?1:0],
+	ssystem3_draw_led(bitmap, screen->machine->pens[ssystem3_led[4]&8?1:0],
 				 ssystem3_led_pos[4].x, ssystem3_led_pos[4].y, '5');
-	ssystem3_draw_led(bitmap, machine->pens[ssystem3_led[4]&8?1:0],
+	ssystem3_draw_led(bitmap, screen->machine->pens[ssystem3_led[4]&8?1:0],
 				 ssystem3_led_pos[4].x, ssystem3_led_pos[4].y, '6');
 	return 0;
 }

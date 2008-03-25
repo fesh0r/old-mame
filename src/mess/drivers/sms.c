@@ -73,8 +73,8 @@ static ADDRESS_MAP_START( sms_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03FF) AM_ROMBANK(1)					/* First 0x0400 part always points to first page */
 	AM_RANGE(0x0400, 0x3FFF) AM_ROMBANK(2)					/* switchable rom bank */
 	AM_RANGE(0x4000, 0x7FFF) AM_ROMBANK(3)					/* switchable rom bank */
-	AM_RANGE(0x8000, 0x9FFF) AM_READWRITE(MRA8_BANK4, sms_cartram_w)	/* ROM bank / on-cart RAM */
-	AM_RANGE(0xA000, 0xBFFF) AM_READWRITE(MRA8_BANK5, sms_cartram2_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0x8000, 0x9FFF) AM_READWRITE(SMH_BANK4, sms_cartram_w)	/* ROM bank / on-cart RAM */
+	AM_RANGE(0xA000, 0xBFFF) AM_READWRITE(SMH_BANK5, sms_cartram2_w)	/* ROM bank / on-cart RAM */
 	AM_RANGE(0xC000, 0xDFFB) AM_MIRROR(0x2000) AM_RAM			/* RAM (mirror at 0xE000) */
 	AM_RANGE(0xDFFC, 0xDFFF) AM_RAM						/* RAM "underneath" frame registers */
 	AM_RANGE(0xFFFC, 0xFFFF) AM_READWRITE(sms_mapper_r, sms_mapper_w)	/* Bankswitch control */
@@ -91,8 +91,8 @@ static ADDRESS_MAP_START( sms_store_mem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sms_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x00) AM_MIRROR(0x3e) AM_WRITE(sms_bios_w)
 	AM_RANGE(0x01, 0x01) AM_MIRROR(0x3e) AM_WRITE(sms_version_w)
 	AM_RANGE(0x40, 0x7F)                 AM_READWRITE(sms_count_r, SN76496_0_w)
@@ -113,8 +113,8 @@ static ADDRESS_MAP_START( sms_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gg_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x00)				 AM_READ(gg_input_port_2_r)
 	AM_RANGE(0x01, 0x05)				 AM_READWRITE(gg_sio_r, gg_sio_w)
 	AM_RANGE(0x06, 0x06)				 AM_READWRITE(gg_psg_r, gg_psg_w)
@@ -276,19 +276,19 @@ static const smsvdp_configuration config_315_5378 = { MODEL_315_5378, sms_int_ca
 static const smsvdp_configuration config_store = { MODEL_315_5124, sms_store_int_callback };
 
 static VIDEO_START(sega_315_5124) {
-	smsvdp_video_init( &config_315_5124 );
+	smsvdp_video_init( machine, &config_315_5124 );
 }
 
 static VIDEO_START(sega_315_5246) {
-	smsvdp_video_init( &config_315_5246 );
+	smsvdp_video_init( machine, &config_315_5246 );
 }
 
 static VIDEO_START(sega_315_5378) {
-	smsvdp_video_init( &config_315_5378 );
+	smsvdp_video_init( machine, &config_315_5378 );
 }
 
 static VIDEO_START(sega_store_315_5124) {
-	smsvdp_video_init( &config_store );
+	smsvdp_video_init( machine, &config_store );
 }
 
 static MACHINE_DRIVER_START(sms1ntsc)
@@ -303,13 +303,11 @@ static MACHINE_DRIVER_START(sms1ntsc)
 	MDRV_MACHINE_RESET(sms)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_ADD("main",0)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_53_693175MHz/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS - 2, LBORDER_START + LBORDER_X_PIXELS + 256 + 10, NTSC_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS, TBORDER_START + NTSC_224_TBORDER_Y_PIXELS + 224)
 
 	MDRV_PALETTE_LENGTH(64+16)
-	MDRV_COLORTABLE_LENGTH(0)
 	MDRV_PALETTE_INIT(sms)
 
 	MDRV_VIDEO_START(sega_315_5124)
@@ -350,13 +348,11 @@ static MACHINE_DRIVER_START(sms1pal)
 	MDRV_MACHINE_RESET(sms)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_ADD("main",0)
 	MDRV_SCREEN_RAW_PARAMS(MASTER_CLOCK_PAL/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS - 2, LBORDER_START + LBORDER_X_PIXELS + 256 + 10, PAL_Y_PIXELS, TBORDER_START + PAL_240_TBORDER_Y_PIXELS, TBORDER_START + PAL_240_TBORDER_Y_PIXELS + 240)
 
 	MDRV_PALETTE_LENGTH(64+16)
-	MDRV_COLORTABLE_LENGTH(0)
 	MDRV_PALETTE_INIT(sms)
 
 	MDRV_VIDEO_START(sega_315_5124)
@@ -399,12 +395,10 @@ static MACHINE_DRIVER_START(gamegear)
 	MDRV_MACHINE_RESET(sms)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", LCD)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
-	MDRV_SCREEN_ADD("main",0)
 	MDRV_SCREEN_RAW_PARAMS(XTAL_53_693175MHz/10, SMS_X_PIXELS, LBORDER_START + LBORDER_X_PIXELS + 6*8, LBORDER_START + LBORDER_X_PIXELS + 26*8, NTSC_Y_PIXELS, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 3*8, TBORDER_START + NTSC_192_TBORDER_Y_PIXELS + 21*8 )
 	MDRV_PALETTE_LENGTH(4096)
-	MDRV_COLORTABLE_LENGTH(0)
 	MDRV_PALETTE_INIT(gamegear)
 
 	MDRV_VIDEO_START(sega_315_5378)
@@ -505,21 +499,21 @@ ROM_END
 
 #define rom_gamegeaj rom_gamegear
 
-static void sms_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sms_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:				info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:		info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:				info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:		info->i = 0; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:				info->init = device_init_sms_cart; break;
-		case DEVINFO_PTR_LOAD:				info->load = device_load_sms_cart; break;
+		case MESS_DEVINFO_PTR_INIT:				info->init = device_init_sms_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:				info->load = device_load_sms_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "sms"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "sms"); break;
 
 		default:					cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -529,10 +523,10 @@ SYSTEM_CONFIG_START(sms)
 	CONFIG_DEVICE(sms_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void sg1000_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info) {
+static void sg1000_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info) {
 	/* cartslot */
 	switch(state) {
-		case DEVINFO_INT_MUST_BE_LOADED:		info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:		info->i = 1; break;
 		default:					sms_cartslot_getinfo(devclass, state, info); break;
 	}
 }
@@ -541,10 +535,10 @@ SYSTEM_CONFIG_START(sg1000)
 	CONFIG_DEVICE(sg1000_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void smssdisp_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info) {
+static void smssdisp_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info) {
 	switch(state) {
-		case DEVINFO_INT_COUNT:				info->i = 5; break;
-		case DEVINFO_INT_MUST_BE_LOADED:	info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:				info->i = 5; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:	info->i = 1; break;
 		default:					sms_cartslot_getinfo(devclass, state, info); break;
 	}
 }
@@ -553,14 +547,14 @@ SYSTEM_CONFIG_START(smssdisp)
 	CONFIG_DEVICE(smssdisp_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void gamegear_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void gamegear_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_INT_COUNT:				info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:		info->i = 1; break;
-		case DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "gg"); break;
+		case MESS_DEVINFO_INT_COUNT:				info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:		info->i = 1; break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "gg"); break;
 
 		default:					sms_cartslot_getinfo(devclass, state, info); break;
 	}

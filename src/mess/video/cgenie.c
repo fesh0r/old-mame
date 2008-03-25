@@ -9,11 +9,12 @@
 #include "driver.h"
 #include "includes/cgenie.h"
 
+
 int cgenie_font_offset[4] = {0, 0, 0, 0};
 
 static CRTC6845 crt;
 static int graphics = 0;
-static mame_bitmap *dlybitmap = NULL;
+static bitmap_t *dlybitmap = NULL;
 static int off_x = 0;
 static int off_y = 0;
 
@@ -25,11 +26,15 @@ static int off_y = 0;
 ***************************************************************************/
 VIDEO_START( cgenie )
 {
+	const device_config *screen = video_screen_first(machine->config);
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
+
 	videoram_size = 0x4000;
 
-	VIDEO_START_CALL(generic);
+	VIDEO_START_CALL(generic_bitmapped);
 
-    dlybitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+    dlybitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 }
 
 /***************************************************************************
@@ -236,7 +241,7 @@ void cgenie_mode_select(int mode)
 }
 
 
-static void cgenie_refresh_monitor(running_machine *machine, mame_bitmap * bitmap, const rectangle *cliprect)
+static void cgenie_refresh_monitor(running_machine *machine, bitmap_t * bitmap, const rectangle *cliprect)
 {
 	int i, address, offset, cursor, size, code, x, y;
     rectangle r;
@@ -314,7 +319,7 @@ static void cgenie_refresh_monitor(running_machine *machine, mame_bitmap * bitma
 	}
 }
 
-static void cgenie_refresh_tv_set(running_machine *machine, mame_bitmap * bitmap, const rectangle *cliprect)
+static void cgenie_refresh_tv_set(running_machine *machine, bitmap_t * bitmap, const rectangle *cliprect)
 {
 	int i, address, offset, cursor, size, code, x, y;
     rectangle r;
@@ -404,13 +409,13 @@ static void cgenie_refresh_tv_set(running_machine *machine, mame_bitmap * bitmap
 }
 
 /***************************************************************************
-  Draw the game screen in the given mame_bitmap.
+  Draw the game screen in the given bitmap_t.
 ***************************************************************************/
 VIDEO_UPDATE( cgenie )
 {
     if( cgenie_tv_mode )
-		cgenie_refresh_tv_set(machine, bitmap, cliprect);
+		cgenie_refresh_tv_set(screen->machine, bitmap, cliprect);
 	else
-		cgenie_refresh_monitor(machine, bitmap, cliprect);
+		cgenie_refresh_monitor(screen->machine, bitmap, cliprect);
 	return 0;
 }

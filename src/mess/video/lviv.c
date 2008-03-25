@@ -10,7 +10,6 @@
 
 #include "driver.h"
 #include "includes/lviv.h"
-#include "mslegacy.h"
 
 const unsigned char lviv_palette[8*3] =
 {
@@ -31,8 +30,11 @@ unsigned short lviv_colortable[1][4] =
 
 PALETTE_INIT( lviv )
 {
-	palette_set_colors_rgb(machine, 0, lviv_palette, sizeof(lviv_palette) / 3);
-	memcpy(colortable, lviv_colortable, sizeof (lviv_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(lviv_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, lviv_palette[i*3], lviv_palette[i*3+1], lviv_palette[i*3+2]);
+	}
 }
 
 
@@ -76,16 +78,16 @@ VIDEO_UPDATE( lviv )
 			data = lviv_video_ram[y*64+x/4];
 
 			pen = lviv_colortable[0][((data & 0x08) >> 3) | ((data & 0x80) >> (3+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 0) = machine->pens[pen];
+			*BITMAP_ADDR16(bitmap, y, x + 0) = screen->machine->pens[pen];
 
 			pen = lviv_colortable[0][((data & 0x04) >> 2) | ((data & 0x40) >> (2+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 1) = machine->pens[pen];
+			*BITMAP_ADDR16(bitmap, y, x + 1) = screen->machine->pens[pen];
 
 			pen = lviv_colortable[0][((data & 0x02) >> 1) | ((data & 0x20) >> (1+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 2) = machine->pens[pen];
+			*BITMAP_ADDR16(bitmap, y, x + 2) = screen->machine->pens[pen];
 
 			pen = lviv_colortable[0][((data & 0x01) >> 0) | ((data & 0x10) >> (0+3))];
-			*BITMAP_ADDR16(bitmap, y, x + 3) = machine->pens[pen];
+			*BITMAP_ADDR16(bitmap, y, x + 3) = screen->machine->pens[pen];
 		}
 	return 0;
 }

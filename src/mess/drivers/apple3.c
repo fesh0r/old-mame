@@ -36,18 +36,18 @@ static MACHINE_DRIVER_START( apple3 )
 	MDRV_CPU_ADD(M6502, 2000000)        /* 2 Mhz */
 	MDRV_CPU_PROGRAM_MAP(apple3_map, 0)
 	MDRV_CPU_PERIODIC_INT(apple3_interrupt, 192)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( apple3 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(280*2, 192)
 	MDRV_SCREEN_VISIBLE_AREA(0, (280*2)-1,0,192-1)
 	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(512)
 	MDRV_PALETTE_INIT( apple2 )
 
 	MDRV_VIDEO_START( apple3 )
@@ -143,25 +143,25 @@ ROM_START(apple3)
 	ROM_LOAD( "apple3.rom", 0x0000, 0x1000, CRC(55e8eec9) SHA1(579ee4cd2b208d62915a0aa482ddc2744ff5e967))
 ROM_END
 
-static void apple3_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void apple3_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 1; break;
-		case DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 4; break;
+		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 1; break;
+		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 4; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
-		case DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
-		case DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
-		case DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
-		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
-		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
+		case MESS_DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
+		case MESS_DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
 
 		default:										apple525_device_getinfo(devclass, state, info); break;
 	}

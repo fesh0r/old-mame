@@ -210,7 +210,7 @@ extern int amstrad_CRTC_HS_Counter;
 static void multiface_rethink_memory(void);
 static WRITE8_HANDLER(multiface_io_write);
 static void multiface_init(void);
-static void multiface_stop(void);
+static void multiface_stop(running_machine *machine);
 static int multiface_hardware_enabled(void);
 static void multiface_reset(void);
 /* ---------------------------------------
@@ -237,20 +237,20 @@ BDIR BC1       |
 /* PSG function selected */
 static unsigned char amstrad_Psg_FunctionSelected;
 
-static void update_psg(void)
+static void update_psg(running_machine *machine)
 {
 	if(aleste_mode & 0x20)  // RTC selected
 	{
 		switch(aleste_rtc_function)
 		{
 		case 0x02:  // AS
-			mc146818_port_w(0,ppi_port_outputs[amstrad_ppi_PortA]);
+			mc146818_port_w(machine, 0,ppi_port_outputs[amstrad_ppi_PortA]);
 			break;
 		case 0x04:  // DS write
-			mc146818_port_w(1,ppi_port_outputs[amstrad_ppi_PortA]);
+			mc146818_port_w(machine, 1,ppi_port_outputs[amstrad_ppi_PortA]);
 			break;
 		case 0x05:  // DS read
-			ppi_port_inputs[amstrad_ppi_PortA] = mc146818_port_r(1);
+			ppi_port_inputs[amstrad_ppi_PortA] = mc146818_port_r(machine, 1);
 			break;
 		}
 		return;
@@ -262,17 +262,17 @@ static void update_psg(void)
 		} break;
   	case 1: 
 		{/* b6 = 1 ? : Read from selected PSG register and make the register data available to PPI Port A */
-  			ppi_port_inputs[amstrad_ppi_PortA] = AY8910_read_port_0_r(0);
+  			ppi_port_inputs[amstrad_ppi_PortA] = AY8910_read_port_0_r(machine, 0);
   		} 
 		break;
   	case 2: 
 		{/* b7 = 1 ? : Write to selected PSG register and write data to PPI Port A */
-  			AY8910_write_port_0_w(0, ppi_port_outputs[amstrad_ppi_PortA]);
+  			AY8910_write_port_0_w(machine, 0, ppi_port_outputs[amstrad_ppi_PortA]);
   		} 
 		break;
   	case 3: 
 		{/* b6 and b7 = 1 ? : The register will now be selected and the user can read from or write to it.  The register will remain selected until another is chosen.*/
-  			AY8910_control_port_0_w(0, ppi_port_outputs[amstrad_ppi_PortA]);
+  			AY8910_control_port_0_w(machine, 0, ppi_port_outputs[amstrad_ppi_PortA]);
 			prev_reg = ppi_port_outputs[amstrad_ppi_PortA];
   		} 
 		break;
@@ -284,14 +284,14 @@ static void update_psg(void)
 /* Read/Write 8255 PPI port A (connected to AY-3-8912 databus) */
 static READ8_HANDLER ( amstrad_ppi_porta_r )
 {
-	update_psg();
+	update_psg(machine);
 	return ppi_port_inputs[amstrad_ppi_PortA];
 }
 
 static WRITE8_HANDLER ( amstrad_ppi_porta_w )
 {
 	ppi_port_outputs[amstrad_ppi_PortA] = data;
-	update_psg();
+	update_psg(machine);
 }
 
 /* - Read PPI Port B -
@@ -385,7 +385,7 @@ static WRITE8_HANDLER ( amstrad_ppi_portc_w )
 	aleste_rtc_function = data & 0x07;
 
 /* Perform PSG function */
-	update_psg();
+	update_psg(machine);
 
 /* b5 Cassette Write data */
 	if(amstrad_system_type != SYSTEM_GX4000)
@@ -576,10 +576,10 @@ static void AmstradCPC_SetLowerRom(int Data)
 		}
 		else
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MRA8_BANK3);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK4);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_BANK11);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK12);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK3);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK4);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK11);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK12);
 			amstrad_plus_asic_regpage = 0;  // disable ASIC registers
 		}
 //      logerror("SYS: Secondary ROM select (lower ROM) - data = %02x - cart bank %i, addr %i\n",Data,amstrad_plus_lower,amstrad_plus_lower_addr);
@@ -700,7 +700,7 @@ static WRITE8_HANDLER( amstrad_plus_asic_6000_w )
 				b = (amstrad_plus_asic_ram[offset+0x1fff] & 0x0f) << 4;
 				offset--;
 			}
-			amstrad_plus_setspritecolour((offset - 0x422), r, g, b);
+			amstrad_plus_setspritecolour(machine, (offset - 0x422), r, g, b);
 		}
 		if(offset == 0x0800)  // Programmable raster interrupt
 		{
@@ -772,21 +772,21 @@ static WRITE8_HANDLER( amstrad_plus_asic_6000_w )
 			if(data & 0x40)
 			{
 				logerror("ASIC: DMA 0 IRQ acknowledge\n");
-				cpunum_set_input_line(Machine, 0,0,CLEAR_LINE);
+				cpunum_set_input_line(machine, 0,0,CLEAR_LINE);
 				amstrad_plus_irq_cause = 0x06;
 				amstrad_plus_asic_ram[0x2c0f] &= ~0x40;
 			}
 			if(data & 0x20)
 			{
 				logerror("ASIC: DMA 1 IRQ acknowledge\n");
-				cpunum_set_input_line(Machine, 0,0,CLEAR_LINE);
+				cpunum_set_input_line(machine, 0,0,CLEAR_LINE);
 				amstrad_plus_irq_cause = 0x06;
 				amstrad_plus_asic_ram[0x2c0f] &= ~0x20;
 			}
 			if(data & 0x10)
 			{
 				logerror("ASIC: DMA 2 IRQ acknowledge\n");
-				cpunum_set_input_line(Machine, 0,0,CLEAR_LINE);
+				cpunum_set_input_line(machine, 0,0,CLEAR_LINE);
 				amstrad_plus_irq_cause = 0x06;
 				amstrad_plus_asic_ram[0x2c0f] &= ~0x10;
 			}
@@ -973,7 +973,7 @@ Bit 7 Bit 6 Function
 
 Note 1 : This function is not available in the Gate-Array, but is performed by a device at the same I/O port address location. In the CPC464,CPC664 and KC compact, this function is performed in a memory-expansion (e.g. Dk'Tronics 64K Ram Expansion), if this expansion is not present then the function is not available. In the CPC6128, this function is performed by a PAL located on the main PCB, or a memory-expansion. In the 464+ and 6128+ this function is performed by the ASIC or a memory expansion. Please read the document on Ram Management for more information.*/
 
-void amstrad_GateArray_write(int dataToGateArray)
+void amstrad_GateArray_write(running_machine *machine, int dataToGateArray)
 {
 /* Get Bit 7 and 6 of the dataToGateArray = Gate Array function selected */
 	switch ((dataToGateArray & 0xc0)>>6) {
@@ -1009,7 +1009,7 @@ Bit Value Function
 0   x     |*/
   	case 0x01: {
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
-    EventList_AddItemOffset((EVENT_LIST_CODE_GA_COLOUR<<6) | PenIndex, AmstradCPC_PenColours[PenIndex], TIME_TO_CYCLES(0,video_screen_get_vpos(0)*video_screen_get_scan_period(0)));
+    EventList_AddItemOffset((EVENT_LIST_CODE_GA_COLOUR<<6) | PenIndex, AmstradCPC_PenColours[PenIndex], TIME_TO_CYCLES(0,video_screen_get_vpos(machine->primary_screen)*video_screen_get_scan_period(machine->primary_screen)));
 #else
       amstrad_vh_update_colour(amstrad_GateArray_PenSelected, (dataToGateArray & 0x1F));
 #endif
@@ -1069,7 +1069,7 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
  then the interrupt request is cleared and the 6-bit counter is reset to "0".  */
   			if ((amstrad_GateArray_ModeAndRomConfiguration & (1<<4)) != 0) {
             amstrad_CRTC_HS_Counter = 0;
-  			    cpunum_set_input_line(Machine, 0,0, CLEAR_LINE);
+  			    cpunum_set_input_line(machine, 0,0, CLEAR_LINE);
 
   			}
 /* b3b2 != 0 then change the state of upper or lower rom area and rethink memory */
@@ -1080,7 +1080,7 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
 /* b1b0 mode change? */
   			if (((amstrad_GateArray_ModeAndRomConfiguration & 0x03)^(Previous_GateArray_ModeAndRomConfiguration & 0x03)) != 0) {
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
-          EventList_AddItemOffset((EVENT_LIST_CODE_GA_MODE<<6) , amstrad_GateArray_ModeAndRomConfiguration & 0x03, TIME_TO_CYCLES(0,video_screen_get_vpos(0)*video_screen_get_scan_period(0)));
+          EventList_AddItemOffset((EVENT_LIST_CODE_GA_MODE<<6) , amstrad_GateArray_ModeAndRomConfiguration & 0x03, TIME_TO_CYCLES(0,video_screen_get_vpos(machine->primary_screen)*video_screen_get_scan_period(machine->primary_screen)));
 #else
   				amstrad_vh_update_mode(amstrad_GateArray_ModeAndRomConfiguration & 0x03);
 #endif
@@ -1102,7 +1102,7 @@ In the 464+ and 6128+ this function is performed by the ASIC or a memory expansi
   }
 }
 
-static void aleste_msx_mapper(int offset, int data)
+static void aleste_msx_mapper(running_machine *machine, int offset, int data)
 {
 	int page = (offset & 0x0300) >> 8;
 	int ramptr = (data & 0x1f) * 0x4000;
@@ -1113,13 +1113,13 @@ static void aleste_msx_mapper(int offset, int data)
 	switch(function)
 	{
 	case 0:  // Pen select (same as Gate Array?)
-		amstrad_GateArray_write(data);
+		amstrad_GateArray_write(machine, data);
 		break;
 	case 1:  // Colour select (6-bit palette)
 		aleste_vh_update_colour(amstrad_GateArray_PenSelected,data & 0x3f);
 		break;
 	case 2:  // Screen mode, Upper/Lower ROM select
-		amstrad_GateArray_write(data);
+		amstrad_GateArray_write(machine, data);
 		break;
 	case 3: // RAM banks
 		switch(page)
@@ -1319,10 +1319,10 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 				int b8b0 = ((offset & (1<<8)) >> (8 - 1)) | (offset & (0x01));
 				switch (b8b0) {
   				case 0x02: {
-  						data = nec765_status_r(0);
+  						data = nec765_status_r(machine, 0);
   				} break;
   				case 0x03: {
-  						data = nec765_data_r(0);
+  						data = nec765_data_r(machine, 0);
   				} break;
   				default: {
   				} break;
@@ -1340,13 +1340,13 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 	{
 		if(aleste_mode & 0x04) // Aleste mode
 		{
-			aleste_msx_mapper(offset,data);
+			aleste_msx_mapper(machine, offset,data);
 		}
 		else
 		{
 		/* if b15 = 0 and b14 = 1 : Gate-Array Write Selected*/
 		if ((offset & (1<<14)) != 0) 
-	   			amstrad_GateArray_write(data);
+	   			amstrad_GateArray_write(machine, data);
 		/* if b15 = 0 : RAM Configuration Write Selected*/
 		  AmstradCPC_GA_SetRamConfiguration();
 		}
@@ -1357,7 +1357,7 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 		switch ((offset & 0x0300) >> 8) { // r1r0
   		case 0x00: {/* Select internal 6845 register Write Only */
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
-  			EventList_AddItemOffset((EVENT_LIST_CODE_CRTC_INDEX_WRITE<<6), data, TIME_TO_CYCLES(0,video_screen_get_vpos(0)*video_screen_get_scan_period(0)));
+  			EventList_AddItemOffset((EVENT_LIST_CODE_CRTC_INDEX_WRITE<<6), data, TIME_TO_CYCLES(0,video_screen_get_vpos(machine->primary_screen)*video_screen_get_scan_period(machine->primary_screen)));
 #endif
         m6845_address_w(0,data);
 		if(amstrad_system_type != SYSTEM_CPC)
@@ -1366,7 +1366,7 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
       } break;
   		case 0x01: {/* Write to selected internal 6845 register Write Only */
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
-				EventList_AddItemOffset((EVENT_LIST_CODE_CRTC_WRITE<<6), data, TIME_TO_CYCLES(0,video_screen_get_vpos(0)*video_screen_get_scan_period(0)));
+				EventList_AddItemOffset((EVENT_LIST_CODE_CRTC_WRITE<<6), data, TIME_TO_CYCLES(0,video_screen_get_vpos(machine->primary_screen)*video_screen_get_scan_period(machine->primary_screen)));
 #endif
 //            logerror("m6845 register (%02d : %04x)\n", selected_m6845_address, (data&0x3F));
         m6845_register_w(0,data);
@@ -1451,7 +1451,7 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 			  break;
 
 		  case 0x03: /* Write Data register of FDC */
-					nec765_data_w(0,data);
+					nec765_data_w(machine, 0,data);
 				break;
 				default:
 				break;
@@ -1478,7 +1478,7 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 			rect.min_x = rect.min_y = 0;
 			rect.max_x = (ALESTE_SCREEN_WIDTH-32) - 1;
 			rect.max_y = (AMSTRAD_SCREEN_HEIGHT-40) - 1;
-			video_screen_configure(0,800,312,&rect,HZ_TO_ATTOSECONDS(AMSTRAD_FPS));
+			video_screen_configure(machine->primary_screen,800,312,&rect,HZ_TO_ATTOSECONDS(AMSTRAD_FPS));
 		}
 		else
 		{
@@ -1486,10 +1486,10 @@ The exception is the case where none of b7-b0 are reset (i.e. port &FBFF), which
 			rect.min_x = rect.min_y = 0;
 			rect.max_x = (AMSTRAD_SCREEN_WIDTH-32) - 1;
 			rect.max_y = (AMSTRAD_SCREEN_HEIGHT-40) - 1;
-			video_screen_configure(0,800,312,&rect,HZ_TO_ATTOSECONDS(AMSTRAD_FPS));
+			video_screen_configure(machine->primary_screen,800,312,&rect,HZ_TO_ATTOSECONDS(AMSTRAD_FPS));
 		}
 	}
-	multiface_io_write(offset,data);
+	multiface_io_write(machine, offset,data);
 }
 
 // Handler for checking the ASIC unlocking sequence
@@ -1613,7 +1613,7 @@ int multiface_hardware_enabled(void)
 }
 
 /* simulate the stop button has been pressed */
-void	multiface_stop(void)
+void multiface_stop(running_machine *machine)
 {
 	/* multiface hardware enabled? */
 		if (!multiface_hardware_enabled())
@@ -1637,7 +1637,7 @@ void	multiface_stop(void)
 		multiface_rethink_memory();
 
 		/* pulse the nmi line */
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 
 		/* initialise 0065 override to monitor calls to 0065 */
 		memory_set_opbase_handler(0,amstrad_multiface_opbaseoverride);
@@ -1799,7 +1799,7 @@ static WRITE8_HANDLER(multiface_io_write)
 /* called when cpu acknowledges int */
 /* reset top bit of interrupt line counter */
 /* this ensures that the next interrupt is no closer than 32 lines */
-static int 	amstrad_cpu_acknowledge_int(int cpu)
+static int amstrad_cpu_acknowledge_int(int cpu)
 {
 	// DMA interrupts can be automatically cleared if bit 0 of &6805 is set to 0
 	if(amstrad_plus_asic_enabled != 0 && amstrad_plus_irq_cause != 0x06 && amstrad_plus_dma_clear & 0x01)
@@ -1828,20 +1828,20 @@ static VIDEO_EOF( amstrad )
 {
 	if (readinputportbytag_safe("multiface", 0) & 0x02)
 	{
-		multiface_stop();
+		multiface_stop(machine);
 	}
 }
 /* sets up for a machine reset
 All hardware is reset and the firmware is completely initialized
 Once all tables and jumpblocks have been set up,
 control is passed to the default entry in rom 0*/
-void amstrad_reset_machine(void)
+void amstrad_reset_machine(running_machine *machine)
 {
 	/* enable lower rom (OS rom) */
-	amstrad_GateArray_write(0x089);
+	amstrad_GateArray_write(machine, 0x089);
 
 	/* set ram config 0 */
-	amstrad_GateArray_write(0x0c0);
+	amstrad_GateArray_write(machine, 0x0c0);
 
   // Get manufacturer name and TV refresh rate from PCB link (dipswitch for mess emulation)
 	ppi_port_inputs[amstrad_ppi_PortB] = (((readinputportbytag("solder_links")&MANUFACTURER_NAME)<<1) | (readinputportbytag("solder_links")&TV_REFRESH_RATE));
@@ -1852,13 +1852,13 @@ void amstrad_reset_machine(void)
 	multiface_reset();
 }
 
-static void kccomp_reset_machine(void)
+static void kccomp_reset_machine(running_machine *machine)
 {
 	/* enable lower rom (OS rom) */
-	amstrad_GateArray_write(0x089);
+	amstrad_GateArray_write(machine, 0x089);
 
 	/* set ram config 0 */
-	amstrad_GateArray_write(0x0c0);
+	amstrad_GateArray_write(machine, 0x0c0);
 }
 
 /* the following timings have been measured! */
@@ -2005,29 +2005,29 @@ static void amstrad_common_init(void)
 	amstrad_CRTC_HS_Counter = 2;
 	previous_amstrad_UpperRom_data = 0xff;
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, MRA8_BANK1);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MRA8_BANK2);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK2);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MRA8_BANK3);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MRA8_BANK4);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK3);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK4);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MRA8_BANK5);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MRA8_BANK6);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK5);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, SMH_BANK6);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_BANK7);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MRA8_BANK8);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK7);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_BANK8);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, MWA8_BANK9);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, MWA8_BANK10);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK9);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK10);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, MWA8_BANK11);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, MWA8_BANK12);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK11);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK12);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, MWA8_BANK13);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, MWA8_BANK14);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK13);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, SMH_BANK14);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_BANK15);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_BANK16);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK15);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_BANK16);
 
 	cpunum_reset(0);
 	if(amstrad_system_type == SYSTEM_CPC)
@@ -2085,7 +2085,7 @@ static MACHINE_RESET( amstrad )
 
 	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0x018000];
 	amstrad_common_init();
-	amstrad_reset_machine();
+	amstrad_reset_machine(machine);
 
 	multiface_init();
 
@@ -2128,7 +2128,7 @@ static MACHINE_RESET( plus )
 	amstrad_plus_irq_cause = 6;
 
 	amstrad_common_init();
-	amstrad_reset_machine();
+	amstrad_reset_machine(machine);
 	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
 	AmstradCPC_GA_SetRamConfiguration();
 	amstrad_plus_setsplitline(0,0);
@@ -2177,7 +2177,7 @@ static MACHINE_RESET( gx4000 )
 	amstrad_plus_irq_cause = 6;
 
 	amstrad_common_init();
-	amstrad_reset_machine();
+	amstrad_reset_machine(machine);
 	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
 	AmstradCPC_GA_SetRamConfiguration();
 	amstrad_plus_setsplitline(0,0);
@@ -2196,7 +2196,7 @@ static MACHINE_RESET( kccomp )
 	}
 
 	amstrad_common_init();
-	kccomp_reset_machine();
+	kccomp_reset_machine(machine);
 
 	/* bit 1 = /TEST. When 0, KC compact will enter data transfer
     sequence, where another system using the expansion port signals
@@ -2226,7 +2226,7 @@ static MACHINE_RESET( aleste )
 	Amstrad_ROM_Table[3] = &memory_region(REGION_CPU1)[0x01c000];  // MSX-DOS / BIOS
 	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0x018000];  // AMSDOS
 	amstrad_common_init();
-	amstrad_reset_machine();
+	amstrad_reset_machine(machine);
 
 	nec765_init(&aleste_8272_interface,NEC765A);
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_DS_80);
@@ -2237,14 +2237,14 @@ static MACHINE_RESET( aleste )
 pages the memory in 8k blocks! The ROM can
 be paged into bank 0 and bank 3. */
 static ADDRESS_MAP_START(amstrad_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x01fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK9)
-	AM_RANGE(0x02000, 0x03fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK10)
-	AM_RANGE(0x04000, 0x05fff) AM_READWRITE(MRA8_BANK3, MWA8_BANK11)
-	AM_RANGE(0x06000, 0x07fff) AM_READWRITE(MRA8_BANK4, MWA8_BANK12)
-	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(MRA8_BANK5, MWA8_BANK13)
-	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(MRA8_BANK6, MWA8_BANK14)
-	AM_RANGE(0x0c000, 0x0dfff) AM_READWRITE(MRA8_BANK7, MWA8_BANK15)
-	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(MRA8_BANK8, MWA8_BANK16)
+	AM_RANGE(0x00000, 0x01fff) AM_READWRITE(SMH_BANK1, SMH_BANK9)
+	AM_RANGE(0x02000, 0x03fff) AM_READWRITE(SMH_BANK2, SMH_BANK10)
+	AM_RANGE(0x04000, 0x05fff) AM_READWRITE(SMH_BANK3, SMH_BANK11)
+	AM_RANGE(0x06000, 0x07fff) AM_READWRITE(SMH_BANK4, SMH_BANK12)
+	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(SMH_BANK5, SMH_BANK13)
+	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(SMH_BANK6, SMH_BANK14)
+	AM_RANGE(0x0c000, 0x0dfff) AM_READWRITE(SMH_BANK7, SMH_BANK15)
+	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(SMH_BANK8, SMH_BANK16)
 ADDRESS_MAP_END
 
 /* I've handled the I/O ports in this way, because the ports
@@ -2899,6 +2899,7 @@ static MACHINE_DRIVER_START( amstrad )
 	MDRV_CPU_PROGRAM_MAP(amstrad_mem, 0)
 	MDRV_CPU_IO_MAP(amstrad_io, 0)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_INTERLEAVE(1)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(19968))
@@ -2906,13 +2907,11 @@ static MACHINE_DRIVER_START( amstrad )
 	MDRV_MACHINE_RESET( amstrad )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(800, 312)
 	/* Amstrad Monitor Visible AREA : 768x272 */
 	MDRV_SCREEN_VISIBLE_AREA(0, ((AMSTRAD_SCREEN_WIDTH-32) - 1), 0, ((AMSTRAD_SCREEN_HEIGHT-40) - 1))
 	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(32)
 	MDRV_PALETTE_INIT(amstrad_cpc)
 
 	MDRV_VIDEO_START(amstrad)
@@ -2931,22 +2930,27 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( kccomp )
 	MDRV_IMPORT_FROM(amstrad)
-	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_MACHINE_RESET(kccomp)
+
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_SCREEN_SIZE(800, 312)
+
 	MDRV_PALETTE_INIT(kccomp)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( cpcplus )
 	MDRV_IMPORT_FROM(amstrad)
-	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_GFXDECODE(asic_sprite)
 	MDRV_MACHINE_START(plus)
 	MDRV_MACHINE_RESET(plus)
+
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_SCREEN_SIZE(800, 312)
+
 	MDRV_PALETTE_LENGTH(4096+48)  // extended 12-bit palette, and standard 32 colour palette
-	MDRV_COLORTABLE_LENGTH(4096+48)
 	MDRV_PALETTE_INIT(amstrad_plus)
 MACHINE_DRIVER_END
 
@@ -2954,13 +2958,15 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( gx4000 )
 	MDRV_IMPORT_FROM(amstrad)
 	MDRV_SOUND_REMOVE("tape")
-	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_GFXDECODE(asic_sprite)
 	MDRV_MACHINE_START(plus)
 	MDRV_MACHINE_RESET(gx4000)
+
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(AMSTRAD_FPS)
 	MDRV_SCREEN_SIZE(800, 312)
+
 	MDRV_PALETTE_LENGTH(4096+48)  // extended 12-bit palette, and standard 32 colour palette
-	MDRV_COLORTABLE_LENGTH(4096+48)
 	MDRV_PALETTE_INIT(amstrad_plus)
 MACHINE_DRIVER_END
 
@@ -2971,7 +2977,6 @@ static MACHINE_DRIVER_START( aleste )
 	MDRV_SOUND_CONFIG(ay8912_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_PALETTE_LENGTH(32+64)
-	MDRV_COLORTABLE_LENGTH(32+64)  // standard CPC palette, and 6-bit MSX palette
 	MDRV_PALETTE_INIT(aleste)
 	MDRV_NVRAM_HANDLER(mc146818)
 MACHINE_DRIVER_END
@@ -3047,8 +3052,8 @@ ROM_END
 
 /* this system must have a cartridge installed to run */
 ROM_START(cpc6128p)
-	ROM_REGION(0x80000, REGION_CPU1, 0)
-	ROM_REGION(0x04000, REGION_USER1, 0)
+	ROM_REGION(0x80000, REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION(0x04000, REGION_USER1, ROMREGION_ERASEFF)
 ROM_END
 
 
@@ -3084,92 +3089,92 @@ ROM_END
  *
  *************************************/
 
-static void cpc6128_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cpc6128_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		default:										legacydsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
 
-static void cpc6128_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cpc6128_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *)cdt_cassette_formats; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *)cdt_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
 
-static void cpc6128_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cpc6128_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
 
-static void cpcplus_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cpcplus_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_amstrad_plus_cartridge; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_amstrad_plus_cartridge; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cpr,bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cpr,bin"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
 
-static void cpcplus_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cpcplus_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sna"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sna"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_amstrad; break;
+		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_amstrad; break;
 
 		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}
 }
 
 
-static void aleste_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void aleste_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_msx_floppy; break;
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_msx_floppy; break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}

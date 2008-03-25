@@ -775,15 +775,15 @@ static MACHINE_DRIVER_START( psxntsc )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( psx_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_CPU_VBLANK_INT("main", psx_vblank)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 60 )
 	MDRV_SCREEN_VBLANK_TIME(0)
 
 	MDRV_MACHINE_RESET( psx )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 1024, 512 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 479 )
@@ -805,15 +805,15 @@ static MACHINE_DRIVER_START( psxpal )
 	/* basic machine hardware */
 	MDRV_CPU_ADD( PSXCPU, XTAL_67_7376MHz )
 	MDRV_CPU_PROGRAM_MAP( psx_map, 0 )
-	MDRV_CPU_VBLANK_INT( psx_vblank, 1 )
+	MDRV_CPU_VBLANK_INT("main", psx_vblank)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE( 50 )
 	MDRV_SCREEN_VBLANK_TIME(0)
 
 	MDRV_MACHINE_RESET( psx )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 1024, 512 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 639, 0, 511 )
@@ -918,16 +918,16 @@ ROM_START( psa )
 	ROMX_LOAD( "ps-41a.bin",    0x0000000, 0x080000, CRC(502224b6) SHA1(14df4f6c1e367ce097c11deae21566b4fe5647a9), ROM_BIOS(2) )
 ROM_END
 
-static void psx_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void psx_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "exe,psx"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "exe,psx"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_psx_exe_load; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_psx_exe_load; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}

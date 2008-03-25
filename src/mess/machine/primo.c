@@ -11,7 +11,6 @@
 
 /* Core includes */
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/primo.h"
 
 /* Components */
@@ -52,19 +51,19 @@ static void primo_update_memory (void)
 	switch (primo_port_FD & 0x03)
 	{
 		case 0x00:	/* Original ROM */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 			memory_set_bankptr(1, memory_region(REGION_CPU1)+0x10000);
 			break;
 		case 0x01:	/* EPROM extension 1 */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 			memory_set_bankptr(1, memory_region(REGION_CPU1)+0x14000);
 			break;
 		case 0x02:	/* RAM */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_BANK1);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
 			memory_set_bankptr(1, memory_region(REGION_CPU1));
 			break;
 		case 0x03:	/* EPROM extension 2 */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 			memory_set_bankptr(1, memory_region(REGION_CPU1)+0x18000);
 			break;
 	}
@@ -84,7 +83,7 @@ READ8_HANDLER( primo_be_1_r )
 	// bit 7, 6 - not used
 
 	// bit 5 - VBLANK
-	data |= (video_screen_get_vblank(0)) ? 0x20 : 0x00;
+	data |= (video_screen_get_vblank(machine->primary_screen)) ? 0x20 : 0x00;
 
 	// bit 4 - I4 (external bus)
 
@@ -239,22 +238,22 @@ DRIVER_INIT( primo64 )
 
 *******************************************************************************/
 
-static void primo_common_machine_init (void)
+static void primo_common_machine_init (running_machine *machine)
 {
 	if (readinputport(6))
 		primo_port_FD = 0x00;
 	primo_update_memory();
-	cpunum_set_clockscale(Machine, 0, readinputport(5) ? 1.5 : 1.0);
+	cpunum_set_clockscale(machine, 0, readinputport(5) ? 1.5 : 1.0);
 }
 
 MACHINE_RESET( primoa )
 {
-	primo_common_machine_init();
+	primo_common_machine_init(machine);
 }
 
 MACHINE_RESET( primob )
 {
-	primo_common_machine_init();
+	primo_common_machine_init(machine);
 
 	cbm_serial_reset_write (0);
 	cbm_drive_0_config (SERIAL, 8);

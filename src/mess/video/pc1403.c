@@ -158,53 +158,52 @@ VIDEO_UPDATE( pc1403 )
 	int x, y, i, j;
 	int color[3];
 
-	bitmap_fill(bitmap, cliprect, 5);
+	bitmap_fill(bitmap, cliprect, 11);
 
 	/* HJB: we cannot initialize array with values from other arrays, thus... */
-	color[0] = machine->pens[pocketc_colortable[CONTRAST][0]];
-	color[2] = machine->pens[pocketc_colortable[CONTRAST][1]];
+	color[0] = pocketc_colortable[CONTRAST][0];
+	color[2] = pocketc_colortable[CONTRAST][1];
 	color[1] = (pc1403_portc&1) ? color[2] : color[0];
 
 	if (pc1403_portc&1) {
 		for (x=RIGHT,y=DOWN,i=0; i<6*5;x+=2) {
 			for (j=0; j<5;j++,i++,x+=2)
-			drawgfx(bitmap, machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
+			drawgfx(bitmap, screen->machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
 				x,y,
 				0, TRANSPARENCY_NONE,0);
 		}
 		for (i=9*5; i<12*5;x+=2) {
 			for (j=0; j<5;j++,i++,x+=2)
-			drawgfx(bitmap, machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
+			drawgfx(bitmap, screen->machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
 				x,y,
 				0, TRANSPARENCY_NONE,0);
 		}
 		for (i=6*5; i<9*5;x+=2) {
 			for (j=0; j<5;j++,i++,x+=2)
-			drawgfx(bitmap, machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
+			drawgfx(bitmap, screen->machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
 				x,y,
 				0, TRANSPARENCY_NONE,0);
 		}
 		for (i=0x7b-3*5; i>0x7b-6*5;x+=2) {
 			for (j=0; j<5;j++,i--,x+=2)
-				drawgfx(bitmap, machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
+				drawgfx(bitmap, screen->machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
 				x,y,
 				0, TRANSPARENCY_NONE,0);
 		}
 		for (i=0x7b; i>0x7b-3*5;x+=2) {
 			for (j=0; j<5;j++,i--,x+=2)
-			drawgfx(bitmap, machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
+			drawgfx(bitmap, screen->machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
 				x,y,
 				0, TRANSPARENCY_NONE,0);
 		}
 		for (i=0x7b-6*5; i>0x7b-12*5;x+=2) {
 			for (j=0; j<5;j++,i--,x+=2)
-			drawgfx(bitmap, machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
+			drawgfx(bitmap, screen->machine->gfx[0], pc1403_lcd.reg[i],CONTRAST,0,0,
 				x,y,
 				0, TRANSPARENCY_NONE,0);
 		}
 	}
-    /* if display is off, busy is always visible? it seems to behave like
-that. */
+    /* if display is off, busy is always visible? it seems to behave like that. */
     /* But if computer is off, busy is hidden. */
     if(!(pc1403_portc&8))
     {if (pc1403_portc&1) pocketc_draw_special(bitmap,RIGHT,DOWN-13,busy,

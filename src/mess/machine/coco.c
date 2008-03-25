@@ -99,10 +99,11 @@ easier to manage.
 #include "sound/ay8910.h"
 #include "devices/cococart.h"
 
+
 /*common vars/calls */
 static UINT8 *coco_rom;
 static int dclg_state, dclg_output_h, dclg_output_v, dclg_timer;
-static UINT8 (*update_keyboard)(void);
+static UINT8 (*update_keyboard)(running_machine *machine);
 static emu_timer *update_keyboard_timer;
 static emu_timer *mux_sel1_timer;
 static emu_timer *mux_sel2_timer;
@@ -582,6 +583,57 @@ SNAPSHOT_LOAD ( coco3_pak )
 }
 
 /***************************************************************************
+  Quickloads
+***************************************************************************/
+
+QUICKLOAD_LOAD ( coco )
+{
+	UINT8 preamble;
+	UINT16 block_length;
+	UINT16 block_address;
+	const UINT8 *ptr;
+	UINT32 length;
+	UINT32 position = 0;
+	UINT32 i;
+	int done = FALSE;
+
+	/* access the pointer and the length */
+	ptr = image_ptr(image);
+	length = image_length(image);
+
+	while(!done && (position + 5 <= length))
+	{
+		/* read this block */
+		preamble		= ptr[position + 0];
+		block_length	= ((UINT16) ptr[position + 1]) << 8 | ((UINT16) ptr[position + 2]) << 0;
+		block_address	= ((UINT16) ptr[position + 3]) << 8 | ((UINT16) ptr[position + 4]) << 0;
+		position += 5;
+
+		if (preamble != 0)
+		{
+			/* start address - just set the address and return */
+			cpunum_set_reg(0, REG_PC, block_address);
+			done = TRUE;
+		}
+		else
+		{
+			/* data block - need to cap the maximum length of the block */
+			block_length = MIN(block_length, length - position);
+
+			/* read the block into memory */
+			for (i = 0; i < block_length; i++)
+			{
+				program_write_byte(block_address + i, ptr[position + i]);
+			}
+
+			/* and advance */
+			position += block_length;
+		}
+	}
+	return INIT_PASS;
+}
+
+/***************************************************************************
   ROM files
 
   ROM files are simply raw dumps of cartridges.  I believe that they should
@@ -705,18 +757,18 @@ enum
 	COCO3_INT_ALL	= 0x3f
 };
 
-static void d_recalc_irq(void)
+static void d_recalc_irq(running_machine *machine)
 {
 	UINT8 pia0_irq_a = pia_get_irq_a(0);
 	UINT8 pia0_irq_b = pia_get_irq_b(0);
 
 	if (pia0_irq_a || pia0_irq_b)
-		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, CLEAR_LINE);
 }
 
-static void d_recalc_firq(void)
+static void d_recalc_firq(running_machine *machine)
 {
 	UINT8 pia1_firq_a = pia_get_irq_a(1);
 	UINT8 pia1_firq_b = pia_get_irq_b(1);
@@ -724,79 +776,79 @@ static void d_recalc_firq(void)
 	UINT8 pia2_firq_b = pia_get_irq_b(2);
 
 	if (pia1_firq_a || pia1_firq_b || pia2_firq_a || pia2_firq_b)
-		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
-static void coco3_recalc_irq(void)
+static void coco3_recalc_irq(running_machine *machine)
 {
 	if ((coco3_gimereg[0] & 0x20) && gime_irq)
-		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, ASSERT_LINE);
 	else
-		d_recalc_irq();
+		d_recalc_irq(machine);
 }
 
-static void coco3_recalc_firq(void)
+static void coco3_recalc_firq(running_machine *machine)
 {
 	if ((coco3_gimereg[0] & 0x10) && gime_firq)
-		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		d_recalc_firq();
+		d_recalc_firq(machine);
 }
 
 static void d_pia0_irq_a(int state)
 {
-	d_recalc_irq();
+	d_recalc_irq(Machine);
 }
 
 static void d_pia0_irq_b(int state)
 {
-	d_recalc_irq();
+	d_recalc_irq(Machine);
 }
 
 static void d_pia1_firq_a(int state)
 {
-	d_recalc_firq();
+	d_recalc_firq(Machine);
 }
 
 static void d_pia1_firq_b(int state)
 {
-	d_recalc_firq();
+	d_recalc_firq(Machine);
 }
 
 /* Dragon Alpha second PIA IRQ lines also cause FIRQ */
 static void d_pia2_firq_a(int state)
 {
-	d_recalc_firq();
+	d_recalc_firq(Machine);
 }
 
 static void d_pia2_firq_b(int state)
 {
-	d_recalc_firq();
+	d_recalc_firq(Machine);
 }
 
 static void coco3_pia0_irq_a(int state)
 {
-	coco3_recalc_irq();
+	coco3_recalc_irq(Machine);
 }
 
 static void coco3_pia0_irq_b(int state)
 {
-	coco3_recalc_irq();
+	coco3_recalc_irq(Machine);
 }
 
 static void coco3_pia1_firq_a(int state)
 {
-	coco3_recalc_firq();
+	coco3_recalc_firq(Machine);
 }
 
 static void coco3_pia1_firq_b(int state)
 {
-	coco3_recalc_firq();
+	coco3_recalc_firq(Machine);
 }
 
-static void coco3_raise_interrupt(UINT8 mask, int state)
+static void coco3_raise_interrupt(running_machine *machine, UINT8 mask, int state)
 {
 	int lowtohigh;
 
@@ -812,18 +864,18 @@ static void coco3_raise_interrupt(UINT8 mask, int state)
 		if ((coco3_gimereg[0] & 0x20) && (coco3_gimereg[2] & mask))
 		{
 			gime_irq |= (coco3_gimereg[2] & mask);
-			coco3_recalc_irq();
+			coco3_recalc_irq(machine);
 
 			if (LOG_INT_COCO3)
-				logerror("CoCo3 Interrupt: Raising IRQ; scanline=%i\n", video_screen_get_vpos(0));
+				logerror("CoCo3 Interrupt: Raising IRQ; scanline=%i\n", video_screen_get_vpos(machine->primary_screen));
 		}
 		if ((coco3_gimereg[0] & 0x10) && (coco3_gimereg[3] & mask))
 		{
 			gime_firq |= (coco3_gimereg[3] & mask);
-			coco3_recalc_firq();
+			coco3_recalc_firq(machine);
 
 			if (LOG_INT_COCO3)
-				logerror("CoCo3 Interrupt: Raising FIRQ; scanline=%i\n", video_screen_get_vpos(0));
+				logerror("CoCo3 Interrupt: Raising FIRQ; scanline=%i\n", video_screen_get_vpos(machine->primary_screen));
 		}
 	}
 }
@@ -832,22 +884,22 @@ static void coco3_raise_interrupt(UINT8 mask, int state)
 
 void coco3_horizontal_sync_callback(int data)
 {
-	pia_0_ca1_w(0, data);
-	coco3_raise_interrupt(COCO3_INT_HBORD, data);
+	pia_0_ca1_w(Machine, 0, data);
+	coco3_raise_interrupt(Machine, COCO3_INT_HBORD, data);
 }
 
 
 
 void coco3_field_sync_callback(int data)
 {
-	pia_0_cb1_w(0, data);
+	pia_0_cb1_w(Machine, 0, data);
 }
 
-void coco3_gime_field_sync_callback(void)
+void coco3_gime_field_sync_callback(running_machine *machine)
 {
 	/* the CoCo 3 VBORD interrupt triggers right after the display */
-	coco3_raise_interrupt(COCO3_INT_VBORD, 1);
-	coco3_raise_interrupt(COCO3_INT_VBORD, 0);
+	coco3_raise_interrupt(machine, COCO3_INT_VBORD, 1);
+	coco3_raise_interrupt(machine, COCO3_INT_VBORD, 0);
 }
 
 
@@ -858,25 +910,26 @@ void coco3_gime_field_sync_callback(void)
 
 static TIMER_CALLBACK(d_recalc_interrupts)
 {
-	d_recalc_firq();
-	d_recalc_irq();
+	d_recalc_firq(machine);
+	d_recalc_irq(machine);
 }
 
 static TIMER_CALLBACK(coco3_recalc_interrupts)
 {
-	coco3_recalc_firq();
-	coco3_recalc_irq();
+	coco3_recalc_firq(machine);
+	coco3_recalc_irq(machine);
 }
 
-static timer_callback recalc_interrupts;
+static timer_fired_func recalc_interrupts;
 
-void coco_set_halt_line(int halt_line)
+#ifdef UNUSED_FUNCTION
+void coco_set_halt_line(running_machine *machine, int halt_line)
 {
 	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, halt_line);
 	if (halt_line == CLEAR_LINE)
 		timer_set(ATTOTIME_IN_CYCLES(1,0), NULL, 0, recalc_interrupts);
 }
-
+#endif
 
 /***************************************************************************
 	Input device abstractions
@@ -1019,7 +1072,7 @@ static void coco_hiresjoy_w(int data)
 		coco_hiresjoy_ytransitiontime = attotime_zero;
 	}
 	coco_hiresjoy_ca = data;
-	(*update_keyboard)();
+	(*update_keyboard)(Machine);
 }
 
 static int coco_hiresjoy_readone(attotime transitiontime)
@@ -1187,25 +1240,25 @@ WRITE8_HANDLER ( dgnalpha_psg_porta_write )
 
 static WRITE8_HANDLER ( d_pia0_ca2_w )
 {
-	timer_adjust(mux_sel1_timer, ATTOTIME_IN_USEC(16), data, attotime_never);
+	timer_adjust_oneshot(mux_sel1_timer, ATTOTIME_IN_USEC(16), data);
 }
 
 static TIMER_CALLBACK(coco_update_sel1_timerproc)
 {
 	mux_sel1 = param;;
-	(*update_keyboard)();
+	(*update_keyboard)(machine);
 	soundmux_update();
 }
 
 static WRITE8_HANDLER ( d_pia0_cb2_w )
 {
-	timer_adjust(mux_sel2_timer, ATTOTIME_IN_USEC(16), data, attotime_never);
+	timer_adjust_oneshot(mux_sel2_timer, ATTOTIME_IN_USEC(16), data);
 }
 
 static TIMER_CALLBACK(coco_update_sel2_timerproc)
 {
 	mux_sel2 = param;
-	(*update_keyboard)();
+	(*update_keyboard)(machine);
 	soundmux_update();
 }
 
@@ -1224,7 +1277,7 @@ static attotime get_relative_time(attotime absolute_time)
 
 
 
-static UINT8 coco_update_keyboard(void)
+static UINT8 coco_update_keyboard(running_machine *machine)
 {
 	UINT8 porta = 0x7F, port_za = 0x7f;
 	int joyval;
@@ -1239,21 +1292,21 @@ static UINT8 coco_update_keyboard(void)
 	joystick = mux_sel2;
 
 	/* poll keyoard keys */
-	if ((input_port_0_r(0) | pia0_pb) != 0xff) porta &= ~0x01;
-	if ((input_port_1_r(0) | pia0_pb) != 0xff) porta &= ~0x02;
-	if ((input_port_2_r(0) | pia0_pb) != 0xff) porta &= ~0x04;
-	if ((input_port_3_r(0) | pia0_pb) != 0xff) porta &= ~0x08;
-	if ((input_port_4_r(0) | pia0_pb) != 0xff) porta &= ~0x10;
-	if ((input_port_5_r(0) | pia0_pb) != 0xff) porta &= ~0x20;
-	if ((input_port_6_r(0) | pia0_pb) != 0xff) porta &= ~0x40;
+	if ((readinputport(0) | pia0_pb) != 0xff) porta &= ~0x01;
+	if ((readinputport(1) | pia0_pb) != 0xff) porta &= ~0x02;
+	if ((readinputport(2) | pia0_pb) != 0xff) porta &= ~0x04;
+	if ((readinputport(3) | pia0_pb) != 0xff) porta &= ~0x08;
+	if ((readinputport(4) | pia0_pb) != 0xff) porta &= ~0x10;
+	if ((readinputport(5) | pia0_pb) != 0xff) porta &= ~0x20;
+	if ((readinputport(6) | pia0_pb) != 0xff) porta &= ~0x40;
 
-	if ((input_port_0_r(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x01;
-	if ((input_port_1_r(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x02;
-	if ((input_port_2_r(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x04;
-	if ((input_port_3_r(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x08;
-	if ((input_port_4_r(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x10;
-	if ((input_port_5_r(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x20;
-	if ((input_port_6_r(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x40;
+	if ((readinputport(0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x01;
+	if ((readinputport(1) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x02;
+	if ((readinputport(2) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x04;
+	if ((readinputport(3) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x08;
+	if ((readinputport(4) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x10;
+	if ((readinputport(5) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x20;
+	if ((readinputport(6) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x40;
 
 	switch(get_input_device(joystick ? INPUTPORT_LEFT_JOYSTICK : INPUTPORT_RIGHT_JOYSTICK))
 	{
@@ -1282,7 +1335,7 @@ static UINT8 coco_update_keyboard(void)
 			break;
 
 		case INPUTDEVICE_DIECOM_LIGHTGUN:
-			if( (video_screen_get_vpos(0) == readinputportbytag_safe("dclg_y", 0)) )
+			if( (video_screen_get_vpos(machine->primary_screen) == readinputportbytag_safe("dclg_y", 0)) )
 			{
 				/* If gun is pointing at the current scan line, set hit bit and cache horizontal timer value */
 				dclg_output_h |= 0x02;
@@ -1295,7 +1348,7 @@ static UINT8 coco_update_keyboard(void)
 			if( (dclg_state == 7) )
 			{
 				/* While in state 7, prepare to chech next video frame for a hit */
-				dclg_time = video_screen_get_time_until_pos(0, readinputportbytag_safe("dclg_y", 0), 0);
+				dclg_time = video_screen_get_time_until_pos(machine->primary_screen, readinputportbytag_safe("dclg_y", 0), 0);
 			}
 
 			break;
@@ -1330,21 +1383,21 @@ static UINT8 coco_update_keyboard(void)
 
 
 
-static UINT8 coco3_update_keyboard(void)
+static UINT8 coco3_update_keyboard(running_machine *machine)
 {
 	/* the CoCo 3 keyboard update routine must also check for the GIME EI1 interrupt */
 	UINT8 porta;
-	porta = coco_update_keyboard();
-	coco3_raise_interrupt(COCO3_INT_EI1, ((porta & 0x7F) == 0x7F) ? CLEAR_LINE : ASSERT_LINE);
+	porta = coco_update_keyboard(machine);
+	coco3_raise_interrupt(machine, COCO3_INT_EI1, ((porta & 0x7F) == 0x7F) ? CLEAR_LINE : ASSERT_LINE);
 	return porta;
 }
 
 
 
 /* three functions that update the keyboard in varying ways */
-static WRITE8_HANDLER ( d_pia0_pb_w )									{ (*update_keyboard)(); }
-static void coco_poll_keyboard(void *param, UINT32 value, UINT32 mask)	{ (*update_keyboard)(); }
-static TIMER_CALLBACK(coco_update_keyboard_timerproc)					{ (*update_keyboard)(); }
+static WRITE8_HANDLER ( d_pia0_pb_w )					{ (*update_keyboard)(machine); }
+INPUT_CHANGED(coco_keyboard_changed)					{ (*update_keyboard)(machine); }
+static TIMER_CALLBACK(coco_update_keyboard_timerproc)	{ (*update_keyboard)(machine); }
 
 static WRITE8_HANDLER ( d_pia0_pa_w )
 {
@@ -1458,7 +1511,7 @@ static WRITE8_HANDLER ( d_pia1_pa_w )
 		cassette_output(cassette_device_image(), ((int) dac - 0x80) / 128.0);
 	}
 
-	(*update_keyboard)();
+	(*update_keyboard)(machine);
 
 	if (get_input_device(INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_INTERFACE)
 		coco_hiresjoy_w(dac >= 0x80);
@@ -1493,7 +1546,7 @@ static WRITE8_HANDLER( dragon64_pia1_pb_w )
 {
 	int ddr;
 
-	d_pia1_pb_w(0, data);
+	d_pia1_pb_w(machine, 0, data);
 
 	ddr = ~pia_get_port_b_z_mask(1);
 
@@ -1540,13 +1593,13 @@ static WRITE8_HANDLER( dgnalpha_pia2_pa_w )
 		case 0x00	: 		/* Inactive, do nothing */
 			break;
 		case 0x01	: 		/* Write to selected port */
-			AY8910_write_port_0_w(0, pia_get_output_b(2));
+			AY8910_write_port_0_w(machine, 0, pia_get_output_b(2));
 			break;
 		case 0x02	: 		/* Read from selected port */
-			pia_set_input_b(2, AY8910_read_port_0_r(0));
+			pia_set_input_b(2, AY8910_read_port_0_r(machine, 0));
 			break;
 		case 0x03	:		/* Select port to write to */
-			AY8910_control_port_0_w(0, pia_get_output_b(2));
+			AY8910_control_port_0_w(machine, 0, pia_get_output_b(2));
 			break;
 	}
 }
@@ -1573,7 +1626,7 @@ static void dragon_page_rom(int	romswitch)
 /* Dragon Alpha onboard FDC */
 /********************************************************************************************/
 
-static void	dgnalpha_fdc_callback(wd17xx_state_t event, void *param)
+static void	dgnalpha_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	/* The NMI line on the alphaAlpha is gated through IC16 (early PLD), and is gated by pia2 CA2  */
 	/* The DRQ line goes through pia2 cb1, in exactly the same way as DRQ from DragonDos does */
@@ -1581,7 +1634,7 @@ static void	dgnalpha_fdc_callback(wd17xx_state_t event, void *param)
 	switch(event)
 	{
 		case WD17XX_IRQ_CLR:
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 			break;
 		case WD17XX_IRQ_SET:
 			if(dgnalpha_just_reset)
@@ -1591,14 +1644,14 @@ static void	dgnalpha_fdc_callback(wd17xx_state_t event, void *param)
 			else
 			{
 				if (pia_get_output_ca2(2))
-					cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
+					cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE);
 			}
 			break;
 		case WD17XX_DRQ_CLR:
-			pia_2_cb1_w(0,CARTLINE_CLEAR);
+			pia_2_cb1_w(machine, 0, CARTLINE_CLEAR);
 			break;
 		case WD17XX_DRQ_SET:
-			pia_2_cb1_w(0,CARTLINE_ASSERTED);
+			pia_2_cb1_w(machine, 0, CARTLINE_ASSERTED);
 			break;
 	}
 }
@@ -1611,16 +1664,16 @@ READ8_HANDLER(wd2797_r)
 	switch(offset & 0x03)
 	{
 		case 0:
-			result = wd17xx_data_r(0);
+			result = wd17xx_data_r(machine, 0);
 			break;
 		case 1:
-			result = wd17xx_sector_r(0);
+			result = wd17xx_sector_r(machine, 0);
 			break;
 		case 2:
-			result = wd17xx_track_r(0);
+			result = wd17xx_track_r(machine, 0);
 			break;
 		case 3:
-			result = wd17xx_status_r(0);
+			result = wd17xx_status_r(machine, 0);
 			break;
 		default:
 			break;
@@ -1634,16 +1687,16 @@ WRITE8_HANDLER(wd2797_w)
     switch(offset & 0x3)
 	{
 		case 0:
-			wd17xx_data_w(0, data);
+			wd17xx_data_w(machine, 0, data);
 			break;
 		case 1:
-			wd17xx_sector_w(0, data);
+			wd17xx_sector_w(machine, 0, data);
 			break;
 		case 2:
-			wd17xx_track_w(0, data);
+			wd17xx_track_w(machine, 0, data);
 			break;
 		case 3:
-			wd17xx_command_w(0, data);
+			wd17xx_command_w(machine, 0, data);
 
 			/* disk head is encoded in the command byte */
 			wd17xx_set_side((data & 0x02) ? 1 : 0);
@@ -2034,7 +2087,7 @@ static void coco3_timer_reset(void)
 			logerror("coco3_reset_timer(): target_time=%g\n", attotime_to_double(target_time));
 
 		/* and adjust the timer */
-		timer_adjust(coco3_gime_timer, target_time, 0, attotime_zero);
+		timer_adjust_oneshot(coco3_gime_timer, target_time, 0);
 	}
 	else
 	{
@@ -2051,8 +2104,8 @@ static TIMER_CALLBACK(coco3_timer_proc)
 {
 	coco3_timer_reset();
 	coco3_vh_blink();
-	coco3_raise_interrupt(COCO3_INT_TMR, 1);
-	coco3_raise_interrupt(COCO3_INT_TMR, 0);
+	coco3_raise_interrupt(machine, COCO3_INT_TMR, 1);
+	coco3_raise_interrupt(machine, COCO3_INT_TMR, 0);
 }
 
 
@@ -2271,7 +2324,7 @@ READ8_HANDLER(coco3_gime_r)
 		result = gime_irq;
 		if (result) {
 			gime_irq = 0;
-			coco3_recalc_irq();
+			coco3_recalc_irq(machine);
 		}
 		break;
 
@@ -2279,7 +2332,7 @@ READ8_HANDLER(coco3_gime_r)
 		result = gime_firq;
 		if (result) {
 			gime_firq = 0;
-			coco3_recalc_firq();
+			coco3_recalc_firq(machine);
 		}
 		break;
 
@@ -2542,7 +2595,7 @@ WRITE8_HANDLER(coco_cartridge_w)
 READ8_HANDLER(coco3_cartridge_r)
 {
 	/* this behavior is documented in Super Extended Basic Unravelled, page 14 */
-	return ((coco3_gimereg[0] & 0x04) || (offset >= 0x10)) ? coco_cartridge_r(offset) : 0;
+	return ((coco3_gimereg[0] & 0x04) || (offset >= 0x10)) ? coco_cartridge_r(machine, offset) : 0;
 }
 
 
@@ -2556,7 +2609,7 @@ WRITE8_HANDLER(coco3_cartridge_w)
 {
 	/* this behavior is documented in Super Extended Basic Unravelled, page 14 */
 	if ((coco3_gimereg[0] & 0x04) || (offset >= 0x10))
-		coco_cartridge_w(offset, data);
+		coco_cartridge_w(machine, offset, data);
 }
 
 
@@ -2567,11 +2620,11 @@ WRITE8_HANDLER(coco3_cartridge_w)
 
 static void coco_cart_timer_w(running_machine *machine, int data)
 {
-	pia_1_cb1_w(0, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
+	pia_1_cb1_w(machine, 0, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* special code for Q state */
 	if ((data == 0x02) || (data == 0x03) || (data == 0x04))
-		timer_adjust(cart_timer, ATTOTIME_IN_USEC(0), data + 1, attotime_zero);
+		timer_adjust_oneshot(cart_timer, ATTOTIME_IN_USEC(0), data + 1);
 }
 
 
@@ -2595,7 +2648,7 @@ static TIMER_CALLBACK(coco_cart_timer_proc)
 static TIMER_CALLBACK(coco3_cart_timer_proc)
 {
 	int data = param;
-	coco3_raise_interrupt(COCO3_INT_EI0, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
+	coco3_raise_interrupt(machine, COCO3_INT_EI0, (data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
 	coco_cart_timer_w(machine, data);
 }
 
@@ -2636,15 +2689,15 @@ static void coco_setcartline(coco_cartridge *cartridge, cococart_line line, coco
 	switch(line)
 	{
 		case COCOCART_LINE_CART:
-			timer_adjust(cart_timer, ATTOTIME_IN_USEC(0), (int) value, attotime_zero);
+			timer_adjust_oneshot(cart_timer, ATTOTIME_IN_USEC(0), (int) value);
 			break;
 
 		case COCOCART_LINE_NMI:
-			timer_adjust(nmi_timer, ATTOTIME_IN_USEC(0), (int) value, attotime_zero);
+			timer_adjust_oneshot(nmi_timer, ATTOTIME_IN_USEC(0), (int) value);
 			break;
 
 		case COCOCART_LINE_HALT:
-			timer_adjust(halt_timer, ATTOTIME_IN_CYCLES(7,0), (int) value, attotime_zero);
+			timer_adjust_oneshot(halt_timer, ATTOTIME_IN_CYCLES(7,0), (int) value);
 			break;
 	}
 }
@@ -2705,7 +2758,7 @@ static void twiddle_cart_line_if_q(void)
 {
 	/* if the cartridge CART line is set to Q, trigger another round of pulses */
 	if ((coco_cart != NULL) && (cococart_get_line(coco_cart, COCOCART_LINE_CART) == COCOCART_LINE_VALUE_Q))
-		timer_adjust(cart_timer, ATTOTIME_IN_USEC(0), 0x02, attotime_zero);
+		timer_adjust_oneshot(cart_timer, ATTOTIME_IN_USEC(0), 0x02);
 }
 
 
@@ -2717,7 +2770,7 @@ static void twiddle_cart_line_if_q(void)
 
 WRITE8_HANDLER(coco_pia_1_w)
 {
-	pia_1_w(offset, data);
+	pia_1_w(machine, offset, data);
 	twiddle_cart_line_if_q();
 }
 
@@ -2731,9 +2784,9 @@ struct _machine_init_interface
 {
 	const pia6821_interface *piaintf;			/* PIA initializer */
 	int	piaintf_count;							/* PIA count */
-	timer_callback recalc_interrupts_;			/* recalculate inturrupts callback */
+	timer_fired_func recalc_interrupts_;			/* recalculate inturrupts callback */
 	void (*printer_out_)(int data);				/* printer output callback */
-	timer_callback cart_timer_proc;				/* cartridge timer proc */
+	timer_fired_func cart_timer_proc;				/* cartridge timer proc */
 	const char *fdc_cart_hardware;				/* normal cartridge hardware */
 	void (*map_memory)(coco_cartridge *cartridge, UINT32 offset, UINT32 mask);
 };
@@ -2747,7 +2800,6 @@ struct _machine_init_interface
 /* for everything except the coco3, so it made sense not to pass it as a parameter */
 static void generic_init_machine(running_machine *machine, const machine_init_interface *init)
 {
-	int portnum;
 	coco_cartridge_config cart_config;
 	mess_image *cart_image;
 	const char *extrainfo;
@@ -2814,10 +2866,6 @@ static void generic_init_machine(running_machine *machine, const machine_init_in
 	cart_config.set_line = coco_setcartline;
 	cart_config.map_memory = init->map_memory;
 	coco_cart = cococart_init(cart_hardware, &cart_config);
-
-	/* set up callbacks to be invoked on key press */
-	for (portnum = 0; portnum <= 6; portnum++)
-		input_port_set_changed_callback(portnum, ~0, coco_poll_keyboard, NULL);
 
 #ifdef MAME_DEBUG
 	cpuintrf_set_dasm_override(0, coco_dasm_override);
@@ -2949,7 +2997,7 @@ MACHINE_START( dgnalpha )
 	/* by the WD2797, it is reset to 0 after the first inurrupt */
 	dgnalpha_just_reset=1;
 
-	wd17xx_init(WD_TYPE_179X, dgnalpha_fdc_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_179X, dgnalpha_fdc_callback, NULL);
 }
 
 /******* Machine Setups CoCos **********/
@@ -3009,9 +3057,20 @@ static void coco3_state_postload(void)
 	coco3_mmu_update(0, 8);
 }
 
-static UINT32 crosshairs_get_screen(int player)
+static void update_lightgun(running_machine *machine)
 {
-	return readinputportbytag_safe("joystick_mode", 0x00) == 0x40 ? 0x03 : 0x00;
+	int is_lightgun = readinputportbytag_safe("joystick_mode", 0x00) == 0x40;
+	crosshair_set_screen(machine, 0, is_lightgun ? CROSSHAIR_SCREEN_ALL : CROSSHAIR_SCREEN_NONE);
+}
+
+INPUT_CHANGED( coco_joystick_mode_changed )
+{
+	update_lightgun(machine);
+}
+
+static TIMER_CALLBACK( update_lightgun_timer_callback )
+{
+	update_lightgun(machine);
 }
 
 MACHINE_START( coco3 )
@@ -3048,8 +3107,11 @@ MACHINE_START( coco3 )
 	state_save_register_global(gime_firq);
 	state_save_register_func_postload(coco3_state_postload);
 
-	video_crosshair_set_screenmask_callback(machine, crosshairs_get_screen);
+	/* need to specify lightgun crosshairs */
+	timer_set(attotime_zero, NULL, 0, update_lightgun_timer_callback);
 }
+
+
 
 /***************************************************************************
   OS9 Syscalls for disassembly

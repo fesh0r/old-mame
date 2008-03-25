@@ -147,9 +147,9 @@ DRIVER_INIT( apple1 )
 {
 	/* Set up the handlers for MESS's dynamically-sized RAM. */
 	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
-								 0x0000, mess_ram_size - 1, 0, 0, MRA8_BANK1);
+								 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK1);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,
-								  0x0000, mess_ram_size - 1, 0, 0, MWA8_BANK1);
+								  0x0000, mess_ram_size - 1, 0, 0, SMH_BANK1);
 	memory_set_bankptr(1, mess_ram);
 
 	pia_config(0, &apple1_pia0);
@@ -413,7 +413,7 @@ static WRITE8_HANDLER( apple1_pia0_dsp_write_signal )
 	   write.  Thus the write delay depends on the cursor position and
 	   where the display is in the refresh cycle. */
 	if (!data)
-		timer_set(apple1_vh_dsp_time_to_ready(), NULL, 0, apple1_dsp_ready_start);
+		timer_set(apple1_vh_dsp_time_to_ready(machine), NULL, 0, apple1_dsp_ready_start);
 }
 
 static TIMER_CALLBACK(apple1_dsp_ready_start)

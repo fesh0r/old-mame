@@ -141,18 +141,18 @@ static const nec765_interface pcw_nec765_interface =
 };
 
 /* determines if int line is held or cleared */
-static void pcw_interrupt_handle(void)
+static void pcw_interrupt_handle(running_machine *machine)
 {
 	if (
 		(pcw_interrupt_counter!=0) ||
 		((fdc_interrupt_code==1) && ((pcw_system_status & (1<<5))!=0))
 		)
 	{
-		cpunum_set_input_line(Machine, 0, 0,HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0,HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(Machine, 0, 0,CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0,CLEAR_LINE);
 	}
 }
 
@@ -163,13 +163,13 @@ static TIMER_CALLBACK(pcw_timer_interrupt)
 {
 	pcw_update_interrupt_counter();
 
-	pcw_interrupt_handle();
+	pcw_interrupt_handle(machine);
 }
 
 static int previous_fdc_int_state;
 
 /* set/clear fdc interrupt */
-static void	pcw_trigger_fdc_int(void)
+static void	pcw_trigger_fdc_int(running_machine *machine)
 {
 	int state;
 
@@ -192,7 +192,7 @@ static void	pcw_trigger_fdc_int(void)
 				{
 					/* I'll pulse it because if I used hold-line I'm not sure
                     it would clear - to be checked */
-					cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+					cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 				}
 			}
 		}
@@ -201,8 +201,7 @@ static void	pcw_trigger_fdc_int(void)
 		/* attach fdc to int */
 		case 1:
 		{
-
-			pcw_interrupt_handle();
+			pcw_interrupt_handle(machine);
 		}
 		break;
 
@@ -225,7 +224,7 @@ static void pcw_fdc_interrupt(int state)
 		pcw_system_status |= (1<<5);
 	}
 
-	pcw_trigger_fdc_int();
+	pcw_trigger_fdc_int(Machine);
 }
 
 
@@ -238,10 +237,10 @@ static void pcw_fdc_interrupt(int state)
     setup of the memory below.
 */
 static ADDRESS_MAP_START(pcw_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK5)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK6)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK7)
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(MRA8_BANK4, MWA8_BANK8)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK5)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK6)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_BANK7)
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK8)
 ADDRESS_MAP_END
 
 
@@ -274,7 +273,7 @@ static void pcw_update_read_memory_block(int block, int bank)
 		/* restore bank handler across entire block */
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
 			block * 0x04000 + 0x0000, block * 0x04000 + 0x3fff, 0, 0,
-			(read8_handler) (STATIC_BANK1 + (FPTR)block));
+			(read8_machine_func) (STATIC_BANK1 + (FPTR)block));
 	}
 }
 
@@ -372,7 +371,7 @@ static int pcw_get_sys_status(void)
 	return pcw_interrupt_counter | (readinputport(16) & (0x040 | 0x010)) | pcw_system_status;
 }
 
-static  READ8_HANDLER(pcw_interrupt_counter_r)
+static READ8_HANDLER(pcw_interrupt_counter_r)
 {
 	int data;
 
@@ -383,7 +382,7 @@ static  READ8_HANDLER(pcw_interrupt_counter_r)
 	/* clear int counter */
 	pcw_interrupt_counter = 0;
 	/* update interrupt */
-	pcw_interrupt_handle();
+	pcw_interrupt_handle(machine);
 	/* return data */
 	return data;
 }
@@ -459,10 +458,10 @@ static WRITE8_HANDLER(pcw_system_control_w)
 			{
 				/* yes */
 
-				pcw_interrupt_handle();
+				pcw_interrupt_handle(machine);
 			}
 
-			pcw_trigger_fdc_int();
+			pcw_trigger_fdc_int(machine);
 		}
 		break;
 
@@ -481,11 +480,11 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* clear nmi interrupt */
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 			}
 
 			/* re-issue interrupt */
-			pcw_interrupt_handle();
+			pcw_interrupt_handle(machine);
 		}
 		break;
 
@@ -503,11 +502,11 @@ static WRITE8_HANDLER(pcw_system_control_w)
 				/* yes */
 
 				/* Clear NMI */
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 
 			}
 
-			pcw_interrupt_handle();
+			pcw_interrupt_handle(machine);
 		}
 		break;
 
@@ -646,15 +645,15 @@ static WRITE8_HANDLER(pcw_expansion_w)
 
 }
 
-static  READ8_HANDLER(pcw_fdc_r)
+static READ8_HANDLER(pcw_fdc_r)
 {
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		return nec765_data_r(0);
+		return nec765_data_r(machine, 0);
 	}
 
-	return nec765_status_r(0);
+	return nec765_status_r(machine, 0);
 }
 
 static WRITE8_HANDLER(pcw_fdc_w)
@@ -662,7 +661,7 @@ static WRITE8_HANDLER(pcw_fdc_w)
 	/* from Jacob Nevins docs. FDC I/O is not fully decoded */
 	if (offset & 1)
 	{
-		nec765_data_w(0,data);
+		nec765_data_w(machine, 0,data);
 	}
 }
 
@@ -978,17 +977,16 @@ static MACHINE_DRIVER_START( pcw )
 	MDRV_CPU_ADD_TAG("main", Z80, 4000000)       /* clock supplied to chip, but in reality it is 3.4Mhz */
 	MDRV_CPU_PROGRAM_MAP(pcw_map, 0)
 	MDRV_CPU_IO_MAP(pcw_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(PCW_SCREEN_WIDTH, PCW_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, PCW_SCREEN_WIDTH-1, 0, PCW_SCREEN_HEIGHT-1)
 	MDRV_PALETTE_LENGTH(PCW_NUM_COLOURS)
-	MDRV_COLORTABLE_LENGTH(PCW_NUM_COLOURS)
 	MDRV_PALETTE_INIT( pcw )
 
 	MDRV_VIDEO_START( pcw )
@@ -1031,13 +1029,13 @@ ROM_PCW(pcw9256)
 ROM_PCW(pcw9512)
 ROM_PCW(pcw10)
 
-static void generic_pcw_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void generic_pcw_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		default:										legacydsk_device_getinfo(devclass, state, info); break;
 	}

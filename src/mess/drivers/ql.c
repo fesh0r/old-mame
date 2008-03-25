@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/i8039/i8039.h"
 #include "cpu/m68000/m68000.h"
 #include "devices/cartslot.h"
@@ -17,6 +16,7 @@
 
     TODO:
 
+	- separate ZX8302 into it's own module
     - microdrive simulation
     - RTC register write
     - serial data latching?
@@ -30,10 +30,10 @@
 
 */
 
-#define X1 15000000.0
-#define X2    32768.0
-#define X3  4436000.0
-#define X4 11000000.0
+#define X1 XTAL_15MHz
+#define X2 XTAL_32_768kHz
+#define X3 XTAL_4_436MHz
+#define X4 XTAL_11MHz
 
 /* Peripheral Chip (ZX8302) */
 
@@ -104,10 +104,10 @@ static emu_timer *zx8302_txd_timer, *zx8302_ipc_timer, *zx8302_rtc_timer, *zx830
 
 static UINT8 *mdv_image;
 
-static void zx8302_interrupt(UINT8 line)
+static void zx8302_interrupt(running_machine *machine, UINT8 line)
 {
 	zx8302.irq |= line;
-	cpunum_set_input_line(Machine, 0, MC68000_IRQ_2, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, MC68000_IRQ_2, HOLD_LINE);
 }
 
 static void zx8302_txd(int level)
@@ -159,7 +159,7 @@ static TIMER_CALLBACK( zx8302_txd_tick )
 		zx8302_txd(1);
 		zx8302.tx_bits = ZX8302_TXD_START;
 		zx8302.status &= ~ZX8302_STATUS_TX_BUFFER_FULL;
-		zx8302_interrupt(ZX8302_INT_TRANSMIT);
+		zx8302_interrupt(machine, ZX8302_INT_TRANSMIT);
 		break;
 	}
 }
@@ -178,7 +178,7 @@ static TIMER_CALLBACK( zx8302_gap_tick )
 {
 	if (zx8302.mdv_motor)
 	{
-		zx8302_interrupt(ZX8302_INT_GAP);
+		zx8302_interrupt(machine, ZX8302_INT_GAP);
 	}
 }
 
@@ -211,8 +211,8 @@ static WRITE8_HANDLER( zx8302_control_w )
 
 	zx8302.tcr = data;
 
-	timer_adjust(zx8302_txd_timer, attotime_zero, 0, ATTOTIME_IN_HZ(baud));
-	timer_adjust(zx8302_ipc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(baudx4));
+	timer_adjust_periodic(zx8302_txd_timer, attotime_zero, 0, ATTOTIME_IN_HZ(baud));
+	timer_adjust_periodic(zx8302_ipc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(baudx4));
 }
 
 static UINT8 zx8302_get_microdrive_status(void)
@@ -367,7 +367,7 @@ static WRITE8_HANDLER( zx8302_irq_acknowledge_w )
 
 	if (!zx8302.irq)
 	{
-		cpunum_set_input_line(Machine, 0, MC68000_IRQ_2, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, MC68000_IRQ_2, CLEAR_LINE);
 	}
 }
 
@@ -379,7 +379,7 @@ static WRITE8_HANDLER( zx8302_data_w )
 
 static INTERRUPT_GEN( zx8302_int )
 {
-	zx8302_interrupt(ZX8302_INT_FRAME);
+	zx8302_interrupt(machine, ZX8302_INT_FRAME);
 }
 
 /* Intelligent Peripheral Controller (IPC) */
@@ -484,24 +484,24 @@ static WRITE8_HANDLER( ipc_port2_w )
 		switch (ipl)
 		{
 		case 0:
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_2, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_5, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_7, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, HOLD_LINE);
 			break;
 		case 1: // CTRL-ALT-7
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_2, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_5, HOLD_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_7, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, CLEAR_LINE);
 			break;
 		case 2:
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_2, HOLD_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_5, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_7, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, CLEAR_LINE);
 			break;
 		case 3:
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_2, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_5, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_7, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_2, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_5, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_7, CLEAR_LINE);
 			break;
 		}
 
@@ -535,7 +535,7 @@ static READ8_HANDLER( ipc_port2_r )
 
 	int irq = (ipc.ser2_rxd | ipc.ser1_txd);
 
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ0, irq);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ0, irq);
 
 	return (zx8302.comdata << 7) | irq;
 }
@@ -574,6 +574,13 @@ static READ8_HANDLER( ipc_bus_r )
 	return 0;
 }
 
+static READ8_HANDLER( ipc_ea_r )
+{
+	// connected to ground via a 10K resistor, but needs to be 1 because the logic is reversed in i8039.c
+
+	return 1;
+}
+
 /* Memory Maps */
 
 static ADDRESS_MAP_START( ql_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -608,6 +615,7 @@ static ADDRESS_MAP_START( ipc_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(I8039_p2, I8039_p2) AM_READWRITE(ipc_port2_r, ipc_port2_w)
 	AM_RANGE(I8039_t1, I8039_t1) AM_READ(ipc_t1_r)
 	AM_RANGE(I8039_bus, I8039_bus) AM_READ(ipc_bus_r)
+	AM_RANGE(I8039_ea, I8039_ea) AM_READ(ipc_ea_r)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -877,8 +885,8 @@ static MACHINE_START( ql )
 	zx8302_rtc_timer = timer_alloc(zx8302_rtc_tick, NULL);
 	zx8302_gap_timer = timer_alloc(zx8302_gap_tick, NULL);
 
-	timer_adjust(zx8302_rtc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(X2/32768));
-	timer_adjust(zx8302_gap_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(31));
+	timer_adjust_periodic(zx8302_rtc_timer, attotime_zero, 0, ATTOTIME_IN_HZ(X2/32768));
+	timer_adjust_periodic(zx8302_gap_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(31));
 
 	zx8302.ctr = time(NULL) + 283996800;
 
@@ -900,19 +908,18 @@ static MACHINE_DRIVER_START( ql )
 	// basic machine hardware
 	MDRV_CPU_ADD(M68008, X1/2)
 	MDRV_CPU_PROGRAM_MAP(ql_map, 0)
-	MDRV_CPU_VBLANK_INT(zx8302_int, 1)
+	MDRV_CPU_VBLANK_INT("main", zx8302_int)
 
-	MDRV_CPU_ADD(I8048, X4) // i8749
+	MDRV_CPU_ADD(I8749, X4)
 	MDRV_CPU_PROGRAM_MAP(ipc_map, 0)
 	MDRV_CPU_IO_MAP(ipc_io_map, 0)
 
 	MDRV_MACHINE_START(ql)
 
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
     // video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(512, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 512-1, 0, 256-1)
@@ -931,6 +938,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ql_ntsc )
 	MDRV_IMPORT_FROM(ql)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(60)
 MACHINE_DRIVER_END
 
@@ -1071,23 +1079,23 @@ static DEVICE_LOAD( ql_microdrive )
 	return INIT_FAIL;
 }
 
-static void ql_microdrive_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ql_microdrive_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ql_microdrive; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ql_microdrive; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mdv"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mdv"); break;
 	}
 }
 
@@ -1110,22 +1118,22 @@ static DEVICE_LOAD( ql_serial )
 	return INIT_FAIL;
 }
 
-static void ql_serial_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ql_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = serial_device_init; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ql_serial; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = serial_device_unload; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = serial_device_init; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ql_serial; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = serial_device_unload; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
 	}
 }
 
@@ -1145,17 +1153,17 @@ static DEVICE_LOAD( ql_cart )
 	return INIT_FAIL;
 }
 
-static void ql_cartslot_getinfo( const device_class *devclass, UINT32 state, union devinfo *info )
+static void ql_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
 {
 	switch( state )
 	{
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 1;
 		break;
-	case DEVINFO_PTR_LOAD:
+	case MESS_DEVINFO_PTR_LOAD:
 		info->load = device_load_ql_cart;
 		break;
-	case DEVINFO_STR_FILE_EXTENSIONS:
+	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
 		strcpy(info->s = device_temp_str(), "bin");
 		break;
 	default:

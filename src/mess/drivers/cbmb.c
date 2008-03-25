@@ -158,7 +158,6 @@ when problems start with -log and look into error.log file
  */
 
 #include "driver.h"
-#include "mslegacy.h"
 #include "cpu/m6502/m6509.h"
 #include "sound/sid6581.h"
 #include "machine/6526cia.h"
@@ -167,7 +166,7 @@ when problems start with -log and look into error.log file
 #include "includes/cbm.h"
 #include "machine/tpi6525.h"
 #include "video/vic6567.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
@@ -175,19 +174,19 @@ when problems start with -log and look into error.log file
 #include "includes/cbmb.h"
 
 static ADDRESS_MAP_START( cbmb_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0xf07ff) AM_READ( MRA8_RAM )
+	AM_RANGE(0x00000, 0xf07ff) AM_READ( SMH_RAM )
 #if 0
-	AM_RANGE(0xf0800, 0xf0fff) AM_READ( MRA8_ROM )
+	AM_RANGE(0xf0800, 0xf0fff) AM_READ( SMH_ROM )
 #endif
-	AM_RANGE(0xf1000, 0xf1fff) AM_READ( MRA8_ROM ) /* cartridges or ram */
-	AM_RANGE(0xf2000, 0xf3fff) AM_READ( MRA8_ROM ) /* cartridges or ram */
-	AM_RANGE(0xf4000, 0xf5fff) AM_READ( MRA8_ROM )
-	AM_RANGE(0xf6000, 0xf7fff) AM_READ( MRA8_ROM )
-	AM_RANGE(0xf8000, 0xfbfff) AM_READ( MRA8_ROM )
-	/*  {0xfc000, 0xfcfff, MRA8_ROM }, */
-	AM_RANGE(0xfd000, 0xfd7ff) AM_READ( MRA8_ROM )
+	AM_RANGE(0xf1000, 0xf1fff) AM_READ( SMH_ROM ) /* cartridges or ram */
+	AM_RANGE(0xf2000, 0xf3fff) AM_READ( SMH_ROM ) /* cartridges or ram */
+	AM_RANGE(0xf4000, 0xf5fff) AM_READ( SMH_ROM )
+	AM_RANGE(0xf6000, 0xf7fff) AM_READ( SMH_ROM )
+	AM_RANGE(0xf8000, 0xfbfff) AM_READ( SMH_ROM )
+	/*  {0xfc000, 0xfcfff, SMH_ROM }, */
+	AM_RANGE(0xfd000, 0xfd7ff) AM_READ( SMH_ROM )
 //  AM_RANGE(0xfd800, 0xfd8ff)
-	AM_RANGE(0xfd801, 0xfd801) AM_MIRROR( 0xfe ) AM_READ( crtc6845_0_register_r )
+	AM_RANGE(0xfd801, 0xfd801) AM_MIRROR( 0xfe ) AM_DEVREAD(MC6845, "crtc", mc6845_register_r)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_READ( sid6581_0_port_r )
 	/* db00 coprocessor */
@@ -195,22 +194,22 @@ static ADDRESS_MAP_START( cbmb_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_READ( tpi6525_0_port_r)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_READ( tpi6525_1_port_r)
-	AM_RANGE(0xfe000, 0xfffff) AM_READ( MRA8_ROM )
+	AM_RANGE(0xfe000, 0xfffff) AM_READ( SMH_ROM )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cbmb_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x0ffff) AM_WRITE( MWA8_NOP )
-	AM_RANGE(0x10000, 0x4ffff) AM_WRITE( MWA8_RAM )
-	AM_RANGE(0x50002, 0x5ffff) AM_WRITE( MWA8_NOP )
-	AM_RANGE(0x60000, 0xf07ff) AM_WRITE( MWA8_RAM )
-	AM_RANGE(0xf1000, 0xf1fff) AM_WRITE( MWA8_ROM ) /* cartridges */
-	AM_RANGE(0xf2000, 0xf3fff) AM_WRITE( MWA8_ROM ) /* cartridges */
-	AM_RANGE(0xf4000, 0xf5fff) AM_WRITE( MWA8_ROM )
-	AM_RANGE(0xf6000, 0xf7fff) AM_WRITE( MWA8_ROM )
-	AM_RANGE(0xf8000, 0xfbfff) AM_WRITE( MWA8_ROM) AM_BASE( &cbmb_basic )
-	AM_RANGE(0xfd000, 0xfd7ff) AM_WRITE( MWA8_RAM) AM_BASE( &videoram) AM_SIZE(&videoram_size ) /* VIDEORAM */
-	AM_RANGE(0xfd800, 0xfd800) AM_MIRROR( 0xfe ) AM_WRITE( crtc6845_0_address_w )
-	AM_RANGE(0xfd801, 0xfd801) AM_MIRROR( 0xfe ) AM_WRITE( crtc6845_0_register_w )
+	AM_RANGE(0x00000, 0x0ffff) AM_WRITE( SMH_NOP )
+	AM_RANGE(0x10000, 0x4ffff) AM_WRITE( SMH_RAM )
+	AM_RANGE(0x50002, 0x5ffff) AM_WRITE( SMH_NOP )
+	AM_RANGE(0x60000, 0xf07ff) AM_WRITE( SMH_RAM )
+	AM_RANGE(0xf1000, 0xf1fff) AM_WRITE( SMH_ROM ) /* cartridges */
+	AM_RANGE(0xf2000, 0xf3fff) AM_WRITE( SMH_ROM ) /* cartridges */
+	AM_RANGE(0xf4000, 0xf5fff) AM_WRITE( SMH_ROM )
+	AM_RANGE(0xf6000, 0xf7fff) AM_WRITE( SMH_ROM )
+	AM_RANGE(0xf8000, 0xfbfff) AM_WRITE( SMH_ROM) AM_BASE( &cbmb_basic )
+	AM_RANGE(0xfd000, 0xfd7ff) AM_WRITE( SMH_RAM) AM_BASE( &videoram) AM_SIZE(&videoram_size ) /* VIDEORAM */
+	AM_RANGE(0xfd800, 0xfd800) AM_MIRROR( 0xfe ) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xfd801, 0xfd801) AM_MIRROR( 0xfe ) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_WRITE( sid6581_0_port_w)
 	/* db00 coprocessor */
@@ -218,22 +217,22 @@ static ADDRESS_MAP_START( cbmb_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_WRITE( tpi6525_0_port_w)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_WRITE( tpi6525_1_port_w)
-	AM_RANGE(0xfe000, 0xfffff) AM_WRITE( MWA8_ROM) AM_BASE( &cbmb_kernal )
+	AM_RANGE(0xfe000, 0xfffff) AM_WRITE( SMH_ROM) AM_BASE( &cbmb_kernal )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cbm500_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0xf07ff) AM_READ( MRA8_RAM )
+	AM_RANGE(0x00000, 0xf07ff) AM_READ( SMH_RAM )
 #if 0
-	AM_RANGE(0xf0800, 0xf0fff) AM_READ( MRA8_ROM )
+	AM_RANGE(0xf0800, 0xf0fff) AM_READ( SMH_ROM )
 #endif
-	AM_RANGE(0xf1000, 0xf1fff) AM_READ( MRA8_ROM ) /* cartridges or ram */
-	AM_RANGE(0xf2000, 0xf3fff) AM_READ( MRA8_ROM ) /* cartridges or ram */
-	AM_RANGE(0xf4000, 0xf5fff) AM_READ( MRA8_ROM )
-	AM_RANGE(0xf6000, 0xf7fff) AM_READ( MRA8_ROM )
-	AM_RANGE(0xf8000, 0xfbfff) AM_READ( MRA8_ROM )
-	/*  {0xfc000, 0xfcfff, MRA8_ROM }, */
-	AM_RANGE(0xfd000, 0xfd3ff) AM_READ( MRA8_RAM ) /* videoram */
-	AM_RANGE(0xfd400, 0xfd7ff) AM_READ( MRA8_RAM ) /* colorram */
+	AM_RANGE(0xf1000, 0xf1fff) AM_READ( SMH_ROM ) /* cartridges or ram */
+	AM_RANGE(0xf2000, 0xf3fff) AM_READ( SMH_ROM ) /* cartridges or ram */
+	AM_RANGE(0xf4000, 0xf5fff) AM_READ( SMH_ROM )
+	AM_RANGE(0xf6000, 0xf7fff) AM_READ( SMH_ROM )
+	AM_RANGE(0xf8000, 0xfbfff) AM_READ( SMH_ROM )
+	/*  {0xfc000, 0xfcfff, SMH_ROM }, */
+	AM_RANGE(0xfd000, 0xfd3ff) AM_READ( SMH_RAM ) /* videoram */
+	AM_RANGE(0xfd400, 0xfd7ff) AM_READ( SMH_RAM ) /* colorram */
 	AM_RANGE(0xfd800, 0xfd8ff) AM_READ( vic2_port_r )
 	/* disk units */
 	AM_RANGE(0xfda00, 0xfdaff) AM_READ( sid6581_0_port_r )
@@ -242,21 +241,21 @@ static ADDRESS_MAP_START( cbm500_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_READ( tpi6525_0_port_r)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_READ( tpi6525_1_port_r)
-	AM_RANGE(0xfe000, 0xfffff) AM_READ( MRA8_ROM )
+	AM_RANGE(0xfe000, 0xfffff) AM_READ( SMH_ROM )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( cbm500_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x1ffff) AM_WRITE( MWA8_RAM )
-	AM_RANGE(0x20000, 0x2ffff) AM_WRITE( MWA8_NOP )
-	AM_RANGE(0x30000, 0x7ffff) AM_WRITE( MWA8_RAM )
-	AM_RANGE(0x80000, 0x8ffff) AM_WRITE( MWA8_NOP )
-	AM_RANGE(0x90000, 0xf07ff) AM_WRITE( MWA8_RAM )
-	AM_RANGE(0xf1000, 0xf1fff) AM_WRITE( MWA8_ROM ) /* cartridges */
-	AM_RANGE(0xf2000, 0xf3fff) AM_WRITE( MWA8_ROM ) /* cartridges */
-	AM_RANGE(0xf4000, 0xf5fff) AM_WRITE( MWA8_ROM )
-	AM_RANGE(0xf6000, 0xf7fff) AM_WRITE( MWA8_ROM )
-	AM_RANGE(0xf8000, 0xfbfff) AM_WRITE( MWA8_ROM) AM_BASE( &cbmb_basic )
-	AM_RANGE(0xfd000, 0xfd3ff) AM_WRITE( MWA8_RAM) AM_BASE( &cbmb_videoram )
+	AM_RANGE(0x00000, 0x1ffff) AM_WRITE( SMH_RAM )
+	AM_RANGE(0x20000, 0x2ffff) AM_WRITE( SMH_NOP )
+	AM_RANGE(0x30000, 0x7ffff) AM_WRITE( SMH_RAM )
+	AM_RANGE(0x80000, 0x8ffff) AM_WRITE( SMH_NOP )
+	AM_RANGE(0x90000, 0xf07ff) AM_WRITE( SMH_RAM )
+	AM_RANGE(0xf1000, 0xf1fff) AM_WRITE( SMH_ROM ) /* cartridges */
+	AM_RANGE(0xf2000, 0xf3fff) AM_WRITE( SMH_ROM ) /* cartridges */
+	AM_RANGE(0xf4000, 0xf5fff) AM_WRITE( SMH_ROM )
+	AM_RANGE(0xf6000, 0xf7fff) AM_WRITE( SMH_ROM )
+	AM_RANGE(0xf8000, 0xfbfff) AM_WRITE( SMH_ROM) AM_BASE( &cbmb_basic )
+	AM_RANGE(0xfd000, 0xfd3ff) AM_WRITE( SMH_RAM) AM_BASE( &cbmb_videoram )
 	AM_RANGE(0xfd400, 0xfd7ff) AM_WRITE( cbmb_colorram_w) AM_BASE( &cbmb_colorram )
 	AM_RANGE(0xfd800, 0xfd8ff) AM_WRITE( vic2_port_w )
 	/* disk units */
@@ -266,7 +265,7 @@ static ADDRESS_MAP_START( cbm500_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	/* dd00 acia */
 	AM_RANGE(0xfde00, 0xfdeff) AM_WRITE( tpi6525_0_port_w)
 	AM_RANGE(0xfdf00, 0xfdfff) AM_WRITE( tpi6525_1_port_w)
-	AM_RANGE(0xfe000, 0xfffff) AM_WRITE( MWA8_ROM) AM_BASE( &cbmb_kernal )
+	AM_RANGE(0xfe000, 0xfffff) AM_WRITE( SMH_ROM) AM_BASE( &cbmb_kernal )
 ADDRESS_MAP_END
 
 #define CBMB_KEYBOARD \
@@ -468,8 +467,11 @@ GFXDECODE_END
 
 static PALETTE_INIT( cbm700 )
 {
-	palette_set_colors_rgb(machine, 0, cbm700_palette, sizeof(cbm700_palette) / 3);
-    memcpy(colortable,cbmb_colortable,sizeof(cbmb_colortable));
+	int i;
+
+	for ( i = 0; i < 2; i++ ) {
+		palette_set_color_rgb(machine, i, cbm700_palette[i*3], cbm700_palette[i*3+1], cbm700_palette[i*3+2]);
+	}
 }
 
 ROM_START (cbm610)
@@ -601,29 +603,55 @@ ROM_END
 
 #endif
 
+static const mc6845_interface cbm600_crtc = {
+	"main",
+	XTAL_18MHz / 8 /*?*/,	/*  I do not know if this is correct, please verify */
+	8 /*?*/,
+	NULL,
+	cbm600_update_row,
+	NULL,
+	cbmb_display_enable_changed,
+	NULL,
+	NULL
+};
+
+static const mc6845_interface cbm700_crtc = {
+	"main",
+	XTAL_18MHz / 8 /*?*/,	/* I do not know if this is correct, please verify */
+	9 /*?*/,
+	NULL,
+	cbm700_update_row,
+	NULL,
+	cbmb_display_enable_changed,
+	NULL,
+	NULL
+};
+
 
 static MACHINE_DRIVER_START( cbm600 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6509, 7833600)        /* 7.8336 Mhz */
 	MDRV_CPU_PROGRAM_MAP(cbmb_readmem, cbmb_writemem)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( cbmb )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 200)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 200 - 1)
 	MDRV_GFXDECODE( cbm600 )
 	MDRV_PALETTE_LENGTH(sizeof (cbm700_palette) / sizeof (cbm700_palette[0]) / 3)
-	MDRV_COLORTABLE_LENGTH(sizeof (cbmb_colortable) / sizeof(cbmb_colortable[0]))
 	MDRV_PALETTE_INIT( cbm700 )
 
-	MDRV_VIDEO_START( generic )
-	MDRV_VIDEO_UPDATE( crtc6845 )
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG( cbm600_crtc )
+
+	MDRV_VIDEO_START( cbmb_crtc )
+	MDRV_VIDEO_UPDATE( cbmb_crtc )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -634,15 +662,20 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cbm600pal )
 	MDRV_IMPORT_FROM( cbm600 )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( cbm700 )
 	MDRV_IMPORT_FROM( cbm600pal )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_SIZE(720, 350)
 	MDRV_SCREEN_VISIBLE_AREA(0, 720 - 1, 0, 350 - 1)
 	MDRV_GFXDECODE( cbm700 )
+
+	MDRV_DEVICE_MODIFY("crtc", MC6845)
+	MDRV_DEVICE_CONFIG( cbm700_crtc )
 
 	MDRV_VIDEO_START( cbm700 )
 MACHINE_DRIVER_END
@@ -653,13 +686,15 @@ static MACHINE_DRIVER_START( cbm500 )
 	MDRV_CPU_ADD_TAG("main", M6509, VIC6567_CLOCK)        /* 7.8336 Mhz */
 	MDRV_CPU_PROGRAM_MAP(cbm500_readmem, cbm500_writemem)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC2_HRETRACERATE)
-	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( cbmb )
 
+	/* video hardware */
 	MDRV_IMPORT_FROM( vh_vic2 )
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -673,29 +708,29 @@ static DRIVER_INIT( cbm600hu )	{ cbm600hu_driver_init(); }
 static DRIVER_INIT( cbm600pal )	{ cbm600pal_driver_init(); }
 static DRIVER_INIT( cbm700 )	{ cbm700_driver_init(); }
 
-static void cbmb_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cbmb_cbmcartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,10,20,40,60"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,10,20,40,60"); break;
 
 		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void cbmb_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cbmb_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbmb; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbmb; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
@@ -710,18 +745,18 @@ SYSTEM_CONFIG_START(cbmb)
 #endif
 SYSTEM_CONFIG_END
 
-static void cbm500_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cbm500_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm500; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm500; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}

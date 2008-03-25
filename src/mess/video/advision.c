@@ -43,8 +43,6 @@ PALETTE_INIT( advision )
 	{
 		/* 8 shades of RED */
 		palette_set_color_rgb(machine, i, i * 0x22, 0x00, 0x00);
-		colortable[i*2+0] = 0;
-		colortable[i*2+0] = i;
 	}
 
 	palette_set_color_rgb(machine, 8, 0x55, 0x55, 0x55);	/* DK GREY - for MAME text only */
@@ -107,7 +105,7 @@ VIDEO_UPDATE( advision )
 			for( bit = 0; bit < 8; bit++ )
 			{
 				if( *led > 0 )
-					*BITMAP_ADDR16(bitmap, 30 + 2 *( y * 8 + bit), 85 + x) = machine->pens[--(*led)];
+					*BITMAP_ADDR16(bitmap, 30 + 2 *( y * 8 + bit), 85 + x) = --(*led);
 				led += 256;
 			}
 		}

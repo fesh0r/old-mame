@@ -15,10 +15,33 @@
     F0000-FDFFF   NOP       or ROM Basic + other Extensions
     FE000-FFFFF   ROM
 
+
+Tandy 1000 (8086/8088) variations:
+1000				128KB-640KB RAM		4.77 MHz		v01.00.00, v01.01.00
+1000A/1000HD		128KB-640KB RAM		4.77 MHz		v01.01.00
+1000SX/1000AX		384KB-640KB RAM		7.16/4.77 MHz	v01.02.00
+1000EX				256KB-640KB RAM		7.16/4.77 MHz	v01.02.00
+1000HX				256KB-640KB RAM		7.16/4.77 MHz	v02.00.00
+1000SL/1000PC		384KB-640KB RAM		8.0/4.77 MHz	v01.04.00, v01.04.01, v01.04.02, v02.00.01
+1000SL/2			512KB-640KB RAM		8.0/4.77 MHz	v01.04.04
+1000RL/1000RL-HD	512KB-768KB RAM		9.44/4.77 MHz	v02.00.00, v02.00.01
+
+Tandy 1000 (80286) variations:
+1000TX				640KB-768KB RAM		8.0/4.77 MHz	v01.03.00
+1000TL				640KB-768KB RAM		8.0/4.77 MHz	v01.04.00, v01.04.01, v01.04.02
+1000TL/2			640KB-768KB RAM		8.0/4.77 MHz	v02.00.00
+1000TL/3			640KB-768KB RAM		10.0/5.0 MHz	v02.00.00
+1000RLX				512KB-1024KB RAM	10.0/5.0 MHz	v02.00.00
+1000RLX-HD			1024MB RAM			10.0/5.0 MHz	v02.00.00
+
+Tandy 1000 (80386) variations:
+1000RSX/1000RSX-HD	1M-9M RAM			25.0/8.0 MHz	v01.10.00
+
 ***************************************************************************/
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "memconv.h"
 
 #include "machine/8255ppi.h"
@@ -90,7 +113,7 @@
 static READ8_HANDLER( pc_YM3812_0_r )
 {
 	if ((offset % 1) == 0)
-		return YM3812_status_port_0_r(0);
+		return YM3812_status_port_0_r(machine, 0);
 	else
 		return 0x00;
 }
@@ -98,16 +121,16 @@ static READ8_HANDLER( pc_YM3812_0_r )
 static WRITE8_HANDLER( pc_YM3812_0_w )
 {
 	if ((offset % 1) == 0)
-		YM3812_control_port_0_w(0, data);
+		YM3812_control_port_0_w(machine, 0, data);
 	else
-		YM3812_write_port_0_w(0, data);
+		YM3812_write_port_0_w(machine, 0, data);
 }
 
-static READ16_HANDLER( pc16le_YM3812_0_r ) { return read16le_with_read8_handler(pc_YM3812_0_r, offset, mem_mask); }
-static WRITE16_HANDLER( pc16le_YM3812_0_w ) { write16le_with_write8_handler(pc_YM3812_0_w, offset, data, mem_mask); }
+static READ16_HANDLER( pc16le_YM3812_0_r ) { return read16le_with_read8_handler(pc_YM3812_0_r, machine, offset, mem_mask); }
+static WRITE16_HANDLER( pc16le_YM3812_0_w ) { write16le_with_write8_handler(pc_YM3812_0_w, machine, offset, data, mem_mask); }
 
 #ifdef UNUSED_FUNCTION
-static WRITE16_HANDLER( pc16le_SN76496_0_w ) { write16le_with_write8_handler(SN76496_0_w, offset, data, mem_mask); }
+static WRITE16_HANDLER( pc16le_SN76496_0_w ) { write16le_with_write8_handler(SN76496_0_w, machine, offset, data, mem_mask); }
 #endif
 
 // IO Expansion, only a little bit for ibm bios self tests
@@ -235,7 +258,7 @@ static ADDRESS_MAP_START(tandy1000_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
 	AM_RANGE(0xa0000, 0xaffff) AM_RAM
 	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
-	AM_RANGE(0xb8000, 0xbffff) AM_READWRITE(pc_t1t_videoram_r, pc_video_videoram_w) AM_SIZE(&videoram_size)
+	AM_RANGE(0xb8000, 0xbffff) AM_READWRITE(pc_t1t_videoram_r, pc_video_videoram_w)
 	AM_RANGE(0xc0000, 0xc7fff) AM_NOP
 	AM_RANGE(0xc8000, 0xc9fff) AM_ROM
 	AM_RANGE(0xca000, 0xcffff) AM_NOP
@@ -1148,30 +1171,21 @@ static const struct YM3812interface ym3812_interface =
 	MDRV_CPU_ADD_TAG("main", type, clock)				\
 	MDRV_CPU_PROGRAM_MAP(mem##_map, 0)			\
 	MDRV_CPU_IO_MAP(port##_io, 0)				\
-	MDRV_CPU_VBLANK_INT(vblankfunc, 4)					\
+	MDRV_CPU_VBLANK_INT_HACK(vblankfunc, 4)					\
 	MDRV_CPU_CONFIG(i86_address_mask)
 
 
 static MACHINE_DRIVER_START( pcmda )
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc8, pc8, V20, 4772720, pc_mda_frame_interrupt)	/* 4,77 Mhz */
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_ADD_TAG("main", V20, 4772720)
+	MDRV_CPU_PROGRAM_MAP(pc8_map, 0)
+	MDRV_CPU_IO_MAP(pc8_io, 0)
+	MDRV_CPU_VBLANK_INT_HACK(pc_mda_frame_interrupt, 4)
 
 	MDRV_MACHINE_RESET(pc_mda)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(80*9, 25*14)
-	MDRV_SCREEN_VISIBLE_AREA(0,80*9-1, 0,25*14-1)
-	MDRV_GFXDECODE(pc_mda)
-	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
-	MDRV_COLORTABLE_LENGTH(sizeof(mda_colortable) / sizeof(mda_colortable[0]))
-	MDRV_PALETTE_INIT(pc_mda)
-
-	MDRV_VIDEO_START(pc_mda)
-	MDRV_VIDEO_UPDATE(pc_video)
+	/* video hardware */
+	MDRV_IMPORT_FROM( pcvideo_mda )
 
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1192,15 +1206,43 @@ static MACHINE_DRIVER_START( pcmda )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( pcherc )
+	/* basic machine hardware */
+	MDRV_CPU_ADD_TAG("main", V20, 4772720)
+	MDRV_CPU_PROGRAM_MAP(pc8_map, 0)
+	MDRV_CPU_IO_MAP(pc8_io, 0)
+	MDRV_CPU_VBLANK_INT_HACK(pc_mda_frame_interrupt, 4)
+
+	MDRV_MACHINE_RESET(pc_mda)
+
+	/* video hardware */
+	MDRV_IMPORT_FROM( pcvideo_hercules )
+
+	/* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_CONFIG(pc_sound_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#ifdef ADLIB
+	MDRV_SOUND_ADD(YM3812, ym3812_StdClock)
+	MDRV_SOUND_CONFIG(ym3812_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+#endif
+#ifdef GAMEBLASTER
+	MDRV_SOUND_ADD(SAA1099, 4772720)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+	MDRV_SOUND_ADD(SAA1099, 4772720)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+#endif
+MACHINE_DRIVER_END
+
 static MACHINE_DRIVER_START( pccga )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc8, pc8, I8088, 4772720, pc_cga_frame_interrupt)	/* 4,77 Mhz */
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_cga)
 
+	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_cga )
 
     /* sound hardware */
@@ -1226,18 +1268,17 @@ static MACHINE_DRIVER_START( europc )
 	/* basic machine hardware */
 	MDRV_CPU_PC(europc, europc, I8088, 4772720*2, pc_aga_frame_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_aga)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*9, 25*14)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*9-1, 0,25*14-1)
 	MDRV_GFXDECODE(europc)
 	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
-	MDRV_COLORTABLE_LENGTH((sizeof(cga_colortable)+sizeof(mda_colortable) )/sizeof(cga_colortable[0]))
 	MDRV_PALETTE_INIT(pc_aga)
 
 	MDRV_VIDEO_START(pc_aga)
@@ -1262,11 +1303,9 @@ static MACHINE_DRIVER_START( xtcga )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc16, pc16, I8086, 12000000, pc_cga_frame_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_cga)
 
+	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_cga )
 
     /* sound hardware */
@@ -1292,18 +1331,17 @@ static MACHINE_DRIVER_START( pc200 )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc1640, pc200, I8086, 8000000, pc_aga_frame_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_aga)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(80*8, 25*14)
 	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1, 0,25*14-1)
 	MDRV_GFXDECODE(aga)
 	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
-	MDRV_COLORTABLE_LENGTH((sizeof(cga_colortable)+sizeof(mda_colortable) )/sizeof(cga_colortable[0]))
 	MDRV_PALETTE_INIT(pc_aga)
 
 	MDRV_VIDEO_START(pc200)	/* PC200 needs its own video init */
@@ -1321,11 +1359,9 @@ static MACHINE_DRIVER_START( pc1512 )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc1640, pc1640, I8086, 8000000, pc_cga_frame_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_aga)
 
+	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_pc1512 )
 
     /* sound hardware */
@@ -1342,12 +1378,13 @@ static MACHINE_DRIVER_START( pc1640 )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc1640, pc1640, I8086, 8000000, pc_vga_frame_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_vga)
 
+	/* video hardware */
 	MDRV_IMPORT_FROM(pcvideo_pc1640)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1363,12 +1400,13 @@ static MACHINE_DRIVER_START( xtvga )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc16, pc16, I8086, 12000000, pc_vga_frame_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_vga)
 
+	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_vga )
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1393,12 +1431,10 @@ static MACHINE_DRIVER_START( t1000hx )
 	/* basic machine hardware */
 	MDRV_CPU_PC(tandy1000, tandy1000, I8088, 8000000, tandy1000_frame_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET(pc_t1t)
 
-	MDRV_IMPORT_FROM( pcvideo_t1000hx )
+	/* video hardware */
+	MDRV_IMPORT_FROM( pcvideo_t1000 )
 
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1411,10 +1447,6 @@ static MACHINE_DRIVER_START( t1000hx )
 	MDRV_NVRAM_HANDLER( tandy1000 )
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( t1000sx )
-	MDRV_IMPORT_FROM( t1000hx )
-	MDRV_IMPORT_FROM( pcvideo_t1000sx )
-MACHINE_DRIVER_END
 
 #if 0
 	//pcjr roms? (incomplete dump, most likely 64 kbyte)
@@ -1477,14 +1509,36 @@ MACHINE_DRIVER_END
 
 ROM_START( ibmpc )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-    ROM_LOAD("basicc11.f6", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9))
-    ROM_LOAD("basicc11.f8", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731))
-    ROM_LOAD("basicc11.fa", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74))
-    ROM_LOAD("basicc11.fc", 0xfc000, 0x2000, CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7))
-    ROM_LOAD("pc102782.bin", 0xfe000, 0x2000, CRC(e88792b3) SHA1(40fce6a94dda4328a8b608c7ae2f39d1dc688af4))
-	ROM_REGION(0x08100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))		/* WDC Expansion ROM C8000-C9FFF */
+
+	/* IBM PC 5150 (rev 2: 1501-476 10/27/82) 5-screw case w/1501981 CGA Card, ROM Basic 1.1 */
+	ROM_SYSTEM_BIOS( 0, "rev3", "IBM PC 5150 1501471 10/27/82" )
+	ROMX_LOAD("5000019.u29", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(1))		/* ROM Basic 1.1 F6000-F7FFF */
+	ROMX_LOAD("5000021.u30", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(1))		/* ROM Basic 1.1 F8000-F9FFF */
+	ROMX_LOAD("5000022.u31", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(1))		/* ROM Basic 1.1 FA000-FBFFF */
+	ROMX_LOAD("5000023.u32", 0xfc000, 0x2000, CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(1))		/* ROM Basic 1.1 FC000-FDFFF */
+	ROMX_LOAD("1501476.u33", 0xfe000, 0x2000, CRC(e88792b3) SHA1(40fce6a94dda4328a8b608c7ae2f39d1dc688af4), ROM_BIOS(1))
+
+	/* IBM PC 5150 (rev 0: 04/24/81) 2-screw case w/MDA Card, ROM Basic 1.0 */
+	/* ROM Basic 1.0 had a bug: Doing ".1 / 10" would result in the wrong answer. May have been fixed in 1.1 */
+	ROM_SYSTEM_BIOS( 1, "rev0", "IBM PC 5150 ??????? 02/24/81" )
+	ROMX_LOAD("basicc10.f6", 0xf6000, 0x2000, NO_DUMP, ROM_BIOS(2))
+	ROMX_LOAD("basicc10.f8", 0xf8000, 0x2000, NO_DUMP, ROM_BIOS(2))
+	ROMX_LOAD("basicc10.fa", 0xfa000, 0x2000, NO_DUMP, ROM_BIOS(2))
+	ROMX_LOAD("basicc10.fc", 0xfc000, 0x2000, NO_DUMP, ROM_BIOS(2))
+	ROMX_LOAD("pc022481.bin", 0xfe000, 0x2000, NO_DUMP, ROM_BIOS(2))
+
+	/* IBM PC 5150 (rev 1: 10/19/81) 2-screw case w/MDA Card, ROM Basic 1.1 (this could be wrong, it may use 1.0)*/
+	ROM_SYSTEM_BIOS( 2, "rev2", "IBM PC 5150 5700671 10/19/81" )
+	ROMX_LOAD("5000019.u29", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(3))		/* ROM Basic 1.1 F6000-F7FFF */
+	ROMX_LOAD("5000021.u30", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(3))		/* ROM Basic 1.1 F8000-F9FFF */
+	ROMX_LOAD("5000022.u31", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(3))		/* ROM Basic 1.1 FA000-FBFFF */
+	ROMX_LOAD("5000023.u32", 0xfc000, 0x2000, CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(3))		/* ROM Basic 1.1 FC000-FDFFF */
+	ROMX_LOAD("5700671.u33", 0xfe000, 0x2000, BAD_DUMP CRC(f46d95f9) SHA1(89a4e107e970d221a1e2f92e785c4ec96e449e67), ROM_BIOS(3))	/* Waiting verification */
+
+	/* Character rom */
+	ROM_REGION(0x2000,REGION_GFX1, 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 ROM_END
 
 ROM_START( ibmpca )
@@ -1495,16 +1549,20 @@ ROM_START( ibmpca )
     ROM_LOAD("basicc11.fa", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74))
     ROM_LOAD("basicc11.fc", 0xfc000, 0x2000, CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7))
     ROM_LOAD("pc081682.bin", 0xfe000, 0x2000, CRC(5c3f0256) SHA1(b42c78abd0a9c630a2f972ad2bae46d83c3a2a09))
-	ROM_REGION(0x08100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	/* Character rom */
+	ROM_REGION(0x2000,REGION_GFX1, 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 ROM_END
 
 ROM_START( bondwell )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) // taken from other machine
 	ROM_LOAD("bondwell.bin", 0xfe000, 0x2000, CRC(d435a405) SHA1(a57c705d1144c7b61940b6f5c05d785c272fc9bb))
-	ROM_REGION(0x08100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd)) // taken from cga
+
+	/* Character rom */
+	ROM_REGION(0x2000,REGION_GFX1, 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 ROM_END
 
 ROM_START( pcmda )
@@ -1515,13 +1573,24 @@ ROM_START( pcmda )
     ROM_LOAD("mda.rom",     0x00000, 0x02000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) // taken from original IBM MDA
 ROM_END
 
+ROM_START( pcherc )
+	ROM_REGION(0x100000,REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
+	ROM_REGION(0x1000,REGION_GFX1, 0)
+	ROM_LOAD("um2301.bin",  0x00000, 0x1000, CRC(0827bdac) SHA1(15f1aceeee8b31f0d860ff420643e3c7f29b5ffc))
+ROM_END
+
+
 ROM_START( pc )
     ROM_REGION(0x100000,REGION_CPU1, 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 //    ROM_LOAD("xthdd.rom",  0xc8000, 0x02000, CRC(a96317da))
     ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
-	ROM_REGION(0x08100,REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	/* Character rom */
+	ROM_REGION(0x2000,REGION_GFX1, 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 ROM_END
 
 ROM_START( europc )
@@ -1545,12 +1614,77 @@ ROM_START( ibmpcjr )
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
+ROM_START( t1000 )
+	ROM_REGION(0x100000,REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	// partlist says it has 1 128kbyte rom
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_SYSTEM_BIOS( 0, "v010000", "v010000" )
+	ROMX_LOAD("v010000.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(1))
+	ROM_SYSTEM_BIOS( 1, "v010100", "v010100" )
+	ROMX_LOAD("v010100.f0", 0xf0000, 0x10000, CRC(b6760881) SHA1(8275e4c48ac09cf36685db227434ca438aebe0b9), ROM_BIOS(2))
+	ROM_REGION(0x08000,REGION_GFX1, 0)
+	// expects 8x9 charset!
+	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
+ROM_END
+
+ROM_START( t1000a )
+	ROM_REGION(0x100000,REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	// partlist says it has 1 128kbyte rom
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("v010100.f0", 0xf0000, 0x10000, CRC(b6760881) SHA1(8275e4c48ac09cf36685db227434ca438aebe0b9))
+	ROM_REGION(0x08000,REGION_GFX1, 0)
+	// expects 8x9 charset!
+	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
+ROM_END
+
+ROM_START( t1000ex )
+	ROM_REGION(0x100000,REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	// partlist says it has 1 128kbyte rom
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("v010200.f0", 0xf0000, 0x10000, CRC(0e016ecf) SHA1(2f5ac8921b7cba56b02122ef772f5f11bbf6d8a2))
+	ROM_REGION(0x08000,REGION_GFX1, 0)
+	// expects 8x9 charset!
+	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
+ROM_END
+
 ROM_START( t1000hx )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 	// partlist says it has 1 128kbyte rom
 	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))
-	ROM_LOAD("tandy1t.rom", 0xf0000, 0x10000, CRC(d37a1d5f) SHA1(5ec031c31a7967cc3fd53a535d81833e4a1c385e))
+	ROM_LOAD("v020000.f0", 0xf0000, 0x10000, CRC(d37a1d5f) SHA1(5ec031c31a7967cc3fd53a535d81833e4a1c385e))
+	ROM_REGION(0x08000,REGION_GFX1, 0)
+	// expects 8x9 charset!
+	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
+ROM_END
+
+ROM_START( t1000sl )
+	ROM_REGION(0x100000,REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	// partlist says it has 1 128kbyte rom
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_SYSTEM_BIOS( 0, "v010400", "v010400" )
+	ROMX_LOAD("v010400.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "v010401", "v010401" )
+	ROMX_LOAD("v010401.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "v010402", "v010402" )
+	ROMX_LOAD("v010402.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 3, "v020001", "v020001" )
+	ROMX_LOAD("v020001.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(4) )
+	ROM_REGION(0x08000,REGION_GFX1, 0)
+	// expects 8x9 charset!
+	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
+ROM_END
+
+ROM_START( t1000sl2 )
+	ROM_REGION(0x100000,REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	// partlist says it has 1 128kbyte rom
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("v010404.f0", 0xf0000, 0x10000, NO_DUMP )
 	ROM_REGION(0x08000,REGION_GFX1, 0)
 	// expects 8x9 charset!
 	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
@@ -1558,10 +1692,24 @@ ROM_END
 
 ROM_START( t1000sx )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
 	// partlist says it has 1 128kbyte rom
-	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))
-	ROM_LOAD("t1000sx.f0", 0xf0000, 0x10000, CRC(0e016ecf) SHA1(2f5ac8921b7cba56b02122ef772f5f11bbf6d8a2))
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_LOAD("v010200.f0", 0xf0000, 0x10000, CRC(0e016ecf) SHA1(2f5ac8921b7cba56b02122ef772f5f11bbf6d8a2))
+	ROM_REGION(0x08000,REGION_GFX1, 0)
+	// expects 8x9 charset!
+	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
+ROM_END
+
+ROM_START( t1000rl )
+	ROM_REGION(0x100000,REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	// not sure about this one
+	// partlist says it has 1 128kbyte rom
+	ROM_LOAD("t1000hx.e0", 0xe0000, 0x10000, CRC(61dbf242) SHA1(555b58d8aa8e0b0839259621c44b832d993beaef))	// not sure about this one
+	ROM_SYSTEM_BIOS( 0, "v020000", "v020000" )
+	ROMX_LOAD("v020000.f0", 0xf0000, 0x10000, CRC(d37a1d5f) SHA1(5ec031c31a7967cc3fd53a535d81833e4a1c385e), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "v020001", "v020001" )
+	ROMX_LOAD("v020001.f0", 0xf0000, 0x10000, NO_DUMP, ROM_BIOS(2) )
 	ROM_REGION(0x08000,REGION_GFX1, 0)
 	// expects 8x9 charset!
 	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
@@ -1572,8 +1720,10 @@ ROM_START( ibmxt )
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
 	ROM_LOAD16_BYTE("xt050986.0", 0xf0000, 0x8000, CRC(83727c42) SHA1(1b218f96aa9570beef5c1f2d7b07433b21dc4599))
 	ROM_LOAD16_BYTE("xt050986.1", 0xf0001, 0x8000, CRC(2a629953) SHA1(048bb1a0b437ae7b93a4d71648cee12e5e37892c))
-	ROM_REGION(0x08100,REGION_GFX1, 0)
-	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	/* Character rom */
+	ROM_REGION(0x2000,REGION_GFX1, 0)
+	ROM_LOAD("5788005.u33", 0x00000, 0x2000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f))
 ROM_END
 
 ROM_START( xtvga )
@@ -1675,40 +1825,40 @@ ROM_START( dgone )
 	ROM_LOAD("cga.chr", 0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
-static void ibmpc_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ibmpc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void ibmpc_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ibmpc_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 3; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void ibmpc_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ibmpc_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		default:										harddisk_device_getinfo(devclass, state, info); break;
 	}
@@ -1728,7 +1878,7 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR     NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP(  1982,	ibmpc,		0,		0,		pccga,      pccga,	    pccga,	    ibmpc,   "International Business Machines",  "IBM PC 10/27/82" , 0)
+COMP(  1981,	ibmpc,		0,		0,		pccga,      pccga,	    pccga,	    ibmpc,   "International Business Machines",  "IBM PC 5150" , 0)
 COMP(  1982,	ibmpca,		ibmpc,	0,		pccga,      pccga,	    pccga,	    ibmpc,   "International Business Machines",  "IBM PC 08/16/82" , 0)
 COMP(  1984,	dgone,		ibmpc,		0,		pccga,      pccga,	    pccga,	    ibmpc,   "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
 COMP(  1987,	pc,		ibmpc,	0,		pccga,      pccga,		pccga,	    ibmpc,   "",  "PC (CGA)" , 0)
@@ -1738,7 +1888,7 @@ COMP(  1988,	europc,		ibmpc,	0,		europc,     europc,		europc,     ibmpc,   "Schn
 // pcjr (better graphics, better sound)
 COMP( 1983,	ibmpcjr,	ibmpc,	0,		t1000hx,    tandy1t,	t1000hx,    ibmpc,   "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
 COMP(  1987,	t1000hx,	ibmpc,	0,		t1000hx,    tandy1t,	t1000hx,	ibmpc,   "Tandy Radio Shack",  "Tandy 1000HX", 0)
-COMP(  1987,	t1000sx,	ibmpc,	0,		t1000sx,    tandy1t,	t1000hx,	ibmpc,   "Tandy Radio Shack",  "Tandy 1000SX", 0)
+COMP(  1987,	t1000sx,	ibmpc,	0,		t1000hx,    tandy1t,	t1000hx,	ibmpc,   "Tandy Radio Shack",  "Tandy 1000SX", 0)
 
 // xt class (pc but 8086)
 COMP(  1986,	ibmxt,		ibmpc,	0,		xtcga,      xtcga,		pccga,		ibmpc,   "International Business Machines",  "IBM PC/XT (CGA)" , 0)
@@ -1751,5 +1901,6 @@ COMP(  198?,	pc1512v2,	ibmpc,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstra
 COMP( 1987,	pc1640,		ibmpc,	0,		pc1640,     pc1640,		pc1640,		ibmpc,   "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
 // pc2086 pc1512 with vga??
 COMP ( 1987,	pcmda,		ibmpc,	0,		pcmda,      pcmda,		pcmda,	    ibmpc,   "",  "PC (MDA)" , 0)
+COMP ( 1987,    pcherc,     ibmpc,  0,      pcherc,     pcmda,      pcmda,      ibmpc,   "MESS",  "PC (Hercules)" , 0)
 COMP ( 1987,	xtvga,		ibmpc,	0,		xtvga,      xtvga,		pc_vga,     ibmpc,   "",  "PC/XT (VGA, MF2 Keyboard)" , 0)
 

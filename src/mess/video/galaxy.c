@@ -3,13 +3,14 @@
   galaxy.c
 
   Functions to emulate the video hardware of the Galaksija.
+  
+  01/03/2008 - Update by Miodrag Milanovic to make Galaksija video work with new SVN code
 
 ***************************************************************************/
 
 #include "driver.h"
 #include "includes/galaxy.h"
 #include "cpu/z80/z80.h"
-#include "mslegacy.h"
 
 static int horizontal_pos = 0x0b;
 
@@ -32,15 +33,13 @@ const unsigned char galaxy_palette[2*3] =
 	0x00, 0x00, 0x00		/* Black */
 };
 
-const unsigned short galaxy_colortable[1][2] =
-{
-	{0, 1}
-};
-
 PALETTE_INIT( galaxy )
 {
-	palette_set_colors_rgb(machine, 0, galaxy_palette, sizeof(galaxy_palette) / 3);
-	memcpy(colortable, galaxy_colortable, sizeof (galaxy_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(galaxy_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, galaxy_palette[i*3], galaxy_palette[i*3+1], galaxy_palette[i*3+2]);
+	}
 }
 
 VIDEO_START( galaxy )
@@ -62,7 +61,7 @@ VIDEO_UPDATE( galaxy )
 		black_area.max_x = 32*8-1;
 		black_area.min_y = 0;
 		black_area.max_y = 16*13-1;
-		fillbitmap(bitmap, machine->pens[1], &black_area);
+		fillbitmap(bitmap, screen->machine->pens[1], &black_area);
 		fast_mode = TRUE;
 		return 0;
 	}
@@ -83,7 +82,7 @@ VIDEO_UPDATE( galaxy )
 		}
 		if (horizontal_pos == 0x0b)
 			black_area.min_x =  black_area.max_x = 0;
-		fillbitmap(bitmap, machine->pens[1], &black_area);
+		fillbitmap(bitmap, screen->machine->pens[1], &black_area);
 	}
 
 	for( offs = 0; offs < 512; offs++ )
@@ -100,7 +99,7 @@ VIDEO_UPDATE( galaxy )
 			if (code>191)
 				code-=128;
 			sy = (offs / 32) * 13;
-			drawgfx(bitmap, machine->gfx[0], code & 0x7f, 1, 0,0, sx,sy,
+			drawgfx(bitmap, screen->machine->gfx[0], code & 0x7f, 0, 0,0, sx,sy,
 				NULL, TRANSPARENCY_NONE, 0);
 		}
 	}

@@ -37,7 +37,6 @@ static const rgb_t nc_palette[NC_NUM_COLOURS] =
 PALETTE_INIT( nc )
 {
 	palette_set_colors(machine, 0, nc_palette, ARRAY_LENGTH(nc_palette));
-	memcpy(colortable, nc_colour_table, sizeof (nc_colour_table));
 }
 
 extern int nc_display_memory_start;
@@ -52,7 +51,7 @@ void nc200_video_set_backlight(int state)
 
 
 /***************************************************************************
-  Draw the game screen in the given mame_bitmap.
+  Draw the game screen in the given bitmap_t.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
@@ -71,21 +70,21 @@ VIDEO_UPDATE( nc )
 
 		if (nc200_backlight)
 		{
-			pens[0] = machine->pens[2];
-			pens[1] = machine->pens[3];
+			pens[0] = screen->machine->pens[2];
+			pens[1] = screen->machine->pens[3];
 		}
 		else
 		{
-			pens[0] = machine->pens[0];
-			pens[1] = machine->pens[1];
+			pens[0] = screen->machine->pens[0];
+			pens[1] = screen->machine->pens[1];
 		}
     }
     else
     {
 		height = NC_SCREEN_HEIGHT;
 		width = NC_SCREEN_WIDTH;
-		pens[0] = machine->pens[2];
-		pens[1] = machine->pens[3];
+		pens[0] = screen->machine->pens[2];
+		pens[1] = screen->machine->pens[3];
 	}
 
 

@@ -120,31 +120,33 @@ static void enterprise_dave_reg_write(int RegIndex, int Data)
 
 static void enterprise_dave_reg_read(int RegIndex)
 {
+	running_machine *machine = Machine;
+
 	switch (RegIndex)
 	{
 	case 0x015:
 		{
 		  /* read keyboard line */
-			Dave_setreg(0x015,
+			Dave_setreg(machine, 0x015,
 				readinputport(Enterprise_KeyboardLine));
 		}
 		break;
 
 		case 0x016:
 		{
-				int ExternalJoystickInputs;
-				int ExternalJoystickPortInput = readinputport(10);
+			int ExternalJoystickInputs;
+			int ExternalJoystickPortInput = readinputport(10);
 
-				if (Enterprise_KeyboardLine<=4)
-				{
-						ExternalJoystickInputs = ExternalJoystickPortInput>>(4-Enterprise_KeyboardLine);
-				}
-				else
-				{
-						ExternalJoystickInputs = 1;
-				}
+			if (Enterprise_KeyboardLine<=4)
+			{
+					ExternalJoystickInputs = ExternalJoystickPortInput>>(4-Enterprise_KeyboardLine);
+			}
+			else
+			{
+					ExternalJoystickInputs = 1;
+			}
 
-				Dave_setreg(0x016, (0x0fe | (ExternalJoystickInputs & 0x01)));
+			Dave_setreg(machine, 0x016, (0x0fe | (ExternalJoystickInputs & 0x01)));
 		}
 		break;
 
@@ -172,7 +174,7 @@ static const DAVE_INTERFACE enterprise_dave_interface =
 };
 
 
-static void enterp_wd177x_callback(wd17xx_state_t event, void *param);
+static void enterp_wd177x_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 static void enterprise_reset(running_machine *machine)
 {
@@ -218,14 +220,14 @@ static void enterprise_reset(running_machine *machine)
 	Enterprise_Pages_Write[MEM_RAM_6] = mess_ram + 0x018000;
 	Enterprise_Pages_Write[MEM_RAM_7] = mess_ram + 0x01c000;
 
-	Dave_Init();
+	Dave_Init(machine);
 
 	Dave_SetIFace(&enterprise_dave_interface);
 
-	Dave_reg_w(0x010,0);
-	Dave_reg_w(0x011,0);
-	Dave_reg_w(0x012,0);
-	Dave_reg_w(0x013,0);
+	Dave_reg_w(machine, 0x010,0);
+	Dave_reg_w(machine, 0x011,0);
+	Dave_reg_w(machine, 0x012,0);
+	Dave_reg_w(machine, 0x013,0);
 
 	cpunum_set_input_line_vector(0,0,0x0ff);
 
@@ -234,7 +236,7 @@ static void enterprise_reset(running_machine *machine)
 
 static MACHINE_START(enterprise)
 {
-	wd17xx_init(WD_TYPE_177X, enterp_wd177x_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_177X, enterp_wd177x_callback, NULL);
 	add_reset_callback(machine, enterprise_reset);
 }
 
@@ -243,13 +245,13 @@ static  READ8_HANDLER ( enterprise_wd177x_read )
 	switch (offset & 0x03)
 	{
 	case 0:
-		return wd17xx_status_r(offset);
+		return wd17xx_status_r(machine, offset);
 	case 1:
-		return wd17xx_track_r(offset);
+		return wd17xx_track_r(machine, offset);
 	case 2:
-		return wd17xx_sector_r(offset);
+		return wd17xx_sector_r(machine, offset);
 	case 3:
-		return wd17xx_data_r(offset);
+		return wd17xx_data_r(machine, offset);
 	default:
 		break;
 	}
@@ -262,16 +264,16 @@ static WRITE8_HANDLER (	enterprise_wd177x_write )
 	switch (offset & 0x03)
 	{
 	case 0:
-		wd17xx_command_w(offset, data);
+		wd17xx_command_w(machine, offset, data);
 		return;
 	case 1:
-		wd17xx_track_w(offset, data);
+		wd17xx_track_w(machine, offset, data);
 		return;
 	case 2:
-		wd17xx_sector_w(offset, data);
+		wd17xx_sector_w(machine, offset, data);
 		return;
 	case 3:
-		wd17xx_data_w(offset, data);
+		wd17xx_data_w(machine, offset, data);
 		return;
 	default:
 		break;
@@ -283,10 +285,10 @@ static WRITE8_HANDLER (	enterprise_wd177x_write )
 /* I've done this because the ram is banked in 16k blocks, and
 the rom can be paged into bank 0 and bank 3. */
 static ADDRESS_MAP_START( enterprise_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x00000, 0x03fff) AM_READWRITE( MRA8_BANK1, MWA8_BANK5 )
-	AM_RANGE( 0x04000, 0x07fff) AM_READWRITE( MRA8_BANK2, MWA8_BANK6 )
-	AM_RANGE( 0x08000, 0x0bfff) AM_READWRITE( MRA8_BANK3, MWA8_BANK7 )
-	AM_RANGE( 0x0c000, 0x0ffff) AM_READWRITE( MRA8_BANK4, MWA8_BANK8 )
+	AM_RANGE( 0x00000, 0x03fff) AM_READWRITE( SMH_BANK1, SMH_BANK5 )
+	AM_RANGE( 0x04000, 0x07fff) AM_READWRITE( SMH_BANK2, SMH_BANK6 )
+	AM_RANGE( 0x08000, 0x0bfff) AM_READWRITE( SMH_BANK3, SMH_BANK7 )
+	AM_RANGE( 0x0c000, 0x0ffff) AM_READWRITE( SMH_BANK4, SMH_BANK8 )
 ADDRESS_MAP_END
 
 
@@ -316,7 +318,7 @@ static int EXDOS_GetDriveSelection(int data)
 
 static char EXDOS_CARD_R = 0;
 
-static void enterp_wd177x_callback(wd17xx_state_t State, void *param)
+static void enterp_wd177x_callback(running_machine *machine, wd17xx_state_t State, void *param)
 {
    if (State==WD17XX_IRQ_CLR)
    {
@@ -369,7 +371,7 @@ static  READ8_HANDLER ( exdos_card_r )
 }
 
 static ADDRESS_MAP_START( enterprise_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x010, 0x017) AM_READWRITE( enterprise_wd177x_read, enterprise_wd177x_write )
 	AM_RANGE( 0x018, 0x018) AM_READWRITE( exdos_card_r, exdos_card_w )
 	AM_RANGE( 0x01c, 0x01c) AM_READWRITE( exdos_card_r, exdos_card_w )
@@ -535,20 +537,19 @@ static MACHINE_DRIVER_START( ep128 )
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(enterprise_mem, 0)
 	MDRV_CPU_IO_MAP(enterprise_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( enterprise )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(ENTERPRISE_SCREEN_WIDTH, ENTERPRISE_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, ENTERPRISE_SCREEN_WIDTH-1, 0, ENTERPRISE_SCREEN_HEIGHT-1)
 	/* MDRV_GFXDECODE( enterprise ) */
 	MDRV_PALETTE_LENGTH(NICK_PALETTE_SIZE)
-	MDRV_COLORTABLE_LENGTH(NICK_COLOURTABLE_SIZE)
 	MDRV_PALETTE_INIT( nick )
 
 	MDRV_VIDEO_START( enterprise )
@@ -583,32 +584,32 @@ ROM_END
 
 ***************************************************************************/
 
-static void ep128_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ep128_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		default:										legacydsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
 #if 0
-static void ep128_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ep128_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = enterprise_floppy_init; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = enterprise_floppy_init; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}

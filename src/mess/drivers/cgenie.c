@@ -27,7 +27,6 @@ NMI
 ***************************************************************************/
 
 #include "driver.h"
-#include "mslegacy.h"
 #include "includes/cgenie.h"
 #include "devices/basicdsk.h"
 #include "devices/cartslot.h"
@@ -54,7 +53,7 @@ static ADDRESS_MAP_START (cgenie_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (cgenie_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xf8, 0xf8) AM_READWRITE( cgenie_sh_control_port_r, cgenie_sh_control_port_w )
 	AM_RANGE(0xf9, 0xf9) AM_READWRITE( cgenie_sh_data_port_r, cgenie_sh_data_port_w )
 	AM_RANGE(0xfa, 0xfa) AM_READWRITE( cgenie_index_r, cgenie_index_w )
@@ -269,7 +268,7 @@ static GFXDECODE_START( cgenie )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, cgenie_gfxlayout, 3*16*2, 3*4 )
 GFXDECODE_END
 
-static const unsigned char cgenie_palette[] = {
+static const unsigned char cgenie_colors[] = {
 	 0*4,  0*4,  0*4,  /* background   */
 
 /* this is the 'RGB monitor' version, strong and clean */
@@ -328,7 +327,7 @@ static const unsigned char cgenie_palette[] = {
 
 };
 
-static const unsigned short cgenie_colortable[] =
+static const unsigned short cgenie_palette[] =
 {
 	0, 1, 0, 2, 0, 3, 0, 4, /* RGB monitor set of text colors */
 	0, 5, 0, 6, 0, 7, 0, 8,
@@ -353,8 +352,18 @@ static const unsigned short cgenie_colortable[] =
 /* Initialise the palette */
 static PALETTE_INIT( cgenie )
 {
-	palette_set_colors_rgb(machine, 0, cgenie_palette, sizeof(cgenie_palette) / 3);
-	memcpy(colortable, cgenie_colortable, sizeof(cgenie_colortable));
+	UINT8 i, r, g, b;
+
+	machine->colortable = colortable_alloc(machine, 49);
+
+	for ( i = 0; i < 49; i++ )
+	{
+		r = cgenie_colors[i*3]; g = cgenie_colors[i*3+1]; b = cgenie_colors[i*3+2];
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
+	}
+
+	for(i=0; i<108; i++)
+		colortable_entry_set_value(machine->colortable, i, cgenie_palette[i]);
 }
 
 
@@ -373,23 +382,22 @@ static MACHINE_DRIVER_START( cgenie )
 	MDRV_CPU_ADD_TAG("main", Z80, 2216800)        /* 2,2168 Mhz */
 	MDRV_CPU_PROGRAM_MAP(cgenie_mem, 0)
 	MDRV_CPU_IO_MAP(cgenie_io, 0)
-	MDRV_CPU_VBLANK_INT(cgenie_frame_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", cgenie_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(cgenie_timer_interrupt, 40)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(4)
 
 	MDRV_MACHINE_START( cgenie )
 	MDRV_MACHINE_RESET( cgenie )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(48*8, (32)*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 48*8-1,0*8,32*8-1)
 	MDRV_GFXDECODE( cgenie )
-	MDRV_PALETTE_LENGTH(sizeof(cgenie_palette) / sizeof(cgenie_palette[0]) / 3)
-	MDRV_COLORTABLE_LENGTH(sizeof(cgenie_colortable) / sizeof(cgenie_colortable[0]))
+	MDRV_PALETTE_LENGTH(108)
 	MDRV_PALETTE_INIT( cgenie )
 
 	MDRV_VIDEO_START( cgenie )
@@ -420,45 +428,45 @@ ROM_START (cgenie)
 	ROM_LOAD ("cgenie1.fnt", 0x0000, 0x0800, CRC(4fed774a) SHA1(d53df8212b521892cc56be690db0bb474627d2ff))
 
 	/* Empty memory region for the character generator */
-	ROM_REGION(0x0800,REGION_GFX2,0)
+	ROM_REGION(0x0800,REGION_GFX2,ROMREGION_ERASEFF)
 
 ROM_END
 
-static void cgenie_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cgenie_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_cgenie_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_cgenie_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void cgenie_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cgenie_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 0;	/* INVALID */ break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0;	/* INVALID */ break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0;	/* INVALID */ break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 0;	/* INVALID */ break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0;	/* INVALID */ break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0;	/* INVALID */ break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_cgenie_cassette; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_cgenie_cassette; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
 	}
 }
 

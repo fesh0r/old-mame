@@ -14,18 +14,12 @@ static int abc80_blink;
 static int abc80_bank;
 static int abc80_row;
 
-static const unsigned short abc80_colortable[] =
-{
-	0x00, 0x01,
-	0x01, 0x00,
-};
-
 PALETTE_INIT( abc80 )
 {
 	palette_set_color(machine, 0, RGB_BLACK);
 	palette_set_color(machine, 1, RGB_WHITE);
-
-	memcpy(colortable, abc80_colortable, sizeof(abc80_colortable));
+	palette_set_color(machine, 2, RGB_WHITE);
+	palette_set_color(machine, 3, RGB_BLACK);
 }
 
 static TILE_GET_INFO(abc80_get_tile_info)
@@ -70,10 +64,10 @@ static TIMER_CALLBACK(abc80_blink_tick)
 VIDEO_START( abc80 )
 {
 	abc80_blink_timer = timer_alloc(abc80_blink_tick, NULL);
-	timer_adjust(abc80_blink_timer, attotime_zero, 0, ATTOTIME_IN_HZ(ABC80_XTAL/2/6/64/312/16));
+	timer_adjust_periodic(abc80_blink_timer, attotime_zero, 0, ATTOTIME_IN_HZ(ABC80_XTAL/2/6/64/312/16));
 
 	tx_tilemap = tilemap_create(abc80_get_tile_info, abc80_tilemap_scan,
-		TILEMAP_TYPE_PEN, 6, 10, 40, 24);
+		6, 10, 40, 24);
 
 	tilemap_set_scrolldx(tx_tilemap, ABC80_HDSTART, ABC80_HDSTART);
 	tilemap_set_scrolldy(tx_tilemap, ABC80_VDSTART, ABC80_VDSTART);
@@ -92,7 +86,7 @@ VIDEO_UPDATE( abc80 )
 	rect.min_y = ABC80_VDSTART;
 	rect.max_y = ABC80_VDSTART + 240 - 1;
 
-	fillbitmap(bitmap, get_black_pen(machine), cliprect);
+	fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 
 	tilemap_mark_all_tiles_dirty(tx_tilemap);
 	tilemap_draw(bitmap, &rect, tx_tilemap, 0, 0);

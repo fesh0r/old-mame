@@ -120,7 +120,7 @@ static VIDEO_START( ti990_4 )
 
 static VIDEO_UPDATE( ti990_4 )
 {
-	vdt911_refresh(bitmap, 0, 0, 0);
+	vdt911_refresh(machine, bitmap, 0, 0, 0);
 	return 0;
 }
 
@@ -128,12 +128,12 @@ static VIDEO_UPDATE( ti990_4 )
 
 static VIDEO_START( ti990_4 )
 {
-	asr733_init_term(0, ti990_set_int6);
+	asr733_init_term(machine, 0, ti990_set_int6);
 }
 
 static VIDEO_UPDATE( ti990_4 )
 {
-	asr733_refresh(bitmap, 0, 0, 0);
+	asr733_refresh(screen->machine, bitmap, 0, 0, 0);
 	return 0;
 }
 
@@ -145,10 +145,10 @@ static VIDEO_UPDATE( ti990_4 )
 
 static ADDRESS_MAP_START(ti990_4_memmap, ADDRESS_SPACE_PROGRAM, 16)
 
-	AM_RANGE(0x0000, 0x7fff) AM_READWRITE(MRA16_RAM, MWA16_RAM)	/* dynamic RAM */
-	AM_RANGE(0x8000, 0xf7ff) AM_READWRITE(MRA16_NOP, MWA16_NOP)	/* reserved for expansion */
-	AM_RANGE(0xf800, 0xfbff) AM_READWRITE(MRA16_RAM, MWA16_RAM)	/* static RAM? */
-	AM_RANGE(0xfc00, 0xffff) AM_READWRITE(MRA16_ROM, MWA16_ROM)	/* LOAD ROM */
+	AM_RANGE(0x0000, 0x7fff) AM_RAM	/* dynamic RAM */
+	AM_RANGE(0x8000, 0xf7ff) AM_NOP	/* reserved for expansion */
+	AM_RANGE(0xf800, 0xfbff) AM_RAM	/* static RAM? */
+	AM_RANGE(0xfc00, 0xffff) AM_ROM	/* LOAD ROM */
 
 ADDRESS_MAP_END
 
@@ -215,27 +215,21 @@ ADDRESS_MAP_END
 };*/
 
 static MACHINE_DRIVER_START(ti990_4)
-
 	/* basic machine hardware */
 	/* TMS9900 CPU @ 3.0(???) MHz */
 	MDRV_CPU_ADD(TMS9900, 3000000)
-	/*MDRV_CPU_CONFIG(reset_params)*/
 	MDRV_CPU_PROGRAM_MAP(ti990_4_memmap, 0)
 	MDRV_CPU_IO_MAP(ti990_4_readcru, ti990_4_writecru)
-	/*MDRV_CPU_VBLANK_INT(NULL, 0)*/
 	MDRV_CPU_PERIODIC_INT(ti990_4_line_interrupt, 120/*or TIME_IN_HZ(100) in Europe*/)
 
-	/* video hardware - we emulate a single 911 vdt display */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
-
 	MDRV_MACHINE_RESET( ti990_4 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware - we emulate a single 911 vdt display */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	/*MDRV_ASPECT_RATIO(num, den)*/
+
 #if VIDEO_911
 	MDRV_SCREEN_SIZE(560, 280)
 	MDRV_SCREEN_VISIBLE_AREA(0, 560-1, 0, /*250*/280-1)
@@ -247,11 +241,9 @@ static MACHINE_DRIVER_START(ti990_4)
 #if VIDEO_911
 	MDRV_GFXDECODE(vdt911)
 	MDRV_PALETTE_LENGTH(vdt911_palette_size)
-	MDRV_COLORTABLE_LENGTH(vdt911_colortable_size)
 #else
 	MDRV_GFXDECODE(asr733)
 	MDRV_PALETTE_LENGTH(asr733_palette_size)
-	MDRV_COLORTABLE_LENGTH(asr733_colortable_size)
 #endif
 
 #if VIDEO_911
@@ -260,7 +252,6 @@ static MACHINE_DRIVER_START(ti990_4)
 	MDRV_PALETTE_INIT(asr733)
 #endif
 	MDRV_VIDEO_START(ti990_4)
-	/*MDRV_VIDEO_EOF(name)*/
 	MDRV_VIDEO_UPDATE(ti990_4)
 
 #if VIDEO_911
@@ -306,9 +297,9 @@ ROM_START(ti990_4)
 
 #if VIDEO_911
 	/* VDT911 character definitions */
-	ROM_REGION(vdt911_chr_region_len, vdt911_chr_region, 0)
+	ROM_REGION(vdt911_chr_region_len, vdt911_chr_region, ROMREGION_ERASEFF)
 #else
-	ROM_REGION(asr733_chr_region_len, asr733_chr_region, 0)
+	ROM_REGION(asr733_chr_region_len, asr733_chr_region, ROMREGION_ERASEFF)
 #endif
 
 ROM_END
@@ -330,16 +321,16 @@ static INPUT_PORTS_START(ti990_4)
 #endif
 INPUT_PORTS_END
 
-static void ti990_4_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti990_4_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_fd800; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_fd800; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}

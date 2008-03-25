@@ -209,11 +209,11 @@ MACHINE_START( geneve )
            how the switches are set. Later we use the configuration switches to
            determine which one to use. */
 	ti99_peb_init();
-        ti99_floppy_controllers_init_all();
+        ti99_floppy_controllers_init_all(machine);
         ti99_ide_init();
         ti99_rs232_init();
 	ti99_usbsm_init();
-	mm58274c_init(0, 1);
+	mm58274c_init(machine, 0, 1);
 	add_exit_callback(machine, machine_stop_geneve);
 }
 
@@ -237,7 +237,7 @@ MACHINE_RESET( geneve )
 	/* init tms9901 */
         tms9901_reset(0);
 
-	v9938_reset();
+	v9938_reset(0);
 
 	/* clear keyboard interface state (probably overkill, but can't harm) */
 	JoySel = 0;
@@ -300,7 +300,7 @@ MACHINE_RESET( geneve )
 		ti99_rs232_reset();
 
 	if (has_usb_sm)
-		ti99_usbsm_reset(TRUE);
+		ti99_usbsm_reset(machine, TRUE);
 }
 
 static void machine_stop_geneve(running_machine *machine)
@@ -320,7 +320,8 @@ static void machine_stop_geneve(running_machine *machine)
 */
 VIDEO_START(geneve)
 {
-	v9938_init(machine, MODEL_V9938, /*0x20000*/0x30000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
+	VIDEO_START_CALL(generic_bitmapped);
+	v9938_init(machine, 0, machine->primary_screen, tmpbitmap, MODEL_V9938, /*0x20000*/0x30000, tms9901_set_int2);	/* v38 with 128 kb of video RAM */
 }
 
 /*
@@ -329,7 +330,7 @@ VIDEO_START(geneve)
 INTERRUPT_GEN( geneve_hblank_interrupt )
 {
 	static int line_count;
-	v9938_interrupt();
+	v9938_interrupt(0);
 	if (++line_count == 262)
 	{
 		line_count = 0;
@@ -372,7 +373,7 @@ static  READ8_HANDLER ( geneve_speech_r )
 {
 	activecpu_adjust_icount(-8);		/* this is just a minimum, it can be more */
 
-	return tms5220_status_r(offset);
+	return tms5220_status_r(machine, offset);
 }
 
 #if 0
@@ -415,7 +416,7 @@ static WRITE8_HANDLER ( geneve_speech_w )
 	}
 #endif
 
-	tms5220_data_w(offset, data);
+	tms5220_data_w(machine, offset, data);
 }
 
 READ8_HANDLER ( geneve_r )
@@ -437,11 +438,11 @@ READ8_HANDLER ( geneve_r )
 			{
 			case 0xf100:
 			case 0xf108:		/* mirror? */
-				return v9938_vram_r(0);
+				return v9938_0_vram_r(machine, 0);
 
 			case 0xf102:
 			case 0xf10a:		/* mirror? */
-				return v9938_status_r(0);
+				return v9938_0_status_r(machine, 0);
 
 			case 0xf110:
 			case 0xf111:
@@ -537,11 +538,11 @@ READ8_HANDLER ( geneve_r )
 				{
 					if (offset & 2)
 					{	/* read VDP status */
-						return v9938_status_r(0);
+						return v9938_0_status_r(machine, 0);
 					}
 					else
 					{	/* read VDP RAM */
-						return v9938_vram_r(0);
+						return v9938_0_vram_r(machine, 0);
 					}
 				}
 				return 0;
@@ -550,7 +551,7 @@ READ8_HANDLER ( geneve_r )
 				/* speech read */
 				if ((! (offset & 1)) && has_speech)
 				{
-					return geneve_speech_r(0);
+					return geneve_speech_r(machine, 0);
 				}
 				return 0;
 
@@ -645,14 +646,14 @@ READ8_HANDLER ( geneve_r )
 #endif
 	case 0xba:
 		/* DSR space */
-		return geneve_peb_r(offset);
+		return geneve_peb_r(machine, offset);
 
 	case 0xbc:
 		/* speech space */
 		if (has_speech)
 		{
 			if ((offset >= 0x1000) && (offset < 0x1400) && (! (offset & 1)))
-				return geneve_speech_r(0);
+				return geneve_speech_r(machine, 0);
 			else
 				return 0;
 		}
@@ -681,22 +682,22 @@ WRITE8_HANDLER ( geneve_w )
 			{
 			case 0xf100:
 			case 0xf108:		/* mirror? */
-				v9938_vram_w(0, data);
+				v9938_0_vram_w(machine, 0, data);
 				return;
 
 			case 0xf102:
 			case 0xf10a:		/* mirror? */
-				v9938_command_w(0, data);
+				v9938_0_command_w(machine, 0, data);
 				return;
 
 			case 0xf104:
 			case 0xf10c:		/* mirror? */
-				v9938_palette_w(0, data);
+				v9938_0_palette_w(machine, 0, data);
 				return;
 
 			case 0xf106:
 			case 0xf10e:		/* mirror? */
-				v9938_register_w(0, data);
+				v9938_0_register_w(machine, 0, data);
 				return;
 
 			case 0xf110:
@@ -715,7 +716,7 @@ WRITE8_HANDLER ( geneve_w )
 				return*/
 
 			case 0xf120:
-				SN76496_0_w(0, data);
+				SN76496_0_w(machine, 0, data);
 				break;
 
 			case 0xf130:
@@ -799,7 +800,7 @@ WRITE8_HANDLER ( geneve_w )
 			{
 			case 1:
 				/* sound write */
-				SN76496_0_w(0, data);
+				SN76496_0_w(machine, 0, data);
 				return;
 
 			case 3:
@@ -811,19 +812,19 @@ WRITE8_HANDLER ( geneve_w )
 					{
 					case 0:
 						/* write VDP RAM */
-						v9938_vram_w(0, data);
+						v9938_0_vram_w(machine, 0, data);
 						break;
 					case 1:
 						/* write VDP address */
-						v9938_command_w(0, data);
+						v9938_0_command_w(machine, 0, data);
 						break;
 					case 2:
 						/* write palette */
-						v9938_palette_w(0, data);
+						v9938_0_palette_w(machine, 0, data);
 						break;
 					case 3:
 						/* write register */
-						v9938_register_w(0, data);
+						v9938_0_register_w(machine, 0, data);
 						break;
 					}
 				}
@@ -833,7 +834,7 @@ WRITE8_HANDLER ( geneve_w )
 				/* speech write */
 				if ((! (offset & 1)) && has_speech)
 				{
-					geneve_speech_w(0, data);
+					geneve_speech_w(machine, 0, data);
 				}
 				return;
 
@@ -937,7 +938,7 @@ WRITE8_HANDLER ( geneve_w )
 #endif
 	case 0xba:
 		/* DSR space */
-		geneve_peb_w(offset, data);
+		geneve_peb_w(machine, offset, data);
 		return;
 
 	case 0xbc:
@@ -945,7 +946,7 @@ WRITE8_HANDLER ( geneve_w )
 		if (has_speech)
 		{
 			if ((offset >= 0x1400) && (offset < 0x1800) && (! (offset & 1)))
-				geneve_speech_w(0, data);
+				geneve_speech_w(machine, 0, data);
 			return;
 		}
 
@@ -1006,7 +1007,7 @@ WRITE8_HANDLER ( geneve_peb_mode_cru_w )
 		}
 	}
 
-	geneve_peb_cru_w(offset, data);
+	geneve_peb_cru_w(machine, offset, data);
 }
 
 /*===========================================================================*/
@@ -1300,7 +1301,7 @@ static void poll_mouse(void)
 
 	last_my = new_my;
 
-	v9938_update_mouse_state(delta_x, delta_y, buttons & 3);
+	v9938_update_mouse_state(0, delta_x, delta_y, buttons & 3);
 }
 
 

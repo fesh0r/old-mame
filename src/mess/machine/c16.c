@@ -8,10 +8,8 @@
 
 ***************************************************************************/
 
-#include <ctype.h>
 #include "driver.h"
 #include "image.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 
@@ -369,19 +367,19 @@ static  READ8_HANDLER(ted7360_dma_read_rom)
 	return mess_ram[offset % mess_ram_size];
 }
 
-void c16_interrupt (int level)
+void c16_interrupt (running_machine *machine, int level)
 {
 	static int old_level;
 
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos7501", ("irq %s\n", level ? "start" : "end"));
-		cpunum_set_input_line(Machine, 0, M6510_IRQ_LINE, level);
+		cpunum_set_input_line(machine, 0, M6510_IRQ_LINE, level);
 		old_level = level;
 	}
 }
 
-static void c16_common_driver_init (void)
+static void c16_common_driver_init (running_machine *machine)
 {
 #ifdef VC1541
 	VC1541_CONFIG vc1541= { 1, 8 };
@@ -392,8 +390,8 @@ static void c16_common_driver_init (void)
 	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTREAD, (genf *) c16_m7501_port_read);
 	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTWRITE, (genf *) c16_m7501_port_write);
 
-	c16_select_roms (0, 0);
-	c16_switch_to_rom (0, 0);
+	c16_select_roms (machine, 0, 0);
+	c16_switch_to_rom (machine, 0, 0);
 
 	if (REAL_C1551) {
 		tpi6525[2].a.read=c1551x_0_read_data;
@@ -441,9 +439,9 @@ static void c16_common_driver_init (void)
 #endif
 }
 
-void c16_driver_init(void)
+void c16_driver_init(running_machine *machine)
 {
-	c16_common_driver_init ();
+	c16_common_driver_init (machine);
 	ted7360_init (C16_PAL);
 	ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 }
@@ -454,13 +452,13 @@ static WRITE8_HANDLER(c16_sidcart_16k)
 	mess_ram[(0x5400 + offset) % mess_ram_size] = data;
 	mess_ram[(0x9400 + offset) % mess_ram_size] = data;
 	mess_ram[(0xd400 + offset) % mess_ram_size] = data;
-	sid6581_0_port_w(offset,data);
+	sid6581_0_port_w(machine, offset,data);
 }
 
 static WRITE8_HANDLER(c16_sidcart_64k)
 {
 	mess_ram[(0xd400 + offset) % mess_ram_size] = data;
-	sid6581_0_port_w(offset,data);
+	sid6581_0_port_w(machine, offset,data);
 }
 
 MACHINE_RESET( c16 )
@@ -482,10 +480,10 @@ MACHINE_RESET( c16 )
 	}
 	else
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, MRA8_NOP);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, MWA8_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, MRA8_NOP);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, MWA8_NOP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, SMH_NOP);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, SMH_NOP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, SMH_NOP);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, SMH_NOP);
 	}
 
 #if 0
@@ -500,8 +498,8 @@ MACHINE_RESET( c16 )
 		memory_set_bankptr(6, mess_ram + (0x8000 % mess_ram_size));
 		memory_set_bankptr(7, mess_ram + (0xc000 % mess_ram_size));
 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff20, 0xff3d, 0, 0, MWA8_BANK10);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff40, 0xffff, 0, 0, MWA8_BANK11);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff20, 0xff3d, 0, 0, SMH_BANK10);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff40, 0xffff, 0, 0, SMH_BANK11);
 		memory_set_bankptr(10, mess_ram + (0xff20 % mess_ram_size));
 		memory_set_bankptr(11, mess_ram + (0xff40 % mess_ram_size));
 
@@ -512,7 +510,7 @@ MACHINE_RESET( c16 )
 	}
 	else
 	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xfcff, 0, 0, MWA8_BANK10);
+		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xfcff, 0, 0, SMH_BANK10);
 		memory_set_bankptr(10, mess_ram + (0x4000 % mess_ram_size));
 
 		if (SIDCARD_HACK)
@@ -528,8 +526,8 @@ MACHINE_RESET( c16 )
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, MWA8_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, SMH_NOP);
 	}
 	if (IEC9ON)
 	{
@@ -538,8 +536,8 @@ MACHINE_RESET( c16 )
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, MWA8_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, MRA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, SMH_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, SMH_NOP);
 	}
 
 	cbm_drive_0_config (SERIAL, 8);

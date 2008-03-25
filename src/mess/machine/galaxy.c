@@ -7,9 +7,7 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/galaxy.h"
 
@@ -63,7 +61,7 @@ static int galaxy_irq_callback (int cpu)
 #define GALAXY_SNAPSHOT_V1_SIZE	8268
 #define GALAXY_SNAPSHOT_V2_SIZE	8244
 
-static void galaxy_setup_snapshot (const UINT8 * data, UINT32 size)
+static void galaxy_setup_snapshot (running_machine *machine, const UINT8 * data, UINT32 size)
 {
 	switch (size)
 	{
@@ -119,8 +117,8 @@ static void galaxy_setup_snapshot (const UINT8 * data, UINT32 size)
 			break;
 	}
 
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
 SNAPSHOT_LOAD( galaxy )
@@ -139,7 +137,7 @@ SNAPSHOT_LOAD( galaxy )
 
 	image_fread(image, snapshot_data, snapshot_size);
 
-	galaxy_setup_snapshot(snapshot_data, snapshot_size);
+	galaxy_setup_snapshot(machine, snapshot_data, snapshot_size);
 
 	return INIT_PASS;
 }
@@ -151,14 +149,14 @@ SNAPSHOT_LOAD( galaxy )
 
 DRIVER_INIT( galaxy )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, MRA8_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, MWA8_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, SMH_BANK1);
 	memory_set_bankptr(1, mess_ram);
 
 	if (mess_ram_size < (6+48)*1024)
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, MRA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, SMH_NOP);
 	}
 }
 
@@ -169,8 +167,8 @@ DRIVER_INIT( galaxy )
 MACHINE_RESET( galaxy )
 {
 	/* ROM 2 enable/disable */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? MRA8_BANK10 : MRA8_NOP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MWA8_NOP);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? SMH_BANK10 : SMH_NOP);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
 	if (readinputport(7))
 		memory_set_bankptr(10, memory_region(REGION_CPU1) + 0x1000);
 

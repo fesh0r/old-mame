@@ -278,7 +278,7 @@ static UINT8 to7_5p14_select;
 static READ8_HANDLER ( to7_5p14_r )
 {
 	if ( offset < 4 )
-		return wd17xx_r( offset );
+		return wd17xx_r( machine, offset );
 	else if ( offset == 8 )
 		return to7_5p14_select;
 	else
@@ -291,7 +291,7 @@ static READ8_HANDLER ( to7_5p14_r )
 static WRITE8_HANDLER( to7_5p14_w )
 {
 	if ( offset < 4 )
-		wd17xx_w( offset, data );
+		wd17xx_w( machine, offset, data );
 	else if ( offset == 8 )
 	{
 		/* drive select */
@@ -349,10 +349,10 @@ static void to7_5p14_reset( void )
 
 
 
-static void to7_5p14_init( void )
+static void to7_5p14_init( running_machine *machine )
 {
 	LOG(( "to7_5p14_init: CD 90-640 controller\n" ));
-	wd17xx_init( WD_TYPE_2793, NULL, NULL );
+	wd17xx_init( machine, WD_TYPE_2793, NULL, NULL );
 	state_save_register_global( to7_5p14_select );
 }
 
@@ -375,7 +375,7 @@ static UINT8 to7_5p14sd_select;
 static READ8_HANDLER ( to7_5p14sd_r )
 {
 	if ( offset < 8 )
-		return mc6843_r( offset );
+		return mc6843_r( machine, offset );
 	else if ( offset >= 8 && offset <= 9 )
 		return to7_5p14sd_select;
 	else
@@ -388,7 +388,7 @@ static READ8_HANDLER ( to7_5p14sd_r )
 static WRITE8_HANDLER( to7_5p14sd_w )
 {
 	if ( offset < 8 )
-		mc6843_w( offset, data );
+		mc6843_w( machine, offset, data );
 	else if ( offset >= 8 && offset <= 9 )
 	{
 		/* drive select */
@@ -1041,7 +1041,7 @@ static void thmfc_floppy_cmd_complete(void)
 	thmfc1->stat0 |= THMFC1_STAT0_FINISHED;
 	thmfc1->data_idx = 0;
 	thmfc1->data_size = 0;
-	timer_adjust( thmfc_floppy_cmd, attotime_never, 0, attotime_never );
+	timer_adjust_oneshot(thmfc_floppy_cmd, attotime_never, 0);
 }
 
 
@@ -1341,7 +1341,7 @@ WRITE8_HANDLER ( thmfc_floppy_w )
 
 		/* abort previous command, if any */
 		thmfc1->op = THMFC1_OP_RESET;
-		timer_adjust( thmfc_floppy_cmd, attotime_never, 0, attotime_never );
+		timer_adjust_oneshot(thmfc_floppy_cmd, attotime_never, 0);
 
 		switch ( data & 3 )
 		{
@@ -1360,7 +1360,7 @@ WRITE8_HANDLER ( thmfc_floppy_w )
 				thmfc1->data_finish = thmfc1->sector_size + 3;
 				thmfc1->stat0 |= THMFC1_STAT0_BYTE_READY_OP;
 				thmfc1->op = THMFC1_OP_WRITE_SECT;
-				timer_adjust( thmfc_floppy_cmd, ATTOTIME_IN_MSEC( 10 ), 0, attotime_never );
+				timer_adjust_oneshot(thmfc_floppy_cmd, ATTOTIME_IN_MSEC( 10 ), 0);
 			}
 			break;
 
@@ -1376,7 +1376,7 @@ WRITE8_HANDLER ( thmfc_floppy_w )
 				thmfc1->data_idx = 1;
 				thmfc1->stat0 |= THMFC1_STAT0_BYTE_READY_OP;
 				thmfc1->op = THMFC1_OP_READ_ADDR;
-				timer_adjust( thmfc_floppy_cmd, ATTOTIME_IN_MSEC( 1 ), 0, attotime_never );
+				timer_adjust_oneshot(thmfc_floppy_cmd, ATTOTIME_IN_MSEC( 1 ), 0);
 			}
 			break;
 
@@ -1392,7 +1392,7 @@ WRITE8_HANDLER ( thmfc_floppy_w )
 				thmfc1->data_idx = 1;
 				thmfc1->stat0 |= THMFC1_STAT0_BYTE_READY_OP;
 				thmfc1->op = THMFC1_OP_READ_SECT;
-				timer_adjust( thmfc_floppy_cmd, ATTOTIME_IN_MSEC( 10 ), 0, attotime_never );
+				timer_adjust_oneshot(thmfc_floppy_cmd, ATTOTIME_IN_MSEC( 10 ), 0);
 			}
 			break;
 		}
@@ -1549,7 +1549,7 @@ void thmfc_floppy_reset( void )
 	thmfc1->data_raw_size = 0;
 	thmfc1->data_crc = 0;
 	thmfc1->wsync = 0;
-	timer_adjust( thmfc_floppy_cmd, attotime_never, 0, attotime_never );
+	timer_adjust_oneshot(thmfc_floppy_cmd, attotime_never, 0);
 }
 
 
@@ -1711,7 +1711,7 @@ static void to7_network_reset( void )
 static READ8_HANDLER ( to7_network_r )
 {
 	if ( offset >= 0 && offset < 4 )
-		return mc6854_r( offset );
+		return mc6854_r( machine, offset );
 
 	if ( offset == 8 )
 	{
@@ -1730,7 +1730,7 @@ static READ8_HANDLER ( to7_network_r )
 static WRITE8_HANDLER ( to7_network_w )
 {
 	if ( offset >= 0 && offset < 4 )
-		mc6854_w( offset, data );
+		mc6854_w( machine, offset, data );
 	else
 	{
 		logerror( "%f $%04x to7_network_w: invalid write offset %i (data=$%02X)\n",
@@ -1758,13 +1758,13 @@ UINT8 to7_controller_type;
 UINT8 to7_floppy_bank;
 
 
-void to7_floppy_init ( void* base )
+void to7_floppy_init ( running_machine *machine, void* base )
 {
 	memory_configure_bank( THOM_FLOP_BANK, 0, TO7_NB_FLOP_BANK, base, 0x800 );
 	state_save_register_global( to7_controller_type );
 	state_save_register_global( to7_floppy_bank );
 	to7_5p14sd_init();
-	to7_5p14_init();
+	to7_5p14_init(machine);
 	to7_qdd_init();
 	thmfc_floppy_init();
 	to7_network_init();
@@ -1820,19 +1820,19 @@ READ8_HANDLER ( to7_floppy_r )
 	{
 
 	case 1:
-		return to7_5p14sd_r( offset );
+		return to7_5p14sd_r( machine, offset );
 
 	case 2:
-		return to7_5p14_r( offset );
+		return to7_5p14_r( machine, offset );
 
 	case 3:
-		return thmfc_floppy_r( offset );
+		return thmfc_floppy_r( machine, offset );
 
 	case 4:
-		return to7_qdd_r( offset );
+		return to7_qdd_r( machine, offset );
 
 	case 5:
-		return to7_network_r( offset );
+		return to7_network_r( machine, offset );
 	}
 
 	return 0;
@@ -1846,11 +1846,11 @@ WRITE8_HANDLER ( to7_floppy_w )
 	{
 
 	case 1:
-		to7_5p14sd_w( offset, data );
+		to7_5p14sd_w( machine, offset, data );
 		return;
 
 	case 2:
-		to7_5p14_w( offset, data );
+		to7_5p14_w( machine, offset, data );
 		break;
 
 	case 3:
@@ -1861,15 +1861,15 @@ WRITE8_HANDLER ( to7_floppy_w )
 			VLOG (( "to7_floppy_w: set CD 90-351 ROM bank to %i\n", data & 3 ));
 		}
 		else
-			thmfc_floppy_w( offset, data );
+			thmfc_floppy_w( machine, offset, data );
 		break;
 
 	case 4:
-		to7_qdd_w( offset, data );
+		to7_qdd_w( machine, offset, data );
 		break;
 
 	case 5:
-		to7_network_w( offset, data );
+		to7_network_w( machine, offset, data );
 		break;
 	}
 }
@@ -1884,9 +1884,9 @@ WRITE8_HANDLER ( to7_floppy_w )
 
 
 
-void to9_floppy_init( void* int_base, void* ext_base )
+void to9_floppy_init( running_machine *machine, void* int_base, void* ext_base )
 {
-	to7_floppy_init( ext_base );
+	to7_floppy_init( machine, ext_base );
 	memory_configure_bank( THOM_FLOP_BANK, TO7_NB_FLOP_BANK, 1, int_base, 0x800 );
 }
 
@@ -1912,15 +1912,15 @@ void to9_floppy_reset( void )
 READ8_HANDLER ( to9_floppy_r )
 {
 	if ( THOM_FLOPPY_EXT )
-		return to7_floppy_r( offset );
+		return to7_floppy_r( machine, offset );
 	else
-		return  to7_5p14_r( offset );
+		return  to7_5p14_r( machine, offset );
 }
 
 WRITE8_HANDLER ( to9_floppy_w )
 {
 	if ( THOM_FLOPPY_EXT )
-		to7_floppy_w( offset, data );
+		to7_floppy_w( machine, offset, data );
 	else
-		to7_5p14_w( offset, data );
+		to7_5p14_w( machine, offset, data );
 }

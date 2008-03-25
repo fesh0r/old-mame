@@ -7,42 +7,43 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/zx.h"
 #include "devices/cassette.h"
 
+#define video_screen_get_refresh(screen)	(((screen_config *)(screen)->inline_config)->refresh)
+
 #define	DEBUG_ZX81_PORTS	1
 #define DEBUG_ZX81_VSYNC	1
 
-#define LOG_ZX81_IOR(_comment) { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOR: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, video_screen_get_vpos(0), _comment); }
-#define LOG_ZX81_IOW(_comment) { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOW: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, video_screen_get_vpos(0), _comment); }
-#define LOG_ZX81_VSYNC { if (DEBUG_ZX81_VSYNC) logerror("VSYNC starts in scanline: %d\n", video_screen_get_vpos(0)); }
+#define LOG_ZX81_IOR(_comment) { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOR: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, video_screen_get_vpos(machine->primary_screen), _comment); }
+#define LOG_ZX81_IOW(_comment) { if (DEBUG_ZX81_PORTS) logerror("ZX81 IOW: %04x, Data: %02x, Scanline: %d (%s)\n", offset, data, video_screen_get_vpos(machine->primary_screen), _comment); }
+#define LOG_ZX81_VSYNC { if (DEBUG_ZX81_VSYNC) logerror("VSYNC starts in scanline: %d\n", video_screen_get_vpos(machine->primary_screen)); }
 
 static UINT8 zx_tape_bit = 0x80;
 
 DRIVER_INIT ( zx )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0x8000, MRA8_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0x8000, MWA8_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0x8000, SMH_BANK1);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0x8000, SMH_BANK1);
 	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x4000);
 }
 
 static OPBASE_HANDLER ( zx_setopbase )
 {
 	if (address & 0x8000)
-		return zx_ula_r(address, REGION_CPU1);
+		return zx_ula_r(machine, address, REGION_CPU1);
 	return address;
 }
 
 static OPBASE_HANDLER ( pc8300_setopbase )
 {
 	if (address & 0x8000)
-		return zx_ula_r(address, REGION_GFX1);
+		return zx_ula_r(machine, address, REGION_GFX1);
 	return address;
 }
 
-static void common_init_machine(opbase_handler setopbase)
+static void common_init_machine(opbase_handler_func setopbase)
 {
 	memory_set_opbase_handler(0, setopbase);
 	zx_tape_bit = 0x80;
@@ -70,6 +71,9 @@ static TIMER_CALLBACK(zx_tape_pulse)
 
 WRITE8_HANDLER ( zx_io_w )
 {
+	const device_config *screen = video_screen_first(machine->config);
+	int height = video_screen_get_height(screen);
+
 	if ((offset & 2) == 0)
 	{
 		timer_reset(ula_nmi, attotime_never);
@@ -78,7 +82,7 @@ WRITE8_HANDLER ( zx_io_w )
 	}
 	else if ((offset & 1) == 0)
 	{
-		timer_adjust(ula_nmi, attotime_zero, 0, ATTOTIME_IN_CYCLES(207, 0));
+		timer_adjust_periodic(ula_nmi, attotime_zero, 0, ATTOTIME_IN_CYCLES(207, 0));
 
 		LOG_ZX81_IOW("ULA NMIs on");
 
@@ -87,12 +91,12 @@ WRITE8_HANDLER ( zx_io_w )
 	}
 	else
 	{
-		zx_ula_bkgnd(1);
+		zx_ula_bkgnd(machine, 1);
 		if (ula_frame_vsync == 2)
 		{
-			cpu_spinuntil_time(video_screen_get_time_until_pos(0, Machine->screen[0].height - 1, 0));
-			ula_scanline_count = Machine->screen[0].height - 1;
-			logerror ("S: %d B: %d\n", video_screen_get_vpos(0), video_screen_get_hpos(0));
+			cpu_spinuntil_time(video_screen_get_time_until_pos(machine->primary_screen, height - 1, 0));
+			ula_scanline_count = height - 1;
+			logerror ("S: %d B: %d\n", video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen));
 		}
 
 		LOG_ZX81_IOW("ULA IRQs on");
@@ -101,6 +105,7 @@ WRITE8_HANDLER ( zx_io_w )
 
 READ8_HANDLER ( zx_io_r )
 {
+	const device_config *screen = video_screen_first(machine->config);
 	int data = 0xff;
 
 	if ((offset & 1) == 0)
@@ -130,12 +135,12 @@ READ8_HANDLER ( zx_io_r )
 			data &= readinputport(7);
 		if ((offset & 0x8000) == 0)
 			data &= readinputport(8);
-		if (Machine->screen[0].refresh > 55)
+		if (video_screen_get_refresh(screen) > 55)
 			data &= ~0x40;
 
 		if (ula_irq_active)
 		{
-			zx_ula_bkgnd(0);
+			zx_ula_bkgnd(machine, 0);
 			ula_irq_active = 0;
 
 			LOG_ZX81_IOR("ULA IRQs off");
@@ -166,6 +171,7 @@ READ8_HANDLER ( zx_io_r )
 
 READ8_HANDLER ( pow3000_io_r )
 {
+	const device_config *screen = video_screen_first(machine->config);
 	int data = 0xff;
 
 	if ((offset & 1) == 0)
@@ -195,12 +201,12 @@ READ8_HANDLER ( pow3000_io_r )
 			data &= readinputport(7);
 		if ((offset & 0x8000) == 0)
 			data &= readinputport(8);
-		if (Machine->screen[0].refresh > 55)
+		if (video_screen_get_refresh(screen) > 55)
 			data &= ~0x40;
 
 		if (ula_irq_active)
 		{
-			zx_ula_bkgnd(0);
+			zx_ula_bkgnd(machine, 0);
 			ula_irq_active = 0;
 			LOG_ZX81_IOR("ULA IRQs off");
 		}

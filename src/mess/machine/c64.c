@@ -12,7 +12,6 @@
     (program write some short test code into the vic sprite register)
  */
 
-#include <ctype.h>
 #include "driver.h"
 
 #include "cpu/m6502/m6502.h"
@@ -80,38 +79,38 @@ cartridgetype = CartridgeAuto;
 static UINT8 serial_clock, serial_data, serial_atn;
 static UINT8 vicirq = 0;
 
-static int is_c65(void)
+static int is_c65(running_machine *machine)
 {
-	return !strncmp(Machine->gamedrv->name, "c65", 3);
+	return !strncmp(machine->gamedrv->name, "c65", 3);
 }
 
-static int is_c128(void)
+static int is_c128(running_machine *machine)
 {
-	return !strncmp(Machine->gamedrv->name, "c128", 4);
+	return !strncmp(machine->gamedrv->name, "c128", 4);
 }
 
-static void c64_nmi(void)
+static void c64_nmi(running_machine *machine)
 {
 	static int nmilevel = 0;
 	int cia1irq = cia_get_irq(1);
 
 	if (nmilevel != KEY_RESTORE||cia1irq)
 	{
-		if (is_c128())
+		if (is_c128(machine))
 		{
 			if (cpu_getactivecpu()==0)
 			{
 				/* z80 */
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 			}
 			else
 			{
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 			}
 		}
 		else
 		{
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, KEY_RESTORE||cia1irq);
 		}
 		nmilevel = KEY_RESTORE||cia1irq;
 	}
@@ -269,7 +268,7 @@ static UINT8 c64_cia0_port_b_r (void)
     if (JOYSTICK_SWAP) value &= c64_keyline[9];
     else value &= c64_keyline[8];
 
-    if (is_c128())
+    if (is_c128(Machine))
     {
 		if (!vic2e_k0_r ())
 			value &= c128_keyline[0];
@@ -278,7 +277,7 @@ static UINT8 c64_cia0_port_b_r (void)
 		if (!vic2e_k2_r ())
 			value &= c128_keyline[2];
     }
-    if (is_c65())
+    if (is_c65(Machine))
 	{
 		if (!(c65_6511_port&2))
 			value&=c65_keyline;
@@ -292,27 +291,27 @@ static void c64_cia0_port_b_w (UINT8 data)
     vic2_lightpen_write (data & 0x10);
 }
 
-static void c64_irq (int level)
+static void c64_irq (running_machine *machine, int level)
 {
 	static int old_level = 0;
 
 	if (level != old_level)
 	{
 		DBG_LOG (3, "mos6510", ("irq %s\n", level ? "start" : "end"));
-		if (is_c128())
+		if (is_c128(machine))
 		{
 			if (0&&(cpu_getactivecpu()==0))
 			{
-				cpunum_set_input_line(Machine, 0, 0, level);
+				cpunum_set_input_line(machine, 0, 0, level);
 			}
 			else
 			{
-				cpunum_set_input_line(Machine, 1, M6510_IRQ_LINE, level);
+				cpunum_set_input_line(machine, 1, M6510_IRQ_LINE, level);
 			}
 		}
 		else
 		{
-			cpunum_set_input_line(Machine, 0, M6510_IRQ_LINE, level);
+			cpunum_set_input_line(machine, 0, M6510_IRQ_LINE, level);
 		}
 		old_level = level;
 	}
@@ -325,7 +324,7 @@ WRITE8_HANDLER(c64_tape_read)
 
 static void c64_cia0_interrupt (int level)
 {
-	c64_irq (level || vicirq);
+	c64_irq (Machine, level || vicirq);
 }
 
 void c64_vic_interrupt (int level)
@@ -333,7 +332,7 @@ void c64_vic_interrupt (int level)
 #if 1
 	if (level != vicirq)
 	{
-		c64_irq (level || cia_get_irq(0));
+		c64_irq (Machine, level || cia_get_irq(0));
 		vicirq = level;
 	}
 #endif
@@ -381,7 +380,7 @@ static void c64_cia1_port_a_w (UINT8 data)
 	cbm_serial_data_write (serial_data = !(data & 0x20));
 	cbm_serial_atn_write (serial_atn = !(data & 8));
 	c64_vicaddr = c64_memory + helper[data & 3];
-	if (is_c128())
+	if (is_c128(Machine))
 	{
 		c128_vicaddr = c64_memory + helper[data & 3] + c128_va1617;
 	}
@@ -389,7 +388,7 @@ static void c64_cia1_port_a_w (UINT8 data)
 
 static void c64_cia1_interrupt (int level)
 {
-	c64_nmi();
+	c64_nmi(Machine);
 }
 
 const cia6526_interface c64_cia0 =
@@ -417,7 +416,7 @@ const cia6526_interface c64_cia1 =
 };
 
 static void c64_bankswitch (int reset);
-static void c64_robocop2_w(int offset, int value)
+static void c64_robocop2_w(running_machine *machine, int offset, int value)
 {
 	/* robocop2 0xe00
 	 * 80 94 80 94 80
@@ -435,13 +434,13 @@ static void c64_robocop2_w(int offset, int value)
 		c64_game = c64_exrom = 1;
 	}
 
-	if (is_c128())
-		c128_bankswitch_64(0);
+	if (is_c128(machine))
+		c128_bankswitch_64(machine, 0);
 	else
 		c64_bankswitch(0);
 }
 
-static void c64_supergames_w(int offset, int value)
+static void c64_supergames_w(running_machine *machine, int offset, int value)
 {
 	/* supergam 0xf00
 	 * 4 9 4
@@ -463,8 +462,8 @@ static void c64_supergames_w(int offset, int value)
 		c64_game = c64_exrom = 0;
 	}
 
-	if (is_c128())
-		c128_bankswitch_64 (0);
+	if (is_c128(machine))
+		c128_bankswitch_64 (machine, 0);
 	else
 		c64_bankswitch (0);
 }
@@ -473,17 +472,17 @@ WRITE8_HANDLER( c64_write_io )
 {
 	c64_io_mirror[ offset ] = data;
 	if (offset < 0x400) {
-		vic2_port_w (offset & 0x3ff, data);
+		vic2_port_w (machine, offset & 0x3ff, data);
 	} else if (offset < 0x800) {
-		sid6581_0_port_w (offset & 0x3ff, data);
+		sid6581_0_port_w (machine, offset & 0x3ff, data);
 	} else if (offset < 0xc00)
 		c64_colorram[offset & 0x3ff] = data | 0xf0;
 	else if (offset < 0xd00)
-		cia_0_w(offset, data);
+		cia_0_w(machine, offset, data);
 	else if (offset < 0xe00)
 	{
 		if (c64_cia1_on)
-			cia_1_w(offset, data);
+			cia_1_w(machine, offset, data);
 		else
 			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
 	}
@@ -492,7 +491,7 @@ WRITE8_HANDLER( c64_write_io )
 		/* i/o 1 */
 		if (cartridge && (cartridgetype == CartridgeRobocop2))
 		{
-			c64_robocop2_w(offset&0xff, data);
+			c64_robocop2_w(machine, offset&0xff, data);
 		}
 		else
 			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
@@ -502,7 +501,7 @@ WRITE8_HANDLER( c64_write_io )
 		/* i/o 2 */
 		if (cartridge && (cartridgetype == CartridgeSuperGames))
 		{
-			c64_supergames_w(offset&0xff, data);
+			c64_supergames_w(machine, offset&0xff, data);
 		}
 		else
 			DBG_LOG (1, "io write", ("%.3x %.2x\n", offset, data));
@@ -515,7 +514,7 @@ static UINT8 *c64_io_ram_r_ptr;
 WRITE8_HANDLER(c64_ioarea_w)
 {
 	if ( c64_io_enabled ) {
-		c64_write_io( offset, data );
+		c64_write_io( machine, offset, data );
 	} else {
 		c64_io_ram_w_ptr[ offset ] = data;
 	}
@@ -524,15 +523,15 @@ WRITE8_HANDLER(c64_ioarea_w)
 READ8_HANDLER( c64_read_io )
 {
 	if (offset < 0x400)
-		return vic2_port_r (offset & 0x3ff);
+		return vic2_port_r (machine, offset & 0x3ff);
 	else if (offset < 0x800)
-		return sid6581_0_port_r (offset & 0x3ff);
+		return sid6581_0_port_r (machine, offset & 0x3ff);
 	else if (offset < 0xc00)
 		return c64_colorram[offset & 0x3ff];
 	else if (offset < 0xd00)
-		return cia_0_r(offset);
+		return cia_0_r(machine, offset);
 	else if (c64_cia1_on && (offset < 0xe00))
-		return cia_1_r(offset);
+		return cia_1_r(machine, offset);
 	DBG_LOG (1, "io read", ("%.3x\n", offset));
 	return 0xff;
 }
@@ -540,7 +539,7 @@ READ8_HANDLER( c64_read_io )
 READ8_HANDLER(c64_ioarea_r)
 {
 	if ( c64_io_enabled ) {
-		return c64_read_io( offset );
+		return c64_read_io( machine, offset );
 	}
 	return c64_io_ram_r_ptr[ offset ];
 }
@@ -666,8 +665,8 @@ static void c64_bankswitch (int reset)
 		} else {
 			c64_io_ram_r_ptr = c64_memory + 0xd000;
 		}
-//		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MRA8_BANK5);
-//		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, MWA8_BANK6);
+//		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, SMH_BANK5);
+//		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, SMH_BANK6);
 //		memory_set_bankptr (6, c64_memory + 0xd000);
 //		if (!charen && (loram || hiram))
 //		{
@@ -682,7 +681,7 @@ static void c64_bankswitch (int reset)
 	if (!c64_game && c64_exrom)
 	{
 		memory_set_bankptr (7, romh);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, MWA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_NOP);
 	}
 	else
 	{
@@ -741,9 +740,9 @@ void c64_m6510_port_write(UINT8 direction, UINT8 data)
 			vc20_tape_motor (data & 0x20);
 		}
 	}
-	if (is_c128())
-		c128_bankswitch_64 (0);
-	else if (is_c65())
+	if (is_c128(Machine))
+		c128_bankswitch_64 (Machine, 0);
+	else if (is_c65(Machine))
 	{
 		// NPW 8-Feb-2004 - Don't know why I have to do this
 		//c65_bankswitch();
@@ -762,9 +761,9 @@ UINT8 c64_m6510_port_read(UINT8 direction)
 		data &= ~0x10;
 	/* WP: motor is always marked as on??? */
 	data &= ~0x20;
-	if (is_c128() && !c128_capslock_r ())
+	if (is_c128(Machine) && !c128_capslock_r ())
 		data &= ~0x40;
-	if (is_c65() && C65_KEY_DIN)
+	if (is_c65(Machine) && C65_KEY_DIN)
 		data &= ~0x40; /*? */
 	return data;
 }
@@ -853,7 +852,7 @@ static int c64_dma_read_color (int offset)
 	return c64_colorram[offset & 0x3ff] & 0xf;
 }
 
-static void c64_common_driver_init (void)
+static void c64_common_driver_init (running_machine *machine)
 {
 	/* configure the M6510 port */
 	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTREAD, (genf *) c64_m6510_port_read);
@@ -868,12 +867,12 @@ static void c64_common_driver_init (void)
 		c64_roml=memory_region(REGION_CPU1)+0x15400;
 		c64_romh=memory_region(REGION_CPU1)+0x17400;
 #if 0
-	{0x10000, 0x11fff, MWA8_ROM, &c64_basic},	/* basic at 0xa000 */
-	{0x12000, 0x13fff, MWA8_ROM, &c64_kernal},	/* kernal at 0xe000 */
-	{0x14000, 0x14fff, MWA8_ROM, &c64_chargen},	/* charrom at 0xd000 */
-	{0x15000, 0x153ff, MWA8_RAM, &c64_colorram},		/* colorram at 0xd800 */
-	{0x15400, 0x173ff, MWA8_ROM, &c64_roml},	/* basic at 0xa000 */
-	{0x17400, 0x193ff, MWA8_ROM, &c64_romh},	/* kernal at 0xe000 */
+	{0x10000, 0x11fff, SMH_ROM, &c64_basic},	/* basic at 0xa000 */
+	{0x12000, 0x13fff, SMH_ROM, &c64_kernal},	/* kernal at 0xe000 */
+	{0x14000, 0x14fff, SMH_ROM, &c64_chargen},	/* charrom at 0xd000 */
+	{0x15000, 0x153ff, SMH_RAM, &c64_colorram},		/* colorram at 0xd800 */
+	{0x15400, 0x173ff, SMH_ROM, &c64_roml},	/* basic at 0xa000 */
+	{0x17400, 0x193ff, SMH_ROM, &c64_romh},	/* kernal at 0xe000 */
 #endif
 	}
 	if (c64_tape_on)
@@ -905,25 +904,25 @@ static void c64_common_driver_init (void)
 					  c64_vic_interrupt);
 	}
 	cia_reset();
-	add_exit_callback(Machine, c64_driver_shutdown);
+	add_exit_callback(machine, c64_driver_shutdown);
 }
 
 DRIVER_INIT( c64 )
 {
-	c64_common_driver_init ();
+	c64_common_driver_init (machine);
 }
 
 DRIVER_INIT( c64pal )
 {
 	c64_pal = 1;
-	c64_common_driver_init ();
+	c64_common_driver_init (machine);
 }
 
 DRIVER_INIT( ultimax )
 {
 	ultimax = 1;
     c64_cia1_on = 0;
-	c64_common_driver_init ();
+	c64_common_driver_init (machine);
 }
 
 DRIVER_INIT( c64gs )
@@ -931,7 +930,7 @@ DRIVER_INIT( c64gs )
 	c64_pal = 1;
 	c64_tape_on = 0;
     c64_cia1_on = 1;
-	c64_common_driver_init ();
+	c64_common_driver_init (machine);
 }
 
 DRIVER_INIT( sx64 )
@@ -939,7 +938,7 @@ DRIVER_INIT( sx64 )
 	VC1541_CONFIG vc1541 = { 1, 8 };
 	c64_tape_on = 0;
 	c64_pal = 1;
-	c64_common_driver_init ();
+	c64_common_driver_init (machine);
 	vc1541_config (0, 0, &vc1541);
 }
 
@@ -949,7 +948,7 @@ static void c64_driver_shutdown (running_machine *machine)
 		vc20_tape_close ();
 }
 
-void c64_common_init_machine (void)
+void c64_common_init_machine (running_machine *machine)
 {
 #ifdef VC1541
 	vc1541_reset ();
@@ -958,8 +957,8 @@ void c64_common_init_machine (void)
 	if (c64_cia1_on)
 	{
 		cbm_serial_reset_write (0);
-		cbm_drive_0_config (SERIAL, is_c65() ? 10 : 8);
-		cbm_drive_1_config (SERIAL, is_c65() ? 11 : 9);
+		cbm_drive_0_config (SERIAL, is_c65(machine) ? 10 : 8);
+		cbm_drive_1_config (SERIAL, is_c65(machine) ? 11 : 9);
 		serial_clock = serial_data = serial_atn = 1;
 	}
 	c64_vicaddr = c64_memory;
@@ -974,7 +973,7 @@ static OPBASE_HANDLER( c64_opbase ) {
 			opcode_base = c64_io_mirror;
 			opcode_memory_min = 0x0000;
 			opcode_memory_max = 0xcfff;
-			c64_io_mirror[address & 0x0fff] = c64_read_io( address & 0x0fff );
+			c64_io_mirror[address & 0x0fff] = c64_read_io( machine, address & 0x0fff );
 		} else {
 			opcode_mask = 0x0fff;
 			opcode_arg_base = c64_io_ram_r_ptr;
@@ -992,13 +991,13 @@ MACHINE_START( c64 )
 	c64_port_data = 0x17;
 
 	c64_io_mirror = auto_malloc( 0x1000 );
-	c64_common_init_machine ();
+	c64_common_init_machine (machine);
 
 	c64_rom_recognition ();
 	c64_rom_load();
 
-	if (is_c128())
-		c128_bankswitch_64 (1);
+	if (is_c128(machine))
+		c128_bankswitch_64 (machine, 1);
 	if (!ultimax)
 		c64_bankswitch (1);
 	memory_set_opbase_handler( 0, c64_opbase );
@@ -1137,9 +1136,9 @@ INTERRUPT_GEN( c64_frame_interrupt )
 	static int monitor=-1;
 	int value, value2;
 
-	c64_nmi();
+	c64_nmi(machine);
 
-	if (is_c128())
+	if (is_c128(machine))
 	{
 		if (MONITOR_TV!=monitor)
 		{
@@ -1147,20 +1146,20 @@ INTERRUPT_GEN( c64_frame_interrupt )
 			{
 				vic2_set_rastering(0);
 				vdc8563_set_rastering(1);
-				video_screen_set_visarea(0, 0, 655, 0, 215);
+				video_screen_set_visarea(machine->primary_screen, 0, 655, 0, 215);
 			}
 			else
 			{
 				vic2_set_rastering(1);
 				vdc8563_set_rastering(0);
-				video_screen_set_visarea(0, 0, 335, 0, 215);
+				video_screen_set_visarea(machine->primary_screen, 0, 335, 0, 215);
 			}
 			monitor=MONITOR_TV;
 		}
 	}
 
 	value = 0xff;
-	if (is_c128())
+	if (is_c128(machine))
 	{
 		if (C128_KEY_CURSOR_DOWN)
 			value &= ~0x80;
@@ -1174,7 +1173,7 @@ INTERRUPT_GEN( c64_frame_interrupt )
 			value &= ~8;
 		if (C128_KEY_CURSOR_RIGHT)
 			value &= ~4;
-	} else if (is_c65()) {
+	} else if (is_c65(machine)) {
 		if (C65_KEY_CURSOR_DOWN)
 			value &= ~0x80;
 		if (C65_KEY_F5)
@@ -1304,12 +1303,12 @@ INTERRUPT_GEN( c64_frame_interrupt )
 		value &= ~0x40;
 	if (KEY_EQUALS)
 		value &= ~0x20;
-	if (is_c128())
+	if (is_c128(machine))
 	{
 		if (C128_KEY_RIGHT_SHIFT)
 		value &= ~0x10;
 	}
-	else if (is_c65())
+	else if (is_c65(machine))
 	{
 		if (C65_KEY_RIGHT_SHIFT)
 		value &= ~0x10;
@@ -1330,7 +1329,7 @@ INTERRUPT_GEN( c64_frame_interrupt )
 	c64_keyline[6] = value;
 
 	value = 0xff;
-	if (is_c65()) {
+	if (is_c65(machine)) {
 		if (C65_KEY_STOP)
 			value &= ~0x80;
 		if (C65_KEY_SPACE)
@@ -1405,7 +1404,7 @@ INTERRUPT_GEN( c64_frame_interrupt )
 	}
 	c64_keyline[9] = value2;
 
-	if (is_c128())
+	if (is_c128(machine))
 	{
 		value = 0xff;
 		if (KEY_NUM1)
@@ -1465,7 +1464,7 @@ INTERRUPT_GEN( c64_frame_interrupt )
 		c128_keyline[2] = value;
 	}
 
-	if (is_c65()) {
+	if (is_c65(machine)) {
 		value = 0xff;
 		if (C65_KEY_ESCAPE)
 			value &= ~0x80;

@@ -7,9 +7,7 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/cgenie.h"
 #include "machine/wd17xx.h"
@@ -20,8 +18,8 @@
 
 
 #define AYWriteReg(chip,port,value) \
-	AY8910_control_port_0_w(0,port);  \
-	AY8910_write_port_0_w(0,value)
+	AY8910_control_port_0_w(machine, 0,port);  \
+	AY8910_write_port_0_w(machine, 0,value)
 
 #define TAPE_HEADER "Colour Genie - Virtual Tape File"
 
@@ -212,7 +210,7 @@ static OPBASE_HANDLER (opbaseoverride)
 	return address;
 }
 
-static void cgenie_fdc_callback(wd17xx_state_t event, void *param);
+static void cgenie_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 MACHINE_RESET( cgenie )
 {
@@ -251,23 +249,23 @@ MACHINE_RESET( cgenie )
 	{
 		if ( readinputport(0) & 0x080 )
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_BANK10);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_NOP);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK10);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 			memory_set_bankptr(10, &ROM[0x0c000]);
 			logerror("cgenie DOS enabled\n");
 			memcpy(&ROM[0x0c000],&ROM[0x10000], 0x2000);
 		}
 		else
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_NOP);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 			logerror("cgenie DOS disabled (no floppy image given)\n");
 		}
 	}
 	else
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MRA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 		logerror("cgenie DOS disabled\n");
 		memset(&memory_region(REGION_CPU1)[0x0c000], 0x00, 0x2000);
 	}
@@ -275,16 +273,16 @@ MACHINE_RESET( cgenie )
 	/* copy EXT ROM, if enabled or wipe out that memory area */
 	if( readinputport(0) & 0x20 )
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MRA8_ROM);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MWA8_ROM);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_ROM);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_ROM);
 		logerror("cgenie EXT enabled\n");
 		memcpy(&memory_region(REGION_CPU1)[0x0e000],
 			   &memory_region(REGION_CPU1)[0x12000], 0x1000);
 	}
 	else
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MRA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, MWA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
 		logerror("cgenie EXT disabled\n");
 		memset(&memory_region(REGION_CPU1)[0x0e000], 0x00, 0x1000);
 	}
@@ -326,13 +324,13 @@ MACHINE_START( cgenie )
 		memset(gfx + i * 8, i, 8);
 
 	/* set up RAM */
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, MRA8_BANK1);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, SMH_BANK1);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, cgenie_videoram_w);
 	videoram = mess_ram;
 	memory_set_bankptr(1, mess_ram);
 
 	/* set up FDC */
-	wd17xx_init(WD_TYPE_179X, cgenie_fdc_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_179X, cgenie_fdc_callback, NULL);
 
 	add_exit_callback(machine, tape_put_close);
 }
@@ -491,7 +489,7 @@ static void tape_put_close(running_machine *machine)
  * tape_put_bit
  * port FF tape status bit changed. Figure out what to do with it ;-)
  *******************************************************************/
-static void tape_put_bit(void)
+static void tape_put_bit(running_machine *machine)
 {
 	int now_cycles = activecpu_gettotalcycles();
 	int diff = now_cycles - put_cycles;
@@ -502,7 +500,7 @@ static void tape_put_bit(void)
 	if( diff > 4000 )
 	{
 		/* reset tape output */
-		tape_put_close(Machine);
+		tape_put_close(machine);
 		put_bit_count = tape_bits = in_sync = 0;
 	}
 	else
@@ -748,7 +746,7 @@ WRITE8_HANDLER( cgenie_port_ff_w )
 	{
 		/* virtual tape ? */
 		if( readinputport(0) & 0x08 )
-			tape_put_bit();
+			tape_put_bit(machine);
 		else
 			DAC_data_w(0,(data & FF_CAS) ? 127:0 );
 	}
@@ -799,7 +797,7 @@ WRITE8_HANDLER( cgenie_port_ff_w )
 				b = 15;
 			}
 		}
-		palette_set_color_rgb(Machine, 0, r, g, b);
+		palette_set_color_rgb(machine, 0, r, g, b);
 	}
 
 	/* character mode changed ? */
@@ -855,13 +853,13 @@ static UINT8 psg_b_inp = 0x00;
 	{
 		/* comparator value */
 		psg_b_inp = 0x00;
-		if( input_port_9_r(0) > psg_a_out )
+		if( readinputport(9) > psg_a_out )
 			psg_b_inp |= 0x80;
-		if( input_port_10_r(0) > psg_a_out )
+		if( readinputport(10) > psg_a_out )
 			psg_b_inp |= 0x40;
-		if( input_port_11_r(0) > psg_a_out )
+		if( readinputport(11) > psg_a_out )
 			psg_b_inp |= 0x20;
-		if( input_port_12_r(0) > psg_a_out )
+		if( readinputport(12) > psg_a_out )
 			psg_b_inp |= 0x10;
 	}
 	else
@@ -869,17 +867,17 @@ static UINT8 psg_b_inp = 0x00;
 		/* read keypad matrix */
 		psg_b_inp = 0xFF;
 		if( !(psg_a_out & 0x01) )
-			psg_b_inp &= ~(input_port_13_r(0) & 15);
+			psg_b_inp &= ~(readinputport(13) & 15);
 		if( !(psg_a_out & 0x02) )
-			psg_b_inp &= ~(input_port_13_r(0) / 16);
+			psg_b_inp &= ~(readinputport(13) / 16);
 		if( !(psg_a_out & 0x04) )
-			psg_b_inp &= ~(input_port_14_r(0) & 15);
+			psg_b_inp &= ~(readinputport(14) & 15);
 		if( !(psg_a_out & 0x08) )
-			psg_b_inp &= ~(input_port_14_r(0) / 16);
+			psg_b_inp &= ~(readinputport(14) / 16);
 		if( !(psg_a_out & 0x10) )
-			psg_b_inp &= ~(input_port_15_r(0) & 15);
+			psg_b_inp &= ~(readinputport(15) & 15);
 		if( !(psg_a_out & 0x20) )
-			psg_b_inp &= ~(input_port_15_r(0) / 16);
+			psg_b_inp &= ~(readinputport(15) / 16);
 	}
 	return psg_b_inp;
 }
@@ -899,7 +897,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 	/* If the floppy isn't emulated, return 0 */
 	if( (readinputport(0) & 0x80) == 0 )
 		return 0;
-	return wd17xx_status_r(offset);
+	return wd17xx_status_r(machine, offset);
 }
 
  READ8_HANDLER( cgenie_track_r )
@@ -907,7 +905,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 	/* If the floppy isn't emulated, return 0xff */
 	if( (readinputport(0) & 0x80) == 0 )
 		return 0xff;
-	return wd17xx_track_r(offset);
+	return wd17xx_track_r(machine, offset);
 }
 
  READ8_HANDLER( cgenie_sector_r )
@@ -915,7 +913,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 	/* If the floppy isn't emulated, return 0xff */
 	if( (readinputport(0) & 0x80) == 0 )
 		return 0xff;
-	return wd17xx_sector_r(offset);
+	return wd17xx_sector_r(machine, offset);
 }
 
  READ8_HANDLER(cgenie_data_r )
@@ -923,7 +921,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 	/* If the floppy isn't emulated, return 0xff */
 	if( (readinputport(0) & 0x80) == 0 )
 		return 0xff;
-	return wd17xx_data_r(offset);
+	return wd17xx_data_r(machine, offset);
 }
 
 WRITE8_HANDLER( cgenie_command_w )
@@ -931,7 +929,7 @@ WRITE8_HANDLER( cgenie_command_w )
 	/* If the floppy isn't emulated, return immediately */
 	if( (readinputport(0) & 0x80) == 0 )
 		return;
-	wd17xx_command_w(offset, data);
+	wd17xx_command_w(machine, offset, data);
 }
 
 WRITE8_HANDLER( cgenie_track_w )
@@ -939,7 +937,7 @@ WRITE8_HANDLER( cgenie_track_w )
 	/* If the floppy isn't emulated, ignore the write */
 	if( (readinputport(0) & 0x80) == 0 )
 		return;
-	wd17xx_track_w(offset, data);
+	wd17xx_track_w(machine, offset, data);
 }
 
 WRITE8_HANDLER( cgenie_sector_w )
@@ -947,7 +945,7 @@ WRITE8_HANDLER( cgenie_sector_w )
 	/* If the floppy isn't emulated, ignore the write */
 	if( (readinputport(0) & 0x80) == 0 )
 		return;
-	wd17xx_sector_w(offset, data);
+	wd17xx_sector_w(machine, offset, data);
 }
 
 WRITE8_HANDLER( cgenie_data_w )
@@ -955,7 +953,7 @@ WRITE8_HANDLER( cgenie_data_w )
 	/* If the floppy isn't emulated, ignore the write */
 	if( (readinputport(0) & 0x80) == 0 )
 		return;
-	wd17xx_data_w(offset, data);
+	wd17xx_data_w(machine, offset, data);
 }
 
  READ8_HANDLER( cgenie_irq_status_r )
@@ -984,7 +982,7 @@ static INTERRUPT_GEN( cgenie_fdc_interrupt )
 	}
 }
 
-void cgenie_fdc_callback(wd17xx_state_t event, void *param)
+void cgenie_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	/* if disc hardware is not enabled, do not cause an int */
 	if (!( readinputport(0) & 0x80 ))
@@ -996,7 +994,7 @@ void cgenie_fdc_callback(wd17xx_state_t event, void *param)
 			irq_status &= ~IRQ_FDC;
 			break;
 		case WD17XX_IRQ_SET:
-			cgenie_fdc_interrupt(Machine, 0);
+			cgenie_fdc_interrupt(machine, 0);
 			break;
 		case WD17XX_DRQ_CLR:
 		case WD17XX_DRQ_SET:
@@ -1041,21 +1039,21 @@ WRITE8_HANDLER( cgenie_motor_w )
 	int result = 0;
 
 	if( offset & 0x01 )
-		result |= input_port_1_r(0);
+		result |= readinputport(1);
 	if( offset & 0x02 )
-		result |= input_port_2_r(0);
+		result |= readinputport(2);
 	if( offset & 0x04 )
-		result |= input_port_3_r(0);
+		result |= readinputport(3);
 	if( offset & 0x08 )
-		result |= input_port_4_r(0);
+		result |= readinputport(4);
 	if( offset & 0x10 )
-		result |= input_port_5_r(0);
+		result |= readinputport(5);
 	if( offset & 0x20 )
-		result |= input_port_6_r(0);
+		result |= readinputport(6);
 	if( offset & 0x40 )
-		result |= input_port_7_r(0);
+		result |= readinputport(7);
 	if( offset & 0x80 )
-		result |= input_port_8_r(0);
+		result |= readinputport(8);
 
 	return result;
 }
@@ -1112,7 +1110,7 @@ WRITE8_HANDLER( cgenie_fontram_w )
 	cgenie_fontram[offset] = data;
 
 	/* convert eight pixels */
-	dp = &Machine->gfx[0]->gfxdata[(256 * 8 + offset) * Machine->gfx[0]->width];
+	dp = &machine->gfx[0]->gfxdata[(256 * 8 + offset) * machine->gfx[0]->width];
 	dp[0] = (data & 0x80) ? 1 : 0;
 	dp[1] = (data & 0x40) ? 1 : 0;
 	dp[2] = (data & 0x20) ? 1 : 0;
@@ -1133,9 +1131,9 @@ INTERRUPT_GEN( cgenie_frame_interrupt )
 {
 	if( cgenie_tv_mode != (readinputport(0) & 0x10) )
 	{
-		cgenie_tv_mode = input_port_0_r(0) & 0x10;
+		cgenie_tv_mode = readinputport(0) & 0x10;
 		/* force setting of background color */
 		port_ff ^= FF_BGD0;
-		cgenie_port_ff_w(0, port_ff ^ FF_BGD0);
+		cgenie_port_ff_w(machine, 0, port_ff ^ FF_BGD0);
 	}
 }

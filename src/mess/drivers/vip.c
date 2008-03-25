@@ -22,7 +22,7 @@
 #include "sound/beep.h"
 #include "video/cdp1861.h"
 
-#define XTAL 3521280
+#define XTAL XTAL_3_52128MHz
 
 extern int cdp1861_efx;
 
@@ -43,7 +43,7 @@ static WRITE8_HANDLER( bankswitch_w )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( vip_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
     AM_RANGE(0x0000, 0x7fff) AM_RAMBANK(1)
 	AM_RANGE(0x8000, 0x81ff) AM_ROM
 ADDRESS_MAP_END
@@ -150,13 +150,13 @@ static MACHINE_START( vip )
 	state_save_register_global(vip_reset);
 	state_save_register_global(vip_run);
 
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, 0, MRA8_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, 0, MWA8_BANK1);
+	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, mess_ram_size - 1, 0, 0, SMH_BANK1);
 
 	if (mess_ram_size < 0x8000)
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, mess_ram_size, 0x7fff, 0, 0, MRA8_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, mess_ram_size, 0x7fff, 0, 0, MWA8_UNMAP);
+		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, mess_ram_size, 0x7fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, mess_ram_size, 0x7fff, 0, 0, SMH_UNMAP);
 	}
 
 	for (addr = 0; addr < mess_ram_size; addr++)
@@ -186,7 +186,7 @@ static MACHINE_DRIVER_START( vip )
 	MDRV_MACHINE_RESET(vip)
 
     /* video hardware */
-	MDRV_SCREEN_ADD("main", 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(XTAL/2, CDP1861_SCREEN_WIDTH, CDP1861_HBLANK_END, CDP1861_HBLANK_START, CDP1861_TOTAL_SCANLINES, CDP1861_SCANLINE_VBLANK_END, CDP1861_SCANLINE_VBLANK_START)
 
@@ -225,28 +225,28 @@ static QUICKLOAD_LOAD( vip )
 	return INIT_PASS;
 }
 
-static void vip_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void vip_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cos"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cos"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_vip; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_vip; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void vip_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void vip_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}

@@ -22,19 +22,16 @@
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 
-/* TODO: Remove dependency on this */
-#include "mslegacy.h"
-
 
 static ADDRESS_MAP_START( c65_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x07fff) AM_RAMBANK(11)
-	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK12)
-	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(MRA8_BANK2, MWA8_BANK13)
-	AM_RANGE(0x0c000, 0x0cfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK14)
-	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(MRA8_BANK4, MWA8_BANK5)
-	AM_RANGE(0x0d800, 0x0dbff) AM_READWRITE(MRA8_BANK6, MWA8_BANK7)
-	AM_RANGE(0x0dc00, 0x0dfff) AM_READWRITE(MRA8_BANK8, MWA8_BANK9)
-	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(MRA8_BANK10, MWA8_BANK15)
+	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(SMH_BANK1, SMH_BANK12)
+	AM_RANGE(0x0a000, 0x0bfff) AM_READWRITE(SMH_BANK2, SMH_BANK13)
+	AM_RANGE(0x0c000, 0x0cfff) AM_READWRITE(SMH_BANK3, SMH_BANK14)
+	AM_RANGE(0x0d000, 0x0d7ff) AM_READWRITE(SMH_BANK4, SMH_BANK5)
+	AM_RANGE(0x0d800, 0x0dbff) AM_READWRITE(SMH_BANK6, SMH_BANK7)
+	AM_RANGE(0x0dc00, 0x0dfff) AM_READWRITE(SMH_BANK8, SMH_BANK9)
+	AM_RANGE(0x0e000, 0x0ffff) AM_READWRITE(SMH_BANK10, SMH_BANK15)
 	AM_RANGE(0x10000, 0x1f7ff) AM_RAM
 	AM_RANGE(0x1f800, 0x1ffff) AM_RAM AM_BASE( &c64_colorram)
 
@@ -261,7 +258,11 @@ INPUT_PORTS_END
 
 static PALETTE_INIT( c65 )
 {
-	palette_set_colors_rgb(machine, 0, vic3_palette, sizeof(vic3_palette) / 3);
+	int i;
+
+	for ( i = 0; i < sizeof(vic3_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, vic3_palette[i*3], vic3_palette[i*3+1], vic3_palette[i*3+2]);
+	}
 }
 
 #if 0
@@ -314,16 +315,17 @@ static MACHINE_DRIVER_START( c65 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M4510, 3500000)  /* or VIC6567_CLOCK, */
 	MDRV_CPU_PROGRAM_MAP(c65_mem, 0)
-	MDRV_CPU_VBLANK_INT(c64_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic3_raster_irq, VIC2_HRETRACERATE)
-	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_START( c65 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( vh_vic2 )
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_SIZE(656, 416)
 	MDRV_SCREEN_VISIBLE_AREA(0, 656 - 1, 0, 416 - 1)
 	MDRV_PALETTE_LENGTH(sizeof(vic3_palette) / sizeof(vic3_palette[0]) / 3)
@@ -340,6 +342,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c65pal )
 	MDRV_IMPORT_FROM( c65 )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
 
 	MDRV_SOUND_REPLACE("sid_r", SID8580, 1022727)
@@ -352,18 +355,18 @@ MACHINE_DRIVER_END
 static DRIVER_INIT( c65 )			{ c65_driver_init(); }
 static DRIVER_INIT( c65pal )		{ c65pal_driver_init(); }
 
-static void c65_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void c65_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c65; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c65; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}

@@ -20,7 +20,6 @@
  ************************************************************************/
 
 #include "driver.h"
-#include "mslegacy.h"
 #include "video/stic.h"
 #include "includes/intv.h"
 #include "devices/cartslot.h"
@@ -34,7 +33,7 @@
 #endif
 #endif
 
-static const unsigned char intv_palette[] =
+static const unsigned char intv_colors[] =
 {
 	0x00, 0x00, 0x00, /* BLACK */
 	0x00, 0x2D, 0xFF, /* BLUE */
@@ -56,27 +55,35 @@ static const unsigned char intv_palette[] =
 
 static PALETTE_INIT( intv )
 {
-	int i,j;
+	int k = 0;
 
-	/* Two copies of the palette */
-	palette_set_colors_rgb(machine, 0, intv_palette, sizeof(intv_palette) / 3);
-	palette_set_colors_rgb(machine, sizeof(intv_palette) / 3, intv_palette, sizeof(intv_palette) / 3);
+	UINT8 i, j, r, g, b;
+	/* Two copies of everything (why?) */
 
-    /* Two copies of the color table */
-    for(i=0;i<16;i++)
-    {
-    	for(j=0;j<16;j++)
-    	{
-    		*colortable++ = i;
-    		*colortable++ = j;
+	machine->colortable = colortable_alloc(machine, 32);
+
+	for ( i = 0; i < 16; i++ )
+	{
+		r = intv_colors[i*3]; g = intv_colors[i*3+1]; b = intv_colors[i*3+2];
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
+		colortable_palette_set_color(machine->colortable, i + 16, MAKE_RGB(r, g, b));
+	}
+
+	for(i=0;i<16;i++)
+	{
+		for(j=0;j<16;j++)
+		{
+		colortable_entry_set_value(machine->colortable, k++, i);
+		colortable_entry_set_value(machine->colortable, k++, j);
 		}
 	}
-    for(i=0;i<16;i++)
-    {
-    	for(j=0;j<16;j++)
-    	{
-    		*colortable++ = i+16;
-    		*colortable++ = j+16;
+
+	for(i=0;i<16;i++)
+	{
+		for(j=16;j<32;j++)
+		{
+		colortable_entry_set_value(machine->colortable, k++, i);
+		colortable_entry_set_value(machine->colortable, k++, j);
 		}
 	}
 }
@@ -324,11 +331,11 @@ static ADDRESS_MAP_START( intvkbd_mem , ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x3800, 0x39ff) AM_READWRITE( intv_gram_r, intv_gram_w )	/* GRAM,     8-bits wide */
 	AM_RANGE(0x4800, 0x6fff) AM_ROM		/* Cartridges? */
 	AM_RANGE(0x7000, 0x7fff) AM_ROM	AM_REGION(REGION_CPU1, 0x7000<<1)	/* Keyboard ROM */
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE( MRA16_RAM, intvkbd_dualport16_w ) AM_BASE(&intvkbd_dualport_ram)	/* Dual-port RAM */
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE( SMH_RAM, intvkbd_dualport16_w ) AM_BASE(&intvkbd_dualport_ram)	/* Dual-port RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( intv2_mem , ADDRESS_SPACE_PROGRAM, 8)
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )  /* Required because of probing */
+	ADDRESS_MAP_UNMAP_HIGH  /* Required because of probing */
 	AM_RANGE( 0x0000, 0x3fff) AM_READWRITE( intvkbd_dualport8_lsb_r, intvkbd_dualport8_lsb_w )	/* Dual-port RAM */
 	AM_RANGE( 0x4000, 0x7fff) AM_READWRITE( intvkbd_dualport8_msb_r, intvkbd_dualport8_msb_w )	/* Dual-port RAM */
 	AM_RANGE( 0xb7f8, 0xb7ff) AM_RAM	/* ??? */
@@ -343,31 +350,30 @@ static INTERRUPT_GEN( intv_interrupt2 )
 
 static MACHINE_DRIVER_START( intv )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", CP1610, 3579545/4)        /* Colorburst/4 */
+	MDRV_CPU_ADD_TAG("main", CP1610, XTAL_3_579545MHz/4)        /* Colorburst/4 */
 	MDRV_CPU_PROGRAM_MAP(intv_mem, 0)
-	MDRV_CPU_VBLANK_INT(intv_interrupt,1)
-	MDRV_SCREEN_REFRESH_RATE(59.92)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", intv_interrupt)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( intv )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(59.92)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 24*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*8-1, 0, 24*8-1)
 	MDRV_GFXDECODE( intv )
-	MDRV_PALETTE_LENGTH(32)
-	MDRV_COLORTABLE_LENGTH(2 * 2 * 16 * 16)
+	MDRV_PALETTE_LENGTH(0x400)
 	MDRV_PALETTE_INIT( intv )
 
 	MDRV_VIDEO_START( intv )
-	MDRV_VIDEO_UPDATE( intv )
+	MDRV_VIDEO_UPDATE( generic_bitmapped )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(AY8910, 3579545/2)
+	MDRV_SOUND_ADD(AY8910, XTAL_3_579545MHz/2)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_DRIVER_END
@@ -378,16 +384,15 @@ static MACHINE_DRIVER_START( intvkbd )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(intvkbd_mem, 0)
 
-	MDRV_CPU_ADD(M6502, 3579545/2)	/* Colorburst/2 */
+	MDRV_CPU_ADD(M6502, XTAL_3_579545MHz/2)	/* Colorburst/2 */
 	MDRV_CPU_PROGRAM_MAP(intv2_mem, 0)
-	MDRV_CPU_VBLANK_INT(intv_interrupt2,1)
+	MDRV_CPU_VBLANK_INT("main", intv_interrupt2)
 
 	MDRV_INTERLEAVE(100)
 
     /* video hardware */
-	MDRV_GFXDECODE( intvkbd )
-	MDRV_VIDEO_START( intvkbd )
-	MDRV_VIDEO_UPDATE( intvkbd )
+	MDRV_GFXDECODE(intvkbd)
+	MDRV_VIDEO_UPDATE(intvkbd)
 MACHINE_DRIVER_END
 
 ROM_START(intv)
@@ -420,21 +425,21 @@ ROM_START(intvkbd)
 	ROM_LOAD( "4c52.u34",  0x0000, 0x0800, CRC(cbeb2e96) SHA1(f0e17adcd278fb376c9f90833c7fbbb60193dbe3))
 ROM_END
 
-static void intv_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void intv_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_intv_cart; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_intv_cart; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_intv_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_intv_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -444,40 +449,40 @@ SYSTEM_CONFIG_START(intv)
 	CONFIG_DEVICE(intv_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void intvkbd_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void intvkbd_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_intvkbd_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_intvkbd_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom,bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom,bin"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
 #ifdef UNUSED_FUNCTION
-static void intvkbd_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void intvkbd_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 0;	/* INVALID */ break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0;	/* INVALID */ break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0;	/* INVALID */ break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 0;	/* INVALID */ break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0;	/* INVALID */ break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0;	/* INVALID */ break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
 	}
 }
 #endif
@@ -496,6 +501,6 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY      FULLNAME */
-CONS( 1979, intv,		0,		0,		intv,     intv, 	0,			intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
-CONS( 1981, intvsrs,	0,		0,		intv,     intv, 	0,			intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
-COMP( 1981, intvkbd,	0,		0,		intvkbd,  intvkbd, 	0,			intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)
+CONS( 1979, intv,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
+CONS( 1981, intvsrs,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
+COMP( 1981, intvkbd,	0,	0,	intvkbd,  intvkbd, 	0,	intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)

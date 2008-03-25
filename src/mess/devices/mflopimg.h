@@ -17,13 +17,13 @@
 
 enum
 {
-	DEVINFO_PTR_FLOPPY_OPTIONS = DEVINFO_PTR_DEV_SPECIFIC,
-	DEVINFO_INT_KEEP_DRIVE_GEOMETRY = DEVINFO_INT_DEV_SPECIFIC
+	MESS_DEVINFO_PTR_FLOPPY_OPTIONS = MESS_DEVINFO_PTR_DEV_SPECIFIC,
+	MESS_DEVINFO_INT_KEEP_DRIVE_GEOMETRY = MESS_DEVINFO_INT_DEV_SPECIFIC
 };
 
 floppy_image *flopimg_get_image(mess_image *image);
 
-void floppy_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info);
+void floppy_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
 
 /* hack for apple II; replace this when we think of something better */
 void floppy_install_unload_proc(mess_image *image, void (*proc)(mess_image *image));

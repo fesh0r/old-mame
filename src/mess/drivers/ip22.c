@@ -149,7 +149,7 @@ static UINT32 int3_regs[64];
 static UINT32 nIOC_ParReadCnt;
 
 // raise a local0 interrupt
-static void int3_raise_local0_irq(UINT8 source_mask)
+static void int3_raise_local0_irq(running_machine *machine, UINT8 source_mask)
 {
 	// signal the interrupt is pending
 	int3_regs[0] |= source_mask;
@@ -157,7 +157,7 @@ static void int3_raise_local0_irq(UINT8 source_mask)
 	// if it's not masked, also assert it now at the CPU
 	if (int3_regs[1] & source_mask)
 	{
-		cpunum_set_input_line(Machine, 0, MIPS3_IRQ0, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, MIPS3_IRQ0, ASSERT_LINE);
 	}
 }
 
@@ -194,7 +194,7 @@ static READ32_HANDLER( hpc3_pbus6_r )
 	switch( offset )
 	{
 	case 0x004/4:
-		ret8 = pc_parallelport0_r(2) ^ 0x0d;
+		ret8 = pc_parallelport0_r(machine, 2) ^ 0x0d;
 		verboselog( 0, "Parallel Control Read: %02x\n", ret8 );
 		return ret8;
 		break;
@@ -205,7 +205,7 @@ static READ32_HANDLER( hpc3_pbus6_r )
 //      }
 //      else
 //      {
-			ret8 = pc_parallelport0_r(1) ^ 0x80;
+			ret8 = pc_parallelport0_r(machine, 1) ^ 0x80;
 //          nIOC_ParReadCnt++;
 //      }
 		verboselog( 0, "Parallel Status Read: %02x\n", ret8 );
@@ -230,10 +230,10 @@ static READ32_HANDLER( hpc3_pbus6_r )
 		return 0x00000004;
 		break;
 	case 0x40/4:
-		return kbdc8042_8_r(0);
+		return kbdc8042_8_r(machine, 0);
 		break;
 	case 0x44/4:
-		return kbdc8042_8_r(4);
+		return kbdc8042_8_r(machine, 4);
 		break;
 	case 0x58/4:
 		return 0x20;	// chip rev 1, board rev 0, "Guinness" (Indy) => 0x01 for "Full House" (Indigo2)
@@ -254,22 +254,22 @@ static READ32_HANDLER( hpc3_pbus6_r )
 		return int3_regs[offset-0x80/4];
 		break;
 	case 0xb0/4:
-		ret8 = pit8253_0_r(0);
+		ret8 = pit8253_0_r(machine, 0);
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Counter 0 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 		break;
 	case 0xb4/4:
-		ret8 = pit8253_0_r(1);
+		ret8 = pit8253_0_r(machine, 1);
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Counter 1 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 		break;
 	case 0xb8/4:
-		ret8 = pit8253_0_r(2);
+		ret8 = pit8253_0_r(machine, 2);
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Counter 2 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 		break;
 	case 0xbc/4:
-		ret8 = pit8253_0_r(3);
+		ret8 = pit8253_0_r(machine, 3);
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Control Word Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 		break;
@@ -288,7 +288,7 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 	{
 	case 0x004/4:
 		verboselog( 0, "Parallel Control Write: %08x\n", data );
-		pc_parallelport0_w(2, data ^ 0x0d);
+		pc_parallelport0_w(machine, 2, data ^ 0x0d);
 //      nIOC_ParCntl = data;
 		break;
 	case 0x030/4:
@@ -322,10 +322,10 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		}
 		break;
 	case 0x40/4:
-		kbdc8042_8_w(0, data);
+		kbdc8042_8_w(machine, 0, data);
 		break;
 	case 0x44/4:
-		kbdc8042_8_w(4, data);
+		kbdc8042_8_w(machine, 4, data);
 		break;
 	case 0x80/4:
 	case 0x84/4:
@@ -343,41 +343,41 @@ static WRITE32_HANDLER( hpc3_pbus6_w )
 		// if no local0 interrupts now, clear the input to the CPU
 		if ((int3_regs[0] & int3_regs[1]) == 0)
 		{
-			cpunum_set_input_line(Machine, 0, MIPS3_IRQ0, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MIPS3_IRQ0, CLEAR_LINE);
 		}
 		else
 		{
-			cpunum_set_input_line(Machine, 0, MIPS3_IRQ0, ASSERT_LINE);
+			cpunum_set_input_line(machine, 0, MIPS3_IRQ0, ASSERT_LINE);
 		}
 
 		// if no local1 interrupts now, clear the input to the CPU
 		if ((int3_regs[2] & int3_regs[3]) == 0)
 		{
-			cpunum_set_input_line(Machine, 0, MIPS3_IRQ1, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, MIPS3_IRQ1, CLEAR_LINE);
 		}
 		else
 		{
-			cpunum_set_input_line(Machine, 0, MIPS3_IRQ1, ASSERT_LINE);
+			cpunum_set_input_line(machine, 0, MIPS3_IRQ1, ASSERT_LINE);
 		}
 		break;
 	case 0xb0/4:
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Counter 0 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_0_w(0, data & 0x000000ff);
+		pit8253_0_w(machine, 0, data & 0x000000ff);
 		return;
 		break;
 	case 0xb4/4:
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Counter 1 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_0_w(1, data & 0x000000ff);
+		pit8253_0_w(machine, 1, data & 0x000000ff);
 		return;
 		break;
 	case 0xb8/4:
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Counter 2 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_0_w(2, data & 0x000000ff);
+		pit8253_0_w(machine, 2, data & 0x000000ff);
 		return;
 		break;
 	case 0xbc/4:
 		verboselog( 0, "HPC PBUS6 IOC4 Timer Control Word Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_0_w(3, data & 0x000000ff);
+		pit8253_0_w(machine, 3, data & 0x000000ff);
 		return;
 		break;
 	default:
@@ -455,7 +455,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 //      verboselog( 2, "HPC3 HD0 Status Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[0x17] );
 		if (!(mem_mask & 0x000000ff))
 		{
-			return wd33c93_r( 0 );
+			return wd33c93_r( machine, 0 );
 		}
 		else
 		{
@@ -467,7 +467,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 //      verboselog( 2, "HPC3 HD0 Register Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[nHPC3_hd0_register] );
 		if (!(mem_mask & 0x000000ff))
 		{
-			return wd33c93_r( 1 );
+			return wd33c93_r( machine, 1 );
 		}
 		else
 		{
@@ -491,7 +491,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 //      verboselog( 2, "HPC3 HD0 Register Select Write: %08x\n", data );
 		if (!(mem_mask & 0x000000ff))
 		{
-			wd33c93_w( 0, data & 0x000000ff );
+			wd33c93_w( machine, 0, data & 0x000000ff );
 		}
 		break;
 	case 0x0004/4:
@@ -499,7 +499,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 //      verboselog( 2, "HPC3 HD0 Register %d Write: %08x\n", nHPC3_hd0_register, data );
 		if (!(mem_mask & 0x000000ff))
 		{
-			wd33c93_w( 1,  data & 0x000000ff );
+			wd33c93_w( machine, 1,  data & 0x000000ff );
 		}
 		break;
 	default:
@@ -919,14 +919,14 @@ static READ32_HANDLER( ffffffff_r )
 static WRITE32_HANDLER( ip22_write_ram )
 {
 	// if banks 2 or 3 are enabled, do nothing, we don't support that much memory
-	if (mc_r(0xc8/4, 0xffffffff) & 0x10001000)
+	if (mc_r(machine, 0xc8/4, 0xffffffff) & 0x10001000)
 	{
 		// a random perturbation so the memory test fails
 		data ^= 0xffffffff;
 	}
 
 	// if banks 0 or 1 have 2 subbanks, also kill it, we only want 128 MB
-	if (mc_r(0xc0/4, 0xffffffff) & 0x40004000)
+	if (mc_r(machine, 0xc0/4, 0xffffffff) & 0x40004000)
 	{
 		// a random perturbation so the memory test fails
 		data ^= 0xffffffff;
@@ -1212,7 +1212,7 @@ static WRITE32_HANDLER( hpc3_pbusdma_w )
 }
 
 static ADDRESS_MAP_START( ip225015_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE( 0x00000000, 0x0007ffff ) AM_READWRITE( MRA32_BANK1, MWA32_BANK1 )	/* mirror of first 512k of main RAM */
+	AM_RANGE( 0x00000000, 0x0007ffff ) AM_READWRITE( SMH_BANK1, SMH_BANK1 )	/* mirror of first 512k of main RAM */
 	AM_RANGE( 0x08000000, 0x0fffffff ) AM_RAM AM_SHARE(1) AM_BASE( &ip22_mainram ) AM_WRITE(ip22_write_ram)		/* 128 MB of main RAM */
 	AM_RANGE( 0x1f0f0000, 0x1f0f1fff ) AM_READWRITE( newport_rex3_r, newport_rex3_w )
 	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE( mc_r, mc_w )
@@ -1239,7 +1239,7 @@ static TIMER_CALLBACK(ip22_timer)
 
 static MACHINE_RESET( ip225015 )
 {
-	mc_init();
+	mc_init(machine);
 	nHPC3_enetr_nbdp = 0x80000000;
 	nHPC3_enetr_cbp = 0x80000000;
 	nIntCounter = 0;
@@ -1277,6 +1277,8 @@ static UINT8 dma_buffer[4096];
 
 static void scsi_irq(int state)
 {
+	running_machine *machine = Machine;
+
 	if (state)
 	{
 		if (wd33c93_get_dma_count())
@@ -1416,7 +1418,7 @@ static void scsi_irq(int state)
 		nHPC_SCSI0DMACtrl &= ~HPC3_DMACTRL_ENABLE;
 
 		// set the interrupt
-		int3_raise_local0_irq(INT3_LOCAL0_SCSI0);
+		int3_raise_local0_irq(machine, INT3_LOCAL0_SCSI0);
 	}
 	else
 	{
@@ -1551,26 +1553,26 @@ static const struct mips3_config config =
 	32768	/* data cache size */
 };
 
-static void ip22_chdcd_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ip22_chdcd_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* CHD CD-ROM */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default: cdrom_device_getinfo(devclass, state, info); break;
 	}
 }
 
 #ifdef UNUSED_FUNCTION
-static void ip22_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ip22_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		default: harddisk_device_getinfo(devclass, state, info); break;
 	}
@@ -1581,15 +1583,15 @@ static MACHINE_DRIVER_START( ip225015 )
 	MDRV_CPU_ADD_TAG( "main", R5000BE, 50000000*3 )
 	MDRV_CPU_CONFIG( config )
 	MDRV_CPU_PROGRAM_MAP( ip225015_map, 0 )
-	MDRV_CPU_VBLANK_INT( ip22_vbl, 1 )
-
-	MDRV_SCREEN_REFRESH_RATE( 60 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", ip22_vbl)
 
 	MDRV_MACHINE_RESET( ip225015 )
 	MDRV_NVRAM_HANDLER( ip22 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE( 60 )
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_SCREEN_SIZE(1280+64, 1024+64)
 	MDRV_SCREEN_VISIBLE_AREA(0, 1279, 0, 1023)

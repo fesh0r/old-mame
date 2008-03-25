@@ -34,6 +34,7 @@
 #include "mscommon.h"
 #include "sound/dac.h"
 
+
 #define VERBOSE_LEVEL ( 0 )
 
 INLINE void ATTR_PRINTF(2,3) verboselog( int n_level, const char *s_fmt, ... )
@@ -133,7 +134,6 @@ static VIDEO_START( mpf1 )
 {
     videoram_size = 6 * 2 + 24;
     videoram = auto_malloc (videoram_size);
-	VIDEO_START_CALL(generic);
 }
 
 
@@ -194,7 +194,7 @@ static ADDRESS_MAP_START( mpf1_io_map, ADDRESS_SPACE_IO, 8 )
        this simulator I've expanded the port assignments accordingly. I've also
        tested wether this is true for the actual hardware, and it is.
     */
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	// The 16 I/O port combinations for the 8255 (P8255A-5, 8628LLP, (c) 1981 AMD)
 	AM_RANGE(0x00, 0x03) AM_READWRITE(ppi8255_0_r, ppi8255_0_w) AM_MIRROR(0x3C)
@@ -376,6 +376,10 @@ static const z80pio_interface pio_intf =
 {
 	mpf1_pio_interrupt,
 	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 	NULL
 };
 
@@ -487,7 +491,7 @@ static WRITE8_HANDLER( mpf1_portc_w )
 	data = ~kbdlatch;
 
 	// watchdog reset
-	watchdog_reset_w(0, ~data & 0x40);
+	watchdog_reset(machine);
 
 	// TONE led & speaker
 	led_tone = (~data & 0x80) >> 7;
@@ -541,15 +545,14 @@ static MACHINE_DRIVER_START( mpf1 )
 	MDRV_CPU_ADD(Z80, 3579500/2)	// 1.79 MHz
 	MDRV_CPU_PROGRAM_MAP(mpf1_map, 0)
 	MDRV_CPU_IO_MAP(mpf1_io_map, 0)
-	MDRV_CPU_VBLANK_INT(irq0_line_hold, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_RESET( mpf1 )
 
 	// video hardware
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(462, 661)
 	MDRV_SCREEN_VISIBLE_AREA(0, 461, 0, 660)

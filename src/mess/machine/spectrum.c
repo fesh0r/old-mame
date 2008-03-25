@@ -23,9 +23,7 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "includes/spectrum.h"
 #include "eventlst.h"
@@ -37,9 +35,9 @@
 
 
 static unsigned long TapePosition = 0;
-static void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize);
-static void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize);
-static void spectrum_setup_sp(unsigned char *pSnapshot, unsigned long SnapshotSize);
+static void spectrum_setup_sna(running_machine *machine, unsigned char *pSnapshot, unsigned long SnapshotSize);
+static void spectrum_setup_z80(running_machine *machine, unsigned char *pSnapshot, unsigned long SnapshotSize);
+static void spectrum_setup_sp(running_machine *machine, unsigned char *pSnapshot, unsigned long SnapshotSize);
 static int spectrum_setup_tap(offs_t address, UINT8 *snapshot_data, int snapshot_length);
 
 TIMEX_CART_TYPE timex_cart_type = TIMEX_CART_NONE;
@@ -110,7 +108,7 @@ SNAPSHOT_LOAD(spectrum)
 			logerror("Invalid .SNA file size.\n");
 			goto error;
 		}
-		spectrum_setup_sna(snapshot_data, snapshot_size);
+		spectrum_setup_sna(machine, snapshot_data, snapshot_size);
 	}
 	else if (!mame_stricmp(file_type, "sp"))
 	{
@@ -119,11 +117,11 @@ SNAPSHOT_LOAD(spectrum)
 			logerror("Invalid .SP signature.\n");
 			goto error;
 		}
-		spectrum_setup_sp(snapshot_data, snapshot_size);
+		spectrum_setup_sp(machine, snapshot_data, snapshot_size);
 	}
 	else
 	{
-		spectrum_setup_z80(snapshot_data, snapshot_size);
+		spectrum_setup_z80(machine, snapshot_data, snapshot_size);
 	}
 	free(snapshot_data);
 	logerror("Snapshot loaded - new PC = %04x\n", (unsigned) cpunum_get_reg(0, Z80_PC) & 0x0ffff);
@@ -394,7 +392,7 @@ static void spectrum_page_basicrom(void)
  *	0	IFF1: 0=DI/1=EI
  *
  *******************************************************************/
-void spectrum_setup_sp(unsigned char *pSnapshot, unsigned long SnapshotSize)
+void spectrum_setup_sp(running_machine *machine, unsigned char *pSnapshot, unsigned long SnapshotSize)
 {
 	int i;
 	UINT8 lo, hi, data;
@@ -489,9 +487,9 @@ void spectrum_setup_sp(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	}
 
 	data = (status & 0x10)>>4;
-	cpunum_set_input_line(Machine, 0, 0, data);
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, data);
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, 0);
+	cpunum_set_input_line(machine, 0, 0, data);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, data);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
 
 	spectrum_page_basicrom();
 
@@ -531,7 +529,7 @@ void spectrum_setup_sp(unsigned char *pSnapshot, unsigned long SnapshotSize)
  *      in which case it is included twice.
  *
  *******************************************************************/
-void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
+void spectrum_setup_sna(running_machine *machine, unsigned char *pSnapshot, unsigned long SnapshotSize)
 {
 	int i, j, usedbanks[8];
 	long bank_offset;
@@ -592,9 +590,9 @@ void spectrum_setup_sna(unsigned char *pSnapshot, unsigned long SnapshotSize)
 	set_last_border_color(pSnapshot[26] & 0x07);
 	force_border_redraw();
 
-	cpunum_set_input_line(Machine, 0, 0, data);
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, data);
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, 0);
+	cpunum_set_input_line(machine, 0, 0, data);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, data);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
 
 	if (SnapshotSize == 49179)
 		/* 48K Snapshot */
@@ -787,7 +785,7 @@ static SPECTRUM_Z80_SNAPSHOT_TYPE spectrum_identify_z80 (unsigned char *pSnapsho
 }
 
 /* now supports 48k & 128k .Z80 files */
-void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
+void spectrum_setup_z80(running_machine *machine, unsigned char *pSnapshot, unsigned long SnapshotSize)
 {
 	int i;
 	unsigned char lo, hi, data;
@@ -803,7 +801,7 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		case SPECTRUM_Z80_SNAPSHOT_48K_OLD:
 		case SPECTRUM_Z80_SNAPSHOT_48K:
 				logerror("48K .Z80 file\n");
-				if (!strcmp(Machine->gamedrv->name,"ts2068"))
+				if (!strcmp(machine->gamedrv->name,"ts2068"))
 					logerror("48K .Z80 file in TS2068\n");
 				break;
 		case SPECTRUM_Z80_SNAPSHOT_128K:
@@ -813,15 +811,15 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 					logerror("Not a 48K .Z80 file\n");
 					return;
 				}
-				if (!strcmp(Machine->gamedrv->name,"ts2068"))
+				if (!strcmp(machine->gamedrv->name,"ts2068"))
 				{
 					logerror("Not a TS2068 .Z80 file\n");
 					return;
 				}
 				break;
 		case SPECTRUM_Z80_SNAPSHOT_TS2068:
-				logerror("TS2068 .Z80 file\n");				if (strcmp(Machine->gamedrv->name,"ts2068"))
-				if (strcmp(Machine->gamedrv->name,"ts2068"))
+				logerror("TS2068 .Z80 file\n");
+				if (strcmp(machine->gamedrv->name,"ts2068"))
 					logerror("Not a TS2068 machine\n");
 				break;
 		case SPECTRUM_Z80_SNAPSHOT_SAMRAM:
@@ -900,9 +898,9 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		/* cpunum_set_reg(0, Z80_IRQ_STATE, 1); */
 	}
 
-	cpunum_set_input_line(Machine, 0, 0, data);
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, data);
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, 0);
+	cpunum_set_input_line(machine, 0, 0, data);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, data);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
 
 	/* IFF2 */
 	if (pSnapshot[28] != 0)
@@ -949,15 +947,15 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 		hi = pSnapshot[33] & 0x0ff;
 		cpunum_set_reg(0, Z80_PC, (hi << 8) | lo);
 
-		if ((z80_type == SPECTRUM_Z80_SNAPSHOT_128K) || ((z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068) && !strcmp(Machine->gamedrv->name,"ts2068")))
+		if ((z80_type == SPECTRUM_Z80_SNAPSHOT_128K) || ((z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068) && !strcmp(machine->gamedrv->name,"ts2068")))
 		{
 			/* Only set up sound registers for 128K machine or TS2068! */
 			for (i = 0; i < 16; i++)
 			{
-				AY8910_control_port_0_w(0, i);
-				AY8910_write_port_0_w(0, pSnapshot[39 + i]);
+				AY8910_control_port_0_w(machine, 0, i);
+				AY8910_write_port_0_w(machine, 0, pSnapshot[39 + i]);
 			}
-			AY8910_control_port_0_w(0, pSnapshot[38]);
+			AY8910_control_port_0_w(machine, 0, pSnapshot[38]);
 		}
 
 		pSource = pSnapshot + header_size;
@@ -1031,13 +1029,13 @@ void spectrum_setup_z80(unsigned char *pSnapshot, unsigned long SnapshotSize)
 			spectrum_128_port_7ffd_data = (pSnapshot[35] & 0x0ff);
 			spectrum_update_paging();
 		}
-		if ((z80_type == SPECTRUM_Z80_SNAPSHOT_48K) && !strcmp(Machine->gamedrv->name,"ts2068"))
+		if ((z80_type == SPECTRUM_Z80_SNAPSHOT_48K) && !strcmp(machine->gamedrv->name,"ts2068"))
 		{
 			ts2068_port_f4_data = 0x03;
 			ts2068_port_ff_data = 0x00;
 			ts2068_update_memory();
 		}
-		if (z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068 && !strcmp(Machine->gamedrv->name,"ts2068"))
+		if (z80_type == SPECTRUM_Z80_SNAPSHOT_TS2068 && !strcmp(machine->gamedrv->name,"ts2068"))
 		{
 			ts2068_port_f4_data = pSnapshot[35];
 			ts2068_port_ff_data = pSnapshot[36];

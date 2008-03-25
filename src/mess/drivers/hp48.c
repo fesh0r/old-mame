@@ -13,7 +13,7 @@
  0xc0000- 0xcffff ram also mapped at 0xd0000-0xdffff */
 
 static ADDRESS_MAP_START(hp48_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x00000, 0xfffff) AM_ROM // configured at runtime, complexe mmu
+	AM_RANGE( 0x00000, 0xfffff) AM_ROM AM_WRITE( hp48_mem_w ) // configured at runtime, complexe mmu
 ADDRESS_MAP_END
 
 
@@ -175,21 +175,20 @@ static MACHINE_DRIVER_START( hp48s )
 	MDRV_CPU_ADD_TAG("main", SATURN, 4000000)		/* 2 MHz */
 	MDRV_CPU_PROGRAM_MAP(hp48_mem, 0)
 	MDRV_CPU_CONFIG(config)
-	MDRV_SCREEN_REFRESH_RATE(64)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( hp48 )
 
 	/* video hardware (well, actually there was no video ;) */
 	/* scanned with 300 dpi, scaled x 55%, y 55% for perfect display 2x2 pixels */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_REFRESH_RATE(64)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(339, 775)
 	MDRV_SCREEN_VISIBLE_AREA(0, 339-1, 0, 775-1)
 	MDRV_GFXDECODE( hp48 )
 	MDRV_PALETTE_LENGTH( 248 )
-	MDRV_COLORTABLE_LENGTH( sizeof (hp48_colortable) / sizeof(hp48_colortable[0][0]) )
 	MDRV_PALETTE_INIT( hp48 )
 
 	MDRV_VIDEO_START( hp48 )

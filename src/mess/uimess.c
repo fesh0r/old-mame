@@ -21,7 +21,7 @@ int mess_ui_active(void)
 	return ui_active;
 }
 
-void mess_ui_update(void)
+void mess_ui_update(running_machine *machine)
 {
 	static int ui_toggle_key = 0;
 
@@ -29,7 +29,7 @@ void mess_ui_update(void)
 	const struct IODevice *dev;
 
 	/* traditional MESS interface */
-	if (Machine->gamedrv->flags & GAME_COMPUTER)
+	if (machine->gamedrv->flags & GAME_COMPUTER)
 	{
 		if( input_ui_pressed(IPT_UI_TOGGLE_UI) )
 		{
@@ -78,17 +78,14 @@ void mess_ui_update(void)
 	}
 
 	/* run display routine for device */
-	if (Machine->devices)
+	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
 	{
-		for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
+		if (dev->display != NULL)
 		{
-			if (dev->display)
+			for (id = 0; id < device_count(dev->type); id++)
 			{
-				for (id = 0; id < device_count(dev->type); id++)
-				{
-					mess_image *img = image_from_devtype_and_index(dev->type, id);
-					dev->display(img);
-				}
+				mess_image *img = image_from_devtype_and_index(dev->type, id);
+				dev->display(img);
 			}
 		}
 	}
@@ -116,7 +113,7 @@ int ui_sprintf_image_info(char *buf)
 		dst += sprintf(dst, "RAM: %s\n\n", ram_string(buf2, mess_ram_size));
 	}
 
-	for (dev = Machine->devices; dev->type < IO_COUNT; dev++)
+	for (dev = mess_device_first_from_machine(Machine); dev != NULL; dev = mess_device_next(dev))
 	{
 		for (id = 0; id < dev->count; id++)
 		{
@@ -202,7 +199,7 @@ int mess_use_new_ui(void)
 
 
 
-int mess_disable_builtin_ui(void)
+int mess_disable_builtin_ui(running_machine *machine)
 {
-	return mess_use_new_ui() || ((Machine->gamedrv->flags & GAME_COMPUTER) && !mess_ui_active());
+	return mess_use_new_ui() || ((machine->gamedrv->flags & GAME_COMPUTER) && !mess_ui_active());
 }

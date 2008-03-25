@@ -11,6 +11,8 @@
 #ifndef CBMB_H_
 #define CBMB_H_
 
+#include "video/mc6845.h"
+
 
 #define C64_DIPS \
      PORT_START /* 13 */ \
@@ -75,8 +77,8 @@
 #define JOYSTICK2 ((input_port_20_word_r(0,0)&0xe00)==0x200)
 #define JOYSTICK_SWAP		(input_port_20_word_r(0,0)&0x100)
 
-#define PADDLE1_BUTTON	((input_port_14_word_r(0,0)&0x100))
-#define PADDLE1_VALUE	(input_port_14_word_r(0,0)&0xff)
+#define PADDLE1_BUTTON	((readinputport(14)&0x100))
+#define PADDLE1_VALUE	(readinputport(14)&0xff)
 #define PADDLE2_BUTTON	((input_port_15_word_r(0,0)&0x100))
 #define PADDLE2_VALUE	(input_port_15_word_r(0,0)&0xff)
 #define PADDLE3_BUTTON	((input_port_16_word_r(0,0)&0x100))
@@ -88,18 +90,18 @@
 #define LIGHTPEN_X_VALUE ((readinputport(18)&0x3ff)&~1)	/* effectiv resolution */
 #define LIGHTPEN_Y_VALUE (readinputport(19)&~1)	/* effectiv resolution */
 
-#define JOYSTICK_1_LEFT	((input_port_13_word_r(0,0)&0x8000))
-#define JOYSTICK_1_RIGHT	((input_port_13_word_r(0,0)&0x4000))
-#define JOYSTICK_1_UP		((input_port_13_word_r(0,0)&0x2000))
-#define JOYSTICK_1_DOWN	((input_port_13_word_r(0,0)&0x1000))
-#define JOYSTICK_1_BUTTON ((input_port_13_word_r(0,0)&0x800))
-#define JOYSTICK_1_BUTTON2 ((input_port_13_word_r(0,0)&0x400))
-#define JOYSTICK_2_LEFT	((input_port_13_word_r(0,0)&0x80))
-#define JOYSTICK_2_RIGHT	((input_port_13_word_r(0,0)&0x40))
-#define JOYSTICK_2_UP		((input_port_13_word_r(0,0)&0x20))
-#define JOYSTICK_2_DOWN	((input_port_13_word_r(0,0)&0x10))
-#define JOYSTICK_2_BUTTON ((input_port_13_word_r(0,0)&8))
-#define JOYSTICK_2_BUTTON2 ((input_port_13_word_r(0,0)&4))
+#define JOYSTICK_1_LEFT	((readinputport(13)&0x8000))
+#define JOYSTICK_1_RIGHT	((readinputport(13)&0x4000))
+#define JOYSTICK_1_UP		((readinputport(13)&0x2000))
+#define JOYSTICK_1_DOWN	((readinputport(13)&0x1000))
+#define JOYSTICK_1_BUTTON ((readinputport(13)&0x800))
+#define JOYSTICK_1_BUTTON2 ((readinputport(13)&0x400))
+#define JOYSTICK_2_LEFT	((readinputport(13)&0x80))
+#define JOYSTICK_2_RIGHT	((readinputport(13)&0x40))
+#define JOYSTICK_2_UP		((readinputport(13)&0x20))
+#define JOYSTICK_2_DOWN	((readinputport(13)&0x10))
+#define JOYSTICK_2_BUTTON ((readinputport(13)&8))
+#define JOYSTICK_2_BUTTON2 ((readinputport(13)&4))
 
 #define IEEE8ON	0
 #define IEEE9ON	0
@@ -128,14 +130,15 @@ void cbmb_rom_load(void);
 
 /*----------- defined in video/cbmb.c -----------*/
 
-void cbm600_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
-					   UINT8 ra, UINT16 y, UINT8 x_count, void *param);
-void cbm700_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
-					   UINT8 ra, UINT16 y, UINT8 x_count, void *param);
+VIDEO_START( cbmb_crtc );
+VIDEO_UPDATE( cbmb_crtc );
+MC6845_UPDATE_ROW( cbm600_update_row );
+MC6845_UPDATE_ROW( cbm700_update_row );
+MC6845_ON_DE_CHANGED( cbmb_display_enable_changed );
 
 void cbm600_vh_init(void);
 void cbm700_vh_init(void);
-extern VIDEO_START( cbm700 );
+VIDEO_START( cbm700 );
 
 void cbmb_vh_set_font(int font);
 

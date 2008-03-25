@@ -4,8 +4,10 @@
 
 ***************************************************************************/
 
+/* NOTE: The palette and colortable have been fixed after the changes in the 0.123-0.124 cycle,
+	but the pen colours may be wrong. This needs to be tested. */
+
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/pc8801.h"
 
 /* NPW 23-Oct-2001 - Adding this so that it compiles */
@@ -76,7 +78,7 @@ static int disp_plane[3];
 
 static char *graph_dirty=NULL;
 static unsigned short *attr_tmp=NULL,*attr_old=NULL,*text_old=NULL;
-static mame_bitmap *wbm1,*wbm2;
+static bitmap_t *wbm1,*wbm2;
 
 #define TRAM(x,y) (pc88sr_is_highspeed ? \
 	pc88sr_textRAM[(dmac_addr[2]+(x)+(y)*120)&0xfff] : \
@@ -91,10 +93,14 @@ INLINE void pc8801_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
 	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)color;
 }
 
-void pc8801_video_init (int hireso)
+void pc8801_video_init (running_machine *machine, int hireso)
 {
-	wbm1 = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
-	wbm2 = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	const device_config *screen = video_screen_first(machine->config);
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
+
+	wbm1 = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
+	wbm2 = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 	pc8801_is_24KHz=hireso;
 	crtcON=0;
 	textON=1;
@@ -151,8 +157,8 @@ static WRITE8_HANDLER(write_gvram)
 	XXX(2)
 
 #define XXX(n) \
-static WRITE8_HANDLER(write_gvram##n##_bank5){write_gvram(offset+0x4000*n,data);} \
-static WRITE8_HANDLER(write_gvram##n##_bank6){write_gvram(offset+0x4000*n+0x3000,data);}
+static WRITE8_HANDLER(write_gvram##n##_bank5){write_gvram(machine, offset+0x4000*n,data);} \
+static WRITE8_HANDLER(write_gvram##n##_bank6){write_gvram(machine, offset+0x4000*n+0x3000,data);}
 	VVV
 #undef XXX
 
@@ -183,8 +189,8 @@ static  READ8_HANDLER(read_gvram_alu##x) \
     (x & 2 ? gVRAM[offset+0x4000] : ~gVRAM[offset+0x4000]) & \
     (x & 4 ? gVRAM[offset+0x8000] : ~gVRAM[offset+0x8000]); \
 } \
-static  READ8_HANDLER(read_gvram_alu##x##_bank5){return read_gvram_alu##x(offset);} \
-static  READ8_HANDLER(read_gvram_alu##x##_bank6){return read_gvram_alu##x(offset+0x3000);}
+static  READ8_HANDLER(read_gvram_alu##x##_bank5){return read_gvram_alu##x(machine, offset);} \
+static  READ8_HANDLER(read_gvram_alu##x##_bank6){return read_gvram_alu##x(machine, offset+0x3000);}
 
 YYY
 
@@ -195,13 +201,13 @@ static WRITE8_HANDLER(write_gvram_alu0)
 #define WWW(x) \
   switch(ALU1&(0x11<<x)) { \
   case 0x00<<x: \
-    write_gvram(offset+x*0x4000,gVRAM[offset+x*0x4000]&(~data)); \
+    write_gvram(machine, offset+x*0x4000,gVRAM[offset+x*0x4000]&(~data)); \
     break; \
   case 0x01<<x: \
-    write_gvram(offset+x*0x4000,gVRAM[offset+x*0x4000]|data); \
+    write_gvram(machine, offset+x*0x4000,gVRAM[offset+x*0x4000]|data); \
     break; \
   case 0x10<<x: \
-    write_gvram(offset+x*0x4000,gVRAM[offset+x*0x4000]^data); \
+    write_gvram(machine, offset+x*0x4000,gVRAM[offset+x*0x4000]^data); \
     break; \
   case 0x11<<x: \
     break; \
@@ -215,16 +221,16 @@ static WRITE8_HANDLER(write_gvram_alu0)
 }
 static WRITE8_HANDLER(write_gvram_alu1)
 {
-  write_gvram(offset+0x0000 , ALU_save0);
-  write_gvram(offset+0x4000 , ALU_save1);
-  write_gvram(offset+0x8000 , ALU_save2);
+  write_gvram(machine, offset+0x0000 , ALU_save0);
+  write_gvram(machine, offset+0x4000 , ALU_save1);
+  write_gvram(machine, offset+0x8000 , ALU_save2);
 }
-static WRITE8_HANDLER(write_gvram_alu2){write_gvram(offset+0x0000,ALU_save1);}
-static WRITE8_HANDLER(write_gvram_alu3){write_gvram(offset+0x4000,ALU_save0);}
+static WRITE8_HANDLER(write_gvram_alu2){write_gvram(machine, offset+0x0000,ALU_save1);}
+static WRITE8_HANDLER(write_gvram_alu3){write_gvram(machine, offset+0x4000,ALU_save0);}
 
 #define XXX(x) \
-static WRITE8_HANDLER(write_gvram_alu##x##_bank5){write_gvram_alu##x(offset,data);} \
-static WRITE8_HANDLER(write_gvram_alu##x##_bank6){write_gvram_alu##x(offset+0x3000,data);}
+static WRITE8_HANDLER(write_gvram_alu##x##_bank5){write_gvram_alu##x(machine, offset,data);} \
+static WRITE8_HANDLER(write_gvram_alu##x##_bank6){write_gvram_alu##x(machine, offset+0x3000,data);}
 
 ZZZ
 
@@ -232,8 +238,8 @@ ZZZ
 
 int is_pc8801_vram_select(void)
 {
-	read8_handler rh5 = NULL, rh6 = NULL;
-	write8_handler wh5 = NULL, wh6 = NULL;
+	read8_machine_func rh5 = NULL, rh6 = NULL;
+	write8_machine_func wh5 = NULL, wh6 = NULL;
 
   if(ALUON) {
     /* ALU mode */
@@ -272,8 +278,8 @@ int is_pc8801_vram_select(void)
     switch(selected_vram) {
 #define XXX(n) \
     case (n+1): \
-      rh5 = MRA8_BANK5; \
-      rh6 = MRA8_BANK6; \
+      rh5 = SMH_BANK5; \
+      rh6 = SMH_BANK6; \
       wh5 = write_gvram##n##_bank5; \
       wh6 = write_gvram##n##_bank6; \
       memory_set_bankptr(5, gVRAM + 0x4000*n ); \
@@ -462,7 +468,7 @@ VIDEO_UPDATE( pc8801 )
 	 GRP_DIRTY(x,y) ||
 	 full_refresh) {
 	plot_box(wbm2,x*8,y*BLOCK_YSIZE,8,BLOCK_YSIZE,palette_transparent_pen);
-	ct=machine->pens[((attr_new&TX_COL_MASK)>>TX_COL_SHIFT)+8];
+	ct=((attr_new&TX_COL_MASK)>>TX_COL_SHIFT)+8;
 	TEXT_OLD(x,y)=text_new;
 	ATTR_OLD(x,y)=attr_new;
 	if(attr_new&TX_GL) {
@@ -485,14 +491,14 @@ VIDEO_UPDATE( pc8801 )
 	  }
 	} else {
 	  /* normal text */
-	  drawgfx(wbm2,machine->gfx
+	  drawgfx(wbm2,screen->machine->gfx
 		  [((attr_new&TX_WID_MASK)>>TX_WID_SHIFT)+
 		  (pc8801_is_24KHz ? 3 : 0)],
 		  text_new,
 		  ((attr_new&TX_REV) ? 8 : 0)
 		  + ((attr_new&TX_COL_MASK)>>TX_COL_SHIFT),
 		  0,0,x*8,y*BLOCK_YSIZE,
-		  &machine->screen[0].visarea,TRANSPARENCY_PEN,
+		  NULL,TRANSPARENCY_PEN,
 		  (attr_new&TX_REV) ? 1 : 0);
 	}
 	if(attr_new&TX_UL) {
@@ -515,8 +521,8 @@ VIDEO_UPDATE( pc8801 )
 		  (((gVRAM[0x0000+x+y*2*80+gy*80] << gx) & 0x80) >> 7) |
 		  (((gVRAM[0x4000+x+y*2*80+gy*80] << gx) & 0x80) >> 6) |
 		  (((gVRAM[0x8000+x+y*2*80+gy*80] << gx) & 0x80) >> 5);
-		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2,machine->pens[cg]);
-		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2+1,machine->pens[17]);
+		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2,cg);
+		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2+1,17);
 	      }
 	    }
 	    break;
@@ -531,8 +537,8 @@ VIDEO_UPDATE( pc8801 )
 		  (((gVRAM[0x8000+x+y*2*80+gy*80] << gx) & 0x80) &&
 		   disp_plane[2]) ?
 		  ((attr_new&TX_COL_MASK)>>TX_COL_SHIFT)+8 : 16;
-		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2,machine->pens[cg]);
-		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2+1,machine->pens[17]);
+		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2,cg);
+		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy*2+1,17);
 	      }
 	    }
 	    break;
@@ -544,13 +550,13 @@ VIDEO_UPDATE( pc8801 )
 		   & 0x80) &&
 		  disp_plane[y<200 ? 0 : 1] ?
 		  ((attr_new&TX_COL_MASK)>>TX_COL_SHIFT)+8 : 16;
-		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy,machine->pens[cg]);
+		pc8801_plot_pixel(wbm1,x*8+gx,y*4+gy,cg);
 	      }
 	    }
 	    break;
 	  case GRAPH_NO:
 	  default:
-	    plot_box(wbm1,x*8,y*4,8,4,machine->pens[16]);
+	    plot_box(wbm1,x*8,y*4,8,4,16);
 	    break;
 	  }
 	} else {
@@ -562,7 +568,7 @@ VIDEO_UPDATE( pc8801 )
 		  (((gVRAM[0x0000+x+y*2*80+gy*80] << gx) & 0x80) >> 7) |
 		  (((gVRAM[0x4000+x+y*2*80+gy*80] << gx) & 0x80) >> 6) |
 		  (((gVRAM[0x8000+x+y*2*80+gy*80] << gx) & 0x80) >> 5);
-		pc8801_plot_pixel(wbm1,x*8+gx,y*2+gy,machine->pens[cg]);
+		pc8801_plot_pixel(wbm1,x*8+gx,y*2+gy,cg);
 	      }
 	    }
 	    break;
@@ -577,13 +583,13 @@ VIDEO_UPDATE( pc8801 )
 		  (((gVRAM[0x8000+x+y*2*80+gy*80] << gx) & 0x80) &&
 		   disp_plane[2]) ?
 		  ((attr_new&TX_COL_MASK)>>TX_COL_SHIFT)+8 : 16;
-		pc8801_plot_pixel(wbm1,x*8+gx,y*2+gy,machine->pens[cg]);
+		pc8801_plot_pixel(wbm1,x*8+gx,y*2+gy,cg);
 	      }
 	    }
 	    break;
 	  case GRAPH_NO:
 	  default:
-	    plot_box(wbm1,x*8,y*2,8,2,machine->pens[16]);
+	    plot_box(wbm1,x*8,y*2,8,2,16);
 	    break;
 	  }
 	}
@@ -592,35 +598,38 @@ VIDEO_UPDATE( pc8801 )
   }
 
 	copyscrollbitmap_trans(wbm1,wbm2,0,0,0,0,
-		&machine->screen[0].visarea,palette_transparent_pen);
+		NULL,palette_transparent_pen);
 	copybitmap(bitmap,wbm1,0,0,0,0,
-		&machine->screen[0].visarea);
+		NULL);
 	return 0;
 }
 
 PALETTE_INIT( pc8801 )
 {
-	int i;
+	UINT8 i;
 
-	for (i = 0; i < 8; i++)
-		palette_set_color_rgb(machine, i, 0, 0, 0);	/* for graphics */
+	machine->colortable = colortable_alloc(machine, 18);
 
-	/* for text */
-	for (i = 0; i < 8; i++)
-	{
-		palette_set_color_rgb(machine, i+8,
-			(i & 2) ? 0xff : 0x00,
-			(i & 4) ? 0xff : 0x00,
-			(i & 1) ? 0xff : 0x00);
-		colortable[i*2+0] = 0;
-		colortable[i*2+1] = i+8;
-		colortable[(i+8)*2+0] = i+8;
-		colortable[(i+8)*2+1] = 0;
-	}
+	for ( i = 0; i < 8; i++ )	/* for graphics */
+		colortable_palette_set_color(machine->colortable, i, RGB_BLACK);
+
+
+	for (i = 0; i < 8; i++)		/* standard colours */
+		colortable_palette_set_color(machine->colortable, i+8, 
+			MAKE_RGB((i & 2) ? 0xff : 0, (i & 4) ? 0xff : 0, (i & 1) ? 0xff : 0));
 
 	/* for background and scanline */
-	palette_set_color_rgb(machine, 16, 0, 0, 0);
-	palette_set_color_rgb(machine, 17, 0, 0, 0);
+	colortable_palette_set_color(machine->colortable, 16, RGB_BLACK);
+	colortable_palette_set_color(machine->colortable, 17, RGB_BLACK);
+
+
+	for ( i = 0; i < 8; i++ )
+	{
+		colortable_entry_set_value(machine->colortable, i*2, 0);
+		colortable_entry_set_value(machine->colortable, i*2+1, i+8);
+		colortable_entry_set_value(machine->colortable, i*2+16, i+8);
+		colortable_entry_set_value(machine->colortable, i*2+17, 0);
+	}
 }
 
 WRITE8_HANDLER(pc8801_crtc_write)
@@ -645,8 +654,7 @@ WRITE8_HANDLER(pc8801_crtc_write)
     case 0x60:
       /* get light pen point */
       crtc_state=lpenx;
-      return;
-    case 0x80:
+      return;    case 0x80:
       /* set cursor */
       crtc_state=cursorx;
       text_cursor=((data&1)!=0x00);
@@ -915,5 +923,5 @@ WRITE8_HANDLER(pc8801_palette_out)
 	r[offset] = (data & 2) ? 0xff : 0x00;
 	g[offset] = (data & 4) ? 0xff : 0x00;
   }
-  palette_set_color_rgb(Machine, palno,r[offset],g[offset],b[offset]);
+  colortable_palette_set_color(machine->colortable, palno, MAKE_RGB(r[offset],g[offset],b[offset]));
 }

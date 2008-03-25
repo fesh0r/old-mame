@@ -90,14 +90,14 @@ read:
 ******************************************************************************/
 
 static ADDRESS_MAP_START(bbca_mem, ADDRESS_SPACE_PROGRAM, 8)
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0) )											/*  Hardware marked with a 1 is not present in a Model A        */
+	ADDRESS_MAP_UNMAP_LOW											/*  Hardware marked with a 1 is not present in a Model A        */
 
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1		, memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK3		, memorya1_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1		, memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK3		, memorya1_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
 
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK4		, MWA8_ROM      	)	/*    8000-bfff                 Paged ROM                       */
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK4		, SMH_ROM      	)	/*    8000-bfff                 Paged ROM                       */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(MRA8_BANK7    	, MWA8_ROM      	)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK7    	, SMH_ROM      	)	/*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_READ     (return8_FF    	                	)	/*    fc00-fdff                 FRED & JIM Pages                */
 
@@ -122,15 +122,15 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(bbcb_mem, ADDRESS_SPACE_PROGRAM, 8)
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0) )
+	ADDRESS_MAP_UNMAP_LOW
 
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1		, memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK3		, memoryb3_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1		, memorya1_w      	)	/*    0000-3fff                 Regular Ram                     */
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK3		, memoryb3_w      	)	/*    4000-7fff                 Repeat of the Regular Ram       */
 
 
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK4    	, memoryb4_w      	)	/*    8000-bfff                 Paged ROM                       */
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK4    	, memoryb4_w      	)	/*    8000-bfff                 Paged ROM                       */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(MRA8_BANK7    	, MWA8_ROM       	)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK7    	, SMH_ROM       	)	/*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_READWRITE(bbc_opus_read     , bbc_opus_write	)	/*    fc00-fdff                 OPUS Disc Controller            */
 
@@ -155,16 +155,16 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(bbcbp_mem, ADDRESS_SPACE_PROGRAM, 8)
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0) )
+	ADDRESS_MAP_UNMAP_LOW
 
-	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(MRA8_BANK1		, memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
+	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(SMH_BANK1		, memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
 
-	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(MRA8_BANK2		, memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
+	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(SMH_BANK2		, memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
 
-	AM_RANGE(0x8000, 0xafff) AM_READWRITE(MRA8_BANK4		, memorybp4_w		)	/*    8000-afff                 Paged ROM or 12K of RAM         */
-	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(MRA8_BANK6		, MWA8_ROM			)	/*    b000-bfff                 Rest of paged ROM area          */
+	AM_RANGE(0x8000, 0xafff) AM_READWRITE(SMH_BANK4		, memorybp4_w		)	/*    8000-afff                 Paged ROM or 12K of RAM         */
+	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(SMH_BANK6		, SMH_ROM			)	/*    b000-bfff                 Rest of paged ROM area          */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(MRA8_BANK7		, MWA8_ROM			)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK7		, SMH_ROM			)	/*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_READ	 (return8_FF							)	/*    fc00-fdff                 FRED & JIM Pages                */
 
@@ -190,16 +190,16 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(bbcbp128_mem, ADDRESS_SPACE_PROGRAM, 8)
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0) )
+	ADDRESS_MAP_UNMAP_LOW
 
-	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(MRA8_BANK1		, memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
+	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(SMH_BANK1		, memorybp1_w		)	/*    0000-2fff                 Regular Ram                     */
 
-	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(MRA8_BANK2		, memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
+	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(SMH_BANK2		, memorybp2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
 
-	AM_RANGE(0x8000, 0xafff) AM_READWRITE(MRA8_BANK4		, memorybp4_128_w	)	/*    8000-afff                 Paged ROM or 12K of RAM         */
-	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(MRA8_BANK6		, memorybp6_128_w	)	/*    b000-bfff                 Rest of paged ROM area          */
+	AM_RANGE(0x8000, 0xafff) AM_READWRITE(SMH_BANK4		, memorybp4_128_w	)	/*    8000-afff                 Paged ROM or 12K of RAM         */
+	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(SMH_BANK6		, memorybp6_128_w	)	/*    b000-bfff                 Rest of paged ROM area          */
 
-	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(MRA8_BANK7		, MWA8_ROM			)	/*    c000-fbff                 OS ROM                          */
+	AM_RANGE(0xc000, 0xfbff) AM_READWRITE(SMH_BANK7		, SMH_ROM			)	/*    c000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfdff) AM_READ	 (return8_FF							)	/*    fc00-fdff                 FRED & JIM Pages                */
 
@@ -251,19 +251,19 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(bbcm_mem, ADDRESS_SPACE_PROGRAM, 8)
 
-	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(MRA8_BANK1		, memorybm1_w		)	/*    0000-2fff                 Regular Ram                     */
+	AM_RANGE(0x0000, 0x2fff) AM_READWRITE(SMH_BANK1		, memorybm1_w		)	/*    0000-2fff                 Regular Ram                     */
 
-	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(MRA8_BANK2		, memorybm2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
+	AM_RANGE(0x3000, 0x7fff) AM_READWRITE(SMH_BANK2		, memorybm2_w		)	/*    3000-7fff                 Video/Shadow Ram                */
 
-	AM_RANGE(0x8000, 0x8fff) AM_READWRITE(MRA8_BANK4		, memorybm4_w		)	/*    8000-8fff                 Paged ROM/RAM or 4K of RAM ANDY */
-	AM_RANGE(0x9000, 0xbfff) AM_READWRITE(MRA8_BANK5		, memorybm5_w		)	/*    9000-bfff                 Rest of paged ROM/RAM area      */
+	AM_RANGE(0x8000, 0x8fff) AM_READWRITE(SMH_BANK4		, memorybm4_w		)	/*    8000-8fff                 Paged ROM/RAM or 4K of RAM ANDY */
+	AM_RANGE(0x9000, 0xbfff) AM_READWRITE(SMH_BANK5		, memorybm5_w		)	/*    9000-bfff                 Rest of paged ROM/RAM area      */
 
-	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(MRA8_BANK7		, memorybm7_w		)	/*    c000-dfff                 OS ROM or 8K of RAM       HAZEL */
+	AM_RANGE(0xc000, 0xdfff) AM_READWRITE(SMH_BANK7		, memorybm7_w		)	/*    c000-dfff                 OS ROM or 8K of RAM       HAZEL */
 	AM_RANGE(0xe000, 0xfbff) AM_ROM AM_REGION(REGION_USER1, 0x42000)				/*    e000-fbff                 OS ROM                          */
 
 	AM_RANGE(0xfc00, 0xfeff) AM_READWRITE(bbcm_r			, bbcm_w			)   /*    this is now processed directly because it can be ROM or hardware */
 	/*
-    AM_RANGE(0xfc00, 0xfdff) AM_READWRITE(MRA8_BANK2        , MWA8_ROM          )       fc00-fdff                   FRED & JIM Pages
+    AM_RANGE(0xfc00, 0xfdff) AM_READWRITE(SMH_BANK2        , SMH_ROM          )       fc00-fdff                   FRED & JIM Pages
 
                                                                                           fe00-feff                 Shiela Address Page
     AM_RANGE(0xfe00, 0xfe07) AM_READWRITE(BBC_6845_r        , BBC_6845_w        )         fe00-fe07  6845 CRTC      Video controller
@@ -289,11 +289,6 @@ ADDRESS_MAP_END
 
 
 
-static const unsigned short bbc_colour_table[8]=
-{
-	0,1,2,3,4,5,6,7
-};
-
 static const rgb_t bbc_palette[8]=
 {
 	MAKE_RGB(0x0ff,0x0ff,0x0ff),
@@ -309,7 +304,6 @@ static const rgb_t bbc_palette[8]=
 static PALETTE_INIT( bbc )
 {
 	palette_set_colors(machine, 0, bbc_palette, ARRAY_LENGTH(bbc_palette));
-	memcpy(colortable,bbc_colour_table,sizeof(bbc_colour_table));
 }
 
 static INPUT_PORTS_START(bbca)
@@ -500,7 +494,7 @@ INPUT_PORTS_END
 /* model B driver */
 
 ROM_START(bbca)
-	ROM_REGION(0x04000,REGION_CPU1,0) /* RAM */
+	ROM_REGION(0x04000,REGION_CPU1,ROMREGION_ERASEFF) /* RAM */
 
 	ROM_REGION(0x14000,REGION_USER1,0) /* ROM */
 	ROM_LOAD("os12.rom",    0x10000,  0x4000, CRC(3c14fc70) SHA1(0d9bcaf6a393c9ce2359ed700ddb53c232c2c45d))
@@ -519,7 +513,7 @@ ROM_END
 
 
 ROM_START(bbcb)
-	ROM_REGION(0x08000,REGION_CPU1,0) /* RAM */
+	ROM_REGION(0x08000,REGION_CPU1,ROMREGION_ERASEFF) /* RAM */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
 
@@ -563,13 +557,13 @@ ROM_START(bbcb)
 	ROM_LOAD("ch103.rom",    0x18000, 0x4000, CRC(98367cf4) SHA1(eca3631aa420691f96b72bfdf2e9c2b613e1bf33))
    /*NONE*/
 
-	ROM_REGION(0x80000,REGION_DISKS,0) /* Opus Ram Disc Space */
+	ROM_REGION(0x80000,REGION_DISKS,ROMREGION_ERASEFF) /* Opus Ram Disc Space */
 
 ROM_END
 
 
 ROM_START(bbcbcsw)
-	ROM_REGION(0x08000,REGION_CPU1,0) /* RAM */
+	ROM_REGION(0x08000,REGION_CPU1,ROMREGION_ERASEFF) /* RAM */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
 
@@ -613,13 +607,13 @@ ROM_START(bbcbcsw)
 	ROM_LOAD("ch103.rom",    0x18000, 0x4000, CRC(98367cf4) SHA1(eca3631aa420691f96b72bfdf2e9c2b613e1bf33))
    /*NONE*/
 
-	ROM_REGION(0x80000,REGION_DISKS,0) /* Opus Ram Disc Space */
+	ROM_REGION(0x80000,REGION_DISKS,ROMREGION_ERASEFF) /* Opus Ram Disc Space */
 
 ROM_END
 
 
 ROM_START(bbcbp)
-	ROM_REGION(0x10000,REGION_CPU1,0) /* ROM MEMORY */
+	ROM_REGION(0x10000,REGION_CPU1,ROMREGION_ERASEFF) /* ROM MEMORY */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
 	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, CRC(9f356396) SHA1(ea7d3a7e3ee1ecfaa1483af994048057362b01f2))  /* basic rom */
@@ -647,7 +641,7 @@ ROM_END
 
 
 ROM_START(bbcbp128)
-	ROM_REGION(0x10000,REGION_CPU1,0) /* ROM MEMORY */
+	ROM_REGION(0x10000,REGION_CPU1,ROMREGION_ERASEFF) /* ROM MEMORY */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
 	ROM_LOAD("bpos2.rom",   0x3c000, 0x4000, CRC(9f356396) SHA1(ea7d3a7e3ee1ecfaa1483af994048057362b01f2))  /* basic rom */
@@ -676,7 +670,7 @@ ROM_END
 
 /* BBC Master Rom Load */
 ROM_START(bbcm)
-	ROM_REGION(0x10000,REGION_CPU1,0) /* ROM MEMORY */
+	ROM_REGION(0x10000,REGION_CPU1,ROMREGION_ERASEFF) /* ROM MEMORY */
 
 	ROM_REGION(0x44000,REGION_USER1,0) /* ROM */
 	ROM_LOAD("mos+3.50.rom",0x40000, 0x4000, CRC(141027b9) SHA1(85211b5bc7c7a269952d2b063b7ec0e1f0196803))
@@ -706,8 +700,8 @@ ROM_END
 
 static INTERRUPT_GEN( bbcb_vsync )
 {
-	via_0_ca1_w(0,1);
-	via_0_ca1_w(0,0);
+	via_0_ca1_w(machine, 0,1);
+	via_0_ca1_w(machine, 0,0);
 	bbc_frameclock();
 }
 
@@ -724,8 +718,9 @@ static MACHINE_DRIVER_START( bbca )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, 2000000)        /* 2.00Mhz */
 	MDRV_CPU_PROGRAM_MAP( bbca_mem, 0 )
-	MDRV_CPU_VBLANK_INT(bbcb_vsync, 1)				/* screen refresh interrupts */
+	MDRV_CPU_VBLANK_INT("main", bbcb_vsync)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcb_keyscan, 1000)		/* scan keyboard */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
 	MDRV_INTERLEAVE(1)
@@ -734,12 +729,10 @@ static MACHINE_DRIVER_START( bbca )
 	MDRV_MACHINE_RESET( bbca )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(800,300)
 	MDRV_SCREEN_VISIBLE_AREA(0,800-1,0,300-1)
 	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(16)
 	MDRV_PALETTE_INIT(bbc)
 
 	MDRV_VIDEO_START(bbca)
@@ -788,22 +781,21 @@ static MACHINE_DRIVER_START( bbcm )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M65SC02, 2000000)        /* 2.00Mhz */
 	MDRV_CPU_PROGRAM_MAP( bbcm_mem, 0 )
-	MDRV_CPU_VBLANK_INT(bbcb_vsync, 1)				/* screen refresh interrupts */
+	MDRV_CPU_VBLANK_INT("main", bbcb_vsync)				/* screen refresh interrupts */
 	MDRV_CPU_PERIODIC_INT(bbcm_keyscan, 1000)		/* scan keyboard */
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( bbcm )
 	MDRV_MACHINE_RESET( bbcm )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(128))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(800,300)
 	MDRV_SCREEN_VISIBLE_AREA(0,800-1,0,300-1)
 	MDRV_PALETTE_LENGTH(16)
-	MDRV_COLORTABLE_LENGTH(16)
 	MDRV_PALETTE_INIT(bbc)
 
 	MDRV_VIDEO_START(bbcm)
@@ -817,48 +809,48 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_NVRAM_HANDLER( mc146818 )
 MACHINE_DRIVER_END
 
-static void bbc_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void bbc_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_bbcb_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_bbcb_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void bbc_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void bbc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_bbc_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_bbc_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ssd,bbc,img"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ssd,bbc,img"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void bbc_cassette_getinfo( const device_class *devclass, UINT32 state, union devinfo *info ) {
+static void bbc_cassette_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info ) {
 	switch( state ) {
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 1;
 		break;
-	case DEVINFO_PTR_CASSETTE_FORMATS:
+	case MESS_DEVINFO_PTR_CASSETTE_FORMATS:
 		info->p = (void *)bbc_cassette_formats;
 		break;
 	default:
@@ -867,13 +859,13 @@ static void bbc_cassette_getinfo( const device_class *devclass, UINT32 state, un
 	}
 }
 
-static void bbc_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void bbc_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}

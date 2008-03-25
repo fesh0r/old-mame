@@ -80,7 +80,6 @@ would just have taken three extra tracks on the main board and a OR gate in an A
 #include "driver.h"
 #include "machine/tms9901.h"
 #include "cpu/tms9900/tms9900.h"
-#include "mslegacy.h"
 
 static int ROM_paged;
 
@@ -132,18 +131,15 @@ static const unsigned char ti99_2_palette[] =
 	0, 0, 0
 };
 
-static const unsigned short ti99_2_colortable[] =
-{
-	0, 1
-};
-
 #define TI99_2_PALETTE_SIZE sizeof(ti99_2_palette)/3
-#define TI99_2_COLORTABLE_SIZE sizeof(ti99_2_colortable)/2
 
 static PALETTE_INIT(ti99_2)
 {
-	palette_set_colors_rgb(machine, 0, ti99_2_palette, TI99_2_PALETTE_SIZE);
-	memcpy(colortable, & ti99_2_colortable, sizeof(ti99_2_colortable));
+	int i;
+
+	for ( i = 0; i < TI99_2_PALETTE_SIZE; i++ ) {
+		palette_set_color_rgb(machine, i, ti99_2_palette[i*3], ti99_2_palette[i*3+1], ti99_2_palette[i*3+2]);
+	}
 }
 
 
@@ -157,7 +153,7 @@ static VIDEO_UPDATE(ti99_2)
 	for (i = 0; i < 768; i++)
 	{
 		/* Is the char code masked or not ??? */
-		drawgfx(bitmap, machine->gfx[0], videoram[i] & 0x7F, 0,
+		drawgfx(bitmap, screen->machine->gfx[0], videoram[i] & 0x7F, 0,
 			0, 0, sx, sy, cliprect, TRANSPARENCY_NONE, 0);
 
 		sx += 8;
@@ -374,22 +370,20 @@ static MACHINE_DRIVER_START(ti99_2)
 	MDRV_CPU_CONFIG(ti99_2_processor_config)
 	MDRV_CPU_PROGRAM_MAP(ti99_2_memmap, 0)
 	MDRV_CPU_IO_MAP(ti99_2_readcru, ti99_2_writecru)
-	MDRV_CPU_VBLANK_INT(ti99_2_vblank_interrupt, 1)
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", ti99_2_vblank_interrupt)
 
 	MDRV_MACHINE_RESET( ti99_2 )
 
 	/* video hardware */
 	/*MDRV_TMS9928A( &tms9918_interface )*/
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(256, 192)
 	MDRV_SCREEN_VISIBLE_AREA(0, 256-1, 0, 192-1)
 	MDRV_GFXDECODE(ti99_2)
 	MDRV_PALETTE_LENGTH(TI99_2_PALETTE_SIZE)
-	MDRV_COLORTABLE_LENGTH(TI99_2_COLORTABLE_SIZE)
 	MDRV_PALETTE_INIT(ti99_2)
 
 	MDRV_VIDEO_UPDATE(ti99_2)

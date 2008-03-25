@@ -31,6 +31,8 @@
 
 extern struct x68k_system sys;
 
+extern mc68901_t *x68k_mfp;
+
 extern emu_timer* scanline_timer;
 extern emu_timer* raster_irq;
 extern emu_timer* vblank_irq;
@@ -40,14 +42,14 @@ UINT16* tvram;  // Text VRAM
 UINT16* x68k_spriteram;  // sprite/background RAM
 UINT16* x68k_spritereg;  // sprite/background registers
 
-static mame_bitmap* x68k_text_bitmap;  // 1024x1024 4x1bpp planes text
-static mame_bitmap* x68k_gfx_0_bitmap_16;  // 16 colour, 512x512, 4 pages
-static mame_bitmap* x68k_gfx_1_bitmap_16;
-static mame_bitmap* x68k_gfx_2_bitmap_16;
-static mame_bitmap* x68k_gfx_3_bitmap_16;
-static mame_bitmap* x68k_gfx_0_bitmap_256;  // 256 colour, 512x512, 2 pages
-static mame_bitmap* x68k_gfx_1_bitmap_256;
-static mame_bitmap* x68k_gfx_0_bitmap_65536;  // 65536 colour, 512x512, 1 page
+static bitmap_t* x68k_text_bitmap;  // 1024x1024 4x1bpp planes text
+static bitmap_t* x68k_gfx_0_bitmap_16;  // 16 colour, 512x512, 4 pages
+static bitmap_t* x68k_gfx_1_bitmap_16;
+static bitmap_t* x68k_gfx_2_bitmap_16;
+static bitmap_t* x68k_gfx_3_bitmap_16;
+static bitmap_t* x68k_gfx_0_bitmap_256;  // 256 colour, 512x512, 2 pages
+static bitmap_t* x68k_gfx_1_bitmap_256;
+static bitmap_t* x68k_gfx_0_bitmap_65536;  // 65536 colour, 512x512, 1 page
 
 static tilemap* x68k_bg0_8;  // two 64x64 tilemaps, 8x8 characters
 static tilemap* x68k_bg1_8;
@@ -58,7 +60,7 @@ extern unsigned int x68k_scanline;
 static int sprite_shift;
 
 static void x68k_render_video_word(int offset);
-static void x68k_crtc_refresh_mode(void);
+static void x68k_crtc_refresh_mode(running_machine *machine);
 void x68k_scanline_check(int);
 
 INLINE void x68k_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
@@ -66,11 +68,11 @@ INLINE void x68k_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
 	*BITMAP_ADDR16(bitmap, y, x) = (UINT16)color;
 }
 
-static mame_bitmap* x68k_get_gfx_pri(int pri,int type)
+static bitmap_t* x68k_get_gfx_page(int pri,int type)
 {
 	if(type == GFX16)
 	{
-		switch(sys.video.gfxlayer_pri[pri])
+		switch(pri)
 		{
 		case 0:
 			return x68k_gfx_0_bitmap_16;
@@ -86,7 +88,7 @@ static mame_bitmap* x68k_get_gfx_pri(int pri,int type)
 	}
 	if(type == GFX256)
 	{
-		switch(sys.video.gfxlayer_pri[pri])
+		switch(pri)
 		{
 		case 0:
 		case 1:
@@ -139,7 +141,7 @@ static TIMER_CALLBACK(x68k_crtc_operation_end)
 	sys.crtc.operation &= ~bit;
 }
 
-static void x68k_crtc_refresh_mode()
+static void x68k_crtc_refresh_mode(running_machine *machine)
 {
 //	rectangle rect;
 //	double scantime;
@@ -194,8 +196,8 @@ static void x68k_crtc_refresh_mode()
 	if(visiblescr.max_y >= scr.max_y)
 		visiblescr.max_y = scr.max_y - 1;
 
-	logerror("video_screen_configure(0,%i,%i,[%i,%i,%i,%i],55.45)\n",scr.max_x,scr.max_y,visiblescr.min_x,visiblescr.min_y,visiblescr.max_x,visiblescr.max_y);
-	video_screen_configure(0,scr.max_x,scr.max_y,&visiblescr,HZ_TO_ATTOSECONDS(55.45));
+	logerror("video_screen_configure(machine->primary_screen,%i,%i,[%i,%i,%i,%i],55.45)\n",scr.max_x,scr.max_y,visiblescr.min_x,visiblescr.min_y,visiblescr.max_x,visiblescr.max_y);
+	video_screen_configure(machine->primary_screen,scr.max_x,scr.max_y,&visiblescr,HZ_TO_ATTOSECONDS(55.45));
 /*
 	rect.min_x = rect.min_y = 0;
 	sys.crtc.visible_width = (sys.crtc.reg[3] - sys.crtc.reg[2]) * 8;
@@ -225,13 +227,13 @@ static void x68k_crtc_refresh_mode()
 	sys.crtc.hshift = (sys.crtc.width - sys.crtc.visible_width) / 2;
 	sys.crtc.vshift = (sys.crtc.height - sys.crtc.visible_height) / 2;
 
-	video_screen_configure(0,sys.crtc.video_width,sys.crtc.video_height,&rect,HZ_TO_ATTOSECONDS(55.45));
-	logerror("video_screen_configure(0,%i,%i,[%i,%i,%i,%i],55.45)\n",sys.crtc.video_width,sys.crtc.video_height,rect.min_x,rect.min_y,rect.max_x,rect.max_y);
-//	x68k_scanline = video_screen_get_vpos(0);
+	video_screen_configure(machine->primary_screen,sys.crtc.video_width,sys.crtc.video_height,&rect,HZ_TO_ATTOSECONDS(55.45));
+	logerror("video_screen_configure(machine->primary_screen,%i,%i,[%i,%i,%i,%i],55.45)\n",sys.crtc.video_width,sys.crtc.video_height,rect.min_x,rect.min_y,rect.max_x,rect.max_y);
+//	x68k_scanline = video_screen_get_vpos(machine->primary_screen);
 	if(sys.crtc.reg[4] != 0)
 	{
 //		scantime = ATTOTIME_IN_HZ(55.45) / sys.crtc.reg[4];
-//		timer_adjust(scanline_timer,attotime_zero,0,scantime);
+//		timer_adjust_periodic(scanline_timer, attotime_zero, 0, scantime);
 	}*/
 }
 
@@ -243,16 +245,16 @@ TIMER_CALLBACK(x68k_hsync)
 	sys.crtc.hblank = state;
 	if(state == 1)
 	{
-		int scan = video_screen_get_vpos(0);
+		int scan = video_screen_get_vpos(machine->primary_screen);
 		if(scan > sys.crtc.vend)
 			scan = 0;
-		hsync_time = video_screen_get_time_until_pos(0,scan+1,sys.crtc.hsync_end);
-		timer_adjust(scanline_timer,hsync_time,0,attotime_never);
+		hsync_time = video_screen_get_time_until_pos(machine->primary_screen,scan+1,sys.crtc.hsync_end);
+		timer_adjust_oneshot(scanline_timer, hsync_time, 0);
 	}
 	if(state == 0)
 	{
-		hsync_time = video_screen_get_time_until_pos(0,video_screen_get_vpos(0),sys.crtc.hend);
-		timer_adjust(scanline_timer,hsync_time,1,attotime_never);
+		hsync_time = video_screen_get_time_until_pos(machine->primary_screen,video_screen_get_vpos(machine->primary_screen),sys.crtc.hend);
+		timer_adjust_oneshot(scanline_timer, hsync_time, 1);
 //		if(!(sys.mfp.gpio & 0x40))  // if GPIP6 is active, clear it
 //			sys.mfp.gpio |= 0x40;
 	}
@@ -269,23 +271,18 @@ TIMER_CALLBACK(x68k_crtc_raster_irq)
 	attotime irq_time;
 	attotime end_time;
 
-	if(scan > sys.crtc.vtotal)
-	{
-		timer_adjust(raster_irq,attotime_zero,0,attotime_never);  // disable timer
-		return;
-	}
 	sys.mfp.gpio &= ~0x40;  // GPIP6
 	if((readinputportbytag("options") & 0x01))
 	{
-		video_screen_update_partial(0,scan);
+		video_screen_update_partial(machine->primary_screen,scan);
 	}
 
-	irq_time = video_screen_get_time_until_pos(0,scan,2);
+	irq_time = video_screen_get_time_until_pos(machine->primary_screen,scan,2);
 	// end of HBlank period clears GPIP6 also?
-	end_time = video_screen_get_time_until_pos(0,scan,sys.crtc.hbegin);
-	timer_adjust(raster_irq,irq_time,scan,attotime_never);
+	end_time = video_screen_get_time_until_pos(machine->primary_screen,scan,sys.crtc.hbegin);
+	timer_adjust_oneshot(raster_irq, irq_time, scan);
 	timer_set(end_time,NULL,0,x68k_crtc_raster_end);
-	logerror("GPIP6: Raster triggered at line %i (%i)\n",scan,video_screen_get_vpos(0));
+	logerror("GPIP6: Raster triggered at line %i (%i)\n",scan,video_screen_get_vpos(machine->primary_screen));
 }
 
 TIMER_CALLBACK(x68k_crtc_vblank_irq)
@@ -300,18 +297,20 @@ TIMER_CALLBACK(x68k_crtc_vblank_irq)
 		vblank_line = sys.crtc.vend;
 		if(vblank_line > sys.crtc.vtotal)
 			vblank_line = sys.crtc.vtotal;
-		irq_time = video_screen_get_time_until_pos(0,vblank_line,2);
-		timer_adjust(vblank_irq,irq_time,0,attotime_never);
+		irq_time = video_screen_get_time_until_pos(machine->primary_screen,vblank_line,2);
+		timer_adjust_oneshot(vblank_irq, irq_time, 0);
 		logerror("CRTC: VBlank on\n");
 	}
 	if(val == 0)  // VBlank off
 	{
 		sys.crtc.vblank = 0;
 		vblank_line = sys.crtc.vbegin;
-		irq_time = video_screen_get_time_until_pos(0,vblank_line,2);
-		timer_adjust(vblank_irq,irq_time,1,attotime_never);
+		irq_time = video_screen_get_time_until_pos(machine->primary_screen,vblank_line,2);
+		timer_adjust_oneshot(vblank_irq, irq_time, 1);
 		logerror("CRTC: VBlank off\n");
 	}
+
+	mc68901_tai_w(x68k_mfp, sys.crtc.vblank);
 }
 
 
@@ -376,24 +375,21 @@ WRITE16_HANDLER( x68k_crtc_w )
 	case 6:
 	case 7:
 	case 8:
-		x68k_crtc_refresh_mode();
+		x68k_crtc_refresh_mode(machine);
 		break;
 	case 9:  // CRTC raster IRQ (GPIP6)
-		if((data / sys.crtc.vmultiple) < sys.crtc.vtotal)
+		if(data != 0)
 		{
-	//		if(data <= sys.crtc.video_height)
-			{
-				attotime irq_time;
-				irq_time = video_screen_get_time_until_pos(0,(data - 1) / sys.crtc.vmultiple,2);
+			attotime irq_time;
+			irq_time = video_screen_get_time_until_pos(machine->primary_screen,(data - 1) / sys.crtc.vmultiple,2);
 
-				if(attotime_to_double(irq_time) > 0)
-					timer_adjust(raster_irq,irq_time,(data - 1) / sys.crtc.vmultiple,attotime_never);
-				logerror("CRTC: Time until next raster IRQ = %f\n",attotime_to_double(irq_time));
-			}
+			if(attotime_to_double(irq_time) > 0)
+				timer_adjust_oneshot(raster_irq, irq_time, (data - 1) / sys.crtc.vmultiple);
+			logerror("CRTC: Time until next raster IRQ = %f\n",attotime_to_double(irq_time));
 		}
 		else
 		{
-			timer_adjust(raster_irq,attotime_zero,0,attotime_never);  // disable timer
+			timer_adjust_oneshot(raster_irq, attotime_never, 0);  // disable timer
 		}
 		logerror("CRTC: Write to raster IRQ register - %i\n",data);
 		break;
@@ -433,7 +429,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 			if(data & 0x0400)  // real size 1024x1024
 				sys.crtc.interlace = 1;
 		}
-		x68k_crtc_refresh_mode();
+		x68k_crtc_refresh_mode(machine);
 		break;
 	case 576:  // operation register
 		sys.crtc.operation = data;
@@ -699,11 +695,12 @@ READ16_HANDLER( x68k_spriteram_r )
 	return x68k_spriteram[offset];
 }
 
-static void x68k_draw_gfx(mame_bitmap* bitmap,rectangle cliprect)
+static void x68k_draw_gfx(bitmap_t* bitmap,rectangle cliprect)
 {
 	int priority;
 	rectangle rect;
 	int xscr,yscr;
+	int gpage;
 
 	for(priority=3;priority>=0;priority--)
 	{
@@ -750,18 +747,16 @@ static void x68k_draw_gfx(mame_bitmap* bitmap,rectangle cliprect)
 				rect.min_y=sys.crtc.vshift;
 				rect.max_x=rect.min_x + sys.crtc.visible_width-1;
 				rect.max_y=rect.min_y + sys.crtc.visible_height-1;
-				if(sys.video.reg[2] & 0x0004 && sys.video.reg[2] & 0x0008 && priority == sys.video.gfxlayer_pri[2])
-				{
-					xscr = sys.crtc.hbegin-(sys.crtc.reg[16] & 0x1ff);
-					yscr = sys.crtc.vbegin-(sys.crtc.reg[17] & 0x1ff);
-					copyscrollbitmap_trans(bitmap, x68k_gfx_1_bitmap_256, 1, &xscr, 1, &yscr, &cliprect,0);
-				}
-				if(sys.video.reg[2] & 0x0001 && sys.video.reg[2] & 0x0002 && priority == sys.video.gfxlayer_pri[0])
-				{
-					xscr = sys.crtc.hbegin-(sys.crtc.reg[12] & 0x1ff);
-					yscr = sys.crtc.vbegin-(sys.crtc.reg[13] & 0x1ff);
-					copyscrollbitmap_trans(bitmap, x68k_gfx_0_bitmap_256, 1, &xscr, 1, &yscr, &cliprect,0);
-				}
+				gpage = sys.video.gfxlayer_pri[priority];
+				if(sys.video.reg[2] & (1 << priority))
+ 				{
+					if(gpage == 0 || gpage == 2)  // so that we aren't drawing the same pages twice
+					{
+						xscr = sys.crtc.hbegin-(sys.crtc.reg[12 + (gpage*2)] & 0x1ff);
+						yscr = sys.crtc.vbegin-(sys.crtc.reg[13 + (gpage*2)] & 0x1ff);
+						copyscrollbitmap_trans(bitmap, x68k_get_gfx_page(gpage,GFX256), 1, &xscr, 1, &yscr, &cliprect,0);
+					}
+ 				}				
 				break;
 			case 0x00:
 				// 16 colour gfx screen
@@ -769,30 +764,13 @@ static void x68k_draw_gfx(mame_bitmap* bitmap,rectangle cliprect)
 				rect.min_y=sys.crtc.vshift;
 				rect.max_x=rect.min_x + sys.crtc.visible_width-1;
 				rect.max_y=rect.min_y + sys.crtc.visible_height-1;
-				if(sys.video.reg[2] & 0x0008)  // Pri3
-				{
-					xscr = sys.crtc.hbegin-(sys.crtc.reg[18] & 0x1ff);
-					yscr = sys.crtc.vbegin-(sys.crtc.reg[19] & 0x1ff);
-					copyscrollbitmap_trans(bitmap, x68k_get_gfx_pri(3,GFX16), 1, &xscr, 1, &yscr ,&cliprect,0);
-				}
-				if(sys.video.reg[2] & 0x0004)  // Pri2
-				{
-					xscr = sys.crtc.hbegin-(sys.crtc.reg[16] & 0x1ff);
-					yscr = sys.crtc.vbegin-(sys.crtc.reg[17] & 0x1ff);
-					copyscrollbitmap_trans(bitmap, x68k_get_gfx_pri(2,GFX16), 1, &xscr, 1, &yscr ,&cliprect,0);
-				}
-				if(sys.video.reg[2] & 0x0002)  // Pri1
-				{
-					xscr = sys.crtc.hbegin-(sys.crtc.reg[14] & 0x1ff);
-					yscr = sys.crtc.vbegin-(sys.crtc.reg[15] & 0x1ff);
-					copyscrollbitmap_trans(bitmap, x68k_get_gfx_pri(1,GFX16), 1, &xscr, 1, &yscr ,&cliprect,0);
-				}
-				if(sys.video.reg[2] & 0x0001)  // Pri0
-				{
-					xscr = sys.crtc.hbegin-(sys.crtc.reg[12] & 0x1ff);
-					yscr = sys.crtc.vbegin-(sys.crtc.reg[13] & 0x1ff);
-					copyscrollbitmap_trans(bitmap, x68k_get_gfx_pri(0,GFX16), 1, &xscr, 1, &yscr ,&cliprect,0);
-				}
+				gpage = sys.video.gfxlayer_pri[priority];
+				if(sys.video.reg[2] & (1 << priority))
+ 				{
+					xscr = sys.crtc.hbegin-(sys.crtc.reg[12+(gpage*2)] & 0x1ff);
+					yscr = sys.crtc.vbegin-(sys.crtc.reg[13+(gpage*2)] & 0x1ff);
+					copyscrollbitmap_trans(bitmap, x68k_get_gfx_page(gpage,GFX16), 1, &xscr, 1, &yscr ,&cliprect,0);
+ 				}
 				break;
 			}
 		}
@@ -800,7 +778,7 @@ static void x68k_draw_gfx(mame_bitmap* bitmap,rectangle cliprect)
 }
 
 // Sprite controller "Cynthia" at 0xeb0000
-static void x68k_draw_sprites(mame_bitmap* bitmap, int priority, rectangle cliprect)
+static void x68k_draw_sprites(running_machine *machine, bitmap_t* bitmap, int priority, rectangle cliprect)
 {
 	/*
 	   0xeb0000 - 0xeb07ff - Sprite registers (up to 128)
@@ -856,7 +834,7 @@ static void x68k_draw_sprites(mame_bitmap* bitmap, int priority, rectangle clipr
 
 			sx += sprite_shift;
 
-			drawgfx(bitmap,Machine->gfx[1],code,colour+0x10,xflip,yflip,sys.crtc.hbegin+sx,sys.crtc.vbegin+sy,&cliprect,TRANSPARENCY_PEN,0x00);
+			drawgfx(bitmap,machine->gfx[1],code,colour+0x10,xflip,yflip,sys.crtc.hbegin+sx,sys.crtc.vbegin+sy,&cliprect,TRANSPARENCY_PEN,0x00);
 		}
 	}
 }
@@ -966,17 +944,17 @@ VIDEO_START( x68000 )
 	machine->gfx[gfx_index]->total_colors = 32;
 
 	/* Tilemaps */
-	x68k_bg0_8 = tilemap_create(x68k_get_bg0_tile,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	x68k_bg1_8 = tilemap_create(x68k_get_bg1_tile,tilemap_scan_rows,TILEMAP_TYPE_PEN,8,8,64,64);
-	x68k_bg0_16 = tilemap_create(x68k_get_bg0_tile_16,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
-	x68k_bg1_16 = tilemap_create(x68k_get_bg1_tile_16,tilemap_scan_rows,TILEMAP_TYPE_PEN,16,16,64,64);
+	x68k_bg0_8 = tilemap_create(x68k_get_bg0_tile,tilemap_scan_rows,8,8,64,64);
+	x68k_bg1_8 = tilemap_create(x68k_get_bg1_tile,tilemap_scan_rows,8,8,64,64);
+	x68k_bg0_16 = tilemap_create(x68k_get_bg0_tile_16,tilemap_scan_rows,16,16,64,64);
+	x68k_bg1_16 = tilemap_create(x68k_get_bg1_tile_16,tilemap_scan_rows,16,16,64,64);
 
 	tilemap_set_transparent_pen(x68k_bg0_8,0);
 	tilemap_set_transparent_pen(x68k_bg1_8,0);
 	tilemap_set_transparent_pen(x68k_bg0_16,0);
 	tilemap_set_transparent_pen(x68k_bg1_16,0);
 
-//	timer_adjust(scanline_timer,attotime_zero,0,ATTOTIME_IN_HZ(55.45)/568);
+//	timer_adjust_periodic(scanline_timer, attotime_zero, 0, ATTOTIME_IN_HZ(55.45)/568);
 }
 
 VIDEO_UPDATE( x68000 )
@@ -1019,12 +997,12 @@ VIDEO_UPDATE( x68000 )
 	{
 		if(sys.video.tile16_dirty[x] != 0)
 		{
-			decodechar(machine->gfx[1], x,memory_region(REGION_USER1));
+			decodechar(screen->machine->gfx[1], x,memory_region(REGION_USER1));
 			sys.video.tile16_dirty[x] = 0;
 		}
 		if(sys.video.tile8_dirty[x] != 0)
 		{
-			decodechar(machine->gfx[0], x,memory_region(REGION_USER1));
+			decodechar(screen->machine->gfx[0], x,memory_region(REGION_USER1));
 			sys.video.tile8_dirty[x] = 0;
 		}
 	}
@@ -1038,7 +1016,7 @@ VIDEO_UPDATE( x68000 )
 		// Sprite / BG Tiles
 		if(priority == sys.video.sprite_pri /*&& (x68k_spritereg[0x404] & 0x0200)*/ && (sys.video.reg[2] & 0x0040))
 		{
-			x68k_draw_sprites(bitmap,1,rect);
+			x68k_draw_sprites(screen->machine, bitmap,1,rect);
 			if((x68k_spritereg[0x404] & 0x0008))
 			{
 				if((x68k_spritereg[0x404] & 0x0030) == 0x10)  // BG1 TXSEL
@@ -1054,7 +1032,7 @@ VIDEO_UPDATE( x68000 )
 					tilemap_draw(bitmap,&rect,x68k_bg1,0,0);
 				}
 			}
-			x68k_draw_sprites(bitmap,2,rect);
+			x68k_draw_sprites(screen->machine,bitmap,2,rect);
 			if((x68k_spritereg[0x404] & 0x0001))
 			{
 				if((x68k_spritereg[0x404] & 0x0006) == 0x02)  // BG0 TXSEL
@@ -1070,7 +1048,7 @@ VIDEO_UPDATE( x68000 )
 					tilemap_draw(bitmap,&rect,x68k_bg1,0,0);
 				}
 			}
-			x68k_draw_sprites(bitmap,3,rect);
+			x68k_draw_sprites(screen->machine,bitmap,3,rect);
 		}
 
 		// Text screen
@@ -1107,6 +1085,8 @@ VIDEO_UPDATE( x68000 )
 #endif
 
 #ifdef MAME_DEBUG
+//	popmessage("Layer priorities [%04x] - Txt: %i  Spr: %i  Gfx: %i  Layer Pri0-3: %i %i %i %i",sys.video.reg[1],sys.video.text_pri,sys.video.sprite_pri,
+//		sys.video.gfx_pri,sys.video.gfxlayer_pri[0],sys.video.gfxlayer_pri[1],sys.video.gfxlayer_pri[2],sys.video.gfxlayer_pri[3]);
 //	popmessage("CRTC regs - %i %i %i %i  - %i %i %i %i - %i - %i",sys.crtc.reg[0],sys.crtc.reg[1],sys.crtc.reg[2],sys.crtc.reg[3],
 //		sys.crtc.reg[4],sys.crtc.reg[5],sys.crtc.reg[6],sys.crtc.reg[7],sys.crtc.reg[8],sys.crtc.reg[9]);
 //	popmessage("Visible resolution = %ix%i (%s) Screen size = %ix%i",sys.crtc.visible_width,sys.crtc.visible_height,sys.crtc.interlace ? "Interlaced" : "Non-interlaced",sys.crtc.video_width,sys.crtc.video_height);
@@ -1119,12 +1099,10 @@ VIDEO_UPDATE( x68000 )
 //	popmessage("Keyboard buffer position = %i",sys.keyboard.headpos);
 //	popmessage("IERA = 0x%02x, IERB = 0x%02x",sys.mfp.iera,sys.mfp.ierb);
 //	popmessage("IPRA = 0x%02x, IPRB = 0x%02x",sys.mfp.ipra,sys.mfp.iprb);
-//	popmessage("uPD72065 status = %02x",nec765_status_r(0));
+//	popmessage("uPD72065 status = %02x",nec765_status_r(machine, 0));
 //	popmessage("Layer enable - 0x%02x",sys.video.reg[2] & 0xff);
 //	popmessage("Graphic layer scroll - %i, %i - %i, %i - %i, %i - %i, %i",
 //		sys.crtc.reg[12],sys.crtc.reg[13],sys.crtc.reg[14],sys.crtc.reg[15],sys.crtc.reg[16],sys.crtc.reg[17],sys.crtc.reg[18],sys.crtc.reg[19]);
-//	popmessage("Layer priorities - Txt: %i  Spr: %i  Gfx: %i  Pages 0-3: %i %i %i %i",sys.video.text_pri,sys.video.sprite_pri,
-//		sys.video.gfx_pri,sys.video.gfx0_pri,sys.video.gfx1_pri,sys.video.gfx2_pri,sys.video.gfx3_pri);
 //	popmessage("Video Controller registers - %04x - %04x - %04x",sys.video.reg[0],sys.video.reg[1],sys.video.reg[2]);
 //	popmessage("IOC IRQ status - %02x",sys.ioc.irqstatus);
 //	popmessage("RAM: mouse data - %02x %02x %02x %02x",mess_ram[0x931],mess_ram[0x930],mess_ram[0x933],mess_ram[0x932]);

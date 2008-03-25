@@ -80,9 +80,9 @@ static ADDRESS_MAP_START( mz700_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x0e000, 0x0ffff) AM_RAMBANK(8)
 #if 0 //mame37b9 traps
 	AM_RANGE( 0x10000, 0x10fff) AM_ROM
-	AM_RANGE( 0x12000, 0x127ff) AM_READWRITE(MRA8_RAM, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size )
-	AM_RANGE( 0x12800, 0x12fff) AM_READWRITE(MRA8_RAM, colorram_w) AM_BASE( &colorram )
-	AM_RANGE( 0x16000, 0x16fff) AM_READWRITE(MRA8_RAM, pcgram_w)
+	AM_RANGE( 0x12000, 0x127ff) AM_READWRITE(SMH_RAM, videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size )
+	AM_RANGE( 0x12800, 0x12fff) AM_READWRITE(SMH_RAM, colorram_w) AM_BASE( &colorram )
+	AM_RANGE( 0x16000, 0x16fff) AM_READWRITE(SMH_RAM, pcgram_w)
 #endif
 ADDRESS_MAP_END
 
@@ -103,7 +103,7 @@ static ADDRESS_MAP_START(mz800_mem, ADDRESS_SPACE_PROGRAM, 8)
 #if 0
 	AM_RANGE( 0x10000, 0x10fff) AM_ROM
 	AM_RANGE( 0x11000, 0x11fff) AM_ROM
-	AM_RANGE( 0x12000, 0x16fff) AM_READWRITE(MRA8_RAM, videoram_w) AM_BASE( &videoram) AM_SIZE( &videoram_size )
+	AM_RANGE( 0x12000, 0x16fff) AM_READWRITE(SMH_RAM, videoram_w) AM_BASE( &videoram) AM_SIZE( &videoram_size )
 	AM_RANGE( 0x12800, 0x12fff) AM_WRITE( colorram_w) AM_BASE( &colorram )
 #endif
 	ADDRESS_MAP_END
@@ -253,20 +253,18 @@ static MACHINE_DRIVER_START(mz700)
 	MDRV_CPU_PROGRAM_MAP(mz700_mem, 0)
 	MDRV_CPU_IO_MAP(mz700_io, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( mz700 )
 
 	/* video hardware - include overscan */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 25*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8 - 1, 0*8, 25*8 - 1)
 
 	MDRV_GFXDECODE(mz700)
-	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(2*256)
+	MDRV_PALETTE_LENGTH(256*2)
 
 	MDRV_PALETTE_INIT(mz700)
 	MDRV_VIDEO_UPDATE(mz700)
@@ -284,20 +282,17 @@ static MACHINE_DRIVER_START(mz800)
 	MDRV_CPU_PROGRAM_MAP(mz800_mem, 0)
 	MDRV_CPU_IO_MAP(mz800_io, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-
 	MDRV_MACHINE_RESET( mz700 )
 
 	/* video hardware - include overscan */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*8, 25*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8 - 1, 0*8, 25*8 - 1)
 
 	MDRV_GFXDECODE(mz700)
 	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(2*256)
 
 	MDRV_PALETTE_INIT(mz700)
 	MDRV_VIDEO_UPDATE(mz700)
@@ -334,16 +329,16 @@ ROM_START(mz800)
 		ROM_LOAD("mz700fon.int",0x00000, 0x1000, CRC(42b9e8fb) SHA1(5128ad179a702f8e0bd9910a58bad8fbe4c20167))
 ROM_END
 
-static void mz700_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void mz700_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) mz700_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) mz700_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}

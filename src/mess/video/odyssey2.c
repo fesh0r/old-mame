@@ -4,12 +4,20 @@
 
 ***************************************************************************/
 
-#include <assert.h>
 #include "driver.h"
 #include "deprecat.h"
-#include "mslegacy.h"
 #include "cpu/i8039/i8039.h"
 #include "includes/odyssey2.h"
+
+
+#define COLLISION_SPRITE_0			0x01
+#define COLLISION_SPRITE_1			0x02
+#define COLLISION_SPRITE_2			0x04
+#define COLLISION_SPRITE_3			0x08
+#define COLLISION_VERTICAL_GRID		0x10
+#define COLLISION_HORIZ_GRID_DOTS	0x20
+#define COLLISION_EXTERNAL_UNUSED	0x40
+#define COLLISION_CHARACTERS		0x80
 
 /* character sprite colors
    dark grey, red, green, orange, blue, violet, light grey, white
@@ -117,9 +125,6 @@ static const UINT8 o2_shape[0x40][8]={
     { 0x00,0x00,0x00,0x10,0x38,0xFF,0x7E,0x00 }
 };
 
-static UINT8 *odyssey2_display;
-int odyssey2_vh_hpos;
-
 static union {
     UINT8 reg[0x100];
     struct {
@@ -150,113 +155,58 @@ static union {
     } s;
 } o2_vdc= { { 0 } };
 
-static UINT8 collision[8];    /* only 7 used but easier to index */
-static int line;
-static attotime line_time;
-static UINT32 o2_snd_shift[2];
-static UINT8 x_beam_pos;
-static UINT8 y_beam_pos;
+static UINT32		o2_snd_shift[2];
+static UINT8		x_beam_pos;
+static UINT8		y_beam_pos;
+static UINT8		control_status;
+static UINT8		collision_status;
+static int			iff;
+static emu_timer	*i824x_line_timer;
+static emu_timer	*i824x_hblank_timer;
+static bitmap_t		*tmp_bitmap;
+static int			start_vpos;
+static int			start_vblank;
+static UINT8		lum;		/* Output of P1 bit 7 influences the intensity of the background and grid colours */
 
-/***************************************************************************
+static sound_stream *odyssey2_sh_channel;
 
-  Start the video hardware emulation.
-
-***************************************************************************/
-
-VIDEO_START( odyssey2 )
-{
-	o2_snd_shift[0] = machine->sample_rate / 983;
-	o2_snd_shift[1] = machine->sample_rate / 3933;
-
-	odyssey2_vh_hpos = 0;
-	odyssey2_display = (UINT8 *) auto_malloc(8 * 8 * 256);
-	memset(odyssey2_display, 0, 8 * 8 * 256);
-}
-
-INLINE int get_horiz_clock_beam_pos( void )
-{
-    int h;
-    h = attotime_mul(attotime_sub(timer_get_time(), line_time), cpunum_get_clock(0) * 8).seconds;
-
-    return h;
-}
-
-INLINE int get_horiz_clock( void )
-{
-    int h;
-    h = attotime_mul(attotime_sub(timer_get_time(), line_time), cpunum_get_clock(0)).seconds;
-
-    return h;
-}
-
-INLINE int horiz_scan_active( void )
-{
-    int h;
-    h = get_horiz_clock();
-
-    if ( h > 15 )
-        return 1;
-
-    return 0;
-}
-
-INLINE int in_vblank( void )
-{
-    if ((line > 239) && (line < 262))
-        return 1;
-
-    return 0;
-}
 
 PALETTE_INIT( odyssey2 )
 {
-	palette_set_colors_rgb(machine, 0, odyssey2_colors, sizeof(odyssey2_colors) / 3);
-	colortable[0] = 0;
-	colortable[1] = 1;
+	int i;
+
+	for ( i = 0; i < 24; i++ ) {
+		palette_set_color_rgb( machine, i, odyssey2_colors[i*3], odyssey2_colors[i*3+1], odyssey2_colors[i*3+2] );
+	}
 }
 
-extern READ8_HANDLER( odyssey2_video_r )
+READ8_HANDLER( odyssey2_video_r )
 {
     UINT8 data = 0;
-    int bit, i;
 
     switch (offset)
     {
         case 0xa1:
-
-            if (horiz_scan_active())
-                data |= 1;
-
-            if (in_vblank())
-                data |= 8;
+			data = control_status;
+			iff = 0;
+			cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
+			control_status &= ~ 0x08;
+			if ( video_screen_get_hpos( machine->primary_screen ) < I824X_START_ACTIVE_SCAN || video_screen_get_hpos( machine->primary_screen ) > I824X_END_ACTIVE_SCAN ) {
+				data |= 1;
+			}
 
             break;
 
         case 0xa2:
-
-            bit = 0x01;
-
-            for (i = 0; i < 8; i++)
-            {
-                /* o2_vdc.s.collision at this point has the requested bit(s)
-                 * to test the current collisions against.  TODO: Sometimes
-                 * $A2 has more than one bit set.  What are the correct semantics
-                 * of that when reading back?  For now having an entire byte
-                 * for each graphics object that can collide is working.
-                 */
-
-                if (bit & o2_vdc.s.collision)
-                    data |= (collision[i] & ~bit);
-
-                bit <<= 1;
-            }
+			data = collision_status;
+			collision_status = 0;
 
             break;
 
         case 0xa4:
 
             if ((o2_vdc.s.control & VDC_CONTROL_REG_STROBE_XY))
-                y_beam_pos = line;
+                y_beam_pos = video_screen_get_vpos( machine->primary_screen ) - start_vpos;
 
             data = y_beam_pos;
 
@@ -265,8 +215,14 @@ extern READ8_HANDLER( odyssey2_video_r )
 
         case 0xa5:
 
-            if ((o2_vdc.s.control & VDC_CONTROL_REG_STROBE_XY))
-                x_beam_pos = get_horiz_clock_beam_pos();
+            if ((o2_vdc.s.control & VDC_CONTROL_REG_STROBE_XY)) {
+                x_beam_pos = video_screen_get_hpos( machine->primary_screen );
+				if ( x_beam_pos < I824X_START_ACTIVE_SCAN ) {
+					x_beam_pos = x_beam_pos - I824X_START_ACTIVE_SCAN + I824X_LINE_CLOCKS;
+				} else {
+					x_beam_pos = x_beam_pos - I824X_START_ACTIVE_SCAN;
+				}
+			}
 
             data = x_beam_pos;
 
@@ -279,7 +235,7 @@ extern READ8_HANDLER( odyssey2_video_r )
     return data;
 }
 
-extern WRITE8_HANDLER( odyssey2_video_w )
+WRITE8_HANDLER( odyssey2_video_w )
 {
 	/* Update the sound */
 	if( offset >= 0xa7 && offset <= 0xaa )
@@ -291,8 +247,14 @@ extern WRITE8_HANDLER( odyssey2_video_w )
              && !(data & VDC_CONTROL_REG_STROBE_XY))
         {
             /* Toggling strobe bit, tuck away values */
-            x_beam_pos = get_horiz_clock_beam_pos();
-            y_beam_pos = line;
+            x_beam_pos = video_screen_get_hpos( machine->primary_screen );
+			if ( x_beam_pos < I824X_START_ACTIVE_SCAN ) {
+				x_beam_pos = x_beam_pos - I824X_START_ACTIVE_SCAN + 228;
+			} else {
+				x_beam_pos = x_beam_pos - I824X_START_ACTIVE_SCAN;
+			}
+
+            y_beam_pos = video_screen_get_vpos( machine->primary_screen ) - start_vpos;
 
             /* This is wrong but more games work with it, TODO: Figure
              * out correct change.  Maybe update the screen here??
@@ -307,145 +269,289 @@ extern WRITE8_HANDLER( odyssey2_video_w )
     o2_vdc.reg[offset] = data;
 }
 
-extern READ8_HANDLER( odyssey2_t1_r )
-{
-    static int t = FALSE;
-
-    t = !t;
-    return t;
+WRITE8_HANDLER ( odyssey2_lum_w ) {
+	lum = data;
 }
 
-INTERRUPT_GEN( odyssey2_line )
+READ8_HANDLER( odyssey2_t1_r )
 {
-    line_time = timer_get_time();
-    line = (line + 1) % 262;
-
-    switch (line)
-    {
-        case 252:
-            cpunum_set_input_line(machine, 0, 0, ASSERT_LINE); /* vsync?? */
-            break;
-        case 253:
-            cpunum_set_input_line(machine, 0, 0, CLEAR_LINE); /* vsync?? */
-            break;
-    }
+	if ( video_screen_get_vpos( machine->primary_screen ) > start_vpos && video_screen_get_vpos( machine->primary_screen ) < start_vblank ) {
+		if ( video_screen_get_hpos( machine->primary_screen ) >= I824X_START_ACTIVE_SCAN && video_screen_get_hpos( machine->primary_screen ) < I824X_END_ACTIVE_SCAN ) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
-INLINE void odyssey2_draw_box(UINT8 bg[][320], int x, int y, int width, int height, UINT8 collision_id)
-{
-    int x1,y1;
-    for (y1 = 0; y1 < height; y1++)
-	{
-		for (x1 = 0; x1 < width; x1++)
-			bg[y+y1][x+x1] |= collision_id;
-    }
-}
+static TIMER_CALLBACK( i824x_scanline_callback ) {
+	UINT8	collision_map[160];
+	int		vpos = video_screen_get_vpos( machine->primary_screen );
 
-INLINE void odyssey2_draw(UINT8 bg[][320], UINT8 code, int x, int y, int scale_x, int scale_y, UINT8 collision_id)
-{
-    int m,x1,y1;
-    for (m=0x80; m>0; m>>=1, x+=scale_x)
-	{
-		if (code & m)
-		{
-			for (y1=0; y1<scale_y; y1++)
-			{
-				for (x1 = 0; x1 < scale_x; x1++)
-					bg[y+y1][x+x1] |= collision_id;
+	if ( vpos < start_vpos )
+		return;
+
+	if ( vpos == start_vpos ) {
+		control_status &= ~0x08;
+	}
+
+	if ( vpos < start_vblank ) {
+		rectangle rect;
+		int	sprite_width[4] = { 8, 8, 8, 8 };
+		int i;
+
+		control_status &= ~ 0x01;
+
+		/* Draw a line */
+		rect.min_y = rect.max_y = vpos;
+		rect.min_x = I824X_START_ACTIVE_SCAN;
+		rect.max_x = I824X_END_ACTIVE_SCAN - 1;
+		fillbitmap( tmp_bitmap, machine->pens[ ( (o2_vdc.s.color >> 3) & 0x7 ) | ( ( lum << 3 ) ^ 0x08 ) ], &rect );
+
+		/* Clear collision map */
+		memset( collision_map, 0, sizeof( collision_map ) );
+
+		/* Display grid if enabled */
+		if ( o2_vdc.s.control & 0x08 ) {
+			UINT16	color = machine->pens[ ( o2_vdc.s.color & 7 ) | ( ( o2_vdc.s.color >> 3 ) & 0x08 ) | ( ( lum << 3 ) ^ 0x08 ) ];
+			int		x_grid_offset = 8;
+			int 	y_grid_offset = 24;
+			int		width = 16;
+			int		height = 24;
+			int		w = ( o2_vdc.s.control & 0x80 ) ? width : 2;
+			int		j, k, y;
+
+			/* Draw horizontal part of grid */
+			for ( j = 1, y = 0; y < 9; y++, j <<= 1 ) {
+				if ( y_grid_offset + y * height <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y_grid_offset + y * height + 3 ) {
+					for ( i = 0; i < 9; i++ ) {
+						if ( ( o2_vdc.s.hgrid[0][i] & j ) || ( o2_vdc.s.hgrid[1][i] & ( j >> 8 ) ) ) {
+							for ( k = 0; k < width + 2; k++ ) {
+								int px = x_grid_offset + i * width + k;
+								collision_map[ px ] |= COLLISION_HORIZ_GRID_DOTS;
+								*BITMAP_ADDR16( tmp_bitmap, vpos, I824X_START_ACTIVE_SCAN + px ) = color;
+							}
+						}
+					}
+				}
+			}
+
+			/* Draw vertical part of grid */
+			for( j = 1, y = 0; y < 8; y++, j <<= 1 ) {
+				if ( y_grid_offset + y * height <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y_grid_offset + ( y + 1 ) * height ) {
+					for ( i = 0; i < 10; i++ ) {
+						if ( o2_vdc.s.vgrid[i] & j ) {
+							for ( k = 0; k < w; k++ ) {
+								int px = x_grid_offset + i * width + k;
+
+								/* Check if we collide with an already drawn source object */
+								if ( collision_map[ px ] & o2_vdc.s.collision ) {
+									collision_status |= COLLISION_VERTICAL_GRID;
+								}
+								/* Check if an already drawn object would collide with us */
+								if ( COLLISION_VERTICAL_GRID & o2_vdc.s.collision && collision_map[ px ] ) {
+									collision_status |= collision_map[ px ];
+								}
+								collision_map[ px ] |= COLLISION_VERTICAL_GRID;
+								*BITMAP_ADDR16( tmp_bitmap, vpos, I824X_START_ACTIVE_SCAN + px ) = color;
+							}
+						}
+					}
+				}
 			}
 		}
-    }
-}
 
-// different bit ordering, maybe I should change rom
-INLINE void odyssey2_draw_sprite(UINT8 bg[][320], UINT8 code, int x, int y, int scale_x, int scale_y, UINT8 collision_id)
-{
-    int m,x1,y1;
+		/* Display objects if enabled */
+		if ( o2_vdc.s.control & 0x20 ) {
+			/* Regular foreground objects */
+			for ( i = 0; i < ARRAY_LENGTH( o2_vdc.s.foreground ); i++ ) {
+				int	y = o2_vdc.s.foreground[i].y;
+				int	height = 8 - ( ( ( y >> 1 ) + o2_vdc.s.foreground[i].ptr ) & 7 );
 
-    for (m=1; m<=0x80; m<<=1, x+=scale_x)
-	{
-		if (code & m)
-		{
-			for (y1=0; y1<scale_y; y1++)
-			{
-				for (x1 = 0; x1 < scale_x; x1++)
-					bg[y+y1][x+x1] |= collision_id;
+				if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + height * 2 ) {
+					UINT16	color = machine->pens[ 16 + ( ( o2_vdc.s.foreground[i].color & 0x0E ) >> 1 ) ];
+					int		offset = ( o2_vdc.s.foreground[i].ptr | ( ( o2_vdc.s.foreground[i].color & 0x01 ) << 8 ) ) + ( y >> 1 ) + ( ( vpos - start_vpos - y ) >> 1 );
+					UINT8	chr = ((char*)o2_shape)[ offset & 0x1FF ];
+					int		x = o2_vdc.s.foreground[i].x;
+					UINT8	m;
+
+					for ( m = 0x80; m > 0; m >>= 1, x++ ) {
+						if ( chr & m ) {
+							if ( x >= 0 && x < 160 ) {
+								/* Check if we collide with an already drawn source object */
+								if ( collision_map[ x ] & o2_vdc.s.collision ) {
+									collision_status |= COLLISION_CHARACTERS;
+								}
+								/* Check if an already drawn object would collide with us */
+								if ( COLLISION_CHARACTERS & o2_vdc.s.collision && collision_map[ x ] ) {
+									collision_status |= collision_map[ x ];
+								}
+								collision_map[ x ] |= COLLISION_CHARACTERS;
+								*BITMAP_ADDR16( tmp_bitmap, vpos, I824X_START_ACTIVE_SCAN + x ) = color;
+							}
+						}
+					}
+				}
+			}
+
+			/* Quad objects */
+			for ( i = 0; i < ARRAY_LENGTH( o2_vdc.s.quad ); i++ ) {
+				int y = o2_vdc.s.quad[i].single[0].y;
+				int height = 8;
+
+				if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + height * 2 ) {
+					int	x = o2_vdc.s.quad[i].single[0].x;
+					int j;
+
+					for ( j = 0; j < ARRAY_LENGTH( o2_vdc.s.quad[0].single ); j++, x += 8 ) {
+						int		char_height = 8 - ( ( ( y >> 1 ) + o2_vdc.s.quad[i].single[j].ptr ) & 7 );
+						if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + char_height * 2 ) {
+							UINT16 color = machine->pens[ 16 + ( ( o2_vdc.s.quad[i].single[j].color & 0x0E ) >> 1 ) ];
+							int	offset = ( o2_vdc.s.quad[i].single[j].ptr | ( ( o2_vdc.s.quad[i].single[j].color & 0x01 ) << 8 ) ) + ( y >> 1 ) + ( ( vpos - start_vpos - y ) >> 1 );
+							UINT8	chr = ((char*)o2_shape)[ offset & 0x1FF ];
+							UINT8	m;
+							for ( m = 0x80; m > 0; m >>= 1, x++ ) {
+								if ( chr & m ) {
+									if ( x >= 0 && x < 160 ) {
+										/* Check if we collide with an already drawn source object */
+										if ( collision_map[ x ] & o2_vdc.s.collision ) {
+											collision_status |= COLLISION_CHARACTERS;
+										}
+										/* Check if an already drawn object would collide with us */
+										if ( COLLISION_CHARACTERS & o2_vdc.s.collision && collision_map[ x ] ) {
+											collision_status |= collision_map[ x ];
+										}
+										collision_map[ x ] |= COLLISION_CHARACTERS;
+										*BITMAP_ADDR16( tmp_bitmap, vpos, I824X_START_ACTIVE_SCAN + x ) = color;
+									}
+								}
+							}
+						} else {
+							x += 8;
+						}
+					}
+				}
+			}
+
+			/* Sprites */
+			for ( i = 0; i < ARRAY_LENGTH( o2_vdc.s.sprites ); i++ ) {
+				int y = o2_vdc.s.sprites[i].y;
+				int height = 8;
+				if ( o2_vdc.s.sprites[i].color & 4 ) {
+					/* Zoomed sprite */
+					sprite_width[i] = 16;
+					if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + height * 4 ) {
+						UINT16 color = machine->pens[ 16 + ( ( o2_vdc.s.sprites[i].color >> 3 ) & 0x07 ) ];
+						UINT8	chr = o2_vdc.s.shape[i][ ( ( vpos - start_vpos - y ) >> 2 ) ];
+						int		x = o2_vdc.s.sprites[i].x;
+						UINT8	m;
+
+						for ( m = 0x01; m > 0; m <<= 1, x += 2 ) {
+							if ( chr & m ) {
+								if ( x >= 0 && x < 160 ) {
+									/* Check if we collide with an already drawn source object */
+									if ( collision_map[ x ] & o2_vdc.s.collision ) {
+										collision_status |= ( 1 << i );
+									}
+									/* Check if an already drawn object would collide with us */
+									if ( ( 1 << i ) & o2_vdc.s.collision && collision_map[ x ] ) {
+										collision_status |= collision_map[ x ];
+									}
+									collision_map[ x ] |= ( 1 << i );
+									*BITMAP_ADDR16( tmp_bitmap, vpos, I824X_START_ACTIVE_SCAN + x ) = color;
+								}
+								if ( x >= -1 && x < 159 ) {
+									/* Check if we collide with an already drawn source object */
+									if ( collision_map[ x ] & o2_vdc.s.collision ) {
+										collision_status |= ( 1 << i );
+									}
+									/* Check if an already drawn object would collide with us */
+									if ( ( 1 << i ) & o2_vdc.s.collision && collision_map[ x ] ) {
+										collision_status |= collision_map[ x ];
+									}
+									collision_map[ x ] |= ( 1 << i );
+									*BITMAP_ADDR16( tmp_bitmap, vpos, I824X_START_ACTIVE_SCAN + x + 1 ) = color;
+								}
+							}
+						}
+					}
+				} else {
+					/* Regular sprite */
+					if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + height * 2 ) {
+						UINT16 color = machine->pens[ 16 + ( ( o2_vdc.s.sprites[i].color >> 3 ) & 0x07 ) ];
+						UINT8	chr = o2_vdc.s.shape[i][ ( ( vpos - start_vpos - y ) >> 1 ) ];
+						int		x = o2_vdc.s.sprites[i].x;
+						UINT8	m;
+
+						for ( m = 0x01; m > 0; m <<= 1, x++ ) {
+							if ( chr & m ) {
+								if ( x >= 0 && x < 160 ) {
+									/* Check if we collide with an already drawn source object */
+									if ( collision_map[ x ] & o2_vdc.s.collision ) {
+										collision_status |= ( 1 << i );
+									}
+									/* Check if an already drawn object would collide with us */
+									if ( ( 1 << i ) & o2_vdc.s.collision && collision_map[ x ] ) {
+										collision_status |= collision_map[ x ];
+									}
+									collision_map[ x ] |= ( 1 << i );
+									*BITMAP_ADDR16( tmp_bitmap, vpos, I824X_START_ACTIVE_SCAN + x ) = color;
+								}
+							}
+						}
+					}
+				}
 			}
 		}
-    }
+	}
+
+	/* Check for start of VBlank */
+	if ( vpos == start_vblank ) {
+		control_status |= 0x08;
+		if ( ! iff ) {
+			cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
+			iff = 1;
+		}
+	}
 }
 
-INLINE void odyssey2_draw_grid( mame_bitmap* bitmap, UINT8 bg[][320] )
-{
-    int width  = 16;
-    int height = 24;
-	int i, j, x, y;
-	int color;
-    int w = 2;
-    int x_grid_offset = 8;
-    int y_grid_offset = 24;
+static TIMER_CALLBACK( i824x_hblank_callback ) {
+	int vpos = video_screen_get_vpos( machine->primary_screen );
 
-    color  = o2_vdc.s.color & 7;
-    color |= (o2_vdc.s.color >> 3) & 8;
+	if ( vpos < start_vpos - 1 )
+		return;
 
-    for (i=0, x=0; x<9; x++, i++)
-    {
-        for (j=1, y=0; y<9; y++, j<<=1)
-        {
-            if ( ((j<=0x80)&&(o2_vdc.s.hgrid[0][i]&j))
-                    ||((j>0x80)&&(o2_vdc.s.hgrid[1][i]&1)) )
-            {
-                odyssey2_draw_box(bg, x_grid_offset + x * width, y_grid_offset + y * height, width + 2, 3, COLLISION_HORIZ_GRID_DOTS);
-                plot_box(bitmap, x_grid_offset + x * width, y_grid_offset + y * height, width + 2, 3, Machine->pens[color]);
-            }
-        }
-    }
-
-    if (o2_vdc.s.control & 0x80)        /* fill solid to end of next vert line */
-        w=width;
-
-    for (i=0, x=0; x<10; x++, i++)
-    {
-        for (j=1, y=0; y<8; y++, j<<=1)
-        {
-            if (o2_vdc.s.vgrid[i] & j)
-            {
-                odyssey2_draw_box(bg, x_grid_offset + x * width, y_grid_offset + y * height, w, height, COLLISION_VERTICAL_GRID);
-                plot_box(bitmap, x_grid_offset + x * width, y_grid_offset + y * height, w, height, Machine->pens[color]);
-            }
-        }
-    }
+	if ( vpos < start_vblank - 1 ) {
+		control_status |= 0x01;
+	}
 }
 
-INLINE void odyssey2_draw_char(mame_bitmap *bitmap, UINT8 bg[][320], int x, int y, int ptr, int color)
+/***************************************************************************
+
+  Start the video hardware emulation.
+
+***************************************************************************/
+
+VIDEO_START( odyssey2 )
 {
-    int n, i;
-    int offset = ptr | ((color & 1) << 8);
+	const device_config *screen = video_screen_first(machine->config);
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
 
-    offset=(offset + (y >> 1)) & 0x1ff;
-	/* 7-Sep-2007 - whomever wrote this crap code was dynamically remapping
-	 * the color table, a vile gross hack.  Doesn't look like this is going
-	 * to survive the 0.118u5 transition */
-	/* Machine->gfx[0]->colortable[1]=Machine->pens[16 + ((color & 0xe) >> 1)]; */
+	o2_snd_shift[0] = machine->sample_rate / 983;
+	o2_snd_shift[1] = machine->sample_rate / 3933;
 
-    // don't ask me about the technical background, but also this height thingy is needed
-    // invaders aliens (!) and shoot (-)
-    n = 8 - (ptr & 7) - ((y >> 1) & 7);
+	start_vpos = I824X_START_Y;
+	start_vblank = I824X_START_Y + I824X_SCREEN_HEIGHT;
+	control_status = 0;
+	iff = 0;
 
-    if (n < 3)
-        n += 7;
+	tmp_bitmap = auto_bitmap_alloc( width, height, video_screen_get_format(screen) );
 
-    for (i=0; i<n; i++)
-    {
-        if (y + i * 2 >= bitmap->height )
-            break;
+	i824x_line_timer = timer_alloc( i824x_scanline_callback, NULL );
+	timer_adjust_periodic( i824x_line_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, I824X_START_ACTIVE_SCAN ), 0, video_screen_get_scan_period( machine->primary_screen ) );
 
-        odyssey2_draw(bg, ((char*)o2_shape)[offset], x, y+i*2, 1, 2, COLLISION_CHARACTERS);
-        drawgfxzoom(bitmap, Machine->gfx[0], ((char*)o2_shape)[offset],0,
-                0,0,x,y+i*2,
-                0, TRANSPARENCY_PEN,0, 0x10000, 0x20000);
-        offset=(offset+1) & 0x1ff;
-    }
+	i824x_hblank_timer = timer_alloc( i824x_hblank_callback, NULL );
+	timer_adjust_periodic( i824x_hblank_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, I824X_END_ACTIVE_SCAN + 18 ), 0, video_screen_get_scan_period( machine->primary_screen ) );
 }
 
 /***************************************************************************
@@ -456,102 +562,21 @@ INLINE void odyssey2_draw_char(mame_bitmap *bitmap, UINT8 bg[][320], int x, int 
 
 VIDEO_UPDATE( odyssey2 )
 {
-	int i, j, x, y;
-	UINT8 bg[300][320]= { { 0 } };
-
-	assert(bitmap->width<=ARRAY_LENGTH(bg[0]) && bitmap->height<=ARRAY_LENGTH(bg));
-
-	plot_box( bitmap, 0, 0, bitmap->width, bitmap->height, machine->pens[(o2_vdc.s.color >> 3) & 0x7] );
-
-	if (o2_vdc.s.control & 0x08)        /* show grid */
-        odyssey2_draw_grid(bitmap, bg);
-
-    if (o2_vdc.s.control & 0x20)        /* show foreground objects */
-	{
-		for (i=0; i<ARRAY_LENGTH(o2_vdc.s.foreground); i++)
-        {
-			odyssey2_draw_char(bitmap, bg,
-				o2_vdc.s.foreground[i].x, o2_vdc.s.foreground[i].y,
-				o2_vdc.s.foreground[i].ptr, o2_vdc.s.foreground[i].color);
-		}
-
-		for (i=0; i<ARRAY_LENGTH(o2_vdc.s.quad); i++)
-		{
-			x=o2_vdc.s.quad[i].single[0].x;
-			for (j=0; j<ARRAY_LENGTH(o2_vdc.s.quad[0].single); j++, x+=2*8)
-			{
-				odyssey2_draw_char(bitmap, bg,
-					x, y=o2_vdc.s.quad[i].single[0].y,
-					o2_vdc.s.quad[i].single[j].ptr, o2_vdc.s.quad[i].single[j].color);
-			}
-		}
-
-		for (i=0; i<ARRAY_LENGTH(o2_vdc.s.sprites); i++)
-		{
-			/* 7-Sep-2007 - whomever wrote this crap code was dynamically remapping
-			 * the color table, a vile gross hack.  Doesn't look like this is going
-			 * to survive the 0.118u5 transition */
-			/* machine->gfx[0]->colortable[1]=machine->pens[16+((o2_vdc.s.sprites[i].color>>3)&7)]; */
-
-			y=o2_vdc.s.sprites[i].y;
-			x=o2_vdc.s.sprites[i].x;
-
-			for (j=0; j<8; j++)
-			{
-				if (o2_vdc.s.sprites[i].color & 4)
-				{
-					if (y+4*j>=bitmap->height)
-                        break;
-					odyssey2_draw_sprite(bg, o2_vdc.s.shape[i][j], x, y+j*4, 2, 4, 1<<i);    /* 1 << i is sprite collision index */
-					drawgfxzoom(bitmap, machine->gfx[1], o2_vdc.s.shape[i][j],0,
-						0,0,x,y+j*4,
-						0, TRANSPARENCY_PEN,0,0x20000, 0x40000);
-				}
-
-				else
-				{
-					if (y+j*2>=bitmap->height)
-                        break;
-					odyssey2_draw_sprite(bg, o2_vdc.s.shape[i][j], x, y+j*2, 1, 2, 1<<i);    /* 1 << i is sprite collision index */
-					drawgfxzoom(bitmap, machine->gfx[1], o2_vdc.s.shape[i][j],0,
-						0,0,x,y+j*2,
-						0, TRANSPARENCY_PEN,0, 0x10000, 0x20000);
-				}
-			}
-		}
-	}
-
-	memset( collision, 0, sizeof( collision ) );
-
-	for (y=0; y<300; y++)
-	{
-		for (x=0; x<320; x++)
-		{
-			switch (bg[y][x])
-            {
-                case 0: case 1: case 2: case 4: case 8:
-                case 0x10: case 0x20: case 0x80:
-                    /* Only one collidable entity in this spot, no collision to mark */
-                    break;
-
-                default:
-                    {
-                        int bit = 0x01;
-                        for (i = 0; i < 8; i++)
-                        {
-                        if (bit & o2_vdc.s.collision && bit & bg[y][x])
-                                collision[i] |= bg[y][x] & ~bit;
-
-                            bit <<= 1;
-                        }
-                    break;
-			}
-		}
-	}
-	}
+	copybitmap( bitmap, tmp_bitmap, 0, 0, 0, 0, cliprect );
 
 	return 0;
 }
+
+static void *odyssey2_sh_start(int clock, const struct CustomSound_interface *config)
+{
+	odyssey2_sh_channel = stream_create(0, 1, clock/(I824X_LINE_CLOCKS*4), 0, odyssey2_sh_update );
+	return (void *) ~0;
+}
+
+const struct CustomSound_interface odyssey2_sound_interface =
+{
+	odyssey2_sh_start
+};
 
 void odyssey2_sh_update( void *param,stream_sample_t **inputs, stream_sample_t **_buffer,int length )
 {
@@ -570,7 +595,7 @@ void odyssey2_sh_update( void *param,stream_sample_t **inputs, stream_sample_t *
 		{
 			*buffer = 0;
 			*buffer = signal & 0x1;
-			period = (o2_vdc.s.sound & 0x20) ? 11 : 44;
+			period = (o2_vdc.s.sound & 0x20) ? 1 : 4;
 			if( ++count >= period )
 			{
 				count = 0;
@@ -580,6 +605,9 @@ void odyssey2_sh_update( void *param,stream_sample_t **inputs, stream_sample_t *
 				{
 					signal |= *buffer << 23;
 				}
+				o2_vdc.s.shift3 = signal & 0xFF;
+				o2_vdc.s.shift2 = ( signal >> 8 ) & 0xFF;
+				o2_vdc.s.shift1 = ( signal >> 16 ) & 0xFF;
 			}
 
 			/* Throw an interrupt if enabled */
@@ -601,3 +629,120 @@ void odyssey2_sh_update( void *param,stream_sample_t **inputs, stream_sample_t *
 			*buffer = 0;
 	}
 }
+
+/*
+	Thomson EF9340/EF9341 extra chips in the g7400
+ */
+
+static struct {
+	UINT8	X;
+	UINT8	Y;
+	UINT8	Y0;
+	UINT8	R;
+	UINT8	M;
+	UINT8	TA;
+	UINT8	TB;
+	UINT8	busy;
+	UINT8	ram[1024];
+} ef9341;
+
+INLINE UINT16 ef9341_get_c_addr( void ) {
+	if ( ( ef9341.Y & 0x0C ) == 0x0C ) {
+		return 0x318 | ( ( ef9341.X & 0x38 ) << 2 ) | ( ef9341.X & 0x07 );
+	}
+	if ( ef9341.X & 0x20 ) {
+		return 0x300 | ( ( ef9341.Y & 0x07 ) << 5 ) | ( ef9341.Y & 0x18 ) | ( ef9341.X & 0x07 );
+	}
+	return ( ef9341.Y << 5 ) | ef9341.X;
+}
+
+INLINE void ef9341_inc_c( void ) {
+	ef9341.X++;
+	if ( ef9341.X >= 40 ) {
+		ef9341.Y = ( ef9341.Y + 1 ) % 24;
+	}
+}
+
+void ef9341_w( int command, int b, UINT8 data ) {
+	logerror("ef9341 %s write, t%s, data %02X\n", command ? "command" : "data", b ? "B" : "A", data );
+
+	if ( command ) {
+		if ( b ) {
+			ef9341.TB = data;
+			ef9341.busy = 0x80;
+			switch( ef9341.TB & 0xE0 ) {
+			case 0x00:	/* Begin row */
+				ef9341.X = 0;
+				ef9341.Y = ef9341.TA & 0x1F;
+				break;
+			case 0x20:	/* Load Y */
+				ef9341.Y = ef9341.TA & 0x1F;
+				break;
+			case 0x40:	/* Load X */
+				ef9341.X = ef9341.TA & 0x3F;
+				break;
+			case 0x60:	/* INC C */
+				ef9341_inc_c();
+				break;
+			case 0x80:	/* Load M */
+				ef9341.M = ef9341.TA;
+				break;
+			case 0xA0:	/* Load R */
+				ef9341.R = ef9341.TA;
+				break;
+			case 0xC0:	/* Load Y0 */
+				ef9341.Y0 = ef9341.TA & 0x3F;
+				break;
+			}
+			ef9341.busy = 0;
+		} else {
+			ef9341.TA = data;
+		}
+	} else {
+		if ( b ) {
+			ef9341.TB = data;
+			ef9341.busy = 0x80;
+			switch ( ef9341.M & 0xE0 ) {
+			case 0x00:	/* Write */
+				ef9341.ram[ ef9341_get_c_addr() ] = ef9341.TB;
+				ef9341_inc_c();
+				break;
+			case 0x20:	/* Read */
+				logerror("ef9341 unimplemented data action %02X\n", ef9341.M & 0xE0 );
+				ef9341_inc_c();
+				break;
+			case 0x40:	/* Write without increment */
+			case 0x60:	/* Read without increment */
+			case 0x80:	/* Write slice */
+			case 0xA0:	/* Read slice */
+				logerror("ef9341 unimplemented data action %02X\n", ef9341.M & 0xE0 );
+				break;
+			}
+			ef9341.busy = 0;
+		} else {
+			ef9341.TA = data;
+		}
+	}
+}
+
+UINT8 ef9341_r( int command, int b ) {
+	UINT8	data = 0xFF;
+
+	logerror("ef9341 %s read, t%s\n", command ? "command" : "data", b ? "B" : "A" );
+	if ( command ) {
+		if ( b ) {
+			data = 0xFF;
+		} else {
+			data = ef9341.busy;
+		}
+	} else {
+		if ( b ) {
+			data = ef9341.TB;
+			ef9341.busy = 0x80;
+		} else {
+			data = ef9341.TA;
+		}
+	}
+	return data;
+}
+

@@ -17,6 +17,7 @@ ToDo:
 #include "includes/aim65.h"
 
 /* peripheral chips */
+#include "video/dl1416.h"
 #include "machine/6522via.h"
 #include "machine/6532riot.h"
 #include "machine/6821pia.h"
@@ -24,8 +25,7 @@ ToDo:
 /* cartridge device */
 #include "devices/cartslot.h"
 
-/* for the layout */
-#include "rendlay.h"
+/* Layout */
 #include "aim65.lh"
 
 
@@ -147,6 +147,19 @@ INPUT_PORTS_END
 
 
 /******************************************************************************
+ Device interfaces
+******************************************************************************/
+
+/* Display driver interfaces */
+static const dl1416_interface dl1416_ds1 = { DL1416T, aim65_update_ds1 };
+static const dl1416_interface dl1416_ds2 = { DL1416T, aim65_update_ds2 };
+static const dl1416_interface dl1416_ds3 = { DL1416T, aim65_update_ds3 };
+static const dl1416_interface dl1416_ds4 = { DL1416T, aim65_update_ds4 };
+static const dl1416_interface dl1416_ds5 = { DL1416T, aim65_update_ds5 };
+
+
+
+/******************************************************************************
  Machine Drivers
 ******************************************************************************/
 
@@ -158,11 +171,18 @@ static MACHINE_DRIVER_START( aim65 )
 
 	MDRV_DEFAULT_LAYOUT(layout_aim65)
 
-	/* dummy values */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_DEVICE_ADD("ds1", DL1416)
+	MDRV_DEVICE_CONFIG(dl1416_ds1)
+	MDRV_DEVICE_ADD("ds2", DL1416)
+	MDRV_DEVICE_CONFIG(dl1416_ds2)
+	MDRV_DEVICE_ADD("ds3", DL1416)
+	MDRV_DEVICE_CONFIG(dl1416_ds3)
+	MDRV_DEVICE_ADD("ds4", DL1416)
+	MDRV_DEVICE_CONFIG(dl1416_ds4)
+	MDRV_DEVICE_ADD("ds5", DL1416)
+	MDRV_DEVICE_CONFIG(dl1416_ds5)
 
-	MDRV_VIDEO_START( aim65 )
+	MDRV_VIDEO_START(aim65)
 MACHINE_DRIVER_END
 
 

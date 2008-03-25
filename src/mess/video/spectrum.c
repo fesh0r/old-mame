@@ -14,7 +14,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/spectrum.h"
 #include "eventlst.h"
 #include "video/border.h"
@@ -112,7 +111,7 @@ VIDEO_EOF( spectrum )
                 pItem = EventList_GetFirstItem();
                 set_last_border_color ( pItem[NumItems-1].Event_Data );
                 EventList_Reset();
-				EventList_SetOffsetStartTime ( ATTOTIME_TO_CYCLES(0, attotime_mul(video_screen_get_scan_period(0), video_screen_get_vpos(0))) );
+				EventList_SetOffsetStartTime ( ATTOTIME_TO_CYCLES(0, attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))) );
                 logerror ("Event log reset in callback fn.\n");
         }
 }
@@ -139,7 +138,7 @@ VIDEO_EOF( ts2068 )
                 pItem = EventList_GetFirstItem();
                 set_last_border_color ( pItem[NumItems-1].Event_Data );
                 EventList_Reset();
-				EventList_SetOffsetStartTime ( ATTOTIME_TO_CYCLES(0, attotime_mul(video_screen_get_scan_period(0), video_screen_get_vpos(0))) );
+				EventList_SetOffsetStartTime ( ATTOTIME_TO_CYCLES(0, attotime_mul(video_screen_get_scan_period(machine->primary_screen), video_screen_get_vpos(machine->primary_screen))) );
                 logerror ("Event log reset in callback fn.\n");
         }
 }
@@ -193,15 +192,15 @@ VIDEO_UPDATE( spectrum )
     for (count=0;count<32*8;count++)
     {
 		if (charsdirty[count]) {
-			decodechar( machine->gfx[0],count,spectrum_characterram);
+			decodechar( screen->machine->gfx[0],count,spectrum_characterram);
 		}
 
 		if (charsdirty[count+256]) {
-			decodechar( machine->gfx[1],count,&spectrum_characterram[0x800]);
+			decodechar( screen->machine->gfx[1],count,&spectrum_characterram[0x800]);
 		}
 
 		if (charsdirty[count+512]) {
-			decodechar( machine->gfx[2],count,&spectrum_characterram[0x1000]);
+			decodechar( screen->machine->gfx[2],count,&spectrum_characterram[0x1000]);
 		}
 	}
 
@@ -214,9 +213,9 @@ VIDEO_UPDATE( spectrum )
             if (charsdirty[count]) {
                     color=get_display_color(spectrum_colorram[count],
                                             flash_invert);
-		drawgfx(bitmap,machine->gfx[0],
+		drawgfx(bitmap,screen->machine->gfx[0],
 			count,
-			color,
+			color+8, // use 2nd part of palette
 			0,0,
                             (sx*8)+SPEC_LEFT_BORDER,(sy*8)+SPEC_TOP_BORDER,
 			0,TRANSPARENCY_NONE,0);
@@ -226,9 +225,9 @@ VIDEO_UPDATE( spectrum )
 	if (charsdirty[count+256]) {
                     color=get_display_color(spectrum_colorram[count+0x100],
                                             flash_invert);
-		drawgfx(bitmap,machine->gfx[1],
+		drawgfx(bitmap,screen->machine->gfx[1],
 			count,
-			color,
+			color+8, // use 2nd part of palette
 			0,0,
                             (sx*8)+SPEC_LEFT_BORDER,((sy+8)*8)+SPEC_TOP_BORDER,
 			0,TRANSPARENCY_NONE,0);
@@ -238,9 +237,9 @@ VIDEO_UPDATE( spectrum )
 	if (charsdirty[count+512]) {
                     color=get_display_color(spectrum_colorram[count+0x200],
                                             flash_invert);
-		drawgfx(bitmap,machine->gfx[2],
+		drawgfx(bitmap,screen->machine->gfx[2],
 			count,
-			color,
+			color+8, // use 2nd part of palette
 			0,0,
                             (sx*8)+SPEC_LEFT_BORDER,((sy+16)*8)+SPEC_TOP_BORDER,
 			0,TRANSPARENCY_NONE,0);
@@ -252,7 +251,7 @@ VIDEO_UPDATE( spectrum )
         (synchronised with start of screen data) before the border lines.
         There should be 16 blank lines after an interrupt is called.
     */
-    draw_border(bitmap, full_refresh,
+    draw_border(screen->machine, bitmap, full_refresh,
             SPEC_TOP_BORDER, SPEC_DISPLAY_YSIZE, SPEC_BOTTOM_BORDER,
             SPEC_LEFT_BORDER, SPEC_DISPLAY_XSIZE, SPEC_RIGHT_BORDER,
             SPEC_LEFT_BORDER_CYCLES, SPEC_DISPLAY_XSIZE_CYCLES,
@@ -302,16 +301,16 @@ VIDEO_UPDATE( spectrum_128 )
                         for (b=0x80;b!=0;b>>=1)
                         {
                                 if (*scr&b)
-                                        spectrum_plot_pixel(bitmap,scrx++,SPEC_TOP_BORDER+scry,machine->pens[ink]);
+                                        spectrum_plot_pixel(bitmap,scrx++,SPEC_TOP_BORDER+scry,screen->machine->pens[ink]);
                                 else
-                                        spectrum_plot_pixel(bitmap,scrx++,SPEC_TOP_BORDER+scry,machine->pens[pap]);
+                                        spectrum_plot_pixel(bitmap,scrx++,SPEC_TOP_BORDER+scry,screen->machine->pens[pap]);
 			}
                 scr++;
                 attr++;
                 }
 	}
 
-	draw_border(bitmap, full_refresh,
+	draw_border(screen->machine, bitmap, full_refresh,
 		SPEC_TOP_BORDER, SPEC_DISPLAY_YSIZE, SPEC_BOTTOM_BORDER,
 		SPEC_LEFT_BORDER, SPEC_DISPLAY_XSIZE, SPEC_RIGHT_BORDER,
 		SPEC_LEFT_BORDER_CYCLES, SPEC_DISPLAY_XSIZE_CYCLES,
@@ -342,7 +341,7 @@ VIDEO_UPDATE( spectrum_128 )
  *******************************************************************/
 
 /* Draw a scanline in TS2068/TC2048 hires mode (code modified from COUPE.C) */
-static void ts2068_hires_scanline(mame_bitmap *bitmap, int y, int borderlines)
+static void ts2068_hires_scanline(running_machine *machine, bitmap_t *bitmap, int y, int borderlines)
 {
 	int x,b,scrx,scry;
 	unsigned short ink,pap;
@@ -372,13 +371,13 @@ static void ts2068_hires_scanline(mame_bitmap *bitmap, int y, int borderlines)
 		{
                         if (*scr&b)
 			{
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[ink]);
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[ink]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[ink]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[ink]);
 			}
 			else
 			{
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[pap]);
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[pap]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[pap]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[pap]);
 			}
 		}
                 scr++;
@@ -387,7 +386,7 @@ static void ts2068_hires_scanline(mame_bitmap *bitmap, int y, int borderlines)
 }
 
 /* Draw a scanline in TS2068/TC2048 64-column mode */
-static void ts2068_64col_scanline(mame_bitmap *bitmap, int y, int borderlines, unsigned short inkcolor)
+static void ts2068_64col_scanline(running_machine *machine, bitmap_t *bitmap, int y, int borderlines, unsigned short inkcolor)
 {
 	int x,b,scrx,scry;
         unsigned char *scr1, *scr2;
@@ -403,25 +402,25 @@ static void ts2068_64col_scanline(mame_bitmap *bitmap, int y, int borderlines, u
 		for (b=0x80;b!=0;b>>=1)
 		{
                         if (*scr1&b)
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[inkcolor]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[inkcolor]);
 			else
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[7-inkcolor]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[7-inkcolor]);
 		}
                 scr1++;
 
 		for (b=0x80;b!=0;b>>=1)
 		{
                         if (*scr2&b)
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[inkcolor]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[inkcolor]);
 			else
-                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[7-inkcolor]);
+                                spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[7-inkcolor]);
 		}
                 scr2++;
 	}
 }
 
 /* Draw a scanline in TS2068/TC2048 lores (normal Spectrum) mode */
-static void ts2068_lores_scanline(mame_bitmap *bitmap, int y, int borderlines, int screen)
+static void ts2068_lores_scanline(running_machine *machine, bitmap_t *bitmap, int y, int borderlines, int screen)
 {
 	int x,b,scrx,scry;
 	unsigned short ink,pap;
@@ -451,13 +450,13 @@ static void ts2068_lores_scanline(mame_bitmap *bitmap, int y, int borderlines, i
 		{
 			if (*scr&b)
 			{
-				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[ink]);
-				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[ink]);
+				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[ink]);
+				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[ink]);
 			}
 			else
 			{
-				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[pap]);
-				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,Machine->pens[pap]);
+				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[pap]);
+				spectrum_plot_pixel(bitmap,scrx++,scry+borderlines,machine->pens[pap]);
 			}
 		}
 		scr++;
@@ -476,28 +475,28 @@ VIDEO_UPDATE( ts2068 )
                 /* 64 Column mode */
                 unsigned short inkcolor = (ts2068_port_ff_data & 0x38) >> 3;
                 for (count = 0; count < 192; count++)
-                        ts2068_64col_scanline(bitmap, count, TS2068_TOP_BORDER, inkcolor);
+                        ts2068_64col_scanline(screen->machine, bitmap, count, TS2068_TOP_BORDER, inkcolor);
 	}
         else if ((ts2068_port_ff_data & 7) == 2)
         {
                 /* Extended Color mode */
                 for (count = 0; count < 192; count++)
-                        ts2068_hires_scanline(bitmap, count, TS2068_TOP_BORDER);
+                        ts2068_hires_scanline(screen->machine, bitmap, count, TS2068_TOP_BORDER);
         }
         else if ((ts2068_port_ff_data & 7) == 1)
         {
                 /* Screen 6000-7aff */
                 for (count = 0; count < 192; count++)
-                        ts2068_lores_scanline(bitmap, count, TS2068_TOP_BORDER, 1);
+                        ts2068_lores_scanline(screen->machine, bitmap, count, TS2068_TOP_BORDER, 1);
         }
         else
         {
                 /* Screen 4000-5aff */
                 for (count = 0; count < 192; count++)
-                        ts2068_lores_scanline(bitmap, count, TS2068_TOP_BORDER, 0);
+                        ts2068_lores_scanline(screen->machine, bitmap, count, TS2068_TOP_BORDER, 0);
         }
 
-        draw_border(bitmap, full_refresh,
+        draw_border(screen->machine, bitmap, full_refresh,
                 TS2068_TOP_BORDER, SPEC_DISPLAY_YSIZE, TS2068_BOTTOM_BORDER,
                 TS2068_LEFT_BORDER, TS2068_DISPLAY_XSIZE, TS2068_RIGHT_BORDER,
                 SPEC_LEFT_BORDER_CYCLES, SPEC_DISPLAY_XSIZE_CYCLES,
@@ -516,28 +515,28 @@ VIDEO_UPDATE( tc2048 )
 		/* 64 Column mode */
 		unsigned short inkcolor = (ts2068_port_ff_data & 0x38) >> 3;
 		for (count = 0; count < 192; count++)
-			ts2068_64col_scanline(bitmap, count, SPEC_TOP_BORDER, inkcolor);
+			ts2068_64col_scanline(screen->machine, bitmap, count, SPEC_TOP_BORDER, inkcolor);
 	}
 	else if ((ts2068_port_ff_data & 7) == 2)
 	{
 		/* Extended Color mode */
 		for (count = 0; count < 192; count++)
-			ts2068_hires_scanline(bitmap, count, SPEC_TOP_BORDER);
+			ts2068_hires_scanline(screen->machine, bitmap, count, SPEC_TOP_BORDER);
 	}
 	else if ((ts2068_port_ff_data & 7) == 1)
 	{
 		/* Screen 6000-7aff */
 		for (count = 0; count < 192; count++)
-			ts2068_lores_scanline(bitmap, count, SPEC_TOP_BORDER, 1);
+			ts2068_lores_scanline(screen->machine, bitmap, count, SPEC_TOP_BORDER, 1);
 	}
 	else
 	{
 		/* Screen 4000-5aff */
 		for (count = 0; count < 192; count++)
-			ts2068_lores_scanline(bitmap, count, SPEC_TOP_BORDER, 0);
+			ts2068_lores_scanline(screen->machine, bitmap, count, SPEC_TOP_BORDER, 0);
 	}
 
-	draw_border(bitmap, full_refresh,
+	draw_border(screen->machine, bitmap, full_refresh,
 		SPEC_TOP_BORDER, SPEC_DISPLAY_YSIZE, SPEC_BOTTOM_BORDER,
 		TS2068_LEFT_BORDER, TS2068_DISPLAY_XSIZE, TS2068_RIGHT_BORDER,
 		SPEC_LEFT_BORDER_CYCLES, SPEC_DISPLAY_XSIZE_CYCLES,

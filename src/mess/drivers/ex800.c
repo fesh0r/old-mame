@@ -127,7 +127,6 @@ TODO:  - The UPD7810 core is missing analog port emulation
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/upd7810/upd7810.h"
 #include "sound/beep.h"
 
@@ -165,35 +164,15 @@ TODO:  - The UPD7810 core is missing analog port emulation
 
 
 /* The ON LINE switch is directly connected to the INT1 input of the CPU */
-static void online_switch(void *param, UINT32 oldvalue, UINT32 newvalue)
+static INPUT_CHANGED( online_switch )
 {
 	static int state = ASSERT_LINE;
 
-	if (newvalue)
+	if (newval)
 	{
-		cpunum_set_input_line(Machine, 0, UPD7810_INTF1, state);
+		cpunum_set_input_line(machine, 0, UPD7810_INTF1, state);
 		state = (state == ASSERT_LINE) ? CLEAR_LINE : ASSERT_LINE;
 	}
-}
-
-
-static void feed_switch(void *param, UINT32 oldvalue, UINT32 newvalue)
-{
-
-}
-
-
-static void selectype_switch(void *param, UINT32 oldvalue, UINT32 newvalue)
-{
-
-}
-
-
-static DRIVER_INIT(ex800)
-{
-	input_port_set_changed_callback(port_tag_to_index("ONLISW"), 0xff, online_switch, NULL);
-	input_port_set_changed_callback(port_tag_to_index("FEED"), 0xff, feed_switch, NULL);
-	input_port_set_changed_callback(port_tag_to_index("SelecType"), 0xff, selectype_switch, NULL);
 }
 
 
@@ -221,19 +200,19 @@ static VIDEO_UPDATE(ex800)
 static READ8_HANDLER(ex800_porta_r)
 {
 	logerror("PA R @%x\n", activecpu_get_pc());
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static READ8_HANDLER(ex800_portb_r)
 {
 	logerror("PB R @%x\n", activecpu_get_pc());
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static READ8_HANDLER(ex800_portc_r)
 {
 	logerror("PC R @%x\n", activecpu_get_pc());
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static WRITE8_HANDLER(ex800_porta_w)
@@ -284,7 +263,7 @@ static WRITE8_HANDLER(ex800_portc_w)
 static READ8_HANDLER(ex800_devsel_r)
 {
 	logerror("DEVSEL R @%x with offset %x\n", activecpu_get_pc(), offset);
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static WRITE8_HANDLER(ex800_devsel_w)
@@ -295,7 +274,7 @@ static WRITE8_HANDLER(ex800_devsel_w)
 static READ8_HANDLER(ex800_gate5a_r)
 {
 	logerror("GATE5A R @%x with offset %x\n", activecpu_get_pc(), offset);
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static WRITE8_HANDLER(ex800_gate5a_w)
@@ -306,7 +285,7 @@ static WRITE8_HANDLER(ex800_gate5a_w)
 static READ8_HANDLER(ex800_iosel_r)
 {
 	logerror("IOSEL R @%x with offset %x\n", activecpu_get_pc(), offset);
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static WRITE8_HANDLER(ex800_iosel_w)
@@ -317,7 +296,7 @@ static WRITE8_HANDLER(ex800_iosel_w)
 static READ8_HANDLER(ex800_gate7a_r)
 {
 	logerror("GATE7A R @%x with offset %x\n", activecpu_get_pc(), offset);
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static WRITE8_HANDLER(ex800_gate7a_w)
@@ -361,7 +340,7 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START( ex800 )
 	PORT_START_TAG("ONLISW")
 	PORT_BIT(0xfe, IP_ACTIVE_HIGH, IPT_UNUSED)
-	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON LINE")   PORT_CODE(KEYCODE_F9)
+	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON LINE")   PORT_CODE(KEYCODE_F9) PORT_CHANGED(online_switch, NULL)
 
 	PORT_START_TAG("FEED")
 	PORT_BIT(0xfc, IP_ACTIVE_LOW, IPT_UNUSED)
@@ -459,9 +438,9 @@ static MACHINE_DRIVER_START(ex800)
 	MDRV_MACHINE_START(ex800)
 
 	/* "video" hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
-//  MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 //  MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 //  MDRV_SCREEN_SIZE(480, 640)
 //  MDRV_SCREEN_VISIBLE_AREA(0, 479, 0, 639)
@@ -496,4 +475,4 @@ ROM_END
 
 
 /*    YEAR  NAME   PARENT  COMPAT  MACHINE INPUT  INIT   CONFIG COMPANY  FULLNAME  FLAGS */
-COMP( 1986, ex800,      0,      0, ex800,  ex800, ex800, NULL,  "Epson", "EX-800", GAME_NO_SOUND | GAME_NOT_WORKING)
+COMP( 1986, ex800,      0,      0, ex800,  ex800, 0,     NULL,  "Epson", "EX-800", GAME_NO_SOUND | GAME_NOT_WORKING)

@@ -304,35 +304,40 @@ bad:
 /* we don't use the bios rom (its not needed and only provides security on early models) */
 
 ROM_START(genesis)
-	ROM_REGION(0x1415000, REGION_CPU1, 0)
-	ROM_REGION( 0x10000, REGION_CPU2, 0)
+	ROM_REGION(0x1415000, REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION( 0x10000, REGION_CPU2, ROMREGION_ERASEFF)
+ROM_END
+
+ROM_START(gensvp)
+	ROM_REGION(0x1415000, REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION( 0x10000, REGION_CPU2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START(megadriv)
-	ROM_REGION(0x1415000, REGION_CPU1, 0)
-	ROM_REGION( 0x10000, REGION_CPU2, 0)
+	ROM_REGION(0x1415000, REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION( 0x10000, REGION_CPU2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START(megadrij)
-	ROM_REGION(0x1415000, REGION_CPU1, 0)
-	ROM_REGION( 0x10000, REGION_CPU2, 0)
+	ROM_REGION(0x1415000, REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION( 0x10000, REGION_CPU2, ROMREGION_ERASEFF)
 ROM_END
 
-static void genesis_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void genesis_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_genesis_cart; break;
-		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = NULL;	/*genesis_partialhash*/ break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_genesis_cart; break;
+		case MESS_DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = NULL;	/*genesis_partialhash*/ break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "smd,bin,md,gen"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "smd,bin,md,gen"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -424,5 +429,6 @@ static DRIVER_INIT( genjpn )
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE    INPUT     INIT   CONFIG   COMPANY   FULLNAME */
 CONS( 1989, genesis,  0,		0,	megadriv,  megadri6, genusa,	genesis, "Sega",   "Genesis (USA, NTSC)", 0)
+CONS( 1993, gensvp,   genesis,	0,	megdsvp,   megdsvp, megadsvp,	genesis, "Sega",   "Genesis (USA, NTSC, w/SVP)", 0)
 CONS( 1990, megadriv, genesis,	0,	megadriv,  megadri6, geneur,	genesis, "Sega",   "Mega Drive (Europe, PAL)", 0)
 CONS( 1988, megadrij, genesis,	0,	megadriv,  megadri6, genjpn,	genesis, "Sega",   "Mega Drive (Japan, NTSC)", 0)

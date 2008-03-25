@@ -6,8 +6,6 @@
 
 #include <math.h>
 #include "driver.h"
-#include "mslegacy.h"
-
 #include "cpu/pdp1/tx0.h"
 #include "includes/tx0.h"
 #include "video/crt.h"
@@ -15,7 +13,6 @@
 
 /* pointer to TX-0 RAM */
 static UINT32 *tx0_memory;
-
 
 /*
     driver init function
@@ -216,10 +213,6 @@ static const gfx_layout fontlayout =
 	8*8 /* every char takes 8 consecutive bytes */
 };
 
-static GFXDECODE_START( tx0 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, fontlayout, 0, 3 )
-GFXDECODE_END
-
 
 /*
     The static palette only includes the pens for the control panel and
@@ -229,8 +222,9 @@ GFXDECODE_END
     black.  Grey levels follow an exponential law, so that decrementing the
     color index periodically will simulate the remanence of a cathode ray tube.
 */
-static const unsigned char palette[] =
+static const UINT8 tx0_colors[] =
 {
+	0x00,0x00,0x00,	/* black */
 	0xFF,0xFF,0xFF,	/* white */
 	0x00,0xFF,0x00,	/* green */
 	0x00,0x40,0x00,	/* dark green */
@@ -238,12 +232,18 @@ static const unsigned char palette[] =
 	0x80,0x80,0x80	/* light gray */
 };
 
-static const unsigned short tx0_colortable[] =
+static const UINT8 tx0_palette[] =
 {
-	pen_panel_bg, pen_panel_caption,
-	pen_typewriter_bg, pen_black,
-	pen_typewriter_bg, pen_red
+	pen_panel_bg, pen_panel_caption,	/* captions */
+	pen_typewriter_bg, pen_black,		/* black typing in typewriter */
+	pen_typewriter_bg, pen_red		/* red typing in typewriter */
 };
+
+static UINT8 total_colors_needed = pen_crt_num_levels + sizeof(tx0_colors) / 3;
+
+static GFXDECODE_START( tx0 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, fontlayout, pen_crt_num_levels + sizeof(tx0_colors) / 3, 3 )
+GFXDECODE_END
 
 /* Initialise the palette */
 static PALETTE_INIT( tx0 )
@@ -256,13 +256,15 @@ static PALETTE_INIT( tx0 )
 	const double update_period = 1./refresh_rate;
 	double decay_1, decay_2;
 	double cur_level_1, cur_level_2;
+#if 0
 #ifdef MAME_DEBUG
 	/* level at which we stop emulating the decay and say the pixel is black */
 	double cut_level = .02;
 #endif
-	int i;
-	int r, g, b;
+#endif
+	UINT8 i, r, g, b;
 
+	machine->colortable = colortable_alloc(machine, total_colors_needed);
 
 	/* initialize CRT palette */
 
@@ -279,12 +281,12 @@ static PALETTE_INIT( tx0 )
 		g = (int) ((g1*cur_level_1 + g2*cur_level_2) + .5);
 		b = (int) ((b1*cur_level_1 + b2*cur_level_2) + .5);
 		/* write color in palette */
-		palette_set_color_rgb(machine, i, r, g, b);
+		colortable_palette_set_color(machine->colortable, i, MAKE_RGB(r, g, b));
 		/* apply decay for next iteration */
 		cur_level_1 *= decay_1;
 		cur_level_2 *= decay_2;
 	}
-
+#if 0
 #ifdef MAME_DEBUG
 	{
 		int recommended_pen_crt_num_levels;
@@ -298,13 +300,23 @@ static PALETTE_INIT( tx0 )
 	/*if ((cur_level_1 > 255.*cut_level) || (cur_level_2 > 255.*cut_level))
         mame_printf_debug("File %s line %d: Please take higher value for pen_crt_num_levels or smaller value for decay\n", __FILE__, __LINE__);*/
 #endif
-
-	palette_set_color_rgb(machine, 0, 0, 0, 0);
+#endif
+	colortable_palette_set_color(machine->colortable, 0, MAKE_RGB(0, 0, 0));
 
 	/* load static palette */
-	palette_set_colors_rgb(machine, pen_crt_num_levels, palette, sizeof(palette) / sizeof(palette[0]) / 3);
+	for ( i = 0; i < 6; i++ )
+	{
+		r = tx0_colors[i*3]; g = tx0_colors[i*3+1]; b = tx0_colors[i*3+2];
+		colortable_palette_set_color(machine->colortable, pen_crt_num_levels + i, MAKE_RGB(r, g, b));
+	}
 
-	memcpy(colortable, tx0_colortable, sizeof(tx0_colortable));
+	/* copy colortable to palette */
+	for( i = 0; i < total_colors_needed; i++ )
+		colortable_entry_set_value(machine->colortable, i, i);
+
+	/* set up palette for text */
+	for( i = 0; i < 6; i++ )
+		colortable_entry_set_value(machine->colortable, total_colors_needed + i, tx0_palette[i]);
 }
 
 
@@ -326,34 +338,27 @@ static const tx0_reset_param_t tx0_reset_param =
 
 
 static MACHINE_DRIVER_START(tx0_64kw)
-
 	/* basic machine hardware */
-	/* TX0 CPU @ approx. 167 kHz (no master clock, but the memory cycle time is
-    approximately 6usec) */
+	/* TX0 CPU @ approx. 167 kHz (no master clock, but the memory cycle time is approximately 6usec) */
 	MDRV_CPU_ADD_TAG("main", TX0_64KW, 166667)
 	MDRV_CPU_CONFIG(tx0_reset_param)
 	MDRV_CPU_PROGRAM_MAP(tx0_64kw_map, 0)
-	/*MDRV_CPU_PORTS(readport, writeport)*/
 	/* dummy interrupt: handles input */
-	MDRV_CPU_VBLANK_INT(tx0_interrupt, 1)
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
-
-	MDRV_SCREEN_REFRESH_RATE(refresh_rate)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
+	MDRV_CPU_VBLANK_INT("main", tx0_interrupt)
 
 	MDRV_MACHINE_START( tx0 )
 	MDRV_MACHINE_RESET( tx0 )
 
 	/* video hardware (includes the control panel and typewriter output) */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(refresh_rate)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(virtual_width, virtual_height)
 	MDRV_SCREEN_VISIBLE_AREA(0, virtual_width-1, 0, virtual_height-1)
 
 	MDRV_GFXDECODE(tx0)
-	MDRV_PALETTE_LENGTH(pen_crt_num_levels + (sizeof(palette) / sizeof(palette[0]) / 3))
-	MDRV_COLORTABLE_LENGTH(sizeof(tx0_colortable) / sizeof(tx0_colortable[0]))
+	MDRV_PALETTE_LENGTH(pen_crt_num_levels + sizeof(tx0_colors) / 3 + sizeof(tx0_palette))
 
 	MDRV_PALETTE_INIT(tx0)
 	MDRV_VIDEO_START(tx0)
@@ -375,82 +380,82 @@ MACHINE_DRIVER_END
 
 ROM_START(tx0_64kw)
 	/*CPU memory space*/
-	ROM_REGION(0x10000 * sizeof(UINT32),REGION_CPU1,0)
+	ROM_REGION(0x10000 * sizeof(UINT32),REGION_CPU1,ROMREGION_ERASEFF)
 		/* Note this computer has no ROM... */
 
-	ROM_REGION(tx0_fontdata_size, REGION_GFX1, 0)
+	ROM_REGION(tx0_fontdata_size, REGION_GFX1, ROMREGION_ERASEFF)
 		/* space filled with our font */
 ROM_END
 
 ROM_START(tx0_8kw)
 	/*CPU memory space*/
-	ROM_REGION(0x2000 * sizeof(UINT32),REGION_CPU1,0)
+	ROM_REGION(0x2000 * sizeof(UINT32),REGION_CPU1,ROMREGION_ERASEFF)
 		/* Note this computer has no ROM... */
 
-	ROM_REGION(tx0_fontdata_size, REGION_GFX1, 0)
+	ROM_REGION(tx0_fontdata_size, REGION_GFX1, ROMREGION_ERASEFF)
 		/* space filled with our font */
 ROM_END
 
-static void tx0_punchtape_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tx0_punchtape_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* punchtape */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_PUNCHTAPE; break;
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PUNCHTAPE; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_tx0_tape; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_tx0_tape; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_tape; break;
-		case DEVINFO_PTR_GET_DISPOSITIONS:				info->getdispositions = tx0_tape_get_open_mode; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_tx0_tape; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_tx0_tape; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_tape; break;
+		case MESS_DEVINFO_PTR_GET_DISPOSITIONS:				info->getdispositions = tx0_tape_get_open_mode; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap,rim"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap,rim"); break;
 	}
 }
 
-static void tx0_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tx0_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_PRINTER; break;
-		case DEVINFO_INT_READABLE:						info->i = 0; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PRINTER; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_tx0_typewriter; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_typewriter; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_tx0_typewriter; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_typewriter; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "typ"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "typ"); break;
 	}
 }
 
-static void tx0_magtape_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tx0_magtape_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* magtape */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_tx0_magtape; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_tx0_magtape; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_magtape; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_tx0_magtape; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_tx0_magtape; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tx0_magtape; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
 	}
 }
 

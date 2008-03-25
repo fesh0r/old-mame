@@ -152,7 +152,6 @@ when problems start with -log and look into error.log file
 
 
 #include "driver.h"
-#include "mslegacy.h"
 
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"
@@ -177,7 +176,7 @@ static ADDRESS_MAP_START( vc20_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x9110, 0x911f) AM_READWRITE( via_0_r, via_0_w )
 	AM_RANGE(0x9120, 0x912f) AM_READWRITE( via_1_r, via_1_w )
 	AM_RANGE(0x9130, 0x93ff) AM_NOP
-	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(MRA8_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/*color ram 4 bit */
+	AM_RANGE(0x9400, 0x97ff) AM_READWRITE(SMH_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/*color ram 4 bit */
 	AM_RANGE(0x9800, 0x9fff) AM_RAM
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(5)
 	AM_RANGE(0xc000, 0xffff) AM_ROM
@@ -195,7 +194,7 @@ static ADDRESS_MAP_START( vc20i_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x9010, 0x910f) AM_NOP
 	AM_RANGE(0x9110, 0x911f) AM_READWRITE( via_0_r, via_0_w )
 	AM_RANGE(0x9120, 0x912f) AM_READWRITE( via_1_r, via_1_w )
-	AM_RANGE(0x9400, 0x97ff) AM_READWRITE( MRA8_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/* color ram 4 bit */
+	AM_RANGE(0x9400, 0x97ff) AM_READWRITE( SMH_RAM, vc20_write_9400) AM_BASE(&vc20_memory_9400)	/* color ram 4 bit */
 	AM_RANGE(0x9800, 0x980f) AM_READWRITE( via_4_r, via_4_w )
 	AM_RANGE(0x9810, 0x981f) AM_READWRITE( via_5_r, via_5_w )
 	AM_RANGE(0xa000, 0xbfff) AM_ROMBANK(5)
@@ -609,8 +608,11 @@ INPUT_PORTS_END
 /* Initialise the vc20 palette */
 static PALETTE_INIT( vc20 )
 {
-	palette_set_colors_rgb(machine, 0, vic6560_palette, sizeof(vic6560_palette) / 3);
-/*  memcpy(sys_colortable,colortable,sizeof(colortable)); */
+	int i;
+
+	for ( i = 0; i < sizeof(vic6560_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, vic6560_palette[i*3], vic6560_palette[i*3+1], vic6560_palette[i*3+2]);
+	}
 }
 
 #if 0
@@ -705,16 +707,16 @@ static MACHINE_DRIVER_START( vic20 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, VIC6560_CLOCK)        /* 7.8336 Mhz */
 	MDRV_CPU_PROGRAM_MAP(vc20_mem, 0)
-	MDRV_CPU_VBLANK_INT(vc20_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", vc20_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic656x_raster_interrupt, VIC656X_HRETRACERATE)
-	MDRV_SCREEN_REFRESH_RATE(VIC6560_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( vc20 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(VIC6560_VRETRACERATE)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE((VIC6560_XSIZE + 7) & ~7, VIC6560_YSIZE)
 	MDRV_SCREEN_VISIBLE_AREA(VIC6560_MAME_XPOS, VIC6560_MAME_XPOS + VIC6560_MAME_XSIZE - 1, VIC6560_MAME_YPOS, VIC6560_MAME_YPOS + VIC6560_MAME_YSIZE - 1)
@@ -765,6 +767,7 @@ static MACHINE_DRIVER_START( vc20 )
 	MDRV_CPU_REPLACE( "main", M6502, VIC6561_CLOCK )
 	MDRV_CPU_PROGRAM_MAP( vc20i_mem, 0 )
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(VIC6561_VRETRACERATE)
 	MDRV_SCREEN_SIZE((VIC6561_XSIZE + 7) & ~7, VIC6561_YSIZE)
 	MDRV_SCREEN_VISIBLE_AREA(VIC6561_MAME_XPOS, VIC6561_MAME_XPOS + VIC6561_MAME_XSIZE - 1, VIC6561_MAME_YPOS, VIC6561_MAME_YPOS + VIC6561_MAME_YSIZE - 1)
@@ -781,36 +784,36 @@ static MACHINE_DRIVER_START( vc20v )
 #endif
 MACHINE_DRIVER_END
 
-static void cbmvc20_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void cbmvc20_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_vc20_rom; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_vc20_rom; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_vc20_rom; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_vc20_rom; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "a0,20,40,60,rom,bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "a0,20,40,60,rom,bin"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void vc20_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void vc20_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_vc20; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_vc20; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}

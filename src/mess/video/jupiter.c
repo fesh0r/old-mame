@@ -7,18 +7,11 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/jupiter.h"
 
 
 UINT8 *jupiter_charram;
 size_t jupiter_charram_size;
-
-
-VIDEO_START( jupiter )
-{
-	VIDEO_START_CALL(generic);
-}
 
 
 WRITE8_HANDLER( jupiter_vh_charram_w )
@@ -29,7 +22,7 @@ WRITE8_HANDLER( jupiter_vh_charram_w )
     jupiter_charram[offset] = data;
 
     /* decode character graphics again */
-	decodechar(Machine->gfx[0], offset / 8, jupiter_charram);
+	decodechar(machine->gfx[0], offset / 8, jupiter_charram);
 }
 
 
@@ -45,8 +38,8 @@ VIDEO_UPDATE( jupiter )
 		sy = (offs / 32) * 8;
 		sx = (offs % 32) * 8;
 
-		drawgfx(bitmap, machine->gfx[0], code & 0x7f, (code & 0x80) ? 1 : 0, 0,0, sx,sy,
-			&machine->screen[0].visarea, TRANSPARENCY_NONE, 0);
+		drawgfx(bitmap, screen->machine->gfx[0], code & 0x7f, (code & 0x80) ? 1 : 0, 0,0, sx,sy,
+			NULL, TRANSPARENCY_NONE, 0);
 	}
 
 	return 0;

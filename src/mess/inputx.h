@@ -51,26 +51,6 @@ enum
 #define UCHAR_SHIFT_BEGIN	(UCHAR_SHIFT_1)
 #define UCHAR_SHIFT_END		(UCHAR_SHIFT_2)
 
-#define PORT_CHAR(ch)	\
-	INPUT_PORT_UINT32_PAIR(INPUT_TOKEN_CHAR, ch),
-
-/* config definition */
-#define PORT_CONFNAME(mask,default,name) \
-	INPUT_PORT_UINT32(INPUT_TOKEN_CONFNAME), INPUT_PORT_UINT32_PAIR(mask, default), INPUT_PORT_PTR(name),
-
-#define PORT_CONFSETTING(default,name) \
-	INPUT_PORT_UINT32_PAIR(INPUT_TOKEN_CONFSETTING, default), INPUT_PORT_PTR(name),
-
-/* categories */
-#define PORT_CATEGORY(category) \
-	INPUT_PORT_UINT32_PAIR(INPUT_TOKEN_CATEGORY, category),
-
-#define PORT_CATEGORY_CLASS(mask,default,name) 						\
-	INPUT_PORT_UINT32(INPUT_TOKEN_CATEGORY_NAME), INPUT_PORT_UINT32_PAIR(mask, default), INPUT_PORT_PTR(name),
-
-#define PORT_CATEGORY_ITEM(default,name,category) 					\
-	INPUT_PORT_UINT32_PAIR(INPUT_TOKEN_CATEGORY_SETTING, default), INPUT_PORT_PTR(name), INPUT_PORT_UINT32_PAIR(INPUT_TOKEN_CATEGORY, category),
-
 
 
 /***************************************************************************
@@ -80,7 +60,7 @@ enum
 ***************************************************************************/
 
 /* these are called by the core; they should not be called from FEs */
-void inputx_init(void);
+void inputx_init(running_machine *machine);
 void inputx_update(void);
 void inputx_handle_mess_extensions(input_port_entry *ipt);
 

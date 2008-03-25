@@ -10,6 +10,7 @@
 #ifndef MSLEGACY_H
 #define MSLEGACY_H
 
+#include "driver.h"
 
 enum
 {
@@ -75,12 +76,8 @@ enum
 };
 
 
-/* palette */
-void palette_set_colors_rgb(running_machine *machine, pen_t color_base, const UINT8 *colors, int color_count);
-
 
 /* uitext */
 const char * ui_getstring (int string_num);
-
 
 #endif /* MSLEGACY_H */

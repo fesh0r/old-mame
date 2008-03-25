@@ -15,11 +15,11 @@
 
 enum
 {
-	DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND = DEVINFO_INT_DEV_SPECIFIC,
-	DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR
+	MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND = MESS_DEVINFO_INT_DEV_SPECIFIC,
+	MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR
 };
 
-void apple525_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info);
+void apple525_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
 
 void apple525_set_lines(UINT8 lines);
 void apple525_set_enable_lines(int enable_mask);

@@ -5,7 +5,6 @@
  ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "zx8301.h"
 
 
@@ -47,7 +46,7 @@ WRITE8_HANDLER( zx8301_control_w )
 	zx8301.base = BIT(data, 7);
 }
 
-static void zx8301_draw_screen(mame_bitmap *bitmap)
+static void zx8301_draw_screen(running_machine *machine, bitmap_t *bitmap)
 {
 	UINT32 addr = zx8301.base << 15;
 	int y, word, pixel;
@@ -79,8 +78,8 @@ static void zx8301_draw_screen(mame_bitmap *bitmap)
 						color = 0;
 					}
 
-					*BITMAP_ADDR16(bitmap, y, x++) = Machine->pens[color];
-					*BITMAP_ADDR16(bitmap, y, x++) = Machine->pens[color];
+					*BITMAP_ADDR16(bitmap, y, x++) = machine->pens[color];
+					*BITMAP_ADDR16(bitmap, y, x++) = machine->pens[color];
 
 					byte_high <<= 2;
 					byte_low <<= 2;
@@ -107,7 +106,7 @@ static void zx8301_draw_screen(mame_bitmap *bitmap)
 					int green = BIT(byte_high, 7);
 					int color = (green << 1) | red;
 
-					*BITMAP_ADDR16(bitmap, y, x++) = Machine->pens[ZX8301_COLOR_MODE4[color]];
+					*BITMAP_ADDR16(bitmap, y, x++) = machine->pens[ZX8301_COLOR_MODE4[color]];
 
 					byte_high <<= 1;
 					byte_low <<= 1;
@@ -120,7 +119,7 @@ static void zx8301_draw_screen(mame_bitmap *bitmap)
 VIDEO_START( zx8301 )
 {
 	zx8301_flash_timer = timer_alloc(zx8301_flash_tick, NULL);
-	timer_adjust(zx8301_flash_timer, ATTOTIME_IN_HZ(2), 0, ATTOTIME_IN_HZ(2));
+	timer_adjust_periodic(zx8301_flash_timer, ATTOTIME_IN_HZ(2), 0, ATTOTIME_IN_HZ(2));
 
 	state_save_register_global(zx8301.dispoff);
 	state_save_register_global(zx8301.mode8);
@@ -132,11 +131,11 @@ VIDEO_UPDATE( zx8301 )
 {
 	if (!zx8301.dispoff)
 	{
-		zx8301_draw_screen(bitmap);
+		zx8301_draw_screen(screen->machine, bitmap);
 	}
 	else
 	{
-		fillbitmap(bitmap, get_black_pen(machine), cliprect);
+		fillbitmap(bitmap, get_black_pen(screen->machine), cliprect);
 	}
 
 	return 0;

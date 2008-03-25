@@ -150,7 +150,7 @@ static void thom_floppy_show ( thom_floppy_drive* d )
 		 (d->density == DEN_FM_LO) ? "FM" : "MFM",
 		 d->tracks, d->sectors,
 		 (d->sides * d->tracks * d->sectors * d->sector_size) / 1024 ));
-	LOG (( "thom_floppy: drive %d loaded\n", d - thom_floppy_drives ));
+	LOG (( "thom_floppy: drive %d loaded\n", (int)(FPTR)(d - thom_floppy_drives) ));
 
 	if ( d->data )
 	{
@@ -215,7 +215,7 @@ static void thom_floppy_seek ( mess_image *image, int physical_track )
 		physical_track = 0;
 	if ( physical_track >= 80 )
 		physical_track = 79;
-	LOG(( "%f thom_floppy_seek: dev=%d track=%i\n", attotime_to_double(timer_get_time()), d - thom_floppy_drives, physical_track ));
+	LOG(( "%f thom_floppy_seek: dev=%d track=%i\n", attotime_to_double(timer_get_time()), (int)(FPTR)(d - thom_floppy_drives), physical_track ));
 	d->cur_track = physical_track;
 }
 
@@ -240,7 +240,7 @@ static void thom_floppy_get_id ( mess_image* image, chrn_id* id,
 	if ( trk >= d->tracks )
 		trk = d->tracks - 1;
 	VLOG(( "thom_floppy_get_id: dev=%d track=%i idx=%i phy-side=%i dens=%s/%s\n",
-	       d - thom_floppy_drives, trk, id_index, physical_side,
+	       (int)(FPTR)(d - thom_floppy_drives), trk, id_index, physical_side,
 	       (thom_density == DEN_FM_LO) ? "FM" : "MFM",
 	       (d->density == DEN_FM_LO) ? "FM" : "MFM" ));
 	thom_floppy_active( 0 );
@@ -283,7 +283,7 @@ static void thom_floppy_read_sector_data_into_buffer ( mess_image* image, int si
 	thom_floppy_drive* d = thom_floppy_drive_of_image( image );
 	UINT8* src = thom_floppy_sector_ptr( d, index1, d->cur_track, 0 );
 	thom_floppy_active( 0 );
-	LOG(( "thom_floppy_read_sector_data_into_buffer: dev=%d track=%i idx=%i side=%i len=%i\n", d - thom_floppy_drives, d->cur_track, index1, side, length ));
+	LOG(( "thom_floppy_read_sector_data_into_buffer: dev=%d track=%i idx=%i side=%i len=%i\n", (int)(FPTR)(d - thom_floppy_drives), d->cur_track, index1, side, length ));
 	if ( length > d->sector_size )
 	{
 		logerror( "thom_floppy_read_sector_data_into_buffer: sector size %i truncated to %i\n", length, d->sector_size );
@@ -300,7 +300,7 @@ static void thom_floppy_write_sector_data_from_buffer ( mess_image *image, int s
 	thom_floppy_drive* d = thom_floppy_drive_of_image( image );
 	UINT8* dst = thom_floppy_sector_ptr( d, data_id, d->cur_track, 0 );
 	thom_floppy_active( 1 );
-	LOG(( "thom_floppy_write_sector_data_into_buffer: dev=%d track=%i idx=%i side=%i ddam=%i len=%i\n", d - thom_floppy_drives, d->cur_track, data_id, side, ddam, length ));
+	LOG(( "thom_floppy_write_sector_data_into_buffer: dev=%d track=%i idx=%i side=%i ddam=%i len=%i\n", (int)(FPTR)(d - thom_floppy_drives), d->cur_track, data_id, side, ddam, length ));
 	if ( length > d->sector_size )
 	{
 		logerror( "thom_floppy_write_sector_data_from_buffer: sector size %i truncated to %i\n", length, d->sector_size );
@@ -322,7 +322,7 @@ static void thom_floppy_format_sector ( mess_image *image, int side, int sector_
 	UINT8* dst;
 	thom_floppy_active( 1 );
 	LOG(( "thom_floppy_format_sector: dev=%d track=%i/%i side=%i/%i idx=%i/%i c=%i h=%i r=%i n=%i filler=$%02X\n",
-	      d - thom_floppy_drives,
+	      (int)(FPTR)(d - thom_floppy_drives),
 	      d->cur_track, d->tracks, side, d->sides, sector_index, d->sectors,
 	      c, h, r, n, filler ));
 
@@ -911,62 +911,62 @@ thom_floppy_type thom_floppy_get_type ( int drive )
 
 
 
-void thom_floppy_getinfo( const device_class *devclass, UINT32 state, union devinfo *info )
+void thom_floppy_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
 {
 	switch ( state )
 	{
-	case DEVINFO_INT_TYPE:
+	case MESS_DEVINFO_INT_TYPE:
 		info->i = IO_FLOPPY;
 		break;
-	case DEVINFO_INT_READABLE:
+	case MESS_DEVINFO_INT_READABLE:
 		info->i = 1;
 		break;
-	case DEVINFO_INT_WRITEABLE:
+	case MESS_DEVINFO_INT_WRITEABLE:
 		info->i = 1;
 		break;
-	case DEVINFO_INT_CREATABLE:
+	case MESS_DEVINFO_INT_CREATABLE:
 		info->i = 1;
 		break;
-	case DEVINFO_PTR_INIT:
+	case MESS_DEVINFO_PTR_INIT:
 		info->init = thom_floppy_init;
 		break;
-	case DEVINFO_PTR_LOAD:
+	case MESS_DEVINFO_PTR_LOAD:
 		info->load = thom_floppy_load;
 		break;
-	case DEVINFO_PTR_UNLOAD:
+	case MESS_DEVINFO_PTR_UNLOAD:
 		info->unload = thom_floppy_unload;
 		break;
-	case DEVINFO_PTR_CREATE:
+	case MESS_DEVINFO_PTR_CREATE:
 		info->create = thom_floppy_create;
 		break;
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 4;
 		break;
-	case DEVINFO_STR_NAME+0:
-	case DEVINFO_STR_NAME+1:
-	case DEVINFO_STR_NAME+2:
-	case DEVINFO_STR_NAME+3:
+	case MESS_DEVINFO_STR_NAME+0:
+	case MESS_DEVINFO_STR_NAME+1:
+	case MESS_DEVINFO_STR_NAME+2:
+	case MESS_DEVINFO_STR_NAME+3:
 		strcpy( info->s = device_temp_str(), "floppydisk0" );
-		info->s[ strlen( info->s ) - 1 ] += state - DEVINFO_STR_NAME;
+		info->s[ strlen( info->s ) - 1 ] += state - MESS_DEVINFO_STR_NAME;
 		break;
-	case DEVINFO_STR_SHORT_NAME+0:
-	case DEVINFO_STR_SHORT_NAME+1:
-	case DEVINFO_STR_SHORT_NAME+2:
-	case DEVINFO_STR_SHORT_NAME+3:
+	case MESS_DEVINFO_STR_SHORT_NAME+0:
+	case MESS_DEVINFO_STR_SHORT_NAME+1:
+	case MESS_DEVINFO_STR_SHORT_NAME+2:
+	case MESS_DEVINFO_STR_SHORT_NAME+3:
 		strcpy( info->s = device_temp_str(), "flop0");
-		info->s[ strlen( info->s ) - 1 ] += state - DEVINFO_STR_SHORT_NAME;
+		info->s[ strlen( info->s ) - 1 ] += state - MESS_DEVINFO_STR_SHORT_NAME;
 		break;
-	case DEVINFO_STR_DESCRIPTION+0:
-	case DEVINFO_STR_DESCRIPTION+1:
-	case DEVINFO_STR_DESCRIPTION+2:
-	case DEVINFO_STR_DESCRIPTION+3:
+	case MESS_DEVINFO_STR_DESCRIPTION+0:
+	case MESS_DEVINFO_STR_DESCRIPTION+1:
+	case MESS_DEVINFO_STR_DESCRIPTION+2:
+	case MESS_DEVINFO_STR_DESCRIPTION+3:
 		strcpy( info->s = device_temp_str(), "Floppy #0" );
-		info->s[ strlen( info->s ) - 1 ] += state - DEVINFO_STR_DESCRIPTION;
+		info->s[ strlen( info->s ) - 1 ] += state - MESS_DEVINFO_STR_DESCRIPTION;
 		break;
-	case DEVINFO_STR_DEV_FILE:
+	case MESS_DEVINFO_STR_DEV_FILE:
 		strcpy( info->s = device_temp_str(), __FILE__ );
 		break;
-	case DEVINFO_STR_FILE_EXTENSIONS:
+	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
 		strcpy( info->s = device_temp_str(), "fd,qd,sap" );
 		break;
 	}

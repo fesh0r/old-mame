@@ -43,17 +43,17 @@ TODO:
 #define MAIN_CLOCK	15974400
 
 static ADDRESS_MAP_START( osborne1_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE( 0x0000, 0x0FFF ) AM_READWRITE( MRA8_BANK1, osborne1_0000_w )
-	AM_RANGE( 0x1000, 0x1FFF ) AM_READWRITE( MRA8_BANK2, osborne1_1000_w )
+	AM_RANGE( 0x0000, 0x0FFF ) AM_READWRITE( SMH_BANK1, osborne1_0000_w )
+	AM_RANGE( 0x1000, 0x1FFF ) AM_READWRITE( SMH_BANK2, osborne1_1000_w )
 	AM_RANGE( 0x2000, 0x2FFF ) AM_READWRITE( osborne1_2000_r, osborne1_2000_w )
-	AM_RANGE( 0x3000, 0x3FFF ) AM_READWRITE( MRA8_BANK3, osborne1_3000_w )
+	AM_RANGE( 0x3000, 0x3FFF ) AM_READWRITE( SMH_BANK3, osborne1_3000_w )
 	AM_RANGE( 0x4000, 0xEFFF ) AM_RAM
-	AM_RANGE( 0xF000, 0xFFFF ) AM_READWRITE( MRA8_BANK4, osborne1_videoram_w )
+	AM_RANGE( 0xF000, 0xFFFF ) AM_READWRITE( SMH_BANK4, osborne1_videoram_w )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( osborne1_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x03 ) AM_WRITE( osborne1_bankswitch_w )
 ADDRESS_MAP_END
 
@@ -148,9 +148,8 @@ static MACHINE_DRIVER_START( osborne1 )
 
 	MDRV_MACHINE_RESET( osborne1 )
 
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT( BITMAP_FORMAT_INDEXED16 )
-	MDRV_SCREEN_ADD( "main",0 )
 	MDRV_SCREEN_RAW_PARAMS( MAIN_CLOCK/2, 512, 0, 416, 260, 0, 240 )
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
@@ -182,11 +181,11 @@ ROM_START( osborne1 )
 	ROM_LOAD( "osbchr.bin", 0x0000, 0x800, BAD_DUMP CRC(6c1eab0d) SHA1(b04459d377a70abc9155a5486003cb795342c801) )
 ROM_END
 
-static void osborne1_floppy_getinfo( const device_class *devclass, UINT32 state, union devinfo *info ) {
+static void osborne1_floppy_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info ) {
 	switch( state ) {
-	case DEVINFO_INT_COUNT:				info->i = 2; break;
-	case DEVINFO_PTR_LOAD:				info->load = device_load_osborne1_floppy; break;
-	case DEVINFO_STR_FILE_EXTENSIONS:	strcpy( info->s = device_temp_str(), "img" ); break;
+	case MESS_DEVINFO_INT_COUNT:				info->i = 2; break;
+	case MESS_DEVINFO_PTR_LOAD:				info->load = device_load_osborne1_floppy; break;
+	case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy( info->s = device_temp_str(), "img" ); break;
 	default:							legacybasicdsk_device_getinfo( devclass, state, info ); break;
 	}
 }

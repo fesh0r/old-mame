@@ -26,6 +26,7 @@
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
 
+
 /*-------------------------------------------------------------------------*/
 /* Defines, constants, and global variables                                */
 /*-------------------------------------------------------------------------*/
@@ -203,12 +204,12 @@ static void compis_osp_pic_irq(UINT8 irq)
 
 READ16_HANDLER ( compis_osp_pic_r )
 {
-	return pic8259_0_r (offset);
+	return pic8259_0_r(machine, offset);
 }
 
 WRITE16_HANDLER ( compis_osp_pic_w )
 {
-	pic8259_0_w (offset, data);
+	pic8259_0_w(machine, offset, data);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -327,7 +328,7 @@ READ16_HANDLER (compis_fdc_dack_r)
 	/* DMA acknowledge if iSBX-218A has DMA enabled */
   	if (readinputport(7))
   	{
-		data = nec765_dack_r(0);
+		data = nec765_dack_r(machine, 0);
 	}
 
 	return data;
@@ -338,7 +339,7 @@ WRITE16_HANDLER (compis_fdc_w)
 	switch(offset)
 	{
 		case 2:
-			nec765_data_w(0, data);
+			nec765_data_w(machine, 0, data);
 			break;
 		default:
 			logerror("FDC Unknown Port Write %04X = %04X\n", offset, data);
@@ -353,10 +354,10 @@ READ16_HANDLER (compis_fdc_r)
 	switch(offset)
 	{
 		case 0:
-			data = nec765_status_r(0);
+			data = nec765_status_r(machine, 0);
 			break;
 		case 1:
-			data = nec765_data_r(0);
+			data = nec765_data_r(machine, 0);
 			break;
 		default:
 			logerror("FDC Unknown Port Read %04X\n", offset);
@@ -447,12 +448,12 @@ static const ppi8255_interface compis_ppi_interface =
 
 READ16_HANDLER ( compis_ppi_r )
 {
-	return ppi8255_0_r (offset);
+	return ppi8255_0_r(machine, offset);
 }
 
 WRITE16_HANDLER ( compis_ppi_w )
 {
-	ppi8255_0_w (offset, data);
+	ppi8255_0_w(machine, offset, data);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -487,12 +488,12 @@ static const struct pit8253_config compis_pit_config[2] =
 
 READ16_HANDLER ( compis_pit_r )
 {
-	return pit8253_0_r (offset);
+	return pit8253_0_r(machine, offset);
 }
 
 WRITE16_HANDLER ( compis_pit_w )
 {
-	pit8253_0_w (offset , data);
+	pit8253_0_w(machine, offset , data);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -501,12 +502,12 @@ WRITE16_HANDLER ( compis_pit_w )
 
 READ16_HANDLER ( compis_osp_pit_r )
 {
-	return pit8253_1_r (offset);
+	return pit8253_1_r(machine, offset);
 }
 
 WRITE16_HANDLER ( compis_osp_pit_w )
 {
-	pit8253_1_w (offset, data);
+	pit8253_1_w(machine, offset, data);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -543,7 +544,7 @@ static const struct msm8251_interface compis_usart_interface=
 
 READ16_HANDLER ( compis_usart_r )
 {
-	return msm8251_data_r ( offset);
+	return msm8251_data_r(machine, offset);
 }
 
 WRITE16_HANDLER ( compis_usart_w )
@@ -551,10 +552,10 @@ WRITE16_HANDLER ( compis_usart_w )
 	switch (offset)
 	{
 		case 0x00:
-			msm8251_data_w (0,data);
+			msm8251_data_w(machine, 0, data);
 			break;
 		case 0x01:
-			msm8251_control_w (0,data);
+			msm8251_control_w(machine, 0, data);
 			break;
 		default:
 			logerror("USART Unknown Port Write %04X = %04X\n", offset, data);
@@ -602,7 +603,7 @@ static int int_callback(int line)
 }
 
 
-static void update_interrupt_state(void)
+static void update_interrupt_state(running_machine *machine)
 {
 	int i, j, new_vector = 0;
 
@@ -681,9 +682,9 @@ generate_int:
 	/* generate the appropriate interrupt */
 	i186.intr.poll_status = 0x8000 | new_vector;
 	if (!i186.intr.pending)
-		cpunum_set_input_line(Machine, 2, 0, ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, 0, ASSERT_LINE);
 	i186.intr.pending = 1;
-	cpu_trigger(Machine, CPU_RESUME_TRIGGER);
+	cpu_trigger(machine, CPU_RESUME_TRIGGER);
 	if (LOG_OPTIMIZATION) logerror("  - trigger due to interrupt pending\n");
 	if (LOG_INTERRUPTS) logerror("(%f) **** Requesting interrupt vector %02X\n", attotime_to_double(timer_get_time()), new_vector);
 }
@@ -769,7 +770,7 @@ static TIMER_CALLBACK(internal_timer_int)
 	if (t->control & 0x2000)
 	{
 		i186.intr.status |= 0x01 << which;
-		update_interrupt_state();
+		update_interrupt_state(machine);
 		if (LOG_TIMER) logerror("  Generating timer interrupt\n");
 	}
 
@@ -777,11 +778,11 @@ static TIMER_CALLBACK(internal_timer_int)
 	if (t->control & 0x0001)
 	{
 		int count = t->maxA ? t->maxA : 0x10000;
-		timer_adjust(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), count), which, attotime_zero);
+		timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), count), which);
 		if (LOG_TIMER) logerror("  Repriming interrupt\n");
 	}
 	else
-		timer_adjust(t->int_timer, attotime_never, which, attotime_zero);
+		timer_adjust_oneshot(t->int_timer, attotime_never, which);
 }
 
 
@@ -892,7 +893,7 @@ static void internal_timer_update(int which,
 				internal_timer_sync(which);
 
 				/* nuke the timer and force the interrupt timer to be recomputed */
-				timer_adjust(t->time_timer, attotime_never, which, attotime_zero);
+				timer_adjust_oneshot(t->time_timer, attotime_never, which);
 				t->time_timer_active = 0;
 				update_int_timer = 1;
 			}
@@ -901,7 +902,7 @@ static void internal_timer_update(int which,
 			else if ((diff & 0x8000) && (new_control & 0x8000))
 			{
 				/* start the timing */
-				timer_adjust(t->time_timer, attotime_never, which, attotime_zero);
+				timer_adjust_oneshot(t->time_timer, attotime_never, which);
 				t->time_timer_active = 1;
 				update_int_timer = 1;
 			}
@@ -926,12 +927,12 @@ static void internal_timer_update(int which,
 	        	int diff = t->maxA - t->count;
 	         	if (diff <= 0)
 	         		diff += 0x10000;
-	         	timer_adjust(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), diff), which, attotime_zero);
+	         	timer_adjust_oneshot(t->int_timer, attotime_mul(ATTOTIME_IN_HZ(2000000), diff), which);
 	         	if (LOG_TIMER) logerror("Set interrupt timer for %d\n", which);
 	      	}
 	      	else
 	      	{
-	        	timer_adjust(t->int_timer, attotime_never, which, attotime_zero);
+	        	timer_adjust_oneshot(t->int_timer, attotime_never, which);
 		}
 	}
 }
@@ -962,7 +963,7 @@ static TIMER_CALLBACK(dma_timer_callback)
 	{
 		if (LOG_DMA) logerror("DMA%d timer callback - requesting interrupt: count = %04X, source = %04X\n", which, d->count, d->source);
 		i186.intr.request |= 0x04 << which;
-		update_interrupt_state();
+		update_interrupt_state(machine);
 	}
 }
 
@@ -1013,8 +1014,8 @@ static void update_dma_control(int which, int new_control)
 			if (LOG_DMA) logerror("Initiated DMA %d - count = %04X, source = %04X, dest = %04X\n", which, d->count, d->source, d->dest);
 
 			d->finished = 0;
-/*			timer_adjust(d->finish_timer,
-         ATTOTIME_IN_HZ(dac[dacnum].frequency) * (double)count, which, 0);*/
+/*			timer_adjust_oneshot(d->finish_timer,
+         ATTOTIME_IN_HZ(dac[dacnum].frequency) * (double)count, which);*/
 		}
 	}
 
@@ -1278,7 +1279,7 @@ WRITE16_HANDLER( i186_internal_port_w )
 			if (LOG_PORTS)
             logerror("%05X:80186 EOI = %04X\n", activecpu_get_pc(), data16);
 			handle_eoi(0x8000);
-			update_interrupt_state();
+			update_interrupt_state(machine);
 			break;
 
 		case 0x24:
@@ -1302,31 +1303,31 @@ WRITE16_HANDLER( i186_internal_port_w )
 			i186.intr.ext[1] = (i186.intr.ext[1] & ~0x08) | ((data16 >> 2) & 0x08);
 			i186.intr.ext[2] = (i186.intr.ext[2] & ~0x08) | ((data16 >> 3) & 0x08);
 			i186.intr.ext[3] = (i186.intr.ext[3] & ~0x08) | ((data16 >> 4) & 0x08);
-			update_interrupt_state();
+			update_interrupt_state(machine);
 			break;
 
 		case 0x2a:
 			if (LOG_PORTS) logerror("%05X:80186 interrupt priority mask = %04X\n", activecpu_get_pc(), data16);
 			i186.intr.priority_mask = data16 & 0x0007;
-			update_interrupt_state();
+			update_interrupt_state(machine);
 			break;
 
 		case 0x2c:
 			if (LOG_PORTS) logerror("%05X:80186 interrupt in-service = %04X\n", activecpu_get_pc(), data16);
 			i186.intr.in_service = data16 & 0x00ff;
-			update_interrupt_state();
+			update_interrupt_state(machine);
 			break;
 
 		case 0x2e:
 			if (LOG_PORTS) logerror("%05X:80186 interrupt request = %04X\n", activecpu_get_pc(), data16);
 			i186.intr.request = (i186.intr.request & ~0x00c0) | (data16 & 0x00c0);
-			update_interrupt_state();
+			update_interrupt_state(machine);
 			break;
 
 		case 0x30:
 			if (LOG_PORTS) logerror("%05X:WARNING - wrote to 80186 interrupt status = %04X\n", activecpu_get_pc(), data16);
 			i186.intr.status = (i186.intr.status & ~0x8007) | (data16 & 0x8007);
-			update_interrupt_state();
+			update_interrupt_state(machine);
 			break;
 
 		case 0x32:
@@ -1591,7 +1592,7 @@ MACHINE_RESET( compis )
 	compis_fdc_reset();
 
 	/* RTC */
-	mm58274c_init(0, 0);
+	mm58274c_init(machine, 0, 0);
 
 	/* Setup the USART */
 	msm8251_init(&compis_usart_interface);

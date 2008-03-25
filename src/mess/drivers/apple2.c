@@ -183,6 +183,7 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/apple2.h"
 #include "machine/ay3600.h"
 #include "devices/appldriv.h"
@@ -526,102 +527,10 @@ static const rgb_t apple2_palette[] =
 	RGB_WHITE
 };
 
-static const gfx_layout apple2_text_layout =
-{
-	14,8,		/* 14*8 characters */
-	256,		/* 256 characters */
-	1,			/* 1 bits per pixel */
-	{ 0 },		/* no bitplanes; 1 bit per pixel */
-	{ 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7 },   /* x offsets */
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8			/* every char takes 8 bytes */
-};
-
-static const gfx_layout apple2_dbltext_layout =
-{
-	7,8,		/* 7*8 characters */
-	256,		/* 256 characters */
-	1,			/* 1 bits per pixel */
-	{ 0 },		/* no bitplanes; 1 bit per pixel */
-	{ 1, 2, 3, 4, 5, 6, 7 },    /* x offsets */
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8			/* every char takes 8 bytes */
-};
-
-static GFXDECODE_START( apple2 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple2_text_layout, 0, 2 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple2_dbltext_layout, 0, 2 )
-GFXDECODE_END
-
-static const gfx_layout apple2e_text_layout =
-{
-	14,8,		/* 14*8 characters */
-	1024,		/* 256 characters */
-	1,			/* 1 bits per pixel */
-	{ 0 },		/* no bitplanes; 1 bit per pixel */
-	{ 7, 7, 6, 6, 5, 5, 4, 4, 3, 3, 2, 2, 1, 1 },   /* x offsets */
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8			/* every char takes 8 bytes */
-};
-
-static const gfx_layout apple2e_dbltext_layout =
-{
-	7,8,		/* 7*8 characters */
-	1024,		/* 256 characters */
-	1,			/* 1 bits per pixel */
-	{ 0 },		/* no bitplanes; 1 bit per pixel */
-	{ 7, 6, 5, 4, 3, 2, 1 },    /* x offsets */
-	{ 0*8, 1*8, 2*8, 3*8, 4*8, 5*8, 6*8, 7*8 },
-	8*8			/* every char takes 8 bytes */
-};
-
-static GFXDECODE_START( apple2e )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple2e_text_layout, 0, 2 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple2e_dbltext_layout, 0, 2 )
-GFXDECODE_END
-
-static const unsigned short apple2_colortable[] =
-{
-	0,	0,	0,	1,	0,	2,	0,	3,	0,	4,	0,	5,	0,	6,	0,	7,
-	0,	8,	0,	9,	0,	10,	0,	11,	0,	12,	0,	13,	0,	14,	0,	15,
-	1,	0,	1,	1,	1,	2,	1,	3,	1,	4,	1,	5,	1,	6,	1,	7,
-	1,	8,	1,	9,	1,	10,	1,	11,	1,	12,	1,	13,	1,	14,	1,	15,
-	2,	0,	2,	1,	2,	2,	2,	3,	2,	4,	2,	5,	2,	6,	2,	7,
-	2,	8,	2,	9,	2,	10,	2,	11,	2,	12,	2,	13,	2,	14,	2,	15,
-	3,	0,	3,	1,	3,	2,	3,	3,	3,	4,	3,	5,	3,	6,	3,	7,
-	3,	8,	3,	9,	3,	10,	3,	11,	3,	12,	3,	13,	3,	14,	3,	15,
-	4,	0,	4,	1,	4,	2,	4,	3,	4,	4,	4,	5,	4,	6,	4,	7,
-	4,	8,	4,	9,	4,	10,	4,	11,	4,	12,	4,	13,	4,	14,	4,	15,
-	5,	0,	5,	1,	5,	2,	5,	3,	5,	4,	5,	5,	5,	6,	5,	7,
-	5,	8,	5,	9,	5,	10,	5,	11,	5,	12,	5,	13,	5,	14,	5,	15,
-	6,	0,	6,	1,	6,	2,	6,	3,	6,	4,	6,	5,	6,	6,	6,	7,
-	6,	8,	6,	9,	6,	10,	6,	11,	6,	12,	6,	13,	6,	14,	6,	15,
-	7,	0,	7,	1,	7,	2,	7,	3,	7,	4,	7,	5,	7,	6,	7,	7,
-	7,	8,	7,	9,	7,	10,	7,	11,	7,	12,	7,	13,	7,	14,	7,	15,
-	8,	0,	8,	1,	8,	2,	8,	3,	8,	4,	8,	5,	8,	6,	8,	7,
-	8,	8,	8,	9,	8,	10,	8,	11,	8,	12,	8,	13,	8,	14,	8,	15,
-	9,	0,	9,	1,	9,	2,	9,	3,	9,	4,	9,	5,	9,	6,	9,	7,
-	9,	8,	9,	9,	9,	10,	9,	11,	9,	12,	9,	13,	9,	14,	9,	15,
-	10,	0,	10,	1,	10,	2,	10,	3,	10,	4,	10,	5,	10,	6,	10,	7,
-	10,	8,	10,	9,	10,	10,	10,	11,	10,	12,	10,	13,	10,	14,	10,	15,
-	11,	0,	11,	1,	11,	2,	11,	3,	11,	4,	11,	5,	11,	6,	11,	7,
-	11,	8,	11,	9,	11,	10,	11,	11,	11,	12,	11,	13,	11,	14,	11,	15,
-	12,	0,	12,	1,	12,	2,	12,	3,	12,	4,	12,	5,	12,	6,	12,	7,
-	12,	8,	12,	9,	12,	10,	12,	11,	12,	12,	12,	13,	12,	14,	12,	15,
-	13,	0,	13,	1,	13,	2,	13,	3,	13,	4,	13,	5,	13,	6,	13,	7,
-	13,	8,	13,	9,	13,	10,	13,	11,	13,	12,	13,	13,	13,	14,	13,	15,
-	14,	0,	14,	1,	14,	2,	14,	3,	14,	4,	14,	5,	14,	6,	14,	7,
-	14,	8,	14,	9,	14,	10,	14,	11,	14,	12,	14,	13,	14,	14,	14,	15,
-	15,	0,	15,	1,	15,	2,	15,	3,	15,	4,	15,	5,	15,	6,	15,	7,
-	15,	8,	15,	9,	15,	10,	15,	11,	15,	12,	15,	13,	15,	14,	15,	15
-};
-
-
 /* Initialize the palette */
 PALETTE_INIT( apple2 )
 {
 	palette_set_colors(machine, 0, apple2_palette, ARRAY_LENGTH(apple2_palette));
-	memcpy(colortable, apple2_colortable, sizeof(apple2_colortable));
 }
 
 static const struct AY8910interface ay8910_interface =
@@ -633,19 +542,18 @@ static MACHINE_DRIVER_START( apple2_common )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, 1021800)		/* close to actual CPU frequency of 1.020484 MHz */
 	MDRV_CPU_PROGRAM_MAP(apple2_map, 0)
-	MDRV_CPU_VBLANK_INT(apple2_interrupt, 192/8)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(apple2_interrupt, 192/8)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( apple2 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(280*2, 192)
 	MDRV_SCREEN_VISIBLE_AREA(0, (280*2)-1,0,192-1)
 	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(apple2_palette))
-	MDRV_COLORTABLE_LENGTH(sizeof(apple2_colortable)/sizeof(unsigned short))
 	MDRV_PALETTE_INIT(apple2)
 
 	MDRV_VIDEO_START(apple2)
@@ -665,20 +573,17 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2 )
 	MDRV_IMPORT_FROM( apple2_common )
-	MDRV_GFXDECODE(apple2)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2p )
 	MDRV_IMPORT_FROM( apple2_common )
 	MDRV_VIDEO_START(apple2p)
-	MDRV_GFXDECODE(apple2)
 MACHINE_DRIVER_END
 
 #ifdef UNUSED_FUNCTION
 static MACHINE_DRIVER_START( ace100 )
 	MDRV_IMPORT_FROM( apple2_common )
 	MDRV_VIDEO_START(apple2p)
-	MDRV_GFXDECODE(apple2)
 MACHINE_DRIVER_END
 #endif
 
@@ -694,7 +599,6 @@ ROM_END
 MACHINE_DRIVER_START( apple2e )
 	MDRV_IMPORT_FROM( apple2_common )
 	MDRV_VIDEO_START(apple2e)
-	MDRV_GFXDECODE(apple2e)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2ee )
@@ -864,22 +768,22 @@ ROM_START(apple2cp)
 ROM_END
 
 
-static void apple2_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void apple2_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 15; break;
-		case DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 16; break;
+		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND:	info->i = 15; break;
+		case MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR:	info->i = 16; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
-		case DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
-		case DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
-		case DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
-		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
-		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
+		case MESS_DEVINFO_STR_NAME+0:						strcpy(info->s = device_temp_str(), "slot6disk1"); break;
+		case MESS_DEVINFO_STR_NAME+1:						strcpy(info->s = device_temp_str(), "slot6disk2"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+0:					strcpy(info->s = device_temp_str(), "s6d1"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+1:					strcpy(info->s = device_temp_str(), "s6d2"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #1"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "Slot 6 Disk #2"); break;
 
 		default:										apple525_device_getinfo(devclass, state, info); break;
 	}

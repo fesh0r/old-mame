@@ -31,7 +31,7 @@
 static ADDRESS_MAP_START( snes_map, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x000000, 0x2fffff) AM_READWRITE(snes_r_bank1, snes_w_bank1)	/* I/O and ROM (repeats for each bank) */
 	AM_RANGE(0x300000, 0x3fffff) AM_READWRITE(snes_r_bank2, snes_w_bank2)	/* I/O and ROM (repeats for each bank) */
-	AM_RANGE(0x400000, 0x5fffff) AM_READWRITE(snes_r_bank3, MWA8_ROM)	/* ROM (and reserved in Mode 20) */
+	AM_RANGE(0x400000, 0x5fffff) AM_READWRITE(snes_r_bank3, SMH_ROM)	/* ROM (and reserved in Mode 20) */
 	AM_RANGE(0x600000, 0x6fffff) AM_READWRITE(snes_r_bank6, snes_w_bank6)	/* used by Mode 20 DSP-1 */
 	AM_RANGE(0x700000, 0x77ffff) AM_READWRITE(snes_r_sram, snes_w_sram)	/* 256KB Mode 20 save ram + reserved from 0x8000 - 0xffff */
 	AM_RANGE(0x780000, 0x7dffff) AM_NOP					/* Reserved */
@@ -41,12 +41,12 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( spc_ram_100_r )
 {
-	return spc_ram_r(offset + 0x100);
+	return spc_ram_r(machine, offset + 0x100);
 }
 
 static WRITE8_HANDLER( spc_ram_100_w )
 {
-	spc_ram_w(offset + 0x100, data);
+	spc_ram_w(machine, offset + 0x100, data);
 }
 
 static ADDRESS_MAP_START( spc_map, ADDRESS_SPACE_PROGRAM, 8)
@@ -158,28 +158,6 @@ INPUT_PORTS_END
 static const struct CustomSound_interface snes_sound_interface =
 { snes_sh_start, 0, 0 };
 
-static GFXDECODE_START( snes )
-GFXDECODE_END
-
-static PALETTE_INIT( snes )
-{
-	int i, r, g, b;
-
-	for( i = 0; i < 32768; i++ )
-	{
-		r = (i & 0x1F) << 3;
-		g = ((i >> 5) & 0x1F) << 3;
-		b = ((i >> 10) & 0x1F) << 3;
-		palette_set_color_rgb(machine,  i, r, g, b );
-	}
-
-	/* The colortable can be black */
-	for( i = 0; i < 256; i++ )
-		colortable[i] = 0;
-}
-
-
-
 /* Loads the battery backed RAM into the appropriate memory area */
 static void snes_load_sram(void)
 {
@@ -259,6 +237,7 @@ static MACHINE_START( snes_mess )
 static int device_load_snes_cart(mess_image *image)
 {
 	int i;
+	running_machine *machine = Machine;
 	UINT16 totalblocks, readblocks;
 	UINT32 offset;
 	UINT8 header[512], sample[0xffff];
@@ -306,7 +285,7 @@ static int device_load_snes_cart(mess_image *image)
 		"UNKNOWN"
 	};
 
-	new_memory_region(Machine, REGION_CPU1, 0x1000000,0);
+	new_memory_region(machine, REGION_CPU1, 0x1000000,0);
 
 	snes_ram = memory_region( REGION_CPU1 );
 	memset( snes_ram, 0, 0x1000000 );
@@ -406,7 +385,7 @@ static int device_load_snes_cart(mess_image *image)
 	}
 
 	/* Find the amount of sram */
-	snes_cart.sram = snes_r_bank1(0x00ffd8);
+	snes_cart.sram = snes_r_bank1(machine, 0x00ffd8);
 	if( snes_cart.sram > 0 )
 	{
 		snes_cart.sram = ((1 << (snes_cart.sram + 3)) / 8);
@@ -422,35 +401,35 @@ static int device_load_snes_cart(mess_image *image)
 		logerror( "\tTotal blocks:  %d (%dmb)\n", totalblocks, totalblocks / (snes_cart.mode == SNES_MODE_20 ? 32 : 16) );
 		logerror( "\tROM bank size: %s (LoROM: %d , HiROM: %d)\n", (snes_cart.mode == SNES_MODE_20) ? "LoROM" : "HiROM", valid_mode20, valid_mode21 );
 		for( i = 0; i < 2; i++ )
-			companyid[i] = snes_r_bank1(0x00ffb0 + i);
+			companyid[i] = snes_r_bank1(machine, 0x00ffb0 + i);
 		logerror( "\tCompany ID:    %s\n", companyid );
 		for( i = 0; i < 4; i++ )
-			romid[i] = snes_r_bank1(0x00ffb2 + i);
+			romid[i] = snes_r_bank1(machine, 0x00ffb2 + i);
 		logerror( "\tROM ID:        %s\n", romid );
 		logerror( "HEADER DETAILS\n" );
 		for( i = 0; i < 21; i++ )
-			title[i] = snes_r_bank1(0x00ffc0 + i);
+			title[i] = snes_r_bank1(machine, 0x00ffc0 + i);
 		logerror( "\tName:          %s\n", title );
-		logerror( "\tSpeed:         %s [%d]\n", ((snes_r_bank1(0x00ffd5) & 0xf0)) ? "FastROM" : "SlowROM", (snes_r_bank1(0x00ffd5) & 0xf0) >> 4 );
-		logerror( "\tBank size:     %s [%d]\n", (snes_r_bank1(0x00ffd5) & 0xf) ? "HiROM" : "LoROM", snes_r_bank1(0x00ffd5) & 0xf );
+		logerror( "\tSpeed:         %s [%d]\n", ((snes_r_bank1(machine, 0x00ffd5) & 0xf0)) ? "FastROM" : "SlowROM", (snes_r_bank1(machine, 0x00ffd5) & 0xf0) >> 4 );
+		logerror( "\tBank size:     %s [%d]\n", (snes_r_bank1(machine, 0x00ffd5) & 0xf) ? "HiROM" : "LoROM", snes_r_bank1(machine, 0x00ffd5) & 0xf );
 		for( i = 0; i < 12; i++ )
 		{
-			if( CartTypes[i].Code == snes_r_bank1(0x00ffd6) )
+			if( CartTypes[i].Code == snes_r_bank1(machine, 0x00ffd6) )
 				break;
 		}
-		logerror( "\tType:          %s [%d]\n", CartTypes[i].Name, snes_r_bank1(0x00ffd6) );
-		logerror( "\tSize:          %d megabits [%d]\n", 1 << (snes_r_bank1(0x00ffd7) - 7), snes_r_bank1(0x00ffd7) );
+		logerror( "\tType:          %s [%d]\n", CartTypes[i].Name, snes_r_bank1(machine, 0x00ffd6) );
+		logerror( "\tSize:          %d megabits [%d]\n", 1 << (snes_r_bank1(machine, 0x00ffd7) - 7), snes_r_bank1(machine, 0x00ffd7) );
 		logerror( "\tSRAM:          %d kilobits [%d]\n", snes_cart.sram * 8, snes_ram[0xffd8] );
-		country = snes_r_bank1(0x00ffd9);
+		country = snes_r_bank1(machine, 0x00ffd9);
 		if( country > 14 )
 			country = 14;
-		logerror( "\tCountry:       %s [%d]\n", countries[country], snes_r_bank1(0x00ffd9) );
-		logerror( "\tLicense:       %s [%X]\n", "", snes_r_bank1(0x00ffda) );
-		logerror( "\tVersion:       1.%d\n", snes_r_bank1(0x00ffdb) );
-		logerror( "\tInv Checksum:  %X %X\n", snes_r_bank1(0x00ffdd), snes_r_bank1(0x00ffdc) );
-		logerror( "\tChecksum:      %X %X\n", snes_r_bank1(0x00ffdf), snes_r_bank1(0x00ffde) );
-		logerror( "\tNMI Address:   %2X%2Xh\n", snes_r_bank1(0x00fffb), snes_r_bank1(0x00fffa) );
-		logerror( "\tStart Address: %2X%2Xh\n", snes_r_bank1(0x00fffd), snes_r_bank1(0x00fffc) );
+		logerror( "\tCountry:       %s [%d]\n", countries[country], snes_r_bank1(machine, 0x00ffd9) );
+		logerror( "\tLicense:       %s [%X]\n", "", snes_r_bank1(machine, 0x00ffda) );
+		logerror( "\tVersion:       1.%d\n", snes_r_bank1(machine, 0x00ffdb) );
+		logerror( "\tInv Checksum:  %X %X\n", snes_r_bank1(machine, 0x00ffdd), snes_r_bank1(machine, 0x00ffdc) );
+		logerror( "\tChecksum:      %X %X\n", snes_r_bank1(machine, 0x00ffdf), snes_r_bank1(machine, 0x00ffde) );
+		logerror( "\tNMI Address:   %2X%2Xh\n", snes_r_bank1(machine, 0x00fffb), snes_r_bank1(machine, 0x00fffa) );
+		logerror( "\tStart Address: %2X%2Xh\n", snes_r_bank1(machine, 0x00fffd), snes_r_bank1(machine, 0x00fffc) );
 	}
 
 	/* Load SRAM */
@@ -468,7 +447,7 @@ static MACHINE_DRIVER_START( snes )
 
 	MDRV_CPU_ADD_TAG("sound", SPC700, 1024000)	/* 1.024 Mhz */
 	MDRV_CPU_PROGRAM_MAP(spc_map, 0)
-	MDRV_CPU_VBLANK_INT(NULL, 0)
+	MDRV_CPU_VBLANK_INT_HACK(NULL, 0)
 
 	MDRV_INTERLEAVE(800)
 
@@ -479,14 +458,9 @@ static MACHINE_DRIVER_START( snes )
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( snes )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_GFXDECODE(snes)
-	MDRV_PALETTE_LENGTH(32768)
-	MDRV_COLORTABLE_LENGTH(257)
-	MDRV_PALETTE_INIT( snes )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 
-	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_RAW_PARAMS(DOTCLK_NTSC, SNES_HTOTAL, 0, SNES_SCR_WIDTH, SNES_VTOTAL_NTSC, 0, SNES_SCR_HEIGHT_NTSC)
 
 	/* sound hardware */
@@ -505,20 +479,20 @@ static MACHINE_DRIVER_START( snespal )
 	MDRV_SCREEN_RAW_PARAMS(DOTCLK_PAL, SNES_HTOTAL, 0, SNES_SCR_WIDTH, SNES_VTOTAL_PAL, 0, SNES_SCR_HEIGHT_PAL)
 MACHINE_DRIVER_END
 
-static void snes_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void snes_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_snes_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_snes_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "smc,sfc,fig,swc"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "smc,sfc,fig,swc"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}

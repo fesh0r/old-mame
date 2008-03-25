@@ -2,8 +2,6 @@
  PeT mess@utanet.at 2001
 ******************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
-
 #include "includes/arcadia.h"
 
 /* TODO: implement the RESET key on the front panel
@@ -516,7 +514,7 @@ static struct {
 	    UINT8 ram3[3][16];
 	} d;
     } reg;
-	mame_bitmap *bitmap;
+	bitmap_t *bitmap;
 } arcadia_video={ 0 };
 
 VIDEO_START( arcadia )
@@ -536,7 +534,12 @@ VIDEO_START( arcadia )
 		arcadia_rectangle[i][5]=arcadia_rectangle[i][6]=arcadia_rectangle[i][7]=arcadia_rectangle[i][4];
 	}
 
-	arcadia_video.bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	{
+		const device_config *screen = video_screen_first(machine->config);
+		int width = video_screen_get_width(screen);
+		int height = video_screen_get_height(screen);
+		arcadia_video.bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
+	}
 }
 
 READ8_HANDLER(arcadia_video_r)
@@ -599,12 +602,12 @@ WRITE8_HANDLER(arcadia_video_w)
 	break;
     case 0xfd:
 	arcadia_video.reg.data[offset]=data;
-	arcadia_soundport_w(offset&3, data);
+	arcadia_soundport_w(machine, offset&3, data);
 	arcadia_video.multicolor=data&0x80;
 	break;
     case 0xfe:
 	arcadia_video.reg.data[offset]=data;
-	arcadia_soundport_w(offset&3, data);
+	arcadia_soundport_w(machine, offset&3, data);
 	arcadia_video.shift=(data>>5);
 	break;
     case 0xf0: case 0xf2: case 0xf4: case 0xf6:
@@ -641,7 +644,7 @@ WRITE8_HANDLER(arcadia_video_w)
     }
 }
 
-INLINE void arcadia_draw_char(mame_bitmap *bitmap, UINT8 *ch, int color,
+INLINE void arcadia_draw_char(running_machine *machine, bitmap_t *bitmap, UINT8 *ch, int color,
 			      int y, int x)
 {
 	/* 7-Sep-2007 - whomever wrote this crap code was dynamically remapping
@@ -652,15 +655,15 @@ INLINE void arcadia_draw_char(mame_bitmap *bitmap, UINT8 *ch, int color,
 	int c;
 	if (color&0x40) c=arcadia_video.reg.d.pal[1];
 	else c=arcadia_video.reg.d.pal[0];
-	/*Machine->gfx[0]->colortable[1]=Machine->pens[(c>>3)&7];*/
+	/*imachine->gfx[0]->colortable[1]=(c>>3)&7;*/
 
 	if (color&0x80) c=arcadia_video.reg.d.pal[1];
 	else c=arcadia_video.reg.d.pal[0];
-	/*Machine->gfx[0]->colortable[0]=Machine->pens[c&7];*/
+	/*machine->gfx[0]->colortable[0]=c&7;*/
 
     } else {
-	/*Machine->gfx[0]->colortable[1]=
-	    Machine->pens[((arcadia_video.reg.d.pal[1]>>3)&1)|((color>>5)&6)];*/
+	/*machine->gfx[0]->colortable[1]=
+	    ((arcadia_video.reg.d.pal[1]>>3)&1)|((color>>5)&6);*/
     }
 
     if (arcadia_video.doublescan) {
@@ -672,10 +675,10 @@ INLINE void arcadia_draw_char(mame_bitmap *bitmap, UINT8 *ch, int color,
             if (y+1<bitmap->height) {
                 arcadia_video.bg[y+1][x>>3]|=b>>(x&7);
                 arcadia_video.bg[y+1][(x>>3)+1]|=b<<(8-(x&7));
-                drawgfx(bitmap, Machine->gfx[0], b,0,
+                drawgfx(bitmap, machine->gfx[0], b,0,
                         0,0,x,y,
                         0, TRANSPARENCY_NONE,0);
-                drawgfx(bitmap, Machine->gfx[0], b,0,
+                drawgfx(bitmap, machine->gfx[0], b,0,
                         0,0,x,y+1,
                         0, TRANSPARENCY_NONE,0);
             }
@@ -686,14 +689,14 @@ INLINE void arcadia_draw_char(mame_bitmap *bitmap, UINT8 *ch, int color,
             arcadia_video.bg[y][x>>3]|=b>>(x&7);
 	    arcadia_video.bg[y][(x>>3)+1]|=b<<(8-(x&7));
 
-	    drawgfx(bitmap, Machine->gfx[0], b,0,
+	    drawgfx(bitmap, machine->gfx[0], b,0,
 		    0,0,x,y,
 		    0, TRANSPARENCY_NONE,0);
 	}
     }
 }
 
-INLINE void arcadia_vh_draw_line(mame_bitmap *bitmap,
+INLINE void arcadia_vh_draw_line(running_machine *machine, bitmap_t *bitmap,
 				 int y, UINT8 chars1[16])
 {
     int x, ch, j, h;
@@ -701,7 +704,7 @@ INLINE void arcadia_vh_draw_line(mame_bitmap *bitmap,
     h=arcadia_video.doublescan?16:8;
 
     if (bitmap->height-arcadia_video.line<h) h=bitmap->height-arcadia_video.line;
-    plot_box(bitmap, 0, y, bitmap->width, h, Machine->remapped_colortable[Machine->gfx[0]->color_base + 0]);
+    plot_box(bitmap, 0, y, bitmap->width, h, 0);
     memset(arcadia_video.bg[y], 0, sizeof(arcadia_video.bg[0])*h);
     for (x=XPOS+arcadia_video.shift, j=0; j<16;j++,x+=8) {
 	ch=chars1[j];
@@ -717,9 +720,9 @@ INLINE void arcadia_vh_draw_line(mame_bitmap *bitmap,
 	    }
 	}
 	if (graphics)
-	    arcadia_draw_char(bitmap, arcadia_rectangle[ch&0x3f], ch, y, x);
+	    arcadia_draw_char(machine, bitmap, arcadia_rectangle[ch&0x3f], ch, y, x);
 	else
-	    arcadia_draw_char(bitmap, chars[ch&0x3f], ch, y, x);
+	    arcadia_draw_char(machine, bitmap, chars[ch&0x3f], ch, y, x);
     }
 }
 
@@ -741,7 +744,7 @@ static int arcadia_sprite_collision(int n1, int n2)
     return FALSE;
 }
 
-static void arcadia_draw_sprites(mame_bitmap *bitmap)
+static void arcadia_draw_sprites(running_machine *machine, bitmap_t *bitmap)
 {
     int i, k, x, y;
     UINT8 b;
@@ -760,19 +763,19 @@ static void arcadia_draw_sprites(mame_bitmap *bitmap)
 	 * to survive the 0.118u5 transition */
 	switch (i) {
 	case 0:
-	    /*Machine->gfx[0]->colortable[1]=Machine->pens[(arcadia_video.reg.d.pal[3]>>3)&7];*/
+	    /*machine->gfx[0]->colortable[1]=(arcadia_video.reg.d.pal[3]>>3)&7;*/
 	    doublescan=arcadia_video.reg.d.pal[3]&0x80?FALSE:TRUE;
 	    break;
 	case 1:
-	    /*Machine->gfx[0]->colortable[1]=Machine->pens[arcadia_video.reg.d.pal[3]&7];*/
+	    /*machine->gfx[0]->colortable[1]=arcadia_video.reg.d.pal[3]&7;*/
 	    doublescan=arcadia_video.reg.d.pal[3]&0x40?FALSE:TRUE;
 	    break;
 	case 2:
-	    /*Machine->gfx[0]->colortable[1]=Machine->pens[(arcadia_video.reg.d.pal[2]>>3)&7];*/
+	    /*machine->gfx[0]->colortable[1]=(arcadia_video.reg.d.pal[2]>>3)&7;*/
 	    doublescan=arcadia_video.reg.d.pal[2]&0x80?FALSE:TRUE;
 	    break;
 	case 3:
-	    /*Machine->gfx[0]->colortable[1]=Machine->pens[arcadia_video.reg.d.pal[2]&7];*/
+	    /*machine->gfx[0]->colortable[1]=arcadia_video.reg.d.pal[2]&7;*/
 	    doublescan=arcadia_video.reg.d.pal[2]&0x40?FALSE:TRUE;
 	    break;
 	}
@@ -781,15 +784,15 @@ static void arcadia_draw_sprites(mame_bitmap *bitmap)
 	    x=arcadia_video.pos[i].x+XPOS;
 	    if (!doublescan) {
 		y=arcadia_video.pos[i].y+YPOS+k;
-		drawgfx(bitmap, Machine->gfx[0], b,0,
+		drawgfx(bitmap, machine->gfx[0], b,0,
 			0,0,x,y,
 			0, TRANSPARENCY_PEN,0);
 	    } else {
 		y=arcadia_video.pos[i].y+YPOS+k*2;
-		drawgfx(bitmap, Machine->gfx[0], b,0,
+		drawgfx(bitmap, machine->gfx[0], b,0,
 			0,0,x,y,
 			0, TRANSPARENCY_PEN,0);
-		drawgfx(bitmap, Machine->gfx[0], b,0,
+		drawgfx(bitmap, machine->gfx[0], b,0,
 			0,0,x,y+1,
 			0, TRANSPARENCY_PEN,0);
 	    }
@@ -810,6 +813,9 @@ static void arcadia_draw_sprites(mame_bitmap *bitmap)
 
 INTERRUPT_GEN( arcadia_video_line )
 {
+	const device_config *screen = video_screen_first(machine->config);
+	int width = video_screen_get_width(screen);
+
 	if (arcadia_video.ad_delay<=0)
 	arcadia_video.ad_select=arcadia_video.reg.d.pal[1]&0x40;
 	else arcadia_video.ad_delay--;
@@ -822,11 +828,11 @@ INTERRUPT_GEN( arcadia_video_line )
 	/* 7-Sep-2007 - whomever wrote this crap code was dynamically remapping
 	 * the color table, a vile gross hack.  Doesn't look like this is going
 	 * to survive the 0.118u5 transition */
-	/*machine->gfx[0]->colortable[0]=machine->pens[arcadia_video.reg.d.pal[1]&7];*/
+	/*machine->gfx[0]->colortable[0]=arcadia_video.reg.d.pal[1]&7;*/
 
 	if (arcadia_video.line<arcadia_video.ypos)
 	{
-		plot_box(arcadia_video.bitmap, 0, arcadia_video.line, machine->screen[0].width, 1, machine->remapped_colortable[machine->gfx[0]->color_base + 0]);
+		plot_box(arcadia_video.bitmap, 0, arcadia_video.line, width, 1, 0);
 		memset(arcadia_video.bg[arcadia_video.line], 0, sizeof(arcadia_video.bg[0]));
 	}
 	else
@@ -838,7 +844,7 @@ INTERRUPT_GEN( arcadia_video_line )
 		if (arcadia_video.charline<13)
 		{
 			if (((arcadia_video.line-arcadia_video.ypos)&(h-1))==0) {
-				arcadia_vh_draw_line(arcadia_video.bitmap, arcadia_video.charline*h+arcadia_video.ypos,
+				arcadia_vh_draw_line(machine, arcadia_video.bitmap, arcadia_video.charline*h+arcadia_video.ypos,
 					arcadia_video.reg.d.chars1[arcadia_video.charline]);
 			}
 		}
@@ -846,7 +852,7 @@ INTERRUPT_GEN( arcadia_video_line )
 		{
 			if (((arcadia_video.line-arcadia_video.ypos)&(h-1))==0)
 			{
-				arcadia_vh_draw_line(arcadia_video.bitmap, arcadia_video.charline*h+arcadia_video.ypos,
+				arcadia_vh_draw_line(machine, arcadia_video.bitmap, arcadia_video.charline*h+arcadia_video.ypos,
 					arcadia_video.reg.d.chars2[arcadia_video.charline-13]);
 			}
 			arcadia_video.charline-=13;
@@ -854,12 +860,12 @@ INTERRUPT_GEN( arcadia_video_line )
 		else
 		{
 			arcadia_video.charline=0xd;
-			plot_box(arcadia_video.bitmap, 0, arcadia_video.line, machine->screen[0].width, 1, machine->remapped_colortable[machine->gfx[0]->color_base + 0]);
+			plot_box(arcadia_video.bitmap, 0, arcadia_video.line, width, 1, 0);
 			memset(arcadia_video.bg[arcadia_video.line], 0, sizeof(arcadia_video.bg[0]));
 		}
 	}
 	if (arcadia_video.line==261)
-		arcadia_draw_sprites(arcadia_video.bitmap);
+		arcadia_draw_sprites(machine, arcadia_video.bitmap);
 }
 
 READ8_HANDLER(arcadia_vsync_r)

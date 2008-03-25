@@ -46,28 +46,28 @@ static READ8_HANDLER(kc85_4_port_r)
 	switch (port)
 	{
 //      case 0x080:
-//          return kc85_module_r(offset);
+//          return kc85_module_r(machine, offset);
 
 		case 0x085:
 		case 0x084:
-			return kc85_4_84_r(offset);
+			return kc85_4_84_r(machine, offset);
 
 
 		case 0x086:
 		case 0x087:
-			return kc85_4_86_r(offset);
+			return kc85_4_86_r(machine, offset);
 
 		case 0x088:
 		case 0x089:
-			return kc85_pio_data_r(port-0x088);
+			return kc85_pio_data_r(machine, port-0x088);
 		case 0x08a:
 		case 0x08b:
-			return kc85_pio_control_r(port-0x08a);
+			return kc85_pio_control_r(machine, port-0x08a);
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(port-0x08c);
+			return kc85_ctc_r(machine, port-0x08c);
 
 	}
 
@@ -84,34 +84,34 @@ static WRITE8_HANDLER(kc85_4_port_w)
 	switch (port)
 	{
 //      case 0x080:
-//          kc85_module_w(offset,data);
+//          kc85_module_w(machine, offset,data);
 //          return;
 
 		case 0x085:
 		case 0x084:
-			kc85_4_84_w(offset,data);
+			kc85_4_84_w(machine, offset,data);
 			return;
 
 		case 0x086:
 		case 0x087:
-			kc85_4_86_w(offset,data);
+			kc85_4_86_w(machine, offset,data);
 			return;
 
 		case 0x088:
 		case 0x089:
-			kc85_4_pio_data_w(port-0x088, data);
+			kc85_4_pio_data_w(machine, port-0x088, data);
 			return;
 
 		case 0x08a:
 		case 0x08b:
-			kc85_pio_control_w(port-0x08a, data);
+			kc85_pio_control_w(machine, port-0x08a, data);
 			return;
 
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(port-0x08c, data);
+			kc85_ctc_w(machine, port-0x08c, data);
 			return;
 	}
 
@@ -120,7 +120,7 @@ static WRITE8_HANDLER(kc85_4_port_w)
 
 
 static ADDRESS_MAP_START(kc85_4_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x0000, 0x0ffff) AM_READWRITE( kc85_4_port_r, kc85_4_port_w )
 ADDRESS_MAP_END
 
@@ -135,33 +135,33 @@ static  READ8_HANDLER(kc85_4d_port_r)
 	switch (port)
 	{
 		case 0x080:
-			return kc85_module_r(offset);
+			return kc85_module_r(machine, offset);
 
 		case 0x085:
 		case 0x084:
-			return kc85_4_84_r(offset);
+			return kc85_4_84_r(machine, offset);
 
 
 		case 0x086:
 		case 0x087:
-			return kc85_4_86_r(offset);
+			return kc85_4_86_r(machine, offset);
 
 		case 0x088:
 		case 0x089:
-			return kc85_pio_data_r(port-0x088);
+			return kc85_pio_data_r(machine, port-0x088);
 		case 0x08a:
 		case 0x08b:
-			return kc85_pio_control_r(port-0x08a);
+			return kc85_pio_control_r(machine, port-0x08a);
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(port-0x08c);
+			return kc85_ctc_r(machine, port-0x08c);
 		case 0x0f0:
 		case 0x0f1:
 		case 0x0f2:
 		case 0x0f3:
-			return kc85_disc_interface_ram_r(offset);
+			return kc85_disc_interface_ram_r(machine, offset);
 
 	}
 
@@ -225,21 +225,21 @@ ADDRESS_MAP_END
 #endif
 
 static ADDRESS_MAP_START(kc85_4_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK7)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK8)
-	AM_RANGE(0x8000, 0xa7ff) AM_READWRITE(MRA8_BANK3, MWA8_BANK9)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK7)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK8)
+	AM_RANGE(0x8000, 0xa7ff) AM_READWRITE(SMH_BANK3, SMH_BANK9)
 //  AM_RANGE(0xa800, 0xbfff) AM_RAM
-	AM_RANGE(0xa800, 0xbfff) AM_READWRITE(MRA8_BANK4, MWA8_BANK10)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_BANK5)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_BANK6)
+	AM_RANGE(0xa800, 0xbfff) AM_READWRITE(SMH_BANK4, SMH_BANK10)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_BANK5)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_BANK6)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(kc85_3_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK6)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK7)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK8)
-	AM_RANGE(0xc000, 0xdfff) AM_READ(MRA8_BANK4)
-	AM_RANGE(0xe000, 0xffff) AM_READ(MRA8_BANK5)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK6)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK7)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_BANK8)
+	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_BANK4)
+	AM_RANGE(0xe000, 0xffff) AM_READ(SMH_BANK5)
 ADDRESS_MAP_END
 
 static READ8_HANDLER(kc85_3_port_r)
@@ -255,15 +255,15 @@ static READ8_HANDLER(kc85_3_port_r)
 
 		case 0x088:
 		case 0x089:
-			return kc85_pio_data_r(port-0x088);
+			return kc85_pio_data_r(machine, port-0x088);
 		case 0x08a:
 		case 0x08b:
-			return kc85_pio_control_r(port-0x08a);
+			return kc85_pio_control_r(machine, port-0x08a);
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			return kc85_ctc_r(port-0x08c);
+			return kc85_ctc_r(machine, port-0x08c);
 	}
 
 	logerror("unhandled port r: %04x\n",offset);
@@ -284,19 +284,19 @@ static WRITE8_HANDLER(kc85_3_port_w)
 
 		case 0x088:
 		case 0x089:
-			kc85_3_pio_data_w(port-0x088, data);
+			kc85_3_pio_data_w(machine, port-0x088, data);
 			return;
 
 		case 0x08a:
 		case 0x08b:
-			kc85_pio_control_w(port-0x08a, data);
+			kc85_pio_control_w(machine, port-0x08a, data);
 			return;
 
 		case 0x08c:
 		case 0x08d:
 		case 0x08e:
 		case 0x08f:
-			kc85_ctc_w(port-0x08c, data);
+			kc85_ctc_w(machine, port-0x08c, data);
 			return;
 	}
 
@@ -305,7 +305,7 @@ static WRITE8_HANDLER(kc85_3_port_w)
 
 
 static ADDRESS_MAP_START(kc85_3_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x0000, 0x0ffff) AM_READWRITE(kc85_3_port_r, kc85_3_port_w)
 ADDRESS_MAP_END
 
@@ -328,7 +328,7 @@ static ADDRESS_MAP_START(kc85_disc_hw_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0f1, 0x0f1) AM_READWRITE(nec765_data_r, nec765_data_w)
 	AM_RANGE(0x0f2, 0x0f3) AM_READWRITE(nec765_dack_r, nec765_dack_w)
 	AM_RANGE(0x0f4, 0x0f5) AM_READ(kc85_disc_hw_input_gate_r)
-	/*{0x0f6, 0x0f7, MRA8_NOP},*/		/* for controller */
+	/*{0x0f6, 0x0f7, SMH_NOP},*/		/* for controller */
 	AM_RANGE(0x0f8, 0x0f9) AM_WRITE( kc85_disc_hw_terminal_count_w) /* terminal count */
 	AM_RANGE(0x0fc, 0x0ff) AM_READWRITE(kc85_disk_hw_ctc_r, kc85_disk_hw_ctc_w)
 ADDRESS_MAP_END
@@ -347,19 +347,18 @@ static MACHINE_DRIVER_START( kc85_3 )
 	MDRV_CPU_PROGRAM_MAP(kc85_3_mem, 0)
 	MDRV_CPU_IO_MAP(kc85_3_io, 0)
 	MDRV_CPU_CONFIG(kc85_daisy_chain)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( kc85_3 )
 
-    /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(KC85_SCREEN_WIDTH, KC85_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, (KC85_SCREEN_WIDTH - 1), 0, (KC85_SCREEN_HEIGHT - 1))
 	MDRV_PALETTE_LENGTH(KC85_PALETTE_SIZE)
-	MDRV_COLORTABLE_LENGTH(KC85_PALETTE_SIZE)
 	MDRV_PALETTE_INIT( kc85 )
 
 	MDRV_VIDEO_START( kc85_3 )
@@ -421,28 +420,28 @@ ROM_START(kc85_3)
 	ROM_LOAD("caos__e0.853", 0x12000, 0x2000, CRC(52bc2199) SHA1(207d3e1c4ebf82ac7553ed0a0850b627b9796d4b))
 ROM_END
 
-static void kc85_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void kc85_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void kc85_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void kc85_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "kcc"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "kcc"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_kc; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_kc; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
@@ -454,19 +453,19 @@ SYSTEM_CONFIG_START(kc85)
 	CONFIG_DEVICE(kc85_quickload_getinfo)
 SYSTEM_CONFIG_END
 
-static void kc85d_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void kc85d_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_kc85_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_kc85_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}

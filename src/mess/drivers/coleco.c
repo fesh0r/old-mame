@@ -63,12 +63,12 @@
 
 READ8_HANDLER(coleco_video_r)
 {
-    return ((offset & 0x01) ? TMS9928A_register_r(1) : TMS9928A_vram_r(0));
+    return ((offset & 0x01) ? TMS9928A_register_r(machine, 1) : TMS9928A_vram_r(machine, 0));
 }
 
 WRITE8_HANDLER(coleco_video_w)
 {
-    (offset & 0x01) ? TMS9928A_register_w(1, data) : TMS9928A_vram_w(0, data);
+    (offset & 0x01) ? TMS9928A_register_w(machine, 1, data) : TMS9928A_vram_w(machine, 0, data);
 }
 
 static ADDRESS_MAP_START( coleco_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -79,7 +79,7 @@ static ADDRESS_MAP_START( coleco_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( coleco_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x80, 0x9f) AM_WRITE(coleco_paddle_toggle_off)
 	AM_RANGE(0xa0, 0xbf) AM_READWRITE(coleco_video_r, coleco_video_w)
 	AM_RANGE(0xc0, 0xdf) AM_WRITE(coleco_paddle_toggle_on)
@@ -237,15 +237,16 @@ static MACHINE_DRIVER_START( coleco )
 	MDRV_CPU_ADD(Z80, 7159090/2)	// 3.579545 MHz
 	MDRV_CPU_PROGRAM_MAP(coleco_map, 0)
 	MDRV_CPU_IO_MAP(coleco_io_map, 0)
-	MDRV_CPU_VBLANK_INT(coleco_interrupt, 1)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", coleco_interrupt)
 
 	MDRV_MACHINE_START(coleco)
 	MDRV_MACHINE_RESET(coleco)
 
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -272,13 +273,13 @@ ROM_START (colecob)
 	ROM_CART_LOAD(0, "rom,col,bin", 0x8000, 0x8000, ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
-static void coleco_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void coleco_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_VERIFY:						info->imgverify = coleco_cart_verify; break;
+		case MESS_DEVINFO_PTR_VERIFY:						info->imgverify = coleco_cart_verify; break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}

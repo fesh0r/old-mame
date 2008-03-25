@@ -168,7 +168,7 @@ static MACHINE_DRIVER_START( tmc2000e )
 
 	// basic system hardware
 
-	MDRV_CPU_ADD(CDP1802, CDP1864_CLK_FREQ)	// 1.75 MHz
+	MDRV_CPU_ADD(CDP1802, XTAL_1_75MHz)
 	MDRV_CPU_PROGRAM_MAP(tmc2000e_map, 0)
 	MDRV_CPU_IO_MAP(tmc2000e_io_map, 0)
 	MDRV_CPU_CONFIG(tmc2000e_config)
@@ -178,8 +178,7 @@ static MACHINE_DRIVER_START( tmc2000e )
 
 	// video hardware
 
-	MDRV_SCREEN_ADD("main", 0)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
 
 	MDRV_VIDEO_START(cdp1864)
@@ -204,43 +203,43 @@ ROM_END
 
 /* System Configuration */
 
-static void tmc2000e_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tmc2000e_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void tmc2000e_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tmc2000e_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_basicdsk_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_basicdsk_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void tmc2000e_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tmc2000e_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}

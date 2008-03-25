@@ -31,7 +31,7 @@ static struct
 
 	int data;
 	int motor;
-	write8_handler read_callback;
+	write8_machine_func read_callback;
 
 	int type;						   /* 0 nothing */
 }
@@ -233,7 +233,7 @@ static void vc20_wav_state (void)
 		if (tape.motor && tape.play)
 		{
 			wav.state = 3;
-			timer_adjust(wav.timer, 0, 0, 1.0 / wav.sample->smpfreq);
+			timer_adjust_periodic(wav.timer, 0, 0, 1.0 / wav.sample->smpfreq);
 			break;
 		}
 		if (tape.motor && tape.record)
@@ -885,11 +885,11 @@ static TIMER_CALLBACK(vc20_prg_timer)
 		}
 	}
 	if (tape.read_callback)
-		tape.read_callback (0, tape.data);
+		tape.read_callback (machine, 0, tape.data);
 	vc20_prg_state ();
 }
 
-void vc20_tape_open (write8_handler read_callback)
+void vc20_tape_open (write8_machine_func read_callback)
 {
 	tape.read_callback = read_callback;
 #ifndef NEW_GAMEDRIVER
@@ -1095,20 +1095,20 @@ void vc20_tape_status (char *text, int size)
 
 
 
-void vc20tape_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void vc20tape_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_vc20_tape; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_vc20_tape; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_vc20_tape; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_vc20_tape; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "wav"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "wav"); break;
 	}
 }
 

@@ -9,9 +9,7 @@
 
 ***************************************************************************/
 
-#include <stdarg.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "devices/cassette.h"
 #include "cpu/i8085/i8085.h"
 #include "includes/pmd85.h"
@@ -39,13 +37,13 @@ static void pmd851_update_memory (void)
 {
 	if (pmd85_startup_mem_map)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MWA8_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, MWA8_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, MWA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_NOP);
 
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MRA8_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, MRA8_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_NOP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(3, memory_region(REGION_CPU1) + 0x010000);
@@ -57,14 +55,14 @@ static void pmd851_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MWA8_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, MWA8_BANK3);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, MWA8_BANK4);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MWA8_BANK5);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK5);
 
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, MRA8_BANK2);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, MRA8_BANK4);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x1000);
@@ -79,8 +77,8 @@ static void pmd852a_update_memory (void)
 	if (pmd85_startup_mem_map)
 	{
 
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, MWA8_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(2, mess_ram + 0x9000);
@@ -96,8 +94,8 @@ static void pmd852a_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, MWA8_BANK3);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x1000);
@@ -145,9 +143,9 @@ static void alfa_update_memory (void)
 {
 	if (pmd85_startup_mem_map)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, MWA8_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, MWA8_NOP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, SMH_NOP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x011000);
@@ -158,9 +156,9 @@ static void alfa_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, MWA8_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, MWA8_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, MWA8_BANK3);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, SMH_BANK3);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x1000);
@@ -173,7 +171,7 @@ static void mato_update_memory (void)
 {
 	if (pmd85_startup_mem_map)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_UNMAP);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(2, mess_ram + 0xc000);
@@ -182,7 +180,7 @@ static void mato_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, MWA8_BANK1);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x4000);
@@ -471,7 +469,7 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							return ppi8255_0_r(offset & 0x03);
+							return ppi8255_0_r(machine, offset & 0x03);
 				}
 				break;
 		case 0x08:	/* ROM module connector */
@@ -486,7 +484,7 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 							switch (offset & 0x80)
 							{
 								case 0x80:	/* ROM module 8255 */
-										return ppi8255_3_r(offset & 0x03);
+										return ppi8255_3_r(machine, offset & 0x03);
 							}
 						}
 						break;
@@ -501,16 +499,16 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 								case 0x10:	/* 8251 (casette recorder, V24) */
 										switch (offset & 0x01)
 										{
-											case 0x00: return msm8251_data_r(offset & 0x01);
-											case 0x01: return msm8251_status_r(offset & 0x01);
+											case 0x00: return msm8251_data_r(machine, offset & 0x01);
+											case 0x01: return msm8251_status_r(machine, offset & 0x01);
 										}
 										break;
 								case 0x40:      /* 8255 (GPIO/0, GPIO/1) */
-										return ppi8255_1_r(offset & 0x03);
+										return ppi8255_1_r(machine, offset & 0x03);
 								case 0x50:	/* 8253 */
-										return pit8253_0_r (offset & 0x03);
+										return pit8253_0_r(machine, offset & 0x03);
 								case 0x70:	/* 8255 (IMS-2) */
-										return ppi8255_2_r(offset & 0x03);
+										return ppi8255_2_r(machine, offset & 0x03);
 							}
 							break;
 					case 0x80:	/* external interfaces */
@@ -537,7 +535,7 @@ WRITE8_HANDLER ( pmd85_io_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							ppi8255_0_w(offset & 0x03, data);
+							ppi8255_0_w(machine, offset & 0x03, data);
 							/* PMD-85.3 memory banking */
 							if ((offset & 0x03) == 0x03)
 							{
@@ -559,7 +557,7 @@ WRITE8_HANDLER ( pmd85_io_w )
 							switch (offset & 0x80)
 							{
 								case 0x80:	/* ROM module 8255 */
-										ppi8255_3_w(offset & 0x03, data);
+										ppi8255_3_w(machine, offset & 0x03, data);
 										break;
 							}
 						}
@@ -575,19 +573,19 @@ WRITE8_HANDLER ( pmd85_io_w )
 								case 0x10:	/* 8251 (casette recorder, V24) */
 										switch (offset & 0x01)
 										{
-											case 0x00: msm8251_data_w(offset & 0x01, data); break;
-											case 0x01: msm8251_control_w(offset & 0x01, data); break;
+											case 0x00: msm8251_data_w(machine, offset & 0x01, data); break;
+											case 0x01: msm8251_control_w(machine, offset & 0x01, data); break;
 										}
 										break;
 								case 0x40:      /* 8255 (GPIO/0, GPIO/0) */
-										ppi8255_1_w(offset & 0x03, data);
+										ppi8255_1_w(machine, offset & 0x03, data);
 										break;
 								case 0x50:	/* 8253 */
-										pit8253_0_w (offset & 0x03, data);
+										pit8253_0_w(machine, offset & 0x03, data);
 										logerror ("8253 writing. Address: %02x, Data: %02x\n", offset, data);
 										break;
 								case 0x70:	/* 8255 (IMS-2) */
-										ppi8255_2_w(offset & 0x03, data);
+										ppi8255_2_w(machine, offset & 0x03, data);
 										break;
 							}
 							break;
@@ -621,7 +619,7 @@ WRITE8_HANDLER ( pmd85_io_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							return ppi8255_0_r(offset & 0x03);
+							return ppi8255_0_r(machine, offset & 0x03);
 				}
 				break;
 	}
@@ -644,7 +642,7 @@ WRITE8_HANDLER ( mato_io_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							ppi8255_0_w(offset & 0x03, data);
+							ppi8255_0_w(machine, offset & 0x03, data);
 							break;
 				}
 				break;
@@ -763,30 +761,30 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 static OPBASE_HANDLER(pmd85_opbaseoverride)
 {
 	if (readinputport(0x10)&0x01)
-		mame_schedule_soft_reset(Machine);
+		mame_schedule_soft_reset(machine);
 	return address;
 }
 
 static OPBASE_HANDLER(mato_opbaseoverride)
 {
 	if (readinputport(0x09)&0x01)
-		mame_schedule_soft_reset(Machine);
+		mame_schedule_soft_reset(machine);
 	return address;
 }
 
-static void pmd85_common_driver_init (void)
+static void pmd85_common_driver_init (running_machine *machine)
 {
 	memory_set_opbase_handler(0, pmd85_opbaseoverride);
 
 	pit8253_init(1, &pmd85_pit8253_interface);
-	pit8253_0_gate_w(0, 1);
-	pit8253_0_gate_w(1, 1);
-	pit8253_0_gate_w(2, 1);
+	pit8253_0_gate_w(machine, 0, 1);
+	pit8253_0_gate_w(machine, 1, 1);
+	pit8253_0_gate_w(machine, 2, 1);
 
 	msm8251_init(&pmd85_msm8251_interface);
 
 	pmd85_cassette_timer = timer_alloc(pmd85_cassette_timer_callback, NULL);
-	timer_adjust(pmd85_cassette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(2400));
+	timer_adjust_periodic(pmd85_cassette_timer, attotime_zero, 0, ATTOTIME_IN_HZ(2400));
 
 	serial_connection_init(&pmd85_cassette_serial_connection);
 	serial_connection_set_in_callback(&pmd85_cassette_serial_connection, pmd85_cassette_write);
@@ -799,7 +797,7 @@ DRIVER_INIT ( pmd851 )
 	pmd85_model = PMD85_1;
 	pmd85_update_memory = pmd851_update_memory;
 	ppi8255_init(&pmd85_ppi8255_interface);
-	pmd85_common_driver_init();
+	pmd85_common_driver_init(machine);
 }
 
 DRIVER_INIT ( pmd852a )
@@ -807,7 +805,7 @@ DRIVER_INIT ( pmd852a )
 	pmd85_model = PMD85_2A;
 	pmd85_update_memory = pmd852a_update_memory;
 	ppi8255_init(&pmd85_ppi8255_interface);
-	pmd85_common_driver_init();
+	pmd85_common_driver_init(machine);
 }
 
 DRIVER_INIT ( pmd853 )
@@ -815,7 +813,7 @@ DRIVER_INIT ( pmd853 )
 	pmd85_model = PMD85_3;
 	pmd85_update_memory = pmd853_update_memory;
 	ppi8255_init(&pmd85_ppi8255_interface);
-	pmd85_common_driver_init();
+	pmd85_common_driver_init(machine);
 }
 
 DRIVER_INIT ( alfa )
@@ -823,7 +821,7 @@ DRIVER_INIT ( alfa )
 	pmd85_model = ALFA;
 	pmd85_update_memory = alfa_update_memory;
 	ppi8255_init(&alfa_ppi8255_interface);
-	pmd85_common_driver_init();
+	pmd85_common_driver_init(machine);
 }
 
 DRIVER_INIT ( mato )

@@ -93,7 +93,7 @@ DRIVER_INIT( europc )
 	init_pc_common(PCCOMMON_KEYBOARD_PC | PCCOMMON_DMA8237_PC | PCCOMMON_TIMER_8253);
 
 	europc_rtc_init();
-//	europc_rtc_set_time();
+//	europc_rtc_set_time(machine);
 }
 
 DRIVER_INIT( t1000hx )
@@ -134,8 +134,8 @@ DRIVER_INIT( pc1512 )
     for (i = 0; i < 256; i++)
 		gfx[i] = i;
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0, MRA16_BANK1 );
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0, pc1512_videoram16le_w );
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x0C000, SMH_BANK1 );
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbbfff, 0, 0x0C000, pc1512_videoram16le_w );
 
 	memory_install_read16_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc1512_16le_r );
 	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0x3d0, 0x3df, 0, 0, pc1512_16le_w );
@@ -149,15 +149,15 @@ DRIVER_INIT( pc1512 )
 
 
 
-static void pc_map_vga_memory(offs_t begin, offs_t end, read8_handler rh, write8_handler wh)
+static void pc_map_vga_memory(offs_t begin, offs_t end, read8_machine_func rh, write8_machine_func wh)
 {
 	int buswidth;
-	buswidth = cputype_databus_width(Machine->drv->cpu[0].type, ADDRESS_SPACE_PROGRAM);
+	buswidth = cputype_databus_width(Machine->config->cpu[0].type, ADDRESS_SPACE_PROGRAM);
 	switch(buswidth)
 	{
 		case 8:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, MRA8_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, MWA8_NOP);
+			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
+			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xA0000, 0xBFFFF, 0, 0, SMH_NOP);
 
 			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, rh);
 			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, wh);
@@ -187,13 +187,13 @@ static const struct pc_vga_interface vga_interface =
 DRIVER_INIT( pc1640 )
 {
 	pc_vga_init(&vga_interface, NULL);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, MRA16_BANK1 );
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, MRA16_BANK2 );
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MRA16_BANK3 );
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, SMH_BANK1 );
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, SMH_BANK2 );
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, SMH_BANK3 );
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, MWA16_BANK1 );
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, MWA16_BANK2 );
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, MWA16_BANK3 );
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xaffff, 0, 0, SMH_BANK1 );
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb7fff, 0, 0, SMH_BANK2 );
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb8000, 0xbffff, 0, 0, SMH_BANK3 );
 
 	memory_install_read16_handler(0, ADDRESS_SPACE_IO, 0x3b0, 0x3bf, 0, 0, vga_port16le_03b0_r );
 	memory_install_read16_handler(0, ADDRESS_SPACE_IO, 0x3c0, 0x3cf, 0, 0, paradise_ega16le_03c0_r );
@@ -238,7 +238,6 @@ MACHINE_RESET( pc_cga )
 
 MACHINE_RESET( pc_t1t )
 {
-	pc_t1t_reset();
 	dma8237_reset();
 	cpunum_set_irq_callback(0, pc_irq_callback);
 }
@@ -270,7 +269,7 @@ static void pc_generic_frame_interrupt(void (*pc_timer)(void))
 
 INTERRUPT_GEN( pc_mda_frame_interrupt )
 {
-	pc_generic_frame_interrupt(pc_mda_timer);
+	pc_generic_frame_interrupt(NULL);
 }
 
 INTERRUPT_GEN( pc_cga_frame_interrupt )
@@ -280,7 +279,7 @@ INTERRUPT_GEN( pc_cga_frame_interrupt )
 
 INTERRUPT_GEN( tandy1000_frame_interrupt )
 {
-	pc_generic_frame_interrupt(pc_t1t_timer);
+	pc_generic_frame_interrupt(NULL);
 }
 
 INTERRUPT_GEN( pc_aga_frame_interrupt )

@@ -17,7 +17,6 @@
 *********************************************************************/
 
 #include "driver.h"
-#include "mslegacy.h"
 #include "includes/oric.h"
 #include "machine/centroni.h"
 #include "devices/printer.h"
@@ -46,9 +45,9 @@
     covered by the roms for these interfaces, can be accessed
     if it is enabled.
 
-    MRA8_BANK1,MRA8_BANK2 and MRA8_BANK3 are used for a 16k rom.
-    MRA8_BANK2 and MRA8_BANK3 are used for a 8k rom.
-    MRA8_BANK3 is used for a 2k rom.
+    SMH_BANK1,SMH_BANK2 and SMH_BANK3 are used for a 16k rom.
+    SMH_BANK2 and SMH_BANK3 are used for a 8k rom.
+    SMH_BANK3 is used for a 2k rom.
 
     0x0300-0x03ff is I/O access. It is not defined below because the
     memory is setup dynamically depending on hardware that has been selected (microdisc, jasmin, apple2) etc.
@@ -58,9 +57,9 @@
 
 static ADDRESS_MAP_START(oric_mem, ADDRESS_SPACE_PROGRAM, 8)
     AM_RANGE( 0x0000, 0xbfff) AM_RAM AM_BASE( &oric_ram )
-    AM_RANGE( 0xc000, 0xdfff) AM_READWRITE( MRA8_BANK1, MWA8_BANK5 )
-	AM_RANGE( 0xe000, 0xf7ff) AM_READWRITE( MRA8_BANK2, MWA8_BANK6 )
-	AM_RANGE( 0xf800, 0xffff) AM_READWRITE( MRA8_BANK3, MWA8_BANK7 )
+    AM_RANGE( 0xc000, 0xdfff) AM_READWRITE( SMH_BANK1, SMH_BANK5 )
+	AM_RANGE( 0xe000, 0xf7ff) AM_READWRITE( SMH_BANK2, SMH_BANK6 )
+	AM_RANGE( 0xf800, 0xffff) AM_READWRITE( SMH_BANK3, SMH_BANK7 )
 ADDRESS_MAP_END
 
 /*
@@ -73,7 +72,7 @@ static ADDRESS_MAP_START(telestrat_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE( 0x031c, 0x031f) AM_READWRITE( acia_6551_r, acia_6551_w )
 	AM_RANGE( 0x0320, 0x032f) AM_READWRITE( via_1_r, via_1_w )
 	AM_RANGE( 0x0400, 0xbfff) AM_RAM
-	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( MRA8_BANK1, MWA8_BANK2 )
+	AM_RANGE( 0xc000, 0xffff) AM_READWRITE( SMH_BANK1, SMH_BANK2 )
 ADDRESS_MAP_END
 
 
@@ -419,16 +418,14 @@ static const unsigned char oric_palette[8*3] =
 	0x00, 0xff, 0xff, 0xff, 0xff, 0xff,
 };
 
-static const unsigned short oric_colortable[8] =
-{
-	 0,1,2,3,4,5,6,7
-};
-
 /* Initialise the palette */
 static PALETTE_INIT( oric )
 {
-	palette_set_colors_rgb(machine, 0, oric_palette, sizeof(oric_palette) / 3);
-	memcpy(colortable, oric_colortable,sizeof(oric_colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(oric_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, oric_palette[i*3], oric_palette[i*3+1], oric_palette[i*3+2]);
+	}
 }
 
 
@@ -446,20 +443,19 @@ static MACHINE_DRIVER_START( oric )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, 1000000)
 	MDRV_CPU_PROGRAM_MAP(oric_mem, 0)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( oric )
 	MDRV_MACHINE_RESET( oric )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40*6, 28*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40*6-1, 0, 28*8-1)
 	MDRV_PALETTE_LENGTH(8)
-	MDRV_COLORTABLE_LENGTH(8)
 	MDRV_PALETTE_INIT( oric )
 
 	MDRV_VIDEO_START( oric )
@@ -528,29 +524,29 @@ ROM_START(prav8dda)
     ROM_LOAD_OPTIONAL ("8ddoshi.rom",0x014100, 0x0200, CRC(66309641) SHA1(9c2e82b3c4d385ade6215fcb89f8b92e6fd2bf4b))
 ROM_END
 
-static void oric_common_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void oric_common_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:				info->i = CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:				info->i = CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) oric_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) oric_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void oric_common_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void oric_common_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
@@ -561,25 +557,24 @@ SYSTEM_CONFIG_START(oric_common)
 	CONFIG_DEVICE(oric_common_printer_getinfo)
 SYSTEM_CONFIG_END
 
-static void oric1_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void oric1_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_oric_floppy; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_oric_floppy; break;
-		case DEVINFO_PTR_STATUS:						/* info->status = floppy_status; */ break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_oric_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_oric_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 	}
 }
 
@@ -588,16 +583,16 @@ SYSTEM_CONFIG_START(oric1)
 	CONFIG_DEVICE(oric1_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-static void prav8_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void prav8_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_apple2; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_apple2; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}

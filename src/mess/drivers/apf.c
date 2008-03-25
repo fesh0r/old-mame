@@ -1,5 +1,17 @@
 /******************************************************************************
 
+driver by ?
+
+PeT mess@utanet.at around February 2008:
+ added apfm1000 cartridge loading
+ fixed apfm1000 pads
+ added apf video mode
+
+todo for apf m1000:
+ add exact cpu/video timing. memory controller+6847 memory operations hold cpu
+  (backgammon relies on exact video timing)
+ support special cartridges (basic, space destroyer)
+
  ******************************************************************************/
 #include "driver.h"
 #include "video/m6847.h"
@@ -100,16 +112,16 @@ static WRITE8_HANDLER(apf_m1000_pia_out_b_func)
 	/* multi colour graphics mode */
 	/* 158 = 1001 multi-colour graphics */
 	/* 222 = 1101 mono graphics */
-	//  if (((previous_mode^data) & 0x0f0)!=0)
+	if (((previous_mode^data) & 0x0f0)!=0)
 	{
-		extern UINT8 apf_m6847_attr;
+	  //	  logerror("apf vidmode %02x\n", data);
 
 		/* not sure if this is correct - need to check */
 		apf_m6847_attr = 0x00;
-		if (data & 0x80)	apf_m6847_attr |= M6847_AG;
-		if (data & 0x40)	apf_m6847_attr |= M6847_GM2;
-		if (data & 0x20)	apf_m6847_attr |= M6847_GM1;
-		if (data & 0x10)	apf_m6847_attr |= M6847_GM0;
+       		if (data & 0x80)	apf_m6847_attr |= M6847_AG;
+		if (data & 0x40)	apf_m6847_attr |= M6847_GM0;
+		//		if (data & 0x20)	apf_m6847_attr |= M6847_GM1; //?
+		//		if (data & 0x10)	apf_m6847_attr |= M6847_GM2; //M6847_GM0; //?
 		previous_mode = data;
 	}
 }
@@ -131,9 +143,9 @@ static WRITE8_HANDLER(apf_m1000_pia_out_cb2_func)
 
 unsigned char apf_ints;
 
-void apf_update_ints(void)
+void apf_update_ints(running_machine *machine)
 {
-	cpunum_set_input_line(Machine, 0, 0, apf_ints ? HOLD_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, apf_ints ? HOLD_LINE : CLEAR_LINE);
 }
 
 static void	apf_m1000_irq_a_func(int state)
@@ -147,7 +159,7 @@ static void	apf_m1000_irq_a_func(int state)
 		apf_ints&=~1;
 	}
 
-	apf_update_ints();
+	apf_update_ints(Machine);
 }
 
 
@@ -164,7 +176,7 @@ static void	apf_m1000_irq_b_func(int state)
 		apf_ints&=~2;
 	}
 
-	apf_update_ints();
+	apf_update_ints(Machine);
 
 }
 
@@ -272,7 +284,7 @@ static void	apf_imagination_irq_a_func(int state)
 		apf_ints&=~4;
 	}
 
-	apf_update_ints();
+	apf_update_ints(Machine);
 
 }
 
@@ -287,7 +299,7 @@ static void	apf_imagination_irq_b_func(int state)
 		apf_ints&=~8;
 	}
 
-	apf_update_ints();
+	apf_update_ints(Machine);
 
 }
 
@@ -321,7 +333,7 @@ static MACHINE_START( apf_imagination )
 {
 	pia_config(1,&apf_imagination_pia_interface);
 	apf_common_init();
-	wd17xx_init(WD_TYPE_179X, NULL, NULL);
+	wd17xx_init(machine, WD_TYPE_179X, NULL, NULL);
 }
 
 static MACHINE_START( apf_m1000 )
@@ -354,42 +366,42 @@ static WRITE8_HANDLER(serial_w)
 
 static WRITE8_HANDLER(apf_wd179x_command_w)
 {
-	wd17xx_command_w(offset,~data);
+	wd17xx_command_w(machine, offset,~data);
 }
 
 static WRITE8_HANDLER(apf_wd179x_track_w)
 {
-	wd17xx_track_w(offset,~data);
+	wd17xx_track_w(machine, offset,~data);
 }
 
 static WRITE8_HANDLER(apf_wd179x_sector_w)
 {
-	wd17xx_sector_w(offset,~data);
+	wd17xx_sector_w(machine, offset,~data);
 }
 
 static WRITE8_HANDLER(apf_wd179x_data_w)
 {
-	wd17xx_data_w(offset,~data);
+	wd17xx_data_w(machine, offset,~data);
 }
 
 static READ8_HANDLER(apf_wd179x_status_r)
 {
-	return ~wd17xx_status_r(offset);
+	return ~wd17xx_status_r(machine, offset);
 }
 
 static READ8_HANDLER(apf_wd179x_track_r)
 {
-	return ~wd17xx_track_r(offset);
+	return ~wd17xx_track_r(machine, offset);
 }
 
 static READ8_HANDLER(apf_wd179x_sector_r)
 {
-	return ~wd17xx_sector_r(offset);
+	return ~wd17xx_sector_r(machine, offset);
 }
 
 static READ8_HANDLER(apf_wd179x_data_r)
 {
-	return wd17xx_data_r(offset);
+	return wd17xx_data_r(machine, offset);
 }
 
 static ADDRESS_MAP_START(apf_imagination_map, ADDRESS_SPACE_PROGRAM, 8)
@@ -484,13 +496,13 @@ static INPUT_PORTS_START( apf_m1000 )
 	/* line 1 */
 	PORT_START_TAG("joy1")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_NAME("PAD 1/RIGHT down") PORT_PLAYER(1) PORT_8WAY
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_NAME("PAD 1/RIGHT left?") PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_NAME("PAD 1/RIGHT right") PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_NAME("PAD 1/RIGHT up") PORT_PLAYER(1) PORT_8WAY
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_NAME("PAD 1/RIGHT right?") PORT_PLAYER(1) PORT_8WAY
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_NAME("PAD 1/RIGHT left") PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_NAME("PAD 2/LEFT down") PORT_PLAYER(2) PORT_8WAY
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_NAME("PAD 2/LEFT left?") PORT_PLAYER(2) PORT_8WAY
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_NAME("PAD 2/LEFT right") PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_NAME("PAD 2/LEFT up") PORT_PLAYER(2) PORT_8WAY
-	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_NAME("PAD 2/LEFT right?") PORT_PLAYER(2) PORT_8WAY
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_NAME("PAD 2/LEFT left") PORT_PLAYER(2) PORT_8WAY
 
 	/* line 2 */
 	PORT_START_TAG("joy2")
@@ -514,6 +526,7 @@ static INPUT_PORTS_START( apf_m1000 )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 5") PORT_CODE(KEYCODE_5_PAD) PORT_PLAYER(2)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 8") PORT_CODE(KEYCODE_8_PAD) PORT_PLAYER(2)
 
+//	PORT_INCLUDE( m6847_artifacting ) // breaks apfimag keyboard
 INPUT_PORTS_END
 
 
@@ -619,8 +632,10 @@ INPUT_PORTS_END
 
 static MACHINE_DRIVER_START( apf_imagination )
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M6800, 3750000)        /* 7.8336 Mhz */
+	//	MDRV_CPU_ADD_TAG("main", M6800, 3750000)        /* 7.8336 Mhz, only 6800p type used 1mhz max*/
+	MDRV_CPU_ADD_TAG("main", M6800, 1000000 )        /* backgammon uses timing from vertical interrupt to switch between video modes during frame */
 	MDRV_CPU_PROGRAM_MAP(apf_imagination_map, 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_NTSC_FRAMES_PER_SECOND)
 	MDRV_INTERLEAVE(0)
 
@@ -629,7 +644,6 @@ static MACHINE_DRIVER_START( apf_imagination )
 	/* video hardware */
 	MDRV_VIDEO_START(apf)
 	MDRV_VIDEO_UPDATE(m6847)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
@@ -670,34 +684,34 @@ ROM_START(apfm1000)
 	ROM_CART_LOAD(0, "bin", 0x8000, 0x2000, ROM_OPTIONAL)
 ROM_END
 
-static void apfimag_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void apfimag_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) apf_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) apf_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void apfimag_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void apfimag_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_apfimag_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_apfimag_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "apd"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "apd"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}

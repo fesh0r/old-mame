@@ -37,17 +37,18 @@ static MACHINE_DRIVER_START( lisa )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 5093760)        /* 20.37504 Mhz / 4 */
 	MDRV_CPU_PROGRAM_MAP(lisa_map, 0)
-	MDRV_CPU_VBLANK_INT(lisa_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", lisa_interrupt)
 
 	MDRV_CPU_ADD_TAG("fdc", M6502, 2000000)        /* 16.000 Mhz / 8 in when DIS asserted, 16.000 Mhz / 9 otherwise (?) */
 	MDRV_CPU_PROGRAM_MAP(lisa_fdc_map, 0)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 	MDRV_MACHINE_RESET( lisa )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(880, 380)
 	MDRV_SCREEN_VISIBLE_AREA(0, 720-1, 0, 364-1)
@@ -75,6 +76,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( macxl )
 	MDRV_IMPORT_FROM( lisa210 )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_SIZE(	768/* ???? */, 447/* ???? */)
 	MDRV_SCREEN_VISIBLE_AREA(0, 608-1, 0, 431-1)
 MACHINE_DRIVER_END
@@ -245,13 +247,13 @@ ROM_START( macxl )
 ROM_END
 
 
-static void lisa_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void lisa_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K; break;
+		case MESS_DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K; break;
 
 		default:										sonydriv_device_getinfo(devclass, state, info); break;
 	}

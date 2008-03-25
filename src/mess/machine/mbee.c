@@ -31,14 +31,17 @@ static UINT8 fdc_head = 0;
 static UINT8 fdc_den = 0;
 static UINT8 fdc_status = 0;
 static void pio_interrupt(int state);
-static void mbee_fdc_callback(wd17xx_state_t event, void *param);
-static UINT8 mbee_busnop = 0;
+static void mbee_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 UINT8 *mbee_workram;
 
 static const z80pio_interface pio_intf =
 {
 	pio_interrupt,	/* callback when change interrupt status */
+	NULL,
+	NULL,
+	NULL,
+	NULL,
 	0,				/* portA ready active callback (do not support yet)*/
 	0				/* portB ready active callback (do not support yet)*/
 };
@@ -49,61 +52,27 @@ static void pio_interrupt(int state)
 }
 
 /*
-  NOTE: the original hardware has a "busnop" circuit which is enabled on reset/poweron.
-  It causes all reads to return 0x00 until A15 is asserted (e.g. a read at or above 0x8000).
-  The following stuff emulates that functionality.
+  On reset or power on, a circuit forces rom 8000-8FFF to appear at 0000-0FFF, while ram is disabled.
+  It gets set back to normal on the first attempt to write to memory. (/WR line goes active).
 */
 
-READ8_HANDLER( mbee_lowram_r )
+
+/* after the first 4 bytes have been read from ROM, switch the ram back in */
+static TIMER_CALLBACK( mbee_reset )
 {
-	if (mbee_busnop)
-	{
-		return 0;
-	}
-
-	return mbee_workram[offset];
-}
-
-static OPBASE_HANDLER( mbee_opbase_handler )
-{
-	if (address > 0x7fff)
-	{
-		mbee_busnop = 0;
-	}
-
-	return address;
-}
-
-static OPBASE_HANDLER( mbee56_opbase_handler )
-{
-	if (address > 0xdfff)
-	{
-		mbee_busnop = 0;
-	}
-
-	return address;
+	memory_set_bank(1, 0);
 }
 
 MACHINE_RESET( mbee )
 {
-	mbee_busnop = 1;
-}
-
-static void mbee_machine_start(opbase_handler handler)
-{
 	z80pio_init(0, &pio_intf);
-	wd17xx_init(WD_TYPE_179X,mbee_fdc_callback, NULL);
-	memory_set_opbase_handler(0, handler);
+	timer_set(ATTOTIME_IN_USEC(4), NULL, 0, mbee_reset);
+	memory_set_bank(1, 1);
 }
 
 MACHINE_START( mbee )
 {
-	mbee_machine_start(mbee_opbase_handler);
-}
-
-MACHINE_START( mbee56 )
-{
-	mbee_machine_start(mbee56_opbase_handler);
+	wd17xx_init(machine, WD_TYPE_179X,mbee_fdc_callback, NULL);
 }
 
 static mess_image *cassette_device_image(void)
@@ -123,32 +92,32 @@ static mess_image *cassette_device_image(void)
  */
 READ8_HANDLER ( mbee_pio_r )
 {
-    UINT8 data = (offset & 2) ? z80pio_c_r(0, offset & 1) : z80pio_d_r(0, offset & 1);
-	if( offset != 2 )
-		return data;
-
-    data |= 0x01;
+	UINT8 data=0;
+	if (offset == 0) return z80pio_d_r(0,0);
+	if (offset == 1) return z80pio_c_r(0,0);
+	if (offset == 3) return z80pio_c_r(0,1);
+	data = z80pio_d_r(0,1) | 1;
 	if (cassette_input(cassette_device_image()) > 0.03)
-		data &= ~0x01;
-
-    return data;
+		data &= ~1;
+	return data;
 }
 
 WRITE8_HANDLER ( mbee_pio_w )
 {
-	if (offset & 2)
-		z80pio_c_w(0, offset & 1, data);
-	else
-		z80pio_d_w(0, offset & 1, data);
+	if (offset == 0) z80pio_d_w(0,0,data);
+	if (offset == 1) z80pio_c_w(0,0,data);
+	if (offset == 3) z80pio_c_w(0,1,data);
 
 	if( offset == 2 )
 	{
+		z80pio_d_w(0,1,data);
+		data = z80pio_p_r(0,1);
 		cassette_output(cassette_device_image(), (data & 0x02) ? -1.0 : +1.0);
-		speaker_level_w(0, (data >> 6) & 1);
+		speaker_level_w(0, (data & 0x40) ? 1 : 0);
 	}
 }
 
-static void mbee_fdc_callback(wd17xx_state_t state, void *param)
+static void mbee_fdc_callback(running_machine *machine, wd17xx_state_t state, void *param)
 {
 	switch( state )
 	{
@@ -202,10 +171,9 @@ WRITE8_HANDLER ( mbee_fdc_motor_w )
 
 INTERRUPT_GEN( mbee_interrupt )
 {
-    /* once per frame, pulse the PIO B bit 7 */
-    logerror("mbee interrupt\n");
+	/* once per frame, pulse the PIO B bit 7 */
 	z80pio_p_w(0, 1, 0x80);
-    z80pio_p_w(0, 1, 0x00);
+	z80pio_p_w(0, 1, 0x00);
 }
 
 DEVICE_LOAD( mbee_cart )

@@ -34,7 +34,6 @@
 #include "devices/basicdsk.h"
 #include "cpu/arm/arm.h"
 #include "sound/dac.h"
-#include "deprecat.h"
 
 
 // interrupt register stuff
@@ -84,33 +83,33 @@ static VIDEO_UPDATE( a310 )
 	return 0;
 }
 
-static void a310_request_irq_a(int mask)
+static void a310_request_irq_a(running_machine *machine, int mask)
 {
 	a310_iocregs[4] |= mask;
 
 	if (a310_iocregs[6] & mask)
 	{
-		cpunum_set_input_line(Machine, 0, ARM_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, ASSERT_LINE);
 	}
 }
 
-static void a310_request_irq_b(int mask)
+static void a310_request_irq_b(running_machine *machine, int mask)
 {
 	a310_iocregs[8] |= mask;
 
 	if (a310_iocregs[10] & mask)
 	{
-		cpunum_set_input_line(Machine, 0, ARM_IRQ_LINE, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, PULSE_LINE);
 	}
 }
 
-static void a310_request_fiq(int mask)
+static void a310_request_fiq(running_machine *machine, int mask)
 {
 	a310_iocregs[12] |= mask;
 
 	if (a310_iocregs[14] & mask)
 	{
-		cpunum_set_input_line(Machine, 0, ARM_FIRQ_LINE, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, ARM_FIRQ_LINE, PULSE_LINE);
 	}
 }
 
@@ -120,16 +119,16 @@ static TIMER_CALLBACK( a310_audio_tick )
 
 	if (a310_sndcur >= a310_sndend)
 	{
-		a310_request_irq_b(A310_IRQB_SOUND_EMPTY);
+		a310_request_irq_b(machine, A310_IRQB_SOUND_EMPTY);
 	}
 }
 
 static TIMER_CALLBACK( a310_vblank )
 {
-	a310_request_irq_a(A310_IRQA_VBL);
+	a310_request_irq_a(machine, A310_IRQA_VBL);
 
 	// set up for next vbl
-	timer_adjust(vbl_timer, video_screen_get_time_until_pos(0, a310_vidregs[0xb4], 0), 0, attotime_never);
+	timer_adjust_oneshot(vbl_timer, video_screen_get_time_until_pos(machine->primary_screen, a310_vidregs[0xb4], 0), 0);
 }
 
 static void a310_set_timer(int tmr)
@@ -138,7 +137,7 @@ static void a310_set_timer(int tmr)
 
 //  logerror("IOC: starting timer %d, %d ticks, freq %f Hz\n", tmr, a310_timercnt[tmr], freq);
 
-	timer_adjust(timer[tmr], ATTOTIME_IN_HZ(freq), tmr, attotime_never);
+	timer_adjust_oneshot(timer[tmr], ATTOTIME_IN_HZ(freq), tmr);
 }
 
 // param
@@ -151,11 +150,11 @@ static TIMER_CALLBACK( a310_timer )
 	switch (param)
 	{
 		case 0:
-			a310_request_irq_a(A310_IRQA_TIMER0);
+			a310_request_irq_a(machine, A310_IRQA_TIMER0);
 			break;
 
 		case 1:
-			a310_request_irq_a(A310_IRQA_TIMER1);
+			a310_request_irq_a(machine, A310_IRQA_TIMER1);
 			break;
 	}
 }
@@ -178,7 +177,7 @@ static MACHINE_RESET( a310 )
 	a310_memc_reset();
 }
 
-static void a310_wd177x_callback(wd17xx_state_t event, void *param)
+static void a310_wd177x_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	switch (event)
 	{
@@ -187,7 +186,7 @@ static void a310_wd177x_callback(wd17xx_state_t event, void *param)
 			break;
 
 		case WD17XX_IRQ_SET:
-			a310_request_fiq(A310_FIQ_FLOPPY);
+			a310_request_fiq(machine, A310_FIQ_FLOPPY);
 			break;
 
 		case WD17XX_DRQ_CLR:
@@ -195,7 +194,7 @@ static void a310_wd177x_callback(wd17xx_state_t event, void *param)
 			break;
 
 		case WD17XX_DRQ_SET:
-			a310_request_fiq(A310_FIQ_FLOPPY_DRQ);
+			a310_request_fiq(machine, A310_FIQ_FLOPPY_DRQ);
 			break;
 	}
 }
@@ -204,22 +203,22 @@ static void a310_wd177x_callback(wd17xx_state_t event, void *param)
 static MACHINE_START( a310 )
 {
 	a310_pagesize = 0;
-	wd17xx_init(WD_TYPE_1772, a310_wd177x_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_1772, a310_wd177x_callback, NULL);
 
 	vbl_timer = timer_alloc(a310_vblank, NULL);
-	timer_adjust(vbl_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(vbl_timer, attotime_never, 0);
 
 	timer[0] = timer_alloc(a310_timer, NULL);
 	timer[1] = timer_alloc(a310_timer, NULL);
 	timer[2] = timer_alloc(a310_timer, NULL);
 	timer[3] = timer_alloc(a310_timer, NULL);
-	timer_adjust(timer[0], attotime_never, 0, attotime_never);
-	timer_adjust(timer[1], attotime_never, 0, attotime_never);
-	timer_adjust(timer[2], attotime_never, 0, attotime_never);
-	timer_adjust(timer[3], attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(timer[0], attotime_never, 0);
+	timer_adjust_oneshot(timer[1], attotime_never, 0);
+	timer_adjust_oneshot(timer[2], attotime_never, 0);
+	timer_adjust_oneshot(timer[3], attotime_never, 0);
 
 	snd_timer = timer_alloc(a310_audio_tick, NULL);
-	timer_adjust(snd_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(snd_timer, attotime_never, 0);
 
 	// reset the DAC to centerline
 	DAC_signed_data_w(0, 0x80);
@@ -373,7 +372,7 @@ static READ32_HANDLER(ioc_r)
 		switch (offset & 0x1f)
 		{
 			case 1:	// keyboard read
-				a310_request_irq_b(A310_IRQB_KBD_XMIT_EMPTY);
+				a310_request_irq_b(machine, A310_IRQB_KBD_XMIT_EMPTY);
 				break;
 
 			case 16:	// timer 0 read
@@ -408,7 +407,7 @@ static READ32_HANDLER(ioc_r)
 	else if (offset >= 0xc4000 && offset <= 0xc4010)
 	{
 		logerror("17XX: R @ addr %x mask %08x\n", offset*4, mem_mask);
-		return wd17xx_data_r(offset&0xf);
+		return wd17xx_data_r(machine, offset&0xf);
 	}
 	else
 	{
@@ -437,7 +436,7 @@ static WRITE32_HANDLER(ioc_w)
 				// if that did it, clear the IRQ
 				if (a310_iocregs[4] == 0)
 				{
-					cpunum_set_input_line(Machine, 0, ARM_IRQ_LINE, CLEAR_LINE);
+					cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, CLEAR_LINE);
 				}
 				break;
 
@@ -505,7 +504,7 @@ static WRITE32_HANDLER(ioc_w)
 	else if (offset >= 0xc4000 && offset <= 0xc4010)
 	{
 		logerror("17XX: %x to addr %x mask %08x\n", data, offset*4, mem_mask);
-		wd17xx_data_w(offset&0xf, data&0xff);
+		wd17xx_data_w(machine, offset&0xf, data&0xff);
 	}
 	else if (offset == 0xd40006)
 	{
@@ -587,10 +586,10 @@ static WRITE32_HANDLER(vidc_w)
 				a310_vidregs[0x80], a310_vidregs[0xa0],
 				visarea.max_x, visarea.max_y);
 
-			video_screen_configure(0, a310_vidregs[0x80], a310_vidregs[0xa0], &visarea, Machine->screen[0].refresh);
+			video_screen_configure(machine->primary_screen, a310_vidregs[0x80], a310_vidregs[0xa0], &visarea, video_screen_get_frame_period(machine->primary_screen).attoseconds);
 
 			// slightly hacky: fire off a VBL right now.  the BIOS doesn't wait long enough otherwise.
-			timer_adjust(vbl_timer, attotime_zero, 0, attotime_never);
+			timer_adjust_oneshot(vbl_timer, attotime_zero, 0);
 		}
 
 		a310_vidregs[reg] = val>>12;
@@ -637,11 +636,11 @@ static WRITE32_HANDLER(memc_w)
 
 					a310_sndcur = a310_sndstart;
 
-					timer_adjust(snd_timer, ATTOTIME_IN_HZ(sndhz), 0, ATTOTIME_IN_HZ(sndhz));
+					timer_adjust_periodic(snd_timer, ATTOTIME_IN_HZ(sndhz), 0, ATTOTIME_IN_HZ(sndhz));
 				}
 				else
 				{
-					timer_adjust(snd_timer, attotime_never, 0, attotime_never);
+					timer_adjust_oneshot(snd_timer, attotime_never, 0);
 					DAC_signed_data_w(0, 0x80);
 				}
 				break;
@@ -862,14 +861,14 @@ static MACHINE_DRIVER_START( a310 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", ARM, 8000000)        /* 8 MHz */
 	MDRV_CPU_PROGRAM_MAP(a310_mem, 0)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	MDRV_MACHINE_RESET( a310 )
 	MDRV_MACHINE_START( a310 )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 16*16)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8 - 1, 0*16, 16*16 - 1)

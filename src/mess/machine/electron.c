@@ -8,7 +8,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/electron.h"
 #include "sound/beep.h"
 #include "devices/cassette.h"
@@ -29,7 +28,7 @@ static void electron_tape_start( void ) {
 	ula.high_tone_set = 0;
 	ula.bit_count = 0;
 	ula.tape_running = 1;
-	timer_adjust( electron_tape_timer, attotime_zero, 0, ATTOTIME_IN_HZ(4800) );
+	timer_adjust_periodic(electron_tape_timer, attotime_zero, 0, ATTOTIME_IN_HZ(4800));
 }
 
 static void electron_tape_stop( void ) {
@@ -80,11 +79,11 @@ static TIMER_CALLBACK(electron_tape_timer_handler)
 				ula.stop_bit = ( ( ula.tape_value == 0x0000FFFF ) ? 0 : 1 );
 				//logerror( "++ Read stop bit: %d\n", ula.stop_bit );
 				if ( ula.start_bit && ula.stop_bit && ula.tape_byte == 0xFF && ! ula.high_tone_set ) {
-					electron_interrupt_handler( INT_SET, INT_HIGH_TONE );
+					electron_interrupt_handler( machine, INT_SET, INT_HIGH_TONE );
 					ula.high_tone_set = 1;
 				} else if ( ! ula.start_bit && ula.stop_bit ) {
 					//logerror( "-- Byte read from tape: %02x\n", ula.tape_byte );
-					electron_interrupt_handler( INT_SET, INT_RECEIVE_FULL );
+					electron_interrupt_handler( machine, INT_SET, INT_RECEIVE_FULL );
 				} else {
 					logerror( "Invalid start/stop bit combination detected: %d,%d\n", ula.start_bit, ula.stop_bit );
 				}
@@ -133,7 +132,7 @@ READ8_HANDLER( electron_ula_r ) {
 	case 0x01:	/* Unknown */
 		break;
 	case 0x04:	/* Casette data shift register */
-		electron_interrupt_handler( INT_CLEAR, INT_RECEIVE_FULL );
+		electron_interrupt_handler( machine, INT_CLEAR, INT_RECEIVE_FULL );
 		data = ula.tape_byte;
 		break;
 	}
@@ -176,18 +175,18 @@ WRITE8_HANDLER( electron_ula_w ) {
 				ula.rompage = 8;
 				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, electron_read_keyboard );
 			} else {
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK2 );
+				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2 );
 			}
 			memory_set_bank(2, ula.rompage);
 		}
 		if ( data & 0x10 ) {
-			electron_interrupt_handler( INT_CLEAR, INT_DISPLAY_END );
+			electron_interrupt_handler( machine, INT_CLEAR, INT_DISPLAY_END );
 		}
 		if ( data & 0x20 ) {
-			electron_interrupt_handler( INT_CLEAR, INT_RTC );
+			electron_interrupt_handler( machine, INT_CLEAR, INT_RTC );
 		}
 		if ( data & 0x40 ) {
-			electron_interrupt_handler( INT_CLEAR, INT_HIGH_TONE );
+			electron_interrupt_handler( machine, INT_CLEAR, INT_HIGH_TONE );
 		}
 		if ( data & 0x80 ) {
 		}
@@ -243,7 +242,7 @@ WRITE8_HANDLER( electron_ula_w ) {
 	}
 }
 
-void electron_interrupt_handler(int mode, int interrupt) {
+void electron_interrupt_handler(running_machine *machine, int mode, int interrupt) {
 	if ( mode == INT_SET ) {
 		ula.interrupt_status |= interrupt;
 	} else {
@@ -251,10 +250,10 @@ void electron_interrupt_handler(int mode, int interrupt) {
 	}
 	if ( ula.interrupt_status & ula.interrupt_control & ~0x83 ) {
 		ula.interrupt_status |= 0x01;
-		cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE );
+		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE );
 	} else {
 		ula.interrupt_status &= ~0x01;
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE );
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE );
 	}
 }
 
@@ -276,7 +275,6 @@ static void electron_reset(running_machine *machine)
 	ula.screen_mode = 0;
 	ula.cassette_motor_mode = 0;
 	ula.capslock_mode = 0;
-	ula.scanline = 0;
 	ula.screen_mode = 0;
 	ula.screen_start = 0x3000;
 	ula.screen_base = 0x3000;
@@ -284,7 +282,6 @@ static void electron_reset(running_machine *machine)
 	ula.screen_addr = 0;
 	ula.tape_running = 0;
 	ula.vram = memory_get_read_ptr( 0, ADDRESS_SPACE_PROGRAM, ula.screen_base );
-	electron_video_init();
 }
 
 MACHINE_START( electron )

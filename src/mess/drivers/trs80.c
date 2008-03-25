@@ -73,12 +73,12 @@ Not emulated:
  LNW80 Colour board
  LNW80 Hires graphics
  LNW80 24x80 screen
- LNW80 Character generator hasn't been decoded, that's why the screen is corrupt
 
 ***************************************************************************/
 
 /* Core includes */
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/trs80.h"
 
 /* Components */
@@ -96,7 +96,7 @@ static READ8_HANDLER (trs80_wd179x_r)
 {
 	if (readinputport(0) & 0x80)
 	{
-		return wd17xx_status_r(offset);
+		return wd17xx_status_r(machine, offset);
 	}
 	else
 	{
@@ -107,11 +107,12 @@ static READ8_HANDLER (trs80_wd179x_r)
 static ADDRESS_MAP_START( mem_level1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_ROM
 	AM_RANGE(0x3800, 0x38ff) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(MRA8_RAM, trs80_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(SMH_RAM, trs80_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_level1, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xfe, 0xfe) AM_READ(trs80_port_xx_r)
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_port_ff_r, trs80_port_ff_w)
 ADDRESS_MAP_END
@@ -129,11 +130,12 @@ static ADDRESS_MAP_START( mem_model1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x37f0, 0x37ff) AM_NOP
 	AM_RANGE(0x3800, 0x38ff) AM_READ(trs80_keyboard_r)
 	AM_RANGE(0x3900, 0x3bff) AM_NOP
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(MRA8_RAM, trs80_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(SMH_RAM, trs80_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_model1, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xfe, 0xfe) AM_READ(trs80_port_xx_r)
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_port_ff_r, trs80_port_ff_w)
 ADDRESS_MAP_END
@@ -141,11 +143,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( mem_model3, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x37ff) AM_ROM
 	AM_RANGE(0x3800, 0x38ff) AM_READ(trs80_keyboard_r)
-	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(MRA8_RAM, trs80_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x3c00, 0x3fff) AM_READWRITE(SMH_RAM, trs80_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x4000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_model3, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80_irq_status_r, trs80_irq_mask_w)
 	AM_RANGE(0xe4, 0xe4)	AM_WRITE(trs80_motor_w)
 	AM_RANGE(0xf0, 0xf0) AM_READWRITE(trs80_wd179x_r, wd17xx_command_w)
@@ -282,7 +285,7 @@ static INPUT_PORTS_START( trs80 )
 
 INPUT_PORTS_END
 
-static const gfx_layout trs80_charlayout_normal_width =
+static const gfx_layout trs80_charlayout =
 {
 	FW,FH,			/* 6 x 12 characters */
 	256,			/* 256 characters */
@@ -296,23 +299,8 @@ static const gfx_layout trs80_charlayout_normal_width =
 	8*FH		   /* every char takes FH bytes */
 };
 
-static const gfx_layout trs80_charlayout_double_width =
-{
-	FW*2,FH,	   /* FW*2 x FH*3 characters */
-	256,		   /* 256 characters */
-	1,			   /* 1 bits per pixel */
-	{ 0 },		   /* no bitplanes; 1 bit per pixel */
-	/* x offsets double width: use each bit twice */
-	{ 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5 },
-	/* y offsets */
-	{  0*8, 1*8, 2*8, 3*8, 4*8, 5*8,
-	   6*8, 7*8, 8*8, 9*8,10*8,11*8 },
-	8*FH		   /* every char takes FH bytes */
-};
-
 static GFXDECODE_START( trs80 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, trs80_charlayout_normal_width, 0, 4 )
-	GFXDECODE_ENTRY( REGION_GFX1, 0, trs80_charlayout_double_width, 0, 4 )
+	GFXDECODE_ENTRY( REGION_GFX1, 0, trs80_charlayout, 0, 1 )
 GFXDECODE_END
 
 
@@ -330,17 +318,17 @@ static MACHINE_DRIVER_START( level1 )
 	MDRV_CPU_ADD_TAG("main", Z80, 1796000)        /* 1.796 Mhz */
 	MDRV_CPU_PROGRAM_MAP(mem_level1, 0)
 	MDRV_CPU_IO_MAP(io_level1, 0)
-	MDRV_CPU_VBLANK_INT(trs80_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", trs80_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(trs80_timer_interrupt, 40)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( trs80 )
 	MDRV_MACHINE_RESET( trs80 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*FW, 16*FH)
 	MDRV_SCREEN_VISIBLE_AREA(0*FW,64*FW-1,0*FH,16*FH-1)
@@ -348,7 +336,6 @@ static MACHINE_DRIVER_START( level1 )
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
-	MDRV_VIDEO_START( trs80 )
 	MDRV_VIDEO_UPDATE( trs80 )
 
 	/* sound hardware */
@@ -372,7 +359,7 @@ static MACHINE_DRIVER_START( model3 )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP( mem_model3, 0 )
 	MDRV_CPU_IO_MAP( io_model3, 0 )
-	MDRV_CPU_VBLANK_INT(trs80_frame_interrupt, 2)
+	MDRV_CPU_VBLANK_INT_HACK(trs80_frame_interrupt, 2)
 MACHINE_DRIVER_END
 
 /***************************************************************************
@@ -392,7 +379,7 @@ ROM_END
 
 ROM_START(trs80l2)
 	ROM_REGION(0x10000, REGION_CPU1,0)
-	ROM_LOAD("trs80.z33",   0x0000, 0x1000, CRC(83dbbbe2) SHA1(b013edb75b934693128baf105f75f47a359c47ae))
+	ROM_LOAD("trs80.z33",   0x0000, 0x1000, CRC(37c59db2) SHA1(e8f8f6a4460a6f6755873580be6ff70cebe14969))
 	ROM_LOAD("trs80.z34",   0x1000, 0x1000, CRC(05818718) SHA1(43c538ca77623af6417474ca5b95fb94205500c1))
 	ROM_LOAD("trs80.zl2",   0x2000, 0x1000, CRC(306e5d66) SHA1(1e1abcfb5b02d4567cf6a81ffc35318723442369))
 
@@ -432,7 +419,8 @@ ROM_START(lnw80)
 	ROM_LOAD("lnw_c1.bin", 0x2800, 0x0800, CRC(ed547445) SHA1(20102de89a3ee4a65366bc2d62be94da984a156b))
 
 	ROM_REGION(0x01000, REGION_GFX1,0)
-	ROM_LOAD("lnw_chr.bin",0x0800, 0x0800, CRC(c89b27df) SHA1(be2a009a07e4378d070002a558705e9a0de59389))
+	ROM_LOAD("lnw_chr.bin",0x0800, 0x0400, CRC(c89b27df) SHA1(be2a009a07e4378d070002a558705e9a0de59389))
+	ROM_IGNORE( 0x400 )		/* leave out unused ff's */
 ROM_END
 
 ROM_START(trs80m3)
@@ -452,40 +440,40 @@ ROM_START(trs80m4)
 	ROM_LOAD("trs80m1.chr", 0x0800, 0x0400, CRC(0033f2b9) SHA1(0d2cd4197d54e2e872b515bbfdaa98efe502eda7))
 ROM_END
 
-static void trs80_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void trs80_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_trs80_cas; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_trs80_cas; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_trs80_cas; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_trs80_cas; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
 	}
 }
 
-static void trs80_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void trs80_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cmd"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cmd"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_trs80_cmd; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_trs80_cmd; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = 0.5; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = 0.5; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
@@ -497,19 +485,19 @@ SYSTEM_CONFIG_START(trs80)
 SYSTEM_CONFIG_END
 
 
-static void trs8012_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void trs8012_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_trs80_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_trs80_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
@@ -526,7 +514,7 @@ COMP( 1977, trs80,    0,	 0,		level1,   trs80, trs80,    trs80,	"Tandy Radio Sha
 COMP( 1978, trs80l2,  trs80,	 0,		model1,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (Radio Shack Level II Basic)" , 0)
 COMP( 1978, trs80l2a, trs80,	 0,		model1,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (R/S L2 Basic)" , 0)
 COMP( 1980, sys80,    trs80,	 0,		model1,   trs80, trs80,    trs8012,	"EACA Computers Ltd.","System-80" , 0)
-COMP( 1981, lnw80,    trs80,	 0,		model1,   trs80, trs80,    trs8012,	"LNW Research","LNW-80", GAME_NOT_WORKING )
+COMP( 1981, lnw80,    trs80,	 0,		model1,   trs80, lnw80,    trs8012,	"LNW Research","LNW-80", 0 )
 COMP( 1980, trs80m3,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", GAME_NOT_WORKING )
 COMP( 1980, trs80m4,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4", GAME_NOT_WORKING )
 

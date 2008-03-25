@@ -74,7 +74,7 @@ static MACHINE_RESET( exelv )
 
 static INTERRUPT_GEN( exelv_hblank_interrupt )
 {
-	tms3556_interrupt();
+	tms3556_interrupt( machine );
 }
 
 /*static DEVICE_LOAD(exelv_cart)
@@ -178,7 +178,7 @@ static int io_hsk;
 static int io_ack;
 static int mailbox_out;
 
-static void io_iterate(void);
+static void io_iterate(running_machine *machine);
 
 static void io_reset(void)
 {
@@ -195,7 +195,7 @@ static TIMER_CALLBACK( io_reset_timer )
 	io_reset();
 }
 
-static void io_iterate(void)
+static void io_iterate(running_machine *machine)
 {
 	if (/*io_hsk &&*/ (mailbox_out == 0) && (! io_command_ack))
 	{
@@ -205,7 +205,7 @@ static void io_iterate(void)
 			break;
 		case IOS_INIT:
 			mailbox_out = 0x08;
-			cpunum_set_input_line(Machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
 			io_state = IOS_NOP;
 			break;
 		case IOS_RESET:
@@ -221,17 +221,17 @@ static void io_iterate(void)
 			break;
 		case IOS_CHARDEF1:
 			mailbox_out = 0x07;
-			cpunum_set_input_line(Machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
 			io_state = IOS_CHARDEF2;
 			break;
 		case IOS_CHARDEF2:
 			mailbox_out = 0x04;
-			cpunum_set_input_line(Machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
 			io_state = IOS_CHARDEF3;
 			break;
 		case IOS_CHARDEF3:
 			mailbox_out = 0xF5;
-			cpunum_set_input_line(Machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
 			io_state = IOS_CHARDEF4;
 			io_counter = 0;
 			break;
@@ -370,7 +370,7 @@ static void io_iterate(void)
 					0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
 				};
 				mailbox_out = fontdata[io_counter+9-2*(io_counter%10)] >> 2;
-				cpunum_set_input_line(Machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+				cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
 				io_counter++;
 				if (io_counter == 127*10)
 					io_state = IOS_NOP;
@@ -380,7 +380,7 @@ static void io_iterate(void)
 	}
 }
 
-static void set_io_hsk(int state)
+static void set_io_hsk(running_machine *machine, int state)
 {
 	if (state != io_hsk)
 	{
@@ -388,11 +388,11 @@ static void set_io_hsk(int state)
 		if (io_command_ack)
 		{
 			if (io_hsk)
-				cpunum_set_input_line(Machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
+				cpunum_set_input_line(machine, 0, TMS7000_IRQ1_LINE, PULSE_LINE);
 			else
 			{
 				io_command_ack = 0;
-				io_iterate();
+				io_iterate(machine);
 			}
 		}
 	}
@@ -415,7 +415,7 @@ static READ8_HANDLER(mailbox_r)
 	mailbox_out = 0x00;
 
 	/* see if there are other messages to post */
-	io_iterate();
+	io_iterate(machine);
 
 	return reply;
 }
@@ -478,7 +478,7 @@ static READ8_HANDLER(exelv_porta_r)
 
 static WRITE8_HANDLER(exelv_portb_w)
 {
-	set_io_hsk((data & 0x1) != 0);
+	set_io_hsk(machine, (data & 0x1) != 0);
 	set_io_ack((data & 0x2) != 0);
 }
 
@@ -510,17 +510,17 @@ static WRITE8_HANDLER(exelv_portb_w)
 static ADDRESS_MAP_START(exelv_memmap, ADDRESS_SPACE_PROGRAM, 8)
 
 	//AM_RANGE(0x0000, 0x007f) AM_READWRITE(tms7000_internal_r, tms7000_internal_w)/* tms7020 internal RAM */
-	AM_RANGE(0x0080, 0x00ff) AM_READWRITE(MRA8_NOP, MWA8_NOP)		/* reserved */
+	AM_RANGE(0x0080, 0x00ff) AM_READWRITE(SMH_NOP, SMH_NOP)		/* reserved */
 	//AM_RANGE(0x0100, 0x010b) AM_READWRITE(tms70x0_pf_r, tms70x0_pf_w)/* tms7020 internal I/O ports */
-	//AM_RANGE(0x010c, 0x01ff) AM_READWRITE(MRA8_NOP, MWA8_NOP)     /* external I/O ports */
+	//AM_RANGE(0x010c, 0x01ff) AM_READWRITE(SMH_NOP, SMH_NOP)     /* external I/O ports */
 	AM_RANGE(0x012d, 0x0012d) AM_READWRITE(tms3556_reg_r/*right???*/, tms3556_reg_w)
 	AM_RANGE(0x012e, 0x0012e) AM_READWRITE(tms3556_vram_r/*right???*/, tms3556_vram_w)
 	AM_RANGE(0x0130, 0x00130) AM_READWRITE(mailbox_r, mailbox_w)
-	AM_RANGE(0x0200, 0x7fff) AM_READWRITE(MRA8_ROM, MWA8_ROM)		/* system ROM */
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_NOP, MWA8_NOP)
-	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(MRA8_RAM, MWA8_RAM)		/* CPU RAM */
-	AM_RANGE(0xc800, /*0xf7ff*/0xefff) AM_READWRITE(MRA8_NOP, MWA8_NOP)
-	AM_RANGE(/*0xf800*/0xf000, 0xffff) AM_READWRITE(MRA8_ROM, MWA8_ROM)/* tms7020 internal ROM */
+	AM_RANGE(0x0200, 0x7fff) AM_READWRITE(SMH_ROM, SMH_ROM)		/* system ROM */
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_NOP, SMH_NOP)
+	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(SMH_RAM, SMH_RAM)		/* CPU RAM */
+	AM_RANGE(0xc800, /*0xf7ff*/0xefff) AM_READWRITE(SMH_NOP, SMH_NOP)
+	AM_RANGE(/*0xf800*/0xf000, 0xffff) AM_READWRITE(SMH_ROM, SMH_ROM)/* tms7020 internal ROM */
 
 ADDRESS_MAP_END
 
@@ -541,30 +541,25 @@ INPUT_PORTS_END
 
 
 static MACHINE_DRIVER_START(exelv)
-
 	/* basic machine hardware */
 	/* TMS7020 CPU @ 4.91(?) MHz */
 	MDRV_CPU_ADD(TMS7000_EXL, 4910000)
-	/*MDRV_CPU_CONFIG(0)*/
 	MDRV_CPU_PROGRAM_MAP(exelv_memmap, 0)
 	MDRV_CPU_IO_MAP(exelv_portmap, 0)
-	MDRV_CPU_VBLANK_INT(exelv_hblank_interrupt, 363)
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
-
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
+	MDRV_CPU_VBLANK_INT_HACK(exelv_hblank_interrupt, 363)
 
 	MDRV_MACHINE_RESET( exelv )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware */
-	MDRV_VIDEO_START(exelv)
 	MDRV_IMPORT_FROM(tms3556)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
+
+	MDRV_VIDEO_START(exelv)
 
 	/* sound */
 	/*MDRV_SOUND_ADD(TMS5220, tms5220interface)*/
-
 MACHINE_DRIVER_END
 
 

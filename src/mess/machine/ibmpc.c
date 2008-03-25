@@ -149,13 +149,13 @@ static struct {
 	if (pc_ppi.portc_switch_high)
 	{
 		/* read hi nibble of S2 */
-		data = (data&0xf0)|((input_port_1_r(0) >> 4) & 0x0f);
+		data = (data&0xf0)|((readinputport(1) >> 4) & 0x0f);
 		PIO_LOG(1,"PIO_C_r (hi)",("$%02x\n", data));
 	}
 	else
 	{
 		/* read lo nibble of S2 */
-		data = (data&0xf0)|(input_port_1_r(0) & 0x0f);
+		data = (data&0xf0)|(readinputport(1) & 0x0f);
 		PIO_LOG(1,"PIO_C_r (lo)",("$%02x\n", data));
 	}
 
@@ -173,7 +173,7 @@ WRITE8_HANDLER ( pc_ppi_portb_w )
 	/* KB controller port B */
 	pc_ppi.portc_switch_high = data & 0x08;
 	pc_ppi.keyboard_disabled = data & 0x80;
-	pc_sh_speaker(data & 0x03);
+	pc_sh_speaker(machine, data & 0x03);
 	pc_keyb_set_clock(data & 0x40);
 
 	if (data & 0x80)
@@ -220,7 +220,7 @@ void pc_rtc_init(void)
 {
 	memset(&pc_rtc,0,sizeof(pc_rtc));
 	pc_rtc.timer = timer_alloc(pc_rtc_timer, NULL);
-	timer_adjust(pc_rtc.timer, attotime_zero, 0, attotime_make(1, 0));
+	timer_adjust_periodic(pc_rtc.timer, attotime_zero, 0, attotime_make(1, 0));
 }
 
 READ8_HANDLER( pc_rtc_r )
@@ -243,8 +243,8 @@ WRITE8_HANDLER( pc_rtc_w )
 	}
 }
 
-READ16_HANDLER( pc16le_rtc_r ) { return read16le_with_read8_handler(pc_rtc_r, offset, mem_mask); }
-WRITE16_HANDLER( pc16le_rtc_w ) { write16le_with_write8_handler(pc_rtc_w, offset, data, mem_mask); }
+READ16_HANDLER( pc16le_rtc_r ) { return read16le_with_read8_handler(pc_rtc_r, machine, offset, mem_mask); }
+WRITE16_HANDLER( pc16le_rtc_w ) { write16le_with_write8_handler(pc_rtc_w, machine, offset, data, mem_mask); }
 
 /*************************************************************************
  *

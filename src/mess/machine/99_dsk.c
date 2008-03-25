@@ -24,7 +24,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/wd17xx.h"
 #include "smc92x4.h"
 #include "ti99_4x.h"
@@ -34,8 +33,10 @@
 #include "formats/basicdsk.h"
 #include "devices/mflopimg.h"
 
+
 #define MAX_FLOPPIES 4
 #define TI99DSK_TAG	"ti99dsktag"
+
 
 static int use_80_track_drives;
 
@@ -70,12 +71,12 @@ static void *motor_on_timer;
 	Emulation is faulty because the CPU is actually stopped in the midst of 
 	instruction, at the end of the memory access
 */
-static void fdc_handle_hold(void)
+static void fdc_handle_hold(running_machine *machine)
 {
 	if (DSKhold && (!DRQ_IRQ_status) && DVENA)
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
 }
 
 /*
@@ -84,7 +85,7 @@ static void fdc_handle_hold(void)
 static TIMER_CALLBACK(motor_on_timer_callback)
 {
 	DVENA = 0;
-	fdc_handle_hold();
+	fdc_handle_hold(machine);
 }
 
 typedef struct ti99_geometry
@@ -366,7 +367,7 @@ static void ti99_install_tracktranslate_procs(void)
 /*
 	callback called whenever DRQ/IRQ state change
 */
-static void fdc_callback(wd17xx_state_t event, void *param)
+static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	switch (event)
 	{
@@ -386,7 +387,7 @@ static void fdc_callback(wd17xx_state_t event, void *param)
 		break;
 	}
 
-	fdc_handle_hold();
+	fdc_handle_hold(machine);
 }
 
 /*
@@ -394,10 +395,10 @@ static void fdc_callback(wd17xx_state_t event, void *param)
 	init state of the emulator. During the normal operation, only the
 	reset routines are used.
 */
-void ti99_floppy_controllers_init_all(void)
+void ti99_floppy_controllers_init_all(running_machine *machine)
 {
 	/* initialize the controller chip for TI FDC, CC, BwG */
-	wd17xx_init(WD_TYPE_179X, fdc_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_179X, fdc_callback, NULL);
 
 	/* initialize the controller chip for HFDC */
 	smc92x4_init(0, & hfdc_intf);
@@ -407,7 +408,7 @@ void ti99_floppy_controllers_init_all(void)
 	motor_on_timer = timer_alloc(motor_on_timer_callback, NULL);
 	
 	/* initialize the RTC for BwG and HFDC */
-	mm58274c_init(1, 1);
+	mm58274c_init(machine, 1, 1);
 }
 
 /*===========================================================================*/
@@ -416,10 +417,10 @@ void ti99_floppy_controllers_init_all(void)
 */
 
 /* prototypes */
-static void fdc_callback(wd17xx_state_t event, void *param);
+static void fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 static TIMER_CALLBACK(motor_on_timer_callback);
-static int fdc_cru_r(int offset);
-static void fdc_cru_w(int offset, int data);
+static int fdc_cru_r(running_machine *machine, int offset);
+static void fdc_cru_w(running_machine *machine, int offset, int data);
 static READ8_HANDLER(fdc_mem_r);
 static WRITE8_HANDLER(fdc_mem_w);
 
@@ -464,7 +465,7 @@ void ti99_fdc_reset(void)
 	bit 6: always 1
 	bit 7: selected side
 */
-static int fdc_cru_r(int offset)
+static int fdc_cru_r(running_machine *machine, int offset)
 {
 	int reply;
 
@@ -491,7 +492,7 @@ static int fdc_cru_r(int offset)
 /*
 	Write disk CRU interface
 */
-static void fdc_cru_w(int offset, int data)
+static void fdc_cru_w(running_machine *machine, int offset, int data)
 {
 	switch (offset)
 	{
@@ -505,8 +506,8 @@ static void fdc_cru_w(int offset, int data)
 		if (data && !motor_on)
 		{	/* on rising edge, set DVENA for 4.23s */
 			DVENA = 1;
-			fdc_handle_hold();
-			timer_adjust(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0, attotime_zero);
+			fdc_handle_hold(machine);
+			timer_adjust_oneshot(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0);
 		}
 		motor_on = data;
 		break;
@@ -518,7 +519,7 @@ static void fdc_cru_w(int offset, int data)
 			  for 4.23s after write to revelant CRU bit, this is not emulated and could cause
 			  the TI99 to lock...) */
 		DSKhold = data;
-		fdc_handle_hold();
+		fdc_handle_hold(machine);
 		break;
 
 	case 3:
@@ -574,16 +575,16 @@ static  READ8_HANDLER(fdc_mem_r)
 	switch (offset)
 	{
 	case 0x1FF0:					/* Status register */
-		return (wd17xx_status_r(offset) ^ 0xFF);
+		return (wd17xx_status_r(machine, offset) ^ 0xFF);
 		break;
 	case 0x1FF2:					/* Track register */
-		return wd17xx_track_r(offset) ^ 0xFF;
+		return wd17xx_track_r(machine, offset) ^ 0xFF;
 		break;
 	case 0x1FF4:					/* Sector register */
-		return wd17xx_sector_r(offset) ^ 0xFF;
+		return wd17xx_sector_r(machine, offset) ^ 0xFF;
 		break;
 	case 0x1FF6:					/* Data register */
-		return wd17xx_data_r(offset) ^ 0xFF;
+		return wd17xx_data_r(machine, offset) ^ 0xFF;
 		break;
 	default:						/* DSR ROM */
 		return ti99_disk_DSR[offset];
@@ -601,16 +602,16 @@ static WRITE8_HANDLER(fdc_mem_w)
 	switch (offset)
 	{
 	case 0x1FF8:					/* Command register */
-		wd17xx_command_w(offset, data);
+		wd17xx_command_w(machine, offset, data);
 		break;
 	case 0x1FFA:					/* Track register */
-		wd17xx_track_w(offset, data);
+		wd17xx_track_w(machine, offset, data);
 		break;
 	case 0x1FFC:					/* Sector register */
-		wd17xx_sector_w(offset, data);
+		wd17xx_sector_w(machine, offset, data);
 		break;
 	case 0x1FFE:					/* Data register */
-		wd17xx_data_w(offset, data);
+		wd17xx_data_w(machine, offset, data);
 		break;
 	}
 }
@@ -630,8 +631,8 @@ static WRITE8_HANDLER(fdc_mem_w)
 */
 
 /* prototypes */
-static int ccfdc_cru_r(int offset);
-static void ccfdc_cru_w(int offset, int data);
+static int ccfdc_cru_r(running_machine *machine, int offset);
+static void ccfdc_cru_w(running_machine *machine, int offset, int data);
 static READ8_HANDLER(ccfdc_mem_r);
 static WRITE8_HANDLER(ccfdc_mem_w);
 
@@ -695,7 +696,7 @@ static int ccfdc_cru_r(int offset)
 /*
 	Write disk CRU interface
 */
-static void ccfdc_cru_w(int offset, int data)
+static void ccfdc_cru_w(running_machine *machine, int offset, int data)
 {
 	switch (offset)
 	{
@@ -709,8 +710,8 @@ static void ccfdc_cru_w(int offset, int data)
 		if (data && !motor_on)
 		{	/* on rising edge, set DVENA for 4.23s */
 			DVENA = 1;
-			fdc_handle_hold();
-			timer_adjust(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0, attotime_zero);
+			fdc_handle_hold(machine);
+			timer_adjust_oneshot(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0);
 		}
 		motor_on = data;
 		break;
@@ -722,7 +723,7 @@ static void ccfdc_cru_w(int offset, int data)
 			  for 4.23s after write to revelant CRU bit, this is not emulated and could cause
 			  the TI99 to lock...) */
 		DSKhold = data;
-		fdc_handle_hold();
+		fdc_handle_hold(machine);
 		break;
 
 	case 4:
@@ -832,9 +833,9 @@ static WRITE8_HANDLER(ccfdc_mem_w)
 */
 
 /* prototypes */
-static int bwg_cru_r(int offset);
-static void bwg_cru_w(int offset, int data);
-static  READ8_HANDLER(bwg_mem_r);
+static int bwg_cru_r(running_machine *machine, int offset);
+static void bwg_cru_w(running_machine *machine, int offset, int data);
+static READ8_HANDLER(bwg_mem_r);
 static WRITE8_HANDLER(bwg_mem_w);
 
 static const ti99_peb_card_handlers_t bwg_handlers =
@@ -884,7 +885,7 @@ void ti99_bwg_reset(void)
 	bit 1-3: drive n active
 	bit 4-7: dip switches 1-4
 */
-static int bwg_cru_r(int offset)
+static int bwg_cru_r(running_machine *machine, int offset)
 {
 	int reply;
 
@@ -909,7 +910,7 @@ static int bwg_cru_r(int offset)
 /*
 	Write disk CRU interface
 */
-static void bwg_cru_w(int offset, int data)
+static void bwg_cru_w(running_machine *machine, int offset, int data)
 {
 	switch (offset)
 	{
@@ -923,8 +924,8 @@ static void bwg_cru_w(int offset, int data)
 		if (data && !motor_on)
 		{	/* on rising edge, set DVENA for 4.23s */
 			DVENA = 1;
-			fdc_handle_hold();
-			timer_adjust(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0, attotime_zero);
+			fdc_handle_hold(machine);
+			timer_adjust_oneshot(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0);
 		}
 		motor_on = data;
 		break;
@@ -936,7 +937,7 @@ static void bwg_cru_w(int offset, int data)
 			  for 4.23s after write to revelant CRU bit, this is not emulated and could cause
 			  the TI99 to lock...) */
 		DSKhold = data;
-		fdc_handle_hold();
+		fdc_handle_hold(machine);
 		break;
 
 	case 4:
@@ -1045,16 +1046,16 @@ static  READ8_HANDLER(bwg_mem_r)
 			switch (offset)
 			{
 			case 0x1FF0:					/* Status register */
-				reply = wd17xx_status_r(offset);
+				reply = wd17xx_status_r(machine, offset);
 				break;
 			case 0x1FF2:					/* Track register */
-				reply = wd17xx_track_r(offset);
+				reply = wd17xx_track_r(machine, offset);
 				break;
 			case 0x1FF4:					/* Sector register */
-				reply = wd17xx_sector_r(offset);
+				reply = wd17xx_sector_r(machine, offset);
 				break;
 			case 0x1FF6:					/* Data register */
-				reply = wd17xx_data_r(offset);
+				reply = wd17xx_data_r(machine, offset);
 				break;
 			default:
 				reply = 0;
@@ -1089,16 +1090,16 @@ static WRITE8_HANDLER(bwg_mem_w)
 			switch (offset)
 			{
 			case 0x1FF8:					/* Command register */
-				wd17xx_command_w(offset, data);
+				wd17xx_command_w(machine, offset, data);
 				break;
 			case 0x1FFA:					/* Track register */
-				wd17xx_track_w(offset, data);
+				wd17xx_track_w(machine, offset, data);
 				break;
 			case 0x1FFC:					/* Sector register */
-				wd17xx_sector_w(offset, data);
+				wd17xx_sector_w(machine, offset, data);
 				break;
 			case 0x1FFE:					/* Data register */
-				wd17xx_data_w(offset, data);
+				wd17xx_data_w(machine, offset, data);
 				break;
 			}
 		}
@@ -1124,8 +1125,8 @@ static WRITE8_HANDLER(bwg_mem_w)
 */
 
 /* prototypes */
-static int hfdc_cru_r(int offset);
-static void hfdc_cru_w(int offset, int data);
+static int hfdc_cru_r(running_machine *machine, int offset);
+static void hfdc_cru_w(running_machine *machine, int offset, int data);
 static  READ8_HANDLER(hfdc_mem_r);
 static WRITE8_HANDLER(hfdc_mem_w);
 
@@ -1252,7 +1253,7 @@ void ti99_hfdc_reset(void)
 /*
 	Read disk CRU interface
 */
-static int hfdc_cru_r(int offset)
+static int hfdc_cru_r(running_machine *machine, int offset)
 {
 	int reply;
 	switch (offset)
@@ -1292,7 +1293,7 @@ static int hfdc_cru_r(int offset)
 /*
 	Write disk CRU interface
 */
-static void hfdc_cru_w(int offset, int data)
+static void hfdc_cru_w(running_machine *machine, int offset, int data)
 {
 	switch (offset)
 	{
@@ -1315,8 +1316,8 @@ static void hfdc_cru_w(int offset, int data)
 		if (data && !motor_on)
 		{
 			DVENA = 1;
-			fdc_handle_hold();
-			timer_adjust(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0, attotime_zero);
+			fdc_handle_hold(machine);
+			timer_adjust_oneshot(motor_on_timer, ATTOTIME_IN_MSEC(4230), 0);
 		}
 		motor_on = data;
 		break;

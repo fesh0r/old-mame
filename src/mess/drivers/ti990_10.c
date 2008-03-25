@@ -134,7 +134,7 @@ static VIDEO_START( ti990_10 )
 
 static VIDEO_UPDATE( ti990_10 )
 {
-	vdt911_refresh(bitmap, 0, 0, 0);
+	vdt911_refresh(screen->machine, bitmap, 0, 0, 0);
 	return 0;
 }
 
@@ -144,13 +144,13 @@ static VIDEO_UPDATE( ti990_10 )
 
 static ADDRESS_MAP_START(ti990_10_memmap, ADDRESS_SPACE_PROGRAM, 16)
 
-	AM_RANGE(0x000000, 0x0fffff) AM_READWRITE(MRA16_RAM, MWA16_RAM)		/* let's say we have 1MB of RAM */
-	AM_RANGE(0x100000, 0x1ff7ff) AM_READWRITE(MRA16_NOP, MWA16_NOP)		/* free TILINE space */
+	AM_RANGE(0x000000, 0x0fffff) AM_RAM		/* let's say we have 1MB of RAM */
+	AM_RANGE(0x100000, 0x1ff7ff) AM_NOP		/* free TILINE space */
 	AM_RANGE(0x1ff800, 0x1ff81f) AM_READWRITE(ti990_hdc_r, ti990_hdc_w)	/* disk controller TPCS */
-	AM_RANGE(0x1ff820, 0x1ff87f) AM_READWRITE(MRA16_NOP, MWA16_NOP)		/* free TPCS */
+	AM_RANGE(0x1ff820, 0x1ff87f) AM_NOP		/* free TPCS */
 	AM_RANGE(0x1ff880, 0x1ff89f) AM_READWRITE(ti990_tpc_r, ti990_tpc_w)	/* tape controller TPCS */
-	AM_RANGE(0x1ff8a0, 0x1ffbff) AM_READWRITE(MRA16_NOP, MWA16_NOP)		/* free TPCS */
-	AM_RANGE(0x1ffc00, 0x1fffff) AM_READWRITE(MRA16_ROM, MWA16_ROM)		/* LOAD ROM */
+	AM_RANGE(0x1ff8a0, 0x1ffbff) AM_NOP		/* free TPCS */
+	AM_RANGE(0x1ffc00, 0x1fffff) AM_ROM		/* LOAD ROM */
 
 ADDRESS_MAP_END
 
@@ -192,33 +192,26 @@ static const ti990_10reset_param reset_params =
 
 
 static MACHINE_DRIVER_START(ti990_10)
-
 	/* basic machine hardware */
 	/* TI990/10 CPU @ 4.0(???) MHz */
 	MDRV_CPU_ADD(TI990_10, 4000000)
 	MDRV_CPU_CONFIG(reset_params)
 	MDRV_CPU_PROGRAM_MAP(ti990_10_memmap, 0)
 	MDRV_CPU_IO_MAP(ti990_10_readcru, ti990_10_writecru)
-	/*MDRV_CPU_VBLANK_INT(NULL, 0)*/
 	MDRV_CPU_PERIODIC_INT(ti990_10_line_interrupt, 120/*or 100 in Europe*/)
 
-	/* video hardware - we emulate a single 911 vdt display */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
-
 	MDRV_MACHINE_RESET( ti990_10 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware - we emulate a single 911 vdt display */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	/*MDRV_ASPECT_RATIO(num, den)*/
 	MDRV_SCREEN_SIZE(560, 280)
 	MDRV_SCREEN_VISIBLE_AREA(0, 560-1, 0, /*250*/280-1)
 
 	MDRV_GFXDECODE(vdt911)
 	MDRV_PALETTE_LENGTH(vdt911_palette_size)
-	MDRV_COLORTABLE_LENGTH(vdt911_colortable_size)
 
 	MDRV_PALETTE_INIT(vdt911)
 	MDRV_VIDEO_START(ti990_10)
@@ -229,7 +222,6 @@ static MACHINE_DRIVER_START(ti990_10)
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-
 MACHINE_DRIVER_END
 
 
@@ -273,7 +265,7 @@ ROM_START(ti990_10)
 
 
 	/* VDT911 character definitions */
-	ROM_REGION(vdt911_chr_region_len, vdt911_chr_region, 0)
+	ROM_REGION(vdt911_chr_region_len, vdt911_chr_region, ROMREGION_ERASEFF)
 
 ROM_END
 
@@ -292,47 +284,47 @@ static INPUT_PORTS_START(ti990_10)
 	VDT911_KEY_PORTS
 INPUT_PORTS_END
 
-static void ti990_10_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti990_10_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_ti990_hd; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti990_hd; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_hd; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_ti990_hd; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti990_hd; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_hd; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
 	}
 }
 
-static void ti990_10_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti990_10_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_ti990_tape; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti990_tape; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_tape; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_ti990_tape; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti990_tape; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_tape; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
 	}
 }
 

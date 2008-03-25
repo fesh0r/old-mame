@@ -40,14 +40,13 @@ static const rgb_t z88_palette[Z88_NUM_COLOURS] =
 PALETTE_INIT( z88 )
 {
 	palette_set_colors(machine, 0, z88_palette, ARRAY_LENGTH(z88_palette));
-	memcpy(colortable, z88_colour_table, sizeof (z88_colour_table));
 }
 
 extern struct blink_hw blink;
 
 /* temp - change to gfxelement structure */
 
-static void z88_vh_render_8x8(mame_bitmap *bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
+static void z88_vh_render_8x8(bitmap_t *bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
 {
         int h,b;
 
@@ -76,7 +75,7 @@ static void z88_vh_render_8x8(mame_bitmap *bitmap, int x, int y, int pen0, int p
         }
 }
 
-static void z88_vh_render_6x8(mame_bitmap *bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
+static void z88_vh_render_6x8(bitmap_t *bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
 {
 	int h,b;
 
@@ -108,7 +107,7 @@ static void z88_vh_render_6x8(mame_bitmap *bitmap, int x, int y, int pen0, int p
 	}
 }
 
-static void z88_vh_render_line(mame_bitmap *bitmap, int x, int y,int pen)
+static void z88_vh_render_line(bitmap_t *bitmap, int x, int y,int pen)
 {
 	z88_plot_pixel(bitmap, x, y+7, pen);
 	z88_plot_pixel(bitmap, x+1, y+7, pen);
@@ -152,7 +151,7 @@ VIDEO_EOF( z88 )
 
 
 /***************************************************************************
-  Draw the game screen in the given mame_bitmap.
+  Draw the game screen in the given bitmap_t.
   Do NOT call osd_update_display() from this fuz88tion,
   it will be called by the main emulation engine.
 ***************************************************************************/
@@ -180,27 +179,27 @@ VIDEO_UPDATE( z88 )
 			/* inverted graphics? */
 				if (byte1 & Z88_SCR_HW_REV)
 				{
-				pen1 = machine->pens[0];
+				pen1 = screen->machine->pens[0];
 
 				if (byte1 & Z88_SCR_HW_GRY)
 				{
-					pen0 = machine->pens[2];
+					pen0 = screen->machine->pens[2];
 				}
 				else
 				{
-					pen0 = machine->pens[1];
+					pen0 = screen->machine->pens[1];
 				}
 				}
 				else
                 {
-				pen0 = machine->pens[0];
+				pen0 = screen->machine->pens[0];
 				if (byte1 & Z88_SCR_HW_GRY)
 				{
-					pen1 = machine->pens[2];
+					pen1 = screen->machine->pens[2];
 				}
 				else
 				{
-					pen1 = machine->pens[1];
+					pen1 = screen->machine->pens[1];
 				}
 			}
 

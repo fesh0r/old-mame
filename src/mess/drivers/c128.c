@@ -308,9 +308,6 @@ U102 23256 (read compatible 27256?) 32kB 1571 system rom
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
 
-/* TODO: Remove dependency on this */
-#include "mslegacy.h"
-
 
 /* shares ram with m8502
  * how to bankswitch ?
@@ -327,13 +324,13 @@ U102 23256 (read compatible 27256?) 32kB 1571 system rom
  */
 static ADDRESS_MAP_START(c128_z80_mem , ADDRESS_SPACE_PROGRAM, 8)
 #if 1
-	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(MRA8_BANK10, c128_write_0000)
-	AM_RANGE(0x1000, 0xbfff) AM_READWRITE(MRA8_BANK11, c128_write_1000)
+	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_BANK10, c128_write_0000)
+	AM_RANGE(0x1000, 0xbfff) AM_READWRITE(SMH_BANK11, c128_write_1000)
 	AM_RANGE(0xc000, 0xffff) AM_RAM
 #else
 	/* best to do reuse bankswitching numbers */
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(MRA8_BANK10, MWA8_BANK1)
-	AM_RANGE(0x0400, 0x0fff) AM_READWRITE(MRA8_BANK11, MWA8_BANK2)
+	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_BANK10, SMH_BANK1)
+	AM_RANGE(0x0400, 0x0fff) AM_READWRITE(SMH_BANK11, SMH_BANK2)
 	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK(3)
 	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(4)
 	AM_RANGE(0x4000, 0xbfff) AM_RAMBANK(5)
@@ -345,20 +342,20 @@ static ADDRESS_MAP_START(c128_z80_mem , ADDRESS_SPACE_PROGRAM, 8)
 #endif
 
 #if 0
-	AM_RANGE(0x10000, 0x1ffff) AM_WRITE(MWA8_RAM)
-	AM_RANGE(0x20000, 0xfffff) AM_WRITE(MWA8_RAM)	   /* or nothing */
-	AM_RANGE(0x100000, 0x107fff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_basic)	/* maps to 0x4000 */
-	AM_RANGE(0x108000, 0x109fff) AM_WRITE(MWA8_ROM) AM_BASE(&c64_basic)	/* maps to 0xa000 */
-	AM_RANGE(0x10a000, 0x10bfff) AM_WRITE(MWA8_ROM) AM_BASE(&c64_kernal)	/* maps to 0xe000 */
-	AM_RANGE(0x10c000, 0x10cfff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_editor)
-	AM_RANGE(0x10d000, 0x10dfff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_z80)		/* maps to z80 0 */
-	AM_RANGE(0x10e000, 0x10ffff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_kernal)
-	AM_RANGE(0x110000, 0x117fff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_internal_function)
-	AM_RANGE(0x118000, 0x11ffff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_external_function)
-	AM_RANGE(0x120000, 0x120fff) AM_WRITE(MWA8_ROM) AM_BASE(&c64_chargen)
-	AM_RANGE(0x121000, 0x121fff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_chargen)
-	AM_RANGE(0x122000, 0x1227ff) AM_WRITE(MWA8_ROM) AM_BASE(&c64_colorram)
-	AM_RANGE(0x122800, 0x1327ff) AM_WRITE(MWA8_ROM) AM_BASE(&c128_vdcram)
+	AM_RANGE(0x10000, 0x1ffff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x20000, 0xfffff) AM_WRITE(SMH_RAM)	   /* or nothing */
+	AM_RANGE(0x100000, 0x107fff) AM_WRITE(SMH_ROM) AM_BASE(&c128_basic)	/* maps to 0x4000 */
+	AM_RANGE(0x108000, 0x109fff) AM_WRITE(SMH_ROM) AM_BASE(&c64_basic)	/* maps to 0xa000 */
+	AM_RANGE(0x10a000, 0x10bfff) AM_WRITE(SMH_ROM) AM_BASE(&c64_kernal)	/* maps to 0xe000 */
+	AM_RANGE(0x10c000, 0x10cfff) AM_WRITE(SMH_ROM) AM_BASE(&c128_editor)
+	AM_RANGE(0x10d000, 0x10dfff) AM_WRITE(SMH_ROM) AM_BASE(&c128_z80)		/* maps to z80 0 */
+	AM_RANGE(0x10e000, 0x10ffff) AM_WRITE(SMH_ROM) AM_BASE(&c128_kernal)
+	AM_RANGE(0x110000, 0x117fff) AM_WRITE(SMH_ROM) AM_BASE(&c128_internal_function)
+	AM_RANGE(0x118000, 0x11ffff) AM_WRITE(SMH_ROM) AM_BASE(&c128_external_function)
+	AM_RANGE(0x120000, 0x120fff) AM_WRITE(SMH_ROM) AM_BASE(&c64_chargen)
+	AM_RANGE(0x121000, 0x121fff) AM_WRITE(SMH_ROM) AM_BASE(&c128_chargen)
+	AM_RANGE(0x122000, 0x1227ff) AM_WRITE(SMH_ROM) AM_BASE(&c64_colorram)
+	AM_RANGE(0x122800, 0x1327ff) AM_WRITE(SMH_ROM) AM_BASE(&c128_vdcram)
 	/* 2 kbyte by 8 bits, only 1 kbyte by 4 bits used) */
 #endif
 ADDRESS_MAP_END
@@ -382,15 +379,15 @@ static ADDRESS_MAP_START( c128_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x1000, 0x1fff) AM_RAMBANK(5)
 	AM_RANGE(0x2000, 0x3fff) AM_RAMBANK(6)
 
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( MRA8_BANK7, c128_write_4000 )
-	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( MRA8_BANK8, c128_write_8000 )
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( MRA8_BANK9, c128_write_a000 )
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( SMH_BANK7, c128_write_4000 )
+	AM_RANGE(0x8000, 0x9fff) AM_READWRITE( SMH_BANK8, c128_write_8000 )
+	AM_RANGE(0xa000, 0xbfff) AM_READWRITE( SMH_BANK9, c128_write_a000 )
 
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE( MRA8_BANK12, c128_write_c000 )
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE( MRA8_BANK13, c128_write_d000 )
-	AM_RANGE(0xe000, 0xfeff) AM_READWRITE( MRA8_BANK14, c128_write_e000 )
-	AM_RANGE(0xff00, 0xff04) AM_READWRITE( MRA8_BANK15, c128_write_ff00 )	   /* mmu c128 modus */
-	AM_RANGE(0xff05, 0xffff) AM_READWRITE( MRA8_BANK16, c128_write_ff05 )
+	AM_RANGE(0xc000, 0xcfff) AM_READWRITE( SMH_BANK12, c128_write_c000 )
+	AM_RANGE(0xd000, 0xdfff) AM_READWRITE( SMH_BANK13, c128_write_d000 )
+	AM_RANGE(0xe000, 0xfeff) AM_READWRITE( SMH_BANK14, c128_write_e000 )
+	AM_RANGE(0xff00, 0xff04) AM_READWRITE( SMH_BANK15, c128_write_ff00 )	   /* mmu c128 modus */
+	AM_RANGE(0xff05, 0xffff) AM_READWRITE( SMH_BANK16, c128_write_ff05 )
 ADDRESS_MAP_END
 
 #define C128_DIPS \
@@ -934,12 +931,12 @@ static PALETTE_INIT( c128 )
 {
 	int i;
 
-	palette_set_colors_rgb(machine, 0, vic2_palette, sizeof(vic2_palette) / 3);
-	palette_set_colors_rgb(machine, sizeof(vic2_palette) / 3, vdc8563_palette, sizeof(vdc8563_palette) / 3);
+	for ( i = 0; i < sizeof(vic2_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, vic2_palette[i*3], vic2_palette[i*3+1], vic2_palette[i*3+2]);
+	}
 
-	for (i=0; i<0x100; i++) {
-		colortable[i*2]=0x10+((i&0xf0)>>4);
-		colortable[i*2+1]=0x10+(i&0xf);
+	for ( i = 0; i < sizeof(vdc8563_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i + sizeof(vic2_palette) / 3, vdc8563_palette[i*3], vdc8563_palette[i*3+1], vdc8563_palette[i*3+2]);
 	}
 }
 
@@ -1061,9 +1058,9 @@ ROM_START (c128)
 	ROM_LOAD ("251913.01", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88))
 	ROM_LOAD ("318020.05", 0x10c000, 0x4000, CRC(ba456b8e) SHA1(ceb6e1a1bf7e08eb9cbc651afa29e26adccf38ab))
 	ROM_LOAD ("390059.01", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f))
-	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START (c128d)
@@ -1071,10 +1068,10 @@ ROM_START (c128d)
 	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
 	ROM_LOAD ("318023.02", 0x108000, 0x8000, CRC(eedc120a) SHA1(f98c5a986b532c78bb68df9ec6dbcf876913b99f))
 	ROM_LOAD ("390059.01", 0x120000, 0x2000, CRC(6aaaafe6) SHA1(29ed066d513f2d5c09ff26d9166ba23c2afb2b3f))
-	ROM_REGION (0x10000, REGION_CPU2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
 	C1571_ROM(REGION_CPU3)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 // submitted as cost reduced set!
@@ -1093,11 +1090,11 @@ ROM_START (c128dita)
 //    ROM_LOAD ("325167.01b", 0x120000, 0x1000, CRC(ec4272ee)) //standard c64 901226.01
 //    ROM_LOAD ("325167.01b", 0x121000, 0x1000, CRC(2bc73556)) // bad dump
 
-	ROM_REGION (0x10000, REGION_CPU2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
     // not included in submission
 //  C1571_ROM(REGION_CPU3)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START (c128ger)
@@ -1106,9 +1103,9 @@ ROM_START (c128ger)
 	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
 	ROM_LOAD ("318077.01", 0x108000, 0x8000, CRC(eb6e2c8f) SHA1(6b3d891fedabb5335f388a5d2a71378472ea60f4))
 	ROM_LOAD ("315079.01", 0x120000, 0x2000, CRC(fe5a2db1) SHA1(638f8aff51c2ac4f99a55b12c4f8c985ef4bebd3))
-	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START (c128fra)
@@ -1124,9 +1121,9 @@ ROM_START (c128fra)
 	ROM_LOAD ("kernalpart.french.bin", 0x10e000, 0x2000, CRC(ca5e1179))
 #endif
 	ROM_LOAD ("325167.01", 0x120000, 0x2000, CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8))
-	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START (c128ita)
@@ -1137,9 +1134,9 @@ ROM_START (c128ita)
 	ROM_LOAD ("251913.01", 0x108000, 0x4000, CRC(0010ec31) SHA1(765372a0e16cbb0adf23a07b80f6b682b39fbf88))
 	ROM_LOAD ("italian.bin", 0x10c000, 0x4000, CRC(74d6b084) SHA1(592a626eb2b5372596ac374d3505c3ce78dd040f))
 	ROM_LOAD ("325167.01", 0x120000, 0x2000, CRC(bad36b88) SHA1(9119b27a1bf885fa4c76fff5d858c74c194dd2b8))
-	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START (c128swe)
@@ -1147,9 +1144,9 @@ ROM_START (c128swe)
 	ROM_LOAD ("318022.02", 0x100000, 0x8000, CRC(af1ae1e8) SHA1(953dcdf5784a6b39ef84dd6fd968c7a03d8d6816))
 	ROM_LOAD ("318034.01", 0x108000, 0x8000, CRC(cb4e1719) SHA1(9b0a0cef56d00035c611e07170f051ee5e63aa3a))
 	ROM_LOAD ("325181.01", 0x120000, 0x2000, CRC(7a70d9b8) SHA1(aca3f7321ee7e6152f1f0afad646ae41964de4fb))
-	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START (c128nor)
@@ -1160,9 +1157,9 @@ ROM_START (c128nor)
 	ROM_LOAD ("nor.bin", 0x10c000, 0x4000, BAD_DUMP CRC(a5406848) SHA1(00fe2fd610a812121befab1e7238fa882c0f8257))
 	/* standard c64, vic20 based norwegian */
 	ROM_LOAD ("char.nor", 0x120000, 0x2000, BAD_DUMP CRC(ba95c625))
-	ROM_REGION (0x10000, REGION_CPU2, 0)
-	ROM_REGION (0x2000, REGION_GFX1, 0)
-	ROM_REGION (0x100, REGION_GFX2, 0)
+	ROM_REGION (0x10000, REGION_CPU2, ROMREGION_ERASEFF)
+	ROM_REGION (0x2000, REGION_GFX1, ROMREGION_ERASEFF)
+	ROM_REGION (0x100, REGION_GFX2, ROMREGION_ERASEFF)
 ROM_END
 
 static const SID6581_interface c128_sound_interface =
@@ -1177,28 +1174,27 @@ static MACHINE_DRIVER_START( c128 )
 	MDRV_CPU_ADD_TAG("main", Z80, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP( c128_z80_mem, 0 )
 	MDRV_CPU_IO_MAP( c128_z80_io, 0 )
-	MDRV_CPU_VBLANK_INT(c64_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC2_HRETRACERATE)
 
 	MDRV_CPU_ADD_TAG("m8502", M8502, VIC6567_CLOCK)
 	MDRV_CPU_PROGRAM_MAP( c128_mem, 0 )
-	MDRV_CPU_VBLANK_INT(c64_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", c64_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(vic2_raster_irq, VIC2_HRETRACERATE)
 
-	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( c128 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(VIC6567_VRETRACERATE)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(656, 216)
 	MDRV_SCREEN_VISIBLE_AREA(0, 656 - 1, 0, 216 - 1)
 	MDRV_GFXDECODE( c128 )
 	MDRV_PALETTE_LENGTH((sizeof (vic2_palette) +sizeof(vdc8563_palette))/ sizeof (vic2_palette[0]) / 3 )
-	MDRV_COLORTABLE_LENGTH( 0x100*2 )
 	MDRV_PALETTE_INIT( c128 )
 
 	MDRV_VIDEO_START( c128 )
@@ -1224,6 +1220,7 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_IMPORT_FROM( c128 )
 	MDRV_CPU_REPLACE( "main", Z80, VIC6569_CLOCK )
 	MDRV_CPU_REPLACE( "m8502", M8502, VIC6569_CLOCK )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(VIC6569_VRETRACERATE)
 
 	/* sound hardware */
@@ -1231,29 +1228,29 @@ static MACHINE_DRIVER_START( c128pal )
 	MDRV_SOUND_CONFIG(c128_sound_interface)
 MACHINE_DRIVER_END
 
-static void c128_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void c128_cbmcartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,80"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,80"); break;
 
 		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void c64_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void c64_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c64; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c64; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}

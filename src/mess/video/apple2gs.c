@@ -12,13 +12,13 @@
 #include "includes/apple2gs.h"
 
 
-static mame_bitmap *apple2gs_legacy_gfx;
+static bitmap_t *apple2gs_legacy_gfx;
 UINT16 apple2gs_bordercolor;
 
 VIDEO_START( apple2gs )
 {
 	apple2gs_bordercolor = 0;
-	apple2_video_start(apple2gs_slowmem, 0x20000, 0, 8);
+	apple2_video_start(machine, apple2gs_slowmem, 0x20000, 0, 8);
 	apple2gs_legacy_gfx = auto_bitmap_alloc(560, 192, BITMAP_FORMAT_INDEXED16);
 }
 
@@ -45,7 +45,7 @@ VIDEO_UPDATE( apple2gs )
 		new_cliprect.min_y = cliprect->min_y+1;
 		new_cliprect.max_y = cliprect->min_y+1;
 
-		video_update_apple2gs(machine, screen, bitmap, &new_cliprect);
+		video_update_apple2gs(screen, bitmap, &new_cliprect);
 	}
 
 	if (apple2gs_newvideo & 0x80)
@@ -133,7 +133,7 @@ VIDEO_UPDATE( apple2gs )
 			new_cliprect.min_y = 0;
 			new_cliprect.max_x = 559;
 			new_cliprect.max_y = 191;
-			video_update_apple2(machine, screen, apple2gs_legacy_gfx, &new_cliprect);
+			video_update_apple2(screen, apple2gs_legacy_gfx, &new_cliprect);
 		}
 
 		if ((beamy < (BORDER_TOP+4)) || (beamy >= (192+4+BORDER_TOP)))

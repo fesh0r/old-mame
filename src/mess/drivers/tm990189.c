@@ -38,14 +38,14 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms9900/tms9900.h"
 #include "machine/tms9901.h"
 #include "machine/tms9902.h"
 #include "video/tms9928a.h"
 #include "devices/cassette.h"
 #include "sound/speaker.h"
-#include "mslegacy.h"
-#include "deprecat.h"
+
 
 static int load_state;
 static int ic_state;
@@ -79,7 +79,7 @@ static int LED_display_window_top;
 static int LED_display_window_width;
 static int LED_display_window_height;
 
-static void hold_load(void);
+static void hold_load(running_machine *machine);
 
 static void usr9901_interrupt_callback(int intreq, int ic);
 static void sys9901_interrupt_callback(int intreq, int ic);
@@ -192,7 +192,7 @@ static MACHINE_RESET( tm990_189 )
 {
 	displayena_timer = timer_alloc(NULL, NULL);
 
-	hold_load();
+	hold_load(machine);
 
 	tms9901_init(0, &usr9901reset_param);
 	tms9901_init(1, &sys9901reset_param);
@@ -224,7 +224,7 @@ static MACHINE_RESET( tm990_189_v )
 	joy2x_timer = timer_alloc(NULL, NULL);
 	joy2y_timer = timer_alloc(NULL, NULL);
 
-	hold_load();
+	hold_load(machine);
 
 	tms9901_init(0, &usr9901reset_param);
 	tms9901_init(1, &sys9901reset_param);
@@ -246,9 +246,11 @@ static MACHINE_RESET( tm990_189_v )
 
 static PALETTE_INIT( tm990_189 )
 {
-	palette_set_colors_rgb(machine, 0, tm990_189_palette, tm990_189_palette_size);
+	int i;
 
-	/*memcpy(colortable, & tm990_189_colortable, sizeof(tm990_189_colortable));*/
+	for ( i = 0; i < tm990_189_palette_size; i++ ) {
+		palette_set_color_rgb(machine, i, tm990_189_palette[i*3], tm990_189_palette[i*3+1], tm990_189_palette[i*3+2]);
+	}
 }
 
 static VIDEO_EOF( tm990_189 )
@@ -264,7 +266,7 @@ INLINE void draw_digit(void)
 	segment_state[digitsel] |= ~segment;
 }
 
-static void update_common(mame_bitmap *bitmap,
+static void update_common(bitmap_t *bitmap,
 							int display_x, int display_y,
 							int LED14_x, int LED14_y,
 							int LED56_x, int LED56_y,
@@ -314,17 +316,20 @@ static void update_common(mame_bitmap *bitmap,
 
 static VIDEO_UPDATE( tm990_189 )
 {
-	update_common(bitmap, 580, 150, 110, 508, 387, 456, 507, 478, machine->pens[1], machine->pens[0]);
+	update_common(bitmap, 580, 150, 110, 508, 387, 456, 507, 478, 1, 0);
 	return 0;
 }
 
 static VIDEO_START( tm990_189_v )
 {
+	const device_config *screen = video_screen_first(machine->config);
+	const rectangle *visarea = video_screen_get_visible_area(screen);
+
 	/* NPW 27-Feb-2006 - ewwww gross!!! maybe this can be fixed when
      * multimonitor support is added?*/
-	LED_display_window_left = machine->screen[0].visarea.min_x;
-	LED_display_window_top = machine->screen[0].visarea.max_y - 32;
-	LED_display_window_width = machine->screen[0].visarea.max_x - machine->screen[0].visarea.min_x;
+	LED_display_window_left = visarea->min_x;
+	LED_display_window_top = visarea->max_y - 32;
+	LED_display_window_width = visarea->max_x - visarea->min_x;
 	LED_display_window_height = 32;
 }
 
@@ -332,13 +337,13 @@ static VIDEO_UPDATE( tm990_189_v )
 {
 	VIDEO_UPDATE_CALL(tms9928a);
 
-	plot_box(bitmap, LED_display_window_left, LED_display_window_top, LED_display_window_width, LED_display_window_height, machine->pens[1]);
+	plot_box(bitmap, LED_display_window_left, LED_display_window_top, LED_display_window_width, LED_display_window_height, screen->machine->pens[1]);
 	update_common(bitmap,
 					LED_display_window_left, LED_display_window_top,
 					LED_display_window_left, LED_display_window_top+16,
 					LED_display_window_left+80, LED_display_window_top+16,
 					LED_display_window_left+128, LED_display_window_top+16,
-					machine->pens[6], machine->pens[1]);
+					6, 1);
 	return 0;
 }
 
@@ -346,12 +351,12 @@ static VIDEO_UPDATE( tm990_189_v )
     Interrupt handlers
 */
 
-static void field_interrupts(void)
+static void field_interrupts(running_machine *machine)
 {
 	if (load_state)
-		cpunum_set_input_line_and_vector(Machine, 0, 0, ASSERT_LINE, 2);
+		cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, 2);
 	else
-		cpunum_set_input_line_and_vector(Machine, 0, 0, ASSERT_LINE, ic_state);
+		cpunum_set_input_line_and_vector(machine, 0, 0, ASSERT_LINE, ic_state);
 }
 
 /*
@@ -361,13 +366,13 @@ static void field_interrupts(void)
 static TIMER_CALLBACK(clear_load)
 {
 	load_state = FALSE;
-	field_interrupts();
+	field_interrupts(machine);
 }
 
-static void hold_load(void)
+static void hold_load(running_machine *machine)
 {
 	load_state = TRUE;
-	field_interrupts();
+	field_interrupts(machine);
 	timer_set(ATTOTIME_IN_MSEC(100), NULL, 0, clear_load);
 }
 
@@ -380,7 +385,7 @@ static void usr9901_interrupt_callback(int intreq, int ic)
 	ic_state = ic & 7;
 
 	if (!load_state)
-		field_interrupts();
+		field_interrupts(Machine);
 }
 
 static void usr9901_led_w(int offset, int data)
@@ -489,7 +494,7 @@ static int device_load_tm990_189_rs232(mess_image *image)
 
 	tms9902_set_dsr(id, 1);
 	rs232_input_timer = timer_alloc(rs232_input_callback, NULL);
-	timer_adjust(rs232_input_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(10));
+	timer_adjust_periodic(rs232_input_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(10));
 
 	return INIT_PASS;
 }
@@ -561,7 +566,7 @@ static WRITE8_HANDLER(ext_instr_decode)
 		break;
 
 	case 7: /* LREX: trigger LOAD */
-		hold_load();
+		hold_load(machine);
 		break;
 	}
 }
@@ -598,9 +603,9 @@ static  READ8_HANDLER(video_vdp_r)
     it. */
 
 	if (offset & 2)
-		reply = TMS9928A_register_r(0);
+		reply = TMS9928A_register_r(machine, 0);
 	else
-		reply = TMS9928A_vram_r(0);
+		reply = TMS9928A_vram_r(machine, 0);
 
 	if (!(offset & 1))
 		bogus_read_save = reply;
@@ -615,13 +620,13 @@ static WRITE8_HANDLER(video_vdp_w)
 	if (offset & 1)
 	{
 		if (offset & 2)
-			TMS9928A_register_w(0, data);
+			TMS9928A_register_w(machine, 0, data);
 		else
-			TMS9928A_vram_w(0, data);
+			TMS9928A_vram_w(machine, 0, data);
 	}
 }
 
-static  READ8_HANDLER(video_joy_r)
+static READ8_HANDLER(video_joy_r)
 {
 	int reply = readinputport(9);
 
@@ -691,9 +696,9 @@ static ADDRESS_MAP_START(tm990_189_v_memmap, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x07ff) AM_RAM									/* RAM */
 	AM_RANGE(0x0800, 0x0fff) AM_ROM									/* extra ROM - application programs with unibug, remaining 2kb of program for university basic */
 
-	AM_RANGE(0x1000, 0x17ff) AM_READWRITE(MRA8_ROM, MWA8_NOP)		/* video board ROM 1 */
-	AM_RANGE(0x1800, 0x1fff) AM_READWRITE(MRA8_ROM, video_joy_w)	/* video board ROM 2 and joystick write port*/
-	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(video_vdp_r, MWA8_NOP)	/* video board tms9918 read ports (bogus) */
+	AM_RANGE(0x1000, 0x17ff) AM_READWRITE(SMH_ROM, SMH_NOP)		/* video board ROM 1 */
+	AM_RANGE(0x1800, 0x1fff) AM_READWRITE(SMH_ROM, video_joy_w)	/* video board ROM 2 and joystick write port*/
+	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(video_vdp_r, SMH_NOP)	/* video board tms9918 read ports (bogus) */
 	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(video_joy_r, video_vdp_w)	/* video board joystick read port and tms9918 write ports */
 
 	AM_RANGE(0x3000, 0x3fff) AM_ROM									/* main ROM - unibug or university basic */
@@ -781,32 +786,25 @@ static tms9980areset_param reset_params =
 };
 
 static MACHINE_DRIVER_START(tm990_189)
-
 	/* basic machine hardware */
 	/* TMS9980 CPU @ 2.0 MHz */
 	MDRV_CPU_ADD(TMS9980, 2000000)
 	MDRV_CPU_CONFIG(reset_params)
 	MDRV_CPU_PROGRAM_MAP(tm990_189_memmap, 0)
 	MDRV_CPU_IO_MAP(tm990_189_readcru, tm990_189_writecru)
-	/*MDRV_CPU_VBLANK_INT(tm990_189_interrupt, 1)*/
-	/*MDRV_CPU_PERIODIC_INT(NULL, 0)*/
 
 	MDRV_MACHINE_RESET( tm990_189 )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware - we emulate a 8-segment LED display */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(75)
-	MDRV_SCREEN_VBLANK_TIME(/*DEFAULT_REAL_60HZ_VBLANK_DURATION*/0)
-	/*MDRV_INTERLEAVE(interleave)*/
-
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(750, 532)
 	MDRV_SCREEN_VISIBLE_AREA(0, 750-1, 0, 532-1)
 
 	/*MDRV_GFXDECODE(tm990_189)*/
 	MDRV_PALETTE_LENGTH(tm990_189_palette_size)
-	MDRV_COLORTABLE_LENGTH(/*tm990_189_colortable_size*/0)
 
 	MDRV_PALETTE_INIT(tm990_189)
 	/*MDRV_VIDEO_START(tm990_189)*/
@@ -819,7 +817,8 @@ static MACHINE_DRIVER_START(tm990_189)
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(SPEAKER, 0)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)MACHINE_DRIVER_END
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+MACHINE_DRIVER_END
 
 #define LEFT_BORDER		15
 #define RIGHT_BORDER		15
@@ -827,26 +826,21 @@ static MACHINE_DRIVER_START(tm990_189)
 #define BOTTOM_BORDER_60HZ	24
 
 static MACHINE_DRIVER_START(tm990_189_v)
-
 	/* basic machine hardware */
 	/* TMS9980 CPU @ 2.0 MHz */
 	MDRV_CPU_ADD(TMS9980, 2000000)
 	MDRV_CPU_CONFIG(reset_params)
 	MDRV_CPU_PROGRAM_MAP(tm990_189_v_memmap, 0)
 	MDRV_CPU_IO_MAP(tm990_189_readcru, tm990_189_writecru)
-	/*MDRV_CPU_VBLANK_INT(tm990_189_interrupt, 1)*/
-	/*MDRV_CPU_PERIODIC_INT(NULL, 0)*/
 
 	MDRV_MACHINE_START( tm990_189_v )
 	MDRV_MACHINE_RESET( tm990_189_v )
-	/*MDRV_NVRAM_HANDLER( NULL )*/
 
 	/* video hardware */
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
-
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_SIZE(LEFT_BORDER+32*8+RIGHT_BORDER, TOP_BORDER_60HZ+24*8+BOTTOM_BORDER_60HZ + 32)
 	MDRV_SCREEN_VISIBLE_AREA(LEFT_BORDER-12, LEFT_BORDER+32*8+12-1, TOP_BORDER_60HZ-9, TOP_BORDER_60HZ+24*8+9-1 + 32)
 	MDRV_VIDEO_EOF(tm990_189)
@@ -860,7 +854,6 @@ static MACHINE_DRIVER_START(tm990_189_v)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(SPEAKER,	0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
-
 MACHINE_DRIVER_END
 
 
@@ -989,36 +982,36 @@ static INPUT_PORTS_START(tm990_189)
 
 INPUT_PORTS_END
 
-static void tm990_189_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tm990_189_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void tm990_189_serial_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void tm990_189_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_tm990_189_rs232; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tm990_189_rs232; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_tm990_189_rs232; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_tm990_189_rs232; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 

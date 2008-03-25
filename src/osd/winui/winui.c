@@ -699,7 +699,7 @@ static int  have_history = FALSE;
 
 static BOOL have_selection = FALSE;
 
-static HBITMAP hMissing_bitmap;
+static HBITMAP hMissing_bitmap = NULL;
 
 /* Icon variables */
 static HIMAGELIST   hLarge = NULL;
@@ -1930,6 +1930,10 @@ static BOOL Win32UI_init(HINSTANCE hInstance, LPSTR lpCmdLine, int nCmdShow)
 		LOGFONT logfont;
 
 		GetListFont(&logfont);
+		if (hFont != NULL) {
+			//Clenaup old Font, otherwise we have a GDI handle leak
+			DeleteFont(hFont);
+		}
 		hFont = CreateFontIndirect(&logfont);
 		if (hFont != NULL)
 			SetAllWindowsFont(hMain, &main_resize, hFont, FALSE);
@@ -2059,28 +2063,32 @@ static void Win32UI_exit()
 		g_pJoyGUI->exit();
 
 	/* Free GDI resources */
+	if (hMain) {
+		DeleteObject(hMain);
+		hMain = NULL;
+	}
 
 	if (hMissing_bitmap)
 	{
-		DeleteObject(hMissing_bitmap);
+		DeleteBitmap(hMissing_bitmap);
 		hMissing_bitmap = NULL;
 	}
 
 	if (hBackground)
 	{
-		DeleteObject(hBackground);
+		DeleteBitmap(hBackground);
 		hBackground = NULL;
 	}
 	
 	if (hPALbg)
 	{
-		DeleteObject(hPALbg);
+		DeletePalette(hPALbg);
 		hPALbg = NULL;
 	}
 	
 	if (hFont)
 	{
-		DeleteObject(hFont);
+		DeleteFont(hFont);
 		hFont = NULL;
 	}
 	
@@ -2108,7 +2116,7 @@ static void Win32UI_exit()
 	pool_free(mameui_pool);
 	mameui_pool = NULL;
 }
-
+	
 static LRESULT CALLBACK MameWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	MINMAXINFO	*mminfo;
@@ -2125,7 +2133,7 @@ static LRESULT CALLBACK MameWindowProc(HWND hWnd, UINT message, WPARAM wParam, L
 			LOGBRUSH lb;
 
 			if (hBrush)
-				DeleteObject(hBrush);
+				DeleteBrush(hBrush);
 			lb.lbStyle  = BS_HOLLOW;
 			hBrush = CreateBrushIndirect(&lb);
 			SetBkMode(hDC, TRANSPARENT);
@@ -3213,7 +3221,7 @@ static void PaintBackgroundImage(HWND hWnd, HRGN hRgn, int x, int y)
 		/* create a region of our client area */
 		rgnBitmap = CreateRectRgnIndirect(&rcClient);
 		SelectClipRgn(hDC, rgnBitmap);
-		DeleteObject(rgnBitmap);
+		DeleteBitmap(rgnBitmap);
 	}
 	else
 	{
@@ -3240,7 +3248,7 @@ static void PaintBackgroundImage(HWND hWnd, HRGN hRgn, int x, int y)
 	
 	if (GetBackgroundPalette() == NULL)
 	{
-		DeleteObject(hPAL);
+		DeletePalette(hPAL);
 		hPAL = NULL;
 	}
 
@@ -3923,7 +3931,7 @@ static void PickFont(void)
 
 	SetListFont(&font);
 	if (hFont != NULL)
-		DeleteObject(hFont);
+		DeleteFont(hFont);
 	hFont = CreateFontIndirect(&font);
 	if (hFont != NULL)
 	{
@@ -4648,13 +4656,13 @@ static void LoadBackgroundBitmap()
 
 	if (hBackground)
 	{
-		DeleteObject(hBackground);
+		DeleteBitmap(hBackground);
 		hBackground = 0;
 	}
 
 	if (hPALbg)
 	{
-		DeleteObject(hPALbg);
+		DeletePalette(hPALbg);
 		hPALbg = 0;
 	}
 
@@ -4742,17 +4750,18 @@ static const TCHAR *GamePicker_GetItemString(HWND hwndPicker, int nItem, int nCo
 			break;
 
 		case COLUMN_TYPE:
-        {
-            machine_config drv;
-            expand_machine_driver(drivers[nItem]->drv,&drv);
+			{
+				machine_config *config = machine_config_alloc(drivers[nItem]->machine_config);
+				/* Vector/Raster */
+				if (isDriverVector(config))
+					s = TEXT("Vector");
+				else
+					s = TEXT("Raster");
 
-			/* Vector/Raster */
-			if (drv.video_attributes & VIDEO_TYPE_VECTOR)
-				s = TEXT("Vector");
-			else
-				s = TEXT("Raster");
+				machine_config_free(config);
+			}
 			break;
-        }
+
 		case COLUMN_TRACKBALL:
 			/* Trackball */
 			if (DriverUsesTrackball(nItem))
@@ -5191,19 +5200,21 @@ static int GamePicker_Compare(HWND hwndPicker, int index1, int index2, int sort_
 		break;
 
 	case COLUMN_PLAYTIME:
-	   value = GetPlayTime(index1) - GetPlayTime(index2);
-	   break;
+		value = GetPlayTime(index1) - GetPlayTime(index2);
+		break;
 
 	case COLUMN_TYPE:
-    {
-        machine_config drv1,drv2;
-        expand_machine_driver(drivers[index1]->drv,&drv1);
-        expand_machine_driver(drivers[index2]->drv,&drv2);
+		{
+			machine_config *config1 = machine_config_alloc(drivers[index1]->machine_config);
+			machine_config *config2 = machine_config_alloc(drivers[index2]->machine_config);
 
-		value = (drv1.video_attributes & VIDEO_TYPE_VECTOR) -
-				(drv2.video_attributes & VIDEO_TYPE_VECTOR);
+			value = isDriverVector(config1) - isDriverVector(config2);
+
+			machine_config_free(config1);
+			machine_config_free(config2);
+		}
 		break;
-    }
+
 	case COLUMN_TRACKBALL:
 		value = DriverUsesTrackball(index1) - DriverUsesTrackball(index2);
 		break;
@@ -5309,10 +5320,10 @@ BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int filetype)
 	switch (filetype)
 	{
 	case FILETYPE_INPUT_FILES :
-		of.lpstrFilter   = TEXT(MAMENAME " input files (*.inp,*.zip)\0*.inp;*.zip\0All files (*.*)\0*.*\0");
+		of.lpstrFilter   = TEXT(MAMENAME) TEXT(" input files (*.inp,*.zip)\0*.inp;*.zip\0All files (*.*)\0*.*\0");
 		break;
 	case FILETYPE_SAVESTATE_FILES :
-		of.lpstrFilter   = TEXT(MAMENAME " savestate files (*.sta)\0*.sta;\0All files (*.*)\0*.*\0");
+		of.lpstrFilter   = TEXT(MAMENAME) TEXT(" savestate files (*.sta)\0*.sta;\0All files (*.*)\0*.*\0");
 		break;
 	case FILETYPE_WAVE_FILES :
 		of.lpstrFilter   = TEXT("sounds (*.wav)\0*.wav;\0All files (*.*)\0*.*\0");
@@ -5406,7 +5417,7 @@ static BOOL SelectLanguageFile(HWND hWnd, TCHAR* filename)
 	of.lStructSize       = sizeof(of);
 	of.hwndOwner         = hWnd;
 	of.hInstance         = NULL;
-	of.lpstrFilter       = TEXT(MAMENAME " Language files (*.lng)\0*.lng\0");
+	of.lpstrFilter       = TEXT(MAMENAME) TEXT(" Language files (*.lng)\0*.lng\0");
 	of.lpstrCustomFilter = NULL;
 	of.nMaxCustFilter    = 0;
 	of.nFilterIndex      = 1;
@@ -6440,13 +6451,15 @@ static LRESULT CALLBACK PictureWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 
 		FillRgn(hdc,region2, hBrush );
 		SelectObject(hdc, holdBrush); 
-		DeleteObject(hBrush); 
+		DeleteBrush(hBrush); 
 
 		SetStretchBltMode(hdc,STRETCH_HALFTONE);
 		StretchBlt(hdc,nBordersize,nBordersize,rect.right-rect.left,rect.bottom-rect.top,
 				   hdc_temp,0,0,width,height,SRCCOPY);
 		SelectObject(hdc_temp,old_bitmap);
 		DeleteDC(hdc_temp);
+		DeleteObject(region1);
+		DeleteObject(region2);
 
 		EndPaint(hWnd,&ps);
 

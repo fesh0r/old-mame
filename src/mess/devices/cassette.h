@@ -16,10 +16,10 @@
 
 enum
 {
-	DEVINFO_INT_CASSETTE_DEFAULT_STATE = DEVINFO_INT_DEV_SPECIFIC,
+	MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE = MESS_DEVINFO_INT_DEV_SPECIFIC,
 
-	DEVINFO_PTR_CASSETTE_FORMATS = DEVINFO_PTR_DEV_SPECIFIC,
-	DEVINFO_PTR_CASSETTE_OPTIONS
+	MESS_DEVINFO_PTR_CASSETTE_FORMATS = MESS_DEVINFO_PTR_DEV_SPECIFIC,
+	MESS_DEVINFO_PTR_CASSETTE_OPTIONS
 };
 
 typedef enum
@@ -56,7 +56,7 @@ double cassette_get_length(mess_image *cassette);
 void cassette_seek(mess_image *cassette, double time, int origin);
 
 /* device specification */
-void cassette_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info);
+void cassette_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
 
 
 #endif /* CASSETTE_H */

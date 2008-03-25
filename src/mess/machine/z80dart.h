@@ -24,10 +24,10 @@ struct _z80dart_interface
 {
 	int baseclock;
 	void (*irq_cb)(int state);
-	write8_handler dtr_changed_cb;
-	write8_handler rts_changed_cb;
-	write8_handler break_changed_cb;
-	write8_handler transmit_cb;
+	write8_machine_func dtr_changed_cb;
+	write8_machine_func rts_changed_cb;
+	write8_machine_func break_changed_cb;
+	write8_machine_func transmit_cb;
 	int (*receive_poll_cb)(int which);
 };
 
@@ -46,7 +46,7 @@ void z80dart_reset(int which);
     CONTROL REGISTER READ/WRITE
 ***************************************************************************/
 
-void z80dart_c_w(int which, int ch, UINT8 data);
+void z80dart_c_w(running_machine *machine, int which, int ch, UINT8 data);
 UINT8 z80dart_c_r(int which, int ch);
 
 

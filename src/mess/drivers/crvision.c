@@ -352,7 +352,7 @@ static WRITE8_HANDLER( pia_portb_w )
         PB7     SN76489 data output
     */
 
-	SN76496_0_w(0, data);
+	SN76496_0_w(machine, 0, data);
 
 	sn76489_ready = 0;
 
@@ -410,15 +410,16 @@ static MACHINE_DRIVER_START( crvision )
 	// basic machine hardware
 	MDRV_CPU_ADD(M6502, 2000000)
 	MDRV_CPU_PROGRAM_MAP(crvision_map, 0)
-	MDRV_CPU_VBLANK_INT(crvision_int, 1)
-	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", crvision_int)
 
 	MDRV_MACHINE_START( crvision )
 	MDRV_MACHINE_RESET( crvision )
 
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/262)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	// sound hardware
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -429,6 +430,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( fnvision )
 	MDRV_IMPORT_FROM( crvision )
 	MDRV_MACHINE_START( fnvision )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(10738635.0/2/342/313)
 MACHINE_DRIVER_END
 
@@ -454,46 +456,46 @@ static DEVICE_LOAD( crvision_cart )
 	{
 	case 0x1000: // 4K
 		image_fread(image, memory_region(REGION_CPU1) + 0x9000, 0x1000);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, MRA8_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		break;
 
 	case 0x1800: // 6K
 		image_fread(image, memory_region(REGION_CPU1) + 0x9000, 0x1000);
 		image_fread(image, memory_region(REGION_CPU1) + 0x8800, 0x0800);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, MRA8_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		break;
 
 	case 0x2000: // 8K
 		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, MRA8_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		break;
 
 	case 0x2800: // 10K
 		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
 		image_fread(image, memory_region(REGION_CPU1) + 0x5800, 0x0800);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, MRA8_BANK1);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, MRA8_BANK2);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
 		break;
 
 	case 0x3000: // 12K
 		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
 		image_fread(image, memory_region(REGION_CPU1) + 0x5000, 0x1000);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, MRA8_BANK1);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, MRA8_BANK2);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
 		break;
 
 	case 0x4000: // 16K
 		image_fread(image, memory_region(REGION_CPU1) + 0xa000, 0x2000);
 		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
 		break;
 
 	case 0x4800: // 18K
 		image_fread(image, memory_region(REGION_CPU1) + 0xa000, 0x2000);
 		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
 		image_fread(image, memory_region(REGION_CPU1) + 0x4800, 0x0800);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, MRA8_BANK1);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4fff, 0, 0x3000, MRA8_BANK2);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, SMH_BANK1);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4fff, 0, 0x3000, SMH_BANK2);
 		break;
 
 	default:
@@ -509,32 +511,32 @@ static DEVICE_LOAD( crvision_cart )
 	return INIT_PASS;
 }
 
-static void crvision_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void crvision_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_crvision_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_crvision_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void crvision_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void crvision_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}

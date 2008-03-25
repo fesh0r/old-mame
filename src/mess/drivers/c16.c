@@ -164,7 +164,6 @@ when problems start with -log and look into error.log file
 #include "includes/vc20tape.h"
 #include "video/ted7360.h"
 #include "devices/cartslot.h"
-#include "mslegacy.h"
 
 /*
  * commodore c16/c116/plus 4
@@ -201,11 +200,11 @@ when problems start with -log and look into error.log file
  */
 
 static ADDRESS_MAP_START( c16_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READ( MRA8_BANK9)
-	AM_RANGE(0x4000, 0x7fff) AM_READ( MRA8_BANK1)	   /* only ram memory configuration */
-	AM_RANGE(0x8000, 0xbfff) AM_READ( MRA8_BANK2)
-	AM_RANGE(0xc000, 0xfbff) AM_READ( MRA8_BANK3)
-	AM_RANGE(0xfc00, 0xfcff) AM_READ( MRA8_BANK4)
+	AM_RANGE(0x0000, 0x3fff) AM_READ( SMH_BANK9)
+	AM_RANGE(0x4000, 0x7fff) AM_READ( SMH_BANK1)	   /* only ram memory configuration */
+	AM_RANGE(0x8000, 0xbfff) AM_READ( SMH_BANK2)
+	AM_RANGE(0xc000, 0xfbff) AM_READ( SMH_BANK3)
+	AM_RANGE(0xfc00, 0xfcff) AM_READ( SMH_BANK4)
 	AM_RANGE(0xfd10, 0xfd1f) AM_READ( c16_fd1x_r)
 	AM_RANGE(0xfd30, 0xfd3f) AM_READ( c16_6529_port_r) /* 6529 keyboard matrix */
 #if 0
@@ -214,15 +213,15 @@ static ADDRESS_MAP_START( c16_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_READ( c16_iec8_port_r) /* configured in c16_common_init */
 #endif
 	AM_RANGE(0xff00, 0xff1f) AM_READ( ted7360_port_r)
-	AM_RANGE(0xff20, 0xffff) AM_READ( MRA8_BANK8)
-/*  { 0x10000, 0x3ffff, MRA8_ROM }, */
+	AM_RANGE(0xff20, 0xffff) AM_READ( SMH_BANK8)
+/*  { 0x10000, 0x3ffff, SMH_ROM }, */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c16_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_WRITE( MWA8_BANK9)
-	AM_RANGE(0x4000, 0x7fff) AM_WRITE( MWA8_BANK5)
-	AM_RANGE(0x8000, 0xbfff) AM_WRITE( MWA8_BANK6)
-	AM_RANGE(0xc000, 0xfcff) AM_WRITE( MWA8_BANK7)
+	AM_RANGE(0x0000, 0x3fff) AM_WRITE( SMH_BANK9)
+	AM_RANGE(0x4000, 0x7fff) AM_WRITE( SMH_BANK5)
+	AM_RANGE(0x8000, 0xbfff) AM_WRITE( SMH_BANK6)
+	AM_RANGE(0xc000, 0xfcff) AM_WRITE( SMH_BANK7)
 #if 0
 	AM_RANGE(0x4000, 0x7fff) AM_WRITE( c16_write_4000)  /*configured in c16_common_init */
 	AM_RANGE(0x8000, 0xbfff) AM_WRITE( c16_write_8000)  /*configured in c16_common_init */
@@ -245,15 +244,15 @@ static ADDRESS_MAP_START( c16_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xff3f, 0xff3f) AM_WRITE( c16_switch_to_ram)
 #if 0
 	AM_RANGE(0xff40, 0xffff) AM_WRITE( c16_write_ff40)  /*configure in c16_common_init */
-//  {0x10000, 0x3ffff, MWA8_ROM},
+//  {0x10000, 0x3ffff, SMH_ROM},
 #endif
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( plus4_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_READ( MRA8_BANK9)
-	AM_RANGE(0x8000, 0xbfff) AM_READ( MRA8_BANK2)
-	AM_RANGE(0xc000, 0xfbff) AM_READ( MRA8_BANK3)
-	AM_RANGE(0xfc00, 0xfcff) AM_READ( MRA8_BANK4)
+	AM_RANGE(0x0000, 0x7fff) AM_READ( SMH_BANK9)
+	AM_RANGE(0x8000, 0xbfff) AM_READ( SMH_BANK2)
+	AM_RANGE(0xc000, 0xfbff) AM_READ( SMH_BANK3)
+	AM_RANGE(0xfc00, 0xfcff) AM_READ( SMH_BANK4)
 	AM_RANGE(0xfd00, 0xfd0f) AM_READ( c16_6551_port_r)
 	AM_RANGE(0xfd10, 0xfd1f) AM_READ( plus4_6529_port_r)
 	AM_RANGE(0xfd30, 0xfd3f) AM_READ( c16_6529_port_r) /* 6529 keyboard matrix */
@@ -263,12 +262,12 @@ static ADDRESS_MAP_START( plus4_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_READ( c16_iec8_port_r) /* configured in c16_common_init */
 #endif
 	AM_RANGE(0xff00, 0xff1f) AM_READ( ted7360_port_r)
-	AM_RANGE(0xff20, 0xffff) AM_READ( MRA8_BANK8)
-/*  { 0x10000, 0x3ffff, MRA8_ROM }, */
+	AM_RANGE(0xff20, 0xffff) AM_READ( SMH_BANK8)
+/*  { 0x10000, 0x3ffff, SMH_ROM }, */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( plus4_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0xfcff) AM_WRITE( MWA8_BANK9)
+	AM_RANGE(0x0000, 0xfcff) AM_WRITE( SMH_BANK9)
 	AM_RANGE(0xfd00, 0xfd0f) AM_WRITE( c16_6551_port_w)
 	AM_RANGE(0xfd10, 0xfd1f) AM_WRITE( plus4_6529_port_w)
 	AM_RANGE(0xfd30, 0xfd3f) AM_WRITE( c16_6529_port_w) /* 6529 keyboard matrix */
@@ -281,18 +280,18 @@ static ADDRESS_MAP_START( plus4_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_WRITE( c16_iec8_port_w) /*configured in c16_common_init */
 #endif
 	AM_RANGE(0xff00, 0xff1f) AM_WRITE( ted7360_port_w)
-	AM_RANGE(0xff20, 0xff3d) AM_WRITE( MWA8_RAM)
+	AM_RANGE(0xff20, 0xff3d) AM_WRITE( SMH_RAM)
 	AM_RANGE(0xff3e, 0xff3e) AM_WRITE( c16_switch_to_rom)
 	AM_RANGE(0xff3f, 0xff3f) AM_WRITE( c16_switch_to_ram)
-	AM_RANGE(0xff40, 0xffff) AM_WRITE( MWA8_RAM)
-//  {0x10000, 0x3ffff, MWA8_ROM},
+	AM_RANGE(0xff40, 0xffff) AM_WRITE( SMH_RAM)
+//  {0x10000, 0x3ffff, SMH_ROM},
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c364_readmem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x7fff) AM_READ( MRA8_BANK9)
-	AM_RANGE(0x8000, 0xbfff) AM_READ( MRA8_BANK2)
-	AM_RANGE(0xc000, 0xfbff) AM_READ( MRA8_BANK3)
-	AM_RANGE(0xfc00, 0xfcff) AM_READ( MRA8_BANK4)
+	AM_RANGE(0x0000, 0x7fff) AM_READ( SMH_BANK9)
+	AM_RANGE(0x8000, 0xbfff) AM_READ( SMH_BANK2)
+	AM_RANGE(0xc000, 0xfbff) AM_READ( SMH_BANK3)
+	AM_RANGE(0xfc00, 0xfcff) AM_READ( SMH_BANK4)
 	AM_RANGE(0xfd00, 0xfd0f) AM_READ( c16_6551_port_r)
 	AM_RANGE(0xfd10, 0xfd1f) AM_READ( plus4_6529_port_r)
 	AM_RANGE(0xfd20, 0xfd2f) AM_READ( c364_speech_r )
@@ -303,12 +302,12 @@ static ADDRESS_MAP_START( c364_readmem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_READ( c16_iec8_port_r) /* configured in c16_common_init */
 #endif
 	AM_RANGE(0xff00, 0xff1f) AM_READ( ted7360_port_r)
-	AM_RANGE(0xff20, 0xffff) AM_READ( MRA8_BANK8)
-/*  { 0x10000, 0x3ffff, MRA8_ROM }, */
+	AM_RANGE(0xff20, 0xffff) AM_READ( SMH_BANK8)
+/*  { 0x10000, 0x3ffff, SMH_ROM }, */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( c364_writemem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0xfcff) AM_WRITE( MWA8_BANK9)
+	AM_RANGE(0x0000, 0xfcff) AM_WRITE( SMH_BANK9)
 	AM_RANGE(0xfd00, 0xfd0f) AM_WRITE( c16_6551_port_w)
 	AM_RANGE(0xfd10, 0xfd1f) AM_WRITE( plus4_6529_port_w)
 	AM_RANGE(0xfd20, 0xfd2f) AM_WRITE( c364_speech_w )
@@ -322,11 +321,11 @@ static ADDRESS_MAP_START( c364_writemem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xfee0, 0xfeff) AM_WRITE( c16_iec8_port_w) /*configured in c16_common_init */
 #endif
 	AM_RANGE(0xff00, 0xff1f) AM_WRITE( ted7360_port_w)
-	AM_RANGE(0xff20, 0xff3d) AM_WRITE( MWA8_RAM)
+	AM_RANGE(0xff20, 0xff3d) AM_WRITE( SMH_RAM)
 	AM_RANGE(0xff3e, 0xff3e) AM_WRITE( c16_switch_to_rom)
 	AM_RANGE(0xff3f, 0xff3f) AM_WRITE( c16_switch_to_ram)
-	AM_RANGE(0xff40, 0xffff) AM_WRITE( MWA8_RAM)
-//  {0x10000, 0x3ffff, MWA8_ROM},
+	AM_RANGE(0xff40, 0xffff) AM_WRITE( SMH_RAM)
+//  {0x10000, 0x3ffff, SMH_ROM},
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( ports_both )
@@ -591,7 +590,11 @@ INPUT_PORTS_END
 /* Initialise the c16 palette */
 static PALETTE_INIT( c16 )
 {
-	palette_set_colors_rgb(machine, 0, ted7360_palette, sizeof(ted7360_palette) / 3);
+	int i;
+
+	for ( i = 0; i < sizeof(ted7360_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, ted7360_palette[i*3], ted7360_palette[i*3+1], ted7360_palette[i*3+2]);
+	}
 }
 
 #if 0
@@ -688,16 +691,16 @@ static MACHINE_DRIVER_START( c16 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M7501, 1400000)        /* 7.8336 Mhz */
 	MDRV_CPU_PROGRAM_MAP(c16_readmem, c16_writemem)
-	MDRV_CPU_VBLANK_INT(c16_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", c16_frame_interrupt)
 	MDRV_CPU_PERIODIC_INT(ted7360_raster_interrupt, TED7360_HRETRACERATE)
-	MDRV_SCREEN_REFRESH_RATE(TED7360PAL_VRETRACERATE)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( c16 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(TED7360PAL_VRETRACERATE)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(336, 216)
 	MDRV_SCREEN_VISIBLE_AREA(0, 336 - 1, 0, 216 - 1)
@@ -743,6 +746,7 @@ static MACHINE_DRIVER_START( plus4 )
 	MDRV_IMPORT_FROM( c16 )
 	MDRV_CPU_REPLACE( "main", M7501, 1200000)
 	MDRV_CPU_PROGRAM_MAP( plus4_readmem, plus4_writemem )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(TED7360NTSC_VRETRACERATE)
 
 	MDRV_SOUND_REPLACE("sid", SID8580, TED7360NTSC_CLOCK/4)
@@ -752,7 +756,8 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( plus4c )
 	MDRV_IMPORT_FROM( plus4 )
 	MDRV_IMPORT_FROM( cpu_c1551 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
 	MDRV_INTERLEAVE(1)
 #else
@@ -764,7 +769,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( plus4v )
 	MDRV_IMPORT_FROM( plus4 )
 	MDRV_IMPORT_FROM( cpu_vc1541 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 #ifdef CPU_SYNC
 	MDRV_INTERLEAVE(1)
 #else
@@ -775,53 +780,54 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( c364 )
 	MDRV_IMPORT_FROM( plus4 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP(c364_readmem, c364_writemem)
 MACHINE_DRIVER_END
 
-static DRIVER_INIT( c16 )		{ c16_driver_init(); }
+static DRIVER_INIT( c16 )		{ c16_driver_init(machine); }
 #ifdef UNUSED_FUNCTION
-DRIVER_INIT( c16hun )	{ c16_driver_init(); }
-DRIVER_INIT( c16c )		{ c16_driver_init(); }
-DRIVER_INIT( c16v )		{ c16_driver_init(); }
+DRIVER_INIT( c16hun )	{ c16_driver_init(machine); }
+DRIVER_INIT( c16c )		{ c16_driver_init(machine); }
+DRIVER_INIT( c16v )		{ c16_driver_init(machine); }
 #endif
-static DRIVER_INIT( plus4 )	{ c16_driver_init(); }
+static DRIVER_INIT( plus4 )	{ c16_driver_init(machine); }
 #ifdef UNUSED_FUNCTION
-DRIVER_INIT( plus4c )	{ c16_driver_init(); }
-DRIVER_INIT( plus4v )	{ c16_driver_init(); }
-DRIVER_INIT( c364 )		{ c16_driver_init(); }
+DRIVER_INIT( plus4c )	{ c16_driver_init(machine); }
+DRIVER_INIT( plus4v )	{ c16_driver_init(machine); }
+DRIVER_INIT( c364 )		{ c16_driver_init(machine); }
 #endif
 
-static void c16cart_device_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void c16cart_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_c16_rom; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_c16_rom; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,rom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,rom"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void c16_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void c16_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c16; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_c16; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}

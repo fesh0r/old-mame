@@ -44,11 +44,10 @@ static const rgb_t pcw_palette[PCW_NUM_COLOURS] =
 PALETTE_INIT( pcw )
 {
 	palette_set_colors(machine, 0, pcw_palette, ARRAY_LENGTH(pcw_palette));
-	memcpy(colortable, pcw_colour_table, sizeof (pcw_colour_table));
 }
 
 /***************************************************************************
-  Draw the game screen in the given mame_bitmap.
+  Draw the game screen in the given bitmap_t.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
@@ -70,8 +69,8 @@ VIDEO_UPDATE( pcw )
 		pen0^=1;
 	}
 
-	pen0 = machine->pens[pen0];
-	pen1 = machine->pens[pen1];
+	pen0 = screen->machine->pens[pen0];
+	pen1 = screen->machine->pens[pen1];
 
 	/* video enable? */
 	if ((pcw_vdu_video_control_register & (1<<6))!=0)

@@ -1,6 +1,5 @@
 #include "driver.h"
 #include "includes/channelf.h"
-#include "mslegacy.h"
 
 UINT8 channelf_val_reg = 0;
 UINT8 channelf_row_reg = 0;
@@ -36,14 +35,17 @@ static const UINT16 colormap[] = {
 /* Initialise the palette */
 PALETTE_INIT( channelf )
 {
-	palette_set_colors_rgb(machine, 0, channelf_palette, sizeof(channelf_palette) / 3);
+	int i;
+
+	for ( i = 0; i < sizeof(channelf_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, channelf_palette[i*3], channelf_palette[i*3+1], channelf_palette[i*3+2]);
+	}
 }
 
 VIDEO_START( channelf )
 {
 	videoram_size = 0x2000;
 	videoram = auto_malloc(videoram_size);
-	VIDEO_START_CALL(generic);
 }
 
 static int recalc_palette_offset(int reg1, int reg2)
@@ -57,7 +59,8 @@ static int recalc_palette_offset(int reg1, int reg2)
 VIDEO_UPDATE( channelf )
 {
 	int x,y,offset, palette_offset;
-	int pen, color;
+	int color;
+	UINT16 pen;
 
 	for(y=0;y<64;y++)
 	{
@@ -66,11 +69,9 @@ VIDEO_UPDATE( channelf )
 		{
 			offset = y*128+x;
 			color = palette_offset+(videoram[offset]&3);
-			pen = machine->pens[colormap[color]];
+			pen = colormap[color];
 			*BITMAP_ADDR16(bitmap, y, x) = pen;
 		}
 	}
 	return 0;
 }
-
-

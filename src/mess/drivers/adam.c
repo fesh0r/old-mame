@@ -195,15 +195,15 @@ TO DO:
 #include "deprecat.h"
 
 static ADDRESS_MAP_START( adam_mem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x00000, 0x01fff) AM_READWRITE( MRA8_BANK1, MWA8_BANK6 )
-	AM_RANGE(0x02000, 0x03fff) AM_READWRITE( MRA8_BANK2, MWA8_BANK7 )
-	AM_RANGE(0x04000, 0x05fff) AM_READWRITE( MRA8_BANK3, MWA8_BANK8 )
-	AM_RANGE(0x06000, 0x07fff) AM_READWRITE( MRA8_BANK4, MWA8_BANK9 )
-	AM_RANGE(0x08000, 0x0ffff) AM_READWRITE( MRA8_BANK5, common_writes_w )
+	AM_RANGE(0x00000, 0x01fff) AM_READWRITE( SMH_BANK1, SMH_BANK6 )
+	AM_RANGE(0x02000, 0x03fff) AM_READWRITE( SMH_BANK2, SMH_BANK7 )
+	AM_RANGE(0x04000, 0x05fff) AM_READWRITE( SMH_BANK3, SMH_BANK8 )
+	AM_RANGE(0x06000, 0x07fff) AM_READWRITE( SMH_BANK4, SMH_BANK9 )
+	AM_RANGE(0x08000, 0x0ffff) AM_READWRITE( SMH_BANK5, common_writes_w )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START ( adam_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x20, 0x3F) AM_READWRITE( adamnet_r, adamnet_w )
 	AM_RANGE(0x60, 0x7F) AM_READWRITE( adam_memory_map_controller_r, adam_memory_map_controller_w )
 	AM_RANGE(0x80, 0x9F) AM_WRITE( adam_paddle_toggle_off )
@@ -630,16 +630,15 @@ static MACHINE_DRIVER_START( adam )
 	//MDRV_CPU_ADD(M6800, 4000000)       /* 4.0 Mhz */
 	//MDRV_CPU_PROGRAM_MAP(master6801_mem, 0)
 
-	MDRV_CPU_VBLANK_INT(adam_interrupt,1)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_INTERLEAVE(1)
+	MDRV_CPU_VBLANK_INT("main", adam_interrupt)
 
 	MDRV_MACHINE_START( adam )
 	MDRV_MACHINE_RESET( adam )
 
     /* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(50)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -687,28 +686,28 @@ ROM_START (adam)
 	//ROM_LOAD ("master68.rom", 0x0100, 0x0E4, CRC(619a47b8)) /* Replacement 6801 Master ROM */
 ROM_END
 
-static void adam_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void adam_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_VERIFY:						info->imgverify = adam_cart_verify; break;
+		case MESS_DEVINFO_PTR_VERIFY:						info->imgverify = adam_cart_verify; break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void adam_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void adam_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_adam; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_adam; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}

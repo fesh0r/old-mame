@@ -8,7 +8,6 @@
 #include <math.h>
 #include <stdio.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "utils.h"
 #include "sound/custom.h"
 
@@ -91,9 +90,9 @@ UINT8 vic6560[16];
 
 int vic6560_pal;
 
-static mame_bitmap *vic6560_bitmap;
+static bitmap_t *vic6560_bitmap;
 static int rasterline = 0, lastline = 0;
-static void vic6560_drawlines (int start, int last);
+static void vic6560_drawlines (running_machine *machine, int start, int last);
 
 static int (*vic_dma_read) (int);
 static int (*vic_dma_read_color) (int);
@@ -163,6 +162,10 @@ static void vic6560_video_stop(running_machine *machine)
 
 VIDEO_START( vic6560 )
 {
+	const device_config *screen = video_screen_first(machine->config);
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
+
 	black = machine->pens[0];
 	white = machine->pens[1];
 	pointerelement = allocgfx(&pointerlayout);
@@ -172,7 +175,7 @@ VIDEO_START( vic6560 )
 	pointercolortable[1] = machine->pens[1];
 	pointercolortable[2] = machine->pens[0];
 	pointerelement->total_colors = 3;
-	vic6560_bitmap = auto_bitmap_alloc(machine->screen[0].width, machine->screen[0].height, BITMAP_FORMAT_INDEXED16);
+	vic6560_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED16);
 	add_exit_callback(machine, vic6560_video_stop);
 }
 
@@ -186,7 +189,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 	case 0xc:
 	case 0xd:
 	case 0xe:
-		vic6560_soundport_w (offset, data);
+		vic6560_soundport_w (machine, offset, data);
 		break;
 	}
 	if (vic6560[offset] != data)
@@ -200,7 +203,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 		case 5:
 		case 0xe:
 		case 0xf:
-			vic6560_drawlines (lastline, rasterline);
+			vic6560_drawlines (machine, lastline, rasterline);
 			break;
 		}
 		vic6560[offset] = data;
@@ -230,13 +233,13 @@ WRITE8_HANDLER ( vic6560_port_w )
 			videoaddr = VIDEOADDR;
 			break;
 		case 0xe:
-			multi[3] = multiinverted[3] = helpercolor = Machine->pens[HELPERCOLOR];
+			multi[3] = multiinverted[3] = helpercolor = machine->pens[HELPERCOLOR];
 			break;
 		case 0xf:
 			inverted = INVERTED;
-			multi[1] = multiinverted[1] = framecolor = Machine->pens[FRAMECOLOR];
+			multi[1] = multiinverted[1] = framecolor = machine->pens[FRAMECOLOR];
 			mono[0] = monoinverted[1] =
-				multi[0] = multiinverted[2] = backgroundcolor = Machine->pens[BACKGROUNDCOLOR];
+				multi[0] = multiinverted[2] = backgroundcolor = machine->pens[BACKGROUNDCOLOR];
 			break;
 		}
 	}
@@ -253,7 +256,7 @@ WRITE8_HANDLER ( vic6560_port_w )
 		val = ((rasterline & 1) << 7) | (vic6560[offset] & 0x7f);
 		break;
 	case 4:						   /*rasterline */
-		vic6560_drawlines (lastline, rasterline);
+		vic6560_drawlines (machine, lastline, rasterline);
 		val = (rasterline / 2) & 0xff;
 		break;
 	case 6:						   /*lightpen horicontal */
@@ -348,7 +351,7 @@ static void vic6560_draw_character_multi (int ybegin, int yend,
 
 
 #ifndef GFX
-INLINE void vic6560_draw_pointer (mame_bitmap *bitmap,
+INLINE void vic6560_draw_pointer (bitmap_t *bitmap,
 								  rectangle *visible, int xoff, int yoff)
 {
 	/* this is a a static graphical object */
@@ -372,7 +375,7 @@ INLINE void vic6560_draw_pointer (mame_bitmap *bitmap,
 }
 #endif
 
-static void vic6560_drawlines (int first, int last)
+static void vic6560_drawlines (running_machine *machine, int first, int last)
 {
 	int line, vline;
 	int offs, yoff, xoff, ybegin, yend, i;
@@ -417,13 +420,13 @@ static void vic6560_drawlines (int first, int last)
 			{
 				if (attr & 8)
 				{
-					multiinverted[0] = Machine->pens[attr & 7];
+					multiinverted[0] = machine->pens[attr & 7];
 					vic6560_draw_character_multi (ybegin, yend, ch, yoff, xoff,
 												  multiinverted);
 				}
 				else
 				{
-					monoinverted[0] = Machine->pens[attr];
+					monoinverted[0] = machine->pens[attr];
 					vic6560_draw_character (ybegin, yend, ch, yoff, xoff, monoinverted);
 				}
 			}
@@ -431,12 +434,12 @@ static void vic6560_drawlines (int first, int last)
 			{
 				if (attr & 8)
 				{
-					multi[2] = Machine->pens[attr & 7];
+					multi[2] = machine->pens[attr & 7];
 					vic6560_draw_character_multi (ybegin, yend, ch, yoff, xoff, multi);
 				}
 				else
 				{
-					mono[1] = Machine->pens[attr];
+					mono[1] = machine->pens[attr];
 					vic6560_draw_character (ybegin, yend, ch, yoff, xoff, mono);
 				}
 			}
@@ -475,7 +478,7 @@ INTERRUPT_GEN( vic656x_raster_interrupt )
 	if (rasterline >= vic656x_lines)
 	{
 		rasterline = 0;
-		vic6560_drawlines (lastline, vic656x_lines);
+		vic6560_drawlines (machine, lastline, vic656x_lines);
 		lastline = 0;
 
 		if (LIGHTPEN_POINTER)
@@ -486,7 +489,7 @@ INTERRUPT_GEN( vic656x_raster_interrupt )
 			r.min_y = LIGHTPEN_Y_VALUE - 1 + VIC656X_MAME_YPOS;
 			r.max_y = r.min_y + 8 - 1;
 
-			if (DOCLIP (&r, &machine->screen[0].visarea))
+			if (DOCLIP (&r, video_screen_get_visible_area(video_screen_first(machine->config))))
 			{
 #ifndef GFX
 				vic6560_draw_pointer (vic6560_bitmap, &r,

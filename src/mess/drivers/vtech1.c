@@ -149,7 +149,7 @@ static ADDRESS_MAP_START(laser310_mem, ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(vtech1_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x0f) AM_READWRITE(vtech1_printer_r, vtech1_printer_w)
 	AM_RANGE(0x10, 0x1f) AM_READWRITE(vtech1_fdc_r, vtech1_fdc_w)
 	AM_RANGE(0x20, 0x2f) AM_READ(vtech1_joystick_r)
@@ -270,6 +270,15 @@ static INPUT_PORTS_START(vtech1)
 	PORT_BIT(0xe0, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON2)        PORT_PLAYER(2)
 	PORT_BIT(0x0f, IP_ACTIVE_LOW, IPT_UNUSED)
+
+	/* Enhanced options not available on real hardware */
+	PORT_START_TAG("CONFIG")
+	PORT_CONFNAME( 0x01, 0x01, "Autorun on Quickload")
+	PORT_CONFSETTING(    0x00, DEF_STR(No))
+	PORT_CONFSETTING(    0x01, DEF_STR(Yes))
+//	PORT_CONFNAME( 0x08, 0x08, "Cassette Speaker")
+//	PORT_CONFSETTING(    0x08, DEF_STR(On))
+//	PORT_CONFSETTING(    0x00, DEF_STR(Off))
 INPUT_PORTS_END
 
 
@@ -295,6 +304,7 @@ static MACHINE_DRIVER_START(laser110)
     MDRV_CPU_ADD_TAG("main", Z80, VTECH1_CLK)  /* 3.57950 Mhz */
     MDRV_CPU_PROGRAM_MAP(laser110_mem, 0)
     MDRV_CPU_IO_MAP(vtech1_io, 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(M6847_PAL_FRAMES_PER_SECOND)
     MDRV_INTERLEAVE(1)
 
@@ -303,7 +313,6 @@ static MACHINE_DRIVER_START(laser110)
     /* video hardware */
 	MDRV_VIDEO_START(vtech1_monochrome)
 	MDRV_VIDEO_UPDATE(m6847)
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(320, 25+192+26)
 	MDRV_SCREEN_VISIBLE_AREA(0, 319, 1, 239)
@@ -394,68 +403,124 @@ ROM_END
  System Config
 ******************************************************************************/
 
-static void vtech1_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static QUICKLOAD_LOAD( vtech1 )
+{
+	UINT8 sw = readinputportbytag("CONFIG") & 1;			/* reading the dipswitch: 1 = autorun */
+	UINT16 exec_addr, start_addr, end_addr;
+
+	if (z80bin_load_file( machine, image, file_type, &exec_addr, &start_addr, &end_addr ) == INIT_FAIL)
+		return INIT_FAIL;
+
+	/* A Microsoft Basic program needs some manipulation before it can be run.
+	1. A start address of 7ae9 indicates a basic program which needs its pointers fixed up.
+	2. If autorun is turned off, the pointers still need fixing, but then display READY.
+	NOTE: This overrides the exec_addr of 0xffff.
+	Important addresses:
+		7ae9 = start (load) address of a conventional basic program
+		791e = custom routine to fix basic pointers */
+
+	program_write_word_16le(0x791c,end_addr+1);
+	program_write_word_16le(0x781e,exec_addr);
+
+	if (start_addr == 0x7ae9)
+	{
+		UINT8 i, data[17]={
+			0xe5,			// PUSH HL	;save pcode pointer
+			0x2a, 0x1c, 0x79,	// LD HL,(791C)	;get saved end_addr+1
+			0x22, 0xf9, 0x78,	// LD (78F9),HL	;move it to correct place
+			0x21, 0x39, 0x78,	// LD HL,7839	;point to control flag
+			0xcb, 0xf6,		// SET 6,(HL)	;turn on autorun (cb b6 = manual run)
+			0xcb, 0x9e,		// RES 3,(HL)	;turn off verify (just in case)
+			0xc3, 0xcf, 0x36,};	// JP 36CF	;enter bios at autorun point
+
+		for (i = 0; i < 17; i++) program_write_byte(0x791e + i, data[i]);
+		if (!sw) program_write_byte(0x7929, 0xb6);	/* turn off autorun */
+		cpunum_set_reg(0, REG_PC, 0x791e);
+	}
+	else
+	if ((exec_addr != 0xffff) && (sw)) cpunum_set_reg(0, REG_PC, exec_addr);
+
+	return INIT_PASS;
+}
+
+static void vtech1_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+{
+	/* quickload */
+	switch(state)
+	{
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case MESS_DEVINFO_STR_DEV_FILE:		strcpy(info->s = device_temp_str(), __FILE__); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "bin"); break;
+
+		/* --- the following bits of info are returned as pointers to data or functions --- */
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:	info->f = (genf *) quickload_load_vtech1; break;
+
+		default:				quickload_device_getinfo(devclass, state, info); break;
+	}
+}
+
+static void vtech1_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void vtech1_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void vtech1_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) vtech1_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) vtech1_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void vtech1_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void vtech1_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "vz"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "vz"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_vtech1; break;
+		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_vtech1; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
+		case MESS_DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
 
 		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void vtech1_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void vtech1_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_vtech1_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_vtech1_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 	}
 }
 
@@ -477,7 +542,7 @@ SYSTEM_CONFIG_START(vtech1)
     CONFIG_DEVICE(vtech1_cassette_getinfo)
     CONFIG_DEVICE(vtech1_snapshot_getinfo)
     CONFIG_DEVICE(vtech1_floppy_getinfo)
-	CONFIG_DEVICE(z80bin_quickload_getinfo)
+	CONFIG_DEVICE(vtech1_quickload_getinfo)
 	CONFIG_RAM_DEFAULT (66 * 1024)   /* with 64K memory expansion */
 	CONFIG_RAM         (4098 * 1024) /* with 4MB memory expansion */
 SYSTEM_CONFIG_END

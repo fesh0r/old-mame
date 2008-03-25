@@ -59,7 +59,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( mtx_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(mtx_strobe_r, mtx_bankswitch_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0x02, 0x02) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
@@ -236,13 +236,14 @@ static MACHINE_DRIVER_START( mtx512 )
 	MDRV_CPU_ADD(Z80, MTX_SYSTEM_CLOCK)
 	MDRV_CPU_PROGRAM_MAP(mtx_mem, 0)
 	MDRV_CPU_IO_MAP(mtx_io, 0)
-	MDRV_CPU_VBLANK_INT(mtx_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", mtx_interrupt)
 	MDRV_CPU_CONFIG(mtx_daisy_chain)
 
 	/* video hardware */
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -285,30 +286,30 @@ ROM_END
  *
  *************************************/
 
-static void mtx_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void mtx_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
 
-static void mtx_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void mtx_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mtb"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mtb"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_mtx; break;
+		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_mtx; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
+		case MESS_DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
 
 		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}

@@ -263,8 +263,8 @@ static WRITE8_HANDLER(sord_ppi_portb_w)
 
 	if (data==0x0f0)
 	{
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 	}
 	LOG(("m5 write to pi5 port b: %02x %04x\n",data,activecpu_get_pc()));
 }
@@ -332,7 +332,7 @@ static READ8_HANDLER(sord_ctc_r)
 {
 	unsigned char data;
 
-	data = z80ctc_0_r(offset & 0x03);
+	data = z80ctc_0_r(machine, offset & 0x03);
 
 	logerror("sord ctc r: %04x %02x\n",(offset & 0x03), data);
 
@@ -343,7 +343,7 @@ static WRITE8_HANDLER(sord_ctc_w)
 {
 	logerror("sord ctc w: %04x %02x\n",(offset & 0x03), data);
 
-	z80ctc_0_w(offset & 0x03, data);
+	z80ctc_0_w(machine, offset & 0x03, data);
 }
 
 static  READ8_HANDLER(sord_sys_r)
@@ -413,7 +413,7 @@ static WRITE8_HANDLER(sord_printer_w)
 }
 
 static ADDRESS_MAP_START( sord_m5_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x0f)					AM_READWRITE(sord_ctc_r,			sord_ctc_w)
 	AM_RANGE(0x10, 0x10) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_vram_r,		TMS9928A_vram_w)
 	AM_RANGE(0x11, 0x11) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_register_r,	TMS9928A_register_w)
@@ -424,7 +424,7 @@ static ADDRESS_MAP_START( sord_m5_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( srdm5fd5_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x0f)					AM_READWRITE(sord_ctc_r,			sord_ctc_w)
 	AM_RANGE(0x10, 0x10) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_vram_r,		TMS9928A_vram_w)
 	AM_RANGE(0x11, 0x11) AM_MIRROR(0x0e)	AM_READWRITE(TMS9928A_register_r,	TMS9928A_register_w)
@@ -449,8 +449,8 @@ static void sordm5_video_interrupt_callback(int state)
 {
 	if (state)
 	{
-		z80ctc_0_trg3_w(0,1);
-		z80ctc_0_trg3_w(0,0);
+		z80ctc_0_trg3_w(Machine, 0, 1);
+		z80ctc_0_trg3_w(Machine, 0, 0);
 	}
 }
 
@@ -625,10 +625,8 @@ static MACHINE_DRIVER_START( sord_m5 )
 	MDRV_CPU_ADD_TAG("main", Z80, 3800000)
 	MDRV_CPU_PROGRAM_MAP(sord_m5_mem, 0)
 	MDRV_CPU_IO_MAP(sord_m5_io, 0)
-	MDRV_CPU_VBLANK_INT(sord_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", sord_interrupt)
 	MDRV_CPU_CONFIG( sord_m5_daisy_chain )
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( sord_m5 )
@@ -636,6 +634,9 @@ static MACHINE_DRIVER_START( sord_m5 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -690,28 +691,28 @@ static FLOPPY_OPTIONS_START( sordm5 )
 		FIRST_SECTOR_ID([1]))
 FLOPPY_OPTIONS_END
 
-static void sordm5_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sordm5_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void sordm5_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void sordm5_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) sordm5_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) sordm5_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
@@ -724,16 +725,16 @@ SYSTEM_CONFIG_START(sordm5)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 SYSTEM_CONFIG_END
 
-static void srdm5fd5_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void srdm5fd5_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_sordm5; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_sordm5; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}

@@ -16,15 +16,15 @@ typedef struct _mc6846_interface mc6846_interface;
 struct _mc6846_interface
 {
   /* CPU write to the outside through chip */
-  write8_handler out_port_func;  /* 8-bit output */
-  write8_handler out_cp1_func;   /* 1-bit output */
-  write8_handler out_cp2_func;   /* 1-bit output */
+  write8_machine_func out_port_func;  /* 8-bit output */
+  write8_machine_func out_cp1_func;   /* 1-bit output */
+  write8_machine_func out_cp2_func;   /* 1-bit output */
 
   /* CPU read from the outside through chip */
-  read8_handler in_port_func; /* 8-bit input */
+  read8_machine_func in_port_func; /* 8-bit input */
 
   /* asynchronous timer output to outside world */
-  write8_handler out_cto_func; /* 1-bit output */
+  write8_machine_func out_cto_func; /* 1-bit output */
 
   /* timer interrupt */
   void ( * irq_func ) ( int state );
@@ -50,7 +50,7 @@ extern void mc6846_set_input_cp1 ( int data );
 extern void mc6846_set_input_cp2 ( int data );
 
 /* polling from outside world */
-extern UINT8  mc6846_get_output_port ( void );
+extern UINT8  mc6846_get_output_port ( running_machine *machine );
 extern UINT8  mc6846_get_output_cto ( void );
 extern UINT8  mc6846_get_output_cp2 ( void );
 

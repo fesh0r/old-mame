@@ -94,7 +94,7 @@ static NVRAM_HANDLER( avigo )
 	}
 }
 
-static void avigo_setbank(int bank, void *address, read8_handler rh, write8_handler wh)
+static void avigo_setbank(int bank, void *address, read8_machine_func rh, write8_machine_func wh)
 {
 	if (address)
 	{
@@ -152,12 +152,12 @@ static WRITE8_HANDLER(avigo_flash_0x8000_write_handler)
 }
 #endif
 
-static void avigo_refresh_ints(void)
+static void avigo_refresh_ints(running_machine *machine)
 {
 	if (avigo_irq!=0)
-		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -266,7 +266,7 @@ static TIMER_CALLBACK(avigo_dummy_timer_callback)
 	memcpy(previous_input_port_data, current_input_port_data, sizeof(int)*4);
 
 	/* refresh status of interrupts */
-	avigo_refresh_ints();
+	avigo_refresh_ints(machine);
 }
 
 /* does not do anything yet */
@@ -280,7 +280,7 @@ static void avigo_tc8521_alarm_int(int state)
 		avigo_irq |= (1<<5);
 	}
 
-	avigo_refresh_ints();
+	avigo_refresh_ints(Machine);
 //#endif
 }
 
@@ -331,7 +331,7 @@ static void avigo_refresh_memory(void)
 		/* ram */
 		case 0x01:
 			addr = mess_ram + ((avigo_ram_bank_l & 0x07)<<14);
-			avigo_setbank(2, addr, MRA8_BANK3, MWA8_BANK7);
+			avigo_setbank(2, addr, SMH_BANK3, SMH_BANK7);
 			break;
 
 		/* %111 */
@@ -342,7 +342,7 @@ static void avigo_refresh_memory(void)
 			addr = (unsigned char *)intelflash_getmemptr(avigo_flash_at_0x8000);
 			addr = addr + (avigo_ram_bank_l<<14);
 			avigo_setbank(2, addr, avigo_flash_0x8000_read_handler,
-				MWA8_NOP /* avigo_flash_0x8000_write_handler */);
+				SMH_NOP /* avigo_flash_0x8000_write_handler */);
 			break;
 
 		case 0x07:
@@ -351,7 +351,7 @@ static void avigo_refresh_memory(void)
 			addr = (unsigned char *)intelflash_getmemptr(avigo_flash_at_0x8000);
 			addr = addr + (avigo_ram_bank_l<<14);
 			avigo_setbank(2, addr, avigo_flash_0x8000_read_handler,
-				MWA8_NOP /* avigo_flash_0x8000_write_handler */);
+				SMH_NOP /* avigo_flash_0x8000_write_handler */);
 			break;
 	}
 }
@@ -369,7 +369,7 @@ static void avigo_com_interrupt(int irq_num, int state)
 		avigo_irq |= (1<<3);
 	}
 
-	avigo_refresh_ints();
+	avigo_refresh_ints(Machine);
 }
 
 
@@ -461,10 +461,10 @@ static MACHINE_START( avigo )
 
 
 static ADDRESS_MAP_START( avigo_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE( MRA8_BANK1, MWA8_BANK5 )
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( MRA8_BANK2, MWA8_BANK6 )
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE( MRA8_BANK3, MWA8_BANK7 )
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE( MRA8_BANK4, MWA8_BANK8 )
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE( SMH_BANK1, SMH_BANK5 )
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE( SMH_BANK2, SMH_BANK6 )
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE( SMH_BANK3, SMH_BANK7 )
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE( SMH_BANK4, SMH_BANK8 )
 ADDRESS_MAP_END
 
 
@@ -515,7 +515,7 @@ static WRITE8_HANDLER(avigo_irq_w)
 {
 	avigo_irq &= ~data;
 
-	avigo_refresh_ints();
+	avigo_refresh_ints(machine);
 }
 
 static  READ8_HANDLER(avigo_rom_bank_l_r)
@@ -804,7 +804,7 @@ static  READ8_HANDLER(avigo_04_r)
 
 
 static ADDRESS_MAP_START( avigo_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	AM_RANGE(0x000, 0x000) AM_READ( avigo_unmapped_r)
     AM_RANGE(0x001, 0x001) AM_READWRITE( avigo_key_data_read_r, avigo_set_key_line_w )
@@ -866,8 +866,6 @@ static MACHINE_DRIVER_START( avigo )
 	MDRV_CPU_ADD(Z80, 4000000)
 	MDRV_CPU_PROGRAM_MAP(avigo_mem, 0)
 	MDRV_CPU_IO_MAP(avigo_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( avigo )
@@ -875,12 +873,13 @@ static MACHINE_DRIVER_START( avigo )
 	MDRV_NVRAM_HANDLER( avigo )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 480-1)
 	MDRV_PALETTE_LENGTH(256)
-	MDRV_COLORTABLE_LENGTH(256)
 	MDRV_PALETTE_INIT( avigo )
 
 	MDRV_VIDEO_START( avigo )

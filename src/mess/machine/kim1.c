@@ -567,8 +567,8 @@ DRIVER_INIT( kim1 )
 		}
 	}
 
-	dst = memory_region(2);
-	memset(dst, 0, 24 * 18 * 24 / 8);
+	dst = memory_region(REGION_GFX2);
+	memset(dst, 0, memory_region_length(REGION_GFX2));
 	for (i = 0; i < 24; i++)
 	{
 		for (y = 0; y < 18; y++)
@@ -597,7 +597,7 @@ DRIVER_INIT( kim1 )
 
 static void set_chip_clock(int chip, int data)
 {
-	timer_adjust(m6530[chip].timer, attotime_zero, chip, ATTOTIME_IN_HZ((data + 1) * m6530[chip].clock / 256 / 256));
+	timer_adjust_periodic(m6530[chip].timer, attotime_zero, chip, ATTOTIME_IN_HZ((data + 1) * m6530[chip].clock / 256 / 256));
 }
 
 MACHINE_RESET( kim1 )
@@ -693,7 +693,7 @@ INLINE int m6530_r(int chip, int offset)
 			switch (which)
 			{
 			case 0:				   /* key row 1 */
-				m6530[1].dria = input_port_0_r(0);
+				m6530[1].dria = readinputport(0);
 				logerror("read keybd(%d): %c%c%c%c%c%c%c\n",
 					 which,
 					 (m6530[1].dria & 0x40) ? '.' : '0',
@@ -705,7 +705,7 @@ INLINE int m6530_r(int chip, int offset)
 					 (m6530[1].dria & 0x01) ? '.' : '6');
 				break;
 			case 1:				   /* key row 2 */
-				m6530[1].dria = input_port_1_r(0);
+				m6530[1].dria = readinputport(1);
 				logerror("read keybd(%d): %c%c%c%c%c%c%c\n",
 					 which,
 					 (m6530[1].dria & 0x40) ? '.' : '7',
@@ -717,7 +717,7 @@ INLINE int m6530_r(int chip, int offset)
 					 (m6530[1].dria & 0x01) ? '.' : 'D');
 				break;
 			case 2:				   /* key row 3 */
-				m6530[1].dria = input_port_2_r(0);
+				m6530[1].dria = readinputport(2);
 				logerror("read keybd(%d): %c%c%c%c%c%c%c\n",
 					 which,
 					 (m6530[1].dria & 0x40) ? '.' : 'E',
@@ -908,23 +908,23 @@ WRITE8_HANDLER ( m6530_002_w )
 	m6530_w(1, offset, data);
 }
 
-void kim1_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+void kim1_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_kim1_cassette; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_kim1_cassette; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "kim1"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "kim1"); break;
 	}
 }
 

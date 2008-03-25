@@ -29,7 +29,6 @@ Ports:
 ***************************************************************************/
 
 #include "driver.h"
-#include "mslegacy.h"
 #include "cpu/z80/z80.h"
 #include "includes/jupiter.h"
 #include "devices/cartslot.h"
@@ -43,7 +42,7 @@ static ADDRESS_MAP_START( jupiter_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x2400, 0x26ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x2700, 0x27ff) AM_RAM
 	AM_RANGE(0x2800, 0x2bff) AM_NOP
-	AM_RANGE(0x2c00, 0x2fff) AM_READWRITE(MRA8_RAM, jupiter_vh_charram_w) AM_BASE(&jupiter_charram) AM_SIZE(&jupiter_charram_size)
+	AM_RANGE(0x2c00, 0x2fff) AM_READWRITE(SMH_RAM, jupiter_vh_charram_w) AM_BASE(&jupiter_charram) AM_SIZE(&jupiter_charram_size)
 	AM_RANGE(0x3000, 0x3bff) AM_NOP
 	AM_RANGE(0x3c00, 0x47ff) AM_RAM
 	AM_RANGE(0x4800, 0x87ff) AM_RAM
@@ -76,27 +75,18 @@ static const gfx_layout jupiter_charlayout =
 	8*8 	/* each character takes 8 consecutive bytes */
 };
 
+PALETTE_INIT( jupiter )
+{
+	palette_set_color(machine,0,RGB_BLACK); /* black */
+	palette_set_color(machine,1,RGB_WHITE); /* white */
+	palette_set_color(machine,2,RGB_WHITE); /* white */
+	palette_set_color(machine,3,RGB_BLACK); /* black */
+}
+
 static GFXDECODE_START( jupiter )
 	GFXDECODE_ENTRY( REGION_CPU1, 0x2c00, jupiter_charlayout, 0, 2 )
 GFXDECODE_END
 
-static const unsigned char jupiter_palette[] =
-{
-	0x00, 0x00, 0x00,	/* Black */
-	0xff, 0xff, 0xff	/* White */
-};
-
-static const unsigned short jupiter_colortable[] =
-{
-	0, 1,
-	1, 0
-};
-
-static PALETTE_INIT( jupiter )
-{
-	palette_set_colors_rgb(machine, 0, jupiter_palette, sizeof(jupiter_palette) / 3);
-	memcpy (colortable, jupiter_colortable, sizeof (jupiter_colortable));
-}
 
 /* keyboard input */
 
@@ -176,24 +166,22 @@ static MACHINE_DRIVER_START( jupiter )
 	MDRV_CPU_ADD_TAG("main", Z80, 3250000)        /* 3.25 Mhz */
 	MDRV_CPU_PROGRAM_MAP(jupiter_mem, 0)
 	MDRV_CPU_IO_MAP(jupiter_io, 0)
-	MDRV_CPU_VBLANK_INT(jupiter_interrupt,1)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", jupiter_interrupt)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( jupiter )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32 * 8, 24 * 8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32 * 8 - 1, 0, 24 * 8 - 1)
 	MDRV_GFXDECODE( jupiter )
-	MDRV_PALETTE_LENGTH(sizeof(jupiter_palette) / 3)
-	MDRV_COLORTABLE_LENGTH(sizeof (jupiter_colortable))
-	MDRV_PALETTE_INIT( jupiter )
+	MDRV_PALETTE_LENGTH(4)
+	MDRV_PALETTE_INIT(jupiter)
 
-	MDRV_VIDEO_START( jupiter )
 	MDRV_VIDEO_UPDATE( jupiter )
 
 	/* sound hardware */
@@ -208,43 +196,43 @@ ROM_START (jupiter)
 	ROM_LOAD ("jupiter.hi", 0x1000, 0x1000, CRC(4009f636) SHA1(98c5d4bcd74bcf014268cf4c00b2007ea5cc21f3))
 ROM_END
 
-static void jupiter_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void jupiter_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_jupiter_ace; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_jupiter_ace; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ace"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ace"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void jupiter_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void jupiter_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_jupiter_tap; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_jupiter_tap; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_jupiter_tap; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_jupiter_tap; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
 	}
 }
 

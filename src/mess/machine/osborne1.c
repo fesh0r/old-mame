@@ -84,7 +84,7 @@ READ8_HANDLER( osborne1_2000_r ) {
 	} else {
 		switch( offset & 0x0F00 ) {
 		case 0x100:	/* Floppy */
-			data = wd17xx_r( offset );
+			data = wd17xx_r( machine, offset );
 			break;
 		case 0x200:	/* Keyboard */
 			/* Row 0 */
@@ -105,12 +105,12 @@ READ8_HANDLER( osborne1_2000_r ) {
 			if ( offset & 0x80 )	data &= readinputport(7);
 			break;
 		case 0x900:	/* IEEE488 PIA */
-			data = pia_0_r( offset & 0x03 );
+			data = pia_0_r( machine, offset & 0x03 );
 			break;
 		case 0xA00:	/* Serial */
 			break;
 		case 0xC00:	/* Video PIA */
-			data = pia_1_r( offset & 0x03 );
+			data = pia_1_r( machine, offset & 0x03 );
 			break;
 		}
 	}
@@ -128,15 +128,15 @@ WRITE8_HANDLER( osborne1_2000_w ) {
 		/* Handle writes to the I/O area */
 		switch( offset & 0x0F00 ) {
 		case 0x100:	/* Floppy */
-			wd17xx_w( offset, data );
+			wd17xx_w( machine, offset, data );
 			break;
 		case 0x900:	/* IEEE488 PIA */
-			pia_0_w( offset & 0x03, data );
+			pia_0_w( machine, offset & 0x03, data );
 			break;
 		case 0xA00:	/* Serial */
 			break;
 		case 0xC00:	/* Video PIA */
-			pia_1_w( offset & 0x03, data );
+			pia_1_w( machine, offset & 0x03, data );
 			break;
 		}
 	}
@@ -217,7 +217,7 @@ static int osborne1_z80_irq_state(int param) {
 static int osborne1_z80_irq_ack(int param) {
 	/* Enable ROM and I/O when IRQ is acknowledged */
 	UINT8	old_bankswitch = osborne1.bankswitch;
-	osborne1_bankswitch_w( 0, 0 );
+	osborne1_bankswitch_w( Machine, 0, 0 );
 	osborne1.bankswitch = old_bankswitch;
 	osborne1.in_irq_handler = 1;
 	return 0xF8;
@@ -226,19 +226,19 @@ static int osborne1_z80_irq_ack(int param) {
 static void osborne1_z80_irq_reti(int param) {
 }
 
-static void osborne1_update_irq_state(void) {
+static void osborne1_update_irq_state(running_machine *machine) {
 	//logerror("Changing irq state; pia_0_irq_state = %s, pia_1_irq_state = %s\n", osborne1.pia_0_irq_state ? "SET" : "CLEARED", osborne1.pia_1_irq_state ? "SET" : "CLEARED" );
 
 	if ( osborne1.pia_1_irq_state ) {
-		cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE );
+		cpunum_set_input_line(machine, 0, 0, ASSERT_LINE );
 	} else {
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE );
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE );
 	}
 }
 
 static void ieee_pia_irq_a_func(int state) {
 	osborne1.pia_0_irq_state = state;
-	osborne1_update_irq_state();
+	osborne1_update_irq_state(Machine);
 }
 
 static const pia6821_interface osborne1_ieee_pia_config = {
@@ -279,7 +279,7 @@ static WRITE8_HANDLER( video_pia_port_b_w ) {
 
 static void video_pia_irq_a_func(int state) {
 	osborne1.pia_1_irq_state = state;
-	osborne1_update_irq_state();
+	osborne1_update_irq_state(Machine);
 }
 
 static const pia6821_interface osborne1_video_pia_config = {
@@ -309,18 +309,18 @@ static const pia6821_interface osborne1_video_pia_config = {
 //};
 
 static TIMER_CALLBACK(osborne1_video_callback) {
-	int y = video_screen_get_vpos(0);
+	int y = video_screen_get_vpos(machine->primary_screen);
 
 	/* Check for start of frame */
 	if ( y == 0 ) {
 		/* Clear CA1 on video PIA */
 		osborne1.start_y = ( osborne1.new_start_y - 1 ) & 0x1F;
 		osborne1.charline = 0;
-		pia_1_ca1_w( 0, 0 );
+		pia_1_ca1_w( machine, 0, 0 );
 	}
 	if ( y == 240 ) {
 		/* Set CA1 on video PIA */
-		pia_1_ca1_w( 0, 0xFF );
+		pia_1_ca1_w( machine, 0, 0xFF );
 	}
 	if ( y < 240 ) {
 		/* Draw a line of the display */
@@ -357,7 +357,7 @@ static TIMER_CALLBACK(osborne1_video_callback) {
 		beep_set_state( 0, 0 );
 	}
 
-	timer_adjust( osborne1.video_timer, video_screen_get_time_until_pos( 0, y + 1, 0 ), 0, attotime_never );
+	timer_adjust_oneshot(osborne1.video_timer, video_screen_get_time_until_pos(machine->primary_screen, y + 1, 0 ), 0);
 }
 
 /*
@@ -424,7 +424,7 @@ static TIMER_CALLBACK( setup_beep ) {
 
 MACHINE_RESET( osborne1 ) {
 	/* Initialize memory configuration */
-	osborne1_bankswitch_w( 0x00, 0 );
+	osborne1_bankswitch_w( machine, 0x00, 0 );
 
 	osborne1.pia_0_irq_state = FALSE;
 	osborne1.pia_1_irq_state = FALSE;
@@ -434,8 +434,8 @@ MACHINE_RESET( osborne1 ) {
 	memset( mess_ram + 0x10000, 0xFF, 0x1000 );
 
 	osborne1.video_timer = timer_alloc( osborne1_video_callback , NULL);
-	timer_adjust( osborne1.video_timer, video_screen_get_time_until_pos( 0, 1, 0 ), 0, attotime_never );
-	pia_1_ca1_w( 0, 0 );
+	timer_adjust_oneshot(osborne1.video_timer, video_screen_get_time_until_pos(machine->primary_screen, 1, 0 ), 0);
+	pia_1_ca1_w( machine, 0, 0 );
 
 	timer_set( attotime_zero, NULL, 0, setup_beep );
 
@@ -456,6 +456,6 @@ DRIVER_INIT( osborne1 ) {
 //	acia6850_config( 0, &osborne1_6850_config );
 
 	/* Configure the floppy disk interface */
-	wd17xx_init( WD_TYPE_MB8877, NULL, NULL );
+	wd17xx_init( machine, WD_TYPE_MB8877, NULL, NULL );
 }
 

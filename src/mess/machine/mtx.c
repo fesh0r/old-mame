@@ -51,7 +51,8 @@ static char mtx_prt_data = 0;
 
 static void mtx_tms9929a_interrupt(int data)
 {
-	z80ctc_0_trg0_w(0, data ? 0 : 1);
+	running_machine *machine = Machine;
+	z80ctc_0_trg0_w(machine, 0, data ? 0 : 1);
 }
 
 static const TMS9928a_interface tms9928a_interface =
@@ -217,14 +218,14 @@ static void mtx_ctc_interrupt(int state)
 
 READ8_HANDLER( mtx_ctc_r )
 {
-	return z80ctc_0_r(offset);
+	return z80ctc_0_r(machine, offset);
 }
 
 WRITE8_HANDLER( mtx_ctc_w )
 {
 //  logerror("mtx_ctc_w: %02x\n", data);
 	if (offset < 3)
-		z80ctc_0_w(offset,data);
+		z80ctc_0_w(machine, offset,data);
 }
 
 static z80ctc_interface mtx_ctc_intf =
@@ -262,7 +263,7 @@ WRITE8_HANDLER( mtx_dart_data_w )
 
 WRITE8_HANDLER( mtx_dart_control_w )
 {
-	z80dart_c_w(0, offset, data);
+	z80dart_c_w(machine, 0, offset, data);
 }
 
 static const z80dart_interface mtx_dart_intf =
@@ -313,19 +314,19 @@ WRITE8_HANDLER( mtx_bankswitch_w )
 	/* set ram bank, for invalid pages a nop-handler will be installed */
 	if (ram_page >= mess_ram_size/0x8000)
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MRA8_NOP, MWA8_NOP);
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_NOP, MWA8_NOP);
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP, SMH_NOP);
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_NOP, SMH_NOP);
 	}
 	else if (ram_page + 1 == mess_ram_size/0x8000)
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MRA8_NOP, MWA8_NOP);
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK4, MWA8_BANK4);
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP, SMH_NOP);
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK4, SMH_BANK4);
 		memory_set_bank(4, ram_page);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, MRA8_BANK3, MWA8_BANK3);
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, MRA8_BANK4, MWA8_BANK4);
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK3, SMH_BANK3);
+		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK4, SMH_BANK4);
 		memory_set_bank(3, ram_page);
 		memory_set_bank(4, ram_page);
 	}

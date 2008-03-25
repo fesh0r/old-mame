@@ -50,7 +50,6 @@ static int laser_two_color = 0;
 VIDEO_START( laser )
 {
 	videoram_size = 0x04000;
-	dirtybuffer = (UINT8*) auto_malloc(videoram_size);
 }
 
 static const int offs_2[192] = {
@@ -127,11 +126,8 @@ VIDEO_UPDATE( laser )
 	int offs, x, y;
 	int full_refresh = 1;
 
-    if( full_refresh )
-	{
-		fillbitmap(bitmap, machine->pens[(laser_bg_mode >> 4) & 15], &machine->screen[0].visarea);
-		memset(dirtybuffer, 1, videoram_size);
-    }
+	if( full_refresh )
+		fillbitmap(bitmap, ((laser_bg_mode >> 4) & 15)<<1, cliprect);
 
 	if (laser_latch & 0x08)
 	{
@@ -144,73 +140,58 @@ VIDEO_UPDATE( laser )
 			 * GR 5
 			 * 640x192 1bpp
 			 */
-            for( y = 0; y < 192; y++ )
-            {
+			for( y = 0; y < 192; y++ )
+			{
 				offs = offs_2[y];
-                for( x = 0; x < 80; x++, offs++ )
-                {
-                    if( dirtybuffer[offs] )
-                    {
-						int sx, sy, code, color = laser_two_color;
-						sy = BORDER_V/2 + y;
-						sx = BORDER_H/2 + x * 8;
-                        code = videoram[offs];
-						drawgfx(bitmap,machine->gfx[2],code,color,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-                        dirtybuffer[offs] = 0;
-                    }
-                }
-            }
-            break;
+				for( x = 0; x < 80; x++, offs++ )
+				{
+					int sx, sy, code, color = laser_two_color;
+					sy = BORDER_V/2 + y;
+					sx = BORDER_H/2 + x * 8;
+					code = videoram[offs];
+					drawgfx(bitmap,screen->machine->gfx[2],code,color,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+			break;
 
-		case  2:
+		case 2:
 			/*
 			 * GR 4
 			 * 320x192 1bpp with two colors per 8 pixels
 			 */
-            for( y = 0; y < 192; y++ )
-            {
+			for( y = 0; y < 192; y++ )
+			{
 				offs = offs_2[y];
 				for( x = 0; x < 40; x++, offs += 2 )
-                {
-					if( dirtybuffer[offs] || dirtybuffer[offs+1] )
-                    {
-						int sx, sy, code, color;
-						sy = BORDER_V/2 + y;
-						sx = BORDER_H/2 + x * 16;
-                        code = videoram[offs];
-						color = videoram[offs+1];
-						drawgfx(bitmap,machine->gfx[3],code,color,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-						dirtybuffer[offs] = dirtybuffer[offs+1] = 0;
-                    }
-                }
-            }
-            break;
+				{
+					int sx, sy, code, color;
+					sy = BORDER_V/2 + y;
+					sx = BORDER_H/2 + x * 16;
+					code = videoram[offs];
+					color = videoram[offs+1];
+					drawgfx(bitmap,screen->machine->gfx[3],code,color,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+			break;
 
 		case  3:
 			/*
 			 * GR 3
 			 * 160x192 4bpp
 			 */
-            for( y = 0; y < 192; y++ )
-            {
+			for( y = 0; y < 192; y++ )
+			{
 				offs = offs_2[y];
 				for( x = 0; x < 80; x++, offs++ )
-                {
-					if( dirtybuffer[offs] )
-                    {
-						int sx, sy, code;
-						sy = BORDER_V/2 + y;
-						sx = BORDER_H/2 + x * 8;
-                        code = videoram[offs];
-						drawgfx(bitmap,machine->gfx[5],code,0,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-						dirtybuffer[offs] = 0;
-                    }
-                }
-            }
-            break;
+				{
+					int sx, sy, code;
+					sy = BORDER_V/2 + y;
+					sx = BORDER_H/2 + x * 8;
+					code = videoram[offs];
+					drawgfx(bitmap,screen->machine->gfx[5],code,0,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+			break;
 
 		case  4:
 		case  5:
@@ -219,121 +200,96 @@ VIDEO_UPDATE( laser )
 			 * 160x96 4bpp
 			 */
 			for( y = 0; y < 96; y++ )
-            {
+			{
 				offs = offs_0[y];
 				for( x = 0; x < 80; x++, offs++ )
-                {
-					if( dirtybuffer[offs] )
-                    {
-						int sx, sy, code;
-						sy = BORDER_V/2 + y * 2;
-						sx = BORDER_H/2 + x * 8;
-                        code = videoram[offs];
-						drawgfx(bitmap,machine->gfx[6],code,0,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-						dirtybuffer[offs] = 0;
-                    }
-                }
-            }
-            break;
+				{
+					int sx, sy, code;
+					sy = BORDER_V/2 + y * 2;
+					sx = BORDER_H/2 + x * 8;
+					code = videoram[offs];
+					drawgfx(bitmap,screen->machine->gfx[6],code,0,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+			break;
 
 		case  6:
 			/*
 			 * GR 2
              * 320x192 1bpp
              */
-            for( y = 0; y < 192; y++ )
-            {
+			for( y = 0; y < 192; y++ )
+			{
 				offs = offs_1[y];
-                for( x = 0; x < 40; x++, offs++ )
-                {
-                    if( dirtybuffer[offs] )
-                    {
-                        int sx, sy, code, color = laser_two_color;
-						sy = BORDER_V/2 + y;
-						sx = BORDER_H/2 + x * 16;
-                        code = videoram[offs];
-						drawgfx(bitmap,machine->gfx[3],code,color,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-                        dirtybuffer[offs] = 0;
-                    }
-                }
-            }
-            break;
+				for( x = 0; x < 40; x++, offs++ )
+				{
+					int sx, sy, code, color = laser_two_color;
+					sy = BORDER_V/2 + y;
+					sx = BORDER_H/2 + x * 16;
+					code = videoram[offs];
+					drawgfx(bitmap,screen->machine->gfx[3],code,color,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+			break;
 
 		case  7:
 			/*
 			 * GR 1
 			 * 160x192 1bpp with two colors per 8 pixels
 			 */
-            for( y = 0; y < 192; y++ )
-            {
+			for( y = 0; y < 192; y++ )
+			{
 				offs = offs_1[y];
 				for( x = 0; x < 20; x++, offs += 2 )
-                {
-					if( dirtybuffer[offs] || dirtybuffer[offs+1] )
-                    {
-						int sx, sy, code, color;
-						sy = BORDER_V/2 + y;
-						sx = BORDER_H/2 + x * 32;
-                        code = videoram[offs];
-						color = videoram[offs+1];
-						drawgfx(bitmap,machine->gfx[4],code,color,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-						dirtybuffer[offs] = dirtybuffer[offs+1] = 0;
-                    }
-                }
-            }
-            break;
-        }
-    }
+				{
+					int sx, sy, code, color;
+					sy = BORDER_V/2 + y;
+					sx = BORDER_H/2 + x * 32;
+					code = videoram[offs];
+					color = videoram[offs+1];
+					drawgfx(bitmap,screen->machine->gfx[4],code,color,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+			break;
+		}
+	}
 	else
 	{
 		/* text modes */
-        if (laser_bg_mode & 1)
-        {
-            /* 80 columns text mode */
-            for( y = 0; y < 24; y++ )
-            {
-                offs = ((y & 7) << 8) + ((y >> 3) * 80);
-                for( x = 0; x < 80; x++, offs++ )
-                {
-                    if( dirtybuffer[0x3800+offs] )
-                    {
-						int sx, sy, code, color = laser_two_color;
-						sy = BORDER_V/2 + y * 8;
-						sx = BORDER_H/2 + x * 8;
-                        code = videoram[0x3800+offs];
-						drawgfx(bitmap,machine->gfx[0],code,color,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-                        dirtybuffer[offs] = 0;
-                    }
-                }
-            }
-        }
-        else
-        {
-            /* 40 columns text mode */
-            for( y = 0; y < 24; y++ )
-            {
-                offs = ((y & 7) << 8) + ((y >> 3) * 80);
-                for( x = 0; x < 40; x++, offs += 2 )
-                {
-                    if( dirtybuffer[0x3800+offs] || dirtybuffer[0x3801+offs] )
-                    {
-                        int sx, sy, code, color = 0;
-						sy = BORDER_V/2 + y * 8;
-						sx = BORDER_H/2 + x * 16;
-                        code = videoram[0x3800+offs];
-                        color = videoram[0x3801+offs];
-						drawgfx(bitmap,machine->gfx[1],code,color,0,0,sx,sy,
-                            &machine->screen[0].visarea,TRANSPARENCY_NONE,0);
-                        dirtybuffer[0x3800+offs] = dirtybuffer[0x3801+offs] = 0;
-                    }
-                }
-            }
-        }
-    }
+		if (laser_bg_mode & 1)
+		{
+			/* 80 columns text mode */
+			for( y = 0; y < 24; y++ )
+			{
+				offs = ((y & 7) << 8) + ((y >> 3) * 80);
+				for( x = 0; x < 80; x++, offs++ )
+				{
+					int sx, sy, code, color = laser_two_color;
+					sy = BORDER_V/2 + y * 8;
+					sx = BORDER_H/2 + x * 8;
+					code = videoram[0x3800+offs];
+					drawgfx(bitmap,screen->machine->gfx[0],code,color,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+		}
+		else
+		{
+			/* 40 columns text mode */
+			for( y = 0; y < 24; y++ )
+			{
+				offs = ((y & 7) << 8) + ((y >> 3) * 80);
+				for( x = 0; x < 40; x++, offs += 2 )
+				{
+					int sx, sy, code, color = 0;
+					sy = BORDER_V/2 + y * 8;
+					sx = BORDER_H/2 + x * 16;
+					code = videoram[0x3800+offs];
+					color = videoram[0x3801+offs];
+					drawgfx(bitmap,screen->machine->gfx[1],code,color,0,0,sx,sy,cliprect,TRANSPARENCY_NONE,0);
+				}
+			}
+		}
+	}
 
 	if( laser_frame_time > 0 )
 	{

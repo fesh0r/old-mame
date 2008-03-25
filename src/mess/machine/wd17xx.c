@@ -36,7 +36,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
 
@@ -142,7 +141,7 @@
 typedef struct _wd17xx_info wd17xx_info;
 struct _wd17xx_info
 {
-	void   (*callback)(wd17xx_state_t event, void *param);   /* callback for IRQ status */
+	void   (*callback)(running_machine *, wd17xx_state_t event, void *param);   /* callback for IRQ status */
 	void	*callback_param;
 	DENSITY   density;				/* FM/MFM, single / double density */
 	wd17xx_type_t type;
@@ -242,10 +241,10 @@ static const UINT8 track_SD[][2] = {
 ***************************************************************************/
 
 static void wd17xx_complete_command(wd17xx_info *, int delay);
-static void wd17xx_clear_data_request(void);
-static void wd17xx_set_data_request(void);
+static void wd17xx_clear_data_request(running_machine *);
+static void wd17xx_set_data_request(running_machine *);
 static void wd17xx_timed_data_request(void);
-static void wd17xx_set_irq(wd17xx_info *);
+static void wd17xx_set_irq(running_machine *, wd17xx_info *);
 static emu_timer *busy_timer = NULL;
 
 /* one wd controlling multiple drives */
@@ -304,7 +303,7 @@ void wd17xx_set_density(DENSITY density)
 static TIMER_CALLBACK(wd17xx_busy_callback)
 {
 	wd17xx_info *info = (wd17xx_info *) ptr;
-	wd17xx_set_irq(info);
+	wd17xx_set_irq(machine, info);
 	timer_reset(busy_timer, attotime_never);
 }
 
@@ -313,7 +312,7 @@ static TIMER_CALLBACK(wd17xx_busy_callback)
 static void wd17xx_set_busy(wd17xx_info *w, attotime duration)
 {
 	w->status |= STA_1_BUSY;
-	timer_adjust(busy_timer, duration, 0, attotime_zero);
+	timer_adjust_oneshot(busy_timer, duration, 0);
 }
 
 
@@ -387,9 +386,9 @@ void wd17xx_reset(void)
 
 
 
-void wd17xx_init(wd17xx_type_t type, void (*callback)(wd17xx_state_t, void *), void *param)
+void wd17xx_init(running_machine *machine, wd17xx_type_t type, void (*callback)(running_machine *, wd17xx_state_t, void *), void *param)
 {
-	assert_always(mame_get_phase(Machine) == MAME_PHASE_INIT, "Can only call wd17xx_init at init time!");
+	assert_always(mame_get_phase(machine) == MAME_PHASE_INIT, "Can only call wd17xx_init at init time!");
 
 	memset(&wd, 0, sizeof(wd));
 	wd.status = STA_1_TRACK0;
@@ -436,7 +435,7 @@ static void write_track(wd17xx_info * w)
 
 
 /* read an entire track */
-static void read_track(wd17xx_info * w)
+static void read_track(running_machine *machine, wd17xx_info * w)
 {
 #if 0
 	UINT8 *psrc;		/* pointer to track format structure */
@@ -563,7 +562,7 @@ static void read_track(wd17xx_info * w)
 
 	w->data_offset = 0;
 
-	wd17xx_set_data_request();
+	wd17xx_set_data_request(machine);
 	w->status |= STA_2_BUSY;
 	w->busy_count = 0;
 }
@@ -596,7 +595,7 @@ static void calc_crc(UINT16 * crc, UINT8 value)
 
 
 /* read the next data address mark */
-static void wd17xx_read_id(wd17xx_info * w)
+static void wd17xx_read_id(running_machine *machine, wd17xx_info * w)
 {
 	chrn_id id;
 
@@ -634,7 +633,7 @@ static void wd17xx_read_id(wd17xx_info * w)
 		w->status |= STA_2_BUSY;
 		w->busy_count = 0;
 
-		wd17xx_set_data_request();
+		wd17xx_set_data_request(machine);
 
 		logerror("read id succeeded.\n");
 	}
@@ -761,19 +760,19 @@ static void wd17xx_read_sector(wd17xx_info *w)
 
 
 
-static void wd17xx_callback(wd17xx_info *w, wd17xx_state_t state)
+static void wd17xx_callback(running_machine *machine, wd17xx_info *w, wd17xx_state_t state)
 {
 	if (w->callback)
-		(*w->callback)(state, w->callback_param);
+		(*w->callback)(machine, state, w->callback_param);
 }
 
 
 
-static void	wd17xx_set_irq(wd17xx_info *w)
+static void	wd17xx_set_irq(running_machine *machine, wd17xx_info *w)
 {
 	w->status &= ~STA_2_BUSY;
 	/* generate an IRQ */
-	wd17xx_callback(w, WD17XX_IRQ_SET);
+	wd17xx_callback(machine, w, WD17XX_IRQ_SET);
 }
 
 
@@ -795,13 +794,13 @@ static TIMER_CALLBACK(wd17xx_misc_timer_callback)
 	switch(callback_type) {
 	case MISCCALLBACK_COMMAND:
 		/* command callback */
-		wd17xx_set_irq(w);
+		wd17xx_set_irq(machine, w);
 		break;
 
 	case MISCCALLBACK_DATA:
 		/* data callback */
 		/* ok, trigger data request now */
-		wd17xx_set_data_request();
+		wd17xx_set_data_request(machine);
 		break;
 	}
 
@@ -831,7 +830,7 @@ static void wd17xx_complete_command(wd17xx_info *w, int delay)
 	usecs *= delay;
 
 	/* set new timer */
-	timer_adjust(w->timer, ATTOTIME_IN_USEC(usecs), MISCCALLBACK_COMMAND, attotime_zero);
+	timer_adjust_oneshot(w->timer, ATTOTIME_IN_USEC(usecs), MISCCALLBACK_COMMAND);
 }
 
 
@@ -902,19 +901,19 @@ static void wd17xx_verify_seek(wd17xx_info *w)
 
 
 /* clear a data request */
-static void wd17xx_clear_data_request(void)
+static void wd17xx_clear_data_request(running_machine *machine)
 {
 	wd17xx_info *w = &wd;
 
 //	w->status_drq = 0;
-	wd17xx_callback(w, WD17XX_DRQ_CLR);
+	wd17xx_callback(machine, w, WD17XX_DRQ_CLR);
 	w->status &= ~STA_2_DRQ;
 }
 
 
 
 /* set data request */
-static void wd17xx_set_data_request(void)
+static void wd17xx_set_data_request(running_machine *machine)
 {
 	wd17xx_info *w = &wd;
 
@@ -926,7 +925,7 @@ static void wd17xx_set_data_request(void)
 
 	/* set drq */
 //	w->status_drq = STA_2_DRQ;
-	wd17xx_callback(w, WD17XX_DRQ_SET);
+	wd17xx_callback(machine, w, WD17XX_DRQ_SET);
 	w->status |= STA_2_DRQ;
 }
 
@@ -990,7 +989,7 @@ static TIMER_CALLBACK(wd17xx_write_sector_callback)
 				w->data_offset = 0;
 				w->data_count = w->sector_length;
 
-				wd17xx_set_data_request();
+				wd17xx_set_data_request(machine);
 
 				w->status |= STA_2_BUSY;
 				w->busy_count = 0;
@@ -1013,7 +1012,7 @@ static void wd17xx_timed_data_request(void)
 	usecs = floppy_drive_get_datarate_in_us(w->density);
 
 	/* set new timer */
-	timer_adjust(w->timer, ATTOTIME_IN_USEC(usecs), MISCCALLBACK_DATA, attotime_zero);
+	timer_adjust_oneshot(w->timer, ATTOTIME_IN_USEC(usecs), MISCCALLBACK_DATA);
 }
 
 
@@ -1052,7 +1051,7 @@ static void wd17xx_timed_write_sector_request(void)
 	wd17xx_info *w = &wd;
 	int result = w->status;
 
-	wd17xx_callback(w, WD17XX_IRQ_CLR);
+	wd17xx_callback(machine, w, WD17XX_IRQ_CLR);
 //	if (w->busy_count)
 //	{
 //		if (!--w->busy_count)
@@ -1135,7 +1134,7 @@ READ8_HANDLER ( wd17xx_sector_r )
 	if (w->data_count >= 1)
 	{
 		/* clear data request */
-		wd17xx_clear_data_request();
+		wd17xx_clear_data_request(machine);
 
 		/* yes */
 		w->data = w->buffer[w->data_offset++];
@@ -1210,7 +1209,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 	floppy_drive_set_motor_state(wd17xx_current_image(), 1);
 	floppy_drive_set_ready_state(wd17xx_current_image(), 1,0);
 	/* also cleared by writing command */
-	wd17xx_callback(w, WD17XX_IRQ_CLR);
+	wd17xx_callback(machine, w, WD17XX_IRQ_CLR);
 
 	/* clear write protected. On read sector, read track and read dam, write protected bit is clear */
 	w->status &= ~((1<<6) | (1<<5) | (1<<4));
@@ -1224,7 +1223,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 		w->data_offset = 0;
 		w->status &= ~(STA_2_BUSY);
 
-		wd17xx_clear_data_request();
+		wd17xx_clear_data_request(machine);
 
 		if (data & 0x0f)
 		{
@@ -1255,7 +1254,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 			w->command = data & ~FDC_MASK_TYPE_II;
 			w->command_type = TYPE_II;
 			w->status &= ~STA_2_LOST_DAT;
-			wd17xx_clear_data_request();
+			wd17xx_clear_data_request(machine);
 
 			wd17xx_timed_read_sector_request();
 
@@ -1271,7 +1270,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 			w->command = data & ~FDC_MASK_TYPE_II;
 			w->command_type = TYPE_II;
 			w->status &= ~STA_2_LOST_DAT;
-			wd17xx_clear_data_request();
+			wd17xx_clear_data_request(machine);
 
 			wd17xx_timed_write_sector_request();
 
@@ -1286,11 +1285,11 @@ WRITE8_HANDLER ( wd17xx_command_w )
 			w->command = data & ~FDC_MASK_TYPE_III;
 			w->command_type = TYPE_III;
 			w->status &= ~STA_2_LOST_DAT;
-			wd17xx_clear_data_request();
+			wd17xx_clear_data_request(machine);
 #if 1
 //			w->status = seek(w, w->track, w->head, w->sector);
 			if (w->status == 0)
-				read_track(w);
+				read_track(machine, w);
 #endif
 			return;
 		}
@@ -1302,7 +1301,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 
 			w->command_type = TYPE_III;
 			w->status &= ~STA_2_LOST_DAT;
-			wd17xx_clear_data_request();
+			wd17xx_clear_data_request(machine);
 
 			if (!floppy_drive_get_flag_state(wd17xx_current_image(), FLOPPY_DRIVE_READY))
             {
@@ -1324,7 +1323,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
                     w->command = data & ~FDC_MASK_TYPE_III;
                     w->data_offset = 0;
                     w->data_count = (w->density) ? TRKSIZE_DD : TRKSIZE_SD;
-                    wd17xx_set_data_request();
+                    wd17xx_set_data_request(machine);
 
                     w->status |= STA_2_BUSY;
                     w->busy_count = 0;
@@ -1340,7 +1339,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 
 			w->command_type = TYPE_III;
 			w->status &= ~STA_2_LOST_DAT;
-  			wd17xx_clear_data_request();
+  			wd17xx_clear_data_request(machine);
 
 			if (!floppy_drive_get_flag_state(wd17xx_current_image(), FLOPPY_DRIVE_READY))
             {
@@ -1348,7 +1347,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
             }
             else
             {
-                wd17xx_read_id(w);
+                wd17xx_read_id(machine, w);
             }
 			return;
 		}
@@ -1540,7 +1539,7 @@ WRITE8_HANDLER ( wd17xx_data_w )
 	if (w->data_count > 0)
 	{
 		/* clear data request */
-		wd17xx_clear_data_request();
+		wd17xx_clear_data_request(machine);
 
 		/* put byte into buffer */
 		if (VERBOSE_DATA)
@@ -1582,16 +1581,16 @@ WRITE8_HANDLER ( wd17xx_data_w )
 
 	switch(offset % 4) {
 	case 0:
-		result = wd17xx_status_r(0);
+		result = wd17xx_status_r(machine, 0);
 		break;
 	case 1:
-		result = wd17xx_track_r(0);
+		result = wd17xx_track_r(machine, 0);
 		break;
 	case 2:
-		result = wd17xx_sector_r(0);
+		result = wd17xx_sector_r(machine, 0);
 		break;
 	case 3:
-		result = wd17xx_data_r(0);
+		result = wd17xx_data_r(machine, 0);
 		break;
 	}
 	return result;
@@ -1603,16 +1602,16 @@ WRITE8_HANDLER( wd17xx_w )
 {
 	switch(offset % 4) {
 	case 0:
-		wd17xx_command_w(0, data);
+		wd17xx_command_w(machine, 0, data);
 		break;
 	case 1:
-		wd17xx_track_w(0, data);
+		wd17xx_track_w(machine, 0, data);
 		break;
 	case 2:
-		wd17xx_sector_w(0, data);
+		wd17xx_sector_w(machine, 0, data);
 		break;
 	case 3:
-		wd17xx_data_w(0, data);
+		wd17xx_data_w(machine, 0, data);
 		break;
 	}
 }

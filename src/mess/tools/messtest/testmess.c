@@ -18,7 +18,6 @@
 #include "video/generic.h"
 #include "render.h"
 #include "messopts.h"
-#include "deprecat.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
@@ -170,14 +169,12 @@ static astring *assemble_software_path(astring *str, const game_driver *gamedrv,
 
 
 
-static void dump_screenshot(int write_file)
+static void dump_screenshot(running_machine *machine, int write_file)
 {
 	file_error filerr;
 	mame_file *fp;
 	char buf[128];
 	int is_blank = 0;
-	int scrnum;
-	UINT32 screenmask;
 
 	if (write_file)
 	{
@@ -188,18 +185,17 @@ static void dump_screenshot(int write_file)
 		filerr = mame_fopen(SEARCHPATH_SCREENSHOT, buf, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE, &fp);
 		if (filerr == FILERR_NONE)
 		{
-			screenmask = render_get_live_screens_mask();
-
-			if (screenmask != 0)
+			/* choose a screen */
+			const device_config *screen = video_screen_first(machine->config);
+			while((screen != NULL) && !render_is_live_screen(screen))
 			{
-				/* choose a screen */
-				for (scrnum = 0; scrnum < MAX_SCREENS; scrnum++)
-				{
-					if (screenmask & (1 << scrnum))
-						break;
-				}
+				screen = video_screen_next(screen);
+			}
 
-				video_screen_save_snapshot(Machine, fp, scrnum);
+			/* did we find a live screen? */
+			if (screen != NULL)
+			{
+				video_screen_save_snapshot(screen, fp);
 				report_message(MSG_INFO, "Saved screenshot as %s", buf);
 			}
 			else
@@ -300,7 +296,6 @@ static messtest_result_t run_test(int flags, struct messtest_results *results)
 	seen_first_update = FALSE;
 	videoram = NULL;
 	videoram_size = 0;
-	dirtybuffer = NULL;
 
 	/* set up options */
 	opts = mame_options_init(win_mess_opts);
@@ -421,13 +416,13 @@ int osd_start_audio_stream(int stereo)
 	if (current_testcase.wavwrite)
 	{
 		snprintf(buf, sizeof(buf) / sizeof(buf[0]), "snap/_%s.wav", current_testcase.name);
-		wavptr = wav_open(buf, Machine->sample_rate, 2);
+		wavptr = wav_open(buf, machine->sample_rate, 2);
 	}
 	else
 	{
 		wavptr = NULL;
 	}
-	samples_this_frame = (int) ((double)Machine->sample_rate / (double)Machine->screen[0].refresh);
+	samples_this_frame = (int) ((double)machine->sample_rate / (double)machine->screen[0].refresh);
 	return samples_this_frame;
 }
 
@@ -445,15 +440,15 @@ void osd_stop_audio_stream(void)
 
 
 
-void osd_update_audio_stream(INT16 *buffer, int samples_this_frame)
+void osd_update_audio_stream(running_machine *machine, INT16 *buffer, int samples_this_frame)
 {
-	if (wavptr && (Machine->sample_rate != 0))
+	if (wavptr && (machine->sample_rate != 0))
 		wav_add_data_16(wavptr, buffer, samples_this_frame * 2);
 }
 
 
 
-static void find_switch(const char *switch_name, const char *switch_setting,
+static void find_switch(running_machine *machine, const char *switch_name, const char *switch_setting,
 	int switch_type, int switch_setting_type,
 	input_port_entry **in_switch, input_port_entry **in_switch_setting)
 {
@@ -463,7 +458,7 @@ static void find_switch(const char *switch_name, const char *switch_setting,
 	*in_switch_setting = NULL;
 
 	/* find switch with the name */
-	in = Machine->input_ports;
+	in = machine->input_ports;
 	while(in->type != IPT_END)
 	{
 		if (in->type == switch_type && input_port_active(in)
@@ -491,7 +486,7 @@ static void find_switch(const char *switch_name, const char *switch_setting,
 
 /* ----------------------------------------------------------------------- */
 
-static void command_wait(void)
+static void command_wait(running_machine *machine)
 {
 	attotime current_time = timer_get_time();
 
@@ -510,7 +505,7 @@ static void command_wait(void)
 
 
 
-static void command_input(void)
+static void command_input(running_machine *machine)
 {
 	/* post a set of characters to the emulation */
 	if (state == STATE_READY)
@@ -534,7 +529,7 @@ static void command_input(void)
 
 
 
-static void command_rawinput(void)
+static void command_rawinput(running_machine *machine)
 {
 	int parts;
 	attotime current_time = timer_get_time();
@@ -588,21 +583,21 @@ static void command_rawinput(void)
 
 
 
-static void command_screenshot(void)
+static void command_screenshot(running_machine *machine)
 {
-	dump_screenshot(TRUE);
+	dump_screenshot(machine, TRUE);
 }
 
 
 
-static void command_checkblank(void)
+static void command_checkblank(running_machine *machine)
 {
-	dump_screenshot(FALSE);
+	dump_screenshot(machine, FALSE);
 }
 
 
 
-static void command_switch(void)
+static void command_switch(running_machine *machine)
 {
 	input_port_entry *switch_name;
 	input_port_entry *switch_setting;
@@ -628,12 +623,12 @@ static void command_switch(void)
 		}
 	}
 
-	find_switch(current_command->u.switch_args.name, current_command->u.switch_args.value,
+	find_switch(machine, current_command->u.switch_args.name, current_command->u.switch_args.value,
 		IPT_DIPSWITCH_NAME, IPT_DIPSWITCH_SETTING, &switch_name, &switch_setting);
 
 	if (!switch_name || !switch_setting)
 	{
-		find_switch(current_command->u.switch_args.name, current_command->u.switch_args.value,
+		find_switch(machine, current_command->u.switch_args.name, current_command->u.switch_args.value,
 			IPT_CONFIG_NAME, IPT_CONFIG_SETTING, &switch_name, &switch_setting);
 	}
 
@@ -656,14 +651,14 @@ static void command_switch(void)
 }
 
 
-static void command_image_preload(void)
+static void command_image_preload(running_machine *machine)
 {
 	state = STATE_ABORTED;
 	report_message(MSG_FAILURE, "Image preloads must be at the beginning");
 }
 
 
-static void command_image_loadcreate(void)
+static void command_image_loadcreate(running_machine *machine)
 {
 	mess_image *image;
 	int device_type;
@@ -742,7 +737,7 @@ static void command_image_loadcreate(void)
 	}
 
 	success = FALSE;
-	for (gamedrv = Machine->gamedrv; !success && gamedrv; gamedrv = mess_next_compatible_driver(gamedrv))
+	for (gamedrv = machine->gamedrv; !success && gamedrv; gamedrv = mess_next_compatible_driver(gamedrv))
 	{
 		/* assemble the full path */
 		filepath = assemble_software_path(astring_alloc(), gamedrv, filename);
@@ -774,7 +769,7 @@ static void command_image_loadcreate(void)
 
 
 
-static void command_verify_memory(void)
+static void command_verify_memory(running_machine *machine)
 {
 	int i = 0;
 	offs_t offset, offset_start, offset_end;
@@ -843,7 +838,7 @@ static void command_verify_memory(void)
 
 
 
-static void command_verify_image(void)
+static void command_verify_image(running_machine *machine)
 {
 	const UINT8 *verify_data;
 	size_t verify_data_size;
@@ -892,7 +887,7 @@ static void command_verify_image(void)
 		{
 			state = STATE_ABORTED;
 			report_message(MSG_FAILURE, "Failed verification step (%s; 0x%x-0x%x)",
-				filename, offset_start, offset_end);
+				filename, (int)offset_start, (int)offset_end);
 			break;
 		}
 	}
@@ -901,7 +896,7 @@ static void command_verify_image(void)
 
 
 
-static void command_trace(void)
+static void command_trace(running_machine *machine)
 {
 #ifdef ENABLE_DEBUGGER
 	int cpunum;
@@ -931,26 +926,26 @@ static void command_trace(void)
 
 
 
-static void command_soft_reset(void)
+static void command_soft_reset(running_machine *machine)
 {
-	mame_schedule_soft_reset(Machine);
+	mame_schedule_soft_reset(machine);
 }
 
 
 
-static void command_hard_reset(void)
+static void command_hard_reset(running_machine *machine)
 {
-	mame_schedule_hard_reset(Machine);
+	mame_schedule_hard_reset(machine);
 }
 
 
 
-static void command_end(void)
+static void command_end(running_machine *machine)
 {
 	/* at the end of our test */
 	state = STATE_DONE;
 	final_time = timer_get_time();
-	mame_schedule_exit(Machine);
+	mame_schedule_exit(machine);
 }
 
 
@@ -960,7 +955,7 @@ static void command_end(void)
 struct command_procmap_entry
 {
 	messtest_command_type_t command_type;
-	void (*proc)(void);
+	void (*proc)(running_machine *machine);
 };
 
 static const struct command_procmap_entry commands[] =
@@ -982,7 +977,7 @@ static const struct command_procmap_entry commands[] =
 	{ MESSTEST_COMMAND_END,				command_end }
 };
 
-void osd_update(int skip_redraw)
+void osd_update(running_machine *machine, int skip_redraw)
 {
 	int i;
 	attotime time_limit;
@@ -1001,7 +996,7 @@ void osd_update(int skip_redraw)
 	/* if we have already aborted or completed, our work is done */
 	if ((state == STATE_ABORTED) || (state == STATE_DONE))
 	{
-		mame_schedule_exit(Machine);
+		mame_schedule_exit(machine);
 		return;
 	}
 
@@ -1030,7 +1025,7 @@ void osd_update(int skip_redraw)
 	{
 		if (current_command->command_type == commands[i].command_type)
 		{
-			commands[i].proc();
+			commands[i].proc(machine);
 			break;
 		}
 	}
@@ -1045,68 +1040,13 @@ void osd_update(int skip_redraw)
 			(current_command[0].command_type != MESSTEST_COMMAND_SCREENSHOT) &&
 			(current_command[1].command_type == MESSTEST_COMMAND_END))
 		{
-			dump_screenshot(TRUE);
+			dump_screenshot(machine, TRUE);
 		}
 
 		current_command++;
 	}
 }
 
-
-
-#if 0
-/* still need to work out some kinks here */
-const struct KeyboardInfo *osd_get_key_list(void)
-{
-	int i;
-
-	if (!ki)
-	{
-		ki = auto_malloc((__code_key_last - __code_key_first + 1) * sizeof(struct KeyboardInfo));
-
-		for (i = __code_key_first; i <= __code_key_last; i++)
-		{
-			ki[i - __code_key_first].name = "Dummy";
-			ki[i - __code_key_first].code = i;
-			ki[i - __code_key_first].standardcode = i;
-		}
-	}
-	return ki;
-}
-
-const struct JoystickInfo *osd_get_joy_list(void)
-{
-	int i;
-
-	if (!ji)
-	{
-		ji = auto_malloc((__code_joy_last - __code_joy_first + 1) * sizeof(struct JoystickInfo));
-
-		for (i = __code_joy_first; i <= __code_joy_last; i++)
-		{
-			ji[i - __code_joy_first].name = "Dummy";
-			ji[i - __code_joy_first].code = i;
-			ji[i - __code_joy_first].standardcode = i;
-		}
-	}
-	return ji;
-}
-
-static int is_input_pressed(int inputcode)
-{
-	return 0;
-}
-
-int osd_is_joy_pressed(int joycode)
-{
-	return is_input_pressed(joycode);
-}
-
-int osd_is_key_pressed(int keycode)
-{
-	return is_input_pressed(keycode);
-}
-#endif
 
 
 char *rompath_extra;

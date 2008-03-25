@@ -30,13 +30,13 @@ rom/ram selection
 #include "sound/ay8910.h"
 
 
-void amstrad_setup_machine(void)
+void amstrad_setup_machine(running_machine *machine)
 {
-	amstrad_reset_machine();
+	amstrad_reset_machine(machine);
 }
 
 /* load CPCEMU style snapshots */
-void amstrad_handle_snapshot(unsigned char *pSnapshot)
+void amstrad_handle_snapshot(running_machine *machine, unsigned char *pSnapshot)
 {
 	int RegData;
 	int i;
@@ -111,14 +111,14 @@ void amstrad_handle_snapshot(unsigned char *pSnapshot)
 	/* init GA */
 	for (i=0; i<17; i++)
 	{
-		amstrad_GateArray_write(i);
+		amstrad_GateArray_write(machine, i);
 
-		amstrad_GateArray_write(((pSnapshot[0x02f + i] & 0x01f) | 0x040));
+		amstrad_GateArray_write(machine, ((pSnapshot[0x02f + i] & 0x01f) | 0x040));
 	}
 
-	amstrad_GateArray_write(pSnapshot[0x02e] & 0x01f);
+	amstrad_GateArray_write(machine, pSnapshot[0x02e] & 0x01f);
 
-	amstrad_GateArray_write(((pSnapshot[0x040] & 0x03f) | 0x080));
+	amstrad_GateArray_write(machine, ((pSnapshot[0x040] & 0x03f) | 0x080));
 
 	AmstradCPC_PALWrite(((pSnapshot[0x041] & 0x03f) | 0x0c0));
 
@@ -144,12 +144,12 @@ void amstrad_handle_snapshot(unsigned char *pSnapshot)
 	/* PSG */
 	for (i=0; i<16; i++)
 	{
-		AY8910_control_port_0_w(0,i);
+		AY8910_control_port_0_w(machine, 0,i);
 
-		AY8910_write_port_0_w(0,pSnapshot[0x05b + i] & 0x0ff);
+		AY8910_write_port_0_w(machine, 0,pSnapshot[0x05b + i] & 0x0ff);
 	}
 
-	AY8910_control_port_0_w(0,pSnapshot[0x05a]);
+	AY8910_control_port_0_w(machine, 0,pSnapshot[0x05a]);
 
 	{
 		int MemSize;
@@ -193,7 +193,7 @@ SNAPSHOT_LOAD(amstrad)
 		return INIT_FAIL;
 	}
 
-	amstrad_handle_snapshot(snapshot);
+	amstrad_handle_snapshot(machine, snapshot);
 	free(snapshot);
 	return INIT_PASS;
 }

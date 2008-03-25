@@ -11,7 +11,6 @@ TODO:
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "amiga.h"
 #include "cpu/m68000/m68k.h"
 #include "machine/6526cia.h"
@@ -148,12 +147,12 @@ static void amiga_ar1_init( void )
 	memset(ar_ram, 0, 0x4000);
 
 	/* Install ROM */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, MRA16_BANK2);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, MWA16_ROM);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, SMH_BANK2);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, SMH_ROM);
 
 	/* Install RAM */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, MRA16_BANK3);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, MWA16_BANK3);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, SMH_BANK3);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, SMH_BANK3);
 
 	/* Configure Banks */
 	memory_set_bankptr(2, memory_region(REGION_USER2));
@@ -186,7 +185,7 @@ static void amiga_ar1_init( void )
 
 static UINT16 amiga_ar23_mode;
 
-static void amiga_ar23_freeze( void );
+static void amiga_ar23_freeze( running_machine *machine );
 
 static READ16_HANDLER( amiga_ar23_cia_r )
 {
@@ -194,10 +193,10 @@ static READ16_HANDLER( amiga_ar23_cia_r )
 
 	if ( ACCESSING_LSB && offset == 2048 && pc >= 0x40 && pc < 0x120 )
 	{
-		amiga_ar23_freeze();
+		amiga_ar23_freeze(machine);
 	}
 
-	return amiga_cia_r( offset, mem_mask );
+	return amiga_cia_r( machine, offset, mem_mask );
 }
 
 static WRITE16_HANDLER( amiga_ar23_mode_w )
@@ -238,7 +237,7 @@ static READ16_HANDLER( amiga_ar23_mode_r )
 			}
 
 			/* overlay disabled, map RAM on 0x000000 */
-			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, MWA16_BANK1);
+			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, SMH_BANK1);
 		}
 	}
 
@@ -250,13 +249,13 @@ static WRITE16_HANDLER( amiga_ar23_chipmem_w )
 	if ( offset == (0x08/2) )
 	{
 		if ( amiga_ar23_mode & 1 )
-			amiga_ar23_freeze();
+			amiga_ar23_freeze(machine);
 	}
 
 	amiga_chip_ram_w( offset * 2, data );
 }
 
-static void amiga_ar23_freeze( void )
+static void amiga_ar23_freeze( running_machine *machine )
 {
 	int pc = safe_activecpu_get_pc();
 
@@ -281,14 +280,14 @@ static void amiga_ar23_freeze( void )
 		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, 0, amiga_ar23_chipmem_w);
 
 		/* trigger NMI irq */
-		cpunum_set_input_line(Machine, 0, 7, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, 7, PULSE_LINE);
 	}
 }
 
-static void amiga_ar23_nmi( void )
+static void amiga_ar23_nmi( running_machine *machine )
 {
 	amiga_ar23_mode = 0;
-	amiga_ar23_freeze();
+	amiga_ar23_freeze(machine);
 }
 
 #if 0
@@ -363,12 +362,12 @@ static void amiga_ar23_init( int ar3 )
 	}
 
 	/* Install ROM */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, MRA16_BANK2);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, MWA16_ROM);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, SMH_BANK2);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, SMH_ROM);
 
 	/* Install RAM */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, MRA16_BANK3);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, MWA16_BANK3);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, SMH_BANK3);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, SMH_BANK3);
 
 	/* Install Custom chip monitor */
 //	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xdff000, 0xdff1ff, 0, 0, amiga_ar23_custom_r);
@@ -453,7 +452,7 @@ void amiga_cart_nmi( void )
 
 		case ACTION_REPLAY_MKII:
 		case ACTION_REPLAY_MKIII:
-			amiga_ar23_nmi();
+			amiga_ar23_nmi(Machine);
 		break;
 	}
 }

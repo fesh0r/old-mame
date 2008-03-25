@@ -43,16 +43,16 @@ internal expansion/cartridge port
 
 static const struct via6522_interface config=
 {
-	0,//read8_handler in_a_func;
-	0,//read8_handler in_b_func;
-	0,//read8_handler in_ca1_func;
-	0,//read8_handler in_cb1_func;
-	0,//read8_handler in_ca2_func;
-	0,//read8_handler in_cb2_func;
-	0,//write8_handler out_a_func;
-	0,//write8_handler out_b_func;
-	0,//write8_handler out_ca2_func;
-	0,//write8_handler out_cb2_func;
+	0,//read8_machine_func in_a_func;
+	0,//read8_machine_func in_b_func;
+	0,//read8_machine_func in_ca1_func;
+	0,//read8_machine_func in_cb1_func;
+	0,//read8_machine_func in_ca2_func;
+	0,//read8_machine_func in_cb2_func;
+	0,//write8_machine_func out_a_func;
+	0,//write8_machine_func out_b_func;
+	0,//write8_machine_func out_ca2_func;
+	0,//write8_machine_func out_cb2_func;
 	0,//void (*irq_func)(int state);
 };
 
@@ -122,19 +122,18 @@ static MACHINE_DRIVER_START( ssystem3 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M6502, 1000000)
 	MDRV_CPU_PROGRAM_MAP(ssystem3_map, 0)
-	MDRV_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( ssystem3 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_REFRESH_RATE(LCD_FRAMES_PER_SECOND)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(728, 437)
 	MDRV_SCREEN_VISIBLE_AREA(0, 728-1, 0, 437-1)
 	MDRV_PALETTE_LENGTH(242 + 32768)
-	MDRV_COLORTABLE_LENGTH(2)
 	MDRV_PALETTE_INIT( ssystem3 )
 
 	MDRV_VIDEO_START( ssystem3 )

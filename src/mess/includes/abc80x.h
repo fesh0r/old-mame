@@ -4,25 +4,35 @@
  *
  ****************************************************************************/
 
-#ifndef ABC80X_H_
-#define ABC80X_H_
+#ifndef __ABC80X__
+#define __ABC80X__
 
-
-#define ABC800_X01 12000000.0
-
+#define ABC800_X01	XTAL_12MHz
+#define ABC806_X02	XTAL_32_768kHz
 
 /*----------- defined in video/abc80x.c -----------*/
 
-WRITE8_HANDLER( abc800_videoram_w );
-PALETTE_INIT( abc800m );
-PALETTE_INIT( abc800c );
-VIDEO_START( abc800m );
-VIDEO_START( abc800c );
-VIDEO_UPDATE( abc800 );
-VIDEO_START( abc802 );
-VIDEO_UPDATE( abc802 );
+MACHINE_DRIVER_EXTERN(abc800m_video);
+MACHINE_DRIVER_EXTERN(abc800c_video);
+MACHINE_DRIVER_EXTERN(abc802_video);
+MACHINE_DRIVER_EXTERN(abc806_video);
 
-void abc802_set_columns(int columns);
+WRITE8_HANDLER( abc800m_hrs_w );
+WRITE8_HANDLER( abc800m_hrc_w );
 
+WRITE8_HANDLER( abc800c_hrs_w );
+WRITE8_HANDLER( abc800c_hrc_w );
 
-#endif /* ABC80X_H_ */
+WRITE8_HANDLER( abc806_hrs_w );
+WRITE8_HANDLER( abc806_hrc_w );
+READ8_HANDLER( abc806_videoram_r );
+WRITE8_HANDLER( abc806_videoram_w );
+READ8_HANDLER( abc806_colorram_r );
+WRITE8_HANDLER( abc806_colorram_w );
+READ8_HANDLER( abc806_fgctlprom_r );
+WRITE8_HANDLER( abc806_fgctlprom_w );
+WRITE8_HANDLER( abc806_sync_w );
+
+void abc802_mux80_40_w(int level);
+
+#endif /* __ABC80X__ */

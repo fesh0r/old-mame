@@ -3,9 +3,8 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "includes/lynx.h"
 #include "deprecat.h"
-
+#include "includes/lynx.h"
 #include "cpu/m6502/m6502.h"
 
 
@@ -806,10 +805,9 @@ typedef struct {
 	UINT8	bakup;
 	UINT8	cntrl1;
 	UINT8	cntrl2;
-    int		counter;
-    void	*timer;
+	int		counter;
+	void	*timer;
 	int		timer_active;
-    double	settime;
 } LYNX_TIMER;
 
 #define NR_LYNX_TIMERS	8
@@ -822,41 +820,40 @@ static void lynx_timer_init(int which)
 {
 	memset( &lynx_timer[which], 0, sizeof(LYNX_TIMER) );
 	lynx_timer[which].timer = timer_alloc( lynx_timer_shot , NULL);
-	lynx_timer[which].settime = 0.0;
 }
 
-static void lynx_timer_signal_irq(int which)
+static void lynx_timer_signal_irq(running_machine *machine, int which)
 {
     if ( ( lynx_timer[which].cntrl1 & 0x80 ) && ( which != 4 ) ) { // irq flag handling later
 		mikey.data[0x81] |= ( 1 << which );
-		cpunum_set_input_line(Machine, 0, M65SC02_IRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, M65SC02_IRQ_LINE, ASSERT_LINE);
     }
     switch ( which ) {
     case 0:
-		lynx_timer_count_down( 2 );
+		lynx_timer_count_down( machine, 2 );
 		lynx_line++;
 		break;
     case 2:
-		lynx_timer_count_down( 4 );
-		lynx_draw_lines( -1 );
+		lynx_timer_count_down( machine, 4 );
+		lynx_draw_lines( machine, -1 );
 		lynx_line=0;
 		break;
     case 1:
-		lynx_timer_count_down( 3 );
+		lynx_timer_count_down( machine, 3 );
 		break;
     case 3:
-		lynx_timer_count_down( 5 );
+		lynx_timer_count_down( machine, 5 );
 		break;
     case 5:
-		lynx_timer_count_down( 7 );
+		lynx_timer_count_down( machine, 7 );
 		break;
     case 7:
-		lynx_audio_count_down( 0 );
+		lynx_audio_count_down( machine, 0 );
 		break;
     }
 }
 
-void lynx_timer_count_down(int which)
+void lynx_timer_count_down(running_machine *machine, int which)
 {
     if ( ( lynx_timer[which].cntrl1 & 0x0f ) == 0x0f ) {
 		if ( lynx_timer[which].counter > 0 ) {
@@ -865,7 +862,7 @@ void lynx_timer_count_down(int which)
 		}
 		if ( lynx_timer[which].counter == 0 ) {
 			lynx_timer[which].cntrl2 |= 8;
-		    lynx_timer_signal_irq(which);
+		    lynx_timer_signal_irq(machine, which);
 		    if ( lynx_timer[which].cntrl1 & 0x10 ) {
 				lynx_timer[which].counter = lynx_timer[which].bakup;
 		    } else {
@@ -879,7 +876,7 @@ void lynx_timer_count_down(int which)
 static TIMER_CALLBACK(lynx_timer_shot)
 {
 	lynx_timer[param].cntrl2 |= 8;
-    lynx_timer_signal_irq( param );
+    lynx_timer_signal_irq( machine, param );
     if ( ! ( lynx_timer[param].cntrl1 & 0x10 ) )
 		lynx_timer[param].timer_active = 0;
 }
@@ -939,20 +936,6 @@ static void lynx_timer_write(int which, int offset, UINT8 data)
 		break;
 	case 1:
 		lynx_timer[which].cntrl1 = data;
-		timer_reset( lynx_timer[which].timer, attotime_never);
-		lynx_timer[which].timer_active = 0;
-		if ( ( lynx_timer[which].cntrl1 & 0x08 ) )
-		{
-			if ( ( lynx_timer[which].cntrl1 & 7 ) != 7 )
-			{
-				attotime t = attotime_mul(ATTOTIME_IN_HZ( lynx_time_factor( lynx_timer[which].cntrl1 & 7 ) ), lynx_timer[which].bakup + 1 );
-				if ( lynx_timer[which].cntrl1 & 0x10 )
-					timer_adjust( lynx_timer[which].timer, attotime_zero, which, t);
-				else
-					timer_adjust( lynx_timer[which].timer, t, which, attotime_zero);
-				lynx_timer[which].timer_active = 1;
-			}
-		}
 		if ( data & 0x40 )
 			lynx_timer[which].cntrl2 &= ~8;
 		break;
@@ -962,6 +945,24 @@ static void lynx_timer_write(int which, int offset, UINT8 data)
 	case 3:
 		lynx_timer[which].cntrl2 = ( lynx_timer[which].cntrl2 & 8 ) | ( data & ~8 );
 		break;
+	}
+
+	/* Update timers */
+	if ( offset < 3 ) {
+		timer_reset( lynx_timer[which].timer, attotime_never);
+		lynx_timer[which].timer_active = 0;
+		if ( ( lynx_timer[which].cntrl1 & 0x08 ) )
+		{
+			if ( ( lynx_timer[which].cntrl1 & 7 ) != 7 )
+			{
+				attotime t = attotime_mul(ATTOTIME_IN_HZ( lynx_time_factor( lynx_timer[which].cntrl1 & 7 ) ), lynx_timer[which].bakup + 1 );
+				if ( lynx_timer[which].cntrl1 & 0x10 )
+					timer_adjust_periodic(lynx_timer[which].timer, attotime_zero, which, t);
+				else
+					timer_adjust_oneshot(lynx_timer[which].timer, t, which);
+				lynx_timer[which].timer_active = 1;
+			}
+		}
 	}
 }
 
@@ -1062,7 +1063,7 @@ static WRITE8_HANDLER(lynx_uart_w)
 		data |= 4; // no comlynx adapter
 		break;
     case 0x8c: case 0x8d:
-		data = lynx_uart_r( offset );
+		data = lynx_uart_r(machine, offset);
 		break;
     default:
 		data = mikey.data[offset];
@@ -1097,7 +1098,7 @@ WRITE8_HANDLER(mikey_write)
 		mikey.data[0x81]&=~data; // clear interrupt source
 		logerror("mikey write %.2x %.2x\n",offset,data);
 		if (!mikey.data[0x81])
-			cpunum_set_input_line(Machine, 0, M65SC02_IRQ_LINE, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, M65SC02_IRQ_LINE, CLEAR_LINE);
 		break;
 
 	case 0x87:
@@ -1120,7 +1121,7 @@ WRITE8_HANDLER(mikey_write)
 		break;
 
 	case 0x8c: case 0x8d:
-		lynx_uart_w(offset, data);
+		lynx_uart_w(machine, offset, data);
 		break;
 
 	case 0xa0: case 0xa1: case 0xa2: case 0xa3: case 0xa4: case 0xa5: case 0xa6: case 0xa7:
@@ -1128,14 +1129,14 @@ WRITE8_HANDLER(mikey_write)
 	case 0xb0: case 0xb1: case 0xb2: case 0xb3: case 0xb4: case 0xb5: case 0xb6: case 0xb7:
 	case 0xb8: case 0xb9: case 0xba: case 0xbb: case 0xbc: case 0xbd: case 0xbe: case 0xbf:
 		mikey.data[offset]=data;
-		lynx_draw_lines(lynx_line);
+		lynx_draw_lines(machine, lynx_line);
 #if 0
 		palette_set_color_rgb(offset&0xf,
 					(mikey.data[0xb0+(offset&0xf)]&0xf)<<4,
 					(mikey.data[0xa0+(offset&0xf)]&0xf)<<4,
 					mikey.data[0xb0+(offset&0xf)]&0xf0 );
 #else
-		lynx_palette[offset&0xf]=Machine->pens[((mikey.data[0xb0+(offset&0xf)]&0xf))
+		lynx_palette[offset&0xf]=machine->pens[((mikey.data[0xb0+(offset&0xf)]&0xf))
 			|((mikey.data[0xa0+(offset&0xf)]&0xf)<<4)
 			|((mikey.data[0xb0+(offset&0xf)]&0xf0)<<4)];
 #endif
@@ -1163,10 +1164,10 @@ WRITE8_HANDLER( lynx_memory_config_w )
      * when these are safe in the cpu */
     lynx_memory_config = data;
 
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? MRA8_BANK1 : suzy_read);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? MWA8_BANK1 : suzy_write);
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? MRA8_BANK2 : mikey_read);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? MWA8_BANK2 : mikey_write);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK1 : suzy_read);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK1 : suzy_write);
+	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK2 : mikey_read);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK2 : mikey_write);
 
 	if (data & 1)
 		memory_set_bankptr(1, lynx_mem_fc00);
@@ -1179,7 +1180,7 @@ WRITE8_HANDLER( lynx_memory_config_w )
 static void lynx_reset(running_machine *machine)
 {
 	int i;
-	lynx_memory_config_w(0, 0);
+	lynx_memory_config_w(machine, 0, 0);
 
 	cpunum_set_input_line(machine, 0, M65SC02_IRQ_LINE, CLEAR_LINE);
 
@@ -1207,7 +1208,7 @@ static void lynx_reset(running_machine *machine)
 
 static void lynx_postload(void)
 {
-	lynx_memory_config_w(0, lynx_memory_config);
+	lynx_memory_config_w(Machine, 0, lynx_memory_config);
 }
 
 MACHINE_START( lynx )

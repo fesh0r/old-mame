@@ -34,7 +34,7 @@ Aquarius Memory map
 static ADDRESS_MAP_START( aquarius_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x2fff) AM_NOP
-	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(MRA8_RAM, aquarius_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(SMH_RAM, aquarius_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x3800, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0xffff) AM_NOP
@@ -44,7 +44,7 @@ ADDRESS_MAP_END
 /* port i/o functions */
 
 static ADDRESS_MAP_START( aquarius_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xfc, 0xfc) AM_WRITE(aquarius_port_fc_w)
 	AM_RANGE(0xfe, 0xfe) AM_READWRITE(aquarius_port_fe_r, aquarius_port_fe_w)
 	AM_RANGE(0xff, 0xff) AM_READWRITE(aquarius_port_ff_r, aquarius_port_ff_w)
@@ -69,7 +69,7 @@ static GFXDECODE_START( aquarius )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, aquarius_charlayout, 0, 256 )
 GFXDECODE_END
 
-static const rgb_t aquarius_palette[] =
+static const rgb_t aquarius_colors[] =
 {
 	RGB_BLACK,					/* Black */
 	MAKE_RGB(0xff, 0x00, 0x00),	/* Red */
@@ -89,7 +89,7 @@ static const rgb_t aquarius_palette[] =
 	MAKE_RGB(0x7f, 0x7f, 0x7f)	/* Dark Gray */
 };
 
-static const unsigned short aquarius_colortable[] =
+static const unsigned short aquarius_palette[] =
 {
     0, 0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0,10, 0,11, 0,12, 0,13, 0,14, 0,15, 0,
     0, 1, 1, 1, 2, 1, 3, 1, 4, 1, 5, 1, 6, 1, 7, 1, 8, 1, 9, 1,10, 1,11, 1,12, 1,13, 1,14, 1,15, 1,
@@ -111,8 +111,15 @@ static const unsigned short aquarius_colortable[] =
 
 static PALETTE_INIT( aquarius )
 {
-	palette_set_colors(machine, 0, aquarius_palette, ARRAY_LENGTH(aquarius_palette));
-	memcpy(colortable, aquarius_colortable, sizeof (aquarius_colortable));
+	int i;
+
+	machine->colortable = colortable_alloc(machine, 16);
+
+	for ( i = 0; i < 16; i++ )
+		colortable_palette_set_color(machine->colortable, i, aquarius_colors[i]);
+
+	for (i=0; i < 512; i++)
+		colortable_entry_set_value(machine->colortable, i, aquarius_palette[i]);
 }
 
 /* Keyboard input */
@@ -122,7 +129,7 @@ static INPUT_PORTS_START(aquarius)
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("=       +   NEXT")   PORT_CODE(KEYCODE_EQUALS)     PORT_CHAR('=') PORT_CHAR('+')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Del     \\")         PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(8)   PORT_CHAR('\\')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(":       *   PEEK")   PORT_CODE(KEYCODE_QUOTE)      PORT_CHAR(':') PORT_CHAR('*')
-	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Rtn")                PORT_CODE(KEYCODE_SLASH)      PORT_CHAR(13)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Rtn")                PORT_CODE(KEYCODE_ENTER)      PORT_CHAR(13)
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(";       @   POKE")   PORT_CODE(KEYCODE_COLON)      PORT_CHAR(';') PORT_CHAR('@')
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(".       >   VAL")    PORT_CODE(KEYCODE_STOP)       PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT(0xc0, IP_ACTIVE_LOW, IPT_UNUSED)
@@ -177,7 +184,7 @@ static INPUT_PORTS_START(aquarius)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("e       E   DIM")    PORT_CODE(KEYCODE_E)          PORT_CHAR('e') PORT_CHAR('E')  PORT_CHAR(5)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("s       S   Stplst") PORT_CODE(KEYCODE_S)          PORT_CHAR('s') PORT_CHAR('S')  PORT_CHAR(19)
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("z       Z   CLOAD")  PORT_CODE(KEYCODE_Z)          PORT_CHAR('z') PORT_CHAR('Z')  PORT_CHAR(26)
-	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Space       CHR$")   PORT_CODE(KEYCODE_LSHIFT)     PORT_CHAR(32)
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Space       CHR$")   PORT_CODE(KEYCODE_SPACE)      PORT_CHAR(32)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("a       A   CSAVE")  PORT_CODE(KEYCODE_A)          PORT_CHAR('a') PORT_CHAR('A')  PORT_CHAR(1)
 	PORT_BIT(0xc0, IP_ACTIVE_LOW, IPT_UNUSED)
 
@@ -216,21 +223,20 @@ static MACHINE_DRIVER_START( aquarius )
 	MDRV_CPU_ADD_TAG("main", Z80, 3500000)
 	MDRV_CPU_PROGRAM_MAP(aquarius_mem, 0)
 	MDRV_CPU_IO_MAP(aquarius_io, 0)
-	MDRV_CPU_VBLANK_INT( aquarius_interrupt, 1 )
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", aquarius_interrupt)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( aquarius )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(40 * 8, 24 * 8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 8 - 1, 0, 24 * 8 - 1)
 	MDRV_GFXDECODE( aquarius )
 	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(aquarius_palette))
-	MDRV_COLORTABLE_LENGTH(sizeof (aquarius_colortable))
 	MDRV_PALETTE_INIT( aquarius )
 
 	MDRV_VIDEO_START( aquarius )

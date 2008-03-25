@@ -13,17 +13,10 @@
 static const UINT8 *a2_videoram;
 static UINT32 a2_videomask;
 static UINT32 old_a2;
-static tilemap *text_tilemap;
-static tilemap *dbltext_tilemap;
-static tilemap *lores_tilemap;
-static int text_videobase;
-static int dbltext_videobase;
-static int lores_videobase;
 static int fgcolor, bgcolor, flash;
 static int alt_charset_value;
 static UINT16 *hires_artifact_map;
 static UINT16 *dhires_artifact_map;
-static UINT8 *lores_tiledata;
 
 #define	BLACK	0
 #define DKRED	1
@@ -46,8 +39,13 @@ static UINT8 *lores_tiledata;
 #define PROFILER_VIDEOTOUCH		PROFILER_USER3
 
 /***************************************************************************
-  helpers
+	HELPERS
 ***************************************************************************/
+
+/*-------------------------------------------------
+    effective_a2 - calculates the effective a2
+	register
+-------------------------------------------------*/
 
 INLINE UINT32 effective_a2(void)
 {
@@ -55,168 +53,219 @@ INLINE UINT32 effective_a2(void)
 }
 
 
+/*-------------------------------------------------
+    compute_video_address - performs funky Apple II
+	video address lookup
+-------------------------------------------------*/
 
-static void apple2_draw_tilemap(mame_bitmap *bitmap, const rectangle *cliprect,
-	int beginrow, int endrow, tilemap *tm, int raw_videobase, int *tm_videobase)
+static UINT32 compute_video_address(int col, int row)
 {
-	rectangle new_cliprect;
-
-	new_cliprect = *cliprect;
-
-	if (new_cliprect.min_y < beginrow)
-		new_cliprect.min_y = beginrow;
-	if (new_cliprect.max_y > endrow)
-		new_cliprect.max_y = endrow;
-	if (new_cliprect.min_y > new_cliprect.max_y)
-		return;
-
-	if (raw_videobase != *tm_videobase)
-	{
-		*tm_videobase = raw_videobase;
-		tilemap_mark_all_tiles_dirty(tm);
-	}
-	tilemap_draw(bitmap, &new_cliprect, tm, 0, 0);
-}
-
-/***************************************************************************
-  text
-***************************************************************************/
-
-static void apple2_generaltext_gettileinfo(int videobase, int memory_offset, int *code, int *color)
-{
-	int current_fgcolor = fgcolor;
-	int current_bgcolor = bgcolor;
-	int i;
-
-	*code = a2_videoram[videobase + memory_offset];
-
-	if (effective_a2() & VAR_ALTCHARSET)
-	{
-		*code |= alt_charset_value;
-	}
-	else if (flash && (*code >= 0x40) && (*code <= 0x7f))
-	{
-		i = current_fgcolor;
-		current_fgcolor = current_bgcolor;
-		current_bgcolor = i;
-	}
-
-	*color = (current_fgcolor * 16) + current_bgcolor;
-}
-
-static TILE_GET_INFO(apple2_text_gettileinfo)
-{
-	int code, color;
-	apple2_generaltext_gettileinfo(text_videobase, tile_index, &code, &color);
-	SET_TILE_INFO(
-		0,				/* gfx */
-		code,			/* character */
-		color,			/* color */
-		0);				/* flags */
-}
-
-static TILE_GET_INFO(apple2_dbltext_gettileinfo)
-{
-	int code, color;
-	apple2_generaltext_gettileinfo(dbltext_videobase, tile_index, &code, &color);
-	SET_TILE_INFO(
-		1,				/* gfx */
-		code,			/* character */
-		color,			/* color */
-		0);				/* flags */
-}
-
-static UINT32 apple2_text_getmemoryoffset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
-{
-	/* Special Apple II addressing.  Gotta love it. */
+	/* special Apple II addressing - gotta love it */
 	return (((row & 0x07) << 7) | ((row & 0x18) * 5 + col));
 }
 
-static UINT32 apple2_dbltext_getmemoryoffset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
+
+
+/*-------------------------------------------------
+    adjust_begin_and_end_row - processes the cliprect
+-------------------------------------------------*/
+
+static void adjust_begin_and_end_row(const rectangle *cliprect, int *beginrow, int *endrow)
 {
-	return apple2_text_getmemoryoffset(col / 2, row, num_cols / 2, num_rows) + ((col % 2) ? 0x00000 : 0x10000);
+	/* assumptions of the code */
+	assert((*beginrow % 8) == 0);
+	assert((*endrow % 8) == 7);
+
+	*beginrow = MAX(*beginrow, cliprect->min_y - (cliprect->min_y % 8));
+	*endrow = MIN(*endrow, cliprect->max_y - (cliprect->max_y % 8) + 7);
+
+	/* sanity check again */
+	assert((*beginrow % 8) == 0);
+	assert((*endrow % 8) == 7);
 }
 
-static void apple2_text_draw(mame_bitmap *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
+
+
+/***************************************************************************
+	TEXT
+***************************************************************************/
+
+/*-------------------------------------------------
+    apple2_plot_text_character - plots a single
+	textual character
+-------------------------------------------------*/
+
+INLINE void apple2_plot_text_character(bitmap_t *bitmap, int xpos, int ypos, int xscale, UINT32 code,
+	const UINT8 *textgfx_data, UINT32 textgfx_datalen, UINT32 my_a2)
 {
-	if (effective_a2() & VAR_80COL)
-		apple2_draw_tilemap(bitmap, cliprect, beginrow, endrow, dbltext_tilemap, page ? 0x800 : 0x400, &dbltext_videobase);
-	else
-		apple2_draw_tilemap(bitmap, cliprect, beginrow, endrow, text_tilemap, page ? 0x800 : 0x400, &text_videobase);
+	int x, y, i;
+	int fg = fgcolor;
+	int bg = bgcolor;
+	const UINT8 *chardata;
+	UINT16 color;
+
+	if (my_a2 & VAR_ALTCHARSET)
+	{
+		/* we're using an alternate charset */
+		code |= alt_charset_value;
+	}
+	else if (flash && (code >= 0x40) && (code <= 0x7f))
+	{
+		/* we're flashing; swap */
+		i = fg;
+		fg = bg;
+		bg = i;
+	}
+
+	/* look up the character data */
+	chardata = &textgfx_data[(code * 8) % textgfx_datalen];
+
+	/* and finally, plot the character itself */
+	for (y = 0; y < 8; y++)
+	{
+		for (x = 0; x < 7; x++)
+		{
+			color = (chardata[y] & (1 << x)) ? bg : fg;
+
+			for (i = 0; i < xscale; i++)
+			{
+				*BITMAP_ADDR16(bitmap, ypos + y, xpos + (x * xscale) + i) = color;
+			}
+		}
+	}
 }
+
+
+
+/*-------------------------------------------------
+    apple2_text_draw - renders text (either 40
+	column or 80 column)
+-------------------------------------------------*/
+
+static void apple2_text_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
+{
+	int row, col;
+	UINT32 start_address = (page ? 0x0800 : 0x0400);
+	UINT32 address;
+	const UINT8 *textgfx_data = memory_region(REGION_GFX1);
+	UINT32 textgfx_datalen = memory_region_length(REGION_GFX1);
+	UINT32 my_a2 = effective_a2();
+
+	/* perform adjustments */
+	adjust_begin_and_end_row(cliprect, &beginrow, &endrow);
+
+	for (row = beginrow; row <= endrow; row += 8)
+	{
+		for (col = 0; col < 40; col++)
+		{
+			/* calculate adderss */
+			address = start_address + compute_video_address(col, row / 8);
+
+			if (my_a2 & VAR_80COL)
+			{
+				apple2_plot_text_character(bitmap, col * 14 + 0, row, 1, a2_videoram[address + 0x10000],
+					textgfx_data, textgfx_datalen, my_a2);
+				apple2_plot_text_character(bitmap, col * 14 + 7, row, 1, a2_videoram[address + 0x00000],
+					textgfx_data, textgfx_datalen, my_a2);
+			}
+			else
+			{
+				apple2_plot_text_character(bitmap, col * 14, row, 2, a2_videoram[address],
+					textgfx_data, textgfx_datalen, my_a2);
+			}
+		}
+	}
+}
+
+
+/*-------------------------------------------------
+    apple2_lores_draw - renders lo-res text
+-------------------------------------------------*/
+
+static void apple2_lores_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
+{
+	int row, col, y, x;
+	UINT8 code;
+	UINT32 start_address = (page ? 0x0800 : 0x0400);
+	UINT32 address;
+
+	/* perform adjustments */
+	adjust_begin_and_end_row(cliprect, &beginrow, &endrow);
+
+	for (row = beginrow; row <= endrow; row += 8)
+	{
+		for (col = 0; col < 40; col++)
+		{
+			/* calculate adderss */
+			address = start_address + compute_video_address(col, row / 8);
+
+			/* perform the lookup */
+			code = a2_videoram[address];
+
+			/* and now draw */
+			for (y = 0; y < 4; y++)
+			{
+				for (x = 0; x < 14; x++)
+					*BITMAP_ADDR16(bitmap, row + y, col * 14 + x) = (code >> 0) & 0x0F;
+			}
+			for (y = 4; y < 8; y++)
+			{
+				for (x = 0; x < 14; x++)
+					*BITMAP_ADDR16(bitmap, row + y, col * 14 + x) = (code >> 0) & 0x0F;
+			}
+		}
+	}
+}
+
+
+/*-------------------------------------------------
+    apple2_set_fgcolor
+-------------------------------------------------*/
 
 void apple2_set_fgcolor(int color)
 {
-	if (color != fgcolor)
-	{
-		tilemap_mark_all_tiles_dirty(text_tilemap);
-		tilemap_mark_all_tiles_dirty(dbltext_tilemap);
-		fgcolor = color;
-	}
+	fgcolor = color;
 }
+
+
+/*-------------------------------------------------
+    apple2_set_bgcolor
+-------------------------------------------------*/
 
 void apple2_set_bgcolor(int color)
 {
-	if (color != bgcolor)
-	{
-		tilemap_mark_all_tiles_dirty(text_tilemap);
-		tilemap_mark_all_tiles_dirty(dbltext_tilemap);
-		bgcolor = color;
-	}
+	bgcolor = color;
 }
+
+
+/*-------------------------------------------------
+    apple2_get_fgcolor
+-------------------------------------------------*/
 
 int apple2_get_fgcolor(void)
 {
 	return fgcolor;
 }
 
+
+/*-------------------------------------------------
+    apple2_get_bgcolor
+-------------------------------------------------*/
+
 int apple2_get_bgcolor(void)
 {
 	return bgcolor;
 }
 
-/***************************************************************************
-  low resolution graphics
-***************************************************************************/
 
-static TILE_GET_INFO(apple2_lores_gettileinfo)
-{
-	UINT32 ch = a2_videoram[lores_videobase + tile_index];
-	tileinfo->pen_data = lores_tiledata;
-	tileinfo->palette_base = ch * 2;
-	tileinfo->flags = 0;
-}
-
-static void apple2_lores_draw(mame_bitmap *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
-{
-	apple2_draw_tilemap(bitmap, cliprect, beginrow, endrow, lores_tilemap, page ? 0x800 : 0x400, &lores_videobase);
-}
 
 /***************************************************************************
-  high resolution graphics
+	HIGH RESOLUTION GRAPHICS
 ***************************************************************************/
 
-static UINT32 apple2_hires_getmemoryoffset(UINT32 col, UINT32 row, UINT32 num_cols, UINT32 num_rows)
+static void apple2_hires_draw(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
 {
-	/* Special Apple II addressing.  Gotta love it. */
-	return apple2_text_getmemoryoffset(col, row / 8, num_cols, num_rows) | ((row & 7) << 10);
-}
-
-struct drawtask_params
-{
-	mame_bitmap *bitmap;
 	const UINT8 *vram;
-	int beginrow;
-	int rowcount;
-	int columns;
-};
-
-static void apple2_hires_draw_task(struct drawtask_params *dtparams)
-{
-	mame_bitmap *bitmap;
-	const UINT8 *vram;
-	int beginrow;
-	int endrow;
 	int row, col, b;
 	int offset;
 	int columns;
@@ -226,32 +275,40 @@ static void apple2_hires_draw_task(struct drawtask_params *dtparams)
 	UINT32 w;
 	UINT16 *artifact_map_ptr;
 
-	bitmap		= dtparams->bitmap;
-	vram		= dtparams->vram;
-	beginrow	= dtparams->beginrow;
-	endrow		= dtparams->beginrow + dtparams->rowcount;
-	columns		= dtparams->columns;
+	/* sanity checks */
+	if (beginrow < cliprect->min_y)
+		beginrow = cliprect->min_y;
+	if (endrow > cliprect->max_y)
+		endrow = cliprect->max_y;
+	if (endrow < beginrow)
+		return;
+
+	vram		= a2_videoram + (page ? 0x4000 : 0x2000);
+	columns		= ((effective_a2() & (VAR_DHIRES|VAR_80COL)) == (VAR_DHIRES|VAR_80COL)) ? 80 : 40;
 
 	vram_row[0] = 0;
 	vram_row[columns + 1] = 0;
 
-	assert((columns == 40) || (columns == 80));
-
-	for (row = beginrow; row < endrow; row++)
+	for (row = beginrow; row <= endrow; row++)
 	{
 		for (col = 0; col < 40; col++)
 		{
-			offset = apple2_hires_getmemoryoffset(col, row, 0, 0);
+			offset = compute_video_address(col, row / 8) | ((row & 7) << 10);
 
-			switch(columns) {
-			case 40:
-				vram_row[1+col] = vram[offset];
-				break;
+			switch(columns)
+			{
+				case 40:
+					vram_row[1+col] = vram[offset];
+					break;
 
-			case 80:
-				vram_row[1+(col*2)+0] = vram[offset + 0x10000];
-				vram_row[1+(col*2)+1] = vram[offset + 0x00000];
-				break;
+				case 80:
+					vram_row[1+(col*2)+0] = vram[offset + 0x10000];
+					vram_row[1+(col*2)+1] = vram[offset + 0x00000];
+					break;
+
+				default:
+					fatalerror("Invalid column count");
+					break;
 			}
 		}
 
@@ -291,33 +348,13 @@ static void apple2_hires_draw_task(struct drawtask_params *dtparams)
 	}
 }
 
-static void apple2_hires_draw(mame_bitmap *bitmap, const rectangle *cliprect, int page, int beginrow, int endrow)
-{
-	struct drawtask_params dtparams;
-
-	if (beginrow < cliprect->min_y)
-		beginrow = cliprect->min_y;
-	if (endrow > cliprect->max_y)
-		endrow = cliprect->max_y;
-	if (endrow < beginrow)
-		return;
-
-	dtparams.vram = a2_videoram + (page ? 0x4000 : 0x2000);
-	dtparams.bitmap = bitmap;
-	dtparams.beginrow = beginrow;
-	dtparams.rowcount = (endrow + 1) - beginrow;
-	dtparams.columns = ((effective_a2() & (VAR_DHIRES|VAR_80COL)) == (VAR_DHIRES|VAR_80COL)) ? 80 : 40;
-
-	apple2_hires_draw_task(&dtparams);
-}
-
 
 
 /***************************************************************************
-  video core
+	VIDEO CORE
 ***************************************************************************/
 
-void apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo)
+void apple2_video_start(running_machine *machine, const UINT8 *vram, size_t vram_size, UINT32 ignored_softswitches, int hires_modulo)
 {
 	int i, j;
 	UINT16 c;
@@ -344,39 +381,11 @@ void apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_soft
 	alt_charset_value = memory_region_length(REGION_GFX1) / 16;
 	a2_videoram = vram;
 
-	text_tilemap = tilemap_create(
-		apple2_text_gettileinfo,
-		apple2_text_getmemoryoffset,
-		TILEMAP_TYPE_PEN,
-		7*2, 8,
-		40, 24);
-
-	dbltext_tilemap = tilemap_create(
-		apple2_dbltext_gettileinfo,
-		apple2_dbltext_getmemoryoffset,
-		TILEMAP_TYPE_PEN,
-		7, 8,
-		80, 24);
-
-	lores_tilemap = tilemap_create(
-		apple2_lores_gettileinfo,
-		apple2_text_getmemoryoffset,
-		TILEMAP_TYPE_PEN,
-		14, 8,
-		40, 24);
-
 	/* 2^3 dependent pixels * 2 color sets * 2 offsets */
 	hires_artifact_map = auto_malloc(sizeof(UINT16) * 8 * 2 * 2);
 
 	/* 2^4 dependent pixels */
 	dhires_artifact_map = auto_malloc(sizeof(UINT16) * 16);
-
-	/* 14x8 */
-	lores_tiledata = auto_malloc(sizeof(UINT8) * 14 * 8);
-
-	/* build lores_tiledata */
-	memset(lores_tiledata + 0*14, 1, 4*14);
-	memset(lores_tiledata + 4*14, 0, 4*14);
 
 	/* build hires artifact map */
 	for (i = 0; i < 8; i++)
@@ -402,6 +411,19 @@ void apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_soft
 		}
 	}
 
+	/* do we need to flip the gfx? */
+	if (!strcmp(machine->gamedrv->name, "apple2")
+		|| !strcmp(machine->gamedrv->name, "apple2p")
+		|| !strcmp(machine->gamedrv->name, "ace100")
+		|| !strcmp(machine->gamedrv->name, "apple2jp"))
+	{
+		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
+		{
+			apple2_font[i] = BITSWAP8(apple2_font[i], 7, 0, 1, 2, 3, 4, 5, 6);
+		}
+	}
+
+
 	/* build double hires artifact map */
 	for (i = 0; i < 16; i++)
 	{
@@ -409,7 +431,6 @@ void apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_soft
 	}
 
 	memset(&old_a2, 0, sizeof(old_a2));
-	text_videobase = lores_videobase = 0;
 	a2_videomask = ~ignored_softswitches;
 }
 
@@ -417,7 +438,7 @@ void apple2_video_start(const UINT8 *vram, size_t vram_size, UINT32 ignored_soft
 
 VIDEO_START( apple2 )
 {
-	apple2_video_start(mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 4);
+	apple2_video_start(machine, mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 4);
 
 	/* hack to fix the colors on apple2/apple2p */
 	fgcolor = 0;
@@ -427,7 +448,7 @@ VIDEO_START( apple2 )
 
 VIDEO_START( apple2p )
 {
-	apple2_video_start(mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 8);
+	apple2_video_start(machine, mess_ram, mess_ram_size, VAR_80COL | VAR_ALTCHARSET | VAR_DHIRES, 8);
 
 	/* hack to fix the colors on apple2/apple2p */
 	fgcolor = 0;
@@ -437,23 +458,18 @@ VIDEO_START( apple2p )
 
 VIDEO_START( apple2e )
 {
-	apple2_video_start(mess_ram, mess_ram_size, 0, 8);
+	apple2_video_start(machine, mess_ram, mess_ram_size, 0, 8);
 }
 
 
 VIDEO_UPDATE( apple2 )
 {
 	int page;
-	int new_flash;
 	UINT32 new_a2;
+	running_machine *machine = screen->machine;
 
-	new_flash = (attotime_mul(timer_get_time(), 4).seconds & 1) ? 1 : 0;
-	if (flash != new_flash)
-	{
-		flash = new_flash;
-		tilemap_mark_all_tiles_dirty(text_tilemap);
-		tilemap_mark_all_tiles_dirty(dbltext_tilemap);
-	}
+	/* calculate the flash value */
+	flash = (attotime_mul(timer_get_time(), 4).seconds & 1) ? 1 : 0;
 
 	/* read out relevant softswitch variables; to see what has changed */
 	new_a2 = effective_a2();
@@ -464,47 +480,38 @@ VIDEO_UPDATE( apple2 )
 	if (ALWAYS_REFRESH || (new_a2 != old_a2))
 	{
 		old_a2 = new_a2;
-		tilemap_mark_all_tiles_dirty(text_tilemap);
-		tilemap_mark_all_tiles_dirty(dbltext_tilemap);
-		tilemap_mark_all_tiles_dirty(lores_tilemap);
 	}
 
 	/* choose which page to use */
 	page = (new_a2 & VAR_PAGE2) ? 1 : 0;
 
+	/* choose the video mode to draw */
 	if (effective_a2() & VAR_TEXT)
 	{
-		apple2_text_draw(bitmap, cliprect, page, 0, 191);
+		/* text screen */
+		apple2_text_draw(machine, bitmap, cliprect, page, 0, 191);
 	}
 	else if ((effective_a2() & VAR_HIRES) && (effective_a2() & VAR_MIXED))
 	{
-		apple2_hires_draw(bitmap, cliprect, page, 0, 159);
-		apple2_text_draw(bitmap, cliprect, page, 160, 191);
+		/* hi-res on top; text at bottom */
+		apple2_hires_draw(machine, bitmap, cliprect, page, 0, 159);
+		apple2_text_draw(machine, bitmap, cliprect, page, 160, 191);
 	}
 	else if (effective_a2() & VAR_HIRES)
 	{
-		apple2_hires_draw(bitmap, cliprect, page, 0, 191);
+		/* hi-res screen */
+		apple2_hires_draw(machine, bitmap, cliprect, page, 0, 191);
 	}
 	else if (effective_a2() & VAR_MIXED)
 	{
-		apple2_lores_draw(bitmap, cliprect, page, 0, 159);
-		apple2_text_draw(bitmap, cliprect, page, 160, 191);
+		/* lo-res on top; text at bottom */
+		apple2_lores_draw(machine, bitmap, cliprect, page, 0, 159);
+		apple2_text_draw(machine, bitmap, cliprect, page, 160, 191);
 	}
 	else
 	{
-		apple2_lores_draw(bitmap, cliprect, page, 0, 191);
+		/* lo-res screen */
+		apple2_lores_draw(machine, bitmap, cliprect, page, 0, 191);
 	}
 	return 0;
-}
-
-void apple2_video_touch(offs_t offset)
-{
-	profiler_mark(PROFILER_VIDEOTOUCH);
-	if (offset >= text_videobase)
-		tilemap_mark_tile_dirty(text_tilemap, offset - text_videobase);
-	if (offset >= dbltext_videobase)
-		tilemap_mark_tile_dirty(dbltext_tilemap, offset - dbltext_videobase);
-	if (offset >= lores_videobase)
-		tilemap_mark_tile_dirty(lores_tilemap, offset - text_videobase);
-	profiler_mark(PROFILER_END);
 }

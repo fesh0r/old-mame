@@ -251,7 +251,7 @@ static WRITE8_HANDLER( abc80_pio_w )
 /* Memory Maps */
 
 static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x6000, 0x6fff) AM_ROM
 	AM_RANGE(0x7000, 0x73ff) AM_ROM
@@ -262,7 +262,8 @@ static ADDRESS_MAP_START( abc80_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( abc80_io_map, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) | AMEF_UNMAP(1) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(abcbus_data_r, abcbus_data_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(abcbus_status_r, abcbus_channel_w)
 	AM_RANGE(0x02, 0x05) AM_WRITE(abcbus_command_w)
@@ -446,7 +447,7 @@ static MACHINE_START( abc80 )
 	state_save_register_global(keylatch);
 
 	abc80_keyboard_timer = timer_alloc(abc80_keyboard_tick, NULL);
-	timer_adjust(abc80_keyboard_timer, attotime_zero, 0, ATTOTIME_IN_USEC(2500));
+	timer_adjust_periodic(abc80_keyboard_timer, attotime_zero, 0, ATTOTIME_IN_USEC(2500));
 }
 
 /* Machine Drivers */
@@ -459,23 +460,21 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_CPU_CONFIG(abc80_daisy_chain)
 	MDRV_CPU_PROGRAM_MAP(abc80_map, 0)
 	MDRV_CPU_IO_MAP(abc80_io_map, 0)
-	MDRV_CPU_VBLANK_INT(abc80_nmi_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", abc80_nmi_interrupt)
 
 	MDRV_MACHINE_START(abc80)
 
 	// video hardware
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_GFXDECODE(abc80)
-	MDRV_COLORTABLE_LENGTH(2*2)
-	MDRV_PALETTE_LENGTH(2)
+	MDRV_PALETTE_LENGTH(4)
 
 	MDRV_PALETTE_INIT(abc80)
 	MDRV_VIDEO_START(abc80)
 	MDRV_VIDEO_UPDATE(abc80)
 
-	MDRV_SCREEN_ADD("main", 0)
 	MDRV_SCREEN_RAW_PARAMS(ABC80_XTAL/2, ABC80_HTOTAL, ABC80_HBEND, ABC80_HBSTART, ABC80_VTOTAL, ABC80_VBEND, ABC80_VBSTART)
 
 	// sound hardware
@@ -517,48 +516,48 @@ ROM_END
 
 /* System Configuration */
 
-static void abc80_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void abc80_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 
 #if 0
-static void abc80_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void abc80_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	// cassette
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) abc80_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) abc80_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 #endif
 
-static void abc80_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void abc80_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_abc_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_abc_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}

@@ -111,13 +111,13 @@ Interrupts:
 
 
 static ADDRESS_MAP_START( primoa_port, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x3f ) AM_READWRITE( primo_be_1_r, primo_ki_1_w )
 	AM_RANGE( 0xfd, 0xfd ) AM_WRITE( primo_FD_w )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( primob_port, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x00, 0x3f ) AM_READWRITE( primo_be_1_r, primo_ki_1_w )
 	AM_RANGE( 0x40, 0x7f ) AM_READWRITE( primo_be_2_r, primo_ki_2_w )
 	AM_RANGE( 0xfd, 0xfd ) AM_WRITE( primo_FD_w )
@@ -227,14 +227,14 @@ static MACHINE_DRIVER_START( primoa32 )
 	MDRV_CPU_ADD_TAG( "main", Z80, 2500000 )
 	MDRV_CPU_PROGRAM_MAP( primo32_mem, 0 )
 	MDRV_CPU_IO_MAP( primoa_port, 0 )
-	MDRV_SCREEN_REFRESH_RATE( 50 )
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	MDRV_CPU_VBLANK_INT( primo_vblank_interrupt, 1 )
+	MDRV_CPU_VBLANK_INT("main", primo_vblank_interrupt)
 
 	MDRV_MACHINE_RESET( primoa )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES( VIDEO_TYPE_RASTER )
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE( 50 )
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 256, 192 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 256-1, 0, 192-1 )
@@ -344,81 +344,80 @@ static const struct CassetteOptions primo_cassette_options = {
 	22050		/* sample frequency */
 };
 
-static void primo_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void primo_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) primo_ptp_format; break;
-		case DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &primo_cassette_options; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) primo_ptp_format; break;
+		case MESS_DEVINFO_PTR_CASSETTE_OPTIONS:				info->p = (void *) &primo_cassette_options; break;
 
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
+		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_STOPPED | CASSETTE_SPEAKER_ENABLED; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void primo_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void primo_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "pss"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "pss"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_primo; break;
+		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_primo; break;
 
 		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void primo_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void primo_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "pp"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "pp"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_primo; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_primo; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void primo_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void primo_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #1"); break;
-		case DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #2"); break;
-		case DEVINFO_STR_DESCRIPTION+2:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #3"); break;
-		case DEVINFO_STR_DESCRIPTION+3:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #4"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+0:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #1"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+1:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #2"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+2:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #3"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+3:					strcpy(info->s = device_temp_str(), "EPROM Expansion Bank #4"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void primo_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+#ifdef UNUSED_FUNCTION
+static void primo_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
 	switch(state)
 	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_NOT_WORKING:					info->i = 1; break;
-
 		default:										cbmfloppy_device_getinfo(devclass, state, info); break;
 	}
 }
+#endif /* UNUSED_FUNCTION */
 
 SYSTEM_CONFIG_START( primoa )
 	CONFIG_DEVICE(primo_cassette_getinfo)
@@ -429,7 +428,7 @@ SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START( primob )
 	CONFIG_IMPORT_FROM( primoa )
-	CONFIG_DEVICE(primo_floppy_getinfo)
+	//CONFIG_DEVICE(primo_floppy_getinfo)
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME      PARENT    COMPAT MACHINE   INPUT  INIT     CONFIG COMPANY  FULLNAME */

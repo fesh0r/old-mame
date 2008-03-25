@@ -47,7 +47,6 @@ documentation still exists.
 #include "formats/coco_dsk.h"
 #include "devices/mflopimg.h"
 #include "devices/coco_vhd.h"
-#include "mslegacy.h"
 
 /*
  Colour codes are as below acording to os-9 headers, however the presise values
@@ -135,36 +134,36 @@ static const unsigned char dgnbeta_palette[] =
 */
 
 static ADDRESS_MAP_START( dgnbeta_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0FFF) 	AM_READWRITE(MRA8_BANK1		,MWA8_BANK1)
-	AM_RANGE(0x1000, 0x1FFF) 	AM_READWRITE(MRA8_BANK2		,MWA8_BANK2)
-	AM_RANGE(0x2000, 0x2FFF) 	AM_READWRITE(MRA8_BANK3		,MWA8_BANK3)
-	AM_RANGE(0x3000, 0x3FFF) 	AM_READWRITE(MRA8_BANK4		,MWA8_BANK4)
-	AM_RANGE(0x4000, 0x4FFF) 	AM_READWRITE(MRA8_BANK5		,MWA8_BANK5)
-	AM_RANGE(0x5000, 0x5FFF) 	AM_READWRITE(MRA8_BANK6		,MWA8_BANK6)
-	AM_RANGE(0x6000, 0x6FFF) 	AM_READWRITE(MRA8_BANK7		,MWA8_BANK7) AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x7000, 0x7FFF) 	AM_READWRITE(MRA8_BANK8		,MWA8_BANK8)
-	AM_RANGE(0x8000, 0x8FFF) 	AM_READWRITE(MRA8_BANK9		,MWA8_BANK9)
-	AM_RANGE(0x9000, 0x9FFF) 	AM_READWRITE(MRA8_BANK10	,MWA8_BANK10)
-	AM_RANGE(0xA000, 0xAFFF) 	AM_READWRITE(MRA8_BANK11	,MWA8_BANK11)
-	AM_RANGE(0xB000, 0xBFFF) 	AM_READWRITE(MRA8_BANK12	,MWA8_BANK12)
-	AM_RANGE(0xC000, 0xCFFF) 	AM_READWRITE(MRA8_BANK13	,MWA8_BANK13)
-	AM_RANGE(0xD000, 0xDFFF) 	AM_READWRITE(MRA8_BANK14	,MWA8_BANK14)
-	AM_RANGE(0xE000, 0xEFFF) 	AM_READWRITE(MRA8_BANK15	,MWA8_BANK15)
-	AM_RANGE(0xF000, 0xFBFF) 	AM_READWRITE(MRA8_BANK16	,MWA8_BANK16)
-	AM_RANGE(0xfC00, 0xfC1F)	AM_READWRITE(MRA8_NOP		,MWA8_NOP)
+	AM_RANGE(0x0000, 0x0FFF) 	AM_READWRITE(SMH_BANK1		,SMH_BANK1)
+	AM_RANGE(0x1000, 0x1FFF) 	AM_READWRITE(SMH_BANK2		,SMH_BANK2)
+	AM_RANGE(0x2000, 0x2FFF) 	AM_READWRITE(SMH_BANK3		,SMH_BANK3)
+	AM_RANGE(0x3000, 0x3FFF) 	AM_READWRITE(SMH_BANK4		,SMH_BANK4)
+	AM_RANGE(0x4000, 0x4FFF) 	AM_READWRITE(SMH_BANK5		,SMH_BANK5)
+	AM_RANGE(0x5000, 0x5FFF) 	AM_READWRITE(SMH_BANK6		,SMH_BANK6)
+	AM_RANGE(0x6000, 0x6FFF) 	AM_READWRITE(SMH_BANK7		,SMH_BANK7) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0x7000, 0x7FFF) 	AM_READWRITE(SMH_BANK8		,SMH_BANK8)
+	AM_RANGE(0x8000, 0x8FFF) 	AM_READWRITE(SMH_BANK9		,SMH_BANK9)
+	AM_RANGE(0x9000, 0x9FFF) 	AM_READWRITE(SMH_BANK10	,SMH_BANK10)
+	AM_RANGE(0xA000, 0xAFFF) 	AM_READWRITE(SMH_BANK11	,SMH_BANK11)
+	AM_RANGE(0xB000, 0xBFFF) 	AM_READWRITE(SMH_BANK12	,SMH_BANK12)
+	AM_RANGE(0xC000, 0xCFFF) 	AM_READWRITE(SMH_BANK13	,SMH_BANK13)
+	AM_RANGE(0xD000, 0xDFFF) 	AM_READWRITE(SMH_BANK14	,SMH_BANK14)
+	AM_RANGE(0xE000, 0xEFFF) 	AM_READWRITE(SMH_BANK15	,SMH_BANK15)
+	AM_RANGE(0xF000, 0xFBFF) 	AM_READWRITE(SMH_BANK16	,SMH_BANK16)
+	AM_RANGE(0xfC00, 0xfC1F)	AM_READWRITE(SMH_NOP		,SMH_NOP)
 	AM_RANGE(0xFC20, 0xFC23)	AM_READWRITE(pia_0_r		,pia_0_w)
 	AM_RANGE(0xFC24, 0xFC27)	AM_READWRITE(pia_1_r		,pia_1_w)
-	AM_RANGE(0xFC28, 0xfC7F)	AM_READWRITE(MRA8_NOP		,MWA8_NOP)
+	AM_RANGE(0xFC28, 0xfC7F)	AM_READWRITE(SMH_NOP		,SMH_NOP)
 	AM_RANGE(0xfc80, 0xfc81)	AM_READWRITE(dgnbeta_6845_r	,dgnbeta_6845_w)
-	AM_RANGE(0xfc82, 0xfC9F)	AM_READWRITE(MRA8_NOP		,MWA8_NOP)
-	AM_RANGE(0xFCA0, 0xFCA3)	AM_READWRITE(MRA8_NOP		,colour_ram_w)		/* 4x4bit colour ram for graphics modes */
+	AM_RANGE(0xfc82, 0xfC9F)	AM_READWRITE(SMH_NOP		,SMH_NOP)
+	AM_RANGE(0xFCA0, 0xFCA3)	AM_READWRITE(SMH_NOP		,colour_ram_w)		/* 4x4bit colour ram for graphics modes */
 	AM_RANGE(0xFCC0, 0xFCC3)	AM_READWRITE(pia_2_r		,pia_2_w)
-	AM_RANGE(0xfcC4, 0xfcdf)	AM_READWRITE(MRA8_NOP		,MWA8_NOP)
+	AM_RANGE(0xfcC4, 0xfcdf)	AM_READWRITE(SMH_NOP		,SMH_NOP)
 	AM_RANGE(0xfce0, 0xfce3)	AM_READWRITE(dgnbeta_wd2797_r	,dgnbeta_wd2797_w)	/* Onboard disk interface */
-	AM_RANGE(0xfce4, 0xfdff)	AM_READWRITE(MRA8_NOP		,MWA8_NOP)
+	AM_RANGE(0xfce4, 0xfdff)	AM_READWRITE(SMH_NOP		,SMH_NOP)
 	AM_RANGE(0xFE00, 0xFE0F)	AM_READWRITE(dgn_beta_page_r	,dgn_beta_page_w)
-	AM_RANGE(0xfe10, 0xfEff)	AM_READWRITE(MRA8_NOP		,MWA8_NOP)
-	AM_RANGE(0xFF00, 0xFFFF) 	AM_READWRITE(MRA8_BANK17	,MWA8_BANK17)
+	AM_RANGE(0xfe10, 0xfEff)	AM_READWRITE(SMH_NOP		,SMH_NOP)
+	AM_RANGE(0xFF00, 0xFFFF) 	AM_READWRITE(SMH_BANK17	,SMH_BANK17)
 
 ADDRESS_MAP_END
 
@@ -287,30 +286,30 @@ INPUT_PORTS_END
 //  return buf;
 //}
 
-static void dgnbeta_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void dgnbeta_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:			info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:			info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_coco; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_coco; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_NAME+0:		strcpy(info->s = device_temp_str(), "floppydisk0"); break;
-		case DEVINFO_STR_NAME+1:		strcpy(info->s = device_temp_str(), "floppydisk1"); break;
-		case DEVINFO_STR_NAME+2:		strcpy(info->s = device_temp_str(), "floppydisk2"); break;
-		case DEVINFO_STR_NAME+3:		strcpy(info->s = device_temp_str(), "floppydisk3"); break;
-		case DEVINFO_STR_SHORT_NAME+0:		strcpy(info->s = device_temp_str(), "flop0"); break;
-		case DEVINFO_STR_SHORT_NAME+1:		strcpy(info->s = device_temp_str(), "flop1"); break;
-		case DEVINFO_STR_SHORT_NAME+2:		strcpy(info->s = device_temp_str(), "flop2"); break;
-		case DEVINFO_STR_SHORT_NAME+3:		strcpy(info->s = device_temp_str(), "flop3"); break;
-		case DEVINFO_STR_DESCRIPTION+0:	strcpy(info->s = device_temp_str(), "Floppy #0"); break;
-		case DEVINFO_STR_DESCRIPTION+1:	strcpy(info->s = device_temp_str(), "Floppy #1"); break;
-		case DEVINFO_STR_DESCRIPTION+2:	strcpy(info->s = device_temp_str(), "Floppy #2"); break;
-		case DEVINFO_STR_DESCRIPTION+3:	strcpy(info->s = device_temp_str(), "Floppy #3"); break;
+		case MESS_DEVINFO_STR_NAME+0:		strcpy(info->s = device_temp_str(), "floppydisk0"); break;
+		case MESS_DEVINFO_STR_NAME+1:		strcpy(info->s = device_temp_str(), "floppydisk1"); break;
+		case MESS_DEVINFO_STR_NAME+2:		strcpy(info->s = device_temp_str(), "floppydisk2"); break;
+		case MESS_DEVINFO_STR_NAME+3:		strcpy(info->s = device_temp_str(), "floppydisk3"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+0:		strcpy(info->s = device_temp_str(), "flop0"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+1:		strcpy(info->s = device_temp_str(), "flop1"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+2:		strcpy(info->s = device_temp_str(), "flop2"); break;
+		case MESS_DEVINFO_STR_SHORT_NAME+3:		strcpy(info->s = device_temp_str(), "flop3"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+0:	strcpy(info->s = device_temp_str(), "Floppy #0"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+1:	strcpy(info->s = device_temp_str(), "Floppy #1"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+2:	strcpy(info->s = device_temp_str(), "Floppy #2"); break;
+		case MESS_DEVINFO_STR_DESCRIPTION+3:	strcpy(info->s = device_temp_str(), "Floppy #3"); break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
@@ -318,7 +317,11 @@ static void dgnbeta_floppy_getinfo(const device_class *devclass, UINT32 state, u
 
 static PALETTE_INIT( dgnbeta )
 {
-	palette_set_colors_rgb(machine, 0, dgnbeta_palette, sizeof(dgnbeta_palette) / 3);
+	int i;
+
+	for ( i = 0; i < sizeof(dgnbeta_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, dgnbeta_palette[i*3], dgnbeta_palette[i*3+1], dgnbeta_palette[i*3+2]);
+	}
 }
 
 static MACHINE_DRIVER_START( dgnbeta )
@@ -330,6 +333,7 @@ static MACHINE_DRIVER_START( dgnbeta )
 	MDRV_CPU_ADD_TAG("dma", M6809E, DGNBETA_CPU_SPEED_HZ)        /* 2 Mhz */
 	MDRV_CPU_PROGRAM_MAP(dgnbeta_map,0)
 
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(DGNBETA_FRAMES_PER_SECOND)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
 
@@ -341,7 +345,7 @@ static MACHINE_DRIVER_START( dgnbeta )
 	MDRV_SCREEN_VISIBLE_AREA(0, 699, 0, 549)
 	MDRV_PALETTE_LENGTH(sizeof (dgnbeta_palette) / sizeof (dgnbeta_palette[0]) / 3)
 	MDRV_PALETTE_INIT( dgnbeta )
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_AFTER_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_AFTER_VBLANK)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 
 	MDRV_VIDEO_UPDATE( dgnbeta )

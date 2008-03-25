@@ -139,6 +139,8 @@
 #include "devices/basicdsk.h"
 #include "includes/x68k.h"
 
+mc68901_t *x68k_mfp;
+
 struct x68k_system sys;
 
 extern UINT16* gvram;  // Graphic VRAM
@@ -153,14 +155,14 @@ static unsigned int x68k_scanline;
 
 static UINT8 mfp_key;
 
-extern mame_bitmap* x68k_text_bitmap;  // 1024x1024 4x1bpp planes text
-extern mame_bitmap* x68k_gfx_0_bitmap_16;  // 16 colour, 512x512, 4 pages
-extern mame_bitmap* x68k_gfx_1_bitmap_16;
-extern mame_bitmap* x68k_gfx_2_bitmap_16;
-extern mame_bitmap* x68k_gfx_3_bitmap_16;
-extern mame_bitmap* x68k_gfx_0_bitmap_256;  // 256 colour, 512x512, 2 pages
-extern mame_bitmap* x68k_gfx_1_bitmap_256;
-extern mame_bitmap* x68k_gfx_0_bitmap_65536;  // 65536 colour, 512x512, 1 page
+extern bitmap_t* x68k_text_bitmap;  // 1024x1024 4x1bpp planes text
+extern bitmap_t* x68k_gfx_0_bitmap_16;  // 16 colour, 512x512, 4 pages
+extern bitmap_t* x68k_gfx_1_bitmap_16;
+extern bitmap_t* x68k_gfx_2_bitmap_16;
+extern bitmap_t* x68k_gfx_3_bitmap_16;
+extern bitmap_t* x68k_gfx_0_bitmap_256;  // 256 colour, 512x512, 2 pages
+extern bitmap_t* x68k_gfx_1_bitmap_256;
+extern bitmap_t* x68k_gfx_0_bitmap_65536;  // 65536 colour, 512x512, 1 page
 
 extern tilemap* x68k_bg0_8;  // two 64x64 tilemaps, 8x8 characters
 extern tilemap* x68k_bg1_8;
@@ -209,7 +211,7 @@ static void mfp_init()
     mfp_timer[2] = timer_alloc(mfp_timer_c_callback, NULL);
     mfp_timer[3] = timer_alloc(mfp_timer_d_callback, NULL);
     mfp_irq = timer_alloc(mfp_update_irq, NULL);
-    timer_adjust(mfp_irq, attotime_zero, 0, ATTOTIME_IN_USEC(32));
+    timer_adjust_periodic(mfp_irq, attotime_zero, 0, ATTOTIME_IN_USEC(32));
 */
 }
 /*
@@ -330,12 +332,12 @@ void mfp_set_timer(int timer, unsigned char data)
 {
     if((data & 0x07) == 0x0000)
     {  // Timer stop
-        timer_adjust(mfp_timer[timer],attotime_zero,0,attotime_zero);
+        timer_adjust_oneshot(mfp_timer[timer], attotime_zero, 0);
         logerror("MFP: Timer #%i stopped. \n",timer);
         return;
     }
 
-    timer_adjust(mfp_timer[timer], attotime_zero, 0, prescale(data & 0x07));
+    timer_adjust_periodic(mfp_timer[timer], attotime_zero, 0, prescale(data & 0x07));
     logerror("MFP: Timer #%i set to %2.1fus\n",timer, attotime_to_double(prescale(data & 0x07)) * 1000000);
 
 }
@@ -344,12 +346,12 @@ void mfp_set_timer(int timer, unsigned char data)
 // 4 channel DMA controller (Hitachi HD63450)
 static WRITE16_HANDLER( x68k_dmac_w )
 {
-	hd63450_w(offset, data, mem_mask);
+	hd63450_w(machine, offset, data, mem_mask);
 }
 
 static READ16_HANDLER( x68k_dmac_r )
 {
-	return hd63450_r(offset, mem_mask);
+	return hd63450_r(machine, offset, mem_mask);
 }
 
 static void x68k_keyboard_ctrl_w(int data)
@@ -564,13 +566,13 @@ static READ16_HANDLER( x68k_scc_r )
 	switch(offset)
 	{
 	case 0:
-		return scc_r(0);
+		return scc_r(machine, 0);
 	case 1:
 		return x68k_read_mouse();
 	case 2:
-		return scc_r(1);
+		return scc_r(machine, 1);
 	case 3:
-		return scc_r(3);
+		return scc_r(machine, 3);
 	default:
 		return 0xff;
 	}
@@ -584,7 +586,7 @@ static WRITE16_HANDLER( x68k_scc_w )
 	switch(offset)
 	{
 	case 0:
-		scc_w(0,(UINT8)data);
+		scc_w(machine, 0,(UINT8)data);
 		if((scc_get_reg_b(5) & 0x02) != prev)
 		{
 			if(scc_get_reg_b(5) & 0x02)  // Request to Send
@@ -597,13 +599,13 @@ static WRITE16_HANDLER( x68k_scc_w )
 		}
 		break;
 	case 1:
-		scc_w(2,(UINT8)data);
+		scc_w(machine, 2,(UINT8)data);
 		break;
 	case 2:
-		scc_w(1,(UINT8)data);
+		scc_w(machine, 1,(UINT8)data);
 		break;
 	case 3:
-		scc_w(3,(UINT8)data);
+		scc_w(machine, 3,(UINT8)data);
 		break;
 	}
 	prev = scc_get_reg_b(5) & 0x02;
@@ -691,7 +693,7 @@ static WRITE16_HANDLER( x68k_fdc_w )
 	{
 	case 0x00:
 	case 0x01:
-		nec765_data_w(0,data);
+		nec765_data_w(machine, 0,data);
 		break;
 	case 0x02:  // drive option signal control
 		x = data & 0x0f;
@@ -734,9 +736,9 @@ static READ16_HANDLER( x68k_fdc_r )
 	switch(offset)
 	{
 	case 0x00:
-		return nec765_status_r(0);
+		return nec765_status_r(machine, 0);
 	case 0x01:
-		return nec765_data_r(0);
+		return nec765_data_r(machine, 0);
 	case 0x02:
 		ret = 0x00;
 		for(x=0;x<4;x++)
@@ -780,14 +782,14 @@ static int x68k_fdc_read_byte(int addr)
 	int data = -1;
 
 	if(sys.fdc.drq_state != 0)
-		data = nec765_dack_r(0);
+		data = nec765_dack_r(Machine, 0);
 //  logerror("FDC: DACK reading\n");
 	return data;
 }
 
 static void x68k_fdc_write_byte(int addr, int data)
 {
-	nec765_dack_w(0,data);
+	nec765_dack_w(Machine, 0, data);
 }
 
 static void fdc_drq(int state, int read_write)
@@ -818,11 +820,11 @@ static WRITE16_HANDLER( x68k_fm_w )
 	switch(offset)
 	{
 	case 0x00:
-		YM2151_register_port_0_w(0,data);
+		YM2151_register_port_0_w(machine, 0, data);
 		logerror("YM: Register select 0x%02x\n",data);
 		break;
 	case 0x01:
-		YM2151_data_port_0_w(0,data);
+		YM2151_data_port_0_w(machine, 0, data);
 		logerror("YM: Data write 0x%02x\n",data);
 		break;
 	}
@@ -831,7 +833,7 @@ static WRITE16_HANDLER( x68k_fm_w )
 static READ16_HANDLER( x68k_fm_r )
 {
 	if(offset == 0x01)
-		return YM2151_status_port_0_r(0);
+		return YM2151_status_port_0_r(machine, 0);
 
 	return 0xff;
 }
@@ -896,7 +898,7 @@ static WRITE16_HANDLER( x68k_sysport_w )
 	{
 	case 0x00:
 		sys.sysport.contrast = data & 0x0f;  // often used for screen fades / blanking
-		container = render_container_get_screen(0);
+		container = render_container_get_screen(machine->primary_screen);
 		render_container_set_brightness(container,(float)(sys.sysport.contrast) / 14.0);
 		break;
 	case 0x01:
@@ -934,6 +936,11 @@ static READ16_HANDLER( x68k_sysport_r )
 	}
 }
 
+static READ16_HANDLER( x68k_mfp_r )
+{
+	return mc68901_register_r(x68k_mfp, offset);
+}
+
 /*
 READ16_HANDLER( x68k_mfp_r )
 {
@@ -945,13 +952,13 @@ READ16_HANDLER( x68k_mfp_r )
     {
     case 0x00:  // GPIP - General purpose I/O register (read-only)
         ret = 0x23;
-        if(video_screen_get_vpos(0) == sys.crtc.reg[9])
+        if(video_screen_get_vpos(machine->primary_screen) == sys.crtc.reg[9])
             ret |= 0x40;
         if(sys.crtc.vblank == 0)
             ret |= 0x10;  // Vsync signal (low if in vertical retrace)
 //      if(sys.mfp.isrb & 0x08)
 //          ret |= 0x08;  // FM IRQ signal
-        if(video_screen_get_hpos(0) > sys.crtc.width - 32)
+        if(video_screen_get_hpos(machine->primary_screen) > sys.crtc.width - 32)
             ret |= 0x80;  // Hsync signal
 //      logerror("MFP: [%08x] Reading offset %i (ret=%02x)\n",activecpu_get_pc(),offset,ret);
         return ret;  // bit 5 is always 1
@@ -997,6 +1004,7 @@ READ16_HANDLER( x68k_mfp_r )
     }
 }
 */
+
 static WRITE16_HANDLER( x68k_mfp_w )
 {
 	/* For the Interrupt registers, the bits are set out as such:
@@ -1119,7 +1127,7 @@ static WRITE16_HANDLER( x68k_mfp_w )
 		}
 		break;
 	default:
-		mfp68901_0_register_lsb_w(offset,data,mem_mask);
+		if (ACCESSING_LSB) mc68901_register_w(x68k_mfp, offset, data & 0xff);
 		return;
 	}
 }
@@ -1137,12 +1145,12 @@ static READ16_HANDLER( x68k_ppi_r )
 
 static READ16_HANDLER( x68k_rtc_r )
 {
-	return rp5c15_r(offset,mem_mask);
+	return rp5c15_r(machine, offset, mem_mask);
 }
 
 static WRITE16_HANDLER( x68k_rtc_w )
 {
-	rp5c15_w(offset,data,mem_mask);
+	rp5c15_w(machine, offset, data, mem_mask);
 }
 
 static void x68k_rtc_alarm_irq(int state)
@@ -1193,7 +1201,7 @@ static WRITE16_HANDLER( x68k_vid_w )
 	{
 		COMBINE_DATA(sys.video.gfx_pal+offset);
 		val = sys.video.gfx_pal[offset];
-		palette_set_color_rgb(Machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
+		palette_set_color_rgb(machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
 		return;
 	}
 
@@ -1201,27 +1209,39 @@ static WRITE16_HANDLER( x68k_vid_w )
 	{
 		COMBINE_DATA(sys.video.text_pal+(offset-0x100));
 		val = sys.video.text_pal[offset-0x100];
-		palette_set_color_rgb(Machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
+		palette_set_color_rgb(machine,offset,(val & 0x07c0) >> 3,(val & 0xf800) >> 8,(val & 0x003e) << 2);
 		return;
 	}
 
 	switch(offset)
 	{
 	case 0x200:
-		sys.video.reg[0] = data;
+		COMBINE_DATA(sys.video.reg);
 		break;
 	case 0x280:  // priority levels
-		sys.video.reg[1] = data;
-		sys.video.gfxlayer_pri[0] = data & 0x0003;
-		sys.video.gfxlayer_pri[1] = (data & 0x000c) >> 2;
-		sys.video.gfxlayer_pri[2] = (data & 0x0030) >> 4;
-		sys.video.gfxlayer_pri[3] = (data & 0x00c0) >> 6;
-		sys.video.gfx_pri = (data & 0x0300) >> 8;
-		sys.video.text_pri = (data & 0x0c00) >> 10;
-		sys.video.sprite_pri = (data & 0x3000) >> 12;
+		COMBINE_DATA(sys.video.reg+1);
+		if(ACCESSING_LSB)
+		{
+			sys.video.gfxlayer_pri[0] = data & 0x0003;
+			sys.video.gfxlayer_pri[1] = (data & 0x000c) >> 2;
+			sys.video.gfxlayer_pri[2] = (data & 0x0030) >> 4;
+			sys.video.gfxlayer_pri[3] = (data & 0x00c0) >> 6;
+		}
+		if(ACCESSING_MSB)
+		{
+			sys.video.gfx_pri = (data & 0x0300) >> 8;
+			sys.video.text_pri = (data & 0x0c00) >> 10;
+			sys.video.sprite_pri = (data & 0x3000) >> 12;
+			if(sys.video.gfx_pri == 3)
+				sys.video.gfx_pri--;
+			if(sys.video.text_pri == 3)
+				sys.video.text_pri--;
+			if(sys.video.sprite_pri == 3)
+				sys.video.sprite_pri--;
+		}
 		break;
 	case 0x300:
-		sys.video.reg[2] = data;
+		COMBINE_DATA(sys.video.reg+2);
 		break;
 	default:
 		logerror("VC: Invalid video controller write (offset = 0x%04x, data = %04x)\n",offset,data);
@@ -1312,7 +1332,7 @@ static READ16_HANDLER( x68k_rom0_r )
        then access causes a bus error */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
-	cpunum_set_input_line_and_vector(Machine, 0,2,ASSERT_LINE,current_vector[2]);
+	cpunum_set_input_line_and_vector(machine, 0,2,ASSERT_LINE,current_vector[2]);
 	return 0xff;
 }
 
@@ -1322,7 +1342,7 @@ static WRITE16_HANDLER( x68k_rom0_w )
        then access causes a bus error */
 	current_vector[2] = 0x02;  // bus error
 	current_irq_line = 2;
-	cpunum_set_input_line_and_vector(Machine, 0,2,ASSERT_LINE,current_vector[2]);
+	cpunum_set_input_line_and_vector(machine, 0,2,ASSERT_LINE,current_vector[2]);
 }
 
 static READ16_HANDLER( x68k_exp_r )
@@ -1336,7 +1356,7 @@ static READ16_HANDLER( x68k_exp_r )
 		if(ACCESSING_LSB)
 			offset++;
 		timer_set(ATTOTIME_IN_CYCLES(16,0), NULL, 0xeafa00+offset,x68k_fake_bus_error);
-//      cpunum_set_input_line_and_vector(Machine, 0,2,ASSERT_LINE,current_vector[2]);
+//      cpunum_set_input_line_and_vector(machine, 0,2,ASSERT_LINE,current_vector[2]);
 	}
 	return 0xffff;
 }
@@ -1352,23 +1372,23 @@ static WRITE16_HANDLER( x68k_exp_w )
 		if(ACCESSING_LSB)
 			offset++;
 		timer_set(ATTOTIME_IN_CYCLES(16,0), NULL, 0xeafa00+offset,x68k_fake_bus_error);
-//      cpunum_set_input_line_and_vector(Machine, 0,2,ASSERT_LINE,current_vector[2]);
+//      cpunum_set_input_line_and_vector(machine, 0,2,ASSERT_LINE,current_vector[2]);
 	}
 }
 
-static void x68k_dma_irq(int channel)
+static void x68k_dma_irq(running_machine *machine, int channel)
 {
 	current_vector[3] = hd63450_get_vector(channel);
 	current_irq_line = 3;
 	logerror("DMA#%i: DMA End (vector 0x%02x)\n",channel,current_vector[3]);
-	cpunum_set_input_line_and_vector(Machine, 0,3,ASSERT_LINE,current_vector[3]);
+	cpunum_set_input_line_and_vector(machine, 0,3,ASSERT_LINE,current_vector[3]);
 }
 
 static void x68k_dma_end(int channel,int irq)
 {
 	if(irq != 0)
 	{
-		x68k_dma_irq(channel);
+		x68k_dma_irq(Machine, channel);
 	}
 }
 
@@ -1402,12 +1422,13 @@ static READ8_HANDLER(mfp_gpio_r)
 	data &= ~(sys.crtc.hblank << 7);
 	data &= ~(sys.crtc.vblank << 4);
 	data |= 0x23;  // GPIP5 is unused, always 1
-	mfp68901_tai_w(0,sys.crtc.vblank);
+
+//	mc68901_tai_w(mfp, sys.crtc.vblank);
 
 	return data;
 }
 
-static void mfp_irq_callback(int which, int state)
+static void mfp_irq_callback(mc68901_t *chip, int state)
 {
 	static int prev;
 	if(prev == CLEAR_LINE && state == CLEAR_LINE)  // eliminate unnecessary calls to set the IRQ line for speed reasons
@@ -1429,9 +1450,9 @@ static INTERRUPT_GEN( x68k_vsync_irq )
 //  mfp_trigger_irq(MFP_IRQ_GPIP4);
 //  }
 //  if(sys.crtc.height == 256)
-//      video_screen_update_partial(0,256);//sys.crtc.reg[4]/2);
+//      video_screen_update_partial(machine->primary_screen,256);//sys.crtc.reg[4]/2);
 //  else
-//      video_screen_update_partial(0,512);//sys.crtc.reg[4]);
+//      video_screen_update_partial(machine->primary_screen,512);//sys.crtc.reg[4]);
 }
 
 static int x68k_int_ack(int line)
@@ -1458,7 +1479,7 @@ static int x68k_int_ack(int line)
 //              sys.mfp.isra |= (1 << (sys.mfp.current_irq - 8));
 //      }
 		sys.mfp.current_irq = -1;
-		current_vector[6] = mfp68901_get_vector(0);
+		current_vector[6] = mc68901_get_vector(x68k_mfp);
 		logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[6],line);
 		return current_vector[6];
 	}
@@ -1488,7 +1509,7 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xe82000, 0xe83fff) AM_READWRITE(x68k_vid_r, x68k_vid_w)
 	AM_RANGE(0xe84000, 0xe85fff) AM_READWRITE(x68k_dmac_r, x68k_dmac_w)
 	AM_RANGE(0xe86000, 0xe87fff) AM_READWRITE(x68k_areaset_r, x68k_areaset_w)
-	AM_RANGE(0xe88000, 0xe89fff) AM_READWRITE(mfp68901_0_register_lsb_r, x68k_mfp_w)
+	AM_RANGE(0xe88000, 0xe89fff) AM_READWRITE(x68k_mfp_r, x68k_mfp_w)
 	AM_RANGE(0xe8a000, 0xe8bfff) AM_READWRITE(x68k_rtc_r, x68k_rtc_w)
 //  AM_RANGE(0xe8c000, 0xe8dfff) AM_READWRITE(x68k_printer_r, x68k_printer_w)
 	AM_RANGE(0xe8e000, 0xe8ffff) AM_READWRITE(x68k_sysport_r, x68k_sysport_w)
@@ -1510,11 +1531,11 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xf00000, 0xffffff) AM_ROM
 ADDRESS_MAP_END
 
-static const mfp68901_interface mfp_interface =
+static const mc68901_interface mfp_interface =
 {
 	2000000, // 4MHz clock
 	4000000,
-	MFP68901_TDO_LOOPBACK,
+	MC68901_TDO_LOOPBACK,
 	0,
 	&mfp_key,  // Rx
 	NULL,      // Tx
@@ -1828,20 +1849,20 @@ static DEVICE_UNLOAD( x68k_floppy )
 	sys.fdc.disk_inserted[image_index_in_device(image)] = 0;
 }
 
-static void x68k_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void x68k_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 4;
 		break;
-	case DEVINFO_PTR_LOAD:
+	case MESS_DEVINFO_PTR_LOAD:
 		info->load = device_load_x68k_floppy;
 		break;
-	case DEVINFO_PTR_UNLOAD:
+	case MESS_DEVINFO_PTR_UNLOAD:
 		info->unload = device_unload_x68k_floppy;
 		break;
-	case DEVINFO_STR_FILE_EXTENSIONS:
+	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
 		strcpy(info->s = device_temp_str(), "xdf,hdm,2hd,dim");
 		break;
 	default:
@@ -1890,15 +1911,15 @@ static MACHINE_RESET( x68000 )
 	nec765_reset(0);
 	mfp_init();
 
-	x68k_scanline = video_screen_get_vpos(0);// = sys.crtc.reg[6];  // Vertical start
+	x68k_scanline = video_screen_get_vpos(machine->primary_screen);// = sys.crtc.reg[6];  // Vertical start
 
 	// start VBlank timer
 	sys.crtc.vblank = 1;
-	irq_time = video_screen_get_time_until_pos(0,sys.crtc.reg[6],2);
-	timer_adjust(vblank_irq,irq_time,0,attotime_never);
+	irq_time = video_screen_get_time_until_pos(machine->primary_screen,sys.crtc.reg[6],2);
+	timer_adjust_oneshot(vblank_irq, irq_time, 0);
 
 	// start HBlank timer
-	timer_adjust(scanline_timer,video_screen_get_scan_period(0),1,attotime_never);
+	timer_adjust_oneshot(scanline_timer, video_screen_get_scan_period(machine->primary_screen), 1);
 
 	sys.mfp.gpio = 0xfb;
 }
@@ -1907,25 +1928,27 @@ static MACHINE_START( x68000 )
 {
 	/*  Install RAM handlers  */
 	x68k_spriteram = (UINT16*)memory_region(REGION_USER1);
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(read16_handler)1);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(write16_handler)1);
+	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(read16_machine_func)1);
+	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(write16_machine_func)1);
 	memory_set_bankptr(1,mess_ram);
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(read16_handler)x68k_gvram_r);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(write16_handler)x68k_gvram_w);
+	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(read16_machine_func)x68k_gvram_r);
+	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(write16_machine_func)x68k_gvram_w);
 	memory_set_bankptr(2,gvram);  // so that code in VRAM is executable - needed for Terra Cresta
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(read16_handler)x68k_tvram_r);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(write16_handler)x68k_tvram_w);
+	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(read16_machine_func)x68k_tvram_r);
+	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(write16_machine_func)x68k_tvram_w);
 	memory_set_bankptr(3,tvram);  // so that code in VRAM is executable - needed for Terra Cresta
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(read16_handler)x68k_sram_r);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(write16_handler)x68k_sram_w);
+	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(read16_machine_func)x68k_sram_r);
+	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(write16_machine_func)x68k_sram_w);
 	memory_set_bankptr(4,generic_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
-	timer_adjust(kb_timer,attotime_zero,0,ATTOTIME_IN_MSEC(5));  // every 5ms
+	timer_adjust_periodic(kb_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(5));  // every 5ms
 
 	// start mouse timer
-	timer_adjust(mouse_timer,attotime_zero,0,ATTOTIME_IN_MSEC(1));  // a guess for now
+	timer_adjust_periodic(mouse_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(1));  // a guess for now
 	sys.mouse.inputtype = 0;
+
+	x68k_mfp = devtag_get_token(machine, MC68901, "mfp");
 }
 
 static DRIVER_INIT( x68000 )
@@ -1958,11 +1981,10 @@ static DRIVER_INIT( x68000 )
 	nec765_reset(0);
 	mfp_init();
 	scc_init(&scc_interface);
-	rp5c15_init(&rtc_intf);
+	rp5c15_init(machine, &rtc_intf);
 
 	memset(&sys,0,sizeof(sys));
 
-	mfp68901_config(0,&mfp_interface);
 	cpunum_set_irq_callback(0, x68k_int_ack);
 
 	// init keyboard
@@ -1980,22 +2002,25 @@ static MACHINE_DRIVER_START( x68000 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 10000000)  /* 10 MHz */
 	MDRV_CPU_PROGRAM_MAP(x68k_map, 0)
-	MDRV_CPU_VBLANK_INT(x68k_vsync_irq,1)
-	MDRV_SCREEN_REFRESH_RATE(55.45)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", x68k_vsync_irq)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( x68000 )
 	MDRV_MACHINE_RESET( x68000 )
 
+	/* device hardware */
+	MDRV_DEVICE_ADD("mfp", MC68901)
+	MDRV_DEVICE_CONFIG(mfp_interface)
+
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(55.45)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 //  MDRV_GFXDECODE(x68k)
 	MDRV_SCREEN_SIZE(1096, 568)  // inital setting
 	MDRV_SCREEN_VISIBLE_AREA(0, 767, 0, 511)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_PALETTE_LENGTH(65536)
-	MDRV_COLORTABLE_LENGTH(65536 + 512)
 	MDRV_PALETTE_INIT( x68000 )
 
 	MDRV_VIDEO_START( x68000 )

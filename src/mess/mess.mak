@@ -72,6 +72,7 @@ CPUS += V20
 CPUS += I8035
 CPUS += I8039
 CPUS += I8048
+CPUS += I8749
 #CPUS += N7751
 #CPUS += MB8884
 #CPUS += M58715
@@ -127,7 +128,7 @@ CPUS += TMS9995
 #CPUS += ADSP2181
 CPUS += PSXCPU
 #CPUS += ASAP
-#CPUS += UPD7810
+CPUS += UPD7810
 #CPUS += UPD7807
 CPUS += ARM
 CPUS += ARM7
@@ -194,7 +195,7 @@ CPUS += CDP1802
 #CPUS += MB8843
 #CPUS += MB8844
 #CPUS += MB86233
-#CPUS += SSP1610
+CPUS += SSP1601
 CPUS += APEXC
 CPUS += CP1610
 CPUS += F8
@@ -209,6 +210,8 @@ CPUS += Z80GB
 CPUS += TMS7000_EXL
 CPUS += SM8500
 CPUS += V30MZ
+#CPUS += SSP1610
+CPUS += UPD7801
 CPUS += M68008
 #CPUS += TMS99000
 CPUS += TMS99010
@@ -316,6 +319,7 @@ SOUNDS += WAVE
 SOUNDS += SID6581
 SOUNDS += SID8580
 SOUNDS += SP0256
+SOUNDS += AICA
 
 
 
@@ -327,13 +331,14 @@ SOUNDS += SP0256
 
 DRVLIBS = \
 	$(MESSOBJ)/messdriv.o \
+	$(MESSOBJ)/3do.a \
 	$(MESSOBJ)/acorn.a \
 	$(MESSOBJ)/advision.a \
 	$(MESSOBJ)/amiga.a \
 	$(MESSOBJ)/amstrad.a \
 	$(MESSOBJ)/apexc.a \
-	$(MESSOBJ)/apple.a \
 	$(MESSOBJ)/apf.a \
+	$(MESSOBJ)/apple.a \
 	$(MESSOBJ)/aquarius.a \
 	$(MESSOBJ)/arcadia.a \
 	$(MESSOBJ)/ascii.a \
@@ -348,44 +353,50 @@ DRVLIBS = \
 	$(MESSOBJ)/cgenie.a \
 	$(MESSOBJ)/coco.a \
 	$(MESSOBJ)/coleco.a \
-	$(MESSOBJ)/compis.a	\
+	$(MESSOBJ)/compis.a \
 	$(MESSOBJ)/concept.a \
 	$(MESSOBJ)/cpschngr.a \
 	$(MESSOBJ)/cybiko.a \
 	$(MESSOBJ)/dai.a \
 	$(MESSOBJ)/dgn_beta.a \
-	$(MESSOBJ)/epson.a \
 	$(MESSOBJ)/ep128.a \
+	$(MESSOBJ)/epoch.a \
+	$(MESSOBJ)/epson.a \
+	$(MESSOBJ)/exeltel.a \
 	$(MESSOBJ)/exidy.a \
 	$(MESSOBJ)/fairch.a \
 	$(MESSOBJ)/galaxy.a \
 	$(MESSOBJ)/gce.a \
+	$(MESSOBJ)/glasgow.a \
+	$(MESSOBJ)/gmaster.a \
 	$(MESSOBJ)/hp48.a \
 	$(MESSOBJ)/intv.a \
 	$(MESSOBJ)/jupiter.a \
 	$(MESSOBJ)/kaypro.a \
 	$(MESSOBJ)/kim1.a \
-	$(MESSOBJ)/magnavox.a \
-	$(MESSOBJ)/mbee.a \
-	$(MESSOBJ)/mc10.a \
-	$(MESSOBJ)/mk1.a \
-	$(MESSOBJ)/mk2.a \
-	$(MESSOBJ)/mephisto.a \
-	$(MESSOBJ)/glasgow.a \
 	$(MESSOBJ)/luxor.a \
 	$(MESSOBJ)/lviv.a \
 	$(MESSOBJ)/lynx.a \
-	$(MESSOBJ)/motorola.a \
+	$(MESSOBJ)/magnavox.a \
+	$(MESSOBJ)/mbee.a \
+	$(MESSOBJ)/mc10.a \
 	$(MESSOBJ)/memotech.a \
+	$(MESSOBJ)/mephisto.a \
+	$(MESSOBJ)/mikro80.a \
+	$(MESSOBJ)/mk1.a \
+	$(MESSOBJ)/mk2.a \
+	$(MESSOBJ)/motorola.a \
 	$(MESSOBJ)/multitch.a \
 	$(MESSOBJ)/nascom1.a \
 	$(MESSOBJ)/nec.a \
 	$(MESSOBJ)/necpc.a \
 	$(MESSOBJ)/nintendo.a \
+	$(MESSOBJ)/osborne.a \
 	$(MESSOBJ)/p2000.a \
 	$(MESSOBJ)/pc.a \
 	$(MESSOBJ)/pcshare.a \
 	$(MESSOBJ)/pdp1.a \
+	$(MESSOBJ)/pel.a \
 	$(MESSOBJ)/pmd85.a \
 	$(MESSOBJ)/primo.a \
 	$(MESSOBJ)/rca.a \
@@ -397,7 +408,9 @@ DRVLIBS = \
 	$(MESSOBJ)/sinclair.a \
 	$(MESSOBJ)/sony.a \
 	$(MESSOBJ)/sord.a \
+	$(MESSOBJ)/special.a \
 	$(MESSOBJ)/ssystem3.a \
+	$(MESSOBJ)/super80.a \
 	$(MESSOBJ)/svi.a \
 	$(MESSOBJ)/svision.a \
 	$(MESSOBJ)/synertec.a \
@@ -412,13 +425,11 @@ DRVLIBS = \
 	$(MESSOBJ)/trs80.a \
 	$(MESSOBJ)/tutor.a \
 	$(MESSOBJ)/tx0.a \
+	$(MESSOBJ)/ut88.a \
 	$(MESSOBJ)/vc4000.a \
 	$(MESSOBJ)/veb.a \
 	$(MESSOBJ)/vtech.a \
-	$(MESSOBJ)/3do.a \
-	$(MESSOBJ)/osborne.a \
 	$(MESSOBJ)/shared.a \
-	$(MESSOBJ)/exeltel.a \
 
 
 
@@ -490,7 +501,7 @@ $(MESSOBJ)/coleco.a:   \
 	$(MESS_MACHINE)/adam.o		\
 	$(MESS_DRIVERS)/adam.o		\
 	$(MESS_FORMATS)/adam_dsk.o	\
-	
+
 $(MESSOBJ)/arcadia.a:  \
 	$(MESS_DRIVERS)/arcadia.o	\
 	$(MESS_AUDIO)/arcadia.o	\
@@ -747,8 +758,7 @@ $(MESSOBJ)/tutor.a:	\
 	$(MESS_DRIVERS)/tutor.o
 
 $(MESSOBJ)/bally.a:    \
-	$(MESS_VIDEO)/astrocde.o \
-	$(MESS_MACHINE)/astrocde.o \
+	$(MAME_VIDEO)/astrocde.o \
 	$(MESS_DRIVERS)/astrocde.o
 
 $(MESSOBJ)/pcshare.a:					\
@@ -788,10 +798,7 @@ $(MESSOBJ)/p2000.a:    \
 	$(MESS_DRIVERS)/p2000t.o	 \
 	$(MESS_MACHINE)/p2000t.o	 \
 	$(MESS_MACHINE)/mc6850.o	 \
-	$(MESS_VIDEO)/osi.o	 \
-	$(MESS_AUDIO)/osi.o	 \
 	$(MESS_DRIVERS)/osi.o	\
-	$(MESS_MACHINE)/osi.o	 \
 
 $(MESSOBJ)/amstrad.a:  \
 	$(MESS_DRIVERS)/amstrad.o  \
@@ -873,6 +880,8 @@ $(MESSOBJ)/vtech.a :   \
 	$(MESS_FORMATS)/vt_cas.o	\
 	$(MESS_FORMATS)/vt_dsk.o	\
 	$(MESS_DRIVERS)/crvision.o	\
+
+$(MESSOBJ)/super80.a :   \
 	$(MESS_DRIVERS)/super80.o	\
 
 $(MESSOBJ)/jupiter.a : \
@@ -985,7 +994,6 @@ $(MESSOBJ)/pmd85.a:   \
 $(MESSOBJ)/magnavox.a: \
 	$(MESS_MACHINE)/odyssey2.o \
 	$(MESS_VIDEO)/odyssey2.o \
-	$(MESS_AUDIO)/odyssey2.o \
 	$(MESS_DRIVERS)/odyssey2.o
 
 $(MESSOBJ)/teamconc.a: \
@@ -1157,6 +1165,39 @@ $(MESSOBJ)/osborne.a:			\
 $(MESSOBJ)/epson.a:			\
 	$(MESS_DRIVERS)/ex800.o	\
 
+$(MESSOBJ)/epoch.a:				\
+	$(MESS_DRIVERS)/gamepock.o	\
+	$(MESS_MACHINE)/gamepock.o	\
+
+$(MESSOBJ)/pel.a:      \
+	$(MESS_DRIVERS)/galeb.o \
+	$(MESS_MACHINE)/galeb.o \
+	$(MESS_VIDEO)/galeb.o \
+	$(MESS_FORMATS)/orao_cas.o		\
+	$(MESS_DRIVERS)/orao.o \
+	$(MESS_MACHINE)/orao.o \
+	$(MESS_VIDEO)/orao.o \
+
+$(MESSOBJ)/gmaster.a:			\
+	$(MESS_DRIVERS)/gmaster.o	\
+	$(MESS_AUDIO)/gmaster.o
+
+$(MESSOBJ)/ut88.a:      \
+	$(MESS_DRIVERS)/ut88.o \
+	$(MESS_MACHINE)/ut88.o \
+	$(MESS_FORMATS)/rk_cas.o		\
+	$(MESS_VIDEO)/ut88.o \
+
+$(MESSOBJ)/mikro80.a:      \
+	$(MESS_DRIVERS)/mikro80.o \
+	$(MESS_MACHINE)/mikro80.o \
+	$(MESS_VIDEO)/mikro80.o \
+
+$(MESSOBJ)/special.a:      \
+	$(MESS_AUDIO)/special.o \
+	$(MESS_DRIVERS)/special.o \
+	$(MESS_MACHINE)/special.o \
+	$(MESS_VIDEO)/special.o \
 
 #-------------------------------------------------
 # layout dependencies
@@ -1169,6 +1210,7 @@ $(MESS_DRIVERS)/acrnsys1.o:	$(MESS_LAYOUT)/acrnsys1.lh
 $(MESS_DRIVERS)/aim65.o:	$(MESS_LAYOUT)/aim65.lh
 $(MESS_DRIVERS)/coco.o:		$(MESS_LAYOUT)/coco3.lh
 $(MESS_DRIVERS)/cybiko.o:	$(MESS_LAYOUT)/cybiko.lh
+$(MESS_DRIVERS)/gamepock.o:	$(MESS_LAYOUT)/gamepock.lh
 $(MESS_DRIVERS)/gb.o:		$(MESS_LAYOUT)/gb.lh
 $(MESS_DRIVERS)/glasgow.o:	$(MESS_LAYOUT)/glasgow.lh
 $(MESS_DRIVERS)/mephisto.o:	$(MESS_LAYOUT)/mephisto.lh
@@ -1177,6 +1219,7 @@ $(MESS_DRIVERS)/mk2.o:		$(MESS_LAYOUT)/mk2.lh
 $(MESS_DRIVERS)/svi318.o:	$(MESS_LAYOUT)/sv328806.lh
 $(MESS_DRIVERS)/svision.o:	$(MESS_LAYOUT)/svision.lh
 $(MESS_DRIVERS)/sym1.o:		$(MESS_LAYOUT)/sym1.lh
+$(MESS_DRIVERS)/ut88.o:		$(MESS_LAYOUT)/ut88mini.lh
 
 
 
@@ -1214,5 +1257,5 @@ endif
 #-------------------------------------------------
 # MESS special OSD rules
 #-------------------------------------------------
-	
+
 include $(SRC)/mess/osd/$(OSD)/$(OSD).mak

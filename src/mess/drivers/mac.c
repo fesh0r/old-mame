@@ -70,6 +70,7 @@ static MACHINE_DRIVER_START( mac512ke )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M68000, 7833600)        /* 7.8336 Mhz */
 	MDRV_CPU_PROGRAM_MAP(mac512ke_map, 0)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60.15)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(1260))
 	MDRV_INTERLEAVE(1)
@@ -77,12 +78,11 @@ static MACHINE_DRIVER_START( mac512ke )
 	MDRV_MACHINE_RESET( mac )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(MAC_H_TOTAL, MAC_V_TOTAL)
 	MDRV_SCREEN_VISIBLE_AREA(0, MAC_H_VIS-1, 0, MAC_V_VIS-1)
 	MDRV_PALETTE_LENGTH(2)
-	MDRV_COLORTABLE_LENGTH(2)
 	MDRV_PALETTE_INIT(mac)
 
 	MDRV_VIDEO_START(mac)
@@ -281,37 +281,37 @@ ROM_START( macclasc )
 	ROM_LOAD16_WORD( "classic.rom",  0x00000, 0x40000, CRC(b14ddcde) SHA1(f710e73e8e0f99d9d0e9e79e71f67a6c3648bf06) )
 ROM_END
 
-static void mac128512_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void mac128512_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K; break;
+		case MESS_DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K; break;
 
 		default:										sonydriv_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void mac_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void mac_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K; break;
+		case MESS_DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES:		info->i = SONY_FLOPPY_ALLOW400K | SONY_FLOPPY_ALLOW800K; break;
 
 		default:										sonydriv_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void mac_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void mac_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		default: harddisk_device_getinfo(devclass, state, info); break;
 	}
@@ -390,7 +390,7 @@ static const struct MachineDriver machine_driver_mac2 =
 			0,0,
 		}
 	},
-	60, DEFAULT_REAL_60HZ_VBLANK_DURATION,		/* frames per second, vblank duration */
+	60, ATTOSECONDS_IN_USEC(2500) /* not accurate */,		/* frames per second, vblank duration */
 	1,
 	mac2_init_machine,
 	0,
@@ -403,7 +403,7 @@ static const struct MachineDriver machine_driver_mac2 =
 	2, 2,						/* number of colors, colortable size */
 	mac_init_palette,				/* convert color prom */
 
-	VIDEO_TYPE_RASTER | VIDEO_UPDATE_BEFORE_VBLANK,
+	VIDEO_UPDATE_BEFORE_VBLANK,
 	0,
 	mac_vh_start,
 	mac_vh_stop,

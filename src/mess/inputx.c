@@ -602,11 +602,21 @@ static void execute_input(int ref, int params, const char *param[])
 
 
 
-static void setup_keybuffer(void)
+static void clear_keybuffer(running_machine *machine)
+{
+	keybuffer = NULL;
+	queue_chars = NULL;
+	codes = NULL;
+}
+
+
+
+static void setup_keybuffer(running_machine *machine)
 {
 	inputx_timer = timer_alloc(inputx_timerproc, NULL);
 	keybuffer = auto_malloc(sizeof(key_buffer));
 	memset(keybuffer, 0, sizeof(*keybuffer));
+	add_exit_callback(machine, clear_keybuffer);
 }
 
 
@@ -637,7 +647,7 @@ static void dump_codes(void)
 
 
 
-void inputx_init(void)
+void inputx_init(running_machine *machine)
 {
 	codes = NULL;
 	inputx_timer = NULL;
@@ -647,17 +657,17 @@ void inputx_init(void)
 	keybuffer = NULL;
 
 #ifdef ENABLE_DEBUGGER
-	if (Machine->debug_mode)
+	if (machine->debug_mode)
 		debug_console_register_command("input", CMDFLAG_NONE, 0, 1, 1, execute_input);
 #endif /* ENABLE_DEBUGGER */
 
 	/* posting keys directly only makes sense for a computer */
-	if (Machine->gamedrv->flags & GAME_COMPUTER)
+	if (machine->gamedrv->flags & GAME_COMPUTER)
 	{
-		codes = build_codes(Machine->input_ports);
+		codes = build_codes(machine->input_ports);
 		if (DUMP_CODES)
 			dump_codes();
-		setup_keybuffer();
+		setup_keybuffer(machine);
 	}
 }
 
@@ -668,7 +678,6 @@ void inputx_setup_natural_keyboard(
 	int (*accept_char_)(unicode_char ch),
 	int (*charqueue_empty_)(void))
 {
-	setup_keybuffer();
 	queue_chars = queue_chars_;
 	accept_char = accept_char_;
 	charqueue_empty = charqueue_empty_;
@@ -793,7 +802,7 @@ static void internal_post_key(unicode_char ch)
 	/* need to start up the timer? */
 	if (keybuf->begin_pos == keybuf->end_pos)
 	{
-		timer_adjust(inputx_timer, choose_delay(ch), 0, attotime_zero);
+		timer_adjust_oneshot(inputx_timer, choose_delay(ch), 0);
 		keybuf->status_keydown = 0;
 	}
 
@@ -909,7 +918,7 @@ static TIMER_CALLBACK(inputx_timerproc)
 	if (keybuf->begin_pos != keybuf->end_pos)
 	{
 		delay = choose_delay(keybuf->buffer[keybuf->begin_pos]);
-		timer_adjust(inputx_timer, delay, 0, attotime_zero);
+		timer_adjust_oneshot(inputx_timer, delay, 0);
 	}
 }
 

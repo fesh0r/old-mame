@@ -81,7 +81,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( nascom1_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(4) )
+	ADDRESS_MAP_GLOBAL_MASK(0x0F)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(nascom1_port_00_r, nascom1_port_00_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(nascom1_port_01_r, nascom1_port_01_w)
 	AM_RANGE(0x02, 0x02) AM_READ(nascom1_port_02_r)
@@ -89,7 +89,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( nascom2_io, ADDRESS_SPACE_IO, 8 )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(nascom1_port_00_r, nascom1_port_00_w)
 	AM_RANGE(0x01, 0x01) AM_READWRITE(nascom1_port_01_r, nascom1_port_01_w)
 	AM_RANGE(0x02, 0x02) AM_READ(nascom1_port_02_r)
@@ -253,11 +253,11 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_CPU_ADD_TAG("main", Z80, 1000000)
 	MDRV_CPU_PROGRAM_MAP(nascom1_mem, 0)
 	MDRV_CPU_IO_MAP(nascom1_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(48 * 8, 16 * 16)
 	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 16 - 1)
@@ -265,7 +265,6 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
 
-	MDRV_VIDEO_START(generic)
 	MDRV_VIDEO_UPDATE(nascom1)
 MACHINE_DRIVER_END
 
@@ -276,6 +275,7 @@ static MACHINE_DRIVER_START( nascom2 )
 	MDRV_CPU_IO_MAP(nascom2_io, 0)
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_SIZE(48 * 8, 16 * 14)
 	MDRV_SCREEN_VISIBLE_AREA(0, 48 * 8 - 1, 0, 16 * 14 - 1)
 	MDRV_GFXDECODE(nascom2)
@@ -324,59 +324,59 @@ ROM_END
  *
  *************************************/
 
-static void nascom1_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void nascom1_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CASSETTE; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_nascom1_cassette; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_nascom1_cassette; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_nascom1_cassette; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_nascom1_cassette; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
 	}
 }
 
 
-static void nascom1_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void nascom1_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "nas"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "nas"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_nascom1; break;
+		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_nascom1; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
+		case MESS_DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
 
 		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}
 }
 
 
-static void nascom2_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void nascom2_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_nascom2_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_nascom2_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}

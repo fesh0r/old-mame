@@ -381,8 +381,8 @@ static ADDRESS_MAP_START( pc8801_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc88sr_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(1) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x00) AM_READ( input_port_0_r )  /* keyboard */
 	AM_RANGE(0x01, 0x01) AM_READ( input_port_1_r )  /* keyboard */
 	AM_RANGE(0x02, 0x02) AM_READ( input_port_2_r )  /* keyboard */
@@ -451,7 +451,7 @@ static ADDRESS_MAP_START( pc8801fd_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pc8801fd_io , ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0xf8, 0xf8) AM_READ( pc8801fd_nec765_tc )
 	AM_RANGE(0xfa, 0xfa) AM_READ( nec765_status_r )
 	AM_RANGE(0xfb, 0xfb) AM_READWRITE( nec765_data_r, nec765_data_w )
@@ -507,29 +507,28 @@ static MACHINE_DRIVER_START( pc88srl )
 	MDRV_CPU_ADD_TAG("main", Z80, 4000000)        /* 4 Mhz */
 	MDRV_CPU_PROGRAM_MAP(pc8801_mem, 0)
 	MDRV_CPU_IO_MAP(pc88sr_io, 0)
-	MDRV_CPU_VBLANK_INT(pc8801_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", pc8801_interrupt)
 
 	/* sub CPU(5 inch floppy drive) */
 	MDRV_CPU_ADD_TAG("sub", Z80, 4000000)		/* 4 Mhz */
 	MDRV_CPU_PROGRAM_MAP(pc8801fd_mem, 0)
 	MDRV_CPU_IO_MAP(pc8801fd_io, 0)
-	MDRV_CPU_VBLANK_INT(pc8801fd_interrupt,1)
+	MDRV_CPU_VBLANK_INT("main", pc8801fd_interrupt)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(5000)
 
 	MDRV_MACHINE_RESET( pc88srl )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/*MDRV_ASPECT_RATIO(8,5)*/
 	MDRV_SCREEN_SIZE(640, 220)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 200-1)
 	MDRV_GFXDECODE( pc8801 )
-	MDRV_PALETTE_LENGTH(18)
-	MDRV_COLORTABLE_LENGTH(32)
+	MDRV_PALETTE_LENGTH(32)
 	MDRV_PALETTE_INIT( pc8801 )
 
 	MDRV_VIDEO_START(pc8801)
@@ -547,37 +546,36 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pc88srh )
 	MDRV_IMPORT_FROM( pc88srl )
-	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_INTERLEAVE(6000)
 
 	MDRV_MACHINE_RESET( pc88srh )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	/*MDRV_ASPECT_RATIO(8, 5)*/
 	MDRV_SCREEN_SIZE(640, 440)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640-1, 0, 400-1)
 MACHINE_DRIVER_END
 
-static void pc88_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void pc88_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_d88image_floppy; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_d88image_floppy; break;
-		case DEVINFO_PTR_STATUS:						/* info->status = floppy_status; */ break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_d88image_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_d88image_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d88"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d88"); break;
 	}
 }
 

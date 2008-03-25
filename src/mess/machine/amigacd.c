@@ -16,6 +16,7 @@ DMAC controller.
 #include "machine/wd33c93.h"
 #include "machine/tpi6525.h"
 #include "matsucd.h"
+#include "deprecat.h"
 
 
 #define VERBOSE_DMAC 0
@@ -70,7 +71,7 @@ typedef struct
 
 static _dmac_data dmac_data;
 
-static void check_interrupts( void )
+static void check_interrupts( running_machine *machine )
 {
 	/* if interrupts are disabled, bail */
 	if ( (dmac_data.cntr & CNTR_INTEN) == 0 )
@@ -81,7 +82,7 @@ static void check_interrupts( void )
 		return;
 
 	/* otherwise, generate the IRQ */
-	amiga_custom_w(REG_INTREQ, 0x8000 | INTENA_PORTS, 0);
+	amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_PORTS, 0);
 }
 
 static TIMER_CALLBACK(dmac_dma_proc)
@@ -111,12 +112,12 @@ static TIMER_CALLBACK(dmac_dma_proc)
 	if ( dmac_data.wtc > 0 )
 	{
 		matsucd_read_next_block();
-		timer_adjust( dmac_data.dma_timer, ATTOTIME_IN_MSEC( CD_SECTOR_TIME ), 0, attotime_zero );
+		timer_adjust_oneshot(dmac_data.dma_timer, ATTOTIME_IN_MSEC( CD_SECTOR_TIME ), 0);
 	}
 	else
 	{
 		dmac_data.istr |= ISTR_INT_P | ISTR_E_INT;
-		check_interrupts();
+		check_interrupts( machine );
 	}
 }
 
@@ -213,14 +214,14 @@ static READ16_HANDLER( amiga_dmac_r )
 		case 0x67:
 		{
 			LOG(( "DMAC: PC=%08x - TPI6525 Read(%d)\n", activecpu_get_pc(), (offset - 0x58) ));
-			return tpi6525_0_port_r(offset - 0x58);
+			return tpi6525_0_port_r(machine, offset - 0x58);
 		}
 		break;
 
 		case 0x70:	/* DMA start strobe */
 		{
 			LOG(( "DMAC: PC=%08x - DMA Start Strobe\n", activecpu_get_pc() ));
-			timer_adjust( dmac_data.dma_timer, ATTOTIME_IN_MSEC( CD_SECTOR_TIME ), 0, attotime_zero );
+			timer_adjust_oneshot(dmac_data.dma_timer, ATTOTIME_IN_MSEC( CD_SECTOR_TIME ), 0);
 		}
 		break;
 
@@ -263,7 +264,7 @@ static WRITE16_HANDLER( amiga_dmac_w )
 		{
 			LOG(( "DMAC: PC=%08x - CNTR Write(%04x)\n", activecpu_get_pc(), data ));
 			dmac_data.cntr = data;
-			check_interrupts();
+			check_interrupts( machine );
 		}
 		break;
 
@@ -339,14 +340,14 @@ static WRITE16_HANDLER( amiga_dmac_w )
 		case 0x67:
 		{
 			LOG(( "DMAC: PC=%08x - TPI6525 Write(%d) - data = %04x\n", activecpu_get_pc(), (offset - 0x58), data ));
-			tpi6525_0_port_w(offset - 0x58, data);
+			tpi6525_0_port_w(machine, offset - 0x58, data);
 		}
 		break;
 
 		case 0x70:	/* DMA start strobe */
 		{
 			LOG(( "DMAC: PC=%08x - DMA Start Strobe\n", activecpu_get_pc() ));
-			timer_adjust( dmac_data.dma_timer, ATTOTIME_IN_MSEC( CD_SECTOR_TIME ), 0, attotime_zero );
+			timer_adjust_oneshot(dmac_data.dma_timer, ATTOTIME_IN_MSEC( CD_SECTOR_TIME ), 0);
 		}
 		break;
 
@@ -391,8 +392,8 @@ static void	dmac_install(offs_t base)
 
 static void	dmac_uninstall(offs_t base)
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, base, base + 0xFFFF, 0, 0, MRA16_UNMAP);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, base, base + 0xFFFF, 0, 0, MWA16_UNMAP);
+	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, base, base + 0xFFFF, 0, 0, SMH_UNMAP);
+	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, base, base + 0xFFFF, 0, 0, SMH_UNMAP);
 }
 
 static const amiga_autoconfig_device dmac_device =
@@ -451,15 +452,15 @@ static TIMER_CALLBACK(tp6525_delayed_irq)
 
 	if ( (CUSTOM_REG(REG_INTREQ) & INTENA_PORTS) == 0 )
 	{
-		amiga_custom_w(REG_INTREQ, 0x8000 | INTENA_PORTS, 0);
+		amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_PORTS, 0);
 	}
 	else
 	{
-		timer_adjust( tp6525_delayed_timer, ATTOTIME_IN_MSEC(1), 0, attotime_zero );
+		timer_adjust_oneshot(tp6525_delayed_timer, ATTOTIME_IN_MSEC(1), 0);
 	}
 }
 
-static void tp6525_irq( int level )
+static void tp6525_irq( running_machine *machine, int level )
 {
 	LOG(( "TPI6525 Interrupt: level = %d\n", level ));
 
@@ -467,12 +468,12 @@ static void tp6525_irq( int level )
 	{
 		if ( (CUSTOM_REG(REG_INTREQ) & INTENA_PORTS) == 0 )
 		{
-			amiga_custom_w(REG_INTREQ, 0x8000 | INTENA_PORTS, 0);
+			amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_PORTS, 0);
 		}
 		else
 		{
 			/* we *have to* deliver the irq, so if we can't, delay it and try again later */
-			timer_adjust( tp6525_delayed_timer, ATTOTIME_IN_MSEC(1), 0, attotime_zero );
+			timer_adjust_oneshot(tp6525_delayed_timer, ATTOTIME_IN_MSEC(1), 0);
 		}
 	}
 }
@@ -480,7 +481,7 @@ static void tp6525_irq( int level )
 static void cdrom_status_enabled( int level )
 {
 	/* PC3 on the 6525 */
-	tpi6525_0_irq3_level( level );
+	tpi6525_0_irq3_level( Machine, level );
 }
 
 static void cdrom_status_change( int level )
@@ -489,13 +490,13 @@ static void cdrom_status_change( int level )
 	level = level ? 0 : 1;
 
 	/* PC2 on the 6525 */
-	tpi6525_0_irq2_level( level );
+	tpi6525_0_irq2_level( Machine, level );
 }
 
 static void cdrom_subcode_ready( int level )
 {
 	/* PC1 on the 6525 */
-	tpi6525_0_irq1_level( level );
+	tpi6525_0_irq1_level( Machine, level );
 }
 
 void amigacd_init( void )

@@ -149,7 +149,7 @@ static void i8271_timed_data_request(void)
 
 	/* set timers */
 	timer_reset(i8271.command_complete_timer, attotime_never);
-	timer_adjust(i8271.data_timer, ATTOTIME_IN_USEC(usecs), 0, attotime_zero);
+	timer_adjust_oneshot(i8271.data_timer, ATTOTIME_IN_USEC(usecs), 0);
 }
 
 
@@ -173,7 +173,7 @@ static void i8271_timed_command_complete(void)
 
 	/* set timers */
 	timer_reset(i8271.data_timer, attotime_never);
-	timer_adjust(i8271.command_complete_timer, ATTOTIME_IN_USEC(usecs), 0, attotime_zero);
+	timer_adjust_oneshot(i8271.command_complete_timer, ATTOTIME_IN_USEC(usecs), 0);
 }
 
 void i8271_reset()
@@ -1368,15 +1368,15 @@ WRITE8_HANDLER(i8271_w)
 
 
 /* to be completed! */
- READ8_HANDLER(i8271_dack_r)
+READ8_HANDLER(i8271_dack_r)
 {
-	return i8271_data_r(offset);
+	return i8271_data_r(machine, offset);
 }
 
 /* to be completed! */
 WRITE8_HANDLER(i8271_dack_w)
 {
-	i8271_data_w(offset, data);
+	i8271_data_w(machine, offset, data);
 }
 
  READ8_HANDLER(i8271_data_r)

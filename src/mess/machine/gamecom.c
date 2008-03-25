@@ -89,9 +89,9 @@ MACHINE_RESET( gamecom )
 	gamecom_dma.enabled = 0;
 
 	memset( internal_registers, 0x00, sizeof(internal_registers) );
-	gamecom_internal_w( SM8521_URTT, 0xFF );
-	gamecom_internal_w( SM8521_URTS, 0x42 );
-	gamecom_internal_w( SM8521_WDTC, 0x38 );
+	gamecom_internal_w( machine, SM8521_URTT, 0xFF );
+	gamecom_internal_w( machine, SM8521_URTS, 0x42 );
+	gamecom_internal_w( machine, SM8521_WDTC, 0x38 );
 }
 
 static void gamecom_set_mmu( int mmu, UINT8 data ) {
@@ -327,10 +327,10 @@ WRITE8_HANDLER( gamecom_internal_w )
 			/* timer run */
 			if ( data & 0x40 ) {
 				/* timer resolution 1 minute */
-				timer_adjust( gamecom_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(60) );
+				timer_adjust_periodic(gamecom_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(60));
 			} else {
 				/* TImer resolution 1 second */
-				timer_adjust( gamecom_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1) );
+				timer_adjust_periodic(gamecom_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1));
 			}
 		} else {
 			/* disable timer reset */

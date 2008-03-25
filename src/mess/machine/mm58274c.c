@@ -19,7 +19,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "mm58274c.h"
 
 
@@ -91,7 +90,7 @@ static attotime interrupt_period_table(int val)
 };
 
 
-void mm58274c_init(int which, int mode24)
+void mm58274c_init(running_machine *machine, int which, int mode24)
 {
 	memset(&rtc[which], 0, sizeof(rtc[which]));
 
@@ -102,7 +101,7 @@ void mm58274c_init(int which, int mode24)
 		mame_system_time systime;
 
 		/* get the current date/time from the core */
-		mame_get_current_datetime(Machine, &systime);
+		mame_get_current_datetime(machine, &systime);
 
 		rtc[which].clk_set = systime.local_time.year & 3 << 2;
 		if (mode24)
@@ -248,7 +247,7 @@ void mm58274c_w(int which, int offset, int data)
 			/* interrupt run */
 			attotime period = interrupt_period_table(rtc[which].int_ctl & int_ctl_dly);
 
-			timer_adjust(rtc[which].interrupt_timer, period, which, rtc[which].int_ctl & int_ctl_rpt ? period : attotime_zero);
+			timer_adjust_periodic(rtc[which].interrupt_timer, period, which, rtc[which].int_ctl & int_ctl_rpt ? period : attotime_zero);
 		}
 		if (data & ctl_clkstop)
 			/* stopping the clock clears the tenth counter */
@@ -321,7 +320,7 @@ void mm58274c_w(int which, int offset, int data)
 				/* interrupt run */
 				attotime period = interrupt_period_table(rtc[which].int_ctl & int_ctl_dly);
 
-				timer_adjust(rtc[which].interrupt_timer, period, which, rtc[which].int_ctl & int_ctl_rpt ? period : attotime_zero);
+				timer_adjust_periodic(rtc[which].interrupt_timer, period, which, rtc[which].int_ctl & int_ctl_rpt ? period : attotime_zero);
 			}
 		}
 		else

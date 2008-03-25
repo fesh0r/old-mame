@@ -12,7 +12,7 @@
 #include "devices/cassette.h"
 #include "formats/a26_cas.h"
 #include "video/tia.h"
-#include "deprecat.h"
+
 
 #define CART memory_region(REGION_USER1)
 
@@ -711,7 +711,7 @@ static WRITE8_HANDLER(modeJVP_switch_w) { modeJVP_switch(offset, data); riot_ram
 static OPBASE_HANDLER( modeF6_opbase )
 {
 	if ( ( address & 0x1FFF ) >= 0x1FF6 && ( address & 0x1FFF ) <= 0x1FF9 ) {
-		modeF6_switch_w( ( address & 0x1FFF ) - 0x1FF6, 0 );
+		modeF6_switch_w( machine, ( address & 0x1FFF ) - 0x1FF6, 0 );
 	}
 	return address;
 }
@@ -839,7 +839,7 @@ static READ8_HANDLER(modeSS_r)
 	/* Because the mame core caches opcode data and doesn't perform reads like normal */
 	/* we have to put in this little hack here to get Suicide Mission to work. */
 	if ( offset != 0xFF8 && ( activecpu_get_pc() & 0x1FFF ) == 0x1FF8 ) {
-		modeSS_r( 0xFF8 );
+		modeSS_r( machine, 0xFF8 );
 	}
 	return data;
 }
@@ -1010,7 +1010,7 @@ depending on last byte & 0x20 -> 0x00 -> switch to bank #1
 
  */
 
-static opbase_handler FE_old_opbase_handler;
+static opbase_handler_func FE_old_opbase_handler;
 static int FETimer;
 
 static OPBASE_HANDLER(modeFE_opbase_handler)
@@ -1040,7 +1040,6 @@ static void modeFE_switch(UINT16 offset, UINT8 data)
     */
 	FETimer = 1;
 	FE_old_opbase_handler = memory_set_opbase_handler(0, modeFE_opbase_handler);
-	catch_nextBranch();
 }
 
 static READ8_HANDLER(modeFE_switch_r)
@@ -1061,7 +1060,7 @@ static  READ8_HANDLER(current_bank_r)
 }
 
 static ADDRESS_MAP_START(a2600_mem, ADDRESS_SPACE_PROGRAM, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(13) )
+	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x007F) AM_MIRROR(0x0F00) AM_READWRITE(tia_r, tia_w)
 	AM_RANGE(0x0080, 0x00FF) AM_MIRROR(0x0D00) AM_RAM AM_BASE(&riot_ram)
 	AM_RANGE(0x0280, 0x029F) AM_MIRROR(0x0D00) AM_READWRITE(r6532_0_r, r6532_0_w)
@@ -1158,12 +1157,12 @@ static void install_banks(int count, unsigned init)
 
 	for (i = 0; i < count; i++)
 	{
-		static const read8_handler handler[] =
+		static const read8_machine_func handler[] =
 		{
-			MRA8_BANK1,
-			MRA8_BANK2,
-			MRA8_BANK3,
-			MRA8_BANK4,
+			SMH_BANK1,
+			SMH_BANK2,
+			SMH_BANK3,
+			SMH_BANK4,
 		};
 
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
@@ -1372,7 +1371,7 @@ static WRITE16_HANDLER( a2600_tia_vsync_callback ) {
 		if ( data >= supported_screen_heights[i] - 3 && data <= supported_screen_heights[i] + 3 ) {
 			if ( supported_screen_heights[i] != current_screen_height ) {
 				current_screen_height = supported_screen_heights[i];
-//              video_screen_configure( 0, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_NTSC ) * 228 * current_screen_height );
+//              video_screen_configure( machine->primary_screen, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_NTSC ) * 228 * current_screen_height );
 			}
 		}
 	}
@@ -1385,7 +1384,7 @@ static WRITE16_HANDLER( a2600_tia_vsync_callback_pal ) {
 		if ( data >= supported_screen_heights[i] - 3 && data <= supported_screen_heights[i] + 3 ) {
 			if ( supported_screen_heights[i] != current_screen_height ) {
 				current_screen_height = supported_screen_heights[i];
-//              video_screen_configure( 0, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_PAL ) * 228 * current_screen_height );
+//              video_screen_configure( machine->primary_screen, 228, current_screen_height, &visarea[i], HZ_TO_ATTOSECONDS( MASTER_CLOCK_PAL ) * 228 * current_screen_height );
 			}
 		}
 	}
@@ -1407,7 +1406,8 @@ static const struct tia_interface tia_interface_pal =
 
 static MACHINE_START( a2600 )
 {
-	current_screen_height = machine->screen[0].height;
+	const device_config *screen = video_screen_first(machine->config);
+	current_screen_height = video_screen_get_height(screen);
 	extra_RAM = new_memory_region( machine, REGION_USER2, 0x8600, ROM_REQUIRED );
 	tia_init( &tia_interface );
 	r6532_config( 0, &r6532_interface );
@@ -1419,7 +1419,8 @@ static MACHINE_START( a2600 )
 
 static MACHINE_START( a2600p )
 {
-	current_screen_height = machine->screen[0].height;
+	const device_config *screen = video_screen_first(machine->config);
+	current_screen_height = video_screen_get_height(screen);
 	extra_RAM = new_memory_region( machine, REGION_USER2, 0x8600, ROM_REQUIRED );
 	tia_init( &tia_interface_pal );
 	r6532_config( 0, &r6532_interface );
@@ -1429,11 +1430,11 @@ static MACHINE_START( a2600p )
 	current_reset_bank_counter = 0xFF;
 }
 
-static void set_category_value( const char* cat, const char *cat_selection ) {
+static void set_category_value( running_machine *machine, const char* cat, const char *cat_selection ) {
 	input_port_entry	*cat_in = NULL;
 	input_port_entry	*in;
 
-	for( in = Machine->input_ports; in->type != IPT_END; in++ ) {
+	for( in = machine->input_ports; in->type != IPT_END; in++ ) {
 		if ( in->type == IPT_CATEGORY_NAME && ! mame_stricmp( cat, input_port_name(in) ) ) {
 			cat_in = in;
 		}
@@ -1444,24 +1445,24 @@ static void set_category_value( const char* cat, const char *cat_selection ) {
 	}
 }
 
-static void set_controller( const char *controller, unsigned int selection ) {
+static void set_controller( running_machine *machine, const char *controller, unsigned int selection ) {
 	/* Defaulting to only joystick when joysstick and paddle are set for now... */
 	if ( selection == JOYS + PADD )
 		selection = JOYS;
 
 	switch( selection ) {
-	case JOYS:	set_category_value( controller, "Joystick" ); break;
-	case PADD:	set_category_value( controller, STR_PADDLES ); break;
-	case KEYP:	set_category_value( controller, STR_KEYPAD ); break;
-	case LGUN:	set_category_value( controller, STR_LIGHTGUN ); break;
-	case INDY:	set_category_value( controller, STR_DRIVING ); break;
-	case BOOS:	set_category_value( controller, STR_BOOSTERGRIP ); break;
-	case KVID:	set_category_value( controller, STR_KIDVID ); break;
+	case JOYS:	set_category_value( machine, controller, "Joystick" ); break;
+	case PADD:	set_category_value( machine, controller, STR_PADDLES ); break;
+	case KEYP:	set_category_value( machine, controller, STR_KEYPAD ); break;
+	case LGUN:	set_category_value( machine, controller, STR_LIGHTGUN ); break;
+	case INDY:	set_category_value( machine, controller, STR_DRIVING ); break;
+	case BOOS:	set_category_value( machine, controller, STR_BOOSTERGRIP ); break;
+	case KVID:	set_category_value( machine, controller, STR_KIDVID ); break;
 	case CMTE:	break;
 	case MLNK:	break;
-	case AMSE:	set_category_value( controller, STR_AMIGAMOUSE ); break;
-	case CX22:	set_category_value( controller, STR_CX22TRAKBALL ); break;
-	case CX80:	set_category_value( controller, STR_CX80TRAKBALL ); break;
+	case AMSE:	set_category_value( machine, controller, STR_AMIGAMOUSE ); break;
+	case CX22:	set_category_value( machine, controller, STR_CX22TRAKBALL ); break;
+	case CX80:	set_category_value( machine, controller, STR_CX80TRAKBALL ); break;
 	}
 }
 
@@ -1476,8 +1477,8 @@ static MACHINE_RESET( a2600 )
 
 	/* auto-detect special controllers */
 	controltemp = detect_2600controllers();
-	set_controller( STR_LEFT_CONTROLLER, controltemp >> 16 );
-	set_controller( STR_RIGHT_CONTROLLER, controltemp & 0xFFFF );
+	set_controller( machine, STR_LEFT_CONTROLLER, controltemp >> 16 );
+	set_controller( machine, STR_RIGHT_CONTROLLER, controltemp & 0xFFFF );
 
 	/* auto-detect bank mode */
 
@@ -1688,8 +1689,8 @@ static MACHINE_RESET( a2600 )
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_r);
 		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_w);
 		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x18ff, 0, 0, MWA8_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1900, 0x19ff, 0, 0, MRA8_BANK9);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x18ff, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1900, 0x19ff, 0, 0, SMH_BANK9);
 		memory_set_bankptr( 9, extra_RAM + 4 * 256 );
 		break;
 
@@ -1742,7 +1743,7 @@ static MACHINE_RESET( a2600 )
 			}
 		}
 		dpc.oscillator = timer_alloc( modeDPC_timer_callback , NULL);
-		timer_adjust( dpc.oscillator, ATTOTIME_IN_HZ(42000), 0, ATTOTIME_IN_HZ(42000) );
+		timer_adjust_periodic(dpc.oscillator, ATTOTIME_IN_HZ(42000), 0, ATTOTIME_IN_HZ(42000));
 		break;
 
 	case mode32in1:
@@ -1760,24 +1761,24 @@ static MACHINE_RESET( a2600 )
 
 	if (banking_mode == modeFA)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x10ff, 0, 0, MWA8_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1100, 0x11ff, 0, 0, MRA8_BANK9);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x10ff, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1100, 0x11ff, 0, 0, SMH_BANK9);
 
 		memory_set_bankptr(9, extra_RAM);
 	}
 
 	if (banking_mode == modeCV)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x17ff, 0, 0, MWA8_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x13ff, 0, 0, MRA8_BANK9);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x17ff, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x13ff, 0, 0, SMH_BANK9);
 
 		memory_set_bankptr(9, extra_RAM);
 	}
 
 	if (chip)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x107f, 0, 0, MWA8_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1080, 0x10ff, 0, 0, MRA8_BANK9);
+		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x107f, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1080, 0x10ff, 0, 0, SMH_BANK9);
 
 		memory_set_bankptr(9, extra_RAM);
 	}
@@ -1945,9 +1946,8 @@ static MACHINE_DRIVER_START( a2600 )
 	MDRV_MACHINE_RESET(a2600)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_ADD("main",0)
 	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_NTSC, 228, 26, 26 + 160 + 16, 262, 24 , 24 + 192 + 31 )
 	MDRV_PALETTE_LENGTH( TIA_PALETTE_LENGTH )
 	MDRV_PALETTE_INIT(tia_NTSC)
@@ -1972,9 +1972,8 @@ static MACHINE_DRIVER_START( a2600p )
 	MDRV_MACHINE_RESET(a2600)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_ADD("main",0)
 	MDRV_SCREEN_RAW_PARAMS( MASTER_CLOCK_PAL, 228, 26, 26 + 160 + 16, 312, 32, 32 + 228 + 31 )
 	MDRV_PALETTE_LENGTH( TIA_PALETTE_LENGTH )
 	MDRV_PALETTE_INIT(tia_PAL)
@@ -2000,41 +1999,41 @@ ROM_END
 
 #define rom_a2600p rom_a2600
 
-static void a2600_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void a2600_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_a2600_cart; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_a2600_cart; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_a2600_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_a2600_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,a26"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,a26"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void a2600_cassette_getinfo( const device_class *devclass, UINT32 state, union devinfo *info ) {
+static void a2600_cassette_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info ) {
 	switch( state ) {
-	case DEVINFO_INT_COUNT:
+	case MESS_DEVINFO_INT_COUNT:
 		info->i = 1;
 		break;
-	case DEVINFO_INT_WRITEABLE:
+	case MESS_DEVINFO_INT_WRITEABLE:
 		info->i = 0;
 		break;
-	case DEVINFO_INT_CREATABLE:
+	case MESS_DEVINFO_INT_CREATABLE:
 		info->i = 0;
 		break;
-	case DEVINFO_INT_CASSETTE_DEFAULT_STATE:
+	case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:
 		info->i = CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED;
 		break;
-	case DEVINFO_PTR_CASSETTE_FORMATS:
+	case MESS_DEVINFO_PTR_CASSETTE_FORMATS:
 		info->p = (void *)a26_cassette_formats;
 		break;
 	default:

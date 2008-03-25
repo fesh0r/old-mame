@@ -7,28 +7,28 @@
 #ifndef PET_H_
 #define PET_H_
 
+#include "video/mc6845.h"
 
 /*----------- defined in video/pet.c -----------*/
 
 /* call to init videodriver */
-extern void pet_vh_init (void);
-extern void pet80_vh_init (void);
-extern void superpet_vh_init (void);
-extern VIDEO_UPDATE( pet );
-void pet40_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
-					  UINT8 ra, UINT16 y, UINT8 x_count, void *param);
-void pet80_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
-					  UINT8 ra, UINT16 y, UINT8 x_count, void *param);
+void pet_vh_init (void);
+void pet80_vh_init (void);
+void superpet_vh_init (void);
+VIDEO_UPDATE( pet );
+MC6845_UPDATE_ROW( pet40_update_row );
+MC6845_UPDATE_ROW( pet80_update_row );
+MC6845_ON_DE_CHANGED( pet_display_enable_changed );
 
 extern int pet_font;
 
 
 /*----------- defined in machine/pet.c -----------*/
 
-#define CBM8096_MEMORY (input_port_11_r(0)&8)
-#define M6809_SELECT (input_port_11_r(0)&4)
-#define IEEE8ON (input_port_11_r(0)&2)
-#define IEEE9ON (input_port_11_r(0)&1)
+#define CBM8096_MEMORY (readinputport(11)&8)
+#define M6809_SELECT (readinputport(11)&4)
+#define IEEE8ON (readinputport(11)&2)
+#define IEEE9ON (readinputport(11)&1)
 
 extern UINT8 *pet_memory;
 extern UINT8 *pet_videoram;

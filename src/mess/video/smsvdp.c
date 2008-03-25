@@ -37,9 +37,9 @@ PAL frame timing
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/smsvdp.h"
 #include "includes/sms.h"
+
 
 #define IS_SMS1_VDP			( smsvdp.features & MODEL_315_5124 )
 #define IS_SMS2_VDP			( smsvdp.features & MODEL_315_5246 )
@@ -95,7 +95,7 @@ static struct _smsvdp {
 	UINT8		*VRAM;						/* Pointer to VRAM */
 	UINT8		*CRAM;						/* Pointer to CRAM */
 	const UINT8	*sms_frame_timing;
-	mame_bitmap	*prev_bitmap;
+	bitmap_t	*prev_bitmap;
 	int			prev_bitmap_saved;
 	UINT8		*collision_buffer;
 
@@ -105,15 +105,18 @@ static struct _smsvdp {
 	 */
 	int			*line_buffer;
 	int			current_palette[32];
-	void (*int_callback)(int);
+	void (*int_callback)(running_machine*,int);
 	emu_timer	*smsvdp_display_timer;
 } smsvdp;
 
 static TIMER_CALLBACK(smsvdp_display_callback);
-static void sms_refresh_line(mame_bitmap *bitmap, int offsetx, int offsety, int line);
+static void sms_refresh_line(running_machine *machine, bitmap_t *bitmap, int offsetx, int offsety, int line);
 static void sms_update_palette(void);
 
-static void set_display_settings( void ) {
+static void set_display_settings( running_machine *machine )
+{
+	const device_config *screen = video_screen_first(machine->config);
+	int height = video_screen_get_height(screen);
 	int M1, M2, M3, M4;
 	M1 = smsvdp.reg[0x01] & 0x10;
 	M2 = smsvdp.reg[0x00] & 0x02;
@@ -151,31 +154,35 @@ static void set_display_settings( void ) {
 	}
 	switch( smsvdp.y_pixels ) {
 	case 192:
-		smsvdp.sms_frame_timing = ( Machine->screen[0].height == PAL_Y_PIXELS ) ? sms_pal_192 : sms_ntsc_192;
+		smsvdp.sms_frame_timing = ( height == PAL_Y_PIXELS ) ? sms_pal_192 : sms_ntsc_192;
 		break;
 	case 224:
-		smsvdp.sms_frame_timing = ( Machine->screen[0].height == PAL_Y_PIXELS ) ? sms_pal_224 : sms_ntsc_224;
+		smsvdp.sms_frame_timing = ( height == PAL_Y_PIXELS ) ? sms_pal_224 : sms_ntsc_224;
 		break;
 	case 240:
-		smsvdp.sms_frame_timing = ( Machine->screen[0].height == PAL_Y_PIXELS ) ? sms_pal_240 : sms_ntsc_240;
+		smsvdp.sms_frame_timing = ( height == PAL_Y_PIXELS ) ? sms_pal_240 : sms_ntsc_240;
 		break;
 	}
 	smsvdp.cram_dirty = 1;
 }
 
  READ8_HANDLER(sms_vdp_vcount_r) {
-	return ( smsvdp.sms_frame_timing[ INIT_VCOUNT ] + video_screen_get_vpos(0) ) & 0xFF;
+	return ( smsvdp.sms_frame_timing[ INIT_VCOUNT ] + video_screen_get_vpos(machine->primary_screen) ) & 0xFF;
 }
 
 READ8_HANDLER(sms_vdp_hcount_r) {
-	return video_screen_get_hpos(0) >> 1;
+	return video_screen_get_hpos(machine->primary_screen) >> 1;
 }
 
 void sms_set_ggsmsmode( int mode ) {
 	smsvdp.gg_sms_mode = mode;
 }
 
-int smsvdp_video_init( const smsvdp_configuration *config ) {
+int smsvdp_video_init( running_machine *machine, const smsvdp_configuration *config )
+{
+	const device_config *screen = video_screen_first(machine->config);
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
 
 	memset( &smsvdp, 0, sizeof smsvdp );
 
@@ -186,8 +193,8 @@ int smsvdp_video_init( const smsvdp_configuration *config ) {
 	   In theory the driver could have a REGION_GFX1 and/or REGION_GFX2 memory region
 	   of it's own. So this code could potentially cause a clash.
 	*/
-	smsvdp.VRAM = new_memory_region( Machine, REGION_GFX1, VRAM_SIZE, ROM_REQUIRED );
-	smsvdp.CRAM = new_memory_region( Machine, REGION_GFX2, MAX_CRAM_SIZE, ROM_REQUIRED );
+	smsvdp.VRAM = new_memory_region( machine, REGION_GFX1, VRAM_SIZE, ROM_REQUIRED );
+	smsvdp.CRAM = new_memory_region( machine, REGION_GFX2, MAX_CRAM_SIZE, ROM_REQUIRED );
 	smsvdp.line_buffer = auto_malloc( 256 * 5 * sizeof(int) );
 	memset( smsvdp.line_buffer, 0, 256 * 5 * sizeof(int) );
 
@@ -203,28 +210,28 @@ int smsvdp_video_init( const smsvdp_configuration *config ) {
 	smsvdp.collision_buffer = auto_malloc(SMS_X_PIXELS);
 
 	/* Make temp bitmap for rendering */
-	tmpbitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED32);
+	tmpbitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED32);
 
-	smsvdp.prev_bitmap = auto_bitmap_alloc(Machine->screen[0].width, Machine->screen[0].height, BITMAP_FORMAT_INDEXED32);
+	smsvdp.prev_bitmap = auto_bitmap_alloc(width, height, BITMAP_FORMAT_INDEXED32);
 
-	set_display_settings();
+	set_display_settings( machine );
 
 	smsvdp.smsvdp_display_timer = timer_alloc( smsvdp_display_callback , NULL);
-	timer_adjust( smsvdp.smsvdp_display_timer, video_screen_get_time_until_pos( 0, 0, 0 ), 0, video_screen_get_scan_period( 0 ) );
+	timer_adjust_periodic(smsvdp.smsvdp_display_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0 ), 0, video_screen_get_scan_period( machine->primary_screen ));
 	return 0;
 }
 
 static TIMER_CALLBACK(smsvdp_set_irq) {
 	smsvdp.irq_state = 1;
 	if ( smsvdp.int_callback ) {
-		smsvdp.int_callback( ASSERT_LINE );
+		smsvdp.int_callback( machine, ASSERT_LINE );
 	}
 }
 
 static TIMER_CALLBACK(smsvdp_display_callback)
 {
 	rectangle rec;
-	int vpos = video_screen_get_vpos(0);
+	int vpos = video_screen_get_vpos(machine->primary_screen);
 	int vpos_limit = smsvdp.sms_frame_timing[VERTICAL_BLANKING] + smsvdp.sms_frame_timing[TOP_BLANKING]
 	               + smsvdp.sms_frame_timing[TOP_BORDER] + smsvdp.sms_frame_timing[ACTIVE_DISPLAY_V]
 	               + smsvdp.sms_frame_timing[BOTTOM_BORDER] + smsvdp.sms_frame_timing[BOTTOM_BLANKING];
@@ -233,7 +240,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 
 	/* Check if we're on the last line of a frame */
 	if ( vpos == vpos_limit - 1 ) {
-		sms_check_pause_button();
+		sms_check_pause_button( machine );
 		return;
 	}
 
@@ -254,7 +261,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 				smsvdp.status |= STATUS_HINT;
 				if ( smsvdp.reg[0x00] & 0x10 ) {
 					/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-					timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), NULL, 0, smsvdp_set_irq );
+					timer_set( video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
 				}
 			}
 
@@ -263,7 +270,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			smsvdp.status |= STATUS_VINT;
 			if ( smsvdp.reg[0x01] & 0x20 ) {
 				/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-				timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), NULL, 0, smsvdp_set_irq );
+				timer_set( video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
 			}
 		}
 		if ( video_skip_this_frame() ) {
@@ -281,7 +288,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 		/* Draw middle of the border */
 		/* We need to do this through the regular drawing function so it will */
 		/* be included in the gamegear scaling functions */
-		sms_refresh_line( tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit - smsvdp.sms_frame_timing[ACTIVE_DISPLAY_V], vpos - ( vpos_limit - smsvdp.sms_frame_timing[ACTIVE_DISPLAY_V] ) );
+		sms_refresh_line( machine, tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit - smsvdp.sms_frame_timing[ACTIVE_DISPLAY_V], vpos - ( vpos_limit - smsvdp.sms_frame_timing[ACTIVE_DISPLAY_V] ) );
 		return;
 	}
 
@@ -298,7 +305,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			smsvdp.status |= STATUS_HINT;
 			if ( smsvdp.reg[0x00] & 0x10 ) {
 				/* Delay triggering of interrupt to allow software to read the status bit before the irq */
-				timer_set( video_screen_get_time_until_pos( 0, video_screen_get_vpos(0), video_screen_get_hpos(0) + 1 ), NULL, 0, smsvdp_set_irq );
+				timer_set( video_screen_get_time_until_pos(machine->primary_screen, video_screen_get_vpos(machine->primary_screen), video_screen_get_hpos(machine->primary_screen) + 1 ), NULL, 0, smsvdp_set_irq );
 			}
 		} else {
 			smsvdp.line_counter -= 1;
@@ -323,7 +330,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 			rec.min_x = LBORDER_START + LBORDER_X_PIXELS + 256;
 			rec.max_x = rec.min_x + RBORDER_X_PIXELS - 1;
 			fillbitmap( tmpbitmap, machine->pens[smsvdp.current_palette[BACKDROP_COLOR]], &rec );
-			sms_refresh_line( tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit, vpos - vpos_limit );
+			sms_refresh_line( machine, tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit, vpos - vpos_limit );
 		}
 		return;
 	}
@@ -347,7 +354,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 		/* Draw middle of the border */
 		/* We need to do this through the regular drawing function so it will */
 		/* be included in the gamegear scaling functions */
-		sms_refresh_line( tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit + smsvdp.sms_frame_timing[TOP_BORDER], vpos - ( vpos_limit + smsvdp.sms_frame_timing[TOP_BORDER] ) );
+		sms_refresh_line( machine, tmpbitmap, LBORDER_START + LBORDER_X_PIXELS, vpos_limit + smsvdp.sms_frame_timing[TOP_BORDER], vpos - ( vpos_limit + smsvdp.sms_frame_timing[TOP_BORDER] ) );
 		return;
 	}
 }
@@ -383,7 +390,7 @@ static TIMER_CALLBACK(smsvdp_display_callback)
 	if (smsvdp.irq_state == 1) {
 		smsvdp.irq_state = 0;
 		if ( smsvdp.int_callback ) {
-			smsvdp.int_callback( CLEAR_LINE );
+			smsvdp.int_callback( machine, CLEAR_LINE );
 		}
 	}
 
@@ -447,11 +454,11 @@ WRITE8_HANDLER(sms_vdp_ctrl_w) {
 				logerror("overscan enabled.\n");
 			}
 			if ( regNum == 0 || regNum == 1 ) {
-				set_display_settings();
+				set_display_settings( machine );
 			}
 			if ( ( regNum == 1 ) && ( smsvdp.reg[0x01] & 0x20 ) && ( smsvdp.status & STATUS_VINT ) ) {
 				smsvdp.irq_state = 1;
-				smsvdp.int_callback( ASSERT_LINE );
+				smsvdp.int_callback( machine, ASSERT_LINE );
 			}
 			smsvdp.addrmode = 0;
 			break;
@@ -913,7 +920,7 @@ static void sms_refresh_line_mode0(int *lineBuffer, int line) {
 	sms_refresh_tms9918_sprites( lineBuffer, line );
 }
 
-static void sms_refresh_line( mame_bitmap *bitmap, int pixelOffsetX, int pixelPlotY, int line ) {
+static void sms_refresh_line( running_machine *machine, bitmap_t *bitmap, int pixelOffsetX, int pixelPlotY, int line ) {
 	int x;
 	int *blitLineBuffer = smsvdp.line_buffer;
 
@@ -992,10 +999,10 @@ static void sms_refresh_line( mame_bitmap *bitmap, int pixelOffsetX, int pixelPl
 			line4 = smsvdp.line_buffer + ( ( ( myLine - 0 ) & 0x03 ) + 1 ) * 256;
 
 			for( x = 0+48; x < 160+48; x++ ) {
-				rgb_t	c1 = Machine->pens[line1[x]];
-				rgb_t	c2 = Machine->pens[line2[x]];
-				rgb_t	c3 = Machine->pens[line3[x]];
-				rgb_t	c4 = Machine->pens[line4[x]];
+				rgb_t	c1 = machine->pens[line1[x]];
+				rgb_t	c2 = machine->pens[line2[x]];
+				rgb_t	c3 = machine->pens[line3[x]];
+				rgb_t	c4 = machine->pens[line4[x]];
 				*BITMAP_ADDR32( bitmap, pixelPlotY, pixelOffsetX + x) =
 					MAKE_RGB( ( RGB_RED(c1)/6 + RGB_RED(c2)/3 + RGB_RED(c3)/3 + RGB_RED(c4)/6 ),
 						( RGB_GREEN(c1)/6 + RGB_GREEN(c2)/3 + RGB_GREEN(c3)/3 + RGB_GREEN(c4)/6 ),
@@ -1007,7 +1014,7 @@ static void sms_refresh_line( mame_bitmap *bitmap, int pixelOffsetX, int pixelPl
 	}
 
 	for( x = 0; x < 256; x++ ) {
-		*BITMAP_ADDR32( bitmap, pixelPlotY + line, pixelOffsetX + x) = Machine->pens[blitLineBuffer[x]];
+		*BITMAP_ADDR32( bitmap, pixelPlotY + line, pixelOffsetX + x) = machine->pens[blitLineBuffer[x]];
 	}
 }
 
@@ -1044,12 +1051,15 @@ static void sms_update_palette(void) {
 	}
 }
 
-VIDEO_UPDATE(sms) {
+VIDEO_UPDATE(sms)
+{
+	int width = video_screen_get_width(screen);
+	int height = video_screen_get_height(screen);
 	int x, y;
 
 	if (smsvdp.prev_bitmap_saved) {
-	for (y = 0; y < machine->screen[0].height; y++) {
-		for (x = 0; x < machine->screen[0].width; x++) {
+	for (y = 0; y < height; y++) {
+		for (x = 0; x < width; x++) {
 			*BITMAP_ADDR32(bitmap, y, x) = (*BITMAP_ADDR32(tmpbitmap, y, x) + *BITMAP_ADDR32(smsvdp.prev_bitmap, y, x)) >> 2;
 			logerror("%x %x %x\n", *BITMAP_ADDR32(tmpbitmap, y, x), *BITMAP_ADDR32(smsvdp.prev_bitmap, y, x), (*BITMAP_ADDR32(tmpbitmap, y, x) + *BITMAP_ADDR32(smsvdp.prev_bitmap, y, x)) >> 2);
 		}

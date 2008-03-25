@@ -14,7 +14,9 @@
 #include "image.h"
 
 
-void z80bin_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info);
+void z80bin_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+
+int z80bin_load_file( running_machine *machine, mess_image *image, const char *file_type, UINT16 *exec_addr, UINT16 *start_addr, UINT16 *end_addr );
 
 
 #endif /* Z80BIN_H */

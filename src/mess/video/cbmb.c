@@ -5,12 +5,22 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/cbmb.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 
 
 static int cbmb_font=0;
+
+VIDEO_START( cbmb_crtc )
+{
+}
+
+VIDEO_UPDATE( cbmb_crtc )
+{
+	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	mc6845_update(mc6845, bitmap, cliprect);
+	return 0;
+}
 
 void cbm600_vh_init(void)
 {
@@ -52,8 +62,6 @@ VIDEO_START( cbm700 )
 			}
 		}
 	}
-
-	VIDEO_START_CALL(generic);
 }
 
 void cbmb_vh_set_font(int font)
@@ -61,29 +69,33 @@ void cbmb_vh_set_font(int font)
 	cbmb_font=font;
 }
 
-void cbm600_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
-					   UINT8 ra, UINT16 y, UINT8 x_count, void *param) {
+MC6845_UPDATE_ROW( cbm600_update_row )
+{
 	int i;
 
 	for( i = 0; i < x_count; i++ ) {
-//		if ( ma + i == cursor_ma ) {
-//			plot_box( bitmap, Machine->gfx[cbmb_font]->width * i, y, Machine->gfx[cbmb_font]->width, 1, Machine->pens[1] );
-//		} else {
-			drawgfx( bitmap, Machine->gfx[cbmb_font], videoram[(ma+i )& 0x7ff], 0, 0, 0, Machine->gfx[cbmb_font]->width * i, y-ra, cliprect, TRANSPARENCY_NONE, 0 );
-//		}
+		if ( i == cursor_x ) {
+			plot_box( bitmap, device->machine->gfx[cbmb_font]->width * i, y, device->machine->gfx[cbmb_font]->width, 1, 1 );
+		} else {
+			drawgfx( bitmap, device->machine->gfx[cbmb_font], videoram[(ma+i )& 0x7ff], 0, 0, 0, device->machine->gfx[cbmb_font]->width * i, y-ra, cliprect, TRANSPARENCY_NONE, 0 );
+		}
 	}
 }
 
-void cbm700_update_row(mame_bitmap *bitmap, const rectangle *cliprect, UINT16 ma,
-					   UINT8 ra, UINT16 y, UINT8 x_count, void *param) {
+MC6845_UPDATE_ROW( cbm700_update_row )
+{
 	int i;
 
 	for( i = 0; i < x_count; i++ ) {
-//		if ( ma + i == cursor_ma ) {
-//			plot_box( bitmap, Machine->gfx[cbmb_font]->width * i, y, Machine->gfx[cbmb_font]->width, 1, Machine->pens[1] );
-//		} else {
-			drawgfx( bitmap, Machine->gfx[cbmb_font], videoram[(ma+i) & 0x7ff], 0, 0, 0, Machine->gfx[cbmb_font]->width * i, y-ra, cliprect, TRANSPARENCY_NONE, 0 );
-//		}
+		if ( i == cursor_x ) {
+			plot_box( bitmap, device->machine->gfx[cbmb_font]->width * i, y, device->machine->gfx[cbmb_font]->width, 1, 1 );
+		} else {
+			drawgfx( bitmap, device->machine->gfx[cbmb_font], videoram[(ma+i) & 0x7ff], 0, 0, 0, device->machine->gfx[cbmb_font]->width * i, y-ra, cliprect, TRANSPARENCY_NONE, 0 );
+		}
 	}
+}
+
+MC6845_ON_DE_CHANGED( cbmb_display_enable_changed )
+{
 }
 

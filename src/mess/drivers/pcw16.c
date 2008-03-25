@@ -128,16 +128,16 @@ static int pcw16_fdc_int_code;
 static int pcw16_system_status;
 
 // debugging - write ram as seen by cpu
-static void pcw16_refresh_ints(void)
+static void pcw16_refresh_ints(running_machine *machine)
 {
 	/* any bits set excluding vsync */
 	if ((pcw16_system_status & (~0x04))!=0)
 	{
-		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	}
 }
 
@@ -154,15 +154,15 @@ static TIMER_CALLBACK(pcw16_timer_callback)
 
 	if (pcw16_interrupt_counter!=0)
 	{
-		pcw16_refresh_ints();
+		pcw16_refresh_ints(machine);
 	}
 }
 
 static ADDRESS_MAP_START(pcw16_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK5)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK6)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK7)
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(MRA8_BANK4, MWA8_BANK8)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK5)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK6)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_BANK7)
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK8)
 ADDRESS_MAP_END
 
 
@@ -175,20 +175,20 @@ static WRITE8_HANDLER(pcw16_palette_w)
 
 static char *pcw16_mem_ptr[4];
 
-static const write8_handler pcw16_write_handler_dram[4] =
+static const write8_machine_func pcw16_write_handler_dram[4] =
 {
-	MWA8_BANK5,
-	MWA8_BANK6,
-	MWA8_BANK7,
-	MWA8_BANK8
+	SMH_BANK5,
+	SMH_BANK6,
+	SMH_BANK7,
+	SMH_BANK8
 };
 
-static const read8_handler pcw16_read_handler_dram[4] =
+static const read8_machine_func pcw16_read_handler_dram[4] =
 {
-	MRA8_BANK1,
-	MRA8_BANK2,
-	MRA8_BANK3,
-	MRA8_BANK4
+	SMH_BANK1,
+	SMH_BANK2,
+	SMH_BANK3,
+	SMH_BANK4
 };
 /*******************************************/
 
@@ -260,7 +260,7 @@ static  READ8_HANDLER(pcw16_flash1_bank_handler3_r)
 	return pcw16_flash1_bank_handler_r(3, offset);
 }
 
-static const read8_handler pcw16_flash0_bank_handlers_r[4] =
+static const read8_machine_func pcw16_flash0_bank_handlers_r[4] =
 {
 	pcw16_flash0_bank_handler0_r,
 	pcw16_flash0_bank_handler1_r,
@@ -268,7 +268,7 @@ static const read8_handler pcw16_flash0_bank_handlers_r[4] =
 	pcw16_flash0_bank_handler3_r,
 };
 
-static const read8_handler pcw16_flash1_bank_handlers_r[4] =
+static const read8_machine_func pcw16_flash1_bank_handlers_r[4] =
 {
 	pcw16_flash1_bank_handler0_r,
 	pcw16_flash1_bank_handler1_r,
@@ -337,7 +337,7 @@ static WRITE8_HANDLER(pcw16_flash1_bank_handler3_w)
 	pcw16_flash1_bank_handler_w(3, offset, data);
 }
 
-static const write8_handler pcw16_flash0_bank_handlers_w[4] =
+static const write8_machine_func pcw16_flash0_bank_handlers_w[4] =
 {
 	pcw16_flash0_bank_handler0_w,
 	pcw16_flash0_bank_handler1_w,
@@ -345,7 +345,7 @@ static const write8_handler pcw16_flash0_bank_handlers_w[4] =
 	pcw16_flash0_bank_handler3_w,
 };
 
-static const write8_handler pcw16_flash1_bank_handlers_w[4] =
+static const write8_machine_func pcw16_flash1_bank_handlers_w[4] =
 {
 	pcw16_flash1_bank_handler0_w,
 	pcw16_flash1_bank_handler1_w,
@@ -374,14 +374,14 @@ static  READ8_HANDLER(pcw16_no_mem_r)
 
 static void pcw16_set_bank_handlers(int bank, PCW16_RAM_TYPE type)
 {
-	read8_handler read_handler;
-	write8_handler write_handler;
+	read8_machine_func read_handler;
+	write8_machine_func write_handler;
 
 	switch (type) {
 	case PCW16_MEM_ROM:
 		/* rom */
 		read_handler = pcw16_read_handler_dram[bank];
-		write_handler = MWA8_NOP;
+		write_handler = SMH_NOP;
 		break;
 
 	case PCW16_MEM_FLASH_1:
@@ -397,7 +397,7 @@ static void pcw16_set_bank_handlers(int bank, PCW16_RAM_TYPE type)
 
 	case PCW16_MEM_NONE:
 		read_handler = pcw16_no_mem_r;
-		write_handler = MWA8_NOP;
+		write_handler = SMH_NOP;
 		break;
 
 	default:
@@ -551,9 +551,9 @@ static int pcw16_keyboard_bits_output = 0;
 static int pcw16_keyboard_state = 0;
 static int pcw16_keyboard_previous_state=0;
 static void pcw16_keyboard_reset(void);
-static void pcw16_keyboard_int(int);
+static void pcw16_keyboard_int(running_machine *, int);
 
-static void pcw16_keyboard_init(void)
+static void pcw16_keyboard_init(running_machine *machine)
 {
 	int i;
 	int b;
@@ -580,7 +580,7 @@ static void pcw16_keyboard_init(void)
 
 
 	/* clear int */
-	pcw16_keyboard_int(0);
+	pcw16_keyboard_int(machine, 0);
 	/* reset state */
 	pcw16_keyboard_state = 0;
 	/* reset ready for transmit */
@@ -611,7 +611,7 @@ static void pcw16_keyboard_set_clock_state(int state)
 	pcw16_keyboard_refresh_outputs();
 }
 
-static void pcw16_keyboard_int(int state)
+static void pcw16_keyboard_int(running_machine *machine, int state)
 {
 	pcw16_system_status &= ~(1<<1);
 
@@ -620,7 +620,7 @@ static void pcw16_keyboard_int(int state)
 		pcw16_system_status |= (1<<1);
 	}
 
-	pcw16_refresh_ints();
+	pcw16_refresh_ints(machine);
 }
 
 static void pcw16_keyboard_reset(void)
@@ -635,7 +635,7 @@ static READ8_HANDLER(pcw16_keyboard_data_shift_r)
 	//logerror("keyboard data shift r: %02x\n", pcw16_keyboard_data_shift);
 	pcw16_keyboard_state &= ~(PCW16_KEYBOARD_BUSY_STATUS);
 
-	pcw16_keyboard_int(0);
+	pcw16_keyboard_int(machine, 0);
 	/* reset for reception */
 	pcw16_keyboard_reset();
 
@@ -659,9 +659,8 @@ static void	pcw16_begin_byte_transfer(void)
 #endif
 
 /* signal a code has been received */
-static void	pcw16_keyboard_signal_byte_received(int data)
+static void	pcw16_keyboard_signal_byte_received(running_machine *machine, int data)
 {
-
 	/* clear clock */
 	pcw16_keyboard_set_clock_state(0);
 
@@ -684,7 +683,7 @@ static void	pcw16_keyboard_signal_byte_received(int data)
 	if ((pcw16_keyboard_parity_table[data])==0)
 		pcw16_keyboard_state |= PCW16_KEYBOARD_PARITY_MASK;
 
-	pcw16_keyboard_int(1);
+	pcw16_keyboard_int(machine, 1);
 }
 
 
@@ -757,7 +756,7 @@ static WRITE8_HANDLER(pcw16_keyboard_control_w)
 				/* set clock low - no furthur transmissions */
 				pcw16_keyboard_set_clock_state(0);
 				/* set int */
-				pcw16_keyboard_int(1);
+				pcw16_keyboard_int(machine, 1);
 			}
 		}
 
@@ -770,7 +769,7 @@ static WRITE8_HANDLER(pcw16_keyboard_control_w)
 		{
 			if ((pcw16_system_status & (1<<1))!=0)
 			{
-				pcw16_keyboard_int(0);
+				pcw16_keyboard_int(machine, 0);
 			}
 		}
 	}
@@ -795,7 +794,7 @@ static TIMER_CALLBACK(pcw16_keyboard_timer_callback)
 //              pcw16_dump_cpu_ram();
 //          }
 
-			pcw16_keyboard_signal_byte_received(data);
+			pcw16_keyboard_signal_byte_received(machine, data);
 		}
 	}
 }
@@ -991,7 +990,7 @@ static WRITE8_HANDLER(rtc_year_w)
 
 static int previous_fdc_int_state;
 
-static void pcw16_trigger_fdc_int(void)
+static void pcw16_trigger_fdc_int(running_machine *machine)
 {
 	int state;
 
@@ -1014,7 +1013,7 @@ static void pcw16_trigger_fdc_int(void)
 				{
 					/* I'll pulse it because if I used hold-line I'm not sure
                     it would clear - to be checked */
-					cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+					cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 				}
 			}
 		}
@@ -1023,7 +1022,7 @@ static void pcw16_trigger_fdc_int(void)
 		/* attach fdc to int */
 		case 1:
 		{
-			pcw16_refresh_ints();
+			pcw16_refresh_ints(machine);
 		}
 		break;
 
@@ -1035,14 +1034,14 @@ static void pcw16_trigger_fdc_int(void)
 	previous_fdc_int_state = state;
 }
 
-static  READ8_HANDLER(pcw16_system_status_r)
+static READ8_HANDLER(pcw16_system_status_r)
 {
 //  logerror("system status r: \n");
 
 	return pcw16_system_status | (readinputport(0) & 0x04);
 }
 
-static  READ8_HANDLER(pcw16_timer_interrupt_counter_r)
+static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
 {
 	int data;
 
@@ -1052,7 +1051,7 @@ static  READ8_HANDLER(pcw16_timer_interrupt_counter_r)
 	/* clear display int */
 	pcw16_system_status &= ~(1<<0);
 
-	pcw16_refresh_ints();
+	pcw16_refresh_ints(machine);
 
 	return data;
 }
@@ -1159,36 +1158,36 @@ static WRITE8_HANDLER(pcw16_system_control_w)
 /* write to Super I/O chip. FDC Data Rate. */
 static WRITE8_HANDLER(pcw16_superio_fdc_datarate_w)
 {
-	pc_fdc_w(PC_FDC_DATA_RATE_REGISTER,data);
+	pc_fdc_w(machine, PC_FDC_DATA_RATE_REGISTER,data);
 }
 
 /* write to Super I/O chip. FDC Digital output register */
 static WRITE8_HANDLER(pcw16_superio_fdc_digital_output_register_w)
 {
-	pc_fdc_w(PC_FDC_DIGITAL_OUTPUT_REGISTER, data);
+	pc_fdc_w(machine, PC_FDC_DIGITAL_OUTPUT_REGISTER, data);
 }
 
 /* write to Super I/O chip. FDC Data Register */
 static WRITE8_HANDLER(pcw16_superio_fdc_data_w)
 {
-	pc_fdc_w(PC_FDC_DATA_REGISTER, data);
+	pc_fdc_w(machine, PC_FDC_DATA_REGISTER, data);
 }
 
 /* write to Super I/O chip. FDC Data Register */
 static  READ8_HANDLER(pcw16_superio_fdc_data_r)
 {
-	return pc_fdc_r(PC_FDC_DATA_REGISTER);
+	return pc_fdc_r(machine, PC_FDC_DATA_REGISTER);
 }
 
 /* write to Super I/O chip. FDC Main Status Register */
 static  READ8_HANDLER(pcw16_superio_fdc_main_status_register_r)
 {
-	return pc_fdc_r(PC_FDC_MAIN_STATUS_REGISTER);
+	return pc_fdc_r(machine, PC_FDC_MAIN_STATUS_REGISTER);
 }
 
 static  READ8_HANDLER(pcw16_superio_fdc_digital_input_register_r)
 {
-	return pc_fdc_r(PC_FDC_DIGITIAL_INPUT_REGISTER);
+	return pc_fdc_r(machine, PC_FDC_DIGITIAL_INPUT_REGISTER);
 }
 
 static void	pcw16_fdc_interrupt(int state)
@@ -1202,7 +1201,7 @@ static void	pcw16_fdc_interrupt(int state)
 		pcw16_system_status |= (1<<6);
 	}
 
-	pcw16_trigger_fdc_int();
+	pcw16_trigger_fdc_int(Machine);
 }
 
 static const struct pc_fdc_interface pcw16_fdc_interface=
@@ -1222,7 +1221,7 @@ static void pcw16_com_interrupt(int nr, int state)
 		pcw16_system_status |= (1<<irq[nr]);
 	}
 
-	pcw16_refresh_ints();
+	pcw16_refresh_ints(Machine);
 }
 
 static void pcw16_com_refresh_connected(int serial_port_id)
@@ -1303,7 +1302,7 @@ static ADDRESS_MAP_START(pcw16_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 
-static void pcw16_reset(void)
+static void pcw16_reset(running_machine *machine)
 {
 	/* initialise defaults */
 	pcw16_fdc_int_code = 2;
@@ -1324,7 +1323,7 @@ static void pcw16_reset(void)
 	rtc_control = 1;
 	rtc_256ths_seconds = 0;
 
-	pcw16_keyboard_init();
+	pcw16_keyboard_init(machine);
 	uart8250_reset(0);
 	uart8250_reset(1);
 }
@@ -1372,7 +1371,7 @@ static MACHINE_RESET( pcw16 )
 	at_keyboard_init(AT_KEYBOARD_TYPE_AT);
 	at_keyboard_set_scan_code_set(3);
 
-	pcw16_reset();
+	pcw16_reset(machine);
 
 	beep_set_state(0,0);
 	beep_set_frequency(0,3750);
@@ -1399,20 +1398,19 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_CPU_ADD(Z80, 16000000)
 	MDRV_CPU_PROGRAM_MAP(pcw16_map, 0)
 	MDRV_CPU_IO_MAP(pcw16_io, 0)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( pcw16 )
 	MDRV_NVRAM_HANDLER( pcw16 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(PCW16_SCREEN_WIDTH, PCW16_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, PCW16_SCREEN_WIDTH-1, 0, PCW16_SCREEN_HEIGHT-1)
 	MDRV_PALETTE_LENGTH(PCW16_NUM_COLOURS)
-	MDRV_COLORTABLE_LENGTH(PCW16_NUM_COLOURS)
 	MDRV_PALETTE_INIT( pcw16 )
 
 	MDRV_VIDEO_START( pcw16 )
@@ -1446,29 +1444,29 @@ ROM_START(pcw16)
 ROM_END
 
 #ifdef UNUSED_FUNCTION
-static void pcw16_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void pcw16_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}
 }
 #endif
 
-static void pcw16_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void pcw16_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_pc; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}

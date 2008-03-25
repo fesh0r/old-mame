@@ -1,7 +1,6 @@
-#include <stdio.h>
 #include "driver.h"
-#include "image.h"
 #include "deprecat.h"
+#include "image.h"
 #include "includes/sms.h"
 #include "video/smsvdp.h"
 #include "sound/2413intf.h"
@@ -242,10 +241,10 @@ WRITE8_HANDLER(sms_version_w) {
 		smsVersion = (data & 0xA0);
 	}
 	if ( data & 0x08 ) {
-		sms_input_write( 0, ( data & 0x20 ) >> 5 );
+		sms_input_write( machine, 0, ( data & 0x20 ) >> 5 );
 	}
 	if ( data & 0x02 ) {
-		sms_input_write( 1, ( data & 0x80 ) >> 7 );
+		sms_input_write( machine, 1, ( data & 0x80 ) >> 7 );
 	}
 }
 
@@ -273,19 +272,19 @@ WRITE8_HANDLER(sms_version_w) {
 
 READ8_HANDLER(sms_count_r) {
 	if ( offset & 0x01 ) {
-		return sms_vdp_hcount_r(offset);
+		return sms_vdp_hcount_r(machine, offset);
 	} else {
 		/* VCount read */
-		return sms_vdp_vcount_r(offset);
+		return sms_vdp_vcount_r(machine, offset);
 	}
 }
 
-void sms_check_pause_button( void ) {
+void sms_check_pause_button( running_machine *machine ) {
 	if ( ! IS_GAMEGEAR ) {
 		if ( ! (readinputport(2) & 0x80) ) {
 			if ( ! smsPaused ) {
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, ASSERT_LINE );
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE );
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE );
+				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE );
 			}
 			smsPaused = 1;
 		} else {
@@ -305,14 +304,14 @@ void sms_check_pause_button( void ) {
 
 WRITE8_HANDLER(sms_YM2413_register_port_0_w) {
 	if ( HAS_FM ) {
-		YM2413_register_port_0_w(offset, (data & 0x3F));
+		YM2413_register_port_0_w(machine, offset, (data & 0x3F));
 	}
 }
 
 WRITE8_HANDLER(sms_YM2413_data_port_0_w) {
 	if ( HAS_FM ) {
 		logerror("data_port_0_w %x %x\n", offset, data);
-		YM2413_data_port_0_w(offset, data);
+		YM2413_data_port_0_w(machine, offset, data);
 	}
 }
 
@@ -469,7 +468,7 @@ WRITE8_HANDLER(sms_bios_w) {
 
 	logerror("bios write %02x, pc: %04x\n", data, activecpu_get_pc());
 
-	setup_rom();
+	setup_rom(machine);
 }
 
 WRITE8_HANDLER(sms_cartram2_w) {
@@ -586,7 +585,7 @@ static void sms_machine_stop(running_machine *machine) {
 	}
 }
 
-void setup_rom(void)
+void setup_rom(running_machine *machine)
 {
 	/* 1. set up bank pointers to point to nothing */
 	memory_set_bankptr( 1, sms_banking_none[1] );
@@ -738,6 +737,7 @@ static int detect_korean_mapper( UINT8 *rom ) {
 }
 
 DEVICE_INIT( sms_cart ) {
+	running_machine *machine = Machine;
 	int i;
 
 	for ( i = 0; i < MAX_CARTRIDGES; i++ ) {
@@ -766,6 +766,7 @@ DEVICE_INIT( sms_cart ) {
 
 DEVICE_LOAD( sms_cart )
 {
+	running_machine *machine = Machine;
 	int size = image_length(image);
 	int index = image_index_in_device( image );
 	const char *fname = image_filename( image );
@@ -939,12 +940,12 @@ MACHINE_RESET(sms)
 
 	setup_banks();
 
-	setup_rom();
+	setup_rom(machine);
 
 	rapid_fire_state_1 = 0;
 	rapid_fire_state_2 = 0;
 	rapid_fire_timer = timer_alloc( rapid_fire_callback , NULL);
-	timer_adjust( rapid_fire_timer, ATTOTIME_IN_HZ(10), 0, ATTOTIME_IN_HZ(10) );
+	timer_adjust_periodic(rapid_fire_timer, ATTOTIME_IN_HZ(10), 0, ATTOTIME_IN_HZ(10));
 
 	last_paddle_read_time = 0;
 	paddle_read_state = 0;
@@ -976,7 +977,7 @@ WRITE8_HANDLER(sms_store_cart_select_w) {
 	}
 	setup_cart_banks();
 	memory_set_bankptr( 10, sms_banking_cart[3] + 0x2000 );
-	setup_rom();
+	setup_rom(machine);
 }
 
 READ8_HANDLER(sms_store_select1) {
@@ -1003,11 +1004,11 @@ WRITE8_HANDLER(sms_store_control_w) {
 	sms_store_control = data;
 }
 
-void sms_int_callback( int state ) {
-	cpunum_set_input_line(Machine, 0, 0, state );
+void sms_int_callback( running_machine *machine, int state ) {
+	cpunum_set_input_line(machine, 0, 0, state );
 }
 
-void sms_store_int_callback( int state ) {
-	cpunum_set_input_line(Machine, sms_store_control & 0x01 ? 1 : 0, 0, state );
+void sms_store_int_callback( running_machine *machine, int state ) {
+	cpunum_set_input_line(machine, sms_store_control & 0x01 ? 1 : 0, 0, state );
 }
 

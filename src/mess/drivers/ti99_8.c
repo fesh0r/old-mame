@@ -370,7 +370,7 @@ static const TMS9928a_interface tms9118_interface =
 
 static MACHINE_START(ti99_8_60hz)
 {
-    ti99_common_init(&tms9118_interface);
+    ti99_common_init(machine, &tms9118_interface);
 }
 
 static const TMS9928a_interface tms9129_interface =
@@ -383,7 +383,7 @@ static const TMS9928a_interface tms9129_interface =
 
 static MACHINE_START(ti99_8_50hz)
 {
-    ti99_common_init(&tms9129_interface);
+    ti99_common_init(machine, &tms9129_interface);
 }
 
 static const struct tms9995reset_param ti99_8_processor_config =
@@ -397,25 +397,22 @@ static const struct tms9995reset_param ti99_8_processor_config =
 };
 
 static MACHINE_DRIVER_START(ti99_8_60hz)
-
 	/* basic machine hardware */
 	/* TMS9995-MP9537 CPU @ 10.7 MHz */
 	MDRV_CPU_ADD(TMS9995, 10738635)
 	MDRV_CPU_CONFIG(ti99_8_processor_config)
 	MDRV_CPU_PROGRAM_MAP(ti99_8_memmap, 0)
 	MDRV_CPU_IO_MAP(ti99_8_readcru, ti99_8_writecru)
-	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
-
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
+	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_8_60hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -428,26 +425,24 @@ static MACHINE_DRIVER_START(ti99_8_60hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START(ti99_8_50hz)
 
+static MACHINE_DRIVER_START(ti99_8_50hz)
 	/* basic machine hardware */
 	/* TMS9995-MP9537 CPU @ 10.7 MHz */
 	MDRV_CPU_ADD(TMS9995, 10738635)
 	MDRV_CPU_CONFIG(ti99_8_processor_config)
 	MDRV_CPU_PROGRAM_MAP(ti99_8_memmap, 0)
 	MDRV_CPU_IO_MAP(ti99_8_readcru, ti99_8_writecru)
-	MDRV_CPU_VBLANK_INT(ti99_vblank_interrupt, 1)
-	/*MDRV_CPU_PERIODIC_INT(func, rate)*/
-
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
-	/*MDRV_INTERLEAVE(interleave)*/
+	MDRV_CPU_VBLANK_INT("main", ti99_vblank_interrupt)
 
 	MDRV_MACHINE_START( ti99_8_50hz )
 	MDRV_MACHINE_RESET( ti99 )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -484,7 +479,7 @@ ROM_START(ti99_8)
 	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
 
 	/* HSGPL memory space */
-	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
+	ROM_REGION(region_hsgpl_len, region_hsgpl, ROMREGION_ERASEFF)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
@@ -494,162 +489,162 @@ ROM_END
 
 #define rom_ti99_8e rom_ti99_8
 
-static void ti99_8_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void ti99_8_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_CARTSLOT; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 3; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_CARTSLOT; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,c,d,g,m,crom,drom,grom,mrom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,c,d,g,m,crom,drom,grom,mrom"); break;
 	}
 }
 
-static void ti99_8_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
+		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:				info->p = (void *) floppyoptions_ti99; break;
 
 		default:										floppy_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void ti99_8_harddisk_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 3; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_HARDDISK; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
-		case DEVINFO_STR_DEV_TAG:						strcpy(info->s = device_temp_str(), "ti99_8_hd"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
+		case MESS_DEVINFO_STR_DEV_TAG:						strcpy(info->s = device_temp_str(), "ti99_8_hd"); break;
 	}
 }
 
-static void ti99_8_parallel_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_parallel_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* parallel */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_PARALLEL; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 
-static void ti99_8_serial_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_serial_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* serial */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_SERIAL; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 
 #if 0
-static void ti99_8_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_QUICKLOAD; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_QUICKLOAD; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hsgpl; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hsgpl; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hsgpl; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hsgpl; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 #endif
 
-static void ti99_8_memcard_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void ti99_8_memcard_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* memcard */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_MEMCARD; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 

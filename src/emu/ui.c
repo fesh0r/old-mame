@@ -24,6 +24,7 @@
 #include "mess.h"
 #include "uimess.h"
 #include "inputx.h"
+#include "messopts.h"
 #endif /* MESS */
 
 #include <ctype.h>

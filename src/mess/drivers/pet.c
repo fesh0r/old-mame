@@ -84,6 +84,8 @@ crtc 40 columns ( 50 or 60 hz )
 crtc 80 columns ( 60 or 60 hz )
 (board version able to do 40 and 80 columns)
 
+There appears to be a 16MHz clock attached to the 6845-type devices.
+
 3 types of basic roms
 basic 1 (only 40 columns, no crtc, with graphics)
 basic 2 (only 40 columns version, no crtc)
@@ -113,20 +115,19 @@ when problems start with -log and look into error.log file
  */
 
 #include "driver.h"
-#include "mslegacy.h"
 
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
 #include "includes/pet.h"
-#include "video/crtc6845.h"
+#include "video/mc6845.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
 /*#include "includes/vc1541.h" */
 
 static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
@@ -136,13 +137,13 @@ static ADDRESS_MAP_START(pet_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pet40_mem , ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE(0x8000, 0x83ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x0c00) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size )
 	AM_RANGE(0xa000, 0xe7ff) AM_ROM
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
-	AM_RANGE(0xe880, 0xe880) AM_WRITE( crtc6845_0_address_w )
-	AM_RANGE(0xe881, 0xe881) AM_READWRITE(crtc6845_0_register_r, crtc6845_0_register_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -158,12 +159,12 @@ static ADDRESS_MAP_START( pet80_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
-	AM_RANGE(0xe880, 0xe880) AM_WRITE( crtc6845_0_address_w )
-	AM_RANGE(0xe881, 0xe881) AM_READWRITE(crtc6845_0_register_r, crtc6845_0_register_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 #endif
-	AM_RANGE(0xf000, 0xffff) AM_READ(MRA8_BANK8)
-	AM_RANGE(0xf000, 0xffef) AM_WRITE(MWA8_BANK8)
-	AM_RANGE(0xfff1, 0xffff) AM_WRITE(MWA8_BANK9)
+	AM_RANGE(0xf000, 0xffff) AM_READ(SMH_BANK8)
+	AM_RANGE(0xf000, 0xffef) AM_WRITE(SMH_BANK8)
+	AM_RANGE(0xfff1, 0xffff) AM_WRITE(SMH_BANK9)
 ADDRESS_MAP_END
 
 
@@ -189,8 +190,8 @@ static ADDRESS_MAP_START( superpet_mem , ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
-	AM_RANGE(0xe880, 0xe880) AM_WRITE(crtc6845_0_address_w)
-	AM_RANGE(0xe881, 0xe881) AM_READWRITE(crtc6845_0_register_r, crtc6845_0_register_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	/* 0xefe0, 0xefe3, mos 6702 */
 	/* 0xeff0, 0xeff3, acia6551 */
 	AM_RANGE(0xeff8, 0xefff) AM_READWRITE(superpet_r, superpet_w)
@@ -205,8 +206,8 @@ static ADDRESS_MAP_START( superpet_m6809_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0xe810, 0xe813) AM_READWRITE(pia_0_r, pia_0_w)
 	AM_RANGE(0xe820, 0xe823) AM_READWRITE(pia_1_r, pia_1_w)
 	AM_RANGE(0xe840, 0xe84f) AM_READWRITE(via_0_r, via_0_w)
-	AM_RANGE(0xe880, 0xe880) AM_WRITE(crtc6845_0_address_w)
-	AM_RANGE(0xe881, 0xe881) AM_READWRITE(crtc6845_0_register_r, crtc6845_0_register_w)
+	AM_RANGE(0xe880, 0xe880) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
+	AM_RANGE(0xe881, 0xe881) AM_DEVREADWRITE(MC6845, "crtc", mc6845_register_r, mc6845_register_w)
 	AM_RANGE(0xeff8, 0xefff) AM_READWRITE(superpet_r, superpet_w)
 	AM_RANGE(0xf000, 0xffff) AM_ROM
 ADDRESS_MAP_END
@@ -476,12 +477,6 @@ static const unsigned char pet_palette[] =
 	0,0x80,0, /* green */
 };
 
-static const unsigned short pet_colortable[][2] = {
-	{ 0, 1 },
-	/* reverse */
-	{ 1, 0 }
-};
-
 static const gfx_layout pet_charlayout =
 {
 	8,8,
@@ -529,10 +524,48 @@ static GFXDECODE_START( superpet )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x3000, pet80_charlayout, 0, 1 )
 GFXDECODE_END
 
+static const mc6845_interface crtc_pet40 = {
+	"main",
+	XTAL_17_73447MHz/3,			/* This is a wild guess and mostly likely incorrect */
+	8,
+	NULL,
+	pet40_update_row,
+	NULL,
+	pet_display_enable_changed,
+	NULL,
+	NULL
+};
+
+static const mc6845_interface crtc_pet80 = {
+	"main",
+	XTAL_12MHz / 2,			/* This is a wild guess and mostly likely incorrect */
+	16,
+	NULL,
+	pet80_update_row,
+	NULL,
+	pet_display_enable_changed,
+	NULL,
+	NULL
+};
+
 static PALETTE_INIT( pet )
 {
-	palette_set_colors_rgb(machine, 0, pet_palette, sizeof(pet_palette) / 3);
-    memcpy(colortable, pet_colortable, sizeof(colortable));
+	int i;
+
+	for ( i = 0; i < sizeof(pet_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, pet_palette[i*3], pet_palette[i*3+1], pet_palette[i*3+2]);
+	}
+}
+
+static VIDEO_START( pet_crtc )
+{
+}
+
+static VIDEO_UPDATE( pet_crtc )
+{
+	const device_config *mc6845 = device_list_find_by_tag(screen->machine->config->devicelist, MC6845, "crtc");
+	mc6845_update(mc6845, bitmap, cliprect);
+	return 0;
 }
 
 /* basic 1 */
@@ -792,24 +825,22 @@ static MACHINE_DRIVER_START( pet )
 	/* basic machine hardware */
 	MDRV_CPU_ADD_TAG("main", M6502, 7833600)        /* 7.8336 Mhz */
 	MDRV_CPU_PROGRAM_MAP(pet_mem, 0)
-	MDRV_CPU_VBLANK_INT(pet_frame_interrupt, 1)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", pet_frame_interrupt)
 	MDRV_INTERLEAVE(0)
 
 	MDRV_MACHINE_RESET( pet )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(320, 200)
 	MDRV_SCREEN_VISIBLE_AREA(0, 320 - 1, 0, 200 - 1)
 	MDRV_GFXDECODE( pet )
 	MDRV_PALETTE_LENGTH(sizeof (pet_palette) / sizeof (pet_palette[0]) / 3)
-	MDRV_COLORTABLE_LENGTH(sizeof (pet_colortable) / sizeof(pet_colortable[0][0]))
 	MDRV_PALETTE_INIT( pet )
 
-	MDRV_VIDEO_START( generic )
 	MDRV_VIDEO_UPDATE( pet )
 MACHINE_DRIVER_END
 
@@ -818,12 +849,19 @@ static MACHINE_DRIVER_START( pet40 )
 	MDRV_IMPORT_FROM( pet )
 	MDRV_CPU_MODIFY( "main" )
 	MDRV_CPU_PROGRAM_MAP( pet40_mem, 0 )
-	MDRV_VIDEO_UPDATE( crtc6845 )
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG( crtc_pet40 )
+
+	MDRV_VIDEO_START( pet_crtc )
+	MDRV_VIDEO_UPDATE( pet_crtc )
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet40pal )
 	MDRV_IMPORT_FROM( pet40 )
+
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
@@ -834,17 +872,23 @@ static MACHINE_DRIVER_START( pet80 )
 	MDRV_CPU_PROGRAM_MAP( pet80_mem, 0 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 250)
 	MDRV_SCREEN_VISIBLE_AREA(0, 640 - 1, 0, 250 - 1)
+
+	MDRV_DEVICE_ADD("crtc", MC6845)
+	MDRV_DEVICE_CONFIG( crtc_pet80 )
+
 	MDRV_GFXDECODE( pet80 )
-	MDRV_VIDEO_UPDATE( crtc6845 )
+	MDRV_VIDEO_START( pet_crtc )
+	MDRV_VIDEO_UPDATE( pet_crtc )
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pet80pal )
 	MDRV_IMPORT_FROM( pet80 )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
@@ -857,11 +901,10 @@ static MACHINE_DRIVER_START( superpet )
 	/* m6809 cpu */
 	MDRV_CPU_ADD_TAG("main", M6809, 1000000)
 	MDRV_CPU_PROGRAM_MAP(superpet_m6809_mem, 0)
-	MDRV_CPU_VBLANK_INT(pet_frame_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", pet_frame_interrupt)
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
-
-    /* video hardware */
 	MDRV_GFXDECODE( superpet )
 MACHINE_DRIVER_END
 
@@ -874,46 +917,46 @@ MACHINE_DRIVER_END
 #define rom_cbm80 rom_pet80
 #define rom_cbm80pal rom_pet80pal
 
-static void pet_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void pet_cbmcartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,a0,b0"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,a0,b0"); break;
 
 		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void pet_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void pet_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_pet; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_pet; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void pet1_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void pet1_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "p00,prg"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_pet1; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_cbm_pet1; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = CBM_QUICKLOAD_DELAY; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}
@@ -939,12 +982,12 @@ SYSTEM_CONFIG_START(pet2)
 	CONFIG_RAM_DEFAULT(32 * 1024)
 SYSTEM_CONFIG_END
 
-static void pet4_cbmcartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void pet4_cbmcartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,a0"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crt,a0"); break;
 
 		default:										cbmcartslot_device_getinfo(devclass, state, info); break;
 	}

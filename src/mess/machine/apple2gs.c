@@ -310,7 +310,7 @@ static const char *apple2gs_irq_name(UINT8 irq_mask)
 
 
 
-static void apple2gs_add_irq(UINT8 irq_mask)
+static void apple2gs_add_irq(running_machine *machine, UINT8 irq_mask)
 {
 	if ((apple2gs_pending_irqs & irq_mask) == 0x00)
 	{
@@ -318,13 +318,13 @@ static void apple2gs_add_irq(UINT8 irq_mask)
 			logerror("apple2gs_add_irq(): adding %s\n", apple2gs_irq_name(irq_mask));
 
 		apple2gs_pending_irqs |= irq_mask;
-		cpunum_set_input_line(Machine, 0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
 
 
-static void apple2gs_remove_irq(UINT8 irq_mask)
+static void apple2gs_remove_irq(running_machine *machine, UINT8 irq_mask)
 {
 	if (apple2gs_pending_irqs & irq_mask)
 	{
@@ -332,7 +332,7 @@ static void apple2gs_remove_irq(UINT8 irq_mask)
 			logerror("apple2gs_remove_irq(): removing %s\n", apple2gs_irq_name(irq_mask));
 
 		apple2gs_pending_irqs &= ~irq_mask;
-		cpunum_set_input_line(Machine, 0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, G65816_LINE_IRQ, apple2gs_pending_irqs ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -340,11 +340,11 @@ void apple2gs_doc_irq(int state)
 {
 	if (state)
 	{
-		apple2gs_add_irq(IRQ_DOC);
+		apple2gs_add_irq(Machine, IRQ_DOC);
 	}
 	else
 	{
-		apple2gs_remove_irq(IRQ_DOC);
+		apple2gs_remove_irq(Machine, IRQ_DOC);
 	}
 }
 
@@ -355,7 +355,7 @@ static TIMER_CALLBACK( apple2gs_clock_tick )
 	if ((apple2gs_vgcint & 0x04) && !(apple2gs_vgcint & 0x40))
 	{
 		apple2gs_vgcint |= 0xc0;
-		apple2gs_add_irq(IRQ_VGC_SECOND);
+		apple2gs_add_irq(machine, IRQ_VGC_SECOND);
 	}
 }
 
@@ -366,7 +366,7 @@ static TIMER_CALLBACK( apple2gs_qsecond_tick )
 	if ((apple2gs_inten & 0x10) && !(apple2gs_intflag & 0x10))
 	{
 		apple2gs_intflag |= 0x10;
-		apple2gs_add_irq(IRQ_INTEN_QSECOND);
+		apple2gs_add_irq(machine, IRQ_INTEN_QSECOND);
 	}
 }
 
@@ -697,7 +697,7 @@ static void adb_write_kmstatus(UINT8 data)
 
 
 
-static UINT8 adb_read_mousedata(void)
+static UINT8 adb_read_mousedata(running_machine *machine)
 {
 	UINT8 result = 0x00;
 	UINT8 absolute;
@@ -710,7 +710,7 @@ static UINT8 adb_read_mousedata(void)
 			absolute = apple2gs_mouse_y;
 			delta = apple2gs_mouse_dy;
 			adb_kmstatus &= ~0x82;
-			apple2gs_remove_irq(IRQ_ADB_MOUSE);
+			apple2gs_remove_irq(machine, IRQ_ADB_MOUSE);
 		}
 		else
 		{
@@ -743,7 +743,7 @@ static INT8 seven_bit_diff(UINT8 v1, UINT8 v2)
 
 
 
-static void adb_check_mouse(void)
+static void adb_check_mouse(running_machine *machine)
 {
 	UINT8 new_mouse_x, new_mouse_y;
 
@@ -763,26 +763,26 @@ static void adb_check_mouse(void)
 			adb_kmstatus |= 0x80;
 			adb_kmstatus &= ~0x02;
 			if (adb_kmstatus & 0x40)
-				apple2gs_add_irq(IRQ_ADB_MOUSE);
+				apple2gs_add_irq(machine, IRQ_ADB_MOUSE);
 		}
 	}
 }
 
 
 
-static void apple2gs_set_scanint(UINT8 data)
+static void apple2gs_set_scanint(running_machine *machine, UINT8 data)
 {
 	/* second interrupt */
 	if ((apple2gs_vgcint & 0x40) && !(data & 0x40))
 	{
-		apple2gs_remove_irq(IRQ_VGC_SECOND);
+		apple2gs_remove_irq(machine, IRQ_VGC_SECOND);
 		apple2gs_vgcint &= ~0xC0;
 	}
 
 	/* scanline interrupt */
 	if ((apple2gs_vgcint & 0x20) && !(data & 0x20))
 	{
-		apple2gs_remove_irq(IRQ_VGC_SCANLINE);
+		apple2gs_remove_irq(machine, IRQ_VGC_SCANLINE);
 		apple2gs_vgcint &= ~0xA0;
 	}
 
@@ -798,9 +798,9 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 	// make sure we're in the 65816's context
 	cpuintrf_push_context(0);
 
-	scanline = video_screen_get_vpos(0);
+	scanline = video_screen_get_vpos(machine->primary_screen);
 
-	video_screen_update_partial(0, scanline);
+	video_screen_update_partial(machine->primary_screen, scanline);
 
 	/* scanline interrupt */
 	if ((apple2gs_newvideo & 0x80) && (apple2gs_vgcint & 0x02) && (scanline >= (BORDER_TOP-1)) && (scanline < (200+BORDER_TOP-1)))
@@ -812,7 +812,7 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 		if (scb & 0x40)
 		{
 			apple2gs_vgcint |= 0xa0;
-			apple2gs_add_irq(IRQ_VGC_SCANLINE);
+			apple2gs_add_irq(machine, IRQ_VGC_SCANLINE);
 		}
 	}
 
@@ -822,21 +822,21 @@ static TIMER_CALLBACK(apple2gs_scanline_tick)
 		if ((apple2gs_inten & 0x08) && !(apple2gs_intflag & 0x08))
 		{
 			apple2gs_intflag |= 0x08;
-			apple2gs_add_irq(IRQ_INTEN_VBL);
+			apple2gs_add_irq(machine, IRQ_INTEN_VBL);
 		}
 	}
 
 	/* check the mouse status */
 	if ((scanline % 8) == 0)
 	{
-		adb_check_mouse();
+		adb_check_mouse(machine);
 
 		/* call Apple II interrupt handler */
-		if ((video_screen_get_vpos(0) % 8) == 7)
+		if ((video_screen_get_vpos(machine->primary_screen) % 8) == 7)
 			apple2_interrupt(machine, 0);
 	}
 
-	timer_adjust(apple2gs_scanline_timer, video_screen_get_time_until_pos(0, (scanline+1)%262, 0), 0, attotime_never);
+	timer_adjust_oneshot(apple2gs_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, (scanline+1)%262, 0), 0);
 
 	cpuintrf_pop_context();
 }
@@ -868,7 +868,7 @@ static READ8_HANDLER( gssnd_r )
 			}
 			else
 			{
-				sndglu_dummy_read = ES5503_reg_0_r(sndglu_addr);
+				sndglu_dummy_read = ES5503_reg_0_r(machine, sndglu_addr);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -907,7 +907,7 @@ static WRITE8_HANDLER( gssnd_w )
 			}
 			else
 			{
-				ES5503_reg_0_w(sndglu_addr, data);
+				ES5503_reg_0_w(machine, sndglu_addr, data);
 			}
 
 			if (sndglu_ctrl & 0x20)	// auto-increment
@@ -933,7 +933,7 @@ static WRITE8_HANDLER( gssnd_w )
 // apple2gs_get_vpos - return the correct vertical counter value for the current scanline,
 // keeping borders in mind.
 
-static int apple2gs_get_vpos(void)
+static int apple2gs_get_vpos(running_machine *machine)
 {
 	int result, scan;
 	static const UINT8 top_border_vert[BORDER_TOP] =
@@ -943,7 +943,7 @@ static int apple2gs_get_vpos(void)
 
 	};
 
-	scan = video_screen_get_vpos(0);
+	scan = video_screen_get_vpos(machine->primary_screen);
 
 	if (scan < BORDER_TOP)
 	{
@@ -966,7 +966,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 	switch(offset)
 	{
 		case 0x19:	/* C019 - RDVBLBAR */
-			result = (video_screen_get_vpos(0) >= (192+BORDER_TOP)) ? 0x80 : 0x00;
+			result = (video_screen_get_vpos(machine->primary_screen) >= (192+BORDER_TOP)) ? 0x80 : 0x00;
 			break;
 
 		case 0x22:	/* C022 - TBCOLOR */
@@ -979,7 +979,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 			break;
 
 		case 0x24:	/* C024 - MOUSEDATA */
-			result = adb_read_mousedata();
+			result = adb_read_mousedata(machine);
 			break;
 
 		case 0x25:	/* C025 - KEYMODREG */
@@ -1007,17 +1007,17 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 			break;
 
 		case 0x2E:	/* C02E - VERTCNT */
-			result = apple2gs_get_vpos() >> 1;
+			result = apple2gs_get_vpos(machine) >> 1;
 			break;
 
 		case 0x2F:	/* C02F - HORIZCNT */
-			result = video_screen_get_hpos(0) / 11;
+			result = video_screen_get_hpos(machine->primary_screen) / 11;
 			if (result > 0)
 			{
 				result += 0x40;
 			}
 
-			if (apple2gs_get_vpos() & 1)
+			if (apple2gs_get_vpos(machine) & 1)
 			{
 				result |= 0x80;
 			}
@@ -1047,14 +1047,14 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			result = scc_r(offset & 0x03);
+			result = scc_r(machine, offset & 0x03);
 			break;
 
 		case 0x3C:	/* C03C - SOUNDCTL */
 		case 0x3D:	/* C03D - SOUNDDATA */
 		case 0x3E:	/* C03E - SOUNDADRL */
 		case 0x3F:	/* C03F - SOUNDADRH */
-			result = gssnd_r(offset & 0x03);
+			result = gssnd_r(machine, offset & 0x03);
 			break;
 
 		case 0x41:	/* C041 - INTEN */
@@ -1088,7 +1088,7 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 			result = 0x00;
 
 		default:
-			result = apple2_c0xx_r(offset);
+			result = apple2_c0xx_r(machine, offset);
 			break;
 	}
 
@@ -1153,7 +1153,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 			break;
 
 		case 0x32:	/* C032 - SCANINT */
-			apple2gs_set_scanint(data);
+			apple2gs_set_scanint(machine, data);
 			break;
 
 		case 0x33:	/* C033 - CLOCKDATA */
@@ -1177,35 +1177,35 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 
 		case 0x36:	/* C036 - CYAREG */
 			apple2gs_cyareg = data & ~0x20;
-			cpunum_set_clock(Machine, 0, (data & 0x80) ? APPLE2GS_14M/5 : APPLE2GS_7M/7);
+			cpunum_set_clock(machine, 0, (data & 0x80) ? APPLE2GS_14M/5 : APPLE2GS_7M/7);
 			break;
 
 		case 0x38:	/* C038 - SCCBREG */
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			scc_w(offset & 0x03, data);
+			scc_w(machine, offset & 0x03, data);
 			break;
 
 		case 0x3C:	/* C03C - SOUNDCTL */
 		case 0x3D:	/* C03D - SOUNDDATA */
 		case 0x3E:	/* C03E - SOUNDADRL */
 		case 0x3F:	/* C03F - SOUNDADRH */
-			gssnd_w(offset & 0x03, data);
+			gssnd_w(machine, offset & 0x03, data);
 			break;
 
 		case 0x41:	/* C041 - INTEN */
 			apple2gs_inten = data & 0x1F;
 			if ((apple2gs_inten & 0x10) == 0x00)
-				apple2gs_remove_irq(IRQ_INTEN_QSECOND);
+				apple2gs_remove_irq(machine, IRQ_INTEN_QSECOND);
 			if ((apple2gs_inten & 0x08) == 0x00)
-				apple2gs_remove_irq(IRQ_INTEN_VBL);
+				apple2gs_remove_irq(machine, IRQ_INTEN_VBL);
 			break;
 
 		case 0x47:	/* C047 - CLRVBLINT */
 			apple2gs_intflag &= ~0x18;
-			apple2gs_remove_irq(IRQ_INTEN_QSECOND);
-			apple2gs_remove_irq(IRQ_INTEN_VBL);
+			apple2gs_remove_irq(machine, IRQ_INTEN_QSECOND);
+			apple2gs_remove_irq(machine, IRQ_INTEN_VBL);
 			break;
 
 		case 0x68:	/* C068 - STATEREG */
@@ -1221,7 +1221,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 			break;
 
 		default:
-			apple2_c0xx_w(offset, data);
+			apple2_c0xx_w(machine, offset, data);
 			break;
 	}
 }
@@ -1240,7 +1240,6 @@ static WRITE8_HANDLER( apple2gs_main0400_w )
 	if (!(apple2gs_shadow & 0x01))
 	{
 		apple2gs_slowmem[offset] = data;
-		apple2_video_touch(offset);
 	}
 }
 
@@ -1252,7 +1251,6 @@ static WRITE8_HANDLER( apple2gs_aux0400_w )
 	if (!(apple2gs_shadow & 0x01))
 	{
 		apple2gs_slowmem[offset] = data;
-		apple2_video_touch(offset);
 	}
 }
 
@@ -1264,7 +1262,6 @@ static WRITE8_HANDLER( apple2gs_main2000_w )
 	if (!(apple2gs_shadow & 0x02))
 	{
 		apple2gs_slowmem[offset] = data;
-		apple2_video_touch(offset);
 	}
 }
 
@@ -1276,7 +1273,6 @@ static WRITE8_HANDLER( apple2gs_aux2000_w )
 	if (!(apple2gs_shadow & 0x12) || !(apple2gs_shadow & 0x08))
 	{
 		apple2gs_slowmem[offset] = data;
-		apple2_video_touch(offset);
 	}
 }
 
@@ -1312,7 +1308,7 @@ static WRITE8_HANDLER( apple2gs_aux4000_w )
 			{
 				int color = (offset - 0x19e00) >> 1;
 
-				palette_set_color_rgb(Machine, color + 16,
+				palette_set_color_rgb(machine, color + 16,
 					((apple2gs_slowmem[0x19E00 + (color * 2) + 1] >> 0) & 0x0F) * 17,
 					((apple2gs_slowmem[0x19E00 + (color * 2) + 0] >> 4) & 0x0F) * 17,
 					((apple2gs_slowmem[0x19E00 + (color * 2) + 0] >> 0) & 0x0F) * 17);
@@ -1531,7 +1527,7 @@ static UINT8 *apple2gs_getslotmem(offs_t address)
 
 
 
-static UINT8 apple2gs_xxCxxx_r(offs_t address)
+static UINT8 apple2gs_xxCxxx_r(running_machine *machine, offs_t address)
 {
 	UINT8 result;
 	int slot;
@@ -1542,7 +1538,7 @@ static UINT8 apple2gs_xxCxxx_r(offs_t address)
 	}
 	else if ((address & 0x000F00) == 0x000000)
 	{
-		result = apple2gs_c0xx_r(address);
+		result = apple2gs_c0xx_r(machine, address);
 	}
 	else
 	{
@@ -1558,7 +1554,7 @@ static UINT8 apple2gs_xxCxxx_r(offs_t address)
 
 
 
-static void apple2gs_xxCxxx_w(offs_t address, UINT8 data)
+static void apple2gs_xxCxxx_w(running_machine *machine, offs_t address, UINT8 data)
 {
 	int slot;
 
@@ -1568,7 +1564,7 @@ static void apple2gs_xxCxxx_w(offs_t address, UINT8 data)
 	}
 	else if ((address & 0x000F00) == 0x000000)
 	{
-		apple2gs_c0xx_w(address, data);
+		apple2gs_c0xx_w(machine, address, data);
 	}
 	else
 	{
@@ -1619,26 +1615,25 @@ static OPBASE_HANDLER( apple2gs_opbase )
 
 
 
-static READ8_HANDLER( apple2gs_00Cxxx_r ) { return apple2gs_xxCxxx_r(offset | 0x00C000); }
-static READ8_HANDLER( apple2gs_01Cxxx_r ) { return apple2gs_xxCxxx_r(offset | 0x01C000); }
-static READ8_HANDLER( apple2gs_E0Cxxx_r ) { return apple2gs_xxCxxx_r(offset | 0xE0C000); }
-static READ8_HANDLER( apple2gs_E1Cxxx_r ) { return apple2gs_xxCxxx_r(offset | 0xE1C000); }
+static READ8_HANDLER( apple2gs_00Cxxx_r ) { return apple2gs_xxCxxx_r(machine, offset | 0x00C000); }
+static READ8_HANDLER( apple2gs_01Cxxx_r ) { return apple2gs_xxCxxx_r(machine, offset | 0x01C000); }
+static READ8_HANDLER( apple2gs_E0Cxxx_r ) { return apple2gs_xxCxxx_r(machine, offset | 0xE0C000); }
+static READ8_HANDLER( apple2gs_E1Cxxx_r ) { return apple2gs_xxCxxx_r(machine, offset | 0xE1C000); }
 
-static WRITE8_HANDLER( apple2gs_00Cxxx_w) { apple2gs_xxCxxx_w(offset | 0x00C000, data); }
-static WRITE8_HANDLER( apple2gs_01Cxxx_w) { apple2gs_xxCxxx_w(offset | 0x01C000, data); }
-static WRITE8_HANDLER( apple2gs_E0Cxxx_w) { apple2gs_xxCxxx_w(offset | 0xE0C000, data); }
-static WRITE8_HANDLER( apple2gs_E1Cxxx_w) { apple2gs_xxCxxx_w(offset | 0xE1C000, data); }
+static WRITE8_HANDLER( apple2gs_00Cxxx_w) { apple2gs_xxCxxx_w(machine, offset | 0x00C000, data); }
+static WRITE8_HANDLER( apple2gs_01Cxxx_w) { apple2gs_xxCxxx_w(machine, offset | 0x01C000, data); }
+static WRITE8_HANDLER( apple2gs_E0Cxxx_w) { apple2gs_xxCxxx_w(machine, offset | 0xE0C000, data); }
+static WRITE8_HANDLER( apple2gs_E1Cxxx_w) { apple2gs_xxCxxx_w(machine, offset | 0xE1C000, data); }
 
 static WRITE8_HANDLER( apple2gs_Exxxxx_w )
 {
 	apple2gs_slowmem[offset] = data;
-	apple2_video_touch(offset);
 }
 
-static WRITE8_HANDLER( apple2gs_E004xx_w ) { apple2gs_Exxxxx_w(offset + 0x00400, data); }
-static WRITE8_HANDLER( apple2gs_E02xxx_w ) { apple2gs_Exxxxx_w(offset + 0x02000, data); }
-static WRITE8_HANDLER( apple2gs_E104xx_w ) { apple2gs_Exxxxx_w(offset + 0x10400, data); }
-static WRITE8_HANDLER( apple2gs_E12xxx_w ) { apple2gs_Exxxxx_w(offset + 0x12000, data); }
+static WRITE8_HANDLER( apple2gs_E004xx_w ) { apple2gs_Exxxxx_w(machine, offset + 0x00400, data); }
+static WRITE8_HANDLER( apple2gs_E02xxx_w ) { apple2gs_Exxxxx_w(machine, offset + 0x02000, data); }
+static WRITE8_HANDLER( apple2gs_E104xx_w ) { apple2gs_Exxxxx_w(machine, offset + 0x10400, data); }
+static WRITE8_HANDLER( apple2gs_E12xxx_w ) { apple2gs_Exxxxx_w(machine, offset + 0x12000, data); }
 
 static WRITE8_HANDLER( apple2gs_slowmem_w )
 {
@@ -1648,7 +1643,7 @@ static WRITE8_HANDLER( apple2gs_slowmem_w )
 	{
 		int color = (offset - 0x19e00) >> 1;
 
-		palette_set_color_rgb(Machine, color + 16,
+		palette_set_color_rgb(machine, color + 16,
 			((apple2gs_slowmem[0x19E00 + (color * 2) + 1] >> 0) & 0x0F) * 17,
 			((apple2gs_slowmem[0x19E00 + (color * 2) + 0] >> 4) & 0x0F) * 17,
 			((apple2gs_slowmem[0x19E00 + (color * 2) + 0] >> 0) & 0x0F) * 17);
@@ -1666,12 +1661,12 @@ static void apple2gs_setup_memory(void)
 	memset(apple2gs_slowmem, 0, 128*1024);
 
 	/* install expanded memory */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x010000, mess_ram_size - 1, 0, 0, MRA8_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x010000, mess_ram_size - 1, 0, 0, MWA8_BANK1);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x010000, mess_ram_size - 1, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x010000, mess_ram_size - 1, 0, 0, SMH_BANK1);
 	memory_set_bankptr(1, mess_ram + 0x010000);
 
 	/* install hi memory */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe00000, 0xe1ffff, 0, 0, MRA8_BANK2);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe00000, 0xe1ffff, 0, 0, SMH_BANK2);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe00000, 0xe1ffff, 0, 0, apple2gs_slowmem_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe00400, 0xe007ff, 0, 0, apple2gs_E004xx_w);
 	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe02000, 0xe03fff, 0, 0, apple2gs_E02xxx_w);
@@ -1682,7 +1677,7 @@ static void apple2gs_setup_memory(void)
 	/* install alternate ROM bank */
 	begin = 0x1000000 - memory_region_length(REGION_CPU1);
 	end = 0xffffff;
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, MRA8_BANK3);
+	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, SMH_BANK3);
 	memory_set_bankptr(3, memory_region(REGION_CPU1));
 
 	/* install new xxC000-xxCFFF handlers */
@@ -1724,16 +1719,16 @@ static READ8_HANDLER( apple2gs_read_vector )
 MACHINE_RESET( apple2gs )
 {
 	apple2gs_clock_timer = timer_alloc(apple2gs_clock_tick, NULL);
-	timer_adjust(apple2gs_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1));
+	timer_adjust_periodic(apple2gs_clock_timer, ATTOTIME_IN_SEC(1), 0, ATTOTIME_IN_SEC(1));
 	
 	apple2gs_qsecond_timer = timer_alloc(apple2gs_qsecond_tick, NULL);
-	timer_adjust(apple2gs_qsecond_timer, ATTOTIME_IN_USEC(266700), 0, ATTOTIME_IN_USEC(266700));
+	timer_adjust_periodic(apple2gs_qsecond_timer, ATTOTIME_IN_USEC(266700), 0, ATTOTIME_IN_USEC(266700));
 	
 	apple2gs_scanline_timer = timer_alloc(apple2gs_scanline_tick, NULL);
-	timer_adjust(apple2gs_scanline_timer, attotime_never, 0, attotime_never);
+	timer_adjust_oneshot(apple2gs_scanline_timer, attotime_never, 0);
 
 	// fire on scanline zero
-	timer_adjust(apple2gs_scanline_timer, video_screen_get_time_until_pos(0, 0, 0), 0, attotime_never);
+	timer_adjust_oneshot(apple2gs_scanline_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
 MACHINE_START( apple2gs )

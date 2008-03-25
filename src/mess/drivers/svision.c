@@ -6,8 +6,6 @@
 
 #include <assert.h>
 #include "driver.h"
-#include "deprecat.h"
-#include "mslegacy.h"
 #include "cpu/m6502/m6502.h"
 
 #include "includes/svision.h"
@@ -74,19 +72,19 @@ static TIMER_CALLBACK(svision_pet_timer)
 	}
 }
 
-void svision_irq(void)
+void svision_irq(running_machine *machine)
 {
 	int irq = svision.timer_shot && (BANK & 2);
 	irq = irq || (svision_dma.finished && (BANK & 4));
 
-	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static TIMER_CALLBACK(svision_timer)
 {
     svision.timer_shot = TRUE;
     timer_enable(svision.timer1, FALSE);
-    svision_irq();
+    svision_irq( machine );
 }
 
 static READ8_HANDLER(svision_r)
@@ -117,11 +115,11 @@ static READ8_HANDLER(svision_r)
 			break;
 		case 0x24:
 			svision.timer_shot = FALSE;
-			svision_irq();
+			svision_irq( machine );
 			break;
 		case 0x25:
 			svision_dma.finished = FALSE;
-			svision_irq();
+			svision_irq( machine );
 			break;
 		default:
 			logerror("%.6f svision read %04x %02x\n", attotime_to_double(timer_get_time()),offset,data);
@@ -146,7 +144,7 @@ static WRITE8_HANDLER(svision_w)
 		case 0x26: /* bits 5,6 memory management for a000? */
 			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time()),offset,data);
 			memory_set_bankptr(1, memory_region(REGION_USER1) + ((svision_reg[0x26] & 0xe0) << 9));
-			svision_irq();
+			svision_irq( machine );
 			break;
 		case 0x23: /* delta hero irq routine write */
 			value = data;
@@ -160,16 +158,16 @@ static WRITE8_HANDLER(svision_w)
 			timer_reset(svision.timer1, ATTOTIME_IN_CYCLES(value * delay, 0));
 			break;
 		case 0x10: case 0x11: case 0x12: case 0x13:
-			svision_soundport_w(svision_channel + 0, offset & 3, data);
+			svision_soundport_w(machine, svision_channel + 0, offset & 3, data);
 			break;
 		case 0x14: case 0x15: case 0x16: case 0x17:
-			svision_soundport_w(svision_channel + 1, offset & 3, data);
+			svision_soundport_w(machine, svision_channel + 1, offset & 3, data);
 			break;
 		case 0x18: case 0x19: case 0x1a: case 0x1b: case 0x1c:
-			svision_sounddma_w(offset - 0x18, data);
+			svision_sounddma_w(machine, offset - 0x18, data);
 			break;
 		case 0x28: case 0x29: case 0x2a:
-			svision_noise_w(offset - 0x28, data);
+			svision_noise_w(machine, offset - 0x28, data);
 			break;
 		default:
 			logerror("%.6f svision write %04x %02x\n", attotime_to_double(timer_get_time()), offset, data);
@@ -185,11 +183,11 @@ static READ8_HANDLER(tvlink_r)
 			if (offset >= 0x800 && offset < 0x840)
 			{
 				/* strange effects when modifying palette */
-				return svision_r(offset);
+				return svision_r(machine, offset);
 			}
 			else
 			{
-				return svision_r(offset);
+				return svision_r(machine, offset);
 			}
 	}
 }
@@ -219,7 +217,7 @@ static WRITE8_HANDLER(tvlink_w)
 			}
 			break;
 		default:
-			svision_w(offset,data);
+			svision_w(machine, offset,data);
 			if (offset >= 0x800 && offset < 0x840)
 			{
 				UINT16 c;
@@ -343,15 +341,27 @@ static const unsigned char svisionn_palette[] =
 
 static PALETTE_INIT( svision )
 {
-	palette_set_colors_rgb(machine, 0, svision_palette, sizeof(svision_palette) / 3);
+	int i;
+
+	for( i = 0; i < sizeof(svision_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, svision_palette[i*3], svision_palette[i*3+1], svision_palette[i*3+2] );
+	}
 }
 static PALETTE_INIT( svisionn )
 {
-	palette_set_colors_rgb(machine, 0, svisionn_palette, sizeof(svisionn_palette) / 3);
+	int i;
+
+	for ( i = 0; i < sizeof(svisionn_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, svisionn_palette[i*3], svisionn_palette[i*3+1], svisionn_palette[i*3+2] );
+	}
 }
 static PALETTE_INIT( svisionp )
 {
-	palette_set_colors_rgb(machine, 0, svisionp_palette, sizeof(svisionp_palette) / 3);
+	int i;
+
+	for ( i = 0; i < sizeof(svisionn_palette) / 3; i++ ) {
+		palette_set_color_rgb(machine, i, svisionp_palette[i*3], svisionp_palette[i*3+1], svisionp_palette[i*3+2] );
+	}
 }
 
 static VIDEO_UPDATE( svision )
@@ -380,7 +390,7 @@ static VIDEO_UPDATE( svision )
 	}
 	else
 	{
-		plot_box(bitmap, 3, 0, 162, 159, machine->pens[PALETTE_START]);
+		plot_box(bitmap, 3, 0, 162, 159, PALETTE_START);
 	}
 	return 0;
 }
@@ -411,7 +421,7 @@ static VIDEO_UPDATE( tvlink )
 	}
 	else
 	{
-		plot_box(bitmap, 3, 0, 162, 159, machine->pens[PALETTE_START]);
+		plot_box(bitmap, 3, 0, 162, 159, screen->machine->pens[PALETTE_START]);
 	}
 	return 0;
 }
@@ -480,15 +490,14 @@ static MACHINE_DRIVER_START( svision )
 	/* basic machine hardware */
 	 MDRV_CPU_ADD_TAG("main", M65C02, 4000000)        /* ? stz used! speed? */
 	MDRV_CPU_PROGRAM_MAP(svision_mem, 0)
-	MDRV_CPU_VBLANK_INT(svision_frame_int, 1)
-	MDRV_SCREEN_REFRESH_RATE(61)
+	MDRV_CPU_VBLANK_INT("main", svision_frame_int)
 
 	MDRV_MACHINE_RESET( svision )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)	/* lcd */
+	MDRV_SCREEN_ADD("main", LCD)
+	MDRV_SCREEN_REFRESH_RATE(61)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	/*MDRV_ASPECT_RATIO(160, 160)*/
 	MDRV_SCREEN_SIZE(3+160+3, 160)
 	MDRV_SCREEN_VISIBLE_AREA(3+0, 3+160-1, 0, 160-1)
 	MDRV_PALETTE_LENGTH(sizeof(svision_palette) / (sizeof(svision_palette[0]) * 3))
@@ -508,6 +517,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( svisionp )
 	MDRV_IMPORT_FROM( svision )
 	MDRV_CPU_REPLACE( "main", M65C02, 4430000)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_PALETTE_INIT( svisionp )
 MACHINE_DRIVER_END
@@ -515,6 +525,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( svisionn )
 	MDRV_IMPORT_FROM( svision )
 	MDRV_CPU_REPLACE( "main", M65C02, 3560000/*?*/)
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_PALETTE_INIT( svisionn )
 MACHINE_DRIVER_END
@@ -526,6 +537,7 @@ static MACHINE_DRIVER_START( tvlinkp )
 
 	MDRV_MACHINE_RESET( tvlink )
 
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
 	MDRV_VIDEO_UPDATE( tvlink )
 

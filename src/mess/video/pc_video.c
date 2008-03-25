@@ -62,7 +62,7 @@ struct mscrtc6845 *pc_video_start(const struct mscrtc6845_config *config,
 
 	if (videoram_size)
 	{
-		video_start_generic(Machine);
+		video_start_generic_bitmapped(Machine);
 	}
 
 	state_save_register_func_postload(pc_video_postload);
@@ -89,17 +89,20 @@ VIDEO_UPDATE( pc_video )
 	{
 		if ((pc_current_width != w) || (pc_current_height != h))
 		{
+			int width = video_screen_get_width(screen);
+			int height = video_screen_get_height(screen);
+
 			pc_current_width = w;
 			pc_current_height = h;
 			pc_anythingdirty = 1;
 
-			if (pc_current_width > machine->screen[0].width)
-				pc_current_width = machine->screen[0].width;
-			if (pc_current_height > machine->screen[0].height)
-				pc_current_height = machine->screen[0].height;
+			if (pc_current_width > width)
+				pc_current_width = width;
+			if (pc_current_height > height)
+				pc_current_height = height;
 
 			if ((pc_current_width > 100) && (pc_current_height > 100))
-				video_screen_set_visarea(0, 0, pc_current_width-1, 0, pc_current_height-1);
+				video_screen_set_visarea(screen, 0, pc_current_width-1, 0, pc_current_height-1);
 
 			fillbitmap(bitmap, 0, cliprect);
 		}
@@ -124,30 +127,17 @@ WRITE8_HANDLER ( pc_video_videoram_w )
 	if (videoram && videoram[offset] != data)
 	{
 		videoram[offset] = data;
-		if (dirtybuffer)
-			dirtybuffer[offset] = 1;
 		pc_anythingdirty = 1;
 	}
 }
 
 
-WRITE16_HANDLER( pc_video_videoram16le_w ) { write16le_with_write8_handler(pc_video_videoram_w, offset, mem_mask, data); }
+WRITE16_HANDLER( pc_video_videoram16le_w ) { write16le_with_write8_handler(pc_video_videoram_w, machine, offset, mem_mask, data); }
 
 WRITE32_HANDLER( pc_video_videoram32_w )
 {
 	COMBINE_DATA(((UINT32 *) videoram) + offset);
 	pc_anythingdirty = 1;
-	if (dirtybuffer)
-	{
-		if ((mem_mask & 0x000000FF) == 0)
-			dirtybuffer[offset * 4 + 0] = 1;
-		if ((mem_mask & 0x0000FF00) == 0)
-			dirtybuffer[offset * 4 + 1] = 1;
-		if ((mem_mask & 0x00FF0000) == 0)
-			dirtybuffer[offset * 4 + 2] = 1;
-		if ((mem_mask & 0xFF000000) == 0)
-			dirtybuffer[offset * 4 + 3] = 1;
-	}
 }
 
 
@@ -158,7 +148,7 @@ WRITE32_HANDLER( pc_video_videoram32_w )
  *
  *************************************/
 
-void pc_render_gfx_1bpp(mame_bitmap *bitmap, struct mscrtc6845 *crtc,
+void pc_render_gfx_1bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc,
 	const UINT8 *vram, const UINT16 *palette, int interlace)
 {
 	int sx, sy, sh;
@@ -198,7 +188,7 @@ void pc_render_gfx_1bpp(mame_bitmap *bitmap, struct mscrtc6845 *crtc,
 
 
 
-void pc_render_gfx_2bpp(mame_bitmap *bitmap, struct mscrtc6845 *crtc,
+void pc_render_gfx_2bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc,
 	const UINT8 *vram, const UINT16 *palette, int interlace)
 {
 	int sx, sy, sh;
@@ -239,7 +229,7 @@ void pc_render_gfx_2bpp(mame_bitmap *bitmap, struct mscrtc6845 *crtc,
 
 
 
-void pc_render_gfx_4bpp(mame_bitmap *bitmap, struct mscrtc6845 *crtc,
+void pc_render_gfx_4bpp(bitmap_t *bitmap, struct mscrtc6845 *crtc,
 	const UINT8 *vram, const UINT16 *palette, int interlace)
 {
 	int sx, sy, sh;

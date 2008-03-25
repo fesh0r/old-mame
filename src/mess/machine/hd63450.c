@@ -7,6 +7,7 @@
 #include "machine/hd63450.h"
 #include "deprecat.h"
 
+
 static struct hd63450 dmac;
 
 static TIMER_CALLBACK(dma_transfer_timer);
@@ -115,7 +116,7 @@ void hd63450_write(int offset, int data, UINT16 mem_mask)
 		{
 			dmac.reg[channel].ccr = data & 0x00ff;
 			if((data & 0x0080))// && !dmac.intf->dma_read[channel] && !dmac.intf->dma_write[channel])
-				dma_transfer_start(channel,0);
+				dma_transfer_start(Machine, channel,0);
 			if(data & 0x0010)  // software abort
 				dma_transfer_abort(channel);
 			if(data & 0x0020)  // halt operation
@@ -188,7 +189,7 @@ void hd63450_write(int offset, int data, UINT16 mem_mask)
 	}
 }
 
-void dma_transfer_start(int channel, int dir)
+void dma_transfer_start(running_machine *machine, int channel, int dir)
 {
 	dmac.in_progress[channel] = 1;
 	dmac.reg[channel].csr &= ~0xe0;
@@ -205,11 +206,11 @@ void dma_transfer_start(int channel, int dir)
 	// Burst transfers will halt the CPU until the transfer is complete
 	if((dmac.reg[channel].dcr & 0xc0) == 0x00)  // Burst transfer
 	{
-		cpunum_set_input_line(Machine, dmac.intf->cpu,INPUT_LINE_HALT,ASSERT_LINE);
-		timer_adjust(dmac.timer[channel],attotime_zero,channel, dmac.intf->burst_clock[channel]);
+		cpunum_set_input_line(machine, dmac.intf->cpu,INPUT_LINE_HALT,ASSERT_LINE);
+		timer_adjust_periodic(dmac.timer[channel], attotime_zero, channel, dmac.intf->burst_clock[channel]);
 	}
 	else
-		timer_adjust(dmac.timer[channel],ATTOTIME_IN_USEC(500),channel, dmac.intf->clock[channel]);
+		timer_adjust_periodic(dmac.timer[channel], ATTOTIME_IN_USEC(500), channel, dmac.intf->clock[channel]);
 
 
 	dmac.transfer_size[channel] = dmac.reg[channel].mtc;
@@ -219,13 +220,13 @@ void dma_transfer_start(int channel, int dir)
 
 static TIMER_CALLBACK(dma_transfer_timer)
 {
-	hd63450_single_transfer(param);
+	hd63450_single_transfer(machine, param);
 }
 
 static void dma_transfer_abort(int channel)
 {
 	logerror("DMA#%i: Transfer aborted\n",channel);
-	timer_adjust(dmac.timer[channel],attotime_zero,0,attotime_zero);
+	timer_adjust_oneshot(dmac.timer[channel], attotime_zero, 0);
 	dmac.in_progress[channel] = 0;
 	dmac.reg[channel].mtc = dmac.transfer_size[channel];
 	dmac.reg[channel].csr |= 0xe0;  // channel operation complete, block transfer complete
@@ -235,7 +236,7 @@ static void dma_transfer_abort(int channel)
 static void dma_transfer_halt(int channel)
 {
 	dmac.halted[channel] = 1;
-	timer_adjust(dmac.timer[channel],attotime_zero,0,attotime_zero);
+	timer_adjust_oneshot(dmac.timer[channel], attotime_zero, 0);
 }
 
 static void dma_transfer_continue(int channel)
@@ -243,11 +244,11 @@ static void dma_transfer_continue(int channel)
 	if(dmac.halted[channel] != 0)
 	{
 		dmac.halted[channel] = 0;
-		timer_adjust(dmac.timer[channel],attotime_zero,channel, dmac.intf->clock[channel]);
+		timer_adjust_periodic(dmac.timer[channel], attotime_zero, channel, dmac.intf->clock[channel]);
 	}
 }
 
-void hd63450_single_transfer(int x)
+void hd63450_single_transfer(running_machine *machine, int x)
 {
 	int data;
 	int datasize = 1;
@@ -362,13 +363,13 @@ void hd63450_single_transfer(int x)
 					dmac.reg[x].mtc = program_read_word(dmac.reg[x].bar+4);
 					return;
 				}
-				timer_adjust(dmac.timer[x],attotime_zero,0,attotime_zero);
+				timer_adjust_oneshot(dmac.timer[x], attotime_zero, 0);
 				dmac.in_progress[x] = 0;
 				dmac.reg[x].mtc = dmac.transfer_size[x];
 				dmac.reg[x].csr |= 0xe0;  // channel operation complete, block transfer complete
 				dmac.reg[x].csr &= ~0x08;  // channel no longer active
 				if((dmac.reg[x].dcr & 0xc0) == 0x00)  // Burst transfer
-					cpunum_set_input_line(Machine, dmac.intf->cpu,INPUT_LINE_HALT,CLEAR_LINE);
+					cpunum_set_input_line(machine, dmac.intf->cpu,INPUT_LINE_HALT,CLEAR_LINE);
 
 				if(dmac.intf->dma_end)
 					dmac.intf->dma_end(x,dmac.reg[x].ccr & 0x08);

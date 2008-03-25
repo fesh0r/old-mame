@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/pcw16.h"
 
 int pcw16_colour_palette[16];
@@ -59,7 +58,6 @@ INLINE void pcw16_plot_pixel(bitmap_t *bitmap, int x, int y, UINT32 color)
 PALETTE_INIT( pcw16 )
 {
 	palette_set_colors(machine, 0, pcw16_palette, ARRAY_LENGTH(pcw16_palette));
-	memcpy(colortable, pcw16_colour_table, sizeof (pcw16_colour_table));
 }
 
 VIDEO_START( pcw16 )
@@ -67,7 +65,7 @@ VIDEO_START( pcw16 )
 }
 
 /* 640, 1 bit per pixel */
-static void pcw16_vh_decode_mode0(mame_bitmap *bitmap, int x, int y, unsigned char byte)
+static void pcw16_vh_decode_mode0(running_machine *machine, bitmap_t *bitmap, int x, int y, unsigned char byte)
 {
 	int b;
 	int local_byte;
@@ -76,8 +74,8 @@ static void pcw16_vh_decode_mode0(mame_bitmap *bitmap, int x, int y, unsigned ch
 
 	local_byte = byte;
 
-	cols[0] = Machine->pens[pcw16_colour_palette[0]];
-	cols[1] = Machine->pens[pcw16_colour_palette[1]];
+	cols[0] = machine->pens[pcw16_colour_palette[0]];
+	cols[1] = machine->pens[pcw16_colour_palette[1]];
 
 	px = x;
 	for (b=0; b<8; b++)
@@ -90,7 +88,7 @@ static void pcw16_vh_decode_mode0(mame_bitmap *bitmap, int x, int y, unsigned ch
 }
 
 /* 320, 2 bits per pixel */
-static void pcw16_vh_decode_mode1(mame_bitmap *bitmap, int x, int y, unsigned char byte)
+static void pcw16_vh_decode_mode1(running_machine *machine, bitmap_t *bitmap, int x, int y, unsigned char byte)
 {
 	int b;
 	int px;
@@ -99,7 +97,7 @@ static void pcw16_vh_decode_mode1(mame_bitmap *bitmap, int x, int y, unsigned ch
 
 	for (b=0; b<3; b++)
 	{
-		cols[b] = Machine->pens[pcw16_colour_palette[b]];
+		cols[b] = machine->pens[pcw16_colour_palette[b]];
 	}
 
 	local_byte = byte;
@@ -121,15 +119,15 @@ static void pcw16_vh_decode_mode1(mame_bitmap *bitmap, int x, int y, unsigned ch
 }
 
 /* 160, 4 bits per pixel */
-static void pcw16_vh_decode_mode2(mame_bitmap *bitmap, int x, int y, unsigned char byte)
+static void pcw16_vh_decode_mode2(running_machine *machine, bitmap_t *bitmap, int x, int y, unsigned char byte)
 {
 	int px;
 	int b;
 	int local_byte;
 	int cols[2];
 
-	cols[0] = Machine->pens[pcw16_colour_palette[0]];
-	cols[1] = Machine->pens[pcw16_colour_palette[1]];
+	cols[0] = machine->pens[pcw16_colour_palette[0]];
+	cols[1] = machine->pens[pcw16_colour_palette[1]];
 	local_byte = byte;
 
 	px = x;
@@ -153,7 +151,7 @@ static void pcw16_vh_decode_mode2(mame_bitmap *bitmap, int x, int y, unsigned ch
 }
 
 /***************************************************************************
-  Draw the game screen in the given mame_bitmap.
+  Draw the game screen in the given bitmap_t.
   Do NOT call osd_update_display() from this function,
   it will be called by the main emulation engine.
 ***************************************************************************/
@@ -178,7 +176,7 @@ VIDEO_UPDATE( pcw16 )
 		border_colour = pcw16_colour_palette[1];
 	}
 
-	border_colour = machine->pens[border_colour];
+	border_colour = screen->machine->pens[border_colour];
 
 	if ((pcw16_video_control & (1<<6))==0)
 	{
@@ -250,20 +248,20 @@ VIDEO_UPDATE( pcw16 )
 				{
 					case 0:
 					{
-						pcw16_vh_decode_mode0(bitmap,x,y+PCW16_BORDER_HEIGHT,byte);
+						pcw16_vh_decode_mode0(screen->machine, bitmap,x,y+PCW16_BORDER_HEIGHT,byte);
 					}
 					break;
 
 					case 1:
 					{
-						pcw16_vh_decode_mode1(bitmap, x,y+PCW16_BORDER_HEIGHT, byte);
+						pcw16_vh_decode_mode1(screen->machine, bitmap, x,y+PCW16_BORDER_HEIGHT, byte);
 					}
 					break;
 
 					case 3:
 					case 2:
 					{
-						pcw16_vh_decode_mode2(bitmap, x, y+PCW16_BORDER_HEIGHT, byte);
+						pcw16_vh_decode_mode2(screen->machine, bitmap, x, y+PCW16_BORDER_HEIGHT, byte);
 					}
 					break;
 				}

@@ -41,6 +41,8 @@
 
 /* Components */
 #include "sound/ay8910.h"
+#include "machine/6522via.h"
+#include "machine/6551.h"
 
 /* Devices */
 #include "devices/cassette.h"
@@ -53,9 +55,9 @@ static ADDRESS_MAP_START( microtan_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xbc01, 0xbc01) AM_READWRITE(AY8910_read_port_0_r, AY8910_write_port_0_w)
 	AM_RANGE(0xbc02, 0xbc02) AM_WRITE(AY8910_control_port_1_w)
 	AM_RANGE(0xbc03, 0xbc03) AM_READWRITE(AY8910_read_port_1_r, AY8910_write_port_1_w)
-	AM_RANGE(0xbfc0, 0xbfcf) AM_READWRITE(microtan_via_0_r, microtan_via_0_w)
-	AM_RANGE(0xbfd0, 0xbfd3) AM_READWRITE(microtan_sio_r, microtan_sio_w)
-	AM_RANGE(0xbfe0, 0xbfef) AM_READWRITE(microtan_via_1_r, microtan_via_1_w)
+	AM_RANGE(0xbfc0, 0xbfcf) AM_READWRITE(via_0_r, via_0_w)
+	AM_RANGE(0xbfd0, 0xbfd3) AM_READWRITE(acia_6551_r, acia_6551_w)
+	AM_RANGE(0xbfe0, 0xbfef) AM_READWRITE(via_1_r, via_1_w)
 	AM_RANGE(0xbff0, 0xbfff) AM_READWRITE(microtan_bffx_r, microtan_bffx_w)
 	AM_RANGE(0xc000, 0xe7ff) AM_ROM
 	AM_RANGE(0xf000, 0xffff) AM_ROM
@@ -211,20 +213,19 @@ static MACHINE_DRIVER_START( microtan )
 	// basic machine hardware
 	MDRV_CPU_ADD_TAG("main", M6502, 750000)	// 750 kHz
 	MDRV_CPU_PROGRAM_MAP(microtan_map, 0)
-	MDRV_CPU_VBLANK_INT(microtan_interrupt, 1)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", microtan_interrupt)
 
 	MDRV_MACHINE_RESET(microtan)
 
     // video hardware - include overscan
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 16*16)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 32*8-1, 0*16, 16*16-1)
 	MDRV_GFXDECODE(microtan)
 	MDRV_PALETTE_LENGTH(2)
-	MDRV_COLORTABLE_LENGTH(2)
 
 	MDRV_PALETTE_INIT(black_and_white)
 	MDRV_VIDEO_START(microtan)
@@ -257,53 +258,53 @@ ROM_START( microtan )
 	ROM_REGION( 0x00800, REGION_GFX1, ROMREGION_DISPOSE )
     ROM_LOAD( "charset.rom",  0x0000, 0x0800, CRC(3b3c5360) SHA1(a3a2f74149107f8b8f35b15069c71f3aa843d12f) )
 
-	ROM_REGION( 0x01000, REGION_GFX2, 0 )
+	ROM_REGION( 0x01000, REGION_GFX2, ROMREGION_ERASEFF )
     // initialized in init_microtan
 ROM_END
 
-static void microtan_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void microtan_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void microtan_snapshot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void microtan_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* snapshot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "m65"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "m65"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_microtan; break;
+		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_microtan; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
+		case MESS_DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
 
 		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void microtan_quickload_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void microtan_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* quickload */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hex"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hex"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_microtan_hexfile; break;
+		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_microtan_hexfile; break;
 
 		/* --- the following bits of info are returned as doubles --- */
-		case DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = 0.5; break;
+		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = 0.5; break;
 
 		default:										quickload_device_getinfo(devclass, state, info); break;
 	}

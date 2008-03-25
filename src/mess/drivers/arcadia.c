@@ -329,7 +329,6 @@ static const unsigned short arcadia_colortable[2][2] = {
 static PALETTE_INIT( arcadia )
 {
 	palette_set_colors(machine, 0, arcadia_palette, ARRAY_LENGTH(arcadia_palette));
-	memcpy(colortable, arcadia_colortable,sizeof(arcadia_colortable));
 }
 
 static MACHINE_DRIVER_START( arcadia )
@@ -338,18 +337,17 @@ static MACHINE_DRIVER_START( arcadia )
 	MDRV_CPU_PROGRAM_MAP(arcadia_mem, 0)
 	MDRV_CPU_IO_MAP(arcadia_io, 0)
 	MDRV_CPU_PERIODIC_INT(arcadia_video_line, 262*60)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(128+2*XPOS, 262)
 	MDRV_SCREEN_VISIBLE_AREA(0, 2*XPOS+128-1, 0, 262-1)
 	MDRV_GFXDECODE( arcadia )
 	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(arcadia_palette))
-	MDRV_COLORTABLE_LENGTH(sizeof (arcadia_colortable) / sizeof(arcadia_colortable[0][0]))
 	MDRV_PALETTE_INIT( arcadia )
 
 	MDRV_VIDEO_START( arcadia )
@@ -364,13 +362,13 @@ MACHINE_DRIVER_END
 
 
 ROM_START(arcadia)
-	ROM_REGION(0x8000,REGION_CPU1, 0)
-	ROM_REGION(0x100,REGION_GFX1, 0)
+	ROM_REGION(0x8000,REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION(0x100,REGION_GFX1, ROMREGION_ERASEFF)
 ROM_END
 
 ROM_START(vcg)
-	ROM_REGION(0x8000,REGION_CPU1, 0)
-	ROM_REGION(0x100,REGION_GFX1, 0)
+	ROM_REGION(0x8000,REGION_CPU1, ROMREGION_ERASEFF)
+	ROM_REGION(0x100,REGION_GFX1, ROMREGION_ERASEFF)
 ROM_END
 
 static int device_load_arcadia_cart(mess_image *image)
@@ -434,20 +432,20 @@ static int device_load_arcadia_cart(mess_image *image)
 	return INIT_PASS;
 }
 
-static void arcadia_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void arcadia_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_arcadia_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_arcadia_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}

@@ -13,6 +13,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/tiaintf.h"
 #include "devices/cartslot.h"
@@ -22,10 +23,10 @@
 static ADDRESS_MAP_START(a7800_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x001F) AM_READWRITE(a7800_TIA_r, a7800_TIA_w)
 	AM_RANGE(0x0020, 0x003F) AM_READWRITE(a7800_MARIA_r, a7800_MARIA_w)
-	AM_RANGE(0x0040, 0x00FF) AM_READWRITE(MRA8_BANK5, a7800_RAM0_w)		/* RAM0 */
+	AM_RANGE(0x0040, 0x00FF) AM_READWRITE(SMH_BANK5, a7800_RAM0_w)		/* RAM0 */
 	AM_RANGE(0x0100, 0x011F) AM_READWRITE(a7800_TIA_r, a7800_TIA_w)
 	AM_RANGE(0x0120, 0x013F) AM_READWRITE(a7800_MARIA_r, a7800_MARIA_w)
-	AM_RANGE(0x0140, 0x01FF) AM_READWRITE(MRA8_BANK6, MWA8_BANK6)		/* RAM1 */
+	AM_RANGE(0x0140, 0x01FF) AM_READWRITE(SMH_BANK6, SMH_BANK6)		/* RAM1 */
 	AM_RANGE(0x0200, 0x021F) AM_READWRITE(a7800_TIA_r, a7800_TIA_w)
 	AM_RANGE(0x0220, 0x023F) AM_READWRITE(a7800_MARIA_r, a7800_MARIA_w)
 	AM_RANGE(0x0280, 0x029F) AM_READWRITE(r6532_0_r, r6532_0_w)
@@ -33,15 +34,15 @@ static ADDRESS_MAP_START(a7800_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0320, 0x033F) AM_READWRITE(a7800_MARIA_r, a7800_MARIA_w)
 	AM_RANGE(0x0480, 0x04FF) AM_RAM										/* RIOT RAM */
 	AM_RANGE(0x1800, 0x27FF) AM_RAM
-	AM_RANGE(0x2800, 0x2FFF) AM_READWRITE(MRA8_BANK7, MWA8_BANK7)		/* MAINRAM */
-	AM_RANGE(0x3000, 0x37FF) AM_READWRITE(MRA8_BANK7, MWA8_BANK7)		/* MAINRAM */
-	AM_RANGE(0x3800, 0x3FFF) AM_READWRITE(MRA8_BANK7, MWA8_BANK7)		/* MAINRAM */
+	AM_RANGE(0x2800, 0x2FFF) AM_READWRITE(SMH_BANK7, SMH_BANK7)		/* MAINRAM */
+	AM_RANGE(0x3000, 0x37FF) AM_READWRITE(SMH_BANK7, SMH_BANK7)		/* MAINRAM */
+	AM_RANGE(0x3800, 0x3FFF) AM_READWRITE(SMH_BANK7, SMH_BANK7)		/* MAINRAM */
 
-	AM_RANGE(0x4000, 0x7FFF) AM_READ(MRA8_BANK1)						/* f18 hornet */
-	AM_RANGE(0x8000, 0x9FFF) AM_READ(MRA8_BANK2)						/* sc */
-	AM_RANGE(0xA000, 0xBFFF) AM_READ(MRA8_BANK3)						/* sc + ac */
-	AM_RANGE(0xC000, 0xDFFF) AM_READ(MRA8_BANK4)						/* ac */
-	AM_RANGE(0xE000, 0xFFFF) AM_READ(MRA8_ROM)
+	AM_RANGE(0x4000, 0x7FFF) AM_READ(SMH_BANK1)						/* f18 hornet */
+	AM_RANGE(0x8000, 0x9FFF) AM_READ(SMH_BANK2)						/* sc */
+	AM_RANGE(0xA000, 0xBFFF) AM_READ(SMH_BANK3)						/* sc + ac */
+	AM_RANGE(0xC000, 0xDFFF) AM_READ(SMH_BANK4)						/* ac */
+	AM_RANGE(0xE000, 0xFFFF) AM_READ(SMH_ROM)
 	AM_RANGE(0x4000, 0xFFFF) AM_WRITE(a7800_cart_w)
 ADDRESS_MAP_END
 
@@ -245,14 +246,12 @@ static const unsigned short a7800_colortable[] =
 static PALETTE_INIT(a7800)
 {
 	palette_set_colors(machine, 0, a7800_palette, ARRAY_LENGTH(a7800_palette));
-    memcpy(colortable,a7800_colortable,sizeof(a7800_colortable));
 }
 
 
 static PALETTE_INIT(a7800p)
 {
 	palette_set_colors(machine, 0, a7800p_palette, ARRAY_LENGTH(a7800p_palette));
-    memcpy(colortable,a7800_colortable,sizeof(a7800_colortable));
 }
 
 
@@ -266,20 +265,20 @@ static MACHINE_DRIVER_START( a7800_ntsc )
 	MDRV_CPU_ADD_TAG("main", M6502, CLK_NTSC)	/* 1.79Mhz (note: The clock switches to 1.19Mhz
                                                  * when the TIA or RIOT are accessed) */
 	MDRV_CPU_PROGRAM_MAP(a7800_mem, 0)
-	MDRV_CPU_VBLANK_INT(a7800_interrupt,262)
+	MDRV_CPU_VBLANK_INT_HACK(a7800_interrupt, 262)
 
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( a7800 )
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
+	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640,262)
 	MDRV_SCREEN_VISIBLE_AREA(0,319,25,45+204)
 	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(a7800_palette))
-	MDRV_COLORTABLE_LENGTH(sizeof(a7800_colortable) / sizeof(a7800_colortable[0]))
 	MDRV_PALETTE_INIT(a7800)
 
 	MDRV_VIDEO_START(a7800)
@@ -301,7 +300,9 @@ static MACHINE_DRIVER_START( a7800_pal )
 	/* basic machine hardware */
 	MDRV_CPU_REPLACE("main", M6502, CLK_PAL)	/* 1.79Mhz (note: The clock switches to 1.19Mhz
                                                  * when the TIA or RIOT are accessed) */
-	MDRV_CPU_VBLANK_INT(a7800_interrupt,312)
+	MDRV_CPU_VBLANK_INT_HACK(a7800_interrupt, 312)
+
+	MDRV_SCREEN_MODIFY( "main" )
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_SIZE(640,312)
 	MDRV_SCREEN_VISIBLE_AREA(0,319,50,50+225)
@@ -335,22 +336,22 @@ ROM_START (a7800p)
     ROM_LOAD ("7800pal.rom", 0xc000, 0x4000, CRC(d5b61170) SHA1(5a140136a16d1d83e4ff32a19409ca376a8df874))
 ROM_END
 
-static void a7800_ntsc_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void a7800_ntsc_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_INIT:							info->init = device_init_a7800_cart; break;
-		case DEVINFO_PTR_LOAD:							info->load = device_load_a7800_cart; break;
-		case DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = a7800_partialhash; break;
+		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_a7800_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_a7800_cart; break;
+		case MESS_DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = a7800_partialhash; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "a78"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "a78"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
@@ -360,13 +361,13 @@ SYSTEM_CONFIG_START(a7800_ntsc)
 	CONFIG_DEVICE(a7800_ntsc_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
-static void a7800_pal_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void a7800_pal_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_MUST_BE_LOADED:				info->i = 0; break;
+		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 0; break;
 		default:										a7800_ntsc_cartslot_getinfo( devclass, state, info); break;
 	}
 }

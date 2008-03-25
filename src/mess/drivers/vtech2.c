@@ -70,14 +70,14 @@
 #include "formats/vt_cas.h"
 
 static ADDRESS_MAP_START(vtech2_mem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(MRA8_BANK1, MWA8_BANK1)
-	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(MRA8_BANK2, MWA8_BANK2)
-	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(MRA8_BANK3, MWA8_BANK3)
-	AM_RANGE(0xc000, 0xffff) AM_READWRITE(MRA8_BANK4, MWA8_BANK4)
+	AM_RANGE(0x0000, 0x3fff) AM_READWRITE(SMH_BANK1, SMH_BANK1)
+	AM_RANGE(0x4000, 0x7fff) AM_READWRITE(SMH_BANK2, SMH_BANK2)
+	AM_RANGE(0x8000, 0xbfff) AM_READWRITE(SMH_BANK3, SMH_BANK3)
+	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK4)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(vtech2_io, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x1f) AM_READWRITE(laser_fdc_r, laser_fdc_w)
 	AM_RANGE(0x40, 0x43) AM_WRITE(laser_bank_select_w)
 	AM_RANGE(0x44, 0x44) AM_WRITE(laser_bg_mode_w)
@@ -410,7 +410,7 @@ static GFXDECODE_START( vtech2 )
 GFXDECODE_END
 
 
-static const rgb_t vt_palette[] =
+static const rgb_t vt_colors[] =
 {
 	RGB_BLACK,
 	MAKE_RGB(0x00, 0x00, 0x7f),  /* blue */
@@ -436,15 +436,19 @@ static PALETTE_INIT( vtech2 )
 {
 	int i;
 
-	palette_set_colors(machine, 0, vt_palette, ARRAY_LENGTH(vt_palette));
+	machine->colortable = colortable_alloc(machine, 16);
+
+	for ( i = 0; i < 16; i++ )
+		colortable_palette_set_color(machine->colortable, i, vt_colors[i]);
 
 	for (i = 0; i < 256; i++)
 	{
-		colortable[2*i] = i%16;
-		colortable[2*i+1] = i/16;
+		colortable_entry_set_value(machine->colortable, 2*i, i&15);
+		colortable_entry_set_value(machine->colortable, 2*i+1, i>>4);
 	}
+
 	for (i = 0; i < 16; i++)
-		colortable[2*256+i] = i;
+		colortable_entry_set_value(machine->colortable, 512+i, i);
 }
 
 static INTERRUPT_GEN( vtech2_interrupt )
@@ -457,7 +461,8 @@ static MACHINE_DRIVER_START( laser350 )
 	MDRV_CPU_ADD_TAG("main", Z80, 3694700)        /* 3.694700 Mhz */
 	MDRV_CPU_PROGRAM_MAP(vtech2_mem, 0)
 	MDRV_CPU_IO_MAP(vtech2_io, 0)
-	MDRV_CPU_VBLANK_INT(vtech2_interrupt, 1)
+	MDRV_CPU_VBLANK_INT("main", vtech2_interrupt)
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_INTERLEAVE(1)
@@ -465,13 +470,11 @@ static MACHINE_DRIVER_START( laser350 )
 	MDRV_MACHINE_RESET( laser350 )
 
     /* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_TYPE_RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(88*8, 24*8+32)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 88*8-1, 0*8, 24*8+32-1)
 	MDRV_GFXDECODE( vtech2 )
-	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(vt_palette))
-	MDRV_COLORTABLE_LENGTH(256*2+16)
+	MDRV_PALETTE_LENGTH(528)
 	MDRV_PALETTE_INIT(vtech2)
 
 	MDRV_VIDEO_START(laser)
@@ -503,7 +506,7 @@ ROM_START(laser350)
 	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,REGION_GFX1,0)
 	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
-	ROM_REGION(0x00100,REGION_GFX2,0)
+	ROM_REGION(0x00100,REGION_GFX2,ROMREGION_ERASEFF)
     /* initialized in init_laser */
 ROM_END
 
@@ -513,7 +516,7 @@ ROM_START(laser500)
 	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,REGION_GFX1,0)
 	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
-	ROM_REGION(0x00100,REGION_GFX2,0)
+	ROM_REGION(0x00100,REGION_GFX2,ROMREGION_ERASEFF)
 	/* initialized in init_laser */
 ROM_END
 
@@ -522,7 +525,7 @@ ROM_START(laser700)
 	ROM_LOAD("laserv3.rom", 0x00000, 0x08000, CRC(9bed01f7) SHA1(3210fddfab2f4c7855fa902fb8e2fc18d10d48f1))
 	ROM_REGION(0x00800,REGION_GFX1,0)
 	ROM_LOAD("laser.fnt",   0x00000, 0x00800, CRC(ed6bfb2a) SHA1(95e247021a10167b9de1d6ffc91ec4ba83b0ec87))
-	ROM_REGION(0x00100,REGION_GFX2,0)
+	ROM_REGION(0x00100,REGION_GFX2,ROMREGION_ERASEFF)
 	/* initialized in init_laser */
 ROM_END
 
@@ -533,57 +536,57 @@ ROM_END
 
 ***************************************************************************/
 
-static void laser_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void laser_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) vtech2_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) vtech2_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void laser_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void laser_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_laser_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_laser_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_laser_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_laser_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void laser_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void laser_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
-		case DEVINFO_INT_READABLE:						info->i = 1; break;
-		case DEVINFO_INT_WRITEABLE:						info->i = 0; break;
-		case DEVINFO_INT_CREATABLE:						info->i = 0; break;
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_TYPE:							info->i = IO_FLOPPY; break;
+		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
+		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_CREATABLE:						info->i = 0; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_laser_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_laser_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 	}
 }
 

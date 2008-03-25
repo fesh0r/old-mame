@@ -6,6 +6,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/8255ppi.h"
 #include "video/tms9928a.h"
 #include "video/v9938.h"
@@ -19,17 +20,17 @@
 #include "sound/ay8910.h"
 
 static ADDRESS_MAP_START (readmem, ADDRESS_SPACE_PROGRAM, 8)
-	AM_RANGE( 0x0000, 0x1fff) AM_READ( MRA8_BANK1 )
-	AM_RANGE( 0x2000, 0x3fff) AM_READ( MRA8_BANK2 )
-	AM_RANGE( 0x4000, 0x5fff) AM_READ( MRA8_BANK3 )
-	AM_RANGE( 0x6000, 0x7ff7) AM_READ( MRA8_BANK4 )
-	AM_RANGE( 0x7ff8, 0x7fff) AM_READ( MRA8_BANK5 )
-	AM_RANGE( 0x8000, 0x97ff) AM_READ( MRA8_BANK6 )
-	AM_RANGE( 0x9800, 0x9fff) AM_READ( MRA8_BANK7 )
-	AM_RANGE( 0xa000, 0xb7ff) AM_READ( MRA8_BANK8 )
-	AM_RANGE( 0xb800, 0xbfff) AM_READ( MRA8_BANK9 )
-	AM_RANGE( 0xc000, 0xdfff) AM_READ( MRA8_BANK10 )
-	AM_RANGE( 0xe000, 0xfffe) AM_READ( MRA8_BANK11 )
+	AM_RANGE( 0x0000, 0x1fff) AM_READ( SMH_BANK1 )
+	AM_RANGE( 0x2000, 0x3fff) AM_READ( SMH_BANK2 )
+	AM_RANGE( 0x4000, 0x5fff) AM_READ( SMH_BANK3 )
+	AM_RANGE( 0x6000, 0x7ff7) AM_READ( SMH_BANK4 )
+	AM_RANGE( 0x7ff8, 0x7fff) AM_READ( SMH_BANK5 )
+	AM_RANGE( 0x8000, 0x97ff) AM_READ( SMH_BANK6 )
+	AM_RANGE( 0x9800, 0x9fff) AM_READ( SMH_BANK7 )
+	AM_RANGE( 0xa000, 0xb7ff) AM_READ( SMH_BANK8 )
+	AM_RANGE( 0xb800, 0xbfff) AM_READ( SMH_BANK9 )
+	AM_RANGE( 0xc000, 0xdfff) AM_READ( SMH_BANK10 )
+	AM_RANGE( 0xe000, 0xfffe) AM_READ( SMH_BANK11 )
 	AM_RANGE( 0xffff, 0xffff) AM_READ( msx_sec_slot_r )
 ADDRESS_MAP_END
 
@@ -44,8 +45,8 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START (readport, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x90, 0x91) AM_READ( msx_printer_r )
 	AM_RANGE( 0xa0, 0xa7) AM_READ( msx_psg_r )
 	AM_RANGE( 0xa8, 0xab) AM_READ( ppi8255_0_r )
@@ -55,7 +56,7 @@ static ADDRESS_MAP_START (readport, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (writeport, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x77, 0x77) AM_WRITE( msx_90in1_w )
 	AM_RANGE( 0x7c, 0x7d) AM_WRITE( msx_fmpac_w )
 	AM_RANGE( 0x90, 0x91) AM_WRITE( msx_printer_w )
@@ -67,29 +68,29 @@ static ADDRESS_MAP_START (writeport, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (readport2, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_UNMAP(0xff) )
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_UNMAP_HIGH
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x90, 0x91) AM_READ( msx_printer_r )
 	AM_RANGE( 0xa0, 0xa7) AM_READ( msx_psg_r )
 	AM_RANGE( 0xa8, 0xab) AM_READ( ppi8255_0_r )
-	AM_RANGE( 0x98, 0x98) AM_READ( v9938_vram_r )
-	AM_RANGE( 0x99, 0x99) AM_READ( v9938_status_r )
+	AM_RANGE( 0x98, 0x98) AM_READ( v9938_0_vram_r )
+	AM_RANGE( 0x99, 0x99) AM_READ( v9938_0_status_r )
 	AM_RANGE( 0xb5, 0xb5) AM_READ( msx_rtc_reg_r )
 	AM_RANGE( 0xd9, 0xd9) AM_READ( msx_kanji_r )
 	AM_RANGE( 0xfc, 0xff) AM_READ( msx_ram_mapper_r )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START (writeport2, ADDRESS_SPACE_IO, 8)
-	ADDRESS_MAP_FLAGS( AMEF_ABITS(8) )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x77, 0x77) AM_WRITE( msx_90in1_w )
 	AM_RANGE( 0x7c, 0x7d) AM_WRITE( msx_fmpac_w )
 	AM_RANGE( 0x90, 0x91) AM_WRITE( msx_printer_w )
 	AM_RANGE( 0xa0, 0xa7) AM_WRITE( msx_psg_w )
 	AM_RANGE( 0xa8, 0xab) AM_WRITE( ppi8255_0_w )
-	AM_RANGE( 0x98, 0x98) AM_WRITE( v9938_vram_w )
-	AM_RANGE( 0x99, 0x99) AM_WRITE( v9938_command_w )
-	AM_RANGE( 0x9a, 0x9a) AM_WRITE( v9938_palette_w )
-	AM_RANGE( 0x9b, 0x9b) AM_WRITE( v9938_register_w )
+	AM_RANGE( 0x98, 0x98) AM_WRITE( v9938_0_vram_w )
+	AM_RANGE( 0x99, 0x99) AM_WRITE( v9938_0_command_w )
+	AM_RANGE( 0x9a, 0x9a) AM_WRITE( v9938_0_palette_w )
+	AM_RANGE( 0x9b, 0x9b) AM_WRITE( v9938_0_register_w )
 	AM_RANGE( 0xb4, 0xb4) AM_WRITE( msx_rtc_latch_w )
 	AM_RANGE( 0xb5, 0xb5) AM_WRITE( msx_rtc_reg_w )
 	AM_RANGE( 0xd8, 0xd9) AM_WRITE( msx_kanji_w )
@@ -711,7 +712,8 @@ static const struct AY8910interface ay8910_interface =
 
 static VIDEO_START( msx2 )
 {
-	v9938_init(machine, MODEL_V9938, 0x20000, msx_vdp_interrupt);
+	VIDEO_START_CALL(generic_bitmapped);
+	v9938_init(machine, 0, machine->primary_screen, tmpbitmap, MODEL_V9938, 0x20000, msx_vdp_interrupt);
 }
 
 #define MSX_XBORDER_PIXELS		15
@@ -726,9 +728,7 @@ static MACHINE_DRIVER_START( msx )
 	MDRV_CPU_ADD(Z80, 3579545)		  /* 3.579545 Mhz */
 	MDRV_CPU_PROGRAM_MAP(readmem,writemem)
 	MDRV_CPU_IO_MAP(readport,writeport)
-	MDRV_CPU_VBLANK_INT(msx_interrupt,1)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT("main", msx_interrupt)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_START( msx )
@@ -736,6 +736,9 @@ static MACHINE_DRIVER_START( msx )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
+	MDRV_SCREEN_MODIFY("main")
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_SIZE(MSX_TOTAL_XRES_PIXELS, MSX_TOTAL_YRES_PIXELS)
 	MDRV_SCREEN_VISIBLE_AREA(MSX_XBORDER_PIXELS - MSX_VISIBLE_XBORDER_PIXELS, MSX_TOTAL_XRES_PIXELS - MSX_XBORDER_PIXELS + MSX_VISIBLE_XBORDER_PIXELS - 1, MSX_YBORDER_PIXELS - MSX_VISIBLE_YBORDER_PIXELS, MSX_TOTAL_YRES_PIXELS - MSX_YBORDER_PIXELS + MSX_VISIBLE_YBORDER_PIXELS - 1)
 
@@ -757,6 +760,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( msx_pal )
 	MDRV_IMPORT_FROM( msx )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
@@ -772,24 +776,24 @@ static MACHINE_DRIVER_START( msx2 )
 	MDRV_CPU_ADD(Z80, 3579545)		  /* 3.579545 Mhz */
 	MDRV_CPU_PROGRAM_MAP(readmem, writemem)
 	MDRV_CPU_IO_MAP(readport2,writeport2)
-	MDRV_CPU_VBLANK_INT(msx2_interrupt,262)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(DEFAULT_REAL_60HZ_VBLANK_DURATION)
+	MDRV_CPU_VBLANK_INT_HACK(msx2_interrupt, 262)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( msx2 )
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK | VIDEO_TYPE_RASTER)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(MSX2_TOTAL_XRES_PIXELS, MSX2_TOTAL_YRES_PIXELS)
 	MDRV_SCREEN_VISIBLE_AREA(MSX2_XBORDER_PIXELS - MSX2_VISIBLE_XBORDER_PIXELS, MSX2_TOTAL_XRES_PIXELS - MSX2_XBORDER_PIXELS + MSX2_VISIBLE_XBORDER_PIXELS - 1, MSX2_YBORDER_PIXELS - MSX2_VISIBLE_YBORDER_PIXELS, MSX2_TOTAL_YRES_PIXELS - MSX2_YBORDER_PIXELS + MSX2_VISIBLE_YBORDER_PIXELS - 1)
 	MDRV_PALETTE_LENGTH(512)
-	MDRV_COLORTABLE_LENGTH(512)
-	MDRV_PALETTE_INIT( v9938 )
+	MDRV_PALETTE_INIT(v9938)
 
-	MDRV_VIDEO_START( msx2 )
-	MDRV_VIDEO_UPDATE( generic_bitmapped )
+	MDRV_VIDEO_START(msx2)
+	MDRV_VIDEO_UPDATE(generic_bitmapped)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -811,6 +815,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( msx2_pal )
 	MDRV_IMPORT_FROM( msx2 )
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(50)
 MACHINE_DRIVER_END
 
@@ -2131,65 +2136,65 @@ MSX_LAYOUT_INIT (vg8020)
 	MSX_LAYOUT_SLOT (3, 0, 0, 4, RAM, 0x10000, 0x0000)	/* 64KB RAM */
 MSX_LAYOUT_END
 
-static void msx_floppy_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void msx_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 2; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_msx_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_msx_floppy; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void msx_cartslot_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void msx_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = MSX_MAX_CARTS; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = MSX_MAX_CARTS; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_LOAD:							info->load = device_load_msx_cart; break;
-		case DEVINFO_PTR_UNLOAD:						info->unload = device_unload_msx_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_msx_cart; break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_msx_cart; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mx1,rom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mx1,rom"); break;
 
 		default:										cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void msx_cassette_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void msx_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) fmsx_cassette_formats; break;
+		case MESS_DEVINFO_PTR_CASSETTE_FORMATS:				info->p = (void *) fmsx_cassette_formats; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static void msx_printer_getinfo(const device_class *devclass, UINT32 state, union devinfo *info)
+static void msx_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* printer */
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		default:										printer_device_getinfo(devclass, state, info); break;
 	}

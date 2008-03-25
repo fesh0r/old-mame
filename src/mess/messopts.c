@@ -5,7 +5,6 @@
 ****************************************************************************/
 
 #include "mame.h"
-#include "deprecat.h"
 #include "options.h"
 #include "driver.h"
 #include "pool.h"
@@ -42,7 +41,7 @@ const options_entry mess_core_options[] =
 	option, by device and index
 -------------------------------------------------*/
 
-const char *mess_get_device_option(const device_class *devclass, int device_index)
+const char *mess_get_device_option(const mess_device_class *devclass, int device_index)
 {
 	const char *result = NULL;
 	const char *dev_name;
@@ -66,13 +65,13 @@ const char *mess_get_device_option(const device_class *devclass, int device_inde
 -------------------------------------------------*/
 
 static void mess_enumerate_devices(core_options *opts, const game_driver *gamedrv,
-	void (*proc)(core_options *opts, const game_driver *gamedrv, const device_class *devclass, int device_index, int global_index))
+	void (*proc)(core_options *opts, const game_driver *gamedrv, const mess_device_class *devclass, int device_index, int global_index))
 {
 	struct SystemConfigurationParamBlock cfg;
 	device_getinfo_handler handlers[64];
 	int count_overrides[ARRAY_LENGTH(handlers)];
 	int i, j, count, index = 0;
-	device_class devclass;
+	mess_device_class devclass;
 
 	/* retrieve getinfo handlers */
 	memset(&cfg, 0, sizeof(cfg));
@@ -92,7 +91,7 @@ static void mess_enumerate_devices(core_options *opts, const game_driver *gamedr
 		devclass.get_info = handlers[i];
 
 		/* how many of this device exist? */
-		count = (int) device_get_info_int(&devclass, DEVINFO_INT_COUNT);
+		count = (int) mess_device_get_info_int(&devclass, MESS_DEVINFO_INT_COUNT);
 
 		/* loop on each device instance */
 		for (j = 0; j < count; j++)
@@ -110,7 +109,7 @@ static void mess_enumerate_devices(core_options *opts, const game_driver *gamedr
 -------------------------------------------------*/
 
 static void add_device_options_for_device(core_options *opts, const game_driver *gamedrv,
-	const device_class *devclass, int device_index, int global_index)
+	const mess_device_class *devclass, int device_index, int global_index)
 {
 	options_entry this_entry[2];
 	const char *dev_name;
@@ -204,7 +203,7 @@ void mess_options_init(core_options *opts)
 -------------------------------------------------*/
 
 static void extract_device_options_for_device(core_options *opts, const game_driver *gamedrv,
-	const device_class *devclass, int device_index, int global_index)
+	const mess_device_class *devclass, int device_index, int global_index)
 {
 	mess_image *image;
 	iodevice_t dev_type;
@@ -215,14 +214,14 @@ static void extract_device_options_for_device(core_options *opts, const game_dri
 	assert_always(options_get_bool(opts, OPTION_ADDED_DEVICE_OPTIONS), "extract_device_options_for_device() called without device options");
 
 	/* identify the correct image */
-	dev_tag = device_get_info_string(devclass, DEVINFO_STR_DEV_TAG);
+	dev_tag = mess_device_get_info_string(devclass, MESS_DEVINFO_STR_DEV_TAG);
 	if (dev_tag != NULL)
 	{
 		image = image_from_devtag_and_index(dev_tag, device_index);
 	}
 	else
 	{
-		dev_type = (iodevice_t) (int) device_get_info_int(devclass, DEVINFO_INT_TYPE);
+		dev_type = (iodevice_t) (int) mess_device_get_info_int(devclass, MESS_DEVINFO_INT_TYPE);
 		image = image_from_devtype_and_index(dev_type, device_index);
 	}
 
@@ -276,13 +275,13 @@ done:
 	out of core into the options
 -------------------------------------------------*/
 
-void mess_options_extract(void)
+void mess_options_extract(running_machine *machine)
 {
 	/* only extract the device options if we've added them */
 	if (options_get_bool(mame_options(), OPTION_ADDED_DEVICE_OPTIONS))
-		mess_enumerate_devices(mame_options(), Machine->gamedrv, extract_device_options_for_device);
+		mess_enumerate_devices(mame_options(), machine->gamedrv, extract_device_options_for_device);
 
 	/* write the config, if appropriate */
 	if (options_get_bool(mame_options(), OPTION_WRITECONFIG))
-		write_config(NULL, Machine->gamedrv);
+		write_config(NULL, machine->gamedrv);
 }

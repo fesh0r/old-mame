@@ -76,23 +76,6 @@ static const char *const mess_default_text[] =
 
 
 /***************************************************************************
-    PALETTE
-***************************************************************************/
-
-void palette_set_colors_rgb(running_machine *machine, pen_t color_base, const UINT8 *colors, int color_count)
-{
-	while (color_count--)
-	{
-		UINT8 r = *colors++;
-		UINT8 g = *colors++;
-		UINT8 b = *colors++;
-		palette_set_color_rgb(machine, color_base++, r, g, b);
-	}
-}
-
-
-
-/***************************************************************************
     UI TEXT
 ***************************************************************************/
 
@@ -100,3 +83,4 @@ const char * ui_getstring (int string_num)
 {
 	return mess_default_text[string_num];
 }
+

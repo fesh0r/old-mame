@@ -121,22 +121,22 @@ VIDEO_UPDATE( pc1251 )
 	int x, y, i, j;
 	int color[2];
 
-	bitmap_fill(bitmap, cliprect, 5);
+	bitmap_fill(bitmap, cliprect, 11);
 
 	/* HJB: we cannot initialize array with values from other arrays, thus... */
-    color[0] = machine->pens[pocketc_colortable[PC1251_CONTRAST][0]];
-	color[1] = machine->pens[pocketc_colortable[PC1251_CONTRAST][1]];
+	color[0] = pocketc_colortable[PC1251_CONTRAST][0];
+	color[1] = pocketc_colortable[PC1251_CONTRAST][1];
 
 	for (x=RIGHT,y=DOWN,i=0; i<60;x+=3) {
 		for (j=0; j<5;j++,i++,x+=3)
-			drawgfx(bitmap, machine->gfx[0], pc1251_lcd.reg[i],
+			drawgfx(bitmap, screen->machine->gfx[0], pc1251_lcd.reg[i],
 					PC1251_CONTRAST,0,0,
 					x,y,
 					0, TRANSPARENCY_NONE,0);
 	}
 	for (i=0x7b; i>=0x40;x+=3) {
 		for (j=0; j<5;j++,i--,x+=3)
-			drawgfx(bitmap, machine->gfx[0], pc1251_lcd.reg[i],
+			drawgfx(bitmap, screen->machine->gfx[0], pc1251_lcd.reg[i],
 					PC1251_CONTRAST,0,0,
 					x,y,
 					0, TRANSPARENCY_NONE,0);

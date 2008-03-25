@@ -112,6 +112,7 @@ TESTDRIVER( 3do_pal )
 
 	DRIVER( megadrij )	/* 1988 Sega Mega Drive (Japan)						*/
 	DRIVER( genesis )	/* 1989 Sega Genesis (USA)							*/
+	DRIVER( gensvp )	/* 1993 Sega Genesis (USA w/SVP chip)					*/
 	DRIVER( megadriv )	/* 1990 Sega Mega Drive (Europe)					*/
 
 	DRIVER( saturnjp )	/* 1994 Sega Saturn (Japan)							*/
@@ -169,13 +170,16 @@ TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 	/* MAGNAVOX */
 	DRIVER( odyssey2 )	/* Magnavox Odyssey 2 - 1978-1983					*/
 
+	/* Hartung, Watara, ...*/
+	DRIVER( gmaster )	/* Hartung Gamemaster */
+
 	/* WATARA */
 	DRIVER( svision )	/* Supervision Handheld								*/
 TESTDRIVER( svisions )
 
 TESTDRIVER( svisionp )
 TESTDRIVER( svisionn )
-TESTDRIVER( tvlinkp )
+	DRIVER( tvlinkp )
 
 	/* INTERTON */
 	DRIVER( vc4000 )	/* Interton vc4000									*/
@@ -183,6 +187,9 @@ TESTDRIVER( tvlinkp )
 	/* BANDAI */
 	DRIVER( wswan )		/* Bandai WonderSwan Handheld						*/
 	DRIVER( wscolor )	/* Bandai WonderSwan Color Handheld					*/
+
+	/* EPOCH */
+	DRIVER( gamepock )	/* Epoch Game Pocket Computer						*/
 
 
 /****************COMPUTERS***************************************************/
@@ -364,7 +371,8 @@ TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
 	DRIVER( ibmpc )		/* 1982	IBM PC										*/
 	DRIVER( ibmpca )	/* 1982 IBM PC										*/
 	DRIVER( dgone )		/* 1984 Data General/One */
-	DRIVER( pcmda )		/* 1987 PC with MDA (MGA aka Hercules)				*/
+	DRIVER( pcmda )		/* 1987 PC with MDA									*/
+	DRIVER( pcherc )    /* 1987 PC with Hercules (for testing hercules)		*/
 	DRIVER( pc )		/* 1987 PC with CGA									*/
 TESTDRIVER( bondwell )	/* 1985	Bondwell (CGA)								*/
 	DRIVER( europc )	/* 1988	Schneider Euro PC (CGA or Hercules)			*/
@@ -536,7 +544,8 @@ TESTDRIVER( einstei2 )
 TESTDRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
 
 	/* MICROBEE SYSTEMS */
-	DRIVER( mbee )		/* Microbee 32 IC									*/
+	DRIVER( mbee )		/* Microbee 16 Standard or Plus								*/
+	DRIVER( mbeeic )	/* Microbee 32 IC									*/
 	DRIVER( mbeepc )	/* Microbee 32 PC									*/
 	DRIVER( mbeepc85 )	/* Microbee 32 PC85									*/
 	DRIVER( mbee56 )	/* Microbee 56K (CP/M)								*/
@@ -602,7 +611,8 @@ TESTDRIVER( trs80m4 )
 	/* PHILIPS */
 	DRIVER( p2000t )	/* 1980 P2000T										*/
 	DRIVER( p2000m )	/* 1980 P2000M										*/
-	/* philips g7000 odyssey2 compatible */
+	DRIVER( videopac )	/* 1979 Videopac G7000/C52							*/
+TESTDRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
 
 	/* COMPUKIT */
 	DRIVER( uk101 )		/* 1979 UK101										*/
@@ -816,6 +826,32 @@ TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
 	DRIVER( mo5nr )		/* 1986 Thomson MO5 NR								*/
 	DRIVER( pro128 )	/* 1986 Oliveti Prodest PC 128						*/
 
+	/* Dick Smith */
+	DRIVER( super80 )
+	DRIVER( super80d )
+	DRIVER( super80e )
+	DRIVER( super80m )
+	DRIVER( super80v )
+
+	/* Galeb */
+	DRIVER( galeb )
+
+	/* Orao */
+	DRIVER( orao )
+	DRIVER( orao103 )
+		
+	/* UT-88 */
+	DRIVER( ut88 )	
+	DRIVER( ut88mini )			
+
+	/* Mikro-80 */
+	DRIVER( mikro80 )	
+
+	/* Specialist */	
+	DRIVER( special )	
+	DRIVER( lik )	
+	DRIVER( specimx )	
+	
 /****************Games*******************************************************/
 	/* Computer Electronic */
 	DRIVER( mk1 )		/* Chess Champion MK I								*/

@@ -9,7 +9,6 @@
 
 /* Core includes */
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/trs80.h"
 
 /* Components */
@@ -281,7 +280,7 @@ DEVICE_LOAD( trs80_floppy )
     return INIT_PASS;
 }
 
-static void trs80_fdc_callback(wd17xx_state_t event, void *param);
+static void trs80_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 MACHINE_RESET( trs80 )
 {
@@ -323,9 +322,37 @@ DRIVER_INIT( trs80 )
 	}
 }
 
+DRIVER_INIT( lnw80 )
+{
+	UINT8 y, *FNT = memory_region(REGION_GFX1);
+	UINT16 i, rows[] = { 0, 0x200, 0x100, 0x300, 1, 0x201, 0x101, 0x301 };
+
+	for( i = 0; i < 0x80; i++ )
+	{
+		/* copy eight lines from the character generator */
+		for (y = 0; y < 8; y++)
+			FNT[i*FH+y] = BITSWAP8(FNT[0x800+(i<<1)+rows[y]], 2, 1, 6, 7, 5, 3, 4, 0); /* bits 0,3,4 are blank */
+	}
+	/* setup the 2x3 chunky block graphics (two times 64 characters) */
+	for( i = 0x80; i < 0x100; i++ )
+	{
+		UINT8 b0, b1, b2, b3, b4, b5;
+		b0 = (i & 0x01) ? 0xe0 : 0x00;
+		b1 = (i & 0x02) ? 0x1c : 0x00;
+		b2 = (i & 0x04) ? 0xe0 : 0x00;
+		b3 = (i & 0x08) ? 0x1c : 0x00;
+		b4 = (i & 0x10) ? 0xe0 : 0x00;
+		b5 = (i & 0x20) ? 0x1c : 0x00;
+
+		FNT[i*FH+ 0] = FNT[i*FH+ 1] = FNT[i*FH+ 2] = FNT[i*FH+ 3] = b0 | b1;
+		FNT[i*FH+ 4] = FNT[i*FH+ 5] = FNT[i*FH+ 6] = FNT[i*FH+ 7] = b2 | b3;
+		FNT[i*FH+ 8] = FNT[i*FH+ 9] = FNT[i*FH+10] = FNT[i*FH+11] = b4 | b5;
+	}
+}
+
 MACHINE_START( trs80 )
 {
-	wd17xx_init(WD_TYPE_179X,trs80_fdc_callback, NULL);
+	wd17xx_init(machine, WD_TYPE_179X,trs80_fdc_callback, NULL);
 	add_exit_callback(machine, tape_put_close);
 }
 
@@ -475,7 +502,7 @@ WRITE8_HANDLER( trs80_port_ff_w )
 			if (diff > 4000)
 			{
 				/* reset tape output */
-				tape_put_close(Machine);
+				tape_put_close(machine);
 				put_bit_count = tape_bits = in_sync = 0;
 			}
 			else
@@ -550,10 +577,6 @@ WRITE8_HANDLER( trs80_port_ff_w )
 		}
 	}
 
-	/* font width change ? (32<->64 characters per line) */
-	if( changes & 0x08 )
-		memset(dirtybuffer, 1, 64 * 16);
-
 	trs80_port_ff = data;
 }
 
@@ -627,7 +650,7 @@ INTERRUPT_GEN( trs80_fdc_interrupt )
 	}
 }
 
-void trs80_fdc_callback(wd17xx_state_t event, void *param)
+void trs80_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	switch (event)
 	{
@@ -635,7 +658,7 @@ void trs80_fdc_callback(wd17xx_state_t event, void *param)
 			irq_status &= ~IRQ_FDC;
 			break;
 		case WD17XX_IRQ_SET:
-			trs80_fdc_interrupt(Machine, 0);
+			trs80_fdc_interrupt(machine, 0);
 			break;
 		case WD17XX_DRQ_CLR:
 		case WD17XX_DRQ_SET:
@@ -731,21 +754,21 @@ WRITE8_HANDLER( trs80_motor_w )
 	int result = 0;
 
 	if (offset & 1)
-		result |= input_port_1_r(0);
+		result |= readinputport(1);
 	if (offset & 2)
-		result |= input_port_2_r(0);
+		result |= readinputport(2);
 	if (offset & 4)
-		result |= input_port_3_r(0);
+		result |= readinputport(3);
 	if (offset & 8)
-		result |= input_port_4_r(0);
+		result |= readinputport(4);
 	if (offset & 16)
-		result |= input_port_5_r(0);
+		result |= readinputport(5);
 	if (offset & 32)
-		result |= input_port_6_r(0);
+		result |= readinputport(6);
 	if (offset & 64)
-		result |= input_port_7_r(0);
+		result |= readinputport(7);
 	if (offset & 128)
-		result |= input_port_8_r(0);
+		result |= readinputport(8);
 
 	return result;
 }

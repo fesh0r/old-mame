@@ -280,7 +280,7 @@ static void reload_interval_timer(int which)
 {
 	if (tms9902[which].TMR)
 	{	/* reset clock interval */
-		timer_adjust(tms9902[which].timer,
+		timer_adjust_periodic(tms9902[which].timer,
 						double_to_attotime((double) tms9902[which].TMR / (tms9902[which].clock_rate / ((tms9902[which].CLK4M) ? 4. : 3.) / 64.)),
 						which,
 						double_to_attotime((double) tms9902[which].TMR / (tms9902[which].clock_rate / ((tms9902[which].CLK4M) ? 4. : 3.) / 64.)));

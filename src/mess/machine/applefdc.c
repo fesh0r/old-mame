@@ -36,7 +36,7 @@
 *********************************************************************/
 
 #include "applefdc.h"
-#include "deprecat.h"
+
 
 /* logging */
 #define LOG_IWM			0
@@ -85,7 +85,7 @@ enum
 
 static int iwm_mode;		/* 0-31 */
 static emu_timer *motor_timer;
-static struct applefdc_interface iwm_intf;
+static applefdc_interface iwm_intf;
 
 static TIMER_CALLBACK(iwm_turnmotor_onoff);
 
@@ -98,7 +98,7 @@ static TIMER_CALLBACK(iwm_turnmotor_onoff);
 
 ***************************************************************************/
 
-void applefdc_init(const struct applefdc_interface *intf)
+void applefdc_init(const applefdc_interface *intf)
 {
 	applefdc_lines = 0;
 	iwm_mode = 0x1f;	/* default value needed by Lisa 2 - no, I don't know if it is true */
@@ -309,15 +309,13 @@ static void iwm_access(int offset)
 	{
 		case 0x08:
 			/* Turn off motor */
-			timer_adjust(motor_timer,
-				(iwm_mode & IWM_MODE_MOTOROFFDELAY) ? attotime_zero : ATTOTIME_IN_SEC(1),
-				0,
-				attotime_zero);
+			timer_adjust_oneshot(motor_timer,
+				(iwm_mode & IWM_MODE_MOTOROFFDELAY) ? attotime_zero : ATTOTIME_IN_SEC(1), 0);
 			break;
 
 		case 0x09:
 			/* Turn on motor */
-			timer_adjust(motor_timer, attotime_zero, 1, attotime_zero);
+			timer_adjust_oneshot(motor_timer, attotime_zero, 1);
 			break;
 
 		case 0x0A:
