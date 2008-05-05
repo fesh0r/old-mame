@@ -1,3 +1,69 @@
+0.125
+-----
+
+
+MAMETesters Bugs Fixed
+----------------------
+01743: [Sound] anteater: Music is really loud and clips (Aaron Giles)
+01770: [Misc.] hanayara, mjangels, mjcomv1, mjreach, quiztvqq, tenkai,
+       tenkaibb, tenkaicb, yarunara: msm6242 device assert (Duke)
+01778: [Sound] all sets in m62.c driver: low ay8910 volume 
+       (Aaron Giles)
+01771: [Misc.] arescue, f1en: space_map_range errors (Aaron Giles)
+01772: [Misc.] daireika: space_map_range assertion (Aaron Giles)
+01773: [Misc.] steelta1, steeltag, steeltal, steeltap: space_map_range
+       error (Aaron Giles)
+01774: [Misc.] racedcb4, racedcg4, racedrc1, racedrc2, racedrc4, 
+       racedrcb, racedrcg, racedrvc: space_map_range error 
+       (Aaron Giles)
+01775: [Misc.] newtangl, troangel: Crash with Access Violation 
+       (robiza)
+01767: [Sound] Various neodrvr.c games: Various sound effects broken 
+       (couriersud)
+01769: [Sound] All games using YM2610: SSG volume more than 1.0 causes
+       no audio output. (couriersud)
+
+
+
+Source Changes
+--------------
+Added video enable/disable feature in m90 driver. [robiza]
+
+Fixed ROZ centering in namcona1 driver [Phil Stroffolino]
+
+Added extra tile banking and layer enable for denjinmk. 
+[David Haywood]
+
+Fixed an envelope corner case in the SCSP and AICA. [kingshriek]
+
+Removed bogus assertion in device code - DEVICE_TYPE_WILDCARD is NULL. 
+[Nathan Woods]
+
+Added xchg and a few other missing opcodes to x86emit.h. [Aaron Giles]
+
+Added -watchdog to runtest.cmd. [Aaron Giles]
+
+Verified clocks on Bomberman pcb which runs on M90 hardware.
+[Corrado Tomaselli]
+
+
+
+New games added or promoted from NOT_WORKING status
+---------------------------------------------------
+Paparazzi [Tomasz Slanina]
+
+
+
+New clones added
+----------------
+Touchmaster 7000 V8.04 [Brian Troha]
+Megatouch III Tournament Edition [Hugh McLenaghan]
+Megatouch III [Mariusz Wojcieszek]
+Heated Barrel (World version 3) [Tomasz Slanina]
+Raiden 2 (set 7) [Tomasz Slanina]
+
+
+
 0.124u5
 -------
 
