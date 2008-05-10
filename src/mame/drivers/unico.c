@@ -38,8 +38,8 @@ Year + Game         PCB             Notes
 ***************************************************************************/
 
 static READ16_HANDLER ( YM3812_status_port_0_msb_r )	{	return YM3812_status_port_0_r(machine,0) << 8;	}
-static WRITE16_HANDLER( YM3812_register_port_0_msb_w )	{	if (ACCESSING_MSB)	YM3812_control_port_0_w(machine,0,data >> 8);	}
-static WRITE16_HANDLER( YM3812_data_port_0_msb_w )		{	if (ACCESSING_MSB)	YM3812_write_port_0_w(machine,0,data >> 8);		}
+static WRITE16_HANDLER( YM3812_register_port_0_msb_w )	{	if (ACCESSING_BITS_8_15)	YM3812_control_port_0_w(machine,0,data >> 8);	}
+static WRITE16_HANDLER( YM3812_data_port_0_msb_w )		{	if (ACCESSING_BITS_8_15)	YM3812_write_port_0_w(machine,0,data >> 8);		}
 
 
 /*
@@ -54,7 +54,7 @@ static WRITE16_HANDLER( YM3812_data_port_0_msb_w )		{	if (ACCESSING_MSB)	YM3812_
 
 static WRITE16_HANDLER( burglarx_sound_bank_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		int bank = (data >> 8 ) & 1;
 		OKIM6295_set_bank_base(0, 0x40000 * bank );
@@ -109,7 +109,7 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( zeropnt_sound_bank_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		/* Banked sound samples. The 3rd quarter of the ROM
            contains garbage. Indeed, only banks 0&1 are used */
@@ -128,7 +128,7 @@ static WRITE16_HANDLER( zeropnt_sound_bank_w )
 /* Light Gun - need to wiggle the input slightly otherwise fire doesn't work */
 static READ16_HANDLER( unico_gunx_0_msb_r )
 {
-	int x=readinputportbytag("X0");
+	int x=input_port_read(machine, "X0");
 
 	x=x*384/256; /* On screen pixel X */
 	if (x<0x160) x=0x30 + (x*0xd0/0x15f);
@@ -139,7 +139,7 @@ static READ16_HANDLER( unico_gunx_0_msb_r )
 
 static READ16_HANDLER( unico_guny_0_msb_r )
 {
-	int y=readinputportbytag("Y0");
+	int y=input_port_read(machine, "Y0");
 
 	y=0x18+((y*0xe0)/0xff);
 
@@ -148,7 +148,7 @@ static READ16_HANDLER( unico_guny_0_msb_r )
 
 static READ16_HANDLER( unico_gunx_1_msb_r )
 {
-	int x=readinputportbytag("X1");
+	int x=input_port_read(machine, "X1");
 
 	x=x*384/256; /* On screen pixel X */
 	if (x<0x160) x=0x30 + (x*0xd0/0x15f);
@@ -159,7 +159,7 @@ static READ16_HANDLER( unico_gunx_1_msb_r )
 
 static READ16_HANDLER( unico_guny_1_msb_r )
 {
-	int y=readinputportbytag("Y1");
+	int y=input_port_read(machine, "Y1");
 
 	y=0x18+((y*0xe0)/0xff);
 
@@ -214,28 +214,28 @@ ADDRESS_MAP_END
                                 Zero Point 2
 ***************************************************************************/
 
-static READ32_HANDLER( zeropnt2_coins_r )			{ return (readinputportbytag("IN0") << 16) | 0xffff; }
-static READ32_HANDLER( zeropnt2_dsw1_r )			{ return (readinputportbytag("DSW1") << 16) | 0xffff; }
-static READ32_HANDLER( zeropnt2_dsw2_r )			{ return (readinputportbytag("DSW2") << 16) | 0xffff; }
-static READ32_HANDLER( zeropnt2_buttons_r )			{ return ((readinputportbytag("IN7") | ((EEPROM_read_bit() & 0x01) << 7)) << 16) | 0xffff; }
+static READ32_HANDLER( zeropnt2_coins_r )			{ return (input_port_read(machine, "IN0") << 16) | 0xffff; }
+static READ32_HANDLER( zeropnt2_dsw1_r )			{ return (input_port_read(machine, "DSW1") << 16) | 0xffff; }
+static READ32_HANDLER( zeropnt2_dsw2_r )			{ return (input_port_read(machine, "DSW2") << 16) | 0xffff; }
+static READ32_HANDLER( zeropnt2_buttons_r )			{ return ((input_port_read(machine, "IN7") | ((EEPROM_read_bit() & 0x01) << 7)) << 16) | 0xffff; }
 
-static READ32_HANDLER( zeropnt2_gunx_0_msb_r )		{ return (unico_gunx_0_msb_r(machine,0,0)-0x0800) << 16; }
-static READ32_HANDLER( zeropnt2_guny_0_msb_r )		{ return (unico_guny_0_msb_r(machine,0,0)+0x0800) << 16; }
-static READ32_HANDLER( zeropnt2_gunx_1_msb_r )		{ return (unico_gunx_1_msb_r(machine,0,0)-0x0800) << 16; }
-static READ32_HANDLER( zeropnt2_guny_1_msb_r )		{ return (unico_guny_1_msb_r(machine,0,0)+0x0800) << 16; }
+static READ32_HANDLER( zeropnt2_gunx_0_msb_r )		{ return (unico_gunx_0_msb_r(machine,0,0xffff)-0x0800) << 16; }
+static READ32_HANDLER( zeropnt2_guny_0_msb_r )		{ return (unico_guny_0_msb_r(machine,0,0xffff)+0x0800) << 16; }
+static READ32_HANDLER( zeropnt2_gunx_1_msb_r )		{ return (unico_gunx_1_msb_r(machine,0,0xffff)-0x0800) << 16; }
+static READ32_HANDLER( zeropnt2_guny_1_msb_r )		{ return (unico_guny_1_msb_r(machine,0,0xffff)+0x0800) << 16; }
 
 static READ32_HANDLER ( zeropnt2_oki0_r )			{ return OKIM6295_status_0_r(machine,0) << 16; }
 static READ32_HANDLER ( zeropnt2_oki1_r )			{ return OKIM6295_status_1_r(machine,0) << 16; }
-static WRITE32_HANDLER( zeropnt2_oki0_w )			{ if ((mem_mask & 0x00ff0000) == 0)	OKIM6295_data_0_w(machine,0,(data >> 16) & 0xff); }
-static WRITE32_HANDLER( zeropnt2_oki1_w )			{ if ((mem_mask & 0x00ff0000) == 0)	OKIM6295_data_1_w(machine,0,(data >> 16) & 0xff); }
+static WRITE32_HANDLER( zeropnt2_oki0_w )			{ if (ACCESSING_BITS_16_23)	OKIM6295_data_0_w(machine,0,(data >> 16) & 0xff); }
+static WRITE32_HANDLER( zeropnt2_oki1_w )			{ if (ACCESSING_BITS_16_23)	OKIM6295_data_1_w(machine,0,(data >> 16) & 0xff); }
 
 static READ32_HANDLER( zeropnt2_ym2151_status_r )	{ return YM2151_status_port_0_r(machine,0) << 16; }
-static WRITE32_HANDLER( zeropnt2_ym2151_reg_w )		{ if ((mem_mask & 0x00ff0000) == 0)	YM2151_register_port_0_w(machine,0,(data >> 16) & 0xff); }
-static WRITE32_HANDLER( zeropnt2_ym2151_data_w )	{ if ((mem_mask & 0x00ff0000) == 0)	YM2151_data_port_0_w(machine,0,(data >> 16) & 0xff); }
+static WRITE32_HANDLER( zeropnt2_ym2151_reg_w )		{ if (ACCESSING_BITS_16_23)	YM2151_register_port_0_w(machine,0,(data >> 16) & 0xff); }
+static WRITE32_HANDLER( zeropnt2_ym2151_data_w )	{ if (ACCESSING_BITS_16_23)	YM2151_data_port_0_w(machine,0,(data >> 16) & 0xff); }
 
 static WRITE32_HANDLER( zeropnt2_sound_bank_w )
 {
-	if (ACCESSING_MSB32)
+	if (ACCESSING_BITS_24_31)
 	{
 		int bank = ((data >> 24) & 3) % 4;
 		UINT8 *dst	= memory_region(REGION_SOUND1);
@@ -246,7 +246,7 @@ static WRITE32_HANDLER( zeropnt2_sound_bank_w )
 
 static WRITE32_HANDLER( zeropnt2_leds_w )
 {
-	if ((mem_mask & 0x00ff0000) == 0)
+	if (ACCESSING_BITS_16_23)
 	{
 		coin_counter_w(0,data & 0x00010000);
 		set_led_status(0,data & 0x00800000);	// Start 1
@@ -259,7 +259,7 @@ static WRITE32_HANDLER( zeropnt2_eeprom_w )
 	if (data & ~0xfe00000)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
 
-	if ( ACCESSING_MSB32 )
+	if ( ACCESSING_BITS_24_31 )
 	{
 		// latch the bit
 		EEPROM_write_bit(data & 0x04000000);

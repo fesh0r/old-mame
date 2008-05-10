@@ -23,7 +23,6 @@ To Do:
 
 - Emeralda:
     After selecting the game type, tilemap scrolling is briefly incorrect
-    Shadow sprites, if enabled, make the score display invisible
     The demo sprites are incorrect, you should see a dolphin speaking
     the instructions and the playfield is wrong.
     Byte 0x25 of the NVRAM controls the FBI logo. 0x00 is on, 0x01 is off
@@ -264,7 +263,7 @@ static READ16_HANDLER( namcona1_nvram_r )
 
 static WRITE16_HANDLER( namcona1_nvram_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 		namcona1_nvmem[offset] = data&0xff;
 	}
@@ -515,7 +514,7 @@ INPUT_PORTS_END
 /***************************************************************************/
 
 static void
-simulate_mcu( void )
+simulate_mcu( running_machine *machine )
 {
 	int i;
 	UINT16 data;
@@ -525,11 +524,11 @@ simulate_mcu( void )
 
 	if (is_na2)
 	{
-		mcu_ram[0xfc0/2] = readinputport(0x0); /* dipswitch */
+		mcu_ram[0xfc0/2] = input_port_read_indexed(machine, 0x0); /* dipswitch */
 
 		for( i=1; i<=4; i++ )
 		{
-			data = readinputport(i)<<8;
+			data = input_port_read_indexed(machine, i)<<8;
 			switch( namcona1_gametype )
 			{
 			case NAMCO_KNCKHEAD:
@@ -548,11 +547,11 @@ simulate_mcu( void )
 				if( data&0x4000 ) data |= 0x10; /* jump */
 				if( i==1 )
 				{
-					if( readinputport(1)&0x80 ) data |= 0x80; /* P1 start */
+					if( input_port_read_indexed(machine, 1)&0x80 ) data |= 0x80; /* P1 start */
 				}
 				if( i==2 )
 				{
-					if( readinputport(2)&0x80 ) data |= 0x80; /* P2 start */
+					if( input_port_read_indexed(machine, 2)&0x80 ) data |= 0x80; /* P2 start */
 				}
 				break;
 
@@ -571,7 +570,7 @@ simulate_mcu( void )
 		mcu_ram[0xfc0/2+0x08] = 0xffff; /* analog6,7 */
 		mcu_ram[0xfc0/2+0x09] = 0xffff; /* encoder0,1 */
 
-		poll_coins = readinputport(5); /* coin input */
+		poll_coins = input_port_read_indexed(machine, 5); /* coin input */
 		if( (poll_coins&0x8)&~(mCoinState&0x8) ) mCoinCount[0]++;
 		if( (poll_coins&0x4)&~(mCoinState&0x4) ) mCoinCount[1]++;
 		if( (poll_coins&0x2)&~(mCoinState&0x2) ) mCoinCount[2]++;
@@ -582,14 +581,14 @@ simulate_mcu( void )
 		mcu_ram[0xfc0/2+0xb] = (mCoinCount[2]<<8)|mCoinCount[3];
 
 		/* special handling for F/A */
-		data = ~((readinputport(1)<<8)|readinputport(2));
+		data = ~((input_port_read_indexed(machine, 1)<<8)|input_port_read_indexed(machine, 2));
 		mcu_ram[0xffc/2] = data;
 		mcu_ram[0xffe/2] = data;
 
 		if( namcona1_gametype == NAMCO_XDAY2 )
 		{
-			int p1 = readinputport(1);
-			int p2 = readinputport(2);
+			int p1 = input_port_read_indexed(machine, 1);
+			int p2 = input_port_read_indexed(machine, 2);
 			UINT32 code = 0;
 			if( p2&0x40 ) code |= 0x2000; // enter (top-level of self-test)
 			if( p2&0x20 ) code |= 0x1000; // exit  (top-level of self-test)
@@ -727,7 +726,7 @@ static READ16_HANDLER( custom_key_r )
 	old_count = count;
 	do
 	{
-		count = mame_rand(Machine);
+		count = mame_rand(machine);
 	} while( old_count == count );
 
 	switch( namcona1_gametype )
@@ -798,7 +797,7 @@ static READ16_HANDLER( custom_key_r )
 	default:
 		return 0;
 	}
-	return mame_rand(Machine)&0xffff;
+	return mame_rand(machine)&0xffff;
 } /* custom_key_r */
 
 static WRITE16_HANDLER( custom_key_w )
@@ -836,15 +835,15 @@ transfer_dword( running_machine *machine, UINT32 dest, UINT32 source )
 	}
 	if( dest>=0xf00000 && dest<=0xf02000 )
 	{
-		namcona1_paletteram_w( machine, (dest-0xf00000)/2, data, 0x0000 );
+		namcona1_paletteram_w( machine, (dest-0xf00000)/2, data, 0xffff );
 	}
 	else if( dest>=0xf40000 && dest<=0xf80000 )
 	{
-		namcona1_gfxram_w( machine, (dest-0xf40000)/2, data, 0x0000 );
+		namcona1_gfxram_w( machine, (dest-0xf40000)/2, data, 0xffff );
 	}
 	else if( dest>=0xff0000 && dest<0xff8000 )
 	{
-		namcona1_videoram_w( machine, (dest-0xff0000)/2, data, 0x0000 );
+		namcona1_videoram_w( machine, (dest-0xff0000)/2, data, 0xffff );
 	}
 	else if( dest>=0xff8000 && dest<=0xffdfff )
 	{
@@ -1054,16 +1053,6 @@ static WRITE16_HANDLER( namcona1_vreg_w )
 
 /***************************************************************/
 
-static WRITE16_HANDLER( bogus_w )
-{
-//  DEBUGGER_BREAK;
-}
-static READ16_HANDLER( bogus_r )
-{
-//  DEBUGGER_BREAK;
-	return 0;
-}
-
 // MCU "mailslot" handler - has 8 16-bit slots mirrored
 static UINT16 mcu_mailbox[8];
 
@@ -1076,7 +1065,7 @@ static WRITE16_HANDLER( mcu_mailbox_w_68k )
 {
 //  logerror("mailbox_w_68k: %x @ %x\n", data, offset);
 
-	if (offset == 4) cpunum_set_input_line(Machine, 1, M37710_LINE_IRQ0, HOLD_LINE);
+	if (offset == 4) cpunum_set_input_line(machine, 1, M37710_LINE_IRQ0, HOLD_LINE);
 
 	COMBINE_DATA(&mcu_mailbox[offset%8]);
 }
@@ -1086,44 +1075,20 @@ static WRITE16_HANDLER( mcu_mailbox_w_mcu )
 	COMBINE_DATA(&mcu_mailbox[offset%8]);
 }
 
-static ADDRESS_MAP_START( namcona1_mcu_readmem, ADDRESS_SPACE_PROGRAM, 16 )
+static ADDRESS_MAP_START( namcona1_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_RAM AM_BASE(&namcona1_workram)
-	AM_RANGE(0x080000, 0x3f7fff) AM_READ(bogus_r)
-	AM_RANGE(0x3f8000, 0x3fffff) AM_READ(mcu_mailbox_r)
+	AM_RANGE(0x3f8000, 0x3fffff) AM_READWRITE(mcu_mailbox_r, mcu_mailbox_w_68k)
 	AM_RANGE(0x400000, 0xbfffff) AM_ROM AM_REGION(REGION_CPU1, 0x280000)	/* data */
 	AM_RANGE(0xc00000, 0xdfffff) AM_ROM AM_REGION(REGION_CPU1, 0x080000)	/* code */
-	AM_RANGE(0xe00000, 0xe00fff) AM_READ(namcona1_nvram_r)
-	AM_RANGE(0xe40000, 0xe4000f) AM_READ(custom_key_r)
-	AM_RANGE(0xe40010, 0xeffeff) AM_READ(bogus_r)
-	AM_RANGE(0xefff00, 0xefffff) AM_READ(namcona1_vreg_r)
-	AM_RANGE(0xf00000, 0xf01fff) AM_READ(namcona1_paletteram_r)
-	AM_RANGE(0xf02000, 0xf3ffff) AM_READ(bogus_r)
-	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(namcona1_gfxram_r)
-	AM_RANGE(0xf80000, 0xfeffff) AM_READ(bogus_r)
-	AM_RANGE(0xff0000, 0xff7fff) AM_READ(namcona1_videoram_r)
-	AM_RANGE(0xff8000, 0xffdfff) AM_READ(SMH_RAM)		/* spare videoram */
-	AM_RANGE(0xffe000, 0xffefff) AM_READ(SMH_RAM)		/* scroll registers */
-	AM_RANGE(0xfff000, 0xffffff) AM_READ(SMH_RAM)		/* spriteram */
-ADDRESS_MAP_END
-
-static ADDRESS_MAP_START( namcona1_mcu_writemem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_RAM
-	AM_RANGE(0x080000, 0x3f7fff) AM_WRITE(bogus_w)
-	AM_RANGE(0x3f8000, 0x3fffff) AM_WRITE(mcu_mailbox_w_68k)
-	AM_RANGE(0x400000, 0xdfffff) AM_WRITE(SMH_ROM) /* data + code */
-	AM_RANGE(0xe00000, 0xe00fff) AM_WRITE(namcona1_nvram_w)
-	AM_RANGE(0xe01000, 0xe3ffff) AM_WRITE(bogus_w)
-	AM_RANGE(0xe40000, 0xe4000f) AM_WRITE(custom_key_w)
-	AM_RANGE(0xe40010, 0xeffeff) AM_WRITE(bogus_w)
-	AM_RANGE(0xefff00, 0xefffff) AM_WRITE(namcona1_vreg_w) AM_BASE(&namcona1_vreg)
-	AM_RANGE(0xf00000, 0xf01fff) AM_WRITE(namcona1_paletteram_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xf02000, 0xf3ffff) AM_WRITE(bogus_w)
-	AM_RANGE(0xf40000, 0xf7ffff) AM_WRITE(namcona1_gfxram_w)
-	AM_RANGE(0xf80000, 0xfeffff) AM_WRITE(bogus_w)
-	AM_RANGE(0xff0000, 0xff7fff) AM_WRITE(namcona1_videoram_w) AM_BASE(&videoram16)
-	AM_RANGE(0xff8000, 0xffdfff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_sparevram)
-	AM_RANGE(0xffe000, 0xffefff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_scroll)
-	AM_RANGE(0xfff000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)
+	AM_RANGE(0xe00000, 0xe00fff) AM_READWRITE(namcona1_nvram_r, namcona1_nvram_w)
+	AM_RANGE(0xe40000, 0xe4000f) AM_READWRITE(custom_key_r, custom_key_w)
+	AM_RANGE(0xefff00, 0xefffff) AM_READWRITE(namcona1_vreg_r, namcona1_vreg_w) AM_BASE(&namcona1_vreg)
+	AM_RANGE(0xf00000, 0xf01fff) AM_READWRITE(namcona1_paletteram_r, namcona1_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xf40000, 0xf7ffff) AM_READWRITE(namcona1_gfxram_r, namcona1_gfxram_w)
+	AM_RANGE(0xff0000, 0xff7fff) AM_READWRITE(namcona1_videoram_r, namcona1_videoram_w) AM_BASE(&videoram16)
+	AM_RANGE(0xff8000, 0xffdfff) AM_RAM AM_BASE(&namcona1_sparevram)	/* spare videoram */
+	AM_RANGE(0xffe000, 0xffefff) AM_RAM	AM_BASE(&namcona1_scroll)		/* scroll registers */
+	AM_RANGE(0xfff000, 0xffffff) AM_RAM	AM_BASE(&spriteram16)			/* spriteram */
 ADDRESS_MAP_END
 
 /* ----- NA-1 MCU handling ----------------------------------- */
@@ -1146,8 +1111,8 @@ static READ16_HANDLER( na1mcu_shared_r )
 
 static WRITE16_HANDLER( na1mcu_shared_w )
 {
-	mem_mask = ((mem_mask>>8)&0xff) | ((mem_mask<<8)&0xff00);
-	data = ((data>>8)&0xff) | ((data<<8)&0xff00);
+	mem_mask = FLIPENDIAN_INT16(mem_mask);
+	data = FLIPENDIAN_INT16(data);
 
 	COMBINE_DATA(&namcona1_workram[offset]);
 }
@@ -1159,12 +1124,12 @@ static READ16_HANDLER(snd_r)
 
 static WRITE16_HANDLER(snd_w)
 {
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 	{
 		C140_w(machine,(offset*2)+1, data);
 	}
 
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 	{
 		C140_w(machine,(offset*2), data>>8);
 	}
@@ -1194,7 +1159,7 @@ static WRITE8_HANDLER( port4_w )
 		logerror("launching 68k, PC=%x\n", activecpu_get_pc());
 
 		// reset and launch the 68k
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, CLEAR_LINE);
 	}
 
 	mcu_port4 = data;
@@ -1230,19 +1195,19 @@ static READ8_HANDLER( port7_r )
 	switch (mcu_port6 & 0xe0)
 	{
 		case 0x40:
-			return readinputport(0);
+			return input_port_read_indexed(machine, 0);
 			break;
 
   		case 0x60:
-			return readinputport(1);
+			return input_port_read_indexed(machine, 1);
 			break;
 
 		case 0x20:
-			return readinputport(4);
+			return input_port_read_indexed(machine, 4);
 			break;
 
 		case 0x00:
-			return readinputport(3);
+			return input_port_read_indexed(machine, 3);
 			break;
 	}
 
@@ -1291,7 +1256,7 @@ static MACHINE_RESET( namcona1_mcu )
 static READ8_HANDLER( portana_r )
 {
 	static const UINT8 bitnum[8] = { 0x40, 0x20, 0x10, 0x01, 0x02, 0x04, 0x08, 0x80 };
-	UINT8 port = readinputport(2);
+	UINT8 port = input_port_read_indexed(machine, 2);
 
 	return (port & bitnum[offset>>1]) ? 0xff : 0x00;
 }
@@ -1310,7 +1275,7 @@ static INTERRUPT_GEN( namcona1_interrupt )
 	int level = cpu_getiloops(); /* 0,1,2,3,4 */
 	if( level==0 )
 	{
-		simulate_mcu();
+		simulate_mcu(machine);
 	}
 	if( mEnableInterrupts )
 	{
@@ -1345,7 +1310,7 @@ static const struct C140interface C140_interface_typeA =
 static MACHINE_DRIVER_START( namcona1 )
 	/* basic machine hardware */
 	MDRV_CPU_ADD(M68000, 50113000/4)
-	MDRV_CPU_PROGRAM_MAP(namcona1_mcu_readmem,namcona1_mcu_writemem)
+	MDRV_CPU_PROGRAM_MAP(namcona1_main_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(namcona1_interrupt,5)
 
 	MDRV_CPU_ADD(M37710, 50113000/4)
@@ -1396,17 +1361,13 @@ MACHINE_DRIVER_END
 
 static ADDRESS_MAP_START( namcona2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_RAM)		/* work RAM */
-	AM_RANGE(0x080000, 0x3fffff) AM_READ(bogus_r)
 	AM_RANGE(0x400000, 0xbfffff) AM_ROM AM_REGION(REGION_CPU1, 0x280000)	/* data */
 	AM_RANGE(0xc00000, 0xdfffff) AM_ROM AM_REGION(REGION_CPU1, 0x080000)	/* code */
 	AM_RANGE(0xe00000, 0xe00fff) AM_READ(namcona1_nvram_r)
 	AM_RANGE(0xe40000, 0xe4000f) AM_READ(custom_key_r)
-	AM_RANGE(0xe40010, 0xeffeff) AM_READ(bogus_r)
 	AM_RANGE(0xefff00, 0xefffff) AM_READ(namcona1_vreg_r)
 	AM_RANGE(0xf00000, 0xf01fff) AM_READ(namcona1_paletteram_r)
-	AM_RANGE(0xf02000, 0xf3ffff) AM_READ(bogus_r)
 	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(namcona1_gfxram_r)
-	AM_RANGE(0xf80000, 0xfeffff) AM_READ(bogus_r)
 	AM_RANGE(0xff0000, 0xff7fff) AM_READ(namcona1_videoram_r)
 	AM_RANGE(0xff8000, 0xffdfff) AM_READ(SMH_RAM)		/* spare videoram */
 	AM_RANGE(0xffe000, 0xffefff) AM_READ(SMH_RAM)		/* scroll registers */
@@ -1416,19 +1377,13 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( namcona2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x000fff) AM_WRITE(namcona1_mcu_w) AM_BASE(&mcu_ram)
 	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_workram)
-	AM_RANGE(0x080000, 0x3f8007) AM_WRITE(bogus_w)
 	AM_RANGE(0x3f8008, 0x3f8009) AM_WRITE(mcu_command_w)
-	AM_RANGE(0x3f800a, 0x3fffff) AM_WRITE(bogus_w)
 	AM_RANGE(0x400000, 0xdfffff) AM_WRITE(SMH_ROM) /* data + code */
 	AM_RANGE(0xe00000, 0xe00fff) AM_WRITE(namcona1_nvram_w)
-	AM_RANGE(0xe01000, 0xe3ffff) AM_WRITE(bogus_w)
 	AM_RANGE(0xe40000, 0xe4000f) AM_WRITE(custom_key_w)
-	AM_RANGE(0xe40010, 0xeffeff) AM_WRITE(bogus_w)
 	AM_RANGE(0xefff00, 0xefffff) AM_WRITE(namcona1_vreg_w) AM_BASE(&namcona1_vreg)
 	AM_RANGE(0xf00000, 0xf01fff) AM_WRITE(namcona1_paletteram_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xf02000, 0xf3ffff) AM_WRITE(bogus_w)
 	AM_RANGE(0xf40000, 0xf7ffff) AM_WRITE(namcona1_gfxram_w)
-	AM_RANGE(0xf80000, 0xfeffff) AM_WRITE(bogus_w)
 	AM_RANGE(0xff0000, 0xff7fff) AM_WRITE(namcona1_videoram_w) AM_BASE(&videoram16)
 	AM_RANGE(0xff8000, 0xffdfff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_sparevram)
 	AM_RANGE(0xffe000, 0xffefff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_scroll)

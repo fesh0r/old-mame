@@ -9,7 +9,6 @@ The DS5002FP has up to 128KB undumped gameplay code making the game unplayable :
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
 
@@ -40,7 +39,7 @@ static WRITE16_HANDLER( clr_int_w )
 static INTERRUPT_GEN( glass_interrupt )
 {
 	if (cause_interrupt){
-		cpunum_set_input_line(Machine, 0, 6, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 6, HOLD_LINE);
 		cause_interrupt = 0;
 	}
 }
@@ -87,7 +86,7 @@ static WRITE16_HANDLER( OKIM6295_bankswitch_w )
 {
 	UINT8 *RAM = memory_region(REGION_SOUND1);
 
-	if (ACCESSING_LSB){
+	if (ACCESSING_BITS_0_7){
 		memcpy(&RAM[0x30000], &RAM[0x40000 + (data & 0x0f)*0x10000], 0x10000);
 	}
 }

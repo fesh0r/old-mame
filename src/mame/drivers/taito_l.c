@@ -40,6 +40,13 @@ TODO:
   & reset
 - Scrolling in Cuby Bop's Game seems incorrect.
 
+puzznici note
+- this set is a bootleg, it uses a converted board without the MCU and has
+  a hacked copyright message.  The tilemap data for one of the girls appears
+  to be corrupt, however this is correct, the bootleggers overwrote part of
+  the data with the expected response sequence from the MCU in order to simulate
+  it.
+
 */
 
 
@@ -256,7 +263,7 @@ static MACHINE_RESET( horshoes )
 
 static int last_irq_level;
 
-static int irq_callback(int irqline)
+static IRQ_CALLBACK(irq_callback)
 {
 	return irq_adr_table[last_irq_level];
 }
@@ -305,7 +312,7 @@ static WRITE8_HANDLER( irq_enable_w )
 
 	// fix Plotting test mode
 	if ((irq_enable & (1 << last_irq_level)) == 0)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static READ8_HANDLER( irq_enable_r )
@@ -533,15 +540,15 @@ static READ8_HANDLER( mux_r )
 	switch(mux_ctrl)
 	{
 	case 0:
-		return input_port_0_r(machine,0);
+		return input_port_read_indexed(machine, 0);
 	case 1:
-		return input_port_1_r(machine,0);
+		return input_port_read_indexed(machine, 1);
 	case 2:
-		return input_port_2_r(machine,0);
+		return input_port_read_indexed(machine, 2);
 	case 3:
-		return input_port_3_r(machine,0);
+		return input_port_read_indexed(machine, 3);
 	case 7:
-		return input_port_4_r(machine,0);
+		return input_port_read_indexed(machine, 4);
 	default:
 		logerror("Mux read from unknown port %d (%04x)\n", mux_ctrl, activecpu_get_pc());
 		return 0xff;
@@ -620,35 +627,35 @@ static int trackx,tracky;
 static READ8_HANDLER( horshoes_tracky_reset_r )
 {
 	/* reset the trackball counter */
-	tracky = readinputportbytag("AN0");
+	tracky = input_port_read(machine, "AN0");
 	return 0;
 }
 
 static READ8_HANDLER( horshoes_trackx_reset_r )
 {
 	/* reset the trackball counter */
-	trackx = readinputportbytag("AN1");
+	trackx = input_port_read(machine, "AN1");
 	return 0;
 }
 
 static READ8_HANDLER( horshoes_tracky_lo_r )
 {
-	return (readinputportbytag("AN0") - tracky) & 0xff;
+	return (input_port_read(machine, "AN0") - tracky) & 0xff;
 }
 
 static READ8_HANDLER( horshoes_tracky_hi_r )
 {
-	return (readinputportbytag("AN0") - tracky) >> 8;
+	return (input_port_read(machine, "AN0") - tracky) >> 8;
 }
 
 static READ8_HANDLER( horshoes_trackx_lo_r )
 {
-	return (readinputportbytag("AN1") - trackx) & 0xff;
+	return (input_port_read(machine, "AN1") - trackx) & 0xff;
 }
 
 static READ8_HANDLER( horshoes_trackx_hi_r )
 {
-	return (readinputportbytag("AN1") - trackx) >> 8;
+	return (input_port_read(machine, "AN1") - trackx) >> 8;
 }
 
 
@@ -939,6 +946,25 @@ static ADDRESS_MAP_START( puzznic_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xbc00, 0xbc00) AM_WRITE(SMH_NOP)	// Control register, function unknown
 ADDRESS_MAP_END
 
+/* bootleg, doesn't have the MCU */
+static ADDRESS_MAP_START( puzznici_readmem, ADDRESS_SPACE_PROGRAM, 8 )
+	COMMON_BANKS_READ
+	COMMON_SINGLE_READ
+	AM_RANGE(0xa800, 0xa800) AM_READ(SMH_NOP)	// Watchdog
+	AM_RANGE(0xb000, 0xb7ff) AM_READ(SMH_RAM)	// Wrong, used to overcome protection
+//  AM_RANGE(0xb800, 0xb800) AM_READ(mcu_data_r)
+	AM_RANGE(0xb801, 0xb801) AM_READ(mcu_control_r)
+ADDRESS_MAP_END
+
+static ADDRESS_MAP_START( puzznici_writemem, ADDRESS_SPACE_PROGRAM, 8 )
+	COMMON_BANKS_WRITE
+	COMMON_SINGLE_WRITE
+	AM_RANGE(0xb000, 0xb7ff) AM_WRITE(SMH_RAM)	// Wrong, used to overcome protection
+//  AM_RANGE(0xb800, 0xb800) AM_WRITE(mcu_data_w)
+//  AM_RANGE(0xb801, 0xb801) AM_WRITE(mcu_control_w)
+	AM_RANGE(0xbc00, 0xbc00) AM_WRITE(SMH_NOP)	// Control register, function unknown
+ADDRESS_MAP_END
+
 
 static ADDRESS_MAP_START( plotting_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	COMMON_BANKS_READ
@@ -1024,7 +1050,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER (evilston_snd_w)
 {
 	shared_ram[0x7fe]=data&0x7f;
-	cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+	cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 }
 
 
@@ -2243,19 +2269,27 @@ static WRITE8_HANDLER( portA_w )
 
 static const struct YM2203interface ym2203_interface_triple =
 {
-	0,
-	0,
-	portA_w,
-	0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		portA_w,
+		NULL,
+	},
 	irqhandler
 };
 
 static const struct YM2203interface ym2203_interface_champwr =
 {
-	0,
-	0,
-	portA_w,
-	champwr_msm5205_volume_w,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		portA_w,
+		champwr_msm5205_volume_w,
+	},
 	irqhandler
 };
 
@@ -2275,8 +2309,15 @@ static const struct YM2610interface ym2610_interface =
 
 static const struct YM2203interface ym2203_interface_single =
 {
-	portA_r,
-	portB_r
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		portA_r,
+		portB_r,
+		NULL,
+		NULL
+	},
+	NULL
 };
 
 
@@ -2477,6 +2518,16 @@ static MACHINE_DRIVER_START( puzznic )
 	MDRV_MACHINE_RESET(puzznic)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( puzznici )
+
+	/* basic machine hardware */
+	MDRV_IMPORT_FROM(plotting)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_PROGRAM_MAP(puzznici_readmem,puzznici_writemem)
+
+	MDRV_MACHINE_RESET(puzznic)
+MACHINE_DRIVER_END
+
 
 static MACHINE_DRIVER_START( horshoes )
 
@@ -2577,6 +2628,27 @@ ROM_END
 ROM_START( raimaisj )
 	ROM_REGION( 0xb0000, REGION_CPU1, 0 )
 	ROM_LOAD( "b36-08-1.bin", 0x00000, 0x20000, CRC(6cc8f79f) SHA1(17b4903f87e6d5447c8557c2baca1728f86245dc) )
+	ROM_RELOAD(               0x10000, 0x20000 )
+	ROM_LOAD( "b36-09.bin",   0x30000, 0x20000, CRC(9c466e43) SHA1(2466a3f1f8124323008c9925f90e9a1d2edf1564) )
+
+	ROM_REGION( 0x1c000, REGION_CPU2, 0 )	/* sound (audio/rastan.c wants it as #2 */
+	ROM_LOAD( "b36-06.bin",   0x00000, 0x4000, CRC(29bbc4f8) SHA1(39a68729c6180c5f6cdf604e692018e7d6bf5591) )
+	ROM_CONTINUE(             0x10000, 0xc000 )
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 )
+	ROM_LOAD( "b36-07.bin",   0x00000, 0x10000, CRC(4f3737e6) SHA1(ff5f5d4ca5485441d03c8cb01a6a096941ab02eb) )
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "b36-01.bin",   0x00000, 0x80000, CRC(89355cb2) SHA1(433e929fe8b488af84e88486d9679468a3d9677a) )
+	ROM_LOAD( "b36-02.bin",   0x80000, 0x80000, CRC(e71da5db) SHA1(aa47ae02c359264c0a1f09ecc583eefd1ef1dfa4) )
+
+	ROM_REGION( 0x80000, REGION_SOUND1, 0 )
+	ROM_LOAD( "b36-03.bin",   0x00000, 0x80000, CRC(96166516) SHA1(a6748218188cbd1b037f6c0845416665c0d55a7b) )
+ROM_END
+
+ROM_START( raimaijo )
+	ROM_REGION( 0xb0000, REGION_CPU1, 0 )
+	ROM_LOAD( "b36-08.bin", 0x00000, 0x20000, CRC(f40b9178) SHA1(ccf5afcf08cac0d5b2d6ba74abd62d35412f0265) )
 	ROM_RELOAD(               0x10000, 0x20000 )
 	ROM_LOAD( "b36-09.bin",   0x30000, 0x20000, CRC(9c466e43) SHA1(2466a3f1f8124323008c9925f90e9a1d2edf1564) )
 
@@ -2893,13 +2965,10 @@ ROM_START( puzznicj )
 	ROM_LOAD( "u09.ic9",   0x20000, 0x20000, CRC(3c115f8b) SHA1(8d518be01b7c4d6d993d5d9b62aab719a5c8baca) )
 ROM_END
 
-ROM_START( puzznici )
+ROM_START( puzznici ) /* bootleg */
 	ROM_REGION( 0x30000, REGION_CPU1, 0 )
 	ROM_LOAD( "1.ic11",  0x00000, 0x20000, CRC(4612f5e0) SHA1(dc07a365414666568537d31ef01b58f2362cadaf) )
 	ROM_RELOAD(          0x10000, 0x20000 )
-
-	ROM_REGION( 0x0800, REGION_CPU2, 0 )	/* 2k for the microcontroller */
-	ROM_LOAD( "mc68705p", 0x0000, 0x0800, NO_DUMP )
 
 	ROM_REGION( 0x40000, REGION_GFX1, ROMREGION_DISPOSE )
 	ROM_LOAD( "u10.ic10",  0x00000, 0x20000, CRC(4264056c) SHA1(d2d8a170ae0f361093a5384935238605a59e5938) )
@@ -3056,12 +3125,13 @@ static DRIVER_INIT( evilston )
 {
 	UINT8 *ROM = memory_region(REGION_CPU2);
 	ROM[0x72]=0x45;	/* reti -> retn  ('dead' loop @ $1104 )*/
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa7fe, 0xa7fe, 0, 0, evilston_snd_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa7fe, 0xa7fe, 0, 0, evilston_snd_w);
 }
 
 
 GAME( 1988, raimais,  0,        raimais,  raimais,  0,        ROT0,   "Taito Corporation Japan", "Raimais (World)", 0 )
 GAME( 1988, raimaisj, raimais,  raimais,  raimaisj, 0,        ROT0,   "Taito Corporation", "Raimais (Japan)", 0 )
+GAME( 1988, raimaijo, raimais,  raimais,  raimaisj, 0,        ROT0,   "Taito Corporation", "Raimais (Japan / First Revision)", 0 )
 GAME( 1988, fhawk,    0,        fhawk,    fhawk,    0,        ROT270, "Taito Corporation Japan", "Fighting Hawk (World)", 0 )
 GAME( 1988, fhawkj,   fhawk,    fhawk,    fhawkj,   0,        ROT270, "Taito Corporation", "Fighting Hawk (Japan)", 0 )
 GAME( 1989, champwr,  0,        champwr,  champwr,  0,        ROT0,   "Taito Corporation Japan", "Champion Wrestler (World)", GAME_IMPERFECT_SOUND )
@@ -3078,7 +3148,7 @@ GAME( 1989, plottinu, plotting, plotting, plotting, 0,        ROT0,   "Taito Ame
 GAME( 1989, flipull,  plotting, plotting, plotting, 0,        ROT0,   "Taito Corporation", "Flipull (Japan)", 0 )
 GAME( 1989, puzznic,  0,        puzznic,  puzznic,  0,        ROT0,   "Taito Corporation Japan", "Puzznic (World)", 0 )
 GAME( 1989, puzznicj, puzznic,  puzznic,  puzznic,  0,        ROT0,   "Taito Corporation", "Puzznic (Japan)", 0 )
-GAME( 1989, puzznici, puzznic,  puzznic,  puzznic,  0,        ROT0,   "Taito Corporation", "Puzznic (Italy)", 0 )
+GAME( 1989, puzznici, puzznic,  puzznici, puzznic,  0,        ROT0,   "bootleg", "Puzznic (Italian bootleg)", 0 )
 GAME( 1990, horshoes, 0,        horshoes, horshoes, 0,        ROT270, "Taito America Corporation", "American Horseshoes (US)", 0 )
 GAME( 1990, palamed,  0,        palamed,  palamed,  0,        ROT0,   "Taito Corporation", "Palamedes (Japan)", 0 )
 GAME( 1993, cachat,   0,        cachat,   cachat,   0,        ROT0,   "Taito Corporation", "Cachat (Japan)", 0 )

@@ -6,7 +6,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "profiler.h"
 #include "cpu/m68000/m68000.h"
 #include "itech32.h"
@@ -249,7 +248,7 @@ VIDEO_START( itech32 )
 
 WRITE16_HANDLER( timekill_colora_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		enable_latch[0] = (~data >> 5) & 1;
 		enable_latch[1] = (~data >> 7) & 1;
@@ -260,40 +259,40 @@ WRITE16_HANDLER( timekill_colora_w )
 
 WRITE16_HANDLER( timekill_colorbc_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		color_latch[1] = ((data & 0xf0) << 4) | 0x1000;
 }
 
 
 WRITE16_HANDLER( timekill_intensity_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		double intensity = (double)(data & 0xff) / (double)0x60;
 		int i;
 		for (i = 0; i < 8192; i++)
-			palette_set_brightness(Machine, i, intensity);
+			palette_set_brightness(machine, i, intensity);
 	}
 }
 
 
 WRITE16_HANDLER( bloodstm_color1_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		color_latch[0] = (data & 0x7f) << 8;
 }
 
 
 WRITE16_HANDLER( bloodstm_color2_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		color_latch[1] = (data & 0x7f) << 8;
 }
 
 
 WRITE16_HANDLER( bloodstm_plane_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		enable_latch[0] = (~data >> 1) & 1;
 		enable_latch[1] = (~data >> 2) & 1;
@@ -303,28 +302,28 @@ WRITE16_HANDLER( bloodstm_plane_w )
 
 WRITE32_HANDLER( drivedge_color0_w )
 {
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 		color_latch[0] = ((data >> 16) & 0x7f) << 8;
 }
 
 
 WRITE32_HANDLER( itech020_color1_w )
 {
-	if (ACCESSING_LSB32)
+	if (ACCESSING_BITS_0_7)
 		color_latch[1] = (data & 0x7f) << 8;
 }
 
 
 WRITE32_HANDLER( itech020_color2_w )
 {
-	if (ACCESSING_LSB32)
+	if (ACCESSING_BITS_0_7)
 		color_latch[0] = (data & 0x7f) << 8;
 }
 
 
 WRITE32_HANDLER( itech020_plane_w )
 {
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		enable_latch[0] = (~data >> 9) & 1;
 		enable_latch[1] = (~data >> 10) & 1;
@@ -350,7 +349,7 @@ WRITE16_HANDLER( timekill_paletteram_w )
 	g = paletteram16[offset & ~1] >> 8;
 	b = paletteram16[offset |  1] >> 8;
 
-	palette_set_color(Machine, offset / 2, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset / 2, MAKE_RGB(r, g, b));
 }
 
 
@@ -359,7 +358,7 @@ WRITE16_HANDLER( bloodstm_paletteram_w )
 	int r, g, b;
 
 	/* in test mode, the LSB is used; in game mode, the MSB is used */
-	if (!ACCESSING_LSB && (offset & 1))
+	if (!ACCESSING_BITS_0_7 && (offset & 1))
 		data >>= 8, mem_mask >>= 8;
 	COMBINE_DATA(&paletteram16[offset]);
 
@@ -367,7 +366,7 @@ WRITE16_HANDLER( bloodstm_paletteram_w )
 	g = paletteram16[offset & ~1] >> 8;
 	b = paletteram16[offset |  1] & 0xff;
 
-	palette_set_color(Machine, offset / 2, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset / 2, MAKE_RGB(r, g, b));
 }
 
 
@@ -381,7 +380,7 @@ WRITE32_HANDLER( drivedge_paletteram_w )
 	g = (paletteram32[offset] >> 8) & 0xff;
 	b = (paletteram32[offset] >> 16) & 0xff;
 
-	palette_set_color(Machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset, MAKE_RGB(r, g, b));
 }
 
 
@@ -395,7 +394,7 @@ WRITE32_HANDLER( itech020_paletteram_w )
 	g = (paletteram32[offset] >> 8) & 0xff;
 	b = paletteram32[offset] & 0xff;
 
-	palette_set_color(Machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset, MAKE_RGB(r, g, b));
 }
 
 
@@ -1416,13 +1415,13 @@ WRITE16_HANDLER( bloodstm_video_w )
 
 READ16_HANDLER( bloodstm_video_r )
 {
-	return itech32_video_r(machine, offset / 2,0);
+	return itech32_video_r(machine, offset / 2, mem_mask);
 }
 
 
 WRITE32_HANDLER( itech020_video_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 		itech32_video_w(machine, offset, data >> 16, mem_mask >> 16);
 	else
 		itech32_video_w(machine, offset, data, mem_mask);
@@ -1438,7 +1437,7 @@ WRITE32_HANDLER( drivedge_zbuf_control_w )
 
 READ32_HANDLER( itech020_video_r )
 {
-	int result = itech32_video_r(machine,offset,0);
+	int result = itech32_video_r(machine, offset, mem_mask);
 	return (result << 16) | result;
 }
 

@@ -16,7 +16,6 @@ DIP Locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -120,7 +119,7 @@ static READ8_HANDLER( bking3_ext_check_r )
 static ADDRESS_MAP_START( bking_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x83ff) AM_RAM
-	AM_RANGE(0x9000, 0x97ff) AM_RAM AM_WRITE(bking_playfield_w) AM_BASE(&bking_playfield_ram)
+	AM_RANGE(0x9000, 0x97ff) AM_RAM_WRITE(bking_playfield_w) AM_BASE(&bking_playfield_ram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bking_io_map, ADDRESS_SPACE_IO, 8 )
@@ -214,7 +213,7 @@ static WRITE8_HANDLER( bking3_68705_portB_w )
 	if (~data & 0x02)
 	{
 		portA_in = from_main;
-		if (main_sent) cpunum_set_input_line(Machine, 2,0,CLEAR_LINE);
+		if (main_sent) cpunum_set_input_line(machine, 2,0,CLEAR_LINE);
 		main_sent = 0;
 	}
 
@@ -432,8 +431,10 @@ static WRITE8_HANDLER( portb_w )
 
 static const struct AY8910interface ay8910_interface =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	DAC_0_signed_data_w,
 	portb_w
 };

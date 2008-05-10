@@ -88,13 +88,13 @@ static WRITE16_HANDLER( gms_write3 )
 
 static READ16_HANDLER( eeprom_r )
 {
-	return (EEPROM_read_bit() << 15)|(input_port_3_word_r(machine,0,0)&0x7fff);
+	return (EEPROM_read_bit() << 15)|(input_port_read_indexed(machine,3)&0x7fff);
 }
 
 static WRITE16_HANDLER( eeprom_w )
 {
 	//bad ?
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 		EEPROM_write_bit(data & 0x04);
 		EEPROM_set_cs_line((data & 0x01) ? CLEAR_LINE:ASSERT_LINE );
@@ -110,7 +110,7 @@ static ADDRESS_MAP_START( rbmk_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x500000, 0x50ffff) AM_RAM
 	AM_RANGE(0x940000, 0x940fff) AM_RAM AM_BASE(&gms_vidram2)
 	AM_RANGE(0x980300, 0x983fff) AM_RAM // 0x2048  words ???, byte access
-	AM_RANGE(0x900000, 0x900fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x900000, 0x900fff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x9c0000, 0x9c0fff) AM_RAM AM_BASE(&gms_vidram)
 	AM_RANGE(0xb00000, 0xb00001) AM_WRITE(eeprom_w)
 	AM_RANGE(0xC00000, 0xC00001) AM_READ(input_port_0_word_r) AM_WRITE(gms_write1)

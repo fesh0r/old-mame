@@ -236,7 +236,7 @@ static READ16_HANDLER( io_r )
 	switch( offset )
 	{
 		case 2/2:
-			return ( (readinputportbytag("DSW1") << 8) | readinputportbytag("DSW2") );
+			return ( (input_port_read(machine, "DSW1") << 8) | input_port_read(machine, "DSW2") );
 
 		// 0x00110007 is controller device select
 		// 0x001100D5 is controller data
@@ -245,15 +245,15 @@ static READ16_HANDLER( io_r )
 			switch( (io_ram[7/2]) & 0xff )
 			{
 				case 0:
-					io_ram[0xd5/2] = readinputportbytag("TRAVERSE");
+					io_ram[0xd5/2] = input_port_read(machine, "TRAVERSE");
 					break;
 
 				case 0x20:
-					io_ram[0xd5/2] = readinputportbytag("ELEVATE");
+					io_ram[0xd5/2] = input_port_read(machine, "ELEVATE");
 					break;
 
 				case 0x40:
-					io_ram[0xd5/2] = readinputportbytag("ACCEL");
+					io_ram[0xd5/2] = input_port_read(machine, "ACCEL");
 					break;
 
 				case 0x42:
@@ -265,7 +265,7 @@ static READ16_HANDLER( io_r )
 					break;
 
 				case 0x60:
-					io_ram[0xd5/2] = readinputportbytag("HANDLE");
+					io_ram[0xd5/2] = input_port_read(machine, "HANDLE");
 					break;
 
 				default:
@@ -274,13 +274,13 @@ static READ16_HANDLER( io_r )
 			return 0;
 
 		case 6/2:
-			return readinputportbytag("IN0"); // high half
+			return input_port_read(machine, "IN0"); // high half
 
 		case 9/2:
-			return readinputportbytag("IN0"); // low half
+			return input_port_read(machine, "IN0"); // low half
 
 		case 0xb/2:
-			return readinputportbytag("DSW3");
+			return input_port_read(machine, "DSW3");
 
 		case 0xd5/2:
 			return io_ram[offset]; // controller data
@@ -301,35 +301,35 @@ static WRITE16_HANDLER( io_w )
 	{
 		case 0:
 			// sound data
-			if (ACCESSING_LSB)
-				cpunum_set_input_line(Machine, 2, 0, HOLD_LINE);
+			if (ACCESSING_BITS_0_7)
+				cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 			else
 				LOG_UNKNOWN_WRITE
 			break;
 
 		case 2:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 				;//watchdog ? written in similar context to CPU1 @ 0x140002
 			else
 				LOG_UNKNOWN_WRITE
 			break;
 
 		case 6:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 				;//select controller device
 			else
 				;//blank inputs
 			break;
 
 		case 8:
-			if (ACCESSING_MSB)
+			if (ACCESSING_BITS_8_15)
 				;//blank inputs
 			else
 				LOG_UNKNOWN_WRITE
 			break;
 
 		case 0xc:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 				// This seems to only be written after each irq1 and irq2
 				logerror("irq wrote %04x\n", data);
 			else
@@ -337,7 +337,7 @@ static WRITE16_HANDLER( io_w )
 			break;
 
 		case 0xd4:
-			if ( ACCESSING_LSB )
+			if ( ACCESSING_BITS_0_7 )
 				;// controller device data
 			else
 				LOG_UNKNOWN_WRITE
@@ -372,10 +372,10 @@ static ADDRESS_MAP_START( master_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x080000, 0x087fff) AM_RAM /*Work RAM*/
 	AM_RANGE(0x0a0000, 0x0a0fff) AM_RAM
-	AM_RANGE(0x0c0000, 0x0c3fff) AM_READWRITE(SMH_RAM, tx_vram_w) AM_BASE(&tx_vram)
+	AM_RANGE(0x0c0000, 0x0c3fff) AM_RAM_WRITE(tx_vram_w) AM_BASE(&tx_vram)
 	AM_RANGE(0x0c4000, 0x0cffff) AM_RAM
 	AM_RANGE(0x0e0000, 0x0e0fff) AM_READWRITE(share_r, share_w) AM_BASE(&shared_ram)
-	AM_RANGE(0x100000, 0x107fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x100000, 0x107fff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x110000, 0x1101ff) AM_READWRITE(io_r,io_w) AM_BASE(&io_ram)
 ADDRESS_MAP_END
 

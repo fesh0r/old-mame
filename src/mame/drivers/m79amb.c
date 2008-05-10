@@ -111,12 +111,12 @@ static const int ControllerTable[32] = {
 
 static READ8_HANDLER( gray5bit_controller0_r )
 {
-    return (input_port_2_r(machine,0) & 0xe0) | (~ControllerTable[input_port_2_r(machine,0) & 0x1f] & 0x1f);
+    return (input_port_read_indexed(machine, 2) & 0xe0) | (~ControllerTable[input_port_read_indexed(machine, 2) & 0x1f] & 0x1f);
 }
 
 static READ8_HANDLER( gray5bit_controller1_r )
 {
-    return (input_port_3_r(machine,0) & 0xe0) | (~ControllerTable[input_port_3_r(machine,0) & 0x1f] & 0x1f);
+    return (input_port_read_indexed(machine, 3) & 0xe0) | (~ControllerTable[input_port_read_indexed(machine, 3) & 0x1f] & 0x1f);
 }
 
 static WRITE8_HANDLER( sound_w )
@@ -125,7 +125,7 @@ static WRITE8_HANDLER( sound_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(SMH_RAM, ramtek_videoram_w) AM_BASE(&ramtek_videoram)
+	AM_RANGE(0x4000, 0x5fff) AM_RAM_WRITE(ramtek_videoram_w) AM_BASE(&ramtek_videoram)
 	AM_RANGE(0x6000, 0x63ff) AM_RAM		/* ?? */
 	AM_RANGE(0x8000, 0x8000) AM_READWRITE(input_port_0_r, sound_w) /* sound_w listed twice?? */
 	AM_RANGE(0x8001, 0x8001) AM_WRITE(SMH_RAM) AM_BASE(&mask)

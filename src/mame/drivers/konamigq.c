@@ -46,7 +46,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/mips/psx.h"
 #include "includes/psx.h"
 #include "machine/konamigx.h"
@@ -62,15 +61,15 @@ static UINT8 sndtor3k[ 16 ];
 
 static WRITE32_HANDLER( soundr3k_w )
 {
-	if( ACCESSING_MSW32 )
+	if( ACCESSING_BITS_16_31 )
 	{
 		sndto000[ ( offset << 1 ) + 1 ] = data >> 16;
 		if( offset == 3 )
 		{
-			cpunum_set_input_line(Machine, 1, 1, HOLD_LINE );
+			cpunum_set_input_line(machine, 1, 1, HOLD_LINE );
 		}
 	}
-	if( ACCESSING_LSW32 )
+	if( ACCESSING_BITS_0_15 )
 	{
 		sndto000[ offset << 1 ] = data;
 	}
@@ -141,7 +140,7 @@ static WRITE32_HANDLER( eeprom_w )
 	EEPROM_write_bit( ( data & 0x01 ) ? 1 : 0 );
 	EEPROM_set_clock_line( ( data & 0x04 ) ? ASSERT_LINE : CLEAR_LINE );
 	EEPROM_set_cs_line( ( data & 0x02 ) ? CLEAR_LINE : ASSERT_LINE );
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ( data & 0x40 ) ? CLEAR_LINE : ASSERT_LINE );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ( data & 0x40 ) ? CLEAR_LINE : ASSERT_LINE );
 }
 
 static CUSTOM_INPUT( eeprom_bit_r )
@@ -155,11 +154,11 @@ static UINT8 *m_p_n_pcmram;
 
 static WRITE32_HANDLER( pcmram_w )
 {
-	if( ACCESSING_LSB32 )
+	if( ACCESSING_BITS_0_7 )
 	{
 		m_p_n_pcmram[ offset << 1 ] = data;
 	}
-	if( ( mem_mask & 0x00ff0000 ) == 0 )
+	if( ACCESSING_BITS_16_23 )
 	{
 		m_p_n_pcmram[ ( offset << 1 ) + 1 ] = data >> 16;
 	}
@@ -223,11 +222,11 @@ static READ16_HANDLER( dual539_r )
 	UINT16 data;
 
 	data = 0;
-	if( ACCESSING_LSB16 )
+	if( ACCESSING_BITS_0_7 )
 	{
 		data |= K054539_1_r( machine, offset );
 	}
-	if( ACCESSING_MSB16 )
+	if( ACCESSING_BITS_8_15 )
 	{
 		data |= K054539_0_r( machine, offset ) << 8;
 	}
@@ -236,11 +235,11 @@ static READ16_HANDLER( dual539_r )
 
 static WRITE16_HANDLER( dual539_w )
 {
-	if( ACCESSING_LSB16 )
+	if( ACCESSING_BITS_0_7 )
 	{
 		K054539_1_w( machine, offset, data );
 	}
-	if( ACCESSING_MSB16 )
+	if( ACCESSING_BITS_8_15 )
 	{
 		K054539_0_w( machine, offset, data >> 8 );
 	}
@@ -342,7 +341,7 @@ static const struct AM53CF96interface scsi_intf =
 
 static DRIVER_INIT( konamigq )
 {
-	psx_driver_init();
+	psx_driver_init(machine);
 
 	m_p_n_pcmram = memory_region( REGION_SOUND1 ) + 0x80000;
 }

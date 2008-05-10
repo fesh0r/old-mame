@@ -173,16 +173,16 @@ static MACHINE_RESET( foodf )
 
 static WRITE16_HANDLER( digital_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		foodf_set_flip(data & 0x01);
 
 		/* bit 1 = UPDATE */
 
 		if (!(data & 0x04))
-			atarigen_scanline_int_ack_w(machine,0,0,0);
+			atarigen_scanline_int_ack_w(machine,0,0,0xffff);
 		if (!(data & 0x08))
-			atarigen_video_int_ack_w(machine,0,0,0);
+			atarigen_video_int_ack_w(machine,0,0,0xffff);
 
 		output_set_led_value(0, (data >> 4) & 1);
 		output_set_led_value(1, (data >> 5) & 1);
@@ -202,7 +202,7 @@ static WRITE16_HANDLER( digital_w )
 
 static READ16_HANDLER( analog_r )
 {
-	return readinputport(whichport);
+	return input_port_read_indexed(machine, whichport);
 }
 
 
@@ -223,9 +223,9 @@ static READ16_HANDLER( pokey1_word_r ) { return pokey1_r(machine, offset); }
 static READ16_HANDLER( pokey2_word_r ) { return pokey2_r(machine, offset); }
 static READ16_HANDLER( pokey3_word_r ) { return pokey3_r(machine, offset); }
 
-static WRITE16_HANDLER( pokey1_word_w ) { if (ACCESSING_LSB) pokey1_w(machine, offset, data & 0xff); }
-static WRITE16_HANDLER( pokey2_word_w ) { if (ACCESSING_LSB) pokey2_w(machine, offset, data & 0xff); }
-static WRITE16_HANDLER( pokey3_word_w ) { if (ACCESSING_LSB) pokey3_w(machine, offset, data & 0xff); }
+static WRITE16_HANDLER( pokey1_word_w ) { if (ACCESSING_BITS_0_7) pokey1_w(machine, offset, data & 0xff); }
+static WRITE16_HANDLER( pokey2_word_w ) { if (ACCESSING_BITS_0_7) pokey2_w(machine, offset, data & 0xff); }
+static WRITE16_HANDLER( pokey3_word_w ) { if (ACCESSING_BITS_0_7) pokey3_w(machine, offset, data & 0xff); }
 
 
 
@@ -240,7 +240,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x014000, 0x014fff) AM_MIRROR(0x3e3000) AM_RAM
 	AM_RANGE(0x018000, 0x018fff) AM_MIRROR(0x3e3000) AM_RAM
 	AM_RANGE(0x01c000, 0x01c0ff) AM_MIRROR(0x3e3f00) AM_RAM AM_BASE(&spriteram16)
-	AM_RANGE(0x800000, 0x8007ff) AM_MIRROR(0x03f800) AM_READWRITE(SMH_RAM, atarigen_playfield_w) AM_BASE(&atarigen_playfield)
+	AM_RANGE(0x800000, 0x8007ff) AM_MIRROR(0x03f800) AM_RAM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
 	AM_RANGE(0x900000, 0x9001ff) AM_MIRROR(0x03fe00) AM_READWRITE(nvram_r, SMH_RAM) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x940000, 0x940007) AM_MIRROR(0x023ff8) AM_READ(analog_r)
 	AM_RANGE(0x944000, 0x944007) AM_MIRROR(0x023ff8) AM_WRITE(analog_w)
@@ -353,7 +353,7 @@ GFXDECODE_END
 
 static READ8_HANDLER( pot_r )
 {
-	return (readinputport(5) >> offset) << 7;
+	return (input_port_read_indexed(machine, 5) >> offset) << 7;
 }
 
 static const struct POKEYinterface pokey_interface =

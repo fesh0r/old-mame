@@ -330,14 +330,14 @@ WRITE16_HANDLER( m72_scrolly2_w )
 
 WRITE16_HANDLER( m72_dmaon_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		memcpy(m72_spriteram,spriteram16,spriteram_size);
 }
 
 
 WRITE16_HANDLER( m72_port02_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (data & 0xe0) logerror("write %02x to port 02\n",data);
 
@@ -346,16 +346,16 @@ WRITE16_HANDLER( m72_port02_w )
 		coin_counter_w(1,data & 0x02);
 
 		/* bit 2 is flip screen (handled both by software and hardware) */
-		flip_screen_set(((data & 0x04) >> 2) ^ ((~readinputport(2) >> 8) & 1));
+		flip_screen_set(((data & 0x04) >> 2) ^ ((~input_port_read_indexed(machine, 2) >> 8) & 1));
 
 		/* bit 3 is display disable */
 		video_off = data & 0x08;
 
 		/* bit 4 resets sound CPU (active low) */
 		if (data & 0x10)
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 		else
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 
 		/* bit 5 = "bank"? */
 	}
@@ -363,7 +363,7 @@ WRITE16_HANDLER( m72_port02_w )
 
 WRITE16_HANDLER( rtype2_port02_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (data & 0xe0) logerror("write %02x to port 02\n",data);
 
@@ -372,7 +372,7 @@ WRITE16_HANDLER( rtype2_port02_w )
 		coin_counter_w(1,data & 0x02);
 
 		/* bit 2 is flip screen (handled both by software and hardware) */
-		flip_screen_set(((data & 0x04) >> 2) ^ ((~readinputport(2) >> 8) & 1));
+		flip_screen_set(((data & 0x04) >> 2) ^ ((~input_port_read_indexed(machine, 2) >> 8) & 1));
 
 		/* bit 3 is display disable */
 		video_off = data & 0x08;
@@ -387,7 +387,7 @@ static int majtitle_rowscroll;
 /* the following is mostly a kludge. This register seems to be used for something else */
 WRITE16_HANDLER( majtitle_gfx_ctrl_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		if (data & 0xff00) majtitle_rowscroll = 1;
 		else majtitle_rowscroll = 0;

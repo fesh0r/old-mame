@@ -54,7 +54,7 @@ VIDEO_UPDATE( maddonna );
 
 static READ16_HANDLER( oneshot_in0_word_r )
 {
-	int data = readinputport(0);
+	int data = input_port_read_indexed(machine, 0);
 
 	switch (data & 0x0c)
 	{
@@ -105,7 +105,7 @@ static READ16_HANDLER( oneshot_gun_y_p2_r )
 
 static WRITE16_HANDLER( soundbank_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		OKIM6295_set_bank_base(0, 0x40000 * ((data & 0x03) ^ 0x03));
 	}

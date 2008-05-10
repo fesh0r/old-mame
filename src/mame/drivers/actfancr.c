@@ -48,16 +48,16 @@ static UINT8 *actfancr_ram;
 
 static READ8_HANDLER( actfan_control_0_r )
 {
-	return readinputport(2); /* VBL */
+	return input_port_read_indexed(machine, 2); /* VBL */
 }
 
 static READ8_HANDLER( actfan_control_1_r )
 {
 	switch (offset) {
-		case 0: return readinputport(0); /* Player 1 */
-		case 1: return readinputport(1); /* Player 2 */
-		case 2: return readinputport(3); /* Dip 1 */
-		case 3: return readinputport(4); /* Dip 2 */
+		case 0: return input_port_read_indexed(machine, 0); /* Player 1 */
+		case 1: return input_port_read_indexed(machine, 1); /* Player 2 */
+		case 2: return input_port_read_indexed(machine, 3); /* Dip 1 */
+		case 3: return input_port_read_indexed(machine, 4); /* Dip 2 */
 	}
 	return 0xff;
 }
@@ -72,11 +72,11 @@ static WRITE8_HANDLER( triothep_control_select_w )
 static READ8_HANDLER( triothep_control_r )
 {
 	switch (trio_control_select) {
-		case 0: return readinputportbytag("IN0"); /* Player 1 */
-		case 1: return readinputportbytag("IN1"); /* Player 2 */
-		case 2: return readinputportbytag("DSW1"); /* Dip 1 */
-		case 3: return readinputportbytag("DSW2"); /* Dip 2 */
-		case 4: return readinputportbytag("IN2"); /* VBL */
+		case 0: return input_port_read(machine, "IN0"); /* Player 1 */
+		case 1: return input_port_read(machine, "IN1"); /* Player 2 */
+		case 2: return input_port_read(machine, "DSW1"); /* Dip 1 */
+		case 3: return input_port_read(machine, "DSW2"); /* Dip 2 */
+		case 4: return input_port_read(machine, "IN2"); /* VBL */
 	}
 
 	return 0xff;
@@ -98,7 +98,7 @@ static ADDRESS_MAP_START( actfan_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x072000, 0x0727ff) AM_READWRITE(actfancr_pf2_data_r, actfancr_pf2_data_w) AM_BASE(&actfancr_pf2_data)
 	AM_RANGE(0x100000, 0x1007ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(buffer_spriteram_w)
-	AM_RANGE(0x120000, 0x1205ff) AM_READWRITE(SMH_RAM, paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0x120000, 0x1205ff) AM_RAM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0x130000, 0x130003) AM_READ(actfan_control_1_r)
 	AM_RANGE(0x140000, 0x140001) AM_READ(actfan_control_0_r)
 	AM_RANGE(0x150000, 0x150001) AM_WRITE(actfancr_sound_w)
@@ -116,7 +116,7 @@ static ADDRESS_MAP_START( triothep_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x100000, 0x100001) AM_WRITE(actfancr_sound_w)
 	AM_RANGE(0x110000, 0x110001) AM_WRITE(buffer_spriteram_w)
 	AM_RANGE(0x120000, 0x1207ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x130000, 0x1305ff) AM_READWRITE(SMH_RAM, paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0x130000, 0x1305ff) AM_RAM_WRITE(paletteram_xxxxBBBBGGGGRRRR_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0x140000, 0x140001) AM_READNOP /* Value doesn't matter */
 	AM_RANGE(0x1f0000, 0x1f3fff) AM_RAM AM_BASE(&actfancr_ram) /* Main ram */
 	AM_RANGE(0x1ff000, 0x1ff001) AM_READWRITE(triothep_control_r, triothep_control_select_w)
@@ -637,12 +637,12 @@ static READ8_HANDLER( cyclej_r )
 
 static DRIVER_INIT( actfancr )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f0026, 0x1f0027, 0, 0, cycle_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f0026, 0x1f0027, 0, 0, cycle_r);
 }
 
 static DRIVER_INIT( actfancj )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f0026, 0x1f0027, 0, 0, cyclej_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f0026, 0x1f0027, 0, 0, cyclej_r);
 }
 
 

@@ -37,7 +37,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/okim6295.h"
 
 #define MASTER_CLOCK 32000000
@@ -193,13 +192,13 @@ static READ32_HANDLER( dreamwld_protdata_r )
 
 static READ32_HANDLER( dreamwld_inputs_r )
 {
-	return readinputport(1)|(readinputport(0)<<16);
+	return input_port_read_indexed(machine, 1)|(input_port_read_indexed(machine, 0)<<16);
 }
 
 static READ32_HANDLER( dreamwld_dips_r )
 {
 	int x;
-	x= readinputport(2);
+	x= input_port_read_indexed(machine, 2);
 	return x|(x<<16);
 }
 
@@ -212,10 +211,10 @@ static WRITE32_HANDLER( dreamwld_palette_w )
 	color = offset*2;
 
 	dat = paletteram32[offset]&0x7fff;
-	palette_set_color_rgb(Machine,color+1,pal5bit(dat >> 10),pal5bit(dat >> 5),pal5bit(dat >> 0));
+	palette_set_color_rgb(machine,color+1,pal5bit(dat >> 10),pal5bit(dat >> 5),pal5bit(dat >> 0));
 
 	dat = (paletteram32[offset]>>16)&0x7fff;
-	palette_set_color_rgb(Machine,color,pal5bit(dat >> 10),pal5bit(dat >> 5),pal5bit(dat >> 0));
+	palette_set_color_rgb(machine,color,pal5bit(dat >> 10),pal5bit(dat >> 5),pal5bit(dat >> 0));
 
 }
 
@@ -226,7 +225,7 @@ static READ32_HANDLER(dreamwld_6295_0_r)
 
 static WRITE32_HANDLER(dreamwld_6295_0_w)
 {
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		OKIM6295_data_0_w(machine, 0, (data>>24) & 0xff);
 	}
@@ -248,7 +247,7 @@ static void dreamwld_oki_setbank( UINT8 chip, UINT8 bank )
 
 static WRITE32_HANDLER( dreamwld_6295_0_bank_w )
 {
-	if (!(mem_mask & 0x000000ff))
+	if (ACCESSING_BITS_0_7)
 	{
 		dreamwld_oki_setbank(0,data&0x3);
 	}
@@ -265,7 +264,7 @@ static READ32_HANDLER(dreamwld_6295_1_r)
 
 static WRITE32_HANDLER(dreamwld_6295_1_w)
 {
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		OKIM6295_data_1_w(machine, 0, (data>>24) & 0xff);
 	}
@@ -277,7 +276,7 @@ static WRITE32_HANDLER(dreamwld_6295_1_w)
 
 static WRITE32_HANDLER( dreamwld_6295_1_bank_w )
 {
-	if (!(mem_mask & 0x000000ff))
+	if (ACCESSING_BITS_0_7)
 	{
 		dreamwld_oki_setbank(1,data&0x3);
 	}
@@ -291,9 +290,9 @@ static ADDRESS_MAP_START( dreamwld_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM  AM_WRITE(SMH_NOP)
 
 	AM_RANGE(0x400000, 0x401fff) AM_RAM AM_BASE( &spriteram32 )
-	AM_RANGE(0x600000, 0x601fff) AM_RAM AM_WRITE(dreamwld_palette_w) AM_BASE(&paletteram32)  // real palette?
-	AM_RANGE(0x800000, 0x801fff) AM_READWRITE(SMH_RAM, dreamwld_bg_videoram_w ) AM_BASE( &dreamwld_bg_videoram )
-	AM_RANGE(0x802000, 0x803fff) AM_READWRITE(SMH_RAM, dreamwld_bg2_videoram_w ) AM_BASE( &dreamwld_bg2_videoram )
+	AM_RANGE(0x600000, 0x601fff) AM_RAM_WRITE(dreamwld_palette_w) AM_BASE(&paletteram32)  // real palette?
+	AM_RANGE(0x800000, 0x801fff) AM_RAM_WRITE(dreamwld_bg_videoram_w ) AM_BASE( &dreamwld_bg_videoram )
+	AM_RANGE(0x802000, 0x803fff) AM_RAM_WRITE(dreamwld_bg2_videoram_w ) AM_BASE( &dreamwld_bg2_videoram )
 	AM_RANGE(0x804000, 0x805fff) AM_RAM AM_BASE( &dreamwld_bg_scroll )  // scroll regs etc.
 
 	AM_RANGE(0xc00000, 0xc00003) AM_READ(dreamwld_inputs_r)

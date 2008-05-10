@@ -60,8 +60,8 @@ static WRITE8_HANDLER( battlane_cpu_command_w )
     /*
     if (~battlane_cpu_control & 0x08)
     {
-        cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
-        cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+        cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
     }
     */
 
@@ -69,7 +69,7 @@ static WRITE8_HANDLER( battlane_cpu_command_w )
         CPU2's SWI will trigger an 6809 IRQ on the master by resetting 0x04
         Master will respond by setting the bit back again
     */
-    cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE,  data & 0x04 ? CLEAR_LINE : HOLD_LINE);
+    cpunum_set_input_line(machine, 0, M6809_IRQ_LINE,  data & 0x04 ? CLEAR_LINE : HOLD_LINE);
 
 	/*
     Slave function call (e.g. ROM test):
@@ -87,13 +87,13 @@ static WRITE8_HANDLER( battlane_cpu_command_w )
     FA96: 27 FA       BEQ   $FA92   ; Wait for bit to be set
     */
 
-	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, data & 0x02 ? CLEAR_LINE : HOLD_LINE);
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, data & 0x02 ? CLEAR_LINE : HOLD_LINE);
 }
 
 static ADDRESS_MAP_START( battlane_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM AM_SHARE(1)
-    AM_RANGE(0x1000, 0x17ff) AM_RAM AM_WRITE(battlane_tileram_w) AM_SHARE(2) AM_BASE(&battlane_tileram)
-    AM_RANGE(0x1800, 0x18ff) AM_RAM AM_WRITE(battlane_spriteram_w) AM_SHARE(3) AM_BASE(&battlane_spriteram)
+    AM_RANGE(0x1000, 0x17ff) AM_RAM_WRITE(battlane_tileram_w) AM_SHARE(2) AM_BASE(&battlane_tileram)
+    AM_RANGE(0x1800, 0x18ff) AM_RAM_WRITE(battlane_spriteram_w) AM_SHARE(3) AM_BASE(&battlane_spriteram)
 	AM_RANGE(0x1c00, 0x1c00) AM_READWRITE(input_port_0_r, battlane_video_ctrl_w)
     AM_RANGE(0x1c01, 0x1c01) AM_READWRITE(input_port_1_r, battlane_scrollx_w)
 	AM_RANGE(0x1c02, 0x1c02) AM_READWRITE(input_port_2_r, battlane_scrolly_w)
@@ -101,7 +101,7 @@ static ADDRESS_MAP_START( battlane_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1c04, 0x1c04) AM_READWRITE(YM3526_status_port_0_r, YM3526_control_port_0_w)
 	AM_RANGE(0x1c05, 0x1c05) AM_WRITE(YM3526_write_port_0_w)
 	AM_RANGE(0x1e00, 0x1e3f) AM_WRITE(battlane_palette_w)
-	AM_RANGE(0x2000, 0x3fff) AM_RAM AM_WRITE(battlane_bitmap_w) AM_SHARE(4)
+	AM_RANGE(0x2000, 0x3fff) AM_RAM_WRITE(battlane_bitmap_w) AM_SHARE(4)
 	AM_RANGE(0x4000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 

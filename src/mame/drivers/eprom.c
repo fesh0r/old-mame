@@ -70,7 +70,7 @@ static MACHINE_RESET( klaxp )
 	atarigen_interrupt_reset(update_interrupts);
 	atarigen_scanline_timer_reset(machine->primary_screen, eprom_scanline_update, 8);
 	atarijsa_reset();
-	atarigen_init_save_state();
+	atarigen_init_save_state(machine);
 }
 
 
@@ -90,7 +90,7 @@ static MACHINE_RESET( eprom )
 
 static READ16_HANDLER( special_port1_r )
 {
-	int result = readinputport(1);
+	int result = input_port_read_indexed(machine, 1);
 
 	if (atarigen_sound_to_cpu_ready) result ^= 0x0004;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0008;
@@ -103,7 +103,7 @@ static READ16_HANDLER( special_port1_r )
 static READ16_HANDLER( adc_r )
 {
 	static int last_offset;
-	int result = readinputport(2 + (last_offset & 3));
+	int result = input_port_read_indexed(machine, 2 + (last_offset & 3));
 	last_offset = offset;
 	return result;
 }
@@ -119,7 +119,7 @@ static READ16_HANDLER( adc_r )
 static WRITE16_HANDLER( eprom_latch_w )
 {
 	/* reset extra CPU */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (data & 1)
 			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
@@ -176,7 +176,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x360010, 0x360011) AM_WRITE(eprom_latch_w)
 	AM_RANGE(0x360020, 0x360021) AM_WRITE(atarigen_sound_reset_w)
 	AM_RANGE(0x360030, 0x360031) AM_WRITE(atarigen_sound_w)
-	AM_RANGE(0x3e0000, 0x3e0fff) AM_READWRITE(SMH_RAM, paletteram16_IIIIRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM_WRITE(paletteram16_IIIIRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x3f0000, 0x3f1fff) AM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
 	AM_RANGE(0x3f2000, 0x3f3fff) AM_WRITE(atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
 	AM_RANGE(0x3f4000, 0x3f4f7f) AM_WRITE(atarigen_alpha_w) AM_BASE(&atarigen_alpha)
@@ -201,7 +201,7 @@ static ADDRESS_MAP_START( guts_map, ADDRESS_SPACE_PROGRAM, 16 )
 //  AM_RANGE(0x360010, 0x360011) AM_WRITE(eprom_latch_w)
 	AM_RANGE(0x360020, 0x360021) AM_WRITE(atarigen_sound_reset_w)
 	AM_RANGE(0x360030, 0x360031) AM_WRITE(atarigen_sound_w)
-	AM_RANGE(0x3e0000, 0x3e0fff) AM_READWRITE(SMH_RAM, paletteram16_IIIIRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM_WRITE(paletteram16_IIIIRRRRGGGGBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xff1fff) AM_WRITE(atarigen_playfield_upper_w) AM_BASE(&atarigen_playfield_upper)
 	AM_RANGE(0xff8000, 0xff9fff) AM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
 	AM_RANGE(0xffa000, 0xffbfff) AM_WRITE(atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
@@ -733,10 +733,8 @@ static DRIVER_INIT( eprom )
 	atarijsa_init(machine, 1, 0x0002);
 
 	/* install CPU synchronization handlers */
-	sync_data = memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_r);
-	sync_data = memory_install_read16_handler(1, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_r);
-	sync_data = memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_w);
-	sync_data = memory_install_write16_handler(1, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_w);
+	sync_data = memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_r, sync_w);
+	sync_data = memory_install_readwrite16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x16cc00, 0x16cc01, 0, 0, sync_r, sync_w);
 }
 
 

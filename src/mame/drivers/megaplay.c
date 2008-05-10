@@ -136,8 +136,13 @@ static UINT32 readpos = 1;  // serial bank selection position (9-bit)
     PORT_BIT ( 0x08, IP_ACTIVE_HIGH, IPT_UNKNOWN ) \
     PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_SERVICE1 ) \
     PORT_BIT ( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-    PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_START1 ) \
-    PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_START2 )
+    PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+    PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+/* Caused 01081:
+ *  PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_START1 ) \
+ *  PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_START2 )
+ */
 
 #define MEGAPLAY_DSWA \
 	PORT_START \
@@ -507,7 +512,7 @@ static READ8_HANDLER( megaplay_bios_6404_r )
 static WRITE8_HANDLER( megaplay_bios_6404_w )
 {
 	if(((bios_6404 & 0x0c) == 0x00) && ((data & 0x0c) == 0x0c))
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 	bios_6404 = data;
 
 //  logerror("BIOS: 0x6404 write: 0x%02x\n",data);
@@ -878,11 +883,11 @@ static READ16_HANDLER ( OLD_megaplay_genesis_io_r )
 		case 1: /* port A data (joypad 1) */
 
 			if (genesis_io_ram[offset] & 0x40)
-				return_value = readinputport(1) & (genesis_io_ram[4]^0xff);
+				return_value = input_port_read_indexed(machine, 1) & (genesis_io_ram[4]^0xff);
 			else
 			{
-				return_value = readinputport(2) & (genesis_io_ram[4]^0xff);
-				return_value |= readinputport(1) & 0x03;
+				return_value = input_port_read_indexed(machine, 2) & (genesis_io_ram[4]^0xff);
+				return_value |= input_port_read_indexed(machine, 1) & 0x03;
 			}
 			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
 //          logerror ("reading joypad 1 , type %02x %02x\n",genesis_io_ram[offset] & 0xb0, return_value &0x7f);
@@ -891,11 +896,11 @@ static READ16_HANDLER ( OLD_megaplay_genesis_io_r )
 		case 2: /* port B data (joypad 2) */
 
 			if (genesis_io_ram[offset] & 0x40)
-				return_value = readinputport(3) & (genesis_io_ram[5]^0xff);
+				return_value = input_port_read_indexed(machine, 3) & (genesis_io_ram[5]^0xff);
 			else
 			{
-				return_value = readinputport(4) & (genesis_io_ram[5]^0xff);
-				return_value |= readinputport(3) & 0x03;
+				return_value = input_port_read_indexed(machine, 4) & (genesis_io_ram[5]^0xff);
+				return_value |= input_port_read_indexed(machine, 3) & 0x03;
 			}
 			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
 //          logerror ("reading joypad 2 , type %02x %02x\n",genesis_io_ram[offset] & 0xb0, return_value &0x7f);
@@ -964,11 +969,11 @@ static READ16_HANDLER( megadriv_68k_read_z80_extra_ram )
 
 static WRITE16_HANDLER( megadriv_68k_write_z80_extra_ram )
 {
-	if (!ACCESSING_LSB) // byte (MSB) access
+	if (!ACCESSING_BITS_0_7) // byte (MSB) access
 	{
 		ic36_ram[(offset<<1)] = (data & 0xff00) >> 8;
 	}
-	else if (!ACCESSING_MSB)
+	else if (!ACCESSING_BITS_8_15)
 	{
 		ic36_ram[(offset<<1)^1] = (data & 0x00ff);
 	}
@@ -990,17 +995,14 @@ static DRIVER_INIT (megaplay)
 	megplay_stat();
 
 	/* for now ... */
-	memory_install_read16_handler(0,  ADDRESS_SPACE_PROGRAM, 0xa10000, 0xa1001f, 0, 0, OLD_megaplay_genesis_io_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa10000, 0xa1001f, 0, 0, OLD_megaplay_genesis_io_w);
+	memory_install_readwrite16_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xa10000, 0xa1001f, 0, 0, OLD_megaplay_genesis_io_r, OLD_megaplay_genesis_io_w);
 
 	/* megaplay has ram shared with the bios cpu here */
-	memory_install_read8_handler(1,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK7);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK7);
+	memory_install_readwrite8_handler(machine, 1,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK7, SMH_BANK7);
 	memory_set_bankptr(7, &ic36_ram[0]);
 
 	/* instead of a RAM mirror the 68k sees the extra ram of the 2nd z80 too */
-	memory_install_read16_handler(0,  ADDRESS_SPACE_PROGRAM, 0xa02000, 0xa03fff, 0, 0, megadriv_68k_read_z80_extra_ram);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa02000, 0xa03fff, 0, 0, megadriv_68k_write_z80_extra_ram);
+	memory_install_readwrite16_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xa02000, 0xa03fff, 0, 0, megadriv_68k_read_z80_extra_ram, megadriv_68k_write_z80_extra_ram);
 }
 
 /*

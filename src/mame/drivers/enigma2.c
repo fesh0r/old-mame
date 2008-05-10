@@ -323,7 +323,7 @@ if (LOG_PROT) logerror("DIP SW Read: %x at %x (prot data %x)\n", offset, activec
 		if (protection_data != 0xff)
 			ret = protection_data ^ 0x88;
 		else
-			ret = readinputport(2);
+			ret = input_port_read_indexed(machine, 2);
 		break;
 
 	case 0x02:
@@ -348,7 +348,7 @@ static WRITE8_HANDLER( sound_data_w )
 	if (!(data & 0x04) && (last_sound_data & 0x04))
 		sound_latch = (sound_latch << 1) | (~data & 0x01);
 
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, (data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, (data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
 
 	last_sound_data = data;
 }
@@ -369,28 +369,30 @@ if (LOG_PROT) logerror("Protection Data Write: %x at %x\n", data, safe_activecpu
 
 static WRITE8_HANDLER( enigma2_flip_screen_w )
 {
-	engima2_flip_screen = ((data >> 5) & 0x01) && ((readinputport(2) & 0x20) == 0x20);
+	engima2_flip_screen = ((data >> 5) & 0x01) && ((input_port_read_indexed(machine, 2) & 0x20) == 0x20);
 }
 
 
 static CUSTOM_INPUT( p1_controls_r )
 {
-	return readinputportbytag("P1CONTROLS");
+	return input_port_read(machine, "P1CONTROLS");
 }
 
 
 static CUSTOM_INPUT( p2_controls_r )
 {
 	if (engima2_flip_screen)
-		return readinputportbytag("P2CONTROLS");
+		return input_port_read(machine, "P2CONTROLS");
 	else
-		return readinputportbytag("P1CONTROLS");
+		return input_port_read(machine, "P1CONTROLS");
 }
 
 
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	sound_latch_r,
 	0,
 	0,

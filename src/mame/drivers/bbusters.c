@@ -211,7 +211,7 @@ WRITE16_HANDLER( bbuster_video_w );
 static MACHINE_RESET( bbusters )
 {
 	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
-	int data = readinputportbytag("FAKE1") & 0x03;
+	int data = input_port_read(machine, "FAKE1") & 0x03;
 
 	/* Country/Version :
          - 0x0000 : Japan?
@@ -230,7 +230,7 @@ static MACHINE_RESET( bbusters )
 static MACHINE_RESET( mechatt )
 {
 	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
-	int data = readinputportbytag("FAKE1") & 0x03;
+	int data = input_port_read(machine, "FAKE1") & 0x03;
 
 	/* Country :
          - 0x0000 : Japan
@@ -260,7 +260,7 @@ static int gun_select;
 
 static READ16_HANDLER( control_3_r )
 {
-	return readinputport(gun_select);
+	return input_port_read_indexed(machine, gun_select);
 }
 
 static WRITE16_HANDLER( gun_select_w )
@@ -272,12 +272,12 @@ static WRITE16_HANDLER( gun_select_w )
 
 static READ16_HANDLER( kludge_r )
 {
-	bbuster_ram[0xa692/2]=readinputportbytag("IN5")<<1;
-	bbuster_ram[0xa694/2]=readinputportbytag("IN6")<<1;
-	bbuster_ram[0xa696/2]=readinputportbytag("IN7")<<1;
-	bbuster_ram[0xa698/2]=readinputportbytag("IN8")<<1;
-	bbuster_ram[0xa69a/2]=readinputportbytag("IN9")<<1;
-	bbuster_ram[0xa69c/2]=readinputportbytag("IN10")<<1;
+	bbuster_ram[0xa692/2]=input_port_read(machine, "IN5")<<1;
+	bbuster_ram[0xa694/2]=input_port_read(machine, "IN6")<<1;
+	bbuster_ram[0xa696/2]=input_port_read(machine, "IN7")<<1;
+	bbuster_ram[0xa698/2]=input_port_read(machine, "IN8")<<1;
+	bbuster_ram[0xa69a/2]=input_port_read(machine, "IN9")<<1;
+	bbuster_ram[0xa69c/2]=input_port_read(machine, "IN10")<<1;
 	return 0;
 }
 
@@ -292,8 +292,8 @@ static READ16_HANDLER( mechatt_gun_r )
 	int baseport=2,x,y;
 	if (offset) baseport=4; /* Player 2 */
 
-	x=readinputport(baseport);
-	y=readinputport(baseport+1);
+	x=input_port_read_indexed(machine, baseport);
+	y=input_port_read_indexed(machine, baseport+1);
 
 	/* Todo - does the hardware really clamp like this? */
 	x+=0x18;
@@ -673,7 +673,12 @@ static void sound_irq( int irq )
 
 static const struct YM2608interface ym2608_interface =
 {
-	0,0,0,0,sound_irq,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
+	sound_irq,
 	REGION_SOUND1
 };
 
@@ -709,13 +714,13 @@ static INTERRUPT_GEN( bbuster )
 
 static VIDEO_EOF( bbuster )
 {
-	buffer_spriteram16_w(machine,0,0,0);
-	buffer_spriteram16_2_w(machine,0,0,0);
+	buffer_spriteram16_w(machine,0,0,0xffff);
+	buffer_spriteram16_2_w(machine,0,0,0xffff);
 }
 
 static VIDEO_EOF( mechatt )
 {
-	buffer_spriteram16_w(machine,0,0,0);
+	buffer_spriteram16_w(machine,0,0,0xffff);
 }
 
 static MACHINE_DRIVER_START( bbusters )
@@ -756,10 +761,10 @@ static MACHINE_DRIVER_START( bbusters )
 
 	MDRV_SOUND_ADD(YM2610, 8000000)
 	MDRV_SOUND_CONFIG(ym2610_interface)
-	MDRV_SOUND_ROUTE(0, "left",  0.60)
-	MDRV_SOUND_ROUTE(0, "right", 0.60)
-	MDRV_SOUND_ROUTE(1, "left",  0.20)
-	MDRV_SOUND_ROUTE(2, "right", 0.20)
+	MDRV_SOUND_ROUTE(0, "left",  3.0)
+	MDRV_SOUND_ROUTE(0, "right", 3.0)
+	MDRV_SOUND_ROUTE(1, "left",  1.0)
+	MDRV_SOUND_ROUTE(2, "right", 1.0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mechatt )

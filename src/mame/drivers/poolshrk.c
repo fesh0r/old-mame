@@ -5,7 +5,6 @@ Atari Poolshark Driver
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "poolshrk.h"
 #include "sound/discrete.h"
 
@@ -72,10 +71,10 @@ static WRITE8_HANDLER( poolshrk_watchdog_w )
 
 static READ8_HANDLER( poolshrk_input_r )
 {
-	UINT8 val = readinputport(offset & 3);
+	UINT8 val = input_port_read_indexed(machine, offset & 3);
 
-	int x = readinputport(4 + (offset & 1));
-	int y = readinputport(6 + (offset & 1));
+	int x = input_port_read_indexed(machine, 4 + (offset & 1));
+	int y = input_port_read_indexed(machine, 6 + (offset & 1));
 
 	if (x >= poolshrk_da_latch) val |= 8;
 	if (y >= poolshrk_da_latch) val |= 4;
@@ -91,7 +90,7 @@ static READ8_HANDLER( poolshrk_input_r )
 
 static READ8_HANDLER( poolshrk_irq_reset_r )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 
 	return 0;
 }

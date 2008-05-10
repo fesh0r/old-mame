@@ -656,7 +656,7 @@ WRITE16_HANDLER( toaplan2_tx_gfxram16_w )
 	{
 		int code = offset/32;
 		COMBINE_DATA(&toaplan2_tx_gfxram16[offset]);
-		decodechar(Machine->gfx[2], code, toaplan2_tx_gfxram);
+		decodechar(machine->gfx[2], code, toaplan2_tx_gfxram);
 
 		tilemap_mark_all_tiles_dirty(tx_tilemap);
 	}
@@ -699,13 +699,13 @@ WRITE16_HANDLER( batrider_textdata_decode )
 
 	/* Decode text characters */
 	for (code = 0; code < 1024; code++)
-		decodechar (Machine->gfx[2], code, raizing_tx_gfxram);
+		decodechar (machine->gfx[2], code, raizing_tx_gfxram);
 	tilemap_mark_all_tiles_dirty(tx_tilemap);
 }
 
 WRITE16_HANDLER( batrider_objectbank_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		data &= 0xf;
 		if (batrider_object_bank[offset] != data)
@@ -813,7 +813,7 @@ WRITE16_HANDLER( toaplan2_1_videoram16_w )
 
 static void toaplan2_scroll_reg_select_w(offs_t offset, UINT16 data, UINT32 mem_mask, int controller)
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		toaplan2_scroll_reg[controller] = data & 0x8f;
 		if (data & 0x70)
@@ -1045,7 +1045,7 @@ WRITE16_HANDLER( toaplan2_1_scroll_reg_data_w )
 
 WRITE16_HANDLER( pipibibi_scroll_w )
 {
-	if (ACCESSING_MSB && ACCESSING_LSB)
+	if (ACCESSING_BITS_8_15 && ACCESSING_BITS_0_7)
 	{
 		switch(offset)
 		{
@@ -1067,13 +1067,13 @@ WRITE16_HANDLER( pipibibi_scroll_w )
 
 READ16_HANDLER( pipibibi_videoram16_r )
 {
-	toaplan2_voffs_w(0, offset, 0, 0);
+	toaplan2_voffs_w(0, offset, 0xffff, 0);
 	return toaplan2_videoram16_r(0, 0);
 }
 
 WRITE16_HANDLER( pipibibi_videoram16_w)
 {
-	toaplan2_voffs_w(0, offset, 0, 0);
+	toaplan2_voffs_w(0, offset, 0xffff, 0);
 	toaplan2_videoram16_w(0, data, mem_mask, 0);
 }
 

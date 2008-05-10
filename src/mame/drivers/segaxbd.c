@@ -240,7 +240,7 @@ static READ16_HANDLER( adc_r )
 	int which = (iochip_regs[0][2] >> 2) & 7;
 
 	/* on the write, latch the selected input port and stash the value */
-	int value = readinputportbytag_safe(ports[which], 0x0010);
+	int value = input_port_read_safe(machine, ports[which], 0x0010);
 
 	/* reverse some port values */
 	if (adc_reverse[which])
@@ -300,11 +300,11 @@ static READ16_HANDLER( iochip_0_r )
                 D6: /INTR of ADC0804
                 D5-D0: CN C pin 24-19 (switch state 0= open, 1= closed)
             */
-			return iochip_r(0, 0, readinputport(0));
+			return iochip_r(0, 0, input_port_read_indexed(machine, 0));
 
 		case 1:
 			/* I/O port: CN C pins 17,15,13,11,9,7,5,3 */
-			return iochip_r(0, 1, readinputport(1));
+			return iochip_r(0, 1, input_port_read_indexed(machine, 1));
 
 		case 2:
 			/* Output port */
@@ -329,7 +329,7 @@ static WRITE16_HANDLER( iochip_0_w )
 	UINT8 oldval;
 
 	/* access is via the low 8 bits */
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 		return;
 
 	data &= 0xff;
@@ -352,7 +352,7 @@ static WRITE16_HANDLER( iochip_0_w )
             */
 			if (((oldval ^ data) & 0x40) && !(data & 0x40)) watchdog_reset_w(machine,0,0);
 			segaic16_set_display_enable(data & 0x20);
-			cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 			return;
 
 		case 3:
@@ -375,19 +375,19 @@ static READ16_HANDLER( iochip_1_r )
 	{
 		case 0:
 			/* Input port: switches, CN D pin A1-8 (switch state 1= open, 0= closed) */
-			return iochip_r(1, 0, readinputport(2));
+			return iochip_r(1, 0, input_port_read_indexed(machine, 2));
 
 		case 1:
 			/* Input port: switches, CN D pin A9-16 (switch state 1= open, 0= closed) */
-			return iochip_r(1, 1, readinputport(3));
+			return iochip_r(1, 1, input_port_read_indexed(machine, 3));
 
 		case 2:
 			/* Input port: DIP switches (1= off, 0= on) */
-			return iochip_r(1, 2, readinputport(4));
+			return iochip_r(1, 2, input_port_read_indexed(machine, 4));
 
 		case 3:
 			/* Input port: DIP switches (1= off, 0= on) */
-			return iochip_r(1, 3, readinputport(5));
+			return iochip_r(1, 3, input_port_read_indexed(machine, 5));
 
 		case 4:
 			/* Unused */
@@ -402,7 +402,7 @@ static READ16_HANDLER( iochip_1_r )
 static WRITE16_HANDLER( iochip_1_w )
 {
 	/* access is via the low 8 bits */
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 		return;
 
 	data &= 0xff;
@@ -417,7 +417,7 @@ static WRITE16_HANDLER( iochip_1_w )
 
 static WRITE16_HANDLER( iocontrol_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		logerror("I/O chip force input = %d\n", data & 1);
 		/* Racing Hero and ABCop set this and fouls up their output ports */
@@ -436,7 +436,7 @@ static WRITE16_HANDLER( iocontrol_w )
 static WRITE16_HANDLER( aburner2_iochip_0_D_w )
 {
 	/* access is via the low 8 bits */
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 		return;
 
 	iochip_regs[0][3] = data;
@@ -482,7 +482,7 @@ static READ16_HANDLER( smgp_excs_r )
 
 static WRITE16_HANDLER( smgp_excs_w )
 {
-	logerror("%06X:smgp_excs_w(%04X) = %04X & %04X\n", activecpu_get_pc(), offset*2, data, mem_mask ^ 0xffff);
+	logerror("%06X:smgp_excs_w(%04X) = %04X & %04X\n", activecpu_get_pc(), offset*2, data, mem_mask);
 }
 
 
@@ -521,14 +521,14 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x080000, 0x083fff) AM_MIRROR(0x01c000) AM_RAM AM_SHARE(1) AM_BASE(&backupram1)
 	AM_RANGE(0x0a0000, 0x0a3fff) AM_MIRROR(0x01c000) AM_RAM AM_SHARE(2) AM_BASE(&backupram2)
-	AM_RANGE(0x0c0000, 0x0cffff) AM_READWRITE(SMH_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
-	AM_RANGE(0x0d0000, 0x0d0fff) AM_MIRROR(0x00f000) AM_READWRITE(SMH_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
+	AM_RANGE(0x0c0000, 0x0cffff) AM_RAM_WRITE(segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
+	AM_RANGE(0x0d0000, 0x0d0fff) AM_MIRROR(0x00f000) AM_RAM_WRITE(segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
 	AM_RANGE(0x0e0000, 0x0e0007) AM_MIRROR(0x003ff8) AM_READWRITE(segaic16_multiply_0_r, segaic16_multiply_0_w)
 	AM_RANGE(0x0e4000, 0x0e401f) AM_MIRROR(0x003fe0) AM_READWRITE(segaic16_divide_0_r, segaic16_divide_0_w)
 	AM_RANGE(0x0e8000, 0x0e801f) AM_MIRROR(0x003fe0) AM_READWRITE(segaic16_compare_timer_0_r, segaic16_compare_timer_0_w)
 	AM_RANGE(0x100000, 0x100fff) AM_MIRROR(0x00f000) AM_RAM AM_BASE(&segaic16_spriteram_0)
 	AM_RANGE(0x110000, 0x11ffff) AM_WRITE(segaic16_sprites_draw_0_w)
-	AM_RANGE(0x120000, 0x123fff) AM_MIRROR(0x00c000) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x120000, 0x123fff) AM_MIRROR(0x00c000) AM_RAM_WRITE(segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x130000, 0x13ffff) AM_READWRITE(adc_r, adc_w)
 	AM_RANGE(0x140000, 0x14000f) AM_MIRROR(0x00fff0) AM_READWRITE(iochip_0_r, iochip_0_w)
 	AM_RANGE(0x150000, 0x15000f) AM_MIRROR(0x00fff0) AM_READWRITE(iochip_1_r, iochip_1_w)
@@ -2178,6 +2178,60 @@ ROM_START( smgpj )
 	ROM_LOAD( "epr12587.14",    0x00000, 0x8000, CRC(2afe648b) SHA1(b5bf86f3acbcc23c136185110acecf2c971294fa) )
 ROM_END
 
+/**************************************************************************************************************************
+    Super Monaco GP, Sega X-board
+    CPU: FD1094 (317-0124a)
+*/
+ROM_START( smgpja )
+	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "epr12432a.58", 0x00000, 0x20000, CRC(22517672) SHA1(db9ac40e83e9786bc9dad70f62c2080d3df694ee) )
+	ROM_LOAD16_BYTE( "epr12433a.63", 0x00001, 0x20000, CRC(a46b5d13) SHA1(3a7de5cb6f3e6d726f0ea886a87125dedc6f849f) )
+
+	ROM_REGION( 0x2000, REGION_USER1, 0 )	/* decryption key */
+	ROM_LOAD( "317-0124a.key", 0x0000, 0x2000, CRC(022a8a16) SHA1(4fd80105cb85ccba77cf1e76a21d6e245d5d2e7d) )
+
+	ROM_REGION( 0x80000, REGION_CPU2, 0 ) /* 2nd 68000 code */
+	ROM_LOAD16_BYTE( "epr12441a.20", 0x00000, 0x20000, CRC(2c9599c1) SHA1(79206f38c2976bd9299ed37bf62ac26dd3fba801) )
+	ROM_LOAD16_BYTE( "epr12442a.29", 0x00001, 0x20000, CRC(77a5ec16) SHA1(b8cf6a3f12689d89bbdd9fb39d1cb7d1a3c10602) )
+
+	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD( "epr12429.154", 0x00000, 0x10000, CRC(5851e614) SHA1(3dc97237ede2c6125e92ea6efc68a748d0ec69be) )
+	ROM_LOAD( "epr12430.153", 0x10000, 0x10000, CRC(05e00134) SHA1(8baaa80815d5dabd38dc8600e357975b96d23b95) )
+	ROM_LOAD( "epr12431.152", 0x20000, 0x10000, CRC(35572f4a) SHA1(d66456ecf7b59f81736fb873c553926b56bb3977))
+
+	ROM_REGION32_LE( 0x200000, REGION_GFX2, 0 ) /* sprites */
+	ROM_LOAD32_BYTE( "mpr12425.90",  0x000000, 0x20000, CRC(14bf2a15) SHA1(84db3ac09e4a8fe470ac051d8d5de1814b48bc72) )
+	ROM_LOAD32_BYTE( "mpr12426.94",  0x000001, 0x20000, CRC(28b60dc0) SHA1(ad69d449434853445a076319a55a29014217a100) )
+	ROM_LOAD32_BYTE( "mpr12427.98",  0x000002, 0x20000, CRC(0a367928) SHA1(bcb558b7c23906397e66a7f046b09eb5036c0888) )
+	ROM_LOAD32_BYTE( "mpr12428.102", 0x000003, 0x20000, CRC(efa80ad5) SHA1(9bc7c3fb60cc076f29a0af487d58e5b48f1c4b06) )
+	ROM_LOAD32_BYTE( "mpr12421.91",  0x080000, 0x20000, CRC(25f46140) SHA1(ea75e364cf52636d100158f79be627e36da8c327) )
+	ROM_LOAD32_BYTE( "mpr12422.95",  0x080001, 0x20000, CRC(cb51c8f6) SHA1(5af56ae1916c3212b8d5b9e4bccbbe1916694f89) )
+	ROM_LOAD32_BYTE( "mpr12423.99",  0x080002, 0x20000, CRC(0be9818e) SHA1(637a8201416e73d53f7e2502ea0a5277e43c167d) )
+	ROM_LOAD32_BYTE( "mpr12424.103", 0x080003, 0x20000, CRC(0ce00dfc) SHA1(3b1990977ec7ad4c3bea66527707cff2cd8d5a98) )
+	ROM_LOAD32_BYTE( "mpr12417.92",  0x100000, 0x20000, CRC(a806eabf) SHA1(1a61a2135d92b42ee131fd3240bc8a17a96696ab) )
+	ROM_LOAD32_BYTE( "mpr12418.96",  0x100001, 0x20000, CRC(ed1a0f2b) SHA1(1aa87292ca0465fa129d6be81d95dbb77332ecab) )
+	ROM_LOAD32_BYTE( "mpr12419.100", 0x100002, 0x20000, CRC(ce4568cb) SHA1(1ed66e74ce94d41593b498827d9cc243f775d4ba) )
+	ROM_LOAD32_BYTE( "mpr12420.104", 0x100003, 0x20000, CRC(679442eb) SHA1(f88ef0219497f955d8db6783f3636dad52928f46) )
+	ROM_LOAD32_BYTE( "epr12413.93",  0x180000, 0x20000, CRC(2f1693df) SHA1(ba1e654a1b5fae661b0dae4a8ed04ff50fb546a2) )
+	ROM_LOAD32_BYTE( "epr12414.97",  0x180001, 0x20000, CRC(c78f3d45) SHA1(665750907ed11c89c2ea5c410eac2808445131ae) )
+	ROM_LOAD32_BYTE( "epr12415.101", 0x180002, 0x20000, CRC(6080e9ed) SHA1(eb1b871453f76e6a65d20fa9d4bddc1c9f940b4d) )
+	ROM_LOAD32_BYTE( "epr12416.105", 0x180003, 0x20000, CRC(6f1f2769) SHA1(d00d26cd1052d4b46c432b6b69cb2d83179d52a6) )
+
+	ROM_REGION( 0x10000, REGION_GFX3, ROMREGION_ERASE00 ) /* road gfx */
+	/* none?? */
+
+	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* sound CPU */
+	ROM_LOAD( "epr12436.17",    0x00000, 0x10000, CRC(16ec5f0a) SHA1(307b7388b5c36fd4bc2a61f7941db44858e03c5c) )
+
+	ROM_REGION( 0x80000, REGION_SOUND1, ROMREGION_ERASEFF ) /* Sega PCM sound data */
+	ROM_LOAD( "mpr12437.11",    0x00000, 0x20000, CRC(a1c7e712) SHA1(fa7fa8c39690ae5dab8b28af5aeed5ffae2cd6de) )
+	ROM_LOAD( "mpr12438.12",    0x20000, 0x20000, CRC(6573d46b) SHA1(c4a4a0ea35250eff28a5bfd5e9cd372f52fd1308) )
+	ROM_LOAD( "mpr12439.13",    0x40000, 0x20000, CRC(13bf6de5) SHA1(92228a05ec33d606491a1da98c4989f69cddbb49) )
+
+	ROM_REGION( 0x10000, REGION_CPU4, 0 ) /* comms */
+	ROM_LOAD( "epr12587.14",    0x00000, 0x8000, CRC(2afe648b) SHA1(b5bf86f3acbcc23c136185110acecf2c971294fa) )
+ROM_END
+
 
 /**************************************************************************************************************************
  **************************************************************************************************************************
@@ -2373,7 +2427,7 @@ static DRIVER_INIT( aburner2 )
 	xboard_generic_init();
 	xboard_set_road_priority(0);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x140006, 0x140007, 0, 0x00fff0, aburner2_iochip_0_D_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x140006, 0x140007, 0, 0x00fff0, aburner2_iochip_0_D_w);
 }
 
 
@@ -2390,14 +2444,14 @@ static DRIVER_INIT( loffire )
 	adc_reverse[1] = adc_reverse[3] = 1;
 
 	/* install extra synchronization on core shared memory */
-	loffire_sync = memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x29c000, 0x29c011, 0, 0, loffire_sync0_w);
+	loffire_sync = memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x29c000, 0x29c011, 0, 0, loffire_sync0_w);
 }
 
 
 static DRIVER_INIT( smgp )
 {
 	xboard_generic_init();
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2f0000, 0x2f3fff, 0, 0, smgp_excs_r, smgp_excs_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2f0000, 0x2f3fff, 0, 0, smgp_excs_r, smgp_excs_w);
 }
 
 
@@ -2423,14 +2477,15 @@ GAME( 1989, loffire,  0,        xboard,  loffire,  loffire,        ROT0, "Sega",
 GAME( 1989, loffireu, loffire,  xboard,  loffire,  loffire,        ROT0, "Sega", "Line of Fire / Bakudan Yarou (US, FD1094 317-0135)", 0 )
 GAME( 1989, loffirej, loffire,  xboard,  loffire,  loffire,        ROT0, "Sega", "Line of Fire / Bakudan Yarou (Japan, FD1094 317-0134)", 0 )
 GAME( 1989, rachero,  0,        xboard,  rachero,  generic_xboard, ROT0, "Sega", "Racing Hero (FD1094 317-0144)", 0 )
-GAME( 1989, smgp,     0,        smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 8, World, Rev B, 'Twin', FD1094 317-0126a)", 0 )
-GAME( 1989, smgp6,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 7, World, Rev A, FD1094 317-0126a)", 0 )
-GAME( 1989, smgp5,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 6, World, 'Air Drive Cabinet', FD1094 317-0126)", 0 )
-GAME( 1989, smgpu,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 5, US, Rev C, FD1094 317-0125a)", 0 )
-GAME( 1989, smgpu1,   smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 4, US, Rev B, FD1094 317-0125a)", 0 )
-GAME( 1989, smgpu2,   smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 3, US, Rev A, FD1094 317-0125a)", 0 )
-GAME( 1989, smgpu3,   smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 2, US, FD1094 317-0125a)", 0 )
-GAME( 1989, smgpj,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 1, Japan, Rev B, FD1094 317-0124a)", 0 )
+GAME( 1989, smgp,     0,        smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 9, World, Rev B, 'Twin', FD1094 317-0126a)", 0 )
+GAME( 1989, smgp6,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 8, World, Rev A, FD1094 317-0126a)", 0 )
+GAME( 1989, smgp5,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 7, World, 'Air Drive Cabinet', FD1094 317-0126)", 0 )
+GAME( 1989, smgpu,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 6, US, Rev C, FD1094 317-0125a)", 0 )
+GAME( 1989, smgpu1,   smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 5, US, Rev B, FD1094 317-0125a)", 0 )
+GAME( 1989, smgpu2,   smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 4, US, Rev A, FD1094 317-0125a)", 0 )
+GAME( 1989, smgpu3,   smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 3, US, FD1094 317-0125a)", 0 )
+GAME( 1989, smgpj,    smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 2, Japan, Rev B, FD1094 317-0124a)", 0 )
+GAME( 1989, smgpja,   smgp,     smgp,    smgp,     smgp,           ROT0, "Sega", "Super Monaco GP (set 1, Japan, Rev A, FD1094 317-0124a)", 0 )
 GAME( 1990, abcop,    0,        xboard,  abcop,    generic_xboard, ROT0, "Sega", "A.B. Cop (FD1094 317-0169b)", 0 )
 GAME( 1990, gprider,  0,        xboard,  gprider,  gprider,        ROT0, "Sega", "GP Rider (set 2, World, FD1094 317-0163)", GAME_NOT_WORKING ) // no prg roms
 GAME( 1990, gprider1, gprider,  xboard,  gprider,  gprider,        ROT0, "Sega", "GP Rider (set 1, US, FD1094 317-0162)", 0 )

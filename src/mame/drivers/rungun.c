@@ -36,7 +36,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 
 #include "video/konamiic.h"
 #include "cpu/m68000/m68000.h"
@@ -94,21 +93,21 @@ static READ16_HANDLER( rng_sysregs_r )
 	switch (offset)
 	{
 		case 0x00/2:
-			if (readinputport(1) & 0x20)
-				return(readinputport(2) | readinputport(4)<<8);
+			if (input_port_read_indexed(machine, 1) & 0x20)
+				return(input_port_read_indexed(machine, 2) | input_port_read_indexed(machine, 4)<<8);
 			else
 			{
-				data = readinputport(2) & readinputport(4);
+				data = input_port_read_indexed(machine, 2) & input_port_read_indexed(machine, 4);
 				return(data<<8 | data);
 			}
 		break;
 
 		case 0x02/2:
-			if (readinputport(1) & 0x20)
-				return(readinputport(3) | readinputport(5)<<8);
+			if (input_port_read_indexed(machine, 1) & 0x20)
+				return(input_port_read_indexed(machine, 3) | input_port_read_indexed(machine, 5)<<8);
 			else
 			{
-				data = readinputport(3) & readinputport(5);
+				data = input_port_read_indexed(machine, 3) & input_port_read_indexed(machine, 5);
 				return(data<<8 | data);
 			}
 		break;
@@ -119,13 +118,13 @@ static READ16_HANDLER( rng_sysregs_r )
                 bit8 : freeze
                 bit9 : joysticks layout(auto detect???)
             */
-			return(input_port_0_word_r(machine, 0, 0));
+			return input_port_read_indexed(machine, 0);
 		break;
 
 		case 0x06/2:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
-				data = readinputport(1) | EEPROM_read_bit();
+				data = input_port_read_indexed(machine, 1) | EEPROM_read_bit();
 
 				if (init_eeprom_count)
 				{
@@ -155,7 +154,7 @@ static WRITE16_HANDLER( rng_sysregs_w )
                 bit7  : set before massive memory writes
                 bit10 : IRQ5 ACK
             */
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				EEPROM_write_bit((data & 0x01) ? 1 : 0);
 				EEPROM_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
@@ -163,7 +162,7 @@ static WRITE16_HANDLER( rng_sysregs_w )
 			}
 
 			if (!(data & 0x40))
-				cpunum_set_input_line(Machine, 0, MC68000_IRQ_5, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, MC68000_IRQ_5, CLEAR_LINE);
 		break;
 
 		case 0x0c/2:
@@ -180,25 +179,25 @@ static WRITE16_HANDLER( rng_sysregs_w )
 
 static WRITE16_HANDLER( sound_cmd1_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		soundlatch_w(machine, 0, data>>8);
 }
 
 static WRITE16_HANDLER( sound_cmd2_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		soundlatch2_w(machine, 0, data>>8);
 }
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	if (ACCESSING_MSB)
-		cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
+	if (ACCESSING_BITS_8_15)
+		cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 }
 
 static READ16_HANDLER( sound_status_msb_r )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		return(rng_sound_status<<8);
 
 	return(0);
@@ -266,7 +265,7 @@ static WRITE8_HANDLER( z80ctrl_w )
 	memory_set_bankptr(2, memory_region(REGION_CPU2) + 0x10000 + (data & 0x07) * 0x4000);
 
 	if (data & 0x10)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 static INTERRUPT_GEN(audio_interrupt)

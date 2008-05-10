@@ -80,7 +80,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "suprridr.h"
 #include "sound/ay8910.h"
 
@@ -136,7 +135,7 @@ static READ8_HANDLER( sound_data_r )
 
 static WRITE8_HANDLER( sound_irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 
@@ -164,8 +163,8 @@ static WRITE8_HANDLER( coin_lock_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0x8800, 0x8bff) AM_READWRITE(SMH_RAM, suprridr_bgram_w) AM_BASE(&suprridr_bgram)
-	AM_RANGE(0x9000, 0x97ff) AM_READWRITE(SMH_RAM, suprridr_fgram_w) AM_BASE(&suprridr_fgram)
+	AM_RANGE(0x8800, 0x8bff) AM_RAM_WRITE(suprridr_bgram_w) AM_BASE(&suprridr_bgram)
+	AM_RANGE(0x9000, 0x97ff) AM_RAM_WRITE(suprridr_fgram_w) AM_BASE(&suprridr_fgram)
 	AM_RANGE(0x9800, 0x983f) AM_RAM
 	AM_RANGE(0x9840, 0x987f) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x9880, 0x9bff) AM_RAM
@@ -229,9 +228,9 @@ static CUSTOM_INPUT( suprridr_control_r )
 
 	/* screen flip multiplexes controls */
 	if (suprridr_is_screen_flipped())
-		ret = readinputportbytag(SUPRRIDR_P2_CONTROL_PORT_TAG);
+		ret = input_port_read(machine, SUPRRIDR_P2_CONTROL_PORT_TAG);
 	else
-		ret = readinputportbytag(SUPRRIDR_P1_CONTROL_PORT_TAG);
+		ret = input_port_read(machine, SUPRRIDR_P1_CONTROL_PORT_TAG);
 
 	return ret;
 }
@@ -338,7 +337,12 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
-	sound_data_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	sound_data_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 
@@ -352,12 +356,12 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( suprridr )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80, 10000000/4)		/* just a guess */
+	MDRV_CPU_ADD(Z80, XTAL_49_152MHz/16)		/* 3 MHz */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(main_portmap,0)
 	MDRV_CPU_VBLANK_INT("main", main_nmi_gen)
 
-	MDRV_CPU_ADD(Z80, 10000000/4)		/* just a guess */
+	MDRV_CPU_ADD(Z80, 10000000/4)		/* 2.5 MHz */
 	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_IO_MAP(sound_portmap,0)
@@ -380,10 +384,10 @@ static MACHINE_DRIVER_START( suprridr )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 10000000/8)
+	MDRV_SOUND_ADD(AY8910, XTAL_49_152MHz/32)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MDRV_SOUND_ADD(AY8910, 10000000/8)
+	MDRV_SOUND_ADD(AY8910, XTAL_49_152MHz/32)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 MACHINE_DRIVER_END

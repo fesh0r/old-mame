@@ -70,7 +70,7 @@ static WRITE8_HANDLER( fantland_nmi_enable_w )
 
 static WRITE16_HANDLER( fantland_nmi_enable_16_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		fantland_nmi_enable_w(machine,offset*2,data);
 }
 
@@ -82,7 +82,7 @@ static WRITE8_HANDLER( fantland_soundlatch_w )
 
 static WRITE16_HANDLER( fantland_soundlatch_16_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		fantland_soundlatch_w(machine, offset*2, data);
 }
 
@@ -102,17 +102,17 @@ static READ16_HANDLER( spriteram2_16_r )
 
 static WRITE16_HANDLER( spriteram_16_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		spriteram[2*offset+0] = data;
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		spriteram[2*offset+1] = data >> 8;
 }
 
 static WRITE16_HANDLER( spriteram2_16_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		spriteram_2[2*offset+0] = data;
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		spriteram_2[2*offset+1] = data >> 8;
 }
 
@@ -179,20 +179,20 @@ static READ8_HANDLER( borntofi_inputs_r )
 	static int old_x[2], old_y[2], old_f[2];
 	static UINT8 ret[2];
 
-	switch (readinputport(7) & 0x03)
+	switch (input_port_read_indexed(machine, 7) & 0x03)
 	{
 		case 3:
-		case 1:	return readinputport(0 + offset);	// Lightgun buttons
-		case 2:	return readinputport(4 + offset);	// Joystick
+		case 1:	return input_port_read_indexed(machine, 0 + offset);	// Lightgun buttons
+		case 2:	return input_port_read_indexed(machine, 4 + offset);	// Joystick
 	}
 
 	// Trackball
 
-	x = readinputport(13 + offset * 2);
-	y = readinputport(12 + offset * 2);
+	x = input_port_read_indexed(machine, 13 + offset * 2);
+	y = input_port_read_indexed(machine, 12 + offset * 2);
 	f = video_screen_get_frame_number(machine->primary_screen);
 
-	ret[offset]	=	(ret[offset] & 0x14) | (readinputport(2 + offset) & 0xc3);
+	ret[offset]	=	(ret[offset] & 0x14) | (input_port_read_indexed(machine, 2 + offset) & 0xc3);
 
 	x =  (x & 0x7f) - (x & 0x80);
 	y =  (y & 0x7f) - (y & 0x80);
@@ -248,7 +248,7 @@ static ADDRESS_MAP_START( wheelrun_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x30000, 0x3ffff) AM_ROM
 	AM_RANGE(0x70000, 0x7ffff) AM_ROM
 
-	AM_RANGE(0x52000, 0x521ff) AM_READWRITE(SMH_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w	) AM_BASE(&paletteram	)
+	AM_RANGE(0x52000, 0x521ff) AM_RAM_WRITE(paletteram_xRRRRRGGGGGBBBBB_le_w	) AM_BASE(&paletteram	)
 
 	AM_RANGE(0x53000, 0x53000) AM_READWRITE( input_port_0_r, borntofi_nmi_enable_w )
 	AM_RANGE(0x53001, 0x53001) AM_READ( input_port_1_r )
@@ -696,7 +696,7 @@ INPUT_PORTS_END
 static CUSTOM_INPUT( wheelrun_wheel_r )
 {
 	int player = (FPTR)param;
-	int delta = readinputport(4 + player);
+	int delta = input_port_read_indexed(machine, 4 + player);
 	delta = (delta & 0x7f) - (delta & 0x80) + 4;
 
 	if		(delta > 7)	delta = 7;

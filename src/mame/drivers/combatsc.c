@@ -118,7 +118,6 @@ e000-e001   YM2203
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "sound/upd7759.h"
@@ -169,7 +168,7 @@ static READ8_HANDLER( trackball_r )
 		{
 			UINT8 curr;
 
-			curr = readinputport(4 + i);
+			curr = input_port_read_indexed(machine, 4 + i);
 
 			dir[i] = curr - pos[i];
 			sign[i] = dir[i] & 0x80;
@@ -214,7 +213,7 @@ static WRITE8_HANDLER( protection_clock_w )
 
 static WRITE8_HANDLER( combasc_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( combasc_play_w )
@@ -642,10 +641,15 @@ GFXDECODE_END
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,
-	0,
-	combasc_portA_w,
-	0
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		combasc_portA_w,
+		NULL
+	},
+	NULL
 };
 
 static const struct upd7759_interface upd7759_interface =
@@ -916,7 +920,7 @@ static DRIVER_INIT( combasct )
 static DRIVER_INIT( combasc )
 {
 	/* joystick instead of trackball */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0404, 0x0404, 0, 0, input_port_4_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0404, 0x0404, 0, 0, input_port_4_r);
 
 	combasc_init_common();
 }

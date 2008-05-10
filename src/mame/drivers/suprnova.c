@@ -380,7 +380,7 @@ static READ32_HANDLER( skns_hit_r )
 	switch(adr) {
 	case 0x28:
 	case 0x2a:
-		return (UINT16)mame_rand(Machine);
+		return (UINT16)mame_rand(machine);
 	case 0x00:
 	case 0x10:
 		return (UINT16)hit.x_in;
@@ -702,17 +702,17 @@ INPUT_PORTS_END
 
 static READ32_HANDLER( nova_input_port_0_r )
 {
-	return readinputport(0)<<24 | readinputport(1)<<16 | readinputport(2)<<8 | readinputport(3);
+	return input_port_read_indexed(machine, 0)<<24 | input_port_read_indexed(machine, 1)<<16 | input_port_read_indexed(machine, 2)<<8 | input_port_read_indexed(machine, 3);
 }
 
 static READ32_HANDLER( nova_input_port_3_r )
 {
-	return readinputport(8) | 0xffffff00;
+	return input_port_read_indexed(machine, 8) | 0xffffff00;
 }
 
 static READ32_HANDLER( nova_input_port_dip_r )
 {
-	return readinputport(4)<<24 | readinputport(5)<<16 | readinputport(6)<<8 | readinputport(7);
+	return input_port_read_indexed(machine, 4)<<24 | input_port_read_indexed(machine, 5)<<16 | input_port_read_indexed(machine, 6)<<8 | input_port_read_indexed(machine, 7);
 }
 
 static UINT32 timer_0_temp[4];
@@ -732,48 +732,48 @@ static WRITE32_HANDLER( skns_io_w )
 {
 	switch(offset) {
 	case 2:
-		if(((mem_mask & 0xff000000) == 0))
+		if(ACCESSING_BITS_24_31)
 		{ /* Coin Lock/Count */
 //          coin_counter_w(0, data & 0x01000000);
 //          coin_counter_w(1, data & 0x02000000);
 //          coin_lockout_w(0, ~data & 0x04000000);
 //          coin_lockout_w(1, ~data & 0x08000000); // Works in puzzloop, others behave strange.
 		}
-		if(((mem_mask & 0x00ff0000) == 0))
+		if(ACCESSING_BITS_16_23)
 		{ /* Analogue Input Select */
 		}
-		if(((mem_mask & 0x0000ff00) == 0))
+		if(ACCESSING_BITS_8_15)
 		{ /* Extended Output - Port A, Mahjong inputs, Comms etc. */
 		}
-		if(((mem_mask & 0x000000ff) == 0))
+		if(ACCESSING_BITS_0_7)
 		{ /* Extended Output - Port B */
 		}
 	break;
 	case 3:
-		if(((mem_mask & 0x0000ff00) == 0))
+		if(ACCESSING_BITS_8_15)
 		{ /* Interrupt Clear, do we need these? */
 /*          if(data&0x01)
-                cpunum_set_input_line(Machine, 0,1,CLEAR_LINE);
+                cpunum_set_input_line(machine, 0,1,CLEAR_LINE);
             if(data&0x02)
-                cpunum_set_input_line(Machine, 0,3,CLEAR_LINE);
+                cpunum_set_input_line(machine, 0,3,CLEAR_LINE);
             if(data&0x04)
-                cpunum_set_input_line(Machine, 0,5,CLEAR_LINE);
+                cpunum_set_input_line(machine, 0,5,CLEAR_LINE);
             if(data&0x08)
-                cpunum_set_input_line(Machine, 0,7,CLEAR_LINE);
+                cpunum_set_input_line(machine, 0,7,CLEAR_LINE);
             if(data&0x10)
-                cpunum_set_input_line(Machine, 0,9,CLEAR_LINE);
+                cpunum_set_input_line(machine, 0,9,CLEAR_LINE);
             if(data&0x20)
-                cpunum_set_input_line(Machine, 0,0xb,CLEAR_LINE);
+                cpunum_set_input_line(machine, 0,0xb,CLEAR_LINE);
             if(data&0x40)
-                cpunum_set_input_line(Machine, 0,0xd,CLEAR_LINE);
+                cpunum_set_input_line(machine, 0,0xd,CLEAR_LINE);
             if(data&0x80)
-                cpunum_set_input_line(Machine, 0,0xf,CLEAR_LINE);*/
+                cpunum_set_input_line(machine, 0,0xf,CLEAR_LINE);*/
 
 			/* idle skip for vblokbrk/sarukani, i can't find a better place to put it :-( but i think it works ok unless its making the game too fast */
 			if (activecpu_get_pc()==0x04013B44)
 			{
-				if (!strcmp(Machine->gamedrv->name,"vblokbrk") ||
-					!strcmp(Machine->gamedrv->name,"sarukani"))
+				if (!strcmp(machine->gamedrv->name,"vblokbrk") ||
+					!strcmp(machine->gamedrv->name,"sarukani"))
 					cpu_spinuntil_int();
 			}
 
@@ -795,7 +795,7 @@ static READ32_HANDLER( skns_msm6242_r )
 	mame_system_time systime;
 	long value;
 
-	mame_get_base_datetime(Machine, &systime);
+	mame_get_base_datetime(machine, &systime);
 	// The clock is not y2k-compatible, wrap back 10 years, screw the leap years
 	//  tm->tm_year -= 10;
 
@@ -852,9 +852,9 @@ static WRITE32_HANDLER( skns_v3t_w )
 
 static WRITE32_HANDLER( skns_ymz280_w )
 {
-	if ((mem_mask & 0xff000000) == 0)
+	if (ACCESSING_BITS_24_31)
 		YMZ280B_register_0_w(machine,offset,(data >> 24) & 0xff);
-	if ((mem_mask & 0x00ff0000) == 0)
+	if (ACCESSING_BITS_16_23)
 		YMZ280B_data_0_w(machine,offset,(data >> 16) & 0xff);
 }
 
@@ -1098,25 +1098,25 @@ static READ32_HANDLER( sengekij_speedup_r ) // 60006ee  600308e
 
 static void init_skns(running_machine *machine)
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000028, 0x600002b, 0, 0, bios_skip_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000028, 0x600002b, 0, 0, bios_skip_r );
 }
 
 static DRIVER_INIT( galpani4 ) { skns_sprite_kludge(-5,-1); init_skns(machine);  } // Idle Loop caught by sh-2 core
 static DRIVER_INIT( galpanis ) { skns_sprite_kludge(-5,-1); init_skns(machine);  } // Idle Loop caught by sh-2 core
-static DRIVER_INIT( cyvern )   { skns_sprite_kludge(+0,+2); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x604d3c8, 0x604d3cb, 0, 0, cyvern_speedup_r );   }
-static DRIVER_INIT( galpans2 ) { skns_sprite_kludge(-1,-1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60fb6bc, 0x60fb6bf, 0, 0, galpans2_speedup_r );  }
-static DRIVER_INIT( gutsn )    { skns_sprite_kludge(+0,+0); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x600c780, 0x600c783, 0, 0, gutsn_speedup_r );  }
-static DRIVER_INIT( panicstr ) { skns_sprite_kludge(-1,-1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60f19e4, 0x60f19e7, 0, 0, panicstr_speedup_r );  }
-static DRIVER_INIT( senknow )  { skns_sprite_kludge(+1,+1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60000dc, 0x60000df, 0, 0, senknow_speedup_r );  }
-static DRIVER_INIT( puzzloop ) { skns_sprite_kludge(-9,-1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6081d38, 0x6081d3b, 0, 0, puzzloop_speedup_r ); }
-static DRIVER_INIT( puzloopj ) { skns_sprite_kludge(-9,-1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6086714, 0x6086717, 0, 0, puzloopj_speedup_r ); }
-static DRIVER_INIT( puzloopu ) { skns_sprite_kludge(-9,-1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6085cec, 0x6085cef, 0, 0, puzloopu_speedup_r ); }
-static DRIVER_INIT( jjparads ) { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000994, 0x6000997, 0, 0, jjparads_speedup_r );  }
-static DRIVER_INIT( jjparad2 ) { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000984, 0x6000987, 0, 0, jjparad2_speedup_r );  }
-static DRIVER_INIT( ryouran )  { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000a14, 0x6000a17, 0, 0, ryouran_speedup_r );  }
-static DRIVER_INIT( teljan )   { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6002fb4, 0x6002fb7, 0, 0, teljan_speedup_r );  }
-static DRIVER_INIT( sengekis ) { skns_sprite_kludge(-192,-272); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60b74bc, 0x60b74bf, 0, 0, sengekis_speedup_r ); }
-static DRIVER_INIT( sengekij ) { skns_sprite_kludge(-192,-272); init_skns(machine); memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60b7380, 0x60b7383, 0, 0, sengekij_speedup_r ); }
+static DRIVER_INIT( cyvern )   { skns_sprite_kludge(+0,+2); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x604d3c8, 0x604d3cb, 0, 0, cyvern_speedup_r );   }
+static DRIVER_INIT( galpans2 ) { skns_sprite_kludge(-1,-1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x60fb6bc, 0x60fb6bf, 0, 0, galpans2_speedup_r );  }
+static DRIVER_INIT( gutsn )    { skns_sprite_kludge(+0,+0); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600c780, 0x600c783, 0, 0, gutsn_speedup_r );  }
+static DRIVER_INIT( panicstr ) { skns_sprite_kludge(-1,-1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x60f19e4, 0x60f19e7, 0, 0, panicstr_speedup_r );  }
+static DRIVER_INIT( senknow )  { skns_sprite_kludge(+1,+1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x60000dc, 0x60000df, 0, 0, senknow_speedup_r );  }
+static DRIVER_INIT( puzzloop ) { skns_sprite_kludge(-9,-1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6081d38, 0x6081d3b, 0, 0, puzzloop_speedup_r ); }
+static DRIVER_INIT( puzloopj ) { skns_sprite_kludge(-9,-1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6086714, 0x6086717, 0, 0, puzloopj_speedup_r ); }
+static DRIVER_INIT( puzloopu ) { skns_sprite_kludge(-9,-1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6085cec, 0x6085cef, 0, 0, puzloopu_speedup_r ); }
+static DRIVER_INIT( jjparads ) { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000994, 0x6000997, 0, 0, jjparads_speedup_r );  }
+static DRIVER_INIT( jjparad2 ) { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000984, 0x6000987, 0, 0, jjparad2_speedup_r );  }
+static DRIVER_INIT( ryouran )  { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000a14, 0x6000a17, 0, 0, ryouran_speedup_r );  }
+static DRIVER_INIT( teljan )   { skns_sprite_kludge(+5,+1); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6002fb4, 0x6002fb7, 0, 0, teljan_speedup_r );  }
+static DRIVER_INIT( sengekis ) { skns_sprite_kludge(-192,-272); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x60b74bc, 0x60b74bf, 0, 0, sengekis_speedup_r ); }
+static DRIVER_INIT( sengekij ) { skns_sprite_kludge(-192,-272); init_skns(machine); memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x60b7380, 0x60b7383, 0, 0, sengekij_speedup_r ); }
 static DRIVER_INIT( sarukani ) { skns_sprite_kludge(-1,-1); init_skns(machine);  } // Speedup is in skns_io_w()
 
 

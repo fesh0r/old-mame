@@ -39,7 +39,6 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 
 extern UINT16 tetrisp2_systemregs[0x10];
@@ -72,14 +71,14 @@ WRITE16_HANDLER( tetrisp2_palette_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
 	if ((offset & 1) == 0)
-		palette_set_color_rgb(Machine,offset/2,pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
+		palette_set_color_rgb(machine,offset/2,pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
 }
 
 WRITE16_HANDLER( rocknms_sub_palette_w )
 {
 	data = COMBINE_DATA(&paletteram16_2[offset]);
 	if ((offset & 1) == 0)
-		palette_set_color_rgb(Machine,(0x8000 + (offset/2)),pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
+		palette_set_color_rgb(machine,(0x8000 + (offset/2)),pal5bit(data >> 1),pal5bit(data >> 6),pal5bit(data >> 11));
 }
 
 
@@ -105,7 +104,7 @@ READ16_HANDLER( rocknms_sub_priority_r )
 
 WRITE16_HANDLER( tetrisp2_priority_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		data |= ((data & 0xff00) >> 8);
 		tetrisp2_priority[offset] = data;
@@ -115,7 +114,7 @@ WRITE16_HANDLER( tetrisp2_priority_w )
 
 WRITE16_HANDLER( rockn_priority_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		tetrisp2_priority[offset] = data;
 	}
@@ -123,12 +122,16 @@ WRITE16_HANDLER( rockn_priority_w )
 
 WRITE16_HANDLER( rocknms_sub_priority_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		rocknms_sub_priority[offset] = data;
 	}
 }
 
+READ16_HANDLER( nndmseal_priority_r )
+{
+	return tetrisp2_priority[offset] | 0xff00;
+}
 
 
 /***************************************************************************
@@ -282,6 +285,12 @@ VIDEO_START( tetrisp2 )
 	tilemap_set_transparent_pen(tilemap_bg,0);
 	tilemap_set_transparent_pen(tilemap_fg,0);
 	tilemap_set_transparent_pen(tilemap_rot,0);
+}
+
+VIDEO_START( nndmseal )
+{
+	VIDEO_START_CALL( tetrisp2 );
+	tilemap_set_scrolldx(tilemap_bg, -4,-4);
 }
 
 VIDEO_START( rockntread )

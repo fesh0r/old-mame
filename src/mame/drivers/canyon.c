@@ -64,11 +64,11 @@ static READ8_HANDLER( canyon_switches_r )
 {
 	UINT8 val = 0;
 
-	if ((readinputport(2) >> (offset & 7)) & 1)
+	if ((input_port_read_indexed(machine, 2) >> (offset & 7)) & 1)
 	{
 		val |= 0x80;
 	}
-	if ((readinputport(1) >> (offset & 3)) & 1)
+	if ((input_port_read_indexed(machine, 1) >> (offset & 3)) & 1)
 	{
 		val |= 0x01;
 	}
@@ -79,7 +79,7 @@ static READ8_HANDLER( canyon_switches_r )
 
 static READ8_HANDLER( canyon_options_r )
 {
-	return (readinputport(0) >> (2 * (~offset & 3))) & 3;
+	return (input_port_read_indexed(machine, 0) >> (2 * (~offset & 3))) & 3;
 }
 
 
@@ -114,7 +114,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0600, 0x0603) AM_WRITE(canyon_whistle_w)
 	AM_RANGE(0x0680, 0x0683) AM_WRITE(canyon_led_w)
 	AM_RANGE(0x0700, 0x0703) AM_WRITE(canyon_attract_w)
-	AM_RANGE(0x0800, 0x0bff) AM_READWRITE(SMH_RAM, canyon_videoram_w) AM_BASE(&canyon_videoram)
+	AM_RANGE(0x0800, 0x0bff) AM_RAM_WRITE(canyon_videoram_w) AM_BASE(&canyon_videoram)
 	AM_RANGE(0x1000, 0x17ff) AM_READWRITE(canyon_switches_r, SMH_NOP)  /* sloppy code writes here */
 	AM_RANGE(0x1800, 0x1fff) AM_READ(canyon_options_r)
 	AM_RANGE(0x2000, 0x3fff) AM_ROM

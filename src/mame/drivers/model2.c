@@ -415,15 +415,15 @@ static void chcolor(pen_t color, UINT16 data)
 static WRITE32_HANDLER(pal32_w)
 {
 	COMBINE_DATA(paletteram32+offset);
-	if(ACCESSING_LSW32)
+	if(ACCESSING_BITS_0_15)
 		chcolor(offset*2, paletteram32[offset]);
-	if(ACCESSING_MSW32)
+	if(ACCESSING_BITS_16_31)
 		chcolor(offset*2+1, paletteram32[offset]>>16);
 }
 
 static WRITE32_HANDLER(ctrl0_w)
 {
-	if(!(mem_mask & 0x000000ff)) {
+	if(ACCESSING_BITS_0_7) {
 		model2_ctrlmode = data & 0x01;
 		EEPROM_write_bit(data & 0x20);
 		EEPROM_set_clock_line((data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
@@ -433,7 +433,7 @@ static WRITE32_HANDLER(ctrl0_w)
 
 static READ32_HANDLER(ctrl0_r)
 {
-	UINT32 ret = readinputport(0);
+	UINT32 ret = input_port_read_indexed(machine, 0);
 	ret <<= 16;
 	if(model2_ctrlmode==0)
 	{
@@ -447,25 +447,25 @@ static READ32_HANDLER(ctrl0_r)
 }
 static READ32_HANDLER(ctrl1_r)
 {
-	return readinputport(1) | readinputport(2)<<16;
+	return input_port_read_indexed(machine, 1) | input_port_read_indexed(machine, 2)<<16;
 }
 
 static READ32_HANDLER(ctrl10_r)
 {
-	return readinputport(0) | readinputport(1)<<16;
+	return input_port_read_indexed(machine, 0) | input_port_read_indexed(machine, 1)<<16;
 }
 
 static READ32_HANDLER(ctrl14_r)
 {
-	return readinputport(2);
+	return input_port_read_indexed(machine, 2);
 }
 
 static READ32_HANDLER(analog_r)
 {
 	if (offset)
-		return readinputport(5);
+		return input_port_read_indexed(machine, 5);
 
-	return readinputport(3) | readinputport(4)<<16;
+	return input_port_read_indexed(machine, 3) | input_port_read_indexed(machine, 4)<<16;
 }
 
 static READ32_HANDLER(fifoctl_r)
@@ -494,7 +494,7 @@ static READ32_HANDLER(videoctl_r)
 
 static READ32_HANDLER(copro_prg_r)
 {
-	if ((strcmp(Machine->gamedrv->name, "manxtt" ) == 0) || (strcmp(Machine->gamedrv->name, "srallyc" ) == 0))
+	if ((strcmp(machine->gamedrv->name, "manxtt" ) == 0) || (strcmp(machine->gamedrv->name, "srallyc" ) == 0))
 	{
 		return 8;
 	}
@@ -530,7 +530,7 @@ static WRITE32_HANDLER( copro_ctl1_w )
 			logerror("Boot copro, %d dwords\n", model2_coprocnt);
 			if (dsp_type != DSP_TYPE_TGPX4)
 			{
-				cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
+				cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
 			}
 		}
 	}
@@ -550,7 +550,7 @@ static WRITE32_HANDLER(copro_function_port_w)
 
 static READ32_HANDLER(copro_fifo_r)
 {
-	if ((strcmp(Machine->gamedrv->name, "manxtt" ) == 0) || (strcmp(Machine->gamedrv->name, "srallyc" ) == 0))
+	if ((strcmp(machine->gamedrv->name, "manxtt" ) == 0) || (strcmp(machine->gamedrv->name, "srallyc" ) == 0))
 	{
 		return 8;
 	}
@@ -589,10 +589,10 @@ static int iop_write_num = 0;
 static UINT32 iop_data = 0;
 static WRITE32_HANDLER(copro_sharc_iop_w)
 {
-	if ((strcmp(Machine->gamedrv->name, "schamp" ) == 0) ||
-		(strcmp(Machine->gamedrv->name, "fvipers" ) == 0) ||
-		(strcmp(Machine->gamedrv->name, "vstriker" ) == 0) ||
-		(strcmp(Machine->gamedrv->name, "gunblade" ) == 0))
+	if ((strcmp(machine->gamedrv->name, "schamp" ) == 0) ||
+		(strcmp(machine->gamedrv->name, "fvipers" ) == 0) ||
+		(strcmp(machine->gamedrv->name, "vstriker" ) == 0) ||
+		(strcmp(machine->gamedrv->name, "gunblade" ) == 0))
 	{
 		cpuintrf_push_context(2);
 		sharc_external_iop_write(offset, data);
@@ -659,7 +659,7 @@ static WRITE32_HANDLER( geo_sharc_ctl1_w )
         else
         {
             logerror("Boot geo, %d dwords\n", model2_geocnt);
-            cpunum_set_input_line(Machine, 3, INPUT_LINE_HALT, CLEAR_LINE);
+            cpunum_set_input_line(machine, 3, INPUT_LINE_HALT, CLEAR_LINE);
             //cpu_spinuntil_time(ATTOTIME_IN_USEC(1000));       // Give the SHARC enough time to boot itself
         }
     }
@@ -669,7 +669,7 @@ static WRITE32_HANDLER( geo_sharc_ctl1_w )
 
 static READ32_HANDLER(geo_sharc_fifo_r)
 {
-    if ((strcmp(Machine->gamedrv->name, "manxtt" ) == 0) || (strcmp(Machine->gamedrv->name, "srallyc" ) == 0))
+    if ((strcmp(machine->gamedrv->name, "manxtt" ) == 0) || (strcmp(machine->gamedrv->name, "srallyc" ) == 0))
     {
         return 8;
     }
@@ -700,7 +700,7 @@ static int geo_iop_write_num = 0;
 static UINT32 geo_iop_data = 0;
 static WRITE32_HANDLER(geo_sharc_iop_w)
 {
-    if ((strcmp(Machine->gamedrv->name, "schamp" ) == 0))
+    if ((strcmp(machine->gamedrv->name, "schamp" ) == 0))
     {
         cpuintrf_push_context(3);
         sharc_external_iop_write(offset, data);
@@ -924,7 +924,7 @@ static void snd_latch_to_68k_w(int data)
 
 static READ32_HANDLER( model2_serial_r )
 {
-	if ((offset == 0) && (mem_mask == 0x0000ffff))
+	if ((offset == 0) && (mem_mask == 0xffff0000))
 	{
 		return 0x00070000;	// TxRdy RxRdy (zeroguna also needs bit 4 set)
 	}
@@ -934,7 +934,7 @@ static READ32_HANDLER( model2_serial_r )
 
 static WRITE32_HANDLER( model2o_serial_w )
 {
-	if (mem_mask == 0xffff0000)
+	if (mem_mask == 0x0000ffff)
 	{
 		snd_latch_to_68k_w(data&0xff);
 	}
@@ -942,7 +942,7 @@ static WRITE32_HANDLER( model2o_serial_w )
 
 static WRITE32_HANDLER( model2_serial_w )
 {
-	if (((mem_mask & 0xff) == 0) && (offset == 0))
+	if (ACCESSING_BITS_0_7 && (offset == 0))
 	{
 		SCSP_MidiIn(machine, 0, data&0xff, 0);
 
@@ -1007,7 +1007,7 @@ static READ32_HANDLER( model2_prot_r )
 
 static WRITE32_HANDLER( model2_prot_w )
 {
-	if (mem_mask == 0xffff)
+	if (mem_mask == 0xffff0000)
 	{
 		data >>= 16;
 	}
@@ -1085,7 +1085,7 @@ static READ32_HANDLER( maxx_r )
 	if (offset <= 0x1f/4)
 	{
 		// special
-		if (mem_mask == 0x0000ffff)
+		if (mem_mask == 0xffff0000)
 		{
 			// 16-bit protection reads
 			model2_maxxstate++;
@@ -1106,7 +1106,7 @@ static READ32_HANDLER( maxx_r )
 				}
 			}
 		}
-		else if (mem_mask == 0)
+		else if (mem_mask == 0xffffffff)
 		{
 			// 32-bit read
 			if (offset == 0x22/4)
@@ -1127,7 +1127,7 @@ static int zflagi, zflag, sysres;
 
 static READ32_HANDLER( network_r )
 {
-	if ((mem_mask == 0) || (mem_mask == 0xffff0000) || (mem_mask == 0x0000ffff))
+	if ((mem_mask == 0xffffffff) || (mem_mask == 0x0000ffff) || (mem_mask == 0xffff0000))
 	{
 		return 0xffffffff;
 	}
@@ -1137,11 +1137,11 @@ static READ32_HANDLER( network_r )
 		return model2_netram[offset];
 	}
 
-	if (mem_mask == 0xff00ffff)
+	if (mem_mask == 0x00ff0000)
 	{
 		return sysres<<16;
 	}
-	else if (mem_mask == 0xffffff00)
+	else if (mem_mask == 0x000000ff)
 	{
 		return zflagi;
 	}
@@ -1151,7 +1151,7 @@ static READ32_HANDLER( network_r )
 
 static WRITE32_HANDLER( network_w )
 {
-	if ((mem_mask == 0) || (mem_mask == 0xffff0000) || (mem_mask == 0x0000ffff))
+	if ((mem_mask == 0xffffffff) || (mem_mask == 0x0000ffff) || (mem_mask == 0xffff0000))
 	{
 		COMBINE_DATA(&model2_netram[offset+0x4000/4]);
 		return;
@@ -1163,11 +1163,11 @@ static WRITE32_HANDLER( network_w )
 		return;
 	}
 
-	if (mem_mask == 0xff00ffff)
+	if (mem_mask == 0x00ff0000)
 	{
 		sysres = data>>16;
 	}
-	else if (mem_mask == 0xffffff00)
+	else if (mem_mask == 0x000000ff)
 	{
 		zflagi = data;
 		zflag = 0;
@@ -1280,7 +1280,7 @@ static ADDRESS_MAP_START( model2_base_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x01100000, 0x0110ffff) AM_READWRITE(sys24_tile32_r, sys24_tile32_w) AM_MIRROR(0x10000)
 	AM_RANGE(0x01180000, 0x011fffff) AM_READWRITE(sys24_char32_r, sys24_char32_w) AM_MIRROR(0x100000)
 
-	AM_RANGE(0x01800000, 0x01803fff) AM_READWRITE(SMH_RAM, pal32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x01800000, 0x01803fff) AM_RAM_WRITE(pal32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x01810000, 0x0181bfff) AM_RAM AM_BASE(&model2_colorxlat)
 	AM_RANGE(0x0181c000, 0x0181c003) AM_WRITE(model2_3d_zclip_w)
 	AM_RANGE(0x01a10000, 0x01a1ffff) AM_READWRITE(network_r, network_w)
@@ -1311,9 +1311,9 @@ static ADDRESS_MAP_START( model2o_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2o_serial_w )
 
-	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(SMH_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
-	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(SMH_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
-	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(SMH_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
+	AM_RANGE(0x12000000, 0x121fffff) AM_RAM_WRITE(model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
+	AM_RANGE(0x12400000, 0x125fffff) AM_RAM_WRITE(model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
+	AM_RANGE(0x12800000, 0x1281ffff) AM_RAM_WRITE(model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
 
 	AM_RANGE(0x01c00000, 0x01c00007) AM_READ(analog_r)
 	AM_RANGE(0x01c00010, 0x01c00013) AM_READ(ctrl10_r)
@@ -1338,9 +1338,9 @@ static ADDRESS_MAP_START( model2a_crx_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00980008, 0x0098000b) AM_WRITE( geo_ctl1_w )
 	AM_RANGE(0x009c0000, 0x009cffff) AM_READWRITE( model2_serial_r, model2_serial_w )
 
-	AM_RANGE(0x12000000, 0x121fffff) AM_READWRITE(SMH_RAM, model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
-	AM_RANGE(0x12400000, 0x125fffff) AM_READWRITE(SMH_RAM, model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
-	AM_RANGE(0x12800000, 0x1281ffff) AM_READWRITE(SMH_RAM, model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
+	AM_RANGE(0x12000000, 0x121fffff) AM_RAM_WRITE(model2o_tex_w0) AM_MIRROR(0x200000) AM_BASE(&model2_textureram0)	// texture RAM 0
+	AM_RANGE(0x12400000, 0x125fffff) AM_RAM_WRITE(model2o_tex_w1) AM_MIRROR(0x200000) AM_BASE(&model2_textureram1)	// texture RAM 1
+	AM_RANGE(0x12800000, 0x1281ffff) AM_RAM_WRITE(model2o_luma_w) AM_BASE(&model2_lumaram) // polygon "luma" RAM
 
 	AM_RANGE(0x01c00000, 0x01c00003) AM_READWRITE(ctrl0_r, ctrl0_w)
 	AM_RANGE(0x01c00004, 0x01c00007) AM_READ(ctrl1_r)
@@ -3911,8 +3911,7 @@ ROM_END
 
 static DRIVER_INIT( genprot )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_w);
+	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 }
 
@@ -3920,8 +3919,7 @@ static DRIVER_INIT( pltkids )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(REGION_CPU1);
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_w);
+	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	// fix bug in program: it destroys the interrupt table and never fixes it
@@ -3932,8 +3930,7 @@ static DRIVER_INIT( zerogun )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(REGION_CPU1);
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_w);
+	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	// fix bug in program: it destroys the interrupt table and never fixes it
@@ -3942,15 +3939,14 @@ static DRIVER_INIT( zerogun )
 
 static DRIVER_INIT( daytonam )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x240000, 0x24ffff, 0, 0, maxx_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x240000, 0x24ffff, 0, 0, maxx_r );
 }
 
 static DRIVER_INIT( sgt24h )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(REGION_CPU1);
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_w);
+	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	ROM[0x56578/4] = 0x08000004;
@@ -3961,8 +3957,7 @@ static DRIVER_INIT( doa )
 {
 	UINT32 *ROM = (UINT32 *)memory_region(REGION_CPU1);
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_w);
+	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01d80000, 0x01dfffff, 0, 0, model2_prot_r, model2_prot_w);
 	protstate = protpos = 0;
 
 	ROM[0x630/4] = 0x08000004;

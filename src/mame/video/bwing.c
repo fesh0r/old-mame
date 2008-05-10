@@ -9,7 +9,6 @@ drivers by Acho A. Tang
 // Directives
 
 #include "driver.h"
-#include "deprecat.h"
 
 #define BW_DEBUG 0
 
@@ -144,7 +143,7 @@ WRITE8_HANDLER( bwing_paletteram_w )
 	g = ((g<<5) + (g<<2) + (g>>1));
 	b = ((b<<5) + (b<<2) + (b>>1));
 
-	if ((i = readinputport(7)) < 4)
+	if ((i = input_port_read_indexed(machine, 7)) < 4)
 	{
 		r = (float)r * rgb[i][0];
 		g = (float)g * rgb[i][1];
@@ -154,7 +153,7 @@ WRITE8_HANDLER( bwing_paletteram_w )
 		if (b > 0xff) b = 0xff;
 	}
 
-	palette_set_color(Machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset, MAKE_RGB(r, g, b));
 
 	#if BW_DEBUG
 		paletteram[offset+0x40] = palatch;
@@ -218,7 +217,8 @@ VIDEO_START( bwing )
 	fgfx = machine->gfx[2];
 	bgfx = machine->gfx[3];
 
-	if ((dwptr = fgfx->pen_usage))
+	dwptr = fgfx->pen_usage;
+	if (dwptr)
 	{
 		dwptr[0] = 0;
 		for(i=1; i<BW_NTILES; i++) dwptr[i] = -1;

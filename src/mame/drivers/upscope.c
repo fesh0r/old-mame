@@ -24,6 +24,7 @@
 **********************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/amiga.h"
 
 
@@ -87,11 +88,11 @@ static void upscope_cia_0_porta_w(UINT8 data)
 	/* swap the write handlers between ROM and bank 1 based on the bit */
 	if ((data & 1) == 0)
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
 
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
 }
 
 
@@ -209,7 +210,7 @@ static void upscope_cia_1_porta_w(UINT8 data)
 		if (data & 4)
 		{
 			if (LOG_IO) logerror("Internal register (%d) read\n", nvram_address_latch);
-			nvram_data_latch = (nvram_address_latch == 0) ? readinputportbytag("IO0") : 0xff;
+			nvram_data_latch = (nvram_address_latch == 0) ? input_port_read(Machine, "IO0") : 0xff;
 		}
 
 		/* if SEL == 0, we read NVRAM */

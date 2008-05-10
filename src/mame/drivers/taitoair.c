@@ -240,14 +240,14 @@ VIDEO_UPDATE( taitoair );
 
 static WRITE16_HANDLER( system_control_w )
 {
-	if ((ACCESSING_LSB == 0) && ACCESSING_MSB)
+	if ((ACCESSING_BITS_0_7 == 0) && ACCESSING_BITS_8_15)
 	{
 		data >>= 8;
 	}
 
 	dsp_HOLD_signal = (data & 4) ? CLEAR_LINE : ASSERT_LINE;
 
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 
 	logerror("68K:%06x writing %04x to TMS32025.  %s HOLD , %s RESET\n",activecpu_get_previouspc(),data,((data & 4) ? "Clear" : "Assert"),((data & 1) ? "Clear" : "Assert"));
 }
@@ -259,7 +259,7 @@ static READ16_HANDLER( lineram_r )
 
 static WRITE16_HANDLER( lineram_w )
 {
-	if (ACCESSING_MSB && ACCESSING_LSB)
+	if (ACCESSING_BITS_8_15 && ACCESSING_BITS_0_7)
 		taitoair_line_ram[offset] = data;
 }
 
@@ -270,7 +270,7 @@ static READ16_HANDLER( dspram_r )
 
 static WRITE16_HANDLER( dspram_w )
 {
-	if (ACCESSING_MSB && ACCESSING_LSB)
+	if (ACCESSING_BITS_8_15 && ACCESSING_BITS_0_7)
 		dsp_ram[offset] = data;
 }
 
@@ -295,7 +295,7 @@ static WRITE16_HANDLER( airsys_paletteram16_w )	/* xxBBBBxRRRRxGGGG */
 	COMBINE_DATA(&paletteram16[offset]);
 
 	a = paletteram16[offset];
-	palette_set_color_rgb(Machine,offset,pal4bit(a >> 0),pal4bit(a >> 5),pal4bit(a >> 10));
+	palette_set_color_rgb(machine,offset,pal4bit(a >> 0),pal4bit(a >> 5),pal4bit(a >> 10));
 }
 
 
@@ -312,16 +312,16 @@ static READ16_HANDLER( stick_input_r )
 	switch( offset )
 	{
 		case 0x00:	/* "counter 1" lo */
-			return readinputportbytag(STICK1_PORT_TAG);
+			return input_port_read(machine, STICK1_PORT_TAG);
 
 		case 0x01:	/* "counter 2" lo */
-			return readinputportbytag(STICK2_PORT_TAG);
+			return input_port_read(machine, STICK2_PORT_TAG);
 
 		case 0x02:	/* "counter 1" hi */
-			return (readinputportbytag(STICK1_PORT_TAG) & 0xff00) >> 8;
+			return (input_port_read(machine, STICK1_PORT_TAG) & 0xff00) >> 8;
 
 		case 0x03:	/* "counter 2" hi */
-			return (readinputportbytag(STICK2_PORT_TAG) & 0xff00) >> 8;
+			return (input_port_read(machine, STICK2_PORT_TAG) & 0xff00) >> 8;
 	}
 
 	return 0;
@@ -332,10 +332,10 @@ static READ16_HANDLER( stick2_input_r )
 	switch( offset )
 	{
 		case 0x00:	/* "counter 3" lo */
-			return readinputportbytag(STICK3_PORT_TAG);
+			return input_port_read(machine, STICK3_PORT_TAG);
 
 		case 0x02:	/* "counter 3" hi */
-			return (readinputportbytag(STICK3_PORT_TAG) & 0xff00) >> 8;
+			return (input_port_read(machine, STICK3_PORT_TAG) & 0xff00) >> 8;
 	}
 
 	return 0;
@@ -355,13 +355,17 @@ static WRITE8_HANDLER( sound_bankswitch_w )
 	reset_sound_region();
 }
 
+static STATE_POSTLOAD( taitoair_postload )
+{
+	reset_sound_region();
+}
 
 static MACHINE_START( taitoair )
 {
 	dsp_HOLD_signal = ASSERT_LINE;
 
 	state_save_register_global(banknum);
-	state_save_register_func_postload(reset_sound_region);
+	state_save_register_postload(machine, taitoair_postload, NULL);
 }
 
 
@@ -375,7 +379,7 @@ static ADDRESS_MAP_START( airsys_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x140000, 0x140001) AM_WRITE(system_control_w)	/* Pause the TMS32025 */
 	AM_RANGE(0x180000, 0x183fff) AM_RAM              		/* "gradiation ram (0)" */
 	AM_RANGE(0x184000, 0x187fff) AM_RAM            			/* "gradiation ram (1)" */
-	AM_RANGE(0x188000, 0x18bfff) AM_READWRITE(SMH_RAM, airsys_paletteram16_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x188000, 0x18bfff) AM_RAM_WRITE(airsys_paletteram16_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x800000, 0x820fff) AM_READWRITE(TC0080VCO_word_r, TC0080VCO_word_w)	/* tilemaps, sprites */
 	AM_RANGE(0x908000, 0x90ffff) AM_RAM AM_BASE(&taitoair_line_ram)	/* "line ram" */
 	AM_RANGE(0x910000, 0x91ffff) AM_RAM	AM_BASE(&dsp_ram)	/* "dsp common ram" (TMS320C25) */

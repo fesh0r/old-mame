@@ -115,17 +115,17 @@ static WRITE16_HANDLER( dbzcontrol_w )
 
 static READ16_HANDLER( dbz_inp0_r )
 {
-	return readinputportbytag("IN0") | (readinputportbytag("IN1")<<8);
+	return input_port_read(machine, "IN0") | (input_port_read(machine, "IN1")<<8);
 }
 
 static READ16_HANDLER( dbz_inp1_r )
 {
-	return readinputportbytag("IN3") | (readinputportbytag("DSW1")<<8);
+	return input_port_read(machine, "IN3") | (input_port_read(machine, "DSW1")<<8);
 }
 
 static READ16_HANDLER( dbz_inp2_r )
 {
-	return readinputportbytag("DSW2") | (readinputportbytag("DSW2")<<8);
+	return input_port_read(machine, "DSW2") | (input_port_read(machine, "DSW2")<<8);
 }
 
 static WRITE16_HANDLER( dbz_sound_command_w )
@@ -135,7 +135,7 @@ static WRITE16_HANDLER( dbz_sound_command_w )
 
 static WRITE16_HANDLER( dbz_sound_cause_nmi )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static void dbz_sound_irq(int irq)

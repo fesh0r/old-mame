@@ -192,7 +192,7 @@ READ8_HANDLER( nycaptor_videoram_r );
 
 static WRITE8_HANDLER( sub_cpu_halt_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, (data )? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, (data )? ASSERT_LINE : CLEAR_LINE);
 }
 
 static UINT8 snd_data;
@@ -226,7 +226,7 @@ static READ8_HANDLER( nycaptor_b_r )
 
 static READ8_HANDLER( nycaptor_by_r )
 {
-	int port=readinputport(6);
+	int port=input_port_read_indexed(machine, 6);
 	if(nyc_gametype==1)
 			port=255-port;
 		return port-8;
@@ -234,13 +234,13 @@ static READ8_HANDLER( nycaptor_by_r )
 
 static READ8_HANDLER( nycaptor_bx_r )
 {
-		return (readinputport(5)+0x27)|1;
+		return (input_port_read_indexed(machine, 5)+0x27)|1;
 }
 
 
 static WRITE8_HANDLER( sound_cpu_reset_w )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data&1 )? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data&1 )? ASSERT_LINE : CLEAR_LINE);
 }
 
 static int vol_ctrl[16];
@@ -284,7 +284,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(Machine, 2,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(machine, 2,INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -296,8 +296,10 @@ static WRITE8_HANDLER(unk_w)
 
 static const struct AY8910interface ay8910_interface =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	unk_w,
 	unk_w
 };

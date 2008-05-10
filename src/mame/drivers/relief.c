@@ -104,7 +104,7 @@ static MACHINE_RESET( relief )
 
 static READ16_HANDLER( special_port2_r )
 {
-	int result = readinputport(2);
+	int result = input_port_read_indexed(machine, 2);
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0020;
 	if (!(result & 0x0080) || atarigen_get_hblank(machine->primary_screen)) result ^= 0x0001;
 	return result;
@@ -120,13 +120,13 @@ static READ16_HANDLER( special_port2_r )
 
 static WRITE16_HANDLER( audio_control_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		ym2413_volume = (data >> 1) & 15;
 		atarigen_set_ym2413_vol(machine, (ym2413_volume * overall_volume * 100) / (127 * 15));
 		adpcm_bank_base = (0x040000 * ((data >> 6) & 3)) | (adpcm_bank_base & 0x100000);
 	}
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		adpcm_bank_base = (0x100000 * ((data >> 8) & 1)) | (adpcm_bank_base & 0x0c0000);
 
 	OKIM6295_set_bank_base(0, adpcm_bank_base);
@@ -135,7 +135,7 @@ static WRITE16_HANDLER( audio_control_w )
 
 static WRITE16_HANDLER( audio_volume_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		overall_volume = data & 127;
 		atarigen_set_ym2413_vol(machine, (ym2413_volume * overall_volume * 100) / (127 * 15));
@@ -159,7 +159,7 @@ static READ16_HANDLER( adpcm_r )
 
 static WRITE16_HANDLER( adpcm_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		OKIM6295_data_0_w(machine, offset, data & 0xff);
 }
 
@@ -173,7 +173,7 @@ static WRITE16_HANDLER( adpcm_w )
 
 static WRITE16_HANDLER( ym2413_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (offset & 1)
 			YM2413_data_port_0_w(machine, 0, data & 0xff);
@@ -205,15 +205,15 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x260010, 0x260011) AM_READ(special_port2_r)
 	AM_RANGE(0x260012, 0x260013) AM_READ(input_port_3_word_r)
 	AM_RANGE(0x2a0000, 0x2a0001) AM_WRITE(watchdog_reset16_w)
-	AM_RANGE(0x3e0000, 0x3e0fff) AM_READWRITE(SMH_RAM, atarigen_666_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM_WRITE(atarigen_666_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x3effc0, 0x3effff) AM_READWRITE(relief_atarivc_r, relief_atarivc_w) AM_BASE(&atarivc_data)
-	AM_RANGE(0x3f0000, 0x3f1fff) AM_READWRITE(SMH_RAM, atarigen_playfield2_latched_msb_w) AM_BASE(&atarigen_playfield2)
-	AM_RANGE(0x3f2000, 0x3f3fff) AM_READWRITE(SMH_RAM, atarigen_playfield_latched_lsb_w) AM_BASE(&atarigen_playfield)
-	AM_RANGE(0x3f4000, 0x3f5fff) AM_READWRITE(SMH_RAM, atarigen_playfield_dual_upper_w) AM_BASE(&atarigen_playfield_upper)
-	AM_RANGE(0x3f6000, 0x3f67ff) AM_READWRITE(SMH_RAM, atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
+	AM_RANGE(0x3f0000, 0x3f1fff) AM_RAM_WRITE(atarigen_playfield2_latched_msb_w) AM_BASE(&atarigen_playfield2)
+	AM_RANGE(0x3f2000, 0x3f3fff) AM_RAM_WRITE(atarigen_playfield_latched_lsb_w) AM_BASE(&atarigen_playfield)
+	AM_RANGE(0x3f4000, 0x3f5fff) AM_RAM_WRITE(atarigen_playfield_dual_upper_w) AM_BASE(&atarigen_playfield_upper)
+	AM_RANGE(0x3f6000, 0x3f67ff) AM_RAM_WRITE(atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
 	AM_RANGE(0x3f6800, 0x3f8eff) AM_RAM
 	AM_RANGE(0x3f8f00, 0x3f8f7f) AM_RAM AM_BASE(&atarivc_eof_data)
-	AM_RANGE(0x3f8f80, 0x3f8fff) AM_READWRITE(SMH_RAM, atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
+	AM_RANGE(0x3f8f80, 0x3f8fff) AM_RAM_WRITE(atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
 	AM_RANGE(0x3f9000, 0x3fffff) AM_RAM
 ADDRESS_MAP_END
 

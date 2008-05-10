@@ -105,11 +105,11 @@ static READ8_HANDLER( starfire_input_r )
 {
 	switch (offset & 15)
 	{
-		case 0:	return input_port_0_r(machine,0);
-		case 1:	return input_port_1_r(machine,0);	/* Note: need to loopback sounds lengths on that one */
-		case 5: return input_port_4_r(machine,0);
-		case 6:	return input_port_2_r(machine,0);
-		case 7:	return input_port_3_r(machine,0);
+		case 0:	return input_port_read_indexed(machine, 0);
+		case 1:	return input_port_read_indexed(machine, 1);	/* Note: need to loopback sounds lengths on that one */
+		case 5: return input_port_read_indexed(machine, 4);
+		case 6:	return input_port_read_indexed(machine, 2);
+		case 7:	return input_port_read_indexed(machine, 3);
 		default: return 0xff;
 	}
 }
@@ -132,10 +132,10 @@ static READ8_HANDLER( fireone_input_r )
 
 	switch (offset & 15)
 	{
-		case 0:	return input_port_0_r(machine,0);
-		case 1: return input_port_1_r(machine,0);
+		case 0:	return input_port_read_indexed(machine, 0);
+		case 1: return input_port_read_indexed(machine, 1);
 		case 2:
-			temp = fireone_select ? input_port_2_r(machine,0) : input_port_3_r(machine,0);
+			temp = fireone_select ? input_port_read_indexed(machine, 2) : input_port_read_indexed(machine, 3);
 			temp = (temp & 0xc0) | fireone_paddle_map[temp & 0x3f];
 			return temp;
 		default: return 0xff;
@@ -153,7 +153,7 @@ static READ8_HANDLER( fireone_input_r )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x9fff) AM_READWRITE(starfire_scratch_r, starfire_scratch_w)
-	AM_RANGE(0xa000, 0xbfff) AM_READWRITE(SMH_RAM, starfire_colorram_w) AM_BASE(&starfire_colorram)
+	AM_RANGE(0xa000, 0xbfff) AM_RAM_WRITE(starfire_colorram_w) AM_BASE(&starfire_colorram)
 	AM_RANGE(0xc000, 0xffff) AM_READWRITE(starfire_videoram_r, starfire_videoram_w) AM_BASE(&starfire_videoram)
 ADDRESS_MAP_END
 

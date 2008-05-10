@@ -478,7 +478,7 @@ static MACHINE_RESET( magworm )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -507,7 +507,7 @@ static WRITE8_HANDLER( irq_ack_w )
  * to prevent the counter from wrapping around between reads.
  */
 
-INLINE int read_trackball(int idx, int switch_port)
+INLINE int read_trackball(running_machine *machine, int idx, int switch_port)
 {
 	UINT8 newpos;
 
@@ -517,10 +517,10 @@ INLINE int read_trackball(int idx, int switch_port)
 
 	/* if we're to read the dipswitches behind the trackball data, do it now */
 	if (dsw_select)
-		return (readinputport(switch_port) & 0x7f) | sign[idx];
+		return (input_port_read_indexed(machine, switch_port) & 0x7f) | sign[idx];
 
 	/* get the new position and adjust the result */
-	newpos = readinputport(6 + idx);
+	newpos = input_port_read_indexed(machine, 6 + idx);
 	if (newpos != oldpos[idx])
 	{
 		sign[idx] = (newpos - oldpos[idx]) & 0x80;
@@ -528,30 +528,30 @@ INLINE int read_trackball(int idx, int switch_port)
 	}
 
 	/* blend with the bits from the switch port */
-	return (readinputport(switch_port) & 0x70) | (oldpos[idx] & 0x0f) | sign[idx];
+	return (input_port_read_indexed(machine, switch_port) & 0x70) | (oldpos[idx] & 0x0f) | sign[idx];
 }
 
 
 static READ8_HANDLER( centiped_IN0_r )
 {
-	return read_trackball(0, 0);
+	return read_trackball(machine, 0, 0);
 }
 
 
 static READ8_HANDLER( centiped_IN2_r )
 {
-	return read_trackball(1, 2);
+	return read_trackball(machine, 1, 2);
 }
 
 
 static READ8_HANDLER( milliped_IN1_r )
 {
-	return read_trackball(1, 1);
+	return read_trackball(machine, 1, 1);
 }
 
 static READ8_HANDLER( milliped_IN2_r )
 {
-	UINT8 data = readinputport(2);
+	UINT8 data = input_port_read_indexed(machine, 2);
 
 	/* MSH - 15 Feb, 2007
      * The P2 X Joystick inputs are not properly handled in
@@ -562,7 +562,7 @@ static READ8_HANDLER( milliped_IN2_r )
      */
 	if (0 != control_select) {
 		/* Bottom 4 bits is our joystick inputs */
-		UINT8 joy2data = readinputport(3) & 0x0f;
+		UINT8 joy2data = input_port_read_indexed(machine, 3) & 0x0f;
 		data = data & 0xf0; /* Keep the top 4 bits */
 		data |= (joy2data & 0x0a) >> 1; /* flip left and up */
 		data |= (joy2data & 0x05) << 1; /* flip right and down */
@@ -584,7 +584,7 @@ static WRITE8_HANDLER( control_select_w )
 
 static READ8_HANDLER( mazeinv_input_r )
 {
-	return readinputport(6 + control_select);
+	return input_port_read_indexed(machine, 6 + control_select);
 }
 
 
@@ -668,7 +668,7 @@ static READ8_HANDLER( caterplr_AY8910_r )
 static ADDRESS_MAP_START( centiped_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM AM_BASE(&rambase)
-	AM_RANGE(0x0400, 0x07bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0400, 0x07bf) AM_RAM_WRITE(centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x07c0, 0x07ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x0800, 0x0800) AM_READ(input_port_4_r)	/* DSW1 */
 	AM_RANGE(0x0801, 0x0801) AM_READ(input_port_5_r)	/* DSW2 */
@@ -693,7 +693,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( centipdb_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_MIRROR(0x4000) AM_RAM
-	AM_RANGE(0x0400, 0x07bf) AM_MIRROR(0x4000) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0400, 0x07bf) AM_MIRROR(0x4000) AM_RAM_WRITE(centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x07c0, 0x07ff) AM_MIRROR(0x4000) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x0800, 0x0800) AM_MIRROR(0x4000) AM_READ(input_port_4_r)	/* DSW1 */
 	AM_RANGE(0x0801, 0x0801) AM_MIRROR(0x4000) AM_READ(input_port_5_r)	/* DSW2 */
@@ -729,7 +729,7 @@ static ADDRESS_MAP_START( milliped_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0400, 0x040f) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x0800, 0x080f) AM_READWRITE(pokey2_r, pokey2_w)
-	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x1000, 0x13bf) AM_RAM_WRITE(centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x13c0, 0x13ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x2000, 0x2000) AM_READ(centiped_IN0_r)
 	AM_RANGE(0x2001, 0x2001) AM_READ(milliped_IN1_r)
@@ -760,7 +760,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( warlords_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x7fff)
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x0400, 0x07bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0400, 0x07bf) AM_RAM_WRITE(centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x07c0, 0x07ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x0800, 0x0800) AM_READ(input_port_2_r) /* DSW1 */
 	AM_RANGE(0x0801, 0x0801) AM_READ(input_port_3_r) /* DSW2 */
@@ -787,7 +787,7 @@ static ADDRESS_MAP_START( mazeinv_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
 	AM_RANGE(0x0400, 0x040f) AM_READWRITE(pokey1_r, pokey1_w)
 	AM_RANGE(0x0800, 0x080f) AM_READWRITE(pokey2_r, pokey2_w)
-	AM_RANGE(0x1000, 0x13bf) AM_READWRITE(SMH_RAM, centiped_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x1000, 0x13bf) AM_RAM_WRITE(centiped_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x13c0, 0x13ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x2000, 0x2000) AM_READ(input_port_0_r)
 	AM_RANGE(0x2001, 0x2001) AM_READ(input_port_1_r)
@@ -1583,6 +1583,8 @@ GFXDECODE_END
 
 static const struct AY8910interface centipdb_ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	caterplr_rand_r
 };
 
@@ -1971,17 +1973,15 @@ ROM_END
 
 static DRIVER_INIT( caterplr )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x100f, 0, 0, caterplr_AY8910_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x100f, 0, 0, caterplr_AY8910_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1780, 0x1780, 0, 0, caterplr_rand_r);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x100f, 0, 0, caterplr_AY8910_r, caterplr_AY8910_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1780, 0x1780, 0, 0, caterplr_rand_r);
 }
 
 
 static DRIVER_INIT( magworm )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1001, 0x1001, 0, 0, AY8910_control_port_0_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1003, 0x1003, 0, 0, AY8910_write_port_0_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1003, 0x1003, 0, 0, AY8910_read_port_0_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1001, 0x1001, 0, 0, AY8910_control_port_0_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1003, 0x1003, 0, 0, AY8910_read_port_0_r, AY8910_write_port_0_w);
 }
 
 

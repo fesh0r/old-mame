@@ -348,14 +348,14 @@ static WRITE16_HANDLER( srmp6_input_select_w )
 static READ16_HANDLER( srmp6_inputs_r )
 {
 	if (offset == 0)			// DSW
-		return readinputport(4);
+		return input_port_read_indexed(machine, 4);
 
 	switch(srmp6_input_select)	// inputs
 	{
-		case 1<<0: return readinputport(0);
-		case 1<<1: return readinputport(1);
-		case 1<<2: return readinputport(2);
-		case 1<<3: return readinputport(3);
+		case 1<<0: return input_port_read_indexed(machine, 0);
+		case 1<<1: return input_port_read_indexed(machine, 1);
+		case 1<<2: return input_port_read_indexed(machine, 2);
+		case 1<<3: return input_port_read_indexed(machine, 3);
 	}
 
 	return 0;
@@ -569,7 +569,7 @@ static WRITE16_HANDLER(paletteram_w)
 			if(b > 0x1F) b = 0x1F;
 		}
 
-		palette_set_color(Machine, offset, MAKE_RGB(r << 3, g << 3, b << 3));
+		palette_set_color(machine, offset, MAKE_RGB(r << 3, g << 3, b << 3));
 	}
 }
 
@@ -580,7 +580,7 @@ static ADDRESS_MAP_START( srmp6, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x800000, 0x9fffff) AM_ROM AM_REGION(REGION_USER1, 0)
 
 	AM_RANGE(0x300000, 0x300005) AM_READWRITE(srmp6_inputs_r, srmp6_input_select_w)		// inputs
-	AM_RANGE(0x480000, 0x480fff) AM_READWRITE(SMH_RAM, paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x480000, 0x480fff) AM_RAM_WRITE(paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x4d0000, 0x4d0001) AM_READWRITE(watchdog_reset16_r, watchdog_reset16_w)	// watchdog
 
 	// OBJ RAM: checked [$400000-$47dfff]

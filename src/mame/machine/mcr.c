@@ -141,7 +141,7 @@ READ8_HANDLER( zwackery_port_2_r );
 
 static READ8_HANDLER( zwackery_port_1_r )
 {
-	UINT8 ret = readinputport(1);
+	UINT8 ret = input_port_read_indexed(machine, 1);
 
 	pia_set_port_a_z_mask(3, ret);
 
@@ -151,7 +151,7 @@ static READ8_HANDLER( zwackery_port_1_r )
 
 static READ8_HANDLER( zwackery_port_3_r )
 {
-	UINT8 ret = readinputport(3);
+	UINT8 ret = input_port_read_indexed(machine, 3);
 
 	pia_set_port_a_z_mask(4, ret);
 
@@ -902,14 +902,14 @@ static READ16_HANDLER( mcr68_6840_r_common )
 
 WRITE16_HANDLER( mcr68_6840_upper_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		mcr68_6840_w_common(machine, offset, (data >> 8) & 0xff);
 }
 
 
 WRITE16_HANDLER( mcr68_6840_lower_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		mcr68_6840_w_common(machine, offset, data & 0xff);
 }
 

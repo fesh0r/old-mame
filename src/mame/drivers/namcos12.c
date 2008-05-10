@@ -922,7 +922,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/mips/psx.h"
 #include "cpu/h83002/h83002.h"
 #include "includes/psx.h"
@@ -984,8 +983,8 @@ static UINT32 m_n_bankoffset;
 static WRITE32_HANDLER( bankoffset_w )
 {
 	// Golgo 13 has different banking (maybe the keycus controls it?)
-	if( strcmp( Machine->gamedrv->name, "golgo13" ) == 0 ||
-		strcmp( Machine->gamedrv->name, "g13knd" ) == 0 )
+	if( strcmp( machine->gamedrv->name, "golgo13" ) == 0 ||
+		strcmp( machine->gamedrv->name, "g13knd" ) == 0 )
 	{
 		if( ( data & 8 ) != 0 )
 		{
@@ -1012,11 +1011,11 @@ static UINT32 m_n_tektagdmaoffset = 0xffffffff;
 
 static WRITE32_HANDLER( dmaoffset_w )
 {
-	if( ACCESSING_LSW32 )
+	if( ACCESSING_BITS_0_15 )
 	{
 		m_n_dmaoffset = ( offset * 4 ) | ( data << 16 );
 	}
-	if( ACCESSING_MSW32 )
+	if( ACCESSING_BITS_16_31 )
 	{
 		m_n_dmaoffset = ( ( offset + 2 ) * 4 ) | ( data & 0xffff0000 );
 	}
@@ -1122,7 +1121,7 @@ ADDRESS_MAP_END
 
 static WRITE32_HANDLER( system11gun_w )
 {
-	if( ACCESSING_LSW32 )
+	if( ACCESSING_BITS_0_15 )
 	{
 		/* start 1 */
 		set_led_status(0, !(data & 0x08));
@@ -1134,7 +1133,7 @@ static WRITE32_HANDLER( system11gun_w )
 		/* !(data & 0x01) */
 		verboselog( 1, "system11gun_w: outputs (%08x %08x)\n", data, mem_mask );
 	}
-	if( ACCESSING_MSW32 )
+	if( ACCESSING_BITS_16_31 )
 	{
 		verboselog( 2, "system11gun_w: start reading (%08x %08x)\n", data, mem_mask );
 	}
@@ -1146,26 +1145,26 @@ static READ32_HANDLER( system11gun_r )
 	switch( offset )
 	{
 	case 0:
-		data = readinputport( 3 );
+		data = input_port_read_indexed(machine,  3 );
 		break;
 	case 1:
-		data = ( readinputport( 4 ) ) | ( ( readinputport( 4 ) + 1 ) << 16 );
+		data = ( input_port_read_indexed(machine,  4 ) ) | ( ( input_port_read_indexed(machine,  4 ) + 1 ) << 16 );
 		break;
 	case 2:
-		data = readinputport( 5 );
+		data = input_port_read_indexed(machine,  5 );
 		break;
 	case 3:
-		data = ( readinputport( 6 ) ) | ( ( readinputport( 6 ) + 1 ) << 16 );
+		data = ( input_port_read_indexed(machine,  6 ) ) | ( ( input_port_read_indexed(machine,  6 ) + 1 ) << 16 );
 		break;
 	}
 	verboselog( 2, "system11gun_r( %08x, %08x ) %08x\n", offset, mem_mask, data );
 	return data;
 }
 
-static void system11gun_install( void )
+static void system11gun_install( running_machine *machine )
 {
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f788000, 0x1f788003, 0, 0, system11gun_w );
-	memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x1f780000, 0x1f78000f, 0, 0, system11gun_r );
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f788000, 0x1f788003, 0, 0, system11gun_w );
+	memory_install_read32_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f780000, 0x1f78000f, 0, 0, system11gun_r );
 }
 
 static UINT8 kcram[ 12 ];
@@ -1208,17 +1207,15 @@ static READ32_HANDLER( tektagt_protection_2_r )
 static MACHINE_RESET( namcos12 )
 {
 	psx_machine_init();
-	bankoffset_w(machine,0,0,0);
+	bankoffset_w(machine,0,0,0xffffffff);
 
 	if( strcmp( machine->gamedrv->name, "tektagt" ) == 0 ||
 		strcmp( machine->gamedrv->name, "tektagta" ) == 0 ||
 		strcmp( machine->gamedrv->name, "tektagtb" ) == 0 ||
 		strcmp( machine->gamedrv->name, "tektagtc" ) == 0 )
 	{
-		memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x1fb00000, 0x1fb00003, 0, 0, tektagt_protection_1_r );
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fb00000, 0x1fb00003, 0, 0, tektagt_protection_1_w );
-		memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x1fb80000, 0x1fb80003, 0, 0, tektagt_protection_2_r );
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fb80000, 0x1fb80003, 0, 0, tektagt_protection_2_w );
+		memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fb00000, 0x1fb00003, 0, 0, tektagt_protection_1_r, tektagt_protection_1_w );
+		memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fb80000, 0x1fb80003, 0, 0, tektagt_protection_2_r, tektagt_protection_2_w );
 	}
 
 	if( strcmp( machine->gamedrv->name, "tektagt" ) == 0 ||
@@ -1240,9 +1237,9 @@ static MACHINE_RESET( namcos12 )
 		strcmp( machine->gamedrv->name, "ghlpanic" ) == 0 )
 	{
 		/* this is based on guesswork, it might not even be keycus. */
-		memory_install_read32_handler (0, ADDRESS_SPACE_PROGRAM, 0x1fc20280, 0x1fc2028b, 0, 0, SMH_BANK2 );
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f008000, 0x1f008003, 0, 0, kcon_w );
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x1f018000, 0x1f018003, 0, 0, kcoff_w );
+		memory_install_read32_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fc20280, 0x1fc2028b, 0, 0, SMH_BANK2 );
+		memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f008000, 0x1f008003, 0, 0, kcon_w );
+		memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1f018000, 0x1f018003, 0, 0, kcoff_w );
 
 		memset( kcram, 0, sizeof( kcram ) );
 		memory_set_bankptr( 2, kcram );
@@ -1300,7 +1297,7 @@ static READ8_HANDLER( s12_mcu_rtc_r )
 	mame_system_time systime;
 	static const int weekday[7] = { 7, 1, 2, 3, 4, 5, 6 };
 
-	mame_get_current_datetime(Machine, &systime);
+	mame_get_current_datetime(machine, &systime);
 
 	switch (s12_rtcstate)
 	{
@@ -1388,7 +1385,7 @@ static READ8_HANDLER( s12_mcu_gun_h_r )
 	int index = port_tag_to_index("IN3");
 	if( index != -1 )
 	{
-		int rv = readinputport( index ) << 6;
+		int rv = input_port_read_indexed(machine,  index ) << 6;
 
 		if( ( offset & 1 ) != 0 )
 		{
@@ -1407,7 +1404,7 @@ static READ8_HANDLER( s12_mcu_gun_v_r )
 	int index = port_tag_to_index("IN4");
 	if( index != -1 )
 	{
-		int rv = readinputport( index ) << 6;
+		int rv = input_port_read_indexed(machine,  index ) << 6;
 
 		if( ( offset & 1 ) != 0 )
 		{
@@ -1440,7 +1437,7 @@ static const struct C352interface c352_interface =
 
 static DRIVER_INIT( namcos12 )
 {
-	psx_driver_init();
+	psx_driver_init(machine);
 
 	psx_dma_install_read_handler( 5, namcos12_rom_read );
 
@@ -1462,19 +1459,19 @@ static DRIVER_INIT( ptblank2 )
 	/* patch out wait for dma 5 to complete */
 	*( (UINT32 *)( memory_region( REGION_USER1 ) + 0x331c4 ) ) = 0;
 
-	system11gun_install();
+	system11gun_install(machine);
 }
 
 static DRIVER_INIT( ghlpanic )
 {
 	DRIVER_INIT_CALL(namcos12);
 
-	system11gun_install();
+	system11gun_install(machine);
 }
 
 static MACHINE_DRIVER_START( coh700 )
 	/* basic machine hardware */
-	MDRV_CPU_ADD( PSXCPU, XTAL_100MHz )
+	MDRV_CPU_ADD( CXD8661R, XTAL_100MHz )
 	MDRV_CPU_PROGRAM_MAP( namcos12_map, 0 )
 	MDRV_CPU_VBLANK_INT("main", psx_vblank)
 

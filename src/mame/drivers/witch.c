@@ -190,7 +190,6 @@ TODO :
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/es8712.h"
 #include "sound/2203intf.h"
 
@@ -319,10 +318,10 @@ static READ8_HANDLER(read_a00x)
  switch(offset)
  {
 	case 0x02: return reg_a002;
-	case 0x04: return readinputportbytag("A004");
-  case 0x05: return readinputportbytag("A005");
-  case 0x0c: return input_port_0_r(machine,0); // stats / reset
-	case 0x0e: return readinputportbytag("A00E");// coin/reset
+	case 0x04: return input_port_read(machine, "A004");
+  case 0x05: return input_port_read(machine, "A005");
+  case 0x0c: return input_port_read_indexed(machine, 0); // stats / reset
+	case 0x0e: return input_port_read(machine, "A00E");// coin/reset
  }
 
 
@@ -331,11 +330,11 @@ static READ8_HANDLER(read_a00x)
     switch(reg_a002&0x3f)
     {
       case 0x3b:
-        return input_port_2_r(machine,0);//bet10 / pay out
+        return input_port_read_indexed(machine, 2);//bet10 / pay out
       case 0x3e:
-        return input_port_3_r(machine,0);//TODO : trace f564
+        return input_port_read_indexed(machine, 3);//TODO : trace f564
       case 0x3d:
-      	return input_port_4_r(machine,0);
+      	return input_port_read_indexed(machine, 4);
       default:
         logerror("A000 read with mux=0x%02x\n",reg_a002&0x3f);
     }
@@ -366,7 +365,7 @@ static WRITE8_HANDLER(write_a00x)
 	break;
 
 	case 0x08: //A008
-    		cpunum_set_input_line(Machine, cpu_getactivecpu(),0,CLEAR_LINE);
+    		cpunum_set_input_line(machine, cpu_getactivecpu(),0,CLEAR_LINE);
     	break;
   }
 }
@@ -411,23 +410,33 @@ static WRITE8_HANDLER(yscroll_w)
 	scrolly=data;
 }
 
-static READ8_HANDLER(portA_r) {	return readinputportbytag("YM_PortA"); }
-static READ8_HANDLER(portB_r) {	return readinputportbytag("YM_PortB");}
+static READ8_HANDLER(portA_r) {	return input_port_read(machine, "YM_PortA"); }
+static READ8_HANDLER(portB_r) {	return input_port_read(machine, "YM_PortB");}
 
 static const struct YM2203interface ym2203_interface_0 =
 {
-	portA_r,
-	portB_r,
-	NULL,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		portA_r,
+		portB_r,
+		NULL,
+		NULL
+	},
 	NULL
 };
 
 static const struct YM2203interface ym2203_interface_1 =
 {
-	NULL,
-	NULL,
-	xscroll_w,
-	yscroll_w
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		xscroll_w,
+		yscroll_w
+	},
+	NULL
 };
 
 static ADDRESS_MAP_START( map_main, ADDRESS_SPACE_PROGRAM, 8 )
@@ -443,8 +452,8 @@ static ADDRESS_MAP_START( map_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc800, 0xcbff) AM_READWRITE(gfx1_vram_r, gfx1_vram_w) AM_BASE(&gfx1_vram)
 	AM_RANGE(0xcc00, 0xcfff) AM_READWRITE(gfx1_cram_r, gfx1_cram_w) AM_BASE(&gfx1_cram)
 	AM_RANGE(0xd000, 0xdfff) AM_RAM AM_BASE(&sprite_ram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, paletteram_xBBBBBGGGGGRRRRR_split1_w) AM_BASE(&paletteram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, paletteram_xBBBBBGGGGGRRRRR_split2_w) AM_BASE(&paletteram_2)
+	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(paletteram_xBBBBBGGGGGRRRRR_split1_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(paletteram_xBBBBBGGGGGRRRRR_split2_w) AM_BASE(&paletteram_2)
 	AM_RANGE(0xf000, 0xf0ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xf100, 0xf17f) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xf180, 0xffff) AM_RAM AM_SHARE(2)
@@ -853,7 +862,7 @@ static DRIVER_INIT(witch)
  	UINT8 *ROM = (UINT8 *)memory_region(REGION_CPU1);
 	memory_set_bankptr(1,&ROM[0x10000+UNBANKED_SIZE]);
 
-	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0x7000, 0x700f, 0, 0, prot_read_700x);
+	memory_install_read8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x7000, 0x700f, 0, 0, prot_read_700x);
 }
 
 GAME( 1992, witch,    0,     witch, witch, witch, ROT0, "Sega / Vic Tokai", "Witch", 0 )

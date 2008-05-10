@@ -79,13 +79,12 @@ static WRITE8_HANDLER( video_control_w );
 
 static const ppi8255_interface single_ppi_intf =
 {
-	1,
-	{ unknown_porta_r },
-	{ unknown_portb_r },
-	{ unknown_portc_r },
-	{ unknown_porta_w },
-	{ unknown_portb_w },
-	{ video_control_w }
+	unknown_porta_r,
+	unknown_portb_r,
+	unknown_portc_r,
+	unknown_porta_w,
+	unknown_portb_w,
+	video_control_w
 };
 
 
@@ -141,7 +140,7 @@ static READ8_HANDLER( sound_data_r )
 
 
 
-static void outrun_generic_init(void)
+static void outrun_generic_init(running_machine *machine)
 {
 	/* allocate memory for regions not automatically assigned */
 	segaic16_spriteram_0 = auto_malloc(0x01000);
@@ -151,13 +150,10 @@ static void outrun_generic_init(void)
 	workram              = auto_malloc(0x08000);
 
 	/* init the memory mapper */
-	segaic16_memory_mapper_init(0, outrun_info, sound_data_w, NULL);
+	segaic16_memory_mapper_init(machine, 0, outrun_info, sound_data_w, NULL);
 
 	/* init the FD1094 */
 	fd1094_driver_init(segaic16_memory_mapper_set_decrypted);
-
-	/* configure the 8255 interface */
-	ppi8255_init(&single_ppi_intf);
 
 	/* reset the custom handlers and other pointers */
 	custom_io_r = NULL;
@@ -267,9 +263,9 @@ static MACHINE_RESET( outrun )
 	fd1094_machine_init();
 
 	/* reset misc components */
-	segaic16_memory_mapper_reset();
+	segaic16_memory_mapper_reset(machine);
 	if (custom_map)
-		segaic16_memory_mapper_config(custom_map);
+		segaic16_memory_mapper_config(machine, custom_map);
 	segaic16_tilemap_reset(0);
 
 	/* hook the RESET line, which resets CPU #1 */
@@ -364,7 +360,7 @@ static READ16_HANDLER( misc_io_r )
 	if (custom_io_r)
 		return custom_io_r(machine, offset, mem_mask);
 	logerror("%06X:misc_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
@@ -375,7 +371,7 @@ static WRITE16_HANDLER( misc_io_w )
 		custom_io_w(machine, offset, data, mem_mask);
 		return;
 	}
-	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
+	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
 }
 
 
@@ -385,15 +381,15 @@ static READ16_HANDLER( outrun_custom_io_r )
 	switch (offset & 0x70/2)
 	{
 		case 0x00/2:
-			return ppi8255_0_r(machine, offset & 3);
+			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), offset & 3);
 
 		case 0x10/2:
-			return readinputport(offset & 3);
+			return input_port_read_indexed(machine, offset & 3);
 
 		case 0x30/2:
 		{
 			static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6", "ADC7" };
-			return readinputportbytag_safe(ports[adc_select], 0x0010);
+			return input_port_read_safe(machine, ports[adc_select], 0x0010);
 		}
 
 		case 0x60/2:
@@ -401,7 +397,7 @@ static READ16_HANDLER( outrun_custom_io_r )
 	}
 
 	logerror("%06X:outrun_custom_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
@@ -411,12 +407,12 @@ static WRITE16_HANDLER( outrun_custom_io_w )
 	switch (offset & 0x70/2)
 	{
 		case 0x00/2:
-			if (ACCESSING_LSB)
-				ppi8255_0_w(machine, offset & 3, data);
+			if (ACCESSING_BITS_0_7)
+				ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), offset & 3, data);
 			return;
 
 		case 0x20/2:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				/* Output port:
                     D7: /MUTE
@@ -438,7 +434,7 @@ static WRITE16_HANDLER( outrun_custom_io_w )
 			segaic16_sprites_draw_0_w(machine, offset, data, mem_mask);
 			return;
 	}
-	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
+	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
 }
 
 
@@ -451,16 +447,16 @@ static READ16_HANDLER( shangon_custom_io_r )
 		case 0x1002/2:
 		case 0x1004/2:
 		case 0x1006/2:
-			return readinputport(offset & 3);
+			return input_port_read_indexed(machine, offset & 3);
 
 		case 0x3020/2:
 		{
 			static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
-			return readinputportbytag_safe(ports[adc_select], 0x0010);
+			return input_port_read_safe(machine, ports[adc_select], 0x0010);
 		}
 	}
 	logerror("%06X:misc_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
@@ -493,7 +489,7 @@ static WRITE16_HANDLER( shangon_custom_io_w )
 			/* ADC trigger */
 			return;
 	}
-	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
+	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
 }
 
 
@@ -828,6 +824,9 @@ static MACHINE_DRIVER_START( outrundx )
 
 	MDRV_MACHINE_RESET(outrun)
 	MDRV_INTERLEAVE(100)
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( single_ppi_intf )
 
 	/* video hardware */
 	MDRV_GFXDECODE(segaorun)
@@ -1677,7 +1676,7 @@ ROM_END
 
 static DRIVER_INIT( outrun )
 {
-	outrun_generic_init();
+	outrun_generic_init(machine);
 	custom_io_r = outrun_custom_io_r;
 	custom_io_w = outrun_custom_io_w;
 }
@@ -1690,7 +1689,7 @@ static DRIVER_INIT( outrunb )
 	UINT8 *byte;
 	int i, length;
 
-	outrun_generic_init();
+	outrun_generic_init(machine);
 	custom_map = memory_map;
 	custom_io_r = outrun_custom_io_r;
 	custom_io_w = outrun_custom_io_w;
@@ -1728,7 +1727,7 @@ static DRIVER_INIT( outrunb )
 
 static DRIVER_INIT( shangon )
 {
-	outrun_generic_init();
+	outrun_generic_init(machine);
 	custom_io_r = shangon_custom_io_r;
 	custom_io_w = shangon_custom_io_w;
 }
@@ -1737,7 +1736,7 @@ static DRIVER_INIT( shangon )
 static DRIVER_INIT( shangon3 )
 {
 	extern void fd1089_decrypt_0034(void);
-	outrun_generic_init();
+	outrun_generic_init(machine);
 	fd1089_decrypt_0034();
 	custom_io_r = shangon_custom_io_r;
 	custom_io_w = shangon_custom_io_w;

@@ -126,7 +126,7 @@ static NVRAM_HANDLER( pirates )
 
 static WRITE16_HANDLER( pirates_out_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bits 0-2 control EEPROM */
 		EEPROM_write_bit(data & 0x04);
@@ -170,7 +170,7 @@ static READ16_HANDLER( pirates_in1_r )
 		bit = 1;
 
 	/* bit 4 is EEPROM data, bit 7 is protection */
-	return input_port_1_word_r(machine,0,0) | (EEPROM_read_bit() << 4) | (bit << 7);
+	return input_port_read_indexed(machine,1) | (EEPROM_read_bit() << 4) | (bit << 7);
 }
 
 
@@ -486,7 +486,7 @@ static DRIVER_INIT( genix )
 
 	/* If this value is increased then something has gone wrong and the protection failed */
 	/* Write-protect it for now */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x109e98, 0x109e9b, 0, 0, genix_prot_r );
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x109e98, 0x109e9b, 0, 0, genix_prot_r );
 }
 
 

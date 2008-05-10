@@ -21,11 +21,11 @@ bit 0 = ? (unused?)
 */
 WRITE8_HANDLER( mexico86_f008_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 4) ? CLEAR_LINE : ASSERT_LINE);
- 	if (Machine->config->cpu[2].type != CPU_DUMMY)
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 4) ? CLEAR_LINE : ASSERT_LINE);
+ 	if (machine->config->cpu[2].type != CPU_DUMMY)
 	{
 		// mexico 86, knight boy
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 2) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 2) ? CLEAR_LINE : ASSERT_LINE);
 	}
 	else
 	{
@@ -46,7 +46,7 @@ WRITE8_HANDLER( mexico86_f008_w )
 
 ***************************************************************************/
 
-static void mcu_simulate(void)
+static void mcu_simulate(running_machine *machine)
 {
 	if (!kikikai_mcu_initialised)
 	{
@@ -71,7 +71,7 @@ logerror("initialising MCU\n");
 		int coin_curr;
 
 
-		coin_curr = ~readinputport(0) & 1;
+		coin_curr = ~input_port_read_indexed(machine, 0) & 1;
 		if (coin_curr && !coin_last && mexico86_protection_ram[0x01] < 9)
 		{
 			mexico86_protection_ram[0x01]++;	// increase credits counter
@@ -81,8 +81,8 @@ logerror("initialising MCU\n");
 
 		mexico86_protection_ram[0x04] = 0x3c;	// coin inputs
 
-		mexico86_protection_ram[0x02] = BITSWAP8(readinputport(1), 7,6,5,4,2,3,1,0);	// player 1
-		mexico86_protection_ram[0x03] = BITSWAP8(readinputport(2), 7,6,5,4,2,3,1,0);	// player 2
+		mexico86_protection_ram[0x02] = BITSWAP8(input_port_read_indexed(machine, 1), 7,6,5,4,2,3,1,0);	// player 1
+		mexico86_protection_ram[0x03] = BITSWAP8(input_port_read_indexed(machine, 2), 7,6,5,4,2,3,1,0);	// player 2
 
 		if (mexico86_protection_ram[0x19] == 0xaa)	// player 2 active
 			mexico86_protection_ram[0x1b] = mexico86_protection_ram[0x03];
@@ -154,7 +154,7 @@ logerror("initialising MCU\n");
 INTERRUPT_GEN( kikikai_interrupt )
 {
 	if (kikikai_mcu_running)
-		mcu_simulate();
+		mcu_simulate(machine);
 
 	cpunum_set_input_line_vector(0,0,mexico86_protection_ram[0]);
 	cpunum_set_input_line(machine, 0,0,HOLD_LINE);
@@ -302,7 +302,7 @@ WRITE8_HANDLER( mexico86_68705_portB_w )
 			else
 			{
 //logerror("%04x: 68705 read input port %04x\n",activecpu_get_pc(),address);
-				latch = readinputport((address & 1) + 1);
+				latch = input_port_read_indexed(machine, (address & 1) + 1);
 			}
 		}
 		else    /* write */
@@ -314,8 +314,8 @@ WRITE8_HANDLER( mexico86_68705_portB_w )
 	if ((ddrB & 0x20) && (data & 0x20) && (~portB_out & 0x20))
 	{
 		cpunum_set_input_line_vector(0,0,mexico86_protection_ram[0]);
-		//cpunum_set_input_line(Machine, 0,0,PULSE_LINE);
-		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE); //AT: HOLD_LINE works better in Z80 interrupt mode 1.
+		//cpunum_set_input_line(machine, 0,0,PULSE_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE); //AT: HOLD_LINE works better in Z80 interrupt mode 1.
 	}
 	if ((ddrB & 0x40) && (~data & 0x40) && (portB_out & 0x40))
 	{

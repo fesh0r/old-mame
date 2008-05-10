@@ -334,7 +334,7 @@ static READ16_HANDLER( igs_##NUM##_input_r )	\
 												\
 	for (i = 0; i < NUM; i++)					\
 		if ((~igs_input_sel) & (1 << i) )		\
-			ret = readinputport(i);				\
+			ret = input_port_read_indexed(machine, i);				\
 												\
 	/* 0x0100 is blitter busy */				\
 	return 	(ret & 0xff) | 0x0000;				\
@@ -357,7 +357,7 @@ static WRITE16_HANDLER( igs_palette_w )
 	COMBINE_DATA(&paletteram16[offset]);
 
 	rgb = (paletteram16[offset & 0x7ff] & 0xff) | ((paletteram16[offset | 0x800] & 0xff) << 8);
-	palette_set_color_rgb(Machine,offset & 0x7ff,pal5bit(rgb >> 0),pal5bit(rgb >> 5),pal5bit(rgb >> 10));
+	palette_set_color_rgb(machine,offset & 0x7ff,pal5bit(rgb >> 0),pal5bit(rgb >> 5),pal5bit(rgb >> 10));
 }
 
 
@@ -627,7 +627,7 @@ static WRITE16_HANDLER( chmplst2_magic_w )
 		case 0x00:
 			COMBINE_DATA(&igs_input_sel2);
 
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				coin_counter_w(0,	data & 0x20);
 				//  coin out        data & 0x40
@@ -640,7 +640,7 @@ static WRITE16_HANDLER( chmplst2_magic_w )
 			break;
 
 		case 0x02:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				chmplst2_pen_hi = data & 0x07;
 
@@ -663,11 +663,11 @@ static READ16_HANDLER( chmplst2_magic_r )
 	switch(igs_magic[0])
 	{
 		case 0x01:
-			if (~igs_input_sel2 & 0x01)	return readinputport(4);
-			if (~igs_input_sel2 & 0x02)	return readinputport(5);
-			if (~igs_input_sel2 & 0x04)	return readinputport(6);
-			if (~igs_input_sel2 & 0x08)	return readinputport(7);
-			if (~igs_input_sel2 & 0x10)	return readinputport(8);
+			if (~igs_input_sel2 & 0x01)	return input_port_read_indexed(machine, 4);
+			if (~igs_input_sel2 & 0x02)	return input_port_read_indexed(machine, 5);
+			if (~igs_input_sel2 & 0x04)	return input_port_read_indexed(machine, 6);
+			if (~igs_input_sel2 & 0x08)	return input_port_read_indexed(machine, 7);
+			if (~igs_input_sel2 & 0x10)	return input_port_read_indexed(machine, 8);
 			/* fall through */
 		default:
 			logerror("%06x: warning, reading with igs_magic = %02x\n", activecpu_get_pc(), igs_magic[0]);
@@ -718,7 +718,7 @@ static WRITE16_HANDLER( chindrag_magic_w )
 	{
 
 		case 0x00:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 				coin_counter_w(0,data & 2);
 
 			if (data & ~0x2)
@@ -736,9 +736,9 @@ static READ16_HANDLER( chindrag_magic_r )
 {
 	switch(igs_magic[0])
 	{
-		case 0x00:	return readinputport(4);
-		case 0x01:	return readinputport(5);
-		case 0x02:	return readinputport(6);
+		case 0x00:	return input_port_read_indexed(machine, 4);
+		case 0x01:	return input_port_read_indexed(machine, 5);
+		case 0x02:	return input_port_read_indexed(machine, 6);
 
 		case 0x20:	return 0x49;
 		case 0x21:	return 0x47;
@@ -781,7 +781,7 @@ static WRITE16_HANDLER( grtwall_magic_w )
 	switch(igs_magic[0])
 	{
 		case 0x02:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				coin_counter_w(0,data & 0x01);
 
@@ -803,7 +803,7 @@ static READ16_HANDLER( grtwall_magic_r )
 {
 	switch(igs_magic[0])
 	{
-		case 0x00:	return readinputport(5);
+		case 0x00:	return input_port_read_indexed(machine, 5);
 
 		case 0x20:	return 0x49;
 		case 0x21:	return 0x47;
@@ -838,7 +838,7 @@ static READ16_HANDLER( grtwall_magic_r )
 
 static WRITE16_HANDLER( lhb_okibank_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		OKIM6295_set_bank_base(0, (data & 0x200) ? 0x40000 : 0);
 	}
@@ -853,7 +853,7 @@ static WRITE16_HANDLER( lhb_input2_w )
 {
 	COMBINE_DATA(&igs_input_sel2);
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		coin_counter_w(0,			 data & 0x20	);
 		//  coin out                 data & 0x40
@@ -873,11 +873,11 @@ static READ16_HANDLER( lhb_input2_r )
 		case 0:		return igs_input_sel2;
 
 		case 1:
-			if (~igs_input_sel2 & 0x01)	return readinputport(6);
-			if (~igs_input_sel2 & 0x02)	return readinputport(7);
-			if (~igs_input_sel2 & 0x04)	return readinputport(8);
-			if (~igs_input_sel2 & 0x08)	return readinputport(9);
-			if (~igs_input_sel2 & 0x10)	return readinputport(10);
+			if (~igs_input_sel2 & 0x01)	return input_port_read_indexed(machine, 6);
+			if (~igs_input_sel2 & 0x02)	return input_port_read_indexed(machine, 7);
+			if (~igs_input_sel2 & 0x04)	return input_port_read_indexed(machine, 8);
+			if (~igs_input_sel2 & 0x08)	return input_port_read_indexed(machine, 9);
+			if (~igs_input_sel2 & 0x10)	return input_port_read_indexed(machine, 10);
 
 			logerror("%06x: warning, reading with igs_input_sel2 = %02x\n", activecpu_get_pc(), igs_input_sel2);
 			break;
@@ -897,7 +897,7 @@ static WRITE16_HANDLER( vbowl_magic_w )
 	switch(igs_magic[0])
 	{
 		case 0x02:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				coin_counter_w(0,data & 1);
 				coin_counter_w(1,data & 2);
@@ -918,8 +918,8 @@ static READ16_HANDLER( vbowl_magic_r )
 {
 	switch(igs_magic[0])
 	{
-		case 0x00:	return readinputport(5);
-		case 0x01:	return readinputport(6);
+		case 0x00:	return input_port_read_indexed(machine, 5);
+		case 0x01:	return input_port_read_indexed(machine, 6);
 
 		case 0x20:	return 0x49;
 		case 0x21:	return 0x47;
@@ -964,7 +964,7 @@ static WRITE16_HANDLER( xymg_magic_w )
 		case 0x01:
 			COMBINE_DATA(&igs_input_sel2);
 
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				coin_counter_w(0,	data & 0x20);
 				//  coin out        data & 0x40
@@ -985,14 +985,14 @@ static READ16_HANDLER( xymg_magic_r )
 {
 	switch(igs_magic[0])
 	{
-		case 0x00:	return readinputport(3);
+		case 0x00:	return input_port_read_indexed(machine, 3);
 
 		case 0x02:
-			if (~igs_input_sel2 & 0x01)	return readinputport(4);
-			if (~igs_input_sel2 & 0x02)	return readinputport(5);
-			if (~igs_input_sel2 & 0x04)	return readinputport(6);
-			if (~igs_input_sel2 & 0x08)	return readinputport(7);
-			if (~igs_input_sel2 & 0x10)	return readinputport(8);
+			if (~igs_input_sel2 & 0x01)	return input_port_read_indexed(machine, 4);
+			if (~igs_input_sel2 & 0x02)	return input_port_read_indexed(machine, 5);
+			if (~igs_input_sel2 & 0x04)	return input_port_read_indexed(machine, 6);
+			if (~igs_input_sel2 & 0x08)	return input_port_read_indexed(machine, 7);
+			if (~igs_input_sel2 & 0x10)	return input_port_read_indexed(machine, 8);
 			/* fall through */
 		default:
 			logerror("%06x: warning, reading with igs_magic = %02x\n", activecpu_get_pc(), igs_magic[0]);
@@ -1012,13 +1012,13 @@ static READ16_HANDLER( xymg_magic_r )
 
 static WRITE16_HANDLER( igs_YM3812_control_port_0_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM3812_control_port_0_w(machine,0,data);
 }
 
 static WRITE16_HANDLER( igs_YM3812_write_port_0_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM3812_write_port_0_w(machine,0,data);
 }
 
@@ -1170,11 +1170,11 @@ static WRITE16_HANDLER( ics2115_0_word_w )
 	switch(offset)
 	{
 		case 1:
-			if (ACCESSING_LSB)	ics2115_w(machine,1,data);
+			if (ACCESSING_BITS_0_7)	ics2115_w(machine,1,data);
 			break;
 		case 2:
-			if (ACCESSING_LSB)	ics2115_w(machine,2,data);
-			if (ACCESSING_MSB)	ics2115_w(machine,3,data>>8);
+			if (ACCESSING_BITS_0_7)	ics2115_w(machine,2,data);
+			if (ACCESSING_BITS_8_15)	ics2115_w(machine,3,data>>8);
 			break;
 	}
 }
@@ -1194,12 +1194,12 @@ static UINT16 *vbowl_trackball;
 static VIDEO_EOF( vbowl )
 {
 	vbowl_trackball[0] = vbowl_trackball[1];
-	vbowl_trackball[1] = (readinputport(8) << 8) | readinputport(7);
+	vbowl_trackball[1] = (input_port_read_indexed(machine, 8) << 8) | input_port_read_indexed(machine, 7);
 }
 
 static WRITE16_HANDLER( vbowl_pen_hi_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		chmplst2_pen_hi = data & 0x07;
 	}

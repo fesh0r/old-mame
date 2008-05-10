@@ -165,14 +165,14 @@ static READ8_HANDLER( rcasino_port_11_r )
        pulse = 0;
        else pulse = 0x04;
    }
-   return readinputport(1) + pulse;
+   return input_port_read_indexed(machine, 1) + pulse;
 }
 
 static ADDRESS_MAP_START( rcasino_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x4fff) AM_ROM
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM
-	AM_RANGE(0xf000, 0xf3ff) AM_RAM AM_WRITE(rcasino_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xf800, 0xfbff) AM_RAM AM_WRITE(rcasino_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xf000, 0xf3ff) AM_RAM_WRITE(rcasino_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xf800, 0xfbff) AM_RAM_WRITE(rcasino_colorram_w) AM_BASE(&colorram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( rcasino_io_map, ADDRESS_SPACE_IO, 8 )
@@ -285,6 +285,8 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_2_r,	// DSW1
 	input_port_3_r,	// DSW2
 	0,

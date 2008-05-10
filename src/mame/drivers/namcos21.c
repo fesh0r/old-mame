@@ -985,7 +985,7 @@ static READ16_HANDLER( pointram_data_r )
 
 static WRITE16_HANDLER( pointram_data_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 //      if( (pointram_idx%6)==0 ) logerror("\n" );
 //      logerror( " %02x", data );
@@ -1003,7 +1003,7 @@ static READ16_HANDLER( namcos21_depthcue_r )
 }
 static WRITE16_HANDLER( namcos21_depthcue_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 		int bank = (pointram_control&0x20)?1:0;
 		namcos21_depthcue[bank][offset] = data;
@@ -1021,7 +1021,7 @@ static READ16_HANDLER( namcos2_68k_dualportram_word_r )
 
 static WRITE16_HANDLER( namcos2_68k_dualportram_word_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 		mpDualPortRAM[offset] = data&0xff;
 	}
@@ -1244,7 +1244,7 @@ static WRITE16_HANDLER( winrun_dsp_complete_w )
 	if( data )
 	{
 		winrun_flushpoly();
-		cpunum_set_input_line(Machine, 4, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(machine, 4, INPUT_LINE_RESET, PULSE_LINE);
 		namcos21_ClearPolyFrameBuffer();
 	}
 }

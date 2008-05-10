@@ -1969,7 +1969,7 @@ static TILE_GET_INFO( K052109_get_tile_info1 ) { K052109_get_tile_info(machine,t
 static TILE_GET_INFO( K052109_get_tile_info2 ) { K052109_get_tile_info(machine,tileinfo,tile_index,2,K052109_colorram_B,K052109_videoram_B,K052109_videoram2_B); }
 
 
-static void K052109_tileflip_reset(void)
+static STATE_POSTLOAD( K052109_tileflip_reset )
 {
 	int data = K052109_ram[0x1e80];
 	tilemap_set_flip(K052109_tilemap[0],(data & 1) ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
@@ -2079,7 +2079,7 @@ void K052109_vh_start(running_machine *machine,int gfx_memory_region,int plane_o
 	state_save_register_global_array(K052109_dy);
 	state_save_register_global(has_extra_video_ram);
 
-	state_save_register_func_postload(K052109_tileflip_reset);
+	state_save_register_postload(machine, K052109_tileflip_reset, NULL);
 }
 
 READ8_HANDLER( K052109_r )
@@ -2252,9 +2252,9 @@ READ16_HANDLER( K052109_word_r )
 
 WRITE16_HANDLER( K052109_word_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K052109_w(machine,offset,(data >> 8) & 0xff);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K052109_w(machine,offset + 0x2000,data & 0xff);
 }
 
@@ -2265,7 +2265,7 @@ READ16_HANDLER(K052109_lsb_r)
 
 WRITE16_HANDLER(K052109_lsb_w)
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		K052109_w(machine, offset, data & 0xff);
 }
 
@@ -2618,9 +2618,9 @@ READ16_HANDLER( K051960_word_r )
 
 WRITE16_HANDLER( K051960_word_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K051960_w(machine,offset*2,(data >> 8) & 0xff);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K051960_w(machine,offset*2 + 1,data & 0xff);
 }
 
@@ -2691,9 +2691,9 @@ READ16_HANDLER( K051937_word_r )
 
 WRITE16_HANDLER( K051937_word_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K051937_w(machine,offset*2,(data >> 8) & 0xff);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K051937_w(machine,offset*2 + 1,data & 0xff);
 }
 
@@ -3194,7 +3194,7 @@ READ16_HANDLER( K053244_lsb_r )
 
 WRITE16_HANDLER( K053244_lsb_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K053244_w(machine, offset, data & 0xff);
 }
 
@@ -3205,9 +3205,9 @@ READ16_HANDLER( K053244_word_r )
 
 WRITE16_HANDLER( K053244_word_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K053244_w(machine, offset*2, (data >> 8) & 0xff);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K053244_w(machine, offset*2+1, data & 0xff);
 }
 
@@ -4134,9 +4134,9 @@ READ16_HANDLER( K053246_word_r )
 
 WRITE16_HANDLER( K053246_word_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K053246_w(machine, offset<<1,(data >> 8) & 0xff);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K053246_w(machine, (offset<<1) + 1,data & 0xff);
 }
 
@@ -5077,7 +5077,7 @@ static int K053251_palette_index[5];
 static tilemap *K053251_tilemaps[5];
 static int K053251_tilemaps_set;
 
-static void K053251_reset_indexes(void)
+static STATE_POSTLOAD( K053251_reset_indexes )
 {
 	K053251_palette_index[0] = 32 * ((K053251_ram[9] >> 0) & 0x03);
 	K053251_palette_index[1] = 32 * ((K053251_ram[9] >> 2) & 0x03);
@@ -5086,12 +5086,12 @@ static void K053251_reset_indexes(void)
 	K053251_palette_index[4] = 16 * ((K053251_ram[10] >> 3) & 0x07);
 }
 
-void K053251_vh_start(void)
+void K053251_vh_start(running_machine *machine)
 {
 	K053251_set_tilemaps(NULL,NULL,NULL,NULL,NULL);
 
 	state_save_register_global_array(K053251_ram);
-	state_save_register_func_postload(K053251_reset_indexes);
+	state_save_register_postload(machine, K053251_reset_indexes, NULL);
 }
 
 void K053251_set_tilemaps(tilemap *ci0,tilemap *ci1,tilemap *ci2,tilemap *ci3,tilemap *ci4)
@@ -5155,13 +5155,13 @@ WRITE8_HANDLER( K053251_w )
 
 WRITE16_HANDLER( K053251_lsb_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K053251_w(machine, offset, data & 0xff);
 }
 
 WRITE16_HANDLER( K053251_msb_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K053251_w(machine, offset, (data >> 8) & 0xff);
 }
 
@@ -5236,7 +5236,7 @@ READ16_HANDLER( K054000_lsb_r )
 
 WRITE16_HANDLER( K054000_lsb_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K054000_w(machine, offset, data & 0xff);
 }
 
@@ -5615,6 +5615,13 @@ void K056832_set_tile_bank(int bank)
 	K056832_change_rombank();
 }
 
+static STATE_POSTLOAD( K056832_postload )
+{
+	K056832_UpdatePageLayout();
+	K056832_change_rambank();
+	K056832_change_rombank();
+}
+
 void K056832_vh_start(running_machine *machine, int gfx_memory_region, int bpp, int big,
 	int (*scrolld)[4][2],
 	void (*callback)(int layer, int *code, int *color, int *flags),
@@ -5825,9 +5832,7 @@ void K056832_vh_start(running_machine *machine, int gfx_memory_region, int bpp, 
 	state_save_register_global_array(K056832_dy);
 	state_save_register_global_array(K056832_LayerTileMode);
 
-	state_save_register_func_postload(K056832_UpdatePageLayout);
-	state_save_register_func_postload(K056832_change_rambank);
-	state_save_register_func_postload(K056832_change_rombank);
+	state_save_register_postload(machine, K056832_postload, NULL);
 }
 
 /* call if a game uses external linescroll */
@@ -5873,11 +5878,11 @@ static int K056832_rom_read_b(int offset, int blksize, int blksize2, int zerosec
 
 READ16_HANDLER( K056832_5bpp_rom_word_r )
 {
-	if (mem_mask == 0x00ff)
+	if (mem_mask == 0xff00)
 	{
 		return K056832_rom_read_b(offset*2, 4, 5, 0)<<8;
 	}
-	else if (mem_mask == 0xff00)
+	else if (mem_mask == 0x00ff)
 	{
 		return K056832_rom_read_b(offset*2+1, 4, 5, 0)<<16;
 	}
@@ -5890,19 +5895,19 @@ READ16_HANDLER( K056832_5bpp_rom_word_r )
 
 READ32_HANDLER( K056832_5bpp_rom_long_r )
 {
-	if (mem_mask == 0x00ffffff)
+	if (mem_mask == 0xff000000)
 	{
 		return K056832_rom_read_b(offset*4, 4, 5, 0)<<24;
 	}
-	else if (mem_mask == 0xff00ffff)
+	else if (mem_mask == 0x00ff0000)
 	{
 		return K056832_rom_read_b(offset*4+1, 4, 5, 0)<<16;
 	}
-	else if (mem_mask == 0xffff00ff)
+	else if (mem_mask == 0x0000ff00)
 	{
 		return K056832_rom_read_b(offset*4+2, 4, 5, 0)<<8;
 	}
-	else if (mem_mask == 0xffffff00)
+	else if (mem_mask == 0x000000ff)
 	{
 		return K056832_rom_read_b(offset*4+3, 4, 5, 1);
 	}
@@ -5915,19 +5920,19 @@ READ32_HANDLER( K056832_5bpp_rom_long_r )
 
 READ32_HANDLER( K056832_6bpp_rom_long_r )
 {
-	if (mem_mask == 0x00ffffff)
+	if (mem_mask == 0xff000000)
 	{
 		return K056832_rom_read_b(offset*4, 4, 6, 0)<<24;
 	}
-	else if (mem_mask == 0xff00ffff)
+	else if (mem_mask == 0x00ff0000)
 	{
 		return K056832_rom_read_b(offset*4+1, 4, 6, 0)<<16;
 	}
-	else if (mem_mask == 0xffff00ff)
+	else if (mem_mask == 0x0000ff00)
 	{
 		return K056832_rom_read_b(offset*4+2, 4, 6, 0)<<8;
 	}
-	else if (mem_mask == 0xffffff00)
+	else if (mem_mask == 0x000000ff)
 	{
 		return K056832_rom_read_b(offset*4+3, 4, 6, 0);
 	}
@@ -6201,8 +6206,7 @@ WRITE16_HANDLER( K056832_ram_word_w )
 	UINT16 old_mask, old_data;
 
 	tile_ptr = &K056832_videoram[K056832_SelectedPagex4096+offset];
-	old_mask = mem_mask;
-	mem_mask = ~mem_mask;
+	old_mask = ~mem_mask;
 	old_data = *tile_ptr;
 	data = (data & mem_mask) | (old_data & old_mask);
 
@@ -6243,8 +6247,7 @@ WRITE32_HANDLER( K056832_ram_long_w )
 	UINT32 old_mask, old_data;
 
 	tile_ptr = &K056832_videoram[K056832_SelectedPagex4096+offset*2];
-	old_mask = mem_mask;
-	mem_mask = ~mem_mask;
+	old_mask = ~mem_mask;
 	old_data = (UINT32)tile_ptr[0]<<16 | (UINT32)tile_ptr[1];
 	data = (data & mem_mask) | (old_data & old_mask);
 
@@ -6397,11 +6400,11 @@ WRITE8_HANDLER( K056832_w )
 {
 	if (offset & 1)
 	{
-		K056832_word_w(machine, (offset>>1), data, 0xff00);
+		K056832_word_w(machine, (offset>>1), data, 0x00ff);
 	}
 	else
 	{
-		K056832_word_w(machine, (offset>>1), data<<8, 0x00ff);
+		K056832_word_w(machine, (offset>>1), data<<8, 0xff00);
 	}
 }
 
@@ -6409,21 +6412,21 @@ WRITE8_HANDLER( K056832_b_w )
 {
 	if (offset & 1)
 	{
-		K056832_b_word_w(machine, (offset>>1), data, 0xff00);
+		K056832_b_word_w(machine, (offset>>1), data, 0x00ff);
 	}
 	else
 	{
-		K056832_b_word_w(machine, (offset>>1), data<<8, 0x00ff);
+		K056832_b_word_w(machine, (offset>>1), data<<8, 0xff00);
 	}
 }
 
 WRITE32_HANDLER( K056832_b_long_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		K056832_b_word_w(machine, offset<<1, data>>16, mem_mask >> 16);
 	}
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 	{
 		K056832_b_word_w(machine, (offset<<1)+1, data, mem_mask);
 	}
@@ -6434,7 +6437,8 @@ static int K056832_update_linemap(running_machine *machine, bitmap_t *bitmap, in
 #define LINE_WIDTH 512
 
 #define DRAW_PIX(N) \
-	if ((pen = src_ptr[N])) \
+	pen = src_ptr[N]; \
+	if (pen) \
 	{ pen += basepen; xpr_ptr[count+N] = TILEMAP_PIXEL_LAYER0; dst_ptr[count+N] = pen; } else \
 	{ xpr_ptr[count+N] = 0; }
 
@@ -6575,7 +6579,8 @@ void K056832_tilemap_draw(running_machine *machine, bitmap_t *bitmap, const rect
 	cmaxy = cliprect->max_y;
 
 	// flip correction registers
-	if ((flipy = K056832_regs[0] & 0x20))
+	flipy = K056832_regs[0] & 0x20;
+	if (flipy)
 	{
 		corr = K056832_regs[0x3c/2];
 		if (corr & 0x400)
@@ -6584,7 +6589,8 @@ void K056832_tilemap_draw(running_machine *machine, bitmap_t *bitmap, const rect
 	dy += corr;
 	ay = (unsigned)(dy - K056832_LayerOffset[layer][1]) % height;
 
-	if ((flipx = K056832_regs[0] & 0x10))
+	flipx = K056832_regs[0] & 0x10;
+	if (flipx)
 	{
 		corr = K056832_regs[0x3a/2];
 		if (corr & 0x800)
@@ -6852,7 +6858,8 @@ void K056832_tilemap_draw_dj(running_machine *machine, bitmap_t *bitmap, const r
 	cmaxy = cliprect->max_y;
 
 	// flip correction registers
-	if ((flipy = K056832_regs[0] & 0x20))
+	flipy = K056832_regs[0] & 0x20;
+	if (flipy)
 	{
 		corr = K056832_regs[0x3c/2];
 		if (corr & 0x400)
@@ -6861,7 +6868,8 @@ void K056832_tilemap_draw_dj(running_machine *machine, bitmap_t *bitmap, const r
 	dy += corr;
 	ay = (unsigned)(dy - K056832_LayerOffset[layer][1]) % height;
 
-	if ((flipx = K056832_regs[0] & 0x10))
+	flipx = K056832_regs[0] & 0x10;
+	if (flipx)
 	{
 		corr = K056832_regs[0x3a/2];
 		if (corr & 0x800)
@@ -7165,14 +7173,14 @@ WRITE32_HANDLER( K055555_long_w )
 {
 	UINT8 regnum, regdat;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		regnum = offset<<1;
 		regdat = data>>24;
 	}
 	else
 	{
-		if (!(mem_mask & 0xff00))
+		if (ACCESSING_BITS_8_15)
 		{
 			regnum = (offset<<1)+1;
 			regdat = data>>8;
@@ -7189,7 +7197,7 @@ WRITE32_HANDLER( K055555_long_w )
 
 WRITE16_HANDLER( K055555_word_w )
 {
-	if (mem_mask == 0xff00)
+	if (mem_mask == 0x00ff)
 	{
 		K055555_write_reg(offset, data&0xff);
 	}
@@ -7525,7 +7533,7 @@ void K053250_vh_start(int chips, int *region)
 
 WRITE16_HANDLER( K053250_0_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		// start LVC DMA transfer at the falling edge of control register's bit1
 		if (offset == 4 && !(data & 2) && (K053250_info.chip[0].regs[4] & 2)) K053250_dma(0, 1);
@@ -7558,7 +7566,7 @@ READ16_HANDLER( K053250_0_rom_r )
 
 WRITE16_HANDLER( K053250_1_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		// start LVC DMA transfer at the falling edge of control register's bit1
 		if (offset == 4 && !(data & 2) && (K053250_info.chip[1].regs[4] & 2)) K053250_dma(1, 1);

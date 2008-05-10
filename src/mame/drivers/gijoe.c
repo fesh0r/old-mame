@@ -97,7 +97,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 8  is EEPROM data */
 	/* bit 9  is EEPROM ready */
 	/* bit 11 is service button */
-	res = (EEPROM_read_bit()<<8) | input_port_0_word_r(machine,0,0);
+	res = (EEPROM_read_bit()<<8) | input_port_read_indexed(machine,0);
 
 	if (init_eeprom_count)
 	{
@@ -115,7 +115,7 @@ static READ16_HANDLER( control2_r )
 
 static WRITE16_HANDLER( control2_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		/* bit 0  is data */
 		/* bit 1  is cs (active low) */
 		/* bit 2  is clock (active high) */
@@ -183,7 +183,7 @@ static INTERRUPT_GEN( gijoe_interrupt )
 
 static WRITE16_HANDLER( sound_cmd_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		data &= 0xff;
 		soundlatch_w(machine, 0, data);
 	}

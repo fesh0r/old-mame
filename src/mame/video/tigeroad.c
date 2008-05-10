@@ -13,7 +13,7 @@ WRITE16_HANDLER( tigeroad_videoctrl_w )
 {
 	int bank;
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		data = (data >> 8) & 0xff;
 
@@ -166,5 +166,5 @@ VIDEO_UPDATE( tigeroad )
 
 VIDEO_EOF( tigeroad )
 {
-	buffer_spriteram16_w(machine,0,0,0);
+	buffer_spriteram16_w(machine,0,0,0xffff);
 }

@@ -86,7 +86,7 @@ extern WRITE16_HANDLER( segac2_vdp_w );
 
 static WRITE16_HANDLER( sys18_refreshenable_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		sys16_refreshenable = data & 0x02;
 	}
@@ -94,7 +94,7 @@ static WRITE16_HANDLER( sys18_refreshenable_w )
 
 static WRITE16_HANDLER( sys18_tilebank_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		sys16_tile_bank0 = (data >> 0) & 0x0F;
 		sys16_tile_bank1 = (data >> 4) & 0x0F;
@@ -193,7 +193,7 @@ static const struct MSM5205interface shdancbl_msm5205_interface =
 static UINT8* shdancbl_soundbank_ptr = NULL;		/* Pointer to currently selected portion of ROM */
 
 static WRITE16_HANDLER( sound_command_irq_w ){
-	if( ACCESSING_LSB ){
+	if( ACCESSING_BITS_0_7 ){
 		soundlatch_w( machine,0,data&0xff );
 		cpunum_set_input_line(machine, 1, 0, HOLD_LINE );
 	}
@@ -337,7 +337,7 @@ static ADDRESS_MAP_START( sound_writeport_18, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static WRITE16_HANDLER( sound_command_nmi_w ){
-	if( ACCESSING_LSB ){
+	if( ACCESSING_BITS_0_7 ){
 		soundlatch_w( machine,0,data&0xff );
 		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
@@ -478,7 +478,7 @@ static int io_reg[0x10];
 
 static READ16_HANDLER( sys18_io_r )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		switch(offset & 0x3000/2)
 		{
@@ -490,14 +490,14 @@ static READ16_HANDLER( sys18_io_r )
 						if(io_reg[0x0F] & 0x01)
 							return io_reg[0x00];
 						else
-							return readinputport(0);
+							return input_port_read_indexed(machine, 0);
 						break;
 
 					case 0x01: /* Port B - 2P controls */
 						if(io_reg[0x0F] & 0x02)
 							return io_reg[0x01];
 						else
-							return readinputport(1);
+							return input_port_read_indexed(machine, 1);
 						break;
 
 					case 0x02: /* Port C - Bidirectional I/O port */
@@ -518,21 +518,21 @@ static READ16_HANDLER( sys18_io_r )
 						if(io_reg[0x0F] & 0x10)
 							return io_reg[0x04];
 						else
-							return readinputport(2);
+							return input_port_read_indexed(machine, 2);
 						break;
 
 					case 0x05: /* Port F - DIP switch #1 */
 						if(io_reg[0x0F] & 0x20)
 							return io_reg[0x05];
 						else
-							return readinputport(3);
+							return input_port_read_indexed(machine, 3);
 						break;
 
 					case 0x06: /* Port G - DIP switch #2 */
 						if(io_reg[0x0F] & 0x40)
 							return io_reg[0x06];
 						else
-							return readinputport(4);
+							return input_port_read_indexed(machine, 4);
 						break;
 
 					case 0x07: /* Port H - Tile banking control */
@@ -576,7 +576,7 @@ static READ16_HANDLER( sys18_io_r )
 
 static WRITE16_HANDLER( sys18_io_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		switch(offset & 0x3000/2)
 		{
@@ -777,7 +777,7 @@ static DRIVER_INIT( shdancbl )
 		mem[i] ^= 0xFF;
 
 	MACHINE_RESET_CALL(sys16_onetime);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xffc000, 0xffc001, 0, 0, shdancbl_skip_r );
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xffc000, 0xffc001, 0, 0, shdancbl_skip_r );
 
 	sys18_splittab_fg_x=&sys16_textram[0x0f80/2];
 	sys18_splittab_bg_x=&sys16_textram[0x0fc0/2];

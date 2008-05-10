@@ -12,7 +12,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 static UINT8 *bgvideoram,*fgvideoram;
 static int bg_bank = 0;
@@ -54,16 +53,16 @@ static WRITE8_HANDLER( coins_w )
 static WRITE8_HANDLER( snd_irq_w )
 {
 	if(data == 1)
-		cpunum_set_input_line_and_vector(Machine, 1, 0, ASSERT_LINE, 0x38);
+		cpunum_set_input_line_and_vector(machine, 1, 0, ASSERT_LINE, 0x38);
 	else
-		cpunum_set_input_line_and_vector(Machine, 1, 0, CLEAR_LINE, 0x38);
+		cpunum_set_input_line_and_vector(machine, 1, 0, CLEAR_LINE, 0x38);
 }
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8800, 0x97ff) AM_RAM
-	AM_RANGE(0xc000, 0xc3ff) AM_RAM AM_WRITE(background_w) AM_BASE(&bgvideoram)
-	AM_RANGE(0xd000, 0xd3ff) AM_RAM AM_WRITE(foreground_w) AM_BASE(&fgvideoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_RAM_WRITE(background_w) AM_BASE(&bgvideoram)
+	AM_RANGE(0xd000, 0xd3ff) AM_RAM_WRITE(foreground_w) AM_BASE(&fgvideoram)
 	AM_RANGE(0xe000, 0xe0ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 ADDRESS_MAP_END
 

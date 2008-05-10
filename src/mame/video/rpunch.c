@@ -7,7 +7,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 
 #define BITMAP_WIDTH	304
@@ -134,7 +133,7 @@ WRITE16_HANDLER( rpunch_videoreg_w )
 
 WRITE16_HANDLER( rpunch_scrollreg_w )
 {
-	if (ACCESSING_LSB && ACCESSING_MSB)
+	if (ACCESSING_BITS_0_7 && ACCESSING_BITS_8_15)
 		switch (offset)
 		{
 			case 0:
@@ -158,7 +157,7 @@ WRITE16_HANDLER( rpunch_scrollreg_w )
 
 WRITE16_HANDLER( rpunch_crtc_data_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		data &= 0xff;
 		switch (crtc_register)
@@ -178,14 +177,14 @@ WRITE16_HANDLER( rpunch_crtc_data_w )
 
 WRITE16_HANDLER( rpunch_crtc_register_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		crtc_register = data & 0xff;
 }
 
 
 WRITE16_HANDLER( rpunch_ins_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (offset == 0)
 		{

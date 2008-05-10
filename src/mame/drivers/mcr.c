@@ -319,9 +319,9 @@ static READ8_HANDLER( solarfox_ip0_r )
 	/* game in cocktail mode, they don't work at all. So we fake-mux   */
 	/* the controls through player 1's ports */
 	if (mcr_cocktail_flip)
-		return readinputportbytag("SSIO.IP0") | 0x08;
+		return input_port_read(machine, "SSIO.IP0") | 0x08;
 	else
-		return ((readinputportbytag("SSIO.IP0") & ~0x14) | 0x08) | ((readinputportbytag("SSIO.IP0") & 0x08) >> 1) | ((readinputportbytag("SSIO.IP2") & 0x01) << 4);
+		return ((input_port_read(machine, "SSIO.IP0") & ~0x14) | 0x08) | ((input_port_read(machine, "SSIO.IP0") & 0x08) >> 1) | ((input_port_read(machine, "SSIO.IP2") & 0x01) << 4);
 }
 
 
@@ -329,9 +329,9 @@ static READ8_HANDLER( solarfox_ip1_r )
 {
 	/*  same deal as above */
 	if (mcr_cocktail_flip)
-		return readinputportbytag("SSIO.IP1") | 0xf0;
+		return input_port_read(machine, "SSIO.IP1") | 0xf0;
 	else
-		return (readinputportbytag("SSIO.IP1") >> 4) | 0xf0;
+		return (input_port_read(machine, "SSIO.IP1") >> 4) | 0xf0;
 }
 
 
@@ -344,7 +344,7 @@ static READ8_HANDLER( solarfox_ip1_r )
 
 static READ8_HANDLER( kick_ip1_r )
 {
-	return (readinputportbytag("DIAL2") << 4) & 0xf0;
+	return (input_port_read(machine, "DIAL2") << 4) & 0xf0;
 }
 
 
@@ -364,18 +364,18 @@ static WRITE8_HANDLER( wacko_op4_w )
 static READ8_HANDLER( wacko_ip1_r )
 {
 	if (!input_mux)
-		return readinputportbytag("SSIO.IP1");
+		return input_port_read(machine, "SSIO.IP1");
 	else
-		return readinputportbytag("SSIO.IP1.ALT");
+		return input_port_read(machine, "SSIO.IP1.ALT");
 }
 
 
 static READ8_HANDLER( wacko_ip2_r )
 {
 	if (!input_mux)
-		return readinputportbytag("SSIO.IP2");
+		return input_port_read(machine, "SSIO.IP2");
 	else
-		return readinputportbytag("SSIO.IP2.ALT");
+		return input_port_read(machine, "SSIO.IP2.ALT");
 }
 
 
@@ -388,7 +388,7 @@ static READ8_HANDLER( wacko_ip2_r )
 
 static READ8_HANDLER( kroozr_ip1_r )
 {
-	int dial = readinputportbytag("DIAL");
+	int dial = input_port_read(machine, "DIAL");
 	return ((dial & 0x80) >> 1) | ((dial & 0x70) >> 4);
 }
 
@@ -581,13 +581,13 @@ static WRITE8_HANDLER( nflfoot_op4_w )
 
 static READ8_HANDLER( demoderb_ip1_r )
 {
-	return readinputportbytag(input_mux ? "SSIO.IP1.ALT" : "SSIO.IP1");
+	return input_port_read(machine, input_mux ? "SSIO.IP1.ALT" : "SSIO.IP1");
 }
 
 
 static READ8_HANDLER( demoderb_ip2_r )
 {
-	return readinputportbytag(input_mux ? "SSIO.IP2.ALT" : "SSIO.IP2");
+	return input_port_read(machine, input_mux ? "SSIO.IP2.ALT" : "SSIO.IP2");
 }
 
 
@@ -614,7 +614,7 @@ static ADDRESS_MAP_START( cpu_90009_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf000, 0xf1ff) AM_MIRROR(0x0200) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xf400, 0xf41f) AM_MIRROR(0x03e0) AM_WRITE(paletteram_xxxxRRRRBBBBGGGG_split1_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf800, 0xf81f) AM_MIRROR(0x03e0) AM_WRITE(paletteram_xxxxRRRRBBBBGGGG_split2_w) AM_BASE(&paletteram_2)
-	AM_RANGE(0xfc00, 0xffff) AM_READWRITE(SMH_RAM, mcr_90009_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xfc00, 0xffff) AM_RAM_WRITE(mcr_90009_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 /* upper I/O map determined by PAL; only SSIO ports are verified from schematics */
@@ -641,7 +641,7 @@ static ADDRESS_MAP_START( cpu_90010_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xc7ff) AM_MIRROR(0x1800) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe000, 0xe1ff) AM_MIRROR(0x1600) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xe800, 0xefff) AM_MIRROR(0x1000) AM_READWRITE(SMH_RAM, mcr_90010_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xe800, 0xefff) AM_MIRROR(0x1000) AM_RAM_WRITE(mcr_90010_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 ADDRESS_MAP_END
 
 /* upper I/O map determined by PAL; only SSIO ports are verified from schematics */
@@ -668,7 +668,7 @@ static ADDRESS_MAP_START( cpu_91490_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xdfff) AM_ROM
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xe800, 0xe9ff) AM_MIRROR(0x0200) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, mcr_91490_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+	AM_RANGE(0xf000, 0xf7ff) AM_RAM_WRITE(mcr_91490_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xf800, 0xf87f) AM_MIRROR(0x0780) AM_WRITE(mcr_91490_paletteram_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
@@ -2470,8 +2470,7 @@ static DRIVER_INIT( twotiger )
 	mcr_init(90010, 91399, 90913);
 	mcr_sound_init(MCR_SSIO);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe800, 0xefff, 0, 0x1000, twotiger_videoram_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe800, 0xefff, 0, 0x1000, twotiger_videoram_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe800, 0xefff, 0, 0x1000, twotiger_videoram_r, twotiger_videoram_w);
 }
 
 

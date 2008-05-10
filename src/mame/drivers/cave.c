@@ -222,7 +222,7 @@ static WRITE16_HANDLER( sound_cmd_w )
 //  sound_flag1 = 1;
 //  sound_flag2 = 1;
 	soundlatch_word_w(machine,offset,data,mem_mask);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	cpu_spinuntil_time(ATTOTIME_IN_USEC(50));	// Allow the other cpu to reply
 }
 
@@ -230,14 +230,14 @@ static WRITE16_HANDLER( sound_cmd_w )
 static READ8_HANDLER( soundlatch_lo_r )
 {
 //  sound_flag1 = 0;
-	return soundlatch_word_r(machine,offset,0) & 0xff;
+	return soundlatch_word_r(machine,offset,0x00ff) & 0xff;
 }
 
 /* Sound CPU: read the high 8 bits of the 16 bit sound latch */
 static READ8_HANDLER( soundlatch_hi_r )
 {
 //  sound_flag2 = 0;
-	return soundlatch_word_r(machine,offset,0) >> 8;
+	return soundlatch_word_r(machine,offset,0xff00) >> 8;
 }
 
 /* Main CPU: read the latch written by the sound CPU (acknowledge) */
@@ -271,7 +271,7 @@ static WRITE8_HANDLER( soundlatch_ack_w )
 /* Handles writes to the YMZ280B */
 static WRITE16_HANDLER( cave_sound_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (offset)	YMZ280B_data_0_w     (machine, offset, data & 0xff);
 		else		YMZ280B_register_0_w (machine, offset, data & 0xff);
@@ -311,17 +311,17 @@ static int cave_region_byte;
 
 static READ16_HANDLER( cave_input1_r )
 {
-	return readinputport(1) | ((EEPROM_read_bit() & 0x01) << 11);
+	return input_port_read_indexed(machine, 1) | ((EEPROM_read_bit() & 0x01) << 11);
 }
 
 static READ16_HANDLER( guwange_input1_r )
 {
-	return readinputport(1) | ((EEPROM_read_bit() & 0x01) << 7);
+	return input_port_read_indexed(machine, 1) | ((EEPROM_read_bit() & 0x01) << 7);
 }
 
 static READ16_HANDLER( gaia_dsw_r )
 {
-	return readinputport(2) | (readinputport(3) << 8);
+	return input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 3) << 8);
 }
 
 static WRITE16_HANDLER( cave_eeprom_msb_w )
@@ -329,7 +329,7 @@ static WRITE16_HANDLER( cave_eeprom_msb_w )
 	if (data & ~0xfe00)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
 
-	if ( ACCESSING_MSB )  // even address
+	if ( ACCESSING_BITS_8_15 )  // even address
 	{
 		coin_lockout_w(1,~data & 0x8000);
 		coin_lockout_w(0,~data & 0x4000);
@@ -355,7 +355,7 @@ static WRITE16_HANDLER( sailormn_eeprom_msb_w )
 
 static WRITE16_HANDLER( hotdogst_eeprom_msb_w )
 {
-	if ( ACCESSING_MSB )  // even address
+	if ( ACCESSING_BITS_8_15 )  // even address
 	{
 		// latch the bit
 		EEPROM_write_bit(data & 0x0800);
@@ -373,7 +373,7 @@ static WRITE16_HANDLER( cave_eeprom_lsb_w )
 	if (data & ~0x00ef)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
 
-	if ( ACCESSING_LSB )  // odd address
+	if ( ACCESSING_BITS_0_7 )  // odd address
 	{
 		coin_lockout_w(1,~data & 0x0008);
 		coin_lockout_w(0,~data & 0x0004);
@@ -394,7 +394,7 @@ static WRITE16_HANDLER( cave_eeprom_lsb_w )
 /*  - No eeprom or lockouts */
 static WRITE16_HANDLER( gaia_coin_lsb_w )
 {
-	if ( ACCESSING_LSB )  // odd address
+	if ( ACCESSING_BITS_0_7 )  // odd address
 	{
 		coin_counter_w(1, data & 0x0002);
 		coin_counter_w(0, data & 0x0001);
@@ -408,7 +408,7 @@ static WRITE16_HANDLER( metmqstr_eeprom_msb_w )
 	if (data & ~0xff00)
 		logerror("CPU #0 PC: %06X - Unknown EEPROM bit written %04X\n",activecpu_get_pc(),data);
 
-	if ( ACCESSING_MSB )  // even address
+	if ( ACCESSING_BITS_8_15 )  // even address
 	{
 		coin_counter_w(1, data & 0x2000);
 		coin_counter_w(0, data & 0x1000);
@@ -578,7 +578,7 @@ static READ16_HANDLER( donpachi_videoregs_r )
 		case 0:
 		case 1:
 		case 2:
-		case 3:	return cave_irq_cause_r(machine,offset,0);
+		case 3:	return cave_irq_cause_r(machine,offset,0xffff);
 
 		default:	return 0x0000;
 	}
@@ -853,7 +853,7 @@ static WRITE16_HANDLER( korokoro_eeprom_msb_w )
 		show_leds();
 	}
 
-	if ( ACCESSING_MSB )  // even address
+	if ( ACCESSING_BITS_8_15 )  // even address
 	{
 		hopper = data & 0x0100;	// ???
 
@@ -870,12 +870,12 @@ static WRITE16_HANDLER( korokoro_eeprom_msb_w )
 
 static READ16_HANDLER( korokoro_input0_r )
 {
-	return readinputport(0) | (hopper ? 0 : 0x8000);
+	return input_port_read_indexed(machine, 0) | (hopper ? 0 : 0x8000);
 }
 
 static READ16_HANDLER( korokoro_input1_r )
 {
-	return readinputport(1) | ((EEPROM_read_bit() & 0x01) << 12);
+	return input_port_read_indexed(machine, 1) | ((EEPROM_read_bit() & 0x01) << 12);
 }
 
 static ADDRESS_MAP_START( korokoro_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1077,7 +1077,7 @@ ADDRESS_MAP_END
 static READ16_HANDLER( sailormn_input0_r )
 {
 //  watchdog_reset16_r(0,0);    // written too rarely for mame.
-	return readinputport(0);
+	return input_port_read_indexed(machine, 0);
 }
 
 static READ16_HANDLER( agallet_irq_cause_r )
@@ -1984,7 +1984,7 @@ static MACHINE_RESET( cave )
 	/* modify the eeprom on a reset with the desired region for the games that have the
        region factory set in eeprom */
 	if (cave_region_byte >= 0)
-		EEPROM_get_data_pointer(0)[cave_region_byte] =  readinputport(2);
+		EEPROM_get_data_pointer(0)[cave_region_byte] =  input_port_read_indexed(machine, 2);
 }
 
 static const struct YMZ280Binterface ymz280b_intf =
@@ -2005,7 +2005,12 @@ static const struct YM2151interface ym2151_interface =
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,irqhandler
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
+	irqhandler
 };
 
 
@@ -4109,7 +4114,7 @@ static DRIVER_INIT( agallet )
 	unpack_sprites();
 
 //  Speed Hack
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb80000, 0xb80001, 0, 0, agallet_irq_cause_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb80000, 0xb80001, 0, 0, agallet_irq_cause_r);
 }
 
 static DRIVER_INIT( dfeveron )

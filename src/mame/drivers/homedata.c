@@ -217,7 +217,6 @@ Custom: GX61A01
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/upd7810/upd7810.h"
 #include "homedata.h"
@@ -264,7 +263,7 @@ static READ8_HANDLER( mrokumei_keyboard_r )
 		{
 			if (keyb & (1 << i))
 			{
-				res = readinputport(3+i) & 0x3f;
+				res = input_port_read_indexed(machine, 3+i) & 0x3f;
 				break;
 			}
 		}
@@ -398,7 +397,7 @@ static MACHINE_RESET( reikaids_upd7807 )
 
 static READ8_HANDLER( reikaids_io_r )
 {
-	int res = readinputport(2);	// bit 4 = coin, bit 5 = service
+	int res = input_port_read_indexed(machine, 2);	// bit 4 = coin, bit 5 = service
 
 	res |= BIT(upd7807_portc,2) * 0x01;		// bit 0 = upd7807 status
 	res |= BIT(upd7807_portc,6) * 0x02;		// bit 1 = upd7807 data
@@ -468,7 +467,7 @@ static READ8_HANDLER( pteacher_io_r )
 
 static READ8_HANDLER( pteacher_keyboard_r )
 {
-	int dips = readinputport(0);
+	int dips = input_port_read_indexed(machine, 0);
 
 //  logerror("%04x: keyboard_r with port A = %02x\n",activecpu_get_pc(),upd7807_porta);
 
@@ -476,7 +475,7 @@ static READ8_HANDLER( pteacher_keyboard_r )
 	{
 		/* player 1 + dip switches */
 		int row = (upd7807_porta & 0x07);
-		return readinputport(2 + row) | (((dips >> row) & 1) << 5);	// 0-5
+		return input_port_read_indexed(machine, 2 + row) | (((dips >> row) & 1) << 5);	// 0-5
 	}
 	if (upd7807_porta & 0x08)
 	{
@@ -1302,8 +1301,15 @@ MACHINE_DRIVER_END
 
 static const struct YM2203interface ym2203_interface =
 {
-	input_port_3_r,
-	input_port_4_r
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		input_port_3_r,
+		input_port_4_r,
+		NULL,
+		NULL
+	},
+	NULL
 };
 
 
@@ -1829,15 +1835,15 @@ static DRIVER_INIT( jogakuen )
 	/* it seems that Mahjong Jogakuen runs on the same board as the others,
        but with just these two addresses swapped. Instead of creating a new
        MachineDriver, I just fix them here. */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8007, 0x8007, 0, 0, pteacher_blitter_bank_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8005, 0x8005, 0, 0, pteacher_gfx_bank_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8007, 0x8007, 0, 0, pteacher_blitter_bank_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8005, 0x8005, 0, 0, pteacher_gfx_bank_w);
 }
 
 static DRIVER_INIT( mjikaga )
 {
 	/* Mahjong Ikagadesuka is different as well. */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7802, 0x7802, 0, 0, pteacher_snd_r);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x0123, 0x0123, 0, 0, pteacher_snd_answer_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7802, 0x7802, 0, 0, pteacher_snd_r);
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0123, 0x0123, 0, 0, pteacher_snd_answer_w);
 }
 
 static DRIVER_INIT( reikaids )

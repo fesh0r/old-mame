@@ -45,7 +45,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -80,10 +79,10 @@ static WRITE32_HANDLER( gunbustr_palette_w )
 	COMBINE_DATA(&paletteram32[offset]);
 
 	a = paletteram32[offset] >> 16;
-	palette_set_color_rgb(Machine,offset*2,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
+	palette_set_color_rgb(machine,offset*2,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
 
 	a = paletteram32[offset] &0xffff;
-	palette_set_color_rgb(Machine,offset*2+1,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
+	palette_set_color_rgb(machine,offset*2+1,pal5bit(a >> 10),pal5bit(a >> 5),pal5bit(a >> 0));
 }
 
 static READ32_HANDLER( gunbustr_input_r )
@@ -92,13 +91,13 @@ static READ32_HANDLER( gunbustr_input_r )
 	{
 		case 0x00:
 		{
-			return (input_port_0_word_r(machine,0,0) << 16) | input_port_1_word_r(machine,0,0) |
+			return (input_port_read_indexed(machine,0) << 16) | input_port_read_indexed(machine,1) |
 				  (EEPROM_read_bit() << 7);
 		}
 
 		case 0x01:
 		{
-			return input_port_2_word_r(machine,0,0) | (coin_word << 16);
+			return input_port_read_indexed(machine,2) | (coin_word << 16);
 		}
  	}
 logerror("CPU #0 PC %06x: read input %06x\n",activecpu_get_pc(),offset);
@@ -124,12 +123,12 @@ popmessage(t);
 	{
 		case 0x00:
 		{
-			if (ACCESSING_MSB32)	/* $400000 is watchdog */
+			if (ACCESSING_BITS_24_31)	/* $400000 is watchdog */
 			{
 				watchdog_reset(machine);
 			}
 
-			if (ACCESSING_LSB32)
+			if (ACCESSING_BITS_0_7)
 			{
 				EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 				EEPROM_write_bit(data & 0x40);
@@ -141,7 +140,7 @@ popmessage(t);
 
 		case 0x01:
 		{
-			if (ACCESSING_MSB32)
+			if (ACCESSING_BITS_24_31)
 			{
 				/* game does not write a separate counter for coin 2!
                    It should disable both coins when 9 credits reached
@@ -175,8 +174,8 @@ static WRITE32_HANDLER( motor_control_w )
 
 static READ32_HANDLER( gunbustr_gun_r )
 {
-	return ( input_port_3_word_r(machine,0,0) << 24) | (input_port_4_word_r(machine,0,0) << 16) |
-		 ( input_port_5_word_r(machine,0,0) << 8)  |  input_port_6_word_r(machine,0,0);
+	return ( input_port_read_indexed(machine,3) << 24) | (input_port_read_indexed(machine,4) << 16) |
+		 ( input_port_read_indexed(machine,5) << 8)  |  input_port_read_indexed(machine,6);
 }
 
 static WRITE32_HANDLER( gunbustr_gun_w )
@@ -446,7 +445,7 @@ static READ32_HANDLER( main_cycle_r )
 static DRIVER_INIT( gunbustr )
 {
 	/* Speedup handler */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x203acc, 0x203acf, 0, 0, main_cycle_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x203acc, 0x203acf, 0, 0, main_cycle_r);
 }
 
 GAME( 1992, gunbustr, 0,      gunbustr, gunbustr, gunbustr, ORIENTATION_FLIP_X, "Taito Corporation", "Gunbuster (Japan)", 0 )

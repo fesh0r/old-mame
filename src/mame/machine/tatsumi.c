@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "tatsumi.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -49,37 +48,37 @@ WRITE16_HANDLER( apache3_bank_w )
 	if (tatsumi_control_word&0x7f00)
 	{
 		logerror("Unknown control Word: %04x\n",tatsumi_control_word);
-		cpunum_set_input_line(Machine, 3, INPUT_LINE_HALT, CLEAR_LINE); // ?
+		cpunum_set_input_line(machine, 3, INPUT_LINE_HALT, CLEAR_LINE); // ?
 	}
 	if ((tatsumi_control_word&0x8)==0 && !(tatsumi_last_control&0x8))
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ4, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ4, ASSERT_LINE);
 
 	if (tatsumi_control_word&0x10)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
 
 	if (tatsumi_control_word&0x80)
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
 
 	tatsumi_last_control=tatsumi_control_word;
 }
 
 WRITE16_HANDLER( apache3_irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ4, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ4, CLEAR_LINE);
 
 	if ((data&2) && (tatsumi_last_irq&2)==0)
 	{
-		cpunum_set_input_line(Machine, 3, INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(machine, 3, INPUT_LINE_HALT, ASSERT_LINE);
 	}
 
 	if ((tatsumi_last_irq&2) && (data&2)==0)
 	{
-		cpunum_set_input_line(Machine, 3, INPUT_LINE_HALT, CLEAR_LINE);
-		cpunum_set_input_line_and_vector(Machine, 3, 0, HOLD_LINE, 0xc7 | 0x10);
+		cpunum_set_input_line(machine, 3, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line_and_vector(machine, 3, 0, HOLD_LINE, 0xc7 | 0x10);
 	}
 
 	tatsumi_last_irq=data;
@@ -111,7 +110,7 @@ WRITE16_HANDLER( apache3_v30_v20_w )
 		logerror("%08x: write unmapped v30 rom %08x\n",activecpu_get_pc(),offset);
 
 	/* Only 8 bits of the V30 data bus are connected - ignore writes to the other half */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		cpuintrf_push_context(2);
 		program_write_byte(offset, data&0xff);
@@ -132,8 +131,8 @@ WRITE16_HANDLER(apache3_z80_w)
 READ8_HANDLER( apache3_adc_r )
 {
 	if (apache3_adc==0)
-		return readinputport(1);
-	return readinputport(2);
+		return input_port_read_indexed(machine, 1);
+	return input_port_read_indexed(machine, 2);
 }
 
 WRITE8_HANDLER( apache3_adc_w )
@@ -170,7 +169,7 @@ READ16_HANDLER( roundup_v30_z80_r )
 WRITE16_HANDLER( roundup_v30_z80_w )
 {
 	/* Only 8 bits of the V30 data bus are connected - ignore writes to the other half */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (tatsumi_control_word&0x20)
 			offset+=0x8000; /* Upper half of Z80 address space */
@@ -187,14 +186,14 @@ WRITE16_HANDLER( roundup5_control_w )
 	COMBINE_DATA(&tatsumi_control_word);
 
 	if (tatsumi_control_word&0x10)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
 
 	if (tatsumi_control_word&0x4)
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, CLEAR_LINE);
 
 //  if (offset==1 && (tatsumi_control_w&0xfeff)!=(last_bank&0xfeff))
 //      logerror("%08x:  Changed bank to %04x (%d)\n",activecpu_get_pc(),tatsumi_control_w,offset);
@@ -220,7 +219,7 @@ WRITE16_HANDLER( roundup5_control_w )
     */
 
 	if ((tatsumi_control_word&0x8)==0 && !(tatsumi_last_control&0x8))
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ4, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ4, ASSERT_LINE);
 //  if (tatsumi_control_w&0x200)
 //      cpu_set_reset_line(1, CLEAR_LINE);
 //  else
@@ -253,7 +252,7 @@ WRITE16_HANDLER( roundup5_e0000_w )
     */
 
 	COMBINE_DATA(&roundup5_e0000_ram[offset]);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ4, CLEAR_LINE); // guess, probably wrong
+	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ4, CLEAR_LINE); // guess, probably wrong
 
 //  logerror("d_68k_e0000_w %06x %04x\n",activecpu_get_pc(),data);
 }
@@ -284,12 +283,12 @@ WRITE16_HANDLER(cyclwarr_control_w)
 
 	if ((tatsumi_control_word&4)==4 && (tatsumi_last_control&4)==0) {
 //      logerror("68k 2 halt\n");
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	}
 
 	if ((tatsumi_control_word&4)==0 && (tatsumi_last_control&4)==4) {
 //      logerror("68k 2 irq go\n");
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
 	}
 
 

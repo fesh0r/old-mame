@@ -1,6 +1,5 @@
 
 #include "driver.h"
-#include "deprecat.h"
 
 static tilemap *bg_layer,*fg_layer,*tx_layer;
 UINT16 *dynduke_back_data,*dynduke_fore_data,*dynduke_scroll_ram;
@@ -16,7 +15,7 @@ WRITE16_HANDLER( dynduke_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	color=paletteram16[offset];
-	palette_set_color_rgb(Machine,offset,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
+	palette_set_color_rgb(machine,offset,pal4bit(color >> 0),pal4bit(color >> 4),pal4bit(color >> 8));
 }
 
 WRITE16_HANDLER( dynduke_background_w )
@@ -93,7 +92,7 @@ WRITE16_HANDLER( dynduke_gfxbank_w )
 {
 	static int old_back,old_fore;
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (data&0x01) back_bankbase=0x1000; else back_bankbase=0;
 		if (data&0x10) fore_bankbase=0x1000; else fore_bankbase=0;
@@ -112,7 +111,7 @@ WRITE16_HANDLER( dynduke_gfxbank_w )
 WRITE16_HANDLER( dynduke_control_w )
 {
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		// bit 0x80 toggles, maybe sprite buffering?
 		// bit 0x40 is flipscreen
@@ -245,5 +244,5 @@ VIDEO_UPDATE( dynduke )
 
 VIDEO_EOF( dynduke )
 {
-	buffer_spriteram16_w(machine,0,0,0); // Could be a memory location instead
+	buffer_spriteram16_w(machine,0,0,0xffff); // Could be a memory location instead
 }

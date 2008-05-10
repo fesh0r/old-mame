@@ -454,7 +454,6 @@
 
 #include "driver.h"
 #include "deprecat.h"
-#include "memconv.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
@@ -593,7 +592,7 @@ static INTERRUPT_GEN( generate_nmi )
 static WRITE8_HANDLER( itech8_nmi_ack_w )
 {
 /* doesn't seem to hold for every game (e.g., hstennis) */
-/*  cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);*/
+/*  cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);*/
 }
 
 
@@ -714,7 +713,7 @@ static WRITE8_HANDLER( rimrockn_bank_w )
 /* used by most games */
 static READ8_HANDLER( special_port0_r )
 {
-	UINT8 result = readinputport(0);
+	UINT8 result = input_port_read_indexed(machine, 0);
 	result = (result & 0xfe) | (pia_portb_data & 0x01);
 	return result;
 }
@@ -723,7 +722,7 @@ static READ8_HANDLER( special_port0_r )
 /* used by Rim Rockin' Basketball */
 static READ8_HANDLER( special_port1_r )
 {
-	UINT8 result = readinputport(1);
+	UINT8 result = input_port_read_indexed(machine, 1);
 	result = (result & 0x7f) | ((pia_portb_data & 0x01) << 7);
 	return result;
 }
@@ -804,7 +803,7 @@ static WRITE8_HANDLER( gtg2_sound_data_w )
 
 static READ8_HANDLER( sound_data_r )
 {
-	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, CLEAR_LINE);
 	return sound_data;
 }
 
@@ -828,75 +827,28 @@ static void via_irq(int state)
 
 /*************************************
  *
- *  16-bit memory shunts
+ *  16-bit-specific handlers
  *
  *************************************/
 
-static READ16_HANDLER( blitter16_r )
-{
-	return read16be_with_read8_handler(itech8_blitter_r, machine, offset, mem_mask);
-}
-
-
-static READ16_HANDLER( tms34061_16_r )
-{
-	/* since multiple XY accesses can move the pointer multiple times, we have to */
-	/* be careful to only perform one read per access here; fortunately, the low */
-	/* bit doesn't matter in XY addressing mode */
-	if ((offset & 0x700) == 0x100)
-	{
-		int result = itech8_tms34061_r(machine, offset * 2);
-		return (result << 8) | result;
-	}
-	else
-		return (itech8_tms34061_r(machine, offset * 2 + 0) << 8) + itech8_tms34061_r(machine, offset * 2 + 1);
-}
-
-
-static WRITE16_HANDLER( sound_data16_w )
-{
-	if (ACCESSING_MSB)
-		sound_data_w(machine, 0, data >> 8);
-}
-
-
 static WRITE16_HANDLER( grom_bank16_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		*itech8_grom_bank = data >> 8;
 }
 
 
 static WRITE16_HANDLER( display_page16_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		itech8_page_w(machine, 0, ~data >> 8);
-}
-
-
-static WRITE16_HANDLER( tms34061_latch16_w )
-{
-	if (ACCESSING_MSB)
-		tms34061_latch_w(machine, 0, data >> 8);
-}
-
-
-static WRITE16_HANDLER( blitter16_w )
-{
-	write16be_with_write8_handler(itech8_blitter_w, machine, offset, data, mem_mask);
 }
 
 
 static WRITE16_HANDLER( palette16_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		itech8_palette_w(machine, offset / 8, data >> 8);
-}
-
-
-static WRITE16_HANDLER( tms34061_16_w )
-{
-	write16be_with_write8_handler(itech8_tms34061_w, machine, offset, data, mem_mask);
 }
 
 
@@ -981,14 +933,14 @@ static ADDRESS_MAP_START( ninclown_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x00007f) AM_RAM AM_REGION(REGION_CPU1, 0)
 	AM_RANGE(0x000080, 0x003fff) AM_RAM AM_BASE((void *)&main_ram) AM_SIZE(&main_ram_size)
 	AM_RANGE(0x004000, 0x07ffff) AM_ROM
-	AM_RANGE(0x100080, 0x100081) AM_WRITE(sound_data16_w)
+	AM_RANGE(0x100080, 0x100081) AM_WRITE8(sound_data_w, 0xff00)
 	AM_RANGE(0x100100, 0x100101) AM_READWRITE(input_port_0_word_r, grom_bank16_w) AM_BASE((void *)&itech8_grom_bank)
 	AM_RANGE(0x100180, 0x100181) AM_READWRITE(input_port_1_word_r, display_page16_w)
-	AM_RANGE(0x100240, 0x100241) AM_WRITE(tms34061_latch16_w)
+	AM_RANGE(0x100240, 0x100241) AM_WRITE8(tms34061_latch_w, 0xff00)
 	AM_RANGE(0x100280, 0x100281) AM_READWRITE(input_port_2_word_r, SMH_NOP)
-	AM_RANGE(0x100300, 0x10031f) AM_READWRITE(blitter16_r, blitter16_w)
+	AM_RANGE(0x100300, 0x10031f) AM_READWRITE8(itech8_blitter_r, itech8_blitter_w, 0xffff)
 	AM_RANGE(0x100380, 0x1003ff) AM_WRITE(palette16_w)
-	AM_RANGE(0x110000, 0x110fff) AM_READWRITE(tms34061_16_r, tms34061_16_w)
+	AM_RANGE(0x110000, 0x110fff) AM_READWRITE8(itech8_tms34061_r, itech8_tms34061_w, 0xffff)
 ADDRESS_MAP_END
 
 
@@ -1731,10 +1683,14 @@ INPUT_PORTS_END
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,
-	0,
-	0,
-	ym2203_portb_out,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		NULL,
+		ym2203_portb_out,
+	},
 	generate_sound_irq
 };
 
@@ -2630,17 +2586,17 @@ ROM_END
 
 static DRIVER_INIT( slikshot )
 {
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0180, 0x0180, 0, 0, slikshot_z80_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_w);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0180, 0x0180, 0, 0, slikshot_z80_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01cf, 0x01cf, 0, 0, slikshot_z80_control_w);
 }
 
 
 static DRIVER_INIT( sstrike )
 {
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x1180, 0x1180, 0, 0, slikshot_z80_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_w);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x1180, 0x1180, 0, 0, slikshot_z80_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x11cf, 0x11cf, 0, 0, slikshot_z80_control_w);
 }
 
 
@@ -2675,16 +2631,16 @@ static DRIVER_INIT( neckneck )
 static DRIVER_INIT( rimrockn )
 {
 	/* additional input ports */
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0160, 0x0160, 0, 0, special_port1_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0161, 0x0161, 0, 0, input_port_3_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0162, 0x0162, 0, 0, input_port_4_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0163, 0x0163, 0, 0, input_port_5_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0164, 0x0164, 0, 0, input_port_6_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0165, 0x0165, 0, 0, input_port_7_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0160, 0x0160, 0, 0, special_port1_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0161, 0x0161, 0, 0, input_port_3_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0162, 0x0162, 0, 0, input_port_4_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0163, 0x0163, 0, 0, input_port_5_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0164, 0x0164, 0, 0, input_port_6_r);
+	memory_install_read8_handler (machine, 0, ADDRESS_SPACE_PROGRAM, 0x0165, 0x0165, 0, 0, input_port_7_r);
 
 	/* different banking mechanism (disable the old one) */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01a0, 0x01a0, 0, 0, rimrockn_bank_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01c0, 0x01df, 0, 0, itech8_blitter_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01a0, 0x01a0, 0, 0, rimrockn_bank_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01c0, 0x01df, 0, 0, itech8_blitter_w);
 }
 
 

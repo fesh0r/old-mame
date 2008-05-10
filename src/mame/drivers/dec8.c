@@ -119,9 +119,9 @@ static READ8_HANDLER( gondo_player_1_r )
 {
 	switch (offset) {
 		case 0: /* Rotary low byte */
-			return ~((1 << (readinputport(5) * 12 / 256))&0xff);
+			return ~((1 << (input_port_read_indexed(machine, 5) * 12 / 256))&0xff);
 		case 1: /* Joystick = bottom 4 bits, rotary = top 4 */
-			return ((~((1 << (readinputport(5) * 12 / 256))>>4))&0xf0) | (readinputport(0)&0xf);
+			return ((~((1 << (input_port_read_indexed(machine, 5) * 12 / 256))>>4))&0xf0) | (input_port_read_indexed(machine, 0)&0xf);
 	}
 	return 0xff;
 }
@@ -130,9 +130,9 @@ static READ8_HANDLER( gondo_player_2_r )
 {
 	switch (offset) {
 		case 0: /* Rotary low byte */
-			return ~((1 << (readinputport(6) * 12 / 256))&0xff);
+			return ~((1 << (input_port_read_indexed(machine, 6) * 12 / 256))&0xff);
 		case 1: /* Joystick = bottom 4 bits, rotary = top 4 */
-			return ((~((1 << (readinputport(6) * 12 / 256))>>4))&0xf0) | (readinputport(1)&0xf);
+			return ((~((1 << (input_port_read_indexed(machine, 6) * 12 / 256))>>4))&0xf0) | (input_port_read_indexed(machine, 1)&0xf);
 	}
 	return 0xff;
 }
@@ -178,8 +178,8 @@ static WRITE8_HANDLER( srdarwin_i8751_w )
  	if (i8751_value==0x5000) i8751_return=((coins / 10) << 4) | (coins % 10); /* Coin request */
  	if (i8751_value==0x6000) {i8751_value=-1; coins--; } /* Coin clear */
 	/* Nb:  Command 0x4000 for setting coinage options is not supported */
- 	if ((readinputport(4)&1)==1) latch=1;
- 	if ((readinputport(4)&1)!=1 && latch) {coins++; latch=0;}
+ 	if ((input_port_read_indexed(machine, 4)&1)==1) latch=1;
+ 	if ((input_port_read_indexed(machine, 4)&1)!=1 && latch) {coins++; latch=0;}
 
 	/* This next value is the index to a series of tables,
     each table controls the end of level bad guy, wrong values crash the
@@ -238,7 +238,7 @@ static WRITE8_HANDLER( gondo_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		if (int_enable) cpunum_set_input_line (Machine, 0, M6809_IRQ_LINE, HOLD_LINE); /* IRQ on *high* byte only */
+		if (int_enable) cpunum_set_input_line (machine, 0, M6809_IRQ_LINE, HOLD_LINE); /* IRQ on *high* byte only */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -246,9 +246,9 @@ static WRITE8_HANDLER( gondo_i8751_w )
 	}
 
 	/* Coins are controlled by the i8751 */
- 	if ((readinputport(4)&3)==3) latch=1;
- 	if ((readinputport(4)&1)!=1 && latch) {coin1++; snd=1; latch=0;}
- 	if ((readinputport(4)&2)!=2 && latch) {coin2++; snd=1; latch=0;}
+ 	if ((input_port_read_indexed(machine, 4)&3)==3) latch=1;
+ 	if ((input_port_read_indexed(machine, 4)&1)!=1 && latch) {coin1++; snd=1; latch=0;}
+ 	if ((input_port_read_indexed(machine, 4)&2)!=2 && latch) {coin2++; snd=1; latch=0;}
 
 	/* Work out return values */
 	if (i8751_value==0x0000) {i8751_return=0; coin1=coin2=snd=0;}
@@ -271,7 +271,7 @@ static WRITE8_HANDLER( shackled_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		cpunum_set_input_line (Machine, 1, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
+		cpunum_set_input_line (machine, 1, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -279,9 +279,9 @@ static WRITE8_HANDLER( shackled_i8751_w )
 	}
 
 	/* Coins are controlled by the i8751 */
- 	if (/*(readinputport(2)&3)==3*/!latch) {latch=1;coin1=coin2=0;}
- 	if ((readinputport(2)&1)!=1 && latch) {coin1=1; latch=0;}
- 	if ((readinputport(2)&2)!=2 && latch) {coin2=1; latch=0;}
+ 	if (/*(input_port_read_indexed(machine, 2)&3)==3*/!latch) {latch=1;coin1=coin2=0;}
+ 	if ((input_port_read_indexed(machine, 2)&1)!=1 && latch) {coin1=1; latch=0;}
+ 	if ((input_port_read_indexed(machine, 2)&2)!=2 && latch) {coin2=1; latch=0;}
 
 	if (i8751_value==0x0050) i8751_return=0; /* Breywood ID */
 	if (i8751_value==0x0051) i8751_return=0; /* Shackled ID */
@@ -299,7 +299,7 @@ static WRITE8_HANDLER( lastmiss_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		cpunum_set_input_line (Machine, 0, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
+		cpunum_set_input_line (machine, 0, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -309,8 +309,8 @@ static WRITE8_HANDLER( lastmiss_i8751_w )
 	if(offset==0)
 	{
 		/* Coins are controlled by the i8751 */
- 		if ((readinputport(2)&3)==3 && !latch) latch=1;
- 		if ((readinputport(2)&3)!=3 && latch) {coin++; latch=0;snd=0x400;i8751_return=0x400;return;}
+ 		if ((input_port_read_indexed(machine, 2)&3)==3 && !latch) latch=1;
+ 		if ((input_port_read_indexed(machine, 2)&3)!=3 && latch) {coin++; latch=0;snd=0x400;i8751_return=0x400;return;}
 		if (i8751_value==0x007a) i8751_return=0x0185; /* Japan ID code */
 		if (i8751_value==0x007b) i8751_return=0x0184; /* USA ID code */
 		if (i8751_value==0x0001) {coin=snd=0;}//???
@@ -330,7 +330,7 @@ static WRITE8_HANDLER( csilver_i8751_w )
 	switch (offset) {
 	case 0: /* High byte */
 		i8751_value=(i8751_value&0xff) | (data<<8);
-		cpunum_set_input_line (Machine, 0, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
+		cpunum_set_input_line (machine, 0, M6809_FIRQ_LINE, HOLD_LINE); /* Signal main cpu */
 		break;
 	case 1: /* Low byte */
 		i8751_value=(i8751_value&0xff00) | data;
@@ -340,8 +340,8 @@ static WRITE8_HANDLER( csilver_i8751_w )
 	if(offset==0)
 	{
 		/* Coins are controlled by the i8751 */
- 		if ((readinputport(2)&3)==3 && !latch) latch=1;
- 		if ((readinputport(2)&3)!=3 && latch) {coin++; latch=0;snd=0x1200; i8751_return=0x1200;return;}
+ 		if ((input_port_read_indexed(machine, 2)&3)==3 && !latch) latch=1;
+ 		if ((input_port_read_indexed(machine, 2)&3)!=3 && latch) {coin++; latch=0;snd=0x1200; i8751_return=0x1200;return;}
 
 		if (i8751_value==0x054a) {i8751_return=~(0x4a); coin=0; snd=0;} /* Captain Silver (Japan) ID */
 		if (i8751_value==0x054c) {i8751_return=~(0x4c); coin=0; snd=0;} /* Captain Silver (World) ID */
@@ -366,9 +366,9 @@ static WRITE8_HANDLER( garyoret_i8751_w )
 	}
 
 	/* Coins are controlled by the i8751 */
- 	if ((readinputport(2)&3)==3) latch=1;
- 	if ((readinputport(2)&1)!=1 && latch) {coin1++; latch=0;}
- 	if ((readinputport(2)&2)!=2 && latch) {coin2++; latch=0;}
+ 	if ((input_port_read_indexed(machine, 2)&3)==3) latch=1;
+ 	if ((input_port_read_indexed(machine, 2)&1)!=1 && latch) {coin1++; latch=0;}
+ 	if ((input_port_read_indexed(machine, 2)&2)!=2 && latch) {coin2++; latch=0;}
 
 	/* Work out return values */
 	if ((i8751_value>>8)==0x00) {i8751_return=0; coin1=coin2=0;}
@@ -474,16 +474,16 @@ static WRITE8_HANDLER( oscar_int_w )
 	/* Deal with interrupts, coins also generate NMI to CPU 0 */
 	switch (offset) {
 		case 0: /* IRQ2 */
-			cpunum_set_input_line(Machine, 1,M6809_IRQ_LINE,ASSERT_LINE);
+			cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,ASSERT_LINE);
 			return;
 		case 1: /* IRC 1 */
-			cpunum_set_input_line(Machine, 0,M6809_IRQ_LINE,CLEAR_LINE);
+			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,CLEAR_LINE);
 			return;
 		case 2: /* IRQ 1 */
-			cpunum_set_input_line(Machine, 0,M6809_IRQ_LINE,ASSERT_LINE);
+			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,ASSERT_LINE);
 			return;
 		case 3: /* IRC 2 */
-			cpunum_set_input_line(Machine, 1,M6809_IRQ_LINE,CLEAR_LINE);
+			cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,CLEAR_LINE);
 			return;
 	}
 }
@@ -497,18 +497,18 @@ static WRITE8_HANDLER( shackled_int_w )
     (The last interrupt has not finished and been ack'd when the new one occurs */
 	switch (offset) {
 		case 0: /* CPU 2 - IRQ acknowledge */
-			cpunum_set_input_line(Machine, 1,M6809_IRQ_LINE,CLEAR_LINE);
+			cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,CLEAR_LINE);
             return;
         case 1: /* CPU 1 - IRQ acknowledge */
-			cpunum_set_input_line(Machine, 0,M6809_IRQ_LINE,CLEAR_LINE);
+			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,CLEAR_LINE);
         	return;
         case 2: /* i8751 - FIRQ acknowledge */
             return;
         case 3: /* IRQ 1 */
-			cpunum_set_input_line(Machine, 0,M6809_IRQ_LINE,ASSERT_LINE);
+			cpunum_set_input_line(machine, 0,M6809_IRQ_LINE,ASSERT_LINE);
 			return;
         case 4: /* IRQ 2 */
-            cpunum_set_input_line(Machine, 1,M6809_IRQ_LINE,ASSERT_LINE);
+            cpunum_set_input_line(machine, 1,M6809_IRQ_LINE,ASSERT_LINE);
             return;
 	}
 #endif
@@ -521,10 +521,10 @@ static WRITE8_HANDLER( shackled_int_w )
         case 2: /* i8751 - FIRQ acknowledge */
             return;
         case 3: /* IRQ 1 */
-			cpunum_set_input_line (Machine, 0, M6809_IRQ_LINE, HOLD_LINE);
+			cpunum_set_input_line (machine, 0, M6809_IRQ_LINE, HOLD_LINE);
 			return;
         case 4: /* IRQ 2 */
-            cpunum_set_input_line (Machine, 1, M6809_IRQ_LINE, HOLD_LINE);
+            cpunum_set_input_line (machine, 1, M6809_IRQ_LINE, HOLD_LINE);
             return;
 	}
 }
@@ -2046,7 +2046,7 @@ static const struct MSM5205interface msm5205_interface =
 static INTERRUPT_GEN( ghostb_interrupt )
 {
 	static int latch[4];
-	int i8751_out=readinputport(4);
+	int i8751_out=input_port_read_indexed(machine, 4);
 
 	/* Ghostbusters coins are controlled by the i8751 */
 	if ((i8751_out & 0x8) == 0x8) latch[0]=1;
@@ -2073,8 +2073,8 @@ static INTERRUPT_GEN( oscar_interrupt )
 {
 	static int latch=1;
 
-	if ((readinputport(2) & 0x7) == 0x7) latch=1;
-	if (latch && (readinputport(2) & 0x7) != 0x7) {
+	if ((input_port_read_indexed(machine, 2) & 0x7) == 0x7) latch=1;
+	if (latch && (input_port_read_indexed(machine, 2) & 0x7) != 0x7) {
 		latch=0;
     	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
     }

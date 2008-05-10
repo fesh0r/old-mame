@@ -81,7 +81,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "genesis.h"
 
@@ -192,7 +191,7 @@ static READ16_HANDLER( ym3438_r )
 static WRITE16_HANDLER( ym3438_w )
 {
 	/* only works if we're accessing the low byte */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		static UINT8 last_port;
 
@@ -222,7 +221,7 @@ static WRITE16_HANDLER( segac2_upd7759_w )
 		return;
 
 	/* only works if we're accessing the low byte */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		upd7759_port_w(0, data & 0xff);
 		upd7759_start_w(0, 0);
@@ -280,7 +279,7 @@ static WRITE16_HANDLER( palette_w )
 	b = ((newword >> 7) & 0x1e) | ((newword >> 14) & 0x01);
 
 	/* set the color */
-	palette_set_color_rgb(Machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
+	palette_set_color_rgb(machine, offset, pal5bit(r), pal5bit(g), pal5bit(b));
 }
 
 
@@ -372,8 +371,8 @@ static READ16_HANDLER( io_chip_r )
 
 			/* otherwise, return an input port */
 			if (offset == 0x04/2 && sound_banks)
-				return (readinputport(offset) & 0xbf) | (upd7759_0_busy_r(machine,0) << 6);
-			return readinputport(offset);
+				return (input_port_read_indexed(machine, offset) & 0xbf) | (upd7759_0_busy_r(machine,0) << 6);
+			return input_port_read_indexed(machine, offset);
 
 		/* 'SEGA' protection */
 		case 0x10/2:
@@ -487,7 +486,7 @@ static WRITE16_HANDLER( io_chip_w )
 static WRITE16_HANDLER( control_w )
 {
 	/* skip if not LSB */
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 		return;
 	data &= 0x0f;
 
@@ -534,7 +533,7 @@ static WRITE16_HANDLER( prot_w )
 	int table_index;
 
 	/* only works for the LSB */
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 		return;
 
 	/* compute the table index */
@@ -575,7 +574,7 @@ static WRITE16_HANDLER( prot_w )
 static WRITE16_HANDLER( counter_timer_w )
 {
 	/* only LSB matters */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/*int value = data & 1;*/
 		switch (data & 0x1e)
@@ -2088,7 +2087,7 @@ static DRIVER_INIT( tfrceacb )
 {
 	/* disable the palette bank switching from the protection chip */
 	segac2_common_init(NULL);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x800001, 0, 0, SMH_NOP);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x800001, 0, 0, SMH_NOP);
 }
 
 static DRIVER_INIT( borench )
@@ -2173,36 +2172,36 @@ static DRIVER_INIT( pclub )
 {
 	segac2_common_init(prot_func_pclub);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 static DRIVER_INIT( pclubjv2 )
 {
 	segac2_common_init(prot_func_pclubjv2);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 static DRIVER_INIT( pclubjv4 )
 {
 	segac2_common_init(prot_func_pclubjv4);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 static DRIVER_INIT( pclubjv5 )
 {
 	segac2_common_init(prot_func_pclubjv5);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880120, 0x880121, 0, 0, printer_r );/*Print Club Vol.1*/
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, printer_r );/*Print Club Vol.2*/
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x880124, 0x880125, 0, 0, print_club_camera_w);
 }
 
 

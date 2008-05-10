@@ -8,6 +8,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/amiga.h"
 #include "sound/es5503.h"
 
@@ -30,7 +31,7 @@
 
 static UINT8 mquake_cia_0_porta_r(void)
 {
-	return readinputportbytag("CIA0PORTA");
+	return input_port_read(Machine, "CIA0PORTA");
 }
 
 static void mquake_cia_0_porta_w(UINT8 data)
@@ -41,11 +42,11 @@ static void mquake_cia_0_porta_w(UINT8 data)
 	/* swap the write handlers between ROM and bank 1 based on the bit */
 	if ((data & 1) == 0)
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
 
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
 }
 
 
@@ -88,12 +89,12 @@ static void mquake_cia_0_portb_w(UINT8 data)
 
 static READ16_HANDLER( es5503_word_lsb_r )
 {
-	return (ACCESSING_LSB) ? (ES5503_reg_0_r(machine, offset) | 0xff00) : 0xffff;
+	return (ACCESSING_BITS_0_7) ? (ES5503_reg_0_r(machine, offset) | 0xff00) : 0xffff;
 }
 
 static WRITE16_HANDLER( es5503_word_lsb_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		// 5503 ROM is banked by the output channel (it's a handy 4-bit output from the 5503)
 		if (offset < 0xe0)
@@ -116,7 +117,7 @@ static WRITE16_HANDLER( es5503_word_lsb_w )
 
 static WRITE16_HANDLER( output_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		logerror("%06x:output_w(%x) = %02x\n", activecpu_get_pc(), offset, data);
 }
 
@@ -124,14 +125,14 @@ static WRITE16_HANDLER( output_w )
 static READ16_HANDLER( coin_chip_r )
 {
 	if (offset == 1)
-		return readinputportbytag("COINCHIP");
-	logerror("%06x:coin_chip_r(%02x) & %04x\n", activecpu_get_pc(), offset, mem_mask ^ 0xffff);
+		return input_port_read(machine, "COINCHIP");
+	logerror("%06x:coin_chip_r(%02x) & %04x\n", activecpu_get_pc(), offset, mem_mask);
 	return 0xffff;
 }
 
 static WRITE16_HANDLER( coin_chip_w )
 {
-	logerror("%06x:coin_chip_w(%02x) = %04x & %04x\n", activecpu_get_pc(), offset, data, mem_mask ^ 0xffff);
+	logerror("%06x:coin_chip_w(%02x) = %04x & %04x\n", activecpu_get_pc(), offset, data, mem_mask);
 }
 
 // inputs at 282000, 282002 (full word)

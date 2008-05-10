@@ -138,7 +138,7 @@ WRITE8_HANDLER( exidy440_paletteram_w )
 		word = (local_paletteram[offset] << 8) + local_paletteram[offset + 1];
 
 		/* extract the 5-5-5 RGB colors */
-		palette_set_color_rgb(Machine, offset / 2, pal5bit(word >> 10), pal5bit(word >> 5), pal5bit(word >> 0));
+		palette_set_color_rgb(machine, offset / 2, pal5bit(word >> 10), pal5bit(word >> 5), pal5bit(word >> 0));
 	}
 }
 
@@ -201,7 +201,7 @@ WRITE8_HANDLER( exidy440_control_w )
 	int oldvis = palettebank_vis;
 
 	/* extract the various bits */
-	exidy440_bank_select(data >> 4);
+	exidy440_bank_select(machine, data >> 4);
 	firq_enable = (data >> 3) & 1;
 	firq_select = (data >> 2) & 1;
 	palettebank_io = (data >> 1) & 1;
@@ -221,7 +221,7 @@ WRITE8_HANDLER( exidy440_control_w )
 		{
 			/* extract a word and the 5-5-5 RGB components */
 			int word = (local_paletteram[offset] << 8) + local_paletteram[offset + 1];
-			palette_set_color_rgb(Machine, i, pal5bit(word >> 10), pal5bit(word >> 5), pal5bit(word >> 0));
+			palette_set_color_rgb(machine, i, pal5bit(word >> 10), pal5bit(word >> 5), pal5bit(word >> 0));
 		}
 	}
 }
@@ -446,8 +446,8 @@ static VIDEO_UPDATE( exidy440 )
 	{
 		int i;
 
-		int beamx = ((readinputport(4) & 0xff) * (HBSTART - HBEND)) >> 8;
-		int beamy = ((readinputport(5) & 0xff) * (VBSTART - VBEND)) >> 8;
+		int beamx = ((input_port_read_indexed(screen->machine, 4) & 0xff) * (HBSTART - HBEND)) >> 8;
+		int beamy = ((input_port_read_indexed(screen->machine, 5) & 0xff) * (VBSTART - VBEND)) >> 8;
 
 		/* The timing of this FIRQ is very important. The games look for an FIRQ
             and then wait about 650 cycles, clear the old FIRQ, and wait a

@@ -47,7 +47,7 @@ VIDEO_UPDATE( amspdwy );
 static READ8_HANDLER( amspdwy_wheel_##_n_##_r ) \
 { \
 	static UINT8 wheel_old, ret; \
-	UINT8 wheel = readinputport(5 + _n_); \
+	UINT8 wheel = input_port_read_indexed(machine, 5 + _n_); \
 	if (wheel != wheel_old) \
 	{ \
 		wheel = (wheel & 0x7fff) - (wheel & 0x8000); \
@@ -55,7 +55,7 @@ static READ8_HANDLER( amspdwy_wheel_##_n_##_r ) \
 		else					ret = ((-wheel) & 0xf) | 0x10; \
 		wheel_old = wheel; \
 	} \
-	return ret | readinputport(2 + _n_); \
+	return ret | input_port_read_indexed(machine, 2 + _n_); \
 }
 AMSPDWY_WHEEL_R( 0 )
 AMSPDWY_WHEEL_R( 1 )
@@ -63,7 +63,7 @@ AMSPDWY_WHEEL_R( 1 )
 
 static READ8_HANDLER( amspdwy_sound_r )
 {
-	return (YM2151_status_port_0_r(machine,0) & ~ 0x30) | readinputport(4);
+	return (YM2151_status_port_0_r(machine,0) & ~ 0x30) | input_port_read_indexed(machine, 4);
 }
 
 static WRITE8_HANDLER( amspdwy_sound_w )
@@ -75,8 +75,8 @@ static WRITE8_HANDLER( amspdwy_sound_w )
 static ADDRESS_MAP_START( amspdwy_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM												// ROM
 	AM_RANGE(0x8000, 0x801f) AM_WRITE(amspdwy_paletteram_w) AM_BASE(&paletteram)// Palette
-	AM_RANGE(0x9000, 0x93ff) AM_MIRROR(0x0400) AM_READWRITE(SMH_RAM, amspdwy_videoram_w) AM_BASE(&videoram)	// Layer, mirrored?
-	AM_RANGE(0x9800, 0x9bff) AM_READWRITE(SMH_RAM, amspdwy_colorram_w) AM_BASE(&colorram)	// Layer
+	AM_RANGE(0x9000, 0x93ff) AM_MIRROR(0x0400) AM_RAM_WRITE(amspdwy_videoram_w) AM_BASE(&videoram)	// Layer, mirrored?
+	AM_RANGE(0x9800, 0x9bff) AM_RAM_WRITE(amspdwy_colorram_w) AM_BASE(&colorram)	// Layer
 	AM_RANGE(0x9c00, 0x9fff) AM_RAM												// Unused?
 //  AM_RANGE(0xa000, 0xa000) AM_WRITENOP                                        // ?
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)							// DSW 1

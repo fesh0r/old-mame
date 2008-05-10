@@ -98,7 +98,7 @@ static VIDEO_UPDATE(lucky8)
 static ADDRESS_MAP_START( lucky8_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_RAM AM_WRITE(lucky8_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x8800, 0x8fff) AM_RAM_WRITE(lucky8_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x9000, 0x97ff) AM_RAM	AM_WRITE(lucky8_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x9800, 0x99ff) AM_RAM
 	AM_RANGE(0xa000, 0xa1ff) AM_RAM
@@ -346,10 +346,12 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
-input_port_7_r,	// DSW3
-input_port_8_r,	// DSW4
-0,
-0
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	input_port_7_r,	// DSW3
+	input_port_8_r,	// DSW4
+	NULL,
+	NULL
 };
 
 static MACHINE_DRIVER_START( lucky8 )

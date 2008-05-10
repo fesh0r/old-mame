@@ -213,10 +213,10 @@ static UINT32 to_main;
 static READ32_HANDLER ( ms32_read_inputs1 )
 {
 	int a,b,c,d;
-	a = readinputport(0);	// unknown
-	b = readinputport(1);	// System inputs
-	c = readinputport(2);	// Player 1 inputs
-	d = readinputport(3);	// Player 2 inputs
+	a = input_port_read_indexed(machine, 0);	// unknown
+	b = input_port_read_indexed(machine, 1);	// System inputs
+	c = input_port_read_indexed(machine, 2);	// Player 1 inputs
+	d = input_port_read_indexed(machine, 3);	// Player 2 inputs
 	return a << 24 | b << 16 | c << 0 | d << 8;
 }
 
@@ -224,31 +224,31 @@ static READ32_HANDLER ( ms32_read_inputs1 )
 static READ32_HANDLER ( ms32_mahjong_read_inputs1 )
 {
 	int a,b,c,d;
-	a = readinputport(0);	// unknown
-	b = readinputport(1);	// System inputs
+	a = input_port_read_indexed(machine, 0);	// unknown
+	b = input_port_read_indexed(machine, 1);	// System inputs
 
 	switch (ms32_mahjong_input_select[0])
 	{
 		case 0x01:
-			c = readinputport(8);	// Player 1 inputs
+			c = input_port_read_indexed(machine, 8);	// Player 1 inputs
 			break;
 		case 0x02:
-			c = readinputport(9);	// Player 1 inputs
+			c = input_port_read_indexed(machine, 9);	// Player 1 inputs
 			break;
 		case 0x04:
-			c = readinputport(10);	// Player 1 inputs
+			c = input_port_read_indexed(machine, 10);	// Player 1 inputs
 			break;
 		case 0x08:
-			c = readinputport(11);	// Player 1 inputs
+			c = input_port_read_indexed(machine, 11);	// Player 1 inputs
 			break;
 		case 0x10:
-			c = readinputport(12);	// Player 1 inputs
+			c = input_port_read_indexed(machine, 12);	// Player 1 inputs
 			break;
 		default:
 			c = 0;
 
 	}
-	d = readinputport(3);	// Player 2 inputs
+	d = input_port_read_indexed(machine, 3);	// Player 2 inputs
 	return a << 24 | b << 16 | c << 0 | d << 8;
 }
 
@@ -256,20 +256,20 @@ static READ32_HANDLER ( ms32_mahjong_read_inputs1 )
 static READ32_HANDLER ( ms32_read_inputs2 )
 {
 	int a,b,c,d;
-	a = readinputport(4);	// Dip 1
-	b = readinputport(5);	// Dip 2
-	c = readinputport(6);	// Dip 3
-	d = readinputport(7);	// unused ?
+	a = input_port_read_indexed(machine, 4);	// Dip 1
+	b = input_port_read_indexed(machine, 5);	// Dip 2
+	c = input_port_read_indexed(machine, 6);	// Dip 3
+	d = input_port_read_indexed(machine, 7);	// unused ?
 	return a << 8 | b << 0 | c << 16 | d << 24;
 }
 
 static READ32_HANDLER ( ms32_read_inputs3 )
 {
 	int a,b,c,d;
-	a = readinputport(10); // unused?
-	b = readinputport(10); // unused?
-	c = readinputport(9);
-	d = (readinputport(8) - 0xb0) & 0xff;
+	a = input_port_read_indexed(machine, 10); // unused?
+	b = input_port_read_indexed(machine, 10); // unused?
+	c = input_port_read_indexed(machine, 9);
+	d = (input_port_read_indexed(machine, 8) - 0xb0) & 0xff;
 	return a << 24 | b << 16 | c << 8 | d << 0;
 }
 
@@ -289,7 +289,7 @@ static READ32_HANDLER( ms32_sound_r )
 
 static WRITE32_HANDLER( reset_sub_w )
 {
-	if(data) cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE); // 0 too ?
+	if(data) cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE); // 0 too ?
 }
 
 
@@ -1243,13 +1243,13 @@ GFXDECODE_END
 
 static UINT16 irqreq;
 
-static int irq_callback(int irqline)
+static IRQ_CALLBACK(irq_callback)
 {
 	int i;
 	for(i=15; i>=0 && !(irqreq & (1<<i)); i--);
 	irqreq &= ~(1<<i);
 	if(!irqreq)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	return i;
 }
 
@@ -2306,7 +2306,7 @@ static DRIVER_INIT (ss92048_01)
 static DRIVER_INIT (kirarast)
 {
 //  { 0xfcc00004, 0xfcc00007, ms32_mahjong_read_inputs1 }
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
 
 	DRIVER_INIT_CALL(ss92047_01);
 }
@@ -2314,7 +2314,7 @@ static DRIVER_INIT (kirarast)
 static DRIVER_INIT (47pie2)
 {
 //  { 0xfcc00004, 0xfcc00007, ms32_mahjong_read_inputs1 }
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
 
 	DRIVER_INIT_CALL(ss92048_01);
 }
@@ -2331,7 +2331,7 @@ static DRIVER_INIT (f1superb)
 static DRIVER_INIT (bnstars)
 {
 //  { 0xfcc00004, 0xfcc00007, ms32_mahjong_read_inputs1 }
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfcc00004, 0xfcc00007, 0, 0, ms32_mahjong_read_inputs1 );
 
 	DRIVER_INIT_CALL(ss92046_01);
 }

@@ -63,7 +63,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "machine/eeprom.h"
@@ -97,7 +96,7 @@ static WRITE32_HANDLER( color_ram_w )
 		g = (a &0xff00) >> 8;
 		b = (a &0xff);
 
-		palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
+		palette_set_color(machine,offset,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -164,13 +163,13 @@ static READ32_HANDLER( groundfx_input_r )
 	{
 		case 0x00:
 		{
-			return (input_port_0_word_r(machine,0,0) << 16) | input_port_1_word_r(machine,0,0) |
+			return (input_port_read_indexed(machine,0) << 16) | input_port_read_indexed(machine,1) |
 				  (EEPROM_read_bit() << 7) | frame_counter;
 		}
 
 		case 0x01:
 		{
-			return input_port_2_word_r(machine,0,0) | (coin_word << 16);
+			return input_port_read_indexed(machine,2) | (coin_word << 16);
 		}
  	}
 
@@ -183,12 +182,12 @@ static WRITE32_HANDLER( groundfx_input_w )
 	{
 		case 0x00:
 		{
-			if (ACCESSING_MSB32)	/* $500000 is watchdog */
+			if (ACCESSING_BITS_24_31)	/* $500000 is watchdog */
 			{
 				watchdog_reset(machine);
 			}
 
-			if (ACCESSING_LSB32)
+			if (ACCESSING_BITS_0_7)
 			{
 				EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 				EEPROM_write_bit(data & 0x40);
@@ -201,7 +200,7 @@ static WRITE32_HANDLER( groundfx_input_w )
 
 		case 0x01:
 		{
-			if (ACCESSING_MSB32)
+			if (ACCESSING_BITS_24_31)
 			{
 				coin_lockout_w(0,~data & 0x01000000);
 				coin_lockout_w(1,~data & 0x02000000);
@@ -215,7 +214,7 @@ static WRITE32_HANDLER( groundfx_input_w )
 
 static READ32_HANDLER( groundfx_adc_r )
 {
-	return (input_port_3_word_r(machine,0,0) << 8) | input_port_4_word_r(machine,0,0);
+	return (input_port_read_indexed(machine,3) << 8) | input_port_read_indexed(machine,4);
 }
 
 static WRITE32_HANDLER( groundfx_adc_w )
@@ -227,13 +226,13 @@ static WRITE32_HANDLER( groundfx_adc_w )
 
 static WRITE32_HANDLER( rotate_control_w )	/* only a guess that it's rotation */
 {
-		if (ACCESSING_LSW32)
+		if (ACCESSING_BITS_0_15)
 		{
 			groundfx_rotate_ctrl[port_sel] = data;
 			return;
 		}
 
-		if (ACCESSING_MSW32)
+		if (ACCESSING_BITS_16_31)
 		{
 			port_sel = (data &0x70000) >> 16;
 		}
@@ -497,7 +496,7 @@ static DRIVER_INIT( groundfx )
 	int data;
 
 	/* Speedup handlers */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x20b574, 0x20b577, 0, 0, irq_speedup_r_groundfx);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x20b574, 0x20b577, 0, 0, irq_speedup_r_groundfx);
 
 	/* make piv tile GFX format suitable for gfxdecode */
 	offset = size/2;

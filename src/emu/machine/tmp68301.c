@@ -21,9 +21,9 @@ static int tmp68301_irq_vector[8];
 
 static void tmp68301_update_timer( int i );
 
-static int tmp68301_irq_callback(int int_level)
+static IRQ_CALLBACK(tmp68301_irq_callback)
 {
-	int vector = tmp68301_irq_vector[int_level];
+	int vector = tmp68301_irq_vector[irqline];
 //  logerror("CPU #0 PC %06X: irq callback returns %04X for level %x\n",activecpu_get_pc(),vector,int_level);
 	return vector;
 }
@@ -155,7 +155,7 @@ WRITE16_HANDLER( tmp68301_regs_w )
 {
 	COMBINE_DATA(&tmp68301_regs[offset]);
 
-	if (!ACCESSING_LSB)	return;
+	if (!ACCESSING_BITS_0_7)	return;
 
 //  logerror("CPU #0 PC %06X: TMP68301 Reg %04X<-%04X & %04X\n",activecpu_get_pc(),offset*2,data,mem_mask^0xffff);
 

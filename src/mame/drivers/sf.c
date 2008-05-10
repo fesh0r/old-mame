@@ -38,7 +38,7 @@ static READ16_HANDLER( dummy_r )
 
 static WRITE16_HANDLER( sf_coin_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		coin_counter_w(0,data & 0x01);
 		coin_counter_w(1,data & 0x02);
@@ -51,7 +51,7 @@ static WRITE16_HANDLER( sf_coin_w )
 
 static WRITE16_HANDLER( soundcmd_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(machine,offset,data & 0xff);
 		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
@@ -123,8 +123,8 @@ static WRITE16_HANDLER( protection_w )
 			program_write_word(0xffc00c, 0xc0);
 			program_write_word(0xffc00e, 0);
 
-			sf_fg_scroll_w(machine, 0, d1, 0);
-			sf_fg_scroll_w(machine, 0, d2, 0);
+			sf_fg_scroll_w(machine, 0, d1, 0xffff);
+			sf_bg_scroll_w(machine, 0, d2, 0xffff);
 			break;
 		}
 	case 4:
@@ -144,7 +144,7 @@ static WRITE16_HANDLER( protection_w )
 				}
 				program_write_word(0xffc682, d1);
 				program_write_word(0xffc00e, off);
-				sf_fg_scroll_w(machine, 0, d1, 0);
+				sf_bg_scroll_w(machine, 0, d1, 0xffff);
 			}
 			break;
 		}
@@ -166,12 +166,12 @@ static const int scale[8] = { 0x00, 0x40, 0xe0, 0xfe, 0xfe, 0xfe, 0xfe, 0xfe };
 
 static READ16_HANDLER( button1_r )
 {
-	return (scale[input_port_7_r(machine,0)]<<8)|scale[input_port_5_r(machine,0)];
+	return (scale[input_port_read_indexed(machine, 7)]<<8)|scale[input_port_read_indexed(machine, 5)];
 }
 
 static READ16_HANDLER( button2_r )
 {
-	return (scale[input_port_8_r(machine,0)]<<8)|scale[input_port_6_r(machine,0)];
+	return (scale[input_port_read_indexed(machine, 8)]<<8)|scale[input_port_read_indexed(machine, 6)];
 }
 
 

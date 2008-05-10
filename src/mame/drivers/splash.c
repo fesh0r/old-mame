@@ -68,7 +68,7 @@ VIDEO_UPDATE( funystrp );
 
 static WRITE16_HANDLER( splash_sh_irqtrigger_w )
 {
-	if (ACCESSING_LSB){
+	if (ACCESSING_BITS_0_7){
 		soundlatch_w(machine,0,data & 0xff);
 		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 	}
@@ -76,7 +76,7 @@ static WRITE16_HANDLER( splash_sh_irqtrigger_w )
 
 static WRITE16_HANDLER( roldf_sh_irqtrigger_w )
 {
-	if (ACCESSING_LSB){
+	if (ACCESSING_BITS_0_7){
 		soundlatch_w(machine,0,data & 0xff);
 		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 	}
@@ -102,7 +102,7 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( splash_coin_w )
 {
-	if (ACCESSING_MSB){
+	if (ACCESSING_BITS_8_15){
 		switch ((offset >> 3)){
 			case 0x00:	/* Coin Lockouts */
 			case 0x01:
@@ -474,7 +474,12 @@ static void ym_irq(int state)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,ym_irq
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
+	ym_irq
 };
 
 static MACHINE_DRIVER_START( roldfrog )

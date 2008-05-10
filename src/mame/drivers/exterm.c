@@ -61,7 +61,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/dac.h"
@@ -140,7 +139,7 @@ static UINT16 exterm_trackball_port_r(running_machine *machine, int which, UINT1
 	UINT16 port;
 
 	/* Read the fake input port */
-	UINT8 trackball_pos = readinputport(3 + which);
+	UINT8 trackball_pos = input_port_read_indexed(machine, 3 + which);
 
 	/* Calculate the change from the last position. */
 	UINT8 trackball_diff = trackball_old[which] - trackball_pos;
@@ -156,8 +155,7 @@ static UINT16 exterm_trackball_port_r(running_machine *machine, int which, UINT1
 	aimpos[which] = (aimpos[which] + trackball_diff) & 0x3f;
 
 	/* Combine it with the standard input bits */
-	port = which ? input_port_1_word_r(machine, 0, mem_mask) :
-				   input_port_0_word_r(machine, 0, mem_mask);
+	port = which ? input_port_read_indexed(machine,1) : input_port_read_indexed(machine,0);
 
 	return (port & 0xc0ff) | (aimpos[which] << 8);
 }
@@ -187,7 +185,7 @@ static WRITE16_HANDLER( exterm_output_port_0_w )
 	/* All the outputs are activated on the rising edge */
 	static UINT16 last = 0;
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* Bit 0-1= Resets analog controls */
 		if ((data & 0x0001) && !(last & 0x0001))
@@ -196,11 +194,11 @@ static WRITE16_HANDLER( exterm_output_port_0_w )
 			aimpos[1] = 0;
 	}
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		/* Bit 13 = Resets the slave CPU */
 		if ((data & 0x2000) && !(last & 0x2000))
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 
 		/* Bits 14-15 = Coin counters */
 		coin_counter_w(0, data & 0x8000);
@@ -222,7 +220,7 @@ static TIMER_CALLBACK( sound_delayed_w )
 
 static WRITE16_HANDLER( sound_latch_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		timer_call_after_resynch(NULL, data & 0xff, sound_delayed_w);
 }
 
@@ -265,7 +263,7 @@ static WRITE8_HANDLER( sound_nmi_rate_w )
 static READ8_HANDLER( sound_master_latch_r )
 {
 	/* read latch and clear interrupt */
-	cpunum_set_input_line(Machine, 2, M6502_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, M6502_IRQ_LINE, CLEAR_LINE);
 	return master_sound_latch;
 }
 
@@ -273,7 +271,7 @@ static READ8_HANDLER( sound_master_latch_r )
 static READ8_HANDLER( sound_slave_latch_r )
 {
 	/* read latch and clear interrupt */
-	cpunum_set_input_line(Machine, 3, M6502_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(machine, 3, M6502_IRQ_LINE, CLEAR_LINE);
 	return slave_sound_latch;
 }
 
@@ -289,7 +287,7 @@ static WRITE8_HANDLER( sound_slave_dac_w )
 static READ8_HANDLER( sound_nmi_to_slave_r )
 {
 	/* a read from here triggers an NMI pulse to the slave */
-	cpunum_set_input_line(Machine, 3, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 3, INPUT_LINE_NMI, PULSE_LINE);
 	return 0xff;
 }
 
@@ -325,7 +323,7 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x01500000, 0x0153ffff) AM_MIRROR(0xfc000000) AM_WRITE(exterm_output_port_0_w)
 	AM_RANGE(0x01580000, 0x015bffff) AM_MIRROR(0xfc000000) AM_WRITE(sound_latch_w)
 	AM_RANGE(0x015c0000, 0x015fffff) AM_MIRROR(0xfc000000) AM_WRITE(watchdog_reset16_w)
-	AM_RANGE(0x01800000, 0x01807fff) AM_MIRROR(0xfc7f8000) AM_READWRITE(SMH_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x01800000, 0x01807fff) AM_MIRROR(0xfc7f8000) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x02800000, 0x02807fff) AM_MIRROR(0xfc7f8000) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x03000000, 0x03ffffff) AM_MIRROR(0xfc000000) AM_ROM AM_REGION(REGION_USER1, 0)
 ADDRESS_MAP_END

@@ -22,6 +22,7 @@
 
 #include "driver.h"
 #include "render.h"
+#include "deprecat.h"
 #include "includes/amiga.h"
 #include "machine/laserdsc.h"
 
@@ -50,8 +51,8 @@ static int get_lightgun_pos(const device_config *screen, int player, int *x, int
 {
 	const rectangle *visarea = video_screen_get_visible_area(screen);
 
-	int xpos = readinputportbytag_safe((player == 0) ? "GUN1X" : "GUN2X", -1);
-	int ypos = readinputportbytag_safe((player == 0) ? "GUN1Y" : "GUN2Y", -1);
+	int xpos = input_port_read_safe(screen->machine, (player == 0) ? "GUN1X" : "GUN2X", -1);
+	int ypos = input_port_read_safe(screen->machine, (player == 0) ? "GUN1Y" : "GUN2Y", -1);
 
 	if (xpos == -1 || ypos == -1)
 		return FALSE;
@@ -251,14 +252,14 @@ static CUSTOM_INPUT( lightgun_pos_r )
 static CUSTOM_INPUT( lightgun_trigger_r )
 {
 	/* read the trigger control based on the input select */
-	return (readinputportbytag("TRIGGERS") >> input_select) & 1;
+	return (input_port_read(machine, "TRIGGERS") >> input_select) & 1;
 }
 
 
 static CUSTOM_INPUT( lightgun_holster_r )
 {
 	/* read the holster control based on the input select */
-	return (readinputportbytag("TRIGGERS") >> (2 + input_select)) & 1;
+	return (input_port_read(machine, "TRIGGERS") >> (2 + input_select)) & 1;
 }
 
 
@@ -277,17 +278,17 @@ static void alg_cia_0_porta_w(UINT8 data)
 	/* swap the write handlers between ROM and bank 1 based on the bit */
 	if ((data & 1) == 0)
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_BANK1);
 
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, SMH_UNMAP);
 }
 
 
 static UINT8 alg_cia_0_porta_r(void)
 {
-	return readinputportbytag("FIRE") | 0x3f;
+	return input_port_read(Machine, "FIRE") | 0x3f;
 }
 
 

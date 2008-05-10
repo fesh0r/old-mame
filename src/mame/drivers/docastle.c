@@ -105,25 +105,48 @@ a400      sound port 2
 a800      sound port 3
 ac00      sound port 4
 
-Note:
-idsoccer seems to run on a modified version of this board which allows for
-more sprite tiles, it also has a MSM5205 chip for sample playback.
+Notes:
+------
+- idsoccer seems to run on a modified version of this board which allows for
+  more sprite tiles, it also has a MSM5205 chip for sample playback.
+
+TODO:
+-----
+
+- third CPU
+- dip switch reading bug. dorunrun and docastle are VERY timing sensitive, and
+  dip switch reading will fail if the main CPU is running at the nominally correct
+  4MHz speed. This is kludge by slighly lowering the speed to 3.98MHz.
+- the dorunrun attract mode sequence is also very timing sensitive. The behaviour
+  of the "dorunru2" set, verified on the real board, with all dips in the OFF
+  position (easiest difficulty setting), should be, for the first 12 rounds of
+  demo play:
+  1) Mr do moves right. Kills all monsters and a letter 'E'.
+  2) Mr do moves Left. Picks up 'A' letter, but dies.
+  3) Mr do moves right. Kills all monsters.
+  4) Mr do moves left. Kills 'X' monster.
+  5) Mr do moves right.
+  6) Mr do moves left. Get 'T' monster.
+  7) Mr do moves right.
+  8) Mr do moves left. Kills 'E' monster - but already has this.
+  9) Mr do moves right.
+  10) Mr do moves left. Kills 'R' monster.
+  11) Mr do moves right.
+  12) Mr do moves. Kills 'A' monster. Shows winning extra Mr do.
+
+  Small changes to the CPU speed alter the demo timing and can cause the above
+  sequence not to work (e.g. Mr Do might not fill all monsters at once on the
+  first round). The 3.98MHz speed makes the sequence work.
+  Note that this only works in the dorunru2 set. The dorunrun set works slightly
+  differently, however it hasn't been compared with the real board so it might be
+  right.
+- unknown ports 0 and 2
+- bad communication in idsoccer
+- adpcm status in idsoccer
+- real values for the adpcm interface in idsoccer
+- handle flipscreen on/off based on address line A7 (cX0X/cX8X)
 
 ***************************************************************************/
-
-/*
-
-    TODO:
-
-    - third CPU
-    - dip switch reading bug
-    - unknown ports 0 and 2
-    - bad communication in idsoccer
-    - adpcm status in idsoccer
-    - real values for the adpcm interface in idsoccer
-    - handle flipscreen on/off based on address line A7 (cX0X/cX8X)
-
-*/
 
 #include "driver.h"
 #include "deprecat.h"
@@ -188,8 +211,8 @@ static ADDRESS_MAP_START( docastle_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9800, 0x99ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xa000, 0xa008) AM_READWRITE(docastle_shared0_r, docastle_shared1_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_RAM_WRITE(docastle_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_RAM_WRITE(docastle_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(docastle_nmitrigger_w)
 ADDRESS_MAP_END
 
@@ -232,8 +255,8 @@ static ADDRESS_MAP_START( dorunrun_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x4000, 0x9fff) AM_ROM
 	AM_RANGE(0xa000, 0xa008) AM_READWRITE(docastle_shared0_r, docastle_shared1_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xb000, 0xb3ff) AM_READWRITE(SMH_RAM, docastle_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xb400, 0xb7ff) AM_READWRITE(SMH_RAM, docastle_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb000, 0xb3ff) AM_RAM_WRITE(docastle_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xb400, 0xb7ff) AM_RAM_WRITE(docastle_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xb800, 0xb800) AM_WRITE(docastle_nmitrigger_w)
 ADDRESS_MAP_END
 
@@ -262,8 +285,8 @@ static ADDRESS_MAP_START( idsoccer_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x9fff) AM_ROM
 	AM_RANGE(0xa000, 0xa008) AM_READWRITE(docastle_shared0_r, docastle_shared1_w)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_READWRITE(SMH_RAM, docastle_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb000, 0xb3ff) AM_MIRROR(0x0800) AM_RAM_WRITE(docastle_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xb400, 0xb7ff) AM_MIRROR(0x0800) AM_RAM_WRITE(docastle_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xc000, 0xc000) AM_READWRITE(idsoccer_adpcm_status_r, idsoccer_adpcm_w)
 	AM_RANGE(0xe000, 0xe000) AM_WRITE(docastle_nmitrigger_w)
 ADDRESS_MAP_END
@@ -628,7 +651,7 @@ static const struct MSM5205interface msm5205_interface =
 static MACHINE_DRIVER_START( docastle )
 	// basic machine hardware
 //  MDRV_CPU_ADD_TAG("main", Z80, 4000000)  // 4 MHz
-	MDRV_CPU_ADD_TAG("main", Z80, 3900000)	// make dip switches work in docastle and dorunrun
+	MDRV_CPU_ADD_TAG("main", Z80, 3980000)	// make dip switches work in docastle and dorunrun and fix dorunru2 attract sequence
 	MDRV_CPU_PROGRAM_MAP(docastle_map, 0)
 	MDRV_CPU_IO_MAP(docastle_io_map, 0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
@@ -644,7 +667,7 @@ static MACHINE_DRIVER_START( docastle )
 	// video hardware
 
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_REFRESH_RATE(59.60)	// measured on pcb
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)

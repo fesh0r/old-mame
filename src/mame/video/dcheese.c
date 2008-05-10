@@ -300,7 +300,7 @@ WRITE16_HANDLER( madmax_blitter_vidparam_w )
 			break;
 
 		default:
-			logerror("%06X:write to %06X = %04X & %04x\n", activecpu_get_pc(), 0x2a0000 + 2 * offset, data, mem_mask ^ 0xffff);
+			logerror("%06X:write to %06X = %04X & %04x\n", activecpu_get_pc(), 0x2a0000 + 2 * offset, data, mem_mask);
 			break;
 	}
 }
@@ -309,7 +309,7 @@ WRITE16_HANDLER( madmax_blitter_vidparam_w )
 WRITE16_HANDLER( madmax_blitter_unknown_w )
 {
 	/* written to just before the blitter command register is written */
-  logerror("%06X:write to %06X = %04X & %04X\n", activecpu_get_pc(), 0x300000 + 2 * offset, data, mem_mask ^ 0xffff);
+  logerror("%06X:write to %06X = %04X & %04X\n", activecpu_get_pc(), 0x300000 + 2 * offset, data, mem_mask);
 }
 
 
@@ -317,9 +317,9 @@ READ16_HANDLER( madmax_blitter_vidparam_r )
 {
 	/* analog inputs seem to be hooked up here -- might not actually map to blitter */
 	if (offset == 0x02/2)
-		return readinputport(3);
+		return input_port_read_indexed(machine, 3);
 	if (offset == 0x0e/2)
-		return readinputport(4);
+		return input_port_read_indexed(machine, 4);
 
 	/* early code polls on this bit, wants it to be 0 */
 	if (offset == 0x36/2)

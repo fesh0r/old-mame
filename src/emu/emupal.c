@@ -10,7 +10,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 #define VERBOSE 0
 
@@ -75,8 +74,8 @@ struct _colortable_t
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void palette_presave(void);
-static void palette_postload(void);
+static void palette_presave(running_machine *machine, void *param);
+static void palette_postload(running_machine *machine, void *param);
 static void palette_exit(running_machine *machine);
 static void allocate_palette(running_machine *machine, palette_private *palette);
 static void allocate_color_tables(running_machine *machine, palette_private *palette);
@@ -151,29 +150,9 @@ void palette_init(running_machine *machine)
 		palette->save_bright = auto_malloc(sizeof(*palette->save_bright) * numcolors);
 		state_save_register_global_pointer(palette->save_pen, numcolors);
 		state_save_register_global_pointer(palette->save_bright, numcolors);
-		state_save_register_func_presave(palette_presave);
-		state_save_register_func_postload(palette_postload);
+		state_save_register_presave(machine, palette_presave, palette);
+		state_save_register_postload(machine, palette_postload, palette);
 	}
-}
-
-
-/*-------------------------------------------------
-    palette_config - palette initialization that
-    takes place after the display is created
--------------------------------------------------*/
-
-void palette_config(running_machine *machine)
-{
-	int i;
-
-	/* now let the driver modify the initial palette and colortable */
-	if (machine->config->init_palette)
-		(*machine->config->init_palette)(machine, memory_region(REGION_PROMS));
-
-	/* set the color table base for each graphics element */
-	for (i = 0; i < MAX_GFX_ELEMENTS; i++)
-		if (machine->gfx[i] != NULL)
-			machine->gfx[i]->color_base = machine->config->gfxdecodeinfo[i].color_codes_start;
 }
 
 
@@ -554,17 +533,17 @@ pen_t get_white_pen(running_machine *machine)
     for saving
 -------------------------------------------------*/
 
-static void palette_presave(void)
+static void palette_presave(running_machine *machine, void *param)
 {
-	int numcolors = palette_get_num_colors(Machine->palette);
-	palette_private *palette = Machine->palette_data;
+	int numcolors = palette_get_num_colors(machine->palette);
+	palette_private *palette = param;
 	int index;
 
 	/* fill the save arrays with updated pen and brightness information */
 	for (index = 0; index < numcolors; index++)
 	{
-		palette->save_pen[index] = palette_entry_get_color(Machine->palette, index);
-		palette->save_bright[index] = palette_entry_get_contrast(Machine->palette, index);
+		palette->save_pen[index] = palette_entry_get_color(machine->palette, index);
+		palette->save_bright[index] = palette_entry_get_contrast(machine->palette, index);
 	}
 }
 
@@ -574,17 +553,17 @@ static void palette_presave(void)
     actually update the palette
 -------------------------------------------------*/
 
-static void palette_postload(void)
+static void palette_postload(running_machine *machine, void *param)
 {
-	int numcolors = palette_get_num_colors(Machine->palette);
-	palette_private *palette = Machine->palette_data;
+	int numcolors = palette_get_num_colors(machine->palette);
+	palette_private *palette = param;
 	int index;
 
 	/* reset the pen and brightness for each entry */
 	for (index = 0; index < numcolors; index++)
 	{
-		palette_entry_set_color(Machine->palette, index, palette->save_pen[index]);
-		palette_entry_set_contrast(Machine->palette, index, palette->save_bright[index]);
+		palette_entry_set_color(machine->palette, index, palette->save_pen[index]);
+		palette_entry_set_contrast(machine->palette, index, palette->save_bright[index]);
 	}
 }
 

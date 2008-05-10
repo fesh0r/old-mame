@@ -108,6 +108,7 @@ device_config *device_list_add(device_config **listheadptr, device_type type, co
 	device->static_config = NULL;
 	device->inline_config = (configlen == 0) ? NULL : (device->tag + strlen(tag) + 1);
 	device->token = NULL;
+	device->machine = NULL;
 	strcpy(device->tag, tag);
 
 	/* reset the inline_config to 0 */
@@ -203,8 +204,6 @@ const device_config *device_list_first(const device_config *listhead, device_typ
 {
 	const device_config *curdev;
 
-	assert(type != NULL);
-
 	/* scan forward starting with the list head */
 	for (curdev = listhead; curdev != NULL; curdev = curdev->next)
 		if (device_matches_type(curdev, type))
@@ -225,7 +224,6 @@ const device_config *device_list_next(const device_config *prevdevice, device_ty
 	const device_config *curdev;
 
 	assert(prevdevice != NULL);
-	assert(type != NULL);
 
 	/* scan forward starting with the item after the previous one */
 	for (curdev = prevdevice->next; curdev != NULL; curdev = curdev->next)
@@ -245,7 +243,6 @@ const device_config *device_list_find_by_tag(const device_config *listhead, devi
 {
 	const device_config *curdev;
 
-	assert(type != NULL);
 	assert(tag != NULL);
 
 	/* find the device in the list */

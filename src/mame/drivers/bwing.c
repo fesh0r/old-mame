@@ -78,14 +78,14 @@ static INTERRUPT_GEN ( bwp1_interrupt )
 		break;
 
 		case 1:
-			if (~readinputport(4) & 0x03)
+			if (~input_port_read_indexed(machine, 4) & 0x03)
 				{ if (!coin) { coin = 1; cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE); } }
 			else
 				coin = 0;
 		break;
 
 		case 2:
-			if (readinputport(5)) cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
+			if (input_port_read_indexed(machine, 5)) cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 		break;
 	}
 }
@@ -104,11 +104,11 @@ static WRITE8_HANDLER( bwp3_nmimask_w ) { bwp3_nmimask = data & 0x80; }
 
 static READ8_HANDLER( bwp1_io_r )
 {
-	if (offset == 0) return(readinputport(0));
-	if (offset == 1) return(readinputport(1));
-	if (offset == 2) return(readinputport(2));
-	if (offset == 3) return(readinputport(3));
-	if (offset == 4) return(readinputport(4));
+	if (offset == 0) return(input_port_read_indexed(machine, 0));
+	if (offset == 1) return(input_port_read_indexed(machine, 1));
+	if (offset == 2) return(input_port_read_indexed(machine, 2));
+	if (offset == 3) return(input_port_read_indexed(machine, 3));
+	if (offset == 4) return(input_port_read_indexed(machine, 4));
 
 	return((bwp123_membase[0])[0x1b00 + offset]);
 }
@@ -119,16 +119,16 @@ static WRITE8_HANDLER( bwp1_ctrl_w )
 	switch (offset)
 	{
 		// MSSTB
-		case 0: cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, ASSERT_LINE); break;
+		case 0: cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, ASSERT_LINE); break;
 
 		// IRQACK
-		case 1: cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, CLEAR_LINE); break;
+		case 1: cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, CLEAR_LINE); break;
 
 		// FIRQACK
-		case 2: cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, CLEAR_LINE); break;
+		case 2: cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, CLEAR_LINE); break;
 
 		// NMIACK
-		case 3: cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE); break;
+		case 3: cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE); break;
 
 		// SWAP(bank-swaps sprite RAM between 1800 & 1900; ignored bc. they're treated as a single chunk.)
 		case 4: break;
@@ -136,7 +136,7 @@ static WRITE8_HANDLER( bwp1_ctrl_w )
 		// SNDREQ
 		case 5:
 			if (data == 0x80) // protection trick to screw CPU1 & 3
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, ASSERT_LINE); // SNMI
+				cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE); // SNMI
 			else
 			if (ffcount < MAX_SOUNDS)
 			{
@@ -163,13 +163,13 @@ static WRITE8_HANDLER( bwp2_ctrl_w )
 {
 	switch (offset)
 	{
-		case 0: cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, ASSERT_LINE); break; // SMSTB
+		case 0: cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, ASSERT_LINE); break; // SMSTB
 
-		case 1: cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, CLEAR_LINE); break;
+		case 1: cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, CLEAR_LINE); break;
 
-		case 2: cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, CLEAR_LINE); break;
+		case 2: cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, CLEAR_LINE); break;
 
-		case 3: cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE); break;
+		case 3: cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE); break;
 	}
 
 	#if BW_DEBUG

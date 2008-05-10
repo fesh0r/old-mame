@@ -533,7 +533,6 @@ Newer version of the I/O chip ?
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoic.h"
 
 #define TOPSPEED_ROAD_COLORS
@@ -762,8 +761,9 @@ static const tile_get_info_func PC080SN_get_tile_info[PC080SN_MAX_CHIPS][2] =
 	{ PC080SN_get_bg_tile_info_1, PC080SN_get_fg_tile_info_1 }
 };
 
-static void PC080SN_restore_scroll(int chip)
+static STATE_POSTLOAD( PC080SN_restore_scroll )
 {
+	int chip = (FPTR)param;
 	int flip;
 
 	PC080SN_bgscrollx[chip][0] = -PC080SN_ctrl[chip][0];
@@ -779,7 +779,7 @@ static void PC080SN_restore_scroll(int chip)
 
 /* opaque parameter is no longer supported and will be removed */
 
-void PC080SN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int y_invert,
+void PC080SN_vh_start(running_machine *machine,int chips,int gfxnum,int x_offset,int y_offset,int y_invert,
 				int opaque,int dblwidth)
 {
 	int i;
@@ -817,7 +817,7 @@ void PC080SN_vh_start(int chips,int gfxnum,int x_offset,int y_offset,int y_inver
 
 		state_save_register_item_pointer("PC080SN", i, PC080SN_ram[i], PC080SN_RAM_SIZE/2);
 		state_save_register_item_array("PC080SN", i, PC080SN_ctrl[i]);
-		state_save_register_func_postload_int(PC080SN_restore_scroll, i);
+		state_save_register_postload(machine, PC080SN_restore_scroll, (void *)(FPTR)i);
 
 		/* use the given gfx set for bg tiles */
 		PC080SN_bg_gfx[i] = gfxnum;
@@ -1233,8 +1233,6 @@ void PC090OJ_vh_start(int gfxnum,int x_offset,int y_offset,int use_buffer)
 	state_save_register_global_pointer(PC090OJ_ram, PC090OJ_RAM_SIZE/2);
 	state_save_register_global_pointer(PC090OJ_ram_buffered, PC090OJ_RAM_SIZE/2);
 	state_save_register_global(PC090OJ_ctrl);
-
-//  state_save_register_func_postload(PC090OJ_restore);
 }
 
 READ16_HANDLER( PC090OJ_word_0_r )	// in case we find a game using 2...
@@ -1504,13 +1502,6 @@ static void TC0080VCO_dirty_chars(void)
 	TC0080VCO_chars_dirty = 1;
 }
 
-static void TC0080VCO_dirty_tilemaps(void)
-{
-	tilemap_mark_all_tiles_dirty(TC0080VCO_tilemap[0]);
-	tilemap_mark_all_tiles_dirty(TC0080VCO_tilemap[1]);
-	tilemap_mark_all_tiles_dirty(TC0080VCO_tilemap[2]);
-}
-
 static void TC0080VCO_restore_scroll(void)
 {
 	TC0080VCO_flipscreen = TC0080VCO_scroll_ram[0] & 0x0c00;
@@ -1525,6 +1516,13 @@ static void TC0080VCO_restore_scroll(void)
 	TC0080VCO_bg1_scrolly = TC0080VCO_scroll_ram[4] &0x03ff;
 }
 
+
+static STATE_POSTLOAD( TC0080VCO_postload )
+{
+	TC0080VCO_set_layer_ptrs();
+	TC0080VCO_dirty_chars();
+	TC0080VCO_restore_scroll();
+}
 
 void TC0080VCO_vh_start(running_machine *machine, int gfxnum,int has_fg0,int bg_xoffs,int bg_yoffs,int bg_flip_yoffs)
 {
@@ -1555,7 +1553,6 @@ void TC0080VCO_vh_start(running_machine *machine, int gfxnum,int has_fg0,int bg_
 
 	state_save_register_global_pointer(TC0080VCO_ram, TC0080VCO_RAM_SIZE/2);
 	state_save_register_global(TC0080VCO_has_tx);
-	state_save_register_func_postload(TC0080VCO_set_layer_ptrs);
 
 	/* Perform extra initialisations for text layer */
 	{
@@ -1563,7 +1560,6 @@ void TC0080VCO_vh_start(running_machine *machine, int gfxnum,int has_fg0,int bg_
 		TC0080VCO_char_dirty = auto_malloc(TC0080VCO_TOTAL_CHARS);
 
 		TC0080VCO_dirty_chars();
-		state_save_register_func_postload(TC0080VCO_dirty_chars);
 
 	 	/* find first empty slot to decode gfx */
 		for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
@@ -1584,8 +1580,7 @@ void TC0080VCO_vh_start(running_machine *machine, int gfxnum,int has_fg0,int bg_
 		tilemap_set_transparent_pen( TC0080VCO_tilemap[2],0 );
 	}
 
-	state_save_register_func_postload(TC0080VCO_dirty_tilemaps);	// unnecessary ?
-	state_save_register_func_postload(TC0080VCO_restore_scroll);
+	state_save_register_postload(machine, TC0080VCO_postload, NULL);
 
 	/* bg0 tilemap scrollable per pixel row */
 	tilemap_set_scroll_rows(TC0080VCO_tilemap[0],512);
@@ -2278,6 +2273,15 @@ static void TC0100SCN_restore_scroll(int chip)
 }
 
 
+static STATE_POSTLOAD( TC0100SCN_postload )
+{
+	int chip = (FPTR)param;
+
+	TC0100SCN_set_layer_ptrs(chip);
+	TC0100SCN_dirty_chars(chip);
+	TC0100SCN_restore_scroll(chip);
+}
+
 void TC0100SCN_vh_start(running_machine *machine, int chips,int gfxnum,int x_offset,int y_offset,int flip_xoffs,
 		int flip_yoffs,int flip_text_xoffs,int flip_text_yoffs,int multiscrn_xoffs)
 {
@@ -2329,10 +2333,7 @@ void TC0100SCN_vh_start(running_machine *machine, int chips,int gfxnum,int x_off
 			state_save_register_item("TC0100SCN", i, TC0100SCN_dblwidth[i]);
 		}
 
-		state_save_register_func_postload_int(TC0100SCN_set_layer_ptrs, i);
-		state_save_register_func_postload_int(TC0100SCN_dirty_chars, i);
-		state_save_register_func_postload_int(TC0100SCN_dirty_tilemaps, i);	// unnecessary ?
-		state_save_register_func_postload_int(TC0100SCN_restore_scroll, i);
+		state_save_register_postload(machine, TC0100SCN_postload, (void *)(FPTR)i);
 
 		/* find first empty slot to decode gfx */
 		for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
@@ -2610,41 +2611,41 @@ WRITE16_HANDLER( TC0100SCN_ctrl_word_2_w )
 
 READ32_HANDLER( TC0100SCN_ctrl_long_r )
 {
-	return (TC0100SCN_ctrl_word_0_r(machine,offset*2,0)<<16)|TC0100SCN_ctrl_word_0_r(machine,offset*2+1,0);
+	return (TC0100SCN_ctrl_word_0_r(machine,offset*2,0xffff)<<16)|TC0100SCN_ctrl_word_0_r(machine,offset*2+1,0xffff);
 }
 
 WRITE32_HANDLER( TC0100SCN_ctrl_long_w )
 {
-	if (ACCESSING_MSW32) TC0100SCN_ctrl_word_w(0,offset*2,data>>16,mem_mask>>16);
-	if (ACCESSING_LSW32) TC0100SCN_ctrl_word_w(0,(offset*2)+1,data&0xffff,mem_mask&0xffff);
+	if (ACCESSING_BITS_16_31) TC0100SCN_ctrl_word_w(0,offset*2,data>>16,mem_mask>>16);
+	if (ACCESSING_BITS_0_15) TC0100SCN_ctrl_word_w(0,(offset*2)+1,data&0xffff,mem_mask&0xffff);
 }
 
 READ32_HANDLER( TC0100SCN_long_r )
 {
-	return (TC0100SCN_word_0_r(machine,offset*2,0)<<16)|TC0100SCN_word_0_r(machine,offset*2+1,0);
+	return (TC0100SCN_word_0_r(machine,offset*2,0xffff)<<16)|TC0100SCN_word_0_r(machine,offset*2+1,0xffff);
 }
 
 WRITE32_HANDLER( TC0100SCN_long_w )
 {
-	if (((mem_mask & 0xff000000) == 0) || ((mem_mask & 0x00ff0000) == 0))
+	if (ACCESSING_BITS_16_31)
 	{
-		int oldword = TC0100SCN_word_0_r(machine,offset*2,0);
+		int oldword = TC0100SCN_word_0_r(machine,offset*2,0xffff);
 		int newword = data>>16;
-		if ((mem_mask & 0x00ff0000) != 0)
+		if (!ACCESSING_BITS_16_23)
 			newword |= (oldword &0x00ff);
-		if ((mem_mask & 0xff000000) != 0)
+		if (!ACCESSING_BITS_24_31)
 			newword |= (oldword &0xff00);
-		TC0100SCN_word_0_w(machine,offset*2,newword,0);
+		TC0100SCN_word_0_w(machine,offset*2,newword,0xffff);
 	}
-	if (((mem_mask & 0x0000ff00) == 0) || ((mem_mask & 0x000000ff) == 0))
+	if (ACCESSING_BITS_0_15)
 	{
-		int oldword = TC0100SCN_word_0_r(machine,(offset*2)+1,0);
+		int oldword = TC0100SCN_word_0_r(machine,(offset*2)+1,0xffff);
 		int newword = data&0xffff;
-		if ((mem_mask & 0x000000ff) != 0)
+		if (!ACCESSING_BITS_0_7)
 			newword |= (oldword &0x00ff);
-		if ((mem_mask & 0x0000ff00) != 0)
+		if (!ACCESSING_BITS_8_15)
 			newword |= (oldword &0xff00);
-		TC0100SCN_word_0_w(machine,(offset*2)+1,newword,0);
+		TC0100SCN_word_0_w(machine,(offset*2)+1,newword,0xffff);
 	}
 }
 
@@ -2917,7 +2918,7 @@ if (offset >= 0x0a)
 
 WRITE16_HANDLER( TC0360PRI_halfword_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		TC0360PRI_w(machine,offset,data & 0xff);
 #if 0
@@ -2931,7 +2932,7 @@ if (data & 0xff00)
 
 WRITE16_HANDLER( TC0360PRI_halfword_swap_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		TC0360PRI_w(machine,offset,(data >> 8) & 0xff);
 #if 0
@@ -3157,6 +3158,13 @@ static void TC0480SCP_restore_scroll(void)
 }
 
 
+static STATE_POSTLOAD( TC0480SCP_postload )
+{
+	TC0480SCP_set_layer_ptrs();
+	TC0480SCP_dirty_chars();
+	TC0480SCP_restore_scroll();
+}
+
 void TC0480SCP_vh_start(running_machine *machine, int gfxnum,int pixels,int x_offset,int y_offset,int text_xoffs,
 				int text_yoffs,int flip_xoffs,int flip_yoffs,int col_base)
 {
@@ -3194,10 +3202,7 @@ void TC0480SCP_vh_start(running_machine *machine, int gfxnum,int pixels,int x_of
 		state_save_register_global_pointer(TC0480SCP_ram, TC0480SCP_RAM_SIZE/2);
 		state_save_register_global_array(TC0480SCP_ctrl);
 		state_save_register_global(TC0480SCP_dblwidth);
-		state_save_register_func_postload(TC0480SCP_set_layer_ptrs);
-		state_save_register_func_postload(TC0480SCP_dirty_chars);
-		state_save_register_func_postload(TC0480SCP_dirty_tilemaps);	// unnecessary ?
-		state_save_register_func_postload(TC0480SCP_restore_scroll);
+		state_save_register_postload(machine, TC0480SCP_postload, NULL);
 
 		/* find first empty slot to decode gfx */
 		for (gfx_index = 0; gfx_index < MAX_GFX_ELEMENTS; gfx_index++)
@@ -3275,43 +3280,43 @@ void TC0480SCP_vh_start(running_machine *machine, int gfxnum,int pixels,int x_of
 
 READ32_HANDLER( TC0480SCP_ctrl_long_r )
 {
-	return (TC0480SCP_ctrl_word_r(machine,offset*2,0)<<16)|TC0480SCP_ctrl_word_r(machine,offset*2+1,0);
+	return (TC0480SCP_ctrl_word_r(machine,offset*2,0xffff)<<16)|TC0480SCP_ctrl_word_r(machine,offset*2+1,0xffff);
 }
 
 /* TODO: byte access ? */
 
 WRITE32_HANDLER( TC0480SCP_ctrl_long_w )
 {
-	if (ACCESSING_MSW32) TC0480SCP_ctrl_word_w(machine,offset*2,data>>16,mem_mask>>16);
-	if (ACCESSING_LSW32) TC0480SCP_ctrl_word_w(machine,(offset*2)+1,data&0xffff,mem_mask&0xffff);
+	if (ACCESSING_BITS_16_31) TC0480SCP_ctrl_word_w(machine,offset*2,data>>16,mem_mask>>16);
+	if (ACCESSING_BITS_0_15) TC0480SCP_ctrl_word_w(machine,(offset*2)+1,data&0xffff,mem_mask&0xffff);
 }
 
 READ32_HANDLER( TC0480SCP_long_r )
 {
-	return (TC0480SCP_word_r(machine,offset*2,0)<<16)|TC0480SCP_word_r(machine,offset*2+1,0);
+	return (TC0480SCP_word_r(machine,offset*2,0xffff)<<16)|TC0480SCP_word_r(machine,offset*2+1,0xffff);
 }
 
 WRITE32_HANDLER( TC0480SCP_long_w )
 {
-	if (((mem_mask & 0xff000000) == 0) || ((mem_mask & 0x00ff0000) == 0))
+	if (ACCESSING_BITS_16_31)
 	{
-		int oldword = TC0480SCP_word_r(machine,offset*2,0);
+		int oldword = TC0480SCP_word_r(machine,offset*2,0xffff);
 		int newword = data>>16;
-		if ((mem_mask & 0x00ff0000) != 0)
+		if (!ACCESSING_BITS_16_23)
 			newword |= (oldword &0x00ff);
-		if ((mem_mask & 0xff000000) != 0)
+		if (!ACCESSING_BITS_24_31)
 			newword |= (oldword &0xff00);
-		TC0480SCP_word_w(machine,offset*2,newword,0);
+		TC0480SCP_word_w(machine,offset*2,newword,0xffff);
 	}
-	if (((mem_mask & 0x0000ff00) == 0) || ((mem_mask & 0x000000ff) == 0))
+	if (ACCESSING_BITS_0_15)
 	{
-		int oldword = TC0480SCP_word_r(machine,(offset*2)+1,0);
+		int oldword = TC0480SCP_word_r(machine,(offset*2)+1,0xffff);
 		int newword = data&0xffff;
-		if ((mem_mask & 0x000000ff) != 0)
+		if (!ACCESSING_BITS_0_7)
 			newword |= (oldword &0x00ff);
-		if ((mem_mask & 0x0000ff00) != 0)
+		if (!ACCESSING_BITS_8_15)
 			newword |= (oldword &0xff00);
-		TC0480SCP_word_w(machine,(offset*2)+1,newword,0);
+		TC0480SCP_word_w(machine,(offset*2)+1,newword,0xffff);
 	}
 }
 
@@ -4689,8 +4694,9 @@ static UINT16 *TC0110PCR_ram[3];
 #define TC0110PCR_RAM_SIZE 0x2000
 
 
-static void TC0110PCR_restore_colors(int chip)
+static STATE_POSTLOAD( TC0110PCR_restore_colors )
 {
+	int chip = (FPTR)param;
 	int i,color,r=0,g=0,b=0;
 
 	for (i=0; i<(256*16); i++)
@@ -4725,35 +4731,35 @@ static void TC0110PCR_restore_colors(int chip)
 			}
 		}
 
-		palette_set_color(Machine, i + (chip << 12),MAKE_RGB(r,g,b));
+		palette_set_color(machine, i + (chip << 12),MAKE_RGB(r,g,b));
 	}
 }
 
 
-void TC0110PCR_vh_start(void)
+void TC0110PCR_vh_start(running_machine *machine)
 {
 	TC0110PCR_ram[0] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[0]));
 
 	state_save_register_global_pointer(TC0110PCR_ram[0], TC0110PCR_RAM_SIZE);
-	state_save_register_func_postload_int(TC0110PCR_restore_colors, 0);
+	state_save_register_postload(machine, TC0110PCR_restore_colors, (void *)0);
 
 	TC0110PCR_type = 0;	/* default, xBBBBBGGGGGRRRRR */
 }
 
-void TC0110PCR_1_vh_start(void)
+void TC0110PCR_1_vh_start(running_machine *machine)
 {
 	TC0110PCR_ram[1] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[1]));
 
 	state_save_register_global_pointer(TC0110PCR_ram[1], TC0110PCR_RAM_SIZE);
-	state_save_register_func_postload_int(TC0110PCR_restore_colors, 1);
+	state_save_register_postload(machine, TC0110PCR_restore_colors, (void *)1);
 }
 
-void TC0110PCR_2_vh_start(void)
+void TC0110PCR_2_vh_start(running_machine *machine)
 {
 	TC0110PCR_ram[2] = auto_malloc(TC0110PCR_RAM_SIZE * sizeof(*TC0110PCR_ram[2]));
 
 	state_save_register_global_pointer(TC0110PCR_ram[2], TC0110PCR_RAM_SIZE);
-	state_save_register_func_postload_int(TC0110PCR_restore_colors, 2);
+	state_save_register_postload(machine, TC0110PCR_restore_colors, (void *)2);
 }
 
 READ16_HANDLER( TC0110PCR_word_r )
@@ -4808,7 +4814,7 @@ WRITE16_HANDLER( TC0110PCR_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4830,7 +4836,7 @@ WRITE16_HANDLER( TC0110PCR_step1_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4853,7 +4859,7 @@ WRITE16_HANDLER( TC0110PCR_step1_word_1_w )
 		{
 			TC0110PCR_ram[1][(TC0110PCR_addr[1])] = data & 0xffff;
 			/* change a color in the second color area (4096-8191) */
-			palette_set_color_rgb(Machine,TC0110PCR_addr[1] + 4096,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(machine,TC0110PCR_addr[1] + 4096,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4876,7 +4882,7 @@ WRITE16_HANDLER( TC0110PCR_step1_word_2_w )
 		{
 			TC0110PCR_ram[2][(TC0110PCR_addr[2])] = data & 0xffff;
 			/* change a color in the second color area (8192-12288) */
-			palette_set_color_rgb(Machine,TC0110PCR_addr[2] + 8192,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+			palette_set_color_rgb(machine,TC0110PCR_addr[2] + 8192,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 			break;
 		}
 
@@ -4900,7 +4906,7 @@ WRITE16_HANDLER( TC0110PCR_step1_rbswap_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
+			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal5bit(data >> 10),pal5bit(data >> 5),pal5bit(data >> 0));
 			break;
 		}
 
@@ -4924,7 +4930,7 @@ WRITE16_HANDLER( TC0110PCR_step1_4bpg_word_w )
 		case 1:
 		{
 			TC0110PCR_ram[0][(TC0110PCR_addr[0])] = data & 0xffff;
-			palette_set_color_rgb(Machine,TC0110PCR_addr[0],pal4bit(data >> 0),pal4bit(data >> 4),pal4bit(data >> 8));
+			palette_set_color_rgb(machine,TC0110PCR_addr[0],pal4bit(data >> 0),pal4bit(data >> 4),pal4bit(data >> 8));
 			break;
 		}
 
@@ -4945,22 +4951,22 @@ READ8_HANDLER( TC0220IOC_r )
 	switch (offset)
 	{
 		case 0x00:	/* IN00-07 (DSA) */
-			return input_port_0_r(machine,0);
+			return input_port_read_indexed(machine, 0);
 
 		case 0x01:	/* IN08-15 (DSB) */
-			return input_port_1_r(machine,0);
+			return input_port_read_indexed(machine, 1);
 
 		case 0x02:	/* IN16-23 (1P) */
-			return input_port_2_r(machine,0);
+			return input_port_read_indexed(machine, 2);
 
 		case 0x03:	/* IN24-31 (2P) */
-			return input_port_3_r(machine,0);
+			return input_port_read_indexed(machine, 3);
 
 		case 0x04:	/* coin counters and lockout */
 			return TC0220IOC_regs[4];
 
 		case 0x07:	/* INB0-7 (coin) */
-			return input_port_4_r(machine,0);
+			return input_port_read_indexed(machine, 4);
 
 		default:
 logerror("PC %06x: warning - read TC0220IOC address %02x\n",activecpu_get_pc(),offset);
@@ -5022,7 +5028,7 @@ READ16_HANDLER( TC0220IOC_halfword_port_r )
 
 WRITE16_HANDLER( TC0220IOC_halfword_port_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		TC0220IOC_port_w( machine, offset, data & 0xff );
 }
 
@@ -5033,7 +5039,7 @@ READ16_HANDLER( TC0220IOC_halfword_portreg_r )
 
 WRITE16_HANDLER( TC0220IOC_halfword_portreg_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		TC0220IOC_portreg_w( machine, offset, data & 0xff );
 }
 
@@ -5044,7 +5050,7 @@ READ16_HANDLER( TC0220IOC_halfword_byteswap_port_r )
 
 WRITE16_HANDLER( TC0220IOC_halfword_byteswap_port_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		TC0220IOC_port_w( machine, offset, (data>>8) & 0xff );
 }
 
@@ -5055,7 +5061,7 @@ READ16_HANDLER( TC0220IOC_halfword_byteswap_portreg_r )
 
 WRITE16_HANDLER( TC0220IOC_halfword_byteswap_portreg_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		TC0220IOC_portreg_w( machine, offset, (data>>8) & 0xff );
 }
 
@@ -5066,7 +5072,7 @@ READ16_HANDLER( TC0220IOC_halfword_r )
 
 WRITE16_HANDLER( TC0220IOC_halfword_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		TC0220IOC_w(machine,offset,data & 0xff);
 	else
 	{
@@ -5085,7 +5091,7 @@ READ16_HANDLER( TC0220IOC_halfword_byteswap_r )
 
 WRITE16_HANDLER( TC0220IOC_halfword_byteswap_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		TC0220IOC_w(machine,offset,(data >> 8) & 0xff);
 	else
 	{
@@ -5106,22 +5112,22 @@ READ8_HANDLER( TC0510NIO_r )
 	switch (offset)
 	{
 		case 0x00:	/* DSA */
-			return input_port_0_r(machine,0);
+			return input_port_read_indexed(machine, 0);
 
 		case 0x01:	/* DSB */
-			return input_port_1_r(machine,0);
+			return input_port_read_indexed(machine, 1);
 
 		case 0x02:	/* 1P */
-			return input_port_2_r(machine,0);
+			return input_port_read_indexed(machine, 2);
 
 		case 0x03:	/* 2P */
-			return input_port_3_r(machine,0);
+			return input_port_read_indexed(machine, 3);
 
 		case 0x04:	/* coin counters and lockout */
 			return TC0510NIO_regs[4];
 
 		case 0x07:	/* coin */
-			return input_port_4_r(machine,0);
+			return input_port_read_indexed(machine, 4);
 
 		default:
 logerror("PC %06x: warning - read TC0510NIO address %02x\n",activecpu_get_pc(),offset);
@@ -5159,7 +5165,7 @@ READ16_HANDLER( TC0510NIO_halfword_r )
 
 WRITE16_HANDLER( TC0510NIO_halfword_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		TC0510NIO_w(machine,offset,data & 0xff);
 	else
 	{
@@ -5189,22 +5195,22 @@ READ8_HANDLER( TC0640FIO_r )
 	switch (offset)
 	{
 		case 0x00:	/* DSA */
-			return input_port_0_r(machine,0);
+			return input_port_read_indexed(machine, 0);
 
 		case 0x01:	/* DSB */
-			return input_port_1_r(machine,0);
+			return input_port_read_indexed(machine, 1);
 
 		case 0x02:	/* 1P */
-			return input_port_2_r(machine,0);
+			return input_port_read_indexed(machine, 2);
 
 		case 0x03:	/* 2P */
-			return input_port_3_r(machine,0);
+			return input_port_read_indexed(machine, 3);
 
 		case 0x04:	/* coin counters and lockout */
 			return TC0640FIO_regs[4];
 
 		case 0x07:	/* coin */
-			return input_port_4_r(machine,0);
+			return input_port_read_indexed(machine, 4);
 
 		default:
 logerror("PC %06x: warning - read TC0640FIO address %02x\n",activecpu_get_pc(),offset);
@@ -5242,7 +5248,7 @@ READ16_HANDLER( TC0640FIO_halfword_r )
 
 WRITE16_HANDLER( TC0640FIO_halfword_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		TC0640FIO_w(machine,offset,data & 0xff);
 	else
 	{
@@ -5258,7 +5264,7 @@ READ16_HANDLER( TC0640FIO_halfword_byteswap_r )
 
 WRITE16_HANDLER( TC0640FIO_halfword_byteswap_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		TC0640FIO_w(machine,offset,(data >> 8) & 0xff);
 	else
 	{

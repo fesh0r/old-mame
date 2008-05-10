@@ -161,14 +161,14 @@ static READ8_HANDLER( mux_r )
 {
 	switch(mux_data)
 	{
-		case 0x00: return readinputport(0);
-		case 0x01: return readinputport(1);
-		case 0x02: return readinputport(2);
-		case 0x04: return readinputport(3);
-		case 0x08: return readinputport(4);
+		case 0x00: return input_port_read_indexed(machine, 0);
+		case 0x01: return input_port_read_indexed(machine, 1);
+		case 0x02: return input_port_read_indexed(machine, 2);
+		case 0x04: return input_port_read_indexed(machine, 3);
+		case 0x08: return input_port_read_indexed(machine, 4);
 		/* FIXME: Was this a quick hack? */
-		case 0x10: return 0xff; //return readinputport(5);
-		case 0x20: return 0xff; //return readinputport(6);
+		case 0x10: return 0xff; //return input_port_read_indexed(machine, 5);
+		case 0x20: return 0xff; //return input_port_read_indexed(machine, 6);
 	}
 	return 0xff;
 }
@@ -204,9 +204,9 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa7fc, 0xa7fc) AM_WRITE(prot_lock_w)
 	AM_RANGE(0xa7ff, 0xa7ff) AM_WRITE(eeprom_w)
 	AM_RANGE(0xaf80, 0xafff) AM_READWRITE(custom_ram_r, custom_ram_w) AM_BASE(&cus_ram) /*260d - 2626*/
-	AM_RANGE(0xb000, 0xb0ff) AM_READWRITE(SMH_RAM, paletteram_RRRGGGBB_w) AM_BASE(&paletteram) /*Wrong format*/
-	AM_RANGE(0xc000, 0xc3ff) AM_READWRITE(SMH_RAM, yumefuda_vram_w) AM_BASE(&videoram)
-	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(SMH_RAM, yumefuda_cram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb000, 0xb0ff) AM_RAM_WRITE(paletteram_RRRGGGBB_w) AM_BASE(&paletteram) /*Wrong format*/
+	AM_RANGE(0xc000, 0xc3ff) AM_RAM_WRITE(yumefuda_vram_w) AM_BASE(&videoram)
+	AM_RANGE(0xd000, 0xd3ff) AM_RAM_WRITE(yumefuda_cram_w) AM_BASE(&colorram)
 	AM_RANGE(0xe000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 

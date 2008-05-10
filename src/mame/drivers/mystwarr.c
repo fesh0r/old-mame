@@ -117,9 +117,9 @@ static NVRAM_HANDLER(gaiapols)
 
 static READ16_HANDLER( mweeprom_r )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
-		int res = readinputport(1) | EEPROM_read_bit();
+		int res = input_port_read_indexed(machine, 1) | EEPROM_read_bit();
 
 		if (init_eeprom_count)
 		{
@@ -137,9 +137,9 @@ static READ16_HANDLER( mweeprom_r )
 
 static READ16_HANDLER( vseeprom_r )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
-		int res = readinputport(1) | EEPROM_read_bit();
+		int res = input_port_read_indexed(machine, 1) | EEPROM_read_bit();
 
 		if (init_eeprom_count)
 		{
@@ -157,7 +157,7 @@ static READ16_HANDLER( vseeprom_r )
 
 static WRITE16_HANDLER( mweeprom_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		EEPROM_write_bit((data&0x0100) ? 1 : 0);
 		EEPROM_set_cs_line((data&0x0200) ? CLEAR_LINE : ASSERT_LINE);
@@ -171,17 +171,17 @@ static WRITE16_HANDLER( mweeprom_w )
 
 static READ16_HANDLER( dddeeprom_r )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
-		return (readinputport(1) | EEPROM_read_bit())<<8;
+		return (input_port_read_indexed(machine, 1) | EEPROM_read_bit())<<8;
 	}
 
-	return readinputport(3);
+	return input_port_read_indexed(machine, 3);
 }
 
 static WRITE16_HANDLER( mmeeprom_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		EEPROM_write_bit((data&0x01) ? 1 : 0);
 		EEPROM_set_cs_line((data&0x02) ? CLEAR_LINE : ASSERT_LINE);
@@ -305,7 +305,7 @@ static WRITE16_HANDLER( irq_ack_w )
 {
 	K056832_b_word_w(machine, offset, data, mem_mask);
 
-	if (offset == 3 && ACCESSING_LSB)
+	if (offset == 3 && ACCESSING_BITS_0_7)
 	{
 		mw_irq_control = data&0xff;
 
@@ -316,27 +316,27 @@ static WRITE16_HANDLER( irq_ack_w )
 
 static READ16_HANDLER( player1_r )
 {
-	return readinputport(2) | (readinputport(3)<<8);
+	return input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 3)<<8);
 }
 
 static READ16_HANDLER( player2_r )
 {
-	return readinputport(4) | (readinputport(5)<<8);
+	return input_port_read_indexed(machine, 4) | (input_port_read_indexed(machine, 5)<<8);
 }
 
 static READ16_HANDLER( mmplayer1_r )
 {
-	return readinputport(2) | (readinputport(4)<<8);
+	return input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 4)<<8);
 }
 
 static READ16_HANDLER( mmplayer2_r )
 {
-	return readinputport(3) | (readinputport(5)<<8);
+	return input_port_read_indexed(machine, 3) | (input_port_read_indexed(machine, 5)<<8);
 }
 
 static READ16_HANDLER( mmcoins_r )
 {
-	int res = readinputport(0);
+	int res = input_port_read_indexed(machine, 0);
 
 	if (init_eeprom_count)
 	{
@@ -349,7 +349,7 @@ static READ16_HANDLER( mmcoins_r )
 
 static READ16_HANDLER( dddcoins_r )
 {
-	int res = (readinputport(0)<<8) | readinputport(2);
+	int res = (input_port_read_indexed(machine, 0)<<8) | input_port_read_indexed(machine, 2);
 
 	if (init_eeprom_count)
 	{
@@ -582,7 +582,7 @@ static READ16_HANDLER( mccontrol_r )
 
 static WRITE16_HANDLER( mccontrol_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		mw_irq_control = data>>8;
 		// bit 0 = watchdog
@@ -850,6 +850,11 @@ static GFXDECODE_START( dadandrn )
 	GFXDECODE_ENTRY( REGION_GFX3, 0, bglayout_8bpp, 0x0000, 8 )
 GFXDECODE_END
 
+static STATE_POSTLOAD( mystwarr_postload )
+{
+	reset_sound_region();
+}
+
 static MACHINE_START( mystwarr )
 {
 	/* set default bankswitch */
@@ -860,7 +865,7 @@ static MACHINE_START( mystwarr )
 
 	state_save_register_global(mw_irq_control);
 	state_save_register_global(cur_sound_region);
-	state_save_register_func_postload(reset_sound_region);
+	state_save_register_postload(machine, mystwarr_postload, NULL);
 }
 
 static MACHINE_RESET(mystwarr)

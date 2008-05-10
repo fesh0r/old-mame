@@ -8,7 +8,6 @@
 *************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "system1.h"
 
 UINT8 *system1_scroll_y;
@@ -105,10 +104,10 @@ WRITE8_HANDLER( system1_paletteram_w )
 		b = pal2bit(data >> 6);
 	}
 
-	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
 }
 
-static void system1_postload(void)
+static STATE_POSTLOAD( system1_postload )
 {
 	memset(sprite_onscreen_map, 255, 256*256);
 	memset(bg_dirtybuffer, 1, 1024);
@@ -124,7 +123,7 @@ VIDEO_START( system1 )
 
 	tmp_bitmap = video_screen_auto_bitmap_alloc(machine->primary_screen);
 
-	state_save_register_func_postload(system1_postload);
+	state_save_register_postload(machine, system1_postload, NULL);
 	state_save_register_global(system1_background_memory);
 	state_save_register_global(system1_video_mode);
 
@@ -145,7 +144,7 @@ VIDEO_START( wbml )
 
 	system1_sprite_xoffset = 1+7*2;
 
-	state_save_register_func_postload(system1_postload);
+	state_save_register_postload(machine, system1_postload, NULL);
 	state_save_register_global(system1_background_memory);
 	state_save_register_global(system1_video_mode);
 

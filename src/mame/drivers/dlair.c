@@ -295,7 +295,7 @@ static MACHINE_RESET( dlair )
 	if (laserdisc_type & LASERDISC_TYPE_VARIABLE)
 	{
 		laserdisc_type &= ~LASERDISC_TYPE_MASK;
-		laserdisc_type |= (readinputportbytag("DSW2") & 0x08) ? LASERDISC_TYPE_LDV1000 : LASERDISC_TYPE_PR7820;
+		laserdisc_type |= (input_port_read(machine, "DSW2") & 0x08) ? LASERDISC_TYPE_LDV1000 : LASERDISC_TYPE_PR7820;
 	}
 	laserdisc_reset(discinfo, laserdisc_type & LASERDISC_TYPE_MASK);
 }
@@ -787,6 +787,8 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_0_r,
 	input_port_1_r
 };

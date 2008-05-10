@@ -21,7 +21,7 @@ static void poly17_init(void);
 static void counter_set_out(int which, int gate);
 static TIMER_CALLBACK( counter_callback );
 static TIMER_CALLBACK( clock_counter_0_ff );
-static void update_grudge_steering(void);
+static void update_grudge_steering(running_machine *machine);
 
 /* global data */
 UINT8 balsente_shooter;
@@ -123,7 +123,7 @@ static TIMER_CALLBACK( interrupt_timer )
 
 	/* if this is Grudge Match, update the steering */
 	if (grudge_steering_result & 0x80)
-		update_grudge_steering();
+		update_grudge_steering(machine);
 
 	/* if we're a shooter, we do a little more work */
 	if (balsente_shooter)
@@ -133,8 +133,8 @@ static TIMER_CALLBACK( interrupt_timer )
 		/* we latch the beam values on the first interrupt after VBLANK */
 		if (param == 64 && balsente_shooter)
 		{
-			balsente_shooter_x = readinputport(8);
-			balsente_shooter_y = readinputport(9);
+			balsente_shooter_x = input_port_read_indexed(machine, 8);
+			balsente_shooter_y = input_port_read_indexed(machine, 9);
 		}
 
 		/* which bits get returned depends on which scanline we're at */
@@ -611,7 +611,7 @@ INTERRUPT_GEN( balsente_update_analog_inputs )
 	/* ports are read once a frame, just at varying intervals. To get around this, we */
 	/* read all the analog inputs at VBLANK time and just return the cached values. */
 	for (i = 0; i < 4; i++)
-		analog_input_data[i] = readinputport(4 + i);
+		analog_input_data[i] = input_port_read_indexed(machine, 4 + i);
 }
 
 
@@ -1014,8 +1014,8 @@ WRITE8_HANDLER( balsente_counter_control_w )
 	counter_set_gate(0, (data >> 1) & 1);
 
 	/* bits D2 and D4 control the clear/reset flags on the flip-flop that feeds counter 0 */
-	if (!(data & 0x04)) set_counter_0_ff(Machine, 1);
-	if (!(data & 0x10)) set_counter_0_ff(Machine, 0);
+	if (!(data & 0x04)) set_counter_0_ff(machine, 1);
+	if (!(data & 0x10)) set_counter_0_ff(machine, 0);
 
 	/* bit 5 clears the NMI interrupt; recompute the I/O state now */
 	m6850_update_io();
@@ -1122,7 +1122,7 @@ WRITE8_HANDLER( balsente_register_addr_w )
 
 READ8_HANDLER( nstocker_port2_r )
 {
-	return (readinputport(2) & 0xf0) | nstocker_bits;
+	return (input_port_read_indexed(machine, 2) & 0xf0) | nstocker_bits;
 }
 
 
@@ -1161,15 +1161,15 @@ READ8_HANDLER( spiker_expand_r )
 }
 
 
-static void update_grudge_steering(void)
+static void update_grudge_steering(running_machine *machine)
 {
 	UINT8 wheel[3];
 	INT8 diff[3];
 
 	/* read the current steering values */
-	wheel[0] = readinputport(4);
-	wheel[1] = readinputport(5);
-	wheel[2] = readinputport(6);
+	wheel[0] = input_port_read_indexed(machine, 4);
+	wheel[1] = input_port_read_indexed(machine, 5);
+	wheel[2] = input_port_read_indexed(machine, 6);
 
 	/* diff the values */
 	diff[0] = wheel[0] - grudge_last_steering[0];
@@ -1219,22 +1219,22 @@ READ8_HANDLER( grudge_steering_r )
 
 READ8_HANDLER( shrike_shared_6809_r )
 {
-  UINT16 mem_mask = offset & 1 ? 0xff : 0xff00;
+  UINT16 mem_mask = offset & 1 ? 0xff00 : 0x00ff;
 
   switch( offset )
   {
     case 6: // return OK for 68k status register until motors hooked up
       return 0;
     default:
-      return ( shrike_shared[offset >> 1] & mem_mask ) >> ( ~mem_mask & 8 );
+      return ( shrike_shared[offset >> 1] & ~mem_mask ) >> ( mem_mask & 8 );
   }
 }
 
 
 WRITE8_HANDLER( shrike_shared_6809_w )
 {
-  UINT16 mem_mask = offset & 1 ? 0xff : 0xff00;
-  shrike_shared[offset >> 1] = ( shrike_shared[offset >> 1] & ~mem_mask ) | ( data << ( ~mem_mask & 0x8 ) );
+  UINT16 mem_mask = offset & 1 ? 0xff00 : 0x00ff;
+  shrike_shared[offset >> 1] = ( shrike_shared[offset >> 1] & mem_mask ) | ( data << ( mem_mask & 0x8 ) );
 }
 
 // uses movep, so writes even 8 bit addresses to odd 16 bit addresses, reads as 16 bit from odd addresses
@@ -1246,6 +1246,6 @@ WRITE16_HANDLER( shrike_io_68k_w )
 
 READ16_HANDLER( shrike_io_68k_r )
 {
-  return ( shrike_io[offset] & ~mem_mask ) >> ( 8 & mem_mask );
+  return ( shrike_io[offset] & mem_mask ) >> ( 8 & ~mem_mask );
 }
 

@@ -79,7 +79,7 @@
 static MACHINE_START( grchamp )
 {
 	/* if the coin system is 1 way, lock Coin B (Page 40) */
-	if (readinputport(1) & 0x10)
+	if (input_port_read_indexed(machine, 1) & 0x10)
 		coin_lockout_w(1, 1);
 }
 
@@ -202,7 +202,7 @@ static WRITE8_HANDLER( led_board_w )
 {
 	static const UINT8 ls247_map[16] =
 		{ 0x3f,0x06,0x5b,0x4f,0x66,0x6d,0x7d,0x07,0x7f,0x6f,0x58,0x4c,0x62,0x69,0x78,0x00 };
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 
 	switch (offset)
 	{
@@ -354,28 +354,28 @@ INLINE UINT8 get_pc3259_bits(grchamp_state *state, int offs)
 
 static READ8_HANDLER( pc3259_0_r )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	return get_pc3259_bits(state, 0);
 }
 
 
 static READ8_HANDLER( pc3259_1_r )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	return get_pc3259_bits(state, 1);
 }
 
 
 static READ8_HANDLER( pc3259_2_r )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	return get_pc3259_bits(state, 2);
 }
 
 
 static READ8_HANDLER( pc3259_3_r )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	return get_pc3259_bits(state, 3);
 }
 
@@ -389,7 +389,7 @@ static READ8_HANDLER( pc3259_3_r )
 
 static READ8_HANDLER( sub_to_main_comm_r )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	return state->comm_latch;
 }
 
@@ -410,7 +410,7 @@ static WRITE8_HANDLER( main_to_sub_comm_w )
 
 static READ8_HANDLER( main_to_sub_comm_r )
 {
-	grchamp_state *state = Machine->driver_data;
+	grchamp_state *state = machine->driver_data;
 	return state->comm_latch2[offset];
 }
 
@@ -452,16 +452,20 @@ static WRITE8_HANDLER( grchamp_portB_2_w )
 
 static const struct AY8910interface ay8910_interface_1 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	grchamp_portA_0_w,
 	grchamp_portB_0_w
 };
 
 static const struct AY8910interface ay8910_interface_3 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	grchamp_portA_2_w,
 	grchamp_portB_2_w
 };
@@ -543,9 +547,9 @@ ADDRESS_MAP_END
 /* complete memory map derived from schematics */
 static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
-	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(SMH_RAM, grchamp_left_w) AM_BASE_MEMBER(grchamp_state, leftram)
-	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(SMH_RAM, grchamp_right_w) AM_BASE_MEMBER(grchamp_state, rightram)
-	AM_RANGE(0x3000, 0x37ff) AM_READWRITE(SMH_RAM, grchamp_center_w) AM_BASE_MEMBER(grchamp_state, centerram)
+	AM_RANGE(0x2000, 0x27ff) AM_RAM_WRITE(grchamp_left_w) AM_BASE_MEMBER(grchamp_state, leftram)
+	AM_RANGE(0x2800, 0x2fff) AM_RAM_WRITE(grchamp_right_w) AM_BASE_MEMBER(grchamp_state, rightram)
+	AM_RANGE(0x3000, 0x37ff) AM_RAM_WRITE(grchamp_center_w) AM_BASE_MEMBER(grchamp_state, centerram)
 	AM_RANGE(0x4000, 0x43ff) AM_MIRROR(0x0400) AM_RAM
 	AM_RANGE(0x5000, 0x6fff) AM_ROM
 ADDRESS_MAP_END

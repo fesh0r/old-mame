@@ -121,7 +121,7 @@ static WRITE32_HANDLER( flash_w )
 
 			// write game settings
 
-			if(ACCESSING_LSW32)
+			if(ACCESSING_BITS_0_15)
 				rom[BYTE_XOR_BE(offset*2 + 1)] = data & 0xffff;
 			else
 				rom[BYTE_XOR_BE(offset*2 + 0)] = (data & 0xffff0000) >> 16;
@@ -142,7 +142,7 @@ static WRITE32_HANDLER( vram_w )
 {
 	UINT32 *dest = &vram[offset+(0x40000/4)*vbuffer];
 
-	if (mem_mask == 0)
+	if (mem_mask == 0xffffffff)
 	{
 		if (~data & 0x80000000)
 			*dest = (*dest & 0x0000ffff) | (data & 0xffff0000);
@@ -150,8 +150,8 @@ static WRITE32_HANDLER( vram_w )
 		if (~data & 0x00008000)
 			*dest = (*dest & 0xffff0000) | (data & 0x0000ffff);
 	}
-	else if (((mem_mask == 0x0000ffff) && (~data & 0x80000000)) ||
-	    	 ((mem_mask == 0xffff0000) && (~data & 0x00008000)))
+	else if (((mem_mask == 0xffff0000) && (~data & 0x80000000)) ||
+	    	 ((mem_mask == 0x0000ffff) && (~data & 0x00008000)))
 		COMBINE_DATA(dest);
 }
 
@@ -182,7 +182,7 @@ static READ32_HANDLER( vblank_r )
 {
 	/* burn a bunch of cycles because this is polled frequently during busy loops */
 	activecpu_adjust_icount(-100);
-	return input_port_0_dword_r(machine, offset, 0);
+	return input_port_read_indexed(machine, 0);
 }
 
 static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -559,7 +559,7 @@ static DRIVER_INIT( xfiles )
 	rom[BYTE4_XOR_BE(0x3aa933)] = 0;
 
 //  protection related ?
-//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0c8b440, 0xf0c8b447, 0, 0, SMH_NOP );
+//  memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf0c8b440, 0xf0c8b447, 0, 0, SMH_NOP );
 
 	flash_roms = 2;
 }
@@ -579,7 +579,7 @@ static DRIVER_INIT( kdynastg )
 	rom[BYTE4_XOR_BE(0x3a45c9)] = 0;
 
 //  protection related ?
-//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x12341234, 0x12341243, 0, 0, SMH_NOP );
+//  memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x12341234, 0x12341243, 0, 0, SMH_NOP );
 
 	flash_roms = 4;
 }

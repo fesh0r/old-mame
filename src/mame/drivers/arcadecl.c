@@ -133,7 +133,7 @@ static READ16_HANDLER( adpcm_r )
 
 static WRITE16_HANDLER( adpcm_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		OKIM6295_data_0_w(machine, offset, (data >> 8) & 0xff);
 }
 
@@ -154,7 +154,7 @@ static WRITE16_HANDLER( latch_w )
     */
 
 	/* lower byte being modified? */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		OKIM6295_set_bank_base(0, (data & 0x80) ? 0x40000 : 0x00000);
 		atarigen_set_oki6295_vol(machine, (data & 0x001f) * 100 / 0x1f);
@@ -172,10 +172,10 @@ static WRITE16_HANDLER( latch_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x200000, 0x21ffff) AM_RAM AM_BASE(&rampart_bitmap)
-	AM_RANGE(0x3c0000, 0x3c07ff) AM_READWRITE(SMH_RAM, atarigen_expanded_666_paletteram_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x3e0000, 0x3e07ff) AM_READWRITE(SMH_RAM, atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
+	AM_RANGE(0x3c0000, 0x3c07ff) AM_RAM_WRITE(atarigen_expanded_666_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e07ff) AM_RAM_WRITE(atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
 	AM_RANGE(0x3e0800, 0x3effbf) AM_RAM
-	AM_RANGE(0x3effc0, 0x3effff) AM_READWRITE(SMH_RAM, atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
+	AM_RANGE(0x3effc0, 0x3effff) AM_RAM_WRITE(atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
 	AM_RANGE(0x640000, 0x640001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x640002, 0x640003) AM_READ(input_port_1_word_r)
 	AM_RANGE(0x640010, 0x640011) AM_READ(input_port_2_word_r)

@@ -7,7 +7,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "video/tlc34076.h"
 #include "btoads.h"
@@ -77,14 +76,14 @@ static TIMER_CALLBACK( delayed_sound_w )
 
 static WRITE16_HANDLER( main_sound_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_w);
 }
 
 
 static READ16_HANDLER( special_port_4_r )
 {
-	int result = readinputport(4) & ~0x81;
+	int result = input_port_read_indexed(machine, 4) & ~0x81;
 
 	if (sound_to_main_ready)
 		result |= 0x01;
@@ -150,7 +149,7 @@ static WRITE8_HANDLER( sound_int_state_w )
 		sndti_reset(SOUND_BSMT2000, 0);
 
 	/* also clears interrupts */
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 	sound_int_state = data;
 }
 
@@ -172,7 +171,7 @@ static WRITE8_HANDLER( bsmt2000_port_w )
 {
 	UINT16 reg = offset >> 8;
 	UINT16 val = ((offset & 0xff) << 8) | data;
-	BSMT2000_data_0_w(machine, reg, val, 0);
+	BSMT2000_data_0_w(machine, reg, val, 0xffff);
 }
 
 

@@ -160,7 +160,7 @@ static UINT8 sound_r(void)
 }
 
 
-static void system18_generic_init(int _rom_board)
+static void system18_generic_init(running_machine *machine, int _rom_board)
 {
 	/* set the ROM board */
 	rom_board = _rom_board;
@@ -173,7 +173,7 @@ static void system18_generic_init(int _rom_board)
 	workram              = auto_malloc(0x04000);
 
 	/* init the memory mapper */
-	segaic16_memory_mapper_init(0, region_info_list[rom_board], sound_w, sound_r);
+	segaic16_memory_mapper_init(machine, 0, region_info_list[rom_board], sound_w, sound_r);
 
 	/* init the FD1094 */
 	fd1094_driver_init(segaic16_memory_mapper_set_decrypted);
@@ -199,7 +199,7 @@ static TIMER_CALLBACK( boost_interleave )
 
 static MACHINE_RESET( system18 )
 {
-	segaic16_memory_mapper_reset();
+	segaic16_memory_mapper_reset(machine);
 	segaic16_tilemap_reset(0);
 	fd1094_machine_init();
 
@@ -236,7 +236,7 @@ static READ16_HANDLER( io_chip_r )
 				return misc_io_data[offset];
 
 			/* otherwise, return an input port */
-			return readinputport(offset);
+			return input_port_read_indexed(machine, offset);
 
 		/* 'SEGA' protection */
 		case 0x10/2:
@@ -330,12 +330,12 @@ static READ16_HANDLER( misc_io_r )
 
 		/* video control latch */
 		case 0x2000/2:
-			return readinputport(4 + (offset & 1));
+			return input_port_read_indexed(machine, 4 + (offset & 1));
 	}
 	if (custom_io_r)
 		return custom_io_r(machine, offset, mem_mask);
 	logerror("%06X:misc_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
@@ -347,7 +347,7 @@ static WRITE16_HANDLER( misc_io_w )
 		/* I/O chip */
 		case 0x0000/2:
 		case 0x1000/2:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				io_chip_w(machine, offset, data, mem_mask);
 				return;
@@ -356,7 +356,7 @@ static WRITE16_HANDLER( misc_io_w )
 
 		/* video control latch */
 		case 0x2000/2:
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				system18_set_vdp_mixing(data & 0xff);
 				return;
@@ -368,7 +368,7 @@ static WRITE16_HANDLER( misc_io_w )
 		custom_io_w(machine, offset, data, mem_mask);
 		return;
 	}
-	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
+	logerror("%06X:misc_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
 }
 
 
@@ -381,7 +381,7 @@ static WRITE16_HANDLER( misc_io_w )
 
 static WRITE16_HANDLER( rom_5987_bank_w )
 {
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 		return;
 	offset &= 0xf;
 	data &= 0xff;
@@ -389,7 +389,7 @@ static WRITE16_HANDLER( rom_5987_bank_w )
 	/* tile banking */
 	if (offset < 8)
 	{
-		int maxbanks = Machine->gfx[0]->total_elements / 1024;
+		int maxbanks = machine->gfx[0]->total_elements / 1024;
 		if (data >= maxbanks)
 			data %= maxbanks;
 		segaic16_tilemap_set_bank(0, offset, data);
@@ -419,15 +419,15 @@ static READ16_HANDLER( ddcrew_custom_io_r )
 	switch (offset)
 	{
 		case 0x3020/2:
-			return readinputportbytag("P3");
+			return input_port_read(machine, "P3");
 
 		case 0x3022/2:
-			return readinputportbytag("P4");
+			return input_port_read(machine, "P4");
 
 		case 0x3024/2:
-			return readinputportbytag("P34START");
+			return input_port_read(machine, "P34START");
 	}
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
@@ -451,7 +451,7 @@ static READ16_HANDLER( lghost_custom_io_r )
 			lghost_value <<= 1;
 			return result;
 	}
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
@@ -460,19 +460,19 @@ static WRITE16_HANDLER( lghost_custom_io_w )
 	switch (offset)
 	{
 		case 0x3010/2:
-			lghost_value = 255 - readinputportbytag("GUNY1");
+			lghost_value = 255 - input_port_read(machine, "GUNY1");
 			break;
 
 		case 0x3012/2:
-			lghost_value = readinputportbytag("GUNX1");
+			lghost_value = input_port_read(machine, "GUNX1");
 			break;
 
 		case 0x3014/2:
-			lghost_value = 255 - readinputportbytag(lghost_select ? "GUNY3" : "GUNY2");
+			lghost_value = 255 - input_port_read(machine, lghost_select ? "GUNY3" : "GUNY2");
 			break;
 
 		case 0x3016/2:
-			lghost_value = readinputportbytag(lghost_select ? "GUNX3" : "GUNX2");
+			lghost_value = input_port_read(machine, lghost_select ? "GUNX3" : "GUNX2");
 			break;
 
 		case 0x3020/2:
@@ -494,24 +494,24 @@ static READ16_HANDLER( wwally_custom_io_r )
 	switch (offset)
 	{
 		case 0x3000/2:
-			return (readinputportbytag("TRACKX1") - wwally_last_x[0]) & 0xff;
+			return (input_port_read(machine, "TRACKX1") - wwally_last_x[0]) & 0xff;
 
 		case 0x3004/2:
-			return (readinputportbytag("TRACKY1") - wwally_last_y[0]) & 0xff;
+			return (input_port_read(machine, "TRACKY1") - wwally_last_y[0]) & 0xff;
 
 		case 0x3008/2:
-			return (readinputportbytag("TRACKX2") - wwally_last_x[1]) & 0xff;
+			return (input_port_read(machine, "TRACKX2") - wwally_last_x[1]) & 0xff;
 
 		case 0x300c/2:
-			return (readinputportbytag("TRACKY2") - wwally_last_y[1]) & 0xff;
+			return (input_port_read(machine, "TRACKY2") - wwally_last_y[1]) & 0xff;
 
 		case 0x3010/2:
-			return (readinputportbytag("TRACKX3") - wwally_last_x[2]) & 0xff;
+			return (input_port_read(machine, "TRACKX3") - wwally_last_x[2]) & 0xff;
 
 		case 0x3014/2:
-			return (readinputportbytag("TRACKY3") - wwally_last_y[2]) & 0xff;
+			return (input_port_read(machine, "TRACKY3") - wwally_last_y[2]) & 0xff;
 	}
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
@@ -521,20 +521,20 @@ static WRITE16_HANDLER( wwally_custom_io_w )
 	{
 		case 0x3000/2:
 		case 0x3004/2:
-			wwally_last_x[0] = readinputportbytag("TRACKX1");
-			wwally_last_y[0] = readinputportbytag("TRACKY1");
+			wwally_last_x[0] = input_port_read(machine, "TRACKX1");
+			wwally_last_y[0] = input_port_read(machine, "TRACKY1");
 			break;
 
 		case 0x3008/2:
 		case 0x300c/2:
-			wwally_last_x[1] = readinputportbytag("TRACKX2");
-			wwally_last_y[1] = readinputportbytag("TRACKY2");
+			wwally_last_x[1] = input_port_read(machine, "TRACKX2");
+			wwally_last_y[1] = input_port_read(machine, "TRACKY2");
 			break;
 
 		case 0x3010/2:
 		case 0x3014/2:
-			wwally_last_x[2] = readinputportbytag("TRACKX3");
-			wwally_last_y[2] = readinputportbytag("TRACKY3");
+			wwally_last_x[2] = input_port_read(machine, "TRACKX3");
+			wwally_last_y[2] = input_port_read(machine, "TRACKY3");
 			break;
 	}
 }
@@ -556,7 +556,7 @@ static WRITE8_HANDLER( soundbank_w )
 static WRITE8_HANDLER( mcu_data_w )
 {
 	mcu_data = data;
-	cpunum_set_input_line(Machine, 2, 1, PULSE_LINE);
+	cpunum_set_input_line(machine, 2, 1, PULSE_LINE);
 }
 
 
@@ -1040,14 +1040,14 @@ static INPUT_PORTS_START( lghost )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
 
 	PORT_MODIFY("P2")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN)
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN)
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED) /* P2 joystick inputs, unused in lghost */
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED)
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED ) /* P2 joystick inputs, unused in lghost */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_MODIFY("SERVICE")
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1064,14 +1064,17 @@ static INPUT_PORTS_START( lghost )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x1c, 0x1c, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SWB:3,4,5")
-	PORT_DIPSETTING(    0x04, DEF_STR( Harder ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Hardest ) )
 	PORT_DIPSETTING(    0x0c, DEF_STR( Easiest ) )
- 	PORT_DIPSETTING(    0x1c, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x10, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x14, DEF_STR( Easier ) )
  	PORT_DIPSETTING(    0x18, DEF_STR( Easy ) )
+ 	PORT_DIPSETTING(    0x1c, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( Hard ) )
+	PORT_DIPSETTING(    0x04, DEF_STR( Harder ) )
+	PORT_DIPSETTING(    0x08, DEF_STR( Hardest ) )
 	PORT_DIPSETTING(    0x00, "Extra Hardest" )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Allow_Continue ) ) PORT_DIPLOCATION("SWB:6")
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x40, 0x40, "Coin Chute" ) PORT_DIPLOCATION("SWB:7")
 	PORT_DIPSETTING(    0x00, "Common" )
 	PORT_DIPSETTING(    0x40, "Individual" )
@@ -2196,17 +2199,17 @@ ROM_END
 
 static DRIVER_INIT( generic_shad )
 {
-	system18_generic_init(ROM_BOARD_171_SHADOW);
+	system18_generic_init(machine, ROM_BOARD_171_SHADOW);
 }
 
 static DRIVER_INIT( generic_5874 )
 {
-	system18_generic_init(ROM_BOARD_171_5874);
+	system18_generic_init(machine, ROM_BOARD_171_5874);
 }
 
 static DRIVER_INIT( generic_5987 )
 {
-	system18_generic_init(ROM_BOARD_171_5987);
+	system18_generic_init(machine, ROM_BOARD_171_5987);
 }
 
 

@@ -67,12 +67,12 @@ static READ16_HANDLER( mahjong_panel_r )
 {
 	switch(sengokumj_mux_data)
 	{
-		case 1:    return readinputport(2);
-		case 2:    return readinputport(3);
-		case 4:    return readinputport(4);
-		case 8:    return readinputport(5);
-		case 0x10: return readinputport(6);
-		case 0x20: return readinputport(7);
+		case 1:    return input_port_read_indexed(machine, 2);
+		case 2:    return input_port_read_indexed(machine, 3);
+		case 4:    return input_port_read_indexed(machine, 4);
+		case 8:    return input_port_read_indexed(machine, 5);
+		case 0x10: return input_port_read_indexed(machine, 6);
+		case 0x20: return input_port_read_indexed(machine, 7);
 	}
 
 	return 0xffff;
@@ -80,7 +80,7 @@ static READ16_HANDLER( mahjong_panel_r )
 
 static WRITE16_HANDLER( mahjong_panel_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		sengokumj_mux_data = data >> 8;
 }
 
@@ -89,7 +89,7 @@ static WRITE16_HANDLER( sengokmj_out_w )
 	static UINT8 old = 0;
 	static int coins_used = 0;
 
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		if((old & 4) == 0 && (data & 4) == 4)
 		{
@@ -111,11 +111,11 @@ static ADDRESS_MAP_START( sengokmj_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x06000, 0x067ff) AM_RAM
 	AM_RANGE(0x07800, 0x097ff) AM_RAM
 	AM_RANGE(0x09800, 0x099ff) AM_RAM
-	AM_RANGE(0x0c000, 0x0c7ff) AM_RAM AM_WRITE(sengokmj_bgvram_w) AM_BASE(&sengokmj_bgvram)
-	AM_RANGE(0x0c800, 0x0cfff) AM_RAM AM_WRITE(sengokmj_fgvram_w) AM_BASE(&sengokmj_fgvram)
-	AM_RANGE(0x0d000, 0x0d7ff) AM_RAM AM_WRITE(sengokmj_mdvram_w) AM_BASE(&sengokmj_mdvram)
-	AM_RANGE(0x0d800, 0x0e7ff) AM_RAM AM_WRITE(sengokmj_txvram_w) AM_BASE(&sengokmj_txvram)
-	AM_RANGE(0x0e800, 0x0f7ff) AM_RAM AM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x0c000, 0x0c7ff) AM_RAM_WRITE(sengokmj_bgvram_w) AM_BASE(&sengokmj_bgvram)
+	AM_RANGE(0x0c800, 0x0cfff) AM_RAM_WRITE(sengokmj_fgvram_w) AM_BASE(&sengokmj_fgvram)
+	AM_RANGE(0x0d000, 0x0d7ff) AM_RAM_WRITE(sengokmj_mdvram_w) AM_BASE(&sengokmj_mdvram)
+	AM_RANGE(0x0d800, 0x0e7ff) AM_RAM_WRITE(sengokmj_txvram_w) AM_BASE(&sengokmj_txvram)
+	AM_RANGE(0x0e800, 0x0f7ff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0f800, 0x0ffff) AM_RAM AM_BASE(&spriteram16)
 	AM_RANGE(0xc0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
@@ -137,35 +137,34 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( sengokmj )
-	/* Must be port 0: coin inputs read through sound cpu */
-	SEIBU_COIN_INPUTS
+	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
 	PORT_START
-	PORT_DIPNAME( 0x0001,   0x0000, DEF_STR( Demo_Sounds ) )
+	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0002,   0x0002, "Re-start" )
+	PORT_DIPNAME( 0x0002, 0x0002, "Re-start" )
 	PORT_DIPSETTING(	  0x0002, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0004,   0x0004, "Double G" )
+	PORT_DIPNAME( 0x0004, 0x0004, "Double G" )
 	PORT_DIPSETTING(	  0x0004, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0008,   0x0008, "Double L" )
+	PORT_DIPNAME( 0x0008, 0x0008, "Double L" )
 	PORT_DIPSETTING(	  0x0008, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0010,   0x0010, "Kamon" )
+	PORT_DIPNAME( 0x0010, 0x0010, "Kamon" )
 	PORT_DIPSETTING(	  0x0010, DEF_STR( Off ) )
 	PORT_DIPSETTING(   	  0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0020,   0x0020, DEF_STR( Unused ) )
+	PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unused ) )
 	PORT_DIPSETTING(	  0x0020, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0040,   0x0040, "Out Sw" )
+	PORT_DIPNAME( 0x0040, 0x0040, "Out Sw" )
 	PORT_DIPSETTING(	  0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080,   0x0080, "Hopper" )
+	PORT_DIPNAME( 0x0080, 0x0080, "Hopper" )
 	PORT_DIPSETTING(	  0x0080, DEF_STR( Off ) )
 	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
-	PORT_BIT(  0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A )
@@ -222,28 +221,28 @@ static INPUT_PORTS_START( sengokmj )
 
 	PORT_START
 	PORT_DIPNAME( 0x0001, 0x0001, "Door" )
-	PORT_DIPSETTING(	0x0001, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(	  0x0001, DEF_STR( Off ) )
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	PORT_SERVICE_NO_TOGGLE( 0x0002, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x0004, 0x0004, "Opt. 1st" )
-	PORT_DIPSETTING(	0x0004, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(	  0x0004, DEF_STR( Off ) )
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0008, 0x0008, "Reset" )
-	PORT_DIPSETTING(	0x0008, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(	  0x0008, DEF_STR( Off ) )
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0010, 0x0010, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(	0x0010, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(	  0x0010, DEF_STR( Off ) )
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0020, 0x0020, "Cash" )
-	PORT_DIPSETTING(    0x0020, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	/* Used, causes "Hopper RunAway" message if you toggle it */
 	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
-	PORT_DIPSETTING(    0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0080, 0x0080, "Meter" )
-	PORT_DIPSETTING(	0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(	0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(	  0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(	  0x0000, DEF_STR( On ) )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 

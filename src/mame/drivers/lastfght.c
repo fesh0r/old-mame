@@ -129,10 +129,10 @@ static VIDEO_UPDATE( lastfght )
 
 static WRITE16_HANDLER(colordac_w)
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		colorram[clr_offset] = data;
-		palette_set_color_rgb(Machine, clr_offset/3,
+		palette_set_color_rgb(machine, clr_offset/3,
 			pal6bit(colorram[(clr_offset/3)*3+0]),
 			pal6bit(colorram[(clr_offset/3)*3+1]),
 			pal6bit(colorram[(clr_offset/3)*3+2])
@@ -140,7 +140,7 @@ static WRITE16_HANDLER(colordac_w)
 		clr_offset = (clr_offset+1) % (256*3);
 	}
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		clr_offset = (data>>8) * 3;
 	}
@@ -154,8 +154,8 @@ static int lastfght_x, lastfght_y, lastfght_w, lastfght_h;
 // high byte of a 16 bit register
 static WRITE16_HANDLER( lastfght_hi_w )
 {
-	if (ACCESSING_MSB)	logerror("%06x: 600000.b = %02x\n", activecpu_get_pc(),data>>8);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_8_15)	logerror("%06x: 600000.b = %02x\n", activecpu_get_pc(),data>>8);
+	if (ACCESSING_BITS_0_7)
 	{
 		lastfght_hi	=	data << 8;
 		//logerror("%06x: lastfght_hi  = %02x\n", activecpu_get_pc(),data);
@@ -164,8 +164,8 @@ static WRITE16_HANDLER( lastfght_hi_w )
 // screen x
 static WRITE16_HANDLER( lastfght_x_w )
 {
-	if (ACCESSING_MSB)	logerror("%06x: 800008.b = %02x\n", activecpu_get_pc(),data>>8);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_8_15)	logerror("%06x: 800008.b = %02x\n", activecpu_get_pc(),data>>8);
+	if (ACCESSING_BITS_0_7)
 	{
 		lastfght_x	=	lastfght_hi | data;
 		//logerror("%06x: lastfght_x   = %02x\n", activecpu_get_pc(),data);
@@ -174,12 +174,12 @@ static WRITE16_HANDLER( lastfght_x_w )
 // screen y, screen width - 1
 static WRITE16_HANDLER( lastfght_yw_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		lastfght_y	=	lastfght_hi | (data >> 8);
 		//logerror("%06x: lastfght_y   = %02x\n", activecpu_get_pc(),data>>8);
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		lastfght_w	=	lastfght_hi | data;
 		//logerror("%06x: lastfght_w   = %02x\n", activecpu_get_pc(),data);
@@ -188,22 +188,22 @@ static WRITE16_HANDLER( lastfght_yw_w )
 // screen height - 1
 static WRITE16_HANDLER( lastfght_h_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		lastfght_h	=	lastfght_hi | (data >> 8);
 		//logerror("%06x: lastfght_h   = %02x\n", activecpu_get_pc(),data>>8);
 	}
-	if (ACCESSING_LSB)	logerror("%06x: 80000d.b = %02x\n", activecpu_get_pc(),data);
+	if (ACCESSING_BITS_0_7)	logerror("%06x: 80000d.b = %02x\n", activecpu_get_pc(),data);
 }
 // source delta x << 6, source x << 6
 static WRITE16_HANDLER( lastfght_sx_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		lastfght_dsx	=	lastfght_hi | (data >> 8);
 		//logerror("%06x: lastfght_dsx = %02x\n", activecpu_get_pc(),data>>8);
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		lastfght_sx	=	lastfght_hi | data;
 		//logerror("%06x: lastfght_sx  = %02x\n", activecpu_get_pc(),data);
@@ -212,12 +212,12 @@ static WRITE16_HANDLER( lastfght_sx_w )
 // source y << 6, source y1 << 6
 static WRITE16_HANDLER( lastfght_sy_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		lastfght_sy	=	lastfght_hi | (data >> 8);
 		//logerror("%06x: lastfght_sy  = %02x\n", activecpu_get_pc(),data>>8);
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		lastfght_sy1	=	lastfght_hi | data;
 		//logerror("%06x: lastfght_sy1 = %02x\n", activecpu_get_pc(),data);
@@ -226,12 +226,12 @@ static WRITE16_HANDLER( lastfght_sy_w )
 // source rom (0x200000 bytes), source page (512x256 bytes)
 static WRITE16_HANDLER( lastfght_sr_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		lastfght_sp	=	(lastfght_hi>>8) >> 4;
 		//logerror("%06x: lastfght_sp  = %02x\n", activecpu_get_pc(),data>>8);
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		lastfght_sr	=	data;
 		//logerror("%06x: lastfght_sr  = %02x\n", activecpu_get_pc(),data);
@@ -240,12 +240,12 @@ static WRITE16_HANDLER( lastfght_sr_w )
 // source x1 << 6, source delta y << 6
 static WRITE16_HANDLER( lastfght_sd_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		lastfght_sx1	=	lastfght_hi | (data >> 8);
 		//logerror("%06x: lastfght_sx1 = %02x\n", activecpu_get_pc(),data>>8);
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		lastfght_dsy	=	lastfght_hi | data;
 		//logerror("%06x: lastfght_dsy = %02x\n", activecpu_get_pc(),data);
@@ -254,7 +254,7 @@ static WRITE16_HANDLER( lastfght_sd_w )
 // start blit
 static WRITE16_HANDLER( lastfght_blit_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		int x,y, addr;
 		UINT8 *gfxdata = memory_region( REGION_GFX1 );
@@ -285,12 +285,12 @@ static WRITE16_HANDLER( lastfght_blit_w )
 			}
 		}
 	}
-	if (ACCESSING_LSB)	logerror("%06x: 600007.b = %02x\n", activecpu_get_pc(),data);
+	if (ACCESSING_BITS_0_7)	logerror("%06x: 600007.b = %02x\n", activecpu_get_pc(),data);
 }
 // toggle framebuffer
 static WRITE16_HANDLER( lastfght_dest_w )
 {
-	if (ACCESSING_LSB)	lastfght_dest ^= 1;
+	if (ACCESSING_BITS_0_7)	lastfght_dest ^= 1;
 }
 
 static READ16_HANDLER( lastfght_c00000_r )
@@ -306,12 +306,12 @@ static READ16_HANDLER( lastfght_c00002_r )
 {
 	// high byte:
 	// mask 0x1c: from sound?
-	return (mame_rand(Machine) & 0x1c00) | readinputport(0);
+	return (mame_rand(Machine) & 0x1c00) | input_port_read_indexed(machine, 0);
 }
 
 static READ16_HANDLER( lastfght_c00004_r )
 {
-	return readinputport(1);
+	return input_port_read_indexed(machine, 1);
 }
 
 static READ16_HANDLER( lastfght_c00006_r )
@@ -319,7 +319,7 @@ static READ16_HANDLER( lastfght_c00006_r )
 	// low byte:
 	// bit 7 = protection?
 	// bit 5 = blitter?
-	return readinputport(2);
+	return input_port_read_indexed(machine, 2);
 }
 
 static WRITE16_HANDLER( lastfght_c00006_w )
@@ -338,8 +338,8 @@ static READ16_HANDLER( lastfght_sound_r )
 
 static WRITE16_HANDLER( lastfght_sound_w )
 {
-	if (ACCESSING_MSB)	logerror("%06x: sound_w msb = %02x\n", activecpu_get_pc(),data>>8);
-	if (ACCESSING_LSB)	logerror("%06x: sound_w lsb = %02x\n", activecpu_get_pc(),data);
+	if (ACCESSING_BITS_8_15)	logerror("%06x: sound_w msb = %02x\n", activecpu_get_pc(),data>>8);
+	if (ACCESSING_BITS_0_7)	logerror("%06x: sound_w lsb = %02x\n", activecpu_get_pc(),data);
 }
 
 /***************************************************************************

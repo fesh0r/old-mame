@@ -186,7 +186,7 @@ VIDEO_EOF( fuuki32 );
 
 static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 {
-	if(ACCESSING_MSW32)
+	if(ACCESSING_BITS_16_31)
 	{
 		int r,g,b;
 		COMBINE_DATA(&paletteram32[offset]);
@@ -195,10 +195,10 @@ static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 		g = (paletteram32[offset] & 0x03e00000) >> (5+16);
 		b = (paletteram32[offset] & 0x001f0000) >> (0+16);
 
-		palette_set_color_rgb(Machine,offset*2,pal5bit(r),pal5bit(g),pal5bit(b));
+		palette_set_color_rgb(machine,offset*2,pal5bit(r),pal5bit(g),pal5bit(b));
 	}
 
-	if(ACCESSING_LSW32)
+	if(ACCESSING_BITS_0_15)
 	{
 		int r,g,b;
 		COMBINE_DATA(&paletteram32[offset]);
@@ -207,7 +207,7 @@ static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 		g = (paletteram32[offset] & 0x000003e0) >> (5);
 		b = (paletteram32[offset] & 0x0000001f) >> (0);
 
-		palette_set_color_rgb(Machine,offset*2+1,pal5bit(r),pal5bit(g),pal5bit(b));
+		palette_set_color_rgb(machine,offset*2+1,pal5bit(r),pal5bit(g),pal5bit(b));
 	}
 }
 
@@ -224,7 +224,7 @@ static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 \
 static READ32_HANDLER( io32_##_N_##_r ) \
 { \
-	return (readinputport( _N_ ) << 16) | readinputport( _N_ ); \
+	return (input_port_read_indexed(machine,  _N_ ) << 16) | input_port_read_indexed(machine,  _N_ ); \
 }
 
 FUUKI32_INPUT( 0 ) /* $800000.l Coins Inputs */
@@ -241,12 +241,12 @@ static READ32_HANDLER( snd_020_r )
 
 static WRITE32_HANDLER( snd_020_w )
 {
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		fuuki32_shared_ram[offset*2] = data>>16;
 	}
 
-	if (!(mem_mask & 0x000000ff))
+	if (ACCESSING_BITS_0_7)
 	{
 		fuuki32_shared_ram[(offset*2)+1] = data & 0xff;
 	}

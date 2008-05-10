@@ -150,7 +150,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/namcoio.h"
 #include "sound/namco.h"
 #include "sound/samples.h"
@@ -180,14 +179,14 @@ VIDEO_EOF( gaplus );	/* update starfields */
 
 ***************************************************************************/
 
-static READ8_HANDLER( in0_l )	{ return readinputport(0); }		// P1 joystick
-static READ8_HANDLER( in0_h )	{ return readinputport(0) >> 4; }	// P2 joystick
-static READ8_HANDLER( in1_l )	{ return readinputport(1); }		// fire and start buttons
-static READ8_HANDLER( in1_h )	{ return readinputport(1) >> 4; }	// coins
-static READ8_HANDLER( dipA_l )	{ return readinputport(2); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return readinputport(2) >> 4; }	// dips A
-static READ8_HANDLER( dipB_l )	{ return readinputport(3); }		// dips B
-static READ8_HANDLER( dipB_h )	{ return readinputport(3) >> 4; }	// dips B
+static READ8_HANDLER( in0_l )	{ return input_port_read_indexed(machine, 0); }		// P1 joystick
+static READ8_HANDLER( in0_h )	{ return input_port_read_indexed(machine, 0) >> 4; }	// P2 joystick
+static READ8_HANDLER( in1_l )	{ return input_port_read_indexed(machine, 1); }		// fire and start buttons
+static READ8_HANDLER( in1_h )	{ return input_port_read_indexed(machine, 1) >> 4; }	// coins
+static READ8_HANDLER( dipA_l )	{ return input_port_read_indexed(machine, 2); }		// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read_indexed(machine, 2) >> 4; }	// dips A
+static READ8_HANDLER( dipB_l )	{ return input_port_read_indexed(machine, 3); }		// dips B
+static READ8_HANDLER( dipB_h )	{ return input_port_read_indexed(machine, 3) >> 4; }	// dips B
 static WRITE8_HANDLER( out_lamps0 )
 {
 	set_led_status(0,data & 1);
@@ -275,7 +274,7 @@ static WRITE8_HANDLER( gaplus_irq_1_ctrl_w )
 	int bit = !BIT(offset,11);
 	cpu_interrupt_enable(0,bit);
 	if (!bit)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( gaplus_irq_3_ctrl_w )
@@ -283,7 +282,7 @@ static WRITE8_HANDLER( gaplus_irq_3_ctrl_w )
 	int bit = !BIT(offset,13);
 	cpu_interrupt_enable(2,bit);
 	if (!bit)
-		cpunum_set_input_line(Machine, 2, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( gaplus_irq_2_ctrl_w )
@@ -291,14 +290,14 @@ static WRITE8_HANDLER( gaplus_irq_2_ctrl_w )
 	int bit = offset & 1;
 	cpu_interrupt_enable(1,bit);
 	if (!bit)
-		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( gaplus_sreset_w )
 {
 	int bit = !BIT(offset,11);
-    cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
-    cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+    cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+    cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 	mappy_sound_enable(bit);
 }
 

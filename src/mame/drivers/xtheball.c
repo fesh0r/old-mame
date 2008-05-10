@@ -125,7 +125,7 @@ static void xtheball_from_shiftreg(UINT32 address, UINT16 *shiftreg)
 
 static WRITE16_HANDLER( dac_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		DAC_data_w(0, data >> 8);
 }
 
@@ -139,7 +139,7 @@ static WRITE16_HANDLER( dac_w )
 
 static WRITE16_HANDLER( bit_controls_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (bitvals[offset] != (data & 1))
 		{
@@ -207,7 +207,7 @@ static WRITE16_HANDLER( bit_controls_w )
 
 static READ16_HANDLER( port0_r )
 {
-	int result = readinputport(0);
+	int result = input_port_read_indexed(machine, 0);
 	result ^= ticket_dispenser_r(machine,0) >> 3;
 	return result;
 }
@@ -215,7 +215,7 @@ static READ16_HANDLER( port0_r )
 
 static READ16_HANDLER( analogx_r )
 {
-	return (readinputportbytag("ANALOGX") << 8) | 0x00ff;
+	return (input_port_read(machine, "ANALOGX") << 8) | 0x00ff;
 }
 
 
@@ -223,7 +223,7 @@ static READ16_HANDLER( analogy_watchdog_r )
 {
 	/* doubles as a watchdog address */
 	watchdog_reset_w(machine,0,0);
-	return (readinputportbytag("ANALOGY") << 8) | 0x00ff;
+	return (input_port_read(machine, "ANALOGY") << 8) | 0x00ff;
 }
 
 

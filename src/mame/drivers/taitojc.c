@@ -408,7 +408,7 @@ static WRITE32_HANDLER( taitojc_palette_w )
 	g = (color >> 16) & 0xff;
 	b = (color >>  0) & 0xff;
 
-	palette_set_color(Machine,offset, MAKE_RGB(r, g, b));
+	palette_set_color(machine,offset, MAKE_RGB(r, g, b));
 }
 
 static READ32_HANDLER ( jc_control_r )
@@ -419,41 +419,41 @@ static READ32_HANDLER ( jc_control_r )
 	{
 		case 0x0:
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
-				r |= ((readinputport(0) & 0x2) << 2) << 24;
+				r |= ((input_port_read_indexed(machine, 0) & 0x2) << 2) << 24;
 			}
 			return r;
 		}
 		case 0x1:
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
 				UINT32 data = EEPROM_read_bit() & 1;
-				data |= readinputport(0) & 0xfe;
+				data |= input_port_read_indexed(machine, 0) & 0xfe;
 				r |= data << 24;
 			}
 			return r;
 		}
 		case 0x2:
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
-				r |= readinputport(1) << 24;
+				r |= input_port_read_indexed(machine, 1) << 24;
 			}
 			return r;
 		}
 		case 0x3:
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
-				r |= readinputport(2) << 24;
+				r |= input_port_read_indexed(machine, 2) << 24;
 			}
 			return r;
 		}
 		case 0x4:
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
 				//r |= (mame_rand(Machine) & 0xff) << 24;
 			}
@@ -461,9 +461,9 @@ static READ32_HANDLER ( jc_control_r )
 		}
 		case 0x7:
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
-				r |= readinputport(3) << 24;
+				r |= input_port_read_indexed(machine, 3) << 24;
 			}
 			return r;
 		}
@@ -483,7 +483,7 @@ static WRITE32_HANDLER ( jc_control_w )
 	{
 		case 0x3:
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
 				EEPROM_set_clock_line(((data >> 24) & 0x08) ? ASSERT_LINE : CLEAR_LINE);
 				EEPROM_write_bit(((data >> 24) & 0x04) ? 1 : 0);
@@ -562,19 +562,19 @@ static READ32_HANDLER(mcu_comm_r)
 	UINT32 r = 0;
 	int reg = offset * 4;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		r |= mcu_comm_reg_r(reg + 0) << 24;
 	}
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		r |= mcu_comm_reg_r(reg + 1) << 16;
 	}
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		r |= mcu_comm_reg_r(reg + 2) << 8;
 	}
-	if (!(mem_mask & 0x000000ff))
+	if (ACCESSING_BITS_0_7)
 	{
 		r |= mcu_comm_reg_r(reg + 3) << 0;
 	}
@@ -586,19 +586,19 @@ static WRITE32_HANDLER(mcu_comm_w)
 {
 	int reg = offset * 4;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		mcu_comm_reg_w(reg + 0, (data >> 24) & 0xff);
 	}
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		mcu_comm_reg_w(reg + 1, (data >> 16) & 0xff);
 	}
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		mcu_comm_reg_w(reg + 2, (data >> 8) & 0xff);
 	}
-	if (!(mem_mask & 0x000000ff))
+	if (ACCESSING_BITS_0_7)
 	{
 		mcu_comm_reg_w(reg + 3, (data >> 0) & 0xff);
 	}
@@ -752,12 +752,12 @@ static int first_dsp_reset = 1;
 static WRITE32_HANDLER(dsp_shared_w)
 {
 	//mame_printf_debug("dsp_shared_ram: %08X, %04X at %08X\n", offset, data >> 16, activecpu_get_pc());
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		dsp_shared_ram[offset] &= 0x00ff;
 		dsp_shared_ram[offset] |= (data >> 16) & 0xff00;
 	}
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		dsp_shared_ram[offset] &= 0xff00;
 		dsp_shared_ram[offset] |= (data >> 16) & 0x00ff;
@@ -776,13 +776,13 @@ static WRITE32_HANDLER(dsp_shared_w)
 		{
 			if (!first_dsp_reset)
 			{
-				cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, CLEAR_LINE);
+				cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, CLEAR_LINE);
 			}
 			first_dsp_reset = 0;
 		}
 		else
 		{
-			cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
 		}
 	}
 }
@@ -869,7 +869,7 @@ static WRITE8_HANDLER(hc11_data_w)
 
 static READ8_HANDLER(hc11_analog_r)
 {
-	return readinputport(4 + offset);
+	return input_port_read_indexed(machine, 4 + offset);
 }
 
 
@@ -1333,28 +1333,28 @@ ROM_START( sidebs )
 	ROM_FILL( 0x0000, 0x0080, 0 )
 
 	ROM_REGION( 0x1800000, REGION_GFX1, 0 )
-	ROM_LOAD32_WORD( "e23-05.009",  0x0800002, 0x200000, BAD_DUMP CRC(9aa0d956) SHA1(bd146e3db7c2a53701eca6b43f903899ed15623a) )
-	ROM_LOAD32_WORD( "e23-12.022",  0x0800000, 0x200000, BAD_DUMP CRC(c93fab09) SHA1(1ed292b11bf6bf09d1783d247f3de0c899e4df28) )
-	ROM_LOAD32_WORD( "e23-06.010",  0x0c00002, 0x200000, BAD_DUMP CRC(2077ac3a) SHA1(894e1bbfef8a693bda50aa8681e8f283c0d6b6cf) )
-	ROM_LOAD32_WORD( "e23-13.023",  0x0c00000, 0x200000, BAD_DUMP CRC(985f6785) SHA1(81cd33957b943f4bb33323fbf491ace344f8245b) )
-	ROM_LOAD32_WORD( "e23-07.012",  0x1400002, 0x200000, BAD_DUMP CRC(bf1cd99d) SHA1(f98e1dacb485c7e40b0b2277a690d74ae020c9d9) )
-	ROM_LOAD32_WORD( "e23-14.025",  0x1400000, 0x200000, BAD_DUMP CRC(9d54eac7) SHA1(4f97b388a0fd0529d26e1cc31491a0e2ce6c381d) )
+	ROM_LOAD32_WORD( "e23-05.009",  0x0800002, 0x200000, CRC(6e5d11ec) SHA1(e5c39d80577bf8ae9fc6162dc54571c6c8421160) )
+	ROM_LOAD32_WORD( "e23-12.022",  0x0800000, 0x200000, CRC(7365333c) SHA1(4f7b75088799ea37f714bc7e5c5b276a7e5d933f) )
+	ROM_LOAD32_WORD( "e23-06.010",  0x0c00002, 0x200000, CRC(ffcfd153) SHA1(65fa486cf0156e2988bd6e7060d66f87f765a123) )
+	ROM_LOAD32_WORD( "e23-13.023",  0x0c00000, 0x200000, CRC(16982d37) SHA1(134370f7dfadb1886f1e5e5dd16f8b72ad08fc68) )
+	ROM_LOAD32_WORD( "e23-07.012",  0x1400002, 0x200000, CRC(90f2a87c) SHA1(770bb89fa42cb2a1d5a58525b8d72ed7df3f93ed) )
+	ROM_LOAD32_WORD( "e23-14.025",  0x1400000, 0x200000, CRC(1bc5a914) SHA1(92f82a4e2fbac73dbb3293726fc09022bd11a8fe) )
 
 	ROM_REGION( 0x1000000, REGION_GFX2, 0 )		/* only accessible to the TMS */
-	ROM_LOAD( "e23-01.005",  0x0000000, 0x200000, BAD_DUMP CRC(c5018242) SHA1(d1a45aa6899d9a95b32aeba0f9a4520714d5f5a3) )
-	ROM_LOAD( "e23-02.006",  0x0200000, 0x200000, BAD_DUMP CRC(dbf24766) SHA1(2ee0bdb9f912f31bdf962a1af53ad1a6e3121a05) )
-	ROM_LOAD( "e23-03.007",  0x0400000, 0x200000, BAD_DUMP CRC(3ab59dd0) SHA1(39e93d306a59017bef0f2fdadc69f96aecbffca6) )
-	ROM_LOAD( "e23-04.008",  0x0600000, 0x200000, BAD_DUMP CRC(5060119c) SHA1(c8c5c33bd37121d222961ecfcdb79bbe6cbdf821) )
-	ROM_LOAD( "e23-08.018",  0x0800000, 0x200000, BAD_DUMP CRC(04738f5b) SHA1(0ebc8c61d87f10822148f3b272612dc10ac4652c) )
-	ROM_LOAD( "e23-09.019",  0x0a00000, 0x200000, BAD_DUMP CRC(089fac53) SHA1(3af008c65f4b60ae221b90fdb52d4e6fe552e5a8) )
-	ROM_LOAD( "e23-10.020",  0x0c00000, 0x200000, BAD_DUMP CRC(dccb19ed) SHA1(35749c823ad9a30f471367750c087435b678b42f) )
-	ROM_LOAD( "e23-11.021",  0x0e00000, 0x200000, BAD_DUMP CRC(6981a46f) SHA1(262bf821275413c70a1a8374185df64c697d8b04) )
+	ROM_LOAD( "e23-01.005",  0x0000000, 0x200000, CRC(2cbe4bbd) SHA1(ed6fe4344c86d50914b5ddbc720dd15544f4d07f) )
+	ROM_LOAD( "e23-02.006",  0x0200000, 0x200000, CRC(7ebada03) SHA1(d75c992aa33dd7f71de6a6d09aac471012b0daa3) )
+	ROM_LOAD( "e23-03.007",  0x0400000, 0x200000, CRC(5bf1f30b) SHA1(6e0c07b9f92962eec55ee444732a10ac78f8b050) )
+	ROM_LOAD( "e23-04.008",  0x0600000, 0x200000, CRC(0f860fb5) SHA1(47c0db4ec6d02e10d8abfacd1fa332f7af3976dd) )
+	ROM_LOAD( "e23-08.018",  0x0800000, 0x200000, CRC(bceea63e) SHA1(eeec1e2306aa37431c5ba69bdb9c5524ab7b7ba4) )
+	ROM_LOAD( "e23-09.019",  0x0a00000, 0x200000, CRC(3917c12f) SHA1(e3a568f638bb6b0cd6237c9fee5fc350983ea1e7) )
+	ROM_LOAD( "e23-10.020",  0x0c00000, 0x200000, CRC(038370d9) SHA1(c02f68a25121d2d5aae62c419522b25cd6ec32b6) )
+	ROM_LOAD( "e23-11.021",  0x0e00000, 0x200000, CRC(91fab03d) SHA1(1865d8b679faa6f2b3c14db2c6c461c00afd547c) )
 
 	ROM_REGION16_BE( 0x1000000, REGION_SOUND1, ROMREGION_ERASE00  )
-	ROM_LOAD16_BYTE( "e23-15.32",  0x000000, 0x200000, CRC(8955b7c7) SHA1(767626bd5cf6810b0368ee85e487c12ef7e8a23d))
-	ROM_LOAD16_BYTE( "e23-16.33",  0x400000, 0x200000, CRC(1d63d785) SHA1(0cf74bb433e9c453e35f7a552fdf9e22084b2f49) )
-	ROM_LOAD16_BYTE( "e23-17.34",  0x800000, 0x200000, CRC(1c54021a) SHA1(a1efbdb02d23a5d32ebd25cb8e99dface3178ebd) )
-	ROM_LOAD16_BYTE( "e23-18.35",  0xc00000, 0x200000, CRC(1816f38a) SHA1(6451bdb4b4297aaf4987451bc0ddd97b0072e113) )
+	ROM_LOAD16_BYTE( "e23-15.032",  0x000000, 0x200000, CRC(8955b7c7) SHA1(767626bd5cf6810b0368ee85e487c12ef7e8a23d))
+	ROM_LOAD16_BYTE( "e23-16.033",  0x400000, 0x200000, CRC(1d63d785) SHA1(0cf74bb433e9c453e35f7a552fdf9e22084b2f49) )
+	ROM_LOAD16_BYTE( "e23-17.034",  0x800000, 0x200000, CRC(1c54021a) SHA1(a1efbdb02d23a5d32ebd25cb8e99dface3178ebd) )
+	ROM_LOAD16_BYTE( "e23-18.035",  0xc00000, 0x200000, CRC(1816f38a) SHA1(6451bdb4b4297aaf4987451bc0ddd97b0072e113) )
 ROM_END
 
 ROM_START( sidebs2 )
@@ -1373,6 +1373,72 @@ ROM_START( sidebs2 )
 
 	ROM_REGION( 0x00080, REGION_USER2, 0 )		/* eeprom */
 	ROM_LOAD( "93c46.87",  0x000000, 0x000080, CRC(14e5526c) SHA1(ae02bd8f1eff41738043931642c652732fbe3801) )
+
+	ROM_REGION( 0x1800000, REGION_GFX1, 0 )
+	ROM_LOAD32_WORD( "e38-05.9",  0x0800002, 0x200000, CRC(bda366bf) SHA1(a7558e6d5e4583a2d8e3d2bfa8cabcc459d3ee83) )
+	ROM_LOAD32_WORD( "e38-13.22", 0x0800000, 0x200000, CRC(1bd7582b) SHA1(35763b9489f995433f66ef72d4f6b6ac67df5480) )
+	ROM_LOAD32_WORD( "e38-06.10", 0x0c00002, 0x200000, CRC(308d2783) SHA1(22c309273444bc6c1df78069850958a739664998) )
+	ROM_LOAD32_WORD( "e38-14.23", 0x0c00000, 0x200000, CRC(f1699f27) SHA1(3c9a9cefe6f215fd9f0a9746da97147d14df1da4) )
+	ROM_LOAD32_WORD( "e38-07.11", 0x1000002, 0x200000, CRC(226ba93d) SHA1(98e6342d070ddd988c1e9bff21afcfb28df86844) )
+	ROM_LOAD32_WORD( "e38-15.24", 0x1000000, 0x200000, CRC(2853c2e3) SHA1(046dbbd4bcb3b07cddab19a284fee9fe736f8def) )
+	ROM_LOAD32_WORD( "e38-08.12", 0x1400002, 0x200000, CRC(9c513b32) SHA1(fe26e39d3d65073d23d525bc17771f0c244a38c2) )
+	ROM_LOAD32_WORD( "e38-16.25", 0x1400000, 0x200000, CRC(fceafae2) SHA1(540ecd5d1aa64c0428a08ea1e4e634e00f7e6bd6) )
+
+	ROM_REGION( 0x1000000, REGION_GFX2, 0 )		/* only accessible to the TMS */
+	ROM_LOAD( "e38-01.5",  0x0000000, 0x200000, CRC(a3c2e2c7) SHA1(538208534f996782167e4cf0d157ad93ce2937bd) )
+	ROM_LOAD( "e38-02.6",  0x0200000, 0x200000, CRC(ecdfb75a) SHA1(85e7afa321846816fa3bd9074ad9dec95abe23fe) )
+	ROM_LOAD( "e38-03.7",  0x0400000, 0x200000, CRC(28e9cb59) SHA1(a2651fd81a1263573f868864ee049f8fc4177ffa) )
+	ROM_LOAD( "e38-04.8",  0x0600000, 0x080000, CRC(26cab05b) SHA1(d5bcf021646dade834840051e0ce083319c53985) )
+	ROM_RELOAD( 0x680000, 0x80000 )
+	ROM_RELOAD( 0x700000, 0x80000 )
+	ROM_RELOAD( 0x780000, 0x80000 )
+	ROM_LOAD( "e38-09.18", 0x0800000, 0x200000, CRC(03c95a7f) SHA1(fc046cf5fcfcf5648f68af4bed78576f6d67b32f) )
+	ROM_LOAD( "e38-10.19", 0x0a00000, 0x200000, CRC(0fb06794) SHA1(2d0e3b07ded698235572fe9e907a84d5779ac2c5) )
+	ROM_LOAD( "e38-11.20", 0x0c00000, 0x200000, CRC(6a312351) SHA1(8037e377f8eef4cc6dd84aec9c829106f0bb130c) )
+	ROM_LOAD( "e38-12.21", 0x0e00000, 0x080000, CRC(193a5774) SHA1(aa017ae4fec92bb87c0eb94f59d093853ddbabc9) )
+	ROM_RELOAD( 0xe80000, 0x80000 )
+	ROM_RELOAD( 0xf00000, 0x80000 )
+	ROM_RELOAD( 0xf80000, 0x80000 )
+
+	ROM_REGION16_BE( 0x1000000, REGION_SOUND1, ROMREGION_ERASE00  )
+	ROM_LOAD16_BYTE( "e23-15.32", 0x000000, 0x200000, CRC(8955b7c7) SHA1(767626bd5cf6810b0368ee85e487c12ef7e8a23d) ) // from sidebs (redump)
+	ROM_LOAD16_BYTE( "e38-17.33", 0x400000, 0x200000, CRC(61e81c7f) SHA1(aa650bc139685ad456c233b79aa60005a8fd6d79) )
+	ROM_LOAD16_BYTE( "e38-18.34", 0x800000, 0x200000, CRC(43e2f149) SHA1(32ea9156948a886dda5bd071e9f493ddc2b06212) )
+	ROM_LOAD16_BYTE( "e38-21.35", 0xc00000, 0x200000, CRC(25373c5f) SHA1(ab9f917dbde7c808be2cd836ce2d3fc558e290f1) )
+
+	/* PALS
+    e23-28.18    NOT A ROM
+    e23-27.13    NOT A ROM
+    e23-26.4     NOT A ROM
+    e23-25-1.3   NOT A ROM
+    e23-30.40    NOT A ROM
+    e23-29.39    NOT A ROM
+    e23-31.46    NOT A ROM
+    e23-32-1.51  NOT A ROM
+    e23-34.72    NOT A ROM
+    e23-33.53    NOT A ROM
+    e23-35.110   NOT A ROM
+    e23-38.73    NOT A ROM
+    e23-37.69    NOT A ROM
+    */
+ROM_END
+
+ROM_START( sidebs2j )
+	ROM_REGION(0x200000, REGION_CPU1, 0)		/* 68040 code */
+ 	ROM_LOAD32_BYTE( "e38-23.36", 0x000000, 0x80000, CRC(b3d8e2d9) SHA1(6de6a51c3d9ace532fa03517bab93101b5a3eaae) )
+	ROM_LOAD32_BYTE( "e38-24.37", 0x000001, 0x80000, CRC(2a47d80d) SHA1(41b889e4a1397c7f0d4f6ef136ed8abfd7e1ed86) )
+	ROM_LOAD32_BYTE( "e38-25.38", 0x000002, 0x80000, CRC(f1a8a4df) SHA1(e4cf75969fb0503df2290522194b097f5cb983a3) )
+	ROM_LOAD32_BYTE( "e38-26.39", 0x000003, 0x80000, CRC(b550fbf2) SHA1(a0a461af7e71c6ad6468cfdee2bc7161ae31bbfb) )
+
+	ROM_REGION( 0x180000, REGION_CPU2, 0 )		/* 68000 Code */
+	ROM_LOAD16_BYTE( "e38-19.30", 0x100001, 0x040000, CRC(3f50cb7b) SHA1(76af65c9b74ede843a3182f79cecda8c3e3febe6) )
+	ROM_LOAD16_BYTE( "e38-20.31", 0x100000, 0x040000, CRC(d01340e7) SHA1(76ee48d644dc1ec415d47e0df4864c64ac928b9d) )
+
+	ROM_REGION( 0x010000, REGION_USER1, 0 )		/* MC68HC11M0 code */
+	ROM_LOAD( "e17-23.65",  0x000000, 0x010000, CRC(80ac1428) SHA1(5a2a1e60a11ecdb8743c20ddacfb61f9fd00f01c) )
+
+	ROM_REGION( 0x00080, REGION_USER2, 0 )		/* eeprom */
+	ROM_LOAD( "93c46.87",  0x000000, 0x000080, CRC(50fdcce0) SHA1(6e901856755ccdcf478a457c510c0de58683216a) )
 
 	ROM_REGION( 0x1800000, REGION_GFX1, 0 )
 	ROM_LOAD32_WORD( "e38-05.9",  0x0800002, 0x200000, CRC(bda366bf) SHA1(a7558e6d5e4583a2d8e3d2bfa8cabcc459d3ee83) )
@@ -1719,11 +1785,12 @@ ROM_START( dangcurv )
 ROM_END
 
 
-GAME( 1996, dendeg,   0,       taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go", GAME_NOT_WORKING )
-GAME( 1996, dendegx,  dendeg,  taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go Ex", GAME_NOT_WORKING )
-GAME( 1998, dendeg2,  0,       taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go 2", GAME_NOT_WORKING )
-GAME( 1998, dendeg2x, dendeg2, taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go 2 Ex", GAME_NOT_WORKING )
-GAME( 1996, sidebs,   0,       taitojc, sidebs,   taitojc,  ROT0, "Taito", "Side By Side", GAME_NOT_WORKING )
-GAME( 1997, sidebs2,  0,       taitojc, sidebs,   taitojc,  ROT0, "Taito", "Side By Side 2", GAME_IMPERFECT_GRAPHICS )
+GAME( 1996, dendeg,   0,       taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go (Japan)", GAME_NOT_WORKING )
+GAME( 1996, dendegx,  dendeg,  taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go Ex (Japan)", GAME_NOT_WORKING )
+GAME( 1998, dendeg2,  0,       taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go 2 (Japan)", GAME_NOT_WORKING )
+GAME( 1998, dendeg2x, dendeg2, taitojc, dendeg,   taitojc,  ROT0, "Taito", "Densya De Go 2 Ex (Japan)", GAME_NOT_WORKING )
+GAME( 1996, sidebs,   0,       taitojc, sidebs,   taitojc,  ROT0, "Taito", "Side By Side (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sidebs2,  0,       taitojc, sidebs,   taitojc,  ROT0, "Taito", "Side By Side 2 (North/South America)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1997, sidebs2j, sidebs2, taitojc, sidebs,   taitojc,  ROT0, "Taito", "Side By Side 2 (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1995, landgear, 0,       taitojc, landgear, taitojc,  ROT0, "Taito", "Landing Gear", GAME_NOT_WORKING )
 GAME( 1995, dangcurv, 0,       taitojc, dangcurv, taitojc,  ROT0, "Taito", "Dangerous Curves", GAME_NOT_WORKING )

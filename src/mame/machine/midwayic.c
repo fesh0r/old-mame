@@ -852,10 +852,10 @@ void midway_ioasic_fifo_full_w(UINT16 data)
 READ32_HANDLER( midway_ioasic_packed_r )
 {
 	UINT32 result = 0;
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= midway_ioasic_r(machine, offset*2, 0xffff0000) & 0xffff;
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= (midway_ioasic_r(machine, offset*2+1, 0xffff0000) & 0xffff) << 16;
+	if (ACCESSING_BITS_0_15)
+		result |= midway_ioasic_r(machine, offset*2, 0x0000ffff) & 0xffff;
+	if (ACCESSING_BITS_16_31)
+		result |= (midway_ioasic_r(machine, offset*2+1, 0x0000ffff) & 0xffff) << 16;
 	return result;
 }
 
@@ -870,7 +870,7 @@ READ32_HANDLER( midway_ioasic_r )
 	switch (offset)
 	{
 		case IOASIC_PORT0:
-			result = readinputport(0);
+			result = input_port_read_indexed(machine, 0);
 			/* bit 0 seems to be a ready flag before shuffling happens */
 			if (!ioasic.shuffle_active)
 			{
@@ -882,15 +882,15 @@ READ32_HANDLER( midway_ioasic_r )
 			break;
 
 		case IOASIC_PORT1:
-			result = readinputport(1);
+			result = input_port_read_indexed(machine, 1);
 			break;
 
 		case IOASIC_PORT2:
-			result = readinputport(2);
+			result = input_port_read_indexed(machine, 2);
 			break;
 
 		case IOASIC_PORT3:
-			result = readinputport(3);
+			result = input_port_read_indexed(machine, 3);
 			break;
 
 		case IOASIC_UARTIN:
@@ -948,10 +948,10 @@ READ32_HANDLER( midway_ioasic_r )
 
 WRITE32_HANDLER( midway_ioasic_packed_w )
 {
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		midway_ioasic_w(machine, offset*2, data & 0xffff, 0xffff0000);
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		midway_ioasic_w(machine, offset*2+1, data >> 16, 0xffff0000);
+	if (ACCESSING_BITS_0_15)
+		midway_ioasic_w(machine, offset*2, data & 0xffff, 0x0000ffff);
+	if (ACCESSING_BITS_16_31)
+		midway_ioasic_w(machine, offset*2+1, data >> 16, 0x0000ffff);
 }
 
 
@@ -1066,7 +1066,7 @@ WRITE32_HANDLER( midway_ioasic_w )
  *
  *************************************/
 
-READ32_HANDLER( midway_ide_asic_r )
+READ32_DEVICE_HANDLER( midway_ide_asic_r )
 {
 	/* convert to standard IDE offsets */
 	offs_t ideoffs = 0x1f0/4 + (offset >> 2);
@@ -1075,16 +1075,16 @@ READ32_HANDLER( midway_ide_asic_r )
 
 	/* offset 0 is a special case */
 	if (offset == 0)
-		result = ide_controller32_0_r(machine, ideoffs, 0xffff0000);
+		result = ide_controller32_r(device, ideoffs, 0x0000ffff);
 
 	/* everything else is byte-sized */
 	else
-		result = ide_controller32_0_r(machine, ideoffs, ~(0xff << shift)) >> shift;
+		result = ide_controller32_r(device, ideoffs, 0xff << shift) >> shift;
 	return result;
 }
 
 
-WRITE32_HANDLER( midway_ide_asic_w )
+WRITE32_DEVICE_HANDLER( midway_ide_asic_w )
 {
 	/* convert to standard IDE offsets */
 	offs_t ideoffs = 0x1f0/4 + (offset >> 2);
@@ -1092,9 +1092,9 @@ WRITE32_HANDLER( midway_ide_asic_w )
 
 	/* offset 0 is a special case */
 	if (offset == 0)
-		ide_controller32_0_w(machine, ideoffs, data, 0xffff0000);
+		ide_controller32_w(device, ideoffs, data, 0x0000ffff);
 
 	/* everything else is byte-sized */
 	else
-		ide_controller32_0_w(machine, ideoffs, data << shift, ~(0xff << shift));
+		ide_controller32_w(device, ideoffs, data << shift, 0xff << shift);
 }

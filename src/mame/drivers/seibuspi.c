@@ -824,7 +824,7 @@ static READ32_HANDLER( sound_fifo_r )
 
 static WRITE32_HANDLER( sound_fifo_w )
 {
-	if( (mem_mask & 0xff) == 0 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		z80_fifoin_push(data & 0xff);
 	}
 }
@@ -841,7 +841,7 @@ static READ32_HANDLER( sound_fifo_status_r )
 
 static READ32_HANDLER( spi_int_r )
 {
-	cpunum_set_input_line(Machine, 0, 0,CLEAR_LINE );
+	cpunum_set_input_line(machine, 0, 0,CLEAR_LINE );
 	return 0xffffffff;
 }
 
@@ -852,14 +852,14 @@ static READ32_HANDLER( spi_unknown_r )
 
 static WRITE32_HANDLER( ds2404_reset_w )
 {
-	if( ACCESSING_LSB32 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		DS2404_1W_reset_w(machine, offset, data);
 	}
 }
 
 static READ32_HANDLER( ds2404_data_r )
 {
-	if( ACCESSING_LSB32 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		return DS2404_data_r(machine, offset);
 	}
 	return 0;
@@ -867,14 +867,14 @@ static READ32_HANDLER( ds2404_data_r )
 
 static WRITE32_HANDLER( ds2404_data_w )
 {
-	if( ACCESSING_LSB32 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		DS2404_data_w(machine, offset, data);
 	}
 }
 
 static WRITE32_HANDLER( ds2404_clk_w )
 {
-	if( ACCESSING_LSB32 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		DS2404_clk_w(machine, offset, data);
 	}
 }
@@ -882,7 +882,7 @@ static WRITE32_HANDLER( ds2404_clk_w )
 static WRITE32_HANDLER( eeprom_w )
 {
 	// tile banks
-	if( !(mem_mask & 0x00ff0000) ) {
+	if( ACCESSING_BITS_16_23 ) {
 		rf2_set_layer_banks(data >> 16);
 		EEPROM_write_bit((data & 0x800000) ? 1 : 0);
 		EEPROM_set_clock_line((data & 0x400000) ? ASSERT_LINE : CLEAR_LINE);
@@ -896,7 +896,7 @@ static WRITE32_HANDLER( eeprom_w )
 
 static WRITE32_HANDLER( z80_prg_fifo_w )
 {
-	if( ACCESSING_LSB32 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		if (z80_prg_fifo_pos<0x40000) z80_rom[z80_prg_fifo_pos] = data & 0xff;
 		z80_prg_fifo_pos++;
 	}
@@ -905,33 +905,33 @@ static WRITE32_HANDLER( z80_prg_fifo_w )
 static WRITE32_HANDLER( z80_enable_w )
 {
 	// tile banks
-	if( !(mem_mask & 0x00ff0000) ) {
+	if( ACCESSING_BITS_16_23 ) {
 		rf2_set_layer_banks(data >> 16);
 	}
 
 logerror("z80 data = %08x mask = %08x\n",data,mem_mask);
-	if( !(mem_mask & 0x000000ff) ) {
+	if( ACCESSING_BITS_0_7 ) {
 		if( data & 0x1 ) {
 			z80_prg_fifo_pos = 0;
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE );
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE );
 		} else {
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE );
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE );
 		}
 	}
 }
 
 static READ32_HANDLER( spi_controls1_r )
 {
-	if( ACCESSING_LSB32 ) {
-		return (readinputport(1) << 8) | readinputport(0) | 0xffff0000;
+	if( ACCESSING_BITS_0_7 ) {
+		return (input_port_read_indexed(machine, 1) << 8) | input_port_read_indexed(machine, 0) | 0xffff0000;
 	}
 	return 0xffffffff;
 }
 
 static READ32_HANDLER( spi_controls2_r )
 {
-	if( ACCESSING_LSB32 ) {
-		return ((readinputport(2) | 0xffffff00) & ~0x40) | (EEPROM_read_bit() << 6);
+	if( ACCESSING_BITS_0_7 ) {
+		return ((input_port_read_indexed(machine, 2) | 0xffffff00) & ~0x40) | (EEPROM_read_bit() << 6);
 	}
 	return 0xffffffff;
 }
@@ -948,14 +948,14 @@ static READ32_HANDLER( spi_6295_1_r )
 
 static WRITE32_HANDLER( spi_6295_0_w )
 {
-	if( ACCESSING_LSB32 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		OKIM6295_data_0_w(machine, 0, data & 0xff);
 	}
 }
 
 static WRITE32_HANDLER( spi_6295_1_w )
 {
-	if( ACCESSING_LSB32 ) {
+	if( ACCESSING_BITS_0_7 ) {
 		OKIM6295_data_1_w(machine, 0, data & 0xff);
 	}
 }
@@ -995,12 +995,12 @@ static WRITE8_HANDLER( z80_bank_w )
 
 static READ8_HANDLER( z80_jp1_r )
 {
-	return readinputport(3);
+	return input_port_read_indexed(machine, 3);
 }
 
 static READ8_HANDLER( z80_coin_r )
 {
-	return readinputport(4);
+	return input_port_read_indexed(machine, 4);
 }
 
 static READ32_HANDLER( soundrom_r )
@@ -1008,11 +1008,11 @@ static READ32_HANDLER( soundrom_r )
 	UINT8 *sound = (UINT8*)memory_region(REGION_USER2);
 	UINT16 *sound16 = (UINT16*)memory_region(REGION_USER2);
 
-	if (mem_mask == 0xffffff00)
+	if (mem_mask == 0x000000ff)
 	{
 		return sound[offset];
 	}
-	else if (mem_mask == 0x00000000)
+	else if (mem_mask == 0xffffffff)
 	{
 		if (offset < 0x100000)
 		{
@@ -1731,7 +1731,7 @@ static INTERRUPT_GEN( spi_interrupt )
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE );
 }
 
-static int spi_irq_callback(int irq)
+static IRQ_CALLBACK(spi_irq_callback)
 {
 	return 0x20;
 }
@@ -1749,9 +1749,9 @@ static MACHINE_RESET( spi )
 	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE );
 	cpunum_set_irq_callback(0, spi_irq_callback);
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000680, 0x00000683, 0, 0, sound_fifo_r);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000688, 0x0000068b, 0, 0, z80_prg_fifo_w);
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000068c, 0x0000068f, 0, 0, z80_enable_w);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000680, 0x00000683, 0, 0, sound_fifo_r);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000688, 0x0000068b, 0, 0, z80_prg_fifo_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000068c, 0x0000068f, 0, 0, z80_enable_w);
 
 	z80_rom = auto_malloc(0x40000);
 	memory_set_bankptr(4, z80_rom);
@@ -1795,7 +1795,7 @@ static MACHINE_DRIVER_START( spi )
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(54)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
 
@@ -1823,8 +1823,8 @@ static MACHINE_RESET( sxx2f )
 
 	memcpy(z80_rom, rom, 0x40000);
 
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000068c, 0x0000068f, 0, 0, eeprom_w);
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000680, 0x00000683, 0, 0, sb_coin_r);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000068c, 0x0000068f, 0, 0, eeprom_w);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000680, 0x00000683, 0, 0, sb_coin_r);
 	cpunum_set_irq_callback(0, spi_irq_callback);
 
 	sb_coin_latch = 0;
@@ -1971,7 +1971,7 @@ static READ32_HANDLER ( rfjet_speedup_r )
 		cpu_spinuntil_int(); // idle
 		// Hack to enter test mode
 		r = spimainram[(0x002894c-0x800)/4] & (~0x400);
-		return r | (((readinputport(2) ^ 0xFF)<<8) & 0x400);
+		return r | (((input_port_read_indexed(machine, 2) ^ 0xFF)<<8) & 0x400);
 	}
 
 	/* rfjetj */
@@ -1995,28 +1995,28 @@ static void init_spi(running_machine *machine)
 
 static DRIVER_INIT( rdft )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00298d0, 0x00298d3, 0, 0, rdft_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00298d0, 0x00298d3, 0, 0, rdft_speedup_r );
 
 	init_spi(machine);
 }
 
 static DRIVER_INIT( senkyu )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0018cb4, 0x0018cb7, 0, 0, senkyu_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0018cb4, 0x0018cb7, 0, 0, senkyu_speedup_r );
 
 	init_spi(machine);
 }
 
 static DRIVER_INIT( senkyua )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0018c9c, 0x0018c9f, 0, 0, senkyua_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0018c9c, 0x0018c9f, 0, 0, senkyua_speedup_r );
 
 	init_spi(machine);
 }
 
 static DRIVER_INIT( batlball )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0018db4, 0x0018db7, 0, 0, batlball_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0018db4, 0x0018db7, 0, 0, batlball_speedup_r );
 
 	init_spi(machine);
 }
@@ -2024,21 +2024,21 @@ static DRIVER_INIT( batlball )
 static DRIVER_INIT( ejanhs )
 {
 //  idle skip doesn't work properly?
-//  memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x002d224, 0x002d227, 0, 0, ejanhs_speedup_r );
+//  memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x002d224, 0x002d227, 0, 0, ejanhs_speedup_r );
 
 	init_spi(machine);
 }
 
 static DRIVER_INIT( viprp1 )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x001e2e0, 0x001e2e3, 0, 0, viprp1_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x001e2e0, 0x001e2e3, 0, 0, viprp1_speedup_r );
 
 	init_spi(machine);
 }
 
 static DRIVER_INIT( viprp1o )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x001d49c, 0x001d49f, 0, 0, viprp1o_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x001d49c, 0x001d49f, 0, 0, viprp1o_speedup_r );
 
 	init_spi(machine);
 }
@@ -2050,12 +2050,12 @@ static void init_rf2(running_machine *machine)
 	intelflash_init( 0, FLASH_INTEL_E28F008SA, NULL );
 	intelflash_init( 1, FLASH_INTEL_E28F008SA, NULL );
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0282AC, 0x0282AF, 0, 0, rf2_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0282AC, 0x0282AF, 0, 0, rf2_speedup_r );
 	seibuspi_rise10_text_decrypt(memory_region(REGION_GFX1));
 	seibuspi_rise10_bg_decrypt(memory_region(REGION_GFX2), memory_region_length(REGION_GFX2));
 	seibuspi_rise10_sprite_decrypt(memory_region(REGION_GFX3), 0x600000);
 
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x560, 0x563, 0, 0, sprite_dma_start_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x560, 0x563, 0, 0, sprite_dma_start_w);
 }
 
 static DRIVER_INIT( rdft2 )
@@ -2074,12 +2074,12 @@ static DRIVER_INIT( rfjet )
 	intelflash_init( 0, FLASH_INTEL_E28F008SA, NULL );
 	intelflash_init( 1, FLASH_INTEL_E28F008SA, NULL );
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x002894c, 0x002894f, 0, 0, rfjet_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x002894c, 0x002894f, 0, 0, rfjet_speedup_r );
 	seibuspi_rise11_text_decrypt(memory_region(REGION_GFX1));
 	seibuspi_rise11_bg_decrypt(memory_region(REGION_GFX2), memory_region_length(REGION_GFX2));
 	seibuspi_rise11_sprite_decrypt(memory_region(REGION_GFX3), 0x800000);
 
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x560, 0x563, 0, 0, sprite_dma_start_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x560, 0x563, 0, 0, sprite_dma_start_w);
 }
 
 /* SYS386 */
@@ -2108,7 +2108,7 @@ static MACHINE_DRIVER_START( seibu386 )
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(54)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8-1, 0*8, 30*8-1)
 

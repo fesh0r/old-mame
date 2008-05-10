@@ -146,9 +146,9 @@ static CUSTOM_INPUT( sidewndr_payout_r )
 	switch (bit_mask)
 	{
 		case 0x01:
-			return ((readinputportbytag("PAYOUT") & bit_mask) >> 0);
+			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 0);
 		case 0x02:
-			return ((readinputportbytag("PAYOUT") & bit_mask) >> 1);
+			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 1);
 		default:
 			logerror("sidewndr_payout_r : invalid %02X bit_mask\n",bit_mask);
 			return 0;
@@ -162,13 +162,13 @@ static CUSTOM_INPUT( starspnr_coinage_r )
 	switch (bit_mask)
 	{
 		case 0x01:
-			return ((readinputportbytag("COINAGE") & bit_mask) >> 0);
+			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 0);
 		case 0x02:
-			return ((readinputportbytag("COINAGE") & bit_mask) >> 1);
+			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 1);
 		case 0x04:
-			return ((readinputportbytag("COINAGE") & bit_mask) >> 2);
+			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 2);
 		case 0x08:
-			return ((readinputportbytag("COINAGE") & bit_mask) >> 3);
+			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 3);
 		default:
 			logerror("starspnr_coinage_r : invalid %02X bit_mask\n",bit_mask);
 			return 0;
@@ -182,11 +182,11 @@ static CUSTOM_INPUT( starspnr_payout_r )
 	switch (bit_mask)
 	{
 		case 0x01:
-			return ((readinputportbytag("PAYOUT") & bit_mask) >> 0);
+			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 0);
 		case 0x02:
-			return ((readinputportbytag("PAYOUT") & bit_mask) >> 1);
+			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 1);
 		case 0x04:
-			return ((readinputportbytag("PAYOUT") & bit_mask) >> 2);
+			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 2);
 		default:
 			logerror("starspnr_payout_r : invalid %02X bit_mask\n",bit_mask);
 			return 0;
@@ -255,7 +255,7 @@ static ADDRESS_MAP_START( acefruit_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x2000, 0x20ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x4000, 0x43ff) AM_RAM AM_BASE(&videoram)
-	AM_RANGE(0x4400, 0x47ff) AM_READWRITE(SMH_RAM, acefruit_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x4400, 0x47ff) AM_RAM_WRITE(acefruit_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x8000, 0x8000) AM_READ(input_port_0_r)
 	AM_RANGE(0x8001, 0x8001) AM_READ(input_port_1_r)
 	AM_RANGE(0x8002, 0x8002) AM_READ(input_port_2_r)

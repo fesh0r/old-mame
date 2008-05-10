@@ -71,7 +71,6 @@ cc_p14.j2 8192 0xedc6a1eb M5L2764k
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/namco.h"
 
@@ -100,7 +99,7 @@ static WRITE8_HANDLER( sound_command_w )
 	sound_fetched = 0;
 	sound_command = data;
 	sound_cpu_ready = 0;
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static READ8_HANDLER( sound_command_r )
@@ -117,7 +116,7 @@ static READ8_HANDLER( sound_ack_r )
 
 static READ8_HANDLER( mainsnk_port_0_r )
 {
-	int result = input_port_0_r( machine, 0 );
+	int result = input_port_read_indexed( machine, 0 );
 	if( !sound_cpu_ready ) result |= 0x20;
 	return result;
 }
@@ -132,10 +131,10 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc500, 0xc500) AM_READ(input_port_4_r)
 	AM_RANGE(0xc600, 0xc600) AM_WRITE(mainsnk_c600_w)
 	AM_RANGE(0xc700, 0xc700) AM_WRITE(sound_command_w)
-	AM_RANGE(0xd800, 0xdbff) AM_READWRITE(SMH_RAM, mainsnk_bgram_w) AM_BASE(&mainsnk_bgram)
+	AM_RANGE(0xd800, 0xdbff) AM_RAM_WRITE(mainsnk_bgram_w) AM_BASE(&mainsnk_bgram)
 	AM_RANGE(0xdc00, 0xe7ff) AM_RAM
 	AM_RANGE(0xe800, 0xefff) AM_RAM AM_BASE(&spriteram)
-	AM_RANGE(0xf000, 0xf3ff) AM_READWRITE(SMH_RAM, mainsnk_fgram_w) AM_BASE(&mainsnk_fgram)
+	AM_RANGE(0xf000, 0xf3ff) AM_RAM_WRITE(mainsnk_fgram_w) AM_BASE(&mainsnk_fgram)
 	AM_RANGE(0xf400, 0xf7ff) AM_RAM
 ADDRESS_MAP_END
 
@@ -458,7 +457,7 @@ ROM_END
 
 static DRIVER_INIT ( canvas )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc000, 0, 0, input_port_0_r );
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc000, 0, 0, input_port_0_r );
 }
 
 ROM_START( canvas )

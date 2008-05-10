@@ -92,6 +92,7 @@ enum
 	XTAL_17_73447MHz	= 17734470,		/* 4 times the PAL subcarrier */
 	XTAL_18MHz   		= 18000000,		/* S.A.R, Ikari Warriors 3 */
 	XTAL_18_432MHz  	= 18432000,		/* Extremely common, used on 100's of PCBs */
+	XTAL_19_6608MHz		= 19660800,		/* Euro League (bootleg), labeled as "UKI 19.6608 20PF" */
 	XTAL_19_923MHz		= 19923000,		/* Cinematronics vectors */
 	XTAL_19_968MHz  	= 19968000,		/* Used mostly by some Taito games */
 	XTAL_20MHz   		= 20000000,
@@ -103,13 +104,14 @@ enum
 	XTAL_24_576MHz  	= 24576000,		/* Pole Position h/w, Model 3 CPU board */
 	XTAL_25MHz   		= 25000000,		/* Namco System 22, Taito GNET, Dogyuun h/w */
 	XTAL_25_1748MHz  	= 25174800,		/* Sega S16A, S16B */
+	XTAL_25_601712MHz  	= 25601712,		/* Astro Corp.'s Show Hand */
 	XTAL_26_66666MHz 	= 26666660,		/* Irem M92 but most use 27MHz */
 	XTAL_26_686MHz 		= 26686000,		/* Typically used on 90's Taito PCBs to drive the custom chips */
 	XTAL_27MHz   		= 27000000,		/* Some Banpresto games macrossp, Irem M92 and 90's Toaplan games */
 	XTAL_27_164MHz  	= 27164000,		/* Typically used on 90's Taito PCBs to drive the custom chips */
 	XTAL_28MHz   		= 28000000,
 	XTAL_28_37516MHz	= 28375160,		/* Amiga PAL systems */
-	XTAL_28_63636MHz  	= 28636360,		/* later Leland games and Atari GT, Amiga NTSC , Raiden2 h/w */
+	XTAL_28_63636MHz  	= 28636360,		/* Later Leland games and Atari GT, Amiga NTSC , Raiden2 h/w */
 	XTAL_30_4761MHz  	= 30476100,		/* Taito JC */
 	XTAL_32MHz   		= 32000000,
 	XTAL_32_22MHz  		= 32220000,		/* Typically used on 90's Data East PCBs */
@@ -134,11 +136,11 @@ enum
 	XTAL_60MHz   		= 60000000,
 	XTAL_61_44MHz		= 61440000,		/* dkong */
 	XTAL_64MHz   		= 64000000,		/* BattleToads */
-	XTAL_66_6667MHz   	= 66666700,		/* later Midway games */
+	XTAL_66_6667MHz   	= 66666700,		/* Later Midway games */
 	XTAL_67_7376MHz  	= 67737600,		/* PSX-based h/w, Sony ZN1-2-based */
 	XTAL_73_728MHz  	= 73728000,		/* Ms. Pac-Man/Galaga 20th Anniversary */
-	XTAL_100MHz  		= 100000000,		/* PSX-based Namco System 12, Vegas, Sony ZN1-2-based */
-	XTAL_101_4912MHz  	= 101491200,		/* PSX-based Namco System 10 */
+	XTAL_100MHz  		= 100000000,	/* PSX-based Namco System 12, Vegas, Sony ZN1-2-based */
+	XTAL_101_4912MHz  	= 101491200,	/* PSX-based Namco System 10 */
 
 /* Resonators (There are probably more. Almost always used for driving OKI sound chips) */
 

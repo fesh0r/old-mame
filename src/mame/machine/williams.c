@@ -433,9 +433,9 @@ static TIMER_CALLBACK( williams2_endscreen_callback )
  *
  *************************************/
 
-static void williams2_postload(void)
+static STATE_POSTLOAD( williams2_postload )
 {
-	williams2_bank_select_w(Machine, 0, vram_bank);
+	williams2_bank_select_w(machine, 0, vram_bank);
 }
 
 
@@ -460,7 +460,7 @@ MACHINE_RESET( williams2 )
 	timer_adjust_oneshot(scan254_timer, video_screen_get_time_until_pos(machine->primary_screen, 254, 0), 0);
 
 	state_save_register_global(vram_bank);
-	state_save_register_func_postload(williams2_postload);
+	state_save_register_postload(machine, williams2_postload, NULL);
 }
 
 
@@ -491,8 +491,8 @@ WRITE8_HANDLER( williams2_bank_select_w )
 	{
 		/* page 0 is video ram */
 		case 0:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
 			memory_set_bank(1, 0);
 			memory_set_bankptr(4, &williams_videoram[0x8000]);
 			break;
@@ -500,16 +500,15 @@ WRITE8_HANDLER( williams2_bank_select_w )
 		/* pages 1 and 2 are ROM */
 		case 1:
 		case 2:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
 			memory_set_bank(1, 1 + ((vram_bank & 6) >> 1));
 			memory_set_bankptr(4, &williams_videoram[0x8000]);
 			break;
 
 		/* page 3 accesses palette RAM; the remaining areas are as if page 1 ROM was selected */
 		case 3:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, williams2_paletteram_w);
+			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x87ff, 0, 0, SMH_BANK4, williams2_paletteram_w);
 			memory_set_bank(1, 1 + ((vram_bank & 4) >> 1));
 			memory_set_bankptr(4, paletteram);
 			break;
@@ -568,13 +567,13 @@ WRITE8_HANDLER( williams_port_select_w )
 
 READ8_HANDLER( williams_input_port_0_3_r )
 {
-	return readinputport(port_select ? 3 : 0);
+	return input_port_read_indexed(machine, port_select ? 3 : 0);
 }
 
 
 READ8_HANDLER( williams_input_port_1_4_r )
 {
-	return readinputport(port_select ? 4 : 1);
+	return input_port_read_indexed(machine, port_select ? 4 : 1);
 }
 
 
@@ -606,7 +605,7 @@ READ8_HANDLER( williams_input_port_1_4_r )
 READ8_HANDLER( williams_49way_port_0_r )
 {
 	static const UINT8 translate49[7] = { 0x0, 0x4, 0x6, 0x7, 0xb, 0x9, 0x8 };
-	return (translate49[readinputportbytag("49WAYX") >> 4] << 4) | translate49[readinputportbytag("49WAYY") >> 4];
+	return (translate49[input_port_read(machine, "49WAYX") >> 4] << 4) | translate49[input_port_read(machine, "49WAYY") >> 4];
 }
 
 
@@ -615,7 +614,7 @@ READ8_HANDLER( williams_input_port_49way_0_5_r )
 	if (port_select)
 		return williams_49way_port_0_r(machine,0);
 	else
-		return readinputport(5);
+		return input_port_read_indexed(machine, 5);
 }
 
 
@@ -711,9 +710,9 @@ WRITE8_HANDLER( williams2_7segment_w )
  *
  *************************************/
 
-static void defender_postload(void)
+static STATE_POSTLOAD( defender_postload )
 {
-	defender_bank_select_w(Machine, 0, vram_bank);
+	defender_bank_select_w(machine, 0, vram_bank);
 }
 
 
@@ -725,7 +724,7 @@ MACHINE_RESET( defender )
 	memory_configure_bank(1, 0, 9, &memory_region(REGION_CPU1)[0x10000], 0x1000);
 	defender_bank_select_w(machine, 0, 0);
 
-	state_save_register_func_postload(defender_postload);
+	state_save_register_postload(machine, defender_postload, NULL);
 }
 
 
@@ -744,7 +743,7 @@ WRITE8_HANDLER( defender_bank_select_w )
 	{
 		/* page 0 is I/O space */
 		case 0:
-			defender_install_io_space();
+			defender_install_io_space(machine);
 			break;
 
 		/* pages 1-9 map to ROM banks */
@@ -757,15 +756,13 @@ WRITE8_HANDLER( defender_bank_select_w )
 		case 7:
 		case 8:
 		case 9:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_UNMAP);
+			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1, SMH_UNMAP);
 			memory_set_bank(1, vram_bank - 1);
 			break;
 
 		/* pages A-F are not connected */
 		default:
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_NOP);
+			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_NOP, SMH_NOP);
 			break;
 	}
 }
@@ -866,7 +863,7 @@ WRITE8_HANDLER( blaster_bank_select_w )
 static READ8_HANDLER( lottofun_input_port_0_r )
 {
 	/* merge in the ticket dispenser status */
-	return input_port_0_r(machine,offset) | ticket_dispenser_r(machine,offset);
+	return input_port_read_indexed(machine,0) | ticket_dispenser_r(machine,offset);
 }
 
 

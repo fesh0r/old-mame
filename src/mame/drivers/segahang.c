@@ -39,7 +39,7 @@ static UINT16 *workram;
 
 static UINT8 adc_select;
 
-static void (*i8751_vblank_hook)(void);
+static void (*i8751_vblank_hook)(running_machine *machine);
 
 
 
@@ -63,15 +63,24 @@ static READ8_HANDLER( adc_status_r );
  *
  *************************************/
 
-static const ppi8255_interface hangon_ppi_intf =
+static const ppi8255_interface hangon_ppi_intf[2] =
 {
-	2,
-	{ NULL,            NULL },
-	{ NULL,            NULL },
-	{ NULL,            adc_status_r },
-	{ soundlatch_w,    sub_control_adc_w },
-	{ video_lamps_w,   NULL },
-	{ tilemap_sound_w, NULL }
+	{
+		NULL,
+		NULL,
+		NULL,
+		soundlatch_w,
+		video_lamps_w,
+		tilemap_sound_w
+	},
+	{
+		NULL,
+		NULL,
+		adc_status_r,
+		sub_control_adc_w,
+		NULL,
+		NULL
+	}
 };
 
 
@@ -84,9 +93,6 @@ static const ppi8255_interface hangon_ppi_intf =
 
 static void hangon_generic_init(void)
 {
-	/* configure the 8255 interface */
-	ppi8255_init(&hangon_ppi_intf);
-
 	/* reset the custom handlers and other pointers */
 	i8751_vblank_hook = NULL;
 }
@@ -138,7 +144,7 @@ static INTERRUPT_GEN( hangon_irq )
 
 static TIMER_CALLBACK( delayed_ppi8255_w )
 {
-	ppi8255_0_w(machine, param >> 8, param & 0xff);
+	ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), param >> 8, param & 0xff);
 }
 
 
@@ -147,26 +153,26 @@ static READ16_HANDLER( hangon_io_r )
 	switch (offset & 0x3020/2)
 	{
 		case 0x0000/2: /* PPI @ 4B */
-			return ppi8255_0_r(machine, offset & 3);
+			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 3);
 
 		case 0x1000/2: /* Input ports and DIP switches */
-			return readinputport(offset & 3);
+			return input_port_read_indexed(machine, offset & 3);
 
 		case 0x3000/2: /* PPI @ 4C */
-			return ppi8255_1_r(machine, offset & 3);
+			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3);
 
 		case 0x3020/2: /* ADC0804 data output */
-			return readinputport(4 + adc_select);
+			return input_port_read_indexed(machine, 4 + adc_select);
 	}
 
 	logerror("%06X:hangon_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
 static WRITE16_HANDLER( hangon_io_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		switch (offset & 0x3020/2)
 		{
 			case 0x0000/2: /* PPI @ 4B */
@@ -176,14 +182,14 @@ static WRITE16_HANDLER( hangon_io_w )
 				return;
 
 			case 0x3000/2: /* PPI @ 4C */
-				ppi8255_1_w(machine, offset & 3, data & 0xff);
+				ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3, data & 0xff);
 				return;
 
 			case 0x3020/2: /* ADC0804 */
 				return;
 		}
 
-	logerror("%06X:hangon_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
+	logerror("%06X:hangon_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
 }
 
 
@@ -192,27 +198,27 @@ static READ16_HANDLER( sharrier_io_r )
 	switch (offset & 0x0030/2)
 	{
 		case 0x0000/2:
-			return ppi8255_0_r(machine, offset & 3);
+			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 3);
 
 		case 0x0010/2: /* Input ports and DIP switches */
-			return readinputport(offset & 3);
+			return input_port_read_indexed(machine, offset & 3);
 
 		case 0x0020/2: /* PPI @ 4C */
 			if (offset == 2) return 0;
-			return ppi8255_1_r(machine, offset & 3);
+			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3);
 
 		case 0x0030/2: /* ADC0804 data output */
-			return readinputport(4 + adc_select);
+			return input_port_read_indexed(machine, 4 + adc_select);
 	}
 
 	logerror("%06X:sharrier_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
-	return segaic16_open_bus_r(machine,0,0);
+	return segaic16_open_bus_r(machine,0,mem_mask);
 }
 
 
 static WRITE16_HANDLER( sharrier_io_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		switch (offset & 0x0030/2)
 		{
 			case 0x0000/2:
@@ -222,14 +228,14 @@ static WRITE16_HANDLER( sharrier_io_w )
 				return;
 
 			case 0x0020/2: /* PPI @ 4C */
-				ppi8255_1_w(machine, offset & 3, data & 0xff);
+				ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3, data & 0xff);
 				return;
 
 			case 0x0030/2: /* ADC0804 */
 				return;
 		}
 
-	logerror("%06X:sharrier_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
+	logerror("%06X:sharrier_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
 }
 
 
@@ -272,7 +278,7 @@ static WRITE8_HANDLER( tilemap_sound_w )
 	/* D2 : SCONT1 - Tilemap origin bit 1 */
 	/* D1 : SCONT0 - Tilemap origin bit 0 */
 	/* D0 : MUTE (1= audio on, 0= audio off) */
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	segaic16_tilemap_set_colscroll(0, ~data & 0x04);
 	segaic16_tilemap_set_rowscroll(0, ~data & 0x02);
 	sound_global_enable(data & 0x01);
@@ -285,8 +291,8 @@ static WRITE8_HANDLER( sub_control_adc_w )
 	/* D6 : INTR line on second CPU */
 	/* D5 : RESET line on second CPU */
 	/* D3-D2 : ADC_SELECT */
-	cpunum_set_input_line(Machine, 1, 4, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 4, (data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 	adc_select = (data >> 2) & 3;
 }
 
@@ -312,7 +318,7 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
 {
 	/* if we have a fake 8751 handler, call it on VBLANK */
 	if (i8751_vblank_hook != NULL)
-		(*i8751_vblank_hook)();
+		(*i8751_vblank_hook)(machine);
 	irq4_line_hold(machine, cpunum);
 }
 
@@ -324,9 +330,9 @@ static INTERRUPT_GEN( i8751_main_cpu_vblank )
  *
  *************************************/
 
-static void sharrier_i8751_sim(void)
+static void sharrier_i8751_sim(running_machine *machine)
 {
-	workram[0x492/2] = (readinputport(4) << 8) | readinputport(5);
+	workram[0x492/2] = (input_port_read_indexed(machine, 4) << 8) | input_port_read_indexed(machine, 5);
 }
 
 
@@ -346,7 +352,7 @@ static void sound_irq(int irq)
 static READ8_HANDLER( sound_data_r )
 {
 	/* assert ACK */
-	ppi8255_set_portC(0, 0x00);
+	ppi8255_set_portC(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), 0x00);
 	return soundlatch_r(machine, offset);
 }
 
@@ -362,10 +368,10 @@ static ADDRESS_MAP_START( hangon_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x20c000, 0x20ffff) AM_RAM
-	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(SMH_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
-	AM_RANGE(0x410000, 0x410fff) AM_READWRITE(SMH_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
+	AM_RANGE(0x400000, 0x403fff) AM_RAM_WRITE(segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
+	AM_RANGE(0x410000, 0x410fff) AM_RAM_WRITE(segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
 	AM_RANGE(0x600000, 0x6007ff) AM_RAM AM_BASE(&segaic16_spriteram_0)
-	AM_RANGE(0xa00000, 0xa00fff) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xa00000, 0xa00fff) AM_RAM_WRITE(segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xc00000, 0xc3ffff) AM_ROM AM_REGION(REGION_CPU2, 0)
 	AM_RANGE(0xc68000, 0xc68fff) AM_RAM AM_SHARE(1) AM_BASE(&segaic16_roadram_0)
 	AM_RANGE(0xc7c000, 0xc7ffff) AM_RAM AM_SHARE(2)
@@ -377,9 +383,9 @@ static ADDRESS_MAP_START( sharrier_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x040000, 0x043fff) AM_RAM AM_BASE(&workram)
-	AM_RANGE(0x100000, 0x107fff) AM_READWRITE(SMH_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
-	AM_RANGE(0x108000, 0x108fff) AM_READWRITE(SMH_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
-	AM_RANGE(0x110000, 0x110fff) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x100000, 0x107fff) AM_RAM_WRITE(segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
+	AM_RANGE(0x108000, 0x108fff) AM_RAM_WRITE(segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
+	AM_RANGE(0x110000, 0x110fff) AM_RAM_WRITE(segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x124000, 0x127fff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0x130000, 0x130fff) AM_RAM AM_BASE(&segaic16_spriteram_0)
 	AM_RANGE(0x140000, 0x14ffff) AM_READWRITE(sharrier_io_r, sharrier_io_w)
@@ -796,7 +802,12 @@ INPUT_PORTS_END
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,sound_irq
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
+	sound_irq
 };
 
 
@@ -856,6 +867,12 @@ static MACHINE_DRIVER_START( hangon_base )
 
 	MDRV_MACHINE_RESET(hangon)
 	MDRV_INTERLEAVE(100)
+
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( hangon_ppi_intf[0] )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( hangon_ppi_intf[1] )
 
 	/* video hardware */
 	MDRV_GFXDECODE(segahang)

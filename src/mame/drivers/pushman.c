@@ -39,7 +39,7 @@ static UINT16 latch,new_latch=0;
 
 static WRITE16_HANDLER( pushman_control_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		soundlatch_w(machine,0,(data>>8)&0xff);
 }
 
@@ -56,14 +56,14 @@ static READ16_HANDLER( pushman_68705_r )
 
 static WRITE16_HANDLER( pushman_68705_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		shared_ram[2*offset]=data>>8;
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		shared_ram[2*offset+1]=data&0xff;
 
 	if (offset==1)
 	{
-        cpunum_set_input_line(Machine, 2,M68705_IRQ_LINE,HOLD_LINE);
+        cpunum_set_input_line(machine, 2,M68705_IRQ_LINE,HOLD_LINE);
 		cpu_spin();
 		new_latch=0;
 	}
@@ -87,9 +87,9 @@ static READ16_HANDLER( bballs_68705_r )
 
 static WRITE16_HANDLER( bballs_68705_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		shared_ram[2*offset]=data>>8;
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		shared_ram[2*offset+1]=data&0xff;
 
 	if(offset==0)
@@ -426,7 +426,12 @@ static void irqhandler(int irq)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,irqhandler
+	{
+			AY8910_LEGACY_OUTPUT,
+			AY8910_DEFAULT_LOADS,
+			NULL, NULL, NULL, NULL,
+	},
+	irqhandler
 };
 
 

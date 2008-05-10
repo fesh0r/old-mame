@@ -175,14 +175,14 @@ static MACHINE_RESET( megasys1_hachoo )
                         [ Main CPU - System A / Z ]
 ***************************************************************************/
 
-static READ16_HANDLER( coins_r )	{return readinputport(0);}	// < 00 | Coins >
-static READ16_HANDLER( player1_r )	{return readinputport(1);}	// < 00 | Player 1 >
-static READ16_HANDLER( player2_r )	{return readinputport(2) * 256 +
-									        readinputport(3);}		// < Reserve | Player 2 >
-static READ16_HANDLER( dsw1_r )		{return readinputport(4);}							//   DSW 1
-static READ16_HANDLER( dsw2_r )		{return readinputport(5);}							//   DSW 2
-static READ16_HANDLER( dsw_r )		{return readinputport(4) * 256 +
-									        readinputport(5);}		// < DSW 1 | DSW 2 >
+static READ16_HANDLER( coins_r )	{return input_port_read_indexed(machine, 0);}	// < 00 | Coins >
+static READ16_HANDLER( player1_r )	{return input_port_read_indexed(machine, 1);}	// < 00 | Player 1 >
+static READ16_HANDLER( player2_r )	{return input_port_read_indexed(machine, 2) * 256 +
+									        input_port_read_indexed(machine, 3);}		// < Reserve | Player 2 >
+static READ16_HANDLER( dsw1_r )		{return input_port_read_indexed(machine, 4);}							//   DSW 1
+static READ16_HANDLER( dsw2_r )		{return input_port_read_indexed(machine, 5);}							//   DSW 2
+static READ16_HANDLER( dsw_r )		{return input_port_read_indexed(machine, 4) * 256 +
+									        input_port_read_indexed(machine, 5);}		// < DSW 1 | DSW 2 >
 
 
 #define INTERRUPT_NUM_A		3
@@ -274,11 +274,11 @@ static READ16_HANDLER( ip_select_r )
 
 	switch (i)
 	{
-			case 0 :	return coins_r(machine,0,0);	break;
-			case 1 :	return player1_r(machine,0,0);	break;
-			case 2 :	return player2_r(machine,0,0);	break;
-			case 3 :	return dsw1_r(machine,0,0);		break;
-			case 4 :	return dsw2_r(machine,0,0);		break;
+			case 0 :	return coins_r(machine,0,0xffff);	break;
+			case 1 :	return player1_r(machine,0,0xffff);	break;
+			case 2 :	return player2_r(machine,0,0xffff);	break;
+			case 3 :	return dsw1_r(machine,0,0xffff);	break;
+			case 4 :	return dsw2_r(machine,0,0xffff);	break;
 			default	 :	return 0x0006;
 	}
 }
@@ -286,7 +286,7 @@ static READ16_HANDLER( ip_select_r )
 static WRITE16_HANDLER( ip_select_w )
 {
 	COMBINE_DATA(&ip_select);
-	cpunum_set_input_line(Machine, 0,2,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,2,HOLD_LINE);
 }
 
 
@@ -795,10 +795,11 @@ static void irq_handler(int irq)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,
-	0,
-	0,
-	0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
 	irq_handler
 };
 
@@ -2931,8 +2932,8 @@ static READ16_HANDLER( protection_peekaboo_r )
 	switch (protection_val)
 	{
 		case 0x02:	return 0x03;
-		case 0x51:	return player1_r(machine,0,0);
-		case 0x52:	return player2_r(machine,0,0);
+		case 0x51:	return player1_r(machine,0,0xffff);
+		case 0x52:	return player2_r(machine,0,0xffff);
 		default:	return protection_val;
 	}
 }
@@ -2955,7 +2956,7 @@ static WRITE16_HANDLER( protection_peekaboo_w )
 		}
 	}
 
-	cpunum_set_input_line(Machine, 0,4,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,4,HOLD_LINE);
 }
 
 
@@ -3859,12 +3860,12 @@ static DRIVER_INIT( iganinju )
 
 static WRITE16_HANDLER( OKIM6295_data_0_both_w )
 {
-	if (ACCESSING_LSB)	OKIM6295_data_0_w(machine, 0, (data >> 0) & 0xff );
+	if (ACCESSING_BITS_0_7)	OKIM6295_data_0_w(machine, 0, (data >> 0) & 0xff );
 	else				OKIM6295_data_0_w(machine, 0, (data >> 8) & 0xff );
 }
 static WRITE16_HANDLER( OKIM6295_data_1_both_w )
 {
-	if (ACCESSING_LSB)	OKIM6295_data_1_w(machine, 0, (data >> 0) & 0xff );
+	if (ACCESSING_BITS_0_7)	OKIM6295_data_1_w(machine, 0, (data >> 0) & 0xff );
 	else				OKIM6295_data_1_w(machine, 0, (data >> 8) & 0xff );
 }
 
@@ -3881,14 +3882,13 @@ static DRIVER_INIT( jitsupro )
 	RAM[0x438/2] = 0x4e71;	//
 
 	/* the sound code writes oki commands to both the lsb and msb */
-	memory_install_write16_handler(1, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xa0003, 0, 0, OKIM6295_data_0_both_w);
-	memory_install_write16_handler(1, ADDRESS_SPACE_PROGRAM, 0xc0000, 0xc0003, 0, 0, OKIM6295_data_1_both_w);
+	memory_install_write16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xa0000, 0xa0003, 0, 0, OKIM6295_data_0_both_w);
+	memory_install_write16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xc0000, 0xc0003, 0, 0, OKIM6295_data_1_both_w);
 }
 
 static DRIVER_INIT( peekaboo )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x100001, 0, 0, protection_peekaboo_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x100001, 0, 0, protection_peekaboo_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x100001, 0, 0, protection_peekaboo_r, protection_peekaboo_w);
 }
 
 static DRIVER_INIT( phantasm )
@@ -3924,8 +3924,7 @@ static DRIVER_INIT( soldam )
 	astyanax_rom_decode(0);
 
 	/* Sprite RAM is mirrored. Why? */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x8c000, 0x8cfff, 0, 0, soldamj_spriteram16_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x8c000, 0x8cfff, 0, 0, soldamj_spriteram16_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8c000, 0x8cfff, 0, 0, soldamj_spriteram16_r, soldamj_spriteram16_w);
 }
 
 static DRIVER_INIT( stdragon )

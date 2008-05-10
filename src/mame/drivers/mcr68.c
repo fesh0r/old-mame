@@ -74,8 +74,8 @@ static UINT8 protection_data[5];
 
 READ8_HANDLER( zwackery_port_2_r )
 {
-	int result = readinputport(2);
-	int wheel = readinputport(5);
+	int result = input_port_read_indexed(machine, 2);
+	int wheel = input_port_read_indexed(machine, 5);
 
 	return result | ((wheel >> 2) & 0x3e);
 }
@@ -92,7 +92,7 @@ static READ16_HANDLER( zwackery_6840_r )
 	/* make this happen, we must assume that reads from the */
 	/* 6840 take 14 additional cycles                       */
 	activecpu_adjust_icount(-14);
-	return mcr68_6840_upper_r(machine,offset,0);
+	return mcr68_6840_upper_r(machine,offset,0xffff);
 }
 
 
@@ -135,16 +135,16 @@ static WRITE16_HANDLER( blasted_control_w )
 
 static READ16_HANDLER( spyhunt2_port_0_r )
 {
-	int result = readinputportbytag("IN0");
+	int result = input_port_read(machine, "IN0");
 	int which = (control_word >> 3) & 3;
-	int analog = readinputport(3 + which);
+	int analog = input_port_read_indexed(machine, 3 + which);
 	return result | ((soundsgood_status_r(machine, 0) & 1) << 5) | (analog << 8);
 }
 
 
 static READ16_HANDLER( spyhunt2_port_1_r )
 {
-	int result = readinputportbytag("IN1");
+	int result = input_port_read(machine, "IN1");
 	return result | ((turbocs_status_r(machine, 0) & 1) << 7);
 }
 
@@ -197,10 +197,10 @@ static const UINT8 translate49[7] = { 0x7, 0x3, 0x1, 0x0, 0xc, 0xe, 0xf };
 
 static READ16_HANDLER( archrivl_port_1_r )
 {
-	return (translate49[readinputportbytag("49WAYY2") >> 4] << 12) |
-			(translate49[readinputportbytag("49WAYX2") >> 4] << 8) |
-			(translate49[readinputportbytag("49WAYY1") >> 4] << 4) |
-			(translate49[readinputportbytag("49WAYX1") >> 4] << 0);
+	return (translate49[input_port_read(machine, "49WAYY2") >> 4] << 12) |
+			(translate49[input_port_read(machine, "49WAYX2") >> 4] << 8) |
+			(translate49[input_port_read(machine, "49WAYY1") >> 4] << 4) |
+			(translate49[input_port_read(machine, "49WAYX1") >> 4] << 0);
 }
 
 
@@ -222,7 +222,7 @@ static WRITE16_HANDLER( archrivl_control_w )
 static WRITE16_HANDLER( pigskin_protection_w )
 {
 	/* ignore upper-byte only */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* track the last 5 bytes */
 		protection_data[0] = protection_data[1];
@@ -259,18 +259,18 @@ static READ16_HANDLER( pigskin_protection_r )
 static READ16_HANDLER( pigskin_port_1_r )
 {
 	/* see archrivl_port_1_r for 49-way joystick description */
-	return readinputportbytag("IN1") |
-			(translate49[readinputportbytag("49WAYX1") >> 4] << 12) |
-			(translate49[readinputportbytag("49WAYY1") >> 4] << 8);
+	return input_port_read(machine, "IN1") |
+			(translate49[input_port_read(machine, "49WAYX1") >> 4] << 12) |
+			(translate49[input_port_read(machine, "49WAYY1") >> 4] << 8);
 }
 
 
 static READ16_HANDLER( pigskin_port_2_r )
 {
 	/* see archrivl_port_1_r for 49-way joystick description */
-	return readinputportbytag("DSW") |
-			(translate49[readinputportbytag("49WAYX2") >> 4] << 12) |
-			(translate49[readinputportbytag("49WAYY2") >> 4] << 8);
+	return input_port_read(machine, "DSW") |
+			(translate49[input_port_read(machine, "49WAYX2") >> 4] << 12) |
+			(translate49[input_port_read(machine, "49WAYY2") >> 4] << 8);
 }
 
 
@@ -283,9 +283,9 @@ static READ16_HANDLER( pigskin_port_2_r )
 
 static READ16_HANDLER( trisport_port_1_r )
 {
-	int xaxis = (INT8)readinputportbytag("AN1");
-	int yaxis = (INT8)readinputportbytag("AN2");
-	int result = readinputportbytag("IN1");
+	int xaxis = (INT8)input_port_read(machine, "AN1");
+	int yaxis = (INT8)input_port_read(machine, "AN2");
+	int result = input_port_read(machine, "IN1");
 
 	result |= (xaxis & 0x3c) << 6;
 	result |= (yaxis & 0x3c) << 10;
@@ -306,7 +306,7 @@ static ADDRESS_MAP_START( mcr68_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fffff)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x060000, 0x063fff) AM_RAM
-	AM_RANGE(0x070000, 0x070fff) AM_READWRITE(SMH_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x070000, 0x070fff) AM_RAM_WRITE(mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
 	AM_RANGE(0x071000, 0x071fff) AM_RAM
 	AM_RANGE(0x080000, 0x080fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x090000, 0x09007f) AM_WRITE(mcr68_paletteram_w) AM_BASE(&paletteram16)
@@ -331,12 +331,12 @@ static ADDRESS_MAP_START( zwackery_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080000, 0x080fff) AM_RAM
 	AM_RANGE(0x084000, 0x084fff) AM_RAM
 	AM_RANGE(0x100000, 0x10000f) AM_READWRITE(zwackery_6840_r, mcr68_6840_upper_w)
-	AM_RANGE(0x104000, 0x104007) AM_READWRITE(pia_2_msb_r, pia_2_msb_w)
-	AM_RANGE(0x108000, 0x108007) AM_READWRITE(pia_3_lsb_r, pia_3_lsb_w)
-	AM_RANGE(0x10c000, 0x10c007) AM_READWRITE(pia_4_lsb_r, pia_4_lsb_w)
-	AM_RANGE(0x800000, 0x800fff) AM_READWRITE(SMH_RAM, zwackery_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
-	AM_RANGE(0x802000, 0x803fff) AM_READWRITE(SMH_RAM, zwackery_paletteram_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xc00000, 0xc00fff) AM_READWRITE(SMH_RAM, zwackery_spriteram_w) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
+	AM_RANGE(0x104000, 0x104007) AM_READWRITE8(pia_2_r, pia_2_w, 0xff00)
+	AM_RANGE(0x108000, 0x108007) AM_READWRITE8(pia_3_r, pia_3_w, 0x00ff)
+	AM_RANGE(0x10c000, 0x10c007) AM_READWRITE8(pia_4_r, pia_4_w, 0x00ff)
+	AM_RANGE(0x800000, 0x800fff) AM_RAM_WRITE(zwackery_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x802000, 0x803fff) AM_RAM_WRITE(zwackery_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xc00000, 0xc00fff) AM_RAM_WRITE(zwackery_spriteram_w) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 ADDRESS_MAP_END
 
 
@@ -355,7 +355,7 @@ static ADDRESS_MAP_START( pigskin_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0a0000, 0x0affff) AM_READ(pigskin_port_2_r)
 	AM_RANGE(0x0c0000, 0x0c007f) AM_WRITE(mcr68_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0e0000, 0x0effff) AM_WRITE(watchdog_reset16_w)
-	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(SMH_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x100000, 0x100fff) AM_RAM_WRITE(mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
 	AM_RANGE(0x120000, 0x120001) AM_READWRITE(pigskin_protection_r, pigskin_protection_w)
 	AM_RANGE(0x140000, 0x143fff) AM_RAM
 	AM_RANGE(0x160000, 0x1607ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
@@ -381,7 +381,7 @@ static ADDRESS_MAP_START( trisport_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x103fff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x120000, 0x12007f) AM_WRITE(mcr68_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x140000, 0x1407ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x160000, 0x160fff) AM_READWRITE(SMH_RAM, mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
+	AM_RANGE(0x160000, 0x160fff) AM_RAM_WRITE(mcr68_videoram_w) AM_BASE(&videoram16) AM_SIZE(&videoram_size)
 	AM_RANGE(0x180000, 0x18000f) AM_READWRITE(mcr68_6840_upper_r, mcr68_6840_upper_w)
 	AM_RANGE(0x1a0000, 0x1affff) AM_WRITE(archrivl_control_w)
 	AM_RANGE(0x1c0000, 0x1cffff) AM_WRITE(watchdog_reset16_w)
@@ -1397,7 +1397,7 @@ static DRIVER_INIT( xenophob )
 	mcr68_timing_factor = attotime_make(0, HZ_TO_ATTOSECONDS(cpunum_get_clock(0) / 10) * (256 + 16));
 
 	/* install control port handler */
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, xenophobe_control_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, xenophobe_control_w);
 }
 
 
@@ -1409,9 +1409,9 @@ static DRIVER_INIT( spyhunt2 )
 	mcr68_timing_factor = attotime_make(0, HZ_TO_ATTOSECONDS(cpunum_get_clock(0) / 10) * (256 + 16));
 
 	/* analog port handling is a bit tricky */
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, spyhunt2_control_w);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0d0000, 0x0dffff, 0, 0, spyhunt2_port_0_r);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0e0000, 0x0effff, 0, 0, spyhunt2_port_1_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, spyhunt2_control_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0d0000, 0x0dffff, 0, 0, spyhunt2_port_0_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0e0000, 0x0effff, 0, 0, spyhunt2_port_1_r);
 }
 
 
@@ -1425,11 +1425,10 @@ static DRIVER_INIT( blasted )
 	mcr68_timing_factor = attotime_make(0, HZ_TO_ATTOSECONDS(cpunum_get_clock(0) / 10) * (256 + 16));
 
 	/* handle control writes */
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, blasted_control_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, blasted_control_w);
 
 	/* 6840 is mapped to the lower 8 bits */
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0a0000, 0x0a000f, 0, 0, mcr68_6840_lower_w);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0a0000, 0x0a000f, 0, 0, mcr68_6840_lower_r);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0a0000, 0x0a000f, 0, 0, mcr68_6840_lower_r, mcr68_6840_lower_w);
 }
 
 
@@ -1441,14 +1440,13 @@ static DRIVER_INIT( archrivl )
 	mcr68_timing_factor = attotime_make(0, HZ_TO_ATTOSECONDS(cpunum_get_clock(0) / 10) * (256 + 16));
 
 	/* handle control writes */
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, archrivl_control_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0c0000, 0x0cffff, 0, 0, archrivl_control_w);
 
 	/* 49-way joystick handling is a bit tricky */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0e0000, 0x0effff, 0, 0, archrivl_port_1_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0e0000, 0x0effff, 0, 0, archrivl_port_1_r);
 
 	/* 6840 is mapped to the lower 8 bits */
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0a0000, 0x0a000f, 0, 0, mcr68_6840_lower_w);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0a0000, 0x0a000f, 0, 0, mcr68_6840_lower_r);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0a0000, 0x0a000f, 0, 0, mcr68_6840_lower_r, mcr68_6840_lower_w);
 }
 
 

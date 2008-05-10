@@ -207,7 +207,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 0 is EEPROM data */
 	/* bit 1 is EEPROM ready */
 	/* bit 3 is service button */
-	res = EEPROM_read_bit() | input_port_1_r(machine, 0);
+	res = EEPROM_read_bit() | input_port_read_indexed(machine,1);
 
 	if (init_eeprom_count)
 	{
@@ -252,7 +252,7 @@ static WRITE16_HANDLER( control2_w )
 
 static WRITE16_HANDLER( sound_cmd1_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		// anyone knows why 0x1a keeps lurking the sound queue in the world version???
 		if (xexex_strip0x1a)
@@ -264,7 +264,7 @@ static WRITE16_HANDLER( sound_cmd1_w )
 
 static WRITE16_HANDLER( sound_cmd2_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch2_w(machine, 0, data & 0xff);
 	}
@@ -377,7 +377,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x182000, 0x183fff) AM_READWRITE(K056832_ram_word_r, K056832_ram_word_w)
 	AM_RANGE(0x190000, 0x191fff) AM_READWRITE(K056832_rom_word_r, SMH_ROM)		// Passthrough to tile roms
 	AM_RANGE(0x1a0000, 0x1a1fff) AM_READ(K053250_0_rom_r)
-	AM_RANGE(0x1b0000, 0x1b1fff) AM_READWRITE(SMH_RAM, paletteram16_xrgb_word_be_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x1b0000, 0x1b1fff) AM_RAM_WRITE(paletteram16_xrgb_word_be_w) AM_BASE(&paletteram16)
 
 #if XE_DEBUG
 	AM_RANGE(0x0c0000, 0x0c003f) AM_READ(K056832_word_r)
@@ -608,12 +608,17 @@ static MACHINE_RESET( xexex )
 	K054539_init_flags(0, K054539_REVERSE_STEREO);
 }
 
+static STATE_POSTLOAD( xexex_postload )
+{
+	parse_control2();
+	reset_sound_region();
+}
+
 static MACHINE_START( xexex )
 {
 	state_save_register_global(cur_control2);
-	state_save_register_func_postload(parse_control2);
 	state_save_register_global(cur_sound_region);
-	state_save_register_func_postload(reset_sound_region);
+	state_save_register_postload(machine, xexex_postload, NULL);
 
 	resume_trigger = 1000;
 

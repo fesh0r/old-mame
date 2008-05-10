@@ -292,7 +292,7 @@ WRITE8_HANDLER( bnj_video_control_w )
     /* For now we just check 0x40 in DSW1, and ignore the write if we */
     /* are in upright controls mode. */
 
-    if (input_port_3_r(machine, 0) & 0x40) /* cocktail mode */
+    if (input_port_read_indexed(machine, 3) & 0x40) /* cocktail mode */
         btime_video_control_w(machine, offset, data);
 }
 
@@ -309,7 +309,7 @@ WRITE8_HANDLER( disco_video_control_w )
 {
 	btime_palette = (data >> 2) & 0x03;
 
-	if (!(input_port_3_r(machine,0) & 0x40)) /* cocktail mode */
+	if (!(input_port_read_indexed(machine, 3) & 0x40)) /* cocktail mode */
 	{
 		flip_screen_set(data & 0x01);
 	}

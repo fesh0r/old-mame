@@ -148,7 +148,7 @@ static READ16_HANDLER( ultennis_hack_r )
 		hack_irq = 0;
 		update_irq_state(Machine);
 	}
-	return readinputport(0);
+	return input_port_read_indexed(machine, 0);
 }
 
 
@@ -378,7 +378,7 @@ static void stonebal_protection(running_machine *machine)
 
 static READ16_HANDLER( special_port5_r )
 {
-	return readinputport(5) | prot_output_bit;
+	return input_port_read_indexed(machine, 5) | prot_output_bit;
 }
 
 
@@ -843,7 +843,7 @@ static DRIVER_INIT( ultennis )
 	protection_handler = ultennis_protection;
 
 	/* additional (protection?) hack */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x300000, 0x300001, 0, 0, ultennis_hack_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x300000, 0x300001, 0, 0, ultennis_hack_r);
 }
 
 

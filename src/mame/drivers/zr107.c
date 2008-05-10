@@ -114,8 +114,8 @@ static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color_rgb(Machine, (offset * 2) + 0, pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16));
-	palette_set_color_rgb(Machine, (offset * 2) + 1, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(machine, (offset * 2) + 0, pal5bit(data >> 26), pal5bit(data >> 21), pal5bit(data >> 16));
+	palette_set_color_rgb(machine, (offset * 2) + 1, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 #define NUM_LAYERS	2
@@ -169,27 +169,27 @@ static READ32_HANDLER( sysreg_r )
 	UINT32 r = 0;
 	if (offset == 0)
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
-			r |= readinputport(0) << 24;
+			r |= input_port_read_indexed(machine, 0) << 24;
 		}
-		if (!(mem_mask & 0x00ff0000))
+		if (ACCESSING_BITS_16_23)
 		{
-			r |= readinputport(1) << 16;
+			r |= input_port_read_indexed(machine, 1) << 16;
 		}
-		if (!(mem_mask & 0x0000ff00))
+		if (ACCESSING_BITS_8_15)
 		{
 			int adc_bit = adc083x_do_read(0);
-			r |= ((readinputport(2) & 0x7f) | (adc_bit << 7)) << 8;
+			r |= ((input_port_read_indexed(machine, 2) & 0x7f) | (adc_bit << 7)) << 8;
 		}
-		if (!(mem_mask & 0x000000ff))
+		if (ACCESSING_BITS_0_7)
 		{
-			r |= readinputport(3) << 0;
+			r |= input_port_read_indexed(machine, 3) << 0;
 		}
 	}
 	else if (offset == 1)
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
 			r |= ((adc083x_sars_read(0) << 5) | (EEPROM_read_bit() << 4)) << 24;
 		}
@@ -202,36 +202,36 @@ static WRITE32_HANDLER( sysreg_w )
 {
 	if( offset == 0 )
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
 			led_reg0 = (data >> 24) & 0xff;
 		}
-		if (!(mem_mask & 0x00ff0000))
+		if (ACCESSING_BITS_16_23)
 		{
 			led_reg1 = (data >> 16) & 0xff;
 		}
-		if (!(mem_mask & 0x000000ff))
+		if (ACCESSING_BITS_0_7)
 		{
 			EEPROM_write_bit((data & 0x1) ? 1 : 0);
 			EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
 			EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
 
 			if (data & 0x10)
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 			else
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 		}
 		return;
 	}
 	else if( offset == 1 )
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
 			if (data & 0x80000000)	/* CG Board 1 IRQ Ack */
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
 
 			if (data & 0x40000000)	/* CG Board 0 IRQ Ack */
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 
 			set_cgboard_id((data >> 28) & 0x3);
 
@@ -249,11 +249,11 @@ static double adc0838_callback(int input)
 	switch (input)
 	{
 		case ADC083X_CH0:
-			return (double)(5 * readinputport(4)) / 255.0;
+			return (double)(5 * input_port_read_indexed(Machine, 4)) / 255.0;
 		case ADC083X_CH1:
-			return (double)(5 * readinputport(5)) / 255.0;
+			return (double)(5 * input_port_read_indexed(Machine, 5)) / 255.0;
 		case ADC083X_CH2:
-			return (double)(5 * readinputport(6)) / 255.0;
+			return (double)(5 * input_port_read_indexed(Machine, 6)) / 255.0;
 		case ADC083X_CH3:
 			return 0;
 		case ADC083X_COM:
@@ -276,12 +276,12 @@ static READ32_HANDLER( ccu_r )
 		case 0x1c/4:
 		{
 			// Midnight Run polls the vertical counter in vblank
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
 				ccu_vcth ^= 0xff;
 				r |= ccu_vcth << 24;
 			}
-			if (!(mem_mask & 0x0000ff00))
+			if (ACCESSING_BITS_8_15)
 			{
 				ccu_vctl++;
 				ccu_vctl &= 0x1ff;
@@ -305,7 +305,7 @@ static ADDRESS_MAP_START( zr107_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x74000000, 0x74003fff) AM_MIRROR(0x80000000) AM_READWRITE(K056832_ram_long_r, K056832_ram_long_w)
 	AM_RANGE(0x74020000, 0x7402003f) AM_MIRROR(0x80000000) AM_READWRITE(K056832_long_r, K056832_long_w)
 	AM_RANGE(0x74060000, 0x7406003f) AM_MIRROR(0x80000000) AM_READWRITE(ccu_r, ccu_w)
-	AM_RANGE(0x74080000, 0x74081fff) AM_MIRROR(0x80000000) AM_READWRITE(SMH_RAM, paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74080000, 0x74081fff) AM_MIRROR(0x80000000) AM_RAM_WRITE(paletteram32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x740a0000, 0x740a3fff) AM_MIRROR(0x80000000) AM_READ(K056832_rom_long_r)
 	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)		/* 21N 21K 23N 23K */
 	AM_RANGE(0x78010000, 0x7801ffff) AM_MIRROR(0x80000000) AM_WRITE(cgboard_dsp_shared_w_ppc)
@@ -325,13 +325,13 @@ static WRITE32_HANDLER( jetwave_palette_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color_rgb(Machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 static ADDRESS_MAP_START( jetwave_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_MIRROR(0x80000000) AM_RAM		/* Work RAM */
 	AM_RANGE(0x74000000, 0x740000ff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_reg_r, K001604_reg_w)
-	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_READWRITE(SMH_RAM, jetwave_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_RAM_WRITE(jetwave_palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x74020000, 0x7403ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_tile_r, K001604_tile_w)
 	AM_RANGE(0x74040000, 0x7407ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_char_r, K001604_char_w)
 	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)		/* 21N 21K 23N 23K */
@@ -357,9 +357,9 @@ static READ16_HANDLER( dual539_r )
 {
 	UINT16 ret = 0;
 
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		ret |= K054539_1_r(machine, offset);
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		ret |= K054539_0_r(machine, offset)<<8;
 
 	return ret;
@@ -367,9 +367,9 @@ static READ16_HANDLER( dual539_r )
 
 static WRITE16_HANDLER( dual539_w )
 {
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		K054539_1_w(machine, offset, data);
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		K054539_0_w(machine, offset, data>>8);
 }
 

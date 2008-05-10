@@ -5,7 +5,6 @@
 *************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "centiped.h"
 
 
@@ -103,7 +102,7 @@ VIDEO_START( warlords )
 	bg_tilemap = tilemap_create(warlords_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
 	/* we overload centiped_flipscreen here to track the cocktail/upright state */
-	centiped_flipscreen = readinputport(0) & 0x80;
+	centiped_flipscreen = input_port_read_indexed(machine, 0) & 0x80;
 	tilemap_set_flip(bg_tilemap, centiped_flipscreen ? TILEMAP_FLIPX : 0);
 }
 
@@ -235,7 +234,7 @@ WRITE8_HANDLER( centiped_paletteram_w )
 
 		/* character colors, set directly */
 		if ((offset & 0x08) == 0)
-			palette_set_color(Machine, offset & 0x03, color);
+			palette_set_color(machine, offset & 0x03, color);
 
 		/* sprite colors - set all the applicable ones */
 		else
@@ -247,13 +246,13 @@ WRITE8_HANDLER( centiped_paletteram_w )
 			for (i = 0; i < 0x100; i += 4)
 			{
 				if (offset == ((i >> 2) & 0x03))
-					palette_set_color(Machine, i + 4 + 1, color);
+					palette_set_color(machine, i + 4 + 1, color);
 
 				if (offset == ((i >> 4) & 0x03))
-					palette_set_color(Machine, i + 4 + 2, color);
+					palette_set_color(machine, i + 4 + 2, color);
 
 				if (offset == ((i >> 6) & 0x03))
-					palette_set_color(Machine, i + 4 + 3, color);
+					palette_set_color(machine, i + 4 + 3, color);
 			}
 		}
 	}
@@ -390,7 +389,7 @@ WRITE8_HANDLER( milliped_paletteram_w )
 {
 	paletteram[offset] = data;
 
-	melliped_mazeinv_set_color(Machine, offset, data);
+	melliped_mazeinv_set_color(machine, offset, data);
 }
 
 
@@ -399,7 +398,7 @@ WRITE8_HANDLER( mazeinv_paletteram_w )
 	paletteram[offset] = data;
 
 	/* the value passed in is a look-up index into the color PROM */
-	melliped_mazeinv_set_color(Machine, offset, ~memory_region(REGION_PROMS)[~data & 0x0f]);
+	melliped_mazeinv_set_color(machine, offset, ~memory_region(REGION_PROMS)[~data & 0x0f]);
 }
 
 
@@ -443,7 +442,7 @@ VIDEO_UPDATE( centiped )
 
 VIDEO_UPDATE( warlords )
 {
-	int upright_mode = readinputport(0) & 0x80;
+	int upright_mode = input_port_read_indexed(screen->machine, 0) & 0x80;
 	int offs;
 
 	/* if the cocktail/upright switch flipped, force refresh */

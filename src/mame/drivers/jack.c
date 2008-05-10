@@ -89,9 +89,9 @@ static WRITE8_HANDLER( joinem_misc_w )
 
 static READ8_HANDLER( joinem_input1_r )
 {
-	UINT8 ret = readinputport(1) & ~0x20;
+	UINT8 ret = input_port_read_indexed(machine, 1) & ~0x20;
 
-	if((readinputport(4) & 0x80) && !joinem_snd_bit)
+	if((input_port_read_indexed(machine, 4) & 0x80) && !joinem_snd_bit)
 		ret |= 0x20;
 
 	return ret;
@@ -177,8 +177,8 @@ static ADDRESS_MAP_START( joinem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb504, 0xb504) AM_READ(input_port_4_r)
 	AM_RANGE(0xb506, 0xb507) AM_READWRITE(jack_flipscreen_r, jack_flipscreen_w)
 	AM_RANGE(0xb700, 0xb700) AM_WRITE(joinem_misc_w)
-	AM_RANGE(0xb800, 0xbbff) AM_RAM AM_WRITE(jack_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xbc00, 0xbfff) AM_RAM AM_WRITE(jack_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xb800, 0xbbff) AM_RAM_WRITE(jack_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xbc00, 0xbfff) AM_RAM_WRITE(jack_colorram_w) AM_BASE(&colorram)
 ADDRESS_MAP_END
 
 
@@ -865,6 +865,8 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	soundlatch_r,
 	timer_r
 };
@@ -918,7 +920,7 @@ static INTERRUPT_GEN( joinem_interrupts )
 		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	else
 	{
-		if(!(readinputport(4) & 0x80))
+		if(!(input_port_read_indexed(machine, 4) & 0x80))
 			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
@@ -1455,10 +1457,10 @@ static DRIVER_INIT( striv )
 	}
 
 	// Set-up the weirdest questions read ever done
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, striv_question_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, striv_question_r);
 
 	// Nop out unused sprites writes
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xb0ff, 0, 0, SMH_NOP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xb0ff, 0, 0, SMH_NOP);
 
 	timer_rate = 128;
 }

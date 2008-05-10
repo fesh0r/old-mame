@@ -76,14 +76,14 @@ static void update_irq_state(void)
 }
 
 
-static int irq_callback(int which)
+static IRQ_CALLBACK(irq_callback)
 {
 	/* auto-ack the IRQ */
-	irq_state[which] = 0;
+	irq_state[irqline] = 0;
 	update_irq_state();
 
 	/* vector is 0x40 + index */
-	return 0x40 + which;
+	return 0x40 + irqline;
 }
 
 
@@ -128,13 +128,13 @@ static MACHINE_START( dcheese )
 
 static READ16_HANDLER( port_0_r )
 {
-	return (readinputport(0) & 0xff7f) | (EEPROM_read_bit() << 7);
+	return (input_port_read_indexed(machine, 0) & 0xff7f) | (EEPROM_read_bit() << 7);
 }
 
 
 static READ16_HANDLER( port_2_r )
 {
-	return (readinputport(2) & 0xff1f) | (!soundlatch_full << 7) | (ticket_dispenser_r(machine, 0) >> 2);
+	return (input_port_read_indexed(machine, 2) & 0xff1f) | (!soundlatch_full << 7) | (ticket_dispenser_r(machine, 0) >> 2);
 }
 
 
@@ -142,7 +142,7 @@ static WRITE16_HANDLER( eeprom_control_w )
 {
 	/* toggles bit $0100 very frequently while waiting for things */
 	/* bits $0080-$0010 are probably lamps */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		EEPROM_set_cs_line(~data & 8);
 		EEPROM_write_bit(data & 2);
@@ -154,7 +154,7 @@ static WRITE16_HANDLER( eeprom_control_w )
 
 static WRITE16_HANDLER( sound_command_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* write the latch and set the IRQ */
 		soundlatch_full = 1;
@@ -207,7 +207,7 @@ static WRITE8_HANDLER( bsmt_data_w )
 	if (offset % 2 == 0)
 		sound_msb_latch = data;
 	else
-		BSMT2000_data_0_w(machine, offset/2, (sound_msb_latch << 8) | data, 0);
+		BSMT2000_data_0_w(machine, offset/2, (sound_msb_latch << 8) | data, 0xffff);
 }
 
 

@@ -11,7 +11,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/atari_vg.h"
 #include "sound/pokey.h"
 
@@ -54,11 +53,11 @@ static READ8_HANDLER( runaway_input_r )
 {
 	UINT8 val = 0;
 
-	if (readinputport(0) & (1 << offset))
+	if (input_port_read_indexed(machine, 0) & (1 << offset))
 	{
 		val |= 0x80;
 	}
-	if (readinputport(1) & (1 << offset))
+	if (input_port_read_indexed(machine, 1) & (1 << offset))
 	{
 		val |= 0x40;
 	}
@@ -69,7 +68,7 @@ static READ8_HANDLER( runaway_input_r )
 
 static READ8_HANDLER( runaway_pot_r )
 {
-	return (readinputport(4) << (7 - offset)) & 0x80;
+	return (input_port_read_indexed(machine, 4) << (7 - offset)) & 0x80;
 }
 
 
@@ -81,7 +80,7 @@ static WRITE8_HANDLER( runaway_led_w )
 
 static WRITE8_HANDLER( runaway_irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 

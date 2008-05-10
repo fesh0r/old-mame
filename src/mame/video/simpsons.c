@@ -45,7 +45,7 @@ static void sprite_callback(int *code,int *color,int *priority_mask)
 
 VIDEO_START( simpsons )
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tile_callback);
 	K053247_vh_start(machine,REGION_GFX2,53,23,NORMAL_PLANE_ORDER,sprite_callback);
@@ -99,20 +99,20 @@ static WRITE8_HANDLER( simpsons_K053247_w )
 	else simpsons_xtraram[offset - 0x1000] = data;
 }
 
-void simpsons_video_banking(int bank)
+void simpsons_video_banking(running_machine *machine, int bank)
 {
 	if (bank & 1)
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK5, paletteram_xBBBBBGGGGGRRRRR_be_w);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK5, paletteram_xBBBBBGGGGGRRRRR_be_w);
 		memory_set_bankptr(5, paletteram);
 	}
 	else
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, K052109_r, K052109_w);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, K052109_r, K052109_w);
 
 	if (bank & 2)
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, simpsons_K053247_r, simpsons_K053247_w);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, simpsons_K053247_r, simpsons_K053247_w);
 	else
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, simpsons_K052109_r, simpsons_K052109_w);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, simpsons_K052109_r, simpsons_K052109_w);
 }
 
 

@@ -1476,7 +1476,7 @@ static READ16_HANDLER( sharedram_68000_r )
 
 static WRITE16_HANDLER( sharedram_68000_w )
 {
-	if (ACCESSING_LSB)	sharedram[offset] = data & 0xff;
+	if (ACCESSING_BITS_0_7)	sharedram[offset] = data & 0xff;
 }
 
 
@@ -1494,10 +1494,10 @@ static WRITE16_HANDLER( sub_ctrl_w )
 	switch(offset)
 	{
 		case 0/2:	// bit 0: reset sub cpu?
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				if ( !(old_data&1) && (data&1) )
-					cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+					cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 				old_data = data;
 			}
 			break;
@@ -1506,11 +1506,11 @@ static WRITE16_HANDLER( sub_ctrl_w )
 			break;
 
 		case 4/2:	// not sure
-			if (ACCESSING_LSB)	soundlatch_w(machine, 0, data & 0xff);
+			if (ACCESSING_BITS_0_7)	soundlatch_w(machine, 0, data & 0xff);
 			break;
 
 		case 6/2:	// not sure
-			if (ACCESSING_LSB)	soundlatch2_w(machine, 0, data & 0xff);
+			if (ACCESSING_BITS_0_7)	soundlatch2_w(machine, 0, data & 0xff);
 			break;
 	}
 
@@ -1520,7 +1520,7 @@ static WRITE16_HANDLER( sub_ctrl_w )
 /* DSW reading for 16 bit CPUs */
 static READ16_HANDLER( seta_dsw_r )
 {
-	UINT16 dsw = readinputport(3);
+	UINT16 dsw = input_port_read_indexed(machine, 3);
 	if (offset == 0)	return (dsw >> 8) & 0xff;
 	else				return (dsw >> 0) & 0xff;
 }
@@ -1530,12 +1530,12 @@ static READ16_HANDLER( seta_dsw_r )
 
 static READ8_HANDLER( dsw1_r )
 {
-	return (readinputport(3) >> 8) & 0xff;
+	return (input_port_read_indexed(machine, 3) >> 8) & 0xff;
 }
 
 static READ8_HANDLER( dsw2_r )
 {
-	return (readinputport(3) >> 0) & 0xff;
+	return (input_port_read_indexed(machine, 3) >> 0) & 0xff;
 }
 
 
@@ -1654,15 +1654,15 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER ( calibr50_ip_r )
 {
-	int dir1 = readinputportbytag("IN4") & 0xfff;	// analog port
-	int dir2 = readinputportbytag("IN5") & 0xfff;	// analog port
+	int dir1 = input_port_read(machine, "IN4") & 0xfff;	// analog port
+	int dir2 = input_port_read(machine, "IN5") & 0xfff;	// analog port
 
 	switch (offset)
 	{
-		case 0x00/2:	return readinputportbytag("IN0");	// p1
-		case 0x02/2:	return readinputportbytag("IN1");	// p2
+		case 0x00/2:	return input_port_read(machine, "IN0");	// p1
+		case 0x02/2:	return input_port_read(machine, "IN1");	// p2
 
-		case 0x08/2:	return readinputport(2);	// Coins
+		case 0x08/2:	return input_port_read_indexed(machine, 2);	// Coins
 
 		case 0x10/2:	return (dir1&0xff);			// lower 8 bits of p1 rotation
 		case 0x12/2:	return (dir1>>8);			// upper 4 bits of p1 rotation
@@ -1677,7 +1677,7 @@ static READ16_HANDLER ( calibr50_ip_r )
 
 static WRITE16_HANDLER( calibr50_soundlatch_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_word_w(machine,0,data,mem_mask);
 		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
@@ -1729,10 +1729,10 @@ static READ16_HANDLER( usclssic_dsw_r )
 {
 	switch (offset)
 	{
-		case 0/2:	return (readinputport(3) >>  8) & 0xf;
-		case 2/2:	return (readinputport(3) >> 12) & 0xf;
-		case 4/2:	return (readinputport(3) >>  0) & 0xf;
-		case 6/2:	return (readinputport(3) >>  4) & 0xf;
+		case 0/2:	return (input_port_read_indexed(machine, 3) >>  8) & 0xf;
+		case 2/2:	return (input_port_read_indexed(machine, 3) >> 12) & 0xf;
+		case 4/2:	return (input_port_read_indexed(machine, 3) >>  0) & 0xf;
+		case 6/2:	return (input_port_read_indexed(machine, 3) >>  4) & 0xf;
 	}
 	return 0;
 }
@@ -1741,8 +1741,8 @@ static READ16_HANDLER( usclssic_trackball_x_r )
 {
 	switch (offset)
 	{
-		case 0/2:	return (readinputport(0) >> 0) & 0xff;
-		case 2/2:	return (readinputport(0) >> 8) & 0xff;
+		case 0/2:	return (input_port_read_indexed(machine, 0) >> 0) & 0xff;
+		case 2/2:	return (input_port_read_indexed(machine, 0) >> 8) & 0xff;
 	}
 	return 0;
 }
@@ -1751,8 +1751,8 @@ static READ16_HANDLER( usclssic_trackball_y_r )
 {
 	switch (offset)
 	{
-		case 0/2:	return (readinputport(1) >> 0) & 0xff;
-		case 2/2:	return (readinputport(1) >> 8) & 0xff;
+		case 0/2:	return (input_port_read_indexed(machine, 1) >> 0) & 0xff;
+		case 2/2:	return (input_port_read_indexed(machine, 1) >> 8) & 0xff;
 	}
 	return 0;
 }
@@ -1762,7 +1762,7 @@ static WRITE16_HANDLER( usclssic_lockout_w )
 {
 	static int old_tiles_offset = 0;
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		seta_tiles_offset = (data & 0x10) ? 0x4000: 0;
 		if (old_tiles_offset != seta_tiles_offset)	tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
@@ -1960,7 +1960,7 @@ static int gun_input_bit = 0, gun_input_src = 0;
 
 static READ16_HANDLER( zombraid_gun_r ) // Serial interface
 {
-	int data = readinputport(4 + gun_input_src); // Input Ports 5-8
+	int data = input_port_read_indexed(machine, 4 + gun_input_src); // Input Ports 5-8
 	return (data >> gun_input_bit) & 1;
 }
 
@@ -2371,10 +2371,10 @@ ADDRESS_MAP_END
 static READ16_HANDLER( krzybowl_input_r )
 {
 	// analog ports
-	int dir1x = readinputport(4) & 0xfff;
-	int dir1y = readinputport(5) & 0xfff;
-	int dir2x = readinputport(6) & 0xfff;
-	int dir2y = readinputport(7) & 0xfff;
+	int dir1x = input_port_read_indexed(machine, 4) & 0xfff;
+	int dir1y = input_port_read_indexed(machine, 5) & 0xfff;
+	int dir2x = input_port_read_indexed(machine, 6) & 0xfff;
+	int dir2y = input_port_read_indexed(machine, 7) & 0xfff;
 
 	switch (offset)
 	{
@@ -2589,12 +2589,12 @@ static READ16_HANDLER( kiwame_nvram_r )
 
 static WRITE16_HANDLER( kiwame_nvram_w )
 {
-	if (ACCESSING_LSB)	COMBINE_DATA( &kiwame_nvram[offset] );
+	if (ACCESSING_BITS_0_7)	COMBINE_DATA( &kiwame_nvram[offset] );
 }
 
 static READ16_HANDLER( kiwame_input_r )
 {
-	int row_select = kiwame_nvram_r( machine,0x10a/2,0 ) & 0x1f;
+	int row_select = kiwame_nvram_r( machine,0x10a/2,0x00ff ) & 0x1f;
 	int i;
 
 	for(i = 0; i < 5; i++)
@@ -2604,9 +2604,9 @@ static READ16_HANDLER( kiwame_input_r )
 
 	switch( offset )
 	{
-		case 0x00/2:	return readinputport( i );
+		case 0x00/2:	return input_port_read_indexed(machine,  i );
 		case 0x02/2:	return 0xffff;
-		case 0x04/2:	return readinputport( 2 );
+		case 0x04/2:	return input_port_read_indexed(machine,  2 );
 //      case 0x06/2:
 		case 0x08/2:	return 0xffff;
 
@@ -2704,7 +2704,7 @@ static READ8_HANDLER( wiggie_soundlatch_r )
 static WRITE16_HANDLER( wiggie_soundlatch_w )
 {
 	wiggie_soundlatch = data >> 8;
-	cpunum_set_input_line(Machine, 1,0, HOLD_LINE);
+	cpunum_set_input_line(machine, 1,0, HOLD_LINE);
 }
 
 
@@ -2760,7 +2760,7 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( utoukond_soundlatch_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 		soundlatch_w(machine,0,data & 0xff);
@@ -2885,21 +2885,21 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( downtown_ip_r )
 {
-	int dir1 = readinputport(4);	// analog port
-	int dir2 = readinputport(5);	// analog port
+	int dir1 = input_port_read_indexed(machine, 4);	// analog port
+	int dir2 = input_port_read_indexed(machine, 5);	// analog port
 
 	dir1 = (~ (0x800 >> ((dir1 * 12)/0x100)) ) & 0xfff;
 	dir2 = (~ (0x800 >> ((dir2 * 12)/0x100)) ) & 0xfff;
 
 	switch (offset)
 	{
-		case 0:	return (readinputport(2) & 0xf0) + (dir1>>8);	// upper 4 bits of p1 rotation + coins
+		case 0:	return (input_port_read_indexed(machine, 2) & 0xf0) + (dir1>>8);	// upper 4 bits of p1 rotation + coins
 		case 1:	return (dir1&0xff);			// lower 8 bits of p1 rotation
-		case 2:	return readinputport(0);	// p1
+		case 2:	return input_port_read_indexed(machine, 0);	// p1
 		case 3:	return 0xff;				// ?
 		case 4:	return (dir2>>8);			// upper 4 bits of p2 rotation + ?
 		case 5:	return (dir2&0xff);			// lower 8 bits of p2 rotation
-		case 6:	return readinputport(1);	// p2
+		case 6:	return input_port_read_indexed(machine, 1);	// p2
 		case 7:	return 0xff;				// ?
 	}
 
@@ -3069,8 +3069,8 @@ ADDRESS_MAP_END
                             Crazy Fight
 ***************************************************************************/
 
-static WRITE16_HANDLER( YM3812_control_port_0_lsb_w )	{	if (ACCESSING_LSB)	YM3812_control_port_0_w(machine, 0, data & 0xff);	}
-static WRITE16_HANDLER( YM3812_write_port_0_lsb_w )		{	if (ACCESSING_LSB)	YM3812_write_port_0_w(machine, 0, data & 0xff);		}
+static WRITE16_HANDLER( YM3812_control_port_0_lsb_w )	{	if (ACCESSING_BITS_0_7)	YM3812_control_port_0_w(machine, 0, data & 0xff);	}
+static WRITE16_HANDLER( YM3812_write_port_0_lsb_w )		{	if (ACCESSING_BITS_0_7)	YM3812_write_port_0_w(machine, 0, data & 0xff);		}
 
 static ADDRESS_MAP_START( crazyfgt_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
@@ -3102,9 +3102,9 @@ ADDRESS_MAP_END
 static READ16_HANDLER( inttoote_dsw_r )
 {
 	int shift = offset * 4;
-	return	((((readinputport(0) >> shift)     & 0xf)) << 0) |
-			((((readinputport(1) >> shift)     & 0xf)) << 4) |
-			((((readinputport(1) >> (shift+8)) & 0xf)) << 8) ;
+	return	((((input_port_read_indexed(machine, 0) >> shift)     & 0xf)) << 0) |
+			((((input_port_read_indexed(machine, 1) >> shift)     & 0xf)) << 4) |
+			((((input_port_read_indexed(machine, 1) >> (shift+8)) & 0xf)) << 8) ;
 }
 
 static UINT16 *inttoote_key_select;
@@ -3112,11 +3112,11 @@ static READ16_HANDLER( inttoote_key_r )
 {
 	switch( *inttoote_key_select )
 	{
-		case 0x08:	return readinputport(4+0);
-		case 0x10:	return readinputport(4+1);
-		case 0x20:	return readinputport(4+2);
-		case 0x40:	return readinputport(4+3);
-		case 0x80:	return readinputport(4+4);
+		case 0x08:	return input_port_read_indexed(machine, 4+0);
+		case 0x10:	return input_port_read_indexed(machine, 4+1);
+		case 0x20:	return input_port_read_indexed(machine, 4+2);
+		case 0x40:	return input_port_read_indexed(machine, 4+3);
+		case 0x80:	return input_port_read_indexed(machine, 4+4);
 	}
 	logerror("%06X: unknown read, select = %04x\n",activecpu_get_pc(),*inttoote_key_select);
 	return 0xffff;
@@ -3146,7 +3146,7 @@ static ADDRESS_MAP_START( inttoote_map, ADDRESS_SPACE_PROGRAM, 16 )
 
 	AM_RANGE(0x700000, 0x700101) AM_READWRITE(inttoote_700000_r,SMH_RAM) AM_BASE(&inttoote_700000)
 
-	AM_RANGE(0x800000, 0x80001f) AM_READWRITE(msm6242_lsb_r,msm6242_lsb_w)   // 6242RTC
+	AM_RANGE(0x800000, 0x80001f) AM_DEVREADWRITE8(MSM6242, "rtc", msm6242_r, msm6242_w, 0x00ff)   // 6242RTC
 
 	AM_RANGE(0x900000, 0x903fff) AM_READWRITE( seta_sound_word_r, seta_sound_word_w		)	// Sound
 
@@ -6674,8 +6674,15 @@ static INTERRUPT_GEN( seta_sub_interrupt )
 
 static const struct YM2203interface tndrcade_ym2203_interface =
 {
-	dsw1_r,		/* input A: DSW 1 */
-	dsw2_r		/* input B: DSW 2 */
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		dsw1_r,		/* input A: DSW 1 */
+		dsw2_r,		/* input B: DSW 2 */
+		NULL,
+		NULL
+	},
+	NULL
 };
 
 
@@ -8149,6 +8156,9 @@ static MACHINE_DRIVER_START( inttoote )
 	MDRV_SOUND_CONFIG(seta_sound_intf)
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
+
+	/* devices */
+	MDRV_DEVICE_ADD("rtc", MSM6242)
 MACHINE_DRIVER_END
 
 
@@ -9278,18 +9288,17 @@ logerror("%04x: twineagl_200100_r %d\n",activecpu_get_pc(),offset);
 static WRITE16_HANDLER( twineagl_200100_w )
 {
 logerror("%04x: twineagl_200100_w %d = %02x\n",activecpu_get_pc(),offset,data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		xram[offset] = data & 0xff;
 }
 
 static DRIVER_INIT( twineagl )
 {
 	/* debug? */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x8000ff, 0, 0, twineagl_debug_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x800000, 0x8000ff, 0, 0, twineagl_debug_r);
 
 	/* This allows 2 simultaneous players and the use of the "Copyright" Dip Switch. */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200100, 0x20010f, 0, 0, twineagl_200100_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200100, 0x20010f, 0, 0, twineagl_200100_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200100, 0x20010f, 0, 0, twineagl_200100_r, twineagl_200100_w);
 }
 
 
@@ -9319,8 +9328,7 @@ static WRITE16_HANDLER( downtown_protection_w )
 
 static DRIVER_INIT( downtown )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x2001ff, 0, 0, downtown_protection_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x2001ff, 0, 0, downtown_protection_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200000, 0x2001ff, 0, 0, downtown_protection_r, downtown_protection_w);
 }
 
 
@@ -9340,7 +9348,7 @@ static READ16_HANDLER( arbalest_debug_r )
 
 static DRIVER_INIT( arbalest )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80000, 0x8000f, 0, 0, arbalest_debug_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80000, 0x8000f, 0, 0, arbalest_debug_r);
 }
 
 
@@ -9349,8 +9357,7 @@ static DRIVER_INIT( metafox )
 	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
 
 	/* This game uses the 21c000-21ffff area for protection? */
-//  memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x21c000, 0x21ffff, 0, 0, SMH_NOP);
-//  memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x21c000, 0x21ffff, 0, 0, SMH_NOP);
+//  memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x21c000, 0x21ffff, 0, 0, SMH_NOP, SMH_NOP);
 
 	RAM[0x8ab1c/2] = 0x4e71;	// patch protection test: "cp error"
 	RAM[0x8ab1e/2] = 0x4e71;
@@ -9394,14 +9401,14 @@ static DRIVER_INIT ( blandia )
 
 static DRIVER_INIT( eightfrc )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x500004, 0x500005, 0, 0, SMH_NOP);	// watchdog??
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x500004, 0x500005, 0, 0, SMH_NOP);	// watchdog??
 }
 
 
 static DRIVER_INIT( zombraid )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00002, 0xf00003, 0, 0, zombraid_gun_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf00001, 0, 0, zombraid_gun_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00002, 0xf00003, 0, 0, zombraid_gun_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf00001, 0, 0, zombraid_gun_w);
 }
 
 
@@ -9419,7 +9426,7 @@ static DRIVER_INIT( kiwame )
 
 static DRIVER_INIT( rezon )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x500006, 0x500007, 0, 0, SMH_NOP);	// irq ack?
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x500006, 0x500007, 0, 0, SMH_NOP);	// irq ack?
 }
 
 static DRIVER_INIT(wiggie)
@@ -9451,10 +9458,9 @@ static DRIVER_INIT(wiggie)
 	}
 
 	/* X1_010 is not used. */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x103fff, 0, 0, SMH_NOP);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x103fff, 0, 0, SMH_NOP);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000, 0x103fff, 0, 0, SMH_NOP, SMH_NOP);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xB00008, 0xB00009, 0, 0, wiggie_soundlatch_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xB00008, 0xB00009, 0, 0, wiggie_soundlatch_w);
 
 }
 

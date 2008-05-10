@@ -165,7 +165,7 @@ static MACHINE_RESET( rpunch )
 
 static READ16_HANDLER( common_port_r )
 {
-	return readinputport(offset) | readinputport(2);
+	return input_port_read_indexed(machine, offset) | input_port_read_indexed(machine, 2);
 }
 
 
@@ -186,7 +186,7 @@ static TIMER_CALLBACK( sound_command_w_callback )
 
 static WRITE16_HANDLER( sound_command_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		timer_call_after_resynch(NULL, data & 0xff, sound_command_w_callback);
 }
 
@@ -194,7 +194,7 @@ static WRITE16_HANDLER( sound_command_w )
 static READ8_HANDLER( sound_command_r )
 {
 	sound_busy = 0;
-	cpunum_set_input_line(Machine, 1, 0, (ym2151_irq | sound_busy) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, (ym2151_irq | sound_busy) ? ASSERT_LINE : CLEAR_LINE);
 	return sound_data;
 }
 

@@ -74,7 +74,7 @@ static ADDRESS_MAP_START( macs_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xdfff) AM_READ(st0016_sprite2_ram_r) AM_WRITE(st0016_sprite2_ram_w)
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM /* work ram ? */
 	AM_RANGE(0xe800, 0xe87f) AM_RAM AM_BASE(&macs_ram2)
-	AM_RANGE(0xe900, 0xe9ff) AM_RAM AM_WRITE(st0016_snd_w) AM_BASE(&st0016_sound_regs)
+	AM_RANGE(0xe900, 0xe9ff) AM_RAM_WRITE(st0016_snd_w) AM_BASE(&st0016_sound_regs)
 	AM_RANGE(0xea00, 0xebff) AM_READ(st0016_palette_ram_r) AM_WRITE(st0016_palette_ram_w)
 	AM_RANGE(0xec00, 0xec1f) AM_READ(st0016_character_ram_r) AM_WRITE(st0016_character_ram_w)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAMBANK(3) /* common /backup ram ?*/
@@ -95,23 +95,23 @@ static READ8_HANDLER( macs_input_r )
 			/*It's bit-wise*/
 			switch(macs_mux_data&0x0f)
 			{
-				case 0x00: return readinputportbytag("IN0");
-				case 0x01: return readinputportbytag("IN1");
-				case 0x02: return readinputportbytag("IN2");
-				case 0x04: return readinputportbytag("IN3");
-				case 0x08: return readinputportbytag("IN4");
+				case 0x00: return input_port_read(machine, "IN0");
+				case 0x01: return input_port_read(machine, "IN1");
+				case 0x02: return input_port_read(machine, "IN2");
+				case 0x04: return input_port_read(machine, "IN3");
+				case 0x08: return input_port_read(machine, "IN4");
 				default:
 				logerror("Unmapped mahjong panel mux data %02x\n",macs_mux_data);
 				return 0xff;
 			}
 		}
-		case 1: return readinputportbytag("SYS0");
-		case 2: return readinputportbytag("DSW0");
-		case 3: return readinputportbytag("DSW1");
-		case 4: return readinputportbytag("DSW2");
-		case 5: return readinputportbytag("DSW3");
-		case 6: return readinputportbytag("DSW4");
-		case 7: return readinputportbytag("SYS1");
+		case 1: return input_port_read(machine, "SYS0");
+		case 2: return input_port_read(machine, "DSW0");
+		case 3: return input_port_read(machine, "DSW1");
+		case 4: return input_port_read(machine, "DSW2");
+		case 5: return input_port_read(machine, "DSW3");
+		case 6: return input_port_read(machine, "DSW4");
+		case 7: return input_port_read(machine, "SYS1");
 		default: 	popmessage("Unmapped I/O read at PC = %06x offset = %02x",activecpu_get_pc(),offset+0xc0);
 	}
 

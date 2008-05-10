@@ -86,6 +86,7 @@ Working games:
     - Ninja Gaiden 2                    (NW) - G board
     - Ninja Gaiden 3                    (3N) - G board
     - Nintendo World Cup                (XZ) - G board
+    - Pinbot                            (IO) - H board
     - Power Blade                       (7T) - G board
     - Pro Wrestling                     (PW) - B board
     - Rad Racer                         (RC) - D board
@@ -114,7 +115,6 @@ Working games:
 Non working games due to mapper/nes emulation issues:
 -----------------------------------------------------
     - Mike Tyson's Punchout             (PT) - E board
-    - Pinbot                            (IO) - H board
 
 Non working games due to missing roms:
 --------------------------------------
@@ -286,7 +286,6 @@ Notes & Todo:
 - Better control layout?. This thing has odd buttons.
 - Find dumps of the rest of the RP5H01's and add the remaining games.
 - Any PPU optimizations that retain accuracy are certainly welcome.
-- Add correct Pinbot mapper.
 
 ***************************************************************************/
 
@@ -306,6 +305,7 @@ Notes & Todo:
 extern WRITE8_HANDLER( playch10_videoram_w );
 extern PALETTE_INIT( playch10 );
 extern VIDEO_START( playch10 );
+extern VIDEO_START( playch10_hboard );
 extern VIDEO_UPDATE( playch10 );
 
 /* from machine */
@@ -429,7 +429,7 @@ static ADDRESS_MAP_START( bios_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM	// 8V
 	AM_RANGE(0x8800, 0x8fff) AM_READWRITE(ram_8w_r, ram_8w_w) AM_BASE(&ram_8w)	// 8W
-	AM_RANGE(0x9000, 0x97ff) AM_RAM AM_WRITE(playch10_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x9000, 0x97ff) AM_RAM_WRITE(playch10_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xc000, 0xdfff) AM_ROM
 	AM_RANGE(0xe000, 0xffff) AM_READWRITE(pc10_prot_r, pc10_prot_w)
 ADDRESS_MAP_END
@@ -778,6 +778,10 @@ static MACHINE_DRIVER_START( playchnv )
 	MDRV_NVRAM_HANDLER(playch10)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( playch10_hboard )
+	MDRV_IMPORT_FROM(playch10)
+	MDRV_VIDEO_START(playch10_hboard)
+MACHINE_DRIVER_END
 
 /***************************************************************************
 
@@ -1735,7 +1739,7 @@ GAME( 1990, pc_radr2, playch10, playch10, playch10, pcgboard_type2, ROT0, "Squar
 GAME( 1985, pc_gntlt, playch10, playch10, playch10, pcgboard_type2, ROT0, "Atari/Tengen (Nintendo of America license)",	"Gauntlet (PlayChoice-10)", GAME_IMPERFECT_GRAPHICS )
 
 /* H-Board Games */
-GAME( 1988, pc_pinbt, playch10, playch10, playch10, pchboard, ROT0, "Rare (Nintendo of America license)",		"PinBot (PlayChoice-10)", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+GAME( 1988, pc_pinbt, playch10, playch10_hboard, playch10, pchboard, ROT0, "Rare (Nintendo of America license)",		"PinBot (PlayChoice-10)", GAME_IMPERFECT_GRAPHICS )
 
 /* i-Board Games */
 GAME( 1989, pc_cshwk, playch10, playch10, playch10, pciboard, ROT0, "Rare (Nintendo of America license)",		"Captain Sky Hawk (PlayChoice-10)", 0 )

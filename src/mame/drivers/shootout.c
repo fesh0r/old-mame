@@ -275,15 +275,24 @@ static void shootout_snd2_irq(int linestate)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,shootout_snd_irq
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
+	shootout_snd_irq
 };
 
 static const struct YM2203interface ym2203_interface2 =
 {
-	0,
-	0,
-	shootout_bankswitch_w,
-	shootout_flipscreen_w,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		shootout_bankswitch_w,
+		shootout_flipscreen_w
+	},
 	shootout_snd2_irq
 };
 
@@ -291,7 +300,7 @@ static INTERRUPT_GEN( shootout_interrupt )
 {
 	static int coin = 0;
 
-	if ( readinputport( 2 ) & 0xc0 ) {
+	if ( input_port_read_indexed(machine,  2 ) & 0xc0 ) {
 		if ( coin == 0 ) {
 			coin = 1;
 			nmi_line_pulse(machine, cpunum);

@@ -388,7 +388,7 @@ static NVRAM_HANDLER(93C56)
 
 static WRITE32_HANDLER( psh_eeprom_w )
 {
-	if (ACCESSING_MSB32)
+	if (ACCESSING_BITS_24_31)
 	{
 		EEPROM_write_bit((data & 0x20000000) ? 1 : 0);
 		EEPROM_set_cs_line((data & 0x80000000) ? CLEAR_LINE : ASSERT_LINE);
@@ -402,9 +402,9 @@ static WRITE32_HANDLER( psh_eeprom_w )
 
 static READ32_HANDLER( psh_eeprom_r )
 {
-	if (ACCESSING_MSB32)
+	if (ACCESSING_BITS_24_31)
 	{
-		return ((EEPROM_read_bit() << 28) | (readinputport(4) << 24)); /* EEPROM | Region */
+		return ((EEPROM_read_bit() << 28) | (input_port_read_indexed(machine, 4) << 24)); /* EEPROM | Region */
 	}
 
 	logerror("Unk EEPROM read mask %x\n", mem_mask);
@@ -419,7 +419,7 @@ static INTERRUPT_GEN(psikyosh_interrupt)
 
 static READ32_HANDLER(io32_r)
 {
-	return ((readinputport(0) << 24) | (readinputport(1) << 16) | (readinputport(2) << 8) | (readinputport(3) << 0));
+	return ((input_port_read_indexed(machine, 0) << 24) | (input_port_read_indexed(machine, 1) << 16) | (input_port_read_indexed(machine, 2) << 8) | (input_port_read_indexed(machine, 3) << 0));
 }
 
 static WRITE32_HANDLER( paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w )
@@ -431,7 +431,7 @@ static WRITE32_HANDLER( paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w )
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 	r = ((paletteram32[offset] & 0xff000000) >>24);
 
-	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
 }
 
 static WRITE32_HANDLER( psikyosh_vidregs_w )
@@ -441,7 +441,7 @@ static WRITE32_HANDLER( psikyosh_vidregs_w )
 #if ROMTEST
 	if(offset==4) /* Configure bank for gfx test */
 	{
-		if (!(mem_mask & 0x000000ff) || !(mem_mask & 0x0000ff00))	// Bank
+		if (ACCESSING_BITS_0_15)	// Bank
 		{
 			UINT8 *ROM = memory_region(REGION_GFX1);
 			memory_set_bankptr(2,&ROM[0x20000 * (psikyosh_vidregs[offset]&0xfff)]); /* Bank comes from vidregs */
@@ -468,22 +468,22 @@ static READ32_HANDLER( psh_ymf_fm_r )
 
 static WRITE32_HANDLER( psh_ymf_fm_w )
 {
-	if (!(mem_mask & 0xff000000))	// FM bank 1 address (OPL2/OPL3 compatible)
+	if (ACCESSING_BITS_24_31)	// FM bank 1 address (OPL2/OPL3 compatible)
 	{
 		YMF278B_control_port_0_A_w(machine, 0, data>>24);
 	}
 
-	if (!(mem_mask & 0x00ff0000))	// FM bank 1 data
+	if (ACCESSING_BITS_16_23)	// FM bank 1 data
 	{
 		YMF278B_data_port_0_A_w(machine, 0, data>>16);
 	}
 
-	if (!(mem_mask & 0x0000ff00))	// FM bank 2 address (OPL3/YMF 262 extended)
+	if (ACCESSING_BITS_8_15)	// FM bank 2 address (OPL3/YMF 262 extended)
 	{
 		YMF278B_control_port_0_B_w(machine, 0, data>>8);
 	}
 
-	if (!(mem_mask & 0x000000ff))	// FM bank 2 data
+	if (ACCESSING_BITS_0_7)	// FM bank 2 data
 	{
 		YMF278B_data_port_0_B_w(machine, 0, data);
 	}
@@ -491,7 +491,7 @@ static WRITE32_HANDLER( psh_ymf_fm_w )
 
 static WRITE32_HANDLER( psh_ymf_pcm_w )
 {
-	if (!(mem_mask & 0xff000000))	// PCM address (OPL4/YMF 278B extended)
+	if (ACCESSING_BITS_24_31)	// PCM address (OPL4/YMF 278B extended)
 	{
 		YMF278B_control_port_0_C_w(machine, 0, data>>24);
 
@@ -503,7 +503,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 #endif
 	}
 
-	if (!(mem_mask & 0x00ff0000))	// PCM data
+	if (ACCESSING_BITS_16_23)	// PCM data
 	{
 		YMF278B_data_port_0_C_w(machine, 0, data>>16);
 	}
@@ -1230,13 +1230,13 @@ static READ32_HANDLER( mjgtaste_speedup_r )
 
 static DRIVER_INIT( soldivid )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, soldivid_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, soldivid_speedup_r );
 	use_factory_eeprom=EEPROM_0;
 }
 
 static DRIVER_INIT( s1945ii )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, s1945ii_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, s1945ii_speedup_r );
 	use_factory_eeprom=EEPROM_DEFAULT;
 }
 
@@ -1244,13 +1244,13 @@ static DRIVER_INIT( daraku )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, daraku_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, daraku_speedup_r );
 	use_factory_eeprom=EEPROM_DARAKU;
 }
 
 static DRIVER_INIT( sbomberb )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, sbomberb_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600000c, 0x600000f, 0, 0, sbomberb_speedup_r );
 	use_factory_eeprom=EEPROM_DEFAULT;
 }
 
@@ -1258,7 +1258,7 @@ static DRIVER_INIT( gunbird2 )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x604000c, 0x604000f, 0, 0, gunbird2_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x604000c, 0x604000f, 0, 0, gunbird2_speedup_r );
 	use_factory_eeprom=EEPROM_DEFAULT;
 }
 
@@ -1266,25 +1266,25 @@ static DRIVER_INIT( s1945iii )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, s1945iii_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, s1945iii_speedup_r );
 	use_factory_eeprom=EEPROM_S1945III;
 }
 
 static DRIVER_INIT( dragnblz )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, dragnblz_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, dragnblz_speedup_r );
 	use_factory_eeprom=EEPROM_DRAGNBLZ;
 }
 
 static DRIVER_INIT( gnbarich )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, gnbarich_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, gnbarich_speedup_r );
 	use_factory_eeprom=EEPROM_GNBARICH;
 }
 
 static DRIVER_INIT( mjgtaste )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, mjgtaste_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x606000c, 0x606000f, 0, 0, mjgtaste_speedup_r );
 	use_factory_eeprom=EEPROM_MJGTASTE;
 	/* needs to install mahjong controls too (can select joystick in test mode tho) */
 }

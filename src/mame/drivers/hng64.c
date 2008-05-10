@@ -571,14 +571,14 @@ static READ32_HANDLER( hng64_random_read )
 
 static READ32_HANDLER( hng64_com_r )
 {
-	logerror("com read  (PC=%08x): %08x %08x = %08x\n", activecpu_get_pc(), (offset*4)+0xc0000000, ~mem_mask, hng64_com_ram[offset]);
+	logerror("com read  (PC=%08x): %08x %08x = %08x\n", activecpu_get_pc(), (offset*4)+0xc0000000, mem_mask, hng64_com_ram[offset]);
 	return hng64_com_ram[offset] ;
 }
 
 
 static WRITE32_HANDLER( hng64_com_w )
 {
-	logerror("com write (PC=%08x): %08x %08x = %08x\n", activecpu_get_pc(), (offset*4)+0xc0000000, ~mem_mask, data);
+	logerror("com write (PC=%08x): %08x %08x = %08x\n", activecpu_get_pc(), (offset*4)+0xc0000000, mem_mask, data);
 	COMBINE_DATA(&hng64_com_ram[offset]);
 }
 
@@ -588,7 +588,7 @@ static UINT32 hng64_com_shared_b;
 
 static WRITE32_HANDLER( hng64_com_share_w )
 {
-	logerror("commw  (PC=%08x): %08x %08x %08x\n", activecpu_get_pc(), data, (offset*4)+0xc0001000, ~mem_mask);
+	logerror("commw  (PC=%08x): %08x %08x %08x\n", activecpu_get_pc(), data, (offset*4)+0xc0001000, mem_mask);
 
 	if (offset==0x0) COMBINE_DATA(&hng64_com_shared_a);
 	if (offset==0x1) COMBINE_DATA(&hng64_com_shared_b);
@@ -596,7 +596,7 @@ static WRITE32_HANDLER( hng64_com_share_w )
 
 static READ32_HANDLER( hng64_com_share_r )
 {
-	logerror("commr  (PC=%08x): %08x %08x\n", activecpu_get_pc(), (offset*4)+0xc0001000, ~mem_mask);
+	logerror("commr  (PC=%08x): %08x %08x\n", activecpu_get_pc(), (offset*4)+0xc0001000, mem_mask);
 
 //  if(offset==0x0) return hng64_com_shared_a;
 //  if(offset==0x1) return hng64_com_shared_b;
@@ -626,7 +626,7 @@ static WRITE32_HANDLER( hng64_pal_w )
 	//if (a != 0)
 	//  popmessage("Alpha is not zero!") ;
 
-	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
 }
 
 static READ32_HANDLER( hng64_port_read )
@@ -709,7 +709,7 @@ static READ32_HANDLER( hng64_sram_r )
 
 static WRITE32_HANDLER( hng64_sram_w )
 {
-	logerror("HNG64 writing to SRAM 0x%08x == 0x%08x & 0x%08x. (PC=%08x)\n", offset*4, data, ~mem_mask, activecpu_get_pc());
+	logerror("HNG64 writing to SRAM 0x%08x == 0x%08x & 0x%08x. (PC=%08x)\n", offset*4, data, mem_mask, activecpu_get_pc());
 	COMBINE_DATA (&hng64_sram[offset]);
 }
 
@@ -729,12 +729,12 @@ static READ32_HANDLER( hng64_dualport_r )
 		//SamSho64
 //      case 0x00:  toggi^=1; if (toggi==1) {return 0x00000400;} else {return 0x00000300;};
 		//RoadsEdge
-//      case 0x00:  return readinputportbytag("IPT_TEST");
+//      case 0x00:  return input_port_read(machine, "IPT_TEST");
 
 		//Fatfurwa
 		case 0x00:  return 0x00000400;
-		case 0x04:  return readinputportbytag("IPT_NONE")       | (readinputportbytag("FATFURWA_TST_ETC")<<16);
-		case 0x08:  return readinputportbytag("FATFURWA_PLR_2") | (readinputportbytag("FATFURWA_PLR_1")<<16);
+		case 0x04:  return input_port_read(machine, "IPT_NONE")       | (input_port_read(machine, "FATFURWA_TST_ETC")<<16);
+		case 0x08:  return input_port_read(machine, "FATFURWA_PLR_2") | (input_port_read(machine, "FATFURWA_PLR_1")<<16);
 
 		// This takes care of the 'machine' error code
 		case 0x600: return no_machine_error_code;
@@ -928,7 +928,7 @@ static ADDRESS_MAP_START( hng_map, ADDRESS_SPACE_PROGRAM, 32 )
 	// Video
 	AM_RANGE(0x20000000, 0x2000bfff) AM_RAM AM_BASE(&hng64_spriteram)									// Sprites
 	AM_RANGE(0x20010000, 0x20010013) AM_READ(hng64_random_read)
-	AM_RANGE(0x20100000, 0x2017ffff) AM_READWRITE(SMH_RAM, hng64_videoram_w) AM_BASE(&hng64_videoram)	// Tilemap
+	AM_RANGE(0x20100000, 0x2017ffff) AM_RAM_WRITE(hng64_videoram_w) AM_BASE(&hng64_videoram)	// Tilemap
 	AM_RANGE(0x20190000, 0x20190037) AM_RAM AM_BASE(&hng64_videoregs)									// Video Registers
 	AM_RANGE(0x20200000, 0x20203fff) AM_READWRITE(SMH_RAM,hng64_pal_w) AM_BASE(&paletteram32)			// Palette
 	AM_RANGE(0x20208000, 0x2020805f) AM_READWRITE(tcram_r, tcram_w) AM_BASE(&hng64_tcram)				// Transition Control

@@ -101,7 +101,6 @@ Notes (couriersud)
 
 ***************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/samples.h"
 #include "m10.h"
 
@@ -139,7 +138,7 @@ static PALETTE_INIT( m10 )
 
 static MACHINE_RESET( irem )
 {
-	m10_state *state = Machine->driver_data;
+	m10_state *state = machine->driver_data;
 
 	state_save_register_global(state->bottomline);
 	state_save_register_global(state->flip);
@@ -172,7 +171,7 @@ static MACHINE_RESET( irem )
 
 static WRITE8_HANDLER( m10_ctrl_w )
 {
-	m10_state *state = Machine->driver_data;
+	m10_state *state = machine->driver_data;
 
 #if DEBUG
 	if (data & 0x40)
@@ -182,10 +181,10 @@ static WRITE8_HANDLER( m10_ctrl_w )
 	/* I have NO IDEA if this is correct or not */
 	state->bottomline = ~data & 0x20;
 
-	if (readinputportbytag("CAB") & 0x01)
+	if (input_port_read(machine, "CAB") & 0x01)
 		state->flip = ~data & 0x10;
 
-	if (!(readinputportbytag("CAB") & 0x02))
+	if (!(input_port_read(machine, "CAB") & 0x02))
 		sound_global_enable(~data & 0x80);
 
 	/* sound command in lower 4 bytes */
@@ -249,7 +248,7 @@ static WRITE8_HANDLER( m10_ctrl_w )
 
 static WRITE8_HANDLER( m11_ctrl_w )
 {
-	m10_state *state = Machine->driver_data;
+	m10_state *state = machine->driver_data;
 
 #if DEBUG
 	if (data & 0x4C)
@@ -258,10 +257,10 @@ static WRITE8_HANDLER( m11_ctrl_w )
 
 	state->bottomline = ~data & 0x20;
 
-	if (readinputportbytag("CAB") & 0x01)
+	if (input_port_read(machine, "CAB") & 0x01)
 		state->flip = ~data & 0x10;
 
-	if (!(readinputportbytag("CAB") & 0x02))
+	if (!(input_port_read(machine, "CAB") & 0x02))
 		sound_global_enable(~data & 0x80);
 }
 
@@ -282,15 +281,15 @@ static WRITE8_HANDLER( m11_ctrl_w )
 
 static WRITE8_HANDLER( m15_ctrl_w )
 {
-	m10_state *state = Machine->driver_data;
+	m10_state *state = machine->driver_data;
 
 #if DEBUG
 	if (data & 0xF0)
 		popmessage("M15 ctrl: %02x",data);
 #endif
-	if (readinputportbytag("CAB") & 0x01)
+	if (input_port_read(machine, "CAB") & 0x01)
 		state->flip = ~data & 0x04;
-	if (!(readinputportbytag("CAB") & 0x02))
+	if (!(input_port_read(machine, "CAB") & 0x02))
 		sound_global_enable(~data & 0x08);
 }
 
@@ -411,7 +410,7 @@ static WRITE8_HANDLER( m15_a100_w )
 static READ8_HANDLER( m10_a700_r )
 {
    	//printf("rd:%d\n",video_screen_get_vpos(machine->primary_screen));
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	return 0x00;
 }
 
@@ -478,7 +477,7 @@ static ADDRESS_MAP_START( m10_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x02ff) AM_RAM AM_BASE_MEMBER(m10_state, memory) /* scratch ram */
 	AM_RANGE(0x1000, 0x2fff) AM_READ(SMH_ROM) AM_BASE_MEMBER(m10_state, rom)
 	AM_RANGE(0x4000, 0x43ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(SMH_RAM, m10_colorram_w) AM_BASE(&colorram) /* foreground colour  */
+	AM_RANGE(0x4800, 0x4bff) AM_RAM_WRITE(m10_colorram_w) AM_BASE(&colorram) /* foreground colour  */
 	AM_RANGE(0x5000, 0x53ff) AM_RAM AM_BASE_MEMBER(m10_state, chargen) /* background ????? */
 	AM_RANGE(0xa200, 0xa200) AM_READ(input_port_1_r)
 	AM_RANGE(0xa300, 0xa300) AM_READ(input_port_0_r)
@@ -492,7 +491,7 @@ static ADDRESS_MAP_START( m11_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x02ff) AM_RAM AM_BASE_MEMBER(m10_state, memory) /* scratch ram */
 	AM_RANGE(0x1000, 0x2fff) AM_READ(SMH_ROM) AM_BASE_MEMBER(m10_state, rom)
 	AM_RANGE(0x4000, 0x43ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(SMH_RAM, m10_colorram_w) AM_BASE(&colorram) /* foreground colour  */
+	AM_RANGE(0x4800, 0x4bff) AM_RAM_WRITE(m10_colorram_w) AM_BASE(&colorram) /* foreground colour  */
 	AM_RANGE(0x5000, 0x53ff) AM_RAM AM_BASE_MEMBER(m10_state, chargen) /* background ????? */
 	AM_RANGE(0xa100, 0xa100) AM_WRITE(m11_a100_w) /* sound writes ???? */
 	AM_RANGE(0xa200, 0xa200) AM_READ(input_port_1_r)
@@ -506,8 +505,8 @@ static ADDRESS_MAP_START( m15_main, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x02ff) AM_RAM AM_BASE_MEMBER(m10_state, memory) /* scratch ram */
 	AM_RANGE(0x1000, 0x33ff) AM_READ(SMH_ROM) AM_BASE_MEMBER(m10_state, rom)
 	AM_RANGE(0x4000, 0x43ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
-	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(SMH_RAM, m10_colorram_w) AM_BASE(&colorram) /* foreground colour  */
-	AM_RANGE(0x5000, 0x57ff) AM_READWRITE(SMH_RAM, m15_chargen_w) AM_BASE_MEMBER(m10_state, chargen) /* background ????? */
+	AM_RANGE(0x4800, 0x4bff) AM_RAM_WRITE(m10_colorram_w) AM_BASE(&colorram) /* foreground colour  */
+	AM_RANGE(0x5000, 0x57ff) AM_RAM_WRITE(m15_chargen_w) AM_BASE_MEMBER(m10_state, chargen) /* background ????? */
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_3_r)
 	AM_RANGE(0xa100, 0xa100) AM_WRITE(m15_a100_w) /* sound writes ???? */
 	AM_RANGE(0xa200, 0xa200) AM_READ(input_port_1_r)

@@ -74,7 +74,7 @@ static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
 	data = paletteram32[offset];
-	palette_set_color_rgb(Machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 static void voodoo_vblank_0(int param)
@@ -205,7 +205,7 @@ static void adc1038_di_w(int bit)
 	adc1038_data_in = bit & 1;
 }
 
-static void adc1038_clk_w(int bit)
+static void adc1038_clk_w(running_machine *machine, int bit)
 {
 	// GTI Club doesn't sync on SARS
 	if (adc1038_gticlub_hack)
@@ -216,10 +216,10 @@ static void adc1038_clk_w(int bit)
 
 			switch (adc1038_adr)
 			{
-				case 0: adc1038_adc_data = readinputport(4); break;
-				case 1: adc1038_adc_data = readinputport(5); break;
-				case 2: adc1038_adc_data = readinputport(6); break;
-				case 3: adc1038_adc_data = readinputport(7); break;
+				case 0: adc1038_adc_data = input_port_read_indexed(machine, 4); break;
+				case 1: adc1038_adc_data = input_port_read_indexed(machine, 5); break;
+				case 2: adc1038_adc_data = input_port_read_indexed(machine, 6); break;
+				case 3: adc1038_adc_data = input_port_read_indexed(machine, 7); break;
 				case 4: adc1038_adc_data = 0x000; break;
 				case 5: adc1038_adc_data = 0x000; break;
 				case 6: adc1038_adc_data = 0x000; break;
@@ -255,16 +255,16 @@ static void adc1038_clk_w(int bit)
 	adc1038_clk = bit;
 }
 
-static int adc1038_sars_r(void)
+static int adc1038_sars_r(running_machine *machine)
 {
 	adc1038_cycle = 0;
 
 	switch (adc1038_adr)
 	{
-		case 0: adc1038_adc_data = readinputport(4); break;
-		case 1: adc1038_adc_data = readinputport(5); break;
-		case 2: adc1038_adc_data = readinputport(6); break;
-		case 3: adc1038_adc_data = readinputport(7); break;
+		case 0: adc1038_adc_data = input_port_read_indexed(machine, 4); break;
+		case 1: adc1038_adc_data = input_port_read_indexed(machine, 5); break;
+		case 2: adc1038_adc_data = input_port_read_indexed(machine, 6); break;
+		case 3: adc1038_adc_data = input_port_read_indexed(machine, 7); break;
 		case 4: adc1038_adc_data = 0x000; break;
 		case 5: adc1038_adc_data = 0x000; break;
 		case 6: adc1038_adc_data = 0x000; break;
@@ -283,27 +283,27 @@ static READ32_HANDLER( sysreg_r )
 	UINT32 r = 0;
 	if (offset == 0)
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
-			r |= readinputport(0) << 24;
+			r |= input_port_read_indexed(machine, 0) << 24;
 		}
-		if (!(mem_mask & 0x00ff0000))
+		if (ACCESSING_BITS_16_23)
 		{
-			r |= readinputport(1) << 16;
+			r |= input_port_read_indexed(machine, 1) << 16;
 		}
-		if (!(mem_mask & 0x0000ff00))
+		if (ACCESSING_BITS_8_15)
 		{
-			r |= (adc1038_sars_r() << 7) << 8;
+			r |= (adc1038_sars_r(machine) << 7) << 8;
 		}
-		if (!(mem_mask & 0x000000ff))
+		if (ACCESSING_BITS_0_7)
 		{
-			r |= readinputport(3) << 0;
+			r |= input_port_read_indexed(machine, 3) << 0;
 		}
 		return r;
 	}
 	else if (offset == 1)
 	{
-		if (!(mem_mask & 0xff000000) )
+		if (ACCESSING_BITS_24_31 )
 		{
 			// 7        0
 			// |?????ae?|
@@ -328,15 +328,15 @@ static WRITE32_HANDLER( sysreg_w )
 {
 	if (offset == 0)
 	{
-		if( !(mem_mask & 0xff000000) )
+		if( ACCESSING_BITS_24_31 )
 		{
 			gticlub_led_reg0 = (data >> 24) & 0xff;
 		}
-		if( !(mem_mask & 0x00ff0000) )
+		if( ACCESSING_BITS_16_23 )
 		{
 			gticlub_led_reg1 = (data >> 16) & 0xff;
 		}
-		if( !(mem_mask & 0x000000ff) )
+		if( ACCESSING_BITS_0_7 )
 		{
 			EEPROM_write_bit((data & 0x01) ? 1 : 0);
 			EEPROM_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
@@ -345,19 +345,19 @@ static WRITE32_HANDLER( sysreg_w )
 	}
 	if( offset == 1 )
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
 			if (data & 0x80000000)	/* CG Board 1 IRQ Ack */
 			{
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
 			}
 			if (data & 0x40000000)	/* CG Board 0 IRQ Ack */
 			{
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 			}
 
 			adc1038_di_w((data >> 24) & 1);
-			adc1038_clk_w((data >> 25) & 1);
+			adc1038_clk_w(machine, (data >> 25) & 1);
 
 			set_cgboard_id((data >> 28) & 0x3);
 		}
@@ -414,19 +414,19 @@ READ32_HANDLER( lanc_r )
 	UINT32 r = 0;
 	int reg = offset * 4;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		r |= K056230_r(reg+0) << 24;
 	}
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		r |= K056230_r(reg+1) << 16;
 	}
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		r |= K056230_r(reg+2) << 8;
 	}
-	if (!(mem_mask & 0x000000ff))
+	if (ACCESSING_BITS_0_7)
 	{
 		r |= K056230_r(reg+3) << 0;
 	}
@@ -438,19 +438,19 @@ WRITE32_HANDLER( lanc_w )
 {
 	int reg = offset * 4;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		K056230_w(reg+0, (data >> 24) & 0xff);
 	}
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		K056230_w(reg+1, (data >> 16) & 0xff);
 	}
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		K056230_w(reg+2, (data >> 8) & 0xff);
 	}
-	if (!(mem_mask & 0x000000ff))
+	if (ACCESSING_BITS_0_7)
 	{
 		K056230_w(reg+3, (data >> 0) & 0xff);
 	}
@@ -474,7 +474,7 @@ WRITE32_HANDLER( lanc_ram_w )
 static ADDRESS_MAP_START( gticlub_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_MIRROR(0x80000000) AM_RAM AM_BASE(&work_ram)		/* Work RAM */
 	AM_RANGE(0x74000000, 0x740000ff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_reg_r, K001604_reg_w)
-	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_READWRITE(SMH_RAM, paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_RAM_WRITE(paletteram32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x74020000, 0x7403ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_tile_r, K001604_tile_w)
 	AM_RANGE(0x74040000, 0x7407ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_char_r, K001604_char_w)
 	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)

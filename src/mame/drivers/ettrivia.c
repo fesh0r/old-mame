@@ -123,8 +123,8 @@ static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xa000) AM_WRITENOP
 	AM_RANGE(0xb000, 0xb000) AM_READ(b000_r) AM_WRITE(b000_w)
 	AM_RANGE(0xb800, 0xb800) AM_WRITE(b800_w)
-	AM_RANGE(0xc000, 0xc7ff) AM_RAM AM_WRITE(ettrivia_fg_w) AM_BASE(&fg_videoram)
-	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_WRITE(ettrivia_bg_w) AM_BASE(&bg_videoram)
+	AM_RANGE(0xc000, 0xc7ff) AM_RAM_WRITE(ettrivia_fg_w) AM_BASE(&fg_videoram)
+	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(ettrivia_bg_w) AM_BASE(&bg_videoram)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_map, ADDRESS_SPACE_IO, 8 )
@@ -209,18 +209,28 @@ static VIDEO_UPDATE( ettrivia )
 
 static const struct AY8910interface ay8912_interface_2 =
 {
-	input_port_1_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	input_port_1_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface ay8912_interface_3 =
 {
-	input_port_0_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	input_port_0_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 
 static INTERRUPT_GEN( ettrivia_interrupt )
 {
-	if( readinputport(2) & 0x01 )
+	if( input_port_read_indexed(machine, 2) & 0x01 )
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 	else
 		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);

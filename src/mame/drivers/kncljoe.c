@@ -26,7 +26,6 @@ Updates:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/ay8910.h"
 #include "sound/sn76496.h"
@@ -55,7 +54,7 @@ static WRITE8_HANDLER( sound_cmd_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
-	AM_RANGE(0xc000, 0xcfff) AM_READWRITE(SMH_RAM, kncljoe_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xc000, 0xcfff) AM_RAM_WRITE(kncljoe_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xd000, 0xd001) AM_WRITE(kncljoe_scroll_w) AM_BASE(&kncljoe_scrollregs)
 	AM_RANGE(0xd800, 0xd800) AM_READ(input_port_0_r) /* IN 0 */
 	AM_RANGE(0xd801, 0xd801) AM_READ(input_port_1_r) /* IN 1 */
@@ -112,7 +111,7 @@ static READ8_HANDLER( m6803_port2_r )
 
 static WRITE8_HANDLER( sound_irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER(unused_w)
@@ -247,15 +246,17 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	soundlatch_r,
-	0,
-	0,
+	NULL,
+	NULL,
 	unused_w
 };
 
 static INTERRUPT_GEN (sound_nmi)
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_DRIVER_START( kncljoe )

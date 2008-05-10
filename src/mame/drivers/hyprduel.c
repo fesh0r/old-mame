@@ -107,7 +107,7 @@ static READ16_HANDLER( hyprduel_irq_cause_r )
 
 static WRITE16_HANDLER( hyprduel_irq_cause_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (data == int_num)
 			requested_int &= ~(int_num & ~*hypr_irq_enable);
@@ -128,24 +128,24 @@ static WRITE16_HANDLER( hypr_subcpu_control_w )
 		{
 			if (pc != 0x95f2)
 			{
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 				subcpu_resetline = 1;
 			} else {
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 				subcpu_resetline = -1;
 			}
 		}
 	} else {
 		if (subcpu_resetline == 1 && (data != 0x0c))
 		{
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 			subcpu_resetline = 0;
 			if (pc == 0xbb0 || pc == 0x9d30 || pc == 0xb19c)
 				cpu_spinuntil_time(ATTOTIME_IN_USEC(15000));		/* sync semaphore */
 		}
 		else if (subcpu_resetline == -1)
 		{
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
 			subcpu_resetline = 0;
 		}
 	}
@@ -806,12 +806,12 @@ static DRIVER_INIT( hyprduel )
 //  ROM[(0x174b9*0x20)+0x1f] |= 0x0e;       /* I */
 //  ROM[(0x174e9*0x20)+0x1f] |= 0x0e;
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc07fff, 0, 0, hypr_sharedram1_w);
-	memory_install_write16_handler(1, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc07fff, 0, 0, hypr_sharedram1_w);
-	memory_install_write16_handler(1, ADDRESS_SPACE_PROGRAM, 0x000000, 0x003fff, 0, 0, hypr_sharedram1_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc07fff, 0, 0, hypr_sharedram1_w);
+	memory_install_write16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc07fff, 0, 0, hypr_sharedram1_w);
+	memory_install_write16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x000000, 0x003fff, 0, 0, hypr_sharedram1_w);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xfe0000, 0xffffff, 0, 0, hypr_sharedram2_w);
-	memory_install_write16_handler(1, ADDRESS_SPACE_PROGRAM, 0xfe0000, 0xffffff, 0, 0, hypr_sharedram2_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfe0000, 0xffffff, 0, 0, hypr_sharedram2_w);
+	memory_install_write16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xfe0000, 0xffffff, 0, 0, hypr_sharedram2_w);
 
 	requested_int = 0x00;
 	blitter_bit = 2;

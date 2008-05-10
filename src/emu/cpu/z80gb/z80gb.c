@@ -37,7 +37,6 @@
 /**                                                         **/
 /*************************************************************/
 #include "debugger.h"
-#include "deprecat.h"
 #include "z80gb.h"
 
 #define FLAG_Z	0x80
@@ -119,8 +118,8 @@ static z80gb_regs Regs;
 /* Memory functions                                                         */
 /****************************************************************************/
 
-#define mem_ReadByte(A)		((UINT8)program_read_byte_8(A))
-#define mem_WriteByte(A,V)	(program_write_byte_8(A,V))
+#define mem_ReadByte(A)		((UINT8)program_read_byte_8le(A))
+#define mem_WriteByte(A,V)	(program_write_byte_8le(A,V))
 
 INLINE UINT16 mem_ReadWord (UINT32 address)
 {

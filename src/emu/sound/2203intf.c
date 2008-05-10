@@ -1,5 +1,6 @@
 #include <math.h>
 #include "sndintrf.h"
+#include "deprecat.h"
 #include "streams.h"
 #include "2203intf.h"
 #include "fm.h"
@@ -97,7 +98,7 @@ static void ym2203_stream_update(void *param, stream_sample_t **inputs, stream_s
 }
 
 
-static void ym2203_postload(void *param)
+static STATE_POSTLOAD( ym2203_postload )
 {
 	struct ym2203_info *info = param;
 	YM2203Postload(info->chip);
@@ -106,7 +107,15 @@ static void ym2203_postload(void *param)
 
 static void *ym2203_start(int sndindex, int clock, const void *config)
 {
-	static const struct YM2203interface generic_2203 = { 0 };
+	static const struct YM2203interface generic_2203 =
+	{
+		{
+			AY8910_LEGACY_OUTPUT,
+			AY8910_DEFAULT_LOADS,
+			NULL, NULL, NULL, NULL
+		},
+		NULL
+	};
 	const struct YM2203interface *intf = config ? config : &generic_2203;
 	struct ym2203_info *info;
 	int rate = clock/72; /* ??? */
@@ -115,7 +124,7 @@ static void *ym2203_start(int sndindex, int clock, const void *config)
 	memset(info, 0, sizeof(*info));
 
 	info->intf = intf;
-	info->psg = ay8910_start_ym(SOUND_YM2203, sndindex, clock, 3, intf->portAread, intf->portBread, intf->portAwrite, intf->portBwrite);
+	info->psg = ay8910_start_ym(SOUND_YM2203, sndindex, clock, &intf->ay8910_intf);
 	if (!info->psg) return NULL;
 
 	/* Timer Handler set */
@@ -128,7 +137,7 @@ static void *ym2203_start(int sndindex, int clock, const void *config)
 	/* Initialize FM emurator */
 	info->chip = YM2203Init(info,sndindex,clock,rate,timer_handler,IRQHandler,&psgintf);
 
-	state_save_register_func_postload_ptr(ym2203_postload, info);
+	state_save_register_postload(Machine, ym2203_postload, info);
 
 	if (info->chip)
 		return info;
@@ -233,62 +242,62 @@ READ16_HANDLER( YM2203_read_port_4_lsb_r ) { struct ym2203_info *info = sndti_to
 WRITE16_HANDLER( YM2203_control_port_0_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 0);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,0,data);
 }
 WRITE16_HANDLER( YM2203_control_port_1_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 1);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,0,data);
 }
 WRITE16_HANDLER( YM2203_control_port_2_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 2);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,0,data);
 }
 WRITE16_HANDLER( YM2203_control_port_3_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 3);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,0,data);
 }
 WRITE16_HANDLER( YM2203_control_port_4_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 4);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,0,data);
 }
 
 WRITE16_HANDLER( YM2203_write_port_0_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 0);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,1,data);
 }
 WRITE16_HANDLER( YM2203_write_port_1_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 1);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,1,data);
 }
 WRITE16_HANDLER( YM2203_write_port_2_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 2);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,1,data);
 }
 WRITE16_HANDLER( YM2203_write_port_3_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 3);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,1,data);
 }
 WRITE16_HANDLER( YM2203_write_port_4_lsb_w )
 {
 	struct ym2203_info *info = sndti_token(SOUND_YM2203, 4);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		YM2203Write(info->chip,1,data);
 }
 

@@ -14,7 +14,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/namco.h"
 
@@ -53,19 +52,19 @@ static READ8_HANDLER( inputport_r )
 	switch (inputport_selected)
 	{
 		case 0x00:	/* DSW B (bits 0-4) */
-			return (readinputport(1) & 0xf8) >> 3; break;
+			return (input_port_read_indexed(machine, 1) & 0xf8) >> 3; break;
 		case 0x01:	/* DSW B (bits 5-7), DSW A (bits 0-1) */
-			return ((readinputport(1) & 0x07) << 2) | ((readinputport(0) & 0xc0) >> 6); break;
+			return ((input_port_read_indexed(machine, 1) & 0x07) << 2) | ((input_port_read_indexed(machine, 0) & 0xc0) >> 6); break;
 		case 0x02:	/* DSW A (bits 2-6) */
-			return (readinputport(0) & 0x3e) >> 1; break;
+			return (input_port_read_indexed(machine, 0) & 0x3e) >> 1; break;
 		case 0x03:	/* DSW A (bit 7), DSW C (bits 0-3) */
-			return ((readinputport(0) & 0x01) << 4) | (readinputport(2) & 0x0f); break;
+			return ((input_port_read_indexed(machine, 0) & 0x01) << 4) | (input_port_read_indexed(machine, 2) & 0x0f); break;
 		case 0x04:	/* coins, start */
-			return readinputport(3); break;
+			return input_port_read_indexed(machine, 3); break;
 		case 0x05:	/* 2P controls */
-			return readinputport(5); break;
+			return input_port_read_indexed(machine, 5); break;
 		case 0x06:	/* 1P controls */
-			return readinputport(4); break;
+			return input_port_read_indexed(machine, 4); break;
 		default:
 			return 0xff;
 	}
@@ -80,7 +79,7 @@ static WRITE8_HANDLER( skykid_led_w )
 static WRITE8_HANDLER( skykid_subreset_w )
 {
 	int bit = !BIT(offset,11);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( skykid_bankswitch_w )
@@ -93,7 +92,7 @@ static WRITE8_HANDLER( skykid_irq_1_ctrl_w )
 	int bit = !BIT(offset,11);
 	cpu_interrupt_enable(0,bit);
 	if (!bit)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( skykid_irq_2_ctrl_w )
@@ -101,7 +100,7 @@ static WRITE8_HANDLER( skykid_irq_2_ctrl_w )
 	int bit = !BIT(offset,13);
 	cpu_interrupt_enable(1,bit);
 	if (!bit)
-		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 static MACHINE_START( skykid )

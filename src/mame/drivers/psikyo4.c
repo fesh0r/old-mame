@@ -200,7 +200,7 @@ static NVRAM_HANDLER(93C56)
 
 static WRITE32_HANDLER( ps4_eeprom_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		EEPROM_write_bit((data & 0x00200000) ? 1 : 0);
 		EEPROM_set_cs_line((data & 0x00800000) ? CLEAR_LINE : ASSERT_LINE);
@@ -214,14 +214,14 @@ static WRITE32_HANDLER( ps4_eeprom_w )
 
 static READ32_HANDLER( ps4_eeprom_r )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		return ((EEPROM_read_bit() << 20)); /* EEPROM */
 	}
 
 //  logerror("Unk EEPROM read mask %x\n", mem_mask);
 
-	return readinputportbytag("JP4")<<16;
+	return input_port_read(machine, "JP4")<<16;
 }
 
 static INTERRUPT_GEN(psikyosh_interrupt)
@@ -234,17 +234,17 @@ static READ32_HANDLER(hotgmck_io32_r) /* used by hotgmck/hgkairak */
 	int ret = 0xff;
 	int sel = (ps4_io_select[0] & 0x0000ff00) >> 8;
 
-	if (sel & 1) ret &= readinputport(0+4*offset);
-	if (sel & 2) ret &= readinputport(1+4*offset);
-	if (sel & 4) ret &= readinputport(2+4*offset);
-	if (sel & 8) ret &= readinputport(3+4*offset);
+	if (sel & 1) ret &= input_port_read_indexed(machine, 0+4*offset);
+	if (sel & 2) ret &= input_port_read_indexed(machine, 1+4*offset);
+	if (sel & 4) ret &= input_port_read_indexed(machine, 2+4*offset);
+	if (sel & 8) ret &= input_port_read_indexed(machine, 3+4*offset);
 
-	return ret<<24 | readinputport(8);
+	return ret<<24 | input_port_read_indexed(machine, 8);
 }
 
 static READ32_HANDLER(ps4_io32_r) /* used by loderndf/hotdebut */
 {
-	return ((readinputport(0+4*offset) << 24) | (readinputport(1+4*offset) << 16) | (readinputport(2+4*offset) << 8) | (readinputport(3+4*offset) << 0));
+	return ((input_port_read_indexed(machine, 0+4*offset) << 24) | (input_port_read_indexed(machine, 1+4*offset) << 16) | (input_port_read_indexed(machine, 2+4*offset) << 8) | (input_port_read_indexed(machine, 3+4*offset) << 0));
 }
 
 static WRITE32_HANDLER( ps4_paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w )
@@ -256,8 +256,8 @@ static WRITE32_HANDLER( ps4_paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 	r = ((paletteram32[offset] & 0xff000000) >>24);
 
-	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
-	palette_set_color(Machine,offset+0x800,MAKE_RGB(r,g,b)); // For screen 2
+	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(machine,offset+0x800,MAKE_RGB(r,g,b)); // For screen 2
 }
 
 static WRITE32_HANDLER( ps4_bgpen_1_dword_w )
@@ -269,7 +269,7 @@ static WRITE32_HANDLER( ps4_bgpen_1_dword_w )
 	g = ((bgpen_1[0] & 0x00ff0000) >>16);
 	r = ((bgpen_1[0] & 0xff000000) >>24);
 
-	palette_set_color(Machine,0x1000,MAKE_RGB(r,g,b)); // Clear colour for screen 1
+	palette_set_color(machine,0x1000,MAKE_RGB(r,g,b)); // Clear colour for screen 1
 }
 
 static WRITE32_HANDLER( ps4_bgpen_2_dword_w )
@@ -281,12 +281,12 @@ static WRITE32_HANDLER( ps4_bgpen_2_dword_w )
 	g = ((bgpen_2[0] & 0x00ff0000) >>16);
 	r = ((bgpen_2[0] & 0xff000000) >>24);
 
-	palette_set_color(Machine,0x1001,MAKE_RGB(r,g,b)); // Clear colour for screen 2
+	palette_set_color(machine,0x1001,MAKE_RGB(r,g,b)); // Clear colour for screen 2
 }
 
 static WRITE32_HANDLER( ps4_screen1_brt_w )
 {
-	if(ACCESSING_LSB32) {
+	if(ACCESSING_BITS_0_7) {
 		/* Need seperate brightness for both screens if displaying together */
 		double brt1 = data & 0xff;
 		static double oldbrt1;
@@ -299,20 +299,20 @@ static WRITE32_HANDLER( ps4_screen1_brt_w )
 			int i;
 
 			for (i = 0; i < 0x800; i++)
-				palette_set_brightness(Machine,i,brt1);
+				palette_set_brightness(machine,i,brt1);
 
 			oldbrt1 = brt1;
 		}
 	} else {
 		/* I believe this to be seperate rgb brightness due to strings in hotdebut, unused in 4 dumped games */
-		if((data & ~mem_mask) != 0)
+		if((data & mem_mask) != 0)
 			logerror("Unk Scr 1 rgb? brt write %08x mask %08x\n", data, mem_mask);
 	}
 }
 
 static WRITE32_HANDLER( ps4_screen2_brt_w )
 {
-	if(ACCESSING_LSB32) {
+	if(ACCESSING_BITS_0_7) {
 		/* Need seperate brightness for both screens if displaying together */
 		double brt2 = data & 0xff;
 		static double oldbrt2;
@@ -326,13 +326,13 @@ static WRITE32_HANDLER( ps4_screen2_brt_w )
 			int i;
 
 			for (i = 0x800; i < 0x1000; i++)
-				palette_set_brightness(Machine,i,brt2);
+				palette_set_brightness(machine,i,brt2);
 
 			oldbrt2 = brt2;
 		}
 	} else {
 		/* I believe this to be seperate rgb brightness due to strings in hotdebut, unused in 4 dumped games */
-		if((data & ~mem_mask) != 0)
+		if((data & mem_mask) != 0)
 			logerror("Unk Scr 2 rgb? brt write %08x mask %08x\n", data, mem_mask);
 	}
 }
@@ -344,7 +344,7 @@ static WRITE32_HANDLER( ps4_vidregs_w )
 #if ROMTEST
 	if(offset==2) /* Configure bank for gfx test */
 	{
-		if (!(mem_mask & 0x000000ff) || !(mem_mask & 0x0000ff00))	// Bank
+		if (ACCESSING_BITS_0_15)	// Bank
 		{
 			UINT8 *ROM = memory_region(REGION_GFX1);
 			memory_set_bankptr(2,&ROM[0x2000 * (psikyo4_vidregs[offset]&0x1fff)]); /* Bank comes from vidregs */
@@ -370,22 +370,22 @@ static READ32_HANDLER( psh_ymf_fm_r )
 
 static WRITE32_HANDLER( psh_ymf_fm_w )
 {
-	if (!(mem_mask & 0xff000000))	// FM bank 1 address (OPL2/OPL3 compatible)
+	if (ACCESSING_BITS_24_31)	// FM bank 1 address (OPL2/OPL3 compatible)
 	{
 		YMF278B_control_port_0_A_w(machine, 0, data>>24);
 	}
 
-	if (!(mem_mask & 0x00ff0000))	// FM bank 1 data
+	if (ACCESSING_BITS_16_23)	// FM bank 1 data
 	{
 		YMF278B_data_port_0_A_w(machine, 0, data>>16);
 	}
 
-	if (!(mem_mask & 0x0000ff00))	// FM bank 2 address (OPL3/YMF 262 extended)
+	if (ACCESSING_BITS_8_15)	// FM bank 2 address (OPL3/YMF 262 extended)
 	{
 		YMF278B_control_port_0_B_w(machine, 0, data>>8);
 	}
 
-	if (!(mem_mask & 0x000000ff))	// FM bank 2 data
+	if (ACCESSING_BITS_0_7)	// FM bank 2 data
 	{
 		YMF278B_data_port_0_B_w(machine, 0, data);
 	}
@@ -393,7 +393,7 @@ static WRITE32_HANDLER( psh_ymf_fm_w )
 
 static WRITE32_HANDLER( psh_ymf_pcm_w )
 {
-	if (!(mem_mask & 0xff000000))	// PCM address (OPL4/YMF 278B extended)
+	if (ACCESSING_BITS_24_31)	// PCM address (OPL4/YMF 278B extended)
 	{
 		YMF278B_control_port_0_C_w(machine, 0, data>>24);
 
@@ -405,7 +405,7 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 #endif
 	}
 
-	if (!(mem_mask & 0x00ff0000))	// PCM data
+	if (ACCESSING_BITS_16_23)	// PCM data
 	{
 		YMF278B_data_port_0_C_w(machine, 0, data>>16);
 	}
@@ -1068,7 +1068,12 @@ PC  :000029F8: BT      $000029EC
 	return ps4_ram[0x00001c/4];
 }
 
-static void install_hotgmck_pcm_bank(void)
+static STATE_POSTLOAD( hotgmck_pcm_bank_postload )
+{
+	set_hotgmck_pcm_bank((FPTR)param);
+}
+
+static void install_hotgmck_pcm_bank(running_machine *machine)
 {
 	UINT8 *ymf_pcm = memory_region(REGION_SOUND1);
 	UINT8 *pcm_rom = memory_region(REGION_SOUND2);
@@ -1079,32 +1084,32 @@ static void install_hotgmck_pcm_bank(void)
 	set_hotgmck_pcm_bank(0);
 	set_hotgmck_pcm_bank(1);
 
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800008, 0x580000b, 0, 0, hotgmck_pcm_bank_w );
-	state_save_register_func_postload_int(set_hotgmck_pcm_bank, 0);
-	state_save_register_func_postload_int(set_hotgmck_pcm_bank, 1);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5800008, 0x580000b, 0, 0, hotgmck_pcm_bank_w );
+	state_save_register_postload(machine, hotgmck_pcm_bank_postload, (void *)0);
+	state_save_register_postload(machine, hotgmck_pcm_bank_postload, (void *)1);
 }
 
 static DRIVER_INIT( hotgmck )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_set_bankptr(1,&RAM[0x100000]);
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x5800000, 0x5800007, 0, 0, hotgmck_io32_r ); // Different Inputs
-	install_hotgmck_pcm_bank();	// Banked PCM ROM
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5800000, 0x5800007, 0, 0, hotgmck_io32_r ); // Different Inputs
+	install_hotgmck_pcm_bank(machine);	// Banked PCM ROM
 }
 
 static DRIVER_INIT( loderndf )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000020, 0x6000023, 0, 0, loderndf_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000020, 0x6000023, 0, 0, loderndf_speedup_r );
 }
 
 static DRIVER_INIT( loderdfa )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000020, 0x6000023, 0, 0, loderdfa_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000020, 0x6000023, 0, 0, loderdfa_speedup_r );
 }
 
 static DRIVER_INIT( hotdebut )
 {
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x600001c, 0x600001f, 0, 0, hotdebut_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x600001c, 0x600001f, 0, 0, hotdebut_speedup_r );
 }
 
 

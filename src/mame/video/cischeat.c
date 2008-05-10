@@ -54,7 +54,6 @@ Note:   if MAME_DEBUG is defined, pressing Z or X with:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "megasys1.h"
 
 /* Variables only used here: */
@@ -183,10 +182,10 @@ VIDEO_START( bigrun )
 
     and allows the shift to be handled using two buttons */
 
-static int read_shift(void)
+static int read_shift(running_machine *machine)
 {
 	static int ret = 1; /* start with low shift */
-	switch ( (readinputport(0) >> 2) & 3 )
+	switch ( (input_port_read_indexed(machine, 0) >> 2) & 3 )
 	{
 		case 1 : ret = 1;	break;	// low  shift: button 3
 		case 2 : ret = 0;	break;	// high shift: button 4
@@ -204,9 +203,9 @@ static int read_shift(void)
     We support just 2 values for now..
 */
 
-static int read_accelerator(void)
+static int read_accelerator(running_machine *machine)
 {
-	if (readinputport(0) & 1)	return 0x00;	// pedal pressed
+	if (input_port_read_indexed(machine, 0) & 1)	return 0x00;	// pedal pressed
 	else						return 0xff;
 }
 
@@ -219,26 +218,26 @@ READ16_HANDLER( bigrun_vregs_r )
 {
 	switch (offset)
 	{
-		case 0x0000/2 : return readinputport(1);	// Coins
-		case 0x0002/2 : return readinputport(2) +
-						(read_shift()<<1);			// Buttons
-		case 0x0004/2 : return readinputport(3);	// Motor Limit Switches
-		case 0x0006/2 : return readinputport(4);	// DSW 1 & 2
+		case 0x0000/2 : return input_port_read_indexed(machine, 1);	// Coins
+		case 0x0002/2 : return input_port_read_indexed(machine, 2) +
+						(read_shift(machine)<<1);			// Buttons
+		case 0x0004/2 : return input_port_read_indexed(machine, 3);	// Motor Limit Switches
+		case 0x0006/2 : return input_port_read_indexed(machine, 4);	// DSW 1 & 2
 
-		case 0x0008/2 :	return soundlatch2_word_r(machine,0,0);	// From sound cpu
+		case 0x0008/2 :	return soundlatch2_word_r(machine,0,0xffff);	// From sound cpu
 
 		case 0x0010/2 :
 			switch (cischeat_ip_select & 0x3)
 			{
-				case 0 : return readinputport(6);		// Driving Wheel
+				case 0 : return input_port_read_indexed(machine, 6);		// Driving Wheel
 				case 1 : return 0xffff;					// Cockpit: Up / Down Position
 				case 2 : return 0xffff;					// Cockpit: Left / Right Position?
-				case 3 : return ~read_accelerator();	// Accelerator (Pedal)
+				case 3 : return ~read_accelerator(machine);	// Accelerator (Pedal)
 				default: return 0xffff;
 			}
 
 
-		case 0x2200/2 : return readinputport(5);	// DSW 3 (4 bits)
+		case 0x2200/2 : return input_port_read_indexed(machine, 5);	// DSW 3 (4 bits)
 
 		default:	SHOW_READ_ERROR("vreg %04X read!",offset*2);
 					return megasys1_vregs[offset];
@@ -253,7 +252,7 @@ WRITE16_HANDLER( bigrun_vregs_w )
 	switch (offset)
 	{
  		case 0x0000/2   :	// leds
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 	 			coin_counter_w(0,new_data & 0x01);
 	 			coin_counter_w(1,new_data & 0x02);
@@ -266,7 +265,7 @@ WRITE16_HANDLER( bigrun_vregs_w )
 			break;
 
  		case 0x0004/2   :	// motor (seat?)
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 				set_led_status(2, (new_data != old_data) ? 1 : 0);
  			break;
 
@@ -274,7 +273,7 @@ WRITE16_HANDLER( bigrun_vregs_w )
 			break;
 
 		case 0x000a/2   :	// to sound cpu
-			soundlatch_word_w(machine,0,new_data,0);
+			soundlatch_word_w(machine,0,new_data,0xffff);
 			break;
 
 		case 0x000c/2   :	break;	// ??
@@ -298,9 +297,9 @@ WRITE16_HANDLER( bigrun_vregs_w )
 		case 0x2208/2   : break;	// watchdog reset
 
 		/* Not sure about this one.. */
-		case 0x2308/2   :	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
-							cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
-							cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, (new_data & 1) ? ASSERT_LINE : CLEAR_LINE );
+		case 0x2308/2   :	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
+							cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (new_data & 2) ? ASSERT_LINE : CLEAR_LINE );
+							cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, (new_data & 1) ? ASSERT_LINE : CLEAR_LINE );
 							break;
 
 		default: SHOW_WRITE_ERROR("vreg %04X <- %04X",offset*2,data);
@@ -316,22 +315,22 @@ READ16_HANDLER( cischeat_vregs_r )
 {
 	switch (offset)
 	{
-		case 0x0000/2 : return readinputport(1);	// Coins
-		case 0x0002/2 : return readinputport(2) +
-						(read_shift()<<1);			// Buttons
-		case 0x0004/2 : return readinputport(3);	// Motor Limit Switches
-		case 0x0006/2 : return readinputport(4);	// DSW 1 & 2
+		case 0x0000/2 : return input_port_read_indexed(machine, 1);	// Coins
+		case 0x0002/2 : return input_port_read_indexed(machine, 2) +
+						(read_shift(machine)<<1);			// Buttons
+		case 0x0004/2 : return input_port_read_indexed(machine, 3);	// Motor Limit Switches
+		case 0x0006/2 : return input_port_read_indexed(machine, 4);	// DSW 1 & 2
 
 		case 0x0010/2 :
 			switch (cischeat_ip_select & 0x3)
 			{
-				case 0 : return readinputport(6);	// Driving Wheel
+				case 0 : return input_port_read_indexed(machine, 6);	// Driving Wheel
 				case 1 : return ~0;					// Cockpit: Up / Down Position?
 				case 2 : return ~0;					// Cockpit: Left / Right Position?
 				default: return ~0;
 			}
 
-		case 0x2200/2 : return readinputport(5);	// DSW 3 (4 bits)
+		case 0x2200/2 : return input_port_read_indexed(machine, 5);	// DSW 3 (4 bits)
 		case 0x2300/2 : return soundlatch2_r(machine,0);	// From sound cpu
 
 		default:	SHOW_READ_ERROR("vreg %04X read!",offset*2);
@@ -347,7 +346,7 @@ WRITE16_HANDLER( cischeat_vregs_w )
 	switch (offset)
 	{
  		case 0x0000/2   :	// leds
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 	 			coin_counter_w(0,new_data & 0x01);
 	 			coin_counter_w(1,new_data & 0x02);
@@ -360,7 +359,7 @@ WRITE16_HANDLER( cischeat_vregs_w )
 			break;
 
  		case 0x0004/2   :	// motor (seat?)
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 				set_led_status(2, (new_data != old_data) ? 1 : 0);
  			break;
 
@@ -386,7 +385,7 @@ WRITE16_HANDLER( cischeat_vregs_w )
 		case 0x2208/2   : break;	// watchdog reset
 
 		case 0x2300/2   :	/* Sound CPU: reads latch during int 4, and stores command */
-							soundlatch_word_w(machine,0,new_data,0);
+							soundlatch_word_w(machine,0,new_data,0xffff);
 							cpunum_set_input_line(machine, 3,4,HOLD_LINE);
 							break;
 
@@ -412,22 +411,22 @@ READ16_HANDLER( f1gpstar_vregs_r )
 	{
 		case 0x0000/2 :	// DSW 1&2: coinage changes with Country
 		{
-			int val = readinputport(1);
-			if (val & 0x0200)	return readinputport(6) | val; 	// JP, US
-			else				return readinputport(7) | val; 	// UK, FR
+			int val = input_port_read_indexed(machine, 1);
+			if (val & 0x0200)	return input_port_read_indexed(machine, 6) | val; 	// JP, US
+			else				return input_port_read_indexed(machine, 7) | val; 	// UK, FR
 		}
 
 //      case 0x0002/2 : return 0xFFFF;
-		case 0x0004/2 :	return readinputport(2) +
-						       (read_shift()<<5);	// Buttons
+		case 0x0004/2 :	return input_port_read_indexed(machine, 2) +
+						       (read_shift(machine)<<5);	// Buttons
 
-		case 0x0006/2 :	return readinputport(3);	// ? Read at boot only
+		case 0x0006/2 :	return input_port_read_indexed(machine, 3);	// ? Read at boot only
 		case 0x0008/2 :	return soundlatch2_r(machine,0);	// From sound cpu
 
-		case 0x000c/2 :	return readinputport(4);	// DSW 3
+		case 0x000c/2 :	return input_port_read_indexed(machine, 4);	// DSW 3
 
 		case 0x0010/2 :	// Accel + Driving Wheel
-			return (read_accelerator()&0xff) + ((readinputport(5)&0xff)<<8);
+			return (read_accelerator(machine)&0xff) + ((input_port_read_indexed(machine, 5)&0xff)<<8);
 
 		default:		SHOW_READ_ERROR("vreg %04X read!",offset*2);
 						return megasys1_vregs[offset];
@@ -460,14 +459,14 @@ READ16_HANDLER( wildplt_vregs_r )
 
 	switch (offset)
 	{
-		case 0x0000/2 :	return readinputport(0); // DSW 1 & 2
+		case 0x0000/2 :	return input_port_read_indexed(machine, 0); // DSW 1 & 2
 
-		case 0x0004/2 :	return readinputport(1); // Buttons
+		case 0x0004/2 :	return input_port_read_indexed(machine, 1); // Buttons
 
 		case 0x0008/2 :	return soundlatch2_r(machine,0); // From sound cpu
 
 		case 0x0010/2 :	// X, Y
-			return readinputport(2) | (readinputport(3)<<8);
+			return input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 3)<<8);
 
 		case 0x0018/2 :
 			return (f1gpstr2_ioready[0]&1) ? 0xff : 0xf0;
@@ -492,7 +491,7 @@ CPU #0 PC 00235C : Warning, vreg 0006 <- 0000
 */
 		// "shudder" motors, leds
 		case 0x0004/2   :
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 	 			coin_counter_w(0,new_data & 0x01);
 	 			coin_counter_w(1,new_data & 0x02);
@@ -505,7 +504,7 @@ CPU #0 PC 00235C : Warning, vreg 0006 <- 0000
 		case 0x0014/2   :	break;
 
 		/* Usually written in sequence, but not always */
-		case 0x0008/2   :	soundlatch_word_w(machine,0,new_data,0);	break;
+		case 0x0008/2   :	soundlatch_word_w(machine,0,new_data,0xffff);	break;
 		case 0x0018/2   :	cpunum_set_input_line(machine, 3,4,HOLD_LINE);	break;
 
 		case 0x0010/2   :	break;
@@ -546,7 +545,7 @@ WRITE16_HANDLER( f1gpstr2_vregs_w )
 	switch (offset)
 	{
 		case 0x0000/2   :
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 			{
 				cpunum_set_input_line(machine, 4,4,(new_data & 4)?ASSERT_LINE:CLEAR_LINE);
 				cpunum_set_input_line(machine, 4,2,(new_data & 2)?ASSERT_LINE:CLEAR_LINE);
@@ -1350,9 +1349,9 @@ if ( input_code_pressed(KEYCODE_Z) || input_code_pressed(KEYCODE_X) )
 #if 1
 	popmessage("Cmd: %04X Pos:%04X Lim:%04X Inp:%04X",
 						scudhamm_motor_command,
-						scudhamm_motor_pos_r(screen->machine,0,0),
-						scudhamm_motor_status_r(screen->machine,0,0),
-						scudhamm_analog_r(screen->machine,0,0) );
+						scudhamm_motor_pos_r(screen->machine,0,0xffff),
+						scudhamm_motor_status_r(screen->machine,0,0xffff),
+						scudhamm_analog_r(screen->machine,0,0xffff) );
 #endif
 
 }

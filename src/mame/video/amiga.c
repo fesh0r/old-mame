@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/amiga.h"
 
 
@@ -166,10 +165,10 @@ VIDEO_START( amiga )
  *
  *************************************/
 
-UINT32 amiga_gethvpos(void)
+UINT32 amiga_gethvpos(const device_config *screen)
 {
-	UINT32 hvpos = (last_scanline << 8) | (video_screen_get_hpos(Machine->primary_screen) >> 2);
-	UINT32 latchedpos = readinputportbytag_safe("HVPOS", 0);
+	UINT32 hvpos = (last_scanline << 8) | (video_screen_get_hpos(screen) >> 2);
+	UINT32 latchedpos = input_port_read_safe(screen->machine, "HVPOS", 0);
 
 	/* if there's no latched position, or if we are in the active display area */
 	/* but before the latching point, return the live HV position */
@@ -225,7 +224,7 @@ static int copper_execute_next(running_machine *machine, int xpos)
 		if (LOG_COPPER)
 			logerror("%02X.%02X: Write to %s = %04x\n", last_scanline, xpos / 2, amiga_custom_names[copper_pending_offset & 0xff], copper_pending_data);
 
-		amiga_custom_w(machine, copper_pending_offset, copper_pending_data, 0);
+		amiga_custom_w(machine, copper_pending_offset, copper_pending_data, 0xffff);
 		copper_pending_offset = 0;
 	}
 

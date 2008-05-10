@@ -105,7 +105,7 @@ static TILE_GET_INFO( get_tile_info_1 )
 WRITE32_HANDLER( psikyo_vram_0_w )
 {
 	COMBINE_DATA(&psikyo_vram_0[offset]);
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		tilemap_mark_tile_dirty(tilemap_0_size0, offset*2);
 		tilemap_mark_tile_dirty(tilemap_0_size1, offset*2);
@@ -113,7 +113,7 @@ WRITE32_HANDLER( psikyo_vram_0_w )
 		tilemap_mark_tile_dirty(tilemap_0_size3, offset*2);
 	}
 
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 	{
 		tilemap_mark_tile_dirty(tilemap_0_size0, offset*2+1);
 		tilemap_mark_tile_dirty(tilemap_0_size1, offset*2+1);
@@ -125,7 +125,7 @@ WRITE32_HANDLER( psikyo_vram_0_w )
 WRITE32_HANDLER( psikyo_vram_1_w )
 {
 	COMBINE_DATA(&psikyo_vram_1[offset]);
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		tilemap_mark_tile_dirty(tilemap_1_size0, offset*2);
 		tilemap_mark_tile_dirty(tilemap_1_size1, offset*2);
@@ -133,7 +133,7 @@ WRITE32_HANDLER( psikyo_vram_1_w )
 		tilemap_mark_tile_dirty(tilemap_1_size3, offset*2);
 	}
 
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 	{
 		tilemap_mark_tile_dirty(tilemap_1_size0, offset*2+1);
 		tilemap_mark_tile_dirty(tilemap_1_size1, offset*2+1);
@@ -434,7 +434,7 @@ VIDEO_UPDATE( psikyo )
 
 	tilemap *tmptilemap0, *tmptilemap1;
 
-	flip_screen_set(~readinputport(2) & 1);	// hardwired to a DSW bit
+	flip_screen_set(~input_port_read_indexed(screen->machine, 2) & 1);	// hardwired to a DSW bit
 
 	/* Layers enable (not quite right) */
 

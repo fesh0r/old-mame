@@ -41,7 +41,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/custom.h"
 #include "cpu/i86/i86.h"
@@ -63,23 +62,23 @@ static UINT32 ts;
 /* Main CPU and Z80 synchronisation */
 static WRITE16_HANDLER( z80_busreq_w )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE16_HANDLER( resume_math_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_TEST, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_TEST, ASSERT_LINE);
 }
 
 static WRITE16_HANDLER( halt_math_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_TEST, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_TEST, CLEAR_LINE);
 }
 
 /* Z80 can trigger an interrupt itself */
 static WRITE8_HANDLER( z80_intreq_w )
 {
-	cpunum_set_input_line(Machine, 2, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 }
 
 /* Periodic Z80 interrupt */
@@ -389,7 +388,7 @@ INPUT_PORTS_END
 
 static READ16_HANDLER( dipswitches_r )
 {
-	return (readinputport(0) & 0xfffe) | ts;
+	return (input_port_read_indexed(machine, 0) & 0xfffe) | ts;
 }
 
 /*
@@ -419,7 +418,7 @@ static ADDRESS_MAP_START( tx1_main, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x02000, 0x02fff) AM_MIRROR(0x1000) AM_RAM
 	AM_RANGE(0x04000, 0x04fff) AM_MIRROR(0x1000) AM_RAM	AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x06000, 0x06fff) AM_READWRITE(tx1_crtc_r, tx1_crtc_w)
-	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(SMH_RAM, tx1_vram_w) AM_BASE(&tx1_vram)
+	AM_RANGE(0x08000, 0x09fff) AM_RAM_WRITE(tx1_vram_w) AM_BASE(&tx1_vram)
 	AM_RANGE(0x0a000, 0x0afff) AM_RAM AM_SHARE(1) AM_BASE(&tx1_rcram)
 	AM_RANGE(0x0b000, 0x0b001) AM_READWRITE(dipswitches_r, z80_busreq_w)
 	AM_RANGE(0x0c000, 0x0c001) AM_WRITE(tx1_scolst_w)
@@ -448,8 +447,8 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( tx1_ppi_latch_w )
 {
-	tx1_ppi_latch_a = ((readinputportbytag("AN_BRAKE") & 0xf) << 4) | (readinputportbytag("AN_ACCELERATOR") & 0xf);
-	tx1_ppi_latch_b = readinputportbytag("AN_STEERING");
+	tx1_ppi_latch_a = ((input_port_read(machine, "AN_BRAKE") & 0xf) << 4) | (input_port_read(machine, "AN_ACCELERATOR") & 0xf);
+	tx1_ppi_latch_b = input_port_read(machine, "AN_STEERING");
 }
 
 static READ8_HANDLER( tx1_ppi_porta_r )
@@ -459,15 +458,15 @@ static READ8_HANDLER( tx1_ppi_porta_r )
 
 static READ8_HANDLER( tx1_ppi_portb_r )
 {
-	return readinputportbytag("PPI_PORTD") | tx1_ppi_latch_b;
+	return input_port_read(machine, "PPI_PORTD") | tx1_ppi_latch_b;
 }
 
 static ADDRESS_MAP_START( tx1_sound_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x3000, 0x37ff) AM_RAM AM_MIRROR(0x800) AM_BASE(&z80_ram)
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(z80_intreq_w)
-	AM_RANGE(0x5000, 0x5003) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
-	AM_RANGE(0x6000, 0x6003) AM_READWRITE(pit8253_r, pit8253_w)
+	AM_RANGE(0x5000, 0x5003) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x6000, 0x6003) AM_READWRITE(tx1_pit8253_r, tx1_pit8253_w)
 	AM_RANGE(0x7000, 0x7fff) AM_WRITE(tx1_ppi_latch_w)
 	AM_RANGE(0xb000, 0xbfff) AM_READWRITE(ts_r, ts_w)
 ADDRESS_MAP_END
@@ -488,7 +487,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( buggyboy_main, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x03fff) AM_RAM AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x04000, 0x04fff) AM_READWRITE(tx1_crtc_r, tx1_crtc_w)
-	AM_RANGE(0x08000, 0x09fff) AM_READWRITE(SMH_RAM, buggyboy_vram_w) AM_BASE(&buggyboy_vram)
+	AM_RANGE(0x08000, 0x09fff) AM_RAM_WRITE(buggyboy_vram_w) AM_BASE(&buggyboy_vram)
 	AM_RANGE(0x0a000, 0x0afff) AM_RAM AM_SHARE(1) AM_BASE(&buggyboy_rcram) AM_SIZE(&buggyboy_rcram_size)
 	AM_RANGE(0x0b000, 0x0b001) AM_READWRITE(dipswitches_r, z80_busreq_w)
 	AM_RANGE(0x0c000, 0x0c001) AM_WRITE(buggyboy_scolst_w)
@@ -535,11 +534,11 @@ static READ8_HANDLER( bb_analog_r )
 {
 	if ( offset == 1 )
 	{
-		return ((readinputportbytag("AN_ACCELERATOR") & 0xf) << 4) | readinputportbytag("AN_STEERING");
+		return ((input_port_read(machine, "AN_ACCELERATOR") & 0xf) << 4) | input_port_read(machine, "AN_STEERING");
 	}
 	else
 	{
-		return (readinputportbytag("AN_BRAKE") & 0xf) << 4;
+		return (input_port_read(machine, "AN_BRAKE") & 0xf) << 4;
 	}
 }
 
@@ -547,11 +546,11 @@ static READ8_HANDLER( bbjr_analog_r )
 {
 	if ( offset == 0 )
 	{
-		return ((readinputportbytag("AN_ACCELERATOR") & 0xf) << 4) | readinputportbytag("AN_STEERING");
+		return ((input_port_read(machine, "AN_ACCELERATOR") & 0xf) << 4) | input_port_read(machine, "AN_STEERING");
 	}
 	else
 	{
-		return (readinputportbytag("AN_BRAKE") & 0xf) << 4;
+		return (input_port_read(machine, "AN_BRAKE") & 0xf) << 4;
 	}
 }
 
@@ -560,7 +559,7 @@ static ADDRESS_MAP_START( buggyboy_sound_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM AM_BASE(&z80_ram)
 	AM_RANGE(0x6000, 0x6001) AM_READ(bb_analog_r)
-	AM_RANGE(0x6800, 0x6803) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
+	AM_RANGE(0x6800, 0x6803) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0x7000, 0x7003) AM_RAM
 	AM_RANGE(0x7800, 0x7800) AM_WRITE(z80_intreq_w)
 	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(ts_r, ts_w)
@@ -570,7 +569,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( buggybjr_sound_prg, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x47ff) AM_RAM AM_BASE(&z80_ram)
-	AM_RANGE(0x5000, 0x5003) AM_READWRITE(pit8253_r, pit8253_w)
+	AM_RANGE(0x5000, 0x5003) AM_READWRITE(tx1_pit8253_r, tx1_pit8253_w)
 	AM_RANGE(0x6000, 0x6001) AM_READ(bbjr_analog_r)
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(z80_intreq_w)
 	AM_RANGE(0xc000, 0xc7ff) AM_READWRITE(ts_r, ts_w)
@@ -620,8 +619,10 @@ GFXDECODE_END
 
 static const struct AY8910interface tx1_ay8910_interface =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	tx1_ay8910_a_w,
 	tx1_ay8910_b_w,
 };
@@ -630,17 +631,21 @@ static const struct AY8910interface tx1_ay8910_interface =
 /* YM2149 IC19 */
 static const struct AY8910interface buggyboy_ym2149_interface_1 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_1_r,
 	input_port_2_r,
-	0,
-	0,
+	NULL,
+	NULL,
 };
 
 /* YM2149 IC24 */
 static const struct AY8910interface buggyboy_ym2149_interface_2 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	bb_ym1_a_w,
 	bb_ym1_b_w,
 };
@@ -651,15 +656,14 @@ static WRITE8_HANDLER( tx1_coin_cnt )
 	coin_counter_w(1, data & 0x40);
 }
 
-const ppi8255_interface tx1_ppi8255_intf =
+static const ppi8255_interface tx1_ppi8255_intf =
 {
-	1,
-	{ tx1_ppi_porta_r },
-	{ tx1_ppi_portb_r },
-	{ input_port_4_r },
-	{ 0 },
-	{ 0 },
-	{ tx1_coin_cnt },
+	tx1_ppi_porta_r,
+	tx1_ppi_portb_r,
+	input_port_4_r,
+	NULL,
+	NULL,
+	tx1_coin_cnt
 };
 
 static const struct CustomSound_interface tx1_custom_interface =
@@ -670,15 +674,14 @@ static const struct CustomSound_interface tx1_custom_interface =
 };
 
 /* Buggy Boy uses an 8255 PPI instead of YM2149 ports for inputs! */
-const ppi8255_interface buggyboy_ppi8255_intf =
+static const ppi8255_interface buggyboy_ppi8255_intf =
 {
-	1,
-	{ input_port_1_r },
-	{ 0 },
-	{ input_port_2_r },
-	{ 0 },
-	{ 0 },
-	{ 0 },
+	input_port_1_r,
+	NULL,
+	input_port_2_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 static const struct CustomSound_interface bb_custom_interface =
@@ -710,6 +713,9 @@ static MACHINE_DRIVER_START( tx1 )
 	MDRV_MACHINE_RESET(tx1)
 	MDRV_MACHINE_START(tx1)
 	MDRV_NVRAM_HANDLER(generic_0fill)
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( tx1_ppi8255_intf )
 
 	MDRV_GFXDECODE(tx1)
 	MDRV_PALETTE_LENGTH(256+(256*4)+(2048*4))
@@ -765,6 +771,9 @@ static MACHINE_DRIVER_START( buggyboy )
 	MDRV_MACHINE_RESET(buggyboy)
 	MDRV_MACHINE_START(buggyboy)
 	MDRV_NVRAM_HANDLER(generic_0fill)
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( buggyboy_ppi8255_intf )
 
 	MDRV_GFXDECODE(buggyboy)
 	MDRV_DEFAULT_LAYOUT(layout_triphsxs)

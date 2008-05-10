@@ -1002,7 +1002,7 @@ static WRITE8_HANDLER( blitter_w )
 		if (i==0 || (i==4 && !data))
 		{
 			blitter_busy = 0;
-			if (firq_level) cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE); // make up delayed FIRQ's
+			if (firq_level) cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE); // make up delayed FIRQ's
 		}
 		else
 		{
@@ -1163,13 +1163,13 @@ static WRITE8_HANDLER( halleys_paletteram_IIRRGGBB_w )
 	g = d    & 0x0c; g |= i;  g = g<<4 | g;
 	b = d<<2 & 0x0c; b |= i;  b = b<<4 | b;
 
-	palette_set_color(Machine, offset, MAKE_RGB(r, g, b));
-	palette_set_color(Machine, offset+SP_2BACK, MAKE_RGB(r, g, b));
-	palette_set_color(Machine, offset+SP_ALPHA, MAKE_RGB(r, g, b));
-	palette_set_color(Machine, offset+SP_COLLD, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset+SP_2BACK, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset+SP_ALPHA, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset+SP_COLLD, MAKE_RGB(r, g, b));
 
 	halleys_decode_rgb(&r, &g, &b, offset, 0);
-	palette_set_color(Machine, offset+0x20, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset+0x20, MAKE_RGB(r, g, b));
 }
 
 
@@ -1430,7 +1430,7 @@ static VIDEO_UPDATE( halleys )
 	else
 		fillbitmap(bitmap, bgcolor, cliprect);
 
-	if (readinputportbytag("FAKE")) copy_scroll_xp(bitmap, render_layer[3], *scrollx0, *scrolly0); // not used???
+	if (input_port_read(screen->machine, "FAKE")) copy_scroll_xp(bitmap, render_layer[3], *scrollx0, *scrolly0); // not used???
 	copy_scroll_xp(bitmap, render_layer[2], *scrollx1, *scrolly1);
 	copy_fixed_2b (bitmap, render_layer[1]);
 	copy_fixed_xp (bitmap, render_layer[0]);
@@ -1568,7 +1568,7 @@ static WRITE8_HANDLER( firq_ack_w )
 	io_ram[0x9c] = data;
 
 	if (firq_level) firq_level--;
-	cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -1593,7 +1593,7 @@ static READ8_HANDLER( coin_lockout_r )
 {
 	// This is a hack, but it lets you coin up when COIN1 or COIN2 are signaled.
 	// See NMI for the twisted logic that is involved in handling coin input.
-	int inp = readinputportbytag("IN0");
+	int inp = input_port_read(machine, "IN0");
 	int result = 0x01; // dual coin slots
 
 	if (inp & 0x80) result |= 0x02;
@@ -1605,7 +1605,7 @@ static READ8_HANDLER( coin_lockout_r )
 
 static READ8_HANDLER( io_mirror_r )
 {
-	return(readinputport(offset + 3));
+	return(input_port_read_indexed(machine, offset + 3));
 }
 
 
@@ -1940,9 +1940,11 @@ static MACHINE_RESET( halleys )
 
 static const struct AY8910interface ay8910_interface =
 {
-	0,
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
+	NULL,
 	sndnmi_msk_w // port Bwrite
 };
 

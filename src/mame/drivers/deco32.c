@@ -263,7 +263,7 @@ static READ32_HANDLER( deco32_irq_controller_r )
 
 	switch (offset) {
 	case 2: /* Raster IRQ ACK - value read is not used */
-		cpunum_set_input_line(Machine, 0, ARM_IRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, ARM_IRQ_LINE, CLEAR_LINE);
 		return 0;
 
 	case 3: /* Irq controller
@@ -331,9 +331,9 @@ static READ32_HANDLER( captaven_prot_r )
 {
 	/* Protection/IO chip 75, same as Lemmings & Robocop 2 */
 	switch (offset<<2) {
-	case 0x0a0: return readinputport(0); /* Player 1 & 2 controls */
-	case 0x158: return readinputport(1); /* Player 3 & 4 controls */
-	case 0xed4: return readinputport(2); /* Misc */
+	case 0x0a0: return input_port_read_indexed(machine, 0); /* Player 1 & 2 controls */
+	case 0x158: return input_port_read_indexed(machine, 1); /* Player 3 & 4 controls */
+	case 0xed4: return input_port_read_indexed(machine, 2); /* Misc */
 	}
 
 	logerror("%08x: Unmapped protection read %04x\n",activecpu_get_pc(),offset<<2);
@@ -343,14 +343,14 @@ static READ32_HANDLER( captaven_prot_r )
 static READ32_HANDLER( captaven_soundcpu_r )
 {
 	/* Top byte - top bit low == sound cpu busy, bottom word is dips */
-	return 0xffff0000 | readinputport(3);
+	return 0xffff0000 | input_port_read_indexed(machine, 3);
 }
 
 static READ32_HANDLER( fghthist_control_r )
 {
 	switch (offset) {
-	case 0: return 0xffff0000 | readinputport(0);
-	case 1: return 0xffff0000 | readinputport(1); //check top bits??
+	case 0: return 0xffff0000 | input_port_read_indexed(machine, 0);
+	case 1: return 0xffff0000 | input_port_read_indexed(machine, 1); //check top bits??
 	case 2: return 0xfffffffe | EEPROM_read_bit();
 	}
 
@@ -359,12 +359,12 @@ static READ32_HANDLER( fghthist_control_r )
 
 static WRITE32_HANDLER( fghthist_eeprom_w )
 {
-	if (ACCESSING_LSB32) {
+	if (ACCESSING_BITS_0_7) {
 		EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 		EEPROM_write_bit(data & 0x10);
 		EEPROM_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 	}
-	else if (mem_mask&0x0000ff00)
+	else if (!ACCESSING_BITS_8_15)
 	{
 		// Volume port
 	}
@@ -375,7 +375,7 @@ static WRITE32_HANDLER( fghthist_eeprom_w )
 static READ32_HANDLER( dragngun_service_r )
 {
 //  logerror("%08x:Read service\n",activecpu_get_pc());
-	return readinputport(3);
+	return input_port_read_indexed(machine, 3);
 }
 
 static READ32_HANDLER( lockload_gun_mirror_r )
@@ -383,8 +383,8 @@ static READ32_HANDLER( lockload_gun_mirror_r )
 //logerror("%08x:Read gun %d\n",activecpu_get_pc(),offset);
 //return ((mame_rand(Machine)%0xffff)<<16) | mame_rand(Machine)%0xffff;
 	if (offset) /* Mirror of player 1 and player 2 fire buttons */
-		return readinputport(5) | ((mame_rand(Machine)%0xff)<<16);
-	return readinputport(4) | readinputport(6) | (readinputport(6)<<16) | (readinputport(6)<<24); //((mame_rand(Machine)%0xff)<<16);
+		return input_port_read_indexed(machine, 5) | ((mame_rand(Machine)%0xff)<<16);
+	return input_port_read_indexed(machine, 4) | input_port_read_indexed(machine, 6) | (input_port_read_indexed(machine, 6)<<16) | (input_port_read_indexed(machine, 6)<<24); //((mame_rand(Machine)%0xff)<<16);
 }
 
 static READ32_HANDLER( dragngun_prot_r )
@@ -398,9 +398,9 @@ static READ32_HANDLER( dragngun_prot_r )
 //definitely vblank in locked load
 
 	switch (offset<<1) {
-	case 0x140/2: return 0xffff0000 | readinputport(0); /* IN0 */
-	case 0xadc/2: return 0xffff0000 | readinputport(1) | strobe; /* IN1 */
-	case 0x6a0/2: return 0xffff0000 | readinputport(2); /* IN2 (Dip switch) */
+	case 0x140/2: return 0xffff0000 | input_port_read_indexed(machine, 0); /* IN0 */
+	case 0xadc/2: return 0xffff0000 | input_port_read_indexed(machine, 1) | strobe; /* IN1 */
+	case 0x6a0/2: return 0xffff0000 | input_port_read_indexed(machine, 2); /* IN2 (Dip switch) */
 	}
 	return 0xffffffff;
 }
@@ -411,10 +411,10 @@ static READ32_HANDLER( dragngun_lightgun_r )
 {
 	/* Ports 0-3 are read, but seem unused */
 	switch (dragngun_lightgun_port) {
-	case 4: return readinputport(4); break;
-	case 5: return readinputport(5); break;
-	case 6: return readinputport(6); break;
-	case 7: return readinputport(7); break;
+	case 4: return input_port_read_indexed(machine, 4); break;
+	case 5: return input_port_read_indexed(machine, 5); break;
+	case 6: return input_port_read_indexed(machine, 6); break;
+	case 7: return input_port_read_indexed(machine, 7); break;
 	}
 
 //  logerror("Illegal lightgun port %d read \n",dragngun_lightgun_port);
@@ -434,7 +434,7 @@ static READ32_HANDLER( dragngun_eeprom_r )
 
 static WRITE32_HANDLER( dragngun_eeprom_w )
 {
-	if (ACCESSING_LSB32) {
+	if (ACCESSING_BITS_0_7) {
 		EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
 		EEPROM_write_bit(data & 0x1);
 		EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
@@ -460,8 +460,8 @@ static int tattass_eprom_bit;
 static READ32_HANDLER( tattass_prot_r )
 {
 	switch (offset<<1) {
-	case 0x280: return readinputport(0) << 16; /* IN0 */
-	case 0x4c4: return readinputport(1) << 16; /* IN1 */
+	case 0x280: return input_port_read_indexed(machine, 0) << 16; /* IN0 */
+	case 0x4c4: return input_port_read_indexed(machine, 1) << 16; /* IN1 */
 	case 0x35a: return tattass_eprom_bit << 16;
 	}
 
@@ -492,7 +492,7 @@ static WRITE32_HANDLER( tattass_control_w )
 	UINT8 *eeprom=EEPROM_get_data_pointer(0);
 
 	/* Eprom in low byte */
-	if (mem_mask==0xffffff00) { /* Byte write to low byte only (different from word writing including low byte) */
+	if (mem_mask==0x000000ff) { /* Byte write to low byte only (different from word writing including low byte) */
 		/*
             The Tattoo Assassins eprom seems strange...  It's 1024 bytes in size, and 8 bit
             in width, but offers a 'multiple read' mode where a bit stream can be read
@@ -597,19 +597,19 @@ static WRITE32_HANDLER( tattass_control_w )
 	}
 
 	/* Volume in high byte */
-	if (mem_mask==0xffff00ff) {
+	if (mem_mask==0x0000ff00) {
 		//TODO:  volume attenuation == ((data>>8)&0xff);
 		return;
 	}
 
 	/* Playfield control - Only written in full word memory accesses */
-	deco32_pri_w(machine,0,data&0x3,0); /* Bit 0 - layer priority toggle, Bit 1 - BG2/3 Joint mode (8bpp) */
+	deco32_pri_w(machine,0,data&0x3,0xffffffff); /* Bit 0 - layer priority toggle, Bit 1 - BG2/3 Joint mode (8bpp) */
 
 	/* Sound board reset control */
 	if (data&0x80)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 
 	/* bit 0x4 fade cancel? */
 	/* bit 0x8 ?? */
@@ -623,8 +623,8 @@ static READ32_HANDLER( nslasher_prot_r )
 {
 
 	switch (offset<<1) {
-	case 0x280: return readinputport(0) << 16| 0xffff; /* IN0 */
-	case 0x4c4: return readinputport(1) << 16| 0xffff; /* IN1 */
+	case 0x280: return input_port_read_indexed(machine, 0) << 16| 0xffff; /* IN0 */
+	case 0x4c4: return input_port_read_indexed(machine, 1) << 16| 0xffff; /* IN1 */
 	case 0x35a: return (EEPROM_read_bit()<< 16) | 0xffff; // Debug switch in low word??
 	}
 
@@ -635,13 +635,13 @@ static READ32_HANDLER( nslasher_prot_r )
 
 static WRITE32_HANDLER( nslasher_eeprom_w )
 {
-	if (ACCESSING_LSB32)
+	if (ACCESSING_BITS_0_7)
 	{
 		EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 		EEPROM_write_bit(data & 0x10);
 		EEPROM_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 
-		deco32_pri_w(machine,0,data&0x3,0); /* Bit 0 - layer priority toggle, Bit 1 - BG2/3 Joint mode (8bpp) */
+		deco32_pri_w(machine,0,data&0x3,0xffffffff); /* Bit 0 - layer priority toggle, Bit 1 - BG2/3 Joint mode (8bpp) */
 	}
 }
 
@@ -1133,7 +1133,7 @@ static WRITE8_HANDLER(deco32_bsmt0_w)
 
 static WRITE8_HANDLER(deco32_bsmt1_w)
 {
-	BSMT2000_data_0_w(machine, offset^ 0xff, ((bsmt_latch<<8)|data), 0);
+	BSMT2000_data_0_w(machine, offset^ 0xff, ((bsmt_latch<<8)|data), 0xffff);
 	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, HOLD_LINE); /* BSMT is ready */
 }
 

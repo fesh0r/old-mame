@@ -95,7 +95,7 @@ static WRITE16_HANDLER( pcup_prgbank_w )
     int bank;
     UINT8 *ROM1 = memory_region(REGION_USER1);
 
-    if (ACCESSING_LSB)
+    if (ACCESSING_BITS_0_7)
     {
         bank = (data>>4) &0x07;
         memory_set_bankptr(2,&ROM1[0x80000*(bank)]);
@@ -105,7 +105,7 @@ static WRITE16_HANDLER( pcup_prgbank_w )
 
 static WRITE16_HANDLER( paldat_w )
 {
-    palette_set_color_rgb(Machine,paloff & 0x7fff,pal5bit(data>>0),pal5bit(data>>5),pal5bit(data>>10));
+    palette_set_color_rgb(machine,paloff & 0x7fff,pal5bit(data>>0),pal5bit(data>>5),pal5bit(data>>10));
 }
 
 static READ16_HANDLER( peno_rand )

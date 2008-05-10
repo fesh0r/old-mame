@@ -65,9 +65,9 @@ static WRITE16_HANDLER( adrst_w )
 	lockon_ctrl_reg = data & 0xff;
 
 	/* Bus mastering for shared access */
-	cpunum_set_input_line(Machine, GROUND_CPU, INPUT_LINE_HALT, data & 0x04 ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(Machine, OBJECT_CPU, INPUT_LINE_HALT, data & 0x20 ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(Machine, SOUND_CPU,  INPUT_LINE_HALT, data & 0x40 ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, GROUND_CPU, INPUT_LINE_HALT, data & 0x04 ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, OBJECT_CPU, INPUT_LINE_HALT, data & 0x20 ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, SOUND_CPU,  INPUT_LINE_HALT, data & 0x40 ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static READ16_HANDLER( main_gnd_r )
@@ -85,9 +85,9 @@ static WRITE16_HANDLER( main_gnd_w )
 {
 	cpuintrf_push_context(GROUND_CPU);
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		program_write_byte(V30_GND_ADDR | (offset * 2 + 0), data);
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		program_write_byte(V30_GND_ADDR | (offset * 2 + 1), data >> 8);
 
 	cpuintrf_pop_context();
@@ -108,9 +108,9 @@ static WRITE16_HANDLER( main_obj_w )
 {
 	cpuintrf_push_context(OBJECT_CPU);
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		program_write_byte(V30_OBJ_ADDR | (offset * 2 + 0), data);
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		program_write_byte(V30_OBJ_ADDR | (offset * 2 + 1), data >> 8);
 
 	cpuintrf_pop_context();
@@ -121,16 +121,16 @@ static WRITE16_HANDLER( tst_w )
 	if (offset < 0x800)
 	{
 		cpuintrf_push_context(GROUND_CPU);
-		if (ACCESSING_LSB)
+		if (ACCESSING_BITS_0_7)
 			program_write_byte(V30_GND_ADDR | (offset * 2 + 0), data);
-		if (ACCESSING_MSB)
+		if (ACCESSING_BITS_8_15)
 			program_write_byte(V30_GND_ADDR | (offset * 2 + 1), data >> 8);
 		cpuintrf_pop_context();
 
 		cpuintrf_push_context(OBJECT_CPU);
-		if (ACCESSING_LSB)
+		if (ACCESSING_BITS_0_7)
 			program_write_byte(V30_OBJ_ADDR | (offset * 2 + 0), data);
-		if (ACCESSING_MSB)
+		if (ACCESSING_BITS_8_15)
 			program_write_byte(V30_OBJ_ADDR | (offset * 2 + 1), data >> 8);
 		cpuintrf_pop_context();
 	}
@@ -178,7 +178,7 @@ static ADDRESS_MAP_START( main_v30, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x04000, 0x04003) AM_READWRITE(lockon_crtc_r, lockon_crtc_w)
 	AM_RANGE(0x06000, 0x06001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x08000, 0x081ff) AM_RAM AM_BASE(&lockon_hud_ram) AM_SIZE(&lockon_hudram_size)
-	AM_RANGE(0x09000, 0x09fff) AM_READWRITE(SMH_RAM, lockon_char_w) AM_BASE(&lockon_char_ram)
+	AM_RANGE(0x09000, 0x09fff) AM_RAM_WRITE(lockon_char_w) AM_BASE(&lockon_char_ram)
 	AM_RANGE(0x0a000, 0x0a001) AM_WRITE(adrst_w)
 	AM_RANGE(0x0b000, 0x0bfff) AM_WRITE(lockon_rotate_w)
 	AM_RANGE(0x0c000, 0x0cfff) AM_WRITE(lockon_fb_clut_w)
@@ -359,10 +359,10 @@ static READ8_HANDLER( adc_r )
 {
 	switch (offset)
 	{
-		case 0:  return readinputportbytag("ADC_BANK");
-		case 1:  return readinputportbytag("ADC_PITCH");
-		case 2:  return readinputportbytag("ADC_MISSILE");
-		case 3:  return readinputportbytag("ADC_HOVER");
+		case 0:  return input_port_read(machine, "ADC_BANK");
+		case 1:  return input_port_read(machine, "ADC_PITCH");
+		case 2:  return input_port_read(machine, "ADC_MISSILE");
+		case 3:  return input_port_read(machine, "ADC_HOVER");
 		default: return 0;
 	}
 }
@@ -458,10 +458,14 @@ static WRITE8_HANDLER( ym2203_out_b )
 
 static const struct YM2203interface ym2203_interface =
 {
-	input_port_1_r,
-	0,
-	0,
-	ym2203_out_b,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		input_port_1_r,
+		NULL,
+		NULL,
+		ym2203_out_b,
+	},
 	ym2203_irq
 };
 

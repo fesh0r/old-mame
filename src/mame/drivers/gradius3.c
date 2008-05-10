@@ -28,6 +28,7 @@ extern UINT16 *gradius3_gfxram;
 extern int gradius3_priority;
 VIDEO_START( gradius3 );
 READ16_HANDLER( gradius3_gfxrom_r );
+READ16_HANDLER (gradius3_gfxram_r );
 WRITE16_HANDLER( gradius3_gfxram_w );
 VIDEO_UPDATE( gradius3 );
 
@@ -40,11 +41,11 @@ static READ16_HANDLER( K052109_halfword_r )
 
 static WRITE16_HANDLER( K052109_halfword_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K052109_w(machine,offset,data & 0xff);
 
 	/* is this a bug in the game or something else? */
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 		K052109_w(machine,offset,(data >> 8) & 0xff);
 //      logerror("%06x half %04x = %04x\n",activecpu_get_pc(),offset,data);
 }
@@ -56,7 +57,7 @@ static READ16_HANDLER( K051937_halfword_r )
 
 static WRITE16_HANDLER( K051937_halfword_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K051937_w(machine,offset,data & 0xff);
 }
 
@@ -67,7 +68,7 @@ static READ16_HANDLER( K051960_halfword_r )
 
 static WRITE16_HANDLER( K051960_halfword_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		K051960_w(machine,offset,data & 0xff);
 }
 
@@ -86,7 +87,7 @@ static MACHINE_RESET( gradius3 )
 
 static WRITE16_HANDLER( cpuA_ctrl_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		data >>= 8;
 
@@ -98,7 +99,7 @@ static WRITE16_HANDLER( cpuA_ctrl_w )
 		gradius3_priority = data & 0x04;
 
 		/* bit 3 enables cpu B */
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 
 		/* bit 5 enables irq */
 		irqAen = data & 0x20;
@@ -110,7 +111,7 @@ static WRITE16_HANDLER( cpuA_ctrl_w )
 
 static WRITE16_HANDLER( cpuB_irqenable_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		irqBmask = (data >> 8) & 0x07;
 }
 
@@ -147,13 +148,13 @@ logerror("%04x MISSED cpu B irq 4 %02x\n",activecpu_get_pc(),data);
 
 static WRITE16_HANDLER( sound_command_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		soundlatch_w(machine,0,(data >> 8) & 0xff);
 }
 
 static WRITE16_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line_and_vector(Machine, 2,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(machine, 2,0,HOLD_LINE,0xff);
 }
 
 static WRITE8_HANDLER( sound_bank_w )
@@ -171,7 +172,7 @@ static WRITE8_HANDLER( sound_bank_w )
 static ADDRESS_MAP_START( gradius3_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
 	AM_RANGE(0x040000, 0x043fff) AM_RAM
-	AM_RANGE(0x080000, 0x080fff) AM_READWRITE(SMH_RAM, paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x080000, 0x080fff) AM_RAM_WRITE(paletteram16_xRRRRRGGGGGBBBBB_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_WRITE(cpuA_ctrl_w)	/* halt cpu B, irq enable, priority, coin counters, other? */
 	AM_RANGE(0x0c8000, 0x0c8001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x0c8002, 0x0c8003) AM_READ(input_port_1_word_r)
@@ -185,7 +186,7 @@ static ADDRESS_MAP_START( gradius3_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0f0000, 0x0f0001) AM_WRITE(sound_irq_w)
 	AM_RANGE(0x100000, 0x103fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x14c000, 0x153fff) AM_READWRITE(K052109_halfword_r, K052109_halfword_w)
-	AM_RANGE(0x180000, 0x19ffff) AM_READWRITE(SMH_RAM, gradius3_gfxram_w) AM_BASE(&gradius3_gfxram)
+	AM_RANGE(0x180000, 0x19ffff) AM_RAM_WRITE(gradius3_gfxram_w) AM_BASE(&gradius3_gfxram) AM_SHARE(2)
 ADDRESS_MAP_END
 
 
@@ -195,7 +196,7 @@ static ADDRESS_MAP_START( gradius3_map2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x140000, 0x140001) AM_WRITE(cpuB_irqenable_w)
 	AM_RANGE(0x200000, 0x203fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x24c000, 0x253fff) AM_READWRITE(K052109_halfword_r, K052109_halfword_w)
-	AM_RANGE(0x280000, 0x29ffff) AM_READWRITE(SMH_RAM, gradius3_gfxram_w)
+	AM_RANGE(0x280000, 0x29ffff) AM_RAM_WRITE(gradius3_gfxram_w) AM_SHARE(2)
 	AM_RANGE(0x2c0000, 0x2c000f) AM_READWRITE(K051937_halfword_r, K051937_halfword_w)
 	AM_RANGE(0x2c0800, 0x2c0fff) AM_READWRITE(K051960_halfword_r, K051960_halfword_w)
 	AM_RANGE(0x400000, 0x5fffff) AM_READ(gradius3_gfxrom_r)		/* gfx ROMs are mapped here, and copied to RAM */

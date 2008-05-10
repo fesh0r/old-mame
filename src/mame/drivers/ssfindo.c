@@ -250,7 +250,7 @@ static WRITE32_HANDLER(FIFO_w)
 
 	if(!(data>>28))
 	{
-		palette_set_color_rgb(Machine, PS7500_FIFO[1]&0xff, data&0xff,(data>>8)&0xff,(data>>16)&0xff);
+		palette_set_color_rgb(machine, PS7500_FIFO[1]&0xff, data&0xff,(data>>8)&0xff,(data>>16)&0xff);
 		PS7500_FIFO[1]++; //autoinc
 	}
 }
@@ -335,7 +335,7 @@ static READ32_HANDLER(PS7500_IO_r)
 			return (PS7500_IO[IRQSTA]&PS7500_IO[IRQMSKA])|0x80;
 
 		case IOCR: //TODO: nINT1, OD[n] p.81
-			return (input_port_0_r(machine,0)&0x80)|0x34|3;
+			return (input_port_read_indexed(machine, 0)&0x80)|0x34|3;
 
 		case VIDCR:
 			return (PS7500_IO[offset]|0x50)&0xfffffff0;

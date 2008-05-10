@@ -99,10 +99,10 @@ WRITE8_HANDLER( taitosound_comm_w )
 //#endif
 			/* this does a hi-lo transition to reset the sound cpu */
 			if (data)
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 			else
 			{
-				cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
                 cpu_spin(); /* otherwise no sound in driftout */
             }
 			break;
@@ -265,12 +265,12 @@ READ8_HANDLER( taitosound_slave_comm_r )
 
 WRITE16_HANDLER( taitosound_port16_lsb_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		taitosound_port_w(machine,0,data & 0xff);
 }
 WRITE16_HANDLER( taitosound_comm16_lsb_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		taitosound_comm_w(machine,0,data & 0xff);
 }
 READ16_HANDLER( taitosound_comm16_lsb_r )
@@ -281,12 +281,12 @@ READ16_HANDLER( taitosound_comm16_lsb_r )
 
 WRITE16_HANDLER( taitosound_port16_msb_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		taitosound_port_w(machine,0,data >> 8);
 }
 WRITE16_HANDLER( taitosound_comm16_msb_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		taitosound_comm_w(machine,0,data >> 8);
 }
 READ16_HANDLER( taitosound_comm16_msb_r )

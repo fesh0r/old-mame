@@ -168,7 +168,7 @@ static READ32_HANDLER(FlipCount_r)
 
 static WRITE32_HANDLER(FlipCount_w)
 {
-	if((~mem_mask)&0x00ff0000)
+	if(mem_mask&0x00ff0000)
 	{
 		int fc=(data>>16)&0xff;
 		if(fc==1)
@@ -181,18 +181,18 @@ static WRITE32_HANDLER(FlipCount_w)
 static READ32_HANDLER(Input_r)
 {
 	if(offset==0)
-		return readinputport(0)|(readinputport(1)<<16);
+		return input_port_read_indexed(machine, 0)|(input_port_read_indexed(machine, 1)<<16);
 	else if(offset==1)
-		return readinputport(2)|(readinputport(3)<<16);
+		return input_port_read_indexed(machine, 2)|(input_port_read_indexed(machine, 3)<<16);
 	else if(offset==2)
 	{
-		UINT8 Port4=readinputport(4);
+		UINT8 Port4=input_port_read_indexed(machine, 4);
 		if(!(Port4&0x10) && ((OldPort4^Port4)&0x10))	//coin buttons trigger IRQs
 			IntReq(machine, 12);
 		if(!(Port4&0x20) && ((OldPort4^Port4)&0x20))
 			IntReq(machine, 19);
 		OldPort4=Port4;
-		return /*dips*/readinputport(5)|(Port4<<16);
+		return /*dips*/input_port_read_indexed(machine, 5)|(Port4<<16);
 	}
 	return 0;
 }
@@ -200,18 +200,18 @@ static READ32_HANDLER(Input_r)
 static WRITE32_HANDLER(IntAck_w)
 {
 	UINT32 IntPend=program_read_dword_32le(0x01800c0c);
-	if((~mem_mask)&0xff)
+	if(mem_mask&0xff)
 	{
 		IntPend&=~(1<<(data&0x1f));
 		program_write_dword_32le(0x01800c0c,IntPend);
 		if(!IntPend)
 			cpunum_set_input_line(machine, 0,SE3208_INT,CLEAR_LINE);
 	}
-	if((~mem_mask)&0xff00)
+	if(mem_mask&0xff00)
 		IntHigh=(data>>8)&7;
 }
 
-static int icallback(int line)
+static IRQ_CALLBACK(icallback)
 {
 	int i;
 	UINT32 IntPend=program_read_dword_32le(0x01800c0c);

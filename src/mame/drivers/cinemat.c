@@ -36,6 +36,7 @@
 #include "cinemat.h"
 #include "rendlay.h"
 
+#include "armora.lh"
 #include "starcas.lh"
 #include "solarq.lh"
 
@@ -86,14 +87,14 @@ MACHINE_RESET( cinemat )
 
 static READ8_HANDLER( inputs_r )
 {
-	return (readinputportbytag("INPUTS") >> offset) & 1;
+	return (input_port_read(machine, "INPUTS") >> offset) & 1;
 }
 
 
 static READ8_HANDLER( switches_r )
 {
 	static const UINT8 switch_shuffle[8] = { 2,5,4,3,0,1,6,7 };
-	return (readinputportbytag("SWITCHES") >> switch_shuffle[offset]) & 1;
+	return (input_port_read(machine, "SWITCHES") >> switch_shuffle[offset]) & 1;
 }
 
 
@@ -153,7 +154,7 @@ static UINT8 joystick_read(void)
 	if (port_tag_to_index("ANALOGX") != -1)
 	{
 		int xval = (INT16)(cpunum_get_reg(0, CCPU_X) << 4) >> 4;
-		return (readinputportbytag(mux_select ? "ANALOGX" : "ANALOGY") - xval) < 0x800;
+		return (input_port_read(Machine, mux_select ? "ANALOGX" : "ANALOGY") - xval) < 0x800;
 	}
 	return 0;
 }
@@ -172,7 +173,7 @@ static READ8_HANDLER( speedfrk_wheel_r )
 	int delta_wheel;
 
     /* the shift register is cleared once per 'frame' */
-    delta_wheel = (INT8)readinputportbytag("WHEEL") / 8;
+    delta_wheel = (INT8)input_port_read(machine, "WHEEL") / 8;
     if (delta_wheel > 3)
         delta_wheel = 3;
     else if (delta_wheel < -3)
@@ -185,14 +186,14 @@ static READ8_HANDLER( speedfrk_wheel_r )
 static READ8_HANDLER( speedfrk_gear_r )
 {
 	static int gear = 0x0e;
-    int gearval = readinputportbytag("GEAR");
+    int gearval = input_port_read(machine, "GEAR");
 
 	/* check the fake gear input port and determine the bit settings for the gear */
 	if ((gearval & 0x0f) != 0x0f)
         gear = gearval & 0x0f;
 
 	/* add the start key into the mix -- note that it overlaps 4th gear */
-	if (!(readinputportbytag("INPUTS") & 0x80))
+	if (!(input_port_read(machine, "INPUTS") & 0x80))
         gear &= ~0x08;
 
 	return (gear >> offset) & 1;
@@ -238,9 +239,9 @@ static READ8_HANDLER( sundance_inputs_r )
 {
 	/* handle special keys first */
 	if (sundance_port_map[offset].portname)
-		return (readinputportbytag(sundance_port_map[offset].portname) & sundance_port_map[offset].bitmask) ? 0 : 1;
+		return (input_port_read(machine, sundance_port_map[offset].portname) & sundance_port_map[offset].bitmask) ? 0 : 1;
 	else
-		return (readinputportbytag("INPUTS") >> offset) & 1;
+		return (input_port_read(machine, "INPUTS") >> offset) & 1;
 }
 
 
@@ -253,7 +254,7 @@ static READ8_HANDLER( sundance_inputs_r )
 
 static READ8_HANDLER( boxingb_dial_r )
 {
-	int value = readinputportbytag("DIAL");
+	int value = input_port_read(machine, "DIAL");
 	if (!mux_select) offset += 4;
 	return (value >> offset) & 1;
 }
@@ -1440,34 +1441,34 @@ ROM_END
 
 static DRIVER_INIT( speedfrk )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x00, 0x03, 0, 0, speedfrk_wheel_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x04, 0x06, 0, 0, speedfrk_gear_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x03, 0, 0, speedfrk_wheel_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x04, 0x06, 0, 0, speedfrk_gear_r);
 }
 
 
 static DRIVER_INIT( sundance )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x00, 0x0f, 0, 0, sundance_inputs_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x0f, 0, 0, sundance_inputs_r);
 }
 
 
 static DRIVER_INIT( tailg )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, mux_select_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, mux_select_w);
 }
 
 
 static DRIVER_INIT( boxingb )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, boxingb_dial_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, mux_select_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, boxingb_dial_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, mux_select_w);
 }
 
 
 static DRIVER_INIT( qb3 )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x0f, 0x0f, 0, 0, qb3_frame_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0, qb3_ram_bank_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x0f, 0x0f, 0, 0, qb3_frame_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0, qb3_ram_bank_w);
 
 	memory_configure_bank(1, 0, 4, rambase, 0x100*2);
 }
@@ -1487,9 +1488,9 @@ GAME( 1979, starhawk, 0,       starhawk, starhawk, 0,        ORIENTATION_FLIP_Y,
 GAMEL(1979, sundance, 0,       sundance, sundance, sundance, ORIENTATION_FLIP_X ^ ROT270, "Cinematronics", "Sundance", GAME_SUPPORTS_SAVE, layout_voffff20 )
 GAMEL(1979, tailg,    0,       tailg,    tailg,    tailg,    ORIENTATION_FLIP_Y,   "Cinematronics", "Tailgunner", GAME_SUPPORTS_SAVE, layout_ho20ffff )
 GAME( 1979, warrior,  0,       warrior,  warrior,  0,        ORIENTATION_FLIP_Y,   "Vectorbeam", "Warrior", GAME_SUPPORTS_SAVE )
-GAME( 1980, armora,   0,       armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Armor Attack", GAME_SUPPORTS_SAVE )
-GAME( 1980, armorap,  armora,  armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Armor Attack (prototype)", GAME_SUPPORTS_SAVE )
-GAME( 1980, armorar,  armora,  armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics (Rock-ola license)", "Armor Attack (Rock-ola)", GAME_SUPPORTS_SAVE )
+GAMEL(1980, armora,   0,       armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Armor Attack", GAME_SUPPORTS_SAVE, layout_armora )
+GAMEL(1980, armorap,  armora,  armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Armor Attack (prototype)", GAME_SUPPORTS_SAVE, layout_armora )
+GAMEL(1980, armorar,  armora,  armora,   armora,   0,        ORIENTATION_FLIP_Y,   "Cinematronics (Rock-ola license)", "Armor Attack (Rock-ola)", GAME_SUPPORTS_SAVE, layout_armora )
 GAME( 1980, ripoff,   0,       ripoff,   ripoff,   0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Rip Off", GAME_SUPPORTS_SAVE )
 GAMEL(1980, starcas,  0,       starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (version 3)", GAME_SUPPORTS_SAVE, layout_starcas )
 GAMEL(1980, starcas1, starcas, starcas,  starcas,  0,        ORIENTATION_FLIP_Y,   "Cinematronics", "Star Castle (older)", GAME_SUPPORTS_SAVE, layout_starcas )

@@ -66,17 +66,17 @@ static TIMER_CALLBACK( nmi_callback	)
 
 	UINT8 wheel[4] =
 	{
-		readinputportbytag("WHEEL1"),
-		readinputportbytag("WHEEL2"),
-		readinputportbytag("WHEEL3"),
-		readinputportbytag("WHEEL4")
+		input_port_read(machine, "WHEEL1"),
+		input_port_read(machine, "WHEEL2"),
+		input_port_read(machine, "WHEEL3"),
+		input_port_read(machine, "WHEEL4")
 	};
 	UINT8 lever[4] =
 	{
-		readinputportbytag("LEVER1"),
-		readinputportbytag("LEVER2"),
-		readinputportbytag("LEVER3"),
-		readinputportbytag("LEVER4")
+		input_port_read(machine, "LEVER1"),
+		input_port_read(machine, "LEVER2"),
+		input_port_read(machine, "LEVER3"),
+		input_port_read(machine, "LEVER4")
 	};
 
 	int i;
@@ -115,9 +115,9 @@ static TIMER_CALLBACK( nmi_callback	)
 
 	/* NMI and watchdog are disabled during service mode */
 
-	watchdog_enable(machine, readinputport(0) & 0x40);
+	watchdog_enable(machine, input_port_read_indexed(machine, 0) & 0x40);
 
-	if (readinputport(0) & 0x40)
+	if (input_port_read_indexed(machine, 0) & 0x40)
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 
 	timer_set(video_screen_get_time_until_pos(machine->primary_screen, scanline, 0), NULL, scanline, nmi_callback);
@@ -148,21 +148,21 @@ static READ8_HANDLER( sprint4_wram_r )
 
 static READ8_HANDLER( sprint4_analog_r )
 {
-	return (readinputportbytag("ANALOG") << (~offset & 7)) & 0x80;
+	return (input_port_read(machine, "ANALOG") << (~offset & 7)) & 0x80;
 }
 static READ8_HANDLER( sprint4_coin_r )
 {
-	return (readinputportbytag("COIN") << (~offset & 7)) & 0x80;
+	return (input_port_read(machine, "COIN") << (~offset & 7)) & 0x80;
 }
 static READ8_HANDLER( sprint4_collision_r )
 {
-	return (readinputportbytag("COLLISION") << (~offset & 7)) & 0x80;
+	return (input_port_read(machine, "COLLISION") << (~offset & 7)) & 0x80;
 }
 
 
 static READ8_HANDLER( sprint4_options_r )
 {
-	return (readinputportbytag("DIP") >> (2 * (offset & 3))) & 3;
+	return (input_port_read(machine, "DIP") >> (2 * (offset & 3))) & 3;
 }
 
 
@@ -241,7 +241,7 @@ static ADDRESS_MAP_START( sprint4_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x3fff)
 
 	AM_RANGE(0x0080, 0x00ff) AM_MIRROR(0x700) AM_READWRITE(sprint4_wram_r, sprint4_wram_w)
-	AM_RANGE(0x0800, 0x0bff) AM_MIRROR(0x400) AM_READWRITE(SMH_RAM, sprint4_video_ram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0800, 0x0bff) AM_MIRROR(0x400) AM_RAM_WRITE(sprint4_video_ram_w) AM_BASE(&videoram)
 
 	AM_RANGE(0x0000, 0x0007) AM_MIRROR(0x718) AM_READ(sprint4_analog_r)
 	AM_RANGE(0x0020, 0x0027) AM_MIRROR(0x718) AM_READ(sprint4_coin_r)

@@ -670,11 +670,11 @@ void model1_tgp_reset(int swa);
 static READ16_HANDLER( io_r )
 {
 	if(offset < 0x8)
-		return readinputport(offset);
+		return input_port_read_indexed(machine, offset);
 	if(offset < 0x10) {
 		offset -= 0x8;
 		if(offset < 3)
-			return readinputport(offset+8) | 0xff00;
+			return input_port_read_indexed(machine, offset+8) | 0xff00;
 		return 0xff;
 	}
 
@@ -689,7 +689,7 @@ static READ16_HANDLER( fifoin_status_r )
 
 static WRITE16_HANDLER( bank_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		switch(data & 0xf) {
 		case 0x1: // 100000-1fffff data roms banking
 			memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x1000000 + 0x100000*((data >> 4) & 0xf));
@@ -714,7 +714,7 @@ static void irq_raise(int level)
 	cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
 }
 
-static int irq_callback(int irqline)
+static IRQ_CALLBACK(irq_callback)
 {
 	return last_irq;
 }
@@ -880,7 +880,7 @@ static WRITE16_HANDLER( snd_latch_to_68k_w )
 	if (fifo_wptr >= FIFO_SIZE) fifo_wptr = 0;
 
 	// signal the 68000 that there's data waiting
-	cpunum_set_input_line(Machine, 1, 2, HOLD_LINE);
+	cpunum_set_input_line(machine, 1, 2, HOLD_LINE);
 	// give the 68k time to reply
 	cpu_spinuntil_time(ATTOTIME_IN_USEC(40));
 }
@@ -890,11 +890,11 @@ static ADDRESS_MAP_START( model1_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x1fffff) AM_ROMBANK(1)
 	AM_RANGE(0x200000, 0x2fffff) AM_ROM
 
-	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(SMH_RAM, mr2_w) AM_BASE(&mr2)
-	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(SMH_RAM, mr_w)  AM_BASE(&mr)
+	AM_RANGE(0x400000, 0x40ffff) AM_RAM_WRITE(mr2_w) AM_BASE(&mr2)
+	AM_RANGE(0x500000, 0x53ffff) AM_RAM_WRITE(mr_w)  AM_BASE(&mr)
 
-	AM_RANGE(0x600000, 0x60ffff) AM_READWRITE(SMH_RAM, md0_w) AM_BASE(&model1_display_list0)
-	AM_RANGE(0x610000, 0x61ffff) AM_READWRITE(SMH_RAM, md1_w) AM_BASE(&model1_display_list1)
+	AM_RANGE(0x600000, 0x60ffff) AM_RAM_WRITE(md0_w) AM_BASE(&model1_display_list0)
+	AM_RANGE(0x610000, 0x61ffff) AM_RAM_WRITE(md1_w) AM_BASE(&model1_display_list1)
 	AM_RANGE(0x680000, 0x680003) AM_READWRITE(model1_listctl_r, model1_listctl_w)
 
 	AM_RANGE(0x700000, 0x70ffff) AM_READWRITE(sys24_tile_r, sys24_tile_w)
@@ -904,7 +904,7 @@ static ADDRESS_MAP_START( model1_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x770000, 0x770001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x780000, 0x7fffff) AM_READWRITE(sys24_char_r, sys24_char_w)
 
-	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(SMH_RAM, p_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x900000, 0x903fff) AM_RAM_WRITE(p_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x910000, 0x91bfff) AM_RAM  AM_BASE(&model1_color_xlat)
 
 	AM_RANGE(0xc00000, 0xc0003f) AM_READ(io_r) AM_WRITENOP
@@ -938,11 +938,11 @@ static ADDRESS_MAP_START( model1_vr_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x1fffff) AM_ROMBANK(1)
 	AM_RANGE(0x200000, 0x2fffff) AM_ROM
 
-	AM_RANGE(0x400000, 0x40ffff) AM_READWRITE(SMH_RAM, mr2_w) AM_BASE(&mr2)
-	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(SMH_RAM, mr_w)  AM_BASE(&mr)
+	AM_RANGE(0x400000, 0x40ffff) AM_RAM_WRITE(mr2_w) AM_BASE(&mr2)
+	AM_RANGE(0x500000, 0x53ffff) AM_RAM_WRITE(mr_w)  AM_BASE(&mr)
 
-	AM_RANGE(0x600000, 0x60ffff) AM_READWRITE(SMH_RAM, md0_w) AM_BASE(&model1_display_list0)
-	AM_RANGE(0x610000, 0x61ffff) AM_READWRITE(SMH_RAM, md1_w) AM_BASE(&model1_display_list1)
+	AM_RANGE(0x600000, 0x60ffff) AM_RAM_WRITE(md0_w) AM_BASE(&model1_display_list0)
+	AM_RANGE(0x610000, 0x61ffff) AM_RAM_WRITE(md1_w) AM_BASE(&model1_display_list1)
 	AM_RANGE(0x680000, 0x680003) AM_READWRITE(model1_listctl_r, model1_listctl_w)
 
 	AM_RANGE(0x700000, 0x70ffff) AM_READWRITE(sys24_tile_r, sys24_tile_w)
@@ -952,7 +952,7 @@ static ADDRESS_MAP_START( model1_vr_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x770000, 0x770001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x780000, 0x7fffff) AM_READWRITE(sys24_char_r, sys24_char_w)
 
-	AM_RANGE(0x900000, 0x903fff) AM_READWRITE(SMH_RAM, p_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x900000, 0x903fff) AM_RAM_WRITE(p_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x910000, 0x91bfff) AM_RAM  AM_BASE(&model1_color_xlat)
 
 	AM_RANGE(0xc00000, 0xc0003f) AM_READ(io_r) AM_WRITENOP

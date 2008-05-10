@@ -51,7 +51,7 @@ VIDEO_UPDATE( bestbest );
 
 static WRITE16_HANDLER( suna16_soundlatch_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w( machine, 0, data & 0xff );
 	}
@@ -61,7 +61,7 @@ static WRITE16_HANDLER( suna16_soundlatch_w )
 
 static WRITE16_HANDLER( bssoccer_leds_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		set_led_status(0, data & 0x01);
 		set_led_status(1, data & 0x02);
@@ -75,7 +75,7 @@ static WRITE16_HANDLER( bssoccer_leds_w )
 
 static WRITE16_HANDLER( uballoon_leds_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		coin_counter_w(0, data & 0x01);
 		set_led_status(0, data & 0x02);
@@ -87,7 +87,7 @@ static WRITE16_HANDLER( uballoon_leds_w )
 
 static WRITE16_HANDLER( bestbest_coin_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		coin_counter_w(0, data & 0x04);
 	}
@@ -205,7 +205,7 @@ static READ16_HANDLER( bestbest_prot_r )
 
 static WRITE16_HANDLER( bestbest_prot_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		switch (data & 0xff)
 		{
@@ -1035,8 +1035,10 @@ static WRITE8_HANDLER( bestbest_ay8910_port_a_w )
 
 static const struct AY8910interface bestbest_ay8910_interface =
 {
-	0,							0,
-	bestbest_ay8910_port_a_w,	0
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,						NULL,
+	bestbest_ay8910_port_a_w,	NULL
 };
 
 static MACHINE_DRIVER_START( bestbest )

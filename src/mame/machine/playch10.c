@@ -61,7 +61,7 @@ MACHINE_RESET( pc10 )
  *************************************/
 READ8_HANDLER( pc10_port_0_r )
 {
-	return readinputport( 0 ) | ( ( ~pc10_int_detect & 1 ) << 3 );
+	return input_port_read_indexed(machine,  0 ) | ( ( ~pc10_int_detect & 1 ) << 3 );
 }
 
 WRITE8_HANDLER( pc10_SDCS_w )
@@ -102,12 +102,12 @@ WRITE8_HANDLER( pc10_DOGDI_w )
 
 WRITE8_HANDLER( pc10_GAMERES_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ( data & 1 ) ? CLEAR_LINE : ASSERT_LINE );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ( data & 1 ) ? CLEAR_LINE : ASSERT_LINE );
 }
 
 WRITE8_HANDLER( pc10_GAMESTOP_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ( data & 1 ) ? CLEAR_LINE : ASSERT_LINE );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ( data & 1 ) ? CLEAR_LINE : ASSERT_LINE );
 }
 
 WRITE8_HANDLER( pc10_PPURES_w )
@@ -183,8 +183,8 @@ WRITE8_HANDLER( pc10_in0_w )
 		return;
 
 	/* load up the latches */
-	input_latch[0] = readinputport( 3 );
-	input_latch[1] = readinputport( 4 );
+	input_latch[0] = input_port_read_indexed(machine,  3 );
+	input_latch[1] = input_port_read_indexed(machine,  4 );
 
 	/* apply any masking from the BIOS */
 	if ( cntrl_mask )
@@ -218,9 +218,9 @@ READ8_HANDLER( pc10_in1_r )
 	/* do the gun thing */
 	if ( pc10_gun_controller )
 	{
-		int trigger = readinputport( 3 );
-		int x = readinputport( 5 );
-		int y = readinputport( 6 );
+		int trigger = input_port_read_indexed(machine,  3 );
+		int x = input_port_read_indexed(machine,  5 );
+		int y = input_port_read_indexed(machine,  6 );
 		UINT32 pix, color_base;
 
 		/* no sprite hit (yet) */
@@ -435,7 +435,7 @@ static WRITE8_HANDLER( aboard_vrom_switch_w )
 DRIVER_INIT( pcaboard )
 {
 	/* switches vrom with writes to the $803e-$8041 area */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, aboard_vrom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, aboard_vrom_switch_w );
 
 	/* common init */
 	DRIVER_INIT_CALL(playch10);
@@ -462,7 +462,7 @@ DRIVER_INIT( pcbboard )
 	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x28000], 0x8000 );
 
 	/* Roms are banked at $8000 to $bfff */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, bboard_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, bboard_rom_switch_w );
 
 	/* common init */
 	DRIVER_INIT_CALL(playch10);
@@ -483,7 +483,7 @@ static WRITE8_HANDLER( cboard_vrom_switch_w )
 DRIVER_INIT( pccboard )
 {
 	/* switches vrom with writes to $6000 */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, cboard_vrom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, cboard_vrom_switch_w );
 
 	/* common init */
 	DRIVER_INIT_CALL(playch10);
@@ -502,7 +502,7 @@ DRIVER_INIT( pcdboard )
 	mmc1_rom_mask = 0x07;
 
 	/* MMC mapper at writes to $8000-$ffff */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, mmc1_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, mmc1_rom_switch_w );
 
 	/* common init */
 	DRIVER_INIT_CALL(playch10);
@@ -513,7 +513,7 @@ DRIVER_INIT( pcdboard )
 DRIVER_INIT( pcdboard_2 )
 {
 	/* extra ram at $6000-$7fff */
-	memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	/* common init */
@@ -599,13 +599,13 @@ DRIVER_INIT( pceboard )
 	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x28000], 0x8000 );
 
 	/* basically a mapper 9 on a nes */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, eboard_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, eboard_rom_switch_w );
 
 	/* ppu_latch callback */
 	ppu_latch = mapper9_latch;
 
 	/* nvram at $6000-$6fff */
-	memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x1000));
 
 	/* common init */
@@ -625,7 +625,7 @@ DRIVER_INIT( pcfboard )
 	mmc1_rom_mask = 0x07;
 
 	/* MMC mapper at writes to $8000-$ffff */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, mmc1_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, mmc1_rom_switch_w );
 
 	/* common init */
 	DRIVER_INIT_CALL(playch10);
@@ -636,7 +636,7 @@ DRIVER_INIT( pcfboard )
 DRIVER_INIT( pcfboard_2 )
 {
 	/* extra ram at $6000-$6fff */
-	memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x1000));
 
 	/* common init */
@@ -651,6 +651,8 @@ static int gboard_scanline_counter;
 static int gboard_scanline_latch;
 static int gboard_banks[2];
 static int gboard_4screen;
+static int gboard_last_bank = 0xff;
+static int gboard_command;
 
 static void gboard_scanline_cb( int num, int scanline, int vblank, int blanked )
 {
@@ -667,15 +669,13 @@ static void gboard_scanline_cb( int num, int scanline, int vblank, int blanked )
 static WRITE8_HANDLER( gboard_rom_switch_w )
 {
 	/* basically, a MMC3 mapper from the nes */
-	static int last_bank = 0xff;
-	static int gboard_command;
 
 	switch( offset & 0x7001 )
 	{
 		case 0x0000:
 			gboard_command = data;
 
-			if ( last_bank != ( data & 0xc0 ) )
+			if ( gboard_last_bank != ( data & 0xc0 ) )
 			{
 				int bank;
 
@@ -701,7 +701,7 @@ static WRITE8_HANDLER( gboard_rom_switch_w )
 				bank = gboard_banks[1] * 0x2000 + 0x10000;
 				memcpy( &memory_region( REGION_CPU2 )[0x0a000], &memory_region( REGION_CPU2 )[bank], 0x2000 );
 
-				last_bank = data & 0xc0;
+				gboard_last_bank = data & 0xc0;
 			}
 		break;
 
@@ -802,10 +802,10 @@ DRIVER_INIT( pcgboard )
 	memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[0x4c000], 0x4000 );
 
 	/* MMC3 mapper at writes to $8000-$ffff */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, gboard_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, gboard_rom_switch_w );
 
 	/* extra ram at $6000-$7fff */
-	memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	gboard_banks[0] = 0x1e;
@@ -850,7 +850,7 @@ DRIVER_INIT( pciboard )
 	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x10000], 0x8000 );
 
 	/* Roms are banked at $8000 to $bfff */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, iboard_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, iboard_rom_switch_w );
 
 	/* common init */
 	DRIVER_INIT_CALL(playch10);
@@ -860,16 +860,62 @@ DRIVER_INIT( pciboard )
 
 /* H Board games (PinBot) */
 
+static WRITE8_HANDLER( hboard_rom_switch_w )
+{
+	switch( offset & 0x7001 )
+	{
+		case 0x0001:
+			{
+				UINT8 cmd = gboard_command & 0x07;
+				int page = ( gboard_command & 0x80 ) >> 5;
+
+				switch( cmd )
+				{
+					case 0:	/* char banking */
+					case 1: /* char banking */
+						data &= 0xfe;
+						page ^= ( cmd << 1 );
+						if ( data & 0x20 )
+						{
+							ppu2c0x_set_videoram_bank( 0, page, 2, data, 64 );
+						}
+						else
+						{
+							ppu2c0x_set_videorom_bank( 0, page, 2, data, 64 );
+						}
+					return;
+
+					case 2: /* char banking */
+					case 3: /* char banking */
+					case 4: /* char banking */
+					case 5: /* char banking */
+						page ^= cmd + 2;
+						if ( data & 0x40 )
+						{
+							ppu2c0x_set_videoram_bank( 0, page, 1, data, 64 );
+						}
+						else
+						{
+							ppu2c0x_set_videorom_bank( 0, page, 1, data, 64 );
+						}
+					return;
+				}
+			}
+	};
+	gboard_rom_switch_w(machine,offset,data);
+};
+
+
 DRIVER_INIT( pchboard )
 {
 	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x4c000], 0x4000 );
 	memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[0x4c000], 0x4000 );
 
 	/* Roms are banked at $8000 to $bfff */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, gboard_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, hboard_rom_switch_w );
 
 	/* extra ram at $6000-$7fff */
-	memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	gboard_banks[0] = 0x1e;
@@ -894,11 +940,11 @@ DRIVER_INIT( pckboard )
 	mmc1_rom_mask = 0x0f;
 
 	/* extra ram at $6000-$7fff */
-	memory_install_readwrite8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0x2000));
 
 	/* Roms are banked at $8000 to $bfff */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, mmc1_rom_switch_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, mmc1_rom_switch_w );
 
 	/* common init */
 	DRIVER_INIT_CALL(playch10);

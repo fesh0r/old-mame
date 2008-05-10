@@ -302,7 +302,7 @@ static int auto_start_mask;
 
 static READ8_HANDLER( polepos_adc_r )
 {
-	return readinputport(3 + adc_input);
+	return input_port_read_indexed(machine, 3 + adc_input);
 }
 
 static READ8_HANDLER( polepos_ready_r )
@@ -373,18 +373,18 @@ static WRITE16_HANDLER( polepos_z8002_nvi_enable_w )
 
 	cpu_interrupt_enable(which,data);
 	if (!data)
-		cpunum_set_input_line(Machine, which, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, which, 0, CLEAR_LINE);
 }
 
 
-static READ8_HANDLER( in0_l )	{ return readinputport(0) & auto_start_mask; }	// fire and start buttons
-static READ8_HANDLER( in0_h )	{ return readinputport(0) >> 4; }	// coins
-static READ8_HANDLER( dipA_l )	{ return readinputport(1); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return readinputport(1) >> 4; }	// dips A
-static READ8_HANDLER( dipB_l )	{ return readinputport(2); }		// dips B
-static READ8_HANDLER( dipB_h )	{ return readinputport(2) >> 4; }	// dips B
-static READ8_HANDLER( in1_l )	{ return readinputport(5); }		// wheel
-static READ8_HANDLER( in1_h )	{ return readinputport(5) >> 4; }	// wheel
+static READ8_HANDLER( in0_l )	{ return input_port_read_indexed(machine, 0) & auto_start_mask; }	// fire and start buttons
+static READ8_HANDLER( in0_h )	{ return input_port_read_indexed(machine, 0) >> 4; }	// coins
+static READ8_HANDLER( dipA_l )	{ return input_port_read_indexed(machine, 1); }		// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read_indexed(machine, 1) >> 4; }	// dips A
+static READ8_HANDLER( dipB_l )	{ return input_port_read_indexed(machine, 2); }		// dips B
+static READ8_HANDLER( dipB_h )	{ return input_port_read_indexed(machine, 2) >> 4; }	// dips B
+static READ8_HANDLER( in1_l )	{ return input_port_read_indexed(machine, 5); }		// wheel
+static READ8_HANDLER( in1_h )	{ return input_port_read_indexed(machine, 5) >> 4; }	// wheel
 static WRITE8_HANDLER( out_0 )
 {
 // no start lamps in pole position
@@ -1687,16 +1687,16 @@ static DRIVER_INIT( topracra )
 	polepos_gear_bit = 0x20;
 
 	/* extra direct mapped inputs read */
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, input_port_5_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, input_port_0_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, input_port_1_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x02, 0x02, 0, 0, input_port_5_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x03, 0x03, 0, 0, input_port_0_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, input_port_1_r);
 
 }
 
 static DRIVER_INIT( polepos2 )
 {
 	/* note that the bootleg version doesn't need this custom IC; it has a hacked ROM in its place */
-	memory_install_read16_handler(1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, polepos2_ic25_r);
+	memory_install_read16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, polepos2_ic25_r);
 
 	DRIVER_INIT_CALL(polepos);
 }

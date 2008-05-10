@@ -79,7 +79,7 @@ static READ8_HANDLER( turtship_ports_r )
 
 	res = 0;
 	for (i = 0;i < 8;i++)
-		res |= ((readinputport(i) >> offset) & 1) << i;
+		res |= ((input_port_read_indexed(machine, i) >> offset) & 1) << i;
 
 	return res;
 }
@@ -705,7 +705,12 @@ static void irqhandler(int irq)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,irqhandler
+	{
+			AY8910_LEGACY_OUTPUT,
+			AY8910_DEFAULT_LOADS,
+			NULL, NULL, NULL, NULL,
+	},
+	irqhandler
 };
 
 static const struct YM2151interface whizz_ym2151_interface =

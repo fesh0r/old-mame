@@ -66,9 +66,9 @@ static VIDEO_UPDATE(cm2)
 static ADDRESS_MAP_START( cm_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xd3ff) AM_RAM
-	AM_RANGE(0xd400, 0xd7ff) AM_RAM AM_WRITE(cm_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xd400, 0xd7ff) AM_RAM_WRITE(cm_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0xd800, 0xdbff) AM_RAM
-	AM_RANGE(0xdc00, 0xdfff) AM_RAM AM_WRITE(cm_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xdc00, 0xdfff) AM_RAM_WRITE(cm_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xe000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
@@ -343,6 +343,8 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_6_r,	//
 	input_port_7_r,	//
 	0,

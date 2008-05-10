@@ -146,12 +146,12 @@ static WRITE8_HANDLER( cloak_custom_w )
 
 static WRITE8_HANDLER( cloak_irq_reset_0_w )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( cloak_irq_reset_1_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( cloak_nvram_enable_w )
@@ -169,7 +169,7 @@ static WRITE8_HANDLER( cloak_nvram_enable_w )
 
 static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_RAM
-	AM_RANGE(0x0400, 0x07ff) AM_READWRITE(SMH_RAM, cloak_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0400, 0x07ff) AM_RAM_WRITE(cloak_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x0800, 0x0fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x1000, 0x100f) AM_READWRITE(pokey1_r, pokey1_w)		/* DSW0 also */
 //  AM_RANGE(0x1008, 0x1008) AM_READ(SMH_RAM)

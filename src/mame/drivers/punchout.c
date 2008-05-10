@@ -104,7 +104,6 @@ DIP locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/vlm5030.h"
 #include "sound/nes_apu.h"
@@ -142,7 +141,7 @@ DRIVER_INIT( armwrest );
 
 static READ8_HANDLER( punchout_input_3_r )
 {
-	int data = input_port_3_r(machine, offset);
+	int data = input_port_read_indexed(machine,3);
 	/* bit 4 is busy pin level */
 	if( VLM5030_BSY() ) data &= ~0x10;
 	else data |= 0x10;
@@ -167,9 +166,9 @@ static WRITE8_HANDLER( punchout_speech_vcu_w )
 static WRITE8_HANDLER( punchout_2a03_reset_w )
 {
 	if (data & 1)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static int prot_mode_sel = -1; /* Mode selector */
@@ -405,12 +404,12 @@ static ADDRESS_MAP_START( punchout_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM
 	AM_RANGE(0xdff0, 0xdff7) AM_RAM AM_BASE(&punchout_bigsprite1)
 	AM_RANGE(0xdff8, 0xdffc) AM_RAM AM_BASE(&punchout_bigsprite2)
-	AM_RANGE(0xdffd, 0xdffd) AM_READWRITE(SMH_RAM, punchout_palettebank_w) AM_BASE(&punchout_palettebank)
-	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(SMH_RAM, punchout_topTilemap_ram_w) AM_BASE(&punchout_topTilemap_ram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, punchout_bigsprite1ram_w) AM_BASE(&punchout_bigsprite1ram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, punchout_bigsprite2ram_w) AM_BASE(&punchout_bigsprite2ram)
+	AM_RANGE(0xdffd, 0xdffd) AM_RAM_WRITE(punchout_palettebank_w) AM_BASE(&punchout_palettebank)
+	AM_RANGE(0xd800, 0xdfff) AM_RAM_WRITE(punchout_topTilemap_ram_w) AM_BASE(&punchout_topTilemap_ram)
+	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(punchout_bigsprite1ram_w) AM_BASE(&punchout_bigsprite1ram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(punchout_bigsprite2ram_w) AM_BASE(&punchout_bigsprite2ram)
 	AM_RANGE(0xf000, 0xf03f) AM_RAM AM_BASE(&punchout_botTilemap_scroll_ram)
-	AM_RANGE(0xf000, 0xffff) AM_READWRITE(SMH_RAM, punchout_botTilemap_ram_w) AM_BASE(&punchout_botTilemap_ram)
+	AM_RANGE(0xf000, 0xffff) AM_RAM_WRITE(punchout_botTilemap_ram_w) AM_BASE(&punchout_botTilemap_ram)
 ADDRESS_MAP_END
 
 
@@ -420,12 +419,12 @@ static ADDRESS_MAP_START( armwrest_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM
 	AM_RANGE(0xdff0, 0xdff7) AM_RAM AM_BASE(&punchout_bigsprite1)
 	AM_RANGE(0xdff8, 0xdffc) AM_RAM AM_BASE(&punchout_bigsprite2)
-	AM_RANGE(0xdffd, 0xdffd) AM_READWRITE(SMH_RAM, punchout_palettebank_w) AM_BASE(&punchout_palettebank)
-	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(SMH_RAM, armwrest_fgTilemap_ram_w) AM_BASE(&armwrest_fgTilemap_ram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, punchout_bigsprite1ram_w) AM_BASE(&punchout_bigsprite1ram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, punchout_bigsprite2ram_w) AM_BASE(&punchout_bigsprite2ram)
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(SMH_RAM, punchout_botTilemap_ram_w) AM_BASE(&punchout_botTilemap_ram)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(SMH_RAM, punchout_topTilemap_ram_w) AM_BASE(&punchout_topTilemap_ram)
+	AM_RANGE(0xdffd, 0xdffd) AM_RAM_WRITE(punchout_palettebank_w) AM_BASE(&punchout_palettebank)
+	AM_RANGE(0xd800, 0xdfff) AM_RAM_WRITE(armwrest_fgTilemap_ram_w) AM_BASE(&armwrest_fgTilemap_ram)
+	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(punchout_bigsprite1ram_w) AM_BASE(&punchout_bigsprite1ram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(punchout_bigsprite2ram_w) AM_BASE(&punchout_bigsprite2ram)
+	AM_RANGE(0xf000, 0xf7ff) AM_RAM_WRITE(punchout_botTilemap_ram_w) AM_BASE(&punchout_botTilemap_ram)
+	AM_RANGE(0xf800, 0xffff) AM_RAM_WRITE(punchout_topTilemap_ram_w) AM_BASE(&punchout_topTilemap_ram)
 ADDRESS_MAP_END
 
 

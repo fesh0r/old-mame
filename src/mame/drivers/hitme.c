@@ -68,7 +68,7 @@ static VIDEO_START(barricad)
 static VIDEO_UPDATE(hitme)
 {
 	/* the card width resistor comes from an input port, scaled to the range 0-25 kOhms */
-	double width_resist = readinputport(7) * 25000 / 100;
+	double width_resist = input_port_read_indexed(screen->machine, 7) * 25000 / 100;
 	/* this triggers a oneshot for the following length of time */
 	double width_duration = 0.45 * 1000e-12 * width_resist;
 	/* the dot clock runs at the standard horizontal frequency * 320+16 clocks per scanline */
@@ -126,9 +126,9 @@ static VIDEO_UPDATE(barricad)
  *
  *************************************/
 
-static UINT8 read_port_and_t0(int port)
+static UINT8 read_port_and_t0(running_machine *machine, int port)
 {
-	UINT8 val = readinputport(port);
+	UINT8 val = input_port_read_indexed(machine, port);
 	if (attotime_compare(timer_get_time(), timeout_time) > 0)
 		val ^= 0x80;
 	return val;
@@ -137,7 +137,7 @@ static UINT8 read_port_and_t0(int port)
 
 static UINT8 read_port_and_t0_and_hblank(running_machine *machine, int port)
 {
-	UINT8 val = read_port_and_t0(port);
+	UINT8 val = read_port_and_t0(machine, port);
 	if (video_screen_get_hpos(machine->primary_screen) < (video_screen_get_width(machine->primary_screen) * 9 / 10))
 		val ^= 0x04;
 	return val;
@@ -152,7 +152,7 @@ static READ8_HANDLER( hitme_port_0_r )
 
 static READ8_HANDLER( hitme_port_1_r )
 {
-	return read_port_and_t0(1);
+	return read_port_and_t0(machine, 1);
 }
 
 
@@ -164,7 +164,7 @@ static READ8_HANDLER( hitme_port_2_r )
 
 static READ8_HANDLER( hitme_port_3_r )
 {
-	return read_port_and_t0(3);
+	return read_port_and_t0(machine, 3);
 }
 
 
@@ -183,7 +183,7 @@ static WRITE8_HANDLER( output_port_0_w )
         In fact, it is very important that our timing calculation timeout AFTER the sound
         system's equivalent computation, or else we will hang notes.
     */
-	UINT8 raw_game_speed = readinputport(6);
+	UINT8 raw_game_speed = input_port_read_indexed(machine, 6);
 	double resistance = raw_game_speed * 25000 / 100;
 	attotime duration = attotime_make(0, ATTOSECONDS_PER_SECOND * 0.45 * 6.8e-6 * resistance * (data+1));
 	timeout_time = attotime_add(timer_get_time(), duration);
@@ -217,7 +217,7 @@ static WRITE8_HANDLER( output_port_1_w )
 static ADDRESS_MAP_START( hitme_map, ADDRESS_SPACE_PROGRAM, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0x1fff)
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
-	AM_RANGE(0x0c00, 0x0eff) AM_READWRITE(SMH_RAM, hitme_vidram_w) AM_BASE(&hitme_vidram)
+	AM_RANGE(0x0c00, 0x0eff) AM_RAM_WRITE(hitme_vidram_w) AM_BASE(&hitme_vidram)
 	AM_RANGE(0x1000, 0x10ff) AM_MIRROR(0x300) AM_RAM
 	AM_RANGE(0x1400, 0x14ff) AM_READ(hitme_port_0_r)
 	AM_RANGE(0x1500, 0x15ff) AM_READ(hitme_port_1_r)

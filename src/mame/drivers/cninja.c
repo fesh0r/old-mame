@@ -96,8 +96,8 @@ static READ16_HANDLER( cninja_irq_r )
 		return cninja_scanline;
 
 	case 2: /* Raster IRQ ACK - value read is not used */
-		cpunum_set_input_line(Machine, 0, 3, CLEAR_LINE);
-		cpunum_set_input_line(Machine, 0, 4, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 3, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 4, CLEAR_LINE);
 		return 0;
 	}
 
@@ -133,17 +133,17 @@ static WRITE16_HANDLER( cninja_irq_w )
 	logerror("%08x:  Unmapped IRQ write %d %04x\n",activecpu_get_pc(),offset,data);
 }
 
-static READ16_HANDLER( robocop2_dip3_r ) { return readinputport(3); }
+static READ16_HANDLER( robocop2_dip3_r ) { return input_port_read_indexed(machine, 3); }
 
 static READ16_HANDLER( robocop2_prot_r )
 {
  	switch (offset<<1) {
 		case 0x41a: /* Player 1 & 2 input ports */
-			return readinputport(0);
+			return input_port_read_indexed(machine, 0);
 		case 0x320: /* Coins */
-			return readinputport(1);
+			return input_port_read_indexed(machine, 1);
 		case 0x4e6: /* Dip switches */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 		case 0x504: /* PC: 6b6.  b4, 2c, 36 written before read */
 			logerror("Protection PC %06x: warning - read unmapped memory address %04x\n",activecpu_get_pc(),offset);
 			return 0x84;
@@ -1778,13 +1778,13 @@ static void cninja_patch(void)
 
 static DRIVER_INIT( cninja )
 {
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x1bc0a8, 0x1bc0a9, 0, 0, cninja_sound_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1bc0a8, 0x1bc0a9, 0, 0, cninja_sound_w);
 	cninja_patch();
 }
 
 static DRIVER_INIT( stoneage )
 {
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x1bc0a8, 0x1bc0a9, 0, 0, stoneage_sound_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1bc0a8, 0x1bc0a9, 0, 0, stoneage_sound_w);
 }
 
 static DRIVER_INIT( mutantf )

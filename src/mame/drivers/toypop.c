@@ -30,7 +30,6 @@ TODO:
 ****************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/namcoio.h"
 #include "sound/namco.h"
 
@@ -56,17 +55,17 @@ PALETTE_INIT( toypop );
 
 ***************************************************************************/
 
-static READ8_HANDLER( in0_l )	{ return readinputport(0); }		// P1 joystick
-static READ8_HANDLER( in0_h )	{ return readinputport(0) >> 4; }	// P2 joystick
-static READ8_HANDLER( in1_l )	{ return readinputport(1); }		// fire and start buttons
-static READ8_HANDLER( in1_h )	{ return readinputport(1) >> 4; }	// coins
-static READ8_HANDLER( dipA_l )	{ return readinputport(2); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return readinputport(2) >> 4; }	// dips A
-static READ8_HANDLER( dipB_l )	{ return readinputport(3); }		// dips B
-static READ8_HANDLER( dipB_h )	{ return readinputport(3) >> 4; }	// dips B
-static READ8_HANDLER( in2_l )	{ return readinputport(4); }		// P1 joystick left in liblrabl
-static READ8_HANDLER( in2_h )	{ return readinputport(4) >> 4; }	// P2 joystick left in liblrabl
-static READ8_HANDLER( in3 )		{ return readinputport(5); }		// test, cocktail, optional buttons
+static READ8_HANDLER( in0_l )	{ return input_port_read_indexed(machine, 0); }		// P1 joystick
+static READ8_HANDLER( in0_h )	{ return input_port_read_indexed(machine, 0) >> 4; }	// P2 joystick
+static READ8_HANDLER( in1_l )	{ return input_port_read_indexed(machine, 1); }		// fire and start buttons
+static READ8_HANDLER( in1_h )	{ return input_port_read_indexed(machine, 1) >> 4; }	// coins
+static READ8_HANDLER( dipA_l )	{ return input_port_read_indexed(machine, 2); }		// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read_indexed(machine, 2) >> 4; }	// dips A
+static READ8_HANDLER( dipB_l )	{ return input_port_read_indexed(machine, 3); }		// dips B
+static READ8_HANDLER( dipB_h )	{ return input_port_read_indexed(machine, 3) >> 4; }	// dips B
+static READ8_HANDLER( in2_l )	{ return input_port_read_indexed(machine, 4); }		// P1 joystick left in liblrabl
+static READ8_HANDLER( in2_h )	{ return input_port_read_indexed(machine, 4) >> 4; }	// P2 joystick left in liblrabl
+static READ8_HANDLER( in3 )		{ return input_port_read_indexed(machine, 5); }		// test, cocktail, optional buttons
 static WRITE8_HANDLER( out_coin0 )
 {
 	coin_lockout_global_w(data & 4);
@@ -149,7 +148,7 @@ static READ16_HANDLER( toypop_m68000_sharedram_r )
 
 static WRITE16_HANDLER( toypop_m68000_sharedram_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		toypop_m68000_sharedram[offset] = data & 0xff;
 }
 
@@ -162,7 +161,7 @@ static READ8_HANDLER( toypop_main_interrupt_enable_r )
 static WRITE8_HANDLER( toypop_main_interrupt_enable_w )
 {
 	cpu_interrupt_enable(0,1);
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_main_interrupt_disable_w )
@@ -173,7 +172,7 @@ static WRITE8_HANDLER( toypop_main_interrupt_disable_w )
 static WRITE8_HANDLER( toypop_sound_interrupt_enable_acknowledge_w )
 {
 	cpu_interrupt_enable(1,1);
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_interrupt_disable_w )
@@ -193,22 +192,22 @@ static INTERRUPT_GEN( toypop_main_interrupt )
 
 static WRITE8_HANDLER( toypop_sound_clear_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_sound_assert_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( toypop_m68000_clear_w )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( toypop_m68000_assert_w )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static TIMER_CALLBACK( disable_interrupts )

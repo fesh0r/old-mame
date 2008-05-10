@@ -409,7 +409,7 @@ static WRITE16_HANDLER( fdc_w )
 	if(!track_size)
 		return;
 
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		data &= 0xff;
 		switch(offset) {
 		case 0:
@@ -499,7 +499,7 @@ static READ16_HANDLER( fdc_status_r )
 
 static WRITE16_HANDLER( fdc_ctrl_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		logerror("FDC control %02x\n", data & 0xff);
 }
 
@@ -510,19 +510,19 @@ static UINT8 hotrod_io_r(running_machine *machine, int port)
 {
 	switch(port) {
 	case 0:
-		return readinputport(0);
+		return input_port_read_indexed(machine, 0);
 	case 1:
-		return readinputport(1);
+		return input_port_read_indexed(machine, 1);
 	case 2:
 		return 0xff;
 	case 3:
 		return 0xff;
 	case 4:
-		return readinputport(2);
+		return input_port_read_indexed(machine, 2);
 	case 5: // Dip switches
-		return readinputport(3);
+		return input_port_read_indexed(machine, 3);
 	case 6:
-		return readinputport(4);
+		return input_port_read_indexed(machine, 4);
 	case 7: // DAC
 		return 0xff;
 	}
@@ -534,20 +534,20 @@ static UINT8 dcclub_io_r(running_machine *machine, int port)
 	switch(port) {
 	case 0: {
 		static const UINT8 pos[16] = { 0, 1, 3, 2, 6, 4, 12, 8, 9 };
-		return (readinputport(0) & 0xf) | ((~pos[readinputport(5)>>4]<<4) & 0xf0);
+		return (input_port_read_indexed(machine, 0) & 0xf) | ((~pos[input_port_read_indexed(machine, 5)>>4]<<4) & 0xf0);
 	}
 	case 1:
-		return readinputport(1);
+		return input_port_read_indexed(machine, 1);
 	case 2:
 		return 0xff;
 	case 3:
 		return 0xff;
 	case 4:
-		return readinputport(2);
+		return input_port_read_indexed(machine, 2);
 	case 5: // Dip switches
-		return readinputport(3);
+		return input_port_read_indexed(machine, 3);
 	case 6:
-		return readinputport(4);
+		return input_port_read_indexed(machine, 4);
 	case 7: // DAC
 		return 0xff;
 	}
@@ -564,15 +564,15 @@ static UINT8 mahmajn_io_r(running_machine *machine, int port)
 	case 1:
 		return 0xff;
 	case 2:
-		return readinputport(cur_input_line);
+		return input_port_read_indexed(machine, cur_input_line);
 	case 3:
 		return 0xff;
 	case 4:
-		return readinputport(8);
+		return input_port_read_indexed(machine, 8);
 	case 5: // Dip switches
-		return readinputport(9);
+		return input_port_read_indexed(machine, 9);
 	case 6:
-		return readinputport(10);
+		return input_port_read_indexed(machine, 10);
 	case 7: // DAC
 		return 0xff;
 	}
@@ -583,19 +583,19 @@ static UINT8 gground_io_r(running_machine *machine, int port)
 {
 	switch(port) {
 	case 0:
-		return readinputport(0);
+		return input_port_read_indexed(machine, 0);
 	case 1:
-		return readinputport(1);
+		return input_port_read_indexed(machine, 1);
 	case 2: // P3 inputs
-		return readinputport(2);
+		return input_port_read_indexed(machine, 2);
 	case 3:
 		return 0xff;
 	case 4:
-		return readinputport(3);
+		return input_port_read_indexed(machine, 3);
 	case 5: // Dip switches
-		return readinputport(4);
+		return input_port_read_indexed(machine, 4);
 	case 6:
-		return readinputport(5);
+		return input_port_read_indexed(machine, 5);
 	case 7: // DAC
 		return 0xff;
 	}
@@ -634,33 +634,33 @@ static UINT8 hotrod_ctrl_cur;
 
 static WRITE16_HANDLER( hotrod3_ctrl_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		data &= 3;
-		hotrod_ctrl_cur = readinputport(9+data);
+		hotrod_ctrl_cur = input_port_read_indexed(machine, 9+data);
 	}
 }
 
 static READ16_HANDLER( hotrod3_ctrl_r )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		switch(offset) {
 			// Steering dials
 		case 0:
-			return readinputport(5) & 0xff;
+			return input_port_read_indexed(machine, 5) & 0xff;
 		case 1:
-			return readinputport(5) >> 8;
+			return input_port_read_indexed(machine, 5) >> 8;
 		case 2:
-			return readinputport(6) & 0xff;
+			return input_port_read_indexed(machine, 6) & 0xff;
 		case 3:
-			return readinputport(6) >> 8;
+			return input_port_read_indexed(machine, 6) >> 8;
 		case 4:
-			return readinputport(7) & 0xff;
+			return input_port_read_indexed(machine, 7) & 0xff;
 		case 5:
-			return readinputport(7) >> 8;
+			return input_port_read_indexed(machine, 7) >> 8;
 		case 6:
-			return readinputport(8) & 0xff;
+			return input_port_read_indexed(machine, 8) & 0xff;
 		case 7:
-			return readinputport(8) >> 8;
+			return input_port_read_indexed(machine, 8) >> 8;
 
 		case 8: { // Serial ADCs for the accel
 			int v = hotrod_ctrl_cur & 0x80;
@@ -735,7 +735,7 @@ static READ16_HANDLER( curbank_r )
 
 static WRITE16_HANDLER( curbank_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		curbank = data & 0xff;
 		reset_bank();
 	}
@@ -751,13 +751,13 @@ static READ16_HANDLER( ym_status_r )
 
 static WRITE16_HANDLER( ym_register_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		YM2151_register_port_0_w(machine, 0, data);
 }
 
 static WRITE16_HANDLER( ym_data_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		YM2151_data_port_0_w(machine, 0, data);
 }
 
@@ -782,7 +782,7 @@ static READ16_HANDLER( mlatch_r )
 
 static WRITE16_HANDLER( mlatch_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		int i;
 		UINT8 mxor = 0;
 		if(!mlatch_table) {
@@ -861,7 +861,7 @@ static WRITE16_HANDLER(irq_w)
 		break;
 	}
 	case 1:
-		if(ACCESSING_LSB) {
+		if(ACCESSING_BITS_0_7) {
 			UINT8 old_tb = irq_timerb;
 			irq_timerb = data;
 			if(old_tb != irq_timerb)
@@ -870,13 +870,13 @@ static WRITE16_HANDLER(irq_w)
 		break;
 	case 2:
 		irq_allow0 = data;
-		cpunum_set_input_line(Machine, 0, IRQ_TIMER+1, irq_timer_pend0 && (irq_allow0 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
-		cpunum_set_input_line(Machine, 0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, IRQ_TIMER+1, irq_timer_pend0 && (irq_allow0 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
 		break;
 	case 3:
 		irq_allow1 = data;
-		cpunum_set_input_line(Machine, 1, IRQ_TIMER+1, irq_timer_pend1 && (irq_allow1 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
-		cpunum_set_input_line(Machine, 1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, IRQ_TIMER+1, irq_timer_pend1 && (irq_allow1 & (1 << IRQ_TIMER)) ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
 		break;
 	}
 }
@@ -896,19 +896,19 @@ static READ16_HANDLER(irq_r)
 	/* These hacks are for Gain Ground */
 	/* otherwise the interrupt occurs before the correct state has been
        set and the game crashes before booting */
-	if (!strcmp(Machine->gamedrv->name,"gground"))
+	if (!strcmp(machine->gamedrv->name,"gground"))
 	{
 
 		if (activecpu_get_pc()==0x0084aa)
 		{
 			ggground_kludge = 1;
-			return mame_rand(Machine);
+			return mame_rand(machine);
 
 		}
 		if (activecpu_get_pc()==0x084ba)
 		{
 			/* Clear IRQ line so IRQ doesn't happen too early */
-			cpunum_set_input_line(Machine, 1, 5, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, 5, CLEAR_LINE);
 
 			/* set a timer to generate an irq at the needed point */
 			if (ggground_kludge == 1)
@@ -920,19 +920,19 @@ static READ16_HANDLER(irq_r)
 		}
 	}
 
-	if (!strcmp(Machine->gamedrv->name,"ggroundj"))
+	if (!strcmp(machine->gamedrv->name,"ggroundj"))
 	{
 
 		if (activecpu_get_pc()==0x0084ac)
 		{
 			ggground_kludge = 1;
-			return mame_rand(Machine);
+			return mame_rand(machine);
 
 		}
 		if (activecpu_get_pc()==0x084bc)
 		{
 			/* Clear IRQ line so IRQ doesn't happen too early */
-			cpunum_set_input_line(Machine, 1, 5, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, 5, CLEAR_LINE);
 
 			/* set a timer to generate an irq at the needed point */
 			if (ggground_kludge == 1)
@@ -947,11 +947,11 @@ static READ16_HANDLER(irq_r)
 	switch(offset) {
 	case 2:
 		irq_timer_pend0 = 0;
-		cpunum_set_input_line(Machine, 0, IRQ_TIMER+1, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, IRQ_TIMER+1, CLEAR_LINE);
 		break;
 	case 3:
 		irq_timer_pend1 = 0;
-		cpunum_set_input_line(Machine, 1, IRQ_TIMER+1, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, IRQ_TIMER+1, CLEAR_LINE);
 		break;
 	}
 	return 0xffff;
@@ -1021,7 +1021,7 @@ static ADDRESS_MAP_START( system24_cpu1_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x260000, 0x260001) AM_WRITENOP		// Vertical synchronization register
 	AM_RANGE(0x270000, 0x270001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x280000, 0x29ffff) AM_READWRITE(sys24_char_r, sys24_char_w)
-	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(SMH_RAM, system24temp_sys16_paletteram1_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x400000, 0x403fff) AM_RAM_WRITE(system24temp_sys16_paletteram1_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x404000, 0x40401f) AM_READWRITE(sys24_mixer_r, sys24_mixer_w)
 	AM_RANGE(0x600000, 0x63ffff) AM_READWRITE(sys24_sprite_r, sys24_sprite_w)
 	AM_RANGE(0x800000, 0x80007f) AM_READWRITE(system24temp_sys16_io_r, system24temp_sys16_io_w)
@@ -1060,7 +1060,7 @@ static ADDRESS_MAP_START( system24_cpu2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x260000, 0x260001) AM_WRITENOP		// Vertical synchronization register
 	AM_RANGE(0x270000, 0x270001) AM_WRITENOP		// Video synchronization switch
 	AM_RANGE(0x280000, 0x29ffff) AM_READWRITE(sys24_char_r, sys24_char_w)
-	AM_RANGE(0x400000, 0x403fff) AM_READWRITE(SMH_RAM, system24temp_sys16_paletteram1_w)
+	AM_RANGE(0x400000, 0x403fff) AM_RAM_WRITE(system24temp_sys16_paletteram1_w)
 	AM_RANGE(0x404000, 0x40401f) AM_READWRITE(sys24_mixer_r, sys24_mixer_w)
 	AM_RANGE(0x600000, 0x63ffff) AM_READWRITE(sys24_sprite_r, sys24_sprite_w)
 	AM_RANGE(0x800000, 0x80007f) AM_READWRITE(system24temp_sys16_io_r, system24temp_sys16_io_w)

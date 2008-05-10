@@ -41,7 +41,6 @@ Verify Color PROM resistor values (Last 8 colors)
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "stactics.h"
 #include "stactics.lh"
 
@@ -65,7 +64,7 @@ static CUSTOM_INPUT( get_motor_not_ready )
 
 static READ8_HANDLER( vert_pos_r )
 {
-	stactics_state *state = Machine->driver_data;
+	stactics_state *state = machine->driver_data;
 
     return 0x70 - state->vert_pos;
 }
@@ -73,19 +72,19 @@ static READ8_HANDLER( vert_pos_r )
 
 static READ8_HANDLER( horiz_pos_r )
 {
-	stactics_state *state = Machine->driver_data;
+	stactics_state *state = machine->driver_data;
 
     return state->horiz_pos + 0x88;
 }
 
 
-static void move_motor(stactics_state *state)
+static void move_motor(running_machine *machine, stactics_state *state)
 {
 	 /* monitor motor under joystick control */
     if (*state->motor_on & 0x01)
     {
-		int ip3 = readinputport(3);
-		int ip4 = readinputport(4);
+		int ip3 = input_port_read_indexed(machine, 3);
+		int ip4 = input_port_read_indexed(machine, 4);
 
 		/* up */
 		if (((ip4 & 0x01) == 0) && (state->vert_pos > -128))
@@ -158,7 +157,7 @@ static INTERRUPT_GEN( stactics_interrupt )
 {
 	stactics_state *state = machine->driver_data;
 
-	move_motor(state);
+	move_motor(machine, state);
 
     cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }

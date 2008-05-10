@@ -96,7 +96,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cdrom.h"
 #include "cpu/powerpc/ppc.h"
 
@@ -146,7 +145,7 @@ static READ64_HANDLER(irq_enable_r)
 {
 	UINT64 r = 0;
 
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		r |= (UINT64)(irq_enable) << 32;
 	}
@@ -156,7 +155,7 @@ static READ64_HANDLER(irq_enable_r)
 
 static WRITE64_HANDLER(irq_enable_w)
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		irq_enable |= (UINT32)(data >> 32);
 	}
@@ -166,7 +165,7 @@ static READ64_HANDLER(irq_active_r)
 {
 	UINT64 r = 0;
 
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		r |= (UINT64)(irq_active) << 32;
 	}
@@ -185,7 +184,7 @@ static READ64_HANDLER(unk1_r)
 #ifdef UNUSED_FUNCTION
 static READ64_HANDLER(unk2_r)
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		return (UINT64)0xa5 << 32;
 	}
@@ -206,12 +205,12 @@ static READ64_HANDLER(unk4_r)
 	UINT64 r = 0;
 //  logerror("unk4_r: %08X, %08X%08X at %08X\n", offset, (UINT32)(mem_mask>>32), (UINT32)(mem_mask), activecpu_get_pc());
 
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		// MCfg
 		r |= (UINT64)((0 << 13) | (5 << 10)) << 32;
 	}
-	if (!(mem_mask & U64(0x00000000ffffffff)))
+	if (ACCESSING_BITS_0_31)
 	{
 		r |= unk20004 & ~0x800000;
 	}
@@ -223,12 +222,12 @@ static WRITE64_HANDLER(unk4_w)
 //  logerror("unk4_w: %08X%08X, %08X, %08X%08X at %08X\n", (UINT32)(data >> 32), (UINT32)(data),
 //      offset, (UINT32)(mem_mask>>32), (UINT32)(mem_mask), activecpu_get_pc());
 
-	if (!(mem_mask & U64(0x00000000ffffffff)))
+	if (ACCESSING_BITS_0_31)
 	{
 		if (data & 0x800000)
 		{
 			mame_printf_debug("CPU%d: CPU1 IRQ at %08X\n", cpu_getactivecpu(), activecpu_get_pc());
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ0, ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ0, ASSERT_LINE);
 		}
 
 		unk20004 = (UINT32)(data);
@@ -245,7 +244,7 @@ static READ64_HANDLER(unk30000_r)
 
 static READ64_HANDLER(unk30030_r)
 {
-	if (!(mem_mask & U64(0x00000000ffffffff)))
+	if (ACCESSING_BITS_0_31)
 	{
 		return 1;
 	}
@@ -254,11 +253,11 @@ static READ64_HANDLER(unk30030_r)
 
 static WRITE64_HANDLER(video_w)
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		vdl0_address = (UINT32)(data >> 32);
 	}
-	if (!(mem_mask & U64(0x00000000ffffffff)))
+	if (ACCESSING_BITS_0_31)
 	{
 		vdl1_address = (UINT32)(data);
 	}
@@ -266,7 +265,7 @@ static WRITE64_HANDLER(video_w)
 
 static WRITE64_HANDLER(video_irq_ack_w)
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		if ((data >> 32) & 0x8000)
 		{
@@ -319,11 +318,11 @@ static WRITE64_HANDLER(unk4000418_w)
 
 static WRITE64_HANDLER(reset_w)
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		if (data & U64(0x100000000))
 		{
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 			unk3 = 0;
 		}
 	}
@@ -725,7 +724,7 @@ static READ64_HANDLER(cde_r)
 	UINT32 r = 0;
 	int reg = offset * 2;
 
-	if (!(mem_mask & U64(0x00000000ffffffff)))
+	if (ACCESSING_BITS_0_31)
 		reg++;
 
 	switch (reg)
@@ -800,7 +799,7 @@ static WRITE64_HANDLER(cde_w)
 	int reg = offset * 2;
 	UINT32 d;
 
-	if (!(mem_mask & U64(0x00000000ffffffff)))
+	if (ACCESSING_BITS_0_31)
 	{
 		reg++;
 		d = (UINT32)(data);
@@ -953,7 +952,7 @@ static READ64_HANDLER(device2_r)
 	UINT32 r = 0;
 	int reg = offset * 2;
 
-	if (!(mem_mask & U64(0x00000000ffffffff)))
+	if (ACCESSING_BITS_0_31)
 		reg++;
 
 	switch (reg)
@@ -983,7 +982,7 @@ static READ64_HANDLER(cpu_r)
 {
 	UINT64 r = 0;
 
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		r = (UINT64)(cpu_getactivecpu() ? 0x80000000 : 0);
 		//r |= 0x40000000;  // sets Video-LowRes !?
@@ -1058,11 +1057,12 @@ static MACHINE_DRIVER_START( m2 )
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 383)
 
-	MDRV_PALETTE_LENGTH(65536)
+	MDRV_PALETTE_LENGTH(32768)
+	MDRV_PALETTE_INIT(RRRRR_GGGGG_BBBBB)
 
 	MDRV_VIDEO_START(m2)
 	MDRV_VIDEO_UPDATE(m2)

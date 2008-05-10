@@ -586,9 +586,9 @@ WRITE8_HANDLER( namcos1_cpu_control_w )
 		namcos1_reset = data & 1;
 	}
 
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -664,7 +664,7 @@ static WRITE8_HANDLER( unknown_w )
 }
 
 /* Main bankswitching routine */
-static void set_bank(int banknum, const bankhandler *handler)
+static void set_bank(running_machine *machine, int banknum, const bankhandler *handler)
 {
 	int bankstart = (banknum & 7) * 0x2000;
 	int cpunum = (banknum >> 3) & 1;
@@ -677,12 +677,12 @@ static void set_bank(int banknum, const bankhandler *handler)
 	if (!handler->bank_handler_r)
 	{
 		if (namcos1_active_bank[banknum].bank_handler_r)
-			memory_install_read8_handler(cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, ram_bank_handler_r[banknum]);
+			memory_install_read8_handler(machine, cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, ram_bank_handler_r[banknum]);
 	}
 	else
 	{
 		if (!namcos1_active_bank[banknum].bank_handler_r)
-			memory_install_read8_handler(cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, io_bank_handler_r[banknum]);
+			memory_install_read8_handler(machine, cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, io_bank_handler_r[banknum]);
 	}
 
 	/* write handlers (except for the 0xe000-0xffff range) */
@@ -691,12 +691,12 @@ static void set_bank(int banknum, const bankhandler *handler)
 		if (!handler->bank_handler_w)
 		{
 			if (namcos1_active_bank[banknum].bank_handler_w)
-				memory_install_write8_handler(cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, ram_bank_handler_w[banknum]);
+				memory_install_write8_handler(machine, cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, ram_bank_handler_w[banknum]);
 		}
 		else
 		{
 			if (!namcos1_active_bank[banknum].bank_handler_r)
-				memory_install_write8_handler(cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, io_bank_handler_w[banknum]);
+				memory_install_write8_handler(machine, cpunum, ADDRESS_SPACE_PROGRAM, bankstart, bankstart + 0x1fff, 0, 0, io_bank_handler_w[banknum]);
 		}
 	}
 
@@ -704,7 +704,7 @@ static void set_bank(int banknum, const bankhandler *handler)
 	namcos1_active_bank[banknum] = *handler;
 }
 
-static void namcos1_bankswitch(int cpu, offs_t offset, UINT8 data)
+static void namcos1_bankswitch(running_machine *machine, int cpu, offs_t offset, UINT8 data)
 {
 	int bank = (cpu*8) + (( offset >> 9) & 0x07);
 
@@ -719,7 +719,7 @@ static void namcos1_bankswitch(int cpu, offs_t offset, UINT8 data)
 		chip[bank] |= (data & 0x03) << 8;
 	}
 
-	set_bank(bank, &namcos1_bank_element[chip[bank]]);
+	set_bank(machine, bank, &namcos1_bank_element[chip[bank]]);
 
 	/* unmapped bank warning */
 	if( namcos1_active_bank[bank].bank_handler_r == unknown_r)
@@ -736,7 +736,7 @@ WRITE8_HANDLER( namcos1_bankswitch_w )
 {
 //  logerror("cpu %d: namcos1_bankswitch_w offset %04x data %02x\n",cpu_getactivecpu(),offset,data);
 
-	namcos1_bankswitch(cpu_getactivecpu(), offset, data);
+	namcos1_bankswitch(machine, cpu_getactivecpu(), offset, data);
 }
 
 /* Sub cpu set start bank port */
@@ -745,8 +745,8 @@ WRITE8_HANDLER( namcos1_subcpu_bank_w )
 //  logerror("namcos1_subcpu_bank_w offset %04x data %02x\n",offset,data);
 
 	/* Prepare code for CPU 1 */
-	namcos1_bankswitch( 1, 0x0e00, 0x03 );
-	namcos1_bankswitch( 1, 0x0e01, data );
+	namcos1_bankswitch( machine, 1, 0x0e00, 0x03 );
+	namcos1_bankswitch( machine, 1, 0x0e01, data );
 }
 
 /*******************************************************************************
@@ -842,23 +842,23 @@ MACHINE_RESET( namcos1 )
 
 	/* Point all of our bankhandlers to the error handlers */
 	for (bank = 0; bank < 2*8 ; bank++)
-		set_bank(bank, &unknown_handler);
+		set_bank(machine, bank, &unknown_handler);
 
 	/* Default MMU setup for Cpu 0 */
-	namcos1_bankswitch(0, 0x0000, 0x01 ); /* bank0 = 0x180(RAM) - evidence: wldcourt */
-	namcos1_bankswitch(0, 0x0001, 0x80 );
-	namcos1_bankswitch(0, 0x0200, 0x01 ); /* bank1 = 0x180(RAM) - evidence: berabohm */
-	namcos1_bankswitch(0, 0x0201, 0x80 );
+	namcos1_bankswitch(machine, 0, 0x0000, 0x01 ); /* bank0 = 0x180(RAM) - evidence: wldcourt */
+	namcos1_bankswitch(machine, 0, 0x0001, 0x80 );
+	namcos1_bankswitch(machine, 0, 0x0200, 0x01 ); /* bank1 = 0x180(RAM) - evidence: berabohm */
+	namcos1_bankswitch(machine, 0, 0x0201, 0x80 );
 
-	namcos1_bankswitch(0, 0x0e00, 0x03 ); /* bank7 = 0x3ff(PRG7) */
-	namcos1_bankswitch(0, 0x0e01, 0xff );
+	namcos1_bankswitch(machine, 0, 0x0e00, 0x03 ); /* bank7 = 0x3ff(PRG7) */
+	namcos1_bankswitch(machine, 0, 0x0e01, 0xff );
 
 	/* Default MMU setup for Cpu 1 */
-	namcos1_bankswitch(1, 0x0000, 0x01 ); /* bank0 = 0x180(RAM) - evidence: wldcourt */
-	namcos1_bankswitch(1, 0x0001, 0x80 );
+	namcos1_bankswitch(machine, 1, 0x0000, 0x01 ); /* bank0 = 0x180(RAM) - evidence: wldcourt */
+	namcos1_bankswitch(machine, 1, 0x0001, 0x80 );
 
-	namcos1_bankswitch(1, 0x0e00, 0x03); /* bank7 = 0x3ff(PRG7) */
-	namcos1_bankswitch(1, 0x0e01, 0xff);
+	namcos1_bankswitch(machine, 1, 0x0e00, 0x03); /* bank7 = 0x3ff(PRG7) */
+	namcos1_bankswitch(machine, 1, 0x0e01, 0xff);
 
 	/* stop all CPUs */
 	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
@@ -1257,9 +1257,9 @@ static READ8_HANDLER( quester_paddle_r )
 		int ret;
 
 		if (!qnum)
-			ret = (readinputportbytag("CONTROL0")&0x90) | qstrobe | (readinputportbytag("PADDLE0")&0x0f);
+			ret = (input_port_read(machine, "CONTROL0")&0x90) | qstrobe | (input_port_read(machine, "PADDLE0")&0x0f);
 		else
-			ret = (readinputportbytag("CONTROL0")&0x90) | qstrobe | (readinputportbytag("PADDLE1")&0x0f);
+			ret = (input_port_read(machine, "CONTROL0")&0x90) | qstrobe | (input_port_read(machine, "PADDLE1")&0x0f);
 
 		qstrobe ^= 0x40;
 
@@ -1270,9 +1270,9 @@ static READ8_HANDLER( quester_paddle_r )
 		int ret;
 
 		if (!qnum)
-			ret = (readinputportbytag("CONTROL1")&0x90) | qnum | (readinputportbytag("PADDLE0")>>4);
+			ret = (input_port_read(machine, "CONTROL1")&0x90) | qnum | (input_port_read(machine, "PADDLE0")>>4);
 		else
-			ret = (readinputportbytag("CONTROL1")&0x90) | qnum | (readinputportbytag("PADDLE1")>>4);
+			ret = (input_port_read(machine, "CONTROL1")&0x90) | qnum | (input_port_read(machine, "PADDLE1")>>4);
 
 		if (!qstrobe) qnum ^= 0x20;
 
@@ -1283,7 +1283,7 @@ static READ8_HANDLER( quester_paddle_r )
 DRIVER_INIT( quester )
 {
 	namcos1_driver_init(NULL);
-	memory_install_read8_handler(3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, quester_paddle_r);
+	memory_install_read8_handler(machine, 3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, quester_paddle_r);
 }
 
 
@@ -1302,7 +1302,7 @@ static READ8_HANDLER( berabohm_buttons_r )
 	{
 		int inp = input_count;
 
-		if (inp == 4) res = readinputportbytag("CONTROL0");
+		if (inp == 4) res = input_port_read(machine, "CONTROL0");
 		else
 		{
 			char portname[4];
@@ -1311,7 +1311,7 @@ static READ8_HANDLER( berabohm_buttons_r )
 			static int counter[4];
 
 			sprintf(portname,"IN%d",inp);	/* IN0-IN3 */
-			res = readinputportbytag(portname);
+			res = input_port_read(machine, portname);
 			if (res & 0x80)
 			{
 				if (counter[inp] >= 0)
@@ -1335,7 +1335,7 @@ static READ8_HANDLER( berabohm_buttons_r )
 				counter[inp] = -1;
 #else
 			sprintf(portname,"IN%d",inp);	/* IN0-IN3 */
-			res = readinputportbytag(portname);
+			res = input_port_read(machine, portname);
 			if (res & 1) res = 0x7f;		/* weak */
 			else if (res & 2) res = 0x48;	/* medium */
 			else if (res & 4) res = 0x40;	/* strong */
@@ -1346,7 +1346,7 @@ static READ8_HANDLER( berabohm_buttons_r )
 	}
 	else
 	{
-		res = readinputportbytag("CONTROL1") & 0x8f;
+		res = input_port_read(machine, "CONTROL1") & 0x8f;
 
 		/* the strobe cannot happen too often, otherwise the MCU will waste too
            much time reading the inputs and won't have enough cycles to play two
@@ -1372,7 +1372,7 @@ static READ8_HANDLER( berabohm_buttons_r )
 DRIVER_INIT( berabohm )
 {
 	namcos1_driver_init(NULL);
-	memory_install_read8_handler(3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, berabohm_buttons_r);
+	memory_install_read8_handler(machine, 3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, berabohm_buttons_r);
 }
 
 
@@ -1388,13 +1388,13 @@ static READ8_HANDLER( faceoff_inputs_r )
 
 	if (offset == 0)
 	{
-		res = (readinputportbytag("CONTROL0") & 0x80) | stored_input[0];
+		res = (input_port_read(machine, "CONTROL0") & 0x80) | stored_input[0];
 
 		return res;
 	}
 	else
 	{
-		res = readinputportbytag("CONTROL1") & 0x80;
+		res = input_port_read(machine, "CONTROL1") & 0x80;
 
 		/* the strobe cannot happen too often, otherwise the MCU will waste too
            much time reading the inputs and won't have enough cycles to play two
@@ -1409,15 +1409,15 @@ static READ8_HANDLER( faceoff_inputs_r )
 			switch (input_count)
 			{
 				case 0:
-					stored_input[0] = readinputportbytag("IN0") & 0x1f;
-					stored_input[1] = (readinputportbytag("IN3") & 0x07) << 3;
+					stored_input[0] = input_port_read(machine, "IN0") & 0x1f;
+					stored_input[1] = (input_port_read(machine, "IN3") & 0x07) << 3;
 
 				case 3:
-					stored_input[0] = readinputportbytag("IN2") & 0x1f;
+					stored_input[0] = input_port_read(machine, "IN2") & 0x1f;
 
 				case 4:
-					stored_input[0] = readinputportbytag("IN1") & 0x1f;
-					stored_input[1] = readinputportbytag("IN3") & 0x18;
+					stored_input[0] = input_port_read(machine, "IN1") & 0x1f;
+					stored_input[1] = input_port_read(machine, "IN3") & 0x18;
 			}
 
 			input_count = (input_count + 1) & 7;
@@ -1434,5 +1434,5 @@ static READ8_HANDLER( faceoff_inputs_r )
 DRIVER_INIT( faceoff )
 {
 	namcos1_driver_init(NULL);
-	memory_install_read8_handler(3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, faceoff_inputs_r);
+	memory_install_read8_handler(machine, 3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, faceoff_inputs_r);
 }

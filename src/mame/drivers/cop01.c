@@ -50,7 +50,6 @@ Mighty Guy board layout:
 
 ***************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/3812intf.h"
 
@@ -101,10 +100,10 @@ static READ8_HANDLER( mightguy_dsw_r )
 	switch (offset)
 	{
 		case 0 :
-			data = (readinputportbytag("DSW1") & 0x7f) | ((readinputportbytag("FAKE") & 0x04) << 5);
+			data = (input_port_read(machine, "DSW1") & 0x7f) | ((input_port_read(machine, "FAKE") & 0x04) << 5);
 			break;
 		case 1 :
-			data = (readinputportbytag("DSW2") & 0x3f) | ((readinputportbytag("FAKE") & 0x03) << 6);
+			data = (input_port_read(machine, "DSW2") & 0x3f) | ((input_port_read(machine, "FAKE") & 0x03) << 6);
 			break;
 		}
 

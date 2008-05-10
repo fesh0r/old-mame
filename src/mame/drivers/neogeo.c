@@ -309,7 +309,7 @@ static void audio_cpu_assert_nmi(void)
 
 static WRITE8_HANDLER( audio_cpu_clear_nmi_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 
@@ -332,7 +332,7 @@ static CUSTOM_INPUT( multiplexed_controller_r )
 
 	sprintf(tag, "IN%s-%d", (const char *)param, controller_select & 0x01);
 
-	return readinputportbytag(tag);
+	return input_port_read(machine, tag);
 }
 
 
@@ -351,10 +351,10 @@ cpu #0 (PC=00C18C40): unmapped memory word write to 00380000 = 0000 & 00FF
 	{
 	default:
 	case 0x00: ret = 0x0000; break; /* nothing? */
-	case 0x09: ret = readinputportbytag("MAHJONG1"); break;
-	case 0x12: ret = readinputportbytag("MAHJONG2"); break;
-	case 0x1b: ret = readinputportbytag("MAHJONG3"); break; /* player 1 normal inputs? */
-	case 0x24: ret = readinputportbytag("MAHJONG4"); break;
+	case 0x09: ret = input_port_read(machine, "MAHJONG1"); break;
+	case 0x12: ret = input_port_read(machine, "MAHJONG2"); break;
+	case 0x1b: ret = input_port_read(machine, "MAHJONG3"); break; /* player 1 normal inputs? */
+	case 0x24: ret = input_port_read(machine, "MAHJONG4"); break;
 	}
 
 	return ret;
@@ -524,7 +524,7 @@ static READ16_HANDLER( memcard_r )
 
 static WRITE16_HANDLER( memcard_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (memcard_present() != -1)
 			memcard_data[offset] = data;
@@ -562,7 +562,7 @@ static MEMCARD_HANDLER( neogeo )
 static WRITE16_HANDLER( audio_command_w )
 {
 	/* accessing the LSB only is not mapped */
-	if (mem_mask != 0xff00)
+	if (mem_mask != 0x00ff)
 	{
 		soundlatch_w(machine, 0, data >> 8);
 
@@ -810,20 +810,20 @@ static void audio_cpu_banking_init(void)
 
 static WRITE16_HANDLER( system_control_w )
 {
-	if ((mem_mask & 0x00ff) != 0x00ff)
+	if (ACCESSING_BITS_0_7)
 	{
 		UINT8 bit = (offset >> 3) & 0x01;
 
 		switch (offset & 0x07)
 		{
 		default:
-		case 0x00: neogeo_set_screen_dark(bit); break;
+		case 0x00: neogeo_set_screen_dark(machine, bit); break;
 		case 0x01: set_main_cpu_vector_table_source(bit);
 				   set_audio_cpu_rom_source(bit); /* this is a guess */
 				   break;
 		case 0x05: neogeo_set_fixed_layer_source(bit); break;
 		case 0x06: set_save_ram_unlock(bit); break;
-		case 0x07: neogeo_set_palette_bank(bit); break;
+		case 0x07: neogeo_set_palette_bank(machine, bit); break;
 
 		case 0x02: /* unknown - HC32 middle pin 1 */
 		case 0x03: /* unknown - uPD4990 pin ? */
@@ -875,7 +875,7 @@ static WRITE16_HANDLER( system_control_w )
 static WRITE16_HANDLER( watchdog_w )
 {
 	/* only an LSB write resets the watchdog */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		watchdog_reset16_w(machine, offset, data, mem_mask);
 	}
@@ -944,6 +944,15 @@ static void set_output_data(UINT8 data)
  *
  *************************************/
 
+static STATE_POSTLOAD( neogeo_postload )
+{
+	_set_main_cpu_bank_address();
+	_set_main_cpu_vector_table_source();
+	set_audio_cpu_banking();
+	_set_audio_cpu_rom_source();
+	set_outputs();
+}
+
 static MACHINE_START( neogeo )
 {
 	/* set the BIOS bank */
@@ -987,11 +996,7 @@ static MACHINE_START( neogeo )
 	state_save_register_global(led1_value);
 	state_save_register_global(led2_value);
 
-	state_save_register_func_postload(_set_main_cpu_bank_address);
-	state_save_register_func_postload(_set_main_cpu_vector_table_source);
-	state_save_register_func_postload(set_audio_cpu_banking);
-	state_save_register_func_postload(_set_audio_cpu_rom_source);
-	state_save_register_func_postload(set_outputs);
+	state_save_register_postload(machine, neogeo_postload, NULL);
 }
 
 
@@ -1008,7 +1013,7 @@ static MACHINE_RESET( neogeo )
 
 	/* reset system control registers */
 	for (offs = 0; offs < 8; offs++)
-		system_control_w(machine, offs, 0, 0xff00);
+		system_control_w(machine, offs, 0, 0x00ff);
 
 	neogeo_reset_rng();
 
@@ -1048,7 +1053,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400000, 0x401fff) AM_MIRROR(0x3fe000) AM_READWRITE(neogeo_paletteram_r, neogeo_paletteram_w)
 	AM_RANGE(0x800000, 0x800fff) AM_READWRITE(memcard_r, memcard_w)
 	AM_RANGE(0xc00000, 0xc1ffff) AM_MIRROR(0x0e0000) AM_ROMBANK(NEOGEO_BANK_BIOS)
-	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_READWRITE(SMH_RAM, save_ram_w) AM_BASE(&save_ram)
+	AM_RANGE(0xd00000, 0xd0ffff) AM_MIRROR(0x0f0000) AM_RAM_WRITE(save_ram_w) AM_BASE(&save_ram)
 	AM_RANGE(0xe00000, 0xffffff) AM_READ(neogeo_unmapped_r)
 ADDRESS_MAP_END
 

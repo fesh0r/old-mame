@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "video/konamiic.h"
 
@@ -239,14 +238,14 @@ VIDEO_START( tmnt )
 
 VIDEO_START( punkshot )
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K051960_vh_start(machine,REGION_GFX2,NORMAL_PLANE_ORDER,punkshot_sprite_callback);
 }
 
 VIDEO_START( lgtnfght )	/* also tmnt2, ssriders */
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 
@@ -262,21 +261,21 @@ VIDEO_START( lgtnfght )	/* also tmnt2, ssriders */
 
 VIDEO_START( sunsetbl )
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,ssbl_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 }
 
 VIDEO_START( blswhstl )
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,blswhstl_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,blswhstl_sprite_callback);
 }
 
 VIDEO_START( glfgreat )
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,lgtnfght_sprite_callback);
 
@@ -290,14 +289,14 @@ VIDEO_START( glfgreat )
 
 VIDEO_START( thndrx2 )
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K051960_vh_start(machine,REGION_GFX2,NORMAL_PLANE_ORDER,thndrx2_sprite_callback);
 }
 
 VIDEO_START( prmrsocr )
 {
-	K053251_vh_start();
+	K053251_vh_start(machine);
 	K052109_vh_start(machine,REGION_GFX1,NORMAL_PLANE_ORDER,tmnt_tile_callback);
 	K053245_vh_start(machine,0, REGION_GFX2,NORMAL_PLANE_ORDER,prmrsocr_sprite_callback);
 
@@ -323,14 +322,14 @@ WRITE16_HANDLER( tmnt_paletteram_word_w )
 	offset &= ~1;
 
 	data = (paletteram16[offset] << 8) | paletteram16[offset+1];
-	palette_set_color_rgb(Machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+	palette_set_color_rgb(machine,offset / 2,pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 }
 
 
 
 WRITE16_HANDLER( tmnt_0a0000_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		static int last;
 
@@ -340,7 +339,7 @@ WRITE16_HANDLER( tmnt_0a0000_w )
 
 		/* bit 3 high then low triggers irq on sound CPU */
 		if (last == 0x08 && (data & 0x08) == 0)
-			cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+			cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 
 		last = data & 0x08;
 
@@ -356,7 +355,7 @@ WRITE16_HANDLER( tmnt_0a0000_w )
 
 WRITE16_HANDLER( punkshot_0a0020_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		static int last;
 
@@ -366,7 +365,7 @@ WRITE16_HANDLER( punkshot_0a0020_w )
 
 		/* bit 2 = trigger irq on sound CPU */
 		if (last == 0x04 && (data & 0x04) == 0)
-			cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+			cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 
 		last = data & 0x04;
 
@@ -377,7 +376,7 @@ WRITE16_HANDLER( punkshot_0a0020_w )
 
 WRITE16_HANDLER( lgtnfght_0a0018_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		static int last;
 
@@ -388,7 +387,7 @@ WRITE16_HANDLER( lgtnfght_0a0018_w )
 
 		/* bit 2 = trigger irq on sound CPU */
 		if (last == 0x00 && (data & 0x04) == 0x04)
-			cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0xff);
+			cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0xff);
 
 		last = data & 0x04;
 
@@ -399,7 +398,7 @@ WRITE16_HANDLER( lgtnfght_0a0018_w )
 
 WRITE16_HANDLER( blswhstl_700300_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0,1 = coin counter */
 		coin_counter_w(0,data & 0x01);
@@ -433,7 +432,7 @@ READ16_HANDLER( glfgreat_rom_r )
 
 WRITE16_HANDLER( glfgreat_122000_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0,1 = coin counter */
 		coin_counter_w(0,data & 0x01);
@@ -454,7 +453,7 @@ WRITE16_HANDLER( glfgreat_122000_w )
 
 		/* other bits unknown */
 	}
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		/* bit 8 = 53596 char/rom selection for ROM test */
 		glfgreat_roz_rom_mode = data & 0x100;
@@ -464,7 +463,7 @@ WRITE16_HANDLER( glfgreat_122000_w )
 
 WRITE16_HANDLER( ssriders_eeprom_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 is data */
 		/* bit 1 is cs (active low) */
@@ -485,7 +484,7 @@ WRITE16_HANDLER( ssriders_eeprom_w )
 
 WRITE16_HANDLER( ssriders_1c0300_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0,1 = coin counter */
 		coin_counter_w(0,data & 0x01);
@@ -501,7 +500,7 @@ WRITE16_HANDLER( ssriders_1c0300_w )
 
 WRITE16_HANDLER( prmrsocr_122000_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0,1 = coin counter */
 		coin_counter_w(0,data & 0x01);
@@ -531,7 +530,7 @@ READ16_HANDLER( prmrsocr_rom_r )
 
 WRITE16_HANDLER( tmnt_priority_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 2/3 = priority; other bits unused */
 		/* bit2 = PRI bit3 = PRI2

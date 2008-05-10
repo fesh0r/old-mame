@@ -42,7 +42,6 @@ Bucky:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
@@ -98,7 +97,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 1 is EEPROM ready */
 	/* bit 3 is service button */
 	/* bits 4-7 are DIP switches */
-	res = EEPROM_read_bit() | input_port_1_r(machine,0);
+	res = EEPROM_read_bit() | input_port_read_indexed(machine, 1);
 
 	if (init_eeprom_count)
 	{
@@ -261,12 +260,12 @@ static WRITE16_HANDLER( K053247_scattered_word_w )
 
 static READ16_HANDLER( player1_r ) 	// players 1 and 3
 {
-	return input_port_2_r(machine,0) | (input_port_4_r(machine,0)<<8);
+	return input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 4)<<8);
 }
 
 static READ16_HANDLER( player2_r )	// players 2 and 4
 {
-	return input_port_3_r(machine,0) | (input_port_5_r(machine,0)<<8);
+	return input_port_read_indexed(machine, 3) | (input_port_read_indexed(machine, 5)<<8);
 }
 
 static WRITE16_HANDLER( moo_prot_w )

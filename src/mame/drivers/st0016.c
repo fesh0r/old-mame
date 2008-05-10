@@ -31,7 +31,7 @@ static ADDRESS_MAP_START( st0016_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xdfff) AM_READ(st0016_sprite2_ram_r) AM_WRITE(st0016_sprite2_ram_w)
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM
 	AM_RANGE(0xe800, 0xe87f) AM_RAM /* common ram */
-	AM_RANGE(0xe900, 0xe9ff) AM_RAM AM_WRITE(st0016_snd_w) AM_BASE(&st0016_sound_regs) /* sound regs 8 x $20 bytes, see notes */
+	AM_RANGE(0xe900, 0xe9ff) AM_RAM_WRITE(st0016_snd_w) AM_BASE(&st0016_sound_regs) /* sound regs 8 x $20 bytes, see notes */
 	AM_RANGE(0xea00, 0xebff) AM_READ(st0016_palette_ram_r) AM_WRITE(st0016_palette_ram_w)
 	AM_RANGE(0xec00, 0xec1f) AM_READ(st0016_character_ram_r) AM_WRITE(st0016_character_ram_w)
 	AM_RANGE(0xf000, 0xffff) AM_RAM /* work ram */
@@ -44,13 +44,13 @@ static READ8_HANDLER(mux_r)
         xxxx - input port #2
     xxxx     - dip switches (2x8 bits) (multiplexed)
 */
-	int retval=input_port_2_r(machine,0)&0x0f;
+	int retval=input_port_read_indexed(machine, 2)&0x0f;
 	switch(mux_port&0x30)
 	{
-		case 0x00: retval|=((input_port_4_r(machine,0)&1)<<4)|((input_port_4_r(machine,0)&0x10)<<1)|((input_port_5_r(machine,0)&1)<<6)|((input_port_5_r(machine,0)&0x10)<<3);break;
-		case 0x10: retval|=((input_port_4_r(machine,0)&2)<<3)|((input_port_4_r(machine,0)&0x20)   )|((input_port_5_r(machine,0)&2)<<5)|((input_port_5_r(machine,0)&0x20)<<2);break;
-		case 0x20: retval|=((input_port_4_r(machine,0)&4)<<2)|((input_port_4_r(machine,0)&0x40)>>1)|((input_port_5_r(machine,0)&4)<<4)|((input_port_5_r(machine,0)&0x40)<<1);break;
-		case 0x30: retval|=((input_port_4_r(machine,0)&8)<<1)|((input_port_4_r(machine,0)&0x80)>>2)|((input_port_5_r(machine,0)&8)<<3)|((input_port_5_r(machine,0)&0x80)   );break;
+		case 0x00: retval|=((input_port_read_indexed(machine, 4)&1)<<4)|((input_port_read_indexed(machine, 4)&0x10)<<1)|((input_port_read_indexed(machine, 5)&1)<<6)|((input_port_read_indexed(machine, 5)&0x10)<<3);break;
+		case 0x10: retval|=((input_port_read_indexed(machine, 4)&2)<<3)|((input_port_read_indexed(machine, 4)&0x20)   )|((input_port_read_indexed(machine, 5)&2)<<5)|((input_port_read_indexed(machine, 5)&0x20)<<2);break;
+		case 0x20: retval|=((input_port_read_indexed(machine, 4)&4)<<2)|((input_port_read_indexed(machine, 4)&0x40)>>1)|((input_port_read_indexed(machine, 5)&4)<<4)|((input_port_read_indexed(machine, 5)&0x40)<<1);break;
+		case 0x30: retval|=((input_port_read_indexed(machine, 4)&8)<<1)|((input_port_read_indexed(machine, 4)&0x80)>>2)|((input_port_read_indexed(machine, 5)&8)<<3)|((input_port_read_indexed(machine, 5)&0x80)   );break;
 	}
 	return retval;
 }

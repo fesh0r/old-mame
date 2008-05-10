@@ -49,7 +49,6 @@ Games by Nihon Game/Culture Brain:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
@@ -80,18 +79,18 @@ static WRITE8_HANDLER( shangkid_maincpu_bank_w )
 
 static WRITE8_HANDLER( shangkid_bbx_enable_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, data?0:1 );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, data?0:1 );
 }
 
 static WRITE8_HANDLER( shangkid_cpu_reset_w )
 {
 	if( data == 0 )
 	{
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 	}
 	else if( data == 1 )
 	{
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 	}
 }
 
@@ -115,7 +114,7 @@ static WRITE8_HANDLER( chinhero_bbx_AY8910_write_w )
 		{
 			if( data == 0x01 )
 				/* 0->1 transition triggers interrupt on Sound CPU */
-				cpunum_set_input_line(Machine, 2, 0, HOLD_LINE );
+				cpunum_set_input_line(machine, 2, 0, HOLD_LINE );
 		}
 		break;
 
@@ -138,7 +137,7 @@ static WRITE8_HANDLER( shangkid_bbx_AY8910_write_w )
 		{
 			if( data == 0x01 )
 				/* 0->1 transition triggers interrupt on Sound CPU */
-				cpunum_set_input_line(Machine, 2, 0, HOLD_LINE );
+				cpunum_set_input_line(machine, 2, 0, HOLD_LINE );
 		}
 		else
 			memory_set_bank(2, data ? 0 : 1);
@@ -286,7 +285,7 @@ static ADDRESS_MAP_START( chinhero_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb802, 0xb802) AM_READ(input_port_2_r) /* player#2 */
 	AM_RANGE(0xb803, 0xb803) AM_READ(input_port_3_r) /* player#1 */
 	AM_RANGE(0xc000, 0xc002) AM_WRITE(SMH_RAM) AM_BASE(&shangkid_videoreg)
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, shangkid_videoram_w) AM_BASE(&videoram) AM_SHARE(1)
+	AM_RANGE(0xd000, 0xdfff) AM_RAM_WRITE(shangkid_videoram_w) AM_BASE(&videoram) AM_SHARE(1)
 	AM_RANGE(0xe000, 0xfdff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0xfe00, 0xffff) AM_RAM AM_BASE(&spriteram) AM_SHARE(3)
 ADDRESS_MAP_END
@@ -307,7 +306,7 @@ static ADDRESS_MAP_START( shangkid_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb802, 0xb802) AM_READ(input_port_2_r) /* player#2 */
 	AM_RANGE(0xb803, 0xb803) AM_READ(input_port_3_r) /* player#1 */
 	AM_RANGE(0xc000, 0xc002) AM_WRITE(SMH_RAM) AM_BASE(&shangkid_videoreg)
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, shangkid_videoram_w) AM_BASE(&videoram) AM_SHARE(1)
+	AM_RANGE(0xd000, 0xdfff) AM_RAM_WRITE(shangkid_videoram_w) AM_BASE(&videoram) AM_SHARE(1)
 	AM_RANGE(0xe000, 0xfdff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0xfe00, 0xffff) AM_RAM AM_BASE(&spriteram) AM_SHARE(3)
 ADDRESS_MAP_END
@@ -327,7 +326,7 @@ static ADDRESS_MAP_START( chinhero_bbx_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb801, 0xb801) AM_READ(input_port_1_r) /* coin/start */
 	AM_RANGE(0xb802, 0xb802) AM_READ(input_port_2_r) /* player#2 */
 	AM_RANGE(0xb803, 0xb803) AM_READ(input_port_3_r) /* player#1 */
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, shangkid_videoram_w) AM_SHARE(1)
+	AM_RANGE(0xd000, 0xdfff) AM_RAM_WRITE(shangkid_videoram_w) AM_SHARE(1)
 	AM_RANGE(0xe000, 0xfdff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0xfe00, 0xffff) AM_RAM AM_SHARE(3)
 ADDRESS_MAP_END
@@ -346,7 +345,7 @@ static ADDRESS_MAP_START( shangkid_bbx_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xb801, 0xb801) AM_READ(input_port_1_r) /* coin/start */
 	AM_RANGE(0xb802, 0xb802) AM_READ(input_port_2_r) /* player#2 */
 	AM_RANGE(0xb803, 0xb803) AM_READ(input_port_3_r) /* player#1 */
-	AM_RANGE(0xd000, 0xdfff) AM_READWRITE(SMH_RAM, shangkid_videoram_w) AM_SHARE(1)
+	AM_RANGE(0xd000, 0xdfff) AM_RAM_WRITE(shangkid_videoram_w) AM_SHARE(1)
 	AM_RANGE(0xe000, 0xfdff) AM_RAM AM_SHARE(2)
 	AM_RANGE(0xfe00, 0xffff) AM_RAM AM_SHARE(3)
 ADDRESS_MAP_END

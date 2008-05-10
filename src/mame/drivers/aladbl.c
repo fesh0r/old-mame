@@ -143,9 +143,9 @@ static WRITE16_HANDLER( aladbl_w )
 
 static READ16_HANDLER( aladbl_r )
 {
-	if (activecpu_get_pc()==0x1b2a56) return (readinputportbytag("MCU") & 0xff0f);             // coins
+	if (activecpu_get_pc()==0x1b2a56) return (input_port_read(machine, "MCU") & 0xff0f);             // coins
 	if (activecpu_get_pc()==0x1b2a72) return 0x0000;
-	if (activecpu_get_pc()==0x1b2d24) return (readinputportbytag("MCU") & 0x00f0) | 0x1200;    // difficulty
+	if (activecpu_get_pc()==0x1b2d24) return (input_port_read(machine, "MCU") & 0x00f0) | 0x1200;    // difficulty
 	if (activecpu_get_pc()==0x1b2d4e) return 0x0000;
 
 	logerror("aladbl_r : %06x\n",activecpu_get_pc());
@@ -156,8 +156,8 @@ static READ16_HANDLER( aladbl_r )
 static DRIVER_INIT( aladbl )
 {
 	// 220000 = writes to mcu? 330000 = reads?
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x220000, 0x220001, 0, 0, aladbl_w);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x330000, 0x330001, 0, 0, aladbl_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x220000, 0x220001, 0, 0, aladbl_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x330000, 0x330001, 0, 0, aladbl_r);
 	DRIVER_INIT_CALL(megadrij);
 }
 

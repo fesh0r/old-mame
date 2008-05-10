@@ -190,7 +190,7 @@ static VIDEO_START( looping )
 
 static WRITE8_HANDLER( flip_screen_x_w )
 {
-	looping_state *state = Machine->driver_data;
+	looping_state *state = machine->driver_data;
 	flip_screen_x_set(~data & 0x01);
 	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get() ? 128 : 0);
 }
@@ -198,7 +198,7 @@ static WRITE8_HANDLER( flip_screen_x_w )
 
 static WRITE8_HANDLER( flip_screen_y_w )
 {
-	looping_state *state = Machine->driver_data;
+	looping_state *state = machine->driver_data;
 	flip_screen_y_set(~data & 0x01);
 	tilemap_set_scrollx(state->bg_tilemap, 0, flip_screen_get() ? 128 : 0);
 }
@@ -206,7 +206,7 @@ static WRITE8_HANDLER( flip_screen_y_w )
 
 static WRITE8_HANDLER( looping_videoram_w )
 {
-	looping_state *state = Machine->driver_data;
+	looping_state *state = machine->driver_data;
 	state->videoram[offset] = data;
 	tilemap_mark_tile_dirty(state->bg_tilemap, offset);
 }
@@ -214,7 +214,7 @@ static WRITE8_HANDLER( looping_videoram_w )
 
 static WRITE8_HANDLER( looping_colorram_w )
 {
-	looping_state *state = Machine->driver_data;
+	looping_state *state = machine->driver_data;
 	int i;
 
 	state->colorram[offset] = data;
@@ -363,7 +363,7 @@ static WRITE8_HANDLER( looping_sound_sw )
         0007 = AFA
     */
 
-	looping_state *state = Machine->driver_data;
+	looping_state *state = machine->driver_data;
 	state->sound[offset + 1] = data ^ 1;
 	DAC_data_w(0, ((state->sound[2] << 7) + (state->sound[3] << 6)) * state->sound[7]);
 }
@@ -461,9 +461,9 @@ static READ8_HANDLER( protection_r )
 static ADDRESS_MAP_START( looping_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 
-	AM_RANGE(0x9000, 0x93ff) AM_READWRITE(SMH_RAM, looping_videoram_w) AM_BASE_MEMBER(looping_state, videoram)
+	AM_RANGE(0x9000, 0x93ff) AM_RAM_WRITE(looping_videoram_w) AM_BASE_MEMBER(looping_state, videoram)
 
-	AM_RANGE(0x9800, 0x983f) AM_MIRROR(0x0700) AM_READWRITE(SMH_RAM, looping_colorram_w) AM_BASE_MEMBER(looping_state, colorram)
+	AM_RANGE(0x9800, 0x983f) AM_MIRROR(0x0700) AM_RAM_WRITE(looping_colorram_w) AM_BASE_MEMBER(looping_state, colorram)
 	AM_RANGE(0x9840, 0x987f) AM_MIRROR(0x0700) AM_RAM AM_BASE_MEMBER(looping_state, spriteram)
 	AM_RANGE(0x9880, 0x98ff) AM_MIRROR(0x0700) AM_RAM
 
@@ -563,7 +563,12 @@ static const struct TMS5220interface tms5220_interface =
 
 static const struct AY8910interface ay8910_interface =
 {
-	soundlatch_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	soundlatch_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 
@@ -781,7 +786,7 @@ static DRIVER_INIT( looping )
 		rom[i] = BITSWAP8(rom[i], 0,1,2,3,4,5,6,7);
 
 	/* install protection handlers */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x7007, 0, 0, protection_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x7007, 0, 0, protection_r);
 }
 
 

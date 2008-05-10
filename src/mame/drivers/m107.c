@@ -14,7 +14,6 @@
 *******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "m107.h"
 #include "machine/irem_cpu.h"
 #include "sound/2151intf.h"
@@ -38,7 +37,7 @@ static TIMER_CALLBACK( m107_scanline_interrupt );
 
 static WRITE16_HANDLER( bankswitch_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		UINT8 *RAM = memory_region(REGION_CPU1);
 		memory_set_bankptr(1,&RAM[0x100000 + ((data&0x7)*0x10000)]);
@@ -84,7 +83,7 @@ static TIMER_CALLBACK( m107_scanline_interrupt )
 
 static WRITE16_HANDLER( m107_coincounter_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		coin_counter_w(0,data & 0x01);
 		coin_counter_w(1,data & 0x02);
@@ -146,7 +145,7 @@ static WRITE16_HANDLER( m107_sound_irq_ack_w )
 static WRITE16_HANDLER( m107_sound_status_w )
 {
 	COMBINE_DATA(&sound_status);
-	cpunum_set_input_line_and_vector(Machine, 0, 0, HOLD_LINE, M107_IRQ_3);
+	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, M107_IRQ_3);
 }
 
 /*****************************************************************************/
@@ -154,10 +153,10 @@ static WRITE16_HANDLER( m107_sound_status_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x9ffff) AM_ROM
 	AM_RANGE(0xa0000, 0xbffff) AM_ROMBANK(1)
-	AM_RANGE(0xd0000, 0xdffff) AM_READWRITE(SMH_RAM, m107_vram_w) AM_BASE(&m107_vram_data)
+	AM_RANGE(0xd0000, 0xdffff) AM_RAM_WRITE(m107_vram_w) AM_BASE(&m107_vram_data)
 	AM_RANGE(0xe0000, 0xeffff) AM_RAM /* System ram */
 	AM_RANGE(0xf8000, 0xf8fff) AM_RAM AM_BASE(&spriteram16)
-	AM_RANGE(0xf9000, 0xf9fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xf9000, 0xf9fff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 

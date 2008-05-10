@@ -56,7 +56,7 @@ static MACHINE_RESET(ssrj)
 
 static READ8_HANDLER(ssrj_wheel_r)
 {
-	int port= input_port_1_r(machine,0) -0x80;
+	int port= input_port_read_indexed(machine, 1) -0x80;
 	int retval=port-oldport;
 	oldport=port;
 	return retval;
@@ -163,8 +163,12 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
-	0, /* not used ? */
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL, /* not used ? */
 	input_port_3_r,
+	NULL,
+	NULL
 };
 
 

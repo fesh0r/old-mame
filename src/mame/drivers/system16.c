@@ -209,7 +209,7 @@ static UINT16 coinctrl;
 
 static WRITE16_HANDLER( sys16_3d_coinctrl_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 {
 		coinctrl = data&0xff;
 		sys16_refreshenable = coinctrl & 0x10;
@@ -409,7 +409,7 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( sound_command_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 {
 		soundlatch_w( machine,0,data&0xff );
 		cpunum_set_input_line(machine, 1, 0, HOLD_LINE );
@@ -418,7 +418,7 @@ static WRITE16_HANDLER( sound_command_w )
 
 static WRITE16_HANDLER( sound_command_nmi_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 {
 		soundlatch_w( machine,0,data&0xff );
 		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
@@ -430,7 +430,7 @@ static WRITE16_HANDLER( sound_command_nmi_w )
 
 static WRITE16_HANDLER( sys16_coinctrl_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 {
 		coinctrl = data&0xff;
 		sys16_refreshenable = coinctrl & 0x20;
@@ -502,7 +502,7 @@ MACHINE_DRIVER_END
 
 static WRITE16_HANDLER( sys16_tilebank_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		switch(offset & 1)
 		{
@@ -891,7 +891,7 @@ static int eswat_tilebank0;
 
 static WRITE16_HANDLER( eswat_tilebank0_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 		eswat_tilebank0 = data&0xff;
 	}
@@ -1201,11 +1201,11 @@ MACHINE_DRIVER_END
 /***************************************************************************/
 
 static READ16_HANDLER( ga_io_players_r ) {
-	return (readinputport(0) << 8) | readinputport(1);
+	return (input_port_read_indexed(machine, 0) << 8) | input_port_read_indexed(machine, 1);
 }
 static READ16_HANDLER( ga_io_service_r )
 {
-	return (input_port_2_word_r(machine,0,0) << 8) | (sys16_workingram[0x2c96/2] & 0x00ff);
+	return (input_port_read_indexed(machine,2) << 8) | (sys16_workingram[0x2c96/2] & 0x00ff);
 }
 
 static ADDRESS_MAP_START( goldnaxe_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1228,10 +1228,10 @@ ADDRESS_MAP_END
 static WRITE16_HANDLER( ga_sound_command_w )
 {
 	COMBINE_DATA( &sys16_workingram[(0xecfc-0xc000)/2] );
-	if( ACCESSING_MSB )
+	if( ACCESSING_BITS_8_15 )
 {
 		soundlatch_w( machine,0,data>>8 );
-		cpunum_set_input_line(Machine, 1, 0, HOLD_LINE );
+		cpunum_set_input_line(machine, 1, 0, HOLD_LINE );
 	}
 }
 
@@ -1400,36 +1400,36 @@ static int passht4b_io3_val;
 
 static READ16_HANDLER( passht4b_service_r )
 {
-	UINT16 val=input_port_2_word_r(machine,offset,0);
-	if(!(readinputport(0) & 0x40)) val&=0xef;
-	if(!(readinputport(1) & 0x40)) val&=0xdf;
-	if(!(readinputport(5) & 0x40)) val&=0xbf;
-	if(!(readinputport(6) & 0x40)) val&=0x7f;
+	UINT16 val=input_port_read_indexed(machine,2);
+	if(!(input_port_read_indexed(machine, 0) & 0x40)) val&=0xef;
+	if(!(input_port_read_indexed(machine, 1) & 0x40)) val&=0xdf;
+	if(!(input_port_read_indexed(machine, 5) & 0x40)) val&=0xbf;
+	if(!(input_port_read_indexed(machine, 6) & 0x40)) val&=0x7f;
 
-	passht4b_io3_val=(readinputport(0)<<4) | (readinputport(5)&0xf);
-	passht4b_io2_val=(readinputport(1)<<4) | (readinputport(6)&0xf);
+	passht4b_io3_val=(input_port_read_indexed(machine, 0)<<4) | (input_port_read_indexed(machine, 5)&0xf);
+	passht4b_io2_val=(input_port_read_indexed(machine, 1)<<4) | (input_port_read_indexed(machine, 6)&0xf);
 
 	passht4b_io1_val=0xff;
 
 	// player 1 buttons
-	if(!(readinputport(0) & 0x10)) passht4b_io1_val &=0xfe;
-	if(!(readinputport(0) & 0x20)) passht4b_io1_val &=0xfd;
-	if(!(readinputport(0) & 0x80)) passht4b_io1_val &=0xfc;
+	if(!(input_port_read_indexed(machine, 0) & 0x10)) passht4b_io1_val &=0xfe;
+	if(!(input_port_read_indexed(machine, 0) & 0x20)) passht4b_io1_val &=0xfd;
+	if(!(input_port_read_indexed(machine, 0) & 0x80)) passht4b_io1_val &=0xfc;
 
 	// player 2 buttons
-	if(!(readinputport(1) & 0x10)) passht4b_io1_val &=0xfb;
-	if(!(readinputport(1) & 0x20)) passht4b_io1_val &=0xf7;
-	if(!(readinputport(1) & 0x80)) passht4b_io1_val &=0xf3;
+	if(!(input_port_read_indexed(machine, 1) & 0x10)) passht4b_io1_val &=0xfb;
+	if(!(input_port_read_indexed(machine, 1) & 0x20)) passht4b_io1_val &=0xf7;
+	if(!(input_port_read_indexed(machine, 1) & 0x80)) passht4b_io1_val &=0xf3;
 
 	// player 3 buttons
-	if(!(readinputport(5) & 0x10)) passht4b_io1_val &=0xef;
-	if(!(readinputport(5) & 0x20)) passht4b_io1_val &=0xdf;
-	if(!(readinputport(5) & 0x80)) passht4b_io1_val &=0xcf;
+	if(!(input_port_read_indexed(machine, 5) & 0x10)) passht4b_io1_val &=0xef;
+	if(!(input_port_read_indexed(machine, 5) & 0x20)) passht4b_io1_val &=0xdf;
+	if(!(input_port_read_indexed(machine, 5) & 0x80)) passht4b_io1_val &=0xcf;
 
 	// player 4 buttons
-	if(!(readinputport(6) & 0x10)) passht4b_io1_val &=0xbf;
-	if(!(readinputport(6) & 0x20)) passht4b_io1_val &=0x7f;
-	if(!(readinputport(6) & 0x80)) passht4b_io1_val &=0x3f;
+	if(!(input_port_read_indexed(machine, 6) & 0x10)) passht4b_io1_val &=0xbf;
+	if(!(input_port_read_indexed(machine, 6) & 0x20)) passht4b_io1_val &=0x7f;
+	if(!(input_port_read_indexed(machine, 6) & 0x80)) passht4b_io1_val &=0x3f;
 
 	return val;
 }
@@ -1908,11 +1908,11 @@ MACHINE_DRIVER_END
 /***************************************************************************/
 
 static READ16_HANDLER( tt_io_player1_r )
-{ return input_port_0_r( machine, offset ) << 8; }
+{ return input_port_read_indexed(machine,0) << 8; }
 static READ16_HANDLER( tt_io_player2_r )
-{ return input_port_1_r( machine, offset ) << 8; }
+{ return input_port_read_indexed(machine,1) << 8; }
 static READ16_HANDLER( tt_io_service_r )
-{ return input_port_2_r( machine, offset ) << 8; }
+{ return input_port_read_indexed(machine,2) << 8; }
 
 
 
@@ -2780,8 +2780,8 @@ ROM_END
 
 /* System16A */
 /*          rom       parent    machine   inp       init */
-GAME( 1987, shinoblb, shinobi,  shinob2,  shinobi,  shinobl,  ROT0,   "[Sega] (Beta bootleg)", "Shinobi (Beta bootleg)", 0 )
-GAME( 1987, shinobld, shinobi,  shinob2,  shinobi,  shinobl,  ROT0,   "[Sega] (Datsu bootleg)", "Shinobi (Datsu bootleg)", 0 )
+GAME( 1987, shinoblb, shinobi,  shinob2,  shinobi,  shinobl,  ROT0,   "[Sega] (Beta bootleg)", "Shinobi (Beta bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
+GAME( 1987, shinobld, shinobi,  shinob2,  shinobi,  shinobl,  ROT0,   "[Sega] (Datsu bootleg)", "Shinobi (Datsu bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND | GAME_NOT_WORKING )
 
 /* System16B */
 /*          rom       parent    machine   inp       init */
@@ -2796,8 +2796,8 @@ GAME( 1989, fpointbj, fpoint,   fpointbl, fpointbj, fpointbl, ROT0,   "bootleg",
 GAME( 1989, goldnabl, goldnaxe, goldnaxe, goldnaxe, goldnabl, ROT0,   "bootleg", "Golden Axe (bootleg, encrypted)", GAME_NOT_WORKING )
 GAME( 1989, goldnab2, goldnaxe, goldnaxe, goldnaxe, goldnabl, ROT0,   "bootleg", "Golden Axe (bootleg)", GAME_NOT_WORKING )
 
-GAME( 1988, passshtb, passsht,  passsht,  passsht,  passsht,  ROT270, "bootleg", "Passing Shot (2 Players) (bootleg)", GAME_IMPERFECT_SOUND )
+GAME( 1988, passshtb, passsht,  passsht,  passsht,  passsht,  ROT270, "bootleg", "Passing Shot (2 Players) (bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND )
 GAME( 1988, passht4b, passsht,  passht4b, passht4b, passht4b, ROT270, "bootleg", "Passing Shot (4 Players) (bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_NO_SOUND | GAME_NOT_WORKING )
 GAME( 1988, tetrisbl, tetris,   tetrisbl, tetris,   tetrisbl, ROT0,   "bootleg", "Tetris (bootleg)", 0 )
-GAME( 1989, tturfbl,  tturf,    tturfbl,  tturf,    tturfbl,  ROT0,   "bootleg", "Tough Turf (bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_NOT_WORKING )
+GAME( 1989, tturfbl,  tturf,    tturfbl,  tturf,    tturfbl,  ROT0,   "bootleg", "Tough Turf (bootleg)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_NOT_WORKING )
 GAME( 1988, wb3bbl,   wb3,      wb3bbl,   wb3b,     wb3bbl,   ROT0,   "bootleg", "Wonder Boy III - Monster Lair (bootleg)", 0 )

@@ -502,7 +502,7 @@ INLINE void update_bank(int bank)
 }
 
 
-static void slapstic_postload(void)
+static STATE_POSTLOAD( slapstic_postload )
 {
 	update_bank(slapstic_bank());
 }
@@ -521,7 +521,7 @@ static OPBASE_HANDLER( atarigen_slapstic_setopbase )
 		{
 			atarigen_slapstic_last_pc = pc;
 			atarigen_slapstic_last_address = address;
-			atarigen_slapstic_r(machine, (address >> 1) & 0x3fff, 0);
+			atarigen_slapstic_r(machine, (address >> 1) & 0x3fff, 0xffff);
 		}
 		return ~0;
 	}
@@ -549,7 +549,7 @@ void atarigen_slapstic_init(int cpunum, offs_t base, offs_t mirror, int chipnum)
 		slapstic_init(chipnum);
 
 		/* install the memory handlers */
-		atarigen_slapstic = memory_install_readwrite16_handler(cpunum, ADDRESS_SPACE_PROGRAM, base, base + 0x7fff, 0, mirror, atarigen_slapstic_r, atarigen_slapstic_w);
+		atarigen_slapstic = memory_install_readwrite16_handler(Machine, cpunum, ADDRESS_SPACE_PROGRAM, base, base + 0x7fff, 0, mirror, atarigen_slapstic_r, atarigen_slapstic_w);
 
 		/* allocate memory for a copy of bank 0 */
 		atarigen_slapstic_bank0 = auto_malloc(0x2000);
@@ -706,19 +706,19 @@ void atarigen_sound_reset(void)
 
 WRITE16_HANDLER( atarigen_sound_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_w);
 }
 
 WRITE16_HANDLER( atarigen_sound_upper_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		timer_call_after_resynch(NULL, (data >> 8) & 0xff, delayed_sound_w);
 }
 
 WRITE32_HANDLER( atarigen_sound_upper32_w )
 {
-	if (ACCESSING_MSB32)
+	if (ACCESSING_BITS_24_31)
 		timer_call_after_resynch(NULL, (data >> 24) & 0xff, delayed_sound_w);
 }
 
@@ -733,21 +733,21 @@ WRITE32_HANDLER( atarigen_sound_upper32_w )
 READ16_HANDLER( atarigen_sound_r )
 {
 	atarigen_sound_to_cpu_ready = 0;
-	atarigen_sound_int_ack_w(machine, 0, 0, 0);
+	atarigen_sound_int_ack_w(machine, 0, 0, 0xffff);
 	return atarigen_sound_to_cpu | 0xff00;
 }
 
 READ16_HANDLER( atarigen_sound_upper_r )
 {
 	atarigen_sound_to_cpu_ready = 0;
-	atarigen_sound_int_ack_w(machine, 0, 0, 0);
+	atarigen_sound_int_ack_w(machine, 0, 0, 0xffff);
 	return (atarigen_sound_to_cpu << 8) | 0x00ff;
 }
 
 READ32_HANDLER( atarigen_sound_upper32_r )
 {
 	atarigen_sound_to_cpu_ready = 0;
-	atarigen_sound_int_ack32_w(machine, 0, 0, 0);
+	atarigen_sound_int_ack32_w(machine, 0, 0, 0xffff);
 	return (atarigen_sound_to_cpu << 24) | 0x00ffffff;
 }
 
@@ -808,7 +808,7 @@ static TIMER_CALLBACK( delayed_sound_reset )
 
 	/* reset the sound write state */
 	atarigen_sound_to_cpu_ready = 0;
-	atarigen_sound_int_ack_w(machine, 0, 0, 0);
+	atarigen_sound_int_ack_w(machine, 0, 0, 0xffff);
 
 	/* allocate a high frequency timer until a response is generated */
 	/* the main CPU is *very* sensistive to the timing of the response */
@@ -1237,7 +1237,7 @@ static void atarivc_common_w(const device_config *screen, offs_t offset, UINT16 
 
 		/* scanline IRQ ack here */
 		case 0x1e:
-			atarigen_scanline_int_ack_w(screen->machine, 0, 0, 0);
+			atarigen_scanline_int_ack_w(screen->machine, 0, 0, 0xffff);
 			break;
 
 		/* log anything else */
@@ -1294,9 +1294,9 @@ WRITE16_HANDLER( atarigen_alpha_w )
 WRITE32_HANDLER( atarigen_alpha32_w )
 {
 	COMBINE_DATA(&atarigen_alpha32[offset]);
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
+	if (ACCESSING_BITS_16_31)
 		tilemap_mark_tile_dirty(atarigen_alpha_tilemap, offset * 2);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 		tilemap_mark_tile_dirty(atarigen_alpha_tilemap, offset * 2 + 1);
 }
 
@@ -1338,9 +1338,9 @@ WRITE16_HANDLER( atarigen_playfield_w )
 WRITE32_HANDLER( atarigen_playfield32_w )
 {
 	COMBINE_DATA(&atarigen_playfield32[offset]);
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
+	if (ACCESSING_BITS_16_31)
 		tilemap_mark_tile_dirty(atarigen_playfield_tilemap, offset * 2);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 		tilemap_mark_tile_dirty(atarigen_playfield_tilemap, offset * 2 + 1);
 }
 
@@ -1512,7 +1512,7 @@ WRITE16_HANDLER( atarigen_expanded_666_paletteram_w )
 {
 	COMBINE_DATA(&paletteram16[offset]);
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		int palentry = offset / 2;
 		int newword = (paletteram16[palentry * 2] & 0xff00) | (paletteram16[palentry * 2 + 1] >> 8);
@@ -1538,7 +1538,7 @@ WRITE32_HANDLER( atarigen_666_paletteram32_w )
 
 	COMBINE_DATA(&paletteram32[offset]);
 
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		newword = paletteram32[offset] >> 16;
 
@@ -1549,7 +1549,7 @@ WRITE32_HANDLER( atarigen_666_paletteram32_w )
 		palette_set_color_rgb(machine, offset * 2, pal6bit(r), pal6bit(g), pal6bit(b));
 	}
 
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 	{
 		newword = paletteram32[offset] & 0xffff;
 
@@ -1639,7 +1639,7 @@ void atarigen_blend_gfx(running_machine *machine, int gfx0, int gfx1, int mask0,
     SAVE STATE
 ***************************************************************************/
 
-void atarigen_init_save_state(void)
+void atarigen_init_save_state(running_machine *machine)
 {
 	state_save_register_global(atarigen_scanline_int_state);
 	state_save_register_global(atarigen_sound_int_state);
@@ -1683,5 +1683,5 @@ void atarigen_init_save_state(void)
 	state_save_register_global(playfield2_latch);
 
 	/* need a postload to reset the state */
-	state_save_register_func_postload(slapstic_postload);
+	state_save_register_postload(machine, slapstic_postload, NULL);
 }

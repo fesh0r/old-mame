@@ -53,11 +53,11 @@ extern VIDEO_UPDATE( deadang );
 
 static READ16_HANDLER( ghunter_trackball_low_r )
 {
-	return (readinputport(3) & 0xff) | ((readinputport(4) & 0xff) << 8);
+	return (input_port_read_indexed(machine, 3) & 0xff) | ((input_port_read_indexed(machine, 4) & 0xff) << 8);
 }
 static READ16_HANDLER( ghunter_trackball_high_r )
 {
-	return ((readinputport(3) & 0x0f00) >> 4) | (readinputport(4) & 0x0f00);
+	return ((input_port_read_indexed(machine, 3) & 0x0f00) >> 4) | (input_port_read_indexed(machine, 4) & 0x0f00);
 }
 
 /* Memory Maps */
@@ -82,7 +82,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x037ff) AM_RAM
-	AM_RANGE(0x03800, 0x03fff) AM_READWRITE(SMH_RAM, deadang_foreground_w) AM_BASE(&deadang_video_data)
+	AM_RANGE(0x03800, 0x03fff) AM_RAM_WRITE(deadang_foreground_w) AM_BASE(&deadang_video_data)
 	AM_RANGE(0x04000, 0x04fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x08000, 0x08001) AM_WRITE(deadang_bank_w)
 	AM_RANGE(0x0c000, 0x0c001) AM_WRITE(watchdog_reset16_w)
@@ -92,7 +92,7 @@ ADDRESS_MAP_END
 /* Input Ports */
 
 static INPUT_PORTS_START( deadang )
-	SEIBU_COIN_INPUTS	/* Must be port 0: coin inputs read through sound cpu */
+	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -130,7 +130,7 @@ static INPUT_PORTS_START( deadang )
 	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Cabinet) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x0080, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x0000, DEF_STR( Cocktail ) )
 	/* Dip switch B */
@@ -158,7 +158,7 @@ static INPUT_PORTS_START( deadang )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( ghunter )
-	SEIBU_COIN_INPUTS	/* Must be port 0: coin inputs read through sound cpu */
+	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -196,7 +196,7 @@ static INPUT_PORTS_START( ghunter )
 	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x0040, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Cabinet) )
+	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x0080, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x0000, DEF_STR( Cocktail ) )
 	/* Dip switch B */
@@ -462,8 +462,8 @@ static DRIVER_INIT( ghunter )
 	seibu_sound_decrypt(REGION_CPU3, 0x2000);
 	seibu_adpcm_decrypt(REGION_SOUND1);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80000, 0x80001, 0, 0, ghunter_trackball_low_r);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0001, 0, 0, ghunter_trackball_high_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80000, 0x80001, 0, 0, ghunter_trackball_low_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0001, 0, 0, ghunter_trackball_high_r);
 }
 
 /* Game Drivers */

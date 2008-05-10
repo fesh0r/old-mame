@@ -252,7 +252,7 @@ static MACHINE_START( redbaron )
 
 static INTERRUPT_GEN( bzone_interrupt )
 {
-	if (readinputport(0) & 0x10)
+	if (input_port_read_indexed(machine, 0) & 0x10)
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
@@ -268,7 +268,7 @@ READ8_HANDLER( bzone_IN0_r )
 {
 	int res;
 
-	res = readinputportbytag("IN0");
+	res = input_port_read(machine, "IN0");
 
 	if (activecpu_gettotalcycles() & 0x100)
 		res |= IN0_3KHZ;
@@ -299,7 +299,7 @@ static WRITE8_HANDLER( bzone_coin_counter_w )
 
 static READ8_HANDLER( redbaron_joy_r )
 {
-	return readinputport(rb_input_select ? 5 : 6);
+	return input_port_read_indexed(machine, rb_input_select ? 5 : 6);
 }
 
 
@@ -807,19 +807,19 @@ static READ8_HANDLER( analog_data_r )
 static WRITE8_HANDLER( analog_select_w )
 {
 	if (offset <= 2)
-		analog_data = readinputport(6 + offset);
+		analog_data = input_port_read_indexed(machine, 6 + offset);
 }
 
 
 static DRIVER_INIT( bradley )
 {
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x400, 0x7ff, 0, 0, SMH_BANK1, SMH_BANK1);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x400, 0x7ff, 0, 0, SMH_BANK1, SMH_BANK1);
 	memory_set_bankptr(1, auto_malloc(0x400));
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1808, 0x1808, 0, 0, input_port_4_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1809, 0x1809, 0, 0, input_port_5_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x180a, 0x180a, 0, 0, analog_data_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1848, 0x1850, 0, 0, analog_select_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1808, 0x1808, 0, 0, input_port_4_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1809, 0x1809, 0, 0, input_port_5_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x180a, 0x180a, 0, 0, analog_data_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1848, 0x1850, 0, 0, analog_select_w);
 }
 
 

@@ -174,10 +174,10 @@ static READ8_HANDLER( ttmahjng_input_port_matrix_r )
 
 	switch (ttmahjng_port_select)
 	{
-	case 1:  ret = readinputport(2); break;
-	case 2:  ret = readinputport(3); break;
-	case 4:  ret = readinputport(4); break;
-	case 8:  ret = readinputport(5); break;
+	case 1:  ret = input_port_read_indexed(machine, 2); break;
+	case 2:  ret = input_port_read_indexed(machine, 3); break;
+	case 4:  ret = input_port_read_indexed(machine, 4); break;
+	case 8:  ret = input_port_read_indexed(machine, 5); break;
 	default: break;
 	}
 
@@ -569,10 +569,12 @@ INPUT_PORTS_END
 
 static const struct AY8910interface stratvox_ay8910_interface =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	stratvox_sn76477_w,  /* SN76477 commands (not used in Route 16?) */
-	0
+	NULL
 };
 
 

@@ -129,7 +129,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/mips/mips3.h"
 #include "cpu/adsp2100/adsp2100.h"
 #include "machine/idectrl.h"
@@ -159,6 +158,38 @@ static const UINT8 *control_map;
 
 static MACHINE_START( kinst )
 {
+	const device_config *ide = device_list_find_by_tag(machine->config->devicelist, IDE_CONTROLLER, "ide");
+	UINT8 *features = ide_get_features(ide);
+
+	if (strncmp(machine->gamedrv->name, "kinst2", 6) != 0)
+	{
+		/* kinst: tweak the model number so we pass the check */
+		features[27*2+0] = 0x54;
+		features[27*2+1] = 0x53;
+		features[28*2+0] = 0x31;
+		features[28*2+1] = 0x39;
+		features[29*2+0] = 0x30;
+		features[29*2+1] = 0x35;
+		features[30*2+0] = 0x47;
+		features[30*2+1] = 0x41;
+		features[31*2+0] = 0x20;
+		features[31*2+1] = 0x20;
+	}
+	else
+	{
+		/* kinst2: tweak the model number so we pass the check */
+		features[10*2+0] = 0x30;
+		features[10*2+1] = 0x30;
+		features[11*2+0] = 0x54;
+		features[11*2+1] = 0x53;
+		features[12*2+0] = 0x31;
+		features[12*2+1] = 0x39;
+		features[13*2+0] = 0x30;
+		features[13*2+1] = 0x35;
+		features[14*2+0] = 0x47;
+		features[14*2+1] = 0x41;
+	}
+
 	/* set the fastest DRC options */
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS);
 
@@ -193,7 +224,7 @@ static MACHINE_START( kinst )
 static MACHINE_RESET( kinst )
 {
 	/* reset the IDE controller */
-	ide_controller_reset(0);
+	devtag_reset(machine, IDE_CONTROLLER, "ide");
 
 	/* set a safe base location for video */
 	video_base = &rambase[0x30000/4];
@@ -252,16 +283,10 @@ static INTERRUPT_GEN( irq0_start )
 }
 
 
-static void ide_interrupt(int state)
+static void ide_interrupt(const device_config *device, int state)
 {
-	cpunum_set_input_line(Machine, 0, 1, state);
+	cpunum_set_input_line(device->machine, 0, 1, state);
 }
-
-
-static const struct ide_interface ide_intf =
-{
-	ide_interrupt
-};
 
 
 
@@ -271,27 +296,27 @@ static const struct ide_interface ide_intf =
  *
  *************************************/
 
-static READ32_HANDLER( ide_controller_r )
+static READ32_DEVICE_HANDLER( kinst_ide_r )
 {
-	return midway_ide_asic_r(machine, offset / 2, mem_mask);
+	return midway_ide_asic_r(device, offset / 2, mem_mask);
 }
 
 
-static WRITE32_HANDLER( ide_controller_w )
+static WRITE32_DEVICE_HANDLER( kinst_ide_w )
 {
-	midway_ide_asic_w(machine, offset / 2, data, mem_mask);
+	midway_ide_asic_w(device, offset / 2, data, mem_mask);
 }
 
 
-static READ32_HANDLER( ide_controller_extra_r )
+static READ32_DEVICE_HANDLER( kinst_ide_extra_r )
 {
-	return ide_controller32_0_r(machine, 0x3f6/4, 0xff00ffff) >> 16;
+	return ide_controller32_r(device, 0x3f6/4, 0x00ff0000) >> 16;
 }
 
 
-static WRITE32_HANDLER( ide_controller_extra_w )
+static WRITE32_DEVICE_HANDLER( kinst_ide_extra_w )
 {
-	ide_controller32_0_w(machine, 0x3f6/4, data << 16, 0xff00ffff);
+	ide_controller32_w(device, 0x3f6/4, data << 16, 0x00ff0000);
 }
 
 
@@ -313,7 +338,7 @@ static READ32_HANDLER( kinst_control_r )
 	switch (offset)
 	{
 		case 2:		/* $90 -- sound return */
-			result = 0xffff0000 | readinputport(offset);
+			result = 0xffff0000 | input_port_read_indexed(machine, offset);
 			result &= ~0x0002;
 			if (dcs_control_r() & 0x800)
 				result |= 0x0002;
@@ -322,11 +347,11 @@ static READ32_HANDLER( kinst_control_r )
 		case 0:		/* $80 */
 		case 1:		/* $88 */
 		case 3:		/* $98 */
-			result = 0xffff0000 | readinputport(offset);
+			result = 0xffff0000 | input_port_read_indexed(machine, offset);
 			break;
 
 		case 4:		/* $a0 */
-			result = 0xffff0000 | readinputport(offset);
+			result = 0xffff0000 | input_port_read_indexed(machine, offset);
 			if (activecpu_get_pc() == 0x802d428)
 				cpu_spinuntil_int();
 			break;
@@ -412,8 +437,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0007ffff) AM_RAM AM_BASE(&rambase)
 	AM_RANGE(0x08000000, 0x087fffff) AM_RAM AM_BASE(&rambase2)
 	AM_RANGE(0x10000080, 0x100000ff) AM_READWRITE(kinst_control_r, kinst_control_w) AM_BASE(&kinst_control)
-	AM_RANGE(0x10000100, 0x1000013f) AM_READWRITE(ide_controller_r, ide_controller_w)
-	AM_RANGE(0x10000170, 0x10000173) AM_READWRITE(ide_controller_extra_r, ide_controller_extra_w)
+	AM_RANGE(0x10000100, 0x1000013f) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", kinst_ide_r, kinst_ide_w)
+	AM_RANGE(0x10000170, 0x10000173) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", kinst_ide_extra_r, kinst_ide_extra_w)
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rombase)
 ADDRESS_MAP_END
 
@@ -660,6 +685,8 @@ static MACHINE_DRIVER_START( kinst )
 	MDRV_MACHINE_START(kinst)
 	MDRV_MACHINE_RESET(kinst)
 
+	MDRV_IDE_CONTROLLER_ADD("ide", 0, ide_interrupt)
+
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK )
 
@@ -868,38 +895,20 @@ ROM_END
 static DRIVER_INIT( kinst )
 {
 	static const UINT8 kinst_control_map[8] = { 0,1,2,3,4,5,6,7 };
-	UINT8 *features;
 
 	dcs_init();
 
 	/* set up the control register mapping */
 	control_map = kinst_control_map;
 
-	/* spin up the hard disk */
-	ide_controller_init(0, &ide_intf);
-
-	/* tweak the model number so we pass the check */
-	features = ide_get_features(0);
-	features[27*2+0] = 0x54;
-	features[27*2+1] = 0x53;
-	features[28*2+0] = 0x31;
-	features[28*2+1] = 0x39;
-	features[29*2+0] = 0x30;
-	features[29*2+1] = 0x35;
-	features[30*2+0] = 0x47;
-	features[30*2+1] = 0x41;
-	features[31*2+0] = 0x20;
-	features[31*2+1] = 0x20;
-
 	/* optimize one of the non-standard loops */
-	kinst_speedup = memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x8808f5bc, 0x8808f5bf, 0, 0, kinst_speedup_r);
+	kinst_speedup = memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8808f5bc, 0x8808f5bf, 0, 0, kinst_speedup_r);
 }
 
 
 static DRIVER_INIT( kinst2 )
 {
 	static const UINT8 kinst2_control_map[8] = { 2,4,1,0,3,5,6,7 };
-	UINT8 *features;
 
 	// read: $80 on ki2 = $90 on ki
 	// read: $88 on ki2 = $a0 on ki
@@ -913,24 +922,8 @@ static DRIVER_INIT( kinst2 )
 	/* set up the control register mapping */
 	control_map = kinst2_control_map;
 
-	/* spin up the hard disk */
-	ide_controller_init(0, &ide_intf);
-
-	/* tweak the model number so we pass the check */
-	features = ide_get_features(0);
-	features[10*2+0] = 0x30;
-	features[10*2+1] = 0x30;
-	features[11*2+0] = 0x54;
-	features[11*2+1] = 0x53;
-	features[12*2+0] = 0x31;
-	features[12*2+1] = 0x39;
-	features[13*2+0] = 0x30;
-	features[13*2+1] = 0x35;
-	features[14*2+0] = 0x47;
-	features[14*2+1] = 0x41;
-
 	/* optimize one of the non-standard loops */
-	kinst_speedup = memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x887ff544, 0x887ff547, 0, 0, kinst_speedup_r);
+	kinst_speedup = memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x887ff544, 0x887ff547, 0, 0, kinst_speedup_r);
 }
 
 

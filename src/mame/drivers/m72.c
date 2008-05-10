@@ -195,37 +195,37 @@ static INTERRUPT_GEN(fake_nmi)
 static WRITE16_HANDLER( bchopper_sample_trigger_w )
 {
 	static const int a[6] = { 0x0000, 0x0010, 0x2510, 0x6510, 0x8510, 0x9310 };
-	if (ACCESSING_LSB && (data & 0xff) < 6) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 6) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( nspirit_sample_trigger_w )
 {
 	static const int a[9] = { 0x0000, 0x0020, 0x2020, 0, 0x5720, 0, 0x7b60, 0x9b60, 0xc360 };
-	if (ACCESSING_LSB && (data & 0xff) < 9) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 9) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( imgfight_sample_trigger_w )
 {
 	static const int a[7] = { 0x0000, 0x0020, 0x44e0, 0x98a0, 0xc820, 0xf7a0, 0x108c0 };
-	if (ACCESSING_LSB && (data & 0xff) < 7) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 7) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( loht_sample_trigger_w )
 {
 	static const int a[7] = { 0x0000, 0x0020, 0, 0x2c40, 0x4320, 0x7120, 0xb200 };
-	if (ACCESSING_LSB && (data & 0xff) < 7) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 7) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( xmultipl_sample_trigger_w )
 {
 	static const int a[3] = { 0x0000, 0x0020, 0x1a40 };
-	if (ACCESSING_LSB && (data & 0xff) < 3) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 3) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( dbreed72_sample_trigger_w )
 {
 	static const int a[9] = { 0x00000, 0x00020, 0x02c40, 0x08160, 0x0c8c0, 0x0ffe0, 0x13000, 0x15820, 0x15f40 };
-	if (ACCESSING_LSB && (data & 0xff) < 9) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 9) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( airduel_sample_trigger_w )
@@ -233,7 +233,7 @@ static WRITE16_HANDLER( airduel_sample_trigger_w )
 	static const int a[16] = {
 		0x00000, 0x00020, 0x03ec0, 0x05640, 0x06dc0, 0x083a0, 0x0c000, 0x0eb60,
 		0x112e0, 0x13dc0, 0x16520, 0x16d60, 0x18ae0, 0x1a5a0, 0x1bf00, 0x1c340 };
-	if (ACCESSING_LSB && (data & 0xff) < 16) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 16) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( dkgenm72_sample_trigger_w )
@@ -244,7 +244,7 @@ static WRITE16_HANDLER( dkgenm72_sample_trigger_w )
 		0x10fa0, 0x10fc0, 0x10fe0, 0x11f40, 0x12b20, 0x130a0, 0x13c60, 0x14740,
 		0x153c0, 0x197e0, 0x1af40, 0x1c080 };
 
-	if (ACCESSING_LSB && (data & 0xff) < 28) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 28) m72_set_sample_start(a[data & 0xff]);
 }
 
 static WRITE16_HANDLER( gallop_sample_trigger_w )
@@ -255,7 +255,7 @@ static WRITE16_HANDLER( gallop_sample_trigger_w )
 		0x10200, 0x10220, 0x10240, 0x11380, 0x12760, 0x12780, 0x127a0, 0x13c40,
 		0x140a0, 0x16760, 0x17e40, 0x18ee0, 0x19f60, 0x1bbc0, 0x1cee0 };
 
-	if (ACCESSING_LSB && (data & 0xff) < 31) m72_set_sample_start(a[data & 0xff]);
+	if (ACCESSING_BITS_0_7 && (data & 0xff) < 31) m72_set_sample_start(a[data & 0xff]);
 }
 
 
@@ -460,7 +460,7 @@ static void copy_le(UINT16 *dest, const UINT8 *src, UINT8 bytes)
 
 static READ16_HANDLER( protection_r )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		copy_le(protection_ram,protection_code,CODE_LEN);
 	return protection_ram[0xffa/2+offset];
 }
@@ -471,61 +471,61 @@ static WRITE16_HANDLER( protection_w )
 	COMBINE_DATA(&protection_ram[offset]);
 	data ^= 0xffff;
 
-	if (offset == 0x0fff/2 && ACCESSING_MSB && (data >> 8) == 0)
+	if (offset == 0x0fff/2 && ACCESSING_BITS_8_15 && (data >> 8) == 0)
 		copy_le(&protection_ram[0x0fe0],protection_crc,CRC_LEN);
 }
 
-static void install_protection_handler(const UINT8 *code,const UINT8 *crc)
+static void install_protection_handler(running_machine *machine, const UINT8 *code,const UINT8 *crc)
 {
 	protection_ram = auto_malloc(0x1000);
 	protection_code = code;
 	protection_crc =  crc;
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, SMH_BANK1);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0ffa, 0xb0ffb, 0, 0, protection_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, protection_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, SMH_BANK1);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0ffa, 0xb0ffb, 0, 0, protection_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, protection_w);
 	memory_set_bankptr(1, protection_ram);
 }
 
 static DRIVER_INIT( bchopper )
 {
-	install_protection_handler(bchopper_code,bchopper_crc);
+	install_protection_handler(machine, bchopper_code,bchopper_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
 }
 
 static DRIVER_INIT( mrheli )
 {
-	install_protection_handler(bchopper_code,mrheli_crc);
+	install_protection_handler(machine, bchopper_code,mrheli_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, bchopper_sample_trigger_w);
 }
 
 static DRIVER_INIT( nspirit )
 {
-	install_protection_handler(nspirit_code,nspirit_crc);
+	install_protection_handler(machine, nspirit_code,nspirit_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
 }
 
 static DRIVER_INIT( nspiritj )
 {
-	install_protection_handler(nspirit_code,nspiritj_crc);
+	install_protection_handler(machine, nspirit_code,nspiritj_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, nspirit_sample_trigger_w);
 }
 
 static DRIVER_INIT( imgfight )
 {
-	install_protection_handler(imgfight_code,imgfight_crc);
+	install_protection_handler(machine, imgfight_code,imgfight_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, imgfight_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, imgfight_sample_trigger_w);
 }
 
 static DRIVER_INIT( loht )
 {
-	install_protection_handler(loht_code,loht_crc);
+	install_protection_handler(machine, loht_code,loht_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
 
 	/* since we skip the startup tests, clear video RAM to prevent garbage on title screen */
 	memset(m72_videoram2,0,0x4000);
@@ -546,45 +546,44 @@ static DRIVER_INIT( loht_mcu )
 
 	protection_ram = auto_malloc(0x10000);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, m72_main_mcu_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, m72_main_mcu_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xb0fff, 0, 0, m72_main_mcu_r, m72_main_mcu_w);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, loht_sample_trigger_w);
 
 }
 
 
 static DRIVER_INIT( xmultipl )
 {
-	install_protection_handler(xmultipl_code,xmultipl_crc);
+	install_protection_handler(machine, xmultipl_code,xmultipl_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, xmultipl_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, xmultipl_sample_trigger_w);
 }
 
 static DRIVER_INIT( dbreed72 )
 {
-	install_protection_handler(dbreed72_code,dbreed72_crc);
+	install_protection_handler(machine, dbreed72_code,dbreed72_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, dbreed72_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, dbreed72_sample_trigger_w);
 }
 
 static DRIVER_INIT( airduel )
 {
-	install_protection_handler(airduel_code,airduel_crc);
+	install_protection_handler(machine, airduel_code,airduel_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, airduel_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, airduel_sample_trigger_w);
 }
 
 static DRIVER_INIT( dkgenm72 )
 {
-	install_protection_handler(dkgenm72_code,dkgenm72_crc);
+	install_protection_handler(machine, dkgenm72_code,dkgenm72_crc);
 
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, dkgenm72_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, dkgenm72_sample_trigger_w);
 }
 
 static DRIVER_INIT( gallop )
 {
-	memory_install_write16_handler(0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, gallop_sample_trigger_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_IO, 0xc0, 0xc1, 0, 0, gallop_sample_trigger_w);
 }
 
 
@@ -600,9 +599,9 @@ static READ16_HANDLER( soundram_r )
 
 static WRITE16_HANDLER( soundram_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		soundram[offset * 2 + 0] = data;
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		soundram[offset * 2 + 1] = data >> 8;
 }
 
@@ -617,7 +616,7 @@ static READ16_HANDLER( poundfor_trackball_r )
 
 		for (i = 0;i < 4;i++)
 		{
-			curr = readinputport(3+i);
+			curr = input_port_read_indexed(machine, 3+i);
 			diff[i] = (curr - prev[i]);
 			prev[i] = curr;
 		}
@@ -629,7 +628,7 @@ static READ16_HANDLER( poundfor_trackball_r )
 		case 0:
 			return (diff[0] & 0xff) | ((diff[2] & 0xff) << 8);
 		case 1:
-			return ((diff[0] >> 8) & 0x1f) | (diff[2] & 0x1f00) | (readinputport(0) & 0xe0e0);
+			return ((diff[0] >> 8) & 0x1f) | (diff[2] & 0x1f00) | (input_port_read_indexed(machine, 0) & 0xe0e0);
 		case 2:
 			return (diff[1] & 0xff) | ((diff[3] & 0xff) << 8);
 		case 3:
@@ -645,8 +644,8 @@ static ADDRESS_MAP_START( NAME##_map, ADDRESS_SPACE_PROGRAM, 16 )		\
 	AM_RANGE(0xc0000, 0xc03ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	\
 	AM_RANGE(0xc8000, 0xc8bff) AM_READWRITE(m72_palette1_r, m72_palette1_w) AM_BASE(&paletteram16)			\
 	AM_RANGE(0xcc000, 0xccbff) AM_READWRITE(m72_palette2_r, m72_palette2_w) AM_BASE(&paletteram16_2)		\
-	AM_RANGE(0xd0000, 0xd3fff) AM_READWRITE(SMH_RAM, m72_videoram1_w) AM_BASE(&m72_videoram1)		\
-	AM_RANGE(0xd8000, 0xdbfff) AM_READWRITE(SMH_RAM, m72_videoram2_w) AM_BASE(&m72_videoram2)		\
+	AM_RANGE(0xd0000, 0xd3fff) AM_RAM_WRITE(m72_videoram1_w) AM_BASE(&m72_videoram1)		\
+	AM_RANGE(0xd8000, 0xdbfff) AM_RAM_WRITE(m72_videoram2_w) AM_BASE(&m72_videoram2)		\
 	AM_RANGE(0xe0000, 0xeffff) AM_READWRITE(soundram_r, soundram_w)							\
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM										\
 ADDRESS_MAP_END
@@ -665,8 +664,8 @@ static ADDRESS_MAP_START( dbreed_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc0000, 0xc03ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xc8000, 0xc8bff) AM_READWRITE(m72_palette1_r, m72_palette1_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xcc000, 0xccbff) AM_READWRITE(m72_palette2_r, m72_palette2_w) AM_BASE(&paletteram16_2)
-	AM_RANGE(0xd0000, 0xd3fff) AM_READWRITE(SMH_RAM, m72_videoram1_w) AM_BASE(&m72_videoram1)
-	AM_RANGE(0xd8000, 0xdbfff) AM_READWRITE(SMH_RAM, m72_videoram2_w) AM_BASE(&m72_videoram2)
+	AM_RANGE(0xd0000, 0xd3fff) AM_RAM_WRITE(m72_videoram1_w) AM_BASE(&m72_videoram1)
+	AM_RANGE(0xd8000, 0xdbfff) AM_RAM_WRITE(m72_videoram2_w) AM_BASE(&m72_videoram2)
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -676,8 +675,8 @@ static ADDRESS_MAP_START( rtype2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xbc000, 0xbc001) AM_WRITE(m72_dmaon_w)
 	AM_RANGE(0xc0000, 0xc03ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xc8000, 0xc8bff) AM_READWRITE(m72_palette1_r, m72_palette1_w) AM_BASE(&paletteram16)
-	AM_RANGE(0xd0000, 0xd3fff) AM_READWRITE(SMH_RAM, m72_videoram1_w) AM_BASE(&m72_videoram1)
-	AM_RANGE(0xd4000, 0xd7fff) AM_READWRITE(SMH_RAM, m72_videoram2_w) AM_BASE(&m72_videoram2)
+	AM_RANGE(0xd0000, 0xd3fff) AM_RAM_WRITE(m72_videoram1_w) AM_BASE(&m72_videoram1)
+	AM_RANGE(0xd4000, 0xd7fff) AM_RAM_WRITE(m72_videoram2_w) AM_BASE(&m72_videoram2)
 	AM_RANGE(0xd8000, 0xd8bff) AM_READWRITE(m72_palette2_r, m72_palette2_w) AM_BASE(&paletteram16_2)
 	AM_RANGE(0xe0000, 0xe3fff) AM_RAM	/* work RAM */
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM
@@ -687,8 +686,8 @@ static ADDRESS_MAP_START( majtitle_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x7ffff) AM_ROM
 	AM_RANGE(0xa0000, 0xa03ff) AM_RAM AM_BASE(&majtitle_rowscrollram)
 	AM_RANGE(0xa4000, 0xa4bff) AM_READWRITE(m72_palette2_r, m72_palette2_w) AM_BASE(&paletteram16_2)
-	AM_RANGE(0xac000, 0xaffff) AM_READWRITE(SMH_RAM, m72_videoram1_w) AM_BASE(&m72_videoram1)
-	AM_RANGE(0xb0000, 0xbffff) AM_READWRITE(SMH_RAM, m72_videoram2_w) AM_BASE(&m72_videoram2)	/* larger than the other games */
+	AM_RANGE(0xac000, 0xaffff) AM_RAM_WRITE(m72_videoram1_w) AM_BASE(&m72_videoram1)
+	AM_RANGE(0xb0000, 0xbffff) AM_RAM_WRITE(m72_videoram2_w) AM_BASE(&m72_videoram2)	/* larger than the other games */
 	AM_RANGE(0xc0000, 0xc03ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xc8000, 0xc83ff) AM_RAM AM_BASE(&spriteram16_2)
 	AM_RANGE(0xcc000, 0xccbff) AM_READWRITE(m72_palette1_r, m72_palette1_w) AM_BASE(&paletteram16)
@@ -706,8 +705,8 @@ static ADDRESS_MAP_START( hharry_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc0000, 0xc03ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xc8000, 0xc8bff) AM_READWRITE(m72_palette1_r, m72_palette1_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xcc000, 0xccbff) AM_READWRITE(m72_palette2_r, m72_palette2_w) AM_BASE(&paletteram16_2)
-	AM_RANGE(0xd0000, 0xd3fff) AM_READWRITE(SMH_RAM, m72_videoram1_w) AM_BASE(&m72_videoram1)
-	AM_RANGE(0xd8000, 0xdbfff) AM_READWRITE(SMH_RAM, m72_videoram2_w) AM_BASE(&m72_videoram2)
+	AM_RANGE(0xd0000, 0xd3fff) AM_RAM_WRITE(m72_videoram1_w) AM_BASE(&m72_videoram1)
+	AM_RANGE(0xd8000, 0xdbfff) AM_RAM_WRITE(m72_videoram2_w) AM_BASE(&m72_videoram2)
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM
 ADDRESS_MAP_END
 
@@ -719,8 +718,8 @@ static ADDRESS_MAP_START( hharryu_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xbc000, 0xbc001) AM_WRITE(m72_dmaon_w)
 	AM_RANGE(0xb0ffe, 0xb0fff) AM_WRITE(SMH_RAM)	/* leftover from protection?? */
 	AM_RANGE(0xc0000, 0xc03ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0xd0000, 0xd3fff) AM_READWRITE(SMH_RAM, m72_videoram1_w) AM_BASE(&m72_videoram1)
-	AM_RANGE(0xd4000, 0xd7fff) AM_READWRITE(SMH_RAM, m72_videoram2_w) AM_BASE(&m72_videoram2)
+	AM_RANGE(0xd0000, 0xd3fff) AM_RAM_WRITE(m72_videoram1_w) AM_BASE(&m72_videoram1)
+	AM_RANGE(0xd4000, 0xd7fff) AM_RAM_WRITE(m72_videoram2_w) AM_BASE(&m72_videoram2)
 	AM_RANGE(0xe0000, 0xe3fff) AM_RAM	/* work RAM */
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM
 ADDRESS_MAP_END
@@ -733,8 +732,8 @@ static ADDRESS_MAP_START( kengo_map, ADDRESS_SPACE_PROGRAM, 16 )
 AM_RANGE(0xb4000, 0xb4001) AM_WRITE(SMH_NOP)	/* ??? */
 	AM_RANGE(0xbc000, 0xbc001) AM_WRITE(m72_dmaon_w)
 	AM_RANGE(0xc0000, 0xc03ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
-	AM_RANGE(0x80000, 0x83fff) AM_READWRITE(SMH_RAM, m72_videoram1_w) AM_BASE(&m72_videoram1)
-	AM_RANGE(0x84000, 0x87fff) AM_READWRITE(SMH_RAM, m72_videoram2_w) AM_BASE(&m72_videoram2)
+	AM_RANGE(0x80000, 0x83fff) AM_RAM_WRITE(m72_videoram1_w) AM_BASE(&m72_videoram1)
+	AM_RANGE(0x84000, 0x87fff) AM_RAM_WRITE(m72_videoram2_w) AM_BASE(&m72_videoram2)
 	AM_RANGE(0xe0000, 0xe3fff) AM_RAM	/* work RAM */
 	AM_RANGE(0xffff0, 0xfffff) AM_ROM
 ADDRESS_MAP_END

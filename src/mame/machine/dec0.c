@@ -20,13 +20,13 @@ READ16_HANDLER( dec0_controls_r )
 	switch (offset<<1)
 	{
 		case 0: /* Player 1 & 2 joystick & buttons */
-			return (readinputport(0) + (readinputport(1) << 8));
+			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
 
 		case 2: /* Credits, start buttons */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 
 		case 4: /* Byte 4: Dipswitch bank 2, Byte 5: Dipswitch Bank 1 */
-			return (readinputport(3) + (readinputport(4) << 8));
+			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
 
 		case 8: /* Intel 8751 mc, Bad Dudes & Heavy Barrel only */
 			//logerror("CPU #0 PC %06x: warning - read unmapped memory address %06x\n",activecpu_get_pc(),0x30c000+offset);
@@ -44,10 +44,10 @@ READ16_HANDLER( dec0_rotary_r )
 	switch (offset<<1)
 	{
 		case 0: /* Player 1 rotary */
-			return ~(1 << (readinputport(5) * 12 / 256));
+			return ~(1 << (input_port_read_indexed(machine, 5) * 12 / 256));
 
 		case 8: /* Player 2 rotary */
-			return ~(1 << (readinputport(6) * 12 / 256));
+			return ~(1 << (input_port_read_indexed(machine, 6) * 12 / 256));
 
 		default:
 			logerror("Unknown rotary read at 300000 %02x\n",offset);
@@ -63,19 +63,19 @@ READ16_HANDLER( midres_controls_r )
 	switch (offset<<1)
 	{
 		case 0: /* Player 1 Joystick + start, Player 2 Joystick + start */
-			return (readinputport(0) + (readinputport(1) << 8));
+			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
 
 		case 2: /* Dipswitches */
-			return (readinputport(3) + (readinputport(4) << 8));
+			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
 
 		case 4: /* Player 1 rotary */
-			return ~(1 << (readinputport(5) * 12 / 256));
+			return ~(1 << (input_port_read_indexed(machine, 5) * 12 / 256));
 
 		case 6: /* Player 2 rotary */
-			return ~(1 << (readinputport(6) * 12 / 256));
+			return ~(1 << (input_port_read_indexed(machine, 6) * 12 / 256));
 
 		case 8: /* Credits, start buttons */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 
 		case 12:
 			return 0;	/* ?? watchdog ?? */
@@ -92,13 +92,13 @@ READ16_HANDLER( slyspy_controls_r )
 	switch (offset<<1)
 	{
 		case 0: /* Dip Switches */
-			return (readinputport(3) + (readinputport(4) << 8));
+			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
 
 		case 2: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (readinputport(0) + (readinputport(1) << 8));
+			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
 
 		case 4: /* Credits */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 	}
 
 	logerror("Unknown control read at 30c000 %d\n",offset);
@@ -527,7 +527,7 @@ static WRITE16_HANDLER( robocop_68000_share_w )
 	robocop_shared_ram[offset]=data&0xff;
 
 	if (offset==0x7ff) /* A control address - not standard ram */
-		cpunum_set_input_line(Machine, 2,0,HOLD_LINE);
+		cpunum_set_input_line(machine, 2,0,HOLD_LINE);
 }
 
 /******************************************************************************/
@@ -546,9 +546,8 @@ DRIVER_INIT( hippodrm )
 {
 	UINT8 *RAM = memory_region(REGION_CPU3);
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x180000, 0x180fff, 0, 0, hippodrm_68000_share_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x180000, 0x180fff, 0, 0, hippodrm_68000_share_w);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xffc800, 0xffcfff, 0, 0, sprite_mirror_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x180000, 0x180fff, 0, 0, hippodrm_68000_share_r, hippodrm_68000_share_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xffc800, 0xffcfff, 0, 0, sprite_mirror_w);
 
 	h6280_decrypt(REGION_CPU3);
 
@@ -572,8 +571,7 @@ DRIVER_INIT( slyspy )
 
 DRIVER_INIT( robocop )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x180000, 0x180fff, 0, 0, robocop_68000_share_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x180000, 0x180fff, 0, 0, robocop_68000_share_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x180000, 0x180fff, 0, 0, robocop_68000_share_r, robocop_68000_share_w);
 }
 
 DRIVER_INIT( baddudes )

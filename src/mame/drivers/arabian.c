@@ -148,7 +148,7 @@ static READ8_HANDLER( custom_cpu_r )
 		case 3:
 		case 4:
 		case 5:
-			return readinputport(2 + offset);
+			return input_port_read_indexed(machine, 2 + offset);
 
 		/* busy flag; this is polled to check the custom CPU's readiness */
 		/* we just toggle it on and off until the main CPU gets the result */
@@ -332,8 +332,10 @@ INPUT_PORTS_END
 
 static const struct AY8910interface ay8910_interface =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	ay8910_porta_w,
 	ay8910_portb_w
 };
@@ -422,8 +424,8 @@ ROM_END
 
 static DRIVER_INIT( arabian )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd34b, 0xd34b, 0, 0, custom_flip_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd400, 0xd401, 0, 0, custom_cocktail_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd34b, 0xd34b, 0, 0, custom_flip_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd400, 0xd401, 0, 0, custom_cocktail_w);
 }
 
 

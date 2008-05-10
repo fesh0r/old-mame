@@ -1471,6 +1471,8 @@ static WRITE8_HANDLER( sound_output_w )
 
 static const struct AY8910interface demon_ay8910_interface_1 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	sound_porta_r,
 	sound_portb_r,
 	0,
@@ -1479,6 +1481,8 @@ static const struct AY8910interface demon_ay8910_interface_1 =
 
 static const struct AY8910interface demon_ay8910_interface_3 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	0,
 	0,
 	0,
@@ -1517,7 +1521,7 @@ static MACHINE_RESET( demon_sound )
 	last_portb_write = 0xff;
 
 	/* turn off channel A on AY8910 #0 because it is used as a low-pass filter */
-	AY8910_set_volume(0, 0, 0);
+	ay8910_set_volume(0, 0, 0);
 }
 
 
@@ -1595,7 +1599,7 @@ static WRITE8_HANDLER( qb3_sound_w )
 static MACHINE_RESET( qb3_sound )
 {
 	MACHINE_RESET_CALL(demon_sound);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, qb3_sound_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x04, 0x04, 0, 0, qb3_sound_w);
 
 	/* this patch prevents the sound ROM from eating itself when command $0A is sent */
 	/* on a cube rotate */

@@ -51,15 +51,15 @@ static READ32_HANDLER( eeprom_r )
 {
 	UINT32 r = 0;
 
-	if (!(mem_mask & 0xff000000))
-		r |= (((EEPROM_read_bit()) << 1) | (readinputport(6) << 3)) << 24;
+	if (ACCESSING_BITS_24_31)
+		r |= (((EEPROM_read_bit()) << 1) | (input_port_read_indexed(machine, 6) << 3)) << 24;
 
 	return r;
 }
 
 static WRITE32_HANDLER( eeprom_w )
 {
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		EEPROM_write_bit((data & 0x01000000) ? 1 : 0);
 		EEPROM_set_clock_line((data & 0x02000000) ? CLEAR_LINE : ASSERT_LINE);
@@ -69,12 +69,12 @@ static WRITE32_HANDLER( eeprom_w )
 
 static READ32_HANDLER( control1_r )
 {
-	return (readinputport(0) << 28) | ((readinputport(1) & 0xfff) << 16) | (readinputport(2) & 0xfff);
+	return (input_port_read_indexed(machine, 0) << 28) | ((input_port_read_indexed(machine, 1) & 0xfff) << 16) | (input_port_read_indexed(machine, 2) & 0xfff);
 }
 
 static READ32_HANDLER( control2_r )
 {
-	return (readinputport(3) << 28) | ((readinputport(4) & 0xfff) << 16) | (readinputport(5) & 0xfff);
+	return (input_port_read_indexed(machine, 3) << 28) | ((input_port_read_indexed(machine, 4) & 0xfff) << 16) | (input_port_read_indexed(machine, 5) & 0xfff);
 }
 
 static WRITE32_HANDLER( int_ack_w )
@@ -92,7 +92,7 @@ static ADDRESS_MAP_START( ultrsprt_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x70000088, 0x7000008f) AM_READ(K056800_host_r)
 	AM_RANGE(0x700000e0, 0x700000e3) AM_WRITE(int_ack_w)
 	AM_RANGE(0x7f000000, 0x7f01ffff) AM_RAM
-	AM_RANGE(0x7f700000, 0x7f703fff) AM_READWRITE(SMH_RAM, palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x7f700000, 0x7f703fff) AM_RAM_WRITE(palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x7fa00000, 0x7fbfffff) AM_ROM AM_SHARE(1)
 	AM_RANGE(0x7fc00000, 0x7fdfffff) AM_ROM AM_SHARE(1)
 	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(1)
@@ -107,10 +107,10 @@ static READ16_HANDLER( sound_r )
 	UINT16 r = 0;
 	int reg = offset * 2;
 
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		r |= K054539_0_r(machine, reg+0) << 8;
 
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		r |= K054539_0_r(machine, reg+1) << 0;
 
 	return r;
@@ -120,10 +120,10 @@ static WRITE16_HANDLER( sound_w )
 {
 	int reg = offset * 2;
 
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		K054539_0_w(machine, reg+0, (data >> 8) & 0xff);
 
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		K054539_0_w(machine, reg+1, (data >> 0) & 0xff);
 }
 
@@ -131,10 +131,10 @@ static READ16_HANDLER( K056800_68k_r )
 {
 	UINT16 r = 0;
 
-	if (!(mem_mask & 0xff00))
+	if (ACCESSING_BITS_8_15)
 		r |= K056800_sound_r(machine, (offset*2)+0, 0xffff) << 8;
 
-	if (!(mem_mask & 0x00ff))
+	if (ACCESSING_BITS_0_7)
 		r |= K056800_sound_r(machine, (offset*2)+1, 0xffff) << 0;
 
 	return r;
@@ -142,11 +142,11 @@ static READ16_HANDLER( K056800_68k_r )
 
 static WRITE16_HANDLER( K056800_68k_w )
 {
-	if (!(mem_mask & 0xff00))
-		K056800_sound_w(machine, (offset*2)+0, (data >> 8) & 0xff, 0xffff);
+	if (ACCESSING_BITS_8_15)
+		K056800_sound_w(machine, (offset*2)+0, (data >> 8) & 0xff, 0x00ff);
 
-	if (!(mem_mask & 0x00ff))
-		K056800_sound_w(machine, (offset*2)+1, (data >> 0) & 0xff, 0xffff);
+	if (ACCESSING_BITS_0_7)
+		K056800_sound_w(machine, (offset*2)+1, (data >> 0) & 0xff, 0x00ff);
 }
 
 static ADDRESS_MAP_START( sound_map, ADDRESS_SPACE_PROGRAM, 16 )

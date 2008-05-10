@@ -164,7 +164,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
@@ -337,9 +336,9 @@ static CUSTOM_INPUT( kikstart_gear_r )
 		port_tag = "GEARP2";
 
 	/* gear MUST be 1, 2 or 3 */
-	if (readinputportbytag(port_tag) & 0x01) kikstart_gears[player] = 0x02;
-	if (readinputportbytag(port_tag) & 0x02) kikstart_gears[player] = 0x03;
-	if (readinputportbytag(port_tag) & 0x04) kikstart_gears[player] = 0x01;
+	if (input_port_read(machine, port_tag) & 0x01) kikstart_gears[player] = 0x02;
+	if (input_port_read(machine, port_tag) & 0x02) kikstart_gears[player] = 0x03;
+	if (input_port_read(machine, port_tag) & 0x04) kikstart_gears[player] = 0x01;
 
 	return kikstart_gears[player];
 }
@@ -552,7 +551,7 @@ static INPUT_PORTS_START( spaceskr )
 	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x18, 0x18, DEF_STR( Lives ) )
+	PORT_DIPNAME( 0x18, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x08, "4" )
 	PORT_DIPSETTING(    0x10, "5" )
@@ -561,9 +560,9 @@ static INPUT_PORTS_START( spaceskr )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x80, 0x00, DEF_STR( Cabinet ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
 	PORT_START_TAG("DSW2")      /* Coinage */
 	DSW2_PORT
@@ -1826,31 +1825,41 @@ static WRITE8_HANDLER( dac_vol_w )
 
 static const struct AY8910interface ay8910_interface_1 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_6_r,
-	input_port_7_r
+	input_port_7_r,
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface ay8910_interface_2 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	dac_out_w,	/* port Awrite */
 	dac_vol_w	/* port Bwrite */
 };
 
 static const struct AY8910interface ay8910_interface_3 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	input_port_4_f0_w,
-	0
+	NULL
 };
 
 static const struct AY8910interface ay8910_interface_4 =
 {
-	0,
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
+	NULL,
 	taitosj_sndnmi_msk_w	/* port Bwrite */
 };
 
@@ -2608,27 +2617,27 @@ ROM_END
 static DRIVER_INIT( spacecr )
 {
 	/* install protection handler */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd48b, 0xd48b, 0, 0, spacecr_prot_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd48b, 0xd48b, 0, 0, spacecr_prot_r);
 }
 
 static DRIVER_INIT( alpine )
 {
 	/* install protection handlers */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd40b, 0xd40b, 0, 0, alpine_port_2_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd50f, 0xd50f, 0, 0, alpine_protection_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd40b, 0xd40b, 0, 0, alpine_port_2_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd50f, 0xd50f, 0, 0, alpine_protection_w);
 }
 
 static DRIVER_INIT( alpinea )
 {
 	/* install protection handlers */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd40b, 0xd40b, 0, 0, alpine_port_2_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd50e, 0xd50e, 0, 0, alpinea_bankswitch_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd40b, 0xd40b, 0, 0, alpine_port_2_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd50e, 0xd50e, 0, 0, alpinea_bankswitch_w);
 }
 
 static DRIVER_INIT( junglhbr )
 {
 	/* inverter on bits 0 and 1 */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0xbfff, 0, 0, junglhbr_characterram_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0xbfff, 0, 0, junglhbr_characterram_w);
 }
 
 static DRIVER_INIT( kikstart )
@@ -2647,7 +2656,7 @@ void taitosj_register_main_savestate(void)
 	state_save_register_global(dac_vol);
 }
 
-GAME( 1981, spaceskr, 0,        nomcu,    spaceskr,   0,       ROT180, "Taito Corporation", "Space Seeker", GAME_SUPPORTS_SAVE )
+GAME( 1981, spaceskr, 0,        nomcu,    spaceskr,   0,       ROT0,   "Taito Corporation", "Space Seeker", GAME_SUPPORTS_SAVE )
 GAME( 1981, spacecr,  0,        nomcu,    spacecr,    spacecr, ROT90,  "Taito Corporation", "Space Cruiser", GAME_SUPPORTS_SAVE )
 GAME( 1982, junglek,  0,        nomcu,    junglek,    0,       ROT180, "Taito Corporation", "Jungle King (Japan)", GAME_SUPPORTS_SAVE )
 GAME( 1982, junglkj2, junglek,  nomcu,    junglek,    0,       ROT180, "Taito Corporation", "Jungle King (Japan, earlier)", GAME_SUPPORTS_SAVE )

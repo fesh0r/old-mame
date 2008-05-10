@@ -231,20 +231,20 @@ static READ32_HANDLER(backfire_eeprom_r)
 {
 	/* some kind of screen indicator?  checked by backfira set before it will boot */
 	int backfire_screen = mame_rand(Machine)&1;
-	return ((EEPROM_read_bit()<<24) | readinputport(0) | (readinputport(3)<<16)) ^  (backfire_screen << 26) ;
+	return ((EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 0) | (input_port_read_indexed(machine, 3)<<16)) ^  (backfire_screen << 26) ;
 }
 
 static READ32_HANDLER(backfire_control2_r)
 {
 //  logerror("%08x:Read eprom %08x (%08x)\n",activecpu_get_pc(),offset<<1,mem_mask);
-	return (EEPROM_read_bit()<<24) | readinputport(1) | (readinputport(1)<<16);
+	return (EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 1) | (input_port_read_indexed(machine, 1)<<16);
 }
 
 #ifdef UNUSED_FUNCTION
 static READ32_HANDLER(backfire_control3_r)
 {
 //  logerror("%08x:Read eprom %08x (%08x)\n",activecpu_get_pc(),offset<<1,mem_mask);
-	return (EEPROM_read_bit()<<24) | readinputport(2) | (readinputport(2)<<16);
+	return (EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 2)<<16);
 }
 #endif
 
@@ -252,7 +252,7 @@ static READ32_HANDLER(backfire_control3_r)
 static WRITE32_HANDLER(backfire_eeprom_w)
 {
 	logerror("%08x:write eprom %08x (%08x) %08x\n",activecpu_get_pc(),offset<<1,mem_mask,data);
-	if (ACCESSING_LSB32) {
+	if (ACCESSING_BITS_0_7) {
 		EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
 		EEPROM_write_bit(data & 0x1);
 		EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
@@ -306,7 +306,7 @@ static WRITE32_HANDLER( backfire_pf4_data_w ) { data &=0x0000ffff; mem_mask &=0x
 #ifdef UNUSED_FUNCTION
 READ32_HANDLER( backfire_unknown_wheel_r )
 {
-	return readinputport(4);
+	return input_port_read_indexed(machine, 4);
 }
 
 READ32_HANDLER( backfire_wheel1_r )
@@ -689,7 +689,7 @@ static DRIVER_INIT( backfire )
 	decrypt156();
 	cpunum_set_clockscale(machine, 0, 4.0f); /* core timings aren't accurate */
 	descramble_sound();
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x0170018, 0x017001b, 0, 0, backfire_speedup_r );
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0170018, 0x017001b, 0, 0, backfire_speedup_r );
 }
 
 GAME( 1995, backfire, 0,        backfire,      backfire, backfire, ROT0, "Data East Corporation", "Backfire! (set 1)", 0 )

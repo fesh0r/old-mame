@@ -281,7 +281,7 @@ static READ16_HANDLER(ac_devices_r)
                 ---- ---- ---- --x- (Activate Test)
                 ---- ---- ---- ---x (Advance Thru Tests)
             */
-			return input_port_0_word_r(machine,0,0);
+			return input_port_read_indexed(machine,0);
 		case 0x0014/2:
 			/*
                 write 0x40,read (~0x08)
@@ -315,7 +315,7 @@ static READ16_HANDLER(ac_devices_r)
                 xxxx xxxx ---- ---- DIPSW4
                 ---- ---- xxxx xxxx DIPSW3
             */
-			return input_port_1_word_r(machine,0,0);
+			return input_port_read_indexed(machine,1);
 	}
 	return ac_devram[offset];
 }
@@ -326,14 +326,14 @@ static WRITE16_HANDLER(ac_devices_w)
 	switch(offset)
 	{
 		case 0x16/2:
-			if(ACCESSING_LSB)
+			if(ACCESSING_BITS_0_7)
 			{
 				logerror("Request to play sample %02x with rom 2\n",data);
 				OKIM6295_data_0_w(machine,0,data);
 			}
 			break;
 		case 0x1a/2:
-			if(ACCESSING_LSB)
+			if(ACCESSING_BITS_0_7)
 			{
 				logerror("Request to play sample %02x with rom 1\n",data);
 				OKIM6295_data_1_w(machine,0,data);
@@ -365,9 +365,9 @@ static ADDRESS_MAP_START( acommand, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x082000, 0x082005) AM_WRITE(ac_bgscroll_w)
 	AM_RANGE(0x082100, 0x082105) AM_WRITE(ac_txscroll_w)
 	AM_RANGE(0x082208, 0x082209) AM_WRITE(ac_unk2_w)
-	AM_RANGE(0x0a0000, 0x0a3fff) AM_READWRITE(SMH_RAM, ac_bgvram_w) AM_BASE(&ac_bgvram)
-	AM_RANGE(0x0b0000, 0x0b3fff) AM_READWRITE(SMH_RAM, ac_txvram_w) AM_BASE(&ac_txvram)
-	AM_RANGE(0x0b8000, 0x0bffff) AM_READWRITE(SMH_RAM, paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x0a0000, 0x0a3fff) AM_RAM_WRITE(ac_bgvram_w) AM_BASE(&ac_bgvram)
+	AM_RANGE(0x0b0000, 0x0b3fff) AM_RAM_WRITE(ac_txvram_w) AM_BASE(&ac_txvram)
+	AM_RANGE(0x0b8000, 0x0bffff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0f0000, 0x0f7fff) AM_RAM
 	AM_RANGE(0x0f8000, 0x0f8fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x0f9000, 0x0fffff) AM_RAM

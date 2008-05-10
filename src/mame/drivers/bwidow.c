@@ -214,7 +214,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/vector.h"
 #include "video/avgdvg.h"
 #include "machine/atari_vg.h"
@@ -253,8 +252,8 @@ static READ8_HANDLER( spacduel_IN3_r )
 	int res1;
 	int res2;
 
-	res1 = readinputportbytag("IN3");
-	res2 = readinputportbytag("IN4");
+	res1 = input_port_read(machine, "IN3");
+	res2 = input_port_read(machine, "IN4");
 	res = 0x00;
 
 	switch (offset & 0x07)
@@ -327,7 +326,7 @@ static WRITE8_HANDLER( bwidow_misc_w )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 

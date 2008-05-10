@@ -12,6 +12,7 @@
 ***************************************************************************/
 
 #include "sndintrf.h"
+#include "deprecat.h"
 #include "streams.h"
 #include "ay8910.h"
 #include "2610intf.h"
@@ -112,7 +113,7 @@ static void ym2610_stream_update(void *param, stream_sample_t **inputs, stream_s
 }
 
 
-static void ym2610_postload(void *param)
+static STATE_POSTLOAD( ym2610_postload )
 {
 	struct ym2610_info *info = param;
 	YM2610Postload(info->chip);
@@ -122,6 +123,12 @@ static void ym2610_postload(void *param)
 static void *ym2610_start(int sndindex, int clock, const void *config)
 {
 	static const struct YM2610interface generic_2610 = { 0 };
+	static const struct AY8910interface generic_ay8910 =
+	{
+		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	};
 	const struct YM2610interface *intf = config ? config : &generic_2610;
 	int rate = clock/72;
 	void *pcmbufa,*pcmbufb;
@@ -134,7 +141,7 @@ static void *ym2610_start(int sndindex, int clock, const void *config)
 	memset(info, 0, sizeof(*info));
 
 	info->intf = intf;
-	info->psg = ay8910_start_ym(SOUND_YM2610, sndindex, clock, 1, NULL, NULL, NULL, NULL);
+	info->psg = ay8910_start_ym(SOUND_YM2610, sndindex, clock, &generic_ay8910);
 	if (!info->psg) return NULL;
 
 	/* Timer Handler set */
@@ -154,7 +161,7 @@ static void *ym2610_start(int sndindex, int clock, const void *config)
 		           pcmbufa,pcmsizea,pcmbufb,pcmsizeb,
 		           timer_handler,IRQHandler,&psgintf);
 
-	state_save_register_func_postload_ptr(ym2610_postload, info);
+	state_save_register_postload(Machine, ym2610_postload, info);
 
 	if (info->chip)
 		return info;
@@ -174,6 +181,12 @@ static void ym2610b_stream_update(void *param, stream_sample_t **inputs, stream_
 static void *ym2610b_start(int sndindex, int clock, const void *config)
 {
 	static const struct YM2610interface generic_2610 = { 0 };
+	static const struct AY8910interface generic_ay8910 =
+	{
+		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	};
 	const struct YM2610interface *intf = config ? config : &generic_2610;
 	int rate = clock/72;
 	void *pcmbufa,*pcmbufb;
@@ -186,7 +199,7 @@ static void *ym2610b_start(int sndindex, int clock, const void *config)
 	memset(info, 0, sizeof(*info));
 
 	info->intf = intf;
-	info->psg = ay8910_start_ym(SOUND_YM2610B, sndindex, clock, 1, NULL, NULL, NULL, NULL);
+	info->psg = ay8910_start_ym(SOUND_YM2610B, sndindex, clock, &generic_ay8910);
 	if (!info->psg) return NULL;
 
 	/* Timer Handler set */
@@ -320,7 +333,7 @@ WRITE8_HANDLER( YM2610_control_port_0_A_w )
 WRITE16_HANDLER( YM2610_control_port_0_A_lsb_w )
 {
 //logerror("PC %04x: 2610 Reg A %02X",activecpu_get_pc(),data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,0);
 		YM2610Write(info->chip,0,data);
@@ -337,7 +350,7 @@ WRITE8_HANDLER( YM2610_control_port_0_B_w )
 WRITE16_HANDLER( YM2610_control_port_0_B_lsb_w )
 {
 //logerror("PC %04x: 2610 Reg B %02X",activecpu_get_pc(),data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,0);
 		YM2610Write(info->chip,2,data);
@@ -354,7 +367,7 @@ WRITE8_HANDLER( YM2610_control_port_1_A_w ){
 }
 
 WRITE16_HANDLER( YM2610_control_port_1_A_lsb_w ){
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,1);
 		YM2610Write(info->chip,0,data);
@@ -367,7 +380,7 @@ WRITE8_HANDLER( YM2610_control_port_1_B_w ){
 }
 
 WRITE16_HANDLER( YM2610_control_port_1_B_lsb_w ){
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,1);
 		YM2610Write(info->chip,2,data);
@@ -388,7 +401,7 @@ WRITE8_HANDLER( YM2610_data_port_0_A_w )
 WRITE16_HANDLER( YM2610_data_port_0_A_lsb_w )
 {
 //logerror(" =%02X\n",data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,0);
 		YM2610Write(info->chip,1,data);
@@ -405,7 +418,7 @@ WRITE8_HANDLER( YM2610_data_port_0_B_w )
 WRITE16_HANDLER( YM2610_data_port_0_B_lsb_w )
 {
 //logerror(" =%02X\n",data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,0);
 		YM2610Write(info->chip,3,data);
@@ -422,7 +435,7 @@ WRITE8_HANDLER( YM2610_data_port_1_A_w ){
 }
 
 WRITE16_HANDLER( YM2610_data_port_1_A_lsb_w ){
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,1);
 		YM2610Write(info->chip,1,data);
@@ -435,7 +448,7 @@ WRITE8_HANDLER( YM2610_data_port_1_B_w ){
 }
 
 WRITE16_HANDLER( YM2610_data_port_1_B_lsb_w ){
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		struct ym2610_info *info = sndti_token(chip_type,1);
 		YM2610Write(info->chip,3,data);

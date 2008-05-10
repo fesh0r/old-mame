@@ -124,7 +124,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/t11/t11.h"
 #include "machine/atarigen.h"
 #include "slapstic.h"
@@ -172,7 +171,7 @@ static UINT8 sound_reset_state;
  *
  *************************************/
 
-static void bankselect_postload(void);
+static STATE_POSTLOAD( bankselect_postload );
 
 
 
@@ -252,7 +251,7 @@ static MACHINE_START( atarisy2 )
 	state_save_register_global(which_adc);
 	state_save_register_global(p2portwr_state);
 	state_save_register_global(p2portrd_state);
-	state_save_register_func_postload(bankselect_postload);
+	state_save_register_postload(machine, bankselect_postload, NULL);
 	state_save_register_global(sound_reset_state);
 }
 
@@ -301,7 +300,7 @@ static WRITE16_HANDLER( int0_ack_w )
 static WRITE16_HANDLER( int1_ack_w )
 {
 	/* reset sound CPU */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 1) ? ASSERT_LINE : CLEAR_LINE);
 }
 
@@ -314,7 +313,7 @@ static TIMER_CALLBACK( delayed_int_enable_w )
 
 static WRITE16_HANDLER( int_enable_w )
 {
-	if (offset == 0 && ACCESSING_LSB)
+	if (offset == 0 && ACCESSING_BITS_0_7)
 		timer_call_after_resynch(NULL, data, delayed_int_enable_w);
 }
 
@@ -359,10 +358,10 @@ static WRITE16_HANDLER( bankselect_w )
 }
 
 
-static void bankselect_postload(void)
+static STATE_POSTLOAD( bankselect_postload )
 {
-	bankselect_w(Machine, 0, bankselect[0], 0);
-	bankselect_w(Machine, 1, bankselect[1], 0);
+	bankselect_w(machine, 0, bankselect[0], 0xffff);
+	bankselect_w(machine, 1, bankselect[1], 0xffff);
 }
 
 
@@ -375,7 +374,7 @@ static void bankselect_postload(void)
 
 static READ16_HANDLER( switch_r )
 {
-	int result = input_port_1_r(machine, offset) | (input_port_2_r(machine, offset) << 8);
+	int result = input_port_read_indexed(machine, 1) | (input_port_read_indexed(machine, 2) << 8);
 
 	if (atarigen_cpu_to_sound_ready) result ^= 0x20;
 	if (atarigen_sound_to_cpu_ready) result ^= 0x10;
@@ -386,12 +385,12 @@ static READ16_HANDLER( switch_r )
 
 static READ8_HANDLER( switch_6502_r )
 {
-	int result = input_port_0_r(machine, offset);
+	int result = input_port_read_indexed(machine, 0);
 
 	if (atarigen_cpu_to_sound_ready) result ^= 0x01;
 	if (atarigen_sound_to_cpu_ready) result ^= 0x02;
 	if (!has_tms5220 || tms5220_ready_r()) result ^= 0x04;
-	if (!(input_port_2_r(machine, offset) & 0x80)) result ^= 0x10;
+	if (!(input_port_read_indexed(machine, 2) & 0x80)) result ^= 0x10;
 
 	return result;
 }
@@ -425,9 +424,9 @@ static WRITE16_HANDLER( adc_strobe_w )
 static READ16_HANDLER( adc_r )
 {
 	if (which_adc < pedal_count)
-		return ~readinputport(3 + which_adc);
+		return ~input_port_read_indexed(machine, 3 + which_adc);
 
-	return readinputport(3 + which_adc) | 0xff00;
+	return input_port_read_indexed(machine, 3 + which_adc) | 0xff00;
 }
 
 
@@ -444,8 +443,8 @@ static READ8_HANDLER( leta_r )
 				static double last_angle;
 				static int rotations;
 
-				int analogx = readinputport(7) - 128;
-				int analogy = readinputport(8) - 128;
+				int analogx = input_port_read_indexed(machine, 7) - 128;
+				int analogy = input_port_read_indexed(machine, 8) - 128;
 				double angle;
 
 				/* if the joystick is centered, leave the rest of this alone */
@@ -481,7 +480,7 @@ static READ8_HANDLER( leta_r )
 		}
 	}
 
-	return readinputport(7 + (offset & 3));
+	return input_port_read_indexed(machine, 7 + (offset & 3));
 }
 
 
@@ -591,7 +590,7 @@ static WRITE8_HANDLER( mixer_w )
 	if (!(data & 0x02)) rbott += 1.0/47;
 	if (!(data & 0x04)) rbott += 1.0/22;
 	gain = (rbott == 0) ? 1.0 : ((1.0/rbott) / (rtop + (1.0/rbott)));
-	atarigen_set_ym2151_vol(Machine, gain * 100);
+	atarigen_set_ym2151_vol(machine, gain * 100);
 
 	/* bits 3-4 control the volume of the POKEYs, using 47k and 100k resistors */
 	rtop = 1.0/(1.0/100 + 1.0/100);
@@ -599,7 +598,7 @@ static WRITE8_HANDLER( mixer_w )
 	if (!(data & 0x08)) rbott += 1.0/47;
 	if (!(data & 0x10)) rbott += 1.0/22;
 	gain = (rbott == 0) ? 1.0 : ((1.0/rbott) / (rtop + (1.0/rbott)));
-	atarigen_set_pokey_vol(Machine, gain * 100);
+	atarigen_set_pokey_vol(machine, gain * 100);
 
 	/* bits 5-7 control the volume of the TMS5220, using 22k, 47k, and 100k resistors */
 	rtop = 1.0/(1.0/100 + 1.0/100);
@@ -608,7 +607,7 @@ static WRITE8_HANDLER( mixer_w )
 	if (!(data & 0x40)) rbott += 1.0/47;
 	if (!(data & 0x80)) rbott += 1.0/22;
 	gain = (rbott == 0) ? 1.0 : ((1.0/rbott) / (rtop + (1.0/rbott)));
-	atarigen_set_tms5220_vol(Machine, gain * 100);
+	atarigen_set_tms5220_vol(machine, gain * 100);
 }
 
 
@@ -639,7 +638,7 @@ static READ16_HANDLER( sound_r )
 	atarigen_update_interrupts(machine);
 
 	/* handle it normally otherwise */
-	return atarigen_sound_r(machine,offset,0);
+	return atarigen_sound_r(machine,offset,0xffff);
 }
 
 
@@ -710,7 +709,7 @@ static WRITE8_HANDLER( coincount_w )
 /* full memory map derived from schematics */
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM
-	AM_RANGE(0x1000, 0x11ff) AM_MIRROR(0x0200) AM_READWRITE(SMH_RAM, atarisy2_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x1000, 0x11ff) AM_MIRROR(0x0200) AM_RAM_WRITE(atarisy2_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x1400, 0x1403) AM_MIRROR(0x007c) AM_READWRITE(adc_r, bankselect_w) AM_BASE(&bankselect)
 	AM_RANGE(0x1480, 0x1487) AM_MIRROR(0x0078) AM_WRITE(adc_strobe_w)
 	AM_RANGE(0x1580, 0x1581) AM_MIRROR(0x001e) AM_WRITE(int0_ack_w)
@@ -906,6 +905,11 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( ssprint )
 	PORT_INCLUDE( paperboy )
 
+	PORT_MODIFY("1840")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN3 )
+
 	PORT_MODIFY("1800")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START3 )
@@ -965,6 +969,8 @@ static INPUT_PORTS_START( csprint )
 
 	PORT_MODIFY("1840")
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
 	PORT_MODIFY("1800")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -987,6 +993,9 @@ INPUT_PORTS_END
 
 static INPUT_PORTS_START( apb )
 	PORT_INCLUDE( paperboy )
+
+	PORT_MODIFY("1840")
+	PORT_BIT( 0x20, IP_ACTIVE_LOW,  IPT_SERVICE1 )
 
 	PORT_MODIFY("1800")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_PLAYER(1)

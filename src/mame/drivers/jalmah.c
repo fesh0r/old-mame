@@ -195,21 +195,21 @@ static VIDEO_START( jalmah )
 }
 
 #define MCU_READ(_number_,_bit_,_offset_,_retval_)\
-if((0xffff - readinputport(_number_)) & _bit_) { jm_regs[_offset_] = _retval_; }
+if((0xffff - input_port_read_indexed(machine, _number_)) & _bit_) { jm_regs[_offset_] = _retval_; }
 
 /*RAM-based protection handlings*/
 static void daireika_mcu_run(running_machine *machine)
 {
 	static UINT16 prg_prot;
 
-	if((0xffff - input_port_0_word_r(machine,0,0)) & 0x0008)//service_mode
+	if((0xffff - input_port_read_indexed(machine,0)) & 0x0008)//service_mode
 	{
-		jm_regs[0x000/2] = input_port_2_word_r(machine,0,0);
-		jm_regs[0x002/2] = input_port_3_word_r(machine,0,0);
-		jm_regs[0x004/2] = input_port_4_word_r(machine,0,0);
-		jm_regs[0x006/2] = input_port_5_word_r(machine,0,0);
-		jm_regs[0x008/2] = input_port_6_word_r(machine,0,0);
-		jm_regs[0x00a/2] = input_port_7_word_r(machine,0,0);
+		jm_regs[0x000/2] = input_port_read_indexed(machine,2);
+		jm_regs[0x002/2] = input_port_read_indexed(machine,3);
+		jm_regs[0x004/2] = input_port_read_indexed(machine,4);
+		jm_regs[0x006/2] = input_port_read_indexed(machine,5);
+		jm_regs[0x008/2] = input_port_read_indexed(machine,6);
+		jm_regs[0x00a/2] = input_port_read_indexed(machine,7);
 	}
 	else
 	{
@@ -247,14 +247,14 @@ static void urashima_mcu_run(running_machine *machine)
 {
 	static UINT16 prg_prot;
 
-	if((0xffff - input_port_0_word_r(machine,0,0)) & 0x0008)//service_mode
+	if((0xffff - input_port_read_indexed(machine,0)) & 0x0008)//service_mode
 	{
-		jm_regs[0x300/2] = input_port_2_word_r(machine,0,0);
-		jm_regs[0x302/2] = input_port_3_word_r(machine,0,0);
-		jm_regs[0x304/2] = input_port_4_word_r(machine,0,0);
-		jm_regs[0x306/2] = input_port_5_word_r(machine,0,0);
-		jm_regs[0x308/2] = input_port_6_word_r(machine,0,0);
-		jm_regs[0x30a/2] = input_port_7_word_r(machine,0,0);
+		jm_regs[0x300/2] = input_port_read_indexed(machine,2);
+		jm_regs[0x302/2] = input_port_read_indexed(machine,3);
+		jm_regs[0x304/2] = input_port_read_indexed(machine,4);
+		jm_regs[0x306/2] = input_port_read_indexed(machine,5);
+		jm_regs[0x308/2] = input_port_read_indexed(machine,6);
+		jm_regs[0x30a/2] = input_port_read_indexed(machine,7);
 	}
 	else
 	{
@@ -289,11 +289,11 @@ static void urashima_mcu_run(running_machine *machine)
 
 static void second_mcu_run(running_machine *machine)
 {
-	if((0xffff - input_port_1_word_r(machine,0,0)) & 0x0004)//service_mode
+	if((0xffff - input_port_read_indexed(machine,1)) & 0x0004)//service_mode
 	{
-		jm_regs[0x200/2] = input_port_2_word_r(machine,0,0);
-		jm_regs[0x202/2] = input_port_3_word_r(machine,0,0);
-		jm_regs[0x204/2] = input_port_4_word_r(machine,0,0);
+		jm_regs[0x200/2] = input_port_read_indexed(machine,2);
+		jm_regs[0x202/2] = input_port_read_indexed(machine,3);
+		jm_regs[0x204/2] = input_port_read_indexed(machine,4);
 	}
 	else
 	{
@@ -441,7 +441,7 @@ static WRITE16_HANDLER( jalmah_tilebank_w )
      ---- xxxx Priority number (trusted,see mjzoomin)
     */
 	//popmessage("Write to tilebank %02x",data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (sc0bank != ((data & 0xf0) >> 4))
 		{
@@ -491,7 +491,7 @@ static UINT8 oki_rom,oki_bank;
 
 static WRITE16_HANDLER( jalmah_okirom_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		UINT8 *oki = memory_region(REGION_SOUND1);
 		oki_rom = data & 1;
@@ -505,7 +505,7 @@ static WRITE16_HANDLER( jalmah_okirom_w )
 
 static WRITE16_HANDLER( jalmah_okibank_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 	{
 		UINT8 *oki = memory_region(REGION_SOUND1);
 		oki_bank = data & 3;
@@ -536,12 +536,12 @@ static ADDRESS_MAP_START( jalmah, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0x080020, 0x08003f) AM_READ(SMH_RAM) AM_WRITE(jalmah_scroll_w)
 	AM_RANGE(0x080040, 0x080041) AM_READWRITE(OKIM6295_status_0_lsb_r, OKIM6295_data_0_lsb_w)
 	//       0x084000, 0x084001  ?
-	AM_RANGE(0x088000, 0x0887ff) AM_READWRITE(SMH_RAM, paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16) /* Palette RAM */
-	AM_RANGE(0x090000, 0x093fff) AM_READWRITE(SMH_RAM, sc0_vram_w) AM_BASE(&sc0_vram)
-	AM_RANGE(0x094000, 0x097fff) AM_READWRITE(SMH_RAM, sc1_vram_w) AM_BASE(&sc1_vram)
-	AM_RANGE(0x098000, 0x09bfff) AM_READWRITE(SMH_RAM, sc2_vram_w) AM_BASE(&sc2_vram)
-	AM_RANGE(0x09c000, 0x09ffff) AM_READWRITE(SMH_RAM, sc3_vram_w) AM_BASE(&sc3_vram)
-	AM_RANGE(0x0a0000, 0x0a3fff) AM_READWRITE(SMH_RAM, sc3_vram_w) /*urashima mirror*/
+	AM_RANGE(0x088000, 0x0887ff) AM_RAM_WRITE(paletteram16_RRRRGGGGBBBBRGBx_word_w) AM_BASE(&paletteram16) /* Palette RAM */
+	AM_RANGE(0x090000, 0x093fff) AM_RAM_WRITE(sc0_vram_w) AM_BASE(&sc0_vram)
+	AM_RANGE(0x094000, 0x097fff) AM_RAM_WRITE(sc1_vram_w) AM_BASE(&sc1_vram)
+	AM_RANGE(0x098000, 0x09bfff) AM_RAM_WRITE(sc2_vram_w) AM_BASE(&sc2_vram)
+	AM_RANGE(0x09c000, 0x09ffff) AM_RAM_WRITE(sc3_vram_w) AM_BASE(&sc3_vram)
+	AM_RANGE(0x0a0000, 0x0a3fff) AM_RAM_WRITE(sc3_vram_w) /*urashima mirror*/
 	AM_RANGE(0x0f0000, 0x0f0fff) AM_RAM AM_BASE(&jm_regs)/*shared with MCU*/
 	AM_RANGE(0x0f1000, 0x0fffff) AM_RAM AM_BASE(&jm_ram)
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM AM_BASE(&jm_mcu_code)/*extra RAM for MCU code prg (NOT ON REAL HW!!!)*/
@@ -1319,7 +1319,7 @@ data value is REQ under mjzoomin video test menu.It is related to the MCU?
 */
 static WRITE16_HANDLER( urashima_mcu_w )
 {
-	if(ACCESSING_LSB && data)
+	if(ACCESSING_BITS_0_7 && data)
 	{
 		//jm_regs[0x30e/2] = ?
 
@@ -1470,7 +1470,7 @@ data value is REQ under mjzoomin video test menu.It is related to the MCU?
 */
 static WRITE16_HANDLER( daireika_mcu_w )
 {
-	if(ACCESSING_LSB && data)
+	if(ACCESSING_BITS_0_7 && data)
 	{
 		/*MCU program upload complete/upload kind*/
 		//jm_regs[0x000e/2] = 0x0005;
@@ -1755,7 +1755,7 @@ data value is REQ under mjzoomin video test menu.It is related to the MCU?
 */
 static WRITE16_HANDLER( mjzoomin_mcu_w )
 {
-	if(ACCESSING_LSB && data)
+	if(ACCESSING_BITS_0_7 && data)
 	{
 		/*******************************************************
         1st M68k code uploaded by the MCU(Service Mode PC=2a56).
@@ -1885,60 +1885,60 @@ static READ16_HANDLER( suchipi_mcu_r )
 
 static DRIVER_INIT( urashima )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, urashima_mcu_r );
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, urashima_mcu_w );
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0320, 0xf0321, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, urashima_mcu_r );
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, urashima_mcu_w );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf0320, 0xf0321, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0xf0322 - 0xf0320));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf03c0, 0xf03c5, 0, 0, SMH_BANK2, SMH_BANK2 );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf03c0, 0xf03c5, 0, 0, SMH_BANK2, SMH_BANK2 );
 	memory_set_bankptr(2, auto_malloc(0xf03c6 - 0xf03c0));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf03c6, 0xf03e5, 0, 0, SMH_BANK3, SMH_BANK3 );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf03c6, 0xf03e5, 0, 0, SMH_BANK3, SMH_BANK3 );
 	memory_set_bankptr(3, auto_malloc(0xf03e6 - 0xf03c6));
 	mcu_prg = 0x12;
 }
 
 static DRIVER_INIT( daireika )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, daireika_mcu_r );
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, daireika_mcu_w );
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0140, 0xf0141, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, daireika_mcu_r );
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, daireika_mcu_w );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf0140, 0xf0141, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0xf0142 - 0xf0140));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf0025, 0, 0, SMH_BANK2, SMH_BANK2 );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf0025, 0, 0, SMH_BANK2, SMH_BANK2 );
 	memory_set_bankptr(2, auto_malloc(0xf0026 - 0xf0020));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00d5, 0, 0, SMH_BANK3, SMH_BANK3 );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00d5, 0, 0, SMH_BANK3, SMH_BANK3 );
 	memory_set_bankptr(3, auto_malloc(0xf00d6 - 0xf00c0));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0100, 0xf0130, 0, 0, SMH_BANK4, SMH_BANK4 );
-	memory_set_bankptr(4, auto_malloc(0xf0130 - 0xf0100));
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf0100, 0xf0131, 0, 0, SMH_BANK4, SMH_BANK4 );
+	memory_set_bankptr(4, auto_malloc(0xf0132 - 0xf0100));
 	mcu_prg = 0x11;
 }
 
 static DRIVER_INIT( mjzoomin )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, mjzoomin_mcu_r );
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, mjzoomin_mcu_w );
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00c5, 0, 0, SMH_BANK1, SMH_BANK1 );
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, mjzoomin_mcu_r );
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80012, 0x80013, 0, 0, mjzoomin_mcu_w );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00c0, 0xf00c5, 0, 0, SMH_BANK1, SMH_BANK1 );
 	memory_set_bankptr(1, auto_malloc(0xf00c6 - 0xf00c0));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf00c6, 0xf00d1, 0, 0, SMH_BANK2, SMH_BANK2 );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00c6, 0xf00d1, 0, 0, SMH_BANK2, SMH_BANK2 );
 	memory_set_bankptr(2, auto_malloc(0xf00d2 - 0xf00c6));
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf002f, 0, 0, SMH_BANK3, SMH_BANK3 );
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf0020, 0xf002f, 0, 0, SMH_BANK3, SMH_BANK3 );
 	memory_set_bankptr(3, auto_malloc(0xf0030 - 0xf0020));
 	mcu_prg = 0x13;
 }
 
 static DRIVER_INIT( kakumei )
 {
-	memory_install_read16_handler(0,  ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
+	memory_install_read16_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
 	mcu_prg = 0x21;
 }
 
 static DRIVER_INIT( kakumei2 )
 {
-	memory_install_read16_handler(0,  ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
+	memory_install_read16_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, kakumei_mcu_r );
 	mcu_prg = 0x22;
 }
 
 static DRIVER_INIT( suchipi )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, suchipi_mcu_r );
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x80004, 0x80005, 0, 0, suchipi_mcu_r );
 	mcu_prg = 0x23;
 }
 

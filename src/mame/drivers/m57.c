@@ -65,7 +65,7 @@
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x87ff) AM_READWRITE(SMH_RAM, m57_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM_WRITE(m57_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x9000, 0x91ff) AM_RAM AM_BASE(&m57_scroll)
 	AM_RANGE(0xc820, 0xc8ff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(irem_sound_cmd_w)
@@ -198,7 +198,7 @@ INPUT_PORTS_END
 static const gfx_layout spritelayout =
 {
 	16,32,
-	RGN_FRAC(1,6),
+	64,
 	3,
 	{ RGN_FRAC(0,3), RGN_FRAC(1,3), RGN_FRAC(2,3) },
 	{ STEP8(0,1), STEP8(16*8,1) },
@@ -208,7 +208,10 @@ static const gfx_layout spritelayout =
 
 static GFXDECODE_START( m57 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, gfx_8x8x3_planar,    0, 32 )
-	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, spritelayout,     32*8, 32 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0x0000, spritelayout, 32*8, 32 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0x1000, spritelayout, 32*8, 32 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0x2000, spritelayout, 32*8, 32 )
+	GFXDECODE_ENTRY( REGION_GFX2, 0x3000, spritelayout, 32*8, 32 )
 GFXDECODE_END
 
 
@@ -244,7 +247,7 @@ static MACHINE_DRIVER_START( m57 )
 	MDRV_VIDEO_UPDATE(m57)
 
 	/* sound hardware */
-	MDRV_IMPORT_FROM(m52_small_audio)
+	MDRV_IMPORT_FROM(m52_sound_c_audio)
 MACHINE_DRIVER_END
 
 

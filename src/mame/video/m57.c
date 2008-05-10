@@ -158,7 +158,7 @@ VIDEO_START( m57 )
 WRITE8_HANDLER( m57_flipscreen_w )
 {
 	/* screen flip is handled both by software and hardware */
-	flipscreen = (data & 0x01) ^ (~readinputportbytag("DSW2") & 0x01);
+	flipscreen = (data & 0x01) ^ (~input_port_read(machine, "DSW2") & 0x01);
 	tilemap_set_flip(bg_tilemap, flipscreen ? (TILEMAP_FLIPY | TILEMAP_FLIPX) : 0);
 
 	coin_counter_w(0,data & 0x02);
@@ -202,7 +202,11 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 		int flipy = attributes&0x80;
 		int flipx = attributes&0x40;
 
-		int tile_number = code + ((attributes & 0x20) << 3);
+		int tile_number = code & 0x3f;
+
+		int bank = 0;
+		if( code&0x80 ) bank += 1;
+		if( attributes&0x20 ) bank += 2;
 
 		if (flipscreen)
 		{
@@ -212,7 +216,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			flipy = !flipy;
 		}
 
-		drawgfx(bitmap,machine->gfx[1],
+		drawgfx(bitmap,machine->gfx[1+bank],
 			tile_number,
 			color,
 			flipx,flipy,

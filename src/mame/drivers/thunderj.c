@@ -78,7 +78,7 @@ static MACHINE_RESET( thunderj )
 
 static READ16_HANDLER( special_port2_r )
 {
-	int result = readinputport(2);
+	int result = input_port_read_indexed(machine, 2);
 
 	if (atarigen_sound_to_cpu_ready) result ^= 0x0004;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0008;
@@ -91,7 +91,7 @@ static READ16_HANDLER( special_port2_r )
 static WRITE16_HANDLER( latch_w )
 {
 	/* reset extra CPU */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* 0 means hold CPU 2's reset low */
 		if (data & 1)
@@ -129,7 +129,7 @@ static READ16_HANDLER( shared_ram_r )
 	UINT16 result = shared_ram[offset];
 
 	/* look for a byte access, and then check for the high bit and a TAS opcode */
-	if (mem_mask != 0 && (result & ~mem_mask & 0x8080))
+	if (mem_mask != 0xffff && (result & mem_mask & 0x8080))
 	{
 		offs_t ppc = activecpu_get_previouspc();
 		if (ppc < 0xa0000)
@@ -209,15 +209,15 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x360010, 0x360011) AM_WRITE(latch_w)
 	AM_RANGE(0x360020, 0x360021) AM_WRITE(atarigen_sound_reset_w)
 	AM_RANGE(0x360030, 0x360031) AM_WRITE(atarigen_sound_w)
-	AM_RANGE(0x3e0000, 0x3e0fff) AM_READWRITE(SMH_RAM, atarigen_666_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x3e0000, 0x3e0fff) AM_RAM_WRITE(atarigen_666_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x3effc0, 0x3effff) AM_READWRITE(thunderj_atarivc_r, thunderj_atarivc_w) AM_BASE(&atarivc_data)
-	AM_RANGE(0x3f0000, 0x3f1fff) AM_READWRITE(SMH_RAM, atarigen_playfield2_latched_msb_w) AM_BASE(&atarigen_playfield2)
-	AM_RANGE(0x3f2000, 0x3f3fff) AM_READWRITE(SMH_RAM, atarigen_playfield_latched_lsb_w) AM_BASE(&atarigen_playfield)
-	AM_RANGE(0x3f4000, 0x3f5fff) AM_READWRITE(SMH_RAM, atarigen_playfield_dual_upper_w) AM_BASE(&atarigen_playfield_upper)
-	AM_RANGE(0x3f6000, 0x3f7fff) AM_READWRITE(SMH_RAM, atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
-	AM_RANGE(0x3f8000, 0x3f8eff) AM_READWRITE(SMH_RAM, atarigen_alpha_w) AM_BASE(&atarigen_alpha)
+	AM_RANGE(0x3f0000, 0x3f1fff) AM_RAM_WRITE(atarigen_playfield2_latched_msb_w) AM_BASE(&atarigen_playfield2)
+	AM_RANGE(0x3f2000, 0x3f3fff) AM_RAM_WRITE(atarigen_playfield_latched_lsb_w) AM_BASE(&atarigen_playfield)
+	AM_RANGE(0x3f4000, 0x3f5fff) AM_RAM_WRITE(atarigen_playfield_dual_upper_w) AM_BASE(&atarigen_playfield_upper)
+	AM_RANGE(0x3f6000, 0x3f7fff) AM_RAM_WRITE(atarimo_0_spriteram_w) AM_BASE(&atarimo_0_spriteram)
+	AM_RANGE(0x3f8000, 0x3f8eff) AM_RAM_WRITE(atarigen_alpha_w) AM_BASE(&atarigen_alpha)
 	AM_RANGE(0x3f8f00, 0x3f8f7f) AM_RAM AM_BASE(&atarivc_eof_data)
-	AM_RANGE(0x3f8f80, 0x3f8fff) AM_READWRITE(SMH_RAM, atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
+	AM_RANGE(0x3f8f80, 0x3f8fff) AM_RAM_WRITE(atarimo_0_slipram_w) AM_BASE(&atarimo_0_slipram)
 	AM_RANGE(0x3f9000, 0x3fffff) AM_RAM
 ADDRESS_MAP_END
 

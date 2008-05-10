@@ -244,7 +244,7 @@ static void sound_exit(running_machine *machine)
 
 	/* stop all the sound chips */
 	for (sndnum = 0; sndnum < MAX_SOUND; sndnum++)
-		if (Machine->config->sound[sndnum].type != SOUND_DUMMY)
+		if (machine->config->sound[sndnum].type != SOUND_DUMMY)
 			sndintrf_exit_sound(sndnum);
 
 	/* reset variables */
@@ -501,7 +501,7 @@ static void sound_reset(running_machine *machine)
 
 	/* reset all the sound chips */
 	for (sndnum = 0; sndnum < MAX_SOUND; sndnum++)
-		if (Machine->config->sound[sndnum].type != SOUND_DUMMY)
+		if (machine->config->sound[sndnum].type != SOUND_DUMMY)
 			sndnum_reset(sndnum);
 }
 
@@ -661,7 +661,7 @@ static TIMER_CALLBACK( sound_update )
 	profiler_mark(PROFILER_SOUND);
 
 	/* force all the speaker streams to generate the proper number of samples */
-	for (curspeak = speaker_output_first(Machine->config); curspeak != NULL; curspeak = speaker_output_next(curspeak))
+	for (curspeak = speaker_output_first(machine->config); curspeak != NULL; curspeak = speaker_output_next(curspeak))
 	{
 		speaker_info *spk = curspeak->token;
 		const stream_sample_t *stream_buf;

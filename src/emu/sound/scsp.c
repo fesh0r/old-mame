@@ -419,7 +419,7 @@ static int EG_Update(struct _SLOT *slot)
 			slot->EG.volume-=slot->EG.D1R;
 			if(slot->EG.volume<=0)
 				slot->EG.volume=0;
-			if(slot->EG.volume>>(EG_SHIFT+5)<slot->EG.DL)
+			if(slot->EG.volume>>(EG_SHIFT+5)<=slot->EG.DL)
 				slot->EG.state=DECAY2;
 			break;
 		case DECAY2:
@@ -1310,7 +1310,7 @@ WRITE16_HANDLER( SCSP_0_w )
 		case 0x42a:
 			if(stv_scu && !(stv_scu[40] & 0x40) /*&& scsp_regs[0x42c/2] & 0x20*/)/*Main CPU allow sound irq*/
 			{
-				cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
+				cpunum_set_input_line_and_vector(machine, 0, 9, HOLD_LINE , 0x46);
 			    logerror("SCSP: Main CPU interrupt\n");
 			}
 		break;

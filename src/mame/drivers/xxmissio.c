@@ -38,7 +38,7 @@ static WRITE8_HANDLER( xxmissio_bank_sel_w )
 
 static READ8_HANDLER( xxmissio_status_r )
 {
-	xxmissio_status = (xxmissio_status | 2) & ( readinputportbytag("IN2") | 0xfd );
+	xxmissio_status = (xxmissio_status | 2) & ( input_port_read(machine, "IN2") | 0xfd );
 	return xxmissio_status;
 }
 
@@ -52,7 +52,7 @@ static WRITE8_HANDLER ( xxmissio_status_m_w )
 
 		case 0x40:
 			xxmissio_status &= ~0x08;
-			cpunum_set_input_line_and_vector(Machine, 1,0,HOLD_LINE,0x10);
+			cpunum_set_input_line_and_vector(machine, 1,0,HOLD_LINE,0x10);
 			break;
 
 		case 0x80:
@@ -75,7 +75,7 @@ static WRITE8_HANDLER ( xxmissio_status_s_w )
 
 		case 0x80:
 			xxmissio_status &= ~0x04;
-			cpunum_set_input_line_and_vector(Machine, 0,0,HOLD_LINE,0x10);
+			cpunum_set_input_line_and_vector(machine, 0,0,HOLD_LINE,0x10);
 			break;
 	}
 }
@@ -118,7 +118,7 @@ static ADDRESS_MAP_START( map1, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc800, 0xcfff) AM_SHARE(2) AM_READWRITE(xxmissio_bgram_r, xxmissio_bgram_w) AM_BASE(&xxmissio_bgram)
 	AM_RANGE(0xd000, 0xd7ff) AM_SHARE(3) AM_RAM AM_BASE(&xxmissio_spriteram)
 
-	AM_RANGE(0xd800, 0xdaff) AM_SHARE(4) AM_READWRITE(SMH_RAM, xxmissio_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd800, 0xdaff) AM_SHARE(4) AM_RAM_WRITE(xxmissio_paletteram_w) AM_BASE(&paletteram)
 
 	AM_RANGE(0xe000, 0xefff) AM_SHARE(5) AM_RAM
 	AM_RANGE(0xf000, 0xffff) AM_SHARE(6) AM_RAM
@@ -145,7 +145,7 @@ static ADDRESS_MAP_START( map2, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc800, 0xcfff) AM_SHARE(2) AM_READWRITE(xxmissio_bgram_r, xxmissio_bgram_w)
 	AM_RANGE(0xd000, 0xd7ff) AM_SHARE(3) AM_RAM
 
-	AM_RANGE(0xd800, 0xdaff) AM_SHARE(4) AM_READWRITE(SMH_RAM, xxmissio_paletteram_w)
+	AM_RANGE(0xd800, 0xdaff) AM_SHARE(4) AM_RAM_WRITE(xxmissio_paletteram_w)
 
 	AM_RANGE(0xe000, 0xefff) AM_SHARE(6) AM_RAM
 	AM_RANGE(0xf000, 0xffff) AM_SHARE(5) AM_RAM
@@ -275,16 +275,28 @@ GFXDECODE_END
 
 static const struct YM2203interface ym2203_interface_1 =
 {
-	input_port_2_r,
-	input_port_3_r
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		input_port_2_r,
+		input_port_3_r,
+		NULL,
+		NULL
+	},
+	NULL
 };
 
 static const struct YM2203interface ym2203_interface_2 =
 {
-	0,
-	0,
-	xxmissio_scroll_x_w,
-	xxmissio_scroll_y_w
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		NULL,
+		xxmissio_scroll_x_w,
+		xxmissio_scroll_y_w
+	},
+	NULL
 };
 
 static MACHINE_DRIVER_START( xxmissio )

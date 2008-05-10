@@ -191,16 +191,16 @@ static READ16_HANDLER( shadfrce_input_ports_r )
 	switch (offset)
 	{
 		case 0 :
-			data = (readinputport(0) & 0xff) | ((readinputport(7) & 0xc0) << 6) | ((readinputport(4) & 0x0f) << 8);
+			data = (input_port_read_indexed(machine, 0) & 0xff) | ((input_port_read_indexed(machine, 7) & 0xc0) << 6) | ((input_port_read_indexed(machine, 4) & 0x0f) << 8);
 			break;
 		case 1 :
-			data = (readinputport(1) & 0xff) | ((readinputport(7) & 0x3f) << 8);
+			data = (input_port_read_indexed(machine, 1) & 0xff) | ((input_port_read_indexed(machine, 7) & 0x3f) << 8);
 			break;
 		case 2 :
-			data = (readinputport(2) & 0xff) | ((readinputport(6) & 0x3f) << 8);
+			data = (input_port_read_indexed(machine, 2) & 0xff) | ((input_port_read_indexed(machine, 6) & 0x3f) << 8);
 			break;
 		case 3 :
-			data = (readinputport(3) & 0xff) | ((readinputport(6) & 0xc0) << 2) | ((readinputport(5) & 0x3c) << 8);
+			data = (input_port_read_indexed(machine, 3) & 0xff) | ((input_port_read_indexed(machine, 6) & 0xc0) << 2) | ((input_port_read_indexed(machine, 5) & 0x3c) << 8);
 			break;
 	}
 
@@ -210,7 +210,7 @@ static READ16_HANDLER( shadfrce_input_ports_r )
 
 static WRITE16_HANDLER ( shadfrce_sound_brt_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		soundlatch_w(machine,1,data >> 8);
 		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE );

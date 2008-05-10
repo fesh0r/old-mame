@@ -47,7 +47,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/okim6295.h"
 
 extern UINT16 *diverboy_spriteram;
@@ -59,7 +58,7 @@ VIDEO_UPDATE(diverboy);
 
 static WRITE16_HANDLER( soundcmd_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_w(machine,0,data & 0xff);
 		cpunum_set_input_line(machine, 1,0,HOLD_LINE);

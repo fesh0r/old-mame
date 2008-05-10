@@ -12,7 +12,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 
 static tilemap *bg_tilemap;
@@ -46,17 +45,17 @@ static WRITE8_HANDLER( wink_coin_counter_w )
 
 static READ8_HANDLER( analog_port_r )
 {
-	return readinputport(0 /*+ 2 * player_mux*/);
+	return input_port_read_indexed(machine, 0 /*+ 2 * player_mux*/);
 }
 
 static READ8_HANDLER( player_inputs_r )
 {
-	return readinputport(1 /*+ 2 * player_mux*/);
+	return input_port_read_indexed(machine, 1 /*+ 2 * player_mux*/);
 }
 
 static WRITE8_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 	//sync with sound cpu (but it still loses some soundlatches...)
 	//timer_call_after_resynch(NULL, 0, NULL);
 }
@@ -65,7 +64,7 @@ static ADDRESS_MAP_START( wink_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0x87ff) AM_RAM
 	AM_RANGE(0x9000, 0x97ff) AM_RAM	AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
-	AM_RANGE(0xa000, 0xa3ff) AM_RAM AM_WRITE(bgram_w) AM_BASE(&videoram)
+	AM_RANGE(0xa000, 0xa3ff) AM_RAM_WRITE(bgram_w) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 
@@ -301,7 +300,12 @@ static READ8_HANDLER( sound_r )
 
 static const struct AY8910interface ay8912_interface =
 {
-	sound_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	sound_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 //AY portA is fed by an input clock at 15625 Hz

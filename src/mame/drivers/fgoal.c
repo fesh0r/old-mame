@@ -17,7 +17,6 @@ Differences between these sets include
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/fgoal.h"
 
 UINT8* fgoal_video_ram;
@@ -82,7 +81,7 @@ static PALETTE_INIT( fgoal )
 static TIMER_CALLBACK( interrupt_callback )
 {
 	int scanline;
-	int coin = (readinputport(1) & 2);
+	int coin = (input_port_read_indexed(machine, 1) & 2);
 
 	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 
@@ -114,22 +113,22 @@ static unsigned video_ram_address(void)
 
 static READ8_HANDLER( fgoal_analog_r )
 {
-	return readinputport(2 + fgoal_player); /* PCB can be jumpered to use a single dial */
+	return input_port_read_indexed(machine, 2 + fgoal_player); /* PCB can be jumpered to use a single dial */
 }
 
 
 static READ8_HANDLER( fgoal_switches_r )
 {
 	if (video_screen_get_vpos(machine->primary_screen) & 0x80)
-		return readinputport(1) | 0x80;
+		return input_port_read_indexed(machine, 1) | 0x80;
 	else
-		return readinputport(1);
+		return input_port_read_indexed(machine, 1);
 }
 
 
 static READ8_HANDLER( fgoal_nmi_reset_r )
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 
 	return 0;
 }
@@ -137,7 +136,7 @@ static READ8_HANDLER( fgoal_nmi_reset_r )
 
 static READ8_HANDLER( fgoal_irq_reset_r )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 
 	return 0;
 }

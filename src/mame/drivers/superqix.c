@@ -195,7 +195,7 @@ static int from_mcu_pending, from_z80_pending, invert_coin_lockout;
 static READ8_HANDLER( in4_mcu_r )
 {
 //  logerror("%04x: in4_mcu_r\n",activecpu_get_pc());
-	return readinputport(4) | (from_mcu_pending << 6) | (from_z80_pending << 7);
+	return input_port_read_indexed(machine, 4) | (from_mcu_pending << 6) | (from_z80_pending << 7);
 }
 
 static READ8_HANDLER( sqix_from_mcu_r )
@@ -268,11 +268,11 @@ static READ8_HANDLER( mcu_p3_r )
 {
 	if ((port1 & 0x10) == 0)
 	{
-		return readinputport(0);
+		return input_port_read_indexed(machine, 0);
 	}
 	else if ((port1 & 0x20) == 0)
 	{
-		return readinputport(2) | (from_mcu_pending << 6) | (from_z80_pending << 7);
+		return input_port_read_indexed(machine, 2) | (from_mcu_pending << 6) | (from_z80_pending << 7);
 	}
 	else if ((port1 & 0x40) == 0)
 	{
@@ -291,13 +291,13 @@ static WRITE8_HANDLER( mcu_p3_w )
 
 static READ8_HANDLER( nmi_ack_r )
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 	return 0;
 }
 
 static READ8_HANDLER( bootleg_in0_r )
 {
-	return BITSWAP8(readinputport(0), 0,1,2,3,4,5,6,7);
+	return BITSWAP8(input_port_read_indexed(machine, 0), 0,1,2,3,4,5,6,7);
 }
 
 static WRITE8_HANDLER( bootleg_flipscreen_w )
@@ -318,14 +318,14 @@ static WRITE8_HANDLER( bootleg_flipscreen_w )
  * connected to the 68705 which acts as a counter.
  */
 
-static int read_dial(int player)
+static int read_dial(running_machine *machine, int player)
 {
 	int newpos;
 	static int oldpos[2];
 	static int sign[2];
 
 	/* get the new position and adjust the result */
-	newpos = readinputport(3 + player);
+	newpos = input_port_read_indexed(machine, 3 + player);
 	if (newpos != oldpos[player])
 	{
 		sign[player] = ((newpos - oldpos[player]) & 0x80) >> 7;
@@ -401,11 +401,11 @@ static WRITE8_HANDLER( hotsmash_68705_portC_w )
 		switch (data & 0x07)
 		{
 			case 0x0:	// dsw A
-				portA_in = readinputport(0);
+				portA_in = input_port_read_indexed(machine, 0);
 				break;
 
 			case 0x1:	// dsw B
-				portA_in = readinputport(1);
+				portA_in = input_port_read_indexed(machine, 1);
 				break;
 
 			case 0x2:
@@ -424,11 +424,11 @@ logerror("%04x: z80 reads command %02x\n",activecpu_get_pc(),from_z80);
 				break;
 
 			case 0x6:
-				portA_in = read_dial(0);
+				portA_in = read_dial(machine, 0);
 				break;
 
 			case 0x7:
-				portA_in = read_dial(1);
+				portA_in = read_dial(machine, 1);
 				break;
 		}
 	}
@@ -449,7 +449,7 @@ logerror("%04x: z80 reads answer %02x\n",activecpu_get_pc(),from_mcu);
 static READ8_HANDLER(hotsmash_ay_port_a_r)
 {
 //logerror("%04x: ay_port_a_r and mcu_pending is %d\n",activecpu_get_pc(),from_mcu_pending);
-	return readinputport(2) | ((from_mcu_pending^1) << 7);
+	return input_port_read_indexed(machine, 2) | ((from_mcu_pending^1) << 7);
 }
 
 /**************************************************************************
@@ -469,10 +469,10 @@ static READ8_HANDLER(pbillian_from_mcu_r)
 
 	switch (from_z80)
 	{
-		case 0x01: return readinputport(4 + 2 * curr_player);
-		case 0x02: return readinputport(5 + 2 * curr_player);
-		case 0x04: return readinputport(0);
-		case 0x08: return readinputport(1);
+		case 0x01: return input_port_read_indexed(machine, 4 + 2 * curr_player);
+		case 0x02: return input_port_read_indexed(machine, 5 + 2 * curr_player);
+		case 0x04: return input_port_read_indexed(machine, 0);
+		case 0x08: return input_port_read_indexed(machine, 1);
 		case 0x80: curr_player = 0; return 0;
 		case 0x81: curr_player = 1; return 0;
 	}
@@ -485,7 +485,7 @@ static READ8_HANDLER(pbillian_ay_port_a_r)
 {
 //  logerror("%04x: ay_port_a_r\n",activecpu_get_pc());
 	 /* bits 76------  MCU status bits */
-	return (mame_rand(Machine)&0xc0)|readinputport(3);
+	return (mame_rand(Machine)&0xc0)|input_port_read_indexed(machine, 3);
 }
 
 
@@ -529,12 +529,12 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)
 	AM_RANGE(0xe000, 0xe0ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xe100, 0xe7ff) AM_RAM
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, superqix_videoram_w) AM_BASE(&superqix_videoram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(superqix_videoram_w) AM_BASE(&superqix_videoram)
 	AM_RANGE(0xf000, 0xffff) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pbillian_port_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_READWRITE(SMH_RAM, paletteram_BBGGRRII_w) AM_BASE(&paletteram)
+	AM_RANGE(0x0000, 0x01ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
 	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
@@ -548,7 +548,7 @@ static ADDRESS_MAP_START( pbillian_port_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( hotsmash_port_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x01ff) AM_READWRITE(SMH_RAM, paletteram_BBGGRRII_w) AM_BASE(&paletteram)
+	AM_RANGE(0x0000, 0x01ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
 	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
@@ -562,7 +562,7 @@ static ADDRESS_MAP_START( hotsmash_port_map, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sqix_port_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_READWRITE(SMH_RAM, paletteram_BBGGRRII_w) AM_BASE(&paletteram)
+	AM_RANGE(0x0000, 0x00ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
 	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
@@ -572,12 +572,12 @@ static ADDRESS_MAP_START( sqix_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0408, 0x0408) AM_READ(mcu_acknowledge_r)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(superqix_0410_w)	/* ROM bank, NMI enable, tile bank */
 	AM_RANGE(0x0418, 0x0418) AM_READ(nmi_ack_r)
-	AM_RANGE(0x0800, 0x77ff) AM_READWRITE(SMH_RAM, superqix_bitmapram_w) AM_BASE(&superqix_bitmapram)
-	AM_RANGE(0x8800, 0xf7ff) AM_READWRITE(SMH_RAM, superqix_bitmapram2_w) AM_BASE(&superqix_bitmapram2)
+	AM_RANGE(0x0800, 0x77ff) AM_RAM_WRITE(superqix_bitmapram_w) AM_BASE(&superqix_bitmapram)
+	AM_RANGE(0x8800, 0xf7ff) AM_RAM_WRITE(superqix_bitmapram2_w) AM_BASE(&superqix_bitmapram2)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( bootleg_port_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x0000, 0x00ff) AM_READWRITE(SMH_RAM, paletteram_BBGGRRII_w) AM_BASE(&paletteram)
+	AM_RANGE(0x0000, 0x00ff) AM_RAM_WRITE(paletteram_BBGGRRII_w) AM_BASE(&paletteram)
 	AM_RANGE(0x0401, 0x0401) AM_READ(AY8910_read_port_0_r)
 	AM_RANGE(0x0402, 0x0402) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x0403, 0x0403) AM_WRITE(AY8910_control_port_0_w)
@@ -587,8 +587,8 @@ static ADDRESS_MAP_START( bootleg_port_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0408, 0x0408) AM_WRITE(bootleg_flipscreen_w)
 	AM_RANGE(0x0410, 0x0410) AM_WRITE(superqix_0410_w)	/* ROM bank, NMI enable, tile bank */
 	AM_RANGE(0x0418, 0x0418) AM_READ(input_port_2_r)
-	AM_RANGE(0x0800, 0x77ff) AM_READWRITE(SMH_RAM, superqix_bitmapram_w) AM_BASE(&superqix_bitmapram)
-	AM_RANGE(0x8800, 0xf7ff) AM_READWRITE(SMH_RAM, superqix_bitmapram2_w) AM_BASE(&superqix_bitmapram2)
+	AM_RANGE(0x0800, 0x77ff) AM_RAM_WRITE(superqix_bitmapram_w) AM_BASE(&superqix_bitmapram)
+	AM_RANGE(0x8800, 0xf7ff) AM_RAM_WRITE(superqix_bitmapram2_w) AM_BASE(&superqix_bitmapram2)
 ADDRESS_MAP_END
 
 
@@ -905,40 +905,62 @@ static const struct Samplesinterface pbillian_samples_interface =
 
 static const struct AY8910interface pbillian_ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	pbillian_ay_port_a_r,			/* port Aread */
-	input_port_2_r					/* port Bread */
+	input_port_2_r,					/* port Bread */
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface hotsmash_ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	hotsmash_ay_port_a_r,			/* port Aread */
-	input_port_2_r					/* port Bread */
+	input_port_2_r,					/* port Bread */
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface sqix_ay8910_interface_1 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_3_r,	/* port Aread */
 	in4_mcu_r,		/* port Bread */
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface sqix_ay8910_interface_2 =
 {
-	input_port_1_r,	/* port Aread */
-	sqix_from_mcu_r,		/* port Bread */
-	0,								/* port Awrite */
-	sqix_z80_mcu_w				/* port Bwrite */
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	input_port_1_r,		/* port Aread */
+	sqix_from_mcu_r,	/* port Bread */
+	NULL,				/* port Awrite */
+	sqix_z80_mcu_w		/* port Bwrite */
 };
 
 static const struct AY8910interface bootleg_ay8910_interface_1 =
 {
-	input_port_3_r,	/* port Aread */
-	input_port_4_r	/* port Bread */
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	input_port_3_r,		/* port Aread */
+	input_port_4_r,		/* port Bread */
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface bootleg_ay8910_interface_2 =
 {
-	input_port_1_r,	/* port Aread */
-	bootleg_in0_r	/* port Bread */
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	input_port_1_r,		/* port Aread */
+	bootleg_in0_r,		/* port Bread */
+	NULL,
+	NULL
 };
 
 

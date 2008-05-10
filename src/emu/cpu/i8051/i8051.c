@@ -191,7 +191,7 @@ static READ32_HANDLER((*hold_eram_iaddr_callback));
  * Read a byte from External Code Memory (Usually Program Rom(s) Space)
  *****************************************************************************
  This area is mapped from 0-FFFF internally (64K) */
-#define CODEMEM_R(a)	(UINT8)program_read_byte_8(a)
+#define CODEMEM_R(a)	(UINT8)program_read_byte_8le(a)
 /*****************************************************************************
  * Read/Write a byte from/to External Data Memory (Usually RAM or other I/O)
  *****************************************************************************
@@ -202,8 +202,8 @@ static READ32_HANDLER((*hold_eram_iaddr_callback));
  addresses, w/o any contention.
  As far as the 8051 program code which is executing knows data memory still lives
  in the 0-FFFF range.*/
-#define DATAMEM_R(a)	(UINT8)data_read_byte_8(a)
-#define DATAMEM_W(a,v)	data_write_byte_8(a,v)
+#define DATAMEM_R(a)	(UINT8)data_read_byte_8le(a)
+#define DATAMEM_W(a,v)	data_write_byte_8le(a,v)
 
 /***************************************************************
  * Read/Write a byte from/to the Internal RAM
@@ -1785,14 +1785,14 @@ static WRITE8_HANDLER(internal_ram_write)
 /* Different chip types handle differently, for speed, simply call the chip's handler */
 static READ8_HANDLER(internal_ram_iread)
 {
-	return i8051.iram_iread(Machine,offset);
+	return i8051.iram_iread(machine,offset);
 }
 
 /* Writes the contents of the Internal RAM memory (BUT CALLED FROM AN INDIRECT ADDRESSING MODE)   */
 /* Different chip types handle differently, for speed, simply call the chip's handler */
 static WRITE8_HANDLER(internal_ram_iwrite)
 {
-	i8051.iram_iwrite(Machine,offset,data);
+	i8051.iram_iwrite(machine,offset,data);
 }
 
 /*Generate an external ram address for read/writing using indirect addressing mode */
@@ -1804,7 +1804,7 @@ static WRITE8_HANDLER(internal_ram_iwrite)
 static READ32_HANDLER(external_ram_iaddr)
 {
     if(i8051.eram_iaddr_callback)
-        return i8051.eram_iaddr_callback(Machine,offset,mem_mask);
+        return i8051.eram_iaddr_callback(machine,offset,mem_mask);
     else
         LOG(("i8051 #%d: external ram address requested (8 bit offset=%02x), but no callback available! at PC:%04x\n", cpu_getactivecpu(), offset, PC));
 

@@ -95,7 +95,6 @@ TO DO :
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
@@ -120,9 +119,9 @@ extern VIDEO_UPDATE( tehkanwc );
 static WRITE8_HANDLER( sub_cpu_halt_w )
 {
 	if (data)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 
@@ -133,32 +132,32 @@ static READ8_HANDLER( tehkanwc_track_0_r )
 {
 	int joy;
 
-	joy = readinputport(10) >> (2*offset);
+	joy = input_port_read_indexed(machine, 10) >> (2*offset);
 	if (joy & 1) return -63;
 	if (joy & 2) return 63;
-	return readinputport(3 + offset) - track0[offset];
+	return input_port_read_indexed(machine, 3 + offset) - track0[offset];
 }
 
 static READ8_HANDLER( tehkanwc_track_1_r )
 {
 	int joy;
 
-	joy = readinputport(10) >> (4+2*offset);
+	joy = input_port_read_indexed(machine, 10) >> (4+2*offset);
 	if (joy & 1) return -63;
 	if (joy & 2) return 63;
-	return readinputport(6 + offset) - track1[offset];
+	return input_port_read_indexed(machine, 6 + offset) - track1[offset];
 }
 
 static WRITE8_HANDLER( tehkanwc_track_0_reset_w )
 {
 	/* reset the trackball counters */
-	track0[offset] = readinputport(3 + offset) + data;
+	track0[offset] = input_port_read_indexed(machine, 3 + offset) + data;
 }
 
 static WRITE8_HANDLER( tehkanwc_track_1_reset_w )
 {
 	/* reset the trackball counters */
-	track1[offset] = readinputport(6 + offset) + data;
+	track1[offset] = input_port_read_indexed(machine, 6 + offset) + data;
 }
 
 
@@ -245,8 +244,8 @@ static ADDRESS_MAP_START( main_mem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xde00, 0xdfff) AM_RAM AM_SHARE(5) /* unused part of the palette RAM, I think? Gridiron uses it */
 	AM_RANGE(0xe000, 0xe7ff) AM_RAM AM_SHARE(6) AM_WRITE(tehkanwc_videoram2_w) AM_BASE(&tehkanwc_videoram2)
 	AM_RANGE(0xe800, 0xebff) AM_RAM AM_SHARE(7) AM_BASE(&spriteram) AM_SIZE(&spriteram_size) /* sprites */
-	AM_RANGE(0xec00, 0xec01) AM_RAM AM_WRITE(tehkanwc_scroll_x_w)
-	AM_RANGE(0xec02, 0xec02) AM_RAM AM_WRITE(tehkanwc_scroll_y_w)
+	AM_RANGE(0xec00, 0xec01) AM_RAM_WRITE(tehkanwc_scroll_x_w)
+	AM_RANGE(0xec02, 0xec02) AM_RAM_WRITE(tehkanwc_scroll_y_w)
 	AM_RANGE(0xf800, 0xf801) AM_READWRITE(tehkanwc_track_0_r, tehkanwc_track_0_reset_w) /* track 0 x/y */
 	AM_RANGE(0xf802, 0xf802) AM_READWRITE(input_port_9_r, gridiron_led0_w) /* Coin & Start */
 	AM_RANGE(0xf803, 0xf803) AM_READ(input_port_5_r) /* joy0 - button */
@@ -638,16 +637,22 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface_1 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	tehkanwc_portA_w,
 	tehkanwc_portB_w
 };
 
 static const struct AY8910interface ay8910_interface_2 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	tehkanwc_portA_r,
-	tehkanwc_portB_r
+	tehkanwc_portB_r,
+	NULL,
+	NULL
 };
 
 static const struct MSM5205interface msm5205_interface =

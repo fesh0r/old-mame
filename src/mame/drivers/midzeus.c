@@ -451,7 +451,7 @@ static CUSTOM_INPUT( custom_49way_r )
 	static const UINT8 translate49[7] = { 0x8, 0xc, 0xe, 0xf, 0x3, 0x1, 0x0 };
 	const char *namex = param;
 	const char *namey = namex + strlen(namex) + 1;
-	return (translate49[readinputportbytag(namey) >> 4] << 4) | translate49[readinputportbytag(namex) >> 4];
+	return (translate49[input_port_read(machine, namey) >> 4] << 4) | translate49[input_port_read(machine, namex) >> 4];
 }
 
 
@@ -464,7 +464,7 @@ static WRITE32_HANDLER( keypad_select_w )
 
 static CUSTOM_INPUT( keypad_r )
 {
-	UINT32 bits = readinputportbytag(param);
+	UINT32 bits = input_port_read(machine, param);
 	UINT8 select = keypad_select;
 	while ((select & 1) != 0)
 	{
@@ -487,7 +487,7 @@ static READ32_HANDLER( analog_r )
 	static const char * const tags[] = { "ANALOG0", "ANALOG1", "ANALOG2", "ANALOG3" };
 	if (offset < 8 || offset > 11)
 		logerror("%06X:analog_r(%X)\n", activecpu_get_pc(), offset);
-	return readinputportbytag(tags[offset & 3]);
+	return input_port_read(machine, tags[offset & 3]);
 }
 
 
@@ -553,8 +553,8 @@ static WRITE32_HANDLER( invasn_gun_w )
 				{ "GUNX1", "GUNY1" },
 				{ "GUNX2", "GUNY2" }
 			};
-			gun_x[player] = readinputportbytag(names[player][0]) * (visarea->max_x + 1 - visarea->min_x) / 255 + visarea->min_x + BEAM_XOFFS;
-			gun_y[player] = readinputportbytag(names[player][1]) * (visarea->max_y + 1 - visarea->min_y) / 255 + visarea->min_y;
+			gun_x[player] = input_port_read(machine, names[player][0]) * (visarea->max_x + 1 - visarea->min_x) / 255 + visarea->min_x + BEAM_XOFFS;
+			gun_y[player] = input_port_read(machine, names[player][1]) * (visarea->max_y + 1 - visarea->min_y) / 255 + visarea->min_y;
 			timer_adjust_oneshot(gun_timer[player], video_screen_get_time_until_pos(machine->primary_screen, MAX(0, gun_y[player] - BEAM_DY), MAX(0, gun_x[player] - BEAM_DX)), player);
 		}
 	}
@@ -1326,7 +1326,7 @@ ROM_END
 
 static DRIVER_INIT( mk4 )
 {
-	dcs2_init(0, 0);
+	dcs2_init(machine, 0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 461/* or 474 */, 94, NULL);
 	midway_ioasic_set_shuffle_state(1);
 }
@@ -1334,26 +1334,26 @@ static DRIVER_INIT( mk4 )
 
 static DRIVER_INIT( invasn )
 {
-	dcs2_init(0, 0);
+	dcs2_init(machine, 0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 468/* or 488 */, 94, NULL);
-	memory_install_readwrite32_handler(0, ADDRESS_SPACE_PROGRAM, 0x9c0000, 0x9c0000, 0, 0, invasn_gun_r, invasn_gun_w);
+	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9c0000, 0x9c0000, 0, 0, invasn_gun_r, invasn_gun_w);
 }
 
 
 static DRIVER_INIT( crusnexo )
 {
-	dcs2_init(0, 0);
+	dcs2_init(machine, 0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 472/* or 476,477,478,110 */, 99, NULL);
 	memory_configure_bank(1, 0, 3, memory_region(REGION_USER2), 0x400000*4);
 
-	memory_install_readwrite32_handler(0, ADDRESS_SPACE_PROGRAM, 0x9b0004, 0x9b0007, 0, 0, crusnexo_leds_r, crusnexo_leds_w);
-	memory_install_write32_handler    (0, ADDRESS_SPACE_PROGRAM, 0x8d0009, 0x8d000a, 0, 0, keypad_select_w);
+	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9b0004, 0x9b0007, 0, 0, crusnexo_leds_r, crusnexo_leds_w);
+	memory_install_write32_handler    (machine, 0, ADDRESS_SPACE_PROGRAM, 0x8d0009, 0x8d000a, 0, 0, keypad_select_w);
 }
 
 
 static DRIVER_INIT( thegrid )
 {
-	dcs2_init(0, 0);
+	dcs2_init(machine, 0, 0);
 	midway_ioasic_init(MIDWAY_IOASIC_STANDARD, 474/* or 491 */, 99, NULL);
 	memory_configure_bank(1, 0, 3, memory_region(REGION_USER2), 0x400000*4);
 }

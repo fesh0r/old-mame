@@ -322,7 +322,7 @@ static READ8_HANDLER( ssio_irq_clear )
 {
 	/* a read here asynchronously resets the 14024 count, clearing /SINT */
 	ssio_14024_count = 0;
-	cpunum_set_input_line(Machine, ssio_sound_cpu, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, ssio_sound_cpu, 0, CLEAR_LINE);
 	return 0xff;
 }
 
@@ -343,12 +343,12 @@ static TIMER_CALLBACK( ssio_delayed_data_w )
 
 static void ssio_update_volumes(void)
 {
-	AY8910_set_volume(0, 0, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[0][0]]);
-	AY8910_set_volume(0, 1, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[0][1]]);
-	AY8910_set_volume(0, 2, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[0][2]]);
-	AY8910_set_volume(1, 0, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[1][0]]);
-	AY8910_set_volume(1, 1, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[1][1]]);
-	AY8910_set_volume(1, 2, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[1][2]]);
+	ay8910_set_volume(0, 0, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[0][0]]);
+	ay8910_set_volume(0, 1, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[0][1]]);
+	ay8910_set_volume(0, 2, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[0][2]]);
+	ay8910_set_volume(1, 0, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[1][0]]);
+	ay8910_set_volume(1, 1, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[1][1]]);
+	ay8910_set_volume(1, 2, ssio_mute ? 0 : ssio_ayvolume_lookup[ssio_duty_cycle[1][2]]);
 }
 
 static WRITE8_HANDLER( ssio_porta0_w )
@@ -414,7 +414,7 @@ void ssio_reset_w(int state)
 READ8_HANDLER( ssio_input_port_r )
 {
 	static const char *const port[] = { "SSIO.IP0", "SSIO.IP1", "SSIO.IP2", "SSIO.IP3", "SSIO.IP4" };
-	UINT8 result = readinputportbytag_safe(port[offset], 0xff);
+	UINT8 result = input_port_read_safe(machine, port[offset], 0xff);
 	if (ssio_custom_input[offset])
 		result = (result & ~ssio_custom_input_mask[offset]) |
 		         ((*ssio_custom_input[offset])(machine, offset) & ssio_custom_input_mask[offset]);
@@ -446,16 +446,20 @@ void ssio_set_custom_output(int which, int mask, write8_machine_func handler)
 /********* sound interfaces ***********/
 static const struct AY8910interface ssio_ay8910_interface_1 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	ssio_porta0_w,
 	ssio_portb0_w
 };
 
 static const struct AY8910interface ssio_ay8910_interface_2 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	ssio_porta1_w,
 	ssio_portb1_w
 };
@@ -549,7 +553,7 @@ static READ16_HANDLER( csdeluxe_pia_r )
 	/* My guess is that Turbo Tag works through a fluke, whereby the 68000 */
 	/* using the MOVEP instruction outputs the same value on the high and */
 	/* low bytes. */
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		return pia_0_alt_r(machine, offset) << 8;
 	else
 		return pia_0_alt_r(machine, offset);
@@ -557,7 +561,7 @@ static READ16_HANDLER( csdeluxe_pia_r )
 
 static WRITE16_HANDLER( csdeluxe_pia_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		pia_0_alt_w(machine, offset, data >> 8);
 	else
 		pia_0_alt_w(machine, offset, data);
@@ -692,7 +696,7 @@ static ADDRESS_MAP_START( soundsgood_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_UNMAP_HIGH
 	ADDRESS_MAP_GLOBAL_MASK(0x7ffff)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM
-	AM_RANGE(0x060000, 0x060007) AM_READWRITE(pia_1_msb_alt_r, pia_1_msb_alt_w)
+	AM_RANGE(0x060000, 0x060007) AM_READWRITE8(pia_1_alt_r, pia_1_alt_w, 0xff00)
 	AM_RANGE(0x070000, 0x070fff) AM_RAM
 ADDRESS_MAP_END
 

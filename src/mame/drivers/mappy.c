@@ -547,7 +547,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/namcoio.h"
 #include "sound/dac.h"
 #include "sound/namco.h"
@@ -604,18 +603,18 @@ WRITE8_HANDLER( superpac_flipscreen_w );
 ***************************************************************************/
 
 static int mux;
-static READ8_HANDLER( in0_l )	{ return readinputportbytag("IN0"); }		// P1 joystick
-static READ8_HANDLER( in0_h )	{ return readinputportbytag("IN0") >> 4; }	// P2 joystick
-static READ8_HANDLER( in1_l )	{ return readinputportbytag("IN1"); }		// fire and start buttons
-static READ8_HANDLER( in1_h )	{ return readinputportbytag("IN1") >> 4; }	// coins
-static READ8_HANDLER( in2 )		{ return readinputportbytag("DSW0"); }		// test, cocktail, optional buttons
-static READ8_HANDLER( dipA_l )	{ return readinputportbytag("DSW1"); }		// dips A
-static READ8_HANDLER( dipA_h )	{ return readinputportbytag("DSW1") >> 4; }	// dips A
-static READ8_HANDLER( dipB_mux )	{ return readinputportbytag("DSW2") >> (4*mux); }	// dips B
+static READ8_HANDLER( in0_l )	{ return input_port_read(machine, "IN0"); }		// P1 joystick
+static READ8_HANDLER( in0_h )	{ return input_port_read(machine, "IN0") >> 4; }	// P2 joystick
+static READ8_HANDLER( in1_l )	{ return input_port_read(machine, "IN1"); }		// fire and start buttons
+static READ8_HANDLER( in1_h )	{ return input_port_read(machine, "IN1") >> 4; }	// coins
+static READ8_HANDLER( in2 )		{ return input_port_read(machine, "DSW0"); }		// test, cocktail, optional buttons
+static READ8_HANDLER( dipA_l )	{ return input_port_read(machine, "DSW1"); }		// dips A
+static READ8_HANDLER( dipA_h )	{ return input_port_read(machine, "DSW1") >> 4; }	// dips A
+static READ8_HANDLER( dipB_mux )	{ return input_port_read(machine, "DSW2") >> (4*mux); }	// dips B
 static READ8_HANDLER( dipB_muxi )	// dips B
 {
 	// bits are interleaved in Phozon
-	return BITSWAP8(readinputport(4),6,4,2,0,7,5,3,1) >> (4*mux);
+	return BITSWAP8(input_port_read_indexed(machine, 4),6,4,2,0,7,5,3,1) >> (4*mux);
 }
 static WRITE8_HANDLER( out_mux )	{ mux = data & 1; }
 static WRITE8_HANDLER( out_lamps )
@@ -705,13 +704,13 @@ static WRITE8_HANDLER( superpac_latch_w )
 		case 0x00:	/* INT ON 2 */
 			cpu_interrupt_enable(1,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 			break;
 
 		case 0x02:	/* INT ON */
 			cpu_interrupt_enable(0,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 			break;
 
 		case 0x04:	/* n.c. */
@@ -727,7 +726,7 @@ static WRITE8_HANDLER( superpac_latch_w )
 			break;
 
 		case 0x0a:	/* SUB RESET */
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x0c:	/* n.c. */
@@ -747,19 +746,19 @@ static WRITE8_HANDLER( phozon_latch_w )
 		case 0x00:
 			cpu_interrupt_enable(1,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 			break;
 
 		case 0x02:
 			cpu_interrupt_enable(0,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 			break;
 
 		case 0x04:
 			cpu_interrupt_enable(2,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 2, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 2, 0, CLEAR_LINE);
 			break;
 
 		case 0x06:
@@ -772,11 +771,11 @@ static WRITE8_HANDLER( phozon_latch_w )
 			break;
 
 		case 0x0a:
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x0c:
-			cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x0e:
@@ -793,13 +792,13 @@ static WRITE8_HANDLER( mappy_latch_w )
 		case 0x00:	/* INT ON 2 */
 			cpu_interrupt_enable(1,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 			break;
 
 		case 0x02:	/* INT ON */
 			cpu_interrupt_enable(0,bit);
 			if (!bit)
-				cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 			break;
 
 		case 0x04:	/* FLIP */
@@ -816,7 +815,7 @@ static WRITE8_HANDLER( mappy_latch_w )
 			break;
 
 		case 0x0a:	/* SUB RESET */
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 0x0c:	/* n.c. */
@@ -866,10 +865,10 @@ static INTERRUPT_GEN( mappy_interrupt_1 )
 
 
 static ADDRESS_MAP_START( superpac_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(SMH_RAM, superpac_videoram_w) AM_BASE(&mappy_videoram)	/* video RAM */
+	AM_RANGE(0x0000, 0x07ff) AM_RAM_WRITE(superpac_videoram_w) AM_BASE(&mappy_videoram)	/* video RAM */
 	AM_RANGE(0x0800, 0x1fff) AM_RAM AM_BASE(&mappy_spriteram)		/* work RAM with embedded sprite RAM */
 	AM_RANGE(0x2000, 0x2000) AM_READWRITE(superpac_flipscreen_r, superpac_flipscreen_w)
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
+	AM_RANGE(0x4000, 0x43ff) AM_RAM_WRITE(mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
 	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(namcoio_r, namcoio_w)		/* custom I/O chips interface */
 	AM_RANGE(0x5000, 0x500f) AM_WRITE(superpac_latch_w)				/* various control bits */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(watchdog_reset_w)
@@ -877,9 +876,9 @@ static ADDRESS_MAP_START( superpac_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( phozon_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(SMH_RAM, superpac_videoram_w) AM_SHARE(2) AM_BASE(&mappy_videoram)	/* video RAM */
+	AM_RANGE(0x0000, 0x07ff) AM_RAM_WRITE(superpac_videoram_w) AM_SHARE(2) AM_BASE(&mappy_videoram)	/* video RAM */
 	AM_RANGE(0x0800, 0x1fff) AM_RAM AM_BASE(&mappy_spriteram) AM_SHARE(3) /* shared RAM with CPU #2/sprite RAM*/
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
+	AM_RANGE(0x4000, 0x43ff) AM_RAM_WRITE(mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
 	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(namcoio_r, namcoio_w)		/* custom I/O chips interface */
 	AM_RANGE(0x5000, 0x500f) AM_WRITE(phozon_latch_w)				/* various control bits */
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(watchdog_reset_w)		 		/* watchdog reset */
@@ -887,10 +886,10 @@ static ADDRESS_MAP_START( phozon_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mappy_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_RAM, mappy_videoram_w) AM_BASE(&mappy_videoram)		/* video RAM */
+	AM_RANGE(0x0000, 0x0fff) AM_RAM_WRITE(mappy_videoram_w) AM_BASE(&mappy_videoram)		/* video RAM */
 	AM_RANGE(0x1000, 0x27ff) AM_RAM AM_BASE(&mappy_spriteram)		/* work RAM with embedded sprite RAM */
 	AM_RANGE(0x3800, 0x3fff) AM_WRITE(mappy_scroll_w)				/* scroll */
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
+	AM_RANGE(0x4000, 0x43ff) AM_RAM_WRITE(mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with the sound CPU */
 	AM_RANGE(0x4800, 0x4bff) AM_READWRITE(namcoio_r, namcoio_w)		/* custom I/O chips interface */
 	AM_RANGE(0x5000, 0x500f) AM_WRITE(mappy_latch_w)				/* various control bits */
 	AM_RANGE(0x8000, 0x8000) AM_WRITE(watchdog_reset_w)				/* watchdog reset */
@@ -899,18 +898,18 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( superpac_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
+	AM_RANGE(0x0000, 0x03ff) AM_RAM_WRITE(mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
 	AM_RANGE(0x2000, 0x200f) AM_WRITE(superpac_latch_w)                   /* various control bits */
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( phozon_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU + sound registers */
+	AM_RANGE(0x0000, 0x03ff) AM_RAM_WRITE(mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU + sound registers */
 	AM_RANGE(0xe000, 0xffff) AM_ROM											/* ROM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mappy_cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x03ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
+	AM_RANGE(0x0000, 0x03ff) AM_RAM_WRITE(mappy_snd_sharedram_w) AM_SHARE(1) AM_BASE(&namco_soundregs) /* shared RAM with the main CPU (also sound registers) */
 	AM_RANGE(0x2000, 0x200f) AM_WRITE(mappy_latch_w)						/* various control bits */
 	AM_RANGE(0xe000, 0xffff) AM_ROM											/* ROM code */
 ADDRESS_MAP_END
@@ -918,9 +917,9 @@ ADDRESS_MAP_END
 
 /* extra CPU only present in Phozon */
 static ADDRESS_MAP_START( phozon_cpu3_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x07ff) AM_READWRITE(SMH_RAM, superpac_videoram_w) AM_SHARE(2)	/* video RAM */
+	AM_RANGE(0x0000, 0x07ff) AM_RAM_WRITE(superpac_videoram_w) AM_SHARE(2)	/* video RAM */
 	AM_RANGE(0x0800, 0x1fff) AM_RAM AM_SHARE(3) 			/* shared RAM with CPU #2/sprite RAM*/
-	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(SMH_RAM, mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with CPU #2 */
+	AM_RANGE(0x4000, 0x43ff) AM_RAM_WRITE(mappy_snd_sharedram_w) AM_SHARE(1)	/* shared RAM with CPU #2 */
 	AM_RANGE(0xa000, 0xa7ff) AM_RAM							/* RAM */
 	AM_RANGE(0xe000, 0xffff) AM_ROM							/* ROM */
 ADDRESS_MAP_END
@@ -2128,7 +2127,7 @@ static DRIVER_INIT( grobda )
        However, removing the 15XX from the board causes sound to disappear completely, so
        the DAC might be built-in after all.
       */
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x0002, 0x0002, 0, 0, grobda_DAC_w );
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0002, 0x0002, 0, 0, grobda_DAC_w );
 
 	DRIVER_INIT_CALL(58_56);
 }
@@ -2136,7 +2135,7 @@ static DRIVER_INIT( grobda )
 static DRIVER_INIT( digdug2 )
 {
 	/* appears to not use the watchdog */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8000, 0, 0, SMH_NOP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8000, 0, 0, SMH_NOP);
 	DRIVER_INIT_CALL(58_56);
 }
 

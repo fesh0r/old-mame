@@ -47,7 +47,7 @@ static void update_interrupts(running_machine *machine)
 static void scanline_update(const device_config *screen, int scanline)
 {
 	/* generate 32V signals */
-	if ((scanline & 32) == 0 && !(readinputport(0) & 0x800))
+	if ((scanline & 32) == 0 && !(input_port_read_indexed(screen->machine, 0) & 0x800))
 		atarigen_scanline_int_gen(screen->machine, 0);
 }
 
@@ -89,7 +89,7 @@ static READ16_HANDLER( adpcm_r )
 
 static WRITE16_HANDLER( adpcm_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		OKIM6295_data_0_w(machine, offset, data & 0xff);
 }
 

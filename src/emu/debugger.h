@@ -16,6 +16,9 @@
 
 #include "mame.h"
 #include "memory.h"
+#ifdef ENABLE_DEBUGGER
+#include "deprecat.h"
+#endif
 
 
 /***************************************************************************

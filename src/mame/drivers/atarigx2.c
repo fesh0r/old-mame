@@ -81,7 +81,7 @@ static MACHINE_RESET( atarigx2 )
 
 static READ32_HANDLER( special_port2_r )
 {
-	int temp = readinputport(2);
+	int temp = input_port_read_indexed(machine, 2);
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x0020;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x0010;
 	temp ^= 0x0008;		/* A2D.EOC always high for now */
@@ -91,16 +91,16 @@ static READ32_HANDLER( special_port2_r )
 
 static READ32_HANDLER( special_port3_r )
 {
-	int temp = readinputport(3);
+	int temp = input_port_read_indexed(machine, 3);
 	return (temp << 16) | temp;
 }
 
 #if 0
 static WRITE32_HANDLER( a2d_select_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 		which_input = offset * 2;
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 		which_input = offset * 2 + 1;
 }
 #endif
@@ -111,9 +111,9 @@ static READ32_HANDLER( a2d_data_r )
 	switch (offset)
 	{
 		case 0:
-			return (readinputport(5) << 24) | (readinputport(6) << 8);
+			return (input_port_read_indexed(machine, 5) << 24) | (input_port_read_indexed(machine, 6) << 8);
 		case 1:
-			return (readinputport(7) << 24) | (readinputport(8) << 8);
+			return (input_port_read_indexed(machine, 7) << 24) | (input_port_read_indexed(machine, 8) << 8);
 	}
 
 	return 0;
@@ -133,17 +133,17 @@ static WRITE32_HANDLER( latch_w )
         D0  = CC.R
     */
 
-	logerror("latch_w(%08X) & %08X\n", data, ~mem_mask);
+	logerror("latch_w(%08X) & %08X\n", data, mem_mask);
 
 	/* upper byte */
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		/* bits 13-11 are the MO control bits */
 		atarirle_control_w(0, (data >> 27) & 7);
 	}
 
 	/* lower byte */
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x100000) ? CLEAR_LINE : ASSERT_LINE);
 }
 
@@ -151,7 +151,7 @@ static WRITE32_HANDLER( latch_w )
 static WRITE32_HANDLER( mo_command_w )
 {
 	COMBINE_DATA(mo_command);
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 		atarirle_command_w(0, ((data & 0xffff) == 2) ? ATARIRLE_COMMAND_CHECKSUM : ATARIRLE_COMMAND_DRAW);
 }
 
@@ -173,7 +173,7 @@ static WRITE32_HANDLER( atarigx2_protection_w )
 //      if (pc == 0x11cbe || pc == 0x11c30)
 //          logerror("%06X:Protection W@%04X = %04X  (result to %06X)\n", pc, offset, data, activecpu_get_reg(M68K_A2));
 //      else
-		if (ACCESSING_MSW32)
+		if (ACCESSING_BITS_16_31)
 			logerror("%06X:Protection W@%04X = %04X\n", pc, offset * 4, data >> 16);
 		else
 			logerror("%06X:Protection W@%04X = %04X\n", pc, offset * 4 + 2, data);
@@ -181,12 +181,12 @@ static WRITE32_HANDLER( atarigx2_protection_w )
 
 	COMBINE_DATA(&protection_base[offset]);
 
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		last_write = protection_base[offset] >> 16;
 		last_write_offset = offset*2;
 	}
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 	{
 		last_write = protection_base[offset] & 0xffff;
 		last_write_offset = offset*2+1;
@@ -1153,7 +1153,7 @@ static READ32_HANDLER( atarigx2_protection_r )
 		}
 	}
 
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 		logerror("%06X:Protection R@%04X = %04X\n", activecpu_get_previouspc(), offset * 4, result >> 16);
 	else
 		logerror("%06X:Protection R@%04X = %04X\n", activecpu_get_previouspc(), offset * 4 + 2, result);
@@ -1169,7 +1169,7 @@ static READ32_HANDLER( atarigx2_protection_r )
 
 static READ32_HANDLER( inputs_01_r )
 {
-	return (readinputport(0) << 16) | readinputport(1);
+	return (input_port_read_indexed(machine, 0) << 16) | input_port_read_indexed(machine, 1);
 }
 
 
@@ -1187,7 +1187,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xca0000, 0xca0fff) AM_READWRITE(atarigx2_protection_r, atarigx2_protection_w) AM_BASE(&protection_base)
 	AM_RANGE(0xd00000, 0xd1ffff) AM_READ(a2d_data_r)
 	AM_RANGE(0xd20000, 0xd20fff) AM_READWRITE(atarigen_eeprom_upper32_r, atarigen_eeprom32_w) AM_BASE((UINT32 **)&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
-	AM_RANGE(0xd40000, 0xd40fff) AM_READWRITE(SMH_RAM, atarigen_666_paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0xd40000, 0xd40fff) AM_RAM_WRITE(atarigen_666_paletteram32_w) AM_BASE(&paletteram32)
 	AM_RANGE(0xd72000, 0xd75fff) AM_WRITE(atarigen_playfield32_w) AM_BASE(&atarigen_playfield32)
 	AM_RANGE(0xd76000, 0xd76fff) AM_WRITE(atarigen_alpha32_w) AM_BASE(&atarigen_alpha32)
 	AM_RANGE(0xd78000, 0xd78fff) AM_WRITE(atarirle_0_spriteram32_w) AM_BASE(&atarirle_0_spriteram32)
@@ -2096,7 +2096,7 @@ static DRIVER_INIT( rrreveng )
 	atarigx2_motion_object_base = 0x400;
 	atarigx2_motion_object_mask = 0x3ff;
 
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xca0fc0, 0xca0fc3, 0, 0, rrreveng_prot_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xca0fc0, 0xca0fc3, 0, 0, rrreveng_prot_r);
 }
 
 

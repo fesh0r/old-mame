@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "lethalj.h"
 
@@ -40,8 +39,8 @@ INLINE void get_crosshair_xy(running_machine *machine, int player, int *x, int *
 	int width = visarea->max_x + 1 - visarea->min_x;
 	int height = visarea->max_y + 1 - visarea->min_y;
 
-	*x = ((readinputport(2 + player * 2) & 0xff) * width) / 255;
-	*y = ((readinputport(3 + player * 2) & 0xff) * height) / 255;
+	*x = ((input_port_read_indexed(machine, 2 + player * 2) & 0xff) * width) / 255;
+	*y = ((input_port_read_indexed(machine, 3 + player * 2) & 0xff) * height) / 255;
 }
 
 
@@ -62,7 +61,7 @@ READ16_HANDLER( lethalj_gun_r )
 		case 4:
 		case 5:
 			/* latch the crosshair position */
-			get_crosshair_xy(Machine, offset - 4, &beamx, &beamy);
+			get_crosshair_xy(machine, offset - 4, &beamx, &beamy);
 			gunx = beamx;
 			guny = beamy;
 			blank_palette = 1;
@@ -170,7 +169,7 @@ WRITE16_HANDLER( lethalj_blitter_w )
 
 	/* clear the IRQ on offset 0 */
 	else if (offset == 0)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 

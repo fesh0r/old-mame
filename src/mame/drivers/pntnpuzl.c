@@ -162,7 +162,7 @@ static UINT16 pntnpuzl_eeprom;
 static READ16_HANDLER( pntnpuzl_eeprom_r )
 {
 	/* bit 11 is EEPROM data */
-	return (pntnpuzl_eeprom & 0xf4ff) | (EEPROM_read_bit()<<11) | (readinputport(3) & 0x0300);
+	return (pntnpuzl_eeprom & 0xf4ff) | (EEPROM_read_bit()<<11) | (input_port_read_indexed(machine, 3) & 0x0300);
 }
 
 static WRITE16_HANDLER( pntnpuzl_eeprom_w )
@@ -253,17 +253,17 @@ static WRITE16_HANDLER( pntnpuzl_palette_w )
 {
 	static int indx,sub,rgb[3];
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		indx = data >> 8;
 		sub = 0;
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		rgb[sub++] = data & 0xff;
 		if (sub == 3)
 		{
-			palette_set_color_rgb(Machine,indx++,pal6bit(rgb[0]),pal6bit(rgb[1]),pal6bit(rgb[2]));
+			palette_set_color_rgb(machine,indx++,pal6bit(rgb[0]),pal6bit(rgb[1]),pal6bit(rgb[2]));
 			sub = 0;
 			if (indx == 256) indx = 0;
 		}
@@ -293,7 +293,7 @@ static WRITE16_HANDLER( pntnpuzl_vid_w )
 
 static READ16_HANDLER( pntnpuzl_vblank_r )
 {
-	return (readinputport(0) & 1) << 11;
+	return (input_port_read_indexed(machine, 0) & 1) << 11;
 }
 
 
@@ -351,11 +351,11 @@ static READ16_HANDLER( pntnpuzl_280014_r )
 	if (serial_out == 0x11)
 	{
 		static int touchscr[5];
-		if (readinputport(0) & 0x10)
+		if (input_port_read_indexed(machine, 0) & 0x10)
 		{
 			touchscr[0] = 0x1b;
-			touchscr[2] = BITSWAP8(readinputport(1),0,1,2,3,4,5,6,7);
-			touchscr[4] = BITSWAP8(readinputport(2),0,1,2,3,4,5,6,7);
+			touchscr[2] = BITSWAP8(input_port_read_indexed(machine, 1),0,1,2,3,4,5,6,7);
+			touchscr[4] = BITSWAP8(input_port_read_indexed(machine, 2),0,1,2,3,4,5,6,7);
 		}
 		else
 			touchscr[0] = 0;
@@ -412,11 +412,11 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( pntnpuzl_irq )
 {
-	if (readinputport(0) & 0x02)	/* coin */
+	if (input_port_read_indexed(machine, 0) & 0x02)	/* coin */
 		cpunum_set_input_line(machine, 0, 1, PULSE_LINE);
-	else if (readinputport(0) & 0x04)	/* service */
+	else if (input_port_read_indexed(machine, 0) & 0x04)	/* service */
 		cpunum_set_input_line(machine, 0, 2, PULSE_LINE);
-	else if (readinputport(0) & 0x08)	/* coin */
+	else if (input_port_read_indexed(machine, 0) & 0x08)	/* coin */
 		cpunum_set_input_line(machine, 0, 4, PULSE_LINE);
 }
 

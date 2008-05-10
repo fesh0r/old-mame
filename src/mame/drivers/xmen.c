@@ -76,7 +76,7 @@ logerror("%06x eeprom_r\n",activecpu_get_pc());
 	/* bit 6 is EEPROM data */
 	/* bit 7 is EEPROM ready */
 	/* bit 14 is service button */
-	res = (EEPROM_read_bit() << 6) | input_port_2_word_r(machine,0,0);
+	res = (EEPROM_read_bit() << 6) | input_port_read_indexed(machine,2);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -93,7 +93,7 @@ logerror("%06x xmen6p_eeprom_r\n",activecpu_get_pc());
 	/* bit 6 is EEPROM data */
 	/* bit 7 is EEPROM ready */
 	/* bit 14 is service button */
-	res = (EEPROM_read_bit() << 6) | input_port_2_word_r(machine,0,0);
+	res = (EEPROM_read_bit() << 6) | input_port_read_indexed(machine,2);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -106,7 +106,7 @@ logerror("%06x xmen6p_eeprom_r\n",activecpu_get_pc());
 static WRITE16_HANDLER( eeprom_w )
 {
 logerror("%06x: write %04x to 108000\n",activecpu_get_pc(),data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 = coin counter */
 		coin_counter_w(0,data & 0x01);
@@ -118,7 +118,7 @@ logerror("%06x: write %04x to 108000\n",activecpu_get_pc(),data);
 		EEPROM_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 		EEPROM_set_clock_line((data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
 	}
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		/* bit 8 = enable sprite ROM reading */
 		K053246_set_OBJCHA_line((data & 0x0100) ? ASSERT_LINE : CLEAR_LINE);
@@ -134,7 +134,7 @@ static READ16_HANDLER( sound_status_r )
 
 static WRITE16_HANDLER( sound_cmd_w )
 {
-	if (ACCESSING_LSB) {
+	if (ACCESSING_BITS_0_7) {
 		data &= 0xff;
 		soundlatch_w(machine, 0, data);
 	}
@@ -149,7 +149,7 @@ static WRITE16_HANDLER( sound_irq_w )
 
 static WRITE16_HANDLER( xmen_18fa00_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		/* bit 2 is interrupt enable */
 		interrupt_enable_w(machine,0,data & 0x04);
 	//  xmen_irqenabled = data;
@@ -175,7 +175,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x080000, 0x0fffff) AM_ROM
 	AM_RANGE(0x100000, 0x100fff) AM_READWRITE(K053247_word_r, K053247_word_w)
 	AM_RANGE(0x101000, 0x101fff) AM_RAM
-	AM_RANGE(0x104000, 0x104fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x104000, 0x104fff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x108000, 0x108001) AM_WRITE(eeprom_w)
 	AM_RANGE(0x108020, 0x108027) AM_WRITE(K053246_word_w)
 	AM_RANGE(0x10804c, 0x10804d) AM_WRITE(sound_cmd_w)
@@ -460,10 +460,15 @@ static INTERRUPT_GEN( xmen_interrupt )
 	else irq3_line_hold(machine, cpunum);
 }
 
+static STATE_POSTLOAD( xmen_postload )
+{
+	sound_reset_bank();
+}
+
 static MACHINE_START( xmen )
 {
 	state_save_register_global(sound_curbank);
-	state_save_register_func_postload(sound_reset_bank);
+	state_save_register_postload(machine, xmen_postload, NULL);
 }
 
 static MACHINE_DRIVER_START( xmen )
@@ -489,8 +494,7 @@ static MACHINE_DRIVER_START( xmen )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(64*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(14*8, (64-14)*8-1, 2*8, 30*8-1 )
-
+	MDRV_SCREEN_VISIBLE_AREA(13*8, (64-13)*8-1, 2*8, 30*8-1 )	/* correct, same issue of TMNT2 */
 	MDRV_PALETTE_LENGTH(2048)
 
 	MDRV_VIDEO_START(xmen)

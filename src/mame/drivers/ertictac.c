@@ -42,7 +42,7 @@ static WRITE32_HANDLER(video_fifo_w)
 
 static READ32_HANDLER(IOCR_r)
 {
-	return (input_port_5_r(machine,0)&0x80)|0x34;
+	return (input_port_read_indexed(machine, 5)&0x80)|0x34;
 }
 
 static WRITE32_HANDLER(IOCR_w)
@@ -63,7 +63,7 @@ static READ32_HANDLER(IRQRQA_r)
 
 static WRITE32_HANDLER(IRQRQA_w)
 {
-	if(ACCESSING_LSB32)
+	if(ACCESSING_BITS_0_7)
 		IRQSTA&=~data;
 }
 
@@ -74,7 +74,7 @@ static READ32_HANDLER(IRQMSKA_r)
 
 static WRITE32_HANDLER(IRQMSKA_w)
 {
-	if(ACCESSING_LSB32)
+	if(ACCESSING_BITS_0_7)
 		IRQMSKA=(data&(~2))|0x80;
 }
 
@@ -90,7 +90,7 @@ static READ32_HANDLER(IRQMSKB_r)
 
 static WRITE32_HANDLER(IRQMSKB_w)
 {
-	if(ACCESSING_LSB32)
+	if(ACCESSING_BITS_0_7)
 		IRQMSKB=data;
 }
 
@@ -101,7 +101,7 @@ static READ32_HANDLER(FIQMSK_r)
 
 static WRITE32_HANDLER(FIQMSK_w)
 {
-	if(ACCESSING_LSB32)
+	if(ACCESSING_BITS_0_7)
 		FIQMSK=(data&(~0x2c))|0x80;
 }
 
@@ -112,7 +112,7 @@ static READ32_HANDLER(T1low_r)
 
 static WRITE32_HANDLER(T1low_w)
 {
-	if(ACCESSING_LSB32)
+	if(ACCESSING_BITS_0_7)
 		T1low=data;
 }
 
@@ -123,7 +123,7 @@ static READ32_HANDLER(T1high_r)
 
 static WRITE32_HANDLER(T1high_w)
 {
-	if(ACCESSING_LSB32)
+	if(ACCESSING_BITS_0_7)
 		T1high=data;
 }
 

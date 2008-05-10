@@ -328,7 +328,11 @@ static void irqhandler(int irq)
 
 static const struct YM2203interface thedeep_ym2203_intf =
 {
-	0,0,0,0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
 	irqhandler
 };
 
@@ -338,7 +342,7 @@ static INTERRUPT_GEN( thedeep_interrupt )
 	{
 		if (protection_command != 0x59)
 		{
-			int coins = readinputport(4);
+			int coins = input_port_read_indexed(machine, 4);
 			if		(coins & 1)	protection_data = 1;
 			else if	(coins & 2)	protection_data = 2;
 			else if	(coins & 4)	protection_data = 3;

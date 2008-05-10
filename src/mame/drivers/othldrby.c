@@ -45,13 +45,13 @@ static READ16_HANDLER( pap )
 
 static WRITE16_HANDLER( oki_bankswitch_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		OKIM6295_set_bank_base(0, (data & 1) * 0x40000);
 }
 
 static WRITE16_HANDLER( coinctrl_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		coin_counter_w(0,data & 1);
 		coin_counter_w(1,data & 2);
@@ -68,7 +68,7 @@ static READ16_HANDLER( calendar_r )
 {
 	mame_system_time systime;
 
-	mame_get_base_datetime(Machine, &systime);
+	mame_get_base_datetime(machine, &systime);
 
 	switch (offset)
 	{

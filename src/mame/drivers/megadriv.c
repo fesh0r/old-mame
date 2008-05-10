@@ -6,7 +6,7 @@ Megadrive / Genesis Rewrite, Take 65498465432356345250432.3  August 06
 Thanks to:
 Charles Macdonald for much useful information (cgfm2.emuviews.com)
 
-Long Decription names mostly taken from the Good Gen database
+Long Decription names mostly taken from the GoodGen database
 
 ToDo:
 
@@ -895,12 +895,12 @@ static WRITE16_HANDLER( megadriv_vdp_w )
 	{
 		case 0x00:
 		case 0x02:
-			if (!ACCESSING_MSB)
+			if (!ACCESSING_BITS_8_15)
 			{
 				data = (data&0x00ff) | data<<8;
 			//  mame_printf_debug("8-bit write VDP data port access, offset %04x data %04x mem_mask %04x\n",offset,data,mem_mask);
 			}
-			else if (!ACCESSING_LSB)
+			else if (!ACCESSING_BITS_0_7)
 			{
 				data = (data&0xff00) | data>>8;
 			//  mame_printf_debug("8-bit write VDP data port access, offset %04x data %04x mem_mask %04x\n",offset,data,mem_mask);
@@ -910,7 +910,7 @@ static WRITE16_HANDLER( megadriv_vdp_w )
 
 		case 0x04:
 		case 0x06:
-			if ((!ACCESSING_MSB) || (!ACCESSING_LSB)) mame_printf_debug("8-bit write VDP control port access, offset %04x data %04x mem_mask %04x\n",offset,data,mem_mask);
+			if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit write VDP control port access, offset %04x data %04x mem_mask %04x\n",offset,data,mem_mask);
 			megadriv_vdp_ctrl_port_w(data);
 			break;
 
@@ -925,8 +925,8 @@ static WRITE16_HANDLER( megadriv_vdp_w )
 		case 0x12:
 		case 0x14:
 		case 0x16:
-			if (ACCESSING_LSB) SN76496_0_w(machine, 0, data & 0xff);
-			//if (ACCESSING_MSB) SN76496_0_w(machine, 0, (data >>8) & 0xff);
+			if (ACCESSING_BITS_0_7) SN76496_0_w(machine, 0, data & 0xff);
+			//if (ACCESSING_BITS_8_15) SN76496_0_w(machine, 0, (data >>8) & 0xff);
 			break;
 
 		default:
@@ -1293,13 +1293,13 @@ static READ16_HANDLER( megadriv_vdp_r )
 
 		case 0x00:
 		case 0x02:
-			if ((!ACCESSING_MSB) || (!ACCESSING_LSB)) mame_printf_debug("8-bit VDP read data port access, offset %04x mem_mask %04x\n",offset,mem_mask);
+			if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit VDP read data port access, offset %04x mem_mask %04x\n",offset,mem_mask);
 			retvalue = megadriv_vdp_data_port_r();
 			break;
 
 		case 0x04:
 		case 0x06:
-		//  if ((!ACCESSING_MSB) || (!ACCESSING_LSB)) mame_printf_debug("8-bit VDP read control port access, offset %04x mem_mask %04x\n",offset,mem_mask);
+		//  if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit VDP read control port access, offset %04x mem_mask %04x\n",offset,mem_mask);
 			retvalue = megadriv_vdp_ctrl_port_r();
 		//  retvalue = mame_rand(Machine);
 		//  mame_printf_debug("%06x: Read Control Port at scanline %d hpos %d (return %04x)\n",activecpu_get_pc(),genesis_scanline_counter, get_hposition(),retvalue);
@@ -1309,7 +1309,7 @@ static READ16_HANDLER( megadriv_vdp_r )
 		case 0x0a:
 		case 0x0c:
 		case 0x0e:
-		//  if ((!ACCESSING_MSB) || (!ACCESSING_LSB)) mame_printf_debug("8-bit VDP read HV counter port access, offset %04x mem_mask %04x\n",offset,mem_mask);
+		//  if ((!ACCESSING_BITS_8_15) || (!ACCESSING_BITS_0_7)) mame_printf_debug("8-bit VDP read HV counter port access, offset %04x mem_mask %04x\n",offset,mem_mask);
 			retvalue = megadriv_read_hv_counters();
 		//  retvalue = mame_rand(Machine);
 		//  mame_printf_debug("%06x: Read HV counters at scanline %d hpos %d (return %04x)\n",activecpu_get_pc(),genesis_scanline_counter, get_hposition(),retvalue);
@@ -1334,11 +1334,11 @@ static READ16_HANDLER( megadriv_68k_YM2612_read)
 		switch (offset)
 		{
 			case 0:
-				if (ACCESSING_MSB)	 return YM2612_status_port_0_A_r(machine, 0) << 8;
+				if (ACCESSING_BITS_8_15)	 return YM2612_status_port_0_A_r(machine, 0) << 8;
 				else 				 return YM2612_status_port_0_A_r(machine, 0);
 				break;
 			case 1:
-				if (ACCESSING_MSB)	return YM2612_status_port_0_A_r(machine, 0) << 8;
+				if (ACCESSING_BITS_8_15)	return YM2612_status_port_0_A_r(machine, 0) << 8;
 				else 				return YM2612_status_port_0_A_r(machine, 0);
 				break;
 		}
@@ -1362,11 +1362,11 @@ static WRITE16_HANDLER( megadriv_68k_YM2612_write)
 		switch (offset)
 		{
 			case 0:
-				if (ACCESSING_MSB)	YM2612_control_port_0_A_w	(machine, 0,	(data >> 8) & 0xff);
+				if (ACCESSING_BITS_8_15)	YM2612_control_port_0_A_w	(machine, 0,	(data >> 8) & 0xff);
 				else 				YM2612_data_port_0_A_w		(machine, 0,	(data >> 0) & 0xff);
 				break;
 			case 1:
-				if (ACCESSING_MSB)	YM2612_control_port_0_B_w	(machine, 0,	(data >> 8) & 0xff);
+				if (ACCESSING_BITS_8_15)	YM2612_control_port_0_B_w	(machine, 0,	(data >> 8) & 0xff);
 				else 				YM2612_data_port_0_B_w		(machine, 0,	(data >> 0) & 0xff);
 				break;
 		}
@@ -1708,21 +1708,21 @@ INPUT_PORTS_START( aladbl )
 INPUT_PORTS_END
 
 
-#define MODE_BUTTON(player) ( (readinputport(player) & 0x800) >> 11 )
-#define Z_BUTTON(player) ( (readinputport(player) & 0x400) >> 10 )
-#define Y_BUTTON(player) ( (readinputport(player) & 0x200) >> 9 )
-#define X_BUTTON(player) ( (readinputport(player) & 0x100) >> 8 )
+#define MODE_BUTTON(player) ( (input_port_read_indexed(Machine, player) & 0x800) >> 11 )
+#define Z_BUTTON(player) ( (input_port_read_indexed(Machine, player) & 0x400) >> 10 )
+#define Y_BUTTON(player) ( (input_port_read_indexed(Machine, player) & 0x200) >> 9 )
+#define X_BUTTON(player) ( (input_port_read_indexed(Machine, player) & 0x100) >> 8 )
 
 
-#define START_BUTTON(player) ( (readinputport(player) & 0x80) >> 7 )
-#define C_BUTTON(player)     ( (readinputport(player) & 0x40) >> 6 )
-#define B_BUTTON(player)     ( (readinputport(player) & 0x20) >> 5 )
-#define A_BUTTON(player)     ( (readinputport(player) & 0x10) >> 4 )
-#define RIGHT_BUTTON(player) ( (readinputport(player) & 0x08) >> 3 )
-#define LEFT_BUTTON(player)  ( (readinputport(player) & 0x04) >> 2 )
-#define DOWN_BUTTON(player)  ( (readinputport(player) & 0x02) >> 1 )
-#define UP_BUTTON(player)    ( (readinputport(player) & 0x01) >> 0 )
-#define MD_RESET_BUTTON      ( (readinputportbytag_safe("RESET",0x00)      & 0x01) >> 0 )
+#define START_BUTTON(player) ( (input_port_read_indexed(Machine, player) & 0x80) >> 7 )
+#define C_BUTTON(player)     ( (input_port_read_indexed(Machine, player) & 0x40) >> 6 )
+#define B_BUTTON(player)     ( (input_port_read_indexed(Machine, player) & 0x20) >> 5 )
+#define A_BUTTON(player)     ( (input_port_read_indexed(Machine, player) & 0x10) >> 4 )
+#define RIGHT_BUTTON(player) ( (input_port_read_indexed(Machine, player) & 0x08) >> 3 )
+#define LEFT_BUTTON(player)  ( (input_port_read_indexed(Machine, player) & 0x04) >> 2 )
+#define DOWN_BUTTON(player)  ( (input_port_read_indexed(Machine, player) & 0x02) >> 1 )
+#define UP_BUTTON(player)    ( (input_port_read_indexed(Machine, player) & 0x01) >> 0 )
+#define MD_RESET_BUTTON      ( (input_port_read_safe(Machine, "RESET",0x00)      & 0x01) >> 0 )
 
 static UINT8 megadrive_io_data_regs[3];
 static UINT8 megadrive_io_ctrl_regs[3];
@@ -2189,11 +2189,11 @@ static WRITE16_HANDLER( megadriv_68k_write_z80_ram )
 	if ((genz80.z80_has_bus==0) && (genz80.z80_is_reset==0))
 	{
 
-		if (!ACCESSING_LSB) // byte (MSB) access
+		if (!ACCESSING_BITS_0_7) // byte (MSB) access
 		{
 			genz80.z80_prgram[(offset<<1)] = (data & 0xff00) >> 8;
 		}
-		else if (!ACCESSING_MSB)
+		else if (!ACCESSING_BITS_8_15)
 		{
 			genz80.z80_prgram[(offset<<1)^1] = (data & 0x00ff);
 		}
@@ -2224,7 +2224,7 @@ static READ16_HANDLER( megadriv_68k_check_z80_bus )
 
 
 	/* Check if the 68k has the z80 bus */
-	if (!ACCESSING_LSB) // byte (MSB) access
+	if (!ACCESSING_BITS_0_7) // byte (MSB) access
 	{
 		if (genz80.z80_has_bus || genz80.z80_is_reset) retvalue = nextvalue | 0x0100;
 		else retvalue = (nextvalue & 0xfeff);
@@ -2233,7 +2233,7 @@ static READ16_HANDLER( megadriv_68k_check_z80_bus )
 		return retvalue;
 
 	}
-	else if (!ACCESSING_MSB) // is this valid?
+	else if (!ACCESSING_BITS_8_15) // is this valid?
 	{
 		//logerror("%06x: 68000 check z80 Bus (byte LSB access) %04x\n", activecpu_get_pc(),mem_mask);
 		if (genz80.z80_has_bus || genz80.z80_is_reset) retvalue = 0x0001;
@@ -2256,35 +2256,35 @@ static READ16_HANDLER( megadriv_68k_check_z80_bus )
 static WRITE16_HANDLER( megadriv_68k_req_z80_bus )
 {
 	/* Request the Z80 bus, allows 68k to read/write Z80 address space */
-	if (!ACCESSING_LSB) // byte access
+	if (!ACCESSING_BITS_0_7) // byte access
 	{
 		if (data & 0x0100)
 		{
 			//logerror("%06x: 68000 request z80 Bus (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_has_bus=0;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		else
 		{
 			//logerror("%06x: 68000 return z80 Bus (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_has_bus=1;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
 
 		}
 	}
-	else if (!ACCESSING_MSB) // is this valid?
+	else if (!ACCESSING_BITS_8_15) // is this valid?
 	{
 		if (data & 0x0001)
 		{
 			//logerror("%06x: 68000 request z80 Bus (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_has_bus=0;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		else
 		{
 			//logerror("%06x: 68000 return z80 Bus (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_has_bus=1;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
 		}
 	}
 	else // word access
@@ -2293,48 +2293,48 @@ static WRITE16_HANDLER( megadriv_68k_req_z80_bus )
 		{
 			//logerror("%06x: 68000 request z80 Bus (word access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_has_bus=0;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, ASSERT_LINE);
 		}
 		else
 		{
 			//logerror("%06x: 68000 return z80 Bus (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_has_bus=1;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_HALT, CLEAR_LINE);
 		}
 	}
 }
 
 static WRITE16_HANDLER ( megadriv_68k_req_z80_reset )
 {
-	if (!ACCESSING_LSB) // byte access
+	if (!ACCESSING_BITS_0_7) // byte access
 	{
 		if (data & 0x0100)
 		{
 			//logerror("%06x: 68000 clear z80 reset (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_is_reset=0;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE);
 		}
 		else
 		{
 			//logerror("%06x: 68000 start z80 reset (byte MSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_is_reset=1;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
 			sndti_reset(SOUND_YM2612, 0);
 		}
 	}
-	else if (!ACCESSING_MSB) // is this valid?
+	else if (!ACCESSING_BITS_8_15) // is this valid?
 	{
 		if (data & 0x0001)
 		{
 			//logerror("%06x: 68000 clear z80 reset (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_is_reset=0;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE);
 		}
 		else
 		{
 			//logerror("%06x: 68000 start z80 reset (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_is_reset=1;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
 			sndti_reset(SOUND_YM2612, 0);
 
 		}
@@ -2345,13 +2345,13 @@ static WRITE16_HANDLER ( megadriv_68k_req_z80_reset )
 		{
 			//logerror("%06x: 68000 clear z80 reset (word access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_is_reset=0;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE );
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, CLEAR_LINE );
 		}
 		else
 		{
 			//logerror("%06x: 68000 start z80 reset (byte LSB access) %04x %04x\n", activecpu_get_pc(),data,mem_mask);
 			genz80.z80_is_reset=1;
-			cpunum_set_input_line(Machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(machine, genz80.z80_cpunum, INPUT_LINE_RESET, ASSERT_LINE);
 			sndti_reset(SOUND_YM2612, 0);
 		}
 	}
@@ -2909,14 +2909,14 @@ static UINT16 vdp_get_word_from_68k_mem_svp(UINT32 source)
 /* emulate testmode plug */
 static UINT8 megadrive_io_read_data_port_svp(int portnum)
 {
-	if (portnum == 0 && readinputportbytag_safe("MEMORY_TEST", 0x00))
+	if (portnum == 0 && input_port_read_safe(Machine, "MEMORY_TEST", 0x00))
 	{
 		return (megadrive_io_data_regs[0] & 0xc0);
 	}
 	return megadrive_io_read_data_port_3button(portnum);
 }
 
-static void svp_init(void)
+static void svp_init(running_machine *machine)
 {
 	UINT8 *ROM;
 
@@ -2924,12 +2924,12 @@ static void svp_init(void)
 
 	/* SVP stuff */
 	svp.dram = auto_malloc(0x20000);
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0x300000, 0x31ffff, 0, 0, SMH_BANK2, SMH_BANK2);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x300000, 0x31ffff, 0, 0, SMH_BANK2, SMH_BANK2);
 	memory_set_bankptr( 2, svp.dram );
-	memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa15000, 0xa150ff, 0, 0, svp_68k_io_r, svp_68k_io_w);
+	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa15000, 0xa150ff, 0, 0, svp_68k_io_r, svp_68k_io_w);
 	// "cell arrange" 1 and 2
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x390000, 0x39ffff, 0, 0, svp_68k_cell1_r);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x3a0000, 0x3affff, 0, 0, svp_68k_cell2_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x390000, 0x39ffff, 0, 0, svp_68k_cell1_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3a0000, 0x3affff, 0, 0, svp_68k_cell2_r);
 
 	svp.iram = auto_malloc(0x800);
 	memory_set_bankptr( 3, svp.iram );
@@ -4755,7 +4755,7 @@ MACHINE_RESET( megadriv )
 	/* default state of z80 = reset, with bus */
 	mame_printf_debug("Resetting Megadrive / Genesis\n");
 
-	switch (readinputportbytag_safe("REGION",0x00))
+	switch (input_port_read_safe(machine, "REGION",0x00))
 	{
 
 		case 1: // US
@@ -4988,6 +4988,7 @@ int megadrive_z80irq_hpos = 320;
 UINT16* megadriv_backupram;
 int megadriv_backupram_length;
 
+#ifndef MESS
 static NVRAM_HANDLER( megadriv )
 {
 	if (megadriv_backupram!=NULL)
@@ -5009,7 +5010,7 @@ static NVRAM_HANDLER( megadriv )
 		}
 	}
 }
-
+#endif
 
 
 MACHINE_DRIVER_START( megadriv )
@@ -5032,7 +5033,9 @@ MACHINE_DRIVER_START( megadriv )
 	MDRV_SCREEN_SIZE(64*8, 64*8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 0, 28*8-1)
 
+#ifndef MESS
 	MDRV_NVRAM_HANDLER(megadriv)
+#endif
 
 	MDRV_PALETTE_LENGTH(0x200)
 
@@ -5087,20 +5090,20 @@ MACHINE_DRIVER_END
 
 
 /* Callback when the genesis enters interrupt code */
-static int genesis_int_callback (int irq)
+static IRQ_CALLBACK(genesis_int_callback)
 {
-	if (irq==4)
+	if (irqline==4)
 	{
 		megadrive_irq4_pending = 0;
 	}
 
-	if (irq==6)
+	if (irqline==6)
 	{
 		megadrive_irq6_pending = 0;
 	//  mame_printf_debug("clear pending!\n");
 	}
 
-	return (0x60+irq*4)/4; // vector address
+	return (0x60+irqline*4)/4; // vector address
 }
 
 static int megadriv_tas_callback(void)
@@ -5183,7 +5186,7 @@ DRIVER_INIT( megadrie )
 DRIVER_INIT( megadsvp )
 {
 	megadriv_init_common(machine);
-	svp_init();
+	svp_init(machine);
 	hazemdchoice_megadrive_region_export = 1;
 	hazemdchoice_megadrive_region_pal = 0;
 	hazemdchoice_megadriv_framerate = 60;
@@ -5215,41 +5218,30 @@ static WRITE8_HANDLER( z80_unmapped_w )
 
 
 /* sets the megadrive z80 to it's normal ports / map */
-void megatech_set_megadrive_z80_as_megadrive_z80(void)
+void megatech_set_megadrive_z80_as_megadrive_z80(running_machine *machine)
 {
 	/* INIT THE PORTS *********************************************************************************************/
-	memory_install_read8_handler (1, ADDRESS_SPACE_IO, 0x0000, 0xffff, 0, 0, z80_unmapped_port_r);
-	memory_install_write8_handler(1, ADDRESS_SPACE_IO, 0x0000, 0xffff, 0, 0, z80_unmapped_port_w);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_IO, 0x0000, 0xffff, 0, 0, z80_unmapped_port_r, z80_unmapped_port_w);
 
 	/* catch any addresses that don't get mapped */
-	memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x0000, 0xffff, 0, 0, z80_unmapped_r);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x0000, 0xffff, 0, 0, z80_unmapped_w);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0000, 0xffff, 0, 0, z80_unmapped_r, z80_unmapped_w);
 
 
-	memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK1);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK1, SMH_BANK1);
 	memory_set_bankptr( 1, genz80.z80_prgram );
 
-	memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK6);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK6);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, SMH_BANK6, SMH_BANK6);
 	memory_set_bankptr( 6, genz80.z80_prgram );
 
 
 	// not allowed??
-//  memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK1);
-//  memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK1);
+//  memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK1, SMH_BANK1);
 
-	memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4003, 0, 0, megadriv_z80_YM2612_read);
-	memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x6100, 0x7eff, 0, 0, megadriv_z80_unmapped_read);
-	memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x7f00, 0x7fff, 0, 0, megadriv_z80_vdp_read);
-	memory_install_read8_handler (1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, z80_read_68k_banked_data);
-
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4003, 0, 0, megadriv_z80_YM2612_write);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x7f00, 0x7fff, 0, 0, megadriv_z80_vdp_write);
-
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, megadriv_z80_z80_bank_w);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x6001, 0x6001, 0, 0, megadriv_z80_z80_bank_w);
-
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, z80_write_68k_banked_data);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4003, 0, 0, megadriv_z80_YM2612_read, megadriv_z80_YM2612_write);
+	memory_install_write8_handler    (machine, 1, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, megadriv_z80_z80_bank_w);
+	memory_install_write8_handler    (machine, 1, ADDRESS_SPACE_PROGRAM, 0x6001, 0x6001, 0, 0, megadriv_z80_z80_bank_w);
+	memory_install_read8_handler     (machine, 1, ADDRESS_SPACE_PROGRAM, 0x6100, 0x7eff, 0, 0, megadriv_z80_unmapped_read);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x7f00, 0x7fff, 0, 0, megadriv_z80_vdp_read, megadriv_z80_vdp_write);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, z80_read_68k_banked_data, z80_write_68k_banked_data);
 }
 

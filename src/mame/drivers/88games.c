@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/konami/konami.h"
 #include "cpu/z80/z80.h"
 #include "video/konamiic.h"
@@ -68,7 +67,7 @@ static WRITE8_HANDLER( k88games_5f84_w )
 
 static WRITE8_HANDLER( k88games_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(Machine, 1, 0, HOLD_LINE, 0xff);
+	cpunum_set_input_line_and_vector(machine, 1, 0, HOLD_LINE, 0xff);
 }
 
 /* handle fake button for speed cheat for players 1 and 2 */
@@ -78,9 +77,9 @@ static READ8_HANDLER( cheat1_r )
 	static int cheat = 0;
 	static const int bits[] = { 0xee, 0xff, 0xbb, 0xaa };
 
-	res = readinputportbytag("IN1");
+	res = input_port_read(machine, "IN1");
 
-	if ((readinputportbytag("IN0") & 0x08) == 0)
+	if ((input_port_read(machine, "IN0") & 0x08) == 0)
 	{
 		res |= 0x55;
 		res &= bits[cheat];
@@ -96,9 +95,9 @@ static READ8_HANDLER( cheat2_r )
 	static int cheat = 0;
 	static const int bits[] = { 0xee, 0xff, 0xbb, 0xaa };
 
-	res = readinputportbytag("IN2");
+	res = input_port_read(machine, "IN2");
 
-	if ((readinputportbytag("IN0") & 0x08) == 0)
+	if ((input_port_read(machine, "IN0") & 0x08) == 0)
 	{
 		res |= 0x55;
 		res &= bits[cheat];
@@ -122,7 +121,7 @@ static WRITE8_HANDLER( speech_msg_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM	AM_BASE(&banked_rom) /* banked ROM + palette RAM */
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(SMH_RAM, paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram_1000)	/* banked ROM + palette RAM */
+	AM_RANGE(0x1000, 0x1fff) AM_RAM_WRITE(paletteram_xBBBBBGGGGGRRRRR_be_w) AM_BASE(&paletteram_1000)	/* banked ROM + palette RAM */
 	AM_RANGE(0x2000, 0x2fff) AM_RAM
 	AM_RANGE(0x3000, 0x37ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x3800, 0x3fff) AM_READWRITE(bankedram_r, bankedram_w) AM_BASE(&ram)

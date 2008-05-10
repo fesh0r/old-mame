@@ -65,7 +65,6 @@ C004      76489 #4 trigger
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/sn76496.h"
 #include "sound/flt_rc.h"
 
@@ -129,7 +128,7 @@ static WRITE8_HANDLER( tp84_filter_w )
 
 static WRITE8_HANDLER( tp84_sh_irqtrigger_w )
 {
-	cpunum_set_input_line_and_vector(Machine, 2,0,HOLD_LINE,0xff);
+	cpunum_set_input_line_and_vector(machine, 2,0,HOLD_LINE,0xff);
 }
 
 
@@ -182,7 +181,7 @@ static ADDRESS_MAP_START( cpu2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x2000, 0x2000) AM_READ(tp84_scanline_r) /* beam position */
 	AM_RANGE(0x4000, 0x4000) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x6000, 0x679f) AM_RAM
-	AM_RANGE(0x67a0, 0x67ff) AM_READWRITE(SMH_RAM, tp84_spriteram_w) AM_BASE(&tp84_spriteram)
+	AM_RANGE(0x67a0, 0x67ff) AM_RAM_WRITE(tp84_spriteram_w) AM_BASE(&tp84_spriteram)
 	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0xe000, 0xffff) AM_ROM
 ADDRESS_MAP_END

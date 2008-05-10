@@ -43,8 +43,8 @@ INLINE void get_crosshair_xy(running_machine *machine, int player, int *x, int *
 {
 	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
-	*x = (((readinputport(4 + player * 2) & 0xff) * (visarea->max_x - visarea->min_x)) >> 8) + visarea->min_x;
-	*y = (((readinputport(5 + player * 2) & 0xff) * (visarea->max_y - visarea->min_y)) >> 8) + visarea->min_y;
+	*x = (((input_port_read_indexed(machine, 4 + player * 2) & 0xff) * (visarea->max_x - visarea->min_x)) >> 8) + visarea->min_x;
+	*y = (((input_port_read_indexed(machine, 5 + player * 2) & 0xff) * (visarea->max_y - visarea->min_y)) >> 8) + visarea->min_y;
 }
 
 
@@ -161,12 +161,12 @@ static MACHINE_RESET( tickee )
 
 static READ8_HANDLER( port1_r )
 {
-	return input_port_1_r(machine, offset) | (ticket_dispenser_0_r(machine, 0) >> 5) | (ticket_dispenser_1_r(machine, 0) >> 6);
+	return input_port_read_indexed(machine,1) | (ticket_dispenser_0_r(machine, 0) >> 5) | (ticket_dispenser_1_r(machine, 0) >> 6);
 }
 
 static READ8_HANDLER( port2_r )
 {
-	return input_port_3_r(machine, offset) | (ticket_dispenser_0_r(machine, 0) >> 5) | (ticket_dispenser_1_r(machine, 0) >> 6);
+	return input_port_read_indexed(machine,3) | (ticket_dispenser_0_r(machine, 0) >> 5) | (ticket_dispenser_1_r(machine, 0) >> 6);
 }
 
 
@@ -376,14 +376,22 @@ INPUT_PORTS_END
 
 static const struct AY8910interface ay8910_interface_1 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_0_r,
- 	input_port_2_r
+ 	input_port_2_r,
+ 	NULL,
+ 	NULL
 };
 
 static const struct AY8910interface ay8910_interface_2 =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	port1_r,
-	port2_r
+	port2_r,
+	NULL,
+	NULL
 };
 
 

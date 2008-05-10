@@ -10,7 +10,7 @@
 #include "driver.h"
 #include "deprecat.h"
 #include "machine/7474.h"
-#include "includes/galaxian.h"
+#include "includes/galaxold.h"
 
 static int irq_line;
 static emu_timer *int_timer;
@@ -22,7 +22,7 @@ static UINT8 _4in1_bank;
 static UINT8 gmgalax_selected_game;
 
 
-static void galaxian_7474_9M_2_callback(void)
+static void galaxold_7474_9M_2_callback(void)
 {
 	/* Q bar clocks the other flip-flop,
        Q is VBLANK (not visible to the CPU) */
@@ -30,24 +30,24 @@ static void galaxian_7474_9M_2_callback(void)
 	TTL7474_update(1);
 }
 
-static void galaxian_7474_9M_1_callback(void)
+static void galaxold_7474_9M_1_callback(void)
 {
 	/* Q goes to the NMI line */
 	cpunum_set_input_line(Machine, 0, irq_line, TTL7474_output_r(1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
-static const struct TTL7474_interface galaxian_7474_9M_2_intf =
+static const struct TTL7474_interface galaxold_7474_9M_2_intf =
 {
-	galaxian_7474_9M_2_callback
+	galaxold_7474_9M_2_callback
 };
 
-static const struct TTL7474_interface galaxian_7474_9M_1_intf =
+static const struct TTL7474_interface galaxold_7474_9M_1_intf =
 {
-	galaxian_7474_9M_1_callback
+	galaxold_7474_9M_1_callback
 };
 
 
-WRITE8_HANDLER( galaxian_nmi_enable_w )
+WRITE8_HANDLER( galaxold_nmi_enable_w )
 {
 	TTL7474_preset_w(1, data);
 	TTL7474_update(1);
@@ -75,11 +75,11 @@ static void machine_reset_common(running_machine *machine, int line)
 	irq_line = line;
 
 	/* initalize main CPU interrupt generator flip-flops */
-	TTL7474_config(0, &galaxian_7474_9M_2_intf);
+	TTL7474_config(0, &galaxold_7474_9M_2_intf);
 	TTL7474_preset_w(0, 1);
 	TTL7474_clear_w (0, 1);
 
-	TTL7474_config(1, &galaxian_7474_9M_1_intf);
+	TTL7474_config(1, &galaxold_7474_9M_1_intf);
 	TTL7474_clear_w (1, 1);
 	TTL7474_d_w     (1, 0);
 	TTL7474_preset_w(1, 0);
@@ -89,7 +89,7 @@ static void machine_reset_common(running_machine *machine, int line)
 	timer_adjust_oneshot(int_timer, video_screen_get_time_until_pos(machine->primary_screen, 0, 0), 0);
 }
 
-MACHINE_RESET( galaxian )
+MACHINE_RESET( galaxold )
 {
 	machine_reset_common(machine, INPUT_LINE_NMI);
 }
@@ -100,51 +100,32 @@ MACHINE_RESET( devilfsg )
 }
 
 
-
-WRITE8_HANDLER( galaxian_coin_lockout_w )
+WRITE8_HANDLER( galaxold_coin_lockout_w )
 {
 	coin_lockout_global_w(~data & 1);
 }
 
 
-WRITE8_HANDLER( galaxian_coin_counter_w )
+WRITE8_HANDLER( galaxold_coin_counter_w )
 {
 	coin_counter_w(offset, data & 0x01);
 }
 
-WRITE8_HANDLER( galaxian_coin_counter_1_w )
+WRITE8_HANDLER( galaxold_coin_counter_1_w )
 {
 	coin_counter_w(1, data & 0x01);
 }
 
-WRITE8_HANDLER( galaxian_coin_counter_2_w )
+WRITE8_HANDLER( galaxold_coin_counter_2_w )
 {
 	coin_counter_w(2, data & 0x01);
 }
 
 
-WRITE8_HANDLER( galaxian_leds_w )
+WRITE8_HANDLER( galaxold_leds_w )
 {
 	set_led_status(offset,data & 1);
 }
-
-
-READ8_HANDLER( jumpbug_protection_r )
-{
-	switch (offset)
-	{
-	case 0x0114:  return 0x4f;
-	case 0x0118:  return 0xd3;
-	case 0x0214:  return 0xcf;
-	case 0x0235:  return 0x02;
-	case 0x0311:  return 0x00;  /* not checked */
-	default:
-		logerror("Unknown protection read. Offset: %04X  PC=%04X\n",0xb000+offset,activecpu_get_pc());
-	}
-
-	return 0;
-}
-
 
 
 static READ8_HANDLER( checkmaj_protection_r )
@@ -234,7 +215,7 @@ DRIVER_INIT( dingoe )
 			rom[i] = BITSWAP8(rom[i],7,6,5,0,3,2,1,4);
 	}
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3001, 0x3001, 0, 0, dingoe_3001_r);	/* Protection check */
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3001, 0x3001, 0, 0, dingoe_3001_r);	/* Protection check */
 
 }
 
@@ -244,9 +225,9 @@ DRIVER_INIT( dingoe )
 static READ8_HANDLER( kingball_IN0_r )
 {
 	if (kingball_speech_dip)
-		return (readinputport(0) & ~0x40) | ((readinputport(3) & 0x01) << 6);
+		return (input_port_read_indexed(machine, 0) & ~0x40) | ((input_port_read_indexed(machine, 3) & 0x01) << 6);
 	else
-		return readinputport(0);
+		return input_port_read_indexed(machine, 0);
 }
 
 static READ8_HANDLER( kingball_IN1_r )
@@ -255,7 +236,7 @@ static READ8_HANDLER( kingball_IN1_r )
        that it's working, doesn't actually use return value, so we can just use
        rand() */
 
-	return (readinputport(1) & ~0x20) | (mame_rand(Machine) & 0x20);
+	return (input_port_read_indexed(machine, 1) & ~0x20) | (mame_rand(Machine) & 0x20);
 }
 
 WRITE8_HANDLER( kingball_speech_dip_w )
@@ -301,30 +282,30 @@ READ8_HANDLER( scramblb_protection_2_r )
 
 static READ8_HANDLER( azurian_IN1_r )
 {
-	return (readinputport(1) & ~0x40) | ((readinputport(3) & 0x01) << 6);
+	return (input_port_read_indexed(machine, 1) & ~0x40) | ((input_port_read_indexed(machine, 3) & 0x01) << 6);
 }
 
 static READ8_HANDLER( azurian_IN2_r )
 {
-	return (readinputport(2) & ~0x04) | ((readinputport(3) & 0x02) << 1);
+	return (input_port_read_indexed(machine, 2) & ~0x04) | ((input_port_read_indexed(machine, 3) & 0x02) << 1);
 }
 
 
 WRITE8_HANDLER( _4in1_bank_w )
 {
 	_4in1_bank = data & 0x03;
-	galaxian_gfxbank_w(machine, 0, _4in1_bank);
+	galaxold_gfxbank_w(machine, 0, _4in1_bank);
 	memory_set_bank(1, _4in1_bank);
 }
 
 READ8_HANDLER( _4in1_input_port_1_r )
 {
-	return (readinputport(1) & ~0xc0) | (readinputport(3+_4in1_bank) & 0xc0);
+	return (input_port_read_indexed(machine, 1) & ~0xc0) | (input_port_read_indexed(machine, 3+_4in1_bank) & 0xc0);
 }
 
 READ8_HANDLER( _4in1_input_port_2_r )
 {
-	return (readinputport(2) & 0x04) | (readinputport(3+_4in1_bank) & ~0xc4);
+	return (input_port_read_indexed(machine, 2) & 0x04) | (input_port_read_indexed(machine, 3+_4in1_bank) & ~0xc4);
 }
 
 
@@ -334,47 +315,47 @@ static void gmgalax_select_game(int game)
 
 	memory_set_bank(1, game);
 
-	galaxian_gfxbank_w(Machine, 0, gmgalax_selected_game);
+	galaxold_gfxbank_w(Machine, 0, gmgalax_selected_game);
 }
 
 READ8_HANDLER( gmgalax_input_port_0_r )
 {
-	return readinputport(gmgalax_selected_game ? 3 : 0);
+	return input_port_read_indexed(machine, gmgalax_selected_game ? 3 : 0);
 }
 
 READ8_HANDLER( gmgalax_input_port_1_r )
 {
-	return readinputport(gmgalax_selected_game ? 4 : 1);
+	return input_port_read_indexed(machine, gmgalax_selected_game ? 4 : 1);
 }
 
 READ8_HANDLER( gmgalax_input_port_2_r )
 {
-	return readinputport(gmgalax_selected_game ? 5 : 2);
+	return input_port_read_indexed(machine, gmgalax_selected_game ? 5 : 2);
 }
 
 
 DRIVER_INIT( pisces )
 {
 	/* the coin lockout was replaced */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6002, 0x6002, 0, 0, galaxian_gfxbank_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6002, 0x6002, 0, 0, galaxold_gfxbank_w);
 }
 
 DRIVER_INIT( checkmaj )
 {
 	/* for the title screen */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3800, 0x3800, 0, 0, checkmaj_protection_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3800, 0x3800, 0, 0, checkmaj_protection_r);
 }
 
 DRIVER_INIT( dingo )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3000, 0, 0, dingo_3000_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3035, 0x3035, 0, 0, dingo_3035_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3000, 0, 0, dingo_3000_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3035, 0x3035, 0, 0, dingo_3035_r);
 }
 
 DRIVER_INIT( kingball )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, kingball_IN0_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa800, 0xa800, 0, 0, kingball_IN1_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, kingball_IN0_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa800, 0xa800, 0, 0, kingball_IN1_r);
 
 	state_save_register_global(kingball_speech_dip);
 	state_save_register_global(kingball_sound);
@@ -395,7 +376,7 @@ static UINT8 decode_mooncrst(UINT8 data,offs_t addr)
 
 DRIVER_INIT( mooncrsu )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa002, 0, 0, galaxian_gfxbank_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa002, 0, 0, galaxold_gfxbank_w);
 }
 
 DRIVER_INIT( mooncrst )
@@ -412,7 +393,7 @@ DRIVER_INIT( mooncrst )
 
 DRIVER_INIT( mooncrgx )
 {
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6002, 0, 0, galaxian_gfxbank_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6002, 0, 0, galaxold_gfxbank_w);
 }
 
 DRIVER_INIT( moonqsr )
@@ -492,20 +473,12 @@ Pin layout is such that links can replace the PAL if encryption is not used.
 	}
 }
 
-DRIVER_INIT( gteikob2 )
-{
-	DRIVER_INIT_CALL(pisces);
-
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7006, 0x7006, 0, 0, gteikob2_flip_screen_x_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7007, 0x7007, 0, 0, gteikob2_flip_screen_y_w);
-}
-
 DRIVER_INIT( azurian )
 {
 	DRIVER_INIT_CALL(pisces);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6800, 0x6800, 0, 0, azurian_IN1_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x7000, 0, 0, azurian_IN2_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6800, 0x6800, 0, 0, azurian_IN1_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x7000, 0, 0, azurian_IN2_r);
 }
 
 DRIVER_INIT( 4in1 )
@@ -533,7 +506,7 @@ INTERRUPT_GEN( hunchbks_vh_interrupt )
 DRIVER_INIT( ladybugg )
 {
 /* Doesn't actually use the bank, but it mustn't have a coin lock! */
-memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6002, 0x6002, 0, 0, galaxian_gfxbank_w);
+memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6002, 0x6002, 0, 0, galaxold_gfxbank_w);
 }
 
 DRIVER_INIT( gmgalax )
@@ -544,20 +517,20 @@ DRIVER_INIT( gmgalax )
 
 	state_save_register_global(gmgalax_selected_game);
 
-	gmgalax_select_game(input_port_6_r(machine, 0) & 0x01);
+	gmgalax_select_game(input_port_read_indexed(machine, 6) & 0x01);
 }
 
 INTERRUPT_GEN( gmgalax_vh_interrupt )
 {
 	// reset the cpu if the selected game changed
-	int new_game = input_port_6_r(machine, 0) & 0x01;
+	int new_game = input_port_read_indexed(machine, 6) & 0x01;
 
 	if (gmgalax_selected_game != new_game)
 	{
 		gmgalax_select_game(new_game);
 
 		/* Ghost Muncher never clears this */
-		galaxian_stars_enable_w(machine, 0, 0);
+		galaxold_stars_enable_w(machine, 0, 0);
 
 		cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, ASSERT_LINE);
 	}

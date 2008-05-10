@@ -217,7 +217,7 @@ static TIMER_CALLBACK( delayed_sound_data_w )
 
 static WRITE16_HANDLER( sound_data_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		timer_call_after_resynch(NULL, data & 0xff, delayed_sound_data_w);
 }
 
@@ -256,7 +256,7 @@ static READ16_HANDLER( io_chip_r )
 				return misc_io_data[offset];
 
 			/* otherwise, return an input port */
-			return readinputport(offset);
+			return input_port_read_indexed(machine, offset);
 
 		/* 'SEGA' protection */
 		case 0x10/2:
@@ -315,9 +315,9 @@ static WRITE16_HANDLER( io_chip_w )
             */
 			segaic16_set_display_enable(data & 0x80);
 			if (((old ^ data) & 0x20) && !(data & 0x20)) watchdog_reset_w(machine,0,0);
-			cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
-			cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+			cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
+			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
 			break;
 
 		/* mute */
@@ -344,7 +344,7 @@ static WRITE16_HANDLER( io_chip_w )
 static READ16_HANDLER( analog_r )
 {
 	int result = 0xff;
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		result = analog_data[offset & 3] & 0x80;
 		analog_data[offset & 3] <<= 1;
@@ -357,7 +357,7 @@ static WRITE16_HANDLER( analog_w )
 {
 	static const char *const ports[] = { "ADC0", "ADC1", "ADC2", "ADC3", "ADC4", "ADC5", "ADC6" };
 	int selected = ((offset & 3) == 3) ? (3 + (misc_io_data[0x08/2] & 3)) : (offset & 3);
-	int value = readinputportbytag_safe(ports[selected], 0xff);
+	int value = input_port_read_safe(machine, ports[selected], 0xff);
 	analog_data[offset & 3] = value;
 }
 
@@ -429,7 +429,7 @@ static ADDRESS_MAP_START( suby_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x0c0000, 0x0cffff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x180000, 0x1807ff) AM_MIRROR(0x007800) AM_RAM AM_BASE(&segaic16_rotateram_0)
 	AM_RANGE(0x188000, 0x188fff) AM_MIRROR(0x007000) AM_RAM AM_BASE(&segaic16_spriteram_0)
-	AM_RANGE(0x190000, 0x193fff) AM_MIRROR(0x004000) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x190000, 0x193fff) AM_MIRROR(0x004000) AM_RAM_WRITE(segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x198000, 0x19ffff) AM_READ(segaic16_rotate_control_0_r)
 	AM_RANGE(0x1f0000, 0x1fffff) AM_RAM
 ADDRESS_MAP_END

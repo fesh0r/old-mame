@@ -122,10 +122,10 @@ if (input_code_pressed(KEYCODE_Z))
 
 static WRITE16_HANDLER(colordac_w)
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		colorram[clr_offset] = data;
-		palette_set_color_rgb(Machine, clr_offset/3,
+		palette_set_color_rgb(machine, clr_offset/3,
 			pal6bit(colorram[(clr_offset/3)*3+0]),
 			pal6bit(colorram[(clr_offset/3)*3+1]),
 			pal6bit(colorram[(clr_offset/3)*3+2])
@@ -133,7 +133,7 @@ static WRITE16_HANDLER(colordac_w)
 		clr_offset = (clr_offset+1) % (256*3);
 	}
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		clr_offset = (data>>8) * 3;
 	}
@@ -145,17 +145,17 @@ static UINT16 bishjan_low;
 
 static WRITE16_HANDLER( bishjan_low_w )
 {
-	if (ACCESSING_MSB)	bishjan_low = data >> 8;
+	if (ACCESSING_BITS_8_15)	bishjan_low = data >> 8;
 }
 
 static WRITE16_HANDLER( bishjan_tmap1_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		bishjan_videoram1[offset*2] = data | bishjan_low;
 		tilemap_mark_tile_dirty(tmap1, offset*2);
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		bishjan_videoram1[offset*2+1] = (data << 8) | bishjan_low;
 		tilemap_mark_tile_dirty(tmap1, offset*2+1);
@@ -163,12 +163,12 @@ static WRITE16_HANDLER( bishjan_tmap1_w )
 }
 static WRITE16_HANDLER( bishjan_tmap2_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		bishjan_videoram2[offset*2] = data | bishjan_low;
 		tilemap_mark_tile_dirty(tmap2, offset*2);
 	}
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		bishjan_videoram2[offset*2+1] = (data << 8) | bishjan_low;
 		tilemap_mark_tile_dirty(tmap2, offset*2+1);
@@ -199,7 +199,7 @@ static UINT16 bishjan_sel, bishjan_input, bishjan_hopper;
 
 static WRITE16_HANDLER( bishjan_sel_w )
 {
-	if (ACCESSING_MSB)	bishjan_sel = data >> 8;
+	if (ACCESSING_BITS_8_15)	bishjan_sel = data >> 8;
 }
 
 static READ16_HANDLER( bishjan_unk_r )
@@ -214,7 +214,7 @@ static READ16_HANDLER( bishjan_unk_r )
 
 static WRITE16_HANDLER( bishjan_input_w )
 {
-	if (ACCESSING_MSB)	bishjan_input = data >> 8;
+	if (ACCESSING_BITS_8_15)	bishjan_input = data >> 8;
 }
 
 static READ16_HANDLER( bishjan_input_r )
@@ -224,17 +224,17 @@ static READ16_HANDLER( bishjan_input_r )
 
 	for (i = 0; i < 5; i++)
 		if (bishjan_input & (1 << i))
-			res = readinputport(4+i);
+			res = input_port_read_indexed(machine, 4+i);
 
 	return	(res << 8) |
-			readinputport(3) |
+			input_port_read_indexed(machine, 3) |
 			((bishjan_hopper && !(video_screen_get_frame_number(machine->primary_screen)%10)) ? 0x00 : 0x04)	// bit 2: hopper sensor
 	;
 }
 
 static WRITE16_HANDLER( bishjan_coin_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		// coin out         data & 0x01;
 		bishjan_hopper	=	data & 0x02;	// hopper

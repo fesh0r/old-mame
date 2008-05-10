@@ -150,7 +150,7 @@ NVRAM_HANDLER( namcos2 )
 }
 
 WRITE16_HANDLER( namcos2_68k_eeprom_w ){
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 		namcos2_eeprom[offset] = data;
 	}
@@ -743,28 +743,28 @@ WRITE8_HANDLER( namcos2_mcu_analog_ctrl_w )
 		switch((data>>2)&0x07)
 		{
 		case 0:
-			namcos2_mcu_analog_data=input_port_2_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 2);
 			break;
 		case 1:
-			namcos2_mcu_analog_data=input_port_3_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 3);
 			break;
 		case 2:
-			namcos2_mcu_analog_data=input_port_4_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 4);
 			break;
 		case 3:
-			namcos2_mcu_analog_data=input_port_5_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 5);
 			break;
 		case 4:
-			namcos2_mcu_analog_data=input_port_6_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 6);
 			break;
 		case 5:
-			namcos2_mcu_analog_data=input_port_7_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 7);
 			break;
 		case 6:
-			namcos2_mcu_analog_data=input_port_8_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 8);
 			break;
 		case 7:
-			namcos2_mcu_analog_data=input_port_9_r(machine,0);
+			namcos2_mcu_analog_data=input_port_read_indexed(machine, 9);
 			break;
 		}
 #if 0
@@ -779,7 +779,7 @@ WRITE8_HANDLER( namcos2_mcu_analog_ctrl_w )
 		/* If the interrupt enable bit is set trigger an A/D IRQ */
 		if(data&0x20)
 		{
-			cpunum_set_input_line(Machine, CPU_MCU, HD63705_INT_ADCONV , PULSE_LINE);
+			cpunum_set_input_line(machine, CPU_MCU, HD63705_INT_ADCONV , PULSE_LINE);
 		}
 	}
 }
@@ -820,14 +820,14 @@ READ8_HANDLER( namcos2_mcu_port_d_r )
 	int data=0;
 
 	/* Read/convert the bits one at a time */
-	if(input_port_2_r(machine,0)>threshold) data|=0x01;
-	if(input_port_3_r(machine,0)>threshold) data|=0x02;
-	if(input_port_4_r(machine,0)>threshold) data|=0x04;
-	if(input_port_5_r(machine,0)>threshold) data|=0x08;
-	if(input_port_6_r(machine,0)>threshold) data|=0x10;
-	if(input_port_7_r(machine,0)>threshold) data|=0x20;
-	if(input_port_8_r(machine,0)>threshold) data|=0x40;
-	if(input_port_9_r(machine,0)>threshold) data|=0x80;
+	if(input_port_read_indexed(machine, 2)>threshold) data|=0x01;
+	if(input_port_read_indexed(machine, 3)>threshold) data|=0x02;
+	if(input_port_read_indexed(machine, 4)>threshold) data|=0x04;
+	if(input_port_read_indexed(machine, 5)>threshold) data|=0x08;
+	if(input_port_read_indexed(machine, 6)>threshold) data|=0x10;
+	if(input_port_read_indexed(machine, 7)>threshold) data|=0x20;
+	if(input_port_read_indexed(machine, 8)>threshold) data|=0x40;
+	if(input_port_read_indexed(machine, 9)>threshold) data|=0x80;
 
 	/* Return the result */
 	return data;
@@ -835,18 +835,18 @@ READ8_HANDLER( namcos2_mcu_port_d_r )
 
 READ8_HANDLER( namcos2_input_port_0_r )
 {
-	int data=readinputport(0);
+	int data=input_port_read_indexed(machine, 0);
 	return data;
 }
 
 READ8_HANDLER( namcos2_input_port_10_r )
 {
-	int data=readinputport(10);
+	int data=input_port_read_indexed(machine, 10);
 	return data;
 }
 
 READ8_HANDLER( namcos2_input_port_12_r )
 {
-	int data=readinputport(12);
+	int data=input_port_read_indexed(machine, 12);
 	return data;
 }

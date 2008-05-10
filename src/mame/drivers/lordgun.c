@@ -55,7 +55,7 @@ WRITE16_HANDLER( lordgun_vram_1_w );
 WRITE16_HANDLER( lordgun_vram_2_w );
 WRITE16_HANDLER( lordgun_vram_3_w );
 
-void lordgun_update_gun(int i);
+void lordgun_update_gun(running_machine *machine, int i);
 
 VIDEO_START( lordgun );
 VIDEO_UPDATE( lordgun );
@@ -111,7 +111,7 @@ static WRITE8_HANDLER(fake2_w)
 
 static READ8_HANDLER( lordgun_eeprom_r )
 {
-	return readinputport(0) | ((EEPROM_read_bit() & 1) << 7);
+	return input_port_read_indexed(machine, 0) | ((EEPROM_read_bit() & 1) << 7);
 }
 
 static WRITE8_HANDLER( lordgun_eeprom_w )
@@ -130,7 +130,7 @@ static WRITE8_HANDLER( lordgun_eeprom_w )
 	// Update light guns positions
 	for (i = 0; i < 2; i++)
 		if ( (data & (0x04 << i)) && !(old & (0x04 << i)) )
-			lordgun_update_gun(i);
+			lordgun_update_gun(machine, i);
 
 	// latch the bit
 	EEPROM_write_bit(data & 0x40);
@@ -152,11 +152,9 @@ static WRITE16_HANDLER( lordgun_priority_w )
 //  popmessage("PR: %04x", data);
 }
 
-static READ16_HANDLER( lordgun_ppi8255_0_r )	{	return ppi8255_0_r(machine, offset);	}
-static READ16_HANDLER( lordgun_ppi8255_1_r )	{	return ppi8255_1_r(machine, offset);	}
+static READ16_DEVICE_HANDLER( lordgun_ppi8255_r )	{	return ppi8255_r(device, offset);	}
 
-static WRITE16_HANDLER( lordgun_ppi8255_0_w )	{	ppi8255_0_w(machine, offset, data & 0xff);	}
-static WRITE16_HANDLER( lordgun_ppi8255_1_w )	{	ppi8255_1_w(machine, offset, data & 0xff);	}
+static WRITE16_DEVICE_HANDLER( lordgun_ppi8255_w )	{	ppi8255_w(device, offset, data & 0xff);	}
 
 static READ16_HANDLER( lordgun_gun_0_x_r )		{ return lordgun_gun[0].hw_x; }
 static READ16_HANDLER( lordgun_gun_0_y_r )		{ return lordgun_gun[0].hw_y; }
@@ -166,8 +164,8 @@ static READ16_HANDLER( lordgun_gun_1_y_r )		{ return lordgun_gun[1].hw_y; }
 
 static WRITE16_HANDLER( lordgun_soundlatch_w )
 {
-	if (ACCESSING_LSB)	soundlatch_w (machine, 0, (data >> 0) & 0xff);
-	if (ACCESSING_MSB)	soundlatch2_w(machine, 0, (data >> 8) & 0xff);
+	if (ACCESSING_BITS_0_7)	soundlatch_w (machine, 0, (data >> 0) & 0xff);
+	if (ACCESSING_BITS_8_15)	soundlatch2_w(machine, 0, (data >> 8) & 0xff);
 
 	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
@@ -176,13 +174,13 @@ static ADDRESS_MAP_START( lordgun_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM
 	AM_RANGE(0x210000, 0x21ffff) AM_RAM AM_BASE(&lordgun_priority_ram)	// PRIORITY
-	AM_RANGE(0x300000, 0x30ffff) AM_READWRITE(SMH_RAM, lordgun_vram_0_w) AM_BASE(&lordgun_vram_0)	// DISPLAY
-	AM_RANGE(0x310000, 0x313fff) AM_READWRITE(SMH_RAM, lordgun_vram_1_w) AM_BASE(&lordgun_vram_1)	// DISPLAY
-	AM_RANGE(0x314000, 0x317fff) AM_READWRITE(SMH_RAM, lordgun_vram_2_w) AM_BASE(&lordgun_vram_2)	// DISPLAY
-	AM_RANGE(0x318000, 0x319fff) AM_READWRITE(SMH_RAM, lordgun_vram_3_w) AM_BASE(&lordgun_vram_3)	// DISPLAY
+	AM_RANGE(0x300000, 0x30ffff) AM_RAM_WRITE(lordgun_vram_0_w) AM_BASE(&lordgun_vram_0)	// DISPLAY
+	AM_RANGE(0x310000, 0x313fff) AM_RAM_WRITE(lordgun_vram_1_w) AM_BASE(&lordgun_vram_1)	// DISPLAY
+	AM_RANGE(0x314000, 0x317fff) AM_RAM_WRITE(lordgun_vram_2_w) AM_BASE(&lordgun_vram_2)	// DISPLAY
+	AM_RANGE(0x318000, 0x319fff) AM_RAM_WRITE(lordgun_vram_3_w) AM_BASE(&lordgun_vram_3)	// DISPLAY
 	AM_RANGE(0x31c000, 0x31c7ff) AM_RAM AM_BASE(&lordgun_scrollram)		// LINE
 	AM_RANGE(0x400000, 0x4007ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	// ANIMATOR
-	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x500000, 0x500fff) AM_RAM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x502000, 0x502001) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_x_0)
 	AM_RANGE(0x502200, 0x502201) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_x_1)
 	AM_RANGE(0x502400, 0x502401) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_x_2)
@@ -197,8 +195,8 @@ static ADDRESS_MAP_START( lordgun_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x503c00, 0x503c01) AM_READ(lordgun_gun_0_y_r)
 	AM_RANGE(0x503e00, 0x503e01) AM_READ(lordgun_gun_1_y_r)
 	AM_RANGE(0x504000, 0x504001) AM_WRITE(lordgun_soundlatch_w)
-	AM_RANGE(0x506000, 0x506007) AM_READWRITE(lordgun_ppi8255_0_r, lordgun_ppi8255_0_w)
-	AM_RANGE(0x508000, 0x508007) AM_READWRITE(lordgun_ppi8255_1_r, lordgun_ppi8255_1_w)
+	AM_RANGE(0x506000, 0x506007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", lordgun_ppi8255_r, lordgun_ppi8255_w)
+	AM_RANGE(0x508000, 0x508007) AM_DEVREADWRITE(PPI8255, "ppi8255_1", lordgun_ppi8255_r, lordgun_ppi8255_w)
 	AM_RANGE(0x50a900, 0x50a9ff) AM_RAM	// protection
 ADDRESS_MAP_END
 
@@ -207,13 +205,13 @@ static ADDRESS_MAP_START( hfh_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM
 	AM_RANGE(0x210000, 0x21ffff) AM_RAM AM_BASE(&lordgun_priority_ram)	// PRIORITY
-	AM_RANGE(0x300000, 0x30ffff) AM_READWRITE(SMH_RAM, lordgun_vram_0_w) AM_BASE(&lordgun_vram_0)	// DISPLAY
-	AM_RANGE(0x310000, 0x313fff) AM_READWRITE(SMH_RAM, lordgun_vram_1_w) AM_BASE(&lordgun_vram_1)	// DISPLAY
-	AM_RANGE(0x314000, 0x317fff) AM_READWRITE(SMH_RAM, lordgun_vram_2_w) AM_BASE(&lordgun_vram_2)	// DISPLAY
-	AM_RANGE(0x318000, 0x319fff) AM_READWRITE(SMH_RAM, lordgun_vram_3_w) AM_BASE(&lordgun_vram_3)	// DISPLAY
+	AM_RANGE(0x300000, 0x30ffff) AM_RAM_WRITE(lordgun_vram_0_w) AM_BASE(&lordgun_vram_0)	// DISPLAY
+	AM_RANGE(0x310000, 0x313fff) AM_RAM_WRITE(lordgun_vram_1_w) AM_BASE(&lordgun_vram_1)	// DISPLAY
+	AM_RANGE(0x314000, 0x317fff) AM_RAM_WRITE(lordgun_vram_2_w) AM_BASE(&lordgun_vram_2)	// DISPLAY
+	AM_RANGE(0x318000, 0x319fff) AM_RAM_WRITE(lordgun_vram_3_w) AM_BASE(&lordgun_vram_3)	// DISPLAY
 	AM_RANGE(0x31c000, 0x31c7ff) AM_RAM AM_BASE(&lordgun_scrollram)		// LINE
 	AM_RANGE(0x400000, 0x4007ff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size)	// ANIMATOR
-	AM_RANGE(0x500000, 0x500fff) AM_READWRITE(SMH_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x500000, 0x500fff) AM_RAM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x502000, 0x502001) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_x_0)
 	AM_RANGE(0x502200, 0x502201) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_x_1)
 	AM_RANGE(0x502400, 0x502401) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_x_2)
@@ -224,8 +222,8 @@ static ADDRESS_MAP_START( hfh_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x502e00, 0x502e01) AM_WRITE(SMH_RAM) AM_BASE(&lordgun_scroll_y_3)
 	AM_RANGE(0x503000, 0x503001) AM_WRITE(lordgun_priority_w)
 	AM_RANGE(0x504000, 0x504001) AM_WRITE(lordgun_soundlatch_w)
-	AM_RANGE(0x506000, 0x506007) AM_READWRITE(lordgun_ppi8255_0_r, lordgun_ppi8255_0_w)
-	AM_RANGE(0x508000, 0x508007) AM_READWRITE(lordgun_ppi8255_1_r, lordgun_ppi8255_1_w)
+	AM_RANGE(0x506000, 0x506007) AM_DEVREADWRITE(PPI8255, "ppi8255_0", lordgun_ppi8255_r, lordgun_ppi8255_w)
+	AM_RANGE(0x508000, 0x508007) AM_DEVREADWRITE(PPI8255, "ppi8255_1", lordgun_ppi8255_r, lordgun_ppi8255_w)
 	AM_RANGE(0x50b900, 0x50b9ff) AM_RAM	// protection
 ADDRESS_MAP_END
 
@@ -409,21 +407,25 @@ INPUT_PORTS_END
 
 ***************************************************************************/
 
-static const ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf[2] =
 {
-	2,	// 2 chips
-	{ lordgun_eeprom_r,		input_port_1_r },		// Port A read
-	{ 0,					input_port_2_r },		// Port B read
-	{ input_port_3_r,		input_port_4_r },		// Port C read
-	{ fake_w,				fake_w },				// Port A write
-	{ lordgun_eeprom_w,		fake_w },				// Port B write
-	{ fake2_w,				fake_w },				// Port C write
+	{
+		lordgun_eeprom_r,			// Port A read
+		NULL,						// Port B read
+		input_port_3_r,				// Port C read
+		fake_w,						// Port A write
+		lordgun_eeprom_w,			// Port B write
+		fake2_w						// Port C write
+	},
+	{
+		input_port_1_r,				// Port A read
+		input_port_2_r,				// Port B read
+		input_port_4_r,				// Port C read
+		fake_w,						// Port A write
+		fake_w,						// Port B write
+		fake_w						// Port C write
+	}
 };
-
-static MACHINE_RESET( lordgun )
-{
-	ppi8255_init(&ppi8255_intf);
-}
 
 static void soundirq(int state)
 {
@@ -444,7 +446,11 @@ static MACHINE_DRIVER_START( lordgun )
 	MDRV_CPU_PROGRAM_MAP(lordgun_soundmem_map,0)
 	MDRV_CPU_IO_MAP(lordgun_soundio_map,0)
 
-	MDRV_MACHINE_RESET(lordgun)
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( ppi8255_intf[0] )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( ppi8255_intf[1] )
 
 	MDRV_NVRAM_HANDLER(93C46)
 

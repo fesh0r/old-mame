@@ -111,7 +111,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "jedi.h"
 
@@ -142,7 +141,7 @@ static TIMER_CALLBACK( generate_interrupt )
 
 static WRITE8_HANDLER( main_irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -215,8 +214,8 @@ static READ8_HANDLER( a2d_data_r )
 
 	switch (state->a2d_select)
 	{
-		case 0: ret = readinputport(2); break;
-		case 2: ret = readinputport(3); break;
+		case 0: ret = input_port_read_indexed(machine, 2); break;
+		case 2: ret = input_port_read_indexed(machine, 3); break;
 	}
 
 	return ret;
@@ -270,7 +269,7 @@ static WRITE8_HANDLER( nvram_enable_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM
-	AM_RANGE(0x0800, 0x08ff) AM_MIRROR(0x0300) AM_READWRITE(SMH_RAM, nvram_data_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x0800, 0x08ff) AM_MIRROR(0x0300) AM_RAM_WRITE(nvram_data_w) AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x0c00, 0x0c00) AM_MIRROR(0x03fe) AM_READWRITE(input_port_0_r, SMH_NOP)
 	AM_RANGE(0x0c01, 0x0c01) AM_MIRROR(0x03fe) AM_READWRITE(input_port_1_r, SMH_NOP)
 	AM_RANGE(0x1000, 0x13ff) AM_NOP

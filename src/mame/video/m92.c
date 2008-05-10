@@ -80,7 +80,7 @@ WRITE16_HANDLER( m92_spritecontrol_w )
 	/* Sprite list size register - used in spriteroutine */
 
 	/* Sprite control - display all sprites, or partial list */
-	if (offset==2 && ACCESSING_LSB)
+	if (offset==2 && ACCESSING_BITS_0_7)
 	{
 		if ((data & 0xff) == 8)
 			m92_sprite_list = (((0x100 - m92_spritecontrol[0]) & 0xff) * 4);
@@ -93,7 +93,7 @@ WRITE16_HANDLER( m92_spritecontrol_w )
 	/* Sprite buffer - the data written doesn't matter (confirmed by several games) */
 	if (offset==4)
 	{
-			buffer_spriteram16_w(machine,0,0,0);
+			buffer_spriteram16_w(machine,0,0,0xffff);
 		m92_sprite_buffer_busy = 0;
 
 		/* Pixel clock is 26.6666 MHz, we have 0x800 bytes, or 0x400 words
@@ -119,7 +119,7 @@ WRITE16_HANDLER( m92_videocontrol_w )
         be a different motherboard revision (most games use M92-A-B top
         pcb, a M92-A-A revision could exist...).
     */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* Access to upper palette bank */
 		m92_palette_bank = (data >> 1) & 1;
@@ -309,7 +309,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			y = buffered_spriteram16[offs+0] & 0x1ff;
 			x = buffered_spriteram16[offs+3] & 0x1ff;
 
-			if ((buffered_spriteram16[offs+2] & 0x0080)==0x0080) pri_back=0; else pri_back=2;
+			if (buffered_spriteram16[offs+2] & 0x0080) pri_back=0; else pri_back=2;
 
 		 	sprite= buffered_spriteram16[offs+1];
 			colour = buffered_spriteram16[offs+2] & 0x007f;
@@ -324,8 +324,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 			x_multi = 1 << x_multi;
 
 			offs += 4 * x_multi;
-			if (pri_sprite != k)
-				continue;
+			if (pri_sprite != k) continue;
 
 			x = x - 16;
 			y = 384 - 16 - y;
@@ -463,7 +462,7 @@ VIDEO_UPDATE( m92 )
 	m92_screenrefresh(screen->machine, bitmap, cliprect);
 
 	/* Flipscreen appears hardwired to the dipswitch - strange */
-	if (readinputportbytag("DIPS21") & 0x100)
+	if (input_port_read(screen->machine, "DIPS21") & 0x100)
 		flip_screen_set(0);
 	else
 		flip_screen_set(1);

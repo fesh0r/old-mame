@@ -36,7 +36,7 @@ INTERRUPT_GEN( toaplan1_interrupt )
 
 WRITE16_HANDLER( toaplan1_intenable_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		toaplan1_intenable = data & 0xff;
 	}
@@ -99,7 +99,7 @@ WRITE16_HANDLER( demonwld_dsp_bio_w )
 	if (data == 0) {
 		if (dsp_execute) {
 			logerror("Turning 68000 on\n");
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, CLEAR_LINE);
 			dsp_execute = 0;
 		}
 		demonwld_dsp_BIO = ASSERT_LINE;
@@ -129,7 +129,7 @@ static void demonwld_dsp(int enable)
 		cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, ASSERT_LINE);
 	}
 }
-static void demonwld_restore_dsp(void)
+static STATE_POSTLOAD( demonwld_restore_dsp )
 {
 	demonwld_dsp(demonwld_dsp_on);
 }
@@ -140,7 +140,7 @@ WRITE16_HANDLER( demonwld_dsp_ctrl_w )
 	logerror("68000:%08x  Writing %08x to %08x.\n",activecpu_get_pc() ,data ,0xe0000a + offset);
 #endif
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		switch (data)
 		{
@@ -160,14 +160,14 @@ READ16_HANDLER( samesame_port_6_word_r )
 {
 	/* Bit 0x80 is secondary CPU (HD647180) ready signal */
 	logerror("PC:%04x Warning !!! IO reading from $14000a\n",activecpu_get_previouspc());
-	return (0x80 | input_port_6_word_r(machine,0,0)) & 0xff;
+	return (0x80 | input_port_read_indexed(machine,6)) & 0xff;
 }
 
 READ16_HANDLER( vimana_input_port_5_word_r )
 {
 	int data, p;
 
-	p = input_port_5_word_r(machine,0,0);
+	p = input_port_read_indexed(machine,5);
 	vimana_latch ^= p;
 	data = (vimana_latch & p );
 
@@ -201,7 +201,7 @@ WRITE16_HANDLER( vimana_mcu_w )
 	{
 		case 0:  break;
 		case 1:  break;
-		case 2:  if (ACCESSING_LSB) vimana_credits = data & 0xff; break;
+		case 2:  if (ACCESSING_BITS_0_7) vimana_credits = data & 0xff; break;
 	}
 }
 
@@ -212,7 +212,7 @@ READ16_HANDLER( toaplan1_shared_r )
 
 WRITE16_HANDLER( toaplan1_shared_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		toaplan1_sharedram[offset] = data & 0xff;
 	}
@@ -223,13 +223,13 @@ WRITE16_HANDLER( toaplan1_reset_sound )
 {
 	/* Reset the secondary CPU and sound chip during soft resets */
 
-	if (ACCESSING_LSB && (data == 0))
+	if (ACCESSING_BITS_0_7 && (data == 0))
 	{
 		logerror("PC:%04x  Resetting Sound CPU and Sound chip (%08x)\n",activecpu_get_previouspc(),data);
-		if (Machine->config->sound[0].type == SOUND_YM3812)
+		if (machine->config->sound[0].type == SOUND_YM3812)
 			sndti_reset(SOUND_YM3812, 0);
-		if (Machine->config->cpu[1].type == CPU_Z80)
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+		if (machine->config->cpu[1].type == CPU_Z80)
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 	}
 }
 
@@ -281,11 +281,11 @@ WRITE8_HANDLER( toaplan1_coin_w )
 
 WRITE16_HANDLER( samesame_coin_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		toaplan1_coin_w(machine, offset, data & 0xff);
 	}
-	if (ACCESSING_MSB && (data&0xff00))
+	if (ACCESSING_BITS_8_15 && (data&0xff00))
 	{
 		logerror("PC:%04x  Writing unknown MSB data (%04x) to coin count/lockout port\n",activecpu_get_previouspc(),data);
 	}
@@ -299,7 +299,7 @@ MACHINE_RESET( toaplan1 )
 	toaplan1_unk_reset_port = 0;
 	coin_lockout_global_w(0);
 }
-void toaplan1_driver_savestate(void)
+void toaplan1_driver_savestate(running_machine *machine)
 {
 	state_save_register_global(toaplan1_intenable);
 	state_save_register_global(toaplan1_coin_count);
@@ -319,14 +319,14 @@ MACHINE_RESET( demonwld )
 	main_ram_seg = 0;
 	dsp_execute = 0;
 }
-void demonwld_driver_savestate(void)
+void demonwld_driver_savestate(running_machine *machine)
 {
 	state_save_register_global(demonwld_dsp_on);
 	state_save_register_global(dsp_addr_w);
 	state_save_register_global(main_ram_seg);
 	state_save_register_global(demonwld_dsp_BIO);
 	state_save_register_global(dsp_execute);
-	state_save_register_func_postload(demonwld_restore_dsp);
+	state_save_register_postload(machine, demonwld_restore_dsp, NULL);
 }
 
 MACHINE_RESET( vimana )
@@ -335,7 +335,7 @@ MACHINE_RESET( vimana )
 	vimana_credits = 0;
 	vimana_latch = 0;
 }
-void vimana_driver_savestate(void)
+void vimana_driver_savestate(running_machine *machine)
 {
 	state_save_register_global(vimana_credits);
 	state_save_register_global(vimana_latch);

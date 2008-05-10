@@ -103,7 +103,7 @@ WRITE16_HANDLER( inufuku_scrollreg_w );
 
 static WRITE16_HANDLER( inufuku_soundcommand_w )
 {
-	if (ACCESSING_LSB) {
+	if (ACCESSING_BITS_0_7) {
 
 		/* hack... sound doesn't work otherwise */
 		if (data == 0x08) return;
@@ -159,7 +159,7 @@ static READ16_HANDLER( inufuku_eeprom_r )
 
 	soundflag = pending_command ? 0x0000 : 0x0080;	// bit7
 	eeprom = (EEPROM_read_bit() & 1) << 6;			// bit6
-	inputport = readinputport(4) & 0xff3f;			// bit5-0
+	inputport = input_port_read_indexed(machine, 4) & 0xff3f;			// bit5-0
 
 	return (soundflag | eeprom | inputport);
 }

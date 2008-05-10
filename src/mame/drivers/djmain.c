@@ -62,6 +62,9 @@ static UINT8 pending_vb_int;
 static UINT16 v_ctrl;
 static UINT32 obj_regs[0xa0/4];
 
+static const UINT8 *ide_user_password;
+static const UINT8 *ide_master_password;
+
 #define DISABLE_VB_INT	(!(v_ctrl & 0x8000))
 
 
@@ -83,7 +86,7 @@ static WRITE32_HANDLER( paletteram32_w )
 	g = (data >>  8) & 0xff;
 	b = (data >> 16) & 0xff;
 
-	palette_set_color(Machine, offset, MAKE_RGB(r, g, b));
+	palette_set_color(machine, offset, MAKE_RGB(r, g, b));
 }
 
 
@@ -96,7 +99,7 @@ static void sndram_set_bank(void)
 
 static WRITE32_HANDLER( sndram_bank_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		sndram_bank = (data >> 16) & 0x1f;
 		sndram_set_bank();
@@ -107,16 +110,16 @@ static READ32_HANDLER( sndram_r )
 {
 	UINT32 data = 0;
 
-	if ((mem_mask & 0xff000000) == 0)
+	if (ACCESSING_BITS_24_31)
 		data |= sndram[offset * 4] << 24;
 
-	if ((mem_mask & 0x00ff0000) == 0)
+	if (ACCESSING_BITS_16_23)
 		data |= sndram[offset * 4 + 1] << 16;
 
-	if ((mem_mask & 0x0000ff00) == 0)
+	if (ACCESSING_BITS_8_15)
 		data |= sndram[offset * 4 + 2] << 8;
 
-	if ((mem_mask & 0x000000ff) == 0)
+	if (ACCESSING_BITS_0_7)
 		data |= sndram[offset * 4 + 3];
 
 	return data;
@@ -124,16 +127,16 @@ static READ32_HANDLER( sndram_r )
 
 static WRITE32_HANDLER( sndram_w )
 {
-	if ((mem_mask & 0xff000000) == 0)
+	if (ACCESSING_BITS_24_31)
 		sndram[offset * 4] = data >> 24;
 
-	if ((mem_mask & 0x00ff0000) == 0)
+	if (ACCESSING_BITS_16_23)
 		sndram[offset * 4 + 1] = data >> 16;
 
-	if ((mem_mask & 0x0000ff00) == 0)
+	if (ACCESSING_BITS_8_15)
 		sndram[offset * 4 + 2] = data >> 8;
 
-	if ((mem_mask & 0x000000ff) == 0)
+	if (ACCESSING_BITS_0_7)
 		sndram[offset * 4 + 3] = data;
 }
 
@@ -144,9 +147,9 @@ static READ16_HANDLER( dual539_16_r )
 {
 	UINT16 ret = 0;
 
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		ret |= K054539_1_r(machine, offset);
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		ret |= K054539_0_r(machine, offset)<<8;
 
 	return ret;
@@ -154,9 +157,9 @@ static READ16_HANDLER( dual539_16_r )
 
 static WRITE16_HANDLER( dual539_16_w )
 {
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		K054539_1_w(machine, offset, data);
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		K054539_0_w(machine, offset, data>>8);
 }
 
@@ -164,9 +167,9 @@ static READ32_HANDLER( dual539_r )
 {
 	UINT32 data = 0;
 
-	if (~mem_mask & 0xffff0000)
+	if (ACCESSING_BITS_16_31)
 		data |= dual539_16_r(machine, offset * 2, mem_mask >> 16) << 16;
-	if (~mem_mask & 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 		data |= dual539_16_r(machine, offset * 2 + 1, mem_mask);
 
 	return data;
@@ -174,9 +177,9 @@ static READ32_HANDLER( dual539_r )
 
 static WRITE32_HANDLER( dual539_w )
 {
-	if (~mem_mask & 0xffff0000)
+	if (ACCESSING_BITS_16_31)
 		dual539_16_w(machine, offset * 2, data >> 16, mem_mask >> 16);
-	if (~mem_mask & 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 		dual539_16_w(machine, offset * 2 + 1, data, mem_mask);
 }
 
@@ -206,10 +209,10 @@ static READ32_HANDLER( obj_rom_r )
 	offset += bank * 0x200;
 	offset *= 4;
 
-	if (~mem_mask & 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 		offset += 2;
 
-	if (~mem_mask & 0xff00ff00)
+	if (mem_mask & 0xff00ff00)
 		offset++;
 
 	return mem8[offset] * 0x01010101;
@@ -220,7 +223,7 @@ static READ32_HANDLER( obj_rom_r )
 
 static WRITE32_HANDLER( v_ctrl_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		data >>= 16;
 		mem_mask >>= 16;
@@ -229,7 +232,7 @@ static WRITE32_HANDLER( v_ctrl_w )
 		if (pending_vb_int && !DISABLE_VB_INT)
 		{
 			pending_vb_int = 0;
-			cpunum_set_input_line(Machine, 0, MC68000_IRQ_4, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, MC68000_IRQ_4, HOLD_LINE);
 		}
 	}
 }
@@ -241,7 +244,7 @@ static READ32_HANDLER( v_rom_r )
 
 	offset *= 2;
 
-	if (!ACCESSING_MSB32)
+	if (!ACCESSING_BITS_24_31)
 		offset += 1;
 
 	offset += bank * 0x800 * 4;
@@ -257,26 +260,26 @@ static READ32_HANDLER( v_rom_r )
 
 static READ32_HANDLER( inp1_r )
 {
-	UINT32 result = (readinputport(5)<<24) | (readinputport(2)<<16) | (readinputport(1)<<8) | readinputport(0);
+	UINT32 result = (input_port_read_indexed(machine, 5)<<24) | (input_port_read_indexed(machine, 2)<<16) | (input_port_read_indexed(machine, 1)<<8) | input_port_read_indexed(machine, 0);
 
 	return result;
 }
 
 static READ32_HANDLER( inp2_r )
 {
-	return (readinputport(3)<<24) | (readinputport(4)<<16) | 0xffff;
+	return (input_port_read_indexed(machine, 3)<<24) | (input_port_read_indexed(machine, 4)<<16) | 0xffff;
 }
 
 static READ32_HANDLER( turntable_r )
 {
 	UINT32 result = 0;
 
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		UINT8 pos;
 		int delta;
 
-		pos = readinputport(6 + turntable_select);
+		pos = input_port_read_indexed(machine, 6 + turntable_select);
 		delta = pos - turntable_last_pos[turntable_select];
 		if (delta < -128)
 			delta += 256;
@@ -294,7 +297,7 @@ static READ32_HANDLER( turntable_r )
 
 static WRITE32_HANDLER( turntable_select_w )
 {
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 		turntable_select = (data >> 19) & 1;
 }
 
@@ -304,35 +307,35 @@ static WRITE32_HANDLER( turntable_select_w )
 #define IDE_STD_OFFSET	(0x1f0/2)
 #define IDE_ALT_OFFSET	(0x3f6/2)
 
-static READ32_HANDLER( ide_std_r )
+static READ32_DEVICE_HANDLER( ide_std_r )
 {
-	if (ACCESSING_LSB32)
-		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset, 0x00ff) >> 8;
+	if (ACCESSING_BITS_0_7)
+		return ide_controller16_r(device, IDE_STD_OFFSET + offset, 0xff00) >> 8;
 	else
-		return ide_controller16_0_r(machine, IDE_STD_OFFSET + offset, 0x0000) << 16;
+		return ide_controller16_r(device, IDE_STD_OFFSET + offset, 0xffff) << 16;
 }
 
-static WRITE32_HANDLER( ide_std_w )
+static WRITE32_DEVICE_HANDLER( ide_std_w )
 {
-	if (ACCESSING_LSB32)
-		ide_controller16_0_w(machine, IDE_STD_OFFSET + offset, data << 8, 0x00ff);
+	if (ACCESSING_BITS_0_7)
+		ide_controller16_w(device, IDE_STD_OFFSET + offset, data << 8, 0xff00);
 	else
-		ide_controller16_0_w(machine, IDE_STD_OFFSET + offset, data >> 16, 0x0000);
+		ide_controller16_w(device, IDE_STD_OFFSET + offset, data >> 16, 0xffff);
 }
 
 
-static READ32_HANDLER( ide_alt_r )
+static READ32_DEVICE_HANDLER( ide_alt_r )
 {
 	if (offset == 0)
-		return ide_controller16_0_r(machine, IDE_ALT_OFFSET, 0xff00) << 24;
+		return ide_controller16_r(device, IDE_ALT_OFFSET, 0x00ff) << 24;
 
 	return 0;
 }
 
-static WRITE32_HANDLER( ide_alt_w )
+static WRITE32_DEVICE_HANDLER( ide_alt_w )
 {
-	if (offset == 0 && !(mem_mask & 0x00ff0000))
-		ide_controller16_0_w(machine, IDE_ALT_OFFSET, data >> 24, 0xff00);
+	if (offset == 0 && ACCESSING_BITS_16_23)
+		ide_controller16_w(device, IDE_ALT_OFFSET, data >> 24, 0x00ff);
 }
 
 
@@ -371,7 +374,7 @@ static WRITE32_HANDLER( ide_alt_w )
 
 static WRITE32_HANDLER( light_ctrl_1_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		output_set_value("right-red-hlt",  !(data & 0x08000000));	// Right red HIGHLIGHT
 		output_set_value("left-red-hlt",   !(data & 0x04000000));	// Left red HIGHLIGHT
@@ -382,7 +385,7 @@ static WRITE32_HANDLER( light_ctrl_1_w )
 
 static WRITE32_HANDLER( light_ctrl_2_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		output_set_value("left-ssr",       !!(data & 0x08000000));	// SSR
 		output_set_value("right-ssr",      !!(data & 0x08000000));	// SSR
@@ -399,17 +402,17 @@ static WRITE32_HANDLER( light_ctrl_2_w )
 
 static WRITE32_HANDLER( unknown590000_w )
 {
-	//logerror("%08X: unknown 590000 write %08X: %08X & %08X\n", activecpu_get_previouspc(), offset, data, ~mem_mask);
+	//logerror("%08X: unknown 590000 write %08X: %08X & %08X\n", activecpu_get_previouspc(), offset, data, mem_mask);
 }
 
 static WRITE32_HANDLER( unknown802000_w )
 {
-	//logerror("%08X: unknown 802000 write %08X: %08X & %08X\n", activecpu_get_previouspc(), offset, data, ~mem_mask);
+	//logerror("%08X: unknown 802000 write %08X: %08X & %08X\n", activecpu_get_previouspc(), offset, data, mem_mask);
 }
 
 static WRITE32_HANDLER( unknownc02000_w )
 {
-	//logerror("%08X: unknown c02000 write %08X: %08X & %08X\n", activecpu_get_previouspc(), offset, data, ~mem_mask);
+	//logerror("%08X: unknown c02000 write %08X: %08X & %08X\n", activecpu_get_previouspc(), offset, data, mem_mask);
 }
 
 
@@ -435,17 +438,17 @@ static INTERRUPT_GEN( vb_interrupt )
 }
 
 
-static void ide_interrupt(int state)
+static void ide_interrupt(const device_config *device, int state)
 {
 	if (state != CLEAR_LINE)
 	{
 		//logerror("IDE interrupt asserted\n");
-		cpunum_set_input_line(Machine, 0, MC68000_IRQ_1, HOLD_LINE);
+		cpunum_set_input_line(device->machine, 0, MC68000_IRQ_1, HOLD_LINE);
 	}
 	else
 	{
 		//logerror("IDE interrupt cleared\n");
-		cpunum_set_input_line(Machine, 0, MC68000_IRQ_1, CLEAR_LINE);
+		cpunum_set_input_line(device->machine, 0, MC68000_IRQ_1, CLEAR_LINE);
 	}
 }
 
@@ -461,7 +464,7 @@ static void ide_interrupt(int state)
 static ADDRESS_MAP_START( memory_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x0fffff) AM_ROM							// PRG ROM
 	AM_RANGE(0x400000, 0x40ffff) AM_RAM							// WORK RAM
-	AM_RANGE(0x480000, 0x48443f) AM_READWRITE(SMH_RAM, paletteram32_w)		// COLOR RAM
+	AM_RANGE(0x480000, 0x48443f) AM_RAM_WRITE(paletteram32_w)		// COLOR RAM
 	                             AM_BASE(&paletteram32)
 	AM_RANGE(0x500000, 0x57ffff) AM_READWRITE(sndram_r, sndram_w)				// SOUND RAM
 	AM_RANGE(0x580000, 0x58003f) AM_READWRITE(K056832_long_r, K056832_long_w)		// VIDEO REG (tilemap)
@@ -482,11 +485,11 @@ static ADDRESS_MAP_START( memory_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x803800, 0x803fff) AM_READ(obj_rom_r)						// OBJECT ROM readthrough (for POST)
 	AM_RANGE(0xc00000, 0xc01fff) AM_READWRITE(K056832_ram_long_r, K056832_ram_long_w)	// VIDEO RAM (tilemap) (beatmania)
 	AM_RANGE(0xc02000, 0xc02047) AM_WRITE(unknownc02000_w)					// ??
-	AM_RANGE(0xd00000, 0xd0000f) AM_READWRITE(ide_std_r, ide_std_w)				// IDE control regs (hiphopmania)
-	AM_RANGE(0xd4000c, 0xd4000f) AM_READWRITE(ide_alt_r, ide_alt_w)				// IDE status control reg (hiphopmania)
+	AM_RANGE(0xd00000, 0xd0000f) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_std_r, ide_std_w)				// IDE control regs (hiphopmania)
+	AM_RANGE(0xd4000c, 0xd4000f) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_alt_r, ide_alt_w)				// IDE status control reg (hiphopmania)
 	AM_RANGE(0xe00000, 0xe01fff) AM_READWRITE(K056832_ram_long_r, K056832_ram_long_w)	// VIDEO RAM (tilemap) (hiphopmania)
-	AM_RANGE(0xf00000, 0xf0000f) AM_READWRITE(ide_std_r, ide_std_w)				// IDE control regs (beatmania)
-	AM_RANGE(0xf4000c, 0xf4000f) AM_READWRITE(ide_alt_r, ide_alt_w)				// IDE status control reg (beatmania)
+	AM_RANGE(0xf00000, 0xf0000f) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_std_r, ide_std_w)				// IDE control regs (beatmania)
+	AM_RANGE(0xf4000c, 0xf4000f) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_alt_r, ide_alt_w)				// IDE status control reg (beatmania)
 ADDRESS_MAP_END
 
 
@@ -1153,19 +1156,6 @@ GFXDECODE_END
 
 /*************************************
  *
- *  IDE interfaces
- *
- *************************************/
-
-static const struct ide_interface ide_intf =
-{
-	ide_interrupt,
-};
-
-
-
-/*************************************
- *
  *  Sound interfaces
  *
  *************************************/
@@ -1183,9 +1173,20 @@ static const struct K054539interface k054539_interface =
  *
  *************************************/
 
+static STATE_POSTLOAD( djmain_postload )
+{
+	sndram_set_bank();
+}
+
 static MACHINE_START( djmain )
 {
+	const device_config *ide = device_list_find_by_tag(machine->config->devicelist, IDE_CONTROLLER, "ide");
 	UINT8 *region = memory_region(REGION_SOUND1);
+
+	if (ide != NULL && ide_master_password != NULL)
+		ide_set_master_password(ide, ide_master_password);
+	if (ide != NULL && ide_user_password != NULL)
+		ide_set_user_password(ide, ide_user_password);
 
 	state_save_register_global(sndram_bank);
 	state_save_register_global_pointer(region, 0x80000 * 32);
@@ -1193,7 +1194,7 @@ static MACHINE_START( djmain )
 	state_save_register_global(v_ctrl);
 	state_save_register_global_array(obj_regs);
 
-	state_save_register_func_postload(sndram_set_bank);
+	state_save_register_postload(machine, djmain_postload, NULL);
 }
 
 
@@ -1204,7 +1205,7 @@ static MACHINE_RESET( djmain )
 	sndram_set_bank();
 
 	/* reset the IDE controller */
-	ide_controller_reset(0);
+	devtag_reset(machine, IDE_CONTROLLER, "ide");
 
 	/* reset LEDs */
 	set_led_status(0, 1);
@@ -1231,6 +1232,8 @@ static MACHINE_DRIVER_START( djmain )
 
 	MDRV_MACHINE_START(djmain)
 	MDRV_MACHINE_RESET(djmain)
+
+	MDRV_IDE_CONTROLLER_ADD("ide", 0, ide_interrupt)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1728,12 +1731,10 @@ ROM_END
 
 static DRIVER_INIT( beatmania )
 {
-	UINT8 *region;
+	new_memory_region(machine, REGION_SOUND1, 0x80000 * 32, 0);
 
-	region = new_memory_region(machine, REGION_SOUND1, 0x80000 * 32, 0);
-
-	/* spin up the hard disk */
-	ide_controller_init(0, &ide_intf);
+	ide_master_password = NULL;
+	ide_user_password = NULL;
 }
 
 static const UINT8 beatmania_master_password[2 + 32] =
@@ -1758,8 +1759,8 @@ static DRIVER_INIT( hmcompmx )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, hmcompmx_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = hmcompmx_user_password;
 }
 
 static DRIVER_INIT( bm4thmix )
@@ -1775,7 +1776,7 @@ static DRIVER_INIT( bm4thmix )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_user_password(0, bm4thmix_user_password);
+	ide_user_password = bm4thmix_user_password;
 }
 
 static DRIVER_INIT( bm5thmix )
@@ -1791,8 +1792,8 @@ static DRIVER_INIT( bm5thmix )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bm5thmix_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bm5thmix_user_password;
 }
 
 static DRIVER_INIT( bmclubmx )
@@ -1808,8 +1809,8 @@ static DRIVER_INIT( bmclubmx )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bmclubmx_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bmclubmx_user_password;
 }
 
 
@@ -1826,8 +1827,8 @@ static DRIVER_INIT( bmcompm2 )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bmcompm2_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bmcompm2_user_password;
 }
 
 static DRIVER_INIT( hmcompm2 )
@@ -1843,8 +1844,8 @@ static DRIVER_INIT( hmcompm2 )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, hmcompm2_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = hmcompm2_user_password;
 }
 
 static DRIVER_INIT( bmdct )
@@ -1860,8 +1861,8 @@ static DRIVER_INIT( bmdct )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bmdct_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bmdct_user_password;
 }
 
 static DRIVER_INIT( bmcorerm )
@@ -1877,8 +1878,8 @@ static DRIVER_INIT( bmcorerm )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bmcorerm_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bmcorerm_user_password;
 }
 
 static DRIVER_INIT( bm6thmix )
@@ -1894,8 +1895,8 @@ static DRIVER_INIT( bm6thmix )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bm6thmix_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bm6thmix_user_password;
 }
 
 static DRIVER_INIT( bm7thmix )
@@ -1911,8 +1912,8 @@ static DRIVER_INIT( bm7thmix )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bm7thmix_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bm7thmix_user_password;
 }
 
 #if 0
@@ -1929,8 +1930,8 @@ static DRIVER_INIT( bmfinal )
 
 	DRIVER_INIT_CALL(beatmania);
 
-	ide_set_master_password(0, beatmania_master_password);
-	ide_set_user_password(0, bmfinal_user_password);
+	ide_master_password = beatmania_master_password;
+	ide_user_password = bmfinal_user_password;
 }
 #endif
 

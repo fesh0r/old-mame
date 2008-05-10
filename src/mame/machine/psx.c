@@ -86,13 +86,13 @@ WRITE32_HANDLER( psx_irq_w )
 	switch( offset )
 	{
 	case 0x00:
-		verboselog( 2, "psx irq data ( %08x, %08x ) %08x -> %08x\n", data, mem_mask, m_n_irqdata, ( m_n_irqdata & mem_mask ) | ( m_n_irqdata & m_n_irqmask & data ) );
-		m_n_irqdata = ( m_n_irqdata & mem_mask ) | ( m_n_irqdata & m_n_irqmask & data );
+		verboselog( 2, "psx irq data ( %08x, %08x ) %08x -> %08x\n", data, mem_mask, m_n_irqdata, ( m_n_irqdata & ~mem_mask ) | ( m_n_irqdata & m_n_irqmask & data ) );
+		m_n_irqdata = ( m_n_irqdata & ~mem_mask ) | ( m_n_irqdata & m_n_irqmask & data );
 		psx_irq_update();
 		break;
 	case 0x01:
-		verboselog( 2, "psx irq mask ( %08x, %08x ) %08x -> %08x\n", data, mem_mask, m_n_irqmask, ( m_n_irqmask & mem_mask ) | data );
-		m_n_irqmask = ( m_n_irqmask & mem_mask ) | data;
+		verboselog( 2, "psx irq mask ( %08x, %08x ) %08x -> %08x\n", data, mem_mask, m_n_irqmask, ( m_n_irqmask & ~mem_mask ) | data );
+		m_n_irqmask = ( m_n_irqmask & ~mem_mask ) | data;
 		if( ( m_n_irqmask & ~( 0x1 | 0x08 | 0x10 | 0x20 | 0x40 | 0x80 | 0x100 | 0x200 | 0x400 ) ) != 0 )
 		{
 			verboselog( 0, "psx_irq_w( %08x, %08x, %08x ) unknown irq\n", offset, data, mem_mask );
@@ -403,13 +403,13 @@ WRITE32_HANDLER( psx_dma_w )
 		{
 		case 0x0:
 			verboselog( 1, "psx_dma_w( %04x, %08x, %08x ) dpcp\n", offset, data, mem_mask );
-			m_n_dpcp = ( m_n_dpcp & mem_mask ) | data;
+			m_n_dpcp = ( m_n_dpcp & ~mem_mask ) | data;
 			break;
 		case 0x1:
-			m_n_dicr = ( m_n_dicr & mem_mask ) |
-				( ~mem_mask & 0x80000000 & m_n_dicr ) |
-				( ~data & ~mem_mask & 0x7f000000 & m_n_dicr ) |
-				( data & ~mem_mask & 0x00ffffff );
+			m_n_dicr = ( m_n_dicr & ~mem_mask ) |
+				( mem_mask & 0x80000000 & m_n_dicr ) |
+				( ~data & mem_mask & 0x7f000000 & m_n_dicr ) |
+				( data & mem_mask & 0x00ffffff );
 /* todo: find out whether to do this instead of dma_interrupt_update()
 
             if( ( m_n_dicr & 0x7f000000 ) != 0 )
@@ -854,12 +854,12 @@ WRITE32_HANDLER( psx_sio_w )
 		verboselog( 0, "psx_sio_w( %08x, %08x, %08x )\n", offset, data, mem_mask );
 		break;
 	case 2:
-		if( ACCESSING_LSW32 )
+		if( ACCESSING_BITS_0_15 )
 		{
 			m_p_n_sio_mode[ n_port ] = data & 0xffff;
 			verboselog( 1, "psx_sio_w %d mode %04x\n", n_port, data & 0xffff );
 		}
-		if( ACCESSING_MSW32 )
+		if( ACCESSING_BITS_16_31 )
 		{
 			verboselog( 1, "psx_sio_w %d control %04x\n", n_port, data >> 16 );
 			m_p_n_sio_control[ n_port ] = data >> 16;
@@ -897,11 +897,11 @@ WRITE32_HANDLER( psx_sio_w )
 		}
 		break;
 	case 3:
-		if( ACCESSING_LSW32 )
+		if( ACCESSING_BITS_0_15 )
 		{
 			verboselog( 0, "psx_sio_w( %08x, %08x, %08x )\n", offset, data, mem_mask );
 		}
-		if( ACCESSING_MSW32 )
+		if( ACCESSING_BITS_16_31 )
 		{
 			m_p_n_sio_baud[ n_port ] = data >> 16;
 			verboselog( 1, "psx_sio_w %d baud %04x\n", n_port, data >> 16 );
@@ -930,33 +930,33 @@ READ32_HANDLER( psx_sio_r )
 		break;
 	case 1:
 		data = m_p_n_sio_status[ n_port ];
-		if( ACCESSING_LSW32 )
+		if( ACCESSING_BITS_0_15 )
 		{
 			verboselog( 1, "psx_sio_r %d status %04x\n", n_port, data & 0xffff );
 		}
-		if( ACCESSING_MSW32 )
+		if( ACCESSING_BITS_16_31 )
 		{
 			verboselog( 0, "psx_sio_r( %08x, %08x ) %08x\n", offset, mem_mask, data );
 		}
 		break;
 	case 2:
 		data = ( m_p_n_sio_control[ n_port ] << 16 ) | m_p_n_sio_mode[ n_port ];
-		if( ACCESSING_LSW32 )
+		if( ACCESSING_BITS_0_15 )
 		{
 			verboselog( 1, "psx_sio_r %d mode %04x\n", n_port, data & 0xffff );
 		}
-		if( ACCESSING_MSW32 )
+		if( ACCESSING_BITS_16_31 )
 		{
 			verboselog( 1, "psx_sio_r %d control %04x\n", n_port, data >> 16 );
 		}
 		break;
 	case 3:
 		data = m_p_n_sio_baud[ n_port ] << 16;
-		if( ACCESSING_LSW32 )
+		if( ACCESSING_BITS_0_15 )
 		{
 			verboselog( 0, "psx_sio_r( %08x, %08x ) %08x\n", offset, mem_mask, data );
 		}
-		if( ACCESSING_MSW32 )
+		if( ACCESSING_BITS_16_31 )
 		{
 			verboselog( 1, "psx_sio_r %d baud %04x\n", n_port, data >> 16 );
 		}
@@ -1535,7 +1535,7 @@ void psx_machine_init( void )
 	psx_gpu_reset();
 }
 
-static void psx_postload( void )
+static STATE_POSTLOAD( psx_postload )
 {
 	int n;
 
@@ -1559,7 +1559,7 @@ static void psx_postload( void )
 	mdec_cos_precalc();
 }
 
-void psx_driver_init( void )
+void psx_driver_init( running_machine *machine )
 {
 	int n;
 
@@ -1648,5 +1648,5 @@ void psx_driver_init( void )
 	state_save_register_global_array( m_p_n_mdec_quantize_uv );
 	state_save_register_global_array( m_p_n_mdec_cos );
 
-	state_save_register_func_postload( psx_postload );
+	state_save_register_postload( machine, psx_postload, NULL );
 }

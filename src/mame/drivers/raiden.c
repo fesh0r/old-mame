@@ -71,9 +71,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sub_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x01fff) AM_RAM
-	AM_RANGE(0x02000, 0x027ff) AM_READWRITE(SMH_RAM, raiden_background_w) AM_BASE(&raiden_back_data)
-	AM_RANGE(0x02800, 0x02fff) AM_READWRITE(SMH_RAM, raiden_foreground_w) AM_BASE(&raiden_fore_data)
-	AM_RANGE(0x03000, 0x03fff) AM_READWRITE(SMH_RAM, paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x02000, 0x027ff) AM_RAM_WRITE(raiden_background_w) AM_BASE(&raiden_back_data)
+	AM_RANGE(0x02800, 0x02fff) AM_RAM_WRITE(raiden_foreground_w) AM_BASE(&raiden_fore_data)
+	AM_RANGE(0x03000, 0x03fff) AM_RAM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x04000, 0x04fff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x07ffe, 0x0afff) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xc0000, 0xfffff) AM_ROM
@@ -97,7 +97,7 @@ ADDRESS_MAP_END
 /******************************************************************************/
 
 static INPUT_PORTS_START( raiden )
-	SEIBU_COIN_INPUTS	/* Must be port 0: coin inputs read through sound cpu */
+	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
 	PORT_START	/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -119,66 +119,66 @@ static INPUT_PORTS_START( raiden )
 
 	PORT_START	/* Dip switch A */
 	PORT_DIPNAME( 0x0001, 0x0001, "Coin Mode" )
-	PORT_DIPSETTING(    0x0001, "A" )
-	PORT_DIPSETTING(    0x0000, "B" )
+	PORT_DIPSETTING(      0x0001, "A" )
+	PORT_DIPSETTING(      0x0000, "B" )
 	/* Coin Mode A */
 	PORT_DIPNAME( 0x001e, 0x001e, DEF_STR( Coinage ) )
-	PORT_DIPSETTING(    0x0014, DEF_STR( 6C_1C ) )
-	PORT_DIPSETTING(    0x0016, DEF_STR( 5C_1C ) )
-	PORT_DIPSETTING(    0x0018, DEF_STR( 4C_1C ) )
-	PORT_DIPSETTING(    0x001a, DEF_STR( 3C_1C ) )
-	PORT_DIPSETTING(    0x0002, DEF_STR( 8C_3C ) )
-	PORT_DIPSETTING(    0x001c, DEF_STR( 2C_1C ) )
-	PORT_DIPSETTING(    0x0004, DEF_STR( 5C_3C ) )
-	PORT_DIPSETTING(    0x0006, DEF_STR( 3C_2C ) )
-	PORT_DIPSETTING(    0x001e, DEF_STR( 1C_1C ) )
-	PORT_DIPSETTING(    0x0008, DEF_STR( 2C_3C ) )
-	PORT_DIPSETTING(    0x0012, DEF_STR( 1C_2C ) )
-	PORT_DIPSETTING(    0x0010, DEF_STR( 1C_3C ) )
-	PORT_DIPSETTING(    0x000e, DEF_STR( 1C_4C ) )
-	PORT_DIPSETTING(    0x000c, DEF_STR( 1C_5C ) )
-	PORT_DIPSETTING(    0x000a, DEF_STR( 1C_6C ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( Free_Play ) )
+	PORT_DIPSETTING(      0x0014, DEF_STR( 6C_1C ) )
+	PORT_DIPSETTING(      0x0016, DEF_STR( 5C_1C ) )
+	PORT_DIPSETTING(      0x0018, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(      0x001a, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(      0x0002, DEF_STR( 8C_3C ) )
+	PORT_DIPSETTING(      0x001c, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(      0x0004, DEF_STR( 5C_3C ) )
+	PORT_DIPSETTING(      0x0006, DEF_STR( 3C_2C ) )
+	PORT_DIPSETTING(      0x001e, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(      0x0008, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(      0x0012, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(      0x0010, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(      0x000e, DEF_STR( 1C_4C ) )
+	PORT_DIPSETTING(      0x000c, DEF_STR( 1C_5C ) )
+	PORT_DIPSETTING(      0x000a, DEF_STR( 1C_6C ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Free_Play ) )
 /*  PORT_DIPNAME( 0x0006, 0x0006, DEF_STR( Coin_A ) )
-    PORT_DIPSETTING(    0x0000, "5C/1C or Free if Coin B too" )
-    PORT_DIPSETTING(    0x0002, DEF_STR( 3C_1C ) )
-    PORT_DIPSETTING(    0x0004, DEF_STR( 2C_1C ) )
-    PORT_DIPSETTING(    0x0006, DEF_STR( 1C_1C ) )
+    PORT_DIPSETTING(      0x0000, "5C/1C or Free if Coin B too" )
+    PORT_DIPSETTING(      0x0002, DEF_STR( 3C_1C ) )
+    PORT_DIPSETTING(      0x0004, DEF_STR( 2C_1C ) )
+    PORT_DIPSETTING(      0x0006, DEF_STR( 1C_1C ) )
     PORT_DIPNAME( 0x0018, 0x0018, DEF_STR( Coin_B ) )
-    PORT_DIPSETTING(    0x0018, DEF_STR( 1C_2C ) )
-    PORT_DIPSETTING(    0x0010, DEF_STR( 1C_3C ) )
-    PORT_DIPSETTING(    0x0008, DEF_STR( 1C_5C ) )
-    PORT_DIPSETTING(    0x0000, "1C/6C or Free if Coin A too" ) */
+    PORT_DIPSETTING(      0x0018, DEF_STR( 1C_2C ) )
+    PORT_DIPSETTING(      0x0010, DEF_STR( 1C_3C ) )
+    PORT_DIPSETTING(      0x0008, DEF_STR( 1C_5C ) )
+    PORT_DIPSETTING(      0x0000, "1C/6C or Free if Coin A too" ) */
 	PORT_DIPNAME( 0x0020, 0x0020, "Credits to Start" )
-	PORT_DIPSETTING(    0x0020, "1" )
-	PORT_DIPSETTING(    0x0000, "2" )
+	PORT_DIPSETTING(      0x0020, "1" )
+	PORT_DIPSETTING(      0x0000, "2" )
 	PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unused ) )
-	PORT_DIPSETTING(    0x0040, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Flip_Screen ) )
-	PORT_DIPSETTING(    0x0080, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_DIPNAME( 0x0300, 0x0300, DEF_STR( Lives ) )
-	PORT_DIPSETTING(    0x0200, "1" )
-	PORT_DIPSETTING(    0x0100, "2" )
-	PORT_DIPSETTING(    0x0300, "3" )
-	PORT_DIPSETTING(    0x0000, "5" )
+	PORT_DIPSETTING(      0x0200, "1" )
+	PORT_DIPSETTING(      0x0100, "2" )
+	PORT_DIPSETTING(      0x0300, "3" )
+	PORT_DIPSETTING(      0x0000, "5" )
 	PORT_DIPNAME( 0x0c00, 0x0c00, DEF_STR( Bonus_Life ) )
-	PORT_DIPSETTING(    0x0800, "80000 300000" )
-	PORT_DIPSETTING(    0x0c00, "150000 400000" )
-	PORT_DIPSETTING(    0x0400, "300000 1000000" )
-	PORT_DIPSETTING(    0x0000, "1000000 5000000" )
+	PORT_DIPSETTING(      0x0800, "80000 300000" )
+	PORT_DIPSETTING(      0x0c00, "150000 400000" )
+	PORT_DIPSETTING(      0x0400, "300000 1000000" )
+	PORT_DIPSETTING(      0x0000, "1000000 5000000" )
 	PORT_DIPNAME( 0x3000, 0x3000, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x2000, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x3000, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x1000, DEF_STR( Hard ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( Very_Hard ) )
+	PORT_DIPSETTING(      0x2000, DEF_STR( Easy ) )
+	PORT_DIPSETTING(      0x3000, DEF_STR( Normal ) )
+	PORT_DIPSETTING(      0x1000, DEF_STR( Hard ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Very_Hard ) )
 	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x4000, DEF_STR( Yes ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
+	PORT_DIPSETTING(      0x4000, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x8000, 0x8000, DEF_STR( Demo_Sounds ) )
-	PORT_DIPSETTING(    0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x8000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
+	PORT_DIPSETTING(      0x8000, DEF_STR( On ) )
 INPUT_PORTS_END
 
 /******************************************************************************/
@@ -228,7 +228,7 @@ static INTERRUPT_GEN( raiden_interrupt )
 
 static VIDEO_EOF( raiden )
 {
-	buffer_spriteram16_w(machine,0,0,0); /* Could be a memory location instead */
+	buffer_spriteram16_w(machine,0,0,0xffff); /* Could be a memory location instead */
 }
 
 static MACHINE_DRIVER_START( raiden )
@@ -473,12 +473,12 @@ static READ16_HANDLER( sub_cpu_spina_r )
 
 static DRIVER_INIT( raiden )
 {
-	memory_install_read16_handler(1, ADDRESS_SPACE_PROGRAM, 0x4008, 0x4009, 0, 0, sub_cpu_spin_r);
+	memory_install_read16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x4008, 0x4009, 0, 0, sub_cpu_spin_r);
 }
 
-static void memory_patcha(void)
+static void memory_patcha(running_machine *machine)
 {
-	memory_install_read16_handler(1, ADDRESS_SPACE_PROGRAM, 0x4008, 0x4009, 0, 0, sub_cpu_spina_r);
+	memory_install_read16_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x4008, 0x4009, 0, 0, sub_cpu_spina_r);
 }
 
 /* This is based on code by Niclas Karlsson Mate, who figured out the
@@ -512,13 +512,13 @@ static void common_decrypt(void)
 
 static DRIVER_INIT( raidenk )
 {
-	memory_patcha();
+	memory_patcha(machine);
 	common_decrypt();
 }
 
 static DRIVER_INIT( raidena )
 {
-	memory_patcha();
+	memory_patcha(machine);
 	common_decrypt();
 	seibu_sound_decrypt(REGION_CPU3,0x20000);
 }

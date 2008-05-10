@@ -101,9 +101,9 @@ static MACHINE_RESET( psikyo )
 
 ***************************************************************************/
 
-static int psikyo_readcoinport(int has_mcu)
+static int psikyo_readcoinport(running_machine *machine, int has_mcu)
 {
-	int ret = readinputport(1) & ~0x84;
+	int ret = input_port_read_indexed(machine, 1) & ~0x84;
 
 	if (has_mcu)
 	{
@@ -142,9 +142,9 @@ static READ32_HANDLER( sngkace_input_r )
 {
 	switch(offset)
 	{
-		case 0x0:	return (readinputport(0) << 16) | 0xffff;
-		case 0x1:	return (readinputport(2) << 16) | readinputport(4);
-		case 0x2:	return (psikyo_readcoinport(0) << 16) | readinputport(3);
+		case 0x0:	return (input_port_read_indexed(machine, 0) << 16) | 0xffff;
+		case 0x1:	return (input_port_read_indexed(machine, 2) << 16) | input_port_read_indexed(machine, 4);
+		case 0x2:	return (psikyo_readcoinport(machine, 0) << 16) | input_port_read_indexed(machine, 3);
 		default:	logerror("PC %06X - Read input %02X !\n", activecpu_get_pc(), offset*2);
 					return 0;
 	}
@@ -154,8 +154,8 @@ static READ32_HANDLER( gunbird_input_r )
 {
 	switch(offset)
 	{
-		case 0x0:	return (readinputport(0) << 16) | psikyo_readcoinport(0);
-		case 0x1:	return (readinputport(2) << 16) | readinputport(3);
+		case 0x0:	return (input_port_read_indexed(machine, 0) << 16) | psikyo_readcoinport(machine, 0);
+		case 0x1:	return (input_port_read_indexed(machine, 2) << 16) | input_port_read_indexed(machine, 3);
 		default:	logerror("PC %06X - Read input %02X !\n", activecpu_get_pc(), offset*2);
 					return 0;
 	}
@@ -171,7 +171,7 @@ static TIMER_CALLBACK( psikyo_soundlatch_callback )
 
 static WRITE32_HANDLER( psikyo_soundlatch_w )
 {
-	if (ACCESSING_LSB32)
+	if (ACCESSING_BITS_0_7)
 		timer_call_after_resynch(NULL, data & 0xff, psikyo_soundlatch_callback);
 }
 
@@ -181,7 +181,7 @@ static WRITE32_HANDLER( psikyo_soundlatch_w )
 
 static WRITE32_HANDLER( s1945_soundlatch_w )
 {
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 		timer_call_after_resynch(NULL, (data >> 16) & 0xff, psikyo_soundlatch_callback);
 }
 
@@ -226,7 +226,7 @@ static WRITE32_HANDLER( s1945_mcu_w )
 	// Accesses are always bytes, so resolve it
 	int suboff;
 	for(suboff=0; suboff < 3; suboff++)
-		if(!((0xff << (8*suboff)) & mem_mask))
+		if((0xff << (8*suboff)) & mem_mask)
 			break;
 	data >>= 8*suboff;
 	offset = offset*4+4+(3-suboff);
@@ -310,8 +310,8 @@ static READ32_HANDLER( s1945_input_r )
 {
 	switch(offset)
 	{
-		case 0x0:	return (readinputport(0) << 16) | psikyo_readcoinport(1);
-		case 0x1:	return (((readinputport(2) << 16) | readinputport(3)) & 0xffff000f) | s1945_mcu_r(machine, offset-1, mem_mask);
+		case 0x0:	return (input_port_read_indexed(machine, 0) << 16) | psikyo_readcoinport(machine, 1);
+		case 0x1:	return (((input_port_read_indexed(machine, 2) << 16) | input_port_read_indexed(machine, 3)) & 0xffff000f) | s1945_mcu_r(machine, offset-1, mem_mask);
 		case 0x2:	return s1945_mcu_r(machine, offset-1, mem_mask);
 		default:	logerror("PC %06X - Read input %02X !\n", activecpu_get_pc(), offset*2);
 					return 0;
@@ -330,9 +330,9 @@ static READ32_HANDLER( s1945_input_r )
 static WRITE32_HANDLER( paletteram32_xRRRRRGGGGGBBBBB_dword_w )
 {
 	paletteram16 = (UINT16 *)paletteram32;
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2, data >> 16, mem_mask >> 16);
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 		paletteram16_xRRRRRGGGGGBBBBB_word_w(machine, offset*2+1, data, mem_mask);
 }
 
@@ -381,7 +381,7 @@ static READ8_HANDLER( psikyo_soundlatch_r )
 
 static WRITE8_HANDLER( psikyo_clear_nmi_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 	z80_nmi = 0;
 }
 
@@ -1812,10 +1812,10 @@ static DRIVER_INIT( sngkace )
 	}
 
 	/* input ports */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, sngkace_input_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, sngkace_input_r);
 
 	/* sound latch */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, psikyo_soundlatch_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, psikyo_soundlatch_w);
 
 	psikyo_ka302c_banking = 0; // SH201B doesn't have any gfx banking
 	psikyo_switch_banks(0, 0); // sngkace / samuraia don't use banking
@@ -1984,10 +1984,10 @@ ROM_END
 static DRIVER_INIT( gunbird )
 {
 	/* input ports */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, gunbird_input_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, gunbird_input_r);
 
 	/* sound latch */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, psikyo_soundlatch_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, psikyo_soundlatch_w);
 
 	psikyo_ka302c_banking = 1;
 }
@@ -2042,10 +2042,10 @@ ROM_END
 static DRIVER_INIT( s1945jn )
 {
 	/* input ports */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, gunbird_input_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, gunbird_input_r);
 
 	/* sound latch */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
 
 	psikyo_ka302c_banking = 1;
 }
@@ -2197,13 +2197,13 @@ ROM_END
 static DRIVER_INIT( s1945 )
 {
 	/* input ports */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
 
 	/* sound latch */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
 
 	/* protection and tile bank switching */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
 	s1945_mcu_init(s1945_table);
 
 	psikyo_ka302c_banking = 0; // Banking is controlled by mcu
@@ -2212,13 +2212,13 @@ static DRIVER_INIT( s1945 )
 static DRIVER_INIT( s1945a )
 {
 	/* input ports */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
 
 	/* sound latch */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
 
 	/* protection and tile bank switching */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
 	s1945_mcu_init(s1945a_table);
 
 	psikyo_ka302c_banking = 0; // Banking is controlled by mcu
@@ -2227,13 +2227,13 @@ static DRIVER_INIT( s1945a )
 static DRIVER_INIT( s1945j )
 {
 	/* input ports*/
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
 
 	/* sound latch */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
 
 	/* protection and tile bank switching */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
 	s1945_mcu_init(s1945j_table);
 
 	psikyo_ka302c_banking = 0; // Banking is controlled by mcu
@@ -2294,13 +2294,13 @@ ROM_END
 static DRIVER_INIT( tengai )
 {
 	/* input ports */
-	memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
+	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00000, 0xc0000b, 0, 0, s1945_input_r);
 
 	/* sound latch */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00010, 0xc00013, 0, 0, s1945_soundlatch_w);
 
 	/* protection */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc00004, 0xc0000b, 0, 0, s1945_mcu_w);
 	s1945_mcu_init(0);
 
 	psikyo_ka302c_banking = 0; // Banking is controlled by mcu

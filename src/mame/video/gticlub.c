@@ -117,7 +117,7 @@ static void K001006_w(int chip, int offset, UINT32 data, UINT32 mem_mask)
 	}
 	else if (offset == 2)
 	{
-		if (!(mem_mask & 0xffff0000))
+		if (ACCESSING_BITS_16_31)
 		{
 			K001006_device_sel[chip] = (data >> 16) & 0xf;
 		}
@@ -287,14 +287,14 @@ READ32_HANDLER( K001005_r )
 			{
 				if (K001005_fifo_read_ptr < 0x3ff)
 				{
-					//cpunum_set_input_line(Machine, 2, SHARC_INPUT_FLAG1, CLEAR_LINE);
+					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, CLEAR_LINE);
 					cpuintrf_push_context(2);
 					sharc_set_flag_input(1, CLEAR_LINE);
 					cpuintrf_pop_context();
 				}
 				else
 				{
-					//cpunum_set_input_line(Machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
+					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
 					cpuintrf_push_context(2);
 					sharc_set_flag_input(1, ASSERT_LINE);
 					cpuintrf_pop_context();
@@ -302,7 +302,7 @@ READ32_HANDLER( K001005_r )
 			}
 			else
 			{
-				//cpunum_set_input_line(Machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
+				//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
 				cpuintrf_push_context(2);
 				sharc_set_flag_input(1, ASSERT_LINE);
 				cpuintrf_pop_context();
@@ -346,14 +346,14 @@ WRITE32_HANDLER( K001005_w )
 			{
 				if (K001005_fifo_write_ptr < 0x400)
 				{
-					//cpunum_set_input_line(Machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
+					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
 					cpuintrf_push_context(2);
 					sharc_set_flag_input(1, ASSERT_LINE);
 					cpuintrf_pop_context();
 				}
 				else
 				{
-					//cpunum_set_input_line(Machine, 2, SHARC_INPUT_FLAG1, CLEAR_LINE);
+					//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, CLEAR_LINE);
 					cpuintrf_push_context(2);
 					sharc_set_flag_input(1, CLEAR_LINE);
 					cpuintrf_pop_context();
@@ -361,7 +361,7 @@ WRITE32_HANDLER( K001005_w )
 			}
 			else
 			{
-				//cpunum_set_input_line(Machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
+				//cpunum_set_input_line(machine, 2, SHARC_INPUT_FLAG1, ASSERT_LINE);
 				cpuintrf_push_context(2);
 				sharc_set_flag_input(1, ASSERT_LINE);
 				cpuintrf_pop_context();

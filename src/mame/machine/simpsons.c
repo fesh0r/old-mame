@@ -1,12 +1,11 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/konami/konami.h"
 #include "machine/eeprom.h"
 #include "sound/k053260.h"
 
 /* from video */
-extern void simpsons_video_banking( int select );
+extern void simpsons_video_banking( running_machine *machine, int select );
 extern UINT8 *simpsons_xtraram;
 
 int simpsons_firq_enabled;
@@ -57,7 +56,7 @@ READ8_HANDLER( simpsons_eeprom_r )
 
 	res |= 0x20;//konami_eeprom_ack() << 5; /* add the ack */
 
-	res |= readinputport( 5 ) & 1; /* test switch */
+	res |= input_port_read_indexed(machine,  5 ) & 1; /* test switch */
 
 	if (init_eeprom_count)
 	{
@@ -76,7 +75,7 @@ WRITE8_HANDLER( simpsons_eeprom_w )
 	EEPROM_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 	EEPROM_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
 
-	simpsons_video_banking( data & 3 );
+	simpsons_video_banking( machine, data & 3 );
 
 	simpsons_firq_enabled = data & 0x04;
 }
@@ -143,5 +142,5 @@ MACHINE_RESET( simpsons )
 	memory_configure_bank(2, 2, 6, memory_region(REGION_CPU2) + 0x10000, 0x4000);
 	memory_set_bank(2, 0);
 
-	simpsons_video_banking( 0 );
+	simpsons_video_banking( machine, 0 );
 }

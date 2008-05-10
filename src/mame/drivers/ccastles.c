@@ -120,7 +120,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/pokey.h"
 #include "ccastles.h"
 
@@ -265,7 +264,7 @@ static WRITE8_HANDLER( irq_ack_w )
 {
 	if (irq_state)
 	{
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 		irq_state = 0;
 	}
 }
@@ -291,7 +290,7 @@ static WRITE8_HANDLER( bankswitch_w )
 
 static READ8_HANDLER( leta_r )
 {
-	return readinputport(2 + offset);
+	return input_port_read_indexed(machine, 2 + offset);
 }
 
 
@@ -342,7 +341,7 @@ static WRITE8_HANDLER( nvram_store_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0001) AM_WRITE(ccastles_bitmode_addr_w)
 	AM_RANGE(0x0002, 0x0002) AM_READWRITE(ccastles_bitmode_r, ccastles_bitmode_w)
-	AM_RANGE(0x0000, 0x7fff) AM_READWRITE(SMH_RAM, ccastles_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x0000, 0x7fff) AM_RAM_WRITE(ccastles_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x8000, 0x8fff) AM_RAM
 	AM_RANGE(0x8e00, 0x8fff) AM_BASE(&spriteram)
 	AM_RANGE(0x9000, 0x90ff) AM_MIRROR(0x0300) AM_RAM AM_BASE(&nvram_stage) AM_SIZE(&generic_nvram_size)

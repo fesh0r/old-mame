@@ -216,14 +216,14 @@ static WRITE8_HANDLER( gladiatr_bankswitch_w )
 
 static READ8_HANDLER( gladiator_dsw1_r )
 {
-	int orig = readinputportbytag("DSW1")^0xff;
+	int orig = input_port_read(machine, "DSW1")^0xff;
 
 	return BITSWAP8(orig, 0,1,2,3,4,5,6,7);
 }
 
 static READ8_HANDLER( gladiator_dsw2_r )
 {
-	int orig = readinputportbytag("DSW2")^0xff;
+	int orig = input_port_read(machine, "DSW2")^0xff;
 
 	return BITSWAP8(orig, 2,3,4,5,6,7,1,0);
 }
@@ -232,15 +232,15 @@ static READ8_HANDLER( gladiator_controll_r )
 {
 	int coins = 0;
 
-	if( readinputportbytag("COINS") & 0xc0 ) coins = 0x80;
+	if( input_port_read(machine, "COINS") & 0xc0 ) coins = 0x80;
 	switch(offset)
 	{
 	case 0x01: /* start button , coins */
-		return readinputportbytag("IN0") | coins;
+		return input_port_read(machine, "IN0") | coins;
 	case 0x02: /* Player 1 Controller , coins */
-		return readinputportbytag("IN1") | coins;
+		return input_port_read(machine, "IN1") | coins;
 	case 0x04: /* Player 2 Controller , coins */
-		return readinputportbytag("IN2") | coins;
+		return input_port_read(machine, "IN2") | coins;
 	}
 	/* unknown */
 	return 0;
@@ -251,7 +251,7 @@ static READ8_HANDLER( gladiator_button3_r )
 	switch(offset)
 	{
 	case 0x01: /* button 3 */
-		return readinputportbytag("IN3");
+		return input_port_read(machine, "IN3");
 	}
 	/* unknown */
 	return 0;
@@ -278,7 +278,7 @@ static MACHINE_RESET( gladiator )
 /* YM2203 port A handler (input) */
 static READ8_HANDLER( gladiator_dsw3_r )
 {
-	return readinputportbytag("DSW3");
+	return input_port_read(machine, "DSW3");
 }
 /* YM2203 port B handler (output) */
 static WRITE8_HANDLER( gladiator_int_control_w )
@@ -329,7 +329,7 @@ static WRITE8_HANDLER( gladiatr_flipscreen_w )
 /* !!!!! patch to IRQ timming for 2nd CPU !!!!! */
 static WRITE8_HANDLER( gladiatr_irq_patch_w )
 {
-	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 }
 #endif
 
@@ -386,10 +386,10 @@ static ADDRESS_MAP_START( ppking_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xbfff) AM_ROM
 	AM_RANGE(0xc000, 0xcbff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0xcc00, 0xcfff) AM_WRITE(ppking_video_registers_w)
-	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(SMH_RAM, gladiatr_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(SMH_RAM, gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, gladiatr_textram_w) AM_BASE(&gladiatr_textram)
+	AM_RANGE(0xd000, 0xd7ff) AM_RAM_WRITE(gladiatr_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd800, 0xdfff) AM_RAM_WRITE(gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
+	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(gladiatr_textram_w) AM_BASE(&gladiatr_textram)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* battery backed RAM */
 ADDRESS_MAP_END
 
@@ -425,10 +425,10 @@ static ADDRESS_MAP_START( gladiatr_cpu1_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0xbfff) AM_ROMBANK(1)
 	AM_RANGE(0xc000, 0xcbff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0xcc00, 0xcfff) AM_WRITE(gladiatr_video_registers_w)
-	AM_RANGE(0xd000, 0xd7ff) AM_READWRITE(SMH_RAM, gladiatr_paletteram_w) AM_BASE(&paletteram)
-	AM_RANGE(0xd800, 0xdfff) AM_READWRITE(SMH_RAM, gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
-	AM_RANGE(0xe000, 0xe7ff) AM_READWRITE(SMH_RAM, gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, gladiatr_textram_w) AM_BASE(&gladiatr_textram)
+	AM_RANGE(0xd000, 0xd7ff) AM_RAM_WRITE(gladiatr_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xd800, 0xdfff) AM_RAM_WRITE(gladiatr_videoram_w) AM_BASE(&gladiatr_videoram)
+	AM_RANGE(0xe000, 0xe7ff) AM_RAM_WRITE(gladiatr_colorram_w) AM_BASE(&gladiatr_colorram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(gladiatr_textram_w) AM_BASE(&gladiatr_textram)
 	AM_RANGE(0xf000, 0xf7ff) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size) /* battery backed RAM */
 ADDRESS_MAP_END
 
@@ -656,16 +656,27 @@ static READ8_HANDLER(f1_r)
 
 static const struct YM2203interface ppking_ym2203_interface =
 {
-	f1_r,
-	f1_r
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		f1_r,
+		f1_r,
+		NULL,
+		NULL
+	},
+	NULL
 };
 
 static const struct YM2203interface gladiatr_ym2203_interface =
 {
-	0,
-	gladiator_dsw3_r,         /* port B read */
-	gladiator_int_control_w, /* port A write */
-	0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL,
+		gladiator_dsw3_r,         /* port B read */
+		gladiator_int_control_w, /* port A write */
+		NULL,
+	},
 	gladiator_ym_irq          /* NMI request for 2nd cpu */
 };
 
@@ -1039,7 +1050,7 @@ static DRIVER_INIT(ppking)
 		}
 	}
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf6a3,0xf6a3,0,0, f6a3_r );
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf6a3,0xf6a3,0,0, f6a3_r );
 }
 
 

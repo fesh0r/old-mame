@@ -549,7 +549,7 @@ static int pci_reg;
 
 static READ64_HANDLER( mpc105_addr_r )
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		return (UINT64)mpc105_addr << 32;
 	}
@@ -558,7 +558,7 @@ static READ64_HANDLER( mpc105_addr_r )
 
 static WRITE64_HANDLER( mpc105_addr_w )
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		UINT32 d = BYTE_REVERSE32((UINT32)(data >> 32));
 		mpc105_addr = data >> 32;
@@ -586,7 +586,7 @@ static WRITE64_HANDLER( mpc105_data_w )
 		mpc105_regs[(pci_reg/2)+0] = BYTE_REVERSE32((UINT32)(data));
 		return;
 	}
-	if (!(mem_mask & 0xffffffff))
+	if (ACCESSING_BITS_0_31)
 	{
 		pci_device_set_reg(pci_device, pci_reg, BYTE_REVERSE32((UINT32)data));
 	}
@@ -627,7 +627,7 @@ static UINT32 mpc106_addr;
 
 static READ64_HANDLER( mpc106_addr_r )
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		return (UINT64)mpc106_addr << 32;
 	}
@@ -636,7 +636,7 @@ static READ64_HANDLER( mpc106_addr_r )
 
 static WRITE64_HANDLER( mpc106_addr_w )
 {
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		UINT32 d = BYTE_REVERSE32((UINT32)(data >> 32));
 
@@ -662,7 +662,7 @@ static READ64_HANDLER( mpc106_data_r )
 		return ((UINT64)(BYTE_REVERSE32(mpc106_regs[(pci_reg/2)+1])) << 32) |
 			   ((UINT64)(BYTE_REVERSE32(mpc106_regs[(pci_reg/2)+0])));
 	}
-	if (!(mem_mask & U64(0xffffffff00000000)))
+	if (ACCESSING_BITS_32_63)
 	{
 		return (UINT64)(BYTE_REVERSE32(pci_device_get_reg(pci_device, pci_reg))) << 32;
 	}
@@ -679,7 +679,7 @@ static WRITE64_HANDLER( mpc106_data_w )
 		mpc106_regs[(pci_reg/2)+0] = BYTE_REVERSE32((UINT32)(data));
 		return;
 	}
-	if (!(mem_mask & 0xffffffff))
+	if (ACCESSING_BITS_0_31)
 	{
 		pci_device_set_reg(pci_device, pci_reg, BYTE_REVERSE32((UINT32)data));
 	}
@@ -723,28 +723,28 @@ static READ64_HANDLER(scsi_r)
 {
 	int reg = offset*8;
 	UINT64 r = 0;
-	if (!(mem_mask & U64(0xff00000000000000))) {
+	if (ACCESSING_BITS_56_63) {
 		r |= (UINT64)lsi53c810_reg_r(reg+0) << 56;
 	}
-	if (!(mem_mask & U64(0x00ff000000000000))) {
+	if (ACCESSING_BITS_48_55) {
 		r |= (UINT64)lsi53c810_reg_r(reg+1) << 48;
 	}
-	if (!(mem_mask & U64(0x0000ff0000000000))) {
+	if (ACCESSING_BITS_40_47) {
 		r |= (UINT64)lsi53c810_reg_r(reg+2) << 40;
 	}
-	if (!(mem_mask & U64(0x000000ff00000000))) {
+	if (ACCESSING_BITS_32_39) {
 		r |= (UINT64)lsi53c810_reg_r(reg+3) << 32;
 	}
-	if (!(mem_mask & U64(0x00000000ff000000))) {
+	if (ACCESSING_BITS_24_31) {
 		r |= (UINT64)lsi53c810_reg_r(reg+4) << 24;
 	}
-	if (!(mem_mask & U64(0x0000000000ff0000))) {
+	if (ACCESSING_BITS_16_23) {
 		r |= (UINT64)lsi53c810_reg_r(reg+5) << 16;
 	}
-	if (!(mem_mask & U64(0x000000000000ff00))) {
+	if (ACCESSING_BITS_8_15) {
 		r |= (UINT64)lsi53c810_reg_r(reg+6) << 8;
 	}
-	if (!(mem_mask & U64(0x00000000000000ff))) {
+	if (ACCESSING_BITS_0_7) {
 		r |= (UINT64)lsi53c810_reg_r(reg+7) << 0;
 	}
 
@@ -754,28 +754,28 @@ static READ64_HANDLER(scsi_r)
 static WRITE64_HANDLER(scsi_w)
 {
 	int reg = offset*8;
-	if (!(mem_mask & U64(0xff00000000000000))) {
+	if (ACCESSING_BITS_56_63) {
 		lsi53c810_reg_w(reg+0, data >> 56);
 	}
-	if (!(mem_mask & U64(0x00ff000000000000))) {
+	if (ACCESSING_BITS_48_55) {
 		lsi53c810_reg_w(reg+1, data >> 48);
 	}
-	if (!(mem_mask & U64(0x0000ff0000000000))) {
+	if (ACCESSING_BITS_40_47) {
 		lsi53c810_reg_w(reg+2, data >> 40);
 	}
-	if (!(mem_mask & U64(0x000000ff00000000))) {
+	if (ACCESSING_BITS_32_39) {
 		lsi53c810_reg_w(reg+3, data >> 32);
 	}
-	if (!(mem_mask & U64(0x00000000ff000000))) {
+	if (ACCESSING_BITS_24_31) {
 		lsi53c810_reg_w(reg+4, data >> 24);
 	}
-	if (!(mem_mask & U64(0x0000000000ff0000))) {
+	if (ACCESSING_BITS_16_23) {
 		lsi53c810_reg_w(reg+5, data >> 16);
 	}
-	if (!(mem_mask & U64(0x000000000000ff00))) {
+	if (ACCESSING_BITS_8_15) {
 		lsi53c810_reg_w(reg+6, data >> 8);
 	}
-	if (!(mem_mask & U64(0x00000000000000ff))) {
+	if (ACCESSING_BITS_0_7) {
 		lsi53c810_reg_w(reg+7, data >> 0);
 	}
 }
@@ -810,7 +810,7 @@ static READ64_HANDLER( real3d_dma_r )
 		case 1:
 			return (dma_irq << 24) | (dma_endian << 8);
 		case 2:
-			if(!(mem_mask & U64(0x00000000ffffffff))) {
+			if(ACCESSING_BITS_0_31) {
 				return dma_data;
 			}
 			break;
@@ -824,17 +824,17 @@ static WRITE64_HANDLER( real3d_dma_w )
 	switch(offset)
 	{
 		case 0:
-			if(!(mem_mask & U64(0xffffffff00000000))) {		/* DMA source address */
+			if(ACCESSING_BITS_32_63) {		/* DMA source address */
 				dma_source = BYTE_REVERSE32((UINT32)(data >> 32));
 				return;
 			}
-			if(!(mem_mask & U64(0x00000000ffffffff))) {		/* DMA destination address */
+			if(ACCESSING_BITS_0_31) {		/* DMA destination address */
 				dma_dest = BYTE_REVERSE32((UINT32)(data));
 				return;
 			}
 			break;
 		case 1:
-			if(!(mem_mask & U64(0xffffffff00000000)))		/* DMA length */
+			if(ACCESSING_BITS_32_63)		/* DMA length */
 			{
 				int length = BYTE_REVERSE32((UINT32)(data >> 32)) * 4;
 				if (dma_endian & 0x80)
@@ -849,21 +849,21 @@ static WRITE64_HANDLER( real3d_dma_w )
 				scsi_irq_callback();
 				return;
 			}
-			else if(!(mem_mask & U64(0x0000000000ff0000)))
+			else if(ACCESSING_BITS_16_23)
 			{
 				if(data & 0x10000) {
 					dma_irq &= ~0x1;
 				}
 				return;
 			}
-			else if(!(mem_mask & U64(0x000000000000ff00)))
+			else if(ACCESSING_BITS_8_15)
 			{
 				dma_endian = (data >> 8) & 0xff;
 				return;
 			}
 			break;
 		case 2:
-			if(!(mem_mask & U64(0xffffffff00000000))) {		/* DMA command */
+			if(ACCESSING_BITS_32_63) {		/* DMA command */
 				UINT32 cmd = BYTE_REVERSE32((UINT32)(data >> 32));
 				if(cmd & 0x20000000) {
 					dma_data = BYTE_REVERSE32(real3d_device_id);	/* (PCI Vendor & Device ID) */
@@ -874,7 +874,7 @@ static WRITE64_HANDLER( real3d_dma_w )
 				}
 				return;
 			}
-			if(!(mem_mask & U64(0x00000000ffffffff))) {		/* ??? */
+			if(ACCESSING_BITS_0_31) {		/* ??? */
 				dma_data = 0xffffffff;
 				return;
 			}
@@ -1015,9 +1015,9 @@ static void model3_init(running_machine *machine, int step)
 	model3_tap_reset();
 
 	if(step < 0x20) {
-		if( mame_stricmp(Machine->gamedrv->name, "vs215") == 0 ||
-			mame_stricmp(Machine->gamedrv->name, "vs29815") == 0 ||
-			mame_stricmp(Machine->gamedrv->name, "bass") == 0 )
+		if( mame_stricmp(machine->gamedrv->name, "vs215") == 0 ||
+			mame_stricmp(machine->gamedrv->name, "vs29815") == 0 ||
+			mame_stricmp(machine->gamedrv->name, "bass") == 0 )
 		{
 			mpc106_init();
 		} else {
@@ -1050,30 +1050,30 @@ static READ64_HANDLER( model3_ctrl_r )
 	switch( offset )
 	{
 		case 0:
-			if (!(mem_mask & U64(0xff00000000000000)))
+			if (ACCESSING_BITS_56_63)
 			{
 				return (UINT64)model3_controls_bank << 56;
 			}
-			else if (!(mem_mask & 0xff000000))
+			else if (ACCESSING_BITS_24_31)
 			{
 				if(model3_controls_bank & 0x1) {
 					eeprom_bit = EEPROM_read_bit() << 5;
-					return ((readinputport(1) & ~0x20) | eeprom_bit) << 24;
+					return ((input_port_read_indexed(machine, 1) & ~0x20) | eeprom_bit) << 24;
 				}
 				else {
-					return (readinputport(0)) << 24;
+					return (input_port_read_indexed(machine, 0)) << 24;
 				}
 			}
 			break;
 
 		case 1:
-			if (!(mem_mask & U64(0xff00000000000000)))
+			if (ACCESSING_BITS_56_63)
 			{
-				return (UINT64)readinputport(2) << 56;
+				return (UINT64)input_port_read_indexed(machine, 2) << 56;
 			}
-			else if (!(mem_mask & 0xff000000))
+			else if (ACCESSING_BITS_24_31)
 			{
-				return readinputport(3) << 24;
+				return input_port_read_indexed(machine, 3) << 24;
 			}
 			break;
 
@@ -1087,27 +1087,27 @@ static READ64_HANDLER( model3_ctrl_r )
 			return U64(0xffffffffffffffff);
 
 		case 5:
-			if (!(mem_mask & 0xff000000))					/* Serial comm RX FIFO 1 */
+			if (ACCESSING_BITS_24_31)					/* Serial comm RX FIFO 1 */
 			{
 				return (UINT64)model3_serial_fifo1 << 24;
 			}
 			break;
 
 		case 6:
-			if (!(mem_mask & U64(0xff00000000000000)))		/* Serial comm RX FIFO 2 */
+			if (ACCESSING_BITS_56_63)		/* Serial comm RX FIFO 2 */
 			{
 				return (UINT64)model3_serial_fifo2 << 56;
 			}
-			else if (!(mem_mask & 0xff000000))				/* Serial comm full/empty flags */
+			else if (ACCESSING_BITS_24_31)				/* Serial comm full/empty flags */
 			{
 				return 0x0c << 24;
 			}
 			break;
 
 		case 7:
-			if (!(mem_mask & 0xff000000))		/* ADC Data read */
+			if (ACCESSING_BITS_24_31)		/* ADC Data read */
 			{
-				UINT8 adc_data = readinputport(5 + adc_channel);
+				UINT8 adc_data = input_port_read_indexed(machine, 5 + adc_channel);
 				adc_channel++;
 				adc_channel &= 0x7;
 				return (UINT64)adc_data << 24;
@@ -1124,7 +1124,7 @@ static WRITE64_HANDLER( model3_ctrl_w )
 	switch(offset)
 	{
 		case 0:
-			if (!(mem_mask & U64(0xff00000000000000)))
+			if (ACCESSING_BITS_56_63)
 			{
 				int reg = (data >> 56) & 0xff;
 				EEPROM_write_bit((reg & 0x20) ? 1 : 0);
@@ -1143,11 +1143,11 @@ static WRITE64_HANDLER( model3_ctrl_w )
 			return;
 
 		case 4:
-			if (!(mem_mask & U64(0xff00000000000000)))	/* Port 4 direction */
+			if (ACCESSING_BITS_56_63)	/* Port 4 direction */
 			{
 
 			}
-			if (!(mem_mask & 0xff000000))				/* Serial comm TX FIFO 1 */
+			if (ACCESSING_BITS_24_31)				/* Serial comm TX FIFO 1 */
 			{											/* Used for reading the light gun in Lost World */
 				switch(data >> 24)
 				{
@@ -1159,32 +1159,32 @@ static WRITE64_HANDLER( model3_ctrl_w )
 						switch(lightgun_reg_sel)		/* read lightrun register */
 						{
 							case 0:		/* player 1 gun X-position, lower 8-bits */
-								model3_serial_fifo2 = readinputport(6) & 0xff;
+								model3_serial_fifo2 = input_port_read_indexed(machine, 6) & 0xff;
 								break;
 							case 1:		/* player 1 gun X-position, upper 2-bits */
-								model3_serial_fifo2 = (readinputport(6) >> 8) & 0x3;
+								model3_serial_fifo2 = (input_port_read_indexed(machine, 6) >> 8) & 0x3;
 								break;
 							case 2:		/* player 1 gun Y-position, lower 8-bits */
-								model3_serial_fifo2 = readinputport(5) & 0xff;
+								model3_serial_fifo2 = input_port_read_indexed(machine, 5) & 0xff;
 								break;
 							case 3:		/* player 1 gun Y-position, upper 2-bits */
-								model3_serial_fifo2 = (readinputport(5) >> 8) & 0x3;
+								model3_serial_fifo2 = (input_port_read_indexed(machine, 5) >> 8) & 0x3;
 								break;
 							case 4:		/* player 2 gun X-position, lower 8-bits */
-								model3_serial_fifo2 = readinputport(8) & 0xff;
+								model3_serial_fifo2 = input_port_read_indexed(machine, 8) & 0xff;
 								break;
 							case 5:		/* player 2 gun X-position, upper 2-bits */
-								model3_serial_fifo2 = (readinputport(8) >> 8) & 0x3;
+								model3_serial_fifo2 = (input_port_read_indexed(machine, 8) >> 8) & 0x3;
 								break;
 							case 6:		/* player 2 gun Y-position, lower 8-bits */
-								model3_serial_fifo2 = readinputport(7) & 0xff;
+								model3_serial_fifo2 = input_port_read_indexed(machine, 7) & 0xff;
 								break;
 							case 7:		/* player 2 gun Y-position, upper 2-bits */
-								model3_serial_fifo2 = (readinputport(7) >> 8) & 0x3;
+								model3_serial_fifo2 = (input_port_read_indexed(machine, 7) >> 8) & 0x3;
 								break;
 							case 8:		/* gun offscreen (bit set = gun offscreen, bit clear = gun on screen) */
 								model3_serial_fifo2 = 0;	/* bit 0 = player 1, bit 1 = player 2 */
-								if(readinputport(9) & 0x1) {
+								if(input_port_read_indexed(machine, 9) & 0x1) {
 									model3_serial_fifo2 |= 0x01;
 								}
 								break;
@@ -1198,7 +1198,7 @@ static WRITE64_HANDLER( model3_ctrl_w )
 			return;
 
 		case 5:
-			if (!(mem_mask & U64(0xff00000000000000)))	/* Serial comm TX FIFO 2 */
+			if (ACCESSING_BITS_56_63)	/* Serial comm TX FIFO 2 */
 			{
 				model3_serial_fifo2 = data >> 56;
 				return;
@@ -1206,7 +1206,7 @@ static WRITE64_HANDLER( model3_ctrl_w )
 			break;
 
 		case 7:
-			if (!(mem_mask & U64(0xff000000)))	/* ADC Channel selection */
+			if (ACCESSING_BITS_24_31)	/* ADC Channel selection */
 			{
 				adc_channel = (data >> 24) & 0xf;
 			}
@@ -1221,20 +1221,20 @@ static READ64_HANDLER( model3_sys_r )
 	switch (offset)
 	{
 		case 0x08/8:
-			if (!(mem_mask & U64(0xff00000000000000)))
+			if (ACCESSING_BITS_56_63)
 			{
 				return ((UINT64)model3_crom_bank << 56);
 			}
 			break;
 
 		case 0x10/8:
-			if (!(mem_mask & U64(0xff00000000000000)))
+			if (ACCESSING_BITS_56_63)
 			{
 				UINT64 res = model3_tap_read();
 
 				return res<<61;
 			}
-			else if (!(mem_mask & 0xff000000))
+			else if (ACCESSING_BITS_24_31)
 			{
 				return (model3_irq_enable<<24);
 			}
@@ -1254,14 +1254,14 @@ static WRITE64_HANDLER( model3_sys_w )
 	switch (offset)
 	{
 		case 0x10/8:
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
 				model3_irq_enable = (data>>24)&0xff;
 			}
 			else logerror("m3_sys: unknown mask on IRQen write\n");
 			break;
 		case 0x08/8:
-			if (!(mem_mask & U64(0xff00000000000000)))
+			if (ACCESSING_BITS_56_63)
 			{
 				model3_crom_bank = data >> 56;
 
@@ -1269,7 +1269,7 @@ static WRITE64_HANDLER( model3_sys_w )
 				data = (~data) & 0xf;
 				memory_set_bankptr( 1, memory_region( REGION_USER1 ) + 0x800000 + (data * 0x800000)); /* banked CROM */
 			}
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
 				data >>= 24;
 				model3_tap_write(
@@ -1286,10 +1286,10 @@ static WRITE64_HANDLER( model3_sys_w )
 static READ64_HANDLER( model3_rtc_r )
 {
 	UINT64 r = 0;
-	if(!(mem_mask & U64(0xff00000000000000))) {
+	if(ACCESSING_BITS_56_63) {
 		r |= (UINT64)rtc72421_r(machine, (offset*2)+0, (UINT32)(mem_mask >> 32)) << 32;
 	}
-	if(!(mem_mask & U64(0x00000000ff000000))) {
+	if(ACCESSING_BITS_24_31) {
 		r |= (UINT64)rtc72421_r(machine, (offset*2)+1, (UINT32)(mem_mask));
 	}
 	return r;
@@ -1297,10 +1297,10 @@ static READ64_HANDLER( model3_rtc_r )
 
 static WRITE64_HANDLER( model3_rtc_w )
 {
-	if(!(mem_mask & U64(0xff00000000000000))) {
+	if(ACCESSING_BITS_56_63) {
 		rtc72421_w(machine, (offset*2)+0, (UINT32)(data >> 32), (UINT32)(mem_mask >> 32));
 	}
-	if(!(mem_mask & U64(0x00000000ff000000))) {
+	if(ACCESSING_BITS_24_31) {
 		rtc72421_w(machine, (offset*2)+1, (UINT32)(data), (UINT32)(mem_mask));
 	}
 }
@@ -1323,7 +1323,7 @@ static WRITE64_HANDLER(model3_sound_w)
 	model3_irq_state &= ~0x40;
 
 	// serial configuration writes
-	if ((mem_mask == U64(0x00ffffffffffffff)) && (offset == 0))
+	if ((mem_mask == U64(0xff00000000000000)) && (offset == 0))
 	{
 		SCSP_MidiIn(machine, 0, (data>>56)&0xff, 0);
 
@@ -1420,13 +1420,13 @@ static READ64_HANDLER(model3_security_r)
 		case 0x00/8:	return 0;		/* status */
 		case 0x1c/8:					/* security board data read */
 		{
-			if (mame_stricmp(Machine->gamedrv->name, "vs299") == 0 ||
-				mame_stricmp(Machine->gamedrv->name, "vs2v991") == 0)
+			if (mame_stricmp(machine->gamedrv->name, "vs299") == 0 ||
+				mame_stricmp(machine->gamedrv->name, "vs2v991") == 0)
 			{
 				return (UINT64)vs299_prot_data[prot_data_ptr++] << 48;
 			}
-			else if (mame_stricmp(Machine->gamedrv->name, "swtrilgy") == 0 ||
-					 mame_stricmp(Machine->gamedrv->name, "swtrilga") == 0)
+			else if (mame_stricmp(machine->gamedrv->name, "swtrilgy") == 0 ||
+					 mame_stricmp(machine->gamedrv->name, "swtrilga") == 0)
 			{
 				UINT64 data = (UINT64)swt_prot_data[prot_data_ptr++] << 16;
 				if (prot_data_ptr > 0x38)
@@ -1435,7 +1435,7 @@ static READ64_HANDLER(model3_security_r)
 				}
 				return data;
 			}
-			else if (mame_stricmp(Machine->gamedrv->name, "fvipers2") == 0)
+			else if (mame_stricmp(machine->gamedrv->name, "fvipers2") == 0)
 			{
 				UINT64 data = (UINT64)fvipers2_prot_data[prot_data_ptr++] << 16;
 				if (prot_data_ptr >= 0x41)
@@ -1444,8 +1444,8 @@ static READ64_HANDLER(model3_security_r)
 				}
 				return data;
 			}
-			else if (mame_stricmp(Machine->gamedrv->name, "spikeout") == 0 ||
-					 mame_stricmp(Machine->gamedrv->name, "spikeofe") == 0)
+			else if (mame_stricmp(machine->gamedrv->name, "spikeout") == 0 ||
+					 mame_stricmp(machine->gamedrv->name, "spikeofe") == 0)
 			{
 				UINT64 data = (UINT64)spikeout_prot_data[prot_data_ptr++] << 16;
 				if (prot_data_ptr >= 0x55)
@@ -1454,7 +1454,7 @@ static READ64_HANDLER(model3_security_r)
 				}
 				return data;
 			}
-			else if (mame_stricmp(Machine->gamedrv->name, "eca") == 0)
+			else if (mame_stricmp(machine->gamedrv->name, "eca") == 0)
 			{
 				UINT64 data = (UINT64)eca_prot_data[prot_data_ptr++] << 16;
 				if (prot_data_ptr >= 0x31)
@@ -1474,7 +1474,7 @@ static READ64_HANDLER(model3_security_r)
 
 static WRITE64_HANDLER(daytona2_rombank_w)
 {
-	if (!(mem_mask & U64(0xff00000000000000)))
+	if (ACCESSING_BITS_56_63)
 	{
 		data >>= 56;
 		data = (~data) & 0xf;
@@ -4096,13 +4096,14 @@ static MACHINE_DRIVER_START( model3_10 )
 
 
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
 
-	MDRV_PALETTE_LENGTH(65536)
+	MDRV_PALETTE_LENGTH(32768)
+	MDRV_PALETTE_INIT(RRRRR_GGGGG_BBBBB)
 
 	MDRV_VIDEO_START(model3)
 	MDRV_VIDEO_UPDATE(model3)
@@ -4133,13 +4134,14 @@ static MACHINE_DRIVER_START( model3_15 )
 
 
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
 
-	MDRV_PALETTE_LENGTH(65536)
+	MDRV_PALETTE_LENGTH(32768)
+	MDRV_PALETTE_INIT(RRRRR_GGGGG_BBBBB)
 
 	MDRV_VIDEO_START(model3)
 	MDRV_VIDEO_UPDATE(model3)
@@ -4169,13 +4171,14 @@ static MACHINE_DRIVER_START( model3_20 )
 
 
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
 
-	MDRV_PALETTE_LENGTH(65536)
+	MDRV_PALETTE_LENGTH(32768)
+	MDRV_PALETTE_INIT(RRRRR_GGGGG_BBBBB)
 
 	MDRV_VIDEO_START(model3)
 	MDRV_VIDEO_UPDATE(model3)
@@ -4205,13 +4208,14 @@ static MACHINE_DRIVER_START( model3_21 )
 
 
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB15)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_SIZE(496, 384)
 	MDRV_SCREEN_VISIBLE_AREA(0, 495, 0, 383)
 
-	MDRV_PALETTE_LENGTH(65536)
+	MDRV_PALETTE_LENGTH(32768)
+	MDRV_PALETTE_INIT(RRRRR_GGGGG_BBBBB)
 
 	MDRV_VIDEO_START(model3)
 	MDRV_VIDEO_UPDATE(model3)
@@ -4261,46 +4265,35 @@ static DRIVER_INIT( model3_10 )
 {
 	interleave_vroms();
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
 }
 
 static DRIVER_INIT( model3_15 )
 {
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
 }
 
 static DRIVER_INIT( model3_20 )
 {
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc2000000, 0xc20000ff, 0, 0, real3d_dma_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc2000000, 0xc20000ff, 0, 0, real3d_dma_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc2000000, 0xc20000ff, 0, 0, real3d_dma_r, real3d_dma_w );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( lostwsga )
@@ -4309,8 +4302,7 @@ static DRIVER_INIT( lostwsga )
 
 	DRIVER_INIT_CALL(model3_15);
 	/* TODO: there's an M68K device at 0xC0000000 - FF, maybe lightgun controls ? */
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[0x7374f0/4] = 0x38840004;		/* This seems to be an actual bug in the original code */
 }
@@ -4321,8 +4313,7 @@ static DRIVER_INIT( scud )
 
 	DRIVER_INIT_CALL(model3_15);
 	/* TODO: network device at 0xC0000000 - FF */
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[(0x71275c^4)/4] = 0x60000000;
 	rom[(0x71277c^4)/4] = 0x60000000;
@@ -4334,8 +4325,7 @@ static DRIVER_INIT( scudp )
 
 	DRIVER_INIT_CALL(model3_15);
 	/* TODO: network device at 0xC0000000 - FF */
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[(0x713724^4)/4] = 0x60000000;
 	rom[(0x713744^4)/4] = 0x60000000;
@@ -4351,8 +4341,7 @@ static DRIVER_INIT( lemans24 )
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 	DRIVER_INIT_CALL(model3_15);
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc1000000, 0xc10000ff, 0, 0, scsi_r, scsi_w );
 
 	rom[(0x73fe38^4)/4] = 0x38840004;		/* This seems to be an actual bug in the original code */
 
@@ -4383,21 +4372,15 @@ static DRIVER_INIT( vs215 )
 	rom[(0x70e710^4)/4] = 0x60000000;
 
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( vs29815 )
@@ -4408,21 +4391,15 @@ static DRIVER_INIT( vs29815 )
 	rom[(0x60290c^4)/4] = 0x60000000;
 
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( bass )
@@ -4433,37 +4410,27 @@ static DRIVER_INIT( bass )
 	rom[(0x7999c8^4)/4] = 0x60000000;
 
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfec00000, 0xfedfffff, 0, 0, mpc106_addr_r, mpc106_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xfee00000, 0xfeffffff, 0, 0, mpc106_data_r, mpc106_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc106_reg_r, mpc106_reg_w );
 }
 
 static DRIVER_INIT( getbass )
 {
 	interleave_vroms();
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
+	memory_install_read64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xff000000, 0xff7fffff, 0, 0, SMH_BANK1 );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf9000000, 0xf90000ff, 0, 0, scsi_r, scsi_w );
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_w );
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0800cf8, 0xf0800cff, 0, 0, mpc105_addr_r, mpc105_addr_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf0c00cf8, 0xf0c00cff, 0, 0, mpc105_data_r, mpc105_data_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf8fff000, 0xf8fff0ff, 0, 0, mpc105_reg_r, mpc105_reg_w );
 }
 
 static DRIVER_INIT( vs2 )
@@ -4512,8 +4479,7 @@ static DRIVER_INIT( harley )
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 	DRIVER_INIT_CALL(model3_20);
 
-	memory_install_read64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00fffff, 0, 0, network_r );
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00fffff, 0, 0, network_w );
+	memory_install_readwrite64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc0000000, 0xc00fffff, 0, 0, network_r, network_w );
 
 	rom[(0x50e8d4^4)/4] = 0x60000000;
 	rom[(0x50e8f4^4)/4] = 0x60000000;
@@ -4581,7 +4547,7 @@ static DRIVER_INIT( daytona2 )
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 	DRIVER_INIT_CALL(model3_20);
 
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
+	memory_install_write64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
 
 	//rom[(0x68468c^4)/4] = 0x60000000;
 	rom[(0x6063c4^4)/4] = 0x60000000;
@@ -4594,7 +4560,7 @@ static DRIVER_INIT( dayto2pe )
 	UINT32 *rom = (UINT32*)memory_region(REGION_USER1);
 	DRIVER_INIT_CALL(model3_20);
 
-	memory_install_write64_handler( 0, ADDRESS_SPACE_PROGRAM, 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
+	memory_install_write64_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xc3800000, 0xc3800007, 0, 0, daytona2_rombank_w );
 
 	rom[(0x606784^4)/4] = 0x60000000;
 	rom[(0x69a3fc^4)/4] = 0x60000000;		// jump to encrypted code

@@ -41,8 +41,8 @@ void cyberbal_sound_reset(void)
 
 READ8_HANDLER( cyberbal_special_port3_r )
 {
-	int temp = readinputport(3);
-	if (!(readinputport(0) & 0x8000)) temp ^= 0x80;
+	int temp = input_port_read_indexed(machine, 3);
+	if (!(input_port_read_indexed(machine, 0) & 0x8000)) temp ^= 0x80;
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x40;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x20;
 	return temp;
@@ -63,7 +63,7 @@ WRITE8_HANDLER( cyberbal_sound_bank_select_w )
 	memory_set_bankptr(8, &bank_base[0x1000 * ((data >> 6) & 3)]);
 	coin_counter_w(1, (data >> 5) & 1);
 	coin_counter_w(0, (data >> 4) & 1);
-	cpunum_set_input_line(Machine, 3, INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 	if (!(data & 0x01)) sndti_reset(SOUND_YM2151, 0);
 
 }
@@ -146,7 +146,7 @@ READ16_HANDLER( cyberbal_sound_68k_r )
 
 WRITE16_HANDLER( cyberbal_sound_68k_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		sound_data_from_68k = (data >> 8) & 0xff;
 		sound_data_from_68k_ready = 1;

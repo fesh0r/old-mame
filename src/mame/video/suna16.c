@@ -58,13 +58,12 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 static int color_bank;
 
 WRITE16_HANDLER( suna16_flipscreen_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		flip_screen_set( data & 1 );
 		color_bank =   ( data & 4 ) >> 2;
@@ -74,7 +73,7 @@ WRITE16_HANDLER( suna16_flipscreen_w )
 
 WRITE16_HANDLER( bestbest_flipscreen_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		flip_screen_set( data & 0x10 );
 //      color_bank =   ( data & 0x07 );
@@ -105,7 +104,7 @@ WRITE16_HANDLER( suna16_paletteram16_w )
 {
 	offset += color_bank * 256;
 	data = COMBINE_DATA(&paletteram16[offset]);
-	palette_set_color_rgb( Machine, offset, pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
+	palette_set_color_rgb( machine, offset, pal5bit(data >> 0),pal5bit(data >> 5),pal5bit(data >> 10));
 }
 
 

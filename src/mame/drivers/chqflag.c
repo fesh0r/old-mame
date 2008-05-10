@@ -51,18 +51,18 @@ static WRITE8_HANDLER( chqflag_bankswitch_w )
 	/* bit 5 = memory bank select */
 	if (data & 0x20)
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, SMH_BANK5, paletteram_xBBBBBGGGGGRRRRR_be_w);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, SMH_BANK5, paletteram_xBBBBBGGGGGRRRRR_be_w);
 		memory_set_bankptr(5, paletteram);
 
 		if (K051316_readroms)
-			memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_rom_0_r, K051316_0_w);	/* 051316 #1 (ROM test) */
+			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_rom_0_r, K051316_0_w);	/* 051316 #1 (ROM test) */
 		else
-			memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_0_r, K051316_0_w);		/* 051316 #1 */
+			memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, K051316_0_r, K051316_0_w);		/* 051316 #1 */
 	}
 	else
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, SMH_BANK1, SMH_BANK1);				/* RAM */
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, SMH_BANK2, SMH_BANK2);				/* RAM */
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x17ff, 0, 0, SMH_BANK1, SMH_BANK1);				/* RAM */
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1fff, 0, 0, SMH_BANK2, SMH_BANK2);				/* RAM */
 	}
 
 	/* other bits unknown/unused */
@@ -77,12 +77,11 @@ static WRITE8_HANDLER( chqflag_vreg_w )
 	coin_counter_w(0,data & 0x02);
 
 	/* bit 4 = enable rom reading thru K051316 #1 & #2 */
-	if ((K051316_readroms = (data & 0x10))){
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2fff, 0, 0, K051316_rom_1_r);	/* 051316 (ROM test) */
-	}
-	else{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2fff, 0, 0, K051316_1_r);		/* 051316 */
-	}
+	K051316_readroms = (data & 0x10);
+	if (K051316_readroms)
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2fff, 0, 0, K051316_rom_1_r);	/* 051316 (ROM test) */
+	else
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2fff, 0, 0, K051316_1_r);		/* 051316 */
 
 	/* Bits 3-7 probably control palette dimming in a similar way to TMNT2/Saunset Riders, */
 	/* however I don't have enough evidence to determine the exact behaviour. */
@@ -90,9 +89,9 @@ static WRITE8_HANDLER( chqflag_vreg_w )
 	/* the headlight (which have the shadow bit set) become highlights */
 	/* Maybe one of the bits inverts the SHAD line while the other darkens the background. */
 	if (data & 0x08)
-		palette_set_shadow_factor(Machine,1/PALETTE_DEFAULT_SHADOW_FACTOR);
+		palette_set_shadow_factor(machine,1/PALETTE_DEFAULT_SHADOW_FACTOR);
 	else
-		palette_set_shadow_factor(Machine,PALETTE_DEFAULT_SHADOW_FACTOR);
+		palette_set_shadow_factor(machine,PALETTE_DEFAULT_SHADOW_FACTOR);
 
 	if ((data & 0x80) != last)
 	{
@@ -103,7 +102,7 @@ static WRITE8_HANDLER( chqflag_vreg_w )
 
 		/* only affect the background */
 		for (i = 512;i < 1024;i++)
-			palette_set_brightness(Machine,i,brt);
+			palette_set_brightness(machine,i,brt);
 	}
 
 //if ((data & 0xf8) && (data & 0xf8) != 0x88)
@@ -125,8 +124,8 @@ static READ8_HANDLER( analog_read_r )
 	static int accel, wheel;
 
 	switch (analog_ctrl & 0x03){
-		case 0x00: return (accel = readinputport(5));	/* accelerator */
-		case 0x01: return (wheel = readinputport(6));	/* steering */
+		case 0x00: return (accel = input_port_read_indexed(machine, 5));	/* accelerator */
+		case 0x01: return (wheel = input_port_read_indexed(machine, 6));	/* steering */
 		case 0x02: return accel;						/* accelerator (previous?) */
 		case 0x03: return wheel;						/* steering (previous?) */
 	}
@@ -136,7 +135,7 @@ static READ8_HANDLER( analog_read_r )
 
 static WRITE8_HANDLER( chqflag_sh_irqtrigger_w )
 {
-	cpunum_set_input_line(Machine, 1,0,HOLD_LINE);
+	cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 }
 
 

@@ -93,7 +93,7 @@ static void cage_irq_callback(int reason)
 	if (reason)
 		atarigen_sound_int_gen(Machine, 0);
 	else
-		atarigen_sound_int_ack_w(Machine,0,0,0);
+		atarigen_sound_int_ack_w(Machine,0,0,0xffff);
 }
 
 
@@ -106,13 +106,13 @@ static void cage_irq_callback(int reason)
 
 static READ32_HANDLER( inputs_01_r )
 {
-	return (readinputportbytag("IN0") << 16) | readinputportbytag("IN1");
+	return (input_port_read(machine, "IN0") << 16) | input_port_read(machine, "IN1");
 }
 
 
 static READ32_HANDLER( special_port2_r )
 {
-	int temp = readinputportbytag("IN2");
+	int temp = input_port_read(machine, "IN2");
 	temp ^= 0x0001;		/* /A2DRDY always high for now */
 	temp ^= 0x0008;		/* A2D.EOC always high for now */
 	return (temp << 16) | temp;
@@ -121,7 +121,7 @@ static READ32_HANDLER( special_port2_r )
 
 static READ32_HANDLER( special_port3_r )
 {
-	int temp = readinputportbytag("IN3");
+	int temp = input_port_read(machine, "IN3");
 	if (atarigen_video_int_state) temp ^= 0x0001;
 	if (atarigen_scanline_int_state) temp ^= 0x0002;
 	return (temp << 16) | temp;
@@ -131,7 +131,7 @@ static READ32_HANDLER( special_port3_r )
 #if (HACK_TMEK_CONTROLS)
 INLINE void compute_fake_pots(int *pots)
 {
-	int fake = readinputportbytag("FAKE");
+	int fake = input_port_read(machine, "FAKE");
 
 	pots[0] = pots[1] = pots[2] = pots[3] = 0x80;
 
@@ -168,7 +168,7 @@ static READ32_HANDLER( analog_port0_r )
 	compute_fake_pots(pots);
 	return (pots[0] << 24) | (pots[3] << 8);
 #else
-	return (readinputportbytag("IN4") << 24) | (readinputportbytag("IN5") << 8);
+	return (input_port_read(machine, "IN4") << 24) | (input_port_read(machine, "IN5") << 8);
 #endif
 }
 
@@ -180,7 +180,7 @@ static READ32_HANDLER( analog_port1_r )
 	compute_fake_pots(pots);
 	return (pots[2] << 24) | (pots[1] << 8);
 #else
-	return (readinputportbytag("IN6") << 24) | (readinputportbytag("IN7") << 8);
+	return (input_port_read(machine, "IN6") << 24) | (input_port_read(machine, "IN7") << 8);
 #endif
 }
 
@@ -206,13 +206,13 @@ static WRITE32_HANDLER( latch_w )
     */
 
 	/* upper byte */
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		/* bits 13-11 are the MO control bits */
 		atarirle_control_w(0, (data >> 27) & 7);
 	}
 
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 //      cage_reset_w(data & 0x00100000);
 		coin_counter_w(0, data & 0x00080000);
@@ -224,14 +224,14 @@ static WRITE32_HANDLER( latch_w )
 static WRITE32_HANDLER( mo_command_w )
 {
 	COMBINE_DATA(mo_command);
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 		atarirle_command_w(0, ((data & 0xffff) == 2) ? ATARIRLE_COMMAND_CHECKSUM : ATARIRLE_COMMAND_DRAW);
 }
 
 
 static WRITE32_HANDLER( led_w )
 {
-//  logerror("LED = %08X & %08X\n", data, ~mem_mask);
+//  logerror("LED = %08X & %08X\n", data, mem_mask);
 }
 
 
@@ -246,9 +246,9 @@ static READ32_HANDLER( sound_data_r )
 {
 	UINT32 result = 0;
 
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 		result |= cage_control_r();
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 		result |= main_from_cage_r() << 16;
 	return result;
 }
@@ -256,9 +256,9 @@ static READ32_HANDLER( sound_data_r )
 
 static WRITE32_HANDLER( sound_data_w )
 {
-	if (ACCESSING_LSW32)
+	if (ACCESSING_BITS_0_15)
 		cage_control_w(data);
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 		main_to_cage_w(data >> 16);
 }
 
@@ -568,13 +568,13 @@ static READ32_HANDLER( colorram_protection_r )
 	UINT32 result32 = 0;
 	UINT16 result;
 
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
+	if (ACCESSING_BITS_16_31)
 	{
 		result = atarigt_colorram_r(address);
 		(*protection_r)(address, &result);
 		result32 |= result << 16;
 	}
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 	{
 		result = atarigt_colorram_r(address + 2);
 		(*protection_r)(address + 2, &result);
@@ -589,13 +589,13 @@ static WRITE32_HANDLER( colorram_protection_w )
 {
 	offs_t address = 0xd80000 + offset * 4;
 
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
+	if (ACCESSING_BITS_16_31)
 	{
 		if (!ignore_writes)
 			atarigt_colorram_w(address, data >> 16, mem_mask >> 16);
 		(*protection_w)(address, data >> 16);
 	}
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 	{
 		if (!ignore_writes)
 			atarigt_colorram_w(address + 2, data, mem_mask);
@@ -1078,14 +1078,14 @@ static WRITE32_HANDLER( tmek_pf_w )
 	/* protected version */
 	if (pc == 0x2EB3C || pc == 0x2EB48)
 	{
-		logerror("%06X:PFW@%06X = %08X & %08X (src=%06X)\n", activecpu_get_pc(), 0xd72000 + offset*4, data, ~mem_mask, (UINT32)activecpu_get_reg(M68K_A4) - 2);
+		logerror("%06X:PFW@%06X = %08X & %08X (src=%06X)\n", activecpu_get_pc(), 0xd72000 + offset*4, data, mem_mask, (UINT32)activecpu_get_reg(M68K_A4) - 2);
 		/* skip these writes to make more stuff visible */
 		return;
 	}
 
 	/* unprotected version */
 	if (pc == 0x25834 || pc == 0x25860)
-		logerror("%06X:PFW@%06X = %08X & %08X (src=%06X)\n", activecpu_get_pc(), 0xd72000 + offset*4, data, ~mem_mask, (UINT32)activecpu_get_reg(M68K_A3) - 2);
+		logerror("%06X:PFW@%06X = %08X & %08X (src=%06X)\n", activecpu_get_pc(), 0xd72000 + offset*4, data, mem_mask, (UINT32)activecpu_get_reg(M68K_A3) - 2);
 
 	atarigen_playfield32_w(machine, offset, data, mem_mask);
 }
@@ -1095,7 +1095,7 @@ static DRIVER_INIT( tmek )
 	atarigen_eeprom_default = NULL;
 	atarigt_is_primrage = 0;
 
-	cage_init(REGION_USER1, 0x4fad);
+	cage_init(machine, REGION_USER1, 0x4fad);
 	cage_set_irq_handler(cage_irq_callback);
 
 	/* setup protection */
@@ -1103,16 +1103,16 @@ static DRIVER_INIT( tmek )
 	protection_w = tmek_protection_w;
 
 	/* temp hack */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xd72000, 0xd75fff, 0, 0, tmek_pf_w);
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd72000, 0xd75fff, 0, 0, tmek_pf_w);
 }
 
 
-static void primrage_init_common(offs_t cage_speedup)
+static void primrage_init_common(running_machine *machine, offs_t cage_speedup)
 {
 	atarigen_eeprom_default = NULL;
 	atarigt_is_primrage = 1;
 
-	cage_init(REGION_USER1, cage_speedup);
+	cage_init(machine, REGION_USER1, cage_speedup);
 	cage_set_irq_handler(cage_irq_callback);
 
 	/* install protection */
@@ -1120,8 +1120,8 @@ static void primrage_init_common(offs_t cage_speedup)
 	protection_w = primrage_protection_w;
 }
 
-static DRIVER_INIT( primrage ) { primrage_init_common(0x42f2); }
-static DRIVER_INIT( primraga ) { primrage_init_common(0x48a4); }
+static DRIVER_INIT( primrage ) { primrage_init_common(machine, 0x42f2); }
+static DRIVER_INIT( primraga ) { primrage_init_common(machine, 0x48a4); }
 
 
 

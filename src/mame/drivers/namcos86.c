@@ -175,7 +175,6 @@ TODO:
 *******************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/2151intf.h"
 #include "sound/namco.h"
@@ -233,15 +232,15 @@ static READ8_HANDLER( dsw0_r )
 {
 	int rhi, rlo;
 
-	rhi  = ( readinputportbytag("DSWA") & 0x01 ) << 4;
-	rhi |= ( readinputportbytag("DSWA") & 0x04 ) << 3;
-	rhi |= ( readinputportbytag("DSWA") & 0x10 ) << 2;
-	rhi |= ( readinputportbytag("DSWA") & 0x40 ) << 1;
+	rhi  = ( input_port_read(machine, "DSWA") & 0x01 ) << 4;
+	rhi |= ( input_port_read(machine, "DSWA") & 0x04 ) << 3;
+	rhi |= ( input_port_read(machine, "DSWA") & 0x10 ) << 2;
+	rhi |= ( input_port_read(machine, "DSWA") & 0x40 ) << 1;
 
-	rlo  = ( readinputportbytag("DSWB") & 0x01 );
-	rlo |= ( readinputportbytag("DSWB") & 0x04 ) >> 1;
-	rlo |= ( readinputportbytag("DSWB") & 0x10 ) >> 2;
-	rlo |= ( readinputportbytag("DSWB") & 0x40 ) >> 3;
+	rlo  = ( input_port_read(machine, "DSWB") & 0x01 );
+	rlo |= ( input_port_read(machine, "DSWB") & 0x04 ) >> 1;
+	rlo |= ( input_port_read(machine, "DSWB") & 0x10 ) >> 2;
+	rlo |= ( input_port_read(machine, "DSWB") & 0x40 ) >> 3;
 
 	return rhi | rlo;
 }
@@ -250,15 +249,15 @@ static READ8_HANDLER( dsw1_r )
 {
 	int rhi, rlo;
 
-	rhi  = ( readinputportbytag("DSWA") & 0x02 ) << 3;
-	rhi |= ( readinputportbytag("DSWA") & 0x08 ) << 2;
-	rhi |= ( readinputportbytag("DSWA") & 0x20 ) << 1;
-	rhi |= ( readinputportbytag("DSWA") & 0x80 );
+	rhi  = ( input_port_read(machine, "DSWA") & 0x02 ) << 3;
+	rhi |= ( input_port_read(machine, "DSWA") & 0x08 ) << 2;
+	rhi |= ( input_port_read(machine, "DSWA") & 0x20 ) << 1;
+	rhi |= ( input_port_read(machine, "DSWA") & 0x80 );
 
-	rlo  = ( readinputportbytag("DSWB") & 0x02 ) >> 1;
-	rlo |= ( readinputportbytag("DSWB") & 0x08 ) >> 2;
-	rlo |= ( readinputportbytag("DSWB") & 0x20 ) >> 3;
-	rlo |= ( readinputportbytag("DSWB") & 0x80 ) >> 4;
+	rlo  = ( input_port_read(machine, "DSWB") & 0x02 ) >> 1;
+	rlo |= ( input_port_read(machine, "DSWB") & 0x08 ) >> 2;
+	rlo |= ( input_port_read(machine, "DSWB") & 0x20 ) >> 3;
+	rlo |= ( input_port_read(machine, "DSWB") & 0x80 ) >> 4;
 
 	return rhi | rlo;
 }
@@ -266,12 +265,12 @@ static READ8_HANDLER( dsw1_r )
 
 static WRITE8_HANDLER( int_ack1_w )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( int_ack2_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 

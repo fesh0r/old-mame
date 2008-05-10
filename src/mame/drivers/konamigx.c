@@ -440,7 +440,7 @@ static WRITE32_HANDLER( esc_w )
 		if (konamigx_wrport1_1 & 0x10)
 		{
 			gx_rdport1_3 &= ~8;
-			cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+			cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 		}
 	}
 	else
@@ -489,14 +489,14 @@ static READ32_HANDLER( eeprom_r )
 	//      excpuint stat, objdma stat, eeprom do
 
 	// note: racin' force expects bit 1 of the eeprom port to toggle
-	return(readinputport(6)<<24 | readinputport(7)<<16 | readinputport(0)<<8 | EEPROM_read_bit() | gx_rdport1_3);
+	return(input_port_read_indexed(machine, 6)<<24 | input_port_read_indexed(machine, 7)<<16 | input_port_read_indexed(machine, 0)<<8 | EEPROM_read_bit() | gx_rdport1_3);
 }
 
 static WRITE32_HANDLER( eeprom_w )
 {
 	UINT32 odata;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		odata = data >> 24;
 		/*
@@ -517,7 +517,7 @@ static WRITE32_HANDLER( eeprom_w )
 		konamigx_wrport1_0 = odata;
 	}
 
-	if (!(mem_mask & 0xff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		/*
           bit 7 = mask all IRQ
@@ -553,19 +553,19 @@ static WRITE32_HANDLER( control_w )
 	//          results.
 	// bit 17 = DOTSEL1 : 0 = 6M, 1=8M, 2=12M, 3=16M
 	// bit 16 = DOTSEL0
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		if (data & 0x400000)
 		{
 			// enable 68k
 			// clear the halt condition and reset the 68000
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 		}
 		else
 		{
 			// disable 68k
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 		}
 
 		K053246_set_OBJCHA_line((data&0x100000) ? ASSERT_LINE : CLEAR_LINE);
@@ -594,7 +594,6 @@ static struct { UINT32 offs, pc, mask, data; } waitskip;
 static READ32_HANDLER(waitskip_r)
 {
 	UINT32 data = gx_workram[waitskip.offs+offset];
-	mem_mask = ~mem_mask;
 
 	if (activecpu_get_pc() == waitskip.pc && (data & mem_mask) == (waitskip.data & mem_mask))
 	{
@@ -627,16 +626,16 @@ static WRITE32_HANDLER( ccu_w )
 	if (offset == 0x1c/4)
 	{
 		// vblank interrupt ACK
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
-			cpunum_set_input_line(Machine, 0, 1, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
 			gx_syncen |= 0x20;
 		}
 
 		// hblank interrupt ACK
-		if (!(mem_mask & 0x0000ff00))
+		if (ACCESSING_BITS_8_15)
 		{
-			cpunum_set_input_line(Machine, 0, 2, CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, 2, CLEAR_LINE);
 			gx_syncen |= 0x40;
 		}
 	}
@@ -764,14 +763,14 @@ static READ32_HANDLER( sound020_r )
 
 	reg = offset << 1;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		MSW = sndto020[reg];
 		if (reg == 2) MSW &= ~3; // supress VOLWR busy flags
 		rv |= MSW<<24;
 	}
 
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		LSW = sndto020[reg+1];
 		rv |= LSW<<8;
@@ -832,14 +831,14 @@ static WRITE32_HANDLER( sound020_w )
 {
 	int reg=0, val=0;
 
-	if (!(mem_mask & 0xff000000))
+	if (ACCESSING_BITS_24_31)
 	{
 		reg = offset<<1;
 		val = data>>24;
 		write_snd_020(reg, val);
 	}
 
-	if (!(mem_mask & 0x0000ff00))
+	if (ACCESSING_BITS_8_15)
 	{
 		reg = (offset<<1)+1;
 		val = (data>>8)&0xff;
@@ -870,9 +869,9 @@ static double adc0834_callback( int input )
 	switch( input )
 	{
 	case ADC083X_CH0:
-		return ( (double)5 * readinputport( 9 ) ) / 255; // steer
+		return ( (double)5 * input_port_read_indexed(Machine,  9 ) ) / 255; // steer
 	case ADC083X_CH1:
-		return ( (double)5 * readinputport( 10 ) ) / 255; // gas
+		return ( (double)5 * input_port_read_indexed(Machine,  10 ) ) / 255; // gas
 	case ADC083X_VREF:
 		return 5;
 	}
@@ -881,23 +880,23 @@ static double adc0834_callback( int input )
 
 static READ32_HANDLER( le2_gun_H_r )
 {
-	int p1x = readinputport(9)*287/0xff+22;
-	int p2x = readinputport(11)*287/0xff+22;
+	int p1x = input_port_read_indexed(machine, 9)*287/0xff+22;
+	int p2x = input_port_read_indexed(machine, 11)*287/0xff+22;
 
 	return (p1x<<16)|p2x;
 }
 
 static READ32_HANDLER( le2_gun_V_r )
 {
-	int p1y = readinputport(10)*223/0xff+1;
-	int p2y = readinputport(12)*223/0xff+1;
+	int p1y = input_port_read_indexed(machine, 10)*223/0xff+1;
+	int p2y = input_port_read_indexed(machine, 12)*223/0xff+1;
 
 	return (p1y<<16)|p2y;
 }
 
 static READ32_HANDLER( service_r )
 {
-	int res = (readinputport(1)<<24) | (readinputport(8)<<8);
+	int res = (input_port_read_indexed(machine, 1)<<24) | (input_port_read_indexed(machine, 8)<<8);
 
 	if (init_eeprom_count)
 	{
@@ -910,7 +909,7 @@ static READ32_HANDLER( service_r )
 
 static READ32_HANDLER( players_r )
 {
-	return (readinputport(2)<<24) | (readinputport(3)<<16) | (readinputport(4)<<8) | (readinputport(5));
+	return (input_port_read_indexed(machine, 2)<<24) | (input_port_read_indexed(machine, 3)<<16) | (input_port_read_indexed(machine, 4)<<8) | (input_port_read_indexed(machine, 5));
 }
 
 
@@ -1097,7 +1096,7 @@ static WRITE32_HANDLER( type4_prot_w )
 				if (konamigx_wrport1_1 & 0x10)
 				{
 					gx_rdport1_3 &= ~8;
-					cpunum_set_input_line(Machine, 0, 4, HOLD_LINE);
+					cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 				}
 
 				// don't accidentally do a phony command
@@ -1152,7 +1151,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gx_type1_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xd4a000, 0xd4a01f) AM_READ(gx6bppspr_r)	// sprite ROM readback
-	AM_RANGE(0xd90000, 0xd97fff) AM_RAM AM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0xd90000, 0xd97fff) AM_RAM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0xdc0000, 0xdc1fff) AM_RAM			// LAN RAM? (Racin' Force has, Open Golf doesn't)
 	AM_RANGE(0xdd0000, 0xdd00ff) AM_READNOP AM_WRITENOP	// LAN board
 	AM_RANGE(0xdda000, 0xddafff) AM_WRITE(adc0834_w)
@@ -1162,7 +1161,7 @@ static ADDRESS_MAP_START( gx_type1_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xe20000, 0xe2000f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe40000, 0xe40003) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe80000, 0xe81fff) AM_RAM AM_BASE((UINT32**)&K053936_1_linectrl) 	// chips 21L+19L / S
-	AM_RANGE(0xec0000, 0xedffff) AM_RAM AM_WRITE(konamigx_t1_psacmap_w) AM_BASE(&gx_psacram)  // chips 20J+23J+18J / S
+	AM_RANGE(0xec0000, 0xedffff) AM_RAM_WRITE(konamigx_t1_psacmap_w) AM_BASE(&gx_psacram)  // chips 20J+23J+18J / S
 	AM_RANGE(0xf00000, 0xf3ffff) AM_READ(type1_roz_r1)	// ROM readback
 	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(type1_roz_r2)	// ROM readback
 	AM_RANGE(0xf80000, 0xf80fff) AM_RAM	// chip 21Q / S
@@ -1171,7 +1170,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gx_type2_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xcc0000, 0xcc0003) AM_WRITE(esc_w)
-	AM_RANGE(0xd90000, 0xd97fff) AM_RAM AM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0xd90000, 0xd97fff) AM_RAM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gx_type3_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -1181,8 +1180,8 @@ static ADDRESS_MAP_START( gx_type3_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xe20000, 0xe20003) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe40000, 0xe40003) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe60000, 0xe60fff) AM_RAM AM_BASE((UINT32**)&K053936_1_linectrl)
-	AM_RANGE(0xe80000, 0xe87fff) AM_RAM AM_WRITE(konamigx_555_palette_w) AM_BASE(&paletteram32) 	// main monitor palette (twice as large as reality)
-	AM_RANGE(0xea0000, 0xea3fff) AM_RAM AM_WRITE(konamigx_555_palette2_w) AM_BASE(&gx_subpaletteram32) // sub monitor palette
+	AM_RANGE(0xe80000, 0xe87fff) AM_RAM_WRITE(konamigx_555_palette_w) AM_BASE(&paletteram32) 	// main monitor palette (twice as large as reality)
+	AM_RANGE(0xea0000, 0xea3fff) AM_RAM_WRITE(konamigx_555_palette2_w) AM_BASE(&gx_subpaletteram32) // sub monitor palette
 	AM_RANGE(0xec0000, 0xec0003) AM_READ(type3_sync_r)
 	AM_RANGE(0xf00000, 0xf07fff) AM_RAM
 ADDRESS_MAP_END
@@ -1194,10 +1193,10 @@ static ADDRESS_MAP_START( gx_type4_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0xe20000, 0xe20003) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe40000, 0xe40003) AM_WRITE(SMH_NOP)
 	AM_RANGE(0xe60000, 0xe60fff) AM_RAM AM_BASE((UINT32**)&K053936_1_linectrl)  // 29C & 29G (PSAC2 line control)
-	AM_RANGE(0xe80000, 0xe8ffff) AM_RAM AM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32) // 11G/13G/15G (main screen palette RAM) (twice as large as reality)
-	AM_RANGE(0xea0000, 0xea7fff) AM_RAM AM_WRITE(konamigx_palette2_w) AM_BASE(&gx_subpaletteram32) // 5G/7G/9G (sub screen palette RAM)
+	AM_RANGE(0xe80000, 0xe8ffff) AM_RAM_WRITE(konamigx_palette_w) AM_BASE(&paletteram32) // 11G/13G/15G (main screen palette RAM) (twice as large as reality)
+	AM_RANGE(0xea0000, 0xea7fff) AM_RAM_WRITE(konamigx_palette2_w) AM_BASE(&gx_subpaletteram32) // 5G/7G/9G (sub screen palette RAM)
 	AM_RANGE(0xec0000, 0xec0003) AM_READ(type3_sync_r)		// type 4 polls this too
-	AM_RANGE(0xf00000, 0xf07fff) AM_RAM AM_WRITE(konamigx_t4_psacmap_w) AM_BASE(&gx_psacram)	// PSAC2 tilemap
+	AM_RANGE(0xf00000, 0xf07fff) AM_RAM_WRITE(konamigx_t4_psacmap_w) AM_BASE(&gx_psacram)	// PSAC2 tilemap
 ADDRESS_MAP_END
 
 /**********************************************************************************/
@@ -1207,9 +1206,9 @@ static READ16_HANDLER( dual539_r )
 {
 	UINT16 ret = 0;
 
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		ret |= K054539_1_r(machine, offset);
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		ret |= K054539_0_r(machine, offset)<<8;
 
 	return ret;
@@ -1217,9 +1216,9 @@ static READ16_HANDLER( dual539_r )
 
 static WRITE16_HANDLER( dual539_w )
 {
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		K054539_1_w(machine, offset, data);
-	if (ACCESSING_MSB16)
+	if (ACCESSING_BITS_8_15)
 		K054539_0_w(machine, offset, data>>8);
 }
 
@@ -3551,8 +3550,8 @@ static DRIVER_INIT(konamigx)
 			switch (gameDefs[i].special)
 	{
 				case 1:	// LE2 guns
-		memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xd44000, 0xd44003, 0, 0, le2_gun_H_r );
-		memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xd44004, 0xd44007, 0, 0, le2_gun_V_r );
+		memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd44000, 0xd44003, 0, 0, le2_gun_H_r );
+		memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd44004, 0xd44007, 0, 0, le2_gun_V_r );
 					break;
 
 				case 2:	// tkmmpzdm hack
@@ -3588,7 +3587,7 @@ static DRIVER_INIT(konamigx)
 					break;
 
 				case 7:	// install type 4 Xilinx protection for non-type 3/4 games
-		memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xcc0000, 0xcc0007, 0, 0, type4_prot_w );
+		memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xcc0000, 0xcc0007, 0, 0, type4_prot_w );
 					break;
 
 				case 8: // tbyahhoo
@@ -3603,14 +3602,14 @@ static DRIVER_INIT(konamigx)
 	switch (readback)
 	{
 		case BPP5:
-			memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xd4a000, 0xd4a00f, 0, 0, gx5bppspr_r);
+			memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd4a000, 0xd4a00f, 0, 0, gx5bppspr_r);
 		break;
 
 		case BPP66:
-			memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xd00000, 0xd01fff, 0, 0, K056832_6bpp_rom_long_r);
+			memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd00000, 0xd01fff, 0, 0, K056832_6bpp_rom_long_r);
 
 		case BPP6:
-			memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0xd4a000, 0xd4a00f, 0, 0, gx6bppspr_r);
+			memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd4a000, 0xd4a00f, 0, 0, gx6bppspr_r);
 		break;
 	}
 

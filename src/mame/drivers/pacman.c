@@ -368,7 +368,7 @@ static UINT8 cannonb_bit_to_read;
 static MACHINE_RESET( mschamp )
 {
 	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
-	int whichbank = readinputportbytag("GAME") & 1;
+	int whichbank = input_port_read(machine, "GAME") & 1;
 
 	memory_configure_bank(1, 0, 2, &rom[0x0000], 0x8000);
 	memory_configure_bank(2, 0, 2, &rom[0x4000], 0x8000);
@@ -388,7 +388,7 @@ static MACHINE_RESET( mschamp )
 static WRITE8_HANDLER( pacman_interrupt_vector_w )
 {
 	cpunum_set_input_line_vector(0, 0, data);
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -405,7 +405,7 @@ static INTERRUPT_GEN( pacman_interrupt )
 		int portnum = port_tag_to_index("FAKE");
 		if (portnum != -1)
 		{
-			UINT8 value = readinputport(portnum);
+			UINT8 value = input_port_read_indexed(machine, portnum);
 			if ((value & 7) == 5 || (value & 6) == 2)
 				irq0_line_hold(machine, cpunum);
 		}
@@ -557,7 +557,7 @@ static READ8_HANDLER( alibaba_mystery_2_r )
 
 static READ8_HANDLER( maketrax_special_port2_r )
 {
-	int data = input_port_2_r(machine,offset);
+	int data = input_port_read_indexed(machine, 2);
 	int pc = activecpu_get_previouspc();
 
 	if ((pc == 0x1973) || (pc == 0x2389)) return data | 0x40;
@@ -600,7 +600,7 @@ static READ8_HANDLER( maketrax_special_port3_r )
 
 static READ8_HANDLER( korosuke_special_port2_r )
 {
-	int data = input_port_2_r(machine,offset);
+	int data = input_port_read_indexed(machine,2);
 	int pc = activecpu_get_previouspc();
 
 	if ((pc == 0x196e) || (pc == 0x2387)) return data | 0x40;
@@ -3326,6 +3326,11 @@ MACHINE_DRIVER_END
 
 static const struct AY8910interface crushs_ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
+	NULL,
 	NULL
 };
 
@@ -5126,8 +5131,8 @@ static void maketrax_rom_decode(void)
 static DRIVER_INIT( maketrax )
 {
 	/* set up protection handlers */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5080, 0x50bf, 0, 0, maketrax_special_port2_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x50c0, 0x50ff, 0, 0, maketrax_special_port3_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5080, 0x50bf, 0, 0, maketrax_special_port2_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x50c0, 0x50ff, 0, 0, maketrax_special_port3_r);
 
 	maketrax_rom_decode();
 }
@@ -5157,8 +5162,8 @@ static void korosuke_rom_decode(void)
 static DRIVER_INIT( korosuke )
 {
 	/* set up protection handlers */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5080, 0x5080, 0, 0, korosuke_special_port2_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x50c0, 0x50ff, 0, 0, korosuke_special_port3_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5080, 0x5080, 0, 0, korosuke_special_port2_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x50c0, 0x50ff, 0, 0, korosuke_special_port3_r);
 
 	korosuke_rom_decode();
 }
@@ -5381,11 +5386,11 @@ static READ8_HANDLER( cannonbp_protection_r )
 static DRIVER_INIT( cannonbp )
 {
 	/* extra memory */
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4bff, 0, 0, SMH_BANK5, SMH_BANK5);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x4bff, 0, 0, SMH_BANK5, SMH_BANK5);
 	memory_set_bankptr(5, auto_malloc(0x400));
 
 	/* protection? */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, cannonbp_protection_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, cannonbp_protection_r);
 }
 
 

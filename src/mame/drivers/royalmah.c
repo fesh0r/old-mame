@@ -221,26 +221,26 @@ static WRITE8_HANDLER( input_port_select_w )
 
 static READ8_HANDLER( royalmah_player_1_port_r )
 {
-	int ret = (input_port_0_r(machine,offset) & 0xc0) | 0x3f;
+	int ret = (input_port_read_indexed(machine,0) & 0xc0) | 0x3f;
 
-	if ((input_port_select & 0x01) == 0)  ret &= input_port_0_r(machine,offset);
-	if ((input_port_select & 0x02) == 0)  ret &= input_port_1_r(machine,offset);
-	if ((input_port_select & 0x04) == 0)  ret &= input_port_2_r(machine,offset);
-	if ((input_port_select & 0x08) == 0)  ret &= input_port_3_r(machine,offset);
-	if ((input_port_select & 0x10) == 0)  ret &= input_port_4_r(machine,offset);
+	if ((input_port_select & 0x01) == 0)  ret &= input_port_read_indexed(machine,0);
+	if ((input_port_select & 0x02) == 0)  ret &= input_port_read_indexed(machine,1);
+	if ((input_port_select & 0x04) == 0)  ret &= input_port_read_indexed(machine,2);
+	if ((input_port_select & 0x08) == 0)  ret &= input_port_read_indexed(machine,3);
+	if ((input_port_select & 0x10) == 0)  ret &= input_port_read_indexed(machine,4);
 
 	return ret;
 }
 
 static READ8_HANDLER( royalmah_player_2_port_r )
 {
-	int ret = (input_port_5_r(machine,offset) & 0xc0) | 0x3f;
+	int ret = (input_port_read_indexed(machine,5) & 0xc0) | 0x3f;
 
-	if ((input_port_select & 0x01) == 0)  ret &= input_port_5_r(machine,offset);
-	if ((input_port_select & 0x02) == 0)  ret &= input_port_6_r(machine,offset);
-	if ((input_port_select & 0x04) == 0)  ret &= input_port_7_r(machine,offset);
-	if ((input_port_select & 0x08) == 0)  ret &= input_port_8_r(machine,offset);
-	if ((input_port_select & 0x10) == 0)  ret &= input_port_9_r(machine,offset);
+	if ((input_port_select & 0x01) == 0)  ret &= input_port_read_indexed(machine,5);
+	if ((input_port_select & 0x02) == 0)  ret &= input_port_read_indexed(machine,6);
+	if ((input_port_select & 0x04) == 0)  ret &= input_port_read_indexed(machine,7);
+	if ((input_port_select & 0x08) == 0)  ret &= input_port_read_indexed(machine,8);
+	if ((input_port_select & 0x10) == 0)  ret &= input_port_read_indexed(machine,9);
 
 	return ret;
 }
@@ -251,9 +251,9 @@ static READ8_HANDLER ( majs101b_dsw_r )
 {
 	switch (dsw_select)
 	{
-		case 0x00: return readinputport(13);	/* DSW3 */
-		case 0x20: return readinputport(14);	/* DSW4 */
-		case 0x40: return readinputport(12);	/* DSW2 */
+		case 0x00: return input_port_read_indexed(machine, 13);	/* DSW3 */
+		case 0x20: return input_port_read_indexed(machine, 14);	/* DSW4 */
+		case 0x40: return input_port_read_indexed(machine, 12);	/* DSW2 */
 	}
 	return 0;
 }
@@ -271,9 +271,9 @@ static READ8_HANDLER ( suzume_dsw_r )
 	{
 		switch (suzume_bank)
 		{
-			case 0x08: return readinputport(14);	/* DSW4 */
-			case 0x10: return readinputport(13);	/* DSW3 */
-			case 0x18: return readinputport(12);	/* DSW2 */
+			case 0x08: return input_port_read_indexed(machine, 14);	/* DSW4 */
+			case 0x10: return input_port_read_indexed(machine, 13);	/* DSW3 */
+			case 0x18: return input_port_read_indexed(machine, 12);	/* DSW2 */
 		}
 		return 0;
 	}
@@ -312,7 +312,7 @@ static WRITE8_HANDLER( mjapinky_palbank_w )
 
 static READ8_HANDLER( mjapinky_dsw_r )
 {
-	if (rombank == 0x0e)	return readinputport(13);
+	if (rombank == 0x0e)	return input_port_read_indexed(machine, 13);
 	else					return *(memory_region(REGION_CPU1) + 0x10000 + 0x8000 * rombank);
 }
 
@@ -502,11 +502,11 @@ static READ8_HANDLER( janptr96_dswsel_r )
 
 static READ8_HANDLER( janptr96_dsw_r )
 {
-	if (~dsw_select & 0x01) return readinputportbytag("DSW4");
-	if (~dsw_select & 0x02) return readinputportbytag("DSW3");
-	if (~dsw_select & 0x04) return readinputportbytag("DSW2");
-	if (~dsw_select & 0x08) return readinputportbytag("DSW1");
-	if (~dsw_select & 0x10) return readinputportbytag("DSWTOP");
+	if (~dsw_select & 0x01) return input_port_read(machine, "DSW4");
+	if (~dsw_select & 0x02) return input_port_read(machine, "DSW3");
+	if (~dsw_select & 0x04) return input_port_read(machine, "DSW2");
+	if (~dsw_select & 0x08) return input_port_read(machine, "DSW1");
+	if (~dsw_select & 0x10) return input_port_read(machine, "DSWTOP");
 	return 0xff;
 }
 
@@ -541,7 +541,7 @@ static ADDRESS_MAP_START( janptr96_iomap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x1c, 0x1c ) AM_READ( janptr96_dsw_r )
 	AM_RANGE( 0x20, 0x20 ) AM_READWRITE( janptr96_unknown_r, janptr96_rambank_w )
 	AM_RANGE( 0x50, 0x50 ) AM_WRITE( mjderngr_palbank_w )
-	AM_RANGE( 0x60, 0x6f ) AM_READWRITE( msm6242_r, msm6242_w )
+	AM_RANGE( 0x60, 0x6f ) AM_DEVREADWRITE(MSM6242, "rtc", msm6242_r, msm6242_w)
 	AM_RANGE( 0x81, 0x81 ) AM_READ( AY8910_read_port_0_r )
 	AM_RANGE( 0x82, 0x82 ) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x83, 0x83 ) AM_WRITE( AY8910_control_port_0_w )
@@ -572,10 +572,10 @@ static READ8_HANDLER( mjifb_rom_io_r )
 
 	switch(offset)
 	{
-		case 0x8000:	return readinputport(14);		// dsw 4
-		case 0x8200:	return readinputport(13);		// dsw 3
+		case 0x8000:	return input_port_read_indexed(machine, 14);		// dsw 4
+		case 0x8200:	return input_port_read_indexed(machine, 13);		// dsw 3
 		case 0x9001:	return AY8910_read_port_0_r(machine,0);	// inputs
-		case 0x9011:	return readinputport(10);
+		case 0x9011:	return input_port_read_indexed(machine, 10);
 	}
 
 	logerror("%04X: unmapped input read at %04X\n", activecpu_get_pc(), offset);
@@ -624,19 +624,19 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( mjifb_p3_r )
 {
-	return readinputport(11) >> 6;
+	return input_port_read_indexed(machine, 11) >> 6;
 }
 static READ8_HANDLER( mjifb_p5_r )
 {
-	return readinputport(11);
+	return input_port_read_indexed(machine, 11);
 }
 static READ8_HANDLER( mjifb_p6_r )
 {
-	return readinputport(12);
+	return input_port_read_indexed(machine, 12);
 }
 static READ8_HANDLER( mjifb_p7_r )
 {
-	return readinputport(12) >> 4;
+	return input_port_read_indexed(machine, 12) >> 4;
 }
 static READ8_HANDLER( mjifb_p8_r )
 {
@@ -679,10 +679,10 @@ static READ8_HANDLER( mjdejavu_rom_io_r )
 
 	switch(offset)
 	{
-		case 0x8000:	return readinputport(14);		// dsw 2
-		case 0x8001:	return readinputport(13);		// dsw 1
+		case 0x8000:	return input_port_read_indexed(machine, 14);		// dsw 2
+		case 0x8001:	return input_port_read_indexed(machine, 13);		// dsw 1
 		case 0x9001:	return AY8910_read_port_0_r(machine,0);	// inputs
-		case 0x9011:	return readinputport(10);
+		case 0x9011:	return input_port_read_indexed(machine, 10);
 	}
 
 	logerror("%04X: unmapped input read at %04X\n", activecpu_get_pc(), offset);
@@ -753,7 +753,7 @@ static ADDRESS_MAP_START( mjtensin_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x6fc3, 0x6fc3 ) AM_WRITE( AY8910_control_port_0_w )
 	AM_RANGE( 0x6fd0, 0x6fd0 ) AM_WRITE( janptr96_coin_counter_w )
 	AM_RANGE( 0x6fd1, 0x6fd1 ) AM_READWRITE( input_port_10_r, input_port_select_w )
-	AM_RANGE( 0x6fe0, 0x6fef ) AM_READWRITE( msm6242_r, msm6242_w )
+	AM_RANGE( 0x6fe0, 0x6fef ) AM_DEVREADWRITE(MSM6242, "rtc", msm6242_r, msm6242_w)
 	AM_RANGE( 0x6ff0, 0x6ff0 ) AM_READWRITE( janptr96_dsw_r, janptr96_dswsel_w )
 	AM_RANGE( 0x6ff1, 0x6ff1 ) AM_WRITE( mjderngr_palbank_w )
 	AM_RANGE( 0x6ff3, 0x6ff3 ) AM_WRITE( mjtensin_6ff3_w )
@@ -795,11 +795,11 @@ static READ8_HANDLER( cafetime_dsw_r )
 {
 	switch( dsw_select )
 	{
-		case 0x00: return readinputportbytag("DSW1");
-		case 0x01: return readinputportbytag("DSW2");
-		case 0x02: return readinputportbytag("DSW3");
-		case 0x03: return readinputportbytag("DSW4");
-		case 0x04: return readinputportbytag("DSWTOP");
+		case 0x00: return input_port_read(machine, "DSW1");
+		case 0x01: return input_port_read(machine, "DSW2");
+		case 0x02: return input_port_read(machine, "DSW3");
+		case 0x03: return input_port_read(machine, "DSW4");
+		case 0x04: return input_port_read(machine, "DSWTOP");
 	}
 	logerror("%04X: unmapped dsw read %02X\n", activecpu_get_pc(), dsw_select);
 	return 0xff;
@@ -828,7 +828,7 @@ static ADDRESS_MAP_START( cafetime_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x7fe2, 0x7fe2 ) AM_WRITE( mjderngr_palbank_w )
 	AM_RANGE( 0x7fe3, 0x7fe3 ) AM_WRITE( cafetime_7fe3_w )
 	AM_RANGE( 0x7fe4, 0x7fe4 ) AM_READ( cafetime_7fe4_r )
-	AM_RANGE( 0x7ff0, 0x7fff ) AM_READWRITE( msm6242_r, msm6242_w )
+	AM_RANGE( 0x7ff0, 0x7fff ) AM_DEVREADWRITE(MSM6242, "rtc", msm6242_r, msm6242_w)
 	AM_RANGE( 0x8000, 0xffff ) AM_READ( SMH_BANK1 )
 	AM_RANGE( 0x8000, 0xffff ) AM_WRITE( SMH_RAM ) AM_BASE(&videoram)
 ADDRESS_MAP_END
@@ -3305,6 +3305,8 @@ INPUT_PORTS_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	royalmah_player_1_port_r,
 	royalmah_player_2_port_r
 };
@@ -3419,6 +3421,9 @@ static MACHINE_DRIVER_START( janptr96 )
 
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 9, 255-8)
+
+	/* devices */
+	MDRV_DEVICE_ADD("rtc", MSM6242)
 MACHINE_DRIVER_END
 
 
@@ -3464,6 +3469,9 @@ static MACHINE_DRIVER_START( mjtensin )
 
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 8, 255-8)
+
+	/* devices */
+	MDRV_DEVICE_ADD("rtc", MSM6242)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( cafetime )
@@ -3475,6 +3483,9 @@ static MACHINE_DRIVER_START( cafetime )
 
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_VISIBLE_AREA(0, 255, 8, 255-8)
+
+	/* devices */
+	MDRV_DEVICE_ADD("rtc", MSM6242)
 MACHINE_DRIVER_END
 
 /***************************************************************************

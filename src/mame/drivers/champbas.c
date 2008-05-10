@@ -66,7 +66,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -108,7 +107,7 @@ static CUSTOM_INPUT( champbas_watchdog_bit2 )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 
@@ -129,14 +128,14 @@ static WRITE8_HANDLER( champbas_mcu_switch_w )
 
 static WRITE8_HANDLER( champbas_mcu_halt_w )
 {
-	int cpunum = mame_find_cpu_index(Machine, CPUTAG_MCU);
+	int cpunum = mame_find_cpu_index(machine, CPUTAG_MCU);
 
 	// MCU not present/not used in champbas
 	if (cpunum == -1)
 		return;
 
 	data &= 1;
-	cpunum_set_input_line(Machine, cpunum, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, cpunum, INPUT_LINE_HALT, data ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* champbja another protection */
@@ -176,7 +175,7 @@ static ADDRESS_MAP_START( talbot_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x6000, 0x63ff) AM_RAM AM_SHARE(1) /* MCU shared RAM */
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x7001, 0x7001) AM_WRITE(AY8910_control_port_0_w)
-	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_WRITE(champbas_bg_videoram_w) AM_BASE(&champbas_bg_videoram)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM_WRITE(champbas_bg_videoram_w) AM_BASE(&champbas_bg_videoram)
 	AM_RANGE(0x8800, 0x8fef) AM_RAM
 	AM_RANGE(0x8ff0, 0x8fff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 
@@ -204,7 +203,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7001, 0x7001) AM_WRITE(AY8910_control_port_0_w)
 	AM_RANGE(0x7800, 0x7fff) AM_ROM	// champbb2 only
 
-	AM_RANGE(0x8000, 0x87ff) AM_RAM AM_WRITE(champbas_bg_videoram_w) AM_BASE(&champbas_bg_videoram)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM_WRITE(champbas_bg_videoram_w) AM_BASE(&champbas_bg_videoram)
 	AM_RANGE(0x8800, 0x8fef) AM_RAM
 	AM_RANGE(0x8ff0, 0x8fff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 

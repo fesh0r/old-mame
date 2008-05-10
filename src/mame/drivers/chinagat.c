@@ -142,7 +142,7 @@ static WRITE8_HANDLER( chinagat_sub_bankswitch_w )
 
 static WRITE8_HANDLER( chinagat_sub_IRQ_w )
 {
-	cpunum_set_input_line(Machine, 1, sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
+	cpunum_set_input_line(machine, 1, sprite_irq, (sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 }
 
 static WRITE8_HANDLER( chinagat_cpu_sound_cmd_w )
@@ -264,8 +264,8 @@ static void saiyugb1_m5205_irq_w(int num)
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_RAM AM_SHARE(1)
-	AM_RANGE(0x2000, 0x27ff) AM_READWRITE(SMH_RAM, ddragon_fgvideoram_w) AM_BASE(&ddragon_fgvideoram)
-	AM_RANGE(0x2800, 0x2fff) AM_READWRITE(SMH_RAM, ddragon_bgvideoram_w) AM_BASE(&ddragon_bgvideoram)
+	AM_RANGE(0x2000, 0x27ff) AM_RAM_WRITE(ddragon_fgvideoram_w) AM_BASE(&ddragon_fgvideoram)
+	AM_RANGE(0x2800, 0x2fff) AM_RAM_WRITE(ddragon_bgvideoram_w) AM_BASE(&ddragon_bgvideoram)
 	AM_RANGE(0x3000, 0x317f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split1_w) AM_BASE(&paletteram)
 	AM_RANGE(0x3400, 0x357f) AM_WRITE(paletteram_xxxxBBBBGGGGRRRR_split2_w) AM_BASE(&paletteram_2)
 	AM_RANGE(0x3800, 0x397f) AM_WRITE(SMH_BANK3) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
@@ -483,10 +483,11 @@ static INTERRUPT_GEN( chinagat_interrupt )
 /* This is only on the second bootleg board */
 static const struct YM2203interface ym2203_interface =
 {
-	0,
-	0,
-	0,
-	0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
 	chinagat_irq_handler
 };
 

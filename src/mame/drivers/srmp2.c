@@ -289,7 +289,7 @@ static READ16_HANDLER( srmp2_input_1_r )
     --x- ---- : Player 1 and 2 side flag
 */
 
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 	{
 		return 0xffff;
 	}
@@ -304,7 +304,7 @@ static READ16_HANDLER( srmp2_input_1_r )
 
 			for (t = 0 ; t < 8 ; t ++)
 			{
-				if (!(readinputport(j) & ( 1 << t )))
+				if (!(input_port_read_indexed(machine, j) & ( 1 << t )))
 				{
 					return (i + t);
 				}
@@ -313,7 +313,7 @@ static READ16_HANDLER( srmp2_input_1_r )
 	}
 	else								/* Analizer and memory reset keys */
 	{
-		return readinputportbytag("IN7");
+		return input_port_read(machine, "IN7");
 	}
 
 	return 0xffff;
@@ -322,7 +322,7 @@ static READ16_HANDLER( srmp2_input_1_r )
 
 static READ16_HANDLER( srmp2_input_2_r )
 {
-	if (!ACCESSING_LSB)
+	if (!ACCESSING_BITS_0_7)
 	{
 		return 0x0001;
 	}
@@ -527,7 +527,7 @@ static READ8_HANDLER( srmp3_input_r )
 
 			for (t = 0 ; t < 8 ; t ++)
 			{
-				if (!(readinputport(j) & ( 1 << t )))
+				if (!(input_port_read_indexed(machine, j) & ( 1 << t )))
 				{
 					keydata = (i + t);
 				}
@@ -540,7 +540,7 @@ static READ8_HANDLER( srmp3_input_r )
 
 	if ((activecpu_get_pc() == 0x8926) || (activecpu_get_pc() == 0x7822))	/* Analizer and memory reset keys */
 	{
-		keydata = readinputport(7);
+		keydata = input_port_read_indexed(machine, 7);
 	}
 
 	return keydata;
@@ -1038,8 +1038,12 @@ INPUT_PORTS_END
 
 static const struct AY8910interface srmp2_ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_2_r,				/* Input A: DSW 2 */
 	input_port_1_r,				/* Input B: DSW 1 */
+	NULL,
+	NULL
 };
 
 

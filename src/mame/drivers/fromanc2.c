@@ -156,10 +156,10 @@ static READ16_HANDLER( fromanc2_keymatrix_r )
 	UINT16 ret;
 
 	switch (fromanc2_portselect) {
-		case 0x01:	ret = readinputportbytag("IN1");	break;
-		case 0x02:	ret = readinputportbytag("IN2"); break;
-		case 0x04:	ret = readinputportbytag("IN3"); break;
-		case 0x08:	ret = readinputportbytag("IN4"); break;
+		case 0x01:	ret = input_port_read(machine, "IN1");	break;
+		case 0x02:	ret = input_port_read(machine, "IN2"); break;
+		case 0x04:	ret = input_port_read(machine, "IN3"); break;
+		case 0x08:	ret = input_port_read(machine, "IN4"); break;
 		default:	ret = 0xffff;
 					logerror("PC:%08X unknown %02X\n", activecpu_get_pc(), fromanc2_portselect);
 					break;
@@ -176,7 +176,7 @@ static READ16_HANDLER( fromanc2_input_r )
 			 ((fromanc2_subcpu_nmi_flag & 1) << 6) |
 			 ((fromanc2_sndcpu_nmi_flag & 1) << 5));
 	eeprom = (EEPROM_read_bit() & 1) << 7;		// EEPROM DATA
-	coinsw = readinputport(0) & 0x030f;			// COIN, TEST
+	coinsw = input_port_read_indexed(machine, 0) & 0x030f;			// COIN, TEST
 
 	return (cflag | eeprom | coinsw);
 }
@@ -187,14 +187,14 @@ static READ16_HANDLER( fromanc4_input_r )
 
 	cflag = (fromanc2_sndcpu_nmi_flag & 1) << 5;
 	eeprom = (EEPROM_read_bit() & 1) << 7;		// EEPROM DATA
-	coinsw = readinputport(0) & 0x001f;			// COIN, TEST
+	coinsw = input_port_read_indexed(machine, 0) & 0x001f;			// COIN, TEST
 
 	return (cflag | eeprom | coinsw);
 }
 
 static WRITE16_HANDLER( fromanc2_eeprom_w )
 {
-	if (ACCESSING_MSB) {
+	if (ACCESSING_BITS_8_15) {
 		// latch the bit
 		EEPROM_write_bit(data & 0x0100);
 
@@ -208,7 +208,7 @@ static WRITE16_HANDLER( fromanc2_eeprom_w )
 
 static WRITE16_HANDLER( fromancr_eeprom_w )
 {
-	if (ACCESSING_LSB) {
+	if (ACCESSING_BITS_0_7) {
 		fromancr_gfxbank_w(data & 0xfff8);
 
 		// latch the bit
@@ -224,7 +224,7 @@ static WRITE16_HANDLER( fromancr_eeprom_w )
 
 static WRITE16_HANDLER( fromanc4_eeprom_w )
 {
-	if (ACCESSING_LSB) {
+	if (ACCESSING_BITS_0_7) {
 		// latch the bit
 		EEPROM_write_bit(data & 0x0004);
 
@@ -244,13 +244,13 @@ static WRITE16_HANDLER( fromanc2_subcpu_w )
 {
 	fromanc2_datalatch1 = data;
 
-	cpunum_set_input_line(Machine, 2, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 2, 0, HOLD_LINE);
 	fromanc2_subcpu_int_flag = 0;
 }
 
 static READ16_HANDLER( fromanc2_subcpu_r )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 	fromanc2_subcpu_nmi_flag = 0;
 
 	return (fromanc2_datalatch_2h << 8) | fromanc2_datalatch_2l;

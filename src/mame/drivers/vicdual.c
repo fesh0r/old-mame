@@ -52,7 +52,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "vicdual.h"
 
 
@@ -68,7 +67,6 @@
 #define COIN_PORT_TAG		"COIN"
 
 static UINT32 coin_status;
-static UINT32 last_coin_input;
 
 
 static TIMER_CALLBACK( clear_coin_status )
@@ -85,9 +83,13 @@ static void assert_coin_status(void)
 
 static CUSTOM_INPUT( vicdual_read_coin_status )
 {
-	UINT32 coin_input = readinputportbytag(COIN_PORT_TAG);
+	return coin_status;
+}
 
-	if (coin_input && !last_coin_input)
+
+static INPUT_CHANGED( coin_changed )
+{
+	if (newval && !oldval)
 	{
 		/* increment the coin counter */
 		coin_counter_w(0, 1);
@@ -98,16 +100,12 @@ static CUSTOM_INPUT( vicdual_read_coin_status )
 		/* simulate the coin switch being closed for a while */
 		timer_set(double_to_attotime(4 * attotime_to_double(video_screen_get_frame_period(machine->primary_screen))), NULL, 0, clear_coin_status);
 	}
-
-	last_coin_input = coin_input;
-
-	return coin_status;
 }
 
 
 #define PORT_COIN									\
 	PORT_START_TAG(COIN_PORT_TAG)					\
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )		\
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_CHANGED(coin_changed, NULL) \
 	PORT_BIT( 0xfe, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 
@@ -188,9 +186,9 @@ static CUSTOM_INPUT( vicdual_get_timer_value )
 #define COLOR_BW_PORT_TAG		"COLOR_BW"
 
 
-int vicdual_is_cabinet_color(void)
+int vicdual_is_cabinet_color(running_machine *machine)
 {
-	return (readinputportbytag(COLOR_BW_PORT_TAG) == 0);
+	return (input_port_read(machine, COLOR_BW_PORT_TAG) == 0);
 }
 
 
@@ -270,8 +268,8 @@ static READ8_HANDLER( depthch_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine, 0);
-	if (offset & 0x08)  ret = input_port_1_r(machine, 0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine, 0);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine, 1);
 
 	return ret;
 }
@@ -286,9 +284,9 @@ static WRITE8_HANDLER( depthch_io_w )
 
 static ADDRESS_MAP_START( depthch_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -352,8 +350,8 @@ static READ8_HANDLER( safari_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine,0);
-	if (offset & 0x08)  ret = input_port_1_r(machine,0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine, 0);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine, 1);
 
 	return ret;
 }
@@ -370,9 +368,9 @@ static ADDRESS_MAP_START( safari_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
     AM_RANGE(0x4000, 0x7fff) AM_NOP	/* unused */
 	AM_RANGE(0x8000, 0x8fff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -436,8 +434,8 @@ static READ8_HANDLER( frogs_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine,0);
-	if (offset & 0x08)  ret = input_port_1_r(machine,0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine, 0);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine, 1);
 
 	return ret;
 }
@@ -452,9 +450,9 @@ static WRITE8_HANDLER( frogs_io_w )
 
 static ADDRESS_MAP_START( frogs_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -544,8 +542,8 @@ static READ8_HANDLER( headon_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine,0);
-	if (offset & 0x08)  ret = input_port_1_r(machine,0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine, 0);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine, 1);
 
 	return ret;
 }
@@ -555,9 +553,9 @@ static READ8_HANDLER( sspaceat_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine, 0);
-	if (offset & 0x04)  ret = input_port_1_r(machine, 0);
-	if (offset & 0x08)  ret = input_port_2_r(machine, 0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine,0);
+	if (offset & 0x04)  ret = input_port_read_indexed(machine,1);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine,2);
 
 	return ret;
 }
@@ -574,9 +572,9 @@ static WRITE8_HANDLER( headon_io_w )
 static ADDRESS_MAP_START( headon_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x6000) AM_ROM
     AM_RANGE(0x8000, 0xbfff) AM_NOP	/* unused */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -744,10 +742,10 @@ static READ8_HANDLER( headon2_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine, 0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine,0);
  	if (offset & 0x02)  /* schematics show this as in input port, but never read from */
-	if (offset & 0x04)  ret = input_port_1_r(machine, 0);
-	if (offset & 0x08)  ret = input_port_2_r(machine, 0);
+	if (offset & 0x04)  ret = input_port_read_indexed(machine,1);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine,2);
 	if (offset & 0x12)  logerror("********* Read from port %x\n", offset);
 
 	return ret;
@@ -784,9 +782,9 @@ static WRITE8_HANDLER( digger_io_w )
 static ADDRESS_MAP_START( headon2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x1fff) AM_MIRROR(0x6000) AM_ROM
  /* AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x3f00) */  /* schematics show this as battery backed RAM, but doesn't appear to be used */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -1055,9 +1053,9 @@ static WRITE8_HANDLER( alphaho_io_w )
 
 static ADDRESS_MAP_START( vicdual_dualgame_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -1998,9 +1996,9 @@ static WRITE8_HANDLER( samurai_io_w )
 /* dual game hardware */
 static ADDRESS_MAP_START( samurai_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_READWRITE(SMH_ROM, samurai_protection_w)
-	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0x8000, 0x83ff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0x8400, 0x87ff) AM_MIRROR(0x7000) AM_RAM
-	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0x8800, 0x8fff) AM_MIRROR(0x7000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -2098,8 +2096,8 @@ static READ8_HANDLER( nsub_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine,0);
-	if (offset & 0x08)  ret = input_port_1_r(machine,0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine, 0);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine, 1);
 
 	return ret;
 }
@@ -2116,9 +2114,9 @@ static WRITE8_HANDLER( nsub_io_w )
 static ADDRESS_MAP_START( nsub_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
     AM_RANGE(0x8000, 0xbfff) AM_NOP	/* unused */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 
@@ -2193,9 +2191,9 @@ static READ8_HANDLER( invinco_io_r )
 {
 	UINT8 ret = 0;
 
-	if (offset & 0x01)  ret = input_port_0_r(machine,0);
-	if (offset & 0x02)  ret = input_port_1_r(machine,0);
-	if (offset & 0x08)  ret = input_port_2_r(machine,0);
+	if (offset & 0x01)  ret = input_port_read_indexed(machine, 0);
+	if (offset & 0x02)  ret = input_port_read_indexed(machine, 1);
+	if (offset & 0x08)  ret = input_port_read_indexed(machine, 2);
 
 	return ret;
 }
@@ -2212,9 +2210,9 @@ static WRITE8_HANDLER( invinco_io_w )
 static ADDRESS_MAP_START( invinco_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_MIRROR(0x4000) AM_ROM
     AM_RANGE(0x8000, 0xbfff) AM_NOP	/* unused */
-	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_videoram_w) AM_BASE(&vicdual_videoram)
+	AM_RANGE(0xc000, 0xc3ff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_videoram_w) AM_BASE(&vicdual_videoram)
 	AM_RANGE(0xc400, 0xc7ff) AM_MIRROR(0x3000) AM_RAM
-	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_READWRITE(SMH_RAM, vicdual_characterram_w) AM_BASE(&vicdual_characterram)
+	AM_RANGE(0xc800, 0xcfff) AM_MIRROR(0x3000) AM_RAM_WRITE(vicdual_characterram_w) AM_BASE(&vicdual_characterram)
 ADDRESS_MAP_END
 
 

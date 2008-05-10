@@ -141,19 +141,19 @@ static INTERRUPT_GEN( irq4_gen )
 
 static READ32_HANDLER( port0_r )
 {
-	return readinputport(0) << 16;
+	return input_port_read_indexed(machine, 0) << 16;
 }
 
 
 static READ32_HANDLER( port1_r )
 {
-	return (readinputport(1) << 16) | (EEPROM_read_bit() << 29);
+	return (input_port_read_indexed(machine, 1) << 16) | (EEPROM_read_bit() << 29);
 }
 
 
 static READ32_HANDLER( port2_r )
 {
-	return readinputport(2) << 16;
+	return input_port_read_indexed(machine, 2) << 16;
 }
 
 
@@ -178,7 +178,7 @@ static WRITE32_HANDLER( control_w )
 	COMBINE_DATA(&control_data);
 
 	/* handle EEPROM I/O */
-	if (!(mem_mask & 0x00ff0000))
+	if (ACCESSING_BITS_16_23)
 	{
 		EEPROM_write_bit(data & 0x00800000);
 		EEPROM_set_cs_line((data & 0x00200000) ? CLEAR_LINE : ASSERT_LINE);
@@ -188,13 +188,13 @@ static WRITE32_HANDLER( control_w )
 	/* toggling BSMT off then on causes a reset */
 	if (!(old & 0x80000000) && (control_data & 0x80000000))
 	{
-		BSMT2000_data_0_w(machine, bsmt_data_bank, 0, 0);
+		BSMT2000_data_0_w(machine, bsmt_data_bank, 0, 0xffff);
 		sndti_reset(SOUND_BSMT2000, 0);
 	}
 
 	/* log any unknown bits */
 	if (data & 0x4f1fffff)
-		logerror("%08X: control_w = %08X & %08X\n", activecpu_get_previouspc(), data, ~mem_mask);
+		logerror("%08X: control_w = %08X & %08X\n", activecpu_get_previouspc(), data, mem_mask);
 }
 
 
@@ -208,7 +208,7 @@ static WRITE32_HANDLER( control_w )
 static WRITE32_HANDLER( bsmt2000_reg_w )
 {
 	if (control_data & 0x80000000)
-		BSMT2000_data_0_w(machine, bsmt_reg, data & 0xffff, mem_mask | 0xffff0000);
+		BSMT2000_data_0_w(machine, bsmt_reg, data & 0xffff, mem_mask & 0xffff);
 	else
 		COMBINE_DATA(&bsmt_data_offset);
 }
@@ -695,26 +695,26 @@ ROM_END
 
 static DRIVER_INIT( policetr )
 {
-	speedup_data = memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc028ac;
 }
 
 static DRIVER_INIT( plctr13b )
 {
-	speedup_data = memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000fc8, 0x00000fcb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc028bc;
 }
 
 
 static DRIVER_INIT( sshooter )
 {
-	speedup_data = memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc03470;
 }
 
 static DRIVER_INIT( sshoot12 )
 {
-	speedup_data = memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
+	speedup_data = memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00018fd8, 0x00018fdb, 0, 0, speedup_w);
 	speedup_pc = 0x1fc033e0;
 }
 

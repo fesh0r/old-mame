@@ -448,7 +448,7 @@ static READ32_HANDLER( rabbit_input_r )
 {
 	int rv;
 
-	rv = (readinputport(1)<<16)|(readinputport(0));
+	rv = (input_port_read_indexed(machine, 1)<<16)|(input_port_read_indexed(machine, 0));
 	rv &= ~1;
 	rv |= EEPROM_read_bit();	// as per code at 4d932
 	return rv;
@@ -458,7 +458,7 @@ static READ32_HANDLER( tmmjprd_input_r )
 {
 	int rv;
 
-	rv = (readinputport(1)<<16)|(readinputport(0));
+	rv = (input_port_read_indexed(machine, 1)<<16)|(input_port_read_indexed(machine, 0));
 	rv &= ~0x80;
 	rv |= (EEPROM_read_bit()<<7);	// as per code at 778
 	return rv;
@@ -473,7 +473,7 @@ static WRITE32_HANDLER( rabbit_paletteram_dword_w )
 	r = ((paletteram32[offset] & 0x0000ff00) >>8);
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 
-	palette_set_color(Machine,offset^0xff,MAKE_RGB(r,g,b));
+	palette_set_color(machine,offset^0xff,MAKE_RGB(r,g,b));
 }
 
 static READ32_HANDLER( rabbit_tilemap0_r )
@@ -553,12 +553,12 @@ static WRITE32_HANDLER( rabbit_audio_w )
 #if VERBOSE_AUDIO_LOG
 	int reg, voice, base, i;
 
-	if (mem_mask == 0x0000ffff)
+	if (mem_mask == 0xffff0000)
 	{
 		reg = offset*2;
 		data >>= 16;
 	}
-	else if (mem_mask == 0xffff0000)
+	else if (mem_mask == 0x0000ffff)
 	{
 		reg = (offset*2)+1;
 		data &= 0xffff;
@@ -722,7 +722,7 @@ static WRITE32_HANDLER( rabbit_eeprom_write )
 {
 	// don't disturb the EEPROM if we're not actually writing to it
 	// (in particular, data & 0x100 here with mask = ffff00ff looks to be the watchdog)
-	if (mem_mask == 0x00ffffff)
+	if (mem_mask == 0xff000000)
 	{
 		// latch the bit
 		EEPROM_write_bit(data & 0x01000000);
@@ -792,7 +792,7 @@ static WRITE32_HANDLER( tmmjprd_paletteram_dword_w )
 	r = ((paletteram32[offset] & 0x0000ff00) >>8);
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 
-	palette_set_color(Machine,(offset^0xff)+0x2000,MAKE_RGB(r,g,b));
+	palette_set_color(machine,(offset^0xff)+0x2000,MAKE_RGB(r,g,b));
 }
 
 

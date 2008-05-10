@@ -133,7 +133,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/namcoio.h"
 #include "machine/namco50.h"
 #include "sound/namco52.h"
@@ -218,9 +217,9 @@ static void namcoio_51XX_write(running_machine *machine,int chip,int data)
 					static int namcoio_51XX_kludge = 0;
 
 					/* Only compute namcoio_51XX_kludge when gamedrv changes */
-					if (namcoio_51XX_driver != Machine->gamedrv)
+					if (namcoio_51XX_driver != machine->gamedrv)
 					{
-						namcoio_51XX_driver = Machine->gamedrv;
+						namcoio_51XX_driver = machine->gamedrv;
 						if (strcmp(namcoio_51XX_driver->name, "xevious") == 0 ||
 							strcmp(namcoio_51XX_driver->parent, "xevious") == 0)
 							namcoio_51XX_kludge = 1;
@@ -383,7 +382,7 @@ static UINT8 namcoio_51XX_read(running_machine *machine, int chip)
 					}
 				}
 
-				if (~readinputport(0) & 0x80)	/* check test mode switch */
+				if (~input_port_read_indexed(machine, 0) & 0x80)	/* check test mode switch */
 					return 0xbb;
 
 				return (io[chip].credits / 10) * 16 + io[chip].credits % 10;

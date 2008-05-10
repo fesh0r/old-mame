@@ -85,23 +85,23 @@
  *
  *************************************/
 
-INLINE UINT16 read16be_with_read8_handler(read8_machine_func handler, void *param, offs_t offset, UINT16 mem_mask)
+INLINE UINT16 read16be_with_read8_handler(read8_machine_func handler, running_machine *machine, offs_t offset, UINT16 mem_mask)
 {
 	UINT16 result = 0;
-	if ((mem_mask & 0xff00) != 0xff00)
-		result |= ((UINT16)(*handler)(param, offset * 2 + 0)) << 8;
-	if ((mem_mask & 0x00ff) != 0x00ff)
-		result |= ((UINT16)(*handler)(param, offset * 2 + 1)) << 0;
+	if (ACCESSING_BITS_8_15)
+		result |= ((UINT16)(*handler)(machine, offset * 2 + 0)) << 8;
+	if (ACCESSING_BITS_0_7)
+		result |= ((UINT16)(*handler)(machine, offset * 2 + 1)) << 0;
 	return result;
 }
 
 
-INLINE void write16be_with_write8_handler(write8_machine_func handler, void *param, offs_t offset, UINT16 data, UINT16 mem_mask)
+INLINE void write16be_with_write8_handler(write8_machine_func handler, running_machine *machine, offs_t offset, UINT16 data, UINT16 mem_mask)
 {
-	if ((mem_mask & 0xff00) != 0xff00)
-		(*handler)(param, offset * 2 + 0, data >> 8);
-	if ((mem_mask & 0x00ff) != 0x00ff)
-		(*handler)(param, offset * 2 + 1, data >> 0);
+	if (ACCESSING_BITS_8_15)
+		(*handler)(machine, offset * 2 + 0, data >> 8);
+	if (ACCESSING_BITS_0_7)
+		(*handler)(machine, offset * 2 + 1, data >> 0);
 }
 
 
@@ -111,23 +111,23 @@ INLINE void write16be_with_write8_handler(write8_machine_func handler, void *par
  *
  *************************************/
 
-INLINE UINT16 read16le_with_read8_handler(read8_machine_func handler, void *param, offs_t offset, UINT16 mem_mask)
+INLINE UINT16 read16le_with_read8_handler(read8_machine_func handler, running_machine *machine, offs_t offset, UINT16 mem_mask)
 {
 	UINT16 result = 0;
-	if ((mem_mask & 0x00ff) != 0x00ff)
-		result |= ((UINT16) (*handler)(param, offset * 2 + 0)) << 0;
-	if ((mem_mask & 0xff00) != 0xff00)
-		result |= ((UINT16) (*handler)(param, offset * 2 + 1)) << 8;
+	if (ACCESSING_BITS_0_7)
+		result |= ((UINT16) (*handler)(machine, offset * 2 + 0)) << 0;
+	if (ACCESSING_BITS_8_15)
+		result |= ((UINT16) (*handler)(machine, offset * 2 + 1)) << 8;
 	return result;
 }
 
 
-INLINE void write16le_with_write8_handler(write8_machine_func handler, void *param, offs_t offset, UINT16 data, UINT16 mem_mask)
+INLINE void write16le_with_write8_handler(write8_machine_func handler, running_machine *machine, offs_t offset, UINT16 data, UINT16 mem_mask)
 {
-	if ((mem_mask & 0x00ff) != 0x00ff)
-		(*handler)(param, offset * 2 + 0, data >> 0);
-	if ((mem_mask & 0xff00) != 0xff00)
-		(*handler)(param, offset * 2 + 1, data >> 8);
+	if (ACCESSING_BITS_0_7)
+		(*handler)(machine, offset * 2 + 0, data >> 0);
+	if (ACCESSING_BITS_8_15)
+		(*handler)(machine, offset * 2 + 1, data >> 8);
 }
 
 
@@ -137,23 +137,23 @@ INLINE void write16le_with_write8_handler(write8_machine_func handler, void *par
  *
  *************************************/
 
-INLINE UINT32 read32be_with_read8_handler(read8_machine_func handler, void *param, offs_t offset, UINT32 mem_mask)
+INLINE UINT32 read32be_with_read8_handler(read8_machine_func handler, running_machine *machine, offs_t offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= read16be_with_read8_handler(handler, param, offset * 2 + 0, mem_mask >> 16) << 16;
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= read16be_with_read8_handler(handler, param, offset * 2 + 1, mem_mask) << 0;
+	if (ACCESSING_BITS_16_31)
+		result |= read16be_with_read8_handler(handler, machine, offset * 2 + 0, mem_mask >> 16) << 16;
+	if (ACCESSING_BITS_0_15)
+		result |= read16be_with_read8_handler(handler, machine, offset * 2 + 1, mem_mask) << 0;
 	return result;
 }
 
 
-INLINE void write32be_with_write8_handler(write8_machine_func handler, void *param, offs_t offset, UINT32 data, UINT32 mem_mask)
+INLINE void write32be_with_write8_handler(write8_machine_func handler, running_machine *machine, offs_t offset, UINT32 data, UINT32 mem_mask)
 {
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		write16be_with_write8_handler(handler, param, offset * 2 + 0, data >> 16, mem_mask >> 16);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		write16be_with_write8_handler(handler, param, offset * 2 + 1, data, mem_mask);
+	if (ACCESSING_BITS_16_31)
+		write16be_with_write8_handler(handler, machine, offset * 2 + 0, data >> 16, mem_mask >> 16);
+	if (ACCESSING_BITS_0_15)
+		write16be_with_write8_handler(handler, machine, offset * 2 + 1, data, mem_mask);
 }
 
 
@@ -163,23 +163,23 @@ INLINE void write32be_with_write8_handler(write8_machine_func handler, void *par
  *
  *************************************/
 
-INLINE UINT32 read32le_with_read8_handler(read8_machine_func handler, void *param, offs_t offset, UINT32 mem_mask)
+INLINE UINT32 read32le_with_read8_handler(read8_machine_func handler, running_machine *machine, offs_t offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= read16le_with_read8_handler(handler, param, offset * 2 + 0, mem_mask) << 0;
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= read16le_with_read8_handler(handler, param, offset * 2 + 1, mem_mask >> 16) << 16;
+	if (ACCESSING_BITS_0_15)
+		result |= read16le_with_read8_handler(handler, machine, offset * 2 + 0, mem_mask) << 0;
+	if (ACCESSING_BITS_16_31)
+		result |= read16le_with_read8_handler(handler, machine, offset * 2 + 1, mem_mask >> 16) << 16;
 	return result;
 }
 
 
-INLINE void write32le_with_write8_handler(write8_machine_func handler, void *param, offs_t offset, UINT32 data, UINT32 mem_mask)
+INLINE void write32le_with_write8_handler(write8_machine_func handler, running_machine *machine, offs_t offset, UINT32 data, UINT32 mem_mask)
 {
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		write16le_with_write8_handler(handler, param, offset * 2 + 0, data, mem_mask);
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		write16le_with_write8_handler(handler, param, offset * 2 + 1, data >> 16, mem_mask >> 16);
+	if (ACCESSING_BITS_0_15)
+		write16le_with_write8_handler(handler, machine, offset * 2 + 0, data, mem_mask);
+	if (ACCESSING_BITS_16_31)
+		write16le_with_write8_handler(handler, machine, offset * 2 + 1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -189,23 +189,23 @@ INLINE void write32le_with_write8_handler(write8_machine_func handler, void *par
  *
  *************************************/
 
-INLINE UINT32 read32be_with_16be_handler(read16_machine_func handler, void *param, offs_t offset, UINT32 mem_mask)
+INLINE UINT32 read32be_with_16be_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= (*handler)(param, offset * 2 + 0, mem_mask >> 16) << 16;
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= (*handler)(param, offset * 2 + 1, mem_mask) << 0;
+	if (ACCESSING_BITS_16_31)
+		result |= (*handler)(machine, offset * 2 + 0, mem_mask >> 16) << 16;
+	if (ACCESSING_BITS_0_15)
+		result |= (*handler)(machine, offset * 2 + 1, mem_mask) << 0;
 	return result;
 }
 
 
-INLINE void write32be_with_16be_handler(write16_machine_func handler, void *param, offs_t offset, UINT32 data, UINT32 mem_mask)
+INLINE void write32be_with_16be_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT32 data, UINT32 mem_mask)
 {
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		(*handler)(param, offset * 2 + 0, data >> 16, mem_mask >> 16);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		(*handler)(param, offset * 2 + 1, data, mem_mask);
+	if (ACCESSING_BITS_16_31)
+		(*handler)(machine, offset * 2 + 0, data >> 16, mem_mask >> 16);
+	if (ACCESSING_BITS_0_15)
+		(*handler)(machine, offset * 2 + 1, data, mem_mask);
 }
 
 
@@ -215,23 +215,23 @@ INLINE void write32be_with_16be_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT32 read32le_with_16le_handler(read16_machine_func handler, void *param, offs_t offset, UINT32 mem_mask)
+INLINE UINT32 read32le_with_16le_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		result |= (*handler)(param, offset * 2 + 0, mem_mask) << 0;
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		result |= (*handler)(param, offset * 2 + 1, mem_mask >> 16) << 16;
+	if (ACCESSING_BITS_0_15)
+		result |= (*handler)(machine, offset * 2 + 0, mem_mask) << 0;
+	if (ACCESSING_BITS_16_31)
+		result |= (*handler)(machine, offset * 2 + 1, mem_mask >> 16) << 16;
 	return result;
 }
 
 
-INLINE void write32le_with_16le_handler(write16_machine_func handler, void *param, offs_t offset, UINT32 data, UINT32 mem_mask)
+INLINE void write32le_with_16le_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT32 data, UINT32 mem_mask)
 {
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
-		(*handler)(param, offset * 2 + 0, data, mem_mask);
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
-		(*handler)(param, offset * 2 + 1, data >> 16, mem_mask >> 16);
+	if (ACCESSING_BITS_0_15)
+		(*handler)(machine, offset * 2 + 0, data, mem_mask);
+	if (ACCESSING_BITS_16_31)
+		(*handler)(machine, offset * 2 + 1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -241,20 +241,20 @@ INLINE void write32le_with_16le_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT32 read32be_with_16le_handler(read16_machine_func handler, void *param, offs_t offset, UINT32 mem_mask)
+INLINE UINT32 read32be_with_16le_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
 	mem_mask = FLIPENDIAN_INT32(mem_mask);
-	result = read32le_with_16le_handler(handler, param, offset, mem_mask);
+	result = read32le_with_16le_handler(handler, machine, offset, mem_mask);
 	return FLIPENDIAN_INT32(result);
 }
 
 
-INLINE void write32be_with_16le_handler(write16_machine_func handler, void *param, offs_t offset, UINT32 data, UINT32 mem_mask)
+INLINE void write32be_with_16le_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT32 data, UINT32 mem_mask)
 {
 	data = FLIPENDIAN_INT32(data);
 	mem_mask = FLIPENDIAN_INT32(mem_mask);
-	write32le_with_16le_handler(handler, param, offset, data, mem_mask);
+	write32le_with_16le_handler(handler, machine, offset, data, mem_mask);
 }
 
 
@@ -264,20 +264,20 @@ INLINE void write32be_with_16le_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT32 read32le_with_16be_handler(read16_machine_func handler, void *param, offs_t offset, UINT32 mem_mask)
+INLINE UINT32 read32le_with_16be_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT32 mem_mask)
 {
 	UINT32 result = 0;
 	mem_mask = FLIPENDIAN_INT32(mem_mask);
-	result = read32be_with_16be_handler(handler, param, offset, mem_mask);
+	result = read32be_with_16be_handler(handler, machine, offset, mem_mask);
 	return FLIPENDIAN_INT32(result);
 }
 
 
-INLINE void write32le_with_16be_handler(write16_machine_func handler, void *param, offs_t offset, UINT32 data, UINT32 mem_mask)
+INLINE void write32le_with_16be_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT32 data, UINT32 mem_mask)
 {
 	data = FLIPENDIAN_INT32(data);
 	mem_mask = FLIPENDIAN_INT32(mem_mask);
-	write32be_with_16be_handler(handler, param, offset, data, mem_mask);
+	write32be_with_16be_handler(handler, machine, offset, data, mem_mask);
 }
 
 
@@ -287,23 +287,23 @@ INLINE void write32le_with_16be_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT64 read64be_with_read8_handler(read8_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT64 read64be_with_read8_handler(read8_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)read32be_with_read8_handler(handler, param, offset * 2 + 0, mem_mask >> 32) << 32;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)read32be_with_read8_handler(handler, param, offset * 2 + 1, mem_mask) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)read32be_with_read8_handler(handler, machine, offset * 2 + 0, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)read32be_with_read8_handler(handler, machine, offset * 2 + 1, mem_mask) << 0;
 	return result;
 }
 
 
-INLINE void write64be_with_write8_handler(write8_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64be_with_write8_handler(write8_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		write32be_with_write8_handler(handler, param, offset * 2 + 0, data >> 32, mem_mask >> 32);
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		write32be_with_write8_handler(handler, param, offset * 2 + 1, data, mem_mask);
+	if (ACCESSING_BITS_32_63)
+		write32be_with_write8_handler(handler, machine, offset * 2 + 0, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		write32be_with_write8_handler(handler, machine, offset * 2 + 1, data, mem_mask);
 }
 
 
@@ -313,23 +313,23 @@ INLINE void write64be_with_write8_handler(write8_machine_func handler, void *par
  *
  *************************************/
 
-INLINE UINT64 read64le_with_read8_handler(read8_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT64 read64le_with_read8_handler(read8_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)read32le_with_read8_handler(handler, param, offset * 2 + 0, mem_mask >> 0) << 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)read32le_with_read8_handler(handler, param, offset * 2 + 1, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)read32le_with_read8_handler(handler, machine, offset * 2 + 0, mem_mask >> 0) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)read32le_with_read8_handler(handler, machine, offset * 2 + 1, mem_mask >> 32) << 32;
 	return result;
 }
 
 
-INLINE void write64le_with_write8_handler(write8_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64le_with_write8_handler(write8_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		write32le_with_write8_handler(handler, param, offset * 2 + 0, data >> 0, mem_mask >> 0);
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		write32le_with_write8_handler(handler, param, offset * 2 + 1, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		write32le_with_write8_handler(handler, machine, offset * 2 + 0, data >> 0, mem_mask >> 0);
+	if (ACCESSING_BITS_32_63)
+		write32le_with_write8_handler(handler, machine, offset * 2 + 1, data >> 32, mem_mask >> 32);
 }
 
 
@@ -339,23 +339,23 @@ INLINE void write64le_with_write8_handler(write8_machine_func handler, void *par
  *
  *************************************/
 
-INLINE UINT32 read64be_with_16be_handler(read16_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT32 read64be_with_16be_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)read32be_with_16be_handler(handler, param, offset * 2 + 0, mem_mask >> 32) << 32;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)read32be_with_16be_handler(handler, param, offset * 2 + 1, mem_mask >> 0) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)read32be_with_16be_handler(handler, machine, offset * 2 + 0, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)read32be_with_16be_handler(handler, machine, offset * 2 + 1, mem_mask >> 0) << 0;
 	return result;
 }
 
 
-INLINE void write64be_with_16be_handler(write16_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64be_with_16be_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		write32be_with_16be_handler(handler, param, offset * 2 + 0, data >> 32, mem_mask >> 32);
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		write32be_with_16be_handler(handler, param, offset * 2 + 1, data >> 0, mem_mask >> 0);
+	if (ACCESSING_BITS_32_63)
+		write32be_with_16be_handler(handler, machine, offset * 2 + 0, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		write32be_with_16be_handler(handler, machine, offset * 2 + 1, data >> 0, mem_mask >> 0);
 }
 
 
@@ -365,23 +365,23 @@ INLINE void write64be_with_16be_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT32 read64le_with_16le_handler(read16_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT32 read64le_with_16le_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)read32le_with_16le_handler(handler, param, offset * 2 + 0, mem_mask >> 0) << 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)read32le_with_16le_handler(handler, param, offset * 2 + 1, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)read32le_with_16le_handler(handler, machine, offset * 2 + 0, mem_mask >> 0) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)read32le_with_16le_handler(handler, machine, offset * 2 + 1, mem_mask >> 32) << 32;
 	return result;
 }
 
 
-INLINE void write64le_with_16le_handler(write16_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64le_with_16le_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		write32le_with_16le_handler(handler, param, offset * 2 + 0, data >> 0, mem_mask >> 0);
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		write32le_with_16le_handler(handler, param, offset * 2 + 1, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		write32le_with_16le_handler(handler, machine, offset * 2 + 0, data >> 0, mem_mask >> 0);
+	if (ACCESSING_BITS_32_63)
+		write32le_with_16le_handler(handler, machine, offset * 2 + 1, data >> 32, mem_mask >> 32);
 }
 
 
@@ -391,23 +391,23 @@ INLINE void write64le_with_16le_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT32 read64be_with_16le_handler(read16_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT32 read64be_with_16le_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)read32be_with_16le_handler(handler, param, offset * 2 + 0, mem_mask >> 32) << 32;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)read32be_with_16le_handler(handler, param, offset * 2 + 1, mem_mask >> 0) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)read32be_with_16le_handler(handler, machine, offset * 2 + 0, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)read32be_with_16le_handler(handler, machine, offset * 2 + 1, mem_mask >> 0) << 0;
 	return result;
 }
 
 
-INLINE void write64be_with_16le_handler(write16_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64be_with_16le_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		write32be_with_16le_handler(handler, param, offset * 2 + 0, data >> 32, mem_mask >> 32);
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		write32be_with_16le_handler(handler, param, offset * 2 + 1, data >> 0, mem_mask >> 0);
+	if (ACCESSING_BITS_32_63)
+		write32be_with_16le_handler(handler, machine, offset * 2 + 0, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		write32be_with_16le_handler(handler, machine, offset * 2 + 1, data >> 0, mem_mask >> 0);
 }
 
 
@@ -417,23 +417,23 @@ INLINE void write64be_with_16le_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT32 read64le_with_16be_handler(read16_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT32 read64le_with_16be_handler(read16_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)read32le_with_16be_handler(handler, param, offset * 2 + 0, mem_mask >> 0) << 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)read32le_with_16be_handler(handler, param, offset * 2 + 1, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)read32le_with_16be_handler(handler, machine, offset * 2 + 0, mem_mask >> 0) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)read32le_with_16be_handler(handler, machine, offset * 2 + 1, mem_mask >> 32) << 32;
 	return result;
 }
 
 
-INLINE void write64le_with_16be_handler(write16_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64le_with_16be_handler(write16_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		write32le_with_16be_handler(handler, param, offset * 2 + 0, data >> 0, mem_mask >> 0);
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		write32le_with_16be_handler(handler, param, offset * 2 + 1, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		write32le_with_16be_handler(handler, machine, offset * 2 + 0, data >> 0, mem_mask >> 0);
+	if (ACCESSING_BITS_32_63)
+		write32le_with_16be_handler(handler, machine, offset * 2 + 1, data >> 32, mem_mask >> 32);
 }
 
 
@@ -443,23 +443,23 @@ INLINE void write64le_with_16be_handler(write16_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT64 read64be_with_32be_handler(read32_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT64 read64be_with_32be_handler(read32_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)(*handler)(param, offset * 2 + 0, mem_mask >> 32) << 32;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)(*handler)(param, offset * 2 + 1, mem_mask >> 0) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)(*handler)(machine, offset * 2 + 0, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)(*handler)(machine, offset * 2 + 1, mem_mask >> 0) << 0;
 	return result;
 }
 
 
-INLINE void write64be_with_32be_handler(write32_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64be_with_32be_handler(write32_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		(*handler)(param, offset * 2 + 0, data >> 32, mem_mask >> 32);
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		(*handler)(param, offset * 2 + 1, data >>  0, mem_mask >>  0);
+	if (ACCESSING_BITS_32_63)
+		(*handler)(machine, offset * 2 + 0, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		(*handler)(machine, offset * 2 + 1, data >>  0, mem_mask >>  0);
 }
 
 
@@ -469,23 +469,23 @@ INLINE void write64be_with_32be_handler(write32_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT64 read64le_with_32le_handler(read32_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT64 read64le_with_32le_handler(read32_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result = 0;
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		result |= (UINT64)(*handler)(param, offset * 2 + 0, mem_mask >> 0) << 0;
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		result |= (UINT64)(*handler)(param, offset * 2 + 1, mem_mask >> 32) << 32;
+	if (ACCESSING_BITS_0_31)
+		result |= (UINT64)(*handler)(machine, offset * 2 + 0, mem_mask >> 0) << 0;
+	if (ACCESSING_BITS_32_63)
+		result |= (UINT64)(*handler)(machine, offset * 2 + 1, mem_mask >> 32) << 32;
 	return result;
 }
 
 
-INLINE void write64le_with_32le_handler(write32_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64le_with_32le_handler(write32_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
-	if ((mem_mask & U64(0x00000000ffffffff)) != U64(0x00000000ffffffff))
-		(*handler)(param, offset * 2 + 0, data >> 0, mem_mask >> 0);
-	if ((mem_mask & U64(0xffffffff00000000)) != U64(0xffffffff00000000))
-		(*handler)(param, offset * 2 + 1, data >> 32, mem_mask >> 32);
+	if (ACCESSING_BITS_0_31)
+		(*handler)(machine, offset * 2 + 0, data >> 0, mem_mask >> 0);
+	if (ACCESSING_BITS_32_63)
+		(*handler)(machine, offset * 2 + 1, data >> 32, mem_mask >> 32);
 }
 
 
@@ -495,20 +495,20 @@ INLINE void write64le_with_32le_handler(write32_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT64 read64be_with_32le_handler(read32_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT64 read64be_with_32le_handler(read32_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result;
 	mem_mask = FLIPENDIAN_INT64(mem_mask);
-	result = read64le_with_32le_handler(handler, param, offset, mem_mask);
+	result = read64le_with_32le_handler(handler, machine, offset, mem_mask);
 	return FLIPENDIAN_INT64(result);
 }
 
 
-INLINE void write64be_with_32le_handler(write32_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64be_with_32le_handler(write32_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
 	data = FLIPENDIAN_INT64(data);
 	mem_mask = FLIPENDIAN_INT64(mem_mask);
-	write64le_with_32le_handler(handler, param, offset, data, mem_mask);
+	write64le_with_32le_handler(handler, machine, offset, data, mem_mask);
 }
 
 
@@ -518,20 +518,20 @@ INLINE void write64be_with_32le_handler(write32_machine_func handler, void *para
  *
  *************************************/
 
-INLINE UINT64 read64le_with_32be_handler(read32_machine_func handler, void *param, offs_t offset, UINT64 mem_mask)
+INLINE UINT64 read64le_with_32be_handler(read32_machine_func handler, running_machine *machine, offs_t offset, UINT64 mem_mask)
 {
 	UINT64 result;
 	mem_mask = FLIPENDIAN_INT64(mem_mask);
-	result = read64be_with_32be_handler(handler, param, offset, mem_mask);
+	result = read64be_with_32be_handler(handler, machine, offset, mem_mask);
 	return FLIPENDIAN_INT64(result);
 }
 
 
-INLINE void write64le_with_32be_handler(write32_machine_func handler, void *param, offs_t offset, UINT64 data, UINT64 mem_mask)
+INLINE void write64le_with_32be_handler(write32_machine_func handler, running_machine *machine, offs_t offset, UINT64 data, UINT64 mem_mask)
 {
 	data = FLIPENDIAN_INT64(data);
 	mem_mask = FLIPENDIAN_INT64(mem_mask);
-	write64be_with_32be_handler(handler, param, offset, data, mem_mask);
+	write64be_with_32be_handler(handler, machine, offset, data, mem_mask);
 }
 
 
@@ -545,28 +545,28 @@ INLINE void write64le_with_32be_handler(write32_machine_func handler, void *para
 #define READ_TEMPLATE(bits, name, handler, func)				\
 READ##bits##_HANDLER( name##_r )								\
 {																\
-	return func(handler, param, offset, mem_mask);				\
+	return func(handler, machine, offset, mem_mask);			\
 }
 
 #define READ_TEMPLATE_COND(bits, name, handler, func, cond)		\
 READ##bits##_HANDLER( name##_r )								\
 {																\
 	if (cond)													\
-		return func(handler, param, offset, mem_mask);			\
+		return func(handler, machine, offset, mem_mask);		\
 	return 0;													\
 }
 
 #define WRITE_TEMPLATE(bits, name, handler, func)				\
 WRITE##bits##_HANDLER( name##_w )								\
 {																\
-	func(handler, param, offset, data, mem_mask);				\
+	func(handler, machine, offset, data, mem_mask);				\
 }
 
 #define WRITE_TEMPLATE_COND(bits, name, handler, func, cond)	\
 WRITE##bits##_HANDLER( name##_w )								\
 {																\
 	if (cond)													\
-		return func(handler, param, offset, data, mem_mask);	\
+		return func(handler, machine, offset, data, mem_mask);	\
 }
 
 
@@ -617,11 +617,11 @@ WRITE8TO16LE(name,write8)
  ************************************/
 
 #define READ8TO16BE_MSB( name, read8 ) \
-READ_TEMPLATE_COND( 16, name, read8, read16be_with_read8_handler, ACCESSING_MSB )
+READ_TEMPLATE_COND( 16, name, read8, read16be_with_read8_handler, ACCESSING_BITS_8_15 )
 
 
 #define WRITE8TO16BE_MSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 16, name, write8, write16be_with_write8_handler, ACCESSING_MSB )
+WRITE_TEMPLATE_COND( 16, name, write8, write16be_with_write8_handler, ACCESSING_BITS_8_15 )
 
 
 #define READWRITE8TO16BE_MSB( name, read8, write8 ) \
@@ -634,11 +634,11 @@ WRITE8TO16BE_MSB(name,write8)
  ************************************/
 
 #define READ8TO16LE_MSB( name, read8 ) \
-READ_TEMPLATE_COND( 16, name, read8, read16le_with_read8_handler, ACCESSING_MSB )
+READ_TEMPLATE_COND( 16, name, read8, read16le_with_read8_handler, ACCESSING_BITS_8_15 )
 
 
 #define WRITE8TO16LE_MSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 16, name, write8, write16le_with_write8_handler, ACCESSING_MSB )
+WRITE_TEMPLATE_COND( 16, name, write8, write16le_with_write8_handler, ACCESSING_BITS_8_15 )
 
 
 #define READWRITE8TO16LE_MSB( name, read8, write8 ) \
@@ -651,11 +651,11 @@ WRITE8TO16LE_MSB(name,write8)
  ************************************/
 
 #define READ8TO16BE_LSB( name, read8 ) \
-READ_TEMPLATE_COND( 16, name, read8, read16be_with_read8_handler, ACCESSING_LSB )
+READ_TEMPLATE_COND( 16, name, read8, read16be_with_read8_handler, ACCESSING_BITS_0_7 )
 
 
 #define WRITE8TO16BE_LSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 16, name, write8, write16be_with_write8_handler, ACCESSING_LSB )
+WRITE_TEMPLATE_COND( 16, name, write8, write16be_with_write8_handler, ACCESSING_BITS_0_7 )
 
 
 #define READWRITE8TO16BE_LSB( name, read8, write8 ) \
@@ -668,11 +668,11 @@ WRITE8TO16BE_LSB(name,write8)
  ************************************/
 
 #define READ8TO16LE_LSB( name, read8 ) \
-READ_TEMPLATE_COND( 16, name, read8, read16le_with_read8_handler, ACCESSING_LSB )
+READ_TEMPLATE_COND( 16, name, read8, read16le_with_read8_handler, ACCESSING_BITS_0_7 )
 
 
 #define WRITE8TO16LE_LSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 16, name, write8, write16le_with_write8_handler, ACCESSING_LSB )
+WRITE_TEMPLATE_COND( 16, name, write8, write16le_with_write8_handler, ACCESSING_BITS_0_7 )
 
 
 #define READWRITE8TO16LE_LSB( name, read8, write8 ) \
@@ -719,11 +719,11 @@ WRITE8TO32LE(name,write8)
  ************************************/
 
 #define READ8TO32BE_MSB( name, read8 ) \
-READ_TEMPLATE_COND( 32, name, read8, read32be_with_read8_handler, ACCESSING_MSB32 )
+READ_TEMPLATE_COND( 32, name, read8, read32be_with_read8_handler, ACCESSING_BITS_24_31 )
 
 
 #define WRITE8TO32BE_MSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 32, name, write8, write32be_with_write8_handler, ACCESSING_MSB32 )
+WRITE_TEMPLATE_COND( 32, name, write8, write32be_with_write8_handler, ACCESSING_BITS_24_31 )
 
 
 #define READWRITE8TO32BE_MSB( name, read8, write8 ) \
@@ -736,11 +736,11 @@ WRITE8TO32BE_MSB(name,write8)
  ************************************/
 
 #define READ8TO32LE_MSB( name, read8 ) \
-READ_TEMPLATE_COND( 32, name, read8, read32le_with_read8_handler, ACCESSING_MSB32 )
+READ_TEMPLATE_COND( 32, name, read8, read32le_with_read8_handler, ACCESSING_BITS_24_31 )
 
 
 #define WRITE8TO32LE_MSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 32, name, write8, write32le_with_write8_handler, ACCESSING_MSB32 )
+WRITE_TEMPLATE_COND( 32, name, write8, write32le_with_write8_handler, ACCESSING_BITS_24_31 )
 
 
 #define READWRITE8TO32LE_MSB( name, read8, write8 ) \
@@ -753,11 +753,11 @@ WRITE8TO32LE_MSB(name,write8)
  ************************************/
 
 #define READ8TO32BE_LSB( name, read8 ) \
-READ_TEMPLATE_COND( 32, name, read8, read32be_with_read8_handler, ACCESSING_LSB32 )
+READ_TEMPLATE_COND( 32, name, read8, read32be_with_read8_handler, ACCESSING_BITS_0_7 )
 
 
 #define WRITE8TO32BE_LSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 32, name, write8, write32be_with_write8_handler, ACCESSING_LSB32 )
+WRITE_TEMPLATE_COND( 32, name, write8, write32be_with_write8_handler, ACCESSING_BITS_0_7 )
 
 
 #define READWRITE8TO32BE_LSB( name, read8, write8 ) \
@@ -770,11 +770,11 @@ WRITE8TO32BE_LSB(name,write8)
  ************************************/
 
 #define READ8TO32LE_LSB( name, read8 ) \
-READ_TEMPLATE_COND( 32, name, read8, read32le_with_read8_handler, ACCESSING_LSB32 )
+READ_TEMPLATE_COND( 32, name, read8, read32le_with_read8_handler, ACCESSING_BITS_0_7 )
 
 
 #define WRITE8TO32LE_LSB( name, write8 ) \
-WRITE_TEMPLATE_COND( 32, name, write8, write32le_with_write8_handler, ACCESSING_LSB32 )
+WRITE_TEMPLATE_COND( 32, name, write8, write32le_with_write8_handler, ACCESSING_BITS_0_7 )
 
 
 #define READWRITE8TO32LE_LSB( name, read8, write8 ) \
@@ -889,11 +889,11 @@ WRITE16LETO32LE(name,write16)
  *************************************/
 
 #define READ16BETO32BE_MSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32be_with_16be_handler, ACCESSING_MSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32be_with_16be_handler, ACCESSING_BITS_16_31 )
 
 
 #define WRITE16BETO32BE_MSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16be_handler, ACCESSING_MSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16be_handler, ACCESSING_BITS_16_31 )
 
 
 #define READWRITE16BETO32BE_MSW( name, read16, write16 ) \
@@ -906,11 +906,11 @@ WRITE16BETO32BE_MSW(name,write16)
  *************************************/
 
 #define READ16LETO32BE_MSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32be_with_16le_handler, ACCESSING_MSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32be_with_16le_handler, ACCESSING_BITS_16_31 )
 
 
 #define WRITE16LETO32BE_MSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16le_handler, ACCESSING_MSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16le_handler, ACCESSING_BITS_16_31 )
 
 
 #define READWRITE16LETO32BE_MSW( name, read16, write16 ) \
@@ -923,11 +923,11 @@ WRITE16LETO32BE_MSW(name,write16)
  *************************************/
 
 #define READ16BETO32LE_MSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32le_with_16be_handler, ACCESSING_MSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32le_with_16be_handler, ACCESSING_BITS_16_31 )
 
 
 #define WRITE16BETO32LE_MSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16be_handler, ACCESSING_MSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16be_handler, ACCESSING_BITS_16_31 )
 
 
 #define READWRITE16BETO32LE_MSW( name, read16, write16 ) \
@@ -940,11 +940,11 @@ WRITE16BETO32LE_MSW(name,write16)
  *************************************/
 
 #define READ16LETO32LE_MSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32le_with_16le_handler, ACCESSING_MSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32le_with_16le_handler, ACCESSING_BITS_16_31 )
 
 
 #define WRITE16LETO32LE_MSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16le_handler, ACCESSING_MSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16le_handler, ACCESSING_BITS_16_31 )
 
 
 #define READWRITE16LETO32LE_MSW( name, read16, write16 ) \
@@ -956,11 +956,11 @@ WRITE16LETO32LE_MSW(name,write16)
  *************************************/
 
 #define READ16BETO32BE_LSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32be_with_16be_handler, ACCESSING_LSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32be_with_16be_handler, ACCESSING_BITS_0_15 )
 
 
 #define WRITE16BETO32BE_LSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16be_handler, ACCESSING_LSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16be_handler, ACCESSING_BITS_0_15 )
 
 
 #define READWRITE16BETO32BE_LSW( name, read16, write16 ) \
@@ -973,11 +973,11 @@ WRITE16BETO32BE_LSW(name,write16)
  *************************************/
 
 #define READ16LETO32BE_LSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32be_with_16le_handler, ACCESSING_LSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32be_with_16le_handler, ACCESSING_BITS_0_15 )
 
 
 #define WRITE16LETO32BE_LSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16le_handler, ACCESSING_LSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32be_with_16le_handler, ACCESSING_BITS_0_15 )
 
 
 #define READWRITE16LETO32BE_LSW( name, read16, write16 ) \
@@ -990,11 +990,11 @@ WRITE16LETO32BE_LSW(name,write16)
  *************************************/
 
 #define READ16BETO32LE_LSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32le_with_16be_handler, ACCESSING_LSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32le_with_16be_handler, ACCESSING_BITS_0_15 )
 
 
 #define WRITE16BETO32LE_LSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16be_handler, ACCESSING_LSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16be_handler, ACCESSING_BITS_0_15 )
 
 
 #define READWRITE16BETO32LE_LSW( name, read16, write16 ) \
@@ -1007,11 +1007,11 @@ WRITE16BETO32LE_LSW(name,write16)
  *************************************/
 
 #define READ16LETO32LE_LSW( name, read16 ) \
-READ_TEMPLATE_COND( 32, name, read16, read32le_with_16le_handler, ACCESSING_LSW32 )
+READ_TEMPLATE_COND( 32, name, read16, read32le_with_16le_handler, ACCESSING_BITS_0_15 )
 
 
 #define WRITE16LETO32LE_LSW( name, write16 ) \
-WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16le_handler, ACCESSING_LSW32 )
+WRITE_TEMPLATE_COND( 32, name, write16, write32le_with_16le_handler, ACCESSING_BITS_0_15 )
 
 
 #define READWRITE16LETO32LE_LSW( name, read16, write16 ) \

@@ -72,7 +72,7 @@ WRITE16_HANDLER( crshrace_videoram2_w )
 
 WRITE16_HANDLER( crshrace_roz_bank_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (roz_bank != (data & 0xff))
 		{
@@ -85,7 +85,7 @@ WRITE16_HANDLER( crshrace_roz_bank_w )
 
 WRITE16_HANDLER( crshrace_gfxctrl_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		gfxctrl = data & 0xdf;
 		flipscreen = data & 0x20;
@@ -215,6 +215,6 @@ popmessage("gfxctrl = %02x",gfxctrl);
 
 VIDEO_EOF( crshrace )
 {
-	buffer_spriteram16_w(machine,0,0,0);
-	buffer_spriteram16_2_w(machine,0,0,0);
+	buffer_spriteram16_w(machine,0,0,0xffff);
+	buffer_spriteram16_2_w(machine,0,0,0xffff);
 }

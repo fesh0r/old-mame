@@ -325,7 +325,6 @@ field:      X address   D           Function    Y address   D (part 2)
 
 #include "cpuintrf.h"
 #include "debugger.h"
-#include "deprecat.h"
 #include "apexc.h"
 
 typedef struct
@@ -448,12 +447,12 @@ static void word_write(int address, UINT32 data, UINT32 mask)
 
 static int papertape_read(void)
 {
-	return io_read_byte_8(0) & 0x1f;
+	return io_read_byte_8be(0) & 0x1f;
 }
 
 static void papertape_punch(int data)
 {
-	io_write_byte_8(0, data);
+	io_write_byte_8be(0, data);
 }
 
 /*

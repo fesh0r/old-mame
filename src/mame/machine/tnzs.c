@@ -13,7 +13,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/i8x41/i8x41.h"
 #include "includes/tnzs.h"
 
@@ -78,9 +77,9 @@ READ8_HANDLER( tnzs_port1_r )
 
 	switch (tnzs_input_select & 0x0f)
 	{
-		case 0x0a:	data = input_port_4_r(machine,0); break;
-		case 0x0c:	data = input_port_2_r(machine,0); break;
-		case 0x0d:	data = input_port_3_r(machine,0); break;
+		case 0x0a:	data = input_port_read_indexed(machine, 4); break;
+		case 0x0c:	data = input_port_read_indexed(machine, 2); break;
+		case 0x0d:	data = input_port_read_indexed(machine, 3); break;
 		default:	data = 0xff; break;
 	}
 
@@ -91,7 +90,7 @@ READ8_HANDLER( tnzs_port1_r )
 
 READ8_HANDLER( tnzs_port2_r )
 {
-	int data = input_port_4_r(machine,0);
+	int data = input_port_read_indexed(machine, 4);
 
 //  logerror("I8742:%04x  Read %02x from port 2\n", activecpu_get_previouspc(), data);
 
@@ -118,7 +117,7 @@ READ8_HANDLER( arknoid2_sh_f000_r )
 
 //  logerror("PC %04x: read input %04x\n", activecpu_get_pc(), 0xf000 + offset);
 
-	val = readinputport(7 + offset/2);
+	val = input_port_read_indexed(machine, 7 + offset/2);
 	if (offset & 1)
 	{
 		return ((val >> 8) & 0xff);
@@ -248,7 +247,7 @@ static READ8_HANDLER( mcu_arknoid2_r )
 					}
 					else return mcu_credits;
 				}
-				else return readinputport(2);	/* buttons */
+				else return input_port_read_indexed(machine, 2);	/* buttons */
 
 			default:
 				logerror("error, unknown mcu command\n");
@@ -339,16 +338,16 @@ static READ8_HANDLER( mcu_extrmatn_r )
 		switch (mcu_command)
 		{
 			case 0x01:
-				return readinputport(2) ^ 0xff;	/* player 1 joystick + buttons */
+				return input_port_read_indexed(machine, 2) ^ 0xff;	/* player 1 joystick + buttons */
 
 			case 0x02:
-				return readinputport(3) ^ 0xff;	/* player 2 joystick + buttons */
+				return input_port_read_indexed(machine, 3) ^ 0xff;	/* player 2 joystick + buttons */
 
 			case 0x1a:
-				return (readinputport(5) | (readinputport(6) << 1));
+				return (input_port_read_indexed(machine, 5) | (input_port_read_indexed(machine, 6) << 1));
 
 			case 0x21:
-				return readinputport(4) & 0x0f;
+				return input_port_read_indexed(machine, 4) & 0x0f;
 
 			case 0x41:
 				return mcu_credits;
@@ -376,7 +375,7 @@ static READ8_HANDLER( mcu_extrmatn_r )
 					else return mcu_credits;
 				}
 				/* buttons */
-				else return ((readinputport(2) & 0xf0) | (readinputport(3) >> 4)) ^ 0xff;
+				else return ((input_port_read_indexed(machine, 2) & 0xf0) | (input_port_read_indexed(machine, 3) >> 4)) ^ 0xff;
 
 			default:
 				logerror("error, unknown mcu command\n");
@@ -552,7 +551,7 @@ DRIVER_INIT( drtoppel )
 	memcpy(&RAM[0x08000],&RAM[0x18000],0x4000);
 
 	/* drtoppel writes to the palette RAM area even if it has PROMs! We have to patch it out. */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xfbff, 0, 0, SMH_NOP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xfbff, 0, 0, SMH_NOP);
 }
 
 DRIVER_INIT( chukatai )
@@ -570,7 +569,7 @@ DRIVER_INIT( tnzs )
 	memcpy(&RAM[0x08000],&RAM[0x2c000],0x4000);
 
 	/* we need to install a kludge to avoid problems with a bug in the original code */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xef10, 0xef10, 0, 0, tnzs_sync_kludge_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xef10, 0xef10, 0, 0, tnzs_sync_kludge_w);
 }
 
 DRIVER_INIT( tnzsb )
@@ -583,7 +582,7 @@ DRIVER_INIT( tnzsb )
 	memcpy(&RAM[0x08000],&RAM[0x2c000],0x4000);
 
 	/* we need to install a kludge to avoid problems with a bug in the original code */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xef10, 0xef10, 0, 0, tnzs_sync_kludge_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xef10, 0xef10, 0, 0, tnzs_sync_kludge_w);
 }
 
 DRIVER_INIT( kabukiz )
@@ -596,9 +595,9 @@ DRIVER_INIT( insectx )
 	mcu_type = MCU_NONE_INSECTX;
 
 	/* this game has no mcu, replace the handler with plain input port handlers */
-	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc000, 0, 0, input_port_2_r );
-	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0xc001, 0xc001, 0, 0, input_port_3_r );
-	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0xc002, 0xc002, 0, 0, input_port_4_r );
+	memory_install_read8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc000, 0, 0, input_port_2_r );
+	memory_install_read8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xc001, 0xc001, 0, 0, input_port_3_r );
+	memory_install_read8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xc002, 0xc002, 0, 0, input_port_4_r );
 }
 
 DRIVER_INIT( kageki )
@@ -661,9 +660,9 @@ INTERRUPT_GEN( arknoid2_interrupt )
 		case MCU_DRTOPPEL:
 		case MCU_PLUMPOP:
 			coin  = 0;
-			coin |= ((readinputport(5) & 1) << 0);
-			coin |= ((readinputport(6) & 1) << 1);
-			coin |= ((readinputport(4) & 3) << 2);
+			coin |= ((input_port_read_indexed(machine, 5) & 1) << 0);
+			coin |= ((input_port_read_indexed(machine, 6) & 1) << 1);
+			coin |= ((input_port_read_indexed(machine, 4) & 3) << 2);
 			coin ^= 0x0c;
 			mcu_handle_coins(coin);
 			break;
@@ -722,9 +721,9 @@ WRITE8_HANDLER( tnzs_bankswitch_w )
 
 	/* bit 4 resets the second CPU */
 	if (data & 0x10)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 
 	/* bits 0-2 select RAM/ROM bank */
 	memory_set_bankptr (1, &RAM[0x10000 + 0x4000 * (data & 0x07)]);
@@ -743,8 +742,8 @@ WRITE8_HANDLER( tnzs_bankswitch1_w )
 				/* bit 2 resets the mcu */
 				if (data & 0x04)
 				{
-					if (Machine->config->cpu[2].type == CPU_I8X41)
-						cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, PULSE_LINE);
+					if (machine->config->cpu[2].type == CPU_I8X41)
+						cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, PULSE_LINE);
 				}
 				/* Coin count and lockout is handled by the i8742 */
 				break;

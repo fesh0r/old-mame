@@ -146,7 +146,7 @@ static const UINT16 mHoreKidProtData[] =
 
 static READ16_HANDLER( horekid_IN2_r )
 {
-	int data = readinputportbytag("IN1");
+	int data = input_port_read(machine, "IN1");
 
 	if (!(data & 0x40))		// FAKE button 3 for "Debug Mode"
 	{
@@ -183,7 +183,7 @@ static READ16_HANDLER( amazon_protection_r )
 
 static WRITE16_HANDLER( amazon_protection_w )
 {
-	if( ACCESSING_LSB )
+	if( ACCESSING_BITS_0_7 )
 	{
 		if( offset==1 )
 		{
@@ -1025,7 +1025,7 @@ static DRIVER_INIT( amatelas )
 static DRIVER_INIT( horekid )
 {
 	mpProtData = mHoreKidProtData;
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x44004, 0x44005, 0, 0, horekid_IN2_r);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x44004, 0x44005, 0, 0, horekid_IN2_r);
 }
 
 /*    YEAR, NAME,   PARENT,     MACHINE, INPUT,    INIT,     MONITOR,  COMPANY,      FULLNAME, FLAGS */

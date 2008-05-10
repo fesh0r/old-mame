@@ -119,7 +119,6 @@ Abnormalities:
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "toaplan1.h"
 #include "cpu/m68000/m68000.h"
 
@@ -317,14 +316,14 @@ static void toaplan1_set_scrolls(void)
 	tilemap_set_scrolly(pf4_tilemap,0,(pf4_scrolly >> 7) - (tiles_offsety - scrolly_offs));
 }
 
-static void rallybik_flipscreen(void)
+static STATE_POSTLOAD( rallybik_flipscreen )
 {
-	rallybik_bcu_flipscreen_w(Machine, 0, bcu_flipscreen, 0);
+	rallybik_bcu_flipscreen_w(machine, 0, bcu_flipscreen, 0xffff);
 }
 
-static void toaplan1_flipscreen(void)
+static STATE_POSTLOAD( toaplan1_flipscreen )
 {
-	toaplan1_bcu_flipscreen_w(Machine, 0, bcu_flipscreen, 0);
+	toaplan1_bcu_flipscreen_w(machine, 0, bcu_flipscreen, 0xffff);
 }
 
 
@@ -368,7 +367,7 @@ VIDEO_START( rallybik )
 	state_save_register_global(pf_voffs);
 	state_save_register_global(spriteram_offs);
 
-	state_save_register_func_postload(rallybik_flipscreen);
+	state_save_register_postload(machine, rallybik_flipscreen, NULL);
 }
 
 VIDEO_START( toaplan1 )
@@ -418,7 +417,7 @@ VIDEO_START( toaplan1 )
 	state_save_register_global(pf_voffs);
 	state_save_register_global(spriteram_offs);
 
-	state_save_register_func_postload(toaplan1_flipscreen);
+	state_save_register_postload(machine, toaplan1_flipscreen, NULL);
 }
 
 
@@ -451,7 +450,7 @@ WRITE16_HANDLER( toaplan1_tile_offsets_w )
 
 WRITE16_HANDLER( rallybik_bcu_flipscreen_w )
 {
-	if (ACCESSING_LSB && (data != bcu_flipscreen))
+	if (ACCESSING_BITS_0_7 && (data != bcu_flipscreen))
 	{
 		logerror("Setting BCU controller flipscreen port to %04x\n",data);
 		bcu_flipscreen = data & 0x01;		/* 0x0001 = flip, 0x0000 = no flip */
@@ -478,7 +477,7 @@ WRITE16_HANDLER( rallybik_bcu_flipscreen_w )
 
 WRITE16_HANDLER( toaplan1_bcu_flipscreen_w )
 {
-	if (ACCESSING_LSB && (data != bcu_flipscreen))
+	if (ACCESSING_BITS_0_7 && (data != bcu_flipscreen))
 	{
 		logerror("Setting BCU controller flipscreen port to %04x\n",data);
 		bcu_flipscreen = data & 0x01;		/* 0x0001 = flip, 0x0000 = no flip */
@@ -505,7 +504,7 @@ WRITE16_HANDLER( toaplan1_bcu_flipscreen_w )
 
 WRITE16_HANDLER( toaplan1_fcu_flipscreen_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		logerror("Setting FCU controller flipscreen port to %04x\n",data);
 		fcu_flipscreen = data & 0x8000;	/* 0x8000 = flip, 0x0000 = no flip */
@@ -1230,18 +1229,18 @@ VIDEO_UPDATE( demonwld )
 
 VIDEO_EOF( rallybik )
 {
-	buffer_spriteram16_w(machine, 0, 0, 0);
+	buffer_spriteram16_w(machine, 0, 0, 0xffff);
 }
 
 VIDEO_EOF( toaplan1 )
 {
-	buffer_spriteram16_w(machine, 0, 0, 0);
+	buffer_spriteram16_w(machine, 0, 0, 0xffff);
 	memcpy(toaplan1_buffered_spritesizeram16, toaplan1_spritesizeram16, TOAPLAN1_SPRITESIZERAM_SIZE);
 }
 
 VIDEO_EOF( samesame )
 {
-	buffer_spriteram16_w(machine, 0, 0, 0);
+	buffer_spriteram16_w(machine, 0, 0, 0xffff);
 	memcpy(toaplan1_buffered_spritesizeram16, toaplan1_spritesizeram16, TOAPLAN1_SPRITESIZERAM_SIZE);
 	cpunum_set_input_line(machine, 0, MC68000_IRQ_2, HOLD_LINE);	/* Frame done */
 }

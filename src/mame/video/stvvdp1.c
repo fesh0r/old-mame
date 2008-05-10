@@ -287,7 +287,7 @@ WRITE32_HANDLER( stv_vdp1_regs_w )
 	if ( offset == 0 )
 	{
 		stv_set_framebuffer_config();
-		if ( ACCESSING_LSW32 )
+		if ( ACCESSING_BITS_0_15 )
 		{
 			if ( vdp1_sprite_log ) logerror( "VDP1: Access to register FBCR = %1X\n", STV_VDP1_FBCR );
 			stv_vdp1_fbcr_accessed = 1;
@@ -301,7 +301,7 @@ WRITE32_HANDLER( stv_vdp1_regs_w )
 			}
 
 			/* needed by pblbeach, it doesn't clear local coordinates in its sprite list...*/
-			if ( !strcmp(Machine->gamedrv->name, "pblbeach") )
+			if ( !strcmp(machine->gamedrv->name, "pblbeach") )
 			{
 				stvvdp1_local_x = stvvdp1_local_y = 0;
 			}
@@ -309,7 +309,7 @@ WRITE32_HANDLER( stv_vdp1_regs_w )
 	}
 	else if ( offset == 1 )
 	{
-		if ( ACCESSING_MSW32 )
+		if ( ACCESSING_BITS_16_31 )
 		{
 			if ( STV_VDP1_PTMR == 1 )
 			{
@@ -319,22 +319,22 @@ WRITE32_HANDLER( stv_vdp1_regs_w )
 				if(!(stv_scu[40] & 0x2000)) /*Sprite draw end irq*/
 				{
 					logerror( "Interrupt: Sprite draw end, Vector 0x4d, Level 0x02\n" );
-					cpunum_set_input_line_and_vector(Machine, 0, 2, HOLD_LINE , 0x4d);
+					cpunum_set_input_line_and_vector(machine, 0, 2, HOLD_LINE , 0x4d);
 				}
 			}
 		}
-		else if ( ACCESSING_LSW32 )
+		else if ( ACCESSING_BITS_0_15 )
 		{
 			if ( vdp1_sprite_log ) logerror( "VDP1: Erase data set %08X\n", data );
 		}
 	}
 	else if ( offset == 2 )
 	{
-		if ( ACCESSING_MSW32 )
+		if ( ACCESSING_BITS_16_31 )
 		{
 			if ( vdp1_sprite_log ) logerror( "VDP1: Erase upper-left coord set: %08X\n", data );
 		}
-		else if ( ACCESSING_LSW32 )
+		else if ( ACCESSING_BITS_0_15 )
 		{
 			if ( vdp1_sprite_log ) logerror( "VDP1: Erase lower-right coord set: %08X\n", data );
 		}
@@ -356,7 +356,7 @@ WRITE32_HANDLER ( stv_vdp1_vram_w )
 
 //  if (((offset * 4) > 0xdf) && ((offset * 4) < 0x140))
 //  {
-//      logerror("cpu #%d (PC=%08X): VRAM dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), offset*4, data, mem_mask ^ 0xffffffff);
+//      logerror("cpu #%d (PC=%08X): VRAM dword write to %08X = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), offset*4, data, mem_mask);
 //  }
 
 	data = stv_vdp1_vram[offset];
@@ -377,11 +377,11 @@ WRITE32_HANDLER ( stv_vdp1_framebuffer0_w )
 	else
 	{
 		/* 16-bit mode */
-		if ( ACCESSING_MSW32 )
+		if ( ACCESSING_BITS_16_31 )
 		{
 			stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2] = (data >> 16) & 0xffff;
 		}
-		if ( ACCESSING_LSW32 )
+		if ( ACCESSING_BITS_0_15 )
 		{
 			stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2+1] = data & 0xffff;
 		}
@@ -399,11 +399,11 @@ READ32_HANDLER ( stv_vdp1_framebuffer0_r )
 	else
 	{
 		/* 16-bit mode */
-		if ( ACCESSING_MSW32 )
+		if ( ACCESSING_BITS_16_31 )
 		{
 			result |= (stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2] << 16);
 		}
-		if ( ACCESSING_LSW32 )
+		if ( ACCESSING_BITS_0_15 )
 		{
 			result |= stv_framebuffer[stv_vdp1_current_draw_framebuffer][offset*2+1];
 		}
@@ -2081,7 +2081,7 @@ void video_update_vdp1(running_machine *machine)
 	//popmessage("%04x %04x",STV_VDP1_EWRR_X3,STV_VDP1_EWRR_Y3);
 }
 
-static void stv_vdp1_state_save_postload(void)
+static STATE_POSTLOAD( stv_vdp1_state_save_postload )
 {
 	UINT8 *vdp1 = stv_vdp1_gfx_decode;
 	int offset;
@@ -2103,7 +2103,7 @@ static void stv_vdp1_state_save_postload(void)
 	}
 }
 
-int stv_vdp1_start ( void )
+int stv_vdp1_start ( running_machine *machine )
 {
 	stv_vdp1_regs = auto_malloc ( 0x040000 );
 	stv_vdp1_vram = auto_malloc ( 0x100000 );
@@ -2143,6 +2143,6 @@ int stv_vdp1_start ( void )
 	state_save_register_global(stv_vdp1_clear_framebuffer_on_next_frame);
 	state_save_register_global(stvvdp1_local_x);
 	state_save_register_global(stvvdp1_local_y);
-	state_save_register_func_postload(stv_vdp1_state_save_postload);
+	state_save_register_postload(machine, stv_vdp1_state_save_postload, NULL);
 	return 0;
 }

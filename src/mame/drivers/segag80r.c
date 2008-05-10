@@ -231,10 +231,10 @@ static READ8_HANDLER( mangled_ports_r )
 	/* read as two bits from each of 4 ports. For this reason, the input   */
 	/* ports have been organized logically, and are demangled at runtime.  */
 	/* 4 input ports each provide 8 bits of information. */
-	UINT8 d7d6 = readinputportbytag("D7D6");
-	UINT8 d5d4 = readinputportbytag("D5D4");
-	UINT8 d3d2 = readinputportbytag("D3D2");
-	UINT8 d1d0 = readinputportbytag("D1D0");
+	UINT8 d7d6 = input_port_read(machine, "D7D6");
+	UINT8 d5d4 = input_port_read(machine, "D5D4");
+	UINT8 d3d2 = input_port_read(machine, "D3D2");
+	UINT8 d1d0 = input_port_read(machine, "D1D0");
 	int shift = offset & 3;
 	return demangle(d7d6 >> shift, d5d4 >> shift, d3d2 >> shift, d1d0 >> shift);
 }
@@ -246,17 +246,17 @@ static READ8_HANDLER( spaceod_mangled_ports_r )
 	/* versus cocktail cabinets; we fix this here. The input ports are */
 	/* coded for cocktail mode; for upright mode, we manually shuffle the */
 	/* bits around. */
-	UINT8 d7d6 = readinputportbytag("D7D6");
-	UINT8 d5d4 = readinputportbytag("D5D4");
-	UINT8 d3d2 = readinputportbytag("D3D2");
-	UINT8 d1d0 = readinputportbytag("D1D0");
+	UINT8 d7d6 = input_port_read(machine, "D7D6");
+	UINT8 d5d4 = input_port_read(machine, "D5D4");
+	UINT8 d3d2 = input_port_read(machine, "D3D2");
+	UINT8 d1d0 = input_port_read(machine, "D1D0");
 	int shift = offset & 3;
 
 	/* tweak bits for the upright case */
 	UINT8 upright = d3d2 & 0x04;
 	if (upright)
 	{
-		UINT8 fc = readinputportbytag("FC");
+		UINT8 fc = input_port_read(machine, "FC");
 		d7d6 |= 0x60;
 		d5d4 = (d5d4 & ~0x1c) |
 				((~fc & 0x20) >> 3) | /* IPT_BUTTON2 */
@@ -270,8 +270,8 @@ static READ8_HANDLER( spaceod_mangled_ports_r )
 
 static READ8_HANDLER( spaceod_port_fc_r )
 {
-	UINT8 upright = readinputportbytag("D3D2") & 0x04;
-	UINT8 fc = readinputportbytag("FC");
+	UINT8 upright = input_port_read(machine, "D3D2") & 0x04;
+	UINT8 fc = input_port_read(machine, "FC");
 
 	/* tweak bits for the upright case */
 	if (upright)
@@ -299,6 +299,12 @@ static WRITE8_HANDLER( coin_count_w )
  *  sindbad Mystery sound handling
  *
  *************************************/
+
+static READ8_HANDLER( sindbadm_portb_r )
+{
+	return input_port_read(machine, "FC");
+}
+
 
 static WRITE8_HANDLER( sindbadm_soundport_w )
 {
@@ -331,6 +337,24 @@ static WRITE8_HANDLER( sindbadm_SN76496_1_w )
 
 /*************************************
  *
+ *  PPI 8255 configurations
+ *
+ *************************************/
+
+static const ppi8255_interface sindbadm_ppi_intf =
+{
+	NULL,
+	sindbadm_portb_r,
+	NULL,
+	sindbadm_soundport_w,
+	NULL,
+	sindbadm_misc_w
+};
+
+
+
+/*************************************
+ *
  *  Main CPU memory handlers
  *
  *************************************/
@@ -340,8 +364,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM		/* CPU board ROM */
 	AM_RANGE(0x0800, 0x7fff) AM_ROM		/* PROM board ROM area */
 	AM_RANGE(0x8000, 0xbfff) AM_ROM		/* PROM board ROM area */
-	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(SMH_RAM, mainram_w) AM_BASE(&mainram)
-	AM_RANGE(0xe000, 0xffff) AM_READWRITE(SMH_RAM, vidram_w) AM_BASE(&videoram)
+	AM_RANGE(0xc800, 0xcfff) AM_RAM_WRITE(mainram_w) AM_BASE(&mainram)
+	AM_RANGE(0xe000, 0xffff) AM_RAM_WRITE(vidram_w) AM_BASE(&videoram)
 ADDRESS_MAP_END
 
 
@@ -355,9 +379,20 @@ static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
+static ADDRESS_MAP_START( main_ppi8255_portmap, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	AM_RANGE(0x0c, 0x0f) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0xbe, 0xbf) AM_READWRITE(segag80r_video_port_r, segag80r_video_port_w)
+	AM_RANGE(0xf9, 0xf9) AM_MIRROR(0x04) AM_WRITE(coin_count_w)
+	AM_RANGE(0xf8, 0xfb) AM_READ(mangled_ports_r)
+	AM_RANGE(0xfc, 0xfc) AM_READ_PORT("FC")
+ADDRESS_MAP_END
+
+
 static ADDRESS_MAP_START( sindbadm_portmap, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x42, 0x43) AM_READWRITE(segag80r_video_port_r, segag80r_video_port_w)
+	AM_RANGE(0x80, 0x83) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xf8, 0xfb) AM_READ(mangled_ports_r)
 ADDRESS_MAP_END
 
@@ -854,6 +889,9 @@ static MACHINE_DRIVER_START( 005 )
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(g80r_base)
 
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_IO_MAP(main_ppi8255_portmap,0)
+
 	/* sound boards */
 	MDRV_IMPORT_FROM(005_sound_board)
 MACHINE_DRIVER_END
@@ -880,6 +918,9 @@ static MACHINE_DRIVER_START( monsterb )
 
 	/* basic machine hardware */
 	MDRV_IMPORT_FROM(g80r_base)
+
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_IO_MAP(main_ppi8255_portmap,0)
 
 	/* background board changes */
 	MDRV_GFXDECODE(monsterb)
@@ -912,6 +953,9 @@ static MACHINE_DRIVER_START( sindbadm )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_IO_MAP(sindbadm_portmap,0)
 	MDRV_CPU_VBLANK_INT("main", sindbadm_vblank_start)
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( sindbadm_ppi_intf )
 
 	/* video hardware */
 	MDRV_GFXDECODE(monsterb)
@@ -1399,11 +1443,11 @@ static DRIVER_INIT( astrob )
 	segag80r_background_pcb = G80_BACKGROUND_NONE;
 
 	/* install speech board */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
 
 	/* install Astro Blaster sound board */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3e, 0x3f, 0, 0, astrob_sound_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3e, 0x3f, 0, 0, astrob_sound_w);
 }
 
 
@@ -1414,10 +1458,6 @@ static DRIVER_INIT( 005 )
 
 	/* configure video */
 	segag80r_background_pcb = G80_BACKGROUND_NONE;
-
-	/* install the 8255 PPI for the sound board */
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, ppi8255_0_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, ppi8255_0_w);
 }
 
 
@@ -1430,15 +1470,14 @@ static DRIVER_INIT( spaceod )
 	segag80r_background_pcb = G80_BACKGROUND_SPACEOD;
 
 	/* configure ports for the background board */
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0x08, 0x0f, 0, 0, spaceod_back_port_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x08, 0x0f, 0, 0, spaceod_back_port_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_IO, 0x08, 0x0f, 0, 0, spaceod_back_port_r, spaceod_back_port_w);
 
 	/* install Space Odyssey sound board */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x0e, 0x0f, 0, 0, spaceod_sound_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x0e, 0x0f, 0, 0, spaceod_sound_w);
 
 	/* install our wacky mangled ports */
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0xf8, 0xfb, 0, 0, spaceod_mangled_ports_r);
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spaceod_port_fc_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0xf8, 0xfb, 0, 0, spaceod_mangled_ports_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spaceod_port_fc_r);
 }
 
 
@@ -1452,12 +1491,8 @@ static DRIVER_INIT( monsterb )
 	monsterb_expand_gfx(REGION_GFX1);
 
 	/* install background board handlers */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xb8, 0xbd, 0, 0, monsterb_back_port_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, monsterb_vidram_w);
-
-	/* install Monster Bash sound board */
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, ppi8255_0_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, ppi8255_0_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb8, 0xbd, 0, 0, monsterb_back_port_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, monsterb_vidram_w);
 }
 
 
@@ -1472,13 +1507,9 @@ static DRIVER_INIT( monster2 )
 	monsterb_expand_gfx(REGION_GFX1);
 
 	/* install background board handlers */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
-
-	/* install Monster Bash sound board */
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, ppi8255_0_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x0c, 0x0f, 0, 0, ppi8255_0_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
 }
 
 
@@ -1492,31 +1523,18 @@ static DRIVER_INIT( pignewt )
 	monsterb_expand_gfx(REGION_GFX1);
 
 	/* install background board handlers */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb4, 0xb5, 0, 0, pignewt_back_color_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xb8, 0xbd, 0, 0, pignewt_back_port_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, pignewt_vidram_w);
 
 	/* install Universal sound board */
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_status_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_data_w);
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, sega_usb_ram_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, usb_ram_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_status_r, sega_usb_data_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, sega_usb_ram_r, usb_ram_w);
 }
 
 
 static DRIVER_INIT( sindbadm )
 {
-	static ppi8255_interface ppi_intf =
-	{
-		1,
-		{ 0 },
-		{ 0 },
-		{ 0 },
-		{ sindbadm_soundport_w },
-		{ 0 },
-		{ sindbadm_misc_w }
-	};
-
 	/* configure the encrypted Z80 */
 	sindbadm_decode();
 	sega_security(0);
@@ -1525,14 +1543,8 @@ static DRIVER_INIT( sindbadm )
 	segag80r_background_pcb = G80_BACKGROUND_SINDBADM;
 
 	/* install background board handlers */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x40, 0x41, 0, 0, sindbadm_back_port_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, sindbadm_vidram_w);
-
-	/* install the 8255 PPI for the sound board */
-	memory_install_read8_handler (0, ADDRESS_SPACE_IO, 0x80, 0x83, 0, 0, ppi8255_0_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x80, 0x83, 0, 0, ppi8255_0_w);
-	ppi_intf.portBread[0] = port_tag_to_handler8("FC");
-	ppi8255_init(&ppi_intf);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x40, 0x41, 0, 0, sindbadm_back_port_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, sindbadm_vidram_w);
 }
 
 

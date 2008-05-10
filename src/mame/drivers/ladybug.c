@@ -89,8 +89,8 @@ static ADDRESS_MAP_START( ladybug_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xa000) AM_WRITE(ladybug_flipscreen_w)
 	AM_RANGE(0xb000, 0xbfff) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0xc000, 0xcfff) AM_WRITE(SN76496_1_w)
-	AM_RANGE(0xd000, 0xd3ff) AM_READWRITE(SMH_RAM, ladybug_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xd400, 0xd7ff) AM_READWRITE(SMH_RAM, ladybug_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xd000, 0xd3ff) AM_RAM_WRITE(ladybug_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xd400, 0xd7ff) AM_RAM_WRITE(ladybug_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_2_r)	/* IN2 */
 ADDRESS_MAP_END
 
@@ -154,7 +154,7 @@ static INPUT_CHANGED( coin2_inserted )
 
 static CUSTOM_INPUT( ladybug_p1_control_r )
 {
-	return readinputportbytag(LADYBUG_P1_CONTROL_PORT_TAG);
+	return input_port_read(machine, LADYBUG_P1_CONTROL_PORT_TAG);
 }
 
 static CUSTOM_INPUT( ladybug_p2_control_r )
@@ -162,10 +162,10 @@ static CUSTOM_INPUT( ladybug_p2_control_r )
 	UINT32 ret;
 
 	/* upright cabinet only uses a single set of controls */
-	if (readinputportbytag("DSW0") & 0x20)
-		ret = readinputportbytag(LADYBUG_P2_CONTROL_PORT_TAG);
+	if (input_port_read(machine, "DSW0") & 0x20)
+		ret = input_port_read(machine, LADYBUG_P2_CONTROL_PORT_TAG);
 	else
-		ret = readinputportbytag(LADYBUG_P1_CONTROL_PORT_TAG);
+		ret = input_port_read(machine, LADYBUG_P1_CONTROL_PORT_TAG);
 
 	return ret;
 }

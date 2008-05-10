@@ -17,7 +17,6 @@ Could be bad dump ('final' romset is made of two sets marked as 'bad' )
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "snk.h"
 #include "sound/ay8910.h"
@@ -67,13 +66,13 @@ static READ8_HANDLER( sound_command_r )
 
 static READ8_HANDLER( sound_nmi_ack_r )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, CLEAR_LINE);
 	return 0;
 }
 
 static READ8_HANDLER( jcross_port_0_r )
 {
-	return(input_port_0_r(machine,0) | sound_cpu_busy);
+	return(input_port_read_indexed(machine, 0) | sound_cpu_busy);
 }
 
 static WRITE8_HANDLER(jcross_vregs0_w){jcross_vregs[0]=data;}
@@ -116,8 +115,8 @@ static ADDRESS_MAP_START( cpuA_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd600, 0xd600) AM_WRITE(jcross_vregs3_w)
 	AM_RANGE(0xd700, 0xd700) AM_WRITE(jcross_vregs4_w)
  	AM_RANGE(0xd800, 0xdfff) AM_RAM AM_SHARE(1) AM_BASE(&spriteram)
-	AM_RANGE(0xe000, 0xefff) AM_READWRITE(SMH_RAM, jcross_background_ram_w) AM_SHARE(2) AM_BASE(&videoram)
-	AM_RANGE(0xf000, 0xf3ff) AM_READWRITE(SMH_RAM, jcross_text_ram_w) AM_BASE(&jcr_textram)
+	AM_RANGE(0xe000, 0xefff) AM_RAM_WRITE(jcross_background_ram_w) AM_SHARE(2) AM_BASE(&videoram)
+	AM_RANGE(0xf000, 0xf3ff) AM_RAM_WRITE(jcross_text_ram_w) AM_BASE(&jcr_textram)
 	AM_RANGE(0xf400, 0xffff) AM_RAM
 ADDRESS_MAP_END
 

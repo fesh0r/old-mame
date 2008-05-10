@@ -27,7 +27,6 @@ WHO AM I?      (In place of "ARIES ELECA")
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "crgolf.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
@@ -81,13 +80,13 @@ static MACHINE_START( crgolf )
 
 static READ8_HANDLER( switch_input_r )
 {
-	return readinputport(port_select);
+	return input_port_read_indexed(machine, port_select);
 }
 
 
 static READ8_HANDLER( analog_input_r )
 {
-	return ((readinputport(7) >> 4) | (readinputport(8) & 0xf0)) ^ 0x88;
+	return ((input_port_read_indexed(machine, 7) >> 4) | (input_port_read_indexed(machine, 8) & 0xf0)) ^ 0x88;
 }
 
 
@@ -131,7 +130,7 @@ static WRITE8_HANDLER( main_to_sound_w )
 
 static READ8_HANDLER( main_to_sound_r )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 	return main_to_sound_data;
 }
 
@@ -158,7 +157,7 @@ static WRITE8_HANDLER( sound_to_main_w )
 
 static READ8_HANDLER( sound_to_main_r )
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE);
 	return sound_to_main_data;
 }
 
@@ -576,7 +575,7 @@ ROM_END
 
 static DRIVER_INIT( crgolfhi )
 {
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa003, 0, 0, crgolfhi_sample_w);
+	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa003, 0, 0, crgolfhi_sample_w);
 }
 
 

@@ -144,7 +144,6 @@ Tetris         -         -         -         -         EPR12169  EPR12170  -    
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "system16.h"
 #include "machine/8255ppi.h"
 #include "cpu/i8039/i8039.h"
@@ -198,13 +197,12 @@ static WRITE8_HANDLER( tilemap_sound_w );
 
 static const ppi8255_interface single_ppi_intf =
 {
-	1,
-	{ NULL },
-	{ NULL },
-	{ NULL },
-	{ soundlatch_w },
-	{ video_control_w },
-	{ tilemap_sound_w }
+	NULL,
+	NULL,
+	NULL,
+	soundlatch_w,
+	video_control_w,
+	tilemap_sound_w
 };
 
 
@@ -228,9 +226,6 @@ static void system16a_generic_init(running_machine *machine)
 	custom_io_w = NULL;
 	lamp_changed_w = NULL;
 	i8751_vblank_hook = NULL;
-
-	/* configure the 8255 interface */
-	ppi8255_init(&single_ppi_intf);
 }
 
 
@@ -266,7 +261,7 @@ static MACHINE_RESET( system16a )
 
 static TIMER_CALLBACK( delayed_ppi8255_w )
 {
-	ppi8255_0_w(machine, param >> 8, param & 0xff);
+	ppi8255_w(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), param >> 8, param & 0xff);
 }
 
 
@@ -276,13 +271,13 @@ static READ16_HANDLER( standard_io_r )
 	switch (offset & (0x3000/2))
 	{
 		case 0x0000/2:
-			return ppi8255_0_r(machine, offset & 3);
+			return ppi8255_r(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), offset & 3);
 
 		case 0x1000/2:
-			return readinputport(offset & 3);
+			return input_port_read_indexed(machine, offset & 3);
 
 		case 0x2000/2:
-			return readinputport(4 + (offset & 1));
+			return input_port_read_indexed(machine, 4 + (offset & 1));
 	}
 	logerror("%06X:standard_io_r - unknown read access to address %04X\n", activecpu_get_pc(), offset * 2);
 	return 0xffff;
@@ -297,11 +292,11 @@ static WRITE16_HANDLER( standard_io_w )
 		case 0x0000/2:
 			/* the port C handshaking signals control the Z80 NMI, */
 			/* so we have to sync whenever we access this PPI */
-			if (ACCESSING_LSB)
+			if (ACCESSING_BITS_0_7)
 				timer_call_after_resynch(NULL, ((offset & 3) << 8) | (data & 0xff), delayed_ppi8255_w);
 			return;
 	}
-	logerror("%06X:standard_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask ^ 0xffff);
+	logerror("%06X:standard_io_w - unknown write access to address %04X = %04X & %04X\n", activecpu_get_pc(), offset * 2, data, mem_mask);
 }
 
 
@@ -380,7 +375,7 @@ static WRITE8_HANDLER( tilemap_sound_w )
              0= Sound is disabled
              1= sound is enabled
     */
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 	segaic16_tilemap_set_colscroll(0, ~data & 0x04);
 	segaic16_tilemap_set_rowscroll(0, ~data & 0x02);
 }
@@ -396,7 +391,7 @@ static WRITE8_HANDLER( tilemap_sound_w )
 static READ8_HANDLER( sound_data_r )
 {
 	/* assert ACK */
-	ppi8255_set_portC(0, 0x00);
+	ppi8255_set_portC(device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255" ), 0x00);
 	return soundlatch_r(machine, offset);
 }
 
@@ -432,8 +427,8 @@ static WRITE8_HANDLER( n7751_control_w )
         D1 = /RESET line on 7751
         D0 = /IRQ line on 7751
     */
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
-	cpunum_set_input_line(Machine, 2, 0, (data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, 0, (data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
 	cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
 }
 
@@ -553,12 +548,12 @@ static void quartet_i8751_sim(running_machine *machine)
 	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 
 	/* X scroll values */
-	segaic16_textram_0_w(machine, 0xff8/2, workram[0x0d14/2], 0);
-	segaic16_textram_0_w(machine, 0xffa/2, workram[0x0d18/2], 0);
+	segaic16_textram_0_w(machine, 0xff8/2, workram[0x0d14/2], 0xffff);
+	segaic16_textram_0_w(machine, 0xffa/2, workram[0x0d18/2], 0xffff);
 
 	/* page values */
-	segaic16_textram_0_w(machine, 0xe9e/2, workram[0x0d1c/2], 0);
-	segaic16_textram_0_w(machine, 0xe9c/2, workram[0x0d1e/2], 0);
+	segaic16_textram_0_w(machine, 0xe9e/2, workram[0x0d1c/2], 0xffff);
+	segaic16_textram_0_w(machine, 0xe9c/2, workram[0x0d1e/2], 0xffff);
 }
 
 
@@ -580,25 +575,25 @@ static READ16_HANDLER( aceattaa_custom_io_r )
 				{
 					switch (video_control & 0xf)
 					{
-						case 0x00: return readinputportbytag("P1");
-						case 0x04: return readinputportbytag("ANALOGX1");
-						case 0x08: return readinputportbytag("ANALOGY1");
-						case 0x0c: return readinputportbytag("UNUSED");
+						case 0x00: return input_port_read(machine, "P1");
+						case 0x04: return input_port_read(machine, "ANALOGX1");
+						case 0x08: return input_port_read(machine, "ANALOGY1");
+						case 0x0c: return input_port_read(machine, "UNUSED");
 					}
 					break;
 				}
 
 				case 0x02:
-					return readinputportbytag("DIAL1") | (readinputportbytag("DIAL2") << 4);
+					return input_port_read(machine, "DIAL1") | (input_port_read(machine, "DIAL2") << 4);
 
 				case 0x03:
 				{
 					switch (video_control & 0xf)
 					{
-						case 0x00: return readinputportbytag("P2");
-						case 0x04: return readinputportbytag("ANALOGX2");
-						case 0x08: return readinputportbytag("ANALOGY2");
-						case 0x0c: return readinputportbytag("POW2");
+						case 0x00: return input_port_read(machine, "P2");
+						case 0x04: return input_port_read(machine, "ANALOGX2");
+						case 0x08: return input_port_read(machine, "ANALOGY2");
+						case 0x0c: return input_port_read(machine, "POW2");
 					}
 					break;
 				}
@@ -628,9 +623,9 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				/* upper bit of the trackball controls */
 				case 0:
 				{
-					UINT8 buttons = readinputportbytag("SERVICE");
-					UINT8 analog1 = readinputportbytag((video_control & 4) ? "ANALOGY1" : "ANALOGX1");
-					UINT8 analog2 = readinputportbytag((video_control & 4) ? "ANALOGY2" : "ANALOGX2");
+					UINT8 buttons = input_port_read(machine, "SERVICE");
+					UINT8 analog1 = input_port_read(machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
+					UINT8 analog2 = input_port_read(machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
 					buttons |= (analog1 & 0x80) >> 1;
 					buttons |= (analog2 & 0x80);
 					return buttons;
@@ -640,8 +635,8 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				/* player 1 select switch mapped to bit 7 */
 				case 1:
 				{
-					UINT8 buttons = readinputportbytag("BUTTONS1");
-					UINT8 analog = readinputportbytag((video_control & 4) ? "ANALOGY1" : "ANALOGX1");
+					UINT8 buttons = input_port_read(machine, "BUTTONS1");
+					UINT8 analog = input_port_read(machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
 					return (buttons & 0x80) | (analog & 0x7f);
 				}
 
@@ -649,13 +644,13 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				case 2:
 				{
 					if (video_control & 4)
-						return (readinputportbytag("ANALOGZ1") >> 4) | (readinputportbytag("ANALOGZ2") & 0xf0);
+						return (input_port_read(machine, "ANALOGZ1") >> 4) | (input_port_read(machine, "ANALOGZ2") & 0xf0);
 					else
 					{
 						static UINT8 last_buttons1 = 0;
 						static UINT8 last_buttons2 = 0;
-						UINT8 buttons1 = readinputportbytag("BUTTONS1");
-						UINT8 buttons2 = readinputportbytag("BUTTONS2");
+						UINT8 buttons1 = input_port_read(machine, "BUTTONS1");
+						UINT8 buttons2 = input_port_read(machine, "BUTTONS2");
 
 						if (!(buttons1 & 0x01))
 							last_buttons1 = 0;
@@ -683,8 +678,8 @@ static READ16_HANDLER( mjleague_custom_io_r )
 				/* player 2 select switch mapped to bit 7 */
 				case 3:
 				{
-					UINT8 buttons = readinputportbytag("BUTTONS2");
-					UINT8 analog = readinputportbytag((video_control & 4) ? "ANALOGY2" : "ANALOGX2");
+					UINT8 buttons = input_port_read(machine, "BUTTONS2");
+					UINT8 analog = input_port_read(machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
 					return (buttons & 0x80) | (analog & 0x7f);
 				}
 			}
@@ -714,10 +709,10 @@ static READ16_HANDLER( pshot16a_custom_io_r )
 				case 1:
 					switch ((read_port++)&3)
 					{
-						case 0: return readinputportbytag("P1");
-						case 1: return readinputportbytag("P2");
-						case 2: return readinputportbytag("P3");
-						case 3: return readinputportbytag("P4");
+						case 0: return input_port_read(machine, "P1");
+						case 1: return input_port_read(machine, "P2");
+						case 2: return input_port_read(machine, "P3");
+						case 3: return input_port_read(machine, "P4");
 					}
 
 					break;
@@ -740,8 +735,8 @@ static READ16_HANDLER( sdi_custom_io_r )
 		case 0x1000/2:
 			switch (offset & 3)
 			{
-				case 1:	return readinputportbytag((video_control & 4) ? "ANALOGY1" : "ANALOGX1");
-				case 3:	return readinputportbytag((video_control & 4) ? "ANALOGY2" : "ANALOGX2");
+				case 1:	return input_port_read(machine, (video_control & 4) ? "ANALOGY1" : "ANALOGX1");
+				case 3:	return input_port_read(machine, (video_control & 4) ? "ANALOGY2" : "ANALOGX2");
 			}
 			break;
 	}
@@ -765,12 +760,12 @@ static READ16_HANDLER( sjryuko_custom_io_r )
 			switch (offset & 3)
 			{
 				case 1:
-					if (readinputportbytag_safe(portname[mj_input_num], 0xff) != 0xff)
+					if (input_port_read_safe(machine, portname[mj_input_num], 0xff) != 0xff)
 						return 0xff & ~(1 << mj_input_num);
 					return 0xff;
 
 				case 2:
-					return readinputportbytag_safe(portname[mj_input_num], 0xff);
+					return input_port_read_safe(machine, portname[mj_input_num], 0xff);
 			}
 			break;
 	}
@@ -811,10 +806,10 @@ static NVRAM_HANDLER( system16a )
 static ADDRESS_MAP_START( system16a_map, ADDRESS_SPACE_PROGRAM, 16 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_MIRROR(0x380000) AM_ROM
-	AM_RANGE(0x400000, 0x407fff) AM_MIRROR(0xb88000) AM_READWRITE(SMH_RAM, segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
-	AM_RANGE(0x410000, 0x410fff) AM_MIRROR(0xb8f000) AM_READWRITE(SMH_RAM, segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
+	AM_RANGE(0x400000, 0x407fff) AM_MIRROR(0xb88000) AM_RAM_WRITE(segaic16_tileram_0_w) AM_BASE(&segaic16_tileram_0)
+	AM_RANGE(0x410000, 0x410fff) AM_MIRROR(0xb8f000) AM_RAM_WRITE(segaic16_textram_0_w) AM_BASE(&segaic16_textram_0)
 	AM_RANGE(0x440000, 0x4407ff) AM_MIRROR(0x3bf800) AM_RAM AM_BASE(&segaic16_spriteram_0)
-	AM_RANGE(0x840000, 0x840fff) AM_MIRROR(0x3bf000) AM_READWRITE(SMH_RAM, segaic16_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x840000, 0x840fff) AM_MIRROR(0x3bf000) AM_RAM_WRITE(segaic16_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xc40000, 0xc43fff) AM_MIRROR(0x39c000) AM_READWRITE(misc_io_r, misc_io_w)
 	AM_RANGE(0xc60000, 0xc6ffff) AM_READ(watchdog_reset16_r)
 	AM_RANGE(0xc70000, 0xc73fff) AM_MIRROR(0x38c000) AM_RAM AM_BASE(&workram)
@@ -1791,6 +1786,9 @@ static MACHINE_DRIVER_START( system16a )
 
 	MDRV_MACHINE_RESET(system16a)
 	MDRV_NVRAM_HANDLER(system16a)
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( single_ppi_intf )
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -3179,7 +3177,7 @@ GAME( 1986, fantzone, 0,        system16a_no7751, fantzone, generic_16a, ROT0,  
 GAME( 1986, fantzon1, fantzone, system16a_no7751, fantzone, generic_16a, ROT0,   "Sega",           "Fantasy Zone (set 1, unprotected)", 0 )
 GAME( 1988, pshot16a, passsht,  system16a,        pshot16a, pshot16a,    ROT270, "Sega",           "Passing Shot (Japan, 4 Players, System 16A, FD1094 317-0071)", 0 )
 GAME( 1987, sdi,      0,        system16a_no7751, sdi,      sdi,         ROT0,   "Sega",           "SDI - Strategic Defense Initiative (Europe, System 16A, FD1089B 317-0027)", 0 )
-GAME( 1987, shinobi,  0,        system16a,        shinobi,  generic_16a, ROT0,   "Sega",           "Shinobi (set 5, System 16A, unprotected)", 0 )
+GAME( 1987, shinobi,  0,        system16a,        shinobi,  generic_16a, ROT0,   "Sega",           "Shinobi (set 6, System 16A, unprotected)", 0 )
 GAME( 1987, shinobi1, shinobi,  system16a,        shinobi,  generic_16a, ROT0,   "Sega",           "Shinobi (set 1, System 16A, FD1094 317-0050)", 0 )
 GAME( 1987, shinobls, shinobi,  system16a,        shinobi,  generic_16a, ROT0,   "[Sega] (Star bootleg)", "Shinobi (Star bootleg, System 16A)", 0 )
 GAME( 1987, sjryuko1, sjryuko,  system16a,        sjryuko,  sjryukoa,    ROT0,   "White Board",    "Sukeban Jansi Ryuko (set 1, System 16A, FD1089B 317-5021)", 0 )

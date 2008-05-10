@@ -91,7 +91,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/pokey.h"
 #include "cloud9.h"
 
@@ -228,7 +227,7 @@ static WRITE8_HANDLER( irq_ack_w )
 {
 	if (irq_state)
 	{
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 		irq_state = 0;
 	}
 }
@@ -248,7 +247,7 @@ static WRITE8_HANDLER( cloud9_coin_counter_w )
 
 static READ8_HANDLER( leta_r )
 {
-	return readinputport(3 + offset);
+	return input_port_read_indexed(machine, 3 + offset);
 }
 
 
@@ -307,7 +306,7 @@ static ADDRESS_MAP_START( cloud9_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5000, 0x53ff) AM_RAM AM_BASE(&spriteram)
 	AM_RANGE(0x5400, 0x547f) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x5480, 0x54ff) AM_WRITE(irq_ack_w)
-	AM_RANGE(0x5500, 0x557f) AM_READWRITE(SMH_RAM, cloud9_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0x5500, 0x557f) AM_RAM_WRITE(cloud9_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0x5580, 0x5587) AM_MIRROR(0x0078) AM_WRITE(cloud9_video_control_w)
 	AM_RANGE(0x5600, 0x5601) AM_MIRROR(0x0078) AM_WRITE(cloud9_coin_counter_w)
 	AM_RANGE(0x5602, 0x5603) AM_MIRROR(0x0078) AM_WRITE(cloud9_led_w)

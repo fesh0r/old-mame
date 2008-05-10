@@ -46,7 +46,7 @@ MACHINE_RESET( kyugo )
 
 WRITE8_HANDLER( kyugo_sub_cpu_control_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -58,9 +58,9 @@ WRITE8_HANDLER( kyugo_sub_cpu_control_w )
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
-	AM_RANGE(0x8000, 0x87ff) AM_READWRITE(SMH_RAM, kyugo_bgvideoram_w) AM_BASE(&kyugo_bgvideoram)
-	AM_RANGE(0x8800, 0x8fff) AM_READWRITE(SMH_RAM, kyugo_bgattribram_w) AM_BASE(&kyugo_bgattribram)
-	AM_RANGE(0x9000, 0x97ff) AM_READWRITE(SMH_RAM, kyugo_fgvideoram_w) AM_BASE(&kyugo_fgvideoram)
+	AM_RANGE(0x8000, 0x87ff) AM_RAM_WRITE(kyugo_bgvideoram_w) AM_BASE(&kyugo_bgvideoram)
+	AM_RANGE(0x8800, 0x8fff) AM_RAM_WRITE(kyugo_bgattribram_w) AM_BASE(&kyugo_bgattribram)
+	AM_RANGE(0x9000, 0x97ff) AM_RAM_WRITE(kyugo_fgvideoram_w) AM_BASE(&kyugo_fgvideoram)
 	AM_RANGE(0x9800, 0x9fff) AM_READWRITE(kyugo_spriteram_2_r, SMH_RAM) AM_BASE(&kyugo_spriteram_2)
 	AM_RANGE(0xa000, 0xa7ff) AM_RAM AM_BASE(&kyugo_spriteram_1)
 	AM_RANGE(0xa800, 0xa800) AM_WRITE(kyugo_scroll_x_lo_w)
@@ -479,8 +479,12 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_0_r,
-	input_port_1_r
+	input_port_1_r,
+	NULL,
+	NULL
 };
 
 
@@ -493,12 +497,12 @@ static const struct AY8910interface ay8910_interface =
 static MACHINE_DRIVER_START( gyrodine )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", Z80, 18432000 / 4)	/* 18.432 MHz crystal */
+	MDRV_CPU_ADD_TAG("main", Z80, XTAL_18_432MHz/6)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(main_map,0)
 	MDRV_CPU_IO_MAP(0,gyrodine_portmap)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
-	MDRV_CPU_ADD_TAG("sub", Z80, 18432000 / 4)	/* 18.432 MHz crystal */
+	MDRV_CPU_ADD_TAG("sub", Z80, XTAL_18_432MHz/6)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(gyrodine_sub_map,0)
 	MDRV_CPU_IO_MAP(gyrodine_sub_portmap,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,4)
@@ -525,11 +529,11 @@ static MACHINE_DRIVER_START( gyrodine )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_18_432MHz/12)  /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(AY8910, 1500000)
+	MDRV_SOUND_ADD(AY8910, XTAL_18_432MHz/12)  /* verified on pcb */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -1236,20 +1240,18 @@ ROM_END
 static DRIVER_INIT( gyrodine )
 {
 	/* add watchdog */
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xe000, 0, 0, watchdog_reset_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xe000, 0, 0, watchdog_reset_w);
 }
 
 
 static DRIVER_INIT( srdmissn )
 {
 	/* shared RAM is mapped at 0xe000 as well  */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xe7ff, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xe7ff, 0, 0, SMH_BANK1);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xe7ff, 0, 0, SMH_BANK1, SMH_BANK1);
 	memory_set_bankptr(1, shared_ram);
 
 	/* extra RAM on sub CPU  */
-	memory_install_read8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8800, 0x8fff, 0, 0, SMH_BANK2);
-	memory_install_write8_handler(1, ADDRESS_SPACE_PROGRAM, 0x8800, 0x8fff, 0, 0, SMH_BANK2);
+	memory_install_readwrite8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8800, 0x8fff, 0, 0, SMH_BANK2, SMH_BANK2);
 	memory_set_bankptr(2, auto_malloc(0x800));
 }
 

@@ -171,7 +171,7 @@ static WRITE16_HANDLER( color_ram_word_w )
 		g = (color_ram[offset] &0xff00) >> 8;
 		b = (color_ram[offset] &0xff);
 
-		palette_set_color(Machine,offset/2,MAKE_RGB(r,g,b));
+		palette_set_color(machine,offset/2,MAKE_RGB(r,g,b));
 	}
 }
 
@@ -202,8 +202,8 @@ static READ16_HANDLER( slapshot_service_input_r )
 	switch (offset)
 	{
 		case 0x03:
-			return ((input_port_3_word_r(machine,0,0) & 0xef) |
-				  (input_port_5_word_r(machine,0,0) & 0x10))  << 8;	/* IN3 + service switch */
+			return ((input_port_read_indexed(machine,3) & 0xef) |
+				  (input_port_read_indexed(machine,5) & 0x10))  << 8;	/* IN3 + service switch */
 
 		default:
 			return TC0640FIO_r(machine,offset) << 8;
@@ -212,13 +212,13 @@ static READ16_HANDLER( slapshot_service_input_r )
 
 static READ16_HANDLER( opwolf3_adc_r )
 {
-	return readinputport(6 + offset)<<8;
+	return input_port_read_indexed(machine, 6 + offset)<<8;
 }
 
 static WRITE16_HANDLER( opwolf3_adc_req_w )
 {
 	/* 4 writes a frame - one for each analogue port */
-	cpunum_set_input_line(Machine, 0,3,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,3,HOLD_LINE);
 }
 
 /*****************************************************
@@ -232,10 +232,15 @@ static void reset_sound_region(void)
 	memory_set_bankptr( 10, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
 }
 
+static STATE_POSTLOAD( slapshot_postload )
+{
+	reset_sound_region();
+}
+
 static MACHINE_START( slapshot )
 {
 	state_save_register_global(banknum);
-	state_save_register_func_postload(reset_sound_region);
+	state_save_register_postload(machine, slapshot_postload, NULL);
 }
 
 

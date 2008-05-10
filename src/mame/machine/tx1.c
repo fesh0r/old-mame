@@ -4,7 +4,6 @@
 
 ***************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
 #include "debugger.h"
 #include "machine/8255ppi.h"
 #include "tx1.h"
@@ -23,6 +22,7 @@
     Globals
 */
 static UINT16 *prom;
+static emu_timer *interrupt_timer;
 
 static struct
 {
@@ -65,7 +65,7 @@ INLINE UINT8 reverse_nibble(UINT8 nibble)
 static TIMER_CALLBACK( interrupt_callback )
 {
 	cpunum_set_input_line_and_vector(machine, 0, 0, HOLD_LINE, 0xff);
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), NULL, 0, interrupt_callback);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
 
 /*
@@ -1472,24 +1472,26 @@ MACHINE_RESET( tx1 )
  *************************************/
 MACHINE_START( tx1 )
 {
-	ppi8255_init(&tx1_ppi8255_intf);
-
 	/* Initialise for each game */
 	prom = (UINT16*)memory_region(REGION_USER1) + (0x8000 >> 1);
 
+	/* set a timer to run the interrupts */
+	interrupt_timer = timer_alloc(interrupt_callback, NULL);
+
 	/* /CUDISP CRTC interrupt */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), NULL, 0, interrupt_callback);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
 
 MACHINE_START( buggyboy )
 {
-	ppi8255_init(&buggyboy_ppi8255_intf);
-
 	/* Initialise for each game */
 	prom = (UINT16*)memory_region(REGION_USER1) + (0x8000 >> 1);
 
+	/* set a timer to run the interrupts */
+	interrupt_timer = timer_alloc(interrupt_callback, NULL);
+
 	/* /CUDISP CRTC interrupt */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), NULL, 0, interrupt_callback);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }
 
 MACHINE_START( buggybjr )
@@ -1497,6 +1499,9 @@ MACHINE_START( buggybjr )
 	/* Initialise for each game */
 	prom = (UINT16*)memory_region(REGION_USER1) + (0x8000 >> 1);
 
+	/* set a timer to run the interrupts */
+	interrupt_timer = timer_alloc(interrupt_callback, NULL);
+
 	/* /CUDISP CRTC interrupt */
-	timer_set(video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), NULL, 0, interrupt_callback);
+	timer_adjust_oneshot(interrupt_timer, video_screen_get_time_until_pos(machine->primary_screen, CURSOR_YPOS, CURSOR_XPOS), 0);
 }

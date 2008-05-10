@@ -25,7 +25,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/tms34010/34010ops.h"
 #include "cpu/tms32025/tms32025.h"
@@ -192,7 +191,7 @@ static WRITE16_HANDLER( nvram_thrash_w )
 static WRITE16_HANDLER( nvram_data_w )
 {
 	/* only the low 8 bits matter */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		if (nvram_write_enable)
 			generic_nvram16[offset] = data & 0xff;
@@ -221,7 +220,7 @@ static WRITE16_HANDLER( amerdart_misc_w )
 	coin_counter_w(0, ~data & 0x0001);
 	coin_counter_w(1, ~data & 0x0002);
 
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
 
 	/* bits 10-15 are counted down over time */
 	if (data & 0x0400) amerdart_iop_echo = 1;
@@ -255,20 +254,20 @@ static TIMER_CALLBACK( amerdart_iop_response )
 			break;
 
 		case 0x100:
-			iop_answer = (INT8)(-readinputportbytag("YAXIS2") - readinputportbytag("XAXIS2")) << 6;
+			iop_answer = (INT8)(-input_port_read(machine, "YAXIS2") - input_port_read(machine, "XAXIS2")) << 6;
 			break;
 		case 0x101:
-			iop_answer = (INT8)(-readinputportbytag("YAXIS2") + readinputportbytag("XAXIS2")) << 6;
+			iop_answer = (INT8)(-input_port_read(machine, "YAXIS2") + input_port_read(machine, "XAXIS2")) << 6;
 			break;
 		case 0x102:
-			iop_answer = (INT8)(-readinputportbytag("YAXIS1") - readinputportbytag("XAXIS1")) << 6;
+			iop_answer = (INT8)(-input_port_read(machine, "YAXIS1") - input_port_read(machine, "XAXIS1")) << 6;
 			break;
 		case 0x103:
-			iop_answer = (INT8)(-readinputportbytag("YAXIS1") + readinputportbytag("XAXIS1")) << 6;
+			iop_answer = (INT8)(-input_port_read(machine, "YAXIS1") + input_port_read(machine, "XAXIS1")) << 6;
 			break;
 
 		case 0x500:
-			iop_answer = readinputport(0);
+			iop_answer = input_port_read_indexed(machine, 0);
 			break;
 	}
 
@@ -298,7 +297,7 @@ static WRITE16_HANDLER( coolpool_misc_w )
 	coin_counter_w(0, ~data & 0x0001);
 	coin_counter_w(1, ~data & 0x0002);
 
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -331,7 +330,7 @@ static WRITE16_HANDLER( coolpool_iop_w )
 static READ16_HANDLER( coolpool_iop_r )
 {
 	logerror("%08x:IOP read %04x\n",activecpu_get_pc(),iop_answer);
-	cpunum_set_input_line(Machine, 0, 1, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 1, CLEAR_LINE);
 
 	return iop_answer;
 }
@@ -357,7 +356,7 @@ static WRITE16_HANDLER( dsp_answer_w )
 {
 	logerror("%08x:IOP answer %04x\n",activecpu_get_pc(),data);
 	iop_answer = data;
-	cpunum_set_input_line(Machine, 0, 1, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 1, ASSERT_LINE);
 }
 
 
@@ -420,9 +419,9 @@ static READ16_HANDLER( coolpool_input_r )
 	static UINT8 oldx, oldy;
 	static UINT16 lastresult;
 
-	int result = (readinputportbytag("IN1") & 0x00ff) | (lastresult & 0xff00);
-	UINT8 newx = readinputportbytag("XAXIS");
-	UINT8 newy = readinputportbytag("YAXIS");
+	int result = (input_port_read(machine, "IN1") & 0x00ff) | (lastresult & 0xff00);
+	UINT8 newx = input_port_read(machine, "XAXIS");
+	UINT8 newy = input_port_read(machine, "YAXIS");
 	int dx = (INT8)(newx - oldx);
 	int dy = (INT8)(newy - oldy);
 
@@ -490,7 +489,7 @@ static ADDRESS_MAP_START( amerdart_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000000, 0x000fffff) AM_RAM AM_BASE(&vram_base)
 	AM_RANGE(0x04000000, 0x0400000f) AM_WRITE(amerdart_misc_w)
 	AM_RANGE(0x05000000, 0x0500000f) AM_READWRITE(coolpool_iop_r, amerdart_iop_w)
-	AM_RANGE(0x06000000, 0x06007fff) AM_READWRITE(SMH_RAM, nvram_thrash_data_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x06000000, 0x06007fff) AM_RAM_WRITE(nvram_thrash_data_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xc0000000, 0xc00001ff) AM_READWRITE(tms34010_io_register_r, tms34010_io_register_w)
 	AM_RANGE(0xffb00000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0)
 ADDRESS_MAP_END
@@ -502,7 +501,7 @@ static ADDRESS_MAP_START( coolpool_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x02000000, 0x020000ff) AM_READWRITE(coolpool_iop_r, coolpool_iop_w)
 	AM_RANGE(0x03000000, 0x0300000f) AM_WRITE(coolpool_misc_w)
 	AM_RANGE(0x03000000, 0x03ffffff) AM_ROM AM_REGION(REGION_GFX1, 0)
-	AM_RANGE(0x06000000, 0x06007fff) AM_READWRITE(SMH_RAM, nvram_thrash_data_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x06000000, 0x06007fff) AM_RAM_WRITE(nvram_thrash_data_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xc0000000, 0xc00001ff) AM_READWRITE(tms34010_io_register_r, tms34010_io_register_w)
 	AM_RANGE(0xffe00000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0)
 ADDRESS_MAP_END
@@ -513,7 +512,7 @@ static ADDRESS_MAP_START( nballsht_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x02000000, 0x020000ff) AM_READWRITE(coolpool_iop_r, coolpool_iop_w)
 	AM_RANGE(0x03000000, 0x0300000f) AM_WRITE(coolpool_misc_w)
 	AM_RANGE(0x04000000, 0x040000ff) AM_READWRITE(tlc34076_lsb_r, tlc34076_lsb_w)	// IMSG176P-40
-	AM_RANGE(0x06000000, 0x0601ffff) AM_MIRROR(0x00020000) AM_READWRITE(SMH_RAM, nvram_thrash_data_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x06000000, 0x0601ffff) AM_MIRROR(0x00020000) AM_RAM_WRITE(nvram_thrash_data_w) AM_BASE(&generic_nvram16) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0xc0000000, 0xc00001ff) AM_READWRITE(tms34010_io_register_r, tms34010_io_register_w)
 	AM_RANGE(0xff000000, 0xff7fffff) AM_ROM AM_REGION(REGION_GFX1, 0)
 	AM_RANGE(0xffc00000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0)
@@ -935,7 +934,7 @@ ROM_END
 
 static DRIVER_INIT( coolpool )
 {
-	memory_install_read16_handler(1, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, coolpool_input_r);
+	memory_install_read16_handler(machine, 1, ADDRESS_SPACE_IO, 0x07, 0x07, 0, 0, coolpool_input_r);
 }
 
 

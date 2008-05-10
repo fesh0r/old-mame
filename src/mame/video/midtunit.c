@@ -5,7 +5,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "profiler.h"
 #include "cpu/tms34010/tms34010.h"
 #include "cpu/tms34010/34010ops.h"
@@ -156,16 +155,16 @@ WRITE16_HANDLER( midtunit_vram_w )
 	offset *= 2;
 	if (videobank_select)
 	{
-		if (ACCESSING_LSB)
+		if (ACCESSING_BITS_0_7)
 			local_videoram[offset] = (data & 0xff) | ((dma_register[DMA_PALETTE] & 0xff) << 8);
-		if (ACCESSING_MSB)
+		if (ACCESSING_BITS_8_15)
 			local_videoram[offset + 1] = ((data >> 8) & 0xff) | (dma_register[DMA_PALETTE] & 0xff00);
 	}
 	else
 	{
-		if (ACCESSING_LSB)
+		if (ACCESSING_BITS_0_7)
 			local_videoram[offset] = (local_videoram[offset] & 0xff) | ((data & 0xff) << 8);
-		if (ACCESSING_MSB)
+		if (ACCESSING_BITS_8_15)
 			local_videoram[offset + 1] = (local_videoram[offset + 1] & 0xff) | (data & 0xff00);
 	}
 }
@@ -174,9 +173,9 @@ WRITE16_HANDLER( midtunit_vram_w )
 WRITE16_HANDLER( midtunit_vram_data_w )
 {
 	offset *= 2;
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		local_videoram[offset] = (data & 0xff) | ((dma_register[DMA_PALETTE] & 0xff) << 8);
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		local_videoram[offset + 1] = ((data >> 8) & 0xff) | (dma_register[DMA_PALETTE] & 0xff00);
 }
 
@@ -184,9 +183,9 @@ WRITE16_HANDLER( midtunit_vram_data_w )
 WRITE16_HANDLER( midtunit_vram_color_w )
 {
 	offset *= 2;
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		local_videoram[offset] = (local_videoram[offset] & 0xff) | ((data & 0xff) << 8);
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		local_videoram[offset + 1] = (local_videoram[offset + 1] & 0xff) | (data & 0xff00);
 }
 
@@ -299,7 +298,7 @@ WRITE16_HANDLER( midtunit_paletteram_w )
 
 	COMBINE_DATA(&paletteram16[offset]);
 	newword = paletteram16[offset];
-	palette_set_color_rgb(Machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
+	palette_set_color_rgb(machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
 
@@ -685,7 +684,7 @@ WRITE16_HANDLER( midtunit_dma_w )
 
 	/* high bit triggers action */
 	command = dma_register[DMA_COMMAND];
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	if (!(command & 0x8000))
 		return;
 

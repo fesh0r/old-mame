@@ -173,7 +173,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6800/m6800.h"
 #include "sound/namco.h"
 
@@ -194,7 +193,7 @@ VIDEO_UPDATE( pacland );
 static WRITE8_HANDLER( pacland_subreset_w )
 {
 	int bit = !BIT(offset,11);
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, bit ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( pacland_flipscreen_w )
@@ -210,8 +209,8 @@ static READ8_HANDLER( pacland_input_r )
 {
 	int shift = 4 * (offset & 1);
 	int port = offset & 2;
-	int r = ( readinputport( port+0 ) << shift ) & 0xf0;
-	r |= ( readinputport( port+1 ) >> (4-shift) ) & 0x0f;
+	int r = ( input_port_read_indexed(machine,  port+0 ) << shift ) & 0xf0;
+	r |= ( input_port_read_indexed(machine,  port+1 ) >> (4-shift) ) & 0x0f;
 	return r;
 }
 
@@ -233,7 +232,7 @@ static WRITE8_HANDLER( pacland_irq_1_ctrl_w )
 	int bit = !BIT(offset,11);
 	cpu_interrupt_enable(0,bit);
 	if (!bit)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( pacland_irq_2_ctrl_w )
@@ -241,14 +240,14 @@ static WRITE8_HANDLER( pacland_irq_2_ctrl_w )
 	int bit = !BIT(offset,13);
 	cpu_interrupt_enable(1,bit);
 	if (!bit)
-		cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 }
 
 
 
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x0000, 0x0fff) AM_READWRITE(SMH_RAM, pacland_videoram_w) AM_BASE(&pacland_videoram)
-	AM_RANGE(0x1000, 0x1fff) AM_READWRITE(SMH_RAM, pacland_videoram2_w) AM_BASE(&pacland_videoram2)
+	AM_RANGE(0x0000, 0x0fff) AM_RAM_WRITE(pacland_videoram_w) AM_BASE(&pacland_videoram)
+	AM_RANGE(0x1000, 0x1fff) AM_RAM_WRITE(pacland_videoram2_w) AM_BASE(&pacland_videoram2)
 	AM_RANGE(0x2000, 0x37ff) AM_RAM AM_BASE(&pacland_spriteram)
 	AM_RANGE(0x3800, 0x3801) AM_WRITE(pacland_scroll0_w)
 	AM_RANGE(0x3a00, 0x3a01) AM_WRITE(pacland_scroll1_w)

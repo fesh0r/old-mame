@@ -48,7 +48,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
 
@@ -83,7 +82,7 @@ static WRITE8_HANDLER( exctsccr_DAC_data_w )
 
 static WRITE8_HANDLER( exctsccr_mcu_halt_w )
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_HALT, (data & 1) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_HALT, (data & 1) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /***************************************************************************
@@ -96,8 +95,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x5fff) AM_ROM
 	AM_RANGE(0x6000, 0x63ff) AM_RAM AM_SHARE(1)
 	AM_RANGE(0x7c00, 0x7fff) AM_RAM
-	AM_RANGE(0x8000, 0x83ff) AM_RAM AM_WRITE(exctsccr_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x8400, 0x87ff) AM_RAM AM_WRITE(exctsccr_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x8000, 0x83ff) AM_RAM_WRITE(exctsccr_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x8400, 0x87ff) AM_RAM_WRITE(exctsccr_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x8800, 0x8bff) AM_RAM AM_BASE(&spriteram_2) /* ??? */
 	AM_RANGE(0xa000, 0xa000) AM_READ(input_port_0_r)
 	AM_RANGE(0xa000, 0xa000) AM_WRITENOP	/* ??? toggled twice at end of irq handler */
@@ -147,8 +146,8 @@ static ADDRESS_MAP_START( bl_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x7000, 0x7000) AM_WRITE(AY8910_write_port_0_w)
 	AM_RANGE(0x7001, 0x7001) AM_WRITE(AY8910_control_port_0_w)
 
-	AM_RANGE(0x8000, 0x83ff) AM_RAM AM_WRITE(exctsccr_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0x8400, 0x87ff) AM_RAM AM_WRITE(exctsccr_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0x8000, 0x83ff) AM_RAM_WRITE(exctsccr_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0x8400, 0x87ff) AM_RAM_WRITE(exctsccr_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x8800, 0x8fff) AM_RAM AM_BASE(&spriteram_2) /* ??? */
 
 	AM_RANGE(0xa000, 0xa000) AM_WRITENOP	/* ??? */

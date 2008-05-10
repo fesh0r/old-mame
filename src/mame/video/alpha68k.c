@@ -5,7 +5,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 
 static tilemap *fix_tilemap;
 static int bank_base,flipscreen;
@@ -38,7 +37,7 @@ WRITE16_HANDLER( alpha68k_paletteram_w )
 	g = ((newword >> 3) & 0x1e) | ((newword >> 13) & 0x01);
 	b = ((newword << 1) & 0x1e) | ((newword >> 12) & 0x01);
 
-	palette_set_color_rgb(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+	palette_set_color_rgb(machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 /******************************************************************************/
@@ -56,8 +55,8 @@ static TILE_GET_INFO( get_tile_info )
 WRITE16_HANDLER( alpha68k_videoram_w )
 {
 	/* Doh. */
-	if(ACCESSING_LSB)
-		if(ACCESSING_MSB)
+	if(ACCESSING_BITS_0_7)
+		if(ACCESSING_BITS_8_15)
 			videoram16[offset] = data;
 		else
 			videoram16[offset] = data & 0xff;

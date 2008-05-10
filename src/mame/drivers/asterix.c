@@ -10,7 +10,6 @@ colour, including the word "Konami"
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -68,7 +67,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 8  is EEPROM data */
 	/* bit 9  is EEPROM ready */
 	/* bit 10 is service button */
-	res = (EEPROM_read_bit()<<8) | input_port_1_word_r(machine,0,0);
+	res = (EEPROM_read_bit()<<8) | input_port_read_indexed(machine,1);
 
 	if (init_eeprom_count)
 	{
@@ -90,7 +89,7 @@ static READ16_HANDLER( control2_r )
 
 static WRITE16_HANDLER( control2_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		cur_control2 = data;
 		/* bit 0 is data */
@@ -189,7 +188,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x1807ff) AM_READWRITE(K053245_word_r, K053245_word_w)
 	AM_RANGE(0x180800, 0x180fff) AM_RAM								// extra RAM, or mirror for the above?
 	AM_RANGE(0x200000, 0x20000f) AM_READWRITE(K053244_word_r, K053244_word_w)
-	AM_RANGE(0x280000, 0x280fff) AM_READWRITE(SMH_RAM, paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x280000, 0x280fff) AM_RAM_WRITE(paletteram16_xBBBBBGGGGGRRRRR_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x300000, 0x30001f) AM_READWRITE(K053244_lsb_r, K053244_lsb_w)
 	AM_RANGE(0x380000, 0x380001) AM_READ(input_port_0_word_r)
 	AM_RANGE(0x380002, 0x380003) AM_READ(control1_r)

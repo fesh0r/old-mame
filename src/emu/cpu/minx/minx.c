@@ -47,7 +47,6 @@ TODO:
 
 #include "minx.h"
 #include "debugger.h"
-#include "deprecat.h"
 
 #define FLAG_I  0x80
 #define FLAG_D  0x40
@@ -90,8 +89,8 @@ typedef struct {
 static minx_regs regs;
 static int minx_icount;
 
-#define rd(offset)	program_read_byte_8( offset )
-#define wr(offset,data)	program_write_byte_8( offset, data )
+#define rd(offset)	program_read_byte_8be( offset )
+#define wr(offset,data)	program_write_byte_8be( offset, data )
 #define minx_PC		( ( regs.PC & 0x8000 ) ? ( regs.V << 15 ) | (regs.PC & 0x7FFF ) : regs.PC )
 
 INLINE UINT16 rd16( UINT32 offset ) {

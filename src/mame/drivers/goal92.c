@@ -29,7 +29,7 @@ static int msm5205next;
 
 static WRITE16_HANDLER( goal92_sound_command_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		soundlatch_w(machine, 0, (data >> 8) & 0xff);
 		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
@@ -41,15 +41,15 @@ static READ16_HANDLER( goal92_inputs_r )
 	switch(offset)
 	{
 		case 0:
-			return readinputport(0);
+			return input_port_read_indexed(machine, 0);
 		case 1:
-			return readinputport(1);
+			return input_port_read_indexed(machine, 1);
 		case 2:
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 		case 3:
-			return readinputport(3);
+			return input_port_read_indexed(machine, 3);
 		case 7:
-			return readinputport(4);
+			return input_port_read_indexed(machine, 4);
 
 		default:
 			logerror("reading unhandled goal92 inputs %04X %04X @ PC = %04X\n",offset, mem_mask,activecpu_get_pc());
@@ -240,10 +240,11 @@ static void irqhandler(int irq)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,
-	0,
-	0,
-	0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
 	irqhandler
 };
 

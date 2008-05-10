@@ -370,10 +370,10 @@ WRITE16_HANDLER( genesis_vdp_w )
 	{
 		case 0x00:	/* Write data */
 		case 0x01:
-			if (mem_mask)
+			if (mem_mask != 0xffff)
 			{
-				data &= ~mem_mask;
-				 if (ACCESSING_MSB)
+				data &= mem_mask;
+				 if (ACCESSING_BITS_8_15)
 				 	data |= data >> 8;
 				 else
 				 	data |= data << 8;
@@ -383,10 +383,10 @@ WRITE16_HANDLER( genesis_vdp_w )
 
 		case 0x02:	/* Control Write */
 		case 0x03:
-			if (mem_mask)
+			if (mem_mask != 0xffff)
 			{
-				data &= ~mem_mask;
-				 if (ACCESSING_MSB)
+				data &= mem_mask;
+				 if (ACCESSING_BITS_8_15)
 				 	data |= data >> 8;
 				 else
 				 	data |= data << 8;
@@ -398,7 +398,7 @@ WRITE16_HANDLER( genesis_vdp_w )
 		case 0x09:
 		case 0x0a:
 		case 0x0b:
-			if (ACCESSING_LSB && sndti_exists(SOUND_SN76496, 0))
+			if (ACCESSING_BITS_0_7 && sndti_exists(SOUND_SN76496, 0))
 				SN76496_0_w(machine, 0, data & 0xff);
 			break;
 	}

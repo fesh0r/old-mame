@@ -95,7 +95,7 @@ WRITE16_HANDLER( taitob_v_control_w )
 
 	COMBINE_DATA (&TC0180VCU_ctrl[offset]);
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		switch(offset)
 		{
@@ -143,7 +143,7 @@ WRITE16_HANDLER( hitice_pixelram_w )
 
   COMBINE_DATA(&taitob_pixelram[offset]);
 
-  if (ACCESSING_LSB)
+  if (ACCESSING_BITS_0_7)
   {
     /* bit 15 of pixel_scroll[0] is probably flip screen */
 
@@ -162,7 +162,7 @@ static void hitice_clear_pixel_bitmap(running_machine *machine)
 	int i;
 
     for (i = 0;i < 0x40000;i++)
-		hitice_pixelram_w(machine,i,0,0);
+		hitice_pixelram_w(machine,i,0,0xffff);
 }
 
 static TILE_GET_INFO( get_bg_tile_info )
@@ -320,9 +320,9 @@ WRITE16_HANDLER( TC0180VCU_framebuffer_word_w )
   int sy = offset >> 8;
   int sx = 2*(offset & 0xff);
 
-  if (ACCESSING_MSB)
+  if (ACCESSING_BITS_8_15)
 	*BITMAP_ADDR16(framebuffer[sy >> 8], sy & 0xff, sx + 0) = data >> 8;
-  if (ACCESSING_LSB)
+  if (ACCESSING_BITS_0_7)
 	*BITMAP_ADDR16(framebuffer[sy >> 8], sy & 0xff, sx + 1) = data & 0xff;
 }
 

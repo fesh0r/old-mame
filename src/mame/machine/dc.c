@@ -5,7 +5,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "debugger.h"
 #include "dc.h"
 #include "cpu/sh4/sh4.h"
@@ -142,7 +141,7 @@ INLINE int decode_reg_64(UINT32 offset, UINT64 mem_mask, UINT64 *shift)
 	*shift = 0;
 
 	// non 32-bit accesses have not yet been seen here, we need to know when they are
-	if ((mem_mask != U64(0x00000000ffffffff)) && (mem_mask != U64(0xffffffff00000000)))
+	if ((mem_mask != U64(0xffffffff00000000)) && (mem_mask != U64(0x00000000ffffffff)))
 	{
 		mame_printf_verbose("Wrong mask! (PC=%x)\n", activecpu_get_pc());
 		#ifdef ENABLE_DEBUGGER
@@ -150,7 +149,7 @@ INLINE int decode_reg_64(UINT32 offset, UINT64 mem_mask, UINT64 *shift)
 		#endif
 	}
 
-	if (mem_mask == U64(0x00000000ffffffff))
+	if (mem_mask == U64(0xffffffff00000000))
 	{
 		reg++;
 		*shift = 32;
@@ -446,7 +445,7 @@ WRITE64_HANDLER( dc_maple_w )
 									maple0x86data2[3] = maple0x86data2[3] | 0x0c;
 									maple0x86data2[6] = maple0x86data2[6] & 0xcf;
 
-									a = readinputportbytag("IN0"); // put keys here
+									a = input_port_read(machine, "IN0"); // put keys here
 									maple0x86data2[6] = maple0x86data2[6] | (a << 4);
 									pos = 0x11;
 									tocopy = 17;
@@ -524,10 +523,10 @@ WRITE64_HANDLER( dc_maple_w )
 												// first function
 												maple0x86data2[pos+ 9]=1; // report
 												maple0x86data2[pos+10]=0; // bits TEST TILT1 TILT2 TILT3 ? ? ? ?
-												maple0x86data2[pos+11]=readinputportbytag("IN1"); // bits 1Pstart 1Pservice 1Pup 1Pdown 1Pleft 1Pright 1Ppush1 1Ppush2
-												maple0x86data2[pos+12]=readinputportbytag("IN2"); // bits 1Ppush3 1Ppush4 1Ppush5 1Ppush6 1Ppush7 1Ppush8 ...
-												maple0x86data2[pos+13]=readinputportbytag("IN3"); // bits 2Pstart 2Pservice 2Pup 2Pdown 2Pleft 2Pright 2Ppush1 2Ppush2
-												maple0x86data2[pos+14]=readinputportbytag("IN4"); // bits 2Ppush3 2Ppush4 2Ppush5 2Ppush6 2Ppush7 2Ppush8 ...
+												maple0x86data2[pos+11]=input_port_read(machine, "IN1"); // bits 1Pstart 1Pservice 1Pup 1Pdown 1Pleft 1Pright 1Ppush1 1Ppush2
+												maple0x86data2[pos+12]=input_port_read(machine, "IN2"); // bits 1Ppush3 1Ppush4 1Ppush5 1Ppush6 1Ppush7 1Ppush8 ...
+												maple0x86data2[pos+13]=input_port_read(machine, "IN3"); // bits 2Pstart 2Pservice 2Pup 2Pdown 2Pleft 2Pright 2Ppush1 2Ppush2
+												maple0x86data2[pos+14]=input_port_read(machine, "IN4"); // bits 2Ppush3 2Ppush4 2Ppush5 2Ppush6 2Ppush7 2Ppush8 ...
 												// second function
 												maple0x86data2[pos+15]=1; // report
 												maple0x86data2[pos+16]=(dc_coin_counts[0] >> 8) & 0xff; // 1CONDITION, 1SLOT COIN(bit13-8)
@@ -633,7 +632,7 @@ READ64_HANDLER( dc_gdrom_r )
 {
 	UINT32 off;
 
-	if ((int)mem_mask & 1)
+	if ((int)~mem_mask & 1)
 	{
 		off=(offset << 1) | 1;
 	}
@@ -654,7 +653,7 @@ WRITE64_HANDLER( dc_gdrom_w )
 {
 	UINT32 dat,off;
 
-	if ((int)mem_mask & 1)
+	if ((int)~mem_mask & 1)
 	{
 		dat=(UINT32)(data >> 32);
 		off=(offset << 1) | 1;
@@ -745,6 +744,14 @@ READ64_HANDLER( dc_modem_r )
 	UINT64 shift;
 
 	reg = decode_reg_64(offset, mem_mask, &shift);
+
+	// from ElSemi: this makes Atomiswave do it's "verbose boot" with a Sammy logo and diagnostics instead of just running the cart.
+	// our PVR emulation is apparently not good enough for that to work yet though.
+	if ((reg == 0x280/4) && (mem_mask == U64(0x00000000ffffffff)))
+	{
+		return 1;
+	}
+
 	mame_printf_verbose("MODEM:  Unmapped read %08x\n", 0x600000+reg*4);
 	return 0;
 }
@@ -842,7 +849,7 @@ READ64_HANDLER( dc_aica_reg_r )
 
 //  mame_printf_verbose("AICA REG: [%08x] read %llx, mask %llx\n", 0x700000+reg*4, (UINT64)offset, mem_mask);
 
-	return (UINT64) AICA_0_r(machine, offset*2, 0x0000)<<shift;
+	return (UINT64) AICA_0_r(machine, offset*2, 0xffff)<<shift;
 }
 
 WRITE64_HANDLER( dc_aica_reg_w )
@@ -859,12 +866,12 @@ WRITE64_HANDLER( dc_aica_reg_w )
 		if (dat & 1)
 		{
 			/* halt the ARM7 */
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 		}
 		else
 		{
 			/* it's alive ! */
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
 		}
         }
 
@@ -875,7 +882,7 @@ WRITE64_HANDLER( dc_aica_reg_w )
 
 READ32_HANDLER( dc_arm_aica_r )
 {
-	return AICA_0_r(machine, offset*2, 0x0000);
+	return AICA_0_r(machine, offset*2, 0xffff);
 }
 
 WRITE32_HANDLER( dc_arm_aica_w )

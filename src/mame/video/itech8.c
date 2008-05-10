@@ -88,7 +88,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/tms34061.h"
 #include "video/tlc34076.h"
 #include "cpu/m6809/m6809.h"
@@ -470,7 +469,7 @@ READ8_HANDLER( itech8_blitter_r )
 	/* a read from offset 3 clears the interrupt and returns the status */
 	if (offset == 3)
 	{
-		itech8_update_interrupts(Machine, -1, -1, 0);
+		itech8_update_interrupts(machine, -1, -1, 0);
 		if (blit_in_progress)
 			result |= 0x80;
 		else
@@ -479,7 +478,7 @@ READ8_HANDLER( itech8_blitter_r )
 
 	/* a read from offsets 12-15 return input port values */
 	if (offset >= 12 && offset <= 15)
-		result = readinputport(3 + offset - 12);
+		result = input_port_read_indexed(machine, 3 + offset - 12);
 
 	return result;
 }

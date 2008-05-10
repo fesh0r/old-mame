@@ -156,7 +156,7 @@ UINT16* mcatadv_vidregs;
 
 static READ16_HANDLER( mcatadv_dsw_r )
 {
-	return readinputport(2+offset) << 8;
+	return input_port_read_indexed(machine, 2+offset) << 8;
 }
 
 static WRITE16_HANDLER( mcat_soundlatch_w )
@@ -168,7 +168,7 @@ static WRITE16_HANDLER( mcat_soundlatch_w )
 #if 0 // mcat only.. install read handler?
 static WRITE16_HANDLER( mcat_coin_w )
 {
-	if(ACCESSING_MSB16)
+	if(ACCESSING_BITS_8_15)
 	{
 		coin_counter_w(0, data & 0x1000);
 		coin_counter_w(1, data & 0x2000);

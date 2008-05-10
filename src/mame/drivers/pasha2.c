@@ -72,7 +72,6 @@ Notes:
 *********************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
 
@@ -114,10 +113,10 @@ static WRITE16_HANDLER( pasha2_palette_w )
 	offset &= 0xff;
 
 	color = (paletteram16[offset] >> 8) | (paletteram16[offset+0x100] & 0xff00);
-	palette_set_color_rgb(Machine,offset*2+0,pal5bit(color),pal5bit(color >> 5),pal5bit(color >> 10));
+	palette_set_color_rgb(machine,offset*2+0,pal5bit(color),pal5bit(color >> 5),pal5bit(color >> 10));
 
 	color = (paletteram16[offset] & 0xff) | ((paletteram16[offset+0x100] & 0xff) << 8);
-	palette_set_color_rgb(Machine,offset*2+1,pal5bit(color),pal5bit(color >> 5),pal5bit(color >> 10));
+	palette_set_color_rgb(machine,offset*2+1,pal5bit(color),pal5bit(color >> 5),pal5bit(color >> 10));
 }
 
 static WRITE16_HANDLER( vbuffer_set_w )
@@ -140,17 +139,17 @@ static WRITE16_HANDLER( bitmap_1_w )
 	// handle overlapping pixels without writing them
 	switch(mem_mask)
 	{
-		case 0:
-			bitmap_1_w(machine,offset,data,0x00ff);
+		case 0xffff:
 			bitmap_1_w(machine,offset,data,0xff00);
+			bitmap_1_w(machine,offset,data,0x00ff);
 			return;
 
-		case 0x00ff:
+		case 0xff00:
 			if((data & 0xff00) == 0xff00)
 				return;
 		break;
 
-		case 0xff00:
+		case 0x00ff:
 			if((data & 0x00ff) == 0x00ff)
 				return;
 		break;
@@ -216,8 +215,8 @@ static WRITE16_HANDLER( pasha2_lamps_w )
 
 static ADDRESS_MAP_START( pasha2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000000, 0x001fffff) AM_RAM	AM_BASE(&wram)
-	AM_RANGE(0x40000000, 0x4001ffff) AM_RAM AM_WRITE(bitmap_0_w)
-	AM_RANGE(0x40020000, 0x4003ffff) AM_RAM AM_WRITE(bitmap_1_w)
+	AM_RANGE(0x40000000, 0x4001ffff) AM_RAM_WRITE(bitmap_0_w)
+	AM_RANGE(0x40020000, 0x4003ffff) AM_RAM_WRITE(bitmap_1_w)
 	AM_RANGE(0x40060000, 0x40060001) AM_WRITENOP
 	AM_RANGE(0x40064000, 0x40064001) AM_WRITENOP
 	AM_RANGE(0x40068000, 0x40068001) AM_WRITENOP
@@ -226,7 +225,7 @@ static ADDRESS_MAP_START( pasha2_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x40074000, 0x40074001) AM_WRITE(vbuffer_set_w)
 	AM_RANGE(0x40078000, 0x40078001) AM_WRITENOP //once at startup -> to disable the eeprom?
 	AM_RANGE(0x80000000, 0x803fffff) AM_ROMBANK(1)
-	AM_RANGE(0xe0000000, 0xe00003ff) AM_RAM AM_WRITE(pasha2_palette_w) AM_BASE(&paletteram16) //tilemap? palette?
+	AM_RANGE(0xe0000000, 0xe00003ff) AM_RAM_WRITE(pasha2_palette_w) AM_BASE(&paletteram16) //tilemap? palette?
 	AM_RANGE(0xfff80000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1,0)
 ADDRESS_MAP_END
 
@@ -457,7 +456,7 @@ static READ16_HANDLER( pasha2_speedup_r )
 
 static DRIVER_INIT( pasha2 )
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x95744, 0x95747, 0, 0, pasha2_speedup_r );
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x95744, 0x95747, 0, 0, pasha2_speedup_r );
 
 	memory_set_bankptr(1, memory_region(REGION_USER2));
 }

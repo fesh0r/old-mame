@@ -83,7 +83,7 @@ static WRITE16_HANDLER( sshangha_protection16_w )
 
 	if (offset == (0x260 >> 1)) {
 		//soundlatch_w(0,data&0xff);
-		//cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		//cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -99,11 +99,11 @@ static READ16_HANDLER( sshangha_protection16_r )
 	switch (offset)
 	{
 		case 0x050 >> 1: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (readinputport(0) + (readinputport(1) << 8));
+			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
 		case 0x76a >> 1: /* Credits */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 		case 0x0ac >> 1: /* DIPS */
-			return (readinputport(3) + (readinputport(4) << 8));
+			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
 
 		// Protection TODO
 	}
@@ -117,11 +117,11 @@ static READ16_HANDLER( sshanghb_protection16_r )
 	switch (offset)
 	{
 		case 0x050 >> 1: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (readinputport(0) + (readinputport(1) << 8));
+			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
 		case 0x76a >> 1: /* Credits */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 		case 0x0ac >> 1: /* DIPS */
-			return (readinputport(3) + (readinputport(4) << 8));
+			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
 	}
 	return sshangha_prot_data[offset];
 }
@@ -142,7 +142,7 @@ static MACHINE_RESET( sshangha )
          orientation when entering the "test mode"
          (check the game code from 0x0006b8 to 0x0006f0).
        I can't tell however if this is accurate or not. */
-	sshangha_control_0_w(machine, 0, 0x10, 0xff00);
+	sshangha_control_0_w(machine, 0, 0x10, 0x00ff);
 }
 
 /******************************************************************************/
@@ -334,7 +334,12 @@ static void irqhandler(int state)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,irqhandler
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
+	irqhandler
 };
 
 static MACHINE_DRIVER_START( sshangha )

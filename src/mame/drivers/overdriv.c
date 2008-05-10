@@ -55,25 +55,25 @@ static READ16_HANDLER( K051316_rom_1_msb_r )
 
 static WRITE16_HANDLER( K051316_0_msb_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K051316_0_w(machine,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_1_msb_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K051316_1_w(machine,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_ctrl_0_msb_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K051316_ctrl_0_w(machine,offset,data >> 8);
 }
 
 static WRITE16_HANDLER( K051316_ctrl_1_msb_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		K051316_ctrl_1_w(machine,offset,data >> 8);
 }
 
@@ -129,7 +129,7 @@ static READ16_HANDLER( eeprom_r )
 
 //logerror("%06x eeprom_r\n",activecpu_get_pc());
 	/* bit 6 is EEPROM data */
-	res = (EEPROM_read_bit() << 6) | input_port_0_word_r(machine,0,0);
+	res = (EEPROM_read_bit() << 6) | input_port_read_indexed(machine,0);
 
 	return res;
 }
@@ -137,7 +137,7 @@ static READ16_HANDLER( eeprom_r )
 static WRITE16_HANDLER( eeprom_w )
 {
 //logerror("%06x: write %04x to eeprom_w\n",activecpu_get_pc(),data);
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 is data */
 		/* bit 1 is clock (active high) */
@@ -172,10 +172,10 @@ static MACHINE_RESET( overdriv )
 
 static WRITE16_HANDLER( cpuA_ctrl_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 probably enables the second 68000 */
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 
 		/* bit 1 is clear during service mode - function unknown */
 
@@ -199,7 +199,7 @@ static WRITE16_HANDLER( cpuB_ctrl_w )
 {
 	COMBINE_DATA(&cpuB_ctrl);
 
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 0 = enable sprite ROM reading */
 		K053246_set_OBJCHA_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
@@ -237,17 +237,17 @@ static READ16_HANDLER( overdriv_sound_1_r )
 
 static WRITE16_HANDLER( overdriv_soundirq_w )
 {
-	cpunum_set_input_line(Machine, 2,M6809_IRQ_LINE,HOLD_LINE);
+	cpunum_set_input_line(machine, 2,M6809_IRQ_LINE,HOLD_LINE);
 }
 
 static WRITE16_HANDLER( overdriv_cpuB_irq5_w )
 {
-	cpunum_set_input_line(Machine, 1,5,HOLD_LINE);
+	cpunum_set_input_line(machine, 1,5,HOLD_LINE);
 }
 
 static WRITE16_HANDLER( overdriv_cpuB_irq6_w )
 {
-	cpunum_set_input_line(Machine, 1,6,HOLD_LINE);
+	cpunum_set_input_line(machine, 1,6,HOLD_LINE);
 }
 
 

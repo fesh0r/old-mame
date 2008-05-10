@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/okim6295.h"
@@ -76,7 +75,7 @@ ADDRESS_MAP_END
 
 static WRITE16_HANDLER( bigkarnk_sound_command_w )
 {
-	if (ACCESSING_LSB){
+	if (ACCESSING_BITS_0_7){
 		soundlatch_w(machine,0,data & 0xff);
 		cpunum_set_input_line(machine, 1,M6809_FIRQ_LINE,HOLD_LINE);
 	}
@@ -84,7 +83,7 @@ static WRITE16_HANDLER( bigkarnk_sound_command_w )
 
 static WRITE16_HANDLER( bigkarnk_coin_w )
 {
-	if (ACCESSING_LSB){
+	if (ACCESSING_BITS_0_7){
 		switch ((offset >> 3)){
 			case 0x00:	/* Coin Lockouts */
 			case 0x01:
@@ -302,7 +301,7 @@ static WRITE16_HANDLER( OKIM6295_bankswitch_w )
 {
 	UINT8 *RAM = memory_region(REGION_SOUND1);
 
-	if (ACCESSING_LSB){
+	if (ACCESSING_BITS_0_7){
 		memcpy(&RAM[0x30000], &RAM[0x40000 + (data & 0x0f)*0x10000], 0x10000);
 	}
 }

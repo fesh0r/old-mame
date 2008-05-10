@@ -52,7 +52,7 @@ static READ16_HANDLER( m68k_shared_word_r )
 
 static WRITE16_HANDLER( m68k_shared_word_w )
 {
-	if (ACCESSING_LSB16)
+	if (ACCESSING_BITS_0_7)
 		m68k_shared_ram[offset] = data & 0xff;
 }
 
@@ -150,22 +150,22 @@ static UINT8 fix_input1(UINT8 in1, UINT8 in2)
 
 static READ8_HANDLER( dsw0_r )
 {
-	return fix_input0(readinputport(0), readinputport(1));
+	return fix_input0(input_port_read_indexed(machine, 0), input_port_read_indexed(machine, 1));
 }
 
 static READ8_HANDLER( dsw1_r )
 {
-	return fix_input1(readinputport(0), readinputport(1));
+	return fix_input1(input_port_read_indexed(machine, 0), input_port_read_indexed(machine, 1));
 }
 
 static READ8_HANDLER( input0_r )
 {
-	return fix_input0(readinputport(2), readinputport(3));
+	return fix_input0(input_port_read_indexed(machine, 2), input_port_read_indexed(machine, 3));
 }
 
 static READ8_HANDLER( input1_r )
 {
-	return fix_input1(readinputport(2), readinputport(3));
+	return fix_input1(input_port_read_indexed(machine, 2), input_port_read_indexed(machine, 3));
 }
 
 static READ8_HANDLER( readFF )
@@ -177,9 +177,9 @@ static READ8_HANDLER( readFF )
 
 static ADDRESS_MAP_START( m6809_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x17ff) AM_RAM
-	AM_RANGE(0x1800, 0x1bff) AM_READWRITE(SMH_RAM, tceptor_tile_ram_w) AM_BASE(&tceptor_tile_ram)
-	AM_RANGE(0x1c00, 0x1fff) AM_READWRITE(SMH_RAM, tceptor_tile_attr_w) AM_BASE(&tceptor_tile_attr)
-	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(SMH_RAM, tceptor_bg_ram_w) AM_BASE(&tceptor_bg_ram)	// background (VIEW RAM)
+	AM_RANGE(0x1800, 0x1bff) AM_RAM_WRITE(tceptor_tile_ram_w) AM_BASE(&tceptor_tile_ram)
+	AM_RANGE(0x1c00, 0x1fff) AM_RAM_WRITE(tceptor_tile_attr_w) AM_BASE(&tceptor_tile_attr)
+	AM_RANGE(0x2000, 0x3fff) AM_RAM_WRITE(tceptor_bg_ram_w) AM_BASE(&tceptor_bg_ram)	// background (VIEW RAM)
 	AM_RANGE(0x4000, 0x43ff) AM_READWRITE(namcos1_cus30_r, namcos1_cus30_w)
 	AM_RANGE(0x4800, 0x4800) AM_WRITE(SMH_NOP)				// 3D scope left/right?
 	AM_RANGE(0x4f00, 0x4f00) AM_READ(SMH_NOP)				// unknown

@@ -50,7 +50,6 @@ Notes:
 *********************************************************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/okim6295.h"
 #include "sound/2413intf.h"
@@ -310,7 +309,7 @@ static WRITE8_HANDLER( dunhuang_paldata_w )
 {
 	dunhuang_paldata[dunhuang_paloffs] = data;
 
-	palette_set_color_rgb( Machine, dunhuang_paloffs/3,
+	palette_set_color_rgb( machine, dunhuang_paloffs/3,
 		pal6bit(dunhuang_paldata[(dunhuang_paloffs/3)*3+0]),
 		pal6bit(dunhuang_paldata[(dunhuang_paloffs/3)*3+1]),
 		pal6bit(dunhuang_paldata[(dunhuang_paloffs/3)*3+2])
@@ -345,7 +344,7 @@ static UINT8 dunhuang_hopper;
 static WRITE8_HANDLER( dunhuang_input_w )	{	dunhuang_input = data;	}
 static READ8_HANDLER( dunhuang_service_r )
 {
-	return readinputport(5)
+	return input_port_read_indexed(machine, 5)
 	 | ((dunhuang_hopper && !(video_screen_get_frame_number(machine->primary_screen)%10)) ? 0x00 : 0x08)	// bit 3: hopper sensor
 	 | 0x80																// bit 7 low -> tiles block transferrer busy
 	;
@@ -353,21 +352,21 @@ static READ8_HANDLER( dunhuang_service_r )
 
 static READ8_HANDLER( dunhuang_dsw_r )
 {
-	if (!(dunhuang_input & 0x01))	return readinputport(0);
-	if (!(dunhuang_input & 0x02))	return readinputport(1);
-	if (!(dunhuang_input & 0x04))	return readinputport(2);
-	if (!(dunhuang_input & 0x08))	return readinputport(3);
-	if (!(dunhuang_input & 0x10))	return readinputport(4);
+	if (!(dunhuang_input & 0x01))	return input_port_read_indexed(machine, 0);
+	if (!(dunhuang_input & 0x02))	return input_port_read_indexed(machine, 1);
+	if (!(dunhuang_input & 0x04))	return input_port_read_indexed(machine, 2);
+	if (!(dunhuang_input & 0x08))	return input_port_read_indexed(machine, 3);
+	if (!(dunhuang_input & 0x10))	return input_port_read_indexed(machine, 4);
 	logerror("%06x: warning, unknown dsw bits read, dunhuang_input = %02x\n", activecpu_get_pc(), dunhuang_input);
 	return 0xff;
 }
 static READ8_HANDLER( dunhuang_input_r )
 {
-	if (!(dunhuang_input & 0x01))	return readinputport(6);
-	if (!(dunhuang_input & 0x02))	return readinputport(7);
-	if (!(dunhuang_input & 0x04))	return readinputport(8);
-	if (!(dunhuang_input & 0x08))	return readinputport(9);
-	if (!(dunhuang_input & 0x10))	return readinputport(10);
+	if (!(dunhuang_input & 0x01))	return input_port_read_indexed(machine, 6);
+	if (!(dunhuang_input & 0x02))	return input_port_read_indexed(machine, 7);
+	if (!(dunhuang_input & 0x04))	return input_port_read_indexed(machine, 8);
+	if (!(dunhuang_input & 0x08))	return input_port_read_indexed(machine, 9);
+	if (!(dunhuang_input & 0x10))	return input_port_read_indexed(machine, 10);
 	logerror("%06x: warning, unknown input bits read, dunhuang_input = %02x\n", activecpu_get_pc(), dunhuang_input);
 	return 0xff;
 }
@@ -666,9 +665,11 @@ GFXDECODE_END
 
 static const struct AY8910interface dunhuang_ay8910_interface =
 {
-//  A                   B
-	0,					dunhuang_dsw_r,	// R
-	dunhuang_input_w,	0				// W
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	//  A                   B
+	NULL,					dunhuang_dsw_r,	// R
+	dunhuang_input_w,		NULL			// W
 };
 
 static MACHINE_DRIVER_START( dunhuang )

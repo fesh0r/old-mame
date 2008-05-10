@@ -248,7 +248,7 @@ static WRITE32_HANDLER( eeprom_data_w )
 {
 	if (eeprom_enabled)
 	{
-		mem_mask |= 0xffffff00;
+		mem_mask &= 0x000000ff;
 		COMBINE_DATA(generic_nvram32 + offset);
 		eeprom_enabled = 0;
 	}
@@ -270,19 +270,19 @@ static WRITE32_HANDLER( eeprom_enable_w )
 
 static READ32_HANDLER( input_0_r )
 {
-	return readinputport(0);
+	return input_port_read_indexed(machine, 0);
 }
 
 
 static READ32_HANDLER( input_1_r )
 {
-	return readinputport(1);
+	return input_port_read_indexed(machine, 1);
 }
 
 
 static READ32_HANDLER( input_2_r )
 {
-	int result = readinputport(2);
+	int result = input_port_read_indexed(machine, 2);
 	if (atarigen_sound_to_cpu_ready) result ^= 0x10;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x20;
 	return result;
@@ -291,7 +291,7 @@ static READ32_HANDLER( input_2_r )
 
 static READ32_HANDLER( input_3_r )
 {
-	return readinputport(3);
+	return input_port_read_indexed(machine, 3);
 }
 
 
@@ -304,13 +304,13 @@ static READ32_HANDLER( input_3_r )
 
 static READ32_HANDLER( sound_data_r )
 {
-	return atarigen_sound_r(machine,offset,0);
+	return atarigen_sound_r(machine,offset,0xffff);
 }
 
 
 static WRITE32_HANDLER( sound_data_w )
 {
-	if (ACCESSING_LSB32)
+	if (ACCESSING_BITS_0_7)
 		atarigen_sound_w(machine,offset, data, mem_mask);
 }
 
@@ -345,7 +345,7 @@ static WRITE32_HANDLER( coin_count_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00000000, 0x0001ffff) AM_RAM AM_BASE(&ram_base)
 	AM_RANGE(0x01800000, 0x01bfffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_BASE(&rom_base)
-	AM_RANGE(0x40000000, 0x400007ff) AM_READWRITE(SMH_RAM, eeprom_data_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
+	AM_RANGE(0x40000000, 0x400007ff) AM_RAM_WRITE(eeprom_data_w) AM_BASE(&generic_nvram32) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x41000000, 0x41000003) AM_READWRITE(sound_data_r, sound_data_w)
 	AM_RANGE(0x41000100, 0x41000103) AM_READ(interrupt_control_r)
 	AM_RANGE(0x41000100, 0x4100011f) AM_WRITE(interrupt_control_w)
@@ -359,7 +359,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x41000500, 0x41000503) AM_WRITE(eeprom_enable_w)
 	AM_RANGE(0x41000600, 0x41000603) AM_WRITE(beathead_finescroll_w)
 	AM_RANGE(0x41000700, 0x41000703) AM_WRITE(watchdog_reset32_w)
-	AM_RANGE(0x42000000, 0x4201ffff) AM_READWRITE(SMH_RAM, beathead_palette_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x42000000, 0x4201ffff) AM_RAM_WRITE(beathead_palette_w) AM_BASE(&paletteram32)
 	AM_RANGE(0x43000000, 0x43000007) AM_READWRITE(beathead_hsync_ram_r, beathead_hsync_ram_w)
 	AM_RANGE(0x8df80000, 0x8df80003) AM_READ(SMH_NOP)	/* noisy x4 during scanline int */
 	AM_RANGE(0x8f380000, 0x8f3fffff) AM_WRITE(beathead_vram_latch_w)
@@ -536,8 +536,8 @@ static DRIVER_INIT( beathead )
 	atarijsa3_init_adpcm(REGION_SOUND1);
 
 	/* prepare the speedups */
-	speedup_data = memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000ae8, 0x00000aeb, 0, 0, speedup_r);
-	movie_speedup_data = memory_install_read32_handler(0, ADDRESS_SPACE_PROGRAM, 0x00000804, 0x00000807, 0, 0, movie_speedup_r);
+	speedup_data = memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000ae8, 0x00000aeb, 0, 0, speedup_r);
+	movie_speedup_data = memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000804, 0x00000807, 0, 0, movie_speedup_r);
 }
 
 

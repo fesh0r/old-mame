@@ -105,8 +105,8 @@ WRITE8_HANDLER (st0016_palette_ram_w)
 	st0016_paletteram[ST0016_PAL_BANK_SIZE*st0016_pal_bank+offset]=data;
 	val=st0016_paletteram[color*2]+(st0016_paletteram[color*2+1]<<8);
 	if(!color)
-		palette_set_color_rgb(Machine,UNUSED_PEN,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10)); /* same as color 0 - bg ? */
-	palette_set_color_rgb(Machine,color,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10));
+		palette_set_color_rgb(machine,UNUSED_PEN,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10)); /* same as color 0 - bg ? */
+	palette_set_color_rgb(machine,color,pal5bit(val >> 0),pal5bit(val >> 5),pal5bit(val >> 10));
 }
 
 READ8_HANDLER(st0016_character_ram_r)
@@ -117,7 +117,7 @@ READ8_HANDLER(st0016_character_ram_r)
 WRITE8_HANDLER(st0016_character_ram_w)
 {
 	st0016_charram[ST0016_CHAR_BANK_SIZE*st0016_char_bank+offset]=data;
-	decodechar(Machine->gfx[st0016_ramgfx], st0016_char_bank,(UINT8 *) st0016_charram);
+	decodechar(machine->gfx[st0016_ramgfx], st0016_char_bank,(UINT8 *) st0016_charram);
 }
 
 READ8_HANDLER(st0016_vregs_r)
@@ -418,16 +418,16 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 	}
 }
 
-static void st0016_postload(void)
+static STATE_POSTLOAD( st0016_postload )
 {
 	int i;
-	st0016_rom_bank_w(Machine,0,st0016_rom_bank);
+	st0016_rom_bank_w(machine,0,st0016_rom_bank);
 	for(i=0;i<ST0016_MAX_CHAR_BANK;i++)
-		decodechar(Machine->gfx[st0016_ramgfx], i,(UINT8 *) st0016_charram);
+		decodechar(machine->gfx[st0016_ramgfx], i,(UINT8 *) st0016_charram);
 }
 
 
-void st0016_save_init(void)
+void st0016_save_init(running_machine *machine)
 {
 	state_save_register_global(st0016_spr_bank);
 	state_save_register_global(st0016_spr2_bank);
@@ -438,7 +438,7 @@ void st0016_save_init(void)
 	state_save_register_global_pointer(st0016_charram, ST0016_MAX_CHAR_BANK*ST0016_CHAR_BANK_SIZE);
 	state_save_register_global_pointer(st0016_paletteram, ST0016_MAX_PAL_BANK*ST0016_PAL_BANK_SIZE);
 	state_save_register_global_pointer(st0016_spriteram, ST0016_MAX_SPR_BANK*ST0016_SPR_BANK_SIZE);
-	state_save_register_func_postload(st0016_postload);
+	state_save_register_postload(machine, st0016_postload, NULL);
 }
 
 
@@ -499,7 +499,7 @@ VIDEO_START( st0016 )
 
 	}
 
-	st0016_save_init();
+	st0016_save_init(machine);
 }
 
 
@@ -670,7 +670,7 @@ VIDEO_UPDATE( st0016 )
 	{
 		if(ISMACS1)
 		{
-			if(!(readinputportbytag("SYS1")&1))	//fake coins - MACS2 system
+			if(!(input_port_read(screen->machine, "SYS1")&1))	//fake coins - MACS2 system
 			{
 				macs_ram2[0]++;
 			}

@@ -101,7 +101,7 @@ static INTERRUPT_GEN( nemesis_interrupt )
 
 static WRITE16_HANDLER( salamand_soundlatch_word_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		soundlatch_w(machine,offset,data & 0xff);
 		cpunum_set_input_line(machine, 1,0,HOLD_LINE);
 	}
@@ -141,7 +141,7 @@ static INTERRUPT_GEN( gx400_interrupt )
 
 static WRITE16_HANDLER( gx400_irq1_enable_word_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		irq1_on = data & 0x0001;
 /*  else
 logerror("irq1en = %08x\n",data);*/
@@ -149,7 +149,7 @@ logerror("irq1en = %08x\n",data);*/
 
 static WRITE16_HANDLER( gx400_irq2_enable_word_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		irq2_on = data & 0x0001;
 /*  else
 logerror("irq2en = %08x\n",data);*/
@@ -157,7 +157,7 @@ logerror("irq2en = %08x\n",data);*/
 
 static WRITE16_HANDLER( gx400_irq4_enable_word_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		irq4_on = data & 0x0100;
 /*  else
 logerror("irq4en = %08x\n",data);*/
@@ -172,7 +172,7 @@ static READ16_HANDLER( gx400_sharedram_word_r )
 
 static WRITE16_HANDLER( gx400_sharedram_word_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		gx400_shared_ram[offset] = data;
 }
 
@@ -192,19 +192,19 @@ static INTERRUPT_GEN( blkpnthr_interrupt )
 
 static WRITE16_HANDLER( nemesis_irq_enable_word_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		irq_on = data & 0xff;
 }
 
 static WRITE16_HANDLER( konamigt_irq_enable_word_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		irq_on = data & 0xff;
 }
 
 static WRITE16_HANDLER( konamigt_irq2_enable_word_w )
 {
-	if(ACCESSING_LSB)
+	if(ACCESSING_BITS_0_7)
 		irq2_on = data & 0xff;
 }
 
@@ -217,8 +217,8 @@ static READ16_HANDLER( konamigt_input_word_r )
     bit 12-15: accel
 */
 
-	int data=readinputport(7);
-	int data2=readinputport(6);
+	int data=input_port_read_indexed(machine, 7);
+	int data2=input_port_read_indexed(machine, 6);
 
 	int ret=0x0000;
 
@@ -238,17 +238,17 @@ static UINT16 hcrash_selected_ip;
 
 static WRITE16_HANDLER( selected_ip_w )
 {
-	if (ACCESSING_LSB) hcrash_selected_ip = data & 0xff;	// latch the value
+	if (ACCESSING_BITS_0_7) hcrash_selected_ip = data & 0xff;	// latch the value
 }
 
 static READ16_HANDLER( selected_ip_r )
 {
 	switch (hcrash_selected_ip & 0xf)
 	{												// From WEC Le Mans Schems:
-		case 0xc:  return input_port_8_r(machine,offset);	// Accel - Schems: Accelevr
-		case 0:    return input_port_8_r(machine,offset);
-		case 0xd:  return input_port_9_r(machine,offset);	// Wheel - Schems: Handlevr
-		case 1:    return input_port_9_r(machine,offset);
+		case 0xc:  return input_port_read_indexed(machine,8);	// Accel - Schems: Accelevr
+		case 0:    return input_port_read_indexed(machine,8);
+		case 0xd:  return input_port_read_indexed(machine,9);	// Wheel - Schems: Handlevr
+		case 1:    return input_port_read_indexed(machine,9);
 
 		default: return ~0;
 	}
@@ -256,7 +256,7 @@ static READ16_HANDLER( selected_ip_r )
 
 static WRITE16_HANDLER( nemesis_soundlatch_word_w )
 {
-	if(ACCESSING_LSB) {
+	if(ACCESSING_BITS_0_7) {
 		soundlatch_w(machine,offset,data & 0xff);
 	}
 }
@@ -801,7 +801,7 @@ static ADDRESS_MAP_START( hcrash_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x00ffff) AM_ROM
 	AM_RANGE(0x040000, 0x05ffff) AM_ROM
 	AM_RANGE(0x080000, 0x083fff) AM_RAM
-	AM_RANGE(0x090000, 0x091fff) AM_RAM AM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x090000, 0x091fff) AM_RAM_WRITE(salamander_palette_word_w) AM_BASE(&paletteram16)
 	AM_RANGE(0x0a0000, 0x0a0001) AM_WRITE(nemesis_irq_enable_word_w)          /* irq enable */
 	AM_RANGE(0x0c0000, 0x0c0001) AM_WRITE(salamand_soundlatch_word_w)
 	AM_RANGE(0x0c0002, 0x0c0003) AM_READ(input_port_4_word_r)
@@ -2091,13 +2091,20 @@ GFXDECODE_END
 
 static const struct AY8910interface ay8910_interface_1 =
 {
-	nemesis_portA_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	nemesis_portA_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface ay8910_interface_2 =
 {
-	0,
-	0,
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	NULL,
+	NULL,
 	k005289_control_A_w,
 	k005289_control_B_w
 };

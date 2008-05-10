@@ -203,7 +203,7 @@ extern UINT32* stv_vdp1_vram;
 /* stvinit.c */
 DRIVER_INIT( ic13 );
 NVRAM_HANDLER( stv );
-void install_stvbios_speedups(void);
+void install_stvbios_speedups(running_machine *machine);
 DRIVER_INIT(bakubaku);
 DRIVER_INIT(mausuke);
 DRIVER_INIT(puyosun);
@@ -507,7 +507,7 @@ static void system_reset()
 	/*Order is surely wrong but whatever...*/
 }
 
-static UINT8 stv_SMPC_r8 (int offset)
+static UINT8 stv_SMPC_r8 (running_machine *machine, int offset)
 {
 	int return_data;
 
@@ -518,13 +518,13 @@ static UINT8 stv_SMPC_r8 (int offset)
 		return_data = 0x20 ^ 0xff;
 
 	if (offset == 0x75)//PDR1 read
-		return_data = readinputport(0);
+		return_data = input_port_read_indexed(machine, 0);
 
 	if (offset == 0x77)//PDR2 read
 		return_data=  (0xfe | EEPROM_read_bit());
 
 //  if (offset == 0x33) //country code
-//      return_data = readinputport(7);
+//      return_data = input_port_read_indexed(machine, 7);
 
 	if (activecpu_get_pc()==0x060020E6) return_data = 0x10;//???
 
@@ -538,7 +538,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 {
 	mame_system_time systime;
 
-	mame_get_base_datetime(Machine, &systime);
+	mame_get_base_datetime(machine, &systime);
 
 //  if(LOG_SMPC) logerror ("8-bit SMPC Write to Offset %02x with Data %02x\n", offset, data);
 	smpc_ram[offset] = data;
@@ -630,7 +630,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 				if(LOG_SMPC) logerror ("SMPC: Slave OFF\n");
 				smpc_ram[0x5f]=0x03;
 				stv_enable_slave_sh2 = 0;
-				cpu_trigger(Machine, 1000);
+				cpu_trigger(machine, 1000);
 				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
 				break;
 			case 0x06:
@@ -683,7 +683,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 
 				smpc_ram[0x31]=0x00;  //?
 
-				//smpc_ram[0x33]=readinputport(7);
+				//smpc_ram[0x33]=input_port_read_indexed(machine, 7);
 
 				smpc_ram[0x35]=0x00;
 				smpc_ram[0x37]=0x00;
@@ -769,10 +769,10 @@ static READ32_HANDLER ( stv_SMPC_r32 )
 	/* registers are all byte accesses, convert here */
 	offset = offset << 2; // multiply offset by 4
 
-	if (!(mem_mask & 0xff000000))	{ byte = 0; readdata = stv_SMPC_r8(offset+byte) << 24; }
-	if (!(mem_mask & 0x00ff0000))	{ byte = 1; readdata = stv_SMPC_r8(offset+byte) << 16; }
-	if (!(mem_mask & 0x0000ff00))	{ byte = 2; readdata = stv_SMPC_r8(offset+byte) << 8;  }
-	if (!(mem_mask & 0x000000ff))	{ byte = 3; readdata = stv_SMPC_r8(offset+byte) << 0;  }
+	if (ACCESSING_BITS_24_31)	{ byte = 0; readdata = stv_SMPC_r8(machine, offset+byte) << 24; }
+	if (ACCESSING_BITS_16_23)	{ byte = 1; readdata = stv_SMPC_r8(machine, offset+byte) << 16; }
+	if (ACCESSING_BITS_8_15)	{ byte = 2; readdata = stv_SMPC_r8(machine, offset+byte) << 8;  }
+	if (ACCESSING_BITS_0_7)	{ byte = 3; readdata = stv_SMPC_r8(machine, offset+byte) << 0;  }
 
 	return readdata;
 }
@@ -785,16 +785,16 @@ static WRITE32_HANDLER ( stv_SMPC_w32 )
 	/* registers are all byte accesses, convert here so we can use the data more easily later */
 	offset = offset << 2; // multiply offset by 4
 
-	if (!(mem_mask & 0xff000000))	{ byte = 0; writedata = data >> 24; }
-	if (!(mem_mask & 0x00ff0000))	{ byte = 1; writedata = data >> 16; }
-	if (!(mem_mask & 0x0000ff00))	{ byte = 2; writedata = data >> 8;  }
-	if (!(mem_mask & 0x000000ff))	{ byte = 3; writedata = data >> 0;  }
+	if (ACCESSING_BITS_24_31)	{ byte = 0; writedata = data >> 24; }
+	if (ACCESSING_BITS_16_23)	{ byte = 1; writedata = data >> 16; }
+	if (ACCESSING_BITS_8_15)	{ byte = 2; writedata = data >> 8;  }
+	if (ACCESSING_BITS_0_7)	{ byte = 3; writedata = data >> 0;  }
 
 	writedata &= 0xff;
 
 	offset += byte;
 
-	stv_SMPC_w8(Machine, offset,writedata);
+	stv_SMPC_w8(machine, offset,writedata);
 }
 
 
@@ -942,9 +942,6 @@ static const UINT8 port_ad[] =
 
 static UINT8 port_sel,mux_data;
 
-#define HI_WORD_ACCESS (mem_mask & 0x00ff0000) == 0
-#define LO_WORD_ACCESS (mem_mask & 0x000000ff) == 0
-
 static READ32_HANDLER ( stv_io_r32 )
 {
 	static int i= -1;
@@ -955,36 +952,36 @@ static READ32_HANDLER ( stv_io_r32 )
 		case 0:
 		switch(port_sel)
 		{
-			case 0x77: return 0xff000000|(readinputport(2) << 16) |0x0000ff00|(readinputport(3));
+			case 0x77: return 0xff000000|(input_port_read_indexed(machine, 2) << 16) |0x0000ff00|(input_port_read_indexed(machine, 3));
 			case 0x67:
 			{
 				switch(mux_data)
 				{
 					/*Mahjong panel interface,bit wise(ACTIVE LOW)*/
-					case 0xfe:	return 0xff000000 | (readinputport(7)  << 16) | 0x0000ff00 | (readinputport(12));
-					case 0xfd:  return 0xff000000 | (readinputport(8)  << 16) | 0x0000ff00 | (readinputport(13));
-					case 0xfb:	return 0xff000000 | (readinputport(9)  << 16) | 0x0000ff00 | (readinputport(14));
-					case 0xf7:	return 0xff000000 | (readinputport(10) << 16) | 0x0000ff00 | (readinputport(15));
-					case 0xef:  return 0xff000000 | (readinputport(11) << 16) | 0x0000ff00 | (readinputport(16));
+					case 0xfe:	return 0xff000000 | (input_port_read_indexed(machine, 7)  << 16) | 0x0000ff00 | (input_port_read_indexed(machine, 12));
+					case 0xfd:  return 0xff000000 | (input_port_read_indexed(machine, 8)  << 16) | 0x0000ff00 | (input_port_read_indexed(machine, 13));
+					case 0xfb:	return 0xff000000 | (input_port_read_indexed(machine, 9)  << 16) | 0x0000ff00 | (input_port_read_indexed(machine, 14));
+					case 0xf7:	return 0xff000000 | (input_port_read_indexed(machine, 10) << 16) | 0x0000ff00 | (input_port_read_indexed(machine, 15));
+					case 0xef:  return 0xff000000 | (input_port_read_indexed(machine, 11) << 16) | 0x0000ff00 | (input_port_read_indexed(machine, 16));
 					/*Joystick panel*/
 					default:
 					//popmessage("%02x MUX DATA",mux_data);
-				    return (readinputport(2) << 16) | (readinputport(3));
+				    return (input_port_read_indexed(machine, 2) << 16) | (input_port_read_indexed(machine, 3));
 				}
 			}
 			case 0x47:
 			{
-				if ( strcmp(Machine->gamedrv->name,"critcrsh") == 0 )
+				if ( strcmp(machine->gamedrv->name,"critcrsh") == 0 )
 				{
 					int data1 = 0, data2 = 0;
 
 					/* Critter Crusher */
-					data1 = readinputport(7);
+					data1 = input_port_read_indexed(machine, 7);
 					data1 = BITSWAP8(data1, 2, 3, 0, 1, 6, 7, 5, 4) & 0xf3;
-					data1 |= (readinputport(2) & 1) ? 0x0 : 0x4;
-					data2 = readinputport(8);
+					data1 |= (input_port_read_indexed(machine, 2) & 1) ? 0x0 : 0x4;
+					data2 = input_port_read_indexed(machine, 8);
 					data2 = BITSWAP8(data2, 2, 3, 0, 1, 6, 7, 5, 4) & 0xf3;
-					data2 |= (readinputport(2) & 1) ? 0x0 : 0x4;
+					data2 |= (input_port_read_indexed(machine, 2) & 1) ? 0x0 : 0x4;
 
 					return 0xff000000 | data1 << 16 | 0x0000ff00 | data2;
 				}
@@ -992,21 +989,21 @@ static READ32_HANDLER ( stv_io_r32 )
 			//default:
 			default:
 			//popmessage("%02x PORT SEL",port_sel);
-			return (readinputport(2) << 16) | (readinputport(3));
+			return (input_port_read_indexed(machine, 2) << 16) | (input_port_read_indexed(machine, 3));
 		}
 		case 1:
-		if ( strcmp(Machine->gamedrv->name,"critcrsh") == 0 )
+		if ( strcmp(machine->gamedrv->name,"critcrsh") == 0 )
 		{
-			return ((readinputport(4) << 16) & ((readinputport(2) & 1) ? 0xffef0000 : 0xffff0000)) | (ioga[1]);
+			return ((input_port_read_indexed(machine, 4) << 16) & ((input_port_read_indexed(machine, 2) & 1) ? 0xffef0000 : 0xffff0000)) | (ioga[1]);
 		}
 		else
 		{
-			return (readinputport(4) << 16) | (ioga[1]);
+			return (input_port_read_indexed(machine, 4) << 16) | (ioga[1]);
 		}
 		case 2:
 		switch(port_sel)
 		{
-			case 0x77:	return (readinputport(5) << 16) | (readinputport(6));
+			case 0x77:	return (input_port_read_indexed(machine, 5) << 16) | (input_port_read_indexed(machine, 6));
 			case 0x67:	return 0xffffffff;/**/
 			case 0x20:  return 0xffff0000 | (ioga[2] & 0xffff);
 			case 0x10:  return ((ioga[2] & 0xffff) << 16) | 0xffff;
@@ -1051,7 +1048,7 @@ static WRITE32_HANDLER ( stv_io_w32 )
 	switch(offset)
 	{
 		case 1:
-			if(LO_WORD_ACCESS)
+			if(ACCESSING_BITS_0_7)
 			{
 				/*Why does the BIOS tests these as ACTIVE HIGH?A program bug?*/
 				ioga[1] = (data) & 0xff;
@@ -1065,24 +1062,24 @@ static WRITE32_HANDLER ( stv_io_w32 )
 			}
 		break;
 		case 2:
-			if(HI_WORD_ACCESS)
+			if(ACCESSING_BITS_16_23)
 			{
 				ioga[2] = data >> 16;
 				mux_data = ioga[2];
 			}
-			else if(LO_WORD_ACCESS)
+			else if(ACCESSING_BITS_0_7)
 				ioga[2] = data;
 		break;
 		case 3:
-			if(HI_WORD_ACCESS)
+			if(ACCESSING_BITS_16_23)
 				ioga[3] = data;
 		break;
 		case 4:
-			if(HI_WORD_ACCESS)
+			if(ACCESSING_BITS_16_23)
 				port_sel = (data & 0xffff0000) >> 16;
 		break;
 		case 5:
-			if(HI_WORD_ACCESS)
+			if(ACCESSING_BITS_16_23)
 				ioga[5] = data;
 		break;
 	}
@@ -1295,14 +1292,14 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 				#if 0
 				if((scu_dst_0 & 0x7ffffff) != 0x05a00000)
 				{
 					if(!(stv_scu[40] & 0x1000))
 					{
-						cpunum_set_input_line_and_vector(Machine, 0, 3, HOLD_LINE, 0x4c);
+						cpunum_set_input_line_and_vector(machine, 0, 3, HOLD_LINE, 0x4c);
 						logerror("SCU: Illegal DMA interrupt\n");
 					}
 				}
@@ -1356,7 +1353,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 			}
 		}
@@ -1406,7 +1403,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 			/*Sound IRQ*/
 			if(/*(!(stv_scu[40] & 0x40)) &&*/ scsp_to_main_irq == 1)
 			{
-				//cpunum_set_input_line_and_vector(Machine, 0, 9, HOLD_LINE , 0x46);
+				//cpunum_set_input_line_and_vector(machine, 0, 9, HOLD_LINE , 0x46);
 				logerror("SCSP: Main CPU interrupt\n");
 			}
 		}
@@ -2052,7 +2049,7 @@ static WRITE32_HANDLER( minit_w )
 {
 	logerror("cpu #%d (PC=%08X) MINIT write = %08x\n",cpu_getactivecpu(), activecpu_get_pc(),data);
 	cpu_boost_interleave(minit_boost_timeslice, ATTOTIME_IN_USEC(minit_boost));
-	cpu_trigger(Machine, 1000);
+	cpu_trigger(machine, 1000);
 	cpunum_set_info_int(1, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
 
@@ -2476,7 +2473,7 @@ static WRITE32_HANDLER ( w60ffc44_write )
 {
 	COMBINE_DATA(&stv_workram_h[0xffc44/4]);
 
-	logerror("cpu #%d (PC=%08X): 60ffc44_write write = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), data, mem_mask ^ 0xffffffff);
+	logerror("cpu #%d (PC=%08X): 60ffc44_write write = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), data, mem_mask);
 	//sinit_w(offset,data,mem_mask);
 }
 
@@ -2484,7 +2481,7 @@ static WRITE32_HANDLER ( w60ffc48_write )
 {
 	COMBINE_DATA(&stv_workram_h[0xffc48/4]);
 
-	logerror("cpu #%d (PC=%08X): 60ffc48_write write = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), data, mem_mask ^ 0xffffffff);
+	logerror("cpu #%d (PC=%08X): 60ffc48_write write = %08X & %08X\n", cpu_getactivecpu(), activecpu_get_pc(), data, mem_mask);
 	//minit_w(offset,data,mem_mask);
 }
 
@@ -2508,13 +2505,13 @@ DRIVER_INIT ( stv )
 	stv_scu = auto_malloc (0x100);
 	scsp_regs = auto_malloc (0x1000);
 
-	install_stvbios_speedups();
+	install_stvbios_speedups(machine);
 
 	/* debug .. watch the command buffer rsgun, cottonbm etc. appear to use to communicate between cpus */
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc44, 0x60ffc47, 0, 0, w60ffc44_write );
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0x60ffc48, 0x60ffc4b, 0, 0, w60ffc48_write );
-	memory_install_write32_handler(1, ADDRESS_SPACE_PROGRAM, 0x60ffc44, 0x60ffc47, 0, 0, w60ffc44_write );
-	memory_install_write32_handler(1, ADDRESS_SPACE_PROGRAM, 0x60ffc48, 0x60ffc4b, 0, 0, w60ffc48_write );
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x60ffc44, 0x60ffc47, 0, 0, w60ffc44_write );
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x60ffc48, 0x60ffc4b, 0, 0, w60ffc48_write );
+	memory_install_write32_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x60ffc44, 0x60ffc47, 0, 0, w60ffc44_write );
+	memory_install_write32_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x60ffc48, 0x60ffc4b, 0, 0, w60ffc48_write );
 
   	smpc_ram[0x23] = DectoBCD(systime.local_time.year /100);
     smpc_ram[0x25] = DectoBCD(systime.local_time.year %100);
@@ -2524,7 +2521,7 @@ DRIVER_INIT ( stv )
     smpc_ram[0x2d] = DectoBCD(systime.local_time.minute);
     smpc_ram[0x2f] = DectoBCD(systime.local_time.second);
     smpc_ram[0x31] = 0x00; //CTG1=0 CTG0=0 (correct??)
-//  smpc_ram[0x33] = readinputport(7);
+//  smpc_ram[0x33] = input_port_read_indexed(machine, 7);
  	smpc_ram[0x5f] = 0x10;
 
  	#ifdef MAME_DEBUG

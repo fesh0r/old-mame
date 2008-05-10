@@ -39,12 +39,12 @@ static WRITE8_HANDLER( input_port_select_w )
 }
 
 
-static UINT8 difficulty_input_port_r(int bit)
+static UINT8 difficulty_input_port_r(running_machine *machine, int bit)
 {
 	UINT8 ret = 0;
 
 	/* read fake port and remap the buttons to 2 bits */
-	UINT8	raw = readinputportbytag("FAKE");
+	UINT8	raw = input_port_read(machine, "FAKE");
 
 	if (raw & (1 << (bit + 1)))
 		ret = 0x03;		/* expert */
@@ -63,12 +63,12 @@ static READ8_HANDLER( input_port_r )
 
 	switch (input_port_select)
 	{
-	case 0x01:	ret = readinputportbytag("IN0"); break;
-	case 0x02:	ret = readinputportbytag("IN1"); break;
-	case 0x04:	ret = (readinputportbytag("IN2") & 0xf0) |
-					   difficulty_input_port_r(0) |
-					  (difficulty_input_port_r(3) << 2); break;
-	case 0x08:	ret = readinputportbytag("IN3"); break;
+	case 0x01:	ret = input_port_read(machine, "IN0"); break;
+	case 0x02:	ret = input_port_read(machine, "IN1"); break;
+	case 0x04:	ret = (input_port_read(machine, "IN2") & 0xf0) |
+					   difficulty_input_port_r(machine, 0) |
+					  (difficulty_input_port_r(machine, 3) << 2); break;
+	case 0x08:	ret = input_port_read(machine, "IN3"); break;
 	case 0x10:
 	case 0x20:	break;	/* these two are not really used */
 	default: logerror("Unexpected port read: %02X\n", input_port_select);
@@ -107,8 +107,8 @@ static WRITE8_HANDLER( analog_reset_w )
 
 	analog_port_val = 0xff;
 
-	timer_adjust_oneshot(analog_timer_1, compute_duration(readinputportbytag("AN1")), 0x02);
-	timer_adjust_oneshot(analog_timer_2, compute_duration(readinputportbytag("AN2")), 0x01);
+	timer_adjust_oneshot(analog_timer_1, compute_duration(input_port_read(machine, "AN1")), 0x02);
+	timer_adjust_oneshot(analog_timer_2, compute_duration(input_port_read(machine, "AN2")), 0x01);
 }
 
 
@@ -132,22 +132,29 @@ static void create_analog_timers(void)
  *
  *************************************/
 
-static const ppi8255_interface ppi8255_intf =
+static const ppi8255_interface ppi8255_intf[2] =
 {
-	2, 							/* 2 chips */
-	{ 0, 0 },					/* Port A read */
-	{ 0, input_port_r },		/* Port B read */
-	{ 0, 0 },					/* Port C read */
-	{ 0, input_port_select_w },	/* Port A write */
-	{ 0, 0 },					/* Port B write */
-	{ 0, 0 /* sound effects */},/* Port C write */
+	{
+		NULL,					/* Port A read */
+		NULL,					/* Port B read */
+		NULL,					/* Port C read */
+		NULL,					/* Port A write */
+		NULL,					/* Port B write */
+		NULL					/* Port C write */
+	},
+	{
+		NULL,					/* Port A read */
+		input_port_r,			/* Port B read */
+		NULL,					/* Port C read */
+		input_port_select_w,	/* Port A write */
+		NULL,					/* Port B write */
+		NULL					/* sound effects, Port C write */
+	}
 };
 
 
 static MACHINE_START( clayshoo )
 {
-	ppi8255_init(&ppi8255_intf);
-
 	create_analog_timers();
 
 	/* register for state saving */
@@ -216,8 +223,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( main_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x20, 0x23) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
-	AM_RANGE(0x30, 0x33) AM_READWRITE(ppi8255_1_r, ppi8255_1_w)
+	AM_RANGE(0x20, 0x23) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x30, 0x33) AM_DEVREADWRITE(PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 
@@ -313,6 +320,11 @@ static MACHINE_DRIVER_START( clayshoo )
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( ppi8255_intf[0] )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( ppi8255_intf[1] )
 MACHINE_DRIVER_END
 
 

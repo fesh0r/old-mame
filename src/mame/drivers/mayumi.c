@@ -60,7 +60,7 @@ static READ8_HANDLER( key_matrix_r )
 	for (i=0; i<5; i++)
 	{
 		if (p & (1 << i))
-			ret &= readinputport(i+7-offset*5);
+			ret &= input_port_read_indexed(machine, i+7-offset*5);
 	}
 
 	return ret;
@@ -263,8 +263,15 @@ GFXDECODE_END
 
 static const struct YM2203interface ym2203_interface =
 {
-	input_port_0_r,
-	input_port_1_r
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		input_port_0_r,
+		input_port_1_r,
+		NULL,
+		NULL
+	},
+	NULL
 };
 
 static MACHINE_DRIVER_START( mayumi )

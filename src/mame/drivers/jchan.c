@@ -220,7 +220,7 @@ This will benefit galpani3 and other kaneko16 games with TOYBOX MCU.
 ***************************************************************************/
 static UINT16 *mcu_ram, jchan_mcu_com[4];
 
-static void jchan_mcu_run(void)
+static void jchan_mcu_run(running_machine *machine)
 {
 	UINT16 mcu_command = mcu_ram[0x0010/2];		/* command nb */
 	UINT16 mcu_offset  = mcu_ram[0x0012/2] / 2;	/* offset in shared RAM where MCU will write */
@@ -302,7 +302,7 @@ static void jchan_mcu_run(void)
 
 		case 0x03: 	// DSW
 		{
-			mcu_ram[mcu_offset] = readinputport(3);
+			mcu_ram[mcu_offset] = input_port_read_indexed(machine, 3);
 			logerror("PC=%06X : MCU executed command: %04X %04X (read DSW)\n",activecpu_get_pc(),mcu_command,mcu_offset*2);
 		}
 		break;
@@ -377,7 +377,7 @@ static WRITE16_HANDLER( jchan_mcu_com##_n_##_w ) \
 	if (jchan_mcu_com[3] != 0xFFFF)	return; \
 \
 	memset(jchan_mcu_com, 0, 4 * sizeof( UINT16 ) ); \
-	jchan_mcu_run(); \
+	jchan_mcu_run(machine); \
 }
 
 JCHAN_MCU_COM_W(0)
@@ -455,8 +455,8 @@ static READ16_HANDLER ( jchan_ctrl_r )
 {
 	switch(offset)
 	{
-		case 0/2: return readinputport(0); // Player 1 controls
-		case 2/2: return readinputport(1); // Player 2 controls
+		case 0/2: return input_port_read_indexed(machine, 0); // Player 1 controls
+		case 2/2: return input_port_read_indexed(machine, 1); // Player 2 controls
 		default: logerror("jchan_ctrl_r unknown!"); break;
 	}
 	return jchan_ctrl[offset];
@@ -480,7 +480,7 @@ static WRITE16_HANDLER( main2sub_cmd_w )
 {
 	COMBINE_DATA(&main2sub_cmd);
 	logerror("cpu #%d (PC=%06X): write cmd %04x to subcpu\n", cpu_getactivecpu(), activecpu_get_previouspc(), main2sub_cmd);
-	cpunum_set_input_line(Machine, 1, 4, HOLD_LINE);
+	cpunum_set_input_line(machine, 1, 4, HOLD_LINE);
 }
 static READ16_HANDLER ( main2sub_status_r )
 {
@@ -513,7 +513,7 @@ static WRITE16_HANDLER( sub2main_cmd_w )
 {
 	COMBINE_DATA(&sub2main_cmd);
 	logerror("cpu #%d (PC=%06X): write cmd %04x to maincpu\n", cpu_getactivecpu(), activecpu_get_previouspc(), sub2main_cmd);
-	cpunum_set_input_line(Machine, 0, 3, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 3, HOLD_LINE);
 }
 static READ16_HANDLER ( sub2main_cmd_r )
 {
@@ -567,15 +567,15 @@ static ADDRESS_MAP_START( jchan_main, ADDRESS_SPACE_PROGRAM, 16 )
 	/* 1st sprite layer */
 //  AM_RANGE(0x500000, 0x5005ff) AM_RAM //     grid tested ($924-$97c), cleared ($982-$9a4) until $503fff
 //  AM_RANGE(0x500600, 0x503fff) AM_RAM // [B] grid tested, cleared ($b68-$be6)
-	AM_RANGE(0x500000, 0x503fff) AM_RAM AM_WRITE(jchan_suprnova_sprite32_w) AM_BASE(&jchan_spriteram)
-	AM_RANGE(0x600000, 0x60003f) AM_RAM AM_WRITE(jchan_suprnova_sprite32regs_w) AM_BASE(&jchan_sprregs)
+	AM_RANGE(0x500000, 0x503fff) AM_RAM_WRITE(jchan_suprnova_sprite32_w) AM_BASE(&jchan_spriteram)
+	AM_RANGE(0x600000, 0x60003f) AM_RAM_WRITE(jchan_suprnova_sprite32regs_w) AM_BASE(&jchan_sprregs)
 
 	/* (0x700000, 0x707fff) = palette zone - but there seems to be 'sub-zones' used differently */
 //  AM_RANGE(0x700000, 0x707fff) AM_RAM //     grid tested, cleared ($dbc-$e3a), $2000 bytes (8Kb) copied from $aae40 ($e40-$e56)
 //  AM_RANGE(0x708000, 0x70ffff) AM_RAM // [E] grid tested, cleared ($d1c-$d9a), $8000 bytes (32Kb) copied from $a2e40 ($da0-$db6)
 	AM_RANGE(0x700000, 0x707fff) AM_RAM // palette for tilemaps?
-	AM_RANGE(0x708000, 0x70ffff) AM_RAM AM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16) // palette for sprites?
-//  AM_RANGE(0x700000, 0x70ffff) AM_RAM AM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16) // palette for sprites?
+	AM_RANGE(0x708000, 0x70ffff) AM_RAM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16) // palette for sprites?
+//  AM_RANGE(0x700000, 0x70ffff) AM_RAM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16) // palette for sprites?
 
 	AM_RANGE(0xf00000, 0xf00003) AM_READWRITE(jchan_ctrl_r, jchan_ctrl_w) AM_BASE(&jchan_ctrl)
 	AM_RANGE(0xf00004, 0xf00005) AM_READ(input_port_2_word_r) // DSW2
@@ -594,11 +594,11 @@ static ADDRESS_MAP_START( jchan_sub, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x400002, 0x403fff) AM_RAM
 
 	/* VIEW2 Tilemap - [D] grid tested, cleared ($1d84), also cleared at startup ($810-$826) */
-	AM_RANGE(0x500000, 0x500fff) AM_RAM // AM_READWRITE(SMH_RAM, kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1) // Layers 0
-	AM_RANGE(0x501000, 0x501fff) AM_RAM // AM_READWRITE(SMH_RAM, kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0) //
+	AM_RANGE(0x500000, 0x500fff) AM_RAM // AM_RAM_WRITE(kaneko16_vram_1_w) AM_BASE(&kaneko16_vram_1) // Layers 0
+	AM_RANGE(0x501000, 0x501fff) AM_RAM // AM_RAM_WRITE(kaneko16_vram_0_w) AM_BASE(&kaneko16_vram_0) //
 	AM_RANGE(0x502000, 0x502fff) AM_RAM // AM_RAM AM_BASE(&kaneko16_vscroll_1)                                  //
 	AM_RANGE(0x503000, 0x503fff) AM_RAM // AM_RAM AM_BASE(&kaneko16_vscroll_0)                                  //
-	AM_RANGE(0x600000, 0x60001f) AM_RAM // AM_READWRITE(SMH_RAM, kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)   // Layers 0 Regs
+	AM_RANGE(0x600000, 0x60001f) AM_RAM // AM_RAM_WRITE(kaneko16_layers_0_regs_w) AM_BASE(&kaneko16_layers_0_regs)   // Layers 0 Regs
 
 	/* 2nd sprite layer? - [C] grid tested, cleared ($1e2a), also cleared at startup ($7dc-$80a) */
 	AM_RANGE(0x700000, 0x703fff) AM_RAM // AM_BASE(&jchan_spriteram) AM_WRITE(jchan_suprnova_sprite32_w)

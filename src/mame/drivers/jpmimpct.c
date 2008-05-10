@@ -295,7 +295,7 @@ static READ16_HANDLER( duart_1_r )
 		}
 		case 0xd:
 		{
-			val = readinputportbytag("TEST/DEMO");
+			val = input_port_read(machine, "TEST/DEMO");
 			break;
 		}
 		case 0xe:
@@ -409,11 +409,11 @@ static READ16_HANDLER( duart_2_r )
 		{
 			if (touch_cnt == 0)
 			{
-				if ( readinputportbytag("TOUCH") & 0x1 )
+				if ( input_port_read(machine, "TOUCH") & 0x1 )
 				{
 					touch_data[0] = 0x2a;
-					touch_data[1] = 0x7 - (readinputportbytag("TOUCH_Y") >> 5) + 0x30;
-					touch_data[2] = (readinputportbytag("TOUCH_X") >> 5) + 0x30;
+					touch_data[1] = 0x7 - (input_port_read(machine, "TOUCH_Y") >> 5) + 0x30;
+					touch_data[2] = (input_port_read(machine, "TOUCH_X") >> 5) + 0x30;
 
 					/* Return RXRDY */
 					return 0x1;
@@ -477,22 +477,22 @@ static READ16_HANDLER( inputs1_r )
 	{
 		case 0:
 		{
-			val = readinputportbytag("DSW");
+			val = input_port_read(machine, "DSW");
 			break;
 		}
 		case 2:
 		{
-			val = readinputportbytag("SW2");
+			val = input_port_read(machine, "SW2");
 			break;
 		}
 		case 4:
 		{
-			val = readinputportbytag("SW1");
+			val = input_port_read(machine, "SW1");
 			break;
 		}
 		case 9:
 		{
-			val = readinputportbytag("COINS");
+			val = input_port_read(machine, "COINS");
 			break;
 		}
 	}
@@ -508,7 +508,7 @@ static READ16_HANDLER( inputs1_r )
  *************************************/
 static WRITE16_HANDLER( volume_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		upd7759_set_bank_base(0, 0x20000 * ((data >> 1) & 3));
 		upd7759_reset_w(0, data & 0x01);
@@ -517,7 +517,7 @@ static WRITE16_HANDLER( volume_w )
 
 static WRITE16_HANDLER( upd7759_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		upd7759_port_w(0, data);
 		upd7759_start_w(0, 0);
@@ -527,7 +527,7 @@ static WRITE16_HANDLER( upd7759_w )
 
 static READ16_HANDLER( upd7759_r )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		return upd7759_busy_r(0);
 	}

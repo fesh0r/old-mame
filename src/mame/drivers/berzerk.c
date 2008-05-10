@@ -383,7 +383,7 @@ static READ8_HANDLER( intercept_v256_r )
 }
 
 
-static void get_pens(pen_t *pens)
+static void get_pens(running_machine *machine, pen_t *pens)
 {
 	static const int resistances_wg[] = { 750, 0 };
 	static const int resistances_el[] = { 1.0 / ((1.0 / 750.0) + (1.0 / 360.0)), 0 };
@@ -391,7 +391,7 @@ static void get_pens(pen_t *pens)
 	int color;
 	double color_weights[2];
 
-	if (readinputportbytag(MONITOR_TYPE_PORT_TAG) == 0)
+	if (input_port_read(machine, MONITOR_TYPE_PORT_TAG) == 0)
 		compute_resistor_weights(0, 0xff, -1.0,
 								 2, resistances_wg, color_weights, 0, 270,
 								 2, resistances_wg, color_weights, 0, 270,
@@ -423,7 +423,7 @@ static VIDEO_UPDATE( berzerk )
 	pen_t pens[NUM_PENS];
 	offs_t offs;
 
-	get_pens(pens);
+	get_pens(screen->machine, pens);
 
 	for (offs = 0; offs < berzerk_videoram_size; offs++)
 	{
@@ -559,7 +559,7 @@ static ADDRESS_MAP_START( berzerk_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0800, 0x0bff) AM_MIRROR(0x0400) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)
 	AM_RANGE(0x1000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x5fff) AM_RAM AM_BASE(&berzerk_videoram) AM_SIZE(&berzerk_videoram_size) AM_SHARE(1)
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(SMH_RAM, magicram_w) AM_SHARE(1)
+	AM_RANGE(0x6000, 0x7fff) AM_RAM_WRITE(magicram_w) AM_SHARE(1)
 	AM_RANGE(0x8000, 0x87ff) AM_MIRROR(0x3800) AM_RAM AM_BASE(&berzerk_colorram)
 	AM_RANGE(0xc000, 0xffff) AM_NOP
 ADDRESS_MAP_END
@@ -568,7 +568,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( frenzy_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_ROM
 	AM_RANGE(0x4000, 0x5fff) AM_RAM AM_BASE(&berzerk_videoram) AM_SIZE(&berzerk_videoram_size) AM_SHARE(1)
-	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(SMH_RAM, magicram_w) AM_SHARE(1)
+	AM_RANGE(0x6000, 0x7fff) AM_RAM_WRITE(magicram_w) AM_SHARE(1)
 	AM_RANGE(0x8000, 0x87ff) AM_MIRROR(0x3800) AM_RAM AM_BASE(&berzerk_colorram)
 	AM_RANGE(0xc000, 0xcfff) AM_ROM
 	AM_RANGE(0xf800, 0xfbff) AM_MIRROR(0x0400) AM_RAM AM_BASE(&generic_nvram) AM_SIZE(&generic_nvram_size)

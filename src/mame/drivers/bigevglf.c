@@ -168,7 +168,7 @@ static WRITE8_HANDLER( nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{
-		cpunum_set_input_line(Machine, 2,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(machine, 2,INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -377,7 +377,7 @@ static READ8_HANDLER( sub_cpu_mcu_coin_port_r )
 
     */
 	bit5 ^= 0x20;
-	return bigevglf_mcu_status_r(machine,0) | (readinputport(1) & 3) | bit5; /* bit 0 and bit 1 - coin inputs */
+	return bigevglf_mcu_status_r(machine,0) | (input_port_read_indexed(machine, 1) & 3) | bit5; /* bit 0 and bit 1 - coin inputs */
 }
 
 static ADDRESS_MAP_START( bigevglf_sub_readport, ADDRESS_SPACE_IO, 8 )

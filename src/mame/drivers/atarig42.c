@@ -83,7 +83,7 @@ static MACHINE_RESET( atarig42 )
 
 static READ16_HANDLER( special_port2_r )
 {
-	int temp = readinputport(2);
+	int temp = input_port_read_indexed(machine, 2);
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x0020;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x0010;
 	temp ^= 0x0008;		/* A2D.EOC always high for now */
@@ -93,7 +93,7 @@ static READ16_HANDLER( special_port2_r )
 
 static WRITE16_HANDLER( a2d_select_w )
 {
-	analog_data = readinputport(4 + (offset != 0));
+	analog_data = input_port_read_indexed(machine, 4 + (offset != 0));
 }
 
 
@@ -106,7 +106,7 @@ static READ16_HANDLER( a2d_data_r )
 static WRITE16_HANDLER( io_latch_w )
 {
 	/* upper byte */
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		/* bit 14 controls the ASIC65 reset line */
 		asic65_reset((~data >> 14) & 1);
@@ -116,7 +116,7 @@ static WRITE16_HANDLER( io_latch_w )
 	}
 
 	/* lower byte */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		/* bit 4 resets the sound CPU */
 		cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
@@ -364,7 +364,7 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xf60000, 0xf60001) AM_READ(asic65_r)
 	AM_RANGE(0xf80000, 0xf80003) AM_WRITE(asic65_data_w)
 	AM_RANGE(0xfa0000, 0xfa0fff) AM_READWRITE(atarigen_eeprom_r, atarigen_eeprom_w) AM_BASE(&atarigen_eeprom) AM_SIZE(&atarigen_eeprom_size)
-	AM_RANGE(0xfc0000, 0xfc0fff) AM_READWRITE(SMH_RAM, atarigen_666_paletteram_w) AM_BASE(&paletteram16)
+	AM_RANGE(0xfc0000, 0xfc0fff) AM_RAM_WRITE(atarigen_666_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xff0000, 0xff0fff) AM_WRITE(atarirle_0_spriteram_w) AM_BASE(&atarirle_0_spriteram)
 	AM_RANGE(0xff2000, 0xff5fff) AM_WRITE(atarigen_playfield_w) AM_BASE(&atarigen_playfield)
 	AM_RANGE(0xff6000, 0xff6fff) AM_WRITE(atarigen_alpha_w) AM_BASE(&atarigen_alpha)
@@ -694,8 +694,7 @@ static DRIVER_INIT( roadriot )
 	atarig42_motion_object_base = 0x200;
 	atarig42_motion_object_mask = 0x1ff;
 
-	sloop_base = memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, roadriot_sloop_data_r);
-	sloop_base = memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, roadriot_sloop_data_w);
+	sloop_base = memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, roadriot_sloop_data_r, roadriot_sloop_data_w);
 	memory_set_opbase_handler(0, sloop_opbase_handler);
 
 	asic65_config(ASIC65_ROMBASED);
@@ -749,8 +748,7 @@ static DRIVER_INIT( guardian )
 	/* put an RTS there so we don't die */
 	*(UINT16 *)&memory_region(REGION_CPU1)[0x80000] = 0x4E75;
 
-	sloop_base = memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, guardians_sloop_data_r);
-	sloop_base = memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, guardians_sloop_data_w);
+	sloop_base = memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, guardians_sloop_data_r, guardians_sloop_data_w);
 	memory_set_opbase_handler(0, sloop_opbase_handler);
 
 	asic65_config(ASIC65_GUARDIANS);

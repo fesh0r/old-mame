@@ -5,7 +5,6 @@
  ***********************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/i8x41/i8x41.h"
 #include "machine/decocass.h"
@@ -136,7 +135,7 @@ READ8_HANDLER( decocass_sound_command_r )
 {
 	UINT8 data = soundlatch_r(machine, 0);
 	LOG(4,("CPU #%d sound command <- $%02x\n", cpu_getactivecpu(), data));
-	cpunum_set_input_line(Machine, 1, M6502_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, M6502_IRQ_LINE, CLEAR_LINE);
 	decocass_sound_ack &= ~0x80;
 	return data;
 }
@@ -182,10 +181,10 @@ WRITE8_HANDLER( decocass_nmi_reset_w )
 WRITE8_HANDLER( decocass_quadrature_decoder_reset_w )
 {
 	/* just latch the analog controls here */
-	decocass_quadrature_decoder[0] = input_port_3_r(machine, 0);
-	decocass_quadrature_decoder[1] = input_port_4_r(machine, 0);
-	decocass_quadrature_decoder[2] = input_port_5_r(machine, 0);
-	decocass_quadrature_decoder[3] = input_port_6_r(machine, 0);
+	decocass_quadrature_decoder[0] = input_port_read_indexed(machine,3);
+	decocass_quadrature_decoder[1] = input_port_read_indexed(machine,4);
+	decocass_quadrature_decoder[2] = input_port_read_indexed(machine,5);
+	decocass_quadrature_decoder[3] = input_port_read_indexed(machine,6);
 }
 
 WRITE8_HANDLER( decocass_adc_w )
@@ -208,7 +207,7 @@ READ8_HANDLER( decocass_input_r )
 	switch (offset & 7)
 	{
 	case 0: case 1: case 2:
-		data = readinputport(offset & 7);
+		data = input_port_read_indexed(machine, offset & 7);
 		break;
 	case 3: case 4: case 5: case 6:
 		data = decocass_quadrature_decoder[(offset & 7) - 3];
@@ -282,14 +281,14 @@ WRITE8_HANDLER( decocass_reset_w )
 	decocass_reset = data;
 
 	/* CPU #1 active hight reset */
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, data & 0x01 );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, data & 0x01 );
 
 	/* on reset also remove the sound timer */
 	if (data & 1)
 		timer_adjust_oneshot(decocass_sound_timer, attotime_never, 0);
 
 	/* 8041 active low reset */
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (data & 0x08) ^ 0x08 );
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x08) ^ 0x08 );
 }
 
 static const char *dirnm(int speed)
@@ -1589,7 +1588,7 @@ WRITE8_HANDLER( decocass_de0091_w )
  *  state save setup
  *
  ***************************************************************************/
-static void decocass_state_save_postload(void)
+static STATE_POSTLOAD( decocass_state_save_postload )
 {
 #if 0
 	/* fix me - this won't work anymore */
@@ -1608,9 +1607,9 @@ static void decocass_state_save_postload(void)
 }
 
 /* To be called once from driver_init, i.e. decocass_init */
-void decocass_machine_state_save_init(void)
+void decocass_machine_state_save_init(running_machine *machine)
 {
-	state_save_register_func_postload(decocass_state_save_postload);
+	state_save_register_postload(machine, decocass_state_save_postload, NULL);
 	state_save_register_global(tape_dir);
 	state_save_register_global(tape_speed);
 	state_save_register_global(tape_time0.seconds);

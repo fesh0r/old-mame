@@ -12,6 +12,7 @@
 ***************************************************************************/
 
 #include "sndintrf.h"
+#include "deprecat.h"
 #include "streams.h"
 #include "ay8910.h"
 #include "2608intf.h"
@@ -110,7 +111,7 @@ static void ym2608_stream_update(void *param, stream_sample_t **inputs, stream_s
 }
 
 
-static void ym2608_postload(void *param)
+static STATE_POSTLOAD( ym2608_postload )
 {
 	struct ym2608_info *info = param;
 	YM2608Postload(info->chip);
@@ -119,7 +120,16 @@ static void ym2608_postload(void *param)
 
 static void *ym2608_start(int sndindex, int clock, const void *config)
 {
-	static const struct YM2608interface generic_2608 = { 0 };
+	static const struct YM2608interface generic_2608 =
+	{
+		{
+			AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
+			AY8910_DEFAULT_LOADS,
+			NULL, NULL, NULL, NULL
+		},
+		NULL,
+		0,
+	};
 	const struct YM2608interface *intf = config ? config : &generic_2608;
 	int rate = clock/72;
 	void *pcmbufa;
@@ -131,7 +141,8 @@ static void *ym2608_start(int sndindex, int clock, const void *config)
 	memset(info, 0, sizeof(*info));
 
 	info->intf = intf;
-	info->psg = ay8910_start_ym(SOUND_YM2608, sndindex, clock, 1, intf->portAread, intf->portBread, intf->portAwrite, intf->portBwrite);
+	/* FIXME: Force to use simgle output */
+	info->psg = ay8910_start_ym(SOUND_YM2608, sndindex, clock, &intf->ay8910_intf);
 	if (!info->psg) return NULL;
 
 	/* Timer Handler set */
@@ -149,7 +160,7 @@ static void *ym2608_start(int sndindex, int clock, const void *config)
 		           pcmbufa,pcmsizea,
 		           timer_handler,IRQHandler,&psgintf);
 
-	state_save_register_func_postload_ptr(ym2608_postload, info);
+	state_save_register_postload(Machine, ym2608_postload, info);
 
 	if (info->chip)
 		return info;

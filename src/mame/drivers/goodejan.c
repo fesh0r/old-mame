@@ -79,11 +79,11 @@ static READ16_HANDLER( mahjong_panel_r )
 
 	switch(goodejan_mux_data)
 	{
-		case 1:    ret = readinputport(1); break;
-		case 2:    ret = readinputport(2); break;
-		case 4:    ret = readinputport(3); break;
-		case 8:    ret = readinputport(4); break;
-		case 0x10: ret = readinputport(5); break;
+		case 1:    ret = input_port_read_indexed(machine, 1); break;
+		case 2:    ret = input_port_read_indexed(machine, 2); break;
+		case 4:    ret = input_port_read_indexed(machine, 3); break;
+		case 8:    ret = input_port_read_indexed(machine, 4); break;
+		case 0x10: ret = input_port_read_indexed(machine, 5); break;
 	}
 
 	return ret;
@@ -101,9 +101,9 @@ static READ16_HANDLER( goodejan_read_ff )
 
 static ADDRESS_MAP_START( goodejan_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00000, 0x0afff) AM_RAM
-	AM_RANGE(0x0c000, 0x0c7ff) AM_RAM AM_WRITE(goodejan_bgvram_w) AM_BASE(&goodejan_bgvram)
-	AM_RANGE(0x0d000, 0x0dfff) AM_RAM AM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
-	AM_RANGE(0x0c800, 0x0cfff) AM_RAM AM_WRITE(goodejan_txvram_w) AM_BASE(&goodejan_txvram)
+	AM_RANGE(0x0c000, 0x0c7ff) AM_RAM_WRITE(goodejan_bgvram_w) AM_BASE(&goodejan_bgvram)
+	AM_RANGE(0x0d000, 0x0dfff) AM_RAM_WRITE(paletteram16_xxxxBBBBGGGGRRRR_word_w) AM_BASE(&paletteram16)
+	AM_RANGE(0x0c800, 0x0cfff) AM_RAM_WRITE(goodejan_txvram_w) AM_BASE(&goodejan_txvram)
 	AM_RANGE(0x0f800, 0x0ffff) AM_RAM AM_BASE(&spriteram16)
 	AM_RANGE(0xc0000, 0xfffff) AM_ROM
 ADDRESS_MAP_END
@@ -124,8 +124,7 @@ static ADDRESS_MAP_START( goodejan_io_map, ADDRESS_SPACE_IO, 16 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( goodejan )
-	/* Must be port 0: coin inputs read through sound cpu */
-	SEIBU_COIN_INPUTS
+	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
 	PORT_START
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A )

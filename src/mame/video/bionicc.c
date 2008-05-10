@@ -93,9 +93,9 @@ static TILE_GET_INFO( get_tx_tile_info )
 
 VIDEO_START( bionicc )
 {
-	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows,  8,8,32,32);
-	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,      16,16,64,64);
-	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,  8,8,64,64);
+	tx_tilemap = tilemap_create(get_tx_tile_info,tilemap_scan_rows, 8, 8,32,32);
+	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,16,16,64,64);
+	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows, 8, 8,64,64);
 
 	tilemap_set_transparent_pen(tx_tilemap,3);
 	tilemap_set_transmask(fg_tilemap,0,0xffff,0x8000); /* split type 0 is completely transparent in front half */
@@ -131,11 +131,23 @@ WRITE16_HANDLER( bionicc_txvideoram_w )
 
 WRITE16_HANDLER( bionicc_paletteram_w )
 {
-	/* The bottom bits are 'intensity' here, but level 2 of Top Secret shows that even
-    when intensity is zero the colour is not reduced to pure black, (the sky should stay
-    at dark blue rather than absolute black) */
+	int r, g, b, bright;
 	data = COMBINE_DATA(&paletteram16[offset]);
-	paletteram16_RRRRGGGGBBBBIIII_word_w(machine,offset,(data & 0xfff0) | ((data & 0x0007) << 1) | 1, 0);
+
+	bright = (data&0x0f);
+
+	r = ((data>>12)&0x0f) * 0x11;
+	g = ((data>>8 )&0x0f) * 0x11;
+	b = ((data>>4 )&0x0f) * 0x11;
+
+	if ((bright & 0x08) == 0)
+	{
+		r = r * (0x07 + bright) / 0x0e;
+		g = g * (0x07 + bright) / 0x0e;
+		b = b * (0x07 + bright) / 0x0e;
+	}
+
+	palette_set_color (machine, offset, MAKE_RGB(r, g, b));
 }
 
 WRITE16_HANDLER( bionicc_scroll_w )
@@ -163,7 +175,7 @@ WRITE16_HANDLER( bionicc_scroll_w )
 
 WRITE16_HANDLER( bionicc_gfxctrl_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		flip_screen_set(data & 0x0100);
 
@@ -219,7 +231,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 
 VIDEO_UPDATE( bionicc )
 {
-	fillbitmap(bitmap,0,cliprect);
+	fillbitmap(bitmap,get_black_pen(screen->machine),cliprect);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,1|TILEMAP_DRAW_LAYER1,0);	/* nothing in FRONT */
 	tilemap_draw(bitmap,cliprect,bg_tilemap,0,0);
 	tilemap_draw(bitmap,cliprect,fg_tilemap,0|TILEMAP_DRAW_LAYER1,0);
@@ -231,5 +243,5 @@ VIDEO_UPDATE( bionicc )
 
 VIDEO_EOF( bionicc )
 {
-	buffer_spriteram16_w(machine,0,0,0);
+	buffer_spriteram16_w(machine,0,0,0xffff);
 }

@@ -301,7 +301,7 @@ static READ8_HANDLER( disk_iobank_r )
 {
 	printf("Read Prototyping card [%02x] @ PC=%05x\n",offset,activecpu_get_pc());
 	if(offset == 1)
-		return readinputport(1);
+		return input_port_read_indexed(machine, 1);
 
 	return disk_data[offset];
 }
@@ -374,9 +374,9 @@ static READ8_HANDLER( undefined_r )
 static WRITE8_HANDLER( nmi_enable_w )
 {
 	//if(data & 0x80)
-		//cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI,ASSERT_LINE);
+		//cpunum_set_input_line(machine, 0, INPUT_LINE_NMI,ASSERT_LINE);
 	//if(!(data & 0x80))
-		//cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI,CLEAR_LINE);
+		//cpunum_set_input_line(machine, 0, INPUT_LINE_NMI,CLEAR_LINE);
 }
 
 static READ8_HANDLER( kludge_r )
@@ -384,7 +384,7 @@ static READ8_HANDLER( kludge_r )
 	return mame_rand(Machine);
 }
 
-static void pc_timer0_w(int state)
+static PIT8253_OUTPUT_CHANGED( pc_timer0_w )
 {
 	//if (state)
 	//  pic8259_0_issue_irq(0);
@@ -392,7 +392,6 @@ static void pc_timer0_w(int state)
 
 static const struct pit8253_config pc_pit8253_config =
 {
-	TYPE8253,
 	{
 		{
 			4772720/4,				/* heartbeat IRQ */
@@ -405,7 +404,7 @@ static const struct pit8253_config pc_pit8253_config =
 		}, {
 			4772720/4,				/* pio port c pin 4, and speaker polling enough */
 			NULL,
-			NULL//pc_sh_speaker_change_clock
+			NULL
 		}
 	}
 };
@@ -438,7 +437,7 @@ static READ8_HANDLER( port_a_r )
 	}
 	else//keyboard emulation
 	{
-		cpunum_set_input_line(Machine, 0,1,PULSE_LINE);
+		cpunum_set_input_line(machine, 0,1,PULSE_LINE);
 		return 0x00;//Keyboard is disconnected
 		//return 0xaa;//Keyboard code
 	}
@@ -471,19 +470,28 @@ static WRITE8_HANDLER( wss_2_w )
 
 static WRITE8_HANDLER( sys_reset_w )
 {
-	cpunum_set_input_line(Machine, 0,INPUT_LINE_RESET,PULSE_LINE);
+	cpunum_set_input_line(machine, 0,INPUT_LINE_RESET,PULSE_LINE);
 }
 
 
-static const ppi8255_interface filetto_ppi8255_intf =
+static const ppi8255_interface filetto_ppi8255_intf[2] =
 {
-	2, 							/* 2 chips */
-	{ port_a_r,NULL },			/* Port A read */
-	{ port_b_r,NULL },			/* Port B read */
-	{ port_c_r,NULL },  		/* Port C read */
-	{ NULL	  ,wss_1_w },   	/* Port A write */
-	{ port_b_w,wss_2_w },   	/* Port B write */
-	{ NULL	  ,sys_reset_w },	/* Port C write */
+	{
+		port_a_r,			/* Port A read */
+		port_b_r,			/* Port B read */
+		port_c_r,  			/* Port C read */
+		NULL,   			/* Port A write */
+		port_b_w,  		 	/* Port B write */
+		NULL				/* Port C write */
+	},
+	{
+		NULL,				/* Port A read */
+		NULL,				/* Port B read */
+		NULL,				/* Port C read */
+		wss_1_w,			/* Port A write */
+		wss_2_w,			/* Port B write */
+		sys_reset_w			/* Port C write */
+	}
 };
 
 static UINT8 irq_data[2];
@@ -547,8 +555,8 @@ static ADDRESS_MAP_START( filetto_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0000, 0x000f) AM_RAM //AM_READWRITE(dma8237_0_r,dma8237_0_w) //8237 DMA Controller
 	AM_RANGE(0x0020, 0x0021) AM_READWRITE(irq_ctrl_8259_r,irq_ctrl_8259_w)//AM_READWRITE(pic8259_0_r,pic8259_0_w) //8259 Interrupt control
 	AM_RANGE(0x0040, 0x0043) AM_READ(kludge_r) //AM_READWRITE(pit8253_0_r,pit8253_0_w) //8253 PIT
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE(ppi8255_0_r,ppi8255_0_w) //PPI 8255
-	AM_RANGE(0x0064, 0x0066) AM_READWRITE(ppi8255_1_r,ppi8255_1_w) //PPI 8255
+	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r,ppi8255_w) //PPI 8255
+	AM_RANGE(0x0064, 0x0066) AM_DEVREADWRITE(PPI8255, "ppi8255_0", ppi8255_r,ppi8255_w) //PPI 8255
 	AM_RANGE(0x0073, 0x0073) AM_READ(undefined_r)
 	AM_RANGE(0x0080, 0x0087) AM_RAM //AM_READWRITE(dma_page_select_r,dma_page_select_w)
 	AM_RANGE(0x00a0, 0x00a0) AM_WRITE(nmi_enable_w)
@@ -651,12 +659,6 @@ static GFXDECODE_START( filetto )
 GFXDECODE_END
 
 
-static MACHINE_RESET(filetto)
-{
-	ppi8255_init(&filetto_ppi8255_intf);
-	pit8253_init(1, &pc_pit8253_config);
-}
-
 /*
 BLACK = 0
 BLUE = 1
@@ -739,6 +741,15 @@ static MACHINE_DRIVER_START( filetto )
 	MDRV_CPU_IO_MAP(filetto_io,0)
 	MDRV_CPU_VBLANK_INT_HACK(filetto_irq,200)
 
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( filetto_ppi8255_intf[0] )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( filetto_ppi8255_intf[1] )
+
 	MDRV_GFXDECODE(filetto)
 
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -750,7 +761,6 @@ static MACHINE_DRIVER_START( filetto )
 
 	MDRV_PALETTE_LENGTH(0x100)
 
-	MDRV_MACHINE_RESET(filetto)
 	MDRV_PALETTE_INIT(filetto)
 
 	MDRV_VIDEO_START(filetto)

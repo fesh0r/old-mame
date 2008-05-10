@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/avgdvg.h"
 #include "sound/5220intf.h"
 #include "cpu/m6502/m6502.h"
@@ -62,7 +61,7 @@ static TIMER_CALLBACK( cpu_irq_clock )
 WRITE8_HANDLER( mhavoc_alpha_irq_ack_w )
 {
 	/* clear the line and reset the clock */
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	alpha_irq_clock = 0;
 	alpha_irq_clock_enable = 1;
 }
@@ -71,7 +70,7 @@ WRITE8_HANDLER( mhavoc_alpha_irq_ack_w )
 WRITE8_HANDLER( mhavoc_gamma_irq_ack_w )
 {
 	/* clear the line and reset the clock */
-	cpunum_set_input_line(Machine, 1, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, CLEAR_LINE);
 	gamma_irq_clock = 0;
 }
 
@@ -225,9 +224,9 @@ READ8_HANDLER( mhavoc_port_0_r )
 	/* Bits 7-6 = selected based on Player 1 */
 	/* Bits 5-4 = common */
 	if (player_1)
-		res = (readinputport(0) & 0x30) | (readinputport(5) & 0xc0);
+		res = (input_port_read_indexed(machine, 0) & 0x30) | (input_port_read_indexed(machine, 5) & 0xc0);
 	else
-		res = readinputport(0) & 0xf0;
+		res = input_port_read_indexed(machine, 0) & 0xf0;
 
 	/* Bit 3 = Gamma rcvd flag */
 	if (gamma_rcvd)
@@ -252,7 +251,7 @@ READ8_HANDLER( mhavoc_port_0_r )
 READ8_HANDLER( alphaone_port_0_r )
 {
 	/* Bits 7-2 = common */
-	UINT8 res = readinputport(0) & 0xfc;
+	UINT8 res = input_port_read_indexed(machine, 0) & 0xfc;
 
 	/* Bit 1 = 2.4kHz (divide 2.5MHz by 1024) */
 	if (!(activecpu_gettotalcycles() & 0x400))
@@ -269,7 +268,7 @@ READ8_HANDLER( alphaone_port_0_r )
 READ8_HANDLER( mhavoc_port_1_r )
 {
 	/* Bits 7-2 = input switches */
-	UINT8 res = readinputport(1) & 0xfc;
+	UINT8 res = input_port_read_indexed(machine, 1) & 0xfc;
 
 	/* Bit 1 = Alpha rcvd flag */
 	if (has_gamma_cpu && alpha_rcvd)
@@ -285,7 +284,7 @@ READ8_HANDLER( mhavoc_port_1_r )
 READ8_HANDLER( mhavoc_port_1_sp_r )
 {
 	/* Bits 7-3 = input switches */
-	UINT8 res = readinputport(1) & 0xf8;
+	UINT8 res = input_port_read_indexed(machine, 1) & 0xf8;
 
 	/* Bit 2 = TMS5220 ready flag */
 	if (!tms5220_ready_r())
@@ -320,7 +319,7 @@ WRITE8_HANDLER( mhavoc_out_0_w )
 	player_1 = (data >> 5) & 1;
 
 	/* Bit 3 = Gamma reset */
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 	if (!(data & 0x08))
 	{
 		logerror("\t\t\t\t*** resetting gamma processor. ***\n");

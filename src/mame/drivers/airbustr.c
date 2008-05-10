@@ -275,7 +275,7 @@ static READ8_HANDLER( devram_r )
 
 static WRITE8_HANDLER( master_nmi_trigger_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static void airbustr_bankswitch(int cpunum, int data)
@@ -352,7 +352,7 @@ static WRITE8_HANDLER( airbustr_paletteram_w )
 	paletteram[offset] = data;
 	val = (paletteram[offset | 1] << 8) | paletteram[offset & ~1];
 
-	palette_set_color_rgb(Machine, offset/2, pal5bit(val >> 5), pal5bit(val >> 10), pal5bit(val >> 0));
+	palette_set_color_rgb(machine, offset/2, pal5bit(val >> 5), pal5bit(val >> 10), pal5bit(val >> 0));
 }
 
 static WRITE8_HANDLER( airbustr_coin_counter_w )
@@ -384,11 +384,11 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( slave_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(2)
-	AM_RANGE(0xc000, 0xc3ff) AM_RAM AM_WRITE(airbustr_videoram2_w) AM_BASE(&airbustr_videoram2)
-	AM_RANGE(0xc400, 0xc7ff) AM_RAM AM_WRITE(airbustr_colorram2_w) AM_BASE(&airbustr_colorram2)
-	AM_RANGE(0xc800, 0xcbff) AM_RAM AM_WRITE(airbustr_videoram_w) AM_BASE(&videoram)
-	AM_RANGE(0xcc00, 0xcfff) AM_RAM AM_WRITE(airbustr_colorram_w) AM_BASE(&colorram)
-	AM_RANGE(0xd000, 0xd5ff) AM_RAM AM_WRITE(airbustr_paletteram_w) AM_BASE(&paletteram)
+	AM_RANGE(0xc000, 0xc3ff) AM_RAM_WRITE(airbustr_videoram2_w) AM_BASE(&airbustr_videoram2)
+	AM_RANGE(0xc400, 0xc7ff) AM_RAM_WRITE(airbustr_colorram2_w) AM_BASE(&airbustr_colorram2)
+	AM_RANGE(0xc800, 0xcbff) AM_RAM_WRITE(airbustr_videoram_w) AM_BASE(&videoram)
+	AM_RANGE(0xcc00, 0xcfff) AM_RAM_WRITE(airbustr_colorram_w) AM_BASE(&colorram)
+	AM_RANGE(0xd000, 0xd5ff) AM_RAM_WRITE(airbustr_paletteram_w) AM_BASE(&paletteram)
 	AM_RANGE(0xd600, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_RAM
 	AM_RANGE(0xf000, 0xffff) AM_RAM AM_SHARE(1)
@@ -560,8 +560,15 @@ GFXDECODE_END
 
 static const struct YM2203interface ym2203_interface =
 {
-	input_port_3_r,		// DSW-1 connected to port A
-	input_port_4_r		// DSW-2 connected to port B
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		input_port_3_r,		// DSW-1 connected to port A
+		input_port_4_r,		// DSW-2 connected to port B
+		NULL,
+		NULL
+	},
+	NULL
 };
 
 /* Interrupt Generators */
@@ -754,7 +761,7 @@ ROM_END
 
 static DRIVER_INIT( airbustr )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, devram_r); // protection device lives here
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, devram_r); // protection device lives here
 }
 
 

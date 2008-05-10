@@ -38,7 +38,6 @@
 */
 
 #include "debugger.h"
-#include "deprecat.h"
 #include "m65ce02.h"
 
 #include "mincce02.h"
@@ -91,8 +90,8 @@ static m65ce02_Regs m65ce02;
 
 static void m65ce02_init(int index, int clock, const void *config, int (*irqcallback)(int))
 {
-	m65ce02.rdmem_id = program_read_byte_8;
-	m65ce02.wrmem_id = program_write_byte_8;
+	m65ce02.rdmem_id = program_read_byte_8le;
+	m65ce02.wrmem_id = program_write_byte_8le;
 	m65ce02.irq_callback = irqcallback;
 }
 

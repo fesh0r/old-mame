@@ -416,14 +416,14 @@ static WRITE32_HANDLER(K037122_sram_w)
 		}
 		else if (offset >= 0x18000/4)
 		{
-			update_palette_color(Machine, chip, 0x18000, offset - (0x18000/4));
+			update_palette_color(machine, chip, 0x18000, offset - (0x18000/4));
 		}
 	}
 	else
 	{
 		if (offset < 0x8000/4)
 		{
-			update_palette_color(Machine, chip, 0, offset);
+			update_palette_color(machine, chip, 0, offset);
 		}
 		else if (offset >= 0x8000/4 && offset < 0x18000/4)
 		{
@@ -593,29 +593,29 @@ static READ32_HANDLER( sysreg_r )
 	UINT32 r = 0;
 	if (offset == 0)
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
 			//printf("read sysreg 0\n");
-			r |= readinputport(0) << 24;
+			r |= input_port_read_indexed(machine, 0) << 24;
 		}
-		if (!(mem_mask & 0x00ff0000))
+		if (ACCESSING_BITS_16_23)
 		{
-			r |= readinputport(1) << 16;
+			r |= input_port_read_indexed(machine, 1) << 16;
 		}
-		if (!(mem_mask & 0x0000ff00))
+		if (ACCESSING_BITS_8_15)
 		{
-			r |= readinputport(2) << 8;
+			r |= input_port_read_indexed(machine, 2) << 8;
 		}
-		if (!(mem_mask & 0x000000ff))
+		if (ACCESSING_BITS_0_7)
 		{
 			r |= 0xf7;
 		}
 	}
 	else if (offset == 1)
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
-			r |= readinputport(3) << 24;
+			r |= input_port_read_indexed(machine, 3) << 24;
 		}
 	}
 	return r;
@@ -624,11 +624,11 @@ static READ32_HANDLER( sysreg_r )
 static WRITE32_HANDLER( sysreg_w )
 {
 	if( offset == 0 ) {
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
 			led_reg0 = (data >> 24) & 0xff;
 		}
-		if (!(mem_mask & 0x00ff0000))
+		if (ACCESSING_BITS_16_23)
 		{
 			led_reg1 = (data >> 16) & 0xff;
 		}
@@ -636,18 +636,18 @@ static WRITE32_HANDLER( sysreg_w )
 	}
 	if( offset == 1 )
 	{
-		if (!(mem_mask & 0xff000000))
+		if (ACCESSING_BITS_24_31)
 		{
 		}
-		if (!(mem_mask & 0x000000ff))
+		if (ACCESSING_BITS_0_7)
 		{
 			if (data & 0x80)	/* CG Board 1 IRQ Ack */
 			{
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
 			}
 			if (data & 0x40)	/* CG Board 0 IRQ Ack */
 			{
-				cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 			}
 			set_cgboard_id((data >> 4) & 0x3);
 		}

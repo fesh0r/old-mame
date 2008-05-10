@@ -102,7 +102,7 @@ static const tms34010_config default_config =
 
 static void check_interrupt(void);
 static TIMER_CALLBACK( scanline_callback );
-static void tms34010_state_postload(void);
+static STATE_POSTLOAD( tms34010_state_postload );
 
 
 /***************************************************************************
@@ -672,7 +672,7 @@ static void tms34010_init(int index, int clock, const void *_config, int (*irqca
 	state_save_register_item("tms34010", index, state.pixelshift);
 	state_save_register_item("tms34010", index, state.gfxcycles);
 	state_save_register_item_pointer("tms34010", index, (&state.regs[0].reg), ARRAY_LENGTH(state.regs));
-	state_save_register_func_postload(tms34010_state_postload);
+	state_save_register_postload(Machine, tms34010_state_postload, NULL);
 }
 
 static void tms34010_reset(void)
@@ -701,7 +701,7 @@ static void tms34010_reset(void)
 	/* the first time we are run */
 	state.reset_deferred = state.config->halt_on_reset;
 	if (state.config->halt_on_reset)
-		tms34010_io_register_w(Machine, REG_HSTCTLH, 0x8000, 0);
+		tms34010_io_register_w(Machine, REG_HSTCTLH, 0x8000, 0xffff);
 }
 
 #if (HAS_TMS34020)
@@ -1622,7 +1622,7 @@ int tms34020_get_DPYSTRT(int cpu)
     SAVE STATE
 ***************************************************************************/
 
-static void tms34010_state_postload(void)
+static STATE_POSTLOAD( tms34010_state_postload )
 {
 	change_pc(TOBYTE(PC));
 	set_raster_op();
@@ -1672,8 +1672,8 @@ void tms34010_host_w(int cpunum, int reg, int data)
 		/* control register */
 		case TMS34010_HOST_CONTROL:
 			external_host_access = TRUE;
-			tms34010_io_register_w(state.screen->machine, REG_HSTCTLH, data & 0xff00, 0);
-			tms34010_io_register_w(state.screen->machine, REG_HSTCTLL, data & 0x00ff, 0);
+			tms34010_io_register_w(state.screen->machine, REG_HSTCTLH, data & 0xff00, 0xffff);
+			tms34010_io_register_w(state.screen->machine, REG_HSTCTLL, data & 0x00ff, 0xffff);
 			external_host_access = FALSE;
 			break;
 

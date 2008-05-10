@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/5220intf.h"
 #include "sound/pokey.h"
@@ -61,7 +60,7 @@ static SOUND_RESET( jedi )
 
 static WRITE8_HANDLER( irq_ack_w )
 {
-	cpunum_set_input_line(Machine, 1, M6502_IRQ_LINE, CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, M6502_IRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -74,7 +73,7 @@ static WRITE8_HANDLER( irq_ack_w )
 
 WRITE8_HANDLER( jedi_audio_reset_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -185,7 +184,7 @@ static ADDRESS_MAP_START( audio_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1600, 0x17ff) AM_NOP
 	AM_RANGE(0x1800, 0x1800) AM_MIRROR(0x03ff) AM_READWRITE(audio_latch_r, SMH_NOP)
 	AM_RANGE(0x1c00, 0x1c00) AM_MIRROR(0x03fe) AM_READWRITE(speech_ready_r, SMH_NOP)
-	AM_RANGE(0x1c01, 0x1c01) AM_MIRROR(0x03fe) AM_READWRITE(SMH_RAM, SMH_NOP) AM_BASE_MEMBER(jedi_state, audio_comm_stat)
+	AM_RANGE(0x1c01, 0x1c01) AM_MIRROR(0x03fe) AM_RAM_WRITE(SMH_NOP) AM_BASE_MEMBER(jedi_state, audio_comm_stat)
 	AM_RANGE(0x2000, 0x7fff) AM_NOP
 	AM_RANGE(0x8000, 0xffff) AM_ROM
 ADDRESS_MAP_END

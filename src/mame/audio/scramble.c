@@ -19,7 +19,7 @@
 #include "sound/5110intf.h"
 #include "sound/tms5110.h"
 #include "sound/ay8910.h"
-#include "includes/galaxian.h"
+#include "includes/galaxold.h"
 
 #define AD2083_TMS5110_CLOCK 		XTAL_640kHz
 
@@ -112,7 +112,7 @@ WRITE8_HANDLER( froggrmc_sh_irqtrigger_w )
 }
 
 
-static int scramble_sh_irq_callback(int irqline)
+static IRQ_CALLBACK(scramble_sh_irq_callback)
 {
 	/* interrupt acknowledge clears the flip-flop --
        we need to pulse the CLR line because MAME's core never clears this
@@ -126,7 +126,7 @@ static int scramble_sh_irq_callback(int irqline)
 	return 0xff;
 }
 
-static int sfx_sh_irq_callback(int irqline)
+static IRQ_CALLBACK(sfx_sh_irq_callback)
 {
 	/* interrupt acknowledge clears the flip-flop --
        we need to pulse the CLR line because MAME's core never clears this
@@ -377,12 +377,22 @@ static const struct TMS5110interface ad2083_tms5110_interface =
 
 static const struct AY8910interface ad2083_ay8910_interface_1 =
 {
-	scramble_portB_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	scramble_portB_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 static const struct AY8910interface ad2083_ay8910_interface_2 =
 {
-	hotshock_soundlatch_r
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	hotshock_soundlatch_r,
+	NULL,
+	NULL,
+	NULL
 };
 
 static ADDRESS_MAP_START( ad2083_sound_map, ADDRESS_SPACE_PROGRAM, 8 )

@@ -138,19 +138,19 @@ static READ16_HANDLER( dassault_control_r )
 	switch (offset<<1)
 	{
 		case 0: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (readinputport(0) + (readinputport(1) << 8));
+			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
 
 		case 2: /* Player 3 & Player 4 joysticks & fire buttons */
-			return (readinputport(6) + (readinputport(7) << 8));
+			return (input_port_read_indexed(machine, 6) + (input_port_read_indexed(machine, 7) << 8));
 
 		case 4: /* Dip 1 (stored at 0x3f8035) */
-			return readinputport(3);
+			return input_port_read_indexed(machine, 3);
 
 		case 6: /* Dip 2 (stored at 0x3f8034) */
-			return readinputport(4);
+			return input_port_read_indexed(machine, 4);
 
 		case 8: /* VBL, Credits */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 	}
 
 	return 0xffff;
@@ -165,7 +165,7 @@ static WRITE16_HANDLER( dassault_control_w )
 
 static READ16_HANDLER( dassault_sub_control_r )
 {
-	return readinputport(5);
+	return input_port_read_indexed(machine, 5);
 }
 
 static WRITE16_HANDLER( dassault_sound_w )
@@ -178,8 +178,8 @@ static WRITE16_HANDLER( dassault_sound_w )
 static READ16_HANDLER( dassault_irq_r )
 {
 	switch (offset) {
-		case 0: cpunum_set_input_line(Machine, 0, 5, CLEAR_LINE); break;
-		case 1: cpunum_set_input_line(Machine, 1, 6, CLEAR_LINE); break;
+		case 0: cpunum_set_input_line(machine, 0, 5, CLEAR_LINE); break;
+		case 1: cpunum_set_input_line(machine, 1, 6, CLEAR_LINE); break;
 	}
 	return shared_ram[(0xffc/2)+offset]; /* The values probably don't matter */
 }
@@ -187,8 +187,8 @@ static READ16_HANDLER( dassault_irq_r )
 static WRITE16_HANDLER( dassault_irq_w )
 {
 	switch (offset) {
-		case 0: cpunum_set_input_line(Machine, 0, 5, ASSERT_LINE); break;
-		case 1: cpunum_set_input_line(Machine, 1, 6, ASSERT_LINE); break;
+		case 0: cpunum_set_input_line(machine, 0, 5, ASSERT_LINE); break;
+		case 1: cpunum_set_input_line(machine, 1, 6, ASSERT_LINE); break;
 	}
 
 	COMBINE_DATA(&shared_ram[(0xffc/2)+offset]); /* The values probably don't matter */
@@ -846,7 +846,7 @@ static DRIVER_INIT( dassault )
 	free(tmp);
 
 	/* Save time waiting on vblank bit */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x3f8000, 0x3f8001, 0, 0, dassault_main_skip);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3f8000, 0x3f8001, 0, 0, dassault_main_skip);
 }
 
 static DRIVER_INIT( thndzone )
@@ -866,7 +866,7 @@ static DRIVER_INIT( thndzone )
 	free(tmp);
 
 	/* Save time waiting on vblank bit */
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x3f8000, 0x3f8001, 0, 0, thndzone_main_skip);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3f8000, 0x3f8001, 0, 0, thndzone_main_skip);
 }
 
 /**********************************************************************************/

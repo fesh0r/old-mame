@@ -204,7 +204,7 @@ READ16_HANDLER(genesis_ctrl_r)
 /* from MESS */
 WRITE16_HANDLER(genesis_ctrl_w)
 {
-	data &= ~mem_mask;
+	data &= mem_mask;
 
 /*  logerror("genesis_ctrl_w %x, %x\n", offset, data); */
 
@@ -217,7 +217,7 @@ WRITE16_HANDLER(genesis_ctrl_w)
 		if (data == 0x100)
 		{
 			z80running = 0;
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);	/* halt Z80 */
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);	/* halt Z80 */
 			/* logerror("z80 stopped by 68k BusReq\n"); */
 		}
 		else
@@ -225,7 +225,7 @@ WRITE16_HANDLER(genesis_ctrl_w)
 			z80running = 1;
 //          memory_set_bankptr(1, &genesis_z80_ram[0]);
 
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
 			/* logerror("z80 started, BusReq ends\n"); */
 		}
 		return;
@@ -233,10 +233,10 @@ WRITE16_HANDLER(genesis_ctrl_w)
 	case 0x100:						/* Z80 CPU Reset */
 		if (data == 0x00)
 		{
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 			/* logerror("z80 reset, ram is %p\n", &genesis_z80_ram[0]); */
 			z80running = 0;
 			return;
@@ -271,11 +271,11 @@ READ16_HANDLER ( genesis_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_MSB)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
 			else 				 return YM3438_read_port_0_r(machine, 0);
 			break;
 		case 2:
-			if (ACCESSING_MSB)	return YM3438_status_port_0_B_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	return YM3438_status_port_0_B_r(machine, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -320,7 +320,7 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 	{
 		offset &=0x1fff;
 //      if(offset == 0)
-//          return (readinputport(8) << 8) ^ 0xff00;
+//          return (input_port_read_indexed(machine, 8) << 8) ^ 0xff00;
 		return (ic36_ram[offset] << 8) + ic36_ram[offset+1];
 	}
 
@@ -331,11 +331,11 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_MSB)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	 return YM3438_status_port_0_A_r(machine, 0) << 8;
 			else 				 return YM3438_read_port_0_r(machine, 0);
 			break;
 		case 2:
-			if (ACCESSING_MSB)	return YM3438_status_port_0_B_r(machine, 0) << 8;
+			if (ACCESSING_BITS_8_15)	return YM3438_status_port_0_B_r(machine, 0) << 8;
 			else 				return 0;
 			break;
 		}
@@ -372,8 +372,8 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 	{
 		offset &=0x1fff;
 
-	if (ACCESSING_LSB) genesis_z80_ram[offset+1] = data & 0xff;
-	if (ACCESSING_MSB) genesis_z80_ram[offset] = (data >> 8) & 0xff;
+	if (ACCESSING_BITS_0_7) genesis_z80_ram[offset+1] = data & 0xff;
+	if (ACCESSING_BITS_8_15) genesis_z80_ram[offset] = (data >> 8) & 0xff;
 	}
 
 
@@ -383,11 +383,11 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 		switch (offset & 3)
 		{
 		case 0:
-			if (ACCESSING_MSB)	YM3438_control_port_0_A_w	(machine, 0,	(data >> 8) & 0xff);
+			if (ACCESSING_BITS_8_15)	YM3438_control_port_0_A_w	(machine, 0,	(data >> 8) & 0xff);
 			else 				YM3438_data_port_0_A_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 		case 2:
-			if (ACCESSING_MSB)	YM3438_control_port_0_B_w	(machine, 0,	(data >> 8) & 0xff);
+			if (ACCESSING_BITS_8_15)	YM3438_control_port_0_B_w	(machine, 0,	(data >> 8) & 0xff);
 			else 				YM3438_data_port_0_B_w		(machine, 0,	(data >> 0) & 0xff);
 			break;
 		}
@@ -412,8 +412,8 @@ WRITE16_HANDLER ( genesis_68k_to_z80_w )
 
 		if ( (offset >= 0x10) && (offset <=0x17) )
 		{
-			if (ACCESSING_LSB) SN76496_0_w(machine, 0, data & 0xff);
-			if (ACCESSING_MSB) SN76496_0_w(machine, 0, (data >>8) & 0xff);
+			if (ACCESSING_BITS_0_7) SN76496_0_w(machine, 0, data & 0xff);
+			if (ACCESSING_BITS_8_15) SN76496_0_w(machine, 0, (data >>8) & 0xff);
 		}
 
 	}
@@ -471,13 +471,13 @@ READ16_HANDLER ( genesis_io_r )
 
 			if (genesis_io_ram[offset] & 0x40)
 			{
-				int iport = readinputport(9);
+				int iport = input_port_read_indexed(machine, 9);
 				return_value = iport & 0x3f;
 			}
 			else
 			{
-				int iport1 = readinputport(12);
-				int iport2 = readinputport(7) >> 1;
+				int iport1 = input_port_read_indexed(machine, 12);
+				int iport2 = input_port_read_indexed(machine, 7) >> 1;
 				return_value = (iport1 & 0x10) + (iport2 & 0x20);
 				if(iport1 & 0x10 || iport2 & 0x20)
 					return_value+=1;
@@ -492,14 +492,14 @@ READ16_HANDLER ( genesis_io_r )
 
 			if (genesis_io_ram[offset] & 0x40)
 			{
-				int iport1 = (readinputport(9) & 0xc0) >> 6;
-				int iport2 = (readinputport(8) & 0x0f) << 2;
+				int iport1 = (input_port_read_indexed(machine, 9) & 0xc0) >> 6;
+				int iport2 = (input_port_read_indexed(machine, 8) & 0x0f) << 2;
 				return_value = (iport1 + iport2) & 0x3f;
 			}
 			else
 			{
-				int iport1 = readinputport(12) << 2;
-				int iport2 = readinputport(7) >> 2;
+				int iport1 = input_port_read_indexed(machine, 12) << 2;
+				int iport2 = input_port_read_indexed(machine, 7) >> 2;
 				return_value = (iport1 & 0x10) + (iport2 & 0x20);
 				if(iport1 & 0x10 || iport2 & 0x20)
 					return_value+=1;
@@ -541,11 +541,11 @@ READ16_HANDLER ( megaplay_genesis_io_r )
 		case 1: /* port A data (joypad 1) */
 
 			if (genesis_io_ram[offset] & 0x40)
-				return_value = readinputport(1) & (genesis_io_ram[4]^0xff);
+				return_value = input_port_read_indexed(machine, 1) & (genesis_io_ram[4]^0xff);
 			else
 			{
-				return_value = readinputport(2) & (genesis_io_ram[4]^0xff);
-				return_value |= readinputport(1) & 0x03;
+				return_value = input_port_read_indexed(machine, 2) & (genesis_io_ram[4]^0xff);
+				return_value |= input_port_read_indexed(machine, 1) & 0x03;
 			}
 			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
 //          logerror ("reading joypad 1 , type %02x %02x\n",genesis_io_ram[offset] & 0xb0, return_value &0x7f);
@@ -554,11 +554,11 @@ READ16_HANDLER ( megaplay_genesis_io_r )
 		case 2: /* port B data (joypad 2) */
 
 			if (genesis_io_ram[offset] & 0x40)
-				return_value = readinputport(3) & (genesis_io_ram[5]^0xff);
+				return_value = input_port_read_indexed(machine, 3) & (genesis_io_ram[5]^0xff);
 			else
 			{
-				return_value = readinputport(4) & (genesis_io_ram[5]^0xff);
-				return_value |= readinputport(3) & 0x03;
+				return_value = input_port_read_indexed(machine, 4) & (genesis_io_ram[5]^0xff);
+				return_value |= input_port_read_indexed(machine, 3) & 0x03;
 			}
 			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
 //          logerror ("reading joypad 2 , type %02x %02x\n",genesis_io_ram[offset] & 0xb0, return_value &0x7f);

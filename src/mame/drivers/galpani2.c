@@ -44,7 +44,7 @@ static READ16_HANDLER(galpani2_eeprom_r)
 static WRITE16_HANDLER(galpani2_eeprom_w)
 {
 	COMBINE_DATA( &eeprom_word );
-	if ( ACCESSING_LSB )
+	if ( ACCESSING_BITS_0_7 )
 	{
 		// latch the bit
 		EEPROM_write_bit(data & 0x02);
@@ -186,7 +186,7 @@ static WRITE16_HANDLER( galpani2_mcu_nmi_w )
 
 static WRITE16_HANDLER( galpani2_coin_lockout_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 	{
 		coin_counter_w(0, data & 0x0100);
 		coin_counter_w(1, data & 0x0200);
@@ -200,7 +200,7 @@ static WRITE16_HANDLER( galpani2_coin_lockout_w )
 
 static WRITE16_HANDLER( galpani2_oki_0_bank_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		UINT8 *ROM = memory_region(REGION_SOUND1);
 		logerror("CPU #0 PC %06X : OKI 0 bank %08X\n",activecpu_get_pc(),data);
@@ -210,7 +210,7 @@ static WRITE16_HANDLER( galpani2_oki_0_bank_w )
 
 static WRITE16_HANDLER( galpani2_oki_1_bank_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		OKIM6295_set_bank_base(1, 0x40000 * (data & 0xf) );
 		logerror("CPU #0 PC %06X : OKI 1 bank %08X\n",activecpu_get_pc(),data);
@@ -223,19 +223,19 @@ static ADDRESS_MAP_START( galpani2_mem1, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_RAM AM_BASE(&galpani2_ram				)		// Work RAM
 	AM_RANGE(0x300000, 0x301fff) AM_RAM												// ?
 	AM_RANGE(0x302000, 0x303fff) AM_RAM AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x304000, 0x30401f) AM_READWRITE(SMH_RAM, kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
+	AM_RANGE(0x304000, 0x30401f) AM_RAM_WRITE(kaneko16_sprites_regs_w) AM_BASE(&kaneko16_sprites_regs	)	// Sprites Regs
 //  AM_RANGE(0x308000, 0x308001) AM_WRITE(SMH_NOP                             )   // ? 0 at startup
 	AM_RANGE(0x30c000, 0x30c001) AM_WRITE(SMH_NOP								)	// ? hblank effect ?
-	AM_RANGE(0x310000, 0x3101ff) AM_READWRITE(SMH_RAM, galpani2_palette_0_w) AM_BASE(&galpani2_palette_0	)	// ?
+	AM_RANGE(0x310000, 0x3101ff) AM_RAM_WRITE(galpani2_palette_0_w) AM_BASE(&galpani2_palette_0	)	// ?
 	AM_RANGE(0x314000, 0x314001) AM_WRITE(SMH_NOP								)	// ? flip backgrounds ?
 	AM_RANGE(0x318000, 0x318001) AM_READWRITE(galpani2_eeprom_r, galpani2_eeprom_w	)	// EEPROM
 	AM_RANGE(0x380000, 0x387fff) AM_RAM												// Palette?
-	AM_RANGE(0x388000, 0x38ffff) AM_READWRITE(SMH_RAM, paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
-	AM_RANGE(0x400000, 0x43ffff) AM_READWRITE(SMH_RAM, galpani2_bg8_0_w) AM_BASE(&galpani2_bg8_0	)	// Background 0
+	AM_RANGE(0x388000, 0x38ffff) AM_RAM_WRITE(paletteram16_xGGGGGRRRRRBBBBB_word_w) AM_BASE(&paletteram16	)	// Palette
+	AM_RANGE(0x400000, 0x43ffff) AM_RAM_WRITE(galpani2_bg8_0_w) AM_BASE(&galpani2_bg8_0	)	// Background 0
 	AM_RANGE(0x440000, 0x440001) AM_RAM AM_BASE(&galpani2_bg8_0_scrollx	)			// Background 0 Scroll X
 	AM_RANGE(0x480000, 0x480001) AM_RAM AM_BASE(&galpani2_bg8_0_scrolly	)			// Background 0 Scroll Y
 	AM_RANGE(0x4c0000, 0x4c0001) AM_WRITE(SMH_NOP								)	// ? 0 at startup only
-	AM_RANGE(0x500000, 0x53ffff) AM_READWRITE(SMH_RAM, galpani2_bg8_1_w) AM_BASE(&galpani2_bg8_1	)	// Background 1
+	AM_RANGE(0x500000, 0x53ffff) AM_RAM_WRITE(galpani2_bg8_1_w) AM_BASE(&galpani2_bg8_1	)	// Background 1
 	AM_RANGE(0x540000, 0x540001) AM_RAM AM_BASE(&galpani2_bg8_1_scrollx	)			// Background 1 Scroll X
 	AM_RANGE(0x580000, 0x580001) AM_RAM AM_BASE(&galpani2_bg8_1_scrolly	)			// Background 1 Scroll Y
 	AM_RANGE(0x5c0000, 0x5c0001) AM_WRITE(SMH_NOP								)	// ? 0 at startup only
@@ -278,7 +278,7 @@ static READ16_HANDLER( galpani2_bankedrom_r )
 static ADDRESS_MAP_START( galpani2_mem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM																// ROM
 	AM_RANGE(0x100000, 0x13ffff) AM_RAM AM_BASE(&galpani2_ram2)										// Work RAM
-	AM_RANGE(0x400000, 0x4fffff) AM_READWRITE(SMH_RAM, galpani2_bg15_w) AM_BASE(&galpani2_bg15)	// bg15
+	AM_RANGE(0x400000, 0x4fffff) AM_RAM_WRITE(galpani2_bg15_w) AM_BASE(&galpani2_bg15)	// bg15
 	AM_RANGE(0x500000, 0x5fffff) AM_RAM																// bg15
 	AM_RANGE(0x600000, 0x600001) AM_WRITE(SMH_NOP						)	// ? 0 at startup only
 	AM_RANGE(0x640000, 0x640001) AM_WRITE(SMH_NOP						)	// ? 0 at startup only

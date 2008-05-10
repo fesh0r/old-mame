@@ -162,10 +162,10 @@ WRITE16_HANDLER( midxunit_unknown_w )
 {
 	int offs = offset / 0x40000;
 
-	if (offs == 1 && ACCESSING_LSB)
+	if (offs == 1 && ACCESSING_BITS_0_7)
 		dcs_reset_w(data & 2);
 
-	if (ACCESSING_LSB && offset % 0x40000 == 0)
+	if (ACCESSING_BITS_0_7 && offset % 0x40000 == 0)
 		logerror("%08X:midxunit_unknown_w @ %d = %02X\n", activecpu_get_pc(), offs, data & 0xff);
 }
 
@@ -188,10 +188,10 @@ READ16_HANDLER( midwunit_io_r )
 		case 1:
 		case 2:
 		case 3:
-			return readinputport(offset);
+			return input_port_read_indexed(machine, offset);
 
 		case 4:
-			return (midway_serial_pic_status_r() << 12) | midwunit_sound_state_r(machine,0,0);
+			return (midway_serial_pic_status_r() << 12) | midwunit_sound_state_r(machine,0,0xffff);
 
 		default:
 			logerror("%08X:Unknown I/O read from %d\n", activecpu_get_pc(), offset);
@@ -211,7 +211,7 @@ READ16_HANDLER( midxunit_io_r )
 		case 1:
 		case 2:
 		case 3:
-			return readinputport(offset);
+			return input_port_read_indexed(machine, offset);
 
 		default:
 			logerror("%08X:Unknown I/O read from %d\n", activecpu_get_pc(), offset);
@@ -223,13 +223,13 @@ READ16_HANDLER( midxunit_io_r )
 
 READ16_HANDLER( midxunit_analog_r )
 {
-	return readinputport(midxunit_analog_port);
+	return input_port_read_indexed(machine, midxunit_analog_port);
 }
 
 
 WRITE16_HANDLER( midxunit_analog_select_w )
 {
-	if (offset == 0 && ACCESSING_LSB)
+	if (offset == 0 && ACCESSING_BITS_0_7)
 		midxunit_analog_port = data - 8 + 4;
 }
 
@@ -281,7 +281,7 @@ READ16_HANDLER( midxunit_uart_r )
 			/* non-loopback case: bit 0 means data ready, bit 2 means ok to send */
 			else
 			{
-				int temp = midwunit_sound_state_r(machine, 0, 0);
+				int temp = midwunit_sound_state_r(machine, 0, 0xffff);
 				result |= (temp & 0x800) >> 9;
 				result |= (~temp & 0x400) >> 10;
 				timer_call_after_resynch(NULL, 0, 0);
@@ -296,7 +296,7 @@ READ16_HANDLER( midxunit_uart_r )
 
 			/* non-loopback case: read from the DCS system */
 			else
-				result = midwunit_sound_r(machine, 0, 0);
+				result = midwunit_sound_r(machine, 0, 0xffff);
 			break;
 
 		case 5:	/* register 5 seems to be like 3, but with in/out swapped */
@@ -308,7 +308,7 @@ READ16_HANDLER( midxunit_uart_r )
 			/* non-loopback case: bit 0 means data ready, bit 2 means ok to send */
 			else
 			{
-				int temp = midwunit_sound_state_r(machine, 0, 0);
+				int temp = midwunit_sound_state_r(machine, 0, 0xffff);
 				result |= (temp & 0x800) >> 11;
 				result |= (~temp & 0x400) >> 8;
 				timer_call_after_resynch(NULL, 0, 0);
@@ -328,7 +328,7 @@ READ16_HANDLER( midxunit_uart_r )
 WRITE16_HANDLER( midxunit_uart_w )
 {
 	/* convert to a byte offset, ignoring MSB writes */
-	if ((offset & 1) || !ACCESSING_LSB)
+	if ((offset & 1) || !ACCESSING_BITS_0_7)
 		return;
 	offset /= 2;
 	data &= 0xff;
@@ -460,13 +460,13 @@ DRIVER_INIT( mk3r10 )
 DRIVER_INIT( umk3 )
 {
 	init_mk3_common();
-	umk3_palette = memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0106a060, 0x0106a09f, 0, 0, umk3_palette_hack_w);
+	umk3_palette = memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0106a060, 0x0106a09f, 0, 0, umk3_palette_hack_w);
 }
 
 DRIVER_INIT( umk3r11 )
 {
 	init_mk3_common();
-	umk3_palette = memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x0106a060, 0x0106a09f, 0, 0, umk3_palette_hack_w);
+	umk3_palette = memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0106a060, 0x0106a09f, 0, 0, umk3_palette_hack_w);
 }
 
 
@@ -551,7 +551,7 @@ DRIVER_INIT( wwfmania )
 	init_wunit_generic();
 
 	/* enable I/O shuffling */
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x01800000, 0x0180000f, 0, 0, wwfmania_io_0_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01800000, 0x0180000f, 0, 0, wwfmania_io_0_w);
 
 	/* serial prefixes 430, 528 */
 	midway_serial_pic_init(528);
@@ -645,21 +645,21 @@ READ16_HANDLER( midwunit_security_r )
 
 WRITE16_HANDLER( midwunit_security_w )
 {
-	if (offset == 0 && ACCESSING_LSB)
+	if (offset == 0 && ACCESSING_BITS_0_7)
 		midway_serial_pic_w(data);
 }
 
 
 WRITE16_HANDLER( midxunit_security_w )
 {
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 		security_bits = data & 0x0f;
 }
 
 
 WRITE16_HANDLER( midxunit_security_clock_w )
 {
-	if (offset == 0 && ACCESSING_LSB)
+	if (offset == 0 && ACCESSING_BITS_0_7)
 		midway_serial_pic_w(((~data & 2) << 3) | security_bits);
 }
 
@@ -695,7 +695,7 @@ WRITE16_HANDLER( midwunit_sound_w )
 	}
 
 	/* call through based on the sound type */
-	if (ACCESSING_LSB)
+	if (ACCESSING_BITS_0_7)
 	{
 		logerror("%08X:Sound write = %04X\n", activecpu_get_pc(), data);
 		dcs_data_w(data & 0xff);

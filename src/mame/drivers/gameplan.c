@@ -80,7 +80,7 @@ TODO:
 
 static WRITE8_HANDLER( io_select_w )
 {
-	gameplan_state *state = Machine->driver_data;
+	gameplan_state *state = machine->driver_data;
 
 	switch (data)
 	{
@@ -96,9 +96,9 @@ static WRITE8_HANDLER( io_select_w )
 
 static READ8_HANDLER( io_port_r )
 {
-	gameplan_state *state = Machine->driver_data;
+	gameplan_state *state = machine->driver_data;
 
-	return readinputport(state->current_port);
+	return input_port_read_indexed(machine, state->current_port);
 }
 
 
@@ -127,13 +127,13 @@ static const struct via6522_interface via_1_interface =
 
 static WRITE8_HANDLER( audio_reset_w )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 1) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
 static WRITE8_HANDLER( audio_cmd_w )
 {
-	gameplan_state *state = Machine->driver_data;
+	gameplan_state *state = machine->driver_data;
 
 	state->audio_cmd = data & 0x7f;
 }
@@ -1160,6 +1160,8 @@ INPUT_PORTS_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	input_port_6_r,
 	input_port_7_r,
 };

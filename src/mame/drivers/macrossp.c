@@ -236,12 +236,12 @@ VIDEO_EOF(macrossp);
 
 static READ32_HANDLER ( macrossp_ports1_r )
 {
-	return ((readinputport(0) << 16) |  (readinputport(1) << 0));
+	return ((input_port_read_indexed(machine, 0) << 16) |  (input_port_read_indexed(machine, 1) << 0));
 }
 
 static READ32_HANDLER ( macrossp_ports2_r )
 {
-	return ((readinputport(2) << 16) |  (readinputport(3) << 0));
+	return ((input_port_read_indexed(machine, 2) << 16) |  (input_port_read_indexed(machine, 3) << 0));
 }
 
 static WRITE32_HANDLER( paletteram32_macrossp_w )
@@ -253,7 +253,7 @@ static WRITE32_HANDLER( paletteram32_macrossp_w )
 	g = ((paletteram32[offset] & 0x00ff0000) >>16);
 	r = ((paletteram32[offset] & 0xff000000) >>24);
 
-	palette_set_color(Machine,offset,MAKE_RGB(r,g,b));
+	palette_set_color(machine,offset,MAKE_RGB(r,g,b));
 }
 
 
@@ -275,12 +275,12 @@ static READ32_HANDLER ( macrossp_soundstatus_r )
 
 static WRITE32_HANDLER( macrossp_soundcmd_w )
 {
-	if (ACCESSING_MSW32)
+	if (ACCESSING_BITS_16_31)
 	{
 		//logerror("%08x write soundcmd %08x (%08x)\n",activecpu_get_pc(),data,mem_mask);
-		soundlatch_word_w(machine,0,data >> 16,0);
+		soundlatch_word_w(machine,0,data >> 16,0xffff);
 		sndpending = 1;
-		cpunum_set_input_line(Machine, 1,2,HOLD_LINE);
+		cpunum_set_input_line(machine, 1,2,HOLD_LINE);
 		/* spin for a while to let the sound CPU read the command */
 		cpu_spinuntil_time(ATTOTIME_IN_USEC(50));
 	}
@@ -683,7 +683,7 @@ PC :00018110 018110: beq     18104
 
 static DRIVER_INIT( macrossp )
 {
-	memory_install_write32_handler(0, ADDRESS_SPACE_PROGRAM, 0xf10158, 0xf1015b, 0, 0, macrossp_speedup_w );
+	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf10158, 0xf1015b, 0, 0, macrossp_speedup_w );
 }
 
 static DRIVER_INIT( quizmoon )

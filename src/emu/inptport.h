@@ -14,6 +14,8 @@
 #ifndef __INPTPORT_H__
 #define __INPTPORT_H__
 
+#include <time.h>
+
 #include "memory.h"
 #include "inputseq.h"
 #include "tokenize.h"
@@ -37,6 +39,11 @@
 
 #define INPUT_PORT_PAIR_ENTRIES	(sizeof(FPTR) / sizeof(UINT32))
 #define INPUT_PORT_PAIR_TOKENS	(2 * sizeof(UINT32) / sizeof(FPTR))
+
+
+#define INP_HEADER_SIZE			64
+#define INP_HEADER_MAJVERSION	2
+#define INP_HEADER_MINVERSION	0
 
 
 /* macro for a custom callback functions (PORT_CUSTOM) */
@@ -276,6 +283,7 @@ enum
 	IPT_UI_SHOW_PROFILER,
 	IPT_UI_TOGGLE_UI,
 	IPT_UI_TOGGLE_DEBUG,
+	IPT_UI_PASTE,
 	IPT_UI_SAVE_STATE,
 	IPT_UI_LOAD_STATE,
 	IPT_UI_ADD_CHEAT,
@@ -324,6 +332,7 @@ enum
 	INPUT_TOKEN_START_TAG,
 	INPUT_TOKEN_MODIFY,
 	INPUT_TOKEN_BIT,
+	INPUT_TOKEN_SPECIAL_ONOFF,
 	INPUT_TOKEN_CODE,
 	INPUT_TOKEN_CODE_DEC,
 	INPUT_TOKEN_CODE_INC,
@@ -629,20 +638,13 @@ struct _input_port_entry
 typedef struct _inp_header inp_header;
 struct _inp_header
 {
-	char 	name[9];      		/* 8 bytes for game->name + NUL */
-	char 	version[3];   		/* byte[0] = 0, byte[1] = version byte[2] = beta_version */
-	char 	reserved[20]; 		/* for future use, possible store game options? */
-};
-
-
-typedef struct _ext_inp_header ext_inp_header;
-struct _ext_inp_header
-{
-	char 	header[7];			/* must be "XINP" followed by NULLs */
-	char 	shortname[9];		/* game shortname */
-	char 	version[32];		/* MAME version string */
-	UINT32 starttime;			/* approximate INP start time */
-	char 	dummy[32];			/* for possible future expansion */
+	char	header[8];			/* +00: 8 byte header - must be "MAMEINP\0" */
+	UINT64	basetime;			/* +08: base time of recording */
+	UINT8	majversion;			/* +10: major INP version */
+	UINT8	minversion;			/* +11: minor INP version */
+	UINT8	reserved[2];		/* +12: must be zero */
+	char	gamename[12];		/* +14: game name string, NULL-terminated */
+	char	version[32];		/* +20: system version string, NULL-terminated */
 };
 
 
@@ -685,9 +687,18 @@ struct _ext_inp_header
 	TOKEN_STRING(_tag),
 
 /* input bit definition */
-#define PORT_BIT(_mask,_default,_type) \
+#define PORT_BIT(_mask, _default, _type) \
 	TOKEN_UINT32_PACK2(INPUT_TOKEN_BIT, 8, _type, 24), \
 	TOKEN_UINT64_PACK2(_mask, 32, _default, 32),
+
+#define PORT_SPECIAL_ONOFF(_mask, _default, _strindex) \
+	TOKEN_UINT32_PACK3(INPUT_TOKEN_SPECIAL_ONOFF, 8, FALSE, 1, INPUT_STRING_##_strindex, 23), \
+	TOKEN_UINT64_PACK2(_mask, 32, _default, 32),
+
+#define PORT_SPECIAL_ONOFF_DIPLOC(_mask, _default, _strindex, _diploc) \
+	TOKEN_UINT32_PACK3(INPUT_TOKEN_SPECIAL_ONOFF, 8, TRUE, 1, INPUT_STRING_##_strindex, 23), \
+	TOKEN_UINT64_PACK2(_mask, 32, _default, 32), \
+	TOKEN_STRING(_diploc),
 
 /* append a code */
 #define PORT_CODE(_code) \
@@ -743,7 +754,7 @@ struct _ext_inp_header
 
 /* analog settings */
 /* if this macro is not used, the minimum defaluts to 0 and maximum defaults to the mask value */
-#define PORT_MINMAX(_min,_max) \
+#define PORT_MINMAX(_min, _max) \
 	TOKEN_UINT32_PACK1(INPUT_TOKEN_MINMAX, 8), \
 	TOKEN_UINT64_PACK2(_min, 32, _max, 32),
 
@@ -798,12 +809,12 @@ struct _ext_inp_header
 	TOKEN_PTR(voidptr, _param),
 
 /* dip switch definition */
-#define PORT_DIPNAME(_mask,_default,_name) \
+#define PORT_DIPNAME(_mask, _default, _name) \
 	TOKEN_UINT32_PACK1(INPUT_TOKEN_DIPNAME, 8), \
 	TOKEN_UINT64_PACK2(_mask, 32, _default, 32), \
 	TOKEN_STRING(_name),
 
-#define PORT_DIPSETTING(_default,_name) \
+#define PORT_DIPSETTING(_default, _name) \
 	TOKEN_UINT64_PACK2(INPUT_TOKEN_DIPSETTING, 8, _default, 32), \
 	TOKEN_STRING(_name),
 
@@ -814,41 +825,41 @@ struct _ext_inp_header
 	TOKEN_STRING(_location),
 
 /* conditionals for dip switch settings */
-#define PORT_CONDITION(_tag,_mask,_condition,_value) \
+#define PORT_CONDITION(_tag, _mask, _condition, _value) \
 	TOKEN_UINT32_PACK2(INPUT_TOKEN_CONDITION, 8, _condition, 24), \
 	TOKEN_UINT64_PACK2(_mask, 32, _value, 32), \
 	TOKEN_STRING(_tag),
 
 /* analog adjuster definition */
-#define PORT_ADJUSTER(_default,_name) \
+#define PORT_ADJUSTER(_default, _name) \
 	TOKEN_UINT64_PACK2(INPUT_TOKEN_ADJUSTER, 8, _default, 32), \
 	TOKEN_STRING(_name),
 
 /* config definition */
-#define PORT_CONFNAME(_mask,_default,_name) \
+#define PORT_CONFNAME(_mask, _default, _name) \
 	TOKEN_UINT32_PACK1(INPUT_TOKEN_CONFNAME, 8), \
 	TOKEN_UINT64_PACK2(_mask, 32, _default, 32), \
 	TOKEN_STRING(_name),
 
-#define PORT_CONFSETTING(_default,_name) \
+#define PORT_CONFSETTING(_default, _name) \
 	TOKEN_UINT64_PACK2(INPUT_TOKEN_CONFSETTING, 8, _default, 32), \
 	TOKEN_STRING(_name),
 
 #ifdef MESS
 /* keyboard chars */
 #define PORT_CHAR(_ch) \
-	TOKEN_UINT32_PACK2(INPUT_TOKEN_CHAR, 8, _ch, 24),
+	TOKEN_UINT64_PACK2(INPUT_TOKEN_CHAR, 8, _ch, 32), \
 
 /* categories */
 #define PORT_CATEGORY(_category) \
-	TOKEN_UINT32_PACK2(INPUT_TOKEN_CHAR, 8, _category, 24),
+	TOKEN_UINT32_PACK2(INPUT_TOKEN_CATEGORY, 8, _category, 24),
 
-#define PORT_CATEGORY_CLASS(_mask,_default,_name) \
+#define PORT_CATEGORY_CLASS(_mask, _default, _name) \
 	TOKEN_UINT32_PACK1(INPUT_TOKEN_CATEGORY_NAME, 8), \
 	TOKEN_UINT64_PACK2(_mask, 32, _default, 32), \
 	TOKEN_STRING(_name),
 
-#define PORT_CATEGORY_ITEM(_default,_name,_category) \
+#define PORT_CATEGORY_ITEM(_default, _name, _category) \
 	TOKEN_UINT64_PACK3(INPUT_TOKEN_CATEGORY_SETTING, 8, _default, 32, _category, 16), \
 	TOKEN_STRING(_name),
 #endif /* MESS */
@@ -859,38 +870,26 @@ struct _ext_inp_header
     HELPER MACROS
 ***************************************************************************/
 
-#define PORT_SERVICE_DIPLOC(mask,default,loc)	\
-	PORT_BIT(    mask, mask & default, IPT_DIPSWITCH_NAME ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) PORT_TOGGLE PORT_DIPLOCATION(loc)	\
-	PORT_DIPSETTING(    mask & default, DEF_STR( Off ) )	\
-	PORT_DIPSETTING(    mask &~default, DEF_STR( On ) )
+#define PORT_DIPUNUSED_DIPLOC(_mask, _default, _diploc) \
+	PORT_SPECIAL_ONOFF_DIPLOC(_mask, _default, Unused, _diploc)
 
-#define PORT_SERVICE(mask,default)	\
-	PORT_BIT(    mask, mask & default, IPT_DIPSWITCH_NAME ) PORT_NAME( DEF_STR( Service_Mode )) PORT_CODE(KEYCODE_F2) PORT_TOGGLE	\
-	PORT_DIPSETTING(    mask & default, DEF_STR( Off ) )	\
-	PORT_DIPSETTING(    mask &~default, DEF_STR( On ) )
+#define PORT_DIPUNUSED(_mask, _default) \
+	PORT_SPECIAL_ONOFF(_mask, _default, Unused)
 
-#define PORT_SERVICE_NO_TOGGLE(mask,default)	\
-	PORT_BIT(    mask, mask & default, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode ))
+#define PORT_DIPUNKNOWN_DIPLOC(_mask, _default, _diploc) \
+	PORT_SPECIAL_ONOFF_DIPLOC(_mask, _default, Unknown, _diploc)
 
-#define PORT_DIPUNUSED_DIPLOC(mask,default,loc)	\
-	PORT_BIT(    mask, mask & default, IPT_DIPSWITCH_NAME ) PORT_NAME( DEF_STR( Unused )) PORT_DIPLOCATION(loc)	\
-	PORT_DIPSETTING(    mask & default, DEF_STR( Off ) )	\
-	PORT_DIPSETTING(    mask &~default, DEF_STR( On ) )
+#define PORT_DIPUNKNOWN(_mask, _default) \
+	PORT_SPECIAL_ONOFF(_mask, _default, Unknown)
 
-#define PORT_DIPUNUSED(mask,default)	\
-	PORT_BIT(    mask, mask & default, IPT_DIPSWITCH_NAME ) PORT_NAME( DEF_STR( Unused )) \
-	PORT_DIPSETTING(    mask & default, DEF_STR( Off ) )	\
-	PORT_DIPSETTING(    mask &~default, DEF_STR( On ) )
+#define PORT_SERVICE_DIPLOC(_mask, _default, _diploc) \
+	PORT_SPECIAL_ONOFF_DIPLOC(_mask, _default, Service_Mode, _diploc)
 
-#define PORT_DIPUNKNOWN_DIPLOC(mask,default,loc)	\
-	PORT_BIT(    mask, mask & default, IPT_DIPSWITCH_NAME ) PORT_NAME( DEF_STR( Unknown )) PORT_DIPLOCATION(loc)	\
-	PORT_DIPSETTING(    mask & default, DEF_STR( Off ) )	\
-	PORT_DIPSETTING(    mask &~default, DEF_STR( On ) )
+#define PORT_SERVICE(_mask, _default) \
+	PORT_SPECIAL_ONOFF(_mask, _default, Service_Mode)
 
-#define PORT_DIPUNKNOWN(mask,default)	\
-	PORT_BIT(    mask, mask & default, IPT_DIPSWITCH_NAME ) PORT_NAME( DEF_STR( Unknown )) \
-	PORT_DIPSETTING(    mask & default, DEF_STR( Off ) )	\
-	PORT_DIPSETTING(    mask &~default, DEF_STR( On ) )
+#define PORT_SERVICE_NO_TOGGLE(_mask, _default) \
+	PORT_BIT( _mask, _mask & _default, IPT_SERVICE ) PORT_NAME( DEF_STR( Service_Mode ))
 
 
 
@@ -901,12 +900,11 @@ struct _ext_inp_header
 #define DEF_STR(str_num) ((const char *)INPUT_STRING_##str_num)
 
 
-
 /***************************************************************************
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-void input_port_init(running_machine *machine, const input_port_token *ipt);
+time_t input_port_init(running_machine *machine, const input_port_token *ipt);
 const char *input_port_string_from_token(const input_port_token token);
 
 input_port_entry *input_port_initialize(input_port_init_params *params, UINT32 type, const char *tag, UINT32 mask, UINT32 defval);
@@ -940,12 +938,10 @@ int input_ui_pressed_repeat(int code, int speed);
 
 void input_port_update_defaults(void);
 
-void input_port_set_digital_value(int port, UINT32 value, UINT32 mask);
-
 UINT32 get_crosshair_pos(int port_num, UINT8 player, UINT8 axis);
 
-UINT32 readinputport(int port);
-UINT32 readinputportbytag(const char *tag);
-UINT32 readinputportbytag_safe(const char *tag, UINT32 defvalue);
+UINT32 input_port_read_indexed(running_machine *machine, int port);
+UINT32 input_port_read(running_machine *machine, const char *tag);
+UINT32 input_port_read_safe(running_machine *machine, const char *tag, UINT32 defvalue);
 
 #endif	/* __INPTPORT_H__ */

@@ -76,7 +76,7 @@ static WRITE8_HANDLER( lkage_sh_nmi_enable_w )
 	sound_nmi_enable = 1;
 	if (pending_nmi)
 	{ /* probably wrong but commands may go lost otherwise */
-		cpunum_set_input_line(Machine, 1,INPUT_LINE_NMI,PULSE_LINE);
+		cpunum_set_input_line(machine, 1,INPUT_LINE_NMI,PULSE_LINE);
 		pending_nmi = 0;
 	}
 }
@@ -84,7 +84,7 @@ static WRITE8_HANDLER( lkage_sh_nmi_enable_w )
 static ADDRESS_MAP_START( lkage, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0xdfff) AM_READ(SMH_ROM) AM_WRITE(SMH_ROM)
 	AM_RANGE(0xe000, 0xe7ff) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) /* work ram */
-	AM_RANGE(0xe800, 0xefff) AM_READWRITE(SMH_RAM, paletteram_xxxxRRRRGGGGBBBB_le_w) AM_BASE(&paletteram)
+	AM_RANGE(0xe800, 0xefff) AM_RAM_WRITE(paletteram_xxxxRRRRGGGGBBBB_le_w) AM_BASE(&paletteram)
 	AM_RANGE(0xf000, 0xf003) AM_READ(SMH_RAM) AM_WRITE(SMH_RAM) AM_BASE(&lkage_vreg) /* video registers */
 	AM_RANGE(0xf060, 0xf060) AM_WRITE(lkage_sound_command_w)
 	AM_RANGE(0xf061, 0xf061) AM_WRITE(SMH_NOP)
@@ -316,10 +316,11 @@ static void irqhandler(int irq)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,
-	0,
-	0,
-	0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		NULL, NULL, NULL, NULL
+	},
 	irqhandler
 };
 
@@ -559,9 +560,9 @@ static READ8_HANDLER( fake_status_r )
 
 static DRIVER_INIT( lkageb )
 {
-	memory_install_read8_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf062, 0xf062, 0, 0, fake_mcu_r);
-	memory_install_read8_handler( 0, ADDRESS_SPACE_PROGRAM, 0xf087, 0xf087, 0, 0, fake_status_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf062, 0xf062, 0, 0, fake_mcu_w );
+	memory_install_read8_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf062, 0xf062, 0, 0, fake_mcu_r);
+	memory_install_read8_handler(machine,  0, ADDRESS_SPACE_PROGRAM, 0xf087, 0xf087, 0, 0, fake_status_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf062, 0xf062, 0, 0, fake_mcu_w );
 }
 
 GAME( 1984, lkage,   0,     lkage,  lkage, 0,       ROT0, "Taito Corporation", "The Legend of Kage", 0 )

@@ -1202,28 +1202,28 @@ static READ32_HANDLER( bnstars1_r )
 			return 0xffffffff;
 
 		case 0x0000:
-			return readinputport(0);
+			return input_port_read_indexed(machine, 0);
 
 		case 0x0080:
-			return readinputport(1);
+			return input_port_read_indexed(machine, 1);
 
 		case 0x2000:
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 
 		case 0x2080:
-			return readinputport(3);
+			return input_port_read_indexed(machine, 3);
 
 	}
 }
 
 static READ32_HANDLER( bnstars2_r )
 {
-	return readinputport(4);
+	return input_port_read_indexed(machine, 4);
 }
 
 static READ32_HANDLER( bnstars3_r )
 {
-	return readinputport(5);
+	return input_port_read_indexed(machine, 5);
 }
 
 static WRITE32_HANDLER( bnstars1_mahjong_select_w )
@@ -1257,15 +1257,15 @@ static ADDRESS_MAP_START( bnstars_map, ADDRESS_SPACE_PROGRAM, 32 )
 	/* wrote together */
 	AM_RANGE(0xfd040000, 0xfd047fff) AM_RAM // priority ram
 	AM_RANGE(0xfd080000, 0xfd087fff) AM_RAM
-	AM_RANGE(0xfd200000, 0xfd237fff) AM_RAM AM_WRITE(ms32_pal1_ram_w) AM_BASE(&ms32_pal_ram[1])
-	AM_RANGE(0xfd400000, 0xfd437fff) AM_RAM AM_WRITE(ms32_pal0_ram_w) AM_BASE(&ms32_pal_ram[0])
-	AM_RANGE(0xfe000000, 0xfe01ffff) AM_RAM AM_WRITE(ms32_roz1_ram_w) AM_BASE(&ms32_roz1_ram)
-	AM_RANGE(0xfe400000, 0xfe41ffff) AM_RAM AM_WRITE(ms32_roz0_ram_w) AM_BASE(&ms32_roz0_ram)
-	AM_RANGE(0xfe800000, 0xfe83ffff) AM_RAM AM_WRITE(ms32_spramx_w) AM_BASE(&ms32_spram)
-	AM_RANGE(0xfea00000, 0xfea07fff) AM_RAM AM_WRITE(ms32_tx1_ram_w) AM_BASE(&ms32_tx1_ram)
-	AM_RANGE(0xfea08000, 0xfea0ffff) AM_RAM AM_WRITE(ms32_bg1_ram_w) AM_BASE(&ms32_bg1_ram)
- 	AM_RANGE(0xfec00000, 0xfec07fff) AM_RAM AM_WRITE(ms32_tx0_ram_w) AM_BASE(&ms32_tx0_ram)
-	AM_RANGE(0xfec08000, 0xfec0ffff) AM_RAM AM_WRITE(ms32_bg0_ram_w) AM_BASE(&ms32_bg0_ram)
+	AM_RANGE(0xfd200000, 0xfd237fff) AM_RAM_WRITE(ms32_pal1_ram_w) AM_BASE(&ms32_pal_ram[1])
+	AM_RANGE(0xfd400000, 0xfd437fff) AM_RAM_WRITE(ms32_pal0_ram_w) AM_BASE(&ms32_pal_ram[0])
+	AM_RANGE(0xfe000000, 0xfe01ffff) AM_RAM_WRITE(ms32_roz1_ram_w) AM_BASE(&ms32_roz1_ram)
+	AM_RANGE(0xfe400000, 0xfe41ffff) AM_RAM_WRITE(ms32_roz0_ram_w) AM_BASE(&ms32_roz0_ram)
+	AM_RANGE(0xfe800000, 0xfe83ffff) AM_RAM_WRITE(ms32_spramx_w) AM_BASE(&ms32_spram)
+	AM_RANGE(0xfea00000, 0xfea07fff) AM_RAM_WRITE(ms32_tx1_ram_w) AM_BASE(&ms32_tx1_ram)
+	AM_RANGE(0xfea08000, 0xfea0ffff) AM_RAM_WRITE(ms32_bg1_ram_w) AM_BASE(&ms32_bg1_ram)
+ 	AM_RANGE(0xfec00000, 0xfec07fff) AM_RAM_WRITE(ms32_tx0_ram_w) AM_BASE(&ms32_tx0_ram)
+	AM_RANGE(0xfec08000, 0xfec0ffff) AM_RAM_WRITE(ms32_bg0_ram_w) AM_BASE(&ms32_bg0_ram)
 
 	AM_RANGE(0xfee00000, 0xfee1ffff) AM_RAM
 	AM_RANGE(0xffe00000, 0xffffffff) AM_READWRITE(SMH_BANK1, SMH_ROM)
@@ -1289,13 +1289,13 @@ static const struct YMF271interface ymf271_interface2 =
 
 static UINT16 irqreq;
 
-static int irq_callback(int irqline)
+static IRQ_CALLBACK(irq_callback)
 {
 	int i;
 	for(i=15; i>=0 && !(irqreq & (1<<i)); i--);
 	irqreq &= ~(1<<i);
 	if(!irqreq)
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	return i;
 }
 

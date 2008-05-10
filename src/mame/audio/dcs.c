@@ -379,7 +379,7 @@ static READ16_HANDLER( dcs_dataram_r );
 static WRITE16_HANDLER( dcs_dataram_w );
 static WRITE16_HANDLER( dcs_data_bank_select_w );
 
-static void sdrc_reset(void);
+static void sdrc_reset(running_machine *machine);
 static READ16_HANDLER( sdrc_r );
 static WRITE16_HANDLER( sdrc_w );
 
@@ -412,7 +412,7 @@ static void sound_tx_callback(int port, INT32 data);
 static READ16_HANDLER( dcs_polling_r );
 
 static TIMER_CALLBACK( transfer_watchdog_callback );
-static int preprocess_write(UINT16 data);
+static int preprocess_write(running_machine *machine, UINT16 data);
 
 
 
@@ -787,7 +787,7 @@ static TIMER_CALLBACK( dcs_reset )
 
 		/* rev 2: reset the SDRC ASIC */
 		case 2:
-			sdrc_reset();
+			sdrc_reset(machine);
 			break;
 
 		/* rev 3: reset the DSIO ASIC */
@@ -930,7 +930,7 @@ void dcs_init(void)
 }
 
 
-void dcs2_init(int dram_in_mb, offs_t polling_offset)
+void dcs2_init(running_machine *machine, int dram_in_mb, offs_t polling_offset)
 {
 	memset(&dcs, 0, sizeof(dcs));
 
@@ -978,7 +978,7 @@ void dcs2_init(int dram_in_mb, offs_t polling_offset)
 
 	/* install the speedup handler */
 	if (polling_offset)
-		dcs_polling_base = memory_install_read16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, polling_offset, polling_offset, 0, 0, dcs_polling_r);
+		dcs_polling_base = memory_install_read16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, polling_offset, polling_offset, 0, 0, dcs_polling_r);
 
 	/* allocate a watchdog timer for HLE transfers */
 	transfer.hle_enabled = (ENABLE_HLE_TRANSFERS && dram_in_mb != 0);
@@ -994,9 +994,9 @@ void dcs2_init(int dram_in_mb, offs_t polling_offset)
 
 
 #ifdef UNUSED_FUNCTION
-void dsio_init(int dram_in_mb, offs_t polling_offset)
+void dsio_init(running_machine *machine, int dram_in_mb, offs_t polling_offset)
 {
-	dcs2_init(dram_in_mb, polling_offset);
+	dcs2_init(machine, dram_in_mb, polling_offset);
 }
 #endif
 
@@ -1072,35 +1072,29 @@ INLINE void sdrc_update_bank_pointers(void)
 }
 
 
-static void sdrc_remap_memory(void)
+static void sdrc_remap_memory(running_machine *machine)
 {
 	/* if SRAM disabled, clean it out */
 	if (SDRC_SM_EN == 0)
 	{
-		memory_install_read32_handler (dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_UNMAP);
-		memory_install_write32_handler(dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_UNMAP);
-		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x37ff, 0, 0, SMH_UNMAP);
-		memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x37ff, 0, 0, SMH_UNMAP);
+		memory_install_readwrite32_handler(machine, dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x37ff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 	}
 
 	/* otherwise, map the SRAM */
 	else
 	{
 		/* first start with a clean program map */
-		memory_install_read32_handler (dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_BANK21);
-		memory_install_write32_handler(dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_BANK21);
+		memory_install_readwrite32_handler(machine, dcs.cpunum, ADDRESS_SPACE_PROGRAM, 0x0800, 0x3fff, 0, 0, SMH_BANK21, SMH_BANK21);
 		memory_set_bankptr(21, dcs_sram + 0x4800);
 
 		/* set up the data map based on the SRAM banking */
 		/* map 0: ram from 0800-37ff */
 		if (SDRC_SM_BK == 0)
 		{
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_BANK22);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_BANK22);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
+			memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_BANK22, SMH_BANK22);
+			memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23, SMH_BANK23);
+			memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24,  SMH_BANK24);
 			memory_set_bankptr(22, dcs_sram + 0x0000);
 			memory_set_bankptr(23, dcs_sram + 0x1000);
 			memory_set_bankptr(24, dcs_sram + 0x2000);
@@ -1109,12 +1103,9 @@ static void sdrc_remap_memory(void)
 		/* map 1: nothing from 0800-17ff, alternate RAM at 1800-27ff, same RAM at 2800-37ff */
 		else
 		{
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_UNMAP);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_UNMAP);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23);
-			memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
-			memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24);
+			memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, 0x0800, 0x17ff, 0, 0, SMH_UNMAP, SMH_UNMAP);
+			memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, 0x1800, 0x27ff, 0, 0, SMH_BANK23, SMH_BANK23);
+			memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, 0x2800, 0x37ff, 0, 0, SMH_BANK24, SMH_BANK24);
 			memory_set_bankptr(23, dcs_sram + 0x3000);
 			memory_set_bankptr(24, dcs_sram + 0x2000);
 		}
@@ -1125,15 +1116,14 @@ static void sdrc_remap_memory(void)
 	{
 		int baseaddr = (SDRC_ROM_ST == 0) ? 0x0000 : (SDRC_ROM_ST == 1) ? 0x3000 : 0x3400;
 		int pagesize = (SDRC_ROM_SZ == 0 && SDRC_ROM_ST != 0) ? 4096 : 1024;
-		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + pagesize - 1, 0, 0, SMH_BANK25);
+		memory_install_read16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + pagesize - 1, 0, 0, SMH_BANK25);
 	}
 
 	/* map the DRAM page as bank 26 */
 	if (SDRC_DM_ST != 0)
 	{
 		int baseaddr = (SDRC_DM_ST == 1) ? 0x0000 : (SDRC_DM_ST == 2) ? 0x3000 : 0x3400;
-		memory_install_read16_handler (dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + 0x3ff, 0, 0, SMH_BANK26);
-		memory_install_write16_handler(dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + 0x3ff, 0, 0, SMH_BANK26);
+		memory_install_readwrite16_handler(machine, dcs.cpunum, ADDRESS_SPACE_DATA, baseaddr, baseaddr + 0x3ff, 0, 0, SMH_BANK26, SMH_BANK26);
 	}
 
 	/* update the bank pointers */
@@ -1141,10 +1131,10 @@ static void sdrc_remap_memory(void)
 }
 
 
-static void sdrc_reset(void)
+static void sdrc_reset(running_machine *machine)
 {
 	memset(sdrc.reg, 0, sizeof(sdrc.reg));
-	sdrc_remap_memory();
+	sdrc_remap_memory(machine);
 }
 
 
@@ -1213,7 +1203,7 @@ static WRITE16_HANDLER( sdrc_w )
 		case 0:
 			sdrc.reg[0] = data;
 			if (diff & 0x1833)
-				sdrc_remap_memory();
+				sdrc_remap_memory(machine);
 			if (diff & 0x0380)
 				sdrc_update_bank_pointers();
 			break;
@@ -1223,7 +1213,7 @@ static WRITE16_HANDLER( sdrc_w )
 			sdrc.reg[1] = data;
 //          dmadac_enable(0, dcs.channels, SDRC_MUTE);
 			if (diff & 0x0003)
-				sdrc_remap_memory();
+				sdrc_remap_memory(machine);
 			break;
 
 		/* offset 2 controls paging */
@@ -1411,13 +1401,13 @@ WRITE32_HANDLER( dsio_idma_data_w )
 {
 	UINT32 pc = activecpu_get_pc();
 	cpuintrf_push_context(dcs.cpunum);
-	if ((mem_mask & 0x0000ffff) != 0x0000ffff)
+	if (ACCESSING_BITS_0_15)
 	{
 		if (LOG_DCS_TRANSFERS)
 			logerror("%08X:IDMA_data_w(%04X) = %04X\n", pc, adsp2181_idma_addr_r(), data & 0xffff);
 		adsp2181_idma_data_w(data & 0xffff);
 	}
-	if ((mem_mask & 0xffff0000) != 0xffff0000)
+	if (ACCESSING_BITS_16_31)
 	{
 		if (LOG_DCS_TRANSFERS)
 			logerror("%08X:IDMA_data_w(%04X) = %04X\n", pc, adsp2181_idma_addr_r(), data >> 16);
@@ -1427,7 +1417,7 @@ WRITE32_HANDLER( dsio_idma_data_w )
 	if (dsio.start_on_next_write && --dsio.start_on_next_write == 0)
 	{
 		logerror("Starting DSIO CPU\n");
-		cpunum_set_input_line(Machine, dcs.cpunum, INPUT_LINE_HALT, CLEAR_LINE);
+		cpunum_set_input_line(machine, dcs.cpunum, INPUT_LINE_HALT, CLEAR_LINE);
 	}
 }
 
@@ -1549,7 +1539,7 @@ static TIMER_CALLBACK( dcs_delayed_data_w_callback )
 void dcs_data_w(int data)
 {
 	/* preprocess the write */
-	if (preprocess_write(data))
+	if (preprocess_write(Machine, data))
 		return;
 
 	/* if we are DCS1, set a timer to latch the data */
@@ -1565,14 +1555,14 @@ static WRITE16_HANDLER( input_latch_ack_w )
 	if (!dcs.last_input_empty && dcs.input_empty_cb)
 		(*dcs.input_empty_cb)(dcs.last_input_empty = 1);
 	SET_INPUT_EMPTY();
-	cpunum_set_input_line(Machine, dcs.cpunum, ADSP2105_IRQ2, CLEAR_LINE);
+	cpunum_set_input_line(machine, dcs.cpunum, ADSP2105_IRQ2, CLEAR_LINE);
 }
 
 
 static READ16_HANDLER( input_latch_r )
 {
 	if (dcs.auto_ack)
-		input_latch_ack_w(machine,0,0,0);
+		input_latch_ack_w(machine,0,0,0xffff);
 	if (LOG_DCS_IO)
 		logerror("%08X:input_latch_r(%04X)\n", activecpu_get_pc(), dcs.input_data);
 	return dcs.input_data;
@@ -1837,7 +1827,7 @@ static WRITE16_HANDLER( adsp_control_w )
 			if (data & 0x0200)
 			{
 				logerror("%04X:Rebooting DCS due to SYSCONTROL write\n", activecpu_get_pc());
-				cpunum_set_input_line(Machine, dcs.cpunum, INPUT_LINE_RESET, PULSE_LINE);
+				cpunum_set_input_line(machine, dcs.cpunum, INPUT_LINE_RESET, PULSE_LINE);
 				dcs_boot();
 				dcs.control_regs[SYSCONTROL_REG] = 0;
 			}
@@ -2054,7 +2044,7 @@ void dcs_fifo_notify(int count, int max)
 	if (transfer.state != 5 || transfer.fifo_entries == transfer.writes_left || transfer.fifo_entries >= 256)
 	{
 		for ( ; transfer.fifo_entries; transfer.fifo_entries--)
-			preprocess_write((*dcs.fifo_data_r)());
+			preprocess_write(Machine, (*dcs.fifo_data_r)());
 	}
 }
 
@@ -2066,7 +2056,7 @@ static TIMER_CALLBACK( transfer_watchdog_callback )
 	if (transfer.fifo_entries && starting_writes_left == transfer.writes_left)
 	{
 		for ( ; transfer.fifo_entries; transfer.fifo_entries--)
-			preprocess_write((*dcs.fifo_data_r)());
+			preprocess_write(machine, (*dcs.fifo_data_r)());
 	}
 	timer_adjust_oneshot(transfer.watchdog, ATTOTIME_IN_MSEC(1), transfer.writes_left);
 }
@@ -2080,7 +2070,7 @@ static TIMER_CALLBACK( s1_ack_callback2 )
 		timer_set(ATTOTIME_IN_USEC(1), NULL, param, s1_ack_callback2);
 		return;
 	}
-	output_latch_w(machine, 0, 0x000a, 0);
+	output_latch_w(machine, 0, 0x000a, 0xffff);
 }
 
 
@@ -2092,14 +2082,14 @@ static TIMER_CALLBACK( s1_ack_callback1 )
 		timer_set(ATTOTIME_IN_USEC(1), NULL, param, s1_ack_callback1);
 		return;
 	}
-	output_latch_w(machine, 0, param, 0);
+	output_latch_w(machine, 0, param, 0xffff);
 
 	/* chain to the next word we need to write back */
 	timer_set(ATTOTIME_IN_USEC(1), NULL, 0, s1_ack_callback2);
 }
 
 
-static int preprocess_stage_1(UINT16 data)
+static int preprocess_stage_1(running_machine *machine, UINT16 data)
 {
 	switch (transfer.state)
 	{
@@ -2173,12 +2163,12 @@ static int preprocess_stage_1(UINT16 data)
 				if (transfer.type == 1 && SDRC_SM_BK == 1)
 				{
 					sdrc.reg[0] &= ~0x1000;
-					sdrc_remap_memory();
+					sdrc_remap_memory(machine);
 				}
 				if (transfer.type == 2 && SDRC_SM_BK == 0)
 				{
 					sdrc.reg[0] |= 0x1000;
-					sdrc_remap_memory();
+					sdrc_remap_memory(machine);
 				}
 				return 1;
 			}
@@ -2230,12 +2220,12 @@ static TIMER_CALLBACK( s2_ack_callback )
 		timer_set(ATTOTIME_IN_USEC(1), NULL, param, s2_ack_callback);
 		return;
 	}
-	output_latch_w(machine, 0, param, 0);
-	output_control_w(machine, 0, (dcs.output_control & ~0xff00) | 0x0300, 0);
+	output_latch_w(machine, 0, param, 0xffff);
+	output_control_w(machine, 0, (dcs.output_control & ~0xff00) | 0x0300, 0xffff);
 }
 
 
-static int preprocess_stage_2(UINT16 data)
+static int preprocess_stage_2(running_machine *machine, UINT16 data)
 {
 	switch (transfer.state)
 	{
@@ -2335,7 +2325,7 @@ static int preprocess_stage_2(UINT16 data)
 }
 
 
-static int preprocess_write(UINT16 data)
+static int preprocess_write(running_machine *machine, UINT16 data)
 {
 	int result;
 
@@ -2345,9 +2335,9 @@ static int preprocess_write(UINT16 data)
 
 	/* state 0 - initialization phase */
 	if (transfer.dcs_state == 0)
-		result = preprocess_stage_1(data);
+		result = preprocess_stage_1(machine, data);
 	else
-		result = preprocess_stage_2(data);
+		result = preprocess_stage_2(machine, data);
 
 	/* if we did the write, toggle the full/not full state so interrupts are generated */
 	if (result && dcs.input_empty_cb)

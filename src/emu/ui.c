@@ -1384,6 +1384,12 @@ static UINT32 handler_ingame(running_machine *machine, UINT32 state)
 	else
 		video_set_fastforward(FALSE);
 
+#ifdef MESS
+	/* paste? */
+	if (input_ui_pressed(IPT_UI_PASTE))
+		ui_paste(machine);
+#endif /* MESS */
+
 	return 0;
 }
 
@@ -1547,7 +1553,15 @@ static void slider_init(running_machine *machine)
 	/* add per-channel volume */
 	numitems = sound_get_user_gain_count();
 	for (item = 0; item < numitems; item++)
-		slider_config(&slider_list[slider_count++], 0, sound_get_default_gain(item) * 1000.0f + 0.5f, 2000, 20, slider_mixervol, item);
+	{
+		INT32 maxval = 2000;
+		INT32 defval = sound_get_default_gain(item) * 1000.0f + 0.5f;
+
+		if (defval > 1000)
+			maxval = 2 * defval;
+
+		slider_config(&slider_list[slider_count++], 0, defval, maxval, 20, slider_mixervol, item);
+	}
 
 	/* add analog adjusters */
 	for (in = machine->input_ports; in && in->type != IPT_END; in++)

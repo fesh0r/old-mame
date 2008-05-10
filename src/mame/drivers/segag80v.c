@@ -257,10 +257,10 @@ static READ8_HANDLER( mangled_ports_r )
 	/* read as two bits from each of 4 ports. For this reason, the input   */
 	/* ports have been organized logically, and are demangled at runtime.  */
 	/* 4 input ports each provide 8 bits of information. */
-	UINT8 d7d6 = readinputportbytag("D7D6");
-	UINT8 d5d4 = readinputportbytag("D5D4");
-	UINT8 d3d2 = readinputportbytag("D3D2");
-	UINT8 d1d0 = readinputportbytag("D1D0");
+	UINT8 d7d6 = input_port_read(machine, "D7D6");
+	UINT8 d5d4 = input_port_read(machine, "D5D4");
+	UINT8 d3d2 = input_port_read(machine, "D3D2");
+	UINT8 d1d0 = input_port_read(machine, "D1D0");
 	int shift = offset & 3;
 	return demangle(d7d6 >> shift, d5d4 >> shift, d3d2 >> shift, d1d0 >> shift);
 }
@@ -284,7 +284,7 @@ static READ8_HANDLER( spinner_input_r )
 	INT8 delta;
 
 	if (spinner_select & 1)
-		return readinputportbytag("FC");
+		return input_port_read(machine, "FC");
 
 /*
  * The values returned are always increasing.  That is, regardless of whether
@@ -294,7 +294,7 @@ static READ8_HANDLER( spinner_input_r )
  */
 
 	/* I'm sure this can be further simplified ;-) BW */
-	delta = readinputportbytag("SPINNER");
+	delta = input_port_read(machine, "SPINNER");
 	if (delta != 0)
 	{
 		spinner_sign = (delta >> 7) & 1;
@@ -313,7 +313,7 @@ static READ8_HANDLER( spinner_input_r )
 
 static CUSTOM_INPUT( elim4_joint_coin_r )
 {
-	return (readinputportbytag("COINS") & 0xf) != 0xf;
+	return (input_port_read(machine, "COINS") & 0xf) != 0xf;
 }
 
 
@@ -329,11 +329,11 @@ static READ8_HANDLER( elim4_input_r )
 		{
 			case 6:
 				/* player 3 & 4 controls */
-				result = readinputportbytag("FC");
+				result = input_port_read(machine, "FC");
 				break;
 			case 7:
 				/* the 4 coin inputs */
-				result = readinputportbytag("COINS");
+				result = input_port_read(machine, "COINS");
 				break;
 		}
 	}
@@ -400,8 +400,8 @@ static WRITE8_HANDLER( unknown_w )
 static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM		/* CPU board ROM */
 	AM_RANGE(0x0800, 0xbfff) AM_ROM		/* PROM board ROM area */
-	AM_RANGE(0xc800, 0xcfff) AM_READWRITE(SMH_RAM, mainram_w) AM_BASE(&mainram)
-	AM_RANGE(0xe000, 0xefff) AM_READWRITE(SMH_RAM, vectorram_w) AM_BASE(&vectorram) AM_SIZE(&vectorram_size)
+	AM_RANGE(0xc800, 0xcfff) AM_RAM_WRITE(mainram_w) AM_BASE(&mainram)
+	AM_RANGE(0xe000, 0xefff) AM_RAM_WRITE(vectorram_w) AM_BASE(&vectorram) AM_SIZE(&vectorram_size)
 ADDRESS_MAP_END
 
 
@@ -1315,8 +1315,8 @@ static DRIVER_INIT( elim2 )
 
 	/* configure sound */
 	has_usb = FALSE;
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, elim1_sh_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, elim2_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, elim1_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, elim2_sh_w);
 }
 
 
@@ -1327,12 +1327,12 @@ static DRIVER_INIT( elim4 )
 
 	/* configure sound */
 	has_usb = FALSE;
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, elim1_sh_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, elim2_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, elim1_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, elim2_sh_w);
 
 	/* configure inputs */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, elim4_input_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, elim4_input_r);
 }
 
 
@@ -1343,10 +1343,10 @@ static DRIVER_INIT( spacfury )
 
 	/* configure sound */
 	has_usb = FALSE;
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, spacfury1_sh_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, spacfury2_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, spacfury1_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, spacfury2_sh_w);
 }
 
 
@@ -1357,16 +1357,16 @@ static DRIVER_INIT( zektor )
 
 	/* configure sound */
 	has_usb = FALSE;
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3c, 0x3c, 0, 0, AY8910_control_port_0_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3d, 0x3d, 0, 0, AY8910_write_port_0_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, zektor1_sh_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, zektor2_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3c, 0x3c, 0, 0, AY8910_control_port_0_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3d, 0x3d, 0, 0, AY8910_write_port_0_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3e, 0x3e, 0, 0, zektor1_sh_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, zektor2_sh_w);
 
 	/* configure inputs */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spinner_input_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spinner_input_r);
 }
 
 
@@ -1377,14 +1377,12 @@ static DRIVER_INIT( tacscan )
 
 	/* configure sound */
 	has_usb = TRUE;
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_status_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_data_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, sega_usb_ram_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, usb_ram_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_status_r, sega_usb_data_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, sega_usb_ram_r, usb_ram_w);
 
 	/* configure inputs */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spinner_input_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spinner_input_r);
 }
 
 
@@ -1395,17 +1393,15 @@ static DRIVER_INIT( startrek )
 
 	/* configure sound */
 	has_usb = TRUE;
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x38, 0x38, 0, 0, sega_speech_data_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3b, 0x3b, 0, 0, sega_speech_control_w);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_status_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_data_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, sega_usb_ram_r);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, usb_ram_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_IO, 0x3f, 0x3f, 0, 0, sega_usb_status_r, sega_usb_data_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, sega_usb_ram_r, usb_ram_w);
 
 	/* configure inputs */
-	memory_install_write8_handler(0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
-	memory_install_read8_handler(0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spinner_input_r);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0xf8, 0xf8, 0, 0, spinner_select_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_IO, 0xfc, 0xfc, 0, 0, spinner_input_r);
 }
 
 

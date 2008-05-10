@@ -158,7 +158,7 @@ static WRITE16_HANDLER( f1dream_control_w )
 
 static WRITE16_HANDLER( tigeroad_soundcmd_w )
 {
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		soundlatch_w(machine,offset,data >> 8);
 }
 
@@ -534,7 +534,12 @@ static void irqhandler(int irq)
 
 static const struct YM2203interface ym2203_interface =
 {
-	0,0,0,0,irqhandler
+	{
+			AY8910_LEGACY_OUTPUT,
+			AY8910_DEFAULT_LOADS,
+			NULL, NULL, NULL, NULL,
+	},
+	irqhandler
 };
 
 static const struct MSM5205interface msm5205_interface =
@@ -793,12 +798,12 @@ ROM_END
 
 static DRIVER_INIT( tigeroad )
 {
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xfe4002, 0xfe4003, 0, 0, tigeroad_soundcmd_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfe4002, 0xfe4003, 0, 0, tigeroad_soundcmd_w);
 }
 
 static DRIVER_INIT( f1dream )
 {
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xfe4002, 0xfe4003, 0, 0, f1dream_control_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfe4002, 0xfe4003, 0, 0, f1dream_control_w);
 }
 
 

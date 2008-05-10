@@ -38,7 +38,7 @@ static WRITE16_HANDLER( darkseal_control_w )
 {
 	switch (offset<<1) {
     case 6: /* DMA flag */
-		buffer_spriteram16_w(machine,0,0,0);
+		buffer_spriteram16_w(machine,0,0,0xffff);
 		return;
     case 8: /* Sound CPU write */
 		soundlatch_w(machine,0,data & 0xff);
@@ -54,13 +54,13 @@ static READ16_HANDLER( darkseal_control_r )
 	switch (offset<<1)
 	{
 		case 0: /* Dip Switches */
-			return (readinputport(3) + (readinputport(4) << 8));
+			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
 
 		case 2: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (readinputport(0) + (readinputport(1) << 8));
+			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
 
 		case 4: /* Credits */
-			return readinputport(2);
+			return input_port_read_indexed(machine, 2);
 	}
 
 	return ~0;

@@ -177,8 +177,8 @@ maybe some priority issues / sprite placement issues..
 #define SOUND_CLOCK		XTAL_18_432MHz
 
 
-#define GUNX( a ) (( ( readinputport( a ) * 287 ) / 0xff ) + 16)
-#define GUNY( a ) (( ( readinputport( a ) * 223 ) / 0xff ) + 10)
+#define GUNX( a ) (( ( input_port_read_indexed(machine,  a ) * 287 ) / 0xff ) + 16)
+#define GUNY( a ) (( ( input_port_read_indexed(machine,  a ) * 223 ) / 0xff ) + 10)
 
 VIDEO_START(lethalen);
 VIDEO_UPDATE(lethalen);
@@ -230,7 +230,7 @@ static NVRAM_HANDLER( lethalen )
 
 static READ8_HANDLER( control2_r )
 {
-	return 0x02 | EEPROM_read_bit() | (input_port_1_r(machine,0) & 0xf0);
+	return 0x02 | EEPROM_read_bit() | (input_port_read_indexed(machine, 1) & 0xf0);
 }
 
 static WRITE8_HANDLER( control2_w )
@@ -262,7 +262,7 @@ static WRITE8_HANDLER( sound_cmd_w )
 
 static WRITE8_HANDLER( sound_irq_w )
 {
-	cpunum_set_input_line(Machine, 1, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 1, 0, HOLD_LINE);
 }
 
 static READ8_HANDLER( sound_status_r )

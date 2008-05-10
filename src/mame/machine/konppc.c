@@ -137,7 +137,7 @@ WRITE32_HANDLER( cgboard_dsp_comm_w_ppc )
 	{
 		if (offset == 0)
 		{
-			if (!(mem_mask & 0xff000000))
+			if (ACCESSING_BITS_24_31)
 			{
 				dsp_shared_ram_bank[cgboard_id] = (data >> 24) & 0x1;
 
@@ -147,18 +147,18 @@ WRITE32_HANDLER( cgboard_dsp_comm_w_ppc )
 				pci_bridge_enable[cgboard_id] = (data & 0x20000000) ? 1 : 0;
 
 				if (data & 0x10000000)
-					cpunum_set_input_line(Machine, dsp, INPUT_LINE_RESET, CLEAR_LINE);
+					cpunum_set_input_line(machine, dsp, INPUT_LINE_RESET, CLEAR_LINE);
 				else
-					cpunum_set_input_line(Machine, dsp, INPUT_LINE_RESET, ASSERT_LINE);
+					cpunum_set_input_line(machine, dsp, INPUT_LINE_RESET, ASSERT_LINE);
 
 				if (data & 0x02000000)
-					cpunum_set_input_line(Machine, dsp, INPUT_LINE_IRQ0, ASSERT_LINE);
+					cpunum_set_input_line(machine, dsp, INPUT_LINE_IRQ0, ASSERT_LINE);
 
 				if (data & 0x04000000)
-					cpunum_set_input_line(Machine, dsp, INPUT_LINE_IRQ1, ASSERT_LINE);
+					cpunum_set_input_line(machine, dsp, INPUT_LINE_IRQ1, ASSERT_LINE);
 			}
 
-			if (!(mem_mask & 0x000000ff))
+			if (ACCESSING_BITS_0_7)
 				dsp_comm_ppc[cgboard_id][offset] = data & 0xff;
 		}
 		else
@@ -184,7 +184,7 @@ WRITE32_HANDLER( cgboard_dsp_shared_w_ppc )
 {
 	if (cgboard_id < MAX_CG_BOARDS)
 	{
-		cpu_trigger(Machine, 10000);		// Remove the timeout (a part of the GTI Club FIFO test workaround)
+		cpu_trigger(machine, 10000);		// Remove the timeout (a part of the GTI Club FIFO test workaround)
 		COMBINE_DATA(dsp_shared_ram[cgboard_id] + (offset + (dsp_shared_ram_bank[cgboard_id] * DSP_BANK_SIZE_WORD)));
 	}
 }

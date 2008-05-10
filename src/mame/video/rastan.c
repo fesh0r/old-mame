@@ -20,26 +20,26 @@ static UINT16 sprites_flipscreen = 0;
 VIDEO_START( rastan )
 {
 	/* (chips, gfxnum, x_offs, y_offs, y_invert, opaque, dblwidth) */
-	PC080SN_vh_start(1,0,0,0,0,0,0);
+	PC080SN_vh_start(machine,1,0,0,0,0,0,0);
 	PC090OJ_vh_start(1,0,0,0);
 }
 
 VIDEO_START( opwolf )
 {
-	PC080SN_vh_start(1,1,0,0,0,0,0);
+	PC080SN_vh_start(machine,1,1,0,0,0,0,0);
 	PC090OJ_vh_start(0,0,0,0);
 }
 
 VIDEO_START( rainbow )
 {
 	/* (chips, gfxnum, x_offs, y_offs, y_invert, opaque, dblwidth) */
-	PC080SN_vh_start(1,1,0,0,0,0,0);
+	PC080SN_vh_start(machine,1,1,0,0,0,0,0);
 	PC090OJ_vh_start(0,0,0,0);
 }
 
 VIDEO_START( jumping )
 {
-	PC080SN_vh_start(1,1,0,0,1,0,0);
+	PC080SN_vh_start(machine,1,1,0,0,1,0,0);
 
 	PC080SN_set_trans_pen(0,1,15);
 
@@ -129,9 +129,9 @@ VIDEO_UPDATE( opwolf )
 
 	PC090OJ_draw_sprites(screen->machine,bitmap,cliprect,1);
 
-//  if (input_port_5_word_r(0,0xffff))
+//  if (input_port_read_indexed(machine,5))
 
-//  popmessage("%d %d",input_port_5_word_r(0,0xffff),input_port_6_word_r(0,0xffff));
+//  popmessage("%d %d",input_port_read_indexed(machine,5),input_port_read_indexed(machine,6));
 
 	return 0;
 }
