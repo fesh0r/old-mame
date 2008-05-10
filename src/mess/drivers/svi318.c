@@ -47,8 +47,8 @@ static ADDRESS_MAP_START( svi318_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x88, 0x88) AM_WRITE( AY8910_control_port_0_w )
 	AM_RANGE( 0x8c, 0x8c) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x90, 0x90) AM_READ( AY8910_read_port_0_r )
-	AM_RANGE( 0x96, 0x97) AM_WRITE( svi318_ppi_w )
-	AM_RANGE( 0x98, 0x9a) AM_READ( svi318_ppi_r )
+	AM_RANGE( 0x96, 0x97) AM_DEVWRITE( PPI8255, "ppi8255", svi318_ppi_w )
+	AM_RANGE( 0x98, 0x9a) AM_DEVREAD( PPI8255, "ppi8255", svi318_ppi_r )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( svi328_806_io, ADDRESS_SPACE_IO, 8 )
@@ -62,8 +62,8 @@ static ADDRESS_MAP_START( svi328_806_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE( 0x88, 0x88) AM_WRITE( AY8910_control_port_0_w )
 	AM_RANGE( 0x8c, 0x8c) AM_WRITE( AY8910_write_port_0_w )
 	AM_RANGE( 0x90, 0x90) AM_READ( AY8910_read_port_0_r )
-	AM_RANGE( 0x96, 0x97) AM_WRITE( svi318_ppi_w )
-	AM_RANGE( 0x98, 0x9a) AM_READ( svi318_ppi_r )
+	AM_RANGE( 0x96, 0x97) AM_DEVWRITE( PPI8255, "ppi8255", svi318_ppi_w )
+	AM_RANGE( 0x98, 0x9a) AM_DEVREAD( PPI8255, "ppi8255", svi318_ppi_r )
 ADDRESS_MAP_END
 
 /*
@@ -289,6 +289,8 @@ INPUT_PORTS_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	svi318_psg_port_a_r,
 	NULL,
 	NULL,
@@ -306,6 +308,9 @@ static MACHINE_DRIVER_START( svi318 )
 	MDRV_MACHINE_START( svi318_pal )
 	MDRV_MACHINE_RESET( svi318 )
 
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( svi318_ppi8255_interface )
+
 	/* Video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
 	MDRV_SCREEN_MODIFY("main")
@@ -321,6 +326,9 @@ static MACHINE_DRIVER_START( svi318 )
 	MDRV_SOUND_ADD(AY8910, 1789773)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi318n )
@@ -357,6 +365,15 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_MACHINE_START( svi318_pal )
 	MDRV_MACHINE_RESET( svi328_806 )
 
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( svi318_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )
+	MDRV_DEVICE_CONFIG( svi318_ins8250_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )
+	MDRV_DEVICE_CONFIG( svi318_ins8250_interface[1] )
+
 	/* Video hardware */
 	MDRV_DEFAULT_LAYOUT( layout_sv328806 )
 
@@ -388,6 +405,9 @@ static MACHINE_DRIVER_START( svi328_806 )
 	MDRV_SOUND_ADD(AY8910, 1789773)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( svi328n_806 )
@@ -465,22 +485,6 @@ ROM_START( sv328n80 )
 	ROMX_LOAD ("svi806se.rom", 0x0000, 0x1000, CRC(daea8956) SHA1(3f16d5513ad35692488ae7d864f660e76c6e8ed3), ROM_BIOS(2))
 ROM_END
 
-static void svi318_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:
-			info->i = 1;
-			break;
-
-		default:
-			printer_device_getinfo(devclass, state, info);
-			break;
-	}
-}
-
 static void svi318_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cassette */
@@ -513,14 +517,14 @@ static void svi318_cartslot_getinfo(const mess_device_class *devclass, UINT32 st
 			break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:
-			info->init = device_init_svi318_cart;
+		case MESS_DEVINFO_PTR_START:
+			info->start = DEVICE_START_NAME(svi318_cart);
 			break;
 		case MESS_DEVINFO_PTR_LOAD:
-			info->load = device_load_svi318_cart;
+			info->load = DEVICE_IMAGE_LOAD_NAME(svi318_cart);
 			break;
 		case MESS_DEVINFO_PTR_UNLOAD:
-			info->unload = device_unload_svi318_cart;
+			info->unload = DEVICE_IMAGE_UNLOAD_NAME(svi318_cart);
 			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -546,7 +550,7 @@ static void svi318_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_LOAD:
-			info->load = device_load_svi318_floppy;
+			info->load = DEVICE_IMAGE_LOAD_NAME(svi318_floppy);
 			break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -561,7 +565,6 @@ static void svi318_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 }
 
 SYSTEM_CONFIG_START( svi318_common )
-	CONFIG_DEVICE(svi318_printer_getinfo)
 	CONFIG_DEVICE(svi318_cassette_getinfo)
 	CONFIG_DEVICE(svi318_cartslot_getinfo)
 	CONFIG_DEVICE(svi318_floppy_getinfo)

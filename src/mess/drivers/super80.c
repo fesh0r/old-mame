@@ -10,8 +10,6 @@
 #include "sound/speaker.h"
 #include "deprecat.h"		/* "Machine" needed for z80pio interrupt */
 
-#define video_screen_get_refresh(screen)	(((screen_config *)(screen)->inline_config)->refresh)
-
 static UINT8 super80_mhz=2;	/* state of bit 2 of port F0 */
 static UINT16 vidpg=0xfe00;	/* Home position of video page being displayed */
 static UINT8 int_sw;		/* internal 1 mhz flipflop */
@@ -21,14 +19,12 @@ static UINT8 current_charset;	/* for super80m */
 
 /* the rest are for super80v */
 static UINT8 *pcgram;
-static int off_x = 0;
-static int off_y = 0;
 static UINT8 framecnt = 0;
 static UINT8 super80v_vid_col=1;			// 0 = color ram ; 1 = video ram
 static UINT8 super80v_rom_pcg=1;			// 0 = prom ; 1 = pcg
-static UINT8 mc6845_cursor[15];				// cursor shape
-static UINT8 mc6845[20];				/* registers */
-static UINT8 mc6845_reg;				/* register index */
+static UINT8 mc6845_cursor[16];				// cursor shape
+static UINT8 mc6845_reg[20];				/* registers */
+static UINT8 mc6845_ind;				/* register index */
 static UINT8 mc6845_mask[]={0xff,0xff,0xff,0x0f,0x7f,0x1f,0x7f,0x7f,3,0x1f,0x7f,0x1f,0x3f,0xff,0x3f,0xff,0,0};
 
 #define MASTER_CLOCK			(XTAL_12MHz)
@@ -171,9 +167,9 @@ static void mc6845_cursor_configure(void)
 
 	for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++) mc6845_cursor[i] = 0;		// prepare cursor by erasing old one
 
-	r9  = mc6845[9];					// number of scan lines - 1
-	r10 = mc6845[10] & 0x1f;				// cursor start line = last 5 bits
-	r11 = mc6845[11]+1;					// cursor end line incremented to suit for-loops below
+	r9  = mc6845_reg[9];					// number of scan lines - 1
+	r10 = mc6845_reg[10] & 0x1f;				// cursor start line = last 5 bits
+	r11 = mc6845_reg[11]+1;					// cursor end line incremented to suit for-loops below
 
 	/* decide the curs_type by examining the registers */
 	if (r10 < r11) curs_type=1;				// start less than end, show start to end
@@ -193,57 +189,28 @@ static void mc6845_cursor_configure(void)
 	if (curs_type == 3) for (i = r11; i < r10;i++) mc6845_cursor[i]=0; // now take a bite out of the middle
 }
 
-/* Resize the screen within the limits of the hardware.
-	If we are using dynamic screen resizing, expand the image to fill the screen area */
+/* Resize the screen within the limits of the hardware. Expand the image to fill the screen area */
 static void mc6845_screen_configure(running_machine *machine)
 {
 	rectangle visarea;
-	UINT16 width, height, bytes;	
-	UINT8 dyn = readinputportbytag("CONFIG") & 0x10;			// read dipswitch
+
+	UINT16 width = mc6845_reg[1]*7-1;							// width in pixels
+	UINT16 height = mc6845_reg[6]*(mc6845_reg[9]+1)-1;					// height in pixels
+	UINT16 bytes = mc6845_reg[1]*mc6845_reg[6]-1;						// video ram needed -1
+
+	/* Resize the screen */
 	visarea.min_x = 0;
-	visarea.max_x = SUPER80V_SCREEN_WIDTH-1;
+	visarea.max_x = width-1;
 	visarea.min_y = 0;
-	visarea.max_y = SUPER80V_SCREEN_HEIGHT-1;
-
-	/* calculate the effect of sync and vertical adjustments */
-	if ( mc6845[2] ) off_x = mc6845[0] - mc6845[2] - 23; else off_x = -24;
-
-	off_y = (mc6845[4] - mc6845[7]) * (mc6845[9] + 1) + mc6845[5];
-
-	if( off_y < 0 ) off_y = 0;
-
-	if( off_y > 128 ) off_y = 128;
-
-	if (dyn)
-	{
-		off_x = 0;
-		off_y = 0;
-	}
-
-	width = mc6845[1]*7-1;							// width in pixels
-	height = mc6845[6]*(mc6845[9]+1)-1;					// height in pixels
-	bytes = mc6845[1]*mc6845[6]-1;						// video ram needed -1
-
-	/* Physically resize the screen now */
-	if (dyn)
-	{
-		visarea.min_x = 0;
-		visarea.max_x = width;
-		visarea.min_y = 0;
-		visarea.max_y = height;
-		if ((width < 610)
-		&& (height < 460)			/* bounds checking to prevent an assert or violation */
-		&& (bytes < 0x1000))
-			video_screen_configure(machine->primary_screen, width+1, height+1, &visarea, video_screen_get_refresh(machine->primary_screen)); 
-	}
-	else
-			video_screen_configure(machine->primary_screen, SUPER80V_SCREEN_WIDTH, SUPER80V_SCREEN_HEIGHT, &visarea, video_screen_get_refresh(machine->primary_screen));	// in case dipswitch was just turned to NO
+	visarea.max_y = height-1;
+	if ((width < 610) && (height < 460) && (bytes < 0x1000))	/* bounds checking to prevent an assert or violation */
+		video_screen_set_visarea(machine->primary_screen, 0, width, 0, height);
 }
 
 static VIDEO_EOF( super80m )
 {
 	/* if we chose another palette or colour mode, enable it */
-	UINT8 chosen_palette = (readinputportbytag("CONFIG") & 0x60)>>5;				// read colour dipswitches
+	UINT8 chosen_palette = (input_port_read(machine, "CONFIG") & 0x60)>>5;				// read colour dipswitches
 
 	if (chosen_palette != current_palette)						// any changes?
 	{
@@ -260,7 +227,7 @@ static VIDEO_UPDATE( super80 )
 	UINT8 x, y, code=32, screen_on=0;
 	UINT8 mask = screen->machine->gfx[0]->total_elements - 1;	/* 0x3F for super80; 0xFF for super80d & super80e */
 
-	if ((super80_mhz == 1) || (!(readinputportbytag("CONFIG") & 4)))	/* bit 2 of port F0 is high, OR user turned on config switch */
+	if ((super80_mhz == 1) || (!(input_port_read(screen->machine, "CONFIG") & 4)))	/* bit 2 of port F0 is high, OR user turned on config switch */
 		screen_on++;
 
 	/* display the picture */
@@ -281,7 +248,7 @@ static VIDEO_UPDATE( super80 )
 
 static VIDEO_UPDATE( super80m )
 {
-	UINT8 x, y, code=32, col=0, screen_on=0, options=readinputportbytag("CONFIG");
+	UINT8 x, y, code=32, col=0, screen_on=0, options=input_port_read(screen->machine, "CONFIG");
 
 	/* get selected character generator */
 	UINT8 cgen = current_charset ^ ((options & 0x10)>>4);	/* bit 0 of port F1 and cgen config switch */
@@ -319,35 +286,35 @@ static VIDEO_UPDATE( super80m )
 
 static VIDEO_UPDATE( super80v )
 {
-	UINT16 i, bytes = mc6845[1]*mc6845[6];
-	UINT8 speed = mc6845[10]&0x20, flash = mc6845[10]&0x40;				// cursor modes
-	UINT16 cursor = (mc6845[14]<<8) | mc6845[15];					// get cursor position
-	UINT16 screen_home = (mc6845[12]<<8) | mc6845[13];				// screen home offset (usually zero)
-	UINT8 options=readinputportbytag("CONFIG");
+	UINT16 i, bytes = mc6845_reg[1]*mc6845_reg[6];
+	UINT8 speed = mc6845_reg[10]&0x20, flash = mc6845_reg[10]&0x40;				// cursor modes
+	UINT16 cursor = (mc6845_reg[14]<<8) | mc6845_reg[15];					// get cursor position
+	UINT16 screen_home = (mc6845_reg[12]<<8) | mc6845_reg[13];				// screen home offset (usually zero)
+	UINT8 options=input_port_read(screen->machine, "CONFIG");
 	framecnt++;
 
 	/* Get the graphics of the character under the cursor, xor with the visible cursor scan lines,
 	   and store as character number 256. If inverse mode, drop bit 7 of character before xoring */
 	if (!super80v_rom_pcg)
-		for ( i = 0; i < 16; i++)
+		for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++)
 			pcgram[0x1000+i] = pcgram[(videoram[cursor]&0x7f)*16+i] ^ mc6845_cursor[i];
 	else
-		for ( i = 0; i < 16; i++)
+		for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++)
 			pcgram[0x1000+i] = pcgram[(videoram[cursor])*16 + i] ^ mc6845_cursor[i];
 
 	decodechar(screen->machine->gfx[0],256, pcgram);			// and into machine graphics
 
-	for( i = screen_home; (i < (bytes + screen_home)) & (i < 0x1000); i++ )
+	for( i = 0; i < bytes; i++ )
 	{
-		int sx, sy, chr, col;
-		sy = off_y + ((i - screen_home) / mc6845[1]) * (mc6845[9] + 1);
-		sx = (off_x + ((i - screen_home) % mc6845[1])) * 7;
-		chr = videoram[i];
+		int mem = (i + screen_home) & 0xfff;
+		int sy = (i / mc6845_reg[1]) * (mc6845_reg[9] + 1);
+		int sx = (i % mc6845_reg[1]) * 7;
+		int chr = videoram[mem];
 
 		/* get colour or b&w */
+		int col = 5;					/* green */
 		if ((options & 0x60) == 0x60) col = 15;		/* b&w */
-		else col = 5;					/* green */
-		if (!(options & 0x40)) col = colorram[i];			// read a byte of colour
+		if (!(options & 0x40)) col = colorram[mem];			// read a byte of colour
 
 		if ((!super80v_rom_pcg) && (chr > 0x7f))			// is it a high chr in inverse mode
 		{
@@ -399,12 +366,12 @@ static const struct z80_irq_daisy_chain super80_daisy_chain[] =
 
 /**************************** CASSETTE ROUTINES *****************************************************************/
 
-static mess_image *cassette_device_image(void)
+static const device_config *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
 
-static void cassette_motor( UINT8 data )
+static void cassette_motor( running_machine *machine, UINT8 data )
 {
 	if (data)
 		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0), CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
@@ -412,7 +379,7 @@ static void cassette_motor( UINT8 data )
 		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0), CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
 	/* does user want to hear the sound? */
-	if (readinputportbytag("CONFIG") & 8)
+	if (input_port_read(machine, "CONFIG") & 8)
 		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0), CASSETTE_SPEAKER_ENABLED, CASSETTE_MASK_SPEAKER);
 	else
 		cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0), CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
@@ -436,10 +403,12 @@ Reasons why it is necessary:
 static TIMER_CALLBACK( super80_timer )
 {
 	UINT8 wave_state=0, i, mask=1, out_f8=z80pio_p_r(0,0), in_fa=255;
+	char port[6];
 
-	for ( i=1; i < 9;i++)
+	for ( i=0; i < 8;i++)
 	{
-		if (!(out_f8 & mask)) in_fa &= readinputport(i);
+		sprintf(port, "LINE%d", i);
+		if (!(out_f8 & mask)) in_fa &= input_port_read(machine, port);
 		mask<<=1;
 	}
 
@@ -462,15 +431,15 @@ static TIMER_CALLBACK( super80_timer )
 
 static READ8_HANDLER( super80v_11_r )
 {
-	if ((mc6845_reg > 13) && (mc6845_reg < 18))		/* determine readable registers */
-		return mc6845[mc6845_reg];
+	if ((mc6845_ind > 13) && (mc6845_ind < 18))		/* determine readable registers */
+		return mc6845_reg[mc6845_ind];
 	else
 		return 0;
 }
 
 static READ8_HANDLER( super80_f2_r )
 {
-	UINT8 data = readinputportbytag("DSW") & 0xf0;	// dip switches on pcb
+	UINT8 data = input_port_read(machine, "DSW") & 0xf0;	// dip switches on pcb
 	data |= cass_out;			// bit 0 = output of U1, bit 1 = current wave_state
 	data |= 0x0c;				// bits 2,3 - not used
 	return data;
@@ -478,14 +447,14 @@ static READ8_HANDLER( super80_f2_r )
 
 static WRITE8_HANDLER( super80v_10_w )
 {
-	if (data < 18) mc6845_reg = data; else mc6845_reg = 19;		/* make sure if you try using an invalid register your write will go nowhere */
+	if (data < 18) mc6845_ind = data; else mc6845_ind = 19;		/* make sure if you try using an invalid register your write will go nowhere */
 }
 
 static WRITE8_HANDLER( super80v_11_w )
 {
-	if (mc6845_reg < 16) mc6845[mc6845_reg] = data & mc6845_mask[mc6845_reg];	/* save data in register */
-	if (mc6845_reg < 10) mc6845_screen_configure(machine);				/* adjust screen size */
-	if ((mc6845_reg > 8) && (mc6845_reg < 12)) mc6845_cursor_configure();		/* adjust cursor shape */
+	if (mc6845_ind < 16) mc6845_reg[mc6845_ind] = data & mc6845_mask[mc6845_ind];	/* save data in register */
+	if ((mc6845_ind == 1) || (mc6845_ind == 6) || (mc6845_ind == 9)) mc6845_screen_configure(machine); /* adjust screen size */
+	if ((mc6845_ind > 8) && (mc6845_ind < 12)) mc6845_cursor_configure();		/* adjust cursor shape */
 }
 
 static UINT8 last_data;
@@ -497,7 +466,19 @@ static WRITE8_HANDLER( super80_f0_w )
 	if (bits & 0x20) set_led_status(2,(data & 32) ? 0 : 1);		/* bit 5 - LED - scroll lock led is used */
 	speaker_level_w(0, (data & 8) ? 0 : 1);				/* bit 3 - speaker */
 	super80_mhz = (data & 4) ? 1 : 2;				/* bit 2 - video on/off */
-	if (bits & 0x02) cassette_motor( data & 2 ? 1 : 0);		/* bit 1 - cassette motor */
+	if (bits & 0x02) cassette_motor( machine, data & 2 ? 1 : 0);		/* bit 1 - cassette motor */
+	if (bits & 0x01) cassette_output(cassette_device_image(), (data & 1) ? -1.0 : +1.0);	/* bit 0 - cass out */
+
+	last_data = data;
+}
+
+static WRITE8_HANDLER( super80r_f0_w )
+{
+	UINT8 bits = data ^ last_data;
+
+	if (bits & 0x20) set_led_status(2,(data & 32) ? 0 : 1);		/* bit 5 - LED - scroll lock led is used */
+	speaker_level_w(0, (data & 8) ? 0 : 1);				/* bit 3 - speaker */
+	if (bits & 0x02) cassette_motor( machine, data & 2 ? 1 : 0);		/* bit 1 - cassette motor */
 	if (bits & 0x01) cassette_output(cassette_device_image(), (data & 1) ? -1.0 : +1.0);	/* bit 0 - cass out */
 
 	last_data = data;
@@ -511,7 +492,7 @@ static WRITE8_HANDLER( super80v_f0_w )
 	super80v_rom_pcg = data & 0x10;					/* bit 4 - bankswitch gfx rom or pcg */
 	speaker_level_w(0, (data & 8) ? 0 : 1);				/* bit 3 - speaker */
 	super80v_vid_col = data & 4;					/* bit 2 - bankswitch video or colour ram */
-	if (bits & 0x02) cassette_motor( data & 2 ? 1 : 0);		/* bit 1 - cassette motor */
+	if (bits & 0x02) cassette_motor( machine, data & 2 ? 1 : 0);		/* bit 1 - cassette motor */
 	if (bits & 0x01) cassette_output(cassette_device_image(), (data & 1) ? -1.0 : +1.0);	/* bit 0 - cass out */
 
 	last_data = data;
@@ -571,6 +552,19 @@ static ADDRESS_MAP_START( super80_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0xfb, 0xfb) AM_MIRROR(0x04) AM_READWRITE(super80_fb_r,super80_fb_w)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( super80r_io, ADDRESS_SPACE_IO, 8 )
+	ADDRESS_MAP_GLOBAL_MASK(0xff)
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x10, 0x10) AM_WRITE(super80v_10_w)
+	AM_RANGE(0x11, 0x11) AM_READWRITE(super80v_11_r, super80v_11_w)
+	AM_RANGE(0xe0, 0xe0) AM_MIRROR(0x14) AM_WRITE(super80r_f0_w)
+	AM_RANGE(0xe2, 0xe2) AM_MIRROR(0x14) AM_READ(super80_f2_r)
+	AM_RANGE(0xf8, 0xf8) AM_MIRROR(0x04) AM_READWRITE(super80_f8_r,super80_f8_w)
+	AM_RANGE(0xf9, 0xf9) AM_MIRROR(0x04) AM_READWRITE(super80_f9_r,super80_f9_w)
+	AM_RANGE(0xfa, 0xfa) AM_MIRROR(0x04) AM_READWRITE(super80_fa_r,super80_fa_w)
+	AM_RANGE(0xfb, 0xfb) AM_MIRROR(0x04) AM_READWRITE(super80_fb_r,super80_fb_w)
+ADDRESS_MAP_END
+
 static ADDRESS_MAP_START( super80v_io, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	ADDRESS_MAP_UNMAP_HIGH
@@ -602,7 +596,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_DIPSETTING(    0x80, DEF_STR(Off))
 	PORT_DIPSETTING(    0x00, DEF_STR(On))
 
-	PORT_START	/* line 0 */
+	PORT_START_TAG("LINE0")	/* line 0 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("@ `") PORT_CODE(KEYCODE_TILDE) PORT_CHAR('@') PORT_CHAR('`')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("H") PORT_CODE(KEYCODE_H) PORT_CHAR('H')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("P") PORT_CODE(KEYCODE_P) PORT_CHAR('P')
@@ -611,7 +605,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9 )") PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR(')')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Space") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("REPT") PORT_CODE(KEYCODE_LALT) 
-	PORT_START	/* line 1 */
+	PORT_START_TAG("LINE1")	/* line 1 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A) PORT_CHAR('A')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("I") PORT_CODE(KEYCODE_I) PORT_CHAR('I')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q) PORT_CHAR('Q')
@@ -620,7 +614,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(": *") PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(':') PORT_CHAR('*')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Backspace") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
-	PORT_START	/* line 2 */
+	PORT_START_TAG("LINE2")	/* line 2 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B) PORT_CHAR('B')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("J") PORT_CODE(KEYCODE_J) PORT_CHAR('J')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("R") PORT_CODE(KEYCODE_R) PORT_CHAR('R')
@@ -629,7 +623,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("; +") PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR('+')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("TAB") PORT_CODE(KEYCODE_TAB) PORT_CHAR(9)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(Fire)") PORT_CODE(KEYCODE_INSERT) PORT_CHAR(UCHAR_MAMEKEY(INSERT))
-	PORT_START	/* line 3 */
+	PORT_START_TAG("LINE3")	/* line 3 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C) PORT_CHAR('C')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("K") PORT_CODE(KEYCODE_K) PORT_CHAR('K')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("S") PORT_CODE(KEYCODE_S) PORT_CHAR('S')
@@ -638,7 +632,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("LINEFEED") PORT_CODE(KEYCODE_ENTER_PAD) PORT_CHAR(10)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CTRL") PORT_CODE(KEYCODE_LCONTROL) PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_SHIFT_2)
-	PORT_START	/* line 4 */
+	PORT_START_TAG("LINE4")	/* line 4 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D) PORT_CHAR('D')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("L") PORT_CODE(KEYCODE_L) PORT_CHAR('L')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("T") PORT_CODE(KEYCODE_T) PORT_CHAR('T')
@@ -647,7 +641,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("BRK") PORT_CODE(KEYCODE_NUMLOCK) PORT_CHAR(3)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("RETURN") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(Right)") PORT_CODE(KEYCODE_RIGHT) PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
-	PORT_START	/* line 5 */
+	PORT_START_TAG("LINE5")	/* line 5 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E) PORT_CHAR('E')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M) PORT_CHAR('M')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("U") PORT_CODE(KEYCODE_U) PORT_CHAR('U')
@@ -656,7 +650,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ESC") PORT_CODE(KEYCODE_ESC) PORT_CHAR(27)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(Left)") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
-	PORT_START	/* line 6 */
+	PORT_START_TAG("LINE6")	/* line 6 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F) PORT_CHAR('F')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N) PORT_CHAR('N')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("V") PORT_CODE(KEYCODE_V) PORT_CHAR('V')
@@ -665,7 +659,7 @@ static INPUT_PORTS_START( super80 )
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("/ ?") PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("DEL") PORT_CODE(KEYCODE_DEL) 
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(Down)") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
-	PORT_START	/* line 7 */
+	PORT_START_TAG("LINE7")	/* line 7 */
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G) PORT_CHAR('G')
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("O") PORT_CODE(KEYCODE_O) PORT_CHAR('O')
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W) PORT_CHAR('W')
@@ -711,12 +705,17 @@ static INPUT_PORTS_START( super80v )
 	PORT_INCLUDE( super80m )
 
 	PORT_MODIFY("CONFIG")
+	PORT_BIT( 0x16, 0x16, IPT_UNUSED )
+INPUT_PORTS_END
 
-	/* Enhanced options not available on real hardware */
-	PORT_BIT( 0x6, 0x6, IPT_UNUSED )
-	PORT_CONFNAME( 0x10, 0x10, "Auto-Resize?")
-	PORT_CONFSETTING(    0x00, DEF_STR(No))
-	PORT_CONFSETTING(    0x10, DEF_STR(Yes))
+static INPUT_PORTS_START( super80r )
+	PORT_INCLUDE( super80v )
+
+	PORT_MODIFY("CONFIG")
+	PORT_BIT( 0x16, 0x16, IPT_UNUSED )
+	PORT_CONFNAME( 0x60, 0x40, "Colour")
+	PORT_CONFSETTING(    0x60, "MonoChrome")
+	PORT_CONFSETTING(    0x40, "Green")
 INPUT_PORTS_END
 
 /**************************** GRAPHICS DECODE *****************************************************************/
@@ -785,7 +784,7 @@ GFXDECODE_END
 static TIMER_CALLBACK( super80_halfspeed )
 {
 	UINT8 go_fast = 0;
-	if ((super80_mhz == 2) || (!(readinputportbytag("CONFIG") & 2)))	/* bit 2 of port F0 is low, OR user turned on config switch */
+	if ((super80_mhz == 2) || (!(input_port_read(machine, "CONFIG") & 2)))	/* bit 2 of port F0 is low, OR user turned on config switch */
 		go_fast++;
 
 	/* code to slow down computer to 1mhz by halting cpu on every second frame */
@@ -850,6 +849,9 @@ static MACHINE_DRIVER_START( super80 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* quickload */
+	MDRV_Z80BIN_QUICKLOAD_ADD(default, 1)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( super80d )
@@ -896,6 +898,15 @@ static MACHINE_DRIVER_START( super80v )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* quickload */
+	MDRV_Z80BIN_QUICKLOAD_ADD(default, 1)
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( super80r )
+	MDRV_IMPORT_FROM(super80v)
+	MDRV_CPU_MODIFY("main")
+	MDRV_CPU_IO_MAP(super80r_io, 0)
 MACHINE_DRIVER_END
 
 static void driver_init_common( void )
@@ -932,90 +943,75 @@ static DRIVER_INIT( super80v )
 
 ROM_START( super80 )
 	ROM_REGION(0x10000, REGION_CPU1, 0)
-	ROM_LOAD("super80.u26",  0xc000, 0x1000, CRC(6a6a9664) SHA1(2c4fcd943aa9bf7419d58fbc0e28ffb89ef22e0b) )
-	ROM_LOAD("super80.u33",  0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
-	ROM_LOAD("super80.u42",  0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
+	ROM_LOAD("super80.u26",   0xc000, 0x1000, CRC(6a6a9664) SHA1(2c4fcd943aa9bf7419d58fbc0e28ffb89ef22e0b) )
+	ROM_LOAD("super80.u33",   0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
+	ROM_LOAD("super80.u42",   0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
 
 	ROM_REGION(0x0400, REGION_GFX1, ROMREGION_DISPOSE)
-	ROM_LOAD("super80.u27",  0x0000, 0x0400, CRC(d1e4b3c6) SHA1(3667b97c6136da4761937958f281609690af4081) )
+	ROM_LOAD("super80.u27",   0x0000, 0x0400, CRC(d1e4b3c6) SHA1(3667b97c6136da4761937958f281609690af4081) )
 ROM_END
 
 ROM_START( super80d )
 	ROM_REGION(0x10000, REGION_CPU1, 0)
-	ROM_LOAD("super80d.u26", 0xc000, 0x1000, CRC(cebd2613) SHA1(87b94cc101a5948ce590211c68272e27f4cbe95a) )
-	ROM_LOAD("super80.u33",	 0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
-	ROM_LOAD("super80.u42",	 0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
+	ROM_SYSTEM_BIOS(0, "super80d", "V2.2")
+	ROMX_LOAD("super80d.u26", 0xc000, 0x1000, CRC(cebd2613) SHA1(87b94cc101a5948ce590211c68272e27f4cbe95a), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "super80f", "MDS (original)")
+	ROMX_LOAD("super80f.u26", 0xc000, 0x1000, CRC(d39775f0) SHA1(b47298ee028924612e9728bb2debd0f47399add7), ROM_BIOS(2))
+	ROM_LOAD("super80.u33",	  0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
+	ROM_LOAD("super80.u42",	  0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
 
 	ROM_REGION(0x1000, REGION_GFX1, ROMREGION_DISPOSE)
-	ROM_LOAD("super80d.u27", 0x0000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
-	ROM_RELOAD(              0x0800, 0x0800 )
+	ROM_LOAD("super80d.u27",  0x0000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
+	ROM_RELOAD(               0x0800, 0x0800 )
 ROM_END
 
 ROM_START( super80e )
 	ROM_REGION(0x10000, REGION_CPU1, 0)
-	ROM_LOAD("super80e.u26", 0xc000, 0x1000, CRC(bdc668f8) SHA1(3ae30b3cab599fca77d5e461f3ec1acf404caf07) )
-	ROM_LOAD("super80.u33",	 0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
-	ROM_LOAD("super80.u42",	 0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
+	ROM_LOAD("super80e.u26",  0xc000, 0x1000, CRC(bdc668f8) SHA1(3ae30b3cab599fca77d5e461f3ec1acf404caf07) )
+	ROM_LOAD("super80.u33",	  0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
+	ROM_LOAD("super80.u42",	  0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
 
 	ROM_REGION(0x1000, REGION_GFX1, ROMREGION_DISPOSE)
-	ROM_LOAD("super80e.u27", 0x0000, 0x1000, CRC(ebe763a7) SHA1(ffaa6d6a2c5dacc5a6651514e6707175a32e83e8) )
+	ROM_LOAD("super80e.u27",  0x0000, 0x1000, CRC(ebe763a7) SHA1(ffaa6d6a2c5dacc5a6651514e6707175a32e83e8) )
 ROM_END
 
 ROM_START( super80m )
 	ROM_REGION(0x10000, REGION_CPU1, 0)
-	ROM_LOAD("s80-8r0.u26",	 0xc000, 0x1000, CRC(48d410d8) SHA1(750d984abc013a3344628300288f6d1ba140a95f) )
-	ROM_LOAD("s80-8r0.u33",  0xd000, 0x1000, CRC(9765793e) SHA1(4951b127888c1f3153004cc9fb386099b408f52c) )
-	ROM_LOAD("s80-8r0.u42",  0xe000, 0x1000, CRC(5f65d94b) SHA1(fe26b54dec14e1c4911d996c9ebd084a38dcb691) )
+	ROM_LOAD("s80-8r0.u26",	  0xc000, 0x1000, CRC(48d410d8) SHA1(750d984abc013a3344628300288f6d1ba140a95f) )
+	ROM_LOAD("s80-8r0.u33",   0xd000, 0x1000, CRC(9765793e) SHA1(4951b127888c1f3153004cc9fb386099b408f52c) )
+	ROM_LOAD("s80-8r0.u42",   0xe000, 0x1000, CRC(5f65d94b) SHA1(fe26b54dec14e1c4911d996c9ebd084a38dcb691) )
 
 	ROM_REGION(0x1000, REGION_GFX1, ROMREGION_DISPOSE)
-	ROM_LOAD("super80d.u27", 0x0000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
-	ROM_RELOAD(              0x0800, 0x0800 )
+	ROM_LOAD("super80d.u27",  0x0000, 0x0800, CRC(cb4c81e2) SHA1(8096f21c914fa76df5d23f74b1f7f83bd8645783) )
+	ROM_RELOAD(               0x0800, 0x0800 )
 
 	ROM_REGION(0x1000, REGION_GFX2, ROMREGION_DISPOSE)
-	ROM_LOAD("super80e.u27", 0x0000, 0x1000, CRC(ebe763a7) SHA1(ffaa6d6a2c5dacc5a6651514e6707175a32e83e8) )
+	ROM_LOAD("super80e.u27",  0x0000, 0x1000, CRC(ebe763a7) SHA1(ffaa6d6a2c5dacc5a6651514e6707175a32e83e8) )
+ROM_END
+
+ROM_START( super80r )
+	ROM_REGION( 0x20000, REGION_CPU1, 0 )
+	ROM_SYSTEM_BIOS(0, "super80r", "MCE (original)")
+	ROMX_LOAD("super80r.u26", 0xc000, 0x1000, CRC(01bb6406) SHA1(8e275ecf5141b93f86e45ff8a735b965ea3e8d44), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "super80s", "MCE (upgraded)")
+	ROMX_LOAD("super80s.u26", 0xc000, 0x1000, CRC(3e29d307) SHA1(b3f4667633e0a4eb8577e39b5bd22e1f0bfbc0a9), ROM_BIOS(2))
+
+	ROM_LOAD("super80.u33",	  0xd000, 0x1000, CRC(cf8020a8) SHA1(2179a61f80372cd49e122ad3364773451531ae85) )
+	ROM_LOAD("super80.u42",	  0xe000, 0x1000, CRC(a1c6cb75) SHA1(d644ca3b399c1a8902f365c6095e0bbdcea6733b) )
+	ROM_LOAD("s80hmce.ic24",  0xf000, 0x0800, CRC(a6488a1e) SHA1(7ba613d70a37a6b738dcd80c2bb9988ff1f011ef) )
 ROM_END
 
 ROM_START( super80v )
 	ROM_REGION( 0x20000, REGION_CPU1, 0 )
-	ROM_LOAD("s80-v37v.u26", 0xc000, 0x1000, CRC(01e0c0dd) SHA1(ef66af9c44c651c65a21d5bda939ffa100078c08) )
-	ROM_LOAD("s80-v37.u33",  0xd000, 0x1000, CRC(812ad777) SHA1(04f355bea3470a7d9ea23bb2811f6af7d81dc400) )
-	ROM_LOAD("s80-v37.u42",  0xe000, 0x1000, CRC(e02e736e) SHA1(57b0264c805da99234ab5e8e028fca456851a4f9) )
-	ROM_LOAD("s80hmce.ic24", 0xf000, 0x0800, CRC(a6488a1e) SHA1(7ba613d70a37a6b738dcd80c2bb9988ff1f011ef) )
+	ROM_LOAD("s80-v37v.u26",  0xc000, 0x1000, CRC(01e0c0dd) SHA1(ef66af9c44c651c65a21d5bda939ffa100078c08) )
+	ROM_LOAD("s80-v37.u33",   0xd000, 0x1000, CRC(812ad777) SHA1(04f355bea3470a7d9ea23bb2811f6af7d81dc400) )
+	ROM_LOAD("s80-v37.u42",   0xe000, 0x1000, CRC(e02e736e) SHA1(57b0264c805da99234ab5e8e028fca456851a4f9) )
+	ROM_LOAD("s80hmce.ic24",  0xf000, 0x0800, CRC(a6488a1e) SHA1(7ba613d70a37a6b738dcd80c2bb9988ff1f011ef) )
 ROM_END
 
 /**************************** DEVICES *****************************************************************/
 
-static QUICKLOAD_LOAD( super80 )
-{
-	UINT8 sw = readinputportbytag("CONFIG") & 1;				/* reading the dipswitch: 1 = autorun */
-	UINT16 exec_addr, start_addr, end_addr;
-
-	if (z80bin_load_file( machine, image, file_type, &exec_addr, &start_addr, &end_addr ) == INIT_FAIL)
-		return INIT_FAIL;
-
-	if ((exec_addr != 0xffff) && (sw))
-		cpunum_set_reg(0, REG_PC, exec_addr);
-
-	return INIT_PASS;
-}
-
-static void super80_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_DEV_FILE:		strcpy(info->s = device_temp_str(), __FILE__); break;
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "bin"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:	info->f = (genf *) quickload_load_super80; break;
-
-		default:				quickload_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static DEVICE_LOAD( super80_cart )
+static DEVICE_IMAGE_LOAD( super80_cart )
 {
 /*	int size = mame_fsize(fp);
 	UINT8 *mem = malloc(size);
@@ -1042,7 +1038,7 @@ static void super80_cartslot_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_COUNT:			info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:			info->load = device_load_super80_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:			info->load = DEVICE_IMAGE_LOAD_NAME(super80_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "rom"); break;
@@ -1063,13 +1059,10 @@ static void super80_cassette_getinfo(const mess_device_class *devclass, UINT32 s
 		default:				cassette_device_getinfo(devclass, state, info); break;
 	}
 }
-INPUT_PORTS_START(0)
-INPUT_PORTS_END
 
 SYSTEM_CONFIG_START(super80)
 	CONFIG_DEVICE(super80_cassette_getinfo)
 	CONFIG_DEVICE(super80_cartslot_getinfo)
-	CONFIG_DEVICE(super80_quickload_getinfo)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT COMPAT MACHINE INPUT     INIT       CONFIG   COMPANY       FULLNAME */
@@ -1077,5 +1070,6 @@ COMP( 1981, super80,  0,       0, super80,  super80,  super80,  super80, "Dick S
 COMP( 1981, super80d, super80, 0, super80d, super80,  super80d, super80, "Dick Smith","Super-80 (V2.2)" , 0)
 COMP( 1981, super80e, super80, 0, super80d, super80,  super80,  super80, "Dick Smith","Super-80 (El Graphix 4)" , 0)
 COMP( 1981, super80m, super80, 0, super80m, super80m, super80d, super80, "Dick Smith","Super-80 (8R0)" , 0)
-COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, super80, "Dick Smith","Super-80 (with VDUEB)" , 0)
+COMP( 1981, super80r, super80, 0, super80r, super80r, super80v, super80, "Dick Smith","Super-80 (with VDUEB)" , 0)
+COMP( 1981, super80v, super80, 0, super80v, super80v, super80v, super80, "Dick Smith","Super-80 (with enhanced VDUEB)" , 0)
 

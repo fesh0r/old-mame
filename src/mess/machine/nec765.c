@@ -21,6 +21,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/nec765.h"
 
 
@@ -68,6 +69,8 @@ typedef struct nec765
 	unsigned long	sector_counter;
 	/* version of fdc to emulate */
 	NEC765_VERSION version;
+	/* is the RDY pin connected or not */
+	NEC765_RDY_PIN	rdy_pin;
 	/* main status register */
 	unsigned char    FDC_main;
 	/* data register */
@@ -141,13 +144,13 @@ static const INT8 nec765_cmd_size[32] =
 
 
 
-static mess_image *current_image(void)
+static const device_config *current_image(void)
 {
-	mess_image *image = NULL;
+	const device_config *image = NULL;
 
 	if (!nec765_iface.get_image)
 	{
-		if (fdc.drive < device_count(IO_FLOPPY))
+		if (fdc.drive < device_count(Machine, IO_FLOPPY))
 			image = image_from_devtype_and_index(IO_FLOPPY, fdc.drive);
 	}
 	else
@@ -257,7 +260,7 @@ static void nec765_seek_complete(void)
 		This indicates it is always ready!!!!!
 	*/
 
-	mess_image *img = current_image();
+	const device_config *img = current_image();
 
 	if (!img)
 		return;
@@ -434,7 +437,7 @@ static void nec765_setup_timed_int(int signed_tracks)
 
 static void nec765_seek_setup(int is_recalibrate)
 {
-	mess_image *img;
+	const device_config *img;
 	int signed_tracks;
 
 	fdc.nec765_flags |= NEC765_SEEK_ACTIVE;
@@ -654,7 +657,7 @@ is not ready.
 /* done when ready state of drive changes */
 /* this ignores if command is active, in which case command should terminate immediatly
 with error */
-static void nec765_set_ready_change_callback(mess_image *img, int state)
+static void nec765_set_ready_change_callback(const device_config *img, int state)
 {
 	int drive = image_index_in_device(img);
 
@@ -664,7 +667,7 @@ static void nec765_set_ready_change_callback(mess_image *img, int state)
 	fdc.nec765_status[0] = 0x0c0 | drive;
 
 	/* not ready */
-	if (state==0)
+	if (state==0 && fdc.rdy_pin == NEC765_RDY_PIN_CONNECTED )
 		fdc.nec765_status[0] |= 8;
 
 	/* trigger an int */
@@ -674,11 +677,12 @@ static void nec765_set_ready_change_callback(mess_image *img, int state)
 
 
 
-void nec765_init(const nec765_interface *iface, NEC765_VERSION version)
+void nec765_init(const nec765_interface *iface, NEC765_VERSION version, NEC765_RDY_PIN rdy_pin)
 {
 	int i;
 
 	fdc.version = version;
+	fdc.rdy_pin = rdy_pin;
 	fdc.timer = timer_alloc(nec765_timer_callback, NULL);
 	fdc.seek_timer = timer_alloc(nec765_seek_timer_callback, NULL);
 	fdc.command_timer = timer_alloc(nec765_continue_command, NULL);
@@ -693,7 +697,7 @@ void nec765_init(const nec765_interface *iface, NEC765_VERSION version)
 
 	nec765_reset(0);
 
-	for (i = 0; i < device_count(IO_FLOPPY); i++)
+	for (i = 0; i < device_count(Machine, IO_FLOPPY); i++)
 		floppy_drive_set_ready_state_change_callback(image_from_devtype_and_index(IO_FLOPPY, i), nec765_set_ready_change_callback);
 }
 
@@ -800,7 +804,7 @@ static int nec765_read_skip_sector(void)
 
 static void nec765_get_next_id(chrn_id *id)
 {
-	mess_image *img = current_image();
+	const device_config *img = current_image();
 
 	/* get next id from disc */
 	floppy_drive_get_next_id(img, fdc.side,id);
@@ -817,7 +821,7 @@ static void nec765_get_next_id(chrn_id *id)
 
 static int nec765_get_matching_sector(void)
 {
-	mess_image *img = current_image();
+	const device_config *img = current_image();
 	chrn_id id;
 
 	/* number of times we have seen index hole */
@@ -928,7 +932,7 @@ static void nec765_read_complete(void)
 
 static void nec765_read_data(void)
 {
-	mess_image *img = current_image();
+	const device_config *img = current_image();
 
 	if (!(floppy_drive_get_flag_state(img, FLOPPY_DRIVE_READY)))
 	{
@@ -1010,7 +1014,7 @@ static void nec765_read_data(void)
 
 static void nec765_format_track(void)
 {
-	mess_image *img = current_image();
+	const device_config *img = current_image();
 
 	/* write protected? */
 	if (floppy_drive_get_flag_state(img, FLOPPY_DRIVE_DISK_WRITE_PROTECTED))
@@ -1771,7 +1775,7 @@ static void nec765_setup_command(void)
 		"Lock"						/* [14] */
 	};
 
-	mess_image *img = current_image();
+	const device_config *img = current_image();
 	const char *cmd = NULL;
 	chrn_id id;
 
@@ -2136,7 +2140,7 @@ void nec765_reset(int offset)
 		are checked or only the drive selected with the drive select bits?? */
 
 		a_drive_is_ready = 0;
-		for (i = 0; i < device_count(IO_FLOPPY); i++)
+		for (i = 0; i < device_count(Machine, IO_FLOPPY); i++)
 		{
 			if (image_exists(image_from_devtype_and_index(IO_FLOPPY, i)))
 			{
@@ -2146,7 +2150,7 @@ void nec765_reset(int offset)
 
 		}
 
-		if (!a_drive_is_ready)
+		if (!a_drive_is_ready && fdc.rdy_pin == NEC765_RDY_PIN_CONNECTED )
 		{
 			fdc.nec765_status[0] |= 0x08;
 		}

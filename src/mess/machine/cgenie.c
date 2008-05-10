@@ -118,7 +118,7 @@ static UINT8 *image_buff;
 static OPBASE_HANDLER (opbaseoverride)
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
-	mess_image *img;
+	const device_config *img;
 	UINT8 *buff, *s, data;
 	UINT16 size, entry = 0, block_len, block_ofs = 0;
 
@@ -235,7 +235,7 @@ MACHINE_RESET( cgenie )
 	/* wipe out font RAM */
 	memset(&ROM[0x0f400], 0xff, 0x0400);
 
-	if( readinputport(0) & 0x80 )
+	if( input_port_read_indexed(machine, 0) & 0x80 )
 	{
 		logerror("cgenie floppy discs enabled\n");
 	}
@@ -245,44 +245,44 @@ MACHINE_RESET( cgenie )
 	}
 
 	/* copy DOS ROM, if enabled or wipe out that memory area */
-	if( readinputport(0) & 0x40 )
+	if( input_port_read_indexed(machine, 0) & 0x40 )
 	{
-		if ( readinputport(0) & 0x080 )
+		if ( input_port_read_indexed(machine, 0) & 0x080 )
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK10);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK10);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 			memory_set_bankptr(10, &ROM[0x0c000]);
 			logerror("cgenie DOS enabled\n");
 			memcpy(&ROM[0x0c000],&ROM[0x10000], 0x2000);
 		}
 		else
 		{
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 			logerror("cgenie DOS disabled (no floppy image given)\n");
 		}
 	}
 	else
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_NOP);
 		logerror("cgenie DOS disabled\n");
 		memset(&memory_region(REGION_CPU1)[0x0c000], 0x00, 0x2000);
 	}
 
 	/* copy EXT ROM, if enabled or wipe out that memory area */
-	if( readinputport(0) & 0x20 )
+	if( input_port_read_indexed(machine, 0) & 0x20 )
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_ROM);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_ROM);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_ROM);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_ROM);
 		logerror("cgenie EXT enabled\n");
 		memcpy(&memory_region(REGION_CPU1)[0x0e000],
 			   &memory_region(REGION_CPU1)[0x12000], 0x1000);
 	}
 	else
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
 		logerror("cgenie EXT disabled\n");
 		memset(&memory_region(REGION_CPU1)[0x0e000], 0x00, 0x1000);
 	}
@@ -324,8 +324,8 @@ MACHINE_START( cgenie )
 		memset(gfx + i * 8, i, 8);
 
 	/* set up RAM */
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, cgenie_videoram_w);
+	memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, cgenie_videoram_w);
 	videoram = mess_ram;
 	memory_set_bankptr(1, mess_ram);
 
@@ -336,7 +336,7 @@ MACHINE_START( cgenie )
 }
 
 
-DEVICE_LOAD( cgenie_cassette )
+DEVICE_IMAGE_LOAD( cgenie_cassette )
 {
 	return INIT_PASS;
 }
@@ -346,7 +346,7 @@ DEVICE_LOAD( cgenie_cassette )
  * of tracks, number of sides, number of sectors etc, so we need to
  * set that up here
  */
-DEVICE_LOAD( cgenie_floppy )
+DEVICE_IMAGE_LOAD( cgenie_floppy )
 {
 	int i, j, dir_offset;
 	UINT8 buff[16];
@@ -745,7 +745,7 @@ WRITE8_HANDLER( cgenie_port_ff_w )
 	if( port_ff_changed & FF_CAS )	/* casette port changed ? */
 	{
 		/* virtual tape ? */
-		if( readinputport(0) & 0x08 )
+		if( input_port_read_indexed(machine, 0) & 0x08 )
 			tape_put_bit(machine);
 		else
 			DAC_data_w(0,(data & FF_CAS) ? 127:0 );
@@ -820,7 +820,7 @@ WRITE8_HANDLER( cgenie_port_ff_w )
 {
 	/* virtual tape ? */
 
-	if( readinputport(0) & 0x08 )
+	if( input_port_read_indexed(machine, 0) & 0x08 )
 		tape_get_bit();
 
 	return port_ff;
@@ -853,13 +853,13 @@ static UINT8 psg_b_inp = 0x00;
 	{
 		/* comparator value */
 		psg_b_inp = 0x00;
-		if( readinputport(9) > psg_a_out )
+		if( input_port_read_indexed(machine, 9) > psg_a_out )
 			psg_b_inp |= 0x80;
-		if( readinputport(10) > psg_a_out )
+		if( input_port_read_indexed(machine, 10) > psg_a_out )
 			psg_b_inp |= 0x40;
-		if( readinputport(11) > psg_a_out )
+		if( input_port_read_indexed(machine, 11) > psg_a_out )
 			psg_b_inp |= 0x20;
-		if( readinputport(12) > psg_a_out )
+		if( input_port_read_indexed(machine, 12) > psg_a_out )
 			psg_b_inp |= 0x10;
 	}
 	else
@@ -867,17 +867,17 @@ static UINT8 psg_b_inp = 0x00;
 		/* read keypad matrix */
 		psg_b_inp = 0xFF;
 		if( !(psg_a_out & 0x01) )
-			psg_b_inp &= ~(readinputport(13) & 15);
+			psg_b_inp &= ~(input_port_read_indexed(machine, 13) & 15);
 		if( !(psg_a_out & 0x02) )
-			psg_b_inp &= ~(readinputport(13) / 16);
+			psg_b_inp &= ~(input_port_read_indexed(machine, 13) / 16);
 		if( !(psg_a_out & 0x04) )
-			psg_b_inp &= ~(readinputport(14) & 15);
+			psg_b_inp &= ~(input_port_read_indexed(machine, 14) & 15);
 		if( !(psg_a_out & 0x08) )
-			psg_b_inp &= ~(readinputport(14) / 16);
+			psg_b_inp &= ~(input_port_read_indexed(machine, 14) / 16);
 		if( !(psg_a_out & 0x10) )
-			psg_b_inp &= ~(readinputport(15) & 15);
+			psg_b_inp &= ~(input_port_read_indexed(machine, 15) & 15);
 		if( !(psg_a_out & 0x20) )
-			psg_b_inp &= ~(readinputport(15) / 16);
+			psg_b_inp &= ~(input_port_read_indexed(machine, 15) / 16);
 	}
 	return psg_b_inp;
 }
@@ -895,7 +895,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
  READ8_HANDLER( cgenie_status_r )
 {
 	/* If the floppy isn't emulated, return 0 */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return 0;
 	return wd17xx_status_r(machine, offset);
 }
@@ -903,7 +903,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
  READ8_HANDLER( cgenie_track_r )
 {
 	/* If the floppy isn't emulated, return 0xff */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return 0xff;
 	return wd17xx_track_r(machine, offset);
 }
@@ -911,7 +911,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
  READ8_HANDLER( cgenie_sector_r )
 {
 	/* If the floppy isn't emulated, return 0xff */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return 0xff;
 	return wd17xx_sector_r(machine, offset);
 }
@@ -919,7 +919,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
  READ8_HANDLER(cgenie_data_r )
 {
 	/* If the floppy isn't emulated, return 0xff */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return 0xff;
 	return wd17xx_data_r(machine, offset);
 }
@@ -927,7 +927,7 @@ WRITE8_HANDLER( cgenie_psg_port_b_w )
 WRITE8_HANDLER( cgenie_command_w )
 {
 	/* If the floppy isn't emulated, return immediately */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return;
 	wd17xx_command_w(machine, offset, data);
 }
@@ -935,7 +935,7 @@ WRITE8_HANDLER( cgenie_command_w )
 WRITE8_HANDLER( cgenie_track_w )
 {
 	/* If the floppy isn't emulated, ignore the write */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return;
 	wd17xx_track_w(machine, offset, data);
 }
@@ -943,7 +943,7 @@ WRITE8_HANDLER( cgenie_track_w )
 WRITE8_HANDLER( cgenie_sector_w )
 {
 	/* If the floppy isn't emulated, ignore the write */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return;
 	wd17xx_sector_w(machine, offset, data);
 }
@@ -951,7 +951,7 @@ WRITE8_HANDLER( cgenie_sector_w )
 WRITE8_HANDLER( cgenie_data_w )
 {
 	/* If the floppy isn't emulated, ignore the write */
-	if( (readinputport(0) & 0x80) == 0 )
+	if( (input_port_read_indexed(machine, 0) & 0x80) == 0 )
 		return;
 	wd17xx_data_w(machine, offset, data);
 }
@@ -985,7 +985,7 @@ static INTERRUPT_GEN( cgenie_fdc_interrupt )
 void cgenie_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param)
 {
 	/* if disc hardware is not enabled, do not cause an int */
-	if (!( readinputport(0) & 0x80 ))
+	if (!( input_port_read_indexed(machine, 0) & 0x80 ))
 		return;
 
 	switch( event )
@@ -1039,21 +1039,21 @@ WRITE8_HANDLER( cgenie_motor_w )
 	int result = 0;
 
 	if( offset & 0x01 )
-		result |= readinputport(1);
+		result |= input_port_read_indexed(machine, 1);
 	if( offset & 0x02 )
-		result |= readinputport(2);
+		result |= input_port_read_indexed(machine, 2);
 	if( offset & 0x04 )
-		result |= readinputport(3);
+		result |= input_port_read_indexed(machine, 3);
 	if( offset & 0x08 )
-		result |= readinputport(4);
+		result |= input_port_read_indexed(machine, 4);
 	if( offset & 0x10 )
-		result |= readinputport(5);
+		result |= input_port_read_indexed(machine, 5);
 	if( offset & 0x20 )
-		result |= readinputport(6);
+		result |= input_port_read_indexed(machine, 6);
 	if( offset & 0x40 )
-		result |= readinputport(7);
+		result |= input_port_read_indexed(machine, 7);
 	if( offset & 0x80 )
-		result |= readinputport(8);
+		result |= input_port_read_indexed(machine, 8);
 
 	return result;
 }
@@ -1129,9 +1129,9 @@ WRITE8_HANDLER( cgenie_fontram_w )
 
 INTERRUPT_GEN( cgenie_frame_interrupt )
 {
-	if( cgenie_tv_mode != (readinputport(0) & 0x10) )
+	if( cgenie_tv_mode != (input_port_read_indexed(machine, 0) & 0x10) )
 	{
-		cgenie_tv_mode = readinputport(0) & 0x10;
+		cgenie_tv_mode = input_port_read_indexed(machine, 0) & 0x10;
 		/* force setting of background color */
 		port_ff ^= FF_BGD0;
 		cgenie_port_ff_w(machine, 0, port_ff ^ FF_BGD0);

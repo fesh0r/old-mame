@@ -90,6 +90,8 @@ static PALETTE_INIT( intv )
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	intv_right_control_r,
 	intv_left_control_r,
 	0,
@@ -435,8 +437,8 @@ static void intv_cartslot_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_intv_cart; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_intv_cart; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(intv_cart); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(intv_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom"); break;
@@ -458,7 +460,7 @@ static void intvkbd_cartslot_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_intvkbd_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(intvkbd_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "int,rom,bin"); break;
@@ -501,6 +503,6 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE   INPUT     INIT        CONFIG      COMPANY      FULLNAME */
-CONS( 1979, intv,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision", GAME_NOT_WORKING )
-CONS( 1981, intvsrs,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision (Sears)", GAME_NOT_WORKING )
+CONS( 1979, intv,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision", 0 )
+CONS( 1981, intvsrs,	0,	0,	intv,     intv, 	0,	intv,		"Mattel",    "Intellivision (Sears)", 0 )
 COMP( 1981, intvkbd,	0,	0,	intvkbd,  intvkbd, 	0,	intvkbd,	"Mattel",    "Intellivision Keyboard Component (Unreleased)", GAME_NOT_WORKING)

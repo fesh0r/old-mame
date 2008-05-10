@@ -49,7 +49,7 @@ static ADDRESS_MAP_START (readport, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x90, 0x91) AM_READ( msx_printer_r )
 	AM_RANGE( 0xa0, 0xa7) AM_READ( msx_psg_r )
-	AM_RANGE( 0xa8, 0xab) AM_READ( ppi8255_0_r )
+	AM_RANGE( 0xa8, 0xab) AM_DEVREAD( PPI8255, "ppi8255", ppi8255_r )
 	AM_RANGE( 0x98, 0x98) AM_READ( TMS9928A_vram_r )
 	AM_RANGE( 0x99, 0x99) AM_READ( TMS9928A_register_r )
 	AM_RANGE( 0xd9, 0xd9) AM_READ( msx_kanji_r )
@@ -61,7 +61,7 @@ static ADDRESS_MAP_START (writeport, ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x7c, 0x7d) AM_WRITE( msx_fmpac_w )
 	AM_RANGE( 0x90, 0x91) AM_WRITE( msx_printer_w )
 	AM_RANGE( 0xa0, 0xa7) AM_WRITE( msx_psg_w )
-	AM_RANGE( 0xa8, 0xab) AM_WRITE( ppi8255_0_w )
+	AM_RANGE( 0xa8, 0xab) AM_DEVWRITE( PPI8255, "ppi8255", ppi8255_w )
 	AM_RANGE( 0x98, 0x98) AM_WRITE( TMS9928A_vram_w )
 	AM_RANGE( 0x99, 0x99) AM_WRITE( TMS9928A_register_w )
 	AM_RANGE( 0xd8, 0xd9) AM_WRITE( msx_kanji_w )
@@ -72,7 +72,7 @@ static ADDRESS_MAP_START (readport2, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE( 0x90, 0x91) AM_READ( msx_printer_r )
 	AM_RANGE( 0xa0, 0xa7) AM_READ( msx_psg_r )
-	AM_RANGE( 0xa8, 0xab) AM_READ( ppi8255_0_r )
+	AM_RANGE( 0xa8, 0xab) AM_DEVREAD( PPI8255, "ppi8255", ppi8255_r )
 	AM_RANGE( 0x98, 0x98) AM_READ( v9938_0_vram_r )
 	AM_RANGE( 0x99, 0x99) AM_READ( v9938_0_status_r )
 	AM_RANGE( 0xb5, 0xb5) AM_READ( msx_rtc_reg_r )
@@ -86,7 +86,7 @@ static ADDRESS_MAP_START (writeport2, ADDRESS_SPACE_IO, 8)
 	AM_RANGE( 0x7c, 0x7d) AM_WRITE( msx_fmpac_w )
 	AM_RANGE( 0x90, 0x91) AM_WRITE( msx_printer_w )
 	AM_RANGE( 0xa0, 0xa7) AM_WRITE( msx_psg_w )
-	AM_RANGE( 0xa8, 0xab) AM_WRITE( ppi8255_0_w )
+	AM_RANGE( 0xa8, 0xab) AM_DEVWRITE( PPI8255, "ppi8255", ppi8255_w )
 	AM_RANGE( 0x98, 0x98) AM_WRITE( v9938_0_vram_w )
 	AM_RANGE( 0x99, 0x99) AM_WRITE( v9938_0_command_w )
 	AM_RANGE( 0x9a, 0x9a) AM_WRITE( v9938_0_palette_w )
@@ -704,6 +704,8 @@ INPUT_PORTS_END
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	msx_psg_port_a_r,
 	msx_psg_port_b_r,
 	msx_psg_port_a_w,
@@ -734,6 +736,9 @@ static MACHINE_DRIVER_START( msx )
 	MDRV_MACHINE_START( msx )
 	MDRV_MACHINE_RESET( msx )
 
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( msx_ppi8255_interface )
+
 	/* video hardware */
 	MDRV_IMPORT_FROM(tms9928a)
 	MDRV_SCREEN_MODIFY("main")
@@ -755,6 +760,9 @@ static MACHINE_DRIVER_START( msx )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD(YM2413, 3579545)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 
@@ -779,7 +787,11 @@ static MACHINE_DRIVER_START( msx2 )
 	MDRV_CPU_VBLANK_INT_HACK(msx2_interrupt, 262)
 	MDRV_INTERLEAVE(1)
 
+	MDRV_MACHINE_START( msx2 )
 	MDRV_MACHINE_RESET( msx2 )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( msx_ppi8255_interface )
 
 	/* video hardware */
 	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
@@ -810,6 +822,9 @@ static MACHINE_DRIVER_START( msx2 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.40)
 
 	MDRV_NVRAM_HANDLER( msx2 )
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 
@@ -2051,7 +2066,6 @@ ROM_START (phc70fd)
 	ROM_LOAD ("70fdkfn.rom", 0x30000, 0x20000, CRC(c9651b32) SHA1(84a645becec0a25d3ab7a909cde1b242699a8662))
 ROM_END
 
-#ifdef UNUSED_FUNCTION
 MSX_LAYOUT_INIT (phc70fd)
 	MSX_LAYOUT_SLOT (0, 0, 0, 2, ROM, 0x8000, 0x0000)
 	MSX_LAYOUT_SLOT (1, 0, 0, 4, CARTRIDGE1, 0x0000, 0x0000)
@@ -2065,7 +2079,6 @@ MSX_LAYOUT_INIT (phc70fd)
 	MSX_LAYOUT_KANJI (0x30000)
 	MSX_LAYOUT_RAMIO_SET_BITS (0x80)
 MSX_LAYOUT_END
-#endif
 
 ROM_START (phc70fd2)
 	ROM_REGION (0x70000, REGION_CPU1,0)
@@ -2145,7 +2158,7 @@ static void msx_floppy_getinfo(const mess_device_class *devclass, UINT32 state, 
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_msx_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(msx_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -2163,8 +2176,8 @@ static void msx_cartslot_getinfo(const mess_device_class *devclass, UINT32 state
 		case MESS_DEVINFO_INT_COUNT:							info->i = MSX_MAX_CARTS; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_msx_cart; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_msx_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(msx_cart); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(msx_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "mx1,rom"); break;
@@ -2188,23 +2201,10 @@ static void msx_cassette_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-static void msx_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
 SYSTEM_CONFIG_START(msx)
 	CONFIG_DEVICE(msx_floppy_getinfo)
 	CONFIG_DEVICE(msx_cartslot_getinfo)
 	CONFIG_DEVICE(msx_cassette_getinfo)
-	CONFIG_DEVICE(msx_printer_getinfo)
 SYSTEM_CONFIG_END
 
 MSX_DRIVER_LIST
@@ -2272,6 +2272,7 @@ MSX_DRIVER_LIST
 	MSX_DRIVER (fsa1wsx)
  	MSX_DRIVER (hbf1xdj)
 	MSX_DRIVER (hbf1xv)
+	MSX_DRIVER (phc70fd)
 	MSX_DRIVER (phc70fd2)
 	MSX_DRIVER (phc35j)
 	MSX_DRIVER (hx10)
@@ -2279,73 +2280,73 @@ MSX_DRIVER_LIST
 MSX_DRIVER_END
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE  INPUT     INIT   CONFIG  COMPANY              FULLNAME */
-COMP( 1983,	msx,	  0,		0,		msx_pal, msx,	   msx,		msx,	"ASCII & Microsoft", "MSX" , 0)
-COMP( 1983, hb75d,	  msx,		0,		msx_pal, msx,      msx,		msx,	"Sony", "HB-75D (Germany)" , 0)
-COMP( 1983, hb75p,	  msx,		0,		msx_pal, msx,      msx,		msx,	"Sony", "HB-75P" , 0)
-COMP( 1984, hb501p,	  msx,		0,		msx_pal, msx,      msx,		msx,	"Sony", "HB-501P" , 0)
-COMP( 1985, hb201p,	  msx,		0,		msx_pal, msx,      msx,		msx,	"Sony", "HB-201P" , 0)
-COMP(1985, svi738,	  msx,		0,		msx_pal, msx,      msx,		msx,	"Spectravideo", "SVI-738", GAME_NOT_WORKING )
-COMP( 1983, cf2000,   msx,      0,      msx,     msxjp,    msx,     msx,    "National / Matsushita", "CF-2000 (Japan)" , 0)
-COMP( 1984, cf1200,   msx,      0,      msx,     msxjp,    msx,     msx,    "National / Matsushita", "CF-1200 (Japan)" , 0)
-COMP( 1984, cf2700,   msx,		0,      msx,     msxjp,    msx,     msx,    "National / Matsushita", "CF-2700 (Japan)" , 0)
-COMP( 1984, cf3000,   msx,		0,      msx,     msxjp,    msx,     msx,    "National / Matsushita", "CF-3000 (Japan)" , 0)
-COMP(1985, cf3300,   msx,		0,      msx,     msxjp,    msx,     msx,    "National / Matsushita", "CF-3300 (Japan)", GAME_NOT_WORKING )
-COMP( 1985, fs4000,   msx,      0,      msx,     msxjp,    msx,     msx,    "National / Matsushita", "FS-4000 (Japan)" , 0)
-COMP( 1985, fs1300,   msx,		0,      msx,     msxjp,    msx,     msx,    "National / Matsushita", "FS-1300 (Japan)" , 0)
-COMP( 1985, hb201,    msx,		0,      msx,     msxjp,    msx,     msx,    "Sony", "HB-201 (Japan)" , 0)
-COMP( 1984, dpc100,	  msx,		0,		msx,	 msxkr,    msx,		msx,	"Daewoo", "IQ-1000 DPC-100 (Korea)" , 0)
-COMP( 1984, dpc180,	  msx,		0,		msx,	 msxkr,    msx,		msx,	"Daewoo", "IQ-1000 DPC-180 (Korea)" , 0)
-COMP( 1984, dpc200,	  msx,		0,		msx,	 msxkr,    msx,		msx,	"Daewoo", "IQ-1000 DPC-200 (Korea)" , 0)
-COMP( 1985, hotbit11, msx,		0,		msx,	 hotbit,   msx,		msx,	"Sharp / Epcom",	 "HB-8000 Hotbit 1.1" , 0)
-COMP( 1985, hotbit12, msx,		0,		msx,	 hotbit,   msx,		msx,	"Sharp / Epcom",	 "HB-8000 Hotbit 1.2" , 0)
-COMP( 1984, hx10, msx,		0,		msx,	 msx,   msx,		msx,	"Toshiba",	 "HX-10" , 0)
-COMP( 1985, vg8020, msx,		0,		msx,	 msx,   msx,		msx,	"Philips",	 "VG-8020" , 0)
-COMP( 1983, expert10, msx,		0,		msx,	 expert10, msx,		msx,	"Gradiente", "Expert (Brazil)" , 0)
-COMP( 1984, expert11, msx,		0,		msx,	 expert11, msx,		msx,	"Gradiente", "Expert Plus (Brazil)" , 0)
-COMP(1985, expertdp, msx,		0,		msx,	 expert11, msx,		msx,	"Gradiente", "Expert DDPlus (Brazil)", GAME_NOT_WORKING )
-COMP (1985, msx2,	  0,		msx,	msx2_pal,	 msx2,	   msx2,	msx,	"ASCII & Microsoft", "MSX2", 0)
-COMP (1986, nms8220,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8220 / 1st released version", 0)
-COMP (1986, nms8220a, msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8220 / 2nd released version", 0)
-COMP (1986, vg8235,   msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "VG-8235", 0)
-COMP (1986, nms8245,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8245", 0)
-COMP (1986, nms8250,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8250", 0)
-COMP (1986, nms8255,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8255", 0)
-COMP (1986, nms8280,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Philips", "NMS-8280", 0)
-COMP (1985, hbf9p,    msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F9P" , 0)
-COMP (1985, hbf500p,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F500P", 0)
-COMP (1985, hbf700d,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F700D (Germany)" , 0)
-COMP (1985, hbf700p,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F700P" , 0)
-COMP (1985, hbf700s,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-F700S (Spain)", 0)
-COMP(1986, hbg900p,  msx2,		0,		msx2_pal,	 msx2,	   msx2,	msx,	"Sony", "HB-G900P", GAME_NOT_WORKING )
-COMP(1985, fs5500,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-5500F1/F2 (Japan)", GAME_NOT_WORKING )
-COMP(1986, fs4500,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-4500 (Japan)", GAME_NOT_WORKING )
-COMP(1986, fs4700,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-4700 (Japan)", GAME_NOT_WORKING )
-COMP(1986, fs5000,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-5000F2 (Japan)", GAME_NOT_WORKING )
-COMP(1986, fs4600,   msx2,		0,      msx2,    msx2jp,   msx2,    msx,    "National / Matsushita", "FS-4600 (Japan)", GAME_NOT_WORKING )
-COMP (1986, fsa1,     msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1 / 1st released version (Japan)", 0)
-COMP (1986, fsa1a,    msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1 / 2nd released version (Japan)", 0)
-COMP (1987, fsa1mk2,  msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1MK2 (Japan)", 0)
-COMP(1987, fsa1f,    msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1F (Japan)", GAME_NOT_WORKING )
-COMP(1987, fsa1fm,   msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1FM (Japan)", GAME_NOT_WORKING )
-COMP (1986, hbf500,   msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F500 (Japan)", 0)
-COMP (1986, hbf900,   msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F900 / 1st released version (Japan)", 0)
-COMP (1986, hbf900a,  msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F900 / 2nd released version (Japan)", 0)
-COMP(1986, hbf1,     msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F1 (Japan)", GAME_NOT_WORKING )
-COMP(1987, hbf12,    msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F1II (Japan)", GAME_NOT_WORKING )
-COMP (1987, hbf1xd,   msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F1XD (Japan)", 0)
-COMP (1988, hbf1xdm2, msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F1XDMK2 (Japan)", 0)
-COMP (1988, phc23,    msx2,     0,      msx2,    msx2jp,   msx2,    msx,    "Sanyo", "WAVY PHC-23 (Japan)", 0)
-COMP (1986, cpc300,	  msx2,		0,		msx2,	 msx2kr,   msx2,	msx,	"Daewoo", "IQ-2000 CPC-300 (Korea)", 0)
-COMP(1986, cpc400,	  msx2,		0,		msx2,	 msx2kr,   msx2,	msx,	"Daewoo", "X-II CPC-400 (Korea)", GAME_NOT_WORKING )
-COMP(1986, cpc400s,  msx2,		0,		msx2,	 msx2kr,   msx2,	msx,	"Daewoo", "X-II CPC-400S (Korea)", GAME_NOT_WORKING )
-COMP (1988, msx2p,	  0,		msx,	msx2,	 msx2jp,   msx2,	msx,	"ASCII & Microsoft", "MSX2+", 0)
-COMP(1988, fsa1fx,   msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1FX (Japan)", GAME_NOT_WORKING )
-COMP(1988, fsa1wx,   msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1WX / 1st released version (Japan)", GAME_NOT_WORKING )
-COMP(1988, fsa1wxa,  msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1WX / 2nd released version (Japan)", GAME_NOT_WORKING )
-COMP(1989, fsa1wsx,  msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Panasonic / Matsushita", "FS-A1WSX (Japan)", GAME_NOT_WORKING )
-COMP(1988, hbf1xdj,  msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F1XDJ (Japan)", GAME_NOT_WORKING )
-COMP(1989, hbf1xv,   msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Sony", "HB-F1XV (Japan)", GAME_NOT_WORKING )
-COMP(1988, phc70fd,  msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Sanyo", "WAVY PHC-70FD (Japan)", GAME_NOT_WORKING )
-COMP(1988, phc70fd2, msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Sanyo", "WAVY PHC-70FD2 (Japan)", GAME_NOT_WORKING )
-COMP (1989, phc35j,   msx2p,    0,      msx2,    msx2jp,   msx2,    msx,    "Sanyo", "WAVY PHC-35J (Japan)", 0)
+COMP(1983, msx,	     0,		0,	msx_pal,  msx,	    msx,     msx, "ASCII & Microsoft", "MSX" , 0)
+COMP(1983, hb75d,    msx,	0,	msx_pal,  msx,      msx,     msx, "Sony", "HB-75D (Germany)" , 0)
+COMP(1983, hb75p,    msx,	0,	msx_pal,  msx,      msx,     msx, "Sony", "HB-75P" , 0)
+COMP(1984, hb501p,   msx,	0,	msx_pal,  msx,      msx,     msx, "Sony", "HB-501P" , 0)
+COMP(1985, hb201p,   msx,	0,	msx_pal,  msx,      msx,     msx, "Sony", "HB-201P" , 0)
+COMP(1985, svi738,   msx,	0,	msx_pal,  msx,      msx,     msx, "Spectravideo", "SVI-738", 0 )
+COMP(1983, cf2000,   msx,	0,      msx,      msxjp,    msx,     msx, "National / Matsushita", "CF-2000 (Japan)" , 0)
+COMP(1984, cf1200,   msx,	0,      msx,      msxjp,    msx,     msx, "National / Matsushita", "CF-1200 (Japan)" , 0)
+COMP(1984, cf2700,   msx,	0,      msx,      msxjp,    msx,     msx, "National / Matsushita", "CF-2700 (Japan)" , 0)
+COMP(1984, cf3000,   msx,	0,      msx,      msxjp,    msx,     msx, "National / Matsushita", "CF-3000 (Japan)" , 0)
+COMP(1985, cf3300,   msx,	0,      msx,      msxjp,    msx,     msx, "National / Matsushita", "CF-3300 (Japan)", 0 )
+COMP(1985, fs4000,   msx,	0,      msx,      msxjp,    msx,     msx, "National / Matsushita", "FS-4000 (Japan)" , 0)
+COMP(1985, fs1300,   msx,	0,      msx,      msxjp,    msx,     msx, "National / Matsushita", "FS-1300 (Japan)" , 0)
+COMP(1985, hb201,    msx,	0,      msx,      msxjp,    msx,     msx, "Sony", "HB-201 (Japan)" , 0)
+COMP(1984, dpc100,   msx,	0,	msx,	  msxkr,    msx,     msx, "Daewoo", "IQ-1000 DPC-100 (Korea)" , 0)
+COMP(1984, dpc180,   msx,	0,	msx,	  msxkr,    msx,     msx, "Daewoo", "IQ-1000 DPC-180 (Korea)" , 0)
+COMP(1984, dpc200,   msx,	0,	msx,	  msxkr,    msx,     msx, "Daewoo", "IQ-1000 DPC-200 (Korea)" , 0)
+COMP(1985, hotbit11, msx,	0,	msx,	  hotbit,   msx,     msx, "Sharp / Epcom",	 "HB-8000 Hotbit 1.1" , 0)
+COMP(1985, hotbit12, msx,	0,	msx,	  hotbit,   msx,     msx, "Sharp / Epcom",	 "HB-8000 Hotbit 1.2" , 0)
+COMP(1984, hx10,     msx,	0,	msx,	  msx,      msx,     msx, "Toshiba",	 "HX-10" , 0)
+COMP(1985, vg8020,   msx,	0,	msx,	  msx,      msx,     msx, "Philips",	 "VG-8020" , 0)
+COMP(1983, expert10, msx,	0,	msx,	  expert10, msx,     msx, "Gradiente", "Expert (Brazil)" , 0)
+COMP(1984, expert11, msx,	0,	msx,	  expert11, msx,     msx, "Gradiente", "Expert Plus (Brazil)" , 0)
+COMP(1985, expertdp, msx,	0,	msx,	  expert11, msx,     msx, "Gradiente", "Expert DDPlus (Brazil)", 0 )
+COMP(1985, msx2,     0,		msx,	msx2_pal, msx2,	    msx2,    msx, "ASCII & Microsoft", "MSX2", 0)
+COMP(1986, nms8220,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8220 / 1st released version", 0)
+COMP(1986, nms8220a, msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8220 / 2nd released version", 0)
+COMP(1986, vg8235,   msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "VG-8235", 0)
+COMP(1986, nms8245,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8245", 0)
+COMP(1986, nms8250,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8250", 0)
+COMP(1986, nms8255,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8255", 0)
+COMP(1986, nms8280,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Philips", "NMS-8280", 0)
+COMP(1985, hbf9p,    msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F9P" , 0)
+COMP(1985, hbf500p,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F500P", 0)
+COMP(1985, hbf700d,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F700D (Germany)" , 0)
+COMP(1985, hbf700p,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F700P" , 0)
+COMP(1985, hbf700s,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-F700S (Spain)", 0)
+COMP(1986, hbg900p,  msx2,	0,	msx2_pal, msx2,	    msx2,    msx, "Sony", "HB-G900P", 0 )
+COMP(1985, fs5500,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-5500F1/F2 (Japan)", 0 )
+COMP(1986, fs4500,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-4500 (Japan)", 0 )
+COMP(1986, fs4700,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-4700 (Japan)", 0 )
+COMP(1986, fs5000,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-5000F2 (Japan)", 0 )
+COMP(1986, fs4600,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "National / Matsushita", "FS-4600 (Japan)", 0 )
+COMP(1986, fsa1,     msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1 / 1st released version (Japan)", 0)
+COMP(1986, fsa1a,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1 / 2nd released version (Japan)", 0)
+COMP(1987, fsa1mk2,  msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1MK2 (Japan)", 0)
+COMP(1987, fsa1f,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1F (Japan)", 0 )
+COMP(1987, fsa1fm,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1FM (Japan)", 0 )
+COMP(1986, hbf500,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F500 (Japan)", 0)
+COMP(1986, hbf900,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F900 / 1st released version (Japan)", 0)
+COMP(1986, hbf900a,  msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F900 / 2nd released version (Japan)", 0)
+COMP(1986, hbf1,     msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1 (Japan)", GAME_NOT_WORKING )
+COMP(1987, hbf12,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1II (Japan)", GAME_NOT_WORKING )
+COMP(1987, hbf1xd,   msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XD (Japan)", 0)
+COMP(1988, hbf1xdm2, msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XDMK2 (Japan)", 0)
+COMP(1988, phc23,    msx2,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-23 (Japan)", 0)
+COMP(1986, cpc300,   msx2,	0,	msx2,	  msx2kr,   msx2,    msx, "Daewoo", "IQ-2000 CPC-300 (Korea)", 0)
+COMP(1986, cpc400,   msx2,	0,	msx2,	  msx2kr,   msx2,    msx, "Daewoo", "X-II CPC-400 (Korea)", 0 )
+COMP(1986, cpc400s,  msx2,	0,	msx2,	  msx2kr,   msx2,    msx, "Daewoo", "X-II CPC-400S (Korea)", 0 )
+COMP(1988, msx2p,    0,		msx,	msx2,	  msx2jp,   msx2,    msx, "ASCII & Microsoft", "MSX2+", 0)
+COMP(1988, fsa1fx,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1FX (Japan)", 0 )
+COMP(1988, fsa1wx,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1WX / 1st released version (Japan)", 0 )
+COMP(1988, fsa1wxa,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1WX / 2nd released version (Japan)", 0 )
+COMP(1989, fsa1wsx,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Panasonic / Matsushita", "FS-A1WSX (Japan)", 0 )
+COMP(1988, hbf1xdj,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XDJ (Japan)", 0 )
+COMP(1989, hbf1xv,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sony", "HB-F1XV (Japan)", 0 )
+COMP(1988, phc70fd,  msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-70FD (Japan)", 0 )
+COMP(1988, phc70fd2, msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-70FD2 (Japan)", 0 )
+COMP(1989, phc35j,   msx2p,	0,      msx2,     msx2jp,   msx2,    msx, "Sanyo", "WAVY PHC-35J (Japan)", 0)
 

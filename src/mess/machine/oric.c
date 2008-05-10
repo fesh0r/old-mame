@@ -75,7 +75,7 @@ static void oric_refresh_ints(running_machine *machine)
 		/* oric 1 or oric atmos */
 
 		/* if floppy disc hardware is disabled, do not allow interrupts from it */
-		if ((readinputport(9) & 0x07)==ORIC_FLOPPY_INTERFACE_NONE)
+		if ((input_port_read_indexed(machine, 9) & 0x07)==ORIC_FLOPPY_INTERFACE_NONE)
 		{
 			oric_irqs &=~(1<<1);
 		}
@@ -121,7 +121,7 @@ static void oric_keyboard_sense_refresh(void)
 	/* what if data is 0, can it sense if any of the keys on a line are pressed? */
 	int input_port_data;
 
- 	input_port_data = readinputport(1+oric_keyboard_line);
+ 	input_port_data = input_port_read_indexed(Machine, 1+oric_keyboard_line);
 
 	/* go through all bits in line */
 	for (i=0; i<8; i++)
@@ -269,7 +269,7 @@ PB7
  */
 
 
-static mess_image *cassette_device_image(void)
+static const device_config *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
@@ -291,7 +291,7 @@ static TIMER_CALLBACK(oric_refresh_tape)
 	to the via cb1 input. Interrupts can be generated from the vertical
 	sync, and flicker free games can be produced */
 
-	input_port_9 = readinputport(9);
+	input_port_9 = input_port_read_indexed(machine, 9);
 	/* cable is enabled? */
 	if ((input_port_9 & 0x08)!=0)
 	{
@@ -493,34 +493,38 @@ disk interface rom accessed through 0x0320-0x03ff (read only)
 CALL &320 to start, or use BOBY rom.
 */
 
-static void oric_install_apple2_interface(void)
+static void oric_install_apple2_interface(running_machine *machine)
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, SMH_BANK4);
+	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
+		APPLEFDC,
+		"fdc");
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
+	memory_install_read8_device_handler(fdc, 0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, SMH_BANK4);
+
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
+	memory_install_write8_device_handler(fdc, 0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_w);
 	memory_set_bankptr(4, 	memory_region(REGION_CPU1) + 0x014000 + 0x020);
 }
 
 
-static void oric_enable_memory(int low, int high, int rd, int wr)
+static void oric_enable_memory(running_machine *machine, int low, int high, int rd, int wr)
 {
 	int i;
 	for (i = low; i <= high; i++)
 	{
 		switch(i) {
 		case 1:
-			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, rd ? SMH_BANK1 : SMH_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, wr ? SMH_BANK5 : SMH_UNMAP);
+			memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, rd ? SMH_BANK1 : SMH_NOP);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, wr ? SMH_BANK5 : SMH_UNMAP);
 			break;
 		case 2:
-			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, rd ? SMH_BANK2 : SMH_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, wr ? SMH_BANK6 : SMH_UNMAP);
+			memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, rd ? SMH_BANK2 : SMH_NOP);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xf7ff, 0, 0, wr ? SMH_BANK6 : SMH_UNMAP);
 			break;
 		case 3:
-			memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, 0, rd ? SMH_BANK3 : SMH_NOP);
+			memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, 0, rd ? SMH_BANK3 : SMH_NOP);
 			break;
 		}
 	}
@@ -549,7 +553,7 @@ static WRITE8_HANDLER(apple2_v2_interface_w)
 	/* bit 0 is 0 for page 0, 1 for page 1 */
 	memory_set_bankptr(4, memory_region(REGION_CPU1) + 0x014000 + 0x0100 + (((offset & 0x02)>>1)<<8));
 
-	oric_enable_memory(1, 3, TRUE, TRUE);
+	oric_enable_memory(machine, 1, 3, TRUE, TRUE);
 
 	/* bit 1 is 0, rom enabled, bit 1 is 1 ram enabled */
 	if ((offset & 0x01)==0)
@@ -585,13 +589,17 @@ static WRITE8_HANDLER(apple2_v2_interface_w)
 /* APPLE 2 INTERFACE V2 */
 static void oric_install_apple2_v2_interface(running_machine *machine)
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, SMH_BANK4);
+	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
+		APPLEFDC,
+		"fdc");
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0380, 0x0383, 0, 0, apple2_v2_interface_w);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
+	memory_install_read8_device_handler(fdc, 0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, SMH_BANK4);
+
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
+	memory_install_write8_device_handler(fdc, 0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0380, 0x0383, 0, 0, apple2_v2_interface_w);
 
 	apple2_v2_interface_w(machine, 0, 0);
 }
@@ -607,7 +615,7 @@ static unsigned char port_3fa_w;
 static unsigned char port_3fb_w;
 
 
-static void oric_jasmin_set_mem_0x0c000(void)
+static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 {
 	/* assumption:
 	1. It is possible to access all 16k overlay ram.
@@ -631,7 +639,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 			/* no it is disabled */
 			/*logerror("&c000-&ffff is os rom\n"); */
 
-			oric_enable_memory(1, 3, TRUE, FALSE);
+			oric_enable_memory(machine, 1, 3, TRUE, FALSE);
 
 			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
 			memory_set_bankptr(1, rom_ptr);
@@ -642,7 +650,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 		{
 			/*logerror("&c000-&ffff is ram\n"); */
 
-			oric_enable_memory(1, 3, TRUE, TRUE);
+			oric_enable_memory(machine, 1, 3, TRUE, TRUE);
 
 			memory_set_bankptr(1, oric_ram_0x0c000);
 			memory_set_bankptr(2, oric_ram_0x0c000+0x02000);
@@ -661,12 +669,12 @@ static void oric_jasmin_set_mem_0x0c000(void)
 			/* overlay ram disabled */
 
 			/*logerror("&c000-&f8ff is nothing!\n"); */
-			oric_enable_memory(1, 2, FALSE, FALSE);
+			oric_enable_memory(machine, 1, 2, FALSE, FALSE);
 		}
 		else
 		{
 			/*logerror("&c000-&f8ff is ram!\n"); */
-			oric_enable_memory(1, 2, TRUE, TRUE);
+			oric_enable_memory(machine, 1, 2, TRUE, TRUE);
 
 			memory_set_bankptr(1, oric_ram_0x0c000);
 			memory_set_bankptr(2, oric_ram_0x0c000+0x02000);
@@ -680,7 +688,7 @@ static void oric_jasmin_set_mem_0x0c000(void)
 
 			/*logerror("&f800-&ffff is jasmin rom\n"); */
 			/* jasmin rom enabled */
-			oric_enable_memory(3, 3, TRUE, TRUE);
+			oric_enable_memory(machine, 3, 3, TRUE, TRUE);
 			rom_ptr = memory_region(REGION_CPU1) + 0x010000+0x04000+0x02000;
 			memory_set_bankptr(3, rom_ptr);
 			memory_set_bankptr(7, rom_ptr);
@@ -771,12 +779,12 @@ static WRITE8_HANDLER(oric_jasmin_w)
 		case 0x0a:
 			logerror("jasmin overlay ram w: %02x PC: %04x\n",data,activecpu_get_pc());
 			port_3fa_w = data;
-			oric_jasmin_set_mem_0x0c000();
+			oric_jasmin_set_mem_0x0c000(machine);
 			break;
 		case 0x0b:
 			logerror("jasmin romdis w: %02x PC: %04x\n",data,activecpu_get_pc());
 			port_3fb_w = data;
-			oric_jasmin_set_mem_0x0c000();
+			oric_jasmin_set_mem_0x0c000(machine);
 			break;
 		/* bit 0,1 of addr is the drive */
 		case 0x0c:
@@ -793,17 +801,17 @@ static WRITE8_HANDLER(oric_jasmin_w)
 }
 
 
-static void oric_install_jasmin_interface(void)
+static void oric_install_jasmin_interface(running_machine *machine)
 {
 	/* romdis */
 	port_3fb_w = 1;
-	oric_jasmin_set_mem_0x0c000();
+	oric_jasmin_set_mem_0x0c000(machine);
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ef, 0, 0, oric_IO_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x03f0, 0x03ff, 0, 0, oric_jasmin_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ef, 0, 0, oric_IO_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x03f0, 0x03ff, 0, 0, oric_jasmin_r);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ef, 0, 0, oric_IO_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x03f0, 0x03ff, 0, 0, oric_jasmin_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ef, 0, 0, oric_IO_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x03f0, 0x03ff, 0, 0, oric_jasmin_w);
 }
 
 /*********************************/
@@ -876,7 +884,7 @@ static void oric_microdisc_wd179x_callback(running_machine *machine, int State)
 }
 
 
-static void	oric_microdisc_set_mem_0x0c000(void)
+static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 {
 	if (oric_is_telestrat)
 		return;
@@ -888,7 +896,7 @@ static void	oric_microdisc_set_mem_0x0c000(void)
 	{
 		/*logerror("&c000-&dfff is ram\n"); */
 		/* rom disabled enable ram */
-		oric_enable_memory(1, 1, TRUE, TRUE);
+		oric_enable_memory(machine, 1, 1, TRUE, TRUE);
 		memory_set_bankptr(1, oric_ram_0x0c000);
 		memory_set_bankptr(5, oric_ram_0x0c000);
 	}
@@ -897,7 +905,7 @@ static void	oric_microdisc_set_mem_0x0c000(void)
 		unsigned char *rom_ptr;
 		/*logerror("&c000-&dfff is os rom\n"); */
 		/* basic rom */
-		oric_enable_memory(1, 1, TRUE, FALSE);
+		oric_enable_memory(machine, 1, 1, TRUE, FALSE);
 		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
 		memory_set_bankptr(1, rom_ptr);
 		memory_set_bankptr(5, rom_ptr);
@@ -910,7 +918,7 @@ static void	oric_microdisc_set_mem_0x0c000(void)
 		unsigned char *rom_ptr;
 		/*logerror("&e000-&ffff is os rom\n"); */
 		/* basic rom */
-		oric_enable_memory(2, 3, TRUE, FALSE);
+		oric_enable_memory(machine, 2, 3, TRUE, FALSE);
 		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
 		memory_set_bankptr(2, rom_ptr+0x02000);
 		memory_set_bankptr(3, rom_ptr+0x03800);
@@ -925,7 +933,7 @@ static void	oric_microdisc_set_mem_0x0c000(void)
 		{
 			unsigned char *rom_ptr;
 			/*logerror("&e000-&ffff is disk rom\n"); */
-			oric_enable_memory(2, 3, TRUE, FALSE);
+			oric_enable_memory(machine, 2, 3, TRUE, FALSE);
 			/* enable rom of microdisc interface */
 			rom_ptr = memory_region(REGION_CPU1) + 0x014000;
 			memory_set_bankptr(2, rom_ptr);
@@ -935,7 +943,7 @@ static void	oric_microdisc_set_mem_0x0c000(void)
 		{
 			/*logerror("&e000-&ffff is ram\n"); */
 			/* rom disabled enable ram */
-			oric_enable_memory(2, 3, TRUE, TRUE);
+			oric_enable_memory(machine, 2, 3, TRUE, TRUE);
 			memory_set_bankptr(2, oric_ram_0x0c000+0x02000);
 			memory_set_bankptr(3, oric_ram_0x0c000+0x03800);
 			memory_set_bankptr(6, oric_ram_0x0c000+0x02000);
@@ -1025,7 +1033,7 @@ WRITE8_HANDLER(oric_microdisc_w)
 
 			wd17xx_set_density(density);
 
-			oric_microdisc_set_mem_0x0c000();
+			oric_microdisc_set_mem_0x0c000(machine);
 			oric_microdisc_refresh_wd179x_ints(machine);
 		}
 		break;
@@ -1036,21 +1044,21 @@ WRITE8_HANDLER(oric_microdisc_w)
 	}
 }
 
-static void oric_install_microdisc_interface(void)
+static void oric_install_microdisc_interface(running_machine *machine)
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, oric_microdisc_r);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, oric_IO_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, oric_microdisc_r);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, oric_IO_r);
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, oric_microdisc_w);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, oric_IO_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, oric_microdisc_w);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0320, 0x03ff, 0, 0, oric_IO_w);
 
 	/* disable os rom, enable microdisc rom */
 	/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */
 	port_314_w = 0x0ff^((1<<7) | (1<<1));
 
-	oric_microdisc_set_mem_0x0c000();
+	oric_microdisc_set_mem_0x0c000(machine);
 }
 
 
@@ -1060,7 +1068,7 @@ static void oric_install_microdisc_interface(void)
 
 static void oric_wd179x_callback(running_machine *machine, wd17xx_state_t State, void *param)
 {
-	switch (readinputport(9) &  0x07)
+	switch (input_port_read_indexed(machine, 9) &  0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
@@ -1075,15 +1083,15 @@ static void oric_wd179x_callback(running_machine *machine, wd17xx_state_t State,
 	}
 }
 
-DEVICE_INIT( oric_floppy )
+DEVICE_START( oric_floppy )
 {
 	/* TODO - THIS DOES NOT MULTITASK BETWEEN ORIC BASICDSKs AND MFM DISKS */
-	return floppy_drive_init(image, NULL);
+	floppy_drive_init(device, NULL);
 }
 
 
 
-DEVICE_LOAD( oric_floppy )
+DEVICE_IMAGE_LOAD( oric_floppy )
 {
 	/* attempt to open mfm disk */
 	if (device_load_mfm_disk(image) == INIT_PASS)
@@ -1135,7 +1143,7 @@ MACHINE_START( oric )
 
 MACHINE_RESET( oric )
 {
-	int disc_interface_id = readinputportbytag("oric_floppy_interface") & 0x07;
+	int disc_interface_id = input_port_read(machine, "oric_floppy_interface") & 0x07;
 
 	switch (disc_interface_id)
 	{
@@ -1148,7 +1156,7 @@ MACHINE_RESET( oric )
 			unsigned char *rom_ptr;
 
 			/* os rom */
-			oric_enable_memory(1, 3, TRUE, FALSE);
+			oric_enable_memory(machine, 1, 3, TRUE, FALSE);
 			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
 			memory_set_bankptr(1, rom_ptr);
 			memory_set_bankptr(2, rom_ptr+0x02000);
@@ -1160,12 +1168,12 @@ MACHINE_RESET( oric )
 
 			if (disc_interface_id==ORIC_FLOPPY_INTERFACE_APPLE2)
 			{
-				oric_install_apple2_interface();
+				oric_install_apple2_interface(machine);
 			}
 			else
 			{
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ff, 0, 0, oric_IO_r);
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ff, 0, 0, oric_IO_w);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ff, 0, 0, oric_IO_r);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x03ff, 0, 0, oric_IO_w);
 			}
 		}
 		break;
@@ -1179,13 +1187,13 @@ MACHINE_RESET( oric )
 
 		case ORIC_FLOPPY_INTERFACE_MICRODISC:
 		{
-			oric_install_microdisc_interface();
+			oric_install_microdisc_interface(machine);
 		}
 		break;
 
 		case ORIC_FLOPPY_INTERFACE_JASMIN:
 		{
-			oric_install_jasmin_interface();
+			oric_install_jasmin_interface(machine);
 		}
 		break;
 	}
@@ -1195,7 +1203,7 @@ MACHINE_RESET( oric )
 READ8_HANDLER ( oric_IO_r )
 {
 #if 0
-	switch (readinputport(9) & 0x07)
+	switch (input_port_read_indexed(machine, 9) & 0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
@@ -1234,7 +1242,7 @@ READ8_HANDLER ( oric_IO_r )
 WRITE8_HANDLER ( oric_IO_w )
 {
 #if 0
-	switch (readinputport(9) & 0x07)
+	switch (input_port_read_indexed(machine, 9) & 0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
@@ -1342,7 +1350,7 @@ struct  telestrat_mem_block
 
 static struct telestrat_mem_block	telestrat_blocks[8];
 
-static void	telestrat_refresh_mem(void)
+static void	telestrat_refresh_mem(running_machine *machine)
 {
 	read8_machine_func rh;
 	write8_machine_func wh;
@@ -1376,8 +1384,8 @@ static void	telestrat_refresh_mem(void)
 		}
 		break;
 	}
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, rh);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, wh);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, rh);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, wh);
 }
 
 static  READ8_HANDLER(telestrat_via2_in_a_func)
@@ -1397,7 +1405,7 @@ static WRITE8_HANDLER(telestrat_via2_out_a_func)
 	{
 		telestrat_bank_selection = data & 0x07;
 
-		telestrat_refresh_mem();
+		telestrat_refresh_mem(machine);
 	}
 }
 
@@ -1408,13 +1416,13 @@ static  READ8_HANDLER(telestrat_via2_in_b_func)
 	/* left joystick selected? */
 	if (telestrat_via2_port_b_data & (1<<6))
 	{
-		data &= readinputport(10);
+		data &= input_port_read_indexed(machine, 10);
 	}
 
 	/* right joystick selected? */
 	if (telestrat_via2_port_b_data & (1<<7))
 	{
-		data &= readinputport(11);
+		data &= input_port_read_indexed(machine, 11);
 	}
 
 	data |= telestrat_via2_port_b_data & ((1<<7) | (1<<6) | (1<<5));
@@ -1508,7 +1516,7 @@ MACHINE_START( telestrat )
 	telestrat_blocks[7].ptr = memory_region(REGION_CPU1)+0x01c000;
 
 	telestrat_bank_selection = 7;
-	telestrat_refresh_mem();
+	telestrat_refresh_mem(machine);
 
 	/* disable os rom, enable microdisc rom */
 	/* 0x0c000-0x0dfff will be ram, 0x0e000-0x0ffff will be microdisc rom */

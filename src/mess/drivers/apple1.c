@@ -126,22 +126,6 @@ static GFXDECODE_START( apple1 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0x0000, apple1_charlayout, 0, 1 )
 GFXDECODE_END
 
-/* Monochrome monitors were not easy to get when the Apple I was
-   introduced, so most systems used a television display with an RF
-   modulator.  Thus white seems like a more accurate foreground color
-   than green. */
-
-static const rgb_t apple1_palette[] =
-{
-	RGB_BLACK,
-	RGB_WHITE
-};
-
-static PALETTE_INIT( apple1 )
-{
-	palette_set_colors(machine, 0, apple1_palette, ARRAY_LENGTH(apple1_palette));
-}
-
 /* keyboard input */
 /*
    It's very likely that the keyboard assgnments are totally wrong: the code in machine/apple1.c
@@ -245,11 +229,14 @@ static MACHINE_DRIVER_START( apple1 )
 	MDRV_SCREEN_SIZE(40 * 7, 24 * 8)
 	MDRV_SCREEN_VISIBLE_AREA(0, 40 * 7 - 1, 0, 24 * 8 - 1)
 	MDRV_GFXDECODE(apple1)
-	MDRV_PALETTE_LENGTH(ARRAY_LENGTH(apple1_palette))
-	MDRV_PALETTE_INIT(apple1)
+	MDRV_PALETTE_LENGTH(2)
+	MDRV_PALETTE_INIT(black_and_white)
 
 	MDRV_VIDEO_START(apple1)
 	MDRV_VIDEO_UPDATE(apple1)
+
+	/* snapshot */
+	MDRV_SNAPSHOT_ADD(apple1, "snp", 0)
 MACHINE_DRIVER_END
 
 ROM_START(apple1)
@@ -261,21 +248,6 @@ ROM_START(apple1)
 	ROM_REGION(0x0200, REGION_GFX1,0)
 	ROM_LOAD("apple1.vid", 0x0000, 0x0200, CRC(a7e567fc) SHA1(b18aae0a2d4f92f5a7e22640719bbc4652f3f4ee))
 ROM_END
-
-static void apple1_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* snapshot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "snp"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_apple1; break;
-
-		default:										snapshot_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void apple1_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -291,7 +263,6 @@ static void apple1_cassette_getinfo(const mess_device_class *devclass, UINT32 st
 }
 
 SYSTEM_CONFIG_START(apple1)
-	CONFIG_DEVICE(apple1_snapshot_getinfo)
 	CONFIG_DEVICE(apple1_cassette_getinfo)
 	/* Note that because we always include 4K of RAM at $E000-$EFFF,
        the RAM amounts listed here will be 4K below the actual RAM

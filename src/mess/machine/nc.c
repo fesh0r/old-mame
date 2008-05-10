@@ -23,7 +23,7 @@ extern unsigned char *nc_card_ram;
 extern int nc_membank_card_ram_mask;
 
 /* save card data back */
-static void	nc_card_save(mess_image *image)
+static void	nc_card_save(const device_config *image)
 {
 	/* if there is no data to write, quit */
 	if (!nc_card_ram || !nc_card_size)
@@ -58,7 +58,7 @@ static int nc_card_calculate_mask(int size)
 
 
 /* load card image */
-static int nc_card_load(mess_image *image, unsigned char **ptr)
+static int nc_card_load(const device_config *image, unsigned char **ptr)
 {
 	int datasize;
 	unsigned char *data;
@@ -94,18 +94,17 @@ static int nc_card_load(mess_image *image, unsigned char **ptr)
 	return 0;
 }
 
-DEVICE_INIT( nc_pcmcia_card )
+DEVICE_START( nc_pcmcia_card )
 {
 	/* card not present */
 	nc_set_card_present_state(0);
 	/* card ram NULL */
 	nc_card_ram = NULL;
 	nc_card_size = 0;
-	return INIT_PASS;
 }
 
 /* load pcmcia card */
-DEVICE_LOAD( nc_pcmcia_card )
+DEVICE_IMAGE_LOAD( nc_pcmcia_card )
 {
 	/* filename specified */
 
@@ -127,7 +126,7 @@ DEVICE_LOAD( nc_pcmcia_card )
 	return INIT_FAIL;
 }
 
-DEVICE_UNLOAD( nc_pcmcia_card )
+DEVICE_IMAGE_UNLOAD( nc_pcmcia_card )
 {
 	/* save card data if there is any */
 	nc_card_save(image);
@@ -148,10 +147,10 @@ DEVICE_UNLOAD( nc_pcmcia_card )
 /*************************************************************************************************/
 /* Serial */
 
-DEVICE_LOAD( nc_serial )
+DEVICE_IMAGE_LOAD( nc_serial )
 {
 	/* filename specified */
-	if (serial_device_load(image)==INIT_PASS)
+	if (device_load_serial_device(image)==INIT_PASS)
 	{
 		/* setup transmit parameters */
 		serial_device_setup(image, 9600, 8, 1,SERIAL_PARITY_NONE);

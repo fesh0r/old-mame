@@ -53,8 +53,6 @@ void cbmcartslot_device_getinfo(const mess_device_class *devclass, UINT32 state,
 # else
 #  define VERBOSE_DBG 1
 # endif
-#else
-# define PET_TEST_CODE
 #endif
 
 #define DBG_LOG(n,m,a) LOG(VERBOSE_DBG,n,m,a)
@@ -68,7 +66,7 @@ QUICKLOAD_LOAD( cbmb );
 QUICKLOAD_LOAD( cbm500 );
 QUICKLOAD_LOAD( cbm_c65 );
 
-#define CBM_QUICKLOAD_DELAY 3.0
+#define CBM_QUICKLOAD_DELAY_SECONDS 3
 
 typedef struct {
 #define CBM_ROM_ADDR_UNKNOWN 0

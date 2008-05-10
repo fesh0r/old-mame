@@ -47,20 +47,20 @@ static WRITE8_HANDLER( tvdraw_axis_w )
 {
 	if (data & 0x01)
 	{
-		tvdraw_data = readinputportbytag("TVDRAW_X");
+		tvdraw_data = input_port_read(machine, "TVDRAW_X");
 
 		if (tvdraw_data < 4) tvdraw_data = 4;
 		if (tvdraw_data > 251) tvdraw_data = 251;
 	}
 	else
 	{
-		tvdraw_data = readinputportbytag("TVDRAW_Y") + 32;
+		tvdraw_data = input_port_read(machine, "TVDRAW_Y") + 32;
 	}
 }
 
 static READ8_HANDLER( tvdraw_status_r )
 {
-	return readinputportbytag("TVDRAW_PEN");
+	return input_port_read(machine, "TVDRAW_PEN");
 }
 
 static READ8_HANDLER( tvdraw_data_r )
@@ -107,7 +107,7 @@ static ADDRESS_MAP_START( sc3000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0xdc, 0xdf) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
+	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE( PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
 ADDRESS_MAP_END
 
 // SF-7000
@@ -122,10 +122,10 @@ static ADDRESS_MAP_START( sf7000_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x7f, 0x7f) AM_WRITE(SN76496_0_w)
 	AM_RANGE(0xbe, 0xbe) AM_READWRITE(TMS9928A_vram_r, TMS9928A_vram_w)
 	AM_RANGE(0xbf, 0xbf) AM_READWRITE(TMS9928A_register_r, TMS9928A_register_w)
-	AM_RANGE(0xdc, 0xdf) AM_READWRITE(ppi8255_0_r, ppi8255_0_w)
+	AM_RANGE(0xdc, 0xdf) AM_DEVREADWRITE( PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xe0, 0xe0) AM_READ(nec765_status_r)
 	AM_RANGE(0xe1, 0xe1) AM_READWRITE(nec765_data_r, nec765_data_w)
-	AM_RANGE(0xe4, 0xe7) AM_READWRITE(ppi8255_1_r, ppi8255_1_w)
+	AM_RANGE(0xe4, 0xe7) AM_DEVREADWRITE( PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w)
 	AM_RANGE(0xe8, 0xe8) AM_READWRITE(msm8251_data_r, msm8251_data_w)
 	AM_RANGE(0xe9, 0xe9) AM_READWRITE(msm8251_status_r, msm8251_control_w)
 ADDRESS_MAP_END
@@ -340,6 +340,8 @@ static int keylatch;
 
 static READ8_HANDLER( sc3000_ppi8255_a_r )
 {
+	char port[4];
+
 	/*
         Signal  Description
 
@@ -353,11 +355,14 @@ static READ8_HANDLER( sc3000_ppi8255_a_r )
         PA7     Keyboard input
     */
 
-	return readinputport(keylatch);
+	sprintf(port, "PA%d", keylatch);
+	return input_port_read(machine, port);
 }
 
 static READ8_HANDLER( sc3000_ppi8255_b_r )
 {
+	char port[4];
+
 	/*
         Signal  Description
 
@@ -371,7 +376,8 @@ static READ8_HANDLER( sc3000_ppi8255_b_r )
         PB7     Cassette tape input
     */
 
-	return readinputport(keylatch + 8) | 0x70;
+	sprintf(port, "PB%d", keylatch);
+	return ( input_port_read(machine, port) | 0x70 );
 }
 
 static WRITE8_HANDLER( sc3000_ppi8255_c_w )
@@ -394,19 +400,17 @@ static WRITE8_HANDLER( sc3000_ppi8255_c_w )
 
 static const ppi8255_interface sc3000_ppi8255_intf =
 {
-	1, 						// 1 chip
-	{ sc3000_ppi8255_a_r },	// Port A read
-	{ sc3000_ppi8255_b_r },	// Port B read
-	{ NULL },				// Port C read
-	{ NULL },				// Port A write
-	{ NULL },				// Port B write
-	{ sc3000_ppi8255_c_w },	// Port C write
+	sc3000_ppi8255_a_r,	// Port A read
+	sc3000_ppi8255_b_r,	// Port B read
+	NULL,				// Port C read
+	NULL,				// Port A write
+	NULL,				// Port B write
+	sc3000_ppi8255_c_w,	// Port C write
 };
 
 static MACHINE_START( sc3000 )
 {
 	TMS9928A_configure(&tms9928a_interface);
-	ppi8255_init(&sc3000_ppi8255_intf);
 }
 
 // SF-7000
@@ -488,15 +492,24 @@ static WRITE8_HANDLER( sf7000_ppi8255_c_w )
 	centronics_write_handshake(1, (data & 0x80) ? 0 : CENTRONICS_STROBE, CENTRONICS_STROBE);
 }
 
-static const ppi8255_interface sf7000_ppi8255_intf =
+static const ppi8255_interface sf7000_ppi8255_intf[2] =
 {
-	2, 											// 2 chips
-	{ sc3000_ppi8255_a_r, sf7000_ppi8255_a_r },	// Port A read
-	{ sc3000_ppi8255_b_r, NULL },				// Port B read
-	{ NULL, NULL },								// Port C read
-	{ NULL, NULL },								// Port A write
-	{ NULL, sf7000_ppi8255_b_w },				// Port B write
-	{ sc3000_ppi8255_c_w, sf7000_ppi8255_c_w },	// Port C write
+	{
+		sc3000_ppi8255_a_r,		// Port A read
+		sc3000_ppi8255_b_r,		// Port B read
+		NULL,					// Port C read
+		NULL,					// Port A write
+		NULL,					// Port B write
+		sc3000_ppi8255_c_w		// Port C write
+	},
+	{
+		sf7000_ppi8255_a_r,		// Port A read
+		NULL,					// Port B read
+		NULL,					// Port C read
+		NULL,					// Port A write
+		sf7000_ppi8255_b_w,		// Port B write
+		sf7000_ppi8255_c_w		// Port C write
+	}
 };
 
 /* callback for /INT output from FDC */
@@ -505,7 +518,7 @@ static void sf7000_fdc_interrupt(int state)
 	sf7000_fdc_int = state;
 }
 
-static void sf7000_fdc_index_callback(mess_image *img, int state)
+static void sf7000_fdc_index_callback(const device_config *img, int state)
 {
 	sf7000_fdc_index = state;
 }
@@ -533,8 +546,7 @@ static const CENTRONICS_CONFIG sf7000_centronics_config[1] = {
 static MACHINE_START( sf7000 )
 {
 	TMS9928A_configure(&tms9928a_interface);
-	ppi8255_init(&sf7000_ppi8255_intf);
-	nec765_init(&sf7000_nec765_interface, NEC765A);
+	nec765_init(&sf7000_nec765_interface, NEC765A, NEC765_RDY_PIN_CONNECTED);
 	floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(IO_FLOPPY, 0), sf7000_fdc_index_callback);
 	msm8251_init(&sf7000_uart_interface);
 	centronics_config(1, sf7000_centronics_config);
@@ -582,6 +594,9 @@ static MACHINE_DRIVER_START( sc3000 )
 
 	MDRV_MACHINE_START( sc3000 )
 
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( sc3000_ppi8255_intf )
+
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
 	MDRV_SCREEN_MODIFY("main")
@@ -592,6 +607,9 @@ static MACHINE_DRIVER_START( sc3000 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(SN76489, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( sf7000 )
@@ -604,6 +622,12 @@ static MACHINE_DRIVER_START( sf7000 )
 	MDRV_MACHINE_START( sf7000 )
 	MDRV_MACHINE_RESET( sf7000 )
 
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( sf7000_ppi8255_intf[0] )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( sf7000_ppi8255_intf[1] )
+
     // video hardware
 	MDRV_IMPORT_FROM(tms9928a)
 	MDRV_SCREEN_MODIFY("main")
@@ -614,6 +638,10 @@ static MACHINE_DRIVER_START( sf7000 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(SN76489, XTAL_10_738635MHz/3)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer1", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -637,19 +665,19 @@ ROM_END
 
 /* System Configuration */
 
-static void sg1000_map_cartridge_memory(UINT8 *ptr, int size)
+static void sg1000_map_cartridge_memory(running_machine *machine, UINT8 *ptr, int size)
 {
 	if (size == 40 * 1024)
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_UNMAP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_UNMAP);
 		memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
 		memory_set_bank(1, 0);
 	}
 	else if (size == 48 * 1024)
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_UNMAP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_UNMAP);
 		memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
 		memory_set_bank(1, 0);
 	}
@@ -657,21 +685,21 @@ static void sg1000_map_cartridge_memory(UINT8 *ptr, int size)
 	{
 		// Terebi Oekaki
 
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, &tvdraw_axis_w);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8000, 0, 0, &tvdraw_status_r);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, &tvdraw_data_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6000, 0, 0, &tvdraw_axis_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8000, 0, 0, &tvdraw_status_r);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, &tvdraw_data_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xa000, 0, 0, SMH_NOP);
 	}
 	else if (!strncmp("ASCII 1986", (const char *)&ptr[0x1cc3], 10))
 	{
 		// The Castle
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
 	}
 }
 
-static DEVICE_LOAD( sg1000_cart )
+static DEVICE_IMAGE_LOAD( sg1000_cart )
 {
 	int size = image_length(image);
 	UINT8 *ptr = memory_region(REGION_CPU1);
@@ -681,10 +709,10 @@ static DEVICE_LOAD( sg1000_cart )
 		return INIT_FAIL;
 	}
 
-	sg1000_map_cartridge_memory(ptr, size);
+	sg1000_map_cartridge_memory(image->machine, ptr, size);
 
-	memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, SMH_BANK2);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, SMH_BANK2);
+	memory_install_read8_handler(image->machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, SMH_BANK2);
+	memory_install_write8_handler(image->machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc3ff, 0, 0x3c00, SMH_BANK2);
 
 	return INIT_PASS;
 }
@@ -695,45 +723,45 @@ static void sg1000_cartslot_getinfo( const mess_device_class *devclass, UINT32 s
 	{
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sg1000_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(sg1000_cart); break;
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sg"); break;
 
 		default:										cartslot_device_getinfo( devclass, state, info ); break;
 	}
 }
 
-static void sc3000_map_cartridge_memory(UINT8 *ptr)
+static void sc3000_map_cartridge_memory(running_machine *machine, UINT8 *ptr)
 {
 	if (!strncmp("SC-3000 BASIC Level 3 ver 1.0", (const char *)&ptr[0x6a20], 29))
 	{
 		// SC-3000 BASIC Level III
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK2);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK2);
 	}
 	else if (!strncmp("PIANO", (const char *)&ptr[0x0841], 5))
 	{
 		// Sega SC-3000 Music Editor
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
 	}
 	else
 	{
 		// regular cartridges
 
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xc7ff, 0, 0x3800, SMH_BANK2);
 	}
 }
 
-static DEVICE_LOAD( sc3000_cart )
+static DEVICE_IMAGE_LOAD( sc3000_cart )
 {
 	int size = image_length(image);
 	UINT8 *ptr = memory_region(REGION_CPU1);
@@ -743,8 +771,8 @@ static DEVICE_LOAD( sc3000_cart )
 		return INIT_FAIL;
 	}
 
-	sg1000_map_cartridge_memory(ptr, size);
-	sc3000_map_cartridge_memory(ptr);
+	sg1000_map_cartridge_memory(image->machine, ptr, size);
+	sc3000_map_cartridge_memory(image->machine, ptr);
 
 	return INIT_PASS;
 }
@@ -755,7 +783,7 @@ static void sc3000_cartslot_getinfo( const mess_device_class *devclass, UINT32 s
 	{
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sc3000_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(sc3000_cart); break;
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sg,sc"); break;
 
 		default:										cartslot_device_getinfo( devclass, state, info ); break;
@@ -772,34 +800,14 @@ static void sc3000_cassette_getinfo(const mess_device_class *devclass, UINT32 st
 	}
 }
 
-static void sc3000_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch(state)
-	{
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void sf7000_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch(state)
-	{
-		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static DEVICE_LOAD( sf7000_floppy )
+static DEVICE_IMAGE_LOAD( sf7000_floppy )
 {
 	if (image_has_been_created(image))
 		return INIT_FAIL;
 
 	if (image_length(image) == 256*16*40)
 	{
-		if (device_load_basicdsk_floppy(image) == INIT_PASS)
+		if (DEVICE_IMAGE_LOAD_NAME(basicdsk_floppy)(image) == INIT_PASS)
 		{
 			/* image, tracks, sides, sectors per track, sector length, first sector id, offset of track 0, track skipping */
 			basicdsk_set_geometry(image, 40, 1, 16, 256, 1, 0, FALSE);
@@ -816,20 +824,20 @@ static void sf7000_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 	switch(state)
 	{
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sf7000_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(sf7000_floppy); break;
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "sf7"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
-static DEVICE_LOAD( sf7000_serial )
+static DEVICE_IMAGE_LOAD( sf7000_serial )
 {
 	/* filename specified */
-	if (serial_device_load(image)==INIT_PASS)
+	if (device_load_serial_device(image)==INIT_PASS)
 	{
 		/* setup transmit parameters */
-		serial_device_setup(image, 9600 >> readinputportbytag("BAUD"), 8, 1, SERIAL_PARITY_NONE);
+		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
 
 		/* connect serial chip to serial device */
 		msm8251_connect_to_serial_device(image);
@@ -855,9 +863,9 @@ static void sf7000_serial_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = serial_device_init; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sf7000_serial; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = serial_device_unload; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(serial_device); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(sf7000_serial); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
@@ -871,13 +879,11 @@ SYSTEM_CONFIG_END
 SYSTEM_CONFIG_START( sc3000 )
 	CONFIG_DEVICE(sc3000_cartslot_getinfo)
 	CONFIG_DEVICE(sc3000_cassette_getinfo)
-	CONFIG_DEVICE(sc3000_printer_getinfo)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START( sf7000 )
 	CONFIG_RAM_DEFAULT	(64 * 1024)
 	CONFIG_DEVICE(sc3000_cassette_getinfo)
-	CONFIG_DEVICE(sf7000_printer_getinfo)
 	CONFIG_DEVICE(sf7000_floppy_getinfo)
 	CONFIG_DEVICE(sf7000_serial_getinfo)
 SYSTEM_CONFIG_END

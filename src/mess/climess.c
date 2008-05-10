@@ -43,13 +43,18 @@ void mess_display_help(void)
 
 int info_listdevices(core_options *opts, const char *gamename)
 {
-	int i, dev, id;
-	const struct IODevice *devices;
+	int i;
+	machine_config *config;
+	const device_config *dev;
+	image_device_info info;
 	const char *src;
 	const char *driver_name;
 	const char *name;
 	const char *shortname;
 	char paren_shortname[16];
+
+	/* since we expand the machine driver, we need to set things up */
+	init_resource_tracking();
 
 	i = 0;
 
@@ -60,39 +65,39 @@ int info_listdevices(core_options *opts, const char *gamename)
 	{
 		if (!core_strwildcmp(gamename, drivers[i]->name))
 		{
-			devices = devices_allocate(drivers[i]);
+			/* allocate the machine config */
+			config = machine_config_alloc_with_mess_devices(drivers[i]);
 
 			driver_name = drivers[i]->name;
 
-			for (dev = 0; devices[dev].type < IO_COUNT; dev++)
+			for (dev = image_device_first(config); dev != NULL; dev = image_device_next(dev))
 			{
-				src = devices[dev].file_extensions;
+				info = image_device_getinfo(config, dev);
 
-				for (id = 0; id < devices[dev].count; id++)
+				src = info.file_extensions;
+				name = info.instance_name;
+				shortname = info.brief_instance_name;
+
+				sprintf(paren_shortname, "(%s)", shortname);
+
+				mame_printf_info("%-13s%-12s%-8s   ", driver_name, name, paren_shortname);
+				driver_name = " ";
+
+				while (src && *src)
 				{
-					name = device_instancename(&devices[dev].devclass, id);
-					shortname = device_briefinstancename(&devices[dev].devclass, id);
-
-					sprintf(paren_shortname, "(%s)", shortname);
-
-					mame_printf_info("%-13s%-12s%-8s   ", driver_name, name, paren_shortname);
-					driver_name = " ";
-
-					if (id == 0)
-					{
-						while (src && *src)
-						{
-							mame_printf_info(".%-5s", src);
-							src += strlen(src) + 1;
-						}
-					}
-					mame_printf_info("\n");
+					mame_printf_info(".%-5s", src);
+					src += strlen(src) + 1;
 				}
+				mame_printf_info("\n");
 			}
-			devices_free(devices);
+			machine_config_free(config);
 		}
 		i++;
 	}
+
+	/* clean up our tracked resources */
+	exit_resource_tracking();
+
 	return 0;
 }
 

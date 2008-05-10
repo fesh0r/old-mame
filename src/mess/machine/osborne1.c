@@ -88,21 +88,21 @@ READ8_HANDLER( osborne1_2000_r ) {
 			break;
 		case 0x200:	/* Keyboard */
 			/* Row 0 */
-			if ( offset & 0x01 )	data &= readinputport(0);
+			if ( offset & 0x01 )	data &= input_port_read_indexed(machine, 0);
 			/* Row 1 */
-			if ( offset & 0x02 )	data &= readinputport(1);
+			if ( offset & 0x02 )	data &= input_port_read_indexed(machine, 1);
 			/* Row 2 */
-			if ( offset & 0x04 )	data &= readinputport(3);
+			if ( offset & 0x04 )	data &= input_port_read_indexed(machine, 3);
 			/* Row 3 */
-			if ( offset & 0x08 )	data &= readinputport(4);
+			if ( offset & 0x08 )	data &= input_port_read_indexed(machine, 4);
 			/* Row 4 */
-			if ( offset & 0x10 )	data &= readinputport(5);
+			if ( offset & 0x10 )	data &= input_port_read_indexed(machine, 5);
 			/* Row 5 */
-			if ( offset & 0x20 )	data &= readinputport(2);
+			if ( offset & 0x20 )	data &= input_port_read_indexed(machine, 2);
 			/* Row 6 */
-			if ( offset & 0x40 )	data &= readinputport(6);
+			if ( offset & 0x40 )	data &= input_port_read_indexed(machine, 6);
 			/* Row 7 */
-			if ( offset & 0x80 )	data &= readinputport(7);
+			if ( offset & 0x80 )	data &= input_port_read_indexed(machine, 7);
 			break;
 		case 0x900:	/* IEEE488 PIA */
 			data = pia_0_r( machine, offset & 0x03 );
@@ -369,7 +369,7 @@ static TIMER_CALLBACK(osborne1_video_callback) {
  * - DEC 1820 double density: 40 tracks, 9 sectors per track, 512-byte sectors (180 KByte)
  *
  */
-DEVICE_LOAD( osborne1_floppy ) {
+DEVICE_IMAGE_LOAD( osborne1_floppy ) {
 	int size, sectors, sectorsize;
 
 	if ( ! image_has_been_created( image ) ) {
@@ -422,6 +422,12 @@ static TIMER_CALLBACK( setup_beep ) {
 	beep_set_frequency( 0, 300 /* 60 * 240 / 2 */ );
 }
 
+MACHINE_START( osborne1 )
+{
+	/* Configure the floppy disk interface */
+	wd17xx_init( machine, WD_TYPE_MB8877, NULL, NULL );
+}	
+
 MACHINE_RESET( osborne1 ) {
 	/* Initialize memory configuration */
 	osborne1_bankswitch_w( machine, 0x00, 0 );
@@ -454,8 +460,5 @@ DRIVER_INIT( osborne1 ) {
 
 	/* Configure the 6850 ACIA */
 //	acia6850_config( 0, &osborne1_6850_config );
-
-	/* Configure the floppy disk interface */
-	wd17xx_init( machine, WD_TYPE_MB8877, NULL, NULL );
 }
 

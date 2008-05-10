@@ -160,12 +160,12 @@ MACHINE_START( ti99_4a_50hz );
 MACHINE_START( ti99_4ev_60hz );
 MACHINE_RESET( ti99 );
 
-DEVICE_INIT( ti99_cart );
-DEVICE_LOAD( ti99_cart );
-DEVICE_UNLOAD( ti99_cart );
+DEVICE_START( ti99_cart );
+DEVICE_IMAGE_LOAD( ti99_cart );
+DEVICE_IMAGE_UNLOAD( ti99_cart );
 
-DEVICE_LOAD( ti99_hd );
-DEVICE_UNLOAD( ti99_hd );
+DEVICE_IMAGE_LOAD( ti99_hd );
+DEVICE_IMAGE_UNLOAD( ti99_hd );
 
 VIDEO_START( ti99_4ev );
 INTERRUPT_GEN( ti99_vblank_interrupt );

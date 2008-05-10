@@ -98,7 +98,7 @@ static TIMER_CALLBACK(cas_copy_callback)
 			LOG(("cas_copy_callback block ($%02X) %d at $%04X\n", data, block_len, block_ofs));
 			while( block_len && cas_size )
 			{
-				program_write_byte_8(block_ofs, cas_buff[offs]);
+				program_write_byte(block_ofs, cas_buff[offs]);
 				offs++;
 				block_ofs++;
 				block_len--;
@@ -121,7 +121,7 @@ static TIMER_CALLBACK(cas_copy_callback)
 	activecpu_set_reg(Z80_PC, entry);
 }
 
-DEVICE_LOAD( trs80_cas )
+DEVICE_IMAGE_LOAD( trs80_cas )
 {
 	cas_size = image_length(image);
 	cas_buff = image_ptr(image);
@@ -142,7 +142,7 @@ DEVICE_LOAD( trs80_cas )
 	return 0;
 }
 
-DEVICE_UNLOAD( trs80_cas )
+DEVICE_IMAGE_UNLOAD( trs80_cas )
 {
 	cas_buff = NULL;
 	cas_size = 0;
@@ -178,7 +178,7 @@ extern QUICKLOAD_LOAD( trs80_cmd )
 			LOG(("trs80_cmd_load block ($%02X) %d at $%04X\n", data, block_len, block_ofs));
 			while( block_len && quickload_size )
 			{
-				program_write_byte_8(block_ofs, cmd_buff[offs]);
+				program_write_byte(block_ofs, cmd_buff[offs]);
 				offs++;
 				block_ofs++;
 				block_len--;
@@ -213,7 +213,7 @@ extern QUICKLOAD_LOAD( trs80_cmd )
 	return INIT_PASS;
 }
 
-DEVICE_LOAD( trs80_floppy )
+DEVICE_IMAGE_LOAD( trs80_floppy )
 {
 	static UINT8 pdrive[4*16];
 	int i;
@@ -493,7 +493,7 @@ WRITE8_HANDLER( trs80_port_ff_w )
 	if( changes & 0x03 )
 	{
 		/* virtual tape ? */
-		if( readinputport(0) & 0x20 )
+		if( input_port_read(machine, "CONFIG") & 0x20 )
 		{
 			int now_cycles = activecpu_gettotalcycles();
 			int diff = now_cycles - put_cycles;
@@ -584,7 +584,7 @@ WRITE8_HANDLER( trs80_port_ff_w )
 {
 	int now_cycles = activecpu_gettotalcycles();
 	/* virtual tape ? */
-	if( readinputport(0) & 0x20 )
+	if( input_port_read(machine, "CONFIG") & 0x20 )
 	{
 		int diff = now_cycles - get_cycles;
 		/* overrun since last read ? */
@@ -672,9 +672,9 @@ INTERRUPT_GEN( trs80_frame_interrupt )
 }
 
 /*************************************
- *									 *
- *		Memory handlers 			 *
- *									 *
+ *				     *
+ *		Memory handlers      *
+ *				     *
  *************************************/
 
  READ8_HANDLER ( trs80_printer_r )
@@ -754,21 +754,21 @@ WRITE8_HANDLER( trs80_motor_w )
 	int result = 0;
 
 	if (offset & 1)
-		result |= readinputport(1);
+		result |= input_port_read(machine, "LINE0");
 	if (offset & 2)
-		result |= readinputport(2);
+		result |= input_port_read(machine, "LINE1");
 	if (offset & 4)
-		result |= readinputport(3);
+		result |= input_port_read(machine, "LINE2");
 	if (offset & 8)
-		result |= readinputport(4);
+		result |= input_port_read(machine, "LINE3");
 	if (offset & 16)
-		result |= readinputport(5);
+		result |= input_port_read(machine, "LINE4");
 	if (offset & 32)
-		result |= readinputport(6);
+		result |= input_port_read(machine, "LINE5");
 	if (offset & 64)
-		result |= readinputport(7);
+		result |= input_port_read(machine, "LINE6");
 	if (offset & 128)
-		result |= readinputport(8);
+		result |= input_port_read(machine, "LINE7");
 
 	return result;
 }

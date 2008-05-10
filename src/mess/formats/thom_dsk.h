@@ -25,11 +25,10 @@ typedef enum {
   THOM_FLOPPY_QDD,     /* 2"8 */
 } thom_floppy_type;
 
-extern int  thom_floppy_init   ( mess_image *image );
-extern int  thom_floppy_load   ( mess_image* image );
-extern void thom_floppy_unload ( mess_image *image);
-extern int  thom_floppy_create ( mess_image *image,
-				 int create_format, option_resolution *args );
+extern DEVICE_START( thom_floppy );
+extern DEVICE_IMAGE_LOAD( thom_floppy );
+extern DEVICE_IMAGE_UNLOAD( thom_floppy );
+extern DEVICE_IMAGE_CREATE( thom_floppy );
 
 extern void    thom_floppy_set_density( DENSITY density );
 extern DENSITY thom_floppy_get_density( void );

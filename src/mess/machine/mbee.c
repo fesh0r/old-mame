@@ -75,7 +75,7 @@ MACHINE_START( mbee )
 	wd17xx_init(machine, WD_TYPE_179X,mbee_fdc_callback, NULL);
 }
 
-static mess_image *cassette_device_image(void)
+static const device_config *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
@@ -176,7 +176,7 @@ INTERRUPT_GEN( mbee_interrupt )
 	z80pio_p_w(0, 1, 0x00);
 }
 
-DEVICE_LOAD( mbee_cart )
+DEVICE_IMAGE_LOAD( mbee_cart )
 {
 	int size = image_length(image);
 	UINT8 *mem = malloc(size);

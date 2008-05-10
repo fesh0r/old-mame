@@ -18,28 +18,28 @@ static	int	aquarius_ramsize = 0;
 MACHINE_RESET( aquarius )
 {
 	logerror("aquarius_init\r\n");
-	if (readinputportbytag("ram") != aquarius_ramsize)
+	if (input_port_read(machine, "ram") != aquarius_ramsize)
 	{
-		aquarius_ramsize = readinputportbytag("ram");
+		aquarius_ramsize = input_port_read(machine, "ram");
 		switch (aquarius_ramsize)
 		{
 			case 02:
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_RAM);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_RAM);
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_RAM);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_RAM);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
 				break;
 			case 01:
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_RAM);
 				break;
 			case 00:
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_NOP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP);
 				break;
 		}
 	}
@@ -57,8 +57,8 @@ MACHINE_RESET( aquarius )
 	{
 		if (!(bc & loop))
 		{
-// TODO: replace it with readinputportbytag
-			rpl &= readinputport (loop2);
+// TODO: replace it with input_port_read
+			rpl &= input_port_read_indexed (machine, loop2);
 		}
 	}
 

@@ -126,29 +126,31 @@ static void enterprise_dave_reg_read(int RegIndex)
 	{
 	case 0x015:
 		{
-		  /* read keyboard line */
-			Dave_setreg(machine, 0x015,
-				readinputport(Enterprise_KeyboardLine));
+		char port[6];
+
+		/* read keyboard line */
+		sprintf(port, "LINE%d", Enterprise_KeyboardLine);
+		Dave_setreg(machine, 0x015, input_port_read(machine, port));
 		}
 		break;
 
-		case 0x016:
+	case 0x016:
+	{
+		int ExternalJoystickInputs;
+		int ExternalJoystickPortInput = input_port_read(machine, "JOY1");
+
+		if (Enterprise_KeyboardLine<=4)
 		{
-			int ExternalJoystickInputs;
-			int ExternalJoystickPortInput = readinputport(10);
-
-			if (Enterprise_KeyboardLine<=4)
-			{
-					ExternalJoystickInputs = ExternalJoystickPortInput>>(4-Enterprise_KeyboardLine);
-			}
-			else
-			{
-					ExternalJoystickInputs = 1;
-			}
-
-			Dave_setreg(machine, 0x016, (0x0fe | (ExternalJoystickInputs & 0x01)));
+				ExternalJoystickInputs = ExternalJoystickPortInput>>(4-Enterprise_KeyboardLine);
 		}
-		break;
+		else
+		{
+				ExternalJoystickInputs = 1;
+		}
+
+		Dave_setreg(machine, 0x016, (0x0fe | (ExternalJoystickInputs & 0x01)));
+	}
+	break;
 
 	default:
 		break;
@@ -403,7 +405,7 @@ N/C - Not connected or just dont know!
 
 static INPUT_PORTS_START( ep128 )
 	/* keyboard line 0 */
-	 PORT_START
+	 PORT_START_TAG("LINE0")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n") PORT_CODE(KEYCODE_N)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\\") PORT_CODE(KEYCODE_SLASH)
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("b") PORT_CODE(KEYCODE_B)
@@ -414,7 +416,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT)
 
 	 /* keyboard line 1 */
-	 PORT_START
+	 PORT_START_TAG("LINE1")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("h") PORT_CODE(KEYCODE_H)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("g") PORT_CODE(KEYCODE_G)
@@ -425,7 +427,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CTRL") PORT_CODE(KEYCODE_LCONTROL)
 
 	 /* keyboard line 2 */
-	 PORT_START
+	 PORT_START_TAG("LINE2")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("u") PORT_CODE(KEYCODE_U)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("q") PORT_CODE(KEYCODE_Q)
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("y") PORT_CODE(KEYCODE_Y)
@@ -436,7 +438,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("TAB") PORT_CODE(KEYCODE_TAB)
 
 	 /* keyboard line 3 */
-	 PORT_START
+	 PORT_START_TAG("LINE3")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7") PORT_CODE(KEYCODE_7)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6") PORT_CODE(KEYCODE_6)
@@ -447,7 +449,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 
 	 /* keyboard line 4 */
-	 PORT_START
+	 PORT_START_TAG("LINE4")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f4") PORT_CODE(KEYCODE_F4)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f8") PORT_CODE(KEYCODE_F8)
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f3") PORT_CODE(KEYCODE_F3)
@@ -458,7 +460,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("f1") PORT_CODE(KEYCODE_F1)
 
 	 /* keyboard line 5 */
-	 PORT_START
+	 PORT_START_TAG("LINE5")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8") PORT_CODE(KEYCODE_8)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9") PORT_CODE(KEYCODE_9)
@@ -469,7 +471,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 
 	 /* keyboard line 6 */
-	 PORT_START
+	 PORT_START_TAG("LINE6")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("j") PORT_CODE(KEYCODE_J)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("k") PORT_CODE(KEYCODE_K)
@@ -480,7 +482,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 
 	 /* keyboard line 7 */
-	 PORT_START
+	 PORT_START_TAG("LINE7")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("STOP") PORT_CODE(KEYCODE_END)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("DOWN") PORT_CODE(KEYCODE_DOWN) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("RIGHT") PORT_CODE(KEYCODE_RIGHT) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)
@@ -492,7 +494,7 @@ static INPUT_PORTS_START( ep128 )
 
 
 	 /* keyboard line 8 */
-	 PORT_START
+	 PORT_START_TAG("LINE8")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("m") PORT_CODE(KEYCODE_M)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ERASE") PORT_CODE(KEYCODE_DEL)
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA)
@@ -504,7 +506,7 @@ static INPUT_PORTS_START( ep128 )
 
 
 	 /* keyboard line 9 */
-	 PORT_START
+	 PORT_START_TAG("LINE9")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("i") PORT_CODE(KEYCODE_I)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("o") PORT_CODE(KEYCODE_O)
@@ -515,7 +517,7 @@ static INPUT_PORTS_START( ep128 )
 	 PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("n/c")
 
 	 /* external joystick 1 */
-	 PORT_START
+	 PORT_START_TAG("JOY1")
 	 PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("EXTERNAL JOYSTICK 1 RIGHT") PORT_CODE(KEYCODE_RIGHT) PORT_CODE(JOYCODE_X_RIGHT_SWITCH)
 	 PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("EXTERNAL JOYSTICK 1 LEFT") PORT_CODE(KEYCODE_LEFT) PORT_CODE(JOYCODE_X_LEFT_SWITCH)
 	 PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("EXTERNAL JOYSTICK 1 DOWN") PORT_CODE(KEYCODE_DOWN) PORT_CODE(JOYCODE_Y_DOWN_SWITCH)
@@ -564,19 +566,15 @@ MACHINE_DRIVER_END
 
 ROM_START( ep128 )
 		/* 128k ram + 32k rom (OS) + 16k rom (BASIC) + 32k rom (EXDOS) */
-		ROM_REGION(0x24000,REGION_CPU1,0)
-		ROM_LOAD("exos.rom",0x10000,0x8000, CRC(d421795f) SHA1(6033a0535136c40c47137e4d1cd9273c06d5fdff))
-		ROM_LOAD("exbas.rom",0x18000,0x4000, CRC(683cf455) SHA1(50a548d1df3ea86f9b5fa669afd8ff124050e776))
-		ROM_LOAD("exdos.rom",0x1c000,0x8000, CRC(d1d7e157) SHA1(31c8be089526aa8aa019c380cdf51ddd3ee76454))
+		ROM_REGION( 0x24000, REGION_CPU1, 0 )
+		ROM_SYSTEM_BIOS( 0, "default", "EXOS 2.1" )
+		ROMX_LOAD("exos21.rom", 0x10000, 0x8000, CRC(982a3b44) SHA1(55315b20fecb4441a07ee4bc5dc7153f396e0a2e), ROM_BIOS(1) )
+		ROM_SYSTEM_BIOS( 1, "exos20", "EXOS 2.0" )
+		ROMX_LOAD("exos20.rom", 0x10000, 0x8000, CRC(d421795f) SHA1(6033a0535136c40c47137e4d1cd9273c06d5fdff), ROM_BIOS(2) )
+		ROM_LOAD( "exbas.rom", 0x18000, 0x4000, CRC(683cf455) SHA1(50a548d1df3ea86f9b5fa669afd8ff124050e776) )
+		ROM_LOAD( "exdos.rom", 0x1c000, 0x8000, CRC(d1d7e157) SHA1(31c8be089526aa8aa019c380cdf51ddd3ee76454) )
 ROM_END
 
-ROM_START( ep128a )
-		/* 128k ram + 32k rom (OS) + 16k rom (BASIC) + 32k rom (EXDOS) */
-		ROM_REGION(0x24000,REGION_CPU1,0)
-		ROM_LOAD("exos21.rom",0x10000,0x8000, CRC(982a3b44) SHA1(55315b20fecb4441a07ee4bc5dc7153f396e0a2e))
-		ROM_LOAD("exbas.rom",0x18000,0x4000, CRC(683cf455) SHA1(50a548d1df3ea86f9b5fa669afd8ff124050e776))
-		ROM_LOAD("exdos.rom",0x1c000,0x8000, CRC(d1d7e157) SHA1(31c8be089526aa8aa019c380cdf51ddd3ee76454))
-ROM_END
 
 /***************************************************************************
 
@@ -606,7 +604,7 @@ static void ep128_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = enterprise_floppy_init; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(enterprise_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -626,5 +624,3 @@ SYSTEM_CONFIG_END
 
 /*      YEAR  NAME      PARENT  COMPAT  MACHINE INPUT   INIT  CONFIG, COMPANY                 FULLNAME */
 COMP( 1984, ep128,		0,		0,		ep128,	ep128,	0,	  ep128,  "Intelligent Software", "Enterprise 128", GAME_IMPERFECT_SOUND )
-COMP( 1984, ep128a,	ep128,	0,		ep128,	ep128,	0,	  ep128,  "Intelligent Software", "Enterprise 128 (EXOS 2.1)", GAME_IMPERFECT_SOUND )
-

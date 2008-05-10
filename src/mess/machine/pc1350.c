@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/sc61860/sc61860.h"
 
 #include "includes/pocketc.h"
@@ -25,6 +26,7 @@ void pc1350_outc(int data)
 
 int pc1350_ina(void)
 {
+	running_machine *machine = Machine;
 	int data=outa;
 	int t=pc1350_keyboard_line_r();
 	if (t&1) {
@@ -127,6 +129,7 @@ int pc1350_inb(void)
 
 int pc1350_brk(void)
 {
+	running_machine *machine = Machine;
 	return PC1350_KEY_BRK;
 }
 
@@ -162,31 +165,31 @@ MACHINE_START( pc1350 )
 {
 	timer_set(ATTOTIME_IN_SEC(1), NULL, 0, pc1350_power_up);
 
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1);
+	memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK1);
 	memory_set_bankptr(1, &mess_ram[0x0000]);
 
 	if (mess_ram_size >= 0x3000)
 	{
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK2);
+		memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK2);
 		memory_set_bankptr(2, &mess_ram[0x1000]);
 	}
 	else
 	{
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_NOP);
 	}
 
 	if (mess_ram_size >= 0x5000)
 	{
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK3);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK3);
+		memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK3);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_BANK3);
 		memory_set_bankptr(3, &mess_ram[0x3000]);
 	}
 	else
 	{
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, SMH_NOP);
 	}
 }

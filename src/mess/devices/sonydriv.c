@@ -37,6 +37,7 @@
 *********************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "sonydriv.h"
 #include "formats/ap_dsk35.h"
 #include "flopdrv.h"
@@ -78,7 +79,7 @@ static unsigned int rotation_speed;		/* drive rotation speed - ignored if ext_sp
 */
 typedef struct
 {
-	mess_image *img;
+	const device_config *img;
 	mame_file *fd;
 
 	unsigned int ext_speed_control : 1;	/* is motor rotation controlled by external device ? */
@@ -105,7 +106,7 @@ static int sony_enable2(void)
 }
 
 #ifdef UNUSED_FUNCTION
-static floppy *get_sony_floppy(mess_image *img)
+static floppy *get_sony_floppy(const device_config *img)
 {
 	int id = image_index_in_device(img);
 	return &sony_floppy[id];
@@ -116,12 +117,12 @@ static floppy *get_sony_floppy(mess_image *img)
 static void load_track_data(int floppy_select)
 {
 	int track_size;
-	mess_image *cur_image;
+	const device_config *cur_image;
 	UINT8 *new_data;
 	floppy *f;
 
 	f = &sony_floppy[floppy_select];
-	cur_image = image_from_devtag_and_index("sonydriv", floppy_select);
+	cur_image = image_from_devtag_and_index(Machine, "sonydriv", floppy_select);
 
 	track_size = floppy_get_track_size(flopimg_get_image(cur_image), f->head, floppy_drive_get_current_track(cur_image));
 	new_data = image_realloc(cur_image, f->loadedtrack_data, track_size);
@@ -140,12 +141,12 @@ static void load_track_data(int floppy_select)
 
 static void save_track_data(int floppy_select)
 {
-	mess_image *cur_image;
+	const device_config *cur_image;
 	floppy *f;
 	int len;
 
 	f = &sony_floppy[floppy_select];
-	cur_image = image_from_devtag_and_index("sonydriv", floppy_select);
+	cur_image = image_from_devtag_and_index(Machine, "sonydriv", floppy_select);
 
 	if (f->loadedtrack_dirty)
 	{
@@ -160,14 +161,14 @@ static void save_track_data(int floppy_select)
 UINT8 sony_read_data(void)
 {
 	UINT8 result = 0;
-	mess_image *cur_image;
+	const device_config *cur_image;
 	floppy *f;
 
 	if (sony_enable2() || (! sony_floppy_enable))
 		return 0xFF;			/* right ??? */
 
 	f = &sony_floppy[sony_floppy_select];
-	cur_image = image_from_devtag_and_index("sonydriv", sony_floppy_select);
+	cur_image = image_from_devtag_and_index(Machine, "sonydriv", sony_floppy_select);
 	if (!image_exists(cur_image))
 		return 0xFF;
 
@@ -182,11 +183,11 @@ UINT8 sony_read_data(void)
 
 void sony_write_data(UINT8 data)
 {
-	mess_image *cur_image;
+	const device_config *cur_image;
 	floppy *f;
 
 	f = &sony_floppy[sony_floppy_select];
-	cur_image = image_from_devtag_and_index("sonydriv", sony_floppy_select);
+	cur_image = image_from_devtag_and_index(Machine, "sonydriv", sony_floppy_select);
 	if (!image_exists(cur_image))
 		return;
 
@@ -198,7 +199,7 @@ void sony_write_data(UINT8 data)
 
 
 
-static int sony_rpm(floppy *f, mess_image *cur_image)
+static int sony_rpm(floppy *f, const device_config *cur_image)
 {
 	int result = 0;
 
@@ -256,7 +257,7 @@ int sony_read_status(void)
 	int result = 1;
 	int action;
 	floppy *f;
-	mess_image *cur_image;
+	const device_config *cur_image;
 
 	action = ((sony_lines & (SONY_CA1 | SONY_CA0)) << 2) | (sony_sel_line << 1) | ((sony_lines & SONY_CA2) >> 2);
 
@@ -269,7 +270,7 @@ int sony_read_status(void)
 	if ((! sony_enable2()) && sony_floppy_enable)
 	{
 		f = &sony_floppy[sony_floppy_select];
-		cur_image = image_from_devtag_and_index("sonydriv", sony_floppy_select);
+		cur_image = image_from_devtag_and_index(Machine, "sonydriv", sony_floppy_select);
 		if (!image_exists(cur_image))
 			cur_image = NULL;
 
@@ -367,7 +368,7 @@ static void sony_doaction(void)
 {
 	int action;
 	floppy *f;
-	mess_image *cur_image;
+	const device_config *cur_image;
 
 	action = ((sony_lines & (SONY_CA1 | SONY_CA0)) << 2) | ((sony_lines & SONY_CA2) >> 2) | (sony_sel_line << 1);
 
@@ -380,7 +381,7 @@ static void sony_doaction(void)
 	if (sony_floppy_enable)
 	{
 		f = &sony_floppy[sony_floppy_select];
-		cur_image = image_from_devtag_and_index("sonydriv", sony_floppy_select);
+		cur_image = image_from_devtag_and_index(Machine, "sonydriv", sony_floppy_select);
 		if (!image_exists(cur_image))
 			cur_image = NULL;
 
@@ -488,16 +489,16 @@ void sony_set_speed(int speed)
 
 
 
-static void device_unload_sonydriv_floppy(mess_image *image)
+static DEVICE_IMAGE_UNLOAD( sonydriv_floppy )
 {
 	int id;
-	device_unload_handler parent_unload;
+	device_image_unload_func parent_unload;
 
 	id = image_index_in_device(image);
 	save_track_data(id);
 	memset(&sony_floppy[id], 0, sizeof(sony_floppy[id]));
 
-	parent_unload = (device_unload_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_UNLOAD);
+	parent_unload = (device_image_unload_func) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_UNLOAD);
 	parent_unload(image);
 }
 
@@ -514,7 +515,7 @@ void sonydriv_device_getinfo(const mess_device_class *devclass, UINT32 state, un
 		case MESS_DEVINFO_STR_DEV_TAG:			strcpy(info->s = device_temp_str(), "sonydriv"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_UNLOAD:			info->unload = device_unload_sonydriv_floppy; break;
+		case MESS_DEVINFO_PTR_UNLOAD:			info->unload = DEVICE_IMAGE_UNLOAD_NAME(sonydriv_floppy); break;
 		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:
 			if (mess_device_get_info_int(devclass, MESS_DEVINFO_INT_SONYDRIV_ALLOWABLE_SIZES) & SONY_FLOPPY_SUPPORT2IMG)
 				info->p = (void *) floppyoptions_apple35_iigs;

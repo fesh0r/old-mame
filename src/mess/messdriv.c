@@ -56,7 +56,7 @@ const game_driver *const test_drivers[] =
 
 	/* 3DO */
 	DRIVER( 3do )		/* 3DO consoles										*/
-TESTDRIVER( 3do_pal )
+	DRIVER( 3do_pal )
 
 	/* ATARI */
 	DRIVER( a2600 )		/* Atari 2600										*/
@@ -175,10 +175,9 @@ TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
 
 	/* WATARA */
 	DRIVER( svision )	/* Supervision Handheld								*/
-TESTDRIVER( svisions )
-
-TESTDRIVER( svisionp )
-TESTDRIVER( svisionn )
+	DRIVER( svisions )
+	DRIVER( svisionp )
+	DRIVER( svisionn )
 	DRIVER( tvlinkp )
 
 	/* INTERTON */
@@ -190,6 +189,9 @@ TESTDRIVER( svisionn )
 
 	/* EPOCH */
 	DRIVER( gamepock )	/* Epoch Game Pocket Computer						*/
+
+	/* KOEI */
+	DRIVER( pasogo )	/* KOEI PasoGo */
 
 
 /****************COMPUTERS***************************************************/
@@ -219,14 +221,14 @@ TESTDRIVER( a310 )		/* 1988 Acorn Archimedes 310						*/
 	DRIVER( gx4000 )    /* Amstrad GX4000 - 1990                            */
 	DRIVER( kccomp )	/* VEB KC compact									*/
 	DRIVER( al520ex )   /* Patisonic Aleste 520EX (1993)                    */
-TESTDRIVER( pcw8256 )	/* 198? PCW8256										*/
-TESTDRIVER( pcw8512 )	/* 198? PCW8512										*/
-TESTDRIVER( pcw9256 )	/* 198? PCW9256										*/
-TESTDRIVER( pcw9512 )	/* 198? PCW9512 (+)									*/
-TESTDRIVER( pcw10 ) 	/* 198? PCW10										*/
-TESTDRIVER( pcw16 )		/* 1995 PCW16										*/
+	DRIVER( pcw8256 )	/* 198? PCW8256										*/
+	DRIVER( pcw8512 )	/* 198? PCW8512										*/
+	DRIVER( pcw9256 )	/* 198? PCW9256										*/
+	DRIVER( pcw9512 )	/* 198? PCW9512 (+)									*/
+	DRIVER( pcw10 ) 	/* 198? PCW10										*/
+	DRIVER( pcw16 )		/* 1995 PCW16										*/
 	DRIVER( nc100 )		/* 19?? NC100										*/
-TESTDRIVER( nc200 )		/* 19?? NC200										*/
+	DRIVER( nc200 )		/* 19?? NC200										*/
 
 	/* APPLE */
 	DRIVER( apple1 )	/* Jul 1976 Apple 1									*/
@@ -362,14 +364,14 @@ TESTDRIVER( c128dita )	/* Commodore 128D - PAL (italian) cost reduced set	*/
 	DRIVER( a500n )		/* Commodore Amiga 500 - NTSC						*/
 	DRIVER( a500p )		/* Commodore Amiga 500 - PAL						*/
 	DRIVER( a1000n )	/* Commodore Amiga 1000 - NTSC						*/
+	DRIVER( a1000p )	/* Commodore Amiga 1000 - PAL						*/
 	DRIVER( cdtv )
 
 	DRIVER( c65 )		/* 1991 C65 / C64DX (Prototype, NTSC)				*/
 	DRIVER( c64dx )		/* 1991 C65 / C64DX (Prototype, German PAL)			*/
 
 	/* IBM PC & Clones */
-	DRIVER( ibmpc )		/* 1982	IBM PC										*/
-	DRIVER( ibmpca )	/* 1982 IBM PC										*/
+	DRIVER( ibm5150 )	/* 1981	IBM 5150									*/
 	DRIVER( dgone )		/* 1984 Data General/One */
 	DRIVER( pcmda )		/* 1987 PC with MDA									*/
 	DRIVER( pcherc )    /* 1987 PC with Hercules (for testing hercules)		*/
@@ -378,12 +380,12 @@ TESTDRIVER( bondwell )	/* 1985	Bondwell (CGA)								*/
 	DRIVER( europc )	/* 1988	Schneider Euro PC (CGA or Hercules)			*/
 
 	/* pc junior */
-TESTDRIVER( ibmpcjr )	/* 1984 IBM PC Jr									*/
+	DRIVER( ibmpcjr )	/* 1984 IBM PC Jr									*/
 	DRIVER( t1000hx )	/* 1987 Tandy 1000HX (similiar to PCJr)				*/
 TESTDRIVER( t1000sx )	/* 1987 Tandy 1000SX (similiar to PCJr)				*/
 
 	/* xt */
-	DRIVER( ibmxt )		/* 1986	IBM XT										*/
+	DRIVER( ibm5160 )	/* 1982	IBM XT 5160									*/
 	DRIVER( pc200 )		/* 1988 Sinclair PC200								*/
 	DRIVER( pc20 )		/* 1988 Amstrad PC20								*/
 TESTDRIVER( ppc512 )	/* 1987 Amstrad PPC512								*/
@@ -415,16 +417,10 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( pc8300 )	/* Your Computer - PC8300							*/
 	DRIVER( pow3000 )	/* Creon Enterprises - Power 3000					*/
 	DRIVER( lambda )	/* Lambda 8300										*/
-TESTDRIVER( h4th )		/* Sinclair ZX-81 Forth by David Husband			*/
-TESTDRIVER( tree4th )	/* Sinclair ZX-81 Tree-Forth by Tree Systems		*/
+	DRIVER( h4th )		/* Sinclair ZX-81 Forth by David Husband			*/
+	DRIVER( tree4th )	/* Sinclair ZX-81 Tree-Forth by Tree Systems		*/
 
 	DRIVER( spectrum )	/* 1982 ZX Spectrum									*/
-	DRIVER( specpls4 )	/* 2000 ZX Spectrum +4								*/
-	DRIVER( specbusy )	/* 1994 ZX Spectrum (BusySoft Upgrade v1.18)		*/
-	DRIVER( specpsch )	/* 19?? ZX Spectrum (Maly's Psycho Upgrade)			*/
-	DRIVER( specgrot )	/* ???? ZX Spectrum (De Groot's Upgrade)			*/
-	DRIVER( specimc )	/* 1985 ZX Spectrum (Collier's Upgrade)				*/
-	DRIVER( speclec )	/* 1987 ZX Spectrum (LEC Upgrade)					*/
 	DRIVER( inves )		/* 1986 Inves Spectrum 48K+							*/
 	DRIVER( tk90x )		/* 1985 TK90x Color Computer						*/
 	DRIVER( tk95 )		/* 1986 TK95 Color Computer							*/
@@ -442,9 +438,8 @@ TESTDRIVER( tree4th )	/* Sinclair ZX-81 Tree-Forth by Tree Systems		*/
 	DRIVER( specp3sp )	/* 1987 ZX Spectrum +3 (Spain)						*/
 	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e								*/
 	DRIVER( specp3es )	/* 2000 ZX Spectrum +3e (Spain)						*/
-
-TESTDRIVER( scorpion )
-TESTDRIVER( pentagon )
+	DRIVER( scorpion )
+	DRIVER( pentagon )
 
 	DRIVER( ql )		/* 1984 Sinclair QL	(UK)							*/
 	DRIVER( ql_us )		/* 1984 Sinclair QL	(USA)							*/
@@ -458,13 +453,10 @@ TESTDRIVER( pentagon )
 
 	/* SHARP */
 	DRIVER( pc1251 )	/* Pocket Computer 1251								*/
-TESTDRIVER( trs80pc3 )	/* Tandy TRS80 PC-3									*/
-
+	DRIVER( trs80pc3 )	/* Tandy TRS80 PC-3									*/
 	DRIVER( pc1401 )	/* Pocket Computer 1401								*/
 	DRIVER( pc1402 )	/* Pocket Computer 1402								*/
-
 	DRIVER( pc1350 )	/* Pocket Computer 1350								*/
-
 	DRIVER( pc1403 )	/* Pocket Computer 1403								*/
 	DRIVER( pc1403h )	/* Pocket Computer 1403H							*/
 
@@ -498,7 +490,7 @@ TESTDRIVER( ti99_232 )	/* 1983 TI 99/2 (32kb ROMs)							*/
 	/* TI 99 clones */
 	DRIVER( tutor)		/* 1983? Tomy Tutor									*/
 	DRIVER( geneve )	/* 1987? Myarc Geneve 9640							*/
-TESTDRIVER( genmod )	/* 199?? Myarc Geneve 9640							*/
+	DRIVER( genmod )	/* 199?? Myarc Geneve 9640							*/
 TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 
 	DRIVER( avigo )		/*													*/
@@ -520,7 +512,7 @@ TESTDRIVER( ti99_4p )	/* 1996 SNUG 99/4P (a.k.a. SGCPU)					*/
 
 	/* SORD */
 	DRIVER( sordm5 )
-TESTDRIVER( srdm5fd5 )
+	DRIVER( srdm5fd5 )
 
 	/* APF Electronics Inc. */
 	DRIVER( apfm1000 )
@@ -532,7 +524,6 @@ TESTDRIVER( einstei2 )
 
 	/* INTELLIGENT SOFTWARE */
 	DRIVER( ep128 )		/* Enterprise 128 k									*/
-	DRIVER( ep128a )	/* Enterprise 128 k									*/
 
 	/* NON LINEAR SYSTEMS */
 	DRIVER( kaypro )	/* Kaypro 2X										*/
@@ -556,8 +547,8 @@ TESTDRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
 	DRIVER( trs80l2a )	/* TRS-80 Model I	- R/S L2 BASIC					*/
 	DRIVER( sys80 )		/* EACA System 80									*/
 	DRIVER( lnw80 )		/* LNW Research LNW-80								*/
-TESTDRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy				*/
-TESTDRIVER( trs80m4 )
+	DRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy				*/
+	DRIVER( trs80m4 )
 
 	DRIVER( coco )		/* Color Computer									*/
 	DRIVER( cocoe )		/* Color Computer (Extended BASIC 1.0)				*/
@@ -824,13 +815,19 @@ TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
 	DRIVER( to9p )		/* 1986 Thomson T09+								*/
 	DRIVER( mo6 )		/* 1986 Thomson MO6									*/
 	DRIVER( mo5nr )		/* 1986 Thomson MO5 NR								*/
-	DRIVER( pro128 )	/* 1986 Oliveti Prodest PC 128						*/
+	DRIVER( pro128 )	/* 1986 Olivetti Prodest PC 128						*/
+
+	/* Cybiko, Inc. */
+TESTDRIVER( cybikov1 )	/* Cybiko Wireless Intertainment System - Classic V1 */
+TESTDRIVER( cybikov2 )	/* Cybiko Wireless Intertainment System - Classic V2 */
+TESTDRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 
 	/* Dick Smith */
 	DRIVER( super80 )
 	DRIVER( super80d )
 	DRIVER( super80e )
 	DRIVER( super80m )
+	DRIVER( super80r )
 	DRIVER( super80v )
 
 	/* Galeb */
@@ -849,14 +846,45 @@ TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
 
 	/* Specialist */	
 	DRIVER( special )	
+	DRIVER( specialp )
 	DRIVER( lik )	
+	DRIVER( erik )	
 	DRIVER( specimx )	
+
+	/* Orion */
+	DRIVER( orion128 )		
+	DRIVER( orionms )		
+	DRIVER( orionz80 )	
+	DRIVER( orionzms )	
+	DRIVER( orionpro )
 	
+	/* BK */
+	DRIVER( bk0010 )	
+	DRIVER( bk001001 )		
+	DRIVER( bk0010fd )	
+		
+	/* Bashkiria-2M */
+	DRIVER( b2m )	
+	DRIVER( b2mrom )		
+
+	/* Bondwell */
+	DRIVER( bw2 )
+
+	/* Exeltel */
+TESTDRIVER( exeltel )	
+
+	/* Comx World Operations Ltd */
+	DRIVER( comx35p )
+	DRIVER( comx35n )
+
 /****************Games*******************************************************/
 	/* Computer Electronic */
 	DRIVER( mk1 )		/* Chess Champion MK I								*/
 	/* Quelle International */
 	DRIVER( mk2 )		/* Chess Champion MK II								*/
+	/* Novag */
+        DRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
+
 	/* Hegener & Glaser Munich */
 	DRIVER( mm4 )		/* Mephisto 4								*/
 	/* Hegener & Glaser Munich */
@@ -869,9 +897,10 @@ TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
 	DRIVER( dallas )		/* Dallas							*/
 	DRIVER( dallas16 )		/* Dallas							*/
 	DRIVER( dallas32 )		/* Dallas							*/
+TESTDRIVER( roma )			/* Roma							*/
 	DRIVER( roma32 )		/* Roma							*/
-	/* Novag */
-TESTDRIVER( ssystem3 )	/* Chess Champion Super System III / MK III			*/
 
+/*********** Misc **********************************************************/
+TESTDRIVER( ex800 )
 
 #endif /* DRIVER_RECURSIVE */

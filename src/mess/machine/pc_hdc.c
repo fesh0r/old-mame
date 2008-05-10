@@ -19,6 +19,7 @@
 #include <stdio.h>
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/pc_hdc.h"
 #include "machine/pic8259.h"
 #include "machine/8237dma.h"
@@ -100,6 +101,7 @@ static int data_cnt = 0;                /* data count */
 static UINT8 *buffer;					/* data buffer */
 static UINT8 *ptr = 0;					/* data pointer */
 static UINT8 hdc_control;
+static void (*hdc_set_irq)(int,int);
 
 static const char *const hdc_command_names[] =
 {
@@ -164,11 +166,12 @@ static const char *const hdc_command_names[] =
 
 static TIMER_CALLBACK(pc_hdc_command);
 
-int pc_hdc_setup(void)
+int pc_hdc_setup(void (*hdc_set_irq_func)(int,int))
 {
 	int i;
 
 	hdc_control = 0;
+	hdc_set_irq = hdc_set_irq_func;
 
 	buffer = auto_malloc(17*4*512);
 
@@ -188,7 +191,7 @@ int pc_hdc_setup(void)
 
 static hard_disk_file *pc_hdc_file(int id)
 {
-	mess_image *img;
+	const device_config *img;
 
 	img = image_from_devtype_and_index(IO_HARDDISK, id);
 	if (!image_exists(img))
@@ -204,8 +207,10 @@ static void pc_hdc_result(int n)
 	/* dip switch selected INT 5 or 2 */
 	irq = (dip[n] & 0x40) ? 5 : 2;
 
-	pic8259_set_irq_line(0, irq, 1);
-	pic8259_set_irq_line(0, irq, 0);
+	if ( hdc_set_irq ) {
+		hdc_set_irq( irq, 1 );
+		hdc_set_irq( irq, 0 );
+	}
 
 	if (LOG_HDC_STATUS)
 		logerror("pc_hdc_result(): $%02x to $%04x\n", csb[n], data_cnt);
@@ -719,7 +724,7 @@ static UINT8 pc_hdc_dipswitch_r(int n)
 static UINT8 pc_HDC_r(int chip, offs_t offs)
 {
 	UINT8 data = 0xff;
-	if( !(readinputport(3) & (0x08>>chip)) || !pc_hdc_file(chip<<1) )
+	if( !(input_port_read_indexed(Machine, 3) & (0x08>>chip)) || !pc_hdc_file(chip<<1) )
 		return data;
 	switch( offs )
 	{
@@ -742,7 +747,7 @@ static void pc_HDC_w(int chip, offs_t offs, UINT8 data)
 	if (LOG_HDC_CALL)
 		logerror("pc_HDC_w(): chip=%d offs=%d data=0x%02x\n", chip, offs, data);
 
-	if( !(readinputport(3) & (0x08>>chip)) || !pc_hdc_file(chip<<1) )
+	if( !(input_port_read_indexed(Machine, 3) & (0x08>>chip)) || !pc_hdc_file(chip<<1) )
 		return;
 
 	switch( offs )

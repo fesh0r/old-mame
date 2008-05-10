@@ -2,7 +2,7 @@
 
   gb.c
 
-  Video file to handle emulation of the Nintendo GameBoy.
+  Video file to handle emulation of the Nintendo Game Boy.
 
   Original code                               Carsten Sorensen   1998
   Mess modifications, bug fixes and speedups  Hans de Goede      1998
@@ -128,7 +128,7 @@ static const unsigned char palette[] =
 	0x84,0x80,0x4E,		/* Medium */
 	0x4E,0x4E,0x4E,		/* Dark */
 
-/* Palette for GameBoy Pocket/Light */
+/* Palette for Game Boy Pocket/Light */
 	0xC4,0xCF,0xA1,		/* Background */
 	0x8B,0x95,0x6D,		/* Light      */
 	0x6B,0x73,0x53,		/* Medium     */
@@ -241,7 +241,7 @@ static void gb_select_sprites( void ) {
 	}
 }
 
-INLINE void gb_update_sprites ( running_machine *machine )
+INLINE void gb_update_sprites ( void )
 {
 	bitmap_t *bitmap = tmpbitmap;
 	UINT8 height, tilemask, line, *oam, *vram;
@@ -291,7 +291,7 @@ INLINE void gb_update_sprites ( running_machine *machine )
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex] && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, spal[colour]);
 					data >>= 1;
 				}
 				break;
@@ -300,7 +300,7 @@ INLINE void gb_update_sprites ( running_machine *machine )
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if (colour && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, spal[colour]);
 					data >>= 1;
 				}
 				break;
@@ -309,7 +309,7 @@ INLINE void gb_update_sprites ( running_machine *machine )
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex] && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, spal[colour]);
 					data <<= 1;
 				}
 				break;
@@ -318,7 +318,7 @@ INLINE void gb_update_sprites ( running_machine *machine )
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if (colour && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[spal[colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, spal[colour]);
 					data <<= 1;
 				}
 				break;
@@ -385,7 +385,7 @@ static void gb_update_scanline( running_machine *machine ) {
 				r.min_y = r.max_y = gb_lcd.current_line;
 				r.min_x = gb_lcd.start_x;
 				r.max_x = gb_lcd.end_x - 1;
-				fillbitmap( bitmap, machine->pens[ gb_bpal[0] ], &r );
+				fillbitmap( bitmap, gb_bpal[0], &r );
 			}
 			while ( l < 2 ) {
 				UINT8	xindex, *map, *tiles;
@@ -413,7 +413,7 @@ static void gb_update_scanline( running_machine *machine ) {
 				while ( i > 0 ) {
 					while ( ( gb_lcd.layer[l].xshift < 8 ) && i ) {
 						register int colour = ( ( data & 0x8000 ) ? 2 : 0 ) | ( ( data & 0x0080 ) ? 1 : 0 );
-						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, machine->pens[ gb_bpal[ colour ] ] );
+						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, gb_bpal[ colour ] );
 						bg_zbuf[ xindex ] = colour;
 						xindex++;
 						data <<= 1;
@@ -437,7 +437,7 @@ static void gb_update_scanline( running_machine *machine ) {
 				l++;
 			}
 			if ( gb_lcd.end_x == 160 && LCDCONT & 0x02 ) {
-				gb_update_sprites( machine );
+				gb_update_sprites();
 			}
 			gb_lcd.start_x = gb_lcd.end_x;
 		}
@@ -449,7 +449,7 @@ static void gb_update_scanline( running_machine *machine ) {
 					const device_config *screen = video_screen_first(machine->config);
 					rectangle r = *video_screen_get_visible_area(screen);
 					r.min_y = r.max_y = gb_lcd.current_line;
-					fillbitmap( bitmap, screen->machine->pens[0], &r );
+					fillbitmap( bitmap, 0, &r );
 				}
 				gb_lcd.previous_line = gb_lcd.current_line;
 			}
@@ -459,7 +459,7 @@ static void gb_update_scanline( running_machine *machine ) {
 	profiler_mark(PROFILER_END);
 }
 
-/* --- Super Gameboy Specific --- */
+/* --- Super Game Boy Specific --- */
 
 INLINE void sgb_update_sprites (void)
 {
@@ -682,7 +682,7 @@ static void sgb_update_scanline( running_machine *machine ) {
 					r.max_x -= SGB_XOFFSET;
 					r.min_y = SGB_YOFFSET;
 					r.max_y -= SGB_YOFFSET;
-					fillbitmap( bitmap, machine->pens[0], &r );
+					fillbitmap( bitmap, 0, &r );
 				} return;
 			case 3: /* Blank screen (white - or should it be color 0?) */
 				{
@@ -692,7 +692,7 @@ static void sgb_update_scanline( running_machine *machine ) {
 					r.max_x -= SGB_XOFFSET;
 					r.min_y = SGB_YOFFSET;
 					r.max_y -= SGB_YOFFSET;
-					fillbitmap( bitmap, machine->pens[32767], &r );
+					fillbitmap( bitmap, 32767, &r );
 				} return;
 			}
 
@@ -711,7 +711,7 @@ static void sgb_update_scanline( running_machine *machine ) {
 				r.min_x = SGB_XOFFSET;
 				r.max_x -= SGB_XOFFSET;
 				r.min_y = r.max_y = gb_lcd.current_line + SGB_YOFFSET;
-				fillbitmap( bitmap, machine->pens[0], &r );
+				fillbitmap( bitmap, 0, &r );
 			}
 			while( l < 2 ) {
 				UINT8	xindex, sgb_palette, *map, *tiles;
@@ -782,7 +782,7 @@ static void sgb_update_scanline( running_machine *machine ) {
 					r.min_x = SGB_XOFFSET;
 					r.max_x -= SGB_XOFFSET;
 					r.min_y = r.max_y = gb_lcd.current_line + SGB_YOFFSET;
-					fillbitmap(bitmap, machine->pens[0], &r);
+					fillbitmap(bitmap, 0, &r);
 				}
 				gb_lcd.previous_line = gb_lcd.current_line;
 			}
@@ -792,7 +792,7 @@ static void sgb_update_scanline( running_machine *machine ) {
 	profiler_mark(PROFILER_END);
 }
 
-/* --- Gameboy Color Specific --- */
+/* --- Game Boy Color Specific --- */
 
 INLINE void cgb_update_sprites ( running_machine *machine ) {
 	bitmap_t *bitmap = tmpbitmap;
@@ -848,7 +848,7 @@ INLINE void cgb_update_sprites ( running_machine *machine ) {
 				{
 					register int colour = ((data & 0x0100) ? 2 : 0) | ((data & 0x0001) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex] && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[cgb_spal[pal + colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, cgb_spal[pal + colour]);
 					data >>= 1;
 				}
 				break;
@@ -859,7 +859,7 @@ INLINE void cgb_update_sprites ( running_machine *machine ) {
 					if((bg_zbuf[xindex] & 0x80) && (bg_zbuf[xindex] & 0x7f) && (LCDCONT & 0x1))
 						colour = 0;
 					if (colour && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[cgb_spal[pal + colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, cgb_spal[pal + colour]);
 					data >>= 1;
 				}
 				break;
@@ -868,7 +868,7 @@ INLINE void cgb_update_sprites ( running_machine *machine ) {
 				{
 					register int colour = ((data & 0x8000) ? 2 : 0) | ((data & 0x0080) ? 1 : 0);
 					if (colour && !bg_zbuf[xindex] && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[cgb_spal[pal + colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, cgb_spal[pal + colour]);
 					data <<= 1;
 				}
 				break;
@@ -879,7 +879,7 @@ INLINE void cgb_update_sprites ( running_machine *machine ) {
 					if((bg_zbuf[xindex] & 0x80) && (bg_zbuf[xindex] & 0x7f) && (LCDCONT & 0x1))
 						colour = 0;
 					if (colour && xindex >= 0 && xindex < 160)
-						gb_plot_pixel(bitmap, xindex, yindex, machine->pens[cgb_spal[pal + colour]]);
+						gb_plot_pixel(bitmap, xindex, yindex, cgb_spal[pal + colour]);
 					data <<= 1;
 				}
 				break;
@@ -947,7 +947,7 @@ static void cgb_update_scanline ( running_machine *machine ) {
 				r.min_y = r.max_y = gb_lcd.current_line;
 				r.min_x = gb_lcd.start_x;
 				r.max_x = gb_lcd.end_x - 1;
-				fillbitmap( bitmap, machine->pens[ ( gbc_mode == GBC_MODE_MONO ) ? 0 : 32767 ], &r );
+				fillbitmap( bitmap, ( gbc_mode == GBC_MODE_MONO ) ? 0 : 32767, &r );
 			}
 			while ( l < 2 ) {
 				UINT8	xindex, *map, *tiles, *gbcmap;
@@ -996,7 +996,7 @@ static void cgb_update_scanline ( running_machine *machine ) {
 							colour = ( ( data & 0x8000 ) ? 2 : 0 ) | ( ( data & 0x0080 ) ? 1 : 0 );
 							data <<= 1;
 						}
-						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, machine->pens[ cgb_bpal[ ( ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x07 ) * 4 ) + colour ] ] );
+						gb_plot_pixel( bitmap, xindex, gb_lcd.current_line, cgb_bpal[ ( ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x07 ) * 4 ) + colour ] );
 						bg_zbuf[ xindex ] = colour + ( gbcmap[ gb_lcd.layer[l].xindex ] & 0x80 );
 						xindex++;
 						gb_lcd.layer[l].xshift++;
@@ -1039,7 +1039,7 @@ static void cgb_update_scanline ( running_machine *machine ) {
 					const device_config *screen = video_screen_first(machine->config);
 					rectangle r = *video_screen_get_visible_area(screen);
 					r.min_y = r.max_y = gb_lcd.current_line;
-					fillbitmap( bitmap, machine->pens[ ( gbc_mode == GBC_MODE_MONO ) ? 0 : 32767 ], &r );
+					fillbitmap( bitmap, ( gbc_mode == GBC_MODE_MONO ) ? 0 : 32767, &r );
 				}
 				gb_lcd.previous_line = gb_lcd.current_line;
 			}
@@ -1307,7 +1307,7 @@ static void gbc_hdma(UINT16 length) {
 	dst = ((UINT16)(HDMA3 & 0x1F) << 8) | (HDMA4 & 0xF0);
 	dst |= 0x8000;
 	while( length > 0 ) {
-		program_write_byte_8( dst++, program_read_byte_8( src++ ) );
+		program_write_byte( dst++, program_read_byte( src++ ) );
 		length--;
 	}
 	HDMA1 = src >> 8;
@@ -1367,7 +1367,7 @@ static TIMER_CALLBACK(gb_lcd_timer_proc)
 			gb_lcd.oam_locked = UNLOCKED;
 			gb_lcd.vram_locked = UNLOCKED;
 			/*
-				There seems to a kind of feature in the gameboy hardware when the lowest bits of the
+				There seems to a kind of feature in the Game Boy hardware when the lowest bits of the
 				SCROLLX register equals 3 or 7, then the delayed M0 irq is triggered 4 cycles later
 				than usual.
 				The SGB probably has the same bug.
@@ -1598,7 +1598,7 @@ static TIMER_CALLBACK(gbc_lcd_timer_proc)
 			gb_lcd.oam_locked = UNLOCKED;
 			gb_lcd.vram_locked = UNLOCKED;
 			/*
-				There seems to a kind of feature in the gameboy hardware when the lowest bits of the
+				There seems to a kind of feature in the Game Boy hardware when the lowest bits of the
 				SCROLLX register equals 3 or 7, then the delayed M0 irq is triggered 4 cycles later
 				than usual.
 				The SGB probably has the same bug.
@@ -1942,7 +1942,7 @@ WRITE8_HANDLER ( gb_video_w ) {
 			UINT8 *P = gb_oam;
 			offset = (UINT16) data << 8;
 			for (data = 0; data < 0xA0; data++)
-				*P++ = program_read_byte_8 (offset++);
+				*P++ = program_read_byte (offset++);
 		}
 		return;
 	case 0x07:						/* BGP - Background Palette */

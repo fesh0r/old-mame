@@ -12,6 +12,9 @@
 #include "hashfile.h"
 #include "emuopts.h"
 #include "../imgtool/imgtool.h"
+#ifdef _WIN32
+#include "winutils.h"
+#endif
 
 extern int mame_validitychecks(int game);
 
@@ -66,7 +69,7 @@ static void messtest_fail(const char *message)
 
 
 
-#ifdef WIN32
+#ifdef _WIN32
 int CLIB_DECL utf8_main(int argc, char *argv[])
 #else
 int CLIB_DECL main(int argc, char *argv[])
@@ -80,9 +83,9 @@ int CLIB_DECL main(int argc, char *argv[])
 	/* test case for memory allocation system */
 	test_memory_pools();
 
-#ifdef WIN32
+#ifdef _WIN32
 	/* expand wildcards so '*' can be used */
-	expand_wildcards(&argc, &argv);
+	win_expand_wildcards(&argc, &argv);
 #endif
 
 	test_count = 0;

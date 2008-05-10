@@ -21,6 +21,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "733_asr.h"
 
 #define MAX_ASR 1
@@ -77,17 +78,6 @@ enum
 	AM_enint_mask = 1 << 6
 };
 
-static const unsigned char asr_palette[asr733_palette_size*3] =
-{
-	255, 255, 255,
-	0, 0, 0
-};
-
-static const unsigned short asr_colortable[asr733_colortable_size] =
-{
-	0, 1
-};
-
 enum
 {
 	asrfontdata_size = 96/*128*/*8
@@ -110,11 +100,8 @@ GFXDECODE_END
 
 PALETTE_INIT( asr733 )
 {
-	int i;
-
-	for ( i = 0; i < asr733_palette_size; i++ ) {
-		palette_set_color_rgb(machine, i, asr_palette[i*3], asr_palette[i*3+1], asr_palette[i*3+2]);
-	}
+	palette_set_color(machine,0,RGB_WHITE); /* white */
+	palette_set_color(machine,1,RGB_BLACK); /* black */
 }
 
 /*
@@ -642,7 +629,7 @@ void asr733_keyboard(int unit)
 
 	/* read current key state */
 	for (i=0; i<6; i++)
-		key_buf[i] = readinputport(i);
+		key_buf[i] = input_port_read_indexed(Machine, i);
 
 	/* process key modifiers */
 	if (key_buf[1] & 0x0200)

@@ -9,8 +9,8 @@
 #ifndef APPLDRIV_H
 #define APPLDRIV_H
 
+#include "mame.h"
 #include "device.h"
-#include "image.h"
 
 
 enum

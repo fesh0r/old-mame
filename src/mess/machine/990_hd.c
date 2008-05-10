@@ -75,7 +75,7 @@ enum
 /* disk drive unit descriptor */
 typedef struct hd_unit_t
 {
-	mess_image *img;						/* image descriptor */
+	const device_config *img;						/* image descriptor */
 	enum { format_mame, format_old } format;
 	hard_disk_file *hd_handle;		/* mame hard disk descriptor - only if format == format_mame */
 	unsigned int wp : 1;					/* TRUE if disk is write-protected */
@@ -162,19 +162,17 @@ static hdc_t hdc;
 /*
 	Initialize hard disk unit
 */
-DEVICE_INIT( ti990_hd )
+DEVICE_START( ti990_hd )
 {
 	hd_unit_t *d;
-	int id = image_index_in_device(image);
+	int id = image_index_in_device(device);
 
-
-	if ((id < 0) || (id >= MAX_DISK_UNIT))
-		return INIT_FAIL;
+	assert ((id >= 0) && (id < MAX_DISK_UNIT));
 
 	d = &hdc.d[id];
 	memset(d, 0, sizeof(*d));
 
-	d->img = image;
+	d->img = device;
 	d->format = format_mame;	/* don't care */
 	d->hd_handle = NULL;
 	d->wp = 1;
@@ -183,10 +181,10 @@ DEVICE_INIT( ti990_hd )
 	/* clear attention line */
 	/*hdc.w[0] &= ~ (0x80 >> id);*/
 
-	return device_init_mess_hd(image);
+	DEVICE_START_CALL(mess_hd);
 }
 
-/*DEVICE_EXIT( ti990_hd )
+/*DEVICE_STOP( ti990_hd )
 {
 	d->img = NULL;
 }*/
@@ -194,7 +192,7 @@ DEVICE_INIT( ti990_hd )
 /*
 	Initialize hard disk unit and open a hard disk image
 */
-DEVICE_LOAD( ti990_hd )
+DEVICE_IMAGE_LOAD( ti990_hd )
 {
 	int id = image_index_in_device(image);
 	hd_unit_t *d;
@@ -285,7 +283,7 @@ DEVICE_LOAD( ti990_hd )
 /*
 	close a hard disk image
 */
-DEVICE_UNLOAD( ti990_hd )
+DEVICE_IMAGE_UNLOAD( ti990_hd )
 {
 	int id = image_index_in_device(image);
 	hd_unit_t *d;

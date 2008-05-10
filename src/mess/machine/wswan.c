@@ -669,7 +669,7 @@ WRITE8_HANDLER( wswan_port_w )
 				dst = ws_portram[0x44] + (ws_portram[0x45] << 8) + (ws_portram[0x43] << 16);
 				length = ws_portram[0x46] + (ws_portram[0x47] << 8);
 				for( ; length > 0; length-- ) {
-					program_write_byte_8( dst, program_read_byte_8( src ) );
+					program_write_byte( dst, program_read_byte( src ) );
 					src++;
 					dst++;
 				}
@@ -942,13 +942,13 @@ WRITE8_HANDLER( wswan_port_w )
 			data = data & 0xF0;
 			switch( data ) {
 			case 0x10:	/* Read Y cursors: Y1 - Y2 - Y3 - Y4 */
-				data = data | readinputport( 2 );
+				data = data | input_port_read_indexed(machine,  2 );
 				break;
 			case 0x20:	/* Read X cursors: X1 - X2 - X3 - X4 */
-				data = data | readinputport( 0 );
+				data = data | input_port_read_indexed(machine,  0 );
 				break;
 			case 0x40:	/* Read buttons: START - A - B */
-				data = data | readinputport( 1 );
+				data = data | input_port_read_indexed(machine,  1 );
 				break;
 			}
 			break;
@@ -1262,7 +1262,7 @@ static const char* wswan_determine_romsize( UINT8 data ) {
 }
 #endif
 
-DEVICE_INIT(wswan_cart)
+DEVICE_START(wswan_cart)
 {
 	/* Initialize EEPROM structure */
 	memset( &eeprom, 0, sizeof( eeprom ) );
@@ -1280,11 +1280,9 @@ DEVICE_INIT(wswan_cart)
 	rtc.minute = 0;
 	rtc.second = 0;
 	rtc.setting = 0xFF;
-
-	return INIT_PASS;
 }
 
-DEVICE_LOAD(wswan_cart)
+DEVICE_IMAGE_LOAD(wswan_cart)
 {
 	UINT32 ii;
 	const char *sram_str;
@@ -1356,7 +1354,7 @@ DEVICE_LOAD(wswan_cart)
 INTERRUPT_GEN(wswan_scanline_interrupt)
 {
 	if( vdp.current_line < 144 ) {
-		wswan_refresh_scanline( machine );
+		wswan_refresh_scanline();
 	}
 
 	/* Decrement 12kHz (HBlank) counter */
@@ -1377,7 +1375,7 @@ INTERRUPT_GEN(wswan_scanline_interrupt)
 	/* Handle Sound DMA */
 	if ( ( sound_dma.enable & 0x88 ) == 0x80 ) {
 		/* TODO: Output sound DMA byte */
-		wswan_port_w( machine, 0x89, program_read_byte_8( sound_dma.source ) );
+		wswan_port_w( machine, 0x89, program_read_byte( sound_dma.source ) );
 		sound_dma.size--;
 		sound_dma.source = ( sound_dma.source + 1 ) & 0x0FFFFF;
 		if ( sound_dma.size == 0 ) {

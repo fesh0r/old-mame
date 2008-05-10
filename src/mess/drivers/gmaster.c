@@ -9,6 +9,7 @@
 #include "devices/cartslot.h"
 
 #include "includes/gmaster.h"
+#include "gmaster.lh"
 
 #define MAIN_XTAL 	12000000
 
@@ -106,7 +107,7 @@ static READ8_HANDLER( gmaster_port_r )
     UINT8 data=0xff;
     switch (offset) {
     case UPD7810_PORTA:
-	data=readinputport(0);
+	data=input_port_read(machine, "JOY");
 	break;
     default:
       logerror("%.4x port %d read %.2x\n",(int)activecpu_get_reg(CPUINFO_INT_PC),offset,data);
@@ -137,23 +138,23 @@ static ADDRESS_MAP_START(gmaster_io, ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gmaster )
-    PORT_START
+    PORT_START_TAG("JOY")
     PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT)
     PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )
     PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )
     PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_UP   )
-     PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_NAME("B")
-     PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_NAME("A")
-     PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SELECT)  PORT_NAME("select")
-     PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START) PORT_NAME("start")
+    PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_NAME("B")
+    PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_NAME("A")
+    PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SELECT)  PORT_NAME("select")
+    PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START) PORT_NAME("start")
 INPUT_PORTS_END
 
 /* palette in red, green, blue tribles */
 static unsigned char gmaster_palette[2][3] =
 {
 #if 1
-    // ziemlich schwierig den lcd touch rüberzubringen
-    // es ist hauptsächlich die das fleckige grünlich, bläuliche
+    // ziemlich schwierig den lcd touch rÃ¼berzubringen
+    // es ist hauptsÃ¤chlich die das fleckige grÃ¼nlich, blÃ¤uliche
     { 130, 159, 166 },
     { 45,45,43 }
 #else
@@ -231,6 +232,7 @@ MDRV_CPU_VBLANK_INT("main", gmaster_interrupt)
   MDRV_PALETTE_LENGTH(sizeof(gmaster_palette)/sizeof(gmaster_palette[0]))
   MDRV_VIDEO_UPDATE(gmaster)
      MDRV_PALETTE_INIT(gmaster)
+     MDRV_DEFAULT_LAYOUT(layout_gmaster)
 
      MDRV_SPEAKER_STANDARD_MONO("gmaster")
      MDRV_SOUND_ADD(CUSTOM, 0)

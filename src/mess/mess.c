@@ -102,77 +102,68 @@ static void ram_init(const game_driver *gamedrv)
 
 
 /*-------------------------------------------------
-    devices_exit - tear down devices for a specific
+    mess_predevice_init - initialize devices for a specific
 	running_machine
 -------------------------------------------------*/
 
-static void devices_exit(running_machine *machine)
+void mess_predevice_init(running_machine *machine)
 {
-	devices_free(machine->devices);
-	machine->devices = NULL;
+	/* initialize natural keyboard support */
+	inputx_init(machine);
+
+	/* allocate the IODevice struct */
+	mess_devices_setup((machine_config *) machine->config, machine->gamedrv);
+
+	/* initialize RAM code */
+	ram_init(machine->gamedrv);
 }
 
 
 
 /*-------------------------------------------------
-    devices_init - initialize devices for a specific
+    mess_postdevice_init - initialize devices for a specific
 	running_machine
 -------------------------------------------------*/
 
-void devices_init(running_machine *machine)
+void mess_postdevice_init(running_machine *machine)
 {
-	const struct IODevice *dev;
-	int id;
 	int result = INIT_FAIL;
 	const char *image_name;
-	mess_image *image;
-
-	/* initialize natural keyboard support */
-	inputx_init(machine);
-
-	/* allocate the IODevice struct */
-	machine->devices = (struct IODevice *) devices_allocate(machine->gamedrv);
-	if (!machine->devices)
-		fatalerror_exitcode(MAMERR_DEVICE, "devices_allocate() failed");
-	add_exit_callback(machine, devices_exit);
-
-	/* initialize RAM code */
-	ram_init(machine->gamedrv);
+	const device_config *image;
+	image_device_info info;
 
 	/* init all devices */
 	image_init(machine);
 
 	/* make sure that any required devices have been allocated */
-	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
+	for (image = image_device_first(machine->config); image != NULL; image = image_device_next(image))
 	{
-		for (id = 0; id < dev->count; id++)
+		/* get the device info */
+		info = image_device_getinfo(machine->config, image);
+
+		/* is an image specified for this image */
+		image_name = mess_get_device_option(&info);
+
+		if ((image_name != NULL) && (image_name[0] != '\0'))
 		{
-			/* identify the image */
-			image = image_from_device_and_index(dev, id);
+			/* try to load this image */
+			result = image_load(image, image_name);
 
-			/* is an image specified for this image */
-			image_name = mess_get_device_option(&dev->devclass, id);
-			if ((image_name != NULL) && (image_name[0] != '\0'))
+			/* did the image load fail? */
+			if (result)
 			{
-				/* try to load this image */
-				result = image_load(image, image_name);
-
-				/* did the image load fail? */
-				if (result)
-				{
-					fatalerror_exitcode(MAMERR_DEVICE, "Device %s load (%s) failed: %s\n",
-						device_typename(dev->type),
-						osd_basename((char *) image_name),
-						image_error(image));
-				}
+				fatalerror_exitcode(MAMERR_DEVICE, "Device %s load (%s) failed: %s\n",
+					info.name,
+					osd_basename((char *) image_name),
+					image_error(image));
 			}
-			else
+		}
+		else
+		{
+			/* no image... must this device be loaded? */
+			if (info.must_be_loaded)
 			{
-				/* no image... must this device be loaded? */
-				if (dev->must_be_loaded)
-				{
-					fatalerror_exitcode(MAMERR_DEVICE, "Driver requires that device %s must have an image to load\n", device_typename(dev->type));
-				}
+				fatalerror_exitcode(MAMERR_DEVICE, "Driver requires that device \"%s\" must have an image to load\n", info.instance_name);
 			}
 		}
 	}

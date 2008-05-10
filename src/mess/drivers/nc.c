@@ -105,6 +105,7 @@
 #include "formats/pc_dsk.h"		/* for NC200 disk image */
 #include "devices/cartslot.h"
 #include "sound/beep.h"
+#include "nc200.lh"
 
 
 #define VERBOSE 0
@@ -399,7 +400,7 @@ static void nc_refresh_memory_bank_config(int bank)
 				memory_set_bankptr(bank+1, addr);
 
 				/* write enabled? */
-				if (readinputport(10) & 0x02)
+				if (input_port_read(Machine, "EXTRA") & 0x02)
 				{
 					/* yes */
 					memory_set_bankptr(bank+5, addr);
@@ -424,12 +425,12 @@ static void nc_refresh_memory_bank_config(int bank)
 		break;
 	}
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
+	memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, read_handler);
 
 	if (write_handler)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,
+		memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM,
 			(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, write_handler);
 	}
 }
@@ -517,7 +518,7 @@ static TIMER_CALLBACK(dummy_timer_callback)
 	int inputport_10_state;
 	int changed_bits;
 
-    inputport_10_state = readinputport(10);
+    inputport_10_state = input_port_read(machine, "EXTRA");
 
 	changed_bits = inputport_10_state^previous_inputport_10_state;
 
@@ -570,7 +571,7 @@ static void nc_common_init_machine(running_machine *machine)
     nc_memory_config[2] = 0;
     nc_memory_config[3] = 0;
 
-	previous_inputport_10_state = readinputport(10);
+	previous_inputport_10_state = input_port_read(machine, "EXTRA");
 
     /* setup reset state ints are masked */
     nc_irq_mask = 0;
@@ -681,6 +682,8 @@ static READ8_HANDLER(nc_irq_status_r)
 
 static READ8_HANDLER(nc_key_data_in_r)
 {
+	char port[6];
+
 	if (offset==9)
 	{
 		/* reading 0x0b9 will clear int and re-start scan procedure! */
@@ -691,7 +694,8 @@ static READ8_HANDLER(nc_key_data_in_r)
 
 		nc_update_interrupts(machine);
 	}
-	return readinputport(offset);
+	sprintf(port, "LINE%d", offset);
+	return input_port_read(machine, port);
 }
 
 
@@ -1017,7 +1021,7 @@ static  READ8_HANDLER(nc100_card_battery_status_r)
 		nc_card_battery_status &=~(1<<7);
 	}
 
-	if (readinputport(10) & 0x02)
+	if (input_port_read(machine, "EXTRA") & 0x02)
 	{
 		/* card write enable */
 		nc_card_battery_status &=~(1<<6);
@@ -1083,7 +1087,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START(nc100)
 	/* 0 */
-	PORT_START
+	PORT_START_TAG("LINE0")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("LEFT SHIFT") PORT_CODE(KEYCODE_LSHIFT)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RIGHT SHIFT") PORT_CODE(KEYCODE_RSHIFT)
 	PORT_BIT (0x004, 0x00, IPT_UNUSED)
@@ -1093,7 +1097,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT (0x040, 0x00, IPT_UNUSED)
 	PORT_BIT (0x080, 0x00, IPT_UNUSED)
 	/* 1 */
-	PORT_START
+	PORT_START_TAG("LINE1")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("YELLOW/FUNCTION") PORT_CODE(KEYCODE_RALT)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CONTROL") PORT_CODE(KEYCODE_LCONTROL)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CONTROL") PORT_CODE(KEYCODE_RCONTROL)
@@ -1104,7 +1108,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("5 %") PORT_CODE(KEYCODE_5)
 	PORT_BIT (0x080, 0x00, IPT_UNUSED)
 	/* 2 */
-	PORT_START
+	PORT_START_TAG("LINE2")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ALT") PORT_CODE(KEYCODE_LALT)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SYMBOL") PORT_CODE(KEYCODE_HOME)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1)
@@ -1114,7 +1118,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT (0x040, 0x00, IPT_UNUSED)
 	PORT_BIT (0x080, 0x00, IPT_UNUSED)
 	/* 3 */
-	PORT_START
+	PORT_START_TAG("LINE3")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 \"") PORT_CODE(KEYCODE_2)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q)
@@ -1124,7 +1128,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("S") PORT_CODE(KEYCODE_S)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D)
 	/* 4 */
-	PORT_START
+	PORT_START_TAG("LINE4")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4 $") PORT_CODE(KEYCODE_4)
 	PORT_BIT (0x002, 0x00, IPT_UNUSED)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z)
@@ -1134,7 +1138,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("R") PORT_CODE(KEYCODE_R)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F)
 	/* 5 */
-	PORT_START
+	PORT_START_TAG("LINE5")
 	PORT_BIT (0x001, 0x00, IPT_UNUSED)
 	PORT_BIT (0x002, 0x00, IPT_UNUSED)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)
@@ -1144,7 +1148,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C)
 	/* 6 */
-	PORT_START
+	PORT_START_TAG("LINE6")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("6 ^") PORT_CODE(KEYCODE_6)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("DOWN/BLUE") PORT_CODE(KEYCODE_DOWN)
 	PORT_BIT (0x004, 0x00, IPT_UNUSED)
@@ -1154,7 +1158,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("H") PORT_CODE(KEYCODE_H)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N)
 	/* 7 */
-	PORT_START
+	PORT_START_TAG("LINE7")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("+ =") PORT_CODE(KEYCODE_EQUALS)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7 &") PORT_CODE(KEYCODE_7)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("/ |") PORT_CODE(KEYCODE_BACKSLASH)
@@ -1164,7 +1168,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("K") PORT_CODE(KEYCODE_K)
 	/* 8 */
-	PORT_START
+	PORT_START_TAG("LINE8")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("8 *") PORT_CODE(KEYCODE_8)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("- _") PORT_CODE(KEYCODE_MINUS)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("} ]") PORT_CODE(KEYCODE_CLOSEBRACE)
@@ -1174,7 +1178,7 @@ static INPUT_PORTS_START(nc100)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("J") PORT_CODE(KEYCODE_J)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA)
 	/* 9 */
-	PORT_START
+	PORT_START_TAG("LINE9")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0 )") PORT_CODE(KEYCODE_0)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9 (") PORT_CODE(KEYCODE_9)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("DEL") PORT_CODE(KEYCODE_BACKSPACE)
@@ -1186,7 +1190,7 @@ static INPUT_PORTS_START(nc100)
 
 	/* these are not part of the nc100 keyboard */
 	/* extra */
-	PORT_START
+	PORT_START_TAG("EXTRA")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON BUTTON") PORT_CODE(KEYCODE_END)
 	/* pcmcia memory card setting */
 	PORT_DIPNAME(0x002, 0x002, "PCMCIA Memory card write enable")
@@ -1349,7 +1353,7 @@ static MACHINE_RESET( nc200 )
 
     nc_common_init_machine(machine);
 
-    nec765_init(&nc200_nec765_interface, NEC765A);
+    nec765_init(&nc200_nec765_interface, NEC765A,NEC765_RDY_PIN_CONNECTED);
     /* double sided, 80 track drive */
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0), FLOPPY_DRIVE_DS_80);
 	//floppy_drive_set_index_pulse_callback(image_from_devtype_and_index(IO_FLOPPY, 0), nc200_floppy_drive_index_callback);
@@ -1428,7 +1432,7 @@ static  READ8_HANDLER(nc200_card_battery_status_r)
 		nc_card_battery_status&=~(1<<7);
 	}
 
-	if (readinputport(10) & 0x02)
+	if (input_port_read(machine, "EXTRA") & 0x02)
 	{
 		/* card write enable */
 		nc_card_battery_status &=~(1<<6);
@@ -1501,9 +1505,10 @@ static WRITE8_HANDLER(nc200_uart_control_w)
 static WRITE8_HANDLER(nc200_memory_card_wait_state_w)
 {
 	LOG_DEBUG(("nc200 memory card wait state: PC: %04x %02x\n",activecpu_get_pc(),data));
+#if 0
 	floppy_drive_set_motor_state(0,1);
 	floppy_drive_set_ready_state(0,1,1);
-
+#endif
 	nec765_set_tc_state((data & 0x01));
 }
 
@@ -1541,7 +1546,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START(nc200)
 	/* 0 */
-	PORT_START
+	PORT_START_TAG("LINE0")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("LEFT SHIFT") PORT_CODE(KEYCODE_LSHIFT)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RIGHT SHIFT") PORT_CODE(KEYCODE_RSHIFT)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4 $") PORT_CODE(KEYCODE_4)
@@ -1551,7 +1556,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT (0x040, 0x00, IPT_UNUSED)
 	PORT_BIT (0x080, 0x00, IPT_UNUSED)
 	/* 1 */
-	PORT_START
+	PORT_START_TAG("LINE1")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("YELLOW/FUNCTION") PORT_CODE(KEYCODE_RALT)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CONTROL") PORT_CODE(KEYCODE_LCONTROL)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("CONTROL") PORT_CODE(KEYCODE_RCONTROL)
@@ -1562,7 +1567,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT (0x040, 0x00, IPT_UNUSED)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9 (") PORT_CODE(KEYCODE_9)
 	/* 2 */
-	PORT_START
+	PORT_START_TAG("LINE2")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ALT") PORT_CODE(KEYCODE_LALT)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SYMBOL") PORT_CODE(KEYCODE_HOME)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1)
@@ -1572,7 +1577,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("6 ^") PORT_CODE(KEYCODE_6)
 	PORT_BIT (0x080, 0x00, IPT_UNUSED)
 	/* 3 */
-	PORT_START
+	PORT_START_TAG("LINE3")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 \"") PORT_CODE(KEYCODE_2)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q)
@@ -1582,7 +1587,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("S") PORT_CODE(KEYCODE_S)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("D") PORT_CODE(KEYCODE_D)
 	/* 4 */
-	PORT_START
+	PORT_START_TAG("LINE4")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("8 *") PORT_CODE(KEYCODE_8)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7 &") PORT_CODE(KEYCODE_7)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z)
@@ -1592,7 +1597,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("R") PORT_CODE(KEYCODE_R)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F)
 	/* 5 */
-	PORT_START
+	PORT_START_TAG("LINE5")
 	PORT_BIT (0x001, 0x00, IPT_UNUSED)
 	PORT_BIT (0x002, 0x00, IPT_UNUSED)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)
@@ -1602,7 +1607,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("C") PORT_CODE(KEYCODE_C)
 	/* 6 */
-	PORT_START
+	PORT_START_TAG("LINE6")
 	PORT_BIT (0x001, 0x00, IPT_UNUSED)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("DOWN/BLUE") PORT_CODE(KEYCODE_DOWN)
 	PORT_BIT (0x004, 0x00, IPT_UNUSED)
@@ -1612,7 +1617,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("H") PORT_CODE(KEYCODE_H)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N)
 	/* 7 */
-	PORT_START
+	PORT_START_TAG("LINE7")
 	PORT_BIT (0x001, 0x00, IPT_UNUSED)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("+ =") PORT_CODE(KEYCODE_EQUALS)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("/ |") PORT_CODE(KEYCODE_BACKSLASH)
@@ -1622,7 +1627,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("K") PORT_CODE(KEYCODE_K)
 	/* 8 */
-	PORT_START
+	PORT_START_TAG("LINE8")
 	PORT_BIT (0x001, 0x00, IPT_UNUSED)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("- _") PORT_CODE(KEYCODE_MINUS)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("} ]") PORT_CODE(KEYCODE_CLOSEBRACE)
@@ -1632,7 +1637,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("J") PORT_CODE(KEYCODE_J)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA)
 	/* 9 */
-	PORT_START
+	PORT_START_TAG("LINE9")
 	PORT_BIT (0x001, 0x00, IPT_UNUSED)
 	PORT_BIT(0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0 )") PORT_CODE(KEYCODE_0)
 	PORT_BIT(0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("DEL") PORT_CODE(KEYCODE_BACKSPACE)
@@ -1643,7 +1648,7 @@ static INPUT_PORTS_START(nc200)
 	PORT_BIT(0x080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(".") PORT_CODE(KEYCODE_STOP)
 
 	/* not part of the nc200 keyboard */
-	PORT_START
+	PORT_START_TAG("EXTRA")
 	PORT_BIT(0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ON BUTTON") PORT_CODE(KEYCODE_END)
 	/* pcmcia memory card setting */
 	PORT_DIPNAME(0x002, 0x002, "PCMCIA Memory card write enable")
@@ -1685,6 +1690,9 @@ static MACHINE_DRIVER_START( nc100 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 
@@ -1697,9 +1705,11 @@ static MACHINE_DRIVER_START( nc200 )
 	MDRV_MACHINE_RESET( nc200 )
 
 	/* video hardware */
+	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_SIZE(NC200_SCREEN_WIDTH, NC200_SCREEN_HEIGHT)
 	MDRV_SCREEN_VISIBLE_AREA(0, NC200_SCREEN_WIDTH-1, 0, NC200_SCREEN_HEIGHT-1)
 	MDRV_PALETTE_LENGTH(NC200_NUM_COLOURS)
+	MDRV_DEFAULT_LAYOUT(layout_nc200)
 MACHINE_DRIVER_END
 
 
@@ -1722,18 +1732,6 @@ ROM_START(nc200)
         ROM_LOAD("nc200.rom", 0x010000, 0x080000, CRC(bb8180e7) SHA1(fb5c93b0a3e199202c6a12548d2617f7a09bae47))
 ROM_END
 
-static void nc_common_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static void nc_common_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* cartslot */
@@ -1743,9 +1741,9 @@ static void nc_common_cartslot_getinfo(const mess_device_class *devclass, UINT32
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_nc_pcmcia_card; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_nc_pcmcia_card; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_nc_pcmcia_card; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(nc_pcmcia_card); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nc_pcmcia_card); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(nc_pcmcia_card); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "crd,card"); break;
@@ -1767,9 +1765,9 @@ static void nc_common_serial_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = serial_device_init; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_nc_serial; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = serial_device_unload; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(serial_device); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nc_serial); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
@@ -1777,7 +1775,6 @@ static void nc_common_serial_getinfo(const mess_device_class *devclass, UINT32 s
 }
 
 SYSTEM_CONFIG_START(nc_common)
-	CONFIG_DEVICE(nc_common_printer_getinfo)
 	CONFIG_DEVICE(nc_common_cartslot_getinfo)
 	CONFIG_DEVICE(nc_common_serial_getinfo)
 SYSTEM_CONFIG_END

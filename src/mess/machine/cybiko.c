@@ -79,29 +79,29 @@ static void cybiko_rs232_reset( void);
 // DRIVER INIT & EXIT //
 ////////////////////////
 
-static void init_ram_handler( offs_t start, offs_t size, offs_t mirror)
+static void init_ram_handler(running_machine *machine, offs_t start, offs_t size, offs_t mirror)
 {
-	memory_install_read_handler( 0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, mirror - size, STATIC_BANK1);
-	memory_install_write_handler( 0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, mirror - size, STATIC_BANK1);
+	memory_install_read_handler(machine, 0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, mirror - size, STATIC_BANK1);
+	memory_install_write_handler(machine, 0, ADDRESS_SPACE_PROGRAM, start, start + size - 1, 0, mirror - size, STATIC_BANK1);
 	memory_set_bankptr( 1, mess_ram);
 }
 
 DRIVER_INIT( cybikov1 )
 {
 	_logerror( 0, ("init_cybikov1\n"));
-	init_ram_handler( 0x200000, mess_ram_size, 0x200000);
+	init_ram_handler(machine, 0x200000, mess_ram_size, 0x200000);
 }
 
 DRIVER_INIT( cybikov2 )
 {
 	_logerror( 0, ("init_cybikov2\n"));
-	init_ram_handler( 0x200000, mess_ram_size, 0x200000);
+	init_ram_handler(machine, 0x200000, mess_ram_size, 0x200000);
 }
 
 DRIVER_INIT( cybikoxt )
 {
 	_logerror( 0, ("init_cybikoxt\n"));
-	init_ram_handler( 0x400000, mess_ram_size, 0x200000);
+	init_ram_handler(machine, 0x400000, mess_ram_size, 0x200000);
 }
 
 ////////////////////
@@ -403,15 +403,15 @@ static int cybiko_rs232_rx_queue( void)
 READ16_HANDLER( cybiko_lcd_r )
 {
 	UINT16 data = 0;
-	if ACCESSING_MSB16 data = data | (hd66421_reg_idx_r() << 8);
-	if ACCESSING_LSB16 data = data | (hd66421_reg_dat_r() << 0);
+	if ACCESSING_BITS_8_15 data = data | (hd66421_reg_idx_r() << 8);
+	if ACCESSING_BITS_0_7 data = data | (hd66421_reg_dat_r() << 0);
 	return data;
 }
 
 WRITE16_HANDLER( cybiko_lcd_w )
 {
-	if ACCESSING_MSB16 hd66421_reg_idx_w( (data >> 8) & 0xFF);
-	if ACCESSING_LSB16 hd66421_reg_dat_w( (data >> 0) & 0xFF);
+	if ACCESSING_BITS_8_15 hd66421_reg_idx_w( (data >> 8) & 0xFF);
+	if ACCESSING_BITS_0_7 hd66421_reg_dat_w( (data >> 0) & 0xFF);
 }
 
 static READ8_HANDLER( cybiko_key_r_byte )
@@ -422,7 +422,7 @@ static READ8_HANDLER( cybiko_key_r_byte )
 	// A11
 	if (!(offset & (1 << 11))) data &= 0xFE;
 	// A1 .. A9
-	for (i=1;i<10;i++) if (!(offset & (1 << i))) data &= readinputport( i - 1);
+	for (i=1;i<10;i++) if (!(offset & (1 << i))) data &= input_port_read_indexed(machine,  i - 1);
 	// A0
 	if (!(offset & (1 <<  0))) data |= 0xFF;
 	//
@@ -433,8 +433,8 @@ READ16_HANDLER( cybiko_key_r )
 {
 	UINT16 data = 0;
 	_logerror( 2, ("cybiko_key_r (%08X/%04X)\n", offset, mem_mask));
-	if ACCESSING_MSB16 data = data | (cybiko_key_r_byte(machine, offset * 2 + 0) << 8);
-	if ACCESSING_LSB16 data = data | (cybiko_key_r_byte(machine, offset * 2 + 1) << 0);
+	if ACCESSING_BITS_8_15 data = data | (cybiko_key_r_byte(machine, offset * 2 + 0) << 8);
+	if ACCESSING_BITS_0_7 data = data | (cybiko_key_r_byte(machine, offset * 2 + 1) << 0);
 	_logerror( 2, ("%04X\n", data));
 	return data;
 }
@@ -448,7 +448,7 @@ static READ8_HANDLER( cybiko_io_reg_r )
 		// keyboard
 		case H8S_IO_PORT1 :
 		{
-			//if (readinputport(0) & 0x02) data = data | 0x08; else data = data & (~0x08); // "esc" key
+			//if (input_port_read_indexed(machine, 0) & 0x02) data = data | 0x08; else data = data & (~0x08); // "esc" key
 			data = data | 0x08;
 		}
 		break;
@@ -562,8 +562,8 @@ WRITE8_HANDLER( cybikoxt_io_reg_w )
 // 20/00, 23/08, 27/01, 2F/08, 2C/02, 2B/08, 28/01, 37/08, 34/04, 33/08, 30/03, 04/80, 05/02, 1B/6C, 00/C8
 WRITE16_HANDLER( cybiko_unk1_w )
 {
-	if ACCESSING_MSB16 logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 0, (data >> 8) & 0xFF);
-	if ACCESSING_LSB16 logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 1, (data >> 0) & 0xFF);
+	if ACCESSING_BITS_8_15 logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 0, (data >> 8) & 0xFF);
+	if ACCESSING_BITS_0_7 logerror( "[%08X] <- %02X\n", 0x200000 + offset * 2 + 1, (data >> 0) & 0xFF);
 }
 
 READ16_HANDLER( cybiko_unk2_r )

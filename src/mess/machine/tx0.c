@@ -21,7 +21,7 @@ static TIMER_CALLBACK(dis_callback);
 /* tape reader registers */
 typedef struct tape_reader_t
 {
-	mess_image *fd;	/* file descriptor of tape image */
+	const device_config *fd;	/* file descriptor of tape image */
 
 	int motor_on;	/* 1-bit reader motor on */
 
@@ -37,7 +37,7 @@ static tape_reader_t tape_reader;
 /* tape puncher registers */
 typedef struct tape_puncher_t
 {
-	mess_image *fd;	/* file descriptor of tape image */
+	const device_config *fd;	/* file descriptor of tape image */
 
 	emu_timer *timer;	/* timer to generate completion pulses */
 } tape_puncher_t;
@@ -48,7 +48,7 @@ static tape_puncher_t tape_puncher;
 /* typewriter registers */
 typedef struct typewriter_t
 {
-	mess_image *fd;	/* file descriptor of output image */
+	const device_config *fd;	/* file descriptor of output image */
 
 	emu_timer *prt_timer;/* timer to generate completion pulses */
 } typewriter_t;
@@ -63,7 +63,7 @@ static emu_timer *dis_timer;
 /* magnetic tape unit registers */
 typedef struct magtape_t
 {
-	mess_image *img;		/* image descriptor */
+	const device_config *img;		/* image descriptor */
 
 	enum
 	{
@@ -180,8 +180,7 @@ MACHINE_START( tx0 )
 	perforated tape handling
 */
 
-void tx0_tape_get_open_mode(const struct IODevice *dev, int id,
-	unsigned int *readable, unsigned int *writeable, unsigned int *creatable)
+void tx0_tape_get_open_mode(int id,	unsigned int *readable, unsigned int *writeable, unsigned int *creatable)
 {
 	/* unit 0 is read-only, unit 1 is write-only */
 	if (id)
@@ -199,9 +198,8 @@ void tx0_tape_get_open_mode(const struct IODevice *dev, int id,
 }
 
 
-DEVICE_INIT( tx0_tape )
+DEVICE_START( tx0_tape )
 {
-	return INIT_PASS;
 }
 
 
@@ -210,7 +208,7 @@ DEVICE_INIT( tx0_tape )
 
 	unit 0 is reader (read-only), unit 1 is puncher (write-only)
 */
-DEVICE_LOAD( tx0_tape )
+DEVICE_IMAGE_LOAD( tx0_tape )
 {
 	int id = image_index_in_device(image);
 
@@ -250,7 +248,7 @@ DEVICE_LOAD( tx0_tape )
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD( tx0_tape )
+DEVICE_IMAGE_UNLOAD( tx0_tape )
 {
 	int id = image_index_in_device(image);
 
@@ -427,7 +425,7 @@ void tx0_io_p7h(void)
 /*
 	Open a file for typewriter output
 */
-DEVICE_LOAD(tx0_typewriter)
+DEVICE_IMAGE_LOAD(tx0_typewriter)
 {
 	/* open file */
 	typewriter.fd = image;
@@ -435,7 +433,7 @@ DEVICE_LOAD(tx0_typewriter)
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD(tx0_typewriter)
+DEVICE_IMAGE_UNLOAD(tx0_typewriter)
 {
 	typewriter.fd = NULL;
 }
@@ -556,17 +554,15 @@ static void schedule_unselect(void)
 	timer_adjust_oneshot(magtape.timer, delay, 0);
 }
 
-DEVICE_INIT( tx0_magtape )
+DEVICE_START( tx0_magtape )
 {
-	magtape.img = image;
-
-	return INIT_PASS;
+	magtape.img = device;
 }
 
 /*
 	Open a magnetic tape image
 */
-DEVICE_LOAD( tx0_magtape )
+DEVICE_IMAGE_LOAD( tx0_magtape )
 {
 	magtape.img = image;
 
@@ -585,7 +581,7 @@ DEVICE_LOAD( tx0_magtape )
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD( tx0_magtape )
+DEVICE_IMAGE_UNLOAD( tx0_magtape )
 {
 	magtape.img = NULL;
 
@@ -1124,7 +1120,7 @@ static void tx0_keyboard(running_machine *machine)
 
 
 	for (i=0; i<4; i++)
-		typewriter_keys[i] = readinputport(tx0_typewriter + i);
+		typewriter_keys[i] = input_port_read_indexed(machine, tx0_typewriter + i);
 
 	for (i=0; i<4; i++)
 	{
@@ -1166,7 +1162,7 @@ INTERRUPT_GEN( tx0_interrupt )
 
 
 	/* read new state of control keys */
-	control_keys = readinputport(tx0_control_switches);
+	control_keys = input_port_read_indexed(machine, tx0_control_switches);
 
 	if (control_keys & tx0_control)
 	{
@@ -1235,7 +1231,7 @@ INTERRUPT_GEN( tx0_interrupt )
 
 
 		/* handle toggle switch register keys */
-		tsr_keys = (readinputport(tx0_tsr_switches_MSW) << 16) | readinputport(tx0_tsr_switches_LSW);
+		tsr_keys = (input_port_read_indexed(machine, tx0_tsr_switches_MSW) << 16) | input_port_read_indexed(machine, tx0_tsr_switches_LSW);
 
 		/* compute transitions */
 		tsr_transitions = tsr_keys & (~ old_tsr_keys);

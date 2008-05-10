@@ -15,7 +15,7 @@
 ULA ula;
 static emu_timer *electron_tape_timer;
 
-static mess_image *cassette_device_image( void ) {
+static const device_config *cassette_device_image( void ) {
 	return image_from_devtype_and_index( IO_CASSETTE, 0 );
 }
 
@@ -100,7 +100,7 @@ static READ8_HANDLER( electron_read_keyboard ) {
 	//logerror( "PC=%04x: keyboard read from paged rom area, address: %04x", activecpu_get_pc(), offset );
 	for( i = 0; i < 14; i++ ) {
 		if ( ! ( offset & 1 ) ) {
-			data |= readinputport(i) & 0x0f;
+			data |= input_port_read_indexed(machine, i) & 0x0f;
 		}
 		offset = offset >> 1;
 	}
@@ -173,9 +173,9 @@ WRITE8_HANDLER( electron_ula_w ) {
 			ula.rompage = data & 0x0f;
 			if ( ula.rompage == 8 || ula.rompage == 9 ) {
 				ula.rompage = 8;
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, electron_read_keyboard );
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, electron_read_keyboard );
 			} else {
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2 );
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2 );
 			}
 			memory_set_bank(2, ula.rompage);
 		}

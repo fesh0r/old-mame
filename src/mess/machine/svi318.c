@@ -15,7 +15,7 @@
 #include "cpu/z80/z80.h"
 #include "video/tms9928a.h"
 #include "machine/8255ppi.h"
-#include "machine/uart8250.h"
+#include "machine/ins8250.h"
 #include "machine/wd17xx.h"
 #include "devices/basicdsk.h"
 #include "devices/printer.h"
@@ -26,9 +26,9 @@
 
 enum {
 	SVI_INTERNAL	= 0,
-	SVI_CART		= 1,
-	SVI_EXPRAM2		= 2,
-	SVI_EXPRAM3		= 3
+	SVI_CART    	= 1,
+	SVI_EXPRAM2 	= 2,
+	SVI_EXPRAM3 	= 3
 };
 
 typedef struct {
@@ -45,6 +45,8 @@ typedef struct {
 	UINT8	bankHigh1_read_only;
 	UINT8	*bankHigh2_ptr;
 	UINT8	bankHigh2_read_only;
+	/* keyboard */
+	UINT8	keyboard_row;
 	/* printer */
 	UINT8	prn_data;
 	UINT8	prn_strobe;
@@ -61,44 +63,40 @@ static UINT32 pcart_rom_size;
 
 static void svi318_set_banks (void);
 
+
 /* Serial ports */
 
-static void svi318_uart8250_interrupt(int nr, int state)
+static INS8250_INTERRUPT( svi318_ins8250_interrupt )
 {
 	if (svi.bankLow != SVI_CART) {
-		cpunum_set_input_line(Machine, 0, 0, (state ? HOLD_LINE : CLEAR_LINE));
+		cpunum_set_input_line(device->machine, 0, 0, (state ? HOLD_LINE : CLEAR_LINE));
 	}
 }
 
-static void svi318_com_refresh_connected(int serial_port_id)
+static INS8250_REFRESH_CONNECT( svi318_com_refresh_connected )
 {
-	switch (serial_port_id)
-	{
-	case 0:	/* Motorola MC14412 modem */
-		uart8250_handshake_in(0, UART8250_HANDSHAKE_IN_CTS|UART8250_HANDSHAKE_IN_DSR|UART8250_INPUTS_RING_INDICATOR|UART8250_INPUTS_DATA_CARRIER_DETECT);
-		break;
-	}
+	/* Motorola MC14412 modem */
+	ins8250_handshake_in(device, UART8250_HANDSHAKE_IN_CTS|UART8250_HANDSHAKE_IN_DSR|UART8250_INPUTS_RING_INDICATOR|UART8250_INPUTS_DATA_CARRIER_DETECT);
 }
 
-static const uart8250_interface svi318_uart8250_interface[2]=
+const ins8250_interface svi318_ins8250_interface[2]=
 {
 	{
-		TYPE8250,
 		1000000,
-		svi318_uart8250_interrupt,
+		svi318_ins8250_interrupt,
 		NULL,
 		NULL,
 		svi318_com_refresh_connected
 	},
 	{
-		TYPE8250,
 		3072000,
-		svi318_uart8250_interrupt,
+		svi318_ins8250_interrupt,
 		NULL,
 		NULL,
 		NULL
 	}
 };
+
 
 /* Cartridge */
 
@@ -111,15 +109,13 @@ static int svi318_verify_cart (UINT8 magic[2])
 		return IMAGE_VERIFY_FAIL;
 }
 
-DEVICE_INIT( svi318_cart )
+DEVICE_START( svi318_cart )
 {
 	pcart = NULL;
 	pcart_rom_size = 0;
-
-	return INIT_PASS;
 }
 
-DEVICE_LOAD( svi318_cart )
+DEVICE_IMAGE_LOAD( svi318_cart )
 {
 	UINT8 *p;
 	UINT32 size;
@@ -147,7 +143,7 @@ DEVICE_LOAD( svi318_cart )
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD( svi318_cart )
+DEVICE_IMAGE_UNLOAD( svi318_cart )
 {
 	pcart = NULL;
 	pcart_rom_size = 0;
@@ -176,7 +172,7 @@ static READ8_HANDLER ( svi318_ppi_port_a_r )
 		data |= 0x80;
 	if (!svi318_cassette_present(0))
 		data |= 0x40;
-	data |= readinputport(12) & 0x30;
+	data |= input_port_read_indexed(machine, 12) & 0x30;
 
 	return data;
 }
@@ -198,13 +194,13 @@ static  READ8_HANDLER ( svi318_ppi_port_b_r )
 {
 	int row;
 
-	row = ppi8255_peek (0, 2) & 0x0f;
+	row = svi.keyboard_row;
 	if (row <= 10)
 	{
 		if (row == 6)
-			return readinputport(row) & readinputport(14);
+			return input_port_read_indexed(machine, row) & input_port_read_indexed(machine, 14);
 		else
-			return readinputport(row);
+			return input_port_read_indexed(machine, row);
 	}
 	return 0xff;
 }
@@ -242,30 +238,36 @@ static WRITE8_HANDLER ( svi318_ppi_port_c_w )
 
 	/* cassette signal write */
 	cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), (data & 0x20) ? -1.0 : +1.0);
+
+	svi.keyboard_row = data & 0x0F;
 }
 
-static const ppi8255_interface svi318_ppi8255_interface =
+const ppi8255_interface svi318_ppi8255_interface =
 {
-	1,
-	{svi318_ppi_port_a_r},
-	{svi318_ppi_port_b_r},
-	{NULL},
-	{NULL},
-	{NULL},
-	{svi318_ppi_port_c_w}
+	svi318_ppi_port_a_r,
+	svi318_ppi_port_b_r,
+	NULL,
+	NULL,
+	NULL,
+	svi318_ppi_port_c_w
 };
 
-READ8_HANDLER( svi318_ppi_r )
+READ8_DEVICE_HANDLER( svi318_ppi_r )
 {
-	return ppi8255_0_r(machine, offset);
+	return ppi8255_r(device, offset);
 }
 
-WRITE8_HANDLER( svi318_ppi_w )
+WRITE8_DEVICE_HANDLER( svi318_ppi_w )
 {
-	ppi8255_0_w(machine, offset + 2, data);
+	ppi8255_w(device, offset + 2, data);
 }
 
 /* Printer port */
+
+static const device_config *printer_device(running_machine *machine)
+{
+	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
+}
 
 static WRITE8_HANDLER( svi318_printer_w )
 {
@@ -274,7 +276,7 @@ static WRITE8_HANDLER( svi318_printer_w )
 	else
 	{
 		if ( (svi.prn_strobe & 1) && !(data & 1) )
-			printer_output(image_from_devtype_and_index(IO_PRINTER, 0), svi.prn_data);
+			printer_output(printer_device(machine), svi.prn_data);
 
 		svi.prn_strobe = data;
 	}
@@ -282,10 +284,7 @@ static WRITE8_HANDLER( svi318_printer_w )
 
 static READ8_HANDLER( svi318_printer_r )
 {
-	if (printer_status(image_from_devtype_and_index(IO_PRINTER, 0), 0) )
-		return 0xfe;
-
-	return 0xff;
+	return printer_is_ready(printer_device(machine)) ? 0xfe:0xff;		/* 0xfe if printer is ready to work */
 }
 
 /* PSG */
@@ -305,7 +304,7 @@ static READ8_HANDLER( svi318_printer_r )
 
 READ8_HANDLER( svi318_psg_port_a_r )
 {
-	return readinputport (11);
+	return input_port_read_indexed(machine, 11);
 }
 
 /*
@@ -380,7 +379,7 @@ static WRITE8_HANDLER( svi318_fdc_drive_motor_w )
 
 static WRITE8_HANDLER( svi318_fdc_density_side_w )
 {
-	mess_image *image;
+	const device_config *image;
 
 	wd17xx_set_density(data & 0x01 ? DEN_FM_LO:DEN_MFM_LO);
 
@@ -415,7 +414,7 @@ static unsigned long svi318_calcoffset(UINT8 t, UINT8 h, UINT8 s,
 	return o;
 }
 
-DEVICE_LOAD( svi318_floppy )
+DEVICE_IMAGE_LOAD( svi318_floppy )
 {
 	int size;
 	int dsktype;
@@ -450,9 +449,8 @@ DEVICE_LOAD( svi318_floppy )
 		return INIT_FAIL;
 
 	basicdsk_set_geometry(image, 40, svi318_fdc.heads[id], 17, 256, 1, 0, FALSE);
-	if (dsktype == 0) {
-		basicdsk_set_calcoffset(image, svi318_calcoffset);
-	}
+
+	if (dsktype == 0) basicdsk_set_calcoffset(image, svi318_calcoffset);
 
 	return INIT_PASS;
 }
@@ -589,7 +587,6 @@ DRIVER_INIT( svi318 )
 	}
 
 	cpunum_set_input_line_vector (0, 0, 0xff);
-	ppi8255_init (&svi318_ppi8255_interface);
 
 	/* memory */
 	svi.empty_bank = auto_malloc (0x8000);
@@ -624,13 +621,6 @@ DRIVER_INIT( svi318 )
 		}
 		cpunum_set_info_ptr(0, CPUINFO_PTR_Z80_CYCLE_TABLE + z80_cycle_table[i], (void*)table);
 	}
-
-	/* floppy */
-	wd17xx_init(machine, WD_TYPE_179X, svi_fdc_callback, NULL);
-
-	/* serial */
-	uart8250_init(0, svi318_uart8250_interface);
-	uart8250_init(1, svi318_uart8250_interface+1);
 }
 
 static const TMS9928a_interface svi318_tms9928a_interface =
@@ -654,11 +644,13 @@ static const TMS9928a_interface svi318_tms9929a_interface =
 MACHINE_START( svi318_ntsc )
 {
 	TMS9928A_configure(&svi318_tms9928a_interface);
+	wd17xx_init(machine, WD_TYPE_179X, svi_fdc_callback, NULL);
 }
 
 MACHINE_START( svi318_pal )
 {
 	TMS9928A_configure(&svi318_tms9929a_interface);
+	wd17xx_init(machine, WD_TYPE_179X, svi_fdc_callback, NULL);
 }
 
 MACHINE_RESET( svi318 )
@@ -666,23 +658,17 @@ MACHINE_RESET( svi318 )
 	/* video stuff */
 	TMS9928A_reset();
 
-	/* PPI */
-	ppi8255_0_w(machine, 3, 0x92);
-
 	svi.bank_switch = 0xff;
 	svi318_set_banks();
 
 	wd17xx_reset();
-
-	uart8250_reset(0);
-	uart8250_reset(1);
 }
 
 INTERRUPT_GEN( svi318_interrupt )
 {
 	int set;
 
-	set = readinputport (13);
+	set = input_port_read_indexed(machine, 13);
 	TMS9928A_set_spriteslimit (set & 0x20);
 	TMS9928A_interrupt();
 }
@@ -842,7 +828,7 @@ READ8_HANDLER( svi318_io_ext_r )
 	case 0x12:
 		data = svi318_printer_r(machine, 0);
 		break;
-/* some UART status is not working
+
 	case 0x20:
 	case 0x21:
 	case 0x22:
@@ -851,9 +837,9 @@ READ8_HANDLER( svi318_io_ext_r )
 	case 0x25:
 	case 0x26:
 	case 0x27:
-		data = uart8250_0_r(machine, offset & 7);
+		data = ins8250_r(device_list_find_by_tag( machine->config->devicelist, INS8250, "ins8250_0" ), offset & 7);
 		break;
-*/
+
 	case 0x28:
 	case 0x29:
 	case 0x2A:
@@ -862,8 +848,9 @@ READ8_HANDLER( svi318_io_ext_r )
 	case 0x2D:
 	case 0x2E:
 	case 0x2F:
-		data = uart8250_1_r(machine, offset & 7);
+		data = ins8250_r(device_list_find_by_tag( machine->config->devicelist, INS8250, "ins8250_1" ), offset & 7);
 		break;
+
 	case 0x30:
 		data = wd17xx_status_r(machine, 0);
 		break;
@@ -900,6 +887,7 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x11:
 		svi318_printer_w(machine, offset & 1, data);
 		break;
+
 	case 0x20:
 	case 0x21:
 	case 0x22:
@@ -908,8 +896,9 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x25:
 	case 0x26:
 	case 0x27:
-		uart8250_0_w(machine, offset & 7, data);
+		ins8250_w(device_list_find_by_tag( machine->config->devicelist, INS8250, "ins8250_0" ), offset & 7, data);
 		break;
+
 	case 0x28:
 	case 0x29:
 	case 0x2A:
@@ -918,8 +907,9 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x2D:
 	case 0x2E:
 	case 0x2F:
-		uart8250_1_w(machine, offset & 7, data);
+		ins8250_w(device_list_find_by_tag( machine->config->devicelist, INS8250, "ins8250_1" ), offset & 7, data);
 		break;
+
 	case 0x30:
 		wd17xx_command_w(machine, 0, data);
 		break;
@@ -938,6 +928,7 @@ WRITE8_HANDLER( svi318_io_ext_w )
 	case 0x38:
 		svi318_fdc_density_side_w(machine, 0, data);
 		break;
+
 	case 0x50: {
 		device_config *devconf = (device_config *) device_list_find_by_tag(machine->config->devicelist, MC6845, "crtc");
 		mc6845_address_w(devconf, 0, data);
@@ -948,6 +939,7 @@ WRITE8_HANDLER( svi318_io_ext_w )
 		mc6845_register_w(devconf, 0, data);
 		}
 		break;
+
 	case 0x58:
 		svi806_ram_enable_w(machine, 0, data);
 		break;

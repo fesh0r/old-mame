@@ -94,7 +94,7 @@ Not emulated:
 
 static READ8_HANDLER (trs80_wd179x_r)
 {
-	if (readinputport(0) & 0x80)
+	if (input_port_read(machine, "CONFIG") & 0x80)
 	{
 		return wd17xx_status_r(machine, offset);
 	}
@@ -149,12 +149,20 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( io_model3, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80_irq_status_r, trs80_irq_mask_w)
-	AM_RANGE(0xe4, 0xe4)	AM_WRITE(trs80_motor_w)
+	/* the ports marked NOP are not emulated yet */
+//	AM_RANGE(0xe0, 0xe3) AM_READWRITE(trs80_irq_status_r, trs80_irq_mask_w)	// needs to be fixed because it breaks the keyboard
+	AM_RANGE(0xe4, 0xe4) AM_READWRITE(SMH_NOP,trs80_motor_w)
+	AM_RANGE(0xe8, 0xe8) AM_NOP
+	AM_RANGE(0xe9, 0xe9) AM_WRITENOP
+	AM_RANGE(0xea, 0xea) AM_NOP
+	AM_RANGE(0xeb, 0xeb) AM_NOP
+	AM_RANGE(0xec, 0xec) AM_WRITENOP
 	AM_RANGE(0xf0, 0xf0) AM_READWRITE(trs80_wd179x_r, wd17xx_command_w)
 	AM_RANGE(0xf1, 0xf1) AM_READWRITE(wd17xx_track_r, wd17xx_track_w)
 	AM_RANGE(0xf2, 0xf2) AM_READWRITE(wd17xx_sector_r, wd17xx_sector_w)
 	AM_RANGE(0xf3, 0xf3) AM_READWRITE(wd17xx_data_r, wd17xx_data_w)
+	AM_RANGE(0xf4, 0xf4) AM_WRITENOP
+	AM_RANGE(0xf8, 0xf8) AM_WRITENOP
 	AM_RANGE(0xff, 0xff) AM_READWRITE(trs80_port_ff_r, trs80_port_ff_w)
 ADDRESS_MAP_END
 
@@ -186,8 +194,8 @@ NB: row 7 contains some originally unused bits
 ***************************************************************************/
 
 static INPUT_PORTS_START( trs80 )
-	PORT_START /* IN0 */
-	PORT_CONFNAME(	  0x80, 0x80,	"Floppy Disc Drives")
+	PORT_START_TAG("CONFIG") /* IN0 */
+	PORT_CONFNAME(	  0x80, 0x00,	"Floppy Disc Drives")
 	PORT_CONFSETTING(	0x00, DEF_STR( Off ) )
 	PORT_CONFSETTING(	0x80, DEF_STR( On ) )
 	PORT_CONFNAME(	  0x40, 0x40,	"Video RAM") PORT_CODE(KEYCODE_F1)
@@ -201,7 +209,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(	  0x02, 0x00, IPT_KEYBOARD) PORT_NAME("Tape stop") PORT_CODE(KEYCODE_F6)
 	PORT_BIT(	  0x01, 0x00, IPT_KEYBOARD) PORT_NAME("Tape rewind") PORT_CODE(KEYCODE_F7)
 
-	PORT_START /* KEY ROW 0 */
+	PORT_START_TAG("LINE0") /* KEY ROW 0 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("0.0: @") PORT_CODE(KEYCODE_ASTERISK)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("0.1: A  a") PORT_CODE(KEYCODE_A)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("0.2: B  b") PORT_CODE(KEYCODE_B)
@@ -211,7 +219,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("0.6: F  f") PORT_CODE(KEYCODE_F)
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_NAME("0.7: G  g") PORT_CODE(KEYCODE_G)
 
-	PORT_START /* KEY ROW 1 */
+	PORT_START_TAG("LINE1") /* KEY ROW 1 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("1.0: H  h") PORT_CODE(KEYCODE_H)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("1.1: I  i") PORT_CODE(KEYCODE_I)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("1.2: J  j") PORT_CODE(KEYCODE_J)
@@ -221,7 +229,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("1.6: N  n") PORT_CODE(KEYCODE_N)
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_NAME("1.7: O  o") PORT_CODE(KEYCODE_O)
 
-	PORT_START /* KEY ROW 2 */
+	PORT_START_TAG("LINE2") /* KEY ROW 2 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("2.0: P  p") PORT_CODE(KEYCODE_P)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("2.1: Q  q") PORT_CODE(KEYCODE_Q)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("2.2: R  r") PORT_CODE(KEYCODE_R)
@@ -231,7 +239,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("2.6: V  v") PORT_CODE(KEYCODE_V)
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_NAME("2.7: W  w") PORT_CODE(KEYCODE_W)
 
-	PORT_START /* KEY ROW 3 */
+	PORT_START_TAG("LINE3") /* KEY ROW 3 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("3.0: X  x") PORT_CODE(KEYCODE_X)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("3.1: Y  y") PORT_CODE(KEYCODE_Y)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("3.2: Z  z") PORT_CODE(KEYCODE_Z)
@@ -241,7 +249,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("3.6: ^  ~") PORT_CODE(KEYCODE_TILDE)
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_NAME("3.7: _") PORT_CODE(KEYCODE_EQUALS)
 
-	PORT_START /* KEY ROW 4 */
+	PORT_START_TAG("LINE4") /* KEY ROW 4 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("4.0: 0") PORT_CODE(KEYCODE_0)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("4.1: 1  !") PORT_CODE(KEYCODE_1)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("4.2: 2  \"") PORT_CODE(KEYCODE_2)
@@ -251,7 +259,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("4.6: 6  &") PORT_CODE(KEYCODE_6)
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_NAME("4.7: 7  '") PORT_CODE(KEYCODE_7)
 
-	PORT_START /* KEY ROW 5 */
+	PORT_START_TAG("LINE5") /* KEY ROW 5 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("5.0: 8  (") PORT_CODE(KEYCODE_8)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("5.1: 9  )") PORT_CODE(KEYCODE_9)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("5.2: :  *") PORT_CODE(KEYCODE_COLON)
@@ -261,7 +269,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("5.6: .  >") PORT_CODE(KEYCODE_STOP)
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_NAME("5.7: /  ?") PORT_CODE(KEYCODE_SLASH)
 
-	PORT_START /* KEY ROW 6 */
+	PORT_START_TAG("LINE6") /* KEY ROW 6 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("6.0: ENTER") PORT_CODE(KEYCODE_ENTER)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("6.1: CLEAR") PORT_CODE(KEYCODE_HOME)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("6.2: BREAK") PORT_CODE(KEYCODE_END)
@@ -273,7 +281,7 @@ static INPUT_PORTS_START( trs80 )
 	PORT_BIT(0x40, 0x00, IPT_KEYBOARD) PORT_NAME("6.6: RIGHT") PORT_CODE(KEYCODE_RIGHT)
 	PORT_BIT(0x80, 0x00, IPT_KEYBOARD) PORT_NAME("6.7: SPACE") PORT_CODE(KEYCODE_SPACE)
 
-	PORT_START /* KEY ROW 7 */
+	PORT_START_TAG("LINE7") /* KEY ROW 7 */
 	PORT_BIT(0x01, 0x00, IPT_KEYBOARD) PORT_NAME("7.0: SHIFT") PORT_CODE(KEYCODE_LSHIFT)
 	PORT_BIT(0x02, 0x00, IPT_KEYBOARD) PORT_NAME("7.1: (ALT)") PORT_CODE(KEYCODE_LALT)
 	PORT_BIT(0x04, 0x00, IPT_KEYBOARD) PORT_NAME("7.2: (PGUP)") PORT_CODE(KEYCODE_PGUP)
@@ -343,6 +351,9 @@ static MACHINE_DRIVER_START( level1 )
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_CONFIG(speaker_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* devices */
+	MDRV_QUICKLOAD_ADD(trs80_cmd, "cmd", 0.5)
 MACHINE_DRIVER_END
 
 
@@ -453,34 +464,15 @@ static void trs80_cassette_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_trs80_cas; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_trs80_cas; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(trs80_cas); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(trs80_cas); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
 	}
 }
 
-static void trs80_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cmd"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_trs80_cmd; break;
-
-		/* --- the following bits of info are returned as doubles --- */
-		case MESS_DEVINFO_FLOAT_QUICKLOAD_DELAY:				info->d = 0.5; break;
-
-		default:										quickload_device_getinfo(devclass, state, info); break;
-	}
-}
-
 SYSTEM_CONFIG_START(trs80)
-	CONFIG_DEVICE(trs80_quickload_getinfo)
 	CONFIG_DEVICE(trs80_cassette_getinfo)
 SYSTEM_CONFIG_END
 
@@ -494,7 +486,7 @@ static void trs8012_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_trs80_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(trs80_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -510,11 +502,11 @@ SYSTEM_CONFIG_END
 
 
 /*    YEAR  NAME      PARENT     COMPAT         MACHINE   INPUT  INIT  CONFIG   COMPANY  FULLNAME */
-COMP( 1977, trs80,    0,	 0,		level1,   trs80, trs80,    trs80,	"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0)
+COMP( 1977, trs80,    0,	     0,		level1,   trs80, trs80,    trs80,	"Tandy Radio Shack",  "TRS-80 Model I (Level I Basic)" , 0)
 COMP( 1978, trs80l2,  trs80,	 0,		model1,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (Radio Shack Level II Basic)" , 0)
 COMP( 1978, trs80l2a, trs80,	 0,		model1,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model I (R/S L2 Basic)" , 0)
 COMP( 1980, sys80,    trs80,	 0,		model1,   trs80, trs80,    trs8012,	"EACA Computers Ltd.","System-80" , 0)
 COMP( 1981, lnw80,    trs80,	 0,		model1,   trs80, lnw80,    trs8012,	"LNW Research","LNW-80", 0 )
-COMP( 1980, trs80m3,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", GAME_NOT_WORKING )
-COMP( 1980, trs80m4,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4", GAME_NOT_WORKING )
+COMP( 1980, trs80m3,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model III", 0 )
+COMP( 1980, trs80m4,  trs80,	 0,		model3,   trs80, trs80,    trs8012,	"Tandy Radio Shack",  "TRS-80 Model 4", 0 )
 

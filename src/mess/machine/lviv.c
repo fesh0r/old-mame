@@ -13,8 +13,8 @@
 #include "devices/cassette.h"
 #include "devices/snapquik.h"
 #include "cpu/i8085/i8085.h"
-#include "includes/lviv.h"
 #include "machine/8255ppi.h"
+#include "includes/lviv.h"
 #include "sound/speaker.h"
 
 
@@ -43,7 +43,7 @@ static void lviv_update_memory (void)
 
 static OPBASE_HANDLER(lviv_opbaseoverride)
 {
-	if (readinputport(12)&0x01)
+	if (input_port_read_indexed(machine, 12)&0x01)
 		mame_schedule_soft_reset(machine);
 	return address;
 }
@@ -63,7 +63,7 @@ static  READ8_HANDLER ( lviv_ppi_0_portc_r )
 	UINT8 data = lviv_ppi_port_outputs[0][2] & 0x0f;
 	if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0.038)
 		data |= 0x10;
-	if (lviv_ppi_port_outputs[0][0] & readinputport(13))
+	if (lviv_ppi_port_outputs[0][0] & input_port_read_indexed(machine, 13))
 		data |= 0x80;
 	return data;
 }
@@ -95,22 +95,22 @@ static  READ8_HANDLER ( lviv_ppi_1_porta_r )
 
 static  READ8_HANDLER ( lviv_ppi_1_portb_r )	/* keyboard reading */
 {
-	return	((lviv_ppi_port_outputs[1][0]&0x01) ? 0xff : readinputport(0)) &
-		((lviv_ppi_port_outputs[1][0]&0x02) ? 0xff : readinputport(1)) &
-		((lviv_ppi_port_outputs[1][0]&0x04) ? 0xff : readinputport(2)) &
-		((lviv_ppi_port_outputs[1][0]&0x08) ? 0xff : readinputport(3)) &
-		((lviv_ppi_port_outputs[1][0]&0x10) ? 0xff : readinputport(4)) &
-		((lviv_ppi_port_outputs[1][0]&0x20) ? 0xff : readinputport(5)) &
-		((lviv_ppi_port_outputs[1][0]&0x40) ? 0xff : readinputport(6)) &
-		((lviv_ppi_port_outputs[1][0]&0x80) ? 0xff : readinputport(7));
+	return	((lviv_ppi_port_outputs[1][0]&0x01) ? 0xff : input_port_read_indexed(machine, 0)) &
+		((lviv_ppi_port_outputs[1][0]&0x02) ? 0xff : input_port_read_indexed(machine, 1)) &
+		((lviv_ppi_port_outputs[1][0]&0x04) ? 0xff : input_port_read_indexed(machine, 2)) &
+		((lviv_ppi_port_outputs[1][0]&0x08) ? 0xff : input_port_read_indexed(machine, 3)) &
+		((lviv_ppi_port_outputs[1][0]&0x10) ? 0xff : input_port_read_indexed(machine, 4)) &
+		((lviv_ppi_port_outputs[1][0]&0x20) ? 0xff : input_port_read_indexed(machine, 5)) &
+		((lviv_ppi_port_outputs[1][0]&0x40) ? 0xff : input_port_read_indexed(machine, 6)) &
+		((lviv_ppi_port_outputs[1][0]&0x80) ? 0xff : input_port_read_indexed(machine, 7));
 }
 
 static  READ8_HANDLER ( lviv_ppi_1_portc_r )     /* keyboard reading */
 {
-	return	((lviv_ppi_port_outputs[1][2]&0x01) ? 0xff : readinputport(8))  &
-		((lviv_ppi_port_outputs[1][2]&0x02) ? 0xff : readinputport(9))  &
-		((lviv_ppi_port_outputs[1][2]&0x04) ? 0xff : readinputport(10)) &
-		((lviv_ppi_port_outputs[1][2]&0x08) ? 0xff : readinputport(11));
+	return	((lviv_ppi_port_outputs[1][2]&0x01) ? 0xff : input_port_read_indexed(machine, 8))  &
+		((lviv_ppi_port_outputs[1][2]&0x02) ? 0xff : input_port_read_indexed(machine, 9))  &
+		((lviv_ppi_port_outputs[1][2]&0x04) ? 0xff : input_port_read_indexed(machine, 10)) &
+		((lviv_ppi_port_outputs[1][2]&0x08) ? 0xff : input_port_read_indexed(machine, 11));
 }
 
 static WRITE8_HANDLER ( lviv_ppi_1_porta_w )	/* kayboard scaning */
@@ -141,11 +141,11 @@ static WRITE8_HANDLER ( lviv_ppi_1_portc_w )	/* kayboard scaning */
 		switch ((offset >> 4) & 0x3)
 		{
 		case 0:
-			return ppi8255_0_r(machine, offset & 3);
+			return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 3);
 			break;
 
 		case 1:
-			return ppi8255_1_r(machine, offset & 3);
+			return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3);
 			break;
 
 		case 2:
@@ -163,10 +163,10 @@ WRITE8_HANDLER ( lviv_io_w )
 	{
 		startup_mem_map = 0;
 
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK3);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xffff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK3);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xffff, 0, 0, SMH_UNMAP);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x4000);
@@ -178,11 +178,11 @@ WRITE8_HANDLER ( lviv_io_w )
 		switch ((offset >> 4) & 0x3)
 		{
 		case 0:
-			ppi8255_0_w(machine, offset & 3, data);
+			ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 3, data);
 			break;
 
 		case 1:
-			ppi8255_1_w(machine, offset & 3, data);
+			ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 3, data);
 			break;
 
 		case 2:
@@ -194,31 +194,38 @@ WRITE8_HANDLER ( lviv_io_w )
 }
 
 
-static const ppi8255_interface lviv_ppi8255_interface =
+const ppi8255_interface lviv_ppi8255_interface_0 =
 {
-	2,
-	{lviv_ppi_0_porta_r, lviv_ppi_1_porta_r},
-	{lviv_ppi_0_portb_r, lviv_ppi_1_portb_r},
-	{lviv_ppi_0_portc_r, lviv_ppi_1_portc_r},
-	{lviv_ppi_0_porta_w, lviv_ppi_1_porta_w},
-	{lviv_ppi_0_portb_w, lviv_ppi_1_portb_w},
-	{lviv_ppi_0_portc_w, lviv_ppi_1_portc_w}
+	lviv_ppi_0_porta_r,
+	lviv_ppi_0_portb_r,
+	lviv_ppi_0_portc_r,
+	lviv_ppi_0_porta_w,
+	lviv_ppi_0_portb_w,
+	lviv_ppi_0_portc_w
+};
+
+const ppi8255_interface lviv_ppi8255_interface_1 =
+{
+	lviv_ppi_1_porta_r,
+	lviv_ppi_1_portb_r,
+	lviv_ppi_1_portc_r,
+	lviv_ppi_1_porta_w,
+	lviv_ppi_1_portb_w,
+	lviv_ppi_1_portc_w
 };
 
 MACHINE_RESET( lviv )
 {
 	memory_set_opbase_handler(0, lviv_opbaseoverride);
 
-	ppi8255_init(&lviv_ppi8255_interface);
-
 	lviv_video_ram = mess_ram + 0xc000;
 
 	startup_mem_map = 1;
 
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_UNMAP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_UNMAP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xffff, 0, 0, SMH_UNMAP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_UNMAP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_UNMAP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC000, 0xffff, 0, 0, SMH_UNMAP);
 
 	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 	memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x010000);

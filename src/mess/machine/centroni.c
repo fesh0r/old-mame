@@ -5,6 +5,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "centroni.h"
 #include "devices/printer.h"
 
@@ -90,9 +91,34 @@ static TIMER_CALLBACK(centronics_timer_callback)
 	}
 }
 
+static const device_config *printer_device(running_machine *machine, int index)
+{
+	const char *tag;
+	switch(index)
+	{
+		case 0:	
+			tag = "printer";
+			break;
+		case 1:	
+			tag = "printer1";
+			break;
+		case 2:	
+			tag = "printer2";
+			break;
+		case 3:	
+			tag = "printer3";
+			break;
+		default:
+			fatalerror("\nInvalid centronics device: %X",index);
+			break;
+	}
+	return device_list_find_by_tag(machine->config->devicelist, PRINTER, tag);
+}
+
 void centronics_write_handshake(int nr, int data, int mask)
 {
 	CENTRONICS *This=cent+nr;
+	const device_config *device;
 
 	int neu=(data&mask)|(This->control&(~mask));
 
@@ -107,7 +133,9 @@ void centronics_write_handshake(int nr, int data, int mask)
 			timer_adjust_oneshot(This->timer, ATTOTIME_IN_USEC(5), nr);
 
 			/* output */
-			printer_output(image_from_devtype_and_index(IO_PRINTER, nr), This->data);
+			device = printer_device(Machine, nr);
+			if (device != NULL)
+				printer_output(device, This->data);
 		}
 
 	}
@@ -118,26 +146,27 @@ int centronics_read_handshake(int nr)
 {
 	CENTRONICS *This=cent+nr;
 	UINT8 data=0;
+	const device_config *device;
 
 	/* state of busy */
 	data |= (This->control & CENTRONICS_NOT_BUSY);
 
 	if (This->config->type == PRINTER_IBM)
-	{
 		data |= CENTRONICS_ONLINE;
-	}
 	else
 	{
 		if (This->control & CENTRONICS_SELECT)
-			data|=CENTRONICS_ONLINE;
+			data |= CENTRONICS_ONLINE;
 	}
+
 	data |= CENTRONICS_NO_ERROR;
-	if (!printer_status(image_from_devtype_and_index(IO_PRINTER, nr), 0))
+
+	device = printer_device(Machine, nr);
+	if ((device == NULL) || !printer_is_ready(device))
 		data |= CENTRONICS_NO_PAPER;
 
 	/* state of acknowledge */
-	data|=(This->control & CENTRONICS_ACKNOWLEDGE);
-
+	data |= (This->control & CENTRONICS_ACKNOWLEDGE);
 
 	return data;
 }

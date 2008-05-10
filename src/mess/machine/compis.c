@@ -93,6 +93,11 @@ static struct i186_state
 	struct mem_state	mem;
 } i186;
 
+static struct {
+	device_config	*pic8259_master;
+	device_config	*pic8259_slave;
+} compis_devices;
+
 /* Keyboard */
 static const UINT8 compis_keyb_codes[6][16] = {
 {0x39, 0x32, 0x29, 0x20, 0x17, 0x0e, 0x05, 0x56, 0x4d, 0x44, 0x08, 0x57, 0x59, 0x4e, 0x43, 0x3a},
@@ -198,24 +203,26 @@ void compis_irq_set(UINT8 irq)
 
 static void compis_osp_pic_irq(UINT8 irq)
 {
-	pic8259_set_irq_line(0, irq, 1);
-	pic8259_set_irq_line(0, irq, 0);
+	if ( compis_devices.pic8259_master ) {
+		pic8259_set_irq_line(compis_devices.pic8259_master, irq, 1);
+		pic8259_set_irq_line(compis_devices.pic8259_master, irq, 0);
+	}
 }
 
-READ16_HANDLER ( compis_osp_pic_r )
+READ16_DEVICE_HANDLER ( compis_osp_pic_r )
 {
-	return pic8259_0_r(machine, offset);
+	return pic8259_r(device, offset);
 }
 
-WRITE16_HANDLER ( compis_osp_pic_w )
+WRITE16_DEVICE_HANDLER ( compis_osp_pic_w )
 {
-	pic8259_0_w(machine, offset, data);
+	pic8259_w(device, offset, data);
 }
 
 /*-------------------------------------------------------------------------*/
 /*  Keyboard                                                               */
 /*-------------------------------------------------------------------------*/
-static void compis_keyb_update(void)
+static void compis_keyb_update(running_machine *machine)
 {
 	UINT8 key_code;
 	UINT8 key_status;
@@ -229,7 +236,7 @@ static void compis_keyb_update(void)
 
 	for (irow = 0; irow < 6; irow++)
 	{
-		data = readinputport(irow);
+		data = input_port_read_indexed(machine, irow);
 		if (data != 0)
 		{
 			ibit = 1;
@@ -291,7 +298,7 @@ static void compis_fdc_reset(void)
 static void compis_fdc_tc(int state)
 {
 	/* Terminal count if iSBX-218A has DMA enabled */
-  	if (readinputport(7))
+  	if (input_port_read_indexed(Machine, 7))
 	{
 		nec765_set_tc_state(state);
 	}
@@ -300,7 +307,7 @@ static void compis_fdc_tc(int state)
 static void compis_fdc_int(int state)
 {
 	/* No interrupt requests if iSBX-218A has DMA enabled */
-  	if (!readinputport(7) && state)
+  	if (!input_port_read_indexed(Machine, 7) && state)
 	{
 		compis_osp_pic_irq(COMPIS_IRQ_SBX0_INT1);
 	}
@@ -309,7 +316,7 @@ static void compis_fdc_int(int state)
 static void compis_fdc_dma_drq(int state, int read)
 {
 	/* DMA requst if iSBX-218A has DMA enabled */
-  	if (readinputport(7) && state)
+  	if (input_port_read_indexed(Machine, 7) && state)
 	{
 		//compis_dma_drq(state, read);
 	}
@@ -326,7 +333,7 @@ READ16_HANDLER (compis_fdc_dack_r)
 	UINT16 data;
 	data = 0xffff;
 	/* DMA acknowledge if iSBX-218A has DMA enabled */
-  	if (readinputport(7))
+  	if (input_port_read_indexed(machine, 7))
   	{
 		data = nec765_dack_r(machine, 0);
 	}
@@ -373,6 +380,11 @@ READ16_HANDLER (compis_fdc_r)
 /*  PPI 8255                                                               */
 /*-------------------------------------------------------------------------*/
 
+static const device_config *printer_device(running_machine *machine)
+{
+	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
+}
+
 /*-------------------------------------------------------------------------*/
 /* Bit 0: J7-2 Centronics D0           		                           */
 /* Bit 1: J7-3 Centronics D1           		                           */
@@ -402,10 +414,10 @@ static READ8_HANDLER ( compis_ppi_port_b_r )
 	UINT8 data;
 
 	/* DIP switch - Test mode */
-	data = readinputport(6);
+	data = input_port_read_indexed(machine, 6);
 
 	/* Centronics busy */
-	if (!printer_status(image_from_devtype_and_index(IO_PRINTER, 0), 0))
+	if (!printer_is_ready(printer_device(machine)))
 		data |= 0x20;
 
 	return 	data;
@@ -424,7 +436,7 @@ static WRITE8_HANDLER ( compis_ppi_port_c_w )
 {
 	/* Centronics Strobe */
 	if ((compis.printer.strobe) && !(data & 0x20))
-		printer_output(image_from_devtype_and_index(IO_PRINTER, 0), compis.printer.data);
+		printer_output(printer_device(machine), compis.printer.data);
 	compis.printer.strobe = ((data & 0x20)?1:0);
 
 	/* FDC Reset */
@@ -435,35 +447,32 @@ static WRITE8_HANDLER ( compis_ppi_port_c_w )
 	compis_fdc_tc((data & 0x80)?1:0);
 }
 
-static const ppi8255_interface compis_ppi_interface =
+const ppi8255_interface compis_ppi_interface =
 {
-    1,
-    {NULL},
-    {compis_ppi_port_b_r},
-    {NULL},
-    {compis_ppi_port_a_w},
-    {NULL},
-    {compis_ppi_port_c_w}
+    NULL,
+    compis_ppi_port_b_r,
+    NULL,
+    compis_ppi_port_a_w,
+    NULL,
+    compis_ppi_port_c_w
 };
 
-READ16_HANDLER ( compis_ppi_r )
+READ16_DEVICE_HANDLER ( compis_ppi_r )
 {
-	return ppi8255_0_r(machine, offset);
+	return ppi8255_r(device, offset);
 }
 
-WRITE16_HANDLER ( compis_ppi_w )
+WRITE16_DEVICE_HANDLER ( compis_ppi_w )
 {
-	ppi8255_0_w(machine, offset, data);
+	ppi8255_w(device, offset, data);
 }
 
 /*-------------------------------------------------------------------------*/
 /*  PIT 8253                                                               */
 /*-------------------------------------------------------------------------*/
 
-static const struct pit8253_config compis_pit_config[2] =
+const struct pit8253_config compis_pit8253_config =
 {
-{
-	TYPE8253,
 	{
 		/* Timer0 */
 		{4770000/4, NULL, NULL },
@@ -472,42 +481,42 @@ static const struct pit8253_config compis_pit_config[2] =
 		/* Timer2 */
 		{4770000/4, NULL, NULL }
 	}
-},
-{
-	TYPE8254,
-	{
-		/* Timer0 */
-		{4770000/4, NULL, NULL },
-		/* Timer1 */
-		{4770000/4, NULL, NULL },
-		/* Timer2 */
-		{4770000/4, NULL, NULL }
-	}
-}
 };
 
-READ16_HANDLER ( compis_pit_r )
+const struct pit8253_config compis_pit8254_config =
 {
-	return pit8253_0_r(machine, offset);
+	{
+		/* Timer0 */
+		{4770000/4, NULL, NULL },
+		/* Timer1 */
+		{4770000/4, NULL, NULL },
+		/* Timer2 */
+		{4770000/4, NULL, NULL }
+	}
+};
+
+READ16_DEVICE_HANDLER ( compis_pit_r )
+{
+	return pit8253_r(device, offset);
 }
 
-WRITE16_HANDLER ( compis_pit_w )
+WRITE16_DEVICE_HANDLER ( compis_pit_w )
 {
-	pit8253_0_w(machine, offset , data);
+	pit8253_w(device, offset , data);
 }
 
 /*-------------------------------------------------------------------------*/
 /*  OSP PIT 8254                                                           */
 /*-------------------------------------------------------------------------*/
 
-READ16_HANDLER ( compis_osp_pit_r )
+READ16_DEVICE_HANDLER ( compis_osp_pit_r )
 {
-	return pit8253_1_r(machine, offset);
+	return pit8253_r(device, offset);
 }
 
-WRITE16_HANDLER ( compis_osp_pit_w )
+WRITE16_DEVICE_HANDLER ( compis_osp_pit_w )
 {
-	pit8253_1_w(machine, offset, data);
+	pit8253_w(device, offset, data);
 }
 
 /*-------------------------------------------------------------------------*/
@@ -568,7 +577,7 @@ WRITE16_HANDLER ( compis_usart_w )
  *	80186 interrupt controller
  *
  *************************************/
-static int int_callback(int line)
+static IRQ_CALLBACK(int_callback)
 {
 	if (LOG_INTERRUPTS)
 		logerror("(%f) **** Acknowledged interrupt vector %02X\n", attotime_to_double(timer_get_time()), i186.intr.poll_status & 0x1f);
@@ -1047,7 +1056,7 @@ READ16_HANDLER( i186_internal_port_r )
 			if (LOG_PORTS)
             logerror("%05X:read 80186 interrupt poll\n", activecpu_get_pc());
 			if (i186.intr.poll_status & 0x8000)
-				int_callback(0);
+				int_callback(machine, 0);
 			return (i186.intr.poll_status >> shift) & 0xff;
 
 		case 0x13:
@@ -1498,14 +1507,14 @@ WRITE16_HANDLER( i186_internal_port_w )
 			temp = (data16 & 0x0fff) << 8;
 			if (data16 & 0x1000)
 			{
-				memory_install_read16_handler(2, ADDRESS_SPACE_PROGRAM, temp, temp + 0xff, 0, 0, i186_internal_port_r);
-				memory_install_write16_handler(2, ADDRESS_SPACE_PROGRAM, temp, temp + 0xff, 0, 0, i186_internal_port_w);
+				memory_install_read16_handler(machine, 2, ADDRESS_SPACE_PROGRAM, temp, temp + 0xff, 0, 0, i186_internal_port_r);
+				memory_install_write16_handler(machine, 2, ADDRESS_SPACE_PROGRAM, temp, temp + 0xff, 0, 0, i186_internal_port_w);
 			}
 			else
 			{
 				temp &= 0xffff;
-				memory_install_read16_handler(2, ADDRESS_SPACE_IO, temp, temp + 0xff, 0, 0, i186_internal_port_r);
-				memory_install_write16_handler(2, ADDRESS_SPACE_IO, temp, temp + 0xff, 0, 0, i186_internal_port_w);
+				memory_install_read16_handler(machine, 2, ADDRESS_SPACE_IO, temp, temp + 0xff, 0, 0, i186_internal_port_r);
+				memory_install_write16_handler(machine, 2, ADDRESS_SPACE_IO, temp, temp + 0xff, 0, 0, i186_internal_port_w);
 			}
 /*			popmessage("Sound CPU reset");*/
 			break;
@@ -1537,25 +1546,38 @@ static void compis_cpu_init(void)
 /* Name: compis                                                            */
 /* Desc: Driver - Init                                                     */
 /*-------------------------------------------------------------------------*/
-static void compis_pic_set_int_line(int which, int interrupt)
-{
-	switch(which)
-	{
-		case 0:
-			/* Master */
-			cpunum_set_input_line(Machine, 0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
-			break;
 
-		case 1:
-			/* Slave */
-			pic8259_set_irq_line(0, 2, interrupt);
-			break;
+/*************************************************************
+ *
+ * pic8259 configuration
+ *
+ *************************************************************/
+ 
+static PIC8259_SET_INT_LINE( compis_pic8259_master_set_int_line ) {
+	cpunum_set_input_line(device->machine, 0, 0, interrupt ? HOLD_LINE : CLEAR_LINE);
+}
+
+
+static PIC8259_SET_INT_LINE( compis_pic8259_slave_set_int_line ) {
+	if ( compis_devices.pic8259_master ) {
+		pic8259_set_irq_line( compis_devices.pic8259_master, 2, interrupt);
 	}
 }
 
-static int compis_irq_callback(int irqline)
+
+const struct pic8259_interface compis_pic8259_master_config = {
+	compis_pic8259_master_set_int_line
+};
+
+
+const struct pic8259_interface compis_pic8259_slave_config = {
+	compis_pic8259_slave_set_int_line
+};
+
+
+static IRQ_CALLBACK(compis_irq_callback)
 {
-	return pic8259_acknowledge(0);
+	return pic8259_acknowledge( compis_devices.pic8259_master);
 }
 
 static const compis_gdc_interface i82720_interface =
@@ -1564,11 +1586,11 @@ static const compis_gdc_interface i82720_interface =
 	0x8000
 };
 
+
 DRIVER_INIT( compis )
 {
 	compis_init( &i82720_interface );
-	cpunum_set_irq_callback(0,	compis_irq_callback);
-	pic8259_init(2, compis_pic_set_int_line);
+	cpunum_set_irq_callback(0, compis_irq_callback);
 	memset (&compis, 0, sizeof (compis) );
 }
 
@@ -1581,14 +1603,8 @@ MACHINE_RESET( compis )
 	/* CPU */
 	compis_cpu_init();
 
-	/* OSP PIT 8254 */
-	pit8253_init(2, compis_pit_config);
-
-	/* PPI */
-	ppi8255_init(&compis_ppi_interface);
-
 	/* FDC */
-	nec765_init(&compis_fdc_interface, NEC765A);
+	nec765_init(&compis_fdc_interface, NEC765A, NEC765_RDY_PIN_CONNECTED);
 	compis_fdc_reset();
 
 	/* RTC */
@@ -1602,6 +1618,9 @@ MACHINE_RESET( compis )
 
 	/* OSP PIC 8259 */
 	cpunum_set_irq_callback(0, compis_irq_callback);
+
+	compis_devices.pic8259_master = (device_config*)device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_master" );
+	compis_devices.pic8259_slave = (device_config*)device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_slave" );
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1611,5 +1630,5 @@ MACHINE_RESET( compis )
 INTERRUPT_GEN( compis_vblank_int )
 {
 //	compis_gdc_vblank_int();
-	compis_keyb_update();
+	compis_keyb_update(machine);
 }

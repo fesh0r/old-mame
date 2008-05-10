@@ -2,12 +2,11 @@
 #include <stdarg.h>
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/cbm.h"
 #include "devices/cartslot.h"
 
 
-static int general_cbm_loadsnap(mess_image *image, const char *file_type, int snapshot_size,
+static int general_cbm_loadsnap(const device_config *image, const char *file_type, int snapshot_size,
 	offs_t offset, void (*cbm_sethiaddress)(UINT16 hiaddress))
 {
 	char buffer[7];
@@ -163,43 +162,34 @@ INT8 cbm_c64_game;
 INT8 cbm_c64_exrom;
 CBM_ROM cbm_rom[0x20]= { {0} };
 
-static DEVICE_UNLOAD(cbm_rom)
+static DEVICE_IMAGE_UNLOAD(cbm_rom)
 {
 	int id = image_index_in_device(image);
 	cbm_rom[id].size = 0;
 	cbm_rom[id].chip = 0;
 }
 
-static const struct IODevice *cbm_rom_find_device(running_machine *machine)
+static DEVICE_START(cbm_rom)
 {
-	return device_find_from_machine(machine, IO_CARTSLOT);
-}
-
-static DEVICE_INIT(cbm_rom)
-{
-	int id = image_index_in_device(image);
+	int id = image_index_in_device(device);
 	if (id == 0)
 	{
 		cbm_c64_game = -1;
 		cbm_c64_exrom = -1;
 	}
-	return INIT_PASS;
 }
 
-static DEVICE_LOAD(cbm_rom)
+static DEVICE_IMAGE_LOAD(cbm_rom)
 {
 	int i;
 	int size, j, read_;
 	const char *filetype;
 	int adr = 0;
-	const struct IODevice *dev;
 
 	for (i=0; (i<sizeof(cbm_rom) / sizeof(cbm_rom[0])) && (cbm_rom[i].size!=0); i++)
 		;
 	if (i >= sizeof(cbm_rom) / sizeof(cbm_rom[0]))
 		return INIT_FAIL;
-
-	dev = cbm_rom_find_device(Machine);
 
 	size = image_length(image);
 
@@ -335,9 +325,9 @@ void cbmcartslot_device_getinfo(const mess_device_class *devclass, UINT32 state,
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "crt"); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:					info->init = device_init_cbm_rom; break;
-		case MESS_DEVINFO_PTR_LOAD:					info->load = device_load_cbm_rom; break;
-		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = device_unload_cbm_rom; break;
+		case MESS_DEVINFO_PTR_START:					info->start = DEVICE_START_NAME(cbm_rom); break;
+		case MESS_DEVINFO_PTR_LOAD:					info->load = DEVICE_IMAGE_LOAD_NAME(cbm_rom); break;
+		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = DEVICE_IMAGE_UNLOAD_NAME(cbm_rom); break;
 
 		default: cartslot_device_getinfo(devclass, state, info);
 	}

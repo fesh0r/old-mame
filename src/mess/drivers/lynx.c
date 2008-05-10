@@ -13,6 +13,8 @@
 #include "includes/lynx.h"
 #include "hash.h"
 
+static QUICKLOAD_LOAD( lynx );
+
 static int rotate=0;
 int lynx_rotate;
 static int lynx_line_y;
@@ -29,19 +31,19 @@ static ADDRESS_MAP_START( lynx_mem , ADDRESS_SPACE_PROGRAM, 8)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( lynx )
-	PORT_START
+	PORT_START_TAG("JOY")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_NAME("A")
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_NAME("B")
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Opt 2") PORT_CODE(KEYCODE_2)
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Opt 1") PORT_CODE(KEYCODE_1)
-    PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT)
-    PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
-    PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
-    PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP   )
-	PORT_START
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP   )
+	PORT_START_TAG("PAUSE")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(DEF_STR(Pause)) PORT_CODE(KEYCODE_3)
 	// power on and power off buttons
-	PORT_START
+	PORT_START_TAG("ROTATION")
 	PORT_CONFNAME ( 0x03, 3, "90 Degree Rotation")
 	PORT_CONFSETTING(	2, "Counterclockwise" )
 	PORT_CONFSETTING(	1, "Clockwise" )
@@ -52,8 +54,8 @@ INPUT_PORTS_END
 static INTERRUPT_GEN( lynx_frame_int )
 {
     lynx_rotate=rotate;
-    if ((readinputport(2)&3)!=3)
-		lynx_rotate=readinputport(2)&3;
+    if ((input_port_read(machine, "ROTATION")&3)!=3)
+		lynx_rotate=input_port_read(machine, "ROTATION")&3;
 }
 
 static UINT8 lynx_read_vram(UINT16 address)
@@ -237,6 +239,9 @@ static MACHINE_DRIVER_START( lynx )
         MDRV_SOUND_ADD_TAG("lynx", CUSTOM, 0)
 	MDRV_SOUND_CONFIG(lynx_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* devices */
+	MDRV_QUICKLOAD_ADD(lynx, "o", 0)
 MACHINE_DRIVER_END
 
 
@@ -306,7 +311,7 @@ static int lynx_verify_cart (char *header)
 	return IMAGE_VERIFY_PASS;
 }
 
-static void lynx_crc_keyword(mess_image *image)
+static void lynx_crc_keyword(const device_config *image)
 {
     const char *info;
 
@@ -322,7 +327,7 @@ static void lynx_crc_keyword(mess_image *image)
     }
 }
 
-static int device_load_lynx_cart(mess_image *image)
+static DEVICE_IMAGE_LOAD( lynx_cart )
 {
 	UINT8 *rom = memory_region(REGION_USER1);
 	int size;
@@ -397,7 +402,7 @@ static void lynx_cartslot_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_lynx_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(lynx_cart); break;
 		case MESS_DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = lynx_partialhash; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -407,24 +412,8 @@ static void lynx_cartslot_getinfo(const mess_device_class *devclass, UINT32 stat
 	}
 }
 
-static void lynx_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "o"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_lynx; break;
-
-		default:										quickload_device_getinfo(devclass, state, info); break;
-	}
-}
-
 SYSTEM_CONFIG_START(lynx)
 	CONFIG_DEVICE(lynx_cartslot_getinfo)
-	CONFIG_DEVICE(lynx_quickload_getinfo)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

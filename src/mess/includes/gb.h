@@ -51,8 +51,8 @@ READ8_HANDLER ( gb_io_r );
 WRITE8_HANDLER( gb_io2_w );
 READ8_HANDLER( gb_ie_r );
 WRITE8_HANDLER( gb_ie_w );
-DEVICE_INIT(gb_cart);
-DEVICE_LOAD(gb_cart);
+DEVICE_START(gb_cart);
+DEVICE_IMAGE_LOAD(gb_cart);
 INTERRUPT_GEN( gb_scanline_interrupt );
 void gb_timer_callback(int cycles);
 WRITE8_HANDLER( gbc_io2_w );
@@ -61,7 +61,7 @@ MACHINE_START( gb );
 MACHINE_RESET( gb );
 MACHINE_RESET( gbpocket );
 
-/* -- Super GameBoy specific -- */
+/* -- Super Game Boy specific -- */
 #define SGB_BORDER_PAL_OFFSET	64	/* Border colours stored from pal 4-7   */
 #define SGB_XOFFSET				48	/* GB screen starts at column 48        */
 #define SGB_YOFFSET				40	/* GB screen starts at row 40           */
@@ -77,7 +77,7 @@ extern UINT8 sgb_hack;				/* Flag set if we're using a hack       */
 extern MACHINE_RESET( sgb );
 extern WRITE8_HANDLER ( sgb_io_w );
 
-/* -- GameBoy Color specific -- */
+/* -- Game Boy Color specific -- */
 #define GBC_MODE_GBC		1		/* GBC is in colour mode                */
 #define GBC_MODE_MONO		2		/* GBC is in mono mode                  */
 
@@ -87,7 +87,7 @@ MACHINE_RESET( gbc );
 
 
 /* -- Megaduck specific -- */
-extern DEVICE_LOAD(megaduck_cart);
+extern DEVICE_IMAGE_LOAD(megaduck_cart);
 extern MACHINE_RESET( megaduck );
 extern  READ8_HANDLER( megaduck_video_r );
 extern WRITE8_HANDLER( megaduck_video_w );

@@ -57,31 +57,38 @@
 #include "devices/cassette.h"
 #include "devices/z80bin.h"
 
+static QUICKLOAD_LOAD( mbee );
+static Z80BIN_EXECUTE( mbee );
+
+static size_t mbee_size;
 
 static ADDRESS_MAP_START(mbee_mem, ADDRESS_SPACE_PROGRAM, 8)
 	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x0000, 0x3fff) AM_SIZE(&mbee_size)
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
 	AM_RANGE(0x1000, 0x3fff) AM_RAM
 	AM_RANGE(0x4000, 0x7fff) AM_WRITENOP	/* Needed because quickload to here will crash MESS otherwise */
 	AM_RANGE(0x8000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(mbee_videoram_r, mbee_videoram_w) AM_BASE(&pcgram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(mbee_pcg_r, mbee_pcg_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_RAMBANK(2) AM_WRITE(mbee_videoram_w) AM_SIZE(&videoram_size)
+	AM_RANGE(0xf800, 0xffff) AM_RAMBANK(3) AM_WRITE(mbee_pcg_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbeeic_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0x7fff) AM_SIZE(&mbee_size)
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
 	AM_RANGE(0x1000, 0x7fff) AM_RAM
 	AM_RANGE(0x8000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(mbee_videoram_r, mbee_videoram_w) AM_BASE(&pcgram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(mbee_pcg_color_r, mbee_pcg_color_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_RAMBANK(2) AM_WRITE(mbee_videoram_w) AM_SIZE(&videoram_size)
+	AM_RANGE(0xf800, 0xffff) AM_RAMBANK(3) AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(mbee56_mem, ADDRESS_SPACE_PROGRAM, 8)
+	AM_RANGE(0x0000, 0xdfff) AM_SIZE(&mbee_size)
 	AM_RANGE(0x0000, 0x0fff) AM_RAMBANK(1)
 	AM_RANGE(0x1000, 0xdfff) AM_RAM
 	AM_RANGE(0xe000, 0xefff) AM_ROM
-	AM_RANGE(0xf000, 0xf7ff) AM_READWRITE(mbee_videoram_r, mbee_videoram_w) AM_BASE(&pcgram) AM_SIZE(&videoram_size)
-	AM_RANGE(0xf800, 0xffff) AM_READWRITE(mbee_pcg_color_r, mbee_pcg_color_w)
+	AM_RANGE(0xf000, 0xf7ff) AM_RAMBANK(2) AM_WRITE(mbee_videoram_w) AM_SIZE(&videoram_size)
+	AM_RANGE(0xf800, 0xffff) AM_RAMBANK(3) AM_WRITE(mbee_pcg_color_w)
 ADDRESS_MAP_END
 
 
@@ -99,7 +106,7 @@ static ADDRESS_MAP_START(mbeeic_ports, ADDRESS_SPACE_IO, 8)
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00, 0x03) AM_MIRROR(0x10) AM_READWRITE(mbee_pio_r, mbee_pio_w)
 	AM_RANGE(0x08, 0x08) AM_MIRROR(0x10) AM_READWRITE(mbee_pcg_color_latch_r, mbee_pcg_color_latch_w)
-	// AM_RANGE(0x09, 0x09) AM_MIRROR(0x10)  Listed as "Colour Wait Off or USART 2651" but doesn't appear in the schematics
+	// AM_RANGE(0x09, 0x09) AM_MIRROR(0x10)  Listed as "Colour Wait Off" or "USART 2651" but doesn't appear in the schematics
 	AM_RANGE(0x0a, 0x0a) AM_MIRROR(0x10) AM_READWRITE(mbee_color_bank_r, mbee_color_bank_w)
 	AM_RANGE(0x0b, 0x0b) AM_MIRROR(0x10) AM_READWRITE(mbee_video_bank_r, mbee_video_bank_w)
 	AM_RANGE(0x0c, 0x0c) AM_MIRROR(0x10) AM_READWRITE(m6545_status_r, m6545_index_w)
@@ -113,7 +120,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( mbee )
-    PORT_START /* IN0 KEY ROW 0 [000] */
+    PORT_START_TAG("LINE0") /* IN0 KEY ROW 0 [000] */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("@") PORT_CODE(KEYCODE_ASTERISK) PORT_CHAR('@')
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("A") PORT_CODE(KEYCODE_A) PORT_CHAR('A')
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B) PORT_CHAR('B')
@@ -122,7 +129,7 @@ static INPUT_PORTS_START( mbee )
     PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E) PORT_CHAR('E')
     PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F") PORT_CODE(KEYCODE_F) PORT_CHAR('F')
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G) PORT_CHAR('G')
-    PORT_START /* IN1 KEY ROW 1 [080] */
+    PORT_START_TAG("LINE1") /* IN1 KEY ROW 1 [080] */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("H") PORT_CODE(KEYCODE_H) PORT_CHAR('H')
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("I") PORT_CODE(KEYCODE_I) PORT_CHAR('I')
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("J") PORT_CODE(KEYCODE_J) PORT_CHAR('J')
@@ -131,7 +138,7 @@ static INPUT_PORTS_START( mbee )
     PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M) PORT_CHAR('M')
     PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N) PORT_CHAR('N')
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("O") PORT_CODE(KEYCODE_O) PORT_CHAR('O')
-    PORT_START /* IN2 KEY ROW 2 [100] */
+    PORT_START_TAG("LINE2") /* IN2 KEY ROW 2 [100] */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("P") PORT_CODE(KEYCODE_P) PORT_CHAR('P')
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Q") PORT_CODE(KEYCODE_Q) PORT_CHAR('Q')
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("R") PORT_CODE(KEYCODE_R) PORT_CHAR('R')
@@ -140,7 +147,7 @@ static INPUT_PORTS_START( mbee )
     PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("U") PORT_CODE(KEYCODE_U) PORT_CHAR('U')
     PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("V") PORT_CODE(KEYCODE_V) PORT_CHAR('V')
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W) PORT_CHAR('W')
-    PORT_START /* IN3 KEY ROW 3 [180] */
+    PORT_START_TAG("LINE3") /* IN3 KEY ROW 3 [180] */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("X") PORT_CODE(KEYCODE_X) PORT_CHAR('X')
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y") PORT_CODE(KEYCODE_Y) PORT_CHAR('Y')
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
@@ -149,34 +156,34 @@ static INPUT_PORTS_START( mbee )
     PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("]") PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHAR(']')
     PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("^") PORT_CODE(KEYCODE_TILDE) PORT_CHAR('^')
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Delete") PORT_CODE(KEYCODE_DEL) PORT_CHAR(8)
-    PORT_START /* IN4 KEY ROW 4 [200] */
+    PORT_START_TAG("LINE4") /* IN4 KEY ROW 4 [200] */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("0") PORT_CODE(KEYCODE_0) PORT_CHAR('0')
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 \"") PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('\"')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
+    PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
     PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4 $") PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
     PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("5 %") PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
     PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("6 &") PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('&')
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("7 '") PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('\'')
-    PORT_START /* IN5 KEY ROW 5 [280] */
+    PORT_START_TAG("LINE5") /* IN5 KEY ROW 5 [280] */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("8 (") PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('(')
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9 )") PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR(')')
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("; +") PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR('+')
-	PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(": *") PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(':') PORT_CHAR('*')
+    PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(": *") PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(':') PORT_CHAR('*')
     PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA) PORT_CHAR(',') PORT_CHAR('<')
     PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("- =") PORT_CODE(KEYCODE_MINUS) PORT_CHAR('-') PORT_CHAR('=')
     PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(". >") PORT_CODE(KEYCODE_STOP) PORT_CHAR('.') PORT_CHAR('>')
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("/ ?") PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('?')
-    PORT_START /* IN6 KEY ROW 6 [300] */
+    PORT_START_TAG("LINE6") /* IN6 KEY ROW 6 [300] */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Escape") PORT_CODE(KEYCODE_ESC) PORT_CHAR(27)
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Backspace") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHAR(8)
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Tab") PORT_CODE(KEYCODE_TAB) PORT_CHAR(9)
     PORT_BIT(0x08, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Linefeed") PORT_CODE(KEYCODE_HOME) PORT_CHAR(10)
     PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Enter") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
-    PORT_BIT (0x20, IP_ACTIVE_HIGH, IPT_UNUSED )
+    PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Lock") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(UCHAR_MAMEKEY(CAPSLOCK))
     PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Break") PORT_CODE(KEYCODE_END) PORT_CHAR(3)
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Space") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
-    PORT_START /* IN7 KEY ROW 7 [380] */
+    PORT_START_TAG("LINE7") /* IN7 KEY ROW 7 [380] */
     PORT_BIT (0x01, IP_ACTIVE_HIGH, IPT_UNUSED )
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Ctrl") PORT_CODE(KEYCODE_LCONTROL)
     PORT_BIT (0x04, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -186,7 +193,7 @@ static INPUT_PORTS_START( mbee )
     PORT_BIT (0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("L-Shift") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
     PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("R-Shift") PORT_CODE(KEYCODE_RSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
-    PORT_START /* IN8 extra keys */
+    PORT_START_TAG("EXTRA") /* IN8 extra keys */
     PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Up)") PORT_CODE(KEYCODE_UP) PORT_CHAR(UCHAR_MAMEKEY(UP))
     PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Down)") PORT_CODE(KEYCODE_DOWN) PORT_CHAR(UCHAR_MAMEKEY(DOWN))
     PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(Left)") PORT_CODE(KEYCODE_LEFT) PORT_CHAR(UCHAR_MAMEKEY(LEFT))
@@ -203,15 +210,12 @@ static INPUT_PORTS_START( mbee )
 //	PORT_CONFNAME( 0x08, 0x08, "Cassette Speaker")
 //	PORT_CONFSETTING(    0x08, DEF_STR(On))
 //	PORT_CONFSETTING(    0x00, DEF_STR(Off))
-//	PORT_CONFNAME( 0x10, 0x10, "Auto-Resize?")
-//	PORT_CONFSETTING(    0x00, DEF_STR(No))
-//	PORT_CONFSETTING(    0x10, DEF_STR(Yes))
 INPUT_PORTS_END
 
 static const gfx_layout mbee_charlayout =
 {
     8,16,                   /* 8 x 16 characters */
-    256,                    /* 256 characters */
+    257,                    /* 256 characters + cursor */
     1,                      /* 1 bits per pixel */
     { 0 },                  /* no bitplanes; 1 bit per pixel */
     /* x offsets */
@@ -223,11 +227,11 @@ static const gfx_layout mbee_charlayout =
 };
 
 static GFXDECODE_START( mbee )
-	GFXDECODE_ENTRY( REGION_CPU1, 0xf000, mbee_charlayout, 0, 1 )
+	GFXDECODE_ENTRY( REGION_CPU1, 0x11000, mbee_charlayout, 0, 1 )
 GFXDECODE_END
 
 static GFXDECODE_START( mbeeic )
-	GFXDECODE_ENTRY( REGION_CPU1, 0xf000, mbee_charlayout, 0, 4096 )
+	GFXDECODE_ENTRY( REGION_CPU1, 0x11000, mbee_charlayout, 0, 4096 )
 GFXDECODE_END
 
 static PALETTE_INIT( mbee )
@@ -306,6 +310,10 @@ static MACHINE_DRIVER_START( mbee )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* devices */
+	MDRV_QUICKLOAD_ADD(mbee, "mwb,com", 2)
+	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
 MACHINE_DRIVER_END
 
 
@@ -339,6 +347,10 @@ static MACHINE_DRIVER_START( mbeeic )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* devices */
+	MDRV_QUICKLOAD_ADD(mbee, "mwb,com", 2)
+	MDRV_Z80BIN_QUICKLOAD_ADD(mbee, 2)
 MACHINE_DRIVER_END
 
 
@@ -352,12 +364,20 @@ static DRIVER_INIT( mbee )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_configure_bank(1, 0, 2, &RAM[0x0000], 0x8000);
+	memory_configure_bank(2, 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(3, 0, 2, &RAM[0x11800], 0x4000);
+	memory_set_bank(2, 1);
+	memory_set_bank(3, 0);
 }
 
 static DRIVER_INIT( mbee56 )
 {
 	UINT8 *RAM = memory_region(REGION_CPU1);
 	memory_configure_bank(1, 0, 2, &RAM[0x0000], 0xe000);
+	memory_configure_bank(2, 0, 2, &RAM[0x11000], 0x4000);
+	memory_configure_bank(3, 0, 2, &RAM[0x11800], 0x4000);
+	memory_set_bank(2, 1);
+	memory_set_bank(3, 0);
 }
 
 ROM_START( mbee )
@@ -369,7 +389,7 @@ ROM_START( mbee )
 	ROM_LOAD("edasma.ic31",   0xc000, 0x1000, CRC(120c3dea) SHA1(32c9bb6e54dd50d5218bb43cc921885a0307161d) )
 	ROM_LOAD("edasmb.ic33",   0xd000, 0x1000, CRC(a23bf3c8) SHA1(73a57c2800a1c744b527d0440b170b8b03351753) )
 	ROM_LOAD("telcom11.rom",  0xe000, 0x1000, CRC(15516499) SHA1(2d4953f994b66c5d3b1d457b8c92d9a0a69eb8b8) )
-	ROM_LOAD("charrom.ic13",  0xf000, 0x0800, CRC(b149737b) SHA1(a3cd4f5d0d3c71137cd1f0f650db83333a2e3597) )
+	ROM_LOAD("charrom.ic13",  0x11000, 0x0800, CRC(b149737b) SHA1(a3cd4f5d0d3c71137cd1f0f650db83333a2e3597) )
 	ROM_RELOAD( 0x17000, 0x0800 )
 	ROM_RELOAD( 0x17800, 0x0800 )
 
@@ -383,7 +403,7 @@ ROM_START( mbeeic )
 	ROM_LOAD("bas522b.rom",   0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
 	ROM_LOAD("edasm.rom",     0xc000, 0x2000, CRC(1af1b3a9) SHA1(d035a997c2dbbb3918b3395a3a5a1076aa203ee5))
 	ROM_LOAD("telcom12.rom",  0xe000, 0x1000, CRC(0231bda3) SHA1(be7b32499034f985cc8f7865f2bc2b78c485585c) )
-	ROM_LOAD("charrom.bin",   0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
+	ROM_LOAD("charrom.bin",   0x11000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
 	ROM_RELOAD( 0x17000, 0x1000 )
 
 	ROM_REGION( 0x0040, REGION_PROMS, 0 )
@@ -396,7 +416,7 @@ ROM_START( mbeepc85 )
 	ROM_LOAD("bas522a.rom",   0x8000, 0x2000, CRC(7896a696) SHA1(a158f7803296766160e1f258dfc46134735a9477))
 	ROM_LOAD("bas522b.rom",   0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
 	ROM_LOAD("wbee12.rom",    0xc000, 0x2000, CRC(0fc21cb5) SHA1(33b3995988fc51ddef1568e160dfe699867adbd5))
-	ROM_LOAD("charrom.bin",   0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
+	ROM_LOAD("charrom.bin",   0x11000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
 	ROM_RELOAD( 0x17000, 0x1000 )
 
 	ROM_REGION( 0x0040, REGION_PROMS, 0 )
@@ -410,7 +430,7 @@ ROM_START( mbeepc )
 	ROM_LOAD("bas522b.rom",   0xa000, 0x2000, CRC(b21d9679) SHA1(332844433763331e9483409cd7da3f90ac58259d))
 	/* This telcom rom is banked between its 2 halves, hooked to port 0A -  not emulated yet */
 	ROM_LOAD("telc321.rom",   0xe000, 0x2000, CRC(b07eefaa) SHA1(5dab90b2c232673282d215845c9947cc5bdd50c8))
-	ROM_LOAD("charrom.bin",   0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
+	ROM_LOAD("charrom.bin",   0x11000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
 	ROM_RELOAD( 0x17000, 0x1000 )
 
 	ROM_REGION( 0x0040, REGION_PROMS, 0 )
@@ -421,7 +441,7 @@ ROM_END
 ROM_START( mbee56 )
 	ROM_REGION(0x18000,REGION_CPU1,0)
 	ROM_LOAD("56kb.rom",      0xe000, 0x1000, CRC(28211224) SHA1(b6056339402a6b2677b0e6c57bd9b78a62d20e4f))
-	ROM_LOAD("charrom.bin",   0xf000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
+	ROM_LOAD("charrom.bin",   0x11000, 0x1000, CRC(1f9fcee4) SHA1(e57ac94e03638075dde68a0a8c834a4f84ba47b0))
 	ROM_RELOAD( 0x17000, 0x1000 )
 
 	ROM_REGION( 0x0040, REGION_PROMS, 0 )
@@ -435,44 +455,70 @@ ROM_END
 
 ***************************************************************************/
 
-static QUICKLOAD_LOAD( mbee )
+static Z80BIN_EXECUTE( mbee )
 {
-	UINT8 sw = readinputportbytag("CONFIG") & 1;			/* reading the dipswitch: 1 = autorun */
-	UINT16 exec_addr, start_addr, end_addr;
+	program_write_word_16le(0xa6, execute_address);			/* fix the EXEC command */
 
-	if (z80bin_load_file( machine, image, file_type, &exec_addr, &start_addr, &end_addr ) == INIT_FAIL)
-		return INIT_FAIL;
-
-	if (exec_addr == 0xffff) return INIT_PASS;			/* data file */
-
-	program_write_word_16le(0xa6,exec_addr);			/* fix the EXEC command */
-
-	if (sw)
+	if (autorun)
 	{
-		program_write_word_16le(0xa2,exec_addr);		/* fix warm-start vector to get around some copy-protections */
-		cpunum_set_reg(0, REG_PC, exec_addr);
+		program_write_word_16le(0xa2, execute_address);		/* fix warm-start vector to get around some copy-protections */
+		cpunum_set_reg(0, REG_PC, execute_address);
 	}
 	else
-		program_write_word_16le(0xa2,0x8517);
+	{
+		program_write_word_16le(0xa2, 0x8517);
+	}
+}
+
+static QUICKLOAD_LOAD( mbee )
+{
+	UINT16 i, j;
+	UINT8 data, sw = input_port_read(image->machine, "CONFIG") & 1;	/* reading the dipswitch: 1 = autorun */
+
+	if (!mame_stricmp(image_filetype(image), "mwb"))
+	{
+		/* mwb files - standard basic files */
+		for (i = 0; i < quickload_size; i++)
+		{
+			j = 0x8c0 + i;
+
+			if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
+
+			if ((j < mbee_size) || (j > 0xefff))
+				program_write_byte(j, data);
+			else
+				return INIT_FAIL;
+		}
+
+		if (sw)
+		{
+			program_write_word_16le(0xa2,0x801e);	/* fix warm-start vector to get around some copy-protections */
+			cpunum_set_reg(0, REG_PC, 0x801e);
+		}
+		else
+			program_write_word_16le(0xa2,0x8517);
+	}
+	else if (!mame_stricmp(image_filetype(image), "com"))
+	{
+		/* com files - most com files are just machine-language games with a wrapper and don't need cp/m to be present */
+		for (i = 0; i < quickload_size; i++)
+		{
+			j = 0x100 + i;
+
+			if (image_fread(image, &data, 1) != 1) return INIT_FAIL;
+
+			if ((j < mbee_size) || (j > 0xefff))
+				program_write_byte(j, data);
+			else
+				return INIT_FAIL;
+		}
+
+		if (sw) cpunum_set_reg(0, REG_PC, 0x100);
+	}
 
 	return INIT_PASS;
 }
 
-static void mbee_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_DEV_FILE:		strcpy(info->s = device_temp_str(), __FILE__); break;
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "bin"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:	info->f = (genf *) quickload_load_mbee; break;
-
-		default:				quickload_device_getinfo(devclass, state, info); break;
-	}
-}
 
 static void mbee_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -480,9 +526,9 @@ static void mbee_cassette_getinfo(const mess_device_class *devclass, UINT32 stat
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:		info->i = 1; break;
 
-		default:										cassette_device_getinfo(devclass, state, info); break;
+		default:				cassette_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -492,15 +538,15 @@ static void mbee_cartslot_getinfo(const mess_device_class *devclass, UINT32 stat
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:		info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_mbee_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:		info->load = DEVICE_IMAGE_LOAD_NAME(mbee_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "rom"); break;
 
-		default:										cartslot_device_getinfo(devclass, state, info); break;
+		default:				cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -510,15 +556,15 @@ static void mbee_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:		info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_basicdsk_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:		info->load = DEVICE_IMAGE_LOAD_NAME(basicdsk_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "dsk"); break;
 
-		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
+		default:				legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -526,14 +572,12 @@ static void mbee_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 SYSTEM_CONFIG_START(mbee)
 	CONFIG_DEVICE(mbee_cassette_getinfo)
 	CONFIG_DEVICE(mbee_cartslot_getinfo)
-	CONFIG_DEVICE(mbee_quickload_getinfo)
 SYSTEM_CONFIG_END
 
 SYSTEM_CONFIG_START(mbeeic)
 	CONFIG_DEVICE(mbee_cassette_getinfo)
 	CONFIG_DEVICE(mbee_cartslot_getinfo)
 	CONFIG_DEVICE(mbee_floppy_getinfo)
-	CONFIG_DEVICE(mbee_quickload_getinfo)
 SYSTEM_CONFIG_END
 
 

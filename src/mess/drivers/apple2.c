@@ -184,19 +184,21 @@ Apple 3.5 and Apple 5.25 drives - up to three devices
 
 #include "driver.h"
 #include "deprecat.h"
-#include "includes/apple2.h"
-#include "machine/ay3600.h"
 #include "devices/appldriv.h"
 #include "devices/mflopimg.h"
 #include "formats/ap2_dsk.h"
+#include "includes/apple2.h"
+#include "machine/ay3600.h"
+#include "machine/ap2_slot.h"
+#include "machine/ap2_lang.h"
+#include "machine/applefdc.h"
+#include "machine/mockngbd.h"
 #include "sound/ay8910.h"
 
 
-static ADDRESS_MAP_START( apple2_map, ADDRESS_SPACE_PROGRAM, 8 )
-ADDRESS_MAP_END
 
-
-/**************************************************************************
+/***************************************************************************
+    PARAMETERS
 ***************************************************************************/
 
 #define JOYSTICK_DELTA			80
@@ -205,6 +207,22 @@ ADDRESS_MAP_END
 #define PADDLE_DELTA            10
 #define PADDLE_SENSITIVITY      10
 #define PADDLE_AUTOCENTER       0
+
+
+
+/***************************************************************************
+    ADDRESS MAP
+***************************************************************************/
+
+static ADDRESS_MAP_START( apple2_map, ADDRESS_SPACE_PROGRAM, 8 )
+	/* nothing in the address map - everything is added dynamically */
+ADDRESS_MAP_END
+
+
+
+/***************************************************************************
+    INPUT PORTS
+***************************************************************************/
 
 static INPUT_PORTS_START( apple2_joystick )
 	PORT_START_TAG("joystick_1_x")		/* Joystick 1 X Axis */
@@ -535,6 +553,8 @@ PALETTE_INIT( apple2 )
 
 static const struct AY8910interface ay8910_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	NULL
 };
 
@@ -569,6 +589,17 @@ static MACHINE_DRIVER_START( apple2_common )
 	MDRV_SOUND_ADD(AY8913, 1022727)
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* slot devices */
+	MDRV_DEVICE_ADD("langcard", APPLE2_LANGCARD)
+	MDRV_DEVICE_ADD("mockingboard", MOCKINGBOARD)
+	MDRV_DEVICE_ADD("fdc", APPLEFDC)
+	MDRV_DEVICE_CONFIG(apple2_fdc_interface)
+
+	/* slots */
+	MDRV_APPLE2_SLOT_ADD(0, "langcard", apple2_langcard_r, apple2_langcard_w)
+	MDRV_APPLE2_SLOT_ADD(4, "mockingboard", mockingboard_r, mockingboard_w)
+	MDRV_APPLE2_SLOT_ADD(6, "fdc", applefdc_r, applefdc_w)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2 )
@@ -579,13 +610,6 @@ static MACHINE_DRIVER_START( apple2p )
 	MDRV_IMPORT_FROM( apple2_common )
 	MDRV_VIDEO_START(apple2p)
 MACHINE_DRIVER_END
-
-#ifdef UNUSED_FUNCTION
-static MACHINE_DRIVER_START( ace100 )
-	MDRV_IMPORT_FROM( apple2_common )
-	MDRV_VIDEO_START(apple2p)
-MACHINE_DRIVER_END
-#endif
 
 ROM_START(las3000)
 	ROM_REGION(0x0800,REGION_GFX1,0)
@@ -608,6 +632,15 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( apple2c )
 	MDRV_IMPORT_FROM( apple2ee )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( apple2c_iwm )
+	MDRV_IMPORT_FROM( apple2c )
+
+	/* replace the old-style FDC with an IWM */
+	MDRV_DEVICE_REMOVE("fdc", APPLEFDC)
+	MDRV_DEVICE_ADD("fdc", IWM)
+	MDRV_DEVICE_CONFIG(apple2_fdc_interface)
 MACHINE_DRIVER_END
 
 
@@ -664,7 +697,7 @@ ROM_END
 
 ROM_START(ace100)
 	ROM_REGION(0x0800,REGION_GFX1,0)
-	ROM_LOAD ( "a2.chr", 0x0000, 0x0800, NO_DUMP)
+	ROM_LOAD ( "ace100.chr", 0x0000, 0x0800, BAD_DUMP CRC(64f415c6) SHA1(f9d312f128c9557d9d6ac03bfad6c3ddf83e5659)) // copy of a2.chr - real Ace chr is undumped
 
 	ROM_REGION(0x4700,REGION_CPU1,0)
 	ROM_LOAD ( "ace100.rom", 0x1000, 0x3000, CRC(9d5ec94f) SHA1(8f2b3f2561788bebc7a805f620ec9e7ade973460))
@@ -827,19 +860,19 @@ SYSTEM_CONFIG_END
 
 
 
-/*    YEAR  NAME      PARENT    COMPAT      MACHINE   INPUT     INIT CONFIG     COMPANY            FULLNAME */
-COMP( 1977, apple2,   0,        0,			apple2,   apple2,   0,   apple2,	"Apple Computer", "Apple ][" , 0)
-COMP( 1979, apple2p,  apple2,   0,			apple2p,  apple2p,  0,   apple2p,	"Apple Computer", "Apple ][+" , 0)
-COMP( 1980, apple2jp, apple2,   0,			apple2p,  apple2p,  0,   apple2p,	"Apple Computer", "Apple ][j+" , 0)
-COMP( 1982, ace100,   apple2,   0,			apple2,	  apple2e,  0,   apple2,	"Franklin Computer", "Franklin Ace 100" , 0)
-COMP( 1983, apple2e,  0,        apple2,		apple2e,  apple2e,  0,   apple2e,	"Apple Computer", "Apple //e" , 0)
-COMP( 1985, apple2ee, apple2e,  0,			apple2ee, apple2e,  0,   apple2e,	"Apple Computer", "Apple //e (enhanced)" , 0)
-COMP( 1987, apple2ep, apple2e,  0,			apple2ee, apple2ep, 0,   apple2e,	"Apple Computer", "Apple //e (Platinum)" , 0)
-COMP( 1984, apple2c,  0,        apple2,		apple2c,  apple2e,  0,   apple2e,	"Apple Computer", "Apple //c" , 0)
-COMP( 1983, las3000,  apple2,   0,			apple2p,  apple2p,  0,   apple2p,	"Video Technology", "Laser 3000",		GAME_NOT_WORKING )
-COMP( 1987, laser128, 0,        apple2c0,	apple2c,  apple2e,  0,   apple2e,	"Video Technology", "Laser 128 (rev 4)",		GAME_NOT_WORKING )
-COMP( 1987, las128ex, apple2c,  0,			apple2c,  apple2e,  0,   apple2e,	"Video Technology", "Laser 128ex (rev 4a)",		GAME_NOT_WORKING )
-COMP( 1985, apple2c0, apple2c,  0,			apple2c,  apple2e,  0,   apple2e,	"Apple Computer", "Apple //c (UniDisk 3.5)" , 0)
-COMP( 1986, apple2c3, apple2c,  0,			apple2c,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c (Original Memory Expansion)" , 0)
-COMP( 1986, apple2c4, apple2c,  0,			apple2c,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c (rev 4)" , GAME_NOT_WORKING )
-COMP( 1988, apple2cp, apple2c,  0,			apple2c,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c Plus" , 0)
+/*    YEAR  NAME      PARENT    COMPAT      MACHINE       INPUT     INIT CONFIG     COMPANY            FULLNAME */
+COMP( 1977, apple2,   0,        0,			apple2,       apple2,   0,   apple2,	"Apple Computer", "Apple ][" , 0)
+COMP( 1979, apple2p,  apple2,   0,			apple2p,      apple2p,  0,   apple2p,	"Apple Computer", "Apple ][+" , 0)
+COMP( 1980, apple2jp, apple2,   0,			apple2p,      apple2p,  0,   apple2p,	"Apple Computer", "Apple ][j+" , 0)
+COMP( 1982, ace100,   apple2,   0,			apple2,	      apple2e,  0,   apple2,	"Franklin Computer", "Franklin Ace 100" , 0)
+COMP( 1983, apple2e,  0,        apple2,		apple2e,      apple2e,  0,   apple2e,	"Apple Computer", "Apple //e" , 0)
+COMP( 1985, apple2ee, apple2e,  0,			apple2ee,     apple2e,  0,   apple2e,	"Apple Computer", "Apple //e (enhanced)" , 0)
+COMP( 1987, apple2ep, apple2e,  0,			apple2ee,     apple2ep, 0,   apple2e,	"Apple Computer", "Apple //e (Platinum)" , 0)
+COMP( 1984, apple2c,  0,        apple2,		apple2c,      apple2e,  0,   apple2e,	"Apple Computer", "Apple //c" , 0)
+COMP( 1983, las3000,  apple2,   0,			apple2p,      apple2p,  0,   apple2p,	"Video Technology", "Laser 3000",		GAME_NOT_WORKING )
+COMP( 1987, laser128, 0,        apple2c0,	apple2c,      apple2e,  0,   apple2e,	"Video Technology", "Laser 128 (rev 4)",		GAME_NOT_WORKING )
+COMP( 1987, las128ex, apple2c,  0,			apple2c,      apple2e,  0,   apple2e,	"Video Technology", "Laser 128ex (rev 4a)",		GAME_NOT_WORKING )
+COMP( 1985, apple2c0, apple2c,  0,			apple2c_iwm,  apple2e,  0,   apple2e,	"Apple Computer", "Apple //c (UniDisk 3.5)" , 0)
+COMP( 1986, apple2c3, apple2c,  0,			apple2c_iwm,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c (Original Memory Expansion)" , 0)
+COMP( 1986, apple2c4, apple2c,  0,			apple2c_iwm,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c (rev 4)" , GAME_NOT_WORKING )
+COMP( 1988, apple2cp, apple2c,  0,			apple2c_iwm,  apple2e,  0,	 apple2e,	"Apple Computer", "Apple //c Plus" , 0)

@@ -1,7 +1,8 @@
 /****************************************************************************
-	Mac hardware
 
-	The hardware for Mac 128k, 512k, 512ke, Plus (SCSI, SCC, etc).
+	machine/mac.c
+
+	Mac hardware - Mac 128k, 512k, 512ke, Plus (SCSI, SCC, etc)
 
 	Nate Woods
 	Ernesto Corvi
@@ -66,9 +67,9 @@
 
 static TIMER_CALLBACK(mac_scanline_tick);
 static emu_timer *mac_scanline_timer;
-static int scan_keyboard(void);
+static int scan_keyboard(running_machine *machine);
 static TIMER_CALLBACK(inquiry_timeout_func);
-static void keyboard_receive(int val);
+static void keyboard_receive(running_machine *machine, int val);
 static READ8_HANDLER(mac_via_in_a);
 static READ8_HANDLER(mac_via_in_b);
 static WRITE8_HANDLER(mac_via_out_a);
@@ -116,9 +117,9 @@ static void mac_install_memory(offs_t memory_begin, offs_t memory_end,
 	rh = (read16_machine_func) (FPTR)bank;
 	wh = is_rom ? SMH_UNMAP : (write16_machine_func) (FPTR)bank;
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, memory_begin,
+	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, memory_begin,
 		memory_end, memory_mask, 0, rh);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, memory_begin,
+	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, memory_begin,
 		memory_end, memory_mask, 0, wh);
 
 	memory_set_bankptr(bank, memory_data);
@@ -285,7 +286,7 @@ static int key_matrix[7];
 static int keycode_buf[2];
 static int keycode_buf_index;
 
-static int scan_keyboard()
+static int scan_keyboard(running_machine *machine)
 {
 	int i, j;
 	int keybuf;
@@ -298,7 +299,7 @@ static int scan_keyboard()
 
 	for (i=0; i<7; i++)
 	{
-		keybuf = readinputport(i+3);
+		keybuf = input_port_read_indexed(machine, i+3);
 
 		if (keybuf != key_matrix[i])
 		{
@@ -430,7 +431,7 @@ static TIMER_CALLBACK(kbd_clock)
 		{
 			kbd_receive = FALSE;
 			/* Process the command received from mac */
-			keyboard_receive(kbd_shift_reg & 0xff);
+			keyboard_receive(machine, kbd_shift_reg & 0xff);
 		}
 		else
 		{
@@ -478,7 +479,7 @@ static TIMER_CALLBACK(inquiry_timeout_func)
 /*
 	called when a command is received from the mac
 */
-static void keyboard_receive(int val)
+static void keyboard_receive(running_machine *machine, int val)
 {
 	switch (val)
 	{
@@ -487,7 +488,7 @@ static void keyboard_receive(int val)
 		if (LOG_KEYBOARD)
 			logerror("keyboard command : inquiry\n");
 
-		keyboard_reply = scan_keyboard();
+		keyboard_reply = scan_keyboard(machine);
 		if (keyboard_reply == 0x7B)
 		{
 			/* if NULL, wait until key pressed or timeout */
@@ -501,7 +502,7 @@ static void keyboard_receive(int val)
 		if (LOG_KEYBOARD)
 			logerror("keyboard command : instant\n");
 
-		kbd_shift_out(scan_keyboard());
+		kbd_shift_out(scan_keyboard(machine));
 		break;
 
 	case 0x16:
@@ -565,8 +566,8 @@ static void mouse_callback(running_machine *machine)
 	int			new_mx, new_my;
 	int			x_needs_update = 0, y_needs_update = 0;
 
-	new_mx = readinputport(1);
-	new_my = readinputport(2);
+	new_mx = input_port_read_indexed(machine, 1);
+	new_my = input_port_read_indexed(machine, 2);
 
 	/* see if it moved in the x coord */
 	if (new_mx != last_mx)
@@ -1113,22 +1114,29 @@ READ16_HANDLER ( mac_iwm_r )
 	 * this driver along
 	 */
 
-	int result = 0;
+	UINT16 result = 0;
+	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
+		IWM,
+		"fdc");
 
 	if (LOG_MAC_IWM)
 		logerror("mac_iwm_r: offset=0x%08x\n", offset);
 
-	result = applefdc_r(machine, offset >> 8);
+	result = applefdc_r(fdc, offset >> 8);
 	return (result << 8) | result;
 }
 
 WRITE16_HANDLER ( mac_iwm_w )
 {
+	const device_config *fdc = device_list_find_by_tag(machine->config->devicelist,
+		IWM,
+		"fdc");
+
 	if (LOG_MAC_IWM)
 		logerror("mac_iwm_w: offset=0x%08x data=0x%04x\n", offset, data);
 
-	if (ACCESSING_LSB)
-		applefdc_w(machine, offset >> 8, data & 0xff);
+	if (ACCESSING_BITS_0_7)
+		applefdc_w(fdc, offset >> 8, data & 0xff);
 }
 
 /* *************************************************************************
@@ -1206,7 +1214,7 @@ static READ8_HANDLER(mac_via_in_b)
 			val |= 0x20;
 		if (mouse_bit_x)	/* Mouse X2 */
 			val |= 0x10;
-		if ((readinputport(0) & 0x01) == 0)
+		if ((input_port_read_indexed(machine, 0) & 0x01) == 0)
 			val |= 0x08;
 	}
 	if (rtc_data_out)
@@ -1274,7 +1282,7 @@ WRITE16_HANDLER ( mac_via_w )
 	if (LOG_VIA)
 		logerror("mac_via_w: offset=0x%02x data=0x%08x\n", offset, data);
 
-	if (ACCESSING_MSB)
+	if (ACCESSING_BITS_8_15)
 		via_0_w(machine, offset, (data >> 8) & 0xff);
 }
 
@@ -1297,22 +1305,6 @@ MACHINE_RESET(mac)
 	/* initialize serial */
 	scc_init(&mac_scc8530_interface);
 
-	/* initialize floppy */
-	{
-		static const applefdc_interface intf =
-		{
-			APPLEFDC_IWM,
-			sony_set_lines,
-			sony_set_enable_lines,
-
-			sony_read_data,
-			sony_write_data,
-			sony_read_status
-		};
-
-		applefdc_init(&intf);
-	}
-
 	/* setup the memory overlay */
 	set_memory_overlay(1);
 
@@ -1334,7 +1326,7 @@ MACHINE_RESET(mac)
 
 
 
-static void mac_state_load(void)
+static STATE_POSTLOAD( mac_state_load )
 {
 	int overlay = mac_overlay;
 	mac_overlay = -1;
@@ -1370,7 +1362,7 @@ static void mac_driver_init(mac_model_t model)
 
 	/* save state stuff */
 	state_save_register_global(mac_overlay);
-	state_save_register_func_postload(mac_state_load);
+	state_save_register_postload(Machine, mac_state_load, NULL);
 }
 
 
@@ -1387,9 +1379,11 @@ DRIVER_INIT(mac512ke)
 
 static const SCSIConfigTable dev_table =
 {
-	2,                                      /* 2 SCSI devices */
-	{ { SCSI_ID_5, 1, SCSI_DEVICE_HARDDISK },  /* SCSI ID 5, using CHD 1, and it's a harddisk */
-	 { SCSI_ID_6, 0, SCSI_DEVICE_HARDDISK } } /* SCSI ID 6, using CHD 0, and it's a harddisk */
+	1,                                      /* 2 SCSI devices */
+	{
+	 { SCSI_ID_5, 0, SCSI_DEVICE_HARDDISK },  /* SCSI ID 5, using CHD 1, and it's a harddisk */
+	 { SCSI_ID_6, 1, SCSI_DEVICE_HARDDISK }   /* SCSI ID 6, using CHD 0, and it's a harddisk */
+	}
 };
 
 static const struct NCR5380interface macplus_5380intf =
@@ -1398,35 +1392,34 @@ static const struct NCR5380interface macplus_5380intf =
 	NULL		// IRQ (unconnected on the Mac Plus)
 };
 
+MACHINE_START( macscsi )
+{
+	ncr5380_init(&macplus_5380intf);
+}
+
 DRIVER_INIT(macplus)
 {
 	mac_driver_init(MODEL_MAC_PLUS);
-
-	ncr5380_init(&macplus_5380intf);
 }
 
 DRIVER_INIT(macse)
 {
 	mac_driver_init(MODEL_MAC_SE);
-
-	ncr5380_init(&macplus_5380intf);
 }
 
 DRIVER_INIT(macclassic)
 {
 	mac_driver_init(MODEL_MAC_CLASSIC);
-
-	ncr5380_init(&macplus_5380intf);
 }
 
-static void mac_vblank_irq(void)
+static void mac_vblank_irq(running_machine *machine)
 {
 	static int irq_count = 0, ca1_data = 0, ca2_data = 0;
 
 	/* handle keyboard */
 	if (kbd_comm == TRUE)
 	{
-		int keycode = scan_keyboard();
+		int keycode = scan_keyboard(machine);
 
 		if (keycode != 0x7B)
 		{
@@ -1467,7 +1460,7 @@ static TIMER_CALLBACK(mac_scanline_tick)
 
 	scanline = video_screen_get_vpos(machine->primary_screen);
 	if (scanline == MAC_V_VIS)
-		mac_vblank_irq();
+		mac_vblank_irq(machine);
 
 	/* check for mouse changes at 10 irqs per frame */
 	if (!(scanline % 10))

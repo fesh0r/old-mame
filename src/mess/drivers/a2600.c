@@ -523,13 +523,13 @@ static int detect_super_chip(void)
 }
 
 
-static DEVICE_INIT( a2600_cart ) {
+static DEVICE_START( a2600_cart )
+{
 	banking_mode = 0xFF;
-	return 0;
 }
 
 
-static DEVICE_LOAD( a2600_cart )
+static DEVICE_IMAGE_LOAD( a2600_cart )
 {
 	const struct _extrainfo_banking_def *eibd;
 	const char	*extrainfo;
@@ -791,7 +791,7 @@ static READ8_HANDLER(modeSS_r)
 
 		/* Check if we should stop the tape */
 		if ( cpu_getactivecpu() >= 0 && activecpu_get_pc() == 0x00FD ) {
-			mess_image *img = image_from_devtype_and_index(IO_CASSETTE, 0);
+			const device_config *img = image_from_devtype_and_index(IO_CASSETTE, 0);
 			if ( img ) {
 				cassette_change_state(img, CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 			}
@@ -1045,12 +1045,12 @@ static void modeFE_switch(UINT16 offset, UINT8 data)
 static READ8_HANDLER(modeFE_switch_r)
 {
 	modeFE_switch(offset, 0 );
-	return program_read_byte_8( 0xFE );
+	return program_read_byte( 0xFE );
 }
 
 static WRITE8_HANDLER(modeFE_switch_w)
 {
-	program_write_byte_8( 0xFE, data );
+	program_write_byte( 0xFE, data );
 	modeFE_switch(offset, 0 );
 }
 
@@ -1070,12 +1070,12 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( switch_A_w )
 {
 	/* Left controller port */
-	if ( readinputport(9) / CATEGORY_SELECT == 0x03 ) {
+	if ( input_port_read(machine, "CONTROLLERS") / CATEGORY_SELECT == 0x03 ) {
 		keypad_left_column = data / 16;
 	}
 
 	/* Right controller port */
-	switch( readinputport(9) % CATEGORY_SELECT ) {
+	switch( input_port_read(machine, "CONTROLLERS") % CATEGORY_SELECT ) {
 	case 0x03:	/* Keypad */
 		keypad_right_column = data & 0x0F;
 		break;
@@ -1091,17 +1091,17 @@ static  READ8_HANDLER( switch_A_r )
 	UINT8 val = 0;
 
 	/* Left controller port PINs 1-4 ( 4321 ) */
-	switch( readinputport(9) / CATEGORY_SELECT ) {
+	switch( input_port_read(machine, "CONTROLLERS") / CATEGORY_SELECT ) {
 	case 0x00:  /* Joystick */
 	case 0x05:	/* Joystick w/Boostergrip */
-		val |= readinputport(6) & 0xF0;
+		val |= input_port_read(machine, "SWA_JOY") & 0xF0;
 		break;
 	case 0x01:  /* Paddle */
-		val |= readinputport(7) & 0xF0;
+		val |= input_port_read(machine, "SWA_PAD") & 0xF0;
 		break;
 	case 0x02:	/* Driving */
 		val |= 0xC0;
-		val |= ( driving_lookup[ ( readinputport(12) & 0x18 ) >> 3 ] << 4 );
+		val |= ( driving_lookup[ ( input_port_read(machine, "WHEEL_L") & 0x18 ) >> 3 ] << 4 );
 		break;
 	case 0x06:	/* Trakball CX-22 */
 	case 0x07:	/* Trakball CX-80 / ST mouse */
@@ -1112,17 +1112,17 @@ static  READ8_HANDLER( switch_A_r )
 	}
 
 	/* Right controller port PINs 1-4 ( 4321 ) */
-	switch( readinputport(9) % CATEGORY_SELECT ) {
+	switch( input_port_read(machine, "CONTROLLERS") % CATEGORY_SELECT ) {
 	case 0x00:	/* Joystick */
 	case 0x05:	/* Joystick w/Boostergrip */
-		val |= readinputport(6) & 0x0F;
+		val |= input_port_read(machine, "SWA_JOY") & 0x0F;
 		break;
 	case 0x01:	/* Paddle */
-		val |= readinputport(7) & 0x0F;
+		val |= input_port_read(machine, "SWA_PAD") & 0x0F;
 		break;
 	case 0x02:	/* Driving */
 		val |= 0x0C;
-		val |= ( driving_lookup[ ( readinputport(13) & 0x18 ) >> 3 ] );
+		val |= ( driving_lookup[ ( input_port_read(machine, "WHEEL_R") & 0x18 ) >> 3 ] );
 		break;
 	case 0x06:	/* Trakball CX-22 */
 	case 0x07:	/* Trakball CX-80 / ST mouse */
@@ -1151,7 +1151,7 @@ static const struct riot6532_interface r6532_interface =
 };
 
 
-static void install_banks(int count, unsigned init)
+static void install_banks(running_machine *machine, int count, unsigned init)
 {
 	int i;
 
@@ -1165,7 +1165,7 @@ static void install_banks(int count, unsigned init)
 			SMH_BANK4,
 		};
 
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
 			0x1000 + (i + 0) * 0x1000 / count - 0,
 			0x1000 + (i + 1) * 0x1000 / count - 1, 0, 0, handler[i]);
 
@@ -1179,15 +1179,15 @@ static READ16_HANDLER(a2600_read_input_port) {
 
 	switch( offset ) {
 	case 0:	/* Left controller port PIN 5 */
-		switch ( readinputport(9) / CATEGORY_SELECT ) {
+		switch ( input_port_read(machine, "CONTROLLERS") / CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
-			return readinputport(0);
+			return input_port_read(machine, "PADDLE1");
 		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_left_column >> i ) & 0x01 ) ) {
-					if ( ( readinputport(10) >> 3*i ) & 0x01 ) {
+					if ( ( input_port_read(machine, "KEYPAD_L") >> 3*i ) & 0x01 ) {
 						return TIA_INPUT_PORT_ALWAYS_ON;
 					} else {
 						return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1196,21 +1196,21 @@ static READ16_HANDLER(a2600_read_input_port) {
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
 		case 0x05:	/* Boostergrip joystick */
-			return ( readinputport(4) & 0x40 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
+			return ( input_port_read(machine, "BUTTONS_L") & 0x40 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
 	case 1:	/* Right controller port PIN 5 */
-		switch ( readinputport(9) / CATEGORY_SELECT ) {
+		switch ( input_port_read(machine, "CONTROLLERS") / CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
-			return readinputport(1);
+			return input_port_read(machine, "PADDLE3");
 		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_left_column >> i ) & 0x01 ) ) {
-					if ( ( readinputport(10) >> 3*i ) & 0x02 ) {
+					if ( ( input_port_read(machine, "KEYPAD_L") >> 3*i ) & 0x02 ) {
 						return TIA_INPUT_PORT_ALWAYS_ON;
 					} else {
 						return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1219,21 +1219,21 @@ static READ16_HANDLER(a2600_read_input_port) {
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
 		case 0x05:	/* Joystick w/Boostergrip */
-			return ( readinputport(4) & 0x20 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
+			return ( input_port_read(machine, "BUTTONS_L") & 0x20 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
 	case 2:	/* Left controller port PIN 9 */
-		switch ( readinputport(9) % CATEGORY_SELECT ) {
+		switch ( input_port_read(machine, "CONTROLLERS") % CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
-			return readinputport(2);
+			return input_port_read(machine, "PADDLE2");
 		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_right_column >> i ) & 0x01 ) ) {
-					if ( ( readinputport(11) >> 3*i ) & 0x01 ) {
+					if ( ( input_port_read(machine, "KEYPAD_R") >> 3*i ) & 0x01 ) {
 						return TIA_INPUT_PORT_ALWAYS_ON;
 					} else {
 						return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1242,21 +1242,21 @@ static READ16_HANDLER(a2600_read_input_port) {
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
 		case 0x05:	/* Joystick w/Boostergrip */
-			return ( readinputport(5) & 0x40 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
+			return ( input_port_read(machine, "BUTTONS_R") & 0x40 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
 	case 3:	/* Right controller port PIN 9 */
-		switch ( readinputport(9) % CATEGORY_SELECT ) {
+		switch ( input_port_read(machine, "CONTROLLERS") % CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		case 0x01:	/* Paddle */
-			return readinputport(3);
+			return input_port_read(machine, "PADDLE4");
 		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_right_column >> i ) & 0x01 ) ) {
-					if ( ( readinputport(11) >> 3*i ) & 0x02 ) {
+					if ( ( input_port_read(machine, "KEYPAD_R") >> 3*i ) & 0x02 ) {
 						return TIA_INPUT_PORT_ALWAYS_ON;
 					} else {
 						return TIA_INPUT_PORT_ALWAYS_OFF;
@@ -1265,24 +1265,24 @@ static READ16_HANDLER(a2600_read_input_port) {
 			}
 			return TIA_INPUT_PORT_ALWAYS_ON;
 		case 0x05:	/* Joystick w/Boostergrip */
-			return ( readinputport(5) & 0x20 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
+			return ( input_port_read(machine, "BUTTONS_R") & 0x20 ) ? TIA_INPUT_PORT_ALWAYS_OFF : TIA_INPUT_PORT_ALWAYS_ON;
 		default:
 			return TIA_INPUT_PORT_ALWAYS_OFF;
 		}
 		break;
 	case 4:	/* Left controller port PIN 6 */
-		switch ( readinputport(9) / CATEGORY_SELECT ) {
+		switch ( input_port_read(machine, "CONTROLLERS") / CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 		case 0x05:	/* Joystick w/Boostergrip */
-			return readinputport(4);
+			return input_port_read(machine, "BUTTONS_L");
 		case 0x01:	/* Paddle */
 			return 0xff;
 		case 0x02:	/* Driving */
-			return readinputport(4) << 3;
+			return input_port_read(machine, "BUTTONS_L") << 3;
 		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_left_column >> i ) & 0x01 ) ) {
-					if ( ( readinputport(10) >> 3*i ) & 0x04 ) {
+					if ( ( input_port_read(machine, "KEYPAD_L") >> 3*i ) & 0x04 ) {
 						return 0xff;
 					} else {
 						return 0x00;
@@ -1291,24 +1291,24 @@ static READ16_HANDLER(a2600_read_input_port) {
 			}
 			return 0xff;
 		case 0x06:	/* Trakball CX-22 */
-			return readinputport(4) << 4;
+			return input_port_read(machine, "BUTTONS_L") << 4;
 		default:
 			return 0xff;
 		}
 		break;
 	case 5:	/* Right controller port PIN 6 */
-		switch ( readinputport(9) % CATEGORY_SELECT ) {
+		switch ( input_port_read(machine, "CONTROLLERS") % CATEGORY_SELECT ) {
 		case 0x00:	/* Joystick */
 		case 0x05:	/* Joystick w/Boostergrip */
-			return readinputport(5);
+			return input_port_read(machine, "BUTTONS_R");
 		case 0x01:	/* Paddle */
 			return 0xff;
 		case 0x02:	/* Driving */
-			return readinputport(5) << 3;
+			return input_port_read(machine, "BUTTONS_R") << 3;
 		case 0x03:	/* Keypad */
 			for ( i = 0; i < 4; i++ ) {
 				if ( ! ( ( keypad_right_column >> i ) & 0x01 ) ) {
-					if ( ( readinputport(11) >> 3*i ) & 0x04 ) {
+					if ( ( input_port_read(machine, "KEYPAD_R") >> 3*i ) & 0x04 ) {
 						return 0xff;
 					} else {
 						return 0x00;
@@ -1317,7 +1317,7 @@ static READ16_HANDLER(a2600_read_input_port) {
 			}
 			return 0xff;
 		case 0x06:	/* Trakball CX-22 */
-			return readinputport(5) << 4;
+			return input_port_read(machine, "BUTTONS_R") << 4;
 		default:
 			return 0xff;
 		}
@@ -1342,7 +1342,7 @@ static READ8_HANDLER(a2600_get_databus_contents) {
 	if ( ! ( last_address & 0x1080 ) ) {
 		return offset;
 	}
-	last_byte = program_read_byte_8( last_address );
+	last_byte = program_read_byte( last_address );
 	if ( last_byte < 0x80 || last_byte == 0xFF ) {
 		return last_byte;
 	}
@@ -1350,9 +1350,9 @@ static READ8_HANDLER(a2600_get_databus_contents) {
 	if ( ! ( prev_address & 0x1080 ) ) {
 		return last_byte;
 	}
-	prev_byte = program_read_byte_8( prev_address );
+	prev_byte = program_read_byte( prev_address );
 	if ( prev_byte == 0xB1 ) {	/* LDA (XX),Y */
-		return program_read_byte_8( last_byte + 1 );
+		return program_read_byte( last_byte + 1 );
 	}
 	return last_byte;
 }
@@ -1549,83 +1549,83 @@ static MACHINE_RESET( a2600 )
 	switch (banking_mode)
 	{
 	case mode2K:
-		install_banks(2, 0x0000);
+		install_banks(machine, 2, 0x0000);
 		break;
 
 	case mode4K:
-		install_banks(1, 0x0000);
+		install_banks(machine, 1, 0x0000);
 		break;
 
 	case modeF8:
 		if (!memcmp(&CART[0x1ffc],snowwhite,sizeof(snowwhite))) {
-			install_banks(1, 0x0000);
+			install_banks(machine, 1, 0x0000);
 		} else {
-			install_banks(1, 0x1000);
+			install_banks(machine, 1, 0x1000);
 		}
 		break;
 
 	case modeFA:
-		install_banks(1, 0x2000);
+		install_banks(machine, 1, 0x2000);
 		break;
 
 	case modeF6:
-		install_banks(1, 0x0000);
+		install_banks(machine, 1, 0x0000);
 		break;
 
 	case modeF4:
-		install_banks(1, 0x7000);
+		install_banks(machine, 1, 0x7000);
 		break;
 
 	case modeFE:
-		install_banks(1, 0x0000);
+		install_banks(machine, 1, 0x0000);
 		break;
 
 	case modeE0:
-		install_banks(4, 0x1c00);
+		install_banks(machine, 4, 0x1c00);
 		break;
 
 	case mode3F:
-		install_banks(2, cart_size - 0x800);
+		install_banks(machine, 2, cart_size - 0x800);
 		number_banks = cart_size / 0x800;
 		break;
 
 	case modeUA:
-		install_banks(1, 0x1000);
+		install_banks(machine, 1, 0x1000);
 		break;
 
 	case modeE7:
-		install_banks(2, 0x3800);
+		install_banks(machine, 2, 0x3800);
 		break;
 
 	case modeDC:
-		install_banks(1, 0x1000 * current_bank);
+		install_banks(machine, 1, 0x1000 * current_bank);
 		break;
 
 	case modeCV:
-		install_banks(2, 0x0000);
+		install_banks(machine, 2, 0x0000);
 		break;
 
 	case mode3E:
-		install_banks(2, cart_size - 0x800);
+		install_banks(machine, 2, cart_size - 0x800);
 		number_banks = cart_size / 0x800;
 		mode3E_ram_enabled = 0;
 		break;
 
 	case modeSS:
-		install_banks(2, 0x0000);
+		install_banks(machine, 2, 0x0000);
 		break;
 
 	case modeFV:
-		install_banks(1, 0x0000);
+		install_banks(machine, 1, 0x0000);
 		current_bank = 0;
 		break;
 
 	case modeDPC:
-		install_banks(1, 0x0000);
+		install_banks(machine, 1, 0x0000);
 		break;
 
 	case mode32in1:
-		install_banks(2, 0x0000);
+		install_banks(machine, 2, 0x0000);
 		current_reset_bank_counter = current_reset_bank_counter & 0x1F;
 		break;
 
@@ -1634,7 +1634,7 @@ static MACHINE_RESET( a2600 )
 		if ( cart_size == 0x2000 )
 			current_reset_bank_counter = 0;
 		current_bank = current_reset_bank_counter * 2;
-		install_banks(1, 0x1000 * current_bank);
+		install_banks(machine, 1, 0x1000 * current_bank);
 		break;
 	}
 
@@ -1642,7 +1642,7 @@ static MACHINE_RESET( a2600 )
 
 	if (banking_mode == modeDC)
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fec, 0x1fec, 0, 0, current_bank_r);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fec, 0x1fec, 0, 0, current_bank_r);
 	}
 
 	/* set up bank switch registers */
@@ -1650,68 +1650,68 @@ static MACHINE_RESET( a2600 )
 	switch (banking_mode)
 	{
 	case modeF8:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_r);
 		break;
 
 	case modeFA:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, modeFA_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, modeFA_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, modeFA_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ffa, 0, 0, modeFA_switch_r);
 		break;
 
 	case modeF6:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff6, 0x1ff9, 0, 0, modeF6_switch_r);
 		memory_set_opbase_handler( 0, modeF6_opbase );
 		break;
 
 	case modeF4:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, modeF4_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, modeF4_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, modeF4_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff4, 0x1ffb, 0, 0, modeF4_switch_r);
 		break;
 
 	case modeE0:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modeE0_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modeE0_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modeE0_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1ff8, 0, 0, modeE0_switch_r);
 		break;
 
 	case mode3F:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x00, 0x3f, 0, 0, mode3F_switch_w);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00, 0x3f, 0, 0, mode3F_switch_w);
 		break;
 
 	case modeUA:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x200, 0x27f, 0, 0, modeUA_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x200, 0x27f, 0, 0, modeUA_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200, 0x27f, 0, 0, modeUA_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x200, 0x27f, 0, 0, modeUA_switch_r);
 		break;
 
 	case modeE7:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x18ff, 0, 0, SMH_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1900, 0x19ff, 0, 0, SMH_BANK9);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fe0, 0x1fe7, 0, 0, modeE7_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fe8, 0x1feb, 0, 0, modeE7_RAM_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x18ff, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1900, 0x19ff, 0, 0, SMH_BANK9);
 		memory_set_bankptr( 9, extra_RAM + 4 * 256 );
 		break;
 
 	case modeDC:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff0, 0x1ff0, 0, 0, modeDC_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff0, 0x1ff0, 0, 0, modeDC_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff0, 0x1ff0, 0, 0, modeDC_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff0, 0x1ff0, 0, 0, modeDC_switch_r);
 		break;
 
 	case modeFE:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeFE_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeFE_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeFE_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01fe, 0x01fe, 0, 0, modeFE_switch_r);
 		break;
 
 	case mode3E:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3e, 0x3e, 0, 0, mode3E_RAM_switch_w);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3f, 0x3f, 0, 0, mode3E_switch_w);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x15ff, 0, 0, mode3E_RAM_w);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3e, 0x3e, 0, 0, mode3E_RAM_switch_w);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3f, 0x3f, 0, 0, mode3E_switch_w);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x15ff, 0, 0, mode3E_RAM_w);
 		break;
 
 	case modeSS:
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, modeSS_r);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, modeSS_r);
 		bank_base[1] = extra_RAM + 2 * 0x800;
 		bank_base[2] = CART;
 		memory_set_bankptr( 1, bank_base[1] );
@@ -1724,15 +1724,15 @@ static MACHINE_RESET( a2600 )
 		break;
 
 	case modeFV:
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fd0, 0x1fd0, 0, 0, modeFV_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1fd0, 0x1fd0, 0, 0, modeFV_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fd0, 0x1fd0, 0, 0, modeFV_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1fd0, 0x1fd0, 0, 0, modeFV_switch_r);
 		break;
 
 	case modeDPC:
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x103f, 0, 0, modeDPC_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1040, 0x107f, 0, 0, modeDPC_w);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_r);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x103f, 0, 0, modeDPC_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1040, 0x107f, 0, 0, modeDPC_w);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1ff8, 0x1ff9, 0, 0, modeF8_switch_r);
 		memory_set_opbase_handler( 0, modeDPC_opbase_handler );
 		{
 			int	data_fetcher;
@@ -1752,8 +1752,8 @@ static MACHINE_RESET( a2600 )
 		break;
 
 	case modeJVP:
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0FA0, 0x0FC0, 0, 0, modeJVP_switch_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0FA0, 0x0FC0, 0, 0, modeJVP_switch_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0FA0, 0x0FC0, 0, 0, modeJVP_switch_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0FA0, 0x0FC0, 0, 0, modeJVP_switch_w);
 		break;
 	}
 
@@ -1761,24 +1761,24 @@ static MACHINE_RESET( a2600 )
 
 	if (banking_mode == modeFA)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x10ff, 0, 0, SMH_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1100, 0x11ff, 0, 0, SMH_BANK9);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x10ff, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1100, 0x11ff, 0, 0, SMH_BANK9);
 
 		memory_set_bankptr(9, extra_RAM);
 	}
 
 	if (banking_mode == modeCV)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x17ff, 0, 0, SMH_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x13ff, 0, 0, SMH_BANK9);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1400, 0x17ff, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x13ff, 0, 0, SMH_BANK9);
 
 		memory_set_bankptr(9, extra_RAM);
 	}
 
 	if (chip)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x107f, 0, 0, SMH_BANK9);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1080, 0x10ff, 0, 0, SMH_BANK9);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x107f, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1080, 0x10ff, 0, 0, SMH_BANK9);
 
 		memory_set_bankptr(9, extra_RAM);
 	}
@@ -1787,16 +1787,16 @@ static MACHINE_RESET( a2600 )
 
 static INPUT_PORTS_START( a2600 )
 
-	PORT_START /* [0] */
+	PORT_START_TAG("PADDLE1") /* [0] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(11) PORT_PLAYER(1) PORT_REVERSE
-	PORT_START /* [1] */
+	PORT_START_TAG("PADDLE3") /* [1] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(11) PORT_PLAYER(3) PORT_REVERSE
-	PORT_START /* [2] */
+	PORT_START_TAG("PADDLE2") /* [2] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(21) PORT_PLAYER(2) PORT_REVERSE
-	PORT_START /* [3] */
+	PORT_START_TAG("PADDLE4") /* [3] */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(10) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(21) PORT_PLAYER(4) PORT_REVERSE PORT_CODE_DEC(KEYCODE_4_PAD) PORT_CODE_INC(KEYCODE_6_PAD)
 
-	PORT_START /* [4] left port button(s) */
+	PORT_START_TAG("BUTTONS_L") /* [4] left port button(s) */
 //  PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(15) PORT_PLAYER(1)
 //  PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(15) PORT_PLAYER(1)
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(15) PORT_PLAYER(1)
@@ -1805,7 +1805,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(10) PORT_PLAYER(1)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(10) PORT_PLAYER(1)
 
-	PORT_START /* [5] right port button(s) */
+	PORT_START_TAG("BUTTONS_R") /* [5] right port button(s) */
 //  PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_CATEGORY(25) PORT_PLAYER(2)
 //  PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(25) PORT_PLAYER(2)
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(25) PORT_PLAYER(2)
@@ -1814,7 +1814,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(20) PORT_PLAYER(2)
 
-	PORT_START /* [6] SWCHA joystick */
+	PORT_START_TAG("SWA_JOY") /* [6] SWCHA joystick */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CATEGORY(20) PORT_PLAYER(2)
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(20) PORT_PLAYER(2)
@@ -1824,7 +1824,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(10) PORT_PLAYER(1)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CATEGORY(10) PORT_PLAYER(1)
 
-	PORT_START /* [7] SWCHA paddles */
+	PORT_START_TAG("SWA_PAD") /* [7] SWCHA paddles */
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(21) PORT_PLAYER(4)
@@ -1834,7 +1834,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(11) PORT_PLAYER(3)
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(11) PORT_PLAYER(1)
 
-	PORT_START /* [8] SWCHB */
+	PORT_START_TAG("SWB") /* [8] SWCHB */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Reset Game") PORT_CODE(KEYCODE_2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START) PORT_NAME("Select Game")
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1850,7 +1850,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_DIPSETTING(    0x80, "A" )
 	PORT_DIPSETTING(    0x00, "B" )
 
-	PORT_START /* [9] */
+	PORT_START_TAG("CONTROLLERS") /* [9] */
 	PORT_CATEGORY_CLASS( 0xf0, 0x00, STR_LEFT_CONTROLLER )
 	PORT_CATEGORY_ITEM(    0x00, DEF_STR( Joystick ), 10 )
 	PORT_CATEGORY_ITEM(    0x10, STR_PADDLES, 11 )
@@ -1876,7 +1876,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_CATEGORY_ITEM(    0x0a, STR_KIDVID, 30 )
 	//PORT_CATEGORY_ITEM(    0x0b, "Save Key", 31 )
 
-	PORT_START	/* [10] left keypad */
+	PORT_START_TAG("KEYPAD_L")	/* [10] left keypad */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 1") PORT_CODE(KEYCODE_7_PAD)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 2") PORT_CODE(KEYCODE_8_PAD)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 3") PORT_CODE(KEYCODE_9_PAD)
@@ -1890,7 +1890,7 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left 0") PORT_CODE(KEYCODE_DEL_PAD)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(13) PORT_NAME("left #") PORT_CODE(KEYCODE_ENTER_PAD)
 
-	PORT_START  /* [11] right keypad */
+	PORT_START_TAG("KEYPAD_R")  /* [11] right keypad */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 1") PORT_CODE(KEYCODE_5)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 2") PORT_CODE(KEYCODE_6)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 3") PORT_CODE(KEYCODE_7)
@@ -1904,34 +1904,34 @@ static INPUT_PORTS_START( a2600 )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right 0") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CATEGORY(23) PORT_NAME("right #") PORT_CODE(KEYCODE_N)
 
-	PORT_START	/* [12] left driving controller */
+	PORT_START_TAG("WHEEL_L")	/* [12] left driving controller */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(12) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START	/* [13] right driving controller */
+	PORT_START_TAG("WHEEL_R")	/* [13] right driving controller */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(22) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-	PORT_START	/* [14] left light gun X */
+	PORT_START_TAG("GUNX_L")	/* [14] left light gun X */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(14) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START	/* [15] left light gun Y */
+	PORT_START_TAG("GUNY_L")	/* [15] left light gun Y */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(14) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(1)
 
-	PORT_START	/* [16] right light gun X */
+	PORT_START_TAG("GUNX_R")	/* [16] right light gun X */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CATEGORY(24) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START	/* [17] right light gun Y */
+	PORT_START_TAG("GUNY_R")	/* [17] right light gun Y */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CATEGORY(24) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
-	PORT_START	/* [18] left trak ball X */
+	PORT_START_TAG("TRAKX_L")	/* [18] left trak ball X */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START	/* [19] left trak ball Y */
+	PORT_START_TAG("TRAKY_L")	/* [19] left trak ball Y */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_CATEGORY(15) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START	/* [20] right trak ball X */
+	PORT_START_TAG("TRAKX_R")	/* [20] right trak ball X */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_CATEGORY(25) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-	PORT_START	/* [21] right trak ball Y */
+	PORT_START_TAG("TRAKY_R")	/* [21] right trak ball Y */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_CATEGORY(25) PORT_SENSITIVITY(40) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
 INPUT_PORTS_END
@@ -2009,8 +2009,8 @@ static void a2600_cartslot_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_a2600_cart; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_a2600_cart; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(a2600_cart); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(a2600_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,a26"); break;

@@ -119,7 +119,7 @@ static int thom_floppy_make_addr( chrn_id id, UINT8* dst, int sector_size )
 
 
 /* build a sector, with header & space */
-static int thom_floppy_make_sector( mess_image* img, chrn_id id, UINT8* dst, int sector_size )
+static int thom_floppy_make_sector( const device_config* img, chrn_id id, UINT8* dst, int sector_size )
 {
 	if ( sector_size == 128 )
 	{
@@ -150,7 +150,7 @@ static int thom_floppy_make_sector( mess_image* img, chrn_id id, UINT8* dst, int
 
 
 /* build a whole track */
-static int thom_floppy_make_track( mess_image* img, UINT8* dst, int sector_size, int side )
+static int thom_floppy_make_track( const device_config* img, UINT8* dst, int sector_size, int side )
 {
 	UINT8 space = ( sector_size == 128 ) ? 0xff : 0;
 	UINT8* org = dst;
@@ -226,7 +226,7 @@ static int thom_qdd_make_addr( int sector, UINT8* dst )
 
 
 /* build a sector, with header */
-static int thom_qdd_make_sector( mess_image* img, int sector, UINT8* dst )
+static int thom_qdd_make_sector( const device_config* img, int sector, UINT8* dst )
 {
 	int i;
 	dst[ 0 ] = 0x5a;
@@ -240,7 +240,7 @@ static int thom_qdd_make_sector( mess_image* img, int sector, UINT8* dst )
 
 
 /* build a whole disk */
-static int thom_qdd_make_disk ( mess_image* img, UINT8* dst )
+static int thom_qdd_make_disk ( const device_config* img, UINT8* dst )
 {
 	UINT8* org = dst;
 	int i;
@@ -332,15 +332,15 @@ static WRITE8_HANDLER( to7_5p14_w )
 
 
 
-static void to7_5p14_reset( void )
+static void to7_5p14_reset( running_machine *machine )
 {
 	int i;
 	LOG(( "to7_5p14_reset: CD 90-640 controller\n" ));
 	thom_floppy_set_density( DEN_MFM_LO );
 	wd17xx_reset();
-	for ( i = 0; i < device_count( IO_FLOPPY ); i++ )
+	for ( i = 0; i < device_count( machine, IO_FLOPPY ); i++ )
 	{
-		mess_image * img = image_from_devtype_and_index( IO_FLOPPY, i );
+		const device_config * img = image_from_devtype_and_index( IO_FLOPPY, i );
 		floppy_drive_set_ready_state( img, FLOPPY_DRIVE_READY, 0 );
 		floppy_drive_set_rpm( img, 300. );
 		floppy_drive_seek( img, - floppy_drive_get_current_track( img ) );
@@ -433,15 +433,15 @@ static WRITE8_HANDLER( to7_5p14sd_w )
 
 
 
-static void to7_5p14sd_reset( void )
+static void to7_5p14sd_reset( running_machine *machine )
 {
 	int i;
 	LOG(( "to7_5p14sd_reset: CD 90-015 controller\n" ));
 	thom_floppy_set_density( DEN_FM_LO );
 	mc6843_reset();
-	for ( i = 0; i < device_count( IO_FLOPPY ); i++ )
+	for ( i = 0; i < device_count( machine, IO_FLOPPY ); i++ )
 	{
-		mess_image * img = image_from_devtype_and_index( IO_FLOPPY, i );
+		const device_config * img = image_from_devtype_and_index( IO_FLOPPY, i );
 		floppy_drive_set_ready_state( img, FLOPPY_DRIVE_READY, 0 );
 		floppy_drive_set_rpm( img, 300. );
 		floppy_drive_seek( img, - floppy_drive_get_current_track( img ) );
@@ -529,7 +529,7 @@ static struct
 
 
 
-static void to7_qdd_index_pulse_cb ( mess_image* img, int state )
+static void to7_qdd_index_pulse_cb ( const device_config* img, int state )
 {
 	to7qdd->index_pulse = state;
 
@@ -546,7 +546,7 @@ static void to7_qdd_index_pulse_cb ( mess_image* img, int state )
 
 
 
-static mess_image * to7_qdd_image ( void )
+static const device_config * to7_qdd_image ( void )
 {
 	return image_from_devtype_and_index( IO_FLOPPY, 0 );
 }
@@ -729,7 +729,7 @@ static READ8_HANDLER ( to7_qdd_r )
 	case 8: /* floppy status */
 	{
 		UINT8 data = 0;
-		mess_image* img = to7_qdd_image();
+		const device_config* img = to7_qdd_image();
 		if ( ! image_exists( img ) )
 			data |= 0x40; /* disk present */
 		if ( to7qdd->index_pulse )
@@ -838,16 +838,16 @@ static WRITE8_HANDLER( to7_qdd_w )
 
 
 
-static void to7_qdd_reset( void )
+static void to7_qdd_reset( running_machine *machine )
 {
 	int i;
 	LOG(( "to7_qdd_reset: CQ 90-028 controller\n" ));
 
 	thom_floppy_set_density( DEN_MFM_LO );
 
-	for ( i = 0; i < device_count( IO_FLOPPY ); i++ )
+	for ( i = 0; i < device_count( machine, IO_FLOPPY ); i++ )
 	{
-		mess_image * img = image_from_devtype_and_index( IO_FLOPPY, i );
+		const device_config * img = image_from_devtype_and_index( IO_FLOPPY, i );
 		floppy_drive_set_index_pulse_callback( img, to7_qdd_index_pulse_cb );
 		floppy_drive_set_ready_state( img, FLOPPY_DRIVE_READY, 0 );
 		floppy_drive_set_motor_state( img, 1 );
@@ -944,7 +944,7 @@ static emu_timer* thmfc_floppy_cmd;
 
 
 
-static mess_image * thmfc_floppy_image ( void )
+static const device_config * thmfc_floppy_image ( void )
 {
 	return image_from_devtype_and_index( IO_FLOPPY, thmfc1->drive );
 }
@@ -958,7 +958,7 @@ static int thmfc_floppy_is_qdd ( void )
 
 
 
-static void thmfc_floppy_index_pulse_cb ( mess_image *img, int state )
+static void thmfc_floppy_index_pulse_cb ( const device_config *img, int state )
 {
 	if ( img != thmfc_floppy_image() )
 		return;
@@ -990,7 +990,7 @@ static void thmfc_floppy_index_pulse_cb ( mess_image *img, int state )
 
 static int thmfc_floppy_find_sector ( chrn_id* dst )
 {
-	mess_image* img = thmfc_floppy_image();
+	const device_config* img = thmfc_floppy_image();
 	chrn_id id;
 	int r = 0;
 
@@ -1034,7 +1034,7 @@ static void thmfc_floppy_cmd_complete(void)
 	if ( thmfc1->op == THMFC1_OP_WRITE_SECT )
 	{
 		/* TODO: detect ddam (?) */
-		mess_image * img = thmfc_floppy_image();
+		const device_config * img = thmfc_floppy_image();
 		floppy_drive_write_sector_data( img, thmfc1->side, thmfc1->sector, thmfc1->data + 3, thmfc1->data_size - 3, 0 );
 	}
 	thmfc1->op = THMFC1_OP_RESET;
@@ -1176,7 +1176,7 @@ static void thmfc_floppy_qdd_write_byte ( UINT8 data )
 			if ( i >= 0 )
 			{
 				/* got an id & a data field => write */
-				mess_image * img = thmfc_floppy_image();
+				const device_config * img = thmfc_floppy_image();
 				int sector = (int) thmfc1->data[ i + 1 ] * 256 +
 					(int) thmfc1->data[ i + 2 ];
 
@@ -1236,7 +1236,7 @@ static void thmfc_floppy_format_byte ( UINT8 data )
 			if ( !memcmp ( thmfc1->data, header, sizeof( header ) ) )
 			{
 				/* got id field => format */
-				mess_image * img = thmfc_floppy_image();
+				const device_config * img = thmfc_floppy_image();
 				UINT8 track  = thmfc1->data[4];
 				UINT8 side   = thmfc1->data[5];
 				UINT8 sector = thmfc1->data[6];
@@ -1266,7 +1266,7 @@ READ8_HANDLER ( thmfc_floppy_r )
 	case 1: /* STAT1 */
 	{
 		UINT8 data = 0;
-		mess_image * img = thmfc_floppy_image();
+		const device_config * img = thmfc_floppy_image();
 		int flags = floppy_drive_get_flag_state( img, -1 );
 		if ( thmfc_floppy_is_qdd() )
 		{
@@ -1431,7 +1431,7 @@ WRITE8_HANDLER ( thmfc_floppy_w )
 
 	case 2: /* CMD2 */
 	{
-		mess_image * img;
+		const device_config * img;
 		int seek = 0, motor;
 		thmfc1->drive = data & 2;
 
@@ -1521,14 +1521,14 @@ WRITE8_HANDLER ( thmfc_floppy_w )
 
 
 
-void thmfc_floppy_reset( void )
+void thmfc_floppy_reset( running_machine *machine )
 {
 	int i;
 	LOG(( "thmfc_floppy_reset: THMFC1 controller\n" ));
 
-	for ( i = 0; i < device_count( IO_FLOPPY ); i++ )
+	for ( i = 0; i < device_count( machine, IO_FLOPPY ); i++ )
 	{
-		mess_image * img = image_from_devtype_and_index( IO_FLOPPY, i );
+		const device_config * img = image_from_devtype_and_index( IO_FLOPPY, i );
 		floppy_drive_set_index_pulse_callback( img, thmfc_floppy_index_pulse_cb );
 		floppy_drive_set_ready_state( img, FLOPPY_DRIVE_READY, 0 );
 		floppy_drive_seek( img, - floppy_drive_get_current_track( img ) );
@@ -1716,7 +1716,7 @@ static READ8_HANDLER ( to7_network_r )
 	if ( offset == 8 )
 	{
 		/* network ID of the computer */
-		UINT8 id = readinputport( THOM_INPUT_FCONFIG ) >> 3;
+		UINT8 id = input_port_read_indexed(machine,  THOM_INPUT_FCONFIG ) >> 3;
 		VLOG(( "%f $%04x to7_network_r: read id $%02X\n", attotime_to_double(timer_get_time()), activecpu_get_previouspc(), id ));
 		return id;
 	}
@@ -1772,31 +1772,31 @@ void to7_floppy_init ( running_machine *machine, void* base )
 
 
 
-void to7_floppy_reset ( void )
+void to7_floppy_reset ( running_machine *machine )
 {
-	to7_controller_type = (readinputport( THOM_INPUT_FCONFIG ) ) & 7;
+	to7_controller_type = (input_port_read_indexed(machine,  THOM_INPUT_FCONFIG ) ) & 7;
 
 	switch ( to7_controller_type )
 	{
 
 	case 1:
 		to7_floppy_bank = 1;
-		to7_5p14sd_reset();
+		to7_5p14sd_reset(machine);
 		break;
 
 	case 2:
 		to7_floppy_bank = 2;
-		to7_5p14_reset();
+		to7_5p14_reset(machine);
 		break;
 
 	case 3:
 		to7_floppy_bank = 3;
-		thmfc_floppy_reset();
+		thmfc_floppy_reset(machine);
 		break;
 
 	case 4:
 		to7_floppy_bank = 7;
-		to7_qdd_reset();
+		to7_qdd_reset(machine);
 		break;
 
 	case 5:
@@ -1892,9 +1892,9 @@ void to9_floppy_init( running_machine *machine, void* int_base, void* ext_base )
 
 
 
-void to9_floppy_reset( void )
+void to9_floppy_reset( running_machine *machine )
 {
-	to7_floppy_reset();
+	to7_floppy_reset(machine);
 	if ( THOM_FLOPPY_EXT )
 	{
 		LOG(( "to9_floppy_reset: external controller\n" ));
@@ -1902,7 +1902,7 @@ void to9_floppy_reset( void )
 	else
 	{
 		LOG(( "to9_floppy_reset: internal controller\n" ));
-		to7_5p14_reset();
+		to7_5p14_reset(machine);
 		memory_set_bank( THOM_FLOP_BANK, TO7_NB_FLOP_BANK );
 	}
 }

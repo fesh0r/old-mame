@@ -37,15 +37,20 @@ Tandy 1000 (80286) variations:
 Tandy 1000 (80386) variations:
 1000RSX/1000RSX-HD	1M-9M RAM			25.0/8.0 MHz	v01.10.00
 
+IBM PC Jr:
+
+TODO: Which clock signals are available in a PC Jr?
+      - What clock is Y1? This eventually gets passed on to the CPU (ZM40?) and some other components by a 8284 (ZM8?).
+      - Is the clock attached to the Video Gate Array (ZM36?) exactly 14MHz?
+
 ***************************************************************************/
 
 
 #include "driver.h"
 #include "deprecat.h"
-#include "memconv.h"
 
 #include "machine/8255ppi.h"
-#include "machine/uart8250.h"
+#include "machine/ins8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
 
@@ -78,6 +83,8 @@ Tandy 1000 (80386) variations:
 #include "devices/printer.h"
 #include "devices/mflopimg.h"
 #include "devices/harddriv.h"
+#include "devices/cassette.h"
+#include "devices/cartslot.h"
 #include "formats/pc_dsk.h"
 
 #include "machine/8237dma.h"
@@ -126,9 +133,6 @@ static WRITE8_HANDLER( pc_YM3812_0_w )
 		YM3812_write_port_0_w(machine, 0, data);
 }
 
-static READ16_HANDLER( pc16le_YM3812_0_r ) { return read16le_with_read8_handler(pc_YM3812_0_r, machine, offset, mem_mask); }
-static WRITE16_HANDLER( pc16le_YM3812_0_w ) { write16le_with_write8_handler(pc_YM3812_0_w, machine, offset, data, mem_mask); }
-
 #ifdef UNUSED_FUNCTION
 static WRITE16_HANDLER( pc16le_SN76496_0_w ) { write16le_with_write8_handler(SN76496_0_w, machine, offset, data, mem_mask); }
 #endif
@@ -157,21 +161,21 @@ static ADDRESS_MAP_START( pc16_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 
-
 static ADDRESS_MAP_START(pc8_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dma8237_0_r,			dma8237_0_w)
-	AM_RANGE(0x0020, 0x0021) AM_READWRITE(pic8259_0_r,			pic8259_0_w)
-	AM_RANGE(0x0040, 0x0043) AM_READWRITE(pit8253_0_r,			pit8253_0_w)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE(ppi8255_0_r,			ppi8255_0_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE(DMA8237, "dma8237", dma8237_r, dma8237_w)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE(PIC8259, "pic8259_master", pic8259_r, pic8259_w)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w)
+	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,			pc_page_w)
+	AM_RANGE(0x00a0, 0x00a0) AM_WRITE( pc_nmi_enable_w )
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc_JOY_r,				pc_JOY_w)
 #ifdef EXP_ON
 	AM_RANGE(0x0210, 0x0217) AM_READWRITE(pc_EXP_r,				pc_EXP_w)
 #endif
 	AM_RANGE(0x0240, 0x0257) AM_READWRITE(pc_rtc_r,				pc_rtc_w)
 	AM_RANGE(0x0278, 0x027b) AM_READWRITE(pc_parallelport2_r,	pc_parallelport2_w)
-	AM_RANGE(0x02e8, 0x02ef) AM_READWRITE(uart8250_3_r,			uart8250_3_w)
-	AM_RANGE(0x02f8, 0x02ff) AM_READWRITE(uart8250_1_r,			uart8250_1_w)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE(INS8250, "ins8250_3", ins8250_r, ins8250_w)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE(INS8250, "ins8250_1", ins8250_r, ins8250_w)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc_HDC1_r,			pc_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc_HDC2_r,			pc_HDC2_w)
 	AM_RANGE(0x0340, 0x0357) AM_READ(return8_FF) /* anonymous bios should not recogniced realtimeclock */
@@ -180,38 +184,38 @@ static ADDRESS_MAP_START(pc8_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0388, 0x0389) AM_READWRITE(pc_YM3812_0_r,		pc_YM3812_0_w)
 #endif
 	AM_RANGE(0x03bc, 0x03be) AM_READWRITE(pc_parallelport0_r,	pc_parallelport0_w)
-	AM_RANGE(0x03e8, 0x03ef) AM_READWRITE(uart8250_2_r,			uart8250_2_w)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE(INS8250, "ins8250_2", ins8250_r, ins8250_w)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc_fdc_r,				pc_fdc_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_READWRITE(uart8250_0_r,			uart8250_0_w)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE(INS8250, "ins8250_0", ins8250_r, ins8250_w)
 ADDRESS_MAP_END
 
 
-
 static ADDRESS_MAP_START(pc16_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dma8237_16le_0_r,			dma8237_16le_0_w)
-	AM_RANGE(0x0020, 0x0021) AM_READWRITE(pic8259_16le_0_r,			pic8259_16le_0_w)
-	AM_RANGE(0x0040, 0x0043) AM_READWRITE(pit8253_16le_0_r,			pit8253_16le_0_w)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE(ppi8255_16le_0_r,			ppi8255_16le_0_w)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page16le_r,			pc_page16le_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8(DMA8237, "dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8(PIT8253, "pit8253", pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE8(PPI8255, "ppi8255", ppi8255_r, ppi8255_w, 0xffff)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
+	AM_RANGE(0x00a0, 0x00a1) AM_WRITE8( pc_nmi_enable_w, 0x00ff )
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc16le_JOY_r,				pc16le_JOY_w)
 #ifdef EXP_ON
 	AM_RANGE(0x0210, 0x0217) AM_READWRITE(pc_EXP_r,					pc_EXP_w)
 #endif
 	AM_RANGE(0x0240, 0x0257) AM_READWRITE(pc16le_rtc_r,				pc16le_rtc_w)
 	AM_RANGE(0x0278, 0x027b) AM_READWRITE(pc16le_parallelport2_r,	pc16le_parallelport2_w)
-	AM_RANGE(0x02e8, 0x02ef) AM_READWRITE(uart8250_16le_3_r,		uart8250_16le_3_w)
-	AM_RANGE(0x02f8, 0x02ff) AM_READWRITE(uart8250_16le_1_r,		uart8250_16le_1_w)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8(INS8250, "ins8250_3", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8(INS8250, "ins8250_1", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,			pc16le_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc16le_HDC2_r,			pc16le_HDC2_w)
 	AM_RANGE(0x0340, 0x0357) AM_READ(return16_FFFF) /* anonymous bios should not recogniced realtimeclock */
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc16le_parallelport1_r,	pc16le_parallelport1_w)
 #ifdef ADLIB
-	AM_RANGE(0x0388, 0x0389) AM_READWRITE(pc16le_YM3812_0_r,		pc16le_YM3812_0_w)
+	AM_RANGE(0x0388, 0x0389) AM_READWRITE8(pc_YM3812_0_r,			pc_YM3812_0_w, 0xffff)
 #endif
 	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc16le_parallelport0_r,	pc16le_parallelport0_w)
-	AM_RANGE(0x03e8, 0x03ef) AM_READWRITE(uart8250_16le_2_r,		uart8250_16le_2_w)
-	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc16le_fdc_r,				pc16le_fdc_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_READWRITE(uart8250_16le_0_r,		uart8250_16le_0_w)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8(INS8250, "ins8250_2", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,				pc_fdc_w, 0xffff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(INS8250, "ins8250_0", ins8250_r, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
@@ -229,17 +233,17 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(europc_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dma8237_0_r,			dma8237_0_w)
-	AM_RANGE(0x0020, 0x0021) AM_READWRITE(pic8259_0_r,			pic8259_0_w)
-	AM_RANGE(0x0040, 0x0043) AM_READWRITE(pit8253_0_r,			pit8253_0_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE(DMA8237, "dma8237", dma8237_r, dma8237_w)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE(PIC8259, "pic8259_master", pic8259_r, pic8259_w)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE(europc_pio_r,			europc_pio_w)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,			pc_page_w)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc_JOY_r,				pc_JOY_w)
 	AM_RANGE(0x0250, 0x025f) AM_READWRITE(europc_jim_r,			europc_jim_w)
 	AM_RANGE(0x0278, 0x027b) AM_READWRITE(pc_parallelport2_r,	pc_parallelport2_w)
 	AM_RANGE(0x02e0, 0x02e0) AM_READ     (europc_jim2_r)
-	AM_RANGE(0x02e8, 0x02ef) AM_READWRITE(uart8250_3_r,			uart8250_3_w)
-	AM_RANGE(0x02f8, 0x02ff) AM_READWRITE(uart8250_1_r,			uart8250_1_w)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE(INS8250, "ins8250_3", ins8250_r, ins8250_w)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE(INS8250, "ins8250_1", ins8250_r, ins8250_w)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc_HDC1_r,			pc_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc_HDC2_r,			pc_HDC2_w)
 	AM_RANGE(0x0378, 0x037b) AM_READWRITE(pc_parallelport1_r,	pc_parallelport1_w)
@@ -247,9 +251,9 @@ static ADDRESS_MAP_START(europc_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0x0388, 0x0389) AM_READWRITE(pc_YM3812_0_r,		pc_YM3812_0_w)
 #endif
 //  AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc16le_parallelport0_r,   pc16le_parallelport0_w)
-	AM_RANGE(0x03e8, 0x03ef) AM_READWRITE(uart8250_2_r,			uart8250_2_w)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE(INS8250, "ins8250_2", ins8250_r, ins8250_w)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc_fdc_r,				pc_fdc_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_READWRITE(uart8250_0_r,			uart8250_0_w)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE(INS8250, "ins8250_0", ins8250_r, ins8250_w)
 ADDRESS_MAP_END
 
 
@@ -269,44 +273,78 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(tandy1000_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dma8237_0_r,				dma8237_0_w)
-	AM_RANGE(0x0020, 0x0021) AM_READWRITE(pic8259_0_r,				pic8259_0_w)
-	AM_RANGE(0x0040, 0x0043) AM_READWRITE(pit8253_0_r,				pit8253_0_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE(DMA8237, "dma8237", dma8237_r, dma8237_w)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE(PIC8259, "pic8259_master", pic8259_r, pic8259_w)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE(tandy1000_pio_r,			tandy1000_pio_w)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
 	AM_RANGE(0x00c0, 0x00c0) AM_WRITE(								SN76496_0_w)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc_JOY_r,					pc_JOY_w)
-	AM_RANGE(0x02f8, 0x02ff) AM_READWRITE(uart8250_1_r,				uart8250_1_w)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE(INS8250, "ins8250_1", ins8250_r, ins8250_w)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc_HDC1_r,				pc_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc_HDC2_r,				pc_HDC2_w)
 	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc_t1t_p37x_r,			pc_t1t_p37x_w)
 	AM_RANGE(0x03bc, 0x03be) AM_READWRITE(pc_parallelport0_r,		pc_parallelport0_w)
 	AM_RANGE(0x03d0, 0x03df) AM_READWRITE(pc_T1T_r,					pc_T1T_w)
 	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc_fdc_r,					pc_fdc_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_READWRITE(uart8250_0_r,				uart8250_0_w)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE(INS8250, "ins8250_0", ins8250_r, ins8250_w)
+ADDRESS_MAP_END
+
+
+
+static ADDRESS_MAP_START(ibmpcjr_map, ADDRESS_SPACE_PROGRAM, 8 )
+	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
+	AM_RANGE(0xa0000, 0xaffff) AM_RAM
+	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
+	AM_RANGE(0xb8000, 0xbffff) AM_READWRITE(pc_t1t_videoram_r, pc_video_videoram_w)
+	AM_RANGE(0xc0000, 0xc7fff) AM_NOP
+	AM_RANGE(0xc8000, 0xc9fff) AM_ROM
+	AM_RANGE(0xca000, 0xcffff) AM_NOP
+	AM_RANGE(0xd0000, 0xeffff) AM_ROM
+	AM_RANGE(0xf0000, 0xfffff) AM_ROM
+ADDRESS_MAP_END
+
+
+static ADDRESS_MAP_START(ibmpcjr_io, ADDRESS_SPACE_IO, 8)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE(DMA8237, "dma8237", dma8237_r, dma8237_w)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE(PIC8259, "pic8259_master", pic8259_r, pic8259_w)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w)
+	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,				pc_page_w)
+	AM_RANGE(0x00a0, 0x00a0) AM_READWRITE( pcjr_nmi_enable_r, pc_nmi_enable_w )
+	AM_RANGE(0x00c0, 0x00c0) AM_WRITE(								SN76496_0_w)
+	AM_RANGE(0x00f0, 0x00f7) AM_READWRITE(pc_fdc_r,					pcjr_fdc_w)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc_JOY_r,					pc_JOY_w)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE(INS8250, "ins8250_1", ins8250_r, ins8250_w)
+	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc_HDC1_r,				pc_HDC1_w)
+	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc_HDC2_r,				pc_HDC2_w)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc_t1t_p37x_r,			pc_t1t_p37x_w)
+	AM_RANGE(0x03bc, 0x03be) AM_READWRITE(pc_parallelport0_r,		pc_parallelport0_w)
+	AM_RANGE(0x03d0, 0x03df) AM_READWRITE(pc_T1T_r,					pc_pcjr_w)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE(INS8250, "ins8250_0", ins8250_r, ins8250_w)
 ADDRESS_MAP_END
 
 
 
 static ADDRESS_MAP_START(pc200_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dma8237_16le_0_r,				dma8237_16le_0_w)
-	AM_RANGE(0x0020, 0x0021) AM_READWRITE(pic8259_16le_0_r,				pic8259_16le_0_w)
-	AM_RANGE(0x0040, 0x0043) AM_READWRITE(pit8253_16le_0_r,				pit8253_16le_0_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8(DMA8237, "dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8(PIT8253, "pit8253", pit8253_r, pit8253_w, 0x00ff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
 	AM_RANGE(0x0078, 0x0079) AM_READWRITE(pc1640_16le_mouse_x_r,			pc1640_16le_mouse_x_w)
 	AM_RANGE(0x007a, 0x007b) AM_READWRITE(pc1640_16le_mouse_y_r,			pc1640_16le_mouse_y_w)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page16le_r,				pc_page16le_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,					pc_page_w, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc16le_JOY_r,					pc16le_JOY_w)
 	AM_RANGE(0x0278, 0x027b) AM_READWRITE(pc16le_parallelport2_r,		pc16le_parallelport2_w)
-	AM_RANGE(0x02e8, 0x02ef) AM_READWRITE(uart8250_16le_3_r,				uart8250_16le_3_w)
-	AM_RANGE(0x02f8, 0x02ff) AM_READWRITE(uart8250_16le_1_r,				uart8250_16le_1_w)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8(INS8250, "ins8250_3", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8(INS8250, "ins8250_1", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,				pc16le_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc16le_HDC2_r,				pc16le_HDC2_w)
 	AM_RANGE(0x0378, 0x037b) AM_READWRITE(pc200_16le_port378_r,			pc16le_parallelport1_w)
 	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc16le_parallelport0_r,		pc16le_parallelport0_w)
-	AM_RANGE(0x03e8, 0x03ef) AM_READWRITE(uart8250_16le_2_r,				uart8250_16le_2_w)
-	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc16le_fdc_r,					pc16le_fdc_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_READWRITE(uart8250_16le_0_r,				uart8250_16le_0_w)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8(INS8250, "ins8250_2", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,					pc_fdc_w, 0xffff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(INS8250, "ins8250_0", ins8250_r, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
@@ -322,25 +360,25 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(pc1640_io, ADDRESS_SPACE_IO, 16)
-	AM_RANGE(0x0000, 0x000f) AM_READWRITE(dma8237_16le_0_r,			dma8237_16le_0_w)
-	AM_RANGE(0x0020, 0x0021) AM_READWRITE(pic8259_16le_0_r,			pic8259_16le_0_w)
-	AM_RANGE(0x0040, 0x0043) AM_READWRITE(pit8253_16le_0_r,			pit8253_16le_0_w)
+	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8(DMA8237, "dma8237", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8(PIT8253, "pit8253", pit8253_r, pit8253_w, 0x00ff)
 	AM_RANGE(0x0060, 0x0065) AM_READWRITE(pc1640_16le_port60_r,			pc1640_16le_port60_w)
 	AM_RANGE(0x0070, 0x0071) AM_READWRITE(mc146818_port16le_r,		mc146818_port16le_w)
 	AM_RANGE(0x0078, 0x0079) AM_READWRITE(pc1640_16le_mouse_x_r,	pc1640_16le_mouse_x_w)
 	AM_RANGE(0x007a, 0x007b) AM_READWRITE(pc1640_16le_mouse_y_r,	pc1640_16le_mouse_y_w)
-	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page16le_r,				pc_page16le_w)
+	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,				pc_page_w, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc16le_JOY_r,				pc16le_JOY_w)
 	AM_RANGE(0x0278, 0x027b) AM_READWRITE(pc16le_parallelport2_r,		pc16le_parallelport2_w)
-	AM_RANGE(0x02e8, 0x02ef) AM_READWRITE(uart8250_16le_3_r,		uart8250_16le_3_w)
-	AM_RANGE(0x02f8, 0x02ff) AM_READWRITE(uart8250_16le_1_r,		uart8250_16le_1_w)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8(INS8250, "ins8250_3", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8(INS8250, "ins8250_1", ins8250_r, ins8250_w, 0xffff)
 	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc16le_HDC1_r,			pc16le_HDC1_w)
 	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc16le_HDC2_r,			pc16le_HDC2_w)
 	AM_RANGE(0x0378, 0x037b) AM_READWRITE(pc1640_16le_port378_r,			pc16le_parallelport1_w)
 	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE(pc16le_parallelport0_r,		pc16le_parallelport0_w)
-	AM_RANGE(0x03e8, 0x03ef) AM_READWRITE(uart8250_16le_2_r,		uart8250_16le_2_w)
-	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc16le_fdc_r,				pc16le_fdc_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_READWRITE(uart8250_16le_0_r,		uart8250_16le_0_w)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8(INS8250, "ins8250_2", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,				pc_fdc_w, 0xffff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(INS8250, "ins8250_0", ins8250_r, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
@@ -493,23 +531,7 @@ static INPUT_PORTS_START( pccga )
 	PORT_INCLUDE( pc_keyboard )		/* IN4 - IN11 */
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
-
-    PORT_START /* IN20 */
-	PORT_CONFNAME( 0x03, 0x00, "CGA character set")
-	PORT_CONFSETTING(0x00, DEF_STR( Normal ))
-    PORT_CONFSETTING(0x01, "Alternative")
-	PORT_CONFNAME( 0x1C, 0x00, "CGA monitor type")
-	PORT_CONFSETTING(0x00, "Colour RGB")
-	PORT_CONFSETTING(0x04, "Mono RGB")
-	PORT_CONFSETTING(0x08, "Colour composite")
-	PORT_CONFSETTING(0x0C, "Television")
-    PORT_CONFSETTING(0x10, "LCD")
-	PORT_CONFNAME( 0xE0, 0x00, "CGA chipset")
-	PORT_CONFSETTING(0x00, "IBM")
-	PORT_CONFSETTING(0x20, "Amstrad PC1512")
-	PORT_CONFSETTING(0x40, "Amstrad PPC512")
-	PORT_CONFSETTING(0x60, "ATI")
-    PORT_CONFSETTING(0x80, "Paradise")
+	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( europc )
@@ -720,23 +742,7 @@ static INPUT_PORTS_START( xtcga )
 	PORT_INCLUDE( pc_keyboard )		/* IN4 - IN11 */
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
-
-    PORT_START /* IN20 */
-	PORT_CONFNAME( 0x03, 0x00, "CGA character set")
-	PORT_CONFSETTING(0x00, DEF_STR( Normal ))
-    PORT_CONFSETTING(0x01, "Alternative")
-	PORT_CONFNAME( 0x1C, 0x00, "CGA monitor type")
-	PORT_CONFSETTING(0x00, "Colour RGB")
-	PORT_CONFSETTING(0x04, "Mono RGB")
-	PORT_CONFSETTING(0x08, "Colour composite")
-	PORT_CONFSETTING(0x0C, "Television")
-    PORT_CONFSETTING(0x10, "LCD")
-	PORT_CONFNAME( 0xE0, 0x00, "CGA chipset")
-	PORT_CONFSETTING(0x00, "IBM")
-	PORT_CONFSETTING(0x20, "Amstrad PC1512")
-	PORT_CONFSETTING(0x40, "Amstrad PPC512")
-	PORT_CONFSETTING(0x60, "ATI")
-    PORT_CONFSETTING(0x80, "Paradise")
+	PORT_INCLUDE( pcvideo_cga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tandy1t )
@@ -935,16 +941,7 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 
 	PORT_INCLUDE( pc_joystick_none )
 
-    PORT_START /* IN20 */
-	PORT_CONFNAME( 0x03, 0x03, "CGA character set")
-	PORT_CONFSETTING(0x00, "Greek")
-	PORT_CONFSETTING(0x01, "Danish 2")
-	PORT_CONFSETTING(0x02, "Danish 1")
-    PORT_CONFSETTING(0x03, "Default")
-	PORT_CONFNAME( 0x1C, 0x00, "CGA monitor type")
-	PORT_CONFSETTING(0x00, "Colour RGB")
-    PORT_CONFSETTING(0x04, "Mono RGB")
-    PORT_BIT ( 0xE0, 0x20, IPT_UNUSED )	/* Chipset is always PC1512 */
+	PORT_INCLUDE( pcvideo_pc1512 )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pc1640 )
@@ -1167,6 +1164,7 @@ static const struct YM3812interface ym3812_interface =
 };
 #endif
 
+
 #define MDRV_CPU_PC(mem, port, type, clock, vblankfunc)	\
 	MDRV_CPU_ADD_TAG("main", type, clock)				\
 	MDRV_CPU_PROGRAM_MAP(mem##_map, 0)			\
@@ -1180,9 +1178,37 @@ static MACHINE_DRIVER_START( pcmda )
 	MDRV_CPU_ADD_TAG("main", V20, 4772720)
 	MDRV_CPU_PROGRAM_MAP(pc8_map, 0)
 	MDRV_CPU_IO_MAP(pc8_io, 0)
-	MDRV_CPU_VBLANK_INT_HACK(pc_mda_frame_interrupt, 4)
+	MDRV_CPU_VBLANK_INT_HACK(pc_frame_interrupt, 4)
 
-	MDRV_MACHINE_RESET(pc_mda)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_mda )
@@ -1203,6 +1229,11 @@ static MACHINE_DRIVER_START( pcmda )
 	MDRV_SOUND_ADD(SAA1099, 4772720)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 
@@ -1211,9 +1242,37 @@ static MACHINE_DRIVER_START( pcherc )
 	MDRV_CPU_ADD_TAG("main", V20, 4772720)
 	MDRV_CPU_PROGRAM_MAP(pc8_map, 0)
 	MDRV_CPU_IO_MAP(pc8_io, 0)
-	MDRV_CPU_VBLANK_INT_HACK(pc_mda_frame_interrupt, 4)
+	MDRV_CPU_VBLANK_INT_HACK(pc_frame_interrupt, 4)
 
-	MDRV_MACHINE_RESET(pc_mda)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_hercules )
@@ -1234,13 +1293,46 @@ static MACHINE_DRIVER_START( pcherc )
 	MDRV_SOUND_ADD(SAA1099, 4772720)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pccga )
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc8, pc8, I8088, 4772720, pc_cga_frame_interrupt)	/* 4,77 Mhz */
+	MDRV_CPU_PC(pc8, pc8, I8088, 4772720, pc_frame_interrupt)	/* 4,77 Mhz */
 
-	MDRV_MACHINE_RESET(pc_cga)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_cga )
@@ -1261,28 +1353,50 @@ static MACHINE_DRIVER_START( pccga )
 	MDRV_SOUND_ADD(SAA1099, 4772720)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( europc )
 	/* basic machine hardware */
-	MDRV_CPU_PC(europc, europc, I8088, 4772720*2, pc_aga_frame_interrupt)
+	MDRV_CPU_PC(europc, europc, I8088, 4772720*2, pc_frame_interrupt)
 
-	MDRV_MACHINE_RESET(pc_aga)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(80*9, 25*14)
-	MDRV_SCREEN_VISIBLE_AREA(0,80*9-1, 0,25*14-1)
-	MDRV_GFXDECODE(europc)
-	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
-	MDRV_PALETTE_INIT(pc_aga)
-
-	MDRV_VIDEO_START(pc_aga)
-	MDRV_VIDEO_UPDATE(pc_video)
+	MDRV_IMPORT_FROM( pcvideo_aga )
 
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -1296,14 +1410,47 @@ static MACHINE_DRIVER_START( europc )
 #endif
 
 	MDRV_NVRAM_HANDLER( europc_rtc )
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 
-static MACHINE_DRIVER_START( xtcga )
+static MACHINE_DRIVER_START( ibm5160 )
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc16, pc16, I8086, 12000000, pc_cga_frame_interrupt)
+	MDRV_CPU_PC(pc16, pc16, I8086, 12000000, pc_frame_interrupt)
 
-	MDRV_MACHINE_RESET(pc_cga)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_cga )
@@ -1324,42 +1471,97 @@ static MACHINE_DRIVER_START( xtcga )
 	MDRV_SOUND_ADD(SAA1099, 4772720)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 #endif
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pc200 )
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc1640, pc200, I8086, 8000000, pc_aga_frame_interrupt)
+	MDRV_CPU_PC(pc1640, pc200, I8086, 8000000, pc_frame_interrupt)
 
-	MDRV_MACHINE_RESET(pc_aga)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(80*8, 25*14)
-	MDRV_SCREEN_VISIBLE_AREA(0,80*8-1, 0,25*14-1)
-	MDRV_GFXDECODE(aga)
-	MDRV_PALETTE_LENGTH(sizeof(cga_palette) / sizeof(cga_palette[0]))
-	MDRV_PALETTE_INIT(pc_aga)
-
-	MDRV_VIDEO_START(pc200)	/* PC200 needs its own video init */
-	MDRV_VIDEO_UPDATE(pc_video)
+	MDRV_IMPORT_FROM( pcvideo_pc200 )
 
     /* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(CUSTOM, 0)
 	MDRV_SOUND_CONFIG(pc_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( pc1512 )
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc1640, pc1640, I8086, 8000000, pc_cga_frame_interrupt)
+	MDRV_CPU_PC(pc1640, pc1640, I8086, 8000000, pc_frame_interrupt)
 
-	MDRV_MACHINE_RESET(pc_aga)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_pc1512 )
@@ -1371,6 +1573,11 @@ static MACHINE_DRIVER_START( pc1512 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 
@@ -1378,7 +1585,35 @@ static MACHINE_DRIVER_START( pc1640 )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc1640, pc1640, I8086, 8000000, pc_vga_frame_interrupt)
 
-	MDRV_MACHINE_RESET(pc_vga)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM(pcvideo_pc1640)
@@ -1393,6 +1628,11 @@ static MACHINE_DRIVER_START( pc1640 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
 
@@ -1400,7 +1640,35 @@ static MACHINE_DRIVER_START( xtvga )
 	/* basic machine hardware */
 	MDRV_CPU_PC(pc16, pc16, I8086, 12000000, pc_vga_frame_interrupt)
 
-	MDRV_MACHINE_RESET(pc_vga)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	MDRV_DEVICE_ADD( "ins8250_2", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+
+	MDRV_DEVICE_ADD( "ins8250_3", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_vga )
@@ -1429,9 +1697,31 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( t1000hx )
 	/* basic machine hardware */
-	MDRV_CPU_PC(tandy1000, tandy1000, I8088, 8000000, tandy1000_frame_interrupt)
+	MDRV_CPU_PC(tandy1000, tandy1000, I8088, 8000000, pc_frame_interrupt)
 
-	MDRV_MACHINE_RESET(pc_t1t)
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pc)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pc_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
 
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_t1000 )
@@ -1445,8 +1735,60 @@ static MACHINE_DRIVER_START( t1000hx )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( tandy1000 )
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
 MACHINE_DRIVER_END
 
+
+static MACHINE_DRIVER_START( ibmpcjr )
+	/* basic machine hardware */
+	MDRV_CPU_PC(ibmpcjr, ibmpcjr, I8088, 4900000, pcjr_frame_interrupt)	/* TODO: Get correct cpu frequency, probably XTAL_14_31818MHz/3 */
+
+	MDRV_MACHINE_START(pc)
+	MDRV_MACHINE_RESET(pcjr)
+
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pcjr_pit8253_config )
+
+	MDRV_DEVICE_ADD( "dma8237", DMA8237 )
+	MDRV_DEVICE_CONFIG( pc_dma8237_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( pcjr_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( pc_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( pcjr_ppi8255_interface )
+
+	MDRV_DEVICE_ADD( "ins8250_0", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ins8250_1", INS8250 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+
+	/* video hardware */
+	MDRV_IMPORT_FROM( pcvideo_pcjr )
+
+    /* sound hardware */
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(CUSTOM, 0)
+	MDRV_SOUND_CONFIG(pc_sound_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+	MDRV_SOUND_ADD(SN76496, 2386360)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	MDRV_NVRAM_HANDLER( tandy1000 )
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+	MDRV_DEVICE_ADD("printer2", PRINTER)
+	MDRV_DEVICE_ADD("printer3", PRINTER)
+MACHINE_DRIVER_END
 
 #if 0
 	//pcjr roms? (incomplete dump, most likely 64 kbyte)
@@ -1507,12 +1849,12 @@ MACHINE_DRIVER_END
     ROM_LOAD("xthdd.rom",  0xc8000, 0x02000, CRC(a96317da))
 #endif
 
-ROM_START( ibmpc )
+ROM_START( ibm5150 )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))		/* WDC Expansion ROM C8000-C9FFF */
 
 	/* IBM PC 5150 (rev 2: 1501-476 10/27/82) 5-screw case w/1501981 CGA Card, ROM Basic 1.1 */
-	ROM_SYSTEM_BIOS( 0, "rev3", "IBM PC 5150 1501471 10/27/82" )
+	ROM_SYSTEM_BIOS( 0, "default", "IBM PC 5150 1501471 10/27/82" )
 	ROMX_LOAD("5000019.u29", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(1))		/* ROM Basic 1.1 F6000-F7FFF */
 	ROMX_LOAD("5000021.u30", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(1))		/* ROM Basic 1.1 F8000-F9FFF */
 	ROMX_LOAD("5000022.u31", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(1))		/* ROM Basic 1.1 FA000-FBFFF */
@@ -1521,7 +1863,7 @@ ROM_START( ibmpc )
 
 	/* IBM PC 5150 (rev 0: 04/24/81) 2-screw case w/MDA Card, ROM Basic 1.0 */
 	/* ROM Basic 1.0 had a bug: Doing ".1 / 10" would result in the wrong answer. May have been fixed in 1.1 */
-	ROM_SYSTEM_BIOS( 1, "rev0", "IBM PC 5150 ??????? 02/24/81" )
+	ROM_SYSTEM_BIOS( 1, "rev1", "IBM PC 5150 ??????? 02/24/81" )
 	ROMX_LOAD("basicc10.f6", 0xf6000, 0x2000, NO_DUMP, ROM_BIOS(2))
 	ROMX_LOAD("basicc10.f8", 0xf8000, 0x2000, NO_DUMP, ROM_BIOS(2))
 	ROMX_LOAD("basicc10.fa", 0xfa000, 0x2000, NO_DUMP, ROM_BIOS(2))
@@ -1604,12 +1946,8 @@ ROM_END
 
 ROM_START( ibmpcjr )
     ROM_REGION(0x100000,REGION_CPU1, 0)
-#ifndef MESS_DEBUG
-	ROM_LOAD("bios.rom", 0xf0000, 0x10000,CRC( 0))
-#else
-    ROM_LOAD("basic.rom", 0xf6000, 0x8000, CRC(0c19c1a8))
-    ROM_LOAD("bios.rom", 0xfe000, 0x2000, CRC(98463f95))
-#endif
+	ROM_LOAD("bios.rom", 0xf0000, 0x10000,CRC(31e3a7aa) SHA1(1f5f7013f18c08ff50d7942e76c4fbd782412414))
+
 	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
@@ -1715,11 +2053,28 @@ ROM_START( t1000rl )
 	ROM_LOAD("50146", 0x00000, 0x02000, BAD_DUMP CRC(1305dcf5) SHA1(aca488a16ae4ff05a1f4d14574379ff49cd48343)) //taken from europc, 9th blank
 ROM_END
 
-ROM_START( ibmxt )
+ROM_START( ibm5160 )
 	ROM_REGION16_LE(0x100000,REGION_CPU1, 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-	ROM_LOAD16_BYTE("xt050986.0", 0xf0000, 0x8000, CRC(83727c42) SHA1(1b218f96aa9570beef5c1f2d7b07433b21dc4599))
-	ROM_LOAD16_BYTE("xt050986.1", 0xf0001, 0x8000, CRC(2a629953) SHA1(048bb1a0b437ae7b93a4d71648cee12e5e37892c))
+
+	ROM_SYSTEM_BIOS( 0, "rev1", "IBM XT 5160 08/16/82" )	/* ROMs marked as BAD_DUMP for now. We expect the data to be in a different ROM chip layout */
+	ROMX_LOAD("basicc11.f6", 0xf6000, 0x2000, BAD_DUMP CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(1) )
+	ROMX_LOAD("basicc11.f8", 0xf8000, 0x2000, BAD_DUMP CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(1) )
+	ROMX_LOAD("basicc11.fa", 0xfa000, 0x2000, BAD_DUMP CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(1) )
+	ROMX_LOAD("basicc11.fc", 0xfc000, 0x2000, BAD_DUMP CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(1) )
+	ROMX_LOAD("pc081682.bin", 0xfe000, 0x2000, BAD_DUMP CRC(5c3f0256) SHA1(b42c78abd0a9c630a2f972ad2bae46d83c3a2a09), ROM_BIOS(1) )
+
+	ROM_SYSTEM_BIOS( 1, "rev2", "IBM XT 5160 11/08/82" )	/* Same as PC 5155 BIOS */
+	ROMX_LOAD("5000027.u19", 0xf0000, 0x8000, CRC(fc982309) SHA1(2aa781a698a21c332398d9bc8503d4f580df0a05), ROM_BIOS(2) ) /* MK37050N-4 */
+	ROMX_LOAD("1501512.u18", 0xf8000, 0x8000, CRC(79522c3d) SHA1(6bac726d8d033491d52507278aa388ec04cf8b7e), ROM_BIOS(2) ) /* MK38036N-25 */
+
+	ROM_SYSTEM_BIOS( 2, "rev3", "IBM XT 5160 01/10/86" )    /* Has enhanced keyboard support and a 3.5" drive */
+	ROMX_LOAD("62x0854.u19", 0xf0000, 0x8000, CRC(b5fb0e83) SHA1(937b43759ffd472da4fb0fe775b3842f5fb4c3b3), ROM_BIOS(3) )
+	ROMX_LOAD("62x0851.u18", 0xf8000, 0x8000, CRC(1054f7bd) SHA1(e7d0155813e4c650085144327581f05486ed1484), ROM_BIOS(3) )
+
+	ROM_SYSTEM_BIOS( 3, "rev4", "IBM XT 5160 05/09/86" )
+	ROMX_LOAD("xt050986.0", 0xf0000, 0x8000, CRC(83727c42) SHA1(1b218f96aa9570beef5c1f2d7b07433b21dc4599), ROM_SKIP(1) | ROM_BIOS(4))
+	ROMX_LOAD("xt050986.1", 0xf0001, 0x8000, CRC(2a629953) SHA1(048bb1a0b437ae7b93a4d71648cee12e5e37892c), ROM_SKIP(1) | ROM_BIOS(4))
 
 	/* Character rom */
 	ROM_REGION(0x2000,REGION_GFX1, 0)
@@ -1825,6 +2180,17 @@ ROM_START( dgone )
 	ROM_LOAD("cga.chr", 0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
+
+static void ibmpc_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info) {
+	switch( state ) {
+	case MESS_DEVINFO_INT_COUNT:						info->i = 1; break;
+	case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:		info->i = CASSETTE_PLAY | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_ENABLED; break;
+
+	default:											cassette_device_getinfo(devclass, state, info); break;
+	}
+}
+
+
 static void ibmpc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
@@ -1840,18 +2206,6 @@ static void ibmpc_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-static void ibmpc_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static void ibmpc_harddisk_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* harddisk */
@@ -1864,11 +2218,36 @@ static void ibmpc_harddisk_getinfo(const mess_device_class *devclass, UINT32 sta
 	}
 }
 
+static void pcjr_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
+{
+	switch( state )
+	{
+	/* --- the following bits of info are returned as 64-bit signed integers --- */
+	case MESS_DEVINFO_INT_COUNT:						info->i = 2; break;
+	case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 0; break;
+
+	/* --- the following bits of info are returned as pointers to data or functions --- */
+	case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME( pcjr_cartridge ); break;
+
+	/* --- the following bits of info are returned as NULL-terminated strings --- */
+	case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy( info->s = device_temp_str(), "jrc" ); break;
+
+	default:											cartslot_device_getinfo( devclass, state, info ); break;
+	}
+}
+
 SYSTEM_CONFIG_START(ibmpc)
 	CONFIG_RAM_DEFAULT( 640 * 1024 )
-	CONFIG_DEVICE(ibmpc_printer_getinfo)
+	CONFIG_DEVICE(ibmpc_cassette_getinfo)
 	CONFIG_DEVICE(ibmpc_floppy_getinfo)
 	CONFIG_DEVICE(ibmpc_harddisk_getinfo)
+SYSTEM_CONFIG_END
+
+SYSTEM_CONFIG_START(pcjr)
+	CONFIG_RAM_DEFAULT( 640 * 1024 )
+	CONFIG_DEVICE(ibmpc_cassette_getinfo)
+	CONFIG_DEVICE(ibmpc_floppy_getinfo)
+	CONFIG_DEVICE(pcjr_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
 /***************************************************************************
@@ -1878,29 +2257,28 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*     YEAR     NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP(  1981,	ibmpc,		0,		0,		pccga,      pccga,	    pccga,	    ibmpc,   "International Business Machines",  "IBM PC 5150" , 0)
-COMP(  1982,	ibmpca,		ibmpc,	0,		pccga,      pccga,	    pccga,	    ibmpc,   "International Business Machines",  "IBM PC 08/16/82" , 0)
-COMP(  1984,	dgone,		ibmpc,		0,		pccga,      pccga,	    pccga,	    ibmpc,   "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
-COMP(  1987,	pc,		ibmpc,	0,		pccga,      pccga,		pccga,	    ibmpc,   "",  "PC (CGA)" , 0)
-COMP( 1985,	bondwell,	ibmpc,	0,		pccga,		bondwell,   bondwell,	ibmpc,   "Bondwell Holding",  "BW230 (PRO28 Series)", GAME_NOT_WORKING )
-COMP(  1988,	europc,		ibmpc,	0,		europc,     europc,		europc,     ibmpc,   "Schneider Rdf. AG",  "EURO PC", 0)
+COMP(  1981,	ibm5150,	0,			0,		pccga,      pccga,	    pccga,	    ibmpc,   "International Business Machines",  "IBM PC 5150" , 0)
+COMP(  1984,	dgone,		ibm5150,	0,		pccga,      pccga,	    pccga,	    ibmpc,   "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
+COMP(  1987,	pc,			ibm5150,	0,		pccga,      pccga,		pccga,	    ibmpc,   "",  "PC (CGA)" , 0)
+COMP(  1985,	bondwell,	ibm5150,	0,		pccga,		bondwell,   bondwell,	ibmpc,   "Bondwell Holding",  "BW230 (PRO28 Series)", GAME_NOT_WORKING )
+COMP(  1988,	europc,		ibm5150,	0,		europc,     europc,		europc,     ibmpc,   "Schneider Rdf. AG",  "EURO PC", 0)
 
 // pcjr (better graphics, better sound)
-COMP( 1983,	ibmpcjr,	ibmpc,	0,		t1000hx,    tandy1t,	t1000hx,    ibmpc,   "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
-COMP(  1987,	t1000hx,	ibmpc,	0,		t1000hx,    tandy1t,	t1000hx,	ibmpc,   "Tandy Radio Shack",  "Tandy 1000HX", 0)
-COMP(  1987,	t1000sx,	ibmpc,	0,		t1000hx,    tandy1t,	t1000hx,	ibmpc,   "Tandy Radio Shack",  "Tandy 1000SX", 0)
+COMP(  1983,	ibmpcjr,	ibm5150,	0,		ibmpcjr,    tandy1t,	pcjr,       pcjr,    "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
+COMP(  1987,	t1000hx,	ibm5150,	0,		t1000hx,    tandy1t,	t1000hx,	ibmpc,   "Tandy Radio Shack",  "Tandy 1000HX", 0)
+COMP(  1987,	t1000sx,	ibm5150,	0,		t1000hx,    tandy1t,	t1000hx,	ibmpc,   "Tandy Radio Shack",  "Tandy 1000SX", 0)
 
 // xt class (pc but 8086)
-COMP(  1986,	ibmxt,		ibmpc,	0,		xtcga,      xtcga,		pccga,		ibmpc,   "International Business Machines",  "IBM PC/XT (CGA)" , 0)
-COMP(  1988,	pc200,		ibmpc,	0,		pc200,		pc200,		pc200,		ibmpc,   "Sinclair Research",  "PC200 Professional Series", 0)
-COMP(  1988,	pc20,		ibmpc,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PC20" , 0)
-COMP(  1987,	ppc512,		ibmpc,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PPC512", 0)
-COMP(  1987,	ppc640,		ibmpc,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PPC640", 0)
-COMP(  1986,	pc1512,		ibmpc,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 1)", 0)
-COMP(  198?,	pc1512v2,	ibmpc,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 2)", 0)
-COMP( 1987,	pc1640,		ibmpc,	0,		pc1640,     pc1640,		pc1640,		ibmpc,   "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
+COMP(  1982,	ibm5160,	ibm5150,	0,		ibm5160,    xtcga,		pccga,		ibmpc,   "International Business Machines",  "IBM XT 5160" , 0)
+COMP(  1988,	pc200,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Sinclair Research",  "PC200 Professional Series", 0)
+COMP(  1988,	pc20,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PC20" , 0)
+COMP(  1987,	ppc512,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PPC512", 0)
+COMP(  1987,	ppc640,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PPC640", 0)
+COMP(  1986,	pc1512,		ibm5150,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 1)", 0)
+COMP(  198?,	pc1512v2,	ibm5150,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 2)", 0)
+COMP(  1987,	pc1640,		ibm5150,	0,		pc1640,     pc1640,		pc1640,		ibmpc,   "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
 // pc2086 pc1512 with vga??
-COMP ( 1987,	pcmda,		ibmpc,	0,		pcmda,      pcmda,		pcmda,	    ibmpc,   "",  "PC (MDA)" , 0)
-COMP ( 1987,    pcherc,     ibmpc,  0,      pcherc,     pcmda,      pcmda,      ibmpc,   "MESS",  "PC (Hercules)" , 0)
-COMP ( 1987,	xtvga,		ibmpc,	0,		xtvga,      xtvga,		pc_vga,     ibmpc,   "",  "PC/XT (VGA, MF2 Keyboard)" , 0)
+COMP ( 1987,	pcmda,		ibm5150,	0,		pcmda,      pcmda,		pcmda,	    ibmpc,   "",  "PC (MDA)" , 0)
+COMP ( 1987,    pcherc,     ibm5150,	0,      pcherc,     pcmda,      pcmda,      ibmpc,   "MESS",  "PC (Hercules)" , 0)
+COMP ( 1987,	xtvga,		ibm5150,	0,		xtvga,      xtvga,		pc_vga,     ibmpc,   "",  "PC/XT (VGA, MF2 Keyboard)" , 0)
 

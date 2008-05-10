@@ -2,7 +2,7 @@
 
   gb.c
 
-  Machine file to handle emulation of the Nintendo GameBoy.
+  Machine file to handle emulation of the Nintendo Game Boy.
 
   Changes:
 
@@ -26,8 +26,8 @@
 						 Added support for games with more than 128 ROM banks.
 	12/6/2002		AK - Rewrote the way bg and sprite palettes are handled.
 						 The window layer no longer has it's own palette.
-						 Added Super GameBoy support.
-	13/6/2002		AK - Added GameBoy Color support.
+						 Added Super Game Boy support.
+	13/6/2002		AK - Added Game Boy Color support.
 
 	17/5/2004       WP - Added Megaduck/Cougar Boy support.
 	13/6/2005		WP - Added support for bootstrap rom banking.
@@ -208,59 +208,59 @@ static void gb_init(running_machine *machine) {
 		case MBC_NONE:
 			break;
 		case MBC_MMM01:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_rom_bank_mmm01_0000_w );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_mmm01_2000_w);
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_rom_bank_mmm01_4000_w);
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_rom_bank_mmm01_6000_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_rom_bank_mmm01_0000_w );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_mmm01_2000_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_rom_bank_mmm01_4000_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_rom_bank_mmm01_6000_w);
 			break;
 		case MBC_MBC1:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );	/* We don't emulate RAM enable yet */
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc1 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc1 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_mem_mode_select_mbc1 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );	/* We don't emulate RAM enable yet */
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc1 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc1 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_mem_mode_select_mbc1 );
 			break;
 		case MBC_MBC2:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc2 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc2 );
 			break;
 		case MBC_MBC3:
 		case MBC_HUC1:	/* Possibly wrong */
 		case MBC_HUC3:	/* Possibly wrong */
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );	/* We don't emulate RAM enable yet */
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc3 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc3 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_mem_mode_select_mbc3 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );	/* We don't emulate RAM enable yet */
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc3 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc3 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_mem_mode_select_mbc3 );
 			break;
 		case MBC_MBC5:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc5 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc5 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc5 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc5 );
 			break;
 		case MBC_MBC6:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_bank_select_mbc6 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, gb_rom_bank_select_mbc6_1 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, gb_rom_bank_select_mbc6_2 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_bank_select_mbc6 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, gb_rom_bank_select_mbc6_1 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, gb_rom_bank_select_mbc6_2 );
 			break;
 		case MBC_MBC7:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, gb_rom_bank_select_mbc7 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x7fff, 0, 0, gb_rom_bank_unknown_mbc7 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, gb_rom_bank_select_mbc7 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x7fff, 0, 0, gb_rom_bank_unknown_mbc7 );
 			break;
 		case MBC_TAMA5:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0xA000, 0xBFFF, 0, 0, gb_ram_tama5 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xA000, 0xBFFF, 0, 0, gb_ram_tama5 );
 			break;
 		case MBC_WISDOM:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, gb_rom_bank_select_wisdom );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, gb_rom_bank_select_wisdom );
 			break;
 		case MBC_MBC1_KOR:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable ); /* We don't emulate RAM enable yet */
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc1_kor );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc1_kor );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_mem_mode_select_mbc1_kor );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x1fff, 0, 0, gb_ram_enable ); /* We don't emulate RAM enable yet */
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, gb_rom_bank_select_mbc1_kor );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, gb_ram_bank_select_mbc1_kor );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, gb_mem_mode_select_mbc1_kor );
 			break;
 
 		case MBC_MEGADUCK:
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0001, 0x0001, 0, 0, megaduck_rom_bank_select_type1 );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0xB000, 0xB000, 0, 0, megaduck_rom_bank_select_type2 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0001, 0x0001, 0, 0, megaduck_rom_bank_select_type1 );
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xB000, 0xB000, 0, 0, megaduck_rom_bank_select_type2 );
 			break;
 	}
 
@@ -757,9 +757,9 @@ WRITE8_HANDLER ( gb_io_w )
 	case 0x00:						/* JOYP - Joypad */
 		JOYPAD = 0xCF | data;
 		if (!(data & 0x20))
-			JOYPAD &= (readinputport (0) >> 4) | 0xF0;
+			JOYPAD &= (input_port_read_indexed(machine, 0) >> 4) | 0xF0;
 		if (!(data & 0x10))
-			JOYPAD &= readinputport (0) | 0xF0;
+			JOYPAD &= input_port_read_indexed(machine, 0) | 0xF0;
 		return;
 	case 0x01:						/* SB - Serial transfer data */
 		break;
@@ -878,7 +878,7 @@ WRITE8_HANDLER ( sgb_io_w )
 				sgb_bitcount = 0;
 				sgb_start = 1;
 				sgb_rest = 0;
-				JOYPAD = 0x0F & ((readinputport (0) >> 4) | readinputport (0) | 0xF0);
+				JOYPAD = 0x0F & ((input_port_read_indexed(machine, 0) >> 4) | input_port_read_indexed(machine, 0) | 0xF0);
 				break;
 			case 0x10:				   /* data true */
 				if (sgb_rest)
@@ -900,7 +900,7 @@ WRITE8_HANDLER ( sgb_io_w )
 					}
 					sgb_rest = 0;
 				}
-				JOYPAD = 0x1F & ((readinputport (0) >> 4) | 0xF0);
+				JOYPAD = 0x1F & ((input_port_read_indexed(machine, 0) >> 4) | 0xF0);
 				break;
 			case 0x20:				/* data false */
 				if (sgb_rest)
@@ -1321,7 +1321,7 @@ WRITE8_HANDLER ( sgb_io_w )
 					}
 					sgb_rest = 0;
 				}
-				JOYPAD = 0x2F & (readinputport (0) | 0xF0);
+				JOYPAD = 0x2F & (input_port_read_indexed(machine, 0) | 0xF0);
 				break;
 			case 0x30:				   /* rest condition */
 				if (sgb_start)
@@ -1382,7 +1382,7 @@ READ8_HANDLER ( gb_io_r )
 	}
 }
 
-DEVICE_INIT(gb_cart)
+DEVICE_START(gb_cart)
 {
 	int I;
 
@@ -1405,10 +1405,9 @@ DEVICE_INIT(gb_cart)
 	CartType = 0;
 	ROMMask = 0;
 	RAMMask = 0;
-	return INIT_PASS;
 }
 
-DEVICE_LOAD(gb_cart)
+DEVICE_IMAGE_LOAD(gb_cart)
 {
 	static const char *const CartTypes[] =
 	{
@@ -1740,7 +1739,7 @@ DEVICE_LOAD(gb_cart)
 		logerror("Cart Information\n");
 		logerror("\tName:             %s\n", S);
 		logerror("\tType:             %s [0x%2X]\n", CartTypes[gb_header[0x0147]], gb_header[0x0147] );
-		logerror("\tGameBoy:          %s\n", (gb_header[0x0143] == 0xc0) ? "No" : "Yes" );
+		logerror("\tGame Boy:         %s\n", (gb_header[0x0143] == 0xc0) ? "No" : "Yes" );
 		logerror("\tSuper GB:         %s [0x%2X]\n", (gb_header[0x0146] == 0x03) ? "Yes" : "No", gb_header[0x0146] );
 		logerror("\tColor GB:         %s [0x%2X]\n", (gb_header[0x0143] == 0x80 || gb_header[0x0143] == 0xc0) ? "Yes" : "No", gb_cart[0x0143] );
 		logerror("\tROM Size:         %d 16kB Banks [0x%2X]\n", ROMBanks, gb_header[0x0148]);
@@ -1911,10 +1910,10 @@ MACHINE_RESET( megaduck )
 }
 
 /*
- Map megaduck video related area on to regular Gameboy video area
+ Map megaduck video related area on to regular Game Boy video area
 
  Different locations of the video registers:
- Register      GameBoy    MegaDuck
+ Register      Game Boy   MegaDuck
  LCDC          FF40       FF10  (See different bit order below)
  STAT          FF41       FF11
  SCY           FF42       FF12
@@ -1934,7 +1933,7 @@ MACHINE_RESET( megaduck )
 
  Different LCDC register
 
- GameBoy        MegaDuck
+ Game Boy       MegaDuck
  0                      6       - BG & Window Display : 0 - Off, 1 - On
  1                      0       - OBJ Display: 0 - Off, 1 - On
  2                      1       - OBJ Size: 0 - 8x8, 1 - 8x16
@@ -1970,7 +1969,7 @@ WRITE8_HANDLER ( megaduck_video_w )
 	gb_video_w(machine, offset, data );
 }
 
-/* Map megaduck audio offset to gameboy audio offsets */
+/* Map megaduck audio offset to game boy audio offsets */
 
 static const UINT8 megaduck_sound_offsets[16] = { 0, 2, 1, 3, 4, 6, 5, 7, 8, 9, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F };
 
@@ -2035,7 +2034,7 @@ WRITE8_HANDLER( megaduck_rom_bank_select_type2 )
 	}
 }
 
-DEVICE_LOAD(megaduck_cart)
+DEVICE_IMAGE_LOAD(megaduck_cart)
 {
 	int I, filesize;
 

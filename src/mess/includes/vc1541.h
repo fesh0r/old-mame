@@ -9,14 +9,6 @@
 #ifndef VC1541_H_
 #define VC1541_H_
 
-
-#ifdef PET_TEST_CODE
-/* test with preliminary VC1541 emulation */
-#define VC1541
-/*#define CPU_SYNC */
-#endif
-
-
 typedef struct {
 	int cpunr;
 	int devicenr;
@@ -25,8 +17,8 @@ typedef struct {
 
 /*----------- defined in machine/vc1541.c -----------*/
 
-DEVICE_LOAD(vc1541);
-DEVICE_UNLOAD(vc1541);
+DEVICE_IMAGE_LOAD(vc1541);
+DEVICE_IMAGE_UNLOAD(vc1541);
 
 int vc1541_config(int id, int mode, VC1541_CONFIG*config);
 void vc1541_reset(void);

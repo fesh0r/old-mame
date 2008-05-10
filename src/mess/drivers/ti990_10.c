@@ -68,6 +68,7 @@ TODO :
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/tms9900/tms9900.h"
 #include "machine/ti990.h"
 #include "machine/990_hd.h"
@@ -76,7 +77,7 @@ TODO :
 
 static MACHINE_RESET( ti990_10 )
 {
-	ti990_hold_load();
+	ti990_hold_load(machine);
 
 	ti990_reset_int();
 
@@ -108,7 +109,7 @@ static void rset_callback(void)
 static void lrex_callback(void)
 {
 	/* right??? */
-	ti990_hold_load();
+	ti990_hold_load(Machine);
 }
 
 /*
@@ -211,7 +212,7 @@ static MACHINE_DRIVER_START(ti990_10)
 	MDRV_SCREEN_VISIBLE_AREA(0, 560-1, 0, /*250*/280-1)
 
 	MDRV_GFXDECODE(vdt911)
-	MDRV_PALETTE_LENGTH(vdt911_palette_size)
+	MDRV_PALETTE_LENGTH(8)
 
 	MDRV_PALETTE_INIT(vdt911)
 	MDRV_VIDEO_START(ti990_10)
@@ -297,9 +298,9 @@ static void ti990_10_harddisk_getinfo(const mess_device_class *devclass, UINT32 
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_ti990_hd; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti990_hd; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_hd; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(ti990_hd); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti990_hd); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti990_hd); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
@@ -319,9 +320,9 @@ static void ti990_10_cassette_getinfo(const mess_device_class *devclass, UINT32 
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_ti990_tape; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti990_tape; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti990_tape; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(ti990_tape); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti990_tape); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti990_tape); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tap"); break;
@@ -334,4 +335,4 @@ SYSTEM_CONFIG_START(ti990_10)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY                 FULLNAME */
-COMP( 1975,	ti990_10,	0,		0,		ti990_10,	ti990_10,	ti990_10,	ti990_10,	"Texas Instruments",	"TI Model 990/10 Minicomputer System" , 0)
+COMP( 1975,	ti990_10,	0,		0,		ti990_10,	ti990_10,	ti990_10,	ti990_10,	"Texas Instruments",	"TI Model 990/10 Minicomputer System" , GAME_NOT_WORKING )

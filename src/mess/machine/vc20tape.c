@@ -44,7 +44,7 @@ static struct
 	emu_timer *timer;
 	int pos;
 	struct GameSample *sample;
-	mess_image *img;
+	const device_config *img;
 } wav;
 
 /* these are the values for prg files */
@@ -72,13 +72,13 @@ static struct
 	char name[16];					   /*name for cbm */
 	UINT8 chksum;
 	attotime lasttime;
-	mess_image *img;
+	const device_config *img;
 } prg;
 
 /* from sound/samples.c no changes (static declared) */
 /* readsamples not useable (loads files only from sample or game directory) */
 /* and doesn't search the rompath */
-static struct GameSample *vc20_read_wav_sample (mess_image *image)
+static struct GameSample *vc20_read_wav_sample (const device_config *image)
 {
 	/* NPW 28-Feb-2005 - this code sucks */
 	return NULL;
@@ -280,7 +280,7 @@ static void vc20_wav_state (void)
 #endif
 }
 
-static void vc20_wav_open(mess_image *image)
+static void vc20_wav_open(const device_config *image)
 {
 	if ((wav.sample = vc20_read_wav_sample (image)) == NULL)
 	{
@@ -406,7 +406,7 @@ static void vc20_prg_state (void)
 	}
 }
 
-static void vc20_prg_open(mess_image *image)
+static void vc20_prg_open(const device_config *image)
 {
 	const char *name;
 	int i;
@@ -912,7 +912,7 @@ void c16_tape_open (void)
 	prg.c16 = 1;
 }
 
-static int device_load_vc20_tape(mess_image *image)
+static DEVICE_IMAGE_LOAD( vc20_tape )
 {
 	const char *cp;
 
@@ -937,7 +937,7 @@ static int device_load_vc20_tape(mess_image *image)
 	return INIT_PASS;
 }
 
-static void device_unload_vc20_tape(mess_image *image)
+static DEVICE_IMAGE_UNLOAD( vc20_tape )
 {
 	vc20_tape_close();
 }
@@ -1104,8 +1104,8 @@ void vc20tape_device_getinfo(const mess_device_class *devclass, UINT32 state, un
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_vc20_tape; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_vc20_tape; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(vc20_tape); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(vc20_tape); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "wav"); break;

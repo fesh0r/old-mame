@@ -15,7 +15,7 @@
 #include <tchar.h>
 
 #include "driver.h"
-#include "device.h"
+#include "image.h"
 #include "screenshot.h"
 #include "datamap.h"
 #include "bitmask.h"

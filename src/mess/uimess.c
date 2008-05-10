@@ -25,8 +25,8 @@ void mess_ui_update(running_machine *machine)
 {
 	static int ui_toggle_key = 0;
 
-	int id, toggled = 0;
-	const struct IODevice *dev;
+	int toggled = 0;
+	const device_config *dev;
 
 	/* traditional MESS interface */
 	if (machine->gamedrv->flags & GAME_COMPUTER)
@@ -78,14 +78,14 @@ void mess_ui_update(running_machine *machine)
 	}
 
 	/* run display routine for device */
-	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
+	if (mame_get_phase(machine) == MAME_PHASE_RUNNING)
 	{
-		if (dev->display != NULL)
+		for (dev = image_device_first(machine->config); dev != NULL; dev = image_device_next(dev))
 		{
-			for (id = 0; id < device_count(dev->type); id++)
+			device_display_func display = (device_display_func) device_get_info_fct(dev, DEVINFO_FCT_DISPLAY);
+			if (display != NULL)
 			{
-				mess_image *img = image_from_devtype_and_index(dev->type, id);
-				dev->display(img);
+				display(dev);
 			}
 		}
 	}
@@ -99,13 +99,12 @@ void mess_ui_update(running_machine *machine)
  *
  *************************************/
 
-int ui_sprintf_image_info(char *buf)
+int ui_sprintf_image_info(running_machine *machine, char *buf)
 {
 	char *dst = buf;
-	const struct IODevice *dev;
-	int id;
+	const device_config *img;
 
-	dst += sprintf(dst, "%s\n\n", Machine->gamedrv->description);
+	dst += sprintf(dst, "%s\n\n", machine->gamedrv->description);
 
 	if (mess_ram_size > 0)
 	{
@@ -113,52 +112,48 @@ int ui_sprintf_image_info(char *buf)
 		dst += sprintf(dst, "RAM: %s\n\n", ram_string(buf2, mess_ram_size));
 	}
 
-	for (dev = mess_device_first_from_machine(Machine); dev != NULL; dev = mess_device_next(dev))
+	for (img = image_device_first(machine->config); img != NULL; img = image_device_next(img))
 	{
-		for (id = 0; id < dev->count; id++)
+		const char *name = image_filename(img);
+		if( name )
 		{
-			mess_image *img = image_from_device_and_index(dev, id);
-			const char *name = image_filename(img);
-			if( name )
+			const char *base_filename;
+			const char *info;
+			char *base_filename_noextension;
+
+			base_filename = image_basename(img);
+			base_filename_noextension = strip_extension(base_filename);
+
+			/* display device type and filename */
+			dst += sprintf(dst,"%s: %s\n", image_typename_id(img), base_filename);
+
+			/* display long filename, if present and doesn't correspond to name */
+			info = image_longname(img);
+			if (info && (!base_filename_noextension || mame_stricmp(info, base_filename_noextension)))
+				dst += sprintf(dst,"%s\n", info);
+
+			/* display manufacturer, if available */
+			info = image_manufacturer(img);
+			if (info)
 			{
-				const char *base_filename;
-				const char *info;
-				char *base_filename_noextension;
-
-				base_filename = image_basename(img);
-				base_filename_noextension = strip_extension(base_filename);
-
-				/* display device type and filename */
-				dst += sprintf(dst,"%s: %s\n", image_typename_id(img), base_filename);
-
-				/* display long filename, if present and doesn't correspond to name */
-				info = image_longname(img);
-				if (info && (!base_filename_noextension || mame_stricmp(info, base_filename_noextension)))
-					dst += sprintf(dst,"%s\n", info);
-
-				/* display manufacturer, if available */
-				info = image_manufacturer(img);
-				if (info)
-				{
-					dst += sprintf(dst,"%s", info);
-					info = stripspace(image_year(img));
-					if (info && *info)
-						dst += sprintf(dst,", %s", info);
-					dst += sprintf(dst,"\n");
-				}
-
-				/* display playable information, if available */
-				info = image_playable(img);
-				if (info)
-					dst += sprintf(dst,"%s\n", info);
-
-				if (base_filename_noextension)
-					free(base_filename_noextension);
+				dst += sprintf(dst,"%s", info);
+				info = stripspace(image_year(img));
+				if (info && *info)
+					dst += sprintf(dst,", %s", info);
+				dst += sprintf(dst,"\n");
 			}
-			else
-			{
-				dst += sprintf(dst,"%s: ---\n", image_typename_id(img));
-			}
+
+			/* display playable information, if available */
+			info = image_playable(img);
+			if (info)
+				dst += sprintf(dst,"%s\n", info);
+
+			if (base_filename_noextension)
+				free(base_filename_noextension);
+		}
+		else
+		{
+			dst += sprintf(dst,"%s: ---\n", image_typename_id(img));
 		}
 	}
 	return dst - buf;
@@ -173,7 +168,7 @@ UINT32 ui_menu_image_info(UINT32 state)
 	UINT32 selected = 0;
 
 	/* add the game info */
-	bufptr += ui_sprintf_image_info(bufptr);
+	bufptr += ui_sprintf_image_info(Machine, bufptr);
 
 	/* make it look like a menu */
 	bufptr += sprintf(bufptr, "\n\t%s %s %s", ui_getstring(UI_lefthilight), ui_getstring(UI_returntomain), ui_getstring(UI_righthilight));
@@ -202,4 +197,26 @@ int mess_use_new_ui(void)
 int mess_disable_builtin_ui(running_machine *machine)
 {
 	return mess_use_new_ui() || ((machine->gamedrv->flags & GAME_COMPUTER) && !mess_ui_active());
+}
+
+
+
+/*-------------------------------------------------
+    ui_paste - does a paste from the keyboard
+-------------------------------------------------*/
+
+void ui_paste(running_machine *machine)
+{
+	/* retrieve the clipboard text */
+	char *text = osd_get_clipboard_text();
+
+	/* was a result returned? */
+	if (text != NULL)
+	{
+		/* post the text */
+		inputx_post_utf8(machine, text);
+
+		/* free the string */
+		free(text);
+	}
 }

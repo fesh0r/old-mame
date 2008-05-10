@@ -126,7 +126,7 @@ ROM_START( n64)
     ROM_REGION32_BE( 0x4000000, REGION_USER2, ROMREGION_ERASEFF)
 ROM_END
 
-static DEVICE_LOAD(n64_cart)
+static DEVICE_IMAGE_LOAD(n64_cart)
 {
 	int i, length;
 	UINT8 *cart = memory_region(REGION_USER2);
@@ -176,7 +176,7 @@ static void n64_cartslot_getinfo(const mess_device_class *devclass, UINT32 state
 		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_n64_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(n64_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "v64,z64,rom,n64,bin"); break;

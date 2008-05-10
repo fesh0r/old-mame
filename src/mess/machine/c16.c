@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "image.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
@@ -54,7 +55,7 @@ static UINT8 *c16_memory_24000;
 static UINT8 *c16_memory_28000;
 static UINT8 *c16_memory_2c000;
 
-static int c16_rom_load(mess_image *img);
+static int c16_rom_load(const device_config *img);
 
 /**
   ddr bit 1 port line is output
@@ -473,17 +474,17 @@ MACHINE_RESET( c16 )
 
 	if (SIDCARD)
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, sid6581_0_port_r);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, sid6581_0_port_w);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, sid6581_0_port_r);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, sid6581_0_port_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, sid6581_0_port_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, sid6581_0_port_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, sid6581_0_port_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, sid6581_0_port_w);
 	}
 	else
 	{
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, SMH_NOP);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, SMH_NOP);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, SMH_NOP);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfe80, 0xfe9f, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfe80, 0xfe9f, 0, 0, SMH_NOP);
 	}
 
 #if 0
@@ -498,46 +499,46 @@ MACHINE_RESET( c16 )
 		memory_set_bankptr(6, mess_ram + (0x8000 % mess_ram_size));
 		memory_set_bankptr(7, mess_ram + (0xc000 % mess_ram_size));
 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff20, 0xff3d, 0, 0, SMH_BANK10);
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0xff40, 0xffff, 0, 0, SMH_BANK11);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xff20, 0xff3d, 0, 0, SMH_BANK10);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xff40, 0xffff, 0, 0, SMH_BANK11);
 		memory_set_bankptr(10, mess_ram + (0xff20 % mess_ram_size));
 		memory_set_bankptr(11, mess_ram + (0xff40 % mess_ram_size));
 
 		if (SIDCARD_HACK)
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_16k);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_16k);
 
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 	}
 	else
 	{
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xfcff, 0, 0, SMH_BANK10);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xfcff, 0, 0, SMH_BANK10);
 		memory_set_bankptr(10, mess_ram + (0x4000 % mess_ram_size));
 
 		if (SIDCARD_HACK)
-			memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
 
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 	}
 
 	if (IEC8ON || REAL_C1551)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, tpi6525_2_port_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, tpi6525_2_port_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, tpi6525_2_port_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, tpi6525_2_port_r);
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, SMH_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, SMH_NOP);
 	}
 	if (IEC9ON)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, tpi6525_3_port_w);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, tpi6525_3_port_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, tpi6525_3_port_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, tpi6525_3_port_r);
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, SMH_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, SMH_NOP);
 	}
 
 	cbm_drive_0_config (SERIAL, 8);
@@ -555,13 +556,13 @@ MACHINE_RESET( c16 )
 
 	for (i = 0; i < 2; i++)
 	{
-		mess_image *image = image_from_devtype_and_index(IO_CARTSLOT, i);
+		const device_config *image = image_from_devtype_and_index(IO_CARTSLOT, i);
 		if (image_exists(image))
 			c16_rom_load(image);
 	}
 }
 
-static int c16_rom_id(mess_image *image)
+static int c16_rom_id(const device_config *image)
 {
     /* magic lowrom at offset 7: $43 $42 $4d */
 	/* if at offset 6 stands 1 it will immediatly jumped to offset 0 (0x8000) */
@@ -595,12 +596,12 @@ static int c16_rom_id(mess_image *image)
 	return retval;
 }
 
-DEVICE_LOAD(c16_rom)
+DEVICE_IMAGE_LOAD(c16_rom)
 {
 	return (!c16_rom_id(image)) ? INIT_FAIL : INIT_PASS;
 }
 
-static int c16_rom_load(mess_image *image)
+static int c16_rom_load(const device_config *image)
 {
 	UINT8 *mem = memory_region (REGION_CPU1);
 	int size, read_;
@@ -640,156 +641,45 @@ INTERRUPT_GEN( c16_frame_interrupt )
 	int value;
 
 	value = 0xff;
-	if (KEY_ATSIGN)
-		value &= ~0x80;
-	if (KEY_F3)
-		value &= ~0x40;
-	if (KEY_F2)
-		value &= ~0x20;
-	if (KEY_F1)
-		value &= ~0x10;
-	if (KEY_HELP)
-		value &= ~8;
-	if (KEY_POUND)
-		value &= ~4;
-	if (KEY_RETURN)
-		value &= ~2;
-	if (KEY_DEL)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW0" );
 	keyline[0] = value;
 
 	value = 0xff;
-	if (KEY_SHIFT)
-		value &= ~0x80;
-	if (KEY_E)
-		value &= ~0x40;
-	if (KEY_S)
-		value &= ~0x20;
-	if (KEY_Z)
-		value &= ~0x10;
-	if (KEY_4)
-		value &= ~8;
-	if (KEY_A)
-		value &= ~4;
-	if (KEY_W)
-		value &= ~2;
-	if (KEY_3)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW1" );
 	keyline[1] = value;
 
 	value = 0xff;
-	if (KEY_X)
-		value &= ~0x80;
-	if (KEY_T)
-		value &= ~0x40;
-	if (KEY_F)
-		value &= ~0x20;
-	if (KEY_C)
-		value &= ~0x10;
-	if (KEY_6)
-		value &= ~8;
-	if (KEY_D)
-		value &= ~4;
-	if (KEY_R)
-		value &= ~2;
-	if (KEY_5)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW2" );
 	keyline[2] = value;
 
 	value = 0xff;
-	if (KEY_V)
-		value &= ~0x80;
-	if (KEY_U)
-		value &= ~0x40;
-	if (KEY_H)
-		value &= ~0x20;
-	if (KEY_B)
-		value &= ~0x10;
-	if (KEY_8)
-		value &= ~8;
-	if (KEY_G)
-		value &= ~4;
-	if (KEY_Y)
-		value &= ~2;
-	if (KEY_7)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW3" );
 	keyline[3] = value;
 
 	value = 0xff;
-	if (KEY_N)
-		value &= ~0x80;
-	if (KEY_O)
-		value &= ~0x40;
-	if (KEY_K)
-		value &= ~0x20;
-	if (KEY_M)
-		value &= ~0x10;
-	if (KEY_0)
-		value &= ~8;
-	if (KEY_J)
-		value &= ~4;
-	if (KEY_I)
-		value &= ~2;
-	if (KEY_9)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW4" );
 	keyline[4] = value;
 
 	value = 0xff;
-	if (KEY_COMMA)
-		value &= ~0x80;
-	if (KEY_MINUS)
-		value &= ~0x40;
-	if (KEY_SEMICOLON)
-		value &= ~0x20;
-	if (KEY_POINT)
-		value &= ~0x10;
-	if (KEY_UP)
-		value &= ~8;
-	if (KEY_L)
-		value &= ~4;
-	if (KEY_P)
-		value &= ~2;
-	if (KEY_DOWN)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW5" );
 	keyline[5] = value;
 
 	value = 0xff;
-	if (KEY_SLASH)
-		value &= ~0x80;
-	if (KEY_PLUS)
-		value &= ~0x40;
-	if (KEY_EQUALS)
-		value &= ~0x20;
-	if (KEY_ESC)
-		value &= ~0x10;
-	if (KEY_RIGHT)
-		value &= ~8;
-	if (KEY_COLON)
-		value &= ~4;
-	if (KEY_ASTERIX)
-		value &= ~2;
-	if (KEY_LEFT)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW6" );
 	keyline[6] = value;
 
 	value = 0xff;
-	if (KEY_STOP)
-		value &= ~0x80;
-	if (KEY_Q)
-		value &= ~0x40;
-	if (KEY_CBM)
-		value &= ~0x20;
-	if (KEY_SPACE)
-		value &= ~0x10;
-	if (KEY_2)
-		value &= ~8;
-	if (KEY_CTRL)
-		value &= ~4;
-	if (KEY_HOME)
-		value &= ~2;
-	if (KEY_1)
-		value &= ~1;
+
+	value &= ~input_port_read(machine,  "ROW7" );
 	keyline[7] = value;
+
 
 	if (JOYSTICK1_PORT) {
 		value = 0xff;
@@ -841,6 +731,6 @@ INTERRUPT_GEN( c16_frame_interrupt )
 
 	vc20_tape_config (DATASSETTE, DATASSETTE_TONE);
 	vc20_tape_buttons (DATASSETTE_PLAY, DATASSETTE_RECORD, DATASSETTE_STOP);
-	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , KEY_SHIFTLOCK ? 1 : 0);
+	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , input_port_read(machine, "Special") & 0x80 ? 1 : 0);
 	set_led_status (0 /*KB_NUMLOCK_FLAG */ , JOYSTICK_SWAP ? 1 : 0);
 }

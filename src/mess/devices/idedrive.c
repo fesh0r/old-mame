@@ -13,14 +13,16 @@
 #include "harddriv.h"
 #include "machine/idectrl.h"
 
+/* FIXME - this is so completely broken until we device-ize IDE drives */
+struct ide_interface;
 
-static void ide_get_params(mess_image *image, int *which_bus, int *which_address,
+static void ide_get_params(const device_config *image, int *which_bus, int *which_address,
 	struct ide_interface **intf,
-	device_init_handler *parent_init,
-	device_load_handler *parent_load,
-	device_unload_handler *parent_unload)
+	device_start_func *parent_init,
+	device_image_load_func *parent_load,
+	device_image_unload_func *parent_unload)
 {
-	const mess_device_class *devclass = &image_device(image)->devclass;
+	const mess_device_class *devclass = &mess_device_from_core_device(image)->devclass;
 	mess_device_class parent_devclass;
 
 	*which_bus = image_index_in_device(image);
@@ -31,11 +33,11 @@ static void ide_get_params(mess_image *image, int *which_bus, int *which_address
 	parent_devclass.get_info = harddisk_device_getinfo;
 
 	if (parent_init)
-		*parent_init = (device_init_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_INIT);
+		*parent_init = (device_start_func) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_START);
 	if (parent_load)
-		*parent_load = (device_load_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_LOAD);
+		*parent_load = (device_image_load_func) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_LOAD);
 	if (parent_unload)
-		*parent_unload = (device_unload_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_UNLOAD);
+		*parent_unload = (device_image_unload_func) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_UNLOAD);
 
 	assert(*which_address == 0);
 	assert(*intf);
@@ -44,39 +46,37 @@ static void ide_get_params(mess_image *image, int *which_bus, int *which_address
 
 
 /*-------------------------------------------------
-	ide_hd_init - Init an IDE hard disk device
+	DEVICE_START(ide_hd) - Init an IDE hard disk device
 -------------------------------------------------*/
 
-static int ide_hd_init(mess_image *image)
+static DEVICE_START(ide_hd)
 {
-	int result, which_bus, which_address;
+	int which_bus, which_address;
 	struct ide_interface *intf;
-	device_init_handler parent_init;
+	device_start_func parent_init;
 
 	/* get the basics */
-	ide_get_params(image, &which_bus, &which_address, &intf, &parent_init, NULL, NULL);
+	ide_get_params(device, &which_bus, &which_address, &intf, &parent_init, NULL, NULL);
 
 	/* call the parent init function */
-	result = parent_init(image);
-	if (result != INIT_PASS)
-		return result;
+	parent_init(device);
 
 	/* configure IDE */
-	ide_controller_init_custom(which_bus, intf, NULL);
-	return INIT_PASS;
+	/* FIXME IDE */
+	/* ide_controller_init_custom(which_bus, intf, NULL); */
 }
 
 
 
 /*-------------------------------------------------
-	ide_hd_load - Load an IDE hard disk image
+	DEVICE_IMAGE_LOAD(ide_hd) - Load an IDE hard disk image
 -------------------------------------------------*/
 
-static int ide_hd_load(mess_image *image)
+static DEVICE_IMAGE_LOAD(ide_hd)
 {
 	int result, which_bus, which_address;
 	struct ide_interface *intf;
-	device_load_handler parent_load;
+	device_image_load_func parent_load;
 
 	/* get the basics */
 	ide_get_params(image, &which_bus, &which_address, &intf, NULL, &parent_load, NULL);
@@ -87,22 +87,23 @@ static int ide_hd_load(mess_image *image)
 		return result;
 
 	/* configure IDE */
-	ide_controller_init_custom(which_bus, intf, mess_hd_get_chd_file(image));
-	ide_controller_reset(which_bus);
+	/* FIXME IDE */
+	/* ide_controller_init_custom(which_bus, intf, mess_hd_get_chd_file(image)); */
+	/* ide_controller_reset(which_bus); */
 	return INIT_PASS;
 }
 
 
 
 /*-------------------------------------------------
-	ide_hd_unload - Unload an IDE hard disk image
+	DEVICE_IMAGE_UNLOAD(ide_hd) - Unload an IDE hard disk image
 -------------------------------------------------*/
 
-static void ide_hd_unload(mess_image *image)
+static DEVICE_IMAGE_UNLOAD(ide_hd)
 {
 	int which_bus, which_address;
 	struct ide_interface *intf;
-	device_unload_handler parent_unload;
+	device_image_unload_func parent_unload;
 
 	/* get the basics */
 	ide_get_params(image, &which_bus, &which_address, &intf, NULL, NULL, &parent_unload);
@@ -111,8 +112,9 @@ static void ide_hd_unload(mess_image *image)
 	parent_unload(image);
 
 	/* configure IDE */
-	ide_controller_init_custom(which_bus, intf, NULL);
-	ide_controller_reset(which_bus);
+	/* FIXME IDE */
+	/* ide_controller_init_custom(which_bus, intf, NULL); */
+	/* ide_controller_reset(which_bus); */
 }
 
 
@@ -144,12 +146,6 @@ static int ide_hd_validity_check(const mess_device_class *devclass)
 		error = 1;
 	}
 
-	if (count > MAX_IDE_CONTROLLERS)
-	{
-		mame_printf_error("%s: Too many IDE devices; maximum is %d\n", devclass->gamedrv->name, MAX_IDE_CONTROLLERS);
-		error = 1;
-	}
-
 	return error;
 }
 
@@ -164,9 +160,9 @@ void ide_harddisk_device_getinfo(const mess_device_class *devclass, UINT32 state
 	switch(state)
 	{
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:					info->init = ide_hd_init; break;
-		case MESS_DEVINFO_PTR_LOAD:					info->load = ide_hd_load; break;
-		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = ide_hd_unload; break;
+		case MESS_DEVINFO_PTR_START:				info->start = DEVICE_START_NAME(ide_hd); break;
+		case MESS_DEVINFO_PTR_LOAD:					info->load = DEVICE_IMAGE_LOAD_NAME(ide_hd); break;
+		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = DEVICE_IMAGE_UNLOAD_NAME(ide_hd); break;
 		case MESS_DEVINFO_PTR_VALIDITY_CHECK:		info->validity_check = ide_hd_validity_check; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

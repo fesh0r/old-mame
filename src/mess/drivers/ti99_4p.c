@@ -42,6 +42,7 @@
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
 #include "devices/harddriv.h"
+#include "machine/idectrl.h"
 
 static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 
@@ -263,6 +264,7 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_VIDEO_START(ti99_4ev)
 	MDRV_VIDEO_UPDATE(generic_bitmapped)
 
+	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(DAC, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
@@ -275,6 +277,9 @@ static MACHINE_DRIVER_START(ti99_4p_60hz)
 	MDRV_SOUND_ADD(TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 
@@ -286,21 +291,21 @@ ROM_START(ti99_4p)
 
 	/*DSR ROM space*/
 	ROM_REGION(region_dsr_len, region_dsr, 0)
-	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f)) /* TI disk DSR ROM */
+	ROM_LOAD_OPTIONAL("disk.bin", offset_fdc_dsr, 0x2000, CRC(8f7df93f) SHA1(ed91d48c1eaa8ca37d5055bcf67127ea51c4cad5) ) /* TI disk DSR ROM */
 #if HAS_99CCFDC
 	ROM_LOAD_OPTIONAL("ccfdc.bin", offset_ccfdc_dsr, 0x4000, BAD_DUMP CRC(f69cc69d)) /* CorComp disk DSR ROM */
 #endif
-	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89)) /* BwG disk DSR ROM */
-	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed)) /* HFDC disk DSR ROM */
-	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb)) /* TI rs232 DSR ROM */
-	ROM_LOAD("evpcdsr.bin", offset_evpc_dsr, 0x10000, CRC(a062b75d)) /* evpc DSR ROM */
+	ROM_LOAD_OPTIONAL("bwg.bin", offset_bwg_dsr, 0x8000, CRC(06f1ec89) SHA1(6ad77033ed268f986d9a5439e65f7d391c4b7651)) /* BwG disk DSR ROM */
+	ROM_LOAD_OPTIONAL("hfdc.bin", offset_hfdc_dsr, 0x4000, CRC(66fbe0ed) SHA1(11df2ecef51de6f543e4eaf8b2529d3e65d0bd59)) /* HFDC disk DSR ROM */
+	ROM_LOAD_OPTIONAL("rs232.bin", offset_rs232_dsr, 0x1000, CRC(eab382fb) SHA1(ee609a18a21f1a3ddab334e8798d5f2a0fcefa91)) /* TI rs232 DSR ROM */
+	ROM_LOAD("evpcdsr.bin", offset_evpc_dsr, 0x10000, CRC(a062b75d) SHA1(6e8060f86e3bb9c36f244d88825e3fe237bfe9a9)) /* evpc DSR ROM */
 
 	/* HSGPL memory space */
-	ROM_REGION(region_hsgpl_len, region_hsgpl, 0)
+	ROM_REGION(region_hsgpl_len, region_hsgpl, ROMREGION_ERASEFF)
 
 	/*TMS5220 ROM space*/
 	ROM_REGION(0x8000, region_speech_rom, 0)
-	ROM_LOAD("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7)) /* system speech ROM */
+	ROM_LOAD_OPTIONAL("spchrom.bin", 0x0000, 0x8000, CRC(58b155f7) SHA1(382292295c00dff348d7e17c5ce4da12a1d87763)) /* system speech ROM */
 ROM_END
 
 #ifdef UNUSED_FUNCTION
@@ -345,9 +350,9 @@ static void ti99_4p_harddisk_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(mess_hd); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hd); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hd); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
@@ -367,8 +372,11 @@ static void ti99_4p_parallel_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_pio); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_pio); break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 
@@ -385,8 +393,11 @@ static void ti99_4p_serial_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_rs232); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_rs232); break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 
@@ -405,8 +416,8 @@ static void ti99_4p_quickload_getinfo(const mess_device_class *devclass, UINT32 
 		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hsgpl; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hsgpl; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hsgpl); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hsgpl); break;
 	}
 }
 #endif
@@ -424,9 +435,12 @@ static void ti99_4p_memcard_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(smartmedia); break;
+
+		/* --- the following bits of info are returned as NULL-terminated strings --- */
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
 
@@ -434,7 +448,7 @@ SYSTEM_CONFIG_START(ti99_4p)
 	CONFIG_DEVICE(ti99_4p_floppy_getinfo)
 	CONFIG_DEVICE(ti99_4p_floppy_getinfo)
 	CONFIG_DEVICE(ti99_4p_harddisk_getinfo)
-	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
+//	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
 	CONFIG_DEVICE(ti99_4p_parallel_getinfo)
 	CONFIG_DEVICE(ti99_4p_serial_getinfo)
 	/*CONFIG_DEVICE(ti99_4p_quickload_getinfo)*/
@@ -442,4 +456,4 @@ SYSTEM_CONFIG_START(ti99_4p)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME      PARENT   COMPAT   MACHINE      INPUT    INIT     CONFIG   COMPANY     FULLNAME */
-COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, ti99_4p,"snug",		"SGCPU (a.k.a. 99/4P)" , 0)
+COMP( 1996, ti99_4p,  0,	   0,		ti99_4p_60hz, ti99_4p, ti99_4p, ti99_4p,"snug",		"SGCPU (a.k.a. 99/4P)" , GAME_NOT_WORKING )

@@ -23,9 +23,9 @@
 static void device_dirs_load(int config_type, xml_data_node *parentnode)
 {
 	xml_data_node *node;
-	const struct IODevice *dev;
-	int i;
-	mess_image *image;
+	const device_config *dev;
+	image_device_info info;
+	const device_config *image;
 	const char *dev_instance;
 	const char *working_directory;
 
@@ -36,15 +36,13 @@ static void device_dirs_load(int config_type, xml_data_node *parentnode)
 			image = NULL;
 			dev_instance = xml_get_attribute_string(node, "instance", NULL);
 
-			if (dev_instance != NULL)
+			if ((dev_instance != NULL) && (dev_instance[0] != '\0'))
 			{
-				for (dev = mess_device_first_from_machine(Machine); (image == NULL) && (dev != NULL); dev = mess_device_next(dev))
+				for (dev = image_device_first(Machine->config); (image == NULL) && (dev != NULL); dev = image_device_next(dev))
 				{
-					for (i = 0; !image && (i < dev->count); i++)
-					{
-						if (!strcmp(dev_instance, device_instancename(&dev->devclass, i)))
-							image = image_from_device_and_index(dev, i);
-					}
+					info = image_device_getinfo(Machine->config, dev);
+					if (!strcmp(dev_instance, info.instance_name))
+						image = dev;
 				}
 
 				if (image != NULL)
@@ -68,27 +66,23 @@ static void device_dirs_load(int config_type, xml_data_node *parentnode)
 static void device_dirs_save(int config_type, xml_data_node *parentnode)
 {
 	xml_data_node *node;
-	const struct IODevice *dev;
-	int i;
-	mess_image *image;
+	image_device_info info;
+	const device_config *image;
 	const char *dev_instance;
 
 	/* only care about game-specific data */
 	if (config_type == CONFIG_TYPE_GAME)
 	{
-		for (dev = mess_device_first_from_machine(Machine); dev != NULL; dev = mess_device_next(dev))
+		for (image = image_device_first(Machine->config); image != NULL; image = image_device_next(image))
 		{
-			for (i = 0; i < dev->count; i++)
-			{
-				image = image_from_device_and_index(dev, i);
-				dev_instance = device_instancename(&dev->devclass, i);
+			info = image_device_getinfo(Machine->config, image);
+			dev_instance = info.instance_name;
 
-				node = xml_add_child(parentnode, "device", NULL);
-				if (node)
-				{
-					xml_set_attribute(node, "instance", dev_instance);
-					xml_set_attribute(node, "directory", image_working_directory(image));
-				}
+			node = xml_add_child(parentnode, "device", NULL);
+			if (node != NULL)
+			{
+				xml_set_attribute(node, "instance", dev_instance);
+				xml_set_attribute(node, "directory", image_working_directory(image));
 			}
 		}
 	}

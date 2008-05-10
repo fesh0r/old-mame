@@ -139,8 +139,6 @@
 #include "devices/basicdsk.h"
 #include "includes/x68k.h"
 
-mc68901_t *x68k_mfp;
-
 struct x68k_system sys;
 
 extern UINT16* gvram;  // Graphic VRAM
@@ -346,12 +344,14 @@ void mfp_set_timer(int timer, unsigned char data)
 // 4 channel DMA controller (Hitachi HD63450)
 static WRITE16_HANDLER( x68k_dmac_w )
 {
-	hd63450_w(machine, offset, data, mem_mask);
+	const device_config* device = device_list_find_by_tag(machine->config->devicelist,HD63450,"hd63450");
+	hd63450_w(device, offset, data, mem_mask);
 }
 
 static READ16_HANDLER( x68k_dmac_r )
 {
-	return hd63450_r(machine, offset, mem_mask);
+	const device_config* device = device_list_find_by_tag(machine->config->devicelist,HD63450,"hd63450");
+	return hd63450_r(device, offset, mem_mask);
 }
 
 static void x68k_keyboard_ctrl_w(int data)
@@ -459,16 +459,17 @@ static void x68k_keyboard_push_scancode(unsigned char code)
 static TIMER_CALLBACK(x68k_keyboard_poll)
 {
 	int x;
-	int port = port_tag_to_index("key1");
+	char port[5];
 
 	for(x=0;x<0x80;x++)
 	{
+		sprintf(port, "key%d", (x / 32) + 1);
 		// adjust delay/repeat timers
 		if(sys.keyboard.keytime[x] > 0)
 		{
 			sys.keyboard.keytime[x] -= 5;
 		}
-		if(!(readinputport(port + x/32) & (1 << (x % 32))))
+		if(!(input_port_read(machine, port) & (1 << (x % 32))))
 		{
 			if(sys.keyboard.keyon[x] != 0)
 			{
@@ -482,14 +483,16 @@ static TIMER_CALLBACK(x68k_keyboard_poll)
 		// check to see if a key is being held
 		if(sys.keyboard.keyon[x] != 0 && sys.keyboard.keytime[x] == 0 && sys.keyboard.last_pressed == x)
 		{
-			if(readinputport(port + sys.keyboard.last_pressed/32) & (1 << (sys.keyboard.last_pressed % 32)))
+			sprintf(port, "key%d", (sys.keyboard.last_pressed / 32) + 1);
+			if(input_port_read(machine, port) & (1 << (sys.keyboard.last_pressed % 32)))
 			{
 				x68k_keyboard_push_scancode(sys.keyboard.last_pressed);
 				sys.keyboard.keytime[sys.keyboard.last_pressed] = (sys.keyboard.repeat^2)*5+30;
 				logerror("KB: Holding key 0x%02x\n",sys.keyboard.last_pressed);
 			}
 		}
-		if((readinputport(port + x/32) & (1 << (x % 32))))
+		sprintf(port, "key%d", (x / 32) + 1);
+		if((input_port_read(machine, port) & (1 << (x % 32))))
 		{
 			if(sys.keyboard.keyon[x] == 0)
 			{
@@ -519,7 +522,7 @@ void mfp_recv_data(int data)
 // mouse input
 // port B of the Z8530 SCC
 // typically read from the SCC data port on receive buffer full interrupt per byte
-static int x68k_read_mouse(void)
+static int x68k_read_mouse(running_machine *machine)
 {
 	char val = 0;
 	char ipt = 0;
@@ -527,15 +530,15 @@ static int x68k_read_mouse(void)
 	switch(sys.mouse.inputtype)
 	{
 	case 0:
-		ipt = readinputportbytag("mouse1");
+		ipt = input_port_read(machine, "mouse1");
 		break;
 	case 1:
-		val = readinputportbytag("mouse2");
+		val = input_port_read(machine, "mouse2");
 		ipt = val - sys.mouse.last_mouse_x;
 		sys.mouse.last_mouse_x = val;
 		break;
 	case 2:
-		val = readinputportbytag("mouse3");
+		val = input_port_read(machine, "mouse3");
 		ipt = val - sys.mouse.last_mouse_y;
 		sys.mouse.last_mouse_y = val;
 		break;
@@ -568,7 +571,7 @@ static READ16_HANDLER( x68k_scc_r )
 	case 0:
 		return scc_r(machine, 0);
 	case 1:
-		return x68k_read_mouse();
+		return x68k_read_mouse(machine);
 	case 2:
 		return scc_r(machine, 1);
 	case 3:
@@ -640,7 +643,7 @@ static READ8_HANDLER( ppi_port_a_r )
 {
 	// Joystick 1
 	if(sys.joy.joy1_enable == 0)
-		return readinputportbytag("joy1");
+		return input_port_read(machine, "joy1");
 	else
 		return 0xff;
 }
@@ -649,7 +652,7 @@ static READ8_HANDLER( ppi_port_b_r )
 {
 	// Joystick 2
 	if(sys.joy.joy2_enable == 0)
-		return readinputportbytag("joy2");
+		return input_port_read(machine, "joy2");
 	else
 		return 0xff;
 }
@@ -938,6 +941,8 @@ static READ16_HANDLER( x68k_sysport_r )
 
 static READ16_HANDLER( x68k_mfp_r )
 {
+	const device_config *x68k_mfp = device_list_find_by_tag(machine->config->devicelist, MC68901, MC68901_TAG);
+
 	return mc68901_register_r(x68k_mfp, offset);
 }
 
@@ -1007,6 +1012,8 @@ READ16_HANDLER( x68k_mfp_r )
 
 static WRITE16_HANDLER( x68k_mfp_w )
 {
+	const device_config *x68k_mfp = device_list_find_by_tag(machine->config->devicelist, MC68901, MC68901_TAG);
+
 	/* For the Interrupt registers, the bits are set out as such:
        Reg A - bit 7: GPIP7 (HSync)
                bit 6: GPIP6 (CRTC CIRQ)
@@ -1127,20 +1134,20 @@ static WRITE16_HANDLER( x68k_mfp_w )
 		}
 		break;
 	default:
-		if (ACCESSING_LSB) mc68901_register_w(x68k_mfp, offset, data & 0xff);
+		if (ACCESSING_BITS_0_7) mc68901_register_w(x68k_mfp, offset, data & 0xff);
 		return;
 	}
 }
 
 
-static WRITE16_HANDLER( x68k_ppi_w )
+static WRITE16_DEVICE_HANDLER( x68k_ppi_w )
 {
-	ppi8255_w(0,offset & 0x03,data);
+	ppi8255_w(device,offset & 0x03,data);
 }
 
-static READ16_HANDLER( x68k_ppi_r )
+static READ16_DEVICE_HANDLER( x68k_ppi_r )
 {
-	return ppi8255_r(0,offset & 0x03);
+	return ppi8255_r(device,offset & 0x03);
 }
 
 static READ16_HANDLER( x68k_rtc_r )
@@ -1220,14 +1227,14 @@ static WRITE16_HANDLER( x68k_vid_w )
 		break;
 	case 0x280:  // priority levels
 		COMBINE_DATA(sys.video.reg+1);
-		if(ACCESSING_LSB)
+		if(ACCESSING_BITS_0_7)
 		{
 			sys.video.gfxlayer_pri[0] = data & 0x0003;
 			sys.video.gfxlayer_pri[1] = (data & 0x000c) >> 2;
 			sys.video.gfxlayer_pri[2] = (data & 0x0030) >> 4;
 			sys.video.gfxlayer_pri[3] = (data & 0x00c0) >> 6;
 		}
-		if(ACCESSING_MSB)
+		if(ACCESSING_BITS_8_15)
 		{
 			sys.video.gfx_pri = (data & 0x0300) >> 8;
 			sys.video.text_pri = (data & 0x0c00) >> 10;
@@ -1348,12 +1355,12 @@ static WRITE16_HANDLER( x68k_rom0_w )
 static READ16_HANDLER( x68k_exp_r )
 {
 	/* These are expansion devices, if not present, they cause a bus error */
-	if(readinputportbytag("options") & 0x02)
+	if(input_port_read(machine, "options") & 0x02)
 	{
 		current_vector[2] = 0x02;  // bus error
 		current_irq_line = 2;
 		offset *= 2;
-		if(ACCESSING_LSB)
+		if(ACCESSING_BITS_0_7)
 			offset++;
 		timer_set(ATTOTIME_IN_CYCLES(16,0), NULL, 0xeafa00+offset,x68k_fake_bus_error);
 //      cpunum_set_input_line_and_vector(machine, 0,2,ASSERT_LINE,current_vector[2]);
@@ -1364,12 +1371,12 @@ static READ16_HANDLER( x68k_exp_r )
 static WRITE16_HANDLER( x68k_exp_w )
 {
 	/* These are expansion devices, if not present, they cause a bus error */
-	if(readinputportbytag("options") & 0x02)
+	if(input_port_read(machine, "options") & 0x02)
 	{
 		current_vector[2] = 0x02;  // bus error
 		current_irq_line = 2;
 		offset *= 2;
-		if(ACCESSING_LSB)
+		if(ACCESSING_BITS_0_7)
 			offset++;
 		timer_set(ATTOTIME_IN_CYCLES(16,0), NULL, 0xeafa00+offset,x68k_fake_bus_error);
 //      cpunum_set_input_line_and_vector(machine, 0,2,ASSERT_LINE,current_vector[2]);
@@ -1378,7 +1385,8 @@ static WRITE16_HANDLER( x68k_exp_w )
 
 static void x68k_dma_irq(running_machine *machine, int channel)
 {
-	current_vector[3] = hd63450_get_vector(channel);
+	const device_config *device = device_list_find_by_tag(machine->config->devicelist, HD63450, "hd63450");
+	current_vector[3] = hd63450_get_vector(device, channel);
 	current_irq_line = 3;
 	logerror("DMA#%i: DMA End (vector 0x%02x)\n",channel,current_vector[3]);
 	cpunum_set_input_line_and_vector(machine, 0,3,ASSERT_LINE,current_vector[3]);
@@ -1394,9 +1402,10 @@ static void x68k_dma_end(int channel,int irq)
 
 static void x68k_dma_error(int channel, int irq)
 {
+	const device_config *device = device_list_find_by_tag(Machine->config->devicelist, HD63450, "hd63450");
 	if(irq != 0)
 	{
-		current_vector[3] = hd63450_get_error_vector(channel);
+		current_vector[3] = hd63450_get_error_vector(device,channel);
 		current_irq_line = 3;
 		cpunum_set_input_line_and_vector(Machine, 0,3,ASSERT_LINE,current_vector[3]);
 	}
@@ -1415,7 +1424,7 @@ static void x68k_fm_irq(int irq)
 
 }
 
-static READ8_HANDLER(mfp_gpio_r)
+static MC68901_GPIO_READ( mfp_gpio_r )
 {
 	UINT8 data = sys.mfp.gpio;
 
@@ -1428,15 +1437,15 @@ static READ8_HANDLER(mfp_gpio_r)
 	return data;
 }
 
-static void mfp_irq_callback(mc68901_t *chip, int state)
+static MC68901_ON_IRQ_CHANGED( mfp_irq_callback )
 {
 	static int prev;
-	if(prev == CLEAR_LINE && state == CLEAR_LINE)  // eliminate unnecessary calls to set the IRQ line for speed reasons
+	if(prev == CLEAR_LINE && level == CLEAR_LINE)  // eliminate unnecessary calls to set the IRQ line for speed reasons
 		return;
 	if((sys.ioc.irqstatus & 0xc0) != 0)  // if the FDC is busy, then we don't want to miss that IRQ
 		return;
-	cpunum_set_input_line(Machine, 0, 6, state);
-	prev = state;
+	cpunum_set_input_line(device->machine, 0, 6, level);
+	prev = level;
 }
 
 static INTERRUPT_GEN( x68k_vsync_irq )
@@ -1455,9 +1464,11 @@ static INTERRUPT_GEN( x68k_vsync_irq )
 //      video_screen_update_partial(machine->primary_screen,512);//sys.crtc.reg[4]);
 }
 
-static int x68k_int_ack(int line)
+static IRQ_CALLBACK(x68k_int_ack)
 {
-	if(line == 6)  // MFP
+	const device_config *x68k_mfp = device_list_find_by_tag(machine->config->devicelist, MC68901, MC68901_TAG);
+
+	if(irqline == 6)  // MFP
 	{
 //      if(sys.mfp.isra & 0x10)
 //          sys.mfp.rsr &= ~0x80;
@@ -1480,22 +1491,22 @@ static int x68k_int_ack(int line)
 //      }
 		sys.mfp.current_irq = -1;
 		current_vector[6] = mc68901_get_vector(x68k_mfp);
-		logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[6],line);
+		logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[6],irqline);
 		return current_vector[6];
 	}
 
-	cpunum_set_input_line_and_vector(Machine, 0,line,CLEAR_LINE,current_vector[line]);
-	if(line == 1)  // IOSC
+	cpunum_set_input_line_and_vector(machine, 0,irqline,CLEAR_LINE,current_vector[irqline]);
+	if(irqline == 1)  // IOSC
 	{
 		sys.ioc.irqstatus &= ~0xf0;
 	}
-	if(line == 5)  // SCC
+	if(irqline == 5)  // SCC
 	{
 		sys.mouse.irqactive = 0;
 	}
 
-	logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[line],line);
-	return current_vector[line];
+	logerror("SYS: IRQ acknowledged (vector=0x%02x, line = %i)\n",current_vector[irqline],irqline);
+	return current_vector[irqline];
 }
 
 static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
@@ -1518,7 +1529,7 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xe94000, 0xe95fff) AM_READWRITE(x68k_fdc_r, x68k_fdc_w)
 	AM_RANGE(0xe96000, 0xe97fff) AM_READWRITE(x68k_hdc_r, x68k_hdc_w)
 	AM_RANGE(0xe98000, 0xe99fff) AM_READWRITE(x68k_scc_r, x68k_scc_w)
-	AM_RANGE(0xe9a000, 0xe9bfff) AM_READWRITE(x68k_ppi_r, x68k_ppi_w)
+	AM_RANGE(0xe9a000, 0xe9bfff) AM_DEVREADWRITE(PPI8255, "ppi8255", x68k_ppi_r, x68k_ppi_w)
 	AM_RANGE(0xe9c000, 0xe9dfff) AM_READWRITE(x68k_ioc_r, x68k_ioc_w)
 	AM_RANGE(0xeafa00, 0xeafa1f) AM_READWRITE(x68k_exp_r, x68k_exp_w)
 	AM_RANGE(0xeafa80, 0xeafa89) AM_READWRITE(x68k_areaset_r, x68k_enh_areaset_w)
@@ -1547,16 +1558,15 @@ static const mc68901_interface mfp_interface =
 
 static const ppi8255_interface ppi_interface =
 {
-	1,  // 1 PPI
-	{ ppi_port_a_r },
-	{ ppi_port_b_r },
-	{ ppi_port_c_r },
-	{ NULL },
-	{ NULL },
-	{ ppi_port_c_w }
+	ppi_port_a_r,
+	ppi_port_b_r,
+	ppi_port_c_r,
+	NULL,
+	NULL,
+	ppi_port_c_w
 };
 
-static const struct hd63450_interface dmac_interface =
+static const hd63450_intf dmac_interface =
 {
 	0,  // CPU - 68000
 	{STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_USEC(4),STATIC_ATTOTIME_IN_USEC(32)},  // Cycle steal mode timing (guesstimate)
@@ -1752,7 +1762,7 @@ static INPUT_PORTS_START( x68000 )
 
 INPUT_PORTS_END
 
-static void dimdsk_set_geometry(mess_image* image)
+static void dimdsk_set_geometry(const device_config* image)
 {
 	// DIM disk image header, most of this is guesswork
 	int tracks = 77;
@@ -1812,7 +1822,7 @@ static void dimdsk_set_geometry(mess_image* image)
 	basicdsk_set_geometry(image, tracks+1, heads, sectors, sectorlen, firstsector, 0x100, FALSE);
 }
 
-static DEVICE_LOAD( x68k_floppy )
+static DEVICE_IMAGE_LOAD( x68k_floppy )
 {
 	if (device_load_basicdsk_floppy(image)==INIT_PASS)
 	{
@@ -1827,7 +1837,7 @@ static DEVICE_LOAD( x68k_floppy )
 			current_vector[1] = 0x61;
 			sys.ioc.irqstatus |= 0x40;
 			current_irq_line = 1;
-			cpunum_set_input_line_and_vector(Machine, 0,1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
+			cpunum_set_input_line_and_vector(image->machine, 0,1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 			logerror("IOC: Disk image inserted\n");
 		}
 		sys.fdc.disk_inserted[image_index_in_device(image)] = 1;
@@ -1837,14 +1847,14 @@ static DEVICE_LOAD( x68k_floppy )
 	return INIT_FAIL;
 }
 
-static DEVICE_UNLOAD( x68k_floppy )
+static DEVICE_IMAGE_UNLOAD( x68k_floppy )
 {
 	if(sys.ioc.irqstatus & 0x02)
 	{
 		current_vector[1] = 0x61;
 		sys.ioc.irqstatus |= 0x40;
 		current_irq_line = 1;
-		cpunum_set_input_line_and_vector(Machine, 0,1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
+		cpunum_set_input_line_and_vector(image->machine, 0,1,ASSERT_LINE,current_vector[1]);  // Disk insert/eject interrupt
 	}
 	sys.fdc.disk_inserted[image_index_in_device(image)] = 0;
 }
@@ -1857,10 +1867,10 @@ static void x68k_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 		info->i = 4;
 		break;
 	case MESS_DEVINFO_PTR_LOAD:
-		info->load = device_load_x68k_floppy;
+		info->load = DEVICE_IMAGE_LOAD_NAME(x68k_floppy);
 		break;
 	case MESS_DEVINFO_PTR_UNLOAD:
-		info->unload = device_unload_x68k_floppy;
+		info->unload = DEVICE_IMAGE_UNLOAD_NAME(x68k_floppy);
 		break;
 	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
 		strcpy(info->s = device_temp_str(), "xdf,hdm,2hd,dim");
@@ -1928,17 +1938,17 @@ static MACHINE_START( x68000 )
 {
 	/*  Install RAM handlers  */
 	x68k_spriteram = (UINT16*)memory_region(REGION_USER1);
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(read16_machine_func)1);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(write16_machine_func)1);
+	memory_install_read16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(read16_machine_func)1);
+	memory_install_write16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(write16_machine_func)1);
 	memory_set_bankptr(1,mess_ram);
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(read16_machine_func)x68k_gvram_r);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(write16_machine_func)x68k_gvram_w);
+	memory_install_read16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(read16_machine_func)x68k_gvram_r);
+	memory_install_write16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0xc00000,0xdfffff,0x1fffff,0,(write16_machine_func)x68k_gvram_w);
 	memory_set_bankptr(2,gvram);  // so that code in VRAM is executable - needed for Terra Cresta
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(read16_machine_func)x68k_tvram_r);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(write16_machine_func)x68k_tvram_w);
+	memory_install_read16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(read16_machine_func)x68k_tvram_r);
+	memory_install_write16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0xe00000,0xe7ffff,0x07ffff,0,(write16_machine_func)x68k_tvram_w);
 	memory_set_bankptr(3,tvram);  // so that code in VRAM is executable - needed for Terra Cresta
-	memory_install_read16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(read16_machine_func)x68k_sram_r);
-	memory_install_write16_handler(0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(write16_machine_func)x68k_sram_w);
+	memory_install_read16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(read16_machine_func)x68k_sram_r);
+	memory_install_write16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0xed0000,0xed3fff,0x003fff,0,(write16_machine_func)x68k_sram_w);
 	memory_set_bankptr(4,generic_nvram16);  // so that code in SRAM is executable, there is an option for booting from SRAM
 
 	// start keyboard timer
@@ -1948,7 +1958,8 @@ static MACHINE_START( x68000 )
 	timer_adjust_periodic(mouse_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(1));  // a guess for now
 	sys.mouse.inputtype = 0;
 
-	x68k_mfp = devtag_get_token(machine, MC68901, "mfp");
+	nec765_init(&fdc_interface,NEC72065,NEC765_RDY_PIN_CONNECTED);
+	nec765_reset(0);
 }
 
 static DRIVER_INIT( x68000 )
@@ -1975,15 +1986,11 @@ static DRIVER_INIT( x68000 )
 	// copy last half of BIOS to a user region, to use for inital startup
 	memcpy(user2,(rom+0xff0000),0x10000);
 
-	ppi8255_init(&ppi_interface);
-	nec765_init(&fdc_interface,NEC72065);
-	hd63450_init(&dmac_interface);
-	nec765_reset(0);
+	memset(&sys,0,sizeof(sys));
+
 	mfp_init();
 	scc_init(&scc_interface);
 	rp5c15_init(machine, &rtc_intf);
-
-	memset(&sys,0,sizeof(sys));
 
 	cpunum_set_irq_callback(0, x68k_int_ack);
 
@@ -2009,8 +2016,14 @@ static MACHINE_DRIVER_START( x68000 )
 	MDRV_MACHINE_RESET( x68000 )
 
 	/* device hardware */
-	MDRV_DEVICE_ADD("mfp", MC68901)
+	MDRV_DEVICE_ADD(MC68901_TAG, MC68901)
 	MDRV_DEVICE_CONFIG(mfp_interface)
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( ppi_interface )
+
+	MDRV_DEVICE_ADD( "hd63450", HD63450 )
+	MDRV_DEVICE_CONFIG( dmac_interface )
 
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)

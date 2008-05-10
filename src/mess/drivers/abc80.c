@@ -162,27 +162,30 @@ static const UINT8 abc80_keycodes[7*4][8] =
 	{ 0x5f, 0x09, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00 }
 };
 
-static void abc80_keyboard_scan(void)
+static void abc80_keyboard_scan(running_machine *machine)
 {
 	UINT8 keycode = 0;
 	UINT8 data;
 	int table = 0, row, col;
 
 	// shift, upper case
-	if (readinputport(7) & 0x07)
+	if (input_port_read(machine, "ROW7") & 0x07)
 	{
 		table |= 0x01;
 	}
 
 	// ctrl
-	if (readinputport(7) & 0x08)
+	if (input_port_read(machine, "ROW7") & 0x08)
 	{
 		table |= 0x02;
 	}
 
 	for (row = 0; row < 7; row++)
 	{
-		data = readinputport(row);
+		char port[5];
+		sprintf(port, "ROW%d", row);
+
+		data = input_port_read(machine, port);
 
 		if (data != 0)
 		{
@@ -190,24 +193,20 @@ static void abc80_keyboard_scan(void)
 
 			for (col = 0; col < 8; col++)
 			{
-				if (data & ibit)
-				{
-					keycode = abc80_keycodes[row + (table * 7)][col];
-				}
+				if (data & ibit) keycode = abc80_keycodes[row + (table * 7)][col];
 				ibit <<= 1;
 			}
 		}
 	}
 
-	if (keycode != 0)
-	{
-		keylatch = keycode;
-		z80pio_p_w(0, 0, keylatch | 0x80);
-	}
+	if (keycode)
+		z80pio_p_w( 0, 0, keycode | 0x80 );
 	else
-	{
-		z80pio_p_w(0, 0, keylatch);
-	}
+		z80pio_p_w( 0, 0, 0 );
+
+	if (keycode != keylatch) program_write_byte(0xfdf5, 0x80);
+
+	keylatch = keycode;
 }
 
 // PIO
@@ -439,7 +438,7 @@ static const struct z80_irq_daisy_chain abc80_daisy_chain[] =
 
 static TIMER_CALLBACK(abc80_keyboard_tick)
 {
-	abc80_keyboard_scan();
+	abc80_keyboard_scan(machine);
 }
 
 static MACHINE_START( abc80 )
@@ -483,6 +482,9 @@ static MACHINE_DRIVER_START( abc80 )
 	MDRV_SOUND_ADD(SN76477, 0)
 	MDRV_SOUND_CONFIG(sn76477_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
+	// printer device
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -493,12 +495,15 @@ ROM_START( abc80 )
 	ROM_LOAD( "za3509.a3", 0x1000, 0x1000, CRC(d224412a) SHA1(30968054bba7c2aecb4d54864b75a446c1b8fdb1) )
 	ROM_LOAD( "za3506.a4", 0x2000, 0x1000, CRC(1502ba5b) SHA1(5df45909c2c4296e5701c6c99dfaa9b10b3a729b) )
 	ROM_LOAD( "za3507.a5", 0x3000, 0x1000, CRC(bc8860b7) SHA1(28b6cf7f5a4f81e017c2af091c3719657f981710) )
-	ROM_SYSTEM_BIOS( 0, "abcdos",		"ABC-DOS" )
-	ROMX_LOAD("abcdos",    0x6000, 0x1000, CRC(2cb2192f) SHA1(a6b3a9587714f8db807c05bee6c71c0684363744), ROM_BIOS(1) )
-	ROM_SYSTEM_BIOS( 1, "abcdosdd",		"ABC-DOS DD" )
-	ROMX_LOAD("abcdosdd",  0x6000, 0x1000, CRC(36db4c15) SHA1(ae462633f3a9c142bb029beb14749a84681377fa), ROM_BIOS(2) )
-	ROM_SYSTEM_BIOS( 2, "udf20",		"UDF-DOS v.20" )
-	ROMX_LOAD("udfdos20",  0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(3) )
+	
+	ROM_SYSTEM_BIOS( 0, "default", "No DOS" )
+	ROM_SYSTEM_BIOS( 1, "abcdos", "ABC-DOS" )
+	ROMX_LOAD("abcdos",    0x6000, 0x1000, CRC(2cb2192f) SHA1(a6b3a9587714f8db807c05bee6c71c0684363744), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "abcdosdd", "ABC-DOS DD" )
+	ROMX_LOAD("abcdosdd",  0x6000, 0x1000, CRC(36db4c15) SHA1(ae462633f3a9c142bb029beb14749a84681377fa), ROM_BIOS(3) )
+	ROM_SYSTEM_BIOS( 3, "udf20", "UDF-DOS v.20" )
+	ROMX_LOAD("udfdos20",  0x6000, 0x1000, CRC(69b09c0b) SHA1(403997a06cf6495b8fa13dc74eff6a64ef7aa53e), ROM_BIOS(4) )
+	
 	ROM_LOAD( "iec",	   0x7000, 0x0400, NO_DUMP )
 	ROM_LOAD( "printer",   0x7800, 0x0400, NO_DUMP )
 
@@ -515,18 +520,6 @@ ROM_START( abc80 )
 ROM_END
 
 /* System Configuration */
-
-static void abc80_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
 
 #if 0
 static void abc80_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -554,7 +547,7 @@ static void abc80_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_abc_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(abc_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -566,7 +559,6 @@ static void abc80_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 SYSTEM_CONFIG_START( abc80 )
 	CONFIG_RAM_DEFAULT(16 * 1024)
 	CONFIG_RAM		  (32 * 1024)
-	CONFIG_DEVICE(abc80_printer_getinfo)
 //  CONFIG_DEVICE(abc80_cassette_getinfo)
 	CONFIG_DEVICE(abc80_floppy_getinfo)
 SYSTEM_CONFIG_END

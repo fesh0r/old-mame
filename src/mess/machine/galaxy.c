@@ -24,7 +24,7 @@ int galaxy_interrupts_enabled = TRUE;
 
 READ8_HANDLER( galaxy_keyboard_r )
 {
-	return readinputport((offset>>3)&0x07) & (0x01<<(offset&0x07)) ? 0xfe : 0xff;
+	return input_port_read_indexed(machine, (offset>>3)&0x07) & (0x01<<(offset&0x07)) ? 0xfe : 0xff;
 }
 
 READ8_HANDLER( galaxy_latch_r )
@@ -48,7 +48,7 @@ INTERRUPT_GEN( galaxy_interrupt )
 	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
-static int galaxy_irq_callback (int cpu)
+static IRQ_CALLBACK(galaxy_irq_callback)
 {
 	galaxy_interrupts_enabled = TRUE;
 	return 1;
@@ -137,7 +137,7 @@ SNAPSHOT_LOAD( galaxy )
 
 	image_fread(image, snapshot_data, snapshot_size);
 
-	galaxy_setup_snapshot(machine, snapshot_data, snapshot_size);
+	galaxy_setup_snapshot(image->machine, snapshot_data, snapshot_size);
 
 	return INIT_PASS;
 }
@@ -149,14 +149,14 @@ SNAPSHOT_LOAD( galaxy )
 
 DRIVER_INIT( galaxy )
 {
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, SMH_BANK1);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, SMH_BANK1);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2800, 0x2800+mess_ram_size-1, 0, 0, SMH_BANK1);
 	memory_set_bankptr(1, mess_ram);
 
 	if (mess_ram_size < (6+48)*1024)
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2800+mess_ram_size, 0xffff, 0, 0, SMH_NOP);
 	}
 }
 
@@ -167,9 +167,9 @@ DRIVER_INIT( galaxy )
 MACHINE_RESET( galaxy )
 {
 	/* ROM 2 enable/disable */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, readinputport(7) ? SMH_BANK10 : SMH_NOP);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-	if (readinputport(7))
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, input_port_read_indexed(machine, 7) ? SMH_BANK10 : SMH_NOP);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
+	if (input_port_read_indexed(machine, 7))
 		memory_set_bankptr(10, memory_region(REGION_CPU1) + 0x1000);
 
 	cpunum_set_irq_callback(0, galaxy_irq_callback);

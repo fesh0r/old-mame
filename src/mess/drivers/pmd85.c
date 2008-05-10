@@ -172,7 +172,9 @@ I/O ports
 #include "driver.h"
 #include "cpu/i8085/i8085.h"
 #include "devices/cassette.h"
+#include "machine/8255ppi.h"
 #include "includes/pmd85.h"
+#include "machine/pit8253.h"
 #include "formats/pmd_pmd.h"
 
 /* I/O ports */
@@ -525,14 +527,17 @@ static MACHINE_DRIVER_START( pmd85 )
 	MDRV_CPU_ADD_TAG("main", 8080, 2000000)		/* 2.048MHz ??? */
 	MDRV_CPU_PROGRAM_MAP(pmd85_mem, 0)
 	MDRV_CPU_IO_MAP(pmd85_readport, pmd85_writeport)
-	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(50)
-	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_INTERLEAVE(1)
 
 	MDRV_MACHINE_RESET( pmd85 )
 
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( pmd85_pit8253_interface )
+
 	/* video hardware */
+	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_REFRESH_RATE(50)
+	MDRV_SCREEN_VBLANK_TIME(0)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(288, 256)
 	MDRV_SCREEN_VISIBLE_AREA(0, 288-1, 0, 256-1)
@@ -548,14 +553,30 @@ static MACHINE_DRIVER_START( pmd85 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
-static MACHINE_DRIVER_START( pmd852a )
+static MACHINE_DRIVER_START( pmd851 )
 	MDRV_IMPORT_FROM( pmd85 )
+
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( pmd85_ppi8255_interface[0] )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( pmd85_ppi8255_interface[1] )
+
+	MDRV_DEVICE_ADD( "ppi8255_2", PPI8255 )
+	MDRV_DEVICE_CONFIG( pmd85_ppi8255_interface[2] )
+
+	MDRV_DEVICE_ADD( "ppi8255_3", PPI8255 )
+	MDRV_DEVICE_CONFIG( pmd85_ppi8255_interface[3] )
+MACHINE_DRIVER_END
+
+static MACHINE_DRIVER_START( pmd852a )
+	MDRV_IMPORT_FROM( pmd851 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(pmd852a_mem, 0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( pmd853 )
-	MDRV_IMPORT_FROM( pmd85 )
+	MDRV_IMPORT_FROM( pmd851 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(pmd853_mem, 0)
 MACHINE_DRIVER_END
@@ -564,6 +585,16 @@ static MACHINE_DRIVER_START( alfa )
 	MDRV_IMPORT_FROM( pmd85 )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(alfa_mem, 0)
+
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( alfa_ppi8255_interface[0] )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( alfa_ppi8255_interface[1] )
+
+	MDRV_DEVICE_ADD( "ppi8255_2", PPI8255 )
+	MDRV_DEVICE_CONFIG( alfa_ppi8255_interface[1] )
+
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mato )
@@ -571,6 +602,10 @@ static MACHINE_DRIVER_START( mato )
 	MDRV_CPU_MODIFY("main")
 	MDRV_CPU_PROGRAM_MAP(mato_mem, 0)
 	MDRV_CPU_IO_MAP(mato_readport, mato_writeport)
+
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( mato_ppi8255_interface )
+
 MACHINE_DRIVER_END
 
 ROM_START(pmd851)
@@ -656,8 +691,8 @@ SYSTEM_CONFIG_END
 
 
 /*    YEAR  NAME     PARENT  COMPAT MACHINE  INPUT  INIT      CONFIG COMPANY  FULLNAME */
-COMP( 1985, pmd851,  0,      0,		pmd85,   pmd85, pmd851,   pmd85, "Tesla", "PMD-85.1" , 0)
-COMP( 1985, pmd852,  pmd851, 0,		pmd85,   pmd85, pmd851,   pmd85, "Tesla", "PMD-85.2" , 0)
+COMP( 1985, pmd851,  0,      0,		pmd851,  pmd85, pmd851,   pmd85, "Tesla", "PMD-85.1" , 0)
+COMP( 1985, pmd852,  pmd851, 0,		pmd851,  pmd85, pmd851,   pmd85, "Tesla", "PMD-85.2" , 0)
 COMP( 1985, pmd852a, pmd851, 0,		pmd852a, pmd85, pmd852a,  pmd85, "Tesla", "PMD-85.2A" , 0)
 COMP( 1985, pmd852b, pmd851, 0,		pmd852a, pmd85, pmd852a,  pmd85, "Tesla", "PMD-85.2B" , 0)
 COMP( 1988, pmd853,  pmd851, 0,		pmd853,  pmd85, pmd853,   pmd85, "Tesla", "PMD-85.3" , 0)

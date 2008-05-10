@@ -19,6 +19,7 @@
 
 #include "driver.h"
 #include "deprecat.h"
+#include "machine/8255ppi.h"
 #include "includes/msx_slot.h"
 #include "includes/msx.h"
 #include "machine/wd17xx.h"
@@ -39,17 +40,17 @@ static void msx_cpu_setbank (int page, UINT8 *mem)
 	case 4:
 		memory_set_bankptr (4, mem);
 		memory_set_bankptr (5, mem + 0x1ff8);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x7ff8, 0x7fff, 0, 0, SMH_BANK5);
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x7ff8, 0x7fff, 0, 0, SMH_BANK5);
 		break;
 	case 5:
 		memory_set_bankptr (6, mem);
 		memory_set_bankptr (7, mem + 0x1800);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x9800, 0x9fff, 0, 0, SMH_BANK7);
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x9800, 0x9fff, 0, 0, SMH_BANK7);
 		break;
 	case 6:
 		memory_set_bankptr (8, mem);
 		memory_set_bankptr (9, mem + 0x1800);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfff, 0, 0, SMH_BANK9);
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfff, 0, 0, SMH_BANK9);
 		break;
 	case 7:
 		memory_set_bankptr (10, mem);
@@ -359,7 +360,7 @@ MSX_SLOT_MAP(konami_scc)
 	case 2:
 		msx_cpu_setbank (5, state->mem + state->banks[2] * 0x2000);
 		msx_cpu_setbank (6, state->mem + state->banks[3] * 0x2000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x9800, 0x9fff, 0, 0,
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x9800, 0x9fff, 0, 0,
 				state->cart.scc.active ? konami_scc_bank5 : SMH_BANK7);
 		break;
 	case 3:
@@ -1178,12 +1179,12 @@ MSX_SLOT_MAP(diskrom)
 	case 1:
 		msx_cpu_setbank (3, state->mem);
 		msx_cpu_setbank (4, state->mem + 0x2000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x7ff8, 0x7fff, 0, 0, msx_diskrom_page1_r);
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x7ff8, 0x7fff, 0, 0, msx_diskrom_page1_r);
 		break;
 	case 2:
 		msx_cpu_setbank (5, msx1.empty);
 		msx_cpu_setbank (6, msx1.empty);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfff, 0, 0, msx_diskrom_page2_r);
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfff, 0, 0, msx_diskrom_page2_r);
 		break;
 	case 3:
 		msx_cpu_setbank (7, msx1.empty);
@@ -1290,12 +1291,12 @@ MSX_SLOT_MAP(diskrom2)
 	case 1:
 		msx_cpu_setbank (3, state->mem);
 		msx_cpu_setbank (4, state->mem + 0x2000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x7fb8, 0x7fbc, 0, 0, msx_diskrom2_page1_r);
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x7fb8, 0x7fbc, 0, 0, msx_diskrom2_page1_r);
 		break;
 	case 2:
 		msx_cpu_setbank (5, msx1.empty);
 		msx_cpu_setbank (6, msx1.empty);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfbc, 0, 0, msx_diskrom2_page2_r);
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfbc, 0, 0, msx_diskrom2_page2_r);
 		break;
 	case 3:
 		msx_cpu_setbank (7, msx1.empty);
@@ -2047,9 +2048,9 @@ MSX_SLOT_MAP(soundcartridge)
 	case 2:
 		msx_cpu_setbank (5, state->mem + state->banks[2] * 0x2000);
 		msx_cpu_setbank (6, state->mem + state->banks[3] * 0x2000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x9800, 0x9fff, 0, 0,
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x9800, 0x9fff, 0, 0,
 			state->cart.sccp.scc_active ? soundcartridge_scc : SMH_BANK7);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfff, 0, 0,
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xb800, 0xbfff, 0, 0,
 			state->cart.sccp.sccp_active ? soundcartridge_sccp : SMH_BANK9);
 		break;
 	case 3:

@@ -33,7 +33,7 @@ static MACHINE_START(apexc)
 
 typedef struct cylinder
 {
-	mess_image *fd;
+	const device_config *fd;
 	int writable;
 } cylinder;
 
@@ -42,7 +42,7 @@ static cylinder apexc_cylinder;
 /*
     Open cylinder image and read RAM
 */
-static int device_load_apexc_cylinder(mess_image *image)
+static DEVICE_IMAGE_LOAD( apexc_cylinder )
 {
 	/* open file */
 	apexc_cylinder.fd = image;
@@ -72,7 +72,7 @@ static int device_load_apexc_cylinder(mess_image *image)
 /*
     Save RAM to cylinder image and close it
 */
-static void device_unload_apexc_cylinder(mess_image *image)
+static DEVICE_IMAGE_UNLOAD( apexc_cylinder )
 {
 	if (apexc_cylinder.fd && apexc_cylinder.writable)
 	{	/* save RAM contents */
@@ -142,14 +142,14 @@ static void device_unload_apexc_cylinder(mess_image *image)
 
 typedef struct tape
 {
-	mess_image *fd;
+	const device_config *fd;
 } tape;
 
 static tape apexc_tapes[2];
 
 
 
-static void apexc_get_open_mode(const struct IODevice *dev, int id,
+static void apexc_get_open_mode(int id,
 	unsigned int *readable, unsigned int *writeable, unsigned int *creatable)
 {
 	/* unit 0 is read-only, unit 1 is write-only */
@@ -169,9 +169,8 @@ static void apexc_get_open_mode(const struct IODevice *dev, int id,
 
 
 
-static int device_init_apexc_tape(mess_image *image)
+static DEVICE_START( apexc_tape )
 {
-	return INIT_PASS;
 }
 
 
@@ -179,7 +178,7 @@ static int device_init_apexc_tape(mess_image *image)
 /*
     Open a tape image
 */
-static int device_load_apexc_tape(mess_image *image)
+static DEVICE_IMAGE_LOAD( apexc_tape )
 {
 	int id = image_index_in_device(image);
 	tape *t = &apexc_tapes[id];
@@ -336,7 +335,7 @@ static INTERRUPT_GEN( apexc_interrupt )
 
 
 	/* read new state of edit keys */
-	edit_keys = (readinputportbytag("data1") << 16) | readinputportbytag("data2");
+	edit_keys = (input_port_read(machine, "data1") << 16) | input_port_read(machine, "data2");
 
 	/* toggle data reg according to transitions */
 	panel_data_reg ^= edit_keys & (~ old_edit_keys);
@@ -346,7 +345,7 @@ static INTERRUPT_GEN( apexc_interrupt )
 
 
 	/* read new state of control keys */
-	control_keys = readinputportbytag("panel");
+	control_keys = input_port_read(machine, "panel");
 
 	/* compute transitions */
 	control_transitions = control_keys & (~ old_control_keys);
@@ -844,8 +843,8 @@ static void apexc_cylinder_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_apexc_cylinder; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_apexc_cylinder; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(apexc_cylinder); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(apexc_cylinder); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "apc"); break;
@@ -862,8 +861,8 @@ static void apexc_punchtape_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_apexc_tape; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_apexc_tape; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(apexc_tape); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(apexc_tape); break;
 		case MESS_DEVINFO_PTR_GET_DISPOSITIONS:				info->getdispositions = apexc_get_open_mode; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

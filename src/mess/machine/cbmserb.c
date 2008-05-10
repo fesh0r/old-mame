@@ -103,17 +103,16 @@ void cbm_drive_1_config (int interface, int serialnr)
 
 
 
-static int device_init_cbm_drive(mess_image *image)
+static DEVICE_START( cbm_drive )
 {
-	int id = image_index_in_device(image);
+	int id = image_index_in_device(device);
 	if (id == 0)
 		cbm_drive_open();	/* boy these C64 drivers are butt ugly */
-	return INIT_PASS;
 }
 
-static void device_exit_cbm_drive(mess_image *image)
+static DEVICE_STOP( cbm_drive )
 {
-	int id = image_index_in_device(image);
+	int id = image_index_in_device(device);
 	if (id == 0)
 		cbm_drive_close();	/* boy these C64 drivers are butt ugly */
 }
@@ -121,7 +120,7 @@ static void device_exit_cbm_drive(mess_image *image)
 
 
 /* open an d64 image */
-static int device_load_cbm_drive(mess_image *image)
+static DEVICE_IMAGE_LOAD( cbm_drive )
 {
 	int id = image_index_in_device(image);
 
@@ -414,9 +413,9 @@ void cbmfloppy_device_getinfo(const mess_device_class *devclass, UINT32 state, u
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_cbm_drive; break;
-		case MESS_DEVINFO_PTR_EXIT:							info->exit = device_exit_cbm_drive; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_cbm_drive; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(cbm_drive); break;
+		case MESS_DEVINFO_PTR_STOP:							info->stop = DEVICE_STOP_NAME(cbm_drive); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(cbm_drive); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d64"); break;

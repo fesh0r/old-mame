@@ -7,7 +7,8 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "machine/uart8250.h"
+#include "deprecat.h"
+#include "machine/ins8250.h"
 #include "includes/pc_mouse.h"
 
 
@@ -15,7 +16,7 @@ static struct {
 
 	PC_MOUSE_PROTOCOL protocol;
 
-	int serial_port; /* -1 for deactivating mouse */
+	const device_config	*ins8250;
 	int inputs;
 
 	UINT8 queue[256];
@@ -32,13 +33,15 @@ void pc_mouse_initialise(void)
 	pc_mouse.head = pc_mouse.tail = 0;
 	pc_mouse.timer = timer_alloc(pc_mouse_scan, NULL);
 	pc_mouse.inputs=UART8250_HANDSHAKE_IN_DSR|UART8250_HANDSHAKE_IN_CTS;
-	if (pc_mouse.serial_port!=-1)
-		uart8250_handshake_in(pc_mouse.serial_port, pc_mouse.inputs);
+	pc_mouse.ins8250 = NULL;
 }
 
-void pc_mouse_set_serial_port(int uart_index)
+void pc_mouse_set_serial_port(const device_config *ins8250)
 {
-	pc_mouse.serial_port = uart_index;
+	if ( pc_mouse.ins8250 != ins8250 ) {
+		pc_mouse.ins8250 = ins8250;
+		ins8250_handshake_in(pc_mouse.ins8250, pc_mouse.inputs);
+	}
 }
 
 /* add data to queue */
@@ -53,7 +56,6 @@ static void	pc_mouse_queue_data(int data)
  **************************************************************************/
 static TIMER_CALLBACK(pc_mouse_scan)
 {
-	int n = param;
 	static int ox = 0, oy = 0;
 	int nx,ny;
 	int dx, dy, nb;
@@ -62,21 +64,21 @@ static TIMER_CALLBACK(pc_mouse_scan)
 	/* Do not get deltas or send packets if queue is not empty (Prevents drifting) */
 	if (pc_mouse.head==pc_mouse.tail)
 	{
-		nx = readinputportbytag("pc_mouse_x");
+		nx = input_port_read(machine, "pc_mouse_x");
 
 		dx = nx - ox;
 		if (dx<=-0x800) dx = nx + 0x1000 - ox; /* Prevent jumping */
 		if (dx>=0x800) dx = nx - 0x1000 - ox;
 		ox = nx;
 
-		ny = readinputportbytag("pc_mouse_y");
+		ny = input_port_read(machine, "pc_mouse_y");
 
 		dy = ny - oy;
 		if (dy<=-0x800) dy = ny + 0x1000 - oy;
 		if (dy>=0x800) dy = ny - 0x1000 - oy;
 		oy = ny;
 
-		nb = readinputportbytag("pc_mouse_misc");
+		nb = input_port_read(machine, "pc_mouse_misc");
 		if ((nb & 0x80) != 0)
 		{
 			pc_mouse.protocol=TYPE_MOUSE_SYSTEMS;
@@ -183,7 +185,7 @@ static TIMER_CALLBACK(pc_mouse_scan)
 		int data;
 
 		data = pc_mouse.queue[pc_mouse.tail];
-		uart8250_receive(n, data);
+		ins8250_receive(pc_mouse.ins8250, data);
 		pc_mouse.tail = ++pc_mouse.tail & 255;
 	}
 }
@@ -194,18 +196,18 @@ static TIMER_CALLBACK(pc_mouse_scan)
  *	Check for mouse control line changes and (de-)install timer
  **************************************************************************/
 
-void pc_mouse_handshake_in(int n, int outputs)
+INS8250_HANDSHAKE_OUT( pc_mouse_handshake_in )
 {
     int new_msr = 0x00;
 
-	if (n!=pc_mouse.serial_port) return;
+	if (device!=pc_mouse.ins8250) return;
 
     /* check if mouse port has DTR set */
-	if( outputs & UART8250_HANDSHAKE_OUT_DTR )
+	if( data & UART8250_HANDSHAKE_OUT_DTR )
 		new_msr |= UART8250_HANDSHAKE_IN_DSR;	/* set DSR */
 
 	/* check if mouse port has RTS set */
-	if( outputs & UART8250_HANDSHAKE_OUT_RTS )
+	if( data & UART8250_HANDSHAKE_OUT_RTS )
 		new_msr |= UART8250_HANDSHAKE_IN_CTS;	/* set CTS */
 
 	/* CTS changed state? */
@@ -219,7 +221,7 @@ void pc_mouse_handshake_in(int n, int outputs)
 			/* reset mouse */
 			pc_mouse.head = pc_mouse.tail = pc_mouse.mb = 0;
 
-			if ((readinputportbytag("pc_mouse_misc") & 0x80) == 0 )
+			if ((input_port_read(Machine, "pc_mouse_misc") & 0x80) == 0 )
 			{
 				/* Identify as Microsoft 3 Button Mouse */
 				pc_mouse.queue[pc_mouse.head] = 'M';
@@ -229,18 +231,18 @@ void pc_mouse_handshake_in(int n, int outputs)
 			}
 
 			/* start a timer to scan the mouse input */
-			timer_adjust_periodic(pc_mouse.timer, attotime_zero, pc_mouse.serial_port, ATTOTIME_IN_HZ(240));
+			timer_adjust_periodic(pc_mouse.timer, attotime_zero, 0, ATTOTIME_IN_HZ(240));
 		}
 		else
 		{
 			/* CTS just went to 0 */
-			timer_adjust_oneshot(pc_mouse.timer, attotime_zero, pc_mouse.serial_port);
+			timer_adjust_oneshot(pc_mouse.timer, attotime_zero, 0);
 			pc_mouse.head = pc_mouse.tail = 0;
 		}
 	}
 
 	pc_mouse.inputs=new_msr;
-	uart8250_handshake_in(pc_mouse.serial_port, new_msr);
+	ins8250_handshake_in(pc_mouse.ins8250, new_msr);
 }
 
 

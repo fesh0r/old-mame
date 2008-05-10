@@ -55,8 +55,8 @@
 
     TODO:
 
-	- pass mc6854 around in machine->driver_data
-    - keyboard ROM dump is needed!
+    - ABC77 keyboard ROM dump is needed!
+	- refactor ABC77/99 keyboards into devices?
 	- rewrite Z80DART for bit level serial I/O
 	- ABC806 memory banking for 0x7000-0x7fff
     - keyboard NE556 discrete beeper
@@ -82,6 +82,7 @@
 #include "machine/z80sio.h"
 #include "machine/z80dart.h"
 #include "machine/abcbus.h"
+#include "machine/e0516.h"
 #include "video/mc6845.h"
 
 /* Devices */
@@ -101,7 +102,7 @@ static WRITE8_HANDLER( abc800_ram_ctrl_w )
 
 // ABC 806
 
-static UINT8 abc806_bank[0xf] = { 0 };
+static UINT8 abc806_bank[16] = { 0 };
 
 static READ8_HANDLER( abc806_bankswitch_r )
 {
@@ -158,12 +159,12 @@ static WRITE8_HANDLER( abc806_bankswitch_w )
 
 			if (bank < 7)
 			{
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end, 0, 0, SMH_UNMAP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end, 0, 0, SMH_UNMAP);
 				logerror("ABC806 deallocating %04x-%04x back to ROM\n", bank_start, bank_end);
 			}
 			else
 			{
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end, 0, 0, (write8_machine_func)(FPTR)(STATIC_BANK1 + bank));
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end, 0, 0, (write8_machine_func)(FPTR)(STATIC_BANK1 + bank));
 				logerror("ABC806 deallocating %04x-%04x back to RAM\n", bank_start, bank_end);
 			}
 		}
@@ -273,7 +274,10 @@ static READ8_HANDLER( abc77_clock_r )
 
 static READ8_HANDLER( abc77_data_r )
 {
-	return readinputport(abc77_keylatch);
+	char port[4];
+	sprintf(port, "X%d", abc77_keylatch);
+
+	return input_port_read(machine, port);
 }
 
 static WRITE8_HANDLER( abc77_data_w )
@@ -298,7 +302,7 @@ static WRITE8_HANDLER( abc77_data_w )
 
 static READ8_HANDLER( abc77_ea_r )
 {
-	return readinputportbytag("DSW") & 0x01;
+	return input_port_read(machine, "DSW") & 0x01;
 }
 
 /* Memory Maps */
@@ -337,9 +341,9 @@ static ADDRESS_MAP_START( abc800m_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x18) AM_READWRITE(abcbus_reset_r, abc800m_hrc_w)
 	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_READWRITE(dart_r, dart_w)
 	AM_RANGE(0x30, 0x32) AM_WRITE(abc800_ram_ctrl_w)
-	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845, "crtc", mc6845_register_r)
-	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845, MC6845_TAG, mc6845_register_r)
+	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_address_w)
+	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_register_w)
 	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_READWRITE(sio2_r, sio2_w)
 	AM_RANGE(0x50, 0x53) AM_MIRROR(0x1c) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x7f) AM_READWRITE(abcbus_strobe_r, abcbus_strobe_w)
@@ -365,9 +369,9 @@ static ADDRESS_MAP_START( abc800c_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x18) AM_READWRITE(abcbus_reset_r, abc800c_hrc_w)
 	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_READWRITE(dart_r, dart_w)
 	AM_RANGE(0x30, 0x32) AM_WRITE(abc800_ram_ctrl_w)
-	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845, "crtc", mc6845_register_r)
-	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845, MC6845_TAG, mc6845_register_r)
+	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_address_w)
+	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_register_w)
 	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_READWRITE(sio2_r, sio2_w)
 	AM_RANGE(0x50, 0x53) AM_MIRROR(0x1c) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0x7f) AM_READWRITE(abcbus_strobe_r, abcbus_strobe_w)
@@ -390,10 +394,10 @@ static ADDRESS_MAP_START( abc802_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x02, 0x05) AM_WRITE(abcbus_command_w)
 	AM_RANGE(0x07, 0x07) AM_READ(abcbus_reset_r)
 	AM_RANGE(0x20, 0x23) AM_READWRITE(dart_r, dart_w)
-	AM_RANGE(0x31, 0x31) AM_DEVREAD(MC6845, "crtc", mc6845_register_r)
+	AM_RANGE(0x31, 0x31) AM_DEVREAD(MC6845, MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x32, 0x35) AM_READWRITE(sio2_r, sio2_w)
-	AM_RANGE(0x38, 0x38) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x39, 0x39) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0x38, 0x38) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_address_w)
+	AM_RANGE(0x39, 0x39) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_register_w)
 	AM_RANGE(0x60, 0x63) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 	AM_RANGE(0x80, 0xff) AM_READWRITE(abcbus_strobe_r, abcbus_strobe_w)
 ADDRESS_MAP_END
@@ -432,13 +436,13 @@ static ADDRESS_MAP_START( abc806_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x06, 0x06) AM_MIRROR(0xff18) AM_WRITE(abc806_hrs_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0xff18) AM_READWRITE(abcbus_reset_r, abc806_hrc_w)
 	AM_RANGE(0x20, 0x23) AM_MIRROR(0xff0c) AM_READWRITE(dart_r, dart_w)
-	AM_RANGE(0x31, 0x31) AM_MIRROR(0xff06) AM_DEVREAD(MC6845, "crtc", mc6845_register_r)
+	AM_RANGE(0x31, 0x31) AM_MIRROR(0xff06) AM_DEVREAD(MC6845, MC6845_TAG, mc6845_register_r)
 	AM_RANGE(0x34, 0x34) AM_MIRROR(0xff00) AM_MASK(0xff00) AM_READWRITE(abc806_bankswitch_r, abc806_bankswitch_w)
 	AM_RANGE(0x35, 0x35) AM_MIRROR(0xff00) AM_READWRITE(abc806_colorram_r, abc806_colorram_w)
 	AM_RANGE(0x36, 0x36) AM_MIRROR(0xff00) AM_WRITE(abc806_fgctlprom_w)
 	AM_RANGE(0x37, 0x37) AM_MIRROR(0xff00) AM_READWRITE(abc806_fgctlprom_r, abc806_sync_w)
-	AM_RANGE(0x38, 0x38) AM_MIRROR(0xff06) AM_DEVWRITE(MC6845, "crtc", mc6845_address_w)
-	AM_RANGE(0x39, 0x39) AM_MIRROR(0xff06) AM_DEVWRITE(MC6845, "crtc", mc6845_register_w)
+	AM_RANGE(0x38, 0x38) AM_MIRROR(0xff06) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_address_w)
+	AM_RANGE(0x39, 0x39) AM_MIRROR(0xff06) AM_DEVWRITE(MC6845, MC6845_TAG, mc6845_register_w)
 	AM_RANGE(0x40, 0x41) AM_MIRROR(0xff1c) AM_READWRITE(sio2_r, sio2_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0xff1c) AM_READWRITE(z80ctc_0_r, z80ctc_0_w)
 	AM_RANGE(0x80, 0x80) AM_MIRROR(0xff7f) AM_READWRITE(abcbus_strobe_r, abcbus_strobe_w)
@@ -727,30 +731,35 @@ static MACHINE_RESET( abc802 )
 	memory_set_bank(1, 0);
 }
 
+static const e0516_interface abc806_e0516_intf =
+{
+	ABC806_X02
+};
+
 static MACHINE_START( abc806 )
 {
 	int bank;
 
 	MACHINE_START_CALL(abc800);
 
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1, SMH_UNMAP);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2, SMH_UNMAP);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3, SMH_UNMAP);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4, SMH_UNMAP);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4fff, 0, 0, SMH_BANK5, SMH_UNMAP);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x5fff, 0, 0, SMH_BANK6, SMH_UNMAP);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK7, SMH_UNMAP);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1, SMH_UNMAP);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2, SMH_UNMAP);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3, SMH_UNMAP);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4, SMH_UNMAP);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4fff, 0, 0, SMH_BANK5, SMH_UNMAP);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x5fff, 0, 0, SMH_BANK6, SMH_UNMAP);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x6fff, 0, 0, SMH_BANK7, SMH_UNMAP);
 
-//	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x7fff, 0, 0, SMH_BANK8, SMH_BANK8);
+//	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7000, 0x7fff, 0, 0, SMH_BANK8, SMH_BANK8);
 
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, SMH_BANK9, SMH_BANK9);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x9fff, 0, 0, SMH_BANK10, SMH_BANK10);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, 0, 0, SMH_BANK11, SMH_BANK11);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, 0, 0, SMH_BANK12, SMH_BANK12);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK13, SMH_BANK13);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, SMH_BANK14, SMH_BANK14);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_BANK15, SMH_BANK15);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK16, SMH_BANK16);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, SMH_BANK9, SMH_BANK9);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x9fff, 0, 0, SMH_BANK10, SMH_BANK10);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, 0, 0, SMH_BANK11, SMH_BANK11);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, 0, 0, SMH_BANK12, SMH_BANK12);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK13, SMH_BANK13);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, 0, 0, SMH_BANK14, SMH_BANK14);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_BANK15, SMH_BANK15);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK16, SMH_BANK16);
 
 	for (bank = 1; bank < 17; bank++)
 	{
@@ -794,6 +803,8 @@ static MACHINE_DRIVER_START( abc800m )
 	MDRV_MACHINE_START(abc800)
 
 	MDRV_IMPORT_FROM(abc800m_video)
+
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc800c )
@@ -811,6 +822,8 @@ static MACHINE_DRIVER_START( abc800c )
 	MDRV_MACHINE_START(abc800)
 
 	MDRV_IMPORT_FROM(abc800c_video)
+
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc802 )
@@ -829,6 +842,8 @@ static MACHINE_DRIVER_START( abc802 )
 	MDRV_MACHINE_RESET(abc802)
 
 	MDRV_IMPORT_FROM(abc802_video)
+
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( abc806 )
@@ -847,6 +862,11 @@ static MACHINE_DRIVER_START( abc806 )
 	MDRV_MACHINE_RESET(abc806)
 
 	MDRV_IMPORT_FROM(abc806_video)
+
+	MDRV_DEVICE_ADD("printer", PRINTER)
+
+	MDRV_DEVICE_ADD(E0516_TAG, E0516)
+	MDRV_DEVICE_CONFIG(abc806_e0516_intf)
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -872,7 +892,12 @@ MACHINE_DRIVER_END
 
 #define ROM_ABC99 \
 	ROM_REGION( 0x1000, REGION_CPU2, 0 ) \
-	ROM_LOAD( "abc99.bin", 0x0000, 0x0800, CRC(d48310fc) SHA1(17A2FFC0EC00D395C2B9CAF3D57FED575BA2B137) )
+	ROM_LOAD( "abc99.bin", 0x0000, 0x0800, CRC(d48310fc) SHA1(17a2ffc0ec00d395c2b9caf3d57fed575ba2b137) )
+
+#define ROM_ABC99_2 \
+	ROM_REGION( 0x1800, REGION_CPU2, 0 ) \
+	ROM_LOAD( "10681909", 0x0000, 0x1000, CRC(ffe32a71) SHA1(fa2ce8e0216a433f9bbad0bdd6e3dc0b540f03b7) ) \
+	ROM_LOAD( "10726864", 0x1000, 0x0800, CRC(e33683ae) SHA1(0c1d9e320f82df05f4804992ef6f6f6cd20623f3) )
 
 #define ROM_KEYBOARD ROM_ABC77
 
@@ -1018,7 +1043,7 @@ static void abc800_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_abc_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(abc_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -1027,25 +1052,13 @@ static void abc800_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 	}
 }
 
-static void abc800_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static DEVICE_LOAD( abc800_serial )
+static DEVICE_IMAGE_LOAD( abc800_serial )
 {
 	/* filename specified */
-	if (serial_device_load(image)==INIT_PASS)
+	if (device_load_serial_device(image)==INIT_PASS)
 	{
 		/* setup transmit parameters */
-		serial_device_setup(image, 9600 >> readinputportbytag("BAUD"), 8, 1, SERIAL_PARITY_NONE);
+		serial_device_setup(image, 9600 >> input_port_read(image->machine, "BAUD"), 8, 1, SERIAL_PARITY_NONE);
 
 		serial_device_set_protocol(image, SERIAL_PROTOCOL_NONE);
 
@@ -1068,9 +1081,9 @@ static void abc800_serial_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = serial_device_init; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_abc800_serial; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = serial_device_unload; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(serial_device); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(abc800_serial); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(serial_device); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "txt"); break;
@@ -1081,7 +1094,6 @@ SYSTEM_CONFIG_START( abc800 )
 	CONFIG_RAM_DEFAULT(16 * 1024)
 	CONFIG_RAM		  (32 * 1024)
 	CONFIG_DEVICE(abc800_cassette_getinfo)
-	CONFIG_DEVICE(abc800_printer_getinfo)
 	CONFIG_DEVICE(abc800_floppy_getinfo)
 	CONFIG_DEVICE(abc800_serial_getinfo)
 SYSTEM_CONFIG_END
@@ -1089,7 +1101,6 @@ SYSTEM_CONFIG_END
 SYSTEM_CONFIG_START( abc802 )
 	CONFIG_RAM_DEFAULT(64 * 1024)
 	CONFIG_DEVICE(abc800_cassette_getinfo)
-	CONFIG_DEVICE(abc800_printer_getinfo)
 	CONFIG_DEVICE(abc800_floppy_getinfo)
 	CONFIG_DEVICE(abc800_serial_getinfo)
 SYSTEM_CONFIG_END
@@ -1097,7 +1108,6 @@ SYSTEM_CONFIG_END
 SYSTEM_CONFIG_START( abc806 )
 	CONFIG_RAM_DEFAULT(128 * 1024)
 	CONFIG_DEVICE(abc800_cassette_getinfo)
-	CONFIG_DEVICE(abc800_printer_getinfo)
 	CONFIG_DEVICE(abc800_floppy_getinfo)
 	CONFIG_DEVICE(abc800_serial_getinfo)
 SYSTEM_CONFIG_END

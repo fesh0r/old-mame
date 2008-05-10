@@ -27,9 +27,9 @@ NVRAM_HANDLER( ti86 );
 
 SNAPSHOT_LOAD( ti8x );
 
-DEVICE_INIT( ti85_serial );
-DEVICE_LOAD( ti85_serial );
-DEVICE_UNLOAD( ti85_serial );
+DEVICE_START( ti85_serial );
+DEVICE_IMAGE_LOAD( ti85_serial );
+DEVICE_IMAGE_UNLOAD( ti85_serial );
 
 WRITE8_HANDLER( ti81_port_0007_w);
  READ8_HANDLER( ti85_port_0000_r);
@@ -59,8 +59,6 @@ WRITE8_HANDLER( ti86_port_0006_w);
 VIDEO_START( ti85 );
 VIDEO_UPDATE( ti85 );
 PALETTE_INIT( ti85 );
-extern const unsigned char ti85_palette[32*7][3];
-extern const unsigned short ti85_colortable[32][7];
 
 
 #endif /* TI85_H_ */

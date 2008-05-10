@@ -13,7 +13,6 @@
 
 struct SystemConfigurationParamBlock;
 
-#include "device.h"
 #include "image.h"
 #include "artworkx.h"
 #include "memory.h"
@@ -57,7 +56,7 @@ UINT32 hash_data_extract_crc32(const char *d);
 
 #if HAS_WAVE
 int tapecontrol(int selected);
-void tapecontrol_gettime(char *timepos, size_t timepos_size, mess_image *img, int *curpos, int *endpos);
+void tapecontrol_gettime(char *timepos, size_t timepos_size, const device_config *img, int *curpos, int *endpos);
 #endif
 
 /* IODevice Initialisation return values.  Use these to determine if */
@@ -71,7 +70,8 @@ void tapecontrol_gettime(char *timepos, size_t timepos_size, mess_image *img, in
 int mess_validitychecks(void);
 
 /* these are called from mame.c */
-void devices_init(running_machine *machine);
+void mess_predevice_init(running_machine *machine);
+void mess_postdevice_init(running_machine *machine);
 
 void mess_config_init(running_machine *machine);
 
@@ -109,7 +109,7 @@ const char *ram_string(char *buffer, UINT32 ram);
 int			ram_validate_option(void);
 void		ram_dump(const char *filename);
 
-UINT8 *memory_install_ram8_handler(int cpunum, int spacenum, offs_t start, offs_t end, offs_t ram_offset, int bank);
+UINT8 *memory_install_ram8_handler(running_machine *machine, int cpunum, int spacenum, offs_t start, offs_t end, offs_t ram_offset, int bank);
 
 /* --------------------------------------------------------------------------------------------- */
 

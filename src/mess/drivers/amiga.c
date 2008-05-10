@@ -18,6 +18,7 @@ would commence ($C00000).
 
 /* Core includes */
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/amiga.h"
 
 /* Components */
@@ -36,8 +37,19 @@ would commence ($C00000).
 /***************************************************************************
   Battery Backed-Up Clock (MSM6264)
 ***************************************************************************/
-static READ16_HANDLER( amiga_clock_r ) { return msm6242_r( machine, offset / 2 ); }
-static WRITE16_HANDLER( amiga_clock_w ) { msm6242_w( machine, offset / 2, data ); }
+
+static READ16_HANDLER( amiga_clock_r )
+{
+	const device_config *rtc = device_list_find_by_tag(machine->config->devicelist, MSM6242, "rtc");
+	return msm6242_r(rtc, offset / 2);
+}
+
+
+static WRITE16_HANDLER( amiga_clock_w )
+{ 
+	const device_config *rtc = device_list_find_by_tag(machine->config->devicelist, MSM6242, "rtc");
+	msm6242_w(rtc, offset / 2, data);
+}
 
 /***************************************************************************
   Address maps
@@ -78,6 +90,7 @@ ADDRESS_MAP_END
  * FC0000-FFFFFF Kickstart ROM
  *
  */
+
 
 static ADDRESS_MAP_START(cdtv_mem, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0x000000, 0x0fffff) AM_RAMBANK(1) AM_BASE(&amiga_chip_ram) AM_SIZE(&amiga_chip_ram_size)
@@ -210,6 +223,9 @@ static MACHINE_DRIVER_START( ntsc )
 	MDRV_VIDEO_START(amiga)
 	MDRV_VIDEO_UPDATE(amiga)
 
+	/* devices */
+	MDRV_DEVICE_ADD("rtc", MSM6242)
+
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
@@ -263,9 +279,10 @@ MACHINE_DRIVER_END
 
 ***************************************************************************/
 
+
 static UINT8 amiga_cia_0_portA_r( void )
 {
-	UINT8 ret = readinputportbytag("CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
+	UINT8 ret = input_port_read(Machine, "CIA0PORTA") & 0xc0;	/* Gameport 1 and 0 buttons */
 	ret |= amiga_fdc_status_r();
 	return ret;
 }
@@ -284,13 +301,13 @@ static void amiga_cia_0_portA_w( UINT8 data )
 		}
 
 		/* overlay disabled, map RAM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, SMH_BANK1);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, SMH_BANK1);
 
 		amiga_cart_check_overlay();
 	}
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, 0, SMH_UNMAP);
+		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, 0, SMH_UNMAP);
 
 	set_led_status( 0, ( data & 2 ) ? 0 : 1 ); /* bit 2 = Power Led on Amiga */
 	output_set_value("power_led", ( data & 2 ) ? 0 : 1);
@@ -298,28 +315,28 @@ static void amiga_cia_0_portA_w( UINT8 data )
 
 static UINT16 amiga_read_joy0dat(void)
 {
-	if ( readinputportbytag("input") & 0x20 ) {
+	if ( input_port_read(Machine, "input") & 0x20 ) {
 		/* Joystick */
-		return readinputportbytag_safe("JOY0DAT", 0xffff);
+		return input_port_read_safe(Machine, "JOY0DAT", 0xffff);
 	} else {
 		/* Mouse */
 		int input;
-		input  = ( readinputportbytag("P0MOUSEX") & 0xff );
-		input |= ( readinputportbytag("P0MOUSEY") & 0xff ) << 8;
+		input  = ( input_port_read(Machine, "P0MOUSEX") & 0xff );
+		input |= ( input_port_read(Machine, "P0MOUSEY") & 0xff ) << 8;
 		return input;
 	}
 }
 
 static UINT16 amiga_read_joy1dat(void)
 {
-	if ( readinputportbytag("input") & 0x10 ) {
+	if ( input_port_read(Machine, "input") & 0x10 ) {
 		/* Joystick */
-		return readinputportbytag_safe("JOY1DAT", 0xffff);
+		return input_port_read_safe(Machine, "JOY1DAT", 0xffff);
 	} else {
 		/* Mouse */
 		int input;
-		input  = ( readinputportbytag("P1MOUSEX") & 0xff );
-		input |= ( readinputportbytag("P1MOUSEY") & 0xff ) << 8;
+		input  = ( input_port_read(Machine, "P1MOUSEX") & 0xff );
+		input |= ( input_port_read(Machine, "P1MOUSEY") & 0xff ) << 8;
 		return input;
 	}
 }
@@ -337,17 +354,18 @@ static void amiga_write_dsklen(UINT16 data)
 	}
 }
 
+
 static void amiga_reset(void)
 {
-	if (readinputportbytag("hardware") & 0x08)
+	if (input_port_read(Machine, "hardware") & 0x08)
 	{
 		/* Install RTC */
-		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xdc0000, 0xdc003f, 0, 0, amiga_clock_r, amiga_clock_w);
+		memory_install_readwrite16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xdc0000, 0xdc003f, 0, 0, amiga_clock_r, amiga_clock_w);
 	}
 	else
 	{
 		/* No RTC support */
-		memory_install_readwrite16_handler(0, ADDRESS_SPACE_PROGRAM, 0xdc0000, 0xdc003f, 0, 0, SMH_UNMAP, SMH_UNMAP);
+		memory_install_readwrite16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xdc0000, 0xdc003f, 0, 0, SMH_UNMAP, SMH_UNMAP);
 	}
 }
 

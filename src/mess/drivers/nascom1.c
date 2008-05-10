@@ -266,6 +266,9 @@ static MACHINE_DRIVER_START( nascom1 )
 	MDRV_PALETTE_INIT(black_and_white)
 
 	MDRV_VIDEO_UPDATE(nascom1)
+
+	/* devices */
+	MDRV_SNAPSHOT_ADD(nascom1, "nas", 0.5)
 MACHINE_DRIVER_END
 
 
@@ -273,6 +276,8 @@ static MACHINE_DRIVER_START( nascom2 )
 	MDRV_IMPORT_FROM(nascom1)
 	MDRV_CPU_REPLACE("main", Z80, 2000000)
 	MDRV_CPU_IO_MAP(nascom2_io, 0)
+
+	MDRV_MACHINE_START(nascom2)
 
 	/* video hardware */
 	MDRV_SCREEN_MODIFY("main")
@@ -337,29 +342,11 @@ static void nascom1_cassette_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_nascom1_cassette; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_nascom1_cassette; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nascom1_cassette); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(nascom1_cassette); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "cas"); break;
-	}
-}
-
-
-static void nascom1_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "nas"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_nascom1; break;
-
-		/* --- the following bits of info are returned as doubles --- */
-		case MESS_DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
-
-		default:										snapshot_device_getinfo(devclass, state, info); break;
 	}
 }
 
@@ -373,7 +360,7 @@ static void nascom2_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_nascom2_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(nascom2_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -389,7 +376,6 @@ SYSTEM_CONFIG_START( nascom1 )
 	CONFIG_RAM(32 * 1024)
 	CONFIG_RAM_DEFAULT(40 * 1024)
 	CONFIG_DEVICE(nascom1_cassette_getinfo)
-	CONFIG_DEVICE(nascom1_snapshot_getinfo)
 SYSTEM_CONFIG_END
 
 

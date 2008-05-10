@@ -1,32 +1,36 @@
-/*
- * functions for the IODevice entry IO_PRINTER
- *
- * Currently only a simple port which only supports status
- * ("online/offline") and output of bytes is supported.
- */
+/****************************************************************************
 
-#ifndef PRINTER_H
-#define PRINTER_H
+	printer.h
 
-#include "device.h"
+	Code for handling printer devices
+
+****************************************************************************/
+
+#ifndef __PRINTER_H__
+#define __PRINTER_H__
+
 #include "image.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-	
-#define MAX_PRINTER	(4)
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
-
-int printer_status(mess_image *img, int newstatus);
-void printer_output(mess_image *img, int data);
-
-void printer_device_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info);
+#define PRINTER	DEVICE_GET_INFO_NAME(printer)
 
 
-#ifdef __cplusplus
-}
-#endif
 
-#endif /* PRINTER_H */
+/***************************************************************************
+    FUNCTION PROTOTYPES
+***************************************************************************/
+
+/* checks to see if a printer is ready */
+int printer_is_ready(const device_config *printer);
+
+/* outputs data to a printer */
+void printer_output(const device_config *printer, UINT8 data);
+
+/* device getinfo function */
+DEVICE_GET_INFO(printer);
+
+#endif /* __PRINTER_H__ */

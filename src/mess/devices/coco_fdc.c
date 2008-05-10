@@ -142,7 +142,8 @@ static void fdc_callback(running_machine *machine, wd17xx_state_t state, void *p
     fdc_init - general function to initialize FDC
 -------------------------------------------------*/
 
-static void fdc_init(coco_cartridge *cartridge,
+static void fdc_init(running_machine *machine,
+	coco_cartridge *cartridge,
 	wd17xx_type_t type,
 	void (*update_lines)(coco_cartridge *cartridge),
 	int initial_drq)
@@ -155,7 +156,7 @@ static void fdc_init(coco_cartridge *cartridge,
 	info->drq = initial_drq ? 1 : 0;
 
 	/* initialize FDC */
-	wd17xx_init(Machine, type, fdc_callback, (void *) cartridge);
+	wd17xx_init(machine, type, fdc_callback, (void *) cartridge);
 }
 
 
@@ -213,7 +214,7 @@ static void fdc_coco_update_lines(coco_cartridge *cartridge)
 
 static void fdc_coco_init(coco_cartridge *cartridge)
 {
-	fdc_init(cartridge, WD_TYPE_1773, fdc_coco_update_lines, 1);
+	fdc_init(Machine, cartridge, WD_TYPE_1773, fdc_coco_update_lines, 1);
 }
 
 
@@ -378,7 +379,7 @@ static int msm6242_rtc_address;
 
 static rtc_type_t real_time_clock(void)
 {
-	return (rtc_type_t) (int) readinputportbytag_safe("real_time_clock", 0x00);
+	return (rtc_type_t) (int) input_port_read_safe(Machine, "real_time_clock", 0x00);
 }
 
 
@@ -389,6 +390,7 @@ static rtc_type_t real_time_clock(void)
 
 static UINT8 fdc_coco3plus_r(coco_cartridge *cartridge, UINT16 addr)
 {
+	const device_config *dev;
 	running_machine *machine = Machine;
 	UINT8 result = fdc_coco_r(cartridge, addr);
 
@@ -396,7 +398,10 @@ static UINT8 fdc_coco3plus_r(coco_cartridge *cartridge, UINT16 addr)
 	{
 		case 0x10:	/* FF50 */
 			if (real_time_clock() == RTC_DISTO)
-				result = msm6242_r(machine, msm6242_rtc_address);
+			{
+				dev = device_list_find_by_tag(machine->config->devicelist, MSM6242, "disto");
+				result = msm6242_r(dev, msm6242_rtc_address);
+			}
 			break;
 
 		case 0x38:	/* FF78 */
@@ -420,8 +425,9 @@ static UINT8 fdc_coco3plus_r(coco_cartridge *cartridge, UINT16 addr)
 		case 0x43:
 		case 0x44:
 		case 0x45:
-			if (device_count(IO_VHD) > 0)
-				result = coco_vhd_io_r(machine, addr);
+			dev = device_list_find_by_tag(machine->config->devicelist, DEVICE_GET_INFO_NAME(coco_vhd), "vhd");
+			if (dev != NULL)
+				result = coco_vhd_io_r((device_config *) dev, addr);
 			break;
 	}
 	return result;
@@ -435,6 +441,7 @@ static UINT8 fdc_coco3plus_r(coco_cartridge *cartridge, UINT16 addr)
 
 static void fdc_coco3plus_w(coco_cartridge *cartridge, UINT16 addr, UINT8 data)
 {
+	const device_config *dev;
 	running_machine *machine = Machine;
 
 	fdc_coco_w(cartridge, addr, data);
@@ -443,7 +450,10 @@ static void fdc_coco3plus_w(coco_cartridge *cartridge, UINT16 addr, UINT8 data)
 	{
 		case 0x10:	/* FF50 */
 			if (real_time_clock() == RTC_DISTO)
-				msm6242_w(machine, msm6242_rtc_address, data);
+			{
+				dev = device_list_find_by_tag(machine->config->devicelist, MSM6242, "disto");
+				msm6242_w(dev, msm6242_rtc_address, data);
+			}
 			break;
 
 		case 0x11:	/* FF51 */
@@ -457,8 +467,9 @@ static void fdc_coco3plus_w(coco_cartridge *cartridge, UINT16 addr, UINT8 data)
 		case 0x43:
 		case 0x44:
 		case 0x45:
-			if (device_count(IO_VHD) > 0)
-				coco_vhd_io_w(machine, addr, data);
+			dev = device_list_find_by_tag(machine->config->devicelist, DEVICE_GET_INFO_NAME(coco_vhd), "vhd");
+			if (dev != NULL)
+				coco_vhd_io_w((device_config *) dev, addr, data);
 			break;
 	}
 }
@@ -522,7 +533,7 @@ static void fdc_dragon_update_lines(coco_cartridge *cartridge)
 
 static void fdc_dragon_init(coco_cartridge *cartridge)
 {
-	fdc_init(cartridge, WD_TYPE_179X, fdc_dragon_update_lines, 0);
+	fdc_init(Machine, cartridge, WD_TYPE_179X, fdc_dragon_update_lines, 0);
 }
 
 

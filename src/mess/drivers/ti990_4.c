@@ -48,7 +48,7 @@ TODO:
 
 static MACHINE_RESET(ti990_4)
 {
-	ti990_hold_load();
+	ti990_hold_load(machine);
 
 	ti990_reset_int();
 
@@ -95,7 +95,7 @@ static WRITE8_HANDLER ( ckon_ckof_callback )
 static WRITE8_HANDLER ( lrex_callback )
 {
 	/* right??? */
-	ti990_hold_load();
+	ti990_hold_load(machine);
 }
 
 #if VIDEO_911
@@ -240,10 +240,10 @@ static MACHINE_DRIVER_START(ti990_4)
 
 #if VIDEO_911
 	MDRV_GFXDECODE(vdt911)
-	MDRV_PALETTE_LENGTH(vdt911_palette_size)
+	MDRV_PALETTE_LENGTH(8)
 #else
 	MDRV_GFXDECODE(asr733)
-	MDRV_PALETTE_LENGTH(asr733_palette_size)
+	MDRV_PALETTE_LENGTH(2)
 #endif
 
 #if VIDEO_911
@@ -341,4 +341,4 @@ SYSTEM_CONFIG_START(ti990_4)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG      COMPANY                 FULLNAME */
-COMP( 1976,	ti990_4,	0,		0,		ti990_4,	ti990_4,	ti990_4,	ti990_4,	"Texas Instruments",	"TI Model 990/4 Microcomputer System" , 0)
+COMP( 1976,	ti990_4,	0,		0,		ti990_4,	ti990_4,	ti990_4,	ti990_4,	"Texas Instruments",	"TI Model 990/4 Microcomputer System" , GAME_NOT_WORKING )

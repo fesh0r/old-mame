@@ -79,7 +79,7 @@ enum
 /* tape reader registers */
 typedef struct tape_reader_t
 {
-	mess_image *fd;	/* file descriptor of tape image */
+	const device_config *fd;	/* file descriptor of tape image */
 
 	int motor_on;	/* 1-bit reader motor on */
 
@@ -98,7 +98,7 @@ static tape_reader_t tape_reader;
 /* tape puncher registers */
 typedef struct tape_puncher_t
 {
-	mess_image *fd;	/* file descriptor of tape image */
+	const device_config *fd;	/* file descriptor of tape image */
 
 	emu_timer *timer;	/* timer to generate completion pulses */
 } tape_puncher_t;
@@ -109,7 +109,7 @@ static tape_puncher_t tape_puncher;
 /* typewriter registers */
 typedef struct typewriter_t
 {
-	mess_image *fd;	/* file descriptor of output image */
+	const device_config *fd;	/* file descriptor of output image */
 
 	int tb;			/* typewriter buffer */
 
@@ -129,7 +129,7 @@ static lightpen_t lightpen;
 /* MIT parallel drum (mostly similar to type 23) */
 typedef struct parallel_drum_t
 {
-	mess_image *fd;	/* file descriptor of drum image */
+	const device_config *fd;	/* file descriptor of drum image */
 
 	int il;			/* initial location (12-bit) */
 	int wc;			/* word counter (12-bit) */
@@ -160,7 +160,7 @@ MACHINE_RESET( pdp1 )
 {
 	int config;
 
-	config = readinputport(pdp1_config);
+	config = input_port_read_indexed(machine, pdp1_config);
 	pdp1_reset_param.extend_support = (config >> pdp1_config_extend_bit) & pdp1_config_extend_mask;
 	pdp1_reset_param.hw_mul_div = (config >> pdp1_config_hw_mul_div_bit) & pdp1_config_hw_mul_div_mask;
 	pdp1_reset_param.type_20_sbs = (config >> pdp1_config_type_20_sbs_bit) & pdp1_config_type_20_sbs_mask;
@@ -352,8 +352,7 @@ WRITE18_HANDLER(pdp1_write_mem)
 	perforated tape handling
 */
 
-void pdp1_get_open_mode(const struct IODevice *dev, int id,
-	unsigned int *readable, unsigned int *writeable, unsigned int *creatable)
+void pdp1_get_open_mode(int id, unsigned int *readable, unsigned int *writeable, unsigned int *creatable)
 {
 	/* unit 0 is read-only, unit 1 is write-only */
 	if (id)
@@ -372,9 +371,8 @@ void pdp1_get_open_mode(const struct IODevice *dev, int id,
 
 
 
-DEVICE_INIT( pdp1_tape )
+DEVICE_START( pdp1_tape )
 {
-	return INIT_PASS;
 }
 
 
@@ -384,7 +382,7 @@ DEVICE_INIT( pdp1_tape )
 
 	unit 0 is reader (read-only), unit 1 is puncher (write-only)
 */
-DEVICE_LOAD( pdp1_tape )
+DEVICE_IMAGE_LOAD( pdp1_tape )
 {
 	int id = image_index_in_device(image);
 
@@ -424,7 +422,7 @@ DEVICE_LOAD( pdp1_tape )
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD( pdp1_tape )
+DEVICE_IMAGE_UNLOAD( pdp1_tape )
 {
 	int id = image_index_in_device(image);
 
@@ -720,7 +718,7 @@ void iot_ppb(int op2, int nac, int mb, int *io, int ac)
 /*
 	Open a file for typewriter output
 */
-DEVICE_LOAD(pdp1_typewriter)
+DEVICE_IMAGE_LOAD(pdp1_typewriter)
 {
 	/* open file */
 	typewriter.fd = image;
@@ -730,7 +728,7 @@ DEVICE_LOAD(pdp1_typewriter)
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD(pdp1_typewriter)
+DEVICE_IMAGE_UNLOAD(pdp1_typewriter)
 {
 	typewriter.fd = NULL;
 }
@@ -1052,7 +1050,7 @@ static void parallel_drum_init(void)
 /*
 	Open a file for drum
 */
-DEVICE_LOAD(pdp1_drum)
+DEVICE_IMAGE_LOAD(pdp1_drum)
 {
 	/* open file */
 	parallel_drum.fd = image;
@@ -1060,7 +1058,7 @@ DEVICE_LOAD(pdp1_drum)
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD(pdp1_drum)
+DEVICE_IMAGE_UNLOAD(pdp1_drum)
 {
 	parallel_drum.fd = NULL;
 }
@@ -1177,7 +1175,7 @@ void iot_dra(int op2, int nac, int mb, int *io, int ac)
 */
 void iot_011(int op2, int nac, int mb, int *io, int ac)
 {
-	int key_state = readinputport(pdp1_spacewar_controllers);
+	int key_state = input_port_read_indexed(Machine, pdp1_spacewar_controllers);
 	int reply;
 
 
@@ -1262,7 +1260,7 @@ static void pdp1_keyboard(running_machine *machine)
 
 
 	for (i=0; i<4; i++)
-		typewriter_keys[i] = readinputport(pdp1_typewriter + i);
+		typewriter_keys[i] = input_port_read_indexed(machine, pdp1_typewriter + i);
 
 	for (i=0; i<4; i++)
 	{
@@ -1288,13 +1286,14 @@ static void pdp1_keyboard(running_machine *machine)
 
 static void pdp1_lightpen(void)
 {
+	running_machine *machine = Machine;
 	int x_delta, y_delta;
 	int current_state;
 	static int previous_state;
 
-	lightpen.active = (readinputport(pdp1_config) >> pdp1_config_lightpen_bit) & pdp1_config_lightpen_mask;
+	lightpen.active = (input_port_read_indexed(machine, pdp1_config) >> pdp1_config_lightpen_bit) & pdp1_config_lightpen_mask;
 
-	current_state = readinputport(pdp1_lightpen_state);
+	current_state = input_port_read_indexed(machine, pdp1_lightpen_state);
 
 	/* update pen down state */
 	lightpen.down = lightpen.active && (current_state & pdp1_lightpen_down);
@@ -1316,8 +1315,8 @@ static void pdp1_lightpen(void)
 	previous_state = current_state;
 
 	/* update pen position */
-	x_delta = readinputport(pdp1_lightpen_x);
-	y_delta = readinputport(pdp1_lightpen_y);
+	x_delta = input_port_read_indexed(machine, pdp1_lightpen_x);
+	y_delta = input_port_read_indexed(machine, pdp1_lightpen_y);
 
 	if (x_delta >= 0x80)
 		x_delta -= 0x100;
@@ -1357,10 +1356,10 @@ INTERRUPT_GEN( pdp1_interrupt )
 	int ta_transitions;
 
 
-	cpunum_set_reg(0, PDP1_SS, readinputport(pdp1_sense_switches));
+	cpunum_set_reg(0, PDP1_SS, input_port_read_indexed(machine, pdp1_sense_switches));
 
 	/* read new state of control keys */
-	control_keys = readinputport(pdp1_control_switches);
+	control_keys = input_port_read_indexed(machine, pdp1_control_switches);
 
 	if (control_keys & pdp1_control)
 	{
@@ -1452,7 +1451,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 
 
 		/* handle test word keys */
-		tw_keys = (readinputport(pdp1_tw_switches_MSB) << 16) | readinputport(pdp1_tw_switches_LSB);
+		tw_keys = (input_port_read_indexed(machine, pdp1_tw_switches_MSB) << 16) | input_port_read_indexed(machine, pdp1_tw_switches_LSB);
 
 		/* compute transitions */
 		tw_transitions = tw_keys & (~ old_tw_keys);
@@ -1465,7 +1464,7 @@ INTERRUPT_GEN( pdp1_interrupt )
 
 
 		/* handle address keys */
-		ta_keys = readinputport(pdp1_ta_switches);
+		ta_keys = input_port_read_indexed(machine, pdp1_ta_switches);
 
 		/* compute transitions */
 		ta_transitions = ta_keys & (~ old_ta_keys);

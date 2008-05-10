@@ -30,7 +30,7 @@ typedef struct {
 
 typedef struct
 {
-	mess_image	*image_file;			/* file handle for disc image */
+	const device_config	*image_file;			/* file handle for disc image */
 	int 	mode;				/* open mode == 0 read only, != 0 read/write */
 	unsigned long image_size;		/* size of image file */
 
@@ -47,8 +47,8 @@ typedef struct
 
 /*----------- defined in machine/d88.c -----------*/
 
-DEVICE_INIT(d88image_floppy);
-DEVICE_LOAD(d88image_floppy);
+DEVICE_START(d88image_floppy);
+DEVICE_IMAGE_LOAD(d88image_floppy);
 
 
 #ifdef __cplusplus

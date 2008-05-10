@@ -615,7 +615,7 @@ static const struct via6522_interface via2 =
 	vc1541_via1_irq
 };
 
-DEVICE_LOAD(vc1541)
+DEVICE_IMAGE_LOAD(vc1541)
 {
 	vc1541->d64.data = image_ptr(image);
 	if (!vc1541->d64.data)
@@ -627,7 +627,7 @@ DEVICE_LOAD(vc1541)
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD(vc1541)
+DEVICE_IMAGE_UNLOAD(vc1541)
 {
 	/* writeback of image data */
 	vc1541->d64.data = NULL;
@@ -1081,8 +1081,8 @@ void vc1541_device_getinfo(const mess_device_class *devclass, UINT32 state, unio
 		case MESS_DEVINFO_INT_RESET_ON_LOAD:			info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:					info->load = device_load_vc1541; break;
-		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = device_unload_vc1541; break;
+		case MESS_DEVINFO_PTR_LOAD:					info->load = DEVICE_IMAGE_LOAD_NAME(vc1541); break;
+		case MESS_DEVINFO_PTR_UNLOAD:				info->unload = DEVICE_IMAGE_UNLOAD_NAME(vc1541); break;
 		case DEVINFO_PTR_VC1541_CONFIG:			info->f = (genf *) vc1541_config; break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

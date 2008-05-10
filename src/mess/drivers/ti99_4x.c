@@ -16,7 +16,10 @@ Similar to TI99/4a, except for the following:
 Historical notes: TI made several last minute design changes.
     * TI99/4 prototypes had an extra port for an I/R joystick and keypad interface.
     * early TI99/4 prototypes were designed for a tms9985, not a tms9900.
-*/
+
+Note: Changes in MAME 0.124u4 caused the execution of code via the read handlers to no longer work.
+	Therefore, the PEB at 4000-5FFF is commented out until a solution is found.
+	Also, the ti99_4ev title screen isn't working. Press 1 to enter Basic. */
 
 #include "driver.h"
 #include "deprecat.h"
@@ -35,16 +38,17 @@ Historical notes: TI made several last minute design changes.
 #include "devices/harddriv.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
+#include "machine/idectrl.h"
 
 /*
     memory map
 */
 
 static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
-
+	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
+//	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
 	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
@@ -59,10 +63,10 @@ static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(memmap_4ev, ADDRESS_SPACE_PROGRAM, 16)
-
+	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
-	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
+//	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
 	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
@@ -298,7 +302,7 @@ static INPUT_PORTS_START(ti99_4)
 	/* 4 ports for keyboard and joystick */
 	PORT_START	/* col 0 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
-		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Q QUIT") PORT_CODE(KEYCODE_Q) PORT_CHAR('Q')
+		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Q QUIT") PORT_CODE(KEYCODE_Q) PORT_CHAR('Q') PORT_CHAR(UCHAR_MAMEKEY(ESC))
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(SPACE)") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
 		/* TI99/4 has a second space key which maps the same */
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SPACE") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(' ')
@@ -309,9 +313,9 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER) PORT_CHAR(13)
 				/* col 1 */
 		PORT_BIT(0x8000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2 @") PORT_CODE(KEYCODE_2) PORT_CHAR('2') PORT_CHAR('@')
-		PORT_BIT(0x4000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("W BEGIN") PORT_CODE(KEYCODE_W) PORT_CHAR('W')
-		PORT_BIT(0x2000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A AID") PORT_CODE(KEYCODE_A) PORT_CHAR('A')
-		PORT_BIT(0x1000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Z BACK") PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
+		PORT_BIT(0x4000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("W BEGIN") PORT_CODE(KEYCODE_W) PORT_CHAR('W') PORT_CHAR(UCHAR_MAMEKEY(F5))
+		PORT_BIT(0x2000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A AID") PORT_CODE(KEYCODE_A) PORT_CHAR('A') PORT_CHAR(UCHAR_MAMEKEY(F7))
+		PORT_BIT(0x1000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Z BACK") PORT_CODE(KEYCODE_Z) PORT_CHAR('Z') PORT_CHAR(UCHAR_MAMEKEY(F9))
 		PORT_BIT(0x0800, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9 (") PORT_CODE(KEYCODE_9) PORT_CHAR('9') PORT_CHAR('(')
 		PORT_BIT(0x0400, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("O +") PORT_CODE(KEYCODE_O) PORT_CHAR('O') PORT_CHAR('+')
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("K /") PORT_CODE(KEYCODE_K) PORT_CHAR('K') PORT_CHAR('/')
@@ -319,18 +323,18 @@ static INPUT_PORTS_START(ti99_4)
 
 	PORT_START	/* col 2 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
-		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E UP") PORT_CODE(KEYCODE_E) PORT_CHAR('E')
-		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("S LEFT") PORT_CODE(KEYCODE_S) PORT_CHAR('S')
-		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("X DOWN") PORT_CODE(KEYCODE_X) PORT_CHAR('X')
+		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E UP") PORT_CODE(KEYCODE_E) PORT_CHAR('E') PORT_CHAR(UCHAR_MAMEKEY(UP))
+		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("S LEFT") PORT_CODE(KEYCODE_S) PORT_CHAR('S') PORT_CHAR(UCHAR_MAMEKEY(LEFT))
+		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("X DOWN") PORT_CODE(KEYCODE_X) PORT_CHAR('X') PORT_CHAR(UCHAR_MAMEKEY(DOWN))
 		PORT_BIT(0x0008, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8 *") PORT_CODE(KEYCODE_8) PORT_CHAR('8') PORT_CHAR('*')
 		PORT_BIT(0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("I -") PORT_CODE(KEYCODE_I) PORT_CHAR('I') PORT_CHAR('-')
 		PORT_BIT(0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("J ^") PORT_CODE(KEYCODE_J) PORT_CHAR('J') PORT_CHAR('^')
 		PORT_BIT(0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("M ;") PORT_CODE(KEYCODE_M) PORT_CHAR('M') PORT_CHAR(';')
 				/* col 3 */
 		PORT_BIT(0x8000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("4 $") PORT_CODE(KEYCODE_4) PORT_CHAR('4') PORT_CHAR('$')
-		PORT_BIT(0x4000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("R REDO") PORT_CODE(KEYCODE_R) PORT_CHAR('R')
-		PORT_BIT(0x2000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("D RIGHT") PORT_CODE(KEYCODE_D) PORT_CHAR('D')
-		PORT_BIT(0x1000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("C CLEAR") PORT_CODE(KEYCODE_C) PORT_CHAR('C')
+		PORT_BIT(0x4000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("R REDO") PORT_CODE(KEYCODE_R) PORT_CHAR('R') PORT_CHAR(UCHAR_MAMEKEY(F8))
+		PORT_BIT(0x2000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("D RIGHT") PORT_CODE(KEYCODE_D) PORT_CHAR('D') PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
+		PORT_BIT(0x1000, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("C CLEAR") PORT_CODE(KEYCODE_C) PORT_CHAR('C') PORT_CHAR(UCHAR_MAMEKEY(F4))
 		PORT_BIT(0x0800, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7 &") PORT_CODE(KEYCODE_7) PORT_CHAR('7') PORT_CHAR('&')
 		PORT_BIT(0x0400, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("U _") PORT_CODE(KEYCODE_U) PORT_CHAR('U') PORT_CHAR('_')
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("H <") PORT_CODE(KEYCODE_H) PORT_CHAR('H') PORT_CHAR('<')
@@ -338,12 +342,12 @@ static INPUT_PORTS_START(ti99_4)
 
 	PORT_START	/* col 4 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5 %") PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
-		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("T ERASE") PORT_CODE(KEYCODE_T) PORT_CHAR('T')
-		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F DEL") PORT_CODE(KEYCODE_F) PORT_CHAR('F')
-		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("V PROC'D") PORT_CODE(KEYCODE_V) PORT_CHAR('V')
+		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("T ERASE") PORT_CODE(KEYCODE_T) PORT_CHAR('T') PORT_CHAR(UCHAR_MAMEKEY(F3))
+		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F DEL") PORT_CODE(KEYCODE_F) PORT_CHAR('F') PORT_CHAR(UCHAR_MAMEKEY(DEL))
+		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("V PROC'D") PORT_CODE(KEYCODE_V) PORT_CHAR('V') PORT_CHAR(UCHAR_MAMEKEY(F6))
 		PORT_BIT(0x0008, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6 ^") PORT_CODE(KEYCODE_6) PORT_CHAR('6') PORT_CHAR('\'')
 		PORT_BIT(0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Y >") PORT_CODE(KEYCODE_Y) PORT_CHAR('Y') PORT_CHAR('>')
-		PORT_BIT(0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("G INS") PORT_CODE(KEYCODE_G) PORT_CHAR('G')
+		PORT_BIT(0x0002, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("G INS") PORT_CODE(KEYCODE_G) PORT_CHAR('G') PORT_CHAR(UCHAR_MAMEKEY(F2))
 		PORT_BIT(0x0001, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B ?") PORT_CODE(KEYCODE_B) PORT_CHAR('B') PORT_CHAR('?')
 				/* col 5: "wired handset 1" (= joystick 1) */
 		PORT_BIT(0xE000, IP_ACTIVE_LOW, IPT_UNUSED)
@@ -528,6 +532,9 @@ static MACHINE_DRIVER_START(ti99_4_60hz)
 	MDRV_SOUND_ADD(TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4_50hz)
@@ -557,6 +564,8 @@ static MACHINE_DRIVER_START(ti99_4_50hz)
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(ti99_4a_60hz)
@@ -585,6 +594,9 @@ static MACHINE_DRIVER_START(ti99_4a_60hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 
@@ -614,6 +626,9 @@ static MACHINE_DRIVER_START(ti99_4a_50hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 
@@ -651,6 +666,9 @@ static MACHINE_DRIVER_START(ti99_4ev_60hz)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
+
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 
@@ -781,9 +799,9 @@ static void ti99_4_cartslot_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_ti99_cart; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_cart; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_cart; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(ti99_cart); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_cart); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,c,d,g,m,crom,drom,grom,mrom"); break;
@@ -820,9 +838,9 @@ static void ti99_4_harddisk_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(mess_hd); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hd); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hd); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
@@ -843,8 +861,8 @@ static void ti99_4_parallel_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_pio); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_pio); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
@@ -864,8 +882,8 @@ static void ti99_4_serial_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_rs232); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_rs232); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
@@ -887,8 +905,8 @@ static void ti99_4_quickload_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hsgpl; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hsgpl; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hsgpl); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hsgpl); break;
 	}
 }
 #endif
@@ -906,9 +924,9 @@ static void ti99_4_memcard_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(smartmedia); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
@@ -920,7 +938,7 @@ SYSTEM_CONFIG_START(ti99_4)
 	CONFIG_DEVICE(ti99_4_cartslot_getinfo)
 	CONFIG_DEVICE(ti99_4_floppy_getinfo)
 	CONFIG_DEVICE(ti99_4_harddisk_getinfo)
-	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
+//	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)	/* causes a save state error */
 	CONFIG_DEVICE(ti99_4_parallel_getinfo)
 	CONFIG_DEVICE(ti99_4_serial_getinfo)
 	/*CONFIG_DEVICE(ti99_4_quickload_getinfo)*/

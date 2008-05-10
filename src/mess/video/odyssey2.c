@@ -167,6 +167,7 @@ static bitmap_t		*tmp_bitmap;
 static int			start_vpos;
 static int			start_vblank;
 static UINT8		lum;		/* Output of P1 bit 7 influences the intensity of the background and grid colours */
+static UINT16		lfsr;
 
 static sound_stream *odyssey2_sh_channel;
 
@@ -305,14 +306,14 @@ static TIMER_CALLBACK( i824x_scanline_callback ) {
 		rect.min_y = rect.max_y = vpos;
 		rect.min_x = I824X_START_ACTIVE_SCAN;
 		rect.max_x = I824X_END_ACTIVE_SCAN - 1;
-		fillbitmap( tmp_bitmap, machine->pens[ ( (o2_vdc.s.color >> 3) & 0x7 ) | ( ( lum << 3 ) ^ 0x08 ) ], &rect );
+		fillbitmap( tmp_bitmap, ( (o2_vdc.s.color >> 3) & 0x7 ) | ( ( lum << 3 ) ^ 0x08 ), &rect );
 
 		/* Clear collision map */
 		memset( collision_map, 0, sizeof( collision_map ) );
 
 		/* Display grid if enabled */
 		if ( o2_vdc.s.control & 0x08 ) {
-			UINT16	color = machine->pens[ ( o2_vdc.s.color & 7 ) | ( ( o2_vdc.s.color >> 3 ) & 0x08 ) | ( ( lum << 3 ) ^ 0x08 ) ];
+			UINT16	color = ( o2_vdc.s.color & 7 ) | ( ( o2_vdc.s.color >> 3 ) & 0x08 ) | ( ( lum << 3 ) ^ 0x08 );
 			int		x_grid_offset = 8;
 			int 	y_grid_offset = 24;
 			int		width = 16;
@@ -368,7 +369,7 @@ static TIMER_CALLBACK( i824x_scanline_callback ) {
 				int	height = 8 - ( ( ( y >> 1 ) + o2_vdc.s.foreground[i].ptr ) & 7 );
 
 				if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + height * 2 ) {
-					UINT16	color = machine->pens[ 16 + ( ( o2_vdc.s.foreground[i].color & 0x0E ) >> 1 ) ];
+					UINT16	color = 16 + ( ( o2_vdc.s.foreground[i].color & 0x0E ) >> 1 );
 					int		offset = ( o2_vdc.s.foreground[i].ptr | ( ( o2_vdc.s.foreground[i].color & 0x01 ) << 8 ) ) + ( y >> 1 ) + ( ( vpos - start_vpos - y ) >> 1 );
 					UINT8	chr = ((char*)o2_shape)[ offset & 0x1FF ];
 					int		x = o2_vdc.s.foreground[i].x;
@@ -405,7 +406,7 @@ static TIMER_CALLBACK( i824x_scanline_callback ) {
 					for ( j = 0; j < ARRAY_LENGTH( o2_vdc.s.quad[0].single ); j++, x += 8 ) {
 						int		char_height = 8 - ( ( ( y >> 1 ) + o2_vdc.s.quad[i].single[j].ptr ) & 7 );
 						if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + char_height * 2 ) {
-							UINT16 color = machine->pens[ 16 + ( ( o2_vdc.s.quad[i].single[j].color & 0x0E ) >> 1 ) ];
+							UINT16 color = 16 + ( ( o2_vdc.s.quad[i].single[j].color & 0x0E ) >> 1 );
 							int	offset = ( o2_vdc.s.quad[i].single[j].ptr | ( ( o2_vdc.s.quad[i].single[j].color & 0x01 ) << 8 ) ) + ( y >> 1 ) + ( ( vpos - start_vpos - y ) >> 1 );
 							UINT8	chr = ((char*)o2_shape)[ offset & 0x1FF ];
 							UINT8	m;
@@ -440,7 +441,7 @@ static TIMER_CALLBACK( i824x_scanline_callback ) {
 					/* Zoomed sprite */
 					sprite_width[i] = 16;
 					if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + height * 4 ) {
-						UINT16 color = machine->pens[ 16 + ( ( o2_vdc.s.sprites[i].color >> 3 ) & 0x07 ) ];
+						UINT16 color = 16 + ( ( o2_vdc.s.sprites[i].color >> 3 ) & 0x07 );
 						UINT8	chr = o2_vdc.s.shape[i][ ( ( vpos - start_vpos - y ) >> 2 ) ];
 						int		x = o2_vdc.s.sprites[i].x;
 						UINT8	m;
@@ -477,7 +478,7 @@ static TIMER_CALLBACK( i824x_scanline_callback ) {
 				} else {
 					/* Regular sprite */
 					if ( y <= ( vpos - start_vpos ) && ( vpos - start_vpos ) < y + height * 2 ) {
-						UINT16 color = machine->pens[ 16 + ( ( o2_vdc.s.sprites[i].color >> 3 ) & 0x07 ) ];
+						UINT16 color = 16 + ( ( o2_vdc.s.sprites[i].color >> 3 ) & 0x07 );
 						UINT8	chr = o2_vdc.s.shape[i][ ( ( vpos - start_vpos - y ) >> 1 ) ];
 						int		x = o2_vdc.s.sprites[i].x;
 						UINT8	m;
@@ -604,6 +605,15 @@ void odyssey2_sh_update( void *param,stream_sample_t **inputs, stream_sample_t *
 				if( o2_vdc.s.sound & 0x40 )
 				{
 					signal |= *buffer << 23;
+				}
+				/* Noise poly is : L=16 W=2 10000000000100001 */
+				lfsr = ( lfsr >> 1 ) | ( ( ( lfsr & 0x01 ) ^ ( ( lfsr & 0x800 ) >> 11 ) ) << 15 );
+				if ( ! lfsr ) {
+					lfsr = 0xFFFF;
+				}
+				/* Check if noise should be applied */
+				if ( o2_vdc.s.sound & 0x10 ) {
+					*buffer |= ( lfsr & 0x01 );
 				}
 				o2_vdc.s.shift3 = signal & 0xFF;
 				o2_vdc.s.shift2 = ( signal >> 8 ) & 0xFF;

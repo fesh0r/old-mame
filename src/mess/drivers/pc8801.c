@@ -6,9 +6,9 @@
 
 #include "driver.h"
 #include "cpu/z80/z80.h"
+#include "machine/8255ppi.h"
 #include "includes/pc8801.h"
 #include "machine/nec765.h"
-#include "machine/8255ppi.h"
 #include "includes/d88.h"
 #include "devices/basicdsk.h"
 #include "sound/2203intf.h"
@@ -438,7 +438,7 @@ static ADDRESS_MAP_START( pc88sr_io, ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xf3, 0xf3) AM_NOP /* DMA floppy (unknown -- not yet) */
 	AM_RANGE(0xf4, 0xf7) AM_NOP /* DMA 5'floppy (may be not released) */
 	AM_RANGE(0xf8, 0xfb) AM_NOP /* DMA 8'floppy (unknown -- not yet) */
-	AM_RANGE(0xfc, 0xff) AM_READWRITE( ppi8255_0_r, ppi8255_0_w )
+	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE( PPI8255, "ppi8255_0", ppi8255_r, ppi8255_w )
 ADDRESS_MAP_END
 
 static INTERRUPT_GEN( pc8801fd_interrupt )
@@ -455,7 +455,7 @@ static ADDRESS_MAP_START( pc8801fd_io , ADDRESS_SPACE_IO, 8)
 	AM_RANGE(0xf8, 0xf8) AM_READ( pc8801fd_nec765_tc )
 	AM_RANGE(0xfa, 0xfa) AM_READ( nec765_status_r )
 	AM_RANGE(0xfb, 0xfb) AM_READWRITE( nec765_data_r, nec765_data_w )
-	AM_RANGE(0xfc, 0xff) AM_READWRITE( ppi8255_1_r, ppi8255_1_w )
+	AM_RANGE(0xfc, 0xff) AM_DEVREADWRITE( PPI8255, "ppi8255_1", ppi8255_r, ppi8255_w )
 ADDRESS_MAP_END
 
 ROM_START (pc88srl)
@@ -492,10 +492,14 @@ static  READ8_HANDLER(opn_dummy_input){return 0xff;}
 
 static const struct YM2203interface ym2203_interface =
 {
-	opn_dummy_input,
-	opn_dummy_input,
-	0,
-	0,
+	{
+		AY8910_LEGACY_OUTPUT,
+		AY8910_DEFAULT_LOADS,
+		opn_dummy_input,
+		opn_dummy_input,
+		0,
+		0
+	},
 	pc88sr_sound_interupt
 };
 
@@ -518,6 +522,12 @@ static MACHINE_DRIVER_START( pc88srl )
 	MDRV_INTERLEAVE(5000)
 
 	MDRV_MACHINE_RESET( pc88srl )
+
+	MDRV_DEVICE_ADD( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc8801_8255_config_0 )
+
+	MDRV_DEVICE_ADD( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( pc8801_8255_config_1 )
 
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -571,8 +581,8 @@ static void pc88_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_d88image_floppy; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_d88image_floppy; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(d88image_floppy); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(d88image_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "d88"); break;

@@ -14,9 +14,9 @@
 #include "deprecat.h"
 #include "devices/cassette.h"
 #include "cpu/i8085/i8085.h"
+#include "machine/8255ppi.h"
 #include "includes/dai.h"
 #include "machine/pit8253.h"
-#include "machine/8255ppi.h"
 #include "machine/tms5501.h"
 
 #define DEBUG_DAI_PORTS	0
@@ -34,7 +34,7 @@ static UINT8 dai_cassette_motor[2];
 
 static OPBASE_HANDLER(dai_opbaseoverride)
 {
-	tms5501_set_pio_bit_7 (0, (readinputport(8) & 0x04) ? 1:0);
+	tms5501_set_pio_bit_7 (0, (input_port_read_indexed(machine, 8) & 0x04) ? 1:0);
 	return address;
 }
 
@@ -66,7 +66,7 @@ static UINT8 dai_keyboard_read (void)
 	for (i = 0; i < 8; i++)
 	{
 		if (dai_keyboard_scan_mask & (1 << i))
-			data |= readinputport(i);
+			data |= input_port_read_indexed(Machine, i);
 	}
 	return data;
 }
@@ -92,17 +92,18 @@ static const tms5501_init_param dai_tms5501_init_param =
 	2000000.
 };
 
-static const ppi8255_interface dai_ppi82555_intf =
+const ppi8255_interface dai_ppi82555_intf =
 {
-	1, 			/* 1 chip */
-	{ NULL, NULL },		/* Port A read */
-	{ NULL, NULL },		/* Port B read */
-	{ NULL, NULL },		/* Port C read */
+	NULL,	/* Port A read */
+	NULL,	/* Port B read */
+	NULL,	/* Port C read */
+	NULL,	/* Port A write */
+	NULL,	/* Port B write */
+	NULL	/* Port C write */
 };
 
-static const struct pit8253_config dai_pit8253_intf =
+const struct pit8253_config dai_pit8253_intf =
 {
-	TYPE8253,
 	{
 		{
 			2000000,
@@ -130,8 +131,6 @@ MACHINE_START( dai )
 	memory_configure_bank(2, 0, 4, memory_region(REGION_CPU1) + 0x010000, 0x1000);
 
 	tms5501_init(0, &dai_tms5501_init_param);
-	ppi8255_init(&dai_ppi82555_intf);
-	pit8253_init(1, &dai_pit8253_intf);
 
 	timer_set(attotime_zero, NULL, 0, dai_bootstrap_callback);
 }
@@ -171,7 +170,7 @@ MACHINE_START( dai )
 
 	switch(offset & 0x000f) {
 	case 0x00:
-		data = readinputport(8);
+		data = input_port_read_indexed(machine, 8);
 		data |= 0x08;			// serial ready
 		if (mame_rand(machine)&0x01)
 			data |= 0x40;		// random number generator

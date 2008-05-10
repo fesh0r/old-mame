@@ -146,15 +146,15 @@ static VIDEO_UPDATE( mpf1 )
 	//fillbitmap(bitmap, get_black_pen(), NULL);
 
 	for(x = 0; x < 6; x++)
-		draw_led(bitmap, leddisplay, leddigit[x], xpositions[x], 377);
+		draw_led(screen->machine, bitmap, leddisplay, leddigit[x], xpositions[x], 377);
 
 	// tone-LED; the green one
-	draw_led(bitmap, radius_7_led, led_tone * 2, 277, 375);
+	draw_led(screen->machine, bitmap, radius_7_led, led_tone * 2, 277, 375);
 
 	// halt-LED; the red one, is turned on when the processor is halted
 	// TODO: processor seems to halt, but restarts(?) at 0x0000 after a while -> fix
 	led_halt = (UINT8) cpunum_get_info_int(0, CPUINFO_INT_REGISTER + Z80_HALT);
-	draw_led(bitmap, radius_7_led, led_halt, 277, 394);
+	draw_led(screen->machine, bitmap, radius_7_led, led_halt, 277, 394);
 	return 0;
 }
 
@@ -168,7 +168,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mpf1_io_map, ADDRESS_SPACE_IO, 8 )
     /* Appendix B.D from the MPF-I user's manual:
-       (contains possible typing/printing errors so I've cited it litteraly)
+       (contains possible typing/printing errors so I've cited it literally)
 
     * D. Input/Output port addressing
     *
@@ -190,14 +190,14 @@ static ADDRESS_MAP_START( mpf1_io_map, ADDRESS_SPACE_IO, 8 )
        Where the text states ".... , all select the s ...." it probably means
        "... ., all select the same ....".
 
-       So to asure that this "incompleteness" of the hardware does also exist in
+       So to assure that this "incompleteness" of the hardware does also exist in
        this simulator I've expanded the port assignments accordingly. I've also
-       tested wether this is true for the actual hardware, and it is.
+       tested whether this is true for the actual hardware, and it is.
     */
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 
 	// The 16 I/O port combinations for the 8255 (P8255A-5, 8628LLP, (c) 1981 AMD)
-	AM_RANGE(0x00, 0x03) AM_READWRITE(ppi8255_0_r, ppi8255_0_w) AM_MIRROR(0x3C)
+	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE(PPI8255, "ppi8255", ppi8255_r, ppi8255_w) AM_MIRROR(0x3C)
 
 //  TODO: create drivers to emulate the following two chips
 //  The 16 I/O port combinations for the CTC (Zilog, Z0843004PSC, Z80 CTC, 8644)
@@ -214,7 +214,7 @@ ADDRESS_MAP_END
 	PORT_BIT( bit, IP_ACTIVE_LOW, IPT_UNUSED )
 
 static INPUT_PORTS_START( mpf1 )
-	PORT_START	// column 0
+	PORT_START_TAG("LINE0")	// column 0
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3 HL") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7 HL'") PORT_CODE(KEYCODE_7)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B I*IF") PORT_CODE(KEYCODE_B)
@@ -224,7 +224,7 @@ static INPUT_PORTS_START( mpf1 )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 1
+	PORT_START_TAG("LINE1")	// column 1
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2 DE") PORT_CODE(KEYCODE_2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6 DE'") PORT_CODE(KEYCODE_6)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A SP") PORT_CODE(KEYCODE_A)
@@ -234,7 +234,7 @@ static INPUT_PORTS_START( mpf1 )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 2
+	PORT_START_TAG("LINE2")	// column 2
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1 BC") PORT_CODE(KEYCODE_1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5 BC'") PORT_CODE(KEYCODE_5)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9 IY") PORT_CODE(KEYCODE_9)
@@ -244,7 +244,7 @@ static INPUT_PORTS_START( mpf1 )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 3
+	PORT_START_TAG("LINE3")	// column 3
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0 AF") PORT_CODE(KEYCODE_0)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("4 AF'") PORT_CODE(KEYCODE_4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8 IX") PORT_CODE(KEYCODE_8)
@@ -254,7 +254,7 @@ static INPUT_PORTS_START( mpf1 )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 4
+	PORT_START_TAG("LINE4")	// column 4
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CBR") PORT_CODE(KEYCODE_N)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("PC") PORT_CODE(KEYCODE_M)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("REG") PORT_CODE(KEYCODE_COMMA)
@@ -264,7 +264,7 @@ static INPUT_PORTS_START( mpf1 )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 5
+	PORT_START_TAG("LINE5")	// column 5
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SBR") PORT_CODE(KEYCODE_H)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("-") PORT_CODE(KEYCODE_J)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("DATA") PORT_CODE(KEYCODE_K)
@@ -274,7 +274,7 @@ static INPUT_PORTS_START( mpf1 )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 6
+	PORT_START_TAG("LINE6")	// column 6
 	KEY_UNUSED( 0x01 )
 	KEY_UNUSED( 0x02 )
 	KEY_UNUSED( 0x04 )
@@ -284,13 +284,13 @@ static INPUT_PORTS_START( mpf1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("USER KEY") PORT_CODE(KEYCODE_U)
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// interrupt keys
+	PORT_START_TAG("EXTRA")	// interrupt keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("MONI") PORT_CODE(KEYCODE_M)	// causes NMI ?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("INTR") PORT_CODE(KEYCODE_I)	// causes INT
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mpf1b )
-	PORT_START	// column 0
+	PORT_START_TAG("LINE0")	// column 0
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3 /") PORT_CODE(KEYCODE_3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("7 >") PORT_CODE(KEYCODE_7)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("B STOP") PORT_CODE(KEYCODE_B)
@@ -300,7 +300,7 @@ static INPUT_PORTS_START( mpf1b )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 1
+	PORT_START_TAG("LINE1")	// column 1
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("2 *") PORT_CODE(KEYCODE_2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("6 <") PORT_CODE(KEYCODE_6)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("A CALL") PORT_CODE(KEYCODE_A)
@@ -310,7 +310,7 @@ static INPUT_PORTS_START( mpf1b )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 2
+	PORT_START_TAG("LINE2")	// column 2
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1 -") PORT_CODE(KEYCODE_1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5 =") PORT_CODE(KEYCODE_5)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("9 P") PORT_CODE(KEYCODE_9)
@@ -320,7 +320,7 @@ static INPUT_PORTS_START( mpf1b )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 3
+	PORT_START_TAG("LINE3")	// column 3
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0 +") PORT_CODE(KEYCODE_0)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("4 * *") PORT_CODE(KEYCODE_4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("8 M") PORT_CODE(KEYCODE_8)
@@ -330,7 +330,7 @@ static INPUT_PORTS_START( mpf1b )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 4
+	PORT_START_TAG("LINE4")	// column 4
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("IF/pgup") PORT_CODE(KEYCODE_PGUP)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("TO/down") PORT_CODE(KEYCODE_T) PORT_CODE(KEYCODE_DOWN)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("THEN/pgdn") PORT_CODE(KEYCODE_PGDN)
@@ -340,7 +340,7 @@ static INPUT_PORTS_START( mpf1b )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 5
+	PORT_START_TAG("LINE5")	// column 5
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("FOR/up") PORT_CODE(KEYCODE_H) PORT_CODE(KEYCODE_UP)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("LIST") PORT_CODE(KEYCODE_L)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("NEW") PORT_CODE(KEYCODE_N)
@@ -350,7 +350,7 @@ static INPUT_PORTS_START( mpf1b )
 	KEY_UNUSED( 0x40 )
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// column 6
+	PORT_START_TAG("LINE6")	// column 6
 	KEY_UNUSED( 0x01 )
 	KEY_UNUSED( 0x02 )
 	KEY_UNUSED( 0x04 )
@@ -360,7 +360,7 @@ static INPUT_PORTS_START( mpf1b )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT)
 	KEY_UNUSED( 0x80 )
 
-	PORT_START	// interrupt keys
+	PORT_START_TAG("EXTRA")	// interrupt keys
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("MONI") PORT_CODE(KEYCODE_M)	// causes NMI ?
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("INTR") PORT_CODE(KEYCODE_I)	// causes INT
 INPUT_PORTS_END
@@ -392,6 +392,8 @@ static const z80pio_interface pio_intf =
 
 static  READ8_HANDLER( mpf1_porta_r )
 {
+	char port[6];
+
 	UINT8 retval;
 	for(keycol = 0; keycol < 6; keycol++)
 	{
@@ -401,7 +403,8 @@ static  READ8_HANDLER( mpf1_porta_r )
 	verboselog( 0, "Key column for kbd read: %02x\n", keycol );
 	if( keycol != 6 )
 	{
-		retval = readinputport(keycol);
+		sprintf(port, "LINE%d", keycol);
+		retval = input_port_read(machine, port);
 	}
 	else
 	{
@@ -459,8 +462,8 @@ static WRITE8_HANDLER( mpf1_portb_w )
 	if( data | ( activecpu_get_pc() != 0x63C ) )
 	{
 		data = ( (data & 0x08) >> 3 ) |
-			   ( (data & 0x10) >> 3 ) |
-		   	   ( (data & 0x20) >> 3 ) |
+		       ( (data & 0x10) >> 3 ) |
+		       ( (data & 0x20) >> 3 ) |
 		       ( (data & 0x80) >> 4 ) |
 		       ( (data & 0x01) << 4 ) |
 		       ( (data & 0x04) << 3 ) |
@@ -507,13 +510,12 @@ static WRITE8_HANDLER( mpf1_portc_w )
 
 static const ppi8255_interface ppi8255_intf =
 {
-	1, 					/* 1 chip */
-	{ mpf1_porta_r },	/* Port A read */
-	{ mpf1_portb_r },	/* Port B read */
-	{ mpf1_portc_r },	/* Port C read */
-	{ mpf1_porta_w },	/* Port A write */
-	{ mpf1_portb_w },	/* Port B write */
-	{ mpf1_portc_w },	/* Port C write */
+	mpf1_porta_r,	/* Port A read */
+	mpf1_portb_r,	/* Port B read */
+	mpf1_portc_r,	/* Port C read */
+	mpf1_porta_w,	/* Port A write */
+	mpf1_portb_w,	/* Port B write */
+	mpf1_portc_w,	/* Port C write */
 };
 
 /* Machine Initialization */
@@ -527,9 +529,6 @@ static MACHINE_RESET( mpf1 )
 	// CTC
 /*  z80ctc_init(&ctc_intf);
     z80ctc_reset(0);*/
-
-	// 8255
-	ppi8255_init(&ppi8255_intf);
 
 	// leds
 	for (lednum = 0; lednum < 6; lednum++)
@@ -548,6 +547,9 @@ static MACHINE_DRIVER_START( mpf1 )
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
 	MDRV_MACHINE_RESET( mpf1 )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( ppi8255_intf )
 
 	// video hardware
 	MDRV_SCREEN_ADD("main", RASTER)

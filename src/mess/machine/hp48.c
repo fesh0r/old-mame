@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 
 #include "includes/hp48.h"
 
@@ -127,7 +128,7 @@ static void hp48_config(void)
 			begin = begin_bank << 13;
 			end = ( end_bank << 13 ) | 0x1FFF;
 
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, read_handlers[bank] );
+			memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, read_handlers[bank] );
 			memory_set_bankptr( bank, hp48_banks[begin_bank].base );
 
 			bank++;
@@ -138,9 +139,9 @@ static void hp48_config(void)
 	}
 
 	if ( hp48s.mem[HDW].adr != -1 ) {
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, hp48s.mem[HDW].adr&~0x3f,
+		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, hp48s.mem[HDW].adr&~0x3f,
 								 hp48s.mem[HDW].adr|0x3f, 0, 0, hp48_read);
-//		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, hp48s.mem[HDW].adr&~0x3f,
+//		memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, hp48s.mem[HDW].adr&~0x3f,
 //								  hp48s.mem[HDW].adr|0x3f, 0, 0, hp48_write);
 	}
 }
@@ -500,15 +501,15 @@ int hp48_in(void)
 		if (KEY_PLUS) data|=1;
 	}
 #else
-	if (out&0x100) data|=readinputport(0);
-	if (out&0x080) data|=readinputport(1);
-	if (out&0x040) data|=readinputport(2);
-	if (out&0x020) data|=readinputport(3);
-	if (out&0x010) data|=readinputport(4);
-	if (out&0x008) data|=readinputport(5);
-	if (out&0x004) data|=readinputport(6);
-	if (out&0x002) data|=readinputport(7);
-	if (out&0x001) data|=readinputport(8);
+	if (out&0x100) data|=input_port_read_indexed(machine, 0);
+	if (out&0x080) data|=input_port_read_indexed(machine, 1);
+	if (out&0x040) data|=input_port_read_indexed(machine, 2);
+	if (out&0x020) data|=input_port_read_indexed(machine, 3);
+	if (out&0x010) data|=input_port_read_indexed(machine, 4);
+	if (out&0x008) data|=input_port_read_indexed(machine, 5);
+	if (out&0x004) data|=input_port_read_indexed(machine, 6);
+	if (out&0x002) data|=input_port_read_indexed(machine, 7);
+	if (out&0x001) data|=input_port_read_indexed(machine, 8);
 #endif
 	return data;
 }

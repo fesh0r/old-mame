@@ -128,15 +128,15 @@ WRITE8_HANDLER( mtx_cst_w )
  *
  *************************************/
 
-static mess_image *mtx_printer_image(void)
+static const device_config *mtx_printer_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_PRINTER, 0);
+	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
 }
 
 READ8_HANDLER( mtx_strobe_r )
 {
 	if (mtx_prt_strobe == 0)
-		printer_output (mtx_printer_image (), mtx_prt_data);
+		printer_output (mtx_printer_image(machine), mtx_prt_data);
 
 	mtx_prt_strobe = 1;
 
@@ -148,7 +148,7 @@ READ8_HANDLER( mtx_prt_r )
 {
 	mtx_prt_strobe = 0;
 
-	return MTX_PRT_NOERROR | (printer_status (mtx_printer_image (), 0)
+	return MTX_PRT_NOERROR | (printer_is_ready (mtx_printer_image (machine))
 			? MTX_PRT_SELECTED : 0);
 }
 
@@ -174,30 +174,30 @@ READ8_HANDLER( mtx_key_lo_r )
 {
 	UINT8 data = 0xff;
 
-	if (!(key_sense & 0x01)) data &= readinputportbytag("keyboard_low_0");
-	if (!(key_sense & 0x02)) data &= readinputportbytag("keyboard_low_1");
-	if (!(key_sense & 0x04)) data &= readinputportbytag("keyboard_low_2");
-	if (!(key_sense & 0x08)) data &= readinputportbytag("keyboard_low_3");
-	if (!(key_sense & 0x10)) data &= readinputportbytag("keyboard_low_4");
-	if (!(key_sense & 0x20)) data &= readinputportbytag("keyboard_low_5");
-	if (!(key_sense & 0x40)) data &= readinputportbytag("keyboard_low_6");
-	if (!(key_sense & 0x80)) data &= readinputportbytag("keyboard_low_7");
+	if (!(key_sense & 0x01)) data &= input_port_read(machine, "keyboard_low_0");
+	if (!(key_sense & 0x02)) data &= input_port_read(machine, "keyboard_low_1");
+	if (!(key_sense & 0x04)) data &= input_port_read(machine, "keyboard_low_2");
+	if (!(key_sense & 0x08)) data &= input_port_read(machine, "keyboard_low_3");
+	if (!(key_sense & 0x10)) data &= input_port_read(machine, "keyboard_low_4");
+	if (!(key_sense & 0x20)) data &= input_port_read(machine, "keyboard_low_5");
+	if (!(key_sense & 0x40)) data &= input_port_read(machine, "keyboard_low_6");
+	if (!(key_sense & 0x80)) data &= input_port_read(machine, "keyboard_low_7");
 
 	return data;
 }
 
 READ8_HANDLER( mtx_key_hi_r )
 {
-	UINT8 data = readinputportbytag("country_code");
+	UINT8 data = input_port_read(machine, "country_code");
 
-	if (!(key_sense & 0x01)) data &= readinputportbytag("keyboard_high_0");
-	if (!(key_sense & 0x02)) data &= readinputportbytag("keyboard_high_1");
-	if (!(key_sense & 0x04)) data &= readinputportbytag("keyboard_high_2");
-	if (!(key_sense & 0x08)) data &= readinputportbytag("keyboard_high_3");
-	if (!(key_sense & 0x10)) data &= readinputportbytag("keyboard_high_4");
-	if (!(key_sense & 0x20)) data &= readinputportbytag("keyboard_high_5");
-	if (!(key_sense & 0x40)) data &= readinputportbytag("keyboard_high_6");
-	if (!(key_sense & 0x80)) data &= readinputportbytag("keyboard_high_7");
+	if (!(key_sense & 0x01)) data &= input_port_read(machine, "keyboard_high_0");
+	if (!(key_sense & 0x02)) data &= input_port_read(machine, "keyboard_high_1");
+	if (!(key_sense & 0x04)) data &= input_port_read(machine, "keyboard_high_2");
+	if (!(key_sense & 0x08)) data &= input_port_read(machine, "keyboard_high_3");
+	if (!(key_sense & 0x10)) data &= input_port_read(machine, "keyboard_high_4");
+	if (!(key_sense & 0x20)) data &= input_port_read(machine, "keyboard_high_5");
+	if (!(key_sense & 0x40)) data &= input_port_read(machine, "keyboard_high_6");
+	if (!(key_sense & 0x80)) data &= input_port_read(machine, "keyboard_high_7");
 
 	return data;
 }
@@ -314,19 +314,19 @@ WRITE8_HANDLER( mtx_bankswitch_w )
 	/* set ram bank, for invalid pages a nop-handler will be installed */
 	if (ram_page >= mess_ram_size/0x8000)
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP, SMH_NOP);
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_NOP, SMH_NOP);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP, SMH_NOP);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_NOP, SMH_NOP);
 	}
 	else if (ram_page + 1 == mess_ram_size/0x8000)
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP, SMH_NOP);
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK4, SMH_BANK4);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_NOP, SMH_NOP);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK4, SMH_BANK4);
 		memory_set_bank(4, ram_page);
 	}
 	else
 	{
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK3, SMH_BANK3);
-		memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK4, SMH_BANK4);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK3, SMH_BANK3);
+		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK4, SMH_BANK4);
 		memory_set_bank(3, ram_page);
 		memory_set_bank(4, ram_page);
 	}
@@ -362,8 +362,8 @@ DRIVER_INIT( rs128 )
 	z80dart_init(0, &mtx_dart_intf);
 
 	/* install handlers for dart interface */
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_IO, 0x0c, 0x0d, 0, 0, mtx_dart_data_r, mtx_dart_data_w);
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_IO, 0x0e, 0x0f, 0, 0, mtx_dart_control_r, mtx_dart_control_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_IO, 0x0c, 0x0d, 0, 0, mtx_dart_data_r, mtx_dart_data_w);
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_IO, 0x0e, 0x0f, 0, 0, mtx_dart_control_r, mtx_dart_control_w);
 }
 
 MACHINE_RESET( rs128 )

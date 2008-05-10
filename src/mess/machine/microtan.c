@@ -143,7 +143,7 @@ static void microtan_set_irq_line(running_machine *machine)
     cpunum_set_input_line(machine, 0, 0, via_0_irq_line | via_1_irq_line | kbd_irq_line);
 }
 
-static mess_image *cassette_device_image(void)
+static const device_config *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
@@ -153,7 +153,7 @@ static mess_image *cassette_device_image(void)
  **************************************************************/
 static  READ8_HANDLER (via_0_in_a )
 {
-    int data = readinputport(10);
+    int data = input_port_read_indexed(machine, 10);
     LOG(("microtan_via_0_in_a %02X\n", data));
     return data;
 }
@@ -604,16 +604,16 @@ INTERRUPT_GEN( microtan_interrupt )
     }
 
     row = 9;
-    new = readinputport(row);
+    new = input_port_read_indexed(machine, row);
     chg = keyrows[--row] ^ new;
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = readinputport(row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
+    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
     if (!chg) --row;
 
     if (row >= 0)
@@ -800,7 +800,7 @@ SNAPSHOT_LOAD( microtan )
 	if (microtan_varify_snapshot(snapshot_buff, snapshot_size)==IMAGE_VERIFY_FAIL)
 		return INIT_FAIL;
 
-	microtan_snapshot_copy(machine, snapshot_buff, snapshot_size);
+	microtan_snapshot_copy(image->machine, snapshot_buff, snapshot_size);
 	return INIT_PASS;
 }
 
@@ -835,7 +835,7 @@ QUICKLOAD_LOAD( microtan_hexfile )
 	else
 		rc = parse_zillion_hex(snapshot_buff, buff);
 	if (rc == INIT_PASS)
-		microtan_snapshot_copy(machine, snapshot_buff, snapshot_size);
+		microtan_snapshot_copy(image->machine, snapshot_buff, snapshot_size);
 	free(snapshot_buff);
 	return rc;
 }
@@ -881,21 +881,21 @@ DRIVER_INIT( microtan )
         dst += 4;
     }
 
-    switch (readinputport(0) & 3)
+    switch (input_port_read_indexed(machine, 0) & 3)
     {
         case 0:  // 1K only :)
-            memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_NOP);
-            memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_NOP);
             break;
         case 1:  // +7K TANEX
-            memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x1fff, 0, 0, SMH_RAM);
-            memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x1fff, 0, 0, SMH_RAM);
-            memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0xbbff, 0, 0, SMH_NOP);
-            memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x1fff, 0, 0, SMH_RAM);
+            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0x1fff, 0, 0, SMH_RAM);
+            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0xbbff, 0, 0, SMH_NOP);
+            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0xbbff, 0, 0, SMH_NOP);
             break;
         default: // +7K TANEX + 40K TANRAM
-            memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_RAM);
-            memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_RAM);
+            memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_RAM);
+            memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_RAM);
             break;
     }
 
@@ -906,7 +906,7 @@ MACHINE_RESET( microtan )
     int i;
 
     for (i = 1; i < 10;  i++)
-        keyrows[i] = readinputport(1+i);
+        keyrows[i] = input_port_read_indexed(machine, 1+i);
     set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
 
     via_config(0, &via6522[0]);

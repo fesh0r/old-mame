@@ -42,7 +42,7 @@ MACHINE_START( mc10 )
 	mc10_bfff = 0x00;
 	mc10_keyboard_strobe = 0x00;
 
-	memory_install_readwrite8_handler(0, ADDRESS_SPACE_PROGRAM,
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
 			0x4000,	0x4000 + mess_ram_size - 1,	0, 0, SMH_BANK1, SMH_BANK1);
 	memory_set_bankptr(1, mess_ram);
 
@@ -69,17 +69,17 @@ READ8_HANDLER ( mc10_bfff_r )
 
 	int val = 0x40;
 
-	if ((readinputport(0) | mc10_keyboard_strobe) == 0xff)
+	if ((input_port_read_indexed(machine, 0) | mc10_keyboard_strobe) == 0xff)
 		val |= 0x01;
-	if ((readinputport(1) | mc10_keyboard_strobe) == 0xff)
+	if ((input_port_read_indexed(machine, 1) | mc10_keyboard_strobe) == 0xff)
 		val |= 0x02;
-	if ((readinputport(2) | mc10_keyboard_strobe) == 0xff)
+	if ((input_port_read_indexed(machine, 2) | mc10_keyboard_strobe) == 0xff)
 		val |= 0x04;
-	if ((readinputport(3) | mc10_keyboard_strobe) == 0xff)
+	if ((input_port_read_indexed(machine, 3) | mc10_keyboard_strobe) == 0xff)
 		val |= 0x08;
-	if ((readinputport(4) | mc10_keyboard_strobe) == 0xff)
+	if ((input_port_read_indexed(machine, 4) | mc10_keyboard_strobe) == 0xff)
 		val |= 0x10;
-	if ((readinputport(5) | mc10_keyboard_strobe) == 0xff)
+	if ((input_port_read_indexed(machine, 5) | mc10_keyboard_strobe) == 0xff)
 		val |= 0x20;
 
 	return val;
@@ -135,10 +135,10 @@ READ8_HANDLER ( mc10_port2_r )
      *   BIT 4 CASSETTE TAPE INPUT
      */
 
-	mess_image *img = image_from_devtype_and_index(IO_CASSETTE, 0);
+	const device_config *img = image_from_devtype_and_index(IO_CASSETTE, 0);
 	int val = 0xed;
 
-	if ((readinputport(6) | mc10_keyboard_strobe) == 0xff)
+	if ((input_port_read_indexed(machine, 6) | mc10_keyboard_strobe) == 0xff)
 		val |= 0x02;
 
 	if (cassette_input(img) >= 0)
@@ -150,7 +150,7 @@ READ8_HANDLER ( mc10_port2_r )
 
 WRITE8_HANDLER ( mc10_port2_w )
 {
-	mess_image *img = image_from_devtype_and_index(IO_CASSETTE, 0);
+	const device_config *img = image_from_devtype_and_index(IO_CASSETTE, 0);
 
 	/*   BIT 0 PRINTER OUTFUT & CASS OUTPUT
      */
@@ -212,5 +212,5 @@ VIDEO_START( mc10 )
 	cfg.type = M6847_VERSION_ORIGINAL_NTSC;
 	cfg.get_attributes = mc10_get_attributes;
 	cfg.get_video_ram = mc10_get_video_ram;
-	m6847_init(&cfg);
+	m6847_init(machine, &cfg);
 }

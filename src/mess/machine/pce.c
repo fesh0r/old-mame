@@ -99,7 +99,7 @@ static void pce_cd_set_irq_line( running_machine *machine, int num, int state );
 static TIMER_CALLBACK( pce_cd_adpcm_dma_timer_callback );
 
 
-static mess_image *cdrom_device_image( void ) {
+static const device_config *cdrom_device_image( void ) {
 	return image_from_devtype_and_index( IO_CDROM, 0 );
 }
 
@@ -113,13 +113,13 @@ static WRITE8_HANDLER( pce_cartridge_ram_w ) {
 	cartridge_ram[ offset ] = data;
 }
 
-DEVICE_LOAD(pce_cart)
+DEVICE_IMAGE_LOAD(pce_cart)
 {
 	int size;
 	int split_rom = 0;
 	const char *extrainfo;
 	unsigned char *ROM;
-	logerror("*** DEVICE_LOAD(pce_cart) : %s\n", image_filename(image));
+	logerror("*** DEVICE_IMAGE_LOAD(pce_cart) : %s\n", image_filename(image));
 
 	/* open file to get size */
 	ROM = memory_region(REGION_USER1);
@@ -129,7 +129,7 @@ DEVICE_LOAD(pce_cart)
 	/* handle header accordingly */
 	if((size/512)&1)
 	{
-		logerror("*** DEVICE_LOAD(pce_cart) : Header present\n");
+		logerror("*** DEVICE_IMAGE_LOAD(pce_cart) : Header present\n");
 		size -= 512;
 		image_fseek(image, 512, SEEK_SET);
 	}
@@ -151,7 +151,7 @@ DEVICE_LOAD(pce_cart)
 		int i;
 		UINT8 decrypted[256];
 
-		logerror( "*** DEVICE_LOAD(pce_cart) : ROM image seems encrypted, decrypting...\n" );
+		logerror( "*** DEVICE_IMAGE_LOAD(pce_cart) : ROM image seems encrypted, decrypting...\n" );
 
 		/* Initialize decryption table */
 		for( i = 0; i < 256; i++ )
@@ -201,14 +201,14 @@ DEVICE_LOAD(pce_cart)
 
 	/* Check for Street fighter 2 */
 	if ( size == PCE_ROM_MAXSIZE ) {
-		memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x01ff0, 0x01ff3, 0, 0, pce_sf2_banking_w );
+		memory_install_write8_handler(image->machine, 0, ADDRESS_SPACE_PROGRAM, 0x01ff0, 0x01ff3, 0, 0, pce_sf2_banking_w );
 	}
 
 	/* Check for Populous */
 	if ( ! memcmp( ROM + 0x1F26, "POPULOUS", 8 ) ) {
 		cartridge_ram = auto_malloc( 0x8000 );
 		memory_set_bankptr( 2, cartridge_ram );
-		memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x087FFF, 0, 0, pce_cartridge_ram_w );
+		memory_install_write8_handler(image->machine, 0, ADDRESS_SPACE_PROGRAM, 0x080000, 0x087FFF, 0, 0, pce_cartridge_ram_w );
 	}
 
 	/* Check for CD system card */
@@ -219,7 +219,7 @@ DEVICE_LOAD(pce_cart)
 			pce_sys3_card = 1;
 			cartridge_ram = auto_malloc( 0x30000 );
 			memory_set_bankptr( 4, cartridge_ram );
-			memory_install_write8_handler( 0, ADDRESS_SPACE_PROGRAM, 0x0D0000, 0x0FFFFF, 0, 0, pce_cartridge_ram_w );
+			memory_install_write8_handler(image->machine, 0, ADDRESS_SPACE_PROGRAM, 0x0D0000, 0x0FFFFF, 0, 0, pce_cartridge_ram_w );
 		}
 	}
 	return 0;
@@ -264,7 +264,7 @@ WRITE8_HANDLER ( pce_joystick_w )
 READ8_HANDLER ( pce_joystick_r )
 {
 	UINT8 ret;
-	int data = readinputport(0);
+	int data = input_port_read_indexed(machine, 0);
 	if(joystick_data_select) data >>= 4;
 	ret = (data & 0x0F) | pce.io_port_options;
 #ifdef UNIFIED_PCE
@@ -517,7 +517,7 @@ static void pce_cd_nec_get_subq( void ) {
 /* 0xDE - GET DIR INFO (NEC) */
 static void pce_cd_nec_get_dir_info( void ) {
 	UINT32 frame, msf, track = 0;
-	mess_image *img = cdrom_device_image();
+	const device_config *img = cdrom_device_image();
 	const cdrom_toc	*toc;
 	logerror("nec get dir info\n");
 

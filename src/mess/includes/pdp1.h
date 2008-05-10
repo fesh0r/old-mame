@@ -130,9 +130,9 @@ MACHINE_RESET( pdp1 );
 READ18_HANDLER ( pdp1_read_mem );
 WRITE18_HANDLER ( pdp1_write_mem );
 
-DEVICE_INIT( pdp1_tape );
-DEVICE_LOAD( pdp1_tape );
-DEVICE_UNLOAD( pdp1_tape );
+DEVICE_START( pdp1_tape );
+DEVICE_IMAGE_LOAD( pdp1_tape );
+DEVICE_IMAGE_UNLOAD( pdp1_tape );
 
 void pdp1_tape_read_binary(void);
 void iot_rpa(int op2, int nac, int mb, int *io, int ac);
@@ -141,15 +141,15 @@ void iot_rrb(int op2, int nac, int mb, int *io, int ac);
 void iot_ppa(int op2, int nac, int mb, int *io, int ac);
 void iot_ppb(int op2, int nac, int mb, int *io, int ac);
 
-DEVICE_LOAD(pdp1_typewriter);
-DEVICE_UNLOAD(pdp1_typewriter);
+DEVICE_IMAGE_LOAD(pdp1_typewriter);
+DEVICE_IMAGE_UNLOAD(pdp1_typewriter);
 void iot_tyo(int op2, int nac, int mb, int *io, int ac);
 void iot_tyi(int op2, int nac, int mb, int *io, int ac);
 
 void iot_dpy(int op2, int nac, int mb, int *io, int ac);
 
-DEVICE_LOAD(pdp1_drum);
-DEVICE_UNLOAD(pdp1_drum);
+DEVICE_IMAGE_LOAD(pdp1_drum);
+DEVICE_IMAGE_UNLOAD(pdp1_drum);
 void iot_dia(int op2, int nac, int mb, int *io, int ac);
 void iot_dba(int op2, int nac, int mb, int *io, int ac);
 void iot_dcc(int op2, int nac, int mb, int *io, int ac);
@@ -162,8 +162,7 @@ void pdp1_io_sc_callback(void);
 
 INTERRUPT_GEN( pdp1_interrupt );
 
-void pdp1_get_open_mode(const struct IODevice *dev, int id,
-	unsigned int *readable, unsigned int *writeable, unsigned int *creatable);
+void pdp1_get_open_mode(int id, unsigned int *readable, unsigned int *writeable, unsigned int *creatable);
 
 typedef struct lightpen_t
 {

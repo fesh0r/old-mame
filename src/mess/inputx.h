@@ -6,17 +6,15 @@
 
 *********************************************************************/
 
-#ifndef INPUTX_H
-#define INPUTX_H
+#ifndef __INPUTX_H__
+#define __INPUTX_H__
 
 #include "mame.h"
 #include "driver.h"
 
 
 /***************************************************************************
-
-	Constants
-
+    CONSTANTS
 ***************************************************************************/
 
 /* input classes */
@@ -30,12 +28,6 @@ enum
 	INPUT_CLASS_CATEGORIZED,
 	INPUT_CLASS_MISC
 };
-
-/***************************************************************************
-
-	Macros
-
-***************************************************************************/
 
 /* MESS uses Supplementary private use B to represent code points
  * corresponding to MAME keycodes and shift keys.  The nice thing about
@@ -54,14 +46,12 @@ enum
 
 
 /***************************************************************************
-
-	Prototypes
-
+    FUNCTION PROTOTYPES
 ***************************************************************************/
 
 /* these are called by the core; they should not be called from FEs */
 void inputx_init(running_machine *machine);
-void inputx_update(void);
+void mess_input_port_update_hook(running_machine *machine, int portnum, UINT32 *digital);
 void inputx_handle_mess_extensions(input_port_entry *ipt);
 
 /* called by drivers to setup natural keyboard support */
@@ -74,36 +64,36 @@ void inputx_setup_natural_keyboard(
 int inputx_validitycheck(const game_driver *gamedrv, input_port_entry **memory);
 
 /* these can be called from FEs */
-int inputx_can_post(void);
-int inputx_can_post_key(unicode_char ch);
-int inputx_is_posting(void);
+int inputx_can_post(running_machine *machine);
+int inputx_can_post_key(running_machine *machine, unicode_char ch);
+int inputx_is_posting(running_machine *machine);
 const char *inputx_key_name(unicode_char ch);
 
 /* various posting functions; can be called from FEs */
-void inputx_post(const unicode_char *text);
-void inputx_post_rate(const unicode_char *text, attotime rate);
-void inputx_postc(unicode_char ch);
-void inputx_postc_rate(unicode_char ch, attotime rate);
-void inputx_postn(const unicode_char *text, size_t text_len);
-void inputx_postn_rate(const unicode_char *text, size_t text_len, attotime rate);
-void inputx_post_utf16(const utf16_char *text);
-void inputx_post_utf16_rate(const utf16_char *text, attotime rate);
-void inputx_postn_utf16(const utf16_char *text, size_t text_len);
-void inputx_postn_utf16_rate(const utf16_char *text, size_t text_len, attotime rate);
-void inputx_post_utf8(const char *text);
-void inputx_post_utf8_rate(const char *text, attotime rate);
-void inputx_postn_utf8(const char *text, size_t text_len);
-void inputx_postn_utf8_rate(const char *text, size_t text_len, attotime rate);
-void inputx_post_coded(const char *text);
-void inputx_post_coded_rate(const char *text, attotime rate);
-void inputx_postn_coded(const char *text, size_t text_len);
-void inputx_postn_coded_rate(const char *text, size_t text_len, attotime rate);
+void inputx_post(running_machine *machine, const unicode_char *text);
+void inputx_post_rate(running_machine *machine, const unicode_char *text, attotime rate);
+void inputx_postc(running_machine *machine, unicode_char ch);
+void inputx_postc_rate(running_machine *machine, unicode_char ch, attotime rate);
+void inputx_postn(running_machine *machine, const unicode_char *text, size_t text_len);
+void inputx_postn_rate(running_machine *machine, const unicode_char *text, size_t text_len, attotime rate);
+void inputx_post_utf16(running_machine *machine, const utf16_char *text);
+void inputx_post_utf16_rate(running_machine *machine, const utf16_char *text, attotime rate);
+void inputx_postn_utf16(running_machine *machine, const utf16_char *text, size_t text_len);
+void inputx_postn_utf16_rate(running_machine *machine, const utf16_char *text, size_t text_len, attotime rate);
+void inputx_post_utf8(running_machine *machine, const char *text);
+void inputx_post_utf8_rate(running_machine *machine, const char *text, attotime rate);
+void inputx_postn_utf8(running_machine *machine, const char *text, size_t text_len);
+void inputx_postn_utf8_rate(running_machine *machine, const char *text, size_t text_len, attotime rate);
+void inputx_post_coded(running_machine *machine, const char *text);
+void inputx_post_coded_rate(running_machine *machine, const char *text, attotime rate);
+void inputx_postn_coded(running_machine *machine, const char *text, size_t text_len);
+void inputx_postn_coded_rate(running_machine *machine, const char *text, size_t text_len, attotime rate);
 
 /* miscellaneous functions */
 int input_classify_port(const input_port_entry *in);
-int input_has_input_class(int inputclass);
+int input_has_input_class(running_machine *machine, int inputclass);
 int input_player_number(const input_port_entry *in);
-int input_count_players(void);
-int input_category_active(int category);
+int input_count_players(running_machine *machine);
+int input_category_active(running_machine *machine, int category);
 
 #endif /* INPUTX_H */

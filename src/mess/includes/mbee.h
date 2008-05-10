@@ -18,7 +18,7 @@ READ8_HANDLER( mbee_lowram_r );
 
 INTERRUPT_GEN( mbee_interrupt );
 
-DEVICE_LOAD( mbee_cart );
+DEVICE_IMAGE_LOAD( mbee_cart );
 
  READ8_HANDLER ( mbee_pio_r );
 WRITE8_HANDLER ( mbee_pio_w );
@@ -46,13 +46,8 @@ WRITE8_HANDLER ( mbee_video_bank_w );
  READ8_HANDLER ( mbee_pcg_color_latch_r );
 WRITE8_HANDLER ( mbee_pcg_color_latch_w );
 
- READ8_HANDLER ( mbee_videoram_r );
 WRITE8_HANDLER ( mbee_videoram_w );
-
- READ8_HANDLER ( mbee_pcg_color_r );
 WRITE8_HANDLER ( mbee_pcg_color_w );
-
- READ8_HANDLER ( mbee_pcg_r );
 WRITE8_HANDLER ( mbee_pcg_w );
 
 VIDEO_START( mbee );

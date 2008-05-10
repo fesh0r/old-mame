@@ -17,8 +17,8 @@
 
 #include "driver.h"
 #include "deprecat.h"
-#include "includes/pc8801.h"
 #include "machine/8255ppi.h"
+#include "includes/pc8801.h"
 #include "machine/nec765.h"
 #include "sound/beep.h"
 
@@ -127,7 +127,7 @@ static void pc8801_update_interrupt(running_machine *machine)
 	}
 }
 
-static int pc8801_interupt_callback (int cpu)
+static IRQ_CALLBACK(pc8801_interupt_callback)
 {
 	int level, i;
 
@@ -194,7 +194,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   if((port_save&0x04) == 0x00 && (data&0x04) != 0x00) calender_shift();
   port_save=data;
 
-  if((readinputport(17)&0x40)==0x00) {
+  if((input_port_read_indexed(machine, 17)&0x40)==0x00) {
     data&=0x7f;
   }
   switch(data&0xa0) {
@@ -241,7 +241,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   int r;
 
   /* read DIP-SW */
-  r=readinputport(17)<<1;
+  r=input_port_read_indexed(machine, 17)<<1;
   /* change bit 0 according BASIC mode */
   if(is_Nbasic) {
     r&=0xfe;
@@ -268,7 +268,7 @@ WRITE8_HANDLER(pc88sr_outport_40)
   int r;
 
   /* read DIP-SW */
-  r=readinputport(18)<<1;
+  r=input_port_read_indexed(machine, 18)<<1;
   /* change bit 6 according speed switch */
   if(pc88sr_is_highspeed) {
     r|=0x40;
@@ -394,14 +394,14 @@ void pc8801_update_bank(void)
 		if(ext_w==NULL)
 		{
 			/* read only mode */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_NOP);
 		}
 		else
 		{
 			/* r/w mode */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
 			if(ext_w!=ext_r) logerror("differnt between read and write bank of extension memory.\n");
 		}
 	}
@@ -411,8 +411,8 @@ void pc8801_update_bank(void)
 		if(RAMmode)
 		{
 			/* RAM */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK1);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK2);
 			memory_set_bankptr(1, pc8801_mainRAM + 0x0000);
 			memory_set_bankptr(2, pc8801_mainRAM + 0x6000);
 		}
@@ -420,8 +420,8 @@ void pc8801_update_bank(void)
 		{
 			/* ROM */
 			/* write through to main RAM */
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, pc8801_writemem1);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, pc8801_writemem2);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, pc8801_writemem1);
+			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, pc8801_writemem2);
 			if(ROMmode)
 			{
 				/* N-BASIC */
@@ -443,8 +443,8 @@ void pc8801_update_bank(void)
 	}
 
 	/* 0x8000 to 0xffff */
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_read_textwindow);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_write_textwindow);
+	memory_install_read8_handler(Machine, 0,  ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_read_textwindow);
+	memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x83ff, 0, 0, (RAMmode || ROMmode) ? SMH_BANK3 : pc8801_write_textwindow);
 
 	memory_set_bankptr(4, pc8801_mainRAM + 0x8400);
 
@@ -455,10 +455,10 @@ void pc8801_update_bank(void)
 	}
 	else
 	{
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
-		memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
+		memory_install_read8_handler(Machine, 0,  ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
+		memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_BANK5);
+		memory_install_read8_handler(Machine, 0,  ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
+		memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, 0, 0, SMH_BANK6);
 
 		memory_set_bankptr(5, pc8801_mainRAM + 0xc000);
 		if(maptvram)
@@ -468,7 +468,7 @@ void pc8801_update_bank(void)
 	}
 }
 
- READ8_HANDLER(pc8801_read_extmem)
+READ8_HANDLER(pc8801_read_extmem)
 {
 	UINT8 ret[2];
 	select_extmem(NULL,NULL,ret);
@@ -572,8 +572,8 @@ static void pc8801_init_bank(running_machine *machine, int hireso)
 	pc8801_update_bank();
 	pc8801_video_init(machine, hireso);
 
-  if(extmem_mode!=readinputport(19)) {
-    extmem_mode=readinputport(19);
+  if(extmem_mode!=input_port_read_indexed(machine, 19)) {
+    extmem_mode=input_port_read_indexed(machine, 19);
     if(extRAM!=NULL) {
       free(extRAM);
       extRAM=NULL;
@@ -695,7 +695,7 @@ static void pc88sr_ch_reset (running_machine *machine, int hireso)
 {
   int a;
 
-  a=readinputport(16);
+  a=input_port_read_indexed(machine, 16);
   is_Nbasic = ((a&0x01)==0x00);
   is_V2mode = ((a&0x02)==0x00);
   pc88sr_is_highspeed = ((a&0x04)!=0x00);
@@ -721,24 +721,24 @@ MACHINE_RESET( pc88srh )
 
 /* 5 inch floppy drive */
 
-static UINT8 load_8255_A(int chip)
+static UINT8 load_8255_A(running_machine *machine, int chip)
 {
-	return use_5FD ? ppi8255_get_portB(1-chip) : 0xff;
+	return use_5FD ? ppi8255_get_portB((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, chip ? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
 }
 
-static UINT8 load_8255_B(int chip)
+static UINT8 load_8255_B(running_machine *machine, int chip)
 {
-	return use_5FD ? ppi8255_get_portA(1-chip) : 0xff;
+	return use_5FD ? ppi8255_get_portA((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, chip ? "ppi8255_0" : "ppi8255_1" ) ) : 0xff;
 }
 
-static UINT8 load_8255_C(int chip)
+static UINT8 load_8255_C(running_machine *machine, int chip)
 {
 	UINT8 result = 0xFF;
 	UINT8 port_c;
 
 	if (use_5FD)
 	{
-		port_c = ppi8255_get_portC(1-chip);
+		port_c = ppi8255_get_portC((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, chip ? "ppi8255_0" : "ppi8255_1" ) );
 		result = ((port_c >> 4) & 0x0F) | ((port_c << 4) & 0xF0);
 	}
 
@@ -765,23 +765,32 @@ static UINT8 load_8255_C(int chip)
 	return result;
 }
 
-static READ8_HANDLER( load_8255_chip0_A )	{ return load_8255_A(0); }
-static READ8_HANDLER( load_8255_chip1_A )	{ return load_8255_A(1); }
-static READ8_HANDLER( load_8255_chip0_B )	{ return load_8255_B(0); }
-static READ8_HANDLER( load_8255_chip1_B )	{ return load_8255_B(1); }
-static READ8_HANDLER( load_8255_chip0_C )	{ return load_8255_C(0); }
-static READ8_HANDLER( load_8255_chip1_C )	{ return load_8255_C(1); }
+static READ8_HANDLER( load_8255_chip0_A )	{ return load_8255_A(machine, 0); }
+static READ8_HANDLER( load_8255_chip1_A )	{ return load_8255_A(machine, 1); }
+static READ8_HANDLER( load_8255_chip0_B )	{ return load_8255_B(machine, 0); }
+static READ8_HANDLER( load_8255_chip1_B )	{ return load_8255_B(machine, 1); }
+static READ8_HANDLER( load_8255_chip0_C )	{ return load_8255_C(machine, 0); }
+static READ8_HANDLER( load_8255_chip1_C )	{ return load_8255_C(machine, 1); }
 
 
-static const ppi8255_interface pc8801_8255_config =
+const ppi8255_interface pc8801_8255_config_0 =
 {
-	2,
-	{ load_8255_chip0_A, load_8255_chip1_A },
-	{ load_8255_chip0_B, load_8255_chip1_B },
-	{ load_8255_chip0_C, load_8255_chip1_C },
-	{ NULL, NULL },
-	{ NULL, NULL },
-	{ NULL, NULL },
+	load_8255_chip0_A,
+	load_8255_chip0_B,
+	load_8255_chip0_C,
+	NULL,
+	NULL,
+	NULL
+};
+
+const ppi8255_interface pc8801_8255_config_1 =
+{
+    load_8255_chip1_A,
+    load_8255_chip1_B,
+    load_8255_chip1_C,
+    NULL,
+    NULL,
+    NULL
 };
 
  READ8_HANDLER(pc8801fd_nec765_tc)
@@ -810,13 +819,12 @@ static const struct nec765_interface pc8801_fdc_interface=
 
 static void pc8801_init_5fd(void)
 {
-	use_5FD = (readinputport(18)&0x80)!=0x00;
-	ppi8255_init(&pc8801_8255_config);
+	use_5FD = (input_port_read_indexed(Machine, 18)&0x80)!=0x00;
 	if (!use_5FD)
 		cpunum_suspend(1, SUSPEND_REASON_DISABLE, 1);
 	else
 		cpunum_resume(1, SUSPEND_REASON_DISABLE);
-	nec765_init(&pc8801_fdc_interface,NEC765A);
+	nec765_init(&pc8801_fdc_interface,NEC765A,NEC765_RDY_PIN_CONNECTED);
 	cpunum_set_input_line_vector(1,0,0);
 	floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1);
 	floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 1), 1);

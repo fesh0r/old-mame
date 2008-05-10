@@ -76,6 +76,8 @@
   compatible with the previous models (though documents ARE compatible)"
 
 
+TODO:
+- Verfiy uart model.
 
 
  ******************************************************************************/
@@ -95,7 +97,7 @@
 #include "includes/pclpt.h"		/* PC-Parallel Port */
 #include "machine/pckeybrd.h"	/* PC-AT keyboard */
 #include "machine/pc_fdc.h"		/* change to superio later */
-#include "machine/uart8250.h"	/* pc com port */
+#include "machine/ins8250.h"	/* pc com port */
 #include "includes/pc_mouse.h"	/* pc serial mouse */
 #include "sound/beep.h"			/* pcw/pcw16 beeper */
 #include "machine/intelfsh.h"
@@ -408,9 +410,9 @@ static void pcw16_set_bank_handlers(int bank, PCW16_RAM_TYPE type)
 		break;
 	}
 
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM,
+	memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, read_handler);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM,
+	memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, write_handler);
 }
 
@@ -1038,7 +1040,7 @@ static READ8_HANDLER(pcw16_system_status_r)
 {
 //  logerror("system status r: \n");
 
-	return pcw16_system_status | (readinputport(0) & 0x04);
+	return pcw16_system_status | (input_port_read(machine, "EXTRA") & 0x04);
 }
 
 static READ8_HANDLER(pcw16_timer_interrupt_counter_r)
@@ -1207,70 +1209,72 @@ static void	pcw16_fdc_interrupt(int state)
 static const struct pc_fdc_interface pcw16_fdc_interface=
 {
 	NEC765A,
+	NEC765_RDY_PIN_CONNECTED,
 	pcw16_fdc_interrupt,
 	NULL
 };
 
-static void pcw16_com_interrupt(int nr, int state)
-{
-	static const int irq[2]={4,3};
-	pcw16_system_status &= ~(1<<irq[nr]);
 
-	if (state)
-	{
-		pcw16_system_status |= (1<<irq[nr]);
+static INS8250_INTERRUPT( pcw16_com_interrupt_1 ) {
+	pcw16_system_status &= ~(1 << 4);
+
+	if ( state ) {
+		pcw16_system_status |= (1 << 4);
 	}
 
-	pcw16_refresh_ints(Machine);
+	pcw16_refresh_ints(device->machine);
 }
 
-static void pcw16_com_refresh_connected(int serial_port_id)
+
+static INS8250_INTERRUPT( pcw16_com_interrupt_2 )
 {
-	switch (serial_port_id)
-	{
+	pcw16_system_status &= ~(1 << 3);
+
+	if ( state ) {
+		pcw16_system_status |= (1 << 3);
+	}
+
+	pcw16_refresh_ints(device->machine);
+}
+
+
+static INS8250_REFRESH_CONNECT( pcw16_com_refresh_connected_1 ) {
 #if 0
-		case 0:
-		{
-			/* PC mouse on this port */
-			pc_mouse_poll(0);
-		}
-		break;
+	pc_mouse_poll(0);
 #endif
-		case 1:
-		{
-			int new_inputs;
-
-			new_inputs = 0;
-
-			/* Power switch is connected to Ring indicator */
-			if (readinputport(0) & 0x040)
-			{
-				new_inputs = UART8250_INPUTS_RING_INDICATOR;
-			}
-
-			uart8250_handshake_in(1, new_inputs);
-		}
-		break;
-	}
 }
 
-static const uart8250_interface pcw16_com_interface[2]=
+
+static INS8250_REFRESH_CONNECT( pcw16_com_refresh_connected_2 )
+{
+	int new_inputs;
+
+	new_inputs = 0;
+
+	/* Power switch is connected to Ring indicator */
+	if (input_port_read(Machine, "EXTRA") & 0x040)
+	{
+		new_inputs = UART8250_INPUTS_RING_INDICATOR;
+	}
+
+	ins8250_handshake_in(device, new_inputs);
+}
+
+static const ins8250_interface pcw16_com_interface[2]=
 {
 	{
-		TYPE16550,
 		1843200,
-		pcw16_com_interrupt,
+		pcw16_com_interrupt_1,
 		NULL,
-		pc_mouse_handshake_in
-//      pcw16_com_refresh_connected
+		pc_mouse_handshake_in,
+		pcw16_com_refresh_connected_1
 	},
 	{
-		TYPE16550,
 		1843200,
-		pcw16_com_interrupt,
+		pcw16_com_interrupt_2,
 		NULL,
 		NULL,
-		pcw16_com_refresh_connected
+		pcw16_com_refresh_connected_2
 	}
 };
 
@@ -1282,8 +1286,8 @@ static ADDRESS_MAP_START(pcw16_io, ADDRESS_SPACE_IO, 8)
     AM_RANGE(0x01c, 0x01c) AM_READ(pcw16_superio_fdc_main_status_register_r)
 	AM_RANGE(0x01d, 0x01d) AM_READWRITE(pcw16_superio_fdc_data_r, pcw16_superio_fdc_data_w)
 	AM_RANGE(0x01f, 0x01f) AM_READWRITE(pcw16_superio_fdc_digital_input_register_r, pcw16_superio_fdc_datarate_w)
-	AM_RANGE(0x020, 0x027) AM_READWRITE(uart8250_0_r, uart8250_0_w)
-	AM_RANGE(0x028, 0x02f) AM_READWRITE(uart8250_1_r, uart8250_1_w)
+	AM_RANGE(0x020, 0x027) AM_DEVREADWRITE(NS16550, "ns16550_1", ins8250_r, ins8250_w)
+	AM_RANGE(0x028, 0x02f) AM_DEVREADWRITE(NS16550, "ns16550_2", ins8250_r, ins8250_w)
 	AM_RANGE(0x038, 0x03a) AM_READWRITE(pc_parallelport0_r, pc_parallelport0_w)
 	/* anne asic */
 	AM_RANGE(0x0e0, 0x0ef) AM_WRITE(pcw16_palette_w)
@@ -1324,8 +1328,6 @@ static void pcw16_reset(running_machine *machine)
 	rtc_256ths_seconds = 0;
 
 	pcw16_keyboard_init(machine);
-	uart8250_reset(0);
-	uart8250_reset(1);
 }
 
 
@@ -1356,16 +1358,14 @@ static MACHINE_RESET( pcw16 )
 
 
 	pc_fdc_init(&pcw16_fdc_interface);
-	uart8250_init(0, pcw16_com_interface);
-	uart8250_init(1, pcw16_com_interface+1);
 
 	pc_lpt_config(0, &lpt_config);
 	centronics_config(0, &cent_config);
 	pc_lpt_set_device(0, &CENTRONICS_PRINTER_DEVICE);
 
 	/* initialise mouse */
-	pc_mouse_set_serial_port(0);
 	pc_mouse_initialise();
+	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, NS16550, "ns16550_0" ) );
 
 	/* initialise keyboard */
 	at_keyboard_init(AT_KEYBOARD_TYPE_AT);
@@ -1378,7 +1378,7 @@ static MACHINE_RESET( pcw16 )
 }
 
 static INPUT_PORTS_START(pcw16)
-	PORT_START
+	PORT_START_TAG("EXTRA")
 	/* vblank */
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_VBLANK)
 	/* power switch - default is on */
@@ -1403,6 +1403,12 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_MACHINE_RESET( pcw16 )
 	MDRV_NVRAM_HANDLER( pcw16 )
 
+	MDRV_DEVICE_ADD( "ns16550_1", NS16550 )				/* TODO: Verify uart model */
+	MDRV_DEVICE_CONFIG( pcw16_com_interface[0] )
+
+	MDRV_DEVICE_ADD( "ns16550_2", NS16550 )				/* TODO: Verify uart model */
+	MDRV_DEVICE_CONFIG( pcw16_com_interface[1] )
+
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -1420,6 +1426,9 @@ static MACHINE_DRIVER_START( pcw16 )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
+
+	/* printer */
+	/* MDRV_DEVICE_ADD("printer", PRINTER) */
 MACHINE_DRIVER_END
 
 
@@ -1443,20 +1452,6 @@ ROM_START(pcw16)
 	ROM_LOAD("pcw045.sys",0x10000, 524288, CRC(c642f498) SHA1(8a5c05de92e7b2c5acdfb038217503ad363285b5))
 ROM_END
 
-#ifdef UNUSED_FUNCTION
-static void pcw16_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-#endif
-
 static void pcw16_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
@@ -1474,9 +1469,8 @@ static void pcw16_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 
 SYSTEM_CONFIG_START(pcw16)
 	CONFIG_RAM_DEFAULT(2048 * 1024)
-	/*CONFIG_DEVICE(pcw16_printer_getinfo)*/
 	CONFIG_DEVICE(pcw16_floppy_getinfo)
 SYSTEM_CONFIG_END
 
 /*     YEAR  NAME     PARENT    COMPAT  MACHINE    INPUT     INIT   CONFIG,  COMPANY          FULLNAME */
-COMP( 1995, pcw16,	  0,		0,		pcw16,	   pcw16,    pcw16,	    pcw16,   "Amstrad plc",   "PCW16", 0)
+COMP( 1995, pcw16,	  0,		0,		pcw16,	   pcw16,    pcw16,	    pcw16,   "Amstrad plc",   "PCW16", GAME_NOT_WORKING )

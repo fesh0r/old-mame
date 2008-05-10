@@ -90,29 +90,29 @@ MACHINE_START( jupiter )
 	logerror("jupiter_init\r\n");
 	logerror("data: %p\n", jupiter_data);
 
-	if (readinputport(8) != jupiter_ramsize)
+	if (input_port_read_indexed(machine, 8) != jupiter_ramsize)
 	{
-		jupiter_ramsize = readinputport(8);
+		jupiter_ramsize = input_port_read_indexed(machine, 8);
 		switch (jupiter_ramsize)
 		{
 			case 03:
 			case 02:
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_RAM);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_RAM);
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_RAM);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_RAM);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
 				break;
 			case 01:
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_RAM);
 				break;
 			case 00:
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
-				memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_NOP);
-				memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_NOP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8800, 0xffff, 0, 0, SMH_NOP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_NOP);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4800, 0x87ff, 0, 0, SMH_NOP);
 				break;
 		}
 
@@ -145,7 +145,7 @@ static void jupiter_machine_stop(running_machine *machine)
    <byt>		: <byt>
 */
 
-DEVICE_LOAD( jupiter_ace )
+DEVICE_IMAGE_LOAD( jupiter_ace )
 {
 	unsigned char jupiter_repeat, jupiter_byte, loop;
 	int done, jupiter_index;
@@ -202,7 +202,7 @@ DEVICE_LOAD( jupiter_ace )
 	return (0);
 }
 
-DEVICE_LOAD( jupiter_tap )
+DEVICE_IMAGE_LOAD( jupiter_tap )
 {
 	UINT8 inpbyt;
 	int loop;
@@ -261,7 +261,7 @@ DEVICE_LOAD( jupiter_tap )
 
 }
 
-DEVICE_UNLOAD( jupiter_tap )
+DEVICE_IMAGE_UNLOAD( jupiter_tap )
 {
 	logerror("jupiter_tap_unload\n");
 	if (jupiter_data)
@@ -274,43 +274,43 @@ DEVICE_UNLOAD( jupiter_tap )
 
  READ8_HANDLER ( jupiter_port_fefe_r )
 {
-	return (readinputport (0));
+	return (input_port_read_indexed(machine, 0));
 }
 
  READ8_HANDLER ( jupiter_port_fdfe_r )
 {
-	return (readinputport (1));
+	return (input_port_read_indexed(machine, 1));
 }
 
  READ8_HANDLER ( jupiter_port_fbfe_r )
 {
-	return (readinputport (2));
+	return (input_port_read_indexed(machine, 2));
 }
 
  READ8_HANDLER ( jupiter_port_f7fe_r )
 {
-	return (readinputport (3));
+	return (input_port_read_indexed(machine, 3));
 }
 
  READ8_HANDLER ( jupiter_port_effe_r )
 {
-	return (readinputport (4));
+	return (input_port_read_indexed(machine, 4));
 }
 
  READ8_HANDLER ( jupiter_port_dffe_r )
 {
-	return (readinputport (5));
+	return (input_port_read_indexed(machine, 5));
 }
 
  READ8_HANDLER ( jupiter_port_bffe_r )
 {
-	return (readinputport (6));
+	return (input_port_read_indexed(machine, 6));
 }
 
  READ8_HANDLER ( jupiter_port_7ffe_r )
 {
 	speaker_level_w(0,0);
-	return (readinputport (7));
+	return (input_port_read_indexed(machine, 7));
 }
 
 WRITE8_HANDLER ( jupiter_port_fe_w )

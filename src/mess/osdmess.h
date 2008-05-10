@@ -12,9 +12,9 @@
 #include "osdcore.h"
 #include "mamecore.h"
 #include "options.h"
+#include "devintrf.h"
 
 struct _mame_file;
-typedef struct _mess_image mess_image;
 
 
 
@@ -210,6 +210,10 @@ char *osd_basename(char *filename);
 
 /* returns 1 if input of type IPT_KEYBOARD should be supressed */
 int osd_keyboard_disabled(void);
+
+/* reads text from the clipboard - the returned string needs to be free()-ed! */
+char *osd_get_clipboard_text(void);
+
 
 
 /******************************************************************************

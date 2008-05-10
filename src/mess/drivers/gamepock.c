@@ -62,12 +62,11 @@ static MACHINE_DRIVER_START( gamepock )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
-static DEVICE_INIT(gamepock_cart) {
+static DEVICE_START(gamepock_cart) {
 	memory_set_bankptr( 1, memory_region( REGION_USER1 ) );
-	return INIT_PASS;
 }
 
-static DEVICE_LOAD(gamepock_cart) {
+static DEVICE_IMAGE_LOAD(gamepock_cart) {
 	UINT8 *cart = memory_region( REGION_USER1 );
 	int size = image_length( image );
 
@@ -85,8 +84,8 @@ static void gamepock_cartslot_getinfo(const mess_device_class *devclass, UINT32 
 	switch( state ) {
 	case MESS_DEVINFO_INT_COUNT:										info->i = 1; break;
 	case MESS_DEVINFO_INT_MUST_BE_LOADED:							info->i = 0; break;
-	case MESS_DEVINFO_PTR_INIT:										info->init = device_init_gamepock_cart; break;
-	case MESS_DEVINFO_PTR_LOAD:										info->load = device_load_gamepock_cart; break;
+	case MESS_DEVINFO_PTR_START:										info->start = DEVICE_START_NAME(gamepock_cart); break;
+	case MESS_DEVINFO_PTR_LOAD:										info->load = DEVICE_IMAGE_LOAD_NAME(gamepock_cart); break;
 	case MESS_DEVINFO_STR_FILE_EXTENSIONS:							strcpy( info->s = device_temp_str(), "bin" ); break;
 	default:													cartslot_device_getinfo(devclass, state, info); break;
 	}

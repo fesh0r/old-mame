@@ -643,17 +643,16 @@ READ8_HANDLER( pokemini_hwreg_r ) {
 	case 0x0A:	return ( timers.seconds_counter >> 8 ) & 0xFF;
 	case 0x0B:	return ( timers.seconds_counter >> 16 ) & 0xFF;
 	case 0x41:	return timers.hz256_counter;
-	case 0x52:	return readinputport( 0 );
+	case 0x52:	return input_port_read_indexed(machine,  0 );
 	}
 	logerror( "%0X: Read from unknown hardware address: %02X\n", activecpu_get_pc(), offset );
 	return pokemini_hwreg[offset];
 }
 
-DEVICE_INIT( pokemini_cart ) {
-	return INIT_PASS;
+DEVICE_START( pokemini_cart ) {
 }
 
-DEVICE_LOAD( pokemini_cart ) {
+DEVICE_IMAGE_LOAD( pokemini_cart ) {
 	int	size = image_length( image );
 
 	/* Verify that the image is big enough */
@@ -688,7 +687,7 @@ static void pokemini_render( void ) {
 				UINT8 tile = pokemini_ram[ 0x360 + ( y * vdp.map_size_x ) + x ];
 				int i;
 				for( i = 0; i < 8; i++ ) {
-					pokemini_ram[ ( y * 96 ) + ( x * 8 ) + i ] = program_read_byte_8( vdp.bg_tiles + ( tile * 8 ) + i );
+					pokemini_ram[ ( y * 96 ) + ( x * 8 ) + i ] = program_read_byte( vdp.bg_tiles + ( tile * 8 ) + i );
 				}
 			}
 		}

@@ -36,6 +36,7 @@
 
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/wd17xx.h"
 #include "devices/flopdrv.h"
 
@@ -177,7 +178,7 @@ struct _wd17xx_info
 	emu_timer	*timer, *timer_rs, *timer_ws, *timer_rid;
 	int		data_direction;
 
-	UINT8   ipl;					/* index pulse */
+	UINT8   ipl;					/* index pulse */	
 };
 
 
@@ -256,9 +257,11 @@ static UINT8 current_drive;
 /* this is the head currently selected */
 static UINT8 hd = 0;
 
+/* pause time when writeing/reading sector */
+static int wd17xx_pause_time;
 /**************************************************************************/
 
-static mess_image *wd17xx_current_image(void)
+static const device_config *wd17xx_current_image(void)
 {
 	return image_from_devtype_and_index(IO_FLOPPY, current_drive);
 }
@@ -323,7 +326,7 @@ static void wd17xx_restore(wd17xx_info *w)
 {
 	UINT8 step_counter;
 
-	if (current_drive >= device_count(IO_FLOPPY))
+	if (current_drive >= device_count(Machine, IO_FLOPPY))
 		return;
 
 	step_counter = 255;
@@ -369,14 +372,14 @@ static void wd17xx_restore(wd17xx_info *w)
 static TIMER_CALLBACK(wd17xx_misc_timer_callback);
 static TIMER_CALLBACK(wd17xx_read_sector_callback);
 static TIMER_CALLBACK(wd17xx_write_sector_callback);
-static void wd17xx_index_pulse_callback(mess_image *img, int state);
+static void wd17xx_index_pulse_callback(const device_config *img, int state);
 
 void wd17xx_reset(void)
 {
 	int i;
-	for (i = 0; i < device_count(IO_FLOPPY); i++)
+	for (i = 0; i < device_count(Machine, IO_FLOPPY); i++)
 	{
-		mess_image *img = image_from_devtype_and_index(IO_FLOPPY, i);
+		const device_config *img = image_from_devtype_and_index(IO_FLOPPY, i);
 		floppy_drive_set_index_pulse_callback(img, wd17xx_index_pulse_callback);
 		floppy_drive_set_rpm( img, 300.);
 	}
@@ -401,7 +404,7 @@ void wd17xx_init(running_machine *machine, wd17xx_type_t type, void (*callback)(
 	wd.timer = timer_alloc(wd17xx_misc_timer_callback, NULL);
 	wd.timer_rs = timer_alloc(wd17xx_read_sector_callback, NULL);
 	wd.timer_ws = timer_alloc(wd17xx_write_sector_callback, NULL);
-
+	wd17xx_pause_time = 40;
 	wd17xx_reset();
 }
 
@@ -650,7 +653,7 @@ static void wd17xx_read_id(running_machine *machine, wd17xx_info * w)
 
 
 
-static void wd17xx_index_pulse_callback(mess_image *img, int state)
+static void wd17xx_index_pulse_callback(const device_config *img, int state)
 {
 	wd17xx_info *w = &wd;
 	if ( img != wd17xx_current_image() )
@@ -1023,7 +1026,7 @@ static void wd17xx_timed_read_sector_request(void)
 	int usecs;
 	wd17xx_info *w = &wd;
 
-	usecs = 40; /* How long should we wait? How about 40 micro seconds? */
+	usecs = wd17xx_pause_time; /* How long should we wait? How about 40 micro seconds? */
 
 	/* set new timer */
 	timer_reset(w->timer_rs, ATTOTIME_IN_USEC(usecs));
@@ -1037,13 +1040,16 @@ static void wd17xx_timed_write_sector_request(void)
 	int usecs;
 	wd17xx_info *w = &wd;
 
-	usecs = 40; /* How long should we wait? How about 40 micro seconds? */
+	usecs = wd17xx_pause_time; /* How long should we wait? How about 40 micro seconds? */
 
 	/* set new timer */
 	timer_reset(w->timer_ws, ATTOTIME_IN_USEC(usecs));
 }
 
-
+void wd17xx_set_pause_time(int usec)
+{
+	wd17xx_pause_time = usec;
+}
 
 /* read the FDC status register. This clears IRQ line too */
  READ8_HANDLER ( wd17xx_status_r )
@@ -1254,6 +1260,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 			w->command = data & ~FDC_MASK_TYPE_II;
 			w->command_type = TYPE_II;
 			w->status &= ~STA_2_LOST_DAT;
+			w->status |= STA_2_BUSY;
 			wd17xx_clear_data_request(machine);
 
 			wd17xx_timed_read_sector_request();
@@ -1270,6 +1277,7 @@ WRITE8_HANDLER ( wd17xx_command_w )
 			w->command = data & ~FDC_MASK_TYPE_II;
 			w->command_type = TYPE_II;
 			w->status &= ~STA_2_LOST_DAT;
+			w->status |= STA_2_BUSY;
 			wd17xx_clear_data_request(machine);
 
 			wd17xx_timed_write_sector_request();

@@ -12,16 +12,16 @@
 
 #include <ctype.h>
 
+#include "mame.h"
 #include "image.h"
 #include "mess.h"
-#include "deprecat.h"
 #include "unzip.h"
 #include "devices/flopdrv.h"
 #include "utils.h"
-#include "tagpool.h"
 #include "hashfile.h"
 #include "mamecore.h"
 #include "messopts.h"
+#include "ui.h"
 
 
 
@@ -29,12 +29,19 @@
     TYPE DEFINITIONS
 ***************************************************************************/
 
-struct _mess_image
+typedef struct _image_slot_data image_slot_data;
+struct _image_slot_data
 {
 	/* variables that persist across image mounts */
-	tag_pool tagpool;
 	object_pool *mempool;
-	const struct IODevice *dev;
+	const device_config *dev;
+	image_device_info info;
+
+	/* callbacks */
+	device_image_load_func load;
+	device_image_create_func create;
+	device_image_unload_func unload;
+	device_image_verify_func verify;
 
 	/* error related info */
 	image_error_t err;
@@ -68,12 +75,11 @@ struct _mess_image
 
 
 
-/***************************************************************************
-    GLOBAL VARIABLES
-***************************************************************************/
-
-static mess_image *images;
-static UINT32 multiple_dev_mask;
+struct _images_private
+{
+	int slot_count;
+	image_slot_data slots[1];
+};
 
 
 
@@ -82,13 +88,84 @@ static UINT32 multiple_dev_mask;
 ***************************************************************************/
 
 static void image_exit(running_machine *machine);
-static void image_clear(mess_image *image);
-static void image_clear_error(mess_image *image);
+static void image_clear(image_slot_data *image);
+static void image_clear_error(image_slot_data *image);
+static void image_unload_internal(image_slot_data *slot);
 
 
 
 /***************************************************************************
-    IMAGE SYSTEM INITIALIZATION
+    INLINE FUNCTIONS
+***************************************************************************/
+
+/*-------------------------------------------------
+    device_get_info_int_offline - return an integer
+	state value from an allocated device; can be
+	called offline
+-------------------------------------------------*/
+
+INLINE INT64 device_get_info_int_offline(const device_config *device, UINT32 state)
+{
+	deviceinfo info;
+
+	assert(device != NULL);
+	assert(device->type != NULL);
+	assert(state >= DEVINFO_INT_FIRST && state <= DEVINFO_INT_LAST);
+
+	/* retrieve the value */
+	info.i = 0;
+	(*device->type)(device, state, &info);
+	return info.i;
+}
+
+
+
+/*-------------------------------------------------
+    device_get_info_fct_offline - return an integer
+	state value from an allocated device; can be
+	called offline
+-------------------------------------------------*/
+
+INLINE genf *device_get_info_fct_offline(const device_config *device, UINT32 state)
+{
+	deviceinfo info;
+
+	assert(device != NULL);
+	assert(device->type != NULL);
+	assert(state >= DEVINFO_FCT_FIRST && state <= DEVINFO_FCT_LAST);
+
+	/* retrieve the value */
+	info.f = 0;
+	(*device->type)(device, state, &info);
+	return info.f;
+}
+
+
+
+/*-------------------------------------------------
+    device_get_info_str_offline - return an integer
+	state value from an allocated device; can be
+	called offline
+-------------------------------------------------*/
+
+INLINE const char *device_get_info_string_offline(const device_config *device, UINT32 state)
+{
+	deviceinfo info;
+
+	assert(device != NULL);
+	assert(device->type != NULL);
+	assert(state >= DEVINFO_STR_FIRST && state <= DEVINFO_STR_LAST);
+
+	/* retrieve the value */
+	info.s = 0;
+	(*device->type)(device, state, &info);
+	return info.s;
+}
+
+
+
+/***************************************************************************
+    CORE IMPLEMENTATION
 ***************************************************************************/
 
 /*-------------------------------------------------
@@ -106,64 +183,53 @@ static void memory_error(const char *message)
     image_init - initialize the core image system
 -------------------------------------------------*/
 
-int image_init(running_machine *machine)
+void image_init(running_machine *machine)
 {
-	int err;
-	int count, indx, j;
-	UINT32 mask, dev_mask = 0;
-	const struct IODevice *dev;
+	int count, indx;
+	const device_config *dev;
+	size_t private_size;
+	image_slot_data *slot;
 
-	/* setup the globals */
-	images = NULL;
-	multiple_dev_mask = 0;
+	/* sanity checks */
+	assert(DEVINFO_FCT_IMAGE_FIRST > DEVINFO_FCT_FIRST);
+	assert(DEVINFO_FCT_IMAGE_LAST < DEVINFO_FCT_DEVICE_SPECIFIC);
 
 	/* first count all images, and identify multiply defined devices */
-	count = 0;
-	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
-	{
-		/* check to see if this device type is used multiple times */
-		mask = 1 << dev->type;
-		if (dev_mask & mask)
-			multiple_dev_mask |= mask;
-		else
-			dev_mask |= mask;
+	count = image_device_count(machine->config);
 
-		/* increment the count */
-		count += dev->count;
-	}
+	/* allocate the private structure */
+	private_size = sizeof(*machine->images_data) + ((count - 1)
+		* sizeof(machine->images_data->slots[0]));
+	machine->images_data = (images_private *) auto_malloc(private_size);
+	memset(machine->images_data, '\0', private_size);
 
-	/* allocate the array */
-	if (count > 0)
-	{
-		images = auto_malloc(count * sizeof(*images));
-		memset(images, 0, count * sizeof(*images));
-	}
+	/* some setup */
+	machine->images_data->slot_count = count;
 
 	/* initialize the devices */
 	indx = 0;
-	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
+	for (dev = image_device_first(machine->config); dev != NULL; dev = image_device_next(dev))
 	{
-		for (j = 0; j < dev->count; j++)
-		{
-			images[indx + j].mempool = pool_alloc(memory_error);
+		slot = &machine->images_data->slots[indx];
 
-			/* setup the device */
-			tagpool_init(&images[indx + j].tagpool);
-			images[indx + j].dev = dev;
+		/* create a memory pool */
+		slot->mempool = pool_alloc(memory_error);
 
-			if (dev->init != NULL)
-			{
-				err = dev->init(&images[indx + j]);
-				if (err != INIT_PASS)
-					return err;
-			}
+		/* setup the device */
+		slot->dev = dev;
+		slot->info = image_device_getinfo(machine->config, dev);
 
-		}
-		indx += dev->count;
+		/* callbacks */
+		slot->load = (device_image_load_func) device_get_info_fct(slot->dev, DEVINFO_FCT_IMAGE_LOAD);
+		slot->create = (device_image_create_func) device_get_info_fct(slot->dev, DEVINFO_FCT_IMAGE_CREATE);
+		slot->unload = (device_image_unload_func) device_get_info_fct(slot->dev, DEVINFO_FCT_IMAGE_UNLOAD);
+		slot->verify = (device_image_verify_func) device_get_info_fct(slot->dev, DEVINFO_FCT_IMAGE_VERIFY);
+
+		indx++;
 	}
 
+	/* add a callback for when we shut down */
 	add_exit_callback(machine, image_exit);
-	return INIT_PASS;
 }
 
 
@@ -174,43 +240,327 @@ int image_init(running_machine *machine)
 
 static void image_exit(running_machine *machine)
 {
-	int j, indx;
-	mess_image *image;
-	const struct IODevice *dev;
+	int i;
+	image_slot_data *slot;
 
-	/* unload all devices */
-	image_unload_all(FALSE);
-	image_unload_all(TRUE);
-
-	indx = 0;
-
-	for (dev = mess_device_first_from_machine(machine); dev != NULL; dev = mess_device_next(dev))
+	if (machine->images_data != NULL)
 	{
-		for (j = 0; j < dev->count; j++)
+		/* extract the options */
+		mess_options_extract(machine);
+
+		for (i = 0; i < machine->images_data->slot_count; i++)
 		{
-			/* identify the image */
-			image = &images[indx + j];
+			/* identify the image slot */
+			slot = &machine->images_data->slots[i];
 
-			/* call the exit handler if appropriate */
-			if (dev->exit != NULL)
-				dev->exit(image);
-
-			/* free the tagpool */
-			tagpool_exit(&images[indx + j].tagpool);
+			/* unload this image */
+			image_unload_internal(slot);
 
 			/* free the working directory */
-			if (image->working_directory != NULL)
+			if (slot->working_directory != NULL)
 			{
-				free(image->working_directory);
-				image->working_directory = NULL;
+				free(slot->working_directory);
+				slot->working_directory = NULL;
 			}
 
 			/* free the memory pool */
-			pool_free(image->mempool);
-			image->mempool = NULL;
+			pool_free(slot->mempool);
+			slot->mempool = NULL;
 		}
-		indx += dev->count;
+
+		machine->images_data = NULL;
 	}
+}
+
+
+
+/****************************************************************************
+    IMAGE DEVICE ENUMERATION
+****************************************************************************/
+
+/*-------------------------------------------------
+    is_image_device - determines if a particular
+	device supports images or not
+-------------------------------------------------*/
+
+static int is_image_device(const device_config *device)
+{
+	return (device->type == MESS_DEVICE)
+		|| (device_get_info_int_offline(device, DEVINFO_INT_IMAGE_READABLE) != 0)
+		|| (device_get_info_int_offline(device, DEVINFO_INT_IMAGE_WRITEABLE) != 0);
+}
+
+
+
+/*-------------------------------------------------
+    image_device_first - return the first device in
+	the list that supports images
+-------------------------------------------------*/
+
+const device_config *image_device_first(const machine_config *config)
+{
+	const device_config *device = device_list_first(config->devicelist, DEVICE_TYPE_WILDCARD);
+	while((device != NULL) && !is_image_device(device))
+	{
+		device = device_list_next(device, DEVICE_TYPE_WILDCARD);
+	}
+	return device;	
+}
+
+
+
+/*-------------------------------------------------
+    image_device_next - return the next device in
+	the list that supports images
+-------------------------------------------------*/
+
+const device_config *image_device_next(const device_config *prevdevice)
+{
+	const device_config *device = device_list_next(prevdevice, DEVICE_TYPE_WILDCARD);
+	while((device != NULL) && !is_image_device(device))
+	{
+		device = device_list_next(device, DEVICE_TYPE_WILDCARD);
+	}
+	return device;	
+}
+
+
+
+/*-------------------------------------------------
+    image_device_count - counts the number of
+	devices that support images
+-------------------------------------------------*/
+
+int image_device_count(const machine_config *config)
+{
+	int count = 0;
+	const device_config *device;
+	for (device = image_device_first(config); device != NULL; device = image_device_next(device))
+	{
+		count++;
+	}
+	return count;
+}
+
+
+
+/****************************************************************************
+    ANALYSIS
+****************************************************************************/
+
+/*-------------------------------------------------
+    get_device_name - retrieves the name of a
+	device
+-------------------------------------------------*/
+
+static void get_device_name(const device_config *device, char *buffer, size_t buffer_len)
+{
+	const char *name = NULL;
+	device_get_name_func get_name;
+	
+	if (name == NULL)
+	{
+		/* first try a get_name function */
+		get_name = (device_get_name_func) device_get_info_fct_offline(device, DEVINFO_FCT_GET_NAME);
+		if (get_name != NULL)
+			name = get_name(device, buffer, buffer_len);
+	}
+
+	if (name == NULL)
+	{
+		/* next try DEVINFO_STR_NAME */
+		name = device_get_info_string_offline(device, DEVINFO_STR_NAME);
+	}
+
+	/* make sure that the name is put into the buffer */
+	if (name != buffer)
+		snprintf(buffer, buffer_len, "%s", (name != NULL) ? name : "");
+}
+
+
+
+/*-------------------------------------------------
+    get_device_file_extensions - retrieves the file
+	extensions used by a device
+-------------------------------------------------*/
+
+static void get_device_file_extensions(const device_config *device,
+	char *buffer, size_t buffer_len)
+{
+	const char *file_extensions;
+	char *s;
+
+	/* be pedantic - we need room for a string list */
+	assert(buffer_len > 0);
+	buffer_len--;
+
+	/* copy the string */
+	file_extensions = device_get_info_string_offline(device, DEVINFO_STR_IMAGE_FILE_EXTENSIONS);
+	snprintf(buffer, buffer_len, "%s", (file_extensions != NULL) ? file_extensions : "");
+
+	/* convert the comma delimited list to a NUL delimited list */
+	s = buffer;
+	while((s = strchr(s, ',')) != NULL)
+		*(s++) = '\0';
+}
+
+
+
+/*-------------------------------------------------
+    get_device_instance_name - retrieves the device
+	instance name or brief instance name
+-------------------------------------------------*/
+
+static void get_device_instance_name(const machine_config *config, const device_config *device,
+	char *buffer, size_t buffer_len, iodevice_t type, UINT32 state, const char *(*get_dev_typename)(iodevice_t))
+{
+	const char *result;
+	const device_config *that_device;
+	int count, index;
+
+	/* retrieve info about the device instance */
+	result = device_get_info_string_offline(device, state);
+	if (result != NULL)
+	{
+		/* we got info directly */
+		snprintf(buffer, buffer_len, "%s", result);
+	}
+	else
+	{
+		/* not specified? default to device names based on the device type */
+		result = get_dev_typename(type);
+
+		/* are there multiple devices of the same type */
+		count = 0;
+		index = -1;
+		for (that_device = image_device_first(config); that_device != NULL; that_device = image_device_next(that_device))
+		{
+			if (device == that_device)
+				index = count;
+			if (device_get_info_int_offline(that_device, DEVINFO_INT_IMAGE_TYPE) == type)
+				count++;
+		}
+
+		/* need to number if there is more than one device */
+		if (count > 1)
+			snprintf(buffer, buffer_len, "%s%d", result, index + 1);
+		else
+			snprintf(buffer, buffer_len, "%s", result);
+	}
+}
+
+
+
+/*-------------------------------------------------
+    image_device_getinfo - returns info on a device;
+	can be called by front end code
+-------------------------------------------------*/
+
+image_device_info image_device_getinfo(const machine_config *config, const device_config *device)
+{
+	const device_config *this_device;
+	image_device_info info;
+	int found;
+
+	/* sanity checks */
+	assert((device->machine == NULL) || (device->machine->config == config));
+	if (device->machine == NULL)
+	{
+		found = FALSE;
+		for (this_device = image_device_first(config); this_device != NULL; this_device = image_device_next(this_device))
+		{
+			if (this_device == device)
+				found = TRUE;
+		}
+		assert(found);
+	}
+
+	/* clear return value */
+	memset(&info, 0, sizeof(info));
+
+	/* retrieve type */
+	info.type = (iodevice_t) (int) device_get_info_int_offline(device, DEVINFO_INT_IMAGE_TYPE);
+
+	/* retrieve flags */
+	info.readable = device_get_info_int_offline(device, DEVINFO_INT_IMAGE_READABLE) ? 1 : 0;
+	info.writeable = device_get_info_int_offline(device, DEVINFO_INT_IMAGE_WRITEABLE) ? 1 : 0;
+	info.creatable = device_get_info_int_offline(device, DEVINFO_INT_IMAGE_CREATABLE) ? 1 : 0;
+	info.must_be_loaded = device_get_info_int_offline(device, DEVINFO_INT_IMAGE_MUST_BE_LOADED) ? 1 : 0;
+	info.reset_on_load = device_get_info_int_offline(device, DEVINFO_INT_IMAGE_RESET_ON_LOAD) ? 1 : 0;
+	info.has_partial_hash = device_get_info_fct_offline(device, DEVINFO_FCT_IMAGE_PARTIAL_HASH) ? 1 : 0;
+
+	/* retrieve name */
+	get_device_name(device, info.name, ARRAY_LENGTH(info.name));
+
+	/* retrieve file extensions */
+	get_device_file_extensions(device, info.file_extensions, ARRAY_LENGTH(info.file_extensions));
+
+	/* retrieve instance name */
+	get_device_instance_name(config, device, info.instance_name, ARRAY_LENGTH(info.instance_name),
+		info.type, DEVINFO_STR_IMAGE_INSTANCE_NAME, device_typename);
+
+	/* retrieve brief instance name */
+	get_device_instance_name(config, device, info.brief_instance_name, ARRAY_LENGTH(info.brief_instance_name),
+		info.type, DEVINFO_STR_IMAGE_BRIEF_INSTANCE_NAME, device_brieftypename);
+
+	return info;
+}
+
+
+
+/*-------------------------------------------------
+    image_device_uses_file_extension - checks to
+	see if a particular devices uses a certain
+	file extension
+-------------------------------------------------*/
+
+int image_device_uses_file_extension(const device_config *device, const char *file_extension)
+{
+	int result = FALSE;
+	const char *s;
+	char file_extension_list[256];
+	
+	/* skip initial period, if present */
+	if (file_extension[0] == '.')
+		file_extension++;
+
+	/* retrieve file extension list */
+	get_device_file_extensions(device, file_extension_list, ARRAY_LENGTH(file_extension_list));
+
+	/* find the extensions */
+	s = file_extension_list;
+	while(!result && (*s != '\0'))
+	{
+		if (!mame_stricmp(s, file_extension))
+		{
+			result = TRUE;
+			break;
+		}
+		s += strlen(s) + 1;
+	}
+	return result;
+}
+
+
+
+/*-------------------------------------------------
+    image_device_compute_hash - compute a hash,
+	using this device's partial hash if appropriate
+-------------------------------------------------*/
+
+void image_device_compute_hash(char *dest, const device_config *device,
+	const void *data, size_t length, unsigned int functions)
+{
+	device_image_partialhash_func partialhash;
+
+	/* retrieve the partial hash func */
+	partialhash = (device_image_partialhash_func) device_get_info_fct_offline(device, DEVINFO_FCT_IMAGE_PARTIAL_HASH);
+
+	/* compute the hash */
+	if (partialhash != NULL)
+		partialhash(dest, data, length, functions);
+	else
+		hash_compute(dest, data, length, functions);
 }
 
 
@@ -224,7 +574,7 @@ static void image_exit(running_machine *machine)
 	an image
 -------------------------------------------------*/
 
-static image_error_t set_image_filename(mess_image *image, const char *filename, const char *zippath)
+static image_error_t set_image_filename(image_slot_data *image, const char *filename, const char *zippath)
 {
 	image_error_t err = IMAGE_ERROR_SUCCESS;
 	astring *alloc_filename = NULL;
@@ -234,7 +584,7 @@ static image_error_t set_image_filename(mess_image *image, const char *filename,
 	int pos;
 
 	/* create the directory string */
-	new_dir = filename ? image_strdup(image, filename) : NULL;
+	new_dir = filename ? image_strdup(image->dev, filename) : NULL;
 	for (pos = strlen(new_dir); (pos > 0); pos--)
 	{
 		if (strchr(":\\/", new_dir[pos - 1]))
@@ -252,7 +602,7 @@ static image_error_t set_image_filename(mess_image *image, const char *filename,
 	}
 
 	/* copy the string */
-	new_name = image_strdup(image, filename);
+	new_name = image_strdup(image->dev, filename);
 	if (!new_name)
 	{
 		err = IMAGE_ERROR_OUTOFMEMORY;
@@ -268,11 +618,11 @@ static image_error_t set_image_filename(mess_image *image, const char *filename,
 	}
 
 	/* set the new name and dir */
-	if (image->name)
-		image_freeptr(image, image->name);
-	if (image->dir)
-		image_freeptr(image, image->dir);
-	if (image->working_directory)
+	if (image->name != NULL)
+		image_freeptr(image->dev, image->name);
+	if (image->dir != NULL)
+		image_freeptr(image->dev, image->dir);
+	if (image->working_directory != NULL)
 		free(image->working_directory);
 	image->name = new_name;
 	image->dir = new_dir;
@@ -291,9 +641,9 @@ done:
 	image is loaded
 -------------------------------------------------*/
 
-static int is_loaded(mess_image *image)
+static int is_loaded(image_slot_data *image)
 {
-	return image->file || image->ptr;
+	return (image->file != NULL) || (image->ptr != NULL);
 }
 
 
@@ -303,7 +653,7 @@ static int is_loaded(mess_image *image)
 	specific path
 -------------------------------------------------*/
 
-static image_error_t load_zip_path(mess_image *image, const char *path)
+static image_error_t load_zip_path(image_slot_data *image, const char *path)
 {
 	image_error_t err = IMAGE_ERROR_FILENOTFOUND;
 	zip_file *zip = NULL;
@@ -364,9 +714,9 @@ static image_error_t load_zip_path(mess_image *image, const char *path)
 		header = zip_file_first_file(zip);
 
 		/* if we specified a zip partial path, find it */
-		if (zip_entry)
+		if (zip_entry != NULL)
 		{
-			while(header)
+			while(header != NULL)
 			{
 				if (!mame_stricmp(header->filename, zip_entry))
 					break;
@@ -375,7 +725,7 @@ static image_error_t load_zip_path(mess_image *image, const char *path)
 		}
 
 		/* were we successful? */
-		if (header)
+		if (header != NULL)
 		{
 			/* if no zip path was specified, we have to change the name */
 			if (!zip_entry)
@@ -387,7 +737,7 @@ static image_error_t load_zip_path(mess_image *image, const char *path)
 			}
 
 			/* allocate space for this zip file */
-			ptr = image_malloc(image, header->uncompressed_length);
+			ptr = image_malloc(image->dev, header->uncompressed_length);
 			if (!ptr)
 			{
 				err = IMAGE_ERROR_OUTOFMEMORY;
@@ -419,7 +769,7 @@ done:
 	specific path
 -------------------------------------------------*/
 
-static image_error_t load_image_by_path(mess_image *image, const char *software_path,
+static image_error_t load_image_by_path(image_slot_data *image, const char *software_path,
 	const game_driver *gamedrv, UINT32 open_flags, const char *path)
 {
 	file_error filerr = FILERR_NOT_FOUND;
@@ -499,33 +849,42 @@ static image_error_t load_image_by_path(mess_image *image, const char *software_
 	flags to use, and in what order
 -------------------------------------------------*/
 
-static void determine_open_plan(mess_image *image, int is_create, UINT32 *open_plan)
+static void determine_open_plan(image_slot_data *image, int is_create, UINT32 *open_plan)
 {
-	unsigned int readable, writeable, creatable;
 	int i = 0;
 
-	if (image->dev->getdispositions)
-	{
-		image->dev->getdispositions(image->dev, image_index_in_device(image),
-			&readable, &writeable, &creatable);
-	}
-	else
-	{
-		readable = image->dev->readable;
-		writeable = image->dev->writeable;
-		creatable = image->dev->creatable;
-	}
-
 	/* emit flags */
-	if (!is_create && readable && writeable)
+	if (!is_create && image->info.readable && image->info.writeable)
 		open_plan[i++] = OPEN_FLAG_READ | OPEN_FLAG_WRITE;
-	if (!is_create && !readable && writeable)
+	if (!is_create && !image->info.readable && image->info.writeable)
 		open_plan[i++] = OPEN_FLAG_WRITE;
-	if (!is_create && readable)
+	if (!is_create && image->info.readable)
 		open_plan[i++] = OPEN_FLAG_READ;
-	if (writeable && creatable)
+	if (image->info.writeable && image->info.creatable)
 		open_plan[i++] = OPEN_FLAG_READ | OPEN_FLAG_WRITE | OPEN_FLAG_CREATE;
 	open_plan[i] = 0;
+}
+
+
+
+/*-------------------------------------------------
+    find_image_slot - locates the slot for an
+	image
+-------------------------------------------------*/
+
+static image_slot_data *find_image_slot(const device_config *image)
+{
+	int i;
+	images_private *images_data = image->machine->images_data;
+
+	for (i = 0; i < images_data->slot_count; i++)
+	{
+		if (images_data->slots[i].dev == image)
+		{
+			return &images_data->slots[i];
+		}
+	}
+	return NULL;
 }
 
 
@@ -534,9 +893,10 @@ static void determine_open_plan(mess_image *image, int is_create, UINT32 *open_p
     image_load_internal - core image loading
 -------------------------------------------------*/
 
-static int image_load_internal(running_machine *machine, mess_image *image, const char *path,
+static int image_load_internal(const device_config *image, const char *path,
 	int is_create, int create_format, option_resolution *create_args)
 {
+	running_machine *machine = image->machine;
 	image_error_t err;
 	const char *software_path;
 	char *software_path_list = NULL;
@@ -544,41 +904,42 @@ static int image_load_internal(running_machine *machine, mess_image *image, cons
 	const game_driver *gamedrv;
 	UINT32 open_plan[4];
 	int i;
+	image_slot_data *slot = find_image_slot(image);
 
 	/* sanity checks */
-	assert_always(image, "image_load(): image is NULL");
-	assert_always(path, "image_load(): path is NULL");
+	assert_always(image != NULL, "image_load(): image is NULL");
+	assert_always(path != NULL, "image_load(): path is NULL");
 
 	/* we are now loading */
-	image->is_loading = 1;
+	slot->is_loading = 1;
 
 	/* first unload the image */
 	image_unload(image);
 
 	/* record the filename */
-	image->err = set_image_filename(image, path, NULL);
-	if (image->err)
+	slot->err = set_image_filename(slot, path, NULL);
+	if (slot->err)
 		goto done;
 
 	/* do we need to reset the CPU? */
-	if ((attotime_compare(timer_get_time(), attotime_zero) > 0) && image->dev->reset_on_load)
+	if ((attotime_compare(timer_get_time(), attotime_zero) > 0) && slot->info.reset_on_load)
 		mame_schedule_hard_reset(machine);
 
 	/* determine open plan */
-	determine_open_plan(image, is_create, open_plan);
+	determine_open_plan(slot, is_create, open_plan);
 
 	/* attempt to open the file in various ways */
-	for (i = 0; !image->file && open_plan[i]; i++)
+	for (i = 0; !slot->file && open_plan[i]; i++)
 	{
 		software_path = software_path_list;
 		do
 		{
 			gamedrv = machine->gamedrv;
-			while(!is_loaded(image) && gamedrv)
+			while(!is_loaded(slot) && (gamedrv != NULL))
 			{
 				/* open the file */
-				image->err = load_image_by_path(image, software_path, gamedrv, open_plan[i], path);
-				if (image->err && (image->err != IMAGE_ERROR_FILENOTFOUND))
+				slot->err = load_image_by_path(slot, software_path, gamedrv, open_plan[i], path);
+				if (slot->err && (slot->err != IMAGE_ERROR_FILENOTFOUND))
 					goto done;
 
 				/* move on to the next driver */
@@ -589,55 +950,55 @@ static int image_load_internal(running_machine *machine, mess_image *image, cons
 			if (software_path)
 				software_path += strlen(software_path) + 1;
 		}
-		while(!is_loaded(image) && software_path && *software_path);
+		while(!is_loaded(slot) && software_path && *software_path);
 	}
 
 	/* did we fail to find the file? */
-	if (!is_loaded(image))
+	if (!is_loaded(slot))
 	{
-		image->err = IMAGE_ERROR_FILENOTFOUND;
+		slot->err = IMAGE_ERROR_FILENOTFOUND;
 		goto done;
 	}
 
 	/* if applicable, call device verify */
-	if (image->dev->imgverify && !image_has_been_created(image))
+	if ((slot->verify != NULL) && !image_has_been_created(image))
 	{
 		/* access the memory */
 		buffer = image_ptr(image);
 		if (!buffer)
 		{
-			image->err = IMAGE_ERROR_OUTOFMEMORY;
+			slot->err = IMAGE_ERROR_OUTOFMEMORY;
 			goto done;
 		}
 
 		/* verify the file */
-		err = image->dev->imgverify(buffer, core_fsize(image->file));
+		err = (*slot->verify)(buffer, core_fsize(slot->file));
 		if (err)
 		{
-			image->err = IMAGE_ERROR_INVALIDIMAGE;
+			slot->err = IMAGE_ERROR_INVALIDIMAGE;
 			goto done;
 		}
 	}
 
 	/* call device load or create */
-	if (image_has_been_created(image) && image->dev->create)
+	if (image_has_been_created(image) && (slot->create != NULL))
 	{
-		err = image->dev->create(image, create_format, create_args);
+		err = slot->create(image, create_format, create_args);
 		if (err)
 		{
-			if (!image->err)
-				image->err = IMAGE_ERROR_UNSPECIFIED;
+			if (!slot->err)
+				slot->err = IMAGE_ERROR_UNSPECIFIED;
 			goto done;
 		}
 	}
-	else if (image->dev->load)
+	else if (slot->load != NULL)
 	{
 		/* using device load */
-		err = image->dev->load(image);
+		err = slot->load(image);
 		if (err)
 		{
-			if (!image->err)
-				image->err = IMAGE_ERROR_UNSPECIFIED;
+			if (!slot->err)
+				slot->err = IMAGE_ERROR_UNSPECIFIED;
 			goto done;
 		}
 	}
@@ -647,10 +1008,10 @@ static int image_load_internal(running_machine *machine, mess_image *image, cons
 done:
 	if (software_path_list)
 		free(software_path_list);
-	if (image->err)
-		image_clear(image);
-	image->is_loading = 1;
-	return image->err ? INIT_FAIL : INIT_PASS;
+	if (slot->err)
+		image_clear(slot);
+	slot->is_loading = 1;
+	return slot->err ? INIT_FAIL : INIT_PASS;
 }
 
 
@@ -659,9 +1020,9 @@ done:
     image_load - load an image into MESS
 -------------------------------------------------*/
 
-int image_load(mess_image *image, const char *path)
+int image_load(const device_config *image, const char *path)
 {
-	return image_load_internal(Machine, image, path, FALSE, 0, NULL);
+	return image_load_internal(image, path, FALSE, 0, NULL);
 }
 
 
@@ -670,9 +1031,9 @@ int image_load(mess_image *image, const char *path)
     image_create - create a MESS image
 -------------------------------------------------*/
 
-int image_create(mess_image *image, const char *path, int create_format, option_resolution *create_args)
+int image_create(const device_config *image, const char *path, int create_format, option_resolution *create_args)
 {
-	return image_load_internal(Machine, image, path, TRUE, create_format, create_args);
+	return image_load_internal(image, path, TRUE, create_format, create_args);
 }
 
 
@@ -682,7 +1043,7 @@ int image_create(mess_image *image, const char *path, int create_format, option_
 	to an image
 -------------------------------------------------*/
 
-static void image_clear(mess_image *image)
+static void image_clear(image_slot_data *image)
 {
 	if (image->file)
 	{
@@ -713,18 +1074,18 @@ static void image_clear(mess_image *image)
 	images
 -------------------------------------------------*/
 
-static void image_unload_internal(mess_image *image, int is_final_unload)
+static void image_unload_internal(image_slot_data *slot)
 {
 	/* is there an actual image loaded? */
-	if (!is_loaded(image))
-		return;
+	if (is_loaded(slot))
+	{
+		/* call the unload function */
+		if (slot->unload != NULL)
+			slot->unload(slot->dev);
 
-	/* call the unload function */
-	if (image->dev->unload)
-		image->dev->unload(image);
-
-	image_clear(image);
-	image_clear_error(image);
+		image_clear(slot);
+		image_clear_error(slot);
+	}
 }
 
 
@@ -733,44 +1094,10 @@ static void image_unload_internal(mess_image *image, int is_final_unload)
     image_unload - main call to unload an image
 -------------------------------------------------*/
 
-void image_unload(mess_image *image)
+void image_unload(const device_config *image)
 {
-	image_unload_internal(image, FALSE);
-}
-
-
-
-/*-------------------------------------------------
-    image_unload_all - unload all images
--------------------------------------------------*/
-
-void image_unload_all(int ispreload)
-{
-	int id;
-	const struct IODevice *dev;
-	mess_image *image;
-
-	if (!ispreload)
-		mess_options_extract(Machine);
-
-	/* normalize ispreload */
-	ispreload = ispreload ? 1 : 0;
-
-	/* unload all devices with matching preload */
-	for (dev = mess_device_first_from_machine(Machine); dev != NULL; dev = mess_device_next(dev))
-	{
-		if (dev->load_at_init == ispreload)
-		{
-			/* all instances */
-			for (id = 0; id < dev->count; id++)
-			{
-				image = image_from_device_and_index(dev, id);
-
-				/* unload this image */
-				image_unload_internal(image, TRUE);
-			}
-		}
-	}
+	image_slot_data *slot = find_image_slot(image);
+	image_unload_internal(slot);
 }
 
 
@@ -784,12 +1111,12 @@ void image_unload_all(int ispreload)
 	error
 -------------------------------------------------*/
 
-static void image_clear_error(mess_image *image)
+static void image_clear_error(image_slot_data *image)
 {
 	image->err = IMAGE_ERROR_SUCCESS;
-	if (image->err_message)
+	if (image->err_message != NULL)
 	{
-		image_freeptr(image, image->err_message);
+		image_freeptr(image->dev, image->err_message);
 		image->err_message = NULL;
 	}
 }
@@ -801,7 +1128,7 @@ static void image_clear_error(mess_image *image)
 	error
 -------------------------------------------------*/
 
-const char *image_error(mess_image *image)
+const char *image_error(const device_config *image)
 {
 	static const char *const messages[] =
 	{
@@ -815,7 +1142,8 @@ const char *image_error(mess_image *image)
 		"Unspecified error"
 	};
 
-	return image->err_message ? image->err_message : messages[image->err];
+	image_slot_data *slot = find_image_slot(image);
+	return slot->err_message ? slot->err_message : messages[slot->err];
 }
 
 
@@ -824,42 +1152,44 @@ const char *image_error(mess_image *image)
     image_seterror - specifies an error on an image
 -------------------------------------------------*/
 
-void image_seterror(mess_image *image, image_error_t err, const char *message)
+void image_seterror(const device_config *image, image_error_t err, const char *message)
 {
-	image_clear_error(image);
-	image->err = err;
-	if (message)
+	image_slot_data *slot = find_image_slot(image);
+
+	image_clear_error(slot);
+	slot->err = err;
+	if (message != NULL)
 	{
-		image->err_message = image_strdup(image, message);
+		slot->err_message = image_strdup(image, message);
 	}
 }
 
 
 
-/****************************************************************************
-  Tag management functions.
+/*-------------------------------------------------
+    image_message - used to display a message while
+	loading
+-------------------------------------------------*/
 
-  When devices have private data structures that need to be associated with a
-  device, it is recommended that image_alloctag() be called in the device
-  init function.  If the allocation succeeds, then a pointer will be returned
-  to a block of memory of the specified size that will last for the lifetime
-  of the emulation.  This pointer can be retrieved with image_lookuptag().
-
-  Note that since image_lookuptag() is used to index preallocated blocks of
-  memory, image_lookuptag() cannot fail legally.  In fact, an assert will be
-  raised if this happens
-****************************************************************************/
-
-void *image_alloctag(mess_image *img, const char *tag, size_t size)
+void image_message(const device_config *device, const char *format, ...)
 {
-	return tagpool_alloc(&img->tagpool, tag, size);
-}
+	image_slot_data *slot;
+	va_list args;
+	char buffer[256];
 
+	/* sanity checks */
+	slot = find_image_slot(device);
+	assert(is_loaded(slot) || slot->is_loading);
 
+	/* format the message */
+	va_start(args, format);
+	vsnprintf(buffer, ARRAY_LENGTH(buffer), format, args);
+	va_end(args);
 
-void *image_lookuptag(mess_image *img, const char *tag)
-{
-	return tagpool_lookup(&img->tagpool, tag);
+	/* display the popup for a standard amount of time */
+	ui_popup_time(10, "%s: %s",
+		image_basename(device),
+		buffer);
 }
 
 
@@ -871,10 +1201,10 @@ void *image_lookuptag(mess_image *img, const char *tag)
   to be loaded
 ****************************************************************************/
 
-static int read_hash_config(const char *sysname, mess_image *image)
+static int read_hash_config(const char *sysname, image_slot_data *image)
 {
 	hash_file *hashfile = NULL;
-	const struct hash_info *info = NULL;
+	const hash_info *info = NULL;
 
 	/* open the hash file */
 	hashfile = hashfile_open(sysname, FALSE, NULL);
@@ -887,21 +1217,21 @@ static int read_hash_config(const char *sysname, mess_image *image)
 		goto done;
 
 	/* copy the relevant entries */
-	image->longname		= info->longname		? image_strdup(image, info->longname)		: NULL;
-	image->manufacturer	= info->manufacturer	? image_strdup(image, info->manufacturer)	: NULL;
-	image->year			= info->year			? image_strdup(image, info->year)			: NULL;
-	image->playable		= info->playable		? image_strdup(image, info->playable)		: NULL;
-	image->extrainfo	= info->extrainfo		? image_strdup(image, info->extrainfo)		: NULL;
+	image->longname		= info->longname		? image_strdup(image->dev, info->longname)		: NULL;
+	image->manufacturer	= info->manufacturer	? image_strdup(image->dev, info->manufacturer)	: NULL;
+	image->year			= info->year			? image_strdup(image->dev, info->year)			: NULL;
+	image->playable		= info->playable		? image_strdup(image->dev, info->playable)		: NULL;
+	image->extrainfo	= info->extrainfo		? image_strdup(image->dev, info->extrainfo)		: NULL;
 
 done:
-	if (hashfile)
+	if (hashfile != NULL)
 		hashfile_close(hashfile);
 	return !hashfile || !info;
 }
 
 
 
-static void run_hash(mess_image *image,
+static void run_hash(const device_config *image,
 	void (*partialhash)(char *, const unsigned char *, unsigned long, unsigned int),
 	char *dest, unsigned int hash_functions)
 {
@@ -929,11 +1259,11 @@ static void run_hash(mess_image *image,
 
 
 
-static int image_checkhash(mess_image *image)
+static int image_checkhash(image_slot_data *image)
 {
 	const game_driver *drv;
-	const struct IODevice *dev;
 	char hash_string[HASH_BUF_SIZE];
+	device_image_partialhash_func partialhash;
 	int rc;
 
 	/* this call should not be made when the image is not loaded */
@@ -942,26 +1272,26 @@ static int image_checkhash(mess_image *image)
 	/* only calculate CRC if it hasn't been calculated, and the open_mode is read only */
 	if (!image->hash && !image->writeable && !image->created)
 	{
-		/* initialize key variables */
-		dev = image_device(image);
-
 		/* do not cause a linear read of 600 megs please */
 		/* TODO: use SHA/MD5 in the CHD header as the hash */
-		if (dev->type == IO_CDROM)
+		if (image->info.type == IO_CDROM)
 			return FALSE;
 
-		run_hash(image, dev->partialhash, hash_string, HASH_CRC | HASH_MD5 | HASH_SHA1);
+		/* retrieve the partial hash func */
+		partialhash = (device_image_partialhash_func) device_get_info_fct_offline(image->dev, DEVINFO_FCT_IMAGE_PARTIAL_HASH);
 
-		image->hash = image_strdup(image, hash_string);
+		run_hash(image->dev, partialhash, hash_string, HASH_CRC | HASH_MD5 | HASH_SHA1);
+
+		image->hash = image_strdup(image->dev, hash_string);
 
 		/* now read the hash file */
-		drv = Machine->gamedrv;
+		drv = image->dev->machine->gamedrv;
 		do
 		{
 			rc = read_hash_config(drv->name, image);
 			drv = mess_next_compatible_driver(drv);
 		}
-		while(rc && drv);
+		while(rc && (drv != NULL));
 	}
 	return TRUE;
 }
@@ -975,23 +1305,12 @@ static int image_checkhash(mess_image *image)
 ****************************************************************************/
 
 /*-------------------------------------------------
-    image_device
--------------------------------------------------*/
-
-const struct IODevice *image_device(mess_image *img)
-{
-	return img->dev;
-}
-
-
-
-/*-------------------------------------------------
     image_exists
 -------------------------------------------------*/
 
-int image_exists(mess_image *img)
+int image_exists(const device_config *image)
 {
-	return image_filename(img) != NULL;
+	return image_filename(image) != NULL;
 }
 
 
@@ -1000,9 +1319,9 @@ int image_exists(mess_image *img)
     image_slotexists
 -------------------------------------------------*/
 
-int image_slotexists(mess_image *img)
+int image_slotexists(const device_config *image)
 {
-	return image_index_in_device(img) < image_device(img)->count;
+	return TRUE;
 }
 
 
@@ -1011,9 +1330,10 @@ int image_slotexists(mess_image *img)
     image_filename
 -------------------------------------------------*/
 
-const char *image_filename(mess_image *img)
+const char *image_filename(const device_config *image)
 {
-	return img->name;
+	image_slot_data *slot = find_image_slot(image);
+	return slot->name;
 }
 
 
@@ -1022,9 +1342,9 @@ const char *image_filename(mess_image *img)
     image_basename
 -------------------------------------------------*/
 
-const char *image_basename(mess_image *img)
+const char *image_basename(const device_config *image)
 {
-	return osd_basename((char *) image_filename(img));
+	return osd_basename((char *) image_filename(image));
 }
 
 
@@ -1033,23 +1353,24 @@ const char *image_basename(mess_image *img)
     image_basename_noext
 -------------------------------------------------*/
 
-const char *image_basename_noext(mess_image *img)
+const char *image_basename_noext(const device_config *image)
 {
 	const char *s;
 	char *ext;
+	image_slot_data *slot = find_image_slot(image);
 
-	if (!img->basename_noext)
+	if (!slot->basename_noext)
 	{
-		s = image_basename(img);
+		s = image_basename(image);
 		if (s)
 		{
-			img->basename_noext = image_strdup(img, s);
-			ext = strrchr(img->basename_noext, '.');
+			slot->basename_noext = image_strdup(image, s);
+			ext = strrchr(slot->basename_noext, '.');
 			if (ext)
 				*ext = '\0';
 		}
 	}
-	return img->basename_noext;
+	return slot->basename_noext;
 }
 
 
@@ -1058,11 +1379,11 @@ const char *image_basename_noext(mess_image *img)
     image_filetype
 -------------------------------------------------*/
 
-const char *image_filetype(mess_image *img)
+const char *image_filetype(const device_config *image)
 {
 	const char *s;
-	s = image_filename(img);
-	if (s)
+	s = image_filename(image);
+	if (s != NULL)
 		s = strrchr(s, '.');
 	return s ? s+1 : NULL;
 }
@@ -1073,9 +1394,10 @@ const char *image_filetype(mess_image *img)
     image_filedir
 -------------------------------------------------*/
 
-const char *image_filedir(mess_image *image)
+const char *image_filedir(const device_config *image)
 {
-	return image->dir;
+	image_slot_data *slot = find_image_slot(image);
+	return slot->dir;
 }
 
 
@@ -1084,9 +1406,10 @@ const char *image_filedir(mess_image *image)
     image_core_file
 -------------------------------------------------*/
 
-core_file *image_core_file(mess_image *image)
+core_file *image_core_file(const device_config *image)
 {
-	return image->file;
+	image_slot_data *slot = find_image_slot(image);
+	return slot->file;
 }
 
 
@@ -1095,15 +1418,11 @@ core_file *image_core_file(mess_image *image)
     image_typename_id
 -------------------------------------------------*/
 
-const char *image_typename_id(mess_image *image)
+const char *image_typename_id(const device_config *image)
 {
-	const struct IODevice *dev;
-	int id;
-	static char buf[64];
-
-	dev = image_device(image);
-	id = image_index_in_device(image);
-	return dev->name(dev, id, buf, sizeof(buf) / sizeof(buf[0]));
+	static char buffer[64];
+	get_device_name(image, buffer, ARRAY_LENGTH(buffer));
+	return buffer;
 }
 
 
@@ -1112,7 +1431,7 @@ const char *image_typename_id(mess_image *image)
     check_for_file
 -------------------------------------------------*/
 
-static void check_for_file(mess_image *image)
+static void check_for_file(image_slot_data *image)
 {
 	assert_always(image->file != NULL, "Illegal operation on unmounted image");
 }
@@ -1123,10 +1442,11 @@ static void check_for_file(mess_image *image)
     image_length
 -------------------------------------------------*/
 
-UINT64 image_length(mess_image *image)
+UINT64 image_length(const device_config *image)
 {
-	check_for_file(image);
-	return core_fsize(image->file);
+	image_slot_data *slot = find_image_slot(image);
+	check_for_file(slot);
+	return core_fsize(slot->file);
 }
 
 
@@ -1135,10 +1455,11 @@ UINT64 image_length(mess_image *image)
     image_hash
 -------------------------------------------------*/
 
-const char *image_hash(mess_image *img)
+const char *image_hash(const device_config *image)
 {
-	image_checkhash(img);
-	return img->hash;
+	image_slot_data *slot = find_image_slot(image);
+	image_checkhash(slot);
+	return slot->hash;
 }
 
 
@@ -1147,13 +1468,13 @@ const char *image_hash(mess_image *img)
     image_crc
 -------------------------------------------------*/
 
-UINT32 image_crc(mess_image *img)
+UINT32 image_crc(const device_config *image)
 {
 	const char *hash_string;
 	UINT32 crc = 0;
 
-	hash_string = image_hash(img);
-	if (hash_string)
+	hash_string = image_hash(image);
+	if (hash_string != NULL)
 		crc = hash_data_extract_crc32(hash_string);
 
 	return crc;
@@ -1165,9 +1486,10 @@ UINT32 image_crc(mess_image *img)
     image_is_writable
 -------------------------------------------------*/
 
-int image_is_writable(mess_image *img)
+int image_is_writable(const device_config *image)
 {
-	return img->writeable;
+	image_slot_data *slot = find_image_slot(image);
+	return slot->writeable;
 }
 
 
@@ -1176,9 +1498,10 @@ int image_is_writable(mess_image *img)
     image_has_been_created
 -------------------------------------------------*/
 
-int image_has_been_created(mess_image *img)
+int image_has_been_created(const device_config *image)
 {
-	return img->created;
+	image_slot_data *slot = find_image_slot(image);
+	return slot->created;
 }
 
 
@@ -1187,9 +1510,10 @@ int image_has_been_created(mess_image *img)
     image_make_readonly
 -------------------------------------------------*/
 
-void image_make_readonly(mess_image *img)
+void image_make_readonly(const device_config *image)
 {
-	img->writeable = 0;
+	image_slot_data *slot = find_image_slot(image);
+	slot->writeable = 0;
 }
 
 
@@ -1198,10 +1522,11 @@ void image_make_readonly(mess_image *img)
     image_fread
 -------------------------------------------------*/
 
-UINT32 image_fread(mess_image *image, void *buffer, UINT32 length)
+UINT32 image_fread(const device_config *image, void *buffer, UINT32 length)
 {
-	check_for_file(image);
-	return core_fread(image->file, buffer, length);
+	image_slot_data *slot = find_image_slot(image);
+	check_for_file(slot);
+	return core_fread(slot->file, buffer, length);
 }
 
 
@@ -1210,10 +1535,11 @@ UINT32 image_fread(mess_image *image, void *buffer, UINT32 length)
     image_fwrite
 -------------------------------------------------*/
 
-UINT32 image_fwrite(mess_image *image, const void *buffer, UINT32 length)
+UINT32 image_fwrite(const device_config *image, const void *buffer, UINT32 length)
 {
-	check_for_file(image);
-	return core_fwrite(image->file, buffer, length);
+	image_slot_data *slot = find_image_slot(image);
+	check_for_file(slot);
+	return core_fwrite(slot->file, buffer, length);
 }
 
 
@@ -1222,10 +1548,11 @@ UINT32 image_fwrite(mess_image *image, const void *buffer, UINT32 length)
     image_fseek
 -------------------------------------------------*/
 
-int image_fseek(mess_image *image, INT64 offset, int whence)
+int image_fseek(const device_config *image, INT64 offset, int whence)
 {
-	check_for_file(image);
-	return core_fseek(image->file, offset, whence);
+	image_slot_data *slot = find_image_slot(image);
+	check_for_file(slot);
+	return core_fseek(slot->file, offset, whence);
 }
 
 
@@ -1234,10 +1561,11 @@ int image_fseek(mess_image *image, INT64 offset, int whence)
     image_ftell
 -------------------------------------------------*/
 
-UINT64 image_ftell(mess_image *image)
+UINT64 image_ftell(const device_config *image)
 {
-	check_for_file(image);
-	return core_ftell(image->file);
+	image_slot_data *slot = find_image_slot(image);
+	check_for_file(slot);
+	return core_ftell(slot->file);
 }
 
 
@@ -1246,7 +1574,7 @@ UINT64 image_ftell(mess_image *image)
     image_fgetc
 -------------------------------------------------*/
 
-int image_fgetc(mess_image *image)
+int image_fgetc(const device_config *image)
 {
 	char ch;
 	if (image_fread(image, &ch, 1) != 1)
@@ -1260,10 +1588,11 @@ int image_fgetc(mess_image *image)
     image_feof
 -------------------------------------------------*/
 
-int image_feof(mess_image *image)
+int image_feof(const device_config *image)
 {
-	check_for_file(image);
-	return core_feof(image->file);
+	image_slot_data *slot = find_image_slot(image);
+	check_for_file(slot);
+	return core_feof(slot->file);
 }
 
 
@@ -1272,10 +1601,11 @@ int image_feof(mess_image *image)
     image_ptr
 -------------------------------------------------*/
 
-void *image_ptr(mess_image *image)
+void *image_ptr(const device_config *image)
 {
-	check_for_file(image);
-	return (void *) core_fbuffer(image->file);
+	image_slot_data *slot = find_image_slot(image);
+	check_for_file(slot);
+	return (void *) core_fbuffer(slot->file);
 }
 
 
@@ -1290,7 +1620,7 @@ void *image_ptr(mess_image *image)
 	actually exists
 -------------------------------------------------*/
 
-static int try_change_working_directory(mess_image *image, const char *subdir)
+static int try_change_working_directory(image_slot_data *image, const char *subdir)
 {
 	osd_directory *directory;
 	const osd_directory_entry *entry;
@@ -1344,7 +1674,7 @@ static int try_change_working_directory(mess_image *image, const char *subdir)
 	directory according to a few defaults
 -------------------------------------------------*/
 
-static void setup_working_directory(mess_image *image)
+static void setup_working_directory(image_slot_data *image)
 {
 	char mess_directory[1024];
 	const game_driver *gamedrv;
@@ -1357,7 +1687,7 @@ static void setup_working_directory(mess_image *image)
 	if (try_change_working_directory(image, "software"))
 	{
 		/* now down to a directory for this computer */
-		gamedrv = Machine->gamedrv;
+		gamedrv = image->dev->machine->gamedrv;
 		while(gamedrv && !try_change_working_directory(image, gamedrv->name))
 		{
 			gamedrv = mess_next_compatible_driver(gamedrv);
@@ -1373,13 +1703,15 @@ static void setup_working_directory(mess_image *image)
 	valid even if not mounted
 -------------------------------------------------*/
 
-const char *image_working_directory(mess_image *image)
+const char *image_working_directory(const device_config *image)
 {
-	/* check to see if we've never initialized the working directory */
-	if (image->working_directory == NULL)
-		setup_working_directory(image);
+	image_slot_data *slot = find_image_slot(image);
 
-	return image->working_directory;
+	/* check to see if we've never initialized the working directory */
+	if (slot->working_directory == NULL)
+		setup_working_directory(slot);
+
+	return slot->working_directory;
 }
 
 
@@ -1389,12 +1721,14 @@ const char *image_working_directory(mess_image *image)
 	directory to use for this image
 -------------------------------------------------*/
 
-void image_set_working_directory(mess_image *image, const char *working_directory)
+void image_set_working_directory(const device_config *image, const char *working_directory)
 {
+	image_slot_data *slot = find_image_slot(image);
+
 	char *new_working_directory = mame_strdup(working_directory);
-	if (image->working_directory)
-		free(image->working_directory);
-	image->working_directory = new_working_directory;
+	if (slot->working_directory)
+		free(slot->working_directory);
+	slot->working_directory = new_working_directory;
 }
 
 
@@ -1407,34 +1741,41 @@ void image_set_working_directory(mess_image *image, const char *working_director
   able to eliminate the need for a unload function.
 ****************************************************************************/
 
-void *image_malloc(mess_image *image, size_t size)
+void *image_malloc(const device_config *image, size_t size)
 {
-	assert(is_loaded(image) || image->is_loading);
-	return pool_malloc(image->mempool, size);
+	return image_realloc(image, NULL, size);
 }
 
 
 
-void *image_realloc(mess_image *image, void *ptr, size_t size)
+void *image_realloc(const device_config *image, void *ptr, size_t size)
 {
-	assert(is_loaded(image) || image->is_loading);
-	return pool_realloc(image->mempool, ptr, size);
+	image_slot_data *slot = find_image_slot(image);
+
+	/* sanity checks */
+	assert(is_loaded(slot) || slot->is_loading);
+
+	return pool_realloc(slot->mempool, ptr, size);
 }
 
 
 
-char *image_strdup(mess_image *image, const char *src)
+char *image_strdup(const device_config *image, const char *src)
 {
-	assert(is_loaded(image) || image->is_loading);
-	return pool_strdup(image->mempool, src);
+	image_slot_data *slot = find_image_slot(image);
+
+	/* sanity checks */
+	assert(is_loaded(slot) || slot->is_loading);
+
+	return pool_strdup(slot->mempool, src);
 }
 
 
 
-void image_freeptr(mess_image *image, void *ptr)
+void image_freeptr(const device_config *image, void *ptr)
 {
 	/* should really do something better here */
-	pool_realloc(image->mempool, ptr, 0);
+	image_realloc(image, ptr, 0);
 }
 
 
@@ -1446,42 +1787,47 @@ void image_freeptr(mess_image *image, void *ptr)
   pertaining to that image in the CRC database
 ****************************************************************************/
 
-const char *image_longname(mess_image *img)
+const char *image_longname(const device_config *image)
 {
-	image_checkhash(img);
-	return img->longname;
+	image_slot_data *slot = find_image_slot(image);
+	image_checkhash(slot);
+	return slot->longname;
 }
 
 
 
-const char *image_manufacturer(mess_image *img)
+const char *image_manufacturer(const device_config *image)
 {
-	image_checkhash(img);
-	return img->manufacturer;
+	image_slot_data *slot = find_image_slot(image);
+	image_checkhash(slot);
+	return slot->manufacturer;
 }
 
 
 
-const char *image_year(mess_image *img)
+const char *image_year(const device_config *image)
 {
-	image_checkhash(img);
-	return img->year;
+	image_slot_data *slot = find_image_slot(image);
+	image_checkhash(slot);
+	return slot->year;
 }
 
 
 
-const char *image_playable(mess_image *img)
+const char *image_playable(const device_config *image)
 {
-	image_checkhash(img);
-	return img->playable;
+	image_slot_data *slot = find_image_slot(image);
+	image_checkhash(slot);
+	return slot->playable;
 }
 
 
 
-const char *image_extrainfo(mess_image *img)
+const char *image_extrainfo(const device_config *image)
 {
-	image_checkhash(img);
-	return img->extrainfo;
+	image_slot_data *slot = find_image_slot(image);
+	image_checkhash(slot);
+	return slot->extrainfo;
 }
 
 
@@ -1498,7 +1844,7 @@ const char *image_extrainfo(mess_image *img)
 	NVRAM file for an image
 -------------------------------------------------*/
 
-static file_error open_battery_file(mess_image *image, UINT32 openflags, mame_file **file)
+static file_error open_battery_file(const device_config *image, UINT32 openflags, mame_file **file)
 {
 	file_error filerr;
 	char *basename_noext;
@@ -1507,7 +1853,7 @@ static file_error open_battery_file(mess_image *image, UINT32 openflags, mame_fi
 	basename_noext = strip_extension(image_basename(image));
 	if (!basename_noext)
 		return FILERR_OUT_OF_MEMORY;
-	fname = astring_assemble_4(astring_alloc(), Machine->gamedrv->name, PATH_SEPARATOR, basename_noext, ".nv");
+	fname = astring_assemble_4(astring_alloc(), image->machine->gamedrv->name, PATH_SEPARATOR, basename_noext, ".nv");
 	filerr = mame_fopen(SEARCHPATH_NVRAM, astring_c(fname), openflags, file);
 	astring_free(fname);
 	free(basename_noext);
@@ -1521,7 +1867,7 @@ static file_error open_battery_file(mess_image *image, UINT32 openflags, mame_fi
 	backed RAM for an image
 -------------------------------------------------*/
 
-void image_battery_load(mess_image *image, void *buffer, int length)
+void image_battery_load(const device_config *image, void *buffer, int length)
 {
 	file_error filerr;
 	mame_file *file;
@@ -1548,7 +1894,7 @@ void image_battery_load(mess_image *image, void *buffer, int length)
 	backed RAM for an image
 -------------------------------------------------*/
 
-void image_battery_save(mess_image *image, const void *buffer, int length)
+void image_battery_save(const device_config *image, const void *buffer, int length)
 {
 	file_error filerr;
 	mame_file *file;
@@ -1572,118 +1918,15 @@ void image_battery_save(mess_image *image, const void *buffer, int length)
   These provide various ways of indexing images
 ****************************************************************************/
 
-int image_absolute_index(mess_image *image)
+int image_absolute_index(const device_config *image)
 {
-	return image - images;
+	image_slot_data *slot = find_image_slot(image);
+	return slot - image->machine->images_data->slots;
 }
 
 
 
-mess_image *image_from_absolute_index(int absolute_index)
+const device_config *image_from_absolute_index(running_machine *machine, int absolute_index)
 {
-	return &images[absolute_index];
-}
-
-
-
-/****************************************************************************
-  Deprecated functions
-
-  The usage of these functions is to be phased out.  The first group because
-  they reflect the outdated fixed relationship between devices and their
-  type/id.
-****************************************************************************/
-
-mess_image *image_from_device_and_index(const struct IODevice *device, int id)
-{
-	int indx;
-	mess_image *image = NULL;
-	const struct IODevice *dev;
-
-	assert(id < device->count);
-	assert(images);
-
-	indx = 0;
-	for (dev = mess_device_first_from_machine(Machine); dev != NULL; dev = mess_device_next(dev))
-	{
-		if (device == dev)
-		{
-			image = &images[indx + id];
-			break;
-		}
-		indx += dev->count;
-	}
-
-	assert(image != NULL);
-	return image;
-}
-
-
-
-mess_image *image_from_devtag_and_index(const char *devtag, int id)
-{
-	int indx;
-	mess_image *image = NULL;
-	const struct IODevice *dev;
-
-	indx = 0;
-	for (dev = mess_device_first_from_machine(Machine); dev != NULL; dev = mess_device_next(dev))
-	{
-		if (dev->tag && !strcmp(dev->tag, devtag))
-		{
-			image = &images[indx + id];
-			break;
-		}
-		indx += dev->count;
-	}
-
-	assert(image);
-	return image;
-}
-
-
-
-mess_image *image_from_devtype_and_index(iodevice_t type, int id)
-{
-	int indx;
-	mess_image *image = NULL;
-	const struct IODevice *dev;
-
-	assert((multiple_dev_mask & (1 << type)) == 0);
-	assert(id < device_count(type));
-
-	indx = 0;
-	for (dev = mess_device_first_from_machine(Machine); dev != NULL; dev = mess_device_next(dev))
-	{
-		if (type == dev->type)
-		{
-			image = &images[indx + id];
-			break;
-		}
-		indx += dev->count;
-	}
-
-	assert(image);
-	return image;
-}
-
-
-
-iodevice_t image_devtype(mess_image *img)
-{
-	return img->dev->type;
-}
-
-
-
-int image_index_in_device(mess_image *img)
-{
-	int indx;
-
-	assert(img);
-	indx = img - image_from_device_and_index(img->dev, 0);
-
-	assert(indx >= 0);
-	assert(indx < img->dev->count);
-	return indx;
+	return machine->images_data->slots[absolute_index].dev;
 }

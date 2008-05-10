@@ -50,30 +50,32 @@ elektor TV Game Computer which is a kind of developer machine for the VC4000.
 #include "devices/cartslot.h"
 #include "devices/snapquik.h" 
 
-static  READ8_HANDLER(vc4000_key_r)
+static QUICKLOAD_LOAD( vc4000 );
+
+static READ8_HANDLER(vc4000_key_r)
 {
 	UINT8 data=0;
 	switch(offset & 0x0f) {
 	case 0x08:
-		data = readinputport(1);
+		data = input_port_read(machine, "KEYPAD1_1");
 		break;
 	case 0x09:
-		data = readinputport(2);
+		data = input_port_read(machine, "KEYPAD1_2");
 		break;
 	case 0x0a:
-		data = readinputport(3);
+		data = input_port_read(machine, "KEYPAD1_3");
 		break;
 	case 0x0b:
-		data = readinputport(0);
+		data = input_port_read(machine, "PANEL");
 		break;
 	case 0x0c:
-		data = readinputport(4);
+		data = input_port_read(machine, "KEYPAD2_1");
 		break;
 	case 0x0d:
-		data = readinputport(5);
+		data = input_port_read(machine, "KEYPAD2_2");
 		break;
 	case 0x0e:
-		data = readinputport(6);
+		data = input_port_read(machine, "KEYPAD2_3");
 		break;
 	}
 	return data;
@@ -100,51 +102,51 @@ static ADDRESS_MAP_START( vc4000_io , ADDRESS_SPACE_IO, 8)
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( vc4000 )
-	PORT_START
+	PORT_START_TAG("PANEL")
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Start") PORT_CODE(KEYCODE_F1)
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Game Select") PORT_CODE(KEYCODE_F2)
-	PORT_START
+	PORT_START_TAG("KEYPAD1_1")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 1") PORT_CODE(KEYCODE_1)
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 4") PORT_CODE(KEYCODE_4) PORT_CODE(KEYCODE_Q)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 7") PORT_CODE(KEYCODE_7) PORT_CODE(KEYCODE_A)
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left Enter") PORT_CODE(KEYCODE_ENTER) PORT_CODE(KEYCODE_Z)
-	PORT_START
+	PORT_START_TAG("KEYPAD1_2")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 2/Button") PORT_CODE(KEYCODE_2) PORT_CODE(KEYCODE_LCONTROL)
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 5") PORT_CODE(KEYCODE_5) PORT_CODE(KEYCODE_W)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 8") PORT_CODE(KEYCODE_8) PORT_CODE(KEYCODE_S)
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 0") PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_X)
-	PORT_START
+	PORT_START_TAG("KEYPAD1_3")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 3") PORT_CODE(KEYCODE_3)
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 6") PORT_CODE(KEYCODE_6) PORT_CODE(KEYCODE_E)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 9") PORT_CODE(KEYCODE_9) PORT_CODE(KEYCODE_D)
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left Clear") PORT_CODE(KEYCODE_C) PORT_CODE(KEYCODE_ESC)
-	PORT_START
+	PORT_START_TAG("KEYPAD2_1")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 1") PORT_CODE(KEYCODE_1_PAD)
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 4") PORT_CODE(KEYCODE_4_PAD)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 7") PORT_CODE(KEYCODE_7_PAD)
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right ENTER") PORT_CODE(KEYCODE_ENTER_PAD)
-	PORT_START
+	PORT_START_TAG("KEYPAD2_2")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 2/Button") PORT_CODE(KEYCODE_2_PAD) PORT_CODE(KEYCODE_LALT)
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 5") PORT_CODE(KEYCODE_5_PAD)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 8") PORT_CODE(KEYCODE_8_PAD)
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 0") PORT_CODE(KEYCODE_0_PAD)
-	PORT_START
+	PORT_START_TAG("KEYPAD2_3")
 	PORT_BIT(0x80, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 3") PORT_CODE(KEYCODE_3_PAD)
 	PORT_BIT(0x40, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 6") PORT_CODE(KEYCODE_6_PAD)
 	PORT_BIT(0x20, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 9") PORT_CODE(KEYCODE_9_PAD)
 	PORT_BIT(0x10, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right Clear") PORT_CODE(KEYCODE_DEL_PAD)
 #ifndef ANALOG_HACK
     // shit, auto centering too slow, so only using 5 bits, and scaling at videoside
-    PORT_START
+    PORT_START_TAG("JOY1_X")
 PORT_BIT(0xff,0x70,IPT_AD_STICK_X) PORT_SENSITIVITY(70) PORT_KEYDELTA(5) PORT_CENTERDELTA(0) PORT_MINMAX(20,225) PORT_CODE_DEC(KEYCODE_LEFT) PORT_CODE_INC(KEYCODE_RIGHT) PORT_CODE_DEC(JOYCODE_X_LEFT_SWITCH) PORT_CODE_INC(JOYCODE_X_RIGHT_SWITCH) PORT_PLAYER(1)
-    PORT_START
+    PORT_START_TAG("JOY1_Y")
 PORT_BIT(0xff,0x70,IPT_AD_STICK_Y) PORT_SENSITIVITY(70) PORT_KEYDELTA(5) PORT_CENTERDELTA(0) PORT_MINMAX(20,225) PORT_CODE_DEC(KEYCODE_UP) PORT_CODE_INC(KEYCODE_DOWN) PORT_CODE_DEC(JOYCODE_Y_UP_SWITCH) PORT_CODE_INC(JOYCODE_Y_DOWN_SWITCH) PORT_PLAYER(1)
-    PORT_START
+    PORT_START_TAG("JOY2_X")
 PORT_BIT(0xff,0x70,IPT_AD_STICK_X) PORT_SENSITIVITY(70) PORT_KEYDELTA(5) PORT_CENTERDELTA(0) PORT_MINMAX(20,225) PORT_CODE_DEC(KEYCODE_DEL) PORT_CODE_INC(KEYCODE_PGDN) PORT_CODE_DEC(JOYCODE_X_LEFT_SWITCH) PORT_CODE_INC(JOYCODE_X_RIGHT_SWITCH) PORT_PLAYER(2)
-    PORT_START
+    PORT_START_TAG("JOY2_Y")
 PORT_BIT(0xff,0x70,IPT_AD_STICK_Y) PORT_SENSITIVITY(70) PORT_KEYDELTA(5) PORT_CENTERDELTA(0) PORT_MINMAX(20,225) PORT_CODE_DEC(KEYCODE_HOME) PORT_CODE_INC(KEYCODE_END) PORT_CODE_DEC(JOYCODE_Y_UP_SWITCH) PORT_CODE_INC(JOYCODE_Y_DOWN_SWITCH) PORT_PLAYER(2)
 #else
-	PORT_START
+	PORT_START_TAG("JOYS")
 	PORT_BIT(0x01, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/left") PORT_CODE(KEYCODE_LEFT)
 	PORT_BIT(0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/right") PORT_CODE(KEYCODE_RIGHT)
 	PORT_BIT(0x04, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/down") PORT_CODE(KEYCODE_DOWN)
@@ -210,6 +212,9 @@ static MACHINE_DRIVER_START( vc4000 )
 	MDRV_SOUND_ADD(CUSTOM, 0)
 	MDRV_SOUND_CONFIG(vc4000_sound_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* quickload */
+	MDRV_QUICKLOAD_ADD(vc4000, "tvc", 0)
 MACHINE_DRIVER_END
 
 ROM_START(vc4000)
@@ -218,50 +223,51 @@ ROM_START(vc4000)
 
 ROM_END
 
-static DEVICE_LOAD( vc4000_cart )
+static DEVICE_IMAGE_LOAD( vc4000_cart )
 {
+	running_machine *machine = image->machine;
 	int size = image_length(image);
 
 	switch (size)
 	{
 	case 0x0800: // 2K
 		image_fread(image, memory_region(REGION_CPU1) + 0x0000, 0x0800);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK1); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK5);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK1); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK5);
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x0000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK2); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK6);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK2); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK6);
 		memory_set_bankptr(2, mess_ram);
 		memory_set_bankptr(6, mess_ram);
 		break;
 
 	case 0x1000: // 4K
 		image_fread(image, memory_region(REGION_CPU1) + 0x0000, 0x1000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK1); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK5);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK1); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK5);
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x0000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK2); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK6);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK2); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK6);
 		memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x0800);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x15FF, 0, 0, SMH_BANK3); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x15FF, 0, 0, SMH_BANK7);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x15FF, 0, 0, SMH_BANK3); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x15FF, 0, 0, SMH_BANK7);
 		memory_set_bankptr(3, mess_ram);
 		memory_set_bankptr(7, mess_ram);
 		break;
 
 	case 0x1800: // 6K
 		image_fread(image, memory_region(REGION_CPU1) + 0x0000, 0x15FF);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK1); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK5);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK1); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07FF, 0, 0, SMH_BANK5);
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x0000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK2); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK6);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK2); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x0FFF, 0, 0, SMH_BANK6);
 		memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x0800);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x15FF, 0, 0, SMH_BANK3); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x15FF, 0, 0, SMH_BANK7);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x15FF, 0, 0, SMH_BANK3); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0800, 0x15FF, 0, 0, SMH_BANK7);
 		memory_set_bankptr(3, memory_region(REGION_CPU1) + 0x1000);
-		memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1BFF, 0, 0, SMH_BANK4); 
-		memory_install_write8_handler (0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1BFF, 0, 0, SMH_BANK8);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1BFF, 0, 0, SMH_BANK4); 
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x1BFF, 0, 0, SMH_BANK8);
 		memory_set_bankptr(4, mess_ram);
 		memory_set_bankptr(8, mess_ram);
 		break;
@@ -284,7 +290,7 @@ static void vc4000_cartslot_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_MUST_BE_LOADED:				info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_vc4000_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(vc4000_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom,bin"); break;
@@ -330,26 +336,10 @@ QUICKLOAD_LOAD(vc4000)
 	return INIT_PASS;
 }
 
-static void vc4000_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "tvc"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:				info->f = (genf *) quickload_load_vc4000; break;
-
-		default:										quickload_device_getinfo(devclass, state, info); break;
-	}
-}
-  
 
 SYSTEM_CONFIG_START(vc4000)
 	CONFIG_RAM_DEFAULT(5 * 1024) 
 	CONFIG_DEVICE(vc4000_cartslot_getinfo)
-	CONFIG_DEVICE(vc4000_quickload_getinfo)
 SYSTEM_CONFIG_END
 
 /*    	YEAR		NAME	PARENT	COMPAT	MACHINE	INPUT	INIT		CONFIG	COMPANY		FULLNAME */

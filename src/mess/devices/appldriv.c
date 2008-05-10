@@ -40,7 +40,7 @@ void apple525_set_enable_lines(int enable_mask)
 
 /* ----------------------------------------------------------------------- */
 
-static void apple525_load_current_track(mess_image *image)
+static void apple525_load_current_track(const device_config *image)
 {
 	int len;
 	struct apple525_disk *disk;
@@ -55,7 +55,7 @@ static void apple525_load_current_track(mess_image *image)
 
 
 
-static void apple525_save_current_track(mess_image *image, int unload)
+static void apple525_save_current_track(const device_config *image, int unload)
 {
 	int len;
 	struct apple525_disk *disk;
@@ -74,7 +74,7 @@ static void apple525_save_current_track(mess_image *image, int unload)
 
 
 
-static void apple525_seek_disk(mess_image *img, struct apple525_disk *disk, signed int step)
+static void apple525_seek_disk(const device_config *img, struct apple525_disk *disk, signed int step)
 {
 	int track;
 	int pseudo_track;
@@ -104,7 +104,7 @@ static void apple525_seek_disk(mess_image *img, struct apple525_disk *disk, sign
 
 
 
-static void apple525_disk_set_lines(mess_image *image, UINT8 new_state)
+static void apple525_disk_set_lines(const device_config *image, UINT8 new_state)
 {
 	struct apple525_disk *cur_disk;
 	UINT8 old_state;
@@ -148,7 +148,7 @@ static void apple525_disk_set_lines(mess_image *image, UINT8 new_state)
 void apple525_set_lines(UINT8 lines)
 {
 	int i, count;
-	mess_image *image;
+	const device_config *image;
 
 	count = device_count_tag_from_machine(Machine, APPLE525TAG);
 
@@ -156,7 +156,7 @@ void apple525_set_lines(UINT8 lines)
 	{
 		if (apple525_enable_mask & (1 << i))
 		{
-			image = image_from_devtag_and_index(APPLE525TAG, i);
+			image = image_from_devtag_and_index(Machine, APPLE525TAG, i);
 			if (image)
 				apple525_disk_set_lines(image, lines);
 		}
@@ -166,7 +166,7 @@ void apple525_set_lines(UINT8 lines)
 
 
 /* reads/writes a byte; write_value is -1 for read only */
-static UINT8 apple525_process_byte(mess_image *img, int write_value)
+static UINT8 apple525_process_byte(const device_config *img, int write_value)
 {
 	UINT8 read_value;
 	struct apple525_disk *disk;
@@ -175,7 +175,7 @@ static UINT8 apple525_process_byte(mess_image *img, int write_value)
 	const struct IODevice *dev;
 
 	disk = (struct apple525_disk *) image_lookuptag(img, APPLE525TAG);
-	dev = image_device(img);
+	dev = mess_device_from_core_device(img);
 	spinfract_dividend = (int) mess_device_get_info_int(&dev->devclass, MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVIDEND);
 	spinfract_divisor = (int) mess_device_get_info_int(&dev->devclass, MESS_DEVINFO_INT_APPLE525_SPINFRACT_DIVISOR);
 
@@ -218,16 +218,16 @@ static UINT8 apple525_process_byte(mess_image *img, int write_value)
 
 
 
-static mess_image *apple525_selected_image(void)
+static const device_config *apple525_selected_image(running_machine *machine)
 {
 	int i, count;
 
-	count = device_count_tag_from_machine(Machine, APPLE525TAG);
+	count = device_count_tag_from_machine(machine, APPLE525TAG);
 
 	for (i = 0; i < count; i++)
 	{
 		if (apple525_enable_mask & (1 << i))
-			return image_from_devtag_and_index(APPLE525TAG, i);
+			return image_from_devtag_and_index(machine, APPLE525TAG, i);
 	}
 	return NULL;
 }
@@ -236,8 +236,8 @@ static mess_image *apple525_selected_image(void)
 
 UINT8 apple525_read_data(void)
 {
-	mess_image *image;
-	image = apple525_selected_image();
+	const device_config *image;
+	image = apple525_selected_image(Machine);
 	return image ? apple525_process_byte(image, -1) : 0xFF;
 }
 
@@ -245,8 +245,8 @@ UINT8 apple525_read_data(void)
 
 void apple525_write_data(UINT8 data)
 {
-	mess_image *image;
-	image = apple525_selected_image();
+	const device_config *image;
+	image = apple525_selected_image(Machine);
 	if (image)
 		apple525_process_byte(image, data);
 }
@@ -256,7 +256,7 @@ void apple525_write_data(UINT8 data)
 int apple525_read_status(void)
 {
 	int i, count, result = 0;
-	mess_image *image;
+	const device_config *image;
 
 	count = device_count_tag_from_machine(Machine, APPLE525TAG);
 
@@ -264,7 +264,7 @@ int apple525_read_status(void)
 	{
 		if (apple525_enable_mask & (1 << i))
 		{
-			image = image_from_devtag_and_index(APPLE525TAG, i);
+			image = image_from_devtag_and_index(Machine, APPLE525TAG, i);
 			if (image && !image_is_writable(image))
 				result = 1;
 		}
@@ -276,25 +276,24 @@ int apple525_read_status(void)
 
 /* ----------------------------------------------------------------------- */
 
-static int device_init_apple525_floppy(mess_image *image)
+static DEVICE_START( apple525_floppy )
 {
-	device_init_handler parent_init;
+	device_start_func parent_init;
 
-	if (!image_alloctag(image, APPLE525TAG, sizeof(struct apple525_disk)))
-		return INIT_FAIL;
+	image_alloctag(device, APPLE525TAG, sizeof(struct apple525_disk));
 
-	parent_init = (device_init_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_INIT);
-	return parent_init(image);
+	parent_init = (device_start_func) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_START);
+	parent_init(device);
 }
 
 
 
-static int device_load_apple525_floppy(mess_image *image)
+static DEVICE_IMAGE_LOAD( apple525_floppy )
 {
 	int result;
-	device_load_handler parent_load;
+	device_image_load_func parent_load;
 
-	parent_load = (device_load_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_LOAD);
+	parent_load = (device_image_load_func) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_LOAD);
 	result = parent_load(image);
 
 	floppy_drive_seek(image, -999);
@@ -304,13 +303,13 @@ static int device_load_apple525_floppy(mess_image *image)
 
 
 
-static void device_unload_apple525_floppy(mess_image *image)
+static DEVICE_IMAGE_UNLOAD( apple525_floppy )
 {
-	device_unload_handler parent_unload;
+	device_image_unload_func parent_unload;
 
 	apple525_save_current_track(image, TRUE);
 
-	parent_unload = (device_unload_handler) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_UNLOAD);
+	parent_unload = (device_image_unload_func) mess_device_get_info_fct(&parent_devclass, MESS_DEVINFO_PTR_UNLOAD);
 	parent_unload(image);
 }
 
@@ -327,9 +326,9 @@ void apple525_device_getinfo(const mess_device_class *devclass, UINT32 state, un
 		case MESS_DEVINFO_STR_DEV_TAG:			strcpy(info->s = device_temp_str(), APPLE525TAG); break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:				info->init = device_init_apple525_floppy; break;
-		case MESS_DEVINFO_PTR_LOAD:				info->load = device_load_apple525_floppy; break;
-		case MESS_DEVINFO_PTR_UNLOAD:			info->unload = device_unload_apple525_floppy; break;
+		case MESS_DEVINFO_PTR_START:				info->start = DEVICE_START_NAME(apple525_floppy); break;
+		case MESS_DEVINFO_PTR_LOAD:				info->load = DEVICE_IMAGE_LOAD_NAME(apple525_floppy); break;
+		case MESS_DEVINFO_PTR_UNLOAD:			info->unload = DEVICE_IMAGE_UNLOAD_NAME(apple525_floppy); break;
 		case MESS_DEVINFO_PTR_FLOPPY_OPTIONS:	info->p = (void *) floppyoptions_apple2; break;
 
 		default: floppy_device_getinfo(devclass, state, info); break;

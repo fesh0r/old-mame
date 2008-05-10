@@ -65,7 +65,9 @@
 
 /* Core includes */
 #include "driver.h"
+#include "machine/8255ppi.h"
 #include "includes/mz700.h"
+#include "machine/pit8253.h"
 
 /* Devices */
 #include "devices/cassette.h"
@@ -255,6 +257,12 @@ static MACHINE_DRIVER_START(mz700)
 
 	MDRV_MACHINE_RESET( mz700 )
 
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( mz700_pit8253_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( mz700_ppi8255_interface )
+
 	/* video hardware - include overscan */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
@@ -284,7 +292,14 @@ static MACHINE_DRIVER_START(mz800)
 
 	MDRV_MACHINE_RESET( mz700 )
 
+	MDRV_DEVICE_ADD( "pit8253", PIT8253 )
+	MDRV_DEVICE_CONFIG( mz700_pit8253_config )
+
+	MDRV_DEVICE_ADD( "ppi8255", PPI8255 )
+	MDRV_DEVICE_CONFIG( mz700_ppi8255_interface )
+
 	/* video hardware - include overscan */
+	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
@@ -292,7 +307,7 @@ static MACHINE_DRIVER_START(mz800)
 	MDRV_SCREEN_VISIBLE_AREA(0*8, 40*8 - 1, 0*8, 25*8 - 1)
 
 	MDRV_GFXDECODE(mz700)
-	MDRV_PALETTE_LENGTH(8)
+	MDRV_PALETTE_LENGTH(256*2)
 
 	MDRV_PALETTE_INIT(mz700)
 	MDRV_VIDEO_UPDATE(mz700)
@@ -351,6 +366,6 @@ SYSTEM_CONFIG_END
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE   INPUT     INIT    CONFIG  COMPANY      FULLNAME */
 COMP( 1982, mz700,	  0,		0,		mz700,	  mz700,	mz700,	mz700,	"Sharp",     "MZ-700" , 0)
 COMP( 1982, mz700j,   mz700,	0,		mz700,	  mz700,	mz700,	mz700,	"Sharp",     "MZ-700 (Japan)" , 0)
-COMP( 1982, mz800,	  mz700,	0,		mz800,	  mz700,	mz800,	mz700,	"Sharp",     "MZ-800" , 0)
+COMP( 1982, mz800,	  mz700,	0,		mz800,	  mz700,	mz800,	mz700,	"Sharp",     "MZ-800" , GAME_NOT_WORKING )
 
 

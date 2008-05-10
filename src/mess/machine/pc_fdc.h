@@ -27,9 +27,10 @@
 struct pc_fdc_interface
 {
 	NEC765_VERSION nec765_type;
+	NEC765_RDY_PIN nec765_rdy_pin;
 	void (*pc_fdc_interrupt)(int);
 	void (*pc_fdc_dma_drq)(int,int);
-	mess_image *(*get_image)(int floppy_index);
+	const device_config *(*get_image)(int floppy_index);
 };
 
 
@@ -40,15 +41,7 @@ void pc_fdc_dack_w(int);
 
 READ8_HANDLER(pc_fdc_r);
 WRITE8_HANDLER(pc_fdc_w);
-
-READ16_HANDLER(pc16le_fdc_r);
-WRITE16_HANDLER(pc16le_fdc_w);
-
-READ32_HANDLER(pc32le_fdc_r);
-WRITE32_HANDLER(pc32le_fdc_w);
-
-READ64_HANDLER(pc64be_fdc_r);
-WRITE64_HANDLER(pc64be_fdc_w);
+WRITE8_HANDLER ( pcjr_fdc_w );
 
 #endif /* PC_FDC_H */
 

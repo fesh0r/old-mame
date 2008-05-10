@@ -8,6 +8,7 @@
 ******************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/kim1.h"
 #include "sound/dac.h"
@@ -633,7 +634,7 @@ MACHINE_RESET( kim1 )
 	set_chip_clock(1, 255);
 }
 
-static DEVICE_LOAD( kim1_cassette )
+static DEVICE_IMAGE_LOAD( kim1_cassette )
 {
 	const char magic[] = "KIM1";
 	char buff[4];
@@ -681,6 +682,7 @@ INTERRUPT_GEN( kim1_interrupt )
 INLINE int m6530_r(int chip, int offset)
 {
 	int data = 0xff;
+	running_machine *machine = Machine;
 
 	switch (offset)
 	{
@@ -692,8 +694,8 @@ INLINE int m6530_r(int chip, int offset)
 
 			switch (which)
 			{
-			case 0:				   /* key row 1 */
-				m6530[1].dria = readinputport(0);
+			case 0:				   /* key row 0 */
+				m6530[1].dria = input_port_read(machine, "LINE0");
 				logerror("read keybd(%d): %c%c%c%c%c%c%c\n",
 					 which,
 					 (m6530[1].dria & 0x40) ? '.' : '0',
@@ -704,8 +706,8 @@ INLINE int m6530_r(int chip, int offset)
 					 (m6530[1].dria & 0x02) ? '.' : '5',
 					 (m6530[1].dria & 0x01) ? '.' : '6');
 				break;
-			case 1:				   /* key row 2 */
-				m6530[1].dria = readinputport(1);
+			case 1:				   /* key row 1 */
+				m6530[1].dria = input_port_read(machine, "LINE1");
 				logerror("read keybd(%d): %c%c%c%c%c%c%c\n",
 					 which,
 					 (m6530[1].dria & 0x40) ? '.' : '7',
@@ -716,8 +718,8 @@ INLINE int m6530_r(int chip, int offset)
 					 (m6530[1].dria & 0x02) ? '.' : 'C',
 					 (m6530[1].dria & 0x01) ? '.' : 'D');
 				break;
-			case 2:				   /* key row 3 */
-				m6530[1].dria = readinputport(2);
+			case 2:				   /* key row 2 */
+				m6530[1].dria = input_port_read(machine, "LINE2");
 				logerror("read keybd(%d): %c%c%c%c%c%c%c\n",
 					 which,
 					 (m6530[1].dria & 0x40) ? '.' : 'E',
@@ -806,11 +808,11 @@ static void m6530_w(int chip, int offset, int data)
 
 			switch (which)
 			{
-			case 0:				   /* key row 1 */
+			case 0:				   /* key row 0 */
 				break;
-			case 1:				   /* key row 2 */
+			case 1:				   /* key row 1 */
 				break;
-			case 2:				   /* key row 3 */
+			case 2:				   /* key row 2 */
 				break;
 			case 3:				   /* WR4?? */
 				break;
@@ -921,7 +923,7 @@ void kim1_cassette_getinfo(const mess_device_class *devclass, UINT32 state, unio
 		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_kim1_cassette; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(kim1_cassette); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "kim1"); break;

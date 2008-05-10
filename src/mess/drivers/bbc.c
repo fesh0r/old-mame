@@ -394,7 +394,7 @@ static INPUT_PORTS_START(bbca)
 	PORT_BIT(0x10,  IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("K") PORT_CODE(KEYCODE_K)
 	PORT_BIT(0x20,  IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("L") PORT_CODE(KEYCODE_L)
 	PORT_BIT(0x40,  IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA)
-	PORT_BIT(0x80,  IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F8") PORT_CODE(KEYCODE_3_PAD)
+	PORT_BIT(0x80,  IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F8") PORT_CODE(KEYCODE_8_PAD)
 
 /* KEYBOARD COLUMN 7 */
 	PORT_START
@@ -807,6 +807,9 @@ static MACHINE_DRIVER_START( bbcm )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MDRV_NVRAM_HANDLER( mc146818 )
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 static void bbc_cartslot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -818,7 +821,7 @@ static void bbc_cartslot_getinfo(const mess_device_class *devclass, UINT32 state
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_bbcb_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(bbcb_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "rom"); break;
@@ -836,7 +839,7 @@ static void bbc_floppy_getinfo(const mess_device_class *devclass, UINT32 state, 
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_bbc_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(bbc_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "ssd,bbc,img"); break;
@@ -859,21 +862,8 @@ static void bbc_cassette_getinfo( const mess_device_class *devclass, UINT32 stat
 	}
 }
 
-static void bbc_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
 SYSTEM_CONFIG_START(bbca)
 	CONFIG_DEVICE(bbc_cassette_getinfo)
-	CONFIG_DEVICE(bbc_printer_getinfo)
 SYSTEM_CONFIG_END
 
 
@@ -881,7 +871,6 @@ SYSTEM_CONFIG_START(bbc)
 	CONFIG_DEVICE(bbc_cartslot_getinfo)
 	CONFIG_DEVICE(bbc_floppy_getinfo)
 	CONFIG_DEVICE(bbc_cassette_getinfo)
-	CONFIG_DEVICE(bbc_printer_getinfo)
 SYSTEM_CONFIG_END
 
 

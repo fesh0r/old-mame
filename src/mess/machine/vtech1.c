@@ -82,7 +82,7 @@ static int vtech1_fdc_latch = 0;
  Machine Initialisation
 ******************************************************************************/
 
-static void common_init_machine(int base)
+static void common_init_machine(running_machine *machine, int base)
 {
 	/* internal ram */
 	memory_configure_bank(1, 0, 1, mess_ram, 0);
@@ -94,13 +94,13 @@ static void common_init_machine(int base)
 		case 22 * 1024:
 		case 32 * 1024:
 			/* install 16KB memory expansion */
-			memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, base, base + 0x3fff, 0, 0, SMH_BANK2);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, base, base + 0x3fff, 0, 0, SMH_BANK2);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, base, base + 0x3fff, 0, 0, SMH_BANK2);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, base, base + 0x3fff, 0, 0, SMH_BANK2);
 			memory_configure_bank(2, 0, 1, mess_ram + base - 0x7800, 0);
 			memory_set_bank(2, 0);
 
-			memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, base + 0x4000, 0xffff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, base + 0x4000, 0xffff, 0, 0, SMH_NOP);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, base + 0x4000, 0xffff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, base + 0x4000, 0xffff, 0, 0, SMH_NOP);
 			break;
 
 		case 66 * 1024:
@@ -108,39 +108,39 @@ static void common_init_machine(int base)
 			/* 64KB/4MB memory expansion */
 
 			/* install fixed first bank */
-			memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK2);
 			memory_configure_bank(2, 0, 1, mess_ram + 0x800, 0);
 			memory_set_bank(2, 0);
 
 			/* install the others, dynamically banked in */
-			memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK3);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK3);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK3);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xffff, 0, 0, SMH_BANK3);
 			memory_configure_bank(3, 0, (mess_ram_size - 0x4800) / 0x4000, mess_ram + 0x4800, 0x4000);
 			memory_set_bank(3, 0);
 			break;
 
 		default:
 			/* no memory expansion */
-			memory_install_read8_handler (0, ADDRESS_SPACE_PROGRAM, base, 0xffff, 0, 0, SMH_NOP);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, base, 0xffff, 0, 0, SMH_NOP);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, base, 0xffff, 0, 0, SMH_NOP);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, base, 0xffff, 0, 0, SMH_NOP);
 			break;
 	}
 }
 
 MACHINE_START(laser110)
 {
-	common_init_machine(0x8000);
+	common_init_machine(machine, 0x8000);
 }
 
 MACHINE_START(laser210)
 {
-	common_init_machine(0x9000);
+	common_init_machine(machine, 0x9000);
 }
 
 MACHINE_START(laser310)
 {
-	common_init_machine(0xb800);
+	common_init_machine(machine, 0xb800);
 }
 
 
@@ -165,7 +165,7 @@ WRITE8_HANDLER (vtech1_memory_bank_w)
  Cassette Handling
 ******************************************************************************/
 
-static mess_image *cassette_device_image(void)
+static const device_config *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
@@ -177,40 +177,52 @@ static mess_image *cassette_device_image(void)
 
 SNAPSHOT_LOAD(vtech1)
 {
-	UINT8 header[24];
-	UINT16 start, end;
+	UINT8 i, header[24];
+	UINT16 start, end, size;
+	char pgmname[18];
 
 	/* get the header */
 	image_fread(image, &header, sizeof(header));
+	for (i = 0; i < 16; i++) pgmname[i] = header[i+4];
+	pgmname[16] = '\0';
 
 	/* get start and end addresses */
 	start = pick_integer_le(header, 22, 2);
 	end = start + snapshot_size - sizeof(header);
+	size = end - start;
 
 	/* check if we have enough ram */
-	if (mess_ram_size < end - start)
+	if (mess_ram_size < size)
+	{
+		char message[256];
+		snprintf(message, ARRAY_LENGTH(message), "SNAPLOAD: %s\nInsufficient RAM - need %04X",pgmname,size);
+		image_seterror(image, IMAGE_ERROR_INVALIDIMAGE, message);
 		return INIT_FAIL;
+	}
 
 	/* write it to ram */
-	image_fread(image, &mess_ram[start - 0x7800], end - start);
+	image_fread(image, &mess_ram[start - 0x7800], size);
 
 	/* patch variables depending on snapshot type */
 	switch (header[21])
 	{
-	case VZ_BASIC:
-		program_write_byte_8(0x78a4, start % 256); /* start of basic program */
-		program_write_byte_8(0x78a5, start / 256);
-		program_write_byte_8(0x78f9, end % 256); /* end of basic program */
-		program_write_byte_8(0x78fa, end / 256);
-		program_write_byte_8(0x78fb, end % 256); /* start variable table */
-		program_write_byte_8(0x78fc, end / 256);
-		program_write_byte_8(0x78fd, end % 256); /* start free mem, end variable table */
-		program_write_byte_8(0x78fe, end / 256);
+	case VZ_BASIC:		/* 0xF0 */
+		program_write_byte(0x78a4, start % 256); /* start of basic program */
+		program_write_byte(0x78a5, start / 256);
+		program_write_byte(0x78f9, end % 256); /* end of basic program */
+		program_write_byte(0x78fa, end / 256);
+		program_write_byte(0x78fb, end % 256); /* start variable table */
+		program_write_byte(0x78fc, end / 256);
+		program_write_byte(0x78fd, end % 256); /* start free mem, end variable table */
+		program_write_byte(0x78fe, end / 256);
+		image_message(image, " %s (B)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
 		break;
 
-	case VZ_MCODE:
-		program_write_byte_8(0x788e, start % 256); /* usr subroutine address */
-		program_write_byte_8(0x788f, start / 256);
+	case VZ_MCODE:		/* 0xF1 */
+		program_write_byte(0x788e, start % 256); /* usr subroutine address */
+		program_write_byte(0x788f, start / 256);
+		image_message(image, " %s (M)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
+		cpunum_set_reg(0, REG_PC, start);				/* start program */
 		break;
 
 	default:
@@ -227,7 +239,7 @@ SNAPSHOT_LOAD(vtech1)
  Floppy Handling
 ******************************************************************************/
 
-static mess_image *vtech1_file(void)
+static const device_config *vtech1_file(void)
 {
 	if (vtech1_drive < 0)
 		return NULL;
@@ -253,7 +265,7 @@ int vtech1_floppy_id(int id)
 }
 */
 
-DEVICE_LOAD(vtech1_floppy)
+DEVICE_IMAGE_LOAD(vtech1_floppy)
 {
 	int id = image_index_in_device(image);
 
@@ -456,13 +468,13 @@ READ8_HANDLER(vtech1_joystick_r)
     int data = 0xff;
 
 	if (!(offset & 1))
-		data &= readinputportbytag("joystick_0");
+		data &= input_port_read(machine, "joystick_0");
 	if (!(offset & 2))
-		data &= readinputportbytag("joystick_0_arm");
+		data &= input_port_read(machine, "joystick_0_arm");
 	if (!(offset & 4))
-		data &= readinputportbytag("joystick_1");
+		data &= input_port_read(machine, "joystick_1");
 	if (!(offset & 8))
-		data &= readinputportbytag("joystick_1_arm");
+		data &= input_port_read(machine, "joystick_1_arm");
 
     return data;
 }
@@ -478,7 +490,7 @@ READ8_HANDLER(vtech1_keyboard_r)
 	for (row = 0; row < 8; row++) {
 		sprintf(portname, "keyboard_%d", row);
 		if (!(offset & (1 << row)))
-			data &= readinputportbytag(portname);
+			data &= input_port_read(machine, portname);
 	}
 
 	if (video_screen_get_vblank(machine->primary_screen))
@@ -531,6 +543,11 @@ WRITE8_HANDLER(vtech1_latch_w)
  Printer Handling
 ******************************************************************************/
 
+static const device_config *printer_device(running_machine *machine)
+{
+	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
+}
+
 /*
 The VZ200/300 printer interface uses I/O port address OE Hex for the ASCII
 character code data and strobe output, and address OOH for the busy/ready-bar
@@ -541,7 +558,7 @@ READ8_HANDLER(vtech1_printer_r)
 {
 	int data = 0xff;
 
-	if (printer_status(image_from_devtype_and_index(IO_PRINTER, 0), 0))
+	if (printer_is_ready(printer_device(machine)))
 		data &= ~0x01;
 
 	return data;
@@ -553,7 +570,7 @@ WRITE8_HANDLER(vtech1_printer_w)
 
 	switch (offset) {
 		case 0x0d:	/* strobe data to printer */
-			printer_output(image_from_devtype_and_index(IO_PRINTER, 0), prn_data);
+			printer_output(printer_device(machine), prn_data);
 			break;
 		case 0x0e:	/* load output latch */
 			prn_data = data;

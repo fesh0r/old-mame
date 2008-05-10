@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/sc61860/sc61860.h"
 
 #include "includes/pocketc.h"
@@ -59,6 +60,7 @@ void pc1403_outa(int data)
 int pc1403_ina(void)
 {
     UINT8 data=outa;
+	running_machine *machine = Machine;
 
     if (asic[3]&1) {
 	if (KEY_7) data|=1;
@@ -193,11 +195,13 @@ void pc1403_outc(int data)
 
 int pc1403_brk(void)
 {
+	running_machine *machine = Machine;
 	return KEY_BRK;
 }
 
 int pc1403_reset(void)
 {
+	running_machine *machine = Machine;
 	return KEY_RESET;
 }
 
@@ -241,13 +245,13 @@ DRIVER_INIT( pc1403 )
 	memory_set_bankptr(1, memory_region(REGION_USER1));
 	if (RAM32K)
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_RAM);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_RAM);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_RAM);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_RAM);
 	}
 	else
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xdfff, 0, 0, SMH_NOP);
 	}
 }
 

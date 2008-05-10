@@ -65,7 +65,6 @@
 
 #include "driver.h"
 #include "m6847.h"
-#include "deprecat.h"
 
 #ifdef ENABLE_DEBUGGER
 #include "debug/debugcpu.h"
@@ -158,7 +157,7 @@ struct _m6847_vdg
 
 
 
-static void apply_artifacts(UINT32 *line);
+static void apply_artifacts(running_machine *machine, UINT32 *line);
 
 static m6847_vdg *m6847;
 
@@ -1216,7 +1215,7 @@ static void text_mode(int scanline, UINT32 *RESTRICT line, const m6847_pixel *RE
 
 
 
-static void render_scanline(bitmap_t *bitmap, int scanline)
+static void render_scanline(running_machine *machine, bitmap_t *bitmap, int scanline)
 {
 	UINT32 border_color;
 	UINT32 *line;
@@ -1261,7 +1260,7 @@ static void render_scanline(bitmap_t *bitmap, int scanline)
 		if ((attrs & (M6847_AG|M6847_GM2|M6847_GM1|M6847_GM0))
 			== (M6847_AG|M6847_GM2|M6847_GM1|M6847_GM0))
 		{
-			apply_artifacts(line + 32);
+			apply_artifacts(machine, line + 32);
 		}
 	}
 	else
@@ -1294,7 +1293,7 @@ static UINT32 mix_color(double factor, UINT8 c0, UINT8 c1)
 
 
 
-static void apply_artifacts(UINT32 *line)
+static void apply_artifacts(running_machine *machine, UINT32 *line)
 {
 	/* Boy this code sucks; this code was adapted from the old M6847
 	 * artifacting implmentation.  The only reason that it didn't look as
@@ -1354,7 +1353,7 @@ static void apply_artifacts(UINT32 *line)
 	int i;
 
 	/* are we artifacting? */
-	artifacting = readinputportbytag_safe("artifacting", 0x00) & 0x03;
+	artifacting = input_port_read_safe(machine, "artifacting", 0x00) & 0x03;
 	if (artifacting == 0x00)
 		return;
 	artifacting &= 0x01;
@@ -1805,7 +1804,16 @@ static void build_fontdata(const m6847_variant *v)
 
 
 
-void m6847_init(const m6847_config *cfg)
+static STATE_POSTLOAD( m6847_postload )
+{
+	set_field_sync();
+	set_horizontal_sync();
+	set_dirty();
+}
+
+
+
+void m6847_init(running_machine *machine, const m6847_config *cfg)
 {
 	const m6847_variant *v;
 	UINT32 frequency;
@@ -1870,7 +1878,7 @@ void m6847_init(const m6847_config *cfg)
 	if (cfg->cpu0_timing_factor > 0)
 	{
 		cpu0_clock_period = period * cfg->cpu0_timing_factor * GROSS_FACTOR;
-		cpunum_set_clock(Machine, 0, ATTOSECONDS_PER_SECOND / cpu0_clock_period);
+		cpunum_set_clock(machine, 0, ATTOSECONDS_PER_SECOND / cpu0_clock_period);
 	}
 
 	/* calculate timing */
@@ -1891,9 +1899,7 @@ void m6847_init(const m6847_config *cfg)
 	timer_adjust_periodic(m6847->fs_rise_timer, attotime_zero, 0, attotime_make(0, frame_period));
 
 	/* setup save states */
-	state_save_register_func_postload(set_field_sync);
-	state_save_register_func_postload(set_horizontal_sync);
-	state_save_register_func_postload(set_dirty);
+	state_save_register_postload(machine, m6847_postload, NULL);
 
 	/* build font */
 	build_fontdata(v);
@@ -1915,7 +1921,7 @@ void m6847_init(const m6847_config *cfg)
 
 #ifdef ENABLE_DEBUGGER
 	/* setup debug commands */
-	if (Machine->debug_mode)
+	if (machine->debug_mode)
 		debug_console_register_command("m6847_dumpscanline", CMDFLAG_NONE, 0, 0, 0, execute_dumpscanline);
 #endif /* ENABLE_DEBUGGER */
 }
@@ -1954,7 +1960,7 @@ VIDEO_UPDATE(m6847)
 
 		/* the video RAM has been dirtied; need to draw */
 		for (row = cliprect->min_y; row <= cliprect->max_y; row++)
-			render_scanline(bitmap, row);
+			render_scanline(screen->machine, bitmap, row);
 	}
 	else
 	{

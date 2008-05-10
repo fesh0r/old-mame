@@ -432,6 +432,8 @@ static PALETTE_INIT( oric )
 
 static const struct AY8910interface oric_ay_interface =
 {
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
 	0,
 	0,
 	oric_psg_porta_write,
@@ -468,6 +470,9 @@ static MACHINE_DRIVER_START( oric )
 	MDRV_SOUND_ADD(AY8912, 1000000)
 	MDRV_SOUND_CONFIG(oric_ay_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
 MACHINE_DRIVER_END
 
 
@@ -540,21 +545,8 @@ static void oric_common_cassette_getinfo(const mess_device_class *devclass, UINT
 	}
 }
 
-static void oric_common_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
-	}
-}
-
 SYSTEM_CONFIG_START(oric_common)
 	CONFIG_DEVICE(oric_common_cassette_getinfo)
-	CONFIG_DEVICE(oric_common_printer_getinfo)
 SYSTEM_CONFIG_END
 
 static void oric1_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
@@ -570,8 +562,8 @@ static void oric1_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_oric_floppy; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_oric_floppy; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(oric_floppy); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(oric_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;

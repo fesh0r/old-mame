@@ -1,13 +1,12 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "video/ppu2c0x.h"
 #include "includes/nes.h"
 #include "machine/nes_mmc.h"
 #include "sound/nes_apu.h"
-#include "zlib.h"
 #include "image.h"
 #include "hash.h"
-#include "deprecat.h"
 
 
 
@@ -57,7 +56,7 @@ static nes_input in_1;
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void init_nes_core(void);
+static void init_nes_core(running_machine *machine);
 static void nes_machine_stop(running_machine *machine);
 
 
@@ -66,12 +65,12 @@ static void nes_machine_stop(running_machine *machine);
     FUNCTIONS
 ***************************************************************************/
 
-static mess_image *cartslot_image(void)
+static const device_config *cartslot_image(void)
 {
 	return image_from_devtype_and_index(IO_CARTSLOT, 0);
 }
 
-static void init_nes_core (void)
+static void init_nes_core (running_machine *machine)
 {
 	/* We set these here in case they weren't set in the cart loader */
 	nes.rom = memory_region(REGION_CPU1);
@@ -81,8 +80,8 @@ static void init_nes_core (void)
 
 	/* Brutal hack put in as a consequence of the new memory system; we really
 	 * need to fix the NES code */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK10);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK10);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK10);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x07ff, 0, 0x1800, SMH_BANK10);
 	memory_set_bankptr(10, nes.rom);
 
 	battery_ram = nes.wram;
@@ -93,12 +92,12 @@ static void init_nes_core (void)
 		case 20:
 			nes.slow_banking = 0;
 			nes_fds.data = auto_malloc( 0x8000 );
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4030, 0x403f, 0, 0, fds_r);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, SMH_BANK2);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_BANK1);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4030, 0x403f, 0, 0, fds_r);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, SMH_BANK2);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_BANK1);
 
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4020, 0x402f, 0, 0, fds_w);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, SMH_BANK2);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4020, 0x402f, 0, 0, fds_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xdfff, 0, 0, SMH_BANK2);
 
 			memory_set_bankptr(1, &nes.rom[0xe000]);
 			memory_set_bankptr(2, nes_fds.data );
@@ -106,22 +105,22 @@ static void init_nes_core (void)
 		case 40:
 			nes.slow_banking = 1;
 			/* Game runs code in between banks, so we do things different */
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_RAM);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_ROM);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_RAM);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, SMH_ROM);
 
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, nes_mid_mapper_w);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, nes_mapper_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, nes_mid_mapper_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, nes_mapper_w);
 			break;
 		default:
 			nes.slow_banking = 0;
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK5);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, SMH_BANK2);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK3);
-			memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_BANK4);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK5);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0, SMH_BANK1);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, SMH_BANK2);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xdfff, 0, 0, SMH_BANK3);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xffff, 0, 0, SMH_BANK4);
 
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, nes_mid_mapper_w);
-			memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, nes_mapper_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, nes_mid_mapper_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, nes_mapper_w);
 			break;
 	}
 
@@ -186,7 +185,7 @@ MACHINE_RESET( nes )
 
 MACHINE_START( nes )
 {
-	init_nes_core();
+	init_nes_core(machine);
 	add_exit_callback(machine, nes_machine_stop);
 }
 
@@ -231,7 +230,7 @@ static int zapper_hit_pixel(running_machine *machine, const nes_input *input)
 	retVal |= ((in_0.i0 >> in_0.shift) & 0x01);
 
 	/* Check the configuration to see what's connected */
-	cfg = readinputport(PORT_CONFIG1);
+	cfg = input_port_read(machine, "CONTROLLERS");
 
 	if (((cfg & 0x000f) == 0x0002) || ((cfg & 0x000f) == 0x0003))
 	{
@@ -265,7 +264,7 @@ static int zapper_hit_pixel(running_machine *machine, const nes_input *input)
 	retVal |= ((in_1.i0 >> in_1.shift) & 0x01);
 
 	/* Check the fake dip to see what's connected */
-	cfg = readinputport(PORT_CONFIG1);
+	cfg = input_port_read(machine, "CONTROLLERS");
 
 	if (((cfg & 0x00f0) == 0x0020) || ((cfg & 0x00f0) == 0x0030))
 	{
@@ -303,6 +302,8 @@ static int zapper_hit_pixel(running_machine *machine, const nes_input *input)
 static void nes_read_input_device(int cfg, nes_input *vals, int pad_port,
 	int supports_zapper, int paddle_port)
 {
+	char port[5];
+
 	vals->i0 = 0;
 	vals->i1 = 0;
 	vals->i2 = 0;
@@ -311,30 +312,33 @@ static void nes_read_input_device(int cfg, nes_input *vals, int pad_port,
 	{
 		case 0x01:	/* gamepad */
 			if (pad_port >= 0)
-				vals->i0 = readinputport(pad_port);
+			{
+				sprintf(port, "PAD%d", pad_port+1);
+				vals->i0 = input_port_read(Machine, port);
+			}
 			break;
 
 		case 0x02:	/* zapper 1 */
 			if (supports_zapper)
 			{
-				vals->i0 = readinputport(PORT_ZAPPER0_T);
-				vals->i1 = readinputport(PORT_ZAPPER0_X);
-				vals->i2 = readinputport(PORT_ZAPPER0_Y);
+				vals->i0 = input_port_read(Machine, "ZAPPER1_T");
+				vals->i1 = input_port_read(Machine, "ZAPPER1_X");
+				vals->i2 = input_port_read(Machine, "ZAPPER1_Y");
 			}
 			break;
 
 		case 0x03:	/* zapper 2 */
 			if (supports_zapper)
 			{
-				vals->i0 = readinputport(PORT_ZAPPER1_T);
-				vals->i1 = readinputport(PORT_ZAPPER1_X);
-				vals->i2 = readinputport(PORT_ZAPPER1_Y);
+				vals->i0 = input_port_read(Machine, "ZAPPER2_T");
+				vals->i1 = input_port_read(Machine, "ZAPPER2_X");
+				vals->i2 = input_port_read(Machine, "ZAPPER2_Y");
 			}
 			break;
 
 		case 0x04:	/* arkanoid paddle */
 			if (paddle_port >= 0)
-				vals->i0 = (UINT8) ((UINT8) readinputport (paddle_port) + (UINT8)0x52) ^ 0xff;
+				vals->i0 = (UINT8) ((UINT8) input_port_read(Machine, "PADDLE") + (UINT8)0x52) ^ 0xff;
 			break;
 	}
 }
@@ -357,13 +361,13 @@ WRITE8_HANDLER ( nes_IN0_w )
 	in_1.shift = 0;
 
 	/* Check the configuration to see what's connected */
-	cfg = readinputport(PORT_CONFIG1);
+	cfg = input_port_read(machine, "CONTROLLERS");
 
 	/* Read the input devices */
-	nes_read_input_device(cfg >>  0, &in_0, PORT_PAD0,  TRUE, -1);
-	nes_read_input_device(cfg >>  4, &in_1, PORT_PAD1,  TRUE, PORT_PADDLE1);
-	nes_read_input_device(cfg >>  8, &in_2, PORT_PAD2, FALSE, -1);
-	nes_read_input_device(cfg >> 12, &in_3, PORT_PAD3, FALSE, -1);
+	nes_read_input_device(cfg >>  0, &in_0, 0,  TRUE, -1);
+	nes_read_input_device(cfg >>  4, &in_1, 1,  TRUE,  1);
+	nes_read_input_device(cfg >>  8, &in_2, 2, FALSE, -1);
+	nes_read_input_device(cfg >> 12, &in_3, 3, FALSE, -1);
 
 	if (cfg & 0x0f00)
 		in_0.i0 |= (in_2.i0 << 8) | (0x08 << 16);
@@ -379,7 +383,7 @@ WRITE8_HANDLER ( nes_IN1_w )
 
 
 
-DEVICE_LOAD(nes_cart)
+DEVICE_IMAGE_LOAD(nes_cart)
 {
 	const char *mapinfo;
 	int mapint1=0,mapint2=0,mapint3=0,mapint4=0,goodcrcinfo = 0;
@@ -465,13 +469,13 @@ DEVICE_LOAD(nes_cart)
 	if (nes.four_screen_vram) logerror("-- 4-screen VRAM\n");
 
 	/* Free the regions that were allocated by the ROM loader */
-	free_memory_region (Machine, REGION_CPU1);
-	free_memory_region (Machine, REGION_GFX1);
+	free_memory_region (image->machine, REGION_CPU1);
+	free_memory_region (image->machine, REGION_GFX1);
 
 	/* Allocate them again with the proper size */
-	new_memory_region(Machine, REGION_CPU1, 0x10000 + (nes.prg_chunks+1) * 0x4000,0);
+	new_memory_region(image->machine, REGION_CPU1, 0x10000 + (nes.prg_chunks+1) * 0x4000,0);
 	if (nes.chr_chunks)
-		new_memory_region(Machine, REGION_GFX1, nes.chr_chunks * 0x2000,0);
+		new_memory_region(image->machine, REGION_GFX1, nes.chr_chunks * 0x2000,0);
 
 	nes.rom = memory_region(REGION_CPU1);
 	nes.vrom = memory_region(REGION_GFX1);
@@ -553,7 +557,7 @@ void nes_partialhash(char *dest, const unsigned char *data,
 }
 
 
-DEVICE_INIT(nes_disk)
+DEVICE_START(nes_disk)
 {
 	/* clear some of the cart variables we don't use */
 	nes.trainer = 0;
@@ -566,12 +570,10 @@ DEVICE_INIT(nes_disk)
 
 	nes_fds.sides = 0;
 	nes_fds.data = NULL;
-
-	return INIT_PASS;
 }
 
 
-DEVICE_LOAD(nes_disk)
+DEVICE_IMAGE_LOAD(nes_disk)
 {
 	unsigned char magic[4];
 
@@ -603,7 +605,7 @@ DEVICE_LOAD(nes_disk)
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD(nes_disk)
+DEVICE_IMAGE_UNLOAD(nes_disk)
 {
 	/* TODO: should write out changes here as well */
 	nes_fds.data = NULL;

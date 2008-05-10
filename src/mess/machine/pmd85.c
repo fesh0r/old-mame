@@ -12,8 +12,8 @@
 #include "driver.h"
 #include "devices/cassette.h"
 #include "cpu/i8085/i8085.h"
-#include "includes/pmd85.h"
 #include "machine/8255ppi.h"
+#include "includes/pmd85.h"
 #include "machine/msm8251.h"
 #include "machine/pit8253.h"
 #include "includes/serial.h"
@@ -24,7 +24,7 @@ static UINT8 pmd85_ppi_port_outputs[4][3];
 
 static UINT8 pmd85_startup_mem_map = 0;
 static UINT8 pmd853_memory_mapping = 0x01;
-static void (*pmd85_update_memory) (void);
+static void (*pmd85_update_memory)(running_machine *);
 
 enum {PMD85_LED_1, PMD85_LED_2, PMD85_LED_3};
 enum {PMD85_1, PMD85_2, PMD85_2A, PMD85_2B, PMD85_3, ALFA, MATO};
@@ -33,17 +33,17 @@ static UINT8 pmd85_model;
 
 static emu_timer * pmd85_cassette_timer;
 
-static void pmd851_update_memory (void)
+static void pmd851_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_NOP);
 
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_NOP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(3, memory_region(REGION_CPU1) + 0x010000);
@@ -55,14 +55,14 @@ static void pmd851_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK5);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_BANK5);
 
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2);
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_BANK2);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK4);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x1000);
@@ -72,13 +72,13 @@ static void pmd851_update_memory (void)
 	}
 }
 
-static void pmd852a_update_memory (void)
+static void pmd852a_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
 
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_UNMAP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(2, mess_ram + 0x9000);
@@ -94,8 +94,8 @@ static void pmd852a_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK3);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x1000);
@@ -105,7 +105,7 @@ static void pmd852a_update_memory (void)
 	}
 }
 
-static void pmd853_update_memory (void)
+static void pmd853_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
@@ -139,13 +139,13 @@ static void pmd853_update_memory (void)
 	}
 }
 
-static void alfa_update_memory (void)
+static void alfa_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, SMH_UNMAP);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, SMH_NOP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, SMH_NOP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x011000);
@@ -156,9 +156,9 @@ static void alfa_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, SMH_BANK2);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, SMH_BANK3);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x0fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x33ff, 0, 0, SMH_BANK2);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3400, 0x3fff, 0, 0, SMH_BANK3);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x1000);
@@ -167,11 +167,11 @@ static void alfa_update_memory (void)
 	}
 }
 
-static void mato_update_memory (void)
+static void mato_update_memory(running_machine *machine)
 {
 	if (pmd85_startup_mem_map)
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 
 		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000);
 		memory_set_bankptr(2, mess_ram + 0xc000);
@@ -180,7 +180,7 @@ static void mato_update_memory (void)
 	}
 	else
 	{
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
 
 		memory_set_bankptr(1, mess_ram);
 		memory_set_bankptr(2, mess_ram + 0x4000);
@@ -202,7 +202,7 @@ static  READ8_HANDLER ( pmd85_ppi_0_porta_r )
 
 static  READ8_HANDLER ( pmd85_ppi_0_portb_r )
 {
-	return readinputport(pmd85_ppi_port_outputs[0][0]&0x0f) & readinputport(0x0f);
+	return input_port_read_indexed(machine, pmd85_ppi_port_outputs[0][0]&0x0f) & input_port_read_indexed(machine, 0x0f);
 }
 
 static  READ8_HANDLER ( pmd85_ppi_0_portc_r )
@@ -243,14 +243,14 @@ static  READ8_HANDLER ( mato_ppi_0_portb_r )
 	for (i = 0; i < 8; i++)
 	{
 		if (!(pmd85_ppi_port_outputs[0][0] & (1 << i)))
-			data &= readinputport(i);
+			data &= input_port_read_indexed(machine, i);
 	}
 	return data;
 }
 
 static  READ8_HANDLER ( mato_ppi_0_portc_r )
 {
-	return readinputport(0x08) | 0x8f;
+	return input_port_read_indexed(machine, 0x08) | 0x8f;
 }
 
 static WRITE8_HANDLER ( mato_ppi_0_portc_w )
@@ -375,9 +375,8 @@ static const struct msm8251_interface pmd85_msm8251_interface =
 
 *******************************************************************************/
 
-static const struct pit8253_config pmd85_pit8253_interface =
+const struct pit8253_config pmd85_pit8253_interface =
 {
-	TYPE8253,
 	{
 		{ 0,		NULL,	NULL },
 		{ 2000000,	NULL,	NULL },
@@ -469,7 +468,7 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							return ppi8255_0_r(machine, offset & 0x03);
+							return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 0x03);
 				}
 				break;
 		case 0x08:	/* ROM module connector */
@@ -484,7 +483,7 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 							switch (offset & 0x80)
 							{
 								case 0x80:	/* ROM module 8255 */
-										return ppi8255_3_r(machine, offset & 0x03);
+										return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_3" ), offset & 0x03);
 							}
 						}
 						break;
@@ -504,11 +503,11 @@ static WRITE8_HANDLER ( pmd85_ppi_3_portc_w )
 										}
 										break;
 								case 0x40:      /* 8255 (GPIO/0, GPIO/1) */
-										return ppi8255_1_r(machine, offset & 0x03);
+										return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 0x03);
 								case 0x50:	/* 8253 */
-										return pit8253_0_r(machine, offset & 0x03);
+										return pit8253_r( (device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8253, "pit8253" ), offset & 0x03);
 								case 0x70:	/* 8255 (IMS-2) */
-										return ppi8255_2_r(machine, offset & 0x03);
+										return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_2" ), offset & 0x03);
 							}
 							break;
 					case 0x80:	/* external interfaces */
@@ -526,7 +525,7 @@ WRITE8_HANDLER ( pmd85_io_w )
 	if (pmd85_startup_mem_map)
 	{
 		pmd85_startup_mem_map = 0;
-		pmd85_update_memory();
+		(*pmd85_update_memory)(machine);
 	}
 
 	switch (offset & 0x0c)
@@ -535,12 +534,12 @@ WRITE8_HANDLER ( pmd85_io_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							ppi8255_0_w(machine, offset & 0x03, data);
+							ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 0x03, data);
 							/* PMD-85.3 memory banking */
 							if ((offset & 0x03) == 0x03)
 							{
 								pmd853_memory_mapping = data & 0x01;
-								pmd85_update_memory();
+								(*pmd85_update_memory)(machine);
 							}
 							break;
 				}
@@ -557,7 +556,7 @@ WRITE8_HANDLER ( pmd85_io_w )
 							switch (offset & 0x80)
 							{
 								case 0x80:	/* ROM module 8255 */
-										ppi8255_3_w(machine, offset & 0x03, data);
+										ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_3" ), offset & 0x03, data);
 										break;
 							}
 						}
@@ -578,14 +577,14 @@ WRITE8_HANDLER ( pmd85_io_w )
 										}
 										break;
 								case 0x40:      /* 8255 (GPIO/0, GPIO/0) */
-										ppi8255_1_w(machine, offset & 0x03, data);
+										ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_1" ), offset & 0x03, data);
 										break;
 								case 0x50:	/* 8253 */
-										pit8253_0_w(machine, offset & 0x03, data);
+										pit8253_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8253, "pit8253" ), offset & 0x03, data);
 										logerror ("8253 writing. Address: %02x, Data: %02x\n", offset, data);
 										break;
 								case 0x70:	/* 8255 (IMS-2) */
-										ppi8255_2_w(machine, offset & 0x03, data);
+										ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_2" ), offset & 0x03, data);
 										break;
 							}
 							break;
@@ -619,7 +618,7 @@ WRITE8_HANDLER ( pmd85_io_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							return ppi8255_0_r(machine, offset & 0x03);
+							return ppi8255_r((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 0x03);
 				}
 				break;
 	}
@@ -633,7 +632,7 @@ WRITE8_HANDLER ( mato_io_w )
 	if (pmd85_startup_mem_map)
 	{
 		pmd85_startup_mem_map = 0;
-		pmd85_update_memory();
+		(*pmd85_update_memory)(machine);
 	}
 
 	switch (offset & 0x0c)
@@ -642,44 +641,85 @@ WRITE8_HANDLER ( mato_io_w )
 				switch (offset & 0x80)
 				{
 					case 0x80:	/* Motherboard 8255 */
-							ppi8255_0_w(machine, offset & 0x03, data);
+							ppi8255_w((device_config*)device_list_find_by_tag( machine->config->devicelist, PPI8255, "ppi8255_0" ), offset & 0x03, data);
 							break;
 				}
 				break;
 	}
 }
 
-static const ppi8255_interface pmd85_ppi8255_interface =
+const ppi8255_interface pmd85_ppi8255_interface[4] =
 {
-	4,
-	{pmd85_ppi_0_porta_r, pmd85_ppi_1_porta_r, pmd85_ppi_2_porta_r, pmd85_ppi_3_porta_r},
-	{pmd85_ppi_0_portb_r, pmd85_ppi_1_portb_r, pmd85_ppi_2_portb_r, pmd85_ppi_3_portb_r},
-	{pmd85_ppi_0_portc_r, pmd85_ppi_1_portc_r, pmd85_ppi_2_portc_r, pmd85_ppi_3_portc_r},
-	{pmd85_ppi_0_porta_w, pmd85_ppi_1_porta_w, pmd85_ppi_2_porta_w, pmd85_ppi_3_porta_w},
-	{pmd85_ppi_0_portb_w, pmd85_ppi_1_portb_w, pmd85_ppi_2_portb_w, pmd85_ppi_3_portb_w},
-	{pmd85_ppi_0_portc_w, pmd85_ppi_1_portc_w, pmd85_ppi_2_portc_w, pmd85_ppi_3_portc_w}
+	{
+		pmd85_ppi_0_porta_r,
+		pmd85_ppi_0_portb_r,
+		pmd85_ppi_0_portc_r,
+		pmd85_ppi_0_porta_w,
+		pmd85_ppi_0_portb_w,
+		pmd85_ppi_0_portc_w
+	},
+	{
+		pmd85_ppi_1_porta_r,
+		pmd85_ppi_1_portb_r,
+		pmd85_ppi_1_portc_r,
+		pmd85_ppi_1_porta_w,
+		pmd85_ppi_1_portb_w,
+		pmd85_ppi_1_portc_w
+	},
+	{
+		pmd85_ppi_2_porta_r,
+		pmd85_ppi_2_portb_r,
+		pmd85_ppi_2_portc_r,
+		pmd85_ppi_2_porta_w,
+		pmd85_ppi_2_portb_w,
+		pmd85_ppi_2_portc_w
+	},
+	{
+		pmd85_ppi_3_porta_r,
+		pmd85_ppi_3_portb_r,
+		pmd85_ppi_3_portc_r,
+		pmd85_ppi_3_porta_w,
+		pmd85_ppi_3_portb_w,
+		pmd85_ppi_3_portc_w
+	}
 };
 
-static const ppi8255_interface alfa_ppi8255_interface =
+const ppi8255_interface alfa_ppi8255_interface[3] =
 {
-	3,
-	{pmd85_ppi_0_porta_r, pmd85_ppi_1_porta_r, pmd85_ppi_2_porta_r},
-	{pmd85_ppi_0_portb_r, pmd85_ppi_1_portb_r, pmd85_ppi_2_portb_r},
-	{pmd85_ppi_0_portc_r, pmd85_ppi_1_portc_r, pmd85_ppi_2_portc_r},
-	{pmd85_ppi_0_porta_w, pmd85_ppi_1_porta_w, pmd85_ppi_2_porta_w},
-	{pmd85_ppi_0_portb_w, pmd85_ppi_1_portb_w, pmd85_ppi_2_portb_w},
-	{pmd85_ppi_0_portc_w, pmd85_ppi_1_portc_w, pmd85_ppi_2_portc_w}
+	{
+		pmd85_ppi_0_porta_r,
+		pmd85_ppi_0_portb_r,
+		pmd85_ppi_0_portc_r,
+		pmd85_ppi_0_porta_w,
+		pmd85_ppi_0_portb_w,
+		pmd85_ppi_0_portc_w
+	},
+	{
+		pmd85_ppi_1_porta_r,
+		pmd85_ppi_1_portb_r,
+		pmd85_ppi_1_portc_r,
+		pmd85_ppi_1_porta_w,
+		pmd85_ppi_1_portb_w,
+		pmd85_ppi_1_portc_w
+	},
+	{
+		pmd85_ppi_2_porta_r,
+		pmd85_ppi_2_portb_r,
+		pmd85_ppi_2_portc_r,
+		pmd85_ppi_2_porta_w,
+		pmd85_ppi_2_portb_w,
+		pmd85_ppi_2_portc_w
+	}
 };
 
-static const ppi8255_interface mato_ppi8255_interface =
+const ppi8255_interface mato_ppi8255_interface =
 {
-	1,
-	{pmd85_ppi_0_porta_r},
-	{mato_ppi_0_portb_r},
-	{mato_ppi_0_portc_r},
-	{pmd85_ppi_0_porta_w},
-	{pmd85_ppi_0_portb_w},
-	{mato_ppi_0_portc_w}
+	pmd85_ppi_0_porta_r,
+	mato_ppi_0_portb_r,
+	mato_ppi_0_portc_r,
+	pmd85_ppi_0_porta_w,
+	pmd85_ppi_0_portb_w,
+	mato_ppi_0_portc_w
 };
 
 static struct serial_connection pmd85_cassette_serial_connection;
@@ -697,7 +737,7 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 	static int clk_level = 1;
 	static int clk_level_tape = 1;
 
-	if (!(readinputport(0x11)&0x02))	/* V.24 / Tape Switch */
+	if (!(input_port_read_indexed(machine, 0x11)&0x02))	/* V.24 / Tape Switch */
 	{
 		/* tape reading */
 		if (cassette_get_state(image_from_devtype_and_index(IO_CASSETTE, 0))&CASSETTE_PLAY)
@@ -760,14 +800,14 @@ static TIMER_CALLBACK(pmd85_cassette_timer_callback)
 
 static OPBASE_HANDLER(pmd85_opbaseoverride)
 {
-	if (readinputport(0x10)&0x01)
+	if (input_port_read_indexed(machine, 0x10)&0x01)
 		mame_schedule_soft_reset(machine);
 	return address;
 }
 
 static OPBASE_HANDLER(mato_opbaseoverride)
 {
-	if (readinputport(0x09)&0x01)
+	if (input_port_read_indexed(machine, 0x09)&0x01)
 		mame_schedule_soft_reset(machine);
 	return address;
 }
@@ -775,11 +815,6 @@ static OPBASE_HANDLER(mato_opbaseoverride)
 static void pmd85_common_driver_init (running_machine *machine)
 {
 	memory_set_opbase_handler(0, pmd85_opbaseoverride);
-
-	pit8253_init(1, &pmd85_pit8253_interface);
-	pit8253_0_gate_w(machine, 0, 1);
-	pit8253_0_gate_w(machine, 1, 1);
-	pit8253_0_gate_w(machine, 2, 1);
 
 	msm8251_init(&pmd85_msm8251_interface);
 
@@ -796,7 +831,6 @@ DRIVER_INIT ( pmd851 )
 {
 	pmd85_model = PMD85_1;
 	pmd85_update_memory = pmd851_update_memory;
-	ppi8255_init(&pmd85_ppi8255_interface);
 	pmd85_common_driver_init(machine);
 }
 
@@ -804,7 +838,6 @@ DRIVER_INIT ( pmd852a )
 {
 	pmd85_model = PMD85_2A;
 	pmd85_update_memory = pmd852a_update_memory;
-	ppi8255_init(&pmd85_ppi8255_interface);
 	pmd85_common_driver_init(machine);
 }
 
@@ -812,7 +845,6 @@ DRIVER_INIT ( pmd853 )
 {
 	pmd85_model = PMD85_3;
 	pmd85_update_memory = pmd853_update_memory;
-	ppi8255_init(&pmd85_ppi8255_interface);
 	pmd85_common_driver_init(machine);
 }
 
@@ -820,7 +852,6 @@ DRIVER_INIT ( alfa )
 {
 	pmd85_model = ALFA;
 	pmd85_update_memory = alfa_update_memory;
-	ppi8255_init(&alfa_ppi8255_interface);
 	pmd85_common_driver_init(machine);
 }
 
@@ -828,9 +859,18 @@ DRIVER_INIT ( mato )
 {
 	pmd85_model = MATO;
 	pmd85_update_memory = mato_update_memory;
-	ppi8255_init(&mato_ppi8255_interface);
 	memory_set_opbase_handler(0, mato_opbaseoverride);
 }
+
+
+static TIMER_CALLBACK( setup_pit8253_gates ) {
+	device_config *pit8253 = (device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8253, "pit8253" );
+
+	pit8253_gate_w(pit8253, 0, 1);
+	pit8253_gate_w(pit8253, 1, 1);
+	pit8253_gate_w(pit8253, 2, 1);
+}
+
 
 MACHINE_RESET( pmd85 )
 {
@@ -840,7 +880,7 @@ MACHINE_RESET( pmd85 )
 		case PMD85_1:
 		case PMD85_2A:
 		case PMD85_3:
-			pmd85_rom_module_present = (readinputport(0x11)&0x01) ? 1 : 0;
+			pmd85_rom_module_present = (input_port_read_indexed(machine, 0x11)&0x01) ? 1 : 0;
 			break;
 		case ALFA:
 		case MATO:
@@ -850,7 +890,7 @@ MACHINE_RESET( pmd85 )
 	/* memory initialization */
 	memset(mess_ram, 0, sizeof(unsigned char)*0x10000);
 	pmd85_startup_mem_map = 1;
-	pmd85_update_memory();
+	pmd85_update_memory(machine);
 
 	/* io devices initialization */
 	switch (pmd85_model)
@@ -860,9 +900,10 @@ MACHINE_RESET( pmd85 )
 		case PMD85_3:
 		case ALFA:
 			msm8251_reset();
-			pit8253_reset(0);
 			break;
 		case MATO:
 			break;
 	}
+
+	timer_set( attotime_zero, NULL, 0, setup_pit8253_gates );
 }

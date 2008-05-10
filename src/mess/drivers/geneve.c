@@ -212,6 +212,7 @@
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
 #include "devices/harddriv.h"
+#include "machine/idectrl.h"
 
 /*
     memory map
@@ -470,12 +471,16 @@ static MACHINE_DRIVER_START(geneve_60hz)
 	MDRV_VIDEO_START(geneve)
 	MDRV_VIDEO_UPDATE(generic_bitmapped)
 
+	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 	MDRV_SOUND_ADD(SN76496, 3579545)	/* 3.579545 MHz */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 	MDRV_SOUND_ADD(TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 
@@ -556,9 +561,9 @@ static void geneve_harddisk_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(mess_hd); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hd); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hd); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
@@ -579,8 +584,8 @@ static void geneve_parallel_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_pio); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_pio); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
@@ -600,8 +605,8 @@ static void geneve_serial_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_rs232); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_rs232); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
@@ -621,9 +626,9 @@ static void geneve_memcard_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(smartmedia); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;

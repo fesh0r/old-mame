@@ -115,6 +115,8 @@ Notes:
 #include "formats/vt_cas.h"
 
 
+static Z80BIN_EXECUTE(vtech1);
+
 /******************************************************************************
  Address Maps
 ******************************************************************************/
@@ -324,6 +326,13 @@ static MACHINE_DRIVER_START(laser110)
 	MDRV_SOUND_ADD(SPEAKER, 0)
 	MDRV_SOUND_CONFIG(speaker_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
+
+	/* printer */
+	MDRV_DEVICE_ADD("printer", PRINTER)
+
+	/* snapshot/quickload */
+	MDRV_SNAPSHOT_ADD(vtech1, "vz", 1.5)
+	MDRV_Z80BIN_QUICKLOAD_ADD(vtech1, 1.5)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START(laser200)
@@ -403,14 +412,8 @@ ROM_END
  System Config
 ******************************************************************************/
 
-static QUICKLOAD_LOAD( vtech1 )
+static Z80BIN_EXECUTE( vtech1 )
 {
-	UINT8 sw = readinputportbytag("CONFIG") & 1;			/* reading the dipswitch: 1 = autorun */
-	UINT16 exec_addr, start_addr, end_addr;
-
-	if (z80bin_load_file( machine, image, file_type, &exec_addr, &start_addr, &end_addr ) == INIT_FAIL)
-		return INIT_FAIL;
-
 	/* A Microsoft Basic program needs some manipulation before it can be run.
 	1. A start address of 7ae9 indicates a basic program which needs its pointers fixed up.
 	2. If autorun is turned off, the pointers still need fixing, but then display READY.
@@ -419,12 +422,12 @@ static QUICKLOAD_LOAD( vtech1 )
 		7ae9 = start (load) address of a conventional basic program
 		791e = custom routine to fix basic pointers */
 
-	program_write_word_16le(0x791c,end_addr+1);
-	program_write_word_16le(0x781e,exec_addr);
+	program_write_word_16le(0x791c, end_address + 1);
+	program_write_word_16le(0x781e, execute_address);
 
-	if (start_addr == 0x7ae9)
+	if (start_address == 0x7ae9)
 	{
-		UINT8 i, data[17]={
+		UINT8 i, data[]={
 			0xe5,			// PUSH HL	;save pcode pointer
 			0x2a, 0x1c, 0x79,	// LD HL,(791C)	;get saved end_addr+1
 			0x22, 0xf9, 0x78,	// LD (78F9),HL	;move it to correct place
@@ -433,41 +436,18 @@ static QUICKLOAD_LOAD( vtech1 )
 			0xcb, 0x9e,		// RES 3,(HL)	;turn off verify (just in case)
 			0xc3, 0xcf, 0x36,};	// JP 36CF	;enter bios at autorun point
 
-		for (i = 0; i < 17; i++) program_write_byte(0x791e + i, data[i]);
-		if (!sw) program_write_byte(0x7929, 0xb6);	/* turn off autorun */
+		for (i = 0; i < ARRAY_LENGTH(data); i++)
+			program_write_byte(0x791e + i, data[i]);
+
+		if (!autorun)
+			program_write_byte(0x7929, 0xb6);	/* turn off autorun */
+
 		cpunum_set_reg(0, REG_PC, 0x791e);
 	}
 	else
-	if ((exec_addr != 0xffff) && (sw)) cpunum_set_reg(0, REG_PC, exec_addr);
-
-	return INIT_PASS;
-}
-
-static void vtech1_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
 	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_DEV_FILE:		strcpy(info->s = device_temp_str(), __FILE__); break;
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy(info->s = device_temp_str(), "bin"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_QUICKLOAD_LOAD:	info->f = (genf *) quickload_load_vtech1; break;
-
-		default:				quickload_device_getinfo(devclass, state, info); break;
-	}
-}
-
-static void vtech1_printer_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* printer */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-
-		default:										printer_device_getinfo(devclass, state, info); break;
+		if (autorun)
+			cpunum_set_reg(0, REG_PC, execute_address);
 	}
 }
 
@@ -486,24 +466,6 @@ static void vtech1_cassette_getinfo(const mess_device_class *devclass, UINT32 st
 	}
 }
 
-static void vtech1_snapshot_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* snapshot */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "vz"); break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_SNAPSHOT_LOAD:					info->f = (genf *) snapshot_load_vtech1; break;
-
-		/* --- the following bits of info are returned as doubles --- */
-		case MESS_DEVINFO_FLOAT_SNAPSHOT_DELAY:				info->d = 0.5; break;
-
-		default:										snapshot_device_getinfo(devclass, state, info); break;
-	}
-}
-
 static void vtech1_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
 	/* floppy */
@@ -517,7 +479,7 @@ static void vtech1_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_vtech1_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(vtech1_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
@@ -537,12 +499,9 @@ static void vtech1_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
    easily modified to work on another model. */
 
 SYSTEM_CONFIG_START(vtech1)
-    CONFIG_DEVICE(vtech1_printer_getinfo)
     CONFIG_DEVICE(cartslot_device_getinfo)
     CONFIG_DEVICE(vtech1_cassette_getinfo)
-    CONFIG_DEVICE(vtech1_snapshot_getinfo)
     CONFIG_DEVICE(vtech1_floppy_getinfo)
-	CONFIG_DEVICE(vtech1_quickload_getinfo)
 	CONFIG_RAM_DEFAULT (66 * 1024)   /* with 64K memory expansion */
 	CONFIG_RAM         (4098 * 1024) /* with 4MB memory expansion */
 SYSTEM_CONFIG_END
@@ -575,7 +534,7 @@ COMP( 1983, laser110,   0,          0,      laser110,   vtech1, 0,   laser110,  
 COMP( 1983, las110de,   laser110,   0,      laser110,   vtech1, 0,   laser110,   "Sanyo",                    "Laser 110 (Germany)",              0 )
 
 COMP( 1983, laser200,   0,          0,      laser200,   vtech1, 0,   laser110,   "Video Technology",         "Laser 200",                        0 )
-COMP( 1983, vz200de,    laser200,   0,      laser200,   vtech1, 0,   laser110,   "Video Technology",         "VZ-200 (Germany & Netherlands)",   0 )
+COMP( 1983, vz200de,    laser200,   0,      laser200,   vtech1, 0,   laser110,   "Video Technology",         "VZ-200 (Germany & Netherlands)",   GAME_NOT_WORKING )
 COMP( 1983, fellow,     laser200,   0,      laser200,   vtech1, 0,   laser110,   "Salora",                   "Fellow (Finland)",                 0 )
 COMP( 1983, tx8000,     laser200,   0,      laser200,   vtech1, 0,   laser110,   "Texet",                    "TX-8000 (UK)",                     0 )
 

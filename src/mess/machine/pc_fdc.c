@@ -45,14 +45,20 @@ struct pc_fdc
 	/* stored int state */
 	int int_state;
 
+	/* PCJR watchdog timer */
+	emu_timer	*watchdog;
+
 	struct pc_fdc_interface fdc_interface;
 };
 
 static struct pc_fdc *fdc;
 
+/* Prototypes */
+
+static TIMER_CALLBACK( watchdog_timeout );
 static void pc_fdc_hw_interrupt(int state);
 static void pc_fdc_hw_dma_drq(int,int);
-static mess_image *pc_fdc_get_image(int floppy_index);
+static const device_config *pc_fdc_get_image(int floppy_index);
 
 static const nec765_interface pc_fdc_nec765_interface =
 {
@@ -81,7 +87,7 @@ static void pc_fdc_reset(void)
 void pc_fdc_init(const struct pc_fdc_interface *iface)
 {
 	int i;
-	mess_image *img;
+	const device_config *img;
 
 	/* initialize fdc structure */
 	fdc = auto_malloc(sizeof(*fdc));
@@ -92,11 +98,13 @@ void pc_fdc_init(const struct pc_fdc_interface *iface)
 		memcpy(&fdc->fdc_interface, iface, sizeof(fdc->fdc_interface));
 
 	/* setup nec765 interface */
-	nec765_init(&pc_fdc_nec765_interface, iface->nec765_type);
+	nec765_init(&pc_fdc_nec765_interface, iface->nec765_type, iface->nec765_rdy_pin);
+
+	fdc->watchdog = timer_alloc( watchdog_timeout, NULL );
 
 	pc_fdc_reset();
 
-	for (i = 0; i < device_count(IO_FLOPPY); i++)
+	for (i = 0; i < device_count(Machine, IO_FLOPPY); i++)
 	{
 		img = image_from_devtype_and_index(IO_FLOPPY, i);
 		floppy_drive_set_geometry(img, FLOPPY_DRIVE_DS_80);
@@ -105,13 +113,13 @@ void pc_fdc_init(const struct pc_fdc_interface *iface)
 
 
 
-static mess_image *pc_fdc_get_image(int floppy_index)
+static const device_config *pc_fdc_get_image(int floppy_index)
 {
-	mess_image *image = NULL;
+	const device_config *image = NULL;
 
 	if (!fdc->fdc_interface.get_image)
 	{
-		if (floppy_index < device_count(IO_FLOPPY))
+		if (floppy_index < device_count(Machine, IO_FLOPPY))
 			image = image_from_devtype_and_index(IO_FLOPPY, floppy_index);
 	}
 	else
@@ -229,12 +237,12 @@ static void pc_fdc_data_rate_w(UINT8 data)
 	 `------------------ 1 = turn floppy drive D motor on
  */
 
-static void pc_fdc_dor_w(UINT8 data)
+static void pc_fdc_dor_w(running_machine *machine, UINT8 data)
 {
 	int selected_drive;
 	int floppy_count;
 
-	floppy_count = device_count(IO_FLOPPY);
+	floppy_count = device_count(machine, IO_FLOPPY);
 
 	if (floppy_count > (fdc->digital_output_register & 0x03))
 		floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, fdc->digital_output_register & 0x03), 1, 0);
@@ -310,6 +318,98 @@ static void pc_fdc_dor_w(UINT8 data)
 }
 
 
+/*	PCJr FDC Digitial Output Register (DOR)
+
+	On a PC Jr the DOR is wired up a bit differently:
+	|7|6|5|4|3|2|1|0|
+	 | | | | | | | `--- Drive enable ( 0 = off, 1 = on )
+	 | | | | | | `----- Reserved
+	 | | | | | `------- Reserved
+	 | | | | `--------- Reserved
+	 | | | `----------- Reserved
+	 | | `------------- Watchdog Timer Enable ( 0 = watchdog disabled, 1 = watchdog enabled )
+	 | `--------------- Watchdog Timer Trigger ( on a 1->0 transition to strobe the trigger )
+	 `----------------- FDC Reset ( 0 = hold reset, 1 = release reset )
+ */
+
+static TIMER_CALLBACK( watchdog_timeout )
+{
+	/* Trigger a watchdog timeout signal */
+	if ( fdc->fdc_interface.pc_fdc_interrupt )
+	{
+		fdc->fdc_interface.pc_fdc_interrupt( 1 );
+		fdc->fdc_interface.pc_fdc_interrupt( 0 );
+	}
+}
+
+static void pcjr_fdc_dor_w(running_machine *machine, UINT8 data)
+{
+	int floppy_count;
+
+	floppy_count = device_count(machine, IO_FLOPPY);
+
+	/* set floppy drive motor state */
+	if (floppy_count > 0)
+		floppy_drive_set_motor_state(image_from_devtype_and_index(IO_FLOPPY, 0), data & 0x01);
+
+	if ( data & 0x01 )
+	{
+		if ( floppy_count )
+			floppy_drive_set_ready_state(image_from_devtype_and_index(IO_FLOPPY, 0), 1, 0);
+	}
+
+	/* Is the watchdog timer disabled */
+	if ( ! ( data & 0x20 ) )
+	{
+		timer_adjust_oneshot( fdc->watchdog, attotime_never, 0 );
+	} else {
+		/* Check for 1->0 watchdog trigger */
+		if ( ( fdc->digital_output_register & 0x40 ) && ! ( data & 0x40 ) )
+		{
+			/* Start watchdog timer here */
+			timer_adjust_oneshot( fdc->watchdog, ATTOTIME_IN_SEC(3), 0 );
+		}
+	}
+
+	/* reset? */
+	if ( ! (data & 0x80) )
+	{
+		/* yes */
+
+			/* pc-xt expects a interrupt to be generated
+			when the fdc is reset.
+			In the FDC docs, it states that a INT will
+			be generated if READY input is true when the
+			fdc is reset.
+
+				It also states, that outputs to drive are set to 0.
+				Maybe this causes the drive motor to go on, and therefore
+				the ready line is set.
+
+			This in return causes a int?? ---
+
+
+		what is not yet clear is if this is a result of the drives ready state
+		changing...
+		*/
+			nec765_set_ready_state(1);
+
+		/* set FDC at reset */
+		nec765_set_reset_state(1);
+	}
+	else
+	{
+		pc_fdc_set_tc_state(0);
+
+		/* release reset on fdc */
+		nec765_set_reset_state(0);
+	}
+
+	logerror("pcjr_fdc_dor_w: changing dor from %02x to %02x\n", fdc->digital_output_register, data);
+
+	fdc->digital_output_register = data;
+}
+
 
 READ8_HANDLER ( pc_fdc_r )
 {
@@ -356,7 +456,7 @@ WRITE8_HANDLER ( pc_fdc_w )
 		case 1:	/* n/a */
 			break;
 		case 2:
-			pc_fdc_dor_w(data);
+			pc_fdc_dor_w(machine, data);
 			break;
 		case 3:
 			/* tape drive select? */
@@ -384,12 +484,19 @@ WRITE8_HANDLER ( pc_fdc_w )
 	}
 }
 
-READ16_HANDLER( pc16le_fdc_r ) { return read16le_with_read8_handler(pc_fdc_r, machine, offset, mem_mask); }
-WRITE16_HANDLER( pc16le_fdc_w ) { write16le_with_write8_handler(pc_fdc_w, machine, offset, data, mem_mask); }
+WRITE8_HANDLER ( pcjr_fdc_w )
+{
+	if (LOG_FDC)
+		logerror("pcjr_fdc_w(): pc=0x%08x offset=%d data=0x%02X\n", (unsigned) activecpu_get_reg(REG_PC), offset, data);
 
-READ32_HANDLER( pc32le_fdc_r ) { return read32le_with_read8_handler(pc_fdc_r, machine, offset, mem_mask); }
-WRITE32_HANDLER( pc32le_fdc_w ) { write32le_with_write8_handler(pc_fdc_w, machine, offset, data, mem_mask); }
-
-READ64_HANDLER( pc64be_fdc_r ) { return read64be_with_read8_handler(pc_fdc_r, machine, offset, mem_mask); }
-WRITE64_HANDLER( pc64be_fdc_w ) { write64be_with_write8_handler(pc_fdc_w,machine,  offset, data, mem_mask); }
+	switch(offset)
+	{
+		case 2:
+			pcjr_fdc_dor_w( machine, data );
+			break;
+		default:
+			pc_fdc_w( machine, offset, data );
+			break;
+	}
+}
 

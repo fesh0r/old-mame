@@ -1,3 +1,173 @@
+0.125
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Bashkiria-2M (not fully operational) [Miodrag Milanovic]
+- BK 0010/0010.01 [Miodrag Milanovic]
+- Bondwell 2 (not working)  [Tomas Karlsson]
+- COMX 35 (not working) [Curt Coder]
+- Dick Smith Super-80 with VDUEB (original version) [Robbbert]
+- KOEI PasoGo (not working) [Peter Trauner]
+- Orion 128/Z80 Card II/Pro	[Miodrag Milanovic]
+- Pentagon (not fully operational)[Miodrag Milanovic]
+
+System Driver Changes:
+----------------------
+- [ABC80] Fixed so that it boots and keyboard works. [Robbbert]
+
+- [APPLE2] Changed slot system to be implemented as MAME devices.  [Nate
+  Woods]
+
+- [BK] Added cassette loading [Miodrag Milanovic]
+
+- [BW2] Added MSM6255 LCD controller emulation. [Curt Coder]
+
+- [CBM, C16] Simplified keyboard and interrupt handling code.  [Fabio Priuli]
+
+- [C64] Fixed some timings in c64 pal. [Roberto Zandonà]
+
+- [C64] Partial input fix, joystick 2 still not working. (bug #1150) [Roberto
+  Zandonà]
+
+- [C64] Implentation of sprite wrapping at the top of the screen. (bug #1599)
+  [Roberto Zandonà]
+
+- [COCO/COCO3] Transitioned Bitbanger and VHD support to use MAME's core
+  device system.  [Nate Woods]
+
+- [COUPE] Rewrote interrupt handling and screen handling, fixes line
+  interrupts.  [Dirk Best]
+
+- [COUPE] Added natural keyboard support.  [Dirk Best]
+
+- [COUPE] Added support for the SAD and SDF disk image formats, as well as
+  720k CP/M images.  [Dirk Best]
+
+- [COUPE] Added support for up to four 1 MB memory expansions.  [Dirk Best]
+
+- [ELECTRON] Fixed corrupt text in Mode 3. [Robbbert]
+
+- [EP128] Merged ex128 and ex128a drivers, to use alternate BIOSes.  [Fabio
+  Priuli]
+
+- [GENESIS] Clean and speed up SSF2 banking [Cowering]
+
+- [GENESIS] Add automatic support for many 'pirate' carts (thanks to Haze for
+  them)  [Cowering]
+
+- [IBMPC,IBM5150] Renamed ibmpc driver to ibm5150.  [Wilbert Pol]
+
+- [LISA] Fixed serial number read.  (bug #1583)  [Gilles Fetis]
+
+- [MBEE] Added quikload support for COM and MWB filetypes. Added LOCK key to
+  keyboard. [Robbbert]
+
+- [ORION] Added cassete loading [Miodrag Milanovic]
+
+- [PC] Fixed error reporting when loading non-existant images.  [Nate Woods]
+
+- [PC] Fixed cursor blinking.  (bug #1096) [Wilbert Pol]
+
+- [PCJR] Various improvements, promoted from TESTDRIVER.  [Wilbert Pol]
+
+- [QL] Converted ZX8301/2 into devices, and fixed system halting. [Curt Coder]
+
+- [SCORPION] IO map is fixed, and NMI for service mode added[Miodrag Milanovic]
+
+- [SPECIAL] Added Erik clone, and fixed bank switch problem [Miodrag Milanovic]
+
+- [SPECTRUM] Split into multiple drivers and cleanup [Miodrag Milanovic]
+
+- [SPECTRUM] IO maps are done in proper way [Miodrag Milanovic]
+
+- [SPECTRUM] Homebrew ROMs are now selectable BIOSes instead of separate
+  drivers. [Miodrag Milanovic]
+
+- [SVI318] UART fix.  [Tomas Karlsson]
+
+- [T1000HX] Fixed bug #1130.  [Wilbert Pol]
+
+- [THOMSON] Fixed crashes with non-default ram sizes.  (bug #1443) [Antoine
+  Mine]
+
+- [TMC2000] System is now working. [Curt Coder]
+
+- [TI99] Natural keyboard fix.  [Fabio Priuli]
+
+- [TUTOR] Changed joystick to use keypad instead of arrow keys by default.
+  [Fabio Priuli]
+
+- [VECTREX] Fixed bug #1569 [Mathis Rosenhauer]
+
+
+
+User Interface Changes:
+-----------------------
+- Fixed bug in file selector that could cause paths to contain extraneous
+  separators.  (bug #1595) [Nate Woods]
+
+- Shift+ScrollLock now triggers a paste command.  [Nate Woods]
+
+- Fixed file manager navigation keys.  (bug #1600) [Nate Woods]
+
+- [Windows] Made -nonewui default.  Depending on the reaction this spawns,
+  the newui may be removed in the future.  [Nate Woods]
+
+- [Windows] Fixed "Configure..." dialog problem when customizing certain
+  system's controllers.  (bugs #1570, #1573) [Nate Woods]
+
+- [Windows] Reduced flickering in input configuration dialog.  [Nate Woods]
+  
+- [Windows UI] Updated MESS icon, logo and other artwork (Asterokid, MAMEPlus
+  team, Hobie Troxell)
+
+- [Windows UI] Fixed custom filters dialog.  (bugs #1561, #1574) [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+(none)
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.125.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Major changes to transition MESS's device system onto MAME's device system.
+  [Nate Woods]
+ 
+- Converted printers, snapshots and quickloads to the new device system.
+  [Nate Woods]
+
+- Fixed memory bug in the hash file parsing code that could cause problems in
+  debug builds.  [Nate Woods]
+
+- Converted CDP1861 and CDP1864 display controllers to devices. [Curt Coder]
+
+- Updated WD17xx floppy implementation; busy signal is now set correctly.
+  [Miodrag Milanovic]
+
+- Clarified error message when MESS fails to load because of a device that is
+  expected to be present.  (bug #1493)  [Nate Woods]
+
+- Created a 'dumpkbd' debugger command to dump all natural keyboard info.
+  [Nate Woods]
+
+- Fixed a regression in natural keyboard support that could cause certain keys
+  to not be recognized.  (bug #1564)  [Nate Woods]
+
+- Converted HD63450 DMA controller to the new device system.  [Barry Rodewald]
+
+- New MESS specific OSD call:  osd_get_clipboard_text().  [Nate Woods]
+
+- Changed Apple FDC/IWM implementation to be a MAME device.  This affects the
+  Apple II, Apple III, Apple IIgs, Lisa and Mac drivers.  [Nate Woods]
+
+
+
 0.124a
 
 New System Drivers Supported (in no particular order):

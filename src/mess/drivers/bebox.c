@@ -9,13 +9,14 @@
 /* Core includes */
 #include "driver.h"
 #include "memconv.h"
+#include "devconv.h"
 #include "includes/bebox.h"
 
 /* Components */
 #include "video/pc_vga.h"
 #include "video/cirrus.h"
 #include "cpu/powerpc/ppc.h"
-#include "machine/uart8250.h"
+#include "machine/ins8250.h"
 #include "machine/pic8259.h"
 #include "machine/mc146818.h"
 #include "machine/pc_fdc.h"
@@ -24,6 +25,7 @@
 #include "machine/pckeybrd.h"
 #include "machine/8042kbdc.h"
 #include "machine/pit8253.h"
+#include "machine/idectrl.h"
 
 /* Devices */
 #include "devices/mflopimg.h"
@@ -32,8 +34,8 @@
 #include "formats/pc_dsk.h"
 
 
-static READ8_HANDLER(at_dma8237_1_r)  { return dma8237_1_r(machine, offset / 2); }
-static WRITE8_HANDLER(at_dma8237_1_w) { dma8237_1_w(machine, offset / 2, data); }
+static READ8_HANDLER(at_dma8237_1_r)  { return dma8237_r((device_config*)device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_2" ), offset / 2); }
+static WRITE8_HANDLER(at_dma8237_1_w) { dma8237_w((device_config*)device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_2" ), offset / 2, data); }
 
 static READ64_HANDLER( bebox_dma8237_1_r )
 {
@@ -45,6 +47,7 @@ static WRITE64_HANDLER( bebox_dma8237_1_w )
 	write64be_with_write8_handler(at_dma8237_1_w, machine, offset, data, mem_mask);
 }
 
+
 static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x7FFFF0F0, 0x7FFFF0F7) AM_READWRITE( bebox_cpu0_imask_r, bebox_cpu0_imask_w )
 	AM_RANGE(0x7FFFF1F0, 0x7FFFF1F7) AM_READWRITE( bebox_cpu1_imask_r, bebox_cpu1_imask_w )
@@ -52,20 +55,20 @@ static ADDRESS_MAP_START( bebox_mem, ADDRESS_SPACE_PROGRAM, 64 )
 	AM_RANGE(0x7FFFF3F0, 0x7FFFF3F7) AM_READWRITE( bebox_crossproc_interrupts_r, bebox_crossproc_interrupts_w )
 	AM_RANGE(0x7FFFF4F0, 0x7FFFF4F7) AM_WRITE( bebox_processor_resets_w )
 
-	AM_RANGE(0x80000000, 0x8000001F) AM_READWRITE( dma8237_64be_0_r, dma8237_64be_0_w )
-	AM_RANGE(0x80000020, 0x8000003F) AM_READWRITE( pic8259_64be_0_r, pic8259_64be_0_w )
-	AM_RANGE(0x80000040, 0x8000005f) AM_READWRITE( pit8253_64be_0_r, pit8253_64be_0_w )
+	AM_RANGE(0x80000000, 0x8000001F) AM_DEVREADWRITE8( DMA8237, "dma8237_1", dma8237_r, dma8237_w, U64(0xffffffffffffffff) )
+	AM_RANGE(0x80000020, 0x8000003F) AM_DEVREADWRITE8( PIC8259, "pic8259_master", pic8259_r, pic8259_w, U64(0xffffffffffffffff) )
+	AM_RANGE(0x80000040, 0x8000005f) AM_DEVREADWRITE8( PIT8254, "pit8254", pit8253_r, pit8253_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000060, 0x8000006F) AM_READWRITE( kbdc8042_64be_r, kbdc8042_64be_w )
 	AM_RANGE(0x80000070, 0x8000007F) AM_READWRITE( mc146818_port64be_r, mc146818_port64be_w )
 	AM_RANGE(0x80000080, 0x8000009F) AM_READWRITE( bebox_page_r, bebox_page_w)
-	AM_RANGE(0x800000A0, 0x800000BF) AM_READWRITE( pic8259_64be_1_r, pic8259_64be_1_w )
+	AM_RANGE(0x800000A0, 0x800000BF) AM_DEVREADWRITE8( PIC8259, "pic8259_slave", pic8259_r, pic8259_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x800000C0, 0x800000DF) AM_READWRITE( bebox_dma8237_1_r, bebox_dma8237_1_w)
 	AM_RANGE(0x800001F0, 0x800001F7) AM_READWRITE( bebox_800001F0_r, bebox_800001F0_w )
-	AM_RANGE(0x800002F8, 0x800002FF) AM_READWRITE( uart8250_64be_1_r, uart8250_64be_1_w )
-	AM_RANGE(0x80000380, 0x80000387) AM_READWRITE( uart8250_64be_2_r, uart8250_64be_2_w )
-	AM_RANGE(0x80000388, 0x8000038F) AM_READWRITE( uart8250_64be_3_r, uart8250_64be_3_w )
+	AM_RANGE(0x800002F8, 0x800002FF) AM_DEVREADWRITE8( NS16550, "ns16550_1", ins8250_r, ins8250_w, U64(0xffffffffffffffff) )
+	AM_RANGE(0x80000380, 0x80000387) AM_DEVREADWRITE8( NS16550, "ns16550_2", ins8250_r, ins8250_w, U64(0xffffffffffffffff) )
+	AM_RANGE(0x80000388, 0x8000038F) AM_DEVREADWRITE8( NS16550, "ns16550_3", ins8250_r, ins8250_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x800003F0, 0x800003F7) AM_READWRITE( bebox_800003F0_r, bebox_800003F0_w )
-	AM_RANGE(0x800003F8, 0x800003FF) AM_READWRITE( uart8250_64be_0_r, uart8250_64be_0_w )
+	AM_RANGE(0x800003F8, 0x800003FF) AM_DEVREADWRITE8( NS16550, "ns16550_0", ins8250_r, ins8250_w, U64(0xffffffffffffffff) )
 	AM_RANGE(0x80000480, 0x8000048F) AM_READWRITE( bebox_80000480_r, bebox_80000480_w )
 	AM_RANGE(0x80000CF8, 0x80000CFF) AM_READWRITE( pci_64be_r, pci_64be_w )
 	AM_RANGE(0x800042E8, 0x800042EF) AM_WRITE( cirrus_64be_42E8_w )
@@ -104,12 +107,42 @@ static MACHINE_DRIVER_START( bebox )
 
 	MDRV_INTERLEAVE(1)
 
+	MDRV_DEVICE_ADD( "pit8254", PIT8254 )
+	MDRV_DEVICE_CONFIG( bebox_pit8254_config )
+
+	MDRV_DEVICE_ADD( "dma8237_1", DMA8237 )
+	MDRV_DEVICE_CONFIG( bebox_dma8237_1_config )
+
+	MDRV_DEVICE_ADD( "dma8237_2", DMA8237 )
+	MDRV_DEVICE_CONFIG( bebox_dma8237_2_config )
+
+	MDRV_DEVICE_ADD( "pic8259_master", PIC8259 )
+	MDRV_DEVICE_CONFIG( bebox_pic8259_master_config )
+
+	MDRV_DEVICE_ADD( "pic8259_slave", PIC8259 )
+	MDRV_DEVICE_CONFIG( bebox_pic8259_slave_config )
+
+	MDRV_DEVICE_ADD( "ns16550_0", NS16550 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( bebox_uart_inteface[0] )
+
+	MDRV_DEVICE_ADD( "ns16550_1", NS16550 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( bebox_uart_inteface[1] )
+
+	MDRV_DEVICE_ADD( "ns16550_2", NS16550 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( bebox_uart_inteface[2] )
+
+	MDRV_DEVICE_ADD( "ns16550_3", NS16550 )			/* TODO: Verify model */
+	MDRV_DEVICE_CONFIG( bebox_uart_inteface[3] )
+
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, bebox_ide_interrupt )	/* FIXME */
+
 	/* video hardware */
 	MDRV_IMPORT_FROM( pcvideo_vga )
 	MDRV_SCREEN_MODIFY("main")
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 
+	MDRV_MACHINE_START( bebox )
 	MDRV_MACHINE_RESET( bebox )
 
 	MDRV_SPEAKER_STANDARD_MONO("mono")

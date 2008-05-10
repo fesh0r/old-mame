@@ -46,18 +46,21 @@ typedef struct {
 
 /*----------- defined in machine/msx.c -----------*/
 
+extern const ppi8255_interface msx_ppi8255_interface;
+
 /* start/stop functions */
 extern DRIVER_INIT( msx );
 extern DRIVER_INIT( msx2 );
 extern MACHINE_START( msx );
+extern MACHINE_START( msx2 );
 extern MACHINE_RESET( msx );
 extern MACHINE_RESET( msx2 );
 extern INTERRUPT_GEN( msx_interrupt );
 extern INTERRUPT_GEN( msx2_interrupt );
 extern NVRAM_HANDLER( msx2 );
 
-DEVICE_LOAD( msx_cart );
-DEVICE_UNLOAD( msx_cart );
+DEVICE_IMAGE_LOAD( msx_cart );
+DEVICE_IMAGE_UNLOAD( msx_cart );
 
 void msx_vdp_interrupt (int);
 
@@ -77,7 +80,7 @@ WRITE8_HANDLER ( msx_rtc_latch_w );
 WRITE8_HANDLER ( msx_90in1_w );
 
 /* disk functions */
-DEVICE_LOAD( msx_floppy );
+DEVICE_IMAGE_LOAD( msx_floppy );
 
 /* new memory emulation */
 WRITE8_HANDLER (msx_superloadrunner_w);

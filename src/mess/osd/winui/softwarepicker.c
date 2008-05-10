@@ -31,47 +31,58 @@
 
 
 
-struct FileInfo
+//============================================================
+//  TYPE DEFINITIONS
+//============================================================
+
+typedef struct _file_info file_info;
+struct _file_info
 {
-	mess_device_class devclass;
+	const device_config *device;
 
 	// hash information
-	char szHash[HASH_BUF_SIZE];
-	BOOL bHashRealized;
-	const struct hash_info *pHashInfo;
+	char hash_string[HASH_BUF_SIZE];
+	BOOL hash_realized;
+	const hash_info *hashinfo;
 
-	LPCSTR pszZipEntryName;
-	LPCSTR pszSubName;
-	char szFilename[1];
+	const char *zip_entry_name;
+	const char *base_name;
+	char file_name[1];
 };
 
-struct DirectorySearchInfo
+typedef struct _directory_search_info directory_search_info;
+struct _directory_search_info
 {
-	struct DirectorySearchInfo *pNext;
-	HANDLE hFind;
+	directory_search_info *next;
+	HANDLE find_handle;
 	WIN32_FIND_DATA fd;
-	char szDirectory[1];
+	char directory_name[1];
 };
 
-struct SoftwarePickerInfo
+typedef struct _software_picker_info software_picker_info;
+struct _software_picker_info
 {
-	WNDPROC pfnOldWndProc;
-	struct FileInfo **ppIndex;
-	int nIndexLength;
-	int nHashesRealized;
-	int nCurrentPosition;
-	struct DirectorySearchInfo *pFirstSearchInfo;
-	struct DirectorySearchInfo *pLastSearchInfo;
-	const game_driver *pDriver;
-	hash_file *pHashFile;
-	void (*pfnErrorProc)(const char *message);
+	WNDPROC old_window_proc;
+	file_info **file_index;
+	int file_index_length;
+	int hashes_realized;
+	int current_position;
+	directory_search_info *first_search_info;
+	directory_search_info *last_search_info;
+	const software_config *config;
 };
 
 
 
-static const TCHAR s_szSoftwarePickerProp[] = TEXT("SWPICKER");
+//============================================================
+//  CONSTANTS
+//============================================================
+
+static const TCHAR software_picker_property_name[] = TEXT("SWPICKER");
 
 
+
+//============================================================
 
 static LPCSTR NormalizePath(LPCSTR pszPath, LPSTR pszBuffer, size_t nBufferSize)
 {
@@ -114,51 +125,49 @@ static LPCSTR NormalizePath(LPCSTR pszPath, LPSTR pszBuffer, size_t nBufferSize)
 
 
 
-static struct SoftwarePickerInfo *GetSoftwarePickerInfo(HWND hwndPicker)
+static software_picker_info *GetSoftwarePickerInfo(HWND hwndPicker)
 {
 	HANDLE h;
-	h = GetProp(hwndPicker, s_szSoftwarePickerProp);
+	h = GetProp(hwndPicker, software_picker_property_name);
 	assert(h);
-	return (struct SoftwarePickerInfo *) h;
+	return (software_picker_info *) h;
 }
 
 
 
 LPCSTR SoftwarePicker_LookupFilename(HWND hwndPicker, int nIndex)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
+	software_picker_info *pPickerInfo;
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	if ((nIndex < 0) || (nIndex >= pPickerInfo->nIndexLength))
+	if ((nIndex < 0) || (nIndex >= pPickerInfo->file_index_length))
 		return NULL;
-	return pPickerInfo->ppIndex[nIndex]->szFilename;
+	return pPickerInfo->file_index[nIndex]->file_name;
 }
 
 
 
-mess_device_class SoftwarePicker_LookupDevice(HWND hwndPicker, int nIndex)
+const device_config *SoftwarePicker_LookupDevice(HWND hwndPicker, int nIndex)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
+	software_picker_info *pPickerInfo;
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	if ((nIndex < 0) || (nIndex >= pPickerInfo->nIndexLength))
+	if ((nIndex < 0) || (nIndex >= pPickerInfo->file_index_length))
 	{
-		mess_device_class dummy;
-		memset(&dummy, 0, sizeof(dummy));
-		return dummy;
+		return NULL;
 	}
-	return pPickerInfo->ppIndex[nIndex]->devclass;
+	return pPickerInfo->file_index[nIndex]->device;
 }
 
 
 
 int SoftwarePicker_LookupIndex(HWND hwndPicker, LPCSTR pszFilename)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
+	software_picker_info *pPickerInfo;
 	int i;
 
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	for (i = 0; i < pPickerInfo->nIndexLength; i++)
+	for (i = 0; i < pPickerInfo->file_index_length; i++)
 	{
-		if (!mame_stricmp(pPickerInfo->ppIndex[i]->szFilename, pszFilename))
+		if (!mame_stricmp(pPickerInfo->file_index[i]->file_name, pszFilename))
 			return i;
 	}
 	return -1;
@@ -168,103 +177,63 @@ int SoftwarePicker_LookupIndex(HWND hwndPicker, LPCSTR pszFilename)
 
 iodevice_t SoftwarePicker_GetImageType(HWND hwndPicker, int nIndex)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
-	const mess_device_class *devclass;
-
-	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	if ((nIndex < 0) || (nIndex >= pPickerInfo->nIndexLength))
-		return -1;
-
-	devclass = &pPickerInfo->ppIndex[nIndex]->devclass;
-	if (!devclass->gamedrv)
-		return -1;
-	return (iodevice_t) (int) mess_device_get_info_int(devclass, MESS_DEVINFO_INT_TYPE);
-}
-
-
-
-void SoftwarePicker_SetDriver(HWND hwndPicker, const game_driver *pDriver)
-{
-	struct SoftwarePickerInfo *pPickerInfo;
-	int i;
-
-	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-
-	// did the driver change?
-	if (pPickerInfo->pDriver != pDriver)
-	{
-		// is there a hash file loaded?
-		if (pPickerInfo->pHashFile != NULL)
-		{
-			// close down the file
-			hashfile_close(pPickerInfo->pHashFile);
-			pPickerInfo->pHashFile = NULL;
-
-			// invalidate the hash "realization"
-			for (i = 0; i < pPickerInfo->nIndexLength; i++)
-			{
-				pPickerInfo->ppIndex[i]->pHashInfo = NULL;
-				pPickerInfo->ppIndex[i]->bHashRealized = FALSE;
-			}
-			pPickerInfo->nHashesRealized = 0;
-		}
-
-
-		// change the driver value
-		pPickerInfo->pDriver = pDriver;
-
-		// if we have a driver, we have to load some stuff
-		if (pDriver != NULL)
-		{
-			// find a hash file
-			while((pDriver != NULL) && !pPickerInfo->pHashFile)
-			{
-				pPickerInfo->pHashFile = hashfile_open_options(MameUIGlobal(), pDriver->name, TRUE, pPickerInfo->pfnErrorProc);
-				pDriver = mess_next_compatible_driver(pDriver);
-			}
-		}
-	}
-}
-
-
-
-void SoftwarePicker_SetErrorProc(HWND hwndPicker, void (*pfnErrorProc)(const char *message))
-{
-	struct SoftwarePickerInfo *pPickerInfo;
-	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	pPickerInfo->pfnErrorProc = pfnErrorProc;
-}
-
-
-
-static void ComputeFileHash(struct SoftwarePickerInfo *pPickerInfo,
-	struct FileInfo *pFileInfo, const unsigned char *pBuffer, unsigned int nLength)
-{
-	unsigned int nFunctions;
 	iodevice_t type;
-	device_partialhash_handler partialhash;
+	const device_config *device = SoftwarePicker_LookupDevice(hwndPicker, nIndex);
 
-	type = (iodevice_t) (int) mess_device_get_info_int(&pFileInfo->devclass, MESS_DEVINFO_INT_TYPE);
-	partialhash = (device_partialhash_handler) mess_device_get_info_fct(&pFileInfo->devclass, MESS_DEVINFO_PTR_PARTIAL_HASH);
-
-	nFunctions = hashfile_functions_used(pPickerInfo->pHashFile, type);
-
-	if (partialhash)
+	if (device != NULL)
 	{
-		partialhash(pFileInfo->szHash, pBuffer, nLength, nFunctions);
+		type = image_device_getinfo(GetSoftwarePickerInfo(hwndPicker)->config->mconfig, device).type;
 	}
 	else
 	{
-		hash_compute(pFileInfo->szHash, pBuffer, nLength, nFunctions);
+		type = IO_UNKNOWN;
 	}
+	return type;
+}
+
+
+
+void SoftwarePicker_SetDriver(HWND hwndPicker, const software_config *config)
+{
+	int i;
+	software_picker_info *pPickerInfo;
+
+	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
+	pPickerInfo->config = config;
+
+	// invalidate the hash "realization"
+	for (i = 0; i < pPickerInfo->file_index_length; i++)
+	{
+		pPickerInfo->file_index[i]->hashinfo = NULL;
+		pPickerInfo->file_index[i]->hash_realized = FALSE;
+	}
+	pPickerInfo->hashes_realized = 0;
+}
+
+
+
+static void ComputeFileHash(software_picker_info *pPickerInfo,
+	file_info *pFileInfo, const unsigned char *pBuffer, unsigned int nLength)
+{
+	image_device_info info;
+	unsigned int functions;
+
+	// get the device info
+	info = image_device_getinfo(pPickerInfo->config->mconfig, pFileInfo->device);
+
+	// determine which functions to use
+	functions = hashfile_functions_used(pPickerInfo->config->hashfile, info.type);
+
+	// compute the hash
+	image_device_compute_hash(pFileInfo->hash_string, pFileInfo->device, pBuffer, nLength, functions);
 }
 
 
 
 static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
-	struct FileInfo *pFileInfo;
+	software_picker_info *pPickerInfo;
+	file_info *pFileInfo;
 	LPSTR pszZipName;
 	BOOL rc = FALSE;
 	unsigned char *pBuffer;
@@ -273,10 +242,10 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 	LVFINDINFO lvfi;
 
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	assert((nIndex >= 0) && (nIndex < pPickerInfo->nIndexLength));
-	pFileInfo = pPickerInfo->ppIndex[nIndex];
+	assert((nIndex >= 0) && (nIndex < pPickerInfo->file_index_length));
+	pFileInfo = pPickerInfo->file_index[nIndex];
 
-	if (pFileInfo->pszZipEntryName)
+	if (pFileInfo->zip_entry_name)
 	{
 		// this is in a ZIP file
 		zip_file *zip;
@@ -284,9 +253,9 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 		const zip_file_header *zipent;
 
 		// open the ZIP file
-		nLength = pFileInfo->pszZipEntryName - pFileInfo->szFilename;
+		nLength = pFileInfo->zip_entry_name - pFileInfo->file_name;
 		pszZipName = (LPSTR) alloca(nLength);
-		memcpy(pszZipName, pFileInfo->szFilename, nLength);
+		memcpy(pszZipName, pFileInfo->file_name, nLength);
 		pszZipName[nLength - 1] = '\0';
 
 		// get the entry name
@@ -296,7 +265,7 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 			zipent = zip_file_first_file(zip);
 			while(!rc && zipent)
 			{
-				if (!mame_stricmp(zipent->filename, pFileInfo->pszZipEntryName))
+				if (!mame_stricmp(zipent->filename, pFileInfo->zip_entry_name))
 				{
 					pBuffer = malloc(zipent->uncompressed_length);
 					if (pBuffer)
@@ -318,7 +287,7 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 	else
 	{
 		// plain open file; map it into memory and calculate the hash
-		hFile = win_create_file_utf8(pFileInfo->szFilename, GENERIC_READ, FILE_SHARE_READ, NULL,
+		hFile = win_create_file_utf8(pFileInfo->file_name, GENERIC_READ, FILE_SHARE_READ, NULL,
 			OPEN_EXISTING, 0, NULL);
 		if (hFile != INVALID_HANDLE_VALUE)
 		{
@@ -356,37 +325,38 @@ static BOOL SoftwarePicker_CalculateHash(HWND hwndPicker, int nIndex)
 
 static void SoftwarePicker_RealizeHash(HWND hwndPicker, int nIndex)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
-	struct FileInfo *pFileInfo;
+	software_picker_info *pPickerInfo;
+	file_info *pFileInfo;
 	unsigned int nHashFunctionsUsed = 0;
 	unsigned int nCalculatedHashes = 0;
 	iodevice_t type;
 
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	assert((nIndex >= 0) && (nIndex < pPickerInfo->nIndexLength));
-	pFileInfo = pPickerInfo->ppIndex[nIndex];
+	assert((nIndex >= 0) && (nIndex < pPickerInfo->file_index_length));
+	pFileInfo = pPickerInfo->file_index[nIndex];
 
 	// Determine which hash functions we need to use for this file, and which hashes
 	// have already been calculated
-	if ((pPickerInfo->pHashFile != NULL) && (pFileInfo->devclass.get_info != NULL))
+	if ((pPickerInfo->config->hashfile != NULL) && (pFileInfo->device != NULL))
 	{
-		type = (iodevice_t) (int) mess_device_get_info_int(&pFileInfo->devclass, MESS_DEVINFO_INT_TYPE);
+		image_device_info info = image_device_getinfo(pPickerInfo->config->mconfig, pFileInfo->device);
+		type = info.type;
 		if (type < IO_COUNT)
-	        nHashFunctionsUsed = hashfile_functions_used(pPickerInfo->pHashFile, type);
-		nCalculatedHashes = hash_data_used_functions(pFileInfo->szHash);
+	        nHashFunctionsUsed = hashfile_functions_used(pPickerInfo->config->hashfile, type);
+		nCalculatedHashes = hash_data_used_functions(pFileInfo->hash_string);
 	}
 
 	// Did we fully compute all hashes?
 	if ((nHashFunctionsUsed & ~nCalculatedHashes) == 0)
 	{
 		// We have calculated all hashs for this file; mark it as realized
-		pPickerInfo->ppIndex[nIndex]->bHashRealized = TRUE;
-		pPickerInfo->nHashesRealized++;
+		pPickerInfo->file_index[nIndex]->hash_realized = TRUE;
+		pPickerInfo->hashes_realized++;
 
-		if (pPickerInfo->pHashFile)
+		if (pPickerInfo->config->hashfile)
 		{
-			pPickerInfo->ppIndex[nIndex]->pHashInfo = hashfile_lookup(pPickerInfo->pHashFile,
-				pPickerInfo->ppIndex[nIndex]->szHash);
+			pPickerInfo->file_index[nIndex]->hashinfo = hashfile_lookup(pPickerInfo->config->hashfile,
+				pPickerInfo->file_index[nIndex]->hash_string);
 		}
 	}
 }
@@ -396,13 +366,12 @@ static void SoftwarePicker_RealizeHash(HWND hwndPicker, int nIndex)
 static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCSTR pszFilename,
 	UINT nZipEntryNameLength, UINT32 nCrc, BOOL bForce)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
-	struct FileInfo **ppNewIndex;
-	struct FileInfo *pInfo;
-	int nIndex, nSize, devindex;
-	LPCSTR pszExtension = NULL, s;
-	const struct IODevice *devices = NULL;
-	mess_device_class devclass = {0,};
+	software_picker_info *pPickerInfo;
+	file_info **ppNewIndex;
+	file_info *pInfo;
+	int nIndex, nSize;
+	LPCSTR pszExtension = NULL;
+	const device_config *device = NULL;
 
 	// first check to see if it is already here
 	if (SoftwarePicker_LookupIndex(hwndPicker, pszFilename) >= 0)
@@ -413,70 +382,54 @@ static BOOL SoftwarePicker_AddFileEntry(HWND hwndPicker, LPCSTR pszFilename,
 	// look up the device
 	if (strrchr(pszFilename, '.'))
 		pszExtension = strrchr(pszFilename, '.');
-	if (pszExtension && pPickerInfo->pDriver)
+	if ((pszExtension != NULL) && (pPickerInfo->config != NULL))
 	{
-		pszExtension++;
-
-		devices = devices_allocate(pPickerInfo->pDriver);
-		if (devices != NULL)
+		for (device = image_device_first(pPickerInfo->config->mconfig); device != NULL; device = image_device_next(device))
 		{
-			for (devindex = 0; devices[devindex].type < IO_COUNT; devindex++)
-			{
-				s = devices[devindex].file_extensions;
-				if (s)
-				{
-					while(*s && mame_stricmp(pszExtension, s))
-						s += strlen(s) + 1;
-					if (*s)
-					{
-						devclass = devices[devindex].devclass;
-						break;
-					}
-				}
-			}
-			devices_free(devices);
+			if (image_device_uses_file_extension(device, pszExtension))
+				break;
 		}
 	}
 
 	// no device?  cop out unless bForce is on
-	if (!devclass.gamedrv && !bForce)
+	if ((device == NULL) && !bForce)
 		return TRUE;
 
 	// create the FileInfo structure
-	nSize = sizeof(struct FileInfo) + strlen(pszFilename);
-	pInfo = (struct FileInfo *) malloc(nSize);
+	nSize = sizeof(file_info) + strlen(pszFilename);
+	pInfo = (file_info *) malloc(nSize);
 	if (!pInfo)
 		goto error;
 	memset(pInfo, 0, nSize);
 
 	// copy the filename
-	strcpy(pInfo->szFilename, pszFilename);
+	strcpy(pInfo->file_name, pszFilename);
 
 	// set up device and CRC, if specified
-	pInfo->devclass = devclass;
-	if (devclass.gamedrv && mess_device_get_info_fct(&devclass, MESS_DEVINFO_PTR_PARTIAL_HASH))
+	pInfo->device = device;
+	if ((device != NULL) && (image_device_getinfo(pPickerInfo->config->mconfig, device).has_partial_hash != 0))
 		nCrc = 0;
 	if (nCrc != 0)
-		snprintf(pInfo->szHash, sizeof(pInfo->szHash) / sizeof(pInfo->szHash[0]), "c:%08x#", nCrc);
+		snprintf(pInfo->hash_string, sizeof(pInfo->hash_string) / sizeof(pInfo->hash_string[0]), "c:%08x#", nCrc);
 
 	// set up zip entry name length, if specified
 	if (nZipEntryNameLength > 0)
-		pInfo->pszZipEntryName = pInfo->szFilename + strlen(pInfo->szFilename) - nZipEntryNameLength;
+		pInfo->zip_entry_name = pInfo->file_name + strlen(pInfo->file_name) - nZipEntryNameLength;
 
 	// calculate the subname
-	pInfo->pszSubName = strrchr(pInfo->szFilename, '\\');
-	if (pInfo->pszSubName)
-		pInfo->pszSubName++;
+	pInfo->base_name = strrchr(pInfo->file_name, '\\');
+	if (pInfo->base_name)
+		pInfo->base_name++;
 	else
-		pInfo->pszSubName = pInfo->szFilename;
+		pInfo->base_name = pInfo->file_name;
 
-	ppNewIndex = realloc(pPickerInfo->ppIndex, (pPickerInfo->nIndexLength + 1) * sizeof(*pPickerInfo->ppIndex));
+	ppNewIndex = realloc(pPickerInfo->file_index, (pPickerInfo->file_index_length + 1) * sizeof(*pPickerInfo->file_index));
 	if (!ppNewIndex)
 		goto error;
 
-	nIndex = pPickerInfo->nIndexLength++;
-	pPickerInfo->ppIndex = ppNewIndex;
-	pPickerInfo->ppIndex[nIndex] = pInfo;
+	nIndex = pPickerInfo->file_index_length++;
+	pPickerInfo->file_index = ppNewIndex;
+	pPickerInfo->file_index[nIndex] = pInfo;
 
 	// Realize the hash
 	SoftwarePicker_RealizeHash(hwndPicker, nIndex);
@@ -566,9 +519,9 @@ BOOL SoftwarePicker_AddFile(HWND hwndPicker, LPCSTR pszFilename)
 
 BOOL SoftwarePicker_AddDirectory(HWND hwndPicker, LPCSTR pszDirectory)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
-	struct DirectorySearchInfo *pSearchInfo;
-	struct DirectorySearchInfo **ppLast;
+	software_picker_info *pPickerInfo;
+	directory_search_info *pSearchInfo;
+	directory_search_info **ppLast;
 	size_t nSearchInfoSize;
 	char szBuffer[MAX_PATH];
 
@@ -578,62 +531,62 @@ BOOL SoftwarePicker_AddDirectory(HWND hwndPicker, LPCSTR pszDirectory)
 	Picker_ResetIdle(hwndPicker);
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
 
-	nSearchInfoSize = sizeof(struct DirectorySearchInfo) + strlen(pszDirectory);
+	nSearchInfoSize = sizeof(directory_search_info) + strlen(pszDirectory);
 	pSearchInfo = malloc(nSearchInfoSize);
 	if (!pSearchInfo)
 		return FALSE;
 	memset(pSearchInfo, 0, nSearchInfoSize);
-	pSearchInfo->hFind = INVALID_HANDLE_VALUE;
+	pSearchInfo->find_handle = INVALID_HANDLE_VALUE;
 
-	strcpy(pSearchInfo->szDirectory, pszDirectory);
+	strcpy(pSearchInfo->directory_name, pszDirectory);
 
 	// insert into linked list
-	if (pPickerInfo->pLastSearchInfo)
-		ppLast = &pPickerInfo->pLastSearchInfo->pNext;
+	if (pPickerInfo->last_search_info)
+		ppLast = &pPickerInfo->last_search_info->next;
 	else
-		ppLast = &pPickerInfo->pFirstSearchInfo;
+		ppLast = &pPickerInfo->first_search_info;
 	*ppLast = pSearchInfo;
-	pPickerInfo->pLastSearchInfo = pSearchInfo;
+	pPickerInfo->last_search_info = pSearchInfo;
 	return TRUE;
 }
 
 
 
-static void SoftwarePicker_FreeSearchInfo(struct DirectorySearchInfo *pSearchInfo)
+static void SoftwarePicker_FreeSearchInfo(directory_search_info *pSearchInfo)
 {
-	if (pSearchInfo->hFind != INVALID_HANDLE_VALUE)
-		FindClose(pSearchInfo->hFind);
+	if (pSearchInfo->find_handle != INVALID_HANDLE_VALUE)
+		FindClose(pSearchInfo->find_handle);
 	free(pSearchInfo);
 }
 
 
 
-static void SoftwarePicker_InternalClear(struct SoftwarePickerInfo *pPickerInfo)
+static void SoftwarePicker_InternalClear(software_picker_info *pPickerInfo)
 {
-	struct DirectorySearchInfo *p;
+	directory_search_info *p;
 	int i;
 
-	for (i = 0; i < pPickerInfo->nIndexLength; i++)
-		free(pPickerInfo->ppIndex[i]);
+	for (i = 0; i < pPickerInfo->file_index_length; i++)
+		free(pPickerInfo->file_index[i]);
 
-	while(pPickerInfo->pFirstSearchInfo)
+	while(pPickerInfo->first_search_info)
 	{
-		p = pPickerInfo->pFirstSearchInfo->pNext;
-		SoftwarePicker_FreeSearchInfo(pPickerInfo->pFirstSearchInfo);
-		pPickerInfo->pFirstSearchInfo = p;
+		p = pPickerInfo->first_search_info->next;
+		SoftwarePicker_FreeSearchInfo(pPickerInfo->first_search_info);
+		pPickerInfo->first_search_info = p;
 	}
 
-	pPickerInfo->ppIndex = NULL;
-	pPickerInfo->nIndexLength = 0;
-	pPickerInfo->nCurrentPosition = 0;
-	pPickerInfo->pLastSearchInfo = NULL;
+	pPickerInfo->file_index = NULL;
+	pPickerInfo->file_index_length = 0;
+	pPickerInfo->current_position = 0;
+	pPickerInfo->last_search_info = NULL;
 }
 
 
 
 void SoftwarePicker_Clear(HWND hwndPicker)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
+	software_picker_info *pPickerInfo;
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
 	SoftwarePicker_InternalClear(pPickerInfo);
 	ListView_DeleteAllItems(hwndPicker);
@@ -642,9 +595,9 @@ void SoftwarePicker_Clear(HWND hwndPicker)
 
 
 static BOOL SoftwarePicker_AddEntry(HWND hwndPicker,
-	struct DirectorySearchInfo *pSearchInfo)
+	directory_search_info *pSearchInfo)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
+	software_picker_info *pPickerInfo;
 	LPSTR pszFilename;
 	BOOL rc;
 	char* utf8_FileName;
@@ -660,8 +613,8 @@ static BOOL SoftwarePicker_AddEntry(HWND hwndPicker,
 		return TRUE;
 	}
 
-	pszFilename = alloca(strlen(pSearchInfo->szDirectory) + 1 + strlen(utf8_FileName) + 1);
-	strcpy(pszFilename, pSearchInfo->szDirectory);
+	pszFilename = alloca(strlen(pSearchInfo->directory_name) + 1 + strlen(utf8_FileName) + 1);
+	strcpy(pszFilename, pSearchInfo->directory_name);
 	strcat(pszFilename, "\\");
 	strcat(pszFilename, utf8_FileName);
 
@@ -678,10 +631,10 @@ static BOOL SoftwarePicker_AddEntry(HWND hwndPicker,
 
 BOOL SoftwarePicker_Idle(HWND hwndPicker)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
-	struct FileInfo *pFileInfo;
+	software_picker_info *pPickerInfo;
+	file_info *pFileInfo;
 	static const char szWildcards[] = "\\*.*";
-	struct DirectorySearchInfo *pSearchInfo;
+	directory_search_info *pSearchInfo;
 	LPSTR pszFilter;
 	BOOL bSuccess;
 	int nCount;
@@ -690,21 +643,21 @@ BOOL SoftwarePicker_Idle(HWND hwndPicker)
 
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
 
-	pSearchInfo = pPickerInfo->pFirstSearchInfo;
+	pSearchInfo = pPickerInfo->first_search_info;
 	if (pSearchInfo)
 	{
 		// searching through directories
-		if (pSearchInfo->hFind != INVALID_HANDLE_VALUE)
+		if (pSearchInfo->find_handle != INVALID_HANDLE_VALUE)
 		{
-			bSuccess = FindNextFile(pSearchInfo->hFind, &pSearchInfo->fd);
+			bSuccess = FindNextFile(pSearchInfo->find_handle, &pSearchInfo->fd);
 		}
 		else
 		{
-			pszFilter = alloca(strlen(pSearchInfo->szDirectory) + strlen(szWildcards) + 1);
-			strcpy(pszFilter, pSearchInfo->szDirectory);
+			pszFilter = alloca(strlen(pSearchInfo->directory_name) + strlen(szWildcards) + 1);
+			strcpy(pszFilter, pSearchInfo->directory_name);
 			strcat(pszFilter, szWildcards);
-			pSearchInfo->hFind = win_find_first_file_utf8(pszFilter, &pSearchInfo->fd);
-			bSuccess = pSearchInfo->hFind != INVALID_HANDLE_VALUE;
+			pSearchInfo->find_handle = win_find_first_file_utf8(pszFilter, &pSearchInfo->fd);
+			bSuccess = pSearchInfo->find_handle != INVALID_HANDLE_VALUE;
 		}
 
 		if (bSuccess)
@@ -713,44 +666,44 @@ BOOL SoftwarePicker_Idle(HWND hwndPicker)
 		}
 		else
 		{
-			pPickerInfo->pFirstSearchInfo = pSearchInfo->pNext;
-			if (!pPickerInfo->pFirstSearchInfo)
-				pPickerInfo->pLastSearchInfo = NULL;
+			pPickerInfo->first_search_info = pSearchInfo->next;
+			if (!pPickerInfo->first_search_info)
+				pPickerInfo->last_search_info = NULL;
 			SoftwarePicker_FreeSearchInfo(pSearchInfo);
 		}
 	}
-	else if (pPickerInfo->pHashFile && (pPickerInfo->nHashesRealized
-		< pPickerInfo->nIndexLength))
+	else if (pPickerInfo->config->hashfile && (pPickerInfo->hashes_realized
+		< pPickerInfo->file_index_length))
 	{
 		// time to realize some hashes
 		nCount = 100;
 
-		while((nCount > 0) && pPickerInfo->ppIndex[pPickerInfo->nCurrentPosition]->bHashRealized)
+		while((nCount > 0) && pPickerInfo->file_index[pPickerInfo->current_position]->hash_realized)
 		{
-			pPickerInfo->nCurrentPosition++;
-			pPickerInfo->nCurrentPosition %= pPickerInfo->nIndexLength;
+			pPickerInfo->current_position++;
+			pPickerInfo->current_position %= pPickerInfo->file_index_length;
 			nCount--;
 		}
 
-		pFileInfo = pPickerInfo->ppIndex[pPickerInfo->nCurrentPosition];
-		if (!pFileInfo->bHashRealized)
+		pFileInfo = pPickerInfo->file_index[pPickerInfo->current_position];
+		if (!pFileInfo->hash_realized)
 		{
-			type = (iodevice_t) (int) mess_device_get_info_int(&pFileInfo->devclass, MESS_DEVINFO_INT_TYPE);
-			if (hashfile_functions_used(pPickerInfo->pHashFile, type))
+			type = mess_device_from_core_device(pFileInfo->device)->type;
+			if (hashfile_functions_used(pPickerInfo->config->hashfile, type))
 			{
 				// only calculate the hash if it is appropriate for this device
-				if (!SoftwarePicker_CalculateHash(hwndPicker, pPickerInfo->nCurrentPosition))
+				if (!SoftwarePicker_CalculateHash(hwndPicker, pPickerInfo->current_position))
 					return FALSE;
 			}
-			SoftwarePicker_RealizeHash(hwndPicker, pPickerInfo->nCurrentPosition);
+			SoftwarePicker_RealizeHash(hwndPicker, pPickerInfo->current_position);
 
 			// under normal circumstances this will be redundant, but in the unlikely
 			// event of a failure, we do not want to keep running into a brick wall
 			// by calculating this hash over and over
-			if (!pPickerInfo->ppIndex[pPickerInfo->nCurrentPosition]->bHashRealized)
+			if (!pPickerInfo->file_index[pPickerInfo->current_position]->hash_realized)
 			{
-				pPickerInfo->ppIndex[pPickerInfo->nCurrentPosition]->bHashRealized = TRUE;
-				pPickerInfo->nHashesRealized++;
+				pPickerInfo->file_index[pPickerInfo->current_position]->hash_realized = TRUE;
+				pPickerInfo->hashes_realized++;
 			}
 		}
 	}
@@ -768,8 +721,8 @@ BOOL SoftwarePicker_Idle(HWND hwndPicker)
 LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 	TCHAR *pszBuffer, UINT nBufferLength)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
-	const struct FileInfo *pFileInfo;
+	software_picker_info *pPickerInfo;
+	const file_info *pFileInfo;
 	LPCTSTR s = NULL;
 	const char *pszUtf8 = NULL;
 	unsigned int nHashFunction = 0;
@@ -777,15 +730,15 @@ LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 	TCHAR* t_buf;
 
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	if ((nRow < 0) || (nRow >= pPickerInfo->nIndexLength))
+	if ((nRow < 0) || (nRow >= pPickerInfo->file_index_length))
 		return NULL;
 
-	pFileInfo = pPickerInfo->ppIndex[nRow];
+	pFileInfo = pPickerInfo->file_index[nRow];
 
 	switch(nColumn)
 	{
 		case MESS_COLUMN_IMAGES:
-			t_buf = tstring_from_utf8(pFileInfo->pszSubName);
+			t_buf = tstring_from_utf8(pFileInfo->base_name);
 			if( !t_buf )
 				return s;
 			_sntprintf(pszBuffer, nBufferLength, TEXT("%s"), t_buf);
@@ -797,21 +750,21 @@ LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 		case MESS_COLUMN_MANUFACTURER:
 		case MESS_COLUMN_YEAR:
 		case MESS_COLUMN_PLAYABLE:
-			if (pFileInfo->pHashInfo)
+			if (pFileInfo->hashinfo)
 			{
 				switch(nColumn)
 				{
 					case MESS_COLUMN_GOODNAME:
-						pszUtf8 = pFileInfo->pHashInfo->longname;
+						pszUtf8 = pFileInfo->hashinfo->longname;
 						break;
 					case MESS_COLUMN_MANUFACTURER:
-						pszUtf8 = pFileInfo->pHashInfo->manufacturer;
+						pszUtf8 = pFileInfo->hashinfo->manufacturer;
 						break;
 					case MESS_COLUMN_YEAR:
-						pszUtf8 = pFileInfo->pHashInfo->year;
+						pszUtf8 = pFileInfo->hashinfo->year;
 						break;
 					case MESS_COLUMN_PLAYABLE:
-						pszUtf8 = pFileInfo->pHashInfo->playable;
+						pszUtf8 = pFileInfo->hashinfo->playable;
 						break;
 				}
 				if (pszUtf8)
@@ -835,7 +788,7 @@ LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 				case MESS_COLUMN_MD5:	nHashFunction = HASH_MD5;	break;
 				case MESS_COLUMN_SHA1:	nHashFunction = HASH_SHA1;	break;
 			}
-			if (hash_data_extract_printable_checksum(pFileInfo->szHash, nHashFunction, szBuffer))
+			if (hash_data_extract_printable_checksum(pFileInfo->hash_string, nHashFunction, szBuffer))
 			{
 				t_buf = tstring_from_utf8(szBuffer);
 				if( !t_buf )
@@ -854,11 +807,11 @@ LPCTSTR SoftwarePicker_GetItemString(HWND hwndPicker, int nRow, int nColumn,
 static LRESULT CALLBACK SoftwarePicker_WndProc(HWND hwndPicker, UINT nMessage,
 	WPARAM wParam, LPARAM lParam)
 {
-	struct SoftwarePickerInfo *pPickerInfo;
+	software_picker_info *pPickerInfo;
 	LRESULT rc;
 
 	pPickerInfo = GetSoftwarePickerInfo(hwndPicker);
-	rc = CallWindowProc(pPickerInfo->pfnOldWndProc, hwndPicker, nMessage, wParam, lParam);
+	rc = CallWindowProc(pPickerInfo->old_window_proc, hwndPicker, nMessage, wParam, lParam);
 
 	if (nMessage == WM_DESTROY)
 	{
@@ -874,7 +827,7 @@ static LRESULT CALLBACK SoftwarePicker_WndProc(HWND hwndPicker, UINT nMessage,
 
 BOOL SetupSoftwarePicker(HWND hwndPicker, const struct PickerOptions *pOptions)
 {
-	struct SoftwarePickerInfo *pPickerInfo = NULL;
+	software_picker_info *pPickerInfo = NULL;
 	LONG_PTR l;
 
 	if (!SetupPicker(hwndPicker, pOptions))
@@ -885,12 +838,12 @@ BOOL SetupSoftwarePicker(HWND hwndPicker, const struct PickerOptions *pOptions)
 		goto error;
 	memset(pPickerInfo, 0, sizeof(*pPickerInfo));
 
-	if (!SetProp(hwndPicker, s_szSoftwarePickerProp, (HANDLE) pPickerInfo))
+	if (!SetProp(hwndPicker, software_picker_property_name, (HANDLE) pPickerInfo))
 		goto error;
 
 	l = (LONG_PTR) SoftwarePicker_WndProc;
 	l = SetWindowLongPtr(hwndPicker, GWLP_WNDPROC, l);
-	pPickerInfo->pfnOldWndProc = (WNDPROC) l;
+	pPickerInfo->old_window_proc = (WNDPROC) l;
 	return TRUE;
 
 error:

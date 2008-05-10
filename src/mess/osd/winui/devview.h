@@ -1,16 +1,19 @@
 #ifndef DEVVIEW_H
 #define DEVVIEW_H
 
+#include "swconfig.h"
+
+
 struct DevViewCallbacks
 {
-	BOOL (*pfnGetOpenFileName)(HWND hwndDevView, const struct IODevice *dev, LPTSTR pszFilename, UINT nFilenameLength);
-	BOOL (*pfnGetCreateFileName)(HWND hwndDevView, const struct IODevice *dev, LPTSTR pszFilename, UINT nFilenameLength);
-	void (*pfnSetSelectedSoftware)(HWND hwndDevView, int nGame, const struct IODevice *dev, int nID, LPCTSTR pszFilename);
-	LPCTSTR (*pfnGetSelectedSoftware)(HWND hwndDevView, int nGame, const struct IODevice *dev, int nID, LPTSTR pszBuffer, UINT nBufferLength);
+	BOOL (*pfnGetOpenFileName)(HWND hwndDevView, const machine_config *config, const device_config *dev, LPTSTR pszFilename, UINT nFilenameLength);
+	BOOL (*pfnGetCreateFileName)(HWND hwndDevView, const machine_config *config, const device_config *dev, LPTSTR pszFilename, UINT nFilenameLength);
+	void (*pfnSetSelectedSoftware)(HWND hwndDevView, int nGame, const machine_config *config, const device_config *dev, LPCTSTR pszFilename);
+	LPCTSTR (*pfnGetSelectedSoftware)(HWND hwndDevView, int nGame, const machine_config *config, const device_config *dev, LPTSTR pszBuffer, UINT nBufferLength);
 };
 
 void DevView_SetCallbacks(HWND hwndDevView, const struct DevViewCallbacks *pCallbacks);
-BOOL DevView_SetDriver(HWND hwndDevView, int nGame);
+BOOL DevView_SetDriver(HWND hwndDevView, const software_config *config);
 void DevView_RegisterClass(void);
 void DevView_Refresh(HWND hwndDevView);
 

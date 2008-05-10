@@ -31,8 +31,6 @@
 
 extern struct x68k_system sys;
 
-extern mc68901_t *x68k_mfp;
-
 extern emu_timer* scanline_timer;
 extern emu_timer* raster_irq;
 extern emu_timer* vblank_irq;
@@ -198,43 +196,6 @@ static void x68k_crtc_refresh_mode(running_machine *machine)
 
 	logerror("video_screen_configure(machine->primary_screen,%i,%i,[%i,%i,%i,%i],55.45)\n",scr.max_x,scr.max_y,visiblescr.min_x,visiblescr.min_y,visiblescr.max_x,visiblescr.max_y);
 	video_screen_configure(machine->primary_screen,scr.max_x,scr.max_y,&visiblescr,HZ_TO_ATTOSECONDS(55.45));
-/*
-	rect.min_x = rect.min_y = 0;
-	sys.crtc.visible_width = (sys.crtc.reg[3] - sys.crtc.reg[2]) * 8;
-	if(sys.crtc.height == 256)
-		sys.crtc.visible_height = (sys.crtc.reg[7] - sys.crtc.reg[6]) / 2;
-	else
-		sys.crtc.visible_height = sys.crtc.reg[7] - sys.crtc.reg[6];
-	if(!(sys.crtc.reg[20] & 0x10))  // 15kHz horizontal frequency
-		sys.crtc.visible_height *= 2;
-
-	rect.max_x = sys.crtc.width - 1;
-	rect.max_y = sys.crtc.height - 1;
-
-	sys.crtc.video_width = sys.crtc.reg[0] * 8;
-	sys.crtc.video_height = sys.crtc.reg[4] + 1;
-	if(sys.crtc.height == 256)
-		sys.crtc.video_height = (sys.crtc.reg[4] / 2) + 1;
-	if(rect.max_x < 1 || rect.max_y < 1)
-		return;  // bail out
-
-	if(sys.crtc.video_width < rect.max_x)
-		sys.crtc.video_width = rect.max_x + 1;
-	if(sys.crtc.video_height < rect.max_y)
-		sys.crtc.video_height = rect.max_y + 1;
-
-	// for now, we'll just center the display area, rather than calculate the display position from the CRTC regs
-	sys.crtc.hshift = (sys.crtc.width - sys.crtc.visible_width) / 2;
-	sys.crtc.vshift = (sys.crtc.height - sys.crtc.visible_height) / 2;
-
-	video_screen_configure(machine->primary_screen,sys.crtc.video_width,sys.crtc.video_height,&rect,HZ_TO_ATTOSECONDS(55.45));
-	logerror("video_screen_configure(machine->primary_screen,%i,%i,[%i,%i,%i,%i],55.45)\n",sys.crtc.video_width,sys.crtc.video_height,rect.min_x,rect.min_y,rect.max_x,rect.max_y);
-//	x68k_scanline = video_screen_get_vpos(machine->primary_screen);
-	if(sys.crtc.reg[4] != 0)
-	{
-//		scantime = ATTOTIME_IN_HZ(55.45) / sys.crtc.reg[4];
-//		timer_adjust_periodic(scanline_timer, attotime_zero, 0, scantime);
-	}*/
 }
 
 TIMER_CALLBACK(x68k_hsync)
@@ -272,7 +233,7 @@ TIMER_CALLBACK(x68k_crtc_raster_irq)
 	attotime end_time;
 
 	sys.mfp.gpio &= ~0x40;  // GPIP6
-	if((readinputportbytag("options") & 0x01))
+	if((input_port_read(machine, "options") & 0x01))
 	{
 		video_screen_update_partial(machine->primary_screen,scan);
 	}
@@ -287,6 +248,7 @@ TIMER_CALLBACK(x68k_crtc_raster_irq)
 
 TIMER_CALLBACK(x68k_crtc_vblank_irq)
 {
+	const device_config *x68k_mfp = device_list_find_by_tag(machine->config->devicelist, MC68901, MC68901_TAG);
 	int val = param;
 	attotime irq_time;
 	int vblank_line;
@@ -310,6 +272,7 @@ TIMER_CALLBACK(x68k_crtc_vblank_irq)
 		logerror("CRTC: VBlank off\n");
 	}
 
+	if (x68k_mfp != NULL)
 	mc68901_tai_w(x68k_mfp, sys.crtc.vblank);
 }
 
@@ -394,7 +357,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 		logerror("CRTC: Write to raster IRQ register - %i\n",data);
 		break;
 	case 20:
-		if(ACCESSING_LSB)
+		if(ACCESSING_BITS_0_7)
 		{
 			switch(data & 0x0c)
 			{
@@ -423,7 +386,7 @@ WRITE16_HANDLER( x68k_crtc_w )
 				break;
 			}
 		}
-		if(ACCESSING_MSB)
+		if(ACCESSING_BITS_8_15)
 		{
 			sys.crtc.interlace = 0;
 			if(data & 0x0400)  // real size 1024x1024

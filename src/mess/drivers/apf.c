@@ -54,13 +54,13 @@ static  READ8_HANDLER(apf_m1000_pia_in_a_func)
 
   UINT8 data=~0;
   if (!(pad_data & 0x08))
-    data &= readinputportbytag("joy3");
+    data &= input_port_read(machine, "joy3");
   if (!(pad_data & 0x04))
-    data &= readinputportbytag("joy2");
+    data &= input_port_read(machine, "joy2");
   if (!(pad_data & 0x02))
-    data &= readinputportbytag("joy1");
+    data &= input_port_read(machine, "joy1");
   if (!(pad_data & 0x01))
-    data &= readinputportbytag("joy0");
+    data &= input_port_read(machine, "joy0");
 
 	return data;
 }
@@ -249,11 +249,12 @@ static WRITE8_HANDLER(apf_imagination_pia_out_b_func)
 	/* bit 7 = ??? */
 
 	int keyboard_line;
+	char port[5];
 
 	keyboard_line = data & 0x07;
 
-// TODO: convert to readinputbytag
-	keyboard_data = readinputport(keyboard_line+4);
+	sprintf(port, "key%d", keyboard_line);
+	keyboard_data = input_port_read(machine, port);
 
 	/* bit 4: cassette motor control */
 	cassette_change_state(image_from_devtype_and_index(IO_CASSETTE, 0),
@@ -708,7 +709,7 @@ static void apfimag_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 2; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_apfimag_floppy; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(apfimag_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "apd"); break;

@@ -38,11 +38,11 @@ static int fmt[NDSK] = {0,};		/* index of disk formats */
 static int mode[NDSK] = {0,};		/* 0 read only, !0 read/write */
 static int bdos_trk[NDSK] = {0,};	/* BDOS track number */
 static int bdos_sec[NDSK] = {0,};	/* BDOS sector number */
-static mess_image *fp[NDSK] = {NULL, };	/* image file pointer */
+static const device_config *fp[NDSK] = {NULL, };	/* image file pointer */
 static int ff[NDSK] = {0, };            /* image filenames specified flags */
 static mame_file *lp = NULL; 			/* list file handle (ie. PIP LST:=X:FILE.EXT) */
-//static mess_image *pp = NULL;			/* punch file handle (ie. PIP PUN:=X:FILE.EXT) */
-//static mess_image *rp = NULL;			/* reader file handle (ie. PIP X:FILE.EXE=RDR:) */
+//static const device_config *pp = NULL;			/* punch file handle (ie. PIP PUN:=X:FILE.EXT) */
+//static const device_config *rp = NULL;			/* reader file handle (ie. PIP X:FILE.EXE=RDR:) */
 static int dma = 0; 				/* DMA transfer address */
 
 static UINT8 zeropage0[8] =
@@ -111,7 +111,7 @@ static void cpm_jumptable(void)
 	RAM[BIOS_EXEC + 2] = 0xc9;			/* RET */
 }
 
-DEVICE_LOAD( cpm_floppy )
+DEVICE_IMAGE_LOAD( cpm_floppy )
 {
 	int id = image_index_in_device(image);
 
@@ -124,7 +124,7 @@ DEVICE_LOAD( cpm_floppy )
 	return INIT_PASS;
 }
 
-/*TODO: implement DEVICE_UNLOAD that clears ff[id]*/
+/*TODO: implement DEVICE_IMAGE_UNLOAD that clears ff[id]*/
 
 /*****************************************************************************
  *	cpm_init
@@ -295,7 +295,7 @@ static void cpm_exit(running_machine *machine)
  *****************************************************************************/
 static void cpm_conout_chr(int data)
 {
-	io_write_byte_8(BIOS_CONOUT, data);
+	io_write_byte(BIOS_CONOUT, data);
 }
 
 /*****************************************************************************
@@ -650,7 +650,7 @@ WRITE8_HANDLER ( cpm_bios_command_w )
 		break;
 
 	case 0x02: /* CSTAT */
-		tmp = io_read_byte_8(BIOS_CONST) & 0xff;
+		tmp = io_read_byte(BIOS_CONST) & 0xff;
 		af = (af & 0xff) | (tmp << 8);
 
 		if (VERBOSE_CONIO)
@@ -658,12 +658,12 @@ WRITE8_HANDLER ( cpm_bios_command_w )
 		break;
 
 	case 0x03: /* CONIN */
-		if ( io_read_byte_8(BIOS_CONST) == 0 )
+		if ( io_read_byte(BIOS_CONST) == 0 )
 		{
 			activecpu_set_reg( Z80_PC, activecpu_get_reg(Z80_PC) - 2 );
 			break;
 		}
-		tmp = io_read_byte_8(BIOS_CONIN) & 0xff;
+		tmp = io_read_byte(BIOS_CONIN) & 0xff;
 		af = (af & 0xff) | (tmp << 8);
 		if (VERBOSE_CONIO)
 			logerror("BIOS 03 console input       A:%02X\n", tmp);

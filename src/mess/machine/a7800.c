@@ -50,7 +50,7 @@ static UINT8 *ROM;
 
 /****** RIOT ****************************************/
 
-/* TODO: Convert the definitions into a syntax accepting readinputportbytag */
+/* TODO: Convert the definitions into a syntax accepting input_port_read */
 
 static const struct riot6532_interface r6532_interface =
 {
@@ -72,7 +72,7 @@ static const struct riot6532_interface r6532_interface_pal =
  * Driver/Machine Init
  * ----------------------------------------------------------------------- */
 
-static void a7800_driver_init(int ispal, int lines)
+static void a7800_driver_init(running_machine *machine, int ispal, int lines)
 {
 	if (ispal)
 	{
@@ -97,11 +97,11 @@ static void a7800_driver_init(int ispal, int lines)
 	memory_set_bankptr(7, &ROM[0x2000]);		/* MAINRAM */
 
 	/* Brutal hack put in as a consequence of new memory system; fix this */
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0480, 0x04FF, 0, 0, SMH_BANK10);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x0480, 0x04FF, 0, 0, SMH_BANK10);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0480, 0x04FF, 0, 0, SMH_BANK10);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0480, 0x04FF, 0, 0, SMH_BANK10);
 	memory_set_bankptr(10, memory_region(REGION_CPU1) + 0x0480);
-	memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x27FF, 0, 0, SMH_BANK11);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x27FF, 0, 0, SMH_BANK11);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x27FF, 0, 0, SMH_BANK11);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1800, 0x27FF, 0, 0, SMH_BANK11);
 	memory_set_bankptr(11, memory_region(REGION_CPU1) + 0x1800);
 }
 
@@ -109,14 +109,14 @@ static void a7800_driver_init(int ispal, int lines)
 
 DRIVER_INIT( a7800_ntsc )
 {
-	a7800_driver_init(FALSE, 262);
+	a7800_driver_init(machine, FALSE, 262);
 }
 
 
 
 DRIVER_INIT( a7800_pal )
 {
-	a7800_driver_init(TRUE, 312);
+	a7800_driver_init(machine, TRUE, 312);
 }
 
 
@@ -139,8 +139,8 @@ MACHINE_RESET( a7800 )
 	/* pokey cartridge */
 	if (a7800_cart_type & 0x01)
 	{
-		memory_install_read8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7FFF, 0, 0, pokey1_r);
-		memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7FFF, 0, 0, pokey1_w);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7FFF, 0, 0, pokey1_r);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7FFF, 0, 0, pokey1_w);
 	}
 }
 
@@ -208,7 +208,7 @@ static int a7800_verify_cart(char header[128])
 	return IMAGE_VERIFY_PASS;
 }
 
-DEVICE_INIT( a7800_cart )
+DEVICE_START( a7800_cart )
 {
 	UINT8	*memory;
 
@@ -218,18 +218,7 @@ DEVICE_INIT( a7800_cart )
 
 	/* Allocate memory for BIOS bank switching */
 	a7800_bios_bkup = (UINT8*) auto_malloc(0x4000);
-	if (!a7800_bios_bkup)
-	{
-		logerror("Could not allocate ROM memory\n");
-		return INIT_FAIL;
-	}
-
 	a7800_cart_bkup = (UINT8*) auto_malloc(0x4000);
-	if (!a7800_cart_bkup)
-	{
-		logerror("Could not allocate ROM memory\n");
-		return INIT_FAIL;
-	}
 
 	/* save the BIOS so we can switch it in and out */
 	memcpy( a7800_bios_bkup, memory + 0xC000, 0x4000 );
@@ -237,11 +226,9 @@ DEVICE_INIT( a7800_cart )
 	/* defaults for PAL bios without cart */
 	a7800_cart_type = 0;
 	a7800_stick_type = 1;
-
-	return INIT_PASS;
 }
 
-DEVICE_LOAD( a7800_cart )
+DEVICE_IMAGE_LOAD( a7800_cart )
 {
 	long len,start;
 	unsigned char header[128];
@@ -360,20 +347,20 @@ DEVICE_LOAD( a7800_cart )
 	switch(offset)
 	{
 		case 0x08:
-			  return((readinputportbytag("buttons") & 0x02) << 6);
+			  return((input_port_read(machine, "buttons") & 0x02) << 6);
 		case 0x09:
-			  return((readinputportbytag("buttons") & 0x08) << 4);
+			  return((input_port_read(machine, "buttons") & 0x08) << 4);
 		case 0x0A:
-			  return((readinputportbytag("buttons") & 0x01) << 7);
+			  return((input_port_read(machine, "buttons") & 0x01) << 7);
 		case 0x0B:
-			  return((readinputportbytag("buttons") & 0x04) << 5);
+			  return((input_port_read(machine, "buttons") & 0x04) << 5);
 		case 0x0c:
-			if((readinputportbytag("buttons") & 0x08) ||(readinputportbytag("buttons") & 0x02))
+			if((input_port_read(machine, "buttons") & 0x08) ||(input_port_read(machine, "buttons") & 0x02))
 				return 0x00;
 			else
 				return 0x80;
 		case 0x0d:
-			if((readinputportbytag("buttons") & 0x01) ||(readinputportbytag("buttons") & 0x04))
+			if((input_port_read(machine, "buttons") & 0x01) ||(input_port_read(machine, "buttons") & 0x04))
 				return 0x00;
 			else
 				return 0x80;

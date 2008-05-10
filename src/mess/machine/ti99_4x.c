@@ -102,10 +102,10 @@ static void ti99_CS_output(int offset, int data);
 static void ti99_8_internal_dsr_reset(void);
 
 static void ti99_4p_internal_dsr_reset(void);
-static void ti99_TIxram_init(void);
-static void ti99_sAMSxram_init(void);
-static void ti99_4p_mapper_init(void);
-static void ti99_myarcxram_init(void);
+static void ti99_TIxram_init(running_machine *machine);
+static void ti99_sAMSxram_init(running_machine *machine);
+static void ti99_4p_mapper_init(running_machine *machine);
+static void ti99_myarcxram_init(running_machine *machine);
 static void ti99_evpc_reset(void);
 
 /*
@@ -466,11 +466,10 @@ DRIVER_INIT( ti99_4p )
 	/*console_GROMs.data_ptr = memory_region(region_grom);*/
 }
 
-DEVICE_INIT( ti99_cart )
+DEVICE_START( ti99_cart )
 {
-	int id = image_index_in_device(image);
+	int id = image_index_in_device(device);
 	cartridge_pages[id] = (UINT16 *) (memory_region(REGION_CPU1) + offset_cart + (id * 0x2000));
-	return INIT_PASS;
 }
 
 /*
@@ -481,7 +480,7 @@ DEVICE_INIT( ti99_cart )
 
 	We don't need to support 99/4p, as it has no cartridge port.
 */
-DEVICE_LOAD( ti99_cart )
+DEVICE_IMAGE_LOAD( ti99_cart )
 {
 	/* Trick - we identify file types according to their extension */
 	/* Note that if we do not recognize the extension, we revert to the slot location <-> type
@@ -587,7 +586,7 @@ DEVICE_LOAD( ti99_cart )
 	return INIT_PASS;
 }
 
-DEVICE_UNLOAD( ti99_cart )
+DEVICE_IMAGE_UNLOAD( ti99_cart )
 {
 	int id = image_index_in_device(image);
 
@@ -644,13 +643,13 @@ DEVICE_UNLOAD( ti99_cart )
 	slot_type[id] = SLOT_EMPTY;
 }
 
-DEVICE_LOAD( ti99_hd )
+DEVICE_IMAGE_LOAD( ti99_hd )
 {
 	int id = image_index_in_device(image);
 	return smc92x4_hd_load(image, id);
 }
 
-DEVICE_UNLOAD( ti99_hd )
+DEVICE_IMAGE_UNLOAD( ti99_hd )
 {
 	int id = image_index_in_device(image);
 	smc92x4_hd_unload(image, id);
@@ -728,9 +727,9 @@ void ti99_common_init(running_machine *machine, const TMS9928a_interface *gfxpar
            how the switches are set. Later we use the configuration switches to
            determine which one to use. */
 	ti99_peb_init();
-        ti99_floppy_controllers_init_all(machine);
-        ti99_ide_init();
-        ti99_rs232_init();
+	ti99_floppy_controllers_init_all(machine);
+	ti99_ide_init();
+	ti99_rs232_init();
 	ti99_hsgpl_init();
 	ti99_usbsm_init();
 }
@@ -793,17 +792,17 @@ MACHINE_RESET( ti99 )
 	else if (ti99_model == model_99_4p)
 		xRAM_kind = xRAM_kind_99_4p_1Mb;	/* hack */
 	else
-		xRAM_kind = (readinputport(input_port_config) >> config_xRAM_bit) & config_xRAM_mask;
+		xRAM_kind = (input_port_read_indexed(machine, input_port_config) >> config_xRAM_bit) & config_xRAM_mask;
 	if (ti99_model == model_99_8)
 		has_speech = TRUE;
 	else
-		has_speech = (readinputport(input_port_config) >> config_speech_bit) & config_speech_mask;
-	fdc_kind = (readinputport(input_port_config) >> config_fdc_bit) & config_fdc_mask;
-	has_ide = (readinputport(input_port_config) >> config_ide_bit) & config_ide_mask;
-	has_rs232 = (readinputport(input_port_config) >> config_rs232_bit) & config_rs232_mask;
-	has_handset = (ti99_model == model_99_4) && ((readinputport(input_port_config) >> config_handsets_bit) & config_handsets_mask);
-	has_hsgpl = (ti99_model == model_99_4p) || ((readinputport(input_port_config) >> config_hsgpl_bit) & config_hsgpl_mask);
-	has_usb_sm = (readinputport(input_port_config) >> config_usbsm_bit) & config_usbsm_mask;
+		has_speech = (input_port_read_indexed(machine, input_port_config) >> config_speech_bit) & config_speech_mask;
+	fdc_kind = (input_port_read_indexed(machine, input_port_config) >> config_fdc_bit) & config_fdc_mask;
+	has_ide = (input_port_read_indexed(machine, input_port_config) >> config_ide_bit) & config_ide_mask;
+	has_rs232 = (input_port_read_indexed(machine, input_port_config) >> config_rs232_bit) & config_rs232_mask;
+	has_handset = (ti99_model == model_99_4) && ((input_port_read_indexed(machine, input_port_config) >> config_handsets_bit) & config_handsets_mask);
+	has_hsgpl = (ti99_model == model_99_4p) || ((input_port_read_indexed(machine, input_port_config) >> config_hsgpl_bit) & config_hsgpl_mask);
+	has_usb_sm = (input_port_read_indexed(machine, input_port_config) >> config_usbsm_bit) & config_usbsm_mask;
 
 	/* set up optional expansion hardware */
 	ti99_peb_reset(ti99_model == model_99_4p, tms9901_set_int1, NULL);
@@ -822,8 +821,8 @@ MACHINE_RESET( ti99 )
 
 		if (ti99_model != model_99_8)
 		{
-			memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_rspeech_r);
-			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_wspeech_w);
+			memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_rspeech_r);
+			memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_wspeech_w);
 
 			sndti_set_info_int(SOUND_TMS5220, 0, SNDINFO_INT_TMS5220_VARIANT, variant_tmc0285);
 		}
@@ -832,8 +831,8 @@ MACHINE_RESET( ti99 )
 	{
 		if (ti99_model != model_99_8)
 		{
-			memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_nop_8_r);
-			memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_nop_8_w);
+			memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0x93ff, 0, 0, ti99_nop_8_r);
+			memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9400, 0x97ff, 0, 0, ti99_nop_8_w);
 		}
 	}
 
@@ -841,25 +840,25 @@ MACHINE_RESET( ti99 )
 	{
 	case xRAM_kind_none:
 	default:
-		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_r);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_w);
-		memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_r);
-		memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_w);
+		memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_r);
+		memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_nop_8_w);
+		memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_r);
+		memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_nop_8_w);
 		break;
 	case xRAM_kind_TI:
-		ti99_TIxram_init();
+		ti99_TIxram_init(machine);
 		break;
 	case xRAM_kind_super_AMS:
-		ti99_sAMSxram_init();
+		ti99_sAMSxram_init(machine);
 		break;
 	case xRAM_kind_99_4p_1Mb:
-		ti99_4p_mapper_init();
+		ti99_4p_mapper_init(machine);
 		break;
 	case xRAM_kind_foundation_128k:
 	case xRAM_kind_foundation_512k:
 	case xRAM_kind_myarc_128k:
 	case xRAM_kind_myarc_512k:
-		ti99_myarcxram_init();
+		ti99_myarcxram_init(machine);
 		break;
 	case xRAM_kind_99_8:
 		break;
@@ -948,7 +947,7 @@ INTERRUPT_GEN( ti99_vblank_interrupt )
 	TMS9928A_interrupt();
 	if (has_handset)
 		ti99_handset_task();
-	has_mecmouse = (readinputport(input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
+	has_mecmouse = (input_port_read_indexed(machine, input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
 	if (has_mecmouse)
 		mecmouse_poll();
 }
@@ -960,7 +959,7 @@ INTERRUPT_GEN( ti99_4ev_hblank_interrupt )
 	if (++line_count == 262)
 	{
 		line_count = 0;
-		has_mecmouse = (readinputport(input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
+		has_mecmouse = (input_port_read_indexed(machine, input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
 		if (has_mecmouse)
 			mecmouse_poll();
 	}
@@ -1047,7 +1046,7 @@ WRITE16_HANDLER ( ti99_cart_w )
 		/* mapper at 0x6ffe */
 		if ((offset >= 0x0600) && (offset <= 0x07fe))
 			COMBINE_DATA(cartridge_pages[0]+offset);
-		else if ((offset == 0x07ff) && ACCESSING_MSB16)
+		else if ((offset == 0x07ff) && ACCESSING_BITS_8_15)
 			current_page_ptr = cartridge_pages[cartridge_paged ? ((data >> 8) & 1) : 0];
 	}
 	else if (cartridge_paged)
@@ -1816,6 +1815,7 @@ static void ti99_handset_post_message(int message)
 */
 static int ti99_handset_poll_keyboard(int num)
 {
+	running_machine *machine = Machine;
 	static UINT8 previous_key[max_handsets];
 
 	UINT32 key_buf;
@@ -1824,8 +1824,8 @@ static int ti99_handset_poll_keyboard(int num)
 
 
 	/* read current key state */
-	key_buf = ( readinputport(input_port_IR_keypads+num)
-					| (readinputport(input_port_IR_keypads+num+1) << 16) ) >> (4*num);
+	key_buf = ( input_port_read_indexed(machine, input_port_IR_keypads+num)
+					| (input_port_read_indexed(machine, input_port_IR_keypads+num+1) << 16) ) >> (4*num);
 
 	/* If a key was previously pressed, this key was not shift, and this key is
 	still down, then don't change the current key press. */
@@ -1898,13 +1898,14 @@ static int ti99_handset_poll_keyboard(int num)
 static int ti99_handset_poll_joystick(int num)
 {
 	static UINT8 previous_joy[max_handsets];
+	running_machine *machine = Machine;
 	UINT8 current_joy;
 	int current_joy_x, current_joy_y;
 	int message;
 
 	/* read joystick position */
-	current_joy_x = readinputport(input_port_IR_joysticks+2*num);
-	current_joy_y = readinputport(input_port_IR_joysticks+2*num+1);
+	current_joy_x = input_port_read_indexed(machine, input_port_IR_joysticks+2*num);
+	current_joy_y = input_port_read_indexed(machine, input_port_IR_joysticks+2*num+1);
 	/* compare with last saved position */
 	current_joy = current_joy_x | (current_joy_y << 4);
 	if (current_joy != previous_joy[num])
@@ -2086,11 +2087,12 @@ static void mecmouse_select(int selnow, int stick1, int stick2)
 static void mecmouse_poll(void)
 {
 	static int last_mx = 0, last_my = 0;
+	running_machine *machine = Machine;
 	int new_mx, new_my;
 	int delta_x, delta_y;
 
-	new_mx = readinputport(input_port_mousex);
-	new_my = readinputport(input_port_mousey);
+	new_mx = input_port_read_indexed(machine, input_port_mousex);
+	new_my = input_port_read_indexed(machine, input_port_mousey);
 
 	/* compute x delta */
 	delta_x = new_mx - last_mx;
@@ -2219,14 +2221,14 @@ static void tms9901_interrupt_callback(int intreq, int ic)
 */
 static int ti99_R9901_0(int offset)
 {
+	running_machine *machine = Machine;
 	int answer;
-
 
 	if ((ti99_model == model_99_4) && (KeyCol == 7))
 		answer = (ti99_handset_poll_bus() << 3) | 0x80;
 	else if (has_mecmouse && (KeyCol == ((ti99_model == model_99_4) ? 6 : 7)))
 	{
-		int buttons = readinputport(input_port_mouse_buttons) & 3;
+		int buttons = input_port_read_indexed(machine, input_port_mouse_buttons) & 3;
 
 		answer = (mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 4;
 
@@ -2238,12 +2240,12 @@ static int ti99_R9901_0(int offset)
 			answer |= 0x80;
 	}
 	else
-		answer = ((readinputport(input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
+		answer = ((input_port_read_indexed(machine, input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
 
 	if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
 	{
 		if (! AlphaLockLine)
-			answer &= ~ (readinputport(input_port_caps_lock) << 3);
+			answer &= ~ (input_port_read_indexed(machine, input_port_caps_lock) << 3);
 	}
 
 	return answer;
@@ -2260,13 +2262,13 @@ static int ti99_R9901_0(int offset)
 */
 static int ti99_R9901_1(int offset)
 {
+	running_machine *machine = Machine;
 	int answer;
-
 
 	if (/*(ti99_model == model_99_4) &&*/ (KeyCol == 7))
 		answer = 0x07;
 	else
-		answer = ((readinputport(input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
+		answer = ((input_port_read_indexed(machine, input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	/*if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)
@@ -2344,12 +2346,12 @@ static void ti99_AlphaW(int offset, int data)
 */
 static int ti99_8_R9901_0(int offset)
 {
+	running_machine *machine = Machine;
 	int answer;
-
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = readinputport(input_port_mouse_buttons) & 3;
+		int buttons = input_port_read_indexed(machine, input_port_mouse_buttons) & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 7) & 0x80;
 
@@ -2358,7 +2360,7 @@ static int ti99_8_R9901_0(int offset)
 			answer |= 0x40;
 	}
 	else
-		answer = (readinputport(input_port_keyboard + KeyCol) << 6) & 0xC0;
+		answer = (input_port_read_indexed(machine, input_port_keyboard + KeyCol) << 6) & 0xC0;
 
 	return answer;
 }
@@ -2374,12 +2376,12 @@ static int ti99_8_R9901_0(int offset)
 */
 static int ti99_8_R9901_1(int offset)
 {
+	running_machine *machine = Machine;
 	int answer;
-
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = readinputport(input_port_mouse_buttons) & 3;
+		int buttons = input_port_read_indexed(machine, input_port_mouse_buttons) & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 1) & 0x03;
 
@@ -2388,7 +2390,7 @@ static int ti99_8_R9901_1(int offset)
 			answer |= 0x04;
 	}
 	else
-		answer = (readinputport(input_port_keyboard + KeyCol) >> 2) & 0x07;
+		answer = (input_port_read_indexed(machine, input_port_keyboard + KeyCol) >> 2) & 0x07;
 
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	/*if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)
@@ -2426,7 +2428,7 @@ static void ti99_8_PTGEN(int offset, int data)
 */
 static void ti99_CS_motor(int offset, int data)
 {
-	mess_image *img = image_from_devtype_and_index(IO_CASSETTE, offset-6);
+	const device_config *img = image_from_devtype_and_index(IO_CASSETTE, offset-6);
 	cassette_change_state(img, data ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 }
 
@@ -2608,12 +2610,12 @@ static WRITE16_HANDLER ( ti99_TIxramlow_w );
 static READ16_HANDLER ( ti99_TIxramhigh_r );
 static WRITE16_HANDLER ( ti99_TIxramhigh_w );
 
-static void ti99_TIxram_init(void)
+static void ti99_TIxram_init(running_machine *machine)
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_w);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_TIxramlow_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_TIxramhigh_w);
 }
 
 /* low 8 kb: 0x2000-0x3fff */
@@ -2680,15 +2682,15 @@ static int sAMSlookup[16];
 
 
 /* set up super AMS handlers, and set initial state */
-static void ti99_sAMSxram_init(void)
+static void ti99_sAMSxram_init(running_machine *machine)
 {
 	int i;
 
 
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_w);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_sAMSxramlow_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_sAMSxramhigh_w);
 
 	ti99_peb_set_card_handlers(0x1e00, & sAMS_expansion_handlers);
 
@@ -2790,27 +2792,27 @@ static int ti99_4p_mapper_lookup[16];
 
 
 /* set up handlers, and set initial state */
-static void ti99_4p_mapper_init(void)
+static void ti99_4p_mapper_init(running_machine *machine)
 {
 	int i;
 
 	/* Not required at run-time */
-	/*memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, SMH_BANK3);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, SMH_BANK3);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, SMH_BANK4);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, SMH_BANK4);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, SMH_BANK5);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, SMH_BANK5);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, SMH_BANK6);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, SMH_BANK6);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, SMH_BANK7);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, SMH_BANK7);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, SMH_BANK8);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, SMH_BANK8);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, SMH_BANK9);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, SMH_BANK9);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, SMH_BANK10);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, SMH_BANK10);*/
+	/*memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, SMH_BANK3);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, SMH_BANK3);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, SMH_BANK4);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, SMH_BANK4);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, SMH_BANK5);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xafff, SMH_BANK5);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, SMH_BANK6);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb000, 0xbfff, SMH_BANK6);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, SMH_BANK7);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, SMH_BANK7);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, SMH_BANK8);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd000, 0xdfff, SMH_BANK8);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, SMH_BANK9);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, SMH_BANK9);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, SMH_BANK10);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xffff, SMH_BANK10);*/
 
 	ti99_peb_set_16bit_card_handlers(0x1e00, & ti99_4p_mapper_handlers);
 
@@ -2944,12 +2946,12 @@ static int myarc_page_offset_mask;
 
 
 /* set up myarc handlers, and set initial state */
-static void ti99_myarcxram_init(void)
+static void ti99_myarcxram_init(running_machine *machine)
 {
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_w);
-	memory_install_read16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_r);
-	memory_install_write16_handler(0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x3fff, 0, 0, ti99_myarcxramlow_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xffff, 0, 0, ti99_myarcxramhigh_w);
 
 	switch (xRAM_kind)
 	{

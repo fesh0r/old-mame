@@ -15,25 +15,31 @@
 
 /*----------- defined in machine/compis.c -----------*/
 
+extern const ppi8255_interface compis_ppi_interface;
+extern const struct pit8253_config compis_pit8253_config;
+extern const struct pit8253_config compis_pit8254_config;
+extern const struct pic8259_interface compis_pic8259_master_config;
+extern const struct pic8259_interface compis_pic8259_slave_config;
+
 DRIVER_INIT(compis);
 MACHINE_RESET(compis);
 INTERRUPT_GEN(compis_vblank_int);
 
 /* PPI 8255 */
-READ16_HANDLER (compis_ppi_r);
-WRITE16_HANDLER (compis_ppi_w);
+READ16_DEVICE_HANDLER (compis_ppi_r);
+WRITE16_DEVICE_HANDLER (compis_ppi_w);
 
 /* PIT 8253 */
-READ16_HANDLER (compis_pit_r);
-WRITE16_HANDLER (compis_pit_w);
+READ16_DEVICE_HANDLER (compis_pit_r);
+WRITE16_DEVICE_HANDLER (compis_pit_w);
 
 /* PIC 8259 (80150/80130) */
-READ16_HANDLER (compis_osp_pic_r);
-WRITE16_HANDLER (compis_osp_pic_w);
+READ16_DEVICE_HANDLER (compis_osp_pic_r);
+WRITE16_DEVICE_HANDLER (compis_osp_pic_w);
 
 /* PIT 8254 (80150/80130) */
-READ16_HANDLER (compis_osp_pit_r);
-WRITE16_HANDLER (compis_osp_pit_w);
+READ16_DEVICE_HANDLER (compis_osp_pit_r);
+WRITE16_DEVICE_HANDLER (compis_osp_pit_w);
 
 /* USART 8251 */
 READ16_HANDLER (compis_usart_r);

@@ -7,7 +7,6 @@
 *********************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "memconv.h"
 #include "includes/crtc6845.h"
 #include "video/pc_video.h"
@@ -31,7 +30,7 @@ static const UINT16 dummy_palette[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
 
 /**************************************************************************/
 
-static void pc_video_postload(void)
+static STATE_POSTLOAD( pc_video_postload )
 {
 	pc_anythingdirty = 1;
 	pc_current_height = -1;
@@ -40,7 +39,7 @@ static void pc_video_postload(void)
 
 
 
-struct mscrtc6845 *pc_video_start(const struct mscrtc6845_config *config,
+struct mscrtc6845 *pc_video_start(running_machine *machine, const struct mscrtc6845_config *config,
 	pc_video_update_proc (*choosevideomode)(int *width, int *height, struct mscrtc6845 *crtc),
 	size_t vramsize)
 {
@@ -62,10 +61,10 @@ struct mscrtc6845 *pc_video_start(const struct mscrtc6845_config *config,
 
 	if (videoram_size)
 	{
-		video_start_generic_bitmapped(Machine);
+		video_start_generic_bitmapped(machine);
 	}
 
-	state_save_register_func_postload(pc_video_postload);
+	state_save_register_postload(machine, pc_video_postload, NULL);
 	return pc_crtc;
 }
 
@@ -132,7 +131,7 @@ WRITE8_HANDLER ( pc_video_videoram_w )
 }
 
 
-WRITE16_HANDLER( pc_video_videoram16le_w ) { write16le_with_write8_handler(pc_video_videoram_w, machine, offset, mem_mask, data); }
+WRITE16_HANDLER( pc_video_videoram16le_w ) { write16le_with_write8_handler(pc_video_videoram_w, machine, offset, data, mem_mask); }
 
 WRITE32_HANDLER( pc_video_videoram32_w )
 {

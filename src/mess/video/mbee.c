@@ -7,6 +7,7 @@
 ****************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/mbee.h"
 
 
@@ -39,22 +40,25 @@ typedef struct {		 // CRTC 6545
 } CRTC6545;
 
 static CRTC6545 crt;
-static int off_x = 0;
-static int off_y = 0;
 static int framecnt = 0;
 static int m6545_color_bank = 0;
 static int m6545_video_bank = 0;
 static int mbee_pcg_color_latch = 0;
 
 int mbee_frame_counter;
-
-
 UINT8 *pcgram;
 
+static UINT8 mc6845_cursor[16];				// cursor shape
+static void mc6845_cursor_configure(void);
+static void mc6845_screen_configure(running_machine *machine);
 
 WRITE8_HANDLER ( mbee_pcg_color_latch_w )
 {
 	mbee_pcg_color_latch = data;
+	if (data & 0x40)
+		memory_set_bank( 3, 1);
+	else
+		memory_set_bank( 3, 0);
 }
 
  READ8_HANDLER ( mbee_pcg_color_latch_r )
@@ -67,14 +71,6 @@ WRITE8_HANDLER ( mbee_videoram_w )
 	videoram[offset] = data;
 }
 
- READ8_HANDLER ( mbee_videoram_r )
-{
-	if( m6545_video_bank & 0x01 )
-		return pcgram[offset];
-	else
-		return videoram[offset];
-}
-
 WRITE8_HANDLER ( mbee_pcg_w )
 {
 	if( pcgram[0x0800+offset] != data )
@@ -84,11 +80,6 @@ WRITE8_HANDLER ( mbee_pcg_w )
 		/* decode character graphics again */
 		decodechar(machine->gfx[0], chr, pcgram);
 	}
-}
-
- READ8_HANDLER ( mbee_pcg_r )
-{
-	return pcgram[0x0800+offset];
 }
 
 WRITE8_HANDLER ( mbee_pcg_color_w )
@@ -107,21 +98,15 @@ WRITE8_HANDLER ( mbee_pcg_color_w )
 		colorram[offset] = data;
 }
 
- READ8_HANDLER ( mbee_pcg_color_r )
-{
-
-	if ( mbee_pcg_color_latch & 0x40 )
-		return colorram[offset];
-	else
-		return pcgram[0x0800+offset];
-}
-
 static int keyboard_matrix_r(int offs)
 {
+	char portname[6];
 	int port = (offs >> 7) & 7;
 	int bit = (offs >> 4) & 7;
-	int data = (readinputport(port) >> bit) & 1;
-	int extra = readinputport(8);
+	int extra = input_port_read(Machine, "EXTRA");
+	int data = 0;
+	sprintf(portname, "LINE%d", port);
+	data = (input_port_read(Machine, portname) >> bit) & 1;
 
 	if( extra & 0x01 )	/* extra: cursor up */
 	{
@@ -158,23 +143,6 @@ static int keyboard_matrix_r(int offs)
 	return data;
 }
 
-static void m6545_offset_xy(void)
-{
-	if( crt.horizontal_sync_pos )
-		off_x = crt.horizontal_total - crt.horizontal_sync_pos - 23;
-	else
-		off_x = -24;
-
-	off_y = (crt.vertical_total - crt.vertical_sync_pos) *
-		(crt.scan_lines + 1) + crt.vertical_adjust;
-
-	if( off_y < 0 )
-		off_y = 0;
-
-	if( off_y > 128 )
-		off_y = 128;
-}
-
  READ8_HANDLER ( mbee_color_bank_r )
 {
 	return m6545_color_bank;
@@ -193,6 +161,10 @@ WRITE8_HANDLER ( mbee_color_bank_w )
 WRITE8_HANDLER ( mbee_video_bank_w )
 {
 	m6545_video_bank = data;
+	if (data & 1)
+		memory_set_bank( 2, 0);
+	else
+		memory_set_bank( 2, 1);
 }
 
 static void m6545_update_strobe(int param)
@@ -312,16 +284,15 @@ WRITE8_HANDLER ( m6545_data_w )
 		if( crt.horizontal_total == data )
 			break;
 		crt.horizontal_total = data;
-		m6545_offset_xy();
 		break;
 	case 1:
 		crt.horizontal_displayed = data;
+		mc6845_screen_configure(machine);
 		break;
 	case 2:
 		if( crt.horizontal_sync_pos == data )
 			break;
 		crt.horizontal_sync_pos = data;
-		m6545_offset_xy();
 		break;
 	case 3:
 		crt.horizontal_length = data;
@@ -330,22 +301,20 @@ WRITE8_HANDLER ( m6545_data_w )
 		if( crt.vertical_total == data )
 			break;
 		crt.vertical_total = data;
-		m6545_offset_xy();
 		break;
 	case 5:
 		if( crt.vertical_adjust == data )
 			break;
 		crt.vertical_adjust = data;
-		m6545_offset_xy();
 		break;
 	case 6:
 		crt.vertical_displayed = data;
+		mc6845_screen_configure(machine);
 		break;
 	case 7:
 		if( crt.vertical_sync_pos == data )
 			break;
 		crt.vertical_sync_pos = data;
-		m6545_offset_xy();
 		break;
 	case 8:
 		crt.crt_mode = data;
@@ -365,13 +334,16 @@ WRITE8_HANDLER ( m6545_data_w )
 		if( crt.scan_lines == data )
 			break;
 		crt.scan_lines = data;
-		m6545_offset_xy();
+		mc6845_screen_configure(machine);
+		mc6845_cursor_configure();
 		break;
 	case 10:
 		crt.cursor_top = data;
+		mc6845_cursor_configure();
 		break;
 	case 11:
 		crt.cursor_bottom = data;
+		mc6845_cursor_configure();
 		break;
 	case 12:
 		data &= 0x3f;
@@ -379,7 +351,7 @@ WRITE8_HANDLER ( m6545_data_w )
 			break;
 		crt.screen_address_hi = data;
 		addr = 0x17000+((data & 32) << 6);
-		memcpy(memory_region(REGION_CPU1)+0xf000, memory_region(REGION_CPU1)+addr, 0x800);
+		memcpy(pcgram, memory_region(REGION_CPU1)+addr, 0x800);
 		for (i = 0; i < 128; i++)
 				decodechar(machine->gfx[0],i, pcgram);
 		break;
@@ -418,54 +390,110 @@ WRITE8_HANDLER ( m6545_data_w )
 	}
 }
 
+/* The 6845 can produce a variety of cursor shapes - all are emulated here */
+static void mc6845_cursor_configure(void)
+{
+	UINT8 i,curs_type=0,r9,r10,r11;
+
+	/* curs_type holds the general cursor shape to be created
+		0 = no cursor
+		1 = partial cursor (only shows on a block of scan lines)
+		2 = full cursor
+		3 = two-part cursor (has a part at the top and bottom with the middle blank) */
+
+	for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++) mc6845_cursor[i] = 0;		// prepare cursor by erasing old one
+
+	r9  = crt.scan_lines;					// number of scan lines - 1
+	r10 = crt.cursor_top & 0x1f;				// cursor start line = last 5 bits
+	r11 = crt.cursor_bottom+1;				// cursor end line incremented to suit for-loops below
+
+	/* decide the curs_type by examining the registers */
+	if (r10 < r11) curs_type=1;				// start less than end, show start to end
+	else
+	if (r10 == r11) curs_type=2;				// if equal, show full cursor
+	else curs_type=3;					// if start greater than end, it's a two-part cursor
+
+	if ((r11 - 1) > r9) curs_type=2;			// if end greater than scan-lines, show full cursor
+	if (r10 > r9) curs_type=0;				// if start greater than scan-lines, then no cursor
+	if (r11 > 16) r11=16;					// truncate 5-bit register to fit our 4-bit hardware
+
+	/* create the new cursor */
+	if (curs_type > 1) for (i = 0;i < ARRAY_LENGTH(mc6845_cursor);i++) mc6845_cursor[i]=0xff; // turn on full cursor
+
+	if (curs_type == 1) for (i = r10;i < r11;i++) mc6845_cursor[i]=0xff; // for each line that should show, turn on that scan line
+		
+	if (curs_type == 3) for (i = r11; i < r10;i++) mc6845_cursor[i]=0; // now take a bite out of the middle
+}
+
+/* Resize the screen within the limits of the hardware. Expand the image to fill the screen area */
+static void mc6845_screen_configure(running_machine *machine)
+{
+	rectangle visarea;
+
+	UINT16 width = crt.horizontal_displayed*8-1;							// width in pixels
+	UINT16 height = crt.vertical_displayed*(crt.scan_lines+1)-1;					// height in pixels
+	UINT16 bytes = crt.horizontal_displayed*crt.vertical_displayed-1;				// video ram needed
+
+	if (width > 511) width=511;	
+	if (height > 255) height=255;
+
+	/* Resize the screen */
+	visarea.min_x = 0;
+	visarea.max_x = width-1;
+	visarea.min_y = 0;
+	visarea.max_y = height-1;
+	if (bytes < 0x800) video_screen_set_visarea(machine->primary_screen, 0, width, 0, height);
+}
+
 VIDEO_START( mbee )
 {
-	videoram = auto_malloc(0x800);
-	pcgram = memory_region(REGION_CPU1)+0xf000;
+	videoram = memory_region(REGION_CPU1)+0x15000;
+	pcgram = memory_region(REGION_CPU1)+0x11000;
 }
 
 VIDEO_START( mbeeic )
 {
-	videoram = auto_malloc(0x800);
-	colorram = auto_malloc(0x800);
-	pcgram = memory_region(REGION_CPU1)+0xf000;
+	videoram = memory_region(REGION_CPU1)+0x15000;
+	colorram = memory_region(REGION_CPU1)+0x15800;
+	pcgram = memory_region(REGION_CPU1)+0x11000;
 }
 
 VIDEO_UPDATE( mbee )
 {
-	int offs, cursor, screen_;
+	UINT16 i, bytes = crt.horizontal_displayed*crt.vertical_displayed;
+	UINT8 speed = crt.cursor_top&0x20, flash = crt.cursor_top&0x40;				// cursor modes
+	UINT16 cursor = (crt.cursor_address_hi<<8) | crt.cursor_address_lo;			// get cursor position
+	UINT16 screen_home = (crt.screen_address_hi<<8) | crt.screen_address_lo;		// screen home offset (usually zero)
 
-	for( offs = 0x000; offs < 0x380; offs += 0x10 )
-		keyboard_matrix_r(offs);
+	for( i = 0; i < 0x380; i += 0x10 ) keyboard_matrix_r(i);
 
 	framecnt++;
 
-	cursor = (crt.cursor_address_hi << 8) | crt.cursor_address_lo;
-	screen_ = (crt.screen_address_hi << 8) | crt.screen_address_lo;
+	/* Get the graphics of the character under the cursor, xor with the visible cursor scan lines,
+	   and store as character number 256. */
+	for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++)
+		pcgram[0x1000+i] = pcgram[(videoram[cursor]<<4) + i] ^ mc6845_cursor[i];
 
-	for (offs = 0; offs < crt.horizontal_displayed * crt.vertical_displayed; offs++)
+	decodechar(screen->machine->gfx[0],256, pcgram);			// and into machine graphics
+
+	for( i = 0; i < bytes; i++ )
 	{
-		int mem = ((offs + screen_) & 0x7ff);
-		int sy = off_y - 9 + (offs / crt.horizontal_displayed) * (crt.scan_lines + 1);
-		int sx = (off_x + 3 + (offs % crt.horizontal_displayed)) << 3;
-		int code = videoram[mem];
-		drawgfx( bitmap, screen->machine->gfx[0],code,0,0,0,sx,sy,
-			NULL,TRANSPARENCY_NONE,0);
+		int mem = (i + screen_home) & 0x7ff;
+		int sy = (i / crt.horizontal_displayed) * (crt.scan_lines + 1);
+		int sx = (i % crt.horizontal_displayed) << 3;
+		int chr = videoram[mem];
 
-		if( mem == cursor && (crt.cursor_top & 0x60) != 0x20 )
-		{
-			if( (crt.cursor_top & 0x60) == 0x60 || (framecnt & 16) == 0 )
-			{
-				int x, y;
-		                for( y = (crt.cursor_top & 31); y <= (crt.cursor_bottom & 31); y++ )
-				{
-					if( y > crt.scan_lines )
-						break;
-					for( x = 0; x < 8; x++ )
-						*BITMAP_ADDR16(bitmap, sy+y, sx+x) = 1;
-				}
-			}
-		}
+		/* if cursor is on and we are at cursor position, show it */
+		/* NOTE: flash rates obtained from real hardware */
+
+		if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
+			((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
+			((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
+			(mem == cursor))					// displaying at cursor position?
+				chr = 256;					// 256 = cursor character
+
+		drawgfx( bitmap, screen->machine->gfx[0],chr,0,0,0,sx,sy,
+			NULL,TRANSPARENCY_NONE,0);	// put character on the screen
 	}
 		
 	return 0;
@@ -473,41 +501,44 @@ VIDEO_UPDATE( mbee )
 
 VIDEO_UPDATE( mbeeic )
 {
-	int offs, cursor, screen_;
+	UINT16 i, bytes = crt.horizontal_displayed*crt.vertical_displayed;
+	UINT8 speed = crt.cursor_top&0x20, flash = crt.cursor_top&0x40;				// cursor modes
+	UINT16 cursor = (crt.cursor_address_hi<<8) | crt.cursor_address_lo;			// get cursor position
+	UINT16 screen_home = (crt.screen_address_hi<<8) | crt.screen_address_lo;		// screen home offset (usually zero)
 	UINT16 colourm = (mbee_pcg_color_latch & 0x0e) << 7;
 
-	for( offs = 0x000; offs < 0x380; offs += 0x10 )
-		keyboard_matrix_r(offs);
+	for( i = 0; i < 0x380; i += 0x10 ) keyboard_matrix_r(i);
 
 	framecnt++;
 
-	cursor = (crt.cursor_address_hi << 8) | crt.cursor_address_lo;
-	screen_ = (crt.screen_address_hi << 8) | crt.screen_address_lo;
+	/* Get the graphics of the character under the cursor, xor with the visible cursor scan lines,
+	   and store as character number 256. */
+	for ( i = 0; i < ARRAY_LENGTH(mc6845_cursor); i++)
+		pcgram[0x1000+i] = pcgram[(videoram[cursor]<<4) + i] ^ mc6845_cursor[i];
 
-	for (offs = 0; offs < crt.horizontal_displayed * crt.vertical_displayed; offs++)
+	decodechar(screen->machine->gfx[0],256, pcgram);			// and into machine graphics
+
+	for( i = 0; i < bytes; i++ )
 	{
-		int mem = ((offs + screen_) & 0x7ff);
-		int sy = off_y + (offs / crt.horizontal_displayed) * (crt.scan_lines + 1);
-		int sx = (off_x + (offs % crt.horizontal_displayed)) << 3;
-		int code = videoram[mem];
-		int color = colorram[mem] | colourm;
-		drawgfx( bitmap, screen->machine->gfx[0],code,color,0,0,sx,sy,
-			NULL, TRANSPARENCY_NONE, 0);
+		int mem = (i + screen_home) & 0x7ff;
+		int sy = (i / crt.horizontal_displayed) * (crt.scan_lines + 1);
+		int sx = (i % crt.horizontal_displayed) << 3;
+		int chr = videoram[mem];
+		int col = colorram[mem] | colourm;						// read a byte of colour
 
-		if( mem == cursor && (crt.cursor_top & 0x60) != 0x20 )
-		{
-			if( (crt.cursor_top & 0x60) == 0x60 || (framecnt & 16) == 0 )
-			{
-				int x, y;
-		                for( y = (crt.cursor_top & 31); y <= (crt.cursor_bottom & 31); y++ )
-				{
-					if( y > crt.scan_lines )
-						break;
-					for( x = 0; x < 8; x++ )
-						*BITMAP_ADDR16(bitmap, sy+y, sx+x) = ((color<<1)+1); /* convert to palette entry number */
-				}
-			}
-		}
+		/* if cursor is on and we are at cursor position, show it */
+		/* NOTE: flash rates obtained from real hardware */
+
+		if ((((!flash) && (!speed)) ||					// (5,6)=(0,0) = cursor on always
+			((flash) && (speed) && (framecnt & 0x10)) ||		// (5,6)=(1,1) = cycle per 32 frames
+			((flash) && (!speed) && (framecnt & 8))) &&		// (5,6)=(0,1) = cycle per 16 frames
+			(mem == cursor))					// displaying at cursor position?
+				chr = 256;					// 256 = cursor character
+
+		drawgfx( bitmap, screen->machine->gfx[0],chr,col,0,0,sx,sy,
+			cliprect,TRANSPARENCY_NONE,0);	// put character on the screen
+
 	}
+
 	return 0;
 }

@@ -52,14 +52,14 @@ static void atom_via_irq_func(int state)
 	}
 }
 
-static mess_image *cassette_device_image(void)
+static const device_config *cassette_device_image(void)
 {
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
 
-static mess_image *printer_image(void)
+static const device_config *printer_image(running_machine *machine)
 {
-	return image_from_devtype_and_index(IO_PRINTER, 0);
+	return device_list_find_by_tag(machine->config->devicelist, PRINTER, "printer");
 }
 
 /* printer status */
@@ -69,7 +69,7 @@ static  READ8_HANDLER(atom_via_in_a_func)
 
 	data = atom_printer_data;
 
-	if (!printer_status(printer_image(),0))
+	if (!printer_is_ready(printer_image(machine)))
 	{
 		/* offline */
 		data |=0x080;
@@ -99,7 +99,7 @@ static WRITE8_HANDLER(atom_via_out_ca2_func)
 		if (data & 0x01)
 		{
 			/* output data to printer */
-			printer_output(printer_image(), atom_printer_data);
+			printer_output(printer_image(machine), atom_printer_data);
 		}
 	}
 
@@ -125,15 +125,14 @@ static const struct via6522_interface atom_6522_interface=
 
 
 
-static const ppi8255_interface atom_8255_int =
+const ppi8255_interface atom_8255_int =
 {
-	1,
-	{atom_8255_porta_r},
-	{atom_8255_portb_r},
-	{atom_8255_portc_r},
-	{atom_8255_porta_w},
-	{atom_8255_portb_w},
-	{atom_8255_portc_w},
+	atom_8255_porta_r,
+	atom_8255_portb_r,
+	atom_8255_portc_r,
+	atom_8255_porta_w,
+	atom_8255_portb_w,
+	atom_8255_portc_w,
 };
 
 static int previous_i8271_int_state = 0;
@@ -241,7 +240,6 @@ static OPBASE_HANDLER(atom_opbase_handler)
 
 MACHINE_RESET( atom )
 {
-	ppi8255_init (&atom_8255_int);
 	atom_8255_porta = 0xff;
 	atom_8255_portb = 0xff;
 	atom_8255_portc = 0xff;
@@ -334,7 +332,7 @@ QUICKLOAD_LOAD(atom)
 
 
 /* load floppy */
-DEVICE_LOAD( atom_floppy )
+DEVICE_IMAGE_LOAD( atom_floppy )
 {
 	if (device_load_basicdsk_floppy(image)==INIT_PASS)
 	{
@@ -358,11 +356,11 @@ DEVICE_LOAD( atom_floppy )
  READ8_HANDLER ( atom_8255_portb_r )
 {
 	/* ilogerror("8255: Read port b: %02X %02X\n",
-			readinputport ((atom_8255.atom_8255_porta & 0x0f) + 1),
-			readinputport (11) & 0xc0); */
-// TODO: convert to readinputportbytag
-	return ((readinputport ((atom_8255_porta & 0x0f) + 1) & 0x3f) |
-											(readinputport (11) & 0xc0));
+			input_port_read_indexed(machine, (atom_8255.atom_8255_porta & 0x0f) + 1),
+			input_port_read_indexed(machine, 11) & 0xc0); */
+// TODO: convert to input_port_read
+	return ((input_port_read_indexed(machine, (atom_8255_porta & 0x0f) + 1) & 0x3f) |
+											(input_port_read_indexed (machine, 11) & 0xc0));
 }
 
 READ8_HANDLER ( atom_8255_portc_r )
@@ -382,7 +380,7 @@ READ8_HANDLER ( atom_8255_portc_r )
 	}
 
 	atom_8255_portc |= (m6847_get_field_sync() ? 0x00 : 0x80);
-	atom_8255_portc |= (readinputportbytag("keyboard_12") & 0x40);
+	atom_8255_portc |= (input_port_read(machine, "keyboard_12") & 0x40);
 	/* logerror("8255: Read port c (%02X)\n",atom_8255.atom_8255_portc); */
 	return (atom_8255_portc);
 }

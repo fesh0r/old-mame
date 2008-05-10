@@ -161,6 +161,7 @@ Keyboard interface:
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
 #include "devices/harddriv.h"
+#include "machine/idectrl.h"
 
 /*
     Memory map - see description above
@@ -423,6 +424,9 @@ static MACHINE_DRIVER_START(ti99_8_60hz)
 	MDRV_SOUND_ADD(TMS5220, 680000L)
 	MDRV_SOUND_CONFIG(tms5220interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
+
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 
@@ -454,6 +458,8 @@ static MACHINE_DRIVER_START(ti99_8_50hz)
 	MDRV_SOUND_ADD(WAVE, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.20)
 
+	/* devices */
+	MDRV_IDE_CONTROLLER_ADD( "ide", ~0, ti99_ide_interrupt )	/* FIXME */
 MACHINE_DRIVER_END
 
 /*
@@ -514,8 +520,8 @@ static void ti99_8_cartslot_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_cart; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_cart; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_cart); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bin,c,d,g,m,crom,drom,grom,mrom"); break;
@@ -550,9 +556,9 @@ static void ti99_8_harddisk_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 3; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_mess_hd; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hd; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hd; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(mess_hd); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_hd); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_hd); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "hd"); break;
@@ -573,8 +579,8 @@ static void ti99_8_parallel_getinfo(const mess_device_class *devclass, UINT32 st
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_pio; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_pio; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_pio); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_pio); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
@@ -594,37 +600,13 @@ static void ti99_8_serial_getinfo(const mess_device_class *devclass, UINT32 stat
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_4_rs232; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_4_rs232; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(ti99_4_rs232); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(ti99_4_rs232); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
 	}
 }
-
-#if 0
-static void ti99_8_quickload_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
-{
-	/* quickload */
-	switch(state)
-	{
-		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_TYPE:							info->i = IO_QUICKLOAD; break;
-		case MESS_DEVINFO_INT_READABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_WRITEABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_CREATABLE:						info->i = 1; break;
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
-		case MESS_DEVINFO_INT_RESET_ON_LOAD:					info->i = 1; break;
-
-		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_ti99_hsgpl; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_ti99_hsgpl; break;
-
-		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
-	}
-}
-#endif
 
 static void ti99_8_memcard_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -639,9 +621,9 @@ static void ti99_8_memcard_getinfo(const mess_device_class *devclass, UINT32 sta
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_INIT:							info->init = device_init_smartmedia; break;
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_smartmedia; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_smartmedia; break;
+		case MESS_DEVINFO_PTR_START:							info->start = DEVICE_START_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(smartmedia); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(smartmedia); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), ""); break;
@@ -659,7 +641,7 @@ SYSTEM_CONFIG_START(ti99_8)
 #if 1
 	CONFIG_DEVICE(ti99_8_floppy_getinfo)
 	CONFIG_DEVICE(ti99_8_harddisk_getinfo)
-	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)
+//	CONFIG_DEVICE(ti99_ide_harddisk_getinfo)	/* save state error if both hard drives enabled */
 	CONFIG_DEVICE(ti99_8_parallel_getinfo)
 	CONFIG_DEVICE(ti99_8_serial_getinfo)
 	/*CONFIG_DEVICE(ti99_8_quickload_getinfo)*/
@@ -669,5 +651,5 @@ SYSTEM_CONFIG_START(ti99_8)
 SYSTEM_CONFIG_END
 
 /*      YEAR    NAME        PARENT      COMPAT  MACHINE     INPUT   INIT        CONFIG      COMPANY                 FULLNAME */
-COMP(	1983,	ti99_8,		0,			0,		ti99_8_60hz,ti99_8,	ti99_8,		ti99_8,		"Texas Instruments",	"TI-99/8 Computer (US)" , 0)
-COMP(	1983,	ti99_8e,	ti99_8,		0,		ti99_8_50hz,ti99_8,	ti99_8,		ti99_8,		"Texas Instruments",	"TI-99/8 Computer (Europe)" , 0)
+COMP(	1983,	ti99_8,		0,	0,	ti99_8_60hz,ti99_8,	ti99_8,	ti99_8,	"Texas Instruments",	"TI-99/8 Computer (US)" , GAME_NOT_WORKING )
+COMP(	1983,	ti99_8e,	ti99_8,	0,	ti99_8_50hz,ti99_8,	ti99_8,	ti99_8,	"Texas Instruments",	"TI-99/8 Computer (Europe)" , GAME_NOT_WORKING )

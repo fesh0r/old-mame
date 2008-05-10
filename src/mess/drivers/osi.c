@@ -40,7 +40,7 @@ static VIDEO_START( sb2m600 )
 
 static VIDEO_START( uk101 )
 {
-	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 16, 64, 16);
+	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 16, 32, 32);
 }
 
 static VIDEO_UPDATE( sb2m600 )
@@ -79,14 +79,14 @@ static READ8_HANDLER( osi_keyboard_r )
 {
 	UINT8 key_column_data = 0xff;
 
-	if (!(key_row_latch & 0x01)) key_column_data &= readinputportbytag("ROW0");
-	if (!(key_row_latch & 0x02)) key_column_data &= readinputportbytag("ROW1");
-	if (!(key_row_latch & 0x04)) key_column_data &= readinputportbytag("ROW2");
-	if (!(key_row_latch & 0x08)) key_column_data &= readinputportbytag("ROW3");
-	if (!(key_row_latch & 0x10)) key_column_data &= readinputportbytag("ROW4");
-	if (!(key_row_latch & 0x20)) key_column_data &= readinputportbytag("ROW5");
-	if (!(key_row_latch & 0x40)) key_column_data &= readinputportbytag("ROW6");
-	if (!(key_row_latch & 0x80)) key_column_data &= readinputportbytag("ROW7");
+	if (!(key_row_latch & 0x01)) key_column_data &= input_port_read(machine, "ROW0");
+	if (!(key_row_latch & 0x02)) key_column_data &= input_port_read(machine, "ROW1");
+	if (!(key_row_latch & 0x04)) key_column_data &= input_port_read(machine, "ROW2");
+	if (!(key_row_latch & 0x08)) key_column_data &= input_port_read(machine, "ROW3");
+	if (!(key_row_latch & 0x10)) key_column_data &= input_port_read(machine, "ROW4");
+	if (!(key_row_latch & 0x20)) key_column_data &= input_port_read(machine, "ROW5");
+	if (!(key_row_latch & 0x40)) key_column_data &= input_port_read(machine, "ROW6");
+	if (!(key_row_latch & 0x80)) key_column_data &= input_port_read(machine, "ROW7");
 
 	return key_column_data;
 }
@@ -185,7 +185,7 @@ static INPUT_PORTS_START( sb2m600 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ESC") PORT_CODE(KEYCODE_TAB) PORT_CHAR(27)
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CTRL") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(UCHAR_SHIFT_2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CTRL") PORT_CODE(KEYCODE_LCONTROL) PORT_CODE(KEYCODE_RCONTROL) PORT_CHAR(UCHAR_SHIFT_2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("REPEAT") PORT_CODE(KEYCODE_BACKSLASH) PORT_CHAR('\\')
 
 	PORT_START_TAG("ROW1")
@@ -376,7 +376,7 @@ static MACHINE_DRIVER_START( sb2m600 )
     // video hardware
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(0, 32*8-1, 0, 32*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(5*8, 29*8-1, 0, 28*8-1)
 	MDRV_GFXDECODE(sb2m600)
 	MDRV_PALETTE_LENGTH(2)
 
@@ -404,8 +404,8 @@ static MACHINE_DRIVER_START( uk101 )
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(50)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(64*8, 16*16)
-	MDRV_SCREEN_VISIBLE_AREA(0, 64*8-1, 0, 16*16-1)
+	MDRV_SCREEN_SIZE(32*8, 32*16)
+	MDRV_SCREEN_VISIBLE_AREA(5*8, 29*8-1, 2*32, 29*16-1)
 	MDRV_GFXDECODE(uk101)
 	MDRV_PALETTE_LENGTH(2)
 
@@ -446,7 +446,7 @@ static UINT8 *sb2m600_tape_image;
 static int sb2m600_tape_size;
 static int sb2m600_tape_index;
 
-static DEVICE_LOAD( sb2m600_cassette )
+static DEVICE_IMAGE_LOAD( sb2m600_cassette )
 {
 	sb2m600_tape_image = (UINT8 *)image_malloc(image, sb2m600_tape_size);
 	sb2m600_tape_size = image_length(image);
@@ -461,7 +461,7 @@ static DEVICE_LOAD( sb2m600_cassette )
 	return INIT_PASS;
 }
 
-static DEVICE_UNLOAD( sb2m600_cassette )
+static DEVICE_IMAGE_UNLOAD( sb2m600_cassette )
 {
 	sb2m600_tape_image = NULL;
 	sb2m600_tape_size = 0;
@@ -480,8 +480,8 @@ static void sb2m600_cassette_getinfo(const mess_device_class *devclass, UINT32 s
 		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = device_load_sb2m600_cassette; break;
-		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = device_unload_sb2m600_cassette; break;
+		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(sb2m600_cassette); break;
+		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(sb2m600_cassette); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "bas"); break;

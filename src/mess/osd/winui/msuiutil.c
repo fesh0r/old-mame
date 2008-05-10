@@ -1,5 +1,5 @@
 #include "driver.h"
-#include "device.h"
+#include "image.h"
 #include "msuiutil.h"
 
 BOOL DriverIsComputer(int driver_index)
@@ -40,12 +40,23 @@ BOOL DriverUsesMouse(int driver_index)
 
 BOOL DriverHasDevice(const game_driver *gamedrv, iodevice_t type)
 {
-	BOOL b;
-	const struct IODevice *devices;
+	BOOL b = FALSE;
+	machine_config *config;
+	const device_config *device;
 
-	devices = devices_allocate(gamedrv);
-	b = device_find(devices, IO_PRINTER) ? TRUE : FALSE;
-	devices_free(devices);
+	// allocate the machine config
+	config = machine_config_alloc_with_mess_devices(gamedrv);
+
+	for (device = image_device_first(config); device != NULL; device = image_device_next(device))
+	{
+		if (image_device_getinfo(config, device).type == type)
+		{
+			b = TRUE;
+			break;
+		}
+	}
+
+	machine_config_free(config);
 	return b;
 }
 

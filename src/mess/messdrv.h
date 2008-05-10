@@ -33,9 +33,12 @@ struct SystemConfigurationParamBlock
 };
 
 #define SYSTEM_CONFIG_START(name)															\
-	static void construct_sysconfig_##name(struct SystemConfigurationParamBlock *cfg)		\
+	void construct_sysconfig_##name(struct SystemConfigurationParamBlock *cfg)		\
 	{																						\
 
+#define SYSTEM_CONFIG_EXTERN(name)															\
+	extern void construct_sysconfig_##name(struct SystemConfigurationParamBlock *cfg);		\
+																							
 #define SYSTEM_CONFIG_END																	\
 	}																						\
 
@@ -70,6 +73,8 @@ struct SystemConfigurationParamBlock
 		cfg->device_countoverrides[cfg->device_position] = (count);	\
 		cfg->device_position++;										\
 	}																\
+
+#define construct_sysconfig_0	NULL
 
 /******************************************************************************
  * MESS' version of the GAME() macros of MAME

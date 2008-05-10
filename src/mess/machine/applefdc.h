@@ -11,28 +11,35 @@
 
 *********************************************************************/
 
-#ifndef APPLEFDC_H
-#define APPLEFDC_H
+#ifndef __APPLEFDC_H__
+#define __APPLEFDC_H__
 
 #include "driver.h"
+
+
+
+/***************************************************************************
+    CONSTANTS
+***************************************************************************/
 
 #define APPLEFDC_PH0	0x01
 #define APPLEFDC_PH1	0x02
 #define APPLEFDC_PH2	0x04
 #define APPLEFDC_PH3	0x08
 
-typedef enum
-{
-	APPLEFDC_APPLE2,	/* classic Apple II disk controller (pre-IWM) */
-	APPLEFDC_IWM,		/* Integrated Woz Machine */
-	APPLEFDC_SWIM		/* Steve Woz Integrated Machine (NYI) */
-} applefdc_t;
+#define APPLEFDC	DEVICE_GET_INFO_NAME( applefdc )
+#define IWM			DEVICE_GET_INFO_NAME( iwm )
+#define SWIM		DEVICE_GET_INFO_NAME( swim )
 
+
+
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
 
 typedef struct _applefdc_interface applefdc_interface;
 struct _applefdc_interface
 {
-	applefdc_t type;
 	void (*set_lines)(UINT8 lines);
 	void (*set_enable_lines)(int enable_mask);
 
@@ -42,10 +49,26 @@ struct _applefdc_interface
 };
 
 
-void applefdc_init(const applefdc_interface *intf);
-READ8_HANDLER( applefdc_r );
-WRITE8_HANDLER( applefdc_w );
-UINT8 applefdc_get_lines(void);
+
+/***************************************************************************
+    PROTOTYPES
+***************************************************************************/
+
+/* classic Apple II disk controller (pre-IWM) */
+DEVICE_GET_INFO(applefdc);	
+
+/* Integrated Woz Machine */
+DEVICE_GET_INFO(iwm);
+
+/* Steve Woz Integrated Machine (NYI) */
+DEVICE_GET_INFO(swim);	
+
+/* read/write handlers */
+READ8_DEVICE_HANDLER(applefdc_r);
+WRITE8_DEVICE_HANDLER(applefdc_w);
+
+/* accessor */
+UINT8 applefdc_get_lines(const device_config *device);
 
 
-#endif /* APPLEFDC_H */
+#endif /* __APPLEFDC_H__ */

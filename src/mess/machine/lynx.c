@@ -686,7 +686,7 @@ static void lynx_multiply(void)
 		if (suzy.accumulate_overflow) data|=0x40;
 		break;
 	case 0xb0:
-		input=readinputport(0);
+		input=input_port_read(machine, "JOY");
 		switch (lynx_rotate) {
 		case 1:
 			data=input;
@@ -715,7 +715,7 @@ static void lynx_multiply(void)
 			data=input;
 		}
 		break;
-	case 0xb1: data=readinputport(1);break;
+	case 0xb1: data=input_port_read(machine, "PAUSE");break;
 	case 0xb2:
 		data=*(memory_region(REGION_USER1)+(suzy.high*lynx_granularity)+suzy.low);
 		suzy.low=(suzy.low+1)&(lynx_granularity-1);
@@ -1164,10 +1164,10 @@ WRITE8_HANDLER( lynx_memory_config_w )
      * when these are safe in the cpu */
     lynx_memory_config = data;
 
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK1 : suzy_read);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK1 : suzy_write);
-	memory_install_read8_handler(0,  ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK2 : mikey_read);
-	memory_install_write8_handler(0, ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK2 : mikey_write);
+	memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK1 : suzy_read);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfc00, 0xfcff, 0, 0, (data & 1) ? SMH_BANK1 : suzy_write);
+	memory_install_read8_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK2 : mikey_read);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfd00, 0xfdff, 0, 0, (data & 2) ? SMH_BANK2 : mikey_write);
 
 	if (data & 1)
 		memory_set_bankptr(1, lynx_mem_fc00);
@@ -1206,7 +1206,7 @@ static void lynx_reset(running_machine *machine)
 #endif
 }
 
-static void lynx_postload(void)
+static STATE_POSTLOAD( lynx_postload )
 {
 	lynx_memory_config_w(Machine, 0, lynx_memory_config);
 }
@@ -1215,7 +1215,7 @@ MACHINE_START( lynx )
 {
 	state_save_register_global(lynx_memory_config);
 	state_save_register_global_pointer(lynx_mem_fe00, lynx_mem_fe00_size);
-	state_save_register_func_postload(lynx_postload);
+	state_save_register_postload(machine, lynx_postload, NULL);
 
 	memory_configure_bank(3, 0, 1, memory_region(REGION_CPU1) + 0x0000, 0);
 	memory_configure_bank(3, 1, 1, lynx_mem_fe00, 0);

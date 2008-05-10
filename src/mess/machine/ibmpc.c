@@ -1,6 +1,8 @@
 #include "driver.h"
 #include "memconv.h"
 #include "includes/ibmpc.h"
+#include "devices/cassette.h"
+#include "machine/pit8253.h"
 
 #include "machine/pcshare.h"
 #include "audio/pc.h"
@@ -70,121 +72,6 @@ fe443 call fe643 keyboard test
 fe4a1 call ff979 tape!!! test
 */
 
-
-/*************************************************************************
- *
- *		PIO
- *		parallel input output
- *
- *************************************************************************/
-static  READ8_HANDLER  ( pc_ppi_porta_r );
-static  READ8_HANDLER  ( pc_ppi_portb_r );
-static  READ8_HANDLER  ( pc_ppi_portc_r );
-static WRITE8_HANDLER ( pc_ppi_porta_w );
-static WRITE8_HANDLER ( pc_ppi_portb_w );
-static WRITE8_HANDLER ( pc_ppi_portc_w );
-
-/* PC-XT has a 8255 which is connected to keyboard and other
-status information */
-const ppi8255_interface pc_ppi8255_interface =
-{
-	1,
-	{pc_ppi_porta_r},
-	{pc_ppi_portb_r},
-	{pc_ppi_portc_r},
-	{pc_ppi_porta_w},
-	{pc_ppi_portb_w},
-	{pc_ppi_portc_w}
-};
-
-static struct {
-	int portc_switch_high;
-	int speaker;
-	int keyboard_disabled;
-} pc_ppi={ 0 };
-
- READ8_HANDLER (pc_ppi_porta_r)
-{
-	int data;
-
-	/* KB port A */
-	if (pc_ppi.keyboard_disabled)
-	{
-		/*   0  0 - no floppy drives
-		 *   1  Not used
-		 * 2-3  The number of memory banks on the system board
-		 * 4-5  Display mode
-		 *	    11 = monochrome
-		 *      10 - color 80x25
-		 *      01 - color 40x25
-		 * 6-7  The number of floppy disk drives
-		 */
-		data = readinputport(1);
-	}
-	else
-	{
-		data = pc_keyb_read();
-	}
-    PIO_LOG(1,"PIO_A_r",("$%02x\n", data));
-    return data;
-}
-
- READ8_HANDLER (pc_ppi_portb_r )
-{
-	int data;
-
-	data = 0xff;
-	PIO_LOG(1,"PIO_B_r",("$%02x\n", data));
-	return data;
-}
-
- READ8_HANDLER ( pc_ppi_portc_r )
-{
-	int data=0xff;
-
-	data&=~0x80; // no parity error
-	data&=~0x40; // no error on expansion board
-	/* KB port C: equipment flags */
-//	if (pc_port[0x61] & 0x08)
-	if (pc_ppi.portc_switch_high)
-	{
-		/* read hi nibble of S2 */
-		data = (data&0xf0)|((readinputport(1) >> 4) & 0x0f);
-		PIO_LOG(1,"PIO_C_r (hi)",("$%02x\n", data));
-	}
-	else
-	{
-		/* read lo nibble of S2 */
-		data = (data&0xf0)|(readinputport(1) & 0x0f);
-		PIO_LOG(1,"PIO_C_r (lo)",("$%02x\n", data));
-	}
-
-	return data;
-}
-
-WRITE8_HANDLER ( pc_ppi_porta_w )
-{
-	/* KB controller port A */
-	PIO_LOG(1,"PIO_A_w",("$%02x\n", data));
-}
-
-WRITE8_HANDLER ( pc_ppi_portb_w )
-{
-	/* KB controller port B */
-	pc_ppi.portc_switch_high = data & 0x08;
-	pc_ppi.keyboard_disabled = data & 0x80;
-	pc_sh_speaker(machine, data & 0x03);
-	pc_keyb_set_clock(data & 0x40);
-
-	if (data & 0x80)
-		pc_keyb_clear();
-}
-
-WRITE8_HANDLER ( pc_ppi_portc_w )
-{
-	/* KB controller port C */
-	PIO_LOG(1,"PIO_C_w",("$%02x\n", data));
-}
 
 // damned old checkit doesn't test at standard adresses
 // will do more when I have a program supporting it

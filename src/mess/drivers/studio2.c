@@ -1,6 +1,6 @@
 /*
 
-RCA Studio II
+RCA Studio II ******* PRESS Q for a car racing game *********** X to accelerate, left & right arrow to steer.
 
 PCB Layout
 ----------
@@ -100,6 +100,7 @@ Notes:
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "video/cdp1861.h"
 #include "video/cdp1864.h"
@@ -107,8 +108,9 @@ Notes:
 #include "sound/beep.h"
 #include "sound/discrete.h"
 
-extern int cdp1861_efx;
-extern int cdp1864_efx;
+#define SCREEN_TAG "main"
+#define CDP1861_TAG "cdp1861"
+#define CDP1864_TAG "cdp1864"
 
 /* Read/Write Handlers */
 
@@ -127,11 +129,10 @@ static ADDRESS_MAP_START( studio2_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( studio2_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_READ(cdp1861_dispon_r)
+	AM_RANGE(0x01, 0x01) AM_DEVREAD(CDP1861, CDP1861_TAG, cdp1861_dispon_r)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
 ADDRESS_MAP_END
 
-#ifdef UNUSED_FUNCTION
 static ADDRESS_MAP_START( mpt02_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_ROM
 	AM_RANGE(0x0800, 0x09ff) AM_RAM
@@ -140,16 +141,15 @@ static ADDRESS_MAP_START( mpt02_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( mpt02_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_READWRITE(cdp1864_dispon_r, cdp1864_step_bgcolor_w)
+	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE(CDP1864, CDP1864_TAG, cdp1864_dispon_r, cdp1864_step_bgcolor_w)
 	AM_RANGE(0x02, 0x02) AM_WRITE(keylatch_w)
-	AM_RANGE(0x04, 0x04) AM_READWRITE(cdp1864_dispoff_r, cdp1864_tone_latch_w)
+	AM_RANGE(0x04, 0x04) AM_DEVREADWRITE(CDP1864, CDP1864_TAG, cdp1864_dispoff_r, cdp1864_tone_latch_w)
 ADDRESS_MAP_END
-#endif
 
 /* Input Ports */
 
 static INPUT_PORTS_START( studio2 )
-	PORT_START
+	PORT_START_TAG("KEYPAD_L")
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 0") PORT_CODE(KEYCODE_0) PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 1") PORT_CODE(KEYCODE_1)
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 2") PORT_CODE(KEYCODE_2)
@@ -161,7 +161,7 @@ static INPUT_PORTS_START( studio2 )
 	PORT_BIT( 0x100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 8") PORT_CODE(KEYCODE_8) PORT_CODE(KEYCODE_S)
 	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 1/Left 9") PORT_CODE(KEYCODE_9) PORT_CODE(KEYCODE_D)
 
-	PORT_START
+	PORT_START_TAG("KEYPAD_R")
 	PORT_BIT( 0x001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 0") PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT( 0x002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 1") PORT_CODE(KEYCODE_7_PAD)
 	PORT_BIT( 0x004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 2") PORT_CODE(KEYCODE_8_PAD) PORT_CODE(KEYCODE_UP)
@@ -174,91 +174,196 @@ static INPUT_PORTS_START( studio2 )
 	PORT_BIT( 0x200, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Player 2/Right 9") PORT_CODE(KEYCODE_3_PAD)
 INPUT_PORTS_END
 
+/* Video */
+
+static int cdp1861_efx;
+
+static CDP1861_ON_INT_CHANGED( studio2_int_w )
+{
+	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_INT, level);
+}
+
+static CDP1861_ON_DMAO_CHANGED( studio2_dmao_w )
+{
+	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_DMAOUT, level);
+}
+
+static CDP1861_ON_EFX_CHANGED( studio2_efx_w )
+{
+	cdp1861_efx = level;
+}
+
+static CDP1861_INTERFACE( studio2_cdp1861_intf )
+{
+	SCREEN_TAG,
+	XTAL_3_52128MHz,
+	studio2_int_w,
+	studio2_dmao_w,
+	studio2_efx_w
+};
+
+static VIDEO_UPDATE( studio2 )
+{
+	const device_config *cdp1861 = device_list_find_by_tag(screen->machine->config->devicelist, CDP1861, CDP1861_TAG);
+
+	cdp1861_update(cdp1861, bitmap, cliprect);
+
+	return 0;
+}
+
+static int cdp1864_efx;
+
+static CDP1864_ON_INT_CHANGED( mpt02_int_w )
+{
+	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_INT, level);
+}
+
+static CDP1864_ON_DMAO_CHANGED( mpt02_dmao_w )
+{
+	cpunum_set_input_line(device->machine, 0, CDP1802_INPUT_LINE_DMAOUT, level);
+}
+
+static CDP1864_ON_EFX_CHANGED( mpt02_efx_w )
+{
+	cdp1864_efx = level;
+}
+
+static CDP1864_INTERFACE( mpt02_cdp1864_intf )
+{
+	SCREEN_TAG,
+	CDP1864_CLK_FREQ,
+	mpt02_int_w,
+	mpt02_dmao_w,
+	mpt02_efx_w,
+	RES_K(2.2),	// unverified
+	RES_K(1),	// unverified
+	RES_K(5.1),	// unverified
+	RES_K(4.7)	// unverified
+};
+
+static VIDEO_UPDATE( mpt02 )
+{
+	const device_config *cdp1864 = device_list_find_by_tag(screen->machine->config->devicelist, CDP1864, CDP1864_TAG);
+
+	cdp1864_update(cdp1864, bitmap, cliprect);
+
+	return 0;
+}
+
 /* CDP1802 Configuration */
 
 static int cdp1802_mode = CDP1802_MODE_RESET;
 
-static UINT8 studio2_mode_r(void)
+static CDP1802_MODE_READ( studio2_mode_r )
 {
 	return cdp1802_mode;
 }
 
-static UINT8 studio2_ef_r(void)
+static CDP1802_EF_READ( studio2_ef_r )
 {
 	int ef = 0x0f;
 
 	if (cdp1861_efx) ef -= EF1;
 
-	if (readinputport(0) & (1 << keylatch)) ef -= EF3;
-	if (readinputport(1) & (1 << keylatch)) ef -= EF4;
+	if (input_port_read(machine, "KEYPAD_L") & (1 << keylatch)) ef -= EF3;
+	if (input_port_read(machine, "KEYPAD_R") & (1 << keylatch)) ef -= EF4;
 
 	return ef;
 }
 
-static void studio2_q_w(int level)
+static CDP1802_Q_WRITE( studio2_q_w )
 {
 	beep_set_state(0, level);
 }
 
-static const CDP1802_CONFIG studio2_config =
+static CDP1802_DMA_WRITE( studio2_dma_w )
+{
+	const device_config *cdp1861 = device_list_find_by_tag(machine->config->devicelist, CDP1861, CDP1861_TAG);
+
+	cdp1861_dma_w(cdp1861, data);
+}
+
+static CDP1802_INTERFACE( studio2_config )
 {
 	studio2_mode_r,
 	studio2_ef_r,
 	NULL,
 	studio2_q_w,
 	NULL,
-	cdp1861_dma_w
+	studio2_dma_w
 };
 
-static UINT8 mpt02_ef_r(void)
+static CDP1802_EF_READ( mpt02_ef_r )
 {
 	int ef = 0x0f;
 
 	if (cdp1864_efx) ef -= EF1;
 
-	if (readinputport(0) & (1 << keylatch)) ef -= EF3;
-	if (readinputport(1) & (1 << keylatch)) ef -= EF4;
+	if (input_port_read(machine, "KEYPAD_L") & (1 << keylatch)) ef -= EF3;
+	if (input_port_read(machine, "KEYPAD_R") & (1 << keylatch)) ef -= EF4;
 
 	return ef;
 }
 
-static const CDP1802_CONFIG mpt02_config =
+static CDP1802_DMA_WRITE( mpt02_dma_w )
+{
+	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
+
+	UINT8 color = colorram[ma / 4]; // 0x04 = R, 0x02 = B, 0x01 = G
+
+	int rdata = BIT(color, 2);
+	int gdata = BIT(color, 0);
+	int bdata = BIT(color, 1);
+
+	cdp1864_dma_w(cdp1864, data, rdata, gdata, bdata);
+}
+
+static CDP1802_INTERFACE( mpt02_config )
 {
 	studio2_mode_r,
 	mpt02_ef_r,
 	NULL,
 	studio2_q_w,
 	NULL,
-	cdp1864_dma_w
+	mpt02_dma_w
 };
 
 /* Machine Initialization */
 
 static MACHINE_START( studio2 )
 {
+	state_save_register_global(cdp1861_efx);
 	state_save_register_global(cdp1802_mode);
 	state_save_register_global(keylatch);
 }
 
 static MACHINE_RESET( studio2 )
 {
-	MACHINE_RESET_CALL(cdp1861);
+	const device_config *cdp1861 = device_list_find_by_tag(machine->config->devicelist, CDP1861, CDP1861_TAG);
+	cdp1861->reset(cdp1861);
+}
+
+static MACHINE_START( mpt02 )
+{
+	state_save_register_global(cdp1864_efx);
+	state_save_register_global(cdp1802_mode);
+	state_save_register_global(keylatch);
 }
 
 static MACHINE_RESET( mpt02 )
 {
-	MACHINE_RESET_CALL(cdp1864);
+	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
+	cdp1864->reset(cdp1864);
 
 	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 }
 
-/* Machine Drivers */
+/* machine Drivers */
 
 static MACHINE_DRIVER_START( studio2 )
-
 	// basic machine hardware
 
-	MDRV_CPU_ADD_TAG("main", CDP1802, 3579545/2) // the real clock is derived from an oscillator circuit
+	MDRV_CPU_ADD(CDP1802, 3579545/2) // the real clock is derived from an oscillator circuit
 	MDRV_CPU_PROGRAM_MAP(studio2_map, 0)
 	MDRV_CPU_IO_MAP(studio2_io_map, 0)
 	MDRV_CPU_CONFIG(studio2_config)
@@ -268,14 +373,16 @@ static MACHINE_DRIVER_START( studio2 )
 
     // video hardware
 
-	MDRV_SCREEN_ADD("main", RASTER)
+	MDRV_SCREEN_ADD(SCREEN_TAG, RASTER)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(3579545/2, CDP1861_SCREEN_WIDTH, CDP1861_HBLANK_END, CDP1861_HBLANK_START, CDP1861_TOTAL_SCANLINES, CDP1861_SCANLINE_VBLANK_END, CDP1861_SCANLINE_VBLANK_START)
 
 	MDRV_PALETTE_LENGTH(2)
 	MDRV_PALETTE_INIT(black_and_white)
-	MDRV_VIDEO_START(cdp1861)
-	MDRV_VIDEO_UPDATE(cdp1861)
+	MDRV_VIDEO_UPDATE(studio2)
+
+	MDRV_DEVICE_ADD(CDP1861_TAG, CDP1861)
+	MDRV_DEVICE_CONFIG(studio2_cdp1861_intf)
 
 	// sound hardware
 
@@ -285,13 +392,14 @@ static MACHINE_DRIVER_START( studio2 )
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( mpt02 )
-
 	// basic machine hardware
 
-	MDRV_CPU_ADD_TAG("main", CDP1802, CDP1864_CLK_FREQ)
-	MDRV_CPU_PROGRAM_MAP(studio2_map, 0)
-	MDRV_CPU_IO_MAP(studio2_io_map, 0)
+	MDRV_CPU_ADD(CDP1802, CDP1864_CLK_FREQ)
+	MDRV_CPU_PROGRAM_MAP(mpt02_map, 0)
+	MDRV_CPU_IO_MAP(mpt02_io_map, 0)
 	MDRV_CPU_CONFIG(mpt02_config)
+
+	MDRV_MACHINE_START(mpt02)
 	MDRV_MACHINE_RESET(mpt02)
 
     // video hardware
@@ -301,8 +409,10 @@ static MACHINE_DRIVER_START( mpt02 )
 	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
 
 	MDRV_PALETTE_LENGTH(8)
-	MDRV_VIDEO_START(cdp1864)
-	MDRV_VIDEO_UPDATE(cdp1864)
+	MDRV_VIDEO_UPDATE(mpt02)
+
+	MDRV_DEVICE_ADD(CDP1864_TAG, CDP1864)
+	MDRV_DEVICE_CONFIG(mpt02_cdp1864_intf)
 
 	// sound hardware
 
@@ -333,7 +443,7 @@ ROM_END
 
 #define ST2_HEADER_SIZE		256
 
-static DEVICE_LOAD( studio2_cart )
+static DEVICE_IMAGE_LOAD( studio2_cart )
 {
 	UINT8	*ptr = NULL;
 	UINT8	header[ST2_HEADER_SIZE];
@@ -369,7 +479,7 @@ static void studio2_cartslot_getinfo( const mess_device_class *devclass, UINT32 
 		info->i = 1;
 		break;
 	case MESS_DEVINFO_PTR_LOAD:
-		info->load = device_load_studio2_cart;
+		info->load = DEVICE_IMAGE_LOAD_NAME(studio2_cart);
 		break;
 	case MESS_DEVINFO_STR_FILE_EXTENSIONS:
 		strcpy(info->s = device_temp_str(), "st2");
@@ -403,20 +513,6 @@ static DRIVER_INIT( studio2 )
 	timer_set(ATTOTIME_IN_MSEC(200), NULL, 0, set_cpu_mode);
 }
 
-static int mpt02_colorram_r(UINT16 addr)
-{
-	return colorram[addr / 4]; // 0x04 = R, 0x02 = B, 0x01 = G
-}
-
-static const CDP1864_interface mpt02_CDP1864_interface =
-{
-	RES_K(2.2),	// unverified
-	RES_K(1),	// unverified
-	RES_K(5.1),	// unverified
-	RES_K(4.7),	// unverified
-	mpt02_colorram_r
-};
-
 static TIMER_CALLBACK(mpt02_setup_beep)
 {
 	beep_set_state( 0, 0 );
@@ -426,7 +522,6 @@ static TIMER_CALLBACK(mpt02_setup_beep)
 static DRIVER_INIT( mpt02 )
 {
 	timer_set(attotime_zero, NULL, 0, mpt02_setup_beep);
-	cdp1864_configure(&mpt02_CDP1864_interface);
 }
 
 /* Game Drivers */
