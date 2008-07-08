@@ -387,7 +387,7 @@ static void renderscanline_uvi_full(void *dest, INT32 scanline, const poly_exten
 static void poly3d_DrawQuad(running_machine *machine, bitmap_t *bitmap, int textureBank, int color, Poly3dVertex pv[4], UINT16 flags, int direct, int cmode )
 {
 	poly_extra_data *extra;
-	poly_vertex v[4], clipv[5];
+	poly_vertex v[4], clipv[6];
 	int clipverts;
 	int vertnum;
 
@@ -406,6 +406,7 @@ static void poly3d_DrawQuad(running_machine *machine, bitmap_t *bitmap, int text
 		clipverts = poly_zclip_if_less(4, v, clipv, 4, MIN_Z);
 		if (clipverts < 3)
 			return;
+		assert(clipverts <= ARRAY_LENGTH(clipv));
 		for (vertnum = 0; vertnum < clipverts; vertnum++)
 		{
 			float ooz = 1.0f / clipv[vertnum].p[0];
@@ -611,7 +612,7 @@ ApplyGamma( bitmap_t *bitmap )
 {
 	int x,y;
 	if( mbSuperSystem22 )
-   { /* super system 22 */
+	{ /* super system 22 */
 #ifdef LSB_FIRST
 #define XORPAT 0x3
 #else
@@ -635,9 +636,9 @@ ApplyGamma( bitmap_t *bitmap )
 	}
 	else
 	{ /* system 22 */
-		const UINT8 *rlut = 0x000+(const UINT8 *)memory_region(REGION_USER1);
-		const UINT8 *glut = 0x100+(const UINT8 *)memory_region(REGION_USER1);
-		const UINT8 *blut = 0x200+(const UINT8 *)memory_region(REGION_USER1);
+		const UINT8 *rlut = 0x000+(const UINT8 *)memory_region(Machine, REGION_USER1);
+		const UINT8 *glut = 0x100+rlut;
+		const UINT8 *blut = 0x200+rlut;
 		for( y=0; y<bitmap->height; y++ )
 		{
 			UINT32 *dest = BITMAP_ADDR32(bitmap, y, 0);
@@ -2236,11 +2237,11 @@ static VIDEO_START( common )
 	mbDSPisActive = 0;
 	memset( namcos22_polygonram, 0xcc, 0x20000 );
 
-	Prepare3dTexture(memory_region(REGION_TEXTURE_TILEMAP), machine->gfx[GFX_TEXTURE_TILE]->gfxdata );
+	Prepare3dTexture(memory_region(machine, REGION_TEXTURE_TILEMAP), machine->gfx[GFX_TEXTURE_TILE]->gfxdata );
 	dirtypal = auto_malloc(NAMCOS22_PALETTE_SIZE/4);
 	cgdirty = auto_malloc( 0x400 );
-	mPtRomSize = memory_region_length(REGION_POINTROM)/3;
-	mpPolyL = memory_region(REGION_POINTROM);
+	mPtRomSize = memory_region_length(machine, REGION_POINTROM)/3;
+	mpPolyL = memory_region(machine, REGION_POINTROM);
 	mpPolyM = mpPolyL + mPtRomSize;
 	mpPolyH = mpPolyM + mPtRomSize;
 

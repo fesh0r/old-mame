@@ -35,7 +35,6 @@ for now. Even at 12 this slowdown still happens a little.
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "audio/seibu.h"
 #include "sound/3812intf.h"
@@ -73,7 +72,7 @@ static READ16_HANDLER( pip16_r )
 
 static int msm5205next;
 
-static void toki_adpcm_int (int data)
+static void toki_adpcm_int (running_machine *machine, int data)
 {
 	static int toggle=0;
 
@@ -82,13 +81,13 @@ static void toki_adpcm_int (int data)
 
 	toggle ^= 1;
 	if (toggle)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static WRITE8_HANDLER( toki_adpcm_control_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 
 
 	/* the code writes either 2 or 3 in the bottom two bits */
@@ -732,7 +731,7 @@ ROM_END
 
 static DRIVER_INIT( toki )
 {
-	UINT8 *ROM = memory_region(REGION_SOUND1);
+	UINT8 *ROM = memory_region(machine, REGION_SOUND1);
 	UINT8 *buffer = malloc_or_die(0x20000);
 	int i;
 
@@ -744,23 +743,28 @@ static DRIVER_INIT( toki )
 
 	free(buffer);
 
-	seibu_sound_decrypt(REGION_CPU2,0x2000);
+	seibu_sound_decrypt(machine,REGION_CPU2,0x2000);
 }
 
 
 static DRIVER_INIT( tokib )
 {
 	UINT8 *temp = malloc_or_die(65536 * 2);
-	int i, offs;
+	int i, offs, len;
+	UINT8 *rom;
 
 	/* invert the sprite data in the ROMs */
-	for (i = 0; i < memory_region_length(REGION_GFX2); i++)
-		memory_region(REGION_GFX2)[i] ^= 0xff;
+	len = memory_region_length(machine, REGION_GFX2);
+	rom = memory_region(machine, REGION_GFX2);
+	for (i = 0; i < len; i++)
+		rom[i] ^= 0xff;
 
 	/* merge background tile graphics together */
-		for (offs = 0; offs < memory_region_length(REGION_GFX3); offs += 0x20000)
+		len = memory_region_length(machine, REGION_GFX3);
+		rom = memory_region(machine, REGION_GFX3);
+		for (offs = 0; offs < len; offs += 0x20000)
 		{
-			UINT8 *base = &memory_region(REGION_GFX3)[offs];
+			UINT8 *base = &rom[offs];
 			memcpy (temp, base, 65536 * 2);
 			for (i = 0; i < 16; i++)
 			{
@@ -770,9 +774,11 @@ static DRIVER_INIT( tokib )
 				memcpy (&base[0x18000 + i * 0x800], &temp[0x1800 + i * 0x2000], 0x800);
 			}
 		}
-		for (offs = 0; offs < memory_region_length(REGION_GFX4); offs += 0x20000)
+		len = memory_region_length(machine, REGION_GFX4);
+		rom = memory_region(machine, REGION_GFX4);
+		for (offs = 0; offs < len; offs += 0x20000)
 		{
-			UINT8 *base = &memory_region(REGION_GFX4)[offs];
+			UINT8 *base = &rom[offs];
 			memcpy (temp, base, 65536 * 2);
 			for (i = 0; i < 16; i++)
 			{
@@ -791,7 +797,7 @@ static DRIVER_INIT(jujub)
 	/* Program ROMs are bitswapped */
 	{
 		int i;
-		UINT16 *prgrom = (UINT16*)memory_region(REGION_CPU1);
+		UINT16 *prgrom = (UINT16*)memory_region(machine, REGION_CPU1);
 
 		for (i = 0; i < 0x60000/2; i++)
 		{
@@ -805,7 +811,7 @@ static DRIVER_INIT(jujub)
 	/* Decrypt data for z80 program */
 	{
 		UINT8 *decrypt = auto_malloc(0x20000);
-		UINT8 *rom = memory_region(REGION_CPU2);
+		UINT8 *rom = memory_region(machine, REGION_CPU2);
 		int i;
 
 		memcpy(decrypt,rom,0x20000);
@@ -820,7 +826,7 @@ static DRIVER_INIT(jujub)
 	}
 
 	{
-		UINT8 *ROM = memory_region(REGION_SOUND1);
+		UINT8 *ROM = memory_region(machine, REGION_SOUND1);
 		UINT8 *buffer = malloc_or_die(0x20000);
 		int i;
 

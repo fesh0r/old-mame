@@ -127,7 +127,6 @@ Dumped by Chackn
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "machine/segacrpt.h"
 #include "sound/2203intf.h"
@@ -162,7 +161,7 @@ VIDEO_UPDATE( angelkds );
 static WRITE8_HANDLER ( angelkds_cpu_bank_write )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_USER1);
+	UINT8 *RAM = memory_region(machine, REGION_USER1);
 
 	bankaddress = data & 0x0f;
 	memory_set_bankptr(1,&RAM[bankaddress*0x4000]);
@@ -181,16 +180,22 @@ these make the game a bit easier for testing purposes
 
 static READ8_HANDLER( angelkds_input_r )
 {
-	int fake = input_port_read_indexed(machine, 6+offset);
+	int fake;
+	static const char *portnames[] = { "I81", "I82" };
+	static const char *fakenames[] = { "FAKE1", "FAKE2" };
 
-	return ((fake & 0x01) ? fake  : input_port_read_indexed(machine, 4+offset));
+	fake = input_port_read(machine, fakenames[offset]);
+
+	return ((fake & 0x01) ? fake  : input_port_read(machine, portnames[offset]));
 }
 
 #else
 
 static READ8_HANDLER( angelkds_input_r )
 {
-	return input_port_read_indexed(machine, 4+offset);
+	static const char *portnames[] = { "I81", "I82" };
+
+	return input_port_read(machine, portnames[offset]);
 }
 
 #endif
@@ -236,10 +241,10 @@ static ADDRESS_MAP_START( main_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_WRITE(SMH_NOP) // 00 on start-up, not again
 	AM_RANGE(0x42, 0x42) AM_WRITE(angelkds_cpu_bank_write)
 	AM_RANGE(0x43, 0x43) AM_WRITE(SMH_NOP) // 9a on start-up, not again
-	AM_RANGE(0x40, 0x40) AM_READ(input_port_0_r)	/* "Coinage" Dip Switches */
-	AM_RANGE(0x41, 0x41) AM_READ(input_port_1_r)	/* Other Dip Switches */
-	AM_RANGE(0x42, 0x42) AM_READ(input_port_2_r)	/* Players inputs (not needed ?) */
-	AM_RANGE(0x80, 0x80) AM_READ(input_port_3_r)	/* System inputs */
+	AM_RANGE(0x40, 0x40) AM_READ_PORT("I40")	/* "Coinage" Dip Switches */
+	AM_RANGE(0x41, 0x41) AM_READ_PORT("I41")	/* Other Dip Switches */
+	AM_RANGE(0x42, 0x42) AM_READ_PORT("I42")	/* Players inputs (not needed ?) */
+	AM_RANGE(0x80, 0x80) AM_READ_PORT("I80")	/* System inputs */
 	AM_RANGE(0x81, 0x82) AM_READ(angelkds_input_r)	/* Players inputs */
 	AM_RANGE(0x83, 0x83) AM_WRITE(SMH_NOP) // 9b on start-up, not again
 	AM_RANGE(0xc0, 0xc3) AM_READWRITE(angelkds_main_sound_r, angelkds_main_sound_w) // 02 various points
@@ -533,9 +538,9 @@ static READ8_HANDLER( angelkds_sub_sound_r )
 }
 
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -732,7 +737,7 @@ ROM_START( spcpostn )
 ROM_END
 
 
-static DRIVER_INIT( spcpostn )	{ spcpostn_decode(); }
+static DRIVER_INIT( spcpostn )	{ spcpostn_decode(machine); }
 
 
 GAME( 1988, angelkds, 0, angelkds, angelkds,        0,  ROT90,  "Sega / Nasco?", "Angel Kids (Japan)" , 0) /* Nasco not displayed but 'Exa Planning' is */

@@ -13,11 +13,14 @@
 
     TODO:
 
+    - run interrupt test suite
+    - run production test suite
+    - run microbus test suite
     - remove LBIops
-    - JP/JSR/JSRP
 
 */
 
+#include "driver.h"
 #include "cpuintrf.h"
 #include "debugger.h"
 #include "cop400.h"
@@ -35,6 +38,8 @@ typedef struct {
 
 typedef struct
 {
+	const cop400_interface *intf;
+
 	UINT9 	PC;
 	UINT9	PREVPC;
 	UINT4	A;
@@ -49,7 +54,9 @@ typedef struct
 	UINT8   skip, skipLBI;
 	UINT8	G_mask;
 	UINT8	D_mask;
-	int		last_si;
+	UINT8	si;
+	int		microbus_int;
+	int		halt;
 } COP410_Regs;
 
 static COP410_Regs R;
@@ -119,7 +126,7 @@ static const s_opcode opcode_33_map[256]=
 	{1, illegal 	},{1, skgz 		},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
 	{1, illegal 	},{1, illegal 	},{1, ing	 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, inl	 	},{1, illegal 	},
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
-	{1, illegal 	},{1, illegal 	},{1, omg	 	},{1, illegal 	},{1, camq	 	},{1, illegal 	},{1, obd	 	},{1, illegal 	},
+	{1, halt	 	},{1, illegal 	},{1, omg	 	},{1, illegal 	},{1, camq	 	},{1, illegal 	},{1, obd	 	},{1, illegal 	},
 
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
 	{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},{1, illegal 	},
@@ -162,9 +169,9 @@ static const s_opcode opcode_map[256]=
 	{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi		},{1, lbi		},
 	{0, illegal		},{1, skmbz1	},{0, illegal	},{1, skmbz3		},{1, xis		},{1, ld		},{1, x			},{1, xds		},
 	{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi		},{1, lbi		},
-	{1, skc			},{1, ske		},{1, sc		},{2, cop410_op23	},{1, xis		},{1, ld		},{1, x			},{1, xds 		},
+	{1, skc			},{1, ske		},{1, sc		},{1, cop410_op23	},{1, xis		},{1, ld		},{1, x			},{1, xds 		},
 	{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi		},{1, lbi		},
-	{1, asc			},{1, add		},{1, rc		},{2, cop410_op33	},{1, xis		},{1, ld		},{1, x			},{1, xds		},
+	{1, asc			},{1, add		},{1, rc		},{1, cop410_op33	},{1, xis		},{1, ld		},{1, x			},{1, xds		},
 	{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi			},{1, lbi		},{1, lbi		},{1, lbi		},{1, lbi		},
 
 	{1, comp		},{0, illegal	},{1, rmb2		},{1, rmb3			},{1, nop		},{1, rmb1		},{1, smb2		},{1, smb1		},
@@ -197,7 +204,7 @@ static const s_opcode opcode_map[256]=
 
 /* Memory Maps */
 
-static ADDRESS_MAP_START( cop410_internal_rom, ADDRESS_SPACE_DATA, 8 )
+static ADDRESS_MAP_START( cop410_internal_rom, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x000, 0x1ff) AM_ROM
 ADDRESS_MAP_END
 
@@ -213,21 +220,40 @@ static void cop410_init(int index, int clock, const void *config, int (*irqcallb
 	int i;
 
 	memset(&R, 0, sizeof(R));
-	R.G_mask = 0x0F;
-	R.D_mask = 0x0F;
+
+	R.intf = (cop400_interface *) config;
+
+	assert(R.intf != NULL);
+
+	/* set output pin masks */
+
+	R.G_mask = 0x0f;
+	R.D_mask = 0x0f;
+
+	/* set clock divider */
+
+	cpunum_set_info_int(index, CPUINFO_INT_CLOCK_DIVIDER, R.intf->cki);
+
+	/* allocate serial timer */
 
 	cop410_serial_timer = timer_alloc(cop410_serial_tick, NULL);
 	timer_adjust_periodic(cop410_serial_timer, attotime_zero, index, ATTOTIME_IN_HZ(clock));
 
+	/* initialize instruction length array */
+
 	for (i=0; i<256; i++) InstLen[i]=1;
 
 	InstLen[0x60] = InstLen[0x61] = InstLen[0x68] = InstLen[0x69] = InstLen[0x33] = InstLen[0x23] = 2;
+
+	/* initialize LBI opcode array */
 
 	for (i=0; i<256; i++) LBIops[i] = 0;
 	for (i=0x08; i<0x10; i++) LBIops[i] = 1;
 	for (i=0x18; i<0x20; i++) LBIops[i] = 1;
 	for (i=0x28; i<0x30; i++) LBIops[i] = 1;
 	for (i=0x38; i<0x40; i++) LBIops[i] = 1;
+
+	/* register for state saving */
 
 	state_save_register_item("cop410", index, PC);
 	state_save_register_item("cop410", index, R.PREVPC);
@@ -245,7 +271,9 @@ static void cop410_init(int index, int clock, const void *config, int (*irqcallb
 	state_save_register_item("cop410", index, skipLBI);
 	state_save_register_item("cop410", index, R.G_mask);
 	state_save_register_item("cop410", index, R.D_mask);
-	state_save_register_item("cop410", index, R.last_si);
+	state_save_register_item("cop410", index, R.si);
+	state_save_register_item("cop410", index, R.microbus_int);
+	state_save_register_item("cop410", index, R.halt);
 }
 
 static void cop411_init(int index, int clock, const void *config, int (*irqcallback)(int))
@@ -269,6 +297,8 @@ static void cop410_reset(void)
 	OUT_D(0);
 	EN = 0;
 	WRITE_G(0);
+
+	R.halt = 0;
 }
 
 /****************************************************************************
@@ -284,7 +314,14 @@ static int cop410_execute(int cycles)
 	{
 		prevPC = PC;
 
-		CALL_DEBUGGER(PC);
+		debugger_instruction_hook(Machine, PC);
+
+		if (R.intf->cko == COP400_CKO_HALT_IO_PORT)
+		{
+			R.halt = IN_CKO();
+		}
+
+		if (R.halt) continue;
 
 		opcode = ROM(PC);
 
@@ -351,6 +388,23 @@ static void cop410_set_context (void *src)
 {
 	if( src )
 		R = *(COP410_Regs*)src;
+}
+
+/**************************************************************************
+ * Validity check
+ **************************************************************************/
+static int cop410_validity_check(const game_driver *driver, const void *config)
+{
+	int error = FALSE;
+	const cop400_interface *intf = (const cop400_interface *) config;
+
+	if ((intf == NULL) || (intf->cki <= 0))
+	{
+		mame_printf_error("%s: %s has an invalid CPU configuration\n", driver->source_file, driver->name);
+		error = TRUE;
+	}
+
+	return error;
 }
 
 /**************************************************************************
@@ -433,10 +487,9 @@ void cop410_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_RESET:							info->reset = cop410_reset;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = cop410_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = cop410_dasm;		break;
-#endif /* ENABLE_DEBUGGER */
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &cop410_ICount;			break;
+		case CPUINFO_PTR_VALIDITY_CHECK:				info->validity_check = cop410_validity_check;	break;
 
 /*      case CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACE_PROGRAM:
             info->internal_map8 = address_map_cop410_internal_rom;                              break;*/
@@ -470,7 +523,7 @@ void cop410_get_info(UINT32 state, cpuinfo *info)
 
 void cop411_get_info(UINT32 state, cpuinfo *info)
 {
-	// COP411 is a 20-pin package version of the COP410, lacking some ports
+	// COP411 is a 20-pin package version of the COP410, missing D2/D3/G3/CKO
 
 	switch (state)
 	{

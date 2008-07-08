@@ -3,6 +3,7 @@
 */
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/n64.h"
 
 #define LOG_RDP_EXECUTION 		0
@@ -10,20 +11,6 @@
 #if LOG_RDP_EXECUTION
 static FILE *rdp_exec;
 #endif
-
-/* defined in systems/n64.c */
-extern UINT32 *rdram;
-extern UINT32 *rsp_imem;
-extern UINT32 *rsp_dmem;
-extern void dp_full_sync(void);
-
-extern UINT32 n64_vi_origin;
-extern UINT32 n64_vi_control;
-
-extern UINT32 dp_start;
-extern UINT32 dp_end;
-extern UINT32 dp_current;
-extern UINT32 dp_status;
 
 static UINT32 rdp_cmd_data[0x1000];
 static int rdp_cmd_ptr = 0;
@@ -335,7 +322,7 @@ VIDEO_UPDATE(n64)
 						int r = ((pix >> 11) & 0x1f) << 3;
 						int g = ((pix >> 6) & 0x1f) << 3;
 						int b = ((pix >> 1) & 0x1f) << 3;
-						d[i^1] = (r << 16) | (g << 8) | b;
+						d[BYTE_XOR_BE(i)] = (r << 16) | (g << 8) | b;
 					}
 				}
 			}
@@ -3017,7 +3004,7 @@ static void rdp_sync_tile(UINT32 w1, UINT32 w2)
 
 static void rdp_sync_full(UINT32 w1, UINT32 w2)
 {
-	dp_full_sync();
+	dp_full_sync(Machine);
 }
 
 static void rdp_set_key_gb(UINT32 w1, UINT32 w2)

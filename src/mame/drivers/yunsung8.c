@@ -30,7 +30,6 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
 #include "sound/msm5205.h"
@@ -56,7 +55,7 @@ VIDEO_UPDATE( yunsung8 );
 
 static MACHINE_RESET( yunsung8 )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1) + 0x24000;
+	UINT8 *RAM = memory_region(machine, REGION_CPU1) + 0x24000;
 
 	yunsung8_videoram_0 = RAM + 0x0000;	// Ram is banked
 	yunsung8_videoram_1 = RAM + 0x2000;
@@ -75,7 +74,7 @@ static MACHINE_RESET( yunsung8 )
 
 static WRITE8_HANDLER( yunsung8_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	int bank				=	data & 7;		// ROM bank
 	yunsung8_layers_ctrl	=	data & 0x30;	// Layers enable
@@ -132,7 +131,7 @@ static int adpcm;
 
 static WRITE8_HANDLER( yunsung8_sound_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 	int bank = data & 7;
 
 	if ( bank != (data&(~0x20)) ) 	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
@@ -485,7 +484,7 @@ GFXDECODE_END
 ***************************************************************************/
 
 
-static void yunsung8_adpcm_int(int irq)
+static void yunsung8_adpcm_int(running_machine *machine, int irq)
 {
 	static int toggle=0;
 
@@ -494,7 +493,7 @@ static void yunsung8_adpcm_int(int irq)
 
 	toggle ^= 1;
 	if (toggle)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const struct MSM5205interface yunsung8_msm5205_interface =

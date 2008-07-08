@@ -189,59 +189,7 @@ $8609 - $860f    High score characters to display to screen for highest score
 #include "deprecat.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
-
-/* video */
-extern UINT8 *slapfight_videoram;
-extern UINT8 *slapfight_colorram;
-extern size_t slapfight_videoram_size;
-extern UINT8 *slapfight_scrollx_lo,*slapfight_scrollx_hi,*slapfight_scrolly;
-VIDEO_UPDATE( slapfight );
-VIDEO_UPDATE( perfrman );
-VIDEO_START( slapfight );
-VIDEO_START( perfrman );
-WRITE8_HANDLER( slapfight_flipscreen_w );
-WRITE8_HANDLER( slapfight_fixram_w );
-WRITE8_HANDLER( slapfight_fixcol_w );
-WRITE8_HANDLER( slapfight_videoram_w );
-WRITE8_HANDLER( slapfight_colorram_w );
-WRITE8_HANDLER( slapfight_palette_bank_w );
-
-/* MACHINE */
-MACHINE_RESET( slapfight );
-extern UINT8 *slapfight_dpram;
-extern size_t slapfight_dpram_size;
-WRITE8_HANDLER( slapfight_dpram_w );
-READ8_HANDLER( slapfight_dpram_r );
-
-READ8_HANDLER( slapfight_port_00_r );
-WRITE8_HANDLER( slapfight_port_00_w );
-WRITE8_HANDLER( slapfight_port_01_w );
-WRITE8_HANDLER( getstar_port_04_w );
-WRITE8_HANDLER( slapfight_port_06_w );
-WRITE8_HANDLER( slapfight_port_07_w );
-WRITE8_HANDLER( slapfight_port_08_w );
-WRITE8_HANDLER( slapfight_port_09_w );
-
-/* MCU */
-READ8_HANDLER( getstar_e803_r );
-
-READ8_HANDLER ( tigerh_68705_portA_r );
-WRITE8_HANDLER( tigerh_68705_portA_w );
-READ8_HANDLER ( tigerh_68705_portB_r );
-WRITE8_HANDLER( tigerh_68705_portB_w );
-READ8_HANDLER ( tigerh_68705_portC_r );
-WRITE8_HANDLER( tigerh_68705_portC_w );
-WRITE8_HANDLER( tigerh_68705_ddrA_w );
-WRITE8_HANDLER( tigerh_68705_ddrB_w );
-WRITE8_HANDLER( tigerh_68705_ddrC_w );
-WRITE8_HANDLER( tigerh_mcu_w );
-READ8_HANDLER ( tigerh_mcu_r );
-READ8_HANDLER ( tigerh_mcu_status_r );
-
-WRITE8_HANDLER( getstar_sh_intenable_w );
-INTERRUPT_GEN( getstar_interrupt );
-
-
+#include "includes/slapfght.h"
 
 static ADDRESS_MAP_START( perfrman_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
@@ -462,7 +410,7 @@ COMMON_START
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	/* Actually, the following DIPSW doesnt seem to do anything */
-	PORT_BIT(    0x20, 0x20, IPT_DIPSWITCH_NAME ) PORT_NAME("Screen Test") PORT_CODE(KEYCODE_F1) PORT_TOGGLE
+	PORT_DIPNAME( 0x20, 0x20, "Screen Test" ) PORT_CODE(KEYCODE_F1) PORT_TOGGLE
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x10, 0x00, DEF_STR( Cabinet ) )
@@ -575,7 +523,7 @@ COMMON_START
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
-	PORT_BIT(    0x20, 0x20, IPT_DIPSWITCH_NAME ) PORT_NAME("Screen Test") PORT_CODE(KEYCODE_F1) PORT_TOGGLE
+	PORT_DIPNAME( 0x20, 0x20, "Screen Test" ) PORT_CODE(KEYCODE_F1) PORT_TOGGLE
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Flip_Screen ) )

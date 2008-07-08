@@ -2,6 +2,7 @@
 #include "deprecat.h"
 #include "video/ppu2c0x.h"
 #include "machine/rp5h01.h"
+#include "includes/playch10.h"
 
 /* Globals */
 int pc10_sdcs;			/* ShareD Chip Select */
@@ -49,7 +50,7 @@ MACHINE_RESET( pc10 )
 	RP5H01_enable_w( 0, 1 );
 
 	/* reset the ppu */
-	ppu2c0x_reset( 0, /* video_screen_get_scan_period(machine->primary_screen) * */ 1 );
+	ppu2c0x_reset( machine, 0, /* video_screen_get_scan_period(machine->primary_screen) * */ 1 );
 
 	ppu2c0x_set_mirroring( 0, mirroring );
 }
@@ -61,7 +62,7 @@ MACHINE_RESET( pc10 )
  *************************************/
 READ8_HANDLER( pc10_port_0_r )
 {
-	return input_port_read_indexed(machine,  0 ) | ( ( ~pc10_int_detect & 1 ) << 3 );
+	return input_port_read(machine, "BIOS") | ( ( ~pc10_int_detect & 1 ) << 3 );
 }
 
 WRITE8_HANDLER( pc10_SDCS_w )
@@ -113,7 +114,7 @@ WRITE8_HANDLER( pc10_GAMESTOP_w )
 WRITE8_HANDLER( pc10_PPURES_w )
 {
 	if ( data & 1 )
-		ppu2c0x_reset( 0, /* video_screen_get_scan_period(machine->primary_screen) * */ 1 );
+		ppu2c0x_reset( machine, 0, /* video_screen_get_scan_period(machine->primary_screen) * */ 1 );
 }
 
 READ8_HANDLER( pc10_detectclr_r )
@@ -166,7 +167,7 @@ WRITE8_HANDLER( pc10_prot_w )
 		/* is the actual protection memory area                     */
 		/* setting the whole 0x2000 region every time is a waste    */
 		/* so we just set $ffff with the current value              */
-		memory_region( REGION_CPU1 )[0xffff] = pc10_prot_r(machine,0);
+		memory_region( machine, REGION_CPU1 )[0xffff] = pc10_prot_r(machine,0);
 	}
 }
 
@@ -183,8 +184,8 @@ WRITE8_HANDLER( pc10_in0_w )
 		return;
 
 	/* load up the latches */
-	input_latch[0] = input_port_read_indexed(machine,  3 );
-	input_latch[1] = input_port_read_indexed(machine,  4 );
+	input_latch[0] = input_port_read(machine, "P1");
+	input_latch[1] = input_port_read(machine, "P2");
 
 	/* apply any masking from the BIOS */
 	if ( cntrl_mask )
@@ -218,9 +219,9 @@ READ8_HANDLER( pc10_in1_r )
 	/* do the gun thing */
 	if ( pc10_gun_controller )
 	{
-		int trigger = input_port_read_indexed(machine,  3 );
-		int x = input_port_read_indexed(machine,  5 );
-		int y = input_port_read_indexed(machine,  6 );
+		int trigger = input_port_read(machine, "P1");
+		int x = input_port_read(machine, "GUNX");
+		int y = input_port_read(machine, "GUNY");
 		UINT32 pix, color_base;
 
 		/* no sprite hit (yet) */
@@ -397,11 +398,12 @@ static WRITE8_HANDLER( mmc1_rom_switch_w )
 			case 3:	/* program banking */
 				{
 					int bank = ( mmc1_shiftreg & mmc1_rom_mask ) * 0x4000;
+					UINT8 *prg = memory_region( machine, REGION_CPU2 );
 
 					if ( !size16k )
 					{
 						/* switch 32k */
-						memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x010000+bank], 0x8000 );
+						memcpy( &prg[0x08000], &prg[0x010000+bank], 0x8000 );
 					}
 					else
 					{
@@ -409,12 +411,12 @@ static WRITE8_HANDLER( mmc1_rom_switch_w )
 						if ( switchlow )
 						{
 							/* low */
-							memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x010000+bank], 0x4000 );
+							memcpy( &prg[0x08000], &prg[0x010000+bank], 0x4000 );
 						}
 						else
 						{
 							/* high */
-							memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[0x010000+bank], 0x4000 );
+							memcpy( &prg[0x0c000], &prg[0x010000+bank], 0x4000 );
 						}
 					}
 				}
@@ -451,15 +453,18 @@ DRIVER_INIT( pcaboard )
 static WRITE8_HANDLER( bboard_rom_switch_w )
 {
 	int bankoffset = 0x10000 + ( ( data & 7 ) * 0x4000 );
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
 
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[bankoffset], 0x4000 );
+	memcpy( &prg[0x08000], &prg[bankoffset], 0x4000 );
 }
 
 DRIVER_INIT( pcbboard )
 {
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+
 	/* We do manual banking, in case the code falls through */
 	/* Copy the initial banks */
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x28000], 0x8000 );
+	memcpy( &prg[0x08000], &prg[0x28000], 0x8000 );
 
 	/* Roms are banked at $8000 to $bfff */
 	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, bboard_rom_switch_w );
@@ -495,9 +500,11 @@ DRIVER_INIT( pccboard )
 
 DRIVER_INIT( pcdboard )
 {
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+
 	/* We do manual banking, in case the code falls through */
 	/* Copy the initial banks */
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x28000], 0x8000 );
+	memcpy( &prg[0x08000], &prg[0x28000], 0x8000 );
 
 	mmc1_rom_mask = 0x07;
 
@@ -557,7 +564,8 @@ static WRITE8_HANDLER( eboard_rom_switch_w )
 		case 0x2000: /* code bank switching */
 			{
 				int bankoffset = 0x10000 + ( data & 0x0f ) * 0x2000;
-				memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[bankoffset], 0x2000 );
+				UINT8 *prg = memory_region( machine, REGION_CPU2 );
+				memcpy( &prg[0x08000], &prg[bankoffset], 0x2000 );
 			}
 		break;
 
@@ -594,9 +602,11 @@ static WRITE8_HANDLER( eboard_rom_switch_w )
 
 DRIVER_INIT( pceboard )
 {
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+
 	/* We do manual banking, in case the code falls through */
 	/* Copy the initial banks */
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x28000], 0x8000 );
+	memcpy( &prg[0x08000], &prg[0x28000], 0x8000 );
 
 	/* basically a mapper 9 on a nes */
 	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, eboard_rom_switch_w );
@@ -618,9 +628,11 @@ DRIVER_INIT( pceboard )
 
 DRIVER_INIT( pcfboard )
 {
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+
 	/* We do manual banking, in case the code falls through */
 	/* Copy the initial banks */
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x28000], 0x8000 );
+	memcpy( &prg[0x08000], &prg[0x28000], 0x8000 );
 
 	mmc1_rom_mask = 0x07;
 
@@ -678,6 +690,7 @@ static WRITE8_HANDLER( gboard_rom_switch_w )
 			if ( gboard_last_bank != ( data & 0xc0 ) )
 			{
 				int bank;
+				UINT8 *prg = memory_region( machine, REGION_CPU2 );
 
 				/* reset the banks */
 				if ( gboard_command & 0x40 )
@@ -685,21 +698,21 @@ static WRITE8_HANDLER( gboard_rom_switch_w )
 					/* high bank */
 					bank = gboard_banks[0] * 0x2000 + 0x10000;
 
-					memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[bank], 0x2000 );
-					memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x4c000], 0x2000 );
+					memcpy( &prg[0x0c000], &prg[bank], 0x2000 );
+					memcpy( &prg[0x08000], &prg[0x4c000], 0x2000 );
 				}
 				else
 				{
 					/* low bank */
 					bank = gboard_banks[0] * 0x2000 + 0x10000;
 
-					memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[bank], 0x2000 );
-					memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[0x4c000], 0x2000 );
+					memcpy( &prg[0x08000], &prg[bank], 0x2000 );
+					memcpy( &prg[0x0c000], &prg[0x4c000], 0x2000 );
 				}
 
 				/* mid bank */
 				bank = gboard_banks[1] * 0x2000 + 0x10000;
-				memcpy( &memory_region( REGION_CPU2 )[0x0a000], &memory_region( REGION_CPU2 )[bank], 0x2000 );
+				memcpy( &prg[0x0a000], &prg[bank], 0x2000 );
 
 				gboard_last_bank = data & 0xc0;
 			}
@@ -729,14 +742,16 @@ static WRITE8_HANDLER( gboard_rom_switch_w )
 					break;
 
 					case 6: /* program banking */
+					{
+						UINT8 *prg = memory_region( machine, REGION_CPU2 );
 						if ( gboard_command & 0x40 )
 						{
 							/* high bank */
 							gboard_banks[0] = data & 0x1f;
 							bank = ( gboard_banks[0] ) * 0x2000 + 0x10000;
 
-							memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[bank], 0x2000 );
-							memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x4c000], 0x2000 );
+							memcpy( &prg[0x0c000], &prg[bank], 0x2000 );
+							memcpy( &prg[0x08000], &prg[0x4c000], 0x2000 );
 						}
 						else
 						{
@@ -744,18 +759,20 @@ static WRITE8_HANDLER( gboard_rom_switch_w )
 							gboard_banks[0] = data & 0x1f;
 							bank = ( gboard_banks[0] ) * 0x2000 + 0x10000;
 
-							memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[bank], 0x2000 );
-							memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[0x4c000], 0x2000 );
+							memcpy( &prg[0x08000], &prg[bank], 0x2000 );
+							memcpy( &prg[0x0c000], &prg[0x4c000], 0x2000 );
 						}
+					}
 					break;
 
 					case 7: /* program banking */
 						{
 							/* mid bank */
+							UINT8 *prg = memory_region( machine, REGION_CPU2 );
 							gboard_banks[1] = data & 0x1f;
 							bank = gboard_banks[1] * 0x2000 + 0x10000;
 
-							memcpy( &memory_region( REGION_CPU2 )[0x0a000], &memory_region( REGION_CPU2 )[bank], 0x2000 );
+							memcpy( &prg[0x0a000], &prg[bank], 0x2000 );
 						}
 					break;
 				}
@@ -796,10 +813,12 @@ static WRITE8_HANDLER( gboard_rom_switch_w )
 
 DRIVER_INIT( pcgboard )
 {
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+
 	/* We do manual banking, in case the code falls through */
 	/* Copy the initial banks */
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x4c000], 0x4000 );
-	memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[0x4c000], 0x4000 );
+	memcpy( &prg[0x08000], &prg[0x4c000], 0x4000 );
+	memcpy( &prg[0x0c000], &prg[0x4c000], 0x4000 );
 
 	/* MMC3 mapper at writes to $8000-$ffff */
 	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, gboard_rom_switch_w );
@@ -834,20 +853,23 @@ DRIVER_INIT( pcgboard_type2 )
 static WRITE8_HANDLER( iboard_rom_switch_w )
 {
 	int bank = data & 7;
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
 
 	if ( data & 0x10 )
 		ppu2c0x_set_mirroring( 0, PPU_MIRROR_HIGH );
 	else
 		ppu2c0x_set_mirroring( 0, PPU_MIRROR_LOW );
 
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[bank * 0x8000 + 0x10000], 0x8000 );
+	memcpy( &prg[0x08000], &prg[bank * 0x8000 + 0x10000], 0x8000 );
 }
 
 DRIVER_INIT( pciboard )
 {
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+
 	/* We do manual banking, in case the code falls through */
 	/* Copy the initial banks */
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x10000], 0x8000 );
+	memcpy( &prg[0x08000], &prg[0x10000], 0x8000 );
 
 	/* Roms are banked at $8000 to $bfff */
 	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, iboard_rom_switch_w );
@@ -908,8 +930,9 @@ static WRITE8_HANDLER( hboard_rom_switch_w )
 
 DRIVER_INIT( pchboard )
 {
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x4c000], 0x4000 );
-	memcpy( &memory_region( REGION_CPU2 )[0x0c000], &memory_region( REGION_CPU2 )[0x4c000], 0x4000 );
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+	memcpy( &prg[0x08000], &prg[0x4c000], 0x4000 );
+	memcpy( &prg[0x0c000], &prg[0x4c000], 0x4000 );
 
 	/* Roms are banked at $8000 to $bfff */
 	memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, hboard_rom_switch_w );
@@ -933,9 +956,11 @@ DRIVER_INIT( pchboard )
 
 DRIVER_INIT( pckboard )
 {
+	UINT8 *prg = memory_region( machine, REGION_CPU2 );
+
 	/* We do manual banking, in case the code falls through */
 	/* Copy the initial banks */
-	memcpy( &memory_region( REGION_CPU2 )[0x08000], &memory_region( REGION_CPU2 )[0x48000], 0x8000 );
+	memcpy( &prg[0x08000], &prg[0x48000], 0x8000 );
 
 	mmc1_rom_mask = 0x0f;
 

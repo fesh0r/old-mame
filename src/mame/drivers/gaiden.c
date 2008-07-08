@@ -125,7 +125,6 @@ Notes:
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
@@ -957,9 +956,9 @@ static GFXDECODE_START( drgnbowl )
 GFXDECODE_END
 
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -1504,8 +1503,8 @@ static DRIVER_INIT( raiga )
 static DRIVER_INIT( drgnbowl )
 {
 	int i;
-	UINT8 *ROM = memory_region(REGION_CPU1);
-	size_t  size = memory_region_length(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+	size_t  size = memory_region_length(machine, REGION_CPU1);
 	UINT8 *buffer = malloc_or_die(size);
 
 	memcpy(buffer,ROM,size);
@@ -1521,8 +1520,8 @@ static DRIVER_INIT( drgnbowl )
 
 	free(buffer);
 
-	ROM = memory_region(REGION_GFX2);
-	size = memory_region_length(REGION_GFX2);
+	ROM = memory_region(machine, REGION_GFX2);
+	size = memory_region_length(machine, REGION_GFX2);
 	buffer = malloc_or_die(size);
 
 	memcpy(buffer,ROM,size);

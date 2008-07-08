@@ -381,7 +381,7 @@ void kbash_okisnd_w(running_machine *machine, int data);
 void fixeight_okisnd_w(running_machine *machine, int data);
 void batsugun_okisnd_w(running_machine *machine, int data);
 
-MACHINE_RESET(batsugun);
+static MACHINE_RESET(batsugun);
 #if USE_V25
 static READ16_HANDLER( batsugun_share_r );
 static READ16_HANDLER( batsugun_share2_r );
@@ -432,7 +432,7 @@ static MACHINE_RESET( vfive )
 
 static MACHINE_RESET( bgaregga )
 {
-	UINT8 *Z80 = (UINT8 *)memory_region(REGION_CPU2);
+	UINT8 *Z80 = (UINT8 *)memory_region(machine, REGION_CPU2);
 
 	// Set Z80 bank switch - default bank is 2
 	current_bank = 2;
@@ -476,7 +476,7 @@ static DRIVER_INIT( fixeight )
 
 static DRIVER_INIT( fixeighb )
 {
-	UINT16 *bgdata = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *bgdata = (UINT16 *)memory_region(machine, REGION_CPU1);
 	memory_set_bankptr(1, &bgdata[0x40000]); /* $80000 - $fffff */
 
 	toaplan2_sub_cpu = CPU_2_NONE;
@@ -487,7 +487,7 @@ static DRIVER_INIT( pipibibi )
 	int A;
 	int oldword, newword;
 
-	UINT16 *pipibibi_68k_rom = (UINT16 *)(memory_region(REGION_CPU1));
+	UINT16 *pipibibi_68k_rom = (UINT16 *)(memory_region(machine, REGION_CPU1));
 
 	/* unscramble the 68K ROM data. */
 
@@ -674,7 +674,7 @@ static WRITE16_HANDLER( toaplan2_coin_word_w )
 	}
 }
 
-WRITE16_HANDLER( toaplan2_v25_coin_word_w )
+static WRITE16_HANDLER( toaplan2_v25_coin_word_w )
 {
 	// logerror("toaplan2_v25_coin_word_w %04x\n",data);
 
@@ -1052,7 +1052,7 @@ static WRITE16_HANDLER( fixeighb_oki_bankswitch_w )
 		data &= 7;
 		if (data <= 4)
 		{
-			UINT8 *fixeighb_oki = memory_region(REGION_SOUND1);
+			UINT8 *fixeighb_oki = memory_region(machine, REGION_SOUND1);
 			memcpy(&fixeighb_oki[0x30000], &fixeighb_oki[(data * 0x10000) + 0x40000], 0x10000);
 		}
 	}
@@ -1108,7 +1108,7 @@ static WRITE8_HANDLER( bgaregga_E00C_w )
 
 static WRITE8_HANDLER( bgaregga_bankswitch_w )
 {
-	UINT8 *RAM = (UINT8 *)memory_region(REGION_CPU2);
+	UINT8 *RAM = (UINT8 *)memory_region(machine, REGION_CPU2);
 	int bankaddress;
 	int bank;
 
@@ -1155,7 +1155,7 @@ static WRITE8_HANDLER( raizing_okim6295_bankselect_3 )
 
 static WRITE8_HANDLER( batrider_bankswitch_w )
 {
-	UINT8 *RAM = (UINT8 *)memory_region(REGION_CPU2);
+	UINT8 *RAM = (UINT8 *)memory_region(machine, REGION_CPU2);
 	int bankaddress;
 	int bank;
 
@@ -1197,7 +1197,7 @@ static WRITE16_HANDLER( batrider_z80_busreq_w )
 
 static READ16_HANDLER( raizing_z80rom_r )
 {
-	UINT8 *Z80_ROM_test = (UINT8 *)memory_region(REGION_CPU2);
+	UINT8 *Z80_ROM_test = (UINT8 *)memory_region(machine, REGION_CPU2);
 
 	if (offset < 0x8000)
 		return Z80_ROM_test[offset] & 0xff;
@@ -1295,7 +1295,7 @@ static const UINT8 bbakraid_unlimited_nvram[512] = {
 
 
 
-static const struct EEPROM_interface eeprom_interface_93C66 =
+static const eeprom_interface eeprom_interface_93C66 =
 {
 	/* Pin 6 of the 93C66 is connected to Gnd!
        So it's configured for 512 bytes */
@@ -1317,16 +1317,16 @@ static NVRAM_HANDLER( bbakraid )
 	/* Pin 6 of 93C66 is connected to Gnd! */
 
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C66);
+		eeprom_init(&eeprom_interface_93C66);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			if (bbakraid_unlimited_ver == 1)
-				EEPROM_set_data(bbakraid_unlimited_nvram, sizeof(bbakraid_unlimited_nvram));
+				eeprom_set_data(bbakraid_unlimited_nvram, sizeof(bbakraid_unlimited_nvram));
 		}
 	}
 }
@@ -1341,7 +1341,7 @@ static READ16_HANDLER( bbakraid_nvram_r )
     */
 
 	int data;
-	data  = ((EEPROM_read_bit() & 0x01) << 4);
+	data  = ((eeprom_read_bit() & 0x01) << 4);
 	data |= ((raizing_Z80_busreq >> 4) & 0x01);	/* Loop BUSRQ to BUSAK */
 
 	return data;
@@ -1356,19 +1356,19 @@ static WRITE16_HANDLER( bbakraid_nvram_w )
 	if ( ACCESSING_BITS_0_7 )
 	{
 		// chip select
-		EEPROM_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE );
 
 		// latch the bit
-		EEPROM_write_bit( (data & 0x04) >> 2 );
+		eeprom_write_bit( (data & 0x04) >> 2 );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x08) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x08) ? ASSERT_LINE : CLEAR_LINE );
 	}
 	raizing_Z80_busreq = data & 0x10;	/* see bbakraid_nvram_r above */
 }
 
 
-static void bbakraid_irqhandler (int state)
+static void bbakraid_irqhandler(running_machine *machine, int state)
 {
 	/* Not used ???  Connected to a test pin (TP082) */
 	logerror("YMZ280 is generating an interrupt. State=%08x\n",state);
@@ -3405,9 +3405,9 @@ static GFXDECODE_START( fixeighb )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, fixeighblayout , 0, 128 )
 GFXDECODE_END
 
-static void irqhandler(int linestate)
+static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 1,0,linestate);
+	cpunum_set_input_line(machine, 1,0,linestate);
 }
 
 static const struct YM3812interface ym3812_interface =
@@ -3895,20 +3895,20 @@ static MACHINE_DRIVER_START( vfive )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 MACHINE_DRIVER_END
 
-MACHINE_RESET(batsugun)
+static MACHINE_RESET(batsugun)
 {
 	#if USE_V25
 	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	#endif
 }
 
-void batsugun_ym2151_irqhandler(int linestate)
+static void batsugun_ym2151_irqhandler(running_machine *machine, int linestate)
 {
 	logerror("batsugun_ym2151_irqhandler %02x\n",linestate);
-//  update_irq_lines(Machine, linestate ? assert : clear);
+//  update_irq_lines(machine, linestate ? assert : clear);
 }
 
-const struct YM2151interface batsugun_ym2151_interface =
+static const struct YM2151interface batsugun_ym2151_interface =
 {
 	batsugun_ym2151_irqhandler
 };
@@ -4236,6 +4236,23 @@ ROM_START( ghox )
 	ROM_REGION( 0x040000, REGION_CPU1, 0 )			/* Main 68K code */
 	ROM_LOAD16_BYTE( "tp021-01.u10", 0x000000, 0x020000, CRC(9e56ac67) SHA1(daf241d9e55a6e60fc004ed61f787641595b1e62) )
 	ROM_LOAD16_BYTE( "tp021-02.u11", 0x000001, 0x020000, CRC(15cac60f) SHA1(6efa3a50a5dfe6ef4072738d6a7d0d95dca8a675) )
+
+#if USE_HD64x180
+	ROM_REGION( 0x10000, REGION_CPU2, 0 )			/* Sound HD647180 code */
+	/* sound CPU is a HD647180 (Z180) with internal ROM - not yet supported */
+	ROM_LOAD( "hd647180.021", 0x00000, 0x08000, NO_DUMP )
+#endif
+
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
+	ROM_LOAD( "tp021-03.u36", 0x000000, 0x080000, CRC(a15d8e9d) SHA1(640a33997bdce8e84bea6a944139716379839037) )
+	ROM_LOAD( "tp021-04.u37", 0x080000, 0x080000, CRC(26ed1c9a) SHA1(37da8af86ea24327444c2d4ad3dfbd936208d43d) )
+ROM_END
+
+
+ROM_START( ghoxa )
+	ROM_REGION( 0x040000, REGION_CPU1, 0 )			/* Main 68K code */
+	ROM_LOAD16_BYTE( "tp021-01a.u10", 0x000000, 0x020000, CRC(c11b13c8) SHA1(da7defc1d3b6ddded910ba56c31fbbdb5ed57b09) )
+	ROM_LOAD16_BYTE( "tp021-02a.u11", 0x000001, 0x020000, CRC(8d426767) SHA1(1ed4a8bcbf4352257e7d58cb5c2c91eb48c2f047) )
 
 #if USE_HD64x180
 	ROM_REGION( 0x10000, REGION_CPU2, 0 )			/* Sound HD647180 code */
@@ -4915,7 +4932,8 @@ ROM_END
 
 /*  ( YEAR  NAME      PARENT    MACHINE   INPUT     INIT      MONITOR COMPANY    FULLNAME     FLAGS ) */
 GAME( 1991, tekipaki, 0,        tekipaki, tekipaki, T2_Z180,  ROT0,   "Toaplan", "Teki Paki", GAME_NO_SOUND )
-GAME( 1991, ghox,     0,        ghox,     ghox,     T2_Z180,  ROT270, "Toaplan", "Ghox", GAME_NO_SOUND )
+GAME( 1991, ghox,     0,        ghox,     ghox,     T2_Z180,  ROT270, "Toaplan", "Ghox (set 1)", GAME_NO_SOUND )
+GAME( 1991, ghoxa,    ghox,     ghox,     ghox,     T2_Z180,  ROT270, "Toaplan", "Ghox (set 2)", GAME_NO_SOUND )
 GAME( 1992, dogyuun,  0,        dogyuun,  dogyuun,  T2_V25,   ROT270, "Toaplan", "Dogyuun", GAME_NO_SOUND )
 GAME( 1993, kbash,    0,        kbash,    kbash,    T2_V25,   ROT0,   "Toaplan", "Knuckle Bash", GAME_IMPERFECT_SOUND )
 GAME( 1999, kbash2,   0,        kbash2,   kbash2,   T2_noZ80, ROT0,   "bootleg", "Knuckle Bash 2 (bootleg)", 0 )

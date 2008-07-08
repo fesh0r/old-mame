@@ -90,11 +90,10 @@ ROMs    : MR96004-10.1  [125661cd] (IC5 - Samples)
 #include "deprecat.h"
 #include "sound/ymf271.h"
 #include "rendlay.h"
+#include "includes/ms32.h"
 
-/* drivers/ms32/c */
-extern void ms32_rearrange_sprites(int region);
-extern void decrypt_ms32_tx(int addr_xor,int data_xor, int region);
-extern void decrypt_ms32_bg(int addr_xor,int data_xor, int region);
+#define ms32_roz_ctrl bnstars_roz_ctrl
+#define ms32_spram bnstars_spram
 
 static tilemap *ms32_tx_tilemap[2];
 static tilemap *ms32_bg_tilemap[2];
@@ -299,7 +298,7 @@ static WRITE32_HANDLER( ms32_roz1_ram_w )
 }
 
 
-static void update_color(int color, int screen)
+static void update_color(running_machine *machine, int color, int screen)
 {
 	int r,g,b;
 
@@ -307,19 +306,19 @@ static void update_color(int color, int screen)
 	g = ((ms32_pal_ram[screen][color*2] & 0x00ff) >>0 );
 	b = ((ms32_pal_ram[screen][color*2+1] & 0x00ff) >>0 );
 
-	palette_set_color(Machine,color+screen*0x8000,MAKE_RGB(r,g,b));
+	palette_set_color(machine,color+screen*0x8000,MAKE_RGB(r,g,b));
 }
 
 static WRITE32_HANDLER( ms32_pal0_ram_w )
 {
 	COMBINE_DATA(&ms32_pal_ram[0][offset]);
-	update_color(offset/2, 0);
+	update_color(machine, offset/2, 0);
 }
 
 static WRITE32_HANDLER( ms32_pal1_ram_w )
 {
 	COMBINE_DATA(&ms32_pal_ram[1][offset]);
-	update_color(offset/2, 1);
+	update_color(machine, offset/2, 1);
 }
 
 static int ms32_reverse_sprite_order = 0;
@@ -534,7 +533,7 @@ static VIDEO_UPDATE(bnstars)
 }
 
 static INPUT_PORTS_START( bnstars )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_A )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_E )
@@ -616,7 +615,7 @@ static INPUT_PORTS_START( bnstars )
 	PORT_DIPSETTING(  0x80000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_DIPNAME(     0x00000001, 0x00000001, "MAH2" )
 	PORT_DIPSETTING(  0x00000001, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
@@ -704,7 +703,7 @@ static INPUT_PORTS_START( bnstars )
 	PORT_DIPSETTING(  0x80000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_DIPNAME(     0x00000001, 0x00000001, "MAH4" )
 	PORT_DIPSETTING(  0x00000001, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
@@ -792,7 +791,7 @@ static INPUT_PORTS_START( bnstars )
 	PORT_DIPSETTING(  0x80000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_DIPNAME(     0x00000001, 0x00000001, "MAH6" )
 	PORT_DIPSETTING(  0x00000001, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
@@ -882,7 +881,7 @@ static INPUT_PORTS_START( bnstars )
 	PORT_DIPSETTING(  0x80000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN4")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_START2 )
 	/* The follow 4 bits active 4 button each one for the second player */
 	PORT_DIPNAME(     0x00000002, 0x00000002, "P2: A,B,C,D" )
@@ -975,7 +974,7 @@ static INPUT_PORTS_START( bnstars )
 	PORT_DIPSETTING(  0x80000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN5")
 	PORT_DIPNAME(     0x00000001, 0x00000001, "Test Mode" ) PORT_DIPLOCATION("SW1:8")
 	PORT_DIPSETTING(  0x00000001, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
@@ -1074,7 +1073,7 @@ static INPUT_PORTS_START( bnstars )
 	PORT_DIPSETTING(  0x80000000, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN6")
 	PORT_DIPNAME(     0x00000001, 0x00000001, "4" )
 	PORT_DIPSETTING(  0x00000001, DEF_STR( Off ) )
 	PORT_DIPSETTING(  0x00000000, DEF_STR( On ) )
@@ -1202,28 +1201,28 @@ static READ32_HANDLER( bnstars1_r )
 			return 0xffffffff;
 
 		case 0x0000:
-			return input_port_read_indexed(machine, 0);
+			return input_port_read(machine, "IN0");
 
 		case 0x0080:
-			return input_port_read_indexed(machine, 1);
+			return input_port_read(machine, "IN1");
 
 		case 0x2000:
-			return input_port_read_indexed(machine, 2);
+			return input_port_read(machine, "IN2");
 
 		case 0x2080:
-			return input_port_read_indexed(machine, 3);
+			return input_port_read(machine, "IN3");
 
 	}
 }
 
 static READ32_HANDLER( bnstars2_r )
 {
-	return input_port_read_indexed(machine, 4);
+	return input_port_read(machine, "IN4");
 }
 
 static READ32_HANDLER( bnstars3_r )
 {
-	return input_port_read_indexed(machine, 5);
+	return input_port_read(machine, "IN5");
 }
 
 static WRITE32_HANDLER( bnstars1_mahjong_select_w )
@@ -1299,24 +1298,24 @@ static IRQ_CALLBACK(irq_callback)
 	return i;
 }
 
-static void irq_init(void)
+static void irq_init(running_machine *machine)
 {
 	irqreq = 0;
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	cpunum_set_irq_callback(0, irq_callback);
 }
 
-static void irq_raise(int level)
+static void irq_raise(running_machine *machine, int level)
 {
 	irqreq |= (1<<level);
-	cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 }
 
 
 static INTERRUPT_GEN(ms32_interrupt)
 {
-	if( cpu_getiloops() == 0 ) irq_raise(10);
-	if( cpu_getiloops() == 1 ) irq_raise(9);
+	if( cpu_getiloops() == 0 ) irq_raise(machine, 10);
+	if( cpu_getiloops() == 1 ) irq_raise(machine, 9);
 	/* hayaosi1 needs at least 12 IRQ 0 per frame to work (see code at FFE02289)
        kirarast needs it too, at least 8 per frame, but waits for a variable amount
        47pi2 needs ?? per frame (otherwise it hangs when you lose)
@@ -1325,12 +1324,12 @@ static INTERRUPT_GEN(ms32_interrupt)
        desertwr
        p47aces
        */
-	if( cpu_getiloops() >= 3 && cpu_getiloops() <= 32 ) irq_raise(0);
+	if( cpu_getiloops() >= 3 && cpu_getiloops() <= 32 ) irq_raise(machine, 0);
 }
 
 static MACHINE_RESET( ms32 )
 {
-	irq_init();
+	irq_init(machine);
 }
 
 
@@ -1446,14 +1445,14 @@ ROM_END
 /* SS92046_01: bbbxing, f1superb, tetrisp, hayaosi1 */
 static DRIVER_INIT (bnstars)
 {
-	ms32_rearrange_sprites(REGION_GFX1);
+	ms32_rearrange_sprites(machine, REGION_GFX1);
 
-	decrypt_ms32_tx(0x00020,0x7e, REGION_GFX5);
-	decrypt_ms32_bg(0x00001,0x9b, REGION_GFX4);
-	decrypt_ms32_tx(0x00020,0x7e, REGION_GFX7);
-	decrypt_ms32_bg(0x00001,0x9b, REGION_GFX6);
+	decrypt_ms32_tx(machine, 0x00020,0x7e, REGION_GFX5);
+	decrypt_ms32_bg(machine, 0x00001,0x9b, REGION_GFX4);
+	decrypt_ms32_tx(machine, 0x00020,0x7e, REGION_GFX7);
+	decrypt_ms32_bg(machine, 0x00001,0x9b, REGION_GFX6);
 
-	memory_set_bankptr(1, memory_region(REGION_CPU1));
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1));
 }
 
 GAME( 1997, bnstars1, 0,        bnstars, bnstars, bnstars, ROT0,   "Jaleco", "Vs. Janshi Brandnew Stars", GAME_NO_SOUND )

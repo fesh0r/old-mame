@@ -625,7 +625,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "system16.h"
 #include "video/segaic24.h"
@@ -633,48 +632,26 @@ Notes:
 #include "cpu/mb86233/mb86233.h"
 #include "sound/multipcm.h"
 #include "sound/2612intf.h"
-
-WRITE16_HANDLER( model1_paletteram_w );
-VIDEO_START(model1);
-VIDEO_UPDATE(model1);
-VIDEO_EOF(model1);
-extern UINT16 *model1_display_list0, *model1_display_list1;
-extern UINT16 *model1_color_xlat;
-READ16_HANDLER( model1_listctl_r );
-WRITE16_HANDLER( model1_listctl_w );
-
-READ16_HANDLER( model1_tgp_copro_r );
-WRITE16_HANDLER( model1_tgp_copro_w );
-READ16_HANDLER( model1_tgp_copro_adr_r );
-WRITE16_HANDLER( model1_tgp_copro_adr_w );
-READ16_HANDLER( model1_tgp_copro_ram_r );
-WRITE16_HANDLER( model1_tgp_copro_ram_w );
-
-/* VR */
-extern READ16_HANDLER( model1_vr_tgp_r );
-extern WRITE16_HANDLER( model1_vr_tgp_w );
-extern READ16_HANDLER( model1_tgp_vr_adr_r );
-extern WRITE16_HANDLER( model1_tgp_vr_adr_w );
-extern READ16_HANDLER( model1_vr_tgp_ram_r );
-extern WRITE16_HANDLER( model1_vr_tgp_ram_w );
-extern void model1_vr_tgp_reset( void );
-ADDRESS_MAP_EXTERN( model1_vr_tgp_map, 32 );
+#include "includes/model1.h"
 
 static int model1_sound_irq;
 
 #define FIFO_SIZE	(8)
 static int to_68k[FIFO_SIZE], fifo_wptr, fifo_rptr;
 
-void model1_tgp_reset(int swa);
-
 static READ16_HANDLER( io_r )
 {
+	static const char *analognames[] = { "AN0", "AN1", "AN2", "AN3", "AN4", "AN5", "AN6", "AN7" };
+	static const char *inputnames[] = { "IN0", "IN1", "IN2" };
+
 	if(offset < 0x8)
-		return input_port_read_indexed(machine, offset);
-	if(offset < 0x10) {
+		return input_port_read(machine, analognames[offset]);
+
+	if(offset < 0x10)
+	{
 		offset -= 0x8;
 		if(offset < 3)
-			return input_port_read_indexed(machine, offset+8) | 0xff00;
+			return input_port_read(machine, inputnames[offset]) | 0xff00;
 		return 0xff;
 	}
 
@@ -692,7 +669,7 @@ static WRITE16_HANDLER( bank_w )
 	if(ACCESSING_BITS_0_7) {
 		switch(data & 0xf) {
 		case 0x1: // 100000-1fffff data roms banking
-			memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x1000000 + 0x100000*((data >> 4) & 0xf));
+			memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x1000000 + 0x100000*((data >> 4) & 0xf));
 			logerror("BANK %x\n", 0x1000000 + 0x100000*((data >> 4) & 0xf));
 			break;
 		case 0x2: // 200000-2fffff data roms banking (unused, all known games have only one bank)
@@ -706,12 +683,12 @@ static WRITE16_HANDLER( bank_w )
 
 static int last_irq;
 
-static void irq_raise(int level)
+static void irq_raise(running_machine *machine, int level)
 {
 	//  logerror("irq: raising %d\n", level);
 	//  irq_status |= (1 << level);
 	last_irq = level;
-	cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 static IRQ_CALLBACK(irq_callback)
@@ -732,9 +709,9 @@ static IRQ_CALLBACK(irq_callback)
 // 3 = ff54c
 // other = ff568/ff574
 
-static void irq_init(void)
+static void irq_init(running_machine *machine)
 {
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	cpunum_set_irq_callback(0, irq_callback);
 }
 
@@ -742,11 +719,11 @@ static INTERRUPT_GEN(model1_interrupt)
 {
 	if (cpu_getiloops())
 	{
-		irq_raise(1);
+		irq_raise(machine, 1);
 	}
 	else
 	{
-		irq_raise(model1_sound_irq);
+		irq_raise(machine, model1_sound_irq);
 
 		// if the FIFO has something in it, signal the 68k too
 		if (fifo_rptr != fifo_wptr)
@@ -758,8 +735,8 @@ static INTERRUPT_GEN(model1_interrupt)
 
 static MACHINE_RESET(model1)
 {
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x1000000);
-	irq_init();
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x1000000);
+	irq_init(machine);
 	model1_tgp_reset(!strcmp(machine->gamedrv->name, "swa") || !strcmp(machine->gamedrv->name, "wingwar") || !strcmp(machine->gamedrv->name, "wingwara"));
 	if (!strcmp(machine->gamedrv->name, "swa"))
 	{
@@ -777,8 +754,8 @@ static MACHINE_RESET(model1)
 
 static MACHINE_RESET(model1_vr)
 {
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x1000000);
-	irq_init();
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x1000000);
+	irq_init(machine);
 	model1_vr_tgp_reset();
 	model1_sound_irq = 3;
 
@@ -801,7 +778,6 @@ static WRITE16_HANDLER( network_ctl_w )
 
 static WRITE16_HANDLER(md1_w)
 {
-	extern int model1_dump;
 	COMBINE_DATA(model1_display_list1+offset);
 	if(0 && offset)
 		return;
@@ -811,7 +787,6 @@ static WRITE16_HANDLER(md1_w)
 
 static WRITE16_HANDLER(md0_w)
 {
-	extern int model1_dump;
 	COMBINE_DATA(model1_display_list0+offset);
 	if(0 && offset)
 		return;
@@ -1573,8 +1548,6 @@ static MACHINE_DRIVER_START( model1 )
 	MDRV_SOUND_ROUTE(0, "left", 1.0)
 	MDRV_SOUND_ROUTE(1, "right", 1.0)
 MACHINE_DRIVER_END
-
-extern struct mb86233_config model1_vr_tgp_config;
 
 static MACHINE_DRIVER_START( model1_vr )
 	MDRV_CPU_ADD(V60, 16000000)

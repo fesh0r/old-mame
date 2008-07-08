@@ -51,7 +51,6 @@ DAC               -26.6860Mhz
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2610intf.h"
 
 static UINT16 *unkram;
@@ -180,9 +179,9 @@ static INTERRUPT_GEN( drill_interrupt )
 	cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
 }
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 0,5,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0,5,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -239,8 +238,9 @@ ROM_END
 static DRIVER_INIT( drill )
 {
 	// rearrange gfx roms to something we can decode, two of the roms form 4bpp of the graphics, the third forms another 2bpp but is in a different format
-	UINT32 *src    = (UINT32*)memory_region       ( REGION_GFX2 );
-	UINT32 *dst    = (UINT32*)memory_region       ( REGION_GFX1 );// + 0x400000;
+	UINT32 *src = (UINT32*)memory_region( machine, REGION_GFX2 );
+	UINT32 *dst = (UINT32*)memory_region( machine, REGION_GFX1 );// + 0x400000;
+	UINT8 *rom = memory_region( machine, REGION_CPU1 );
 	int i;
 
 	for (i=0; i< 0x400000/4; i++)
@@ -251,10 +251,10 @@ static DRIVER_INIT( drill )
 	}
 
 	//enable some kind of debug mode (ignore errors)
-	memory_region( REGION_CPU1)[0x7fffb]=0;
-	memory_region( REGION_CPU1)[0x7fffc]=0;
-	memory_region( REGION_CPU1)[0x7fffd]=0;
-	memory_region( REGION_CPU1)[0x7fffe]=0;
+	rom[0x7fffb]=0;
+	rom[0x7fffc]=0;
+	rom[0x7fffd]=0;
+	rom[0x7fffe]=0;
 }
 
 GAME( 1993, 2mindril,    0,        drill,    drill,    drill, ROT0,  "Taito", "Two Minute Drill", GAME_NOT_WORKING | GAME_IMPERFECT_GRAPHICS )

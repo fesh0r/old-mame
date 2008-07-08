@@ -279,12 +279,12 @@ static READ8_HANDLER( cvs_input_r )
 	/* the lower 4 (or 3?) bits select the port to read */
 	switch (offset & 0x0f)	/* might be 0x07 */
 	{
-	case 0x00:  ret = input_port_read_indexed(machine, 0); break;
-	case 0x02:  ret = input_port_read_indexed(machine, 1); break;
-	case 0x03:  ret = input_port_read_indexed(machine, 2); break;
-	case 0x04:  ret = input_port_read_indexed(machine, 3); break;
-	case 0x06:  ret = input_port_read_indexed(machine, 4); break;
-	case 0x07:  ret = input_port_read_indexed(machine, 5); break;
+	case 0x00:  ret = input_port_read(machine, "IN0"); break;
+	case 0x02:  ret = input_port_read(machine, "IN1"); break;
+	case 0x03:  ret = input_port_read(machine, "IN2"); break;
+	case 0x04:  ret = input_port_read(machine, "IN3"); break;
+	case 0x06:  ret = input_port_read(machine, "DSW3"); break;
+	case 0x07:  ret = input_port_read(machine, "DSW2"); break;
 	default:    logerror("%04x : CVS: Reading unmapped input port 0x%02x\n", activecpu_get_pc(), offset & 0x0f); break;
 	}
 
@@ -436,11 +436,11 @@ static WRITE8_HANDLER( cvs_tms5110_pdc_w )
 
 static int speech_rom_read_bit(void)
 {
-	UINT8 *ROM = memory_region(CVS_REGION_SPEECH_DATA);
+	UINT8 *ROM = memory_region(Machine, CVS_REGION_SPEECH_DATA);
     int bit;
 
 	/* before reading the bit, clamp the address to the region length */
-	speech_rom_bit_address = speech_rom_bit_address & ((memory_region_length(CVS_REGION_SPEECH_DATA) * 8) - 1);
+	speech_rom_bit_address = speech_rom_bit_address & ((memory_region_length(Machine, CVS_REGION_SPEECH_DATA) * 8) - 1);
 	bit = (ROM[speech_rom_bit_address >> 3] >> (speech_rom_bit_address & 0x07)) & 0x01;
 
 	/* prepare for next bit */
@@ -539,7 +539,7 @@ static ADDRESS_MAP_START( cvs_main_cpu_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0xff) AM_READWRITE(cvs_input_r, cvs_scroll_w)
 	AM_RANGE(S2650_DATA_PORT, S2650_DATA_PORT) AM_READWRITE(cvs_collision_clear, cvs_video_fx_w)
 	AM_RANGE(S2650_CTRL_PORT, S2650_CTRL_PORT) AM_READWRITE(cvs_collision_r, audio_command_w)
-    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(input_port_6_r)
+    AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("SENSE")
 ADDRESS_MAP_END
 
 
@@ -657,7 +657,7 @@ static INPUT_PORTS_START( cvs )
 	PORT_DIPSETTING(    0x10, "5" )
 	PORT_DIPUNUSED( 0x20, IP_ACTIVE_HIGH )                  /* can't tell if it's ACTIVE_HIGH or ACTIVE_LOW */
 
-	PORT_START	/* SENSE */
+	PORT_START_TAG("SENSE")	/* SENSE */
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 INPUT_PORTS_END
 
@@ -1535,25 +1535,27 @@ ROM_END
 
 static DRIVER_INIT( huncholy )
 {
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+
 	/* patch out protection */
-	memory_region(REGION_CPU1)[0x0082] = 0xc0;
-	memory_region(REGION_CPU1)[0x0083] = 0xc0;
-	memory_region(REGION_CPU1)[0x0084] = 0xc0;
-	memory_region(REGION_CPU1)[0x00b7] = 0xc0;
-	memory_region(REGION_CPU1)[0x00b8] = 0xc0;
-	memory_region(REGION_CPU1)[0x00b9] = 0xc0;
-	memory_region(REGION_CPU1)[0x00d9] = 0xc0;
-	memory_region(REGION_CPU1)[0x00da] = 0xc0;
-	memory_region(REGION_CPU1)[0x00db] = 0xc0;
-	memory_region(REGION_CPU1)[0x4456] = 0xc0;
-	memory_region(REGION_CPU1)[0x4457] = 0xc0;
-	memory_region(REGION_CPU1)[0x4458] = 0xc0;
+	ROM[0x0082] = 0xc0;
+	ROM[0x0083] = 0xc0;
+	ROM[0x0084] = 0xc0;
+	ROM[0x00b7] = 0xc0;
+	ROM[0x00b8] = 0xc0;
+	ROM[0x00b9] = 0xc0;
+	ROM[0x00d9] = 0xc0;
+	ROM[0x00da] = 0xc0;
+	ROM[0x00db] = 0xc0;
+	ROM[0x4456] = 0xc0;
+	ROM[0x4457] = 0xc0;
+	ROM[0x4458] = 0xc0;
 }
 
 
 static DRIVER_INIT( hunchbka )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	offs_t offs;
 
@@ -1565,53 +1567,57 @@ static DRIVER_INIT( hunchbka )
 
 static DRIVER_INIT( superbik )
 {
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+
 	/* patch out protection */
-	memory_region(REGION_CPU1)[0x0079] = 0xc0;
-	memory_region(REGION_CPU1)[0x007a] = 0xc0;
-	memory_region(REGION_CPU1)[0x007b] = 0xc0;
-	memory_region(REGION_CPU1)[0x0081] = 0xc0;
-	memory_region(REGION_CPU1)[0x0082] = 0xc0;
-	memory_region(REGION_CPU1)[0x0083] = 0xc0;
-	memory_region(REGION_CPU1)[0x00b6] = 0xc0;
-	memory_region(REGION_CPU1)[0x00b7] = 0xc0;
-	memory_region(REGION_CPU1)[0x00b8] = 0xc0;
-	memory_region(REGION_CPU1)[0x0168] = 0xc0;
-	memory_region(REGION_CPU1)[0x0169] = 0xc0;
-	memory_region(REGION_CPU1)[0x016a] = 0xc0;
+	ROM[0x0079] = 0xc0;
+	ROM[0x007a] = 0xc0;
+	ROM[0x007b] = 0xc0;
+	ROM[0x0081] = 0xc0;
+	ROM[0x0082] = 0xc0;
+	ROM[0x0083] = 0xc0;
+	ROM[0x00b6] = 0xc0;
+	ROM[0x00b7] = 0xc0;
+	ROM[0x00b8] = 0xc0;
+	ROM[0x0168] = 0xc0;
+	ROM[0x0169] = 0xc0;
+	ROM[0x016a] = 0xc0;
 
 	/* and speed up the protection check */
-	memory_region(REGION_CPU1)[0x0099] = 0xc0;
-	memory_region(REGION_CPU1)[0x009a] = 0xc0;
-	memory_region(REGION_CPU1)[0x009b] = 0xc0;
-	memory_region(REGION_CPU1)[0x00bb] = 0xc0;
-	memory_region(REGION_CPU1)[0x00bc] = 0xc0;
-	memory_region(REGION_CPU1)[0x00bd] = 0xc0;
+	ROM[0x0099] = 0xc0;
+	ROM[0x009a] = 0xc0;
+	ROM[0x009b] = 0xc0;
+	ROM[0x00bb] = 0xc0;
+	ROM[0x00bc] = 0xc0;
+	ROM[0x00bd] = 0xc0;
 }
 
 
 static DRIVER_INIT( hero )
 {
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
+
 	/* patch out protection */
-	memory_region(REGION_CPU1)[0x0087] = 0xc0;
-	memory_region(REGION_CPU1)[0x0088] = 0xc0;
-	memory_region(REGION_CPU1)[0x0aa1] = 0xc0;
-	memory_region(REGION_CPU1)[0x0aa2] = 0xc0;
-	memory_region(REGION_CPU1)[0x0aa3] = 0xc0;
-	memory_region(REGION_CPU1)[0x0aaf] = 0xc0;
-	memory_region(REGION_CPU1)[0x0ab0] = 0xc0;
-	memory_region(REGION_CPU1)[0x0ab1] = 0xc0;
-	memory_region(REGION_CPU1)[0x0abd] = 0xc0;
-	memory_region(REGION_CPU1)[0x0abe] = 0xc0;
-	memory_region(REGION_CPU1)[0x0abf] = 0xc0;
-	memory_region(REGION_CPU1)[0x4de0] = 0xc0;
-	memory_region(REGION_CPU1)[0x4de1] = 0xc0;
-	memory_region(REGION_CPU1)[0x4de2] = 0xc0;
+	ROM[0x0087] = 0xc0;
+	ROM[0x0088] = 0xc0;
+	ROM[0x0aa1] = 0xc0;
+	ROM[0x0aa2] = 0xc0;
+	ROM[0x0aa3] = 0xc0;
+	ROM[0x0aaf] = 0xc0;
+	ROM[0x0ab0] = 0xc0;
+	ROM[0x0ab1] = 0xc0;
+	ROM[0x0abd] = 0xc0;
+	ROM[0x0abe] = 0xc0;
+	ROM[0x0abf] = 0xc0;
+	ROM[0x4de0] = 0xc0;
+	ROM[0x4de1] = 0xc0;
+	ROM[0x4de2] = 0xc0;
 }
 
 
 static DRIVER_INIT( raiders )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	offs_t offs;
 
@@ -1620,9 +1626,9 @@ static DRIVER_INIT( raiders )
 		ROM[offs] = BITSWAP8(ROM[offs],7,1,5,4,3,2,6,0);
 
 	/* patch out protection */
-	memory_region(REGION_CPU1)[0x010a] = 0xc0;
-	memory_region(REGION_CPU1)[0x010b] = 0xc0;
-	memory_region(REGION_CPU1)[0x010c] = 0xc0;
+	ROM[0x010a] = 0xc0;
+	ROM[0x010b] = 0xc0;
+	ROM[0x010c] = 0xc0;
 }
 
 

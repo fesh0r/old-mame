@@ -7,7 +7,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "nb1413m3.h"
 
 
@@ -30,8 +29,8 @@ static UINT8 *nbmj8891_palette;
 static UINT8 *nbmj8891_clut;
 
 
-static void nbmj8891_vramflip(int vram);
-static void nbmj8891_gfxdraw(void);
+static void nbmj8891_vramflip(running_machine *machine, int vram);
+static void nbmj8891_gfxdraw(running_machine *machine);
 
 
 /******************************************************************************
@@ -134,14 +133,14 @@ WRITE8_HANDLER( nbmj8891_blitter_w )
 		case 0x04:	blitter_sizex = data; break;
 		case 0x05:	blitter_sizey = data;
 					/* writing here also starts the blit */
-					nbmj8891_gfxdraw();
+					nbmj8891_gfxdraw(machine);
 					break;
 		case 0x06:	blitter_direction_x = (data & 0x01) ? 1 : 0;
 					blitter_direction_y = (data & 0x02) ? 1 : 0;
 					nbmj8891_flipscreen = (data & 0x04) ? 1 : 0;
 					nbmj8891_dispflag = (data & 0x08) ? 0 : 1;
-					if (gfxdraw_mode) nbmj8891_vramflip(1);
-					nbmj8891_vramflip(0);
+					if (gfxdraw_mode) nbmj8891_vramflip(machine, 1);
+					nbmj8891_vramflip(machine, 0);
 					break;
 		case 0x07:	break;
 	}
@@ -162,14 +161,14 @@ WRITE8_HANDLER( nbmj8891_taiwanmb_blitter_w )
 
 WRITE8_HANDLER( nbmj8891_taiwanmb_gfxdraw_w )
 {
-//  nbmj8891_gfxdraw();
+//  nbmj8891_gfxdraw(machine);
 }
 
 WRITE8_HANDLER( nbmj8891_taiwanmb_gfxflag_w )
 {
 	nbmj8891_flipscreen = (data & 0x04) ? 1 : 0;
 
-	nbmj8891_vramflip(0);
+	nbmj8891_vramflip(machine, 0);
 }
 
 WRITE8_HANDLER( nbmj8891_taiwanmb_mcu_w )
@@ -248,7 +247,7 @@ WRITE8_HANDLER( nbmj8891_taiwanmb_mcu_w )
 			blitter_sizey ^= 0x00;
 		}
 
-		nbmj8891_gfxdraw();
+		nbmj8891_gfxdraw(machine);
 	}
 
 //  blitter_direction_x = 0;                // for debug
@@ -273,14 +272,15 @@ WRITE8_HANDLER( nbmj8891_vramsel_w )
 
 WRITE8_HANDLER( nbmj8891_romsel_w )
 {
+	int gfxlen = memory_region_length(machine, REGION_GFX1);
 	nbmj8891_gfxrom = (data & 0x0f);
 
-	if ((0x20000 * nbmj8891_gfxrom) > (memory_region_length(REGION_GFX1) - 1))
+	if ((0x20000 * nbmj8891_gfxrom) > (gfxlen - 1))
 	{
 #ifdef MAME_DEBUG
 		popmessage("GFXROM BANK OVER!!");
 #endif
-		nbmj8891_gfxrom &= (memory_region_length(REGION_GFX1) / 0x20000 - 1);
+		nbmj8891_gfxrom &= (gfxlen / 0x20000 - 1);
 	}
 }
 
@@ -288,15 +288,15 @@ WRITE8_HANDLER( nbmj8891_romsel_w )
 
 
 ******************************************************************************/
-void nbmj8891_vramflip(int vram)
+void nbmj8891_vramflip(running_machine *machine, int vram)
 {
 	static int nbmj8891_flipscreen_old = 0;
 	int x, y;
 	UINT8 color1, color2;
 	UINT8 *vidram;
 
-	int width = video_screen_get_width(Machine->primary_screen);
-	int height = video_screen_get_height(Machine->primary_screen);
+	int width = video_screen_get_width(machine->primary_screen);
+	int height = video_screen_get_height(machine->primary_screen);
 
 	if (nbmj8891_flipscreen == nbmj8891_flipscreen_old) return;
 
@@ -318,15 +318,15 @@ void nbmj8891_vramflip(int vram)
 }
 
 
-static void update_pixel0(int x, int y)
+static void update_pixel0(running_machine *machine, int x, int y)
 {
-	UINT8 color = nbmj8891_videoram0[(y * video_screen_get_width(Machine->primary_screen)) + x];
+	UINT8 color = nbmj8891_videoram0[(y * video_screen_get_width(machine->primary_screen)) + x];
 	*BITMAP_ADDR16(nbmj8891_tmpbitmap0, y, x) = color;
 }
 
-static void update_pixel1(int x, int y)
+static void update_pixel1(running_machine *machine, int x, int y)
 {
-	UINT8 color = nbmj8891_videoram1[(y * video_screen_get_width(Machine->primary_screen)) + x];
+	UINT8 color = nbmj8891_videoram1[(y * video_screen_get_width(machine->primary_screen)) + x];
 	*BITMAP_ADDR16(nbmj8891_tmpbitmap1, y, x) = (color == 0x7f) ? 0xff : color;
 }
 
@@ -335,10 +335,10 @@ static TIMER_CALLBACK( blitter_timer_callback )
 	nb1413m3_busyflag = 1;
 }
 
-static void nbmj8891_gfxdraw(void)
+static void nbmj8891_gfxdraw(running_machine *machine)
 {
-	UINT8 *GFX = memory_region(REGION_GFX1);
-	int width = video_screen_get_width(Machine->primary_screen);
+	UINT8 *GFX = memory_region(machine, REGION_GFX1);
+	int width = video_screen_get_width(machine->primary_screen);
 
 	int x, y;
 	int dx1, dx2, dy1, dy2;
@@ -347,7 +347,7 @@ static void nbmj8891_gfxdraw(void)
 	int skipx, skipy;
 	int ctrx, ctry;
 	UINT8 color, color1, color2;
-	int gfxaddr;
+	int gfxaddr, gfxlen;
 
 	nb1413m3_busyctr = 0;
 
@@ -376,18 +376,19 @@ static void nbmj8891_gfxdraw(void)
 		skipy = -1;
 	}
 
+	gfxlen = memory_region_length(machine, REGION_GFX1);
 	gfxaddr = (nbmj8891_gfxrom << 17) + (blitter_src_addr << 1);
 
 	for (y = starty, ctry = sizey; ctry >= 0; y += skipy, ctry--)
 	{
 		for (x = startx, ctrx = sizex; ctrx >= 0; x += skipx, ctrx--)
 		{
-			if ((gfxaddr > (memory_region_length(REGION_GFX1) - 1)))
+			if ((gfxaddr > (gfxlen - 1)))
 			{
 #ifdef MAME_DEBUG
 				popmessage("GFXROM ADDRESS OVER!!");
 #endif
-				gfxaddr &= (memory_region_length(REGION_GFX1) - 1);
+				gfxaddr &= (gfxlen - 1);
 			}
 
 			color = GFX[gfxaddr++];
@@ -444,12 +445,12 @@ static void nbmj8891_gfxdraw(void)
 				if (color1 != 0xff)
 				{
 					nbmj8891_videoram0[(dy1 * width) + dx1] = color1;
-					update_pixel0(dx1, dy1);
+					update_pixel0(machine, dx1, dy1);
 				}
 				if (color2 != 0xff)
 				{
 					nbmj8891_videoram0[(dy1 * width) + dx2] = color2;
-					update_pixel0(dx2, dy1);
+					update_pixel0(machine, dx2, dy1);
 				}
 			}
 			if (gfxdraw_mode && (nbmj8891_vram & 0x02))
@@ -461,21 +462,21 @@ static void nbmj8891_gfxdraw(void)
 					if (color1 != 0xff)
 					{
 						nbmj8891_videoram1[(dy2 * width) + dx1] = color1;
-						update_pixel1(dx1, dy2);
+						update_pixel1(machine, dx1, dy2);
 					}
 					if (color2 != 0xff)
 					{
 						nbmj8891_videoram1[(dy2 * width) + dx2] = color2;
-						update_pixel1(dx2, dy2);
+						update_pixel1(machine, dx2, dy2);
 					}
 				}
 				else
 				{
 					// transparent disable
 					nbmj8891_videoram1[(dy2 * width) + dx1] = color1;
-					update_pixel1(dx1, dy2);
+					update_pixel1(machine, dx1, dy2);
 					nbmj8891_videoram1[(dy2 * width) + dx2] = color2;
-					update_pixel1(dx2, dy2);
+					update_pixel1(machine, dx2, dy2);
 				}
 			}
 
@@ -493,7 +494,7 @@ static void nbmj8891_gfxdraw(void)
 ******************************************************************************/
 VIDEO_START( nbmj8891_1layer )
 {
-	UINT8 *CLUT = memory_region(REGION_USER1);
+	UINT8 *CLUT = memory_region(machine, REGION_USER1);
 	int i;
 	int width = video_screen_get_width(machine->primary_screen);
 	int height = video_screen_get_height(machine->primary_screen);
@@ -541,12 +542,12 @@ VIDEO_UPDATE( nbmj8891 )
 		nbmj8891_screen_refresh = 0;
 		for (y = 0; y < height; y++)
 			for (x = 0; x < width; x++)
-				update_pixel0(x, y);
+				update_pixel0(screen->machine, x, y);
 
 		if (gfxdraw_mode)
 			for (y = 0; y < height; y++)
 				for (x = 0; x < width; x++)
-					update_pixel1(x, y);
+					update_pixel1(screen->machine, x, y);
 	}
 
 	if (nbmj8891_dispflag)

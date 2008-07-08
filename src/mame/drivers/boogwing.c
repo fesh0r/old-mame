@@ -75,7 +75,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/h6280/h6280.h"
 #include "decocrpt.h"
@@ -84,7 +83,6 @@
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
-extern void deco102_decrypt(int region, int address_xor, int data_select_xor, int opcode_select_xor);
 VIDEO_START(boogwing);
 VIDEO_UPDATE(boogwing);
 
@@ -283,9 +281,9 @@ GFXDECODE_END
 
 /**********************************************************************************/
 
-static void sound_irq(int state)
+static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1,1,state); /* IRQ 2 */
+	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -481,14 +479,14 @@ ROM_END
 
 static DRIVER_INIT( boogwing )
 {
-	const UINT8* src=memory_region(REGION_GFX6);
-	UINT8* dst=memory_region(REGION_GFX2) + 0x200000;
+	const UINT8* src=memory_region(machine, REGION_GFX6);
+	UINT8* dst=memory_region(machine, REGION_GFX2) + 0x200000;
 
-	deco56_decrypt(REGION_GFX1);
-	deco56_decrypt(REGION_GFX2);
-	deco56_decrypt(REGION_GFX3);
-	deco56_remap(REGION_GFX6);
-	deco102_decrypt(REGION_CPU1, 0x42ba, 0x00, 0x18);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco56_decrypt(machine, REGION_GFX2);
+	deco56_decrypt(machine, REGION_GFX3);
+	deco56_remap(machine, REGION_GFX6);
+	deco102_decrypt(machine, REGION_CPU1, 0x42ba, 0x00, 0x18);
 	memcpy(dst, src, 0x100000);
 }
 

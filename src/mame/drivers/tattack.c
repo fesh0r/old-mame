@@ -93,9 +93,6 @@ PORT_START
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
 
-	PORT_DIPNAME( 0x02, 0x00, "DSW1 2" )
-	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x00, "Time" )
 	PORT_DIPSETTING(    0x04, "112" )
 	PORT_DIPSETTING(    0x00, "5" )
@@ -226,7 +223,7 @@ ROM_END
 static DRIVER_INIT(tattack)
 {
 
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	rom[0x1b4]=0;
 	rom[0x1b5]=0;

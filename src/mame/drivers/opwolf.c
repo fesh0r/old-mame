@@ -94,12 +94,12 @@ register. So what is controlling priority.
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
 #include "sound/2151intf.h"
 #include "sound/msm5205.h"
+#include "includes/cchip.h"
 
 int opwolf_region;
 
@@ -108,13 +108,6 @@ static UINT8 adpcm_b[0x08];
 static UINT8 adpcm_c[0x08];
 static int opwolf_gun_xoffs, opwolf_gun_yoffs;
 
-void opwolf_cchip_init(void);
-
-READ16_HANDLER( opwolf_cchip_status_r );
-READ16_HANDLER( opwolf_cchip_data_r );
-WRITE16_HANDLER( opwolf_cchip_status_w );
-WRITE16_HANDLER( opwolf_cchip_data_w );
-WRITE16_HANDLER( opwolf_cchip_bank_w );
 WRITE16_HANDLER( rainbow_spritectrl_w );
 WRITE16_HANDLER( rastan_spriteflip_w );
 VIDEO_START( opwolf );
@@ -311,7 +304,7 @@ static MACHINE_RESET( opwolf )
 	MSM5205_reset_w(1, 1);
 }
 
-static void opwolf_msm5205_vck(int chip)
+static void opwolf_msm5205_vck(running_machine *machine, int chip)
 {
 	static int adpcm_data[2] = { -1, -1 };
 
@@ -324,7 +317,7 @@ static void opwolf_msm5205_vck(int chip)
 	}
 	else
 	{
-		adpcm_data[chip] = memory_region(REGION_SOUND1)[adpcm_pos[chip]];
+		adpcm_data[chip] = memory_region(machine, REGION_SOUND1)[adpcm_pos[chip]];
 		adpcm_pos[chip] = (adpcm_pos[chip] + 1) & 0x7ffff;
 		MSM5205_data_w(chip, adpcm_data[chip] >> 4);
 	}
@@ -537,9 +530,9 @@ GFXDECODE_END
 
 /* handler called by the YM2151 emulator when the internal timers cause an IRQ */
 
-static void irq_handler(int irq)
+static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -784,7 +777,7 @@ ROM_END
 
 static DRIVER_INIT( opwolf )
 {
-	UINT16* rom=(UINT16*)memory_region(REGION_CPU1);
+	UINT16* rom=(UINT16*)memory_region(machine, REGION_CPU1);
 
 	opwolf_region = rom[0x03fffe / 2] & 0xff;
 
@@ -794,13 +787,13 @@ static DRIVER_INIT( opwolf )
 	opwolf_gun_xoffs = 0xec - (rom[0x03ffb0 / 2] & 0xff);
 	opwolf_gun_yoffs = 0x1c - (rom[0x03ffae / 2] & 0xff);
 
-	memory_configure_bank(10, 0, 4, memory_region(REGION_CPU2) + 0x10000, 0x4000);
+	memory_configure_bank(10, 0, 4, memory_region(machine, REGION_CPU2) + 0x10000, 0x4000);
 }
 
 
 static DRIVER_INIT( opwolfb )
 {
-	UINT16* rom=(UINT16*)memory_region(REGION_CPU1);
+	UINT16* rom=(UINT16*)memory_region(machine, REGION_CPU1);
 
 	opwolf_region = rom[0x03fffe / 2] & 0xff;
 
@@ -808,7 +801,7 @@ static DRIVER_INIT( opwolfb )
 	opwolf_gun_xoffs = -2;
 	opwolf_gun_yoffs = 17;
 
-	memory_configure_bank(10, 0, 4, memory_region(REGION_CPU2) + 0x10000, 0x4000);
+	memory_configure_bank(10, 0, 4, memory_region(machine, REGION_CPU2) + 0x10000, 0x4000);
 }
 
 

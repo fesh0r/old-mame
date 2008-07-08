@@ -565,7 +565,7 @@ static WRITE32_HANDLER( hng64_videoram_w )
 
 static READ32_HANDLER( hng64_random_read )
 {
-	return mame_rand(Machine)&0xffffffff;
+	return mame_rand(machine)&0xffffffff;
 }
 
 
@@ -620,7 +620,7 @@ static WRITE32_HANDLER( hng64_pal_w )
 	a = ((paletteram32[offset] & 0xff000000) >>24);
 
 	// a sure ain't alpha.
-	// alpha_set_level(mame_rand(Machine)) ;
+	// alpha_set_level(mame_rand(machine)) ;
 	// mame_printf_debug("Alpha : %d %d %d %d\n", a, b, g, r) ;
 
 	//if (a != 0)
@@ -638,7 +638,7 @@ static READ32_HANDLER( hng64_port_read )
 
 	if(offset==0x85b) return 0x00000010;
 
-	return mame_rand(Machine)&0xffffffff;
+	return mame_rand(machine)&0xffffffff;
 }
 
 
@@ -740,7 +740,7 @@ static READ32_HANDLER( hng64_dualport_r )
 		case 0x600: return no_machine_error_code;
 	}
 
-	return mame_rand(Machine)&0xffffffff;
+	return mame_rand(machine)&0xffffffff;
 	//return hng64_dualport[offset];
 }
 
@@ -1072,7 +1072,7 @@ index=00000004  pagesize=01000000  vaddr=00000000C9000000  paddr=000000006900000
 
 static OPBASE_HANDLER( KL5C80_opbase_handler )
 {
-	opcode_base = opcode_arg_base = hng64_com_op_base;
+	opbase->rom = opbase->ram = hng64_com_op_base;
 	return ~0;
 }
 
@@ -1422,7 +1422,7 @@ static DRIVER_INIT(hng64_race)
 
 
 /* ?? */
-static const struct mips3_config config =
+static const mips3_config config =
 {
 	16384,				/* code cache size */
 	16384				/* data cache size */
@@ -1458,6 +1458,7 @@ static INTERRUPT_GEN( irq_start )
 static MACHINE_RESET(hyperneo)
 {
 	int i ;
+	const UINT8 *rom = memory_region(machine, REGION_USER2);
 
 	/* Sound CPU */
 	UINT8 *RAM = (UINT8*)hng64_soundram;
@@ -1476,7 +1477,7 @@ static MACHINE_RESET(hyperneo)
 
 	/* Fill up virtual memory with ROM */
 	for (i = 0x0; i < 0x100000; i++)
-		hng64_com_virtual_mem[i] = memory_region(REGION_USER2)[i] ;
+		hng64_com_virtual_mem[i] = rom[i] ;
 
 	KL5C80_virtual_mem_sync();
 	memory_set_opbase_handler(2, KL5C80_opbase_handler);

@@ -145,6 +145,28 @@ Notes about 'frogg' :
   bit 5 of IN1 is tested if "Cabinet" Dip Switch is set to "Cocktail".
 
 
+Notes about 'calipso' :
+---------------------
+
+  Calipso was apperantly redesigned for two player simultanious play.
+  There is code at $298a to flip the screen, but location $8669 has to be
+  set to 2. It's set to 1 no matter how many players are playing.
+  It's possible that there is a cocktail version of the game.
+
+
+Notes about 'moonwar' :
+---------------------
+
+  Moonwar: 8255 Port C bit 4 was originally designed so when bit4=0, 1P spinner
+  is selected, and when bit4=1, 2P spinner gets selected.  But they forgot to
+  change the 8255 initialization value and Port C was set to input, setting the
+  spinner select bit to HI regardless what was written to it. This bug has been
+  corrected in the newer set, but, to maintain hardware compatibility with
+  older PCB's, they had to reverse to active status of the select bit.  So in the
+  newer set, Bit4=1 selects the 1P spinner and Bit4=0 selects the 2P spinner.
+
+
+
 TO DO :
 -------
 
@@ -196,6 +218,8 @@ static UINT8 protection_result;
 
 static UINT8 konami_sound_control;
 static UINT8 sfx_sample_control;
+
+static UINT8 moonwar_port_select;
 
 static UINT8 irq_enabled;
 static int irq_line;
@@ -841,13 +865,13 @@ static INPUT_CHANGED( gmgalax_game_changed )
 
 	/* select the bank and graphics bank based on it */
 	memory_set_bank(1, gmgalax_selected_game);
-	galaxian_gfxbank_w(machine, 0, gmgalax_selected_game);
+	galaxian_gfxbank_w(field->port->machine, 0, gmgalax_selected_game);
 
 	/* reset the starts */
-	galaxian_stars_enable_w(machine, 0, 0);
+	galaxian_stars_enable_w(field->port->machine, 0, 0);
 
 	/* reset the CPU */
-	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
+	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 }
 
 
@@ -856,7 +880,7 @@ static CUSTOM_INPUT( gmgalax_port_r )
 	const char *portname = param;
 	if (gmgalax_selected_game != 0)
 		portname += strlen(portname) + 1;
-	return input_port_read(machine, portname);
+	return input_port_read(field->port->machine, portname);
 }
 
 
@@ -912,7 +936,7 @@ static WRITE8_HANDLER( zigzag_ay8910_w )
 
 static CUSTOM_INPUT( azurian_port_r )
 {
-	return (input_port_read(machine, "FAKE") >> (FPTR)param) & 1;
+	return (input_port_read(field->port->machine, "FAKE") >> (FPTR)param) & 1;
 }
 
 
@@ -926,7 +950,7 @@ static CUSTOM_INPUT( azurian_port_r )
 static CUSTOM_INPUT( kingball_muxbit_r )
 {
 	/* multiplex the service mode switch with a speech DIP switch */
-	return (input_port_read(machine, "FAKE") >> kingball_speech_dip) & 1;
+	return (input_port_read(field->port->machine, "FAKE") >> kingball_speech_dip) & 1;
 }
 
 
@@ -935,7 +959,7 @@ static CUSTOM_INPUT( kingball_noise_r )
 	/* bit 5 is the NOISE line from the sound circuit.  The code just verifies
        that it's working, doesn't actually use return value, so we can just use
        rand() */
-	return mame_rand(machine) & 1;
+	return mame_rand(field->port->machine) & 1;
 }
 
 
@@ -1084,6 +1108,51 @@ static READ8_HANDLER( dingoe_3001_r )
 }
 
 
+/*************************************
+ *
+ *  Moon War I/O
+ *
+ *************************************/
+
+static WRITE8_HANDLER( moonwar_port_select_w )
+{
+	moonwar_port_select = data & 0x10;
+}
+
+
+static READ8_HANDLER( moonwar_input_port_0_r )
+{
+	UINT8 sign;
+	UINT8 delta;
+
+	delta = (moonwar_port_select ? input_port_read(machine, "IN3") : input_port_read(machine, "IN4"));
+
+	sign = (delta & 0x80) >> 3;
+	delta &= 0x0f;
+
+	return ((input_port_read(machine, "IN0") & 0xe0) | delta | sign );
+}
+
+
+static const ppi8255_interface moonwar_ppi8255_intf[2] =
+{
+	{
+		moonwar_input_port_0_r,			/* Port A read */
+		konami_portb_0_r,				/* Port B read */
+		konami_portc_0_r,				/* Port C read */
+		NULL,							/* Port A write */
+		NULL,							/* Port B write */
+		moonwar_port_select_w 			/* Port C write */
+	},
+	{
+		NULL,							/* Port A read */
+		NULL,							/* Port B read */
+		konami_portc_1_r,				/* Port C read */
+		soundlatch_w,					/* Port A write */
+		konami_sound_control_w,			/* Port B write */
+		konami_portc_1_w				/* Port C write */
+	}
+};
 
 /*************************************
  *
@@ -1517,18 +1586,18 @@ static const gfx_layout galaxian_spritelayout =
  *
  *************************************/
 
-GFXDECODE_START(galaxian)
+static GFXDECODE_START(galaxian)
 	GFXDECODE_SCALE(REGION_GFX1, 0x0000, galaxian_charlayout,   0, 8, GALAXIAN_XSCALE,1)
 	GFXDECODE_SCALE(REGION_GFX1, 0x0000, galaxian_spritelayout, 0, 8, GALAXIAN_XSCALE,1)
 GFXDECODE_END
 
-GFXDECODE_START(gmgalax)
+static GFXDECODE_START(gmgalax)
 	GFXDECODE_SCALE(REGION_GFX1, 0x0000, galaxian_charlayout,   0, 16, GALAXIAN_XSCALE,1)
 	GFXDECODE_SCALE(REGION_GFX1, 0x0000, galaxian_spritelayout, 0, 16, GALAXIAN_XSCALE,1)
 GFXDECODE_END
 
 /* separate character and sprite ROMs */
-GFXDECODE_START(pacmanbl)
+static GFXDECODE_START(pacmanbl)
 	GFXDECODE_SCALE(REGION_GFX1, 0x0000, galaxian_charlayout,   0, 8, GALAXIAN_XSCALE,1)
 	GFXDECODE_SCALE(REGION_GFX2, 0x0000, galaxian_spritelayout, 0, 8, GALAXIAN_XSCALE,1)
 GFXDECODE_END
@@ -2074,6 +2143,21 @@ static MACHINE_DRIVER_START( anteater )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.1)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( moonwar )
+
+	/* basic machine hardware */
+	/* same as regular type 1, the only difference is that the bullets are less yellow */
+	MDRV_IMPORT_FROM(scobra)
+
+	/* device config overrides */
+	MDRV_DEVICE_MODIFY( "ppi8255_0", PPI8255 )
+	MDRV_DEVICE_CONFIG( moonwar_ppi8255_intf[0] )
+
+	MDRV_DEVICE_MODIFY( "ppi8255_1", PPI8255 )
+	MDRV_DEVICE_CONFIG( moonwar_ppi8255_intf[1] )
+
+	MDRV_PALETTE_INIT(moonwar)
+MACHINE_DRIVER_END
 
 
 /*************************************
@@ -2082,9 +2166,9 @@ MACHINE_DRIVER_END
  *
  *************************************/
 
-static void decode_mooncrst(int length, UINT8 *dest)
+static void decode_mooncrst(running_machine *machine, int length, UINT8 *dest)
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 	int offs;
 
 	for (offs = 0; offs < length; offs++)
@@ -2099,7 +2183,7 @@ static void decode_mooncrst(int length, UINT8 *dest)
 }
 
 
-static void decode_checkman(void)
+static void decode_checkman(running_machine *machine)
 {
 	/*
                              Encryption Table
@@ -2146,8 +2230,8 @@ static void decode_checkman(void)
 		{ 0,2,0,2 },
 		{ 1,4,1,4 }
 	};
-	UINT8 *rombase = memory_region(REGION_CPU1);
-	UINT32 romlength = memory_region_length(REGION_CPU1);
+	UINT8 *rombase = memory_region(machine, REGION_CPU1);
+	UINT32 romlength = memory_region_length(machine, REGION_CPU1);
 	UINT32 offs;
 
 	for (offs = 0; offs < romlength; offs++)
@@ -2161,10 +2245,10 @@ static void decode_checkman(void)
 }
 
 
-static void decode_dingoe(void)
+static void decode_dingoe(running_machine *machine)
 {
-	UINT8 *rombase = memory_region(REGION_CPU1);
-	UINT32 romlength = memory_region_length(REGION_CPU1);
+	UINT8 *rombase = memory_region(machine, REGION_CPU1);
+	UINT32 romlength = memory_region_length(machine, REGION_CPU1);
 	UINT32 offs;
 
 	for (offs = 0; offs < romlength; offs++)
@@ -2184,9 +2268,9 @@ static void decode_dingoe(void)
 }
 
 
-static void decode_frogger_sound(void)
+static void decode_frogger_sound(running_machine *machine)
 {
-	UINT8 *rombase = memory_region(REGION_CPU2);
+	UINT8 *rombase = memory_region(machine, REGION_CPU2);
 	UINT32 offs;
 
 	/* the first ROM of the sound CPU has data lines D0 and D1 swapped */
@@ -2195,9 +2279,9 @@ static void decode_frogger_sound(void)
 }
 
 
-static void decode_frogger_gfx(void)
+static void decode_frogger_gfx(running_machine *machine)
 {
-	UINT8 *rombase = memory_region(REGION_GFX1);
+	UINT8 *rombase = memory_region(machine, REGION_GFX1);
 	UINT32 offs;
 
 	/* the 2nd gfx ROM has data lines D0 and D1 swapped */
@@ -2206,10 +2290,10 @@ static void decode_frogger_gfx(void)
 }
 
 
-static void decode_anteater_gfx(void)
+static void decode_anteater_gfx(running_machine *machine)
 {
-	UINT32 romlength = memory_region_length(REGION_GFX1);
-	UINT8 *rombase = memory_region(REGION_GFX1);
+	UINT32 romlength = memory_region_length(machine, REGION_GFX1);
+	UINT8 *rombase = memory_region(machine, REGION_GFX1);
 	UINT8 *scratch = malloc_or_die(romlength);
 	UINT32 offs;
 
@@ -2226,10 +2310,10 @@ static void decode_anteater_gfx(void)
 }
 
 
-static void decode_losttomb_gfx(void)
+static void decode_losttomb_gfx(running_machine *machine)
 {
-	UINT32 romlength = memory_region_length(REGION_GFX1);
-	UINT8 *rombase = memory_region(REGION_GFX1);
+	UINT32 romlength = memory_region_length(machine, REGION_GFX1);
+	UINT8 *rombase = memory_region(machine, REGION_GFX1);
 	UINT8 *scratch = malloc_or_die(romlength);
 	UINT32 offs;
 
@@ -2245,6 +2329,36 @@ static void decode_losttomb_gfx(void)
 	free(scratch);
 }
 
+
+static void decode_superbon(running_machine *machine)
+{
+	offs_t i;
+	UINT8 *RAM;
+
+	/* Deryption worked out by hand by Chris Hardy. */
+
+	RAM = memory_region(machine, REGION_CPU1);
+
+	for (i = 0;i < 0x1000;i++)
+	{
+		/* Code is encrypted depending on bit 7 and 9 of the address */
+		switch (i & 0x0280)
+		{
+		case 0x0000:
+			RAM[i] ^= 0x92;
+			break;
+		case 0x0080:
+			RAM[i] ^= 0x82;
+			break;
+		case 0x0200:
+			RAM[i] ^= 0x12;
+			break;
+		case 0x0280:
+			RAM[i] ^= 0x10;
+			break;
+		}
+	}
+}
 
 
 /*************************************
@@ -2320,10 +2434,10 @@ static DRIVER_INIT( gmgalax )
 
 	/* ROM is banked */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
-	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
 
 	/* callback when the game select is toggled */
-	gmgalax_game_changed(machine, NULL, 0, 0);
+	gmgalax_game_changed(machine->portconfig->fieldlist, NULL, 0, 0);
 	state_save_register_global(gmgalax_selected_game);
 }
 
@@ -2372,7 +2486,7 @@ static DRIVER_INIT( mooncrst )
 	common_init(machine, galaxian_draw_bullet, galaxian_draw_background, mooncrst_extend_tile_info, mooncrst_extend_sprite_info);
 
 	/* decrypt program code */
-	decode_mooncrst(0x8000, memory_region(REGION_CPU1));
+	decode_mooncrst(machine, 0x8000, memory_region(machine, REGION_CPU1));
 }
 
 
@@ -2401,7 +2515,7 @@ static DRIVER_INIT( moonqsr )
 	common_init(machine, galaxian_draw_bullet, galaxian_draw_background, moonqsr_extend_tile_info, moonqsr_extend_sprite_info);
 
 	/* decrypt program code */
-	decode_mooncrst(0x8000, decrypt);
+	decode_mooncrst(machine, 0x8000, decrypt);
 	memory_set_decrypted_region(0, 0x0000, 0x7fff, decrypt);
 }
 
@@ -2438,8 +2552,8 @@ static DRIVER_INIT( zigzag )
 	/* make ROMs 2 & 3 swappable */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2000, 0x2fff, 0, 0, SMH_BANK1);
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3fff, 0, 0, SMH_BANK2);
-	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0x2000, 0x1000);
-	memory_configure_bank(2, 0, 2, memory_region(REGION_CPU1) + 0x2000, 0x1000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1) + 0x2000, 0x1000);
+	memory_configure_bank(2, 0, 2, memory_region(machine, REGION_CPU1) + 0x2000, 0x1000);
 
 	/* handler for doing the swaps */
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x7002, 0x7002, 0, 0x07f8, zigzag_bankswap_w);
@@ -2476,7 +2590,7 @@ static DRIVER_INIT( checkman )
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_IO, 0x00, 0x00, 0, 0xffff, checkman_sound_command_w);
 
 	/* decrypt program code */
-	decode_checkman();
+	decode_checkman(machine);
 }
 
 
@@ -2521,7 +2635,7 @@ static DRIVER_INIT( dingoe )
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3001, 0x3001, 0, 0, dingoe_3001_r);	/* Protection check */
 
 	/* decrypt program code */
-	decode_dingoe();
+	decode_dingoe(machine);
 }
 
 
@@ -2539,7 +2653,7 @@ static DRIVER_INIT( skybase )
 
 	/* extend ROM */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x5fff, 0, 0, SMH_BANK2);
-	memory_set_bankptr(2, memory_region(REGION_CPU1));
+	memory_set_bankptr(2, memory_region(machine, REGION_CPU1));
 }
 
 
@@ -2552,7 +2666,7 @@ static DRIVER_INIT( mshuttle )
 	irq_line = 0;
 
 	/* decrypt the code */
-	mshuttle_decode();
+	mshuttle_decode(machine);
 }
 
 
@@ -2565,7 +2679,7 @@ static DRIVER_INIT( mshuttlj )
 	irq_line = 0;
 
 	/* decrypt the code */
-	cclimbrj_decode();
+	cclimbrj_decode(machine);
 }
 
 
@@ -2595,7 +2709,7 @@ static DRIVER_INIT( scorpnmc )
 
 	/* extra ROM */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x67ff, 0, 0, SMH_BANK1);
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x5000);
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x5000);
 
 	/* install RAM at $4000-$4800 */
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x47ff, 0, 0, SMH_BANK2, SMH_BANK2);
@@ -2657,7 +2771,7 @@ static DRIVER_INIT( sfx )
 
 	/* sound board has space for extra ROM */
 	memory_install_read8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
-	memory_set_bankptr(1, memory_region(REGION_CPU2));
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU2));
 }
 
 
@@ -2685,7 +2799,7 @@ static DRIVER_INIT( losttomb )
 	common_init(machine, scramble_draw_bullet, scramble_draw_background, NULL, NULL);
 
 	/* decrypt */
-	decode_losttomb_gfx();
+	decode_losttomb_gfx(machine);
 }
 
 
@@ -2696,8 +2810,8 @@ static DRIVER_INIT( frogger )
 	galaxian_frogger_adjust = TRUE;
 
 	/* decrypt */
-	decode_frogger_sound();
-	decode_frogger_gfx();
+	decode_frogger_sound(machine);
+	decode_frogger_gfx(machine);
 }
 
 
@@ -2714,7 +2828,7 @@ static DRIVER_INIT( froggrmc )
 	memory_set_bankptr(1, auto_malloc(0x800));
 
 	/* decrypt */
-	decode_frogger_sound();
+	decode_frogger_sound(machine);
 }
 
 
@@ -2724,7 +2838,7 @@ static DRIVER_INIT( froggers )
 	common_init(machine, NULL, frogger_draw_background, frogger_extend_tile_info, frogger_extend_sprite_info);
 
 	/* decrypt */
-	decode_frogger_sound();
+	decode_frogger_sound(machine);
 }
 
 
@@ -2754,7 +2868,7 @@ static DRIVER_INIT( scorpion )
 
 	/* extra ROM */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, SMH_BANK1);
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x5800);
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x5800);
 
 	/* no background related */
 //  memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6803, 0x6803, 0, 0, SMH_NOP);
@@ -2762,7 +2876,7 @@ static DRIVER_INIT( scorpion )
 	memory_install_read8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, 0x3000, 0x3000, 0, 0, scorpion_sound_status_r);
 /*
 {
-    const UINT8 *rom = memory_region(REGION_SOUND1);
+    const UINT8 *rom = memory_region(machine, REGION_SOUND1);
     int i;
 
     for (i = 0; i < 0x2c; i++)
@@ -2786,8 +2900,38 @@ static DRIVER_INIT( anteater )
 	common_init(machine, scramble_draw_bullet, scramble_draw_background, NULL, NULL);
 
 	/* decode graphics */
-	decode_anteater_gfx();
+	decode_anteater_gfx(machine);
 }
+
+
+static DRIVER_INIT( superbon )
+{
+
+	/* video extensions */
+	common_init(machine, scramble_draw_bullet, scramble_draw_background, NULL, NULL);
+
+	/* decode code */
+	decode_superbon(machine);
+}
+
+
+static DRIVER_INIT( calipso )
+{
+
+	/* video extensions */
+	common_init(machine, scramble_draw_bullet, scramble_draw_background, NULL, calipso_extend_sprite_info);
+
+}
+
+
+static DRIVER_INIT( moonwar )
+{
+	/* video extensions */
+	common_init(machine, scramble_draw_bullet, scramble_draw_background, NULL, NULL);
+
+	state_save_register_global(moonwar_port_select);
+}
+
 
 
 #include "galdrvr.c"

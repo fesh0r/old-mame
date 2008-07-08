@@ -199,9 +199,9 @@ static UINT16 irq_enable;
 static UINT16 *ssv_mainram;
 
 /* Update the IRQ state based on all possible causes */
-static void update_irq_state(void)
+static void update_irq_state(running_machine *machine)
 {
-	cpunum_set_input_line(Machine, 0, 0, (requested_int & irq_enable)? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, (requested_int & irq_enable)? ASSERT_LINE : CLEAR_LINE);
 }
 
 static IRQ_CALLBACK(ssv_irq_callback)
@@ -223,7 +223,7 @@ static WRITE16_HANDLER( ssv_irq_ack_w )
 	int level = ((offset * 2) & 0x70) >> 4;
 	requested_int &= ~(1 << level);
 
-	update_irq_state();
+	update_irq_state(machine);
 }
 
 /*
@@ -258,13 +258,13 @@ static INTERRUPT_GEN( ssv_interrupt )
 		if(interrupt_ultrax)
 		{
 			requested_int |= 1 << 1;	// needed by ultrax to coin up, breaks cairblad
-			update_irq_state();
+			update_irq_state(machine);
 		}
 	}
 	else
 	{
 		requested_int |= 1 << 3;	// vblank
-		update_irq_state();
+		update_irq_state(machine);
 	}
 }
 
@@ -273,12 +273,12 @@ static INTERRUPT_GEN( gdfs_interrupt )
 	if (cpu_getiloops())
 	{
 		requested_int |= 1 << 6;	// reads lightgun (4 times for 4 axis)
-		update_irq_state();
+		update_irq_state(machine);
 	}
 	else
 	{
 		requested_int |= 1 << 3;	// vblank
-		update_irq_state();
+		update_irq_state(machine);
 	}
 }
 
@@ -338,7 +338,7 @@ static MACHINE_RESET( ssv )
 {
 	requested_int = 0;
 	cpunum_set_irq_callback(0, ssv_irq_callback);
-	memory_set_bankptr(1, memory_region(REGION_USER1));
+	memory_set_bankptr(1, memory_region(machine, REGION_USER1));
 }
 
 
@@ -365,12 +365,12 @@ static NVRAM_HANDLER( ssv )
 static NVRAM_HANDLER( gdfs )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);
+		eeprom_init(&eeprom_interface_93C46);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			/* Set the EEPROM to Factory Defaults */
@@ -461,7 +461,7 @@ static UINT16 *ssv_input_sel;
 
 static READ16_HANDLER( drifto94_rand_r )
 {
-	return mame_rand(Machine) & 0xffff;
+	return mame_rand(machine) & 0xffff;
 }
 
 static ADDRESS_MAP_START( drifto94_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -491,7 +491,7 @@ static UINT16 *gdfs_blitram;
 
 static READ16_HANDLER( gdfs_eeprom_r )
 {
-	return (((gdfs_lightgun_select & 1) ? 0 : 0xff) ^ input_port_read_indexed(machine, 5 + gdfs_lightgun_select)) | (EEPROM_read_bit() << 8);
+	return (((gdfs_lightgun_select & 1) ? 0 : 0xff) ^ input_port_read_indexed(machine, 5 + gdfs_lightgun_select)) | (eeprom_read_bit() << 8);
 }
 
 static WRITE16_HANDLER( gdfs_eeprom_w )
@@ -507,13 +507,13 @@ static WRITE16_HANDLER( gdfs_eeprom_w )
 //      data & 0x0001 ?
 
 		// latch the bit
-		EEPROM_write_bit(data & 0x4000);
+		eeprom_write_bit(data & 0x4000);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x1000) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x1000) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x2000) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x2000) ? ASSERT_LINE : CLEAR_LINE );
 
 		if (!(data_old & 0x0800) && (data & 0x0800))	// rising clock
 			gdfs_lightgun_select = (data & 0x0300) >> 8;
@@ -579,8 +579,8 @@ static WRITE16_HANDLER( gdfs_blitram_w )
 			UINT32 dst	=	(gdfs_blitram[0xc4/2] + (gdfs_blitram[0xc6/2] << 16)) << 4;
 			UINT32 len	=	(gdfs_blitram[0xc8/2]) << 4;
 
-			UINT8 *rom	=	memory_region(REGION_GFX2);
-			size_t size	=	memory_region_length(REGION_GFX2);
+			UINT8 *rom	=	memory_region(machine, REGION_GFX2);
+			size_t size	=	memory_region_length(machine, REGION_GFX2);
 
 			if ( (src+len <= size) && (dst+len <= 4 * 0x100000) )
 			{
@@ -1050,8 +1050,8 @@ static UINT8 trackball_select, gfxrom_select;
 
 static READ16_HANDLER( eaglshot_gfxrom_r )
 {
-	UINT8 *rom	=	memory_region(REGION_GFX1);
-	size_t size	=	memory_region_length(REGION_GFX1);
+	UINT8 *rom	=	memory_region(machine, REGION_GFX1);
+	size_t size	=	memory_region_length(machine, REGION_GFX1);
 
 	offset = offset * 2 + gfxrom_select * 0x200000;
 
@@ -2752,7 +2752,7 @@ static DRIVER_INIT( ryorioh )		{	init_ssv();
 static DRIVER_INIT( srmp4 )		{	init_ssv();
 								ssv_sprites_offsx = -8;	ssv_sprites_offsy = +0xf0;
 								ssv_tilemap_offsx = +0;	ssv_tilemap_offsy = -0xf0;
-//  ((UINT16 *)memory_region(REGION_USER1))[0x2b38/2] = 0x037a;   /* patch to see gal test mode */
+//  ((UINT16 *)memory_region(machine, REGION_USER1))[0x2b38/2] = 0x037a;   /* patch to see gal test mode */
 							}
 static DRIVER_INIT( srmp7 )		{	init_ssv();
 								ssv_sprites_offsx = +0;	ssv_sprites_offsy = -0xf;

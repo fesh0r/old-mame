@@ -17,7 +17,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/pckeybrd.h"
 
 #ifdef MESS
@@ -188,7 +187,7 @@ typedef struct at_keyboard
 	int scan_code_set;
 	int last_code;
 
-	int ports[8];
+	const input_port_config *ports[8];
 } at_keyboard;
 
 static at_keyboard keyboard;
@@ -318,10 +317,9 @@ static int at_keyboard_charqueue_empty(void);
 
 
 
-void at_keyboard_init(AT_KEYBOARD_TYPE type)
+void at_keyboard_init(running_machine *machine, AT_KEYBOARD_TYPE type)
 {
 	int i;
-	char buf[32];
 
 	memset(&keyboard, 0, sizeof(keyboard));
 	keyboard.type = type;
@@ -342,8 +340,9 @@ void at_keyboard_init(AT_KEYBOARD_TYPE type)
 	/* locate the keyboard ports */
 	for (i = 0; i < sizeof(keyboard.ports) / sizeof(keyboard.ports[0]); i++)
 	{
+		char buf[40];
 		sprintf(buf, "pc_keyboard_%d", i);
-		keyboard.ports[i] = port_tag_to_index(buf);
+		keyboard.ports[i] = input_port_by_tag(machine->portconfig, buf);
 	}
 
 #ifdef MESS
@@ -508,8 +507,8 @@ static void at_keyboard_extended_scancode_insert(int code, int pressed)
 static UINT32 at_keyboard_readport(int port)
 {
 	UINT32 result = 0;
-	if (keyboard.ports[port] >= 0)
-		result = input_port_read_indexed(Machine, keyboard.ports[port]);
+	if (keyboard.ports[port] != NULL)
+		result = input_port_read_direct(keyboard.ports[port]);
 	return result;
 }
 

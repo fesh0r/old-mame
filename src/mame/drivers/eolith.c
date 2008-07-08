@@ -67,7 +67,7 @@ static int coin_counter_bit = 0;
 #include "eolithsp.h"
 
 // It's configured for 512 bytes
-static const struct EEPROM_interface eeprom_interface_93C66 =
+static const eeprom_interface eeprom_interface_93C66 =
 {
 	9,				// address bits 9
 	8,				// data bits    8
@@ -83,11 +83,11 @@ static const struct EEPROM_interface eeprom_interface_93C66 =
 static NVRAM_HANDLER( eolith )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C66);
-		if (file)	EEPROM_load(file);
+		eeprom_init(&eeprom_interface_93C66);
+		if (file)	eeprom_load(file);
 	}
 }
 
@@ -104,7 +104,7 @@ static READ32_HANDLER( eolith_custom_r )
     */
 	eolith_speedup_read();
 
-	return (input_port_read_indexed(machine, 0) & ~0x308) | (EEPROM_read_bit() << 3) | (mame_rand(Machine) & 0x300);
+	return (input_port_read(machine, "IN0") & ~0x308) | (eeprom_read_bit() << 3) | (mame_rand(machine) & 0x300);
 }
 
 static WRITE32_HANDLER( systemcontrol_w )
@@ -113,9 +113,9 @@ static WRITE32_HANDLER( systemcontrol_w )
 	coin_counter_w(0, data & coin_counter_bit);
 	set_led_status(0, data & 1);
 
-	EEPROM_write_bit(data & 0x08);
-	EEPROM_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
-	EEPROM_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_write_bit(data & 0x08);
+	eeprom_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
 
 	// bit 0x100 and 0x040 ?
 }
@@ -855,7 +855,7 @@ static DRIVER_INIT( landbrka )
 	//it fails compares with memories:
 	//$4002d338 -> $4002d348 .... $4002d33f -> $4002d34f
 	//related with bits 0x100 - 0x200 read at startup from input(0) ?
-	UINT32 *rombase = (UINT32*)memory_region(REGION_CPU1);
+	UINT32 *rombase = (UINT32*)memory_region(machine, REGION_CPU1);
 	rombase[0x14f00/4] = (rombase[0x14f00/4] & 0xffff) | 0x03000000; /* Change BR to NOP */
 
 	coin_counter_bit = 0x2000;
@@ -865,7 +865,7 @@ static DRIVER_INIT( landbrka )
 static DRIVER_INIT( hidctch2 )
 {
 	//it fails compares in memory like in landbrka
-	UINT32 *rombase = (UINT32*)memory_region(REGION_CPU1);
+	UINT32 *rombase = (UINT32*)memory_region(machine, REGION_CPU1);
 	rombase[0xbcc8/4] = (rombase[0xbcc8/4] & 0xffff) | 0x03000000; /* Change BR to NOP */
 	init_eolith_speedup(machine);
 }

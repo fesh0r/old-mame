@@ -6,10 +6,9 @@ Based on drivers from Juno First emulator by Chris Hardy (chrish@kcbbs.gen.nz)
 
 #include "driver.h"
 #include "cpu/m6809/m6809.h"
+#include "machine/konami1.h"
 #include "audio/timeplt.h"
 
-
-extern void konami1_decode(void);
 
 extern WRITE8_HANDLER( rocnrope_videoram_w );
 extern WRITE8_HANDLER( rocnrope_colorram_w );
@@ -23,7 +22,7 @@ extern VIDEO_UPDATE( rocnrope );
 /* Roc'n'Rope has the IRQ vectors in RAM. The rom contains $FFFF at this address! */
 static WRITE8_HANDLER( rocnrope_interrupt_vector_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 
 	RAM[0xFFF2+offset] = data;
@@ -310,16 +309,14 @@ ROM_END
 
 static DRIVER_INIT( rocnrope )
 {
-	extern UINT8 *konami1_decrypted;
+	UINT8 *decrypted = konami1_decode(machine, 0);
 
-	konami1_decode();
-
-	konami1_decrypted[0x703d] = 0x98;	/* fix one instruction */
+	decrypted[0x703d] = 0x98;	/* fix one instruction */
 }
 
 static DRIVER_INIT( rocnropk )
 {
-	konami1_decode();
+	konami1_decode(machine, 0);
 }
 
 

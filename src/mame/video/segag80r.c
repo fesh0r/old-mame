@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "segag80r.h"
 #include "rescap.h"
 #include "video/resnet.h"
@@ -89,7 +88,7 @@ INTERRUPT_GEN( sindbadm_vblank_start )
  *
  *************************************/
 
-static void g80_set_palette_entry(int entry, UINT8 data)
+static void g80_set_palette_entry(running_machine *machine, int entry, UINT8 data)
 {
 	int bit0, bit1, bit2;
 	int r, g, b;
@@ -116,7 +115,7 @@ static void g80_set_palette_entry(int entry, UINT8 data)
 	bit1 = (b >> 1) & 0x01;
 	b = combine_2_weights(bweights, bit0, bit1);
 
-	palette_set_color(Machine, entry, MAKE_RGB(r, g, b));
+	palette_set_color(machine, entry, MAKE_RGB(r, g, b));
 }
 
 
@@ -172,7 +171,7 @@ static void spaceod_bg_init_palette(running_machine *machine)
 
 static TILE_GET_INFO( spaceod_get_tile_info )
 {
-	int code = memory_region(REGION_GFX2)[tile_index + 0x1000 * (spaceod_bg_control >> 6)];
+	int code = memory_region(machine, REGION_GFX2)[tile_index + 0x1000 * (spaceod_bg_control >> 6)];
 	SET_TILE_INFO(1, code + 0x100 * ((spaceod_bg_control >> 2) & 1), 0, 0);
 }
 
@@ -187,7 +186,7 @@ static TILEMAP_MAPPER( spaceod_scan_rows )
 
 static TILE_GET_INFO( bg_get_tile_info )
 {
-	int code = memory_region(REGION_GFX2)[tile_index];
+	int code = memory_region(machine, REGION_GFX2)[tile_index];
 	SET_TILE_INFO(1, code + 0x100 * bg_char_bank, code >> 4, 0);
 }
 
@@ -234,13 +233,13 @@ VIDEO_START( segag80r )
 
 		/* background tilemap is effectively 1 screen x n screens */
 		case G80_BACKGROUND_MONSTERB:
-			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 32,memory_region_length(REGION_GFX2) / 32);
+			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 32,memory_region_length(machine, REGION_GFX2) / 32);
 			break;
 
 		/* background tilemap is effectively 4 screens x n screens */
 		case G80_BACKGROUND_PIGNEWT:
 		case G80_BACKGROUND_SINDBADM:
-			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 128,memory_region_length(REGION_GFX2) / 128);
+			bg_tilemap = tilemap_create(bg_get_tile_info, tilemap_scan_rows,  8,8, 128,memory_region_length(machine, REGION_GFX2) / 128);
 			break;
 	}
 
@@ -280,7 +279,7 @@ WRITE8_HANDLER( segag80r_videoram_w )
 	{
 		offset &= 0x3f;
 		paletteram[offset] = data;
-		g80_set_palette_entry(offset, data);
+		g80_set_palette_entry(machine, offset, data);
 		return;
 	}
 
@@ -444,7 +443,7 @@ WRITE8_HANDLER( monsterb_videoram_w )
 	{
 		offs_t paloffs = offset & 0x3f;
 		paletteram[paloffs | 0x40] = data;
-		g80_set_palette_entry(paloffs | 0x40, data);
+		g80_set_palette_entry(machine, paloffs | 0x40, data);
 		/* note that since the background board is not integrated with the main board */
 		/* writes here also write through to regular videoram */
 	}
@@ -514,7 +513,7 @@ WRITE8_HANDLER( pignewt_videoram_w )
 	{
 		offs_t paloffs = offset & 0x3f;
 		paletteram[paloffs | 0x40] = data;
-		g80_set_palette_entry(paloffs | 0x40, data);
+		g80_set_palette_entry(machine, paloffs | 0x40, data);
 		return;
 	}
 
@@ -597,7 +596,7 @@ WRITE8_HANDLER( sindbadm_videoram_w )
 	{
 		offs_t paloffs = offset & 0x3f;
 		paletteram[paloffs | 0x40] = data;
-		g80_set_palette_entry(paloffs | 0x40, data);
+		g80_set_palette_entry(machine, paloffs | 0x40, data);
 		return;
 	}
 

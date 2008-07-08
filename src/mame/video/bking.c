@@ -216,12 +216,12 @@ WRITE8_HANDLER( bking_playfield_w )
 
 READ8_HANDLER( bking_input_port_5_r )
 {
-	return input_port_read_indexed(machine, controller ? 7 : 5);
+	return input_port_read(machine, controller ? "TRACK1_X" : "TRACK0_X");
 }
 
 READ8_HANDLER( bking_input_port_6_r )
 {
-	return input_port_read_indexed(machine, controller ? 8 : 6);
+	return input_port_read(machine, controller ? "TRACK1_Y" : "TRACK0_Y");
 }
 
 READ8_HANDLER( bking_pos_r )
@@ -333,7 +333,7 @@ VIDEO_EOF( bking )
 
 	if (latch != 0)
 	{
-		const UINT8* MASK = memory_region(REGION_USER1) + 8 * hit;
+		const UINT8* MASK = memory_region(machine, REGION_USER1) + 8 * hit;
 
 		int x;
 		int y;

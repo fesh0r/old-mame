@@ -88,8 +88,6 @@ Are the OKI M6295 clocks from Heavy Smash are correct at least for the Mitchell 
 
 */
 
-extern void decrypt156(void);
-
 #include "driver.h"
 #include "decocrpt.h"
 #include "deco32.h"
@@ -137,7 +135,7 @@ INPUT_PORTS_END
 
 static READ32_HANDLER( simpl156_inputs_read )
 {
-	int eep = EEPROM_read_bit();
+	int eep = eeprom_read_bit();
 	UINT32 returndata;
 
 	returndata = input_port_read_indexed(machine, 0)^0xffff0000;
@@ -184,9 +182,9 @@ static WRITE32_HANDLER( simpl156_eeprom_w )
 
 	OKIM6295_set_bank_base(1, 0x40000 * (data & 0x7) );
 
-	EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
-	EEPROM_write_bit(data & 0x10);
-	EEPROM_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_write_bit(data & 0x10);
+	eeprom_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -458,16 +456,16 @@ GFXDECODE_END
 static NVRAM_HANDLER( simpl156 )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);// 93c45
+		eeprom_init(&eeprom_interface_93C46);// 93c45
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			if (simpl156_default_eeprom)	/* Set the EEPROM to Factory Defaults */
-				EEPROM_set_data(simpl156_default_eeprom,0x100);
+				eeprom_set_data(simpl156_default_eeprom,0x100);
 		}
 	}
 }
@@ -552,8 +550,8 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT(simpl156)
 {
-	UINT8 *rom = memory_region(REGION_SOUND2);
-	int length = memory_region_length(REGION_SOUND2);
+	UINT8 *rom = memory_region(machine, REGION_SOUND2);
+	int length = memory_region_length(machine, REGION_SOUND2);
 	UINT8 *buf1 = malloc_or_die(length);
 
 	UINT32 x;
@@ -577,8 +575,8 @@ static DRIVER_INIT(simpl156)
 
 	free (buf1);
 
-	deco56_decrypt(REGION_GFX1);
-	decrypt156();
+	deco56_decrypt(machine, REGION_GFX1);
+	deco156_decrypt(machine);
 
 	simpl156_default_eeprom = NULL;
 }

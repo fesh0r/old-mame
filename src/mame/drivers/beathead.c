@@ -98,7 +98,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/asap/asap.h"
 #include "machine/atarigen.h"
 #include "audio/atarijsa.h"
@@ -226,7 +225,7 @@ static WRITE32_HANDLER( interrupt_control_w )
 		irq_state[0] = irq_state[1] = irq_state[2] = 0;
 
 	/* update the current state */
-	update_interrupts(Machine);
+	update_interrupts(machine);
 }
 
 
@@ -268,30 +267,12 @@ static WRITE32_HANDLER( eeprom_enable_w )
  *
  *************************************/
 
-static READ32_HANDLER( input_0_r )
-{
-	return input_port_read_indexed(machine, 0);
-}
-
-
-static READ32_HANDLER( input_1_r )
-{
-	return input_port_read_indexed(machine, 1);
-}
-
-
 static READ32_HANDLER( input_2_r )
 {
-	int result = input_port_read_indexed(machine, 2);
+	int result = input_port_read(machine, "IN2");
 	if (atarigen_sound_to_cpu_ready) result ^= 0x10;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x20;
 	return result;
-}
-
-
-static READ32_HANDLER( input_3_r )
-{
-	return input_port_read_indexed(machine, 3);
 }
 
 
@@ -349,12 +330,12 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x41000000, 0x41000003) AM_READWRITE(sound_data_r, sound_data_w)
 	AM_RANGE(0x41000100, 0x41000103) AM_READ(interrupt_control_r)
 	AM_RANGE(0x41000100, 0x4100011f) AM_WRITE(interrupt_control_w)
-	AM_RANGE(0x41000200, 0x41000203) AM_READ(input_0_r)
-	AM_RANGE(0x41000204, 0x41000207) AM_READ(input_1_r)
+	AM_RANGE(0x41000200, 0x41000203) AM_READ_PORT("IN1")
+	AM_RANGE(0x41000204, 0x41000207) AM_READ_PORT("IN0")
 	AM_RANGE(0x41000208, 0x4100020f) AM_WRITE(sound_reset_w)
 	AM_RANGE(0x41000220, 0x41000227) AM_WRITE(coin_count_w)
 	AM_RANGE(0x41000300, 0x41000303) AM_READ(input_2_r)
-	AM_RANGE(0x41000304, 0x41000307) AM_READ(input_3_r)
+	AM_RANGE(0x41000304, 0x41000307) AM_READ_PORT("IN3")
 	AM_RANGE(0x41000400, 0x41000403) AM_WRITE(SMH_RAM) AM_BASE(&beathead_palette_select)
 	AM_RANGE(0x41000500, 0x41000503) AM_WRITE(eeprom_enable_w)
 	AM_RANGE(0x41000600, 0x41000603) AM_WRITE(beathead_finescroll_w)
@@ -379,10 +360,20 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( beathead )
-	PORT_START
+	PORT_START_TAG("IN0")		/* Player 1 */
+	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+
+	PORT_START_TAG("IN1")		/* Player 2 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
@@ -391,26 +382,14 @@ static INPUT_PORTS_START( beathead )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
-	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x000f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SPECIAL )
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_SPECIAL )
 	PORT_SERVICE( 0x0040, IP_ACTIVE_LOW )
 	PORT_BIT( 0xff80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0006, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -532,8 +511,8 @@ static DRIVER_INIT( beathead )
 {
 	/* initialize the common systems */
 	atarigen_eeprom_default = NULL;
-	atarijsa_init(machine, 2, 0x0040);
-	atarijsa3_init_adpcm(REGION_SOUND1);
+	atarijsa_init(machine, "IN2", 0x0040);
+	atarijsa3_init_adpcm(machine, REGION_SOUND1);
 
 	/* prepare the speedups */
 	speedup_data = memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00000ae8, 0x00000aeb, 0, 0, speedup_r);

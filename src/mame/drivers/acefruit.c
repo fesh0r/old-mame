@@ -146,9 +146,9 @@ static CUSTOM_INPUT( sidewndr_payout_r )
 	switch (bit_mask)
 	{
 		case 0x01:
-			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 0);
+			return ((input_port_read(field->port->machine, "PAYOUT") & bit_mask) >> 0);
 		case 0x02:
-			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 1);
+			return ((input_port_read(field->port->machine, "PAYOUT") & bit_mask) >> 1);
 		default:
 			logerror("sidewndr_payout_r : invalid %02X bit_mask\n",bit_mask);
 			return 0;
@@ -162,13 +162,13 @@ static CUSTOM_INPUT( starspnr_coinage_r )
 	switch (bit_mask)
 	{
 		case 0x01:
-			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 0);
+			return ((input_port_read(field->port->machine, "COINAGE") & bit_mask) >> 0);
 		case 0x02:
-			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 1);
+			return ((input_port_read(field->port->machine, "COINAGE") & bit_mask) >> 1);
 		case 0x04:
-			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 2);
+			return ((input_port_read(field->port->machine, "COINAGE") & bit_mask) >> 2);
 		case 0x08:
-			return ((input_port_read(machine, "COINAGE") & bit_mask) >> 3);
+			return ((input_port_read(field->port->machine, "COINAGE") & bit_mask) >> 3);
 		default:
 			logerror("starspnr_coinage_r : invalid %02X bit_mask\n",bit_mask);
 			return 0;
@@ -182,11 +182,11 @@ static CUSTOM_INPUT( starspnr_payout_r )
 	switch (bit_mask)
 	{
 		case 0x01:
-			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 0);
+			return ((input_port_read(field->port->machine, "PAYOUT") & bit_mask) >> 0);
 		case 0x02:
-			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 1);
+			return ((input_port_read(field->port->machine, "PAYOUT") & bit_mask) >> 1);
 		case 0x04:
-			return ((input_port_read(machine, "PAYOUT") & bit_mask) >> 2);
+			return ((input_port_read(field->port->machine, "PAYOUT") & bit_mask) >> 2);
 		default:
 			logerror("starspnr_payout_r : invalid %02X bit_mask\n",bit_mask);
 			return 0;
@@ -571,7 +571,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( sidewndr )
 {
-	UINT8 *ROM = memory_region( REGION_CPU1 );
+	UINT8 *ROM = memory_region( machine, REGION_CPU1 );
 	/* replace "ret nc" ( 0xd0 ) with "di" */
 	ROM[ 0 ] = 0xf3;
 	/* this is either a bad dump or the cpu core should set the carry flag on reset */

@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "video/konamiic.h"
 #include "f1gp.h"
 
@@ -67,7 +66,7 @@ VIDEO_START( f1gp )
 	dirtychar = auto_malloc(TOTAL_CHARS);
 	memset(dirtychar,1,TOTAL_CHARS);
 
-	zoomdata = (UINT16 *)memory_region(REGION_GFX4);
+	zoomdata = (UINT16 *)memory_region(machine, REGION_GFX4);
 }
 
 VIDEO_START( f1gpb )
@@ -80,7 +79,7 @@ VIDEO_START( f1gpb )
 	dirtychar = auto_malloc(TOTAL_CHARS);
 	memset(dirtychar,1,TOTAL_CHARS);
 
-	zoomdata = (UINT16 *)memory_region(REGION_GFX4);
+	zoomdata = (UINT16 *)memory_region(machine, REGION_GFX4);
 }
 
 VIDEO_START( f1gp2 )
@@ -100,7 +99,7 @@ VIDEO_START( f1gp2 )
 	dirtychar = auto_malloc(TOTAL_CHARS);
 	memset(dirtychar,1,TOTAL_CHARS);
 
-	zoomdata = (UINT16 *)memory_region(REGION_GFX4);
+	zoomdata = (UINT16 *)memory_region(machine, REGION_GFX4);
 }
 
 
@@ -292,7 +291,7 @@ static void f1gpb_draw_sprites(running_machine *machine, bitmap_t *bitmap,const 
 		if((spriteram16[attr_start + 1] & 0x00f0) && (spriteram16[attr_start + 1] & 0x00f0) != 0xc0)
 		{
 			printf("attr %X\n",spriteram16[attr_start + 1] & 0x00f0);
-			code = mame_rand(Machine);
+			code = mame_rand(machine);
 		}
 
 /*

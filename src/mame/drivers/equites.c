@@ -146,6 +146,10 @@ TODO:
   Sprite y scaling is slightly wrong and leaves gaps in tall objects.
   Note that sprites are 30x30 instead of 32x32.
 
+- The "road" background in splndrbt is slightly wrong. Apparently, the black lines
+  visible in some parts of the background should never disappear in the distance.
+  Currently, they may or may not disappear depending on the X position.
+
 - Need to use different default volumes for various games, especially gekisou
   where the car noise is really unpleasant with the default settings.
 
@@ -369,7 +373,7 @@ D                                                                               
 #include "equites.h"
 
 #define HVOLTAGE_DEBUG	0
-#define EASY_TEST_MODE	1
+#define EASY_TEST_MODE	0
 
 #define FRQ_ADJUSTER_TAG	"FRQ"
 
@@ -456,7 +460,7 @@ static WRITE8_HANDLER(equites_c0f8_w)
 		case 4: // c0fc: increment PROM address (written by NMI handler)
 			equites_sound_prom_address = (equites_sound_prom_address + 1) & 0x1f;
 //       at this point, the 5-bit value
-//       memory_region(REGION_SOUND1)[equites_sound_prom_address] & 0x1f
+//       memory_region(machine, REGION_SOUND1)[equites_sound_prom_address] & 0x1f
 //       goes to an op-amp and to the base of a transistor. The transistor is part
 //       of a resonator that is used to generate the M5232 clock. The PROM doesn't
 //       actually seem to be important, since even removing it the M5232 clock
@@ -643,7 +647,7 @@ static WRITE8_HANDLER(equites_8155_w)
 #if HVOLTAGE_DEBUG
 static READ16_HANDLER(hvoltage_debug_r)
 {
-	return(input_port_read_indexed(machine, 2));
+	return(input_port_read(machine, "FAKE"));
 }
 #endif
 
@@ -797,11 +801,11 @@ ADDRESS_MAP_END
 // Equites Port Map
 
 static INPUT_PORTS_START( equites )
-	PORT_START
+	PORT_START_TAG("IN0")
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_COIN2 )
 #if EASY_TEST_MODE
@@ -834,11 +838,11 @@ INPUT_PORTS_END
 // Gekisou Port Map
 
 static INPUT_PORTS_START( gekisou )
-	PORT_START
+	PORT_START_TAG("IN0")
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_COIN2 )
 #if EASY_TEST_MODE
@@ -860,11 +864,11 @@ INPUT_PORTS_END
 // Bull Fighter Port Map
 
 static INPUT_PORTS_START( bullfgtr )
-	PORT_START
+	PORT_START_TAG("IN0")
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_COIN2 )
 #if EASY_TEST_MODE
@@ -896,11 +900,11 @@ INPUT_PORTS_END
 // Koukouyakyuh Port Map
 
 static INPUT_PORTS_START( kouyakyu )
-	PORT_START
+	PORT_START_TAG("IN0")
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_BUTTON3, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 //  PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_COIN1 )
 //  PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x0300, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -933,11 +937,11 @@ INPUT_PORTS_END
 // Splendor Blast Port Map
 
 static INPUT_PORTS_START( splndrbt )
-	PORT_START
+	PORT_START_TAG("IN0")
 	EQUITES_PLAYER_INPUT_LSB( IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN, IPT_START1 )
 	EQUITES_PLAYER_INPUT_MSB( IPT_BUTTON1, IPT_BUTTON2, IPT_UNKNOWN, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_COIN2 )
 #if EASY_TEST_MODE
@@ -969,7 +973,7 @@ INPUT_PORTS_END
 // High Voltage Port Map
 
 static INPUT_PORTS_START( hvoltage )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
@@ -989,7 +993,7 @@ static INPUT_PORTS_START( hvoltage )
 	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_UNKNOWN ) PORT_COCKTAIL
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_HIGH, IPT_COIN2 )
 #if EASY_TEST_MODE
@@ -1023,7 +1027,7 @@ static INPUT_PORTS_START( hvoltage )
 
 #if HVOLTAGE_DEBUG
 	/* Fake port to handle debug mode */
-	PORT_START
+	PORT_START_TAG("FAKE")
 	PORT_DIPNAME( 0xffff, 0xffff, "Debug Mode" )
 	PORT_DIPSETTING(      0xffff, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -1783,7 +1787,7 @@ ROM_END
 
 static void unpack_block(int region, int offset, int size)
 {
-	UINT8 *rom = memory_region(region);
+	UINT8 *rom = memory_region(Machine, region);
 	int i;
 
 	for (i = 0; i < size; ++i)

@@ -5,6 +5,8 @@
 
 /*----------- defined in video/n64.c -----------*/
 
+extern int fb_width;
+
 extern VIDEO_START( n64 );
 extern VIDEO_UPDATE( n64 );
 extern void rdp_process_list(void);
@@ -48,8 +50,18 @@ extern UINT32 *rdram;
 extern UINT32 *rsp_imem;
 extern UINT32 *rsp_dmem;
 
-extern void signal_rcp_interrupt(int interrupt);
-extern void clear_rcp_interrupt(int interrupt);
+extern UINT32 dp_start;
+extern UINT32 dp_end;
+extern UINT32 dp_current;
+extern UINT32 dp_status;
+
+extern UINT32 n64_vi_width;
+extern UINT32 n64_vi_origin;
+extern UINT32 n64_vi_control;
+
+extern void dp_full_sync(running_machine *machine);
+extern void signal_rcp_interrupt(running_machine *machine, int interrupt);
+extern void clear_rcp_interrupt(running_machine *machine, int interrupt);
 
 
 /* read/write handlers for the N64 subsystems */
@@ -72,6 +84,6 @@ extern WRITE32_HANDLER( n64_si_reg_w );
 extern READ32_HANDLER( n64_pif_ram_r );
 extern WRITE32_HANDLER( n64_pif_ram_w );
 
-void n64_machine_reset(void);
+void n64_machine_reset(running_machine *machine);
 
 #endif

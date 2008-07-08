@@ -11,10 +11,7 @@
 */
 
 #define DE156CPU ARM
-extern void decrypt156(void);
-
 #include "driver.h"
-#include "deprecat.h"
 #include "decocrpt.h"
 #include "deco32.h"
 #include "machine/eeprom.h"
@@ -74,7 +71,7 @@ static VIDEO_START(backfire)
 	state_save_register_global_pointer(deco16_pf12_control, 0x10/2);
 	state_save_register_global_pointer(deco16_pf34_control, 0x10/2);
 
-	deco16_2_video_init(0);
+	deco16_2_video_init(machine, 0);
 
 	deco16_pf1_colour_bank = 0x00;
 	deco16_pf2_colour_bank = 0x40;
@@ -230,21 +227,21 @@ static VIDEO_UPDATE(backfire)
 static READ32_HANDLER(backfire_eeprom_r)
 {
 	/* some kind of screen indicator?  checked by backfira set before it will boot */
-	int backfire_screen = mame_rand(Machine)&1;
-	return ((EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 0) | (input_port_read_indexed(machine, 3)<<16)) ^  (backfire_screen << 26) ;
+	int backfire_screen = mame_rand(machine)&1;
+	return ((eeprom_read_bit()<<24) | input_port_read(machine, "IN0") | (input_port_read(machine, "IN3")<<16)) ^  (backfire_screen << 26) ;
 }
 
 static READ32_HANDLER(backfire_control2_r)
 {
 //  logerror("%08x:Read eprom %08x (%08x)\n",activecpu_get_pc(),offset<<1,mem_mask);
-	return (EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 1) | (input_port_read_indexed(machine, 1)<<16);
+	return (eeprom_read_bit()<<24) | input_port_read(machine, "IN1") | (input_port_read(machine, "IN1")<<16);
 }
 
 #ifdef UNUSED_FUNCTION
 static READ32_HANDLER(backfire_control3_r)
 {
 //  logerror("%08x:Read eprom %08x (%08x)\n",activecpu_get_pc(),offset<<1,mem_mask);
-	return (EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 2)<<16);
+	return (eeprom_read_bit()<<24) | input_port_read(machine, "IN2") | (input_port_read(machine, "IN2")<<16);
 }
 #endif
 
@@ -253,9 +250,9 @@ static WRITE32_HANDLER(backfire_eeprom_w)
 {
 	logerror("%08x:write eprom %08x (%08x) %08x\n",activecpu_get_pc(),offset<<1,mem_mask,data);
 	if (ACCESSING_BITS_0_7) {
-		EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x1);
-		EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x1);
+		eeprom_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -306,17 +303,17 @@ static WRITE32_HANDLER( backfire_pf4_data_w ) { data &=0x0000ffff; mem_mask &=0x
 #ifdef UNUSED_FUNCTION
 READ32_HANDLER( backfire_unknown_wheel_r )
 {
-	return input_port_read_indexed(machine, 4);
+	return input_port_read(machine, "PADDLE0");
 }
 
 READ32_HANDLER( backfire_wheel1_r )
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 READ32_HANDLER( backfire_wheel2_r )
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 #endif
 
@@ -359,7 +356,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( backfire )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -369,7 +366,7 @@ static INPUT_PORTS_START( backfire )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -379,7 +376,7 @@ static INPUT_PORTS_START( backfire )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -397,7 +394,7 @@ static INPUT_PORTS_START( backfire )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -407,13 +404,13 @@ static INPUT_PORTS_START( backfire )
 	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("PADDLE0")
 	PORT_BIT ( 0x00ff, 0x0080, IPT_PADDLE ) PORT_SENSITIVITY(30) PORT_KEYDELTA(1)
 
-	PORT_START
+	PORT_START_TAG("PADDLE1")
 	PORT_BIT ( 0x00ff, 0x0080, IPT_PADDLE ) PORT_SENSITIVITY(30) PORT_KEYDELTA(1)
 
-	PORT_START
+	PORT_START_TAG("UNK")
 	/* ?? */
 INPUT_PORTS_END
 
@@ -465,7 +462,7 @@ static GFXDECODE_START( backfire )
 GFXDECODE_END
 
 
-static void sound_irq_gen(int state)
+static void sound_irq_gen(running_machine *machine, int state)
 {
 	logerror("sound irq\n");
 }
@@ -645,9 +642,9 @@ ROM_START( backfira )
 	ROM_LOAD( "mbz-06.19l",    0x200000, 0x080000,  CRC(4a38c635) SHA1(7f0fb6a7a4aa6774c04fa38e53ceff8744fe1e9f) )
 ROM_END
 
-static void descramble_sound( void )
+static void descramble_sound( running_machine *machine )
 {
-	UINT8 *rom = memory_region(REGION_SOUND1);
+	UINT8 *rom = memory_region(machine, REGION_SOUND1);
 	int length = 0x200000; // only the first rom is swapped on backfire!
 	UINT8 *buf1 = malloc_or_die(length);
 	UINT32 x;
@@ -684,11 +681,11 @@ static READ32_HANDLER( backfire_speedup_r )
 
 static DRIVER_INIT( backfire )
 {
-	deco56_decrypt(REGION_GFX1); /* 141 */
-	deco56_decrypt(REGION_GFX2); /* 141 */
-	decrypt156();
+	deco56_decrypt(machine, REGION_GFX1); /* 141 */
+	deco56_decrypt(machine, REGION_GFX2); /* 141 */
+	deco156_decrypt(machine);
 	cpunum_set_clockscale(machine, 0, 4.0f); /* core timings aren't accurate */
-	descramble_sound();
+	descramble_sound(machine);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0170018, 0x017001b, 0, 0, backfire_speedup_r );
 }
 

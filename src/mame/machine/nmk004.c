@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "nmk004.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
@@ -168,7 +167,7 @@ static void oki_play_sample(running_machine *machine, int sample_no)
 
 		if (sample != 0)
 		{
-			UINT8 *rom = memory_region(REGION_SOUND1 + chip);
+			UINT8 *rom = memory_region(machine, REGION_SOUND1 + chip);
 			int bank = (byte2 & 0x0c) >> 2;
 			int vol = (byte2 & 0x70) >> 4;
 
@@ -997,23 +996,23 @@ static void update_music(running_machine *machine)
 
 
 
-void NMK004_irq(int irq)
+void NMK004_irq(running_machine *machine, int irq)
 {
 	int status;
 
 	if (!irq) return;
 
-	status = YM2203_status_port_0_r(Machine,0);
+	status = YM2203_status_port_0_r(machine,0);
 
 	if (status & 1)	// timer A expired
 	{
-		oki_update_state(Machine);
-		get_command(Machine);
-		update_music(Machine);
+		oki_update_state(machine);
+		get_command(machine);
+		update_music(machine);
 
 		// restart timer
-		YM2203_control_port_0_w(Machine, 0, 0x27);
-		YM2203_write_port_0_w(Machine, 0, 0x15);
+		YM2203_control_port_0_w(machine, 0, 0x27);
+		YM2203_write_port_0_w(machine, 0, 0x15);
 	}
 }
 
@@ -1030,7 +1029,7 @@ static TIMER_CALLBACK( real_nmk004_init )
 
 	memset(&NMK004_state, 0, sizeof(NMK004_state));
 
-	NMK004_state.rom = memory_region(REGION_CPU2);
+	NMK004_state.rom = memory_region(machine, REGION_CPU2);
 
 	YM2203_control_port_0_w(machine, 0, 0x2f);
 

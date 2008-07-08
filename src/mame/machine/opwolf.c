@@ -36,6 +36,7 @@
 *************************************************************************/
 
 #include "driver.h"
+#include "includes/cchip.h"
 
 /* Select how coinage data is initialised in opwolf_cchip_data_w : 0 = user-defined in function - 1 = automatic */
 #define OPWOLF_READ_COINAGE_FROM_ROM	1
@@ -426,7 +427,7 @@ WRITE16_HANDLER( opwolf_cchip_data_w )
 		if (offset == 0x14)
 		{
 #if OPWOLF_READ_COINAGE_FROM_ROM
-			UINT16* rom=(UINT16*)memory_region(REGION_CPU1);
+			UINT16* rom=(UINT16*)memory_region(machine, REGION_CPU1);
 			UINT32 coin_table[2]={0,0};
 			UINT8 coin_offset[2];
 			int slot;

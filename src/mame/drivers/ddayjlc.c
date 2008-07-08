@@ -113,7 +113,7 @@ static const UINT8 protData[0x10]=
 
 static READ8_HANDLER(prot_r)
 {
-	return (input_port_read_indexed(machine, 1)&0x1f)|protData[protAdr];
+	return (input_port_read(machine, "IN1") & 0x1f)|protData[protAdr];
 }
 
 static WRITE8_HANDLER(prot_w)
@@ -165,7 +165,7 @@ static WRITE8_HANDLER(bg2_w)
 {
 	bgadr=(bgadr&0xfb)|((data&1)<<2);
 	if(bgadr>2)	bgadr=0;
-	memory_set_bankptr( 1, memory_region(REGION_USER1)+bgadr*0x4000 );
+	memory_set_bankptr( 1, memory_region(machine, REGION_USER1)+bgadr*0x4000 );
 }
 
 static WRITE8_HANDLER( sound_w )
@@ -222,10 +222,10 @@ static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf086, 0xf086) AM_WRITE(bg2_w)
 	AM_RANGE(0xf101, 0xf101) AM_WRITE(main_nmi_w)
 	AM_RANGE(0xf102, 0xf105) AM_WRITE(prot_w)
-	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_0_r)
+	AM_RANGE(0xf000, 0xf000) AM_READ_PORT("IN0")
 	AM_RANGE(0xf100, 0xf100) AM_READ(prot_r)
-	AM_RANGE(0xf180, 0xf180) AM_READ(input_port_2_r)
-	AM_RANGE(0xf200, 0xf200) AM_READ(input_port_3_r)
+	AM_RANGE(0xf180, 0xf180) AM_READ_PORT("DSW1")
+	AM_RANGE(0xf200, 0xf200) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 
@@ -242,7 +242,7 @@ static ADDRESS_MAP_START( sound_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( ddayjlc )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -252,7 +252,7 @@ static INPUT_PORTS_START( ddayjlc )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN1 )
@@ -262,7 +262,7 @@ static INPUT_PORTS_START( ddayjlc )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START	/* DIPSW-1 */
+	PORT_START_TAG("DSW1")	/* DIPSW-1 */
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
@@ -287,7 +287,7 @@ static INPUT_PORTS_START( ddayjlc )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START	/* DIPSW-2 */
+	PORT_START_TAG("DSW2")	/* DIPSW-2 */
 	PORT_DIPNAME( 0x07, 0x00, DEF_STR( Coin_B ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
@@ -559,8 +559,8 @@ static DRIVER_INIT( ddayjlc )
 		UINT8 *src, *dst, *temp;
 		temp = malloc_or_die(0x10000);
 		src = temp;
-		dst = memory_region(REGION_GFX1);
-		length = memory_region_length(REGION_GFX1);
+		dst = memory_region(machine, REGION_GFX1);
+		length = memory_region_length(machine, REGION_GFX1);
 		memcpy(src, dst, length);
 		newadr=0;
 		oldaddr=0;
@@ -574,7 +574,7 @@ static DRIVER_INIT( ddayjlc )
 		free(temp);
 	}
 
-	memory_set_bankptr( 1, memory_region(REGION_USER1) );
+	memory_set_bankptr( 1, memory_region(machine, REGION_USER1) );
 
 }
 

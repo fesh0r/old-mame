@@ -9,27 +9,12 @@ someone@secureshell.com
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "cpu/z80/z80.h"
 #include "video/konamiic.h"
 #include "sound/2151intf.h"
 #include "sound/k053260.h"
-
-/* from video */
-VIDEO_START( simpsons );
-WRITE8_HANDLER( simpsons_priority_w );
-VIDEO_UPDATE( simpsons );
-
-/* from machine */
-READ8_HANDLER( simpsons_eeprom_r );
-WRITE8_HANDLER( simpsons_eeprom_w );
-WRITE8_HANDLER( simpsons_coin_counter_w );
-READ8_HANDLER( simpsons_sound_interrupt_r );
-READ8_HANDLER( simpsons_sound_r );
-MACHINE_RESET( simpsons );
-NVRAM_HANDLER( simpsons );
-extern int simpsons_firq_enabled;
+#include "includes/simpsons.h"
 
 
 /***************************************************************************
@@ -69,9 +54,9 @@ static WRITE8_HANDLER( z80_bankswitch_w )
 #if 0
 static int nmi_enabled;
 
-static void sound_nmi_callback( int param )
+static void sound_nmi_callback( running_machine *machine, int param )
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, ( nmi_enabled ) ? CLEAR_LINE : ASSERT_LINE );
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ( nmi_enabled ) ? CLEAR_LINE : ASSERT_LINE );
 
 	nmi_enabled = 0;
 }

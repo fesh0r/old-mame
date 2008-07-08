@@ -121,11 +121,10 @@ CN1 standard DB15 VGA connector (15KHz)
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/eeprom.h"
 
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -139,19 +138,19 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( pntnpuzl )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
-			EEPROM_load(file);
+			eeprom_load(file);
 		else
 		{
 			int length;
 			UINT8 *dat;
 
-			dat = EEPROM_get_data_pointer(&length);
+			dat = eeprom_get_data_pointer(&length);
 			memset(dat, 0, length);
 		}
 	}
@@ -162,7 +161,7 @@ static UINT16 pntnpuzl_eeprom;
 static READ16_HANDLER( pntnpuzl_eeprom_r )
 {
 	/* bit 11 is EEPROM data */
-	return (pntnpuzl_eeprom & 0xf4ff) | (EEPROM_read_bit()<<11) | (input_port_read_indexed(machine, 3) & 0x0300);
+	return (pntnpuzl_eeprom & 0xf4ff) | (eeprom_read_bit()<<11) | (input_port_read(machine, "IN1") & 0x0300);
 }
 
 static WRITE16_HANDLER( pntnpuzl_eeprom_w )
@@ -173,9 +172,9 @@ static WRITE16_HANDLER( pntnpuzl_eeprom_w )
 	/* bit 13 is clock (active high) */
 	/* bit 14 is cs (active high) */
 
-	EEPROM_write_bit(data & 0x1000);
-	EEPROM_set_cs_line((data & 0x4000) ? CLEAR_LINE : ASSERT_LINE);
-	EEPROM_set_clock_line((data & 0x2000) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_write_bit(data & 0x1000);
+	eeprom_set_cs_line((data & 0x4000) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_clock_line((data & 0x2000) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -275,7 +274,7 @@ static WRITE16_HANDLER( pntnpuzl_palette_w )
 #ifdef UNUSED_FUNCTION
 READ16_HANDLER ( pntnpuzl_random_r )
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 #endif
 
@@ -293,7 +292,7 @@ static WRITE16_HANDLER( pntnpuzl_vid_w )
 
 static READ16_HANDLER( pntnpuzl_vblank_r )
 {
-	return (input_port_read_indexed(machine, 0) & 1) << 11;
+	return (input_port_read(machine, "IN0") & 1) << 11;
 }
 
 
@@ -351,11 +350,11 @@ static READ16_HANDLER( pntnpuzl_280014_r )
 	if (serial_out == 0x11)
 	{
 		static int touchscr[5];
-		if (input_port_read_indexed(machine, 0) & 0x10)
+		if (input_port_read(machine, "IN0") & 0x10)
 		{
 			touchscr[0] = 0x1b;
-			touchscr[2] = BITSWAP8(input_port_read_indexed(machine, 1),0,1,2,3,4,5,6,7);
-			touchscr[4] = BITSWAP8(input_port_read_indexed(machine, 2),0,1,2,3,4,5,6,7);
+			touchscr[2] = BITSWAP8(input_port_read(machine, "TOUCHX"),0,1,2,3,4,5,6,7);
+			touchscr[4] = BITSWAP8(input_port_read(machine, "TOUCHY"),0,1,2,3,4,5,6,7);
 		}
 		else
 			touchscr[0] = 0;
@@ -388,7 +387,7 @@ static ADDRESS_MAP_START( pntnpuzl_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x180000, 0x180001) AM_READ(SMH_NOP) //|
 	AM_RANGE(0x200000, 0x200001) AM_WRITE(pntnpuzl_200000_w)
 	AM_RANGE(0x280000, 0x280001) AM_READ(pntnpuzl_eeprom_r)
-	AM_RANGE(0x280002, 0x280003) AM_READ(input_port_4_word_r)
+	AM_RANGE(0x280002, 0x280003) AM_READ_PORT("IN2")
 	AM_RANGE(0x280000, 0x280001) AM_WRITE(pntnpuzl_eeprom_w)
 	AM_RANGE(0x280008, 0x280009) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x28000a, 0x28000b) AM_WRITE(SMH_NOP)
@@ -412,16 +411,16 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( pntnpuzl_irq )
 {
-	if (input_port_read_indexed(machine, 0) & 0x02)	/* coin */
+	if (input_port_read(machine, "IN0") & 0x02)	/* coin */
 		cpunum_set_input_line(machine, 0, 1, PULSE_LINE);
-	else if (input_port_read_indexed(machine, 0) & 0x04)	/* service */
+	else if (input_port_read(machine, "IN0") & 0x04)	/* service */
 		cpunum_set_input_line(machine, 0, 2, PULSE_LINE);
-	else if (input_port_read_indexed(machine, 0) & 0x08)	/* coin */
+	else if (input_port_read(machine, "IN0") & 0x08)	/* coin */
 		cpunum_set_input_line(machine, 0, 4, PULSE_LINE);
 }
 
 static INPUT_PORTS_START( pntnpuzl )
-	PORT_START	/* fake inputs */
+	PORT_START_TAG("IN0")	/* fake inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_VBLANK )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(1)
 	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_HIGH ) PORT_IMPULSE(1)
@@ -429,17 +428,17 @@ static INPUT_PORTS_START( pntnpuzl )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )
 
 	/* game uses a touch screen */
-	PORT_START
+	PORT_START_TAG("TOUCHX")
 	PORT_BIT( 0x7f, 0x40, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,0x7f) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
 
-	PORT_START
+	PORT_START_TAG("TOUCHY")
 	PORT_BIT( 0x7f, 0x40, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(Y, -1.0, 0.0, 0) PORT_MINMAX(0,0x7f) PORT_SENSITIVITY(25) PORT_KEYDELTA(13)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_S)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_A)
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_V)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_OTHER ) PORT_CODE(KEYCODE_C)
@@ -482,7 +481,7 @@ ROM_END
 
 static DRIVER_INIT(pip)
 {
-//  UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+//  UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 //  rom[0x2696/2] = 0x4e71;
 //  rom[0x26a0/2] = 0x4e71;
 }

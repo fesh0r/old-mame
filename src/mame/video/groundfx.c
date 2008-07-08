@@ -83,7 +83,7 @@ Heavy use is made of sprite zooming.
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,int do_hack,int x_offs,int y_offs)
 {
-	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
+	UINT16 *spritemap = (UINT16 *)memory_region(machine, REGION_USER1);
 	int offs, data, tilenum, color, flipx, flipy;
 	int x, y, priority, dblsize, curx, cury;
 	int sprites_flipscreen = 0;
@@ -242,7 +242,7 @@ VIDEO_UPDATE( groundfx )
 	fillbitmap(priority_bitmap,0,cliprect);
 	fillbitmap(bitmap,0,cliprect);	/* wrong color? */
 
-	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[0],0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[0],TILEMAP_DRAW_OPAQUE,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[1],0,0);
 
 	/*  BIG HACK!

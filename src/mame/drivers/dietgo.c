@@ -5,19 +5,15 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/h6280/h6280.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 #include "decocrpt.h"
+#include "decoprot.h"
 #include "deco16ic.h"
 
 VIDEO_UPDATE( dietgo );
 VIDEO_START( dietgo );
-READ16_HANDLER( dietgo_104_prot_r );
-WRITE16_HANDLER( dietgo_104_prot_w );
-
-extern void deco102_decrypt(int region, int address_xor, int data_select_xor, int opcode_select_xor);
 
 
 static ADDRESS_MAP_START( dietgo_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -71,13 +67,13 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( dietgo )
-	PORT_START	/* Verified as 4 bit input port only */
+	PORT_START_TAG("IN0")	/* Verified as 4 bit input port only */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN1")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -95,7 +91,7 @@ static INPUT_PORTS_START( dietgo )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START	/* Dip switch bank 1 */
+	PORT_START_TAG("DSW")	/* Dip switch bank 1 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -186,9 +182,9 @@ static GFXDECODE_START( dietgo )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout,      512, 16 )	/* Sprites (16x16) */
 GFXDECODE_END
 
-static void sound_irq(int state)
+static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1,1,state); /* IRQ 2 */
+	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -354,8 +350,8 @@ ROM_END
 
 static DRIVER_INIT( dietgo )
 {
-	deco56_decrypt(REGION_GFX1);
-	deco102_decrypt(REGION_CPU1, 0xe9ba, 0x01, 0x19);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco102_decrypt(machine, REGION_CPU1, 0xe9ba, 0x01, 0x19);
 }
 
 GAME( 1992, dietgo,   0,      dietgo, dietgo,  dietgo,    ROT0, "Data East Corporation", "Diet Go Go (Euro v1.1 1992.09.26)", 0 )

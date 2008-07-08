@@ -96,13 +96,11 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+#include "includes/decocrpt.h"
 #include "machine/eeprom.h"
 #include "sound/ymz280b.h"
 #include "decoprot.h"
 #include "cpu/arm/arm.h"
-
-extern void decrypt156(void);
 
 VIDEO_START( mlc );
 VIDEO_UPDATE( mlc );
@@ -118,15 +116,15 @@ static int mlc_raster_table[9][256];
 
 static READ32_HANDLER( avengrs_control_r )
 {
-	return (input_port_read_indexed(machine, 1)<<16) | (EEPROM_read_bit()<<23) | input_port_read_indexed(machine, 0);
+	return (input_port_read(machine, "IN1")<<16) | (eeprom_read_bit()<<23) | input_port_read(machine, "IN0");
 }
 
 static READ32_HANDLER(test2_r)
 {
 //  if (offset==0)
-//      return input_port_read_indexed(machine, 0); //0xffffffff;
+//      return input_port_read(machine, "IN0"); //0xffffffff;
 //   logerror("%08x:  Test2_r %d\n",activecpu_get_pc(),offset);
-	return mame_rand(Machine); //0xffffffff;
+	return mame_rand(machine); //0xffffffff;
 }
 
 static READ32_HANDLER(test3_r)
@@ -136,7 +134,7 @@ static READ32_HANDLER(test3_r)
 
 */
 //if (offset==0)
-//  return mame_rand(Machine)|(mame_rand(Machine)<<16);
+//  return mame_rand(machine)|(mame_rand(machine)<<16);
 //  logerror("%08x:  Test3_r %d\n",activecpu_get_pc(),offset);
 	return 0xffffffff;
 }
@@ -146,9 +144,9 @@ static WRITE32_HANDLER( avengrs_eprom_w )
 	if (ACCESSING_BITS_8_15) {
 		UINT8 ebyte=(data>>8)&0xff;
 //      if (ebyte&0x80) {
-			EEPROM_set_clock_line((ebyte & 0x2) ? ASSERT_LINE : CLEAR_LINE);
-			EEPROM_write_bit(ebyte & 0x1);
-			EEPROM_set_cs_line((ebyte & 0x4) ? CLEAR_LINE : ASSERT_LINE);
+			eeprom_set_clock_line((ebyte & 0x2) ? ASSERT_LINE : CLEAR_LINE);
+			eeprom_write_bit(ebyte & 0x1);
+			eeprom_set_cs_line((ebyte & 0x4) ? CLEAR_LINE : ASSERT_LINE);
 //      }
 	}
 	else if (ACCESSING_BITS_0_7) {
@@ -332,7 +330,7 @@ ADDRESS_MAP_END
 /******************************************************************************/
 
 static INPUT_PORTS_START( mlc )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -350,7 +348,7 @@ static INPUT_PORTS_START( mlc )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -684,11 +682,11 @@ ROM_END
 
 /***************************************************************************/
 
-static void descramble_sound( void )
+static void descramble_sound( running_machine *machine )
 {
 	/* the same as simpl156 / heavy smash? */
-	UINT8 *rom = memory_region(REGION_SOUND1);
-	int length = memory_region_length(REGION_SOUND1);
+	UINT8 *rom = memory_region(machine, REGION_SOUND1);
+	int length = memory_region_length(machine, REGION_SOUND1);
 	UINT8 *buf1 = malloc_or_die(length);
 
 	UINT32 x;
@@ -726,7 +724,7 @@ static DRIVER_INIT( avengrgs )
 {
 	mainCpuIsArm=0;
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01089a0, 0x01089a3, 0, 0, avengrgs_speedup_r );
-	descramble_sound();
+	descramble_sound(machine);
 }
 
 static DRIVER_INIT( mlc )
@@ -736,8 +734,8 @@ static DRIVER_INIT( mlc )
         Skull Fung where there probably shouldn't be. */
 	cpunum_set_clockscale(machine, 0, 2.0f);
 	mainCpuIsArm=1;
-	decrypt156();
-	descramble_sound();
+	deco156_decrypt(machine);
+	descramble_sound(machine);
 }
 
 /***************************************************************************/

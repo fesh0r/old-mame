@@ -58,15 +58,17 @@ enum
 	XTAL_4_9152MHz   	= 4915200,
 	XTAL_5MHz    		= 5000000,		/* Mutant Night */
 	XTAL_5_7143MHz		= 5714300,		/* Cidelsa Destroyer */
-	XTAL_6MHz    		= 6000000,
+	XTAL_6MHz    		= 6000000,		/* American Poker II */
 	XTAL_6_144MHz		= 6144000,		/* Used on Alpha Denshi early 80's games sound board */
 	XTAL_7MHz    		= 7000000,		/* Jaleco Mega System PCBs */
 	XTAL_7_15909MHz   	= 7159090,		/* Blood Bros */
 	XTAL_7_3728MHz   	= 7372800,
 	XTAL_8MHz    		= 8000000,		/* Extremely common, used on 100's of PCBs */
+	XTAL_8_664MHz		= 8664000,		/* Touchmaster */
 	XTAL_9_987MHz		= 9987000,		/* Crazy Balloon */
 	XTAL_10MHz   		= 10000000,
 	XTAL_10_595MHz  	= 10595000,		/* Mad Alien */
+	XTAL_10_733MHz   	= 10733000,		/* The Fairyland Story */
 	XTAL_10_738635MHz	= 10738635,		/* TMS9918 family */
 	XTAL_11MHz			= 11000000,		/* Mario I8039 sound */
 	XTAL_11_0592MHz  	= 11059200,		/* Lethal Justice */
@@ -112,6 +114,7 @@ enum
 	XTAL_28MHz   		= 28000000,
 	XTAL_28_37516MHz	= 28375160,		/* Amiga PAL systems */
 	XTAL_28_63636MHz  	= 28636360,		/* Later Leland games and Atari GT, Amiga NTSC , Raiden2 h/w */
+	XTAL_30MHz   		= 30000000,		/* Impera Magic Card */
 	XTAL_30_4761MHz  	= 30476100,		/* Taito JC */
 	XTAL_32MHz   		= 32000000,
 	XTAL_32_22MHz  		= 32220000,		/* Typically used on 90's Data East PCBs */

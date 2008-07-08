@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/jackal.h"
 
 static UINT8 *jackal_scrollram;
 UINT8 *jackal_videoctrl;
@@ -23,26 +24,21 @@ PALETTE_INIT( jackal )
 	/* allocate the colortable */
 	machine->colortable = colortable_alloc(machine, 0x200);
 
-	for (i = 0; i < 0x1000; i++)
+	for (i = 0; i < 0x100; i++)
 	{
-		UINT16 ctabentry = (i & 0xff) | 0x100;
-
-		/* this is surely wrong - is there a PROM missing? */
-		if (i & 0x0f)
-			ctabentry = ctabentry | (i >> 8);
-
+		UINT16 ctabentry = i | 0x100;
 		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 
-	for (i = 0x1000; i < 0x1100; i++)
+	for (i = 0x100; i < 0x200; i++)
 	{
-		UINT8 ctabentry = color_prom[i - 0x1000] & 0x0f;
+		UINT16 ctabentry = color_prom[i - 0x100] & 0x0f;
 		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 
-	for (i = 0x1100; i < 0x1200; i++)
+	for (i = 0x200; i < 0x300; i++)
 	{
-		UINT8 ctabentry = (color_prom[i - 0x1100] & 0x0f) | 0x10;
+		UINT16 ctabentry = (color_prom[i - 0x200] & 0x0f) | 0x10;
 		colortable_entry_set_value(machine->colortable, i, ctabentry);
 	}
 }
@@ -70,11 +66,11 @@ void jackal_mark_tile_dirty(int offset)
 
 static TILE_GET_INFO( get_bg_tile_info )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	int attr = RAM[0x2000 + tile_index];
 	int code = RAM[0x2400 + tile_index] + ((attr & 0xc0) << 2) + ((attr & 0x30) << 6);
-	int color = attr & 0x0f;
+	int color = 0;//attr & 0x0f;
 	int flags = ((attr & 0x10) ? TILE_FLIPX : 0) | ((attr & 0x20) ? TILE_FLIPY : 0);
 
 	SET_TILE_INFO(0, code, color, flags);
@@ -85,9 +81,9 @@ VIDEO_START( jackal )
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows, 8, 8, 32, 32);
 }
 
-static void draw_background( bitmap_t *bitmap, const rectangle *cliprect )
+static void draw_background( running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	int i;
 
 	jackal_scrollram = &RAM[0x0020];
@@ -208,7 +204,7 @@ static void draw_sprites_region(running_machine *machine, bitmap_t *bitmap, cons
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	UINT8 *sr, *ss;
 
 	if (jackal_videoctrl[0x03] & 0x08)
@@ -229,7 +225,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 VIDEO_UPDATE( jackal )
 {
 	set_pens(screen->machine->colortable);
-	draw_background(bitmap, cliprect);
+	draw_background(screen->machine, bitmap, cliprect);
 	draw_sprites(screen->machine, bitmap, cliprect);
 	return 0;
 }

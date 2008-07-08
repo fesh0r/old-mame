@@ -38,7 +38,7 @@ To Do:
 static UINT16 eeprom_word;
 static READ16_HANDLER(galpani2_eeprom_r)
 {
-	return (eeprom_word & ~1) | (EEPROM_read_bit() & 1);
+	return (eeprom_word & ~1) | (eeprom_read_bit() & 1);
 }
 
 static WRITE16_HANDLER(galpani2_eeprom_w)
@@ -47,13 +47,13 @@ static WRITE16_HANDLER(galpani2_eeprom_w)
 	if ( ACCESSING_BITS_0_7 )
 	{
 		// latch the bit
-		EEPROM_write_bit(data & 0x02);
+		eeprom_write_bit(data & 0x02);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -202,7 +202,7 @@ static WRITE16_HANDLER( galpani2_oki_0_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		UINT8 *ROM = memory_region(REGION_SOUND1);
+		UINT8 *ROM = memory_region(machine, REGION_SOUND1);
 		logerror("CPU #0 PC %06X : OKI 0 bank %08X\n",activecpu_get_pc(),data);
 		memcpy(ROM + 0x30000, ROM + 0x40000 + 0x10000 * (~data & 0xf), 0x10000);
 	}
@@ -266,8 +266,8 @@ static UINT16 *galpani2_rombank;
 
 static READ16_HANDLER( galpani2_bankedrom_r )
 {
-	UINT16 *ROM = (UINT16 *) memory_region( REGION_USER1 );
-	size_t    len = memory_region_length( REGION_USER1 ) / 2;
+	UINT16 *ROM = (UINT16 *) memory_region( machine, REGION_USER1 );
+	size_t    len = memory_region_length( machine, REGION_USER1 ) / 2;
 
 	offset += (0x800000/2) * (*galpani2_rombank & 0x0003);
 

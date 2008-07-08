@@ -200,7 +200,7 @@ static VIDEO_UPDATE( darkhors )
 
 ***************************************************************************/
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	7,				// address bits 7
 	8,				// data bits    8
@@ -217,24 +217,18 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( darkhors )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			// Set the EEPROM to Factory Defaults
-			EEPROM_set_data(memory_region(REGION_USER1),(1<<7));
+			eeprom_set_data(memory_region(machine, REGION_USER1),(1<<7));
 		}
 	}
-}
-
-static READ32_HANDLER( darkhors_eeprom_r )
-{
-	// bit 31?
-	return input_port_read_indexed(machine, 4) | ((EEPROM_read_bit() & 1) << (7+16));
 }
 
 static WRITE32_HANDLER( darkhors_eeprom_w )
@@ -245,13 +239,13 @@ static WRITE32_HANDLER( darkhors_eeprom_w )
 	if ( ACCESSING_BITS_24_31 )
 	{
 		// latch the bit
-		EEPROM_write_bit(data & 0x04000000);
+		eeprom_write_bit(data & 0x04000000);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x01000000) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x01000000) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x02000000) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x02000000) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -301,9 +295,10 @@ static READ32_HANDLER( darkhors_input_sel_r )
 	// from bit mask to bit number
 	int bit_p1 = mask_to_bit((input_sel & 0x00ff0000) >> 16);
 	int bit_p2 = mask_to_bit((input_sel & 0xff000000) >> 24);
+	static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3", "IN4", "IN5", "IN6", "IN7" };
 
-	return	(input_port_read_indexed(machine, 5 + bit_p1) & 0x00ffffff) |
-			(input_port_read_indexed(machine, 5 + bit_p2) & 0xff000000) ;
+	return	(input_port_read(machine, portnames[bit_p1]) & 0x00ffffff) |
+			(input_port_read(machine, portnames[bit_p2]) & 0xff000000) ;
 }
 
 static WRITE32_HANDLER( darkhors_unk1_w )
@@ -315,7 +310,7 @@ static WRITE32_HANDLER( darkhors_unk1_w )
 static ADDRESS_MAP_START( darkhors_readmem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x000000, 0x0fffff) AM_READ( SMH_ROM					)
 	AM_RANGE(0x400000, 0x41ffff) AM_READ( SMH_RAM					)
-	AM_RANGE(0x4e0080, 0x4e0083) AM_READ( darkhors_eeprom_r			)
+	AM_RANGE(0x4e0080, 0x4e0083) AM_READ( input_port_4_dword_r		)
 	AM_RANGE(0x580000, 0x580003) AM_READ( input_port_0_dword_r		)
 	AM_RANGE(0x580004, 0x580007) AM_READ( input_port_1_dword_r		)
 	AM_RANGE(0x580008, 0x58000b) AM_READ( darkhors_input_sel_r		)
@@ -354,11 +349,11 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( darkhors )
-	PORT_START	// IN0 - 580000
+	PORT_START_TAG("580000")	/* IN0 - 580000 */
 	PORT_BIT( 0xff7fffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00800000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("?") PORT_CODE(KEYCODE_RCONTROL)
 
-	PORT_START	// IN1 - 580004
+	PORT_START_TAG("580004")	/* IN1 - 580004 */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_BILL1 )	// bill in
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_COIN1 )	// coin in s1
@@ -371,17 +366,17 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x08000000, IP_ACTIVE_LOW, IPT_COIN2 )	// coin drop p2
 	PORT_BIT( 0x10000000, IP_ACTIVE_LOW, IPT_SPECIAL)	// hopper full p2
 
-	PORT_START	// IN2 - 580400
+	PORT_START_TAG("580400")	/* IN2 - 580400 */
 	PORT_BIT( 0xfffcffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("0") PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("9") PORT_CODE(KEYCODE_9_PAD)
 
-	PORT_START	// IN3 - 580420
+	PORT_START_TAG("580420")	/* IN3 - 580420 */
 	PORT_BIT( 0xfffcffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("0*") PORT_CODE(KEYCODE_0_PAD)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("9*") PORT_CODE(KEYCODE_9_PAD)
 
-	PORT_START	// IN4 - 4e0080
+	PORT_START_TAG("4e0080")	/* IN4 - 4e0080 */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW,  IPT_SERVICE1 )	// config
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW,  IPT_SERVICE2 )	// reset
@@ -390,7 +385,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x00100000, IP_ACTIVE_LOW,  IPT_SERVICE  ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F1) // test
 	PORT_BIT( 0x00200000, IP_ACTIVE_LOW,  IPT_UNKNOWN  )	// door 1
 	PORT_BIT( 0x00400000, IP_ACTIVE_LOW,  IPT_UNKNOWN  )	// door 2
-	PORT_BIT( 0x00800000, IP_ACTIVE_HIGH, IPT_SPECIAL  )	// eeprom
+	PORT_BIT( 0x00800000, IP_ACTIVE_HIGH, IPT_SPECIAL  ) PORT_CUSTOM(eeprom_bit_r, NULL)
 	PORT_BIT( 0x01000000, IP_ACTIVE_LOW,  IPT_START1   )	// start
 	PORT_BIT( 0x02000000, IP_ACTIVE_LOW,  IPT_OTHER ) PORT_NAME("P1 Payout") PORT_CODE(KEYCODE_LCONTROL)	// payout
 	PORT_BIT( 0x04000000, IP_ACTIVE_LOW,  IPT_OTHER ) PORT_NAME("P1 Cancel") PORT_CODE(KEYCODE_LALT)		// cancel
@@ -400,7 +395,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
 
-	PORT_START	// IN5 - 580008(0)
+	PORT_START_TAG("IN0")	/* IN5 - 580008(0) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 1") PORT_CODE(KEYCODE_1_PAD)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 2") PORT_CODE(KEYCODE_2_PAD)
@@ -419,7 +414,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Bet 7") //PORT_CODE(KEYCODE_)
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Bet 8") //PORT_CODE(KEYCODE_)
 
-	PORT_START	// IN6 - 580008(1)
+	PORT_START_TAG("IN1")	/* IN6 - 580008(1) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 1-2") PORT_CODE(KEYCODE_Z)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 1-3") PORT_CODE(KEYCODE_A)
@@ -438,7 +433,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P2 Bet 1-8") //PORT_CODE(KEYCODE_)
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN7 - 580008(2)
+	PORT_START_TAG("IN2")	/* IN7 - 580008(2) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 2-3") PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 2-4") PORT_CODE(KEYCODE_S)
@@ -457,7 +452,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN - 580008(3)
+	PORT_START_TAG("IN3")	/* IN - 580008(3) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 3-4") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 3-5") PORT_CODE(KEYCODE_D)
@@ -476,7 +471,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN8 - 580008(4)
+	PORT_START_TAG("IN4")	/* IN8 - 580008(4) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 4-5") PORT_CODE(KEYCODE_V)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 4-6") PORT_CODE(KEYCODE_F)
@@ -495,7 +490,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN9 - 580008(5)
+	PORT_START_TAG("IN5")	/* IN9 - 580008(5) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 5-6") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 5-7") PORT_CODE(KEYCODE_G)
@@ -514,7 +509,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN10 - 580008(6)
+	PORT_START_TAG("IN6")	/* IN10 - 580008(6) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 6-7") PORT_CODE(KEYCODE_N)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 6-8") PORT_CODE(KEYCODE_H)
@@ -533,7 +528,7 @@ static INPUT_PORTS_START( darkhors )
 	PORT_BIT( 0x40000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80000000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN11 - 580008(7)
+	PORT_START_TAG("IN7")	/* IN11 - 580008(7) */
 	PORT_BIT( 0x0000ffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_OTHER ) PORT_NAME("P1 Bet 7-8") PORT_CODE(KEYCODE_M)
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -667,8 +662,8 @@ ROM_END
 
 static DRIVER_INIT( darkhors )
 {
-	UINT32 *rom    = (UINT32 *) memory_region(REGION_CPU1);
-	UINT8  *eeprom = (UINT8 *)  memory_region(REGION_USER1);
+	UINT32 *rom    = (UINT32 *) memory_region(machine, REGION_CPU1);
+	UINT8  *eeprom = (UINT8 *)  memory_region(machine, REGION_USER1);
 	int i;
 
 #if 1

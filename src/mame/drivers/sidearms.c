@@ -36,7 +36,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
 
@@ -60,7 +59,7 @@ int sidearms_gameid;
 static WRITE8_HANDLER( sidearms_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 
 	/* bits 0 and 1 select the ROM bank */
@@ -167,7 +166,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( whizz_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	int bank = 0;
 
 	switch (data & 0xC0)
@@ -597,7 +596,6 @@ static INPUT_PORTS_START( whizz )
 	PORT_START_TAG("IN6")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0c, IP_ACTIVE_LOW, IPT_BUTTON4 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH,IPT_VBLANK )
@@ -698,9 +696,9 @@ static GFXDECODE_START( turtship )
 GFXDECODE_END
 
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -1229,7 +1227,7 @@ GAME( 1988, turtshij, turtship, turtship, turtship, turtship, ROT0,   "Philko (P
 GAME( 1988, turtshik, turtship, turtship, turtship, turtship, ROT0,   "Philko", "Turtle Ship (Korea)", 0 )
 GAME( 1989, dyger,    0,        turtship, dyger,    dyger,    ROT270, "Philko", "Dyger (Korea set 1)", 0 )
 GAME( 1989, dygera,   dyger,    turtship, dyger,    dyger,    ROT270, "Philko", "Dyger (Korea set 2)", 0 )
-GAME( 1989, twinfalc, 0,        whizz, 	  whizz,    whizz,    ROT0,   "Philko (Poara Enterprises license)", "Twin Falcons", 0 )
-GAME( 1989, whizz,    twinfalc, whizz, 	  whizz,    whizz,    ROT0,   "Philko", "Whizz", 0 )
+GAME( 1989, twinfalc, 0,        whizz,    whizz,    whizz,    ROT0,   "Philko (Poara Enterprises license)", "Twin Falcons", 0 )
+GAME( 1989, whizz,    twinfalc, whizz,    whizz,    whizz,    ROT0,   "Philko", "Whizz", 0 )
 
 

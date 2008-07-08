@@ -7,7 +7,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "balsente.h"
 #include "sound/cem3394.h"
@@ -18,7 +17,7 @@
 
 /* local prototypes */
 static void poly17_init(void);
-static void counter_set_out(int which, int gate);
+static void counter_set_out(running_machine *machine, int which, int gate);
 static TIMER_CALLBACK( counter_callback );
 static TIMER_CALLBACK( clock_counter_0_ff );
 static void update_grudge_steering(running_machine *machine);
@@ -133,8 +132,8 @@ static TIMER_CALLBACK( interrupt_timer )
 		/* we latch the beam values on the first interrupt after VBLANK */
 		if (param == 64 && balsente_shooter)
 		{
-			balsente_shooter_x = input_port_read_indexed(machine, 8);
-			balsente_shooter_y = input_port_read_indexed(machine, 9);
+			balsente_shooter_x = input_port_read(machine, "FAKEX");
+			balsente_shooter_y = input_port_read(machine, "FAKEY");
 		}
 
 		/* which bits get returned depends on which scanline we're at */
@@ -184,9 +183,9 @@ MACHINE_RESET( balsente )
 	memset(noise_position, 0, sizeof(noise_position));
 
 	/* point the banks to bank 0 */
-	numbanks = (memory_region_length(REGION_CPU1) > 0x40000) ? 16 : 8;
-	memory_configure_bank(1, 0, numbanks, &memory_region(REGION_CPU1)[0x10000], 0x6000);
-	memory_configure_bank(2, 0, numbanks, &memory_region(REGION_CPU1)[0x12000], 0x6000);
+	numbanks = (memory_region_length(machine, REGION_CPU1) > 0x40000) ? 16 : 8;
+	memory_configure_bank(1, 0, numbanks, &memory_region(machine, REGION_CPU1)[0x10000], 0x6000);
+	memory_configure_bank(2, 0, numbanks, &memory_region(machine, REGION_CPU1)[0x12000], 0x6000);
 	memory_set_bank(1, 0);
 	memory_set_bank(2, 0);
 
@@ -342,7 +341,7 @@ WRITE8_HANDLER( balsente_rombank2_select_w )
 	int bank = data & 7;
 
 	/* top bit controls which half of the ROMs to use (Name that Tune only) */
-	if (memory_region_length(REGION_CPU1) > 0x40000) bank |= (data >> 4) & 8;
+	if (memory_region_length(machine, REGION_CPU1) > 0x40000) bank |= (data >> 4) & 8;
 
 	/* when they set the AB bank, it appears as though the CD bank is reset */
 	if (data & 0x20)
@@ -392,7 +391,7 @@ WRITE8_HANDLER( balsente_misc_output_w )
  *
  *************************************/
 
-static void m6850_update_io(void)
+static void m6850_update_io(running_machine *machine)
 {
 	UINT8 new_state;
 
@@ -448,12 +447,12 @@ static void m6850_update_io(void)
 	/* apply the change */
 	if (new_state && !(m6850_status & 0x80))
 	{
-		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 		m6850_status |= 0x80;
 	}
 	else if (!new_state && (m6850_status & 0x80))
 	{
-		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, CLEAR_LINE);
 		m6850_status &= ~0x80;
 	}
 
@@ -466,12 +465,12 @@ static void m6850_update_io(void)
 	/* apply the change */
 	if (new_state && !(m6850_sound_status & 0x80))
 	{
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE);
 		m6850_sound_status |= 0x80;
 	}
 	else if (!new_state && (m6850_sound_status & 0x80))
 	{
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE);
 		m6850_sound_status &= ~0x80;
 	}
 }
@@ -501,7 +500,7 @@ READ8_HANDLER( balsente_m6850_r )
 
 		/* clear the overrun and receive buffer full bits */
 		m6850_status &= ~0x21;
-		m6850_update_io();
+		m6850_update_io(machine);
 	}
 
 	return result;
@@ -513,7 +512,7 @@ static TIMER_CALLBACK( m6850_data_ready_callback )
 	/* set the output data byte and indicate that we're ready to go */
 	m6850_output = param;
 	m6850_data_ready = 1;
-	m6850_update_io();
+	m6850_update_io(machine);
 }
 
 
@@ -521,7 +520,7 @@ static TIMER_CALLBACK( m6850_w_callback )
 {
 	/* indicate that the transmit buffer is no longer empty and update the I/O state */
 	m6850_status &= ~0x02;
-	m6850_update_io();
+	m6850_update_io(machine);
 
 	/* set a timer for 500usec later to actually transmit the data */
 	/* (this is very important for several games, esp Snacks'n Jaxson) */
@@ -537,7 +536,7 @@ WRITE8_HANDLER( balsente_m6850_w )
 		m6850_control = data;
 
 		/* re-update since interrupt enables could have been modified */
-		m6850_update_io();
+		m6850_update_io(machine);
 	}
 
 	/* output register is at offset 1; set a timer to synchronize the CPUs */
@@ -570,7 +569,7 @@ READ8_HANDLER( balsente_m6850_sound_r )
 
 		/* clear the overrun and receive buffer full bits */
 		m6850_sound_status &= ~0x21;
-		m6850_update_io();
+		m6850_update_io(machine);
 	}
 
 	return result;
@@ -591,7 +590,7 @@ WRITE8_HANDLER( balsente_m6850_sound_w )
 	}
 
 	/* re-update since interrupt enables could have been modified */
-	m6850_update_io();
+	m6850_update_io(machine);
 }
 
 
@@ -605,13 +604,14 @@ WRITE8_HANDLER( balsente_m6850_sound_w )
 INTERRUPT_GEN( balsente_update_analog_inputs )
 {
 	int i;
+	static const char *analog[] = { "AN0", "AN1", "AN2", "AN3" };
 
 	/* the analog input system helpfully scales the value read by the percentage of time */
 	/* into the current frame we are; unfortunately, this is bad for us, since the analog */
 	/* ports are read once a frame, just at varying intervals. To get around this, we */
 	/* read all the analog inputs at VBLANK time and just return the cached values. */
 	for (i = 0; i < 4; i++)
-		analog_input_data[i] = input_port_read_indexed(machine, 4 + i);
+		analog_input_data[i] = input_port_read(machine, analog[i]);
 }
 
 
@@ -719,7 +719,7 @@ INLINE void counter_update_count(int which)
  *
  *************************************/
 
-static void counter_set_gate(int which, int gate)
+static void counter_set_gate(running_machine *machine, int which, int gate)
 {
 	int oldgate = counter[which].gate;
 
@@ -739,7 +739,7 @@ static void counter_set_gate(int which, int gate)
 		/* mode 1 waits for the gate to trigger the counter */
 		if (counter[which].mode == 1)
 		{
-			counter_set_out(which, 0);
+			counter_set_out(machine, which, 0);
 
 			/* add one to the count; technically, OUT goes low on the next clock pulse */
 			/* and then starts counting down; it's important that we don't count the first one */
@@ -752,15 +752,15 @@ static void counter_set_gate(int which, int gate)
 }
 
 
-static void counter_set_out(int which, int out)
+static void counter_set_out(running_machine *machine, int which, int out)
 {
 	/* OUT on counter 2 is hooked to the /INT line on the Z80 */
 	if (which == 2)
-		cpunum_set_input_line(Machine, 1, 0, out ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, 0, out ? ASSERT_LINE : CLEAR_LINE);
 
 	/* OUT on counter 0 is hooked to the GATE line on counter 1 */
 	else if (which == 0)
-		counter_set_gate(1, !out);
+		counter_set_gate(machine, 1, !out);
 
 	/* remember the out state */
 	counter[which].out = out;
@@ -776,7 +776,7 @@ static TIMER_CALLBACK( counter_callback )
 	/* set the state of the OUT line */
 	/* mode 0 and 1: when firing, transition OUT to high */
 	if (counter[param].mode == 0 || counter[param].mode == 1)
-		counter_set_out(param, 1);
+		counter_set_out(machine, param, 1);
 
 	/* no other modes handled currently */
 }
@@ -839,7 +839,7 @@ WRITE8_HANDLER( balsente_counter_8253_w )
 
 			/* if the counter is in mode 0, a write here will reset the OUT state */
 			if (counter[which].mode == 0)
-				counter_set_out(which, 0);
+				counter_set_out(machine, which, 0);
 
 			/* write the LSB */
 			if (counter[which].writebyte == 0)
@@ -868,7 +868,7 @@ WRITE8_HANDLER( balsente_counter_8253_w )
 
 				/* if the counter is in mode 1, a write here will set the OUT state */
 				if (counter[which].mode == 1)
-					counter_set_out(which, 1);
+					counter_set_out(machine, which, 1);
 			}
 			break;
 
@@ -879,14 +879,14 @@ WRITE8_HANDLER( balsente_counter_8253_w )
 
 			/* if the counter was in mode 0, a write here will reset the OUT state */
 			if (((counter[which].mode >> 1) & 7) == 0)
-				counter_set_out(which, 0);
+				counter_set_out(machine, which, 0);
 
 			/* set the mode */
 			counter[which].mode = (data >> 1) & 7;
 
 			/* if the counter is in mode 0, a write here will reset the OUT state */
 			if (counter[which].mode == 0)
-				counter_set_out(which, 0);
+				counter_set_out(machine, which, 0);
 			break;
 	}
 }
@@ -1011,14 +1011,14 @@ WRITE8_HANDLER( balsente_counter_control_w )
 	}
 
 	/* set the actual gate afterwards, since we need to know the old value above */
-	counter_set_gate(0, (data >> 1) & 1);
+	counter_set_gate(machine, 0, (data >> 1) & 1);
 
 	/* bits D2 and D4 control the clear/reset flags on the flip-flop that feeds counter 0 */
 	if (!(data & 0x04)) set_counter_0_ff(machine, 1);
 	if (!(data & 0x10)) set_counter_0_ff(machine, 0);
 
 	/* bit 5 clears the NMI interrupt; recompute the I/O state now */
-	m6850_update_io();
+	m6850_update_io(machine);
 }
 
 
@@ -1122,7 +1122,7 @@ WRITE8_HANDLER( balsente_register_addr_w )
 
 READ8_HANDLER( nstocker_port2_r )
 {
-	return (input_port_read_indexed(machine, 2) & 0xf0) | nstocker_bits;
+	return (input_port_read(machine, "IN0") & 0xf0) | nstocker_bits;
 }
 
 
@@ -1167,9 +1167,9 @@ static void update_grudge_steering(running_machine *machine)
 	INT8 diff[3];
 
 	/* read the current steering values */
-	wheel[0] = input_port_read_indexed(machine, 4);
-	wheel[1] = input_port_read_indexed(machine, 5);
-	wheel[2] = input_port_read_indexed(machine, 6);
+	wheel[0] = input_port_read(machine, "AN0");
+	wheel[1] = input_port_read(machine, "AN1");
+	wheel[2] = input_port_read(machine, "AN2");
 
 	/* diff the values */
 	diff[0] = wheel[0] - grudge_last_steering[0];

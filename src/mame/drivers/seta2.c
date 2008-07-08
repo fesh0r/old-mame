@@ -425,8 +425,8 @@ static WRITE16_HANDLER( seta2_sound_bank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		UINT8 *ROM = memory_region( REGION_SOUND1 );
-		int banks = (memory_region_length( REGION_SOUND1 ) - 0x100000) / 0x20000;
+		UINT8 *ROM = memory_region( machine, REGION_SOUND1 );
+		int banks = (memory_region_length( machine, REGION_SOUND1 ) - 0x100000) / 0x20000;
 		if (data >= banks)
 		{
 			logerror("CPU #0 PC %06X: invalid sound bank %04X\n",activecpu_get_pc(),data);
@@ -490,21 +490,21 @@ static NVRAM_HANDLER(93C46_gundamex)
 {
 	if (read_or_write)
 	{
-		EEPROM_save(file);
+		eeprom_save(file);
 	}
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);
+		eeprom_init(&eeprom_interface_93C46);
 		if (file)
 		{
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 		{
 			int length;
 			UINT8 *dat;
 
-			dat = EEPROM_get_data_pointer(&length);
+			dat = eeprom_get_data_pointer(&length);
 			dat[0]=0x70;
 			dat[1]=0x08;
 		}
@@ -513,14 +513,14 @@ static NVRAM_HANDLER(93C46_gundamex)
 
 static READ16_HANDLER( gundamex_eeprom_r )
 {
-	return ((EEPROM_read_bit() & 1)) << 3;
+	return ((eeprom_read_bit() & 1)) << 3;
 }
 
 static WRITE16_HANDLER( gundamex_eeprom_w )
 {
-		EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x1);
-		EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x1);
+		eeprom_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static ADDRESS_MAP_START( gundamex_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -681,12 +681,12 @@ ADDRESS_MAP_END
 static READ16_HANDLER( pzlbowl_protection_r )
 {
 	UINT32 address = (program_read_word(0x20ba16) << 16) | program_read_word(0x20ba18);
-	return memory_region(REGION_CPU1)[address - 2];
+	return memory_region(machine, REGION_CPU1)[address - 2];
 }
 
 static READ16_HANDLER( pzlbowl_coins_r )
 {
-	return input_port_read_indexed(machine, 4) | (mame_rand(Machine) & 0x80 );
+	return input_port_read_indexed(machine, 4) | (mame_rand(machine) & 0x80 );
 }
 
 static WRITE16_HANDLER( pzlbowl_coin_counter_w )
@@ -1785,7 +1785,7 @@ static INTERRUPT_GEN( seta2_interrupt )
 	{
 		case 0:
 			/* VBlank is connected to INT0 (external interrupts pin 0) */
-			tmp68301_external_interrupt_0();
+			tmp68301_external_interrupt_0(machine);
 			break;
 	}
 }
@@ -1795,10 +1795,10 @@ static INTERRUPT_GEN( samshoot_interrupt )
 	switch ( cpu_getiloops() )
 	{
 		case 0:
-			tmp68301_external_interrupt_0();	// vblank
+			tmp68301_external_interrupt_0(machine);	// vblank
 			break;
 		case 1:
-			tmp68301_external_interrupt_2();	// to do: hook up x1-10 interrupts
+			tmp68301_external_interrupt_2(machine);	// to do: hook up x1-10 interrupts
 			break;
 	}
 }
@@ -2098,8 +2098,8 @@ ROM_END
 
 ROM_START( deerhunt ) /* Deer Hunting USA V4.3 (11/1/2000) - The "E05" breaks version label conventions but is correct & verified */
 	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* TMP68301 Code */
-	ROM_LOAD16_BYTE( "as0906e05.u06", 0x000000, 0x100000, CRC(20c81f17) SHA1(d41d93d6ee88738cec55f7bf3ce6be1dbec68e09) ) /* CRC16 694E printed on label */
-	ROM_LOAD16_BYTE( "as0907e05.u07", 0x000001, 0x100000, CRC(1731aa2a) SHA1(cffae7a99a7f960a62ef0c4454884df17a93c1a6) ) /* CRC16 5D89 printed on label */
+	ROM_LOAD16_BYTE( "as0906e05.u06", 0x000000, 0x100000, CRC(20c81f17) SHA1(d41d93d6ee88738cec55f7bf3ce6be1dbec68e09) ) /* checksum 694E printed on label */
+	ROM_LOAD16_BYTE( "as0907e05.u07", 0x000001, 0x100000, CRC(1731aa2a) SHA1(cffae7a99a7f960a62ef0c4454884df17a93c1a6) ) /* checksum 5D89 printed on label */
 
 	ROM_REGION( 0x2000000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "as0901m01.u38", 0x0000000, 0x800000, CRC(1d6acf8f) SHA1(6f61fe21bebb7c87e8e6c3ef3ba73b8cf327dde9) )
@@ -2114,8 +2114,8 @@ ROM_END
 
 ROM_START( deerhuna ) /* Deer Hunting USA V4.2 (xx/x/2000) */
 	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* TMP68301 Code */
-	ROM_LOAD16_BYTE( "as0906e04-v4_2.u06", 0x000000, 0x100000, CRC(bb3af36f) SHA1(f04071347e8ad361bf666fcb6c0136e522f19d47) ) /* CRC16 6640 printed on label */
-	ROM_LOAD16_BYTE( "as0907e04-v4_2.u07", 0x000001, 0x100000, CRC(83f02117) SHA1(70fc2291bc93af3902aae88688be6a8078f7a07e) ) /* CRC16 595A printed on label */
+	ROM_LOAD16_BYTE( "as0906e04-v4_2.u06", 0x000000, 0x100000, CRC(bb3af36f) SHA1(f04071347e8ad361bf666fcb6c0136e522f19d47) ) /* checksum 6640 printed on label */
+	ROM_LOAD16_BYTE( "as0907e04-v4_2.u07", 0x000001, 0x100000, CRC(83f02117) SHA1(70fc2291bc93af3902aae88688be6a8078f7a07e) ) /* checksum 595A printed on label */
 
 	ROM_REGION( 0x2000000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "as0901m01.u38", 0x0000000, 0x800000, CRC(1d6acf8f) SHA1(6f61fe21bebb7c87e8e6c3ef3ba73b8cf327dde9) )
@@ -2130,8 +2130,8 @@ ROM_END
 
 ROM_START( deerhunb ) /* Deer Hunting USA V4.0 (6/15/2000) */
 	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* TMP68301 Code */
-	ROM_LOAD16_BYTE( "as0906e04.u06", 0x000000, 0x100000, CRC(07d9b64a) SHA1(f9aac644aab920bbac84b14836ee589ccd51f6db) ) /* CRC16 7BBB printed on label */
-	ROM_LOAD16_BYTE( "as0907e04.u07", 0x000001, 0x100000, CRC(19973d08) SHA1(da1cc02ce480a62ccaf94d0af1246a340f054b43) ) /* CRC16 4C78 printed on label */
+	ROM_LOAD16_BYTE( "as0906e04.u06", 0x000000, 0x100000, CRC(07d9b64a) SHA1(f9aac644aab920bbac84b14836ee589ccd51f6db) ) /* checksum 7BBB printed on label */
+	ROM_LOAD16_BYTE( "as0907e04.u07", 0x000001, 0x100000, CRC(19973d08) SHA1(da1cc02ce480a62ccaf94d0af1246a340f054b43) ) /* checksum 4C78 printed on label */
 
 	ROM_REGION( 0x2000000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "as0901m01.u38", 0x0000000, 0x800000, CRC(1d6acf8f) SHA1(6f61fe21bebb7c87e8e6c3ef3ba73b8cf327dde9) )
@@ -2164,8 +2164,8 @@ ROM_END
 
 ROM_START( turkhunt ) /* V1.0 is currently the only known version */
 	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* TMP68301 Code */
-	ROM_LOAD16_BYTE( "asx906e01.u06", 0x000000, 0x100000, CRC(c96266e1) SHA1(0ca462b3b0f27198e36384eee6ea5c5d4e7e1293) ) /* CRC16 E510 printed on label */
-	ROM_LOAD16_BYTE( "asx907e01.u07", 0x000001, 0x100000, CRC(7c67b502) SHA1(6a0e8883a115dac4095d86897e7eca2a007a1c71) ) /* CRC16 AB40 printed on label */
+	ROM_LOAD16_BYTE( "asx906e01.u06", 0x000000, 0x100000, CRC(c96266e1) SHA1(0ca462b3b0f27198e36384eee6ea5c5d4e7e1293) ) /* checksum E510 printed on label */
+	ROM_LOAD16_BYTE( "asx907e01.u07", 0x000001, 0x100000, CRC(7c67b502) SHA1(6a0e8883a115dac4095d86897e7eca2a007a1c71) ) /* checksum AB40 printed on label */
 
 	ROM_REGION( 0x2000000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "asx901m01.u38", 0x0000000, 0x800000, CRC(eabd3f44) SHA1(5a1ac986d11a8b019e18761cf4ea0a6f49fbdbfc) )
@@ -2180,8 +2180,8 @@ ROM_END
 
 ROM_START( wschamp ) /* V2.0 */
 	ROM_REGION( 0x200000, REGION_CPU1, 0 )		/* TMP68301 Code */
-	ROM_LOAD16_BYTE( "as1006e02.u06", 0x000000, 0x100000, CRC(0ad01677) SHA1(63e09b9f7cc8b781af1756f86caa0cc0962ae584) )
-	ROM_LOAD16_BYTE( "as1007e02.u07", 0x000001, 0x100000, CRC(572624f0) SHA1(0c2f67daa22f4edd66a2be990dc6cd999faff0fa) )
+	ROM_LOAD16_BYTE( "as1006e02.u06", 0x000000, 0x100000, CRC(0ad01677) SHA1(63e09b9f7cc8b781af1756f86caa0cc0962ae584) ) /* checksum 421E printed on label */
+	ROM_LOAD16_BYTE( "as1007e02.u07", 0x000001, 0x100000, CRC(572624f0) SHA1(0c2f67daa22f4edd66a2be990dc6cd999faff0fa) ) /* checksum A48F printed on label */
 
 	ROM_REGION( 0x2000000, REGION_GFX1, ROMREGION_DISPOSE )	/* Sprites */
 	ROM_LOAD( "as1001m01.u38", 0x0000000, 0x800000, CRC(92595579) SHA1(75a7131aedb18b7103677340c3cca7c91aaca2bf) )

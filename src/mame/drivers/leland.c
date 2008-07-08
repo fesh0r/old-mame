@@ -122,47 +122,47 @@ ADDRESS_MAP_END
 
 /* Helps document the input ports. */
 #define IPT_SLAVEHALT 	IPT_SPECIAL
-#define IPT_EEPROM_DATA	IPT_SPECIAL
+#define IPT_eeprom_DATA	IPT_SPECIAL
 
 
 static INPUT_PORTS_START( cerberus )		/* complete, verified from code */
-	PORT_START      /* 0x80 */
+	PORT_START_TAG("IN0")	/* 0x80 */
     PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_PLAYER(1)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 
-	PORT_START      /* 0x81 */
+	PORT_START_TAG("IN1")	/* 0x81 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x90 */
+	PORT_START_TAG("IN2")	/* 0x90 */
     PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_PLAYER(2)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 
-	PORT_START      /* 0x91 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x91 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog joystick 1 */
+	PORT_START_TAG("AN0")	/* Analog joystick 1 */
     PORT_BIT( 0xff, 0, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START
+	PORT_START_TAG("AN1")
     PORT_BIT( 0xff, 0, IPT_DIAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(2)
-	PORT_START      /* Analog joystick 2 */
-	PORT_START
-	PORT_START      /* Analog joystick 3 */
-	PORT_START
+	PORT_START_TAG("AN2")	/* Analog joystick 2 */
+	PORT_START_TAG("AN3")
+	PORT_START_TAG("AN4")	/* Analog joystick 3 */
+	PORT_START_TAG("AN5")
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( mayhem )		/* complete, verified from code */
-	PORT_START      /* 0xC0 */
+	PORT_START_TAG("IN0")	/* 0xC0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
@@ -172,14 +172,14 @@ static INPUT_PORTS_START( mayhem )		/* complete, verified from code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 
-	PORT_START      /* 0xC1 */
+	PORT_START_TAG("IN1")	/* 0xC1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0xD0 */
+	PORT_START_TAG("IN2")	/* 0xD0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -189,209 +189,209 @@ static INPUT_PORTS_START( mayhem )		/* complete, verified from code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START      /* 0xD1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0xD1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog joystick 1 */
-	PORT_START
-	PORT_START      /* Analog joystick 2 */
-	PORT_START
-	PORT_START      /* Analog joystick 3 */
-	PORT_START
+	PORT_START_TAG("AN0")	/* Analog joystick 1 */
+	PORT_START_TAG("AN1")
+	PORT_START_TAG("AN2")	/* Analog joystick 2 */
+	PORT_START_TAG("AN3")
+	PORT_START_TAG("AN4")	/* Analog joystick 3 */
+	PORT_START_TAG("AN5")
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( wseries )		/* complete, verified from code */
-	PORT_START      /* 0x80 */
+	PORT_START_TAG("IN0")	/* 0x80 */
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Extra Base") PORT_PLAYER(1)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Go Back") PORT_PLAYER(1)
 
-	PORT_START      /* 0x81 */
+	PORT_START_TAG("IN1")	/* 0x81 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x90 */
+	PORT_START_TAG("IN2")	/* 0x90 */
 	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("Aim") PORT_PLAYER(1)
 
-	PORT_START      /* 0x91 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x91 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog joystick 1 */
+	PORT_START_TAG("AN0")	/* Analog joystick 1 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog joystick 2 */
-	PORT_START
-	PORT_START      /* Analog joystick 3 */
+	PORT_START_TAG("AN2")	/* Analog joystick 2 */
+	PORT_START_TAG("AN3")
+	PORT_START_TAG("AN4")	/* Analog joystick 3 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
-	PORT_START
+	PORT_START_TAG("AN5")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( alleymas )		/* complete, verified from code */
-	PORT_START      /* 0xC0 */
+	PORT_START_TAG("IN0")	/* 0xC0 */
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START      /* 0xC1 */
+	PORT_START_TAG("IN1")	/* 0xC1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0xD0 */
+	PORT_START_TAG("IN2")	/* 0xD0 */
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )		/* redundant inputs */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )		/* redundant inputs */
 
-	PORT_START      /* 0xD1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0xD1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog joystick 1 */
+	PORT_START_TAG("AN0")	/* Analog joystick 1 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0,224) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog joystick 2 */
-	PORT_START
-	PORT_START      /* Analog joystick 3 */
-	PORT_START
+	PORT_START_TAG("AN2")	/* Analog joystick 2 */
+	PORT_START_TAG("AN3")
+	PORT_START_TAG("AN4")	/* Analog joystick 3 */
+	PORT_START_TAG("AN5")
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( upyoural )		/* complete, verified from code */
-	PORT_START      /* 0xC0 */
+	PORT_START_TAG("IN0")	/* 0xC0 */
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON4 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
-	PORT_START      /* 0xC1 */
+	PORT_START_TAG("IN1")	/* 0xC1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0xD0 */
+	PORT_START_TAG("IN2")	/* 0xD0 */
 	PORT_BIT( 0x3f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 )
 
-	PORT_START      /* 0xD1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0xD1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog joystick 1 */
+	PORT_START_TAG("AN0")	/* Analog joystick 1 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0,224) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog joystick 2 */
-	PORT_START
-	PORT_START      /* Analog joystick 3 */
-	PORT_START
+	PORT_START_TAG("AN2")	/* Analog joystick 2 */
+	PORT_START_TAG("AN3")
+	PORT_START_TAG("AN4")	/* Analog joystick 3 */
+	PORT_START_TAG("AN5")
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( dangerz )		/* complete, verified from code */
-	PORT_START      /* 0x80 */
+	PORT_START_TAG("IN0")	/* 0x80 */
 	PORT_BIT( 0x1f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x81 */
+	PORT_START_TAG("IN1")	/* 0x81 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x90 */
+	PORT_START_TAG("IN2")	/* 0x90 */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x91 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x91 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog 1 */
+	PORT_START_TAG("AN0")	/* Analog 1 */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog 2 */
+	PORT_START_TAG("AN1")	/* Analog 2 */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( basebal2 )		/* complete, verified from code */
-	PORT_START      /* 0x40/C0 */
+	PORT_START_TAG("IN0")	/* 0x40/C0 */
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x30, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* read by strkzone, but never referenced */
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("Extra Base") PORT_PLAYER(1)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("Go Back") PORT_PLAYER(1)
 
-	PORT_START      /* 0x41/C1 */
+	PORT_START_TAG("IN1")	/* 0x41/C1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x50/D0 */
+	PORT_START_TAG("IN2")	/* 0x50/D0 */
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_NAME("R Run/Steal") PORT_PLAYER(1)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("L Run/Steal") PORT_PLAYER(1)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME("Run/Aim") PORT_PLAYER(1)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("Run/Cutoff") PORT_PLAYER(1)
 
-	PORT_START      /* 0x51/D1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x51/D1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog joystick 1 */
+	PORT_START_TAG("AN0")	/* Analog joystick 1 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog joystick 2 */
-	PORT_START
-	PORT_START      /* Analog joystick 3 */
+	PORT_START_TAG("AN2")	/* Analog joystick 2 */
+	PORT_START_TAG("AN3")
+	PORT_START_TAG("AN4")	/* Analog joystick 3 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
-	PORT_START
+	PORT_START_TAG("AN5")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( redline )		/* complete, verified in code */
-	PORT_START      /* 0xC0 */
+	PORT_START_TAG("IN0")	/* 0xC0 */
 	PORT_BIT( 0x1f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xe0, 0x00, IPT_PEDAL ) PORT_MINMAX(0x00,0xe0) PORT_SENSITIVITY(100) PORT_KEYDELTA(64) PORT_PLAYER(1)
 
-	PORT_START      /* 0xC1 */
+	PORT_START_TAG("IN1")	/* 0xC1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -399,39 +399,39 @@ static INPUT_PORTS_START( redline )		/* complete, verified in code */
 	PORT_BIT( 0x70, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* used, but for what purpose? */
 
-	PORT_START      /* 0xD0 */
+	PORT_START_TAG("IN2")	/* 0xD0 */
 	PORT_BIT( 0x1f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xe0, 0x00, IPT_PEDAL ) PORT_MINMAX(0x00,0xe0) PORT_SENSITIVITY(100) PORT_KEYDELTA(64) PORT_PLAYER(2)
 
-	PORT_START      /* 0xD1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0xD1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog wheel 1 */
+	PORT_START_TAG("AN0")	/* Analog wheel 1 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog wheel 2 */
+	PORT_START_TAG("AN1")	/* Analog wheel 2 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( quarterb )		/* complete, verified in code */
-	PORT_START      /* 0x80 */
+	PORT_START_TAG("IN0")	/* 0x80 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0e, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x81 */
+	PORT_START_TAG("IN1")	/* 0x81 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x90 */
+	PORT_START_TAG("IN2")	/* 0x90 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
@@ -441,39 +441,39 @@ static INPUT_PORTS_START( quarterb )		/* complete, verified in code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START      /* 0x91 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x91 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog spring stick 1 */
+	PORT_START_TAG("AN0")	/* Analog spring stick 1 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog spring stick 2 */
+	PORT_START_TAG("AN1")	/* Analog spring stick 2 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog spring stick 3 */
-	PORT_START      /* Analog spring stick 4 */
-	PORT_START      /* Analog spring stick 5 */
-	PORT_START      /* Analog spring stick 6 */
+	PORT_START_TAG("AN2")	/* Analog spring stick 3 */
+	PORT_START_TAG("AN3")	/* Analog spring stick 4 */
+	PORT_START_TAG("AN4")	/* Analog spring stick 5 */
+	PORT_START_TAG("AN5")	/* Analog spring stick 6 */
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( teamqb )		/* complete, verified in code */
-	PORT_START      /* 0x80 */
+	PORT_START_TAG("IN0")	/* 0x80 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0e, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x81 */
+	PORT_START_TAG("IN1")	/* 0x81 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x90 */
+	PORT_START_TAG("IN2")	/* 0x90 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
@@ -483,25 +483,25 @@ static INPUT_PORTS_START( teamqb )		/* complete, verified in code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START      /* 0x91 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x91 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog spring stick 1 */
+	PORT_START_TAG("AN0")	/* Analog spring stick 1 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog spring stick 2 */
+	PORT_START_TAG("AN1")	/* Analog spring stick 2 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog spring stick 3 */
-	PORT_START      /* Analog spring stick 4 */
-	PORT_START      /* Analog spring stick 5 */
+	PORT_START_TAG("AN2")	/* Analog spring stick 3 */
+	PORT_START_TAG("AN3")	/* Analog spring stick 4 */
+	PORT_START_TAG("AN4")	/* Analog spring stick 5 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(3)
-	PORT_START      /* Analog spring stick 6 */
+	PORT_START_TAG("AN5")	/* Analog spring stick 6 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(3)
 
-	PORT_START      /* 0x7C */
+	PORT_START_TAG("IN4")	/* 0x7C */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
 	PORT_BIT( 0x0e, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
@@ -509,7 +509,7 @@ static INPUT_PORTS_START( teamqb )		/* complete, verified in code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 )
 
-	PORT_START      /* 0x7F */
+	PORT_START_TAG("IN5")	/* 0x7F */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(4)
@@ -522,51 +522,51 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( aafb2p )		/* complete, verified in code */
-	PORT_START      /* 0x80 */
+	PORT_START_TAG("IN0")	/* 0x80 */
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x81 */
+	PORT_START_TAG("IN1")	/* 0x81 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x90 */
+	PORT_START_TAG("IN2")	/* 0x90 */
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START      /* 0x91 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x91 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog spring stick 1 */
+	PORT_START_TAG("AN0")	/* Analog spring stick 1 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog spring stick 2 */
+	PORT_START_TAG("AN1")	/* Analog spring stick 2 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog spring stick 3 */
-	PORT_START      /* Analog spring stick 4 */
-	PORT_START      /* Analog spring stick 5 */
+	PORT_START_TAG("AN2")	/* Analog spring stick 3 */
+	PORT_START_TAG("AN3")	/* Analog spring stick 4 */
+	PORT_START_TAG("AN4")	/* Analog spring stick 5 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
-	PORT_START      /* Analog spring stick 6 */
+	PORT_START_TAG("AN5")	/* Analog spring stick 6 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START      /* 0x7C */
+	PORT_START_TAG("IN4")	/* 0x7C */
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x7F */
+	PORT_START_TAG("IN5")	/* 0x7F */
 	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -576,7 +576,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( offroad )		/* complete, verified from code */
-	PORT_START      /* 0xC0 */
+	PORT_START_TAG("IN0")	/* 0xC0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* read */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* read */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* read */
@@ -586,40 +586,40 @@ static INPUT_PORTS_START( offroad )		/* complete, verified from code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0xC1 */
+	PORT_START_TAG("IN1")	/* 0xC1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0xD0 */
+	PORT_START_TAG("IN2")	/* 0xD0 */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0xD1 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0xD1 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_SERVICE_NO_TOGGLE( 0x08, IP_ACTIVE_LOW )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* Analog pedal 1 */
+	PORT_START_TAG("AN0")	/* Analog pedal 1 */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog pedal 2 */
+	PORT_START_TAG("AN1")	/* Analog pedal 2 */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
-	PORT_START      /* Analog pedal 3 */
+	PORT_START_TAG("AN2")	/* Analog pedal 3 */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(3)
-	PORT_START      /* Analog wheel 1 */
+	PORT_START_TAG("AN3")	/* Analog wheel 1 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
-	PORT_START      /* Analog wheel 2 */
+	PORT_START_TAG("AN4")	/* Analog wheel 2 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
-	PORT_START      /* Analog wheel 3 */
+	PORT_START_TAG("AN5")	/* Analog wheel 3 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(3)
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( pigout )		/* complete, verified from code */
-	PORT_START      /* 0x40 */
+	PORT_START_TAG("IN0")	/* 0x40 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
@@ -629,14 +629,14 @@ static INPUT_PORTS_START( pigout )		/* complete, verified from code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START      /* 0x41 */
+	PORT_START_TAG("IN1")	/* 0x41 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SLAVEHALT )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* read, but never referenced */
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0xf0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x50 */
+	PORT_START_TAG("IN2")	/* 0x50 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -646,13 +646,13 @@ static INPUT_PORTS_START( pigout )		/* complete, verified from code */
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 
-	PORT_START      /* 0x51 */
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_EEPROM_DATA )
+	PORT_START_TAG("IN3")	/* 0x51 */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_eeprom_DATA )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_SERVICE_NO_TOGGLE( 0x04, IP_ACTIVE_LOW )
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* 0x7F */
+	PORT_START_TAG("IN4")	/* 0x7F */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -1853,7 +1853,7 @@ ROM_END
 /*
 Copy this code into the init function and modify:
 {
-    UINT8 *ram = memory_region(REGION_CPU1);
+    UINT8 *ram = memory_region(machine, REGION_CPU1);
     FILE *output;
 
     output = fopen("indyheat.m", "w");
@@ -1881,13 +1881,13 @@ static void dasm_chunk(char *tag, UINT8 *base, UINT16 pc, UINT32 length, FILE *o
 {
 	extern unsigned DasmZ80(char *buffer, unsigned _pc);
 
-	UINT8 *old_rom = opcode_base;
-	UINT8 *old_ram = opcode_arg_base;
+	UINT8 *old_rom = opbase->rom;
+	UINT8 *old_ram = opbase->ram;
 	char buffer[256];
 	int count, offset, i;
 
 	fprintf(output, "\n\n\n%s:\n", tag);
-	opcode_base = opcode_arg_base = &base[-pc];
+	opbase->rom = opbase->ram = &base[-pc];
 	for (offset = 0; offset < length; offset += count)
 	{
 		count = DasmZ80(buffer, pc);
@@ -1904,8 +1904,8 @@ static void dasm_chunk(char *tag, UINT8 *base, UINT16 pc, UINT32 length, FILE *o
 				fprintf(output, "   ");
 		fprintf(output, "%s\n", buffer);
 	}
-	opcode_base = old_rom;
-	opcode_arg_base = old_ram;
+	opbase->rom = old_rom;
+	opbase->ram = old_ram;
 }
 #endif
 
@@ -1943,9 +1943,9 @@ static DRIVER_INIT( cerberus )
 
 	/* master CPU bankswitching */
 	leland_update_master_bank = cerberus_bankswitch;
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x2000);
-	memory_set_bankptr(2, memory_region(REGION_CPU1) + 0xa000);
-	memory_set_bankptr(3, memory_region(REGION_CPU2) + 0x2000);
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x2000);
+	memory_set_bankptr(2, memory_region(machine, REGION_CPU1) + 0xa000);
+	memory_set_bankptr(3, memory_region(machine, REGION_CPU2) + 0x2000);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x40, 0x80);
@@ -2211,7 +2211,7 @@ static DRIVER_INIT( redlin2p )
 	/* master CPU bankswitching */
 	leland_update_master_bank = redline_bankswitch;
 
-	leland_rotate_memory(0);
+	leland_rotate_memory(machine, 0);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x00, 0xc0);
@@ -2242,7 +2242,7 @@ static DRIVER_INIT( quarterb )
 	/* master CPU bankswitching */
 	leland_update_master_bank = viper_bankswitch;
 
-	leland_rotate_memory(0);
+	leland_rotate_memory(machine, 0);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x40, 0x80);
@@ -2267,9 +2267,9 @@ static DRIVER_INIT( viper )
 	/* master CPU bankswitching */
 	leland_update_master_bank = viper_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x00, 0xc0);
@@ -2298,9 +2298,9 @@ static DRIVER_INIT( teamqb )
 	/* master CPU bankswitching */
 	leland_update_master_bank = viper_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x40, 0x80);
@@ -2328,9 +2328,9 @@ static DRIVER_INIT( aafb )
 	/* master CPU bankswitching */
 	leland_update_master_bank = viper_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x00, 0xc0);
@@ -2358,9 +2358,9 @@ static DRIVER_INIT( aafbb )
 	/* master CPU bankswitching */
 	leland_update_master_bank = viper_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x80, 0x40);
@@ -2388,9 +2388,9 @@ static DRIVER_INIT( aafbd2p )
 	/* master CPU bankswitching */
 	leland_update_master_bank = viper_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x00, 0x40);
@@ -2423,9 +2423,9 @@ static DRIVER_INIT( offroad )
 	/* master CPU bankswitching */
 	leland_update_master_bank = offroad_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x00, 0xc0);
@@ -2460,9 +2460,9 @@ static DRIVER_INIT( offroadt )
 	/* master CPU bankswitching */
 	leland_update_master_bank = offroad_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x80, 0x40);
@@ -2494,9 +2494,9 @@ static DRIVER_INIT( pigout )
 	/* master CPU bankswitching */
 	leland_update_master_bank = offroad_bankswitch;
 
-	leland_rotate_memory(0);
-	leland_rotate_memory(1);
-	leland_rotate_memory(1);
+	leland_rotate_memory(machine, 0);
+	leland_rotate_memory(machine, 1);
+	leland_rotate_memory(machine, 1);
 
 	/* set up the master CPU I/O ports */
 	init_master_ports(machine, 0x00, 0x40);

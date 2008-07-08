@@ -105,7 +105,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2151intf.h"
 #include "sound/upd7759.h"
@@ -143,16 +142,17 @@ WRITE16_HANDLER( rpunch_crtc_register_w );
  *
  *************************************/
 
-static void ym2151_irq_gen(int state)
+static void ym2151_irq_gen(running_machine *machine, int state)
 {
 	ym2151_irq = state;
-	cpunum_set_input_line(Machine, 1, 0, (ym2151_irq | sound_busy) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, (ym2151_irq | sound_busy) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static MACHINE_RESET( rpunch )
 {
-	memcpy(memory_region(REGION_SOUND1), memory_region(REGION_SOUND1) + 0x20000, 0x20000);
+	UINT8 *snd = memory_region(machine, REGION_SOUND1);
+	memcpy(snd, snd + 0x20000, 0x20000);
 }
 
 
@@ -165,7 +165,7 @@ static MACHINE_RESET( rpunch )
 
 static READ16_HANDLER( common_port_r )
 {
-	return input_port_read_indexed(machine, offset) | input_port_read_indexed(machine, 2);
+	return input_port_read(machine, offset ? "P2" : "P1") | input_port_read(machine, "SERVICE");
 }
 
 
@@ -216,8 +216,9 @@ static WRITE8_HANDLER( upd_control_w )
 {
 	if ((data & 1) != upd_rom_bank)
 	{
+		UINT8 *snd = memory_region(machine, REGION_SOUND1);
 		upd_rom_bank = data & 1;
-		memcpy(memory_region(REGION_SOUND1), memory_region(REGION_SOUND1) + 0x20000 * (upd_rom_bank + 1), 0x20000);
+		memcpy(snd, snd + 0x20000 * (upd_rom_bank + 1), 0x20000);
 	}
 	upd7759_reset_w(0, data >> 7);
 }
@@ -245,7 +246,7 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x060000, 0x060fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x080000, 0x083fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0c0018, 0x0c001b) AM_READ(common_port_r)
-	AM_RANGE(0x0c001c, 0x0c001d) AM_READ(input_port_3_word_r)
+	AM_RANGE(0x0c001c, 0x0c001d) AM_READ_PORT("DSW")
 	AM_RANGE(0x0c001e, 0x0c001f) AM_READ(sound_busy_r)
 	AM_RANGE(0x0a0000, 0x0a07ff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0fc000, 0x0fffff) AM_READ(SMH_RAM)
@@ -756,8 +757,8 @@ static DRIVER_INIT( svolley )
  *
  *************************************/
 
-GAME( 1987, rabiolep, 0,        rpunch,   rabiolep, rabiolep, ROT0, "V-System Co.", "Rabio Lepus (Japan)", 0 )
-GAME( 1987, rpunch,   rabiolep, rpunch,   rpunch,   rabiolep, ROT0, "V-System Co. (Bally/Midway/Sente license)", "Rabbit Punch (US)", 0 )
-GAME( 1989, svolley,  0,        rpunch,   svolley,  svolley,  ROT0, "V-System Co.", "Super Volleyball (Japan)", 0 )
-GAME( 1989, svolleyk, svolley,  rpunch,   svolley,  svolley,  ROT0, "V-System Co.", "Super Volleyball (Korea)", 0 )
-GAME( 1989, svolleyu, svolley,  rpunch,   svolley,  svolley,  ROT0, "V-System Co. (Data East license)", "Super Volleyball (US)", 0 )
+GAME( 1987, rabiolep, 0,        rpunch,   rabiolep, rabiolep, ROT0, "V-System Co.", "Rabio Lepus (Japan)", GAME_NO_COCKTAIL )
+GAME( 1987, rpunch,   rabiolep, rpunch,   rpunch,   rabiolep, ROT0, "V-System Co. (Bally/Midway/Sente license)", "Rabbit Punch (US)", GAME_NO_COCKTAIL )
+GAME( 1989, svolley,  0,        rpunch,   svolley,  svolley,  ROT0, "V-System Co.", "Super Volleyball (Japan)", GAME_NO_COCKTAIL )
+GAME( 1989, svolleyk, svolley,  rpunch,   svolley,  svolley,  ROT0, "V-System Co.", "Super Volleyball (Korea)", GAME_NO_COCKTAIL )
+GAME( 1989, svolleyu, svolley,  rpunch,   svolley,  svolley,  ROT0, "V-System Co. (Data East license)", "Super Volleyball (US)", GAME_NO_COCKTAIL )

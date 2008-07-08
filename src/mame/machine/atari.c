@@ -40,7 +40,7 @@ static void a600xl_mmu(running_machine *machine, UINT8 new_mmu);
 
 static void pokey_reset(running_machine *machine);
 
-void atari_interrupt_cb(int mask)
+void atari_interrupt_cb(running_machine *machine, int mask)
 {
 
 	if (VERBOSE_POKEY)
@@ -69,7 +69,7 @@ void atari_interrupt_cb(int mask)
 			logerror("atari interrupt_cb TIMR1\n");
 	}
 
-	cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 /**************************************************************
@@ -135,19 +135,19 @@ void a600xl_mmu(running_machine *machine, UINT8 new_mmu)
 	/* check if self-test ROM changed */
 	if ( new_mmu & 0x80 )
 	{
-		logerror("%s MMU SELFTEST RAM\n", Machine->gamedrv->name);
+		logerror("%s MMU SELFTEST RAM\n", machine->gamedrv->name);
 		rbank2 = SMH_NOP;
 		wbank2 = SMH_NOP;
 	}
 	else
 	{
-		logerror("%s MMU SELFTEST ROM\n", Machine->gamedrv->name);
+		logerror("%s MMU SELFTEST ROM\n", machine->gamedrv->name);
 		rbank2 = SMH_BANK2;
 		wbank2 = SMH_UNMAP;
 	}
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
 	if (rbank2 == SMH_BANK2)
-		memory_set_bankptr(2, memory_region(REGION_CPU1)+0x5000);
+		memory_set_bankptr(2, memory_region(machine, REGION_CPU1)+0x5000);
 }
 
 void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
@@ -159,23 +159,23 @@ void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
 	/* check if memory C000-FFFF changed */
 	if( new_mmu & 0x01 )
 	{
-		logerror("%s MMU BIOS ROM\n", Machine->gamedrv->name);
+		logerror("%s MMU BIOS ROM\n", machine->gamedrv->name);
 		rbank3 = SMH_BANK3;
 		wbank3 = SMH_UNMAP;
-		base3 = memory_region(REGION_CPU1)+0x14000;  /* 8K lo BIOS */
+		base3 = memory_region(machine, REGION_CPU1)+0x14000;  /* 8K lo BIOS */
 		rbank4 = SMH_BANK4;
 		wbank4 = SMH_UNMAP;
-		base4 = memory_region(REGION_CPU1)+0x15800;  /* 4K FP ROM + 8K hi BIOS */
+		base4 = memory_region(machine, REGION_CPU1)+0x15800;  /* 4K FP ROM + 8K hi BIOS */
 	}
 	else
 	{
-		logerror("%s MMU BIOS RAM\n", Machine->gamedrv->name);
+		logerror("%s MMU BIOS RAM\n", machine->gamedrv->name);
 		rbank3 = SMH_BANK3;
 		wbank3 = SMH_BANK3;
-		base3 = memory_region(REGION_CPU1)+0x0c000;  /* 8K RAM */
+		base3 = memory_region(machine, REGION_CPU1)+0x0c000;  /* 8K RAM */
 		rbank4 = SMH_BANK4;
 		wbank4 = SMH_BANK4;
-		base4 = memory_region(REGION_CPU1)+0x0d800;  /* 4K RAM + 8K RAM */
+		base4 = memory_region(machine, REGION_CPU1)+0x0d800;  /* 4K RAM + 8K RAM */
 	}
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, rbank3, wbank3);
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xd800, 0xffff, 0, 0, rbank4, wbank4);
@@ -185,17 +185,17 @@ void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
 	/* check if BASIC changed */
 	if( new_mmu & 0x02 )
 	{
-		logerror("%s MMU BASIC RAM\n", Machine->gamedrv->name);
+		logerror("%s MMU BASIC RAM\n", machine->gamedrv->name);
 		rbank1 = SMH_BANK1;
 		wbank1 = SMH_BANK1;
-		base1 = memory_region(REGION_CPU1)+0x0a000;  /* 8K RAM */
+		base1 = memory_region(machine, REGION_CPU1)+0x0a000;  /* 8K RAM */
 	}
 	else
 	{
-		logerror("%s MMU BASIC ROM\n", Machine->gamedrv->name);
+		logerror("%s MMU BASIC ROM\n", machine->gamedrv->name);
 		rbank1 = SMH_BANK1;
 		wbank1 = SMH_UNMAP;
-		base1 = memory_region(REGION_CPU1)+0x10000;  /* 8K BASIC */
+		base1 = memory_region(machine, REGION_CPU1)+0x10000;  /* 8K BASIC */
 	}
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xa000, 0xbfff, 0, 0, rbank1, wbank1);
 	memory_set_bankptr(1, base1);
@@ -203,17 +203,17 @@ void a800xl_mmu(running_machine *machine, UINT8 new_mmu)
 	/* check if self-test ROM changed */
 	if( new_mmu & 0x80 )
 	{
-		logerror("%s MMU SELFTEST RAM\n", Machine->gamedrv->name);
+		logerror("%s MMU SELFTEST RAM\n", machine->gamedrv->name);
 		rbank2 = SMH_BANK2;
 		wbank2 = SMH_BANK2;
-		base2 = memory_region(REGION_CPU1)+0x05000;  /* 0x0800 bytes */
+		base2 = memory_region(machine, REGION_CPU1)+0x05000;  /* 0x0800 bytes */
 	}
 	else
 	{
-		logerror("%s MMU SELFTEST ROM\n", Machine->gamedrv->name);
+		logerror("%s MMU SELFTEST ROM\n", machine->gamedrv->name);
 		rbank2 = SMH_BANK2;
 		wbank2 = SMH_UNMAP;
-		base2 = memory_region(REGION_CPU1)+0x15000;  /* 0x0800 bytes */
+		base2 = memory_region(machine, REGION_CPU1)+0x15000;  /* 0x0800 bytes */
 	}
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5000, 0x57ff, 0, 0, rbank2, wbank2);
 	memory_set_bankptr(2, base2);
@@ -654,7 +654,7 @@ static void a800_setbank(running_machine *machine, int n)
 {
 	void *read_addr;
 	void *write_addr;
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
 
 	switch (n)
 	{
@@ -742,39 +742,39 @@ static void atari_machine_start(running_machine *machine, int type, const pia682
 
 	/* GTIA */
 	memset(&gtia_intf, 0, sizeof(gtia_intf));
-	if (port_tag_to_index("console") >= 0)
+	if (input_port_by_tag(machine->portconfig, "console") != NULL)
 		gtia_intf.console_read = console_read;
 	if (sndti_exists(SOUND_DAC, 0))
 		gtia_intf.console_write = console_write;
 	gtia_init(machine, &gtia_intf);
 
 	/* pokey */
-	add_reset_callback(Machine, pokey_reset);
+	add_reset_callback(machine, pokey_reset);
 
 	/* PIA */
 	if (pia_intf)
 	{
 		pia_config(0, pia_intf);
-		add_reset_callback(Machine, _pia_reset);
+		add_reset_callback(machine, _pia_reset);
 	}
 
 	/* ANTIC */
-	add_reset_callback(Machine, _antic_reset);
+	add_reset_callback(machine, _antic_reset);
 
 	/* cartridge */
 	if (has_cart)
-		add_reset_callback(Machine, cart_reset);
+		add_reset_callback(machine, cart_reset);
 
 #ifdef MESS
 	{
 		offs_t ram_top;
 		offs_t ram_size;
 
-		if (!strcmp(Machine->gamedrv->name, "a400")
-			|| !strcmp(Machine->gamedrv->name, "a400pal")
-			|| !strcmp(Machine->gamedrv->name, "a800")
-			|| !strcmp(Machine->gamedrv->name, "a800pal")
-			|| !strcmp(Machine->gamedrv->name, "a800xl"))
+		if (!strcmp(machine->gamedrv->name, "a400")
+			|| !strcmp(machine->gamedrv->name, "a400pal")
+			|| !strcmp(machine->gamedrv->name, "a800")
+			|| !strcmp(machine->gamedrv->name, "a800pal")
+			|| !strcmp(machine->gamedrv->name, "a800xl"))
 		{
 			ram_size = 0xA000;
 		}
@@ -835,7 +835,7 @@ MACHINE_START( a800 )
 #ifdef MESS
 DEVICE_IMAGE_LOAD( a800_cart )
 {
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
 	int size;
 
 	/* load an optional (dual) cartridge (e.g. basic.rom) */
@@ -843,7 +843,7 @@ DEVICE_IMAGE_LOAD( a800_cart )
 	{
 		size = image_fread(image, &mem[0x12000], 0x2000);
 		a800_cart_is_16k = (size == 0x2000);
-		logerror("%s loaded right cartridge '%s' size 16K\n", Machine->gamedrv->name, image_filename(image) );
+		logerror("%s loaded right cartridge '%s' size 16K\n", image->machine->gamedrv->name, image_filename(image) );
 	}
 	else
 	{
@@ -851,7 +851,7 @@ DEVICE_IMAGE_LOAD( a800_cart )
 		a800_cart_loaded = size > 0x0000;
 		size = image_fread(image, &mem[0x12000], 0x2000);
 		a800_cart_is_16k = size > 0x2000;
-		logerror("%s loaded left cartridge '%s' size %s\n", Machine->gamedrv->name, image_filename(image) , (a800_cart_is_16k) ? "16K":"8K");
+		logerror("%s loaded left cartridge '%s' size %s\n", image->machine->gamedrv->name, image_filename(image) , (a800_cart_is_16k) ? "16K":"8K");
 	}
 	return INIT_PASS;
 }
@@ -889,13 +889,13 @@ MACHINE_START( a800xl )
 #ifdef MESS
 DEVICE_IMAGE_LOAD( a800xl_cart )
 {
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
 	astring *fname;
 	mame_file *basic_fp;
 	file_error filerr;
 	unsigned size;
 
-	fname = astring_assemble_3(astring_alloc(), Machine->gamedrv->name, PATH_SEPARATOR, "basic.rom");
+	fname = astring_assemble_3(astring_alloc(), image->machine->gamedrv->name, PATH_SEPARATOR, "basic.rom");
 	filerr = mame_fopen(SEARCHPATH_ROM, astring_c(fname), OPEN_FLAG_READ, &basic_fp);
 	astring_free(fname);
 
@@ -904,7 +904,7 @@ DEVICE_IMAGE_LOAD( a800xl_cart )
 		size = mame_fread(basic_fp, &mem[0x14000], 0x2000);
 		if( size < 0x2000 )
 		{
-			logerror("%s image '%s' load failed (less than 8K)\n", Machine->gamedrv->name, astring_c(fname));
+			logerror("%s image '%s' load failed (less than 8K)\n", image->machine->gamedrv->name, astring_c(fname));
 			mame_fclose(basic_fp);
 			return 2;
 		}
@@ -919,7 +919,7 @@ DEVICE_IMAGE_LOAD( a800xl_cart )
 			size = image_fread(image, &mem[0x16000], 0x2000);
 			a800_cart_is_16k = size / 0x2000;
 			logerror("%s loaded cartridge '%s' size %s\n",
-					Machine->gamedrv->name, image_filename(image), (a800_cart_is_16k) ? "16K":"8K");
+					image->machine->gamedrv->name, image_filename(image), (a800_cart_is_16k) ? "16K":"8K");
 		}
 		mame_fclose(basic_fp);
 	}
@@ -946,7 +946,7 @@ MACHINE_START( a5200 )
 #ifdef MESS
 DEVICE_IMAGE_LOAD( a5200_cart )
 {
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
 	int size;
 
 	/* load an optional (dual) cartidge */
@@ -967,14 +967,14 @@ DEVICE_IMAGE_LOAD( a5200_cart )
 		}
 	}
 	logerror("%s loaded cartridge '%s' size %dK\n",
-		Machine->gamedrv->name, image_filename(image) , size/1024);
+		image->machine->gamedrv->name, image_filename(image) , size/1024);
 	return INIT_PASS;
 }
 
 DEVICE_IMAGE_UNLOAD( a5200_cart )
 {
-	UINT8 *mem = memory_region(REGION_CPU1);
-    /* zap the cartridge memory (again) */
+	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
+	/* zap the cartridge memory (again) */
 	memset(&mem[0x4000], 0x00, 0x8000);
 }
 #endif

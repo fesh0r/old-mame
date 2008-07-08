@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "profiler.h"
 #include "cpu/m6809/m6809.h"
 #include "irobot.h"
@@ -27,7 +26,7 @@
 
 #define IR_CPU_STATE \
 	logerror(\
-			"pc: %4x, scanline: %d\n", activecpu_get_previouspc(), video_screen_get_vpos(Machine->primary_screen))
+			"pc: %4x, scanline: %d\n", activecpu_get_previouspc(), video_screen_get_vpos(machine->primary_screen))
 
 
 UINT8 irobot_vg_clear;
@@ -51,7 +50,7 @@ UINT8 *irobot_combase;
 UINT8 irobot_bufsel;
 UINT8 irobot_alphamap;
 
-static void irmb_run(void);
+static void irmb_run(running_machine *machine);
 
 
 /***********************************************************************/
@@ -100,7 +99,7 @@ WRITE8_HANDLER( irobot_statwr_w )
 	irobot_combase_mb = comRAM[(data >> 7) ^ 1];
 	irobot_bufsel = data & 0x02;
 	if (((data & 0x01) == 0x01) && (irobot_vg_clear == 0))
-		irobot_poly_clear();
+		irobot_poly_clear(machine);
 
 	irobot_vg_clear = data & 0x01;
 
@@ -118,13 +117,13 @@ WRITE8_HANDLER( irobot_statwr_w )
 		irvg_running=1;
 	}
 	if ((data & 0x10) && !(irobot_statwr & 0x10))
-		irmb_run();
+		irmb_run(machine);
 	irobot_statwr = data;
 }
 
 WRITE8_HANDLER( irobot_out0_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	irobot_out0 = data;
 	switch (data & 0x60)
@@ -146,7 +145,7 @@ WRITE8_HANDLER( irobot_out0_w )
 
 WRITE8_HANDLER( irobot_rom_banksel_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	switch ((data & 0x0E) >> 1)
 	{
@@ -192,7 +191,7 @@ static TIMER_CALLBACK( scanline_callback )
 static TIMER_CALLBACK( irmb_done_callback );
 MACHINE_RESET( irobot )
 {
-	UINT8 *MB = memory_region(REGION_CPU2);
+	UINT8 *MB = memory_region(machine, REGION_CPU2);
 
 	/* initialize the memory regions */
 	mbROM 		= MB + 0x00000;
@@ -226,9 +225,9 @@ READ8_HANDLER( irobot_control_r )
 {
 
 	if (irobot_control_num == 0)
-		return input_port_read_indexed(machine, 5);
+		return input_port_read(machine, "AN0");
 	else if (irobot_control_num == 1)
-		return input_port_read_indexed(machine, 6);
+		return input_port_read(machine, "AN1");
 	return 0;
 
 }
@@ -370,9 +369,9 @@ static void irmb_dout(const irmb_ops *curop, UINT32 d)
 
 
 /* Convert microcode roms to a more usable form */
-static void load_oproms(void)
+static void load_oproms(running_machine *machine)
 {
-	UINT8 *MB = memory_region(REGION_PROMS) + 0x20;
+	UINT8 *MB = memory_region(machine, REGION_PROMS) + 0x20;
 	int i;
 
 	/* allocate RAM */
@@ -451,7 +450,7 @@ DRIVER_INIT( irobot )
 		irmb_regs[i] = 0;
 	}
 	irmb_latch=0;
-	load_oproms();
+	load_oproms(machine);
 }
 
 static TIMER_CALLBACK( irmb_done_callback )
@@ -575,7 +574,7 @@ static TIMER_CALLBACK( irmb_done_callback )
 
 
 /* Run mathbox */
-static void irmb_run(void)
+static void irmb_run(running_machine *machine)
 {
 	const irmb_ops *prevop = &mbops[0];
 	const irmb_ops *curop = &mbops[0];
@@ -862,7 +861,7 @@ default:	case 0x3f:	IXOR(irmb_din(curop), 0);							break;
 		timer_adjust_oneshot(irmb_timer, attotime_mul(ATTOTIME_IN_NSEC(200), icount), 0);
 	}
 #else
-	cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, ASSERT_LINE);
 #endif
 	irmb_running=1;
 }

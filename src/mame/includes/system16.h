@@ -24,9 +24,9 @@ VIDEO_UPDATE( system16b );
 VIDEO_START( system18 );
 VIDEO_UPDATE( system18 );
 
-void system18_set_grayscale(int enable);
-void system18_set_vdp_enable(int eanble);
-void system18_set_vdp_mixing(int mixing);
+void system18_set_grayscale(running_machine *machine, int enable);
+void system18_set_vdp_enable(running_machine *machine, int eanble);
+void system18_set_vdp_mixing(running_machine *machine, int mixing);
 
 /*----------- defined in video/segaorun.c -----------*/
 
@@ -80,6 +80,12 @@ extern int sys16_sprite_quartet2( struct sys16_sprite_attributes *sprite, const 
 
 #define NumOfShadowColors 32
 #define ShadowColorsMultiplier 2
+
+/*----------- defined in machine/s16fd.c -----------*/
+
+void *fd1094_get_decrypted_base(void);
+void fd1094_machine_init(void);
+void fd1094_driver_init(running_machine *machine, void (*set_decrypted)(running_machine *, UINT8 *));
 
 /*----------- defined in machine/system16.c -----------*/
 

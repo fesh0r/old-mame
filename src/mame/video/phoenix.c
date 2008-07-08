@@ -14,9 +14,12 @@ static UINT8 *videoram_pg[2];
 static UINT8 videoram_pg_index;
 static UINT8 palette_bank;
 static UINT8 cocktail_mode;
-static int pleiads_protection_question;
-static int survival_protection_value;
+static UINT8 pleiads_protection_question;
+static UINT8 survival_protection_value;
+static int survival_sid_value;
 static tilemap *fg_tilemap, *bg_tilemap;
+static UINT8 survival_input_latches[2];
+static UINT8 survival_input_readc;
 
 
 /***************************************************************************
@@ -183,6 +186,8 @@ VIDEO_START( phoenix )
 	memory_set_bank(1, 0);
 
     videoram_pg_index = 0;
+	palette_bank = 0;
+	cocktail_mode = 0;
 
 	fg_tilemap = tilemap_create(get_fg_tile_info,tilemap_scan_rows,8,8,32,32);
 	bg_tilemap = tilemap_create(get_bg_tile_info,tilemap_scan_rows,     8,8,32,32);
@@ -199,6 +204,21 @@ VIDEO_START( phoenix )
 	state_save_register_global(videoram_pg_index);
 	state_save_register_global(palette_bank);
 	state_save_register_global(cocktail_mode);
+
+	/* some more candidates */
+	pleiads_protection_question = 0;
+	survival_protection_value = 0;
+	survival_sid_value = 0;
+	survival_input_readc = 0;
+	survival_input_latches[0] = 0;
+	survival_input_latches[1] = 0;
+
+	state_save_register_global(pleiads_protection_question);
+	state_save_register_global(survival_protection_value);
+	state_save_register_global(survival_sid_value);
+	state_save_register_global(survival_input_readc);
+	state_save_register_global_array(survival_input_latches);
+
 }
 
 /***************************************************************************
@@ -209,7 +229,7 @@ VIDEO_START( phoenix )
 
 WRITE8_HANDLER( phoenix_videoram_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	videoram_pg[videoram_pg_index][offset] = data;
 
@@ -293,9 +313,9 @@ WRITE8_HANDLER( phoenix_scroll_w )
 CUSTOM_INPUT( player_input_r )
 {
 	if (cocktail_mode)
-		return (input_port_read(machine, "CTRL") & 0xf0) >> 4;
+		return (input_port_read(field->port->machine, "CTRL") & 0xf0) >> 4;
 	else
-		return (input_port_read(machine, "CTRL") & 0x0f) >> 0;
+		return (input_port_read(field->port->machine, "CTRL") & 0x0f) >> 0;
 }
 
 CUSTOM_INPUT( pleiads_protection_r )
@@ -314,32 +334,114 @@ CUSTOM_INPUT( pleiads_protection_r )
 		return 1;
 		break;
 	default:
-		logerror("Unknown protection question %02X at %04X\n", pleiads_protection_question, activecpu_get_pc());
+		logerror("Unknown protection question %02X at %04X\n", pleiads_protection_question, safe_activecpu_get_pc());
 		return 0;
 	}
 }
 
+/*
+    Protection.  There is a 14 pin part connected to the 8910 Port B D0 labeled DL57S22
+
+    Inputs are demangled at 0x1ae6-0x1b04 using the table at 0x1b26
+    and bit 0 of the data from the AY8910 port B. The equation is:
+    input = map[input] + ay_data + b@437c
+    (b@437c is set and cleared elsewhere in the code, but is
+    always 0 during the demangling.)
+
+    A routine at 0x2f31 checks for incorrect AY8910 port B data.
+    Incorrect values increment an error counter at 0x4396 which
+    causes bad sprites and will kill the game after a specified
+    number of errors. For input & 0xf0 == 0 or 2 or 4, AY8910
+    port B must have bit 0 cleared. For all other joystick bits,
+    it must be set.
+
+    Another  routine at 0x02bc checks for bad SID data, and
+    increments the same error counter and cancels certain joystick input.
+
+    The hiscore data entry routine at 0x2fd8 requires unmangled inputs
+    at 0x3094. This could explain the significance of the loop where
+    the joystick inputs are read for gameplay at 0x2006-0x202a. The
+    code waits here for two consecutive identical reads from the AY8910.
+    This probably means there's a third read of raw data with some or all
+    of the otherwise unused bits 1-7 on the AY8910 port B set to
+    distinguish it from a gameplay read.
+*/
+
+#define REMAP_JS(js) ((ret & 0xf) | ( (js & 0xf)  << 4))
 READ8_HANDLER( survival_input_port_0_r )
 {
-	int ret = input_port_read(machine, "IN0");
+	UINT8 ret = ~input_port_read(machine, "IN0");
 
-	if (survival_protection_value)
+	if( survival_input_readc++ == 2 )
 	{
-		ret ^= 0xf0;
+		survival_input_readc = 0;
+		survival_protection_value = 0;
+		return ~ret;
 	}
 
-	return ret;
+	// Any value that remaps the joystick input to 0,2,4 must clear bit 0
+	// on the AY8910 port B. All other remaps must set bit 0.
+
+	survival_protection_value = 0xff;
+	survival_sid_value = 0;
+
+	switch( ( ret >> 4) & 0xf )
+	{
+		case 0: // js_nop = 7 + 1
+			ret = REMAP_JS( 7 );
+			break;
+		case 1: // js_n = 1 + 1
+			ret = REMAP_JS( 8 );
+			break;
+		case 2: // js_e = 0 + 0
+			survival_sid_value = 0x80;
+			survival_protection_value = 0xfe;
+			ret = REMAP_JS( 2 );
+			break;
+		case 3: // js_ne = 0 + 1;
+			survival_sid_value = 0x80;
+			ret = REMAP_JS( 0xa );
+			break;
+		case 4: // js_w = 4 + 0
+			survival_sid_value = 0x80;
+			survival_protection_value = 0xfe;
+			ret = REMAP_JS( 4 );
+			break;
+		case 5: // js_nw = 2 + 1
+			survival_sid_value = 0x80;
+			ret = REMAP_JS( 0xc );
+			break;
+		case 8: // js_s = 5 + 1
+			ret = REMAP_JS( 1 );
+			break;
+		case 0xa: // js_se = 6 + 1
+			survival_sid_value = 0x80;
+			ret = REMAP_JS( 3 );
+			break;
+		case 0xc: // js_sw = 4 + 1
+			survival_sid_value = 0x80;
+			ret = REMAP_JS( 5 );
+			break;
+		default:
+			break;
+	}
+
+	survival_input_latches[0] = survival_input_latches[1];
+	survival_input_latches[1] = ~ret;
+
+	return survival_input_latches[0];
 }
 
 READ8_HANDLER( survival_protection_r )
 {
-	if (activecpu_get_pc() == 0x2017)
-	{
-		survival_protection_value ^= 1;
-	}
-
 	return survival_protection_value;
 }
+
+int survival_sid_callback( void )
+{
+	return survival_sid_value;
+}
+
 
 /***************************************************************************
 

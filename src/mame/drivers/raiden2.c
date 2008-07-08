@@ -62,9 +62,9 @@ Current Problem(s) - in order of priority
 #include "audio/seibu.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
+#include "machine/seicop.h"
+#include "includes/raiden2.h"
 
-/* in machine/r2crypt.c */
-extern void raiden2_decrypt_sprites(void);
 
 static tilemap *background_layer,*midground_layer,*foreground_layer,*text_layer;
 static UINT16 *back_data,*fore_data,*mid_data, *w1ram;
@@ -80,11 +80,6 @@ static void combine32(UINT32 *val, int offset, UINT16 data, UINT16 mem_mask)
 	UINT16 *dest = (UINT16 *)val + BYTE_XOR_LE(offset);
 	COMBINE_DATA(dest);
 }
-
-/* machine/seicop.c */
-extern READ16_HANDLER( raiden2_cop2_r );
-extern WRITE16_HANDLER( raiden2_cop2_w );
-//extern void cop_init(void);
 
 
 
@@ -666,7 +661,7 @@ static WRITE16_HANDLER(any_w)
 		logerror("mainram_w %04x, %04x & %04x (%x)\n", offset*2, data, mem_mask, activecpu_get_pc());
 
 	//  if(offset == 0x700)
-	//      cpu_setbank(2, memory_region(REGION_USER1)+0x20000*data);
+	//      cpu_setbank(2, memory_region(machine, REGION_USER1)+0x20000*data);
 
 	COMBINE_DATA(&mainram[offset]);
 }
@@ -727,7 +722,7 @@ static void r2_dt(UINT16 sc, UINT16 cc, UINT16 ent, UINT16 tm, UINT16 x, UINT16 
 	logerror("Draw tilemap %04x:%04x  %04x %04x  %04x %04x, bank %d\n",
 			 sc, cc, ent, tm, x, y, bank);
 
-	//  cpu_setbank(2, memory_region(REGION_USER1)+0x20000*bank);
+	//  cpu_setbank(2, memory_region(machine, REGION_USER1)+0x20000*bank);
 }
 
 static void r2_6f6c(UINT16 cc, UINT16 v1, UINT16 v2)
@@ -735,7 +730,7 @@ static void r2_6f6c(UINT16 cc, UINT16 v1, UINT16 v2)
 //  int bank = 0;
 	logerror("6f6c: 9800:%04x  %04x %04x\n",
 			 cc, v1, v2);
-	//  cpu_setbank(2, memory_region(REGION_USER1)+0x20000*bank);
+	//  cpu_setbank(2, memory_region(machine, REGION_USER1)+0x20000*bank);
 }
 #endif
 
@@ -749,10 +744,6 @@ static MACHINE_RESET(raiden2)
 
 
 /* MEMORY MAPS */
-
-extern UINT16* cop_mcu_ram;
-extern WRITE16_HANDLER( raiden2_mcu_w );
-extern READ16_HANDLER( raiden2_mcu_r );
 
 static ADDRESS_MAP_START( raiden2_mem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x00400, 0x007ff) AM_READWRITE(raiden2_mcu_r, raiden2_mcu_w) AM_BASE(&cop_mcu_ram)
@@ -779,7 +770,7 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START( raiden2 )
 	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
-	PORT_START	/* IN0 */
+	PORT_START_TAG("P1")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -789,7 +780,7 @@ static INPUT_PORTS_START( raiden2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN1 */
+	PORT_START_TAG("P2")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -799,7 +790,7 @@ static INPUT_PORTS_START( raiden2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* Dip switch A  */
+	PORT_START_TAG("DSWA")	/* Dip switch A  */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ))
 	PORT_DIPSETTING(    0x01, DEF_STR( 4C_1C ))
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ))
@@ -825,7 +816,7 @@ static INPUT_PORTS_START( raiden2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* Dip switch B */
+	PORT_START_TAG("DSWB")	/* Dip switch B */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ))
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
@@ -848,7 +839,7 @@ static INPUT_PORTS_START( raiden2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* START BUTTONS */
+	PORT_START_TAG("SYSTEM")	/* START BUTTONS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -859,7 +850,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( raidendx )
 	SEIBU_COIN_INPUTS	/* coin inputs read through sound cpu */
 
-	PORT_START	/* IN0 */
+	PORT_START_TAG("P1")	/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -869,7 +860,7 @@ static INPUT_PORTS_START( raidendx )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN1 */
+	PORT_START_TAG("P2")	/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -879,7 +870,7 @@ static INPUT_PORTS_START( raidendx )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* Dip switch A  */
+	PORT_START_TAG("DSWA")	/* Dip switch A  */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coin_A ))
 	PORT_DIPSETTING(    0x01, DEF_STR( 4C_1C ))
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ))
@@ -905,7 +896,7 @@ static INPUT_PORTS_START( raidendx )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* Dip switch B  */
+	PORT_START_TAG("DSWB")	/* Dip switch B  */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ))
 	PORT_DIPSETTING(    0x03, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easy ) )
@@ -929,7 +920,7 @@ static INPUT_PORTS_START( raidendx )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ))
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* START BUTTONS */
+	PORT_START_TAG("SYSTEM")	/* START BUTTONS */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1907,12 +1898,12 @@ ROM_END
 static DRIVER_INIT (raiden2)
 {
 	/* wrong , there must be some banking this just stops it crashing */
-	UINT8 *RAM = memory_region(REGION_USER1);
+	UINT8 *RAM = memory_region(machine, REGION_USER1);
 
 	memory_set_bankptr(1,&RAM[0x100000]);
 	memory_set_bankptr(2,&RAM[0x040000]);
 
-	raiden2_decrypt_sprites();
+	raiden2_decrypt_sprites(machine);
 }
 
 
@@ -1927,15 +1918,15 @@ static const UINT8 r2_v33_default_eeprom_type1[32] =
 static NVRAM_HANDLER( rdx_v33 )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);
+		eeprom_init(&eeprom_interface_93C46);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
-			EEPROM_set_data(r2_v33_default_eeprom_type1,32);
+			eeprom_set_data(r2_v33_default_eeprom_type1,32);
 		}
 	}
 }
@@ -1945,9 +1936,9 @@ static WRITE16_HANDLER( rdx_v33_eeprom_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		EEPROM_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x20);
-		EEPROM_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x20);
+		eeprom_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 
 		if (data&0xc7) logerror("eeprom_w extra bits used %04x\n",data);
 	}
@@ -1959,7 +1950,7 @@ static WRITE16_HANDLER( rdx_v33_eeprom_w )
 
 static READ16_HANDLER( rdx_v33_eeprom_r )
 {
-	return input_port_read_indexed(machine, 0) | (EEPROM_read_bit()<<4);
+	return input_port_read(machine, "SYSTEM") | (eeprom_read_bit()<<4);
 }
 
 
@@ -1993,7 +1984,7 @@ static WRITE16_HANDLER( mcu_prog_offs_w )
 
 static READ16_HANDLER( r2_playerin_r )
 {
-	return input_port_read_indexed(machine, 1);
+	return input_port_read(machine, "INPUT");
 }
 static READ16_HANDLER( rdx_v33_oki_r )
 {
@@ -2090,7 +2081,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( rdx_v33 )
-   PORT_START
+   PORT_START_TAG("SYSTEM")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -2102,7 +2093,7 @@ static INPUT_PORTS_START( rdx_v33 )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 	PORT_BIT( 0xff80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("INPUT")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -2167,22 +2158,23 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT(rdx_v33)
 {
-	memory_set_bankptr(1,&memory_region(REGION_CPU1)[0x020000]);
-	memory_set_bankptr(2,&memory_region(REGION_CPU1)[0x030000]);
-	memory_set_bankptr(3,&memory_region(REGION_CPU1)[0x040000]);
-	memory_set_bankptr(4,&memory_region(REGION_CPU1)[0x050000]);
-	memory_set_bankptr(5,&memory_region(REGION_CPU1)[0x060000]);
-	memory_set_bankptr(6,&memory_region(REGION_CPU1)[0x070000]);
-	memory_set_bankptr(7,&memory_region(REGION_CPU1)[0x080000]);
-	memory_set_bankptr(8,&memory_region(REGION_CPU1)[0x090000]);
-	memory_set_bankptr(9,&memory_region(REGION_CPU1)[0x0a0000]);
-	memory_set_bankptr(10,&memory_region(REGION_CPU1)[0x0b0000]);
-	memory_set_bankptr(11,&memory_region(REGION_CPU1)[0x0c0000]);
-	memory_set_bankptr(12,&memory_region(REGION_CPU1)[0x0d0000]);
-	memory_set_bankptr(13,&memory_region(REGION_CPU1)[0x0e0000]);
-	memory_set_bankptr(14,&memory_region(REGION_CPU1)[0x0f0000]);
+	UINT8 *prg = memory_region(machine, REGION_CPU1);
+	memory_set_bankptr(1,&prg[0x020000]);
+	memory_set_bankptr(2,&prg[0x030000]);
+	memory_set_bankptr(3,&prg[0x040000]);
+	memory_set_bankptr(4,&prg[0x050000]);
+	memory_set_bankptr(5,&prg[0x060000]);
+	memory_set_bankptr(6,&prg[0x070000]);
+	memory_set_bankptr(7,&prg[0x080000]);
+	memory_set_bankptr(8,&prg[0x090000]);
+	memory_set_bankptr(9,&prg[0x0a0000]);
+	memory_set_bankptr(10,&prg[0x0b0000]);
+	memory_set_bankptr(11,&prg[0x0c0000]);
+	memory_set_bankptr(12,&prg[0x0d0000]);
+	memory_set_bankptr(13,&prg[0x0e0000]);
+	memory_set_bankptr(14,&prg[0x0f0000]);
 
-	raiden2_decrypt_sprites();
+	raiden2_decrypt_sprites(machine);
 }
 
 

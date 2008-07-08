@@ -107,7 +107,7 @@ extern UINT16 *namcos2_sprite_ram;
 WRITE16_HANDLER( namcos2_sprite_ram_w );
 READ16_HANDLER( namcos2_sprite_ram_r );
 
-int namcos2_GetPosIrqScanline( void );
+int namcos2_GetPosIrqScanline( running_machine *machine );
 
 WRITE16_HANDLER( namcos2_gfx_ctrl_w );
 READ16_HANDLER( namcos2_gfx_ctrl_r );
@@ -145,8 +145,8 @@ READ16_HANDLER( namcos2_flap_prot_r );
 /**************************************************************/
 /*  EEPROM memory function handlers                           */
 /**************************************************************/
-#define NAMCOS2_68K_EEPROM_W	namcos2_68k_eeprom_w
-#define NAMCOS2_68K_EEPROM_R	namcos2_68k_eeprom_r
+#define NAMCOS2_68K_eeprom_W	namcos2_68k_eeprom_w
+#define NAMCOS2_68K_eeprom_R	namcos2_68k_eeprom_r
 NVRAM_HANDLER( namcos2 );
 WRITE16_HANDLER( namcos2_68k_eeprom_w );
 READ16_HANDLER( namcos2_68k_eeprom_r );

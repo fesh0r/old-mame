@@ -15,30 +15,63 @@ CPUOBJ = $(EMUOBJ)/cpu
 
 
 #-------------------------------------------------
+# Shared code
+#-------------------------------------------------
+
+OBJDIRS += $(CPUOBJ)
+CPUOBJS += $(CPUOBJ)/vtlb.o
+
+
+
+#-------------------------------------------------
 # Dynamic recompiler objects
 #-------------------------------------------------
 
+DRCOBJ = \
+	$(CPUOBJ)/drcbec.o \
+	$(CPUOBJ)/drcbeut.o \
+	$(CPUOBJ)/drccache.o \
+	$(CPUOBJ)/drcfe.o \
+	$(CPUOBJ)/drcuml.o \
+
+DRCDEPS = \
+	$(CPUSRC)/drcbeut.h \
+	$(CPUSRC)/drccache.h \
+	$(CPUSRC)/drcfe.h \
+	$(CPUSRC)/drcuml.h \
+	$(CPUSRC)/drcumlsh.h \
+
+# fixme - need to make this work for other target architectures (PPC)
+
+ifndef FORCE_DRC_C_BACKEND
 ifdef PTR64
 
-DRCOBJ = $(CPUOBJ)/x64drc.o $(CPUOBJ)/x86log.o $(CPUOBJ)/drcfe.o
+DRCOBJ += \
+	$(CPUOBJ)/drcbex64.o \
+	$(CPUOBJ)/x86log.o
 
-DRCDEPS = 	$(CPUSRC)/x86emit.h \
-			$(CPUSRC)/x64drc.c \
-			$(CPUSRC)/x64drc.h \
+DRCDEPS += \
+	$(CPUSRC)/x86emit.h
 
-$(DRCOBJ): $(DRCDEPS)
+DEFS += -DNATIVE_DRC=drcbe_x64_be_interface
 
 else
 
-DRCOBJ = $(CPUOBJ)/x86drc.o $(CPUOBJ)/x86log.o $(CPUOBJ)/drcfe.o
+DRCOBJ += \
+	$(CPUOBJ)/drcbex86.o \
+	$(CPUOBJ)/x86log.o
 
-DRCDEPS = 	$(CPUSRC)/x86emit.h \
-			$(CPUSRC)/x86drc.c \
-			$(CPUSRC)/x86drc.h \
+DRCDEPS += \
+	$(CPUSRC)/x86emit.h
+
+DEFS += -DNATIVE_DRC=drcbe_x86_be_interface
+
+endif
+endif
+
 
 $(DRCOBJ): $(DRCDEPS)
 
-endif
 
 
 #-------------------------------------------------
@@ -244,6 +277,7 @@ $(CPUOBJ)/cdp1802/cdp1802.o:	$(CPUSRC)/cdp1802/cdp1802.c \
 CPUDEFS += -DHAS_COP410=$(if $(filter COP410,$(CPUS)),1,0)
 CPUDEFS += -DHAS_COP411=$(if $(filter COP411,$(CPUS)),1,0)
 CPUDEFS += -DHAS_COP420=$(if $(filter COP420,$(CPUS)),1,0)
+CPUDEFS += -DHAS_COP421=$(if $(filter COP421,$(CPUS)),1,0)
 
 ifneq ($(filter COP410 COP411,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/cop400
@@ -251,7 +285,7 @@ CPUOBJS += $(CPUOBJ)/cop400/cop410.o
 DBGOBJS += $(CPUOBJ)/cop400/cop410ds.o
 endif
 
-ifneq ($(filter COP420,$(CPUS)),)
+ifneq ($(filter COP420 COP421,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/cop400
 CPUOBJS += $(CPUOBJ)/cop400/cop420.o
 DBGOBJS += $(CPUOBJ)/cop400/cop420ds.o
@@ -431,12 +465,17 @@ CPUDEFS += -DHAS_SH2=$(if $(filter SH2,$(CPUS)),1,0)
 
 ifneq ($(filter SH2,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/sh2
-CPUOBJS += $(CPUOBJ)/sh2/sh2.o
+CPUOBJS += $(CPUOBJ)/sh2/sh2.o $(CPUOBJ)/sh2/sh2comn.o
 DBGOBJS += $(CPUOBJ)/sh2/sh2dasm.o
 endif
 
 $(CPUOBJ)/sh2/sh2.o:	$(CPUSRC)/sh2/sh2.c \
-						$(CPUSRC)/sh2/sh2.h
+			$(CPUSRC)/sh2/sh2.h \
+			$(CPUSRC)/sh2/sh2comn.h
+
+$(CPUOBJ)/sh2/sh2comn.o:  $(CPUSRC)/sh2/sh2comn.c \
+			$(CPUSRC)/sh2/sh2comn.h \
+			$(CPUSRC)/sh2/sh2.h
 
 #-------------------------------------------------
 # Hitachi SH4
@@ -581,6 +620,20 @@ endif
 $(CPUOBJ)/i8051/i8051.o:	$(CPUSRC)/i8051/i8051.c \
 							$(CPUSRC)/i8051/i8051.h \
 							$(CPUSRC)/i8051/i8051ops.c
+
+
+
+#-------------------------------------------------
+# DS5002FP
+#-------------------------------------------------
+
+CPUDEFS += -DHAS_DS5002FP=$(if $(filter DS5002FP,$(CPUS)),1,0)
+
+ifneq ($(filter DS5002FP,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/ds5002fp
+CPUOBJS += $(CPUOBJ)/ds5002fp/ds5002fp.o
+DBGOBJS += $(CPUOBJ)/ds5002fp/ds5002fpdasm.o
+endif
 
 
 
@@ -793,27 +846,22 @@ CPUDEFS += -DHAS_RM7000=$(if $(filter RM7000,$(CPUS)),1,0)
 
 ifneq ($(filter R4600 R4650 R4700 R5000 QED5271 RM7000,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/mips
-CPUOBJS += $(CPUOBJ)/mips/mips3com.o
+CPUOBJS += $(CPUOBJ)/mips/mips3com.o $(CPUOBJ)/mips/mips3fe.o $(CPUOBJ)/mips/mips3drc.o $(DRCOBJ)
 DBGOBJS += $(CPUOBJ)/mips/mips3dsm.o
-
-ifdef X86_MIPS3_DRC
-CPUOBJS += $(CPUOBJ)/mips/mips3drc.o $(CPUOBJ)/mips/mips3fe.o $(DRCOBJ)
-else
-CPUOBJS += $(CPUOBJ)/mips/mips3.o
-endif
 endif
 
-$(CPUOBJ)/mips/mips3.o:		$(CPUSRC)/mips/mips3.c \
-							$(CPUSRC)/mips/mips3.h \
-							$(CPUSRC)/mips/mips3com.h
+$(CPUOBJ)/mips/mips3com.o:	$(CPUSRC)/mips/mips3.h \
+								$(CPUSRC)/mips/mips3com.h
 
-$(CPUOBJ)/mips/mips3drc.o:	$(CPUSRC)/mips/mips3drc.c \
-							$(CPUSRC)/mips/mdrcold.c \
-							$(CPUSRC)/mips/mdrc64.c \
-							$(CPUSRC)/mips/mips3.h \
-							$(CPUSRC)/mips/mips3com.h \
-							$(CPUSRC)/mips/mips3fe.h \
-							$(DRCDEPS)
+$(CPUOBJ)/mips/mips3fe.o:	$(CPUSRC)/mips/mips3.h \
+								$(CPUSRC)/mips/mips3com.h \
+								$(CPUSRC)/mips/mips3fe.h
+
+$(CPUOBJ)/mips/mips3drc.o:		$(CPUSRC)/mips/mips3drc.c \
+								$(CPUSRC)/mips/mips3.h \
+								$(CPUSRC)/mips/mips3com.h \
+								$(CPUSRC)/mips/mips3fe.h \
+								$(DRCDEPS)
 
 
 
@@ -1023,12 +1071,12 @@ M68KMAKE = $(BUILDOUT)/m68kmake$(BUILD_EXE)
 endif
 
 # when we compile source files we need to include generated files from the OBJ directory
-$(CPUOBJ)/m68000/%.o: $(CPUSRC)/m68000/%.c
+$(CPUOBJ)/m68000/%.o: $(CPUSRC)/m68000/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -I$(CPUOBJ)/m68000 -c $< -o $@
 
 # when we compile generated files we need to include stuff from the src directory
-$(CPUOBJ)/m68000/%.o: $(CPUOBJ)/m68000/%.c
+$(CPUOBJ)/m68000/%.o: $(CPUOBJ)/m68000/%.c | $(OSPREBUILD)
 	@echo Compiling $<...
 	$(CC) $(CDEFS) $(CFLAGS) -I$(CPUSRC)/m68000 -c $< -o $@
 
@@ -1091,41 +1139,33 @@ $(CPUOBJ)/pdp1/pdp1.o:	$(CPUSRC)/pdp1/pdp1.c \
 # Motorola PowerPC series
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_PPC403=$(if $(filter PPC403,$(CPUS)),1,0)
+CPUDEFS += -DHAS_PPC403GA=$(if $(filter PPC403GA,$(CPUS)),1,0)
+CPUDEFS += -DHAS_PPC403GCX=$(if $(filter PPC403GCX,$(CPUS)),1,0)
 CPUDEFS += -DHAS_PPC601=$(if $(filter PPC601,$(CPUS)),1,0)
 CPUDEFS += -DHAS_PPC602=$(if $(filter PPC602,$(CPUS)),1,0)
 CPUDEFS += -DHAS_PPC603=$(if $(filter PPC603,$(CPUS)),1,0)
+CPUDEFS += -DHAS_PPC603E=$(if $(filter PPC603E,$(CPUS)),1,0)
+CPUDEFS += -DHAS_PPC603R=$(if $(filter PPC603R,$(CPUS)),1,0)
 CPUDEFS += -DHAS_PPC604=$(if $(filter PPC604,$(CPUS)),1,0)
 CPUDEFS += -DHAS_MPC8240=$(if $(filter MPC8240,$(CPUS)),1,0)
 
-ifneq ($(filter PPC403 PPC601 PPC602 PPC603 PPC604 MPC8240,$(CPUS)),)
+ifneq ($(filter PPC403GA PPC403GCX PPC601 PPC602 PPC603 PPC603E PPC603R PPC604 MPC8240,$(CPUS)),)
 OBJDIRS += $(CPUOBJ)/powerpc
+CPUOBJS += $(CPUOBJ)/powerpc/ppccom.o $(CPUOBJ)/powerpc/ppcfe.o $(CPUOBJ)/powerpc/ppcdrc.o $(DRCOBJ)
 DBGOBJS += $(CPUOBJ)/powerpc/ppc_dasm.o
-
-ifdef X86_PPC_DRC
-CPUOBJS += $(CPUOBJ)/powerpc/ppcdrc.o $(DRCOBJ)
-else
-CPUOBJS += $(CPUOBJ)/powerpc/ppc.o
-endif
 endif
 
-$(CPUOBJ)/powerpc/ppc.o:	$(CPUSRC)/powerpc/ppc.c \
-							$(CPUSRC)/powerpc/ppc.h \
-							$(CPUSRC)/powerpc/ppc_ops.c \
-							$(CPUSRC)/powerpc/ppc_mem.c \
-							$(CPUSRC)/powerpc/ppc403.c \
-							$(CPUSRC)/powerpc/ppc602.c \
-							$(CPUSRC)/powerpc/ppc603.c
+$(CPUOBJ)/powerpc/ppccom.o:	$(CPUSRC)/powerpc/ppc.h \
+							$(CPUSRC)/powerpc/ppccom.h
+
+$(CPUOBJ)/powerpc/ppcfe.o:	$(CPUSRC)/powerpc/ppc.h \
+							$(CPUSRC)/powerpc/ppccom.h \
+							$(CPUSRC)/powerpc/ppcfe.h
 
 $(CPUOBJ)/powerpc/ppcdrc.o:	$(CPUSRC)/powerpc/ppcdrc.c \
 							$(CPUSRC)/powerpc/ppc.h \
-							$(CPUSRC)/powerpc/drc_ops.c \
-							$(CPUSRC)/powerpc/drc_ops.h \
-							$(CPUSRC)/powerpc/ppc_ops.c \
-							$(CPUSRC)/powerpc/ppc_mem.c \
-							$(CPUSRC)/powerpc/ppc403.c \
-							$(CPUSRC)/powerpc/ppc602.c \
-							$(CPUSRC)/powerpc/ppc603.c \
+							$(CPUSRC)/powerpc/ppccom.h \
+							$(CPUSRC)/powerpc/ppcfe.h \
 							$(DRCDEPS)
 
 
@@ -1294,8 +1334,7 @@ endif
 $(CPUOBJ)/saturn/saturn.o:	$(CPUSRC)/saturn/saturn.c \
 							$(CPUSRC)/saturn/sattable.c \
 							$(CPUSRC)/saturn/satops.c \
-							$(CPUSRC)/saturn/saturn.h \
-							$(CPUSRC)/saturn/sat.h
+							$(CPUSRC)/saturn/saturn.h
 
 
 
@@ -1639,21 +1678,21 @@ $(CPUOBJ)/z80/z80.o:	$(CPUSRC)/z80/z80.c \
 
 
 #-------------------------------------------------
-# Game Boy Z-80
+# Sharp LR35902 (Game Boy CPU)
 #-------------------------------------------------
 
-CPUDEFS += -DHAS_Z80GB=$(if $(filter Z80GB,$(CPUS)),1,0)
+CPUDEFS += -DHAS_LR35902=$(if $(filter LR35902,$(CPUS)),1,0)
 
-ifneq ($(filter Z80GB,$(CPUS)),)
-OBJDIRS += $(CPUOBJ)/z80gb
-CPUOBJS += $(CPUOBJ)/z80gb/z80gb.o
-DBGOBJS += $(CPUOBJ)/z80gb/z80gbd.o
+ifneq ($(filter LR35902,$(CPUS)),)
+OBJDIRS += $(CPUOBJ)/lr35902
+CPUOBJS += $(CPUOBJ)/lr35902/lr35902.o
+DBGOBJS += $(CPUOBJ)/lr35902/lr35902d.o
 endif
 
-$(CPUOBJ)/z80gb/z80gb.o:	$(CPUSRC)/z80gb/z80gb.c \
-							$(CPUSRC)/z80gb/z80gb.h \
-							$(CPUSRC)/z80gb/opc_cb.h \
-							$(CPUSRC)/z80gb/opc_main.h
+$(CPUOBJ)/lr35902/lr35902.o:	$(CPUSRC)/lr35902/lr35902.c \
+								$(CPUSRC)/lr35902/lr35902.h \
+								$(CPUSRC)/lr35902/opc_cb.h \
+								$(CPUSRC)/lr35902/opc_main.h
 
 
 

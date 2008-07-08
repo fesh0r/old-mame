@@ -16,7 +16,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "lemmings.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
@@ -33,10 +32,10 @@ static WRITE16_HANDLER( lemmings_control_w )
 static READ16_HANDLER( lemmings_trackball_r )
 {
 	switch (offset) {
-	case 0: return input_port_read_indexed(machine, 4); break;
-	case 1: return input_port_read_indexed(machine, 5); break;
-	case 4: return input_port_read_indexed(machine, 6); break;
-	case 5: return input_port_read_indexed(machine, 7); break;
+	case 0: return input_port_read(machine, "AN0"); break;
+	case 1: return input_port_read(machine, "AN1"); break;
+	case 4: return input_port_read(machine, "AN2"); break;
+	case 5: return input_port_read(machine, "AN3"); break;
 	}
 	return 0;
 }
@@ -46,13 +45,13 @@ static READ16_HANDLER( lemmings_prot_r )
 {
  	switch (offset<<1) {
 		case 0x41a: /* Player input */
-			return input_port_read_indexed(machine, 0);
+			return input_port_read(machine, "IN0");
 
 		case 0x320: /* Coins */
-			return input_port_read_indexed(machine, 1);
+			return input_port_read(machine, "IN1");
 
 		case 0x4e6: /* Dips */
-			return (input_port_read_indexed(machine, 2) + (input_port_read_indexed(machine, 3) << 8));
+			return (input_port_read(machine, "DSW1") + (input_port_read(machine, "DSW2") << 8));
 	}
 
 	return 0;
@@ -260,9 +259,9 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void sound_irq(int state)
+static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1,0,state);
+	cpunum_set_input_line(machine, 1,0,state);
 }
 
 static const struct YM2151interface ym2151_interface =

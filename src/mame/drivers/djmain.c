@@ -92,9 +92,9 @@ static WRITE32_HANDLER( paletteram32_w )
 
 //---------
 
-static void sndram_set_bank(void)
+static void sndram_set_bank(running_machine *machine)
 {
-	sndram = memory_region(REGION_SOUND1) + 0x80000 * sndram_bank;
+	sndram = memory_region(machine, REGION_SOUND1) + 0x80000 * sndram_bank;
 }
 
 static WRITE32_HANDLER( sndram_bank_w )
@@ -102,7 +102,7 @@ static WRITE32_HANDLER( sndram_bank_w )
 	if (ACCESSING_BITS_16_31)
 	{
 		sndram_bank = (data >> 16) & 0x1f;
-		sndram_set_bank();
+		sndram_set_bank(machine);
 	}
 }
 
@@ -203,7 +203,7 @@ static WRITE32_HANDLER( obj_ctrl_w )
 
 static READ32_HANDLER( obj_rom_r )
 {
-	UINT8 *mem8 = memory_region(REGION_GFX1);
+	UINT8 *mem8 = memory_region(machine, REGION_GFX1);
 	int bank = obj_regs[0x28/4] >> 16;
 
 	offset += bank * 0x200;
@@ -239,7 +239,7 @@ static WRITE32_HANDLER( v_ctrl_w )
 
 static READ32_HANDLER( v_rom_r )
 {
-	UINT8 *mem8 = memory_region(REGION_GFX2);
+	UINT8 *mem8 = memory_region(machine, REGION_GFX2);
 	int bank = K056832_word_r(machine, 0x34/2, 0xffff);
 
 	offset *= 2;
@@ -260,26 +260,27 @@ static READ32_HANDLER( v_rom_r )
 
 static READ32_HANDLER( inp1_r )
 {
-	UINT32 result = (input_port_read_indexed(machine, 5)<<24) | (input_port_read_indexed(machine, 2)<<16) | (input_port_read_indexed(machine, 1)<<8) | input_port_read_indexed(machine, 0);
+	UINT32 result = (input_port_read(machine, "DSW3")<<24) | (input_port_read(machine, "IN2")<<16) | (input_port_read(machine, "IN1")<<8) | input_port_read(machine, "IN0");
 
 	return result;
 }
 
 static READ32_HANDLER( inp2_r )
 {
-	return (input_port_read_indexed(machine, 3)<<24) | (input_port_read_indexed(machine, 4)<<16) | 0xffff;
+	return (input_port_read(machine, "DSW1")<<24) | (input_port_read(machine, "DSW2")<<16) | 0xffff;
 }
 
 static READ32_HANDLER( turntable_r )
 {
 	UINT32 result = 0;
+	static const char *ttnames[] = { "TT1", "TT2" };
 
 	if (ACCESSING_BITS_8_15)
 	{
 		UINT8 pos;
 		int delta;
 
-		pos = input_port_read_indexed(machine, 6 + turntable_select);
+		pos = input_port_read(machine, ttnames[turntable_select]);
 		delta = pos - turntable_last_pos[turntable_select];
 		if (delta < -128)
 			delta += 256;
@@ -501,7 +502,7 @@ ADDRESS_MAP_END
  *************************************/
 
 #define BEATMANIA_INPUT \
-	PORT_START      /* IN 0 */ \
+	PORT_START_TAG("IN0")		/* IN 0 */ \
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) \
@@ -511,7 +512,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) \
  \
-	PORT_START      /* IN 1 */ \
+	PORT_START_TAG("IN1")		/* IN 1 */ \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(2) \
@@ -521,21 +522,21 @@ ADDRESS_MAP_END
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_START3 ) PORT_NAME("Effect")	/* EFFECT */ \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) \
  \
-	PORT_START      /* IN 2 */ \
+	PORT_START_TAG("IN2")		/* IN 2 */ \
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)	/* TEST SW */ \
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service")	/* SERVICE */ \
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_SERVICE2 ) PORT_NAME("Reset")		/* RESET SW */ \
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 #define BEATMANIA_TURNTABLE \
-	PORT_START      /* IN 6: turn table 1P */ \
+	PORT_START_TAG("TT1")		/* IN 6: turn table 1P */ \
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_PLAYER(1) \
  \
-	PORT_START      /* IN 7: turn table 2P */ \
+	PORT_START_TAG("TT2")		/* IN 7: turn table 2P */ \
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(15) PORT_PLAYER(2)
 
 #define BEATMANIA_DSW1(base,mask) \
-	PORT_START      /* IN 3 */ \
+	PORT_START_TAG("DSW1")		/* IN 3 */ \
 	PORT_DIPNAME( 0xff, (0xff & mask) | base, DEF_STR( Coinage ) ) \
 	PORT_DIPSETTING(    (0xe0 & mask) | base, "1P 8C / 2P 16C / Continue 8C" ) \
 	PORT_DIPSETTING(    (0xe1 & mask) | base, "1P 8C / 2P 16C / Continue 7C" ) \
@@ -572,7 +573,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    (0x00 & mask) | base, DEF_STR( Free_Play ) )
 
 #define BM1STMIX_DSW1 \
-	PORT_START      /* IN 3 */ \
+	PORT_START_TAG("DSW1")		/* IN 3 */ \
 	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x1f, 0x1f, DEF_STR( Coinage ) ) \
 	PORT_DIPSETTING(    0x1e, "1P 3C / 2P 6C / Continue 3C" ) \
@@ -595,7 +596,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
 
 #define BEATMANIA_DSW2 \
-	PORT_START      /* IN 4 */ \
+	PORT_START_TAG("DSW2")		/* IN 4 */ \
 	PORT_DIPNAME( 0x80, 0x80, "Score Display" ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) ) \
@@ -619,7 +620,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, "Level 3" )
 
 #define BEATMANIA_DSW2_OLD_LEVEL \
-	PORT_START      /* IN 4 */ \
+	PORT_START_TAG("DSW2")		/* IN 4 */ \
 	PORT_DIPNAME( 0x80, 0x80, "Score Display" ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) ) \
@@ -648,7 +649,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, "Level 15" )
 
 #define BM1STMIX_DSW2 \
-	PORT_START      /* IN 4 */ \
+	PORT_START_TAG("DSW2")		/* IN 4 */ \
 	PORT_DIPNAME( 0x80, 0x80, "Enable Expert Mode" ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) ) \
 	PORT_DIPSETTING(    0x80, DEF_STR( Yes ) ) \
@@ -660,7 +661,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x1f, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 
 #define BMCOMPMX_DSW2 \
-	PORT_START      /* IN 4 */ \
+	PORT_START_TAG("DSW2")		/* IN 4 */ \
 	PORT_DIPNAME( 0x80, 0x80, "Score Display" ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) ) \
@@ -689,7 +690,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, "Level 15" )
 
 #define BEATMANIA_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x20, 0x20, "Event Mode" ) \
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) ) \
@@ -704,11 +705,11 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )		/* DSW 3-6 */
 
 #define BM1STMIX_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 #define BM2NDMIX_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x39, 0x39, "Event Mode / Free Hidden Songs" ) \
 	PORT_DIPSETTING(    0x39, "Off / Off" ) \
@@ -721,7 +722,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )		/* DSW 3-5 */ \
 
 #define BMCOMPMX_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x20, 0x20, "Event Mode" ) \
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) ) \
@@ -738,7 +739,7 @@ ADDRESS_MAP_END
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 #define BM4THMIX_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x20, 0x20, "Event Mode" ) \
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) ) \
@@ -755,7 +756,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )		/* DSW 3-6 */
 
 #define HMCOMPM2_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x20, 0x20, "Event Mode" ) \
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) ) \
@@ -772,7 +773,7 @@ ADDRESS_MAP_END
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )		/* DSW 3-6 */
 
 #define BMDCT_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xc0, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x20, 0x20, "Event Mode" ) \
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) ) \
@@ -853,7 +854,7 @@ INPUT_PORTS_END
 
 
 #define POPN_INPUT \
-	PORT_START      /* IN 0 */ \
+	PORT_START_TAG("IN0")		/* IN 0 */ \
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) \
@@ -863,7 +864,7 @@ INPUT_PORTS_END
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(1) \
  \
-	PORT_START      /* IN 1 */ \
+	PORT_START_TAG("IN1")		/* IN 1 */ \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON9 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
@@ -873,14 +874,14 @@ INPUT_PORTS_END
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) \
  \
-	PORT_START      /* IN 2 */ \
+	PORT_START_TAG("IN2")		/* IN 2 */ \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)	/* TEST SW */ \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* SERVICE */ \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE2 )	/* RESET SW */ \
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 #define POPN_DSW1 \
-	PORT_START      /* IN 3 */ \
+	PORT_START_TAG("DSW1")		/* IN 3 */ \
 	PORT_DIPNAME( 0xc0, 0xc0, "Jamming Gauge Blocks" ) \
 	PORT_DIPSETTING(    0x80, "5" ) \
 	PORT_DIPSETTING(    0xc0, "6" ) \
@@ -924,7 +925,7 @@ INPUT_PORTS_END
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
 
 #define POPN1_DSW1 \
-	PORT_START      /* IN 3 */ \
+	PORT_START_TAG("DSW1")		/* IN 3 */ \
 	PORT_DIPNAME( 0xc0, 0xc0, "Jamming Gauge Blocks" ) \
 	PORT_DIPSETTING(    0x80, "5" ) \
 	PORT_DIPSETTING(    0xc0, "6" ) \
@@ -950,7 +951,7 @@ INPUT_PORTS_END
 	PORT_DIPSETTING(    0x00, DEF_STR( Free_Play ) )
 
 #define POPN_DSW2 \
-	PORT_START      /* IN 4 */ \
+	PORT_START_TAG("DSW2")		/* IN 4 */ \
 	PORT_DIPNAME( 0x80, 0x80, "Score Display" ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) ) \
@@ -972,7 +973,7 @@ INPUT_PORTS_END
 	PORT_DIPSETTING(    0x00, "3" )
 
 #define POPN1_DSW2 \
-	PORT_START      /* IN 4 */ \
+	PORT_START_TAG("DSW2")		/* IN 4 */ \
 	PORT_DIPNAME( 0x80, 0x80, "Score Display" ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) ) \
@@ -996,14 +997,14 @@ INPUT_PORTS_END
 	PORT_DIPSETTING(    0x00, "3" )
 
 #define POPN_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xf7, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x08, 0x08, "All Song Mode" )		/* DSW 3-3 */ \
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) ) \
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
 #define POPN1_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xec, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x10, 0x10, "All Song Mode" )		/* DSW 3-2 */ \
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) ) \
@@ -1035,7 +1036,7 @@ INPUT_PORTS_END
 #endif
 
 #define POPNST_INPUT \
-	PORT_START      /* IN 0 */ \
+	PORT_START_TAG("IN0")		/* IN 0 */ \
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) \
@@ -1045,7 +1046,7 @@ INPUT_PORTS_END
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_PLAYER(1) \
  \
-	PORT_START      /* IN 1 */ \
+	PORT_START_TAG("IN1")		/* IN 1 */ \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON9 ) PORT_PLAYER(1) \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON10 ) PORT_PLAYER(1) \
@@ -1055,14 +1056,14 @@ INPUT_PORTS_END
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START3 )	/* RIGHT SELECTION */ \
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) \
  \
-	PORT_START      /* IN 2 */ \
+	PORT_START_TAG("IN2")		/* IN 2 */ \
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME(DEF_STR( Test )) PORT_CODE(KEYCODE_F2)	/* TEST SW */ \
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )	/* SERVICE */ \
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_BIT( 0xf8, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 #define POPNST_DSW1 \
-	PORT_START      /* IN 3 */ \
+	PORT_START_TAG("DSW1")		/* IN 3 */ \
 	PORT_DIPNAME( 0xe0, 0xe0, "Coinage (6 Buttons)" ) \
 	PORT_DIPSETTING(    0x20, "1P 4C / Continue 2C" ) \
 	PORT_DIPSETTING(    0x40, "1P 3C / Continue 3C" ) \
@@ -1092,7 +1093,7 @@ INPUT_PORTS_END
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 #define POPNST_DSW2 \
-	PORT_START      /* IN 4 */ \
+	PORT_START_TAG("DSW2")		/* IN 4 */ \
 	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Demo_Sounds ) ) \
 	PORT_DIPSETTING(    0xc0, "Loud" ) \
 	PORT_DIPSETTING(    0x80, DEF_STR ( Medium ) ) \
@@ -1114,7 +1115,7 @@ INPUT_PORTS_END
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 #define POPNST_DSW3 \
-	PORT_START      /* IN 5 */ \
+	PORT_START_TAG("DSW3")		/* IN 5 */ \
 	PORT_BIT( 0xd5, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
 	PORT_DIPNAME( 0x2a, 0x2a, "Enable Secret Mode" ) \
 	PORT_DIPSETTING(    0x2a, DEF_STR( Off ) ) \
@@ -1122,7 +1123,7 @@ INPUT_PORTS_END
 
 #ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( popnstage )
-	POPNST_INPUT			/* IN 0-2 */
+	POPNST_INPUT		/* IN 0-2 */
 	POPNST_DSW1			/* IN 3 */
 	POPNST_DSW2			/* IN 4 */
 	POPNST_DSW3			/* IN 5 */
@@ -1175,13 +1176,13 @@ static const struct K054539interface k054539_interface =
 
 static STATE_POSTLOAD( djmain_postload )
 {
-	sndram_set_bank();
+	sndram_set_bank(machine);
 }
 
 static MACHINE_START( djmain )
 {
 	const device_config *ide = device_list_find_by_tag(machine->config->devicelist, IDE_CONTROLLER, "ide");
-	UINT8 *region = memory_region(REGION_SOUND1);
+	UINT8 *region = memory_region(machine, REGION_SOUND1);
 
 	if (ide != NULL && ide_master_password != NULL)
 		ide_set_master_password(ide, ide_master_password);
@@ -1202,7 +1203,7 @@ static MACHINE_RESET( djmain )
 {
 	/* reset sound ram bank */
 	sndram_bank = 0;
-	sndram_set_bank();
+	sndram_set_bank(machine);
 
 	/* reset the IDE controller */
 	devtag_reset(machine, IDE_CONTROLLER, "ide");
@@ -1288,9 +1289,9 @@ ROM_START( bm1stmix )
 	ROM_LOAD16_BYTE( "753jaa10.27d", 0x100001, 0x80000, CRC(391F4BFD) SHA1(791c9889ea3ce639bbfb87934a1cad9aa3c9ccde) )
 
 	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
+	DISK_IMAGE( "753jaa11", 0, MD5(d56ec7b9877d1f26d7fc1cabed404947) SHA1(71d200d1bd3f1f3a01f4daa78dc9abcca8b8a1fb) )	/* ver 1.00 JA */
 	// There is an alternate image
 	//DISK_IMAGE( "753jaa11", 0, MD5(260c9b72f4a03055e3abad61c6225324) SHA1(2cc3e149744516bf2353a2b47d33bc9d2072b6c4) ) /* ver 1.00 JA */
-	DISK_IMAGE( "753jaa11", 0, MD5(d56ec7b9877d1f26d7fc1cabed404947) SHA1(71d200d1bd3f1f3a01f4daa78dc9abcca8b8a1fb) )	/* ver 1.00 JA */
 ROM_END
 
 ROM_START( bm2ndmix )
@@ -1335,8 +1336,6 @@ ROM_START( bm2ndmxa )
 	DISK_IMAGE( "853jaa11", 0, MD5(37281741b748bea7dfa711a956649d1e) SHA1(03d6cc5aea5920163fbaba34c4f838ca605a87e3) )	/* ver 1.10 JA */
 ROM_END
 
-
-
 ROM_START( bm3rdmix )
 	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* MC68EC020FG25 MPU */
 	ROM_LOAD16_BYTE( "825jaa01.6a", 0x000000, 0x80000, CRC(CF7494A5) SHA1(994df0644817f44d135a16f04d8dae9ec73e3728) )
@@ -1356,7 +1355,7 @@ ROM_START( bm3rdmix )
 
 
 	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
-	DISK_IMAGE( "825jaa", 0, SHA1(dc10d8d281dd8153aeb620228e397aba0bbac198) MD5(3276e3ed57f1a6d9a18365054b0439ba) ) /* ver 1.00 JA */
+	DISK_IMAGE( "825jaa11", 0, SHA1(dc10d8d281dd8153aeb620228e397aba0bbac198) MD5(3276e3ed57f1a6d9a18365054b0439ba) )	/* ver 1.00 JA */
 ROM_END
 
 ROM_START( bmcompmx )
@@ -1463,7 +1462,7 @@ ROM_START( bmclubmx )
 	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
 	DISK_IMAGE( "993jaa11.chd", 0, NO_DUMP )
 	// this image has not been verified
-//  DISK_IMAGE( "993jaa11.chd", 0, MD5(e26eb62d7cf3357585f5066da6063143) )  /* ver 1.00 JA */
+	//  DISK_IMAGE( "993jaa11.chd", 0, MD5(e26eb62d7cf3357585f5066da6063143) )  /* ver 1.00 JA */
 ROM_END
 
 ROM_START( bmcompm2 )
@@ -1589,9 +1588,32 @@ ROM_START( bm7thmix )
 	ROM_LOAD16_BYTE( "b07jaa10.27d", 0x100001, 0x80000, CRC(6B75BA9C) SHA1(aee922adc3bc0296ae6e08e461b20a9e5e72a2df) )
 
 	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
-	DISK_IMAGE( "b07jab11.chd", 0, NO_DUMP )
+	DISK_IMAGE( "b07jaa11", 0, MD5(8ee59f074ee79eb7a435a54b6745387c) SHA1(91957d353d2978ce46c5232dd182c056206eb722) )	/* ver 1.00 JA */
 	// this image has not been verified
 	//DISK_IMAGE( "b07jab11.chd", 0, MD5(0e9440787ca69567792095085e2a3619) )    /* ver 1.00 JA */
+ROM_END
+
+ROM_START( bmfinal )
+	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* MC68EC020FG25 MPU */
+	ROM_LOAD16_BYTE( "c01jaa01.6a", 0x000000, 0x80000, CRC(A64EEFF7) SHA1(377eee1f41e3072f9154a7c17ec4c4f3fb63ea4a) )
+	ROM_LOAD16_BYTE( "c01jaa02.8a", 0x000001, 0x80000, CRC(599BDAC5) SHA1(f85aff020c92fcd3c2a42036615226b54e5bee98) )
+
+	ROM_REGION( 0x200000, REGION_GFX1, 0)		/* SPRITE */
+	ROM_LOAD16_BYTE( "c01jaa03.19a", 0x000000, 0x80000, CRC(1C9C6EB7) SHA1(bd1a9d8ed78095328817f599f52d9d34e09e9275) )
+	ROM_LOAD16_BYTE( "c01jaa04.20a", 0x000001, 0x80000, CRC(4E5AA665) SHA1(22f3888a29497ff0a801cce620ca0373268e5cd9) )
+	ROM_LOAD16_BYTE( "c01jaa05.22a", 0x100000, 0x80000, CRC(37DAB217) SHA1(66b07c36e7749a4c9d9dfaca633958a4922c4562) )
+	ROM_LOAD16_BYTE( "c01jaa06.24a", 0x100001, 0x80000, CRC(D35C6818) SHA1(ce608603ea3662f8cda5cf958a676d64a0f74645) )
+
+	ROM_REGION( 0x200000, REGION_GFX2, 0 )		/* TILEMAP */
+	ROM_LOAD16_BYTE( "c01jaa07.22d", 0x000000, 0x80000, CRC(3E70F506) SHA1(d3cd0b48383bf2514b7f47fade8549ea8e3c5555) )
+	ROM_LOAD16_BYTE( "c01jaa08.23d", 0x000001, 0x80000, CRC(535E6065) SHA1(131f7eec4179145781bbd23474202f4eaf9cefd0) )
+	ROM_LOAD16_BYTE( "c01jaa09.25d", 0x100000, 0x80000, CRC(45CF93B1) SHA1(7c5082bcd1fe15761a0a965e25dda121904ff1bd) )
+	ROM_LOAD16_BYTE( "c01jaa10.27d", 0x100001, 0x80000, CRC(C9927749) SHA1(c2644877bda483e241381265e723ea8ab8357761) )
+
+	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
+	DISK_IMAGE( "c01jaa11", 0, MD5(ab47c58c0eda12c591d20013e16525f0) SHA1(f7e19e590005201d859f9a4ced8edf7fe88099f6) )	/* ver 1.00 JA */
+	// this image has not been verified
+	//DISK_IMAGE( "c01jaa11", 0, MD5(8bb7e6b6bc63cac8a4f2997307c25748) )    /* ver 1.00 JA */
 ROM_END
 
 #if 0
@@ -1615,27 +1637,6 @@ ROM_START( bm3rdmxb )
 
 	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
 	DISK_IMAGE( "825jab11", 0, MD5(f4360da10a932ba90e93469df7426d1d) SHA1(1) )  /* ver 1.01 JA */
-ROM_END
-
-ROM_START( bmfinal )
-	ROM_REGION( 0x100000, REGION_CPU1, 0 )		/* MC68EC020FG25 MPU */
-	ROM_LOAD16_BYTE( "c01jaa01.6a", 0x000000, 0x80000, CRC(A64EEFF7) SHA1(377eee1f41e3072f9154a7c17ec4c4f3fb63ea4a) )
-	ROM_LOAD16_BYTE( "c01jaa02.8a", 0x000001, 0x80000, CRC(599BDAC5) SHA1(f85aff020c92fcd3c2a42036615226b54e5bee98) )
-
-	ROM_REGION( 0x200000, REGION_GFX1, 0)		/* SPRITE */
-	ROM_LOAD16_BYTE( "c01jaa03.19a", 0x000000, 0x80000, CRC(1C9C6EB7) SHA1(bd1a9d8ed78095328817f599f52d9d34e09e9275) )
-	ROM_LOAD16_BYTE( "c01jaa04.20a", 0x000001, 0x80000, CRC(4E5AA665) SHA1(22f3888a29497ff0a801cce620ca0373268e5cd9) )
-	ROM_LOAD16_BYTE( "c01jaa05.22a", 0x100000, 0x80000, CRC(37DAB217) SHA1(66b07c36e7749a4c9d9dfaca633958a4922c4562) )
-	ROM_LOAD16_BYTE( "c01jaa06.24a", 0x100001, 0x80000, CRC(D35C6818) SHA1(ce608603ea3662f8cda5cf958a676d64a0f74645) )
-
-	ROM_REGION( 0x200000, REGION_GFX2, 0 )		/* TILEMAP */
-	ROM_LOAD16_BYTE( "c01jaa07.22d", 0x000000, 0x80000, CRC(3E70F506) SHA1(d3cd0b48383bf2514b7f47fade8549ea8e3c5555) )
-	ROM_LOAD16_BYTE( "c01jaa08.23d", 0x000001, 0x80000, CRC(535E6065) SHA1(131f7eec4179145781bbd23474202f4eaf9cefd0) )
-	ROM_LOAD16_BYTE( "c01jaa09.25d", 0x100000, 0x80000, CRC(45CF93B1) SHA1(7c5082bcd1fe15761a0a965e25dda121904ff1bd) )
-	ROM_LOAD16_BYTE( "c01jaa10.27d", 0x100001, 0x80000, CRC(C9927749) SHA1(c2644877bda483e241381265e723ea8ab8357761) )
-
-	DISK_REGION( REGION_DISKS )			/* IDE HARD DRIVE */
-	DISK_IMAGE( "c01jaa11.chd", 0, MD5(8bb7e6b6bc63cac8a4f2997307c25748) )	/* ver 1.00 JA */
 ROM_END
 
 ROM_START( popn1 )
@@ -1916,7 +1917,6 @@ static DRIVER_INIT( bm7thmix )
 	ide_user_password = bm7thmix_user_password;
 }
 
-#if 0
 static DRIVER_INIT( bmfinal )
 {
 	static const UINT8 bmfinal_user_password[2 + 32] =
@@ -1933,7 +1933,7 @@ static DRIVER_INIT( bmfinal )
 	ide_master_password = beatmania_master_password;
 	ide_user_password = bmfinal_user_password;
 }
-#endif
+
 
 /*************************************
  *
@@ -1957,13 +1957,12 @@ GAME( 2000, hmcompm2, bmcompm2, djmain,   hmcompm2,  hmcompm2,  ROT0, "Konami", 
 GAME( 2000, bmdct,    0,        djmain,   bmdct,     bmdct,     ROT0, "Konami", "beatmania f. Dreams Come True (ver JA-A)", 0 )
 GAME( 2000, bmcorerm, 0,        djmain,   beatmania, bmcorerm,  ROT0, "Konami", "beatmania CORE REMIX (ver JA-A)", 0 )
 GAME( 2001, bm6thmix, 0,        djmain,   beatmania, bm6thmix,  ROT0, "Konami", "beatmania 6th MIX (ver JA-A)", 0 )
-GAME( 2001, bm7thmix, 0,        djmain,   beatmania, bm7thmix,  ROT0, "Konami", "beatmania 7th MIX (ver JA-B)", GAME_NOT_WORKING ) // missing hd
+GAME( 2001, bm7thmix, 0,        djmain,   beatmania, bm7thmix,  ROT0, "Konami", "beatmania 7th MIX (ver JA-B)", 0 )
+GAME( 2002, bmfinal,  0,        djmain,   beatmania, bmfinal,   ROT0, "Konami", "beatmania THE FINAL (ver JA-A)", 0 )
 
 #if 0
 // for reference, these sets have not been verified
 GAME( 1998, bm3rdmxb, bm3rdmix, djmain,   bm3rdmix,  beatmania, ROT0, "Konami", "beatmania 3rd MIX (ver JA-B)", 0 )
-
-GAME( 2002, bmfinal,  0,        djmain,   beatmania, bmfinal,   ROT0, "Konami", "beatmania THE FINAL (ver JA-A)", 0 )
 
 GAME( 1998, popn1,    0,        djmain,   popn1,     beatmania, ROT0, "Konami", "Pop'n Music 1 (ver JA-A)", 0 )
 GAME( 1998, popn2,    0,        djmain,   popnmusic, beatmania, ROT0, "Konami", "Pop'n Music 2 (ver JA-A)", 0 )

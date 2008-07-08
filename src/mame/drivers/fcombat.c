@@ -61,7 +61,7 @@ extern int fcombat_sv;
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -146,7 +146,7 @@ static READ8_HANDLER( fcombat_protection_r )
 static READ8_HANDLER( fcombat_port01_r )
 {
 	/* the cocktail flip bit muxes between ports 0 and 1 */
-	return fcombat_cocktail_flip ? input_port_read_indexed(machine, 1) : input_port_read_indexed(machine, 0);
+	return fcombat_cocktail_flip ? input_port_read(machine, "IN1") : input_port_read(machine, "IN0");
 }
 
 
@@ -187,7 +187,7 @@ static READ8_HANDLER(e300_r)
 	int wx=(tx+fcombat_sh)/16;
 	int wy=(ty*2+fcombat_sv)/16;
 
-	return memory_region(REGION_USER2)[wx*32*16+wy];
+	return memory_region(machine, REGION_USER2)[wx*32*16+wy];
 }
 
 static WRITE8_HANDLER(ee00_w)
@@ -201,8 +201,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd000, 0xd7ff) AM_RAM AM_BASE(&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0xd800, 0xd8ff) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xe000, 0xe000) AM_READ(fcombat_port01_r)
-	AM_RANGE(0xe100, 0xe100) AM_READ(input_port_2_r)
-	AM_RANGE(0xe200, 0xe200) AM_READ(input_port_3_r)
+	AM_RANGE(0xe100, 0xe100) AM_READ_PORT("DSW0")
+	AM_RANGE(0xe200, 0xe200) AM_READ_PORT("DSW1")
 	AM_RANGE(0xe300, 0xe300) AM_READ(e300_r)
 	AM_RANGE(0xe400, 0xe400) AM_READ(fcombat_protection_r) // protection?
 	AM_RANGE(0xe800, 0xe800) AM_WRITE(fcombat_videoreg_w)	// at least bit 0 for flip screen and joystick input multiplexor
@@ -329,8 +329,8 @@ static DRIVER_INIT( fcombat )
 
 	/* make a temporary copy of the character data */
 	src = temp;
-	dst = memory_region(REGION_GFX1);
-	length = memory_region_length(REGION_GFX1);
+	dst = memory_region(machine, REGION_GFX1);
+	length = memory_region_length(machine, REGION_GFX1);
 	memcpy(src, dst, length);
 
 	/* decode the characters */
@@ -347,8 +347,8 @@ static DRIVER_INIT( fcombat )
 
 	/* make a temporary copy of the sprite data */
 	src = temp;
-	dst = memory_region(REGION_GFX2);
-	length = memory_region_length(REGION_GFX2);
+	dst = memory_region(machine, REGION_GFX2);
+	length = memory_region_length(machine, REGION_GFX2);
 	memcpy(src, dst, length);
 
 	/* decode the sprites */
@@ -368,8 +368,8 @@ static DRIVER_INIT( fcombat )
 
 	/* make a temporary copy of the character data */
 	src = temp;
-	dst = memory_region(REGION_GFX3);
-	length = memory_region_length(REGION_GFX3);
+	dst = memory_region(machine, REGION_GFX3);
+	length = memory_region_length(machine, REGION_GFX3);
 	memcpy(src, dst, length);
 
 	/* decode the characters */
@@ -387,8 +387,8 @@ static DRIVER_INIT( fcombat )
 	}
 
 	src = temp;
-	dst = memory_region(REGION_USER1);
-	length = memory_region_length(REGION_USER1);
+	dst = memory_region(machine, REGION_USER1);
+	length = memory_region_length(machine, REGION_USER1);
 	memcpy(src, dst, length);
 
 	for (oldaddr = 0; oldaddr < 32; oldaddr++)
@@ -399,8 +399,8 @@ static DRIVER_INIT( fcombat )
 
 
 	src = temp;
-	dst = memory_region(REGION_USER2);
-	length = memory_region_length(REGION_USER2);
+	dst = memory_region(machine, REGION_USER2);
+	length = memory_region_length(machine, REGION_USER2);
 	memcpy(src, dst, length);
 
 	for (oldaddr = 0; oldaddr < 32; oldaddr++)

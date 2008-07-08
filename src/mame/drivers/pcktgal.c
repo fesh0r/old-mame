@@ -13,7 +13,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
@@ -30,7 +29,7 @@ extern VIDEO_UPDATE( pcktgal );
 
 static WRITE8_HANDLER( pcktgal_bank_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	if (data & 1) { memory_set_bankptr(1,&RAM[0x4000]); }
 	else { memory_set_bankptr(1,&RAM[0x10000]); }
@@ -52,7 +51,7 @@ static WRITE8_HANDLER( pcktgal_sound_w )
 
 static int msm5205next;
 
-static void pcktgal_adpcm_int(int data)
+static void pcktgal_adpcm_int(running_machine *machine, int data)
 {
 	static int toggle;
 
@@ -61,7 +60,7 @@ static void pcktgal_adpcm_int(int data)
 
 	toggle = 1 - toggle;
 	if (toggle)
-		cpunum_set_input_line(Machine, 1,M6502_IRQ_LINE,HOLD_LINE);
+		cpunum_set_input_line(machine, 1,M6502_IRQ_LINE,HOLD_LINE);
 }
 
 static WRITE8_HANDLER( pcktgal_adpcm_data_w )
@@ -429,7 +428,7 @@ static DRIVER_INIT( deco222 )
 {
 	int A;
 	UINT8 *decrypted = auto_malloc(0x10000);
-	UINT8 *rom = memory_region(REGION_CPU2);
+	UINT8 *rom = memory_region(machine, REGION_CPU2);
 
 	memory_set_decrypted_region(1, 0x8000, 0xffff, decrypted);
 
@@ -437,17 +436,17 @@ static DRIVER_INIT( deco222 )
 	for (A = 0x8000;A < 0x18000;A++)
 		decrypted[A-0x8000] = (rom[A] & 0x9f) | ((rom[A] & 0x20) << 1) | ((rom[A] & 0x40) >> 1);
 
-	memory_configure_bank(3, 0, 2, memory_region(REGION_CPU2) + 0x10000, 0x4000);
+	memory_configure_bank(3, 0, 2, memory_region(machine, REGION_CPU2) + 0x10000, 0x4000);
 	memory_configure_bank_decrypted(3, 0, 2, &decrypted[0x8000], 0x4000);
 }
 
 static DRIVER_INIT( graphics )
 {
-	UINT8 *rom = memory_region(REGION_GFX1);
-	int len = memory_region_length(REGION_GFX1);
+	UINT8 *rom = memory_region(machine, REGION_GFX1);
+	int len = memory_region_length(machine, REGION_GFX1);
 	int i,j,temp[16];
 
-	memory_configure_bank(3, 0, 2, memory_region(REGION_CPU2) + 0x10000, 0x4000);
+	memory_configure_bank(3, 0, 2, memory_region(machine, REGION_CPU2) + 0x10000, 0x4000);
 
 	/* Tile graphics roms have some swapped lines, original version only */
 	for (i = 0x00000;i < len;i += 32)

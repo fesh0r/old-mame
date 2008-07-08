@@ -383,7 +383,7 @@ static WRITE16_HANDLER( gain_control_w )
 
 ***************************************************************************/
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -397,13 +397,13 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( taito_b )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 		if (file)
 		{
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 	}
 }
@@ -412,7 +412,7 @@ static READ16_HANDLER( eeprom_r )
 {
 	int res;
 
-	res = (EEPROM_read_bit() & 0x01);
+	res = (eeprom_read_bit() & 0x01);
 	res |= input_port_read_indexed(machine,1) & 0xfe; /* coin inputs */
 
 	return res;
@@ -443,9 +443,9 @@ static WRITE16_HANDLER( eeprom_w )
 		/* bit 7 - set all the time (Chip Select?) */
 
 		/* EEPROM */
-		EEPROM_write_bit(data & 0x04);
-		EEPROM_set_clock_line((data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_write_bit(data & 0x04);
+		eeprom_set_clock_line((data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -1380,7 +1380,7 @@ static INPUT_PORTS_START( crimecj )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN0")
+	PORT_START_TAG("IN1")
 	TAITO_B_PLAYERS_INPUT( 2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -2566,9 +2566,9 @@ GFXDECODE_END
 
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface_rsaga2 =
@@ -3269,7 +3269,7 @@ MACHINE_DRIVER_END
 #if 0
 static void ryujin_patch(void)
 {
-	UINT16 *rom = (UINT16*)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16*)memory_region(machine, REGION_CPU1);
 	rom[ 0x62/2 ] = 1;
 	//0 (already in rom) - Taito Corporation 1993
 	//1 - Taito America corp with blue FBI logo
@@ -3316,7 +3316,7 @@ MACHINE_DRIVER_END
 #if 0
 static void sbm_patch(void)
 {
-	UINT16 *rom = (UINT16*)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16*)memory_region(machine, REGION_CPU1);
 	rom[ 0x7ffff/2 ] = 2; //US version
 }
 #endif
@@ -3995,7 +3995,7 @@ ROM_END
 
 static DRIVER_INIT( taito_b )
 {
-	memory_configure_bank(1, 0, 4, memory_region(REGION_CPU2) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 4, memory_region(machine, REGION_CPU2) + 0x10000, 0x4000);
 }
 
 GAME( 1989, masterw,  0,       masterw,  masterw,  taito_b, ROT270, "Taito Corporation Japan", "Master of Weapon (World)", GAME_SUPPORTS_SAVE )

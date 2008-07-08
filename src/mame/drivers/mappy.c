@@ -614,7 +614,7 @@ static READ8_HANDLER( dipB_mux )	{ return input_port_read(machine, "DSW2") >> (4
 static READ8_HANDLER( dipB_muxi )	// dips B
 {
 	// bits are interleaved in Phozon
-	return BITSWAP8(input_port_read_indexed(machine, 4),6,4,2,0,7,5,3,1) >> (4*mux);
+	return BITSWAP8(input_port_read(machine, "DSW2"),6,4,2,0,7,5,3,1) >> (4*mux);
 }
 static WRITE8_HANDLER( out_mux )	{ mux = data & 1; }
 static WRITE8_HANDLER( out_lamps )
@@ -1260,7 +1260,7 @@ NAMCO_56DSW0
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
-	PORT_BIT(    0x40, 0x40, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x40, 0x40, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, "Freeze" )

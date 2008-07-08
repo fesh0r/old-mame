@@ -127,7 +127,6 @@ ROMs -
 ----------------------------------------------------------------*/
 
 #include "driver.h"
-#include "deprecat.h"
 
 #include "cpu/sh2/sh2.h"
 #include "machine/eeprom.h"
@@ -161,7 +160,7 @@ static GFXDECODE_START( ps4 )
 	GFXDECODE_ENTRY( REGION_GFX1, 0, layout_16x16x8, 0x000, 0x80 ) // 8bpp tiles
 GFXDECODE_END
 
-static const struct EEPROM_interface eeprom_interface_93C56 =
+static const eeprom_interface eeprom_interface_93C56 =
 {
 	8,		// address bits 8
 	8,		// data bits    8
@@ -178,21 +177,21 @@ static NVRAM_HANDLER(93C56)
 {
 	if (read_or_write)
 	{
-		EEPROM_save(file);
+		eeprom_save(file);
 	}
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C56);
+		eeprom_init(&eeprom_interface_93C56);
 		if (file)
 		{
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else	// these games want the eeprom all zeros by default
 		{
 			int length;
 			UINT8 *dat;
 
-			dat = EEPROM_get_data_pointer(&length);
+			dat = eeprom_get_data_pointer(&length);
 			memset(dat, 0, length);
 		}
 	}
@@ -202,9 +201,9 @@ static WRITE32_HANDLER( ps4_eeprom_w )
 {
 	if (ACCESSING_BITS_16_31)
 	{
-		EEPROM_write_bit((data & 0x00200000) ? 1 : 0);
-		EEPROM_set_cs_line((data & 0x00800000) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x00400000) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit((data & 0x00200000) ? 1 : 0);
+		eeprom_set_cs_line((data & 0x00800000) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x00400000) ? ASSERT_LINE : CLEAR_LINE);
 
 		return;
 	}
@@ -216,7 +215,7 @@ static READ32_HANDLER( ps4_eeprom_r )
 {
 	if (ACCESSING_BITS_16_31)
 	{
-		return ((EEPROM_read_bit() << 20)); /* EEPROM */
+		return ((eeprom_read_bit() << 20)); /* EEPROM */
 	}
 
 //  logerror("Unk EEPROM read mask %x\n", mem_mask);
@@ -234,17 +233,17 @@ static READ32_HANDLER(hotgmck_io32_r) /* used by hotgmck/hgkairak */
 	int ret = 0xff;
 	int sel = (ps4_io_select[0] & 0x0000ff00) >> 8;
 
-	if (sel & 1) ret &= input_port_read_indexed(machine, 0+4*offset);
-	if (sel & 2) ret &= input_port_read_indexed(machine, 1+4*offset);
-	if (sel & 4) ret &= input_port_read_indexed(machine, 2+4*offset);
-	if (sel & 8) ret &= input_port_read_indexed(machine, 3+4*offset);
+	if (sel & 1) ret &= input_port_read(machine, offset ? "KEY4" : "KEY0" );
+	if (sel & 2) ret &= input_port_read(machine, offset ? "KEY5" : "KEY1" );
+	if (sel & 4) ret &= input_port_read(machine, offset ? "KEY6" : "KEY2" );
+	if (sel & 8) ret &= input_port_read(machine, offset ? "KEY7" : "KEY3" );
 
-	return ret<<24 | input_port_read_indexed(machine, 8);
+	return ret<<24 | input_port_read(machine, "SYSTEM");
 }
 
 static READ32_HANDLER(ps4_io32_r) /* used by loderndf/hotdebut */
 {
-	return ((input_port_read_indexed(machine, 0+4*offset) << 24) | (input_port_read_indexed(machine, 1+4*offset) << 16) | (input_port_read_indexed(machine, 2+4*offset) << 8) | (input_port_read_indexed(machine, 3+4*offset) << 0));
+	return ((input_port_read(machine, offset ? "P3" : "P1" ) << 24) | (input_port_read(machine, offset ? "P4" : "P2" ) << 16) | (input_port_read(machine, offset ? "UNUSED1" : "UNUSED0" ) << 8) | (input_port_read(machine, offset ? "UNUSED2" : "SYSTEM" ) << 0));
 }
 
 static WRITE32_HANDLER( ps4_paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w )
@@ -346,7 +345,7 @@ static WRITE32_HANDLER( ps4_vidregs_w )
 	{
 		if (ACCESSING_BITS_0_15)	// Bank
 		{
-			UINT8 *ROM = memory_region(REGION_GFX1);
+			UINT8 *ROM = memory_region(machine, REGION_GFX1);
 			memory_set_bankptr(2,&ROM[0x2000 * (psikyo4_vidregs[offset]&0x1fff)]); /* Bank comes from vidregs */
 		}
 	}
@@ -358,7 +357,7 @@ static UINT32 sample_offs = 0;
 
 static READ32_HANDLER( ps4_sample_r ) /* Send sample data for test */
 {
-	UINT8 *ROM = memory_region(REGION_SOUND1);
+	UINT8 *ROM = memory_region(machine, REGION_SOUND1);
 	return ROM[sample_offs++]<<16;
 }
 #endif
@@ -413,10 +412,10 @@ static WRITE32_HANDLER( psh_ymf_pcm_w )
 
 #define PCM_BANK_NO(n)	((ps4_io_select[0] >> (n * 4 + 24)) & 0x07)
 
-static void set_hotgmck_pcm_bank(int n)
+static void set_hotgmck_pcm_bank(running_machine *machine, int n)
 {
-	UINT8 *ymf_pcmbank = memory_region(REGION_SOUND1) + 0x200000;
-	UINT8 *pcm_rom = memory_region(REGION_SOUND2);
+	UINT8 *ymf_pcmbank = memory_region(machine, REGION_SOUND1) + 0x200000;
+	UINT8 *pcm_rom = memory_region(machine, REGION_SOUND2);
 
 	memcpy(ymf_pcmbank + n * 0x100000, pcm_rom + PCM_BANK_NO(n) * 0x100000, 0x100000);
 }
@@ -433,10 +432,10 @@ static WRITE32_HANDLER( hotgmck_pcm_bank_w )
 	new_bank1 = PCM_BANK_NO(1);
 
 	if (old_bank0 != new_bank0)
-		set_hotgmck_pcm_bank(0);
+		set_hotgmck_pcm_bank(machine, 0);
 
 	if (old_bank1 != new_bank1)
-		set_hotgmck_pcm_bank(1);
+		set_hotgmck_pcm_bank(machine, 1);
 }
 
 static ADDRESS_MAP_START( ps4_readmem, ADDRESS_SPACE_PROGRAM, 32 )
@@ -474,12 +473,12 @@ static ADDRESS_MAP_START( ps4_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x06000000, 0x060fffff) AM_WRITE(SMH_RAM) AM_BASE(&ps4_ram)	// work RAM
 ADDRESS_MAP_END
 
-static void irqhandler(int linestate)
+static void irqhandler(running_machine *machine, int linestate)
 {
 	if (linestate)
-		cpunum_set_input_line(Machine, 0, 12, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, 12, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, 12, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 12, CLEAR_LINE);
 }
 
 static const struct YMF278B_interface ymf278b_interface =
@@ -542,216 +541,216 @@ MACHINE_DRIVER_END
 
 #define UNUSED_PORT \
 	/* not read? */ \
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 static INPUT_PORTS_START( hotgmck )
-	PORT_START_TAG("IN0")	/* fake player 1 controls 1st bank */
+	PORT_START_TAG("KEY0")	/* fake player 1 controls 1st bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_E )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_I )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_M )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")	/* fake player 1 controls 2nd bank */
+	PORT_START_TAG("KEY1")	/* fake player 1 controls 2nd bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_B )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_F )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_J )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_N )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")	/* fake player 1 controls 3rd bank */
+	PORT_START_TAG("KEY2")	/* fake player 1 controls 3rd bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_C )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_G )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_K )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_RON )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN3")	/* fake player 1 controls 4th bank */
+	PORT_START_TAG("KEY3")	/* fake player 1 controls 4th bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_D )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_H )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_L )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_PON )
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN4")	/* fake player 2 controls 1st bank */
+	PORT_START_TAG("KEY4")	/* fake player 2 controls 1st bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_A ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_E ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_I ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_M ) PORT_PLAYER(2)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_KAN ) PORT_PLAYER(2)
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN5")	/* fake player 2 controls 2nd bank */
+	PORT_START_TAG("KEY5")	/* fake player 2 controls 2nd bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_B ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_F ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_J ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_N ) PORT_PLAYER(2)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_REACH ) PORT_PLAYER(2)
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN6")	/* fake player 2 controls 3rd bank */
+	PORT_START_TAG("KEY6")	/* fake player 2 controls 3rd bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_C ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_G ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_K ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_CHI ) PORT_PLAYER(2)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_RON ) PORT_PLAYER(2)
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN7")	/* fake player 2 controls 4th bank */
+	PORT_START_TAG("KEY7")	/* fake player 2 controls 4th bank */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_D ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_H ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_L ) PORT_PLAYER(2)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_PON ) PORT_PLAYER(2)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN8")	/* system inputs */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW,  IPT_COIN1    ) // Screen 1
-	PORT_BIT(  0x02, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x04, IP_ACTIVE_LOW,  IPT_COIN2    ) // Screen 2
-	PORT_BIT(  0x08, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x10, IP_ACTIVE_LOW,  IPT_SERVICE1 ) // Screen 1
+	PORT_START_TAG("SYSTEM")	/* system inputs */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1    ) // Screen 1
+	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
+	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_COIN2    ) // Screen 2
+	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
+	PORT_BIT( 0x10, IP_ACTIVE_LOW,  IPT_SERVICE1 ) // Screen 1
 	PORT_SERVICE_NO_TOGGLE( 0x20, IP_ACTIVE_LOW)
 #if ROMTEST
 	PORT_DIPNAME( 0x40, 0x40, "Debug" ) /* Unknown effects */
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 #else
-	PORT_BIT(  0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 #endif
-	PORT_BIT(  0x80, IP_ACTIVE_LOW,  IPT_SERVICE2 ) // Screen 2
+	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_SERVICE2 ) // Screen 2
 
 	PORT_START_TAG("JP4")/* jumper pads 'JP4' on the PCB */
 	UNUSED_PORT
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( loderndf )
-	PORT_START_TAG("IN0")	/* player 1 controls */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) // Can be used as Retry button
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_START_TAG("P1")	/* player 1 controls */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1) // Can be used as Retry button
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN1")	/* player 2 controls */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) // Can be used as Retry button
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_START_TAG("P2")	/* player 2 controls */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2) // Can be used as Retry button
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN2")
+	PORT_START_TAG("UNUSED0")
 	UNUSED_PORT /* unused? */
 
-	PORT_START_TAG("IN3")	/* system inputs */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW,  IPT_COIN1    ) // Screen 1
-	PORT_BIT(  0x02, IP_ACTIVE_LOW,  IPT_COIN2    ) // Screen 1 - 2nd slot
-	PORT_BIT(  0x04, IP_ACTIVE_LOW,  IPT_COIN3    ) // Screen 2
-	PORT_BIT(  0x08, IP_ACTIVE_LOW,  IPT_COIN4    ) // Screen 2 - 2nd slot
-	PORT_BIT(  0x10, IP_ACTIVE_LOW,  IPT_SERVICE1 ) // Screen 1
+	PORT_START_TAG("SYSTEM")	/* system inputs */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1    ) // Screen 1
+	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_COIN2    ) // Screen 1 - 2nd slot
+	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_COIN3    ) // Screen 2
+	PORT_BIT( 0x08, IP_ACTIVE_LOW,  IPT_COIN4    ) // Screen 2 - 2nd slot
+	PORT_BIT( 0x10, IP_ACTIVE_LOW,  IPT_SERVICE1 ) // Screen 1
 	PORT_SERVICE_NO_TOGGLE( 0x20, IP_ACTIVE_LOW)
 #if ROMTEST
 	PORT_DIPNAME( 0x40, 0x40, "Debug" ) /* Must be high for rom test, unknown other side-effects */
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 #else
-	PORT_BIT(  0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 #endif
-	PORT_BIT(  0x80, IP_ACTIVE_LOW,  IPT_SERVICE2 ) // Screen 2
+	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_SERVICE2 ) // Screen 2
 
-	PORT_START_TAG("IN4")	/* player 1 controls on second screen */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(3)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(3)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3) // Can be used as Retry button
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START3 )
+	PORT_START_TAG("P3")	/* player 1 controls on second screen */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(3)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(3)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3) // Can be used as Retry button
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START3 )
 
-	PORT_START_TAG("IN5")	/* player 2 controls on second screen */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(4)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(4)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(4)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4) // Can be used as Retry button
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START4 )
+	PORT_START_TAG("P4")	/* player 2 controls on second screen */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(4)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(4)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(4)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4) // Can be used as Retry button
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 )
 
-	PORT_START_TAG("IN6")
+	PORT_START_TAG("UNUSED1")
 	UNUSED_PORT
 
-	PORT_START_TAG("IN7")
+	PORT_START_TAG("UNUSED2")
 	UNUSED_PORT
 
 	PORT_START_TAG("JP4")/* jumper pads 'JP4' on the PCB */
 //  1-ON,2-ON,3-ON,4-ON  --> Japanese
 //  1-ON,2-ON,3-ON,4-OFF --> English
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Region ) )
-	PORT_DIPSETTING(    0x00, "Japan (Shows Version Number)" )
-	PORT_DIPSETTING(    0x01, "World (Does Not Show Version Number)" )
+	PORT_DIPSETTING(	0x00, "Japan (Shows Version Number)" )
+	PORT_DIPSETTING(	0x01, "World (Does Not Show Version Number)" )
 INPUT_PORTS_END
 
 /* unused inputs also act as duplicate buttons */
 static INPUT_PORTS_START( hotdebut )
-	PORT_START_TAG("IN0")	/* player 1 controls */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_START_TAG("P1")	/* player 1 controls */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START_TAG("IN1")	/* player 2 controls */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START2 )
+	PORT_START_TAG("P2")	/* player 2 controls */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START_TAG("IN2")
+	PORT_START_TAG("UNUSED0")
 	UNUSED_PORT
 
-	PORT_START_TAG("IN3")	/* system inputs */
+	PORT_START_TAG("SYSTEM")	/* system inputs */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1    ) // Screen 1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_COIN2    ) // Screen 1 - 2nd slot
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_COIN3    ) // Screen 2
@@ -760,37 +759,37 @@ static INPUT_PORTS_START( hotdebut )
 	PORT_SERVICE_NO_TOGGLE(0x20, IP_ACTIVE_LOW)
 #if ROMTEST
 	PORT_DIPNAME( 0x40, 0x40, "Debug" ) /* Must be high for rom test, unknown other side-effects */
-	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPSETTING(	0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 #else
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 #endif
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_SERVICE2 ) // Screen 2
 
-	PORT_START_TAG("IN4")	/* player 1 controls on second screen */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(3)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START3 )
+	PORT_START_TAG("P3")	/* player 1 controls on second screen */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(3)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START3 )
 
-	PORT_START_TAG("IN5")	/* player 2 controls on second screen */
-	PORT_BIT(  0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
-	PORT_BIT(  0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
-	PORT_BIT(  0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
-	PORT_BIT(  0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(4)
-	PORT_BIT(  0x10, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x20, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_START4 )
+	PORT_START_TAG("P4")	/* player 2 controls on second screen */
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(4)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 )
 
-	PORT_START_TAG("IN6")
+	PORT_START_TAG("UNUSED1")
 	UNUSED_PORT
 
-	PORT_START_TAG("IN7")
+	PORT_START_TAG("UNUSED2")
 	UNUSED_PORT
 
 	PORT_START_TAG("JP4")/* jumper pads 'JP4' on the PCB */
@@ -1070,19 +1069,19 @@ PC  :000029F8: BT      $000029EC
 
 static STATE_POSTLOAD( hotgmck_pcm_bank_postload )
 {
-	set_hotgmck_pcm_bank((FPTR)param);
+	set_hotgmck_pcm_bank(machine, (FPTR)param);
 }
 
 static void install_hotgmck_pcm_bank(running_machine *machine)
 {
-	UINT8 *ymf_pcm = memory_region(REGION_SOUND1);
-	UINT8 *pcm_rom = memory_region(REGION_SOUND2);
+	UINT8 *ymf_pcm = memory_region(machine, REGION_SOUND1);
+	UINT8 *pcm_rom = memory_region(machine, REGION_SOUND2);
 
 	memcpy(ymf_pcm, pcm_rom, 0x200000);
 
 	ps4_io_select[0] = (ps4_io_select[0] & 0x00ffffff) | 0x32000000;
-	set_hotgmck_pcm_bank(0);
-	set_hotgmck_pcm_bank(1);
+	set_hotgmck_pcm_bank(machine, 0);
+	set_hotgmck_pcm_bank(machine, 1);
 
 	memory_install_write32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5800008, 0x580000b, 0, 0, hotgmck_pcm_bank_w );
 	state_save_register_postload(machine, hotgmck_pcm_bank_postload, (void *)0);
@@ -1091,7 +1090,7 @@ static void install_hotgmck_pcm_bank(running_machine *machine)
 
 static DRIVER_INIT( hotgmck )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	memory_set_bankptr(1,&RAM[0x100000]);
 	memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5800000, 0x5800007, 0, 0, hotgmck_io32_r ); // Different Inputs
 	install_hotgmck_pcm_bank(machine);	// Banked PCM ROM

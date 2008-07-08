@@ -97,7 +97,7 @@ static const UINT8 default_eeprom[128] =
 };
 
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -111,15 +111,15 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( overdriv )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
-			EEPROM_load(file);
+			eeprom_load(file);
 		else
-			EEPROM_set_data(default_eeprom,sizeof(default_eeprom));
+			eeprom_set_data(default_eeprom,sizeof(default_eeprom));
 	}
 }
 
@@ -129,7 +129,7 @@ static READ16_HANDLER( eeprom_r )
 
 //logerror("%06x eeprom_r\n",activecpu_get_pc());
 	/* bit 6 is EEPROM data */
-	res = (EEPROM_read_bit() << 6) | input_port_read_indexed(machine,0);
+	res = (eeprom_read_bit() << 6) | input_port_read(machine,"INPUT");
 
 	return res;
 }
@@ -142,9 +142,9 @@ static WRITE16_HANDLER( eeprom_w )
 		/* bit 0 is data */
 		/* bit 1 is clock (active high) */
 		/* bit 2 is cs (active low) */
-		EEPROM_write_bit(data & 0x01);
-		EEPROM_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x01);
+		eeprom_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -258,8 +258,8 @@ static ADDRESS_MAP_START( overdriv_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x040000, 0x043fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x080000, 0x080fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x0c0000, 0x0c0001) AM_READ(eeprom_r)
-	AM_RANGE(0x0c0002, 0x0c0003) AM_READ(input_port_1_word_r)
-	AM_RANGE(0x180000, 0x180001) AM_READ(input_port_2_word_r)
+	AM_RANGE(0x0c0002, 0x0c0003) AM_READ_PORT("SYSTEM")
+	AM_RANGE(0x180000, 0x180001) AM_READ_PORT("PADDLE")
 	AM_RANGE(0x1d8000, 0x1d8003) AM_READ(overdriv_sound_0_r)	/* K053260 */
 	AM_RANGE(0x1e0000, 0x1e0003) AM_READ(overdriv_sound_1_r)	/* K053260 */
 	AM_RANGE(0x200000, 0x203fff) AM_READ(sharedram_r)
@@ -295,30 +295,30 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( overdriv_readmem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_READ(SMH_ROM)
 	AM_RANGE(0x080000, 0x083fff) AM_READ(SMH_RAM)
-AM_RANGE(0x0c0000, 0x0c1fff) AM_READ(SMH_RAM)
-AM_RANGE(0x100000, 0x10000f) AM_READ(SMH_NOP)	// K053250 #0
-AM_RANGE(0x108000, 0x10800f) AM_READ(SMH_NOP)	// K053250 #1
+	AM_RANGE(0x0c0000, 0x0c1fff) AM_READ(SMH_RAM)
+	AM_RANGE(0x100000, 0x10000f) AM_READ(SMH_NOP)	// K053250 #0
+	AM_RANGE(0x108000, 0x10800f) AM_READ(SMH_NOP)	// K053250 #1
 	AM_RANGE(0x118000, 0x118fff) AM_READ(K053247_word_r)
 	AM_RANGE(0x120000, 0x120001) AM_READ(K053246_word_r)
 	AM_RANGE(0x128000, 0x128001) AM_READ(cpuB_ctrl_r)
 	AM_RANGE(0x200000, 0x203fff) AM_READ(sharedram_r)
-AM_RANGE(0x208000, 0x20bfff) AM_READ(SMH_RAM)
+	AM_RANGE(0x208000, 0x20bfff) AM_READ(SMH_RAM)
 
-AM_RANGE(0x218000, 0x219fff) AM_READ(SMH_NOP)	// K053250 #0 gfx ROM read (LSB)
-AM_RANGE(0x220000, 0x221fff) AM_READ(SMH_NOP)	// K053250 #1 gfx ROM read (LSB)
+	AM_RANGE(0x218000, 0x219fff) AM_READ(SMH_NOP)	// K053250 #0 gfx ROM read (LSB)
+	AM_RANGE(0x220000, 0x221fff) AM_READ(SMH_NOP)	// K053250 #1 gfx ROM read (LSB)
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( overdriv_writemem2, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x03ffff) AM_WRITE(SMH_ROM)
 	AM_RANGE(0x080000, 0x083fff) AM_WRITE(SMH_RAM)	/* work RAM */
-AM_RANGE(0x0c0000, 0x0c1fff) AM_WRITE(SMH_RAM)
-AM_RANGE(0x100000, 0x10000f) AM_WRITE(SMH_NOP)	// K053250 #0
-AM_RANGE(0x108000, 0x10800f) AM_WRITE(SMH_NOP)	// K053250 #1
+	AM_RANGE(0x0c0000, 0x0c1fff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x100000, 0x10000f) AM_WRITE(SMH_NOP)	// K053250 #0
+	AM_RANGE(0x108000, 0x10800f) AM_WRITE(SMH_NOP)	// K053250 #1
 	AM_RANGE(0x118000, 0x118fff) AM_WRITE(K053247_word_w)
 	AM_RANGE(0x128000, 0x128001) AM_WRITE(cpuB_ctrl_w)	/* enable K053247 ROM reading, plus something else */
 	AM_RANGE(0x130000, 0x130007) AM_WRITE(K053246_word_w)
 	AM_RANGE(0x200000, 0x203fff) AM_WRITE(sharedram_w)
-AM_RANGE(0x208000, 0x20bfff) AM_WRITE(SMH_RAM)
+	AM_RANGE(0x208000, 0x20bfff) AM_WRITE(SMH_RAM)
 ADDRESS_MAP_END
 
 
@@ -339,10 +339,12 @@ static ADDRESS_MAP_START( overdriv_s_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1000, 0xffff) AM_WRITE(SMH_ROM)
 ADDRESS_MAP_END
 
-
+/* Both IPT_START1 assignments are needed. The game will reset during */
+/* the "continue" sequence if the assignment on the first port        */
+/* is missing.                                                        */
 
 static INPUT_PORTS_START( overdriv )
-	PORT_START
+	PORT_START_TAG("INPUT")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_TOGGLE
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -352,7 +354,7 @@ static INPUT_PORTS_START( overdriv )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* EEPROM data */
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("SYSTEM")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -362,7 +364,7 @@ static INPUT_PORTS_START( overdriv )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// ?
 
-	PORT_START
+	PORT_START_TAG("PADDLE")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_SENSITIVITY(100) PORT_KEYDELTA(50)
 INPUT_PORTS_END
 

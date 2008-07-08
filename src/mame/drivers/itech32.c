@@ -211,7 +211,6 @@ Notes:
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/6522via.h"
@@ -286,29 +285,29 @@ INLINE int determine_irq_state(int vint, int xint, int qint)
 }
 
 
-void itech32_update_interrupts(int vint, int xint, int qint)
+void itech32_update_interrupts(running_machine *machine, int vint, int xint, int qint)
 {
 	int level = determine_irq_state(vint, xint, qint);
 
 	/* update it */
 	if (level)
-		cpunum_set_input_line(Machine, 0, level, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, level, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
 static INTERRUPT_GEN( generate_int1 )
 {
 	/* signal the NMI */
-	itech32_update_interrupts(1, -1, -1);
+	itech32_update_interrupts(machine, 1, -1, -1);
 	if (FULL_LOGGING) logerror("------------ VBLANK (%d) --------------\n", video_screen_get_vpos(machine->primary_screen));
 }
 
 
 static WRITE16_HANDLER( int1_ack_w )
 {
-	itech32_update_interrupts(0, -1, -1);
+	itech32_update_interrupts(machine, 0, -1, -1);
 }
 
 
@@ -522,7 +521,7 @@ static READ32_HANDLER( gtclass_prot_result_r )
 
 static WRITE8_HANDLER( sound_bank_w )
 {
-	memory_set_bankptr(1, &memory_region(REGION_CPU2)[0x10000 + data * 0x4000]);
+	memory_set_bankptr(1, &memory_region(machine, REGION_CPU2)[0x10000 + data * 0x4000]);
 }
 
 
@@ -631,12 +630,12 @@ static WRITE8_HANDLER( pia_portb_out )
  *
  *************************************/
 
-static void via_irq(int state)
+static void via_irq(running_machine *machine, int state)
 {
 	if (state)
-		cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, M6809_FIRQ_LINE, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -781,7 +780,7 @@ static NVRAM_HANDLER( itech32 )
 	else
 	{
 		for (i = 0x80; i < main_ram_size; i++)
-			((UINT8 *)main_ram)[i] = mame_rand(Machine);
+			((UINT8 *)main_ram)[i] = mame_rand(machine);
 
 		/* due to accessing uninitialized RAM, we need this hack */
 		if (is_drivedge)
@@ -801,7 +800,7 @@ static NVRAM_HANDLER( itech020 )
 	else
 	{
 		for (i = 0; i < nvram_size; i++)
-			((UINT8 *)nvram)[i] = mame_rand(Machine);
+			((UINT8 *)nvram)[i] = mame_rand(machine);
 	}
 }
 
@@ -3786,7 +3785,7 @@ static DRIVER_INIT( wcbowlt )	/* PIC 16C54 labeled as ITBWL-3 */
 	/* Tournament Version, Same protection memory address as WCB Deluxe, but uses the standard WCB pic ITBWL-3 */
 	init_shuffle_bowl_common(machine, 0x111a);
 
-	timekeeper_init( 0, TIMEKEEPER_M48T02, NULL );
+	timekeeper_init( machine, 0, TIMEKEEPER_M48T02, NULL );
 	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x681000, 0x6817ff, 0, 0, timekeeper_0_32be_r, timekeeper_0_32be_w);
 }
 
@@ -3835,7 +3834,7 @@ static DRIVER_INIT( aamat )
         Tournament Version - So install needed handler for the TimeKeeper ram
     */
 	DRIVER_INIT_CALL(aama);
-	timekeeper_init( 0, TIMEKEEPER_M48T02, NULL );
+	timekeeper_init( machine, 0, TIMEKEEPER_M48T02, NULL );
 	memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x681000, 0x6817ff, 0, 0, timekeeper_0_32be_r, timekeeper_0_32be_w);
 }
 

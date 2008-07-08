@@ -17,6 +17,7 @@
 #include "deprecat.h"
 #include "system16.h"
 #include "machine/segaic16.h"
+#include "machine/fd1089.h"
 #include "machine/8255ppi.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/2203intf.h"
@@ -259,7 +260,7 @@ static WRITE8_HANDLER( video_lamps_w )
 	segaic16_tilemap_set_flip(0, data & 0x80);
 	segaic16_sprites_set_flip(0, data & 0x80);
 	segaic16_sprites_set_shadow(0, ~data & 0x40);
-	segaic16_set_display_enable(data & 0x10);
+	segaic16_set_display_enable(machine, data & 0x10);
 	set_led_status(1, data & 0x08);
 	set_led_status(0, data & 0x04);
 	coin_counter_w(1, data & 0x02);
@@ -343,9 +344,9 @@ static void sharrier_i8751_sim(running_machine *machine)
  *
  *************************************/
 
-static void sound_irq(int irq)
+static void sound_irq(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 2, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -1289,8 +1290,8 @@ ROM_START( sharrier )
 	ROM_LOAD( "epr-7181.ic2", 0x0000, 0x8000, CRC(b4740419) SHA1(8ece2dc85692e32d0ba0b427c260c3d10ac0b7cc) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* sound CPU */
-	ROM_LOAD( "epr-72xx.ic73", 0x00000, 0x004000, CRC(d6397933) SHA1(b85bb47efb6c113b3676b10ab86f1798a89d45b4) ) /* epr-7233? & epr-2734? (not verified) */
-	ROM_LOAD( "epr-72xx.ic72", 0x04000, 0x004000, CRC(504e76d9) SHA1(302af9101da01c97ca4be6acd21fb5b8e8f0b7ef) )
+	ROM_LOAD( "epr-7234.ic73", 0x00000, 0x004000, CRC(d6397933) SHA1(b85bb47efb6c113b3676b10ab86f1798a89d45b4) )
+	ROM_LOAD( "epr-7233.ic72", 0x04000, 0x004000, CRC(504e76d9) SHA1(302af9101da01c97ca4be6acd21fb5b8e8f0b7ef) )
 
 	ROM_REGION( 0x10000, REGION_SOUND1, 0 ) /* Sega PCM sound data */
 	ROM_LOAD( "epr-7231.ic5", 0x00000, 0x8000, CRC(871c6b14) SHA1(6d04ddc32fdf1db409cb519890821bd10fc9e58b) )
@@ -1369,8 +1370,8 @@ ROM_START( sharrir1 )
 	ROM_LOAD( "epr-7181.ic2", 0x0000, 0x8000, CRC(b4740419) SHA1(8ece2dc85692e32d0ba0b427c260c3d10ac0b7cc) )
 
 	ROM_REGION( 0x10000, REGION_CPU3, 0 ) /* sound CPU */
-	ROM_LOAD( "epr-72xx.ic73", 0x00000, 0x004000, CRC(d6397933) SHA1(b85bb47efb6c113b3676b10ab86f1798a89d45b4) ) /* epr-7233? & epr-2734? (not verified) */
-	ROM_LOAD( "epr-72xx.ic72", 0x04000, 0x004000, CRC(504e76d9) SHA1(302af9101da01c97ca4be6acd21fb5b8e8f0b7ef) )
+	ROM_LOAD( "epr-7234.ic73", 0x00000, 0x004000, CRC(d6397933) SHA1(b85bb47efb6c113b3676b10ab86f1798a89d45b4) )
+	ROM_LOAD( "epr-7233.ic72", 0x04000, 0x004000, CRC(504e76d9) SHA1(302af9101da01c97ca4be6acd21fb5b8e8f0b7ef) )
 
 	ROM_REGION( 0x10000, REGION_SOUND1, 0 ) /* Sega PCM sound data */
 	ROM_LOAD( "epr-7231.ic5", 0x00000, 0x8000, CRC(871c6b14) SHA1(6d04ddc32fdf1db409cb519890821bd10fc9e58b) )
@@ -1710,15 +1711,14 @@ static DRIVER_INIT( sharrier )
 
 static DRIVER_INIT( enduror )
 {
-	void fd1089_decrypt_0013A(void);
 	hangon_generic_init();
-	fd1089_decrypt_0013A();
+	fd1089_decrypt_0013A(machine);
 }
 
 
 static DRIVER_INIT( endurobl )
 {
-	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 	UINT16 *decrypt = (UINT16 *)auto_malloc(0x40000);
 
 	hangon_generic_init();
@@ -1731,7 +1731,7 @@ static DRIVER_INIT( endurobl )
 
 static DRIVER_INIT( endurob2 )
 {
-	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 	UINT16 *decrypt = (UINT16 *)auto_malloc(0x40000);
 
 	hangon_generic_init();

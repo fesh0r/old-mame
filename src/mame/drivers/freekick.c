@@ -93,17 +93,12 @@ static WRITE8_HANDLER( spinner_select_w )
 
 static READ8_HANDLER( spinner_r )
 {
-	return input_port_read_indexed(machine, 5 + spinner);
-}
-
-static READ8_HANDLER( gigas_spinner_r )
-{
-	return input_port_read_indexed(machine,  spinner );
+	return input_port_read(machine, spinner ? "IN3" : "IN2");
 }
 
 static MACHINE_RESET( pbillrd )
 {
-	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
 }
 
 static WRITE8_HANDLER( pbillrd_bankswitch_w )
@@ -194,10 +189,10 @@ static ADDRESS_MAP_START( pbillrd_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_0_r)
-	AM_RANGE(0xe800, 0xe800) AM_READ(input_port_1_r)
-	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_2_r)
-	AM_RANGE(0xf800, 0xf800) AM_READ(input_port_3_r)
+	AM_RANGE(0xe000, 0xe000) AM_READ_PORT("IN0")
+	AM_RANGE(0xe800, 0xe800) AM_READ_PORT("IN1")
+	AM_RANGE(0xf000, 0xf000) AM_READ_PORT("DSW1")
+	AM_RANGE(0xf800, 0xf800) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( pbillrd_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -223,8 +218,8 @@ static ADDRESS_MAP_START( freekckb_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xe800, 0xe8ff) AM_READ(SMH_RAM)	// sprites
 	AM_RANGE(0xec00, 0xec03) AM_DEVREAD(PPI8255, "ppi8255_0", ppi8255_r)
 	AM_RANGE(0xf000, 0xf003) AM_DEVREAD(PPI8255, "ppi8255_1", ppi8255_r)
-	AM_RANGE(0xf800, 0xf800) AM_READ(input_port_3_r)
-	AM_RANGE(0xf801, 0xf801) AM_READ(input_port_4_r)
+	AM_RANGE(0xf800, 0xf800) AM_READ_PORT("IN0")
+	AM_RANGE(0xf801, 0xf801) AM_READ_PORT("IN1")
 	AM_RANGE(0xf802, 0xf802) AM_READ(SMH_NOP)	//MUST return bit 0 = 0, otherwise game resets
 	AM_RANGE(0xf803, 0xf803) AM_READ(spinner_r)
 ADDRESS_MAP_END
@@ -250,10 +245,10 @@ static ADDRESS_MAP_START( gigas_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0xbfff) AM_READ(SMH_ROM)
 	AM_RANGE(0xc000, 0xdfff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe000, 0xe000) AM_READ(input_port_2_r)
-	AM_RANGE(0xe800, 0xe800) AM_READ(input_port_3_r)
-	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_4_r)
-	AM_RANGE(0xf800, 0xf800) AM_READ(input_port_5_r)
+	AM_RANGE(0xe000, 0xe000) AM_READ_PORT("IN0")
+	AM_RANGE(0xe800, 0xe800) AM_READ_PORT("IN1")
+	AM_RANGE(0xf000, 0xf000) AM_READ_PORT("DSW1")
+	AM_RANGE(0xf800, 0xf800) AM_READ_PORT("DSW2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gigas_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -275,7 +270,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( gigas_readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(gigas_spinner_r)
+	AM_RANGE(0x00, 0x00) AM_READ(spinner_r)
 	AM_RANGE(0x01, 0x01) AM_READ(SMH_NOP) //unused dip 3
 ADDRESS_MAP_END
 
@@ -286,7 +281,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( oigas_readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x00, 0x00) AM_READ(gigas_spinner_r)
+	AM_RANGE(0x00, 0x00) AM_READ(spinner_r)
 	AM_RANGE(0x01, 0x01) AM_READ(SMH_NOP) //unused dip 3
 	AM_RANGE(0x02, 0x02) AM_READ(oigas_2_r)
 	AM_RANGE(0x03, 0x03) AM_READ(oigas_3_r)
@@ -594,7 +589,7 @@ static WRITE8_HANDLER( snd_rom_addr_h_w )
 
 static READ8_HANDLER( snd_rom_r )
 {
-	return memory_region(REGION_USER1)[romaddr & 0x7fff];
+	return memory_region(machine, REGION_USER1)[romaddr & 0x7fff];
 }
 
 static const ppi8255_interface ppi8255_intf[2] =
@@ -1036,13 +1031,13 @@ ROM_END
 
 static DRIVER_INIT(gigas)
 {
-	memory_set_decrypted_region(0, 0x0000, 0x7fff, memory_region(REGION_CPU1) + 0x10000);
+	memory_set_decrypted_region(0, 0x0000, 0x7fff, memory_region(machine, REGION_CPU1) + 0x10000);
 }
 
 
 static DRIVER_INIT( pbillrds )
 {
-	mc8123_decrypt_rom(0, memory_region(REGION_USER1), 1, 2);
+	mc8123_decrypt_rom(machine, 0, memory_region(machine, REGION_USER1), 1, 2);
 }
 
 

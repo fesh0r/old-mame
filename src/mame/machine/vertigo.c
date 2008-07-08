@@ -108,7 +108,7 @@ static PIT8253_OUTPUT_CHANGED( v_irq4_w )
 static PIT8253_OUTPUT_CHANGED( v_irq3_w )
 {
 	if (state)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ0, ASSERT_LINE);
+		cpunum_set_input_line(device->machine, 1, INPUT_LINE_IRQ0, ASSERT_LINE);
 
 	update_irq_encoder(INPUT_LINE_IRQ3, state);
 }
@@ -220,7 +220,7 @@ MACHINE_RESET( vertigo )
 		TTL74148_input_line_w(0, i, 1);
 
 	TTL74148_update(0);
-	vertigo_vproc_init();
+	vertigo_vproc_init(machine);
 
 	irq4_time = timer_get_time();
 	irq_state = 7;

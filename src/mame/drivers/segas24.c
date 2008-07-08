@@ -344,7 +344,7 @@ Notes:
 UINT16* s24_mainram1;
 
 extern void s24_fd1094_machine_init(void);
-extern void s24_fd1094_driver_init(void);
+extern void s24_fd1094_driver_init(running_machine *machine);
 
 VIDEO_START(system24);
 VIDEO_UPDATE(system24);
@@ -429,7 +429,7 @@ static WRITE16_HANDLER( fdc_w )
 				break;
 			case 0x9:
 				logerror("Read multiple [%02x] %d..%d side %d track %d\n", data, fdc_sector, fdc_sector+fdc_data-1, data & 8 ? 1 : 0, fdc_phys_track);
-				fdc_pt = memory_region(REGION_USER2) + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
+				fdc_pt = memory_region(machine, REGION_USER2) + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
 				fdc_span = track_size;
 				fdc_status = 3;
 				fdc_drq = 1;
@@ -437,7 +437,7 @@ static WRITE16_HANDLER( fdc_w )
 				break;
 			case 0xb:
 				logerror("Write multiple [%02x] %d..%d side %d track %d\n", data, fdc_sector, fdc_sector+fdc_data-1, data & 8 ? 1 : 0, fdc_phys_track);
-				fdc_pt = memory_region(REGION_USER2) + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
+				fdc_pt = memory_region(machine, REGION_USER2) + track_size*(2*fdc_phys_track+(data & 8 ? 1 : 0));
 				fdc_span = track_size;
 				fdc_status = 3;
 				fdc_drq = 1;
@@ -688,19 +688,19 @@ static WRITE16_HANDLER( iod_w )
 
 static UINT8 resetcontrol, prev_resetcontrol;
 
-static void reset_reset(void)
+static void reset_reset(running_machine *machine)
 {
 	int changed = resetcontrol ^ prev_resetcontrol;
 	if(changed & 2) {
 		if(resetcontrol & 2) {
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_RESET, PULSE_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, CLEAR_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, PULSE_LINE);
 //          mame_printf_debug("enable 2nd cpu!\n");
-//          DEBUGGER_BREAK;
+//          debugger_break(machine);
 			s24_fd1094_machine_init();
 
 		} else
-			cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 	}
 	if(changed & 4)
 		sndti_reset(SOUND_YM2151, 0);
@@ -711,7 +711,7 @@ static void resetcontrol_w(UINT8 data)
 {
 	resetcontrol = data;
 	logerror("Reset control %02x (%x:%x)\n", resetcontrol, cpu_getactivecpu(), activecpu_get_pc());
-	reset_reset();
+	reset_reset(Machine);
 }
 
 
@@ -719,9 +719,9 @@ static void resetcontrol_w(UINT8 data)
 
 static UINT8 curbank;
 
-static void reset_bank(void)
+static void reset_bank(running_machine *machine)
 {
-	if (memory_region(REGION_USER1))
+	if (memory_region(machine, REGION_USER1))
 	{
 		memory_set_bank(1, curbank & 15);
 		memory_set_bank(2, curbank & 15);
@@ -737,7 +737,7 @@ static WRITE16_HANDLER( curbank_w )
 {
 	if(ACCESSING_BITS_0_7) {
 		curbank = data & 0xff;
-		reset_bank();
+		reset_bank(machine);
 	}
 }
 
@@ -978,11 +978,11 @@ static INTERRUPT_GEN(irq_vbl)
 	}
 }
 
-static void irq_ym(int irq)
+static void irq_ym(running_machine *machine, int irq)
 {
 	irq_yms = irq;
-	cpunum_set_input_line(Machine, 0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
-	cpunum_set_input_line(Machine, 1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, IRQ_YM2151+1, irq_yms && (irq_allow0 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, IRQ_YM2151+1, irq_yms && (irq_allow1 & (1 << IRQ_YM2151)) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -1173,7 +1173,7 @@ static DRIVER_INIT(sspirits)
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 
 }
 
@@ -1182,7 +1182,7 @@ static DRIVER_INIT(sspiritj)
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2f00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 
 }
 
@@ -1191,7 +1191,7 @@ static DRIVER_INIT(dcclubfd)
 	system24temp_sys16_io_set_callbacks(dcclub_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = dcclub_mlt;
 	track_size = 0x2d00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 
 }
 
@@ -1203,7 +1203,7 @@ static DRIVER_INIT(sgmast)
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 
 }
 
@@ -1212,7 +1212,7 @@ static DRIVER_INIT(qsww)
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 }
 
 static DRIVER_INIT(gground)
@@ -1220,7 +1220,7 @@ static DRIVER_INIT(gground)
 	system24temp_sys16_io_set_callbacks(gground_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 }
 
 static DRIVER_INIT(crkdown)
@@ -1228,7 +1228,7 @@ static DRIVER_INIT(crkdown)
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 }
 
 static DRIVER_INIT(roughrac)
@@ -1236,7 +1236,7 @@ static DRIVER_INIT(roughrac)
 	system24temp_sys16_io_set_callbacks(hotrod_io_r, hotrod_io_w, resetcontrol_w, iod_r, iod_w);
 	mlatch_table = 0;
 	track_size = 0x2d00;
-	s24_fd1094_driver_init();
+	s24_fd1094_driver_init(machine);
 }
 
 /*************************************
@@ -1250,17 +1250,18 @@ static NVRAM_HANDLER(system24)
 	if(!track_size || !file)
 		return;
 	if(read_or_write)
-		mame_fwrite(file, memory_region(REGION_USER2), 2*track_size);
+		mame_fwrite(file, memory_region(machine, REGION_USER2), 2*track_size);
 	else
-		mame_fread(file, memory_region(REGION_USER2), 2*track_size);
+		mame_fread(file, memory_region(machine, REGION_USER2), 2*track_size);
 }
 
 static MACHINE_START( system24 )
 {
-	if (memory_region(REGION_USER1))
+	UINT8 *usr1 = memory_region(machine, REGION_USER1);
+	if (usr1)
 	{
-		memory_configure_bank(1, 0, 16, memory_region(REGION_USER1), 0x40000);
-		memory_configure_bank(2, 0, 16, memory_region(REGION_USER1), 0x40000);
+		memory_configure_bank(1, 0, 16, usr1, 0x40000);
+		memory_configure_bank(2, 0, 16, usr1, 0x40000);
 	}
 }
 
@@ -1270,7 +1271,7 @@ static MACHINE_RESET(system24)
 	prev_resetcontrol = resetcontrol = 0x06;
 	fdc_init();
 	curbank = 0;
-	reset_bank();
+	reset_bank(machine);
 	irq_init();
 	mlatch = 0x00;
 }

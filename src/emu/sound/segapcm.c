@@ -3,6 +3,7 @@
 /*********************************************************/
 
 #include "sndintrf.h"
+#include "deprecat.h"
 #include "streams.h"
 #include "segapcm.h"
 
@@ -79,13 +80,13 @@ static void SEGAPCM_update(void *param, stream_sample_t **inputs, stream_sample_
 static void *segapcm_start(int sndindex, int clock, const void *config)
 {
 	const struct SEGAPCMinterface *intf = config;
-	int mask, rom_mask;
+	int mask, rom_mask, len;
 	struct segapcm *spcm;
 
 	spcm = auto_malloc(sizeof(*spcm));
 	memset(spcm, 0, sizeof(*spcm));
 
-	spcm->rom = (const UINT8 *)memory_region(intf->region);
+	spcm->rom = (const UINT8 *)memory_region(Machine, intf->region);
 	spcm->ram = auto_malloc(0x800);
 
 	memset(spcm->ram, 0xff, 0x800);
@@ -95,7 +96,8 @@ static void *segapcm_start(int sndindex, int clock, const void *config)
 	if(!mask)
 		mask = BANK_MASK7>>16;
 
-	for(rom_mask = 1; rom_mask < memory_region_length(intf->region); rom_mask *= 2);
+	len = memory_region_length(Machine, intf->region);
+	for(rom_mask = 1; rom_mask < len; rom_mask *= 2);
 	rom_mask--;
 
 	spcm->bankmask = mask & (rom_mask >> spcm->bankshift);

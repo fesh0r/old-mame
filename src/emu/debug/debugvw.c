@@ -99,7 +99,7 @@ struct _debug_view_registers
 	UINT8			recompute;					/* do we need to recompute the layout the next change? */
 	UINT8			cpunum;						/* target CPU number */
 	int				divider;					/* dividing column */
-	UINT32			last_update;				/* execution counter at last update */
+	UINT64			last_update;				/* execution counter at last update */
 	debug_view_register reg[MAX_REGS];			/* register data */
 };
 
@@ -113,8 +113,8 @@ struct _debug_view_disasm
 	UINT8			right_column;				/* right column? */
 	UINT32			backwards_steps;			/* number of backwards steps */
 	UINT32			dasm_width;					/* width of the disassembly area */
-	UINT8 *			last_opcode_base;			/* last opcode base */
-	UINT8 *			last_opcode_arg_base;		/* last opcode arg base */
+	UINT8 *			last_opbase_rom;			/* last opbase.rom */
+	UINT8 *			last_opbase_ram;			/* last opbase.ram */
 	UINT32			last_change_count;			/* last comment change count */
 	offs_t			last_pcbyte;				/* last PC byte value */
 	UINT32			active_address;				/* the address cursor_row is pointing to */
@@ -1072,15 +1072,16 @@ static void registers_recompute(debug_view *view)
 
 static void registers_update(debug_view *view)
 {
-	UINT32 execution_counter = debug_get_execution_counter();
 	debug_view_registers *regdata = view->extra_data;
 	debug_view_char *dest = view->viewdata;
+	UINT64 total_cycles;
 	UINT32 row, i;
 	const device_config *screen = Machine->primary_screen;
 
 	/* cannot update if no active CPU */
 	if (cpu_getactivecpu() < 0)
 		return;
+	total_cycles = activecpu_gettotalcycles();
 
 	/* if our assumptions changed, revisit them */
 	if (regdata->recompute)
@@ -1140,7 +1141,7 @@ static void registers_update(debug_view *view)
 			else
 			{
 				data = (char *)cpunum_reg_string(regdata->cpunum, reg->regnum);
-				if (regdata->last_update != execution_counter)
+				if (regdata->last_update != total_cycles)
 					reg->lastval = reg->currval;
 				reg->currval = cpunum_get_reg(regdata->cpunum, reg->regnum);
 			}
@@ -1189,7 +1190,7 @@ static void registers_update(debug_view *view)
 	}
 
 	/* remember the last update */
-	regdata->last_update = execution_counter;
+	regdata->last_update = total_cycles;
 }
 
 
@@ -1359,7 +1360,7 @@ static offs_t disasm_back_up(int cpunum, const debug_cpu_info *cpuinfo, offs_t s
 
 			/* get the disassembly, but only if mapped */
 			instlen = 1;
-			if (!cpuinfo->translate || (*cpuinfo->translate)(ADDRESS_SPACE_PROGRAM, &pcbyte))
+			if (cpuinfo->translate == NULL || (*cpuinfo->translate)(ADDRESS_SPACE_PROGRAM, TRANSLATE_FETCH_DEBUG, &pcbyte))
 				instlen = activecpu_dasm(dasmbuffer, testpc & addrmask, &opbuf[1000 + testpc - startpc], &argbuf[1000 + testpc - startpc]) & DASMFLAG_LENGTHMASK;
 
 			/* count this one */
@@ -1461,6 +1462,7 @@ static void disasm_generate_bytes(offs_t pcbyte, int numbytes, const debug_cpu_i
 
 static int disasm_recompute(debug_view *view, offs_t pc, int startline, int lines, int original_cpunum)
 {
+	extern opbase_data opbase;
 	debug_view_disasm *dasmdata = view->extra_data;
 	const debug_cpu_info *cpuinfo = debug_get_cpu_info(dasmdata->cpunum);
 	int chunksize, minbytes, maxbytes, maxbytes_clamped;
@@ -1536,7 +1538,7 @@ static int disasm_recompute(debug_view *view, offs_t pc, int startline, int line
 
 		/* make sure we can translate the address */
 		tempaddr = pcbyte;
-		if (!cpuinfo->translate || (*cpuinfo->translate)(ADDRESS_SPACE_PROGRAM, &tempaddr))
+		if (cpuinfo->translate == NULL || (*cpuinfo->translate)(ADDRESS_SPACE_PROGRAM, TRANSLATE_FETCH_DEBUG, &tempaddr))
 		{
 			UINT8 opbuf[64], argbuf[64];
 
@@ -1596,8 +1598,8 @@ static int disasm_recompute(debug_view *view, offs_t pc, int startline, int line
 		memory_set_opbase(activecpu_get_physical_pc_byte());
 
 	/* update opcode base information */
-	dasmdata->last_opcode_base = opcode_base;
-	dasmdata->last_opcode_arg_base = opcode_arg_base;
+	dasmdata->last_opbase_rom = opbase.rom;
+	dasmdata->last_opbase_ram = opbase.ram;
 	dasmdata->last_change_count = debug_comment_all_change_count();
 
 	/* now longer need to recompute */
@@ -1613,6 +1615,7 @@ static int disasm_recompute(debug_view *view, offs_t pc, int startline, int line
 
 static void disasm_update(debug_view *view)
 {
+	extern opbase_data opbase;
 	debug_view_disasm *dasmdata = view->extra_data;
 	const debug_cpu_info *cpuinfo = debug_get_cpu_info(dasmdata->cpunum);
 	offs_t pc = cpunum_get_reg(dasmdata->cpunum, REG_PC);
@@ -1676,7 +1679,7 @@ static void disasm_update(debug_view *view)
 	}
 
 	/* if the opcode base has changed, rework things */
-	if (opcode_base != dasmdata->last_opcode_base || opcode_arg_base != dasmdata->last_opcode_arg_base)
+	if (opbase.rom != dasmdata->last_opbase_rom || opbase.ram != dasmdata->last_opbase_ram)
 		dasmdata->recompute = TRUE;
 
 	/* if the comments have changed, redo it */
@@ -1759,7 +1762,7 @@ recompute:
 			/* if we're on a line with a breakpoint, tag it changed */
 			else
 			{
-				for (bp = cpuinfo->first_bp; bp; bp = bp->next)
+				for (bp = cpuinfo->bplist; bp != NULL; bp = bp->next)
 					if (dasmdata->address[effrow] == ADDR2BYTE_MASKED(bp->address, cpuinfo, ADDRESS_SPACE_PROGRAM))
 						attrib = DCA_CHANGED;
 			}
@@ -2377,7 +2380,7 @@ static void memory_write_byte(debug_view_memory *memdata, offs_t offs, UINT8 dat
 
 /* hack for FD1094 editing */
 #ifdef FD1094_HACK
-	if (memdata->raw_base == memory_region(REGION_USER2))
+	if (memdata->raw_base == memory_region(machine, REGION_USER2))
 	{
 		extern void fd1094_regenerate_key(void);
 		fd1094_regenerate_key();
@@ -2768,7 +2771,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "   ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 								len += sprintf(&data[len], "%02X ", memory_read_byte(memdata, addrbyte + i, !memdata->no_translation));
 							else
 								len += sprintf(&data[len], "** ");
@@ -2782,7 +2785,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "      ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 								len += sprintf(&data[len], " %04X ", memory_read_word(memdata, addrbyte + 2 * i, !memdata->no_translation));
 							else
 								len += sprintf(&data[len], " **** ");
@@ -2796,7 +2799,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "            ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 								len += sprintf(&data[len], "  %08X  ", memory_read_dword(memdata, addrbyte + 4 * i, !memdata->no_translation));
 							else
 								len += sprintf(&data[len], "  ********  ");
@@ -2810,7 +2813,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "                        ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 							{
 								UINT64 qword = memory_read_qword(memdata, addrbyte + 8 * i, !memdata->no_translation);
 								len += sprintf(&data[len], "    %08X%08X    ", (UINT32)(qword >> 32), (UINT32)qword);
@@ -2864,7 +2867,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "   ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 								len += sprintf(&data[len], "%02X ", memory_read_byte(memdata, addrbyte + i, !memdata->no_translation));
 							else
 								len += sprintf(&data[len], "** ");
@@ -2878,7 +2881,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "      ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 								len += sprintf(&data[len], " %04X ", memory_read_word(memdata, addrbyte + 2 * i, !memdata->no_translation));
 							else
 								len += sprintf(&data[len], " **** ");
@@ -2892,7 +2895,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "            ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 								len += sprintf(&data[len], "  %08X  ", memory_read_dword(memdata, addrbyte + 4 * i, !memdata->no_translation));
 							else
 								len += sprintf(&data[len], "  ********  ");
@@ -2906,7 +2909,7 @@ static void memory_update(debug_view *view)
 							if (curaddr > maxaddr)
 								len += sprintf(&data[len], "                        ");
 							else if (memdata->raw_base != NULL || memdata->no_translation ||
-									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, &curaddr))
+									 cpuinfo->translate == NULL || (*cpuinfo->translate)(memdata->spacenum, TRANSLATE_READ_DEBUG, &curaddr))
 							{
 								UINT64 qword = memory_read_qword(memdata, addrbyte + 8 * i, !memdata->no_translation);
 								len += sprintf(&data[len], "    %08X%08X    ", (UINT32)(qword >> 32), (UINT32)qword);

@@ -166,7 +166,7 @@ INLINE void generate_exception(int exception, int backup)
     if (exception != 0)
     {
         fprintf(stderr, "Exception: PC=%08X, PPC=%08X\n", mips3.core.pc, mips3.ppc);
-        DEBUGGER_BREAK;
+        debugger_break(Machine);
     }
 */
 
@@ -290,20 +290,18 @@ static void mips3_reset(void)
 }
 
 
-static int mips3_translate(int space, offs_t *address)
+static int mips3_translate(int space, int intention, offs_t *address)
 {
 	/* common translate */
-	return mips3com_translate_address(&mips3.core, space, address);
+	return mips3com_translate_address(&mips3.core, space, intention, address);
 }
 
 
-#ifdef ENABLE_DEBUGGER
 offs_t mips3_dasm(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram)
 {
 	/* common disassemble */
 	return mips3com_dasm(&mips3.core, buffer, pc, oprom, opram);
 }
-#endif /* ENABLE_DEBUGGER */
 
 
 
@@ -556,8 +554,7 @@ INLINE void set_cop0_reg(int idx, UINT64 val)
 			if ((mips3.core.cpr[0][idx] ^ val) & 0xff)
 			{
 				mips3.core.cpr[0][idx] = val;
-				mips3com_unmap_tlb_entries(&mips3.core);
-				mips3com_map_tlb_entries(&mips3.core);
+				mips3com_asid_changed(&mips3.core);
 			}
 			mips3.core.cpr[0][idx] = val;
 			break;
@@ -1680,7 +1677,7 @@ int mips3_execute(int cycles)
 
 		/* debugging */
 		mips3.ppc = mips3.core.pc;
-		CALL_DEBUGGER(mips3.core.pc);
+		debugger_instruction_hook(Machine, mips3.core.pc);
 
 		/* instruction fetch */
 		op = ROPCODE(mips3.pcbase | (mips3.core.pc & 0xfff));
@@ -1779,12 +1776,12 @@ int mips3_execute(int cycles)
 						break;
 					case 0x20:	/* ADD */
 						if (ENABLE_OVERFLOWS && RSVAL32 > ~RTVAL32) generate_exception(EXCEPTION_OVERFLOW, 1);
-						else RDVAL64 = (INT32)(RSVAL32 + RTVAL32);
+						else if (RDREG) RDVAL64 = (INT32)(RSVAL32 + RTVAL32);
 						break;
 					case 0x21:	/* ADDU */		if (RDREG) RDVAL64 = (INT32)(RSVAL32 + RTVAL32);				break;
 					case 0x22:	/* SUB */
 						if (ENABLE_OVERFLOWS && RSVAL32 < RTVAL32) generate_exception(EXCEPTION_OVERFLOW, 1);
-						else RDVAL64 = (INT32)(RSVAL32 - RTVAL32);
+						else if (RDREG) RDVAL64 = (INT32)(RSVAL32 - RTVAL32);
 						break;
 					case 0x23:	/* SUBU */		if (RDREG) RDVAL64 = (INT32)(RSVAL32 - RTVAL32);				break;
 					case 0x24:	/* AND */		if (RDREG) RDVAL64 = RSVAL64 & RTVAL64;							break;
@@ -1795,12 +1792,12 @@ int mips3_execute(int cycles)
 					case 0x2b:	/* SLTU */		if (RDREG) RDVAL64 = (UINT64)RSVAL64 < (UINT64)RTVAL64;			break;
 					case 0x2c:	/* DADD */
 						if (ENABLE_OVERFLOWS && RSVAL64 > ~RTVAL64) generate_exception(EXCEPTION_OVERFLOW, 1);
-						else RDVAL64 = RSVAL64 + RTVAL64;
+						else if (RDREG) RDVAL64 = RSVAL64 + RTVAL64;
 						break;
 					case 0x2d:	/* DADDU */		if (RDREG) RDVAL64 = RSVAL64 + RTVAL64;							break;
 					case 0x2e:	/* DSUB */
 						if (ENABLE_OVERFLOWS && RSVAL64 < RTVAL64) generate_exception(EXCEPTION_OVERFLOW, 1);
-						else RDVAL64 = RSVAL64 - RTVAL64;
+						else if (RDREG) RDVAL64 = RSVAL64 - RTVAL64;
 						break;
 					case 0x2f:	/* DSUBU */		if (RDREG) RDVAL64 = RSVAL64 - RTVAL64;							break;
 					case 0x30:	/* TGE */		if ((INT64)RSVAL64 >= (INT64)RTVAL64) generate_exception(EXCEPTION_TRAP, 1); break;
@@ -2137,9 +2134,7 @@ void mips3_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_INIT:							/* provided per-CPU */					break;
 		case CPUINFO_PTR_RESET:							info->reset = mips3_reset;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = mips3_execute;			break;
-#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = mips3_dasm;			break;
-#endif
 		case CPUINFO_PTR_TRANSLATE:						info->translate = mips3_translate;		break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */

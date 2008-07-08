@@ -33,7 +33,6 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 #include "sound/okim6295.h"
@@ -129,7 +128,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( fuuki16_sound_rombank_w )
 {
 	if (data <= 2)
-		memory_set_bankptr(1, memory_region(REGION_CPU2) + 0x8000 * data + 0x10000);
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU2) + 0x8000 * data + 0x10000);
 	else
 	 	logerror("CPU #1 - PC %04X: unknown bank bits: %02X\n",activecpu_get_pc(),data);
 }
@@ -500,9 +499,9 @@ GFXDECODE_END
 
 ***************************************************************************/
 
-static void soundirq(int state)
+static void soundirq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, 0, state);
+	cpunum_set_input_line(machine, 1, 0, state);
 }
 
 static const struct YM3812interface fuuki16_ym3812_intf =

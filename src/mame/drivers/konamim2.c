@@ -1,27 +1,27 @@
-/*  Konami M2 Hardware
-
-    Preliminary driver by Ville Linde
-
-    Games on this hardware:
-    =======================
-
-    Game                 | Konami ID
-    ---------------------------------
-    Evil Night           | GN810
-    Heat of Eleven '98   | GX703
-    Tobe! Polystars      | GX623
-    Battle Tryst         | G?636
-
-*/
-
 /*
-Tobe! PolyStars
-Konami, 1997
+Konami M2 Hardware
+Preliminary driver by Ville Linde
 
-This game runs on 3DO-based Konami M2 hardware.
 
-PCB Layout
-----------
+Konami M2 Hardware Overview
+Konami, 1997-1998
+
+This hardware is 3DO-based with two IBM Power PC CPUs.
+
+There were only 5 known games on this hardware. They include....
+
+Game                                                 Year    CD Codes     Konami Part#
+--------------------------------------------------------------------------------------
+Battle Tryst                                         1998    636JAC02
+Evil Night                                           1998    810UBA02
+Hell Night ((alt. Region title, same as Evil Night)  1998    810EAA02
+Heat Of Eleven '98                                   1998    703EAA02
+Polystars                                            1997    623JAA02     003894
+Total Vice                                           1997    639AAB01
+
+
+PCB Layouts
+-----------
 
 Top Board
 
@@ -67,7 +67,7 @@ PWB403045B (C) 1997 KONAMI CO., LTD.
 |       NJM5532D                    9.83MHz                |
 |                                   19.66MHz               |
 |J                |--------|   93C46.7K                    |-|
-|A                | 058232 |                623B01.8Q      | |
+|A                | 058232 |                BOOTROM.8Q     | |
 |M                |--------|   |------|                    | |
 |M       |------|              |003461|                    | |
 |A       |056879|              |      |                    | |CN15
@@ -79,21 +79,112 @@ PWB403045B (C) 1997 KONAMI CO., LTD.
 |                                                          |
 |----------------------------------------------------------|
 Notes:
-      056879   - Konami custom IC, location 10E (QFP120)
-      058232   - Konami custom ceramic flat pack IC, DAC?
-      003461   - Konami custom IC, location 11K (QFP100)
-      CN16     - 4 pin connector for CD-DA in from CDROM
-      CN15     - Standard (PC-compatible) 40 pin IDE CDROM flat cable connector and 4 pin power plug connector,
-                 connected to Panasonic CR-583 8-speed CDROM drive.
-                 CDROM disc contains 1 data track & 24 audio tracks. Total Capacity: 581 MBytes
-                 Konami part number: 003894
-                 Software revision: 623JAA02
-      LA4705   - LA4705 Power Amplifier
-      623B01.8Q- 16MBit MASKROM. Location 8Q (DIP42)
-      93C46.7K - 128bytes x8bit Serial EEPROM. Location 7K (DIP8)
-      DSW      - 8 position dip switch
+      056879     - Konami custom IC, location 10E (QFP120)
+      058232     - Konami custom ceramic flat pack IC, DAC?
+      003461     - Konami custom IC, location 11K (QFP100)
+      CN16       - 4 pin connector for CD-DA in from CDROM
+      CN15       - Standard (PC-compatible) 40 pin IDE CDROM flat cable connector and 4 pin power plug connector,
+                   connected to Panasonic CR-583 8-speed CDROM drive.
+      LA4705     - LA4705 Power Amplifier
+      DSW        - 8 position dip switch
+      BOOTROM.8Q - 16MBit MASKROM. Location 8Q (DIP42)
+                   Battle Tryst       - 636A01.8Q
+                   Evil Night         -       .8Q
+                   Heat Of Eleven '98 -       .8Q
+                   Polystars          - 623B01.8Q
+                   Total Vice         -       .8Q
+      93C46.7K   - 128bytes x8bit Serial EEPROM. Location 7K (DIP8)
+                   NOTE! There is very mild protection to stop game-swapping. It is based on the information in the EEPROM
+                   being the same as the Time Keeper NVRAM.
+                   For example, in Evil Night, the first line of the NVRAM in hex is 474E38313000000019984541410002A601FEFE01
+                   Looking at it in ascii:  GN810.....EAA.......
+                   Hex 474E383130 = GN810
+                   1998 = the year of the game
+                   Hex 454141 = EAA (the version = europe english)
+                   The numbers after this appear to be unimportant (at least with regards to swapping games anyway).
+                   All the other data after the first line is used for high scores tables etc.
+                   The important part is that the data in the EEPROM should be the same as the NVRAM, but the EEPROM data
+                   is byte-swapped! If the two don't match, the check on 7K or the NVRAM will fail and the PCB will reboot
+                   forever.
 
+Some lower boards have two connectors underneath for a protection sub-board or sound board. These are detailed below....
+
+GX636-PWB(A) (C) 1997 KONAMI CO., LTD.
+|-------------------------|
+| CN4 CN3  |---------|    |
+|          |---------|CN2 |
+|          PAL            |
+|                         |
+|             NVRAM       |
+|                         |
+|          |---------|    |
+|          |---------|CN1 |
+|-------------------------|
+Notes:
+      NVRAM  - With Heat of Eleven '98, uses Dallas DS1643 NonVolatile TimeKeeping RAM
+               With Battle Tryst, uses ST M48T58Y-70PC1 NonVolatile TimeKeeping RAM
+               With Poly Stars, a sub board is not used at all
+      PAL    - PALCE16V8Q, stamped 'X636A1'
+      CN3    - 4-pin sound cable tied to CN16 (CD-DA Input) on main lower board
+      CN4    - 4-pin sound cable tied to CDROM analog audio output connector
+
+GQ639 PWB 403327(A)
+|-----------------------------------------|
+|       639JAA02.xx                       |
+|                                         |
+|                                         |
+|                   |---------|           |
+|                   |---------|           |
+|                                         |
+|                                         |
+|               PAL                       |
+|                                         |
+|                                         |
+|                                         |
+|                                         |
+|                   |---------|           |
+|      YMZ280B      |---------|           |
+|                                         |
+|      16.9344MHz                         |
+|                                         |
+|                                         |
+|-----------------------------------------|
+Notes:
+      This PCB is used on Total Vice only.
+      639JAA02.xx - 8MBit Sound data ROM (DIP42)
+      PAL         - PAL16V8H stampd '       '
+
+
+PWB0000047043 (C) 1998 KONAMI CO., LTD.
+|-----------------------------------------|
+| CN4     CN3                             |
+|                                         |
+|                                         |
+|                   |---------|           |
+|                   |---------|           |
+|        16.9344MHz              M48T58Y  |
+|                      PAL                |
+|          YMZ280B                        |
+|                                         |
+|                                         |
+|                                         |
+|                                         |
+|                   |---------|           |
+|                   |---------|           |
+|                                         |
+|                                         |
+|                                         |
+|              810A03.16H                 |
+|-----------------------------------------|
+Notes:
+      This PCB is used on Evil Night/Hell Night only.
+      810A03.16H - 16MBit Sound data ROM (DIP42, byte mode)
+      PAL        - PAL16V8H stamped 'N810B1'
+      M48T58Y    - ST M48T58Y-70PC1 NonVolatile TimeKeeping RAM
+      CN3        - 4-pin sound cable tied to CN16 (CD-DA Input) on main lower board
+      CN4        - 4-pin sound cable tied to CDROM analog audio output connector
 */
+
 
 #include "driver.h"
 #include "cdrom.h"
@@ -1019,11 +1110,9 @@ static INPUT_PORTS_START( m2 )
 INPUT_PORTS_END
 
 
-static const ppc_config ppc602_config =
+static const powerpc_config ppc602_config =
 {
-	PPC_MODEL_602,
-	0x20,				/* Multiplier 2, Bus = 33MHz, Core = 66MHz */
-	BUS_FREQUENCY_33MHZ
+	33000000			/* Multiplier 2, Bus = 33MHz, Core = 66MHz */
 };
 
 static INTERRUPT_GEN(m2)
@@ -1110,6 +1199,17 @@ ROM_START(evilngt)
 	ROM_LOAD( "m48t58y.u1",  0x000000, 0x001000, CRC(169bb8f4) SHA1(55c0bafab5d309fe69156489186e232aa87ca0dd) )
 ROM_END
 
+ROM_START(hellngt)
+	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
+	ROM_LOAD16_WORD("636a01.8q", 0x000000, 0x200000, CRC(7b1dc738) SHA1(32ae8e7ddd38fcc70b4410275a2cc5e9a0d7d33b))
+
+	ROM_REGION( 0x1000, REGION_USER2, 0 ) /* timekeeper eeprom */
+	ROM_LOAD( "m48t58y.u1",  0x000000, 0x001000, CRC(169bb8f4) SHA1(55c0bafab5d309fe69156489186e232aa87ca0dd) )
+
+	DISK_REGION( REGION_DISKS )
+	DISK_IMAGE( "810eaa02", 0, MD5(250a1b9cc2a25aed6c27321dd8f4f8a2) SHA1(d2f48a389f8091e03ada81c255231c7957d1aee3))
+ROM_END
+
 ROM_START(totlvice)
 	ROM_REGION64_BE(0x200000, REGION_USER1, 0)	/* boot rom */
 	ROM_LOAD16_WORD("636a01.8q", 0x000000, 0x200000, CRC(7b1dc738) SHA1(32ae8e7ddd38fcc70b4410275a2cc5e9a0d7d33b))
@@ -1126,8 +1226,9 @@ static DRIVER_INIT( m2 )
 	cde_init();
 }
 
-GAME( 1997, polystar, 0, m2, m2, m2, ROT0, "Konami", "Tobe! Polystars (ver JAA)", GAME_NOT_WORKING | GAME_NO_SOUND )
-GAME( 1997, totlvice, 0, m2, m2, m2, ROT0, "Konami", "Total Vice (ver JAD)", GAME_NOT_WORKING | GAME_NO_SOUND )
-GAME( 1998, btltryst, 0, m2, m2, m2, ROT0, "Konami", "Battle Tryst (ver JAC)", GAME_NOT_WORKING | GAME_NO_SOUND )
-GAME( 1998, heatof11, 0, m2, m2, m2, ROT0, "Konami", "Heat of Eleven '98 (ver EAA)", GAME_NOT_WORKING | GAME_NO_SOUND )
-GAME( 1998, evilngt,  0, m2, m2, m2, ROT0, "Konami", "Evil Night (ver EAA)", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1997, polystar, 0,       m2, m2, m2, ROT0, "Konami", "Tobe! Polystars (ver JAA)", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1997, totlvice, 0,       m2, m2, m2, ROT0, "Konami", "Total Vice (ver JAD)", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1998, btltryst, 0,       m2, m2, m2, ROT0, "Konami", "Battle Tryst (ver JAC)", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1998, heatof11, 0,       m2, m2, m2, ROT0, "Konami", "Heat of Eleven '98 (ver EAA)", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1998, evilngt,  0,       m2, m2, m2, ROT0, "Konami", "Evil Night (ver EAA)", GAME_NOT_WORKING | GAME_NO_SOUND )
+GAME( 1998, hellngt,  evilngt, m2, m2, m2, ROT0, "Konami", "Hell Night (ver EAA)", GAME_NOT_WORKING | GAME_NO_SOUND )

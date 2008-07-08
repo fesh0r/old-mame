@@ -434,7 +434,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/saa1099.h"
 #include "sound/msm5205.h"
 
@@ -518,7 +517,7 @@ static READ8_HANDLER(banked_ram_r)
 
 		if (bank>0x3) // ROM access
 		{
-			UINT8 *src    = memory_region( REGION_GFX1 );
+			UINT8 *src    = memory_region( machine, REGION_GFX1 );
 			bank &=0x3;
 			return src[offset+(bank*0x4000)];
 		}
@@ -534,7 +533,7 @@ static READ8_HANDLER(banked_ram_r)
 		UINT8 *src;
 		int bank;
 		bank = mastboy_bank & 0x7f;
-		src = memory_region       ( REGION_USER1 ) + bank * 0x4000;
+		src = memory_region       ( machine, REGION_USER1 ) + bank * 0x4000;
 		return src[offset];
 	}
 }
@@ -634,14 +633,14 @@ static WRITE8_HANDLER( mastboy_msm5205_data_w )
 	mastboy_m5205_next = data;
 }
 
-static void mastboy_adpcm_int(int data)
+static void mastboy_adpcm_int(running_machine *machine, int data)
 {
 	MSM5205_data_w (0,mastboy_m5205_next);
 	mastboy_m5205_next>>=4;
 
 	mastboy_m5205_part ^= 1;
 	if(!mastboy_m5205_part)
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -973,7 +972,7 @@ ROM_END
 
 static DRIVER_INIT( mastboy )
 {
-	mastboy_vram = memory_region( REGION_GFX1 ); // makes decoding the RAM based tiles easier this way
+	mastboy_vram = memory_region( machine, REGION_GFX1 ); // makes decoding the RAM based tiles easier this way
 }
 
 GAME( 1991, mastboy,  0,          mastboy, mastboy, mastboy, ROT0, "Gaelco", "Master Boy (Spanish, PCB Rev A)", 0 )

@@ -12,7 +12,6 @@
 #include "driver.h"
 #include "config.h"
 #include "generic.h"
-#include "deprecat.h"
 
 
 
@@ -24,7 +23,6 @@
 UINT32 dispensed_tickets;
 UINT32 coin_count[COIN_COUNTERS];
 UINT32 coinlockedout[COIN_COUNTERS];
-UINT32 servicecoinlockedout[COIN_COUNTERS];
 static UINT32 lastcoin[COIN_COUNTERS];
 
 /* generic NVRAM */
@@ -46,8 +44,8 @@ static UINT8 interrupt_enable[MAX_CPU];
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static void counters_load(int config_type, xml_data_node *parentnode);
-static void counters_save(int config_type, xml_data_node *parentnode);
+static void counters_load(running_machine *machine, int config_type, xml_data_node *parentnode);
+static void counters_save(running_machine *machine, int config_type, xml_data_node *parentnode);
 static void interrupt_reset(running_machine *machine);
 
 
@@ -70,13 +68,11 @@ void generic_machine_init(running_machine *machine)
 	{
 		lastcoin[counternum] = 0;
 		coinlockedout[counternum] = 0;
-		servicecoinlockedout[counternum] = 0;
 	}
 
 	/* register coin save state */
 	state_save_register_item_array("coin", 0, coin_count);
 	state_save_register_item_array("coin", 0, coinlockedout);
-	state_save_register_item_array("coin", 0, servicecoinlockedout);
 	state_save_register_item_array("coin", 0, lastcoin);
 
 	/* reset NVRAM size and pointers */
@@ -93,7 +89,7 @@ void generic_machine_init(running_machine *machine)
 	state_save_register_item_array("cpu", 0, interrupt_enable);
 
 	/* register for configuration */
-	config_register("counters", counters_load, counters_save);
+	config_register(machine, "counters", counters_load, counters_save);
 
 	/* for memory cards, request save state and an exit callback */
 	if (machine->config->memcard_handler != NULL)
@@ -114,7 +110,7 @@ void generic_machine_init(running_machine *machine)
     and tickets
 -------------------------------------------------*/
 
-static void counters_load(int config_type, xml_data_node *parentnode)
+static void counters_load(running_machine *machine, int config_type, xml_data_node *parentnode)
 {
 	xml_data_node *coinnode, *ticketnode;
 
@@ -153,7 +149,7 @@ static void counters_load(int config_type, xml_data_node *parentnode)
     and tickets
 -------------------------------------------------*/
 
-static void counters_save(int config_type, xml_data_node *parentnode)
+static void counters_save(running_machine *machine, int config_type, xml_data_node *parentnode)
 {
 	int i;
 
@@ -208,18 +204,6 @@ void coin_lockout_w(int num,int on)
 	if (num >= COIN_COUNTERS) return;
 
 	coinlockedout[num] = on;
-}
-
-
-/*-------------------------------------------------
-    service_coin_lockout_w - locks out one coin input
--------------------------------------------------*/
-
-void service_coin_lockout_w(int num,int on)
-{
-	if (num >= COIN_COUNTERS) return;
-
-	servicecoinlockedout[num] = on;
 }
 
 
@@ -284,12 +268,12 @@ mame_file *nvram_fopen(running_machine *machine, UINT32 openflags)
     nvram_load - load a system's NVRAM
 -------------------------------------------------*/
 
-void nvram_load(void)
+void nvram_load(running_machine *machine)
 {
-	if (Machine->config->nvram_handler != NULL)
+	if (machine->config->nvram_handler != NULL)
 	{
-		mame_file *nvram_file = nvram_fopen(Machine, OPEN_FLAG_READ);
-		(*Machine->config->nvram_handler)(Machine, nvram_file, 0);
+		mame_file *nvram_file = nvram_fopen(machine, OPEN_FLAG_READ);
+		(*machine->config->nvram_handler)(machine, nvram_file, 0);
 		if (nvram_file != NULL)
 			mame_fclose(nvram_file);
 	}
@@ -300,14 +284,14 @@ void nvram_load(void)
     nvram_save - save a system's NVRAM
 -------------------------------------------------*/
 
-void nvram_save(void)
+void nvram_save(running_machine *machine)
 {
-	if (Machine->config->nvram_handler != NULL)
+	if (machine->config->nvram_handler != NULL)
 	{
-		mame_file *nvram_file = nvram_fopen(Machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
+		mame_file *nvram_file = nvram_fopen(machine, OPEN_FLAG_WRITE | OPEN_FLAG_CREATE | OPEN_FLAG_CREATE_PATHS);
 		if (nvram_file != NULL)
 		{
-			(*Machine->config->nvram_handler)(Machine, nvram_file, 1);
+			(*machine->config->nvram_handler)(machine, nvram_file, 1);
 			mame_fclose(nvram_file);
 		}
 	}
@@ -389,7 +373,7 @@ INLINE void memcard_name(int index, char *buffer)
     the given index
 -------------------------------------------------*/
 
-int memcard_create(int index, int overwrite)
+int memcard_create(running_machine *machine, int index, int overwrite)
 {
 	file_error filerr;
 	mame_file *file;
@@ -400,7 +384,7 @@ int memcard_create(int index, int overwrite)
 	memcard_name(index, name);
 
 	/* if we can't overwrite, fail if the file already exists */
-	fname = astring_assemble_3(astring_alloc(), Machine->basename, PATH_SEPARATOR, name);
+	fname = astring_assemble_3(astring_alloc(), machine->basename, PATH_SEPARATOR, name);
 	if (!overwrite)
 	{
 		filerr = mame_fopen(SEARCHPATH_MEMCARD, astring_c(fname), OPEN_FLAG_READ, &file);
@@ -419,8 +403,8 @@ int memcard_create(int index, int overwrite)
 		return 1;
 
 	/* initialize and then save the card */
-	if (Machine->config->memcard_handler)
-		(*Machine->config->memcard_handler)(Machine, file, MEMCARD_CREATE);
+	if (machine->config->memcard_handler)
+		(*machine->config->memcard_handler)(machine, file, MEMCARD_CREATE);
 
 	/* close the file */
 	mame_fclose(file);
@@ -433,7 +417,7 @@ int memcard_create(int index, int overwrite)
     with the given index
 -------------------------------------------------*/
 
-int memcard_insert(int index)
+int memcard_insert(running_machine *machine, int index)
 {
 	file_error filerr;
 	mame_file *file;
@@ -442,12 +426,12 @@ int memcard_insert(int index)
 
 	/* if a card is already inserted, eject it first */
 	if (memcard_inserted != -1)
-		memcard_eject(Machine);
+		memcard_eject(machine);
 	assert(memcard_inserted == -1);
 
 	/* create a name */
 	memcard_name(index, name);
-	fname = astring_assemble_3(astring_alloc(), Machine->basename, PATH_SEPARATOR, name);
+	fname = astring_assemble_3(astring_alloc(), machine->basename, PATH_SEPARATOR, name);
 
 	/* open the file; if we can't, it's an error */
 	filerr = mame_fopen(SEARCHPATH_MEMCARD, astring_c(fname), OPEN_FLAG_READ, &file);
@@ -456,8 +440,8 @@ int memcard_insert(int index)
 		return 1;
 
 	/* initialize and then load the card */
-	if (Machine->config->memcard_handler)
-		(*Machine->config->memcard_handler)(Machine, file, MEMCARD_INSERT);
+	if (machine->config->memcard_handler)
+		(*machine->config->memcard_handler)(machine, file, MEMCARD_INSERT);
 
 	/* close the file */
 	mame_fclose(file);

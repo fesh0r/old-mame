@@ -291,6 +291,30 @@ astring *astring_substr(astring *str, int start, int count)
 
 
 /*-------------------------------------------------
+    astring_del - delete a substring of
+    ourself, keeping everything else
+-------------------------------------------------*/
+
+astring *astring_del(astring *str, int start, int count)
+{
+	int strlength = strlen(str->text);
+
+	/* ignore attempts to do this on the dummy */
+	if (str == &dummy_astring)
+		return str;
+
+	/* normalize parameters */
+	normalize_substr(&start, &count, strlength);
+
+	/* move the data and NULL-terminate */
+	if (count > 0)
+		memmove(str->text + start, str->text + start + count, strlength - (start + count));
+	str->text[strlength - count] = 0;
+	return str;
+}
+
+
+/*-------------------------------------------------
     astring_printf - printf text into an astring
 -------------------------------------------------*/
 
@@ -498,6 +522,41 @@ int astring_findc(const astring *str, int start, const char *search)
 }
 
 
+/*-------------------------------------------------
+    astring_replace - search in an astring for
+    another astring, replacing all instances with
+    a third and returning the number of matches
+-------------------------------------------------*/
+
+int astring_replace(astring *str, int start, const astring *search, const astring *replace)
+{
+	return astring_replacec(str, start, search->text, replace->text);
+}
+
+
+/*-------------------------------------------------
+    astring_replacec - search in an astring for a
+    C string, replacing all instances with another
+    C string and returning the number of matches
+-------------------------------------------------*/
+
+int astring_replacec(astring *str, int start, const char *search, const char *replace)
+{
+	int searchlen = strlen(search);
+	int replacelen = strlen(replace);
+	int matches = 0;
+	int curindex;
+
+	for (curindex = astring_findc(str, start, search); curindex != -1; curindex = astring_findc(str, curindex + replacelen, search))
+	{
+		matches++;
+		astring_del(str, curindex, searchlen);
+		astring_insc(str, curindex, replace);
+	}
+	return matches;
+}
+
+
 
 /***************************************************************************
     ASTRING UTILITIES
@@ -584,11 +643,11 @@ astring *astring_trimspace(astring *str)
 	char *ptr;
 
 	/* first remove stuff from the end */
-	for (ptr = str->text + strlen(str->text) - 1; ptr >= str->text && isspace(*ptr); ptr--)
+	for (ptr = str->text + strlen(str->text) - 1; ptr >= str->text && (!(*ptr & 0x80) && isspace(*ptr)); ptr--)
 		*ptr = 0;
 
 	/* then count how much to remove from the beginning */
-	for (ptr = str->text; *ptr != 0 && isspace(*ptr); ptr++) ;
+	for (ptr = str->text; *ptr != 0 && (!(*ptr & 0x80) && isspace(*ptr)); ptr++) ;
 	if (ptr > str->text)
 		astring_substr(str, ptr - str->text, -1);
 

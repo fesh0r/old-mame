@@ -42,7 +42,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/ay8910.h"
 #include "grchamp.h"
@@ -76,11 +75,10 @@
  *
  *************************************/
 
-static MACHINE_START( grchamp )
+static MACHINE_RESET( grchamp )
 {
 	/* if the coin system is 1 way, lock Coin B (Page 40) */
-	if (input_port_read_indexed(machine, 1) & 0x10)
-		coin_lockout_w(1, 1);
+	coin_lockout_w(1, (input_port_read(machine, "DSWB") & 0x10) ? 1 : 0);
 }
 
 
@@ -337,12 +335,12 @@ static WRITE8_HANDLER( cpu1_outputs_w )
  *
  *************************************/
 
-INLINE UINT8 get_pc3259_bits(grchamp_state *state, int offs)
+INLINE UINT8 get_pc3259_bits(running_machine *machine, grchamp_state *state, int offs)
 {
 	int bits;
 
 	/* force a partial update to the current position */
-	video_screen_update_partial(Machine->primary_screen, video_screen_get_vpos(Machine->primary_screen));
+	video_screen_update_partial(machine->primary_screen, video_screen_get_vpos(machine->primary_screen));
 
 	/* get the relevant 4 bits */
 	bits = (state->collide >> (offs*4)) & 0x0f;
@@ -355,28 +353,28 @@ INLINE UINT8 get_pc3259_bits(grchamp_state *state, int offs)
 static READ8_HANDLER( pc3259_0_r )
 {
 	grchamp_state *state = machine->driver_data;
-	return get_pc3259_bits(state, 0);
+	return get_pc3259_bits(machine, state, 0);
 }
 
 
 static READ8_HANDLER( pc3259_1_r )
 {
 	grchamp_state *state = machine->driver_data;
-	return get_pc3259_bits(state, 1);
+	return get_pc3259_bits(machine, state, 1);
 }
 
 
 static READ8_HANDLER( pc3259_2_r )
 {
 	grchamp_state *state = machine->driver_data;
-	return get_pc3259_bits(state, 2);
+	return get_pc3259_bits(machine, state, 2);
 }
 
 
 static READ8_HANDLER( pc3259_3_r )
 {
 	grchamp_state *state = machine->driver_data;
-	return get_pc3259_bits(state, 3);
+	return get_pc3259_bits(machine, state, 3);
 }
 
 
@@ -692,7 +690,7 @@ static MACHINE_DRIVER_START( grchamp )
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_PERIODIC_INT(irq0_line_hold, (double)SOUND_CLOCK/4/16/16/10/16)
 
-	MDRV_MACHINE_START(grchamp)
+	MDRV_MACHINE_RESET(grchamp)
 	MDRV_WATCHDOG_VBLANK_INIT(8)
 	MDRV_INTERLEAVE(100)
 

@@ -33,7 +33,6 @@ Memo:
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/m68kfmly.h"
 #include "machine/z80ctc.h"
 #include "nb1413m3.h"
@@ -77,9 +76,9 @@ static int musobana_inputport;
 static int musobana_outcoin_flag;
 
 
-static void niyanpai_soundbank_w(int data)
+static void niyanpai_soundbank_w(running_machine *machine, int data)
 {
-	UINT8 *SNDROM = memory_region(REGION_CPU2);
+	UINT8 *SNDROM = memory_region(machine, REGION_CPU2);
 
 	memory_set_bankptr(1, &SNDROM[0x08000 + (0x8000 * (data & 0x03))]);
 }
@@ -139,7 +138,7 @@ static void tmpz84c011_pio_w(running_machine *machine, int offset, int data)
 	switch (offset)
 	{
 		case 0:			/* PA_0 */
-			niyanpai_soundbank_w(data & 0x03);
+			niyanpai_soundbank_w(machine, data & 0x03);
 			break;
 		case 1:			/* PB_0 */
 			DAC_1_WRITE(machine, 0, data);
@@ -185,9 +184,9 @@ static WRITE8_HANDLER( tmpz84c011_0_dir_pd_w )	{ pio_dir[3] = data; }
 static WRITE8_HANDLER( tmpz84c011_0_dir_pe_w )	{ pio_dir[4] = data; }
 
 
-static void ctc0_interrupt(int state)
+static void ctc0_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, 0, state);
+	cpunum_set_input_line(machine, 1, 0, state);
 }
 
 static z80ctc_interface ctc_intf =
@@ -221,8 +220,8 @@ static MACHINE_RESET( niyanpai )
 
 static DRIVER_INIT( niyanpai )
 {
-	UINT8 *MAINROM = memory_region(REGION_CPU1);
-	UINT8 *SNDROM = memory_region(REGION_CPU2);
+	UINT8 *MAINROM = memory_region(machine, REGION_CPU1);
+	UINT8 *SNDROM = memory_region(machine, REGION_CPU2);
 
 	// main program patch (USR0 -> IRQ LEVEL1)
 	MAINROM[(25 * 4) + 0] = MAINROM[(64 * 4) + 0];
@@ -237,7 +236,7 @@ static DRIVER_INIT( niyanpai )
 	tmpz84c011_init(machine);
 
 	// initialize sound rom bank
-	niyanpai_soundbank_w(0);
+	niyanpai_soundbank_w(machine, 0);
 
 	// initialize out coin flag (musobana)
 	musobana_outcoin_flag = 1;
@@ -248,27 +247,27 @@ static READ16_HANDLER( niyanpai_dipsw_r )
 {
 	UINT8 dipsw_a, dipsw_b;
 
-	dipsw_a = (((input_port_read_indexed(machine, 0) & 0x01) << 7) | ((input_port_read_indexed(machine, 0) & 0x02) << 5) |
-			   ((input_port_read_indexed(machine, 0) & 0x04) << 3) | ((input_port_read_indexed(machine, 0) & 0x08) << 1) |
-			   ((input_port_read_indexed(machine, 0) & 0x10) >> 1) | ((input_port_read_indexed(machine, 0) & 0x20) >> 3) |
-			   ((input_port_read_indexed(machine, 0) & 0x40) >> 5) | ((input_port_read_indexed(machine, 0) & 0x80) >> 7));
+	dipsw_a = (((input_port_read(machine, "DSWA") & 0x01) << 7) | ((input_port_read(machine, "DSWA") & 0x02) << 5) |
+			   ((input_port_read(machine, "DSWA") & 0x04) << 3) | ((input_port_read(machine, "DSWA") & 0x08) << 1) |
+			   ((input_port_read(machine, "DSWA") & 0x10) >> 1) | ((input_port_read(machine, "DSWA") & 0x20) >> 3) |
+			   ((input_port_read(machine, "DSWA") & 0x40) >> 5) | ((input_port_read(machine, "DSWA") & 0x80) >> 7));
 
-	dipsw_b = (((input_port_read_indexed(machine, 1) & 0x01) << 7) | ((input_port_read_indexed(machine, 1) & 0x02) << 5) |
-			   ((input_port_read_indexed(machine, 1) & 0x04) << 3) | ((input_port_read_indexed(machine, 1) & 0x08) << 1) |
-			   ((input_port_read_indexed(machine, 1) & 0x10) >> 1) | ((input_port_read_indexed(machine, 1) & 0x20) >> 3) |
-			   ((input_port_read_indexed(machine, 1) & 0x40) >> 5) | ((input_port_read_indexed(machine, 1) & 0x80) >> 7));
+	dipsw_b = (((input_port_read(machine, "DSWB") & 0x01) << 7) | ((input_port_read(machine, "DSWB") & 0x02) << 5) |
+			   ((input_port_read(machine, "DSWB") & 0x04) << 3) | ((input_port_read(machine, "DSWB") & 0x08) << 1) |
+			   ((input_port_read(machine, "DSWB") & 0x10) >> 1) | ((input_port_read(machine, "DSWB") & 0x20) >> 3) |
+			   ((input_port_read(machine, "DSWB") & 0x40) >> 5) | ((input_port_read(machine, "DSWB") & 0x80) >> 7));
 
 	return ((dipsw_a << 8) | dipsw_b);
 }
 
 static READ16_HANDLER( niyanpai_inputport_0_r )
 {
-	return ((input_port_read_indexed(machine, 3) << 8) | (input_port_read_indexed(machine, 4) << 0));
+	return ((input_port_read(machine, "P1") << 8) | (input_port_read(machine, "P2") << 0));
 }
 
 static READ16_HANDLER( niyanpai_inputport_1_r )
 {
-	return ((input_port_read_indexed(machine, 2) << 8) | 0xff);
+	return ((input_port_read(machine, "SYSTEM") << 8) | 0xff);
 }
 
 static READ16_HANDLER( musobana_inputport_0_r )
@@ -277,12 +276,14 @@ static READ16_HANDLER( musobana_inputport_0_r )
 
 	switch ((musobana_inputport ^ 0xff00) >> 8)
 	{
-		case 0x01:	portdata = ((input_port_read_indexed(machine, 3) << 8) | (input_port_read_indexed(machine, 8))); break;
-		case 0x02:	portdata = ((input_port_read_indexed(machine, 4) << 8) | (input_port_read_indexed(machine, 9))); break;
-		case 0x04:	portdata = ((input_port_read_indexed(machine, 5) << 8) | (input_port_read_indexed(machine, 10))); break;
-		case 0x08:	portdata = ((input_port_read_indexed(machine, 6) << 8) | (input_port_read_indexed(machine, 11))); break;
-		case 0x10:	portdata = ((input_port_read_indexed(machine, 7) << 8) | (input_port_read_indexed(machine, 12))); break;
-		default:	portdata = (((input_port_read_indexed(machine, 3) << 8) | (input_port_read_indexed(machine, 8)))) & (((input_port_read_indexed(machine, 4) << 8) | (input_port_read_indexed(machine, 9)))) & (((input_port_read_indexed(machine, 5) << 8) | (input_port_read_indexed(machine, 10)))) & (((input_port_read_indexed(machine, 6) << 8) | (input_port_read_indexed(machine, 11)))) & (((input_port_read_indexed(machine, 7) << 8) | (input_port_read_indexed(machine, 12)))); break;
+		case 0x01:	portdata = ((input_port_read(machine, "KEY0") << 8) | (input_port_read(machine, "KEY5"))); break;
+		case 0x02:	portdata = ((input_port_read(machine, "KEY1") << 8) | (input_port_read(machine, "KEY6"))); break;
+		case 0x04:	portdata = ((input_port_read(machine, "KEY2") << 8) | (input_port_read(machine, "KEY7"))); break;
+		case 0x08:	portdata = ((input_port_read(machine, "KEY3") << 8) | (input_port_read(machine, "KEY8"))); break;
+		case 0x10:	portdata = ((input_port_read(machine, "KEY4") << 8) | (input_port_read(machine, "KEY9"))); break;
+		default:	portdata = (((input_port_read(machine, "KEY0") << 8) | (input_port_read(machine, "KEY5")))) & (((input_port_read(machine, "KEY1") << 8) | (input_port_read(machine, "KEY6"))))
+								& (((input_port_read(machine, "KEY2") << 8) | (input_port_read(machine, "KEY7")))) & (((input_port_read(machine, "KEY3") << 8) | (input_port_read(machine, "KEY8"))))
+								& (((input_port_read(machine, "KEY4") << 8) | (input_port_read(machine, "KEY9")))); break;
 	}
 
 	return (portdata);
@@ -298,7 +299,7 @@ static READ16_HANDLER( musobana_inputport_1_r )
 	if (tmp68301_parallel_interface_r(machine, 0x0005, 0x00ff) & 0x0004) musobana_outcoin_flag ^= 1;
 	else musobana_outcoin_flag = 1;
 
-	return (((input_port_read_indexed(machine, 2) & 0xdf) | ((musobana_outcoin_flag & 0x01) << 5)) << 8);
+	return (((input_port_read(machine, "SYSTEM") & 0xdf) | ((musobana_outcoin_flag & 0x01) << 5)) << 8);
 }
 
 static WRITE16_HANDLER ( musobana_inputport_w )
@@ -537,7 +538,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( niyanpai )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -561,7 +562,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x00, "Nudity" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -570,7 +571,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -580,7 +581,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )		// ?
  	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )					// TEST
 
-	PORT_START	/* (3) PLAYER-1 */
+	PORT_START_TAG("P1")	/* (3) PLAYER-1 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
@@ -590,7 +591,7 @@ static INPUT_PORTS_START( niyanpai )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* (4) PLAYER-2 */
+	PORT_START_TAG("P2")	/* (4) PLAYER-2 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
@@ -605,7 +606,7 @@ static INPUT_PORTS_START( musobana )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, "Game Out" )
 	PORT_DIPSETTING(    0x03, "90% (Easy)" )
 	PORT_DIPSETTING(    0x02, "80%" )
@@ -629,7 +630,7 @@ static INPUT_PORTS_START( musobana )
 	PORT_DIPSETTING(    0x80, "Medal Type" )
 	PORT_DIPSETTING(    0x00, "Credit Type" )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x03, 0x03, "Bet Min" )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -653,7 +654,7 @@ static INPUT_PORTS_START( musobana )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -663,24 +664,14 @@ static INPUT_PORTS_START( musobana )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
  	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )					// TEST
 
-	NBMJCTRL_PORT1	/* (3)  PORT 1-1 */
-	NBMJCTRL_PORT2	/* (4)  PORT 1-2 */
-	NBMJCTRL_PORT3	/* (5)  PORT 1-3 */
-	NBMJCTRL_PORT4	/* (6)  PORT 1-4 */
-	NBMJCTRL_PORT5	/* (7)  PORT 1-5 */
-
-	NBMJCTRL_PORT6	/* (8)  PORT 2-1 */
-	NBMJCTRL_PORT7	/* (9)  PORT 2-2 */
-	NBMJCTRL_PORT8	/* (10) PORT 2-3 */
-	NBMJCTRL_PORT9	/* (11) PORT 2-4 */
-	NBMJCTRL_PORT10	/* (12) PORT 2-5 */
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( 4psimasy )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -706,7 +697,7 @@ static INPUT_PORTS_START( 4psimasy )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -732,7 +723,7 @@ static INPUT_PORTS_START( 4psimasy )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -742,24 +733,14 @@ static INPUT_PORTS_START( 4psimasy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
  	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )					// TEST
 
-	NBMJCTRL_PORT1	/* (3)  PORT 1-1 */
-	NBMJCTRL_PORT2	/* (4)  PORT 1-2 */
-	NBMJCTRL_PORT3	/* (5)  PORT 1-3 */
-	NBMJCTRL_PORT4	/* (6)  PORT 1-4 */
-	NBMJCTRL_PORT5	/* (7)  PORT 1-5 */
-
-	NBMJCTRL_PORT6	/* (8)  PORT 2-1 */
-	NBMJCTRL_PORT7	/* (9)  PORT 2-2 */
-	NBMJCTRL_PORT8	/* (10) PORT 2-3 */
-	NBMJCTRL_PORT9	/* (11) PORT 2-4 */
-	NBMJCTRL_PORT10	/* (12) PORT 2-5 */
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mhhonban )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -785,7 +766,7 @@ static INPUT_PORTS_START( mhhonban )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -811,7 +792,7 @@ static INPUT_PORTS_START( mhhonban )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )			// COIN1
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )			// CREDIT CLEAR
@@ -821,17 +802,7 @@ static INPUT_PORTS_START( mhhonban )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
  	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )					// TEST
 
-	NBMJCTRL_PORT1	/* (3)  PORT 1-1 */
-	NBMJCTRL_PORT2	/* (4)  PORT 1-2 */
-	NBMJCTRL_PORT3	/* (5)  PORT 1-3 */
-	NBMJCTRL_PORT4	/* (6)  PORT 1-4 */
-	NBMJCTRL_PORT5	/* (7)  PORT 1-5 */
-
-	NBMJCTRL_PORT6	/* (8)  PORT 2-1 */
-	NBMJCTRL_PORT7	/* (9)  PORT 2-2 */
-	NBMJCTRL_PORT8	/* (10) PORT 2-3 */
-	NBMJCTRL_PORT9	/* (11) PORT 2-4 */
-	NBMJCTRL_PORT10	/* (12) PORT 2-5 */
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 

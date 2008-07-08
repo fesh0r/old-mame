@@ -37,6 +37,140 @@
     Winding Heat                   | GX677     | ZR107        | ZR107
     Jetwave / Waveshark            | GX678     | ZR107        | GN678
 
+
+Konami 'ZR107' Hardware
+Konami, 1995-1996
+
+Known games on this hardware include....
+
+Game                   (C)      Year
+-------------------------------------
+Midnight Run           Konami   1995
+Jet Wave / Wave Shark  Konami   1996 (top board only)
+Winding Heat           Konami   1996
+
+PCB Layouts
+-----------
+
+Top Board
+
+ZR107 PWB(A)300769A
+|------------------------------------------------------------|
+|                                         MASKROM.3R         |
+|                             MASKROM.5N  MASKROM.5R         |
+|056602  056800      058141    68EC000FN8   TSOP56   DIP42   |
+| RESET_SW                                  TSOP56   DIP42   |
+|058232                                                      |
+|   PAL(001535) PAL(001536)  8464  8464           EPROM.13U  |
+|                                                            |
+|                                      SOJ40      EPROM.15U  |
+|                                                            |
+|                         DIP32        SOJ40      EPROM.17U  |
+|                        EPROM.19L  18.432MHz                |
+|        93C46.20E                                EPROM.20U  |
+|               LED                   814260-70              |
+|                         PAL(001534)                        |
+|     ADC0838                                                |
+|                         PAL(001533) 814260-70              |
+| TEST_SW                                                    |
+|                         PAL(001532)                        |
+| PAL(056787A)                                               |
+|                                                            |
+|     8464                                     |--------|    |
+|                                              |IBM     |    |
+|                          64MHz               |POWERPC |    |
+|     056230   QFP44                           |403GA   |    |
+|                                              |--------|    |
+| DSW(4)                                                     |
+|------------------------------------------------------------|
+Notes:
+     403GA: clock 32.000MHz (64/2)
+     68000: clock 8.000MHz (64/8)
+    TSOP56: Unpopulated position for 2Mx8 TSOP56 FlashROM
+     DIP42: Unpopulated position for 2Mx8 DIP42 MASKROM
+     DIP32: Unpopulated position for 512kx8 EPROM
+     SOJ40: Unpopulated position for DRAM 814260-70
+     QFP44: Unpopulated position for MB89371FL
+    056230: Konami custom, also marked KS40011, used for network functions
+    058141: Konami custom
+    056800: Konami custom
+    058232: Konami custom filter/DAC?
+    056602: Konami custom sound ceramic module (contains a small IC, some OP amps, resistors, caps etc)
+      8464: 8kx8 SRAM (NDIP28)
+    814260: 256kx16 DRAM (SOJ40)
+       LED: 2 digit alpha-numeric 7-segment LED
+
+ROM Usage
+---------
+                            |-------------------------- ROM Locations ---------------------------|
+Game                        5R      3R      5N      13U       15U       17U       20U       19L
+--------------------------------------------------------------------------------------------------
+Midnight Run (code# unknown)xxxA08  xxxA09  xxxA10  xxxExx04  xxxExx03  xxxExx02  xxxExx01  xxxA07
+Jet Wave                    678A08  678A09  678A10  678UAB04  678UAB03  678UAB02  678UAB01  678A07
+Winding Heat                677A08  677A09  677A10  677UBC04  677UBC03  677UBC02  677UBC01  677A07
+
+
+Bottom Board
+
+ZR107  PWB(B)300816D
+|------------------------------------------------------------|
+|                          |-------|                         |
+| DIP42     MASKROM.2H     |KS10081| 81141622  81141622      |
+|                          |-------|                         |
+| DIP42     MASKROM.5H              |---------|   81141622   |
+|                                   | KS10071 |              |
+| DIP42     MASKROM.7H              |         |   81141622   |
+|                                   |---------|              |
+| DIP42     MASKROM.9H               81141622                |
+|                                                            |
+|                           MC88916                          |
+| PAL(001785)                  AM7203  AM7203  AM7203 AM7203 |
+|                                                            |
+|                                                            |
+|                                         PAL(001782)        |
+|                                                 PAL(001781)|
+|                                                            |
+|                                                            |
+| MC44200   CY7C128  CY7C128  CY7C199  CY7C199               |
+|                             CY7C199  CY7C199  36MHz        |
+| MACH110                                                    |
+|(001779)    056832                           |---------|    |
+|                                             |ADSP21062|    |
+|   PAL(001784) 058143                        |SHARC    |    |
+|MASKROM.35A                MACH110           |KS-160   |    |
+|            62256  62256  (001780)           |---------|    |
+|MASKROM.35B      62256                     CY7C109  CY7C109 |
+|                         DSW(4)            CY7C109  CY7C109 |
+|------------------------------------------------------------|
+Notes:
+      KS10081 : Konami custom video chip, also marked 001006
+      KS10071 : Konami custom video chip, also marked 001005. Chip is heatsinked
+      056832  : Konami custom
+      058143  : Konami custom
+      AM7203  : AMD AM7203 2kx9 FIFO (PLCC32)
+      MACH110 : MACH110 CPLD stamped 001779 & 001780
+      DSW(4)  : 4 position DIP SWITCH
+      PAL     : PALCE16V8H stamped 001781, 001782, 001784, 001785
+      81141622: 256kx16 SDRAM
+      CY7C128 : 2kx8 SRAM
+      CY7C199 : 32kx8 SRAM
+      CY7C109 : 128kx8 SRAM
+      62256   : 32kx8 SRAM
+      DIP42   : Unpopulated position for 1Mx8 DIP42 MASKROM
+      MC88916 : Motorola MC88916 Low Skew CMOS PLL Clock Driver
+
+ROM Usage
+---------
+                 |--------------- ROM Locations ---------------|
+Game             35A     35B     2H      5H      7H      9H
+---------------------------------------------------------------
+Midnight Run     xxxA12  xxxA11  xxxA16  xxxA15  xxxA14  xxxA13 (xxx= code unknown)
+Jet Wave         - see note -
+Winding Heat     677A12  677A11  677A16  677A15  677A14  677A13
+
+Note: Jet Wave uses the lower board from GTI Club (GN678), and a ZR107(PWB(A)300769A top board.
+Check gticlub.c for details on the bottom board.
+
 */
 
 #include "driver.h"
@@ -56,8 +190,8 @@ static UINT8 led_reg0 = 0x7f, led_reg1 = 0x7f;
 
 
 // defined in drivers/gticlub.c
-extern READ32_HANDLER(lanc_r);
-extern WRITE32_HANDLER(lanc_w);
+extern READ8_HANDLER(K056230_r);
+extern WRITE8_HANDLER(K056230_w);
 extern READ32_HANDLER(lanc_ram_r);
 extern WRITE32_HANDLER(lanc_ram_w);
 
@@ -164,84 +298,105 @@ static VIDEO_UPDATE( zr107 )
 
 /******************************************************************/
 
-static READ32_HANDLER( sysreg_r )
+static CUSTOM_INPUT( adcdo_r )
+{
+	return adc083x_do_read(0);
+}
+
+static READ8_HANDLER( sysreg_r )
 {
 	UINT32 r = 0;
-	if (offset == 0)
+
+	switch (offset)
 	{
-		if (ACCESSING_BITS_24_31)
-		{
-			r |= input_port_read_indexed(machine, 0) << 24;
-		}
-		if (ACCESSING_BITS_16_23)
-		{
-			r |= input_port_read_indexed(machine, 1) << 16;
-		}
-		if (ACCESSING_BITS_8_15)
-		{
-			int adc_bit = adc083x_do_read(0);
-			r |= ((input_port_read_indexed(machine, 2) & 0x7f) | (adc_bit << 7)) << 8;
-		}
-		if (ACCESSING_BITS_0_7)
-		{
-			r |= input_port_read_indexed(machine, 3) << 0;
-		}
+		case 0:	/* I/O port 0 */
+		case 1:	/* I/O port 1 */
+		case 2:	/* I/O port 2 */
+		case 3:	/* System Port 0 */
+			r = input_port_read_indexed(machine, offset);
+			break;
+
+		case 4:	/* System Port 1 */
+			/*
+                0x80 = PARAACK
+                0x40 = unused
+                0x20 = SARS (A/D busy flag)
+                0x10 = EEPDO (EEPROM DO)
+            */
+			r = (adc083x_sars_read(0) << 5) | (eeprom_read_bit() << 4);
+			break;
+
+		case 5:	/* Parallel data port */
+			break;
 	}
-	else if (offset == 1)
-	{
-		if (ACCESSING_BITS_24_31)
-		{
-			r |= ((adc083x_sars_read(0) << 5) | (EEPROM_read_bit() << 4)) << 24;
-		}
-	}
-	//mame_printf_debug("sysreg_r: %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
 	return r;
 }
 
-static WRITE32_HANDLER( sysreg_w )
+static WRITE8_HANDLER( sysreg_w )
 {
-	if( offset == 0 )
+	switch (offset)
 	{
-		if (ACCESSING_BITS_24_31)
-		{
-			led_reg0 = (data >> 24) & 0xff;
-		}
-		if (ACCESSING_BITS_16_23)
-		{
-			led_reg1 = (data >> 16) & 0xff;
-		}
-		if (ACCESSING_BITS_0_7)
-		{
-			EEPROM_write_bit((data & 0x1) ? 1 : 0);
-			EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
-			EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
+		case 0:	/* LED Register 0 */
+			led_reg0 = data;
+			break;
 
-			if (data & 0x10)
-				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, CLEAR_LINE);
-			else
-				cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ASSERT_LINE);
-		}
-		return;
-	}
-	else if( offset == 1 )
-	{
-		if (ACCESSING_BITS_24_31)
-		{
-			if (data & 0x80000000)	/* CG Board 1 IRQ Ack */
+		case 1:	/* LED Register 1 */
+			led_reg1 = data;
+			break;
+
+		case 2: /* Parallel data register */
+			mame_printf_debug("Parallel data = %02X\n", data);
+			break;
+
+		case 3:	/* System Register 0 */
+			/*
+                0x80 = unused
+                0x40 = COINREQ1
+                0x20 = COINREQ2
+                0x10 = SNDRES
+                0x08 = unused
+                0x04 = EEPCS
+                0x02 = EEPCLK
+                0x01 = EEPDI
+            */
+			eeprom_write_bit((data & 0x01) ? 1 : 0);
+			eeprom_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
+			eeprom_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			mame_printf_debug("System register 0 = %02X\n", data);
+			break;
+
+		case 4:	/* System Register 1 */
+			/*
+                0x80 = EXRES1
+                0x40 = EXRES0
+                0x20 = EXID1
+                0x10 = EXID0
+                0x08 = unused
+                0x04 = ADCS (ADC CS)
+                0x02 = ADDI (ADC DI)
+                0x01 = ADDSCLK (ADC SCLK)
+            */
+			if (data & 0x80)	/* CG Board 1 IRQ Ack */
 				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
-
-			if (data & 0x40000000)	/* CG Board 0 IRQ Ack */
+			if (data & 0x40)	/* CG Board 0 IRQ Ack */
 				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+			set_cgboard_id((data >> 4) & 3);
+			adc083x_cs_write(0, (data >> 2) & 1);
+			adc083x_di_write(0, (data >> 1) & 1);
+			adc083x_clk_write(0, (data >> 0) & 1);
+			mame_printf_debug("System register 1 = %02X\n", data);
+			break;
 
-			set_cgboard_id((data >> 28) & 0x3);
+		case 5:	/* System Register 2 */
+			/*
+                0x01 = AFE
+            */
+			if (data & 0x01)
+				watchdog_reset(machine);
+			break;
 
-			adc083x_cs_write(0, (data >> 26) & 1);
-			adc083x_di_write(0, (data >> 25) & 1);
-			adc083x_clk_write(0, (data >> 24) & 1);
-		}
-		return;
 	}
-	mame_printf_debug("sysreg_w: %08X, %08X, %08X\n", offset, data, mem_mask);
 }
 
 static double adc0838_callback(int input)
@@ -300,24 +455,38 @@ static WRITE32_HANDLER( ccu_w )
 
 /******************************************************************/
 
+static UINT32 *workram;
+static MACHINE_START( zr107 )
+{
+	/* set conservative DRC options */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+
+	/* configure fast RAM regions for DRC */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x000fffff);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+}
+
 static ADDRESS_MAP_START( zr107_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x000fffff) AM_MIRROR(0x80000000) AM_RAM		/* Work RAM */
-	AM_RANGE(0x74000000, 0x74003fff) AM_MIRROR(0x80000000) AM_READWRITE(K056832_ram_long_r, K056832_ram_long_w)
-	AM_RANGE(0x74020000, 0x7402003f) AM_MIRROR(0x80000000) AM_READWRITE(K056832_long_r, K056832_long_w)
-	AM_RANGE(0x74060000, 0x7406003f) AM_MIRROR(0x80000000) AM_READWRITE(ccu_r, ccu_w)
-	AM_RANGE(0x74080000, 0x74081fff) AM_MIRROR(0x80000000) AM_RAM_WRITE(paletteram32_w) AM_BASE(&paletteram32)
-	AM_RANGE(0x740a0000, 0x740a3fff) AM_MIRROR(0x80000000) AM_READ(K056832_rom_long_r)
-	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)		/* 21N 21K 23N 23K */
-	AM_RANGE(0x78010000, 0x7801ffff) AM_MIRROR(0x80000000) AM_WRITE(cgboard_dsp_shared_w_ppc)
-	AM_RANGE(0x78040000, 0x7804000f) AM_MIRROR(0x80000000) AM_READWRITE(K001006_0_r, K001006_0_w)
-	AM_RANGE(0x780c0000, 0x780c0007) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
-	AM_RANGE(0x7e000000, 0x7e003fff) AM_MIRROR(0x80000000) AM_READWRITE(sysreg_r, sysreg_w)
-	AM_RANGE(0x7e008000, 0x7e009fff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_r, lanc_w)				/* LANC registers */
-	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_ram_r, lanc_ram_w)		/* LANC Buffer RAM (27E) */
-	AM_RANGE(0x7e00c000, 0x7e00c007) AM_MIRROR(0x80000000) AM_WRITE(K056800_host_w)
-	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_MIRROR(0x80000000) AM_READ(K056800_host_r)
-	AM_RANGE(0x7f800000, 0x7f9fffff) AM_MIRROR(0x80000000) AM_ROM AM_SHARE(2)
-	AM_RANGE(0x7fe00000, 0x7fffffff) AM_MIRROR(0x80000000) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)	/* Program ROM */
+	AM_RANGE(0x00000000, 0x000fffff) AM_RAM	AM_BASE(&workram)	/* Work RAM */
+	AM_RANGE(0x74000000, 0x74003fff) AM_READWRITE(K056832_ram_long_r, K056832_ram_long_w)
+	AM_RANGE(0x74020000, 0x7402003f) AM_READWRITE(K056832_long_r, K056832_long_w)
+	AM_RANGE(0x74060000, 0x7406003f) AM_READWRITE(ccu_r, ccu_w)
+	AM_RANGE(0x74080000, 0x74081fff) AM_RAM_WRITE(paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x740a0000, 0x740a3fff) AM_READ(K056832_rom_long_r)
+	AM_RANGE(0x78000000, 0x7800ffff) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)		/* 21N 21K 23N 23K */
+	AM_RANGE(0x78010000, 0x7801ffff) AM_WRITE(cgboard_dsp_shared_w_ppc)
+	AM_RANGE(0x78040000, 0x7804000f) AM_READWRITE(K001006_0_r, K001006_0_w)
+	AM_RANGE(0x780c0000, 0x780c0007) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
+	AM_RANGE(0x7e000000, 0x7e003fff) AM_READWRITE8(sysreg_r, sysreg_w, 0xffffffff)
+	AM_RANGE(0x7e008000, 0x7e009fff) AM_READWRITE8(K056230_r, K056230_w, 0xffffffff)				/* LANC registers */
+	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_READWRITE(lanc_ram_r, lanc_ram_w)		/* LANC Buffer RAM (27E) */
+	AM_RANGE(0x7e00c000, 0x7e00c007) AM_WRITE(K056800_host_w)
+	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_READ(K056800_host_r)
+	AM_RANGE(0x7f800000, 0x7f9fffff) AM_ROM AM_SHARE(2)
+	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)	/* Program ROM */
 ADDRESS_MAP_END
 
 
@@ -339,8 +508,8 @@ static ADDRESS_MAP_START( jetwave_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x78040000, 0x7804000f) AM_MIRROR(0x80000000) AM_READWRITE(K001006_0_r, K001006_0_w)
 	AM_RANGE(0x78080000, 0x7808000f) AM_MIRROR(0x80000000) AM_READWRITE(K001006_1_r, K001006_1_w)
 	AM_RANGE(0x780c0000, 0x780c0007) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
-	AM_RANGE(0x7e000000, 0x7e003fff) AM_MIRROR(0x80000000) AM_READWRITE(sysreg_r, sysreg_w)
-	AM_RANGE(0x7e008000, 0x7e009fff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_r, lanc_w)				/* LANC registers */
+	AM_RANGE(0x7e000000, 0x7e003fff) AM_MIRROR(0x80000000) AM_READWRITE8(sysreg_r, sysreg_w, 0xffffffff)
+	AM_RANGE(0x7e008000, 0x7e009fff) AM_MIRROR(0x80000000) AM_READWRITE8(K056230_r, K056230_w, 0xffffffff)				/* LANC registers */
 	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_ram_r, lanc_ram_w)		/* LANC Buffer RAM (27E) */
 	AM_RANGE(0x7e00c000, 0x7e00c007) AM_MIRROR(0x80000000) AM_WRITE(K056800_host_w)
 	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_MIRROR(0x80000000) AM_READ(K056800_host_r)
@@ -424,7 +593,8 @@ static INPUT_PORTS_START( midnrun )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x7f, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, 0)
 
 	PORT_START
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
@@ -467,7 +637,8 @@ static INPUT_PORTS_START( windheat )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x7f, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, 0)
 
 	PORT_START
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
@@ -510,7 +681,8 @@ static INPUT_PORTS_START( jetwave )
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 	PORT_START
-	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x7f, IP_ACTIVE_HIGH, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(adcdo_r, 0)
 
 	PORT_START
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
@@ -541,11 +713,6 @@ static INPUT_PORTS_START( jetwave )
 
 INPUT_PORTS_END
 
-static const ppc_config zr107_ppc_cfg =
-{
-	PPC_MODEL_403GA
-};
-
 static sharc_config sharc_cfg =
 {
 	BOOT_MODE_EPROM
@@ -570,8 +737,7 @@ static MACHINE_RESET( zr107 )
 static MACHINE_DRIVER_START( zr107 )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_CONFIG(zr107_ppc_cfg)
+	MDRV_CPU_ADD(PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(zr107_map, 0)
 	MDRV_CPU_VBLANK_INT("main", zr107_vblank)
 
@@ -585,6 +751,7 @@ static MACHINE_DRIVER_START( zr107 )
 	MDRV_INTERLEAVE(500)
 
 	MDRV_NVRAM_HANDLER(93C46)
+	MDRV_MACHINE_START(zr107)
 	MDRV_MACHINE_RESET(zr107)
 
  	/* video hardware */
@@ -615,8 +782,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START( jetwave )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_CONFIG(zr107_ppc_cfg)
+	MDRV_CPU_ADD(PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(jetwave_map, 0)
 	MDRV_CPU_VBLANK_INT("main", zr107_vblank)
 
@@ -630,6 +796,7 @@ static MACHINE_DRIVER_START( jetwave )
 	MDRV_INTERLEAVE(500)
 
 	MDRV_NVRAM_HANDLER(93C46)
+	MDRV_MACHINE_START(zr107)
 	MDRV_MACHINE_RESET(zr107)
 
  	/* video hardware */
@@ -659,12 +826,12 @@ MACHINE_DRIVER_END
 
 /*****************************************************************************/
 
-static void sound_irq_callback(int irq)
+static void sound_irq_callback(running_machine *machine, int irq)
 {
 	if (irq == 0)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
 }
 
 static DRIVER_INIT(zr107)
@@ -672,7 +839,7 @@ static DRIVER_INIT(zr107)
 	init_konami_cgboard(1, CGBOARD_TYPE_ZR107);
 	sharc_dataram = auto_malloc(0x100000);
 
-	K001005_preprocess_texture_data(memory_region(REGION_GFX1), memory_region_length(REGION_GFX1), 0);
+	K001005_preprocess_texture_data(memory_region(machine, REGION_GFX1), memory_region_length(machine, REGION_GFX1), 0);
 
 	K056800_init(sound_irq_callback);
 
@@ -684,7 +851,7 @@ static DRIVER_INIT(jetwave)
 	init_konami_cgboard(1, CGBOARD_TYPE_GTICLUB);
 	sharc_dataram = auto_malloc(0x100000);
 
-	K001005_preprocess_texture_data(memory_region(REGION_GFX1), memory_region_length(REGION_GFX1), 0);
+	K001005_preprocess_texture_data(memory_region(machine, REGION_GFX1), memory_region_length(machine, REGION_GFX1), 0);
 
 	K056800_init(sound_irq_callback);
 

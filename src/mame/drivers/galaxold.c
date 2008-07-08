@@ -356,6 +356,7 @@ TO DO :
 #include "sound/dac.h"
 #include "sound/flt_rc.h"
 #include "includes/cclimber.h"
+#include "includes/galaxian.h"
 
 
 /*************************************
@@ -545,9 +546,9 @@ ADDRESS_MAP_END
 
 
 static READ8_HANDLER( scramb2_protection_r ) { return 0x25; }
-static READ8_HANDLER( scramb2_port0_r ) { return (input_port_read_indexed(machine, 0)>>offset)&0x1; }
-static READ8_HANDLER( scramb2_port1_r ) { return (input_port_read_indexed(machine, 1)>>offset)&0x1; }
-static READ8_HANDLER( scramb2_port2_r ) { return (input_port_read_indexed(machine, 2)>>offset)&0x1; }
+static READ8_HANDLER( scramb2_port0_r ) { return (input_port_read(machine, "IN0") >> offset) & 0x1; }
+static READ8_HANDLER( scramb2_port1_r ) { return (input_port_read(machine, "IN1") >> offset) & 0x1; }
+static READ8_HANDLER( scramb2_port2_r ) { return (input_port_read(machine, "IN2") >> offset) & 0x1; }
 
 static ADDRESS_MAP_START( scramb2_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x3fff) AM_READ(SMH_ROM)
@@ -976,32 +977,6 @@ static ADDRESS_MAP_START( hexpoola_io, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(input_port_3_r)
 ADDRESS_MAP_END
 
-#define GAL_IN0\
-	PORT_START_TAG("IN0")\
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )\
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )\
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY\
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY\
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )\
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) )\
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )\
-	PORT_DIPSETTING(    0x20, DEF_STR( Cocktail ) )\
-	PORT_SERVICE( 0x40, IP_ACTIVE_HIGH )\
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-
-#define GAL_IN1\
-	PORT_START_TAG("IN1")\
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )\
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )\
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY PORT_COCKTAIL\
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY PORT_COCKTAIL\
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL\
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )\
-	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Coinage ) )\
-	PORT_DIPSETTING(    0x40, DEF_STR( 2C_1C ) )\
-	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )\
-	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )\
-	PORT_DIPSETTING(    0xc0, DEF_STR( Free_Play ) )
 
 static INPUT_PORTS_START( scramblb )
 	PORT_START_TAG("IN0")
@@ -1050,9 +1025,9 @@ static INPUT_PORTS_START( scramb2 )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
-    PORT_DIPNAME( 0x0040, 0x0040, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0040, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x40, 0x40, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
  	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
 	PORT_START_TAG("IN1")
@@ -1069,7 +1044,7 @@ static INPUT_PORTS_START( scramb2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
 	PORT_START_TAG("IN2")
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_COCKTAIL
 	PORT_DIPNAME( 0x06, 0x00, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 1C_2C ) )
@@ -1079,28 +1054,14 @@ static INPUT_PORTS_START( scramb2 )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
-    PORT_DIPNAME( 0x0020, 0x0020, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0020, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
-    PORT_DIPNAME( 0x0080, 0x0080, DEF_STR( Unknown ) )
-    PORT_DIPSETTING(      0x0080, DEF_STR( Off ) )
-    PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
+	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
+	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Unknown ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 INPUT_PORTS_END
-
-
-#define MOON_IN0\
-	PORT_START_TAG("IN0")\
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )\
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN2 )\
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_2WAY\
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_2WAY\
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 )\
-	PORT_DIPNAME( 0x20, 0x00, DEF_STR( Cabinet ) )\
-	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )\
-	PORT_DIPSETTING(    0x20, DEF_STR( Cocktail ) )\
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* "reset" on schematics */\
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 static INPUT_PORTS_START( 4in1 )
 	PORT_START_TAG("IN0")
@@ -3257,7 +3218,7 @@ GAME( 1982, bagmanmc, bagman,   bagmanmc, bagmanmc, 0,        ROT90,  "bootleg",
 GAME( 1982, dkongjrm, dkongjr,  dkongjrm, dkongjrm, 0,        ROT90,  "bootleg", "Donkey Kong Jr. (Moon Cresta hardware)", GAME_WRONG_COLORS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1981, rockclim, 0,        rockclim, rockclim, 0,	      ROT180, "Taito", "Rock Climber", GAME_SUPPORTS_SAVE )
 GAME( 1983, ozon1,    0,        ozon1,    ozon1,    0,	      ROT90,  "Proma", "Ozon I", GAME_SUPPORTS_SAVE )
-GAME( 1983, ladybugg, ladybug,  batman2,  ladybugg, ladybugg, ROT270, "bootleg", "Ladybug (bootleg on Galaxian hardware)", GAME_SUPPORTS_SAVE )
+GAME( 1983, ladybugg, ladybug,  batman2,  ladybugg, ladybugg, ROT270, "bootleg", "Lady Bug (bootleg on Galaxian hardware)", GAME_SUPPORTS_SAVE )
 GAME( 1980, vpool,    hustler,  mooncrst, vpool,    0,        ROT90,  "bootleg", "Video Pool (bootleg on Moon Cresta hardware)", GAME_SUPPORTS_SAVE )
 GAME( 1984, drivfrcg, drivfrcp, drivfrcg, drivfrcg, 0,        ROT90,  "Shinkai Inc. (Magic Eletronics USA licence)", "Driving Force (Galaxian conversion)", GAME_SUPPORTS_SAVE )
 GAME( 1985, drivfrcb, drivfrcp, drivfrcg, drivfrcg, 0,        ROT90,  "bootleg", "Driving Force (Galaxian conversion bootleg)", GAME_SUPPORTS_SAVE )

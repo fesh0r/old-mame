@@ -193,7 +193,7 @@ static MACHINE_RESET( gauntlet )
 
 static READ16_HANDLER( port4_r )
 {
-	int temp = input_port_read_indexed(machine, 4);
+	int temp = input_port_read(machine, "IN4");
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x0020;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x0010;
 	return temp;
@@ -237,7 +237,7 @@ static READ8_HANDLER( switch_6502_r )
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x80;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x40;
 	if (tms5220_ready_r()) temp ^= 0x20;
-	if (!(input_port_read_indexed(machine, 4) & 0x0008)) temp ^= 0x10;
+	if (!(input_port_read(machine, "IN4") & 0x0008)) temp ^= 0x10;
 
 	return temp;
 }
@@ -378,7 +378,6 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gauntlet )
 	PORT_START_TAG("IN0")	/* 803000 */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x000c, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -389,7 +388,6 @@ static INPUT_PORTS_START( gauntlet )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("IN1")	/* 803002 */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x000c, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -400,7 +398,6 @@ static INPUT_PORTS_START( gauntlet )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("IN2")	/* 803004 */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START3 )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x000c, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -411,7 +408,6 @@ static INPUT_PORTS_START( gauntlet )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	PORT_START_TAG("IN3")	/* 803006 */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START4 )
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(4)
 	PORT_BIT( 0x000c, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1635,17 +1631,18 @@ ROM_END
  *
  *************************************/
 
-static void gauntlet_common_init(int slapstic, int vindctr2)
+static void gauntlet_common_init(running_machine *machine, int slapstic, int vindctr2)
 {
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x038000, 0, slapstic);
+	atarigen_slapstic_init(machine, 0, 0x038000, 0, slapstic);
 
 	/* swap the top and bottom halves of the main CPU ROM images */
-	atarigen_swap_mem(memory_region(REGION_CPU1) + 0x000000, memory_region(REGION_CPU1) + 0x008000, 0x8000);
-	atarigen_swap_mem(memory_region(REGION_CPU1) + 0x040000, memory_region(REGION_CPU1) + 0x048000, 0x8000);
-	atarigen_swap_mem(memory_region(REGION_CPU1) + 0x050000, memory_region(REGION_CPU1) + 0x058000, 0x8000);
-	atarigen_swap_mem(memory_region(REGION_CPU1) + 0x060000, memory_region(REGION_CPU1) + 0x068000, 0x8000);
-	atarigen_swap_mem(memory_region(REGION_CPU1) + 0x070000, memory_region(REGION_CPU1) + 0x078000, 0x8000);
+	atarigen_swap_mem(rom + 0x000000, rom + 0x008000, 0x8000);
+	atarigen_swap_mem(rom + 0x040000, rom + 0x048000, 0x8000);
+	atarigen_swap_mem(rom + 0x050000, rom + 0x058000, 0x8000);
+	atarigen_swap_mem(rom + 0x060000, rom + 0x068000, 0x8000);
+	atarigen_swap_mem(rom + 0x070000, rom + 0x078000, 0x8000);
 
 	/* indicate whether or not we are vindicators 2 */
 	vindctr2_screen_refresh = vindctr2;
@@ -1654,29 +1651,29 @@ static void gauntlet_common_init(int slapstic, int vindctr2)
 
 static DRIVER_INIT( gauntlet )
 {
-	gauntlet_common_init(104, 0);
+	gauntlet_common_init(machine, 104, 0);
 }
 
 
 static DRIVER_INIT( gaunt2p )
 {
-	gauntlet_common_init(107, 0);
+	gauntlet_common_init(machine, 107, 0);
 }
 
 
 static DRIVER_INIT( gauntlet2 )
 {
-	gauntlet_common_init(106, 0);
+	gauntlet_common_init(machine, 106, 0);
 }
 
 
 static DRIVER_INIT( vindctr2 )
 {
-	UINT8 *gfx2_base = memory_region(REGION_GFX2);
+	UINT8 *gfx2_base = memory_region(machine, REGION_GFX2);
 	UINT8 *data = malloc_or_die(0x8000);
 	int i;
 
-	gauntlet_common_init(118, 1);
+	gauntlet_common_init(machine, 118, 1);
 
 	/* highly strange -- the address bits on the chip at 2J (and only that
        chip) are scrambled -- this is verified on the schematics! */

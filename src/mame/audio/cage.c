@@ -40,7 +40,7 @@ static attotime cage_cpu_h1_clock_period;
 static UINT8 cpu_to_cage_ready;
 static UINT8 cage_to_cpu_ready;
 
-static void (*cage_irqhandler)(int);
+static void (*cage_irqhandler)(running_machine *, int);
 
 static attotime serial_period_per_word;
 
@@ -158,10 +158,10 @@ void cage_init(running_machine *machine, int boot_region, offs_t speedup)
 
 	cage_irqhandler = NULL;
 
-	memory_set_bankptr(10, memory_region(boot_region));
-	memory_set_bankptr(11, memory_region(boot_region + 1));
+	memory_set_bankptr(10, memory_region(machine, boot_region));
+	memory_set_bankptr(11, memory_region(machine, boot_region + 1));
 
-	cage_cpu = mame_find_cpu_index(Machine, "cage");
+	cage_cpu = mame_find_cpu_index(machine, "cage");
 	cage_cpu_clock_period = ATTOTIME_IN_HZ(cpunum_get_clock(cage_cpu));
 	cage_cpu_h1_clock_period = attotime_mul(cage_cpu_clock_period, 2);
 
@@ -171,10 +171,20 @@ void cage_init(running_machine *machine, int boot_region, offs_t speedup)
 
 	if (speedup)
 		speedup_ram = memory_install_write32_handler(machine, cage_cpu, ADDRESS_SPACE_PROGRAM, speedup, speedup, 0, 0, speedup_w);
+
+	state_save_register_global(cpu_to_cage_ready);
+	state_save_register_global(cage_to_cpu_ready);
+	state_save_register_global(serial_period_per_word.seconds);
+	state_save_register_global(serial_period_per_word.attoseconds);
+	state_save_register_global(dma_enabled);
+	state_save_register_global(dma_timer_enabled);
+	state_save_register_global_array(cage_timer_enabled);
+	state_save_register_global(cage_from_main);
+	state_save_register_global(cage_control);
 }
 
 
-void cage_set_irq_handler(void (*irqhandler)(int))
+void cage_set_irq_handler(void (*irqhandler)(running_machine *, int))
 {
 	cage_irqhandler = irqhandler;
 }
@@ -447,7 +457,7 @@ static void update_control_lines(void)
 		if ((cage_control & 2) && cage_to_cpu_ready)
 			reason |= CAGE_IRQ_REASON_DATA_READY;
 
-		(*cage_irqhandler)(reason);
+		(*cage_irqhandler)(Machine, reason);
 	}
 
 	/* set the IOF input lines */

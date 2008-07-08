@@ -33,10 +33,13 @@ sound_prog 27512
 
 COR_x are LN60G resitor packs
 
+-------------------------------------
+
+Note: this is quite clearly a 'Korean bootleg' of Shisensho - Joshiryo-Hen / Match-It
+
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
 
@@ -61,7 +64,7 @@ static WRITE8_HANDLER( onetwo_fgram_w )
 
 static WRITE8_HANDLER( onetwo_cpubank_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *RAM = memory_region(machine, REGION_CPU1) + 0x10000;
 
 	memory_set_bankptr(1,&RAM[data * 0x4000]);
 }
@@ -79,25 +82,25 @@ static WRITE8_HANDLER( onetwo_soundlatch_w )
 	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
-static void setColor(int offset)
+static void setColor(running_machine *machine, int offset)
 {
 		int r,g,b;
 		r=paletteram[offset]&0x1f;
 		g=paletteram_2[offset]&0x1f;
 		b=((paletteram[offset]&0x60)>>2)|((paletteram_2[offset]&0xe0)>>5);
-		palette_set_color_rgb(Machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
+		palette_set_color_rgb(machine,offset,pal5bit(r),pal5bit(g),pal5bit(b));
 }
 
 static WRITE8_HANDLER(palette1_w)
 {
 	paletteram[offset]=data;
-	setColor(offset);
+	setColor(machine, offset);
 }
 
 static WRITE8_HANDLER(palette2_w)
 {
 	paletteram_2[offset]=data;
-	setColor(offset);
+	setColor(machine, offset);
 }
 
 /* Main CPU */
@@ -183,7 +186,7 @@ static INPUT_PORTS_START( onetwo )
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x04, 0x04, "Coin Chute" ) PORT_DIPLOCATION("SW2:3")
+	PORT_DIPNAME( 0x04, 0x00, "Coin Chute" ) PORT_DIPLOCATION("SW2:3")
 	PORT_DIPSETTING(    0x04, "Common" )
 	PORT_DIPSETTING(    0x00, "Separate" )
 	PORT_DIPNAME( 0x08, 0x08, "Nude Pictures" ) PORT_DIPLOCATION("SW2:4")
@@ -260,9 +263,9 @@ static VIDEO_UPDATE( onetwo )
 	return 0;
 }
 
-static void irqhandler(int linestate)
+static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 1,0,linestate);
+	cpunum_set_input_line(machine, 1,0,linestate);
 }
 
 static const struct YM3812interface ym3812_interface =

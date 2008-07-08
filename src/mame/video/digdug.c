@@ -97,7 +97,7 @@ static TILEMAP_MAPPER( tilemap_scan )
 
 static TILE_GET_INFO( bg_get_tile_info )
 {
-	UINT8 *rom = memory_region(REGION_GFX4);
+	UINT8 *rom = memory_region(machine, REGION_GFX4);
 	int code = rom[tile_index | (bg_select << 10)];
 	/* when the background is "disabled", it is actually still drawn, but using
        a color code that makes all pixels black. There are pullups setting the
@@ -277,14 +277,15 @@ static void draw_sprites(running_machine* machine, bitmap_t *bitmap, const recta
 		if (size)
 			sprite = (sprite & 0xc0) | ((sprite & ~0xc0) << 2);
 
+		sy -= 16 * size;
+		sy = (sy & 0xff) - 32;	// fix wraparound
+
 		if (flip_screen_get())
 		{
 			flipx ^= 1;
 			flipy ^= 1;
+			sy += 48;
 		}
-
-		sy -= 16 * size;
-		sy = (sy & 0xff) - 32;	// fix wraparound
 
 		for (y = 0;y <= size;y++)
 		{

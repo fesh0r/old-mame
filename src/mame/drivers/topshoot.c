@@ -134,12 +134,11 @@ connector, but of course, I can be wrong.
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "genesis.h"
 
 
 static INPUT_PORTS_START( topshoot ) /* Top Shooter Input Ports */
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN0")	/* 16bit */
 	PORT_DIPNAME( 0x0001, 0x0000, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -297,7 +296,7 @@ ROM_END
 
 static READ16_HANDLER( vdp_fake_r )
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static DRIVER_INIT(topshoot)
@@ -305,7 +304,7 @@ static DRIVER_INIT(topshoot)
 	/* hack -- fix vdp emulation instead */
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xC00004, 0xC00005, 0, 0, vdp_fake_r);
 
-	memory_set_bankptr(3, memory_region(REGION_CPU1) );
+	memory_set_bankptr(3, memory_region(machine, REGION_CPU1) );
 	memory_set_bankptr(4, genesis_68k_ram );
 }
 

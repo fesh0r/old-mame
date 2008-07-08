@@ -50,7 +50,6 @@ Stephh's notes (based on the game M68000 code and some tests) :
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
@@ -74,7 +73,7 @@ VIDEO_UPDATE(aquarium);
 #if AQUARIUS_HACK
 static MACHINE_RESET( aquarium )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	int data = input_port_read(machine, "FAKE");
 
 	/* Language : 0x0000 = Japanese - Other value = English */
@@ -87,7 +86,7 @@ static MACHINE_RESET( aquarium )
 static READ16_HANDLER( aquarium_coins_r )
 {
 	int data;
-	data = (input_port_read_indexed(machine,2) & 0x7fff);	/* IN1 */
+	data = (input_port_read(machine, "IN1") & 0x7fff);
 	data |= aquarium_snd_ack;
 	aquarium_snd_ack = 0;
 	return data;
@@ -109,7 +108,7 @@ static WRITE16_HANDLER( aquarium_sound_w )
 static WRITE8_HANDLER( aquarium_z80_bank_w )
 {
 	int soundbank = ((data & 0x7) + 1) * 0x8000;
-	UINT8 *Z80 = (UINT8 *)memory_region(REGION_CPU2);
+	UINT8 *Z80 = (UINT8 *)memory_region(machine, REGION_CPU2);
 
 	memory_set_bankptr(1, &Z80[soundbank + 0x10000]);
 }
@@ -213,8 +212,8 @@ static INPUT_PORTS_START( aquarium )
 	PORT_DIPNAME( 0x2000, 0x2000, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x2000, DEF_STR( On ) )
-	PORT_DIPUNUSED( 0x0400, IP_ACTIVE_LOW )
-	PORT_DIPUNUSED( 0x0800, IP_ACTIVE_LOW )
+	PORT_DIPUNUSED( 0x4000, IP_ACTIVE_LOW )
+	PORT_DIPUNUSED( 0x8000, IP_ACTIVE_LOW )
 
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -292,8 +291,8 @@ static DRIVER_INIT( aquarium )
        the roms containing the 1bpp data so we can decode it
        correctly */
 
-	UINT8 *DAT2 = memory_region(REGION_GFX1)+0x080000;
-	UINT8 *DAT = memory_region(REGION_USER1);
+	UINT8 *DAT2 = memory_region(machine, REGION_GFX1)+0x080000;
+	UINT8 *DAT = memory_region(machine, REGION_USER1);
 	int len = 0x0200000;
 
 	for (len = 0 ; len < 0x020000 ; len ++ )
@@ -308,8 +307,8 @@ static DRIVER_INIT( aquarium )
 		DAT2[len*4+2] |= (DAT[len] & 0x01) << 3;
 	}
 
-	DAT2 = memory_region(REGION_GFX4)+0x080000;
-	DAT = memory_region(REGION_USER2);
+	DAT2 = memory_region(machine, REGION_GFX4)+0x080000;
+	DAT = memory_region(machine, REGION_USER2);
 
 	for (len = 0 ; len < 0x020000 ; len ++ )
 	{
@@ -335,9 +334,9 @@ static GFXDECODE_START( aquarium )
 	GFXDECODE_ENTRY( REGION_GFX4, 0, char5bpplayout,   0x400, 32 )
 GFXDECODE_END
 
-static void irq_handler(int irq)
+static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
+	cpunum_set_input_line(machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const struct YM2151interface ym2151_interface =

@@ -311,19 +311,12 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoipt.h"
 #include "audio/taitosnd.h"
 #include "seta.h"
 #include "sound/2610intf.h"
 #include "sound/2151intf.h"
-
-MACHINE_RESET( cchip1 );
-READ16_HANDLER( cchip1_ctrl_r );
-READ16_HANDLER( cchip1_ram_r );
-WRITE16_HANDLER( cchip1_ctrl_w );
-WRITE16_HANDLER( cchip1_bank_w );
-WRITE16_HANDLER( cchip1_ram_w );
+#include "includes/cchip.h"
 
 
 
@@ -402,15 +395,15 @@ static WRITE16_HANDLER( kyustrkr_input_w )
 
 static INT32 banknum = -1;
 
-static void reset_sound_region(void)
+static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 2, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr( 2, memory_region(machine, REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 3;
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 
@@ -971,9 +964,9 @@ GFXDECODE_END
 /**************************************************************************/
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -997,7 +990,7 @@ static const struct YM2151interface ym2151_interface =
 
 static STATE_POSTLOAD( taitox_postload )
 {
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static MACHINE_START( taitox )

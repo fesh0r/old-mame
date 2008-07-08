@@ -18,15 +18,12 @@ MAIN BOARD:
 ***************************************************************************/
 
 #include "driver.h"
+#include "machine/konami1.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/sn76496.h"
 #include "sound/vlm5030.h"
 #include "sound/dac.h"
 #include "sound/msm5205.h"
-
-
-void konami1_decode(void);
-UINT8 konami1_decodebyte( UINT8 opcode, UINT16 address );
 
 
 extern UINT8 *trackfld_scroll;
@@ -53,71 +50,13 @@ WRITE8_HANDLER( hyprolyb_ADPCM_data_w );
 */
 static UINT8 *nvram;
 static size_t nvram_size;
-static int we_flipped_the_switch;
 
 static NVRAM_HANDLER( trackfld )
 {
 	if (read_or_write)
-	{
 		mame_fwrite(file,nvram,nvram_size);
-
-		if (we_flipped_the_switch)
-		{
-			input_port_entry *in;
-
-
-			/* find the dip switch which resets the high score table, and set it */
-			/* back to off. */
-			in = machine->input_ports;
-
-			while (in->type != IPT_END)
-			{
-				if (in->name != NULL && in->name != IP_NAME_DEFAULT &&
-						strcmp(in->name,"World Records") == 0)
-				{
-					if (in->default_value == 0)
-						in->default_value = in->mask;
-					break;
-				}
-
-				in++;
-			}
-
-			we_flipped_the_switch = 0;
-		}
-	}
-	else
-	{
-		if (file)
-		{
-			mame_fread(file,nvram,nvram_size);
-			we_flipped_the_switch = 0;
-		}
-		else
-		{
-			input_port_entry *in;
-
-
-			/* find the dip switch which resets the high score table, and set it on */
-			in = machine->input_ports;
-
-			while (in->type != IPT_END)
-			{
-				if (in->name != NULL && in->name != IP_NAME_DEFAULT &&
-						strcmp(in->name,"World Records") == 0)
-				{
-					if (in->default_value == in->mask)
-					{
-						in->default_value = 0;
-						we_flipped_the_switch = 1;
-					}
-					break;
-				}
-
-				in++;
-			}
-		}
-	}
+	else if (file)
+		mame_fread(file,nvram,nvram_size);
 }
 
 static NVRAM_HANDLER( mastkin )
@@ -140,7 +79,7 @@ static WRITE8_HANDLER( questions_bank_w )
 {
 	if( data != 0xff )
 	{
-		UINT8 *questions = memory_region(REGION_USER1);
+		UINT8 *questions = memory_region(machine, REGION_USER1);
 		int bankaddr = 0;
 
 		switch( ~data & 0xff )
@@ -1309,32 +1248,30 @@ ROM_END
 
 static DRIVER_INIT( trackfld )
 {
-	konami1_decode();
+	konami1_decode(machine, 0);
 }
 
 static DRIVER_INIT( atlantol )
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
-	int size = memory_region_length(REGION_CPU1);
-	UINT8 *decrypt = auto_malloc(size);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
+	UINT8 *decrypt;
 	int A;
 
-	memory_set_decrypted_region(0, 0x0000, 0xffff, decrypt);
+	/* "konami1" encrypted opcodes */
+	decrypt = konami1_decode(machine, 0);
 
 	/* not encrypted opcodes */
 	for (A = 0;A < 0x6000;A++)
 		decrypt[A] = rom[A];
 
-	/* "konami1" encrypted opcodes */
-	for (A = 0x6000;A < size;A++)
-		decrypt[A] = konami1_decodebyte(rom[A],A);
+	memory_set_decrypted_region(0, 0x0000, 0xffff, decrypt);
 
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1000, 0, 0, SMH_NOP );
 }
 
 static DRIVER_INIT( mastkin )
 {
-	UINT8 *prom = memory_region(REGION_PROMS);
+	UINT8 *prom = memory_region(machine, REGION_PROMS);
 	int i;
 
 	/* build a fake palette so the screen won't be all black */
@@ -1355,14 +1292,14 @@ static DRIVER_INIT( mastkin )
 
 static DRIVER_INIT( wizzquiz )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1) + 0xe000;
+	UINT8 *ROM = memory_region(machine, REGION_CPU1) + 0xe000;
 	int i;
 
 	/* decrypt program rom */
 	for( i = 0; i < 0x2000; i++ )
 		ROM[i] = BITSWAP8(ROM[i],0,1,2,3,4,5,6,7);
 
-	ROM = memory_region(REGION_USER1);
+	ROM = memory_region(machine, REGION_USER1);
 
 	/* decrypt questions roms */
 	for( i = 0; i < 0x40000; i++ )

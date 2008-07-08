@@ -21,7 +21,7 @@
 
     CPU:    1x 65SC02 at 2MHz.
 
-    Sound:  1x AD-65 or U6295 (OKI6295 compatible)
+    Sound:  1x AD-65 or U6295 (OKI6295 compatible) at 1MHz, pin7 HIGH.
             1x LM358N
             1x TDA2003
 
@@ -48,7 +48,7 @@
 ***************************************************************************************
 
 
-    All the supported games have been coded using some Funworld games as point to start,
+    All supported games have been coded using some italian C.M.C games as point to start,
     changing hardware accesses, program logics, graphics, plus protection and some I/O
     through the 2x high density PLDs.
 
@@ -86,7 +86,7 @@
 
     To clear credits (and stats), just re-initialize the NVRAM.
 
-    Only for the new hardware revision (snookr10 & apple10), pressing STOP 1 (key 'Z') in the
+    Only for the new hardware revision (snookr10 & apple10), pressing STOP 1 (key 'Z') into the
     stats mode, make the hidden Input Test mode to appear. Press RESET (F3) to exit the mode.
 
 
@@ -108,8 +108,15 @@
     You have 1 attempt for each 100 earned points. If you lose the game, you lose the points.
 
 
+    NOTE: Bit 7 of input port 0x3004 is tied to bit 7 of input port 0x3003 (DIP switch 1).
+          This allow to use the PAYOUT button to trigger the Supper Game instead of STOP 5.
 
-    ***** Issues / Protection *****
+
+***************************************************************************************
+
+
+    Issues / Protection
+    -------------------
 
     * Apple 10
 
@@ -199,7 +206,7 @@
     To properly decrypt the thing 'on the fly' as the hardware does, I applied a bitswap into TILE_GET_INFO.
     This method rearrange the tile number for each tile called to be drawn.
 
-    The final algorhithm:
+    The final algorithm:
                                                                    digit #3
                                                                    +-------+ swapped digits 1 & 2
                                                                    |       |  +-------+------+
@@ -231,8 +238,9 @@
     0xE0-0xEF  |  0x70-0x7F
     0xF0-0xFF  |  0xF0-0xFF
 
+    And each one of these segments are internally scrambled too.
 
-    So, the algorhythm to properly decrypt the color codes is very different here:
+    So, the algorithm to properly decrypt the color codes is very different here:
 
                                           1st nibble
                                       inverted bitorder
@@ -248,8 +256,8 @@
 ***********************************************************************************
 
 
-    Memory Maps
-    -----------
+    * MEMORY MAPS *
+    ---------------
 
     (Old hardware)
 
@@ -261,8 +269,8 @@
     $4003 - $4003   Input Port 3   ;R  , DIP switches.
     $5000 - $5000   Output Port A  ;W  , lamps.
     $5001 - $5001   Output Port B  ;W  , lamps.
-    $6000 - $6FFF   VideoRAM
-    $7000 - $7FFF   ColorRAM
+    $6000 - $6FFF   Video RAM
+    $7000 - $7FFF   Color RAM
     $8000 - $FFFF   ROM Space
 
 
@@ -274,11 +282,11 @@
     $3001 - $3001   Input Port 1   ;R
     $3002 - $3002   Input Port 2   ;R
     $3003 - $3003   Input Port 3   ;R  , DIP switches.
-    $3004 - $3004   ???            ;R  , the code is constantly polling bit 7.
+    $3004 - $3004   Input Port 4   ;R  , bit 7 in parallel with DIP switch 1.
     $5000 - $5000   Output Port A  ;W  , lamps.
     $5001 - $5001   Output Port B  ;W  , lamps.
-    $6000 - $6FFF   VideoRAM
-    $7000 - $7FFF   ColorRAM
+    $6000 - $6FFF   Video RAM
+    $7000 - $7FFF   Color RAM
     $8000 - $FFFF   ROM Space
 
 
@@ -287,6 +295,27 @@
 
     *** Driver Updates ***
 
+
+    [2008/06/09]
+    - Fixed the tilemap size.
+    - Fixed the screen size.
+    - Updated technical notes.
+
+    [2008/05/29]
+    - Switched the color system to RESNET calculations.
+    - Hooked the infamous bit7 of Input Port 0x3004 in parallel to DIP switch 1.
+      This allow to use the PAYOUT button to trigger the Super Game instead of STOP 5.
+    - Demultiplexed lamps matrix.
+    - Added lamps support, but is still imperfect.
+    - Updated technical notes.
+
+    [2008/05/22]
+    - Confirmed the CPU clock after some PCB measurements.
+    - Changed the SND clock to 1MHz to match the PCB measurement.
+    - Corrected the internal OKI6295 frequency turning the pin 7 state to HIGH.
+    - Inputs: Eliminated all pulse limitations.
+      Affected buttons have a rattled sound in the real thing too.
+    - Updated technical notes.
 
     [2008/04/28]
     - Created a new machine driver for tenballs due to different memory map.
@@ -317,10 +346,7 @@
 
     *** TO DO ***
 
-    - Figure out the unknown reads to offset $3004, bit 7.
-    - Get CPU and sound clocks properly measured.
-    - Get the OKI6295 pin 7 measured to know the real status.
-    - Hook lamps.
+    - Fix lamps.
 
 
 ***********************************************************************************/
@@ -330,6 +356,7 @@
 
 #include "driver.h"
 #include "sound/okim6295.h"
+#include "snookr10.lh"
 
 
 /* from video */
@@ -344,16 +371,42 @@ VIDEO_UPDATE( snookr10 );
 
 /**********************
 * Read/Write Handlers *
+*   - Input Ports -   *
+**********************/
+
+static READ8_HANDLER( dsw_port_1_r )
+/*-----------------------------------
+    PORT 0x3004 ;INPUT PORT 4
+-------------------------------------
+    BIT 0 =
+    BIT 1 =
+    BIT 2 =
+    BIT 3 =
+    BIT 4 =
+    BIT 5 =
+    BIT 6 =
+    BIT 7 = Complement of DS1, bit 7
+------------------------------------*/
+{
+return input_port_read_indexed(machine,3);
+}
+
+/**********************
+* Read/Write Handlers *
 *  - Output Ports -   *
-***********************
+**********************/
+
+/*  Lamps are multiplexed using a 5 bit matrix.
+    The first 4 bits are from Port A, and the
+    remaining one is from Port B.
 
     LAMPS components:
 
     START  = bit1 & bit3
     CANCEL = bit0 & bit3
-    STOP1  = bit1
+    STOP1  = bit1 only
     STOP2  = bit1 & bit2
-    STOP3  = bit1
+    STOP3  = bit1 only
     STOP4  = bit1 & bit4
     STOP5  = bit0 & bit4
 */
@@ -363,26 +416,35 @@ static WRITE8_HANDLER( output_port_0_w )
     PORT 0x5000 ;OUTPUT PORT A
 -------------------------------
     BIT 0 =
-    BIT 1 = Lamps, bit0
+    BIT 1 = Lamps matrix, bit0
     BIT 2 =
-    BIT 3 = Lamps, bit1
+    BIT 3 = Lamps matrix, bit1
     BIT 4 =
-    BIT 5 = Lamps, bit2
+    BIT 5 = Lamps matrix, bit2
     BIT 6 =
-    BIT 7 = Lamps, bit3
+    BIT 7 = Lamps matrix, bit3
 ------------------------------*/
 {
-//  (data >> 1) & 1;    /* lamps, bit0 */
-//  (data >> 3) & 1;    /* lamps, bit1 */
-//  (data >> 5) & 1;    /* lamps, bit2 */
-//  (data >> 7) & 1;    /* lamps, bit3 */
+	int bit0, bit1, bit2, bit3, bit4;
+
+	bit0 = (data >> 1) & 1;
+	bit1 = (data >> 3) & 1;
+	bit2 = (data >> 5) & 1;
+	bit3 = (data >> 7) & 1;
+	bit4 = (input_port_read_indexed(machine,5) & 1);
+
+	output_set_lamp_value(1, (bit1 & bit3));	/* Lamp 1 - START  */
+	output_set_lamp_value(2, (bit0 & bit3));	/* Lamp 2 - CANCEL */
+	output_set_lamp_value(3, (bit1 | bit3));	/* Lamp 3 - STOP1  */
+	output_set_lamp_value(4, (bit1 & bit2));	/* Lamp 4 - STOP2  */
+	output_set_lamp_value(5, (bit1 | bit3));	/* Lamp 5 - STOP3  */
 }
 
 static WRITE8_HANDLER( output_port_1_w )
 /*-----------------------------
     PORT 0x5001 ;OUTPUT PORT B
 -------------------------------
-    BIT 0 = Lamps, bit4
+    BIT 0 = Lamps matrix, bit4
     BIT 1 =
     BIT 2 =
     BIT 3 =
@@ -392,7 +454,14 @@ static WRITE8_HANDLER( output_port_1_w )
     BIT 7 =
 ------------------------------*/
 {
-//  (data & 1);         /* lamps, bit4 */
+	int bit0, bit1, bit4;
+
+	bit0 = (input_port_read_indexed(machine,4) >> 1) & 1;
+	bit1 = (input_port_read_indexed(machine,4) >> 3) & 1;
+	bit4 = (data & 1);
+
+	output_set_lamp_value(6, (bit1 & bit4));	/* Lamp 6 - STOP4  */
+	output_set_lamp_value(7, (bit0 & bit4));	/* Lamp 7 - STOP5  */
 }
 
 
@@ -407,7 +476,7 @@ static ADDRESS_MAP_START( snookr10_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x3001, 0x3001) AM_READ(input_port_1_r)	/* IN1 */
 	AM_RANGE(0x3002, 0x3002) AM_READ(input_port_2_r)	/* IN2 */
 	AM_RANGE(0x3003, 0x3003) AM_READ(input_port_3_r)	/* DS1 */
-	AM_RANGE(0x3004, 0x3004) AM_READNOP /* unknown reads comparing bit 7 */
+	AM_RANGE(0x3004, 0x3004) AM_READ(dsw_port_1_r)		/* complement of DS1, bit 7 */
 	AM_RANGE(0x5000, 0x5000) AM_WRITE(output_port_0_w)	/* OUT0 */
 	AM_RANGE(0x5001, 0x5001) AM_WRITE(output_port_1_w)	/* OUT1 */
 	AM_RANGE(0x6000, 0x6fff) AM_RAM_WRITE(snookr10_videoram_w) AM_BASE(&videoram)
@@ -434,23 +503,23 @@ ADDRESS_MAP_END
 *      Input ports       *
 *************************/
 
-/*  Do the stops & cancel buttons need PORT_IMPULSE
-    to just trigger only 1 sound each time they are pressed? */
+/*  Eliminated all PORT_IMPULSE limitations.
+    All Hold & Cancel buttons have a rattle sound in the real PCB. */
 
 static INPUT_PORTS_START( snookr10 )
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote x100") PORT_CODE(KEYCODE_Q)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_IMPULSE(2) PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* Input Test in stats mode */
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_IMPULSE(2) PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* Input Test in stats mode */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )		PORT_NAME("Start (Deal) / Raddoppio (Double-Up)")
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON5 )	PORT_IMPULSE(2) PORT_NAME("Stop 5 / Risk (Half Gamble) / Super Game") PORT_CODE(KEYCODE_B)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON5 )	PORT_NAME("Stop 5 / Risk (Half Gamble) / Super Game") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1 )	PORT_NAME("Estatistica (Stats)")
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	PORT_NAME("Management")
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_IMPULSE(2) PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
 
 	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_IMPULSE(2) PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_IMPULSE(2) PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Ticket") PORT_CODE(KEYCODE_T)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Hopper") PORT_CODE(KEYCODE_H)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -487,25 +556,29 @@ static INPUT_PORTS_START( snookr10 )
 	PORT_DIPSETTING(    0x20, "Manual - Coins" )
 	PORT_DIPSETTING(    0x40, "Manual - Tickets" )
 	PORT_DIPSETTING(    0x60, "Automatic" )
-	PORT_DIPNAME( 0x80, 0x80, "Super Game" )				PORT_DIPLOCATION("SW1:1")
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Super Game Button" )			PORT_DIPLOCATION("SW1:1")
+	PORT_DIPSETTING(    0x00, "PAYOUT button" )
+	PORT_DIPSETTING(    0x80, "STOP 5 button" )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( apple10 )
+
+/*  Eliminated all PORT_IMPULSE limitations.
+    All Hold & Cancel buttons have a rattle sound in the real PCB. */
+
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote x100") PORT_CODE(KEYCODE_Q)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_IMPULSE(2) PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* Input Test in stats mode */
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_IMPULSE(2) PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* Input Test in stats mode */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )		PORT_NAME("Start (Deal) / Raddoppio (Double-Up)")
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON5 )	PORT_IMPULSE(2) PORT_NAME("Stop 5 / Risk (Half Gamble) / Super Game") PORT_CODE(KEYCODE_B)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON5 )	PORT_NAME("Stop 5 / Risk (Half Gamble) / Super Game") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1 )	PORT_NAME("Estatistica (Stats)")
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	PORT_NAME("Management")
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_IMPULSE(2) PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
 
 	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_IMPULSE(2) PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_IMPULSE(2) PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Ticket") PORT_CODE(KEYCODE_T)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Hopper") PORT_CODE(KEYCODE_H)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -542,25 +615,29 @@ static INPUT_PORTS_START( apple10 )
 	PORT_DIPSETTING(    0x20, "Manual - Coins 2" )
 	PORT_DIPSETTING(    0x40, "Disable Payment/Game" )
 	PORT_DIPSETTING(    0x60, "Automatic" )
-	PORT_DIPNAME( 0x80, 0x80, "Super Game" )				PORT_DIPLOCATION("SW1:1")
-	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
+	PORT_DIPNAME( 0x80, 0x80, "Super Game Button" )			PORT_DIPLOCATION("SW1:1")
+	PORT_DIPSETTING(    0x00, "PAYOUT button" )
+	PORT_DIPSETTING(    0x80, "STOP 5 button" )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tenballs )
+
+/*  Eliminated all PORT_IMPULSE limitations.
+    All Hold & Cancel buttons have a rattle sound in the real PCB. */
+
 	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Remote x100") PORT_CODE(KEYCODE_Q)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_IMPULSE(2) PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* no Input Test in stats mode */
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_IMPULSE(2) PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 )	PORT_NAME("Stop 1") PORT_CODE(KEYCODE_Z)	/* no Input Test in stats mode */
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON6 )	PORT_NAME("Cancella (Cancel) / Play / Bet") PORT_CODE(KEYCODE_N)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_START1 )		PORT_NAME("Start (Deal) / Raddoppio (Double-Up)")
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON5 )	PORT_IMPULSE(2) PORT_NAME("Stop 5 / Risk (Half Gamble) / Super Game") PORT_CODE(KEYCODE_B)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON5 )	PORT_NAME("Stop 5 / Risk (Half Gamble) / Super Game") PORT_CODE(KEYCODE_B)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE1 )	PORT_NAME("Estatistica (Stats)")
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE2 )	PORT_NAME("Management")
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_IMPULSE(2) PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 )	PORT_NAME("Stop 4 / Alta (High)") PORT_CODE(KEYCODE_V)
 
 	PORT_START_TAG("IN1")
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_IMPULSE(2) PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_IMPULSE(2) PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON2 )	PORT_NAME("Stop 2 / Bassa (Low)") PORT_CODE(KEYCODE_X)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )	PORT_NAME("Stop 3") PORT_CODE(KEYCODE_C)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Ticket") PORT_CODE(KEYCODE_T)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SERVICE )	PORT_NAME("Hopper") PORT_CODE(KEYCODE_H)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -644,7 +721,7 @@ GFXDECODE_END
 static MACHINE_DRIVER_START( snookr10 )
 
     /* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", M65SC02, MASTER_CLOCK/8)	/* 2MHz */
+	MDRV_CPU_ADD_TAG("main", M65SC02, MASTER_CLOCK/8)	/* 2 MHz (1.999 MHz measured) */
 	MDRV_CPU_PROGRAM_MAP(snookr10_map, 0)
 	MDRV_CPU_VBLANK_INT("main", nmi_line_pulse)
 
@@ -656,20 +733,20 @@ static MACHINE_DRIVER_START( snookr10 )
 	MDRV_SCREEN_REFRESH_RATE(60)
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE((128+1)*4, (30+1)*8)
+	MDRV_SCREEN_SIZE(96*4, 30*8)
 	MDRV_SCREEN_VISIBLE_AREA(0*4, 96*4-1, 0*8, 30*8-1)
 
 	MDRV_GFXDECODE(snookr10)
 
-	MDRV_PALETTE_LENGTH(0x100)
+	MDRV_PALETTE_LENGTH(256)
 	MDRV_PALETTE_INIT(snookr10)
 	MDRV_VIDEO_START(snookr10)
 	MDRV_VIDEO_UPDATE(snookr10)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
-	MDRV_SOUND_ADD(OKIM6295, MASTER_CLOCK/12)	/* guess */
-	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7low)	/* pin7 not checked */
+	MDRV_SOUND_ADD(OKIM6295, MASTER_CLOCK/16)	/* 1 MHz (995.5 kHz measured) */
+	MDRV_SOUND_CONFIG(okim6295_interface_region_1_pin7high)	/* pin7 checked HIGH on PCB */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.8)
 
 MACHINE_DRIVER_END
@@ -752,7 +829,7 @@ ROM_END
 *      Game Drivers      *
 *************************/
 
-/*    YEAR  NAME      PARENT    MACHINE   INPUT     INIT ROT    COMPANY    FULLNAME                FLAGS  */
-GAME( 1998, snookr10, 0,        snookr10, snookr10, 0,   ROT0, "Sandii'", "Snooker 10 (Ver 1.11)", 0 )
-GAME( 1998, apple10,  0,        apple10,  apple10,  0,   ROT0, "Sandii'", "Apple 10 (Ver 1.21)",   0 )
-GAME( 1997, tenballs, snookr10, tenballs, tenballs, 0,   ROT0, "unknown", "Ten Balls (Ver 1.05)",  0 )
+/*     YEAR  NAME      PARENT    MACHINE   INPUT     INIT ROT    COMPANY    FULLNAME                FLAGS  LAYOUT */
+GAMEL( 1998, snookr10, 0,        snookr10, snookr10, 0,   ROT0, "Sandii'", "Snooker 10 (Ver 1.11)", 0,     layout_snookr10 )
+GAMEL( 1998, apple10,  0,        apple10,  apple10,  0,   ROT0, "Sandii'", "Apple 10 (Ver 1.21)",   0,     layout_snookr10 )
+GAMEL( 1997, tenballs, snookr10, tenballs, tenballs, 0,   ROT0, "unknown", "Ten Balls (Ver 1.05)",  0,     layout_snookr10 )

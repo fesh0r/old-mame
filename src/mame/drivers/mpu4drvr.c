@@ -269,7 +269,7 @@ static MACHINE_RESET( mpu4_vid )
 */
 
 
-static void update_mpu68_interrupts(void)
+static void update_mpu68_interrupts(running_machine *machine)
 {
 	int newstate = 0;
 
@@ -284,12 +284,12 @@ static void update_mpu68_interrupts(void)
 	if (newstate)
 	{
 		LOGSTUFF(("68k IRQ, %x\n", newstate));
-		cpunum_set_input_line(Machine, 1, newstate, ASSERT_LINE);
+		cpunum_set_input_line(machine, 1, newstate, ASSERT_LINE);
 	}
 	else
 	{
 		LOGSTUFF(("68k IRQ Clear, %x\n", newstate));
-		cpunum_set_input_line(Machine, 1, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 1, 7, CLEAR_LINE);
 	}
 }
 
@@ -307,7 +307,7 @@ static void m68k_acia_irq(int state)
 {
 	m6809_acia_cts = state;
 	m6850_irq_state = state;
-	update_mpu68_interrupts();
+	update_mpu68_interrupts(Machine);
 }
 
 
@@ -337,10 +337,10 @@ static const struct acia6850_interface m68k_acia_if =
 };
 
 
-static void cpu1_ptm_irq(int state)
+static void cpu1_ptm_irq(running_machine *machine, int state)
 {
 	m6840_irq_state = state;
-	update_mpu68_interrupts();
+	update_mpu68_interrupts(machine);
 }
 
 
@@ -794,7 +794,7 @@ static void scn2674_write_command(UINT8 data)
 		{
 			scn2674_irq_state = 1;
 		}
-		update_mpu68_interrupts();
+		update_mpu68_interrupts(Machine);
 	}
 	if ((data&0xe0)==0x80)
 	{
@@ -820,7 +820,7 @@ static void scn2674_write_command(UINT8 data)
 				scn2674_irq_state = 1;
 			}
 		}
-		update_mpu68_interrupts();
+		update_mpu68_interrupts(Machine);
 
 	}
 
@@ -845,7 +845,7 @@ static void scn2674_write_command(UINT8 data)
 				scn2674_irq_state = 1;
 			}
 		}
-		update_mpu68_interrupts();
+		update_mpu68_interrupts(Machine);
 	}
 
 	/* Delayed Commands */
@@ -1353,7 +1353,7 @@ static INTERRUPT_GEN(mpu4_vid_irq)
 			{
 				LOGSTUFF(("vblank irq\n"));
 				scn2674_irq_state = 1;
-				update_mpu68_interrupts();
+				update_mpu68_interrupts(machine);
 
 				scn2674_irq_register |= 0x10;
 			}
@@ -1567,7 +1567,7 @@ static UINT8 *dealem_videoram;
 
 static PALETTE_INIT( dealem )
 {
-	int i;
+	int i, len;
 	static const int resistances_rg[3] = { 1000, 470, 220 };
 	static const int resistances_b [2] = { 470, 220 };
 	double weights_r[3], weights_g[3], weights_b[2];
@@ -1577,7 +1577,8 @@ static PALETTE_INIT( dealem )
 			3,	resistances_rg,	weights_g,	1000,	0,
 			2,	resistances_b,	weights_b,	1000,	0);
 
-	for (i = 0; i < memory_region_length(REGION_PROMS); i++)
+	len = memory_region_length(machine, REGION_PROMS);
+	for (i = 0; i < len; i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 

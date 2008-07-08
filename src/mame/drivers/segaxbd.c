@@ -56,25 +56,14 @@ static UINT16 *backupram1, *backupram2;
 
 /*************************************
  *
- *  Prototypes
- *
- *************************************/
-
-extern void fd1094_machine_init(void);
-extern void fd1094_driver_init(void (*set_decrypted)(UINT8 *));
-
-
-
-/*************************************
- *
  *  Configuration
  *
  *************************************/
 
-static void xboard_generic_init(void)
+static void xboard_generic_init(running_machine *machine)
 {
 	/* init the FD1094 */
-	fd1094_driver_init(NULL);
+	fd1094_driver_init(machine, NULL);
 
 	/* set the default road priority */
 	xboard_set_road_priority(1);
@@ -95,7 +84,7 @@ static void xboard_generic_init(void)
  *
  *************************************/
 
-static void update_main_irqs(void)
+static void update_main_irqs(running_machine *machine)
 {
 	int irq = 0;
 
@@ -111,11 +100,11 @@ static void update_main_irqs(void)
 	/* assert the lines that are live, or clear everything if nothing is live */
 	if (irq != 0)
 	{
-		cpunum_set_input_line(Machine, 0, irq, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, irq, ASSERT_LINE);
 		cpu_boost_interleave(attotime_zero, ATTOTIME_IN_USEC(100));
 	}
 	else
-		cpunum_set_input_line(Machine, 0, 7, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 7, CLEAR_LINE);
 }
 
 
@@ -148,18 +137,18 @@ static TIMER_CALLBACK( scanline_callback )
 
 	/* update IRQs on the main CPU */
 	if (update)
-		update_main_irqs();
+		update_main_irqs(machine);
 
 	/* come back in 2 scanlines */
 	timer_set(video_screen_get_time_until_pos(machine->primary_screen, next_scanline, 0), NULL, next_scanline, scanline_callback);
 }
 
 
-static void timer_ack_callback(void)
+static void timer_ack_callback(running_machine *machine)
 {
 	/* clear the timer IRQ */
 	timer_irq_state = 0;
-	update_main_irqs();
+	update_main_irqs(machine);
 }
 
 
@@ -183,9 +172,9 @@ static void sound_data_w(UINT8 data)
 }
 
 
-static void sound_cpu_irq(int state)
+static void sound_cpu_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 2, 0, state);
+	cpunum_set_input_line(machine, 2, 0, state);
 }
 
 
@@ -351,7 +340,7 @@ static WRITE16_HANDLER( iochip_0_w )
                 D0: Sound section reset (1= normal operation, 0= reset)
             */
 			if (((oldval ^ data) & 0x40) && !(data & 0x40)) watchdog_reset_w(machine,0,0);
-			segaic16_set_display_enable(data & 0x20);
+			segaic16_set_display_enable(machine, data & 0x20);
 			cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 			return;
 
@@ -1876,8 +1865,8 @@ ROM_START( smgp5 )
 	ROM_LOAD32_BYTE( "mpr12418.96",  0x100001, 0x20000, CRC(ed1a0f2b) SHA1(1aa87292ca0465fa129d6be81d95dbb77332ecab) )
 	ROM_LOAD32_BYTE( "mpr12419.100", 0x100002, 0x20000, CRC(ce4568cb) SHA1(1ed66e74ce94d41593b498827d9cc243f775d4ba) )
 	ROM_LOAD32_BYTE( "mpr12420.104", 0x100003, 0x20000, CRC(679442eb) SHA1(f88ef0219497f955d8db6783f3636dad52928f46) )
-	ROM_LOAD32_BYTE( "epr12413.93", 0x180000, 0x20000, CRC(2f1693df) SHA1(ba1e654a1b5fae661b0dae4a8ed04ff50fb546a2) )
-	ROM_LOAD32_BYTE( "epr12414.97", 0x180001, 0x20000, CRC(c78f3d45) SHA1(665750907ed11c89c2ea5c410eac2808445131ae) )
+	ROM_LOAD32_BYTE( "epr12413.93",  0x180000, 0x20000, CRC(2f1693df) SHA1(ba1e654a1b5fae661b0dae4a8ed04ff50fb546a2) )
+	ROM_LOAD32_BYTE( "epr12414.97",  0x180001, 0x20000, CRC(c78f3d45) SHA1(665750907ed11c89c2ea5c410eac2808445131ae) )
 	ROM_LOAD32_BYTE( "epr12415.101", 0x180002, 0x20000, CRC(6080e9ed) SHA1(eb1b871453f76e6a65d20fa9d4bddc1c9f940b4d) )
 	ROM_LOAD32_BYTE( "epr12416.105", 0x180003, 0x20000, CRC(6f1f2769) SHA1(d00d26cd1052d4b46c432b6b69cb2d83179d52a6) )
 
@@ -1913,8 +1902,8 @@ ROM_END
 */
 ROM_START( smgpu )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "ep12561c.58", 0x00000, 0x20000, CRC(a5b0f3fe) SHA1(17103e56f822fdb52e72f597c01415ed375aa102) )
-	ROM_LOAD16_BYTE( "ep12562c.63", 0x00001, 0x20000, CRC(799e55f4) SHA1(2e02cdc63bda47b087c81021018287cfa961c083) )
+	ROM_LOAD16_BYTE( "epr12561c.58", 0x00000, 0x20000, CRC(a5b0f3fe) SHA1(17103e56f822fdb52e72f597c01415ed375aa102) )
+	ROM_LOAD16_BYTE( "epr12562c.63", 0x00001, 0x20000, CRC(799e55f4) SHA1(2e02cdc63bda47b087c81021018287cfa961c083) )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 )	/* decryption key */
 	ROM_LOAD( "317-0125a.key", 0x0000, 0x2000, CRC(3ecdb120) SHA1(c484198e4509d79214e78d4a47e9a7e339f7a2ed) )
@@ -1967,8 +1956,8 @@ ROM_END
 */
 ROM_START( smgpu1 )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "ep12561b.63", 0x00000, 0x20000, CRC(80a32655) SHA1(fe1ffa8af9f1ca175ba90b24a0853329b08d19af) )
-	ROM_LOAD16_BYTE( "ep12562b.58", 0x00001, 0x20000, CRC(d525f2a8) SHA1(f3241e11485c7428cd9f081ec6768fda39ae3250) )
+	ROM_LOAD16_BYTE( "epr12561b.58", 0x00000, 0x20000, CRC(80a32655) SHA1(fe1ffa8af9f1ca175ba90b24a0853329b08d19af) )
+	ROM_LOAD16_BYTE( "epr12562b.63", 0x00001, 0x20000, CRC(d525f2a8) SHA1(f3241e11485c7428cd9f081ec6768fda39ae3250) )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 )	/* decryption key */
 	ROM_LOAD( "317-0125a.key", 0x0000, 0x2000, CRC(3ecdb120) SHA1(c484198e4509d79214e78d4a47e9a7e339f7a2ed) )
@@ -2411,7 +2400,7 @@ ROM_END
 
 static DRIVER_INIT( generic_xboard )
 {
-	xboard_generic_init();
+	xboard_generic_init(machine);
 }
 
 
@@ -2424,7 +2413,7 @@ static DRIVER_INIT( generic_xboard )
 
 static DRIVER_INIT( aburner2 )
 {
-	xboard_generic_init();
+	xboard_generic_init(machine);
 	xboard_set_road_priority(0);
 
 	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x140006, 0x140007, 0, 0x00fff0, aburner2_iochip_0_D_w);
@@ -2433,14 +2422,14 @@ static DRIVER_INIT( aburner2 )
 
 static DRIVER_INIT( aburner )
 {
-	xboard_generic_init();
+	xboard_generic_init(machine);
 	xboard_set_road_priority(0);
 }
 
 
 static DRIVER_INIT( loffire )
 {
-	xboard_generic_init();
+	xboard_generic_init(machine);
 	adc_reverse[1] = adc_reverse[3] = 1;
 
 	/* install extra synchronization on core shared memory */
@@ -2450,14 +2439,14 @@ static DRIVER_INIT( loffire )
 
 static DRIVER_INIT( smgp )
 {
-	xboard_generic_init();
+	xboard_generic_init(machine);
 	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x2f0000, 0x2f3fff, 0, 0, smgp_excs_r, smgp_excs_w);
 }
 
 
 static DRIVER_INIT( gprider )
 {
-	xboard_generic_init();
+	xboard_generic_init(machine);
 	gprider_hack = 1;
 }
 

@@ -159,11 +159,11 @@ TODO:
 
 static int adpcm_pos, adpcm_idle;
 
-static void idsoccer_adpcm_int(int chip)
+static void idsoccer_adpcm_int(running_machine *machine, int chip)
 {
 	static int adpcm_data = -1;
 
-	if (adpcm_pos >= memory_region_length(REGION_SOUND1))
+	if (adpcm_pos >= memory_region_length(machine, REGION_SOUND1))
 	{
 		adpcm_idle = 1;
 		MSM5205_reset_w(0, 1);
@@ -175,7 +175,7 @@ static void idsoccer_adpcm_int(int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(REGION_SOUND1)[adpcm_pos++];
+		adpcm_data = memory_region(machine, REGION_SOUND1)[adpcm_pos++];
 		MSM5205_data_w(0, adpcm_data >> 4);
 	}
 }

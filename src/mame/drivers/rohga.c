@@ -108,7 +108,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/h6280/h6280.h"
 #include "decocrpt.h"
 #include "decoprot.h"
@@ -125,9 +124,9 @@ VIDEO_UPDATE( wizdfire );
 VIDEO_UPDATE( nitrobal );
 WRITE16_HANDLER( rohga_buffer_spriteram16_w );
 
-static READ16_HANDLER( rohga_dip3_r ) { return input_port_read_indexed(machine, 3); }
-static READ16_HANDLER( nitrobal_control_r ) { return input_port_read_indexed(machine, 3); }
-static READ16_HANDLER( schmeisr_control_r ) { return input_port_read_indexed(machine, 1); }
+static READ16_HANDLER( rohga_dip3_r ) { return input_port_read(machine, "DSW3"); }
+static READ16_HANDLER( nitrobal_control_r ) { return input_port_read(machine, "DSW3"); }
+static READ16_HANDLER( schmeisr_control_r ) { return input_port_read(machine, "IN1"); }
 
 /**********************************************************************************/
 
@@ -350,7 +349,7 @@ ADDRESS_MAP_END
 /**********************************************************************************/
 
 static INPUT_PORTS_START( rohga )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -368,13 +367,13 @@ static INPUT_PORTS_START( rohga )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START	/* Dip switch bank 1/2 */
+	PORT_START_TAG("DSW1_2")		/* Dip switch bank 1/2 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -423,7 +422,7 @@ static INPUT_PORTS_START( rohga )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	/* Dip switch bank 3 */
+	PORT_START_TAG("DSW3")		/* Dip switch bank 3 */
 	PORT_DIPNAME( 0x0001, 0x0001, "Stage Clear Bonus" ) /* Life Recovery At stage clear */
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -448,7 +447,7 @@ static INPUT_PORTS_START( rohga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( wizdfire )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -466,13 +465,13 @@ static INPUT_PORTS_START( wizdfire )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START	/* Dip switch bank 1/2 */
+	PORT_START_TAG("DSW1_2")		/* Dip switch bank 1/2 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -521,7 +520,7 @@ static INPUT_PORTS_START( wizdfire )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( nitrobal )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -539,13 +538,13 @@ static INPUT_PORTS_START( nitrobal )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START	/* Dip switch bank 1/2 */
+	PORT_START_TAG("DSW1_2")		/* Dip switch bank 1/2 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -593,7 +592,7 @@ static INPUT_PORTS_START( nitrobal )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("DSW3")		 /* Not really a DSW, but this way it's easier to read by tag */
 	PORT_BIT( 0x1, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x2, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x4, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -605,7 +604,7 @@ static INPUT_PORTS_START( nitrobal )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( schmeisr )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -623,13 +622,13 @@ static INPUT_PORTS_START( schmeisr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START	/* Dip switch bank 1/2 */
+	PORT_START_TAG("DSW1_2")		/* Dip switch bank 1/2 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -677,7 +676,7 @@ static INPUT_PORTS_START( schmeisr )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	/* Dip switch bank 3 - This bank of switches are _NOT_ shown in the test mode screen */
+	PORT_START_TAG("DSW3")	/* Dip switch bank 3 - This bank of switches are _NOT_ shown in the test mode screen */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -793,9 +792,9 @@ GFXDECODE_END
 
 /**********************************************************************************/
 
-static void sound_irq(int state)
+static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1,1,state); /* IRQ 2 */
+	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -1411,38 +1410,38 @@ ROM_END
 
 static DRIVER_INIT( rohga )
 {
-	deco56_decrypt(REGION_GFX1);
-	deco56_decrypt(REGION_GFX2);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco56_decrypt(machine, REGION_GFX2);
 
 	decoprot_reset();
 }
 
 static DRIVER_INIT( wizdfire )
 {
-	deco74_decrypt(REGION_GFX1);
-	deco74_decrypt(REGION_GFX2);
-	deco74_decrypt(REGION_GFX3);
+	deco74_decrypt(machine, REGION_GFX1);
+	deco74_decrypt(machine, REGION_GFX2);
+	deco74_decrypt(machine, REGION_GFX3);
 }
 
 static DRIVER_INIT( nitrobal )
 {
-	deco56_decrypt(REGION_GFX1);
-	deco56_decrypt(REGION_GFX2);
-	deco74_decrypt(REGION_GFX3);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco56_decrypt(machine, REGION_GFX2);
+	deco74_decrypt(machine, REGION_GFX3);
 
 	decoprot_reset();
 }
 
 static DRIVER_INIT( schmeisr )
 {
-	const UINT8 *src = memory_region(REGION_GFX2);
-	UINT8 *dst = memory_region(REGION_GFX1);
+	const UINT8 *src = memory_region(machine, REGION_GFX2);
+	UINT8 *dst = memory_region(machine, REGION_GFX1);
 
 	memcpy(dst,src,0x20000);
 	memcpy(dst+0x20000,src+0x80000,0x20000);
 
-	deco74_decrypt(REGION_GFX1);
-	deco74_decrypt(REGION_GFX2);
+	deco74_decrypt(machine, REGION_GFX1);
+	deco74_decrypt(machine, REGION_GFX2);
 
 	decoprot_reset();
 }

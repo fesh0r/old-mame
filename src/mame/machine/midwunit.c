@@ -179,6 +179,8 @@ WRITE16_HANDLER( midxunit_unknown_w )
 
 READ16_HANDLER( midwunit_io_r )
 {
+	static const char *portnames[] = { "IN0", "IN1", "DSW", "IN2" };
+
 	/* apply I/O shuffling */
 	offset = ioshuffle[offset % 16];
 
@@ -188,7 +190,7 @@ READ16_HANDLER( midwunit_io_r )
 		case 1:
 		case 2:
 		case 3:
-			return input_port_read_indexed(machine, offset);
+			return input_port_read(machine, portnames[offset]);
 
 		case 4:
 			return (midway_serial_pic_status_r() << 12) | midwunit_sound_state_r(machine,0,0xffff);
@@ -203,6 +205,8 @@ READ16_HANDLER( midwunit_io_r )
 
 READ16_HANDLER( midxunit_io_r )
 {
+	static const char *portnames[] = { "IN0", "IN1", "IN2", "DSW" };
+
 	offset = (offset / 2) % 8;
 
 	switch (offset)
@@ -211,7 +215,7 @@ READ16_HANDLER( midxunit_io_r )
 		case 1:
 		case 2:
 		case 3:
-			return input_port_read_indexed(machine, offset);
+			return input_port_read(machine, portnames[offset]);
 
 		default:
 			logerror("%08X:Unknown I/O read from %d\n", activecpu_get_pc(), offset);
@@ -223,14 +227,16 @@ READ16_HANDLER( midxunit_io_r )
 
 READ16_HANDLER( midxunit_analog_r )
 {
-	return input_port_read_indexed(machine, midxunit_analog_port);
+	static const char *portnames[] = { "AN0", "AN1", "AN2", "AN3", "AN4", "AN5" };
+
+	return input_port_read(machine, portnames[midxunit_analog_port]);
 }
 
 
 WRITE16_HANDLER( midxunit_analog_select_w )
 {
 	if (offset == 0 && ACCESSING_BITS_0_7)
-		midxunit_analog_port = data - 8 + 4;
+		midxunit_analog_port = data - 8;
 }
 
 
@@ -370,14 +376,15 @@ WRITE16_HANDLER( midxunit_uart_w )
 static void init_wunit_generic(void)
 {
 	UINT8 *base;
-	int i, j;
+	int i, j, len;
 
 	/* register for state saving */
 	register_state_saving();
 
 	/* load the graphics ROMs -- quadruples */
-	midyunit_gfx_rom = base = memory_region(REGION_GFX1);
-	for (i = 0; i < memory_region_length(REGION_GFX1) / 0x400000; i++)
+	midyunit_gfx_rom = base = memory_region(Machine, REGION_GFX1);
+	len = memory_region_length(Machine, REGION_GFX1);
+	for (i = 0; i < len / 0x400000; i++)
 	{
 		memcpy(midwunit_decode_memory, base, 0x400000);
 		for (j = 0; j < 0x100000; j++)
@@ -433,39 +440,39 @@ static WRITE16_HANDLER( umk3_palette_hack_w )
 /*  printf("in=%04X%04X  out=%04X%04X\n", umk3_palette[3], umk3_palette[2], umk3_palette[1], umk3_palette[0]); */
 }
 
-static void init_mk3_common(void)
+static void init_mk3_common(running_machine *machine)
 {
 	/* common init */
 	init_wunit_generic();
 
 	/* serial prefixes 439, 528 */
-	midway_serial_pic_init(528);
+	midway_serial_pic_init(machine, 528);
 }
 
 DRIVER_INIT( mk3 )
 {
-	init_mk3_common();
+	init_mk3_common(machine);
 }
 
 DRIVER_INIT( mk3r20 )
 {
-	init_mk3_common();
+	init_mk3_common(machine);
 }
 
 DRIVER_INIT( mk3r10 )
 {
-	init_mk3_common();
+	init_mk3_common(machine);
 }
 
 DRIVER_INIT( umk3 )
 {
-	init_mk3_common();
+	init_mk3_common(machine);
 	umk3_palette = memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0106a060, 0x0106a09f, 0, 0, umk3_palette_hack_w);
 }
 
 DRIVER_INIT( umk3r11 )
 {
-	init_mk3_common();
+	init_mk3_common(machine);
 	umk3_palette = memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0106a060, 0x0106a09f, 0, 0, umk3_palette_hack_w);
 }
 
@@ -478,7 +485,7 @@ DRIVER_INIT( openice )
 	init_wunit_generic();
 
 	/* serial prefixes 438, 528 */
-	midway_serial_pic_init(528);
+	midway_serial_pic_init(machine, 528);
 }
 
 
@@ -490,7 +497,7 @@ DRIVER_INIT( nbahangt )
 	init_wunit_generic();
 
 	/* serial prefixes 459, 470, 528 */
-	midway_serial_pic_init(528);
+	midway_serial_pic_init(machine, 528);
 }
 
 
@@ -554,7 +561,7 @@ DRIVER_INIT( wwfmania )
 	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x01800000, 0x0180000f, 0, 0, wwfmania_io_0_w);
 
 	/* serial prefixes 430, 528 */
-	midway_serial_pic_init(528);
+	midway_serial_pic_init(machine, 528);
 }
 
 
@@ -566,7 +573,7 @@ DRIVER_INIT( rmpgwt )
 	init_wunit_generic();
 
 	/* serial prefixes 465, 528 */
-	midway_serial_pic_init(528);
+	midway_serial_pic_init(machine, 528);
 }
 
 
@@ -575,14 +582,15 @@ DRIVER_INIT( rmpgwt )
 DRIVER_INIT( revx )
 {
 	UINT8 *base;
-	int i, j;
+	int i, j, len;
 
 	/* register for state saving */
 	register_state_saving();
 
 	/* load the graphics ROMs -- quadruples */
-	midyunit_gfx_rom = base = memory_region(REGION_GFX1);
-	for (i = 0; i < memory_region_length(REGION_GFX1) / 0x200000; i++)
+	midyunit_gfx_rom = base = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(Machine, REGION_GFX1);
+	for (i = 0; i < len / 0x200000; i++)
 	{
 		memcpy(midwunit_decode_memory, base, 0x200000);
 		for (j = 0; j < 0x80000; j++)
@@ -598,7 +606,7 @@ DRIVER_INIT( revx )
 	dcs_init();
 
 	/* serial prefixes 419, 420 */
-	midway_serial_pic_init(419);
+	midway_serial_pic_init(machine, 419);
 }
 
 

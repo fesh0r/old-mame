@@ -5,9 +5,6 @@ The FairyLand Story
   added Victorious Nine by BUT
 
 TODO:
-- game behaves VERY strangely in attract mode. Wait until the demo game will
-  be shown. Insert a coin - game screen will be replaced with "start screen"
-  but you can still see demo sprites and hear the in-game sounds.
 - TA7630 emulation needs filter support (bass sounds from MSM5232 should be about 2 times louder)
 
 ***************************************************************************/
@@ -19,41 +16,7 @@ TODO:
 #include "sound/ay8910.h"
 #include "sound/msm5232.h"
 #include "sound/dac.h"
-
-VIDEO_START( flstory );
-VIDEO_UPDATE( flstory );
-VIDEO_START( victnine );
-VIDEO_UPDATE( victnine );
-
-extern UINT8 *flstory_scrlram;
-
-WRITE8_HANDLER( flstory_videoram_w );
-READ8_HANDLER( flstory_palette_r );
-WRITE8_HANDLER( flstory_palette_w );
-WRITE8_HANDLER( flstory_gfxctrl_w );
-READ8_HANDLER( flstory_scrlram_r );
-WRITE8_HANDLER( flstory_scrlram_w );
-READ8_HANDLER( victnine_gfxctrl_r );
-WRITE8_HANDLER( victnine_gfxctrl_w );
-
-READ8_HANDLER( flstory_68705_portA_r );
-WRITE8_HANDLER( flstory_68705_portA_w );
-READ8_HANDLER( flstory_68705_portB_r );
-WRITE8_HANDLER( flstory_68705_portB_w );
-READ8_HANDLER( flstory_68705_portC_r );
-WRITE8_HANDLER( flstory_68705_portC_w );
-WRITE8_HANDLER( flstory_68705_ddrA_w );
-WRITE8_HANDLER( flstory_68705_ddrB_w );
-WRITE8_HANDLER( flstory_68705_ddrC_w );
-WRITE8_HANDLER( flstory_mcu_w );
-READ8_HANDLER( flstory_mcu_r );
-READ8_HANDLER( flstory_mcu_status_r );
-WRITE8_HANDLER( onna34ro_mcu_w );
-READ8_HANDLER( onna34ro_mcu_r );
-READ8_HANDLER( onna34ro_mcu_status_r );
-WRITE8_HANDLER( victnine_mcu_w );
-READ8_HANDLER( victnine_mcu_r );
-READ8_HANDLER( victnine_mcu_status_r );
+#include "includes/flstory.h"
 
 UINT8 *onna34ro_workram;
 UINT8 *victnine_workram;
@@ -119,13 +82,13 @@ static ADDRESS_MAP_START( flstory_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd400, 0xd400) AM_READWRITE(from_snd_r, sound_command_w)
 	AM_RANGE(0xd401, 0xd401) AM_READ(snd_flag_r)
 	AM_RANGE(0xd403, 0xd403) AM_NOP	/* unknown */
-	AM_RANGE(0xd800, 0xd800) AM_READ(input_port_0_r)
-	AM_RANGE(0xd801, 0xd801) AM_READ(input_port_1_r)
-	AM_RANGE(0xd802, 0xd802) AM_READ(input_port_2_r)
-	AM_RANGE(0xd803, 0xd803) AM_READ(input_port_3_r)
-	AM_RANGE(0xd804, 0xd804) AM_READ(input_port_4_r)
+	AM_RANGE(0xd800, 0xd800) AM_READ_PORT("DSW0")
+	AM_RANGE(0xd801, 0xd801) AM_READ_PORT("DSW1")
+	AM_RANGE(0xd802, 0xd802) AM_READ_PORT("IN0")
+	AM_RANGE(0xd803, 0xd803) AM_READ_PORT("IN1")
+	AM_RANGE(0xd804, 0xd804) AM_READ_PORT("IN2")
 	AM_RANGE(0xd805, 0xd805) AM_READ(flstory_mcu_status_r)
-	AM_RANGE(0xd806, 0xd806) AM_READ(input_port_5_r)
+	AM_RANGE(0xd806, 0xd806) AM_READ_PORT("IN3")
 //  AM_RANGE(0xda00, 0xda00) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xdc00, 0xdc9f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xdca0, 0xdcbf) AM_RAM_WRITE(flstory_scrlram_w) AM_BASE(&flstory_scrlram)
@@ -145,13 +108,13 @@ static ADDRESS_MAP_START( onna34ro_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd400, 0xd400) AM_READWRITE(from_snd_r, sound_command_w)
 	AM_RANGE(0xd401, 0xd401) AM_READ(snd_flag_r)
 	AM_RANGE(0xd403, 0xd403) AM_NOP	/* unknown */
-	AM_RANGE(0xd800, 0xd800) AM_READ(input_port_0_r)
-	AM_RANGE(0xd801, 0xd801) AM_READ(input_port_1_r)
-	AM_RANGE(0xd802, 0xd802) AM_READ(input_port_2_r)
-	AM_RANGE(0xd803, 0xd803) AM_READ(input_port_3_r)
-	AM_RANGE(0xd804, 0xd804) AM_READ(input_port_4_r)
+	AM_RANGE(0xd800, 0xd800) AM_READ_PORT("DSW0")
+	AM_RANGE(0xd801, 0xd801) AM_READ_PORT("DSW1")
+	AM_RANGE(0xd802, 0xd802) AM_READ_PORT("DSW2")
+	AM_RANGE(0xd803, 0xd803) AM_READ_PORT("IN0")
+	AM_RANGE(0xd804, 0xd804) AM_READ_PORT("IN1")
 	AM_RANGE(0xd805, 0xd805) AM_READ(onna34ro_mcu_status_r)
-	AM_RANGE(0xd806, 0xd806) AM_READ(input_port_5_r)
+	AM_RANGE(0xd806, 0xd806) AM_READ_PORT("IN2")
 //  AM_RANGE(0xda00, 0xda00) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xdc00, 0xdc9f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xdca0, 0xdcbf) AM_RAM_WRITE(flstory_scrlram_w) AM_BASE(&flstory_scrlram)
@@ -163,7 +126,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( victnine_port_5_r )
 {
-	return (victnine_mcu_status_r(machine,0) & 3) | (input_port_read_indexed(machine, 5) & ~3);
+	return (victnine_mcu_status_r(machine,0) & 3) | (input_port_read(machine, "IN2") & ~3);
 }
 
 static ADDRESS_MAP_START( victnine_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -176,14 +139,14 @@ static ADDRESS_MAP_START( victnine_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xd400, 0xd400) AM_READWRITE(from_snd_r, sound_command_w)
 	AM_RANGE(0xd401, 0xd401) AM_READ(snd_flag_r)
 	AM_RANGE(0xd403, 0xd403) AM_READNOP /* unknown */
-	AM_RANGE(0xd800, 0xd800) AM_READ(input_port_0_r)
-	AM_RANGE(0xd801, 0xd801) AM_READ(input_port_1_r)
-	AM_RANGE(0xd802, 0xd802) AM_READ(input_port_2_r)
-	AM_RANGE(0xd803, 0xd803) AM_READ(input_port_3_r)
-	AM_RANGE(0xd804, 0xd804) AM_READ(input_port_4_r)
+	AM_RANGE(0xd800, 0xd800) AM_READ_PORT("DSW0")
+	AM_RANGE(0xd801, 0xd801) AM_READ_PORT("DSW1")
+	AM_RANGE(0xd802, 0xd802) AM_READ_PORT("DSW2")
+	AM_RANGE(0xd803, 0xd803) AM_READ_PORT("IN0")
+	AM_RANGE(0xd804, 0xd804) AM_READ_PORT("IN1")
 	AM_RANGE(0xd805, 0xd805) AM_READ(victnine_port_5_r)
-	AM_RANGE(0xd806, 0xd806) AM_READ(input_port_6_r)
-	AM_RANGE(0xd807, 0xd807) AM_READ(input_port_7_r)
+	AM_RANGE(0xd806, 0xd806) AM_READ_PORT("IN3")
+	AM_RANGE(0xd807, 0xd807) AM_READ_PORT("IN4")
 //  AM_RANGE(0xda00, 0xda00) AM_WRITE(SMH_RAM)
 	AM_RANGE(0xdc00, 0xdc9f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0xdca0, 0xdcbf) AM_RAM_WRITE(flstory_scrlram_w) AM_BASE(&flstory_scrlram)
@@ -373,7 +336,7 @@ static INPUT_PORTS_START( flstory )
 	PORT_DIPNAME( 0x20, 0x20, "Leave Off")		// Check code at 0x7859
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )		// (must be OFF or the game will
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )			// hang after the game is over !)
-	PORT_BIT(    0x40, 0x40, IPT_DIPSWITCH_NAME ) PORT_NAME("Invulnerability (Cheat)")
+	PORT_DIPNAME( 0x40, 0x40, "Invulnerability (Cheat)" )
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x80, 0x80, "Coin Slots" )
@@ -689,17 +652,17 @@ static const struct MSM5232interface msm5232_interface =
 static MACHINE_DRIVER_START( flstory )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(Z80,10733000/2)		/* ??? */
+	MDRV_CPU_ADD(Z80,XTAL_10_733MHz/2) /* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(flstory_map,0)
 	MDRV_CPU_VBLANK_INT("main", irq0_line_hold)
 
-	MDRV_CPU_ADD(Z80,8000000/2)
-	/* audio CPU */		/* 4 MHz */
+	MDRV_CPU_ADD(Z80,XTAL_8MHz/2) /* verified on pcb */
+	/* audio CPU */
 	MDRV_CPU_PROGRAM_MAP(sound_map,0)
 	MDRV_CPU_VBLANK_INT_HACK(irq0_line_hold,2)	/* IRQ generated by ??? */
 						/* NMI generated by the main CPU */
 
-	MDRV_CPU_ADD(M68705,4000000)	/* ??? */
+	MDRV_CPU_ADD(M68705,XTAL_18_432MHz/6)	/* verified on pcb */
 	MDRV_CPU_PROGRAM_MAP(flstory_m68705_map,0)
 
 	MDRV_INTERLEAVE(100)	/* 100 CPU slices per frame - an high value to ensure proper */
@@ -723,11 +686,11 @@ static MACHINE_DRIVER_START( flstory )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(AY8910, 8000000/4)
+	MDRV_SOUND_ADD(AY8910, XTAL_8MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(ay8910_interface)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
-	MDRV_SOUND_ADD(MSM5232, 2000000)
+	MDRV_SOUND_ADD(MSM5232, XTAL_8MHz/4) /* verified on pcb */
 	MDRV_SOUND_CONFIG(msm5232_interface)
 	MDRV_SOUND_ROUTE(0, "mono", 1.0)	// pin 28  2'-1
 	MDRV_SOUND_ROUTE(1, "mono", 1.0)	// pin 29  4'-1
@@ -841,7 +804,7 @@ static MACHINE_DRIVER_START( victnine )
 
 	MDRV_SOUND_ADD(AY8910, 8000000/4)
 	MDRV_SOUND_CONFIG(ay8910_interface)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MDRV_SOUND_ADD(MSM5232, 2000000)
 	MDRV_SOUND_CONFIG(msm5232_interface)

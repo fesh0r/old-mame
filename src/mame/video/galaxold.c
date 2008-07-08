@@ -5,6 +5,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "includes/galaxold.h"
 
 static const rectangle _spritevisiblearea =
@@ -22,7 +23,7 @@ static const rectangle* spritevisiblearea;
 static const rectangle* spritevisibleareaflipx;
 
 
-#define STARS_COLOR_BASE 		(memory_region_length(REGION_PROMS))
+#define STARS_COLOR_BASE 		(memory_region_length(Machine, REGION_PROMS))
 #define BULLETS_COLOR_BASE		(STARS_COLOR_BASE + 64)
 #define BACKGROUND_COLOR_BASE	(BULLETS_COLOR_BASE + 2)
 
@@ -59,7 +60,6 @@ static void dambustr_modify_charcode(UINT16 *code,UINT8 x);
 
 static void (*modify_spritecode)(UINT8 *spriteram,int*,int*,int*,int);	/* function to call to do sprite banking */
 static void mshuttle_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int *flipy,int offs);
-static void  calipso_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void mimonkey_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void  batman2_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int *flipy,int offs);
 static void dkongjrm_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int *flipy,int offs);
@@ -166,12 +166,12 @@ static bitmap_t *dambustr_tmpbitmap;
 ***************************************************************************/
 PALETTE_INIT( galaxold )
 {
-	int i;
+	int i, len;
 
 
 	/* first, the character/sprite palette */
-
-	for (i = 0;i < memory_region_length(REGION_PROMS);i++)
+	len = memory_region_length(machine, REGION_PROMS);
+	for (i = 0;i < len;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -212,14 +212,6 @@ PALETTE_INIT( scrambold )
 	palette_set_color(machine,BACKGROUND_COLOR_BASE,MAKE_RGB(0,0,0x56));
 }
 
-PALETTE_INIT( moonwar )
-{
-	PALETTE_INIT_CALL(scrambold);
-
-
-	/* wire mod to connect the bullet blue output to the 220 ohm resistor */
-	palette_set_color(machine,BULLETS_COLOR_BASE+0,MAKE_RGB(0xef,0xef,0x97));
-}
 
 PALETTE_INIT( stratgyx )
 {
@@ -247,12 +239,12 @@ PALETTE_INIT( stratgyx )
 
 PALETTE_INIT( rockclim )
 {
-	int i;
+	int i, len;
 
 
 	/* first, the character/sprite palette */
-
-	for (i = 0;i < memory_region_length(REGION_PROMS);i++)
+	len = memory_region_length(machine, REGION_PROMS);
+	for (i = 0;i < len;i++)
 	{
 		int bit0,bit1,bit2,r,g,b;
 
@@ -592,17 +584,6 @@ VIDEO_START( ckongs )
 	VIDEO_START_CALL(scrambold);
 
 	modify_spritecode = mshuttle_modify_spritecode;
-}
-
-VIDEO_START( calipso )
-{
-	VIDEO_START_CALL(galaxold_plain);
-
-	draw_bullets = scramble_draw_bullets;
-
-	draw_background = scramble_draw_background;
-
-	modify_spritecode = calipso_modify_spritecode;
 }
 
 VIDEO_START( mariner )
@@ -1141,7 +1122,7 @@ static void mariner_modify_charcode(UINT16 *code,UINT8 x)
 
 	/* bit 0 of the PROM controls character banking */
 
-	prom = memory_region(REGION_USER2);
+	prom = memory_region(Machine, REGION_USER2);
 
 	*code |= ((prom[x] & 0x01) << 8);
 }
@@ -1168,13 +1149,6 @@ static void mshuttle_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int
 	*code |= ((spriteram[offs + 2] & 0x30) << 2);
 }
 
-static void calipso_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int *flipy,int offs)
-{
-	/* No flips */
-	*code = spriteram[offs + 1];
-	*flipx = 0;
-	*flipy = 0;
-}
 
 static void mimonkey_modify_spritecode(UINT8 *spriteram,int *code,int *flipx,int *flipy,int offs)
 {
@@ -1326,7 +1300,7 @@ static void stratgyx_draw_background(bitmap_t *bitmap, const rectangle *cliprect
                  the green gun if BCG is asserted
        bits 2-7 are unconnected */
 
-	prom = memory_region(REGION_USER1);
+	prom = memory_region(Machine, REGION_USER1);
 
 	for (x = 0; x < 32; x++)
 	{
@@ -1395,7 +1369,7 @@ static void mariner_draw_background(bitmap_t *bitmap, const rectangle *cliprect)
        line (column) of the screen.  The first 0x20 bytes for unflipped,
        and the 2nd 0x20 bytes for flipped screen. */
 
-	prom = memory_region(REGION_USER1);
+	prom = memory_region(Machine, REGION_USER1);
 
 	if (flipscreen_x)
 	{
@@ -1690,7 +1664,7 @@ static void mariner_draw_stars(running_machine *machine, bitmap_t *bitmap, const
 
 	/* bit 2 of the PROM controls star visibility */
 
-	prom = memory_region(REGION_USER2);
+	prom = memory_region(machine, REGION_USER2);
 
 	for (offs = 0;offs < STAR_COUNT;offs++)
 	{

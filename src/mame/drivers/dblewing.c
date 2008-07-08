@@ -16,8 +16,6 @@ the most protected of the DE102 games?
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
-extern void deco102_decrypt(int region, int address_xor, int data_select_xor, int opcode_select_xor);
-
 /*
 
 offs +0
@@ -140,7 +138,7 @@ static int dblewing_bank_callback(const int bank)
 
 static VIDEO_START(dblewing)
 {
-	deco16_1_video_init();
+	deco16_1_video_init(machine);
 
 	deco16_set_tilemap_bank_callback(0,dblewing_bank_callback);
 	deco16_set_tilemap_bank_callback(1,dblewing_bank_callback);
@@ -271,7 +269,7 @@ static READ16_HANDLER ( dlbewing_prot_r )
 
 	mame_printf_debug("dblewing prot r %08x, %04x, %04x\n",activecpu_get_pc(), offset*2, mem_mask);
 
-	return 0;//mame_rand(Machine);
+	return 0;//mame_rand(machine);
 }
 
 static WRITE16_HANDLER( dblewing_prot_w )
@@ -526,9 +524,9 @@ static INPUT_PORTS_START( dblewing )
 
 INPUT_PORTS_END
 
-static void sound_irq(int irq)
+static void sound_irq(running_machine *machine, int irq)
 {
-//  cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 //  mame_printf_debug("sound irq\n");
 }
 
@@ -638,8 +636,8 @@ ROM_END
 
 static DRIVER_INIT( dblewing )
 {
-	deco56_decrypt(REGION_GFX1);
-	deco102_decrypt(REGION_CPU1, 0x399d, 0x25, 0x3d);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco102_decrypt(machine, REGION_CPU1, 0x399d, 0x25, 0x3d);
 }
 
 

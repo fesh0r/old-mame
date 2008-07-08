@@ -271,9 +271,9 @@ static void kageki_init_samples(void)
 	int start, size;
 	int i, n;
 
+	src = memory_region(Machine, REGION_SOUND1) + 0x0090;
 	for (i = 0; i < MAX_SAMPLES; i++)
 	{
-		src = memory_region(REGION_SOUND1) + 0x0090;
 		start = (src[(i * 2) + 1] * 256) + src[(i * 2)];
 		scan = &src[start];
 		size = 0;
@@ -363,7 +363,7 @@ static WRITE8_HANDLER( kabukiz_sound_bank_w )
 	// to avoid the write when the sound chip is initialized
 	if(data != 0xff)
 	{
-		UINT8 *ROM = memory_region(REGION_CPU3);
+		UINT8 *ROM = memory_region(machine, REGION_CPU3);
 		memory_set_bankptr(3, &ROM[0x10000 + 0x4000 * (data & 0x07)]);
 	}
 }
@@ -525,7 +525,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8742_readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x07ff) AM_READ(SMH_ROM)
-	AM_RANGE(0x0800, 0x08ff) AM_READ(SMH_RAM)	/* Internal i8742 RAM */
+	AM_RANGE(0x0800, 0x08ff) AM_RAM				/* Internal i8742 RAM */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8742_writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -534,8 +534,8 @@ static ADDRESS_MAP_START( i8742_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( i8742_readport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_READ(tnzs_port1_r)
-	AM_RANGE(0x02, 0x02) AM_READ(tnzs_port2_r)
+	AM_RANGE(I8X41_p1, I8X41_p1) AM_READ(tnzs_port1_r)
+	AM_RANGE(I8X41_p2, I8X41_p2) AM_READ(tnzs_port2_r)
 	AM_RANGE(I8X41_t0, I8X41_t0) AM_READ(input_port_5_r)
 	AM_RANGE(I8X41_t1, I8X41_t1) AM_READ(input_port_6_r)
 ADDRESS_MAP_END
@@ -545,7 +545,7 @@ static ADDRESS_MAP_START( i8742_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-WRITE8_HANDLER( jpopnics_palette_w )
+static WRITE8_HANDLER( jpopnics_palette_w )
 {
 	int r,g,b;
 	UINT16 paldata;
@@ -560,7 +560,7 @@ WRITE8_HANDLER( jpopnics_palette_w )
 	b = (paldata >> 8) & 0x000f;
 	// the other bits seem to be used, and the colours are wrong..
 
-	palette_set_color_rgb(Machine,offset,r<<4, g<<4, b<<4);
+	palette_set_color_rgb(machine,offset,r<<4, g<<4, b<<4);
 }
 
 static ADDRESS_MAP_START( jpopnics_main_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -576,6 +576,7 @@ static ADDRESS_MAP_START( jpopnics_main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xf800, 0xffff) AM_RAM AM_WRITE(jpopnics_palette_w) AM_BASE(&paletteram)
 ADDRESS_MAP_END
 
+#ifdef UNUSED_FUNCTION
 READ8_HANDLER( moo_r )
 {
 	return mame_rand(machine);
@@ -585,10 +586,11 @@ READ8_HANDLER( bbb_r )
 {
 	return 0xff;
 }
+#endif
 
-WRITE8_HANDLER( jpopnics_subbankswitch_w )
+static WRITE8_HANDLER( jpopnics_subbankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 
 	/* bits 0-1 select ROM bank */
 	memory_set_bankptr (2, &RAM[0x10000 + 0x2000 * (data & 3)]);
@@ -1428,9 +1430,9 @@ static const struct YM2203interface ym2203_interface =
 
 
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface kageki_ym2203_interface =
@@ -1553,6 +1555,9 @@ static MACHINE_DRIVER_START( drtoppel )
 MACHINE_DRIVER_END
 
 
+static const i8x41_config i8042_config = { TYPE_I8X42 };
+
+
 static MACHINE_DRIVER_START( tnzs )
 
 	/* basic machine hardware */
@@ -1567,6 +1572,7 @@ static MACHINE_DRIVER_START( tnzs )
 	MDRV_CPU_ADD(I8X41,12000000/2)	/* 400KHz ??? - Main board Crystal is 12MHz */
 	MDRV_CPU_PROGRAM_MAP(i8742_readmem,i8742_writemem)
 	MDRV_CPU_IO_MAP(i8742_readport,i8742_writeport)
+	MDRV_CPU_CONFIG( i8042_config )
 
 	MDRV_INTERLEAVE(100)
 
@@ -2355,14 +2361,14 @@ ROM_END
 ROM_START( insectx )
 	ROM_REGION( 0x30000, REGION_CPU1, 0 )	/* 64k + bankswitch areas for the first CPU */
 	ROM_LOAD( "b97-03.u32", 0x00000, 0x08000, CRC(18eef387) SHA1(b22633930d39be1e72fbd5b080972122da3cb3ef) )
-	ROM_CONTINUE(             0x18000, 0x18000 )		/* banked at 8000-bfff */
+	ROM_CONTINUE(           0x18000, 0x18000 )		/* banked at 8000-bfff */
 
 	ROM_REGION( 0x18000, REGION_CPU2, 0 )	/* 64k for the second CPU */
 	ROM_LOAD( "b97-07.u38", 0x00000, 0x08000, CRC(324b28c9) SHA1(db77a4ac60196d0f0f35dbc5c951ec29d6392463) )
-	ROM_CONTINUE(             0x10000, 0x08000 )		/* banked at 8000-9fff */
+	ROM_CONTINUE(           0x10000, 0x08000 )		/* banked at 8000-9fff */
 
-	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE )
-	ROM_LOAD( "b97-02.u1", 0x00000, 0x80000, CRC(d00294b1) SHA1(f43a4f7d13193ddbbcdef71a5085c1db0fc062d4) )
+	ROM_REGION( 0x100000, REGION_GFX1, ROMREGION_DISPOSE ) /* Mask roms */
+	ROM_LOAD( "b97-01.u1", 0x00000, 0x80000, CRC(d00294b1) SHA1(f43a4f7d13193ddbbcdef71a5085c1db0fc062d4) )
 	ROM_LOAD( "b97-02.u2", 0x80000, 0x80000, CRC(db5a7434) SHA1(71fac872b19a13a7ad25c8ad895c322ec9573fdc) )
 ROM_END
 

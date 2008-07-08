@@ -173,11 +173,7 @@ cpu #0 (PC=0601023A): unmapped program memory dword write to 02000000 = 00000000
 #include "machine/scudsp.h"
 #include "sound/scsp.h"
 #include "machine/stvprot.h"
-
-extern UINT32* stv_vdp2_regs;
-extern UINT32* stv_vdp2_vram;
-extern UINT32* stv_vdp2_cram;
-extern UINT32* stv_vdp1_vram;
+#include "includes/stv.h"
 
 #define USE_SLAVE 1
 /*Enable the following to play 'myfairld' without using the -nosound switch.*/
@@ -200,51 +196,6 @@ extern UINT32* stv_vdp1_vram;
 #define MASTER_CLOCK_352 57272800
 #define MASTER_CLOCK_320 53748200
 
-/* stvinit.c */
-DRIVER_INIT( ic13 );
-NVRAM_HANDLER( stv );
-void install_stvbios_speedups(running_machine *machine);
-DRIVER_INIT(bakubaku);
-DRIVER_INIT(mausuke);
-DRIVER_INIT(puyosun);
-DRIVER_INIT(shienryu);
-DRIVER_INIT(prikura);
-DRIVER_INIT(hanagumi);
-DRIVER_INIT(cottonbm);
-DRIVER_INIT(cotton2);
-DRIVER_INIT(fhboxers);
-DRIVER_INIT(dnmtdeka);
-DRIVER_INIT(groovef);
-DRIVER_INIT(danchih);
-DRIVER_INIT(astrass);
-DRIVER_INIT(thunt);
-DRIVER_INIT(grdforce);
-DRIVER_INIT(batmanfr);
-DRIVER_INIT(winterht);
-DRIVER_INIT(seabass);
-DRIVER_INIT(vfremix);
-DRIVER_INIT(diehard);
-DRIVER_INIT(sss);
-DRIVER_INIT(othellos);
-DRIVER_INIT(sasissu);
-DRIVER_INIT(gaxeduel);
-DRIVER_INIT(suikoenb);
-DRIVER_INIT(sokyugrt);
-DRIVER_INIT(znpwfv);
-DRIVER_INIT(twcup98);
-DRIVER_INIT(smleague);
-DRIVER_INIT(maruchan);
-DRIVER_INIT(sandor);
-DRIVER_INIT(colmns97);
-DRIVER_INIT(pblbeach);
-DRIVER_INIT(shanhigw);
-DRIVER_INIT(finlarch);
-DRIVER_INIT(elandore);
-DRIVER_INIT(rsgun);
-DRIVER_INIT(ffreveng);
-DRIVER_INIT(decathlt);
-DRIVER_INIT(nameclv3);
-
 /**************************************************************************************/
 /*to be added into a stv Header file,remember to remove all the static...*/
 
@@ -254,7 +205,6 @@ static UINT8 *smpc_ram;
 UINT32* stv_workram_l;
 UINT32* stv_workram_h;
 static UINT32* stv_backupram;
-extern UINT32* stv_scu;
 static UINT32* ioga;
 static UINT16* scsp_regs;
 static UINT16* sound_ram;
@@ -285,12 +235,12 @@ static INT32  scu_size_0,		/* Transfer DMA size lv 0*/
 			  scu_size_1,		/* lv 1*/
 			  scu_size_2;		/* lv 2*/
 
-static void dma_direct_lv0(void);	/*DMA level 0 direct transfer function*/
-static void dma_direct_lv1(void);   /*DMA level 1 direct transfer function*/
-static void dma_direct_lv2(void);   /*DMA level 2 direct transfer function*/
-static void dma_indirect_lv0(void); /*DMA level 0 indirect transfer function*/
-static void dma_indirect_lv1(void); /*DMA level 1 indirect transfer function*/
-static void dma_indirect_lv2(void); /*DMA level 2 indirect transfer function*/
+static void dma_direct_lv0(running_machine *machine);	/*DMA level 0 direct transfer function*/
+static void dma_direct_lv1(running_machine *machine);   /*DMA level 1 direct transfer function*/
+static void dma_direct_lv2(running_machine *machine);   /*DMA level 2 direct transfer function*/
+static void dma_indirect_lv0(running_machine *machine); /*DMA level 0 indirect transfer function*/
+static void dma_indirect_lv1(running_machine *machine); /*DMA level 1 indirect transfer function*/
+static void dma_indirect_lv2(running_machine *machine); /*DMA level 2 indirect transfer function*/
 
 
 int minit_boost,sinit_boost;
@@ -521,7 +471,7 @@ static UINT8 stv_SMPC_r8 (running_machine *machine, int offset)
 		return_data = input_port_read_indexed(machine, 0);
 
 	if (offset == 0x77)//PDR2 read
-		return_data=  (0xfe | EEPROM_read_bit());
+		return_data=  (0xfe | eeprom_read_bit());
 
 //  if (offset == 0x33) //country code
 //      return_data = input_port_read_indexed(machine, 7);
@@ -545,9 +495,9 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 
 	if(offset == 0x75)
 	{
-		EEPROM_set_clock_line((data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x10);
-		EEPROM_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x08) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x10);
+		eeprom_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
 
 
 //      if (data & 0x01)
@@ -1284,8 +1234,8 @@ static WRITE32_HANDLER( stv_scu_w32 )
 */
 		if(stv_scu[4] & 1 && ((stv_scu[5] & 7) == 7) && stv_scu[4] & 0x100)
 		{
-			if(DIRECT_MODE(0)) { dma_direct_lv0(); }
-			else			   { dma_indirect_lv0(); }
+			if(DIRECT_MODE(0)) { dma_direct_lv0(machine); }
+			else			   { dma_indirect_lv0(machine); }
 
 			stv_scu[4]^=1;//disable starting bit.
 
@@ -1345,8 +1295,8 @@ static WRITE32_HANDLER( stv_scu_w32 )
 		case 12:
 		if(stv_scu[12] & 1 && ((stv_scu[13] & 7) == 7) && stv_scu[12] & 0x100)
 		{
-			if(DIRECT_MODE(1)) { dma_direct_lv1(); }
-			else			   { dma_indirect_lv1(); }
+			if(DIRECT_MODE(1)) { dma_direct_lv1(machine); }
+			else			   { dma_indirect_lv1(machine); }
 
 			stv_scu[12]^=1;
 
@@ -1395,8 +1345,8 @@ static WRITE32_HANDLER( stv_scu_w32 )
 		case 20:
 		if(stv_scu[20] & 1 && ((stv_scu[21] & 7) == 7) && stv_scu[20] & 0x100)
 		{
-			if(DIRECT_MODE(2)) { dma_direct_lv2(); }
-			else			   { dma_indirect_lv2(); }
+			if(DIRECT_MODE(2)) { dma_direct_lv2(machine); }
+			else			   { dma_indirect_lv2(machine); }
 
 			stv_scu[20]^=1;
 
@@ -1425,7 +1375,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 		/*DSP section*/
 		/*Use functions so it is easier to work out*/
 		case 32:
-		dsp_prg_ctrl(data);
+		dsp_prg_ctrl(machine, data);
 		if(LOG_SCU) logerror("SCU DSP: Program Control Port Access %08x\n",data);
 		break;
 		case 33:
@@ -1484,7 +1434,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 	}
 }
 
-static void dma_direct_lv0()
+static void dma_direct_lv0(running_machine *machine)
 {
 	static UINT32 tmp_src,tmp_dst,tmp_size;
 	if(LOG_SCU) logerror("DMA lv 0 transfer START\n"
@@ -1582,7 +1532,7 @@ static void dma_direct_lv0()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x800))/*Lv 0 DMA end irq*/
-		cpunum_set_input_line_and_vector(Machine, 0, 5, HOLD_LINE , 0x4b);
+		cpunum_set_input_line_and_vector(machine, 0, 5, HOLD_LINE , 0x4b);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1594,7 +1544,7 @@ static void dma_direct_lv0()
 	D0MV_0;
 }
 
-static void dma_direct_lv1()
+static void dma_direct_lv1(running_machine *machine)
 {
 	static UINT32 tmp_src,tmp_dst,tmp_size;
 	if(LOG_SCU) logerror("DMA lv 1 transfer START\n"
@@ -1685,7 +1635,7 @@ static void dma_direct_lv1()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x400))/*Lv 1 DMA end irq*/
-		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x4a);
+		cpunum_set_input_line_and_vector(machine, 0, 6, HOLD_LINE , 0x4a);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1697,7 +1647,7 @@ static void dma_direct_lv1()
 	D1MV_0;
 }
 
-static void dma_direct_lv2()
+static void dma_direct_lv2(running_machine *machine)
 {
 	static UINT32 tmp_src,tmp_dst,tmp_size;
 	if(LOG_SCU) logerror("DMA lv 2 transfer START\n"
@@ -1788,7 +1738,7 @@ static void dma_direct_lv2()
 
 	if(LOG_SCU) logerror("DMA transfer END\n");
 	if(!(stv_scu[40] & 0x200))/*Lv 2 DMA end irq*/
-		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x49);
+		cpunum_set_input_line_and_vector(machine, 0, 6, HOLD_LINE , 0x49);
 
 	if(scu_add_tmp & 0x80000000)
 	{
@@ -1800,7 +1750,7 @@ static void dma_direct_lv2()
 	D2MV_0;
 }
 
-static void dma_indirect_lv0()
+static void dma_indirect_lv0(running_machine *machine)
 {
 	/*Helper to get out of the cycle*/
 	UINT8 job_done = 0;
@@ -1866,12 +1816,12 @@ static void dma_indirect_lv0()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x800))/*Lv 0 DMA end irq*/
-		cpunum_set_input_line_and_vector(Machine, 0, 5, HOLD_LINE , 0x4b);
+		cpunum_set_input_line_and_vector(machine, 0, 5, HOLD_LINE , 0x4b);
 
 	D0MV_0;
 }
 
-static void dma_indirect_lv1()
+static void dma_indirect_lv1(running_machine *machine)
 {
 	/*Helper to get out of the cycle*/
 	UINT8 job_done = 0;
@@ -1938,12 +1888,12 @@ static void dma_indirect_lv1()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x400))/*Lv 1 DMA end irq*/
-		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x4a);
+		cpunum_set_input_line_and_vector(machine, 0, 6, HOLD_LINE , 0x4a);
 
 	D1MV_0;
 }
 
-static void dma_indirect_lv2()
+static void dma_indirect_lv2(running_machine *machine)
 {
 	/*Helper to get out of the cycle*/
 	UINT8 job_done = 0;
@@ -2009,7 +1959,7 @@ static void dma_indirect_lv2()
 	}while(job_done == 0);
 
 	if(!(stv_scu[40] & 0x200))/*Lv 2 DMA end irq*/
-		cpunum_set_input_line_and_vector(Machine, 0, 6, HOLD_LINE , 0x49);
+		cpunum_set_input_line_and_vector(machine, 0, 6, HOLD_LINE , 0x49);
 
 	D2MV_0;
 }
@@ -2060,29 +2010,6 @@ static WRITE32_HANDLER( sinit_w )
 	cpunum_set_info_int(0, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
 
-
-extern WRITE32_HANDLER ( stv_vdp2_vram_w );
-extern READ32_HANDLER ( stv_vdp2_vram_r );
-
-extern WRITE32_HANDLER ( stv_vdp2_cram_w );
-extern READ32_HANDLER ( stv_vdp2_cram_r );
-
-extern WRITE32_HANDLER ( stv_vdp2_regs_w );
-extern READ32_HANDLER ( stv_vdp2_regs_r );
-
-extern VIDEO_START ( stv_vdp2 );
-extern VIDEO_UPDATE( stv_vdp2 );
-
-extern READ32_HANDLER( stv_vdp1_regs_r );
-extern WRITE32_HANDLER( stv_vdp1_regs_w );
-extern READ32_HANDLER ( stv_vdp1_vram_r );
-extern WRITE32_HANDLER ( stv_vdp1_vram_w );
-
-extern WRITE32_HANDLER ( stv_vdp1_framebuffer0_w );
-extern READ32_HANDLER ( stv_vdp1_framebuffer0_r );
-
-extern WRITE32_HANDLER ( stv_vdp1_framebuffer1_w );
-extern READ32_HANDLER ( stv_vdp1_framebuffer1_r );
 
 #ifdef UNUSED_FUNCTION
 static READ32_HANDLER( stv_sh2_random_r )
@@ -2541,7 +2468,7 @@ DRIVER_INIT ( stv )
 #ifdef UNUSED_FUNCTION
 static void print_game_info(void)
 {
-	UINT8 *ROM = memory_region(REGION_USER1);
+	UINT8 *ROM = memory_region(machine, REGION_USER1);
 	static FILE *print_file = NULL;
 	UINT8 STR[0x100];
 	UINT32 src_i,dst_i;
@@ -2646,7 +2573,7 @@ static const struct sh2_config sh2_conf_slave  = { 1 };
 
 static int scsp_last_line = 0;
 
-static void scsp_irq(int irq)
+static void scsp_irq(running_machine *machine, int irq)
 {
 	// don't bother the 68k if it's off
 	if (!en_68k)
@@ -2657,15 +2584,15 @@ static void scsp_irq(int irq)
 	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpunum_set_input_line(Machine, 2, irq, ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, irq, ASSERT_LINE);
 	}
 	else if (irq < 0)
 	{
-		cpunum_set_input_line(Machine, 2, -irq, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, -irq, CLEAR_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(Machine, 2, scsp_last_line, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, scsp_last_line, CLEAR_LINE);
 	}
 }
 
@@ -3790,7 +3717,7 @@ by Sega titles,and this is a Sunsoft game)It's likely to be a left-over...
 
 static DRIVER_INIT( sanjeon )
 {
-	UINT8 *src    = memory_region       ( REGION_USER1 );
+	UINT8 *src    = memory_region       ( machine, REGION_USER1 );
 	int x;
 
 	for (x=0;x<0x3000000;x++)

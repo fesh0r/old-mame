@@ -38,7 +38,7 @@ struct ym3812_info
 static void IRQHandler_3812(void *param,int irq)
 {
 	struct ym3812_info *info = param;
-	if (info->intf->handler) (info->intf->handler)(irq ? ASSERT_LINE : CLEAR_LINE);
+	if (info->intf->handler) (info->intf->handler)(Machine, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 static TIMER_CALLBACK( timer_callback_3812_0 )
 {
@@ -207,7 +207,7 @@ struct ym3526_info
 static void IRQHandler_3526(void *param,int irq)
 {
 	struct ym3526_info *info = param;
-	if (info->intf->handler) (info->intf->handler)(irq ? ASSERT_LINE : CLEAR_LINE);
+	if (info->intf->handler) (info->intf->handler)(Machine, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 /* Timer overflow callback from timer.c */
 static TIMER_CALLBACK( timer_callback_3526_0 )
@@ -374,7 +374,7 @@ struct y8950_info
 static void IRQHandler_8950(void *param,int irq)
 {
 	struct y8950_info *info = param;
-	if (info->intf->handler) (info->intf->handler)(irq ? ASSERT_LINE : CLEAR_LINE);
+	if (info->intf->handler) (info->intf->handler)(Machine, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 static TIMER_CALLBACK( timer_callback_8950_0 )
 {
@@ -462,8 +462,8 @@ static void *y8950_start(int sndindex, int clock, const void *config)
 
 	/* ADPCM ROM data */
 	Y8950SetDeltaTMemory(info->chip,
-		(void *)(memory_region(info->intf->rom_region)),
-			memory_region_length(info->intf->rom_region) );
+		(void *)(memory_region(Machine, info->intf->rom_region)),
+			memory_region_length(Machine, info->intf->rom_region) );
 
 	info->stream = stream_create(0,1,rate,info,y8950_stream_update);
 

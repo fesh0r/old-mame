@@ -106,8 +106,8 @@ static WRITE8_HANDLER( cham24_IN0_w )
 	in_0_shift = 0;
 	in_1_shift = 0;
 
-	in_0 = input_port_read_indexed(machine, 0);
-	in_1 = input_port_read_indexed(machine, 1);
+	in_0 = input_port_read(machine, "P1");
+	in_1 = input_port_read(machine, "P2");
 
 }
 
@@ -124,8 +124,8 @@ static WRITE8_HANDLER( cham24_mapper_w )
 	UINT32 prg_bank_page_size = (offset >> 12) & 0x01;
 	UINT32 gfx_mirroring = (offset >> 13) & 0x01;
 
-	UINT8* dst = memory_region( REGION_CPU1 );
-	UINT8* src = memory_region( REGION_USER1 );
+	UINT8* dst = memory_region( machine, REGION_CPU1 );
+	UINT8* src = memory_region( machine, REGION_USER1 );
 
 	// switch PPU VROM bank
 	ppu2c0x_set_videorom_bank( 0, 0, 8, gfx_bank, 512 );
@@ -168,7 +168,7 @@ static ADDRESS_MAP_START( cham24_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( cham24 )
-	PORT_START /* IN0 */
+	PORT_START_TAG("P1") /* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)	/* Select */
@@ -178,7 +178,7 @@ static INPUT_PORTS_START( cham24 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 
-	PORT_START /* IN1 */
+	PORT_START_TAG("P2") /* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)	/* Select */
@@ -198,14 +198,14 @@ static const struct NESinterface cham24_interface_1 =
 static MACHINE_RESET( cham24 )
 {
 	/* switch PRG rom */
-	UINT8* dst = memory_region( REGION_CPU1 );
-	UINT8* src = memory_region( REGION_USER1 );
+	UINT8* dst = memory_region( machine, REGION_CPU1 );
+	UINT8* src = memory_region( machine, REGION_USER1 );
 
 	memcpy( &dst[0x8000], &src[0x0f8000], 0x4000 );
 	memcpy( &dst[0xc000], &src[0x0f8000], 0x4000 );
 
 	/* reset the ppu */
-	ppu2c0x_reset( 0, 1 );
+	ppu2c0x_reset( machine, 0, 1 );
 }
 
 static PALETTE_INIT( cham24 )

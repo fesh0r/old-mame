@@ -84,12 +84,12 @@ static WRITE16_HANDLER(ml_subreset_w)
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	data=0;
-	memory_set_bankptr( 1, memory_region(REGION_CPU2) + ((data) & 0x03) * 0x4000 + 0x10000 );
+	memory_set_bankptr( 1, memory_region(machine, REGION_CPU2) + ((data) & 0x03) * 0x4000 + 0x10000 );
 }
 
 static int adpcm_pos;
 
-static void ml_msm5205_vck(int chip)
+static void ml_msm5205_vck(running_machine *machine, int chip)
 {
 	static int adpcm_data = -1;
 
@@ -100,7 +100,7 @@ static void ml_msm5205_vck(int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(REGION_SOUND1)[adpcm_pos];
+		adpcm_data = memory_region(machine, REGION_SOUND1)[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0xffff;
 		MSM5205_data_w(0, adpcm_data >> 4);
 	}
@@ -336,9 +336,9 @@ PORT_START_TAG("IN3")
 
 INPUT_PORTS_END
 
-static void irq_handler(int irq)
+static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static GFXDECODE_START( mlanding )
@@ -436,8 +436,9 @@ ROM_END
 
 static DRIVER_INIT(mlanding)
 {
-	memory_region(REGION_CPU3)[0x88b]=0x4e;
-	memory_region(REGION_CPU3)[0x88a]=0x71;
+	UINT8 *rom = memory_region(machine, REGION_CPU3);
+	rom[0x88b]=0x4e;
+	rom[0x88a]=0x71;
 }
 
 GAME( 1990, mlanding, 0,        mlanding,   mlanding, mlanding,        ROT0,    "Taito Corporation", "Midnight Landing", GAME_NOT_WORKING|GAME_NO_SOUND )

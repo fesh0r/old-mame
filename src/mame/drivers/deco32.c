@@ -241,8 +241,6 @@ static int raster_enable;
 static emu_timer *raster_irq_timer;
 static UINT8 nslasher_sound_irq;
 
-extern void decrypt156(void);
-
 /**********************************************************************************/
 
 static TIMER_CALLBACK( interrupt_gen )
@@ -331,9 +329,9 @@ static READ32_HANDLER( captaven_prot_r )
 {
 	/* Protection/IO chip 75, same as Lemmings & Robocop 2 */
 	switch (offset<<2) {
-	case 0x0a0: return input_port_read_indexed(machine, 0); /* Player 1 & 2 controls */
-	case 0x158: return input_port_read_indexed(machine, 1); /* Player 3 & 4 controls */
-	case 0xed4: return input_port_read_indexed(machine, 2); /* Misc */
+	case 0x0a0: return input_port_read(machine, "IN0"); /* Player 1 & 2 controls */
+	case 0x158: return input_port_read(machine, "IN1"); /* Player 3 & 4 controls */
+	case 0xed4: return input_port_read(machine, "IN2"); /* Misc */
 	}
 
 	logerror("%08x: Unmapped protection read %04x\n",activecpu_get_pc(),offset<<2);
@@ -343,15 +341,15 @@ static READ32_HANDLER( captaven_prot_r )
 static READ32_HANDLER( captaven_soundcpu_r )
 {
 	/* Top byte - top bit low == sound cpu busy, bottom word is dips */
-	return 0xffff0000 | input_port_read_indexed(machine, 3);
+	return 0xffff0000 | input_port_read(machine, "DSW");
 }
 
 static READ32_HANDLER( fghthist_control_r )
 {
 	switch (offset) {
-	case 0: return 0xffff0000 | input_port_read_indexed(machine, 0);
-	case 1: return 0xffff0000 | input_port_read_indexed(machine, 1); //check top bits??
-	case 2: return 0xfffffffe | EEPROM_read_bit();
+	case 0: return 0xffff0000 | input_port_read(machine, "IN0");
+	case 1: return 0xffff0000 | input_port_read(machine, "IN1"); //check top bits??
+	case 2: return 0xfffffffe | eeprom_read_bit();
 	}
 
 	return 0xffffffff;
@@ -360,9 +358,9 @@ static READ32_HANDLER( fghthist_control_r )
 static WRITE32_HANDLER( fghthist_eeprom_w )
 {
 	if (ACCESSING_BITS_0_7) {
-		EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x10);
-		EEPROM_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x10);
+		eeprom_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 	}
 	else if (!ACCESSING_BITS_8_15)
 	{
@@ -375,16 +373,16 @@ static WRITE32_HANDLER( fghthist_eeprom_w )
 static READ32_HANDLER( dragngun_service_r )
 {
 //  logerror("%08x:Read service\n",activecpu_get_pc());
-	return input_port_read_indexed(machine, 3);
+	return input_port_read(machine, "IN2");
 }
 
 static READ32_HANDLER( lockload_gun_mirror_r )
 {
 //logerror("%08x:Read gun %d\n",activecpu_get_pc(),offset);
-//return ((mame_rand(Machine)%0xffff)<<16) | mame_rand(Machine)%0xffff;
+//return ((mame_rand(machine)%0xffff)<<16) | mame_rand(machine)%0xffff;
 	if (offset) /* Mirror of player 1 and player 2 fire buttons */
-		return input_port_read_indexed(machine, 5) | ((mame_rand(Machine)%0xff)<<16);
-	return input_port_read_indexed(machine, 4) | input_port_read_indexed(machine, 6) | (input_port_read_indexed(machine, 6)<<16) | (input_port_read_indexed(machine, 6)<<24); //((mame_rand(Machine)%0xff)<<16);
+		return input_port_read(machine, "IN4") | ((mame_rand(machine)%0xff)<<16);
+	return input_port_read(machine, "IN3") | input_port_read(machine, "LIGHT0_X") | (input_port_read(machine, "LIGHT0_X")<<16) | (input_port_read(machine, "LIGHT0_X")<<24); //((mame_rand(machine)%0xff)<<16);
 }
 
 static READ32_HANDLER( dragngun_prot_r )
@@ -398,9 +396,9 @@ static READ32_HANDLER( dragngun_prot_r )
 //definitely vblank in locked load
 
 	switch (offset<<1) {
-	case 0x140/2: return 0xffff0000 | input_port_read_indexed(machine, 0); /* IN0 */
-	case 0xadc/2: return 0xffff0000 | input_port_read_indexed(machine, 1) | strobe; /* IN1 */
-	case 0x6a0/2: return 0xffff0000 | input_port_read_indexed(machine, 2); /* IN2 (Dip switch) */
+	case 0x140/2: return 0xffff0000 | input_port_read(machine, "IN0"); /* IN0 */
+	case 0xadc/2: return 0xffff0000 | input_port_read(machine, "IN1") | strobe; /* IN1 */
+	case 0x6a0/2: return 0xffff0000 | input_port_read(machine, "DSW"); /* IN2 (Dip switch) */
 	}
 	return 0xffffffff;
 }
@@ -411,10 +409,10 @@ static READ32_HANDLER( dragngun_lightgun_r )
 {
 	/* Ports 0-3 are read, but seem unused */
 	switch (dragngun_lightgun_port) {
-	case 4: return input_port_read_indexed(machine, 4); break;
-	case 5: return input_port_read_indexed(machine, 5); break;
-	case 6: return input_port_read_indexed(machine, 6); break;
-	case 7: return input_port_read_indexed(machine, 7); break;
+	case 4: return input_port_read(machine, "LIGHT0_X"); break;
+	case 5: return input_port_read(machine, "LIGHT1_X"); break;
+	case 6: return input_port_read(machine, "LIGHT0_Y"); break;
+	case 7: return input_port_read(machine, "LIGHT1_Y"); break;
 	}
 
 //  logerror("Illegal lightgun port %d read \n",dragngun_lightgun_port);
@@ -429,15 +427,15 @@ static WRITE32_HANDLER( dragngun_lightgun_w )
 
 static READ32_HANDLER( dragngun_eeprom_r )
 {
-	return 0xfffffffe | EEPROM_read_bit();
+	return 0xfffffffe | eeprom_read_bit();
 }
 
 static WRITE32_HANDLER( dragngun_eeprom_w )
 {
 	if (ACCESSING_BITS_0_7) {
-		EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x1);
-		EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x1);
+		eeprom_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
 		return;
 	}
 	logerror("%08x:Write control 1 %08x %08x\n",activecpu_get_pc(),offset,data);
@@ -460,8 +458,8 @@ static int tattass_eprom_bit;
 static READ32_HANDLER( tattass_prot_r )
 {
 	switch (offset<<1) {
-	case 0x280: return input_port_read_indexed(machine, 0) << 16; /* IN0 */
-	case 0x4c4: return input_port_read_indexed(machine, 1) << 16; /* IN1 */
+	case 0x280: return input_port_read(machine, "IN0") << 16;
+	case 0x4c4: return input_port_read(machine, "IN1") << 16;
 	case 0x35a: return tattass_eprom_bit << 16;
 	}
 
@@ -489,7 +487,7 @@ static WRITE32_HANDLER( tattass_control_w )
 	static int pendingCommand=0; /* 1 = read, 2 = write */
 	static int readBitCount=0;
 	static int byteAddr=0;
-	UINT8 *eeprom=EEPROM_get_data_pointer(0);
+	UINT8 *eeprom=eeprom_get_data_pointer(0);
 
 	/* Eprom in low byte */
 	if (mem_mask==0x000000ff) { /* Byte write to low byte only (different from word writing including low byte) */
@@ -623,9 +621,9 @@ static READ32_HANDLER( nslasher_prot_r )
 {
 
 	switch (offset<<1) {
-	case 0x280: return input_port_read_indexed(machine, 0) << 16| 0xffff; /* IN0 */
-	case 0x4c4: return input_port_read_indexed(machine, 1) << 16| 0xffff; /* IN1 */
-	case 0x35a: return (EEPROM_read_bit()<< 16) | 0xffff; // Debug switch in low word??
+	case 0x280: return input_port_read(machine, "IN0") << 16| 0xffff; /* IN0 */
+	case 0x4c4: return input_port_read(machine, "IN1") << 16| 0xffff; /* IN1 */
+	case 0x35a: return (eeprom_read_bit()<< 16) | 0xffff; // Debug switch in low word??
 	}
 
 	//logerror("%08x: Read unmapped prot %08x (%08x)\n",activecpu_get_pc(),offset<<1,mem_mask);
@@ -637,9 +635,9 @@ static WRITE32_HANDLER( nslasher_eeprom_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x10);
-		EEPROM_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x10);
+		eeprom_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 
 		deco32_pri_w(machine,0,data&0x3,0xffffffff); /* Bit 0 - layer priority toggle, Bit 1 - BG2/3 Joint mode (8bpp) */
 	}
@@ -1246,7 +1244,7 @@ COIN1n adds 100 energy points (based on "Coinage") for player n when ingame if e
 */
 
 static INPUT_PORTS_START( captaven )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -1264,7 +1262,7 @@ static INPUT_PORTS_START( captaven )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -1282,7 +1280,7 @@ static INPUT_PORTS_START( captaven )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -1300,7 +1298,7 @@ static INPUT_PORTS_START( captaven )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* Dip switch bank 1 */
+	PORT_START_TAG("DSW")	/* Dip switch bank 1 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -1352,7 +1350,7 @@ static INPUT_PORTS_START( captaven )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( fghthist )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
@@ -1370,7 +1368,7 @@ static INPUT_PORTS_START( fghthist )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -1390,7 +1388,7 @@ static INPUT_PORTS_START( fghthist )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( dragngun )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1408,7 +1406,7 @@ static INPUT_PORTS_START( dragngun )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -1426,7 +1424,7 @@ static INPUT_PORTS_START( dragngun )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED ) /* Would be a dipswitch, but only 1 present on board */
 	PORT_DIPNAME( 0x0100, 0x0000, "Reset" ) /* Behaves like Reset */
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
@@ -1453,7 +1451,7 @@ static INPUT_PORTS_START( dragngun )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_VBLANK )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_SERVICE( 0x0004, IP_ACTIVE_LOW )
@@ -1463,21 +1461,21 @@ static INPUT_PORTS_START( dragngun )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("LIGHT0_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("LIGHT1_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("LIGHT0_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("LIGHT1_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( lockload )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1495,14 +1493,14 @@ static INPUT_PORTS_START( lockload )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_SPECIAL ) //check  //test BUTTON F2
 	PORT_BIT( 0xfff0, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED ) /* Would be a dipswitch, but only 1 present on board */
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Free_Play ) )
 	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
@@ -1529,35 +1527,35 @@ static INPUT_PORTS_START( lockload )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_VBLANK ) //IPT_VBLANK )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_SERVICE( 0x0004, IP_ACTIVE_LOW )
 	PORT_BIT( 0x00f8, IP_ACTIVE_LOW, IPT_UNUSED ) //check  //test BUTTON F2
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1) /* mirror of fire buttons */
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN4")
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("LIGHT0_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("LIGHT0_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("LIGHT1_X")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("LIGHT1_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(20) PORT_KEYDELTA(25) PORT_PLAYER(2)
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tattass )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -1575,7 +1573,7 @@ static INPUT_PORTS_START( tattass )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -1595,7 +1593,7 @@ static INPUT_PORTS_START( tattass )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( nslasher )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -1613,7 +1611,7 @@ static INPUT_PORTS_START( nslasher )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -1777,19 +1775,19 @@ GFXDECODE_END
 
 /**********************************************************************************/
 
-static void sound_irq(int state)
+static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1,1,state); /* IRQ 2 */
+	cpunum_set_input_line(machine, 1,1,state); /* IRQ 2 */
 }
 
-static void sound_irq_nslasher(int state)
+static void sound_irq_nslasher(running_machine *machine, int state)
 {
 	/* bit 0 of nslasher_sound_irq specifies IRQ from sound chip */
 	if (state)
 		nslasher_sound_irq |= 0x01;
 	else
 		nslasher_sound_irq &= ~0x01;
-	cpunum_set_input_line(Machine, 1, 0, (nslasher_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, (nslasher_sound_irq != 0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
@@ -1836,7 +1834,7 @@ static const UINT8 tattass_default_eprom[0x160] =
 	0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-static const struct EEPROM_interface eeprom_interface_tattass =
+static const eeprom_interface eeprom_interface_tattass =
 {
 	10,				// address bits 10  ==> } 1024 byte eprom
 	8,				// data bits    8
@@ -1845,13 +1843,13 @@ static const struct EEPROM_interface eeprom_interface_tattass =
 static NVRAM_HANDLER(tattass)
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
 		int len;
-		EEPROM_init(&eeprom_interface_tattass);
-		if (file) EEPROM_load(file);
-		else memcpy(EEPROM_get_data_pointer(&len),tattass_default_eprom,0x160);
+		eeprom_init(&eeprom_interface_tattass);
+		if (file) eeprom_load(file);
+		else memcpy(eeprom_get_data_pointer(&len),tattass_default_eprom,0x160);
 	}
 }
 
@@ -3191,19 +3189,19 @@ ROM_END
 
 static DRIVER_INIT( captaven )
 {
-	deco56_decrypt(REGION_GFX1);
-	deco56_decrypt(REGION_GFX2);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco56_decrypt(machine, REGION_GFX2);
 }
 
 static DRIVER_INIT( dragngun )
 {
-	UINT32 *ROM = (UINT32 *)memory_region(REGION_CPU1);
-	const UINT8 *SRC_RAM = memory_region(REGION_GFX1);
-	UINT8 *DST_RAM = memory_region(REGION_GFX2);
+	UINT32 *ROM = (UINT32 *)memory_region(machine, REGION_CPU1);
+	const UINT8 *SRC_RAM = memory_region(machine, REGION_GFX1);
+	UINT8 *DST_RAM = memory_region(machine, REGION_GFX2);
 
-	deco74_decrypt(REGION_GFX1);
-	deco74_decrypt(REGION_GFX2);
-	deco74_decrypt(REGION_GFX3);
+	deco74_decrypt(machine, REGION_GFX1);
+	deco74_decrypt(machine, REGION_GFX2);
+	deco74_decrypt(machine, REGION_GFX3);
 
 	memcpy(DST_RAM+0x80000,SRC_RAM,0x10000);
 	memcpy(DST_RAM+0x110000,SRC_RAM+0x10000,0x10000);
@@ -3213,20 +3211,20 @@ static DRIVER_INIT( dragngun )
 
 static DRIVER_INIT( fghthist )
 {
-	deco56_decrypt(REGION_GFX1);
-	deco74_decrypt(REGION_GFX2);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco74_decrypt(machine, REGION_GFX2);
 
 	decoprot_reset();
 }
 
 static DRIVER_INIT( lockload )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
-//  UINT32 *ROM = (UINT32 *)memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+//  UINT32 *ROM = (UINT32 *)memory_region(machine, REGION_CPU1);
 
-	deco74_decrypt(REGION_GFX1);
-	deco74_decrypt(REGION_GFX2);
-	deco74_decrypt(REGION_GFX3);
+	deco74_decrypt(machine, REGION_GFX1);
+	deco74_decrypt(machine, REGION_GFX2);
+	deco74_decrypt(machine, REGION_GFX3);
 
 	memcpy(RAM+0x300000,RAM+0x100000,0x100000);
 	memset(RAM+0x100000,0,0x100000);
@@ -3238,7 +3236,7 @@ static DRIVER_INIT( lockload )
 
 static DRIVER_INIT( tattass )
 {
-	UINT8 *RAM = memory_region(REGION_GFX1);
+	UINT8 *RAM = memory_region(machine, REGION_GFX1);
 	UINT8 *tmp = malloc_or_die(0x80000);
 
 	/* Reorder bitplanes to make decoding easier */
@@ -3246,20 +3244,20 @@ static DRIVER_INIT( tattass )
 	memcpy(RAM+0x80000,RAM+0x100000,0x80000);
 	memcpy(RAM+0x100000,tmp,0x80000);
 
-	RAM = memory_region(REGION_GFX2);
+	RAM = memory_region(machine, REGION_GFX2);
 	memcpy(tmp,RAM+0x80000,0x80000);
 	memcpy(RAM+0x80000,RAM+0x100000,0x80000);
 	memcpy(RAM+0x100000,tmp,0x80000);
 
 	free(tmp);
 
-	deco56_decrypt(REGION_GFX1); /* 141 */
-	deco56_decrypt(REGION_GFX2); /* 141 */
+	deco56_decrypt(machine, REGION_GFX1); /* 141 */
+	deco56_decrypt(machine, REGION_GFX2); /* 141 */
 }
 
 static DRIVER_INIT( nslasher )
 {
-	UINT8 *RAM = memory_region(REGION_GFX1);
+	UINT8 *RAM = memory_region(machine, REGION_GFX1);
 	UINT8 *tmp = malloc_or_die(0x80000);
 
 	/* Reorder bitplanes to make decoding easier */
@@ -3267,19 +3265,19 @@ static DRIVER_INIT( nslasher )
 	memcpy(RAM+0x80000,RAM+0x100000,0x80000);
 	memcpy(RAM+0x100000,tmp,0x80000);
 
-	RAM = memory_region(REGION_GFX2);
+	RAM = memory_region(machine, REGION_GFX2);
 	memcpy(tmp,RAM+0x80000,0x80000);
 	memcpy(RAM+0x80000,RAM+0x100000,0x80000);
 	memcpy(RAM+0x100000,tmp,0x80000);
 
 	free(tmp);
 
-	deco56_decrypt(REGION_GFX1); /* 141 */
-	deco74_decrypt(REGION_GFX2);
+	deco56_decrypt(machine, REGION_GFX1); /* 141 */
+	deco74_decrypt(machine, REGION_GFX2);
 
-	decrypt156();
+	deco156_decrypt(machine);
 
-	soundlatch_setclearedvalue(0xff);
+	soundlatch_setclearedvalue(machine, 0xff);
 
 	/* The board for Night Slashers is very close to the Fighter's History and
     Tattoo Assassins boards, but has an encrypted ARM cpu. */

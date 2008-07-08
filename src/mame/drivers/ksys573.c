@@ -301,11 +301,11 @@ static READ32_HANDLER( jamma_r )
 	switch (offset)
 	{
 	case 0:
-		data = input_port_read_indexed(machine, 0);
+		data = input_port_read(machine, "IN0");
 		break;
 	case 1:
 	{
-		data = input_port_read_indexed(machine, 1);
+		data = input_port_read(machine, "IN1");
 		data |= 0x000000c0;
 
 		if( has_ds2401[ security_cart_number ] )
@@ -341,10 +341,10 @@ static READ32_HANDLER( jamma_r )
 		break;
 	}
 	case 2:
-		data = input_port_read_indexed(machine, 2);
+		data = input_port_read(machine, "IN2");
 		break;
 	case 3:
-		data = input_port_read_indexed(machine, 3);
+		data = input_port_read(machine, "IN3");
 		break;
 	}
 
@@ -518,7 +518,7 @@ static TIMER_CALLBACK( atapi_xfer_end )
 		atapi_regs[ATAPI_REG_INTREASON] = ATAPI_INTREASON_IO | ATAPI_INTREASON_COMMAND;
 	}
 
-	psx_irq_set(0x400);
+	psx_irq_set(machine, 0x400);
 
 	verboselog( 2, "atapi_xfer_end: %d %d\n", atapi_xferlen, atapi_xfermod );
 }
@@ -568,7 +568,7 @@ static READ32_HANDLER( atapi_r )
 			atapi_regs[ATAPI_REG_COUNTLOW] = atapi_xferlen & 0xff;
 			atapi_regs[ATAPI_REG_COUNTHIGH] = (atapi_xferlen>>8)&0xff;
 
-			psx_irq_set(0x400);
+			psx_irq_set(machine, 0x400);
 		}
 
 		if( atapi_data_ptr < atapi_data_len )
@@ -585,7 +585,7 @@ static READ32_HANDLER( atapi_r )
 				{
 					atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
 					atapi_regs[ATAPI_REG_INTREASON] = ATAPI_INTREASON_IO;
-					psx_irq_set(0x400);
+					psx_irq_set(machine, 0x400);
 				}
 			}
 		}
@@ -667,7 +667,7 @@ static WRITE32_HANDLER( atapi_w )
 				SCSIWriteData( inserted_cdrom, atapi_data, atapi_cdata_wait );
 
 				// assert IRQ
-				psx_irq_set(0x400);
+				psx_irq_set(machine, 0x400);
 
 				// not sure here, but clear DRQ at least?
 				atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
@@ -740,7 +740,7 @@ static WRITE32_HANDLER( atapi_w )
 				}
 
 				// assert IRQ
-				psx_irq_set(0x400);
+				psx_irq_set(machine, 0x400);
 			}
 			else
 			{
@@ -857,7 +857,7 @@ static WRITE32_HANDLER( atapi_w )
 					atapi_regs[ATAPI_REG_COUNTLOW] = 0;
 					atapi_regs[ATAPI_REG_COUNTHIGH] = 2;
 
-					psx_irq_set(0x400);
+					psx_irq_set(machine, 0x400);
 					break;
 
 				case 0xef:	// SET FEATURES
@@ -866,7 +866,7 @@ static WRITE32_HANDLER( atapi_w )
 					atapi_data_ptr = 0;
 					atapi_data_len = 0;
 
-					psx_irq_set(0x400);
+					psx_irq_set(machine, 0x400);
 					break;
 
 				default:
@@ -1221,7 +1221,7 @@ static TIMER_CALLBACK( root_finished )
 	if( ( m_p_n_root_mode[ n_counter ] & RC_IRQOVERFLOW ) != 0 ||
 		( m_p_n_root_mode[ n_counter ] & RC_IRQTARGET ) != 0 )
 	{
-		psx_irq_set( 0x10 << n_counter );
+		psx_irq_set( machine, 0x10 << n_counter );
 	}
 }
 
@@ -1325,7 +1325,7 @@ static ADDRESS_MAP_START( konami573_map, ADDRESS_SPACE_PROGRAM, 32 )
 ADDRESS_MAP_END
 
 
-static void flash_init( void )
+static void flash_init( running_machine *machine )
 {
 	int i;
 	int chip;
@@ -1354,7 +1354,7 @@ static void flash_init( void )
 	i = 0;
 	while( flash_init[ i ].start != NULL )
 	{
-		data = memory_region( flash_init[ i ].region );
+		data = memory_region( machine, flash_init[ i ].region );
 		if( data != NULL )
 		{
 			size = 0;
@@ -1365,7 +1365,7 @@ static void flash_init( void )
 				size += flash_init[ i ].size;
 				flash_chips++;
 			}
-			if( size != memory_region_length( flash_init[ i ].region ) )
+			if( size != memory_region_length( machine, flash_init[ i ].region ) )
 			{
 				fatalerror( "flash_init %d incorrect region length\n", i );
 			}
@@ -1408,11 +1408,11 @@ static void *atapi_get_device(void)
 	return ret;
 }
 
-static void security_cart_init( int cart, int eeprom_region, int ds2401_region )
+static void security_cart_init( running_machine *machine, int cart, int eeprom_region, int ds2401_region )
 {
-	UINT8 *eeprom_rom = memory_region( eeprom_region );
-	int eeprom_length = memory_region_length( eeprom_region );
-	UINT8 *ds2401_rom = memory_region( ds2401_region );
+	UINT8 *eeprom_rom = memory_region( machine, eeprom_region );
+	int eeprom_length = memory_region_length( machine, eeprom_region );
+	UINT8 *ds2401_rom = memory_region( machine, ds2401_region );
 
 	if( eeprom_rom != NULL )
 	{
@@ -1501,12 +1501,12 @@ static DRIVER_INIT( konami573 )
 		m_p_timer_root[i] = timer_alloc(root_finished, NULL);
 	}
 
-	timekeeper_init( 0, TIMEKEEPER_M48T58, memory_region( REGION_USER11 ) );
+	timekeeper_init( machine, 0, TIMEKEEPER_M48T58, memory_region( machine, REGION_USER11 ) );
 
 	state_save_register_global( m_n_security_control );
 
-	security_cart_init( 0, REGION_USER2, REGION_USER9 );
-	security_cart_init( 1, REGION_USER8, REGION_USER10 );
+	security_cart_init( machine, 0, REGION_USER2, REGION_USER9 );
+	security_cart_init( machine, 1, REGION_USER8, REGION_USER10 );
 
 	state_save_register_item_array( "KSYS573", 0, m_p_n_root_count );
 	state_save_register_item_array( "KSYS573", 0, m_p_n_root_mode );
@@ -1514,17 +1514,17 @@ static DRIVER_INIT( konami573 )
 	state_save_register_item_array( "KSYS573", 0, m_p_n_root_start );
 
 	adc083x_init( 0, ADC0834, analogue_inputs_callback );
-	flash_init();
+	flash_init(machine);
 }
 
 static MACHINE_RESET( konami573 )
 {
-	psx_machine_init();
+	psx_machine_init(machine);
 
 	if( chiptype[ 0 ] != 0 )
 	{
 		/* security cart */
-		psx_sio_input( 1, PSX_SIO_IN_DSR, PSX_SIO_IN_DSR );
+		psx_sio_input( machine, 1, PSX_SIO_IN_DSR, PSX_SIO_IN_DSR );
 	}
 
 	flash_bank = -1;
@@ -1880,7 +1880,7 @@ static void gn845pwbb_clk_w( int offset, int data )
 
 static CUSTOM_INPUT( gn845pwbb_read )
 {
-	return input_port_read(machine,  "STAGE" ) & stage_mask;
+	return input_port_read(field->port->machine,  "STAGE" ) & stage_mask;
 }
 
 static void gn845pwbb_output_callback( int offset, int data )
@@ -3005,7 +3005,7 @@ static INPUT_PORTS_START( drmn )
 	PORT_BIT( 0x08000000, IP_ACTIVE_LOW, IPT_UNUSED ) /* P2 BUTTON6 */
 INPUT_PORTS_END
 
-#define SYS573_BIOS_A ROM_LOAD( "700a01.22g",   0x0000000, 0x080000, CRC(11812ef8) )
+#define SYS573_BIOS_A ROM_LOAD( "700a01.22g",   0x0000000, 0x080000, CRC(11812ef8) SHA1(e1284add4aaddd5337bd7f4e27614460d52b5b48))
 
 // BIOS
 ROM_START( sys573 )

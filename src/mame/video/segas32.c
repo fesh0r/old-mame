@@ -142,7 +142,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "profiler.h"
 #include "segas32.h"
 
@@ -276,7 +275,7 @@ static UINT32 *spriteram_32bit;
 static TILE_GET_INFO( get_tile_info );
 static void sprite_erase_buffer(void);
 static void sprite_swap_buffers(void);
-static void sprite_render_list(void);
+static void sprite_render_list(running_machine *machine);
 
 
 
@@ -369,7 +368,7 @@ static TIMER_CALLBACK( update_sprites )
 	if (sprite_control[0] & 1)
 	{
 		sprite_swap_buffers();
-		sprite_render_list();
+		sprite_render_list(machine);
 	}
 	sprite_control[0] = 0;
 }
@@ -410,14 +409,14 @@ INLINE UINT16 xBGRBBBBGGGGRRRR_to_xBBBBBGGGGGRRRRR(UINT16 value)
 }
 
 
-INLINE void update_color(int offset, UINT16 data)
+INLINE void update_color(running_machine *machine, int offset, UINT16 data)
 {
 	/* note that since we use this RAM directly, we don't technically need */
 	/* to call palette_set_color() at all; however, it does give us that */
 	/* nice display when you hit F4, which is useful for debugging */
 
 	/* set the color */
-	palette_set_color_rgb(Machine, offset, pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
+	palette_set_color_rgb(machine, offset, pal5bit(data >> 0), pal5bit(data >> 5), pal5bit(data >> 10));
 }
 
 
@@ -439,7 +438,7 @@ INLINE UINT16 common_paletteram_r(int which, offs_t offset)
 }
 
 
-static void common_paletteram_w(int which, offs_t offset, UINT16 data, UINT16 mem_mask)
+static void common_paletteram_w(running_machine *machine, int which, offs_t offset, UINT16 data, UINT16 mem_mask)
 {
 	UINT16 value;
 	int convert;
@@ -457,7 +456,7 @@ static void common_paletteram_w(int which, offs_t offset, UINT16 data, UINT16 me
 	COMBINE_DATA(&value);
 	if (convert) value = xBGRBBBBGGGGRRRR_to_xBBBBBGGGGGRRRRR(value);
 	system32_paletteram[which][offset] = value;
-	update_color(0x4000*which + offset, value);
+	update_color(machine, 0x4000*which + offset, value);
 
 	/* if blending is enabled, writes go to both halves of palette RAM */
 	if (mixer_control[which][0x4e/2] & 0x0880)
@@ -470,7 +469,7 @@ static void common_paletteram_w(int which, offs_t offset, UINT16 data, UINT16 me
 		COMBINE_DATA(&value);
 		if (convert) value = xBGRBBBBGGGGRRRR_to_xBBBBBGGGGGRRRRR(value);
 		system32_paletteram[which][offset] = value;
-		update_color(0x4000*which + offset, value);
+		update_color(machine, 0x4000*which + offset, value);
 	}
 }
 
@@ -490,7 +489,7 @@ READ16_HANDLER( system32_paletteram_r )
 
 WRITE16_HANDLER( system32_paletteram_w )
 {
-	common_paletteram_w(0, offset, data, mem_mask);
+	common_paletteram_w(machine, 0, offset, data, mem_mask);
 }
 
 
@@ -504,9 +503,9 @@ READ32_HANDLER( multi32_paletteram_0_r )
 WRITE32_HANDLER( multi32_paletteram_0_w )
 {
 	if (ACCESSING_BITS_0_15)
-		common_paletteram_w(0, offset*2+0, data, mem_mask);
+		common_paletteram_w(machine, 0, offset*2+0, data, mem_mask);
 	if (ACCESSING_BITS_16_31)
-		common_paletteram_w(0, offset*2+1, data >> 16, mem_mask >> 16);
+		common_paletteram_w(machine, 0, offset*2+1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -520,9 +519,9 @@ READ32_HANDLER( multi32_paletteram_1_r )
 WRITE32_HANDLER( multi32_paletteram_1_w )
 {
 	if (ACCESSING_BITS_0_15)
-		common_paletteram_w(1, offset*2+0, data, mem_mask);
+		common_paletteram_w(machine, 1, offset*2+0, data, mem_mask);
 	if (ACCESSING_BITS_16_31)
-		common_paletteram_w(1, offset*2+1, data >> 16, mem_mask >> 16);
+		common_paletteram_w(machine, 1, offset*2+1, data >> 16, mem_mask >> 16);
 }
 
 
@@ -1697,7 +1696,7 @@ static void sprite_swap_buffers(void)
 		}																	\
 	}
 
-static int draw_one_sprite(UINT16 *data, int xoffs, int yoffs, const rectangle *clipin, const rectangle *clipout)
+static int draw_one_sprite(running_machine *machine, UINT16 *data, int xoffs, int yoffs, const rectangle *clipin, const rectangle *clipout)
 {
 	static const int transparency_masks[4][4] =
 	{
@@ -1708,8 +1707,8 @@ static int draw_one_sprite(UINT16 *data, int xoffs, int yoffs, const rectangle *
 	};
 
 	bitmap_t *bitmap = layer_data[(!is_multi32 || !(data[3] & 0x0800)) ? MIXER_LAYER_SPRITES_2 : MIXER_LAYER_MULTISPR_2].bitmap;
-	UINT8 numbanks = memory_region_length(REGION_GFX2) / 0x400000;
-	const UINT32 *spritebase = (const UINT32 *)memory_region(REGION_GFX2);
+	UINT8 numbanks = memory_region_length(machine, REGION_GFX2) / 0x400000;
+	const UINT32 *spritebase = (const UINT32 *)memory_region(machine, REGION_GFX2);
 
 	int indirect = data[0] & 0x2000;
 	int indlocal = data[0] & 0x1000;
@@ -1898,7 +1897,7 @@ bail:
 
 
 
-static void sprite_render_list(void)
+static void sprite_render_list(running_machine *machine)
 {
 	rectangle outerclip, clipin, clipout;
 	int xoffs = 0, yoffs = 0;
@@ -1929,7 +1928,7 @@ static void sprite_render_list(void)
 		{
 			/* command 0 = draw sprite */
 			case 0:
-				spritenum += 1 + draw_one_sprite(sprite, xoffs, yoffs, &clipin, &clipout);
+				spritenum += 1 + draw_one_sprite(machine, sprite, xoffs, yoffs, &clipin, &clipout);
 				break;
 
 			/* command 1 = set clipping */

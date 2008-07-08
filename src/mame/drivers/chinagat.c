@@ -69,7 +69,6 @@ Input is unique but has a few similarities to DD2 (the coin inputs)
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/z80/z80.h"
 #include "cpu/i8039/i8039.h"
@@ -130,13 +129,13 @@ static WRITE8_HANDLER( chinagat_video_ctrl_w )
 
 static WRITE8_HANDLER( chinagat_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	memory_set_bankptr( 1,&RAM[ 0x10000 + (0x4000 * (data & 7)) ] );
 }
 
 static WRITE8_HANDLER( chinagat_sub_bankswitch_w )
 {
-	UINT8 *RAM = memory_region( REGION_CPU2 );
+	UINT8 *RAM = memory_region( machine, REGION_CPU2 );
 	memory_set_bankptr( 4,&RAM[ 0x10000 + (0x4000 * (data & 7)) ] );
 }
 
@@ -183,7 +182,7 @@ static WRITE8_HANDLER( saiyugb1_adpcm_control_w )
 {
 	/* i8748 Port 2 write */
 
-	UINT8 *saiyugb1_adpcm_rom = memory_region(REGION_SOUND1);
+	UINT8 *saiyugb1_adpcm_rom = memory_region(machine, REGION_SOUND1);
 
 	if (data & 0x80)	/* Reset m5205 and disable ADPCM ROM outputs */
 	{
@@ -257,7 +256,7 @@ static READ8_HANDLER( saiyugb1_m5205_irq_r )
 	}
 	return 0;
 }
-static void saiyugb1_m5205_irq_w(int num)
+static void saiyugb1_m5205_irq_w(running_machine *machine, int num)
 {
 	adpcm_sound_irq = 1;
 }
@@ -457,8 +456,9 @@ static GFXDECODE_START( chinagat )
 	GFXDECODE_ENTRY( REGION_GFX3, 0, tilelayout, 256, 8 )	/* 16x16 background tiles */
 GFXDECODE_END
 
-static void chinagat_irq_handler(int irq) {
-	cpunum_set_input_line(Machine, 2, 0, irq ? ASSERT_LINE : CLEAR_LINE );
+static void chinagat_irq_handler(running_machine *machine, int irq)
+{
+	cpunum_set_input_line(machine, 2, 0, irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const struct YM2151interface ym2151_interface =

@@ -5,12 +5,11 @@ Based on drivers from Juno First emulator by Chris Hardy (chrish@kcbbs.gen.nz)
 ***************************************************************************/
 
 #include "driver.h"
+#include "machine/konami1.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/vlm5030.h"
 #include "sound/dac.h"
 
-
-extern void konami1_decode(void);
 
 extern UINT8 *hyperspt_scroll;
 
@@ -63,71 +62,13 @@ static READ8_HANDLER( konami_IN1_r )
 */
 static UINT8 *nvram;
 static size_t nvram_size;
-static int we_flipped_the_switch;
 
 static NVRAM_HANDLER( hyperspt )
 {
 	if (read_or_write)
-	{
 		mame_fwrite(file,nvram,nvram_size);
-
-		if (we_flipped_the_switch)
-		{
-			input_port_entry *in;
-
-
-			/* find the dip switch which resets the high score table, and set it */
-			/* back to off. */
-			in = machine->input_ports;
-
-			while (in->type != IPT_END)
-			{
-				if (in->name != NULL && in->name != IP_NAME_DEFAULT &&
-						strcmp(in->name,"World Records") == 0)
-				{
-					if (in->default_value == 0)
-						in->default_value = in->mask;
-					break;
-				}
-
-				in++;
-			}
-
-			we_flipped_the_switch = 0;
-		}
-	}
-	else
-	{
-		if (file)
-		{
-			mame_fread(file,nvram,nvram_size);
-			we_flipped_the_switch = 0;
-		}
-		else
-		{
-			input_port_entry *in;
-
-
-			/* find the dip switch which resets the high score table, and set it on */
-			in = machine->input_ports;
-
-			while (in->type != IPT_END)
-			{
-				if (in->name != NULL && in->name != IP_NAME_DEFAULT &&
-						strcmp(in->name,"World Records") == 0)
-				{
-					if (in->default_value == in->mask)
-					{
-						in->default_value = 0;
-						we_flipped_the_switch = 1;
-					}
-					break;
-				}
-
-				in++;
-			}
-		}
-	}
+	else if (file)
+		mame_fread(file,nvram,nvram_size);
 }
 
 
@@ -650,7 +591,7 @@ ROM_END
 
 static DRIVER_INIT( hyperspt )
 {
-	konami1_decode();
+	konami1_decode(machine, 0);
 }
 
 

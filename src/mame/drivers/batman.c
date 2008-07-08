@@ -97,7 +97,7 @@ static WRITE16_HANDLER( batman_atarivc_w )
 
 static READ16_HANDLER( special_port2_r )
 {
-	int result = input_port_read_indexed(machine, 2);
+	int result = input_port_read(machine, "260010");
 	if (atarigen_sound_to_cpu_ready) result ^= 0x0010;
 	if (atarigen_cpu_to_sound_ready) result ^= 0x0020;
 	return result;
@@ -170,9 +170,8 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( batman )
-	PORT_START		/* 26000 */
+	PORT_START_TAG("260000")		/* 260000 */
 	PORT_BIT( 0x01ff, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -181,10 +180,10 @@ static INPUT_PORTS_START( batman )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START		/* 26002 */
+	PORT_START_TAG("260002")		/* 260002 */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START		/* 26010 */
+	PORT_START_TAG("260010")		/* 260010 */
 	PORT_BIT( 0x000f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_UNUSED )	/* Input buffer full (@260030) */
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_UNUSED )	/* Output buffer full (@260040) */
@@ -354,8 +353,8 @@ static DRIVER_INIT( batman )
 		0x01D0,0x02C8,0x0000
 	};
 	atarigen_eeprom_default = default_eeprom;
-	atarijsa_init(machine, 2, 0x0040);
-	atarijsa3_init_adpcm(REGION_SOUND1);
+	atarijsa_init(machine, "260010", 0x0040);
+	atarijsa3_init_adpcm(machine, REGION_SOUND1);
 }
 
 

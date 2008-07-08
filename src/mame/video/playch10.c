@@ -1,14 +1,7 @@
 #include "driver.h"
 #include "deprecat.h"
 #include "video/ppu2c0x.h"
-
-/* from machine */
-extern int pc10_sdcs;			/* ShareD Chip Select */
-extern int pc10_dispmask;		/* Display Mask */
-extern int pc10_gun_controller;	/* whether we need to draw a crosshair or not */
-extern int pc10_int_detect;
-extern int pc10_game_mode;
-extern int pc10_dispmask_old;
+#include "includes/playch10.h"
 
 static int pc10_bios;
 
@@ -110,7 +103,7 @@ static TILE_GET_INFO( get_bg_tile_info )
 
 VIDEO_START( playch10 )
 {
-	const UINT8 *bios = memory_region(REGION_CPU1);
+	const UINT8 *bios = memory_region(machine, REGION_CPU1);
 	pc10_bios = (bios[3] == 0x2a) ? 1 : 2;
 
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,
@@ -121,7 +114,7 @@ VIDEO_START( playch10 )
 
 VIDEO_START( playch10_hboard )
 {
-	const UINT8 *bios = memory_region(REGION_CPU1);
+	const UINT8 *bios = memory_region(machine, REGION_CPU1);
 	pc10_bios = (bios[3] == 0x2a) ? 1 : 2;
 
 	bg_tilemap = tilemap_create(get_bg_tile_info, tilemap_scan_rows,

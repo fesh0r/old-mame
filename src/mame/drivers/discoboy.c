@@ -167,7 +167,7 @@ static VIDEO_UPDATE( discoboy )
 #ifdef UNUSED_FUNCTION
 void discoboy_setrombank(UINT8 data)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	data &=0x2f;
 	memory_set_bankptr(1, &ROM[0x6000+(data*0x1000)] );
 }
@@ -187,7 +187,7 @@ static WRITE8_HANDLER( discoboy_port_00_w )
 
 static WRITE8_HANDLER( discoboy_port_01_w )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	int rombank;
 
 	// 00 10 20 30 during gameplay  1,2,3 other times?? title screen bit 0x40 toggle
@@ -253,7 +253,7 @@ static READ8_HANDLER( rambank2_r )
 		printf( "unk rb2_r\n");
 	}
 
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static WRITE8_HANDLER( rambank2_w )
@@ -336,7 +336,7 @@ static int adpcm_data = 0x80;
 //  adpcm_data = data;
 //}
 
-static void splash_msm5205_int(int data)
+static void splash_msm5205_int(running_machine *machine, int data)
 {
 	MSM5205_data_w(0,adpcm_data >> 4);
 //  adpcm_data = (adpcm_data << 4) & 0xf0;
@@ -514,7 +514,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( discoboy )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	discoboy_ram_part1 = auto_malloc(0x800);
 	discoboy_ram_part2 = auto_malloc(0x800);

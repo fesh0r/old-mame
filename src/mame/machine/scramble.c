@@ -12,8 +12,6 @@
 #include "machine/8255ppi.h"
 #include "includes/galaxold.h"
 
-static UINT8 moonwar_port_select;
-
 static UINT8 cavelon_bank;
 
 static UINT8 security_2B_counter;
@@ -37,12 +35,12 @@ MACHINE_RESET( sfx )
 	sfx_sh_init();
 }
 
-int monsterz_count = 0;
+static int monsterz_count = 0;
 MACHINE_RESET( monsterz )
 {
 /*
 // patch rom crc
-    UINT8 *ROM = memory_region(REGION_CPU1);
+    UINT8 *ROM = memory_region(machine, REGION_CPU1);
     ROM[0x363f] = 0;
     ROM[0x3640] = 0;
     ROM[0x3641] = 0;
@@ -58,7 +56,7 @@ MACHINE_RESET( monsterz )
 
 MACHINE_RESET( explorer )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	RAM[0x47ff] = 0; /* If not set, it doesn't reset after the 1st time */
 
 	MACHINE_RESET_CALL(galaxold);
@@ -73,25 +71,6 @@ static READ8_HANDLER( ckongs_input_port_1_r )
 static READ8_HANDLER( ckongs_input_port_2_r )
 {
 	return (input_port_read_indexed(machine, 2) & 0xf9) | ((input_port_read_indexed(machine, 1) & 0x03) << 1);
-}
-
-
-static WRITE8_HANDLER( moonwar_port_select_w )
-{
-	moonwar_port_select = data & 0x10;
-}
-
-static READ8_HANDLER( moonwar_input_port_0_r )
-{
-	UINT8 sign;
-	UINT8 delta;
-
-	delta = (moonwar_port_select ? input_port_read_indexed(machine, 3) : input_port_read_indexed(machine, 4));
-
-	sign = (delta & 0x80) >> 3;
-	delta &= 0x0f;
-
-	return ((input_port_read_indexed(machine, 0) & 0xe0) | delta | sign );
 }
 
 
@@ -265,27 +244,6 @@ const ppi8255_interface stratgyx_ppi8255_intf[2] =
 };
 
 
-const ppi8255_interface moonwar_ppi8255_intf[2] =
-{
-	{
-		moonwar_input_port_0_r,		/* Port A read */
-		input_port_1_r,				/* Port B read */
-		input_port_2_r,				/* Port C read */
-		NULL,						/* Port A write */
-		NULL,						/* Port B write */
-		moonwar_port_select_w 		/* Port C write */
-	},
-	{
-		NULL,						/* Port A read */
-		NULL,						/* Port B read */
-		NULL,						/* Port C read */
-		soundlatch_w,				/* Port A write */
-		scramble_sh_irqtrigger_w,	/* Port B write */
-		NULL						/* Port C write */
-	}
-};
-
-
 const ppi8255_interface darkplnt_ppi8255_intf[2] =
 {
 	{
@@ -430,7 +388,7 @@ DRIVER_INIT( mariner )
 {
 	/* extra ROM */
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5800, 0x67ff, 0, 0, SMH_BANK1, SMH_UNMAP);
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x5800);
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x5800);
 
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9008, 0x9008, 0, 0, mariner_protection_2_r);
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb401, 0xb401, 0, 0, mariner_protection_1_r);
@@ -445,12 +403,12 @@ DRIVER_INIT( frogger )
 	UINT8 *ROM;
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
-	ROM = memory_region(REGION_CPU2);
+	ROM = memory_region(machine, REGION_CPU2);
 	for (A = 0;A < 0x0800;A++)
 		ROM[A] = BITSWAP8(ROM[A],7,6,5,4,3,2,0,1);
 
 	/* likewise, the 2nd gfx ROM has data lines D0 and D1 swapped. Decode it. */
-	ROM = memory_region(REGION_GFX1);
+	ROM = memory_region(machine, REGION_GFX1);
 	for (A = 0x0800;A < 0x1000;A++)
 		ROM[A] = BITSWAP8(ROM[A],7,6,5,4,3,2,0,1);
 }
@@ -461,7 +419,7 @@ DRIVER_INIT( froggers )
 	UINT8 *ROM;
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
-	ROM = memory_region(REGION_CPU2);
+	ROM = memory_region(machine, REGION_CPU2);
 	for (A = 0;A < 0x0800;A++)
 		ROM[A] = BITSWAP8(ROM[A],7,6,5,4,3,2,0,1);
 }
@@ -478,7 +436,7 @@ DRIVER_INIT( devilfsh )
 	/* A2 -> A3 */
 	/* A3 -> A1 */
 
-	RAM = memory_region(REGION_CPU1);
+	RAM = memory_region(machine, REGION_CPU1);
 	for (i = 0; i < 0x10000; i += 16)
 	{
 		offs_t j;
@@ -504,12 +462,12 @@ DRIVER_INIT( hotshock )
 {
 	/* protection??? The game jumps into never-neverland here. I think
        it just expects a RET there */
-	memory_region(REGION_CPU1)[0x2ef9] = 0xc9;
+	memory_region(machine, REGION_CPU1)[0x2ef9] = 0xc9;
 }
 
 DRIVER_INIT( cavelon )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	/* banked ROM */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
@@ -525,10 +483,7 @@ DRIVER_INIT( cavelon )
 	state_save_register_global(cavelon_bank);
 }
 
-DRIVER_INIT( moonwar )
-{
-	state_save_register_global(moonwar_port_select);
-}
+
 
 DRIVER_INIT( darkplnt )
 {
@@ -557,7 +512,7 @@ DRIVER_INIT( mimonkey )
 		{ 0x80,0x87,0x81,0x87,0x83,0x00,0x84,0x01,0x01,0x86,0x86,0x80,0x86,0x00,0x86,0x86 }
 	};
 
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	int A, ctr = 0, line, col;
 
 	for( A = 0; A < 0x4000; A++ )
@@ -590,7 +545,7 @@ static int bit(int i,int n)
 
 DRIVER_INIT( anteater )
 {
-	offs_t i;
+	offs_t i, len;
 	UINT8 *RAM;
 	UINT8 *scratch;
 
@@ -602,13 +557,14 @@ DRIVER_INIT( anteater )
     *   Optimizations done by Fabio Buffoni
     */
 
-	RAM = memory_region(REGION_GFX1);
+	RAM = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
 
-	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(len);
 
-		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
+		memcpy(scratch, RAM, len);
 
-		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
+		for (i = 0; i < len; i++)
 		{
 			int j;
 
@@ -626,7 +582,7 @@ DRIVER_INIT( anteater )
 
 DRIVER_INIT( rescue )
 {
-	offs_t i;
+	offs_t i, len;
 	UINT8 *RAM;
 	UINT8 *scratch;
 
@@ -638,13 +594,14 @@ DRIVER_INIT( rescue )
     *   Optimizations done by Fabio Buffoni
     */
 
-	RAM = memory_region(REGION_GFX1);
+	RAM = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
 
-	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(len);
 
-		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
+		memcpy(scratch, RAM, len);
 
-		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
+		for (i = 0; i < len; i++)
 		{
 			int j;
 
@@ -662,7 +619,7 @@ DRIVER_INIT( rescue )
 
 DRIVER_INIT( minefld )
 {
-	offs_t i;
+	offs_t i, len;
 	UINT8 *RAM;
 	UINT8 *scratch;
 
@@ -673,13 +630,14 @@ DRIVER_INIT( minefld )
     *   Code To Decode Minefield by Mike Balfour and Nicola Salmoria
     */
 
-	RAM = memory_region(REGION_GFX1);
+	RAM = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
 
-	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(len);
 
-		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
+		memcpy(scratch, RAM, len);
 
-		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
+		for (i = 0; i < len; i++)
 		{
 			int j;
 
@@ -698,7 +656,7 @@ DRIVER_INIT( minefld )
 
 DRIVER_INIT( losttomb )
 {
-	offs_t i;
+	offs_t i, len;
 	UINT8 *RAM;
 	UINT8 *scratch;
 
@@ -710,13 +668,14 @@ DRIVER_INIT( losttomb )
     *   Optimizations done by Fabio Buffoni
     */
 
-	RAM = memory_region(REGION_GFX1);
+	RAM = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
 
-	scratch = malloc_or_die(memory_region_length(REGION_GFX1));
+	scratch = malloc_or_die(len);
 
-		memcpy(scratch, RAM, memory_region_length(REGION_GFX1));
+		memcpy(scratch, RAM, len);
 
-		for (i = 0; i < memory_region_length(REGION_GFX1); i++)
+		for (i = 0; i < len; i++)
 		{
 			int j;
 
@@ -732,43 +691,11 @@ DRIVER_INIT( losttomb )
 		free(scratch);
 }
 
-DRIVER_INIT( superbon )
-{
-	offs_t i;
-	UINT8 *RAM;
-
-
-	DRIVER_INIT_CALL(scramble);
-
-	/* Deryption worked out by hand by Chris Hardy. */
-
-	RAM = memory_region(REGION_CPU1);
-
-	for (i = 0;i < 0x1000;i++)
-	{
-		/* Code is encrypted depending on bit 7 and 9 of the address */
-		switch (i & 0x0280)
-		{
-		case 0x0000:
-			RAM[i] ^= 0x92;
-			break;
-		case 0x0080:
-			RAM[i] ^= 0x82;
-			break;
-		case 0x0200:
-			RAM[i] ^= 0x12;
-			break;
-		case 0x0280:
-			RAM[i] ^= 0x10;
-			break;
-		}
-	}
-}
-
 
 DRIVER_INIT( hustler )
 {
 	offs_t A;
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 
 	for (A = 0;A < 0x4000;A++)
@@ -776,7 +703,6 @@ DRIVER_INIT( hustler )
 		UINT8 xormask;
 		int bits[8];
 		int i;
-		UINT8 *rom = memory_region(REGION_CPU1);
 
 
 		for (i = 0;i < 8;i++)
@@ -797,7 +723,7 @@ DRIVER_INIT( hustler )
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
 	{
-		UINT8 *rom = memory_region(REGION_CPU2);
+		rom = memory_region(machine, REGION_CPU2);
 
 
 		for (A = 0;A < 0x0800;A++)
@@ -808,6 +734,7 @@ DRIVER_INIT( hustler )
 DRIVER_INIT( billiard )
 {
 	offs_t A;
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 
 	for (A = 0;A < 0x4000;A++)
@@ -815,7 +742,6 @@ DRIVER_INIT( billiard )
 		UINT8 xormask;
 		int bits[8];
 		int i;
-		UINT8 *rom = memory_region(REGION_CPU1);
 
 
 		for (i = 0;i < 8;i++)
@@ -838,7 +764,7 @@ DRIVER_INIT( billiard )
 
 	/* the first ROM of the second CPU has data lines D0 and D1 swapped. Decode it. */
 	{
-		UINT8 *rom = memory_region(REGION_CPU2);
+		rom = memory_region(machine, REGION_CPU2);
 
 
 		for (A = 0;A < 0x0800;A++)
@@ -866,11 +792,10 @@ DRIVER_INIT( mrkougb )
 DRIVER_INIT( ad2083 )
 {
 	UINT8 c;
-	int i;
+	int i, len = memory_region_length(machine, REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
-	UINT8 *ROM = memory_region(REGION_CPU1);
-
-	for (i=0; i<memory_region_length(REGION_CPU1); i++)
+	for (i=0; i<len; i++)
 	{
 		c = ROM[i] ^ 0x35;
 		c = BITSWAP8(c, 6,2,5,1,7,3,4,0); /* also swapped inside of the bigger module */

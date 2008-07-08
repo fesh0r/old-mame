@@ -8,6 +8,7 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/slapfght.h"
 
 
 UINT8 *slapfight_dpram;
@@ -18,7 +19,6 @@ static int getstar_sequence_index;
 static int getstar_sh_intenabled;
 
 static int slapfight_status_state;
-extern UINT8 *getstar_e803;
 
 static UINT8 mcu_val;
 
@@ -87,14 +87,14 @@ WRITE8_HANDLER( slapfight_port_07_w )
 
 WRITE8_HANDLER( slapfight_port_08_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	memory_set_bankptr(1,&RAM[0x10000]);
 }
 
 WRITE8_HANDLER( slapfight_port_09_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	memory_set_bankptr(1,&RAM[0x14000]);
 }

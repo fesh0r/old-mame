@@ -157,7 +157,7 @@ static VIDEO_UPDATE( alg )
 
 static MACHINE_START( alg )
 {
-	discinfo = laserdisc_init(LASERDISC_TYPE_LDP1450, get_disk_handle(0), 1);
+	discinfo = laserdisc_init(machine, LASERDISC_TYPE_LDP1450, get_disk_handle(0), 1);
 	serial_timer = timer_alloc(response_timer, NULL);
 	serial_timer_active = FALSE;
 }
@@ -244,7 +244,7 @@ static CUSTOM_INPUT( lightgun_pos_r )
 	int x = 0, y = 0;
 
 	/* get the position based on the input select */
-	get_lightgun_pos(machine->primary_screen, input_select, &x, &y);
+	get_lightgun_pos(field->port->machine->primary_screen, input_select, &x, &y);
 	return (y << 8) | (x >> 2);
 }
 
@@ -252,14 +252,14 @@ static CUSTOM_INPUT( lightgun_pos_r )
 static CUSTOM_INPUT( lightgun_trigger_r )
 {
 	/* read the trigger control based on the input select */
-	return (input_port_read(machine, "TRIGGERS") >> input_select) & 1;
+	return (input_port_read(field->port->machine, "TRIGGERS") >> input_select) & 1;
 }
 
 
 static CUSTOM_INPUT( lightgun_holster_r )
 {
 	/* read the holster control based on the input select */
-	return (input_port_read(machine, "TRIGGERS") >> (2 + input_select)) & 1;
+	return (input_port_read(field->port->machine, "TRIGGERS") >> (2 + input_select)) & 1;
 }
 
 
@@ -714,7 +714,7 @@ ROM_END
  *
  *************************************/
 
-static void alg_init(void)
+static void alg_init(running_machine *machine)
 {
 	static const amiga_machine_interface alg_intf =
 	{
@@ -731,11 +731,11 @@ static void alg_init(void)
 		NULL,
 		0
 	};
-	amiga_machine_config(&alg_intf);
+	amiga_machine_config(machine, &alg_intf);
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(Machine, REGION_USER1), 0);
 }
 
 
@@ -748,8 +748,8 @@ static void alg_init(void)
 
 static DRIVER_INIT( palr1 )
 {
-	UINT32 length = memory_region_length(REGION_USER2);
-	UINT8 *rom = memory_region(REGION_USER2);
+	UINT32 length = memory_region_length(machine, REGION_USER2);
+	UINT8 *rom = memory_region(machine, REGION_USER2);
 	UINT8 *original = malloc_or_die(length);
 	UINT32 srcaddr;
 
@@ -763,13 +763,13 @@ static DRIVER_INIT( palr1 )
 	}
 	free(original);
 
-	alg_init();
+	alg_init(machine);
 }
 
 static DRIVER_INIT( palr3 )
 {
-	UINT32 length = memory_region_length(REGION_USER2);
-	UINT8 *rom = memory_region(REGION_USER2);
+	UINT32 length = memory_region_length(machine, REGION_USER2);
+	UINT8 *rom = memory_region(machine, REGION_USER2);
 	UINT8 *original = malloc_or_die(length);
 	UINT32 srcaddr;
 
@@ -782,13 +782,13 @@ static DRIVER_INIT( palr3 )
 	}
 	free(original);
 
-	alg_init();
+	alg_init(machine);
 }
 
 static DRIVER_INIT( palr6 )
 {
-	UINT32 length = memory_region_length(REGION_USER2);
-	UINT8 *rom = memory_region(REGION_USER2);
+	UINT32 length = memory_region_length(machine, REGION_USER2);
+	UINT8 *rom = memory_region(machine, REGION_USER2);
 	UINT8 *original = malloc_or_die(length);
 	UINT32 srcaddr;
 
@@ -803,13 +803,13 @@ static DRIVER_INIT( palr6 )
 	}
 	free(original);
 
-	alg_init();
+	alg_init(machine);
 }
 
 static DRIVER_INIT( aplatoon )
 {
 	/* NOT DONE TODO FIGURE OUT THE RIGHT ORDER!!!! */
-	UINT8 *rom = memory_region(REGION_USER2);
+	UINT8 *rom = memory_region(machine, REGION_USER2);
 	char *decrypted = auto_malloc(0x40000);
 	int i;
 
@@ -823,12 +823,12 @@ static DRIVER_INIT( aplatoon )
 		memcpy(decrypted + i * 0x1000, rom + shuffle[i] * 0x1000, 0x1000);
 	memcpy(rom, decrypted, 0x40000);
 	logerror("decrypt done\n ");
-	alg_init();
+	alg_init(machine);
 }
 
 static DRIVER_INIT( none )
 {
-	alg_init();
+	alg_init(machine);
 }
 
 

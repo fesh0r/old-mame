@@ -95,7 +95,7 @@ static VIDEO_UPDATE(astrocorp)
 
 static READ16_HANDLER( astrocorp_eeprom_r )
 {
-	return 0xfff7 | (EEPROM_read_bit() << 3);
+	return 0xfff7 | (eeprom_read_bit() << 3);
 }
 
 static WRITE16_HANDLER( astrocorp_eeprom_w )
@@ -103,13 +103,13 @@ static WRITE16_HANDLER( astrocorp_eeprom_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		// latch the bit
-		EEPROM_write_bit(data & 0x01);
+		eeprom_write_bit(data & 0x01);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -186,7 +186,7 @@ ADDRESS_MAP_END
                                 Input Ports
 ***************************************************************************/
 
-INPUT_PORTS_START( showhand )
+static INPUT_PORTS_START( showhand )
 	PORT_START_TAG("INPUTS")	// 54000
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_COIN1     )	PORT_IMPULSE(1)	// coin
 	PORT_BIT( 0x0002, IP_ACTIVE_HIGH, IPT_BUTTON3   )	PORT_NAME("Payout")	PORT_CODE(KEYCODE_F1) // payout (must be 0 on startup)
@@ -236,16 +236,16 @@ static const UINT16 showhand_default_eeprom[] =	{0x0001,0x0007,0x000a,0x0003,0x0
 static NVRAM_HANDLER( showhand )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);
+		eeprom_init(&eeprom_interface_93C46);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			/* Set the EEPROM to Factory Defaults */
-			EEPROM_set_data((UINT8*)showhand_default_eeprom,sizeof(showhand_default_eeprom));
+			eeprom_set_data((UINT8*)showhand_default_eeprom,sizeof(showhand_default_eeprom));
 		}
 	}
 }
@@ -331,7 +331,7 @@ ROM_END
 static DRIVER_INIT( showhand )
 {
 /*
-    UINT16 *rom = (UINT16*)memory_region(REGION_CPU1);
+    UINT16 *rom = (UINT16*)memory_region(machine, REGION_CPU1);
 
     rom[0x0a1a/2] = 0x6000; // hopper jam
 

@@ -25,7 +25,6 @@ enum
 extern UINT16 *namcona1_workram;
 extern UINT16 *namcona1_vreg;
 extern UINT16 *namcona1_scroll;
-extern UINT16 *namcona1_sparevram;
 
 extern WRITE16_HANDLER( namcona1_videoram_w );
 extern READ16_HANDLER( namcona1_videoram_r );

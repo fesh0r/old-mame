@@ -50,7 +50,7 @@ static UINT8 speech_data;
 static UINT8 last_ctl;
 
 static int cpu_num;
-static UINT8 test_port;
+static const char *test_port;
 static UINT16 test_mask;
 
 static UINT8 has_pokey;
@@ -104,9 +104,10 @@ static void init_save_state(void)
  *
  *************************************/
 
-void atarijsa_init(running_machine *machine, int testport, int testmask)
+void atarijsa_init(running_machine *machine, const char *testport, int testmask)
 {
 	int i;
+	UINT8 *rgn;
 
 	/* copy in the parameters */
 	cpu_num = mame_find_cpu_index(machine, "jsa");
@@ -115,8 +116,9 @@ void atarijsa_init(running_machine *machine, int testport, int testmask)
 	test_mask = testmask;
 
 	/* predetermine the bank base */
-	bank_base = &memory_region(REGION_CPU1+cpu_num)[0x03000];
-	bank_source_data = &memory_region(REGION_CPU1+cpu_num)[0x10000];
+	rgn = memory_region(machine, REGION_CPU1+cpu_num);
+	bank_base = &rgn[0x03000];
+	bank_source_data = &rgn[0x10000];
 
 	/* determine which sound hardware is installed */
 	has_tms5220 = has_oki6295 = has_pokey = has_ym2151 = 0;
@@ -150,9 +152,9 @@ void atarijsa_init(running_machine *machine, int testport, int testmask)
 }
 
 
-void atarijsa3_init_adpcm(int region)
+void atarijsa3_init_adpcm(running_machine *machine, int region)
 {
-	UINT8 *base = memory_region(region);
+	UINT8 *base = memory_region(machine, region);
 
 	/* expand the ADPCM data to avoid lots of memcpy's during gameplay */
 	/* the upper 128k is fixed, the lower 128k is bankswitched */
@@ -219,7 +221,7 @@ static READ8_HANDLER( jsa1_io_r )
                 0x01 = coin 1
             */
 			result = input_port_read(machine, "JSAI");
-			if (!(input_port_read_indexed(machine, test_port) & test_mask)) result ^= 0x80;
+			if (!(input_port_read(machine, test_port) & test_mask)) result ^= 0x80;
 			if (atarigen_cpu_to_sound_ready) result ^= 0x40;
 			if (atarigen_sound_to_cpu_ready) result ^= 0x20;
 			if (!has_tms5220 || tms5220_ready_r()) result ^= 0x10;
@@ -346,7 +348,7 @@ static READ8_HANDLER( jsa2_io_r )
                 0x01 = coin 1
             */
 			result = input_port_read(machine, "JSAII");
-			if (!(input_port_read_indexed(machine, test_port) & test_mask)) result ^= 0x80;
+			if (!(input_port_read(machine, test_port) & test_mask)) result ^= 0x80;
 			if (atarigen_cpu_to_sound_ready) result ^= 0x40;
 			if (atarigen_sound_to_cpu_ready) result ^= 0x20;
 			break;
@@ -465,7 +467,7 @@ static READ8_HANDLER( jsa3_io_r )
                 0x01 = coin R (active high)
             */
 			result = input_port_read(machine, "JSAIII");
-			if (!(input_port_read_indexed(machine, test_port) & test_mask)) result ^= 0x90;
+			if (!(input_port_read(machine, test_port) & test_mask)) result ^= 0x90;
 			if (atarigen_cpu_to_sound_ready) result ^= 0x40;
 			if (atarigen_sound_to_cpu_ready) result ^= 0x20;
 			break;
@@ -602,7 +604,7 @@ static READ8_HANDLER( jsa3s_io_r )
                 0x01 = coin R (active high)
             */
 			result = input_port_read(machine, "JSAIII");
-			if (!(input_port_read_indexed(machine, test_port) & test_mask)) result ^= 0x90;
+			if (!(input_port_read(machine, test_port) & test_mask)) result ^= 0x90;
 			if (atarigen_cpu_to_sound_ready) result ^= 0x40;
 			if (atarigen_sound_to_cpu_ready) result ^= 0x20;
 			break;

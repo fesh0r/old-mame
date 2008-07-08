@@ -350,7 +350,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taito_f3.h"
 #include "cpu/mc68hc11/mc68hc11.h"
 #include "sound/es5506.h"
@@ -382,8 +381,8 @@ extern READ32_HANDLER(taitojc_tile_r);
 extern WRITE32_HANDLER(taitojc_tile_w);
 extern READ32_HANDLER(taitojc_char_r);
 extern WRITE32_HANDLER(taitojc_char_w);
-extern void taitojc_clear_frame(void);
-extern void taitojc_render_polygons(UINT16 *polygon_fifo, int length);
+extern void taitojc_clear_frame(running_machine *machine);
+extern void taitojc_render_polygons(running_machine *machine, UINT16 *polygon_fifo, int length);
 
 extern VIDEO_START(taitojc);
 extern VIDEO_UPDATE(taitojc);
@@ -429,7 +428,7 @@ static READ32_HANDLER ( jc_control_r )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				UINT32 data = EEPROM_read_bit() & 1;
+				UINT32 data = eeprom_read_bit() & 1;
 				data |= input_port_read_indexed(machine, 0) & 0xfe;
 				r |= data << 24;
 			}
@@ -455,7 +454,7 @@ static READ32_HANDLER ( jc_control_r )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				//r |= (mame_rand(Machine) & 0xff) << 24;
+				//r |= (mame_rand(machine) & 0xff) << 24;
 			}
 			return r;
 		}
@@ -485,9 +484,9 @@ static WRITE32_HANDLER ( jc_control_w )
 		{
 			if (ACCESSING_BITS_24_31)
 			{
-				EEPROM_set_clock_line(((data >> 24) & 0x08) ? ASSERT_LINE : CLEAR_LINE);
-				EEPROM_write_bit(((data >> 24) & 0x04) ? 1 : 0);
-				EEPROM_set_cs_line(((data >> 24) & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+				eeprom_set_clock_line(((data >> 24) & 0x08) ? ASSERT_LINE : CLEAR_LINE);
+				eeprom_write_bit(((data >> 24) & 0x04) ? 1 : 0);
+				eeprom_set_cs_line(((data >> 24) & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 			}
 			return;
 		}
@@ -897,7 +896,7 @@ static UINT16 dsp_tex_offset = 0;
 
 static READ16_HANDLER( dsp_rom_r )
 {
-	UINT16 *rom = (UINT16*)memory_region(REGION_GFX2);
+	UINT16 *rom = (UINT16*)memory_region(machine, REGION_GFX2);
 	UINT16 data = rom[dsp_rom_pos++];
 	//mame_printf_debug("dsp_rom_r:  %08X, %08X at %08X\n", offset, mem_mask, activecpu_get_pc());
 	return data;
@@ -1018,8 +1017,8 @@ static WRITE16_HANDLER(dsp_unk2_w)
 {
 	if (offset == 0)
 	{
-		taitojc_clear_frame();
-		taitojc_render_polygons(polygon_fifo, polygon_fifo_ptr);
+		taitojc_clear_frame(machine);
+		taitojc_render_polygons(machine, polygon_fifo, polygon_fifo_ptr);
 
 		polygon_fifo_ptr = 0;
 	}
@@ -1252,7 +1251,7 @@ INPUT_PORTS_END
 
 static MACHINE_RESET( taitojc )
 {
-	taito_f3_soundsystem_reset();
+	taito_f3_soundsystem_reset(machine);
 
 	f3_68681_reset();
 

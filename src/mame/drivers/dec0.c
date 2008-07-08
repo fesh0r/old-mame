@@ -39,7 +39,6 @@ ToDo:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/h6280/h6280.h"
 #include "dec0.h"
@@ -73,7 +72,7 @@ static WRITE16_HANDLER( dec0_control_w )
 			break;
 
 		case 6: /* Intel 8751 microcontroller - Bad Dudes, Heavy Barrel, Birdy Try only */
-			dec0_i8751_write(data);
+			dec0_i8751_write(machine, data);
 			break;
 
 		case 8: /* Interrupt ack (VBL - IRQ 6) */
@@ -697,7 +696,7 @@ static INPUT_PORTS_START( slyspy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW1")
+	PORT_START_TAG("DSW0")
 	DEC0_COIN_SETTING
 	PORT_SERVICE( 0x10, IP_ACTIVE_LOW )
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Demo_Sounds ) )
@@ -710,7 +709,7 @@ static INPUT_PORTS_START( slyspy )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW2")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, "Energy" )
 	PORT_DIPSETTING(    0x02, DEF_STR( Low ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Medium ) )
@@ -903,14 +902,14 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void sound_irq(int linestate)
+static void sound_irq(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 1,0,linestate); /* IRQ */
+	cpunum_set_input_line(machine, 1,0,linestate); /* IRQ */
 }
 
-static void sound_irq2(int linestate)
+static void sound_irq2(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 1,1,linestate); /* IRQ2 */
+	cpunum_set_input_line(machine, 1,1,linestate); /* IRQ2 */
 }
 
 static const struct YM3812interface ym3812_interface =

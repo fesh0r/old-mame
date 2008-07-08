@@ -308,7 +308,7 @@ PALETTE_INIT( galaxian )
 {
 	static const int rgb_resistances[3] = { 1000, 470, 220 };
 	double rweights[3], gweights[3], bweights[2];
-	int i, minval, midval, maxval;
+	int i, minval, midval, maxval, len;
 	UINT8 starmap[4];
 
 	/*
@@ -343,7 +343,8 @@ PALETTE_INIT( galaxian )
 			2, &rgb_resistances[1], bweights, 470, 0);
 
 	/* decode the palette first */
-	for (i = 0; i < memory_region_length(REGION_PROMS); i++)
+	len = memory_region_length(machine, REGION_PROMS);
+	for (i = 0; i < len; i++)
 	{
 		UINT8 bit0, bit1, bit2, r, g, b;
 
@@ -422,7 +423,14 @@ PALETTE_INIT( galaxian )
 	bullet_color[7] = MAKE_RGB(0xff,0xff,0x00);
 }
 
+PALETTE_INIT( moonwar )
+{
+	PALETTE_INIT_CALL(galaxian);
 
+
+	/* wire mod to connect the bullet blue output to the 220 ohm resistor */
+	bullet_color[7] = MAKE_RGB(0xef,0xef,0x97);
+}
 
 /*************************************
  *
@@ -1003,7 +1011,7 @@ void frogger_draw_background(running_machine *machine, bitmap_t *bitmap, const r
 
 void amidar_draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect)
 {
-	const UINT8 *prom = memory_region(REGION_USER1);
+	const UINT8 *prom = memory_region(machine, REGION_USER1);
 	rectangle draw;
 	int x;
 
@@ -1305,7 +1313,7 @@ void mooncrst_extend_tile_info(UINT16 *code, UINT8 *color, UINT8 attrib, UINT8 x
 void mooncrst_extend_sprite_info(const UINT8 *base, UINT8 *sx, UINT8 *sy, UINT8 *flipx, UINT8 *flipy, UINT16 *code, UINT8 *color)
 {
 	if (gfxbank[2] && (*code & 0x30) == 0x20)
-		*code = (*code & 0x0f) | (gfxbank[1] << 4) | (gfxbank[0] << 5) | 0x40;
+		*code = (*code & 0x0f) | (gfxbank[0] << 4) | (gfxbank[1] << 5) | 0x40;
 }
 
 
@@ -1345,6 +1353,21 @@ void mshuttle_extend_sprite_info(const UINT8 *base, UINT8 *sx, UINT8 *sy, UINT8 
 }
 
 
+/*************************************
+ *
+ *  Calipso extensions
+ *
+ *************************************/
+
+void calipso_extend_sprite_info(const UINT8 *base, UINT8 *sx, UINT8 *sy, UINT8 *flipx, UINT8 *flipy, UINT16 *code, UINT8 *color)
+{
+	/* same as the others, but no sprite flipping, but instead the bits are used
+       as extra sprite code bits, giving 256 sprite images */
+	/* No flips */
+	*code = base[1];
+	*flipx = 0;
+	*flipy = 0;
+}
 
 /*************************************
  *

@@ -183,7 +183,6 @@
 **************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/adsp2100/adsp2100.h"
 #include "cpu/mips/mips3.h"
 #include "audio/dcs.h"
@@ -380,7 +379,8 @@
  *
  *************************************/
 
-struct galileo_timer
+typedef struct _galileo_timer galileo_timer;
+struct _galileo_timer
 {
 	emu_timer *		timer;
 	UINT32			count;
@@ -388,13 +388,14 @@ struct galileo_timer
 };
 
 
-struct galileo_data
+typedef struct _galileo_data galileo_data;
+struct _galileo_data
 {
 	/* raw register data */
 	UINT32			reg[0x1000/4];
 
 	/* timer info */
-	struct galileo_timer timer[4];
+	galileo_timer 	timer[4];
 
 	/* DMA info */
 	INT8			dma_active;
@@ -407,7 +408,8 @@ struct galileo_data
 };
 
 
-struct widget_data
+typedef struct _widget_data widget_data;
+struct _widget_data
 {
 	/* ethernet register address */
 	UINT8			ethernet_addr;
@@ -428,9 +430,10 @@ struct widget_data
 static UINT32 *rambase;
 static UINT32 *rombase;
 
-static struct galileo_data galileo;
-static struct widget_data widget;
+static galileo_data galileo;
+static widget_data widget;
 
+static const device_config *voodoo_device;
 static UINT8 voodoo_stalled;
 static UINT8 cpu_stalled_on_voodoo;
 static UINT32 cpu_stalled_offset;
@@ -465,14 +468,14 @@ static UINT32 cmos_write_enabled;
  *
  *************************************/
 
-static void vblank_assert(int state);
-static void update_vblank_irq(void);
+static void vblank_assert(running_machine *machine, int state);
+static void update_vblank_irq(running_machine *machine);
 static void galileo_reset(void);
 static TIMER_CALLBACK( galileo_timer_callback );
 static void galileo_perform_dma(running_machine *machine, int which);
-static void voodoo_stall(int stall);
-static void widget_reset(void);
-static void update_widget_irq(void);
+static void voodoo_stall(const device_config *device, int stall);
+static void widget_reset(running_machine *machine);
+static void update_widget_irq(running_machine *machine);
 
 
 
@@ -482,37 +485,9 @@ static void update_widget_irq(void);
  *
  *************************************/
 
-static void seattle_exit(running_machine *machine)
-{
-	voodoo_exit(0);
-}
-
-
-static VIDEO_START( seattle )
-{
-	add_exit_callback(machine, seattle_exit);
-
-	voodoo_start(0, machine->primary_screen, VOODOO_1, 2, 4, 0);
-
-	voodoo_set_vblank_callback(0, vblank_assert);
-	voodoo_set_stall_callback(0, voodoo_stall);
-}
-
-
-static VIDEO_START( flagstaff )
-{
-	add_exit_callback(machine, seattle_exit);
-
-	voodoo_start(0, machine->primary_screen, VOODOO_1, 2, 4, 4);
-
-	voodoo_set_vblank_callback(0, vblank_assert);
-	voodoo_set_stall_callback(0, voodoo_stall);
-}
-
-
 static VIDEO_UPDATE( seattle )
 {
-	return voodoo_update(0, bitmap, cliprect) ? 0 : UPDATE_HAS_NOT_CHANGED;
+	return voodoo_update(voodoo_device, bitmap, cliprect) ? 0 : UPDATE_HAS_NOT_CHANGED;
 }
 
 
@@ -523,8 +498,18 @@ static VIDEO_UPDATE( seattle )
  *
  *************************************/
 
-static MACHINE_RESET( seattle )
+static MACHINE_START( seattle )
 {
+	int index;
+
+	voodoo_device = device_list_find_by_tag(machine->config->devicelist, VOODOO_GRAPHICS, "voodoo");
+
+	/* allocate timers for the galileo */
+	galileo.timer[0].timer = timer_alloc(galileo_timer_callback, NULL);
+	galileo.timer[1].timer = timer_alloc(galileo_timer_callback, NULL);
+	galileo.timer[2].timer = timer_alloc(galileo_timer_callback, NULL);
+	galileo.timer[3].timer = timer_alloc(galileo_timer_callback, NULL);
+
 	/* set the fastest DRC options, but strict verification */
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_DRC_OPTIONS, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
 
@@ -541,11 +526,40 @@ static MACHINE_RESET( seattle )
 	cpunum_set_info_ptr(0, CPUINFO_PTR_MIPS3_FASTRAM_BASE, rombase);
 	cpunum_set_info_int(0, CPUINFO_INT_MIPS3_FASTRAM_READONLY, 1);
 
-	/* allocate timers for the galileo */
-	galileo.timer[0].timer = timer_alloc(galileo_timer_callback, NULL);
-	galileo.timer[1].timer = timer_alloc(galileo_timer_callback, NULL);
-	galileo.timer[2].timer = timer_alloc(galileo_timer_callback, NULL);
-	galileo.timer[3].timer = timer_alloc(galileo_timer_callback, NULL);
+	/* register for save states */
+	state_save_register_global_array(galileo.reg);
+	state_save_register_global(galileo.dma_active);
+	state_save_register_global_array(galileo.dma_stalled_on_voodoo);
+	state_save_register_global_array(galileo.pci_bridge_regs);
+	state_save_register_global_array(galileo.pci_3dfx_regs);
+	state_save_register_global_array(galileo.pci_ide_regs);
+	for (index = 0; index < ARRAY_LENGTH(galileo.timer); index++)
+	{
+		state_save_register_item("galileo", index, galileo.timer[index].count);
+		state_save_register_item("galileo", index, galileo.timer[index].active);
+	}
+	state_save_register_global(widget.ethernet_addr);
+	state_save_register_global(widget.irq_num);
+	state_save_register_global(widget.irq_mask);
+	state_save_register_global(voodoo_stalled);
+	state_save_register_global(cpu_stalled_on_voodoo);
+	state_save_register_global(cpu_stalled_offset);
+	state_save_register_global(cpu_stalled_data);
+	state_save_register_global(cpu_stalled_mem_mask);
+	state_save_register_global(board_config);
+	state_save_register_global(ethernet_irq_num);
+	state_save_register_global(ethernet_irq_state);
+	state_save_register_global(vblank_irq_num);
+	state_save_register_global(vblank_latch);
+	state_save_register_global(vblank_state);
+	state_save_register_global(pending_analog_read);
+	state_save_register_global(status_leds);
+	state_save_register_global(cmos_write_enabled);
+}
+
+
+static MACHINE_RESET( seattle )
+{
 	galileo.dma_active = -1;
 
 	vblank_irq_num = 0;
@@ -566,12 +580,8 @@ static MACHINE_RESET( seattle )
 
 	/* reset the other devices */
 	galileo_reset();
-	devtag_reset(machine, IDE_CONTROLLER, "ide");
-	voodoo_reset(0);
 	if (board_config == SEATTLE_WIDGET_CONFIG)
-		widget_reset();
-	if (board_config == FLAGSTAFF_CONFIG)
-		smc91c94_reset();
+		widget_reset(machine);
 }
 
 
@@ -595,24 +605,18 @@ static void ide_interrupt(const device_config *device, int state)
  *
  *************************************/
 
-static void ethernet_interrupt(int state)
+static void ethernet_interrupt(running_machine *machine, int state)
 {
 	ethernet_irq_state = state;
 	if (board_config == FLAGSTAFF_CONFIG)
 	{
 		UINT8 assert = ethernet_irq_state && (*interrupt_enable & (1 << ETHERNET_IRQ_SHIFT));
 		if (ethernet_irq_num != 0)
-			cpunum_set_input_line(Machine, 0, ethernet_irq_num, assert ? ASSERT_LINE : CLEAR_LINE);
+			cpunum_set_input_line(machine, 0, ethernet_irq_num, assert ? ASSERT_LINE : CLEAR_LINE);
 	}
 	else if (board_config == SEATTLE_WIDGET_CONFIG)
-		update_widget_irq();
+		update_widget_irq(machine);
 }
-
-
-static const struct smc91c9x_interface ethernet_intf =
-{
-	ethernet_interrupt
-};
 
 
 
@@ -622,9 +626,9 @@ static const struct smc91c9x_interface ethernet_intf =
  *
  *************************************/
 
-static void ioasic_irq(int state)
+static void ioasic_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, IOASIC_IRQ_NUM, state);
+	cpunum_set_input_line(machine, 0, IOASIC_IRQ_NUM, state);
 }
 
 
@@ -690,8 +694,8 @@ static WRITE32_HANDLER( interrupt_config_w )
 	}
 
 	/* update the states */
-	update_vblank_irq();
-	ethernet_interrupt(ethernet_irq_state);
+	update_vblank_irq(machine);
+	ethernet_interrupt(machine, ethernet_irq_state);
 }
 
 
@@ -702,9 +706,9 @@ static WRITE32_HANDLER( seattle_interrupt_enable_w )
 	if (old != *interrupt_enable)
 	{
 		if (vblank_latch)
-			update_vblank_irq();
+			update_vblank_irq(machine);
 		if (ethernet_irq_state)
-			ethernet_interrupt(ethernet_irq_state);
+			ethernet_interrupt(machine, ethernet_irq_state);
 	}
 }
 
@@ -716,7 +720,7 @@ static WRITE32_HANDLER( seattle_interrupt_enable_w )
  *
  *************************************/
 
-static void update_vblank_irq(void)
+static void update_vblank_irq(running_machine *machine)
 {
 	int state = CLEAR_LINE;
 
@@ -727,7 +731,7 @@ static void update_vblank_irq(void)
 	/* if the VBLANK has been latched, and the interrupt is enabled, assert */
 	if (vblank_latch && (*interrupt_enable & (1 << VBLANK_IRQ_SHIFT)))
 		state = ASSERT_LINE;
-	cpunum_set_input_line(Machine, 0, vblank_irq_num, state);
+	cpunum_set_input_line(machine, 0, vblank_irq_num, state);
 }
 
 
@@ -735,11 +739,11 @@ static WRITE32_HANDLER( vblank_clear_w )
 {
 	/* clear the latch and update the IRQ */
 	vblank_latch = 0;
-	update_vblank_irq();
+	update_vblank_irq(machine);
 }
 
 
-static void vblank_assert(int state)
+static void vblank_assert(running_machine *machine, int state)
 {
 	/* cache the raw state */
 	vblank_state = state;
@@ -748,7 +752,7 @@ static void vblank_assert(int state)
 	if ((state && !(*interrupt_enable & 0x100)) || (!state && (*interrupt_enable & 0x100)))
 	{
 		vblank_latch = 1;
-		update_vblank_irq();
+		update_vblank_irq(machine);
 	}
 }
 
@@ -830,7 +834,7 @@ static void pci_3dfx_w(UINT8 reg, UINT8 type, UINT32 data)
 			break;
 
 		case 0x10:		/* initEnable register */
-			voodoo_set_init_enable(0, data);
+			voodoo_set_init_enable(voodoo_device, data);
 			break;
 	}
 	if (LOG_PCI)
@@ -881,14 +885,14 @@ static void pci_ide_w(UINT8 reg, UINT8 type, UINT32 data)
  *
  *************************************/
 
-static void update_galileo_irqs(void)
+static void update_galileo_irqs(running_machine *machine)
 {
 	int state = CLEAR_LINE;
 
 	/* if any unmasked interrupts are live, we generate */
 	if (galileo.reg[GREG_INT_STATE] & galileo.reg[GREG_INT_MASK])
 		state = ASSERT_LINE;
-	cpunum_set_input_line(Machine, 0, GALILEO_IRQ_NUM, state);
+	cpunum_set_input_line(machine, 0, GALILEO_IRQ_NUM, state);
 
 	if (LOG_GALILEO)
 		logerror("Galileo IRQ %s\n", (state == ASSERT_LINE) ? "asserted" : "cleared");
@@ -898,7 +902,7 @@ static void update_galileo_irqs(void)
 static TIMER_CALLBACK( galileo_timer_callback )
 {
 	int which = param;
-	struct galileo_timer *timer = &galileo.timer[which];
+	galileo_timer *timer = &galileo.timer[which];
 
 	if (LOG_TIMERS)
 		logerror("timer %d fired\n", which);
@@ -916,7 +920,7 @@ static TIMER_CALLBACK( galileo_timer_callback )
 
 	/* trigger the interrupt */
 	galileo.reg[GREG_INT_STATE] |= 1 << (GINT_T0EXP_SHIFT + which);
-	update_galileo_irqs();
+	update_galileo_irqs(machine);
 }
 
 
@@ -927,7 +931,7 @@ static TIMER_CALLBACK( galileo_timer_callback )
  *
  *************************************/
 
-static int galileo_dma_fetch_next(int which)
+static int galileo_dma_fetch_next(running_machine *machine, int which)
 {
 	offs_t address = 0;
 	UINT32 data;
@@ -942,7 +946,7 @@ static int galileo_dma_fetch_next(int which)
 		if (galileo.reg[GREG_DMA0_CONTROL + which] & 0x400)
 		{
 			galileo.reg[GREG_INT_STATE] |= 1 << (GINT_DMA0COMP_SHIFT + which);
-			update_galileo_irqs();
+			update_galileo_irqs(machine);
 		}
 		galileo.reg[GREG_DMA0_CONTROL + which] &= ~0x5000;
 		return 0;
@@ -1018,7 +1022,7 @@ static void galileo_perform_dma(running_machine *machine, int which)
 				}
 
 				/* write the data and advance */
-				voodoo_0_w(machine, (dstaddr & 0xffffff) / 4, program_read_dword(srcaddr), 0xffffffff);
+				voodoo_w(voodoo_device, (dstaddr & 0xffffff) / 4, program_read_dword(srcaddr), 0xffffffff);
 				srcaddr += srcinc;
 				dstaddr += dstinc;
 				bytesleft -= 4;
@@ -1051,9 +1055,9 @@ static void galileo_perform_dma(running_machine *machine, int which)
 		if (!(galileo.reg[GREG_DMA0_CONTROL + which] & 0x400))
 		{
 			galileo.reg[GREG_INT_STATE] |= 1 << (GINT_DMA0COMP_SHIFT + which);
-			update_galileo_irqs();
+			update_galileo_irqs(machine);
 		}
-	} while (galileo_dma_fetch_next(which));
+	} while (galileo_dma_fetch_next(machine, which));
 
 	galileo.reg[GREG_DMA0_CONTROL + which] &= ~0x5000;
 }
@@ -1085,7 +1089,7 @@ static READ32_HANDLER( galileo_r )
 		case GREG_TIMER3_COUNT:
 		{
 			int which = offset % 4;
-			struct galileo_timer *timer = &galileo.timer[which];
+			galileo_timer *timer = &galileo.timer[which];
 
 			result = timer->count;
 			if (timer->active)
@@ -1177,7 +1181,7 @@ static WRITE32_HANDLER( galileo_w )
 
 			/* fetch next record */
 			if (data & 0x2000)
-				galileo_dma_fetch_next(which);
+				galileo_dma_fetch_next(machine, which);
 			galileo.reg[offset] &= ~0x2000;
 
 			/* if enabling, start the DMA */
@@ -1192,7 +1196,7 @@ static WRITE32_HANDLER( galileo_w )
 		case GREG_TIMER3_COUNT:
 		{
 			int which = offset % 4;
-			struct galileo_timer *timer = &galileo.timer[which];
+			galileo_timer *timer = &galileo.timer[which];
 
 			if (which != 0)
 				data &= 0xffffff;
@@ -1211,7 +1215,7 @@ static WRITE32_HANDLER( galileo_w )
 				logerror("%08X:timer/counter control = %08X\n", activecpu_get_pc(), data);
 			for (which = 0, mask = 0x01; which < 4; which++, mask <<= 2)
 			{
-				struct galileo_timer *timer = &galileo.timer[which];
+				galileo_timer *timer = &galileo.timer[which];
 				if (!timer->active && (data & mask))
 				{
 					timer->active = 1;
@@ -1242,7 +1246,7 @@ static WRITE32_HANDLER( galileo_w )
 			if (LOG_GALILEO)
 				logerror("%08X:Galileo write to IRQ clear = %08X & %08X\n", offset*4, data, mem_mask);
 			galileo.reg[offset] = oldata & data;
-			update_galileo_irqs();
+			update_galileo_irqs(machine);
 			break;
 
 		case GREG_CONFIG_DATA:
@@ -1295,12 +1299,12 @@ static WRITE32_HANDLER( galileo_w )
  *
  *************************************/
 
-static WRITE32_HANDLER( seattle_voodoo_w )
+static WRITE32_DEVICE_HANDLER( seattle_voodoo_w )
 {
 	/* if we're not stalled, just write and get out */
 	if (!voodoo_stalled)
 	{
-		voodoo_0_w(machine, offset, data, mem_mask);
+		voodoo_w(device, offset, data, mem_mask);
 		return;
 	}
 
@@ -1320,7 +1324,7 @@ static WRITE32_HANDLER( seattle_voodoo_w )
 }
 
 
-static void voodoo_stall(int stall)
+static void voodoo_stall(const device_config *device, int stall)
 {
 	/* set the new state */
 	voodoo_stalled = stall;
@@ -1356,7 +1360,7 @@ static void voodoo_stall(int stall)
 
 				/* resume execution */
 				cpuintrf_push_context(0);
-				galileo_perform_dma(Machine, which);
+				galileo_perform_dma(device->machine, which);
 				cpuintrf_pop_context();
 				break;
 			}
@@ -1366,12 +1370,12 @@ static void voodoo_stall(int stall)
 		{
 			/* if the CPU had a pending write, do it now */
 			if (cpu_stalled_on_voodoo)
-				voodoo_0_w(Machine, cpu_stalled_offset, cpu_stalled_data, cpu_stalled_mem_mask);
+				voodoo_w(device, cpu_stalled_offset, cpu_stalled_data, cpu_stalled_mem_mask);
 			cpu_stalled_on_voodoo = FALSE;
 
 			/* resume CPU execution */
 			if (LOG_DMA) logerror("Resuming CPU on voodoo\n");
-			cpu_trigger(Machine, 45678);
+			cpu_trigger(device->machine, 45678);
 		}
 	}
 }
@@ -1392,9 +1396,11 @@ static READ32_HANDLER( analog_port_r )
 
 static WRITE32_HANDLER( analog_port_w )
 {
+	static const char *portnames[] = { "AN0", "AN1", "AN2", "AN3", "AN4", "AN5", "AN6", "AN7" };
+
 	if (data < 8 || data > 15)
 		logerror("%08X:Unexpected analog port select = %08X\n", activecpu_get_pc(), data);
-	pending_analog_read = input_port_read_indexed(machine, 4 + (data & 7));
+	pending_analog_read = input_port_read(machine, portnames[data & 7]);
 }
 
 
@@ -1412,39 +1418,39 @@ static READ32_HANDLER( carnevil_gun_r )
 	switch (offset)
 	{
 		case 0:		/* low 8 bits of X */
-			result = (input_port_read_indexed(machine, 4) << 4) & 0xff;
+			result = (input_port_read(machine, "LIGHT0_X") << 4) & 0xff;
 			break;
 
 		case 1:		/* upper 4 bits of X */
-			result = (input_port_read_indexed(machine, 4) >> 4) & 0x0f;
-			result |= (input_port_read_indexed(machine, 8) & 0x03) << 4;
+			result = (input_port_read(machine, "LIGHT0_X") >> 4) & 0x0f;
+			result |= (input_port_read(machine, "FAKE") & 0x03) << 4;
 			result |= 0x40;
 			break;
 
 		case 2:		/* low 8 bits of Y */
-			result = (input_port_read_indexed(machine, 5) << 2) & 0xff;
+			result = (input_port_read(machine, "LIGHT0_Y") << 2) & 0xff;
 			break;
 
 		case 3:		/* upper 4 bits of Y */
-			result = (input_port_read_indexed(machine, 5) >> 6) & 0x03;
+			result = (input_port_read(machine, "LIGHT0_Y") >> 6) & 0x03;
 			break;
 
 		case 4:		/* low 8 bits of X */
-			result = (input_port_read_indexed(machine, 6) << 4) & 0xff;
+			result = (input_port_read(machine, "LIGHT1_X") << 4) & 0xff;
 			break;
 
 		case 5:		/* upper 4 bits of X */
-			result = (input_port_read_indexed(machine, 6) >> 4) & 0x0f;
-			result |= (input_port_read_indexed(machine, 8) & 0x30);
+			result = (input_port_read(machine, "LIGHT1_X") >> 4) & 0x0f;
+			result |= (input_port_read(machine, "FAKE") & 0x30);
 			result |= 0x40;
 			break;
 
 		case 6:		/* low 8 bits of Y */
-			result = (input_port_read_indexed(machine, 7) << 2) & 0xff;
+			result = (input_port_read(machine, "LIGHT1_Y") << 2) & 0xff;
 			break;
 
 		case 7:		/* upper 4 bits of Y */
-			result = (input_port_read_indexed(machine, 7) >> 6) & 0x03;
+			result = (input_port_read(machine, "LIGHT1_Y") >> 6) & 0x03;
 			break;
 	}
 	return result;
@@ -1464,21 +1470,21 @@ static WRITE32_HANDLER( carnevil_gun_w )
  *
  *************************************/
 
-static READ32_HANDLER( ethernet_r )
+static READ32_DEVICE_HANDLER( ethernet_r )
 {
 	if (!(offset & 8))
-		return smc91c94_r(machine, offset & 7, mem_mask & 0xffff);
+		return smc91c9x_r(device, offset & 7, mem_mask & 0xffff);
 	else
-		return smc91c94_r(machine, offset & 7, mem_mask & 0x00ff);
+		return smc91c9x_r(device, offset & 7, mem_mask & 0x00ff);
 }
 
 
-static WRITE32_HANDLER( ethernet_w )
+static WRITE32_DEVICE_HANDLER( ethernet_w )
 {
 	if (!(offset & 8))
-		smc91c94_w(machine, offset & 7, data & 0xffff, mem_mask | 0xffff);
+		smc91c9x_w(device, offset & 7, data & 0xffff, mem_mask | 0xffff);
 	else
-		smc91c94_w(machine, offset & 7, data & 0x00ff, mem_mask | 0x00ff);
+		smc91c9x_w(device, offset & 7, data & 0x00ff, mem_mask | 0x00ff);
 }
 
 
@@ -1489,16 +1495,15 @@ static WRITE32_HANDLER( ethernet_w )
  *
  *************************************/
 
-static void widget_reset(void)
+static void widget_reset(running_machine *machine)
 {
 	UINT8 saved_irq = widget.irq_num;
 	memset(&widget, 0, sizeof(widget));
 	widget.irq_num = saved_irq;
-	smc91c94_reset();
 }
 
 
-static void update_widget_irq(void)
+static void update_widget_irq(running_machine *machine)
 {
 	UINT8 state = ethernet_irq_state << WINT_ETHERNET_SHIFT;
 	UINT8 mask = widget.irq_mask;
@@ -1506,11 +1511,11 @@ static void update_widget_irq(void)
 
 	/* update the IRQ state */
 	if (widget.irq_num != 0)
-		cpunum_set_input_line(Machine, 0, widget.irq_num, assert ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, widget.irq_num, assert ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
-static READ32_HANDLER( widget_r )
+static READ32_DEVICE_HANDLER( widget_r )
 {
 	UINT32 result = ~0;
 
@@ -1526,11 +1531,11 @@ static READ32_HANDLER( widget_r )
 			break;
 
 		case WREG_ANALOG:
-			result = analog_port_r(machine, 0, mem_mask);
+			result = analog_port_r(device->machine, 0, mem_mask);
 			break;
 
 		case WREG_ETHER_DATA:
-			result = smc91c94_r(machine, widget.ethernet_addr & 7, mem_mask & 0xffff);
+			result = smc91c9x_r(device, widget.ethernet_addr & 7, mem_mask & 0xffff);
 			break;
 	}
 
@@ -1540,7 +1545,7 @@ static READ32_HANDLER( widget_r )
 }
 
 
-static WRITE32_HANDLER( widget_w )
+static WRITE32_DEVICE_HANDLER( widget_w )
 {
 	if (LOG_WIDGET)
 		logerror("Widget write (%02X) = %08X & %08X\n", offset*4, data, mem_mask);
@@ -1553,15 +1558,15 @@ static WRITE32_HANDLER( widget_w )
 
 		case WREG_INTERRUPT:
 			widget.irq_mask = data;
-			update_widget_irq();
+			update_widget_irq(device->machine);
 			break;
 
 		case WREG_ANALOG:
-			analog_port_w(machine, 0, data, mem_mask);
+			analog_port_w(device->machine, 0, data, mem_mask);
 			break;
 
 		case WREG_ETHER_DATA:
-			smc91c94_w(machine, widget.ethernet_addr & 7, data & 0xffff, mem_mask & 0xffff);
+			smc91c9x_w(device, widget.ethernet_addr & 7, data & 0xffff, mem_mask & 0xffff);
 			break;
 	}
 }
@@ -1617,13 +1622,13 @@ static WRITE32_HANDLER( asic_reset_w )
 {
 	COMBINE_DATA(asic_reset);
 	if (!(*asic_reset & 0x0002))
-		midway_ioasic_reset();
+		midway_ioasic_reset(machine);
 }
 
 
 static WRITE32_HANDLER( asic_fifo_w )
 {
-	midway_ioasic_fifo_w(data);
+	midway_ioasic_fifo_w(machine, data);
 }
 
 
@@ -1721,7 +1726,7 @@ PCI Mem  = 08000000-09FFFFFF
 static ADDRESS_MAP_START( seattle_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000000, 0x007fffff) AM_RAM AM_BASE(&rambase)	// wg3dh only has 4MB; sfrush, blitz99 8MB
-	AM_RANGE(0x08000000, 0x08ffffff) AM_READWRITE(voodoo_0_r, seattle_voodoo_w)
+	AM_RANGE(0x08000000, 0x08ffffff) AM_DEVREADWRITE(VOODOO_GRAPHICS, "voodoo", voodoo_r, seattle_voodoo_w)
 	AM_RANGE(0x0a000000, 0x0a0003ff) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_controller32_r, ide_controller32_w)
 	AM_RANGE(0x0a00040c, 0x0a00040f) AM_NOP						// IDE-related, but annoying
 	AM_RANGE(0x0a000f00, 0x0a000f07) AM_DEVREADWRITE(IDE_CONTROLLER, "ide", ide_bus_master32_r, ide_bus_master32_w)
@@ -1818,7 +1823,7 @@ static INPUT_PORTS_START( seattle_common )
 	PORT_BIT( 0x6000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BILL1 )
 
-	PORT_START_TAG("P12")
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -1836,7 +1841,7 @@ static INPUT_PORTS_START( seattle_common )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("P34")
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -1905,7 +1910,7 @@ static INPUT_PORTS_START( sfrush )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xe000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P12")
+	PORT_MODIFY("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)	/* view 1 */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)	/* view 2 */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)	/* view 3 */
@@ -1923,31 +1928,31 @@ static INPUT_PORTS_START( sfrush )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P34")
+	PORT_MODIFY("IN2")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("AN0")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN2")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN3")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN4")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(20) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("AN5")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(100) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("AN6")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(100) PORT_PLAYER(3)
 
-	PORT_START
+	PORT_START_TAG("AN7")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(25) PORT_KEYDELTA(5)
 INPUT_PORTS_END
 
@@ -1985,7 +1990,7 @@ static INPUT_PORTS_START( calspeed )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_START3 )
 	PORT_BIT( 0xe000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P12")
+	PORT_MODIFY("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(2)	/* radio */
 	PORT_BIT( 0x000c, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -1998,31 +2003,31 @@ static INPUT_PORTS_START( calspeed )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)	/* 3rd gear */
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)	/* 4th gear */
 
-	PORT_MODIFY("P34")
+	PORT_MODIFY("IN2")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("AN0")
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(25) PORT_KEYDELTA(5)
 
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(20) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("AN2")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(100) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("AN3")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN4")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN5")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN6")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN7")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 INPUT_PORTS_END
 
@@ -2046,7 +2051,7 @@ static INPUT_PORTS_START( vaportrx )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_VOLUME_UP )
 	PORT_BIT( 0xe000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P12")
+	PORT_MODIFY("IN1")
 	PORT_BIT( 0x000f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)	/* right trigger */
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)	/* left thumb */
@@ -2057,31 +2062,31 @@ static INPUT_PORTS_START( vaportrx )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)	/* right view */
 	PORT_BIT( 0xf000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P34")
+	PORT_MODIFY("IN2")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("AN0")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("AN2")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("AN3")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN4")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN5")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN6")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN7")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 INPUT_PORTS_END
 
@@ -2097,7 +2102,7 @@ static INPUT_PORTS_START( biofreak )
 	PORT_DIPSETTING(      0x0002, DEF_STR( Off ))
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ))
 
-	PORT_MODIFY("P12")
+	PORT_MODIFY("IN1")
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)	/* LP = P1 left punch */
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)	/* F  = P1 ??? */
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)	/* RP = P1 right punch */
@@ -2107,7 +2112,7 @@ static INPUT_PORTS_START( biofreak )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)	/* RP = P1 right punch */
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P34")
+	PORT_MODIFY("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)	/* LK = P1 left kick */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)	/* RK = P1 right kick */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1)	/* T  = P1 ??? */
@@ -2170,11 +2175,11 @@ static INPUT_PORTS_START( blitz )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ))
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ))
 
-	PORT_MODIFY("P12")
+	PORT_MODIFY("IN1")
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P34")
+	PORT_MODIFY("IN2")
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
@@ -2298,25 +2303,25 @@ static INPUT_PORTS_START( carnevil )
 	PORT_MODIFY("SYSTEM")
 	PORT_BIT( 0x0780, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P12")
+	PORT_MODIFY("IN1")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P34")
+	PORT_MODIFY("IN2")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START				/* fake analog X */
+	PORT_START_TAG("LIGHT0_X")				/* fake analog X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(10)
 
-	PORT_START				/* fake analog Y */
+	PORT_START_TAG("LIGHT0_Y")				/* fake analog Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10)
 
-	PORT_START				/* fake analog X */
+	PORT_START_TAG("LIGHT1_X")				/* fake analog X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START				/* fake analog Y */
+	PORT_START_TAG("LIGHT1_Y")				/* fake analog Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START				/* fake switches */
+	PORT_START_TAG("FAKE")					/* fake switches */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -2393,7 +2398,7 @@ static INPUT_PORTS_START( hyprdriv )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ))
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ))
 
-	PORT_MODIFY("P12")
+	PORT_MODIFY("IN1")
 	PORT_BIT( 0x0003, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_LEFT ) PORT_2WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_JOYSTICKLEFT_RIGHT ) PORT_2WAY PORT_PLAYER(1)
@@ -2402,35 +2407,36 @@ static INPUT_PORTS_START( hyprdriv )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0xff80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_MODIFY("P34")
+	PORT_MODIFY("IN2")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("AN0")
 	PORT_BIT( 0x00ff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(25) PORT_KEYDELTA(25)
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(20) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("AN2")
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(100) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("AN3")
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(25) PORT_KEYDELTA(25)
 
-	PORT_START
+	PORT_START_TAG("AN4")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN5")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN6")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	PORT_START_TAG("AN7")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 
-	PORT_START
+	/* 2008-06 FP: is this ever read?? */
+	PORT_START_TAG("AN8")
 	PORT_BIT( 0xff, 0x80, IPT_SPECIAL )
 INPUT_PORTS_END
 
@@ -2442,7 +2448,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct mips3_config config =
+static const mips3_config config =
 {
 	16384,		/* code cache size */
 	16384,		/* data cache size */
@@ -2456,10 +2462,16 @@ static MACHINE_DRIVER_START( seattle_common )
 	MDRV_CPU_CONFIG(config)
 	MDRV_CPU_PROGRAM_MAP(seattle_map,0)
 
+	MDRV_MACHINE_START(seattle)
 	MDRV_MACHINE_RESET(seattle)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
 	MDRV_IDE_CONTROLLER_ADD("ide", 0, ide_interrupt)
+
+	MDRV_3DFX_VOODOO_1_ADD("voodoo", STD_VOODOO_1_CLOCK, 2, "main")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
+	MDRV_3DFX_VOODOO_VBLANK(vblank_assert)
+	MDRV_3DFX_VOODOO_STALL(voodoo_stall)
 
 	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -2468,7 +2480,6 @@ static MACHINE_DRIVER_START( seattle_common )
 	MDRV_SCREEN_SIZE(640, 480)
 	MDRV_SCREEN_VISIBLE_AREA(0, 639, 0, 479)
 
-	MDRV_VIDEO_START(seattle)
 	MDRV_VIDEO_UPDATE(seattle)
 
 	/* sound hardware */
@@ -2477,30 +2488,46 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( phoenixsa )
 	MDRV_IMPORT_FROM(seattle_common)
-	MDRV_CPU_REPLACE("main", R4700LE, SYSTEM_CLOCK*2)
 	MDRV_IMPORT_FROM(dcs2_audio_2115)
+	MDRV_CPU_REPLACE("main", R4700LE, SYSTEM_CLOCK*2)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( seattle150 )
 	MDRV_IMPORT_FROM(seattle_common)
-	MDRV_CPU_REPLACE("main", R5000LE, SYSTEM_CLOCK*3)
 	MDRV_IMPORT_FROM(dcs2_audio_2115)
+	MDRV_CPU_REPLACE("main", R5000LE, SYSTEM_CLOCK*3)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( seattle150_widget )
+	MDRV_IMPORT_FROM(seattle150)
+	MDRV_SMC91C94_ADD("ethernet", ethernet_interrupt)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( seattle200 )
 	MDRV_IMPORT_FROM(seattle_common)
-	MDRV_CPU_REPLACE("main", R5000LE, SYSTEM_CLOCK*4)
 	MDRV_IMPORT_FROM(dcs2_audio_2115)
+	MDRV_CPU_REPLACE("main", R5000LE, SYSTEM_CLOCK*4)
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( seattle200_widget )
+	MDRV_IMPORT_FROM(seattle200)
+	MDRV_SMC91C94_ADD("ethernet", ethernet_interrupt)
 MACHINE_DRIVER_END
 
 
 static MACHINE_DRIVER_START( flagstaff )
 	MDRV_IMPORT_FROM(seattle_common)
-	MDRV_CPU_REPLACE("main", R5000LE, SYSTEM_CLOCK*4)
-	MDRV_VIDEO_START(flagstaff)
 	MDRV_IMPORT_FROM(cage_seattle)
+	MDRV_CPU_REPLACE("main", R5000LE, SYSTEM_CLOCK*4)
+
+	MDRV_SMC91C94_ADD("ethernet", ethernet_interrupt)
+
+	MDRV_3DFX_VOODOO_MODIFY("voodoo")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(1, 4)
 MACHINE_DRIVER_END
 
 
@@ -2724,8 +2751,10 @@ ROM_END
 
 static void init_common(running_machine *machine, int ioasic, int serialnum, int yearoffs, int config)
 {
+	const device_config *device;
+
 	/* initialize the subsystems */
-	midway_ioasic_init(ioasic, serialnum, yearoffs, ioasic_irq);
+	midway_ioasic_init(machine, ioasic, serialnum, yearoffs, ioasic_irq);
 
 	/* switch off the configuration */
 	board_config = config;
@@ -2733,13 +2762,13 @@ static void init_common(running_machine *machine, int ioasic, int serialnum, int
 	{
 		case PHOENIX_CONFIG:
 			/* original Phoenix board only has 4MB of RAM */
-			memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, SMH_NOP, SMH_NOP);
+			memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00400000, 0x007fffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 			break;
 
 		case SEATTLE_WIDGET_CONFIG:
 			/* set up the widget board */
-			memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0001f, 0, 0, widget_r, widget_w);
-			smc91c94_init(&ethernet_intf);
+			device = device_list_find_by_tag(machine->config->devicelist, SMC91C94, "ethernet");
+			memory_install_readwrite32_device_handler(device, 0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0001f, 0, 0, widget_r, widget_w);
 			break;
 
 		case FLAGSTAFF_CONFIG:
@@ -2747,8 +2776,8 @@ static void init_common(running_machine *machine, int ioasic, int serialnum, int
 			memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x14000000, 0x14000003, 0, 0, analog_port_r, analog_port_w);
 
 			/* set up the ethernet controller */
-			memory_install_readwrite32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0003f, 0, 0, ethernet_r, ethernet_w);
-			smc91c94_init(&ethernet_intf);
+			device = device_list_find_by_tag(machine->config->devicelist, SMC91C94, "ethernet");
+			memory_install_readwrite32_device_handler(device, 0, ADDRESS_SPACE_PROGRAM, 0x16c00000, 0x16c0003f, 0, 0, ethernet_r, ethernet_w);
 			break;
 	}
 
@@ -2915,21 +2944,21 @@ static DRIVER_INIT( hyprdriv )
  *************************************/
 
 /* Atari */
-GAME( 1996, wg3dh,    0,        phoenixsa,  wg3dh,    wg3dh,    ROT0, "Atari Games",  "Wayne Gretzky's 3D Hockey", 0 )
-GAME( 1996, mace,     0,        seattle150, mace,     mace,     ROT0, "Atari Games",  "Mace: The Dark Age (boot ROM 1.0ce, HDD 1.0b)", 0 )
-GAME( 1997, macea,    mace,     seattle150, mace,     mace,     ROT0, "Atari Games",  "Mace: The Dark Age (HDD 1.0a", 0 )
-GAME( 1996, sfrush,   0,        flagstaff,  sfrush,   sfrush,   ROT0, "Atari Games",  "San Francisco Rush", 0 )
-GAME( 1996, sfrushrk, 0,        flagstaff,  sfrushrk, sfrushrk, ROT0, "Atari Games",  "San Francisco Rush: The Rock", GAME_NOT_WORKING )
-GAME( 1998, calspeed, 0,        seattle150, calspeed, calspeed, ROT0, "Atari Games",  "California Speed (Version 2.1a, 4/17/98)", 0 )
-GAME( 1998, calspeda, calspeed, seattle150, calspeed, calspeed, ROT0, "Atari Games",  "California Speed (Version 1.0r7a 3/4/98)", 0 )
-GAME( 1998, vaportrx, 0,        seattle200, vaportrx, vaportrx, ROT0, "Atari Games",  "Vapor TRX", 0 )
-GAME( 1998, vaportrp, vaportrx, seattle200, vaportrx, vaportrx, ROT0, "Atari Games",  "Vapor TRX (prototype)", 0 )
+GAME( 1996, wg3dh,    0,        phoenixsa,         wg3dh,    wg3dh,    ROT0, "Atari Games",  "Wayne Gretzky's 3D Hockey", GAME_SUPPORTS_SAVE )
+GAME( 1996, mace,     0,        seattle150,        mace,     mace,     ROT0, "Atari Games",  "Mace: The Dark Age (boot ROM 1.0ce, HDD 1.0b)", GAME_SUPPORTS_SAVE )
+GAME( 1997, macea,    mace,     seattle150,        mace,     mace,     ROT0, "Atari Games",  "Mace: The Dark Age (HDD 1.0a", GAME_SUPPORTS_SAVE )
+GAME( 1996, sfrush,   0,        flagstaff,         sfrush,   sfrush,   ROT0, "Atari Games",  "San Francisco Rush", GAME_SUPPORTS_SAVE )
+GAME( 1996, sfrushrk, 0,        flagstaff,         sfrushrk, sfrushrk, ROT0, "Atari Games",  "San Francisco Rush: The Rock", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+GAME( 1998, calspeed, 0,        seattle150_widget, calspeed, calspeed, ROT0, "Atari Games",  "California Speed (Version 2.1a, 4/17/98)", GAME_SUPPORTS_SAVE )
+GAME( 1998, calspeda, calspeed, seattle150_widget, calspeed, calspeed, ROT0, "Atari Games",  "California Speed (Version 1.0r7a 3/4/98)", GAME_SUPPORTS_SAVE )
+GAME( 1998, vaportrx, 0,        seattle200_widget, vaportrx, vaportrx, ROT0, "Atari Games",  "Vapor TRX", GAME_SUPPORTS_SAVE )
+GAME( 1998, vaportrp, vaportrx, seattle200_widget, vaportrx, vaportrx, ROT0, "Atari Games",  "Vapor TRX (prototype)", GAME_SUPPORTS_SAVE )
 
 /* Midway */
-GAME( 1997, biofreak, 0,        seattle150, biofreak, biofreak, ROT0, "Midway Games", "BioFreaks (prototype)", 0 )
-GAME( 1997, blitz,    0,        seattle150, blitz,    blitz,    ROT0, "Midway Games", "NFL Blitz (boot ROM 1.2)", 0 )
-GAME( 1997, blitz11,  blitz,    seattle150, blitz,    blitz,    ROT0, "Midway Games", "NFL Blitz (boot ROM 1.1)", 0 )
-GAME( 1998, blitz99,  0,        seattle150, blitz99,  blitz99,  ROT0, "Midway Games", "NFL Blitz '99", 0 )
-GAME( 1999, blitz2k,  0,        seattle150, blitz99,  blitz2k,  ROT0, "Midway Games", "NFL Blitz 2000 Gold Edition", 0 )
-GAME( 1998, carnevil, 0,        seattle150, carnevil, carnevil, ROT0, "Midway Games", "CarnEvil", 0 )
-GAME( 1998, hyprdriv, 0,        seattle200, hyprdriv, hyprdriv, ROT0, "Midway Games", "Hyperdrive", 0 )
+GAME( 1997, biofreak, 0,        seattle150,        biofreak, biofreak, ROT0, "Midway Games", "BioFreaks (prototype)", GAME_SUPPORTS_SAVE )
+GAME( 1997, blitz,    0,        seattle150,        blitz,    blitz,    ROT0, "Midway Games", "NFL Blitz (boot ROM 1.2)", GAME_SUPPORTS_SAVE )
+GAME( 1997, blitz11,  blitz,    seattle150,        blitz,    blitz,    ROT0, "Midway Games", "NFL Blitz (boot ROM 1.1)", GAME_SUPPORTS_SAVE )
+GAME( 1998, blitz99,  0,        seattle150,        blitz99,  blitz99,  ROT0, "Midway Games", "NFL Blitz '99", GAME_SUPPORTS_SAVE )
+GAME( 1999, blitz2k,  0,        seattle150,        blitz99,  blitz2k,  ROT0, "Midway Games", "NFL Blitz 2000 Gold Edition", GAME_SUPPORTS_SAVE )
+GAME( 1998, carnevil, 0,        seattle150,        carnevil, carnevil, ROT0, "Midway Games", "CarnEvil", GAME_SUPPORTS_SAVE )
+GAME( 1998, hyprdriv, 0,        seattle200_widget, hyprdriv, hyprdriv, ROT0, "Midway Games", "Hyperdrive", GAME_SUPPORTS_SAVE )

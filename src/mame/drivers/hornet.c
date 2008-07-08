@@ -1,8 +1,20 @@
 /*  Konami Hornet System
-
     Driver by Ville Linde
 
 
+    Konami 'Hornet' Hardware
+    Konami, 1997-1999
+
+    Known games on this hardware include....
+
+    Game                             (C)      Year
+    ----------------------------------------------
+    Gradius 4 : Fukkatsu             Konami   1999
+    NBA Play by Play                 Konami   1998
+    Silent Scope                     Konami   1999
+    Silent Scope 2 : Fatal Judgement Konami   2000
+    Silent Scope 2 : Dark Silhouette Konami   2000
+    Terraburst                       Konami   1998
 
     Hardware overview:
 
@@ -31,99 +43,184 @@
 
 
     Hardware configurations:
+    ------------------------
 
-    Game             | ID        | CPU PCB      | CG Board(s)   | LAN PCB
-    ---------------------------------------------------------------------------
-    Gradius 4        | GX837     | GN715(A)     | GN715(B)      |
-    NBA Play by Play | GX778     | GN715(A)     | GN715(B)      |
-    Silent Scope     | GQ830     | GN715(A)     | 2x GN715(B)   |
-    Silent Scope 2   | GQ931     | GN715(A)     | 2x GQ871(B)   | GQ931(H)
+    Game              KONAMI ID  CPU PCB    GFX Board(s)  LAN PCB
+    --------------------------------------------------------------
+    Gradius 4         GX837      GN715(A)   GN715(B)
+    NBA Play By Play  GX778      GN715(A)   GN715(B)
+    Silent Scope      GQ830      GN715(A)   2x GN715(B)
+    Silent Scope 2    GQ931      GN715(A)   2x GQ871(B)   GQ931(H)
 
 
+    PCB Layouts
+    -----------
 
-
-    Top Board GN715 PWB(A)A
+    Top Board
+    GN715 PWB(A)A
     |--------------------------------------------------------------|
-    |                                                              |
-    |                                                        PAL   |
-    |               PAL               68EC000          837A08.7S   |
-    |NE5532         PAL                                            |
-    |                         DRM1M4SJ8                            |
-    |NE5532                                                        |
-    |     SM5877              RF5C400                              |
-    |                                                              |
+    | SP485CS CN10       CN11        CN9          JP8 JP9 JP10 JP11|
+    |CN19                                                    PAL1  |
+    |CN21       JP13 PAL2             68EC000          EPROM.7S    |
+    |   NE5532       PAL3                                      CN12|
+    |           JP12  JP16    DRM1M4SJ8                        CN13|
+    |   NE5532                            MASKROM.9P    MASKROM.9T |
+    |     SM5877 JP15         RF5C400                              |
+    |CN18                                 MASKROM.12P   MASKROM.12T|
     |     SM5877     16.9344MHz                                    |
-    |                SRAM256K               837A10.14P  837A05.14T |
+    |CN14            SRAM256K             MASKROM.14P   MASKROM.14T|
     |                                                              |
-    |                SRAM256K               837A09.16P  837A04.16T |
+    |CN16            SRAM256K             MASKROM.16P   MASKROM.16T|
     |  ADC12138                                                    |
-    |             056800                                           |
+    |             056800            JP5                            |
+    |                               JP4                            |
+    |                      MACH111  JP3                |---------| |
+    |   TEST_SW                         EPROM.22P      |         | |
+    |CN1                   DRAM16X16                   |PPC403GA | |
+    |                                   EPROM.25P      |         | |
+    |                                                  |         | |
+    |                      DRAM16X16    EPROM.27P      |---------| |
+    | 4AK16                                                     JP6|
     |                                                              |
-    |                      MACH111                                 |
-    |                                                              |
-    |                      DRAM16X16                      PPC403GA |
-    |                                   837C01.27P                 |
-    |                                                              |
-    |                      DRAM16X16                               |
-    | 4AK16                                                        |
-    |                                                              |
-    |                                                              |
-    | 0038323  PAL                                        7.3728MHz|
-    | E9825                                                        |
+    |CN3                                                           |
+    | 0038323  PAL4                                       7.3728MHz|
+    | E9825    058232           CN2                                |
     |                                                     50.000MHz|
-    |                                                              |
-    |M48T58Y-70PC1                                        64.000MHz|
+    |    RESET_SW               CN5                    JP1  JP2    |
+    |M48T58Y-70PC1  CN4                 CN6               64.000MHz|
     |--------------------------------------------------------------|
-
     Notes:
-        DRM1M4SJ8 = Fujitsu 81C4256 DRAM (SOJ24)
-        SRAM256K = Cypress CY7C199 SRAM (SOJ28)
-        DRAM16X16 = Fujitsu 8118160A-60 DRAM (SOJ42)
-        0038323 E9825 = SOIC8, I've seen a similar chip in the security cart of System573
-        M48T58Y-70PC1 = ST Timekeeper RAM
+          DRM1M4SJ8 - Fujitsu 81C4256 256Kx4 DRAM (SOJ24)
+           SRAM256K - Cypress CY7C199 32kx8 SRAM (SOJ28)
+          DRAM16X16 - Fujitsu 8118160A-60 16megx16 DRAM (SOJ42)
+      0038323 E9825 - SOIC8 (Secured PIC?). I've seen a similar chip in the security cart of System573
+      M48T58Y-70PC1 - ST Timekeeper RAM
+            RF5C400 - Ricoh RF5C400 PCM 32Ch, 44.1 kHz Stereo, 3D Effect Spatializer, clock input 16.9344MHz
+             056800 - Konami Custom (QFP80)
+             058232 - Konami Custom Ceramic Package (SIL14)
+           ADC12138 - National Semiconductor ADC12138 A/D Converter, 12-bit + Serial I/O With MUX (SOP28)
+            MACH111 - AMD MACH111 CPLD (Stamped 'N676A1', PLCC44)
+            68EC000 - Motorola MC68EC000, running at 16.0MHz (64/4)
+           PPC403GA - IBM PowerPC 403GA CPU, clock input 32.0MHz (QFP160)
+           SM5877AM - Nippon Precision Circuits 3rd Order 2-Channel D/A Converter (SOIC24)
+              4AK16 - Hitachi 4AK16 Silicon N-Channel Power MOS FET Array (SIL10)
+           NE5532AN - Philips, Dual Low-Noise High-Speed Audio OP Amp (DIP8)
+            SP485CS - Sipex SP485CS Low Power Half Duplex RS485 Transceiver (DIP8)
+               PAL1 - AMD PALCE16V8 (stamped 'N676A4', DIP20)
+               PAL2 - AMD PALCE16V8 (stamped 'N676A2', DIP20)
+               PAL3 - AMD PALCE16V8 (stamped 'N676A3', DIP20)
+               PAL4 - AMD PALCE16V8 (stamped 'N676A5', DIP20)
+                JP1 -       25M O O-O 32M
+                JP2 -       25M O O-O 32M
+                JP3 -        RW O O O RO
+                JP4 - PROG  32M O O-O 16M
+                JP5 - DATA  32M O-O O 16M
+                JP6 - BOOT   16 O-O O 32
+                JP7 - SRC DOUT2 O O-O 0
+                JP8 -   64M&32M O-O O 16M
+                JP9 -       64M O O-O 32M&16M
+               JP10 -   64M&32M O-O O 16M
+               JP11 -       64M O O-O 32M&16M
+               JP12 -      THRU O-O O SP
+               JP13 -      THRU O-O O SP
+               JP14 - WDT       O O
+               JP15 -      MONO O-O O SURR
+               JP16 -      HIGH O O O MID (N/C LOW)
+       CN1 THRU CN3 - Multi-pin Flat Cable Connector
+                CN4 - Multi-pin Connector for Network PCB
+                CN5 - Multi-pin Flat Cable Connector
+                CN6 - 96-Pin To Lower PCB, Joining Connector
+       CN7 THRU CN8 - Not used
+      CN9 THRU CN11 - 6-Pin Power Connectors
+               CN19 - USB Connector
+               CN21 - 5-Pin Analog Controls Connector (Tied to USB Connector via the Filter Board)
+               CN18 - RCA Mono Audio OUT
+        CN14 & CN16 - RCA Stereo Audio OUT
 
 
-    Bottom Board GN715 PWB(B)A
+    ROM Usage
+    ---------
+                 |------------------------------- ROM Locations ----------------------------------|
+    Game         27P     25P  22P   16P     14P     12P     9P      16T     14T     12T  9T  7S
+    -----------------------------------------------------------------------------------------------
+    Gradius 4    837C01  -    -     837A09  837A10  -       778A12  837A04  837A05  -    -   837A08
+    NBA P/Play   778A01  -    -     778A09  778A10  778A11  778A12  778A04  778A05  -    -   778A08
+    S/Scope      830B01  -    -     830A09  830A10  -       -       -       -       -    -   830A08
+    S/Scope 2    931D01  -    -     931A09  931A10  931A11  -       931A04  -       -    -   931A08
+    Terraburst
+
+
+    Bottom Board
+    GN715 PWB(B)A
     |--------------------------------------------------------------|
-    |                                                              |
-    |JP1                                          4M EDO   4M EDO  |
-    |                                                              |
-    |  4M EDO 4M EDO      TEXELFX                                  |
-    |                                                       4M EDO |
-    |  4M EDO 4M EDO                  PIXELFX               4M EDO |
-    |                                                              |
-    |  4M EDO 4M EDO                                KONAMI         |
-    |                                   50MHz       0000033906     |
-    |  4M EDO 4M EDO                                               |
-    |                       256KSRAM 256KSRAM                      |
-    |                                                              |
+    |CN4        CN2    CN8               CN6                    CN5|
+    |JP1                 |---------|              4M_EDO   4M_EDO  |
+    |                    |         |     |----------|              |
+    |  4M_EDO 4M_EDO     | TEXELFX |     |          |              |
+    |                    |         |     | PIXELFX  |       4M_EDO |
+    |  4M_EDO 4M_EDO     |         |     |          |       4M_EDO |
+    |                    |---------|     |          | |--------|   |
+    |  4M_EDO 4M_EDO                     |----------| |KONAMI  |   |
+    |CN3                                50MHz JP7     |33906   |   |
+    |  4M_EDO 4M_EDO                          JP6     |        |   |
+    |                       256KSRAM 256KSRAM         |--------|   |
+    |CN7                                                           |
     |         AV9170                     1MSRAM 1MSRAM             |
     | MC44200                                                      |
     |                       256KSRAM 256KSRAM                      |
     |                                    1MSRAM 1MSRAM             |
-    |                                               837A13.24U     |
-    |  KONAMI    MACH111                                 837A15.24V|
-    |  0000037122                        1MSRAM 1MSRAM             |
-    |                       ADSP-21062                             |
-    |                       SHARC    36.00MHz                      |
-    |1MSRAM                              1MSRAM 1MSRAM             |
-    |                                                              |
-    |1MSRAM                  PAL  PAL                              |
-    |           256KSRAM                            837A14.32U     |
-    |1MSRAM     256KSRAM                                 837A16.32V|
-    |           256KSRAM                                           |
+    |  |-------|                                    MASKROM.24U    |
+    |  |KONAMI |  MACH111  |-------------|              MASKROM.24V|
+    |  |37122  |           |ANALOG       |   1MSRAM 1MSRAM         |
+    |  |       |           |DEVICES      |                         |
+    |  |-------|       JP5 |ADSP-21062   |   36.00MHz              |
+    |1MSRAM                |SHARC        |   1MSRAM 1MSRAM         |
+    |                      |             |                         |
+    |1MSRAM                |             |                         |
+    |           256KSRAM   |-------------|          MASKROM.32U    |
+    |1MSRAM     256KSRAM                                MASKROM.32V|
+    |           256KSRAM     PAL1  PAL2            JP4             |
     |1MSRAM                                                        |
-    |           JP2                                                |
+    |           JP2                 CN1            JP3             |
     |--------------------------------------------------------------|
-
     Notes:
-        4M EDO = SM81C256K16CJ-35 RAM 66MHz
-        1MSRAM = CY7C109-25VC
-        256KSRAM = W24257AJ-15
-        TEXELFX = 3DFX 500-0004-02 BD0665.1 TMU (QFP208)
-        PIXELFX = 3DFX 500-0003-03 F001701.1 FBI (QFP240)
-        JP1 = Jumper set to SCR. Alt. setting is TWN
-        JP2 = Jumper set for MASTER, Alt. setting SLAVE
+          4M_EDO - Silicon Magic SM81C256K16CJ-35 EDO DRAM 66MHz (SOJ40)
+          1MSRAM - Cypress CY7C109-25VC 1Meg SRAM (SOJ32)
+        256KSRAM - Winbond W24257AJ-15 256K SRAM (SOJ28)
+         TEXELFX - 3DFX 500-0004-02 BD0665.1 TMU (QFP208)
+         PIXELFX - 3DFX 500-0003-03 F001701.1 FBI (QFP240)
+      0000037122 - Konami Custom (QFP208)
+       MC44200FT - Motorola MC44200FT 3 Channel Video D/A Converter (QFP44)
+         MACH111 - AMD MACH111 CPLD (Stamped 'N715B1', PLCC44)
+          AV9170 - Integrated Circuit Systems Inc. Clock Multiplier (SOIC8)
+            PAL1 - AMD PALCE16V8 (stamped 'N676B4', DIP20)
+            PAL2 - AMD PALCE16V8 (stamped 'N676B5', DIP20)
+             JP1 -    SCR O O-O TWN
+             JP2 - MASTER O-O O SLAVE
+             JP3 -    16M O O-O 32M
+             JP4 -    32M O-O O 16M
+             JP5 -  ASYNC O O-O SYNC
+             JP6 -    DSP O O-O ADCK
+             JP7 -    MCK O-O O SCK
+             CN1 - 96 Pin To Lower PCB, Joining Connector
+             CN2 - 8-Pin RGB OUT
+             CN3 - 15-Pin DSUB VGA Video MAIN OUT
+             CN4 - 6-Pin Power Connector
+             CN5 - 4-Pin Power Connector
+             CN6 - 2-Pin Connector (Not Used)
+             CN7 - 15-Pin DSUB VGA Video MAIN OUT
+             CN8 - 6-Pin Connector (Not Used)
+
+    ROM Usage
+    ---------
+                 |------ ROM Locations -------|
+    Game         24U     24V     32U     32V
+    -------------------------------------------
+    Gradius 4    837A13  837A15  837A14  837A16
+    NBA P/Play   778A13  778A15  778A14  778A16
+    S/Scope      -       -       -       -          (no ROMs, not used)
+    S/Scope 2    -       -       -       -          (no ROMs, not used)
+    Terraburst
 
 
 
@@ -159,7 +256,6 @@
     Jumpers set on GFX PCB to scope monitor:
     4A   set to TWN (twin GFX PCBs)
     37D  set to Slave
-
 
 
     1 x 64.0000MHz
@@ -212,9 +308,9 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/powerpc/ppc.h"
 #include "cpu/sharc/sharc.h"
+#include "machine/eeprom.h"
 #include "machine/konppc.h"
 #include "machine/konamiic.h"
 #include "video/voodoo.h"
@@ -223,6 +319,12 @@
 #include "rendlay.h"
 
 static UINT8 led_reg0 = 0x7f, led_reg1 = 0x7f;
+static UINT32 *workram;
+static UINT32 *sharc_dataram[2];
+static UINT8 jvs_sdata[1024];
+static UINT32 jvs_sdata_ptr = 0;
+static UINT8 *backup_ram;
+
 
 /* K037122 Tilemap chip (move to konamiic.c ?) */
 
@@ -308,6 +410,13 @@ static TILE_GET_INFO( K037122_1_tile_info_layer1 )
 	SET_TILE_INFO(K037122_gfx_index[1], tile, color, flags);
 }
 
+static STATE_POSTLOAD( K037122_postload )
+{
+	int chip = (FPTR)param;
+	K037122_char_dirty[chip] = 1;
+	memset(K037122_dirty_map[chip], 1, K037122_NUM_TILES);
+}
+
 static int K037122_vh_start(running_machine *machine, int chip)
 {
 	for(K037122_gfx_index[chip] = 0; K037122_gfx_index[chip] < MAX_GFX_ELEMENTS; K037122_gfx_index[chip]++)
@@ -345,6 +454,11 @@ static int K037122_vh_start(running_machine *machine, int chip)
 
 	machine->gfx[K037122_gfx_index[chip]]->total_colors = machine->config->total_colors / 16;
 
+	state_save_register_item_array("K037122", chip, K037122_reg[chip]);
+	state_save_register_item_pointer("K037122", chip, K037122_char_ram[chip], 0x200000/sizeof(K037122_char_ram[chip][0]));
+	state_save_register_item_pointer("K037122", chip, K037122_tile_ram[chip], 0x20000/sizeof(K037122_tile_ram[chip][0]));
+	state_save_register_postload(machine, K037122_postload, (void *)(FPTR)chip);
+
 	return 0;
 }
 
@@ -367,9 +481,9 @@ static void K037122_tile_update(running_machine *machine, int chip)
 	}
 }
 
-static void K037122_tile_draw(int chip, bitmap_t *bitmap, const rectangle *cliprect)
+static void K037122_tile_draw(running_machine *machine, int chip, bitmap_t *bitmap, const rectangle *cliprect)
 {
-	const rectangle *visarea = video_screen_get_visible_area(Machine->primary_screen);
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 	if (K037122_reg[chip][0xc] & 0x10000)
 	{
@@ -484,64 +598,23 @@ static WRITE32_HANDLER(K037122_reg_w)
 	COMBINE_DATA( K037122_reg[chip] + offset );
 }
 
-static int voodoo_version = 0;
-
-static void voodoo_vblank_0(int param)
+static void voodoo_vblank_0(const device_config *device, int param)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
-static void voodoo_vblank_1(int param)
+static void voodoo_vblank_1(const device_config *device, int param)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
-}
-
-static void hornet_exit(running_machine *machine)
-{
-	voodoo_exit(0);
-}
-
-static void hornet_2board_exit(running_machine *machine)
-{
-	voodoo_exit(0);
-	voodoo_exit(1);
+	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
 static VIDEO_START( hornet )
 {
-	add_exit_callback(machine, hornet_exit);
-
-	if (voodoo_version == 0)
-		voodoo_start(0, machine->primary_screen, VOODOO_1, 2, 4, 0);
-	else
-		voodoo_start(0, machine->primary_screen, VOODOO_2, 2, 4, 0);
-
-	voodoo_set_vblank_callback(0, voodoo_vblank_0);
-
 	K037122_vh_start(machine, 0);
 }
 
 static VIDEO_START( hornet_2board )
 {
-	const device_config *left_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "left");
-	const device_config *right_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "right");
-
-	add_exit_callback(machine, hornet_2board_exit);
-
-	if (voodoo_version == 0)
-	{
-		voodoo_start(0, left_screen,  VOODOO_1, 2, 4, 0);
-		voodoo_start(1, right_screen, VOODOO_1, 2, 4, 0);
-	}
-	else
-	{
-		voodoo_start(0, left_screen,  VOODOO_2, 2, 4, 0);
-		voodoo_start(1, right_screen, VOODOO_2, 2, 4, 0);
-	}
-
-	voodoo_set_vblank_callback(0, voodoo_vblank_0);
-	voodoo_set_vblank_callback(1, voodoo_vblank_1);
-
 	K037122_vh_start(machine, 0);
 	K037122_vh_start(machine, 1);
 }
@@ -549,10 +622,12 @@ static VIDEO_START( hornet_2board )
 
 static VIDEO_UPDATE( hornet )
 {
-	voodoo_update(0, bitmap, cliprect);
+	const device_config *voodoo = device_list_find_by_tag(screen->machine->config->devicelist, VOODOO_GRAPHICS, "voodoo0");
+
+	voodoo_update(voodoo, bitmap, cliprect);
 
 	K037122_tile_update(screen->machine, 0);
-	K037122_tile_draw(0, bitmap, cliprect);
+	K037122_tile_draw(screen->machine, 0, bitmap, cliprect);
 
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
 	draw_7segment_led(bitmap, 9, 3, led_reg1);
@@ -561,24 +636,23 @@ static VIDEO_UPDATE( hornet )
 
 static VIDEO_UPDATE( hornet_2board )
 {
-	const device_config *left_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
-	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
-
-	if (screen == left_screen)
+	if (strcmp(screen->tag, "left") == 0)
 	{
-		voodoo_update(0, bitmap, cliprect);
+		const device_config *voodoo = device_list_find_by_tag(screen->machine->config->devicelist, VOODOO_GRAPHICS, "voodoo0");
+		voodoo_update(voodoo, bitmap, cliprect);
 
 		/* TODO: tilemaps per screen */
 		K037122_tile_update(screen->machine, 0);
-		K037122_tile_draw(0, bitmap, cliprect);
+		K037122_tile_draw(screen->machine, 0, bitmap, cliprect);
 	}
-	else if (screen == right_screen)
+	else if (strcmp(screen->tag, "right") == 0)
 	{
-		voodoo_update(1, bitmap, cliprect);
+		const device_config *voodoo = device_list_find_by_tag(screen->machine->config->devicelist, VOODOO_GRAPHICS, "voodoo1");
+		voodoo_update(voodoo, bitmap, cliprect);
 
 		/* TODO: tilemaps per screen */
 		K037122_tile_update(screen->machine, 1);
-		K037122_tile_draw(1, bitmap, cliprect);
+		K037122_tile_draw(screen->machine, 1, bitmap, cliprect);
 	}
 
 	draw_7segment_led(bitmap, 3, 3, led_reg0);
@@ -588,74 +662,127 @@ static VIDEO_UPDATE( hornet_2board )
 
 /*****************************************************************************/
 
-static READ32_HANDLER( sysreg_r )
+static READ8_HANDLER( sysreg_r )
 {
-	UINT32 r = 0;
-	if (offset == 0)
+	UINT8 r = 0;
+	static const char *portnames[] = { "IN0", "IN1", "IN2" };
+
+	switch (offset)
 	{
-		if (ACCESSING_BITS_24_31)
-		{
-			//printf("read sysreg 0\n");
-			r |= input_port_read_indexed(machine, 0) << 24;
-		}
-		if (ACCESSING_BITS_16_23)
-		{
-			r |= input_port_read_indexed(machine, 1) << 16;
-		}
-		if (ACCESSING_BITS_8_15)
-		{
-			r |= input_port_read_indexed(machine, 2) << 8;
-		}
-		if (ACCESSING_BITS_0_7)
-		{
-			r |= 0xf7;
-		}
-	}
-	else if (offset == 1)
-	{
-		if (ACCESSING_BITS_24_31)
-		{
-			r |= input_port_read_indexed(machine, 3) << 24;
-		}
+		case 0:	/* I/O port 0 */
+		case 1:	/* I/O port 1 */
+		case 2:	/* I/O port 2 */
+			r = input_port_read(machine, portnames[offset]);
+			break;
+
+		case 3:	/* I/O port 3 */
+			/*
+                0x80 = JVSINIT (JAMMA I/F SENSE)
+                0x40 = COMMST
+                0x20 = GSENSE
+                0x08 = EEPDO (EEPROM DO)
+                0x04 = ADEOC (ADC EOC)
+                0x02 = ADDOR (ADC DOR)
+                0x01 = ADDO (ADC DO)
+            */
+			r = 0xf7 | (eeprom_read_bit() << 3);
+			break;
+
+		case 4:	/* I/O port 4 - DIP switches */
+			r = input_port_read(machine, "DSW");
+			break;
 	}
 	return r;
 }
 
-static WRITE32_HANDLER( sysreg_w )
+static WRITE8_HANDLER( sysreg_w )
 {
-	if( offset == 0 ) {
-		if (ACCESSING_BITS_24_31)
-		{
-			led_reg0 = (data >> 24) & 0xff;
-		}
-		if (ACCESSING_BITS_16_23)
-		{
-			led_reg1 = (data >> 16) & 0xff;
-		}
-		return;
-	}
-	if( offset == 1 )
+	switch (offset)
 	{
-		if (ACCESSING_BITS_24_31)
-		{
-		}
-		if (ACCESSING_BITS_0_7)
-		{
-			if (data & 0x80)	/* CG Board 1 IRQ Ack */
-			{
+		case 0:	/* LED Register 0 */
+			led_reg0 = data;
+			break;
+
+		case 1:	/* LED Register 1 */
+			led_reg1 = data;
+			break;
+
+		case 2: /* Parallel data register */
+			mame_printf_debug("Parallel data = %02X\n", data);
+			break;
+
+		case 3:	/* System Register 0 */
+			/*
+                0x80 = EEPWEN (EEPROM write enable)
+                0x40 = EEPCS (EEPROM CS)
+                0x20 = EEPSCL (EEPROM SCL?)
+                0x10 = EEPDT (EEPROM data)
+                0x08 = JVSTXEN / LAMP3 (something about JAMMA interface)
+                0x04 = LAMP2
+                0x02 = LAMP1
+                0x01 = LAMP0
+            */
+			eeprom_write_bit((data & 0x10) ? 1 : 0);
+			eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+			eeprom_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+			mame_printf_debug("System register 0 = %02X\n", data);
+			break;
+
+		case 4:	/* System Register 1 */
+			/*
+                0x80 = SNDRES (sound reset)
+                0x40 = COMRES (COM reset)
+                0x20 = COINRQ2 (EEPROM SCL?)
+                0x10 = COINRQ1 (EEPROM data)
+                0x08 = ADCS (ADC CS)
+                0x04 = ADCONV (ADC CONV)
+                0x02 = ADDI (ADC DI)
+                0x01 = ADDSCLK (ADC SCLK)
+            */
+			cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+			mame_printf_debug("System register 1 = %02X\n", data);
+			break;
+
+		case 5:	/* Sound Control Register */
+			/*
+                0x80 = MODE1
+                0x40 = MUTE1
+                0x20 = DEEN1
+                0x10 = ATCK1
+                0x08 = MODE0
+                0x04 = MUTE0
+                0x02 = DEEN0
+                0x01 = ATCK0
+            */
+			mame_printf_debug("Sound control register = %02X\n", data);
+			break;
+
+		case 6:	/* WDT Register */
+			/*
+                0x80 = WDTCLK
+            */
+			if (data & 0x80)
+				watchdog_reset(machine);
+			break;
+
+		case 7:	/* CG Control Register */
+			/*
+                0x80 = EXRES1
+                0x40 = EXRES0
+                0x20 = EXID1
+                0x10 = EXID0
+                0x01 = EXRGB
+            */
+			if (data & 0x80)
 				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
-			}
-			if (data & 0x40)	/* CG Board 0 IRQ Ack */
-			{
+			if (data & 0x40)
 				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
-			}
-			set_cgboard_id((data >> 4) & 0x3);
-		}
-		return;
+			set_cgboard_id((data >> 4) & 3);
+			break;
 	}
 }
 
-static int comm_rombank = 0;
+/*****************************************************************************/
 
 static WRITE32_HANDLER( comm1_w )
 {
@@ -665,12 +792,9 @@ static WRITE32_HANDLER( comm1_w )
 static WRITE32_HANDLER( comm_rombank_w )
 {
 	int bank = data >> 24;
-	if (memory_region(REGION_USER3))
-		if( bank != comm_rombank ) {
-			printf("rombank %02X\n", bank);
-			comm_rombank = bank & 0x7f;
-			memory_set_bankptr(1, memory_region(REGION_USER3) + (comm_rombank * 0x10000));
-		}
+	UINT8 *usr3 = memory_region(machine, REGION_USER3);
+	if (usr3 != NULL)
+		memory_set_bank(1, bank & 0x7f);
 }
 
 static READ32_HANDLER( comm0_unk_r )
@@ -682,24 +806,24 @@ static READ32_HANDLER( comm0_unk_r )
 /*****************************************************************************/
 
 static ADDRESS_MAP_START( hornet_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x003fffff) AM_MIRROR(0x80000000) AM_RAM		/* Work RAM */
-	AM_RANGE(0x74000000, 0x740000ff) AM_MIRROR(0x80000000) AM_READWRITE(K037122_reg_r, K037122_reg_w)
-	AM_RANGE(0x74020000, 0x7403ffff) AM_MIRROR(0x80000000) AM_READWRITE(K037122_sram_r, K037122_sram_w)
-	AM_RANGE(0x74040000, 0x7407ffff) AM_MIRROR(0x80000000) AM_READWRITE(K037122_char_r, K037122_char_w)
-	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)
-	AM_RANGE(0x780c0000, 0x780c0003) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
-	AM_RANGE(0x7d000000, 0x7d00ffff) AM_MIRROR(0x80000000) AM_READ(sysreg_r)
-	AM_RANGE(0x7d010000, 0x7d01ffff) AM_MIRROR(0x80000000) AM_WRITE(sysreg_w)
-	AM_RANGE(0x7d020000, 0x7d021fff) AM_MIRROR(0x80000000) AM_READWRITE(timekeeper_0_32be_r, timekeeper_0_32be_w)	/* M48T58Y RTC/NVRAM */
-	AM_RANGE(0x7d030000, 0x7d030007) AM_MIRROR(0x80000000) AM_READWRITE(K056800_host_r, K056800_host_w)
-	AM_RANGE(0x7d042000, 0x7d043fff) AM_MIRROR(0x80000000) AM_RAM				/* COMM BOARD 0 */
-	AM_RANGE(0x7d044000, 0x7d044007) AM_MIRROR(0x80000000) AM_READ(comm0_unk_r)
-	AM_RANGE(0x7d048000, 0x7d048003) AM_MIRROR(0x80000000) AM_WRITE(comm1_w)
-	AM_RANGE(0x7d04a000, 0x7d04a003) AM_MIRROR(0x80000000) AM_WRITE(comm_rombank_w)
-	AM_RANGE(0x7d050000, 0x7d05ffff) AM_MIRROR(0x80000000) AM_ROMBANK(1)		/* COMM BOARD 1 */
-	AM_RANGE(0x7e000000, 0x7e7fffff) AM_MIRROR(0x80000000) AM_ROM AM_REGION(REGION_USER2, 0)		/* Data ROM */
-	AM_RANGE(0x7f000000, 0x7f3fffff) AM_MIRROR(0x80000000) AM_ROM AM_SHARE(2)
-	AM_RANGE(0x7fc00000, 0x7fffffff) AM_MIRROR(0x80000000) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)	/* Program ROM */
+	AM_RANGE(0x00000000, 0x003fffff) AM_RAM AM_BASE(&workram)		/* Work RAM */
+	AM_RANGE(0x74000000, 0x740000ff) AM_READWRITE(K037122_reg_r, K037122_reg_w)
+	AM_RANGE(0x74020000, 0x7403ffff) AM_READWRITE(K037122_sram_r, K037122_sram_w)
+	AM_RANGE(0x74040000, 0x7407ffff) AM_READWRITE(K037122_char_r, K037122_char_w)
+	AM_RANGE(0x78000000, 0x7800ffff) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)
+	AM_RANGE(0x780c0000, 0x780c0003) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
+	AM_RANGE(0x7d000000, 0x7d00ffff) AM_READ8(sysreg_r, 0xffffffff)
+	AM_RANGE(0x7d010000, 0x7d01ffff) AM_WRITE8(sysreg_w, 0xffffffff)
+	AM_RANGE(0x7d020000, 0x7d021fff) AM_READWRITE8(timekeeper_0_r, timekeeper_0_w, 0xffffffff)	/* M48T58Y RTC/NVRAM */
+	AM_RANGE(0x7d030000, 0x7d030007) AM_READWRITE(K056800_host_r, K056800_host_w)
+	AM_RANGE(0x7d042000, 0x7d043fff) AM_RAM				/* COMM BOARD 0 */
+	AM_RANGE(0x7d044000, 0x7d044007) AM_READ(comm0_unk_r)
+	AM_RANGE(0x7d048000, 0x7d048003) AM_WRITE(comm1_w)
+	AM_RANGE(0x7d04a000, 0x7d04a003) AM_WRITE(comm_rombank_w)
+	AM_RANGE(0x7d050000, 0x7d05ffff) AM_ROMBANK(1)		/* COMM BOARD 1 */
+	AM_RANGE(0x7e000000, 0x7e7fffff) AM_ROM AM_REGION(REGION_USER2, 0)		/* Data ROM */
+	AM_RANGE(0x7f000000, 0x7f3fffff) AM_ROM AM_SHARE(2)
+	AM_RANGE(0x7fc00000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)	/* Program ROM */
 ADDRESS_MAP_END
 
 /*****************************************************************************/
@@ -713,8 +837,6 @@ static ADDRESS_MAP_START( sound_memmap, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 /*****************************************************************************/
-
-static UINT32 *sharc_dataram[2];
 
 static READ32_HANDLER( dsp_dataram0_r )
 {
@@ -738,9 +860,9 @@ static WRITE32_HANDLER( dsp_dataram1_w )
 
 static ADDRESS_MAP_START( sharc0_map, ADDRESS_SPACE_DATA, 32 )
 	AM_RANGE(0x0400000, 0x041ffff) AM_READWRITE(cgboard_0_shared_sharc_r, cgboard_0_shared_sharc_w)
-	AM_RANGE(0x0500000, 0x05fffff) AM_READWRITE(dsp_dataram0_r, dsp_dataram0_w)
+	AM_RANGE(0x0500000, 0x05fffff) AM_READWRITE(dsp_dataram0_r, dsp_dataram0_w) AM_BASE(&sharc_dataram[0])
 	AM_RANGE(0x1400000, 0x14fffff) AM_RAM
-	AM_RANGE(0x2400000, 0x27fffff) AM_READWRITE(voodoo_0_r, voodoo_0_w)
+	AM_RANGE(0x2400000, 0x27fffff) AM_DEVREADWRITE(VOODOO_GRAPHICS, "voodoo0", voodoo_r, voodoo_w)
 	AM_RANGE(0x3400000, 0x34000ff) AM_READWRITE(cgboard_0_comm_sharc_r, cgboard_0_comm_sharc_w)
 	AM_RANGE(0x3500000, 0x35000ff) AM_READWRITE(K033906_0_r, K033906_0_w)
 	AM_RANGE(0x3600000, 0x37fffff) AM_ROMBANK(5)
@@ -748,9 +870,9 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( sharc1_map, ADDRESS_SPACE_DATA, 32 )
 	AM_RANGE(0x0400000, 0x041ffff) AM_READWRITE(cgboard_1_shared_sharc_r, cgboard_1_shared_sharc_w)
-	AM_RANGE(0x0500000, 0x05fffff) AM_READWRITE(dsp_dataram1_r, dsp_dataram1_w)
+	AM_RANGE(0x0500000, 0x05fffff) AM_READWRITE(dsp_dataram1_r, dsp_dataram1_w) AM_BASE(&sharc_dataram[1])
 	AM_RANGE(0x1400000, 0x14fffff) AM_RAM
-	AM_RANGE(0x2400000, 0x27fffff) AM_READWRITE(voodoo_1_r, voodoo_1_w)
+	AM_RANGE(0x2400000, 0x27fffff) AM_DEVREADWRITE(VOODOO_GRAPHICS, "voodoo1", voodoo_r, voodoo_w)
 	AM_RANGE(0x3400000, 0x34000ff) AM_READWRITE(cgboard_1_comm_sharc_r, cgboard_1_comm_sharc_w)
 	AM_RANGE(0x3500000, 0x35000ff) AM_READWRITE(K033906_1_r, K033906_1_w)
 	AM_RANGE(0x3600000, 0x37fffff) AM_ROMBANK(6)
@@ -759,7 +881,7 @@ ADDRESS_MAP_END
 /*****************************************************************************/
 
 static INPUT_PORTS_START( hornet )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -769,7 +891,7 @@ static INPUT_PORTS_START( hornet )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -779,14 +901,14 @@ static INPUT_PORTS_START( hornet )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
 	PORT_SERVICE_NO_TOGGLE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x80, 0x00, "Test Mode" )
 	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x80, DEF_STR( On ) )
@@ -811,11 +933,10 @@ static INPUT_PORTS_START( hornet )
 	PORT_DIPNAME( 0x01, 0x01, "Monitor Type" )
 	PORT_DIPSETTING( 0x01, "24KHz" )
 	PORT_DIPSETTING( 0x00, "15KHz" )
-
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sscope )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -824,17 +945,17 @@ static INPUT_PORTS_START( sscope )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)		// Gun trigger
 	PORT_BIT( 0x03, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
 	PORT_SERVICE_NO_TOGGLE( 0x10, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x80, 0x00, "Test Mode" )
 	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x80, DEF_STR( On ) )
@@ -859,17 +980,11 @@ static INPUT_PORTS_START( sscope )
 	PORT_DIPNAME( 0x01, 0x01, "Monitor Type" )
 	PORT_DIPSETTING( 0x01, "24KHz" )
 	PORT_DIPSETTING( 0x00, "15KHz" )
-
 INPUT_PORTS_END
 
 static const struct RF5C400interface rf5c400_interface =
 {
 	REGION_SOUND1
-};
-
-static const ppc_config hornet_ppc_cfg =
-{
-	PPC_MODEL_403GA
 };
 
 static sharc_config sharc_cfg =
@@ -887,21 +1002,50 @@ static sharc_config sharc_cfg =
 
 */
 
+static MACHINE_START( hornet )
+{
+	/* set conservative DRC options */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+
+	/* configure fast RAM regions for DRC */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x003fffff);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, workram);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+
+	state_save_register_global(led_reg0);
+	state_save_register_global(led_reg1);
+	state_save_register_global_array(jvs_sdata);
+	state_save_register_global(jvs_sdata_ptr);
+}
+
 static MACHINE_RESET( hornet )
 {
-	if (memory_region(REGION_USER3))
-		memory_set_bankptr(1, memory_region(REGION_USER3));
+	UINT8 *usr3 = memory_region(machine, REGION_USER3);
+	UINT8 *usr5 = memory_region(machine, REGION_USER5);
+	if (usr3 != NULL)
+	{
+		memory_configure_bank(1, 0, memory_region_length(machine, REGION_USER3) / 0x40000, usr3, 0x40000);
+		memory_set_bank(1, 0);
+	}
+
 	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 
-	if (memory_region(REGION_USER5))
-		memory_set_bankptr(5, memory_region(REGION_USER5));
+	if (usr5)
+		memory_set_bankptr(5, usr5);
+}
+
+static NVRAM_HANDLER( hornet )
+{
+	NVRAM_HANDLER_CALL(timekeeper_0);
+	NVRAM_HANDLER_CALL(93C46);
 }
 
 static MACHINE_DRIVER_START( hornet )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD_TAG("main", PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_CONFIG(hornet_ppc_cfg)
+	MDRV_CPU_ADD_TAG("main", PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(hornet_map, 0)
 
 	MDRV_CPU_ADD(M68000, 64000000/4)	/* 16MHz */
@@ -913,9 +1057,14 @@ static MACHINE_DRIVER_START( hornet )
 
 	MDRV_INTERLEAVE(100)
 
+	MDRV_MACHINE_START( hornet )
 	MDRV_MACHINE_RESET( hornet )
 
-	MDRV_NVRAM_HANDLER( timekeeper_0 )
+	MDRV_NVRAM_HANDLER( hornet )
+
+	MDRV_3DFX_VOODOO_1_ADD("voodoo0", STD_VOODOO_1_CLOCK, 2, "main")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
+	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
 
  	/* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -940,13 +1089,19 @@ MACHINE_DRIVER_END
 
 static MACHINE_RESET( hornet_2board )
 {
-	if (memory_region(REGION_USER3))
-		memory_set_bankptr(1, memory_region(REGION_USER3));
+	UINT8 *usr3 = memory_region(machine, REGION_USER3);
+	UINT8 *usr5 = memory_region(machine, REGION_USER5);
+
+	if (usr3 != NULL)
+	{
+		memory_configure_bank(1, 0, memory_region_length(machine, REGION_USER3) / 0x40000, usr3, 0x40000);
+		memory_set_bank(1, 0);
+	}
 	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, ASSERT_LINE);
 	cpunum_set_input_line(machine, 3, INPUT_LINE_RESET, ASSERT_LINE);
 
-	if (memory_region(REGION_USER5))
-		memory_set_bankptr(5, memory_region(REGION_USER5));
+	if (usr5)
+		memory_set_bankptr(5, usr5);
 }
 
 static MACHINE_DRIVER_START( hornet_2board )
@@ -961,6 +1116,15 @@ static MACHINE_DRIVER_START( hornet_2board )
 
 	MDRV_VIDEO_START(hornet_2board)
 	MDRV_VIDEO_UPDATE(hornet_2board)
+
+	MDRV_3DFX_VOODOO_REMOVE("voodoo0")
+	MDRV_3DFX_VOODOO_1_ADD("voodoo0", STD_VOODOO_1_CLOCK, 2, "left")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
+	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
+
+	MDRV_3DFX_VOODOO_1_ADD("voodoo1", STD_VOODOO_1_CLOCK, 2, "right")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
+	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_1)
 
 	/* video hardware */
 	MDRV_PALETTE_LENGTH(65536)
@@ -980,55 +1144,63 @@ static MACHINE_DRIVER_START( hornet_2board )
 	MDRV_SCREEN_VISIBLE_AREA(0, 511, 0, 383)
 MACHINE_DRIVER_END
 
+static MACHINE_DRIVER_START( hornet_2board_v2 )
+	MDRV_IMPORT_FROM(hornet_2board)
+
+	MDRV_3DFX_VOODOO_REMOVE("voodoo0")
+	MDRV_3DFX_VOODOO_2_ADD("voodoo0", STD_VOODOO_2_CLOCK, 2, "left")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
+	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
+
+	MDRV_3DFX_VOODOO_REMOVE("voodoo1")
+	MDRV_3DFX_VOODOO_2_ADD("voodoo1", STD_VOODOO_2_CLOCK, 2, "right")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 4)
+	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_1)
+MACHINE_DRIVER_END
+
 
 /*****************************************************************************/
 
-static UINT8 jvs_rdata[1024];
-static UINT8 jvs_sdata[1024];
-
-static int jvs_rdata_ptr = 0;
-static int jvs_sdata_ptr = 0;
-
-static UINT8 jamma_jvs_r(void)
-{
-	UINT8 r;
-	r = jvs_rdata[jvs_rdata_ptr];
-	jvs_rdata_ptr++;
-
-	return r;
-}
+static void jamma_jvs_cmd_exec(void);
 
 static void jamma_jvs_w(UINT8 data)
 {
+	if (jvs_sdata_ptr == 0 && data != 0xe0)
+		return;
 	jvs_sdata[jvs_sdata_ptr] = data;
 	jvs_sdata_ptr++;
+
+	if (jvs_sdata_ptr >= 3 && jvs_sdata_ptr >= 3 + jvs_sdata[2])
+		jamma_jvs_cmd_exec();
 }
 
-static int jvs_encode_data(UINT8 *in, UINT8 *out, int length)
+static int jvs_encode_data(UINT8 *in, int length)
 {
-	int outptr = 0;
 	int inptr = 0;
+	int sum = 0;
 
 	while (inptr < length)
 	{
 		UINT8 b = in[inptr++];
 		if (b == 0xe0)
 		{
-			out[outptr++] = 0xd0;
-			out[outptr++] = 0xdf;
+			sum += 0xd0 + 0xdf;
+			ppc4xx_spu_receive_byte(0, 0xd0);
+			ppc4xx_spu_receive_byte(0, 0xdf);
 		}
 		else if (b == 0xd0)
 		{
-			out[outptr++] = 0xd0;
-			out[outptr++] = 0xcf;
+			sum += 0xd0 + 0xcf;
+			ppc4xx_spu_receive_byte(0, 0xd0);
+			ppc4xx_spu_receive_byte(0, 0xcf);
 		}
 		else
 		{
-			out[outptr++] = b;
+			sum += b;
+			ppc4xx_spu_receive_byte(0, b);
 		}
-	};
-
-	return outptr;
+	}
+	return sum;
 }
 
 static int jvs_decode_data(UINT8 *in, UINT8 *out, int length)
@@ -1057,19 +1229,13 @@ static void jamma_jvs_cmd_exec(void)
 {
 	UINT8 sync, node, byte_num;
 	UINT8 data[1024], rdata[1024];
-	int i, length;
+	int length;
 	int rdata_ptr;
 	int sum;
 
 	sync = jvs_sdata[0];
 	node = jvs_sdata[1];
 	byte_num = jvs_sdata[2];
-
-	if (sync != 0xe0)
-	{
-		printf("jamma_jvs_cmd_exec: SYNC byte not found! (%02X)\n", sync);
-		return;
-	}
 
 	length = jvs_decode_data(&jvs_sdata[3], data, byte_num-1);
 
@@ -1119,282 +1285,245 @@ static void jamma_jvs_cmd_exec(void)
 	}
 
 	// write jvs return data
-	jvs_rdata[0] = 0xe0;			// sync
-	jvs_rdata[1] = 0x00;			// node
-	jvs_rdata[2] = rdata_ptr+1;		// num of bytes
+	sum = 0x00 + (rdata_ptr+1);
+	ppc4xx_spu_receive_byte(0, 0xe0);			// sync
+	ppc4xx_spu_receive_byte(0, 0x00);			// node
+	ppc4xx_spu_receive_byte(0, rdata_ptr+1);	// num of bytes
+	sum += jvs_encode_data(rdata, rdata_ptr);
+	ppc4xx_spu_receive_byte(0, sum - 1);		// checksum
 
-	length = jvs_encode_data(rdata, &jvs_rdata[3], rdata_ptr);
-
-	// calculate sum
-	sum = 0;
-	for (i=0; i < length+2; i++)
-	{
-		sum += jvs_rdata[1+i];
-	}
-
-	// write sum
-	jvs_rdata[3+length] = (UINT8)(sum-1);
-
-	jvs_rdata_ptr = 0;
 	jvs_sdata_ptr = 0;
 }
 
 /*****************************************************************************/
 
 
-static UINT8 jamma_rdata[1024];
-static void jamma_r(int length)
-{
-	int i;
-//  printf("jamma_r %d\n", length);
-	for (i=0; i < length; i++)
-	{
-		jamma_rdata[i] = jamma_jvs_r();
-	}
-}
-
-static UINT8 jamma_wdata[1024];
-static void jamma_w(int length)
-{
-	int i;
-//  printf("jamma_w %d\n", length);
-	for (i=0; i < length; i++)
-	{
-		jamma_jvs_w(jamma_wdata[i]);
-	}
-
-	jamma_jvs_cmd_exec();
-}
-
-static void sound_irq_callback(int irq)
+static void sound_irq_callback(running_machine *machine, int irq)
 {
 	if (irq == 0)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
 }
 
-static UINT8 backup_ram[0x2000];
-static void init_hornet(running_machine *machine)
+static void init_hornet(running_machine *machine, const UINT8 *backupdef)
 {
 	init_konami_cgboard(1, CGBOARD_TYPE_HORNET);
-	set_cgboard_texture_bank(0, 5, memory_region(REGION_USER5));
-
-	sharc_dataram[0] = auto_malloc(0x100000);
+	set_cgboard_texture_bank(0, 5, memory_region(machine, REGION_USER5));
 
 	K056800_init(sound_irq_callback);
 	K033906_init();
 
-	timekeeper_init(0, TIMEKEEPER_M48T58, backup_ram);
+	backup_ram = auto_malloc(0x2000);
+	memcpy(backup_ram, backupdef, 0x2000);
+	timekeeper_init(machine, 0, TIMEKEEPER_M48T58, backup_ram);
 
-	ppc403_install_spu_tx_dma_handler(jamma_w, jamma_wdata);
-	ppc403_install_spu_rx_dma_handler(jamma_r, jamma_rdata);
+	ppc4xx_spu_set_tx_handler(0, jamma_jvs_w);
 }
 
-static void init_hornet_2board(running_machine *machine)
+static void init_hornet_2board(running_machine *machine, const UINT8 *backupdef)
 {
 	init_konami_cgboard(2, CGBOARD_TYPE_HORNET);
-	set_cgboard_texture_bank(0, 5, memory_region(REGION_USER5));
-	set_cgboard_texture_bank(1, 6, memory_region(REGION_USER5));
-
-	sharc_dataram[0] = auto_malloc(0x100000);
-	sharc_dataram[1] = auto_malloc(0x100000);
+	set_cgboard_texture_bank(0, 5, memory_region(machine, REGION_USER5));
+	set_cgboard_texture_bank(1, 6, memory_region(machine, REGION_USER5));
 
 	K056800_init(sound_irq_callback);
 	K033906_init();
 
-	timekeeper_init(0, TIMEKEEPER_M48T58, backup_ram);
+	backup_ram = auto_malloc(0x2000);
+	memcpy(backup_ram, backupdef, 0x2000);
+	timekeeper_init(machine, 0, TIMEKEEPER_M48T58, backup_ram);
 
-	ppc403_install_spu_tx_dma_handler(jamma_w, jamma_wdata);
-	ppc403_install_spu_rx_dma_handler(jamma_r, jamma_rdata);
+	ppc4xx_spu_set_tx_handler(0, jamma_jvs_w);
 }
 
 static DRIVER_INIT(gradius4)
 {
-	/* RTC data */
-	backup_ram[0x00] = 0x47;	// 'G'
-	backup_ram[0x01] = 0x58;	// 'X'
-	backup_ram[0x02] = 0x38;	// '8'
-	backup_ram[0x03] = 0x33;	// '3'
-	backup_ram[0x04] = 0x37;	// '7'
-	backup_ram[0x05] = 0x00;	//
-	backup_ram[0x06] = 0x11;	//
-	backup_ram[0x07] = 0x06;	// 06 / 11
-	backup_ram[0x08] = 0x19;	//
-	backup_ram[0x09] = 0x98;	// 1998
-	backup_ram[0x0a] = 0x4a;	// 'J'
-	backup_ram[0x0b] = 0x41;	// 'A'
-	backup_ram[0x0c] = 0x43;	// 'C'
-	backup_ram[0x0d] = 0x00;	//
-	backup_ram[0x0e] = 0x02;	// checksum
-	backup_ram[0x0f] = 0xd7;	// checksum
+	UINT8 backupdef[0x2000] = { 0 };
 
-	voodoo_version = 0;
-	init_hornet(machine);
+	/* RTC data */
+	backupdef[0x00] = 0x47;	// 'G'
+	backupdef[0x01] = 0x58;	// 'X'
+	backupdef[0x02] = 0x38;	// '8'
+	backupdef[0x03] = 0x33;	// '3'
+	backupdef[0x04] = 0x37;	// '7'
+	backupdef[0x05] = 0x00;	//
+	backupdef[0x06] = 0x11;	//
+	backupdef[0x07] = 0x06;	// 06 / 11
+	backupdef[0x08] = 0x19;	//
+	backupdef[0x09] = 0x98;	// 1998
+	backupdef[0x0a] = 0x4a;	// 'J'
+	backupdef[0x0b] = 0x41;	// 'A'
+	backupdef[0x0c] = 0x43;	// 'C'
+	backupdef[0x0d] = 0x00;	//
+	backupdef[0x0e] = 0x02;	// checksum
+	backupdef[0x0f] = 0xd7;	// checksum
+
+	init_hornet(machine, backupdef);
 }
 
 static DRIVER_INIT(nbapbp)
 {
+	UINT8 backupdef[0x2000] = { 0 };
 	int i;
 	UINT16 checksum;
 
 	/* RTC data */
-	backup_ram[0x00] = 0x47;	// 'G'
-	backup_ram[0x01] = 0x58;	// 'X'
-	backup_ram[0x02] = 0x37;	// '7'
-	backup_ram[0x03] = 0x37;	// '7'
-	backup_ram[0x04] = 0x38;	// '8'
-	backup_ram[0x05] = 0x00;	//
-	backup_ram[0x06] = 0x00;	//
-	backup_ram[0x07] = 0x00;	//
-	backup_ram[0x08] = 0x19;	//
-	backup_ram[0x09] = 0x98;	// 1998
-	backup_ram[0x0a] = 0x4a;	// 'J'
-	backup_ram[0x0b] = 0x41;	// 'A'
-	backup_ram[0x0c] = 0x41;	// 'A'
-	backup_ram[0x0d] = 0x00;	//
+	backupdef[0x00] = 0x47;	// 'G'
+	backupdef[0x01] = 0x58;	// 'X'
+	backupdef[0x02] = 0x37;	// '7'
+	backupdef[0x03] = 0x37;	// '7'
+	backupdef[0x04] = 0x38;	// '8'
+	backupdef[0x05] = 0x00;	//
+	backupdef[0x06] = 0x00;	//
+	backupdef[0x07] = 0x00;	//
+	backupdef[0x08] = 0x19;	//
+	backupdef[0x09] = 0x98;	// 1998
+	backupdef[0x0a] = 0x4a;	// 'J'
+	backupdef[0x0b] = 0x41;	// 'A'
+	backupdef[0x0c] = 0x41;	// 'A'
+	backupdef[0x0d] = 0x00;	//
 
 	checksum = 0;
 	for (i=0; i < 14; i++)
 	{
-		checksum += backup_ram[i];
+		checksum += backupdef[i];
 		checksum &= 0xffff;
 	}
-	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
-	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
+	backupdef[0x0e] = (checksum >> 8) & 0xff;	// checksum
+	backupdef[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	voodoo_version = 0;
-	init_hornet(machine);
+	init_hornet(machine, backupdef);
 }
 
 static DRIVER_INIT(terabrst)
 {
+	UINT8 backupdef[0x2000] = { 0 };
 	int i;
 	UINT16 checksum;
 
 	/* RTC data */
-	backup_ram[0x00] = 0x47;	// 'G'
-	backup_ram[0x01] = 0x4e;	// 'N'
-	backup_ram[0x02] = 0x37;	// '7'
-	backup_ram[0x03] = 0x31;	// '1'
-	backup_ram[0x04] = 0x35;	// '5'
-	backup_ram[0x05] = 0x00;	//
-	backup_ram[0x06] = 0x00;	//
-	backup_ram[0x07] = 0x00;	//
-	backup_ram[0x08] = 0x19;	//
-	backup_ram[0x09] = 0x98;	// 1998
-	backup_ram[0x0a] = 0x41;	// 'J'
-	backup_ram[0x0b] = 0x41;	// 'A'
-	backup_ram[0x0c] = 0x45;	// 'E'
-	backup_ram[0x0d] = 0x00;	//
+	backupdef[0x00] = 0x47;	// 'G'
+	backupdef[0x01] = 0x4e;	// 'N'
+	backupdef[0x02] = 0x37;	// '7'
+	backupdef[0x03] = 0x31;	// '1'
+	backupdef[0x04] = 0x35;	// '5'
+	backupdef[0x05] = 0x00;	//
+	backupdef[0x06] = 0x00;	//
+	backupdef[0x07] = 0x00;	//
+	backupdef[0x08] = 0x19;	//
+	backupdef[0x09] = 0x98;	// 1998
+	backupdef[0x0a] = 0x41;	// 'J'
+	backupdef[0x0b] = 0x41;	// 'A'
+	backupdef[0x0c] = 0x45;	// 'E'
+	backupdef[0x0d] = 0x00;	//
 
 	checksum = 0;
 	for (i=0; i < 14; i+=2)
 	{
-		checksum += (backup_ram[i] << 8) | (backup_ram[i+1]);
+		checksum += (backupdef[i] << 8) | (backupdef[i+1]);
 	}
 	checksum = ~checksum - 0;
-	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
-	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
+	backupdef[0x0e] = (checksum >> 8) & 0xff;	// checksum
+	backupdef[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	voodoo_version = 0;
-	init_hornet_2board(machine);
+	init_hornet_2board(machine, backupdef);
 }
 
 static DRIVER_INIT(sscope)
 {
+	UINT8 backupdef[0x2000] = { 0 };
 	int i;
 	UINT16 checksum;
 
 	/* RTC data */
-	backup_ram[0x00] = 0x47;	// 'G'
-	backup_ram[0x01] = 0x51;	// 'Q'
-	backup_ram[0x02] = 0x38;	// '8'
-	backup_ram[0x03] = 0x33;	// '3'
-	backup_ram[0x04] = 0x30;	// '0'
-	backup_ram[0x05] = 0x00;	//
-	backup_ram[0x06] = 0x00;	//
-	backup_ram[0x07] = 0x00;	//
-	backup_ram[0x08] = 0x20;	//
-	backup_ram[0x09] = 0x00;	// 2000
-	backup_ram[0x0a] = 0x55;	// 'U'
-	backup_ram[0x0b] = 0x41;	// 'A'
-	backup_ram[0x0c] = 0x41;	// 'A'
-	backup_ram[0x0d] = 0x00;	//
+	backupdef[0x00] = 0x47;	// 'G'
+	backupdef[0x01] = 0x51;	// 'Q'
+	backupdef[0x02] = 0x38;	// '8'
+	backupdef[0x03] = 0x33;	// '3'
+	backupdef[0x04] = 0x30;	// '0'
+	backupdef[0x05] = 0x00;	//
+	backupdef[0x06] = 0x00;	//
+	backupdef[0x07] = 0x00;	//
+	backupdef[0x08] = 0x20;	//
+	backupdef[0x09] = 0x00;	// 2000
+	backupdef[0x0a] = 0x55;	// 'U'
+	backupdef[0x0b] = 0x41;	// 'A'
+	backupdef[0x0c] = 0x41;	// 'A'
+	backupdef[0x0d] = 0x00;	//
 
 	checksum = 0;
 	for (i=0; i < 14; i+=2)
 	{
-		checksum += (backup_ram[i] << 8) | (backup_ram[i+1]);
+		checksum += (backupdef[i] << 8) | (backupdef[i+1]);
 	}
 	checksum = ~checksum - 1;
-	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
-	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
+	backupdef[0x0e] = (checksum >> 8) & 0xff;	// checksum
+	backupdef[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
-	voodoo_version = 0;
-	init_hornet_2board(machine);
+	init_hornet_2board(machine, backupdef);
 }
 
 static DRIVER_INIT(sscope2)
 {
+	UINT8 backupdef[0x2000] = { 0 };
 	int i;
 	int checksum;
 
 	/* RTC data */
-	backup_ram[0x00] = 0x47;	// 'G'
-	backup_ram[0x01] = 0x4b;	// 'K'
-	backup_ram[0x02] = 0x39;	// '9'
-	backup_ram[0x03] = 0x33;	// '3'
-	backup_ram[0x04] = 0x31;	// '1'
-	backup_ram[0x05] = 0x00;	//
-	backup_ram[0x06] = 0x00;	//
-	backup_ram[0x07] = 0x00;	//
-	backup_ram[0x08] = 0x20;	//
-	backup_ram[0x09] = 0x00;	// 2000
-	backup_ram[0x0a] = 0x55;	// 'U'
-	backup_ram[0x0b] = 0x41;	// 'A'
-	backup_ram[0x0c] = 0x41;	// 'A'
-	backup_ram[0x0d] = 0x00;	//
+	backupdef[0x00] = 0x47;	// 'G'
+	backupdef[0x01] = 0x4b;	// 'K'
+	backupdef[0x02] = 0x39;	// '9'
+	backupdef[0x03] = 0x33;	// '3'
+	backupdef[0x04] = 0x31;	// '1'
+	backupdef[0x05] = 0x00;	//
+	backupdef[0x06] = 0x00;	//
+	backupdef[0x07] = 0x00;	//
+	backupdef[0x08] = 0x20;	//
+	backupdef[0x09] = 0x00;	// 2000
+	backupdef[0x0a] = 0x55;	// 'U'
+	backupdef[0x0b] = 0x41;	// 'A'
+	backupdef[0x0c] = 0x41;	// 'A'
+	backupdef[0x0d] = 0x00;	//
 
 	checksum = 0;
 	for (i=0; i < 14; i+=2)
 	{
-		checksum += (backup_ram[i] << 8) | (backup_ram[i+1]);
+		checksum += (backupdef[i] << 8) | (backupdef[i+1]);
 		checksum &= 0xffff;
 	}
 	checksum = (-1 - checksum) - 1;
-	backup_ram[0x0e] = (checksum >> 8) & 0xff;	// checksum
-	backup_ram[0x0f] = (checksum >> 0) & 0xff;	// checksum
+	backupdef[0x0e] = (checksum >> 8) & 0xff;	// checksum
+	backupdef[0x0f] = (checksum >> 0) & 0xff;	// checksum
 
 
 	/* Silent Scope data */
-	backup_ram[0x1f40] = 0x47;	// 'G'
-	backup_ram[0x1f41] = 0x4b;	// 'Q'
-	backup_ram[0x1f42] = 0x38;	// '8'
-	backup_ram[0x1f43] = 0x33;	// '3'
-	backup_ram[0x1f44] = 0x30;	// '0'
-	backup_ram[0x1f45] = 0x00;	//
-	backup_ram[0x1f46] = 0x00;	//
-	backup_ram[0x1f47] = 0x00;	//
-	backup_ram[0x1f48] = 0x20;	//
-	backup_ram[0x1f49] = 0x00;	// 2000
-	backup_ram[0x1f4a] = 0x55;	// 'U'
-	backup_ram[0x1f4b] = 0x41;	// 'A'
-	backup_ram[0x1f4c] = 0x41;	// 'A'
-	backup_ram[0x1f4d] = 0x00;	//
+	backupdef[0x1f40] = 0x47;	// 'G'
+	backupdef[0x1f41] = 0x4b;	// 'Q'
+	backupdef[0x1f42] = 0x38;	// '8'
+	backupdef[0x1f43] = 0x33;	// '3'
+	backupdef[0x1f44] = 0x30;	// '0'
+	backupdef[0x1f45] = 0x00;	//
+	backupdef[0x1f46] = 0x00;	//
+	backupdef[0x1f47] = 0x00;	//
+	backupdef[0x1f48] = 0x20;	//
+	backupdef[0x1f49] = 0x00;	// 2000
+	backupdef[0x1f4a] = 0x55;	// 'U'
+	backupdef[0x1f4b] = 0x41;	// 'A'
+	backupdef[0x1f4c] = 0x41;	// 'A'
+	backupdef[0x1f4d] = 0x00;	//
 
 	checksum = 0;
 	for (i=0x1f40; i < 0x1f4e; i+=2)
 	{
-		checksum += (backup_ram[i] << 8) | (backup_ram[i+1]);
+		checksum += (backupdef[i] << 8) | (backupdef[i+1]);
 		checksum &= 0xffff;
 	}
 	checksum = (-1 - checksum) - 1;
-	backup_ram[0x1f4e] = (checksum >> 8) & 0xff;	// checksum
-	backup_ram[0x1f4f] = (checksum >> 0) & 0xff;	// checksum
+	backupdef[0x1f4e] = (checksum >> 8) & 0xff;	// checksum
+	backupdef[0x1f4f] = (checksum >> 0) & 0xff;	// checksum
 
-	voodoo_version = 1;
-	init_hornet_2board(machine);
+	init_hornet_2board(machine, backupdef);
 }
 
 /*****************************************************************************/
@@ -1534,9 +1663,9 @@ ROM_END
 
 /*************************************************************************/
 
-GAME( 1998, gradius4,	0,		hornet,			hornet,	gradius4,	ROT0,	"Konami",	"Gradius 4: Fukkatsu", GAME_IMPERFECT_SOUND )
-GAME( 1998, nbapbp,		0,		hornet,			hornet,	nbapbp,		ROT0,	"Konami",	"NBA Play By Play", GAME_IMPERFECT_SOUND )
-GAMEL( 1998, terabrst,   0,     hornet_2board,  hornet, terabrst,   ROT0,   "Konami",   "Teraburst", GAME_IMPERFECT_SOUND, layout_dualhsxs )
-GAMEL( 2000, sscope,	0,		hornet_2board,	sscope,	sscope,		ROT0,	"Konami",	"Silent Scope (ver UAB)", GAME_IMPERFECT_SOUND|GAME_NOT_WORKING, layout_dualhsxs )
-GAMEL( 2000, sscopea,	sscope, hornet_2board,	sscope,	sscope,		ROT0,	"Konami",	"Silent Scope (ver UAA)", GAME_IMPERFECT_SOUND|GAME_NOT_WORKING, layout_dualhsxs )
-GAMEL( 2000, sscope2,	0,		hornet_2board,	sscope,	sscope2,	ROT0,	"Konami",	"Silent Scope 2", GAME_IMPERFECT_SOUND|GAME_NOT_WORKING, layout_dualhsxs )
+GAME( 1998, gradius4,	0,		hornet,			  hornet,	gradius4,	ROT0,	"Konami",	"Gradius 4: Fukkatsu", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1998, nbapbp,		0,		hornet,			  hornet,	nbapbp,		ROT0,	"Konami",	"NBA Play By Play", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAMEL( 1998, terabrst,  0,      hornet_2board,    hornet,   terabrst,   ROT0,   "Konami",   "Teraburst", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE, layout_dualhsxs )
+GAMEL( 2000, sscope,	0,		hornet_2board,	  sscope,	sscope,		ROT0,	"Konami",	"Silent Scope (ver UAB)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING | GAME_SUPPORTS_SAVE, layout_dualhsxs )
+GAMEL( 2000, sscopea,	sscope, hornet_2board,	  sscope,	sscope,		ROT0,	"Konami",	"Silent Scope (ver UAA)", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING | GAME_SUPPORTS_SAVE, layout_dualhsxs )
+GAMEL( 2000, sscope2,	0,		hornet_2board_v2, sscope,	sscope2,	ROT0,	"Konami",	"Silent Scope 2", GAME_IMPERFECT_SOUND | GAME_NOT_WORKING | GAME_SUPPORTS_SAVE, layout_dualhsxs )

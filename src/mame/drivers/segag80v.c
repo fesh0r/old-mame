@@ -182,7 +182,7 @@ static INPUT_CHANGED( service_switch )
 {
 	/* pressing the service switch sends an NMI */
 	if (newval)
-		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 
@@ -313,7 +313,7 @@ static READ8_HANDLER( spinner_input_r )
 
 static CUSTOM_INPUT( elim4_joint_coin_r )
 {
-	return (input_port_read(machine, "COINS") & 0xf) != 0xf;
+	return (input_port_read(field->port->machine, "COINS") & 0xf) != 0xf;
 }
 
 
@@ -715,6 +715,10 @@ static INPUT_PORTS_START( zektor )
 	PORT_DIPSETTING(	0x80, "20000" )
 	PORT_DIPSETTING(	0x40, "30000" )
 
+	PORT_MODIFY("D5D4")
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )					/* P1.15 */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )					/* P1.19 */
+
 	PORT_MODIFY("FC")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
@@ -752,6 +756,10 @@ static INPUT_PORTS_START( tacscan )
 	PORT_DIPSETTING(	0x80, "20000" )
 	PORT_DIPSETTING(	0x40, "30000" )
 
+	PORT_MODIFY("D5D4")
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )					/* P1.15 */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )					/* P1.19 */
+
 	PORT_MODIFY("FC")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
@@ -788,6 +796,11 @@ static INPUT_PORTS_START( startrek )
 	PORT_DIPSETTING(	0x40, "20000" )
 	PORT_DIPSETTING(	0x80, "30000" )
 	PORT_DIPSETTING(	0xc0, "40000" )
+
+	PORT_MODIFY("D5D4")
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )					/* P1.15 */
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )					/* P1.19 */
+
 
 	PORT_MODIFY("FC")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_START1 )

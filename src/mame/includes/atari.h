@@ -50,7 +50,7 @@ DEVICE_IMAGE_UNLOAD( a5200_cart );
 
  READ8_HANDLER ( atari_serin_r );
 WRITE8_HANDLER ( atari_serout_w );
-void atari_interrupt_cb(int mask);
+void atari_interrupt_cb(running_machine *machine, int mask);
 
 void a800_handle_keyboard(running_machine *machine);
 void a5200_handle_keypads(running_machine *machine);
@@ -322,11 +322,11 @@ typedef struct {
 #define RDPMGFXS(o) cpunum_read_byte(0, antic.pmbase_s+(o)+(antic.scanline>>1))
 #define RDPMGFXD(o) cpunum_read_byte(0, antic.pmbase_d+(o)+antic.scanline)
 #else
-#define RDANTIC()	(memory_region(REGION_CPU1))[antic.dpage+antic.doffs]
-#define RDVIDEO(o)	(memory_region(REGION_CPU1))[antic.vpage+((antic.voffs+(o))&VOFFS)]
-#define RDCHGEN(o)	(memory_region(REGION_CPU1))[antic.chbase+(o)]
-#define RDPMGFXS(o) (memory_region(REGION_CPU1))[antic.pmbase_s+(o)+(antic.scanline>>1)]
-#define RDPMGFXD(o) (memory_region(REGION_CPU1))[antic.pmbase_d+(o)+antic.scanline]
+#define RDANTIC()	(memory_region(machine, REGION_CPU1))[antic.dpage+antic.doffs]
+#define RDVIDEO(o)	(memory_region(machine, REGION_CPU1))[antic.vpage+((antic.voffs+(o))&VOFFS)]
+#define RDCHGEN(o)	(memory_region(machine, REGION_CPU1))[antic.chbase+(o)]
+#define RDPMGFXS(o) (memory_region(machine, REGION_CPU1))[antic.pmbase_s+(o)+(antic.scanline>>1)]
+#define RDPMGFXD(o) (memory_region(machine, REGION_CPU1))[antic.pmbase_d+(o)+antic.scanline]
 #endif
 
 #define PREPARE()												\

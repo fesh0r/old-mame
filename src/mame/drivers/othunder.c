@@ -231,7 +231,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/eeprom.h"
@@ -257,7 +256,7 @@ static MACHINE_RESET( othunder )
 	last_irq_level = 0;
 }
 
-static void update_irq(void)
+static void update_irq(running_machine *machine)
 {
 	int curr_level;
 
@@ -270,7 +269,7 @@ static void update_irq(void)
 
 	if (curr_level != last_irq_level)
 	{
-		cpunum_set_input_line(Machine, 0,curr_level,curr_level ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0,curr_level,curr_level ? ASSERT_LINE : CLEAR_LINE);
 		last_irq_level = curr_level;
 	}
 }
@@ -288,19 +287,19 @@ static WRITE16_HANDLER( irq_ack_w )
 			break;
 	}
 
-	update_irq();
+	update_irq(machine);
 }
 
 static INTERRUPT_GEN( vblank_interrupt )
 {
 	vblank_irq = 1;
-	update_irq();
+	update_irq(machine);
 }
 
 static TIMER_CALLBACK( ad_interrupt )
 {
 	ad_irq = 1;
-	update_irq();
+	update_irq(machine);
 }
 
 
@@ -324,7 +323,7 @@ static const UINT8 default_eeprom[128]=
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -338,21 +337,21 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( othunder )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
-			EEPROM_load(file);
+			eeprom_load(file);
 		else
-			EEPROM_set_data(default_eeprom,128);  /* Default the gun setup values */
+			eeprom_set_data(default_eeprom,128);  /* Default the gun setup values */
 	}
 }
 
 static int eeprom_r(void)
 {
-	return (EEPROM_read_bit() & 0x01)<<7;
+	return (eeprom_read_bit() & 0x01)<<7;
 }
 
 
@@ -379,9 +378,9 @@ static WRITE16_HANDLER( othunder_TC0220IOC_w )
 if (data & 4)
 	popmessage("OBPRI SET!");
 
-				EEPROM_write_bit(data & 0x40);
-				EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
-				EEPROM_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+				eeprom_write_bit(data & 0x40);
+				eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+				eeprom_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 				break;
 
 			default:
@@ -436,14 +435,14 @@ static WRITE16_HANDLER( othunder_lightgun_w )
 
 static INT32 banknum = -1;
 
-static void reset_sound_region(void)
+static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 10, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr( 10, memory_region(machine, REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
 }
 
 static STATE_POSTLOAD( othunder_postload )
 {
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static MACHINE_START( othunder )
@@ -456,7 +455,7 @@ static MACHINE_START( othunder )
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static WRITE16_HANDLER( othunder_sound_w )
@@ -685,9 +684,9 @@ GFXDECODE_END
 **************************************************************/
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =

@@ -124,7 +124,7 @@ enum
 	CPUINFO_PTR_EXECUTE,								/* R/O: int (*execute)(int cycles) */
 	CPUINFO_PTR_BURN,									/* R/O: void (*burn)(int cycles) */
 	CPUINFO_PTR_DISASSEMBLE,							/* R/O: offs_t (*disassemble)(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram) */
-	CPUINFO_PTR_TRANSLATE,								/* R/O: int (*translate)(int space, offs_t *address) */
+	CPUINFO_PTR_TRANSLATE,								/* R/O: int (*translate)(int space, int intention, offs_t *address) */
 	CPUINFO_PTR_READ,									/* R/O: int (*read)(int space, UINT32 offset, int size, UINT64 *value) */
 	CPUINFO_PTR_WRITE,									/* R/O: int (*write)(int space, UINT32 offset, int size, UINT64 value) */
 	CPUINFO_PTR_READOP,									/* R/O: int (*readop)(UINT32 offset, int size, UINT64 *value) */
@@ -133,6 +133,7 @@ enum
 	CPUINFO_PTR_INTERNAL_MEMORY_MAP,					/* R/O: const addrmap_token *map */
 	CPUINFO_PTR_INTERNAL_MEMORY_MAP_LAST = CPUINFO_PTR_INTERNAL_MEMORY_MAP + ADDRESS_SPACES - 1,
 	CPUINFO_PTR_DEBUG_REGISTER_LIST,					/* R/O: int *list: list of registers for the debugger */
+	CPUINFO_PTR_VALIDITY_CHECK,							/* R/O: int (*validity_check)(const void *config) */
 
 	CPUINFO_PTR_CPU_SPECIFIC = 0x18000,					/* R/W: CPU-specific values start here */
 
@@ -178,6 +179,22 @@ enum
 };
 
 
+/* Translation intentions */
+#define TRANSLATE_TYPE_MASK		0x03		/* read write or fetch */
+#define TRANSLATE_USER_MASK		0x04		/* user mode or fully privileged */
+#define TRANSLATE_DEBUG_MASK	0x08		/* debug mode (no side effects) */
+
+#define TRANSLATE_READ			0			/* translate for read */
+#define TRANSLATE_WRITE			1			/* translate for write */
+#define TRANSLATE_FETCH			2			/* translate for instruction fetch */
+#define TRANSLATE_READ_USER		(TRANSLATE_READ | TRANSLATE_USER_MASK)
+#define TRANSLATE_WRITE_USER	(TRANSLATE_WRITE | TRANSLATE_USER_MASK)
+#define TRANSLATE_FETCH_USER	(TRANSLATE_FETCH | TRANSLATE_USER_MASK)
+#define TRANSLATE_READ_DEBUG	(TRANSLATE_READ | TRANSLATE_DEBUG_MASK)
+#define TRANSLATE_WRITE_DEBUG	(TRANSLATE_WRITE | TRANSLATE_DEBUG_MASK)
+#define TRANSLATE_FETCH_DEBUG	(TRANSLATE_FETCH | TRANSLATE_DEBUG_MASK)
+
+
 /* Disassembler constants */
 #define DASMFLAG_SUPPORTED		0x80000000	/* are disassembly flags supported? */
 #define DASMFLAG_STEP_OUT		0x40000000	/* this instruction should be the end of a step out sequence */
@@ -208,11 +225,12 @@ typedef void (*cpu_exit_func)(void);
 typedef int	(*cpu_execute_func)(int cycles);
 typedef void (*cpu_burn_func)(int cycles);
 typedef offs_t (*cpu_disassemble_func)(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
-typedef int	(*cpu_translate_func)(int space, offs_t *address);
+typedef int	(*cpu_translate_func)(int space, int intention, offs_t *address);
 typedef int	(*cpu_read_func)(int space, UINT32 offset, int size, UINT64 *value);
 typedef int	(*cpu_write_func)(int space, UINT32 offset, int size, UINT64 value);
 typedef int	(*cpu_readop_func)(UINT32 offset, int size, UINT64 *value);
 typedef void (*cpu_setup_commands_func)(void);
+typedef int (*cpu_validity_check_func)(const game_driver *driver, const void *config);
 
 
 /* cpuinfo union used to pass data to/from the get_info/set_info functions */
@@ -242,6 +260,7 @@ union _cpuinfo
 	const addrmap16_token *	internal_map16;				/* CPUINFO_PTR_INTERNAL_MEMORY_MAP */
 	const addrmap32_token *	internal_map32;				/* CPUINFO_PTR_INTERNAL_MEMORY_MAP */
 	const addrmap64_token *	internal_map64;				/* CPUINFO_PTR_INTERNAL_MEMORY_MAP */
+	cpu_validity_check_func	validity_check;				/* CPUINFO_PTR_VALIDITY_CHECK */
 };
 
 

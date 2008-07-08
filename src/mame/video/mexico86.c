@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "includes/mexico86.h"
 
 UINT8 *mexico86_videoram,*mexico86_objectram;
 size_t mexico86_objectram_size;
@@ -8,7 +9,7 @@ static int charbank;
 
 WRITE8_HANDLER( mexico86_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	if ((data & 7) > 5)
 		popmessage( "Switching to invalid bank!" );

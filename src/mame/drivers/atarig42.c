@@ -83,7 +83,7 @@ static MACHINE_RESET( atarig42 )
 
 static READ16_HANDLER( special_port2_r )
 {
-	int temp = input_port_read_indexed(machine, 2);
+	int temp = input_port_read(machine, "IN2");
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x0020;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x0010;
 	temp ^= 0x0008;		/* A2D.EOC always high for now */
@@ -93,7 +93,9 @@ static READ16_HANDLER( special_port2_r )
 
 static WRITE16_HANDLER( a2d_select_w )
 {
-	analog_data = input_port_read_indexed(machine, 4 + (offset != 0));
+	static const char *portnames[] = { "A2D0", "A2D1" };
+
+	analog_data = input_port_read(machine, portnames[offset != 0]);
 }
 
 
@@ -109,10 +111,10 @@ static WRITE16_HANDLER( io_latch_w )
 	if (ACCESSING_BITS_8_15)
 	{
 		/* bit 14 controls the ASIC65 reset line */
-		asic65_reset((~data >> 14) & 1);
+		asic65_reset(machine, (~data >> 14) & 1);
 
 		/* bits 13-11 are the MO control bits */
-		atarirle_control_w(0, (data >> 11) & 7);
+		atarirle_control_w(machine, 0, (data >> 11) & 7);
 	}
 
 	/* lower byte */
@@ -147,7 +149,7 @@ static OPBASE_HANDLER( sloop_opbase_handler )
 {
 	if  (address < 0x80000)
 	{
-		opcode_base = opcode_arg_base = (void *)sloop_base;
+		opbase->rom = opbase->ram = (void *)sloop_base;
 		return (offs_t)-1;
 	}
 	return address;
@@ -381,17 +383,17 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( roadriot )
-	PORT_START		/* e00000 */
+	PORT_START_TAG("IN0")		/* e00000 */
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0xf800, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* e00002 */
+	PORT_START_TAG("IN1")      /* e00002 */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START		/* e00010 */
+	PORT_START_TAG("IN2")		/* e00010 */
 	PORT_BIT( 0x003f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_SERVICE( 0x0040, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_VBLANK )
@@ -399,16 +401,16 @@ static INPUT_PORTS_START( roadriot )
 
 	JSA_III_PORT	/* audio board port */
 
-	PORT_START		/* analog 0 */
+	PORT_START_TAG("A2D0")		/* analog 0 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10)
 
-	PORT_START      /* analog 1 */
+	PORT_START_TAG("A2D1")		/* analog 1 */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(16)
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( guardian )
-	PORT_START		/* e00000 */
+	PORT_START_TAG("IN0")		/* e00000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
@@ -426,7 +428,7 @@ static INPUT_PORTS_START( guardian )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START      /* e00002 */
+	PORT_START_TAG("IN1")      /* e00002 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
@@ -442,7 +444,7 @@ static INPUT_PORTS_START( guardian )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START		/* e00010 */
+	PORT_START_TAG("IN2")		/* e00010 */
 	PORT_BIT( 0x003f, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_SERVICE( 0x0040, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_VBLANK )
@@ -450,10 +452,10 @@ static INPUT_PORTS_START( guardian )
 
 	JSA_III_PORT	/* audio board port */
 
-	PORT_START		/* analog 0 */
+	PORT_START_TAG("A2D0")		/* analog 0 */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* analog 1 */
+	PORT_START_TAG("A2D1")		/* analog 1 */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -687,8 +689,8 @@ static DRIVER_INIT( roadriot )
 		0x0118,0x0100,0x01C8,0x01D0,0x0000
 	};
 	atarigen_eeprom_default = default_eeprom;
-	atarijsa_init(machine, 2, 0x0040);
-	atarijsa3_init_adpcm(REGION_SOUND1);
+	atarijsa_init(machine, "IN2", 0x0040);
+	atarijsa3_init_adpcm(machine, REGION_SOUND1);
 
 	atarig42_playfield_base = 0x400;
 	atarig42_motion_object_base = 0x200;
@@ -697,7 +699,7 @@ static DRIVER_INIT( roadriot )
 	sloop_base = memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, roadriot_sloop_data_r, roadriot_sloop_data_w);
 	memory_set_opbase_handler(0, sloop_opbase_handler);
 
-	asic65_config(ASIC65_ROMBASED);
+	asic65_config(machine, ASIC65_ROMBASED);
 /*
     Road Riot color MUX
 
@@ -737,8 +739,8 @@ static DRIVER_INIT( guardian )
 		0x0109,0x0100,0x0108,0x0134,0x0105,0x0148,0x1400,0x0000
 	};
 	atarigen_eeprom_default = default_eeprom;
-	atarijsa_init(machine, 2, 0x0040);
-	atarijsa3_init_adpcm(REGION_SOUND1);
+	atarijsa_init(machine, "IN2", 0x0040);
+	atarijsa3_init_adpcm(machine, REGION_SOUND1);
 
 	atarig42_playfield_base = 0x000;
 	atarig42_motion_object_base = 0x400;
@@ -746,12 +748,12 @@ static DRIVER_INIT( guardian )
 
 	/* it looks like they jsr to $80000 as some kind of protection */
 	/* put an RTS there so we don't die */
-	*(UINT16 *)&memory_region(REGION_CPU1)[0x80000] = 0x4E75;
+	*(UINT16 *)&memory_region(machine, REGION_CPU1)[0x80000] = 0x4E75;
 
 	sloop_base = memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x07ffff, 0, 0, guardians_sloop_data_r, guardians_sloop_data_w);
 	memory_set_opbase_handler(0, sloop_opbase_handler);
 
-	asic65_config(ASIC65_GUARDIANS);
+	asic65_config(machine, ASIC65_GUARDIANS);
 /*
     Guardians color MUX
 

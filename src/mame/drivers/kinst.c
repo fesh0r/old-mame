@@ -144,7 +144,6 @@ Notes:
 static UINT32 *rambase, *rambase2, *rombase;
 static UINT32 *video_base;
 static UINT32 *kinst_control;
-static UINT32 *kinst_speedup;
 
 static const UINT8 *control_map;
 
@@ -223,9 +222,6 @@ static MACHINE_START( kinst )
 
 static MACHINE_RESET( kinst )
 {
-	/* reset the IDE controller */
-	devtag_reset(machine, IDE_CONTROLLER, "ide");
-
 	/* set a safe base location for video */
 	video_base = &rambase[0x30000/4];
 }
@@ -330,6 +326,7 @@ static WRITE32_DEVICE_HANDLER( kinst_ide_extra_w )
 static READ32_HANDLER( kinst_control_r )
 {
 	UINT32 result;
+	static const char *portnames[] = { "P1", "P2", "IN0", "IN1", "DSW" };
 
 	/* apply shuffling */
 	offset = control_map[offset / 2];
@@ -338,7 +335,7 @@ static READ32_HANDLER( kinst_control_r )
 	switch (offset)
 	{
 		case 2:		/* $90 -- sound return */
-			result = 0xffff0000 | input_port_read_indexed(machine, offset);
+			result = 0xffff0000 | input_port_read(machine, portnames[offset]);
 			result &= ~0x0002;
 			if (dcs_control_r() & 0x800)
 				result |= 0x0002;
@@ -347,11 +344,11 @@ static READ32_HANDLER( kinst_control_r )
 		case 0:		/* $80 */
 		case 1:		/* $88 */
 		case 3:		/* $98 */
-			result = 0xffff0000 | input_port_read_indexed(machine, offset);
+			result = 0xffff0000 | input_port_read(machine, portnames[offset]);
 			break;
 
 		case 4:		/* $a0 */
-			result = 0xffff0000 | input_port_read_indexed(machine, offset);
+			result = 0xffff0000 | input_port_read(machine, portnames[offset]);
 			if (activecpu_get_pc() == 0x802d428)
 				cpu_spinuntil_int();
 			break;
@@ -397,37 +394,6 @@ static WRITE32_HANDLER( kinst_control_w )
 
 /*************************************
  *
- *  Speedups
- *
- *************************************/
-
-static TIMER_CALLBACK( end_spin )
-{
-	cpu_triggerint(machine, 0);
-}
-
-
-static READ32_HANDLER( kinst_speedup_r )
-{
-	if (activecpu_get_pc() == 0x88029890 ||	/* KI */
-		activecpu_get_pc() == 0x8802c2d0	/* KI2 */)
-	{
-		UINT32 r3 = activecpu_get_reg(MIPS3_R3);
-		UINT32 r26 = activecpu_get_reg(MIPS3_R26) - *kinst_speedup;
-		if (r26 < r3)
-		{
-			timer_set(ATTOTIME_IN_CYCLES((r3 - r26) * 2, 0), NULL, 0, end_spin);
-			cpu_spinuntil_int();
-		}
-	}
-	return *kinst_speedup;
-}
-
-
-
-
-/*************************************
- *
  *  Main CPU memory handlers
  *
  *************************************/
@@ -452,7 +418,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( kinst )
-	PORT_START
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
@@ -470,7 +436,7 @@ static INPUT_PORTS_START( kinst )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_COIN4 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SPECIAL )	/* door */
 
-	PORT_START
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
@@ -488,17 +454,17 @@ static INPUT_PORTS_START( kinst )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BILL1 )	/* bill */
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SPECIAL )	/* coin door */
 
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* sound status */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_VOLUME_UP )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_VOLUME_DOWN )
 	PORT_BIT( 0xfff0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )	/* verify */
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0003, 0x0003, "Blood Level" )
 	PORT_DIPSETTING(      0x0003, DEF_STR( High ))
 	PORT_DIPSETTING(      0x0002, DEF_STR( Medium ))
@@ -556,7 +522,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( kinst2 )
-	PORT_START
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
@@ -574,7 +540,7 @@ static INPUT_PORTS_START( kinst2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_COIN4 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SPECIAL )	/* door */
 
-	PORT_START
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
@@ -592,17 +558,17 @@ static INPUT_PORTS_START( kinst2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BILL1 )	/* bill */
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SPECIAL )	/* coin door */
 
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	/* sound status */
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_VOLUME_UP )
 	PORT_BIT( 0x0008, IP_ACTIVE_LOW, IPT_VOLUME_DOWN )
 	PORT_BIT( 0xfff0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )	/* verify */
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x0003, 0x0003, "Blood Level" )
 	PORT_DIPSETTING(      0x0003, DEF_STR( High ))
 	PORT_DIPSETTING(      0x0002, DEF_STR( Medium ))
@@ -667,7 +633,7 @@ INPUT_PORTS_END
  *
  *************************************/
 
-static const struct mips3_config config =
+static const mips3_config config =
 {
 	16384,				/* code cache size */
 	16384				/* data cache size */
@@ -688,7 +654,7 @@ static MACHINE_DRIVER_START( kinst )
 	MDRV_IDE_CONTROLLER_ADD("ide", 0, ide_interrupt)
 
 	/* video hardware */
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK )
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_UPDATE_BEFORE_VBLANK)
 
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(60)
@@ -900,9 +866,6 @@ static DRIVER_INIT( kinst )
 
 	/* set up the control register mapping */
 	control_map = kinst_control_map;
-
-	/* optimize one of the non-standard loops */
-	kinst_speedup = memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8808f5bc, 0x8808f5bf, 0, 0, kinst_speedup_r);
 }
 
 
@@ -921,9 +884,6 @@ static DRIVER_INIT( kinst2 )
 
 	/* set up the control register mapping */
 	control_map = kinst2_control_map;
-
-	/* optimize one of the non-standard loops */
-	kinst_speedup = memory_install_read32_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x887ff544, 0x887ff547, 0, 0, kinst_speedup_r);
 }
 
 
@@ -934,13 +894,13 @@ static DRIVER_INIT( kinst2 )
  *
  *************************************/
 
-GAME( 1994, kinst,    0,      kinst, kinst,  kinst,   ROT0, "Rare", "Killer Instinct (v1.5d)", 0 )
-GAME( 1994, kinst14,  kinst,  kinst, kinst2, kinst,   ROT0, "Rare", "Killer Instinct (v1.4)", 0 )
-GAME( 1994, kinst13,  kinst,  kinst, kinst2, kinst,   ROT0, "Rare", "Killer Instinct (v1.3)", 0 )
-GAME( 1994, kinstp,   kinst,  kinst, kinst2, kinst,   ROT0, "Rare", "Killer Instinct (proto v4.7)", 0 )
+GAME( 1994, kinst,    0,      kinst, kinst,  kinst,   ROT0, "Rare", "Killer Instinct (v1.5d)", GAME_SUPPORTS_SAVE )
+GAME( 1994, kinst14,  kinst,  kinst, kinst2, kinst,   ROT0, "Rare", "Killer Instinct (v1.4)", GAME_SUPPORTS_SAVE )
+GAME( 1994, kinst13,  kinst,  kinst, kinst2, kinst,   ROT0, "Rare", "Killer Instinct (v1.3)", GAME_SUPPORTS_SAVE )
+GAME( 1994, kinstp,   kinst,  kinst, kinst2, kinst,   ROT0, "Rare", "Killer Instinct (proto v4.7)", GAME_SUPPORTS_SAVE )
 
-GAME( 1995, kinst2,   0,      kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.4)", 0 )
-GAME( 1995, kinst2k,  kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.4k, upgrade kit)", GAME_NOT_WORKING )
-GAME( 1995, kinst213, kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.3)", 0 )
-GAME( 1995, kinst211, kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.1)", 0 )
-GAME( 1995, kinst210, kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.0)", 0 )
+GAME( 1995, kinst2,   0,      kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.4)", GAME_SUPPORTS_SAVE )
+GAME( 1995, kinst2k,  kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.4k, upgrade kit)", GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+GAME( 1995, kinst213, kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.3)", GAME_SUPPORTS_SAVE )
+GAME( 1995, kinst211, kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.1)", GAME_SUPPORTS_SAVE )
+GAME( 1995, kinst210, kinst2, kinst, kinst2, kinst2,  ROT0, "Rare", "Killer Instinct 2 (v1.0)", GAME_SUPPORTS_SAVE )

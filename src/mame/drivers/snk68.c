@@ -34,7 +34,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
 #include "sound/upd7759.h"
@@ -678,9 +677,9 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM3812interface ym3812_interface =
@@ -1197,7 +1196,7 @@ ROM_END
 
 static DRIVER_INIT( searchar )
 {
-	memory_set_bankptr(1, memory_region(REGION_USER1));
+	memory_set_bankptr(1, memory_region(machine, REGION_USER1));
 }
 
 /******************************************************************************/

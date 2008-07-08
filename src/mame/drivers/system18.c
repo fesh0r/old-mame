@@ -62,7 +62,6 @@ Other notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "system16.h"
 #include "cpu/m68000/m68000.h"
@@ -70,9 +69,6 @@ Other notes:
 #include "sound/msm5205.h"
 #include "sound/2612intf.h"
 #include "sound/rf5c68.h"
-
-void fd1094_machine_init(void);
-void fd1094_driver_init(void (*set_decrypted)(UINT8 *));
 
 /* video/segac2.c */
 extern void update_system18_vdp( bitmap_t *bitmap, const rectangle *cliprect );
@@ -175,13 +171,13 @@ static WRITE8_HANDLER( shdancbl_msm5205_data_w )
 	sample_buffer = data;
 }
 
-static void shdancbl_msm5205_callback(int data)
+static void shdancbl_msm5205_callback(running_machine *machine, int data)
 {
 	MSM5205_data_w(0, sample_buffer & 0x0F);
 	sample_buffer >>= 4;
 	sample_select ^= 1;
 	if(sample_select == 0)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const struct MSM5205interface shdancbl_msm5205_interface =
@@ -207,7 +203,7 @@ static READ8_HANDLER( shdancbl_soundbank_r )
 
 static WRITE8_HANDLER( shdancbl_bankctrl_w )
 {
-	UINT8 *mem = memory_region(REGION_CPU2);
+	UINT8 *mem = memory_region(machine, REGION_CPU2);
 
 	switch(data)
 	{
@@ -304,7 +300,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( sys18_soundbank_w )
 {
-	UINT8 *mem = memory_region(REGION_CPU2);
+	UINT8 *mem = memory_region(machine, REGION_CPU2);
 	int rom = (data >> 6) & 3;
 	int bank = (data & 0x3f);
 	int mask = sys18_sound_info[rom*2+0];
@@ -772,7 +768,7 @@ static DRIVER_INIT( shdancbl )
 	UINT8 *mem;
 
 	/* Invert tile ROM data*/
-	mem = memory_region(REGION_GFX1);
+	mem = memory_region(machine, REGION_GFX1);
 	for(i = 0; i < 0xc0000; i++)
 		mem[i] ^= 0xFF;
 
@@ -784,7 +780,7 @@ static DRIVER_INIT( shdancbl )
 	sys16_MaxShadowColors=0;
 
 	/* Copy first 32K of IC45 to Z80 address space */
-	mem = memory_region(REGION_CPU2);
+	mem = memory_region(machine, REGION_CPU2);
 	memcpy(mem, mem+0x10000, 0x8000);
 }
 
@@ -910,7 +906,7 @@ static MACHINE_RESET( mwalkbl ){
 }
 
 static DRIVER_INIT( mwalkbl ){
-	UINT8 *RAM= memory_region(REGION_CPU2);
+	UINT8 *RAM= memory_region(machine, REGION_CPU2);
 	static const int mwalk_sound_info[] =
 	{
 		0x0f, 0x00000, // ROM #1 = 128K
@@ -1091,7 +1087,7 @@ static MACHINE_RESET( astormbl ){
 
 
 static DRIVER_INIT( astormbl ){
-	UINT8 *RAM= memory_region(REGION_CPU2);
+	UINT8 *RAM= memory_region(machine, REGION_CPU2);
 	static const int astormbl_sound_info[] =
 	{
 		0x0f, 0x00000, // ROM #1 = 128K

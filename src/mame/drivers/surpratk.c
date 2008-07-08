@@ -222,9 +222,9 @@ INPUT_PORTS_END
 
 
 
-static void irqhandler(int linestate)
+static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 0,KONAMI_FIRQ_LINE,linestate);
+	cpunum_set_input_line(machine, 0,KONAMI_FIRQ_LINE,linestate);
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -327,7 +327,7 @@ ROM_END
 
 static void surpratk_banking(int lines)
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(Machine, REGION_CPU1);
 	int offs = 0;
 
 logerror("%04x: setlines %02x\n",activecpu_get_pc(),lines);
@@ -341,7 +341,7 @@ static MACHINE_RESET( surpratk )
 {
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)surpratk_banking);
 
-	paletteram = &memory_region(REGION_CPU1)[0x48000];
+	paletteram = &memory_region(machine, REGION_CPU1)[0x48000];
 }
 
 static DRIVER_INIT( surpratk )

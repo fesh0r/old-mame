@@ -263,7 +263,7 @@ static int m4510_execute(int cycles)
 		UINT8 op;
 		PPC = PCD;
 
-		CALL_DEBUGGER(PCD);
+		debugger_instruction_hook(Machine, PCD);
 
 		/* if an irq is pending, take it now */
 		if( m4510.pending_irq )
@@ -371,11 +371,11 @@ static ADDRESS_MAP_START(m4510_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x0000, 0x0001) AM_READWRITE(m4510_read_0000, m4510_write_0000)
 ADDRESS_MAP_END
 
-static int m4510_translate(int space, offs_t *addr)
+static int m4510_translate(int space, int intention, offs_t *addr)
 {
 	if (space == ADDRESS_SPACE_PROGRAM)
 		*addr = M4510_MEM(*addr);
-	return 1;
+	return TRUE;
 }
 
 /**************************************************************************
@@ -493,9 +493,7 @@ void m4510_get_info(UINT32 state, cpuinfo *info)
 		case CPUINFO_PTR_EXIT:							info->exit = m4510_exit;				break;
 		case CPUINFO_PTR_EXECUTE:						info->execute = m4510_execute;			break;
 		case CPUINFO_PTR_BURN:							info->burn = NULL;						break;
-#ifdef ENABLE_DEBUGGER
 		case CPUINFO_PTR_DISASSEMBLE:					info->disassemble = m4510_dasm;			break;
-#endif
 		case CPUINFO_PTR_INSTRUCTION_COUNTER:			info->icount = &m4510_ICount;			break;
 		case CPUINFO_PTR_INTERNAL_MEMORY_MAP:			info->internal_map8 = address_map_m4510_mem; break;
 		case CPUINFO_PTR_TRANSLATE:						info->translate = m4510_translate;		break;

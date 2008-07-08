@@ -175,11 +175,11 @@ static READ32_HANDLER( aleck_dips_r )
 {
 	if (offset == 0)
 	{
-		return (input_port_read_indexed(machine, 3));
+		return (input_port_read(machine, "IN0"));	/* mtetrisc has regular inputs here */
 	}
 	else if (offset == 1)
 	{
-		return (input_port_read_indexed(machine, 4));
+		return (input_port_read(machine, "IN1"));
 	}
 
 	return 0;
@@ -235,7 +235,7 @@ static INPUT_PORTS_START( aleck64 )
 	PORT_START_TAG("P1_ANALOG_Y")
 		PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0xff,0x00) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN0")
 		PORT_DIPNAME( 0x80000000, 0x80000000, "DIPSW1 #8" )
 		PORT_DIPSETTING( 0x80000000, DEF_STR( Off ) )
 		PORT_DIPSETTING( 0x00000000, DEF_STR( On ) )
@@ -286,7 +286,7 @@ static INPUT_PORTS_START( aleck64 )
 		PORT_DIPSETTING( 0x00000000, DEF_STR( On ) )
 		PORT_BIT(0x0000ffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 		PORT_BIT( 0xff00ffff, IP_ACTIVE_LOW, IPT_UNUSED )
 		PORT_SERVICE_NO_TOGGLE( 0x00200000, IP_ACTIVE_LOW )
 		PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
@@ -300,7 +300,7 @@ static INPUT_PORTS_START( mtetrisc )
 	PORT_START_TAG("P1_ANALOG_X")
 	PORT_START_TAG("P1_ANALOG_Y")
 
-	PORT_START
+	PORT_START_TAG("IN0")
 		PORT_BIT( 0xffff0000, IP_ACTIVE_LOW, IPT_UNUSED )
 		PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_START2 )
 		PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -319,7 +319,7 @@ static INPUT_PORTS_START( mtetrisc )
 		PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 		PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 		PORT_BIT( 0xffcc, IP_ACTIVE_LOW, IPT_UNUSED )
 		PORT_SERVICE_NO_TOGGLE( 0x0020, IP_ACTIVE_LOW )
 		PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
@@ -352,7 +352,7 @@ static INPUT_PORTS_START( starsldr )
 	PORT_START_TAG("P1_ANALOG_Y")
 		PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0xff,0x00) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN0")
 		PORT_DIPNAME( 0x80000000, 0x00000000, DEF_STR(Joystick) )	// DIPSW1 #8
 		PORT_DIPSETTING( 0x00000000, DEF_STR(Joystick) )
 		PORT_DIPSETTING( 0x80000000, "3D" )
@@ -399,7 +399,7 @@ static INPUT_PORTS_START( starsldr )
 		PORT_DIPSETTING( 0x00000000, "Hard2" )
 		PORT_BIT(0x0000ffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 		PORT_BIT( 0xff00ffff, IP_ACTIVE_LOW, IPT_UNUSED )
 		PORT_SERVICE_NO_TOGGLE( 0x00200000, IP_ACTIVE_LOW )
 		PORT_BIT( 0x00100000, IP_ACTIVE_LOW, IPT_SERVICE ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_7)
@@ -408,7 +408,7 @@ static INPUT_PORTS_START( starsldr )
 INPUT_PORTS_END
 
 /* ?? */
-static const struct mips3_config config =
+static const mips3_config config =
 {
 	16384,				/* code cache size */
 	8192,				/* data cache size */
@@ -417,12 +417,12 @@ static const struct mips3_config config =
 
 static INTERRUPT_GEN( n64_vblank )
 {
-	signal_rcp_interrupt(VI_INTERRUPT);
+	signal_rcp_interrupt(machine, VI_INTERRUPT);
 }
 
 static MACHINE_RESET( aleck64 )
 {
-	n64_machine_reset();
+	n64_machine_reset(machine);
 }
 
 static MACHINE_DRIVER_START( aleck64 )
@@ -459,7 +459,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( aleck64 )
 {
-	UINT8 *rom = memory_region(REGION_USER2);
+	UINT8 *rom = memory_region(machine, REGION_USER2);
 
 	rom[0x67c] = 0;
 	rom[0x67d] = 0;

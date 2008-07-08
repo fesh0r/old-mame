@@ -75,7 +75,6 @@ Side 2 = 0x8F7DDD (or 0x880000 | ( 0x77 << 12 ) | 0x0DDD)
 
 #include "driver.h"
 #include "render.h"
-#include "deprecat.h"
 #include "machine/laserdsc.h"
 #include "video/tms9928a.h"
 #include "sound/discrete.h"
@@ -163,9 +162,11 @@ static WRITE8_HANDLER( cliff_port_bank_w )
 
 static READ8_HANDLER( cliff_port_r )
 {
+	static const char *banknames[] = { "BANK0", "BANK1", "BANK2", "BANK3", "BANK4", "BANK5", "BANK6" };
+
 	if ( port_bank < 7 )
 	{
-		return input_port_read_indexed(machine,  port_bank );
+		return input_port_read(machine,  banknames[port_bank]);
 	}
 
 	/* output is pulled up for non-mapped ports */
@@ -228,7 +229,7 @@ static INTERRUPT_GEN( cliff_vsync )
 {
 	/* clock the laserdisc and video chip every 60Hz */
 	laserdisc_vsync(discinfo);
-	TMS9928A_interrupt();
+	TMS9928A_interrupt(machine);
 }
 
 static TIMER_CALLBACK( cliff_irq_callback )
@@ -255,16 +256,16 @@ static TIMER_CALLBACK( cliff_irq_callback )
 	timer_adjust_oneshot(irq_timer, video_screen_get_time_until_pos(machine->primary_screen, param, 0), param);
 }
 
-static void vdp_interrupt (int state)
+static void vdp_interrupt (running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE );
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE );
 }
 
 
 
 static MACHINE_START( cliffhgr )
 {
-	discinfo = laserdisc_init(LASERDISC_TYPE_PR8210, get_disk_handle(0), 0);
+	discinfo = laserdisc_init(machine, LASERDISC_TYPE_PR8210, get_disk_handle(0), 0);
 	irq_timer = timer_alloc(cliff_irq_callback, NULL);
 }
 

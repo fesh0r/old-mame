@@ -106,8 +106,8 @@ extern int vball_gfxset;
 
 VIDEO_START( vb );
 VIDEO_UPDATE( vb );
-extern void vb_bgprombank_w(int bank);
-extern void vb_spprombank_w(int bank);
+extern void vb_bgprombank_w(running_machine *machine, int bank);
+extern void vb_spprombank_w(running_machine *machine, int bank);
 extern WRITE8_HANDLER( vb_attrib_w );
 extern WRITE8_HANDLER( vb_videoram_w );
 extern void vb_mark_all_dirty(void);
@@ -129,7 +129,7 @@ INTERRUPT_GEN( vball_interrupt );
 */
 static WRITE8_HANDLER( vb_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	memory_set_bankptr( 1,&RAM[ 0x10000 + ( 0x4000 * ( data & 1 ) ) ] );
 
 	if (vball_gfxset != ((data  & 0x20) ^ 0x20)) {
@@ -161,8 +161,8 @@ static WRITE8_HANDLER( vb_scrollx_hi_w )
 {
 	flip_screen_set(~data&1);
 	vb_scrollx_hi = (data & 0x02) << 7;
-	vb_bgprombank_w((data >> 2)&0x07);
-	vb_spprombank_w((data >> 5)&0x07);
+	vb_bgprombank_w(machine, (data >> 2)&0x07);
+	vb_spprombank_w(machine, (data >> 5)&0x07);
 	//logerror("%04x: vb_scrollx_hi = %d\n",activecpu_get_previouspc(), vb_scrollx_hi);
 }
 
@@ -387,9 +387,9 @@ static GFXDECODE_START( vb )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, spritelayout, 128, 8 )	/* 16x16 sprites */
 GFXDECODE_END
 
-static void vball_irq_handler(int irq)
+static void vball_irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
+	cpunum_set_input_line(machine, 1, 0 , irq ? ASSERT_LINE : CLEAR_LINE );
 }
 
 static const struct YM2151interface ym2151_interface =

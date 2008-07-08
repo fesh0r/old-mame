@@ -14,23 +14,11 @@ OKI M6295 sound ROM dump is bad.
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/okim6295.h"
 #include "sound/3812intf.h"
+#include "includes/bublbobl.h"
 
 static UINT8 *bg_paletteram, *missb2_bgvram;
-
-/* video/bublbobl.c */
-extern UINT8 *bublbobl_objectram;
-extern size_t bublbobl_objectram_size;
-
-/* machine/bublbobl.c */
-WRITE8_HANDLER( bublbobl_bankswitch_w );
-WRITE8_HANDLER( bublbobl_nmitrigger_w );
-WRITE8_HANDLER( bublbobl_sound_command_w );
-WRITE8_HANDLER( bublbobl_sh_nmi_disable_w );
-WRITE8_HANDLER( bublbobl_sh_nmi_enable_w );
-extern int bublbobl_video_enable;
 
 /* Video Hardware */
 
@@ -39,6 +27,7 @@ static VIDEO_UPDATE( missb2 )
 	int offs;
 	int sx,sy,xc,yc;
 	int gfx_num,gfx_attr,gfx_offs;
+	const UINT8 *prom;
 	const UINT8 *prom_line;
 	UINT16 bg_offs;
 
@@ -65,8 +54,9 @@ static VIDEO_UPDATE( missb2 )
 
 	sx = 0;
 
+	prom = memory_region(screen->machine, REGION_PROMS);
 	for (offs = 0;offs < bublbobl_objectram_size;offs += 4)
-    {
+	{
 		/* skip empty sprites */
 		/* this is dword aligned so the UINT32 * cast shouldn't give problems */
 		/* on any architecture */
@@ -75,7 +65,7 @@ static VIDEO_UPDATE( missb2 )
 
 		gfx_num = bublbobl_objectram[offs + 1];
 		gfx_attr = bublbobl_objectram[offs + 3];
-		prom_line = memory_region(REGION_PROMS) + 0x80 + ((gfx_num & 0xe0) >> 1);
+		prom_line = prom + 0x80 + ((gfx_num & 0xe0) >> 1);
 
 		gfx_offs = ((gfx_num & 0x1f) * 0x80);
 		if ((gfx_num & 0xa0) == 0xa0)
@@ -128,21 +118,21 @@ static VIDEO_UPDATE( missb2 )
 	return 0;
 }
 
-INLINE void bg_changecolor_RRRRGGGGBBBBxxxx(pen_t color,int data)
+INLINE void bg_changecolor_RRRRGGGGBBBBxxxx(running_machine *machine,pen_t color,int data)
 {
-	palette_set_color_rgb(Machine,color+256,pal4bit(data >> 12),pal4bit(data >> 8),pal4bit(data >> 4));
+	palette_set_color_rgb(machine,color+256,pal4bit(data >> 12),pal4bit(data >> 8),pal4bit(data >> 4));
 }
 
 static WRITE8_HANDLER( bg_paletteram_RRRRGGGGBBBBxxxx_be_w )
 {
 	bg_paletteram[offset] = data;
-	bg_changecolor_RRRRGGGGBBBBxxxx(offset / 2,bg_paletteram[offset | 1] | (bg_paletteram[offset & ~1] << 8));
+	bg_changecolor_RRRRGGGGBBBBxxxx(machine, offset / 2,bg_paletteram[offset | 1] | (bg_paletteram[offset & ~1] << 8));
 }
 
 static WRITE8_HANDLER( missb2_bg_bank_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 
 	// I don't know how this is really connected,bit 1 is always high afaik...
 	bankaddress = ((data & 2) ? 0x1000 : 0x0000) | ((data & 1) ? 0x4000 : 0x0000) | (0x8000);
@@ -343,10 +333,10 @@ GFXDECODE_END
 /* Sound Interfaces */
 
 // Handler called by the 3526 emulator when the internal timers cause an IRQ
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
 	logerror("YM3526 firing an IRQ\n");
-//  cpunum_set_input_line(Machine, 2,0,irq ? ASSERT_LINE : CLEAR_LINE);
+//  cpunum_set_input_line(machine, 2,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM3526interface ym3526_interface =
@@ -445,7 +435,7 @@ ROM_END
 
 static DRIVER_INIT( missb2 )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	/* in Bubble Bobble, bank 0 has code falling from 7fff to 8000,
        so I have to copy it there because bank switching wouldn't catch it */

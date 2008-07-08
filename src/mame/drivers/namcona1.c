@@ -19,24 +19,9 @@ NA-2 Games:
 
 To Do:
 
-- Pressing "F3" (reset) crashes MAME
-
-- Emeralda:
-    After selecting the game type, tilemap scrolling is briefly incorrect
-    The demo sprites are incorrect, you should see a dolphin speaking
-    the instructions and the playfield is wrong.
-    Byte 0x25 of the NVRAM controls the FBI logo. 0x00 is on, 0x01 is off
-
-- Hook up ROZ registers
-    Example:  In Emeralda the game logo rotates and zooms in against a black
-    background with bubbles during the intro.  Then at the second green screen
-    when flashing Please Insert Coin, the word NAMCO rotates past the viewer.
-
-- Is view area controlled by registers?
+- view area / screen resolution controlled by registers?
 
 - Xday 2:
-    has some graphics glitches (wrong sprite tiles); probably blitter-related
-
     Rom board  M112
     Rom board custom Key chip i.d. C394
     Game uses a small cash-register type printer (connects to rom board)
@@ -74,6 +59,8 @@ Notes:
 -   Almost all quiz games using JAMMA edge connector assign
     button1 to up, button 2 to down, button 3 to left, button 4 to right.
     But Taito F2 quiz games assign button 3 to right and button 4 to left.
+
+-   Emeralda: Byte 0x25 of the NVRAM, when zero, enables the FBI logo.
 
 
 Namco NA2 hardware
@@ -272,7 +259,7 @@ static WRITE16_HANDLER( namcona1_nvram_w )
 /***************************************************************************/
 
 static INPUT_PORTS_START( namcona1_joy )
-	PORT_START
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -282,7 +269,7 @@ static INPUT_PORTS_START( namcona1_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -292,7 +279,7 @@ static INPUT_PORTS_START( namcona1_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
@@ -302,7 +289,7 @@ static INPUT_PORTS_START( namcona1_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START3 )
 
-	PORT_START
+	PORT_START_TAG("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
@@ -312,7 +299,7 @@ static INPUT_PORTS_START( namcona1_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x01, "DIP2 (Freeze)" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -328,7 +315,7 @@ static INPUT_PORTS_START( namcona1_joy )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( namcona1_quiz )
-	PORT_START
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -338,7 +325,7 @@ static INPUT_PORTS_START( namcona1_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -348,7 +335,7 @@ static INPUT_PORTS_START( namcona1_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
@@ -358,7 +345,7 @@ static INPUT_PORTS_START( namcona1_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START3 )
 
-	PORT_START
+	PORT_START_TAG("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(4)
@@ -368,7 +355,7 @@ static INPUT_PORTS_START( namcona1_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4 )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x01, "DIP2 (Freeze)" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -384,7 +371,7 @@ static INPUT_PORTS_START( namcona1_quiz )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( namcona2_joy )
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, "DIP2 (Freeze)" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -399,7 +386,7 @@ static INPUT_PORTS_START( namcona2_joy )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE )
 
-	PORT_START
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -409,7 +396,7 @@ static INPUT_PORTS_START( namcona2_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 
-	PORT_START
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -419,7 +406,7 @@ static INPUT_PORTS_START( namcona2_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
@@ -429,7 +416,7 @@ static INPUT_PORTS_START( namcona2_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START3 )
 
-	PORT_START
+	PORT_START_TAG("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(4)
@@ -439,7 +426,7 @@ static INPUT_PORTS_START( namcona2_joy )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START4 )
 
-	PORT_START
+	PORT_START_TAG("COIN")
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -448,7 +435,7 @@ static INPUT_PORTS_START( namcona2_joy )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( namcona2_quiz )
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x01, 0x00, "DIP2 (Freeze)" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -463,7 +450,7 @@ static INPUT_PORTS_START( namcona2_quiz )
 	PORT_DIPSETTING(    0x40, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SERVICE )
 
-	PORT_START
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON4 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 )
@@ -473,7 +460,7 @@ static INPUT_PORTS_START( namcona2_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )
 
-	PORT_START
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
@@ -483,7 +470,7 @@ static INPUT_PORTS_START( namcona2_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("P3")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(3)
@@ -493,7 +480,7 @@ static INPUT_PORTS_START( namcona2_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START3 )
 
-	PORT_START
+	PORT_START_TAG("P4")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(4)
@@ -503,7 +490,7 @@ static INPUT_PORTS_START( namcona2_quiz )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START4 )
 
-	PORT_START
+	PORT_START_TAG("COIN")
 	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN2 )
@@ -519,16 +506,17 @@ simulate_mcu( running_machine *machine )
 	int i;
 	UINT16 data;
 	UINT8 poll_coins;
+	static const char *portnames[] = { "P1", "P2", "P3", "P4" };
 
 	namcona1_workram[0xf60/2] = 0x0000; /* mcu ready */
 
 	if (is_na2)
 	{
-		mcu_ram[0xfc0/2] = input_port_read_indexed(machine, 0x0); /* dipswitch */
+		mcu_ram[0xfc0/2] = input_port_read(machine, "DSW"); /* dipswitch */
 
 		for( i=1; i<=4; i++ )
 		{
-			data = input_port_read_indexed(machine, i)<<8;
+			data = input_port_read(machine, portnames[i-1])<<8;
 			switch( namcona1_gametype )
 			{
 			case NAMCO_KNCKHEAD:
@@ -547,11 +535,11 @@ simulate_mcu( running_machine *machine )
 				if( data&0x4000 ) data |= 0x10; /* jump */
 				if( i==1 )
 				{
-					if( input_port_read_indexed(machine, 1)&0x80 ) data |= 0x80; /* P1 start */
+					if( input_port_read(machine, "P1") & 0x80 ) data |= 0x80; /* P1 start */
 				}
 				if( i==2 )
 				{
-					if( input_port_read_indexed(machine, 2)&0x80 ) data |= 0x80; /* P2 start */
+					if( input_port_read(machine, "P2") & 0x80 ) data |= 0x80; /* P2 start */
 				}
 				break;
 
@@ -570,7 +558,7 @@ simulate_mcu( running_machine *machine )
 		mcu_ram[0xfc0/2+0x08] = 0xffff; /* analog6,7 */
 		mcu_ram[0xfc0/2+0x09] = 0xffff; /* encoder0,1 */
 
-		poll_coins = input_port_read_indexed(machine, 5); /* coin input */
+		poll_coins = input_port_read(machine, "COIN"); /* coin input */
 		if( (poll_coins&0x8)&~(mCoinState&0x8) ) mCoinCount[0]++;
 		if( (poll_coins&0x4)&~(mCoinState&0x4) ) mCoinCount[1]++;
 		if( (poll_coins&0x2)&~(mCoinState&0x2) ) mCoinCount[2]++;
@@ -581,14 +569,14 @@ simulate_mcu( running_machine *machine )
 		mcu_ram[0xfc0/2+0xb] = (mCoinCount[2]<<8)|mCoinCount[3];
 
 		/* special handling for F/A */
-		data = ~((input_port_read_indexed(machine, 1)<<8)|input_port_read_indexed(machine, 2));
+		data = ~((input_port_read(machine, "P1")<<8)|input_port_read(machine, "P2"));
 		mcu_ram[0xffc/2] = data;
 		mcu_ram[0xffe/2] = data;
 
 		if( namcona1_gametype == NAMCO_XDAY2 )
 		{
-			int p1 = input_port_read_indexed(machine, 1);
-			int p2 = input_port_read_indexed(machine, 2);
+			int p1 = input_port_read(machine, "P1");
+			int p2 = input_port_read(machine, "P2");
 			UINT32 code = 0;
 			if( p2&0x40 ) code |= 0x2000; // enter (top-level of self-test)
 			if( p2&0x20 ) code |= 0x1000; // exit  (top-level of self-test)
@@ -833,29 +821,25 @@ transfer_dword( running_machine *machine, UINT32 dest, UINT32 source )
 		logerror( "bad blt src %08x\n", source );
 		return -1;
 	}
-	if( dest>=0xf00000 && dest<=0xf02000 )
+	if( dest>=0xf00000 && dest<0xf02000 )
 	{
 		namcona1_paletteram_w( machine, (dest-0xf00000)/2, data, 0xffff );
 	}
-	else if( dest>=0xf40000 && dest<=0xf80000 )
+	else if( dest>=0xf40000 && dest<0xf80000 )
 	{
 		namcona1_gfxram_w( machine, (dest-0xf40000)/2, data, 0xffff );
 	}
-	else if( dest>=0xff0000 && dest<0xff8000 )
+	else if( dest>=0xff0000 && dest<0xffc000 )
 	{
 		namcona1_videoram_w( machine, (dest-0xff0000)/2, data, 0xffff );
 	}
-	else if( dest>=0xff8000 && dest<=0xffdfff )
-	{
-		namcona1_sparevram[(dest-0xff8000)/2] = data;
-	}
-	else if( dest>=0xfff000 && dest<=0xffffff )
+	else if( dest>=0xfff000 && dest<0x1000000 )
 	{
 		spriteram16[(dest-0xfff000)/2] = data;
 	}
 	else
 	{
-		logerror( "bad blt dst %08x\n", dest );
+		logerror( "bad blit dest %08x\n", dest );
 		return -1;
 	}
 	return 0;
@@ -865,7 +849,7 @@ static void
 blit_setup( int format, int *bytes_per_row, int *pitch, int mode )
 {
 	if( mode == 3 )
-	{
+	{ /* TILE DATA */
 		switch( format )
 		{
 		case 0x0001:
@@ -888,7 +872,7 @@ blit_setup( int format, int *bytes_per_row, int *pitch, int mode )
 		}
 	}
 	else
-	{
+	{ /* SHAPE DATA */
 		switch( format )
 		{
 		case 0x00bd: /* Numan Athletics */
@@ -933,29 +917,6 @@ blit_setup( int format, int *bytes_per_row, int *pitch, int mode )
 	}
 } /* blit_setup */
 
-/*
-$efff20: sprite control: 0x3a,0x3e,0x3f
-            bit 0x01 selects spriteram bank
-
-               0    2    4    6    8    a    c    e
-$efff00:    src0 src1 src2 dst0 dst1 dst2 BANK [src
-$efff10:    src] [dst dst] #BYT BLIT eINT 001f 0001
-$efff20:    003f 003f IACK ---- ---- ---- ---- ----
-$efff30:    ---- ---- ---- ---- ---- ---- ---- ----
-$efff40:    ---- ---- ---- ---- ---- ---- ---- ----
-$efff50:    ---- ---- ---- ---- ---- ---- ---- ----
-$efff60:    ---- ---- ---- ---- ---- ---- ---- ----
-$efff70:    ---- ---- ---- ---- ---- ---- ---- ----
-$efff80:    0050 0170 0020 0100 0000 0000 0000 GFXE
-$efff90:    0000 0001 0002 0003 FLIP ---- ---- ----
-$efffa0:    PRI  PRI  PRI  PRI  ---- ---- 00c0 ----     priority (0..7)
-$efffb0:    COLR COLR COLR COLR 0001 0004 0000 ----     color (0..f)
-$efffc0:    ???? ???? ???? ???? ???? ???? ???? ----     ROZ
-
-Emeralda:
-$efff80:    0048 0177 0020 0100 0000 00fd 0000 GFXE
-*/
-
 static void namcona1_blit( running_machine *machine )
 {
 	int src0 = namcona1_vreg[0x0];
@@ -969,29 +930,29 @@ static void namcona1_blit( running_machine *machine )
 	int gfxbank = namcona1_vreg[0x6];
 
 	/* dest and source are provided as dword offsets */
-	UINT32 src_baseaddr	= 2*((namcona1_vreg[0x7]<<16)|namcona1_vreg[0x8]);
-	UINT32 dst_baseaddr	= 2*((namcona1_vreg[0x9]<<16)|namcona1_vreg[0xa]);
+	UINT32 src_baseaddr	= 2*(0xffffff&((namcona1_vreg[0x7]<<16)|namcona1_vreg[0x8]));
+	UINT32 dst_baseaddr	= 2*(0xffffff&((namcona1_vreg[0x9]<<16)|namcona1_vreg[0xa]));
 
 	int num_bytes = namcona1_vreg[0xb];
 
-	int dest_offset, source_offset;
-	int dest_bytes_per_row, dst_pitch;
-	int source_bytes_per_row, src_pitch;
+	int dst_offset, src_offset;
+	int dst_bytes_per_row, dst_pitch;
+	int src_bytes_per_row, src_pitch;
 
 	(void)dst2;
 	(void)dst0;
 	(void)src2;
 	(void)src0;
-
-/*  logerror( "0x%08x: blt(%08x,%08x,%08x);%04x %04x %04x; %04x %04x %04x; gfx=%04x\n",
+/*
+    logerror( "0x%08x: blt(%08x,%08x,numBytes=%04x);src=%04x %04x %04x; dst=%04x %04x %04x; gfx=%04x\n",
         activecpu_get_pc(),
         dst_baseaddr,src_baseaddr,num_bytes,
         src0,src1,src2,
         dst0,dst1,dst2,
-        gfxbank );*/
-
-	blit_setup( dst1, &dest_bytes_per_row, &dst_pitch, gfxbank);
-	blit_setup( src1, &source_bytes_per_row, &src_pitch, gfxbank );
+        gfxbank );
+*/
+	blit_setup( dst1, &dst_bytes_per_row, &dst_pitch, gfxbank);
+	blit_setup( src1, &src_bytes_per_row, &src_pitch, gfxbank );
 
 	if( num_bytes&1 )
 	{
@@ -1003,32 +964,32 @@ static void namcona1_blit( running_machine *machine )
 		dst_baseaddr += 0xf40000;
 	}
 
-	dest_offset		= 0;
-	source_offset	= 0;
+	dst_offset = 0;
+	src_offset = 0;
 
 	while( num_bytes>0 )
 	{
 		if( transfer_dword(machine,
-			dst_baseaddr + dest_offset,
-			src_baseaddr + source_offset ) )
+			dst_baseaddr + dst_offset,
+			src_baseaddr + src_offset ) )
 		{
 			return;
 		}
 
 		num_bytes -= 2;
 
-		dest_offset+=2;
-		if( dest_offset >= dest_bytes_per_row )
+		dst_offset+=2;
+		if( dst_offset >= dst_bytes_per_row )
 		{
 			dst_baseaddr += dst_pitch;
-			dest_offset = 0;
+			dst_offset = 0;
 		}
 
-		source_offset+=2;
-		if( source_offset >= source_bytes_per_row )
+		src_offset+=2;
+		if( src_offset >= src_bytes_per_row )
 		{
 			src_baseaddr += src_pitch;
-			source_offset = 0;
+			src_offset = 0;
 		}
 	}
 } /* namcona1_blit */
@@ -1085,8 +1046,8 @@ static ADDRESS_MAP_START( namcona1_main_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xefff00, 0xefffff) AM_READWRITE(namcona1_vreg_r, namcona1_vreg_w) AM_BASE(&namcona1_vreg)
 	AM_RANGE(0xf00000, 0xf01fff) AM_READWRITE(namcona1_paletteram_r, namcona1_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xf40000, 0xf7ffff) AM_READWRITE(namcona1_gfxram_r, namcona1_gfxram_w)
-	AM_RANGE(0xff0000, 0xff7fff) AM_READWRITE(namcona1_videoram_r, namcona1_videoram_w) AM_BASE(&videoram16)
-	AM_RANGE(0xff8000, 0xffdfff) AM_RAM AM_BASE(&namcona1_sparevram)	/* spare videoram */
+	AM_RANGE(0xff0000, 0xffbfff) AM_READWRITE(namcona1_videoram_r,    namcona1_videoram_w) AM_BASE(&videoram16)
+	AM_RANGE(0xffd000, 0xffdfff) AM_RAM /* unknown */
 	AM_RANGE(0xffe000, 0xffefff) AM_RAM	AM_BASE(&namcona1_scroll)		/* scroll registers */
 	AM_RANGE(0xfff000, 0xffffff) AM_RAM	AM_BASE(&spriteram16)			/* spriteram */
 ADDRESS_MAP_END
@@ -1195,19 +1156,19 @@ static READ8_HANDLER( port7_r )
 	switch (mcu_port6 & 0xe0)
 	{
 		case 0x40:
-			return input_port_read_indexed(machine, 0);
+			return input_port_read(machine, "P1");
 			break;
 
   		case 0x60:
-			return input_port_read_indexed(machine, 1);
+			return input_port_read(machine, "P2");
 			break;
 
 		case 0x20:
-			return input_port_read_indexed(machine, 4);
+			return input_port_read(machine, "DSW");
 			break;
 
 		case 0x00:
-			return input_port_read_indexed(machine, 3);
+			return input_port_read(machine, "P4");
 			break;
 	}
 
@@ -1256,7 +1217,7 @@ static MACHINE_RESET( namcona1_mcu )
 static READ8_HANDLER( portana_r )
 {
 	static const UINT8 bitnum[8] = { 0x40, 0x20, 0x10, 0x01, 0x02, 0x04, 0x08, 0x80 };
-	UINT8 port = input_port_read_indexed(machine, 2);
+	UINT8 port = input_port_read(machine, "P3");
 
 	return (port & bitnum[offset>>1]) ? 0xff : 0x00;
 }
@@ -1270,17 +1231,26 @@ static ADDRESS_MAP_START( namcona1_mcu_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x10, 0x1f) AM_READ( portana_r )
 ADDRESS_MAP_END
 
+
 static INTERRUPT_GEN( namcona1_interrupt )
 {
 	int level = cpu_getiloops(); /* 0,1,2,3,4 */
 	if( level==0 )
 	{
-		simulate_mcu(machine);
+		simulate_mcu( machine );
 	}
 	if( mEnableInterrupts )
 	{
 		if( (namcona1_vreg[0x1a/2]&(1<<level))==0 )
 		{
+			if( level==2 )
+			{ // posirq used with dolphin in Emeraldia's "how to play" attract mode
+				int scanline = namcona1_vreg[0x8a/2]&0xff;
+				if( scanline )
+				{
+					video_screen_update_partial(machine->primary_screen, scanline );
+				}
+			}
 			cpunum_set_input_line(machine, 0, level+1, HOLD_LINE);
 		}
 	}
@@ -1293,7 +1263,9 @@ static INTERRUPT_GEN( namcona1_interrupt )
 static INTERRUPT_GEN( mcu_interrupt )
 {
 	if (cpu_getiloops() == 0)
+	{
  		cpunum_set_input_line(machine, 1, M37710_LINE_IRQ1, HOLD_LINE);
+	}
 	else if (cpu_getiloops() == 1)
 	{
 		cpunum_set_input_line(machine, 1, M37710_LINE_ADC, HOLD_LINE);
@@ -1333,7 +1305,7 @@ static MACHINE_DRIVER_START( namcona1 )
 	MDRV_SCREEN_SIZE(38*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8, 38*8-1-8, 4*8, 32*8-1)
 
-	MDRV_PALETTE_LENGTH(0x1000)
+	MDRV_PALETTE_LENGTH(0x2000)
 
 	MDRV_VIDEO_START(namcona1)
 	MDRV_VIDEO_UPDATE(namcona1)
@@ -1341,7 +1313,7 @@ static MACHINE_DRIVER_START( namcona1 )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_STEREO("left", "right")
 
-	MDRV_SOUND_ADD(C140, 42667)
+	MDRV_SOUND_ADD(C140, 44100)
 	MDRV_SOUND_CONFIG(C140_interface_typeA)
 	MDRV_SOUND_ROUTE(0, "right", 1.00)
 	MDRV_SOUND_ROUTE(1, "left", 1.00)
@@ -1360,32 +1332,37 @@ static MACHINE_DRIVER_START( namcona1w )
 MACHINE_DRIVER_END
 
 static ADDRESS_MAP_START( namcona2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
-	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_RAM)		/* work RAM */
+	AM_RANGE(0x000000, 0x07ffff) AM_READ(SMH_RAM) /* work RAM */
 	AM_RANGE(0x400000, 0xbfffff) AM_ROM AM_REGION(REGION_CPU1, 0x280000)	/* data */
 	AM_RANGE(0xc00000, 0xdfffff) AM_ROM AM_REGION(REGION_CPU1, 0x080000)	/* code */
 	AM_RANGE(0xe00000, 0xe00fff) AM_READ(namcona1_nvram_r)
+	/* xday: additional battery-backed ram at 00E024FA? */
 	AM_RANGE(0xe40000, 0xe4000f) AM_READ(custom_key_r)
 	AM_RANGE(0xefff00, 0xefffff) AM_READ(namcona1_vreg_r)
 	AM_RANGE(0xf00000, 0xf01fff) AM_READ(namcona1_paletteram_r)
 	AM_RANGE(0xf40000, 0xf7ffff) AM_READ(namcona1_gfxram_r)
-	AM_RANGE(0xff0000, 0xff7fff) AM_READ(namcona1_videoram_r)
-	AM_RANGE(0xff8000, 0xffdfff) AM_READ(SMH_RAM)		/* spare videoram */
-	AM_RANGE(0xffe000, 0xffefff) AM_READ(SMH_RAM)		/* scroll registers */
-	AM_RANGE(0xfff000, 0xffffff) AM_READ(SMH_RAM)		/* spriteram */
+	AM_RANGE(0xff0000, 0xffbfff) AM_READ(namcona1_videoram_r)
+	AM_RANGE(0xffd000, 0xffdfff) AM_READ(SMH_RAM) /* unknown */
+	AM_RANGE(0xffe000, 0xffefff) AM_READ(SMH_RAM) /* scroll registers */
+	AM_RANGE(0xfff000, 0xffffff) AM_READ(SMH_RAM) /* spriteram */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( namcona2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x000fff) AM_WRITE(namcona1_mcu_w) AM_BASE(&mcu_ram)
 	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_workram)
 	AM_RANGE(0x3f8008, 0x3f8009) AM_WRITE(mcu_command_w)
+	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(SMH_NOP) /* xday: serial out? */
+	AM_RANGE(0xd40000, 0xd40001) AM_WRITE(SMH_NOP) /* xday: serial out? */
+	AM_RANGE(0xd80000, 0xd80001) AM_WRITE(SMH_NOP) /* xday: serial out? */
+	AM_RANGE(0xdc0000, 0xdc001f) AM_WRITE(SMH_NOP) /* xday: serial config? */
 	AM_RANGE(0x400000, 0xdfffff) AM_WRITE(SMH_ROM) /* data + code */
 	AM_RANGE(0xe00000, 0xe00fff) AM_WRITE(namcona1_nvram_w)
 	AM_RANGE(0xe40000, 0xe4000f) AM_WRITE(custom_key_w)
 	AM_RANGE(0xefff00, 0xefffff) AM_WRITE(namcona1_vreg_w) AM_BASE(&namcona1_vreg)
 	AM_RANGE(0xf00000, 0xf01fff) AM_WRITE(namcona1_paletteram_w) AM_BASE(&paletteram16)
 	AM_RANGE(0xf40000, 0xf7ffff) AM_WRITE(namcona1_gfxram_w)
-	AM_RANGE(0xff0000, 0xff7fff) AM_WRITE(namcona1_videoram_w) AM_BASE(&videoram16)
-	AM_RANGE(0xff8000, 0xffdfff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_sparevram)
+	AM_RANGE(0xff0000, 0xffbfff) AM_WRITE(namcona1_videoram_w) AM_BASE(&videoram16)
+	AM_RANGE(0xffd000, 0xffdfff) AM_WRITE(SMH_RAM) /* unknown */
 	AM_RANGE(0xffe000, 0xffefff) AM_WRITE(SMH_RAM) AM_BASE(&namcona1_scroll)
 	AM_RANGE(0xfff000, 0xffffff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16)
 ADDRESS_MAP_END
@@ -1415,7 +1392,7 @@ static MACHINE_DRIVER_START( namcona2 )
 	MDRV_SCREEN_SIZE(38*8, 32*8)
 	MDRV_SCREEN_VISIBLE_AREA(8, 38*8-1-8, 4*8, 32*8-1)
 
-	MDRV_PALETTE_LENGTH(0x1000)
+	MDRV_PALETTE_LENGTH(0x2000)
 
 	MDRV_VIDEO_START(namcona1)
 	MDRV_VIDEO_UPDATE(namcona1)
@@ -1430,9 +1407,9 @@ static MACHINE_DRIVER_START( namcona2 )
 MACHINE_DRIVER_END
 
 static void
-init_namcona1( int gametype )
+init_namcona1( running_machine *machine, int gametype )
 {
-	UINT16 *pMem = (UINT16 *)memory_region( REGION_CPU1 );
+	UINT16 *pMem = (UINT16 *)memory_region( machine, REGION_CPU1 );
 
 	namcona1_gametype = gametype;
 	mpBank0 = &pMem[0x80000/2];
@@ -1443,9 +1420,9 @@ init_namcona1( int gametype )
 }
 
 static void
-init_namcona2( int gametype )
+init_namcona2( running_machine *machine, int gametype )
 {
-	UINT16 *pMem = (UINT16 *)memory_region( REGION_CPU1 );
+	UINT16 *pMem = (UINT16 *)memory_region( machine, REGION_CPU1 );
 
 	namcona1_workram[0] = 0x0007; namcona1_workram[1] = 0xfffc; /* (?) stack */
 	namcona1_workram[2] = 0x00c0; namcona1_workram[3] = 0x0000; /* reset vector */
@@ -1466,18 +1443,18 @@ init_namcona2( int gametype )
 		NAMCONA_interface.metadata_offset = 0x70000/2;
 }
 
-static DRIVER_INIT( bkrtmaq ){		init_namcona1(NAMCO_BKRTMAQ); }
-static DRIVER_INIT( cgangpzl ){	init_namcona1(NAMCO_CGANGPZL); }
-static DRIVER_INIT( emeralda ){	init_namcona2(NAMCO_EMERALDA); } /* NA-2 Hardware */
-static DRIVER_INIT( emeraldj ){	init_namcona1(NAMCO_EMERALDA); } /* NA-1 Hardware */
-static DRIVER_INIT( exbania ){		init_namcona1(NAMCO_EXBANIA); }
-static DRIVER_INIT( fa ){	        init_namcona1(NAMCO_FA); }
-static DRIVER_INIT( knckhead ){	init_namcona2(NAMCO_KNCKHEAD); }
-static DRIVER_INIT( numanath ){	init_namcona2(NAMCO_NUMANATH); }
-static DRIVER_INIT( quiztou ){		init_namcona2(NAMCO_QUIZTOU); }
-static DRIVER_INIT( swcourt ){		init_namcona1(NAMCO_SWCOURT); }
-static DRIVER_INIT( tinklpit ){	init_namcona1(NAMCO_TINKLPIT); }
-static DRIVER_INIT( xday2 ){		init_namcona2(NAMCO_XDAY2); }
+static DRIVER_INIT( bkrtmaq ){		init_namcona1(machine, NAMCO_BKRTMAQ); }
+static DRIVER_INIT( cgangpzl ){	init_namcona1(machine, NAMCO_CGANGPZL); }
+static DRIVER_INIT( emeralda ){	init_namcona2(machine, NAMCO_EMERALDA); } /* NA-2 Hardware */
+static DRIVER_INIT( emeraldj ){	init_namcona1(machine, NAMCO_EMERALDA); } /* NA-1 Hardware */
+static DRIVER_INIT( exbania ){		init_namcona1(machine, NAMCO_EXBANIA); }
+static DRIVER_INIT( fa ){	        init_namcona1(machine, NAMCO_FA); }
+static DRIVER_INIT( knckhead ){	init_namcona2(machine, NAMCO_KNCKHEAD); }
+static DRIVER_INIT( numanath ){	init_namcona2(machine, NAMCO_NUMANATH); }
+static DRIVER_INIT( quiztou ){		init_namcona2(machine, NAMCO_QUIZTOU); }
+static DRIVER_INIT( swcourt ){		init_namcona1(machine, NAMCO_SWCOURT); }
+static DRIVER_INIT( tinklpit ){	init_namcona1(machine, NAMCO_TINKLPIT); }
+static DRIVER_INIT( xday2 ){		init_namcona2(machine, NAMCO_XDAY2); }
 
 ROM_START( bkrtmaq )
 	ROM_REGION( 0xa80000, REGION_CPU1, 0 )

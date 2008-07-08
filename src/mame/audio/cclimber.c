@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "deprecat.h"
 #include "sound/ay8910.h"
 #include "sound/samples.h"
 #include "includes/cclimber.h"
@@ -16,22 +17,23 @@ static INT16 *samplebuf;	/* buffer to decode samples at run time */
 static void cclimber_sh_start(void)
 {
 	samplebuf = 0;
-	if (memory_region(REGION_SOUND1))
-		samplebuf = auto_malloc(sizeof(*samplebuf)*2*memory_region_length(REGION_SOUND1));
+	if (memory_region(Machine, REGION_SOUND1))
+		samplebuf = auto_malloc(sizeof(*samplebuf)*2*memory_region_length(Machine, REGION_SOUND1));
 }
 
 
 static void cclimber_play_sample(int start,int freq,int volume)
 {
 	int len;
-	const UINT8 *rom = memory_region(REGION_SOUND1);
+	int romlen = memory_region_length(Machine, REGION_SOUND1);
+	const UINT8 *rom = memory_region(Machine, REGION_SOUND1);
 
 
 	if (!rom) return;
 
 	/* decode the rom samples */
 	len = 0;
-	while (start + len < memory_region_length(REGION_SOUND1) && rom[start+len] != 0x70)
+	while (start + len < romlen && rom[start+len] != 0x70)
 	{
 		int sample;
 

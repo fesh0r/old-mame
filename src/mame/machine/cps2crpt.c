@@ -111,7 +111,6 @@ the decryption keys.
 *******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68kmame.h"
 #include "ui.h"
 #include "includes/cps1.h"
@@ -631,10 +630,10 @@ static void optimise_sboxes(struct optimised_sbox* out, const struct sbox* in)
 
 
 
-static void cps2_decrypt(const UINT32 *master_key, UINT32 upper_limit)
+static void cps2_decrypt(running_machine *machine, const UINT32 *master_key, UINT32 upper_limit)
 {
-	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
-	int length = memory_region_length(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
+	int length = memory_region_length(machine, REGION_CPU1);
 	UINT16 *dec = auto_malloc(length);
 	int i;
 	UINT32 key1[4];
@@ -674,7 +673,7 @@ static void cps2_decrypt(const UINT32 *master_key, UINT32 upper_limit)
 		{
 			char loadingMessage[256]; // for displaying with UI
 			sprintf(loadingMessage, "Decrypting %d%%", i*100/0x10000);
-			ui_set_startup_text(Machine, loadingMessage,FALSE);
+			ui_set_startup_text(machine, loadingMessage,FALSE);
 		}
 
 
@@ -941,6 +940,7 @@ static const struct game_keys keys_table[] =
 	{ "mmatrix",  { 0xac9ebd79,0x410467df }, 0x180000 },	// B6C0 B447 BACF  cmpa.w  D0,A3   cmp.w   D7,D2   cmpa.w  A7,A5
 	{ "mmatrixj", { 0x4df81e95,0x72ed9823 }, 0x180000 },	// B6C0 B447 BACF  cmpa.w  D0,A3   cmp.w   D7,D2   cmpa.w  A7,A5
 	{ "mpang",    { 0x95f741c6,0xe547a21b }, 0x100000 },	// 0C84 347D 89A3  cmpi.l  #$347D89A3,D4
+	{ "mpangu",   { 0x95f741c6,0xe547a21b }, 0x100000 },	// 0C84 347D 89A3  cmpi.l  #$347D89A3,D4
 	{ "mpangj",   { 0x95f741c6,0xe547a21b }, 0x100000 },	// 0C84 347D 89A3  cmpi.l  #$347D89A3,D4
 	{ "pzloop2",  { 0xa054f812,0xc40d36b4 }, 0x400000 },	// 0C82 9A73 15F1  cmpi.l  #$9A7315F1,D2
 	{ "pzloop2j", { 0xa054f812,0xc40d36b4 }, 0x400000 },	// 0C82 9A73 15F1  cmpi.l  #$9A7315F1,D2
@@ -970,7 +970,7 @@ DRIVER_INIT( cps2crpt )
 		if (strcmp(k->name, gamename) == 0)
 		{
 			// we have a proper key so use it to decrypt
-			cps2_decrypt(k->keys, k->upper_limit ? k->upper_limit : 0x400000);
+			cps2_decrypt(machine, k->keys, k->upper_limit ? k->upper_limit : 0x400000);
 
 			break;
 		}

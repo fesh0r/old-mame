@@ -91,16 +91,9 @@ type1       type0           function
 #include "driver.h"
 #include "system16.h"
 #include "video/resnet.h"
+#include "includes/genesis.h"
 
-/* video/segac2.c */
-void system18_vdp_update( bitmap_t *bitmap, const rectangle *cliprect );
-void system18_vdp_start(running_machine *machine);
-READ16_HANDLER( segac2_vdp_r );
-WRITE16_HANDLER( segac2_vdp_w );
-UINT16 sys18_ddcrew_bankregs[0x20];
-
-
-
+static UINT16 sys18_ddcrew_bankregs[0x20];
 
 /* callback to poll video registers */
 void (* sys16_update_proc)( void );
@@ -340,8 +333,8 @@ static void draw_sprite(running_machine *machine,
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, int b3d ) //*
 {
 	pen_t pen_base = machine->gfx[0]->color_base;
-	const UINT8 *base_gfx = memory_region(REGION_GFX2);
-	const int gfx_rom_size = memory_region_length(REGION_GFX2);
+	const UINT8 *base_gfx = memory_region(machine, REGION_GFX2);
+	const int gfx_rom_size = memory_region_length(machine, REGION_GFX2);
 	const UINT16 *source = sys16_spriteram;
 	struct sys16_sprite_attributes sprite;
 	int xpos, ypos, screen_width, width, logical_height, pitch, flipy, flipx;

@@ -1301,6 +1301,8 @@ Note: on screen copyright is (c)1998 Coinmaster.
 
 /* Variables and functions only used here */
 
+static UINT8 port_select;     /* for muxed controls in 'usclssic' */
+
 static UINT8 *sharedram;
 
 
@@ -1422,9 +1424,9 @@ static const struct x1_010_interface seta_sound_intf2 =
 	0x1000,		/* address */
 };
 
-static void utoukond_ym3438_interrupt(int linestate)
+static void utoukond_ym3438_interrupt(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, linestate);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, linestate);
 }
 
 static const struct YM3438interface utoukond_ym3438_intf =
@@ -1729,30 +1731,32 @@ static READ16_HANDLER( usclssic_dsw_r )
 {
 	switch (offset)
 	{
-		case 0/2:	return (input_port_read_indexed(machine, 3) >>  8) & 0xf;
-		case 2/2:	return (input_port_read_indexed(machine, 3) >> 12) & 0xf;
-		case 4/2:	return (input_port_read_indexed(machine, 3) >>  0) & 0xf;
-		case 6/2:	return (input_port_read_indexed(machine, 3) >>  4) & 0xf;
+		case 0/2:	return (input_port_read(machine, "DSW") >>  8) & 0xf;
+		case 2/2:	return (input_port_read(machine, "DSW") >> 12) & 0xf;
+		case 4/2:	return (input_port_read(machine, "DSW") >>  0) & 0xf;
+		case 6/2:	return (input_port_read(machine, "DSW") >>  4) & 0xf;
 	}
 	return 0;
 }
 
 static READ16_HANDLER( usclssic_trackball_x_r )
 {
+	static const char *const portx_name[2] = { "P1X", "P2X" };
 	switch (offset)
 	{
-		case 0/2:	return (input_port_read_indexed(machine, 0) >> 0) & 0xff;
-		case 2/2:	return (input_port_read_indexed(machine, 0) >> 8) & 0xff;
+		case 0/2:	return (input_port_read(machine, portx_name[port_select]) >> 0) & 0xff;
+		case 2/2:	return (input_port_read(machine, portx_name[port_select]) >> 8) & 0xff;
 	}
 	return 0;
 }
 
 static READ16_HANDLER( usclssic_trackball_y_r )
 {
+	static const char *const porty_name[2] = { "P1Y", "P2Y" };
 	switch (offset)
 	{
-		case 0/2:	return (input_port_read_indexed(machine, 1) >> 0) & 0xff;
-		case 2/2:	return (input_port_read_indexed(machine, 1) >> 8) & 0xff;
+		case 0/2:	return (input_port_read(machine, porty_name[port_select]) >> 0) & 0xff;
+		case 2/2:	return (input_port_read(machine, porty_name[port_select]) >> 8) & 0xff;
 	}
 	return 0;
 }
@@ -1764,11 +1768,13 @@ static WRITE16_HANDLER( usclssic_lockout_w )
 
 	if (ACCESSING_BITS_0_7)
 	{
+		port_select = (data & 0x40) >> 6;
+
 		seta_tiles_offset = (data & 0x10) ? 0x4000: 0;
 		if (old_tiles_offset != seta_tiles_offset)	tilemap_mark_all_tiles_dirty(ALL_TILEMAPS);
 		old_tiles_offset = seta_tiles_offset;
 
-		seta_coin_lockout_w(data);
+		seta_coin_lockout_w(machine, data);
 	}
 }
 
@@ -1780,10 +1786,10 @@ static ADDRESS_MAP_START( usclssic_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0x900000, 0x900001) AM_READ(SMH_RAM					)	// ?
 	AM_RANGE(0xa00000, 0xa00005) AM_READ(SMH_RAM					)	// VRAM Ctrl
 /**/AM_RANGE(0xb00000, 0xb003ff) AM_READ(SMH_RAM					)	// Palette
-	AM_RANGE(0xb40000, 0xb40003) AM_READ(usclssic_trackball_x_r	)	// TrackBall X
-	AM_RANGE(0xb40004, 0xb40007) AM_READ(usclssic_trackball_y_r	)	// TrackBall Y + Buttons
-	AM_RANGE(0xb40010, 0xb40011) AM_READ(input_port_2_word_r		)	// Coins
-	AM_RANGE(0xb40018, 0xb4001f) AM_READ(usclssic_dsw_r			)	// 2 DSWs
+	AM_RANGE(0xb40000, 0xb40003) AM_READ(usclssic_trackball_x_r		)	// TrackBall X
+	AM_RANGE(0xb40004, 0xb40007) AM_READ(usclssic_trackball_y_r		)	// TrackBall Y + Buttons
+	AM_RANGE(0xb40010, 0xb40011) AM_READ_PORT("COINS")					// Coins
+	AM_RANGE(0xb40018, 0xb4001f) AM_READ(usclssic_dsw_r				)	// 2 DSWs
 	AM_RANGE(0xb80000, 0xb80001) AM_READ(SMH_NOP					)	// watchdog (value is discarded)?
 	AM_RANGE(0xc00000, 0xc03fff) AM_READ(SMH_RAM					)	// Sprites Code + X + Attr
 	AM_RANGE(0xd00000, 0xd01fff) AM_READ(SMH_RAM					)	// VRAM
@@ -2808,7 +2814,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( sub_bankswitch_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU2);
+	UINT8 *rom = memory_region(machine, REGION_CPU2);
 	int bank = data >> 4;
 
 	memory_set_bankptr(1, &rom[bank * 0x4000 + 0xc000]);
@@ -2817,7 +2823,7 @@ static WRITE8_HANDLER( sub_bankswitch_w )
 static WRITE8_HANDLER( sub_bankswitch_lockout_w )
 {
 	sub_bankswitch_w(machine,offset,data);
-	seta_coin_lockout_w(data);
+	seta_coin_lockout_w(machine, data);
 }
 
 
@@ -4737,7 +4743,6 @@ static INPUT_PORTS_START( kiwame )
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
-	PORT_SERVICE( 0x0200, IP_ACTIVE_LOW )
 	PORT_SERVICE_DIPLOC(  0x0200, IP_ACTIVE_LOW, "SW1:2" )
 	PORT_DIPNAME( 0x1c00, 0x1c00, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:3,4,5")
 	PORT_DIPSETTING(      0x1c00, DEF_STR( None ) )
@@ -5663,35 +5668,46 @@ INPUT_PORTS_END
                                 U.S. Classic
 ***************************************************************************/
 
-#define TRACKBALL(_dir_) \
-	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_##_dir_ ) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_RESET
-
 static INPUT_PORTS_START( usclssic )
-	PORT_START_TAG("IN0")
-	TRACKBALL(X)
-	PORT_BIT   ( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT   ( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT   ( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT   ( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_START_TAG("P1X")     /* muxed port 0 */
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_RESET
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("IN1")
-	TRACKBALL(Y)
-	PORT_BIT   ( 0x1000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT   ( 0x2000, IP_ACTIVE_HIGH, IPT_BUTTON1 )
-	PORT_BIT   ( 0x4000, IP_ACTIVE_HIGH, IPT_START1 )
-	PORT_BIT   ( 0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_START_TAG("P1Y")     /* muxed port 0 */
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_RESET
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_BUTTON1 )
+	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_START1 )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 
-	PORT_START_TAG("IN2")
-	PORT_BIT(  0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN  )	// tested (sound related?)
-	PORT_BIT(  0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x0008, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
+	PORT_START_TAG("P2X")     /* muxed port 1 */
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_RESET PORT_COCKTAIL
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+
+	PORT_START_TAG("P2Y")     /* muxed port 1 */
+	PORT_BIT( 0x0fff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(70) PORT_KEYDELTA(30) PORT_RESET PORT_COCKTAIL
+	PORT_BIT( 0x1000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x4000, IP_ACTIVE_HIGH, IPT_START2 )
+	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
+
+	PORT_START_TAG("COINS")
+	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN  )	// tested (sound related?)
+	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
+	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
+	PORT_BIT( 0x0008, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(5)
 	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(5)
-	PORT_BIT(  0x0040, IP_ACTIVE_HIGH, IPT_SERVICE1 )
-	PORT_BIT(  0x0080, IP_ACTIVE_HIGH, IPT_TILT     )
+	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_SERVICE1 )
+	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_TILT     )
 
-	PORT_START_TAG("IN3") //2 DSWs - $600001 & 3.b
+	PORT_START_TAG("DSW") //2 DSWs - $600001 & 3.b
 	PORT_DIPNAME( 0x0001, 0x0001, "Credits For 9-Hole" ) PORT_DIPLOCATION("SW2:1")
 	PORT_DIPSETTING(      0x0001, "2" )
 	PORT_DIPSETTING(      0x0000, "3" )
@@ -6182,12 +6198,6 @@ static INPUT_PORTS_START( inttoote )
 	PORT_DIPSETTING(    0x08, "1 Coin/10 Credits" )
 	PORT_DIPSETTING(    0x04, "1 Coin/20 Credits" )
 	PORT_DIPSETTING(    0x00, "1 Coin/50 Credits" )
-	PORT_DIPNAME( 0x08, 0x08, "Unknown 1-3" )
-	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x10, 0x10, "Unknown 1-4" )
-	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_DIPNAME( 0x20, 0x20, "Unknown 1-5" )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -9354,7 +9364,7 @@ static DRIVER_INIT( arbalest )
 
 static DRIVER_INIT( metafox )
 {
-	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *) memory_region(machine, REGION_CPU1);
 
 	/* This game uses the 21c000-21ffff area for protection? */
 //  memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x21c000, 0x21ffff, 0, 0, SMH_NOP, SMH_NOP);
@@ -9377,7 +9387,7 @@ static DRIVER_INIT ( blandia )
 	rom_size = 0x80000;
 	buf = malloc_or_die(rom_size);
 
-	rom = memory_region(REGION_GFX2) + 0x40000;
+	rom = memory_region(machine, REGION_GFX2) + 0x40000;
 
 	for (rpos = 0; rpos < rom_size/2; rpos++) {
 		buf[rpos+0x40000] = rom[rpos*2];
@@ -9386,7 +9396,7 @@ static DRIVER_INIT ( blandia )
 
 	memcpy( rom, buf, rom_size );
 
-	rom = memory_region(REGION_GFX3) + 0x40000;
+	rom = memory_region(machine, REGION_GFX3) + 0x40000;
 
 	for (rpos = 0; rpos < rom_size/2; rpos++) {
 		buf[rpos+0x40000] = rom[rpos*2];
@@ -9414,7 +9424,7 @@ static DRIVER_INIT( zombraid )
 
 static DRIVER_INIT( kiwame )
 {
-	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *) memory_region(machine, REGION_CPU1);
 
 	/* WARNING: This game writes to the interrupt vector
        table. Lev 1 routine address is stored at $100 */
@@ -9436,8 +9446,8 @@ static DRIVER_INIT(wiggie)
 	UINT8 temp[16];
 	int i,j;
 
-	src = memory_region(REGION_CPU1);
-	len = memory_region_length(REGION_CPU1);
+	src = memory_region(machine, REGION_CPU1);
+	len = memory_region_length(machine, REGION_CPU1);
 	for (i = 0;i < len;i += 16)
 	{
 		memcpy(temp,&src[i],16);
@@ -9467,7 +9477,7 @@ static DRIVER_INIT(wiggie)
 static DRIVER_INIT( crazyfgt )
 {
 	// protection check at boot
-	UINT16 *RAM = (UINT16 *) memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *) memory_region(machine, REGION_CPU1);
 	RAM[0x1078/2] = 0x4e71;
 
 	// fixed priorities?
@@ -9507,7 +9517,7 @@ static const pia6821_interface inttoote_pia1_intf =
 
 static DRIVER_INIT( inttoote )
 {
-	UINT16 *ROM = (UINT16 *)memory_region( REGION_CPU1 );
+	UINT16 *ROM = (UINT16 *)memory_region( machine, REGION_CPU1 );
 	static UINT16 seta_vregs_unused[3] = {0,0,0};
 
 	// missing / unused video regs

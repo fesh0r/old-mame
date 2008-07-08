@@ -83,7 +83,6 @@ Noted added by ClawGrip 28-Mar-2008:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
 #include "sound/msm5205.h"
@@ -122,7 +121,7 @@ static WRITE8_HANDLER( wc90b_shared_w )
 static WRITE8_HANDLER( wc90b_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -132,7 +131,7 @@ static WRITE8_HANDLER( wc90b_bankswitch_w )
 static WRITE8_HANDLER( wc90b_bankswitch1_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -148,7 +147,7 @@ static WRITE8_HANDLER( wc90b_sound_command_w )
 static WRITE8_HANDLER( adpcm_control_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 
 	/* the code writes either 2 or 3 in the bottom two bits */
 	bankaddress = 0x10000 + (data & 0x01) * 0x4000;
@@ -348,9 +347,9 @@ GFXDECODE_END
 
 
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -363,7 +362,7 @@ static const struct YM2203interface ym2203_interface =
 	irqhandler
 };
 
-static void adpcm_int(int data)
+static void adpcm_int(running_machine *machine, int data)
 {
 	static int toggle = 0;
 
@@ -372,7 +371,7 @@ static void adpcm_int(int data)
 
 	toggle ^= 1;
 	if(toggle)
-		cpunum_set_input_line(Machine, 2, INPUT_LINE_NMI, PULSE_LINE);
+		cpunum_set_input_line(machine, 2, INPUT_LINE_NMI, PULSE_LINE);
 
 }
 

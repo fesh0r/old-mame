@@ -11,7 +11,6 @@ To Do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "triplhnt.h"
 
 static UINT8 triplhnt_cmos[16];
@@ -28,11 +27,11 @@ static DRIVER_INIT( triplhnt )
 }
 
 
-void triplhnt_set_collision(int code)
+void triplhnt_set_collision(running_machine *machine, int code)
 {
 	triplhnt_hit_code = code;
 
-	cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
 
@@ -197,7 +196,7 @@ static INPUT_PORTS_START( triplhnt )
 	PORT_START /* 0C48 */
 // default to service enabled to make users calibrate gun
 //  PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
-	PORT_BIT(    0x40, 0x00, IPT_DIPSWITCH_NAME ) PORT_NAME( DEF_STR( Service_Mode )) PORT_TOGGLE PORT_CODE(KEYCODE_F2)
+	PORT_DIPNAME( 0x40, 0x00, DEF_STR( Service_Mode )) PORT_TOGGLE PORT_CODE(KEYCODE_F2)
 	PORT_DIPSETTING(    0x40, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )

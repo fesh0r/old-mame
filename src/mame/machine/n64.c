@@ -27,25 +27,23 @@ static UINT32 mi_version;
 static UINT32 mi_interrupt = 0;
 static UINT32 mi_intr_mask = 0;
 
-extern int fb_width;
-
-void signal_rcp_interrupt(int interrupt)
+void signal_rcp_interrupt(running_machine *machine, int interrupt)
 {
 	if (mi_intr_mask & interrupt)
 	{
 		mi_interrupt |= interrupt;
 
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
 	}
 }
 
-void clear_rcp_interrupt(int interrupt)
+void clear_rcp_interrupt(running_machine *machine, int interrupt)
 {
 	mi_interrupt &= ~interrupt;
 
 	//if (!mi_interrupt)
 	{
-		cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 	}
 }
 
@@ -77,7 +75,7 @@ WRITE32_HANDLER( n64_mi_reg_w )
 		case 0x00/4:		// MI_INIT_MODE_REG
 			if (data & 0x0800)
 			{
-				clear_rcp_interrupt(DP_INTERRUPT);
+				clear_rcp_interrupt(machine, DP_INTERRUPT);
 			}
 			break;
 
@@ -225,7 +223,7 @@ static void sp_set_status(UINT32 status)
 
         if (cpunum_get_info_int(1, CPUINFO_INT_REGISTER + RSP_SR) & RSP_STATUS_INTR_BREAK)
 		{
-			signal_rcp_interrupt(SP_INTERRUPT);
+			signal_rcp_interrupt(Machine, SP_INTERRUPT);
 		}
 	}
 }
@@ -338,11 +336,11 @@ WRITE32_HANDLER( n64_sp_reg_w )
                 }
                 if (data & 0x00000008)      // clear interrupt
                 {
-                    clear_rcp_interrupt(SP_INTERRUPT);
+                    clear_rcp_interrupt(machine, SP_INTERRUPT);
                 }
                 if (data & 0x00000010)      // set interrupt
                 {
-                    signal_rcp_interrupt(SP_INTERRUPT);
+                    signal_rcp_interrupt(machine, SP_INTERRUPT);
                 }
                 if (data & 0x00000020)
                 {
@@ -493,9 +491,9 @@ UINT32 dp_current;
 UINT32 dp_status = 0;
 
 
-void dp_full_sync(void)
+void dp_full_sync(running_machine *machine)
 {
-	signal_rcp_interrupt(DP_INTERRUPT);
+	signal_rcp_interrupt(machine, DP_INTERRUPT);
 }
 
 READ32_HANDLER( n64_dp_reg_r )
@@ -659,7 +657,7 @@ WRITE32_HANDLER( n64_vi_reg_w )
 			break;
 
 		case 0x10/4:		// VI_CURRENT_REG
-			clear_rcp_interrupt(VI_INTERRUPT);
+			clear_rcp_interrupt(machine, VI_INTERRUPT);
 			break;
 
 		case 0x14/4:		// VI_BURST_REG
@@ -737,7 +735,7 @@ static int audio_fifo_wpos = 0;
 static int audio_fifo_rpos = 0;
 static int audio_fifo_num = 0;
 
-static void audio_fifo_push(UINT32 address, UINT32 length)
+static void audio_fifo_push(running_machine *machine, UINT32 address, UINT32 length)
 {
     AUDIO_DMA *current;
 
@@ -767,12 +765,12 @@ static void audio_fifo_push(UINT32 address, UINT32 length)
 
     if (! (ai_status & 0x40000000))
     {
-        signal_rcp_interrupt(AI_INTERRUPT);
+        signal_rcp_interrupt(machine, AI_INTERRUPT);
         start_audio_dma();
     }
 }
 
-static void audio_fifo_pop(void)
+static void audio_fifo_pop(running_machine *machine)
 {
     audio_fifo_rpos++;
     audio_fifo_num--;
@@ -790,7 +788,7 @@ static void audio_fifo_pop(void)
     if (audio_fifo_num < AUDIO_DMA_DEPTH)
     {
         ai_status &= ~0x80000001;   // FIFO not full
-        signal_rcp_interrupt(AI_INTERRUPT);
+        signal_rcp_interrupt(machine, AI_INTERRUPT);
     }
 }
 
@@ -834,13 +832,13 @@ static void start_audio_dma(void)
 
 static TIMER_CALLBACK( audio_timer_callback )
 {
-    audio_fifo_pop();
+    audio_fifo_pop(machine);
 
     // keep playing if there's another DMA queued
     if (audio_fifo_get_top() != NULL)
     {
         start_audio_dma();
-        signal_rcp_interrupt(AI_INTERRUPT);
+        signal_rcp_interrupt(machine, AI_INTERRUPT);
     }
     else
     {
@@ -892,7 +890,7 @@ WRITE32_HANDLER( n64_ai_reg_w )
         case 0x04/4:        // AI_LEN_REG
 //          mame_printf_debug("ai_len = %08X at %08X\n", data, activecpu_get_pc());
             ai_len = data & 0x3ffff;        // Hardware v2.0 has 18 bits, v1.0 has 15 bits
-            audio_fifo_push(ai_dram_addr, ai_len);
+            audio_fifo_push(machine, ai_dram_addr, ai_len);
             break;
 
         case 0x08/4:        // AI_CONTROL_REG
@@ -901,7 +899,7 @@ WRITE32_HANDLER( n64_ai_reg_w )
             break;
 
         case 0x0c/4:
-            clear_rcp_interrupt(AI_INTERRUPT);
+            clear_rcp_interrupt(machine, AI_INTERRUPT);
             break;
 
         case 0x10/4:        // AI_DACRATE_REG
@@ -987,7 +985,7 @@ WRITE32_HANDLER( n64_pi_reg_w )
 				}
 			}
 
-			signal_rcp_interrupt(PI_INTERRUPT);
+			signal_rcp_interrupt(machine, PI_INTERRUPT);
 			break;
 		}
 
@@ -1018,7 +1016,7 @@ WRITE32_HANDLER( n64_pi_reg_w )
 					pi_dram_addr += 1;
 				}
 			}
-			signal_rcp_interrupt(PI_INTERRUPT);
+			signal_rcp_interrupt(machine, PI_INTERRUPT);
 
 			if (pi_first_dma)
 			{
@@ -1035,7 +1033,7 @@ WRITE32_HANDLER( n64_pi_reg_w )
 		{
 			if (data & 0x2)
 			{
-				clear_rcp_interrupt(PI_INTERRUPT);
+				clear_rcp_interrupt(machine, PI_INTERRUPT);
 			}
 			break;
 		}
@@ -1174,6 +1172,9 @@ static int pif_channel_handle_command(running_machine *machine, int channel, int
 		{
 			UINT16 buttons = 0;
 			INT8 x = 0, y = 0;
+			/* add here tags for P2, P3 and P4 when implemented */
+			static const char *portnames[] = { "P1", "P1_ANALOG_X", "P1_ANALOG_Y" };
+
 			if (slength != 1 || rlength != 4)
 			{
 				fatalerror("handle_pif: read button values (bytes to send %d, bytes to receive %d)\n", slength, rlength);
@@ -1183,9 +1184,9 @@ static int pif_channel_handle_command(running_machine *machine, int channel, int
 			{
 				case 0:
 				{
-                    buttons = input_port_read_indexed(machine, (channel*3) + 0);
-                    x = input_port_read_indexed(machine, (channel*3) + 1) - 128;
-                    y = input_port_read_indexed(machine, (channel*3) + 2) - 128;
+                    buttons = input_port_read(machine, portnames[(channel*3) + 0]);
+                    x = input_port_read(machine, portnames[(channel*3) + 1]) - 128;
+                    y = input_port_read(machine, portnames[(channel*3) + 2]) - 128;
 
 					rdata[0] = (buttons >> 8) & 0xff;
 					rdata[1] = (buttons >> 0) & 0xff;
@@ -1482,7 +1483,7 @@ static void pif_dma(running_machine *machine, int direction)
 	}
 
 	si_status |= 0x1000;
-	signal_rcp_interrupt(SI_INTERRUPT);
+	signal_rcp_interrupt(machine, SI_INTERRUPT);
 }
 
 READ32_HANDLER( n64_si_reg_r )
@@ -1521,7 +1522,7 @@ WRITE32_HANDLER( n64_si_reg_w )
 
 		case 0x18/4:		// SI_STATUS_REG
 			si_status &= ~0x1000;
-			clear_rcp_interrupt(SI_INTERRUPT);
+			clear_rcp_interrupt(machine, SI_INTERRUPT);
 			break;
 
 		default:
@@ -1568,16 +1569,16 @@ WRITE32_HANDLER( n64_pif_ram_w )
     }
     */
 
-    signal_rcp_interrupt(SI_INTERRUPT);
+    signal_rcp_interrupt(machine, SI_INTERRUPT);
 }
 
 //static UINT16 crc_seed = 0x3f;
 
-void n64_machine_reset(void)
+void n64_machine_reset(running_machine *machine)
 {
 	int i;
-	//UINT32 *pif_rom   = (UINT32*)memory_region(REGION_USER1);
-	UINT32 *cart = (UINT32*)memory_region(REGION_USER2);
+	//UINT32 *pif_rom   = (UINT32*)memory_region(machine, REGION_USER1);
+	UINT32 *cart = (UINT32*)memory_region(machine, REGION_USER2);
 	UINT64 boot_checksum;
 
 	mi_version = 0;
@@ -1641,7 +1642,7 @@ void n64_machine_reset(void)
 	audio_timer = timer_alloc(audio_timer_callback, NULL);
 	timer_adjust_oneshot(audio_timer, attotime_never, 0);
 
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
 
     // bootcode differs between CIC-chips, so we can use its checksum to detect the CIC-chip
     boot_checksum = 0;

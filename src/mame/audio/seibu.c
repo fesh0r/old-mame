@@ -3,7 +3,7 @@
     Seibu Sound System v1.02, designed 1986 by Seibu Kaihatsu
 
     The Seibu sound system comprises of a Z80A, a YM3812, a YM3931*, and
-    an Oki MSM6205.  As well as sound the Z80 can controls coins and pass
+    an Oki MSM6295.  As well as sound the Z80 can controls coins and pass
     data to the main cpu.  There are a few little quirks that make it
     worthwhile emulating in a seperate file:
 
@@ -33,8 +33,8 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "streams.h"
 #include "deprecat.h"
+#include "streams.h"
 #include "audio/seibu.h"
 #include "sound/3812intf.h"
 #include "sound/2151intf.h"
@@ -103,10 +103,10 @@ static UINT8 decrypt_opcode(int a,int src)
 	return src;
 }
 
-void seibu_sound_decrypt(int cpu_region,int length)
+void seibu_sound_decrypt(running_machine *machine,int cpu_region,int length)
 {
 	UINT8 *decrypt = auto_malloc(length);
-	UINT8 *rom = memory_region(cpu_region);
+	UINT8 *rom = memory_region(machine, cpu_region);
 	int i;
 
 	memory_set_decrypted_region(cpu_region - REGION_CPU1, 0x0000, (length < 0x10000) ? (length - 1) : 0x1fff, decrypt);
@@ -179,7 +179,7 @@ static void *seibu_adpcm_start(int clock, const struct CustomSound_interface *co
 			state->allocated = 1;
 			state->playing = 0;
 			state->stream = stream_create(0, 1, clock, state, seibu_adpcm_callback);
-			state->base = memory_region(REGION_SOUND1);
+			state->base = memory_region(Machine, REGION_SOUND1);
 			reset_adpcm(&state->adpcm);
 			return state;
 		}
@@ -196,12 +196,13 @@ static void seibu_adpcm_stop(void *token)
 // simplify PCB layout/routing rather than intentional protection, but it
 // still fits, especially since the Z80s for all these games are truly encrypted.
 
-void seibu_adpcm_decrypt(int region)
+void seibu_adpcm_decrypt(running_machine *machine, int region)
 {
-	UINT8 *ROM = memory_region(region);
+	UINT8 *ROM = memory_region(machine, region);
+	int len = memory_region_length(machine, region);
 	int i;
 
-	for (i = 0; i < memory_region_length(region); i++)
+	for (i = 0; i < len; i++)
 	{
 		ROM[i] = BITSWAP8(ROM[i], 7, 5, 3, 1, 6, 4, 2, 0);
 	}
@@ -336,19 +337,19 @@ WRITE8_HANDLER( seibu_rst18_ack_w )
 	update_irq_lines(machine, RST18_CLEAR);
 }
 
-void seibu_ym3812_irqhandler(int linestate)
+void seibu_ym3812_irqhandler(running_machine *machine, int linestate)
 {
-	update_irq_lines(Machine, linestate ? RST10_ASSERT : RST10_CLEAR);
+	update_irq_lines(machine, linestate ? RST10_ASSERT : RST10_CLEAR);
 }
 
-void seibu_ym2151_irqhandler(int linestate)
+void seibu_ym2151_irqhandler(running_machine *machine, int linestate)
 {
-	update_irq_lines(Machine, linestate ? RST10_ASSERT : RST10_CLEAR);
+	update_irq_lines(machine, linestate ? RST10_ASSERT : RST10_CLEAR);
 }
 
-void seibu_ym2203_irqhandler(int linestate)
+void seibu_ym2203_irqhandler(running_machine *machine, int linestate)
 {
-	update_irq_lines(Machine, linestate ? RST10_ASSERT : RST10_CLEAR);
+	update_irq_lines(machine, linestate ? RST10_ASSERT : RST10_CLEAR);
 }
 
 /***************************************************************************/
@@ -356,8 +357,8 @@ void seibu_ym2203_irqhandler(int linestate)
 /* Use this if the sound cpu is cpu 1 */
 MACHINE_RESET( seibu_sound_1 )
 {
-	int romlength = memory_region_length(REGION_CPU2);
-	UINT8 *rom = memory_region(REGION_CPU2);
+	int romlength = memory_region_length(machine, REGION_CPU2);
+	UINT8 *rom = memory_region(machine, REGION_CPU2);
 
 	sound_cpu=1;
 	update_irq_lines(machine, VECTOR_INIT);
@@ -368,8 +369,8 @@ MACHINE_RESET( seibu_sound_1 )
 /* Use this if the sound cpu is cpu 2 */
 MACHINE_RESET( seibu_sound_2 )
 {
-	int romlength = memory_region_length(REGION_CPU3);
-	UINT8 *rom = memory_region(REGION_CPU3);
+	int romlength = memory_region_length(machine, REGION_CPU3);
+	UINT8 *rom = memory_region(machine, REGION_CPU3);
 
 	sound_cpu=2;
 	update_irq_lines(machine, VECTOR_INIT);

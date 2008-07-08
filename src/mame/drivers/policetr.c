@@ -141,19 +141,19 @@ static INTERRUPT_GEN( irq4_gen )
 
 static READ32_HANDLER( port0_r )
 {
-	return input_port_read_indexed(machine, 0) << 16;
+	return input_port_read(machine, "IN0") << 16;
 }
 
 
 static READ32_HANDLER( port1_r )
 {
-	return (input_port_read_indexed(machine, 1) << 16) | (EEPROM_read_bit() << 29);
+	return (input_port_read(machine, "IN1") << 16) | (eeprom_read_bit() << 29);
 }
 
 
 static READ32_HANDLER( port2_r )
 {
-	return input_port_read_indexed(machine, 2) << 16;
+	return input_port_read(machine, "DSW1") << 16;
 }
 
 
@@ -180,9 +180,9 @@ static WRITE32_HANDLER( control_w )
 	/* handle EEPROM I/O */
 	if (ACCESSING_BITS_16_23)
 	{
-		EEPROM_write_bit(data & 0x00800000);
-		EEPROM_set_cs_line((data & 0x00200000) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x00400000) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x00800000);
+		eeprom_set_cs_line((data & 0x00200000) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x00400000) ? ASSERT_LINE : CLEAR_LINE);
 	}
 
 	/* toggling BSMT off then on causes a reset */
@@ -225,7 +225,7 @@ static WRITE32_HANDLER( bsmt2000_data_w )
 
 static READ32_HANDLER( bsmt2000_data_r )
 {
-	return memory_region(REGION_SOUND1)[bsmt_data_bank * 0x10000 + bsmt_data_offset] << 8;
+	return memory_region(machine, REGION_SOUND1)[bsmt_data_bank * 0x10000 + bsmt_data_offset] << 8;
 }
 
 
@@ -269,7 +269,7 @@ static WRITE32_HANDLER( speedup_w )
  *
  *************************************/
 
-static const struct EEPROM_interface eeprom_interface_policetr =
+static const eeprom_interface eeprom_interface_policetr =
 {
 	8,				// address bits 8
 	16,				// data bits    16
@@ -284,11 +284,11 @@ static const struct EEPROM_interface eeprom_interface_policetr =
 static NVRAM_HANDLER( policetr )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_policetr);
-		if (file)	EEPROM_load(file);
+		eeprom_init(&eeprom_interface_policetr);
+		if (file)	eeprom_load(file);
 	}
 }
 
@@ -346,7 +346,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( policetr )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -364,7 +364,7 @@ static INPUT_PORTS_START( policetr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -382,7 +382,7 @@ static INPUT_PORTS_START( policetr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("DSW1")
 	PORT_DIPUNUSED_DIPLOC( 0x01, 0x01, "SW1:1" )
 	PORT_DIPUNUSED_DIPLOC( 0x02, 0x02, "SW1:2" )
 	PORT_DIPUNUSED_DIPLOC( 0x04, 0x04, "SW1:3" )
@@ -597,6 +597,17 @@ Note: If you set the dipswitch to service mode and reset the game within Mame.
       instead of green.  But, the listed checksums on the screen match the
       checksums printed on the ROM labels... this seems wierd to me.
       However, this has been verified to happen on a real PCB
+
+      There was a PCB on eBay that used mask roms for the program roms with the following checksum
+      values printed on the labels
+
+      U110  050C
+      u111  F343
+      U112  201D
+      U113  FB4x (x maybe 0, 6 or 8.  The picture wasn't clear for this last number)
+
+      These are different then the current set and might have the checksum test corrected.
+
 */
 	ROM_LOAD32_BYTE( "ptb-u113.v13", 0x00000, 0x20000, CRC(d636c00d) SHA1(ef989eb85b51a64ca640297c1286514c8d7f8f76) )
 	ROM_LOAD32_BYTE( "ptb-u112.v13", 0x00001, 0x20000, CRC(86f0497e) SHA1(d177023f7cb2e01de60ef072212836dc94759c1a) )

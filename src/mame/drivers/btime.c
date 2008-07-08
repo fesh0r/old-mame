@@ -50,59 +50,9 @@ can take. Should the game reset????
 #include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
-
-
-extern UINT8 *btime_videoram;
-extern size_t btime_videoram_size;
-extern UINT8 *btime_colorram;
-extern UINT8 *lnc_charbank;
-extern UINT8 *bnj_backgroundram;
-extern size_t bnj_backgroundram_size;
-extern UINT8 *zoar_scrollram;
-extern UINT8 *deco_charram;
-
-PALETTE_INIT( btime );
-PALETTE_INIT( lnc );
-
-MACHINE_RESET( lnc );
-
-VIDEO_START( btime );
-VIDEO_START( bnj );
-
-
-VIDEO_UPDATE( btime );
-VIDEO_UPDATE( cookrace );
-VIDEO_UPDATE( bnj );
-VIDEO_UPDATE( lnc );
-VIDEO_UPDATE( zoar );
-VIDEO_UPDATE( disco );
-VIDEO_UPDATE( eggs );
-
-WRITE8_HANDLER( btime_paletteram_w );
-WRITE8_HANDLER( bnj_background_w );
-WRITE8_HANDLER( bnj_scroll1_w );
-WRITE8_HANDLER( bnj_scroll2_w );
-READ8_HANDLER( btime_mirrorvideoram_r );
-WRITE8_HANDLER( btime_mirrorvideoram_w );
-READ8_HANDLER( btime_mirrorcolorram_r );
-WRITE8_HANDLER( btime_mirrorcolorram_w );
-WRITE8_HANDLER( lnc_videoram_w );
-WRITE8_HANDLER( lnc_mirrorvideoram_w );
-WRITE8_HANDLER( deco_charram_w );
-
-WRITE8_HANDLER( zoar_video_control_w );
-WRITE8_HANDLER( btime_video_control_w );
-WRITE8_HANDLER( bnj_video_control_w );
-WRITE8_HANDLER( lnc_video_control_w );
-WRITE8_HANDLER( disco_video_control_w );
-
-INTERRUPT_GEN( lnc_sound_interrupt );
+#include "includes/btime.h"
 
 static WRITE8_HANDLER( audio_command_w );
-
-READ8_HANDLER( mmonkey_protection_r );
-WRITE8_HANDLER( mmonkey_protection_w );
-
 
 static UINT8 *decrypted;
 static UINT8 *rambase;
@@ -133,12 +83,12 @@ static void btime_decrypt(void)
 	/* however if the previous instruction was JSR (which caused a write to */
 	/* the stack), fetch the address of the next instruction. */
 	addr1 = activecpu_get_previouspc();
-	src1 = (addr1 < 0x9000) ? rambase : memory_region(REGION_CPU1);
+	src1 = (addr1 < 0x9000) ? rambase : memory_region(Machine, REGION_CPU1);
 	if (decrypted[addr1] == 0x20)	/* JSR $xxxx */
 		addr = src1[addr1+1] + 256 * src1[addr1+2];
 
 	/* If the address of the next instruction is xxxx xxx1 xxxx x1xx, decode it. */
-	src = (addr < 0x9000) ? rambase : memory_region(REGION_CPU1);
+	src = (addr < 0x9000) ? rambase : memory_region(Machine, REGION_CPU1);
 	if ((addr & 0x0104) == 0x0104)
 	{
 		/* 76543210 -> 65342710 bit rotation */
@@ -386,18 +336,18 @@ ADDRESS_MAP_END
 static INPUT_CHANGED( coin_inserted_irq_hi )
 {
 	if (newval)
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpunum_set_input_line(field->port->machine, 0, 0, HOLD_LINE);
 }
 
 static INPUT_CHANGED( coin_inserted_irq_lo )
 {
 	if (!newval)
-		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
+		cpunum_set_input_line(field->port->machine, 0, 0, HOLD_LINE);
 }
 
 static INPUT_CHANGED( coin_inserted_nmi_lo )
 {
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -504,7 +454,6 @@ static INPUT_PORTS_START( cookrace )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
@@ -902,7 +851,6 @@ static INPUT_PORTS_START( bnj )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK  )
 
 	PORT_START_TAG("DSW2")
-	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x01, "3" )
 	PORT_DIPSETTING(    0x00, "5" )
@@ -1058,7 +1006,6 @@ static INPUT_PORTS_START( sdtennis )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK  )
 
 	PORT_START_TAG("DSW2")
-	PORT_BIT( 0xe0, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x01, "2" )
@@ -1682,7 +1629,7 @@ ROM_END
 static void decrypt_C10707_cpu(int cpu, int region)
 {
 	UINT8 *decrypt = auto_malloc(0x10000);
-	UINT8 *rom = memory_region(region);
+	UINT8 *rom = memory_region(Machine, region);
 	offs_t addr;
 
 	memory_set_decrypted_region(cpu, 0x0000, 0xffff, decrypt);
@@ -1697,7 +1644,7 @@ static void decrypt_C10707_cpu(int cpu, int region)
 
 static READ8_HANDLER( wtennis_reset_hack_r )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	/* Otherwise the game goes into test mode and there is no way out that I
        can see.  I'm not sure how it can work, it probably somehow has to do
@@ -1710,7 +1657,7 @@ static READ8_HANDLER( wtennis_reset_hack_r )
 
 static void init_rom1(void)
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(Machine, REGION_CPU1);
 
 	decrypted = auto_malloc(0x10000);
 	memory_set_decrypted_region(0, 0x0000, 0xffff, decrypted);
@@ -1728,7 +1675,7 @@ static DRIVER_INIT( btime )
 
 static DRIVER_INIT( zoar )
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	/* At location 0xD50A is what looks like an undocumented opcode. I tried
        implementing it given what opcode 0x23 should do, but it still didn't
@@ -1746,13 +1693,13 @@ static DRIVER_INIT( lnc )
 
 static DRIVER_INIT( cookrace )
 {
-	memcpy(&audio_rambase[0x200], memory_region(REGION_CPU2) + 0xf200, 0x200);
+	memcpy(&audio_rambase[0x200], memory_region(machine, REGION_CPU2) + 0xf200, 0x200);
 	decrypt_C10707_cpu(0, REGION_CPU1);
 }
 
 static DRIVER_INIT( wtennis )
 {
-	memcpy(&audio_rambase[0x200], memory_region(REGION_CPU2) + 0xf200, 0x200);
+	memcpy(&audio_rambase[0x200], memory_region(machine, REGION_CPU2) + 0xf200, 0x200);
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc15f, 0xc15f, 0, 0, wtennis_reset_hack_r);
 	decrypt_C10707_cpu(0, REGION_CPU1);
 }

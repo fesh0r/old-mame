@@ -127,7 +127,7 @@ static const UINT8 default_eeprom[128]=
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static const struct EEPROM_interface groundfx_eeprom_interface =
+static const eeprom_interface groundfx_eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -141,13 +141,13 @@ static const struct EEPROM_interface groundfx_eeprom_interface =
 static NVRAM_HANDLER( groundfx )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else {
-		EEPROM_init(&groundfx_eeprom_interface);
+		eeprom_init(&groundfx_eeprom_interface);
 		if (file)
-			EEPROM_load(file);
+			eeprom_load(file);
 		else
-			EEPROM_set_data(default_eeprom,128);  /* Default the gun setup values */
+			eeprom_set_data(default_eeprom,128);  /* Default the gun setup values */
 	}
 }
 
@@ -163,13 +163,13 @@ static READ32_HANDLER( groundfx_input_r )
 	{
 		case 0x00:
 		{
-			return (input_port_read_indexed(machine,0) << 16) | input_port_read_indexed(machine,1) |
-				  (EEPROM_read_bit() << 7) | frame_counter;
+			return (input_port_read(machine, "IN0") << 16) | input_port_read(machine, "IN1") |
+				  (eeprom_read_bit() << 7) | frame_counter;
 		}
 
 		case 0x01:
 		{
-			return input_port_read_indexed(machine,2) | (coin_word << 16);
+			return input_port_read(machine, "IN2") | (coin_word << 16);
 		}
  	}
 
@@ -189,9 +189,9 @@ static WRITE32_HANDLER( groundfx_input_w )
 
 			if (ACCESSING_BITS_0_7)
 			{
-				EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
-				EEPROM_write_bit(data & 0x40);
-				EEPROM_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+				eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+				eeprom_write_bit(data & 0x40);
+				eeprom_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 				return;
 			}
 
@@ -214,7 +214,7 @@ static WRITE32_HANDLER( groundfx_input_w )
 
 static READ32_HANDLER( groundfx_adc_r )
 {
-	return (input_port_read_indexed(machine,3) << 8) | input_port_read_indexed(machine,4);
+	return (input_port_read(machine, "AN0") << 8) | input_port_read(machine, "AN1");
 }
 
 static WRITE32_HANDLER( groundfx_adc_w )
@@ -280,7 +280,7 @@ static ADDRESS_MAP_START( groundfx_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x200000, 0x21ffff) AM_WRITE(SMH_RAM) AM_BASE(&groundfx_ram)
 	AM_RANGE(0x300000, 0x303fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram32) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x400000, 0x400003) AM_WRITE(motor_control_w)	/* gun vibration */
-	AM_RANGE(0x500000, 0x500007) AM_WRITE(groundfx_input_w)	/* eerom etc. */
+	AM_RANGE(0x500000, 0x500007) AM_WRITE(groundfx_input_w)	/* eeprom etc. */
 	AM_RANGE(0x600000, 0x600003) AM_WRITE(groundfx_adc_w)
 	AM_RANGE(0x700000, 0x7007ff) AM_WRITE(SMH_RAM) AM_BASE(&f3_shared_ram)
 	AM_RANGE(0x800000, 0x80ffff) AM_WRITE(TC0480SCP_long_w)	  /* tilemaps */
@@ -298,10 +298,10 @@ ADDRESS_MAP_END
 ***********************************************************/
 
 static INPUT_PORTS_START( groundfx )
-	PORT_START      /* IN0 */
+	PORT_START_TAG("IN0")	/* IN0 */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW,  IPT_UNUSED )
 
-	PORT_START      /* IN1 */
+	PORT_START_TAG("IN1")	/* IN1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH,  IPT_SPECIAL ) /* Frame counter */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNUSED )
@@ -319,7 +319,7 @@ static INPUT_PORTS_START( groundfx )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW,  IPT_UNUSED )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_UNUSED )
 
-	PORT_START      /* IN2 */
+	PORT_START_TAG("IN2")	/* IN2 */
 	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_LOW )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_SERVICE1 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_COIN1 )
@@ -329,16 +329,16 @@ static INPUT_PORTS_START( groundfx )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNUSED )
 
-	PORT_START	/* IN 2, steering wheel */
+	PORT_START_TAG("AN0")	/* IN 2, steering wheel */
 	PORT_BIT( 0xff, 0x7f, IPT_AD_STICK_X ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START	/* IN 3, accel */
+	PORT_START_TAG("AN1")	/* IN 3, accel */
 	PORT_BIT( 0xff, 0xff, IPT_AD_STICK_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START	/* IN 4, sound volume */
+	PORT_START_TAG("AN2")	/* IN 4, sound volume */
 	PORT_BIT( 0xff, 0x00, IPT_AD_STICK_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START	/* IN 5, unknown */
+	PORT_START_TAG("AN3")	/* IN 5, unknown */
 	PORT_BIT( 0xff, 0x00, IPT_AD_STICK_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -393,7 +393,7 @@ GFXDECODE_END
 
 static MACHINE_RESET( groundfx )
 {
-	taito_f3_soundsystem_reset();
+	taito_f3_soundsystem_reset(machine);
 	f3_68681_reset();
 }
 
@@ -491,8 +491,8 @@ static READ32_HANDLER( irq_speedup_r_groundfx )
 static DRIVER_INIT( groundfx )
 {
 	UINT32 offset,i;
-	UINT8 *gfx = memory_region(REGION_GFX3);
-	int size=memory_region_length(REGION_GFX3);
+	UINT8 *gfx = memory_region(machine, REGION_GFX3);
+	int size=memory_region_length(machine, REGION_GFX3);
 	int data;
 
 	/* Speedup handlers */

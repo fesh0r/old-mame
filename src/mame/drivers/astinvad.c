@@ -137,7 +137,7 @@ static void plot_byte(bitmap_t *bitmap, UINT8 y, UINT8 x, UINT8 data, UINT8 colo
 
 static VIDEO_UPDATE( astinvad )
 {
-	const UINT8 *color_prom = memory_region(REGION_PROMS);
+	const UINT8 *color_prom = memory_region(screen->machine, REGION_PROMS);
 	UINT8 yoffs = flip_yoffs & screen_flip;
 	int x, y;
 
@@ -156,6 +156,7 @@ static VIDEO_UPDATE( astinvad )
 
 static VIDEO_UPDATE( spaceint )
 {
+	const UINT8 *color_prom = memory_region(screen->machine, REGION_PROMS);
 	int offs;
 
 	for (offs = 0; offs < videoram_size; offs++)
@@ -168,7 +169,7 @@ static VIDEO_UPDATE( spaceint )
 
 		/* this is almost certainly wrong */
 		offs_t n = ((offs >> 5) & 0xf0) | color;
-		color = memory_region(REGION_PROMS)[n] & 0x07;
+		color = color_prom[n] & 0x07;
 
 		plot_byte(bitmap, y, x, data, color);
 	}
@@ -212,7 +213,7 @@ static MACHINE_START( kamikaze )
 static INPUT_CHANGED( spaceint_coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -280,7 +281,7 @@ static WRITE8_HANDLER( astinvad_sound2_w )
 	if (bits_gone_hi & 0x08) sample_start(5, SND_FLEET4, 0);
 	if (bits_gone_hi & 0x10) sample_start(4, SND_UFOHIT, 0);
 
-	screen_flip = (input_port_read_indexed(machine, 3) & data & 0x20) ? 0xff : 0x00;
+	screen_flip = (input_port_read(machine, "IN3") & data & 0x20) ? 0xff : 0x00;
 }
 
 
@@ -311,7 +312,7 @@ static WRITE8_HANDLER( spaceint_sound2_w )
 
 	if (bits_gone_hi & 0x04) sample_start(3, SND_INVADERHIT, 0);
 
-	screen_flip = (input_port_read_indexed(machine, 3) & data & 0x80) ? 0xff : 0x00;
+	screen_flip = (input_port_read(machine, "IN3") & data & 0x80) ? 0xff : 0x00;
 }
 
 

@@ -44,7 +44,7 @@ WRITE8_HANDLER( liberate_videoram_w );
 
 static READ8_HANDLER( deco16_bank_r )
 {
-	const UINT8 *ROM = memory_region(REGION_USER1);
+	const UINT8 *ROM = memory_region(machine, REGION_USER1);
 
 	/* The tilemap bank can be swapped into main memory */
 	if (deco16_bank)
@@ -67,7 +67,7 @@ static WRITE8_HANDLER( deco16_bank_w )
 
 static READ8_HANDLER( deco16_io_r )
 {
-	const UINT8 *ROM = memory_region(REGION_CPU1);
+	const UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	if (deco16_bank) {
 		if (offset==0) return input_port_read(machine, "IN1"); /* Player 1 controls */
@@ -126,7 +126,7 @@ static ADDRESS_MAP_START( liberate_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( deco16_readport, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x00, 0x00) AM_READ(input_port_0_r)
+	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( deco16_writeport, ADDRESS_SPACE_IO, 8 )
@@ -134,15 +134,15 @@ static ADDRESS_MAP_START( deco16_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( liberatb_readmem, ADDRESS_SPACE_PROGRAM, 8 )
-	AM_RANGE(0x00fe, 0x00fe) AM_READ(input_port_0_r)
+	AM_RANGE(0x00fe, 0x00fe) AM_READ_PORT("IN0")
 	AM_RANGE(0x0000, 0x0fff) AM_READ(SMH_RAM)
 	AM_RANGE(0x1000, 0x3fff) AM_READ(SMH_ROM) /* Mirror of main rom */
 	AM_RANGE(0x4000, 0x7fff) AM_READ(deco16_bank_r)
-	AM_RANGE(0xf000, 0xf000) AM_READ(input_port_1_r)
-	AM_RANGE(0xf001, 0xf001) AM_READ(input_port_2_r)
-	AM_RANGE(0xf002, 0xf002) AM_READ(input_port_3_r)
-	AM_RANGE(0xf003, 0xf003) AM_READ(input_port_4_r)
-	AM_RANGE(0xf004, 0xf004) AM_READ(input_port_5_r)
+	AM_RANGE(0xf000, 0xf000) AM_READ_PORT("IN1")
+	AM_RANGE(0xf001, 0xf001) AM_READ_PORT("IN2")
+	AM_RANGE(0xf002, 0xf002) AM_READ_PORT("IN3")
+	AM_RANGE(0xf003, 0xf003) AM_READ_PORT("DSW1")
+	AM_RANGE(0xf004, 0xf004) AM_READ_PORT("DSW2")
 	AM_RANGE(0x8000, 0xffff) AM_READ(SMH_ROM)
 ADDRESS_MAP_END
 
@@ -497,13 +497,16 @@ GFXDECODE_END
 
 static INTERRUPT_GEN( deco16_interrupt )
 {
-	static int latch=0;
-	int p=~input_port_read_indexed(machine, 3);
-	if (p&0x43 && !latch) {
-		cpunum_set_input_line(machine, 0,DECO16_IRQ_LINE,ASSERT_LINE);
-		latch=1;
-	} else {
-		if (!(p&0x43))
+	static int latch = 0;
+	int p = ~input_port_read(machine, "IN3");
+	if ((p & 0x43) && !latch)
+	{
+		cpunum_set_input_line(machine, 0, DECO16_IRQ_LINE, ASSERT_LINE);
+		latch = 1;
+	}
+	else
+	{
+		if (!(p & 0x43))
 			latch=0;
 	}
 }
@@ -899,10 +902,10 @@ ROM_END
  *
  *************************************/
 
-static void sound_cpu_decrypt(void)
+static void sound_cpu_decrypt(running_machine *machine)
 {
 	UINT8 *decrypted = auto_malloc(0x4000);
-	UINT8 *rom = memory_region(REGION_CPU2);
+	UINT8 *rom = memory_region(machine, REGION_CPU2);
 	int i;
 
 	/* Bit swapping on sound cpu - Opcodes only */
@@ -914,14 +917,14 @@ static void sound_cpu_decrypt(void)
 
 static DRIVER_INIT( prosport )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	int i;
 
 	/* Main cpu has the nibbles swapped */
 	for (i=0; i<0x10000; i++)
 		RAM[i]=((RAM[i] & 0x0f) << 4) | ((RAM[i] & 0xf0) >> 4);
 
-	sound_cpu_decrypt();
+	sound_cpu_decrypt(machine);
 }
 
 static DRIVER_INIT( yellowcb )
@@ -935,7 +938,7 @@ static DRIVER_INIT( liberate )
 {
 	int A;
 	UINT8 *decrypted = auto_malloc(0x10000);
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	memory_set_decrypted_region(0, 0x0000, 0xffff, decrypted);
 
@@ -946,7 +949,7 @@ static DRIVER_INIT( liberate )
 		decrypted[A] = (decrypted[A] & 0x7d) | ((decrypted[A] & 0x02) << 6) | ((decrypted[A] & 0x80) >> 6);
 	}
 
-	sound_cpu_decrypt();
+	sound_cpu_decrypt(machine);
 }
 
 /*************************************

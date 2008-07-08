@@ -213,13 +213,13 @@ DIP locations verified for:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
 #include "sound/2610intf.h"
 #include "sound/2151intf.h"
 #include "sound/msm5205.h"
+#include "includes/cchip.h"
 
 WRITE16_HANDLER( asuka_spritectrl_w );
 
@@ -230,14 +230,6 @@ VIDEO_START( galmedes );
 VIDEO_START( cadash );
 VIDEO_UPDATE( asuka );
 VIDEO_UPDATE( bonzeadv );
-
-READ16_HANDLER( bonzeadv_cchip_r );
-READ16_HANDLER( bonzeadv_cchip_ctrl_r );
-READ16_HANDLER( bonzeadv_cchip_ram_r );
-WRITE16_HANDLER( bonzeadv_cchip_ctrl_w );
-WRITE16_HANDLER( bonzeadv_cchip_bank_w );
-WRITE16_HANDLER( bonzeadv_cchip_ram_w );
-
 
 /***********************************************************
                 INTERRUPTS
@@ -261,14 +253,14 @@ static INTERRUPT_GEN( cadash_interrupt )
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
-	memory_set_bankptr( 1, memory_region(REGION_CPU2) + ((data-1) & 0x03) * 0x4000 + 0x10000 );
+	memory_set_bankptr( 1, memory_region(machine, REGION_CPU2) + ((data-1) & 0x03) * 0x4000 + 0x10000 );
 }
 
 
 
 static int adpcm_pos;
 
-static void asuka_msm5205_vck(int chip)
+static void asuka_msm5205_vck(running_machine *machine, int chip)
 {
 	static int adpcm_data = -1;
 
@@ -279,7 +271,7 @@ static void asuka_msm5205_vck(int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(REGION_SOUND1)[adpcm_pos];
+		adpcm_data = memory_region(machine, REGION_SOUND1)[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0xffff;
 		MSM5205_data_w(0, adpcm_data >> 4);
 	}
@@ -306,8 +298,8 @@ static WRITE8_HANDLER( asuka_msm5205_stop_w )
 static MACHINE_START( asuka )
 {
 	/* configure the banks */
-    memory_configure_bank(1, 0, 1, memory_region(REGION_CPU2), 0);
-	memory_configure_bank(1, 1, 3, memory_region(REGION_CPU2) + 0x10000, 0x04000);
+    memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU2), 0);
+	memory_configure_bank(1, 1, 3, memory_region(machine, REGION_CPU2) + 0x10000, 0x04000);
 
 	state_save_register_global(adpcm_pos);
 }
@@ -754,9 +746,9 @@ GFXDECODE_END
                 SOUND
 **************************************************************/
 
-static void irq_handler(int irq)
+static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =

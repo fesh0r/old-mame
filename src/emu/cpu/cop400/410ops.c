@@ -35,7 +35,8 @@
 
 #define IN_G()			IN(COP400_PORT_G)
 #define IN_L()			IN(COP400_PORT_L)
-#define IN_SI()			IN(COP400_PORT_SIO)
+#define IN_SI()			BIT(IN(COP400_PORT_SIO), 0)
+#define IN_CKO()		BIT(IN(COP400_PORT_CKO), 0)
 #define OUT_G(A)		OUT(COP400_PORT_G, (A) & R.G_mask)
 #define OUT_L(A)		OUT(COP400_PORT_L, (A))
 #define OUT_D(A)		OUT(COP400_PORT_D, (A) & R.D_mask)
@@ -57,19 +58,13 @@ static TIMER_CALLBACK(cop410_serial_tick)
 
 	if (BIT(EN, 0))
 	{
-		/* SIO is a binary counter */
+		/*
 
-		// serial input
+            SIO is an asynchronous binary counter decrementing its value by one upon each low-going pulse ("1" to "0") occurring on the SI input.
+            Each pulse must remain at each logic level at least two instruction cycles. SK outputs the value of the C upon the execution of an XAS
+            and remains latched until the execution of another XAS instruction. The SO output is equal to the value of EN3.
 
-		int si = IN_SI();
-
-		if (R.last_si && !si)
-		{
-			SIO--;
-			SIO &= 0x0f;
-		}
-
-		R.last_si = si;
+        */
 
 		// serial output
 
@@ -78,10 +73,31 @@ static TIMER_CALLBACK(cop410_serial_tick)
 		// serial clock
 
 		OUT_SK(SKL);
+
+		// serial input
+
+		R.si <<= 1;
+		R.si = (R.si & 0x0e) | IN_SI();
+
+		if ((R.si & 0x0f) == 0x0c) // 1100
+		{
+			SIO--;
+			SIO &= 0x0f;
+		}
 	}
 	else
 	{
-		/* SIO is a shift register */
+		/*
+
+            SIO is a serial shift register, shifting continuously left each instruction cycle time. The data present at SI goes into the least
+            significant bit of SIO: SO can be enabled to output the most significant bit of SIO each cycle time. SK output becomes a logic-
+            controlled clock, providing a SYNC signal each instruction time. It will start outputting a SYNC pulse upon the execution of an XAS
+            instruction with C = "1," stopping upon the execution of a subsequent XAS with C = "0".
+
+            If EN0 is changed from "1" to "0" ("0" to "1") the SK output will change from "1" to SYNC (SYNC to "1") without the execution of
+            an XAS instruction.
+
+        */
 
 		// serial output
 
@@ -94,22 +110,20 @@ static TIMER_CALLBACK(cop410_serial_tick)
 			OUT_SO(0);
 		}
 
-		SIO <<= 1;
-
-		// serial input
-
-		SIO = (SIO & 0x0e) | BIT(IN_SI(), 0);
-
 		// serial clock
 
 		if (SKL)
 		{
-			OUT_SK(1);
+			OUT_SK(1); // SYNC
 		}
 		else
 		{
 			OUT_SK(0);
 		}
+
+		// serial input
+
+		SIO = ((SIO << 1) | IN_SI()) & 0x0f;
 	}
 
 	cpuintrf_pop_context();
@@ -127,7 +141,13 @@ INLINE void WRITE_Q(UINT8 data)
 
 INLINE void WRITE_G(UINT8 data)
 {
+	if (R.intf->microbus == COP400_MICROBUS_ENABLED)
+	{
+		data = (data & 0x0e) | R.microbus_int;
+	}
+
 	G = data;
+
 	OUT_G(G);
 }
 
@@ -403,7 +423,7 @@ INSTRUCTION(jp)
 	{
 		// JSRP
 		UINT8 a = opcode & 0x3f;
-		PUSH(PC + 1);
+		PUSH(PC);
 		PC = 0x80 | a;
 	}
 }
@@ -470,6 +490,24 @@ INSTRUCTION(retsk)
 	skip = 1;
 }
 
+/*
+
+    Processor:          COP410C/COP411C
+
+    Mnemonic:           HALT
+
+    Hex Code:           33 38
+    Binary:             0 0 1 1 0 0 1 1 0 0 1 1 1 0 0 0
+
+    Description:        Halt processor
+
+*/
+
+INSTRUCTION(halt)
+{
+	R.halt = 1;
+}
+
 /* Memory Reference Instructions */
 
 /*
@@ -488,7 +526,45 @@ INSTRUCTION(retsk)
 
 INSTRUCTION(camq)
 {
-	WRITE_Q((A << 4) | RAM_R(B));
+	/*
+
+        Excerpt from the COP410L data sheet:
+
+        False states may be generated on L0-L7 during the execution of the CAMQ instruction.
+        The L-ports should not be used as clocks for edge sensitive devices such as flip-flops,
+        counters, shift registers, etc. the following short program that illustrates this situation.
+
+        START:
+            CLRA        ;ENABLE THE Q
+            LEI 4       ;REGISTER TO L LINES
+            LBI TEST
+            STII 3
+            AISC 12
+        LOOP:
+            LBI TEST    ;LOAD Q WITH X'C3
+            CAMQ
+            JP LOOP
+
+        In this program the internal Q register is enabled onto the L lines and a steady bit
+        pattern of logic highs is output on L0, L1, L6, L7, and logic lows on L2-L5 via the
+        two-byte CAMQ instruction. Timing constraints on the device are such that the Q
+        register may be temporarily loaded with the second byte of the CAMQ opcode (3C) prior
+        to receiving the valid data pattern. If this occurs, the opcode will ripple onto the L
+        lines and cause negative-going glitches on L0, L1, L6, L7, and positive glitches on
+        L2-L5. Glitch durations are under 2 ms, although the exact value may vary due to data
+        patterns, processing parameters, and L line loading. These false states are peculiar
+        only to the CAMQ instruction and the L lines.
+
+    */
+
+	UINT8 data = (A << 4) | RAM_R(B);
+
+	WRITE_Q(data);
+
+#ifdef CAMQ_BUG
+	WRITE_Q(0x3c);
+	WRITE_Q(data);
+#endif
 }
 
 /*
@@ -530,7 +606,7 @@ INSTRUCTION(ld)
 
 INSTRUCTION(lqid)
 {
-	PUSH(PC + 1);
+	PUSH(PC);
 	PC = (PC & 0x300) | (A << 4) | RAM_R(B);
 	WRITE_Q(ROM(PC));
 	POP();
@@ -839,9 +915,9 @@ INSTRUCTION(lei)
 
 	EN = y;
 
-	if (!BIT(EN, 2))
+	if (BIT(EN, 2))
 	{
-		OUT_L(0);
+		OUT_L(Q);
 	}
 }
 

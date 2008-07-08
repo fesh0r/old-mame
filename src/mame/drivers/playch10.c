@@ -297,57 +297,10 @@ Notes & Todo:
 #include "sound/nes_apu.h"
 
 #include "rendlay.h"
+#include "includes/playch10.h"
 
 /* clock frequency */
 #define N2A03_DEFAULTCLOCK (21477272.724 / 12)
-
-/* from video */
-extern WRITE8_HANDLER( playch10_videoram_w );
-extern PALETTE_INIT( playch10 );
-extern VIDEO_START( playch10 );
-extern VIDEO_START( playch10_hboard );
-extern VIDEO_UPDATE( playch10 );
-
-/* from machine */
-extern MACHINE_RESET( pc10 );
-extern DRIVER_INIT( playch10 );	/* standard games */
-extern DRIVER_INIT( pc_gun );	/* gun games */
-extern DRIVER_INIT( pc_hrz );	/* horizontal games */
-extern DRIVER_INIT( pcaboard );	/* a-board games */
-extern DRIVER_INIT( pcbboard );	/* b-board games */
-extern DRIVER_INIT( pccboard );	/* c-board games */
-extern DRIVER_INIT( pcdboard );	/* d-board games */
-extern DRIVER_INIT( pcdboard_2 );	/* d-board games with extra ram */
-extern DRIVER_INIT( pceboard );	/* e-board games */
-extern DRIVER_INIT( pcfboard );	/* f-board games */
-extern DRIVER_INIT( pcfboard_2 );	/* f-board games with extra ram */
-extern DRIVER_INIT( pcgboard );	/* g-board games */
-extern DRIVER_INIT( pcgboard_type2 ); /* g-board games with 4 screen mirror */
-extern DRIVER_INIT( pchboard );	/* h-board games */
-extern DRIVER_INIT( pciboard );	/* i-board games */
-extern DRIVER_INIT( pckboard );	/* k-board games */
-extern READ8_HANDLER( pc10_port_0_r );
-extern READ8_HANDLER( pc10_instrom_r );
-extern READ8_HANDLER( pc10_prot_r );
-extern READ8_HANDLER( pc10_detectclr_r );
-extern READ8_HANDLER( pc10_in0_r );
-extern READ8_HANDLER( pc10_in1_r );
-extern WRITE8_HANDLER( pc10_SDCS_w );
-extern WRITE8_HANDLER( pc10_CNTRLMASK_w );
-extern WRITE8_HANDLER( pc10_DISPMASK_w );
-extern WRITE8_HANDLER( pc10_SOUNDMASK_w );
-extern WRITE8_HANDLER( pc10_NMIENABLE_w );
-extern WRITE8_HANDLER( pc10_DOGDI_w );
-extern WRITE8_HANDLER( pc10_GAMERES_w );
-extern WRITE8_HANDLER( pc10_GAMESTOP_w );
-extern WRITE8_HANDLER( pc10_PPURES_w );
-extern WRITE8_HANDLER( pc10_prot_w );
-extern WRITE8_HANDLER( pc10_CARTSEL_w );
-extern WRITE8_HANDLER( pc10_in0_w );
-
-extern int pc10_sdcs;
-extern int pc10_nmi_enable;
-extern int pc10_dog_di;
 
 /******************************************************************************/
 
@@ -384,7 +337,7 @@ static WRITE8_HANDLER( sprite_dma_w )
 
 static NVRAM_HANDLER( playch10 )
 {
-	UINT8 *mem = memory_region( REGION_CPU2 ) + 0x6000;
+	UINT8 *mem = memory_region( machine, REGION_CPU2 ) + 0x6000;
 
 	if ( read_or_write )
 		mame_fwrite( file, mem, 0x1000 );
@@ -437,8 +390,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( bios_io_map, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READWRITE(pc10_port_0_r, pc10_SDCS_w)
-	AM_RANGE(0x01, 0x01) AM_READWRITE(input_port_1_r, pc10_CNTRLMASK_w)
-	AM_RANGE(0x02, 0x02) AM_READWRITE(input_port_2_r, pc10_DISPMASK_w)
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("SW1") AM_WRITE(pc10_CNTRLMASK_w)
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("SW2") AM_WRITE(pc10_DISPMASK_w)
 	AM_RANGE(0x03, 0x03) AM_READWRITE(pc10_detectclr_r, pc10_SOUNDMASK_w)
 	AM_RANGE(0x04, 0x04) AM_WRITE(pc10_GAMERES_w)
 	AM_RANGE(0x05, 0x05) AM_WRITE(pc10_GAMESTOP_w)
@@ -665,7 +618,7 @@ static INPUT_PORTS_START( playch10 )
 	PORT_DIPSETTING(    0x00, "1 unit every 4 seconds" )
 	PORT_DIPSETTING(    0x80, DEF_STR( Free_Play ) )
 
-	PORT_START_TAG("IN0")
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("P1 Button B")
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("P1 Button A")
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 ) PORT_NAME("Game Select") PORT_CODE(KEYCODE_1)
@@ -675,7 +628,7 @@ static INPUT_PORTS_START( playch10 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT  )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 
-	PORT_START_TAG("IN1")
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("P2 Button A") PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("P2 Button B") PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )	// wired to 1p select button
@@ -690,10 +643,10 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( playc10g )
 	PORT_INCLUDE(playch10)
 
-	PORT_START	// IN2 - FAKE - Gun X pos
+	PORT_START_TAG("GUNX")	/* IN2 - FAKE - Gun X pos */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(30)
 
-	PORT_START	// IN3 - FAKE - Gun Y pos
+	PORT_START_TAG("GUNY")	/* IN3 - FAKE - Gun Y pos */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(30)
 INPUT_PORTS_END
 

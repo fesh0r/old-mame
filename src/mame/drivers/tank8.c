@@ -5,16 +5,15 @@ Atari Tank 8 driver
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "tank8.h"
 #include "sound/discrete.h"
 
 static int collision_index;
 
 
-void tank8_set_collision(int index)
+void tank8_set_collision(running_machine *machine, int index)
 {
-	cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 
 	collision_index = index;
 }
@@ -90,7 +89,7 @@ static WRITE8_HANDLER( tank8_attract_w )
 
 static WRITE8_HANDLER( tank8_motor_w )
 {
-	discrete_sound_w(machine, TANK8_MOTOR1_EN+offset, data);
+	discrete_sound_w(machine, NODE_RELATIVE(TANK8_MOTOR1_EN, offset), data);
 }
 
 static ADDRESS_MAP_START( tank8_cpu_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -467,10 +466,10 @@ ROM_END
 
 static DRIVER_INIT( decode )
 {
-	const UINT8* DECODE = memory_region(REGION_USER1);
+	const UINT8* DECODE = memory_region(machine, REGION_USER1);
 
-	UINT8* p1 = memory_region(REGION_CPU1) + 0x00000;
-	UINT8* p2 = memory_region(REGION_CPU1) + 0x10000;
+	UINT8* p1 = memory_region(machine, REGION_CPU1) + 0x00000;
+	UINT8* p2 = memory_region(machine, REGION_CPU1) + 0x10000;
 
 	int i;
 

@@ -429,7 +429,7 @@ static MACHINE_RESET( mpu4 )
 
 /* init rom bank, some games don't set this */
 	{
-		UINT8 *rom = memory_region(REGION_CPU1);
+		UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 		memory_configure_bank(1, 0, 8, &rom[0x01000], 0x10000);
 
@@ -440,7 +440,7 @@ static MACHINE_RESET( mpu4 )
 
 
 /* 6809 IRQ handler */
-static void cpu0_irq(int state)
+static void cpu0_irq(running_machine *machine, int state)
 {
 	/* The PIA and PTM IRQ lines are all connected to a common PCB track, leading directly to the 6809 IRQ line. */
 	int combined_state = pia_get_irq_a(0) | pia_get_irq_b(0) |
@@ -453,12 +453,12 @@ static void cpu0_irq(int state)
 
 	if (!serial_card_connected)
 	{
-		cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 		LOG(("6809 int%d \n", combined_state));
 	}
 	else
 	{
-		cpunum_set_input_line(Machine, 0, M6809_FIRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, M6809_FIRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 		LOG(("6809 fint%d \n", combined_state));
 	}
 }
@@ -949,15 +949,14 @@ static const pia6821_interface pia_ic7_intf =
 /* IC8, Inputs, TRIACS, alpha clock */
 static READ8_HANDLER( pia_ic8_porta_r )
 {
-	static const UINT8 ports[8] = { 0, 1, 2, 3, 0, 1, 4, 5 };
-	int input_read = ports[input_strobe];
+	static const char *portnames[] = { "ORANGE1", "ORANGE2", "BLACK1", "BLACK2", "ORANGE1", "ORANGE2", "DIL1", "DIL2" };
 
-	LOG_IC8(("%04x IC8 PIA Read of Port A (MUX input data)\n",activecpu_get_previouspc()));
+	LOG_IC8(("%04x IC8 PIA Read of Port A (MUX input data)\n", activecpu_get_previouspc()));
 /* The orange inputs are polled twice as often as the black ones, for reasons of efficiency.
    This is achieved via connecting every input line to an AND gate, thus allowing two strobes
    to represent each orange input bank (strobes are active low). */
 	pia_set_input_cb1(2, (input_port_read(machine, "AUX2") & 0x80));
-	return input_port_read_indexed(machine, input_read);
+	return input_port_read(machine, portnames[input_strobe]);
 }
 
 

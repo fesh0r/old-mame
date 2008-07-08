@@ -10,6 +10,17 @@ OKI M6295
 OSC:  4.0000MHz, 20.0000MHz, 26.6660MHz
 Imagetek Inc 14220 071
 
+
+Magical Error wo Sagase
+(c)1993? Technosoft / Jaleco
+TEC5000(Japan)
+
+TMP68000N-10 x2
+YM2413
+OKI M6295
+OSC:  3.579545MHz, 4.0000MHz, 20.0000MHz, 26.6660MHz
+Imagetek Inc 14220 071
+
 --
 driver by Eisuke Watanabe
 based on driver from drivers/metro.c by Luca Elia
@@ -93,11 +104,11 @@ static WRITE16_HANDLER( hypr_sharedram2_w )
 		COMBINE_DATA(&hypr_sub_sharedram2_2[offset-0x4000/2]);
 }
 
-static void update_irq_state(void)
+static void update_irq_state(running_machine *machine)
 {
 	int irq = requested_int & ~*hypr_irq_enable;
 
-	cpunum_set_input_line(Machine, 0, 3, (irq & int_num) ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 3, (irq & int_num) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static READ16_HANDLER( hyprduel_irq_cause_r )
@@ -114,7 +125,7 @@ static WRITE16_HANDLER( hyprduel_irq_cause_w )
 		else
 			requested_int &= ~(data & *hypr_irq_enable);
 
-		update_irq_state();
+		update_irq_state(machine);
 	}
 }
 
@@ -204,7 +215,7 @@ static INTERRUPT_GEN( hyprduel_interrupt )
 		rastersplit = line + 1;
 	}
 
-	update_irq_state();
+	update_irq_state(machine);
 }
 
 static MACHINE_RESET( hyprduel )
@@ -233,8 +244,8 @@ static READ16_HANDLER( hyprduel_bankedrom_r )
 {
 	const int region = REGION_GFX1;
 
-	UINT8 *ROM = memory_region( region );
-	size_t  len  = memory_region_length( region );
+	UINT8 *ROM = memory_region( machine, region );
+	size_t  len  = memory_region_length( machine, region );
 
 	offset = offset * 2 + 0x10000 * (*hyprduel_rombank);
 
@@ -291,7 +302,7 @@ static UINT16 *hyprduel_blitter_regs;
 static TIMER_CALLBACK( hyprduel_blit_done )
 {
 	requested_int |= 1 << blitter_bit;
-	update_irq_state();
+	update_irq_state(machine);
 }
 
 INLINE int blt_read(const UINT8 *ROM, const int offs)
@@ -319,8 +330,8 @@ static WRITE16_HANDLER( hyprduel_blitter_w )
 	{
 		const int region = REGION_GFX1;
 
-		UINT8 *src	=	memory_region(region);
-		size_t  src_len	=	memory_region_length(region);
+		UINT8 *src	=	memory_region(machine, region);
+		size_t  src_len	=	memory_region_length(machine, region);
 
 		UINT32 tmap		=	(hyprduel_blitter_regs[ 0x00 / 2 ] << 16 ) +
 							 hyprduel_blitter_regs[ 0x02 / 2 ];
@@ -691,9 +702,9 @@ GFXDECODE_END
                             Sound Communication
 ***************************************************************************/
 
-static void sound_irq(int state)
+static void sound_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, 1, HOLD_LINE);
+	cpunum_set_input_line(machine, 1, 1, HOLD_LINE);
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -791,8 +802,8 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( hyprduel )
 {
-	int i;
-	UINT8 *ROM = memory_region(REGION_GFX1);
+	int i, len = memory_region_length(machine, REGION_GFX1);
+	UINT8 *ROM = memory_region(machine, REGION_GFX1);
 
 	/*
       Tiles can be either 4-bit or 8-bit, and both depths can be used at the same
@@ -800,7 +811,7 @@ static DRIVER_INIT( hyprduel )
       tilemap.c handle that, we invert gfx data so the transparent pen becomes 0
       for both tile depths.
     */
-	for (i = 0;i < memory_region_length(REGION_GFX1);i++)
+	for (i = 0;i < len;i++)
 		ROM[i] ^= 0xff;
 
 //  ROM[(0x174b9*0x20)+0x1f] |= 0x0e;       /* I */
@@ -823,50 +834,50 @@ static DRIVER_INIT( hyprduel )
 
 ROM_START( hyprduel )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "hd_prg2.rom", 0x000000, 0x40000, CRC(c7402722) SHA1(e385676cdcee65a3ddf07791d82a1fe83ba1b3e2) )
-	ROM_LOAD16_BYTE( "hd_prg1.rom", 0x000001, 0x40000, CRC(d8297c2b) SHA1(2e23c5b1784d0a465c0c0dc3ca28505689a8b16c) )
+	ROM_LOAD16_BYTE( "24.u24", 0x000000, 0x40000, CRC(c7402722) SHA1(e385676cdcee65a3ddf07791d82a1fe83ba1b3e2) ) /* Also silk screened as position 10 */
+	ROM_LOAD16_BYTE( "23.u23", 0x000001, 0x40000, CRC(d8297c2b) SHA1(2e23c5b1784d0a465c0c0dc3ca28505689a8b16c) ) /* Also silk screened as position  9 */
 
 	ROM_REGION( 0x400000, REGION_GFX1, 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
-	ROMX_LOAD( "hyper-1.4", 0x000000, 0x100000, CRC(4b3b2d3c) SHA1(5e9e8ec853f71aeff3910b93dadbaeae2b61717b) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "hyper-2.6", 0x000002, 0x100000, CRC(dc230116) SHA1(a3c447657d8499764f52c81382961f425c56037b) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "hyper-3.3", 0x000004, 0x100000, CRC(2d770dd0) SHA1(27f9e7f67e96210d3710ab4f940c5d7ae13f8bbf) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "hyper-4.5", 0x000006, 0x100000, CRC(f88c6d33) SHA1(277b56df40a17d7dd9f1071b0d498635a5b783cd) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-1.u74", 0x000000, 0x100000, CRC(4b3b2d3c) SHA1(5e9e8ec853f71aeff3910b93dadbaeae2b61717b) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-2.u75", 0x000002, 0x100000, CRC(dc230116) SHA1(a3c447657d8499764f52c81382961f425c56037b) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-3.u76", 0x000004, 0x100000, CRC(2d770dd0) SHA1(27f9e7f67e96210d3710ab4f940c5d7ae13f8bbf) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-4.u77", 0x000006, 0x100000, CRC(f88c6d33) SHA1(277b56df40a17d7dd9f1071b0d498635a5b783cd) , ROM_GROUPWORD | ROM_SKIP(6) )
 
 	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
-	ROM_LOAD( "97.11", 0x00000, 0x40000, CRC(bf3f8574) SHA1(9e743f05e53256c886d43e1f0c43d7417134b9b3) )
+	ROM_LOAD( "97.u97", 0x00000, 0x40000, CRC(bf3f8574) SHA1(9e743f05e53256c886d43e1f0c43d7417134b9b3) ) /* Also silk screened as position 11 */
 ROM_END
 
 ROM_START( hyprdelj )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "u24a.10", 0x000000, 0x40000, CRC(2458f91d) SHA1(c75c7bccc84738e29b35667793491a1213aea1da) )
-	ROM_LOAD16_BYTE( "u23a.9",  0x000001, 0x40000, CRC(98aedfca) SHA1(42028e57ac79473cde683be2100b953ff3b2b345) )
+	ROM_LOAD16_BYTE( "24a.u24", 0x000000, 0x40000, CRC(2458f91d) SHA1(c75c7bccc84738e29b35667793491a1213aea1da) ) /* Also silk screened as position 10 */
+	ROM_LOAD16_BYTE( "23a.u23", 0x000001, 0x40000, CRC(98aedfca) SHA1(42028e57ac79473cde683be2100b953ff3b2b345) ) /* Also silk screened as position  9 */
 
 	ROM_REGION( 0x400000, REGION_GFX1, 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
-	ROMX_LOAD( "hyper-1.4", 0x000000, 0x100000, CRC(4b3b2d3c) SHA1(5e9e8ec853f71aeff3910b93dadbaeae2b61717b) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "hyper-2.6", 0x000002, 0x100000, CRC(dc230116) SHA1(a3c447657d8499764f52c81382961f425c56037b) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "hyper-3.3", 0x000004, 0x100000, CRC(2d770dd0) SHA1(27f9e7f67e96210d3710ab4f940c5d7ae13f8bbf) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "hyper-4.5", 0x000006, 0x100000, CRC(f88c6d33) SHA1(277b56df40a17d7dd9f1071b0d498635a5b783cd) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-1.u74", 0x000000, 0x100000, CRC(4b3b2d3c) SHA1(5e9e8ec853f71aeff3910b93dadbaeae2b61717b) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-2.u75", 0x000002, 0x100000, CRC(dc230116) SHA1(a3c447657d8499764f52c81382961f425c56037b) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-3.u76", 0x000004, 0x100000, CRC(2d770dd0) SHA1(27f9e7f67e96210d3710ab4f940c5d7ae13f8bbf) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "ts_hyper-4.u77", 0x000006, 0x100000, CRC(f88c6d33) SHA1(277b56df40a17d7dd9f1071b0d498635a5b783cd) , ROM_GROUPWORD | ROM_SKIP(6) )
 
 	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
-	ROM_LOAD( "97.11", 0x00000, 0x40000, CRC(bf3f8574) SHA1(9e743f05e53256c886d43e1f0c43d7417134b9b3) )
+	ROM_LOAD( "97.u97", 0x00000, 0x40000, CRC(bf3f8574) SHA1(9e743f05e53256c886d43e1f0c43d7417134b9b3) ) /* Also silk screened as position 11 */
 ROM_END
 
 ROM_START( magerror )
 	ROM_REGION( 0x80000, REGION_CPU1, 0 )
-	ROM_LOAD16_BYTE( "u24.10", 0x000000, 0x40000, CRC(5e78027f) SHA1(053374942bc545a92cc6f6ab6784c4626e4ec9e1) )
-	ROM_LOAD16_BYTE( "u23.9",  0x000001, 0x40000, CRC(7271ec70) SHA1(bd7666390b70821f90ba976a3afe3194fb119478) )
+	ROM_LOAD16_BYTE( "24.u24", 0x000000, 0x40000, CRC(5e78027f) SHA1(053374942bc545a92cc6f6ab6784c4626e4ec9e1) ) /* Also silk screened as position 10 */
+	ROM_LOAD16_BYTE( "23.u23", 0x000001, 0x40000, CRC(7271ec70) SHA1(bd7666390b70821f90ba976a3afe3194fb119478) ) /* Also silk screened as position  9 */
 
 	ROM_REGION( 0x400000, REGION_GFX1, 0 )	/* Gfx + Prg + Data (Addressable by CPU & Blitter) */
-	ROMX_LOAD( "mr01.u76", 0x000004, 0x100000, CRC(6cc3b928) SHA1(f19d0add314867bfb7dcefe8e7a2d50a84530df7) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "mr03.u77", 0x000006, 0x100000, CRC(6b1eb0ea) SHA1(6167a61562ef28147a7917c692f181f3fc2d5be6) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "mr02.u74", 0x000000, 0x100000, CRC(f7ba06fb) SHA1(e1407b0d03863f434b68183c01e8547612e5c5fd) , ROM_GROUPWORD | ROM_SKIP(6) )
-	ROMX_LOAD( "mr04.u75", 0x000002, 0x100000, CRC(8c114d15) SHA1(4eb1f82e7992deb126633287cb4fd2a6d215346c) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "mr93046-02.u74", 0x000000, 0x100000, CRC(f7ba06fb) SHA1(e1407b0d03863f434b68183c01e8547612e5c5fd) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "mr93046-04.u75", 0x000002, 0x100000, CRC(8c114d15) SHA1(4eb1f82e7992deb126633287cb4fd2a6d215346c) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "mr93046-01.u76", 0x000004, 0x100000, CRC(6cc3b928) SHA1(f19d0add314867bfb7dcefe8e7a2d50a84530df7) , ROM_GROUPWORD | ROM_SKIP(6) )
+	ROMX_LOAD( "mr93046-03.u77", 0x000006, 0x100000, CRC(6b1eb0ea) SHA1(6167a61562ef28147a7917c692f181f3fc2d5be6) , ROM_GROUPWORD | ROM_SKIP(6) )
 
 	ROM_REGION( 0x40000, REGION_SOUND1, 0 )	/* Samples */
-	ROM_LOAD( "u97.11", 0x00000, 0x40000, CRC(2e62bca8) SHA1(191fff11186dbbc1d9d9f3ba1b6e17c38a7d2d1d) )
+	ROM_LOAD( "97.u97", 0x00000, 0x40000, CRC(2e62bca8) SHA1(191fff11186dbbc1d9d9f3ba1b6e17c38a7d2d1d) ) /* Also silk screened as position 11 */
 ROM_END
 
 GAME( 1993, hyprduel, 0,        hyprduel, hyprduel, hyprduel, ROT0, "Technosoft", "Hyper Duel (Japan set 1)", 0 )
 GAME( 1993, hyprdelj, hyprduel, hyprduel, hyprduel, hyprduel, ROT0, "Technosoft", "Hyper Duel (Japan set 2)", 0 )
 
-GAME( 199?, magerror, 0,        magerror, hyprduel, hyprduel, ROT0, "Technosoft / Jaleco", "Search for the Magical Error", GAME_NOT_WORKING )
+GAME( 199?, magerror, 0,        magerror, hyprduel, hyprduel, ROT0, "Technosoft / Jaleco", "Magical Error wo Sagase", GAME_NOT_WORKING )

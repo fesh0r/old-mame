@@ -64,7 +64,11 @@
 #define OPTION_PLAYBACK				"playback"
 #define OPTION_RECORD				"record"
 #define OPTION_MNGWRITE				"mngwrite"
+#define OPTION_AVIWRITE				"aviwrite"
 #define OPTION_WAVWRITE				"wavwrite"
+#define OPTION_SNAPNAME				"snapname"
+#define OPTION_SNAPSIZE				"snapsize"
+#define OPTION_SNAPVIEW				"snapview"
 
 /* core performance options */
 #define OPTION_AUTOFRAMESKIP		"autoframeskip"
@@ -108,6 +112,7 @@
 #define OPTION_VOLUME				"volume"
 
 /* core input options */
+#define OPTION_COIN_LOCKOUT			"coin_lockout"
 #define OPTION_CTRLR				"ctrlr"
 #define OPTION_MOUSE				"mouse"
 #define OPTION_JOYSTICK				"joystick"

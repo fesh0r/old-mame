@@ -48,7 +48,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "sound/2203intf.h"
 #include "machine/8255ppi.h"
@@ -286,9 +285,9 @@ static GFXDECODE_START( pipeline )
 	GFXDECODE_ENTRY( REGION_GFX2, 0, layout_8x8x3, 0x100, 32 ) // 3bpp tiles
 GFXDECODE_END
 
-static void ctc0_interrupt(int state)
+static void ctc0_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, 0, state);
+	cpunum_set_input_line(machine, 1, 0, state);
 }
 
 static z80ctc_interface ctc_intf =
@@ -348,8 +347,8 @@ static const struct YM2203interface ym2203_interface =
 static PALETTE_INIT(pipeline)
 {
 	int r,g,b,i,c;
-	UINT8 *prom1 = &memory_region(REGION_PROMS)[0x000];
-	UINT8 *prom2 = &memory_region(REGION_PROMS)[0x100];
+	UINT8 *prom1 = &memory_region(machine, REGION_PROMS)[0x000];
+	UINT8 *prom2 = &memory_region(machine, REGION_PROMS)[0x100];
 
 	for(i=0;i<0x100;i++)
 	{

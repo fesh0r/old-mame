@@ -13,7 +13,8 @@ priority should be given to
 
 
 #include "driver.h"
-#include "deprecat.h"
+#include "includes/ms32.h"
+
 
 //UINT32 *ms32_fce00000;
 UINT32 *ms32_roz_ctrl;
@@ -98,7 +99,7 @@ VIDEO_START( ms32 )
 /********** PALETTE WRITES **********/
 
 
-static void update_color(int color)
+static void update_color(running_machine *machine, int color)
 {
 	int r,g,b;
 
@@ -119,7 +120,7 @@ static void update_color(int color)
 		b = ((ms32_palram[color*2+1] & 0x00ff) >>0 );
 	}
 
-	palette_set_color(Machine,color,MAKE_RGB(r,g,b));
+	palette_set_color(machine,color,MAKE_RGB(r,g,b));
 }
 
 WRITE32_HANDLER( ms32_brightness_w )
@@ -139,7 +140,7 @@ WRITE32_HANDLER( ms32_brightness_w )
 			brt_b = 0x100 - ((brt[1] & 0x00ff) >> 0);
 
 			for (i = 0;i < 0x3000;i++)	// colors 0x3000-0x3fff are not used
-				update_color(i);
+				update_color(machine, i);
 		}
 	}
 
@@ -150,7 +151,7 @@ WRITE32_HANDLER( ms32_palram_w )
 {
 	COMBINE_DATA(&ms32_palram[offset]);
 
-	update_color(offset/2);
+	update_color(machine, offset/2);
 }
 
 
@@ -285,17 +286,17 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 	gfx_element mygfx = *gfx;
 
 	UINT32		*source	= sprram_top;
-	const UINT32	*finish	= sprram_top + (sprram_size - 0x10) / 4;
+	const UINT32	*finish	= sprram_top + (sprram_size - 0x20) / 4;
 
 
 	if (ms32_reverse_sprite_order == 1)
 	{
-		source	= sprram_top + (sprram_size - 0x10) / 4;
+		source	= sprram_top + (sprram_size - 0x20) / 4;
 		finish	= sprram_top;
 	}
 
 
-	for (;ms32_reverse_sprite_order ? (source>=finish) : (source<finish); ms32_reverse_sprite_order ? (source-=4) : (source+=4))
+	for (;ms32_reverse_sprite_order ? (source>=finish) : (source<finish); ms32_reverse_sprite_order ? (source-=8) : (source+=8))
 	{
 		attr	=	source[ 0 ];
 

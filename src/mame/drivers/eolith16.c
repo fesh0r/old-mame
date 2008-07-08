@@ -19,7 +19,7 @@ static UINT16 *vram;
 static int vbuffer = 0;
 
 // It's configured for 512 bytes
-static const struct EEPROM_interface eeprom_interface_93C66 =
+static const eeprom_interface eeprom_interface_93C66 =
 {
 	9,				// address bits 9
 	8,				// data bits    8
@@ -35,9 +35,9 @@ static WRITE16_HANDLER( eeprom_w )
 	vbuffer = (data & 0x80) >> 7;
 	coin_counter_w(0, data & 1);
 
-	EEPROM_write_bit(data & 0x40);
-	EEPROM_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
-	EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_write_bit(data & 0x40);
+	eeprom_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
 
 	//data & 0x100 and data & 0x004 always set
 }
@@ -45,7 +45,7 @@ static WRITE16_HANDLER( eeprom_w )
 static READ16_HANDLER( eolith16_custom_r )
 {
 	eolith_speedup_read();
-	return (input_port_read_indexed(machine, 0) & ~0x10) | (EEPROM_read_bit() << 4);
+	return (input_port_read(machine, "IN0") & ~0x10) | (eeprom_read_bit() << 4);
 }
 
 
@@ -75,12 +75,12 @@ static ADDRESS_MAP_START( eolith16_map, ADDRESS_SPACE_PROGRAM, 16 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( eolith16 )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_SPECIAL ) // eeprom bit
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM(eolith_speedup_getvblank, 0)
 	PORT_BIT( 0xff6f, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
@@ -90,7 +90,7 @@ static INPUT_PORTS_START( eolith16 )
 	PORT_SERVICE_NO_TOGGLE( 0x0040, IP_ACTIVE_LOW )
 	PORT_BIT( 0xff80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP    ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN  ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT  ) PORT_PLAYER(1)
@@ -129,11 +129,11 @@ static VIDEO_UPDATE( eolith16 )
 static NVRAM_HANDLER( eolith16_eeprom )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C66);
-		if (file)	EEPROM_load(file);
+		eeprom_init(&eeprom_interface_93C66);
+		if (file)	eeprom_load(file);
 	}
 }
 

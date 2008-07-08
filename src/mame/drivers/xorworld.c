@@ -51,15 +51,15 @@ static NVRAM_HANDLER( xorworld )
 {
 	if (read_or_write)
 	{
-		EEPROM_save(file);
+		eeprom_save(file);
 	}
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);
+		eeprom_init(&eeprom_interface_93C46);
 
 		if (file)
 		{
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 	}
 }
@@ -77,25 +77,25 @@ static NVRAM_HANDLER( xorworld )
 /* the EEPROM is read thru bit 4 */
 static READ16_HANDLER( xorworld_input_r )
 {
-	return input_port_read_indexed(machine, 0) | ((EEPROM_read_bit() & 0x01) << 4);
+	return input_port_read_indexed(machine, 0) | ((eeprom_read_bit() & 0x01) << 4);
 }
 
 static WRITE16_HANDLER( eeprom_chip_select_w )
 {
 	/* bit 0 is CS (active low) */
-	EEPROM_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE16_HANDLER( eeprom_serial_clock_w )
 {
 	/* bit 0 is SK (active high) */
-	EEPROM_set_clock_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_set_clock_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE16_HANDLER( eeprom_data_w )
 {
 	/* bit 0 is EEPROM data (DIN) */
-	EEPROM_write_bit(data & 0x01);
+	eeprom_write_bit(data & 0x01);
 }
 
 
@@ -261,7 +261,7 @@ static DRIVER_INIT( xorworld )
 	/*  patch some strange protection (without this, strange characters appear
         after level 5 and some pieces don't rotate properly some times) */
 
-	UINT16 *rom = (UINT16 *)(memory_region(REGION_CPU1) + 0x1390);
+	UINT16 *rom = (UINT16 *)(memory_region(machine, REGION_CPU1) + 0x1390);
 
 	PATCH(0x4239); PATCH(0x00ff); PATCH(0xe196);	/* clr.b $ffe196 */
 	PATCH(0x4239); PATCH(0x00ff); PATCH(0xe197);	/* clr.b $ffe197 */

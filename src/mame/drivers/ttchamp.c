@@ -42,7 +42,6 @@ The PCB is Spanish and manufacured by Gamart.
 */
 
 #include "driver.h"
-#include "deprecat.h"
 
 static UINT16 *peno_vram;
 
@@ -93,7 +92,7 @@ static WRITE16_HANDLER( paloff_w )
 static WRITE16_HANDLER( pcup_prgbank_w )
 {
     int bank;
-    UINT8 *ROM1 = memory_region(REGION_USER1);
+    UINT8 *ROM1 = memory_region(machine, REGION_USER1);
 
     if (ACCESSING_BITS_0_7)
     {
@@ -110,13 +109,13 @@ static WRITE16_HANDLER( paldat_w )
 
 static READ16_HANDLER( peno_rand )
 {
-    return 0xffff;// mame_rand(Machine);
+    return 0xffff;// mame_rand(machine);
 }
 
 #ifdef UNUSED_FUNCTION
 static READ16_HANDLER( peno_rand2 )
 {
-    return mame_rand(Machine);
+    return mame_rand(machine);
 }
 #endif
 
@@ -322,7 +321,7 @@ ROM_END
 
 static DRIVER_INIT (ttchamp)
 {
-	UINT8 *ROM1 = memory_region(REGION_USER1);
+	UINT8 *ROM1 = memory_region(machine, REGION_USER1);
 	memory_set_bankptr(1,&ROM1[0x120000]);
 	memory_set_bankptr(2,&ROM1[0x180000]);
 }

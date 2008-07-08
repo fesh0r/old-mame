@@ -7,8 +7,8 @@ static UINT8 K056800_host_reg[8];
 static UINT8 K056800_sound_reg[8];
 
 static emu_timer *K056800_sound_cpu_timer;
-static int K056800_sound_cpu_irq1_enable;
-static void (*K056800_sound_irq_callback)(int);
+static UINT8 K056800_sound_cpu_irq1_enable;
+static void (*K056800_sound_irq_callback)(running_machine *, int);
 
 static UINT8 K056800_host_reg_r(int reg)
 {
@@ -20,13 +20,13 @@ static UINT8 K056800_host_reg_r(int reg)
 	return value;
 }
 
-static void K056800_host_reg_w(int reg, UINT8 data)
+static void K056800_host_reg_w(running_machine *machine, int reg, UINT8 data)
 {
 	K056800_sound_reg[reg] = data;
 
 	if (reg == 7)
 	{
-		K056800_sound_irq_callback(1);
+		K056800_sound_irq_callback(machine, 1);
 	}
 }
 
@@ -49,11 +49,11 @@ static TIMER_CALLBACK( K056800_sound_cpu_timer_tick )
 {
 	if (K056800_sound_cpu_irq1_enable)
 	{
-		K056800_sound_irq_callback(0);
+		K056800_sound_irq_callback(machine, 0);
 	}
 }
 
-void K056800_init(void (* irq_callback)(int))
+void K056800_init(void (* irq_callback)(running_machine *, int))
 {
 	attotime timer_period;
 	K056800_sound_irq_callback = irq_callback;
@@ -65,6 +65,10 @@ void K056800_init(void (* irq_callback)(int))
 
 	K056800_sound_cpu_timer = timer_alloc(K056800_sound_cpu_timer_tick, NULL);
 	timer_adjust_periodic(K056800_sound_cpu_timer, timer_period, 0, timer_period);
+
+	state_save_register_item_array("K056800", 0, K056800_host_reg);
+	state_save_register_item_array("K056800", 0, K056800_sound_reg);
+	state_save_register_item("K056800", 0, K056800_sound_cpu_irq1_enable);
 }
 
 READ32_HANDLER(K056800_host_r)
@@ -95,19 +99,19 @@ WRITE32_HANDLER(K056800_host_w)
 {
 	if (ACCESSING_BITS_24_31)
 	{
-		K056800_host_reg_w((offset*4)+0, (data >> 24) & 0xff);
+		K056800_host_reg_w(machine, (offset*4)+0, (data >> 24) & 0xff);
 	}
 	if (ACCESSING_BITS_16_23)
 	{
-		K056800_host_reg_w((offset*4)+1, (data >> 16) & 0xff);
+		K056800_host_reg_w(machine, (offset*4)+1, (data >> 16) & 0xff);
 	}
 	if (ACCESSING_BITS_8_15)
 	{
-		K056800_host_reg_w((offset*4)+2, (data >> 8) & 0xff);
+		K056800_host_reg_w(machine, (offset*4)+2, (data >> 8) & 0xff);
 	}
 	if (ACCESSING_BITS_0_7)
 	{
-		K056800_host_reg_w((offset*4)+3, (data >> 0) & 0xff);
+		K056800_host_reg_w(machine, (offset*4)+3, (data >> 0) & 0xff);
 	}
 }
 

@@ -31,14 +31,14 @@ static UINT8 *exerion_ram;
 static READ8_HANDLER( exerion_port01_r )
 {
 	/* the cocktail flip bit muxes between ports 0 and 1 */
-	return exerion_cocktail_flip ? input_port_read_indexed(machine, 1) : input_port_read_indexed(machine, 0);
+	return exerion_cocktail_flip ? input_port_read(machine, "IN1") : input_port_read(machine, "IN0");
 }
 
 
 static INPUT_CHANGED( coin_inserted )
 {
 	/* coin insertion causes an NMI */
-	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(field->port->machine, 0, INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 
@@ -64,7 +64,7 @@ static READ8_HANDLER( exerion_porta_r )
 static WRITE8_HANDLER( exerion_portb_w )
 {
 	/* pull the expected value from the ROM */
-	porta = memory_region(REGION_CPU1)[0x5f76];
+	porta = memory_region(machine, REGION_CPU1)[0x5f76];
 	portb = data;
 
 	logerror("Port B = %02X\n", data);
@@ -74,7 +74,7 @@ static WRITE8_HANDLER( exerion_portb_w )
 static READ8_HANDLER( exerion_protection_r )
 {
 	if (activecpu_get_pc() == 0x4143)
-		return memory_region(REGION_CPU1)[0x33c0 + (exerion_ram[0xd] << 2) + offset];
+		return memory_region(machine, REGION_CPU1)[0x33c0 + (exerion_ram[0xd] << 2) + offset];
 	else
 		return exerion_ram[0x8 + offset];
 }
@@ -95,8 +95,8 @@ static ADDRESS_MAP_START( main_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x8800, 0x887f) AM_RAM AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
 	AM_RANGE(0x8800, 0x8bff) AM_RAM
 	AM_RANGE(0xa000, 0xa000) AM_READ(exerion_port01_r)
-	AM_RANGE(0xa800, 0xa800) AM_READ(input_port_2_r)
-	AM_RANGE(0xb000, 0xb000) AM_READ(input_port_3_r)
+	AM_RANGE(0xa800, 0xa800) AM_READ_PORT("DSW0")
+	AM_RANGE(0xb000, 0xb000) AM_READ_PORT("DSW1")
 	AM_RANGE(0xc000, 0xc000) AM_WRITE(exerion_videoreg_w)
 	AM_RANGE(0xc800, 0xc800) AM_WRITE(soundlatch_w)
 	AM_RANGE(0xd000, 0xd000) AM_WRITE(AY8910_control_port_0_w)
@@ -422,8 +422,8 @@ static DRIVER_INIT( exerion )
 
 	/* make a temporary copy of the character data */
 	src = temp;
-	dst = memory_region(REGION_GFX1);
-	length = memory_region_length(REGION_GFX1);
+	dst = memory_region(machine, REGION_GFX1);
+	length = memory_region_length(machine, REGION_GFX1);
 	memcpy(src, dst, length);
 
 	/* decode the characters */
@@ -440,8 +440,8 @@ static DRIVER_INIT( exerion )
 
 	/* make a temporary copy of the sprite data */
 	src = temp;
-	dst = memory_region(REGION_GFX2);
-	length = memory_region_length(REGION_GFX2);
+	dst = memory_region(machine, REGION_GFX2);
+	length = memory_region_length(machine, REGION_GFX2);
 	memcpy(src, dst, length);
 
 	/* decode the sprites */
@@ -463,7 +463,7 @@ static DRIVER_INIT( exerion )
 
 static DRIVER_INIT( exerionb )
 {
-	UINT8 *ram = memory_region(REGION_CPU1);
+	UINT8 *ram = memory_region(machine, REGION_CPU1);
 	int addr;
 
 	/* the program ROMs have data lines D1 and D2 swapped. Decode them. */

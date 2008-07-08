@@ -132,7 +132,6 @@ Region byte at offset 0x031:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
@@ -227,14 +226,14 @@ static WRITE16_HANDLER( opwolf3_adc_req_w )
 
 static INT32 banknum = -1;
 
-static void reset_sound_region(void)
+static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 10, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr( 10, memory_region(machine, REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
 }
 
 static STATE_POSTLOAD( slapshot_postload )
 {
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static MACHINE_START( slapshot )
@@ -247,7 +246,7 @@ static MACHINE_START( slapshot )
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static WRITE16_HANDLER( slapshot_msb_sound_w )
@@ -533,9 +532,9 @@ GFXDECODE_END
 **************************************************************/
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -728,11 +727,11 @@ ROM_END
 static DRIVER_INIT( slapshot )
 {
 	UINT32 offset,i;
-	UINT8 *gfx = memory_region(REGION_GFX2);
-	int size=memory_region_length(REGION_GFX2);
+	UINT8 *gfx = memory_region(machine, REGION_GFX2);
+	int size=memory_region_length(machine, REGION_GFX2);
 	int data;
 
-	timekeeper_init( 0, TIMEKEEPER_MK48T08, NULL );
+	timekeeper_init( machine, 0, TIMEKEEPER_MK48T08, NULL );
 
 	offset = size/2;
 	for (i = size/2+size/4; i<size; i++)

@@ -113,7 +113,7 @@ MACHINE_RESET( m72_sound )
 	state_save_register_global(sample_addr);
 }
 
-void m72_ym2151_irq_handler(int irq)
+void m72_ym2151_irq_handler(running_machine *machine, int irq)
 {
 	if (irq)
 		timer_call_after_resynch(NULL, YM2151_ASSERT,setvector_callback);
@@ -198,11 +198,11 @@ WRITE8_HANDLER( poundfor_sample_addr_w )
 
 READ8_HANDLER( m72_sample_r )
 {
-	return memory_region(REGION_SOUND1)[sample_addr];
+	return memory_region(machine, REGION_SOUND1)[sample_addr];
 }
 
 WRITE8_HANDLER( m72_sample_w )
 {
 	DAC_signed_data_w(0,data);
-	sample_addr = (sample_addr + 1) & (memory_region_length(REGION_SOUND1) - 1);
+	sample_addr = (sample_addr + 1) & (memory_region_length(machine, REGION_SOUND1) - 1);
 }

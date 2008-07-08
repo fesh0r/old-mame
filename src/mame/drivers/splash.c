@@ -143,7 +143,7 @@ static WRITE8_HANDLER( splash_adpcm_data_w ){
 	adpcm_data = data;
 }
 
-static void splash_msm5205_int(int data)
+static void splash_msm5205_int(running_machine *machine, int data)
 {
 	MSM5205_data_w(0,adpcm_data >> 4);
 	adpcm_data = (adpcm_data << 4) & 0xf0;
@@ -467,7 +467,7 @@ static MACHINE_DRIVER_START( splash )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 MACHINE_DRIVER_END
 
-static void ym_irq(int state)
+static void ym_irq(running_machine *machine, int state)
 {
 	logerror("2203 IRQ: %d\n", state);
 }
@@ -903,7 +903,7 @@ static DRIVER_INIT( roldfrog )
 
 static DRIVER_INIT( rebus )
 {
-	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *ROM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	splash_bitmap_type = 1;
 	splash_sprite_attr2_shift = 0;
 
@@ -931,7 +931,7 @@ static DRIVER_INIT( rebus )
 
 static DRIVER_INIT( funystrp )
 {
-	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *ROM = (UINT16 *)memory_region(machine, REGION_CPU1);
 
 	splash_bitmap_type = 0;
 	splash_sprite_attr2_shift = 0;

@@ -211,18 +211,19 @@ static TIMER_CALLBACK( delayed_joystick_int )
 static READ16_HANDLER( joystick_r )
 {
 	int newval = 0xff;
+	static const char *portnames[] = { "IN0", "IN1" };
 
 	/* digital joystick type */
 	if (joystick_type == 1)
-		newval = (input_port_read_indexed(machine, 0) & (0x80 >> offset)) ? 0xf0 : 0x00;
+		newval = (input_port_read(machine, "IN0") & (0x80 >> offset)) ? 0xf0 : 0x00;
 
 	/* Hall-effect analog joystick */
 	else if (joystick_type == 2)
-		newval = input_port_read_indexed(machine, offset & 1);
+		newval = input_port_read(machine, portnames[offset & 1]);
 
 	/* Road Blasters gas pedal */
 	else if (joystick_type == 3)
-		newval = input_port_read_indexed(machine, 1);
+		newval = input_port_read(machine, "IN1");
 
 	/* the A4 bit enables/disables joystick IRQs */
 	joystick_int_enable = ((offset >> 3) & 1) ^ 1;
@@ -268,13 +269,13 @@ static READ16_HANDLER( trakball_r )
 
 			if (player == 0)
 			{
-				posx = (INT8)input_port_read_indexed(machine, 0);
-				posy = (INT8)input_port_read_indexed(machine, 1);
+				posx = (INT8)input_port_read(machine, "IN0");
+				posy = (INT8)input_port_read(machine, "IN1");
 			}
 			else
 			{
-				posx = (INT8)input_port_read_indexed(machine, 2);
-				posy = (INT8)input_port_read_indexed(machine, 3);
+				posx = (INT8)input_port_read(machine, "IN2");
+				posy = (INT8)input_port_read(machine, "IN3");
 			}
 
 			cur[player][0] = posx + posy;
@@ -286,7 +287,7 @@ static READ16_HANDLER( trakball_r )
 
 	/* Road Blasters steering wheel */
 	else if (trackball_type == 2)
-		result = input_port_read_indexed(machine, 0);
+		result = input_port_read(machine, "IN0");
 
 	return result;
 }
@@ -301,7 +302,7 @@ static READ16_HANDLER( trakball_r )
 
 static READ16_HANDLER( port4_r )
 {
-	int temp = input_port_read_indexed(machine, 4);
+	int temp = input_port_read(machine, "F60000");
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x0080;
 	return temp;
 }
@@ -316,11 +317,11 @@ static READ16_HANDLER( port4_r )
 
 static READ8_HANDLER( switch_6502_r )
 {
-	int temp = input_port_read_indexed(machine, 5);
+	int temp = input_port_read(machine, "1820");
 
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x08;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x10;
-	if (!(input_port_read_indexed(machine, 4) & 0x0040)) temp ^= 0x80;
+	if (!(input_port_read(machine, "F60000") & 0x0040)) temp ^= 0x80;
 
 	return temp;
 }
@@ -470,19 +471,19 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( marble )
-	PORT_START  /* F20000 */
+	PORT_START_TAG("IN0")  /* F20000 */
     PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START  /* F20002 */
+	PORT_START_TAG("IN1")  /* F20002 */
     PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_PLAYER(1)
 
-	PORT_START  /* F20004 */
+	PORT_START_TAG("IN2")  /* F20004 */
     PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START  /* F20006 */
+	PORT_START_TAG("IN3")  /* F20006 */
     PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30) PORT_PLAYER(2)
 
-	PORT_START	/* F60000 */
+	PORT_START_TAG("F60000")	/* F60000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -493,7 +494,7 @@ static INPUT_PORTS_START( marble )
 	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 1820 (sound) */
+	PORT_START_TAG("1820")	/* 1820 (sound) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -505,24 +506,23 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( peterpak )
-	PORT_START	/* F40000 */
+	PORT_START_TAG("IN0")	/* F40000 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN1")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN2")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN3")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* F60000 */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_START_TAG("F60000")	/* F60000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -533,7 +533,7 @@ static INPUT_PORTS_START( peterpak )
 	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 1820 (sound) */
+	PORT_START_TAG("1820")	/* 1820 (sound) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -545,24 +545,23 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( indytemp )
-	PORT_START	/* F40000 */
+	PORT_START_TAG("IN0")	/* F40000 */
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_JOYSTICK_UP )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_JOYSTICK_DOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN1")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN2")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN3")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* F60000 */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_START_TAG("F60000")	/* F60000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )	/* freeze? */
@@ -573,7 +572,7 @@ static INPUT_PORTS_START( indytemp )
 	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 1820 (sound) */
+	PORT_START_TAG("1820")	/* 1820 (sound) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -585,20 +584,19 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( roadrunn )
-	PORT_START	/* F40000 */
+	PORT_START_TAG("IN0")	/* F40000 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START	/* F40002 */
+	PORT_START_TAG("IN1")	/* F40002 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN2")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN3")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* F60000 */
-	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_START1 )
+	PORT_START_TAG("F60000")	/* F60000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON2 )
@@ -609,7 +607,7 @@ static INPUT_PORTS_START( roadrunn )
 	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 1820 (sound) */
+	PORT_START_TAG("1820")	/* 1820 (sound) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -621,19 +619,19 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( roadblst )
-	PORT_START	/* F20000 */
+	PORT_START_TAG("IN0")	/* F20000 */
 	PORT_BIT( 0xff, 0x00, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_REVERSE
 
-	PORT_START	/* F40000 */
+	PORT_START_TAG("IN1")	/* F40000 */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(64)
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN2")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* n/a */
+	PORT_START_TAG("IN3")	/* n/a */
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START	/* F60000 */
+	PORT_START_TAG("F60000")	/* F60000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON3 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -644,7 +642,7 @@ static INPUT_PORTS_START( roadblst )
 	PORT_BIT( 0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* 1820 (sound) */
+	PORT_START_TAG("1820")	/* 1820 (sound) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -2103,7 +2101,7 @@ static DRIVER_INIT( marble )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 0, 103);
+	atarigen_slapstic_init(machine, 0, 0x080000, 0, 103);
 
 	joystick_type = 0;	/* none */
 	trackball_type = 1;	/* rotated */
@@ -2115,7 +2113,7 @@ static DRIVER_INIT( peterpak )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 0, 107);
+	atarigen_slapstic_init(machine, 0, 0x080000, 0, 107);
 
 	joystick_type = 1;	/* digital */
 	trackball_type = 0;	/* none */
@@ -2127,7 +2125,7 @@ static DRIVER_INIT( indytemp )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 0, 105);
+	atarigen_slapstic_init(machine, 0, 0x080000, 0, 105);
 
 	joystick_type = 1;	/* digital */
 	trackball_type = 0;	/* none */
@@ -2139,7 +2137,7 @@ static DRIVER_INIT( roadrunn )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 0, 108);
+	atarigen_slapstic_init(machine, 0, 0x080000, 0, 108);
 
 	joystick_type = 2;	/* analog */
 	trackball_type = 0;	/* none */
@@ -2151,7 +2149,7 @@ static DRIVER_INIT( roadb109 )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 0, 109);
+	atarigen_slapstic_init(machine, 0, 0x080000, 0, 109);
 
 	joystick_type = 3;	/* pedal */
 	trackball_type = 2;	/* steering wheel */
@@ -2163,7 +2161,7 @@ static DRIVER_INIT( roadb110 )
 	via_config(0, &via_interface);
 
 	atarigen_eeprom_default = NULL;
-	atarigen_slapstic_init(0, 0x080000, 0, 110);
+	atarigen_slapstic_init(machine, 0, 0x080000, 0, 110);
 
 	joystick_type = 3;	/* pedal */
 	trackball_type = 2;	/* steering wheel */

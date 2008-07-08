@@ -24,7 +24,6 @@ Check game speed, it depends on a bit we toggle..
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/okim6295.h"
 
 /* Variables defined in video: */
@@ -57,7 +56,7 @@ static WRITE16_HANDLER( blmbycar_okibank_w )
 {
 	if (ACCESSING_BITS_0_7)
 	{
-		UINT8 *RAM = memory_region(REGION_SOUND1);
+		UINT8 *RAM = memory_region(machine, REGION_SOUND1);
 		memcpy(&RAM[0x30000],&RAM[0x40000 + 0x10000*(data & 0xf)],0x10000);
 	}
 }
@@ -77,7 +76,7 @@ static UINT8 pot_wheel = 0;
 static WRITE16_HANDLER( blmbycar_pot_wheel_reset_w )
 {
 	if (ACCESSING_BITS_0_7)
-		pot_wheel = ~input_port_read_indexed(machine, 2) & 0xff;
+		pot_wheel = ~input_port_read(machine, "IN1") & 0xff;
 }
 
 static WRITE16_HANDLER( blmbycar_pot_wheel_shift_w )
@@ -94,7 +93,7 @@ static WRITE16_HANDLER( blmbycar_pot_wheel_shift_w )
 static READ16_HANDLER( blmbycar_pot_wheel_r )
 {
 	return	((pot_wheel & 0x80) ? 0x04 : 0) |
-			(mame_rand(Machine) & 0x08);
+			(mame_rand(machine) & 0x08);
 }
 
 
@@ -102,7 +101,7 @@ static READ16_HANDLER( blmbycar_pot_wheel_r )
 
 static READ16_HANDLER( blmbycar_opt_wheel_r )
 {
-	return	(~input_port_read_indexed(machine, 2) & 0xff) << 8;
+	return	(~input_port_read(machine, "IN1") & 0xff) << 8;
 }
 
 
@@ -212,7 +211,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( blmbycar )
 
-	PORT_START	// IN0 - $700000.w
+	PORT_START_TAG("DSW")	// IN0 - $700000.w
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:8,7")
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy )    )
 	PORT_DIPSETTING(      0x0003, DEF_STR( Normal )  )
@@ -259,7 +258,7 @@ static INPUT_PORTS_START( blmbycar )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	// IN1 - $700002.w
+	PORT_START_TAG("IN0")	// IN1 - $700002.w
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
@@ -278,17 +277,17 @@ static INPUT_PORTS_START( blmbycar )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_START1  )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2  )
 
-	PORT_START	// IN2 - $700004.w
+	PORT_START_TAG("IN1")	// IN2 - $700004.w
 	PORT_BIT ( 0x00ff, 0x0080, IPT_AD_STICK_X ) PORT_SENSITIVITY(30) PORT_KEYDELTA(1)
 
-	PORT_START	// IN3 - $700006.w
+	PORT_START_TAG("IN2")	// IN3 - $700006.w
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
 INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( watrball )
-	PORT_START	/* dips */
+	PORT_START_TAG("DSW")	/* dips */
 	PORT_DIPNAME( 0x0003, 0x0003, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW1:8,7") /* Affects timer */
 	PORT_DIPSETTING(      0x0002, DEF_STR( Easy )    )    /* 180 Seconds */
 	PORT_DIPSETTING(      0x0003, DEF_STR( Normal )  )    /* 150 Seconds */
@@ -326,7 +325,7 @@ static INPUT_PORTS_START( watrball )
 	PORT_DIPUNUSED_DIPLOC( 0x4000, 0x4000, "SW2:2" )
 	PORT_DIPUNUSED_DIPLOC( 0x8000, 0x8000, "SW2:1" )
 
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN0")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
@@ -533,8 +532,8 @@ ROM_END
 
 static DRIVER_INIT( blmbycar )
 {
-	UINT16 *RAM  = (UINT16 *) memory_region(REGION_CPU1);
-	size_t    size = memory_region_length(REGION_CPU1) / 2;
+	UINT16 *RAM  = (UINT16 *) memory_region(machine, REGION_CPU1);
+	size_t    size = memory_region_length(machine, REGION_CPU1) / 2;
 	int i;
 
 	for (i = 0; i < size; i++)

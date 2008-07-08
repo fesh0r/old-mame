@@ -9,6 +9,7 @@ This file is also used by scregg.c
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/btime.h"
 
 
 UINT8 *btime_videoram;
@@ -292,7 +293,7 @@ WRITE8_HANDLER( bnj_video_control_w )
     /* For now we just check 0x40 in DSW1, and ignore the write if we */
     /* are in upright controls mode. */
 
-    if (input_port_read_indexed(machine, 3) & 0x40) /* cocktail mode */
+    if (input_port_read(machine, "DSW1") & 0x40) /* cocktail mode */
         btime_video_control_w(machine, offset, data);
 }
 
@@ -309,7 +310,7 @@ WRITE8_HANDLER( disco_video_control_w )
 {
 	btime_palette = (data >> 2) & 0x03;
 
-	if (!(input_port_read_indexed(machine, 3) & 0x40)) /* cocktail mode */
+	if (!(input_port_read(machine, "DSW1") & 0x40)) /* cocktail mode */
 	{
 		flip_screen_set(data & 0x01);
 	}
@@ -407,7 +408,7 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap, const recta
 static void draw_background(running_machine *machine, bitmap_t *bitmap, const rectangle *cliprect, UINT8* tmap, UINT8 color)
 {
     int i;
-
+    const UINT8 *gfx = memory_region(machine, REGION_GFX3);
     int scroll = -(bnj_scroll2 | ((bnj_scroll1 & 0x03) << 8));
 
     // One extra iteration for wrap around
@@ -432,7 +433,7 @@ static void draw_background(running_machine *machine, bitmap_t *bitmap, const re
             }
 
             drawgfx(bitmap, machine->gfx[2],
-                    memory_region(REGION_GFX3)[tileoffset + offs],
+                    gfx[tileoffset + offs],
                     color,
                     flip_screen_get(),flip_screen_get(),
                     x,y,

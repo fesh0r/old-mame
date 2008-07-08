@@ -279,7 +279,7 @@ static WRITE16_HANDLER( prmrsocr_sound_irq_w )
 
 static WRITE8_HANDLER( prmrsocr_audio_bankswitch_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(machine, REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 7) * 0x4000);
 }
@@ -313,7 +313,7 @@ static WRITE8_HANDLER( tmnt_sres_w )
 static void tmnt_decode_sample(void)
 {
 	int i;
-	UINT8 *source = memory_region(REGION_SOUND3);
+	UINT8 *source = memory_region(Machine, REGION_SOUND3);
 
 	sampledata = auto_malloc(0x40000*sizeof(sampledata[0]));
 
@@ -372,7 +372,7 @@ static READ16_HANDLER( punkshot_kludge_r )
 	/* 0xffffff, and returning 0 causes the game to mess up - locking up in a */
 	/* loop where the ball is continuously bouncing from the basket. Returning */
 	/* a random number seems to prevent that. */
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 
@@ -455,7 +455,7 @@ static WRITE16_HANDLER( ssriders_protection_w )
 static int init_eeprom_count;
 
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -469,15 +469,15 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( eeprom )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
 		{
 			init_eeprom_count = 0;
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 			init_eeprom_count = 10;
@@ -507,7 +507,7 @@ static READ16_HANDLER( blswhstl_eeprom_r )
 
 	/* bit 0 is EEPROM data */
 	/* bit 1 is EEPROM ready */
-	res = EEPROM_read_bit() | input_port_read_indexed(machine,3);
+	res = eeprom_read_bit() | input_port_read_indexed(machine,3);
 	return res;
 }
 
@@ -520,7 +520,7 @@ static READ16_HANDLER( ssriders_eeprom_r )
 	/* bit 1 is EEPROM ready */
 	/* bit 2 is VBLANK (???) */
 	/* bit 7 is service button */
-	res = EEPROM_read_bit() | input_port_read_indexed(machine,3);
+	res = eeprom_read_bit() | input_port_read_indexed(machine,3);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -539,7 +539,7 @@ static READ16_HANDLER( sunsetbl_eeprom_r )
 	/* bit 1 is EEPROM ready */
 	/* bit 2 is VBLANK (???) */
 	/* bit 3 is service button */
-	res = EEPROM_read_bit() | input_port_read_indexed(machine,3);
+	res = eeprom_read_bit() | input_port_read_indexed(machine,3);
 	if (init_eeprom_count)
 	{
 		init_eeprom_count--;
@@ -556,16 +556,16 @@ static WRITE16_HANDLER( blswhstl_eeprom_w )
 		/* bit 0 is data */
 		/* bit 1 is cs (active low) */
 		/* bit 2 is clock (active high) */
-		EEPROM_write_bit(data & 0x01);
-		EEPROM_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x01);
+		eeprom_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
 WRITE16_HANDLER( ssriders_eeprom_w );	/* in video/tmnt.c */
 
 
-static const struct EEPROM_interface thndrx2_eeprom_interface =
+static const eeprom_interface thndrx2_eeprom_interface =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -579,15 +579,15 @@ static const struct EEPROM_interface thndrx2_eeprom_interface =
 static NVRAM_HANDLER( thndrx2 )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&thndrx2_eeprom_interface);
+		eeprom_init(&thndrx2_eeprom_interface);
 
 		if (file)
 		{
 			init_eeprom_count = 0;
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 			init_eeprom_count = 10;
@@ -616,7 +616,7 @@ static READ16_HANDLER( thndrx2_eeprom_r )
 	/* bit 1 is EEPROM ready */
 	/* bit 3 is VBLANK (???) */
 	/* bit 7 is service button */
-	res = (EEPROM_read_bit() << 8) | input_port_read_indexed(machine,1);
+	res = (eeprom_read_bit() << 8) | input_port_read_indexed(machine,1);
 	toggle ^= 0x0800;
 	return (res ^ toggle);
 }
@@ -630,9 +630,9 @@ static WRITE16_HANDLER( thndrx2_eeprom_w )
 		/* bit 0 is data */
 		/* bit 1 is cs (active low) */
 		/* bit 2 is clock (active high) */
-		EEPROM_write_bit(data & 0x01);
-		EEPROM_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x01);
+		eeprom_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
 
 		/* bit 5 triggers IRQ on sound cpu */
 		if (last == 0 && (data & 0x20) != 0)
@@ -663,7 +663,7 @@ static READ16_HANDLER( prmrsocr_eeprom_r )
 {
 	/* bit 8 is EEPROM data */
 	/* bit 9 is EEPROM ready */
-	return (EEPROM_read_bit() << 8) | input_port_read_indexed(machine,1);
+	return (eeprom_read_bit() << 8) | input_port_read_indexed(machine,1);
 }
 
 static WRITE16_HANDLER( prmrsocr_eeprom_w )
@@ -678,9 +678,9 @@ static WRITE16_HANDLER( prmrsocr_eeprom_w )
 		/* bit 8 is data */
 		/* bit 9 is cs (active low) */
 		/* bit 10 is clock (active high) */
-		EEPROM_write_bit(data & 0x0100);
-		EEPROM_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x0100);
+		eeprom_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -1054,7 +1054,7 @@ static WRITE16_HANDLER( tmnt2_1c0800_w )
 		CellSrc = tmnt2_1c0800[0x00] | (tmnt2_1c0800[0x01] << 16 );
 //        if ( CellDest >= 0x180000 && CellDest < 0x183fe0 ) {
         CellVar -= 0x104000;
-		src = (UINT16 *)(memory_region(REGION_CPU1) + CellSrc);
+		src = (UINT16 *)(memory_region(machine, REGION_CPU1) + CellSrc);
 
 		CellVar >>= 1;
 
@@ -2042,9 +2042,9 @@ static INPUT_PORTS_START( glfgreat )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_SERVICE_NO_TOGGLE( 0x0400, IP_ACTIVE_LOW )
-	PORT_DIPNAME( 0x8000, 0x0000, "Freeze" )	/* ?? VBLANK ?? */
+	PORT_DIPNAME( 0x0800, 0x0000, "Freeze" )	/* ?? VBLANK ?? */
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
-	PORT_DIPSETTING(      0x8000, DEF_STR( On ) )
+	PORT_DIPSETTING(      0x0800, DEF_STR( On ) )
 	PORT_DIPNAME( 0x1000, 0x1000, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x1000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -2285,7 +2285,7 @@ static INPUT_PORTS_START( prmrsocr )
 INPUT_PORTS_END
 
 
-static void cuebrick_irq_handler(int state)
+static void cuebrick_irq_handler(running_machine *machine, int state)
 {
 	cuebrick_snd_irqlatch = state;
 }
@@ -2627,9 +2627,9 @@ static MACHINE_DRIVER_START( glfgreat )
 MACHINE_DRIVER_END
 
 
-static void sound_nmi(void)
+static void sound_nmi(running_machine *machine)
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static const struct K054539interface k054539_interface =
@@ -3955,8 +3955,8 @@ static DRIVER_INIT( mia )
         be shuffled around because the ROMs are connected differently to the
         051962 custom IC.
     */
-	gfxdata = memory_region(REGION_GFX1);
-	len = memory_region_length(REGION_GFX1);
+	gfxdata = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
 	for (i = 0;i < len;i += 4)
 	{
 		for (j = 0;j < 4;j++)
@@ -3976,8 +3976,8 @@ static DRIVER_INIT( mia )
         be shuffled around because the ROMs are connected differently to the
         051937 custom IC.
     */
-	gfxdata = memory_region(REGION_GFX2);
-	len = memory_region_length(REGION_GFX2);
+	gfxdata = memory_region(machine, REGION_GFX2);
+	len = memory_region_length(machine, REGION_GFX2);
 	for (i = 0;i < len;i += 4)
 	{
 		for (j = 0;j < 4;j++)
@@ -4037,6 +4037,7 @@ static DRIVER_INIT( mia )
 static DRIVER_INIT( tmnt )
 {
 	UINT8 *gfxdata;
+	const UINT8 *code_conv_table;
 	int len;
 	int i,j,k,A,B,entry;
 	int bits[32];
@@ -4050,8 +4051,8 @@ static DRIVER_INIT( tmnt )
         be shuffled around because the ROMs are connected differently to the
         051962 custom IC.
     */
-	gfxdata = memory_region(REGION_GFX1);
-	len = memory_region_length(REGION_GFX1);
+	gfxdata = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
 	for (i = 0;i < len;i += 4)
 	{
 		for (j = 0;j < 4;j++)
@@ -4071,8 +4072,8 @@ static DRIVER_INIT( tmnt )
         be shuffled around because the ROMs are connected differently to the
         051937 custom IC.
     */
-	gfxdata = memory_region(REGION_GFX2);
-	len = memory_region_length(REGION_GFX2);
+	gfxdata = memory_region(machine, REGION_GFX2);
+	len = memory_region_length(machine, REGION_GFX2);
 	for (i = 0;i < len;i += 4)
 	{
 		for (j = 0;j < 4;j++)
@@ -4089,9 +4090,9 @@ static DRIVER_INIT( tmnt )
 
 	temp = malloc_or_die(len);
 	memcpy(temp,gfxdata,len);
+	code_conv_table = &memory_region(machine, REGION_PROMS)[0x0000];
 	for (A = 0;A < len/4;A++)
 	{
-		UINT8 *code_conv_table = &memory_region(REGION_PROMS)[0x0000];
 #define CA0 0
 #define CA1 1
 #define CA2 2
@@ -4167,8 +4168,8 @@ static void shuffle(UINT8 *buf,int len)
 static DRIVER_INIT( glfgreat )
 {
 	/* ROMs are interleaved at byte level */
-	shuffle(memory_region(REGION_GFX1),memory_region_length(REGION_GFX1));
-	shuffle(memory_region(REGION_GFX2),memory_region_length(REGION_GFX2));
+	shuffle(memory_region(machine, REGION_GFX1),memory_region_length(machine, REGION_GFX1));
+	shuffle(memory_region(machine, REGION_GFX2),memory_region_length(machine, REGION_GFX2));
 }
 
 static DRIVER_INIT( cuebrick )
@@ -4177,8 +4178,8 @@ static DRIVER_INIT( cuebrick )
 	generic_nvram_size = 0x400*0x20;
 
 	/* ROMs are interleaved at byte level */
-	shuffle(memory_region(REGION_GFX1),memory_region_length(REGION_GFX1));
-	shuffle(memory_region(REGION_GFX2),memory_region_length(REGION_GFX2));
+	shuffle(memory_region(machine, REGION_GFX1),memory_region_length(machine, REGION_GFX1));
+	shuffle(memory_region(machine, REGION_GFX2),memory_region_length(machine, REGION_GFX2));
 }
 
 GAME( 1989, cuebrick, 0,        cuebrick, cuebrick, cuebrick, ROT0,  "Konami", "Cue Brick (World version D)", 0 )

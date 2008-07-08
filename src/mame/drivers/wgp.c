@@ -394,7 +394,6 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
@@ -433,12 +432,12 @@ static WRITE16_HANDLER( sharedram_w )
 	COMBINE_DATA(&sharedram[offset]);
 }
 
-static void parse_control(void)
+static void parse_control(running_machine *machine)
 {
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 	/* bit 1 is "vibration" acc. to test mode */
 }
@@ -449,7 +448,7 @@ static WRITE16_HANDLER( cpua_ctrl_w )	/* assumes Z80 sandwiched between 68Ks */
 		data = data >> 8;	/* for Wgp */
 	cpua_ctrl = data;
 
-	parse_control();
+	parse_control(machine);
 
 	logerror("CPU #0 PC %06x: write %04x to cpu control\n",activecpu_get_pc(),data);
 }
@@ -622,15 +621,15 @@ static WRITE16_HANDLER( wgp_adinput_w )
 
 static INT32 banknum = -1;
 
-static void reset_sound_region(void)	/* assumes Z80 sandwiched between the 68Ks */
+static void reset_sound_region(running_machine *machine)	/* assumes Z80 sandwiched between the 68Ks */
 {
-	memory_set_bankptr( 10, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr( 10, memory_region(machine, REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static WRITE16_HANDLER( wgp_sound_w )
@@ -914,9 +913,9 @@ GFXDECODE_END
 **************************************************************/
 
 /* handler called by the YM2610 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)	// assumes Z80 sandwiched between 68Ks
+static void irqhandler(running_machine *machine, int irq)	// assumes Z80 sandwiched between 68Ks
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -937,8 +936,8 @@ graphics glitches.
 
 static STATE_POSTLOAD( wgp_postload )
 {
-	parse_control();
-	reset_sound_region();
+	parse_control(machine);
+	reset_sound_region(machine);
 }
 
 static MACHINE_START( wgp )
@@ -1212,7 +1211,7 @@ static DRIVER_INIT( wgp )
 #if 0
 	/* Patch for coding error that causes corrupt data in
        sprite tilemapping area from $4083c0-847f */
-	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *ROM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	ROM[0x25dc / 2] = 0x0602;	// faulty value is 0x0206
 #endif
 
@@ -1223,7 +1222,7 @@ static DRIVER_INIT( wgp )
 static DRIVER_INIT( wgp2 )
 {
 	/* Code patches to prevent failure in memory checks */
-	UINT16 *ROM = (UINT16 *)memory_region(REGION_CPU3);
+	UINT16 *ROM = (UINT16 *)memory_region(machine, REGION_CPU3);
 	ROM[0x8008 / 2] = 0x0;
 	ROM[0x8010 / 2] = 0x0;
 

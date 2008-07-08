@@ -7,7 +7,6 @@ Data East machine functions - Bryan McPhail, mish@tendril.co.uk
 *******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "dec0.h"
 #include "cpu/h6280/h6280.h"
 
@@ -20,20 +19,20 @@ READ16_HANDLER( dec0_controls_r )
 	switch (offset<<1)
 	{
 		case 0: /* Player 1 & 2 joystick & buttons */
-			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
+			return (input_port_read(machine, "IN0") + (input_port_read(machine, "IN1") << 8));
 
 		case 2: /* Credits, start buttons */
-			return input_port_read_indexed(machine, 2);
+			return input_port_read(machine, "IN2");
 
 		case 4: /* Byte 4: Dipswitch bank 2, Byte 5: Dipswitch Bank 1 */
-			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
+			return (input_port_read(machine, "DSW0") + (input_port_read(machine, "DSW1") << 8));
 
 		case 8: /* Intel 8751 mc, Bad Dudes & Heavy Barrel only */
-			//logerror("CPU #0 PC %06x: warning - read unmapped memory address %06x\n",activecpu_get_pc(),0x30c000+offset);
+			//logerror("CPU #0 PC %06x: warning - read unmapped memory address %06x\n", activecpu_get_pc(), 0x30c000+offset);
 			return i8751_return;
 	}
 
-	logerror("CPU #0 PC %06x: warning - read unmapped memory address %06x\n",activecpu_get_pc(),0x30c000+offset);
+	logerror("CPU #0 PC %06x: warning - read unmapped memory address %06x\n", activecpu_get_pc(), 0x30c000+offset);
 	return ~0;
 }
 
@@ -44,13 +43,13 @@ READ16_HANDLER( dec0_rotary_r )
 	switch (offset<<1)
 	{
 		case 0: /* Player 1 rotary */
-			return ~(1 << (input_port_read_indexed(machine, 5) * 12 / 256));
+			return ~(1 << (input_port_read(machine, "AN0") * 12 / 256));
 
 		case 8: /* Player 2 rotary */
-			return ~(1 << (input_port_read_indexed(machine, 6) * 12 / 256));
+			return ~(1 << (input_port_read(machine, "AN1") * 12 / 256));
 
 		default:
-			logerror("Unknown rotary read at 300000 %02x\n",offset);
+			logerror("Unknown rotary read at 300000 %02x\n", offset);
 	}
 
 	return 0;
@@ -63,25 +62,25 @@ READ16_HANDLER( midres_controls_r )
 	switch (offset<<1)
 	{
 		case 0: /* Player 1 Joystick + start, Player 2 Joystick + start */
-			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
+			return (input_port_read(machine, "IN0") + (input_port_read(machine, "IN1") << 8));
 
 		case 2: /* Dipswitches */
-			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
+			return (input_port_read(machine, "DSW0") + (input_port_read(machine, "DSW1") << 8));
 
 		case 4: /* Player 1 rotary */
-			return ~(1 << (input_port_read_indexed(machine, 5) * 12 / 256));
+			return ~(1 << (input_port_read(machine, "AN0") * 12 / 256));
 
 		case 6: /* Player 2 rotary */
-			return ~(1 << (input_port_read_indexed(machine, 6) * 12 / 256));
+			return ~(1 << (input_port_read(machine, "AN1") * 12 / 256));
 
 		case 8: /* Credits, start buttons */
-			return input_port_read_indexed(machine, 2);
+			return input_port_read(machine, "IN2");
 
 		case 12:
 			return 0;	/* ?? watchdog ?? */
 	}
 
-	logerror("PC %06x unknown control read at %02x\n",activecpu_get_pc(),0x180000+offset);
+	logerror("PC %06x unknown control read at %02x\n", activecpu_get_pc(), 0x180000+offset);
 	return ~0;
 }
 
@@ -92,16 +91,16 @@ READ16_HANDLER( slyspy_controls_r )
 	switch (offset<<1)
 	{
 		case 0: /* Dip Switches */
-			return (input_port_read_indexed(machine, 3) + (input_port_read_indexed(machine, 4) << 8));
+			return (input_port_read(machine, "DSW0") + (input_port_read(machine, "DSW1") << 8));
 
 		case 2: /* Player 1 & Player 2 joysticks & fire buttons */
-			return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
+			return (input_port_read(machine, "IN0") + (input_port_read(machine, "IN1") << 8));
 
 		case 4: /* Credits */
-			return input_port_read_indexed(machine, 2);
+			return input_port_read(machine, "IN2");
 	}
 
-	logerror("Unknown control read at 30c000 %d\n",offset);
+	logerror("Unknown control read at 30c000 %d\n", offset);
 	return ~0;
 }
 
@@ -115,7 +114,7 @@ READ16_HANDLER( slyspy_protection_r )
 		case 6:		return 0x2;
 	}
 
-	logerror("%04x, Unknown protection read at 30c000 %d\n",activecpu_get_pc(),offset);
+	logerror("%04x, Unknown protection read at 30c000 %d\n", activecpu_get_pc(), offset);
 	return 0;
 }
 
@@ -471,14 +470,14 @@ static TIMER_CALLBACK( i8751_callback )
 }
 #endif
 
-void dec0_i8751_write(int data)
+void dec0_i8751_write(running_machine *machine, int data)
 {
 	/* Writes to this address cause an IRQ to the i8751 microcontroller */
 	if (GAME==1) hbarrel_i8751_write(data);
 	if (GAME==2) baddudes_i8751_write(data);
 	if (GAME==3) birdtry_i8751_write(data);
 
-	cpunum_set_input_line(Machine, 0,5,HOLD_LINE);
+	cpunum_set_input_line(machine, 0,5,HOLD_LINE);
 
 	/* Simulate the processing time of the i8751, time value is guessed
     if (i8751_timer)
@@ -532,10 +531,10 @@ static WRITE16_HANDLER( robocop_68000_share_w )
 
 /******************************************************************************/
 
-static void h6280_decrypt(int memory_area)
+static void h6280_decrypt(running_machine *machine, int memory_area)
 {
 	int i;
-	UINT8 *RAM = memory_region(memory_area);
+	UINT8 *RAM = memory_region(machine, memory_area);
 
 	/* Read each byte, decrypt it */
 	for (i=0x00000; i<0x10000; i++)
@@ -544,12 +543,12 @@ static void h6280_decrypt(int memory_area)
 
 DRIVER_INIT( hippodrm )
 {
-	UINT8 *RAM = memory_region(REGION_CPU3);
+	UINT8 *RAM = memory_region(machine, REGION_CPU3);
 
 	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x180000, 0x180fff, 0, 0, hippodrm_68000_share_r, hippodrm_68000_share_w);
 	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xffc800, 0xffcfff, 0, 0, sprite_mirror_w);
 
-	h6280_decrypt(REGION_CPU3);
+	h6280_decrypt(machine, REGION_CPU3);
 
 	/* The protection cpu has additional memory mapped protection! */
 	RAM[0x189]=0x60; /* RTS prot area */
@@ -560,9 +559,9 @@ DRIVER_INIT( hippodrm )
 
 DRIVER_INIT( slyspy )
 {
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 
-	h6280_decrypt(REGION_CPU2);
+	h6280_decrypt(machine, REGION_CPU2);
 
 	/* Slyspy sound cpu has some protection */
 	RAM[0xf2d]=0xea;
@@ -583,7 +582,7 @@ DRIVER_INIT( hbarrel )
 {
 	GAME=1;
 { /* Remove this patch once processing time of i8751 is simulated */
-UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 rom[0xb68/2] = 0x8008;
 }
 }
@@ -592,7 +591,7 @@ DRIVER_INIT( hbarrelw )
 {
 	GAME=1;
 { /* Remove this patch once processing time of i8751 is simulated */
-UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 rom[0xb3e/2] = 0x8008;
 }
 }
@@ -604,7 +603,7 @@ DRIVER_INIT( birdtry )
 
 	GAME=3;
 
-	src = memory_region(REGION_GFX4);
+	src = memory_region(machine, REGION_GFX4);
 
 	/* some parts of the graphic have bytes swapped */
 	for (k = 0;k < 0x70000;k += 0x20000)

@@ -237,12 +237,12 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoipt.h"
 #include "video/taitoic.h"
 #include "audio/taitosnd.h"
 #include "sound/2203intf.h"
 #include "sound/2151intf.h"
+#include "includes/cchip.h"
 
 VIDEO_START( rainbow );
 VIDEO_START( jumping );
@@ -252,13 +252,6 @@ VIDEO_UPDATE( jumping );
 
 WRITE16_HANDLER( jumping_spritectrl_w );
 WRITE16_HANDLER( rainbow_spritectrl_w );
-
-void rainbow_cchip_init(int version);
-READ16_HANDLER( rainbow_cchip_ctrl_r );
-READ16_HANDLER( rainbow_cchip_ram_r );
-WRITE16_HANDLER( rainbow_cchip_ctrl_w );
-WRITE16_HANDLER( rainbow_cchip_bank_w );
-WRITE16_HANDLER( rainbow_cchip_ram_w );
 
 static UINT8 jumping_latch = 0;
 
@@ -354,7 +347,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( bankswitch_w )
 {
-	memory_set_bankptr(5, memory_region(REGION_CPU2) + ((data - 1) & 3) * 0x4000 + 0x10000);
+	memory_set_bankptr(5, memory_region(machine, REGION_CPU2) + ((data - 1) & 3) * 0x4000 + 0x10000);
 }
 
 static READ8_HANDLER( jumping_latch_r )
@@ -597,9 +590,9 @@ GFXDECODE_END
 
 /* handler called by the YM2151 emulator when the internal timers cause an IRQ */
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -649,14 +642,15 @@ static MACHINE_DRIVER_START( rainbow )
 MACHINE_DRIVER_END
 
 
+/* Jumping The pcb has 2 xtals, 24MHz and 18,432MHz */
 static MACHINE_DRIVER_START( jumping )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(M68000, 8000000)
+	MDRV_CPU_ADD(M68000, XTAL_24MHz/3)	/* not verified but matches original */
 	MDRV_CPU_PROGRAM_MAP(jumping_readmem,jumping_writemem)
 	MDRV_CPU_VBLANK_INT("main", irq4_line_hold)
 
-	MDRV_CPU_ADD(Z80, 4000000)
+	MDRV_CPU_ADD(Z80, XTAL_18_432MHz/6)	/* not verified but music tempo matches original */
 	MDRV_CPU_PROGRAM_MAP(jumping_sound_readmem,jumping_sound_writemem)
 
 	MDRV_INTERLEAVE(10)	/* 10 CPU slices per frame - enough ? */
@@ -678,10 +672,10 @@ static MACHINE_DRIVER_START( jumping )
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
-	MDRV_SOUND_ADD(YM2203, 3579545)
+	MDRV_SOUND_ADD(YM2203, XTAL_18_432MHz/6)	/* not verified */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 
-	MDRV_SOUND_ADD(YM2203, 3579545)
+	MDRV_SOUND_ADD(YM2203, XTAL_18_432MHz/6)	/* not verified */
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.30)
 MACHINE_DRIVER_END
 
@@ -809,12 +803,13 @@ static DRIVER_INIT( rainbowe )
 
 static DRIVER_INIT( jumping )
 {
-	int i;
+	int i, len = memory_region_length(machine, REGION_GFX2);
+	UINT8 *rom = memory_region(machine, REGION_GFX2);
 
 	/* Sprite colour map is reversed - switch to normal */
 
-	for (i = 0;i < memory_region_length(REGION_GFX2);i++)
-		memory_region(REGION_GFX2)[i] ^= 0xff;
+	for (i = 0;i < len;i++)
+		rom[i] ^= 0xff;
 
 	state_save_register_global(jumping_latch);
 }

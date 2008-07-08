@@ -91,7 +91,7 @@ static VIDEO_UPDATE( snowbros )
 
 static VIDEO_START( snowbros )
 {
-	pandora_start(0,0,0);
+	pandora_start(machine,0,0,0);
 }
 
 static VIDEO_EOF( snowbros )
@@ -409,33 +409,29 @@ static READ16_HANDLER( sb3_sound_r )
 	return 0x0003;
 }
 
-static void sb3_play_music(int data)
+static void sb3_play_music(running_machine *machine, int data)
 {
+	UINT8 *snd;
+
 	/* sample is actually played in interrupt function so it loops */
 	sb3_music = data;
 
 	switch (data)
 	{
 		case 0x23:
-		memcpy(memory_region(REGION_SOUND1)+0x20000, memory_region(REGION_SOUND1)+0x80000, 0x20000);
+		case 0x26:
+		snd = memory_region(machine, REGION_SOUND1);
+		memcpy(snd+0x20000, snd+0x80000+0x00000, 0x20000);
 		sb3_music_is_playing = 1;
 		break;
 
 		case 0x24:
-		memcpy(memory_region(REGION_SOUND1)+0x20000, memory_region(REGION_SOUND1)+0x80000+0x20000, 0x20000);
+		snd = memory_region(machine, REGION_SOUND1);
+		memcpy(snd+0x20000, snd+0x80000+0x20000, 0x20000);
 		sb3_music_is_playing = 1;
 		break;
 
 		case 0x25:
-		memcpy(memory_region(REGION_SOUND1)+0x20000, memory_region(REGION_SOUND1)+0x80000+0x40000, 0x20000);
-		sb3_music_is_playing = 1;
-		break;
-
-		case 0x26:
-		memcpy(memory_region(REGION_SOUND1)+0x20000, memory_region(REGION_SOUND1)+0x80000, 0x20000);
-		sb3_music_is_playing = 1;
-		break;
-
 		case 0x27:
 		case 0x28:
 		case 0x29:
@@ -443,7 +439,8 @@ static void sb3_play_music(int data)
 		case 0x2b:
 		case 0x2c:
 		case 0x2d:
-		memcpy(memory_region(REGION_SOUND1)+0x20000, memory_region(REGION_SOUND1)+0x80000+0x40000, 0x20000);
+		snd = memory_region(machine, REGION_SOUND1);
+		memcpy(snd+0x20000, snd+0x80000+0x40000, 0x20000);
 		sb3_music_is_playing = 1;
 		break;
 
@@ -494,7 +491,7 @@ static WRITE16_HANDLER( sb3_sound_w )
 
 		if (data>=0x22 && data<=0x31)
 		{
-			sb3_play_music(data);
+			sb3_play_music(machine, data);
 		}
 
 		if ((data>=0x30) && (data<=0x51))
@@ -504,7 +501,7 @@ static WRITE16_HANDLER( sb3_sound_w )
 
 		if (data>=0x52 && data<=0x5f)
 		{
-			sb3_play_music(data-0x30);
+			sb3_play_music(machine, data-0x30);
 		}
 
 	}
@@ -1515,9 +1512,9 @@ static GFXDECODE_START( hyperpac )
 GFXDECODE_END
 
 /* handler called by the 3812/2151 emulator when the internal timers cause an IRQ */
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* SnowBros Sound */
@@ -1537,7 +1534,7 @@ static const struct YM2151interface ym2151_interface =
 
 static MACHINE_RESET (semiprot)
 {
-	UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
+	UINT16 *PROTDATA = (UINT16*)memory_region(machine, REGION_USER1);
 	int i;
 
 	for (i = 0;i < 0x200/2;i++)
@@ -1546,7 +1543,7 @@ static MACHINE_RESET (semiprot)
 
 static MACHINE_RESET (finalttr)
 {
-	UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
+	UINT16 *PROTDATA = (UINT16*)memory_region(machine, REGION_USER1);
 	int i;
 
 	for (i = 0;i < 0x200/2;i++)
@@ -2309,7 +2306,7 @@ static READ16_HANDLER ( moremorp_0a_read )
 
 static DRIVER_INIT( moremorp )
 {
-//  UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
+//  UINT16 *PROTDATA = (UINT16*)memory_region(machine, REGION_USER1);
 //  int i;
 
 //  for (i = 0;i < 0x200/2;i++)
@@ -2322,8 +2319,8 @@ static DRIVER_INIT( moremorp )
 
 static DRIVER_INIT( cookbib2 )
 {
-//  UINT16 *HCROM = (UINT16*)memory_region(REGION_CPU1);
-//  UINT16 *PROTDATA = (UINT16*)memory_region(REGION_USER1);
+//  UINT16 *HCROM = (UINT16*)memory_region(machine, REGION_CPU1);
+//  UINT16 *PROTDATA = (UINT16*)memory_region(machine, REGION_USER1);
 //  int i;
 //  hyperpac_ram[0xf000/2] = 0x46fc;
 //  hyperpac_ram[0xf002/2] = 0x2700;
@@ -2685,8 +2682,8 @@ static READ16_HANDLER ( _4in1_02_read )
 static DRIVER_INIT(4in1boot)
 {
 	UINT8 *buffer;
-	UINT8 *src = memory_region(REGION_CPU1);
-	int len = memory_region_length(REGION_CPU1);
+	UINT8 *src = memory_region(machine, REGION_CPU1);
+	int len = memory_region_length(machine, REGION_CPU1);
 
 	/* strange order */
 	buffer = malloc_or_die(len);
@@ -2700,8 +2697,8 @@ static DRIVER_INIT(4in1boot)
 		free(buffer);
 	}
 
-	src = memory_region(REGION_CPU2);
-	len = memory_region_length(REGION_CPU2);
+	src = memory_region(machine, REGION_CPU2);
+	len = memory_region_length(machine, REGION_CPU2);
 
 	/* strange order */
 	buffer = malloc_or_die(len);
@@ -2718,8 +2715,8 @@ static DRIVER_INIT(4in1boot)
 static DRIVER_INIT(snowbro3)
 {
 	UINT8 *buffer;
-	UINT8 *src = memory_region(REGION_CPU1);
-	int len = memory_region_length(REGION_CPU1);
+	UINT8 *src = memory_region(machine, REGION_CPU1);
+	int len = memory_region_length(machine, REGION_CPU1);
 
 	/* strange order */
 	buffer = malloc_or_die(len);

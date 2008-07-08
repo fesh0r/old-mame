@@ -39,12 +39,13 @@ enum
 	STATIC_INVALID = 0,									/* invalid - should never be used */
 	STATIC_BANK1 = 1,									/* first memory bank */
 	/* entries 1-32 are for fixed banks 1-32 specified by the driver */
-	/* entries 33-67 are for dynamically allocated internal banks */
-	STATIC_BANKMAX = 67,								/* last memory bank */
+	/* entries 33-66 are for dynamically allocated internal banks */
+	STATIC_BANKMAX = 66,								/* last memory bank */
 	STATIC_RAM,											/* RAM - reads/writes map to dynamic banks */
 	STATIC_ROM,											/* ROM - reads = RAM; writes = UNMAP */
 	STATIC_NOP,											/* NOP - reads = unmapped value; writes = no-op */
 	STATIC_UNMAP,										/* unmapped - same as NOP except we log errors */
+	STATIC_WATCHPOINT,									/* watchpoint - used internally */
 	STATIC_COUNT										/* total number of static handlers */
 };
 
@@ -91,8 +92,21 @@ typedef struct _handler_data handler_data;
 typedef UINT32	offs_t;
 
 
+/* opbase_data contains state data for opcode handling */
+typedef struct _opbase_data opbase_data;
+struct _opbase_data
+{
+	UINT8 *					rom;				/* opcode ROM base pointer */
+	UINT8 *					ram;				/* opcode RAM base pointer */
+	offs_t					mask;				/* opcode ROM address mask */
+	offs_t					mem_min;			/* opcode ROM/RAM min */
+	offs_t					mem_max;			/* opcode ROM/RAM max */
+	UINT8		 			entry;				/* opcode readmem entry */
+};
+
+
 /* opcode base adjustment handler */
-typedef offs_t	(*opbase_handler_func) (ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t address);
+typedef offs_t	(*opbase_handler_func) (ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t address, ATTR_UNUSED opbase_data *opbase);
 
 
 /* machine read/write handlers */
@@ -199,6 +213,7 @@ struct _address_map_entry
 	const char *			read_name;			/* read handler callback name */
 	device_type				read_devtype;		/* read device type for device references */
 	const char *			read_devtag;		/* read tag for the relevant device */
+	const char *			read_porttag;		/* tag for input port reading */
 	write_handler 			write;				/* write handler callback */
 	UINT8					write_bits;			/* bits for the write handler callback (0=default, 1=8, 2=16, 3=32) */
 	UINT8					write_mask;			/* mask bits indicating which subunits to process */
@@ -362,7 +377,7 @@ union _addrmap64_token
 ***************************************************************************/
 
 /* opcode base adjustment handler function macro */
-#define OPBASE_HANDLER(name)			offs_t name(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t address)
+#define OPBASE_HANDLER(name)			offs_t name(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t address, opbase_data *opbase)
 
 
 /* machine read/write handler function macros */
@@ -453,19 +468,19 @@ union _addrmap64_token
 
 
 /* opcode range safety check */
-#define address_is_unsafe(A)			((UNEXPECTED((A) < opcode_memory_min) || UNEXPECTED((A) > opcode_memory_max)))
+#define address_is_unsafe(A)			((UNEXPECTED((A) < opbase.mem_min) || UNEXPECTED((A) > opbase.mem_max)))
 
 
 /* unsafe opcode and opcode argument reading */
-#define cpu_opptr_unsafe(A)				((void *)&opcode_base[(A) & opcode_mask])
-#define cpu_readop_unsafe(A)			(opcode_base[(A) & opcode_mask])
-#define cpu_readop16_unsafe(A)			(*(UINT16 *)&opcode_base[(A) & opcode_mask])
-#define cpu_readop32_unsafe(A)			(*(UINT32 *)&opcode_base[(A) & opcode_mask])
-#define cpu_readop64_unsafe(A)			(*(UINT64 *)&opcode_base[(A) & opcode_mask])
-#define cpu_readop_arg_unsafe(A)		(opcode_arg_base[(A) & opcode_mask])
-#define cpu_readop_arg16_unsafe(A)		(*(UINT16 *)&opcode_arg_base[(A) & opcode_mask])
-#define cpu_readop_arg32_unsafe(A)		(*(UINT32 *)&opcode_arg_base[(A) & opcode_mask])
-#define cpu_readop_arg64_unsafe(A)		(*(UINT64 *)&opcode_arg_base[(A) & opcode_mask])
+#define cpu_opptr_unsafe(A)				((void *)&opbase.rom[(A) & opbase.mask])
+#define cpu_readop_unsafe(A)			(opbase.rom[(A) & opbase.mask])
+#define cpu_readop16_unsafe(A)			(*(UINT16 *)&opbase.rom[(A) & opbase.mask])
+#define cpu_readop32_unsafe(A)			(*(UINT32 *)&opbase.rom[(A) & opbase.mask])
+#define cpu_readop64_unsafe(A)			(*(UINT64 *)&opbase.rom[(A) & opbase.mask])
+#define cpu_readop_arg_unsafe(A)		(opbase.ram[(A) & opbase.mask])
+#define cpu_readop_arg16_unsafe(A)		(*(UINT16 *)&opbase.ram[(A) & opbase.mask])
+#define cpu_readop_arg32_unsafe(A)		(*(UINT32 *)&opbase.ram[(A) & opbase.mask])
+#define cpu_readop_arg64_unsafe(A)		(*(UINT64 *)&opbase.ram[(A) & opbase.mask])
 
 
 /* wrappers for dynamic read handler installation */
@@ -772,14 +787,14 @@ union _addrmap64_token
 
 /* common shortcuts */
 #define AM_READWRITE(_read,_write)			AM_READ(_read) AM_WRITE(_write)
-#define AM_READWRITE8(_read,_write,_shift)	AM_READ8(_read,_shift) AM_WRITE8(_write,_shift)
-#define AM_READWRITE16(_read,_write,_shift)	AM_READ16(_read,_shift) AM_WRITE16(_write,_shift)
-#define AM_READWRITE32(_read,_write,_shift)	AM_READ32(_read,_shift) AM_WRITE32(_write,_shift)
+#define AM_READWRITE8(_read,_write,_mask)	AM_READ8(_read,_mask) AM_WRITE8(_write,_mask)
+#define AM_READWRITE16(_read,_write,_mask)	AM_READ16(_read,_mask) AM_WRITE16(_write,_mask)
+#define AM_READWRITE32(_read,_write,_mask)	AM_READ32(_read,_mask) AM_WRITE32(_write,_mask)
 
 #define AM_DEVREADWRITE(_type,_tag,_read,_write) AM_DEVREAD(_type,_tag,_read) AM_DEVWRITE(_type,_tag,_write)
-#define AM_DEVREADWRITE8(_type,_tag,_read,_write,_shift) AM_DEVREAD8(_type,_tag,_read,_shift) AM_DEVWRITE8(_type,_tag,_write,_shift)
-#define AM_DEVREADWRITE16(_type,_tag,_read,_write,_shift) AM_DEVREAD16(_type,_tag,_read,_shift) AM_DEVWRITE16(_type,_tag,_write,_shift)
-#define AM_DEVREADWRITE32(_type,_tag,_read,_write,_shift) AM_DEVREAD32(_type,_tag,_read,_shift) AM_DEVWRITE32(_type,_tag,_write,_shift)
+#define AM_DEVREADWRITE8(_type,_tag,_read,_write,_mask) AM_DEVREAD8(_type,_tag,_read,_mask) AM_DEVWRITE8(_type,_tag,_write,_mask)
+#define AM_DEVREADWRITE16(_type,_tag,_read,_write,_mask) AM_DEVREAD16(_type,_tag,_read,_mask) AM_DEVWRITE16(_type,_tag,_write,_mask)
+#define AM_DEVREADWRITE32(_type,_tag,_read,_write,_mask) AM_DEVREAD32(_type,_tag,_read,_mask) AM_DEVWRITE32(_type,_tag,_write,_mask)
 
 #define AM_ROM								AM_READ(SMH_ROM)
 #define AM_ROMBANK(_bank)					AM_READ(SMH_BANK(_bank))
@@ -800,12 +815,6 @@ union _addrmap64_token
     GLOBAL VARIABLES
 ***************************************************************************/
 
-extern UINT8 			opcode_entry;				/* current entry for opcode fetching */
-extern UINT8 *			opcode_base;				/* opcode ROM base */
-extern UINT8 *			opcode_arg_base;			/* opcode RAM base */
-extern offs_t			opcode_mask;				/* mask to apply to the opcode address */
-extern offs_t			opcode_memory_min;			/* opcode memory minimum */
-extern offs_t			opcode_memory_max;			/* opcode memory maximum */
 extern address_space	active_address_space[];		/* address spaces */
 
 extern const char *const address_space_names[ADDRESS_SPACES];
@@ -941,15 +950,15 @@ UINT32	cpu_readop_arg32_safe(offs_t byteaddress);
 UINT64	cpu_readop_arg64_safe(offs_t byteaddress);
 
 /* opcode and opcode argument reading */
-INLINE void * cpu_opptr(offs_t byteaddress)			{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_opptr_unsafe(byteaddress); }
-INLINE UINT8  cpu_readop(offs_t byteaddress)		{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_unsafe(byteaddress); }
-INLINE UINT16 cpu_readop16(offs_t byteaddress)		{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop16_unsafe(byteaddress); }
-INLINE UINT32 cpu_readop32(offs_t byteaddress)		{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop32_unsafe(byteaddress); }
-INLINE UINT64 cpu_readop64(offs_t byteaddress)		{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop64_unsafe(byteaddress); }
-INLINE UINT8  cpu_readop_arg(offs_t byteaddress)	{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg_unsafe(byteaddress); }
-INLINE UINT16 cpu_readop_arg16(offs_t byteaddress)	{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg16_unsafe(byteaddress); }
-INLINE UINT32 cpu_readop_arg32(offs_t byteaddress)	{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg32_unsafe(byteaddress); }
-INLINE UINT64 cpu_readop_arg64(offs_t byteaddress)	{ if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg64_unsafe(byteaddress); }
+INLINE void * cpu_opptr(offs_t byteaddress)			{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_opptr_unsafe(byteaddress); }
+INLINE UINT8  cpu_readop(offs_t byteaddress)		{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_unsafe(byteaddress); }
+INLINE UINT16 cpu_readop16(offs_t byteaddress)		{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop16_unsafe(byteaddress); }
+INLINE UINT32 cpu_readop32(offs_t byteaddress)		{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop32_unsafe(byteaddress); }
+INLINE UINT64 cpu_readop64(offs_t byteaddress)		{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop64_unsafe(byteaddress); }
+INLINE UINT8  cpu_readop_arg(offs_t byteaddress)	{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg_unsafe(byteaddress); }
+INLINE UINT16 cpu_readop_arg16(offs_t byteaddress)	{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg16_unsafe(byteaddress); }
+INLINE UINT32 cpu_readop_arg32(offs_t byteaddress)	{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg32_unsafe(byteaddress); }
+INLINE UINT64 cpu_readop_arg64(offs_t byteaddress)	{ extern opbase_data opbase; if (address_is_unsafe(byteaddress)) { memory_set_opbase(byteaddress); } return cpu_readop_arg64_unsafe(byteaddress); }
 
 
 /***************************************************************************

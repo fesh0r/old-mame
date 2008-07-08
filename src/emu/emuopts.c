@@ -65,7 +65,11 @@ const options_entry mame_core_options[] =
 	{ "playback;pb",                 NULL,        0,                 "playback an input file" },
 	{ "record;rec",                  NULL,        0,                 "record an input file" },
 	{ "mngwrite",                    NULL,        0,                 "optional filename to write a MNG movie of the current session" },
+	{ "aviwrite",                    NULL,        0,                 "optional filename to write an AVI movie of the current session" },
 	{ "wavwrite",                    NULL,        0,                 "optional filename to write a WAV file of the current session" },
+	{ "snapname",                    "%g/%i",     0,                 "override of the default snapshot/movie naming; %g == gamename, %i == index" },
+	{ "snapsize",                    "auto",      0,                 "specify snapshot/movie resolution (<width>x<height>) or 'auto' to use minimal size " },
+	{ "snapview",                    "internal",  0,                 "specify snapshot/movie view or 'internal' to use internal pixel-aspect views" },
 
 	/* performance options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE PERFORMANCE OPTIONS" },
@@ -116,9 +120,10 @@ const options_entry mame_core_options[] =
 
 	/* input options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE INPUT OPTIONS" },
+	{ "coin_lockout;coinlock",       "1",         OPTION_BOOLEAN,    "enable coin lockouts to actually lock out coins" },
 	{ "ctrlr",                       NULL,        0,                 "preconfigure for specified controller" },
 	{ "mouse",                       "0",         OPTION_BOOLEAN,    "enable mouse input" },
-	{ "joystick;joy",                "0",         OPTION_BOOLEAN,    "enable joystick input" },
+	{ "joystick;joy",                "1",         OPTION_BOOLEAN,    "enable joystick input" },
 	{ "lightgun;gun",                "0",         OPTION_BOOLEAN,    "enable lightgun input" },
 	{ "multikeyboard;multikey",      "0",         OPTION_BOOLEAN,    "enable separate input from each keyboard device (if present)" },
 	{ "multimouse",                  "0",         OPTION_BOOLEAN,    "enable separate input from each mouse device (if present)" },
@@ -144,13 +149,8 @@ const options_entry mame_core_options[] =
 	{ "log",                         "0",         OPTION_BOOLEAN,    "generate an error.log file" },
 	{ "verbose;v",                   "0",         OPTION_BOOLEAN,    "display additional diagnostic information" },
 	{ "update_in_pause",             "0",         OPTION_BOOLEAN,    "keep calling video updates while in pause" },
-#ifdef ENABLE_DEBUGGER
-	{ "debug;d",                     "1",         OPTION_BOOLEAN,    "enable/disable debugger" },
+	{ "debug;d",                     "0",         OPTION_BOOLEAN,    "enable/disable debugger" },
 	{ "debugscript",                 NULL,        0,                 "script for debugger" },
-#else
-	{ "debug;d",                     "1",         OPTION_DEPRECATED, "(debugger-only command)" },
-	{ "debugscript",                 NULL,        OPTION_DEPRECATED, "(debugger-only command)" },
-#endif
 
 	/* misc options */
 	{ NULL,                          NULL,        OPTION_HEADER,     "CORE MISC OPTIONS" },

@@ -37,7 +37,6 @@ Known Issues
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -53,7 +52,7 @@ static UINT16 cur_control2;
 static int init_eeprom_count;
 static emu_timer *dmadelay_timer;
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -67,7 +66,7 @@ static const struct EEPROM_interface eeprom_interface =
 #if 0
 static void eeprom_init(void)
 {
-	EEPROM_init(&eeprom_interface);
+	eeprom_init(&eeprom_intf);
 	init_eeprom_count = 0;
 }
 #endif
@@ -75,15 +74,15 @@ static void eeprom_init(void)
 static NVRAM_HANDLER( gijoe )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
 		{
 			init_eeprom_count = 0;
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 			init_eeprom_count = 2720;
@@ -97,7 +96,7 @@ static READ16_HANDLER( control1_r )
 	/* bit 8  is EEPROM data */
 	/* bit 9  is EEPROM ready */
 	/* bit 11 is service button */
-	res = (EEPROM_read_bit()<<8) | input_port_read_indexed(machine,0);
+	res = (eeprom_read_bit()<<8) | input_port_read(machine, "IN0");
 
 	if (init_eeprom_count)
 	{
@@ -123,9 +122,9 @@ static WRITE16_HANDLER( control2_w )
 		/* bit 5  is enable irq 6 */
 		/* bit 7  (unknown: enable irq 5?) */
 
-		EEPROM_write_bit(data & 0x01);
-		EEPROM_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x01);
+		eeprom_set_cs_line((data & 0x02) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x04) ? ASSERT_LINE : CLEAR_LINE);
 		cur_control2 = data;
 
 		/* bit 6 = enable sprite ROM reading */
@@ -199,9 +198,9 @@ static READ16_HANDLER( sound_status_r )
 	return soundlatch2_r(machine,0);
 }
 
-static void sound_nmi(void)
+static void sound_nmi(running_machine *machine)
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, PULSE_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static MACHINE_START( gijoe )
@@ -270,7 +269,7 @@ static ADDRESS_MAP_START( sound_writemem, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gijoe )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_START1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_START2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_START3 )
@@ -279,7 +278,7 @@ static INPUT_PORTS_START( gijoe )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW,  IPT_SPECIAL )  // EEPROM ready (always 1)
 	PORT_SERVICE_NO_TOGGLE( 0x0800, IP_ACTIVE_LOW )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_COIN3 )
@@ -289,7 +288,7 @@ static INPUT_PORTS_START( gijoe )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW,  IPT_SERVICE3 )
 	PORT_BIT( 0x0800, IP_ACTIVE_LOW,  IPT_SERVICE4 )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -311,7 +310,7 @@ static INPUT_PORTS_START( gijoe )
 	PORT_DIPSETTING(      0x8000, "Common" )
 	PORT_DIPSETTING(      0x0000, "Independant" )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)

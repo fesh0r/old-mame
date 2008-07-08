@@ -1099,7 +1099,7 @@ static PALETTE_INIT( halleys )
 	}
 }
 
-static void halleys_decode_rgb(UINT32 *r, UINT32 *g, UINT32 *b, int addr, int data)
+static void halleys_decode_rgb(running_machine *machine, UINT32 *r, UINT32 *g, UINT32 *b, int addr, int data)
 {
 /*
     proms contain:
@@ -1116,7 +1116,7 @@ static void halleys_decode_rgb(UINT32 *r, UINT32 *g, UINT32 *b, int addr, int da
 	sram_189 = paletteram;
 
 	// each of the three 32-byte 6330 PROM is wired to an RGB component output
-	prom_6330 = memory_region(REGION_PROMS);
+	prom_6330 = memory_region(machine, REGION_PROMS);
 
 	// latch1 holds 8 bits from the selected palette RAM address
 	latch1_273 = sram_189[addr];
@@ -1168,7 +1168,7 @@ static WRITE8_HANDLER( halleys_paletteram_IIRRGGBB_w )
 	palette_set_color(machine, offset+SP_ALPHA, MAKE_RGB(r, g, b));
 	palette_set_color(machine, offset+SP_COLLD, MAKE_RGB(r, g, b));
 
-	halleys_decode_rgb(&r, &g, &b, offset, 0);
+	halleys_decode_rgb(machine, &r, &g, &b, offset, 0);
 	palette_set_color(machine, offset+0x20, MAKE_RGB(r, g, b));
 }
 
@@ -1605,7 +1605,9 @@ static READ8_HANDLER( coin_lockout_r )
 
 static READ8_HANDLER( io_mirror_r )
 {
-	return(input_port_read_indexed(machine, offset + 3));
+	static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3" };
+
+	return input_port_read(machine, portnames[offset]);
 }
 
 
@@ -1620,15 +1622,15 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xff66, 0xff66) AM_READ(collision_id_r) // HACK: collision detection bypass(Halley's Comet only)
 	AM_RANGE(0xff71, 0xff71) AM_READ(blitter_status_r)
 	AM_RANGE(0xff80, 0xff83) AM_READ(io_mirror_r)
-	AM_RANGE(0xff90, 0xff90) AM_READ(input_port_3_r) // coin/start
-	AM_RANGE(0xff91, 0xff91) AM_READ(input_port_4_r) // player 1
-	AM_RANGE(0xff92, 0xff92) AM_READ(input_port_5_r) // player 2
-	AM_RANGE(0xff93, 0xff93) AM_READ(input_port_6_r) // unused?
+	AM_RANGE(0xff90, 0xff90) AM_READ_PORT("IN0")	// coin/start
+	AM_RANGE(0xff91, 0xff91) AM_READ_PORT("IN1")	// player 1
+	AM_RANGE(0xff92, 0xff92) AM_READ_PORT("IN2")	// player 2
+	AM_RANGE(0xff93, 0xff93) AM_READ_PORT("IN3")	// unused?
 	AM_RANGE(0xff94, 0xff94) AM_READ(coin_lockout_r)
-	AM_RANGE(0xff95, 0xff95) AM_READ(input_port_0_r) // dipswitch 4
-	AM_RANGE(0xff96, 0xff96) AM_READ(input_port_1_r) // dipswitch 3
-	AM_RANGE(0xff97, 0xff97) AM_READ(input_port_2_r) // dipswitch 2
-	AM_RANGE(0xff00, 0xffbf) AM_READ(SMH_RAM)        // I/O read fall-through
+	AM_RANGE(0xff95, 0xff95) AM_READ_PORT("DSW1")		// dipswitch 4
+	AM_RANGE(0xff96, 0xff96) AM_READ_PORT("DSW2")		// dipswitch 3
+	AM_RANGE(0xff97, 0xff97) AM_READ_PORT("DSW3")		// dipswitch 2
+	AM_RANGE(0xff00, 0xffbf) AM_READ(SMH_RAM)			// I/O read fall-through
 
 	AM_RANGE(0xffc0, 0xffdf) AM_READ(SMH_RAM)        // palette read
 	AM_RANGE(0xffe0, 0xffff) AM_READ(vector_r)
@@ -1687,7 +1689,7 @@ ADDRESS_MAP_END
 */
 
 static INPUT_PORTS_START( halleys )
-	PORT_START_TAG("DSW1") // 0xff95
+	PORT_START_TAG("DSW1")	/* 0xff95 */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
@@ -1711,7 +1713,7 @@ static INPUT_PORTS_START( halleys )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 
-	PORT_START_TAG("DSW2") // 0xff96
+	PORT_START_TAG("DSW2")	/* 0xff96 */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Easiest ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )
@@ -1734,7 +1736,7 @@ static INPUT_PORTS_START( halleys )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW3") // 0xff97
+	PORT_START_TAG("DSW3")	/* 0xff97 */
 	PORT_DIPNAME( 0x01, 0x01, "Unknown(3-1)" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1760,7 +1762,7 @@ static INPUT_PORTS_START( halleys )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("IN0") // 0xff90
+	PORT_START_TAG("IN0")	/* 0xff90 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_START1 )
@@ -1770,7 +1772,7 @@ static INPUT_PORTS_START( halleys )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("IN1") // 0xff91
+	PORT_START_TAG("IN1")	/* 0xff91 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1780,7 +1782,7 @@ static INPUT_PORTS_START( halleys )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P1 Hyperspace")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P1 Fire")
 
-	PORT_START_TAG("IN2") // 0xff92
+	PORT_START_TAG("IN2")	/* 0xff92 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -1790,9 +1792,9 @@ static INPUT_PORTS_START( halleys )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) PORT_NAME("P2 Hyperspace")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_NAME("P2 Fire")
 
-	PORT_START_TAG("IN3") // 0xff93
+	PORT_START_TAG("IN3")	/* 0xff93 */
 
-	PORT_START_TAG("FAKE") // just to be safe
+	PORT_START_TAG("FAKE")	/* just to be safe */
 	PORT_DIPNAME( 0x01, 0x00, "Show Unused Layer" )
 	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
@@ -1800,7 +1802,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( benberob )
-	PORT_START_TAG("DSW1") // 0xff95
+	PORT_START_TAG("DSW1")	/* 0xff95 */
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x02, "Every 100K" )
 	PORT_DIPSETTING(    0x00, "100K & Every 200K" )
@@ -1824,8 +1826,7 @@ static INPUT_PORTS_START( benberob )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Cocktail ) )
 
-	// 0xff96
-	PORT_START_TAG("DSW2")
+	PORT_START_TAG("DSW2")	/* 0xff96 */
 	PORT_DIPNAME( 0x0f, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x0f, DEF_STR( 9C_1C ) )
 	PORT_DIPSETTING(    0x0e, DEF_STR( 8C_1C ) )
@@ -1861,7 +1862,7 @@ static INPUT_PORTS_START( benberob )
 	PORT_DIPSETTING(    0x60, DEF_STR( 1C_7C ) )
 	PORT_DIPSETTING(    0x70, DEF_STR( 1C_8C ) )
 
-	PORT_START_TAG("DSW3") // 0xff97
+	PORT_START_TAG("DSW3")	/* 0xff97 */
 	PORT_DIPNAME( 0x01, 0x01, "Starting Round" )
 	PORT_DIPSETTING(    0x01, "1st Round" )
 	PORT_DIPSETTING(    0x00, "2nd Round" )
@@ -1886,7 +1887,7 @@ static INPUT_PORTS_START( benberob )
 	PORT_DIPSETTING(    0x80, "9" )
 	PORT_DIPSETTING(    0x00, "16" )
 
-	PORT_START_TAG("IN0") // 0xff90
+	PORT_START_TAG("IN0")	/* 0xff90 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_START1 )
@@ -1896,7 +1897,7 @@ static INPUT_PORTS_START( benberob )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_COIN2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 )
 
-	PORT_START_TAG("IN1") // 0xff91
+	PORT_START_TAG("IN1")	/* 0xff91 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
@@ -1906,7 +1907,7 @@ static INPUT_PORTS_START( benberob )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_NAME("P1 Jump")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_NAME("P1 Extinguisher")
 
-	PORT_START_TAG("IN2") // 0xff92
+	PORT_START_TAG("IN2")	/* 0xff92 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
@@ -1916,7 +1917,7 @@ static INPUT_PORTS_START( benberob )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2) PORT_NAME("P2 Jump")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2) PORT_NAME("P2 Extinguisher")
 
-	PORT_START_TAG("IN3") // 0xff93
+	PORT_START_TAG("IN3")	/* 0xff93 */
 INPUT_PORTS_END
 
 
@@ -2145,7 +2146,7 @@ ROM_END
 //**************************************************************************
 // Driver Initializations
 
-static void init_common(void)
+static void init_common(running_machine *machine)
 {
 	UINT8 *buf, *rom;
 	int addr, i;
@@ -2180,7 +2181,7 @@ static void init_common(void)
 
 
 	// decrypt main program ROM
-	rom = cpu1_base = memory_region(REGION_CPU1);
+	rom = cpu1_base = memory_region(machine, REGION_CPU1);
 	buf = gfx1_base;
 
 	for (i=0; i<0x10000; i++)
@@ -2193,7 +2194,7 @@ static void init_common(void)
 
 
 	// swap graphics ROM addresses and unpack each pixel
-	rom = memory_region(REGION_GFX1);
+	rom = memory_region(machine, REGION_GFX1);
 	buf = gfx_plane02;
 
 	for (i=0xffff; i>=0; i--)
@@ -2229,7 +2230,7 @@ static DRIVER_INIT( benberob )
 {
 	game_id = GAME_BENBEROB;
 
-	init_common();
+	init_common(machine);
 
 	blitter_reset_timer = timer_alloc(blitter_reset, NULL);
 }
@@ -2240,7 +2241,7 @@ static DRIVER_INIT( halleys )
 	game_id = GAME_HALLEYS;
 	halleys_collision_detection = 0xb114;
 
-	init_common();
+	init_common(machine);
 }
 
 static DRIVER_INIT( halley87 )
@@ -2248,7 +2249,7 @@ static DRIVER_INIT( halley87 )
 	game_id = GAME_HALLEYS;
 	halleys_collision_detection = 0xb10d;
 
-	init_common();
+	init_common(machine);
 }
 
 

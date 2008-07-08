@@ -15,15 +15,15 @@ struct riot6532_interface
 	read8_machine_func in_b_func;
 	write8_machine_func out_a_func;
 	write8_machine_func out_b_func;
-	void (*irq_func)(int state);
+	void (*irq_func)(running_machine *machine, int state);
 };
 
 void r6532_set_clock(int which, int clock);
-void r6532_reset(int which);
-void r6532_config(int which, const struct riot6532_interface* intf);
-UINT8 r6532_read(int which, offs_t offset);
-void r6532_write(int which, offs_t offset, UINT8 data);
-void r6532_set_input_a(int which, UINT8 data);
+void r6532_reset(running_machine *machine, int which);
+void r6532_config(running_machine *machine, int which, const struct riot6532_interface* intf);
+UINT8 r6532_read(running_machine *machine, int which, offs_t offset);
+void r6532_write(running_machine *machine, int which, offs_t offset, UINT8 data);
+void r6532_set_input_a(running_machine *machine, int which, UINT8 data);
 void r6532_set_input_b(int which, UINT8 data);
 
 /******************* Standard 8-bit CPU interfaces, D0-D7 *******************/

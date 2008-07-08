@@ -28,7 +28,7 @@ typedef struct
 {
 	int baseclock;                           /* timer clock */
 	int notimer;                         /* timer disablers */
-	void (*intr)(int which);             /* callback when change interrupt status */
+	void (*intr)(running_machine *machine, int which);             /* callback when change interrupt status */
 	write8_machine_func zc0;   /* ZC/TO0 callback */
 	write8_machine_func zc1;   /* ZC/TO1 callback */
 	write8_machine_func zc2;   /* ZC/TO2 callback */
@@ -70,7 +70,7 @@ READ8_HANDLER( z80ctc_1_r );
     EXTERNAL TRIGGERS
 ***************************************************************************/
 
-void z80ctc_trg_w(int which, int trg, UINT8 data);
+void z80ctc_trg_w(running_machine *machine, int which, int trg, UINT8 data);
 WRITE8_HANDLER( z80ctc_0_trg0_w );
 WRITE8_HANDLER( z80ctc_0_trg1_w );
 WRITE8_HANDLER( z80ctc_0_trg2_w );

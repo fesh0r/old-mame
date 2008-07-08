@@ -48,6 +48,7 @@ CROSS_BUILD_OSD = $(OSD)
 endif
 
 
+
 #-------------------------------------------------
 # specify OS target, which further differentiates
 # the underlying OS; supported values are:
@@ -96,20 +97,16 @@ endif
 # for details
 #-------------------------------------------------
 
-# uncomment next line to enable the debugger
-# DEBUGGER = 1
-
 # uncomment next line to build a debug version
 # DEBUG = 1
 
 # uncomment next line to include the internal profiler
 # PROFILER = 1
 
-# uncomment next line to use DRC MIPS3 engine
-X86_MIPS3_DRC = 1
-
-# uncomment next line to use DRC PowerPC engine
-X86_PPC_DRC = 1
+# uncomment the force the universal DRC to always use the C backend
+# you may need to do this if your target architecture does not have
+# a native backend
+# FORCE_DRC_C_BACKEND = 1
 
 
 
@@ -155,11 +152,6 @@ BUILD_ZLIB = 1
 #-------------------------------------------------
 # sanity check the configuration
 #-------------------------------------------------
-
-# disable DRC cores for 64-bit builds
-ifdef PTR64
-X86_PPC_DRC =
-endif
 
 # specify a default optimization level if none explicitly stated
 ifndef OPTIMIZE
@@ -210,8 +202,8 @@ RM = @rm -f
 # form the name of the executable
 #-------------------------------------------------
 
-# debugger builds just get the 'd' suffix and nothing more
-ifdef DEBUGGER
+# debug builds just get the 'd' suffix and nothing more
+ifdef DEBUG
 DEBUGSUFFIX = d
 endif
 
@@ -268,11 +260,6 @@ endif
 # define PTR64 if we are a 64-bit target
 ifdef PTR64
 DEFS += -DPTR64
-endif
-
-# define ENABLE_DEBUGGER if we are a debugger-enabled build
-ifdef DEBUGGER
-DEFS += -DENABLE_DEBUGGER
 endif
 
 # define MAME_DEBUG if we are a debugging build

@@ -28,6 +28,8 @@
           the Z180, but the cpu core doesn't support that yet.
         * Is the clock divide 3 or 4?
 
+    Versions known to exist but not dumped: v1.03 & v1.04
+
 ***************************************************************************/
 
 #include "driver.h"
@@ -94,7 +96,7 @@ static WRITE8_HANDLER( _20pacgal_dac_w )
  *
  *************************************/
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -109,13 +111,13 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( eeprom )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
-			EEPROM_load(file);
+			eeprom_load(file);
 	}
 }
 
@@ -123,7 +125,7 @@ static NVRAM_HANDLER( eeprom )
 static READ8_HANDLER( eeprom_r )
 {
 	/* bit 7 is EEPROM data */
-	return EEPROM_read_bit() << 7;
+	return eeprom_read_bit() << 7;
 }
 
 
@@ -132,9 +134,9 @@ static WRITE8_HANDLER( eeprom_w )
 	/* bit 7 is data */
 	/* bit 6 is clock (active high) */
 	/* bit 5 is cs (active low) */
-	EEPROM_write_bit(data & 0x80);
-	EEPROM_set_cs_line((data & 0x20) ? CLEAR_LINE : ASSERT_LINE);
-	EEPROM_set_clock_line((data & 0x40) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_write_bit(data & 0x80);
+	eeprom_set_cs_line((data & 0x20) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_clock_line((data & 0x40) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -165,7 +167,10 @@ static WRITE8_HANDLER( rom_bank_select_w )
 	state->game_selected = data & 1;
 
 	if (state->game_selected == 0)
-		memcpy(memory_region(REGION_CPU1)+0x48000, memory_region(REGION_CPU1)+0x8000, 0x2000);
+	{
+		UINT8 *rom = memory_region(machine, REGION_CPU1);
+		memcpy(rom+0x48000, rom+0x8000, 0x2000);
+	}
 }
 
 
@@ -178,7 +183,7 @@ static WRITE8_HANDLER( rom_48000_w )
 		if (offset < 0x0800)
 			state->video_ram[offset & 0x07ff] = data;
 
-		memory_region(REGION_CPU1)[0x48000 + offset] = data;
+		memory_region(machine, REGION_CPU1)[0x48000 + offset] = data;
 	}
 }
 

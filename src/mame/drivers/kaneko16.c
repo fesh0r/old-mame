@@ -78,11 +78,6 @@ Dip locations verified from manual for:
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 
-extern void (*toybox_mcu_run)(running_machine *machine);	/* one of the following */
-void bloodwar_mcu_run(running_machine *machine);
-void bonkadv_mcu_run(running_machine *machine);
-void gtmr_mcu_run(running_machine *machine);
-
 /***************************************************************************
 
 
@@ -243,7 +238,7 @@ static MACHINE_RESET( shogwarr )
 
 static READ16_HANDLER( kaneko16_rnd_r )
 {
-	return mame_rand(Machine) & 0xffff;
+	return mame_rand(machine) & 0xffff;
 }
 
 static WRITE16_HANDLER( kaneko16_coin_lockout_w )
@@ -320,13 +315,13 @@ static WRITE16_HANDLER( kaneko16_YM2149_1_w )
 
 static READ8_HANDLER( kaneko16_eeprom_r )
 {
-	return EEPROM_read_bit() & 1;
+	return eeprom_read_bit() & 1;
 }
 
 static WRITE8_HANDLER( kaneko16_eeprom_reset_w )
 {
 	// reset line asserted: reset.
-	EEPROM_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE );
+	eeprom_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE );
 }
 
 static WRITE16_HANDLER( kaneko16_eeprom_w )
@@ -334,13 +329,13 @@ static WRITE16_HANDLER( kaneko16_eeprom_w )
 	if (ACCESSING_BITS_0_7)
 	{
 		// latch the bit
-		EEPROM_write_bit(data & 0x02);
+		eeprom_write_bit(data & 0x02);
 
 		// reset line asserted: reset.
-//      EEPROM_set_cs_line((data & 0x00) ? CLEAR_LINE : ASSERT_LINE );
+//      eeprom_set_cs_line((data & 0x00) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE );
 	}
 
 	if (ACCESSING_BITS_8_15)
@@ -603,10 +598,20 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( gtmr_wheel_r )
 {
-	if ( (input_port_read_indexed(machine, 4) & 0x1800) == 0x10)	// DSW setting
-		return	input_port_read_indexed(machine, 5)<<8;			// 360' Wheel
-	else
-		return	input_port_read_indexed(machine, 5);				// 270' Wheel
+	// check 'Controls' dip switch
+	switch (input_port_read(machine, "DSW1") & 0x1000)
+	{
+		case 0x0000:	// 'Both Sides' = 270deg Wheel
+			return	(input_port_read(machine, "WHEEL0"));
+			break;
+
+		case 0x1000:	// '1P Side' = 360' Wheel
+			return	(input_port_read(machine, "WHEEL1"));
+			break;
+		default:
+			return	(0);
+			break;
+		}
 }
 
 static WRITE16_HANDLER( gtmr_oki_0_bank_w )
@@ -708,16 +713,16 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( gtmr2_wheel_r )
 {
-	switch (input_port_read_indexed(machine, 4) & 0x1800)
+	switch (input_port_read(machine, "DSW1") & 0x1800)
 	{
 		case 0x0000:	// 270' A. Wheel
-			return	(input_port_read_indexed(machine, 5));
+			return	(input_port_read(machine, "WHEEL0"));
 			break;
 		case 0x1000:	// 270' D. Wheel
-			return	(input_port_read_indexed(machine, 6) << 8);
+			return	(input_port_read(machine, "WHEEL1") << 8);
 			break;
 		case 0x0800:	// 360' Wheel
-			return	(input_port_read_indexed(machine, 7) << 8);
+			return	(input_port_read(machine, "WHEEL2") << 8);
 			break;
 		default:
 			logerror("gtmr2_wheel_r : read at %06x with joystick\n", activecpu_get_pc());
@@ -728,7 +733,7 @@ static READ16_HANDLER( gtmr2_wheel_r )
 
 static READ16_HANDLER( gtmr2_IN1_r )
 {
-	return	(input_port_read_indexed(machine, 1) & (input_port_read_indexed(machine, 8) | ~0x7100));
+	return	(input_port_read(machine, "IN1") & (input_port_read(machine, "FAKE") | ~0x7100));
 }
 
 static ADDRESS_MAP_START( gtmr2_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -847,7 +852,7 @@ ADDRESS_MAP_END
 #if 0
 static WRITE8_HANDLER( blazeon_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	int bank = data & 7;
 	memory_set_bankptr(15, &RAM[bank * 0x10000 + 0x1000]);
 }
@@ -879,7 +884,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( bakubrkr )
-	PORT_START	// IN0 - Player 1 + DSW - e00000.w
+	PORT_START_TAG("IN0")	// IN0 - Player 1 + DSW - e00000.w
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On )  )
@@ -901,7 +906,7 @@ static INPUT_PORTS_START( bakubrkr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN1 - Player 2 - e00002.b
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - e00002.b
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -911,7 +916,7 @@ static INPUT_PORTS_START( bakubrkr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN2 - Coins - e00004.b
+	PORT_START_TAG("IN2")	// IN2 - Coins - e00004.b
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
@@ -921,7 +926,7 @@ static INPUT_PORTS_START( bakubrkr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
-	PORT_START	// IN3 - Seems unused ! - e00006.b
+	PORT_START_TAG("IN3")	// IN3 - Seems unused ! - e00006.b
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -938,7 +943,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( berlwall )
-	PORT_START	// IN0 - Player 1 - 680000.w
+	PORT_START_TAG("IN0")	// IN0 - Player 1 - 680000.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -948,7 +953,7 @@ static INPUT_PORTS_START( berlwall )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN1 - Player 2 - 680002.w
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - 680002.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -958,7 +963,7 @@ static INPUT_PORTS_START( berlwall )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN2 - Coins - 680004.w
+	PORT_START_TAG("IN2")	// IN2 - Coins - 680004.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
@@ -968,7 +973,7 @@ static INPUT_PORTS_START( berlwall )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
-	PORT_START	// IN3 - ? - 680006.w
+	PORT_START_TAG("IN3")	// IN3 - ? - 680006.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1048,7 +1053,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( blazeon )
-	PORT_START	// IN0 - Player 1 + DSW - c00000.w
+	PORT_START_TAG("IN0")	// IN0 - Player 1 + DSW - c00000.w
 	PORT_DIPNAME( 0x0003,  0x0003, DEF_STR( Difficulty )  ) PORT_DIPLOCATION("SW2:1,2")
 	PORT_DIPSETTING(       0x0002, DEF_STR( Easy )        )
 	PORT_DIPSETTING(       0x0003, DEF_STR( Normal )      )
@@ -1075,7 +1080,7 @@ static INPUT_PORTS_START( blazeon )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_START1         )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN1          ) PORT_IMPULSE(2)
 
-	PORT_START	// IN1 - Player 2 - c00002.w
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - c00002.w
 	PORT_DIPNAME( 0x000f, 0x000f, DEF_STR( Coin_A )   ) PORT_DIPLOCATION("SW1:1,2,3,4")
 	PORT_DIPSETTING(      0x0007, DEF_STR( 4C_1C )    )
 	PORT_DIPSETTING(      0x0008, DEF_STR( 3C_1C )    )
@@ -1121,10 +1126,10 @@ static INPUT_PORTS_START( blazeon )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_START2         )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_COIN2          ) PORT_IMPULSE(2)
 
-	PORT_START	// IN2 - ? - c00004.w
+	PORT_START_TAG("IN2")	// IN2 - ? - c00004.w
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNKNOWN )	// unused?
 
-	PORT_START	// IN3 - Other Buttons - c00006.w
+	PORT_START_TAG("IN3")	// IN3 - Other Buttons - c00006.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -1140,7 +1145,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( bloodwar )
-	PORT_START	// IN0 - Player 1 - b00000.w
+	PORT_START_TAG("IN0")	// IN0 - Player 1 - b00000.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(1)
@@ -1150,7 +1155,7 @@ static INPUT_PORTS_START( bloodwar )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(1)
 
-	PORT_START	// IN1 - Player 2 - b00002.w
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - b00002.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(2)
@@ -1160,7 +1165,7 @@ static INPUT_PORTS_START( bloodwar )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN2 - Coins - b00004.w
+	PORT_START_TAG("IN2")	// IN2 - Coins - b00004.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
@@ -1170,7 +1175,7 @@ static INPUT_PORTS_START( bloodwar )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE2	)	// tested
 
-	PORT_START	// IN3 - ? - b00006.w
+	PORT_START_TAG("IN3")	// IN3 - ? - b00006.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )	// tested
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)	// tested
@@ -1180,7 +1185,7 @@ static INPUT_PORTS_START( bloodwar )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN4 - DSW from the MCU - $10497e.b <- $208000.b
+	PORT_START_TAG("DSW1")	// IN4 - DSW from the MCU - $10497e.b <- $208000.b
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(      0x0000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0100, DEF_STR( On ) )
@@ -1210,7 +1215,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( bonkadv )
-	PORT_START	// IN0 - Player 1 - b00000.w
+	PORT_START_TAG("IN0")	// IN0 - Player 1 - b00000.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(1)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(1)
@@ -1220,7 +1225,7 @@ static INPUT_PORTS_START( bonkadv )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(1)
 
-	PORT_START	// IN1 - Player 2 - b00002.w
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - b00002.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN		) PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT		) PORT_PLAYER(2)
@@ -1230,7 +1235,7 @@ static INPUT_PORTS_START( bonkadv )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3			) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4			) PORT_PLAYER(2)
 
-	PORT_START	// IN2 - Coins - b00004.w
+	PORT_START_TAG("IN2")	// IN2 - Coins - b00004.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
@@ -1240,7 +1245,7 @@ static INPUT_PORTS_START( bonkadv )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE2	)
 
-	PORT_START	// IN3 - ? - b00006.w
+	PORT_START_TAG("IN3")	// IN3 - ? - b00006.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1250,7 +1255,7 @@ static INPUT_PORTS_START( bonkadv )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN4 - DSW from the MCU - $10019e.b <- $200200.b
+	PORT_START_TAG("DSW1")	// IN4 - DSW from the MCU - $10019e.b <- $200200.b
 	PORT_DIPNAME( 0x0100, 0x0100, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0100, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -1281,7 +1286,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( gtmr )
-	PORT_START	// IN0 - Player 1 - b00000.w
+	PORT_START_TAG("IN0")	// IN0 - Player 1 - b00000.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -1291,7 +1296,7 @@ static INPUT_PORTS_START( gtmr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN1 - Player 2 - b00002.w
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - b00002.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -1301,7 +1306,7 @@ static INPUT_PORTS_START( gtmr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN2 - Coins - b00004.w
+	PORT_START_TAG("IN2")	// IN2 - Coins - b00004.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
@@ -1311,7 +1316,7 @@ static INPUT_PORTS_START( gtmr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
-	PORT_START	// IN3 - Seems unused ! - b00006.w
+	PORT_START_TAG("IN3")	// IN3 - Seems unused ! - b00006.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1321,7 +1326,7 @@ static INPUT_PORTS_START( gtmr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN4 - DSW from the MCU - 101265.b <- 206000.b
+	PORT_START_TAG("DSW1")	// IN4 - DSW from the MCU - 101265.b <- 206000.b
 	PORT_SERVICE_DIPLOC(  0x0100, IP_ACTIVE_LOW, "SW1:1" )
 	PORT_DIPNAME( 0x0200, 0x0200, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:2")
 	PORT_DIPSETTING(      0x0200, DEF_STR( Off ) )
@@ -1344,8 +1349,11 @@ static INPUT_PORTS_START( gtmr )
 	PORT_DIPSETTING(      0x4000, "Flag Only" )
 	PORT_DIPSETTING(      0x0000, DEF_STR( None ) )
 
-	PORT_START	// IN5 - Wheel - 100015.b <- ffffe.b
-	PORT_BIT ( 0x00ff, 0x0080, IPT_PADDLE ) PORT_SENSITIVITY(30) PORT_KEYDELTA(1)
+	PORT_START_TAG("WHEEL0")	// IN5 - Wheel (270deg) - 100015.b <- ffffe.b
+	PORT_BIT ( 0x00ff, 0x0080, IPT_PADDLE ) PORT_SENSITIVITY(30) PORT_KEYDELTA(25)
+
+	PORT_START_TAG("WHEEL1")	// IN6 - Wheel (360deg)
+	PORT_BIT ( 0x00ff, 0x0000, IPT_DIAL ) PORT_SENSITIVITY(70) PORT_KEYDELTA(25) PORT_PLAYER(1)
 INPUT_PORTS_END
 
 
@@ -1354,7 +1362,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( gtmr2 )
-	PORT_START	// IN0 - Player 1 - 100004.w <- b00000.w (cpl)
+	PORT_START_TAG("IN0")	// IN0 - Player 1 - 100004.w <- b00000.w (cpl)
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -1364,7 +1372,7 @@ static INPUT_PORTS_START( gtmr2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN1 - Player 2 - 10000c.w <- b00002.w (cpl) - for "test mode" only
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - 10000c.w <- b00002.w (cpl) - for "test mode" only
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -1374,7 +1382,7 @@ static INPUT_PORTS_START( gtmr2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN2 - Coins - 100014.w <- b00004.w (cpl)
+	PORT_START_TAG("IN2")	// IN2 - Coins - 100014.w <- b00004.w (cpl)
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)	// only in "test mode"
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
@@ -1384,7 +1392,7 @@ static INPUT_PORTS_START( gtmr2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
-	PORT_START	// IN3 - 100017.w <- b00006.w
+	PORT_START_TAG("IN3")	// IN3 - 100017.w <- b00006.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1394,7 +1402,7 @@ static INPUT_PORTS_START( gtmr2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_NAME("IN 3-6")	// Code at 0x002236 - Centers 270D wheel ?
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN4 - DSW from the MCU - 1016f7.b <- 206000.b
+	PORT_START_TAG("DSW1")	// IN4 - DSW from the MCU - 1016f7.b <- 206000.b
 	PORT_DIPNAME( 0x0700, 0x0700, "Linked Operation Board Number" ) PORT_DIPLOCATION("SW1:6,7,8")
 	PORT_DIPSETTING(      0x0700, "No Communication" )
 	PORT_DIPSETTING(      0x0600, "Board #1" )
@@ -1408,31 +1416,31 @@ static INPUT_PORTS_START( gtmr2 )
     */
 	PORT_DIPNAME( 0x1800, 0x1800, DEF_STR( Controls ) ) PORT_DIPLOCATION("SW1:4,5")
 	PORT_DIPSETTING(      0x1800, DEF_STR( Joystick ) )
-	PORT_DIPSETTING(      0x0800, "Wheel (360)" )			// Not working correctly in race
-	PORT_DIPSETTING(      0x1000, "Wheel (270D)" )			// Not working correctly !
-	PORT_DIPSETTING(      0x0000, "Wheel (270A)" )			// Not working correctly in race
+	PORT_DIPSETTING(      0x0800, "Wheel (360)" )			// Not working correctly in race }
+	PORT_DIPSETTING(      0x1000, "Wheel (270D)" )			// Not working correctly !   } seems to work ok to me! (minwah)
+	PORT_DIPSETTING(      0x0000, "Wheel (270A)" )			// Not working correctly in race }
 	PORT_DIPNAME( 0x2000, 0x2000, "Optional Mode Of Pedal Function" ) PORT_DIPLOCATION("SW1:3")
 	PORT_DIPSETTING(      0x2000, "Microswitch" )			// "This mode also corresponds to the two buttons used with joystick."
-	PORT_DIPSETTING(      0x0000, "Potentiometer" )         // Not implemented yet
+	PORT_DIPSETTING(      0x0000, "Potentiometer" )         	// Not implemented yet
 	PORT_DIPNAME( 0x4000, 0x4000, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:2")
 	PORT_DIPSETTING(      0x4000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On )  )
 	PORT_SERVICE_DIPLOC(  0x8000, IP_ACTIVE_LOW, "SW1:1" )
 
-	PORT_START	// IN5 - Wheel (270A) - 100019.b <- fffff.b
+	PORT_START_TAG("WHEEL0")	// IN5 - Wheel (270A) - 100019.b <- fffff.b
 	PORT_BIT ( 0x00ff, 0x0080, IPT_PADDLE ) PORT_SENSITIVITY(30) PORT_KEYDELTA(1)
 
-	PORT_START	// IN6 - Wheel (270D) - 100019.b <- ffffe.b
+	PORT_START_TAG("WHEEL1")	// IN6 - Wheel (270D) - 100019.b <- ffffe.b
 	PORT_BIT ( 0x00ff, 0x0080, IPT_PADDLE ) PORT_SENSITIVITY(30) PORT_KEYDELTA(1)
 
-	PORT_START	// IN7 - Wheel (360) - 100019.b <- ffffe.b
+	PORT_START_TAG("WHEEL2")	// IN7 - Wheel (360) - 100019.b <- ffffe.b
 	PORT_BIT( 0x00ff, 0x0000, IPT_DIAL ) PORT_SENSITIVITY(30) PORT_KEYDELTA(1) PORT_CODE_DEC(KEYCODE_LEFT) PORT_CODE_INC(KEYCODE_RIGHT)
 
-	PORT_START	// Fake IN1 - To be pressed during boot sequence - Code at 0x000c9e
+	PORT_START_TAG("FAKE")	// Fake IN1 - To be pressed during boot sequence - Code at 0x000c9e
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_NAME("IN 1-0") PORT_CODE(KEYCODE_H)	// "sound test"
-	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_NAME("IN 1-4") PORT_CODE(KEYCODE_J)	// "view tiles"
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON7 ) PORT_NAME("IN 1-5") PORT_CODE(KEYCODE_K)	// "view memory"
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON8 ) PORT_NAME("IN 1-6") PORT_CODE(KEYCODE_L)	// "view sprites ?"
@@ -1445,7 +1453,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( mgcrystl )
-	PORT_START	// IN0 - Player 1 + DSW - c00000.w
+	PORT_START_TAG("IN0")	// IN0 - Player 1 + DSW - c00000.w
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off )         )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On )          )
@@ -1467,7 +1475,7 @@ static INPUT_PORTS_START( mgcrystl )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN1 - Player 2 - c00002.b
+	PORT_START_TAG("IN1")	// IN1 - Player 2 - c00002.b
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1486,7 +1494,7 @@ static INPUT_PORTS_START( mgcrystl )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN2 - Other Buttons - c00004.b
+	PORT_START_TAG("IN2")	// IN2 - Other Buttons - c00004.b
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1   )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2   )
@@ -1505,7 +1513,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( shogwarr )
-	PORT_START	// IN0 - - b80000.w
+	PORT_START_TAG("IN0")	// IN0 - - b80000.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -1515,7 +1523,7 @@ static INPUT_PORTS_START( shogwarr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	// ? tested
 
-	PORT_START	// IN1 - - b80002.w
+	PORT_START_TAG("IN1")	// IN1 - - b80002.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -1525,7 +1533,7 @@ static INPUT_PORTS_START( shogwarr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )	// ? tested
 
-	PORT_START	// IN2 - Coins - b80004.w
+	PORT_START_TAG("IN2")	// IN2 - Coins - b80004.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(2)
@@ -1535,7 +1543,7 @@ static INPUT_PORTS_START( shogwarr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_SERVICE1	)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN	)	// ? tested
 
-	PORT_START	// IN3 - ? - b80006.w
+	PORT_START_TAG("IN3")	// IN3 - ? - b80006.w
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1545,7 +1553,7 @@ static INPUT_PORTS_START( shogwarr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN4 - DSW from the MCU - 102e15.b <- 200059.b
+	PORT_START_TAG("DSW1")	// IN4 - DSW from the MCU - 102e15.b <- 200059.b
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Flip_Screen ) ) PORT_DIPLOCATION("SW1:1")
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2048,10 +2056,10 @@ MACHINE_DRIVER_END
  have the even and odd pixels swapped. So we use this function to untangle
  them and have one single gfxlayout for both tiles and sprites.
 */
-static void kaneko16_unscramble_tiles(int region)
+static void kaneko16_unscramble_tiles(running_machine *machine, int region)
 {
-	UINT8 *RAM	=	memory_region(region);
-	int size			=	memory_region_length(region);
+	UINT8 *RAM	=	memory_region(machine, region);
+	int size			=	memory_region_length(machine, region);
 	int i;
 
 	if (RAM == NULL)	return;
@@ -2062,7 +2070,7 @@ static void kaneko16_unscramble_tiles(int region)
 	}
 }
 
-static void kaneko16_expand_sample_banks(int region)
+static void kaneko16_expand_sample_banks(running_machine *machine, int region)
 {
 	/* The sample data for the first OKI has an address translator/
        banking register in it that munges the addresses as follows:
@@ -2074,14 +2082,15 @@ static void kaneko16_expand_sample_banks(int region)
        possible combinations of these and swap between them.
     */
 	int bank;
+	UINT8 *src0;
 
-	if (memory_region_length(region) < 0x40000 * 16)
+	if (memory_region_length(machine, region) < 0x40000 * 16)
 		fatalerror("gtmr SOUND1 region too small");
 
 	/* bank 0 maps to itself, so we just leave it alone */
+	src0 = memory_region(machine, region);
 	for (bank = 15; bank > 0; bank--)
 	{
-		UINT8 *src0 = memory_region(region);
 		UINT8 *srcn = src0 + 0x10000 * (bank < 3 ? 3 : bank);
 		UINT8 *dst = src0 + 0x40000 * bank;
 
@@ -2092,20 +2101,20 @@ static void kaneko16_expand_sample_banks(int region)
 
 static DRIVER_INIT( kaneko16 )
 {
-	kaneko16_unscramble_tiles(REGION_GFX2);
-	kaneko16_unscramble_tiles(REGION_GFX3);
+	kaneko16_unscramble_tiles(machine, REGION_GFX2);
+	kaneko16_unscramble_tiles(machine, REGION_GFX3);
 }
 
 static DRIVER_INIT( berlwall )
 {
-	kaneko16_unscramble_tiles(REGION_GFX2);
+	kaneko16_unscramble_tiles(machine, REGION_GFX2);
 }
 
 static DRIVER_INIT( samplebank )
 {
-	kaneko16_unscramble_tiles(REGION_GFX2);
-	kaneko16_unscramble_tiles(REGION_GFX3);
-	kaneko16_expand_sample_banks(REGION_SOUND1);
+	kaneko16_unscramble_tiles(machine, REGION_GFX2);
+	kaneko16_unscramble_tiles(machine, REGION_GFX3);
+	kaneko16_expand_sample_banks(machine, REGION_SOUND1);
 }
 
 

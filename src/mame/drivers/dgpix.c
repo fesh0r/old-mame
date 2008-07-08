@@ -26,7 +26,6 @@
     You could even multiply the PC by the stack pointer if you wanted."
 
 
-
  driver by Pierpaolo Prazzoli & Tomasz Slanina
 
  - Pierpaolo Prazzoli 2006.05.06
@@ -60,7 +59,7 @@ static UINT32 flash_cmd = 0;
 
 static READ32_HANDLER( flash_r )
 {
-	UINT32 *ROM = (UINT32 *)memory_region(REGION_USER1);
+	UINT32 *ROM = (UINT32 *)memory_region(machine, REGION_USER1);
 
 	if(offset >= (0x2000000 - flash_roms * 0x400000) / 4)
 	{
@@ -99,7 +98,7 @@ static WRITE32_HANDLER( flash_w )
 		if(data == 0xd0d00000)
 		{
 			// point to game settings
-			UINT8 *rom = (UINT8 *)memory_region(REGION_USER1) + offset*4;
+			UINT8 *rom = (UINT8 *)memory_region(machine, REGION_USER1) + offset*4;
 
 			// erase one block
 			memset(rom, 0xff, 0x10000);
@@ -117,7 +116,7 @@ static WRITE32_HANDLER( flash_w )
 		}
 		else
 		{
-			UINT16 *rom = (UINT16 *)memory_region(REGION_USER1);
+			UINT16 *rom = (UINT16 *)memory_region(machine, REGION_USER1);
 
 			// write game settings
 
@@ -182,7 +181,7 @@ static READ32_HANDLER( vblank_r )
 {
 	/* burn a bunch of cycles because this is polled frequently during busy loops */
 	activecpu_adjust_icount(-100);
-	return input_port_read_indexed(machine, 0);
+	return input_port_read(machine, "IN0");
 }
 
 static ADDRESS_MAP_START( cpu_map, ADDRESS_SPACE_PROGRAM, 32 )
@@ -210,7 +209,7 @@ static NVRAM_HANDLER( flashroms )
 	if (read_or_write)
 	{
 		// point to game settings
-		UINT8 *rom = (UINT8 *)memory_region(REGION_USER1) + 0x1c00000 + 0x360000;
+		UINT8 *rom = (UINT8 *)memory_region(machine, REGION_USER1) + 0x1c00000 + 0x360000;
 		UINT8 tmp[0x40000];
 		int i;
 
@@ -223,7 +222,7 @@ static NVRAM_HANDLER( flashroms )
 	else if (file)
 	{
 		// point to game settings
-		UINT8 *rom = (UINT8 *)memory_region(REGION_USER1) + 0x1c00000 + 0x360000;
+		UINT8 *rom = (UINT8 *)memory_region(machine, REGION_USER1) + 0x1c00000 + 0x360000;
 		UINT8 tmp[0x40000];
 		int i;
 
@@ -236,11 +235,11 @@ static NVRAM_HANDLER( flashroms )
 }
 
 static INPUT_PORTS_START( dgpix )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x00000003, IP_ACTIVE_LOW, IPT_VBLANK ) //value 2 is used by fmaniac3
 	PORT_BIT( 0xfffffffc, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x00000001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x00000002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x00000004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT	) PORT_8WAY PORT_PLAYER(1)
@@ -258,7 +257,6 @@ static INPUT_PORTS_START( dgpix )
 	PORT_BIT( 0x00004000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x00008000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_SERVICE_NO_TOGGLE( 0x00010000, IP_ACTIVE_LOW )
-	PORT_BIT( 0x00010000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x00020000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x00040000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x00080000, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -549,7 +547,7 @@ ROM_END
 
 static DRIVER_INIT( xfiles )
 {
-	UINT8 *rom = (UINT8 *)memory_region(REGION_USER1) + 0x1c00000;
+	UINT8 *rom = (UINT8 *)memory_region(machine, REGION_USER1) + 0x1c00000;
 
 	rom[BYTE4_XOR_BE(0x3aa92e)] = 3;
 	rom[BYTE4_XOR_BE(0x3aa92f)] = 0;
@@ -566,7 +564,7 @@ static DRIVER_INIT( xfiles )
 
 static DRIVER_INIT( kdynastg )
 {
-	UINT8 *rom = (UINT8 *)memory_region(REGION_USER1) + 0x1c00000;
+	UINT8 *rom = (UINT8 *)memory_region(machine, REGION_USER1) + 0x1c00000;
 
 	rom[BYTE4_XOR_BE(0x3aaa10)] = 3; // 129f0 - nopped call
 	rom[BYTE4_XOR_BE(0x3aaa11)] = 0;

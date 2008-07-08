@@ -1,6 +1,7 @@
 /* Raiden 2 Sprite Decryption */
 
 #include "driver.h"
+#include "includes/raiden2.h"
 
 /* INIT */
 
@@ -247,10 +248,10 @@ static UINT32 trans(UINT32 v, UINT32 x)
   return r;
 }
 
-void raiden2_decrypt_sprites(void)
+void raiden2_decrypt_sprites(running_machine *machine)
 {
   int i;
-  UINT32 *data = (UINT32 *)memory_region(REGION_GFX3);
+  UINT32 *data = (UINT32 *)memory_region(machine, REGION_GFX3);
   for(i=0; i<0x800000/4; i++) {
     UINT32 x1, v1, y1;
 

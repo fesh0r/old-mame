@@ -125,11 +125,13 @@ static TILEMAP_MAPPER( tilemap_scan_gstrik2 )
 
 ***************************************************************************/
 
+#ifdef UNUSED_FUNCTION
 WRITE16_HANDLER( metro_paletteram_w )
 {
 	data = COMBINE_DATA(&paletteram16[offset]);
 	palette_set_color_rgb(machine,offset,pal5bit(data >> 6),pal5bit(data >> 11),pal5bit(data >> 1));
 }
+#endif
 
 
 /***************************************************************************
@@ -599,8 +601,8 @@ void metro_draw_sprites(running_machine *machine, bitmap_t *bitmap, const rectan
 {
 	const int region		=	REGION_GFX1;
 
-	UINT8 *base_gfx	=	memory_region(region);
-	UINT8 *gfx_max	=	base_gfx + memory_region_length(region);
+	UINT8 *base_gfx	=	memory_region(machine, region);
+	UINT8 *gfx_max	=	base_gfx + memory_region_length(machine, region);
 
 	int max_x = video_screen_get_width(machine->primary_screen);
 	int max_y = video_screen_get_height(machine->primary_screen);

@@ -182,7 +182,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/tait8741.h"
 #include "cpu/z80/z80.h"
 #include "sound/2203intf.h"
@@ -208,7 +207,7 @@ VIDEO_UPDATE( gladiatr );
 /*Rom bankswitching*/
 static WRITE8_HANDLER( gladiatr_bankswitch_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *rom = memory_region(machine, REGION_CPU1) + 0x10000;
 
 	memory_set_bankptr(1, rom + 0x6000 * (data & 0x01));
 }
@@ -270,7 +269,7 @@ static MACHINE_RESET( gladiator )
 	TAITO8741_start(&gsword_8741interface);
 	/* 6809 bank memory set */
 	{
-		UINT8 *rom = memory_region(REGION_CPU3) + 0x10000;
+		UINT8 *rom = memory_region(machine, REGION_CPU3) + 0x10000;
 		memory_set_bankptr(2,rom);
 	}
 }
@@ -288,16 +287,16 @@ static WRITE8_HANDLER( gladiator_int_control_w )
 	/* bit 0   : ??                    */
 }
 /* YM2203 IRQ */
-static void gladiator_ym_irq(int irq)
+static void gladiator_ym_irq(running_machine *machine, int irq)
 {
 	/* NMI IRQ is not used by gladiator sound program */
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*Sound Functions*/
 static WRITE8_HANDLER( glad_adpcm_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU3) + 0x10000;
+	UINT8 *rom = memory_region(machine, REGION_CPU3) + 0x10000;
 
 	/* bit6 = bank offset */
 	memory_set_bankptr(2,rom + ((data & 0x40) ? 0xc000 : 0));
@@ -362,9 +361,9 @@ static WRITE8_HANDLER(qx2_w){ }
 
 static WRITE8_HANDLER(qx3_w){ }
 
-static READ8_HANDLER(qx2_r){ return mame_rand(Machine); }
+static READ8_HANDLER(qx2_r){ return mame_rand(machine); }
 
-static READ8_HANDLER(qx3_r){ return mame_rand(Machine)&0xf; }
+static READ8_HANDLER(qx3_r){ return mame_rand(machine)&0xf; }
 
 static READ8_HANDLER(qx0_r)
 {
@@ -469,11 +468,6 @@ ADDRESS_MAP_END
 
 
 
-static INPUT_PORTS_START( ppking )
-
-INPUT_PORTS_END
-
-
 static INPUT_PORTS_START( gladiatr )
 	PORT_START_TAG("DSW1")		/* (8741-0 parallel port)*/
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
@@ -553,7 +547,6 @@ static INPUT_PORTS_START( gladiatr )
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNKNOWN )
-	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN ) /* COINS */
 
@@ -651,7 +644,7 @@ GFXDECODE_END
 
 static READ8_HANDLER(f1_r)
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static const struct YM2203interface ppking_ym2203_interface =
@@ -987,7 +980,7 @@ static DRIVER_INIT( gladiatr )
 	UINT8 *rom;
 	int i,j;
 
-	rom = memory_region(REGION_GFX2);
+	rom = memory_region(machine, REGION_GFX2);
 	// unpack 3bpp graphics
 	for (j = 3; j >= 0; j--)
 	{
@@ -1001,7 +994,7 @@ static DRIVER_INIT( gladiatr )
 	swap_block(rom + 0x14000, rom + 0x18000, 0x4000);
 
 
-	rom = memory_region(REGION_GFX3);
+	rom = memory_region(machine, REGION_GFX3);
 	// unpack 3bpp graphics
 	for (j = 5; j >= 0; j--)
 	{
@@ -1032,14 +1025,14 @@ static DRIVER_INIT(ppking)
 	UINT8 *rom;
 	int i,j;
 
-	rom = memory_region(REGION_GFX2);
+	rom = memory_region(machine, REGION_GFX2);
 	// unpack 3bpp graphics
 	for (i = 0; i < 0x2000; i++)
 	{
 		rom[i+0x2000] = rom[i] >> 4;
 	}
 
-	rom = memory_region(REGION_GFX3);
+	rom = memory_region(machine, REGION_GFX3);
 	// unpack 3bpp graphics
 	for (j = 1; j >= 0; j--)
 	{
@@ -1055,7 +1048,7 @@ static DRIVER_INIT(ppking)
 
 
 
-GAME( 1985, ppking,   0,        ppking,   ppking,   ppking,   ROT90, "Taito America Corporation", "Ping-Pong King", GAME_NOT_WORKING)
+GAME( 1985, ppking,   0,        ppking,   0,        ppking,   ROT90, "Taito America Corporation", "Ping-Pong King", GAME_NOT_WORKING)
 GAME( 1986, gladiatr, 0,        gladiatr, gladiatr, gladiatr, ROT0,  "Taito America Corporation", "Gladiator (US)", 0 )
 GAME( 1986, ogonsiro, gladiatr, gladiatr, gladiatr, gladiatr, ROT0,  "Taito Corporation", "Ohgon no Siro (Japan)", 0 )
 GAME( 1986, greatgur, gladiatr, gladiatr, gladiatr, gladiatr, ROT0,  "Taito Corporation", "Great Gurianos (Japan?)", 0 )

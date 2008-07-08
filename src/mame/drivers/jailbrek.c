@@ -21,12 +21,11 @@ ernesto@imagina.com
 
 
 #include "driver.h"
+#include "machine/konami1.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/sn76496.h"
 #include "sound/vlm5030.h"
 
-
-void konami1_decode(void);
 
 extern UINT8 *jailbrek_scroll_x;
 extern UINT8 *jailbrek_scroll_dir;
@@ -393,7 +392,7 @@ ROM_END
 
 static DRIVER_INIT( jailbrek )
 {
-	UINT8 *SPEECH_ROM = memory_region(REGION_SOUND1);
+	UINT8 *SPEECH_ROM = memory_region(machine, REGION_SOUND1);
     int nIndex;
 
     /*
@@ -405,7 +404,7 @@ static DRIVER_INIT( jailbrek )
        represents address line A13.)
     */
 
-    if (memory_region_length(REGION_SOUND1) == 0x4000)
+    if (memory_region_length(machine, REGION_SOUND1) == 0x4000)
     {
         for (nIndex = 0; nIndex < 0x2000; ++nIndex)
         {
@@ -413,7 +412,7 @@ static DRIVER_INIT( jailbrek )
         }
     }
 
-    konami1_decode();
+    konami1_decode(machine, 0);
 }
 
 GAME( 1986, jailbrek, 0,        jailbrek, jailbrek, jailbrek, ROT0, "Konami", "Jail Break", GAME_SUPPORTS_SAVE )

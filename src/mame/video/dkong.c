@@ -761,7 +761,7 @@ static void radarscp_step(running_machine *machine, int line_cnt)
 
 }
 
-static void radarscp_draw_background(dkong_state *state, bitmap_t *bitmap, const rectangle *cliprect)
+static void radarscp_draw_background(running_machine *machine, dkong_state *state, bitmap_t *bitmap, const rectangle *cliprect)
 {
 	const UINT8 	*htable = NULL;
 	int 			x,y;
@@ -769,7 +769,7 @@ static void radarscp_draw_background(dkong_state *state, bitmap_t *bitmap, const
 	UINT16 			*pixel;
 
 	if (state->hardware_type == HARDWARE_TRS01)
-		htable = memory_region(REGION_GFX4);
+		htable = memory_region(machine, REGION_GFX4);
 
 	y = cliprect->min_y;
 	while (y <= cliprect->max_y)
@@ -793,8 +793,8 @@ static void radarscp_draw_background(dkong_state *state, bitmap_t *bitmap, const
 static TIMER_CALLBACK( scanline_callback )
 {
 	dkong_state *state = machine->driver_data;
-	const UINT8 *table = memory_region(REGION_GFX3);
-	int 		table_len = memory_region_length(REGION_GFX3);
+	const UINT8 *table = memory_region(machine, REGION_GFX3);
+	int 		table_len = memory_region_length(machine, REGION_GFX3);
 	int 			x,y,offset;
 	UINT16 			*pixel;
 	static int		counter=0;
@@ -834,23 +834,23 @@ static TIMER_CALLBACK( scanline_callback )
 static void check_palette(running_machine *machine)
 {
 	dkong_state *state = machine->driver_data;
+	const input_port_config *port;
 	int newset;
-	int num;
 
-	num = port_tag_to_index("VIDHW");
-	if (num>=0)
+	port = input_port_by_tag(machine->portconfig, "VIDHW");
+	if (port != NULL)
 	{
-		newset = input_port_read_indexed(machine, num);
+		newset = input_port_read_direct(port);
 		if (newset != state->vidhw)
 		{
 			state->vidhw = newset;
 			switch (newset)
 			{
 				case 0x00:
-					palette_init_radarscp(machine, memory_region(REGION_PROMS));
+					palette_init_radarscp(machine, memory_region(machine, REGION_PROMS));
 					break;
 				case 0x01:
-					palette_init_dkong2b(machine, memory_region(REGION_PROMS));
+					palette_init_dkong2b(machine, memory_region(machine, REGION_PROMS));
 					break;
 			}
 		}
@@ -937,7 +937,7 @@ VIDEO_UPDATE( dkong )
 		case HARDWARE_TRS02:
 			tilemap_draw(bitmap, cliprect, state->bg_tilemap, 0, 0);
 			draw_sprites(screen->machine, bitmap, cliprect, 0x40, 1);
-			radarscp_draw_background(state, bitmap, cliprect);
+			radarscp_draw_background(screen->machine, state, bitmap, cliprect);
 			break;
 		default:
 			fatalerror("Invalid hardware type in dkong_video_update");

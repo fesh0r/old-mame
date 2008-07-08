@@ -662,8 +662,14 @@ static void PREFIX86(_push_es)(void)    /* Opcode 0x06 */
 
 static void PREFIX86(_pop_es)(void)    /* Opcode 0x07 */
 {
+#ifdef I80286
+	UINT16 tmp;
+	POP(tmp);
+	i80286_data_descriptor(ES,tmp);
+#else
 	POP(I.sregs[ES]);
 	I.base[ES] = SegBase(ES);
+#endif
 	ICOUNT -= cycles.pop_seg;
 }
 
@@ -3128,7 +3134,7 @@ static void PREFIX86(_invalid)(void)
 	i80286_trap2(ILLEGAL_INSTRUCTION);
 #else
 	 /* makes the cpu loops forever until user resets it */
-	/*{ DEBUGGER_BREAK; } */
+	/*{ debugger_break(Machine); } */
 	logerror("illegal instruction %.2x at %.5x\n",PEEKBYTE(I.pc), I.pc);
 	I.pc--;
 	ICOUNT -= 10;

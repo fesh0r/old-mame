@@ -1,8 +1,13 @@
 /***************************************************************************
 
     mips3.h
-    Interface file for the portable MIPS III/IV emulator.
-    Written by Aaron Giles
+
+    Interface file for the universal machine language-based
+    MIPS III/IV emulator.
+
+    Copyright Aaron Giles
+    Released for general non-commercial use under the MAME license
+    Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
 
@@ -54,37 +59,102 @@ enum
 	MIPS3_HI,
 	MIPS3_LO,
 	MIPS3_FPR0,
+	MIPS3_FPS0,
+	MIPS3_FPD0,
 	MIPS3_FPR1,
+	MIPS3_FPS1,
+	MIPS3_FPD1,
 	MIPS3_FPR2,
+	MIPS3_FPS2,
+	MIPS3_FPD2,
 	MIPS3_FPR3,
+	MIPS3_FPS3,
+	MIPS3_FPD3,
 	MIPS3_FPR4,
+	MIPS3_FPS4,
+	MIPS3_FPD4,
 	MIPS3_FPR5,
+	MIPS3_FPS5,
+	MIPS3_FPD5,
 	MIPS3_FPR6,
+	MIPS3_FPS6,
+	MIPS3_FPD6,
 	MIPS3_FPR7,
+	MIPS3_FPS7,
+	MIPS3_FPD7,
 	MIPS3_FPR8,
+	MIPS3_FPS8,
+	MIPS3_FPD8,
 	MIPS3_FPR9,
+	MIPS3_FPS9,
+	MIPS3_FPD9,
 	MIPS3_FPR10,
+	MIPS3_FPS10,
+	MIPS3_FPD10,
 	MIPS3_FPR11,
+	MIPS3_FPS11,
+	MIPS3_FPD11,
 	MIPS3_FPR12,
+	MIPS3_FPS12,
+	MIPS3_FPD12,
 	MIPS3_FPR13,
+	MIPS3_FPS13,
+	MIPS3_FPD13,
 	MIPS3_FPR14,
+	MIPS3_FPS14,
+	MIPS3_FPD14,
 	MIPS3_FPR15,
+	MIPS3_FPS15,
+	MIPS3_FPD15,
 	MIPS3_FPR16,
+	MIPS3_FPS16,
+	MIPS3_FPD16,
 	MIPS3_FPR17,
+	MIPS3_FPS17,
+	MIPS3_FPD17,
 	MIPS3_FPR18,
+	MIPS3_FPS18,
+	MIPS3_FPD18,
 	MIPS3_FPR19,
+	MIPS3_FPS19,
+	MIPS3_FPD19,
 	MIPS3_FPR20,
+	MIPS3_FPS20,
+	MIPS3_FPD20,
 	MIPS3_FPR21,
+	MIPS3_FPS21,
+	MIPS3_FPD21,
 	MIPS3_FPR22,
+	MIPS3_FPS22,
+	MIPS3_FPD22,
 	MIPS3_FPR23,
+	MIPS3_FPS23,
+	MIPS3_FPD23,
 	MIPS3_FPR24,
+	MIPS3_FPS24,
+	MIPS3_FPD24,
 	MIPS3_FPR25,
+	MIPS3_FPS25,
+	MIPS3_FPD25,
 	MIPS3_FPR26,
+	MIPS3_FPS26,
+	MIPS3_FPD26,
 	MIPS3_FPR27,
+	MIPS3_FPS27,
+	MIPS3_FPD27,
 	MIPS3_FPR28,
+	MIPS3_FPS28,
+	MIPS3_FPD28,
 	MIPS3_FPR29,
+	MIPS3_FPS29,
+	MIPS3_FPD29,
 	MIPS3_FPR30,
+	MIPS3_FPS30,
+	MIPS3_FPD30,
 	MIPS3_FPR31,
+	MIPS3_FPS31,
+	MIPS3_FPD31,
+	MIPS3_CCR1_31,
 	MIPS3_SR,
 	MIPS3_EPC,
 	MIPS3_CAUSE,
@@ -139,7 +209,8 @@ enum
     STRUCTURES
 ***************************************************************************/
 
-struct mips3_config
+typedef struct _mips3_config mips3_config;
+struct _mips3_config
 {
 	size_t		icache;							/* code cache size */
 	size_t		dcache;							/* data cache size */
@@ -185,13 +256,12 @@ void rm7000le_get_info(UINT32 state, cpuinfo *info);
 
 /* fix me -- how do we make this work?? */
 #define MIPS3DRC_STRICT_VERIFY		0x0001			/* verify all instructions */
-#define MIPS3DRC_STRICT_COP0		0x0002			/* validate all COP0 instructions */
-#define MIPS3DRC_STRICT_COP1		0x0004			/* validate all COP1 instructions */
-#define MIPS3DRC_STRICT_COP2		0x0008			/* validate all COP2 instructions */
-#define MIPS3DRC_FLUSH_PC			0x0020			/* flush the PC value before each memory access */
-#define MIPS3DRC_CHECK_OVERFLOWS	0x0040			/* actually check overflows on add/sub instructions */
+#define MIPS3DRC_STRICT_COP1		0x0002			/* validate all COP1 instructions */
+#define MIPS3DRC_STRICT_COP2		0x0004			/* validate all COP2 instructions */
+#define MIPS3DRC_FLUSH_PC			0x0008			/* flush the PC value before each memory access */
+#define MIPS3DRC_CHECK_OVERFLOWS	0x0010			/* actually check overflows on add/sub instructions */
 
-#define MIPS3DRC_COMPATIBLE_OPTIONS	(MIPS3DRC_STRICT_VERIFY | MIPS3DRC_STRICT_COP0 | MIPS3DRC_STRICT_COP1 | MIPS3DRC_STRICT_COP2 | MIPS3DRC_FLUSH_PC)
+#define MIPS3DRC_COMPATIBLE_OPTIONS	(MIPS3DRC_STRICT_VERIFY | MIPS3DRC_STRICT_COP1 | MIPS3DRC_STRICT_COP2 | MIPS3DRC_FLUSH_PC)
 #define MIPS3DRC_FASTEST_OPTIONS	(0)
 
 

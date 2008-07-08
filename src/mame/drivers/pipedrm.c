@@ -104,7 +104,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "fromance.h"
 #include "sound/2608intf.h"
@@ -125,11 +124,11 @@ static UINT8 sound_command;
 static MACHINE_RESET( pipedrm )
 {
 	/* initialize main Z80 bank */
-	memory_configure_bank(1, 0, 8, memory_region(REGION_CPU1) + 0x10000, 0x2000);
+	memory_configure_bank(1, 0, 8, memory_region(machine, REGION_CPU1) + 0x10000, 0x2000);
 	memory_set_bank(1, 0);
 
 	/* initialize sound bank */
-	memory_configure_bank(2, 0, 2, memory_region(REGION_CPU2) + 0x10000, 0x8000);
+	memory_configure_bank(2, 0, 2, memory_region(machine, REGION_CPU2) + 0x10000, 0x8000);
 	memory_set_bank(2, 0);
 	/* state save */
 	state_save_register_global(pending_command);
@@ -525,16 +524,16 @@ GFXDECODE_END
  *
  *************************************/
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 static const struct YM2608interface ym2608_interface =
 {
 	{
-		AY8910_LEGACY_OUTPUT,
+		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
 		AY8910_DEFAULT_LOADS,
 		NULL, NULL, NULL, NULL
 	},

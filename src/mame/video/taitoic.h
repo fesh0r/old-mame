@@ -4,6 +4,14 @@
 
 extern const int TC0100SCN_SINGLE_VDU;	/* value set in taitoic.c */
 
+extern UINT8 TC0360PRI_regs[16];
+
+extern UINT16	*TC0080VCO_chain_ram_0;
+extern UINT16	*TC0080VCO_chain_ram_1;
+extern UINT16	*TC0080VCO_spriteram;
+extern UINT16	*TC0080VCO_scroll_ram;
+extern int	TC0080VCO_flipscreen;
+
 int number_of_TC0100SCN(void);
 int has_TC0110PCR(void);
 int has_second_TC0110PCR(void);
@@ -167,7 +175,7 @@ extern int TC0480SCP_pri_reg;
 READ16_HANDLER( TC0150ROD_word_r );
 WRITE16_HANDLER( TC0150ROD_word_w );
 void TC0150ROD_vh_start(void);
-void TC0150ROD_draw(bitmap_t *bitmap,const rectangle *cliprect,int y_offs,int palette_offs,int type,int road_trans,UINT32 low_priority,UINT32 high_priority);
+void TC0150ROD_draw(running_machine *machine,bitmap_t *bitmap,const rectangle *cliprect,int y_offs,int palette_offs,int type,int road_trans,UINT32 low_priority,UINT32 high_priority);
 
 
 /***************************************************************************/

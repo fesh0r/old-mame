@@ -210,7 +210,7 @@ WRITE16_HANDLER( bbuster_video_w );
 #if BBUSTERS_HACK
 static MACHINE_RESET( bbusters )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	int data = input_port_read(machine, "FAKE1") & 0x03;
 
 	/* Country/Version :
@@ -229,7 +229,7 @@ static MACHINE_RESET( bbusters )
 #if MECHATT_HACK
 static MACHINE_RESET( mechatt )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	int data = input_port_read(machine, "FAKE1") & 0x03;
 
 	/* Country :
@@ -260,6 +260,7 @@ static int gun_select;
 
 static READ16_HANDLER( control_3_r )
 {
+	/* gun_select seems to assume only values 5,6,7... is this correct? */
 	return input_port_read_indexed(machine, gun_select);
 }
 
@@ -289,11 +290,13 @@ static WRITE16_HANDLER( sound_cpu_w )
 
 static READ16_HANDLER( mechatt_gun_r )
 {
-	int baseport=2,x,y;
-	if (offset) baseport=4; /* Player 2 */
+	int baseport=0,x,y;
+	static const char *port[] = { "IN2", "IN3", "IN4", "IN5" };
 
-	x=input_port_read_indexed(machine, baseport);
-	y=input_port_read_indexed(machine, baseport+1);
+	if (offset) baseport=2; /* Player 2 */
+
+	x=input_port_read(machine, port[baseport]);
+	y=input_port_read(machine, port[baseport+1]);
 
 	/* Todo - does the hardware really clamp like this? */
 	x+=0x18;
@@ -666,15 +669,15 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void sound_irq( int irq )
+static void sound_irq( running_machine *machine, int irq )
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2608interface ym2608_interface =
 {
 	{
-		AY8910_LEGACY_OUTPUT,
+		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
 		AY8910_DEFAULT_LOADS,
 		NULL, NULL, NULL, NULL
 	},
@@ -933,7 +936,7 @@ ROM_END
 static void bbusters_patch_code(UINT16 offset)
 {
 	/* To avoid checksum error */
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	RAM[(offset +  0)/2] = 0x4e71;
 	RAM[(offset +  2)/2] = 0x4e71;
 	RAM[(offset + 10)/2] = 0x4e71;

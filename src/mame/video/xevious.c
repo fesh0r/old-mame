@@ -328,9 +328,9 @@ WRITE8_HANDLER( xevious_bs_w )
 
 READ8_HANDLER( xevious_bb_r )
 {
-	UINT8 *rom2a = memory_region(REGION_GFX4);
-	UINT8 *rom2b = memory_region(REGION_GFX4)+0x1000;
-	UINT8 *rom2c = memory_region(REGION_GFX4)+0x3000;
+	UINT8 *rom2a = memory_region(machine, REGION_GFX4);
+	UINT8 *rom2b = rom2a+0x1000;
+	UINT8 *rom2c = rom2a+0x3000;
 	int adr_2b,adr_2c;
 	int dat1,dat2;
 
@@ -450,13 +450,16 @@ static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectan
 			color = spriteram[offs + 1] & 0x7f;
 			flipx = spriteram_3[offs] & 4;
 			flipy = spriteram_3[offs] & 8;
+
+			sx = spriteram_2[offs + 1] - 40 + 0x100*(spriteram_3[offs + 1] & 1);
+			sy = 28*8-spriteram_2[offs]-1;
+
 			if (flip_screen_get())
 			{
 				flipx = !flipx;
 				flipy = !flipy;
+				sy += 48;
 			}
-			sx = spriteram_2[offs + 1] - 40 + 0x100*(spriteram_3[offs + 1] & 1);
-			sy = 28*8-spriteram_2[offs]-1;
 
 			transmask = colortable_get_transpen_mask(machine->colortable, machine->gfx[bank], color, 0x80);
 

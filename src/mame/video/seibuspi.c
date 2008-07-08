@@ -1,4 +1,5 @@
 #include "driver.h"
+#include "includes/seibuspi.h"
 
 static tilemap *text_layer;
 static tilemap *back_layer;
@@ -13,7 +14,6 @@ static UINT32 video_dma_length;
 static UINT32 video_dma_address;
 
 static int rf2_layer_bank[3];
-extern UINT32 *spimainram;
 static UINT32 *tilemap_ram;
 static UINT32 *palette_ram;
 static UINT32 *sprite_ram;
@@ -523,7 +523,7 @@ VIDEO_START( spi )
 	for (i = 6000; i < 6016; i++) { alpha_table[i] = 1; }
 	for (i = 6128; i < 6144; i++) { alpha_table[i] = 1; }
 
-	region_length = memory_region_length(REGION_GFX2);
+	region_length = memory_region_length(machine, REGION_GFX2);
 
 	if (region_length <= 0x300000)
 	{

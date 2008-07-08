@@ -735,7 +735,7 @@ try_again:
 	d3d->presentation.MultiSampleType				= D3DMULTISAMPLE_NONE;
 	d3d->presentation.SwapEffect					= D3DSWAPEFFECT_DISCARD;
 	d3d->presentation.hDeviceWindow					= window->hwnd;
-	d3d->presentation.Windowed						= !window->fullscreen || HAS_WINDOW_MENU;
+	d3d->presentation.Windowed						= !window->fullscreen || win_has_menu(window);
 	d3d->presentation.EnableAutoDepthStencil		= FALSE;
 	d3d->presentation.AutoDepthStencilFormat		= D3DFMT_D16;
 	d3d->presentation.Flags							= 0;
@@ -765,6 +765,7 @@ try_again:
 
 	// set the max texture size
 	render_target_set_max_texture_size(window->target, d3d->texture_max_width, d3d->texture_max_height);
+	mame_printf_verbose("Direct3D: Max texture size = %dx%d\n", (int)d3d->texture_max_width, (int)d3d->texture_max_height);
 
 	// set the gamma if we need to
 	if (window->fullscreen)
@@ -1147,7 +1148,7 @@ static int config_adapter_mode(running_machine *machine, win_window_info *window
 	}
 
 	// choose a resolution: window mode case
-	if (!window->fullscreen || !video_config.switchres || HAS_WINDOW_MENU)
+	if (!window->fullscreen || !video_config.switchres || win_has_menu(window))
 	{
 		RECT client;
 

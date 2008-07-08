@@ -448,9 +448,9 @@ static READ32_HANDLER( rabbit_input_r )
 {
 	int rv;
 
-	rv = (input_port_read_indexed(machine, 1)<<16)|(input_port_read_indexed(machine, 0));
+	rv = (input_port_read(machine, "IN1")<<16)|(input_port_read(machine, "IN0"));
 	rv &= ~1;
-	rv |= EEPROM_read_bit();	// as per code at 4d932
+	rv |= eeprom_read_bit();	// as per code at 4d932
 	return rv;
 }
 
@@ -458,9 +458,9 @@ static READ32_HANDLER( tmmjprd_input_r )
 {
 	int rv;
 
-	rv = (input_port_read_indexed(machine, 1)<<16)|(input_port_read_indexed(machine, 0));
+	rv = (input_port_read(machine, "IN1")<<16)|(input_port_read(machine, "IN0"));
 	rv &= ~0x80;
-	rv |= (EEPROM_read_bit()<<7);	// as per code at 778
+	rv |= (eeprom_read_bit()<<7);	// as per code at 778
 	return rv;
 }
 
@@ -498,7 +498,7 @@ static READ32_HANDLER( rabbit_tilemap3_r )
 
 static READ32_HANDLER( randomrabbits )
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static ADDRESS_MAP_START( rabbit_readmem, ADDRESS_SPACE_PROGRAM, 32 )
@@ -521,7 +521,7 @@ ADDRESS_MAP_END
 /* rom bank is used when testing roms, not currently hooked up */
 static WRITE32_HANDLER ( rabbit_rombank_w )
 {
-	UINT8 *dataroms = memory_region(REGION_USER1);
+	UINT8 *dataroms = memory_region(machine, REGION_USER1);
 	int bank;
 //  mame_printf_debug("rabbit rombank %08x\n",data&0x3ff);
 	bank = data & 0x3ff;
@@ -613,9 +613,9 @@ static TIMER_CALLBACK( rabbit_blit_done )
 	cpunum_set_input_line(machine, 0, rabbit_bltirqlevel, HOLD_LINE);
 }
 
-static void rabbit_do_blit(void)
+static void rabbit_do_blit(running_machine *machine)
 {
-	UINT8 *blt_data = memory_region(REGION_USER1);
+	UINT8 *blt_data = memory_region(machine, REGION_USER1);
 	int blt_source = (rabbit_blitterregs[0]&0x000fffff)>>0;
 	int blt_column = (rabbit_blitterregs[1]&0x00ff0000)>>16;
 	int blt_line   = (rabbit_blitterregs[1]&0x000000ff);
@@ -714,7 +714,7 @@ static WRITE32_HANDLER( rabbit_blitter_w )
 
 	if (offset == 0x0c/4)
 	{
-		rabbit_do_blit();
+		rabbit_do_blit(machine);
 	}
 }
 
@@ -725,13 +725,13 @@ static WRITE32_HANDLER( rabbit_eeprom_write )
 	if (mem_mask == 0xff000000)
 	{
 		// latch the bit
-		EEPROM_write_bit(data & 0x01000000);
+		eeprom_write_bit(data & 0x01000000);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x04000000) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x04000000) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x02000000) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x02000000) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -826,7 +826,7 @@ static ADDRESS_MAP_START( tmmjprd_writemem, ADDRESS_SPACE_PROGRAM, 32 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( rabbit )
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN0")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SPECIAL ) // Eeprom
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unlabeled in input test
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
@@ -844,7 +844,7 @@ static INPUT_PORTS_START( rabbit )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN1")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -880,7 +880,7 @@ static INPUT_PORTS_START( rabbit )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tmmjprd )
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN0")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_UNKNOWN ) // unlabeled in input test
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_START1 )
@@ -898,7 +898,7 @@ static INPUT_PORTS_START( tmmjprd )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN1")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)

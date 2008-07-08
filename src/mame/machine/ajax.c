@@ -8,13 +8,12 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "cpu/z80/z80.h"
 #include "cpu/konami/konami.h"
 #include "video/konamiic.h"
+#include "includes/ajax.h"
 
-extern UINT8 ajax_priority;
 static int firq_enable;
 
 /*  ajax_bankswitch_w:
@@ -36,7 +35,7 @@ static int firq_enable;
 
 static WRITE8_HANDLER( ajax_bankswitch_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	int bankaddress = 0;
 
 	/* rom select */
@@ -109,23 +108,23 @@ static WRITE8_HANDLER( ajax_lamps_w )
 
 READ8_HANDLER( ajax_ls138_f10_r )
 {
-	int data = 0;
+	int data = 0, index;
+	static const char *portnames[] = { "IN0", "IN1", "DSW1", "DSW2" };
 
-	switch ((offset & 0x01c0) >> 6){
+	switch ((offset & 0x01c0) >> 6)
+	{
 		case 0x00:	/* ??? */
-			data = mame_rand(Machine);
+			data = mame_rand(machine);
 			break;
 		case 0x04:	/* 2P inputs */
-			data = input_port_read_indexed(machine, 5);
+			data = input_port_read(machine, "IN2");
 			break;
 		case 0x06:	/* 1P inputs + DIPSW #1 & #2 */
-			if (offset & 0x02)
-				data = input_port_read_indexed(machine, offset & 0x01);
-			else
-				data = input_port_read_indexed(machine, 3 + (offset & 0x01));
+			index = offset & 0x01;
+			data = input_port_read(machine, (offset & 0x02) ? portnames[2 + index] : portnames[index]);
 			break;
 		case 0x07:	/* DIPSW #3 */
-			data = input_port_read_indexed(machine, 2);
+			data = input_port_read(machine, "DSW3");
 			break;
 
 		default:
@@ -181,7 +180,7 @@ WRITE8_HANDLER( ajax_ls138_f10_w )
 
 WRITE8_HANDLER( ajax_bankswitch_2_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 	int bankaddress;
 
 	/* enable char ROM reading through the video RAM */

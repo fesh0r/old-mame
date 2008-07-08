@@ -68,7 +68,6 @@ TODO:
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -121,7 +120,7 @@ static WRITE8_HANDLER( pending_command_clear_w )
 
 static WRITE8_HANDLER( inufuku_soundrombank_w )
 {
-	UINT8 *ROM = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *ROM = memory_region(machine, REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1, ROM + (data & 0x03) * 0x8000);
 }
@@ -158,8 +157,8 @@ static READ16_HANDLER( inufuku_eeprom_r )
 	UINT16 inputport;
 
 	soundflag = pending_command ? 0x0000 : 0x0080;	// bit7
-	eeprom = (EEPROM_read_bit() & 1) << 6;			// bit6
-	inputport = input_port_read_indexed(machine, 4) & 0xff3f;			// bit5-0
+	eeprom = (eeprom_read_bit() & 1) << 6;			// bit6
+	inputport = input_port_read(machine, "IN1") & 0xff3f;	// bit5-0
 
 	return (soundflag | eeprom | inputport);
 }
@@ -167,13 +166,13 @@ static READ16_HANDLER( inufuku_eeprom_r )
 static WRITE16_HANDLER( inufuku_eeprom_w )
 {
 	// latch the bit
-	EEPROM_write_bit(data & 0x0800);
+	eeprom_write_bit(data & 0x0800);
 
 	// reset line asserted: reset.
-	EEPROM_set_cs_line((data & 0x2000) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_cs_line((data & 0x2000) ? CLEAR_LINE : ASSERT_LINE);
 
 	// clock line asserted: write latch or select next bit to read
-	EEPROM_set_clock_line((data & 0x1000) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_set_clock_line((data & 0x1000) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -270,7 +269,7 @@ ADDRESS_MAP_END
 ******************************************************************************/
 
 static INPUT_PORTS_START( inufuku )
-	PORT_START	// 0
+	PORT_START_TAG("P1")	// 0
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
@@ -280,7 +279,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 
-	PORT_START	// 1
+	PORT_START_TAG("P2")	// 1
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -290,7 +289,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 
-	PORT_START	// 2
+	PORT_START_TAG("IN0")	// 2
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START1 )
@@ -300,7 +299,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// 3
+	PORT_START_TAG("P4")	// 3
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(4)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(4)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(4)
@@ -310,7 +309,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(4)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(4)
 
-	PORT_START	// 4
+	PORT_START_TAG("IN1")	// 4
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN3 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN4 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_START3 )
@@ -322,7 +321,7 @@ static INPUT_PORTS_START( inufuku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// pending sound command
 
-	PORT_START	// 5
+	PORT_START_TAG("P3")	// 5
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(3)
@@ -377,9 +376,9 @@ GFXDECODE_END
 
 ******************************************************************************/
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =

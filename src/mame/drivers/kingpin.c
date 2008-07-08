@@ -20,7 +20,6 @@ Todo:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/tms9928a.h"
 #include "sound/ay8910.h"
 
@@ -128,12 +127,12 @@ ADDRESS_MAP_END
 
 static INTERRUPT_GEN( kingpin_video_interrupt )
 {
-	TMS9928A_interrupt();
+	TMS9928A_interrupt(machine);
 }
 
-static void vdp_interrupt (int state)
+static void vdp_interrupt (running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0,0, HOLD_LINE);
+	cpunum_set_input_line(machine, 0,0, HOLD_LINE);
 }
 
 static const TMS9928a_interface tms9928a_interface =
@@ -183,7 +182,7 @@ static DRIVER_INIT( kingpin )
 	TMS9928A_configure(&tms9928a_interface);
 
 	/* Hacks to keep the emu a'runnin */
-	code_base = memory_region(REGION_CPU1);
+	code_base = memory_region(machine, REGION_CPU1);
 	code_base[0x17d4] = 0xc3;	/* Maybe sound related? */
 }
 

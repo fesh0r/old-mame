@@ -247,11 +247,11 @@ INTERRUPT_GEN( snk_irq_BA )
 }
 
 // NMI handshakes between CPUs are determined to be much simpler
-READ8_HANDLER ( snk_cpuA_nmi_trigger_r ) { cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
-WRITE8_HANDLER( snk_cpuA_nmi_ack_w ) { cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, CLEAR_LINE); }
+READ8_HANDLER ( snk_cpuA_nmi_trigger_r ) { cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
+WRITE8_HANDLER( snk_cpuA_nmi_ack_w ) { cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE); }
 
-READ8_HANDLER ( snk_cpuB_nmi_trigger_r ) { cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
-WRITE8_HANDLER( snk_cpuB_nmi_ack_w ) { cpunum_set_input_line(Machine, 1, INPUT_LINE_NMI, CLEAR_LINE); }
+READ8_HANDLER ( snk_cpuB_nmi_trigger_r ) { cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, ASSERT_LINE); return 0; }
+WRITE8_HANDLER( snk_cpuB_nmi_ack_w ) { cpunum_set_input_line(machine, 1, INPUT_LINE_NMI, CLEAR_LINE); }
 
 /*********************************************************************/
 
@@ -357,11 +357,11 @@ static READ8_HANDLER( snk_sound_register_r ){
 	return snk_sound_register;// | 0x2; /* hack; lets chopper1 play music */
 }
 
-static void snk_sound_callback0_w( int state ){ /* ? */
+static void snk_sound_callback0_w( running_machine *machine, int state ){ /* ? */
 	if( state ) snk_sound_register |= 0x01;
 }
 
-static void snk_sound_callback1_w( int state ){ /* ? */
+static void snk_sound_callback1_w( running_machine *machine, int state ){ /* ? */
 	if( state ) snk_sound_register |= 0x02;
 }
 
@@ -889,7 +889,7 @@ static MACHINE_DRIVER_START( athena )
 
 	MDRV_PALETTE_INIT(aso)
 	MDRV_VIDEO_START(snk)
-	MDRV_VIDEO_UPDATE(tnk3)
+	MDRV_VIDEO_UPDATE(athena)
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -3542,9 +3542,6 @@ static INPUT_PORTS_START( bermudaa )
 	BERMWW_COMMON
 
 	PORT_START_TAG("DSW2")
-	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Allow_Continue ) )
-	PORT_DIPSETTING(    0x01, DEF_STR( No ) )
-	PORT_DIPSETTING(    0x00, DEF_STR( Yes ) )
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Normal ) )
@@ -4379,7 +4376,7 @@ static const SNK_INPUT_PORT_TYPE tdfever_io[SNK_MAX_INPUT_PORTS] = {
 };
 
 static DRIVER_INIT( ikari ){
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	/*  Hack ROM test */
 	RAM[0x11a6] = 0x00;
 	RAM[0x11a7] = 0x00;
@@ -4398,7 +4395,7 @@ static DRIVER_INIT( ikari ){
 }
 
 static DRIVER_INIT( ikarijp ){
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	RAM[0x190b] = 0xc9; /* faster test */
 
 	snk_sound_busy_bit = 0x20;
@@ -4409,7 +4406,7 @@ static DRIVER_INIT( ikarijp ){
 }
 
 static DRIVER_INIT( ikarijpb ){
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	RAM[0x190b] = 0xc9; /* faster test */
 
 	snk_sound_busy_bit = 0x20;
@@ -4420,7 +4417,7 @@ static DRIVER_INIT( ikarijpb ){
 }
 
 static DRIVER_INIT( victroad ){
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	/* Hack ROM test */
 	RAM[0x17bd] = 0x00;
 	RAM[0x17be] = 0x00;
@@ -4439,7 +4436,7 @@ static DRIVER_INIT( victroad ){
 }
 
 static DRIVER_INIT( dogosoke ){
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	/* Hack ROM test */
 	RAM[0x179f] = 0x00;
 	RAM[0x17a0] = 0x00;
@@ -4492,7 +4489,7 @@ static DRIVER_INIT( choppera ){
 }
 
 static DRIVER_INIT( bermudat ){
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	// Patch "Turbo Error"
 	RAM[0x127e] = 0xc9;

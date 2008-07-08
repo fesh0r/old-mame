@@ -45,7 +45,6 @@ ClawGrip, Jul 2006
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
@@ -60,7 +59,7 @@ extern VIDEO_UPDATE( pokechmp );
 
 static WRITE8_HANDLER( pokechmp_bank_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	if (data == 0x00)
 	{
@@ -99,16 +98,16 @@ static WRITE8_HANDLER( pokechmp_sound_w )
 }
 
 
-INLINE void pokechmp_set_color(pen_t color, int rshift, int gshift, int bshift, UINT16 data)
+INLINE void pokechmp_set_color(running_machine *machine, pen_t color, int rshift, int gshift, int bshift, UINT16 data)
 {
-	palette_set_color_rgb(Machine, color, pal5bit(data >> rshift), pal5bit(data >> gshift), pal5bit(data >> bshift));
+	palette_set_color_rgb(machine, color, pal5bit(data >> rshift), pal5bit(data >> gshift), pal5bit(data >> bshift));
 }
 
 
 static WRITE8_HANDLER( pokechmp_paletteram_w )
 {
 	paletteram[offset] = data;
-	pokechmp_set_color(offset &0x3ff, 0, 5, 10, (paletteram[offset&0x3ff]<<8) | ( paletteram[ (offset&0x3ff)+0x400 ] )  );
+	pokechmp_set_color(machine, offset &0x3ff, 0, 5, 10, (paletteram[offset&0x3ff]<<8) | ( paletteram[ (offset&0x3ff)+0x400 ] )  );
 }
 
 
@@ -286,7 +285,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( pokechmp )
 {
-	memory_configure_bank(3, 0, 2, memory_region(REGION_CPU2) + 0x10000, 0x4000);
+	memory_configure_bank(3, 0, 2, memory_region(machine, REGION_CPU2) + 0x10000, 0x4000);
 }
 
 

@@ -5,7 +5,7 @@
     Front-end for MIPS3 recompiler
 
     Copyright Aaron Giles
-    Released for general use under the MAME license
+    Released for general non-commercial use under the MAME license
     Visit http://mamedev.org for licensing and usage restrictions.
 
 ***************************************************************************/
@@ -39,7 +39,7 @@ static int describe_instruction_cop2(mips3_state *mips, UINT32 op, opcode_desc *
     of a single instruction
 -------------------------------------------------*/
 
-int mips3fe_describe(void *param, opcode_desc *desc)
+int mips3fe_describe(void *param, opcode_desc *desc, const opcode_desc *prev)
 {
 	mips3_state *mips = param;
 	UINT32 op = *desc->opptr.l;
@@ -82,7 +82,7 @@ int mips3fe_describe(void *param, opcode_desc *desc)
 			return TRUE;
 
 		case 0x03:	/* JAL */
-			desc->gpr.modified |= REGFLAG_R(31);
+			desc->regout[0] |= REGFLAG_R(31);
 			desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 			desc->targetpc = (desc->pc & 0xf0000000) | (LIMMVAL << 2);
 			desc->delayslots = 1;
@@ -96,7 +96,7 @@ int mips3fe_describe(void *param, opcode_desc *desc)
 				desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 			else
 			{
-				desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+				desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
 				desc->flags |= OPFLAG_IS_CONDITIONAL_BRANCH;
 			}
 			desc->targetpc = desc->pc + 4 + (SIMMVAL << 2);
@@ -112,7 +112,7 @@ int mips3fe_describe(void *param, opcode_desc *desc)
 				desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 			else
 			{
-				desc->gpr.used |= REGFLAG_R(RSREG);
+				desc->regin[0] |= REGFLAG_R(RSREG);
 				desc->flags |= OPFLAG_IS_CONDITIONAL_BRANCH;
 			}
 			desc->targetpc = desc->pc + 4 + (SIMMVAL << 2);
@@ -122,8 +122,8 @@ int mips3fe_describe(void *param, opcode_desc *desc)
 
 		case 0x08:	/* ADDI */
 		case 0x18:	/* DADDI */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			desc->flags |= OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
@@ -134,19 +134,19 @@ int mips3fe_describe(void *param, opcode_desc *desc)
 		case 0x0d:	/* ORI */
 		case 0x0e:	/* XORI */
 		case 0x19:	/* DADDIU */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x0f:	/* LUI */
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x1a:	/* LDL */
 		case 0x1b:	/* LDR */
 		case 0x22:	/* LWL */
 		case 0x26:	/* LWR */
-			desc->gpr.used |= REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RTREG);
 		case 0x20:	/* LB */
 		case 0x21:	/* LH */
 		case 0x23:	/* LW */
@@ -156,8 +156,8 @@ int mips3fe_describe(void *param, opcode_desc *desc)
 		case 0x30:	/* LL */
 		case 0x34:	/* LLD */
 		case 0x37:	/* LD */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			desc->flags |= OPFLAG_READS_MEMORY | OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
@@ -168,36 +168,41 @@ int mips3fe_describe(void *param, opcode_desc *desc)
 		case 0x2c:	/* SDL */
 		case 0x2d:	/* SDR */
 		case 0x2e:	/* SWR */
+		case 0x3f:	/* SD */
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->flags |= OPFLAG_WRITES_MEMORY | OPFLAG_CAN_CAUSE_EXCEPTION;
+			return TRUE;
+
 		case 0x38:	/* SC */
 		case 0x3c:	/* SCD */
-		case 0x3f:	/* SD */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			desc->flags |= OPFLAG_WRITES_MEMORY | OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
 		case 0x31:	/* LWC1 */
 		case 0x35:	/* LDC1 */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->fpr.modified |= REGFLAG_CPR1(RTREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regout[1] |= REGFLAG_CPR1(RTREG);
 			desc->flags |= OPFLAG_READS_MEMORY | OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
 		case 0x39:	/* SWC1 */
 		case 0x3d:	/* SDC1 */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->fpr.used |= REGFLAG_CPR1(RTREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regin[1] |= REGFLAG_CPR1(RTREG);
 			desc->flags |= OPFLAG_WRITES_MEMORY | OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
 		case 0x32:	/* LWC2 */
 		case 0x36:	/* LDC2 */
-			desc->gpr.used |= REGFLAG_R(RSREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
 			desc->flags |= OPFLAG_READS_MEMORY | OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
 		case 0x3a:	/* SWC2 */
 		case 0x3e:	/* SDC2 */
-			desc->gpr.used |= REGFLAG_R(RSREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
 			desc->flags |= OPFLAG_WRITES_MEMORY | OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
@@ -232,15 +237,15 @@ static int describe_instruction_special(mips3_state *mips, UINT32 op, opcode_des
 		case 0x3c:	/* DSLL32 */
 		case 0x3e:	/* DSRL32 */
 		case 0x3f:	/* DSRA32 */
-			desc->gpr.used |= REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			return TRUE;
 
 		case 0x0a:	/* MOVZ - MIPS IV */
 		case 0x0b:	/* MOVN - MIPS IV */
 			if (mips->flavor < MIPS3_TYPE_MIPS_IV)
 				return FALSE;
-			desc->gpr.used |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_R(RDREG);
 		case 0x04:	/* SLLV */
 		case 0x06:	/* SRLV */
 		case 0x07:	/* SRAV */
@@ -257,16 +262,16 @@ static int describe_instruction_special(mips3_state *mips, UINT32 op, opcode_des
 		case 0x2b:	/* SLTU */
 		case 0x2d:	/* DADDU */
 		case 0x2f:	/* DSUBU */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			return TRUE;
 
 		case 0x20:	/* ADD */
 		case 0x22:	/* SUB */
 		case 0x2c:	/* DADD */
 		case 0x2e:	/* DSUB */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			desc->flags |= OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
@@ -276,78 +281,78 @@ static int describe_instruction_special(mips3_state *mips, UINT32 op, opcode_des
 		case 0x33:	/* TLTU */
 		case 0x34:	/* TEQ */
 		case 0x36:	/* TNE */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
 			desc->flags |= OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
 		case 0x01:	/* MOVF - MIPS IV */
 			if (mips->flavor < MIPS3_TYPE_MIPS_IV)
 				return FALSE;
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->fpr.used |= REGFLAG_FCC;
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regin[2] |= REGFLAG_FCC;
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			return TRUE;
 
 		case 0x08:	/* JR */
-			desc->gpr.used |= REGFLAG_R(RSREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
 			desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 			desc->targetpc = BRANCH_TARGET_DYNAMIC;
 			desc->delayslots = 1;
 			return TRUE;
 
 		case 0x09:	/* JALR */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 			desc->targetpc = BRANCH_TARGET_DYNAMIC;
 			desc->delayslots = 1;
 			return TRUE;
 
 		case 0x10:	/* MFHI */
-			desc->gpr.used |= REGFLAG_HI;
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_HI;
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			return TRUE;
 
 		case 0x11:	/* MTHI */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->gpr.modified |= REGFLAG_HI;
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regout[0] |= REGFLAG_HI;
 			return TRUE;
 
 		case 0x12:	/* MFLO */
-			desc->gpr.used |= REGFLAG_LO;
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[2] |= REGFLAG_LO;
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			return TRUE;
 
 		case 0x13:	/* MTLO */
-			desc->gpr.used |= REGFLAG_R(RSREG);
-			desc->gpr.modified |= REGFLAG_LO;
+			desc->regin[0] |= REGFLAG_R(RSREG);
+			desc->regout[2] |= REGFLAG_LO;
 			return TRUE;
 
 		case 0x18:	/* MULT */
 		case 0x19:	/* MULTU */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_LO | REGFLAG_HI;
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[2] |= REGFLAG_LO | REGFLAG_HI;
 			desc->cycles = 3;
 			return TRUE;
 
 		case 0x1a:	/* DIV */
 		case 0x1b:	/* DIVU */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_LO | REGFLAG_HI;
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[2] |= REGFLAG_LO | REGFLAG_HI;
 			desc->cycles = 35;
 			return TRUE;
 
 		case 0x1c:	/* DMULT */
 		case 0x1d:	/* DMULTU */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_LO | REGFLAG_HI;
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[2] |= REGFLAG_LO | REGFLAG_HI;
 			desc->cycles = 7;
 			return TRUE;
 
 		case 0x1e:	/* DDIV */
 		case 0x1f:	/* DDIVU */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_LO | REGFLAG_HI;
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[2] |= REGFLAG_LO | REGFLAG_HI;
 			desc->cycles = 67;
 			return TRUE;
 
@@ -383,7 +388,7 @@ static int describe_instruction_regimm(mips3_state *mips, UINT32 op, opcode_desc
 				desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 			else
 			{
-				desc->gpr.used |= REGFLAG_R(RSREG);
+				desc->regin[0] |= REGFLAG_R(RSREG);
 				desc->flags |= OPFLAG_IS_CONDITIONAL_BRANCH;
 			}
 			desc->targetpc = desc->pc + 4 + (SIMMVAL << 2);
@@ -397,7 +402,7 @@ static int describe_instruction_regimm(mips3_state *mips, UINT32 op, opcode_desc
 		case 0x0b:	/* TLTIU */
 		case 0x0c:	/* TEQI */
 		case 0x0e:	/* TNEI */
-			desc->gpr.used |= REGFLAG_R(RSREG);
+			desc->regin[0] |= REGFLAG_R(RSREG);
 			desc->flags |= OPFLAG_CAN_CAUSE_EXCEPTION;
 			return TRUE;
 
@@ -409,10 +414,10 @@ static int describe_instruction_regimm(mips3_state *mips, UINT32 op, opcode_desc
 				desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 			else
 			{
-				desc->gpr.used |= REGFLAG_R(RSREG);
+				desc->regin[0] |= REGFLAG_R(RSREG);
 				desc->flags |= OPFLAG_IS_CONDITIONAL_BRANCH;
 			}
-			desc->gpr.modified |= REGFLAG_R(31);
+			desc->regout[0] |= REGFLAG_R(31);
 			desc->targetpc = desc->pc + 4 + (SIMMVAL << 2);
 			desc->delayslots = 1;
 			desc->skipslots = (RTREG & 0x02) ? 1 : 0;
@@ -431,17 +436,22 @@ static int describe_instruction_regimm(mips3_state *mips, UINT32 op, opcode_desc
 
 static int describe_instruction_idt(mips3_state *mips, UINT32 op, opcode_desc *desc)
 {
+	/* only on the R4650 */
+	if (mips->flavor != MIPS3_TYPE_R4650)
+		return FALSE;
+
 	switch (op & 0x1f)
 	{
 		case 0: /* MAD */
 		case 1: /* MADU */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG) | REGFLAG_LO | REGFLAG_HI;
-			desc->gpr.modified |= REGFLAG_LO | REGFLAG_HI;
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regin[2] |= REGFLAG_LO | REGFLAG_HI;
+			desc->regout[2] |= REGFLAG_LO | REGFLAG_HI;
 			return TRUE;
 
 		case 2: /* MUL */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->gpr.modified |= REGFLAG_R(RDREG);
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RDREG);
 			desc->cycles = 3;
 			return TRUE;
 	}
@@ -465,14 +475,21 @@ static int describe_instruction_cop0(mips3_state *mips, UINT32 op, opcode_desc *
 	{
 		case 0x00:	/* MFCz */
 		case 0x01:	/* DMFCz */
+			if (RDREG == COP0_Count)
+				desc->cycles += MIPS3_COUNT_READ_CYCLES;
+			if (RDREG == COP0_Cause)
+				desc->cycles += MIPS3_CAUSE_READ_CYCLES;
+			desc->regout[0] |= REGFLAG_R(RTREG);
+			return TRUE;
+
 		case 0x02:	/* CFCz */
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x04:	/* MTCz */
 		case 0x05:	/* DMTCz */
 		case 0x06:	/* CTCz */
-			desc->gpr.used |= REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RTREG);
 			if (RSREG == 0x04 || RSREG == 0x05)
 			{
 				if (RDREG == COP0_Cause)
@@ -509,7 +526,7 @@ static int describe_instruction_cop0(mips3_state *mips, UINT32 op, opcode_desc *
 					return TRUE;
 
 				case 0x18:	/* ERET */
-					desc->flags |= OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
+					desc->flags |= OPFLAG_CAN_CHANGE_MODES | OPFLAG_IS_UNCONDITIONAL_BRANCH | OPFLAG_END_SEQUENCE;
 					return TRUE;
 			}
 			return FALSE;
@@ -534,22 +551,22 @@ static int describe_instruction_cop1(mips3_state *mips, UINT32 op, opcode_desc *
 	{
 		case 0x00:	/* MFCz */
 		case 0x01:	/* DMFCz */
-			desc->fpr.used |= REGFLAG_CPR1(RDREG);
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regin[1] |= REGFLAG_CPR1(RDREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x02:	/* CFCz */
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x04:	/* MTCz */
 		case 0x05:	/* DMTCz */
-			desc->gpr.used |= REGFLAG_R(RTREG);
-			desc->fpr.modified |= REGFLAG_CPR1(RDREG);
+			desc->regin[0] |= REGFLAG_R(RTREG);
+			desc->regout[1] |= REGFLAG_CPR1(RDREG);
 			return TRUE;
 
 		case 0x06:	/* CTCz */
-			desc->gpr.used |= REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x08:	/* BC */
@@ -559,7 +576,7 @@ static int describe_instruction_cop1(mips3_state *mips, UINT32 op, opcode_desc *
 				case 0x01:	/* BCzT */
 				case 0x02:	/* BCzFL */
 				case 0x03:	/* BCzTL */
-					desc->fpr.used |= REGFLAG_FCC;
+					desc->regin[2] |= REGFLAG_FCC;
 					desc->flags |= OPFLAG_IS_CONDITIONAL_BRANCH;
 					desc->targetpc = desc->pc + 4 + (SIMMVAL << 2);
 					desc->delayslots = 1;
@@ -580,8 +597,8 @@ static int describe_instruction_cop1(mips3_state *mips, UINT32 op, opcode_desc *
 				case 0x01:	/* SUB */
 				case 0x02:	/* MUL */
 				case 0x03:	/* DIV */
-					desc->fpr.used |= REGFLAG_CPR1(FSREG) | REGFLAG_CPR1(FTREG);
-					desc->fpr.modified |= REGFLAG_CPR1(FDREG);
+					desc->regin[1] |= REGFLAG_CPR1(FSREG) | REGFLAG_CPR1(FTREG);
+					desc->regout[1] |= REGFLAG_CPR1(FDREG);
 					return TRUE;
 
 				case 0x15:	/* RECIP - MIPS IV */
@@ -604,20 +621,21 @@ static int describe_instruction_cop1(mips3_state *mips, UINT32 op, opcode_desc *
 				case 0x21:	/* CVT.D */
 				case 0x24:	/* CVT.W */
 				case 0x25:	/* CVT.L */
-					desc->fpr.used |= REGFLAG_CPR1(FSREG);
-					desc->fpr.modified |= REGFLAG_CPR1(FDREG);
+					desc->regin[1] |= REGFLAG_CPR1(FSREG);
+					desc->regout[1] |= REGFLAG_CPR1(FDREG);
 					return TRUE;
 
 				case 0x11:	/* MOVT/F - MIPS IV */
 					if (mips->flavor < MIPS3_TYPE_MIPS_IV)
 						return FALSE;
-					desc->fpr.used |= REGFLAG_CPR1(FSREG) | REGFLAG_FCC;
-					desc->fpr.modified |= REGFLAG_CPR1(FDREG);
+					desc->regin[1] |= REGFLAG_CPR1(FSREG);
+					desc->regin[2] |= REGFLAG_FCC;
+					desc->regout[1] |= REGFLAG_CPR1(FDREG);
 					return TRUE;
 
 				case 0x30:	case 0x38:	/* C.F */
 				case 0x31:	case 0x39:	/* C.UN */
-					desc->fpr.modified |= REGFLAG_FCC;
+					desc->regout[2] |= REGFLAG_FCC;
 					return TRUE;
 
 				case 0x32:	case 0x3a:	/* C.EQ */
@@ -626,8 +644,8 @@ static int describe_instruction_cop1(mips3_state *mips, UINT32 op, opcode_desc *
 				case 0x35:	case 0x3d:	/* C.ULT */
 				case 0x36:	case 0x3e:	/* C.OLE */
 				case 0x37:	case 0x3f:	/* C.ULE */
-					desc->fpr.used |= REGFLAG_CPR1(FSREG) | REGFLAG_CPR1(FTREG);
-					desc->fpr.modified |= REGFLAG_FCC;
+					desc->regin[1] |= REGFLAG_CPR1(FSREG) | REGFLAG_CPR1(FTREG);
+					desc->regout[2] |= REGFLAG_FCC;
 					return TRUE;
 			}
 			return FALSE;
@@ -652,15 +670,15 @@ static int describe_instruction_cop1x(mips3_state *mips, UINT32 op, opcode_desc 
 	{
 		case 0x00:	/* LWXC1 */
 		case 0x01:	/* LDXC1 */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->fpr.modified |= REGFLAG_CPR1(FDREG);
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regout[1] |= REGFLAG_CPR1(FDREG);
 			desc->flags |= OPFLAG_READS_MEMORY;
 			return TRUE;
 
 		case 0x08:	/* SWXC1 */
 		case 0x09:	/* SDXC1 */
-			desc->gpr.used |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
-			desc->fpr.used |= REGFLAG_CPR1(FDREG);
+			desc->regin[0] |= REGFLAG_R(RSREG) | REGFLAG_R(RTREG);
+			desc->regin[1] |= REGFLAG_CPR1(FDREG);
 			desc->flags |= OPFLAG_WRITES_MEMORY;
 			return TRUE;
 
@@ -672,8 +690,8 @@ static int describe_instruction_cop1x(mips3_state *mips, UINT32 op, opcode_desc 
 		case 0x28:	case 0x29:	/* MSUB */
 		case 0x30:	case 0x31:	/* NMADD */
 		case 0x38:	case 0x39:	/* NMSUB */
-			desc->fpr.used |= REGFLAG_CPR1(FSREG) | REGFLAG_CPR1(FTREG) | REGFLAG_CPR1(FRREG);
-			desc->fpr.modified |= REGFLAG_CPR1(FDREG);
+			desc->regin[1] |= REGFLAG_CPR1(FSREG) | REGFLAG_CPR1(FTREG) | REGFLAG_CPR1(FRREG);
+			desc->regout[1] |= REGFLAG_CPR1(FDREG);
 			return TRUE;
 	}
 
@@ -697,13 +715,13 @@ static int describe_instruction_cop2(mips3_state *mips, UINT32 op, opcode_desc *
 		case 0x00:	/* MFCz */
 		case 0x01:	/* DMFCz */
 		case 0x02:	/* CFCz */
-			desc->gpr.modified |= REGFLAG_R(RTREG);
+			desc->regout[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x04:	/* MTCz */
 		case 0x05:	/* DMTCz */
 		case 0x06:	/* CTCz */
-			desc->gpr.used |= REGFLAG_R(RTREG);
+			desc->regin[0] |= REGFLAG_R(RTREG);
 			return TRUE;
 
 		case 0x08:	/* BC */

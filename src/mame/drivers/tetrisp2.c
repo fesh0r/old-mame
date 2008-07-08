@@ -34,7 +34,6 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/okim6295.h"
 #include "sound/ymz280b.h"
 #include "rocknms.lh"
@@ -168,7 +167,7 @@ static READ16_HANDLER( rockn_adpcmbank_r )
 
 static WRITE16_HANDLER( rockn_adpcmbank_w )
 {
-	UINT8 *SNDROM = memory_region(REGION_SOUND1);
+	UINT8 *SNDROM = memory_region(machine, REGION_SOUND1);
 	int bank;
 
 	rockn_adpcmbank = data;
@@ -185,7 +184,7 @@ static WRITE16_HANDLER( rockn_adpcmbank_w )
 
 static WRITE16_HANDLER( rockn2_adpcmbank_w )
 {
-	UINT8 *SNDROM = memory_region(REGION_SOUND1);
+	UINT8 *SNDROM = memory_region(machine, REGION_SOUND1);
 	int bank;
 
 	char banktable[9][3]=
@@ -233,13 +232,13 @@ static WRITE16_HANDLER( nndmseal_sound_bank_w )
 
 	if (ACCESSING_BITS_0_7)
 	{
-		UINT8 *rom = memory_region(REGION_SOUND2);
+		UINT8 *rom = memory_region(machine, REGION_SOUND2);
 
 		if (data & 0x04)
 		{
 			bank_lo = data & 0x03;
 
-			memcpy(memory_region(REGION_SOUND1), rom + (bank_lo * 0x80000), 0x20000);
+			memcpy(memory_region(machine, REGION_SOUND1), rom + (bank_lo * 0x80000), 0x20000);
 
 //          logerror("PC:%06X sound bank_lo = %02X\n",activecpu_get_pc(),bank_lo);
 		}
@@ -247,7 +246,7 @@ static WRITE16_HANDLER( nndmseal_sound_bank_w )
 		{
 			bank_hi = data & 0x03;
 
-			memcpy(memory_region(REGION_SOUND1) + 0x20000, rom + (bank_lo * 0x80000) + (bank_hi * 0x20000), 0x20000);
+			memcpy(memory_region(machine, REGION_SOUND1) + 0x20000, rom + (bank_lo * 0x80000) + (bank_hi * 0x20000), 0x20000);
 
 //          logerror("PC:%06X sound bank_hi = %02X\n",activecpu_get_pc(),bank_hi);
 		}
@@ -265,8 +264,8 @@ static WRITE16_HANDLER( nndmseal_sound_bank_w )
 static READ16_HANDLER( tetrisp2_ip_1_word_r )
 {
 	return	( input_port_read(machine, "IN1") &  0xfcff ) |
-			(           mame_rand(Machine) & ~0xfcff ) |
-			(      1 << (8 + (mame_rand(Machine)&1)) );
+			(           mame_rand(machine) & ~0xfcff ) |
+			(      1 << (8 + (mame_rand(machine)&1)) );
 }
 
 

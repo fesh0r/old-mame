@@ -71,7 +71,7 @@ static void init_monitors(void);
 static BOOL CALLBACK monitor_enum_callback(HMONITOR handle, HDC dc, LPRECT rect, LPARAM data);
 static win_monitor_info *pick_monitor(int index);
 
-static void check_osd_inputs(void);
+static void check_osd_inputs(running_machine *machine);
 
 static void extract_video_config(running_machine *machine);
 static void load_effect_overlay(running_machine *machine, const char *filename);
@@ -107,10 +107,8 @@ void winvideo_init(running_machine *machine)
 		SetForegroundWindow(win_window_list->hwnd);
 
 	// possibly create the debug window, but don't show it yet
-#ifdef ENABLE_DEBUGGER
 	if (options_get_bool(mame_options(), OPTION_DEBUG))
 		debugwin_init_windows();
-#endif
 }
 
 
@@ -126,10 +124,8 @@ static void video_exit(running_machine *machine)
 	effect_bitmap = NULL;
 
 	// possibly kill the debug window
-#ifdef ENABLE_DEBUGGER
 	if (options_get_bool(mame_options(), OPTION_DEBUG))
 		debugwin_destroy_windows();
-#endif
 
 	// free all of our monitor information
 	while (win_monitor_list != NULL)
@@ -211,7 +207,7 @@ void osd_update(running_machine *machine, int skip_redraw)
 	// poll the joystick values here
 	winwindow_process_events(machine, TRUE);
 	wininput_poll(machine);
-	check_osd_inputs();
+	check_osd_inputs(machine);
 }
 
 
@@ -352,15 +348,15 @@ finishit:
 //  check_osd_inputs
 //============================================================
 
-static void check_osd_inputs(void)
+static void check_osd_inputs(running_machine *machine)
 {
 	// check for toggling fullscreen mode
-	if (input_ui_pressed(IPT_OSD_1))
+	if (input_ui_pressed(machine, IPT_OSD_1))
 		winwindow_toggle_full_screen();
 
 #ifdef MESS
 	// check for toggling menu bar
-	if (input_ui_pressed(IPT_OSD_2))
+	if (input_ui_pressed(machine, IPT_OSD_2))
 		win_toggle_menubar();
 #endif
 }
@@ -380,11 +376,10 @@ static void extract_video_config(running_machine *machine)
 	video_config.prescale      = options_get_int(mame_options(), WINOPTION_PRESCALE);
 	video_config.keepaspect    = options_get_bool(mame_options(), WINOPTION_KEEPASPECT);
 	video_config.numscreens    = options_get_int(mame_options(), WINOPTION_NUMSCREENS);
-#ifdef ENABLE_DEBUGGER
+
 	// if we are in debug mode, never go full screen
 	if (options_get_bool(mame_options(), OPTION_DEBUG))
 		video_config.windowed = TRUE;
-#endif
 	stemp                      = options_get_string(mame_options(), WINOPTION_EFFECT);
 	if (strcmp(stemp, "none") != 0)
 		load_effect_overlay(machine, stemp);

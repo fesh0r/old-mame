@@ -22,7 +22,6 @@ Memo:
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/z80/z80.h"
 #include "machine/eeprom.h"
@@ -156,7 +155,7 @@ static READ16_HANDLER( fromanc2_keymatrix_r )
 	UINT16 ret;
 
 	switch (fromanc2_portselect) {
-		case 0x01:	ret = input_port_read(machine, "IN1");	break;
+		case 0x01:	ret = input_port_read(machine, "IN1"); break;
 		case 0x02:	ret = input_port_read(machine, "IN2"); break;
 		case 0x04:	ret = input_port_read(machine, "IN3"); break;
 		case 0x08:	ret = input_port_read(machine, "IN4"); break;
@@ -175,8 +174,8 @@ static READ16_HANDLER( fromanc2_input_r )
 	cflag = (((fromanc2_subcpu_int_flag & 1) << 4) |
 			 ((fromanc2_subcpu_nmi_flag & 1) << 6) |
 			 ((fromanc2_sndcpu_nmi_flag & 1) << 5));
-	eeprom = (EEPROM_read_bit() & 1) << 7;		// EEPROM DATA
-	coinsw = input_port_read_indexed(machine, 0) & 0x030f;			// COIN, TEST
+	eeprom = (eeprom_read_bit() & 1) << 7;		// EEPROM DATA
+	coinsw = input_port_read(machine, "IN0") & 0x030f;			// COIN, TEST
 
 	return (cflag | eeprom | coinsw);
 }
@@ -186,8 +185,8 @@ static READ16_HANDLER( fromanc4_input_r )
 	UINT16 cflag, coinsw, eeprom;
 
 	cflag = (fromanc2_sndcpu_nmi_flag & 1) << 5;
-	eeprom = (EEPROM_read_bit() & 1) << 7;		// EEPROM DATA
-	coinsw = input_port_read_indexed(machine, 0) & 0x001f;			// COIN, TEST
+	eeprom = (eeprom_read_bit() & 1) << 7;		// EEPROM DATA
+	coinsw = input_port_read(machine, "IN0") & 0x001f;			// COIN, TEST
 
 	return (cflag | eeprom | coinsw);
 }
@@ -196,13 +195,13 @@ static WRITE16_HANDLER( fromanc2_eeprom_w )
 {
 	if (ACCESSING_BITS_8_15) {
 		// latch the bit
-		EEPROM_write_bit(data & 0x0100);
+		eeprom_write_bit(data & 0x0100);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x0400) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_cs_line((data & 0x0400) ? CLEAR_LINE : ASSERT_LINE);
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x0200) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_set_clock_line((data & 0x0200) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -212,13 +211,13 @@ static WRITE16_HANDLER( fromancr_eeprom_w )
 		fromancr_gfxbank_w(data & 0xfff8);
 
 		// latch the bit
-		EEPROM_write_bit(data & 0x0001);
+		eeprom_write_bit(data & 0x0001);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x0004) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_cs_line((data & 0x0004) ? CLEAR_LINE : ASSERT_LINE);
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x0002) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_set_clock_line((data & 0x0002) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -226,13 +225,13 @@ static WRITE16_HANDLER( fromanc4_eeprom_w )
 {
 	if (ACCESSING_BITS_0_7) {
 		// latch the bit
-		EEPROM_write_bit(data & 0x0004);
+		eeprom_write_bit(data & 0x0004);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x0001) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_cs_line((data & 0x0001) ? CLEAR_LINE : ASSERT_LINE);
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x0002) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_set_clock_line((data & 0x0002) ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -292,7 +291,7 @@ static READ8_HANDLER( fromanc2_sndcpu_nmi_clr )
 
 static WRITE8_HANDLER( fromanc2_subcpu_rombank_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU3);
+	UINT8 *RAM = memory_region(machine, REGION_CPU3);
 	int rombank = data & 0x03;
 	int rambank = (data & 0x0c) >> 2;
 
@@ -683,9 +682,9 @@ GFXDECODE_END
 //
 // ----------------------------------------------------------------------------
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =

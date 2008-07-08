@@ -124,7 +124,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/konamiic.h"
 #include "sound/2610intf.h"
 #include "crshrace.h"
@@ -135,7 +134,7 @@ TODO:
 
 static READ16_HANDLER( extrarom1_r )
 {
-	UINT8 *rom = memory_region(REGION_USER1);
+	UINT8 *rom = memory_region(machine, REGION_USER1);
 
 	offset *= 2;
 
@@ -144,7 +143,7 @@ static READ16_HANDLER( extrarom1_r )
 
 static READ16_HANDLER( extrarom2_r )
 {
-	UINT8 *rom = memory_region(REGION_USER2);
+	UINT8 *rom = memory_region(machine, REGION_USER2);
 
 	offset *= 2;
 
@@ -153,7 +152,7 @@ static READ16_HANDLER( extrarom2_r )
 
 static WRITE8_HANDLER( crshrace_sh_bankswitch_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(machine, REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1,rom + (data & 0x03) * 0x8000);
 }
@@ -173,7 +172,7 @@ static WRITE16_HANDLER( sound_command_w )
 
 static READ16_HANDLER( country_sndpending_r )
 {
-	return input_port_read_indexed(machine, 5) | (pending_command ? 0x8000 : 0);
+	return input_port_read(machine, "DSW2") | (pending_command ? 0x8000 : 0);
 }
 
 static WRITE8_HANDLER( pending_command_clear_w )
@@ -249,7 +248,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( crshrace )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -267,7 +266,7 @@ static INPUT_PORTS_START( crshrace )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -277,7 +276,7 @@ static INPUT_PORTS_START( crshrace )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("DSW0")
 	/* DSW1 : 0xfe1c83 = !(0xfff004) */
 	PORT_DIPNAME( 0x0100, 0x0100, "Coin Slot" )
 	PORT_DIPSETTING(      0x0100, "Same" )
@@ -326,7 +325,7 @@ static INPUT_PORTS_START( crshrace )
 	PORT_DIPSETTING(      0x0040, DEF_STR( Hard ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( Hardest ) )
 
-	PORT_START
+	PORT_START_TAG("DSW1")
 	/* DSW3 : 0xfe1c85 = !(0xfff00b) */
 #if CRSHRACE_3P_HACK
 	PORT_DIPNAME( 0x0001, 0x0001, "Maximum Players" )
@@ -368,7 +367,7 @@ static INPUT_PORTS_START( crshrace )
 	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Yes ) )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -378,7 +377,7 @@ static INPUT_PORTS_START( crshrace )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_START3 )
 
-	PORT_START
+	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x0f00, 0x0100, "Country" )
 	PORT_DIPSETTING(      0x0100, DEF_STR( World ) )
 	PORT_DIPSETTING(      0x0800, "USA & Canada" )
@@ -405,7 +404,7 @@ INPUT_PORTS_END
 
 /* Same as 'crshrace', but additional "unknown" Dip Switch (see notes) */
 static INPUT_PORTS_START( crshrac2 )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -423,7 +422,7 @@ static INPUT_PORTS_START( crshrac2 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_TILT )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_SERVICE1 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
@@ -433,7 +432,7 @@ static INPUT_PORTS_START( crshrac2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("DSW0")
 	/* DSW2 : 0xfe1c84 = !(0xfff005) */
 	PORT_DIPNAME( 0x0001, 0x0001, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( Off ) )
@@ -482,7 +481,7 @@ static INPUT_PORTS_START( crshrac2 )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("DSW1")
 	/* DSW3 : 0xfe1c85 = !(0xfff00b) */
 #if CRSHRACE_3P_HACK
 	PORT_DIPNAME( 0x0001, 0x0001, "Maximum Players" )
@@ -524,7 +523,7 @@ static INPUT_PORTS_START( crshrac2 )
 	PORT_DIPSETTING(      0x0000, DEF_STR( No ) )
 	PORT_DIPSETTING(      0x0080, DEF_STR( Yes ) )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(3)
@@ -534,7 +533,7 @@ static INPUT_PORTS_START( crshrac2 )
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_START3 )
 
-	PORT_START
+	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x0f00, 0x0100, "Country" )
 	PORT_DIPSETTING(      0x0100, DEF_STR( World ) )
 	PORT_DIPSETTING(      0x0800, "USA & Canada" )
@@ -606,9 +605,9 @@ GFXDECODE_END
 
 
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2610interface ym2610_interface =
@@ -733,7 +732,7 @@ ROM_END
 void crshrace_patch_code(UINT16 offset)
 {
 	/* A hack which shows 3 player mode in code which is disabled */
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	RAM[(offset + 0)/2] = 0x4e71;
 	RAM[(offset + 2)/2] = 0x4e71;
 	RAM[(offset + 4)/2] = 0x4e71;

@@ -9,7 +9,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 
 static int crtindex;
 static int crtdata[256];
@@ -21,7 +20,7 @@ static int bitmap_offset=0;
 
 static READ8_HANDLER( tetriunk_random_r )
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static WRITE8_HANDLER(crt_index_w)
@@ -87,7 +86,7 @@ static VIDEO_UPDATE(tetriunk)
 {
 	int x,y,z;
 	int count = 0;
-	UINT8 *region = memory_region(REGION_USER1);
+	UINT8 *region = memory_region(screen->machine, REGION_USER1);
 
 	if(input_code_pressed_once(KEYCODE_Z))
 	{
@@ -221,7 +220,9 @@ static DRIVER_INIT (tetriunk)
 {
 	int i,j,k;
 	int index=0;
-	UINT8 *region = memory_region(REGION_USER1);
+	UINT8 *region = memory_region(machine, REGION_USER1);
+	UINT8 *gfx = memory_region(machine, REGION_GFX2);
+
 	for(i=0;i<0x20000;i++)
 	{
 		//8 pixels/byte
@@ -231,7 +232,7 @@ static DRIVER_INIT (tetriunk)
 			int pixel=0;
 			for(k=0;k<4;k++)
 			{
-				if(memory_region(REGION_GFX2)[k*0x20000+i]&mask)
+				if(gfx[k*0x20000+i]&mask)
 				{
 					pixel|=(1<<k);
 				}

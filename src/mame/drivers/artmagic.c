@@ -125,7 +125,7 @@ static WRITE16_HANDLER( control_w )
 
 	/* OKI banking here */
 	if (offset == 0)
-		OKIM6295_set_bank_base(0, (((data >> 4) & 1) * 0x40000) % memory_region_length(REGION_SOUND1));
+		OKIM6295_set_bank_base(0, (((data >> 4) & 1) * 0x40000) % memory_region_length(machine, REGION_SOUND1));
 
 	logerror("%06X:control_w(%d) = %04X\n", activecpu_get_pc(), offset, data);
 }
@@ -144,11 +144,11 @@ static READ16_HANDLER( ultennis_hack_r )
 	if (activecpu_get_pc() == 0x18c2)
 	{
 		hack_irq = 1;
-		update_irq_state(Machine);
+		update_irq_state(machine);
 		hack_irq = 0;
-		update_irq_state(Machine);
+		update_irq_state(machine);
 	}
-	return input_port_read_indexed(machine, 0);
+	return input_port_read(machine, "300000");
 }
 
 
@@ -378,7 +378,7 @@ static void stonebal_protection(running_machine *machine)
 
 static READ16_HANDLER( special_port5_r )
 {
-	return input_port_read_indexed(machine, 5) | prot_output_bit;
+	return input_port_read(machine, "300008") | prot_output_bit;
 }
 
 
@@ -401,7 +401,7 @@ static WRITE16_HANDLER( protection_bit_w )
 		prot_bit_index = 0;
 
 		/* update the protection state */
-		(*protection_handler)(Machine);
+		(*protection_handler)(machine);
 	}
 }
 

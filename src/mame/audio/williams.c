@@ -65,10 +65,10 @@ static UINT8 williams_pianum;
 
 static void init_audio_state(running_machine *machine);
 
-static void cvsd_ym2151_irq(int state);
-static void adpcm_ym2151_irq(int state);
-static void cvsd_irqa(int state);
-static void cvsd_irqb(int state);
+static void cvsd_ym2151_irq(running_machine *machine, int state);
+static void adpcm_ym2151_irq(running_machine *machine, int state);
+static void cvsd_irqa(running_machine *machine, int state);
+static void cvsd_irqb(running_machine *machine, int state);
 
 static WRITE8_HANDLER( cvsd_bank_select_w );
 static READ8_HANDLER( cvsd_pia_r );
@@ -273,7 +273,7 @@ void williams_cvsd_init(int pianum)
 	pia_config(pianum, &cvsd_pia_intf);
 
 	/* configure master CPU banks */
-	ROM = memory_region(REGION_CPU1 + sound_cpunum);
+	ROM = memory_region(Machine, REGION_CPU1 + sound_cpunum);
 	for (bank = 0; bank < 16; bank++)
 	{
 		/*
@@ -305,7 +305,7 @@ void williams_narc_init(void)
 	soundalt_cpunum = mame_find_cpu_index(Machine, "narc2");
 
 	/* configure master CPU banks */
-	ROM = memory_region(REGION_CPU1 + sound_cpunum);
+	ROM = memory_region(Machine, REGION_CPU1 + sound_cpunum);
 	for (bank = 0; bank < 16; bank++)
 	{
 		/*
@@ -319,7 +319,7 @@ void williams_narc_init(void)
 	memory_set_bankptr(6, &ROM[0x10000 + 0x4000 + 0x8000 + 0x10000 + 0x20000 * 3]);
 
 	/* configure slave CPU banks */
-	ROM = memory_region(REGION_CPU1 + soundalt_cpunum);
+	ROM = memory_region(Machine, REGION_CPU1 + soundalt_cpunum);
 	for (bank = 0; bank < 16; bank++)
 	{
 		/*
@@ -348,13 +348,13 @@ void williams_adpcm_init(void)
 	soundalt_cpunum = -1;
 
 	/* configure banks */
-	ROM = memory_region(REGION_CPU1 + sound_cpunum);
+	ROM = memory_region(Machine, REGION_CPU1 + sound_cpunum);
 	memory_configure_bank(5, 0, 8, &ROM[0x10000], 0x8000);
 	memory_set_bankptr(6, &ROM[0x10000 + 0x4000 + 7 * 0x8000]);
 
 	/* expand ADPCM data */
 	/* it is assumed that U12 is loaded @ 0x00000 and U13 is loaded @ 0x40000 */
-	ROM = memory_region(REGION_SOUND1);
+	ROM = memory_region(Machine, REGION_SOUND1);
 	memcpy(ROM + 0x1c0000, ROM + 0x080000, 0x20000);	/* expand individual banks */
 	memcpy(ROM + 0x180000, ROM + 0x0a0000, 0x20000);
 	memcpy(ROM + 0x140000, ROM + 0x0c0000, 0x20000);
@@ -404,21 +404,21 @@ static void init_audio_state(running_machine *machine)
     CVSD IRQ GENERATION CALLBACKS
 ****************************************************************************/
 
-static void cvsd_ym2151_irq(int state)
+static void cvsd_ym2151_irq(running_machine *machine, int state)
 {
 	pia_set_input_ca1(williams_pianum, !state);
 }
 
 
-static void cvsd_irqa(int state)
+static void cvsd_irqa(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, sound_cpunum, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, sound_cpunum, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
-static void cvsd_irqb(int state)
+static void cvsd_irqb(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, sound_cpunum, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, sound_cpunum, INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -427,9 +427,9 @@ static void cvsd_irqb(int state)
     ADPCM IRQ GENERATION CALLBACKS
 ****************************************************************************/
 
-static void adpcm_ym2151_irq(int state)
+static void adpcm_ym2151_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, sound_cpunum, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, sound_cpunum, M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 

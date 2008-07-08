@@ -219,25 +219,27 @@ static UINT32 *rom_base;
 
 static MACHINE_RESET( cojag )
 {
+	UINT8 *rom = memory_region(machine, REGION_USER2);
+
 	/* 68020 only: copy the interrupt vectors into RAM */
 	if (!cojag_is_r3000)
 		memcpy(jaguar_shared_ram, rom_base, 0x10);
 
 	/* configure banks for gfx/sound ROMs */
-	if (memory_region(REGION_USER2))
+	if (rom)
 	{
 		/* graphics banks */
 		if (cojag_is_r3000)
 		{
-			memory_configure_bank(1, 0, 2, memory_region(REGION_USER2) + 0x800000, 0x400000);
+			memory_configure_bank(1, 0, 2, rom + 0x800000, 0x400000);
 			memory_set_bank(1, 0);
 		}
-		memory_configure_bank(8, 0, 2, memory_region(REGION_USER2) + 0x800000, 0x400000);
+		memory_configure_bank(8, 0, 2, rom + 0x800000, 0x400000);
 		memory_set_bank(8, 0);
 
 		/* sound banks */
-		memory_configure_bank(2, 0, 8, memory_region(REGION_USER2) + 0x000000, 0x200000);
-		memory_configure_bank(9, 0, 8, memory_region(REGION_USER2) + 0x000000, 0x200000);
+		memory_configure_bank(2, 0, 8, rom + 0x000000, 0x200000);
+		memory_configure_bank(9, 0, 8, rom + 0x000000, 0x200000);
 		memory_set_bank(2, 0);
 		memory_set_bank(9, 0);
 	}
@@ -302,7 +304,7 @@ static WRITE32_HANDLER( misc_control_w )
 	}
 
 	/* adjust banking */
-	if (memory_region(REGION_USER2))
+	if (memory_region(machine, REGION_USER2))
 	{
 		memory_set_bank(2, (data >> 1) & 7);
 		memory_set_bank(9, (data >> 1) & 7);
@@ -365,7 +367,7 @@ static READ32_HANDLER( jaguar_wave_rom_r )
 
 static READ32_HANDLER( jamma_r )
 {
-	return input_port_read_indexed(machine, 0) | (input_port_read_indexed(machine, 1) << 16);
+	return input_port_read(machine, "IN0") | (input_port_read(machine, "IN1") << 16);
 }
 
 
@@ -378,7 +380,7 @@ static READ32_HANDLER( status_r )
 	// D5     = /VOLUMEUP
 	// D4     = /VOLUMEDOWN
 	// D3-D0  = ACTC4-1
-	return input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 2) << 16);
+	return input_port_read(machine, "IN2") | (input_port_read(machine, "IN2") << 16);
 }
 
 
@@ -394,7 +396,7 @@ static WRITE32_HANDLER( latch_w )
 	logerror("%08X:latch_w(%X)\n", activecpu_get_previouspc(), data);
 
 	/* adjust banking */
-	if (memory_region(REGION_USER2))
+	if (memory_region(machine, REGION_USER2))
 	{
 		if (cojag_is_r3000)
 			memory_set_bank(1, data & 1);
@@ -788,17 +790,17 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( area51 )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0xfe00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0xfe00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -809,19 +811,19 @@ static INPUT_PORTS_START( area51 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL )	// vsyncneq
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START				/* fake analog X */
+	PORT_START_TAG("FAKE1_X")				/* fake analog X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 320.0/(320.0 - 7 -7), 0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(10)
 
-	PORT_START				/* fake analog Y */
+	PORT_START_TAG("FAKE1_Y")				/* fake analog Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, (240.0 - 1)/240, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10)
 
-	PORT_START				/* fake analog X */
+	PORT_START_TAG("FAKE2_X")				/* fake analog X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 320.0/(320.0 - 7 -7), 0.0, 0) PORT_SENSITIVITY(50) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START				/* fake analog Y */
+	PORT_START_TAG("FAKE2_Y")				/* fake analog Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, (240.0 - 1)/240, 0.0, 0) PORT_SENSITIVITY(70) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START				/* gun triggers */
+	PORT_START_TAG("IN3")			/* gun triggers */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_SPECIAL )	// gun data valid
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_SPECIAL )	// gun data valid
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -831,7 +833,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( freezeat )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -842,7 +844,7 @@ static INPUT_PORTS_START( freezeat )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
@@ -853,7 +855,7 @@ static INPUT_PORTS_START( freezeat )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -864,7 +866,7 @@ static INPUT_PORTS_START( freezeat )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL )	// vsyncneq
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x000f, IP_ACTIVE_HIGH, IPT_SPECIAL )	// coin returns
 	PORT_BIT( 0x00f0, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -872,7 +874,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( fishfren )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
@@ -883,7 +885,7 @@ static INPUT_PORTS_START( fishfren )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
@@ -894,7 +896,7 @@ static INPUT_PORTS_START( fishfren )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -905,7 +907,7 @@ static INPUT_PORTS_START( fishfren )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL )	// vsyncneq
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x000f, IP_ACTIVE_HIGH, IPT_SPECIAL )	// coin returns
 	PORT_BIT( 0x00f0, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -913,7 +915,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( vcircle )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(2)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(2)
@@ -927,7 +929,7 @@ static INPUT_PORTS_START( vcircle )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON5 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON6 ) PORT_PLAYER(1)
@@ -941,7 +943,7 @@ static INPUT_PORTS_START( vcircle )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_COIN3 )
@@ -952,7 +954,7 @@ static INPUT_PORTS_START( vcircle )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_SPECIAL )	// vsyncneq
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x000f, IP_ACTIVE_HIGH, IPT_SPECIAL )	// coin returns
 	PORT_BIT( 0x00f0, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )

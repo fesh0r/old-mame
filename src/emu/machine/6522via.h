@@ -48,20 +48,20 @@ struct via6522_interface
 	write8_machine_func out_cb1_func;
 	write8_machine_func out_ca2_func;
 	write8_machine_func out_cb2_func;
-	void (*irq_func)(int state);
+	void (*irq_func)(running_machine *machine, int state);
 };
 
 void via_set_clock(int which,int clck);
 void via_config(int which, const struct via6522_interface *intf);
 void via_reset(void);
-int via_read(int which, int offset);
-void via_write(int which, int offset, int data);
+int via_read(running_machine *machine, int which, int offset);
+void via_write(running_machine *machine, int which, int offset, int data);
 void via_set_input_a(int which, int data);
-void via_set_input_ca1(int which, int data);
-void via_set_input_ca2(int which, int data);
+void via_set_input_ca1(running_machine *machine, int which, int data);
+void via_set_input_ca2(running_machine *machine, int which, int data);
 void via_set_input_b(int which, int data);
-void via_set_input_cb1(int which, int data);
-void via_set_input_cb2(int which, int data);
+void via_set_input_cb1(running_machine *machine, int which, int data);
+void via_set_input_cb2(running_machine *machine, int which, int data);
 
 /******************* Standard 8-bit CPU interfaces, D0-D7 *******************/
 

@@ -168,51 +168,7 @@ TODO:
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 #include "sound/dac.h"
-
-
-MACHINE_START( taitosj );
-MACHINE_RESET( taitosj );
-WRITE8_HANDLER( taitosj_bankswitch_w );
-READ8_HANDLER( taitosj_fake_data_r );
-READ8_HANDLER( taitosj_fake_status_r );
-WRITE8_HANDLER( taitosj_fake_data_w );
-READ8_HANDLER( taitosj_mcu_data_r );
-READ8_HANDLER( taitosj_mcu_status_r );
-WRITE8_HANDLER( taitosj_mcu_data_w );
-READ8_HANDLER( taitosj_68705_portA_r );
-READ8_HANDLER( taitosj_68705_portB_r );
-READ8_HANDLER( taitosj_68705_portC_r );
-WRITE8_HANDLER( taitosj_68705_portA_w );
-WRITE8_HANDLER( taitosj_68705_portB_w );
-
-READ8_HANDLER( spacecr_prot_r );
-WRITE8_HANDLER( alpine_protection_w );
-WRITE8_HANDLER( alpinea_bankswitch_w );
-READ8_HANDLER( alpine_port_2_r );
-
-extern UINT8 *taitosj_videoram_1;
-extern UINT8 *taitosj_videoram_2;
-extern UINT8 *taitosj_videoram_3;
-extern UINT8 *taitosj_spriteram;
-extern UINT8 *taitosj_paletteram;
-extern UINT8 *taitosj_characterram;
-extern UINT8 *taitosj_scroll;
-extern UINT8 *taitosj_colscrolly;
-extern UINT8 *taitosj_gfxpointer;
-extern UINT8 *taitosj_colorbank;
-extern UINT8 *taitosj_video_mode;
-extern UINT8 *taitosj_video_priority;
-extern UINT8 *taitosj_collision_reg;
-extern UINT8 *kikstart_scrollram;
-
-READ8_HANDLER( taitosj_gfxrom_r );
-WRITE8_HANDLER( taitosj_videoe_w );
-WRITE8_HANDLER( taitosj_characterram_w );
-WRITE8_HANDLER( junglhbr_characterram_w );
-WRITE8_HANDLER( taitosj_collision_reg_clear_w );
-VIDEO_START( taitosj );
-VIDEO_UPDATE( taitosj );
-VIDEO_UPDATE( kikstart );
+#include "includes/taitosj.h"
 
 
 static UINT8 sndnmi_disable = 1;
@@ -336,9 +292,9 @@ static CUSTOM_INPUT( kikstart_gear_r )
 		port_tag = "GEARP2";
 
 	/* gear MUST be 1, 2 or 3 */
-	if (input_port_read(machine, port_tag) & 0x01) kikstart_gears[player] = 0x02;
-	if (input_port_read(machine, port_tag) & 0x02) kikstart_gears[player] = 0x03;
-	if (input_port_read(machine, port_tag) & 0x04) kikstart_gears[player] = 0x01;
+	if (input_port_read(field->port->machine, port_tag) & 0x01) kikstart_gears[player] = 0x02;
+	if (input_port_read(field->port->machine, port_tag) & 0x02) kikstart_gears[player] = 0x03;
+	if (input_port_read(field->port->machine, port_tag) & 0x04) kikstart_gears[player] = 0x01;
 
 	return kikstart_gears[player];
 }

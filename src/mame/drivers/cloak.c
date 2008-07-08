@@ -110,19 +110,9 @@
 #include "driver.h"
 #include "deprecat.h"
 #include "sound/pokey.h"
+#include "includes/cloak.h"
 
 static int cloak_nvram_enabled;
-
-extern WRITE8_HANDLER( cloak_videoram_w );
-extern WRITE8_HANDLER( cloak_paletteram_w );
-extern WRITE8_HANDLER( cloak_clearbmp_w );
-extern WRITE8_HANDLER( graph_processor_w );
-extern WRITE8_HANDLER( cloak_flipscreen_w );
-extern READ8_HANDLER( graph_processor_r );
-
-extern VIDEO_START( cloak );
-extern VIDEO_UPDATE( cloak );
-
 
 /*************************************
  *
@@ -242,7 +232,7 @@ static INPUT_PORTS_START( cloak )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
 
 	PORT_START	/* IN3 */
-	PORT_BIT( 0x2f, IP_ACTIVE_LOW, IPT_UNUSED )		// not connected
+	PORT_BIT( 0x0f, IP_ACTIVE_LOW, IPT_UNUSED )		// not connected
 	PORT_BIT( 0x30, IP_ACTIVE_HIGH, IPT_UNUSED )	// pulled high
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_START1 )

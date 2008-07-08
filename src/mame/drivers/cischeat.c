@@ -505,7 +505,7 @@ UINT16 scudhamm_motor_command;
 
 READ16_HANDLER( scudhamm_motor_status_r )
 {
-//  return 1 << (mame_rand(Machine)&1);         // Motor Status
+//  return 1 << (mame_rand(machine)&1);         // Motor Status
 	return scudhamm_motor_command;	// Motor Status
 }
 
@@ -532,7 +532,7 @@ static WRITE16_HANDLER( scudhamm_motor_command_w )
 
 READ16_HANDLER( scudhamm_analog_r )
 {
-	return input_port_read_indexed(machine, 1);
+	return input_port_read(machine, "IN1");
 }
 
 /*
@@ -627,17 +627,17 @@ static READ16_HANDLER( armchmp2_analog_r )
 	int armdelta;
 	static int armold = 0;
 
-	armdelta = input_port_read_indexed(machine, 1) - armold;
-	armold = input_port_read_indexed(machine, 1);
+	armdelta = input_port_read(machine, "IN1") - armold;
+	armold = input_port_read(machine, "IN1");
 
 	return ~( scudhamm_motor_command + armdelta );	// + x : x<=0 and player loses, x>0 and player wins
 }
 
 static READ16_HANDLER( armchmp2_buttons_r )
 {
-	int arm_x = input_port_read_indexed(machine, 1);
+	int arm_x = input_port_read(machine, "IN1");
 
-	UINT16 ret = input_port_read_indexed(machine, 0);
+	UINT16 ret = input_port_read(machine, "IN0");
 
 	if (arm_x < 0x40)		ret &= ~1;
 	else if (arm_x > 0xc0)	ret &= ~2;
@@ -1123,7 +1123,7 @@ INPUT_PORTS_END
 //                  [4] DSW 1 & 2   [5] DSW 3       [6] Driving Wheel
 
 static INPUT_PORTS_START( cischeat )
-	PORT_START_TAG("IN0")	// Fake input port - Buttons status
+	PORT_START_TAG("FAKE")	// Fake input port - Buttons status
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("P1 Low Gear")\
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("P1 High Gear")\
 
@@ -1210,7 +1210,7 @@ static INPUT_PORTS_START( cischeat )
 	PORT_BIT(  0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN6 - Driving Wheel - $80010.w(0)
+	PORT_START_TAG("IN6")	// IN6 - Driving Wheel - $80010.w(0)
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE ) PORT_SENSITIVITY(30) PORT_KEYDELTA(30)
 INPUT_PORTS_END
 
@@ -1225,7 +1225,7 @@ INPUT_PORTS_END
 //                  [6] Coinage JP&USA  [7] Coinage UK&FR
 
 static INPUT_PORTS_START( f1gpstar )
-	PORT_START_TAG("IN0")	// Fake input port - Buttons status
+	PORT_START_TAG("FAKE")	// Fake input port - Buttons status
     PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("P1 Accelerator")\
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("P1 Low Gear")\
 	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("P1 High Gear")\
@@ -1971,10 +1971,10 @@ MACHINE_DRIVER_END
 
     We need to untangle it
 */
-static void cischeat_untangle_sprites(int region)
+static void cischeat_untangle_sprites(running_machine *machine, int region)
 {
-	UINT8		*src = memory_region(region);
-	const UINT8	*end = memory_region(region) + memory_region_length(region);
+	UINT8		*src = memory_region(machine, region);
+	const UINT8	*end = src + memory_region_length(machine, region);
 
 	while (src < end)
 	{
@@ -2127,9 +2127,9 @@ ROM_END
 static DRIVER_INIT( bigrun )
 {
 	/* Split ROMs */
-	rom_1 = (UINT16 *) memory_region(REGION_USER1);
+	rom_1 = (UINT16 *) memory_region(machine, REGION_USER1);
 
-	cischeat_untangle_sprites(REGION_GFX4);	// Untangle sprites
+	cischeat_untangle_sprites(machine, REGION_GFX4);	// Untangle sprites
 	phantasm_rom_decode(3);					// Decrypt sound cpu code
 }
 
@@ -2249,19 +2249,19 @@ ROM_END
 static DRIVER_INIT( cischeat )
 {
 	/* Split ROMs */
-	rom_1 = (UINT16 *) (memory_region(REGION_USER1) + 0x00000);
-	rom_2 = (UINT16 *) (memory_region(REGION_CPU2)  + 0x40000);
-	rom_3 = (UINT16 *) (memory_region(REGION_CPU3)  + 0x40000);
+	rom_1 = (UINT16 *) (memory_region(machine, REGION_USER1) + 0x00000);
+	rom_2 = (UINT16 *) (memory_region(machine, REGION_CPU2)  + 0x40000);
+	rom_3 = (UINT16 *) (memory_region(machine, REGION_CPU3)  + 0x40000);
 
-	memcpy(memory_region(REGION_USER1) + 0x80000, rom_2, 0x40000);
+	memcpy(memory_region(machine, REGION_USER1) + 0x80000, rom_2, 0x40000);
 	memset(rom_2, 0, 0x40000);
-	rom_2 = (UINT16 *) (memory_region(REGION_USER1) + 0x80000);
+	rom_2 = (UINT16 *) (memory_region(machine, REGION_USER1) + 0x80000);
 
-	memcpy(memory_region(REGION_USER1) + 0xc0000, rom_3, 0x40000);
+	memcpy(memory_region(machine, REGION_USER1) + 0xc0000, rom_3, 0x40000);
 	memset(rom_3, 0, 0x40000);
-	rom_3 = (UINT16 *) (memory_region(REGION_USER1) + 0xc0000);
+	rom_3 = (UINT16 *) (memory_region(machine, REGION_USER1) + 0xc0000);
 
-	cischeat_untangle_sprites(REGION_GFX4);	// Untangle sprites
+	cischeat_untangle_sprites(machine, REGION_GFX4);	// Untangle sprites
 	astyanax_rom_decode(3);					// Decrypt sound cpu code
 }
 
@@ -2476,9 +2476,9 @@ ROM_END
 static DRIVER_INIT( f1gpstar )
 {
 	/* Split ROMs */
-	rom_1 = (UINT16 *) memory_region(REGION_USER1);
+	rom_1 = (UINT16 *) memory_region(machine, REGION_USER1);
 
-	cischeat_untangle_sprites(REGION_GFX4);
+	cischeat_untangle_sprites(machine, REGION_GFX4);
 }
 
 

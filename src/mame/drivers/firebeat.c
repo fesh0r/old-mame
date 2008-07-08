@@ -109,7 +109,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/powerpc/ppc.h"
 #include "machine/intelfsh.h"
 #include "machine/scsicd.h"
@@ -563,6 +562,7 @@ static UINT32 GCU_r(int chip, UINT32 offset, UINT32 mem_mask)
 	switch(reg)
 	{
 		case 0x78:		/* GCU Status */
+			/* ppd checks bits 0x0041 of the upper halfword on interrupt */
 			return 0xffff0005;
 
 		default:
@@ -585,6 +585,10 @@ static void GCU_w(running_machine *machine, int chip, UINT32 offset, UINT32 data
 	switch(reg)
 	{
 		case 0x10:		/* ??? */
+			/* IRQ clear/enable; ppd writes bit off then on in response to interrupt */
+			/* it enables bits 0x41, but 0x01 seems to be the one it cares about */
+			if (ACCESSING_BITS_16_31 && (data & 0x0001) == 0)
+				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
 			break;
 
 		case 0x30:
@@ -674,15 +678,15 @@ static READ32_HANDLER(input_r)
 
 	if (ACCESSING_BITS_24_31)
 	{
-		r |= (input_port_read_indexed(machine, 0) & 0xff) << 24;
+		r |= (input_port_read(machine, "IN0") & 0xff) << 24;
 	}
 	if (ACCESSING_BITS_8_15)
 	{
-		r |= (input_port_read_indexed(machine, 1) & 0xff) << 8;
+		r |= (input_port_read(machine, "IN1") & 0xff) << 8;
 	}
 	if (ACCESSING_BITS_0_7)
 	{
-		r |= (input_port_read_indexed(machine, 2) & 0xff);
+		r |= (input_port_read(machine, "IN2") & 0xff);
 	}
 
 	return r;
@@ -692,11 +696,11 @@ static READ32_HANDLER( sensor_r )
 {
 	if (offset == 0)
 	{
-		return input_port_read_indexed(machine, 3) | 0x01000100;
+		return input_port_read(machine, "SENSOR1") | 0x01000100;
 	}
 	else
 	{
-		return input_port_read_indexed(machine, 4) | 0x01000100;
+		return input_port_read(machine, "SENSOR2") | 0x01000100;
 	}
 }
 
@@ -850,9 +854,14 @@ static UINT8  atapi_scsi_packet[32*1024];
 static int atapi_data_ptr, atapi_xferlen, atapi_xfermod, atapi_cdata_wait;
 static int atapi_drivesel;
 
-static void atapi_cause_irq(void)
+static void atapi_cause_irq(running_machine *machine)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ4, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ4, ASSERT_LINE);
+}
+
+static void atapi_clear_irq(running_machine *machine)
+{
+	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ4, CLEAR_LINE);
 }
 
 static void atapi_exit(running_machine* machine)
@@ -895,7 +904,7 @@ static void atapi_reset(void)
 
 
 
-static UINT16 atapi_command_reg_r(int reg)
+static UINT16 atapi_command_reg_r(running_machine *machine, int reg)
 {
 	int i, data;
 	static UINT8 temp_data[64*1024];
@@ -908,7 +917,7 @@ static UINT16 atapi_command_reg_r(int reg)
 		if (atapi_data_ptr == 0)
 		{
 			//printf("ATAPI: dropping DRQ\n");
-			atapi_cause_irq();
+			atapi_cause_irq(machine);
 			atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
 
 			// get the data from the device
@@ -928,7 +937,7 @@ static UINT16 atapi_command_reg_r(int reg)
 		if (atapi_xfermod && atapi_data_ptr == (atapi_xferlen/2))
 		{
 			//printf("ATAPI: DRQ interrupt\n");
-			atapi_cause_irq();
+			atapi_cause_irq(machine);
 			atapi_regs[ATAPI_REG_CMDSTATUS] |= ATAPI_STAT_DRQ;
 			atapi_data_ptr = 0;
 
@@ -952,11 +961,13 @@ static UINT16 atapi_command_reg_r(int reg)
 	}
 	else
 	{
+		if (reg == ATAPI_REG_CMDSTATUS)
+			atapi_clear_irq(machine);
 		return atapi_regs[reg];
 	}
 }
 
-static void atapi_command_reg_w(int reg, UINT16 data)
+static void atapi_command_reg_w(running_machine *machine, int reg, UINT16 data)
 {
 	int i;
 
@@ -982,7 +993,7 @@ static void atapi_command_reg_w(int reg, UINT16 data)
 				SCSIWriteData( atapi_device_data[atapi_drivesel], atapi_scsi_packet, atapi_cdata_wait );
 
 				// assert IRQ
-				atapi_cause_irq();
+				atapi_cause_irq(machine);
 
 				// not sure here, but clear DRQ at least?
 				atapi_regs[ATAPI_REG_CMDSTATUS] = 0;
@@ -999,7 +1010,7 @@ static void atapi_command_reg_w(int reg, UINT16 data)
 			atapi_regs[ATAPI_REG_CMDSTATUS] |= ATAPI_STAT_BSY;
 
 			// assert IRQ
-			atapi_cause_irq();
+			atapi_cause_irq(machine);
 
 			// decompose SCSI packet into proper byte order
 			for (i = 0; i < 16; i += 2)
@@ -1161,12 +1172,12 @@ static READ32_HANDLER( atapi_command_r )
 //  printf("atapi_command_r: %08X, %08X\n", offset, mem_mask);
 	if (ACCESSING_BITS_16_31)
 	{
-		r = atapi_command_reg_r(offset*2);
+		r = atapi_command_reg_r(machine, offset*2);
 		return ATAPI_ENDIAN(r) << 16;
 	}
 	else
 	{
-		r = atapi_command_reg_r((offset*2) + 1);
+		r = atapi_command_reg_r(machine, (offset*2) + 1);
 		return ATAPI_ENDIAN(r) << 0;
 	}
 }
@@ -1177,11 +1188,11 @@ static WRITE32_HANDLER( atapi_command_w )
 
 	if (ACCESSING_BITS_16_31)
 	{
-		atapi_command_reg_w(offset*2, ATAPI_ENDIAN((data >> 16) & 0xffff));
+		atapi_command_reg_w(machine, offset*2, ATAPI_ENDIAN((data >> 16) & 0xffff));
 	}
 	else
 	{
-		atapi_command_reg_w((offset*2) + 1, ATAPI_ENDIAN((data >> 0) & 0xffff));
+		atapi_command_reg_w(machine, (offset*2) + 1, ATAPI_ENDIAN((data >> 0) & 0xffff));
 	}
 }
 
@@ -1262,10 +1273,10 @@ static WRITE32_HANDLER( comm_uart_w )
 	}
 }
 
-static void comm_uart_irq_callback(int channel, int value)
+static void comm_uart_irq_callback(running_machine *machine, int channel, int value)
 {
 	// TODO
-	//cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ2, ASSERT_LINE);
+	//cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, ASSERT_LINE);
 }
 
 /*****************************************************************************/
@@ -1383,11 +1394,11 @@ static READ32_HANDLER( keyboard_wheel_r )
 {
 	if (offset == 0)		// Keyboard Wheel (P1)
 	{
-		return input_port_read_indexed(machine, 3) << 24;
+		return input_port_read(machine, "WHEEL_P1") << 24;
 	}
 	else if (offset == 2)	// Keyboard Wheel (P2)
 	{
-		return input_port_read_indexed(machine, 4) << 24;
+		return input_port_read(machine, "WHEEL_P2") << 24;
 	}
 
 	return 0;
@@ -1413,23 +1424,27 @@ static WRITE32_HANDLER( midi_uart_w )
 	}
 }
 
-static void midi_uart_irq_callback(int channel, int value)
+static void midi_uart_irq_callback(running_machine *machine, int channel, int value)
 {
 	if (channel == 0)
 	{
-		if ((extend_board_irq_enable & 0x02) == 0)
+		if ((extend_board_irq_enable & 0x02) == 0 && value != CLEAR_LINE)
 		{
 			extend_board_irq_active |= 0x02;
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 		}
+		else
+			cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
 	}
 	else
 	{
-		if ((extend_board_irq_enable & 0x01) == 0)
+		if ((extend_board_irq_enable & 0x01) == 0 && value != CLEAR_LINE)
 		{
 			extend_board_irq_active |= 0x01;
-			cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 		}
+		else
+			cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
 	}
 }
 
@@ -1466,12 +1481,13 @@ static const int keyboard_notes[24] =
 static TIMER_CALLBACK( keyboard_timer_callback )
 {
 	static const int kb_uart_channel[2] = { 1, 0 };
+	static const char *keynames[] = { "KEYBOARD_P1", "KEYBOARD_P2" };
 	int keyboard;
 	int i;
 
 	for (keyboard=0; keyboard < 2; keyboard++)
 	{
-		UINT32 kbstate = input_port_read_indexed(machine, 5 + keyboard);
+		UINT32 kbstate = input_port_read(machine, keynames[keyboard]);
 		int uart_channel = kb_uart_channel[keyboard];
 
 		if (kbstate != keyboard_state[keyboard])
@@ -1483,23 +1499,23 @@ static TIMER_CALLBACK( keyboard_timer_callback )
 				if ((keyboard_state[keyboard] & (1 << i)) != 0 && (kbstate & (1 << i)) == 0)
 				{
 					// key was on, now off -> send Note Off message
-					pc16552d_rx_data(1, uart_channel, 0x80);
-					pc16552d_rx_data(1, uart_channel, kbnote);
-					pc16552d_rx_data(1, uart_channel, 0x7f);
+					pc16552d_rx_data(machine, 1, uart_channel, 0x80);
+					pc16552d_rx_data(machine, 1, uart_channel, kbnote);
+					pc16552d_rx_data(machine, 1, uart_channel, 0x7f);
 				}
 				else if ((keyboard_state[keyboard] & (1 << i)) == 0 && (kbstate & (1 << i)) != 0)
 				{
 					// key was off, now on -> send Note On message
-					pc16552d_rx_data(1, uart_channel, 0x90);
-					pc16552d_rx_data(1, uart_channel, kbnote);
-					pc16552d_rx_data(1, uart_channel, 0x7f);
+					pc16552d_rx_data(machine, 1, uart_channel, 0x90);
+					pc16552d_rx_data(machine, 1, uart_channel, kbnote);
+					pc16552d_rx_data(machine, 1, uart_channel, 0x7f);
 				}
 			}
 		}
 		else
 		{
 			// no messages, send Active Sense message instead
-			pc16552d_rx_data(1, uart_channel, 0xfe);
+			pc16552d_rx_data(machine, 1, uart_channel, 0xfe);
 		}
 
 		keyboard_state[keyboard] = kbstate;
@@ -1743,7 +1759,22 @@ static READ16_HANDLER(spu_unk_r)
 
 /*****************************************************************************/
 
+static UINT32 *work_ram;
+static MACHINE_START( firebeat )
+{
+	/* set conservative DRC options */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+
+	/* configure fast RAM regions for DRC */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x01ffffff);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+}
+
 static ADDRESS_MAP_START( firebeat_map, ADDRESS_SPACE_PROGRAM, 32 )
+	AM_RANGE(0x00000000, 0x01ffffff) AM_RAM AM_BASE(&work_ram)
 	AM_RANGE(0x70000000, 0x70000fff) AM_READWRITE(midi_uart_r, midi_uart_w)
 	AM_RANGE(0x70006000, 0x70006003) AM_WRITE(extend_board_irq_w)
 	AM_RANGE(0x70008000, 0x7000800f) AM_READ(keyboard_wheel_r)
@@ -1761,8 +1792,7 @@ static ADDRESS_MAP_START( firebeat_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x7e800100, 0x7e8001ff) AM_READWRITE(gcu1_r, gcu1_w)
 	AM_RANGE(0x7fe00000, 0x7fe0000f) AM_READWRITE(atapi_command_r, atapi_command_w)
 	AM_RANGE(0x7fe80000, 0x7fe8000f) AM_READWRITE(atapi_control_r, atapi_control_w)
-	AM_RANGE(0x80000000, 0x81ffffff) AM_RAM
-	AM_RANGE(0xfff80000, 0xffffffff) AM_ROM AM_REGION(REGION_USER1, 0)		/* System BIOS */
+	AM_RANGE(0x7ff80000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0)		/* System BIOS */
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( spu_map, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1790,7 +1820,7 @@ static WRITE8_HANDLER( soundram_w )
 {
 }
 
-static void sound_irq_callback(int state)
+static void sound_irq_callback(running_machine *machine, int state)
 {
 }
 
@@ -1818,7 +1848,7 @@ static NVRAM_HANDLER(firebeat)
 
 		if (file != NULL)
 		{
-			rtc65271_file_load(file);
+			rtc65271_file_load(machine, file);
 		}
 	}
 }
@@ -1973,7 +2003,7 @@ static MACHINE_RESET( firebeat )
 {
 	void *cd;
 	int i;
-	UINT8 *sound = memory_region(REGION_SOUND1);
+	UINT8 *sound = memory_region(machine, REGION_SOUND1);
 
 	for (i=0; i < 0x200000; i++)
 	{
@@ -1985,19 +2015,14 @@ static MACHINE_RESET( firebeat )
 	cdda_set_cdrom(0, cd);
 }
 
-static const ppc_config firebeat_ppc_cfg =
-{
-	PPC_MODEL_403GCX
-};
-
 static MACHINE_DRIVER_START(firebeat)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403, 66000000)
-	MDRV_CPU_CONFIG(firebeat_ppc_cfg)
+	MDRV_CPU_ADD(PPC403GCX, 66000000)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
 	MDRV_CPU_VBLANK_INT("main", firebeat_interrupt)
 
+	MDRV_MACHINE_START(firebeat)
 	MDRV_MACHINE_RESET(firebeat)
 	MDRV_NVRAM_HANDLER(firebeat)
 
@@ -2032,8 +2057,7 @@ MACHINE_DRIVER_END
 static MACHINE_DRIVER_START(firebeat2)
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403, 66000000)
-	MDRV_CPU_CONFIG(firebeat_ppc_cfg)
+	MDRV_CPU_ADD(PPC403GCX, 66000000)
 	MDRV_CPU_PROGRAM_MAP(firebeat_map, 0)
 	MDRV_CPU_VBLANK_INT("left", firebeat_interrupt)
 
@@ -2232,9 +2256,7 @@ static void security_w(UINT8 data)
 {
 	int r = ibutton_w(data);
 	if (r >= 0)
-	{
-		ppc403_spu_rx(r & 0xff);
-	}
+		ppc4xx_spu_receive_byte(0, r);
 }
 
 /*****************************************************************************/
@@ -2252,7 +2274,7 @@ static void init_lights(running_machine *machine, write32_machine_func out1, wri
 
 static void init_firebeat(running_machine *machine)
 {
-	UINT8 *rom = memory_region(REGION_USER2);
+	UINT8 *rom = memory_region(machine, REGION_USER2);
 
 	atapi_init(machine);
 	intelflash_init(0, FLASH_FUJITSU_29F016A, NULL);
@@ -2269,7 +2291,7 @@ static void init_firebeat(running_machine *machine)
 
 	cur_cab_data = cab_data;
 
-	ppc403_install_spu_tx_handler(security_w);
+	ppc4xx_spu_set_tx_handler(0, security_w);
 
 	set_ibutton(rom);
 

@@ -134,7 +134,7 @@ NVRAM_HANDLER( atarigen );
     SLAPSTIC HANDLING
 ---------------------------------------------------------------*/
 
-void atarigen_slapstic_init(int cpunum, offs_t base, offs_t mirror, int chipnum);
+void atarigen_slapstic_init(running_machine *machine, int cpunum, offs_t base, offs_t mirror, int chipnum);
 void atarigen_slapstic_reset(void);
 
 WRITE16_HANDLER( atarigen_slapstic_w );
@@ -151,7 +151,7 @@ INTERRUPT_GEN( atarigen_6502_irq_gen );
 READ8_HANDLER( atarigen_6502_irq_ack_r );
 WRITE8_HANDLER( atarigen_6502_irq_ack_w );
 
-void atarigen_ym2151_irq_gen(int irq);
+void atarigen_ym2151_irq_gen(running_machine *machine, int irq);
 
 WRITE16_HANDLER( atarigen_sound_w );
 READ16_HANDLER( atarigen_sound_r );

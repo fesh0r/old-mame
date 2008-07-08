@@ -32,10 +32,193 @@
     Solar Assault                  | GX680     | GN672(A)     | GN678(B)       |
 
     Hang Pilot                     | GN685     | ??           | 2x ??          | 3dfx-based CG boards
+
+
+Konami 'GTI Club' Hardware
+Konami, 1996-1998
+
+Known games on this hardware include....
+
+Game                        (C)      Year
+-----------------------------------------
+GTI Club                    Konami   1996
+Jet Wave / Wave Shark       Konami   1996 (video board only)
+Operation Thunder Hurricane Konami   1997
+Solar Assault               Konami   1997
+Solar Assault : Revised     Konami   1998
+
+
+PCB Layouts
+-----------
+
+Top Board
+
+GN672 PWB(A)3020088
+Konami 1996
+|--------------------------------------------------------------|
+|                                    DRAM1M   MASKROM.2S       |
+|CN13            NJM5532    PAL(002616)                        |
+|                    SM5877                   MASKROM.5S       |
+|       AN7395S  NJM5532                                       |
+|                                   RF5C400   MASKROM.7S       |
+|                                                              |
+|             056800            SRAM256K      MASKROM.9S       |
+|   058232                      SRAM256K                       |
+|       RESET_SW        EPROM.13K                   MASKROM.12U|
+|5                                                             |
+|6                                                  MASKROM.14U|
+|W  TEST_SW              68EC000FN16                           |
+|A                                         EPROM.19R  EPROM.19U|
+|Y                                         EPROM.19R  EPROM.19U|
+|              33.868MHz                                       |
+|                     PAL(002248)                  |---------| |
+|                     PAL(002249)                  |PPC403GA | |
+|             93C56                                |         | |
+|LED        PAL(002247)      DRAM4MX16             |         | |
+|                                                  |---------| |
+|           056230           DRAM4MX16                         |
+|SRAM64K                                                       |
+|                   64MHz            MACH111                   |
+|CN4                                                           |
+|        PAL(056787A)                                          |
+|CN5                                                           |
+|DSW(4)                        CN12                            |
+|--------------------------------------------------------------|
+Notes:
+         DRAM1M - OKI M514256 1Mx4 DRAM (SOJ26/20)
+        SRAM64K - 8kx8 SRAM (DIP28)
+       SRAM256K - Fujitsu 84256 32kx8 SRAM (DIP28)
+      DRAM4MX16 - Hitachi HM514260 4Mx16 DRAM (SOJ42)
+        RF5C400 - Ricoh RF5C400 PCM 32Ch, 44.1 kHz Stereo, 3D Effect Spatializer, clock input 16.934MHz (33.868/2)
+         056800 - Konami Custom (QFP80)
+         056230 - Konami Custom (QFP80)
+         058232 - Konami Custom Ceramic Package (SIL14, D/A filter?)
+        MACH111 - AMD MACH111 PLCC44 CPLD (stamped '002246')
+        68EC000 - Motorola MC68EC000, running at 16.0MHz (64/4)
+          93C56 - EEPROM (DIP8)
+       PPC403GA - IBM PowerPC 403GA CPU, clock input 32.0MHz (64/2) (QFP160)
+       SM5877AM - Nippon Precision Circuits 3rd Order 2-Channel D/A Converter (SOIC24)
+      NJM5532AN - Dual Low-Noise High-Speed Audio OP Amp (DIP8)
+        AN7395S - Panasonic AN7395S Spatializer Audio Processor IC for 3D surround (SOIC20)
+          CN4/5 - Network connectors
+           CN12 - DIN96 connector joining to lower PCB
+           CN13 - Audio OUT connector
+            LED - Alpha-numeric 7-segment LED
+
+ROM Usage
+---------
+                            |--------------------------------------- ROM Locations --------------------------------------|
+Game                        13K     2S      5S      7S      9S      12U     14U     19R       19U       21R       21U
+--------------------------------------------------------------------------------------------------------------------------
+GTI Club                    688A07  688A12  688A11  688A10  688A09  688A06  688A05  688AAA04  688AAA02  688AAA03  688AAA01
+Jet Wave                    - see note -
+Hang Pilot                  685A07  -       -       685A10  685A09  685A06  685A05  685JAB04  685JAB02  685JAB03  685JAB01
+Operation Thunder Hurricane 680A07  680A12  680A11  680A10  680A09  680A06  680A05  680UAA04  680UAA02  680UAA03  680UAA01
+Solar Assault               792A07  792A12  792A11  792A10  792A09  792A06  792A05  792UAA04  792UAA02  792UAA03  792UAA01
+Solar Assault : Revised     - N/A -
+
+Note : Jet Wave uses the lower board (GN678) from GTI Club, but it uses a different top board (ZR107 PWB(A)300769A)
+Check zr107.c for details on the top board.
+
+Operation Thunder Hurricane uses an additional top board for sound, network and analog
+control functions...
+
+GN680 PWB(E)403381B
+|------------------------------------------|
+|CN11  CN12    CN8      CN9    CN10  DSW(4)|
+|                 NRPS11     NRPS11        |
+|                                          |
+|                        LM1881   LM1881   |
+|                                          |
+|LED(x4)                                   |
+|                                          |
+|           68EC000FN16  8464              |
+|    RESET_SW            8464              |
+|32MHz                           680C22.20K|
+|8464                 PAL(002962)          |
+|CN4   056230         PAL(002961)          |
+|   PAL(056787A)      PAL(002960)          |
+|CN5                                       |
+|------------------------------------------|
+Notes:
+      68000 @ 16MHz (32/2)
+      CN11/12 - Power connectors
+      CN8/9   - 6-pin analog control connectors
+      CN10    - 4-pin sound output connector
+      NRPS11  - Idec NRPS11 PC Board circuit protector
+      LM1881  - Video sync separator (DIP8)
+
+
+Bottom Board
+
+GN678 PWB(B)302009A
+Konami 1996
+|-------------------------------------------------------------------------------------------|
+|CN4      MASKROM.2D      |--------|  SDR4M16  SDR4M16      |--------|  SDR4M16  SDR4M16    |
+|                         |KS10081 |                        |KS10081 |                      |
+|         MASKROM.4D      |        |                        |        |               SDR4M16|
+|                         |--------|     |----------|       |--------|    |----------|      |
+|CN2      MASKROM.6D                     | KS10071  | SDR4M16             | KS10071  |      |
+|                                        |          |                     |          |      |
+|         MASKROM.9D                     |          | SDR4M16             |          |      |
+|                                        |----------|                     |----------|      |
+|         MASKROM.11D                                                                SDR4M16|
+|                                          SDR4M16                          SDR4M16         |
+|         MASKROM.13D                                                                       |
+|                                                      MC88916                              |
+|         MASKROM.16D                                         PAL(002304)                   |
+| MC44200                                                                 PAL(002303)       |
+|         MASKROM.18D                                                                       |
+|                                                                                           |
+|                                                                         36MHz             |
+|                                AM7203  AM7203  AM7203  AM7203         |-------------|     |
+|                                                  256KSRAM  256KSRAM   |ANALOG       |     |
+|                                                                       |DEVICES      |     |
+|              PAL(002305)  64KSRAM   64KSRAM      256KSRAM  256KSRAM   |ADSP-21062   |     |
+|                                                                       |SHARC        |     |
+|         |--------|     MACH110                                        |KS-160X      |     |
+|1MSRAM   |KONAMI  |                                                    |-------------|     |
+|1MSRAM   |001604  |                                                                        |
+|1MSRAM   |        |                                                        1MSRAM  1MSRAM  |
+|1MSRAM   |--------|                                                                        |
+|1MSRAM       256KSRAM                                                      1MSRAM  1MSRAM  |
+|1MSRAM   256KSRAM 256KSRAM                    CN1                                          |
+|-------------------------------------------------------------------------------------------|
+Notes:
+     SDR4M16 - Fujitsu 81141622-015 4M SDRAM (TSOP50)
+      1MSRAM - Sharp LH521007 128kx8 SRAM (SOJ32)
+    256KSRAM - Cypress CY7C199 32kx8 SRAM (SOJ28)
+     64KSRAM - Cypress CY7C185 8kx8 SRAM (DIP28)
+     KS10071 - Konami Custom video chip
+     KS10081 - Konami Custom video chip
+      001604 - Konami Custom (QFP208)
+   MC44200FT - Motorola MC44200FT 3 Channel Video D/A Converter (QFP44)
+     MACH110 - AMD MACH110 or MACH111 PLCC44 CPLD (Jet Wave stamped '002302')
+                                                  (GTI Club stamped '003161')
+                                                  (Thund.Hurr. stamped '003161')
+      AM7203 - AMD AM7203 FIFO (PLCC32)
+     MC88916 - Motorola MC88916 Low Skew CMOS PLL Clock Driver
+         CN1 - 96 Pin joining connector to upper PCB
+         CN2 - 8-Pin 24kHz RGB OUT
+         CN4 - 6-Pin Power Connector
+
+ROM Usage
+---------
+                            |---------------------- ROM Locations -----------------------|
+Game                        2D      4D      6D      9D      11D     13D     16D     18D
+------------------------------------------------------------------------------------------
+GTI Club                    -       688A16  -       688A15  -       688A14  -       688A13
+Jet Wave                    -       678A16  -       678A15  -       678A14  -       678A13
+Operation Thunder Hurricane -       680A16  -       680A15  -       680A14  -       680A13
+Solar Assault               -       792A16  -       792A15  -       792A14  -       792A13
+Solar Assault : Revised     - N/A -
+
+Hang Pilot (uses an unknown but similar video board)                12W             4W
+                            -       -       -       -       -       678A14  -       678A13
+
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "cpu/powerpc/ppc.h"
 #include "cpu/sharc/sharc.h"
@@ -65,11 +248,6 @@ READ32_HANDLER(K001604_reg_r);
 
 
 
-VIDEO_START( gticlub );
-VIDEO_UPDATE( gticlub );
-
-
-
 static WRITE32_HANDLER( paletteram32_w )
 {
 	COMBINE_DATA(&paletteram32[offset]);
@@ -77,27 +255,18 @@ static WRITE32_HANDLER( paletteram32_w )
 	palette_set_color_rgb(machine, offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
-static void voodoo_vblank_0(int param)
+static void voodoo_vblank_0(const device_config *device, int param)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
+	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
-static void voodoo_vblank_1(int param)
+static void voodoo_vblank_1(const device_config *device, int param)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
+	cpunum_set_input_line(device->machine, 0, INPUT_LINE_IRQ1, ASSERT_LINE);
 }
 
 static VIDEO_START( hangplt )
 {
-	const device_config *left_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "left");
-	const device_config *right_screen = device_list_find_by_tag(machine->config->devicelist, VIDEO_SCREEN, "right");
-
-	voodoo_start(0, left_screen,  VOODOO_1, 2, 4, 4);
-	voodoo_start(1, right_screen, VOODOO_1, 2, 4, 4);
-
-	voodoo_set_vblank_callback(0, voodoo_vblank_0);
-	voodoo_set_vblank_callback(1, voodoo_vblank_1);
-
 	K001604_vh_start(machine, 0);
 	K001604_vh_start(machine, 1);
 }
@@ -105,26 +274,27 @@ static VIDEO_START( hangplt )
 
 static VIDEO_UPDATE( hangplt )
 {
-	const device_config *left_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "left");
-	const device_config *right_screen = device_list_find_by_tag(screen->machine->config->devicelist, VIDEO_SCREEN, "right");
-
 	fillbitmap(bitmap, screen->machine->pens[0], cliprect);
 
-	if (screen == left_screen)
+	if (strcmp(screen->tag, "left") == 0)
 	{
+		const device_config *voodoo = device_list_find_by_tag(screen->machine->config->devicelist, VOODOO_GRAPHICS, "voodoo0");
+
 		K001604_tile_update(screen->machine, 0);
 	//  K001604_draw_back_layer(bitmap, cliprect);
 
-		voodoo_update(0, bitmap, cliprect);
+		voodoo_update(voodoo, bitmap, cliprect);
 
 		K001604_draw_front_layer(0, bitmap, cliprect);
 	}
-	else if (screen == right_screen)
+	else if (strcmp(screen->tag, "right") == 0)
 	{
+		const device_config *voodoo = device_list_find_by_tag(screen->machine->config->devicelist, VOODOO_GRAPHICS, "voodoo1");
+
 		K001604_tile_update(screen->machine, 1);
 	//  K001604_draw_back_layer(bitmap, cliprect);
 
-		voodoo_update(1, bitmap, cliprect);
+		voodoo_update(voodoo, bitmap, cliprect);
 
 		K001604_draw_front_layer(1, bitmap, cliprect);
 	}
@@ -138,7 +308,7 @@ static VIDEO_UPDATE( hangplt )
 /******************************************************************/
 
 /* 93C56 EEPROM */
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	8,				/* address bits */
 	16,				/* data bits */
@@ -151,21 +321,21 @@ static const struct EEPROM_interface eeprom_interface =
 	0				/* reset_delay */
 };
 
-static void eeprom_handler(mame_file *file, int read_or_write)
+static void eeprom_handler(running_machine *machine, mame_file *file, int read_or_write)
 {
 	if (read_or_write)
 	{
 		if (file)
 		{
-			EEPROM_save(file);
+			eeprom_save(file);
 		}
 	}
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 		if (file)
 		{
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 		{
@@ -173,14 +343,14 @@ static void eeprom_handler(mame_file *file, int read_or_write)
 			UINT8 eepdata[0x200];
 			memset(eepdata, 0xff, 0x200);
 
-			if (mame_stricmp(Machine->gamedrv->name, "slrasslt") == 0)
+			if (mame_stricmp(machine->gamedrv->name, "slrasslt") == 0)
 			{
 				// magic number
 				eepdata[0x4] = 0x96;
 				eepdata[0x5] = 0x72;
 			}
 
-			EEPROM_set_data(eepdata, 0x200);
+			eeprom_set_data(eepdata, 0x200);
 		}
 	}
 }
@@ -216,10 +386,10 @@ static void adc1038_clk_w(running_machine *machine, int bit)
 
 			switch (adc1038_adr)
 			{
-				case 0: adc1038_adc_data = input_port_read_indexed(machine, 4); break;
-				case 1: adc1038_adc_data = input_port_read_indexed(machine, 5); break;
-				case 2: adc1038_adc_data = input_port_read_indexed(machine, 6); break;
-				case 3: adc1038_adc_data = input_port_read_indexed(machine, 7); break;
+				case 0: adc1038_adc_data = input_port_read(machine, "AN0"); break;
+				case 1: adc1038_adc_data = input_port_read(machine, "AN1"); break;
+				case 2: adc1038_adc_data = input_port_read(machine, "AN2"); break;
+				case 3: adc1038_adc_data = input_port_read(machine, "AN3"); break;
 				case 4: adc1038_adc_data = 0x000; break;
 				case 5: adc1038_adc_data = 0x000; break;
 				case 6: adc1038_adc_data = 0x000; break;
@@ -261,10 +431,10 @@ static int adc1038_sars_r(running_machine *machine)
 
 	switch (adc1038_adr)
 	{
-		case 0: adc1038_adc_data = input_port_read_indexed(machine, 4); break;
-		case 1: adc1038_adc_data = input_port_read_indexed(machine, 5); break;
-		case 2: adc1038_adc_data = input_port_read_indexed(machine, 6); break;
-		case 3: adc1038_adc_data = input_port_read_indexed(machine, 7); break;
+		case 0: adc1038_adc_data = input_port_read(machine, "AN0"); break;
+		case 1: adc1038_adc_data = input_port_read(machine, "AN1"); break;
+		case 2: adc1038_adc_data = input_port_read(machine, "AN2"); break;
+		case 3: adc1038_adc_data = input_port_read(machine, "AN3"); break;
 		case 4: adc1038_adc_data = 0x000; break;
 		case 5: adc1038_adc_data = 0x000; break;
 		case 6: adc1038_adc_data = 0x000; break;
@@ -278,32 +448,21 @@ static int adc1038_sars_r(running_machine *machine)
 	return adc1038_sars;
 }
 
-static READ32_HANDLER( sysreg_r )
+static READ8_HANDLER( sysreg_r )
 {
-	UINT32 r = 0;
-	if (offset == 0)
+	static const char *portnames[] = { "IN0", "IN1", "IN2", "IN3" };
+
+	switch (offset)
 	{
-		if (ACCESSING_BITS_24_31)
-		{
-			r |= input_port_read_indexed(machine, 0) << 24;
-		}
-		if (ACCESSING_BITS_16_23)
-		{
-			r |= input_port_read_indexed(machine, 1) << 16;
-		}
-		if (ACCESSING_BITS_8_15)
-		{
-			r |= (adc1038_sars_r(machine) << 7) << 8;
-		}
-		if (ACCESSING_BITS_0_7)
-		{
-			r |= input_port_read_indexed(machine, 3) << 0;
-		}
-		return r;
-	}
-	else if (offset == 1)
-	{
-		if (ACCESSING_BITS_24_31 )
+		case 0:
+		case 1:
+		case 3:
+			return input_port_read(machine, portnames[offset]);
+
+		case 2:
+			return adc1038_sars_r(machine) << 7;
+
+		case 4:
 		{
 			// 7        0
 			// |?????ae?|
@@ -311,64 +470,55 @@ static READ32_HANDLER( sysreg_r )
 			// a = ADC readout
 			// e = EEPROM data out
 
-			UINT32 eeprom_bit = (EEPROM_read_bit() << 1);
+			UINT32 eeprom_bit = (eeprom_read_bit() << 1);
 			UINT32 adc_bit = (adc1038_do_r() << 2);
-			r |= (eeprom_bit | adc_bit) << 24;
+			return (eeprom_bit | adc_bit);
 		}
-		else
-		{
-			mame_printf_debug("sysreg_r %d, %08X\n", offset, mem_mask);
-		}
-		return r;
+
+		default:
+			mame_printf_debug("sysreg_r %d\n", offset);
+			break;
 	}
-	return r;
+	return 0;
 }
 
-static WRITE32_HANDLER( sysreg_w )
+static WRITE8_HANDLER( sysreg_w )
 {
-	if (offset == 0)
+	switch (offset)
 	{
-		if( ACCESSING_BITS_24_31 )
-		{
-			gticlub_led_reg0 = (data >> 24) & 0xff;
-		}
-		if( ACCESSING_BITS_16_23 )
-		{
-			gticlub_led_reg1 = (data >> 16) & 0xff;
-		}
-		if( ACCESSING_BITS_0_7 )
-		{
-			EEPROM_write_bit((data & 0x01) ? 1 : 0);
-			EEPROM_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
-			EEPROM_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
-		}
-	}
-	if( offset == 1 )
-	{
-		if (ACCESSING_BITS_24_31)
-		{
-			if (data & 0x80000000)	/* CG Board 1 IRQ Ack */
-			{
+		case 0:
+			gticlub_led_reg0 = data;
+			break;
+
+		case 1:
+			gticlub_led_reg1 = data;
+			break;
+
+		case 3:
+			eeprom_write_bit((data & 0x01) ? 1 : 0);
+			eeprom_set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
+			eeprom_set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+			break;
+
+		case 4:
+			if (data & 0x80)	/* CG Board 1 IRQ Ack */
 				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ1, CLEAR_LINE);
-			}
-			if (data & 0x40000000)	/* CG Board 0 IRQ Ack */
-			{
+
+			if (data & 0x40)	/* CG Board 0 IRQ Ack */
 				cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, CLEAR_LINE);
-			}
 
-			adc1038_di_w((data >> 24) & 1);
-			adc1038_clk_w(machine, (data >> 25) & 1);
+			adc1038_di_w((data >> 0) & 1);
+			adc1038_clk_w(machine, (data >> 1) & 1);
 
-			set_cgboard_id((data >> 28) & 0x3);
-		}
-		return;
+			set_cgboard_id((data >> 4) & 0x3);
+			break;
 	}
 }
 
 /* Konami K056230 (LANC) */
-static UINT8 K056230_r(int reg)
+READ8_HANDLER( K056230_r )
 {
-	switch (reg)
+	switch (offset)
 	{
 		case 0:		// Status register
 		{
@@ -376,14 +526,19 @@ static UINT8 K056230_r(int reg)
 		}
 	}
 
-//  mame_printf_debug("K056230_r: %d at %08X\n", reg, activecpu_get_pc());
+//  mame_printf_debug("K056230_r: %d at %08X\n", offset, activecpu_get_pc());
 
 	return 0;
 }
 
-static void K056230_w(int reg, UINT8 data)
+TIMER_CALLBACK( network_irq_clear )
 {
-	switch (reg)
+	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, CLEAR_LINE);
+}
+
+WRITE8_HANDLER( K056230_w )
+{
+	switch (offset)
 	{
 		case 0:		// Mode register
 		{
@@ -394,11 +549,14 @@ static void K056230_w(int reg, UINT8 data)
 			if (data & 0x20)
 			{
 				// Thunder Hurricane breaks otherwise...
-				if (mame_stricmp(Machine->gamedrv->name, "thunderh") != 0)
+				if (mame_stricmp(machine->gamedrv->name, "thunderh") != 0)
 				{
-					cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ2, ASSERT_LINE);
+					cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, ASSERT_LINE);
+					timer_set(ATTOTIME_IN_USEC(10), NULL, 0, network_irq_clear);
 				}
 			}
+//          else
+//              cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ2, CLEAR_LINE);
 			break;
 		}
 		case 2:		// Sub ID register
@@ -406,54 +564,7 @@ static void K056230_w(int reg, UINT8 data)
 			break;
 		}
 	}
-//  mame_printf_debug("K056230_w: %d, %02X at %08X\n", reg, data, activecpu_get_pc());
-}
-
-READ32_HANDLER( lanc_r )
-{
-	UINT32 r = 0;
-	int reg = offset * 4;
-
-	if (ACCESSING_BITS_24_31)
-	{
-		r |= K056230_r(reg+0) << 24;
-	}
-	if (ACCESSING_BITS_16_23)
-	{
-		r |= K056230_r(reg+1) << 16;
-	}
-	if (ACCESSING_BITS_8_15)
-	{
-		r |= K056230_r(reg+2) << 8;
-	}
-	if (ACCESSING_BITS_0_7)
-	{
-		r |= K056230_r(reg+3) << 0;
-	}
-
-	return r;
-}
-
-WRITE32_HANDLER( lanc_w )
-{
-	int reg = offset * 4;
-
-	if (ACCESSING_BITS_24_31)
-	{
-		K056230_w(reg+0, (data >> 24) & 0xff);
-	}
-	if (ACCESSING_BITS_16_23)
-	{
-		K056230_w(reg+1, (data >> 16) & 0xff);
-	}
-	if (ACCESSING_BITS_8_15)
-	{
-		K056230_w(reg+2, (data >> 8) & 0xff);
-	}
-	if (ACCESSING_BITS_0_7)
-	{
-		K056230_w(reg+3, (data >> 0) & 0xff);
-	}
+//  mame_printf_debug("K056230_w: %d, %02X at %08X\n", offset, data, activecpu_get_pc());
 }
 
 static UINT32 lanc_ram[0x2000/4];
@@ -471,25 +582,38 @@ WRITE32_HANDLER( lanc_ram_w )
 
 /******************************************************************/
 
+static MACHINE_START( gticlub )
+{
+	/* set conservative DRC options */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_COMPATIBLE_OPTIONS);
+
+	/* configure fast RAM regions for DRC */
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_SELECT, 0);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_START, 0x00000000);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_END, 0x000fffff);
+	cpunum_set_info_ptr(0, CPUINFO_PTR_PPC_FASTRAM_BASE, work_ram);
+	cpunum_set_info_int(0, CPUINFO_INT_PPC_FASTRAM_READONLY, 0);
+}
+
 static ADDRESS_MAP_START( gticlub_map, ADDRESS_SPACE_PROGRAM, 32 )
-	AM_RANGE(0x00000000, 0x000fffff) AM_MIRROR(0x80000000) AM_RAM AM_BASE(&work_ram)		/* Work RAM */
-	AM_RANGE(0x74000000, 0x740000ff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_reg_r, K001604_reg_w)
-	AM_RANGE(0x74010000, 0x7401ffff) AM_MIRROR(0x80000000) AM_RAM_WRITE(paletteram32_w) AM_BASE(&paletteram32)
-	AM_RANGE(0x74020000, 0x7403ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_tile_r, K001604_tile_w)
-	AM_RANGE(0x74040000, 0x7407ffff) AM_MIRROR(0x80000000) AM_READWRITE(K001604_char_r, K001604_char_w)
-	AM_RANGE(0x78000000, 0x7800ffff) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)
-	AM_RANGE(0x78040000, 0x7804000f) AM_MIRROR(0x80000000) AM_READWRITE(K001006_0_r, K001006_0_w)
-	AM_RANGE(0x78080000, 0x7808000f) AM_MIRROR(0x80000000) AM_READWRITE(K001006_1_r, K001006_1_w)
-	AM_RANGE(0x780c0000, 0x780c0003) AM_MIRROR(0x80000000) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
-	AM_RANGE(0x7e000000, 0x7e003fff) AM_MIRROR(0x80000000) AM_READWRITE(sysreg_r, sysreg_w)
-	AM_RANGE(0x7e008000, 0x7e009fff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_r, lanc_w)
-	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_MIRROR(0x80000000) AM_READWRITE(lanc_ram_r, lanc_ram_w)
-	AM_RANGE(0x7e00c000, 0x7e00c007) AM_MIRROR(0x80000000) AM_WRITE(K056800_host_w)
-	AM_RANGE(0x7e00c000, 0x7e00c007) AM_MIRROR(0x80000000) AM_READ(K056800_host_r)		// Hang Pilot
-	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_MIRROR(0x80000000) AM_READ(K056800_host_r)
-	AM_RANGE(0x7f000000, 0x7f3fffff) AM_MIRROR(0x80000000) AM_ROM AM_REGION(REGION_USER2, 0)	/* Data ROM */
-	AM_RANGE(0x7f800000, 0x7f9fffff) AM_MIRROR(0x80000000) AM_ROM AM_SHARE(2)
-	AM_RANGE(0x7fe00000, 0x7fffffff) AM_MIRROR(0x80000000) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)	/* Program ROM */
+	AM_RANGE(0x00000000, 0x000fffff) AM_RAM AM_BASE(&work_ram)		/* Work RAM */
+	AM_RANGE(0x74000000, 0x740000ff) AM_READWRITE(K001604_reg_r, K001604_reg_w)
+	AM_RANGE(0x74010000, 0x7401ffff) AM_RAM_WRITE(paletteram32_w) AM_BASE(&paletteram32)
+	AM_RANGE(0x74020000, 0x7403ffff) AM_READWRITE(K001604_tile_r, K001604_tile_w)
+	AM_RANGE(0x74040000, 0x7407ffff) AM_READWRITE(K001604_char_r, K001604_char_w)
+	AM_RANGE(0x78000000, 0x7800ffff) AM_READWRITE(cgboard_dsp_shared_r_ppc, cgboard_dsp_shared_w_ppc)
+	AM_RANGE(0x78040000, 0x7804000f) AM_READWRITE(K001006_0_r, K001006_0_w)
+	AM_RANGE(0x78080000, 0x7808000f) AM_READWRITE(K001006_1_r, K001006_1_w)
+	AM_RANGE(0x780c0000, 0x780c0003) AM_READWRITE(cgboard_dsp_comm_r_ppc, cgboard_dsp_comm_w_ppc)
+	AM_RANGE(0x7e000000, 0x7e003fff) AM_READWRITE8(sysreg_r, sysreg_w, 0xffffffff)
+	AM_RANGE(0x7e008000, 0x7e009fff) AM_READWRITE8(K056230_r, K056230_w, 0xffffffff)
+	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_READWRITE(lanc_ram_r, lanc_ram_w)
+	AM_RANGE(0x7e00c000, 0x7e00c007) AM_WRITE(K056800_host_w)
+	AM_RANGE(0x7e00c000, 0x7e00c007) AM_READ(K056800_host_r)		// Hang Pilot
+	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_READ(K056800_host_r)
+	AM_RANGE(0x7f000000, 0x7f3fffff) AM_ROM AM_REGION(REGION_USER2, 0)	/* Data ROM */
+	AM_RANGE(0x7f800000, 0x7f9fffff) AM_ROM AM_SHARE(2)
+	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION(REGION_USER1, 0) AM_SHARE(2)	/* Program ROM */
 ADDRESS_MAP_END
 
 /**********************************************************************/
@@ -539,9 +663,9 @@ static ADDRESS_MAP_START( hangplt_sharc0_map, ADDRESS_SPACE_DATA, 32 )
 	AM_RANGE(0x0400000, 0x041ffff) AM_READWRITE(cgboard_0_shared_sharc_r, cgboard_0_shared_sharc_w)
 	AM_RANGE(0x0500000, 0x05fffff) AM_READWRITE(dsp_dataram0_r, dsp_dataram0_w)
 	AM_RANGE(0x1400000, 0x14fffff) AM_RAM
-	AM_RANGE(0x2400000, 0x27fffff) AM_READWRITE(nwk_voodoo_0_r, voodoo_0_w)
+	AM_RANGE(0x2400000, 0x27fffff) AM_DEVREADWRITE(VOODOO_GRAPHICS, "voodoo0", nwk_voodoo_0_r, voodoo_w)
 	AM_RANGE(0x3400000, 0x34000ff) AM_READWRITE(cgboard_0_comm_sharc_r, cgboard_0_comm_sharc_w)
-	AM_RANGE(0x3401000, 0x34fffff) AM_WRITE(nwk_fifo_0_w)
+	AM_RANGE(0x3401000, 0x34fffff) AM_DEVWRITE(VOODOO_GRAPHICS, "voodoo0", nwk_fifo_0_w)
 	AM_RANGE(0x3500000, 0x3507fff) AM_READWRITE(K033906_0_r, K033906_0_w)
 	AM_RANGE(0x3600000, 0x37fffff) AM_ROMBANK(5)
 ADDRESS_MAP_END
@@ -550,9 +674,9 @@ static ADDRESS_MAP_START( hangplt_sharc1_map, ADDRESS_SPACE_DATA, 32 )
 	AM_RANGE(0x0400000, 0x041ffff) AM_READWRITE(cgboard_1_shared_sharc_r, cgboard_1_shared_sharc_w)
 	AM_RANGE(0x0500000, 0x05fffff) AM_READWRITE(dsp_dataram1_r, dsp_dataram1_w)
 	AM_RANGE(0x1400000, 0x14fffff) AM_RAM
-	AM_RANGE(0x2400000, 0x27fffff) AM_READWRITE(nwk_voodoo_1_r, voodoo_1_w)
+	AM_RANGE(0x2400000, 0x27fffff) AM_DEVREADWRITE(VOODOO_GRAPHICS, "voodoo1", nwk_voodoo_1_r, voodoo_w)
 	AM_RANGE(0x3400000, 0x34000ff) AM_READWRITE(cgboard_1_comm_sharc_r, cgboard_1_comm_sharc_w)
-	AM_RANGE(0x3401000, 0x34fffff) AM_WRITE(nwk_fifo_1_w)
+	AM_RANGE(0x3401000, 0x34fffff) AM_DEVWRITE(VOODOO_GRAPHICS, "voodoo1", nwk_fifo_1_w)
 	AM_RANGE(0x3500000, 0x3507fff) AM_READWRITE(K033906_1_r, K033906_1_w)
 	AM_RANGE(0x3600000, 0x37fffff) AM_ROMBANK(6)
 ADDRESS_MAP_END
@@ -561,12 +685,12 @@ ADDRESS_MAP_END
 
 static NVRAM_HANDLER(gticlub)
 {
-	eeprom_handler(file, read_or_write);
+	eeprom_handler(machine, file, read_or_write);
 }
 
 
 static INPUT_PORTS_START( gticlub )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )		// View switch
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) 		// Shift Down
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON3 )		// Shift Up
@@ -574,13 +698,13 @@ static INPUT_PORTS_START( gticlub )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x0b, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -597,37 +721,37 @@ static INPUT_PORTS_START( gticlub )
 	PORT_DIPSETTING( 0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
-	PORT_START /* mask default type                     sens delta min max */
+	PORT_START_TAG("AN0")	/* mask default type             sens delta min max */
 	PORT_BIT( 0x3ff, 0x200, IPT_PADDLE ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0x3ff, 0x000, IPT_PEDAL ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START
+	PORT_START_TAG("AN2")
 	PORT_BIT( 0x3ff, 0x000, IPT_PEDAL2 ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START
+	PORT_START_TAG("AN3")
 	PORT_BIT( 0x3ff, 0x000, IPT_PEDAL3 ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( slrasslt )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )						// View Shift
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)		// Trigger
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)		// Missile
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)		// Power Up
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -645,16 +769,21 @@ static INPUT_PORTS_START( slrasslt )
 	PORT_DIPSETTING( 0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("AN0")
 	PORT_BIT( 0x3ff, 0x000, IPT_AD_STICK_Y ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5)
 
-	PORT_START
+	PORT_START_TAG("AN1")
 	PORT_BIT( 0x3ff, 0x000, IPT_AD_STICK_X ) PORT_MINMAX(0x000,0x3ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(5) PORT_REVERSE
 
+	PORT_START_TAG("AN2")
+	PORT_BIT( 0x3ff, 0x000, IPT_UNUSED )
+
+	PORT_START_TAG("AN3")
+	PORT_BIT( 0x3ff, 0x000, IPT_UNUSED )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( thunderh )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -664,7 +793,7 @@ static INPUT_PORTS_START( thunderh )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -674,10 +803,10 @@ static INPUT_PORTS_START( thunderh )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -698,7 +827,7 @@ static INPUT_PORTS_START( thunderh )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( hangplt )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
@@ -706,15 +835,15 @@ static INPUT_PORTS_START( hangplt )
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x07, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x8f, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)		// Push limit switch
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)		// Pull limit switch
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0xff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN3")
 	PORT_SERVICE_NO_TOGGLE( 0x80, IP_ACTIVE_LOW )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE1 ) PORT_NAME("Service Button") PORT_CODE(KEYCODE_8)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -732,6 +861,17 @@ static INPUT_PORTS_START( hangplt )
 	PORT_DIPSETTING( 0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 
+	PORT_START_TAG("AN0")
+	PORT_BIT( 0x3ff, 0x000, IPT_UNKNOWN )
+
+	PORT_START_TAG("AN1")
+	PORT_BIT( 0x3ff, 0x000, IPT_UNKNOWN )
+
+	PORT_START_TAG("AN2")
+	PORT_BIT( 0x3ff, 0x000, IPT_UNKNOWN )
+
+	PORT_START_TAG("AN3")
+	PORT_BIT( 0x3ff, 0x000, IPT_UNKNOWN )
 INPUT_PORTS_END
 
 /* PowerPC interrupts
@@ -746,11 +886,6 @@ static INTERRUPT_GEN( gticlub_vblank )
 	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
-
-static const ppc_config gticlub_ppc_cfg =
-{
-	PPC_MODEL_403GA
-};
 
 static const sharc_config sharc_cfg =
 {
@@ -770,8 +905,7 @@ static MACHINE_RESET( gticlub )
 static MACHINE_DRIVER_START( gticlub )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_CONFIG(gticlub_ppc_cfg)
+	MDRV_CPU_ADD(PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(gticlub_map, 0)
 	MDRV_CPU_VBLANK_INT("main", gticlub_vblank)
 
@@ -785,6 +919,7 @@ static MACHINE_DRIVER_START( gticlub )
 	MDRV_INTERLEAVE(100)
 
 	MDRV_NVRAM_HANDLER(gticlub)
+	MDRV_MACHINE_START(gticlub)
 	MDRV_MACHINE_RESET(gticlub)
 
  	/* video hardware */
@@ -816,8 +951,7 @@ static MACHINE_RESET( hangplt )
 static MACHINE_DRIVER_START( hangplt )
 
 	/* basic machine hardware */
-	MDRV_CPU_ADD(PPC403, 64000000/2)	/* PowerPC 403GA 32MHz */
-	MDRV_CPU_CONFIG(gticlub_ppc_cfg)
+	MDRV_CPU_ADD(PPC403GA, 64000000/2)	/* PowerPC 403GA 32MHz */
 	MDRV_CPU_PROGRAM_MAP(gticlub_map, 0)
 
 	MDRV_CPU_ADD(M68000, 64000000/4)	/* 16MHz */
@@ -834,7 +968,18 @@ static MACHINE_DRIVER_START( hangplt )
 	MDRV_INTERLEAVE(100)
 
 	MDRV_NVRAM_HANDLER(gticlub)
+	MDRV_MACHINE_START(gticlub)
 	MDRV_MACHINE_RESET(hangplt)
+
+	MDRV_3DFX_VOODOO_1_ADD("voodoo0", STD_VOODOO_1_CLOCK, 2, "left")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 2)
+	MDRV_3DFX_VOODOO_TMU_MEMORY(1, 2)
+	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_0)
+
+	MDRV_3DFX_VOODOO_1_ADD("voodoo1", STD_VOODOO_1_CLOCK, 2, "right")
+	MDRV_3DFX_VOODOO_TMU_MEMORY(0, 2)
+	MDRV_3DFX_VOODOO_TMU_MEMORY(1, 2)
+	MDRV_3DFX_VOODOO_VBLANK(voodoo_vblank_1)
 
  	/* video hardware */
 	MDRV_PALETTE_LENGTH(65536)
@@ -1000,12 +1145,12 @@ ROM_START( hangplt )
         ROM_LOAD32_WORD( "685a14.12w",   0x000000, 0x400000, CRC(87437739) SHA1(0d45637af40938a54d5efd29c125b0fafd55f9a4) )
 ROM_END
 
-static void sound_irq_callback(int irq)
+static void sound_irq_callback(running_machine *machine, int irq)
 {
 	if (irq == 0)
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ1, PULSE_LINE);
 	else
-		cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
+		cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ2, PULSE_LINE);
 }
 
 static DRIVER_INIT(gticlub)
@@ -1013,7 +1158,7 @@ static DRIVER_INIT(gticlub)
 	init_konami_cgboard(1, CGBOARD_TYPE_GTICLUB);
 	sharc_dataram_0 = auto_malloc(0x100000);
 
-	K001005_preprocess_texture_data(memory_region(REGION_GFX1), memory_region_length(REGION_GFX1), 1);
+	K001005_preprocess_texture_data(memory_region(machine, REGION_GFX1), memory_region_length(machine, REGION_GFX1), 1);
 
 	K056800_init(sound_irq_callback);
 
@@ -1028,8 +1173,8 @@ static DRIVER_INIT(gticlub)
 static DRIVER_INIT(hangplt)
 {
 	init_konami_cgboard(2, CGBOARD_TYPE_HANGPLT);
-	set_cgboard_texture_bank(0, 5, memory_region(REGION_USER5));
-	set_cgboard_texture_bank(1, 6, memory_region(REGION_USER5));
+	set_cgboard_texture_bank(0, 5, memory_region(machine, REGION_USER5));
+	set_cgboard_texture_bank(1, 6, memory_region(machine, REGION_USER5));
 
 	sharc_dataram_0 = auto_malloc(0x100000);
 	sharc_dataram_1 = auto_malloc(0x100000);
@@ -1041,9 +1186,6 @@ static DRIVER_INIT(hangplt)
 static DRIVER_INIT(slrasslt)
 {
 	DRIVER_INIT_CALL(gticlub);
-
-	// enable self-modifying code checks
-	cpunum_set_info_int(0, CPUINFO_INT_PPC_DRC_OPTIONS, PPCDRC_OPTIONS_CHECK_SELFMOD_CODE);
 }
 
 /*************************************************************************/

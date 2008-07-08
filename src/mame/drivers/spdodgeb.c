@@ -76,7 +76,7 @@ static WRITE8_HANDLER( spd_adpcm_w )
 	}
 }
 
-static void spd_adpcm_int(int chip)
+static void spd_adpcm_int(running_machine *machine, int chip)
 {
 	static int adpcm_data[2] = { -1, -1 };
 
@@ -92,7 +92,7 @@ static void spd_adpcm_int(int chip)
 	}
 	else
 	{
-		UINT8 *ROM = memory_region(REGION_SOUND1) + 0x10000 * chip;
+		UINT8 *ROM = memory_region(machine, REGION_SOUND1) + 0x10000 * chip;
 
 		adpcm_data[chip] = ROM[adpcm_pos[chip]++];
 		MSM5205_data_w(chip,adpcm_data[chip] >> 4);
@@ -412,9 +412,9 @@ static GFXDECODE_START( spdodgeb )
 GFXDECODE_END
 
 
-static void irq_handler(int irq)
+static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,M6809_FIRQ_LINE,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine,1,M6809_FIRQ_LINE,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM3812interface ym3812_interface =

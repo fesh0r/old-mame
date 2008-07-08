@@ -100,11 +100,11 @@ static WRITE8_HANDLER( multigam_IN0_w )
 	in_0_shift = 0;
 	in_1_shift = 0;
 
-	in_0 = input_port_read_indexed(machine, 0);
-	in_1 = input_port_read_indexed(machine, 1);
+	in_0 = input_port_read(machine, "P1");
+	in_1 = input_port_read(machine, "P2");
 
 	multigam_in_dsw_shift = 0;
-	multigam_in_dsw = input_port_read_indexed(machine, 3);
+	multigam_in_dsw = input_port_read(machine, "DSW");
 }
 
 static READ8_HANDLER( multigam_IN1_r )
@@ -117,7 +117,7 @@ static READ8_HANDLER( multigam_inputs_r )
 	/* bit 0: serial input (dsw)
        bit 1: coin */
 	return ((multigam_in_dsw >> multigam_in_dsw_shift++) & 0x01) |
-			input_port_read_indexed(machine, 2);
+			input_port_read(machine, "IN0");
 }
 
 
@@ -132,8 +132,8 @@ static int multigam_game_gfx_bank = 0;
 static WRITE8_HANDLER(multigam_switch_prg_rom)
 {
 	/* switch PRG rom */
-	UINT8* dst = memory_region( REGION_CPU1 );
-	UINT8* src = memory_region( REGION_USER1 );
+	UINT8* dst = memory_region( machine, REGION_CPU1 );
+	UINT8* src = memory_region( machine, REGION_USER1 );
 
 	if ( data & 0x80 )
 	{
@@ -232,6 +232,7 @@ static WRITE8_HANDLER( multigam3_mmc3_rom_switch_w )
 			if ( multigam3_mmc3_last_bank != ( data & 0xc0 ) )
 			{
 				int bank;
+				UINT8 *prg = memory_region( machine, REGION_CPU1 );
 
 				/* reset the banks */
 				if ( multigam3_mmc3_command & 0x40 )
@@ -239,21 +240,21 @@ static WRITE8_HANDLER( multigam3_mmc3_rom_switch_w )
 					/* high bank */
 					bank = multigam3_mmc3_banks[0] * 0x2000 + 0xa0000;
 
-					memcpy( &memory_region( REGION_CPU1 )[0x0c000], &memory_region( REGION_USER1 )[bank], 0x2000 );
-					memcpy( &memory_region( REGION_CPU1 )[0x08000], &memory_region( REGION_USER1 )[0xa0000 + 0x3c000], 0x2000 );
+					memcpy( &prg[0x0c000], &prg[bank], 0x2000 );
+					memcpy( &prg[0x08000], &prg[0xa0000 + 0x3c000], 0x2000 );
 				}
 				else
 				{
 					/* low bank */
 					bank = multigam3_mmc3_banks[0] * 0x2000 + 0xa0000;
 
-					memcpy( &memory_region( REGION_CPU1 )[0x08000], &memory_region( REGION_USER1 )[bank], 0x2000 );
-					memcpy( &memory_region( REGION_CPU1 )[0x0c000], &memory_region( REGION_USER1 )[0xa0000 + 0x3c000], 0x2000 );
+					memcpy( &prg[0x08000], &prg[bank], 0x2000 );
+					memcpy( &prg[0x0c000], &prg[0xa0000 + 0x3c000], 0x2000 );
 				}
 
 				/* mid bank */
 				bank = multigam3_mmc3_banks[1] * 0x2000 + 0xa0000;
-				memcpy( &memory_region( REGION_CPU1 )[0x0a000], &memory_region( REGION_USER1 )[bank], 0x2000 );
+				memcpy( &prg[0x0a000], &prg[bank], 0x2000 );
 
 				multigam3_mmc3_last_bank = data & 0xc0;
 			}
@@ -283,14 +284,16 @@ static WRITE8_HANDLER( multigam3_mmc3_rom_switch_w )
 					break;
 
 					case 6: /* program banking */
+					{
+						UINT8 *prg = memory_region( machine, REGION_CPU1 );
 						if ( multigam3_mmc3_command & 0x40 )
 						{
 							/* high bank */
 							multigam3_mmc3_banks[0] = data & 0x1f;
 							bank = ( multigam3_mmc3_banks[0] ) * 0x2000 + 0xa0000;
 
-							memcpy( &memory_region( REGION_CPU1 )[0x0c000], &memory_region( REGION_USER1 )[bank], 0x2000 );
-							memcpy( &memory_region( REGION_CPU1 )[0x08000], &memory_region( REGION_USER1 )[0xa0000 + 0x3c000], 0x2000 );
+							memcpy( &prg[0x0c000], &prg[bank], 0x2000 );
+							memcpy( &prg[0x08000], &prg[0xa0000 + 0x3c000], 0x2000 );
 						}
 						else
 						{
@@ -298,18 +301,20 @@ static WRITE8_HANDLER( multigam3_mmc3_rom_switch_w )
 							multigam3_mmc3_banks[0] = data & 0x1f;
 							bank = ( multigam3_mmc3_banks[0] ) * 0x2000 + 0xa0000;
 
-							memcpy( &memory_region( REGION_CPU1 )[0x08000], &memory_region( REGION_USER1 )[bank], 0x2000 );
-							memcpy( &memory_region( REGION_CPU1 )[0x0c000], &memory_region( REGION_USER1 )[0xa0000 + 0x3c000], 0x2000 );
+							memcpy( &prg[0x08000], &prg[bank], 0x2000 );
+							memcpy( &prg[0x0c000], &prg[0xa0000 + 0x3c000], 0x2000 );
 						}
+					}
 					break;
 
 					case 7: /* program banking */
 						{
 							/* mid bank */
+							UINT8 *prg = memory_region( machine, REGION_CPU1 );
 							multigam3_mmc3_banks[1] = data & 0x1f;
 							bank = multigam3_mmc3_banks[1] * 0x2000 + 0xa0000;
 
-							memcpy( &memory_region( REGION_CPU1 )[0x0a000], &memory_region( REGION_USER1 )[bank], 0x2000 );
+							memcpy( &prg[0x0a000], &prg[bank], 0x2000 );
 						}
 					break;
 				}
@@ -350,8 +355,8 @@ static WRITE8_HANDLER( multigam3_mmc3_rom_switch_w )
 
 static void multigam_init_smb3(running_machine *machine)
 {
-	UINT8* dst = memory_region( REGION_CPU1 );
-	UINT8* src = memory_region( REGION_USER1 );
+	UINT8* dst = memory_region( machine, REGION_CPU1 );
+	UINT8* src = memory_region( machine, REGION_USER1 );
 
 	memcpy(&dst[0x8000], &src[0xa0000 + 0x3c000], 0x4000);
 	memcpy(&dst[0xc000], &src[0xa0000 + 0x3c000], 0x4000);
@@ -384,8 +389,8 @@ static WRITE8_HANDLER(multigm3_mapper2_w)
 static WRITE8_HANDLER(multigm3_switch_prg_rom)
 {
 	/* switch PRG rom */
-	UINT8* dst = memory_region( REGION_CPU1 );
-	UINT8* src = memory_region( REGION_USER1 );
+	UINT8* dst = memory_region( machine, REGION_CPU1 );
+	UINT8* src = memory_region( machine, REGION_USER1 );
 
 	if ( data == 0xa8 )
 	{
@@ -395,7 +400,7 @@ static WRITE8_HANDLER(multigm3_switch_prg_rom)
 	else
 	{
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xffff, 0, 0, multigm3_mapper2_w );
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x6000);
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x6000);
 	}
 
 	if ( data & 0x80 )
@@ -445,7 +450,7 @@ ADDRESS_MAP_END
 *******************************************************/
 
 static INPUT_PORTS_START( multigam_common )
-	PORT_START /* IN0 */
+	PORT_START_TAG("P1")		/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)	/* Select */
@@ -455,7 +460,7 @@ static INPUT_PORTS_START( multigam_common )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
 
-	PORT_START /* IN1 */
+	PORT_START_TAG("P2")		/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(2)	/* Select */
@@ -465,14 +470,14 @@ static INPUT_PORTS_START( multigam_common )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(2)
 
-	PORT_START /* IN2 */
+	PORT_START_TAG("IN0")		/* IN2 */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( multigam )
 	PORT_INCLUDE( multigam_common )
 
-	PORT_START /* IN3 */
+	PORT_START_TAG("DSW")		/* IN3 */
 	PORT_DIPNAME( 0x06, 0x00, "Coin/Time" )
 	PORT_DIPSETTING( 0x00, "3 min" )
 	PORT_DIPSETTING( 0x04, "5 min" )
@@ -483,7 +488,7 @@ INPUT_PORTS_END
 static INPUT_PORTS_START( multigm3 )
 	PORT_INCLUDE( multigam_common )
 
-	PORT_START /* IN3 */
+	PORT_START_TAG("DSW")		/* IN3 */
 	PORT_DIPNAME( 0x06, 0x00, "Coin/Time" )
 	PORT_DIPSETTING( 0x00, "15 min" )
 	PORT_DIPSETTING( 0x04, "8 min" )
@@ -550,13 +555,13 @@ GFXDECODE_END
 static MACHINE_RESET( multigam )
 {
 	/* reset the ppu */
-	ppu2c0x_reset( 0, 1 );
+	ppu2c0x_reset( machine, 0, 1 );
 }
 
 static MACHINE_RESET( multigm3 )
 {
 	/* reset the ppu */
-	ppu2c0x_reset( 0, 1 );
+	ppu2c0x_reset( machine, 0, 1 );
 	multigm3_switch_prg_rom(machine, 0, 0x01 );
 };
 
@@ -676,8 +681,8 @@ static DRIVER_INIT(multigm3)
 {
 	const UINT8 decode[16]  = { 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00, 0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a };
 
-	multigm3_decrypt(memory_region(REGION_CPU1), memory_region_length(REGION_CPU1), decode );
-	multigm3_decrypt(memory_region(REGION_USER1), memory_region_length(REGION_USER1), decode );
+	multigm3_decrypt(memory_region(machine, REGION_CPU1), memory_region_length(machine, REGION_CPU1), decode );
+	multigm3_decrypt(memory_region(machine, REGION_USER1), memory_region_length(machine, REGION_USER1), decode );
 
 	multigmc_mmc3_6000_ram = auto_malloc(0x2000);
 }

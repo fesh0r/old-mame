@@ -101,9 +101,7 @@ VIDEO_START( warlords )
 {
 	bg_tilemap = tilemap_create(warlords_get_tile_info, tilemap_scan_rows,  8,8, 32,32);
 
-	/* we overload centiped_flipscreen here to track the cocktail/upright state */
-	centiped_flipscreen = input_port_read_indexed(machine, 0) & 0x80;
-	tilemap_set_flip(bg_tilemap, centiped_flipscreen ? TILEMAP_FLIPX : 0);
+	centiped_flipscreen = 0;
 }
 
 
@@ -398,7 +396,7 @@ WRITE8_HANDLER( mazeinv_paletteram_w )
 	paletteram[offset] = data;
 
 	/* the value passed in is a look-up index into the color PROM */
-	melliped_mazeinv_set_color(machine, offset, ~memory_region(REGION_PROMS)[~data & 0x0f]);
+	melliped_mazeinv_set_color(machine, offset, ~memory_region(machine, REGION_PROMS)[~data & 0x0f]);
 }
 
 
@@ -442,7 +440,7 @@ VIDEO_UPDATE( centiped )
 
 VIDEO_UPDATE( warlords )
 {
-	int upright_mode = input_port_read_indexed(screen->machine, 0) & 0x80;
+	int upright_mode = input_port_read(screen->machine, "IN0") & 0x80;
 	int offs;
 
 	/* if the cocktail/upright switch flipped, force refresh */

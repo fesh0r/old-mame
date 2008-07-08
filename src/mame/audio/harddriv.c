@@ -5,7 +5,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/tms32010/tms32010.h"
 #include "sound/dac.h"
 #include "machine/atarigen.h"
@@ -50,10 +49,10 @@ static UINT64 last_bio_cycles;
  *
  *************************************/
 
-void hdsnd_init(void)
+void hdsnd_init(running_machine *machine)
 {
-	rombase = (UINT8 *)memory_region(REGION_SOUND1);
-	romsize = memory_region_length(REGION_SOUND1);
+	rombase = (UINT8 *)memory_region(machine, REGION_SOUND1);
+	romsize = memory_region_length(machine, REGION_SOUND1);
 	comram = (UINT16 *)auto_malloc(0x400);
 	last_bio_cycles = 0;
 }
@@ -121,7 +120,7 @@ WRITE16_HANDLER( hd68k_snd_reset_w )
 	cpunum_set_input_line(machine, hdcpu_sound, INPUT_LINE_RESET, ASSERT_LINE);
 	cpunum_set_input_line(machine, hdcpu_sound, INPUT_LINE_RESET, CLEAR_LINE);
 	mainflag = soundflag = 0;
-	update_68k_interrupts(Machine);
+	update_68k_interrupts(machine);
 	logerror("%06X:Reset sound\n", activecpu_get_previouspc());
 }
 
@@ -136,7 +135,7 @@ WRITE16_HANDLER( hd68k_snd_reset_w )
 READ16_HANDLER( hdsnd68k_data_r )
 {
 	mainflag = 0;
-	update_68k_interrupts(Machine);
+	update_68k_interrupts(machine);
 	logerror("%06X:sound read from main=%04X\n", activecpu_get_previouspc(), maindata);
 	return maindata;
 }
@@ -179,7 +178,7 @@ READ16_HANDLER( hdsnd68k_status_r )
 //            D13 = Test Switch
 //            D12 = 5220 Ready Flag (0=Ready)
 	logerror("%06X:hdsnd68k_status_r(%04X)\n", activecpu_get_previouspc(), offset);
-	return (mainflag << 15) | (soundflag << 14) | 0x2000 | 0;//((input_port_read_indexed(machine, 0) & 0x0020) << 8) | 0;
+	return (mainflag << 15) | (soundflag << 14) | 0x2000 | 0;//((input_port_read(machine, "IN0") & 0x0020) << 8) | 0;
 }
 
 
@@ -240,7 +239,7 @@ WRITE16_HANDLER( hdsnd68k_speech_w )
 WRITE16_HANDLER( hdsnd68k_irqclr_w )
 {
 	irq68k = 0;
-	update_68k_interrupts(Machine);
+	update_68k_interrupts(machine);
 }
 
 
@@ -358,7 +357,7 @@ WRITE16_HANDLER( hdsnddsp_gen68kirq_w )
 {
 	/* generate 68k IRQ */
 	irq68k = 1;
-	update_68k_interrupts(Machine);
+	update_68k_interrupts(machine);
 }
 
 

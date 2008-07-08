@@ -1,21 +1,9 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/ym2151.h"
 #include "sound/namco.h"
+#include "includes/namcos1.h"
 
 #define NAMCOS1_MAX_BANK 0x400
-
-/* from drivers */
-void namcos1_init_DACs(void);
-
-/* from video */
-READ8_HANDLER( namcos1_videoram_r );
-WRITE8_HANDLER( namcos1_videoram_w );
-WRITE8_HANDLER( namcos1_paletteram_w );
-READ8_HANDLER( namcos1_spriteram_r );
-WRITE8_HANDLER( namcos1_spriteram_w );
-extern void namcos1_set_scroll_offsets( const int *bgx, const int *bgy, int negative, int optimize );
-extern void namcos1_set_sprite_offsets( int x, int y );
 
 UINT8 *namcos1_paletteram;
 
@@ -118,7 +106,8 @@ static WRITE8_HANDLER( namcos1_3dcs_w )
 
 
 
-static int key_id,key_reg,key_rng,key_swap4_arg,key_swap4,key_bottom4,key_top4;
+static int key_id, key_reg, key_rng, key_swap4_arg, key_swap4, key_bottom4, key_top4;
+static unsigned int key_quotient, key_reminder, key_numerator_high_word;
 static UINT8 key[8];
 
 
@@ -277,7 +266,10 @@ static WRITE8_HANDLER( key_type1_w )
 
   Key custom type 2 (CUS151 - CUS155)
 
-  16/16 bit division + key no.
+  16/16 or 32/16 bit division + key no.
+
+  it's not entirely understood how the 32/16 division works. Only galaga88
+  seems to use it.
 
 *****************************************************************************/
 
@@ -314,7 +306,7 @@ CPU #1 PC cbe8: keychip read 0002
 CPU #1 PC cbe8: keychip read 0003
 
 mmaze: (CUS152)
-CPU #0 PC 60f3: keychip write 0004=5b
+CPU #0 PC 60f3: keychip write 0004=5b [operating mode?]
 CPU #0 PC 60fe: keychip write 0000=00
 CPU #0 PC 60fe: keychip write 0001=01
 CPU #0 PC 6101: keychip write 0002=00
@@ -362,7 +354,19 @@ CPU #0 PC db22: keychip read 0000
 CPU #0 PC db22: keychip read 0001
 CPU #0 PC db2b: keychip read 0002
 CPU #0 PC db2b: keychip read 0003
-CPU #0 PC e136: keychip write 0004=0c
+CPU #0 PC e136: keychip write 0004=0c [operating mode?]
+
+then a 32/16 bit division is used to calculate the hit ratio at the end of the game:
+CPU #0 PC ef6f: keychip write 0004=2d [operating mode?]
+CPU #0 PC ef76: keychip write 0000=01 \ denominator
+CPU #0 PC ef76: keychip write 0001=37 /
+CPU #0 PC ef7c: keychip write 0002=00 \ numerator high word
+CPU #0 PC ef7c: keychip write 0003=03 /
+CPU #0 PC ef81: keychip write 0004=0c [operating mode?]
+CPU #0 PC ef87: keychip write 0002=b1 \ numerator low word
+CPU #0 PC ef87: keychip write 0003=50 /
+CPU #0 PC ef8a: keychip read 0002
+CPU #0 PC ef8a: keychip read 0003
 
 ws: (CUS154)
 CPU #0 PC e052: keychip write 0004=d3 [operating mode?]
@@ -379,7 +383,7 @@ CPU #0 PC db5a: keychip read 0000
 CPU #0 PC db5a: keychip read 0001
 CPU #0 PC db63: keychip read 0002
 CPU #0 PC db63: keychip read 0003
-CPU #0 PC db70: keychip write 0004=0b
+CPU #0 PC db70: keychip write 0004=0b [operating mode?]
 CPU #0 PC db77: keychip write 0000=ff
 CPU #0 PC db77: keychip write 0001=ff
 CPU #0 PC db7e: keychip write 0002=ff
@@ -388,7 +392,7 @@ CPU #0 PC db82: keychip read 0000
 CPU #0 PC db82: keychip read 0001
 CPU #0 PC db8b: keychip read 0002
 CPU #0 PC db8b: keychip read 0003
-CPU #0 PC db95: keychip write 0004=03
+CPU #0 PC db95: keychip write 0004=03 [operating mode?]
 CPU #0 PC e552: keychip read 0004     [AND #$3F = key no.]
 CPU #0 PC e560: keychip write 0000=00
 CPU #0 PC e560: keychip write 0001=73
@@ -405,27 +409,14 @@ static READ8_HANDLER( key_type2_r )
 {
 //  logerror("CPU #%d PC %04x: keychip read %04x\n",cpu_getactivecpu(),activecpu_get_pc(),offset);
 
+	key_numerator_high_word = 0;
+
 	if (offset < 4)
 	{
-		int d = (key[0] << 8) | key[1];
-		int n = (key[2] << 8) | key[3];
-		int q,r;
-
-		if (d)
-		{
-			q = n / d;
-			r = n % d;
-		}
-		else
-		{
-			q = 0xffff;
-			r = 0x00;
-		}
-
-		if (offset == 0) return r >> 8;
-		if (offset == 1) return r & 0xff;
-		if (offset == 2) return q >> 8;
-		if (offset == 3) return q & 0xff;
+		if (offset == 0) return key_reminder >> 8;
+		if (offset == 1) return key_reminder & 0xff;
+		if (offset == 2) return key_quotient >> 8;
+		if (offset == 3) return key_quotient & 0xff;
 	}
 	else if (offset == 4)
 		return key_id;
@@ -438,7 +429,30 @@ static WRITE8_HANDLER( key_type2_w )
 //  logerror("CPU #%d PC %04x: keychip write %04x=%02x\n",cpu_getactivecpu(),activecpu_get_pc(),offset,data);
 
 	if (offset < 5)
+	{
 		key[offset] = data;
+
+		if (offset == 3)
+		{
+			unsigned int d = (key[0] << 8) | key[1];
+			unsigned int n = (key_numerator_high_word << 16) | (key[2] << 8) | key[3];
+
+			if (d)
+			{
+				key_quotient = n / d;
+				key_reminder = n % d;
+			}
+			else
+			{
+				key_quotient = 0xffff;
+				key_reminder = 0x0000;
+			}
+
+//  logerror("calculating division: %08x / %04x = %04x, %04x\n", n, d, key_quotient, key_reminder);
+
+			key_numerator_high_word = (key[2] << 8) | key[3];
+		}
+	}
 }
 
 
@@ -528,10 +542,11 @@ static READ8_HANDLER( key_type3_r )
        it happens to work correctly also using the standard handling for 0058.
        The schematics don't show A11 being used, so I go for this handling.
       */
+
 	op = (offset & 0x70) >> 4;
 
 	if (op == key_reg)		return key_id;
-	if (op == key_rng)		return mame_rand(Machine);
+	if (op == key_rng)		return mame_rand(machine);
 	if (op == key_swap4)	return (key[key_swap4_arg] << 4) | (key[key_swap4_arg] >> 4);
 	if (op == key_bottom4)	return (offset << 4) | (key[key_swap4_arg] & 0x0f);
 	if (op == key_top4)		return (offset << 4) | (key[key_swap4_arg] >> 4);
@@ -558,7 +573,7 @@ static WRITE8_HANDLER( key_type3_w )
 
 WRITE8_HANDLER( namcos1_sound_bankswitch_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU3) + 0xc000;
+	UINT8 *rom = memory_region(machine, REGION_CPU3) + 0xc000;
 
 	int bank = (data & 0x70) >> 4;
 	memory_set_bankptr(17,rom + 0x4000 * bank);
@@ -772,7 +787,7 @@ static void namcos1_install_bank(int start,int end,read8_machine_func hr,write8_
 
 
 
-static void namcos1_build_banks(read8_machine_func key_r,write8_machine_func key_w)
+static void namcos1_build_banks(running_machine *machine,read8_machine_func key_r,write8_machine_func key_w)
 {
 	int i;
 
@@ -818,7 +833,7 @@ static void namcos1_build_banks(read8_machine_func key_r,write8_machine_func key
 
 	/* PRG0-PRG7 */
 	{
-		UINT8 *rom = memory_region(REGION_USER1);
+		UINT8 *rom = memory_region(machine, REGION_USER1);
 
 		namcos1_install_bank(0x200,0x3ff,0,rom_w,0,rom);
 
@@ -909,7 +924,7 @@ WRITE8_HANDLER( namcos1_mcu_bankswitch_w )
 	/* bit 0-1 : address line A15-A16 */
 	addr += (data & 3) * 0x8000;
 
-	memory_set_bankptr(20, memory_region(REGION_CPU4) + addr);
+	memory_set_bankptr(20, memory_region(machine, REGION_CPU4) + addr);
 }
 
 
@@ -955,7 +970,7 @@ struct namcos1_specific
 	int key_reg6;
 };
 
-static void namcos1_driver_init(const struct namcos1_specific *specific )
+static void namcos1_driver_init( running_machine *machine, const struct namcos1_specific *specific )
 {
 	static const struct namcos1_specific no_key =
 	{
@@ -989,7 +1004,7 @@ static void namcos1_driver_init(const struct namcos1_specific *specific )
 	memory_set_bankptr( 19, namcos1_triram );
 
 	/* build bank elements */
-	namcos1_build_banks(specific->key_r,specific->key_w);
+	namcos1_build_banks(machine,specific->key_r,specific->key_w);
 }
 
 
@@ -998,7 +1013,7 @@ static void namcos1_driver_init(const struct namcos1_specific *specific )
 *******************************************************************************/
 DRIVER_INIT( shadowld )
 {
-	namcos1_driver_init(NULL);
+	namcos1_driver_init(machine, NULL);
 }
 
 /*******************************************************************************
@@ -1010,7 +1025,7 @@ DRIVER_INIT( dspirit )
 	{
 		key_type1_r,key_type1_w, 0x36
 	};
-	namcos1_driver_init(&dspirit_specific);
+	namcos1_driver_init(machine, &dspirit_specific);
 }
 
 /*******************************************************************************
@@ -1022,7 +1037,7 @@ DRIVER_INIT( wldcourt )
 	{
 		key_type1_r,key_type1_w, 0x35
 	};
-	namcos1_driver_init(&worldcourt_specific);
+	namcos1_driver_init(machine, &worldcourt_specific);
 }
 
 /*******************************************************************************
@@ -1034,7 +1049,7 @@ DRIVER_INIT( blazer )
 	{
 		key_type1_r,key_type1_w, 0x13
 	};
-	namcos1_driver_init(&blazer_specific);
+	namcos1_driver_init(machine, &blazer_specific);
 }
 
 /*******************************************************************************
@@ -1046,7 +1061,7 @@ DRIVER_INIT( puzlclub )
 	{
 		key_type1_r,key_type1_w, 0x35
 	};
-	namcos1_driver_init(&puzlclub_specific);
+	namcos1_driver_init(machine, &puzlclub_specific);
 }
 
 /*******************************************************************************
@@ -1058,7 +1073,7 @@ DRIVER_INIT( pacmania )
 	{
 		key_type2_r,key_type2_w, 0x12
 	};
-	namcos1_driver_init(&pacmania_specific);
+	namcos1_driver_init(machine, &pacmania_specific);
 }
 
 /*******************************************************************************
@@ -1070,7 +1085,7 @@ DRIVER_INIT( alice )
 	{
 		key_type2_r,key_type2_w, 0x25
 	};
-	namcos1_driver_init(&alice_specific);
+	namcos1_driver_init(machine, &alice_specific);
 }
 
 /*******************************************************************************
@@ -1082,7 +1097,7 @@ DRIVER_INIT( galaga88 )
 	{
 		key_type2_r,key_type2_w, 0x31
 	};
-	namcos1_driver_init(&galaga88_specific);
+	namcos1_driver_init(machine, &galaga88_specific);
 }
 
 /*******************************************************************************
@@ -1094,7 +1109,7 @@ DRIVER_INIT( ws )
 	{
 		key_type2_r,key_type2_w, 0x07
 	};
-	namcos1_driver_init(&ws_specific);
+	namcos1_driver_init(machine, &ws_specific);
 }
 
 /*******************************************************************************
@@ -1106,7 +1121,7 @@ DRIVER_INIT( bakutotu )
 	{
 		key_type2_r,key_type2_w, 0x22
 	};
-	namcos1_driver_init(&bakutotu_specific);
+	namcos1_driver_init(machine, &bakutotu_specific);
 
 #if 0
 	// resolves CPU deadlocks caused by sloppy coding(see driver\namcos1.c)
@@ -1114,7 +1129,7 @@ DRIVER_INIT( bakutotu )
 		static const UINT8 target[8] = {0x34,0x37,0x35,0x37,0x96,0x00,0x2e,0xed};
 		UINT8 *rombase, *srcptr, *endptr, *scanptr;
 
-		rombase = memory_region(REGION_USER1);
+		rombase = memory_region(machine, REGION_USER1);
 		srcptr = rombase + 0x1e000;
 		endptr = srcptr + 0xa000;
 
@@ -1144,7 +1159,7 @@ DRIVER_INIT( splatter )
 		key_type3_r,key_type3_w, 181, 3, 4,-1,-1,-1,-1
 	};
 
-	namcos1_driver_init(&splatter_specific);
+	namcos1_driver_init(machine, &splatter_specific);
 }
 
 /*******************************************************************************
@@ -1156,7 +1171,7 @@ DRIVER_INIT( rompers )
 	{
 		key_type3_r,key_type3_w, 182, 7,-1,-1,-1,-1,-1
 	};
-	namcos1_driver_init(&rompers_specific);
+	namcos1_driver_init(machine, &rompers_specific);
 }
 
 /*******************************************************************************
@@ -1168,7 +1183,7 @@ DRIVER_INIT( blastoff )
 	{
 		key_type3_r,key_type3_w, 183, 0, 7, 3, 5,-1,-1
 	};
-	namcos1_driver_init(&blastoff_specific);
+	namcos1_driver_init(machine, &blastoff_specific);
 }
 
 /*******************************************************************************
@@ -1180,7 +1195,7 @@ DRIVER_INIT( ws89 )
 	{
 		key_type3_r,key_type3_w, 184, 2,-1,-1,-1,-1,-1
 	};
-	namcos1_driver_init(&ws89_specific);
+	namcos1_driver_init(machine, &ws89_specific);
 }
 
 /*******************************************************************************
@@ -1192,7 +1207,35 @@ DRIVER_INIT( tankfrce )
 	{
 		key_type3_r,key_type3_w, 185, 5,-1, 1,-1, 2,-1
 	};
-	namcos1_driver_init(&tankfrce_specific);
+	namcos1_driver_init(machine, &tankfrce_specific);
+}
+
+// Inputs are multiplexed, somehow
+READ8_HANDLER( tankfrc4_input_r )
+{
+
+	switch (offset)
+	{
+		case 0:
+			return mame_rand(machine);
+
+		case 1:
+			return mame_rand(machine);
+
+	}
+	return 0x00;
+
+}
+
+DRIVER_INIT( tankfrc4 )
+{
+	static const struct namcos1_specific tankfrce_specific=
+	{
+		key_type3_r,key_type3_w, 185, 5,-1, 1,-1, 2,-1
+	};
+	namcos1_driver_init(machine, &tankfrce_specific);
+
+	memory_install_read8_handler(machine, 3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, tankfrc4_input_r);
 }
 
 /*******************************************************************************
@@ -1204,7 +1247,7 @@ DRIVER_INIT( dangseed )
 	{
 		key_type3_r,key_type3_w, 308, 6,-1, 5,-1, 0, 4
 	};
-	namcos1_driver_init(&dangseed_specific);
+	namcos1_driver_init(machine, &dangseed_specific);
 }
 
 /*******************************************************************************
@@ -1216,7 +1259,7 @@ DRIVER_INIT( pistoldm )
 	{
 		key_type3_r,key_type3_w, 309, 1, 2, 0,-1, 4,-1
 	};
-	namcos1_driver_init(&pistoldm_specific);
+	namcos1_driver_init(machine, &pistoldm_specific);
 }
 
 /*******************************************************************************
@@ -1228,7 +1271,7 @@ DRIVER_INIT( ws90 )
 	{
 		key_type3_r,key_type3_w, 310, 4,-1, 7,-1, 3,-1
 	};
-	namcos1_driver_init(&ws90_specific);
+	namcos1_driver_init(machine, &ws90_specific);
 }
 
 /*******************************************************************************
@@ -1240,7 +1283,7 @@ DRIVER_INIT( soukobdx )
 	{
 		key_type3_r,key_type3_w, 311, 2, 3/*?*/, 0,-1, 4,-1
 	};
-	namcos1_driver_init(&soukobdx_specific);
+	namcos1_driver_init(machine, &soukobdx_specific);
 }
 
 
@@ -1282,7 +1325,7 @@ static READ8_HANDLER( quester_paddle_r )
 
 DRIVER_INIT( quester )
 {
-	namcos1_driver_init(NULL);
+	namcos1_driver_init(machine, NULL);
 	memory_install_read8_handler(machine, 3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, quester_paddle_r);
 }
 
@@ -1305,7 +1348,7 @@ static READ8_HANDLER( berabohm_buttons_r )
 		if (inp == 4) res = input_port_read(machine, "CONTROL0");
 		else
 		{
-			char portname[4];
+			char portname[40];
 
 #ifdef PRESSURE_SENSITIVE
 			static int counter[4];
@@ -1371,7 +1414,7 @@ static READ8_HANDLER( berabohm_buttons_r )
 
 DRIVER_INIT( berabohm )
 {
-	namcos1_driver_init(NULL);
+	namcos1_driver_init(machine, NULL);
 	memory_install_read8_handler(machine, 3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, berabohm_buttons_r);
 }
 
@@ -1433,6 +1476,6 @@ static READ8_HANDLER( faceoff_inputs_r )
 
 DRIVER_INIT( faceoff )
 {
-	namcos1_driver_init(NULL);
+	namcos1_driver_init(machine, NULL);
 	memory_install_read8_handler(machine, 3, ADDRESS_SPACE_PROGRAM, 0x1400, 0x1401, 0, 0, faceoff_inputs_r);
 }

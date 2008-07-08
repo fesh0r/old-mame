@@ -4,6 +4,7 @@
 #include "video/cdp1869.h"
 #include "sound/cdp1869.h"
 #include "sound/ay8910.h"
+#include "machine/cdp1852.h"
 #include "cidelsa.h"
 
 /*
@@ -11,7 +12,6 @@
     TODO:
 
     - move set_cpu_mode timer call to MDRV
-    - fix COP420 core to get sound in Draco
 
 */
 
@@ -45,7 +45,7 @@ static CDP1802_Q_WRITE( cidelsa_q_w )
 	state->cdp1802_q = level;
 }
 
-static const cdp1802_interface cidelsa_cdp1802_config =
+static CDP1802_INTERFACE( cidelsa_cdp1802_config )
 {
 	cidelsa_mode_r,		// MODE
 	cidelsa_ef_r,		// EF
@@ -161,7 +161,7 @@ static WRITE8_HANDLER( draco_ay8910_port_b_w )
 
 static const struct AY8910interface ay8910_interface =
 {
-	AY8910_LEGACY_OUTPUT,
+	AY8910_SINGLE_OUTPUT,
 	AY8910_DEFAULT_LOADS,
 	NULL,
 	NULL,
@@ -187,7 +187,24 @@ static WRITE8_HANDLER( destryer_out1_w )
     */
 }
 
-static WRITE8_HANDLER( altair_out1_w )
+/* CDP1852 Interfaces */
+
+static CDP1852_DATA_READ( cidelsa_in0_r )
+{
+	return input_port_read(device->machine, "IN0");
+}
+
+static CDP1852_DATA_READ( cidelsa_in1_r )
+{
+	return input_port_read(device->machine, "IN1");
+}
+
+static CDP1852_DATA_READ( cidelsa_in2_r )
+{
+	return input_port_read(device->machine, "IN2");
+}
+
+static CDP1852_DATA_WRITE( altair_out1_w )
 {
 	/*
       bit   description
@@ -207,9 +224,9 @@ static WRITE8_HANDLER( altair_out1_w )
 	set_led_status(2, data & 0x20); // FIRE
 }
 
-static WRITE8_HANDLER( draco_out1_w )
+static CDP1852_DATA_WRITE( draco_out1_w )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = device->machine->driver_data;
 
 	/*
       bit   description
@@ -226,6 +243,60 @@ static WRITE8_HANDLER( draco_out1_w )
 
     state->draco_sound = (data & 0xe0) >> 5;
 }
+
+static CDP1852_INTERFACE( cidelsa_cdp1852_in0_intf )
+{
+	CDP1852_CLOCK_HIGH, // really tied to CDP1876 CMSEL (pin 32)
+	CDP1852_MODE_INPUT,
+	cidelsa_in0_r,
+	NULL,
+	NULL
+};
+
+static CDP1852_INTERFACE( cidelsa_cdp1852_in1_intf )
+{
+	CDP1852_CLOCK_HIGH,
+	CDP1852_MODE_INPUT,
+	cidelsa_in1_r,
+	NULL,
+	NULL
+};
+
+static CDP1852_INTERFACE( cidelsa_cdp1852_in2_intf )
+{
+	CDP1852_CLOCK_HIGH,
+	CDP1852_MODE_INPUT,
+	cidelsa_in2_r,
+	NULL,
+	NULL
+};
+
+static CDP1852_INTERFACE( altair_cdp1852_out1_intf )
+{
+	ALTAIR_CHR1 / 8, // CDP1802 TPB
+	CDP1852_MODE_OUTPUT,
+	NULL,
+	altair_out1_w,
+	NULL
+};
+
+static CDP1852_INTERFACE( draco_cdp1852_out1_intf )
+{
+	ALTAIR_CHR1 / 8, // CDP1802 TPB
+	CDP1852_MODE_OUTPUT,
+	NULL,
+	draco_out1_w,
+	NULL
+};
+
+/* COP400 Interface */
+
+static COP400_INTERFACE( draco_cop_intf )
+{
+	COP400_CKI_DIVISOR_16, // ???
+	COP400_CKO_OSCILLATOR_OUTPUT, // ???
+	COP400_MICROBUS_DISABLED
+};
 
 /* Memory Maps */
 
@@ -265,10 +336,10 @@ static ADDRESS_MAP_START( altair_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( altair_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN0") AM_WRITE(altair_out1_w)
-	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN1")
+	AM_RANGE(0x01, 0x01) AM_DEVREAD(CDP1852, "IC23", cdp1852_data_r) AM_DEVWRITE(CDP1852, "IC26", cdp1852_data_w)
+	AM_RANGE(0x02, 0x02) AM_DEVREAD(CDP1852, "IC24", cdp1852_data_r)
 	AM_RANGE(0x03, 0x03) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out3_w)
-	AM_RANGE(0x04, 0x04) AM_READ_PORT("IN2") AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out4_w)
+	AM_RANGE(0x04, 0x04) AM_DEVREAD(CDP1852, "IC25", cdp1852_data_r) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out4_w)
 	AM_RANGE(0x05, 0x05) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out5_w)
 	AM_RANGE(0x06, 0x06) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out6_w)
 	AM_RANGE(0x07, 0x07) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out7_w)
@@ -284,10 +355,10 @@ static ADDRESS_MAP_START( draco_map, ADDRESS_SPACE_PROGRAM, 8 )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( draco_io_map, ADDRESS_SPACE_IO, 8 )
-	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN0") AM_WRITE(draco_out1_w)
-	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN1")
+	AM_RANGE(0x01, 0x01) AM_DEVREAD(CDP1852, "IC29", cdp1852_data_r) AM_DEVWRITE(CDP1852, "IC32", cdp1852_data_w)
+	AM_RANGE(0x02, 0x02) AM_DEVREAD(CDP1852, "IC30", cdp1852_data_r)
 	AM_RANGE(0x03, 0x03) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out3_w)
-	AM_RANGE(0x04, 0x04) AM_READ_PORT("IN2") AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out4_w)
+	AM_RANGE(0x04, 0x04) AM_DEVREAD(CDP1852, "IC31", cdp1852_data_r) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out4_w)
 	AM_RANGE(0x05, 0x05) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out5_w)
 	AM_RANGE(0x06, 0x06) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out6_w)
 	AM_RANGE(0x07, 0x07) AM_DEVWRITE(CDP1869_VIDEO, CDP1869_TAG, cdp1869_out7_w)
@@ -310,14 +381,14 @@ ADDRESS_MAP_END
 
 static CUSTOM_INPUT( cdp1869_pcb_r )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = field->port->machine->driver_data;
 
 	return state->cdp1869_pcb;
 }
 
 static CUSTOM_INPUT( cdp1869_predisplay_r )
 {
-	cidelsa_state *state = machine->driver_data;
+	cidelsa_state *state = field->port->machine->driver_data;
 
 	return state->cdp1869_prd;
 }
@@ -331,7 +402,7 @@ static INPUT_PORTS_START( destryer )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) // LF
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) // FR
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM(cdp1869_pcb_r, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(cdp1869_pcb_r, 0)
 
 	PORT_START_TAG("IN1")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
@@ -371,7 +442,7 @@ static INPUT_PORTS_START( altair )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) // LF
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) // FR
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM(cdp1869_pcb_r, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(cdp1869_pcb_r, 0)
 
 	PORT_START_TAG("IN1")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
@@ -421,7 +492,7 @@ static INPUT_PORTS_START( draco )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SPECIAL ) PORT_CUSTOM(cdp1869_pcb_r, 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(cdp1869_pcb_r, 0)
 
 	PORT_START_TAG("IN1")
 	PORT_DIPNAME( 0x03, 0x02, DEF_STR( Difficulty ) )
@@ -495,7 +566,7 @@ static MACHINE_START( draco )
 
 	// COP402 memory banking
 
-	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU2), 0x400);
+	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU2), 0x400);
 	memory_set_bank(1, 0);
 
 	// register save states
@@ -578,6 +649,20 @@ static MACHINE_DRIVER_START( altair )
 	MDRV_MACHINE_START(cidelsa)
 	MDRV_MACHINE_RESET(cidelsa)
 
+	// input/output hardware
+
+	MDRV_DEVICE_ADD("IC23", CDP1852)
+	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in0_intf)
+
+	MDRV_DEVICE_ADD("IC24", CDP1852)
+	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in1_intf)
+
+	MDRV_DEVICE_ADD("IC25", CDP1852)
+	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in2_intf)
+
+	MDRV_DEVICE_ADD("IC26", CDP1852)
+	MDRV_DEVICE_CONFIG(altair_cdp1852_out1_intf)
+
 	// video hardware
 
 	MDRV_IMPORT_FROM(altair_video)
@@ -607,6 +692,21 @@ static MACHINE_DRIVER_START( draco )
 	MDRV_CPU_ADD(COP420, DRACO_SND_CHR1) // COP402N
 	MDRV_CPU_PROGRAM_MAP(draco_sound_map, 0)
 	MDRV_CPU_IO_MAP(draco_sound_io_map, 0)
+	MDRV_CPU_CONFIG(draco_cop_intf)
+
+	// input/output hardware
+
+	MDRV_DEVICE_ADD("IC29", CDP1852)
+	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in0_intf)
+
+	MDRV_DEVICE_ADD("IC30", CDP1852)
+	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in1_intf)
+
+	MDRV_DEVICE_ADD("IC31", CDP1852)
+	MDRV_DEVICE_CONFIG(cidelsa_cdp1852_in2_intf)
+
+	MDRV_DEVICE_ADD("IC32", CDP1852)
+	MDRV_DEVICE_CONFIG(draco_cdp1852_out1_intf)
 
 	// video hardware
 
@@ -617,7 +717,6 @@ static MACHINE_DRIVER_START( draco )
 	MDRV_SPEAKER_STANDARD_MONO("mono")
 
 	MDRV_SOUND_ADD(CDP1869, DRACO_CHR2)
-	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MDRV_SOUND_ADD(AY8910, DRACO_SND_CHR1)
 	MDRV_SOUND_CONFIG(ay8910_interface)
@@ -673,4 +772,4 @@ ROM_END
 GAME( 1980, destryer, 0, 		destryer, destryer, 0, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 1)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1980, destryea, destryer, destryea, destryer, 0, ROT90, "Cidelsa", "Destroyer (Cidelsa) (set 2)", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1981, altair,   0, 		altair,   altair,   0, ROT90, "Cidelsa", "Altair", GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
-GAME( 1981, draco,    0, 		draco,    draco,    0, ROT90, "Cidelsa", "Draco", GAME_IMPERFECT_COLORS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
+GAME( 1981, draco,    0, 		draco,    draco,    0, ROT90, "Cidelsa", "Draco", GAME_IMPERFECT_COLORS | GAME_SUPPORTS_SAVE )

@@ -367,7 +367,7 @@ static UINT8 cannonb_bit_to_read;
 
 static MACHINE_RESET( mschamp )
 {
-	UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
+	UINT8 *rom = memory_region(machine, REGION_CPU1) + 0x10000;
 	int whichbank = input_port_read(machine, "GAME") & 1;
 
 	memory_configure_bank(1, 0, 2, &rom[0x0000], 0x8000);
@@ -402,13 +402,9 @@ static INTERRUPT_GEN( pacman_interrupt )
 	/* and that the speedup button is pressed */
 	else
 	{
-		int portnum = port_tag_to_index("FAKE");
-		if (portnum != -1)
-		{
-			UINT8 value = input_port_read_indexed(machine, portnum);
-			if ((value & 7) == 5 || (value & 6) == 2)
-				irq0_line_hold(machine, cpunum);
-		}
+		UINT8 value = input_port_read_safe(machine, "FAKE", 0);
+		if ((value & 7) == 5 || (value & 6) == 2)
+			irq0_line_hold(machine, cpunum);
 	}
 }
 
@@ -534,7 +530,7 @@ static READ8_HANDLER( alibaba_mystery_1_r )
 {
 	/* The return value determines what the mystery item is.  Each bit corresponds
        to a question mark */
-	return mame_rand(Machine) & 0x0f;
+	return mame_rand(machine) & 0x0f;
 }
 
 
@@ -557,7 +553,7 @@ static READ8_HANDLER( alibaba_mystery_2_r )
 
 static READ8_HANDLER( maketrax_special_port2_r )
 {
-	int data = input_port_read_indexed(machine, 2);
+	int data = input_port_read(machine, "IN1");
 	int pc = activecpu_get_previouspc();
 
 	if ((pc == 0x1973) || (pc == 0x2389)) return data | 0x40;
@@ -600,7 +596,7 @@ static READ8_HANDLER( maketrax_special_port3_r )
 
 static READ8_HANDLER( korosuke_special_port2_r )
 {
-	int data = input_port_read_indexed(machine,2);
+	int data = input_port_read(machine, "IN1");
 	int pc = activecpu_get_previouspc();
 
 	if ((pc == 0x196e) || (pc == 0x2387)) return data | 0x40;
@@ -668,7 +664,7 @@ static WRITE8_HANDLER( bigbucks_bank_w )
 static READ8_HANDLER( bigbucks_question_r )
 {
 
-	UINT8 *question = memory_region(REGION_USER1);
+	UINT8 *question = memory_region(machine, REGION_USER1);
 	UINT8 ret;
 
 	ret = question[(bigbucks_bank << 16) | (offset ^ 0xffff)];
@@ -772,7 +768,7 @@ static WRITE8_HANDLER( rocktrv2_question_bank_w )
 
 static READ8_HANDLER( rocktrv2_question_r )
 {
-	UINT8 *question = memory_region(REGION_USER1);
+	UINT8 *question = memory_region(machine, REGION_USER1);
 
 	return question[offset | (rocktrv2_question_bank * 0x8000)];
 }
@@ -815,10 +811,10 @@ static ADDRESS_MAP_START( pacman_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW2")		/* DSW2 */
 ADDRESS_MAP_END
 // The Pacman code uses $5004 and $5005 for LED's and $5007 for coin lockout.  This hardware does not
 // exist on any Pacman or Puckman board I have seen.  DW
@@ -843,10 +839,10 @@ static ADDRESS_MAP_START( mspacman_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW2")		/* DSW2 */
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(1)
 ADDRESS_MAP_END
 
@@ -870,10 +866,10 @@ static ADDRESS_MAP_START( woodpek_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW2")		/* DSW2 */
 	AM_RANGE(0x8000, 0xbfff) AM_ROM
 ADDRESS_MAP_END
 
@@ -898,9 +894,9 @@ static ADDRESS_MAP_START( alibaba_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x50c1, 0x50c1) AM_MIRROR(0xaf00) AM_WRITE(pacman_flipscreen_w)
 	AM_RANGE(0x50c2, 0x50c2) AM_MIRROR(0xaf00) AM_WRITE(interrupt_enable_w)
 	AM_RANGE(0x50c3, 0x50ff) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf00) AM_READ(alibaba_mystery_1_r)
 	AM_RANGE(0x50c1, 0x50c1) AM_MIRROR(0xaf00) AM_READ(alibaba_mystery_2_r)
 	AM_RANGE(0x50c2, 0x50ff) AM_MIRROR(0xaf00) AM_READ(pacman_read_nop)
@@ -928,10 +924,10 @@ static ADDRESS_MAP_START( dremshpr_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW2")		/* DSW2 */
 	AM_RANGE(0x8000, 0xbfff) AM_ROM
 ADDRESS_MAP_END
 
@@ -955,10 +951,10 @@ static ADDRESS_MAP_START( epos_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW2")		/* DSW2 */
 ADDRESS_MAP_END
 
 
@@ -980,10 +976,10 @@ static ADDRESS_MAP_START( vanvan_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP) /* ??? toggled before reading 5000 */
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW2")		/* DSW2 */
 	AM_RANGE(0x8000, 0x8fff) AM_MIRROR(0x3000) AM_ROM
 	/* probably a leftover from development: the Sanritsu version */
 	/* writes the color lookup table here, while the Karateko version */
@@ -1009,9 +1005,9 @@ static ADDRESS_MAP_START( s2650games_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x1586, 0x1587) AM_MIRROR(0xe000) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x15c0, 0x15c0) AM_MIRROR(0xe000) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x15c7, 0x15c7) AM_MIRROR(0xe000) AM_WRITE(porky_banking_w)
-	AM_RANGE(0x1500, 0x1500) AM_MIRROR(0xe000) AM_READ(input_port_0_r)
-	AM_RANGE(0x1540, 0x1540) AM_MIRROR(0xe000) AM_READ(input_port_1_r)
-	AM_RANGE(0x1580, 0x1580) AM_MIRROR(0xe000) AM_READ(input_port_2_r)
+	AM_RANGE(0x1500, 0x1500) AM_MIRROR(0xe000) AM_READ_PORT("IN0")
+	AM_RANGE(0x1540, 0x1540) AM_MIRROR(0xe000) AM_READ_PORT("IN1")
+	AM_RANGE(0x1580, 0x1580) AM_MIRROR(0xe000) AM_READ_PORT("DSW0")
 	AM_RANGE(0x1800, 0x1bff) AM_MIRROR(0xe000) AM_WRITE(s2650games_videoram_w) AM_BASE(&videoram)
 	AM_RANGE(0x1c00, 0x1fef) AM_MIRROR(0xe000) AM_RAM
 	AM_RANGE(0x1ff0, 0x1fff) AM_MIRROR(0xe000) AM_WRITE(SMH_RAM) AM_BASE(&spriteram) AM_SIZE(&spriteram_size)
@@ -1034,15 +1030,15 @@ static ADDRESS_MAP_START( rocktrv2_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x50c0, 0x50c0) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x5fe0, 0x5fe3) AM_WRITE(rocktrv2_prot_data_w) AM_BASE(&rocktrv2_prot_data)
 	AM_RANGE(0x5ff0, 0x5ff0) AM_WRITE(rocktrv2_question_bank_w)
-	AM_RANGE(0x5000, 0x5000) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x507f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x507f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_READ_PORT("DSW2")		/* DSW2 */
 	AM_RANGE(0x5fe0, 0x5fe0) AM_READ(rocktrv2_prot1_data_r)
 	AM_RANGE(0x5fe4, 0x5fe4) AM_READ(rocktrv2_prot2_data_r)
 	AM_RANGE(0x5fe8, 0x5fe8) AM_READ(rocktrv2_prot3_data_r)
 	AM_RANGE(0x5fec, 0x5fec) AM_READ(rocktrv2_prot4_data_r)
-	AM_RANGE(0x5fff, 0x5fff) AM_READ(input_port_3_r) /* DSW2 mirrored */
+	AM_RANGE(0x5fff, 0x5fff) AM_READ_PORT("DSW2")		/* DSW2 mirrored */
 	AM_RANGE(0x6000, 0x7fff) AM_ROM
 	AM_RANGE(0x8000, 0xffff) AM_READ(rocktrv2_question_r)
 ADDRESS_MAP_END
@@ -1059,10 +1055,10 @@ static ADDRESS_MAP_START( bigbucks_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5007, 0x5007) AM_WRITE(SMH_NOP) /*?*/
 	AM_RANGE(0x5040, 0x505f) AM_WRITE(pacman_sound_w) AM_BASE(&pacman_soundregs)
 	AM_RANGE(0x50c0, 0x50c0) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x503f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x507f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x50bf) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50ff) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x503f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x507f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x50bf) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50ff) AM_READ_PORT("DSW2")		/* DSW2 */
 	AM_RANGE(0x5100, 0x5100) AM_WRITE(SMH_NOP) /*?*/
 	AM_RANGE(0x6000, 0x6000) AM_WRITE(bigbucks_bank_w)
 	AM_RANGE(0x8000, 0x9fff) AM_ROM
@@ -1088,10 +1084,10 @@ static ADDRESS_MAP_START( mschamp_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)	/* IN0 */
-	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)	/* IN1 */
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_2_r)	/* DSW1 */
-	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ(input_port_3_r)	/* DSW2 */
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")		/* IN0 */
+	AM_RANGE(0x5040, 0x5040) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")		/* IN1 */
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW1")		/* DSW1 */
+	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_READ_PORT("DSW2")		/* DSW2 */
 	AM_RANGE(0x8000, 0xbfff) AM_ROMBANK(2)
 ADDRESS_MAP_END
 
@@ -1115,8 +1111,8 @@ static ADDRESS_MAP_START( crushs_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x5070, 0x507f) AM_MIRROR(0xaf00) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_WRITE(SMH_NOP)
 	AM_RANGE(0x50c0, 0x50c0) AM_MIRROR(0xaf3f) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ(input_port_0_r)
-	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ(input_port_1_r)
+	AM_RANGE(0x5000, 0x5000) AM_MIRROR(0xaf3f) AM_READ_PORT("IN0")
+	AM_RANGE(0x5080, 0x5080) AM_MIRROR(0xaf3f) AM_READ_PORT("IN1")
 ADDRESS_MAP_END
 
 
@@ -1176,19 +1172,19 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( drivfrcp_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ(SMH_NOP)
 	AM_RANGE(0x01, 0x01) AM_READ(drivfrcp_port1_r)
-	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(input_port_3_r)
+	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("Sense")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( _8bpm_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x00, 0x00) AM_READ(SMH_NOP)
 	AM_RANGE(0x01, 0x01) AM_READ(_8bpm_port1_r)
 	AM_RANGE(0xe0, 0xe0) AM_READ(SMH_NOP)
-	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(input_port_3_r)
+	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("Sense")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( porky_readport, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_READ(porky_port1_r)
-	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ(input_port_3_r)
+	AM_RANGE(S2650_SENSE_PORT, S2650_SENSE_PORT) AM_READ_PORT("Sense")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( s2650games_writeport, ADDRESS_SPACE_IO, 8 )
@@ -1197,8 +1193,8 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( crushs_readport, ADDRESS_SPACE_IO, 8 )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-	AM_RANGE(0x01, 0x01) AM_READ(input_port_3_r)
-	AM_RANGE(0x02, 0x02) AM_READ(input_port_2_r)
+	AM_RANGE(0x01, 0x01) AM_READ_PORT("DSW2")
+	AM_RANGE(0x02, 0x02) AM_READ_PORT("DSW1")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( crushs_writeport, ADDRESS_SPACE_IO, 8 )
@@ -1240,7 +1236,7 @@ static INPUT_PORTS_START( pacman )
 	PORT_DIPSETTING(   0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(   0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1263,7 +1259,7 @@ static INPUT_PORTS_START( pacman )
 	PORT_DIPSETTING(    0x80, DEF_STR( Normal ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Alternate ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("FAKE")
@@ -1285,7 +1281,7 @@ static INPUT_PORTS_START( mspacman )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT(    0x10, 0x10, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x10, 0x10, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -1304,7 +1300,7 @@ static INPUT_PORTS_START( mspacman )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1325,7 +1321,7 @@ static INPUT_PORTS_START( mspacman )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("FAKE")
@@ -1346,7 +1342,7 @@ static INPUT_PORTS_START( mspacpls )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT(    0x10, 0x10, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x10, 0x10, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -1365,7 +1361,7 @@ static INPUT_PORTS_START( mspacpls )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1386,7 +1382,7 @@ static INPUT_PORTS_START( mspacpls )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1397,7 +1393,7 @@ static INPUT_PORTS_START( mschamp )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT(    0x10, 0x10, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x10, 0x10, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -1416,7 +1412,7 @@ static INPUT_PORTS_START( mschamp )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1437,7 +1433,7 @@ static INPUT_PORTS_START( mschamp )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hard ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 	PORT_START_TAG("GAME")
@@ -1478,7 +1474,7 @@ static INPUT_PORTS_START( maketrax )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection */
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1497,7 +1493,7 @@ static INPUT_PORTS_START( maketrax )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
  	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection */
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1531,7 +1527,7 @@ static INPUT_PORTS_START( korosuke )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection */
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1550,7 +1546,7 @@ static INPUT_PORTS_START( korosuke )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
  	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection */
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1577,7 +1573,7 @@ static INPUT_PORTS_START( mbrush )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection in Make Trax */
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1596,7 +1592,7 @@ static INPUT_PORTS_START( mbrush )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection in Make Trax */
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1624,7 +1620,7 @@ static INPUT_PORTS_START( paintrlr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection in Make Trax */
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -1643,7 +1639,7 @@ static INPUT_PORTS_START( paintrlr )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_UNUSED )  /* Protection in Make Trax */
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1671,7 +1667,7 @@ static INPUT_PORTS_START( crushs )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW)
 
-	PORT_START
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -1698,7 +1694,7 @@ static INPUT_PORTS_START( crushs )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START
+	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x0f, 0x00, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x09, DEF_STR( 2C_2C ) )
@@ -1758,7 +1754,7 @@ static INPUT_PORTS_START( ponpoko )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x01, "10000" )
 	PORT_DIPSETTING(    0x02, "30000" )
@@ -1781,7 +1777,7 @@ static INPUT_PORTS_START( ponpoko )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x0f, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x04, "A 3/1 B 3/1" )
 	PORT_DIPSETTING(    0x0e, "A 3/1 B 1/2" )
@@ -1835,7 +1831,7 @@ static INPUT_PORTS_START( eyes )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -1858,7 +1854,7 @@ static INPUT_PORTS_START( eyes )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1884,7 +1880,7 @@ static INPUT_PORTS_START( mrtnt )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -1907,7 +1903,7 @@ static INPUT_PORTS_START( mrtnt )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1933,7 +1929,7 @@ static INPUT_PORTS_START( lizwiz )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -1956,7 +1952,7 @@ static INPUT_PORTS_START( lizwiz )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -1978,15 +1974,13 @@ static INPUT_PORTS_START( theglobp )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) // and start1
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 ) // and start2
 	PORT_DIPNAME( 0x80, 0x80, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x03, "3" )
 	PORT_DIPSETTING(    0x02, "4" )
@@ -2011,7 +2005,7 @@ static INPUT_PORTS_START( theglobp )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2037,7 +2031,7 @@ static INPUT_PORTS_START( vanvan )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
@@ -2061,11 +2055,11 @@ static INPUT_PORTS_START( vanvan )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
 
 	/* When all DSW2 are ON, there is no sprite collision detection */
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_BIT(    0x02, 0x00, IPT_DIPSWITCH_NAME ) PORT_NAME("Invulnerability (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x02, 0x00, "Invulnerability (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
@@ -2110,7 +2104,7 @@ static INPUT_PORTS_START( vanvank )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Cocktail ) )
@@ -2135,11 +2129,11 @@ static INPUT_PORTS_START( vanvank )
 	PORT_DIPSETTING(    0x00, DEF_STR( 1C_3C ) )
 
 	/* When all DSW2 are ON, there is no sprite collision detection */
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
-	PORT_BIT(    0x02, 0x00, IPT_DIPSWITCH_NAME ) PORT_NAME("Invulnerability (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x02, 0x00, "Invulnerability (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( On ) )
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )
@@ -2184,7 +2178,7 @@ static INPUT_PORTS_START( dremshpr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
@@ -2207,7 +2201,7 @@ static INPUT_PORTS_START( dremshpr )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	/* turning this on crashes puts the */
 	/* emulated machine in an infinite loop once in a while */
 #if 0
@@ -2226,9 +2220,9 @@ static INPUT_PORTS_START( alibaba )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT(0x10, 0x10, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
-	PORT_DIPSETTING(0x10, DEF_STR( Off ) )
-	PORT_DIPSETTING(0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x10, 0x10, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
+	PORT_DIPSETTING( 0x10, DEF_STR( Off ) )
+	PORT_DIPSETTING( 0x00, DEF_STR( On ) )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
@@ -2245,7 +2239,7 @@ static INPUT_PORTS_START( alibaba )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -2295,7 +2289,7 @@ static INPUT_PORTS_START( jumpshot )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, "Time"  )
 //  PORT_DIPSETTING(    0x00,  "2 Minutes"  )
 	PORT_DIPSETTING(    0x02,  "2 Minutes" )
@@ -2320,7 +2314,7 @@ static INPUT_PORTS_START( jumpshot )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2350,7 +2344,7 @@ static INPUT_PORTS_START( jumpshtp )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, "Time Limit"  )
 //  PORT_DIPSETTING(    0x00,  "Short"  )
 	PORT_DIPSETTING(    0x02,  "Short" )
@@ -2375,7 +2369,7 @@ static INPUT_PORTS_START( jumpshtp )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2396,7 +2390,7 @@ static INPUT_PORTS_START( shootbul )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x07, 0x07, "Time"  )
 	PORT_DIPSETTING(    0x01, "Short")
 	PORT_DIPSETTING(    0x07, "Average" )
@@ -2417,7 +2411,7 @@ static INPUT_PORTS_START( shootbul )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2450,7 +2444,7 @@ static INPUT_PORTS_START( bwcasino )
 	PORT_DIPSETTING(    0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2481,7 +2475,7 @@ static INPUT_PORTS_START( bwcasino )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2511,7 +2505,7 @@ static INPUT_PORTS_START( acitya )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON6 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2542,7 +2536,7 @@ static INPUT_PORTS_START( acitya )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2553,7 +2547,7 @@ static INPUT_PORTS_START( nmouse )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT(    0x10, 0x10, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x10, 0x10, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -2572,7 +2566,7 @@ static INPUT_PORTS_START( nmouse )
 	PORT_DIPSETTING(   0x80, DEF_STR( Upright ) )
 	PORT_DIPSETTING(   0x00, DEF_STR( Cocktail ) )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -2595,7 +2589,7 @@ static INPUT_PORTS_START( nmouse )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 
 INPUT_PORTS_END
@@ -2606,7 +2600,7 @@ static INPUT_PORTS_START( woodpek )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_4WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_4WAY
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_4WAY
-	PORT_BIT(    0x10, 0x10, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x10, 0x10, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x10, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_COIN1 )
@@ -2623,7 +2617,7 @@ static INPUT_PORTS_START( woodpek )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x01, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 1C_1C ) )
@@ -2644,7 +2638,7 @@ static INPUT_PORTS_START( woodpek )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2671,7 +2665,7 @@ static INPUT_PORTS_START( bigbucks )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x01, 0x00, "Time to bet / answer" )
 	PORT_DIPSETTING(    0x00, "15 sec. / 10 sec." )
 	PORT_DIPSETTING(    0x01, "20 sec. / 15 sec." )
@@ -2697,7 +2691,7 @@ static INPUT_PORTS_START( bigbucks )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -2879,7 +2873,7 @@ static INPUT_PORTS_START( rocktrv2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -2903,7 +2897,7 @@ static INPUT_PORTS_START( rocktrv2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_DIPNAME( 0x01, 0x01, "Mode" )
 	PORT_DIPSETTING(    0x01, "Amusement" )
 	PORT_DIPSETTING(    0x00, "Credit" )
@@ -2944,12 +2938,12 @@ static INPUT_PORTS_START( cannonbp )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT )	PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT )	PORT_4WAY PORT_COCKTAIL
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN )	PORT_4WAY PORT_COCKTAIL
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 ) PORT_NAME( "Start" )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 ) PORT_NAME( "Select" )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 
-	PORT_START_TAG("DSW 1")
+	PORT_START_TAG("DSW1")
 	PORT_DIPNAME( 0x03, 0x03, "Display" )
 	PORT_DIPSETTING(    0x03, "Scores and Progession Bars" )
 	PORT_DIPSETTING(    0x01, "Scores only" )
@@ -2967,7 +2961,7 @@ static INPUT_PORTS_START( cannonbp )
 	PORT_DIPUNUSED( 0x40, IP_ACTIVE_LOW )
 	PORT_DIPUNUSED( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START_TAG("DSW 2")
+	PORT_START_TAG("DSW2")
 	PORT_BIT( 0xff, IP_ACTIVE_HIGH, IPT_UNUSED )
 INPUT_PORTS_END
 
@@ -5106,10 +5100,10 @@ ROM_END
  *
  *************************************/
 
-static void maketrax_rom_decode(void)
+static void maketrax_rom_decode(running_machine *machine)
 {
 	UINT8 *decrypted = auto_malloc(0x4000);
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	/* patch protection using a copy of the opcodes so ROM checksum */
 	/* tests will not fail */
@@ -5134,13 +5128,13 @@ static DRIVER_INIT( maketrax )
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5080, 0x50bf, 0, 0, maketrax_special_port2_r);
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x50c0, 0x50ff, 0, 0, maketrax_special_port3_r);
 
-	maketrax_rom_decode();
+	maketrax_rom_decode(machine);
 }
 
-static void korosuke_rom_decode(void)
+static void korosuke_rom_decode(running_machine *machine)
 {
 	UINT8 *decrypted = auto_malloc(0x4000);
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	/* patch protection using a copy of the opcodes so ROM checksum */
 	/* tests will not fail */
@@ -5165,7 +5159,7 @@ static DRIVER_INIT( korosuke )
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x5080, 0x5080, 0, 0, korosuke_special_port2_r);
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x50c0, 0x50ff, 0, 0, korosuke_special_port3_r);
 
-	korosuke_rom_decode();
+	korosuke_rom_decode(machine);
 }
 
 static DRIVER_INIT( ponpoko )
@@ -5175,10 +5169,10 @@ static DRIVER_INIT( ponpoko )
 
 	int i, j;
 	UINT8 *RAM, temp;
-	int length = memory_region_length(REGION_GFX1)/2;
+	int length = memory_region_length(machine, REGION_GFX1)/2;
 
 	/* Characters */
-	RAM = memory_region(REGION_GFX1);
+	RAM = memory_region(machine, REGION_GFX1);
 	for (i = 0;i < length;i += 0x10)
 	{
 		for (j = 0; j < 8; j++)
@@ -5190,7 +5184,7 @@ static DRIVER_INIT( ponpoko )
 	}
 
 	/* Sprites */
-	RAM = memory_region(REGION_GFX1)+length;
+	RAM = memory_region(machine, REGION_GFX1)+length;
 	for (i = 0;i < length;i += 0x20)
 	{
 		for (j = 0; j < 8; j++)
@@ -5222,13 +5216,13 @@ static void eyes_decode(UINT8 *data)
 
 static DRIVER_INIT( eyes )
 {
-	int i;
+	int i, len;
 	UINT8 *RAM;
 
 	/* CPU ROMs */
 
 	/* Data lines D3 and D5 swapped */
-	RAM = memory_region(REGION_CPU1);
+	RAM = memory_region(machine, REGION_CPU1);
 	for (i = 0; i < 0x4000; i++)
 	{
 		RAM[i] = BITSWAP8(RAM[i],7,6,3,4,5,2,1,0);
@@ -5238,37 +5232,39 @@ static DRIVER_INIT( eyes )
 	/* Graphics ROMs */
 
 	/* Data lines D4 and D6 and address lines A0 and A2 are swapped */
-	RAM = memory_region(REGION_GFX1);
-	for (i = 0;i < memory_region_length(REGION_GFX1);i += 8)
+	RAM = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
+	for (i = 0;i < len;i += 8)
 		eyes_decode(&RAM[i]);
 }
 
 static DRIVER_INIT( woodpek )
 {
-	int i;
+	int i, len;
 	UINT8 *RAM;
 
 	/* Graphics ROMs */
 
 	/* Data lines D4 and D6 and address lines A0 and A2 are swapped */
-	RAM = memory_region(REGION_GFX1);
-	for (i = 0;i < memory_region_length(REGION_GFX1);i += 8)
+	RAM = memory_region(machine, REGION_GFX1);
+	len = memory_region_length(machine, REGION_GFX1);
+	for (i = 0;i < len;i += 8)
 		eyes_decode(&RAM[i]);
 }
 
 static DRIVER_INIT( pacplus )
 {
-	pacplus_decode();
+	pacplus_decode(machine);
 }
 
 static DRIVER_INIT( jumpshot )
 {
-	jumpshot_decode();
+	jumpshot_decode(machine);
 }
 
 static DRIVER_INIT( drivfrcp )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	int i;
 
 	for( i = 0; i < 4; i++)
@@ -5277,7 +5273,7 @@ static DRIVER_INIT( drivfrcp )
 
 static DRIVER_INIT( 8bpm )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	int i;
 
 	/* Data lines D0 and D6 swapped */
@@ -5292,7 +5288,7 @@ static DRIVER_INIT( 8bpm )
 
 static DRIVER_INIT( porky )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	int i;
 
 	/* Data lines D0 and D4 swapped */
@@ -5311,7 +5307,7 @@ static DRIVER_INIT( porky )
 static DRIVER_INIT( rocktrv2 )
 {
 	/* hack to pass the rom check for the bad rom */
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	ROM[0x7ffe] = 0xa7;
 	ROM[0x7fee] = 0x6d;
@@ -5323,7 +5319,7 @@ socket and run through the 74298.  Clock is tied to system clock.  */
 static DRIVER_INIT( mspacmbe )
 {
 	UINT8 temp;
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 	int i;
 
 	/* Address lines A1 and A0 swapped if A2=0 */

@@ -1,6 +1,5 @@
 #include "driver.h"
-
-extern UINT16 *pgm_mainram;
+#include "includes/pgm.h"
 
 /*** ASIC27a (Puzzle Star) -- ARM but with no external rom? behaves a bit like KOV ***/
 
@@ -117,7 +116,7 @@ static const int Pstar_80[0x1a3]={
 READ16_HANDLER (PSTARS_protram_r)
 {
 	if (offset == 4)		//region
-		return input_port_read_indexed(machine, 4);
+		return input_port_read(machine, "Region");
 	else if (offset >= 0x10)  //timer
 	{
 	  logerror("PSTARS ACCESS COUNTER %6X\n",pstar_ram[offset-0x10]);
@@ -318,7 +317,7 @@ static void asic3_compute_hold(running_machine *machine)
 {
 	// The mode is dependant on the region
 	static const int modes[4] = { 1, 1, 3, 2 };
-	int mode = modes[input_port_read_indexed(machine, 4) & 3];
+	int mode = modes[input_port_read(machine, "Region") & 3];
 
 	switch(mode) {
 	case 1:
@@ -354,9 +353,9 @@ READ16_HANDLER( pgm_asic3_r )
 	/* region is supplied by the protection device */
 
 	switch(asic3_reg) {
-	case 0x00: res = (asic3_latch[0] & 0xf7) | ((input_port_read_indexed(machine, 4) << 3) & 0x08); break;
+	case 0x00: res = (asic3_latch[0] & 0xf7) | ((input_port_read(machine, "Region") << 3) & 0x08); break;
 	case 0x01: res = asic3_latch[1]; break;
-	case 0x02: res = (asic3_latch[2] & 0x7f) | ((input_port_read_indexed(machine, 4) << 6) & 0x80); break;
+	case 0x02: res = (asic3_latch[2] & 0x7f) | ((input_port_read(machine, "Region") << 6) & 0x80); break;
 	case 0x03:
 		res = (bt(asic3_hold, 15) << 0)
 			| (bt(asic3_hold, 12) << 1)
@@ -462,7 +461,7 @@ READ16_HANDLER (sango_protram_r)
 	// 4 = hong kong
 	// 5 = world
 
-	if (offset == 4)	return input_port_read_indexed(machine, 4);
+	if (offset == 4)	return input_port_read(machine, "Region");
 
 	// otherwise it doesn't seem to use the ram for anything important, we return 0 to avoid test mode corruption
 	// kovplus reads from offset 000e a lot ... why?
@@ -539,7 +538,6 @@ READ16_HANDLER (ASIC28_r16)
 
 		case 0x21: // PhotoY2k spritenum conversion 3/4
 			if(!ASIC28RCNT) {
-				extern const UINT32 pgmy2ks[];
 				photoy2k_trf[2] = val & 0xffff;
 				logerror("ASIC28: PhotoY2K spr3 %04x %06x (%06x)\n", val & 0xffff, photoy2k_trf[1], activecpu_get_pc());
 				if(photoy2k_trf[0] < 0x3c00)

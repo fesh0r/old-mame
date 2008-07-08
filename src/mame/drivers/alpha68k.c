@@ -273,7 +273,7 @@ static READ16_HANDLER( control_1_r )
 	if (invert_controls)
 		return ~(input_port_read(machine, "IN0") + (input_port_read(machine, "IN1") << 8));
 
-	return (input_port_read_indexed(machine, 0) + (input_port_read_indexed(machine, 1) << 8));
+	return (input_port_read(machine, "IN0") + (input_port_read(machine, "IN1") << 8));
 }
 
 static READ16_HANDLER( control_2_r )
@@ -769,7 +769,7 @@ ADDRESS_MAP_END
 static WRITE8_HANDLER( sound_bank_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 
 	bankaddress = 0x10000 + (data) * 0x4000;
 	memory_set_bankptr(7,&RAM[bankaddress]);
@@ -1965,9 +1965,9 @@ static const struct YM2203interface ym2203_interface =
 	}
 };
 
-static void YM3812_irq(int param)
+static void YM3812_irq(running_machine *machine, int param)
 {
-	cpunum_set_input_line(Machine, 1, 0, (param) ? HOLD_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 0, (param) ? HOLD_LINE : CLEAR_LINE);
 }
 
 static const struct YM3812interface ym3812_interface =
@@ -3216,7 +3216,7 @@ static DRIVER_INIT( btlfildb )
 static DRIVER_INIT( skysoldr )
 {
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x40008, 0x40009, 0, 0, skysoldr_cycle_r);
-	memory_set_bankptr(8, (memory_region(REGION_USER1))+0x40000);
+	memory_set_bankptr(8, (memory_region(machine, REGION_USER1))+0x40000);
 	invert_controls=0;
 	microcontroller_id=0;
 	coin_id=0x22|(0x22<<8);
@@ -3231,7 +3231,7 @@ static DRIVER_INIT( goldmedl )
 
 static DRIVER_INIT( goldmeda )
 {
-	memory_set_bankptr(8, memory_region(REGION_CPU1) + 0x20000);
+	memory_set_bankptr(8, memory_region(machine, REGION_CPU1) + 0x20000);
 	invert_controls=0;
 	microcontroller_id=0x8803; //Guess - routine to handle coinage is the same as in 'goldmedl'
 	coin_id=0x23|(0x24<<8);
@@ -3256,7 +3256,7 @@ static DRIVER_INIT( skyadvnu )
 static DRIVER_INIT( gangwars )
 {
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x40206, 0x40207, 0, 0, gangwars_cycle_r);
-	memory_set_bankptr(8, memory_region(REGION_USER1));
+	memory_set_bankptr(8, memory_region(machine, REGION_USER1));
 	invert_controls=0;
 	microcontroller_id=0x8512;
 	coin_id=0x23|(0x24<<8);
@@ -3265,7 +3265,7 @@ static DRIVER_INIT( gangwars )
 static DRIVER_INIT( gangwarb )
 {
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x40206, 0x40207, 0, 0, gangwarb_cycle_r);
-	memory_set_bankptr(8, memory_region(REGION_USER1));
+	memory_set_bankptr(8, memory_region(machine, REGION_USER1));
 	invert_controls=0;
 	microcontroller_id=0x8512;
 	coin_id=0x23|(0x24<<8);
@@ -3273,7 +3273,7 @@ static DRIVER_INIT( gangwarb )
 
 static DRIVER_INIT( sbasebal )
 {
-	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 
 	/* Game hangs on divide by zero?!  Patch it */
 	rom[0xb672/2] = 0x4e71;

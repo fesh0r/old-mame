@@ -44,7 +44,6 @@ Year + Game             Main CPU    Sound CPU    Sound            Video
 ***************************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2151intf.h"
 #include "sound/3812intf.h"
 #include "sound/dac.h"
@@ -179,20 +178,20 @@ static READ8_HANDLER( borntofi_inputs_r )
 	static int old_x[2], old_y[2], old_f[2];
 	static UINT8 ret[2];
 
-	switch (input_port_read_indexed(machine, 7) & 0x03)
+	switch (input_port_read(machine, "Controls") & 0x03)
 	{
 		case 3:
-		case 1:	return input_port_read_indexed(machine, 0 + offset);	// Lightgun buttons
-		case 2:	return input_port_read_indexed(machine, 4 + offset);	// Joystick
+		case 1:	return input_port_read(machine, offset ? "IN1" : "IN0");	// Lightgun buttons
+		case 2:	return input_port_read(machine, offset ? "IN5" : "IN4");	// Joystick
 	}
 
 	// Trackball
 
-	x = input_port_read_indexed(machine, 13 + offset * 2);
-	y = input_port_read_indexed(machine, 12 + offset * 2);
+	x = input_port_read(machine, offset ? "P2 Trackball X" : "P1 Trackball X");
+	y = input_port_read(machine, offset ? "P2 Trackball Y" : "P1 Trackball Y");
 	f = video_screen_get_frame_number(machine->primary_screen);
 
-	ret[offset]	=	(ret[offset] & 0x14) | (input_port_read_indexed(machine, 2 + offset) & 0xc3);
+	ret[offset]	=	(ret[offset] & 0x14) | (input_port_read(machine, offset ? "IN3" : "IN2") & 0xc3);
 
 	x =  (x & 0x7f) - (x & 0x80);
 	y =  (y & 0x7f) - (y & 0x80);
@@ -222,14 +221,14 @@ static ADDRESS_MAP_START( borntofi_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x52000, 0x521ff ) AM_READWRITE( SMH_RAM, paletteram_xRRRRRGGGGGBBBBB_le_w ) AM_BASE( &paletteram )
 	AM_RANGE( 0x53000, 0x53001 ) AM_READWRITE( borntofi_inputs_r, borntofi_nmi_enable_w )
 	AM_RANGE( 0x53002, 0x53002 ) AM_READWRITE( input_port_6_r,    fantland_soundlatch_w )
-	AM_RANGE( 0x53003, 0x53003 ) AM_READ( input_port_7_r )
+	AM_RANGE( 0x53003, 0x53003 ) AM_READ_PORT( "Controls" )
 
 	AM_RANGE( 0x54000, 0x567ff ) AM_RAM AM_BASE( &spriteram )
 
-	AM_RANGE( 0x57000, 0x57000 ) AM_READ( input_port_8_r  )
-	AM_RANGE( 0x57001, 0x57001 ) AM_READ( input_port_9_r  )
-	AM_RANGE( 0x57002, 0x57002 ) AM_READ( input_port_10_r )
-	AM_RANGE( 0x57003, 0x57003 ) AM_READ( input_port_11_r )
+	AM_RANGE( 0x57000, 0x57000 ) AM_READ_PORT( "P1 Lightgun Y" )
+	AM_RANGE( 0x57001, 0x57001 ) AM_READ_PORT( "P1 Lightgun X" )
+	AM_RANGE( 0x57002, 0x57002 ) AM_READ_PORT( "P2 Lightgun Y" )
+	AM_RANGE( 0x57003, 0x57003 ) AM_READ_PORT( "P2 Lightgun X" )
 
 	AM_RANGE( 0x60000, 0x6ffff ) AM_RAM AM_BASE( &spriteram_2 )
 
@@ -335,7 +334,7 @@ static WRITE8_HANDLER( borntofi_msm5205_w )
 	}
 }
 
-static void borntofi_adpcm_int(int voice)
+static void borntofi_adpcm_int(running_machine *machine, int voice)
 {
 	UINT8 *rom;
 	size_t   len;
@@ -344,8 +343,8 @@ static void borntofi_adpcm_int(int voice)
 	if (!borntofi_adpcm[voice].playing)
 		return;
 
-	rom = memory_region( REGION_SOUND1 );
-	len = memory_region_length( REGION_SOUND1 ) * 2;
+	rom = memory_region( machine, REGION_SOUND1 );
+	len = memory_region_length( machine, REGION_SOUND1 ) * 2;
 
 	start = borntofi_adpcm[voice].addr[0] + borntofi_adpcm[voice].nibble;
 	stop  = borntofi_adpcm[voice].addr[1];
@@ -406,7 +405,7 @@ ADDRESS_MAP_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( fantland )
-	PORT_START	/* IN0 - a3000 */
+	PORT_START_TAG("a3000")	/* IN0 - a3000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1			)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_START1			)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	)
@@ -426,7 +425,7 @@ static INPUT_PORTS_START( fantland )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON1		) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_BUTTON2		) PORT_PLAYER(2)
 
-	PORT_START	/* IN2 - a3002 */
+	PORT_START_TAG("a3002")	/* IN2 - a3002 */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x0001, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x0002, DEF_STR( 3C_1C ) )
@@ -555,7 +554,7 @@ INPUT_PORTS_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( borntofi )
-	PORT_START	/* IN0 - 53000 (Lightgun) */
+	PORT_START_TAG("IN0")	/* IN0 - 53000 (Lightgun) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1	)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2	)
@@ -565,7 +564,7 @@ static INPUT_PORTS_START( borntofi )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
-	PORT_START	/* IN1 - 53001 (Lightgun) */
+	PORT_START_TAG("IN1")	/* IN1 - 53001 (Lightgun) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2	)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON2	) PORT_PLAYER(2)
@@ -575,7 +574,7 @@ static INPUT_PORTS_START( borntofi )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN	)
 
-	PORT_START	/* IN2 - 53000 (Trackball) */
+	PORT_START_TAG("IN2")	/* IN2 - 53000 (Trackball) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_START1	)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL	)	// trackball x
@@ -585,7 +584,7 @@ static INPUT_PORTS_START( borntofi )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_BUTTON2	)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_BUTTON1	)
 
-	PORT_START	/* IN3 - 53001 (Trackball) */
+	PORT_START_TAG("IN3")	/* IN3 - 53001 (Trackball) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN2	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_START2	)
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_SPECIAL	)	// trackball x
@@ -595,7 +594,7 @@ static INPUT_PORTS_START( borntofi )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW,  IPT_BUTTON2	) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_BUTTON1	) PORT_PLAYER(2)
 
-	PORT_START	/* IN4 - 53000 (Joystick) */
+	PORT_START_TAG("IN4")	/* IN4 - 53000 (Joystick) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1			)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START1			)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		)
@@ -605,7 +604,7 @@ static INPUT_PORTS_START( borntofi )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2			)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1			)
 
-	PORT_START	/* IN5 - 53001 (Joystick) */
+	PORT_START_TAG("IN5")	/* IN5 - 53001 (Joystick) */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN2			)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_START2			)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP		) PORT_PLAYER(2)
@@ -615,7 +614,7 @@ static INPUT_PORTS_START( borntofi )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2			) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1			) PORT_PLAYER(2)
 
-	PORT_START	/* IN6 - 53002 */
+	PORT_START_TAG("IN6")	/* IN6 - 53002 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
@@ -663,28 +662,28 @@ static INPUT_PORTS_START( borntofi )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START_TAG("P1 Lightgun Y")	/* IN8 - 57000 */
+	PORT_START_TAG("P1 Lightgun Y")		/* IN8 - 57000 */
 	PORT_BIT( 0xff, 0xb0, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, (352.0 - 12) / 352, 12.0 / 352, 0) PORT_MINMAX(0x80,0xfc) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START_TAG("P1 Lightgun X")	/* IN9 - 57001 */
+	PORT_START_TAG("P1 Lightgun X")		/* IN9 - 57001 */
 	PORT_BIT( 0xff, 0x60, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0x07,0xb7) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_PLAYER(1)
 
-	PORT_START_TAG("P2 Lightgun Y")	/* IN10 - 57002 */
+	PORT_START_TAG("P2 Lightgun Y")		/* IN10 - 57002 */
 	PORT_BIT( 0xff, 0xb0, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, (352.0 - 12) / 352, 12.0 / 352, 0) PORT_MINMAX(0x80,0xfc) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-	PORT_START_TAG("P2 Lightgun X")	/* IN11 - 57003 */
+	PORT_START_TAG("P2 Lightgun X")		/* IN11 - 57003 */
 	PORT_BIT( 0xff, 0x70, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0x07,0xb7) PORT_SENSITIVITY(100) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-	PORT_START	/* IN12 - 53000 */
+	PORT_START_TAG("P1 Trackball Y")	/* IN12 - 53000 */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(10) PORT_KEYDELTA(5) PORT_PLAYER(1) PORT_RESET
 
-	PORT_START	/* IN13 - 53000 */
+	PORT_START_TAG("P1 Trackball X")	/* IN13 - 53000 */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(10) PORT_KEYDELTA(5) PORT_PLAYER(1) PORT_RESET
 
-	PORT_START	/* IN14 - 53001 */
+	PORT_START_TAG("P2 Trackball Y")	/* IN14 - 53001 */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(10) PORT_KEYDELTA(5) PORT_PLAYER(2)
 
-	PORT_START	/* IN15 - 53001 */
+	PORT_START_TAG("P2 Trackball X")	/* IN15 - 53001 */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(10) PORT_KEYDELTA(5) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -696,7 +695,7 @@ INPUT_PORTS_END
 static CUSTOM_INPUT( wheelrun_wheel_r )
 {
 	int player = (FPTR)param;
-	int delta = input_port_read_indexed(machine, 4 + player);
+	int delta = input_port_read(field->port->machine, player ? "WHEEL1" : "WHEEL0");
 	delta = (delta & 0x7f) - (delta & 0x80) + 4;
 
 	if		(delta > 7)	delta = 7;
@@ -707,7 +706,7 @@ static CUSTOM_INPUT( wheelrun_wheel_r )
 }
 
 static INPUT_PORTS_START( wheelrun )
-	PORT_START	/* IN0 - 53000 */
+	PORT_START_TAG("53000")	/* IN0 - 53000 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN1	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
@@ -715,7 +714,7 @@ static INPUT_PORTS_START( wheelrun )
 	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(wheelrun_wheel_r, (void *)0)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
 
-	PORT_START	/* IN1 - 53001 */
+	PORT_START_TAG("53001")	/* IN1 - 53001 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW,  IPT_COIN2	)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
@@ -723,7 +722,7 @@ static INPUT_PORTS_START( wheelrun )
 	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(wheelrun_wheel_r, (void *)1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW,  IPT_UNKNOWN	)
 
-	PORT_START	/* IN2 - 53002 */
+	PORT_START_TAG("53002")	/* IN2 - 53002 */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( 4C_1C ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( 3C_1C ) )
@@ -746,7 +745,7 @@ static INPUT_PORTS_START( wheelrun )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )
 
-	PORT_START	/* IN3 - 53003 */
+	PORT_START_TAG("53003")	/* IN3 - 53003 */
 	PORT_DIPNAME( 0xff, 0xdf, "Wheel Sensitivity" )
 	PORT_DIPSETTING(    0x7f, "0" )
 	PORT_DIPSETTING(    0xbf, "1" )
@@ -757,9 +756,9 @@ static INPUT_PORTS_START( wheelrun )
 	PORT_DIPSETTING(    0xfd, "6" )
 	PORT_DIPSETTING(    0xfe, "7" )
 
-	PORT_START	/* IN4 */
+	PORT_START_TAG("WHEEL0")	/* IN4 */
 	PORT_BIT( 0xff, 0, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_RESET PORT_REVERSE PORT_PLAYER(1)
-	PORT_START	/* IN5 */
+	PORT_START_TAG("WHEEL1")	/* IN5 */
 	PORT_BIT( 0xff, 0, IPT_DIAL ) PORT_SENSITIVITY(25) PORT_KEYDELTA(10) PORT_RESET PORT_REVERSE PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -849,9 +848,9 @@ static MACHINE_DRIVER_START( fantland )
 MACHINE_DRIVER_END
 
 
-static void galaxygn_sound_irq(int line)
+static void galaxygn_sound_irq(running_machine *machine, int line)
 {
-	cpunum_set_input_line_and_vector(Machine, 1, 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
+	cpunum_set_input_line_and_vector(machine, 1, 0, line ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
 }
 
 static const struct YM2151interface galaxygn_ym2151_interface =
@@ -949,9 +948,9 @@ MACHINE_DRIVER_END
 
 
 
-static void wheelrun_ym3526_irqhandler(int state)
+static void wheelrun_ym3526_irqhandler(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, INPUT_LINE_IRQ0, state);
+	cpunum_set_input_line(machine, 1, INPUT_LINE_IRQ0, state);
 }
 
 static const struct YM3526interface wheelrun_ym3526_interface =

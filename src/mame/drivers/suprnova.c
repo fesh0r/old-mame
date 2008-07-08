@@ -471,7 +471,7 @@ static MACHINE_RESET(skns)
 	timer_pulse(ATTOTIME_IN_MSEC(8), NULL, 11, interrupt_callback);
 	timer_pulse(ATTOTIME_IN_CYCLES(1824, 0), NULL, 9, interrupt_callback);
 
-	memory_set_bankptr(1,memory_region(REGION_USER1));
+	memory_set_bankptr(1,memory_region(machine, REGION_USER1));
 }
 
 
@@ -833,7 +833,7 @@ static READ32_HANDLER( skns_msm6242_r )
 
 static WRITE32_HANDLER( skns_v3t_w )
 {
-	UINT8 *btiles = memory_region(REGION_GFX3);
+	UINT8 *btiles = memory_region(machine, REGION_GFX3);
 
 	COMBINE_DATA(&skns_v3t_ram[offset]);
 
@@ -956,13 +956,13 @@ static MACHINE_DRIVER_START(skns)
 	MDRV_MACHINE_RESET(skns)
 	MDRV_NVRAM_HANDLER(generic_1fill)
 
-	MDRV_VIDEO_ATTRIBUTES(VIDEO_BUFFERS_SPRITERAM)
+	MDRV_VIDEO_ATTRIBUTES(VIDEO_ALWAYS_UPDATE)
 
 	MDRV_SCREEN_ADD("main", RASTER)
-	MDRV_SCREEN_REFRESH_RATE(60)
+	MDRV_SCREEN_REFRESH_RATE(59.5971) // measured by Guru
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(0))
-	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
-	MDRV_SCREEN_SIZE(64*16,64*16)
+	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_RGB32)
+	MDRV_SCREEN_SIZE(320,240)
 	MDRV_SCREEN_VISIBLE_AREA(0,319,0,239)
 
 	MDRV_PALETTE_LENGTH(32768)
@@ -1232,6 +1232,53 @@ ROM_START( galpans2 )
 	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Samples */
       ROM_LOAD( "gs230000.u1",  0x000000, 0x400000, CRC(0348e8e1) SHA1(8a21c7e5cea0bc08a2595213d689c58c0251fdb5) )
 ROM_END
+
+/*
+
+Gals Panic SU (Kaneko 1999)
+Korean hacked version. Runs on Super Kaneko Nova System mainboard
+and original Super Kaneko Nova System ROM board labelled "ROM-BOARD"
+EPROMs at U8, U10 and mainboard U10 are new to this version.
+The ROM board is wired to accept 16MBit SOP44 maskROMs.
+The actual ROMs used are 32M. There are some wire mods to enable the
+higher capacity ROMs, basically wiring pin 44 of the SOP44's to
+some logic to enable it.
+All of the SOP44 ROMs are from Gals Panic 2, but because Gals Panic 2
+uses a different ROM board the Gals Panic SU ROMs are at different
+locations.
+For Gals Panic SU, the 32M ROMs can be taken from the existing
+Gals Panic 2 set.
+
+*/
+
+ROM_START( galpansu )
+	ROM_REGION( 0x080000, REGION_CPU1, 0 ) /* SH-2 Code */
+	ROM_LOAD       ( "bios.u10",   0x000000, 0x080000, CRC(161fb79e) SHA1(dfb5517de3a14a94344e0f58bbe90b69c5cb5b57) ) /* Korea BIOS */
+
+	ROM_REGION32_BE( 0x200000, REGION_USER1, 0 ) /* SH-2 Code mapped at 0x04000000 */
+    ROM_LOAD16_BYTE( "su.u10",    0x000000, 0x100000, CRC(5ae66218) SHA1(c3f32603e1da945efb984ff99e1a30202e535773) )
+    ROM_LOAD16_BYTE( "su.u8",     0x000001, 0x100000, CRC(10977a03) SHA1(2ab95398d6b88d8819f368ee6104d7f8b485778d) )
+
+	/* the rest of the roms match Gals Panic S2, but are in different locations */
+	ROM_REGION( 0x1000000, REGION_GFX1, 0 )
+    ROM_LOAD( "24", 0x000000, 0x400000, CRC(294b2f14) SHA1(90cbd0acdaa2d89d208c28aae33ab57c03624089) )
+    ROM_LOAD( "20", 0x400000, 0x400000, CRC(f75c5a9a) SHA1(3919643cee6c88185a1aa3c58c5bc80599bf734e) )
+    ROM_LOAD( "17",  0x800000, 0x400000, CRC(25b4f56b) SHA1(f9a33d5ed54a04ecece3035e75508d191bbe74b1) )
+    ROM_LOAD( "32", 0xc00000, 0x400000, CRC(db6d4424) SHA1(0a88dafd0ee2490ff2ef39ce8eb1931c41bdda42) )
+
+	ROM_REGION( 0x800000, REGION_GFX2, ROMREGION_DISPOSE )
+    ROM_LOAD( "16", 0x000000, 0x400000, CRC(5caae1c0) SHA1(8f77e4cf018d7290b2d804cbff9fccf0bf4d2404) )
+    ROM_LOAD( "13",  0x400000, 0x400000, CRC(8d51f197) SHA1(19d2afab823ea179918e7bcbf4df2283e77570f0) )
+
+	ROM_REGION( 0x800000, REGION_GFX3, ROMREGION_ERASE00 ) /* Tiles Plane B */
+	/* First 0x040000 bytes (0x03ff Tiles) are RAM Based Tiles */
+	/* 0x040000 - 0x3fffff empty? */
+    ROM_LOAD( "7",  0x400000, 0x400000, CRC(58800a18) SHA1(5e6d55ecd12275662d6f59559e137b759f23fff6) )
+
+	ROM_REGION( 0x400000, REGION_SOUND1, 0 ) /* Samples */
+      ROM_LOAD( "4",  0x000000, 0x400000, CRC(0348e8e1) SHA1(8a21c7e5cea0bc08a2595213d689c58c0251fdb5) )
+ROM_END
+
 
 ROM_START( gutsn )
 	ROM_REGION( 0x080000, REGION_CPU1, 0 ) /* SH-2 Code */
@@ -1604,6 +1651,7 @@ GAME( 1996, galpani4, skns,    skns, cyvern,   galpani4, ROT0,  "Kaneko", "Gals 
 GAME( 1997, galpanis, skns,    skns, galpanis, galpanis, ROT0,  "Kaneko", "Gals Panic S - Extra Edition (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1998, cyvern,   skns,    skns, cyvern,   cyvern,   ROT90, "Kaneko", "Cyvern (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1999, galpans2, skns,    skns, galpanis, galpans2, ROT0,  "Kaneko", "Gals Panic S2 (Japan)", GAME_IMPERFECT_GRAPHICS )
+GAME( 1999, galpansu, galpans2,skns, galpanis, galpans2, ROT0,  "Kaneko", "Gals Panic SU (Korea)", GAME_IMPERFECT_GRAPHICS ) // official or hack?
 GAME( 1999, panicstr, skns,    skns, galpanis, panicstr, ROT0,  "Kaneko", "Panic Street (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 1999, senknow , skns,    skns, skns,     senknow,  ROT0,  "Kaneko / Kouyousha", "Sen-Know (Japan)", GAME_IMPERFECT_GRAPHICS )
 GAME( 2000, gutsn,    skns,    skns, skns,     gutsn,    ROT0,  "Kaneko / Kouyousha", "Guts'n (Japan)", GAME_IMPERFECT_GRAPHICS ) // quite fragile, started working of it's own accord in 0.69 :)

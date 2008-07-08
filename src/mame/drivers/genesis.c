@@ -12,7 +12,6 @@ segac2.c
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "genesis.h"
 
 #define MASTER_CLOCK		53693100
@@ -140,10 +139,10 @@ INTERRUPT_GEN( genesis_vblank_interrupt )
 
 
 /* interrupt callback to generate the YM3438 interrupt */
-void genesis_irq2_interrupt(int state)
+void genesis_irq2_interrupt(running_machine *machine, int state)
 {
 	irq2_int = state;
-	update_interrupts(Machine);
+	update_interrupts(machine);
 }
 
 
@@ -319,8 +318,8 @@ READ16_HANDLER ( megaplay_68k_to_z80_r )
 	if ((offset >= 0x2000) && (offset <= 0x3fff))
 	{
 		offset &=0x1fff;
-//      if(offset == 0)
-//          return (input_port_read_indexed(machine, 8) << 8) ^ 0xff00;
+//      if(offset == 0)     /* this read handler was used around MAME0.82 to read DSWB. Now it's (DSW0 & 0xff) */
+//          return (input_port_read(machine, "DSW0") << 8) ^ 0xff00;
 		return (ic36_ram[offset] << 8) + ic36_ram[offset+1];
 	}
 
@@ -445,136 +444,8 @@ $A1001F Port C serial control
 
 UINT16 *genesis_io_ram;
 
-READ16_HANDLER ( genesis_io_r )
-{
-	/* 8-bit only, data is mirrored in both halves */
-
-	UINT8 return_value = 0;
-
-	switch (offset)
-	{
-		case 0:
-		/* Charles MacDonald ( http://cgfm2.emuviews.com/ )
-            D7 : Console is 1= Export (USA, Europe, etc.) 0= Domestic (Japan)
-            D6 : Video type is 1= PAL, 0= NTSC
-            D5 : Sega CD unit is 1= not present, 0= connected.
-            D4 : Unused (always returns zero)
-            D3 : Bit 3 of version number
-            D2 : Bit 2 of version number
-            D1 : Bit 1 of version number
-            D0 : Bit 0 of version number
-        */
-			return_value = 0x80; /* ? megatech is usa? */
-			break;
-
-		case 1: /* port A data (joypad 1) */
-
-			if (genesis_io_ram[offset] & 0x40)
-			{
-				int iport = input_port_read_indexed(machine, 9);
-				return_value = iport & 0x3f;
-			}
-			else
-			{
-				int iport1 = input_port_read_indexed(machine, 12);
-				int iport2 = input_port_read_indexed(machine, 7) >> 1;
-				return_value = (iport1 & 0x10) + (iport2 & 0x20);
-				if(iport1 & 0x10 || iport2 & 0x20)
-					return_value+=1;
-			}
-
-			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
-//          logerror ("reading joypad 1 , type %02x %02x\n",genesis_io_ram[offset] & 0x80, return_value &0x7f);
-			if(bios_ctrl_inputs & 0x04) return_value = 0xff;
-			break;
-
-		case 2: /* port B data (joypad 2) */
-
-			if (genesis_io_ram[offset] & 0x40)
-			{
-				int iport1 = (input_port_read_indexed(machine, 9) & 0xc0) >> 6;
-				int iport2 = (input_port_read_indexed(machine, 8) & 0x0f) << 2;
-				return_value = (iport1 + iport2) & 0x3f;
-			}
-			else
-			{
-				int iport1 = input_port_read_indexed(machine, 12) << 2;
-				int iport2 = input_port_read_indexed(machine, 7) >> 2;
-				return_value = (iport1 & 0x10) + (iport2 & 0x20);
-				if(iport1 & 0x10 || iport2 & 0x20)
-					return_value+=1;
-			}
-			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
-//          logerror ("reading joypad 2 , type %02x %02x\n",genesis_io_ram[offset] & 0x80, return_value &0x7f);
-			if(bios_ctrl_inputs & 0x04) return_value = 0xff;
-			break;
-
-		default:
-			return_value = 0xe0;
-
-	}
-	return return_value | return_value << 8;
-}
-
-READ16_HANDLER ( megaplay_genesis_io_r )
-{
-	/* 8-bit only, data is mirrored in both halves */
-
-	UINT8 return_value = 0;
-
-	switch (offset)
-	{
-		case 0:
-		/* Charles MacDonald ( http://cgfm2.emuviews.com/ )
-            D7 : Console is 1= Export (USA, Europe, etc.) 0= Domestic (Japan)
-            D6 : Video type is 1= PAL, 0= NTSC
-            D5 : Sega CD unit is 1= not present, 0= connected.
-            D4 : Unused (always returns zero)
-            D3 : Bit 3 of version number
-            D2 : Bit 2 of version number
-            D1 : Bit 1 of version number
-            D0 : Bit 0 of version number
-        */
-			return_value = 0x80; /* ? megatech is usa? */
-			break;
-
-		case 1: /* port A data (joypad 1) */
-
-			if (genesis_io_ram[offset] & 0x40)
-				return_value = input_port_read_indexed(machine, 1) & (genesis_io_ram[4]^0xff);
-			else
-			{
-				return_value = input_port_read_indexed(machine, 2) & (genesis_io_ram[4]^0xff);
-				return_value |= input_port_read_indexed(machine, 1) & 0x03;
-			}
-			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
-//          logerror ("reading joypad 1 , type %02x %02x\n",genesis_io_ram[offset] & 0xb0, return_value &0x7f);
-			break;
-
-		case 2: /* port B data (joypad 2) */
-
-			if (genesis_io_ram[offset] & 0x40)
-				return_value = input_port_read_indexed(machine, 3) & (genesis_io_ram[5]^0xff);
-			else
-			{
-				return_value = input_port_read_indexed(machine, 4) & (genesis_io_ram[5]^0xff);
-				return_value |= input_port_read_indexed(machine, 3) & 0x03;
-			}
-			return_value = (genesis_io_ram[offset] & 0x80) | return_value;
-//          logerror ("reading joypad 2 , type %02x %02x\n",genesis_io_ram[offset] & 0xb0, return_value &0x7f);
-			break;
-
-//      case 3: /* port C data */
-//          return_value = bios_6402 << 3;
-//          break;
-
-	default:
-			return_value = genesis_io_ram[offset];
-
-	}
-	return return_value | return_value << 8;
-}
-
+/* This handler is still used in hshavoc.c & topshoot.c ;   */
+/* megaplay.c uses a local copy 'OLD_megaplay_genesis_io_w' */
 WRITE16_HANDLER ( genesis_io_w )
 {
 //  logerror ("write io offset :%02x data %04x PC: 0x%06x\n",offset,data,activecpu_get_previouspc());
@@ -755,7 +626,7 @@ READ8_HANDLER ( genesis_z80_bank_r )
 	logerror("z80 read from address %x\n", address);
 
 	/* Read the data out of the 68k ROM */
-	if (address < 0x400000) return memory_region(REGION_CPU1)[BYTE_XOR(address)];
+	if (address < 0x400000) return memory_region(machine, REGION_CPU1)[BYTE_XOR(address)];
 	/* else read the data out of the 68k RAM */
 //  else if (address > 0xff0000) return genesis_68k_ram[BYTE_XOR(offset)];
 

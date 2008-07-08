@@ -8,6 +8,7 @@ Preliminary driver by:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "video/konamiic.h"
 #include "sound/2151intf.h"
@@ -80,10 +81,12 @@ static WRITE8_HANDLER( gbusters_coin_counter_w )
 	/* other bits unused/unknown */
 	if (data & 0xf8)
 	{
+#if 0
 		char baf[40];
-		logerror("%04x: (ccount) write %02x\n",activecpu_get_pc(), data);
 		sprintf(baf,"ccnt = %02x", data);
-//      popmessage(baf);
+		popmessage(baf);
+#endif
+		logerror("%04x: (ccount) write %02x\n",activecpu_get_pc(), data);
 	}
 }
 
@@ -416,7 +419,7 @@ ROM_END
 
 static void gbusters_banking( int lines )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(Machine, REGION_CPU1);
 	int offs = 0x10000;
 
 	/* bits 0-3 ROM bank */
@@ -433,7 +436,7 @@ static void gbusters_banking( int lines )
 
 static MACHINE_RESET( gbusters )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)gbusters_banking);
 

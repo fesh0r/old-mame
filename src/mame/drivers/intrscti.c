@@ -12,11 +12,10 @@ I've not had a chance to wire up the board yet, but it might be possible to writ
 */
 
 #include "driver.h"
-#include "deprecat.h"
 
 static READ8_HANDLER( unk_r )
 {
-	return mame_rand(Machine);
+	return mame_rand(machine);
 }
 
 static UINT8 *intrscti_ram;
@@ -127,7 +126,7 @@ ROM_END
 
 static DRIVER_INIT( intrscti )
 {
-	UINT8 *cpu = memory_region( REGION_CPU1 );
+	UINT8 *cpu = memory_region( machine, REGION_CPU1 );
 	int i;
 	for (i=0x8000;i<0x8fff;i++)
 	{

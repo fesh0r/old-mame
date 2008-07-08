@@ -88,7 +88,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/ticket.h"
 #include "cpu/m6809/m6809.h"
 #include "capbowl.h"
@@ -111,7 +110,7 @@ static UINT8 last_trackball_val[2];
 
 static INTERRUPT_GEN( capbowl_interrupt )
 {
-	if (input_port_read_indexed(machine, 4) & 1)	/* get status of the F2 key */
+	if (input_port_read(machine, "SERVICE") & 1)						/* get status of the F2 key */
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);	/* trigger self test */
 }
 
@@ -150,7 +149,7 @@ static MACHINE_RESET( capbowl )
 static WRITE8_HANDLER( capbowl_rom_select_w )
 {
 	int bankaddress = ((data & 0x0c) << 13) + ((data & 0x01) << 14);
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x10000 + bankaddress);
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x10000 + bankaddress);
 }
 
 
@@ -163,21 +162,21 @@ static WRITE8_HANDLER( capbowl_rom_select_w )
 
 static READ8_HANDLER( track_0_r )
 {
-	return (input_port_read_indexed(machine, 0) & 0xf0) | ((input_port_read_indexed(machine, 2) - last_trackball_val[0]) & 0x0f);
+	return (input_port_read(machine, "IN0") & 0xf0) | ((input_port_read(machine, "TRACKY") - last_trackball_val[0]) & 0x0f);
 }
 
 
 static READ8_HANDLER( track_1_r )
 {
-	return (input_port_read_indexed(machine, 1) & 0xf0) | ((input_port_read_indexed(machine, 3) - last_trackball_val[1]) & 0x0f);
+	return (input_port_read(machine, "IN1") & 0xf0) | ((input_port_read(machine, "TRACKX") - last_trackball_val[1]) & 0x0f);
 }
 
 
 static WRITE8_HANDLER( track_reset_w )
 {
 	/* reset the trackball counters */
-	last_trackball_val[0] = input_port_read_indexed(machine, 2);
-	last_trackball_val[1] = input_port_read_indexed(machine, 3);
+	last_trackball_val[0] = input_port_read(machine, "TRACKY");
+	last_trackball_val[1] = input_port_read(machine, "TRACKX");
 
 	watchdog_reset_w(machine, offset, data);
 }
@@ -205,9 +204,9 @@ static WRITE8_HANDLER( capbowl_sndcmd_w )
  *
  *************************************/
 
-static void firqhandler(int irq)
+static void firqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1, 1, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, 1, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -294,7 +293,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( capbowl )
-	PORT_START	/* IN0 */
+	PORT_START_TAG("IN0")	/* IN0 */
 	/* low 4 bits are for the trackball */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_COCKTAIL
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_COCKTAIL
@@ -303,20 +302,20 @@ static INPUT_PORTS_START( capbowl )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START	/* IN1 */
+	PORT_START_TAG("IN1")	/* IN1 */
 	/* low 4 bits are for the trackball */
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-	PORT_START	/* FAKE */
+	PORT_START_TAG("TRACKY")	/* FAKE */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(20) PORT_KEYDELTA(40) PORT_REVERSE
 
-	PORT_START	/* FAKE */
+	PORT_START_TAG("TRACKX")	/* FAKE */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(20) PORT_KEYDELTA(40)
 
-	PORT_START	/* FAKE */
+	PORT_START_TAG("SERVICE")	/* FAKE */
 	/* This fake input port is used to get the status of the F2 key, */
 	/* and activate the test mode, which is triggered by a NMI */
 	PORT_SERVICE_NO_TOGGLE( 0x01, IP_ACTIVE_HIGH )

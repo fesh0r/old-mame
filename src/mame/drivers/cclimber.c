@@ -466,7 +466,7 @@ static INPUT_PORTS_START( cclimber )
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Unknown ) )		// Look code at 0x03c4 : 0x8076 is never tested !
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x04, DEF_STR( On ) )
-	PORT_BIT(    0x08, 0x00, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x08, 0x00, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
@@ -497,7 +497,7 @@ static INPUT_PORTS_START( cclimbrj )
 	PORT_DIPNAME( 0x04, 0x00, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x00, "30000" )
 	PORT_DIPSETTING(    0x04, "50000" )
-	PORT_BIT(    0x08, 0x00, IPT_DIPSWITCH_NAME ) PORT_NAME("Rack Test (Cheat)") PORT_CODE(KEYCODE_F1)
+	PORT_DIPNAME( 0x08, 0x00, "Rack Test (Cheat)" ) PORT_CODE(KEYCODE_F1)
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x08, DEF_STR( On ) )
 	PORT_DIPNAME( 0x30, 0x00, DEF_STR( Coin_A ) )
@@ -826,7 +826,7 @@ static INPUT_PORTS_START( guzzler )
 	PORT_DIPSETTING(    0xc0, DEF_STR( 1C_6C ) )
 
 	PORT_START_TAG("DSW1")
-	PORT_BIT( 0xf0, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Cabinet ) )
 	PORT_DIPSETTING(    0x10, DEF_STR( Upright ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Cocktail ) )
@@ -1991,13 +1991,13 @@ ROM_END
 
 static DRIVER_INIT( yamato )
 {
-	yamato_decode();
+	yamato_decode(machine);
 }
 
 
 static DRIVER_INIT( toprollr )
 {
-	toprollr_decode();
+	toprollr_decode(machine);
 }
 
 

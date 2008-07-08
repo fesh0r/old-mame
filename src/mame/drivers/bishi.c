@@ -159,17 +159,17 @@ static WRITE16_HANDLER( bishi_sound_w )
 
 static READ16_HANDLER( dipsw_r )	// dips
 {
-	return input_port_read_indexed(machine, 1) | (input_port_read_indexed(machine, 5)<<8);
+	return input_port_read(machine, "DSW0") | (input_port_read(machine, "DSW1")<<8);
 }
 
 static READ16_HANDLER( player1_r ) 	// players 1 and 3
 {
-	return 0xff | (input_port_read_indexed(machine, 2)<<8);
+	return 0xff | (input_port_read(machine, "IN2")<<8);
 }
 
 static READ16_HANDLER( player2_r )	// players 2 and 4
 {
-	return input_port_read_indexed(machine, 3) | (input_port_read_indexed(machine, 4)<<8);
+	return input_port_read(machine, "IN3") | (input_port_read(machine, "IN4")<<8);
 }
 
 static READ16_HANDLER( bishi_K056832_rom_r )
@@ -321,12 +321,12 @@ static MACHINE_RESET( bishi )
 {
 }
 
-static void sound_irq_gen(int state)
+static void sound_irq_gen(running_machine *machine, int state)
 {
 	if (state)
-		cpunum_set_input_line(Machine, 0, MC68000_IRQ_1, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, MC68000_IRQ_1, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, MC68000_IRQ_1, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, MC68000_IRQ_1, CLEAR_LINE);
 }
 
 static const struct YMZ280Binterface ymz280b_intf =

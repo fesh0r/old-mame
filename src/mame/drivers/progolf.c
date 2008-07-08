@@ -42,18 +42,7 @@ Twenty four 8116 rams.
 #include "driver.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/ay8910.h"
-
-extern UINT8 *deco_charram;
-
-PALETTE_INIT( btime );
-VIDEO_START( btime );
-VIDEO_UPDATE( progolf );
-
-READ8_HANDLER( btime_mirrorvideoram_r );
-WRITE8_HANDLER( btime_mirrorvideoram_w );
-
-WRITE8_HANDLER( deco_charram_w );
-
+#include "includes/btime.h"
 
 static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x0fff) AM_RAM
@@ -64,7 +53,7 @@ static ADDRESS_MAP_START( main_cpu, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x9200, 0x9200) AM_WRITENOP
 	AM_RANGE(0x9400, 0x9400) AM_WRITENOP
 	AM_RANGE(0x9600, 0x9600) AM_WRITENOP
-	AM_RANGE(0x9600, 0x9600) AM_READ(input_port_0_r)     /* VBLANK */
+	AM_RANGE(0x9600, 0x9600) AM_READ_PORT("IN0")     /* VBLANK */
 	AM_RANGE(0x9800, 0x9800) AM_READNOP
 	AM_RANGE(0x9800, 0x9801) AM_WRITENOP
 	AM_RANGE(0x9a00, 0x9a00) AM_WRITENOP
@@ -96,7 +85,7 @@ ADDRESS_MAP_END
 #endif
 
 static INPUT_PORTS_START( progolf )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -106,7 +95,7 @@ static INPUT_PORTS_START( progolf )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	/* */
 
 	PORT_START_TAG("IN2")
@@ -193,7 +182,7 @@ GFXDECODE_END
 #ifdef UNUSED_FUNCTION
 static INTERRUPT_GEN( progolf_interrupt )
 {
-	//if (input_port_read_indexed(machine, 2) & 0xc0)
+	//if (input_port_read(machine, "IN2") & 0xc0)
 		cpunum_set_input_line(machine, 0, /*0*/INPUT_LINE_NMI, /*HOLD_LINE*/PULSE_LINE);
 }
 #endif
@@ -283,7 +272,7 @@ ROM_END
 static DRIVER_INIT( progolf )
 {
 	int A;
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 	UINT8* decrypted = auto_malloc(0x10000);
 
 	memory_set_decrypted_region(0,0x0000,0xffff, decrypted);

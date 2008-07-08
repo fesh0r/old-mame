@@ -69,7 +69,6 @@ Versions known to exist but not dumped:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/eeprom.h"
 #include "machine/nmk112.h"
 #include "cpu/z80/z80.h"
@@ -78,6 +77,8 @@ Versions known to exist but not dumped:
 #include "sound/2151intf.h"
 #include "sound/okim6295.h"
 #include "sound/ymz280b.h"
+
+extern UINT16 *cave_spriteram16_2;
 
 /***************************************************************************
 
@@ -93,6 +94,7 @@ static UINT8 vblank_irq;
 static UINT8 sound_irq;
 static UINT8 unknown_irq;
 static UINT8 agallet_vblank_irq;
+
 
 /* Update the IRQ state based on all possible causes */
 static void update_irq_state(running_machine *machine)
@@ -129,10 +131,10 @@ static INTERRUPT_GEN( cave_interrupt )
 }
 
 /* Called by the YMZ280B to set the IRQ state */
-static void sound_irq_gen(int state)
+static void sound_irq_gen(running_machine *machine, int state)
 {
 	sound_irq = (state != 0);
-	update_irq_state(Machine);
+	update_irq_state(machine);
 }
 
 
@@ -162,7 +164,7 @@ static READ16_HANDLER( cave_irq_cause_r )
 	if (offset == 4/2)	vblank_irq = 0;
 	if (offset == 6/2)	unknown_irq = 0;
 
-	update_irq_state(Machine);
+	update_irq_state(machine);
 
 /*
     sailormn and agallet wait for bit 2 of $b80001 to go 1 -> 0.
@@ -309,19 +311,9 @@ static const UINT8 *cave_default_eeprom;
 static int cave_default_eeprom_length;
 static int cave_region_byte;
 
-static READ16_HANDLER( cave_input1_r )
-{
-	return input_port_read_indexed(machine, 1) | ((EEPROM_read_bit() & 0x01) << 11);
-}
-
-static READ16_HANDLER( guwange_input1_r )
-{
-	return input_port_read_indexed(machine, 1) | ((EEPROM_read_bit() & 0x01) << 7);
-}
-
 static READ16_HANDLER( gaia_dsw_r )
 {
-	return input_port_read_indexed(machine, 2) | (input_port_read_indexed(machine, 3) << 8);
+	return input_port_read(machine, "DSW1") | (input_port_read(machine, "DSW2") << 8);
 }
 
 static WRITE16_HANDLER( cave_eeprom_msb_w )
@@ -337,13 +329,13 @@ static WRITE16_HANDLER( cave_eeprom_msb_w )
 		coin_counter_w(0, data & 0x1000);
 
 		// latch the bit
-		EEPROM_write_bit(data & 0x0800);
+		eeprom_write_bit(data & 0x0800);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x0400) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x0400) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -358,13 +350,13 @@ static WRITE16_HANDLER( hotdogst_eeprom_msb_w )
 	if ( ACCESSING_BITS_8_15 )  // even address
 	{
 		// latch the bit
-		EEPROM_write_bit(data & 0x0800);
+		eeprom_write_bit(data & 0x0800);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x0400) ? CLEAR_LINE: ASSERT_LINE );
+		eeprom_set_clock_line((data & 0x0400) ? CLEAR_LINE: ASSERT_LINE );
 	}
 }
 
@@ -381,13 +373,13 @@ static WRITE16_HANDLER( cave_eeprom_lsb_w )
 		coin_counter_w(0, data & 0x0001);
 
 		// latch the bit
-		EEPROM_write_bit(data & 0x80);
+		eeprom_write_bit(data & 0x80);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x20) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x20) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x40) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x40) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -416,13 +408,13 @@ static WRITE16_HANDLER( metmqstr_eeprom_msb_w )
 		if (~data & 0x0100)
 		{
 			// latch the bit
-			EEPROM_write_bit(data & 0x0800);
+			eeprom_write_bit(data & 0x0800);
 
 			// reset line asserted: reset.
-			EEPROM_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE );
+			eeprom_set_cs_line((data & 0x0200) ? CLEAR_LINE : ASSERT_LINE );
 
 			// clock line asserted: write latch or select next bit to read
-			EEPROM_set_clock_line((data & 0x0400) ? ASSERT_LINE : CLEAR_LINE );
+			eeprom_set_clock_line((data & 0x0400) ? ASSERT_LINE : CLEAR_LINE );
 		}
 	}
 }
@@ -430,21 +422,21 @@ static WRITE16_HANDLER( metmqstr_eeprom_msb_w )
 static NVRAM_HANDLER( cave )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);
+		eeprom_init(&eeprom_interface_93C46);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			if (cave_default_eeprom)	/* Set the EEPROM to Factory Defaults */
-				EEPROM_set_data(cave_default_eeprom,cave_default_eeprom_length);
+				eeprom_set_data(cave_default_eeprom,cave_default_eeprom_length);
 		}
 	}
 }
 
-static const struct EEPROM_interface eeprom_interface_93C46_8bit =
+static const eeprom_interface eeprom_interface_93C46_8bit =
 {
 	7,				// address bits 7
 	8,				// data bits    8
@@ -461,16 +453,16 @@ static const struct EEPROM_interface eeprom_interface_93C46_8bit =
 static NVRAM_HANDLER( korokoro )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46_8bit);
+		eeprom_init(&eeprom_interface_93C46_8bit);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			if (cave_default_eeprom)	/* Set the EEPROM to Factory Defaults */
-				EEPROM_set_data(cave_default_eeprom,cave_default_eeprom_length);
+				eeprom_set_data(cave_default_eeprom,cave_default_eeprom_length);
 		}
 	}
 }
@@ -507,7 +499,7 @@ static ADDRESS_MAP_START( dfeveron_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0x900000, 0x900005) AM_READ(SMH_RAM				)	// Layer 0 Control
 /**/AM_RANGE(0xa00000, 0xa00005) AM_READ(SMH_RAM				)	// Layer 1 Control
 	AM_RANGE(0xb00000, 0xb00001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xb00002, 0xb00003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0xb00002, 0xb00003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( dfeveron_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -515,7 +507,7 @@ static ADDRESS_MAP_START( dfeveron_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM						)	// RAM
 	AM_RANGE(0x300000, 0x300003) AM_WRITE(cave_sound_w					)	// YMZ280
 	AM_RANGE(0x400000, 0x407fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM						)	// Sprites?
+	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0	)	// Layer 0
 	AM_RANGE(0x600000, 0x607fff) AM_WRITE(cave_vram_1_w) AM_BASE(&cave_vram_1	)	// Layer 1
 	AM_RANGE(0x708000, 0x708fff) AM_WRITE(SMH_RAM) AM_BASE(&paletteram16) AM_SIZE(&cave_paletteram_size)	// Palette
@@ -546,7 +538,7 @@ static ADDRESS_MAP_START( ddonpach_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0xb00000, 0xb00005) AM_READ(SMH_RAM				)	// Layer 2 Control
 /**/AM_RANGE(0xc00000, 0xc0ffff) AM_READ(SMH_RAM				)	// Palette
 	AM_RANGE(0xd00000, 0xd00001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xd00002, 0xd00003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0xd00002, 0xd00003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ddonpach_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -554,7 +546,7 @@ static ADDRESS_MAP_START( ddonpach_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM							)	// RAM
 	AM_RANGE(0x300000, 0x300003) AM_WRITE(cave_sound_w						)	// YMZ280
 	AM_RANGE(0x400000, 0x407fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM							)	// Sprites?
+	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0	)	// Layer 0
 	AM_RANGE(0x600000, 0x607fff) AM_WRITE(cave_vram_1_w) AM_BASE(&cave_vram_1	)	// Layer 1
 	AM_RANGE(0x700000, 0x70ffff) AM_WRITE(cave_vram_2_8x8_w) AM_BASE(&cave_vram_2	)	// Layer 2
@@ -612,7 +604,7 @@ static ADDRESS_MAP_START( donpachi_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xb00000, 0xb00001) AM_READ(OKIM6295_status_0_lsb_r	)	// M6295
 	AM_RANGE(0xb00010, 0xb00011) AM_READ(OKIM6295_status_1_lsb_r	)	//
 	AM_RANGE(0xc00000, 0xc00001) AM_READ(input_port_0_word_r		)	// Inputs
-	AM_RANGE(0xc00002, 0xc00003) AM_READ(cave_input1_r				)	// Inputs + EEPROM
+	AM_RANGE(0xc00002, 0xc00003) AM_READ(input_port_1_word_r		)	// Inputs + EEPROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( donpachi_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -622,7 +614,7 @@ static ADDRESS_MAP_START( donpachi_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x300000, 0x307fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0	)	// Layer 0
 	AM_RANGE(0x400000, 0x407fff) AM_WRITE(cave_vram_2_8x8_w) AM_BASE(&cave_vram_2	)	// Layer 2
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x508000, 0x50ffff) AM_WRITE(SMH_RAM							)	// Sprites?
+	AM_RANGE(0x508000, 0x50ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0x600000, 0x600005) AM_WRITE(SMH_RAM) AM_BASE(&cave_vctrl_1			)	// Layer 1 Control
 	AM_RANGE(0x700000, 0x700005) AM_WRITE(SMH_RAM) AM_BASE(&cave_vctrl_0			)	// Layer 0 Control
 	AM_RANGE(0x800000, 0x800005) AM_WRITE(SMH_RAM) AM_BASE(&cave_vctrl_2			)	// Layer 2 Control
@@ -654,7 +646,7 @@ static ADDRESS_MAP_START( esprade_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0xb00000, 0xb00005) AM_READ(SMH_RAM				)	// Layer 2 Control
 /**/AM_RANGE(0xc00000, 0xc0ffff) AM_READ(SMH_RAM				)	// Palette
 	AM_RANGE(0xd00000, 0xd00001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xd00002, 0xd00003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0xd00002, 0xd00003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( esprade_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -662,7 +654,7 @@ static ADDRESS_MAP_START( esprade_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM						)	// RAM
 	AM_RANGE(0x300000, 0x300003) AM_WRITE(cave_sound_w					)	// YMZ280
 	AM_RANGE(0x400000, 0x407fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM						)	// Sprites?
+	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)	// Sprites?
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0	)	// Layer 0
 	AM_RANGE(0x600000, 0x607fff) AM_WRITE(cave_vram_1_w) AM_BASE(&cave_vram_1	)	// Layer 1
 	AM_RANGE(0x700000, 0x707fff) AM_WRITE(cave_vram_2_w) AM_BASE(&cave_vram_2	)	// Layer 2
@@ -706,7 +698,7 @@ static ADDRESS_MAP_START( gaia_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM						)	// RAM
 	AM_RANGE(0x300000, 0x300003) AM_WRITE(cave_sound_w					)	// YMZ280
 	AM_RANGE(0x400000, 0x407fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprite bank 1
-	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM						)	// Sprite bank 2
+	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2) // Sprite bank 2
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0	)	// Layer 0
 	AM_RANGE(0x508000, 0x50ffff) AM_WRITE(SMH_RAM						)	// More Layer 0, Tested but not used?
 	AM_RANGE(0x600000, 0x607fff) AM_WRITE(cave_vram_1_w) AM_BASE(&cave_vram_1	)	// Layer 1
@@ -742,7 +734,7 @@ static ADDRESS_MAP_START( guwange_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0xb00000, 0xb00005) AM_READ(SMH_RAM				)	// Layer 2 Control
 /**/AM_RANGE(0xc00000, 0xc0ffff) AM_READ(SMH_RAM				)	// Palette
 	AM_RANGE(0xd00010, 0xd00011) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xd00012, 0xd00013) AM_READ(guwange_input1_r		)	// Inputs + EEPROM
+	AM_RANGE(0xd00012, 0xd00013) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( guwange_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -750,7 +742,7 @@ static ADDRESS_MAP_START( guwange_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x200000, 0x20ffff) AM_WRITE(SMH_RAM						)	// RAM
 	AM_RANGE(0x300000, 0x30007f) AM_WRITE(SMH_RAM) AM_BASE(&cave_videoregs	)	// Video Regs
 	AM_RANGE(0x400000, 0x407fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM						)	// Sprites?
+	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0	)	// Layer 0
 	AM_RANGE(0x600000, 0x607fff) AM_WRITE(cave_vram_1_w) AM_BASE(&cave_vram_1	)	// Layer 1
 	AM_RANGE(0x700000, 0x707fff) AM_WRITE(cave_vram_2_w) AM_BASE(&cave_vram_2	)	// Layer 2
@@ -782,7 +774,7 @@ static ADDRESS_MAP_START( hotdogst_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0xb80000, 0xb80005) AM_READ(SMH_RAM				)	// Layer 1 Control
 /**/AM_RANGE(0xc00000, 0xc00005) AM_READ(SMH_RAM				)	// Layer 2 Control
 	AM_RANGE(0xc80000, 0xc80001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xc80002, 0xc80003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0xc80002, 0xc80003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 /**/AM_RANGE(0xf00000, 0xf07fff) AM_READ(SMH_RAM				)	// Sprites
 /**/AM_RANGE(0xf08000, 0xf0ffff) AM_READ(SMH_RAM				)	// Sprites?
 ADDRESS_MAP_END
@@ -802,7 +794,7 @@ static ADDRESS_MAP_START( hotdogst_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(hotdogst_eeprom_msb_w			)	// EEPROM
 	AM_RANGE(0xd00002, 0xd00003) AM_WRITE(SMH_NOP						)	// ???
 	AM_RANGE(0xf00000, 0xf07fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0xf08000, 0xf0ffff) AM_WRITE(SMH_RAM						)	// Sprites?
+	AM_RANGE(0xf08000, 0xf0ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 ADDRESS_MAP_END
 
 
@@ -858,24 +850,19 @@ static WRITE16_HANDLER( korokoro_eeprom_msb_w )
 		hopper = data & 0x0100;	// ???
 
 		// latch the bit
-		EEPROM_write_bit(data & 0x4000);
+		eeprom_write_bit(data & 0x4000);
 
 		// reset line asserted: reset.
-		EEPROM_set_cs_line((data & 0x1000) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_set_cs_line((data & 0x1000) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		EEPROM_set_clock_line((data & 0x2000) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line((data & 0x2000) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
-static READ16_HANDLER( korokoro_input0_r )
+static CUSTOM_INPUT( korokoro_hopper_r )
 {
-	return input_port_read_indexed(machine, 0) | (hopper ? 0 : 0x8000);
-}
-
-static READ16_HANDLER( korokoro_input1_r )
-{
-	return input_port_read_indexed(machine, 1) | ((EEPROM_read_bit() & 0x01) << 12);
+	return hopper ? 1 : 0;
 }
 
 static ADDRESS_MAP_START( korokoro_readmem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -886,8 +873,8 @@ static ADDRESS_MAP_START( korokoro_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x1c0000, 0x1c0007) AM_READ( cave_irq_cause_r		)	// IRQ Cause
 //  AM_RANGE(0x200000, 0x207fff) AM_READ( SMH_RAM             )   // Palette
 //  AM_RANGE(0x240000, 0x240003) AM_READ( cave_sound_r          )   // YMZ280
-	AM_RANGE(0x280000, 0x280001) AM_READ( korokoro_input0_r		)	// Inputs + ???
-	AM_RANGE(0x280002, 0x280003) AM_READ( korokoro_input1_r		)	// Inputs + EEPROM
+	AM_RANGE(0x280000, 0x280001) AM_READ( input_port_0_word_r	)	// Inputs + ???
+	AM_RANGE(0x280002, 0x280003) AM_READ( input_port_1_word_r	)	// Inputs + EEPROM
 	AM_RANGE(0x300000, 0x30ffff) AM_READ( SMH_RAM				)	// RAM
 ADDRESS_MAP_END
 
@@ -922,7 +909,7 @@ static ADDRESS_MAP_START( mazinger_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0x600000, 0x600005) AM_READ(SMH_RAM				)	// Layer 1 Control
 /**/AM_RANGE(0x700000, 0x700005) AM_READ(SMH_RAM				)	// Layer 0 Control
 	AM_RANGE(0x800000, 0x800001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0x800002, 0x800003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0x800002, 0x800003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 /**/AM_RANGE(0xc08000, 0xc0ffff) AM_READ(SMH_RAM				)	// Palette
 	AM_RANGE(0xd00000, 0xd7ffff) AM_READ(SMH_BANK1			)	// ROM
 ADDRESS_MAP_END
@@ -931,7 +918,7 @@ static ADDRESS_MAP_START( mazinger_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x07ffff) AM_WRITE(SMH_ROM							)	// ROM
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM							)	// RAM
 	AM_RANGE(0x200000, 0x207fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x208000, 0x20ffff) AM_WRITE(SMH_RAM							)	// Sprites?
+	AM_RANGE(0x208000, 0x20ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0x300068, 0x300069) AM_WRITE(watchdog_reset16_w				)	// Watchdog
 	AM_RANGE(0x30006e, 0x30006f) AM_WRITE(sound_cmd_w						)	// To Sound CPU
 	AM_RANGE(0x300000, 0x30007f) AM_WRITE(SMH_RAM) AM_BASE(&cave_videoregs		)	// Video Regs
@@ -968,7 +955,7 @@ static ADDRESS_MAP_START( metmqstr_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0xb80000, 0xb80005) AM_READ(SMH_RAM				)	// Layer 1 Control
 /**/AM_RANGE(0xc00000, 0xc00005) AM_READ(SMH_RAM				)	// Layer 2 Control
 	AM_RANGE(0xc80000, 0xc80001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0xc80002, 0xc80003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0xc80002, 0xc80003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 	AM_RANGE(0xf00000, 0xf07fff) AM_READ(SMH_RAM				)	// Sprites
 	AM_RANGE(0xf08000, 0xf0ffff) AM_READ(SMH_RAM				)	// RAM
 ADDRESS_MAP_END
@@ -993,7 +980,7 @@ static ADDRESS_MAP_START( metmqstr_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xc00000, 0xc00005) AM_WRITE(SMH_RAM) AM_BASE(&cave_vctrl_0		)	// Layer 0 Control
 	AM_RANGE(0xd00000, 0xd00001) AM_WRITE(metmqstr_eeprom_msb_w			)	// EEPROM
 	AM_RANGE(0xf00000, 0xf07fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0xf08000, 0xf0ffff) AM_WRITE(SMH_RAM						)	// RAM
+	AM_RANGE(0xf08000, 0xf0ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 ADDRESS_MAP_END
 
 
@@ -1003,7 +990,7 @@ ADDRESS_MAP_END
 
 static READ16_HANDLER( pwrinst2_eeprom_r )
 {
-	return ~8 + ((EEPROM_read_bit() & 1) ? 8 : 0);
+	return ~8 + ((eeprom_read_bit() & 1) ? 8 : 0);
 }
 
 INLINE void vctrl_w(UINT16 *VCTRL, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT16 data, ATTR_UNUSED UINT16 mem_mask)
@@ -1058,7 +1045,7 @@ static ADDRESS_MAP_START( pwrinst2_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x900000, 0x907fff) AM_WRITE(cave_vram_1_w) AM_BASE(&cave_vram_1	)	// Layer 1
 	AM_RANGE(0x980000, 0x987fff) AM_WRITE(cave_vram_3_8x8_w) AM_BASE(&cave_vram_3	)	// Layer 3
 	AM_RANGE(0xa00000, 0xa07fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0xa08000, 0xa0ffff) AM_WRITE(SMH_RAM							)	// Sprites?
+	AM_RANGE(0xa08000, 0xa0ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0xa10000, 0xa1ffff) AM_WRITE(SMH_RAM							)	// Sprites?
 	AM_RANGE(0xa80000, 0xa8007f) AM_WRITE(SMH_RAM) AM_BASE(&cave_videoregs		)	// Video Regs
 	AM_RANGE(0xb00000, 0xb00005) AM_WRITE(pwrinst2_vctrl_2_w) AM_BASE(&cave_vctrl_2			)	// Layer 2 Control
@@ -1077,7 +1064,7 @@ ADDRESS_MAP_END
 static READ16_HANDLER( sailormn_input0_r )
 {
 //  watchdog_reset16_r(0,0);    // written too rarely for mame.
-	return input_port_read_indexed(machine, 0);
+	return input_port_read(machine, "IN0");
 }
 
 static READ16_HANDLER( agallet_irq_cause_r )
@@ -1107,7 +1094,7 @@ static ADDRESS_MAP_START( sailormn_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x508000, 0x50ffff) AM_READ(SMH_RAM				)	// Sprites?
 	AM_RANGE(0x510000, 0x510001) AM_READ(SMH_RAM				)	// (agallet)
 	AM_RANGE(0x600000, 0x600001) AM_READ(sailormn_input0_r		)	// Inputs + Watchdog!
-	AM_RANGE(0x600002, 0x600003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0x600002, 0x600003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 	AM_RANGE(0x800000, 0x887fff) AM_READ(SMH_RAM				)	// Layer 0
 	AM_RANGE(0x880000, 0x887fff) AM_READ(SMH_RAM				)	// Layer 1
 	AM_RANGE(0x900000, 0x907fff) AM_READ(SMH_RAM				)	// Layer 2
@@ -1130,7 +1117,7 @@ static ADDRESS_MAP_START( sailormn_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x40c000, 0x40ffff) AM_WRITE(SMH_RAM							)	// (agallet)
 	AM_RANGE(0x410000, 0x410001) AM_WRITE(SMH_RAM							)	// (agallet)
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x508000, 0x50ffff) AM_WRITE(SMH_RAM							)	// Sprites?
+	AM_RANGE(0x508000, 0x50ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0x510000, 0x510001) AM_WRITE(SMH_RAM							)	// (agallet)
 	AM_RANGE(0x700000, 0x700001) AM_WRITE(sailormn_eeprom_msb_w				)	// EEPROM
 	AM_RANGE(0x800000, 0x807fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0		)	// Layer 0
@@ -1160,7 +1147,7 @@ static ADDRESS_MAP_START( uopoko_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 /**/AM_RANGE(0x700000, 0x700005) AM_READ(SMH_RAM				)	// Layer 0 Control
 /**/AM_RANGE(0x800000, 0x80ffff) AM_READ(SMH_RAM				)	// Palette
 	AM_RANGE(0x900000, 0x900001) AM_READ(input_port_0_word_r	)	// Inputs
-	AM_RANGE(0x900002, 0x900003) AM_READ(cave_input1_r			)	// Inputs + EEPROM
+	AM_RANGE(0x900002, 0x900003) AM_READ(input_port_1_word_r	)	// Inputs + EEPROM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( uopoko_writemem, ADDRESS_SPACE_PROGRAM, 16 )
@@ -1168,7 +1155,7 @@ static ADDRESS_MAP_START( uopoko_writemem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x100000, 0x10ffff) AM_WRITE(SMH_RAM						)	// RAM
 	AM_RANGE(0x300000, 0x300003) AM_WRITE(cave_sound_w					)	// YMZ280
 	AM_RANGE(0x400000, 0x407fff) AM_WRITE(SMH_RAM) AM_BASE(&spriteram16) AM_SIZE(&spriteram_size	)	// Sprites
-	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM						)	// Sprites?
+	AM_RANGE(0x408000, 0x40ffff) AM_WRITE(SMH_RAM) AM_BASE(&cave_spriteram16_2)
 	AM_RANGE(0x500000, 0x507fff) AM_WRITE(cave_vram_0_w) AM_BASE(&cave_vram_0	)	// Layer 0
 	AM_RANGE(0x600000, 0x60007f) AM_WRITE(SMH_RAM) AM_BASE(&cave_videoregs	)	// Video Regs
 	AM_RANGE(0x700000, 0x700005) AM_WRITE(SMH_RAM) AM_BASE(&cave_vctrl_0		)	// Layer 0 Control
@@ -1192,7 +1179,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( hotdogst_rombank_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 	int bank = data & 0x0f;
 	if ( data & ~0x0f )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 1)	bank+=2;
@@ -1201,7 +1188,7 @@ static WRITE8_HANDLER( hotdogst_rombank_w )
 
 static WRITE8_HANDLER( hotdogst_okibank_w )
 {
-	UINT8 *RAM = memory_region(REGION_SOUND1);
+	UINT8 *RAM = memory_region(machine, REGION_SOUND1);
 	int bank1 = (data >> 0) & 0x3;
 	int bank2 = (data >> 4) & 0x3;
 	memcpy(RAM + 0x20000 * 0, RAM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1245,7 +1232,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( mazinger_rombank_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 	int bank = data & 0x07;
 	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 1)	bank+=2;
@@ -1289,7 +1276,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( metmqstr_rombank_w )
 {
-	UINT8 *ROM = memory_region(REGION_CPU2);
+	UINT8 *ROM = memory_region(machine, REGION_CPU2);
 	int bank = data & 0xf;
 	if ( bank != data )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank >= 2)	bank += 2;
@@ -1298,7 +1285,7 @@ static WRITE8_HANDLER( metmqstr_rombank_w )
 
 static WRITE8_HANDLER( metmqstr_okibank0_w )
 {
-	UINT8 *ROM = memory_region(REGION_SOUND1);
+	UINT8 *ROM = memory_region(machine, REGION_SOUND1);
 	int bank1 = (data >> 0) & 0x7;
 	int bank2 = (data >> 4) & 0x7;
 	memcpy(ROM + 0x20000 * 0, ROM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1307,7 +1294,7 @@ static WRITE8_HANDLER( metmqstr_okibank0_w )
 
 static WRITE8_HANDLER( metmqstr_okibank1_w )
 {
-	UINT8 *ROM = memory_region(REGION_SOUND2);
+	UINT8 *ROM = memory_region(machine, REGION_SOUND2);
 	int bank1 = (data >> 0) & 0x7;
 	int bank2 = (data >> 4) & 0x7;
 	memcpy(ROM + 0x20000 * 0, ROM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1352,7 +1339,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER( pwrinst2_rombank_w )
 {
-	UINT8 *ROM = memory_region(REGION_CPU2);
+	UINT8 *ROM = memory_region(machine, REGION_CPU2);
 	int bank = data & 0x07;
 	if ( data & ~0x07 )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 2)	bank+=1;
@@ -1410,7 +1397,7 @@ static WRITE8_HANDLER( mirror_ram_w )
 
 static WRITE8_HANDLER( sailormn_rombank_w )
 {
-	UINT8 *RAM = memory_region(REGION_CPU2);
+	UINT8 *RAM = memory_region(machine, REGION_CPU2);
 	int bank = data & 0x1f;
 	if ( data & ~0x1f )	logerror("CPU #1 - PC %04X: Bank %02X\n",activecpu_get_pc(),data);
 	if (bank > 1)	bank+=2;
@@ -1419,7 +1406,7 @@ static WRITE8_HANDLER( sailormn_rombank_w )
 
 static WRITE8_HANDLER( sailormn_okibank0_w )
 {
-	UINT8 *RAM = memory_region(REGION_SOUND1);
+	UINT8 *RAM = memory_region(machine, REGION_SOUND1);
 	int bank1 = (data >> 0) & 0xf;
 	int bank2 = (data >> 4) & 0xf;
 	memcpy(RAM + 0x20000 * 0, RAM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1428,7 +1415,7 @@ static WRITE8_HANDLER( sailormn_okibank0_w )
 
 static WRITE8_HANDLER( sailormn_okibank1_w )
 {
-	UINT8 *RAM = memory_region(REGION_SOUND2);
+	UINT8 *RAM = memory_region(machine, REGION_SOUND2);
 	int bank1 = (data >> 0) & 0xf;
 	int bank2 = (data >> 4) & 0xf;
 	memcpy(RAM + 0x20000 * 0, RAM + 0x40000 + 0x20000 * bank1, 0x20000);
@@ -1498,7 +1485,6 @@ static INPUT_PORTS_START( cave )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START1  )
-
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(6)
 	PORT_SERVICE_NO_TOGGLE(0x0200, IP_ACTIVE_LOW )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )	// sw? exit service mode
@@ -1517,11 +1503,10 @@ static INPUT_PORTS_START( cave )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_START2  )
-
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(6)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW,  IPT_SERVICE1)
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x0800, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom bit
+	PORT_BIT(  0x0800, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 	PORT_BIT(  0x1000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x2000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -1534,7 +1519,6 @@ static INPUT_PORTS_START( gaia )
 
 	PORT_MODIFY("IN0")	// IN0 - Player 1 + 2
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_BUTTON4 ) PORT_PLAYER(1)
-
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN	 ) PORT_PLAYER(2)
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(2)
@@ -1553,7 +1537,6 @@ static INPUT_PORTS_START( gaia )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0800, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1687,7 +1670,6 @@ static INPUT_PORTS_START( guwange )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_START2  )
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_UP	 ) PORT_PLAYER(2)
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
@@ -1705,8 +1687,7 @@ static INPUT_PORTS_START( guwange )
 	PORT_BIT(  0x0010, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
 	PORT_BIT(  0x0040, IP_ACTIVE_LOW,  IPT_UNKNOWN  )
-	PORT_BIT(  0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom bit
-
+	PORT_BIT(  0x0080, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1728,7 +1709,6 @@ static INPUT_PORTS_START( korokoro )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0040, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -1736,7 +1716,7 @@ static INPUT_PORTS_START( korokoro )
 	PORT_BIT(  0x1000, IP_ACTIVE_LOW, IPT_SERVICE2)	// service medal out?
 	PORT_SERVICE( 0x2000, IP_ACTIVE_LOW )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW, IPT_SERVICE1)	// service coin
-	PORT_BIT(  0x8000, IP_ACTIVE_HIGH, IPT_SPECIAL)	// motor / hopper status ???
+	PORT_BIT(  0x8000, IP_ACTIVE_LOW, IPT_SPECIAL)	PORT_CUSTOM(korokoro_hopper_r, NULL) // motor / hopper status ???
 
 	PORT_START_TAG("IN1")	// IN1
 	PORT_BIT(  0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -1747,12 +1727,11 @@ static INPUT_PORTS_START( korokoro )
 	PORT_BIT(  0x0020, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0040, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0080, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-
 	PORT_BIT(  0x0100, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0200, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0400, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x0800, IP_ACTIVE_LOW,  IPT_UNKNOWN )
-	PORT_BIT(  0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom bit
+	PORT_BIT(  0x1000, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 	PORT_BIT(  0x2000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x4000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT(  0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -1984,7 +1963,7 @@ static MACHINE_RESET( cave )
 	/* modify the eeprom on a reset with the desired region for the games that have the
        region factory set in eeprom */
 	if (cave_region_byte >= 0)
-		EEPROM_get_data_pointer(0)[cave_region_byte] =  input_port_read_indexed(machine, 2);
+		eeprom_get_data_pointer(0)[cave_region_byte] =  input_port_read(machine, "EEPROM");
 }
 
 static const struct YMZ280Binterface ymz280b_intf =
@@ -1993,9 +1972,9 @@ static const struct YMZ280Binterface ymz280b_intf =
 	sound_irq_gen
 };
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -2622,13 +2601,14 @@ MACHINE_DRIVER_END
 ***************************************************************************/
 
 /* 4 bits -> 8 bits. Even and odd pixels are swapped */
-static void unpack_sprites(void)
+static void unpack_sprites(running_machine *machine)
 {
 	const int region		=	REGION_GFX1;	// sprites
 
-	const UINT32 len	=	memory_region_length(region);
-	UINT8 *src		=	memory_region(region) + len / 2 - 1;
-	UINT8 *dst		=	memory_region(region) + len - 1;
+	const UINT32 len	=	memory_region_length(machine, region);
+	UINT8 *rgn		=	memory_region(machine, region);
+	UINT8 *src		=	rgn + len / 2 - 1;
+	UINT8 *dst		=	rgn + len - 1;
 
 	while(dst > src)
 	{
@@ -2640,13 +2620,14 @@ static void unpack_sprites(void)
 
 
 /* 4 bits -> 8 bits. Even and odd pixels and even and odd words, are swapped */
-static void ddonpach_unpack_sprites(void)
+static void ddonpach_unpack_sprites(running_machine *machine)
 {
 	const int region		=	REGION_GFX1;	// sprites
 
-	const UINT32 len	=	memory_region_length(region);
-	UINT8 *src		=	memory_region(region) + len / 2 - 1;
-	UINT8 *dst		=	memory_region(region) + len - 1;
+	const UINT32 len	=	memory_region_length(machine, region);
+	UINT8 *rgn		=	memory_region(machine, region);
+	UINT8 *src		=	rgn + len / 2 - 1;
+	UINT8 *dst		=	rgn + len - 1;
 
 	while(dst > src)
 	{
@@ -2665,12 +2646,12 @@ static void ddonpach_unpack_sprites(void)
 
 
 /* 2 pages of 4 bits -> 8 bits */
-static void esprade_unpack_sprites(void)
+static void esprade_unpack_sprites(running_machine *machine)
 {
 	const int region		=	REGION_GFX1;	// sprites
 
-	UINT8 *src		=	memory_region(region);
-	UINT8 *dst		=	memory_region(region) + memory_region_length(region);
+	UINT8 *src		=	memory_region(machine, region);
+	UINT8 *dst		=	src + memory_region_length(machine, region);
 
 	while(src < dst)
 	{
@@ -4069,10 +4050,12 @@ ROM_END
 
 /* Tiles are 6 bit, 4 bits stored in one rom, 2 bits in the other.
    Expand the 2 bit part into a 4 bit layout, so we can decode it */
-static void sailormn_unpack_tiles( const int region )
+static void sailormn_unpack_tiles( running_machine *machine, const int region )
 {
-	UINT8 *src		=	memory_region(region) + (memory_region_length(region)/4)*3 - 1;
-	UINT8 *dst		=	memory_region(region) + (memory_region_length(region)/4)*4 - 2;
+	const UINT32 len	=	memory_region_length(machine, region);
+	UINT8 *rgn		=	memory_region(machine, region);
+	UINT8 *src		=	rgn + (len/4)*3 - 1;
+	UINT8 *dst		=	rgn + (len/4)*4 - 2;
 
 	while(src <= dst)
 	{
@@ -4105,13 +4088,13 @@ static DRIVER_INIT( agallet )
 {
 	init_cave(machine);
 
-	sailormn_unpack_tiles( REGION_GFX4 );
+	sailormn_unpack_tiles( machine, REGION_GFX4 );
 
 	cave_default_eeprom = cave_default_eeprom_type7;
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type7);
 	cave_region_byte = 0x1f;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 
 //  Speed Hack
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb80000, 0xb80001, 0, 0, agallet_irq_cause_r);
@@ -4125,7 +4108,7 @@ static DRIVER_INIT( dfeveron )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type1);
 	cave_region_byte = -1;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_kludge = 2;
 }
 
@@ -4137,7 +4120,7 @@ static DRIVER_INIT( feversos )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type1feversos);
 	cave_region_byte = -1;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_kludge = 2;
 }
 
@@ -4149,7 +4132,7 @@ static DRIVER_INIT( ddonpach )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type2);
 	cave_region_byte = -1;
 
-	ddonpach_unpack_sprites();
+	ddonpach_unpack_sprites(machine);
 	cave_spritetype = 1;	// "different" sprites (no zooming?)
 	time_vblank_irq = 90;
 }
@@ -4162,7 +4145,7 @@ static DRIVER_INIT( donpachi )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type2);
 	cave_region_byte = -1;
 
-	ddonpach_unpack_sprites();
+	ddonpach_unpack_sprites(machine);
 	cave_spritetype = 1;	// "different" sprites (no zooming?)
 	time_vblank_irq = 90;
 
@@ -4177,12 +4160,12 @@ static DRIVER_INIT( esprade )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type2);
 	cave_region_byte = -1;
 
-	esprade_unpack_sprites();
+	esprade_unpack_sprites(machine);
 	time_vblank_irq = 2000;	/**/
 
 #if 0		//ROM PATCH
 	{
-		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+		UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 		rom[0x118A/2] = 0x4e71;			//palette fix   118A: 5548              SUBQ.W  #2,A0       --> NOP
 	}
 #endif
@@ -4194,7 +4177,7 @@ static DRIVER_INIT( gaia )
 
 	/* No EEPROM */
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_spritetype = 2;	// Normal sprites with different position handling
 	time_vblank_irq = 2000;	/**/
 }
@@ -4207,7 +4190,7 @@ static DRIVER_INIT( guwange )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type1);
 	cave_region_byte = -1;
 
-	esprade_unpack_sprites();
+	esprade_unpack_sprites(machine);
 	time_vblank_irq = 2000;	/**/
 }
 
@@ -4219,7 +4202,7 @@ static DRIVER_INIT( hotdogst )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type4);
 	cave_region_byte = -1;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_spritetype = 2;	// Normal sprites with different position handling
 	time_vblank_irq = 2000;	/**/
 }
@@ -4227,8 +4210,8 @@ static DRIVER_INIT( hotdogst )
 static DRIVER_INIT( mazinger )
 {
 	UINT8 *buffer;
-	UINT8 *src = memory_region(REGION_GFX1);
-	int len = memory_region_length(REGION_GFX1);
+	UINT8 *src = memory_region(machine, REGION_GFX1);
+	int len = memory_region_length(machine, REGION_GFX1);
 
 	init_cave(machine);
 
@@ -4246,13 +4229,13 @@ static DRIVER_INIT( mazinger )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type5);
 	cave_region_byte = 0x05;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_spritetype = 2;	// Normal sprites with different position handling
 	cave_kludge = 3;
 	time_vblank_irq = 2100;
 
 	/* setup extra ROM */
-	memory_set_bankptr(1,memory_region(REGION_USER1));
+	memory_set_bankptr(1,memory_region(machine, REGION_USER1));
 }
 
 
@@ -4260,7 +4243,7 @@ static DRIVER_INIT( metmqstr )
 {
 	init_cave(machine);
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_spritetype = 2;	// Normal sprites with different position handling
 	cave_kludge = 3;
 	time_vblank_irq = 17376;
@@ -4270,8 +4253,8 @@ static DRIVER_INIT( metmqstr )
 static DRIVER_INIT( pwrins2j )
 {
 	UINT8 *buffer;
-	UINT8 *src = memory_region(REGION_GFX1);
-	int len = memory_region_length(REGION_GFX1);
+	UINT8 *src = memory_region(machine, REGION_GFX1);
+	int len = memory_region_length(machine, REGION_GFX1);
 	int i, j;
 
 	init_cave(machine);
@@ -4289,7 +4272,7 @@ static DRIVER_INIT( pwrins2j )
 		free(buffer);
 	}
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_spritetype = 3;
 	cave_kludge = 4;
 	time_vblank_irq = 2000;	/**/
@@ -4305,7 +4288,7 @@ static DRIVER_INIT( pwrinst2 )
 
 #if 1		//ROM PATCH
 	{
-		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+		UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 		rom[0xD46C/2] = 0xD482;			// kurara dash fix  0xd400 -> 0xd482
 	}
 #endif
@@ -4316,8 +4299,8 @@ static DRIVER_INIT( pwrinst2 )
 static DRIVER_INIT( sailormn )
 {
 	UINT8 *buffer;
-	UINT8 *src = memory_region(REGION_GFX1);
-	int len = memory_region_length(REGION_GFX1);
+	UINT8 *src = memory_region(machine, REGION_GFX1);
+	int len = memory_region_length(machine, REGION_GFX1);
 
 	init_cave(machine);
 
@@ -4331,13 +4314,13 @@ static DRIVER_INIT( sailormn )
 		free(buffer);
 	}
 
-	sailormn_unpack_tiles( REGION_GFX4 );
+	sailormn_unpack_tiles( machine, REGION_GFX4 );
 
 	cave_default_eeprom = cave_default_eeprom_type6;
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type6);
 	cave_region_byte = 0x11;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_spritetype = 2;	// Normal sprites with different position handling
 	cave_kludge = 1;
 	time_vblank_irq = 2000;
@@ -4351,7 +4334,7 @@ static DRIVER_INIT( uopoko )
 	cave_default_eeprom_length = sizeof(cave_default_eeprom_type4);
 	cave_region_byte = -1;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	cave_kludge = 2;
 	time_vblank_irq = 2000;	/**/
 }
@@ -4362,7 +4345,7 @@ static DRIVER_INIT( korokoro )
 
 	irq_level = 2;
 
-	unpack_sprites();
+	unpack_sprites(machine);
 	time_vblank_irq = 2000;	/**/
 }
 

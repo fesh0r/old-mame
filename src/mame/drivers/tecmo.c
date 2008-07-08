@@ -46,7 +46,6 @@ f80b      ????
 
 ***************************************************************************/
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "sound/3812intf.h"
 #include "sound/msm5205.h"
@@ -70,7 +69,7 @@ VIDEO_UPDATE( tecmo );
 static WRITE8_HANDLER( tecmo_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 
 	bankaddress = 0x10000 + ((data & 0xf8) << 8);
@@ -98,12 +97,12 @@ static WRITE8_HANDLER( tecmo_adpcm_vol_w )
 {
 	MSM5205_set_volume(0,(data & 0x0f) * 100 / 15);
 }
-static void tecmo_adpcm_int(int num)
+static void tecmo_adpcm_int(running_machine *machine, int num)
 {
 	static int adpcm_data = -1;
 
 	if (adpcm_pos >= adpcm_end ||
-				adpcm_pos >= memory_region_length(REGION_SOUND1))
+				adpcm_pos >= memory_region_length(machine, REGION_SOUND1))
 		MSM5205_reset_w(0,1);
 	else if (adpcm_data != -1)
 	{
@@ -112,7 +111,7 @@ static void tecmo_adpcm_int(int num)
 	}
 	else
 	{
-		UINT8 *ROM = memory_region(REGION_SOUND1);
+		UINT8 *ROM = memory_region(machine, REGION_SOUND1);
 
 		adpcm_data = ROM[adpcm_pos++];
 		MSM5205_data_w(0,adpcm_data >> 4);
@@ -545,9 +544,9 @@ GFXDECODE_END
 
 
 
-static void irqhandler(int linestate)
+static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 1,0,linestate);
+	cpunum_set_input_line(machine, 1,0,linestate);
 }
 
 static const struct YM3526interface ym3812_interface =

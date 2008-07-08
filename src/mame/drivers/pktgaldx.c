@@ -64,8 +64,6 @@ VIDEO_UPDATE(pktgaldx);
 VIDEO_START(pktgaldb);
 VIDEO_UPDATE(pktgaldb);
 
-extern void deco102_decrypt(int region, int address_xor, int data_select_xor, int opcode_select_xor);
-
 extern UINT16* pcktgaldb_fgram;
 extern UINT16* pcktgaldb_sprites;
 
@@ -207,7 +205,7 @@ ADDRESS_MAP_END
 /**********************************************************************************/
 
 static INPUT_PORTS_START( pktgaldx )
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN0")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -218,7 +216,7 @@ static INPUT_PORTS_START( pktgaldx )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	/* 16bit */
+	PORT_START_TAG("DSW")	/* 16bit */
 	PORT_DIPNAME( 0x0007, 0x0007, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( 3C_1C ) )
 	PORT_DIPSETTING(      0x0001, DEF_STR( 2C_1C ) )
@@ -266,7 +264,7 @@ static INPUT_PORTS_START( pktgaldx )
 	PORT_DIPSETTING(      0x8000, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
 
-	PORT_START	/* 16bit */
+	PORT_START_TAG("IN1")	/* 16bit */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -462,8 +460,8 @@ ROM_END
 
 static DRIVER_INIT( pktgaldx )
 {
-	deco56_decrypt(REGION_GFX1);
-	deco102_decrypt(REGION_CPU1, 0x42ba, 0x00, 0x00);
+	deco56_decrypt(machine, REGION_GFX1);
+	deco102_decrypt(machine, REGION_CPU1, 0x42ba, 0x00, 0x00);
 }
 
 GAME( 1992, pktgaldx, 0,        pktgaldx, pktgaldx, pktgaldx,  ROT0, "Data East Corporation", "Pocket Gal Deluxe (Euro v3.00)", 0 )

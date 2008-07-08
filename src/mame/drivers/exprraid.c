@@ -61,7 +61,6 @@ sign is intact, however Credit is spelt incorrectly.
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
@@ -105,7 +104,7 @@ static WRITE8_HANDLER( sound_cpu_command_w )
 
 static READ8_HANDLER( vblank_r )
 {
-	return input_port_read_indexed(machine,  0 );
+	return input_port_read(machine, "IN0");
 }
 
 static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
@@ -116,10 +115,10 @@ static ADDRESS_MAP_START( master_map, ADDRESS_SPACE_PROGRAM, 8 )
     AM_RANGE(0x0c00, 0x0fff) AM_RAM_WRITE(exprraid_colorram_w) AM_BASE(&colorram)
 	AM_RANGE(0x1317, 0x1317) AM_READNOP // ???
 	AM_RANGE(0x1700, 0x1700) AM_READNOP // ???
-    AM_RANGE(0x1800, 0x1800) AM_READ(input_port_1_r) /* DSW 0 */
-    AM_RANGE(0x1801, 0x1801) AM_READ(input_port_2_r) /* Controls */
-    AM_RANGE(0x1802, 0x1802) AM_READ(input_port_3_r) /* Coins */
-    AM_RANGE(0x1803, 0x1803) AM_READ(input_port_4_r) /* DSW 1 */
+    AM_RANGE(0x1800, 0x1800) AM_READ_PORT("DSW0")	/* DSW 0 */
+    AM_RANGE(0x1801, 0x1801) AM_READ_PORT("IN1")	/* Controls */
+    AM_RANGE(0x1802, 0x1802) AM_READ_PORT("IN2")	/* Coins */
+    AM_RANGE(0x1803, 0x1803) AM_READ_PORT("DSW1")	/* DSW 1 */
 	AM_RANGE(0x2000, 0x2000) AM_WRITENOP // ???
     AM_RANGE(0x2001, 0x2001) AM_WRITE(sound_cpu_command_w)
 	AM_RANGE(0x2002, 0x2002) AM_WRITE(exprraid_flipscreen_w)
@@ -144,10 +143,10 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( exprraid )
-	PORT_START /* IN 0 - 0x3800 */
+	PORT_START_TAG("IN0")	/* IN 0 - 0x3800 */
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START /* DSW 0 - 0x1800 */
+	PORT_START_TAG("DSW0")	/* DSW 0 - 0x1800 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coin_A ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -167,7 +166,7 @@ static INPUT_PORTS_START( exprraid )
 	PORT_DIPSETTING(    0x40, DEF_STR( Cocktail ) )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START /* IN 1 - 0x1801 */
+	PORT_START_TAG("IN1")	/* IN 1 - 0x1801 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
@@ -177,7 +176,7 @@ static INPUT_PORTS_START( exprraid )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START /* IN 2 - 0x1802 */
+	PORT_START_TAG("IN2")	/* IN 2 - 0x1802 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_COCKTAIL
@@ -187,7 +186,7 @@ static INPUT_PORTS_START( exprraid )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
 
-	PORT_START /* IN 3 - 0x1803 */
+	PORT_START_TAG("DSW1")	/* IN 3 - 0x1803 */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x01, "1" )
 	PORT_DIPSETTING(    0x03, "3" )
@@ -274,9 +273,9 @@ GFXDECODE_END
 
 
 /* handler called by the 3812 emulator when the internal timers cause an IRQ */
-static void irqhandler(int linestate)
+static void irqhandler(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line_and_vector(Machine, 1,0,linestate,0xff);
+	cpunum_set_input_line_and_vector(machine, 1,0,linestate,0xff);
 }
 
 static const struct YM3526interface ym3526_interface =
@@ -288,12 +287,15 @@ static INTERRUPT_GEN( exprraid_interrupt )
 {
 	static int coin = 0;
 
-	if ( ( ~input_port_read_indexed(machine,  3 ) ) & 0xc0 ) {
-		if ( coin == 0 ) {
+	if ((~input_port_read(machine, "IN2")) & 0xc0 )
+	{
+		if ( coin == 0 )
+		{
 			coin = 1;
 			cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
 		}
-	} else
+	}
+	else
 		coin = 0;
 }
 
@@ -530,11 +532,11 @@ ROM_START( wexpresc )
 ROM_END
 
 
-static void exprraid_gfx_expand(void)
+static void exprraid_gfx_expand(running_machine *machine)
 {
 	/* Expand the background rom so we can use regular decode routines */
 
-	UINT8	*gfx = memory_region(REGION_GFX3);
+	UINT8	*gfx = memory_region(machine, REGION_GFX3);
 	int				offs = 0x10000-0x1000;
 	int				i;
 
@@ -552,9 +554,9 @@ static void exprraid_gfx_expand(void)
 }
 
 
-static void patch_rom1(void)
+static void patch_rom1(running_machine *machine)
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 	int i;
 
 	/* HACK!: Implement custom opcode as regular with a mapped io read */
@@ -573,13 +575,13 @@ static void patch_rom1(void)
 
 static DRIVER_INIT( wexpress )
 {
-	patch_rom1();
-	exprraid_gfx_expand();
+	patch_rom1(machine);
+	exprraid_gfx_expand(machine);
 }
 
 static DRIVER_INIT( exprraid )
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 
 	/* decode vectors */
@@ -592,20 +594,20 @@ static DRIVER_INIT( exprraid )
 	rom[0xfffe] = rom[0xfff3];
 	rom[0xffff] = rom[0xfff2];
 
-	patch_rom1();
-	exprraid_gfx_expand();
+	patch_rom1(machine);
+	exprraid_gfx_expand(machine);
 }
 
 static DRIVER_INIT( wexpresb )
 {
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x3800, 0x3800, 0, 0, vblank_r);
-	exprraid_gfx_expand();
+	exprraid_gfx_expand(machine);
 }
 
 static DRIVER_INIT( wexpresc )
 {
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xFFC0, 0xFFC0, 0, 0, vblank_r);
-	exprraid_gfx_expand();
+	exprraid_gfx_expand(machine);
 }
 
 

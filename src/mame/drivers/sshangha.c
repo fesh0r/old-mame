@@ -52,7 +52,6 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/okim6295.h"
 
@@ -327,9 +326,9 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void irqhandler(int state)
+static void irqhandler(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1,0,state);
+	cpunum_set_input_line(machine, 1,0,state);
 }
 
 static const struct YM2203interface ym2203_interface =
@@ -433,7 +432,7 @@ static DRIVER_INIT( sshangha )
 #if SSHANGHA_HACK
 	/* This is a hack to allow you to use the extra features
          of the first "Unused" Dip Switch (see notes above). */
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	RAM[0x000384/2] = 0x4e71;
 	RAM[0x000386/2] = 0x4e71;
 	RAM[0x000388/2] = 0x4e71;

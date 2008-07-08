@@ -17,7 +17,7 @@
 
 #include "410ops.c"
 
-#define IN_IN()			IN(COP400_PORT_IN)
+#define IN_IN()			(R.IN_mask ? IN(COP400_PORT_IN) : 0)
 
 /* Arithmetic Instructions */
 
@@ -230,7 +230,7 @@ INSTRUCTION(cop402m_inin)
     Hex Code:           33 29
     Binary:
 
-    Data Flow:          IL3,"1","0",IL0 -> A
+    Data Flow:          IL3,CKO,"0",IL0 -> A
 
     Description:        Input IL Latches to A
 
@@ -238,31 +238,9 @@ INSTRUCTION(cop402m_inin)
 
 INSTRUCTION(inil)
 {
-	// NOT PROPERLY IMPLEMENTED
+	A = (IL & 0x09) | IN_CKO() << 2;
 
-	A = (IN_IN() & 0x09) | 0x04;
-}
-
-/*
-
-    Processor:          COP421
-
-    Mnemonic:           INIL
-
-    Hex Code:           33 29
-    Binary:
-
-    Data Flow:          "0",CKO,"0","0" -> A
-
-    Description:        Input CKO to A
-
-*/
-
-INSTRUCTION(cop421_inil)
-{
-	// NOT PROPERLY IMPLEMENTED
-
-	A = 0;
+	IL = 0;
 }
 
 /*

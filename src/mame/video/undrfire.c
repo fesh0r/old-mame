@@ -82,7 +82,7 @@ Heavy use is made of sprite zooming.
 
 static void draw_sprites(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,const int *primasks,int x_offs,int y_offs)
 {
-	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
+	UINT16 *spritemap = (UINT16 *)memory_region(machine, REGION_USER1);
 	int offs, data, tilenum, color, flipx, flipy;
 	int x, y, priority, dblsize, curx, cury;
 	int sprites_flipscreen = 0;
@@ -226,8 +226,8 @@ logerror("Sprite number %04x had %02x invalid chunks\n",tilenum,bad_chunks);
 
 static void draw_sprites_cbombers(running_machine *machine, bitmap_t *bitmap,const rectangle *cliprect,const int *primasks,int x_offs,int y_offs)
 {
-	UINT16 *spritemap = (UINT16 *)memory_region(REGION_USER1);
-	UINT8 *spritemapHibit = (UINT8 *)memory_region(REGION_USER2);
+	UINT16 *spritemap = (UINT16 *)memory_region(machine, REGION_USER1);
+	UINT8 *spritemapHibit = (UINT8 *)memory_region(machine, REGION_USER2);
 
 	int offs, data, tilenum, color, flipx, flipy;
 	int x, y, priority, dblsize, curx, cury;
@@ -245,7 +245,7 @@ static void draw_sprites_cbombers(running_machine *machine, bitmap_t *bitmap,con
 		data = spriteram32[offs+0];
 		flipx =    (data & 0x00800000) >> 23;
 		zoomx =    (data & 0x007f0000) >> 16;
-		tilenum =  (data & 0x00007fff);
+		tilenum =  (data & 0x0000ffff);
 
 		data = spriteram32[offs+2];
 		priority = (data & 0x000c0000) >> 18;
@@ -262,11 +262,9 @@ static void draw_sprites_cbombers(running_machine *machine, bitmap_t *bitmap,con
 
 		color /= 2;		/* as sprites are 5bpp */
 		flipy = !flipy;
-//      y = (-y &0x3ff);
 
 		if (!tilenum) continue;
 
-//      flipy = !flipy;
 		zoomx += 1;
 		zoomy += 1;
 
@@ -282,72 +280,64 @@ static void draw_sprites_cbombers(running_machine *machine, bitmap_t *bitmap,con
 		total_chunks = ((dblsize*3) + 1) << 2;	// 4 or 16
 		map_offset = tilenum << 2;
 
+		for (sprite_chunk = 0; sprite_chunk < total_chunks; sprite_chunk++)
 		{
-			for (sprite_chunk=0;sprite_chunk<total_chunks;sprite_chunk++)
+			int map_addr;
+
+			j = sprite_chunk / dimension;   /* rows */
+			k = sprite_chunk % dimension;   /* chunks per row */
+
+			px = k;
+			py = j;
+			/* pick tiles back to front for x and y flips */
+			if (flipx)  px = dimension-1-k;
+			if (flipy)  py = dimension-1-j;
+
+			map_addr = map_offset + px + (py << (dblsize + 1));
+			code =  (spritemapHibit[map_addr] << 16) | spritemap[map_addr];
+
+			curx = x + ((k*zoomx)/dimension);
+			cury = y + ((j*zoomy)/dimension);
+
+			zx= x + (((k+1)*zoomx)/dimension) - curx;
+			zy= y + (((j+1)*zoomy)/dimension) - cury;
+
+			if (sprites_flipscreen)
 			{
-				j = sprite_chunk / dimension;   /* rows */
-				k = sprite_chunk % dimension;   /* chunks per row */
-
-				px = k;
-				py = j;
-				/* pick tiles back to front for x and y flips */
-				if (flipx)  px = dimension-1-k;
-				if (flipy)  py = dimension-1-j;
-
-				code = spritemap[map_offset + px + (py<<(dblsize+1))];
-
-				if (spritemapHibit)
-				{
-					code|=spritemapHibit[map_offset + px + (py<<(dblsize+1))] << 16;
-
-					//if (spritemapHibit[map_offset + px + (py<<(dblsize+1))])
-						//color=mame_rand(machine);
-				}
-
-				curx = x + ((k*zoomx)/dimension);
-				cury = y + ((j*zoomy)/dimension);
-
-				zx= x + (((k+1)*zoomx)/dimension) - curx;
-				zy= y + (((j+1)*zoomy)/dimension) - cury;
-
-				if (sprites_flipscreen)
-				{
-					/* -zx/y is there to fix zoomed sprite coords in screenflip.
+				/* -zx/y is there to fix zoomed sprite coords in screenflip.
                        drawgfxzoom does not know to draw from flip-side of sprites when
                        screen is flipped; so we must correct the coords ourselves. */
 
-					curx = 320 - curx - zx;
-					cury = 256 - cury - zy;
-					flipx = !flipx;
-					flipy = !flipy;
-				}
+				curx = 320 - curx - zx;
+				cury = 256 - cury - zy;
+				flipx = !flipx;
+				flipy = !flipy;
+			}
 
-				sprite_ptr->gfx = 0;
-				sprite_ptr->code = code;
-				sprite_ptr->color = color;
-				sprite_ptr->flipx = !flipx;
-				sprite_ptr->flipy = flipy;
-				sprite_ptr->x = curx;
-				sprite_ptr->y = cury;
-				sprite_ptr->zoomx = zx << 12;
-				sprite_ptr->zoomy = zy << 12;
+			sprite_ptr->gfx = 0;
+			sprite_ptr->code = code;
+			sprite_ptr->color = color;
+			sprite_ptr->flipx = !flipx;
+			sprite_ptr->flipy = flipy;
+			sprite_ptr->x = curx;
+			sprite_ptr->y = cury;
+			sprite_ptr->zoomx = zx << 12;
+			sprite_ptr->zoomy = zy << 12;
 
-				if (primasks)
-				{
-					sprite_ptr->primask = primasks[priority];
-
-					sprite_ptr++;
-				}
-				else
-				{
-					drawgfxzoom(bitmap,machine->gfx[sprite_ptr->gfx],
-							sprite_ptr->code,
-							sprite_ptr->color,
-							sprite_ptr->flipx,sprite_ptr->flipy,
-							sprite_ptr->x,sprite_ptr->y,
-							cliprect,TRANSPARENCY_PEN,0,
-							sprite_ptr->zoomx,sprite_ptr->zoomy);
-				}
+			if (primasks)
+			{
+				sprite_ptr->primask = primasks[priority];
+				sprite_ptr++;
+			}
+			else
+			{
+				drawgfxzoom(bitmap,machine->gfx[sprite_ptr->gfx],
+						sprite_ptr->code,
+						sprite_ptr->color,
+						sprite_ptr->flipx,sprite_ptr->flipy,
+						sprite_ptr->x,sprite_ptr->y,
+						cliprect,TRANSPARENCY_PEN,0,
+						sprite_ptr->zoomx,sprite_ptr->zoomy);
 			}
 		}
 	}
@@ -445,7 +435,7 @@ VIDEO_UPDATE( undrfire )
    pointless - it's always hidden by other layers. Does it
    serve some blending pupose ? */
 
-	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[0],0,0);
+	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[0],TILEMAP_DRAW_OPAQUE,0);
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[1],0,0);
 
 #ifdef MAME_DEBUG
@@ -635,14 +625,6 @@ VIDEO_UPDATE( cbombers )
 	TC0100SCN_tilemap_draw(screen->machine,bitmap,cliprect,0,pivlayer[2],0,0);	/* piv text layer */
 
 	TC0480SCP_tilemap_draw(bitmap,cliprect,layer[4],0,0);	/* TC0480SCP text layer */
-
-	/* See if we should draw artificial gun targets */
-	/* (not yet implemented...) */
-
-	if (input_port_read_indexed(screen->machine,7) & 0x1)	/* Fake DSW */
-	{
-		popmessage("Gunsights on");
-	}
 
 /* Enable this to see rotation (?) control words */
 #if 0

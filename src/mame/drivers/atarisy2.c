@@ -236,7 +236,7 @@ static OPBASE_HANDLER( atarisy2_opbase_handler )
 	/* make sure slapstic area looks like ROM */
 	if (address >= 0x8000 && address < 0x8200)
 	{
-		opcode_base = opcode_arg_base = (UINT8 *)atarisy2_slapstic - 0x8000;
+		opbase->rom = opbase->ram = (UINT8 *)atarisy2_slapstic - 0x8000;
 		return ~0;
 	}
 	return address;
@@ -353,7 +353,7 @@ static WRITE16_HANDLER( bankselect_w )
 	COMBINE_DATA(&newword);
 	bankselect[offset] = newword;
 
-	base = &memory_region(REGION_CPU1)[bankoffset[(newword >> 10) & 0x3f]];
+	base = &memory_region(machine, REGION_CPU1)[bankoffset[(newword >> 10) & 0x3f]];
 	memcpy(offset ? rombank2 : rombank1, base, 0x2000);
 }
 
@@ -374,7 +374,7 @@ static STATE_POSTLOAD( bankselect_postload )
 
 static READ16_HANDLER( switch_r )
 {
-	int result = input_port_read_indexed(machine, 1) | (input_port_read_indexed(machine, 2) << 8);
+	int result = input_port_read(machine, "1800") | (input_port_read(machine, "1801") << 8);
 
 	if (atarigen_cpu_to_sound_ready) result ^= 0x20;
 	if (atarigen_sound_to_cpu_ready) result ^= 0x10;
@@ -385,12 +385,12 @@ static READ16_HANDLER( switch_r )
 
 static READ8_HANDLER( switch_6502_r )
 {
-	int result = input_port_read_indexed(machine, 0);
+	int result = input_port_read(machine, "1840");
 
 	if (atarigen_cpu_to_sound_ready) result ^= 0x01;
 	if (atarigen_sound_to_cpu_ready) result ^= 0x02;
 	if (!has_tms5220 || tms5220_ready_r()) result ^= 0x04;
-	if (!(input_port_read_indexed(machine, 2) & 0x80)) result ^= 0x10;
+	if (!(input_port_read(machine, "1801") & 0x80)) result ^= 0x10;
 
 	return result;
 }
@@ -423,15 +423,19 @@ static WRITE16_HANDLER( adc_strobe_w )
 
 static READ16_HANDLER( adc_r )
 {
-	if (which_adc < pedal_count)
-		return ~input_port_read_indexed(machine, 3 + which_adc);
+	static const char *adcnames[] = { "ADC0", "ADC1", "ADC2", "ADC3" };
 
-	return input_port_read_indexed(machine, 3 + which_adc) | 0xff00;
+	if (which_adc < pedal_count)
+		return ~input_port_read(machine, adcnames[which_adc]);
+
+	return input_port_read(machine, adcnames[which_adc]) | 0xff00;
 }
 
 
 static READ8_HANDLER( leta_r )
 {
+	static const char *letanames[] = { "LETA0", "LETA1", "LETA2", "LETA3" };
+
     if (pedal_count == -1)   /* 720 */
 	{
 		/* special thanks to MAME Analog+ for the mapping code */
@@ -443,8 +447,8 @@ static READ8_HANDLER( leta_r )
 				static double last_angle;
 				static int rotations;
 
-				int analogx = input_port_read_indexed(machine, 7) - 128;
-				int analogy = input_port_read_indexed(machine, 8) - 128;
+				int analogx = input_port_read(machine, "LETA0") - 128;
+				int analogy = input_port_read(machine, "LETA1") - 128;
 				double angle;
 
 				/* if the joystick is centered, leave the rest of this alone */
@@ -480,7 +484,7 @@ static READ8_HANDLER( leta_r )
 		}
 	}
 
-	return input_port_read_indexed(machine, 7 + (offset & 3));
+	return input_port_read(machine, letanames[offset & 3]);
 }
 
 
@@ -786,9 +790,7 @@ static INPUT_PORTS_START( paperboy )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON2 )
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON1 )
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
 	PORT_START_TAG("1801")
 	PORT_BIT( 0x7f, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -3028,16 +3030,17 @@ static DRIVER_INIT( paperboy )
 		0x0000
 	};
 	int i;
+	UINT8 *cpu1 = memory_region(machine, REGION_CPU1);
 
 	atarigen_eeprom_default = compressed_default_eeprom;
-	slapstic_init(105);
+	slapstic_init(machine, 105);
 
 	/* expand the 16k program ROMs into full 64k chunks */
 	for (i = 0x10000; i < 0x90000; i += 0x20000)
 	{
-		memcpy(&memory_region(REGION_CPU1)[i + 0x08000], &memory_region(REGION_CPU1)[i], 0x8000);
-		memcpy(&memory_region(REGION_CPU1)[i + 0x10000], &memory_region(REGION_CPU1)[i], 0x8000);
-		memcpy(&memory_region(REGION_CPU1)[i + 0x18000], &memory_region(REGION_CPU1)[i], 0x8000);
+		memcpy(&cpu1[i + 0x08000], &cpu1[i], 0x8000);
+		memcpy(&cpu1[i + 0x10000], &cpu1[i], 0x8000);
+		memcpy(&cpu1[i + 0x18000], &cpu1[i], 0x8000);
 	}
 
 	pedal_count = 0;
@@ -3077,23 +3080,24 @@ static DRIVER_INIT( 720 )
 		0x0000
 	};
 	atarigen_eeprom_default = compressed_default_eeprom;
-	slapstic_init(107);
+	slapstic_init(machine, 107);
 
 	pedal_count = -1;
 	has_tms5220 = 1;
 }
 
 
-static void ssprint_init_common(const UINT16 *default_eeprom)
+static void ssprint_init_common(running_machine *machine, const UINT16 *default_eeprom)
 {
 	int i;
+	UINT8 *cpu1 = memory_region(machine, REGION_CPU1);
 
 	atarigen_eeprom_default = default_eeprom;
-	slapstic_init(108);
+	slapstic_init(machine, 108);
 
 	/* expand the 32k program ROMs into full 64k chunks */
 	for (i = 0x10000; i < 0x90000; i += 0x20000)
-		memcpy(&memory_region(REGION_CPU1)[i + 0x10000], &memory_region(REGION_CPU1)[i], 0x10000);
+		memcpy(&cpu1[i + 0x10000], &cpu1[i], 0x10000);
 
 	pedal_count = 3;
 	has_tms5220 = 0;
@@ -3128,7 +3132,7 @@ static DRIVER_INIT( ssprint )
 		0x01D0,0x0125,0x0186,0x0102,0x01C6,0x011D,0x011F,0xFF00,
 		0xFF00,0xFF00,0xFF00,0xFF00,0xFF00,0x0800,0x0000
 	};
-	ssprint_init_common(compressed_default_eeprom);
+	ssprint_init_common(machine, compressed_default_eeprom);
 }
 
 static DRIVER_INIT( ssprint1 )
@@ -3173,7 +3177,7 @@ static DRIVER_INIT( ssprint1 )
 		0x012c,0x0132,0x0102,0x01d0,0x0125,0x0186,0x0102,0x01c6,
 		0x011d,0x011f,0x0200,0x0000
 	};
-	ssprint_init_common(compressed_default_eeprom);
+	ssprint_init_common(machine, compressed_default_eeprom);
 }
 
 
@@ -3210,13 +3214,14 @@ static DRIVER_INIT( csprint )
 		0x0186,0x0100,0x011B,0x01BC,0x011D,0x011F,0x0000
 	};
 	int i;
+	UINT8 *cpu1 = memory_region(machine, REGION_CPU1);
 
 	atarigen_eeprom_default = compressed_default_eeprom;
-	slapstic_init(109);
+	slapstic_init(machine, 109);
 
 	/* expand the 32k program ROMs into full 64k chunks */
 	for (i = 0x10000; i < 0x90000; i += 0x20000)
-		memcpy(&memory_region(REGION_CPU1)[i + 0x10000], &memory_region(REGION_CPU1)[i], 0x10000);
+		memcpy(&cpu1[i + 0x10000], &cpu1[i], 0x10000);
 
 	pedal_count = 2;
 	has_tms5220 = 0;
@@ -3226,7 +3231,7 @@ static DRIVER_INIT( csprint )
 static DRIVER_INIT( apb )
 {
 	atarigen_eeprom_default = NULL;
-	slapstic_init(110);
+	slapstic_init(machine, 110);
 
 	pedal_count = 2;
 	has_tms5220 = 1;

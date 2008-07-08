@@ -6,7 +6,7 @@
 struct LSI53C810interface
 {
 	const SCSIConfigTable *scsidevs;			/* SCSI devices */
-	void (*irq_callback)(void);			/* IRQ callback */
+	void (*irq_callback)(running_machine *machine, int); /* IRQ callback */
 	void (*dma_callback)(UINT32, UINT32, int, int);	/* DMA callback */
 	UINT32 (*fetch)(UINT32 dsp);
 };
@@ -19,8 +19,8 @@ extern void lsi53c810_write_data(int bytes, UINT8 *pData);
 
 extern void *lsi53c810_get_device(int id);
 
-UINT8 lsi53c810_reg_r(int reg);
-void lsi53c810_reg_w(int reg, UINT8 value);
+READ8_HANDLER( lsi53c810_reg_r );
+WRITE8_HANDLER( lsi53c810_reg_w );
 
 unsigned lsi53c810_dasm(char *buf, UINT32 pc);
 

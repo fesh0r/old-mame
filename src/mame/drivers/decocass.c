@@ -140,7 +140,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( decocass_mcu_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x03ff) AM_ROM
-	AM_RANGE(0x0800, 0x083f) AM_RAM
+	AM_RANGE(0x0800, 0x087f) AM_RAM
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( decocass_mcu_portmap, ADDRESS_SPACE_IO, 8 )
@@ -149,7 +149,7 @@ static ADDRESS_MAP_START( decocass_mcu_portmap, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( decocass )
-	PORT_START		/* IN0 */
+	PORT_START_TAG("IN0")		/* IN0 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH,IPT_JOYSTICK_RIGHT )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH,IPT_JOYSTICK_LEFT )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH,IPT_JOYSTICK_UP )
@@ -159,7 +159,7 @@ static INPUT_PORTS_START( decocass )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH,IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH,IPT_UNUSED )
 
-	PORT_START		/* IN1 */
+	PORT_START_TAG("IN1")		/* IN1 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH,IPT_JOYSTICK_RIGHT ) PORT_COCKTAIL
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH,IPT_JOYSTICK_LEFT ) PORT_COCKTAIL
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH,IPT_JOYSTICK_UP ) PORT_COCKTAIL
@@ -169,7 +169,7 @@ static INPUT_PORTS_START( decocass )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH,IPT_UNUSED )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH,IPT_UNUSED )
 
-	PORT_START		/* IN2 */
+	PORT_START_TAG("IN2")		/* IN2 */
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH,IPT_UNKNOWN )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH,IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH,IPT_UNKNOWN )
@@ -179,16 +179,16 @@ static INPUT_PORTS_START( decocass )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 ) PORT_IMPULSE(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 ) PORT_IMPULSE(1)
 
-	PORT_START		/* IN3 */
+	PORT_START_TAG("AN0")		/* IN3 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START		/* IN4 */
+	PORT_START_TAG("AN1")		/* IN4 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START		/* IN5 */
+	PORT_START_TAG("AN2")		/* IN5 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_X ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START		/* IN6 */
+	PORT_START_TAG("AN3")		/* IN6 */
 	PORT_BIT( 0xff, 0x80, IPT_AD_STICK_Y ) PORT_MINMAX(0x10,0xf0) PORT_SENSITIVITY(100) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
 	PORT_START_TAG("DSW1")
@@ -1104,7 +1104,7 @@ ROM_END
 
 static DRIVER_INIT( decocass )
 {
-	UINT8 *rom = memory_region(REGION_CPU1);
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 	int A;
 
 	/* allocate memory and mark all RAM regions with their decrypted pointers */
@@ -1125,8 +1125,8 @@ static DRIVER_INIT( decocass )
 
 static DRIVER_INIT( decocrom )
 {
-	int romlength = memory_region_length(REGION_USER3);
-	UINT8 *rom = memory_region(REGION_USER3);
+	int romlength = memory_region_length(machine, REGION_USER3);
+	UINT8 *rom = memory_region(machine, REGION_USER3);
 	UINT8 *decrypted2 = auto_malloc(romlength);
 	int i;
 
@@ -1140,7 +1140,7 @@ static DRIVER_INIT( decocrom )
 	/* convert charram to a banked ROM */
 	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0xafff, 0, 0, SMH_BANK1, decocass_de0091_w);
 	memory_configure_bank(1, 0, 1, decocass_charram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(REGION_USER3), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER3), 0);
 	memory_configure_bank_decrypted(1, 0, 1, &decrypted[0x6000], 0);
 	memory_configure_bank_decrypted(1, 1, 1, decrypted2, 0);
 	memory_set_bank(1, 0);

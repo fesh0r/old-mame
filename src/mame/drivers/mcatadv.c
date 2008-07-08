@@ -136,7 +136,6 @@ Stephh's notes (based on the games M68000 code and some tests) :
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2610intf.h"
 
 VIDEO_UPDATE( mcatadv );
@@ -156,7 +155,7 @@ UINT16* mcatadv_vidregs;
 
 static READ16_HANDLER( mcatadv_dsw_r )
 {
-	return input_port_read_indexed(machine, 2+offset) << 8;
+	return input_port_read(machine, offset ? "DSW2" : "DSW1") << 8;
 }
 
 static WRITE16_HANDLER( mcat_soundlatch_w )
@@ -203,8 +202,8 @@ static ADDRESS_MAP_START( mcatadv_readmem, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x700000, 0x707fff) AM_READ(SMH_RAM) // Sprites
 	AM_RANGE(0x708000, 0x70ffff) AM_READ(SMH_RAM) // Tests more than is needed?
 
-	AM_RANGE(0x800000, 0x800001) AM_READ(input_port_0_word_r)	// Inputs
-	AM_RANGE(0x800002, 0x800003) AM_READ(input_port_1_word_r)	// Inputs
+	AM_RANGE(0x800000, 0x800001) AM_READ_PORT("IN0")	// Inputs
+	AM_RANGE(0x800002, 0x800003) AM_READ_PORT("IN1")	// Inputs
 	AM_RANGE(0xa00000, 0xa00003) AM_READ(mcatadv_dsw_r)		// Dip Switches
 
 	AM_RANGE(0xb00000, 0xb0000f) AM_READ(SMH_RAM)
@@ -238,7 +237,7 @@ ADDRESS_MAP_END
 
 static WRITE8_HANDLER ( mcatadv_sound_bw_w )
 {
-	UINT8 *rom = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *rom = memory_region(machine, REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1,rom + data * 0x4000);
 }
@@ -478,9 +477,9 @@ GFXDECODE_END
 
 
 /* Stolen from Psikyo.c */
-static void sound_irq( int irq )
+static void sound_irq( running_machine *machine, int irq )
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 static const struct YM2610interface mcatadv_ym2610_interface =
 {
@@ -540,7 +539,7 @@ MACHINE_DRIVER_END
 
 static DRIVER_INIT( mcatadv )
 {
-	UINT8 *z80rom = memory_region(REGION_CPU2) + 0x10000;
+	UINT8 *z80rom = memory_region(machine, REGION_CPU2) + 0x10000;
 
 	memory_set_bankptr(1, z80rom + 0x4000);
 }

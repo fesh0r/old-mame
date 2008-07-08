@@ -43,7 +43,7 @@ static int K001006_device_sel[MAX_K001006_CHIPS] = { 0, 0 };
 
 static UINT32 K001006_palette[MAX_K001006_CHIPS][0x800];
 
-static UINT32 K001006_r(int chip, int offset, UINT32 mem_mask)
+static UINT32 K001006_r(running_machine *machine, int chip, int offset, UINT32 mem_mask)
 {
 	if (offset == 1)
 	{
@@ -51,7 +51,7 @@ static UINT32 K001006_r(int chip, int offset, UINT32 mem_mask)
 		{
 			case 0x0b:		// CG Board ROM read
 			{
-				UINT16 *rom = (UINT16*)memory_region(REGION_GFX1);
+				UINT16 *rom = (UINT16*)memory_region(machine, REGION_GFX1);
 				return rom[K001006_addr[chip] / 2] << 16;
 			}
 			case 0x0d:		// Palette RAM read
@@ -126,7 +126,7 @@ static void K001006_w(int chip, int offset, UINT32 data, UINT32 mem_mask)
 
 READ32_HANDLER(K001006_0_r)
 {
-	return K001006_r(0, offset, mem_mask);
+	return K001006_r(machine, 0, offset, mem_mask);
 }
 
 WRITE32_HANDLER(K001006_0_w)
@@ -136,7 +136,7 @@ WRITE32_HANDLER(K001006_0_w)
 
 READ32_HANDLER(K001006_1_r)
 {
-	return K001006_r(1, offset, mem_mask);
+	return K001006_r(machine, 1, offset, mem_mask);
 }
 
 WRITE32_HANDLER(K001006_1_w)
@@ -159,7 +159,7 @@ static bitmap_t *K001005_bitmap[2];
 static bitmap_t *K001005_zbuffer;
 static rectangle K001005_cliprect;
 
-static void render_polygons(void);
+static void render_polygons(running_machine *machine);
 
 static UINT8 *K001005_texture;
 
@@ -176,7 +176,7 @@ static int tex_mirror_table[4][128];
 
 static int K001005_bitmap_page = 0;
 
-void K001005_swap_buffers(void);
+void K001005_swap_buffers(running_machine *machine);
 
 static void K001005_exit(running_machine *machine)
 {
@@ -403,8 +403,8 @@ WRITE32_HANDLER( K001005_w )
 
 			if (data == 2 && K001005_3d_fifo_ptr > 0)
 			{
-				K001005_swap_buffers();
-				render_polygons();
+				K001005_swap_buffers(machine);
+				render_polygons(machine);
 				poly_wait(poly, "render_polygons");
 				K001005_3d_fifo_ptr = 0;
 			}
@@ -469,7 +469,7 @@ static void draw_scanline_tex(void *dest, INT32 scanline, const poly_extent *ext
 {
 	const poly_extra_data *extra = extradata;
 	bitmap_t *destmap = dest;
-	UINT8 *texrom = memory_region(REGION_GFX1) + (extra->texture_page * 0x40000);
+	UINT8 *texrom = memory_region(Machine, REGION_GFX1) + (extra->texture_page * 0x40000);
 	int pal_chip = (extra->texture_palette & 0x8) ? 1 : 0;
 	int palette_index = (extra->texture_palette & 0x7) * 256;
 	float z = extent->param[0].start;
@@ -527,10 +527,10 @@ static void draw_scanline_tex(void *dest, INT32 scanline, const poly_extent *ext
 static poly_vertex prev_v[4];
 static int prev_poly_type;
 
-static void render_polygons(void)
+static void render_polygons(running_machine *machine)
 {
 	int i, j;
-	const rectangle *visarea = video_screen_get_visible_area(Machine->primary_screen);
+	const rectangle *visarea = video_screen_get_visible_area(machine->primary_screen);
 
 //  mame_printf_debug("K001005_fifo_ptr = %08X\n", K001005_3d_fifo_ptr);
 
@@ -944,13 +944,13 @@ void K001005_draw(bitmap_t *bitmap, const rectangle *cliprect)
 	}
 }
 
-void K001005_swap_buffers(void)
+void K001005_swap_buffers(running_machine *machine)
 {
 	K001005_bitmap_page ^= 1;
 
 	//if (K001005_status == 2)
 	{
-		fillbitmap(K001005_bitmap[K001005_bitmap_page], Machine->pens[0], &K001005_cliprect);
+		fillbitmap(K001005_bitmap[K001005_bitmap_page], machine->pens[0], &K001005_cliprect);
 		fillbitmap(K001005_zbuffer, 0xffffffff, &K001005_cliprect);
 	}
 }
@@ -1008,7 +1008,7 @@ VIDEO_UPDATE( gticlub )
         int index = (debug_tex_page - 1) * 0x40000;
         int pal = debug_tex_palette & 7;
         int tp = (debug_tex_palette >> 3) & 1;
-        UINT8 *rom = memory_region(REGION_GFX1);
+        UINT8 *rom = memory_region(machine, REGION_GFX1);
 
         for (y=0; y < 384; y++)
         {

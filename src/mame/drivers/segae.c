@@ -765,7 +765,7 @@ static UINT8 vdp_data_r(struct sms_vdp *chip)
 	return retdata;
 }
 
-static void vdp_data_w(UINT8 data, struct sms_vdp* chip)
+static void vdp_data_w(running_machine *machine, UINT8 data, struct sms_vdp* chip)
 {
 	/* data writes clear the pending flag */
 	chip->cmd_pend = 0;
@@ -801,7 +801,7 @@ static void vdp_data_w(UINT8 data, struct sms_vdp* chip)
 					r = (palword & 0x000f)>>0;
 					g = (palword & 0x00f0)>>4;
 					b = (palword & 0x0f00)>>8;
-					palette_set_color_rgb(Machine,(chip->addr_reg&0x3e)/2, pal4bit(r), pal4bit(g), pal4bit(b));
+					palette_set_color_rgb(machine,(chip->addr_reg&0x3e)/2, pal4bit(r), pal4bit(g), pal4bit(b));
 					chip->cram_mamecolours[(chip->addr_reg&0x3e)/2]=(b<<1)|(g<<6)|(r<<11);
 				}
 			}
@@ -816,7 +816,7 @@ static void vdp_data_w(UINT8 data, struct sms_vdp* chip)
 				r = (data & 0x03)>>0;
 				g = (data & 0x0c)>>2;
 				b = (data & 0x30)>>4;
-				palette_set_color_rgb(Machine,chip->addr_reg&0x1f, pal2bit(r), pal2bit(g), pal2bit(b));
+				palette_set_color_rgb(machine,chip->addr_reg&0x1f, pal2bit(r), pal2bit(g), pal2bit(b));
 				chip->cram_mamecolours[chip->addr_reg&0x1f]=(b<<3)|(g<<8)|(r<<13);
 			}
 
@@ -945,7 +945,7 @@ READ8_HANDLER( md_sms_vdp_data_r )
 
 WRITE8_HANDLER( md_sms_vdp_data_w )
 {
-	vdp_data_w(data, md_sms_vdp);
+	vdp_data_w(machine, data, md_sms_vdp);
 }
 
 READ8_HANDLER( md_sms_vdp_ctrl_r )
@@ -973,7 +973,7 @@ READ8_HANDLER( sms_vdp_data_r )
 
 WRITE8_HANDLER( sms_vdp_data_w )
 {
-	vdp_data_w(data, vdp1);
+	vdp_data_w(machine, data, vdp1);
 }
 
 READ8_HANDLER( sms_vdp_ctrl_r )
@@ -1422,7 +1422,7 @@ static void show_tiles(struct sms_vdp* chip)
  Even though some games set bit 7, it does nothing.
  */
 
-static void end_of_frame(struct sms_vdp *chip)
+static void end_of_frame(running_machine *machine, struct sms_vdp *chip)
 {
 	UINT8 m1 = (chip->regs[0x1]&0x10)>>4;
 	UINT8 m2 = (chip->regs[0x0]&0x02)>>1;
@@ -1440,7 +1440,7 @@ static void end_of_frame(struct sms_vdp *chip)
 		visarea.min_y = 0;
 		visarea.max_y = sms_mode_table[chip->screen_mode].sms2_height-1;
 
-		if (chip->chip_id==3) video_screen_configure(Machine->primary_screen, 256, 256, &visarea, HZ_TO_ATTOSECONDS(chip->sms_framerate));
+		if (chip->chip_id==3) video_screen_configure(machine->primary_screen, 256, 256, &visarea, HZ_TO_ATTOSECONDS(chip->sms_framerate));
 
 	}
 	else /* 160x144 */
@@ -1464,7 +1464,7 @@ static void end_of_frame(struct sms_vdp *chip)
 #ifdef UNUSED_FUNCTION
 VIDEO_EOF(sms)
 {
-	end_of_frame(vdp1);
+	end_of_frame(machine, vdp1);
 	//if (SMS_PAUSE_BUTTON) cpunum_set_input_line(machine, 0,INPUT_LINE_NMI,PULSE_LINE); // not on systeme!!!
 }
 #endif
@@ -1700,8 +1700,8 @@ static INPUT_PORTS_START( tetrisse ) /* Used By Tetris */
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) ) PORT_DIPLOCATION("SW2:2")
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPUNUSED_DIPLOC( 0x40, 0x40, "SW2:3" )
-	PORT_DIPUNUSED_DIPLOC( 0x80, 0x80, "SW2:4" )
+	PORT_DIPUNUSED_DIPLOC( 0x04, 0x04, "SW2:3" )
+	PORT_DIPUNUSED_DIPLOC( 0x08, 0x08, "SW2:4" )
 	PORT_DIPNAME( 0x30, 0x30, DEF_STR( Difficulty ) ) PORT_DIPLOCATION("SW2:5,6")
 	PORT_DIPSETTING(    0x20, DEF_STR( Easy ) )
 	PORT_DIPSETTING(    0x30, DEF_STR( Normal ) )
@@ -1954,19 +1954,19 @@ MACHINE_RESET(megatech_bios)
 
 static VIDEO_EOF(systeme)
 {
-	end_of_frame(vdp1);
-	end_of_frame(vdp2);
+	end_of_frame(machine, vdp1);
+	end_of_frame(machine, vdp2);
 }
 
 
 VIDEO_EOF(megatech_md_sms)
 {
-	end_of_frame(md_sms_vdp);
+	end_of_frame(machine, md_sms_vdp);
 }
 
 VIDEO_EOF(megatech_bios)
 {
-	end_of_frame(vdp1);
+	end_of_frame(machine, vdp1);
 }
 
 VIDEO_UPDATE(megatech_md_sms)
@@ -2081,7 +2081,7 @@ static READ8_HANDLER( sms_vdp_2_data_r )
 
 static WRITE8_HANDLER( sms_vdp_2_data_w )
 {
-	vdp_data_w(data, vdp2);
+	vdp_data_w(machine, data, vdp2);
 }
 
 static READ8_HANDLER( sms_vdp_2_ctrl_r )
@@ -2146,7 +2146,7 @@ static WRITE8_HANDLER( systeme_bank_w )
 		vdp2->vram = vdp2_vram_bank0;
 	}
 
-	//memcpy(sms_rom+0x8000, memory_region(REGION_USER1)+0x10000+rombank*0x4000, 0x4000);
+	//memcpy(sms_rom+0x8000, memory_region(machine, REGION_USER1)+0x10000+rombank*0x4000, 0x4000);
 	memory_set_bank(1, rombank);
 
 }
@@ -2193,13 +2193,13 @@ static void init_systeme_map(running_machine *machine)
 //  memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0xbfff, 0, 0, SMH_BANK1, SMH_UNMAP);
 //  memory_set_bankptr( 1, sms_rom );
 
-	memory_configure_bank(1, 0, 16, memory_region(REGION_CPU1) + 0x10000, 0x4000);
+	memory_configure_bank(1, 0, 16, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
 
 	/* alternate way of accessing video ram */
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, segasyse_videoram_w);
 
 
-//  memcpy(sms_rom, memory_region(REGION_USER1), 0x8000);
+//  memcpy(sms_rom, memory_region(machine, REGION_USER1), 0x8000);
 
 	/* main ram area */
 	sms_mainram = auto_malloc(0x4000);
@@ -2210,9 +2210,9 @@ static void init_systeme_map(running_machine *machine)
 	init_ports_systeme(machine);
 }
 
-void init_for_megadrive(void)
+void init_for_megadrive(running_machine *machine)
 {
-	md_sms_vdp = start_vdp(Machine, GEN_VDP);
+	md_sms_vdp = start_vdp(machine, GEN_VDP);
 	md_sms_vdp->set_irq = sms_vdp_cpu1_irq_callback;
 	md_sms_vdp->is_pal = 0;
 	md_sms_vdp->sms_total_scanlines = 262;
@@ -2345,21 +2345,21 @@ static DRIVER_INIT( opaopa )
 {
 	DRIVER_INIT_CALL(segasyse);
 
-	mc8123_decrypt_rom(0, memory_region(REGION_USER1), 1, 8);
+	mc8123_decrypt_rom(machine, 0, memory_region(machine, REGION_USER1), 1, 8);
 }
 
 static DRIVER_INIT( fantzn2 )
 {
 	DRIVER_INIT_CALL(segasyse);
 
-	mc8123_decrypt_rom(0, memory_region(REGION_USER1), 0, 0);
+	mc8123_decrypt_rom(machine, 0, memory_region(machine, REGION_USER1), 0, 0);
 }
 
 static DRIVER_INIT( astrofl )
 {
 	DRIVER_INIT_CALL(segasyse);
 
-	astrofl_decode();
+	astrofl_decode(machine);
 }
 
 GAME( 1985, hangonjr, 0,        systeme, hangonjr, hangonjr, ROT0,  "Sega", "Hang-On Jr.", 0 )

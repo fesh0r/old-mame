@@ -5,7 +5,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/atarigen.h"
 #include "sound/dac.h"
 #include "includes/cyberbal.h"
@@ -21,10 +20,10 @@ static void update_sound_68k_interrupts(running_machine *machine);
 
 
 
-void cyberbal_sound_reset(void)
+void cyberbal_sound_reset(running_machine *machine)
 {
 	/* reset the sound system */
-	bank_base = &memory_region(REGION_CPU2)[0x10000];
+	bank_base = &memory_region(machine, REGION_CPU2)[0x10000];
 	memory_set_bankptr(8, &bank_base[0x0000]);
 	fast_68k_int = io_68k_int = 0;
 	sound_data_from_68k = sound_data_from_6502 = 0;
@@ -41,8 +40,8 @@ void cyberbal_sound_reset(void)
 
 READ8_HANDLER( cyberbal_special_port3_r )
 {
-	int temp = input_port_read_indexed(machine, 3);
-	if (!(input_port_read_indexed(machine, 0) & 0x8000)) temp ^= 0x80;
+	int temp = input_port_read(machine, "JSAII");
+	if (!(input_port_read(machine, "IN0") & 0x8000)) temp ^= 0x80;
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x40;
 	if (atarigen_sound_to_cpu_ready) temp ^= 0x20;
 	return temp;
@@ -84,7 +83,7 @@ WRITE8_HANDLER( cyberbal_sound_68k_6502_w )
 	if (!io_68k_int)
 	{
 		io_68k_int = 1;
-		update_sound_68k_interrupts(Machine);
+		update_sound_68k_interrupts(machine);
 	}
 }
 
@@ -127,7 +126,7 @@ WRITE16_HANDLER( cyberbal_io_68k_irq_ack_w )
 	if (io_68k_int)
 	{
 		io_68k_int = 0;
-		update_sound_68k_interrupts(Machine);
+		update_sound_68k_interrupts(machine);
 	}
 }
 
@@ -161,6 +160,6 @@ WRITE16_HANDLER( cyberbal_sound_68k_dac_w )
 	if (fast_68k_int)
 	{
 		fast_68k_int = 0;
-		update_sound_68k_interrupts(Machine);
+		update_sound_68k_interrupts(machine);
 	}
 }

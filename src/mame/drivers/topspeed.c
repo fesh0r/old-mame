@@ -230,7 +230,6 @@ Stephh's notes (based on the game M68000 code and some tests) :
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "taitoipt.h"
 #include "cpu/m68000/m68000.h"
 #include "video/taitoic.h"
@@ -265,12 +264,12 @@ static WRITE16_HANDLER( sharedram_w )
 	COMBINE_DATA(&sharedram[offset]);
 }
 
-static void parse_control(void)	/* assumes Z80 sandwiched between 68Ks */
+static void parse_control(running_machine *machine)	/* assumes Z80 sandwiched between 68Ks */
 {
 	/* bit 0 enables cpu B */
 	/* however this fails when recovering from a save state
        if cpu B is disabled !! */
-	cpunum_set_input_line(Machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
+	cpunum_set_input_line(machine, 2, INPUT_LINE_RESET, (cpua_ctrl &0x1) ? CLEAR_LINE : ASSERT_LINE);
 
 }
 
@@ -280,7 +279,7 @@ static WRITE16_HANDLER( cpua_ctrl_w )
 		data = data >> 8;	/* for Wgp */
 	cpua_ctrl = data;
 
-	parse_control();
+	parse_control(machine);
 
 	logerror("CPU #0 PC %06x: write %04x to cpu control\n",activecpu_get_pc(),data);
 }
@@ -377,7 +376,7 @@ static READ16_HANDLER( topspeed_motor_r )
 	switch (offset)
 	{
 		case 0x0:
-			return (mame_rand(Machine) &0xff);	/* motor status ?? */
+			return (mame_rand(machine) &0xff);	/* motor status ?? */
 
 		case 0x101:
 			return 0x55;	/* motor cpu status ? */
@@ -403,20 +402,20 @@ logerror("CPU #0 PC %06x: warning - write %04x to motor cpu %03x\n",activecpu_ge
 
 static INT32 banknum = -1;
 
-static void reset_sound_region(void)
+static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr( 10, memory_region(REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
+	memory_set_bankptr( 10, memory_region(machine, REGION_CPU2) + (banknum * 0x4000) + 0x10000 );
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )	/* assumes Z80 sandwiched between 68Ks */
 {
 	banknum = (data - 1) & 7;
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static int adpcm_pos;
 
-static void topspeed_msm5205_vck(int chip)
+static void topspeed_msm5205_vck(running_machine *machine, int chip)
 {
 	static int adpcm_data = -1;
 
@@ -427,7 +426,7 @@ static void topspeed_msm5205_vck(int chip)
 	}
 	else
 	{
-		adpcm_data = memory_region(REGION_SOUND1)[adpcm_pos];
+		adpcm_data = memory_region(machine, REGION_SOUND1)[adpcm_pos];
 		adpcm_pos = (adpcm_pos + 1) & 0x1ffff;
 		MSM5205_data_w(0, adpcm_data >> 4);
 	}
@@ -657,9 +656,9 @@ GFXDECODE_END
 
 /* handler called by the YM2151 emulator when the internal timers cause an IRQ */
 
-static void irq_handler(int irq)	/* assumes Z80 sandwiched between 68Ks */
+static void irq_handler(running_machine *machine, int irq)	/* assumes Z80 sandwiched between 68Ks */
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface ym2151_interface =
@@ -681,8 +680,8 @@ static const struct MSM5205interface msm5205_interface =
 
 static STATE_POSTLOAD( topspeed_postload )
 {
-	parse_control();
-	reset_sound_region();
+	parse_control(machine);
+	reset_sound_region(machine);
 }
 
 static MACHINE_START( topspeed )

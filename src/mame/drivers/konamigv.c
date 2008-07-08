@@ -138,33 +138,28 @@ static NVRAM_HANDLER( konamigv_93C46 )
 {
 	if( read_or_write )
 	{
-		EEPROM_save( file );
+		eeprom_save( file );
 	}
 	else
 	{
-		EEPROM_init( &eeprom_interface_93C46 );
+		eeprom_init( &eeprom_interface_93C46 );
 
 		if( file )
 		{
-			EEPROM_load( file );
+			eeprom_load( file );
 		}
 		else
 		{
-			EEPROM_set_data( memory_region( REGION_USER2 ), memory_region_length( REGION_USER2 ) );
+			eeprom_set_data( memory_region( machine, REGION_USER2 ), memory_region_length( machine, REGION_USER2 ) );
 		}
 	}
-}
-
-static CUSTOM_INPUT( eeprom_bit_r )
-{
-	return EEPROM_read_bit();
 }
 
 static WRITE32_HANDLER( eeprom_w )
 {
-	EEPROM_write_bit((data&0x01) ? 1 : 0);
-	EEPROM_set_clock_line((data&0x04) ? ASSERT_LINE : CLEAR_LINE);
-	EEPROM_set_cs_line((data&0x02) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_write_bit((data&0x01) ? 1 : 0);
+	eeprom_set_clock_line((data&0x04) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_set_cs_line((data&0x02) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE32_HANDLER( mb89371_w )
@@ -287,9 +282,9 @@ static void scsi_dma_write( UINT32 n_address, INT32 n_size )
 	}
 }
 
-static void scsi_irq(void)
+static void scsi_irq(running_machine *machine)
 {
-	psx_irq_set(0x400);
+	psx_irq_set(machine, 0x400);
 }
 
 static const SCSIConfigTable dev_table =
@@ -324,7 +319,7 @@ static DRIVER_INIT( konamigv )
 
 static MACHINE_RESET( konamigv )
 {
-	psx_machine_init();
+	psx_machine_init(machine);
 
 	/* also hook up CDDA audio to the CD-ROM drive */
 	cdda_set_cdrom(0, am53cf96_get_device(SCSI_ID_4));
@@ -522,10 +517,11 @@ static READ32_HANDLER( trackball_r )
 		int axis;
 		UINT16 diff;
 		UINT16 value;
+		static const char *axisnames[] = { "TRACK0_X", "TRACK0_Y" };
 
 		for( axis = 0; axis < 2; axis++ )
 		{
-			value = input_port_read_indexed(machine,  axis + 3 );
+			value = input_port_read(machine, axisnames[axis]);
 			diff = value - trackball_prev[ axis ];
 			trackball_prev[ axis ] = value;
 			trackball_data[ axis ] = ( ( diff & 0xf00 ) << 16 ) | ( ( diff & 0xff ) << 8 );
@@ -561,10 +557,10 @@ MACHINE_DRIVER_END
 static INPUT_PORTS_START( simpbowl )
 	PORT_INCLUDE( konamigv )
 
-	PORT_START_TAG("IN3")
+	PORT_START_TAG("TRACK0_X")
 	PORT_BIT( 0xfff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("IN4")
+	PORT_START_TAG("TRACK0_Y")
 	PORT_BIT( 0xfff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_PLAYER(1)
 
 INPUT_PORTS_END
@@ -606,10 +602,11 @@ static READ32_HANDLER( btc_trackball_r )
 		int axis;
 		UINT16 diff;
 		UINT16 value;
+		static const char *axisnames[] = { "TRACK0_X", "TRACK0_Y", "TRACK1_X", "TRACK1_Y" };
 
 		for( axis = 0; axis < 4; axis++ )
 		{
-			value = input_port_read_indexed(machine,  axis + 3 );
+			value = input_port_read(machine, axisnames[axis]);
 			diff = value - btc_trackball_prev[ axis ];
 			btc_trackball_prev[ axis ] = value;
 			btc_trackball_data[ axis ] = ( ( diff & 0xf00 ) << 16 ) | ( ( diff & 0xff ) << 8 );
@@ -648,16 +645,16 @@ MACHINE_DRIVER_END
 static INPUT_PORTS_START( btchamp )
 	PORT_INCLUDE( konamigv )
 
-	PORT_START_TAG("IN3")
+	PORT_START_TAG("TRACK0_X")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START_TAG("IN4")
+	PORT_START_TAG("TRACK0_Y")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN5")
+	PORT_START_TAG("TRACK1_X")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_X ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_REVERSE PORT_PLAYER(2)
 
-	PORT_START_TAG("IN6")
+	PORT_START_TAG("TRACK1_Y")
 	PORT_BIT( 0x7ff, 0x0000, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(100) PORT_KEYDELTA(63) PORT_PLAYER(2)
 INPUT_PORTS_END
 

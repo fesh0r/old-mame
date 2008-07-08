@@ -10,7 +10,6 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/2151intf.h"
@@ -177,7 +176,7 @@ static READ16_HANDLER( button2_r )
 
 static WRITE8_HANDLER( sound2_bank_w )
 {
-	memory_set_bankptr(1,memory_region(REGION_CPU3)+0x8000*(data+1));
+	memory_set_bankptr(1,memory_region(machine, REGION_CPU3)+0x8000*(data+1));
 }
 
 
@@ -799,9 +798,9 @@ GFXDECODE_END
 
 
 
-static void irq_handler(int irq)
+static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface ym2151_interface =

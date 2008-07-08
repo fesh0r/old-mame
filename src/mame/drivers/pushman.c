@@ -15,6 +15,8 @@
     The hardware is actually very similar to F1-Dream and Tiger Road but
     with a 68705 for protection.
 
+    There is a Top Tronic licensed version currently not dumped
+
  **************************************************************************
 
     Bouncing Balls                      (c) 1991 Comad
@@ -22,7 +24,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/2203intf.h"
@@ -419,9 +420,9 @@ GFXDECODE_END
 
 /******************************************************************************/
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-    cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2203interface ym2203_interface =

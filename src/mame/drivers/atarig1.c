@@ -90,7 +90,7 @@ static MACHINE_RESET( atarig1 )
 static WRITE16_HANDLER( mo_control_w )
 {
 	if (ACCESSING_BITS_0_7)
-		atarirle_control_w(0, data & 7);
+		atarirle_control_w(machine, 0, data & 7);
 }
 
 
@@ -110,7 +110,7 @@ static WRITE16_HANDLER( mo_command_w )
 
 static READ16_HANDLER( special_port0_r )
 {
-	int temp = input_port_read_indexed(machine, 0);
+	int temp = input_port_read(machine, "IN0");
 	if (atarigen_cpu_to_sound_ready) temp ^= 0x1000;
 	temp ^= 0x2000;		/* A2DOK always high for now */
 	return temp;
@@ -125,13 +125,15 @@ static WRITE16_HANDLER( a2d_select_w )
 
 static READ16_HANDLER( a2d_data_r )
 {
+	static const char *adcnames[] = { "ADC0", "ADC1", "ADC2" };
+
 	/* Pit Fighter has no A2D, just another input port */
 	if (atarig1_pitfight)
-		return input_port_read_indexed(machine, 1);
+		return input_port_read(machine, "ADC0");
 
 	/* otherwise, assume it's hydra */
 	if (which_input < 3)
-		return input_port_read_indexed(machine, 1 + which_input) << 8;
+		return input_port_read(machine, adcnames[which_input]) << 8;
 
 	return 0;
 }
@@ -250,7 +252,7 @@ ADDRESS_MAP_END
  *************************************/
 
 static INPUT_PORTS_START( hydra )
-	PORT_START		/* fc0000 */
+	PORT_START_TAG("IN0")		/* fc0000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_BUTTON5 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_BUTTON2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_BUTTON6 )
@@ -262,15 +264,15 @@ static INPUT_PORTS_START( hydra )
 	PORT_SERVICE( 0x4000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START		/* ADC 0 @ fc8000 */
+	PORT_START_TAG("ADC0")		/* ADC 0 @ fc8000 */
 	PORT_BIT( 0x00ff, 0x0080, IPT_AD_STICK_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(10)
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START		/* ADC 1 @ fc8000 */
+	PORT_START_TAG("ADC1")		/* ADC 1 @ fc8000 */
 	PORT_BIT( 0x00ff, 0x0080, IPT_AD_STICK_Y ) PORT_SENSITIVITY(70) PORT_KEYDELTA(10)
 	PORT_BIT( 0xff00, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* ADC 2 @ fc8000 */
+	PORT_START_TAG("ADC2")      /* ADC 2 @ fc8000 */
 	PORT_BIT( 0xff, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(100) PORT_KEYDELTA(16)
 
 	JSA_II_PORT		/* audio board port */
@@ -280,7 +282,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( pitfight )
-	PORT_START		/* fc0000 */
+	PORT_START_TAG("IN0")		/* fc0000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
@@ -288,14 +290,13 @@ static INPUT_PORTS_START( pitfight )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0f80, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_SERVICE( 0x4000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START      /* fc8000 */
+	PORT_START_TAG("ADC0")		/* fc8000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(3)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(3)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(3)
@@ -303,7 +304,6 @@ static INPUT_PORTS_START( pitfight )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(3)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(3)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(3)
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START3 )
 	PORT_BIT( 0x0080, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
@@ -312,13 +312,12 @@ static INPUT_PORTS_START( pitfight )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* not used */
+	PORT_START_TAG("ADC1")      /* not used */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* not used */
+	PORT_START_TAG("ADC2")      /* not used */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	JSA_II_PORT		/* audio board port */
@@ -328,7 +327,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( pitfighj )
-	PORT_START		/* fc0000 */
+	PORT_START_TAG("IN0")		/* fc0000 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
@@ -336,14 +335,13 @@ static INPUT_PORTS_START( pitfighj )
 	PORT_BIT( 0x0010, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0020, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(1)
 	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
-	PORT_BIT( 0x0040, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x0f80, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x2000, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_SERVICE( 0x4000, IP_ACTIVE_LOW )
 	PORT_BIT( 0x8000, IP_ACTIVE_HIGH, IPT_VBLANK )
 
-	PORT_START      /* fc8000 */
+	PORT_START_TAG("ADC0")      /* fc8000 */
 	PORT_BIT( 0x00ff, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x0100, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(2)
 	PORT_BIT( 0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(2)
@@ -352,13 +350,12 @@ static INPUT_PORTS_START( pitfighj )
 	PORT_BIT( 0x1000, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x2000, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_PLAYER(2)
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
-	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* not used */
+	PORT_START_TAG("ADC1")      /* not used */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START      /* not used */
+	PORT_START_TAG("ADC2")      /* not used */
 	PORT_BIT( 0xffff, IP_ACTIVE_LOW, IPT_UNUSED )
 
 	JSA_II_PORT		/* audio board port */
@@ -967,8 +964,8 @@ static void init_g1_common(running_machine *machine, offs_t slapstic_base, int s
 		state_save_register_postload(machine, pitfighb_state_postload, NULL);
 	}
 	else if (slapstic != 0)
-		atarigen_slapstic_init(0, slapstic_base, 0, slapstic);
-	atarijsa_init(machine, 0, 0x4000);
+		atarigen_slapstic_init(machine, 0, slapstic_base, 0, slapstic);
+	atarijsa_init(machine, "IN0", 0x4000);
 
 	atarig1_pitfight = is_pitfight;
 }

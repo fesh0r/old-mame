@@ -5,8 +5,15 @@
     Generic dynamic recompiler frontend structures and utilities.
 
     Copyright Aaron Giles
-    Released for general use under the MAME license
+    Released for general non-commercial use under the MAME license
     Visit http://mamedev.org for licensing and usage restrictions.
+
+****************************************************************************
+
+    Future improvements/changes:
+
+    * more aggressive handling of needed registers for conditional
+        intrablock branches
 
 ***************************************************************************/
 
@@ -44,12 +51,13 @@ struct _drcfe_state
 	UINT32				window_end;					/* code window end offset = startpc + window_end */
 	UINT32				max_sequence;				/* maximum instructions to include in a sequence */
 
-	drcfe_describe_func		describe;					/* callback to describe a single instruction */
+	drcfe_describe_func	describe;					/* callback to describe a single instruction */
 	void *				param;						/* parameter for the callback */
 
 	/* CPU parameters */
 	offs_t				pageshift;					/* shift to convert address to a page index */
 	cpu_translate_func	translate;					/* pointer to translation function */
+	offs_t				codexor;					/* XOR to reach code */
 
 	/* opcode descriptor arrays */
 	opcode_desc *		desc_live_list;				/* head of list of live descriptions */
@@ -64,10 +72,9 @@ struct _drcfe_state
     FUNCTION PROTOTYPES
 ***************************************************************************/
 
-static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc);
+static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc, const opcode_desc *prevdesc);
 static opcode_desc **build_sequence(drcfe_state *drcfe, opcode_desc **tailptr, int start, int end, UINT32 endflag);
-static void accumulate_live_info_forwards(opcode_desc *desc, UINT64 *gprread, UINT64 *gprwrite, UINT64 *fprread, UINT64 *fprwrite);
-static void accumulate_live_info_backwards(opcode_desc *desc, UINT64 *gprread, UINT64 *gprwrite, UINT64 *fprread, UINT64 *fprwrite);
+static void accumulate_required_backwards(opcode_desc *desc, UINT32 *reqmask);
 static void release_descriptions(drcfe_state *drcfe, opcode_desc *desc);
 
 
@@ -136,6 +143,12 @@ drcfe_state *drcfe_init(const drcfe_config *config, void *param)
 	/* initialize the state */
 	drcfe->pageshift = activecpu_page_shift(ADDRESS_SPACE_PROGRAM);
 	drcfe->translate = (cpu_translate_func)activecpu_get_info_fct(CPUINFO_PTR_TRANSLATE);
+#ifdef LSB_FIRST
+	if (activecpu_endianness() == CPU_IS_BE)
+#else
+	if (activecpu_endianness() == CPU_IS_LE)
+#endif
+		drcfe->codexor = (activecpu_databus_width(ADDRESS_SPACE_PROGRAM) / 8 / activecpu_min_instruction_bytes() - 1) * activecpu_min_instruction_bytes();
 
 	return drcfe;
 }
@@ -175,8 +188,8 @@ void drcfe_exit(drcfe_state *drcfe)
 
 const opcode_desc *drcfe_describe_code(drcfe_state *drcfe, offs_t startpc)
 {
-	offs_t minpc = startpc - drcfe->window_start;
-	offs_t maxpc = startpc + drcfe->window_end;
+	offs_t minpc = startpc - MIN(drcfe->window_start, startpc);
+	offs_t maxpc = startpc + MIN(drcfe->window_end, 0xffffffff - startpc);
 	pc_stack_entry pcstack[MAX_STACK_DEPTH];
 	pc_stack_entry *pcstackptr = &pcstack[0];
 	opcode_desc **tailptr;
@@ -212,10 +225,14 @@ const opcode_desc *drcfe_describe_code(drcfe_state *drcfe, offs_t startpc)
 		}
 
 		/* loop until we exit the block */
-		for (curpc = curstack->targetpc; curpc < maxpc && drcfe->desc_array[curpc - minpc] == NULL; curpc += drcfe->desc_array[curpc - minpc]->length)
+		for (curpc = curstack->targetpc; curpc >= minpc && curpc < maxpc && drcfe->desc_array[curpc - minpc] == NULL; curpc += drcfe->desc_array[curpc - minpc]->length)
 		{
 			/* allocate a new description and describe this instruction */
-			drcfe->desc_array[curpc - minpc] = curdesc = describe_one(drcfe, curpc);
+			drcfe->desc_array[curpc - minpc] = curdesc = describe_one(drcfe, curpc, curdesc);
+
+			/* first instruction in a sequence is always a branch target */
+			if (curpc == curstack->targetpc)
+				curdesc->flags |= OPFLAG_IS_BRANCH_TARGET;
 
 			/* stop if we hit a page fault */
 			if (curdesc->flags & OPFLAG_COMPILER_PAGE_FAULT)
@@ -224,10 +241,6 @@ const opcode_desc *drcfe_describe_code(drcfe_state *drcfe, offs_t startpc)
 			/* if we are the first instruction in the whole window, we must validate the TLB */
 			if (curpc == startpc && drcfe->pageshift != 0)
 				curdesc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION;
-
-			/* first instruction in a sequence is always a branch target */
-			if (curpc == curstack->targetpc)
-				curdesc->flags |= OPFLAG_IS_BRANCH_TARGET;
 
 			/* if we are a branch within the block range, add the branch target to our stack */
 			if ((curdesc->flags & OPFLAG_IS_BRANCH) && curdesc->targetpc >= minpc && curdesc->targetpc < maxpc && pcstackptr < &pcstack[MAX_STACK_DEPTH])
@@ -263,7 +276,7 @@ const opcode_desc *drcfe_describe_code(drcfe_state *drcfe, offs_t startpc)
     slots of branches as well
 -------------------------------------------------*/
 
-static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc)
+static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc, const opcode_desc *prevdesc)
 {
 	opcode_desc *desc = desc_alloc(drcfe);
 
@@ -274,27 +287,27 @@ static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc)
 	desc->targetpc = BRANCH_TARGET_DYNAMIC;
 
 	/* compute the physical PC */
-	if (drcfe->translate != NULL && !(*drcfe->translate)(ADDRESS_SPACE_PROGRAM, &desc->physpc))
+	if (drcfe->translate != NULL && !(*drcfe->translate)(ADDRESS_SPACE_PROGRAM, TRANSLATE_FETCH, &desc->physpc))
 	{
 		/* uh-oh: a page fault; leave the description empty and just if this is the first instruction, leave it empty and */
 		/* mark as needing to validate; otherwise, just end the sequence here */
-		desc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION | OPFLAG_COMPILER_PAGE_FAULT | OPFLAG_VIRTUAL_NOOP;
+		desc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION | OPFLAG_COMPILER_PAGE_FAULT | OPFLAG_VIRTUAL_NOOP | OPFLAG_END_SEQUENCE;
 		return desc;
 	}
 
 	/* get a pointer to the physical address */
 	memory_set_opbase(desc->physpc);
-	desc->opptr.v = cpu_opptr(desc->physpc);
+	desc->opptr.v = cpu_opptr(desc->physpc ^ drcfe->codexor);
 	assert(desc->opptr.v != NULL);
 	if (desc->opptr.v == NULL)
 	{
 		/* address is unmapped; report it as such */
-		desc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION | OPFLAG_COMPILER_UNMAPPED | OPFLAG_VIRTUAL_NOOP;
+		desc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION | OPFLAG_COMPILER_UNMAPPED | OPFLAG_VIRTUAL_NOOP | OPFLAG_END_SEQUENCE;
 		return desc;
 	}
 
 	/* call the callback to describe an instruction */
-	if (!(*drcfe->describe)(drcfe->param, desc))
+	if (!(*drcfe->describe)(drcfe->param, desc, prevdesc))
 	{
 		desc->flags |= OPFLAG_WILL_CAUSE_EXCEPTION | OPFLAG_INVALID_OPCODE;
 		return desc;
@@ -312,19 +325,22 @@ static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc)
 	{
 		opcode_desc **tailptr = &desc->delay;
 		offs_t delaypc = curpc + desc->length;
+		opcode_desc *prev = desc;
 		UINT8 slotnum;
 
 		/* iterate over slots and describe them */
 		for (slotnum = 0; slotnum < desc->delayslots; slotnum++)
 		{
 			/* recursively describe the next instruction */
-			*tailptr = describe_one(drcfe, delaypc);
+			*tailptr = describe_one(drcfe, delaypc, prev);
 			if (*tailptr == NULL)
 				break;
 
 			/* set the delay slot flag and a pointer back to the original branch */
 			(*tailptr)->flags |= OPFLAG_IN_DELAY_SLOT;
 			(*tailptr)->branch = desc;
+			(*tailptr)->prev = prev;
+			prev = *tailptr;
 
 			/* stop if we hit a page fault */
 			if ((*tailptr)->flags & OPFLAG_COMPILER_PAGE_FAULT)
@@ -347,8 +363,7 @@ static opcode_desc *describe_one(drcfe_state *drcfe, offs_t curpc)
 
 static opcode_desc **build_sequence(drcfe_state *drcfe, opcode_desc **tailptr, int start, int end, UINT32 endflag)
 {
-	UINT64 gprread = 0, gprwrite = 0;
-	UINT64 fprread = 0, fprwrite = 0;
+	opcode_desc *prev = NULL;
 	int consecutive = 0;
 	int seqstart = -1;
 	int skipsleft = 0;
@@ -373,8 +388,12 @@ static opcode_desc **build_sequence(drcfe_state *drcfe, opcode_desc **tailptr, i
 			}
 
 			/* start a new sequence if we aren't already in the middle of one */
-			if (seqstart == -1)
+			if (seqstart == -1 && skipsleft == 0)
+			{
+				/* tag all start-of-sequence instructions as needing TLB verification */
+				curdesc->flags |= OPFLAG_VALIDATE_TLB | OPFLAG_CAN_CAUSE_EXCEPTION;
 				seqstart = descnum;
+			}
 
 			/* if we are the last instruction, indicate end-of-sequence and redispatch */
 			if (nextdesc == NULL)
@@ -407,25 +426,20 @@ static opcode_desc **build_sequence(drcfe_state *drcfe, opcode_desc **tailptr, i
 			if (curdesc->flags & OPFLAG_END_SEQUENCE)
 				consecutive = 0;
 
-			/* update register accumulators */
-			accumulate_live_info_forwards(curdesc, &gprread, &gprwrite, &fprread, &fprwrite);
-
 			/* if this is the end of a sequence, work backwards */
 			if (curdesc->flags & OPFLAG_END_SEQUENCE)
 			{
+				UINT32 reqmask[4] = { 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff };
 				int backdesc;
 
-				/* loop until all the registers have been accounted for */
-				gprread = gprwrite = 0;
-				fprread = fprwrite = 0;
-				for (backdesc = descnum; backdesc != seqstart - 1; backdesc--)
-					if (drcfe->desc_array[backdesc] != NULL)
-						accumulate_live_info_backwards(drcfe->desc_array[backdesc], &gprread, &gprwrite, &fprread, &fprwrite);
+				/* figure out which registers we *must* generate, assuming at the end all must be */
+				if (seqstart != -1)
+					for (backdesc = descnum; backdesc != seqstart - 1; backdesc--)
+						if (drcfe->desc_array[backdesc] != NULL)
+							accumulate_required_backwards(drcfe->desc_array[backdesc], reqmask);
 
 				/* reset the register states */
 				seqstart = -1;
-				gprread = gprwrite = 0;
-				fprread = fprwrite = 0;
 			}
 
 			/* if we have instructions remaining to be skipped, and this instruction is a branch target */
@@ -438,6 +452,8 @@ static opcode_desc **build_sequence(drcfe_state *drcfe, opcode_desc **tailptr, i
 			{
 				*tailptr = curdesc;
 				tailptr = &curdesc->next;
+				curdesc->prev = prev;
+				prev = curdesc;
 			}
 			else
 				desc_free(drcfe, curdesc);
@@ -459,42 +475,38 @@ static opcode_desc **build_sequence(drcfe_state *drcfe, opcode_desc **tailptr, i
 
 
 /*-------------------------------------------------
-    accumulate_live_info_forwards - recursively
-    accumulate live register liveness information
-    walking in a forward direction
--------------------------------------------------*/
-
-static void accumulate_live_info_forwards(opcode_desc *desc, UINT64 *gprread, UINT64 *gprwrite, UINT64 *fprread, UINT64 *fprwrite)
-{
-	/* set the initial information */
-	desc->gpr.liveread = (*gprread |= desc->gpr.used);
-	desc->gpr.livewrite = (*gprwrite |= desc->gpr.modified);
-	desc->fpr.liveread = (*fprread |= desc->fpr.used);
-	desc->fpr.livewrite = (*fprwrite |= desc->fpr.modified);
-
-	/* recursively handle delay slots */
-	if (desc->delay != NULL)
-		accumulate_live_info_forwards(desc->delay, gprread, gprwrite, fprread, fprwrite);
-}
-
-
-/*-------------------------------------------------
-    accumulate_live_info_backwards - recursively
+    accumulate_required_backwards - recursively
     accumulate live register liveness information
     walking in a backwards direction
 -------------------------------------------------*/
 
-static void accumulate_live_info_backwards(opcode_desc *desc, UINT64 *gprread, UINT64 *gprwrite, UINT64 *fprread, UINT64 *fprwrite)
+static void accumulate_required_backwards(opcode_desc *desc, UINT32 *reqmask)
 {
 	/* recursively handle delay slots */
 	if (desc->delay != NULL)
-		accumulate_live_info_backwards(desc->delay, gprread, gprwrite, fprread, fprwrite);
+		accumulate_required_backwards(desc->delay, reqmask);
 
-	/* accumulate the info from this instruction */
-	desc->gpr.liveread &= (*gprread |= desc->gpr.used);
-	desc->gpr.livewrite &= (*gprwrite |= desc->gpr.modified);
-	desc->fpr.liveread &= (*fprread |= desc->fpr.used);
-	desc->fpr.livewrite &= (*fprwrite |= desc->fpr.modified);
+	/* if this is a branch, we have to reset our requests */
+	if (desc->flags & OPFLAG_IS_BRANCH)
+		reqmask[0] = reqmask[1] = reqmask[2] = reqmask[3] = 0xffffffff;
+
+	/* determine the required registers */
+	desc->regreq[0] = desc->regout[0] & reqmask[0];
+	desc->regreq[1] = desc->regout[1] & reqmask[1];
+	desc->regreq[2] = desc->regout[2] & reqmask[2];
+	desc->regreq[3] = desc->regout[3] & reqmask[3];
+
+	/* any registers modified by this instruction aren't required upstream until referenced */
+	reqmask[0] &= ~desc->regout[0];
+	reqmask[1] &= ~desc->regout[1];
+	reqmask[2] &= ~desc->regout[2];
+	reqmask[3] &= ~desc->regout[3];
+
+	/* any registers required by this instruction now get marked required */
+	reqmask[0] |= desc->regin[0];
+	reqmask[1] |= desc->regin[1];
+	reqmask[2] |= desc->regin[2];
+	reqmask[3] |= desc->regin[3];
 }
 
 

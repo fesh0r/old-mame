@@ -13,8 +13,6 @@
 */
 
 #define DE156CPU ARM
-extern void decrypt156(void);
-
 #include "driver.h"
 #include "decocrpt.h"
 #include "deco32.h"
@@ -51,7 +49,7 @@ static VIDEO_START( wcvol95 )
 	state_save_register_global_pointer(deco16_pf12_control, 0x10/2);
 	state_save_register_global_pointer(paletteram16, 0x1000/2);
 
-	deco16_1_video_init();
+	deco16_1_video_init(machine);
 
 	deco16_set_tilemap_bank_callback(0, simpl156_bank_callback);
 	deco16_set_tilemap_bank_callback(1, simpl156_bank_callback);
@@ -152,7 +150,7 @@ static VIDEO_UPDATE( wcvol95 )
 
 static READ32_HANDLER(hvysmsh_eeprom_r)
 {
-	return (EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 0) | (input_port_read_indexed(machine, 1)<<16);
+	return (eeprom_read_bit()<<24) | input_port_read(machine, "IN0") | (input_port_read(machine, "IN1")<<16);
 }
 
 static WRITE32_HANDLER(hvysmsh_eeprom_w)
@@ -161,9 +159,9 @@ static WRITE32_HANDLER(hvysmsh_eeprom_w)
 
 		OKIM6295_set_bank_base(1, 0x40000 * (data & 0x7) );
 
-		EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x10);
-		EEPROM_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x10);
+		eeprom_set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -195,15 +193,15 @@ static WRITE32_HANDLER(hvysmsh_oki_1_w)
 
 static READ32_HANDLER(wcvol95_eeprom_r)
 {
-	return (EEPROM_read_bit()<<24) | input_port_read_indexed(machine, 0) | ((input_port_read_indexed(machine, 1)&0xff)<<16);
+	return (eeprom_read_bit()<<24) | input_port_read(machine, "IN0") | ((input_port_read(machine, "IN1") & 0xff)<<16);
 }
 
 static WRITE32_HANDLER(wcvol95_eeprom_w)
 {
 	if (ACCESSING_BITS_0_7) {
-		EEPROM_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_write_bit(data & 0x1);
-		EEPROM_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit(data & 0x1);
+		eeprom_set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -280,7 +278,7 @@ ADDRESS_MAP_END
 /***************************************************************************/
 
 static INPUT_PORTS_START( hvysmsh )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -298,7 +296,7 @@ static INPUT_PORTS_START( hvysmsh )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -318,7 +316,7 @@ static INPUT_PORTS_START( hvysmsh )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( wcvol95 )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
@@ -336,7 +334,7 @@ static INPUT_PORTS_START( wcvol95 )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW, IPT_START2 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW, IPT_SERVICE1 )
@@ -404,7 +402,7 @@ GFXDECODE_END
 
 /**********************************************************************************/
 
-static void sound_irq_gen(int state)
+static void sound_irq_gen(running_machine *machine, int state)
 {
 	logerror("sound irq\n");
 }
@@ -661,10 +659,10 @@ ROM_END
 
 /**********************************************************************************/
 
-static void descramble_sound( int region )
+static void descramble_sound( running_machine *machine, int region )
 {
-	UINT8 *rom = memory_region(region);
-	int length = memory_region_length(region);
+	UINT8 *rom = memory_region(machine, region);
+	int length = memory_region_length(machine, region);
 	UINT8 *buf1 = malloc_or_die(length);
 	UINT32 x;
 
@@ -689,16 +687,16 @@ static void descramble_sound( int region )
 
 static DRIVER_INIT( hvysmsh )
 {
-	deco56_decrypt(REGION_GFX1); /* 141 */
-	decrypt156();
-	descramble_sound(REGION_SOUND2);
+	deco56_decrypt(machine, REGION_GFX1); /* 141 */
+	deco156_decrypt(machine);
+	descramble_sound(machine, REGION_SOUND2);
 }
 
 static DRIVER_INIT( wcvol95 )
 {
-	deco56_decrypt(REGION_GFX1); /* 141 */
-	decrypt156();
-	descramble_sound(REGION_SOUND1);
+	deco56_decrypt(machine, REGION_GFX1); /* 141 */
+	deco156_decrypt(machine);
+	descramble_sound(machine, REGION_SOUND1);
 }
 
 

@@ -8,7 +8,9 @@
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "machine/eeprom.h"
+#include "includes/gaelco2.h"
 
 /***************************************************************************
 
@@ -16,15 +18,15 @@
 
 ***************************************************************************/
 
-static void gaelco2_ROM16_split(int src_reg, int dst_reg, int start, int length, int dest1, int dest2)
+static void gaelco2_ROM16_split(running_machine *machine, int src_reg, int dst_reg, int start, int length, int dest1, int dest2)
 {
 	int i;
 
 	/* get a pointer to the source data */
-	UINT8 *src = (UINT8 *)memory_region(src_reg);
+	UINT8 *src = (UINT8 *)memory_region(machine, src_reg);
 
 	/* get a pointer to the destination data */
-	UINT8 *dst = (UINT8 *)memory_region(dst_reg);
+	UINT8 *dst = (UINT8 *)memory_region(machine, dst_reg);
 
 	/* fill destination areas with the proper data */
 	for (i = 0; i < length/2; i++){
@@ -61,16 +63,16 @@ DRIVER_INIT( alighunt )
     */
 
 	/* split ROM u48 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0000000, 0x0400000, 0x0000000, 0x0400000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0000000, 0x0400000, 0x0000000, 0x0400000);
 
 	/* split ROM u47 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0400000, 0x0400000, 0x0200000, 0x0600000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0400000, 0x0400000, 0x0200000, 0x0600000);
 
 	/* split ROM u50 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0800000, 0x0400000, 0x0800000, 0x0c00000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0800000, 0x0400000, 0x0800000, 0x0c00000);
 
 	/* split ROM u49 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0c00000, 0x0400000, 0x0a00000, 0x0e00000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0c00000, 0x0400000, 0x0a00000, 0x0e00000);
 }
 
 
@@ -92,13 +94,13 @@ DRIVER_INIT( touchgo )
     */
 
 	/* split ROM ic65 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0000000, 0x0400000, 0x0000000, 0x0400000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0000000, 0x0400000, 0x0000000, 0x0400000);
 
 	/* split ROM ic66 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0400000, 0x0200000, 0x0200000, 0x0600000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0400000, 0x0200000, 0x0200000, 0x0600000);
 
 	/* split ROM ic67 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0800000, 0x0400000, 0x0800000, 0x0c00000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0800000, 0x0400000, 0x0800000, 0x0c00000);
 }
 
 
@@ -120,13 +122,13 @@ DRIVER_INIT( snowboar )
     */
 
 	/* split ROM sb44 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0000000, 0x0400000, 0x0000000, 0x0400000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0000000, 0x0400000, 0x0000000, 0x0400000);
 
 	/* split ROM sb45 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0400000, 0x0400000, 0x0200000, 0x0600000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0400000, 0x0400000, 0x0200000, 0x0600000);
 
 	/* split ROM sb46 */
-	gaelco2_ROM16_split(REGION_GFX2, REGION_GFX1, 0x0800000, 0x0400000, 0x0800000, 0x0c00000);
+	gaelco2_ROM16_split(machine, REGION_GFX2, REGION_GFX1, 0x0800000, 0x0400000, 0x0800000, 0x0c00000);
 }
 
 /***************************************************************************
@@ -158,13 +160,111 @@ WRITE16_HANDLER( wrally2_coin_w )
 	coin_counter_w((offset >> 3) & 0x01,  data & 0x01);
 }
 
+WRITE16_HANDLER( touchgo_coin_w )
+{
+	if ((offset >> 2) == 0){
+		coin_counter_w(0, data & 0x01);
+		coin_counter_w(1, data & 0x02);
+		coin_counter_w(2, data & 0x04);
+		coin_counter_w(3, data & 0x08);
+	}
+}
+
+/***************************************************************************
+
+    Bang
+
+***************************************************************************/
+
+static int clr_gun_int;
+
+DRIVER_INIT( bang )
+{
+	clr_gun_int = 0;
+}
+
+WRITE16_HANDLER( bang_clr_gun_int_w )
+{
+	clr_gun_int = 1;
+}
+
+INTERRUPT_GEN( bang_interrupt )
+{
+	if (cpu_getiloops() == 0){
+		cpunum_set_input_line(machine, 0, 2, HOLD_LINE);
+
+		clr_gun_int = 0;
+	}
+	else if (cpu_getiloops() % 2){
+		if (clr_gun_int){
+			cpunum_set_input_line(machine, 0, 4, HOLD_LINE);
+		}
+	}
+}
+
+/***************************************************************************
+
+    World Rally 2 analog controls
+    - added by Mirko Mattioli <els@fastwebnet.it>
+    ---------------------------------------------------------------
+    WR2 pcb has two ADC, one for each player. The ADCs have in common
+    the clock signal line (adc_clk) and the chip enable signal line
+    (adc_cs) and, of course,  two different data out signal lines.
+    When "Pot Wheel" option is selected via dip-switch, then the gear
+    is enabled (low/high shifter); the gear is disabled in joy mode by
+    the CPU program code. No brakes are present in this game.
+    Analog controls routines come from modified code wrote by Aaron
+    Giles for gaelco3d driver.
+
+***************************************************************************/
+
+static UINT8 analog_ports[2];
+
+CUSTOM_INPUT( wrally2_analog_bit_r )
+{
+	int which = (FPTR)param;
+	return (analog_ports[which] >> 7) & 0x01;
+}
+
+
+WRITE16_HANDLER( wrally2_adc_clk )
+{
+	/* a zero/one combo is written here to clock the next analog port bit */
+	if (ACCESSING_BITS_0_7)
+	{
+		if (!(data & 0xff))
+		{
+			analog_ports[0] <<= 1;
+			analog_ports[1] <<= 1;
+		}
+	}
+	else
+		logerror("%06X:analog_port_clock_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+}
+
+
+WRITE16_HANDLER( wrally2_adc_cs )
+{
+	/* a zero is written here to read the analog ports, and a one is written when finished */
+	if (ACCESSING_BITS_0_7)
+	{
+		if (!(data & 0xff))
+		{
+			analog_ports[0] = input_port_read_safe(machine, "ANALOG0", 0);
+			analog_ports[1] = input_port_read_safe(machine, "ANALOG1", 0);
+		}
+	}
+	else
+		logerror("%06X:analog_port_latch_w(%02X) = %08X & %08X\n", activecpu_get_pc(), offset, data, mem_mask);
+}
+
 /***************************************************************************
 
     EEPROM (93C66)
 
 ***************************************************************************/
 
-static const struct EEPROM_interface gaelco2_eeprom_interface =
+static const eeprom_interface gaelco2_eeprom_interface =
 {
 	8,				/* address bits */
 	16,				/* data bits */
@@ -180,11 +280,11 @@ static const struct EEPROM_interface gaelco2_eeprom_interface =
 NVRAM_HANDLER( gaelco2 )
 {
 	if (read_or_write){
-		EEPROM_save(file);
+		eeprom_save(file);
 	} else {
-		EEPROM_init(&gaelco2_eeprom_interface);
+		eeprom_init(&gaelco2_eeprom_interface);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 	}
 }
 
@@ -193,25 +293,25 @@ READ16_HANDLER( gaelco2_eeprom_r )
 	/* bit 6 is EEPROM data (DOUT) */
 	/* bit 7 is EEPROM ready */
 	/* bits 0-5, COINSW, STARTSW & Service */
-	return (1 << 7) | (EEPROM_read_bit() << 6) | (input_port_read_indexed(machine, 2) & 0x3f);
+	return (1 << 7) | (eeprom_read_bit() << 6) | (input_port_read(machine, "COIN") & 0x3f);
 }
 
 WRITE16_HANDLER( gaelco2_eeprom_cs_w )
 {
 	/* bit 0 is CS (active low) */
-	EEPROM_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_cs_line((data & 0x01) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 WRITE16_HANDLER( gaelco2_eeprom_sk_w )
 {
 	/* bit 0 is SK (active high) */
-	EEPROM_set_clock_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_set_clock_line((data & 0x01) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 WRITE16_HANDLER( gaelco2_eeprom_data_w )
 {
 	/* bit 0 is EEPROM data (DIN) */
-	EEPROM_write_bit(data & 0x01);
+	eeprom_write_bit(data & 0x01);
 }
 
 /***************************************************************************

@@ -9,16 +9,7 @@ to be honest i think some of these cause more problems than they're worth ...
 #include "machine/eeprom.h"
 #include "cpu/sh2/sh2.h"
 #include "machine/stvprot.h"
-
-extern UINT32 *stv_workram_h;
-extern UINT32 *stv_workram_l;
-extern UINT32 *stv_backupram;
-extern int stv_enable_slave_sh2;
-
-extern int minit_boost,sinit_boost;
-extern attotime minit_boost_timeslice, sinit_boost_timeslice;
-
-DRIVER_INIT ( stv );
+#include "includes/stv.h"
 
 /*
 IC-13 rom shifter routine,on 2000000-21fffff the game maps the rom bytes on the
@@ -26,9 +17,9 @@ ODD (in every sense) bytes.This gets the IC-13 rom status to good and ends a emu
 weird issue once and for all...
 We need to remove this and add the whole thing into the ROM loading structure...
 */
-static void ic13_shifter(void)
+static void ic13_shifter(running_machine *machine)
 {
-	UINT32 *rom = (UINT32 *)memory_region(REGION_USER1);
+	UINT32 *rom = (UINT32 *)memory_region(machine, REGION_USER1);
 	UINT32 i;
 	UINT32 *tmp = malloc_or_die(0x80000*2);
 
@@ -76,7 +67,7 @@ static void ic13_shifter(void)
 
 DRIVER_INIT ( ic13 )
 {
-	ic13_shifter();
+	ic13_shifter(machine);
 	DRIVER_INIT_CALL(stv);
 }
 /*
@@ -146,16 +137,16 @@ static int stv_default_eeprom_length;
 NVRAM_HANDLER( stv )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C46);
+		eeprom_init(&eeprom_interface_93C46);
 
-		if (file) EEPROM_load(file);
+		if (file) eeprom_load(file);
 		else
 		{
 			if (stv_default_eeprom)	/* Set the EEPROM to Factory Defaults */
-				EEPROM_set_data(stv_default_eeprom,stv_default_eeprom_length);
+				eeprom_set_data(stv_default_eeprom,stv_default_eeprom_length);
 		}
 	}
 }

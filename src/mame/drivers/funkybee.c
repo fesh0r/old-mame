@@ -37,11 +37,6 @@ write
 AY8910 Port A = DSW
 
 
-Known issues:
-
-* skylancr fires in the same spot regardless of player position when in cocktail mode.
-
-
 Stephh's notes (based on the games Z80 code and some tests) :
 
 1) 'funkybee' and clones
@@ -93,8 +88,8 @@ extern VIDEO_UPDATE( funkybee );
 
 static READ8_HANDLER( funkybee_input_port_0_r )
 {
-	watchdog_reset_r(machine,0);
-	return input_port_read_indexed(machine,0);
+	watchdog_reset_r(machine, 0);
+	return input_port_read(machine, "IN0");
 }
 
 static WRITE8_HANDLER( funkybee_coin_counter_w )
@@ -108,8 +103,8 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xa000, 0xdfff) AM_READ(SMH_RAM)
 	AM_RANGE(0xf000, 0xf000) AM_READ(SMH_NOP)	/* IRQ Ack */
 	AM_RANGE(0xf800, 0xf800) AM_READ(funkybee_input_port_0_r)
-	AM_RANGE(0xf801, 0xf801) AM_READ(input_port_1_r)
-	AM_RANGE(0xf802, 0xf802) AM_READ(input_port_2_r)
+	AM_RANGE(0xf801, 0xf801) AM_READ_PORT("IN1")
+	AM_RANGE(0xf802, 0xf802) AM_READ_PORT("IN2")
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( writemem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -187,7 +182,6 @@ static INPUT_PORTS_START( funkybee )
 	PORT_DIPSETTING(	0x80, DEF_STR( Cocktail ) )
 INPUT_PORTS_END
 
-#ifdef UNUSED_DEFINITION
 static INPUT_PORTS_START( funkbeeb )
 	PORT_INCLUDE(funkybee)
 
@@ -198,7 +192,6 @@ static INPUT_PORTS_START( funkbeeb )
 	PORT_DIPSETTING(	0x10, "3" )
 	PORT_DIPSETTING(	0x00, "4" )
 INPUT_PORTS_END
-#endif
 
 static INPUT_PORTS_START( skylancr )
 	PORT_START_TAG("IN0")
@@ -321,7 +314,7 @@ static MACHINE_DRIVER_START( funkybee )
 	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500) /* not accurate */)
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE(32*8, 32*8)
-	MDRV_SCREEN_VISIBLE_AREA(12, 32*8-1-12, 0*8, 28*8-1)
+	MDRV_SCREEN_VISIBLE_AREA(12, 32*8-8-1, 0*8, 28*8-1)
 
 	MDRV_GFXDECODE(funkybee)
 	MDRV_PALETTE_LENGTH(32)
@@ -415,6 +408,6 @@ ROM_START( skylance )
 ROM_END
 
 GAME( 1982, funkybee, 0,        funkybee, funkybee, 0, ROT90, "Orca",                           "Funky Bee",                            0 )
-GAME( 1982, funkbeeb, funkybee, funkybee, funkybee, 0, ROT90, "bootleg",                        "Funky Bee (bootleg, harder)",          0 )
+GAME( 1982, funkbeeb, funkybee, funkybee, funkbeeb, 0, ROT90, "bootleg",                        "Funky Bee (bootleg, harder)",          0 )
 GAME( 1983, skylancr, 0,        funkybee, skylancr, 0, ROT90, "Orca",                           "Sky Lancer",                           0 )
 GAME( 1983, skylance, skylancr, funkybee, skylance, 0, ROT90, "Orca (Esco Trading Co license)", "Sky Lancer (Esco Trading Co license)", 0 )

@@ -7,7 +7,6 @@ Driver by Manuel Abadia <manu@teleline.es>
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "sound/2203intf.h"
 #include "sound/vlm5030.h"
@@ -52,7 +51,7 @@ static INTERRUPT_GEN( ddrible_interrupt_1 )
 static WRITE8_HANDLER( ddrible_bankswitch_w )
 {
 	int bankaddress;
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	bankaddress = 0x10000 + (data & 0x0f)*0x2000;
 	memory_set_bankptr(1,&RAM[bankaddress]);
@@ -91,7 +90,7 @@ static WRITE8_HANDLER( ddrible_coin_counter_w )
 
 static READ8_HANDLER( ddrible_vlm5030_busy_r )
 {
-	return mame_rand(Machine); /* patch */
+	return mame_rand(machine); /* patch */
 	/* FIXME: remove ? */
 #if 0
 	if (VLM5030_BSY()) return 1;
@@ -101,7 +100,7 @@ static READ8_HANDLER( ddrible_vlm5030_busy_r )
 
 static WRITE8_HANDLER( ddrible_vlm5030_ctrl_w )
 {
-	UINT8 *SPEECH_ROM = memory_region(REGION_SOUND1);
+	UINT8 *SPEECH_ROM = memory_region(machine, REGION_SOUND1);
 	/* b7 : vlm data bus OE   */
 	/* b6 : VLM5030-RST       */
 	/* b5 : VLM5030-ST        */

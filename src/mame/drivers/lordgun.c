@@ -26,7 +26,6 @@ To do:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/8255ppi.h"
 #include "machine/eeprom.h"
 #include "sound/3812intf.h"
@@ -69,7 +68,7 @@ VIDEO_UPDATE( lordgun );
 static DRIVER_INIT( lordgun )
 {
 	int i;
-	UINT16 *src = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *src = (UINT16 *)memory_region(machine, REGION_CPU1);
 
 	int rom_size = 0x100000;
 
@@ -111,7 +110,7 @@ static WRITE8_HANDLER(fake2_w)
 
 static READ8_HANDLER( lordgun_eeprom_r )
 {
-	return input_port_read_indexed(machine, 0) | ((EEPROM_read_bit() & 1) << 7);
+	return input_port_read(machine, "IN0") | ((eeprom_read_bit() & 1) << 7);
 }
 
 static WRITE8_HANDLER( lordgun_eeprom_w )
@@ -133,13 +132,13 @@ static WRITE8_HANDLER( lordgun_eeprom_w )
 			lordgun_update_gun(machine, i);
 
 	// latch the bit
-	EEPROM_write_bit(data & 0x40);
+	eeprom_write_bit(data & 0x40);
 
 	// reset line asserted: reset.
-	EEPROM_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE );
+	eeprom_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE );
 
 	// clock line asserted: write latch or select next bit to read
-	EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE );
+	eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE );
 
 	lordgun_whitescreen = data & 0x80;
 
@@ -329,7 +328,7 @@ GFXDECODE_END
 ***************************************************************************/
 
 static INPUT_PORTS_START( lordgun )
-	PORT_START	// IN0
+	PORT_START_TAG("IN0")
 	PORT_DIPNAME( 0x01, 0x01, "Game Mode" )
 	PORT_DIPSETTING(    0x01, "Arcade" )
 	PORT_DIPSETTING(    0x00, "Street" )
@@ -347,7 +346,7 @@ static INPUT_PORTS_START( lordgun )
 	PORT_SERVICE_NO_TOGGLE( 0x40, IP_ACTIVE_LOW )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL )	// eeprom
 
-	PORT_START	// IN1
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1   )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -356,7 +355,7 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE2 ) // cheat: skip ahead
 
-	PORT_START	// IN2
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2  )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -366,7 +365,7 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN3
+	PORT_START_TAG("IN3")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN  )
@@ -376,7 +375,7 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN  )
 
-	PORT_START	//IN 4
+	PORT_START_TAG("IN4")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1   ) PORT_IMPULSE(5)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2   ) PORT_IMPULSE(5)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -386,16 +385,16 @@ static INPUT_PORTS_START( lordgun )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START	// IN5
+	PORT_START_TAG("LIGHT0_X")
 	PORT_BIT( 0x1ff, 0x100, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,0x1ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START	// IN6
+	PORT_START_TAG("LIGHT1_X")
 	PORT_BIT( 0x1ff, 0x100, IPT_LIGHTGUN_X ) PORT_CROSSHAIR(X, 1.0, 0.0, 0) PORT_MINMAX(0,0x1ff) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(2)
 
-	PORT_START	// IN7
+	PORT_START_TAG("LIGHT0_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(1)
 
-	PORT_START	// IN8
+	PORT_START_TAG("LIGHT1_Y")
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR(Y, 1.0, 0.0, 0) PORT_SENSITIVITY(35) PORT_KEYDELTA(10) PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -427,9 +426,9 @@ static const ppi8255_interface ppi8255_intf[2] =
 	}
 };
 
-static void soundirq(int state)
+static void soundirq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, 0, state);
+	cpunum_set_input_line(machine, 1, 0, state);
 }
 
 static const struct YM3812interface lordgun_ym3812_interface =

@@ -75,7 +75,7 @@ static VIDEO_UPDATE( dorachan )
 
 	get_pens(pens);
 
-	color_map_base = memory_region(REGION_PROMS);
+	color_map_base = memory_region(screen->machine, REGION_PROMS);
 
 	for (offs = 0; offs < dorachan_videoram_size; offs++)
 	{
@@ -119,7 +119,7 @@ static CUSTOM_INPUT( dorachan_v128_r )
 {
 	/* to avoid resetting (when player 2 starts) bit 0 need to be
        inverted when screen is flipped */
-	return ((video_screen_get_vpos(machine->primary_screen) >> 7) & 0x01) ^ dorachan_flip_screen;
+	return ((video_screen_get_vpos(field->port->machine->primary_screen) >> 7) & 0x01) ^ dorachan_flip_screen;
 }
 
 

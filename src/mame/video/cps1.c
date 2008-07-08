@@ -22,31 +22,32 @@ NAME                                        Year  B-board #      B-board PALs   
 ------------------------------------------- ----  --------  ---------------------  ---------  -----------------------  -------------
 Forgotten Worlds / Lost Worlds              1988  88618B-2  LWCHR            LWIO  None       CPS-B-01  DL-0411-10001  None
   (alt B-board revision)                          88621B-2  LW621            LWIO  ?
-Ghouls 'n Ghosts (World / US)               1988  88620B-2  DM620            LWIO  None       CPS-B-01  DL-0411-10001  None
+Ghouls 'n Ghosts (World / US)               1988  88620-B-2 DM620            LWIO  None       CPS-B-01  DL-0411-10001  None
   (alt B-board revision - Japan)                  88622B-2  DM22A            LWIO  88622-C-1  CPS-B-01  DL-0411-10001  None
 Strider                                     1989  89624B-2  ST24M1           LWIO  88622-C-1  CPS-B-01  DL-0411-10001  None
   (alt B-board revision)                          89624B-2  ST24M2           LWIO  88622-C-2  CPS-B-01  DL-0411-10001  None
   (alt B-board revision)                          89624B-3  ST24B2           LWIO  88622-C-2  CPS-B-01  DL-0411-10001  None
   (alt B-board revision - Japan)                  ?         ST22B            ?
 Dynasty Wars                                1989  89624B-3  TK24B?           ?     88622-C-2  CPS-B-02  DL-0411-10002  None
-  (alt B-board revision - Japan)                  88622B-3  TK22B            IOB1
+  (alt B-board revision - Japan)                  88622B-3  TK22B            LWIO
 Willow                                      1989  89624B-3  WL24B            LWIO  88622-C-4  CPS-B-03  DL-0411-10003  None
   (alt B-board revision - Japan)                  88622B-3  WL22B            LWIO  88622-C-2  CPS-B-03  DL-0411-10003  None
 UN Squadron / Area 88                       1989  89624B-3  AR24B            LWIO  88622-C-4  CPS-B-11  DL-0411-10004  None
   (alt B-board revision - Japan)                  88622B-2  AR22B            LWIO
+  (alt B-board revision - Japan)                  88622B-3  AR22B            LWIO
 Final Fight (first rev)                     1989  89624B-3  S224B            IOB1  88622-C-5  CPS-B-04  DL-0411-10005  None
 Final Fight (US/Japan 900112)                                                      ?          CPS-B-04@ DL-0411-10001  None
 Final Fight (US 900613)                           89624B-3                   IOB1  88622-C-5  CPS-B-05  DL-0411-10006  None
 Final Fight (Japan 900305) (alt B-board revision) 88622B-2  S222B            LWIO  88622-C-5  CPS-B-02  DL-0411-10002  None
 1941                                        1990  ?         YI24B            ?     88622-C-5  CPS-B-05  DL-0411-10006  ?
-  (alt B-board revision - Japan)                  ?         ?                ?
+  (alt B-board revision - Japan)                  ?         YI22B?           ?
 Mercs                                       1990  89624B-3  O224B            IOB1  90628-C-1  CPS-B-12  DL-0411-10007  C628
-  (alt B-board revision - Japan)                  ?         ?                ?
+  (alt B-board revision - Japan)                  ?         O222B?           ?
   (alt C-board revision)                                                           90628-C-2
 Magic Sword                                 1990  89624B-3  MS24B            IOB1  88622-C-5  CPS-B-13  DL-0411-10008  None
   (alt B-board revision - Japan)                  89625B-1  MS22B            IOB1
 Chiki Chiki Boys / Mega Twins               1990  89624B-3  CK24B            IOB1  88622-C-5  CPS-B-14  DL-0411-10009  None
-  (alt B-board revision - Japan)                  ?         ?                ?
+  (alt B-board revision - Japan)                  ?         CK22B?           ?
 Nemo                                        1990  89624B-3  NM24B            IOB1  88622-C-5  CPS-B-15  DL-0411-10010  None
   (alt B-board revision - Japan)                  89625B-1  NM22B            ?
 Carrier Air Wing / U.S. Navy                1990  89624B-3  CA24B            IOB1  88622-C-5  CPS-B-16  DL-0411-10011  None
@@ -63,16 +64,16 @@ Street Fighter II (US 911101)                                                   
 Street Fighter II (Japan 911210)                                                              CPS-B-13  DL-0411-10008
 Three Wonders*                              1991  89624B-3  RT24B            LWIO  90630C-4   CPS-B-21  DL-0921-10014        IOC1
   (alt B-board revision - Japan)                  89625B-1  RT22B            IOB1
-  (alt B-board revision)                          91634B-2  ?                IOB1
+  (alt B-board revision)                          91634B-2  RT63B?           IOB1
 King of Dragons*                            1991  90629B-3  KD29B            IOB1  90631C-5   CPS-B-21  DL-0921-10014  C632  IOC1
 Captain Commando*                           1991  91635B-2  CC63B     CCPRG  IOB1  90631C-5   CPS-B-21  DL-0921-10014  C632  IOC1
 Knights of the Round*                       1991  91635B-2  KR63B     BPRG1  IOB1  90631C-5   CPS-B-21  DL-0921-10014  C632  IOC1
-  (alt B-board revision)                          ?         ?                ?
+  (alt B-board revision)                          ?         KR29B?           ?
 Street Fighter II' Champion Edition         1992  91635B-2  S9263B    BPRG1  IOB1  92631C-6   CPS-B-21  DL-0921-10014  C632  IOC1
   (alt B-board revision - Japan)                  91634B-2  S9263B    BPRG1  IOB1
 Varth (World)                               1992  89624B-3  VA24B            IOB1  88622-C-5  CPS-B-04  DL-0411-10005  None
   (alt B-board revision - US)                     ?         VA63B?           ?
-Varth (Japan)*                                    ?         ?                      ?          CPS-B-21  DL-0921-10014  ?
+Varth (Japan)*                                    ?         VA22B?           ?     ?          CPS-B-21  DL-0921-10014  ?
 Capcom World 2*                             1992  ?         Q522B            IOB1  ?          CPS-B-21  DL-0921-10014        IOC1
 Quiz and Dragons (US)*                      1992  89625B-1  QD22B            IOB1  92641C-1   CPS-B-21  DL-0921-10014        IOC1
 Quiz and Dragons (Japan)*                   1994  ?         ?                IOB1  ?          CPS-B-21  DL-0921-10014        IOC1
@@ -85,7 +86,7 @@ Muscle Bomber Duo*                          1993  ?         ?                   
 Quiz Tonosama no Yabou 2                    1995  ?         ?                      ?          ?
 Pnickies                                    1994  ?         ?                      ?          CPS-B-21? DL-0921-10014? ?
 Pang 3                                      1995  94916-10  CP1B1F,CP1B8K,CP1B9KA  92631C-6   CPS-B-21  DL-0921-10014  C632  IOC1
-Megaman the Power Battle                    1995  91634B-2  RCM63B   BPRG1   IOB1  ?          CPS-B-21  DL-0921-10014  C632  IOC1
+Megaman the Power Battle                    1995  91634B-2  RCM63B   BPRG1  IOB1  92631C-6    CPS-B-21  DL-0921-10014  C632  IOC1
 
 @actually CPS-B-01, the original number was scratched out and "04" stamped over it
 *denotes Suicide Battery
@@ -422,7 +423,7 @@ static const struct CPS1config *cps1_game_config;
 #define CPS_B_21_QS3 0x0e,0x0c00,  -1,  -1,  -1,  -1,  0x2c, -1,  -1,   0x12,{0x14,0x16,0x08,0x0a},0x0c, {0x04,0x02,0x20,0x00,0x00}
 #define CPS_B_21_QS4 0x2e,0x0c01,  -1,  -1,  -1,  -1,  0x1c,0x1e,0x08,  0x16,{0x00,0x02,0x28,0x2a},0x2c, {0x04,0x08,0x10,0x00,0x00}
 #define CPS_B_21_QS5 0x1e,0x0c02,  -1,  -1,  -1,  -1,  0x0c, -1,  -1,   0x2a,{0x2c,0x2e,0x30,0x32},0x1c, {0x04,0x08,0x10,0x00,0x00}
-#define HACK_B_1      -1,   -1,    -1,  -1,  -1,  -1,   -1,  -1,  -1,   0x14,{0x12,0x10,0x0e,0x0c},0x1c, {0xff,0xff,0xff,0x00,0x00}
+#define HACK_B_1      -1,   -1,    -1,  -1,  -1,  -1,   -1,  -1,  -1,   0x14,{0x12,0x10,0x0e,0x0c},0x0a, {0x0e,0x0e,0x0e,0x30,0x30}
 
 /*
 CPS_B_21_DEF is CPS-B-21 at default settings (no battery)
@@ -1227,6 +1228,7 @@ static const struct CPS1config cps1_config_table[]=
 	{"captcomm", CPS_B_21_BT3, mapper_CC63B,  0x36, 0x38, 0x34 },
 	{"captcomu", CPS_B_21_BT3, mapper_CC63B,  0x36, 0x38, 0x34 },
 	{"captcomj", CPS_B_21_BT3, mapper_CC63B,  0x36, 0x38, 0x34 },
+	{"captcomb", CPS_B_21_BT3, mapper_CC63B,  0x36, 0x38, 0x34 },
 	{"knights",  CPS_B_21_BT4, mapper_KR63B,  0x36, 0, 0x34 },
 	{"knightsu", CPS_B_21_BT4, mapper_KR63B,  0x36, 0, 0x34 },
 	{"knightsj", CPS_B_21_BT4, mapper_KR63B,  0x36, 0, 0x34 },
@@ -1249,6 +1251,7 @@ static const struct CPS1config cps1_config_table[]=
 	{"sf2m7",    CPS_B_21_DEF, mapper_S9263B, 0x36, 0, 0, 1 },
 	{"sf2yyc",   CPS_B_21_DEF, mapper_S9263B, 0x36, 0, 0, 1 },
 	{"sf2koryu", CPS_B_21_DEF, mapper_S9263B, 0x36, 0, 0, 1 },
+	{"sf2mdt",   CPS_B_21_DEF, mapper_S9263B, 0x36, 0, 0, 1 },
 	{"varth",    CPS_B_04,     mapper_VA63B },	/* CPSB test has been patched out (60=0008) register is also written to, possibly leftover from development */
 	{"varthr1",  CPS_B_04,     mapper_VA63B },	/* CPSB test has been patched out (60=0008) register is also written to, possibly leftover from development */
 	{"varthu",   CPS_B_04,     mapper_VA63B },	/* CPSB test has been patched out (60=0008) register is also written to, possibly leftover from development */
@@ -1258,12 +1261,18 @@ static const struct CPS1config cps1_config_table[]=
 	{"wofa",     CPS_B_21_DEF, mapper_TK263B },	/* bootleg? */
 	{"wofu",     CPS_B_21_QS1, mapper_TK263B },
 	{"wofj",     CPS_B_21_QS1, mapper_TK263B },
+	{"wofhfh",   CPS_B_21_DEF, mapper_TK263B }, /* Chinese bootleg */
 	{"dino",     CPS_B_21_QS2, mapper_CD63B },	/* layer enable never used */
 	{"dinou",    CPS_B_21_QS2, mapper_CD63B },	/* layer enable never used */
 	{"dinoj",    CPS_B_21_QS2, mapper_CD63B },	/* layer enable never used */
+	{"dinopic",  CPS_B_21_QS2, mapper_CD63B },	/* layer enable never used */
+	{"dinopic2", CPS_B_21_QS2, mapper_CD63B },	/* layer enable never used */
 	{"punisher", CPS_B_21_QS3, mapper_PS63B },
 	{"punishru", CPS_B_21_QS3, mapper_PS63B },
 	{"punishrj", CPS_B_21_QS3, mapper_PS63B },
+	{"punipic",  CPS_B_21_QS3, mapper_PS63B },
+	{"punipic2", CPS_B_21_QS3, mapper_PS63B },
+	{"punipic3", CPS_B_21_QS3, mapper_PS63B },
 	{"slammast", CPS_B_21_QS4, mapper_MB63B },
 	{"slammasu", CPS_B_21_QS4, mapper_MB63B },
 	{"mbomberj", CPS_B_21_QS4, mapper_MB63B },
@@ -1417,13 +1426,13 @@ static MACHINE_RESET( cps )
 	if (strcmp(gamename, "sf2rb" )==0)
 	{
 		/* Patch out protection check */
-		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+		UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 		rom[0xe5464/2] = 0x6012;
 	}
 	if (strcmp(gamename, "sf2rb2" )==0)
 	{
 		/* Patch out protection check */
-		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+		UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 		rom[0xe5332/2] = 0x6014;
 	}
 
@@ -1434,13 +1443,13 @@ static MACHINE_RESET( cps )
            by the cpu core as a 32-bit branch. This branch would make the
            game crash (address error, since it would branch to an odd address)
            if location 180ca6 (outside ROM space) isn't 0. Protection check? */
-		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+		UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 		rom[0x11756/2] = 0x4e71;
 	}
 	else if (strcmp(gamename, "ghouls" )==0)
 	{
 		/* Patch out self-test... it takes forever */
-		UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+		UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 		rom[0x61964/2] = 0x4ef9;
 		rom[0x61966/2] = 0x0000;
 		rom[0x61968/2] = 0x0400;
@@ -1482,6 +1491,10 @@ WRITE16_HANDLER( cps1_cps_a_w )
 	if (offset == CPS1_PALETTE_BASE)
 		cps1_build_palette(machine, cps1_base(CPS1_PALETTE_BASE,cps1_palette_align));
 
+	// pzloop2 write to register 24 on startup. This is probably just a bug.
+	if (offset == 0x24/2 && cps_version == 2)
+		return;
+
 	if (offset > CPS1_VIDEOCONTROL)
 		popmessage("write to CPS-A register %02x contact MAMEDEV", offset*2);
 }
@@ -1506,13 +1519,23 @@ READ16_HANDLER( cps1_cps_b_r )
 				cps1_cps_b_regs[cps1_game_config->mult_factor2/2]) >> 16;
 
 	if (offset == cps1_game_config->in2_addr/2)	/* Extra input ports (on C-board) */
-		return input_port_read(machine, "IN2");
+	{
+		if (cps1_game_config->bootleg_kludge == 1)
+			return input_port_read(machine, "IN2") << 8;
+		else
+			return input_port_read(machine, "IN2");
+	}
 
 	if (offset == cps1_game_config->in3_addr/2)	/* Player 4 controls (on C-board) ("Captain Commando") */
 		return input_port_read(machine, "IN3");
 
 	if (cps_version == 2)
 	{
+		if (offset == 0x10/2)
+		{
+			// UNKNOWN--only mmatrix appears to read this, and I'm not sure if the result is actuallyused
+			return cps1_cps_b_regs[0x10/2];
+		}
 		if (offset == 0x12/2)
 		{
 			return cps1_cps_b_regs[0x12/2];
@@ -1583,7 +1606,8 @@ WRITE16_HANDLER( cps1_cps_b_w )
 			offset != cps1_game_config->priority[2]/2 &&
 			offset != cps1_game_config->priority[3]/2 &&
 			offset != cps1_game_config->palette_control/2 &&
-			offset != cps1_game_config->out2_addr/2)
+			offset != cps1_game_config->out2_addr/2 &&
+			!cps1_game_config->bootleg_kludge)
 		popmessage("CPS-B write %04x to port %02x contact MAMEDEV", data, offset*2);
 }
 
@@ -1597,11 +1621,11 @@ INLINE int cps2_port(int offset)
 
 
 
-static void cps1_gfx_decode(void)
+static void cps1_gfx_decode(running_machine *machine)
 {
-	int size=memory_region_length(REGION_GFX1);
+	int size=memory_region_length(machine, REGION_GFX1);
 	int i,j,gfxsize;
-	UINT8 *cps1_gfx = memory_region(REGION_GFX1);
+	UINT8 *cps1_gfx = memory_region(machine, REGION_GFX1);
 
 
 	gfxsize=size/4;
@@ -1652,29 +1676,29 @@ static void unshuffle(UINT64 *buf,int len)
 	}
 }
 
-static void cps2_gfx_decode(void)
+static void cps2_gfx_decode(running_machine *machine)
 {
 	const int banksize=0x200000;
-	int size=memory_region_length(REGION_GFX1);
+	int size=memory_region_length(machine, REGION_GFX1);
 	int i;
 
 	for (i = 0;i < size;i += banksize)
-		unshuffle((UINT64 *)(memory_region(REGION_GFX1) + i),banksize/8);
+		unshuffle((UINT64 *)(memory_region(machine, REGION_GFX1) + i),banksize/8);
 
-	cps1_gfx_decode();
+	cps1_gfx_decode(machine);
 }
 
 
 DRIVER_INIT( cps1 )
 {
-	cps1_gfx_decode();
+	cps1_gfx_decode(machine);
 }
 
 
 
 DRIVER_INIT( cps2_video )
 {
-	cps2_gfx_decode();
+	cps2_gfx_decode(machine);
 
 	cps1_scanline1 = 262;
 	cps1_scanline2 = 262;
@@ -1762,7 +1786,7 @@ void cps1_get_video_base(void )
 	enablemask = cps1_game_config->layer_enable_mask[0] | cps1_game_config->layer_enable_mask[1]
 			| cps1_game_config->layer_enable_mask[2]
 			| cps1_game_config->layer_enable_mask[3] | cps1_game_config->layer_enable_mask[4];
-	if (((layercontrol & ~enablemask) & 0xc03e) != 0)
+	if (((layercontrol & ~enablemask) & 0x003e) != 0)
 		popmessage("layer %02x contact MAMEDEV",layercontrol&0xc03f);
 }
 
@@ -2497,7 +2521,7 @@ static void cps2_render_sprites(running_machine *machine, bitmap_t *bitmap,const
 static void cps1_render_stars(const device_config *screen, bitmap_t *bitmap,const rectangle *cliprect)
 {
 	int offs;
-	UINT8 *stars_rom = memory_region(REGION_GFX2);
+	UINT8 *stars_rom = memory_region(screen->machine, REGION_GFX2);
 
 	if (!stars_rom && (cps1_stars_enabled[0] || cps1_stars_enabled[1]))
 	{

@@ -5,13 +5,10 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "segaic16.h"
 #include "video/resnet.h"
-
-extern void *fd1089_get_decrypted_base(void);
-extern void fd1094_machine_init(void);
-extern void *fd1094_get_decrypted_base(void);
+#include "machine/fd1089.h"
+#include "includes/system16.h"
 
 
 /*************************************
@@ -61,7 +58,7 @@ struct compare_timer_chip
 	UINT16	counter;
 	UINT8	bit;
 	void	(*sound_w)(UINT8);
-	void	(*timer_ack)(void);
+	void	(*timer_ack)(running_machine *);
 };
 
 
@@ -163,10 +160,10 @@ void segaic16_memory_mapper_config(running_machine *machine, const UINT8 *map_da
 }
 
 
-void segaic16_memory_mapper_set_decrypted(UINT8 *decrypted)
+void segaic16_memory_mapper_set_decrypted(running_machine *machine, UINT8 *decrypted)
 {
 	struct memory_mapper_chip *chip = &memory_mapper;
-	offs_t romsize = memory_region_length(REGION_CPU1 + chip->cpunum);
+	offs_t romsize = memory_region_length(machine, REGION_CPU1 + chip->cpunum);
 	int rgnum;
 
 	/* loop over the regions */
@@ -218,7 +215,7 @@ static void memory_mapper_w(running_machine *machine, struct memory_mapper_chip 
 			/*   03 - maybe controls halt and reset lines together? */
 			if ((oldval ^ chip->regs[offset]) & 3)
 			{
-				cpunum_set_input_line(Machine, chip->cpunum, INPUT_LINE_RESET, (chip->regs[offset] & 3) == 3 ? ASSERT_LINE : CLEAR_LINE);
+				cpunum_set_input_line(machine, chip->cpunum, INPUT_LINE_RESET, (chip->regs[offset] & 3) == 3 ? ASSERT_LINE : CLEAR_LINE);
 				if ((chip->regs[offset] & 3) == 3)
 					fd1094_machine_init();
 			}
@@ -232,7 +229,7 @@ static void memory_mapper_w(running_machine *machine, struct memory_mapper_chip 
 		case 0x04:
 			/* controls IRQ lines to 68000, negative logic -- write $B to signal IRQ4 */
 			if ((chip->regs[offset] & 7) != 7)
-				cpunum_set_input_line(Machine, chip->cpunum, (~chip->regs[offset] & 7), HOLD_LINE);
+				cpunum_set_input_line(machine, chip->cpunum, (~chip->regs[offset] & 7), HOLD_LINE);
 			break;
 
 		case 0x05:
@@ -355,7 +352,7 @@ static void update_memory_mapping(running_machine *machine, struct memory_mapper
 		/* ROM areas need extra clamping */
 		if (rgn->romoffset != ~0)
 		{
-			offs_t romsize = memory_region_length(REGION_CPU1 + chip->cpunum);
+			offs_t romsize = memory_region_length(machine, REGION_CPU1 + chip->cpunum);
 			if (region_start >= romsize)
 				read = NULL;
 			else if (region_start + rgn->length > romsize)
@@ -384,7 +381,7 @@ static void update_memory_mapping(running_machine *machine, struct memory_mapper
 				if (!decrypted)
 					decrypted = fd1089_get_decrypted_base();
 
-				memory_configure_bank(banknum, 0, 1, memory_region(REGION_CPU1 + chip->cpunum) + region_start, 0);
+				memory_configure_bank(banknum, 0, 1, memory_region(machine, REGION_CPU1 + chip->cpunum) + region_start, 0);
 				if (decrypted)
 					memory_configure_bank_decrypted(banknum, 0, 1, decrypted ? (decrypted + region_start) : 0, 0);
 				memory_set_bank(banknum, 0);
@@ -585,7 +582,7 @@ WRITE16_HANDLER( segaic16_divide_2_w ) { divide_w(2, offset, data, mem_mask); }
  *
  *************************************/
 
-void segaic16_compare_timer_init(int which, void (*sound_write_callback)(UINT8), void (*timer_ack_callback)(void))
+void segaic16_compare_timer_init(int which, void (*sound_write_callback)(UINT8), void (*timer_ack_callback)(running_machine *))
 {
 	compare_timer[which].sound_w = sound_write_callback;
 	compare_timer[which].timer_ack = timer_ack_callback;
@@ -641,14 +638,14 @@ static void update_compare(int which, int update_history)
 }
 
 
-static void timer_interrupt_ack(int which)
+static void timer_interrupt_ack(running_machine *machine, int which)
 {
 	if (compare_timer[which].timer_ack)
-		(*compare_timer[which].timer_ack)();
+		(*compare_timer[which].timer_ack)(machine);
 }
 
 
-static UINT16 compare_timer_r(int which, offs_t offset, UINT16 mem_mask)
+static UINT16 compare_timer_r(running_machine *machine, int which, offs_t offset, UINT16 mem_mask)
 {
 	offset &= 0xf;
 	if (LOG_COMPARE) logerror("%06X:compare%d_r(%X) = %04X\n", activecpu_get_pc(), which, offset, compare_timer[which].regs[offset]);
@@ -663,13 +660,13 @@ static UINT16 compare_timer_r(int which, offs_t offset, UINT16 mem_mask)
 		case 0x6:	return compare_timer[which].regs[2];
 		case 0x7:	return compare_timer[which].regs[7];
 		case 0x9:
-		case 0xd:	timer_interrupt_ack(which); break;
+		case 0xd:	timer_interrupt_ack(machine, which); break;
 	}
 	return 0xffff;
 }
 
 
-static void compare_timer_w(int which, offs_t offset, UINT16 data, UINT16 mem_mask)
+static void compare_timer_w(running_machine *machine, int which, offs_t offset, UINT16 data, UINT16 mem_mask)
 {
 	offset &= 0xf;
 	if (LOG_COMPARE) logerror("%06X:compare%d_w(%X) = %04X\n", activecpu_get_pc(), which, offset, data);
@@ -683,7 +680,7 @@ static void compare_timer_w(int which, offs_t offset, UINT16 data, UINT16 mem_ma
 		case 0x8:
 		case 0xc:	COMBINE_DATA(&compare_timer[which].regs[8]); break;
 		case 0x9:
-		case 0xd:	timer_interrupt_ack(which); break;
+		case 0xd:	timer_interrupt_ack(machine, which); break;
 		case 0xa:
 		case 0xe:	COMBINE_DATA(&compare_timer[which].regs[10]); break;
 		case 0xb:
@@ -696,7 +693,7 @@ static void compare_timer_w(int which, offs_t offset, UINT16 data, UINT16 mem_ma
 }
 
 
-READ16_HANDLER( segaic16_compare_timer_0_r )  { return compare_timer_r(0, offset, mem_mask); }
-READ16_HANDLER( segaic16_compare_timer_1_r )  { return compare_timer_r(1, offset, mem_mask); }
-WRITE16_HANDLER( segaic16_compare_timer_0_w ) { compare_timer_w(0, offset, data, mem_mask); }
-WRITE16_HANDLER( segaic16_compare_timer_1_w ) { compare_timer_w(1, offset, data, mem_mask); }
+READ16_HANDLER( segaic16_compare_timer_0_r )  { return compare_timer_r(machine, 0, offset, mem_mask); }
+READ16_HANDLER( segaic16_compare_timer_1_r )  { return compare_timer_r(machine, 1, offset, mem_mask); }
+WRITE16_HANDLER( segaic16_compare_timer_0_w ) { compare_timer_w(machine, 0, offset, data, mem_mask); }
+WRITE16_HANDLER( segaic16_compare_timer_1_w ) { compare_timer_w(machine, 1, offset, data, mem_mask); }

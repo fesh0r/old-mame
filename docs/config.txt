@@ -274,7 +274,7 @@ Configuration options
 		- mame.ini
 		- <mymame>.ini (i.e. if MAME was renamed mame060.exe, MAME
 				parses mame060.ini here)
-		- mamed.ini  (if this is a debug build, i.e. mamed.exe)
+		- debug.ini (if the debugger is enabled)
 		- vector.ini (for vector games only)
 		- <driver>.ini (based on the source filename of the driver)
 		- <parent>.ini (for clones only, may be called recursively)
@@ -453,12 +453,56 @@ Core state/playback options
 	(.cfg), NVRAM (.nv), and memory card files deleted. The default is
 	NULL (no recording).
 
+-snapname <name>
+
+	Describes how MAME should name files for snapshots. <name> is a string
+	that provides a template that is used to generate a filename. Three
+	simple substitutions are provided: the / character represents the
+	path separator on any target platform (even Windows); the string %g
+	represents the driver name of the current game; and the string %i
+	represents an incrementing index. If %i is omitted, then each
+	snapshot taken will overwrite the previous one; otherwise, MAME will
+	find the next empty value for %i and use that for a filename. The
+	default is %g/%i, which creates a separate folder for each game,
+	and names the snapshots under it starting with 0000 and increasing
+	from there.
+
+-snapsize <width>x<height> 
+
+	Hard-codes the size for snapshots and movie recording. By default,
+	MAME will create snapshots at the game's current resolution in raw
+	pixels, and will create movies at the game's starting resolution in
+	raw pixels. If you specify this option, then MAME will create both
+	snapshots and movies at the size specified, and will bilinear filter
+	the result. Note that this size does not automatically rotate if the 
+	game is vertically oriented. The default is 'auto'.
+
+-snapview <viewname> 
+
+	Specifies the view to use when rendering snapshots and movies. By
+	default, both use a special 'internal' view, which renders a separate
+	snapshot per screen or renders movies only of the first screen. By
+	specifying this option, you can override this default behavior and
+	select a single view that will apply to all snapshots and movies.
+	Note that <viewname> does not need to be a perfect match; rather, it
+	will select the first view whose name matches all the characters
+	specified by <viewname>. For example, -snapview native will match the 
+	"Native (15:14)" view even though it is not a perfect match. 
+	<viewname> can also be 'auto', which selects the first view with all
+	screens present. The default value is 'internal'.
+
 -mngwrite <filename>
 
 	Writes each video frame to the given <filename> in MNG format,
 	producing an animation of the game session. Note that -mngwrite only
 	writes video frames; it does not save any audio data. Use -wavwrite
 	for that, and reassemble the audio/video using offline tools. The
+	default is NULL (no recording).
+
+-aviwrite <filename>
+
+	Stream video and sound data to the given <filename> in AVI format,
+	producing an animation of the game session complete with sound. The
 	default is NULL (no recording).
 
 -wavwrite <filename>
@@ -698,6 +742,16 @@ Core sound options
 Core input options
 ------------------
 
+-[no]coin_lockout / -[no]coinlock
+
+	Enables simulation of the "coin lockout" feature that is implmeneted
+	on a number of game PCBs. It was up to the operator whether or not
+	the coin lockout outputs were actually connected to the coin
+	mechanisms. If this feature is enabled, then attempts to enter a coin
+	while the lockout is active will fail and will display a popup message
+	in the user interface. If this feature is disabled, the coin lockout
+	signal will be ignored. The default is ON (-coin_lockout).
+
 -ctrlr <controller>
 
 	Enables support for special controllers. Configuration files are
@@ -886,10 +940,9 @@ Debugging options
 
 -[no]debug
 
-	Activates the integrated debugger. This is available only if the
-	program is compiled with MAME_DEBUG defined. By default, the debugger
-	is entered by pressing the tilde (~) key during emulation. It is also
-	entered immediately at startup. The default is ON (-debug).
+	Activates the integrated debugger. By default, the debugger is entered 
+	by pressing the tilde (~) key during emulation. It is also entered 
+	immediately at startup. The default is OFF (-nodebug).
 
 -debugscript <filename>
 

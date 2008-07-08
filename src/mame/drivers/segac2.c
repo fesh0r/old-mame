@@ -9,12 +9,15 @@
     Sega's C2 was used between 1989 and 1994, the hardware being very similar to that
     used by the Sega MegaDrive/Genesis Home Console Sega produced around the same time.
 
+    The Columns manual call this system 'System 14' instead of system C/C2.
+
+
     todo: fill in protection chip data
 
-    Year  Game                       Developer         Protection Chip  Board
-    ====  ====================       ================  ===============  =====
+    Year  Game                       Developer         Protection Chip  Board  Number
+    ====  ====================       ================  ===============  =====  ======
     1989  Bloxeed                    Sega / Elorg      n/a              C
-    1990  Columns                    Sega              317-0149         C
+    1990  Columns                    Sega              317-0149         C      171-5880B
     1990  Columns II                 Sega              317-0160         C
     1990  ThunderForce AC            Sega / Technosoft 317-0172         C2
     1990  Borench                    Sega              317-0173         C2
@@ -145,8 +148,8 @@ static MACHINE_RESET( segac2 )
 
 	/* determine how many sound banks */
 	sound_banks = 0;
-	if (memory_region(REGION_SOUND1))
-		sound_banks = memory_region_length(REGION_SOUND1) / 0x20000;
+	if (memory_region(machine, REGION_SOUND1))
+		sound_banks = memory_region_length(machine, REGION_SOUND1) / 0x20000;
 
 	/* reset the protection */
 	prot_write_buf = 0;
@@ -352,6 +355,7 @@ static void recompute_palette_tables(void)
 
 static READ16_HANDLER( io_chip_r )
 {
+	static const char *portnames[] = { "P1", "P2", "PORTC", "PORTD", "SERVICE", "COINAGE", "DSW", "PORTH" };
 	offset &= 0x1f/2;
 
 	switch (offset)
@@ -371,8 +375,8 @@ static READ16_HANDLER( io_chip_r )
 
 			/* otherwise, return an input port */
 			if (offset == 0x04/2 && sound_banks)
-				return (input_port_read_indexed(machine, offset) & 0xbf) | (upd7759_0_busy_r(machine,0) << 6);
-			return input_port_read_indexed(machine, offset);
+				return (input_port_read(machine, portnames[offset]) & 0xbf) | (upd7759_0_busy_r(machine,0) << 6);
+			return input_port_read(machine, portnames[offset]);
 
 		/* 'SEGA' protection */
 		case 0x10/2:
@@ -491,7 +495,7 @@ static WRITE16_HANDLER( control_w )
 	data &= 0x0f;
 
 	/* bit 0 controls display enable */
-	segac2_enable_display(~data & 1);
+	segac2_enable_display(machine, ~data & 1);
 
 	/* bit 1 resets the protection */
 	if (!(data & 2))
@@ -799,10 +803,10 @@ static INPUT_PORTS_START( columns )
     /* The first level increase (from 0 to 1) is always after destroying
        35 jewels. Then, the level gets 1 level more every : */
     PORT_DIPNAME( 0x30, 0x30, DEF_STR( Difficulty ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )     // 50 jewels
-    PORT_DIPSETTING(    0x10, DEF_STR( Medium ) )   // 40 jewels
-    PORT_DIPSETTING(    0x30, DEF_STR( Hard ) )     // 35 jewels
-    PORT_DIPSETTING(    0x20, DEF_STR( Hardest ) )  // 25 jewels
+    PORT_DIPSETTING(    0x00, DEF_STR( Easiest ) )  // 50 jewels
+    PORT_DIPSETTING(    0x10, DEF_STR( Easy ) )     // 40 jewels
+    PORT_DIPSETTING(    0x30, DEF_STR( Normal ) )   // 35 jewels
+    PORT_DIPSETTING(    0x20, DEF_STR( Hard ) )     // 25 jewels
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( columnsu )
@@ -823,13 +827,16 @@ static INPUT_PORTS_START( columnsu )
 	PORT_DIPNAME( 0x02, 0x00, DEF_STR( Demo_Sounds ) )
 	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x00, "Background Music" )	/* listed in the manual, ON by default */
+	PORT_DIPSETTING(    0x04, "BGM #1" )
+	PORT_DIPSETTING(    0x00, "BGM #2" )
     /* The first level increase (from 0 to 1) is always after destroying
        35 jewels. Then, the level gets 1 level more every : */
     PORT_DIPNAME( 0x30, 0x30, DEF_STR( Difficulty ) )
-    PORT_DIPSETTING(    0x00, DEF_STR( Easy ) )     // 50 jewels
-    PORT_DIPSETTING(    0x10, DEF_STR( Medium ) )   // 40 jewels
-    PORT_DIPSETTING(    0x30, DEF_STR( Hard ) )     // 35 jewels
-    PORT_DIPSETTING(    0x20, DEF_STR( Hardest ) )  // 25 jewels
+    PORT_DIPSETTING(    0x00, DEF_STR( Easiest ) )  // 50 jewels
+    PORT_DIPSETTING(    0x10, DEF_STR( Easy ) )     // 40 jewels
+    PORT_DIPSETTING(    0x30, DEF_STR( Normal ) )   // 35 jewels
+    PORT_DIPSETTING(    0x20, DEF_STR( Hard ) )     // 25 jewels
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( columns2 )
@@ -2153,7 +2160,7 @@ static DRIVER_INIT( ichirj )
 static DRIVER_INIT( ichirjbl )
 {
 	/* when did this actually work? - the protection is patched but the new check fails? */
-	UINT16 *rom = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *rom = (UINT16 *)memory_region(machine, REGION_CPU1);
 	rom[0x390/2] = 0x6600;
 }
 

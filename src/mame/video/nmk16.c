@@ -10,8 +10,7 @@
 #include "driver.h"
 
 UINT16 *nmk_bgvideoram,*nmk_fgvideoram,*nmk_txvideoram;
-UINT16 *gunnail_scrollram;
-static UINT16 gunnail_scrolly;
+UINT16 *gunnail_scrollram, *gunnail_scrollramy;
 
 static int redraw_bitmap;
 
@@ -403,16 +402,6 @@ WRITE16_HANDLER( bioship_bank_w )
 	}
 }
 
-WRITE16_HANDLER( gunnail_scrollx_w )
-{
-	COMBINE_DATA(&gunnail_scrollram[offset]);
-}
-
-WRITE16_HANDLER( gunnail_scrolly_w )
-{
-	COMBINE_DATA(&gunnail_scrolly);
-}
-
 /***************************************************************************
 
   Display refresh
@@ -563,24 +552,24 @@ static void mcu_run(running_machine *machine, UINT8 dsw_setting)
 	/*needed because of the uncompatibility of the dsw settings.*/
 	if(dsw_setting)
 	{
-		dsw_a = (input_port_read_indexed(machine, 2+dsw_setting) & 0x7);
-		dsw_b = (input_port_read_indexed(machine, 2+dsw_setting) & 0x38) >> 3;
+		dsw_a = (input_port_read(machine, "DSW2") & 0x7);
+		dsw_b = (input_port_read(machine, "DSW2") & 0x38) >> 3;
 	}
 	else
 	{
-		dsw_a = (input_port_read_indexed(machine, 2) & 0x0700) >> 8;
-		dsw_b = (input_port_read_indexed(machine, 2) & 0x3800) >> 11;
+		dsw_a = (input_port_read(machine, "DSW1") & 0x0700) >> 8;
+		dsw_b = (input_port_read(machine, "DSW1") & 0x3800) >> 11;
 	}
 
 	read_coin = old_value;
-	old_value = input_port_read_indexed(machine, 0);
+	old_value = input_port_read(machine, "IN0");
 
 	if(dsw_a == 0 || dsw_b == 0)
 		nmk16_mainram[0x9000/2]|=0x4000; //free_play
 
 	if(read_coin != old_value)
 	{
-		if(!(input_port_read_indexed(machine, 0) & 0x01))//COIN1
+		if(!(input_port_read(machine, "IN0") & 0x01))//COIN1
 		{
 			switch(dsw_a & 7)
 			{
@@ -615,7 +604,7 @@ static void mcu_run(running_machine *machine, UINT8 dsw_setting)
 			}
 		}
 
-		if(!(input_port_read_indexed(machine, 0) & 0x02))//COIN2
+		if(!(input_port_read(machine, "IN0") & 0x02))//COIN2
 		{
 			switch(dsw_b & 7)
 			{
@@ -650,19 +639,19 @@ static void mcu_run(running_machine *machine, UINT8 dsw_setting)
 			}
 		}
 
-		if(!(input_port_read_indexed(machine, 0) & 0x04))//SERVICE_COIN
+		if(!(input_port_read(machine, "IN0") & 0x04))	//SERVICE_COIN
 			nmk16_mainram[0xef00/2]++;
 
 		if(nmk16_mainram[0xef00/2] >= 1 && (nmk16_mainram[0x9000/2] & 0x8000))/*enable start button*/
 		{
 			/*Start a 1-player game,but don't decrement if the player 1 is already playing*/
-			if((!(input_port_read_indexed(machine, 0) & 0x08)) /*START1*/
+			if((!(input_port_read(machine, "IN0") & 0x08)) /*START1*/
 			&& (!(nmk16_mainram[0x9000/2] & 0x0200)) /*PLAYER-1 playing*/
 			)
 				nmk16_mainram[0xef00/2]--;
 
 			/*Start a 2-players game,but don't decrement if the player 2 is already playing*/
-			if((!(input_port_read_indexed(machine, 0) & 0x10))
+			if((!(input_port_read(machine, "IN0") & 0x10))
 			&& (!(nmk16_mainram[0x9000/2] & 0x0100))
 			)
 			{
@@ -746,21 +735,47 @@ VIDEO_UPDATE( tharrier )
 
 VIDEO_UPDATE( gunnail )
 {
-	int i;
+	int y1, i;
+	rectangle bgclip = *cliprect;
 
-	for (i = 0;i < 256;i++)
+	// the hardware supports per-scanline X *and* Y scroll which isn't
+	// supported by tilemaps so we have to draw the tilemap one line at a time
+	y1 = cliprect->min_y;
+	while (y1 <= cliprect->max_y)
 	{
-		tilemap_set_scrollx(bg_tilemap,(i+gunnail_scrolly) & 0x1ff,gunnail_scrollram[0] + gunnail_scrollram[i] - videoshift);
-	}
-	tilemap_set_scrolly(bg_tilemap,0,gunnail_scrolly);
+		int const yscroll = gunnail_scrollramy[0] + gunnail_scrollramy[y1];
+		int y2;
 
-	VIDEO_UPDATE_CALL(macross);
+		// group all consecutive lines with the same y scroll to reduce overhead
+		y2 = y1+1;
+		while (y2 <= cliprect->max_y && gunnail_scrollramy[y2] == gunnail_scrollramy[y1])
+			y2++;
+
+		bgclip.min_y = y1;
+		bgclip.max_y = y2-1;
+
+		tilemap_set_scrolly(bg_tilemap, 0, yscroll);
+		for (i = y1; i < y2; i++)
+			tilemap_set_scrollx(bg_tilemap,(i + yscroll) & 0x1ff, gunnail_scrollram[0] + gunnail_scrollram[i] - videoshift);
+
+		tilemap_draw(bitmap,&bgclip,bg_tilemap,0,0);
+
+		y1 = y2;
+	}
+
+	nmk16_draw_sprites(screen->machine, bitmap,cliprect,3);
+	nmk16_draw_sprites(screen->machine, bitmap,cliprect,2);
+	nmk16_draw_sprites(screen->machine, bitmap,cliprect,1);
+	nmk16_draw_sprites(screen->machine, bitmap,cliprect,0);
+
+	tilemap_set_scrollx(tx_tilemap,0,-videoshift);
+	tilemap_draw(bitmap,cliprect,tx_tilemap,0,0);
 	return 0;
 }
 
 VIDEO_UPDATE( bioship )
 {
-	UINT16 *tilerom = (UINT16 *)memory_region(REGION_GFX5);
+	UINT16 *tilerom = (UINT16 *)memory_region(screen->machine, REGION_GFX5);
 	int scrollx=-(bioship_scroll[1] + bioship_scroll[0]*256);
 	int scrolly=-(bioship_scroll[3] + bioship_scroll[2]*256);
 
@@ -1052,8 +1067,8 @@ static void video_update(running_machine *machine, bitmap_t *bitmap, const recta
 	if (dsw_flipscreen)
 	{
 
-		flip_screen_x_set(~input_port_read_indexed(machine, 2) & 0x0100);
-		flip_screen_y_set(~input_port_read_indexed(machine, 2) & 0x0200);
+		flip_screen_x_set(~input_port_read(machine, "DSW1") & 0x0100);
+		flip_screen_y_set(~input_port_read(machine, "DSW1") & 0x0200);
 	}
 
 	tilemap_set_scrollx(tilemap_0, 0, afega_scroll_0[1] + xoffset);

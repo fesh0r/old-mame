@@ -87,6 +87,7 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
+#include "deprecat.h"
 #include "video/konamiic.h"
 #include "cpu/konami/konami.h" /* for the callback and the firq irq definition */
 #include "machine/eeprom.h"
@@ -112,7 +113,7 @@ VIDEO_UPDATE( vendetta );
 static int init_eeprom_count;
 
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -126,15 +127,15 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( vendetta )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
 		{
 			init_eeprom_count = 0;
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 			init_eeprom_count = 1000;
@@ -145,7 +146,7 @@ static READ8_HANDLER( vendetta_eeprom_r )
 {
 	int res;
 
-	res = EEPROM_read_bit();
+	res = eeprom_read_bit();
 
 	res |= 0x02;//konami_eeprom_ack() << 5; /* add the ack */
 
@@ -176,9 +177,9 @@ static WRITE8_HANDLER( vendetta_eeprom_w )
 		return;
 
 	/* EEPROM */
-	EEPROM_write_bit(data & 0x20);
-	EEPROM_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
-	EEPROM_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_write_bit(data & 0x20);
+	eeprom_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 
 	irq_enabled = ( data >> 6 ) & 1;
 
@@ -828,7 +829,7 @@ ROM_END
 
 static void vendetta_banking( int lines )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(Machine, REGION_CPU1);
 
 	if ( lines >= 0x1c )
 	{
@@ -842,11 +843,11 @@ static MACHINE_RESET( vendetta )
 {
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)vendetta_banking);
 
-	paletteram = &memory_region(REGION_CPU1)[0x48000];
+	paletteram = &memory_region(machine, REGION_CPU1)[0x48000];
 	irq_enabled = 0;
 
 	/* init banks */
-	memory_set_bankptr( 1, &memory_region(REGION_CPU1)[0x10000] );
+	memory_set_bankptr( 1, &memory_region(machine, REGION_CPU1)[0x10000] );
 	vendetta_video_banking( machine, 0 );
 }
 

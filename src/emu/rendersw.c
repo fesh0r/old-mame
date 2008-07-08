@@ -42,6 +42,10 @@
 #define NO_DEST_READ 0
 #endif
 
+#if !defined(BILINEAR_FILTER)
+#define BILINEAR_FILTER 0
+#endif
+
 
 
 /***************************************************************************
@@ -53,6 +57,7 @@
 
 #include "mamecore.h"
 #include "eminline.h"
+#include "video/rgbutil.h"
 #include "render.h"
 #include <math.h>
 
@@ -99,13 +104,23 @@ static UINT32 cosine_table[2049];
     INLINE FUNCTIONS
 ***************************************************************************/
 
+/*-------------------------------------------------
+    round_nearest - round to nearest in a
+    predictable way
+-------------------------------------------------*/
+
 INLINE float round_nearest(float f)
 {
 	return floor(f + 0.5f);
 }
 
 
-INLINE UINT32 ycc_to_rgb(UINT8 y, UINT8 cb, UINT8 cr)
+/*-------------------------------------------------
+    ycc_to_rgb - convert YCC to RGB; the YCC pixel
+    contains Y in the LSB, Cb << 8, and Cr << 16
+-------------------------------------------------*/
+
+INLINE UINT32 ycc_to_rgb(UINT32 ycc)
 {
 	/* original equations:
 
@@ -129,6 +144,9 @@ INLINE UINT32 ycc_to_rgb(UINT8 y, UINT8 cb, UINT8 cr)
         G = clip(( 298 * Y - 298 * 16 - 100 * Cb + 100 * 128 - 208 * Cr + 208 * 128 + 128) >> 8)
         B = clip(( 298 * Y - 298 * 16 + 516 * Cb - 516 * 128                        + 128) >> 8)
     */
+    UINT8 y = ycc;
+    UINT8 cb = ycc >> 8;
+    UINT8 cr = ycc >> 16;
 	int r, g, b, common;
 
 	common = 298 * y - 298 * 16;
@@ -145,6 +163,256 @@ INLINE UINT32 ycc_to_rgb(UINT8 y, UINT8 cb, UINT8 cr)
 
 	return MAKE_RGB(r, g, b);
 }
+
+
+/*-------------------------------------------------
+    get_texel_palette16_nearest - return the
+    nearest neighbor texel from a palettized
+    16bpp source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_palette16_nearest(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT16 *texbase = (const UINT16 *)texture->base + (curv >> 16) * texture->rowpixels + (curu >> 16);
+	return texture->palette[texbase[0]];
+}
+
+
+/*-------------------------------------------------
+    get_texel_palette16_bilinear - return a
+    bilinear filtered texel from a palettized
+    16bpp source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_palette16_bilinear(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT16 *texbase = texture->base;
+	rgb_t pix00, pix01, pix10, pix11;
+	INT32 u0, u1, v0, v1;
+
+	u0 = curu >> 16;
+	u1 = 1;
+	if (u0 < 0) u0 = u1 = 0;
+	else if (u0 + 1 >= texture->width) u0 = texture->width - 1, u1 = 0;
+	v0 = curv >> 16;
+	v1 = texture->rowpixels;
+	if (v0 < 0) v0 = v1 = 0;
+	else if (v0 + 1 >= texture->height) v0 = texture->height - 1, v1 = 0;
+
+	texbase += v0 * texture->rowpixels + u0;
+
+	pix00 = texture->palette[texbase[0]];
+	pix01 = texture->palette[texbase[u1]];
+	pix10 = texture->palette[texbase[v1]];
+	pix11 = texture->palette[texbase[u1 + v1]];
+	return rgb_bilinear_filter(pix00, pix01, pix10, pix11, curu >> 8, curv >> 8);
+}
+
+
+/*-------------------------------------------------
+    get_texel_rgb15_nearest - return the
+    nearest neighbor texel from a 15bpp RGB source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_rgb15_nearest(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT16 *texbase = (const UINT16 *)texture->base + (curv >> 16) * texture->rowpixels + (curu >> 16);
+	return texbase[0];
+}
+
+
+/*-------------------------------------------------
+    get_texel_rgb15_bilinear - return the
+    bilinear filtered texel from a 15bpp RGB
+    source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_rgb15_bilinear(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT16 *texbase = texture->base;
+	rgb_t pix00, pix01, pix10, pix11, filtered;
+	INT32 u0, u1, v0, v1;
+
+	u0 = curu >> 16;
+	u1 = 1;
+	if (u0 < 0) u0 = u1 = 0;
+	else if (u0 + 1 >= texture->width) u0 = texture->width - 1, u1 = 0;
+	v0 = curv >> 16;
+	v1 = texture->rowpixels;
+	if (v0 < 0) v0 = v1 = 0;
+	else if (v0 + 1 >= texture->height) v0 = texture->height - 1, v1 = 0;
+
+	texbase += v0 * texture->rowpixels + u0;
+
+	pix00 = texbase[0];
+	pix01 = texbase[u1];
+	pix10 = texbase[v1];
+	pix11 = texbase[u1 + v1];
+	pix00 = ((pix00 & 0x7fe0) << 6) | (pix00 & 0x1f);
+	pix01 = ((pix01 & 0x7fe0) << 6) | (pix01 & 0x1f);
+	pix10 = ((pix10 & 0x7fe0) << 6) | (pix10 & 0x1f);
+	pix11 = ((pix11 & 0x7fe0) << 6) | (pix11 & 0x1f);
+	filtered = rgb_bilinear_filter(pix00, pix01, pix10, pix11, curu >> 8, curv >> 8);
+	return (filtered & 0x1f) | ((filtered & 0x1ff800) >> 6);
+}
+
+
+/*-------------------------------------------------
+    get_texel_yuy16_nearest - return the
+    nearest neighbor texel from a 16bpp YCbCr
+    source (pixel is returned as Cr-Cb-Y
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_yuy16_nearest(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT16 *texbase = (const UINT16 *)texture->base + (curv >> 16) * texture->rowpixels + (curu >> 17) * 2;
+	return (texbase[(curu >> 16) & 1] >> 8) | ((texbase[0] & 0xff) << 8) | ((texbase[1] & 0xff) << 16);
+}
+
+
+/*-------------------------------------------------
+    get_texel_yuy16_bilinear - return the
+    nearest neighbor texel from a 16bpp YCbCr
+    source (pixel is returned as Cr-Cb-Y
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_yuy16_bilinear(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT16 *texbase = texture->base;
+	rgb_t pix00, pix01, pix10, pix11;
+	INT32 u0, u1, v0, v1;
+
+	u0 = curu >> 16;
+	u1 = 1;
+	if (u0 < 0) u0 = u1 = 0;
+	else if (u0 + 1 >= texture->width) u0 = texture->width - 1, u1 = 0;
+	v0 = curv >> 16;
+	v1 = texture->rowpixels;
+	if (v0 < 0) v0 = v1 = 0;
+	else if (v0 + 1 >= texture->height) v0 = texture->height - 1, v1 = 0;
+
+	texbase += v0 * texture->rowpixels + (u0 & ~1);
+
+	if ((curu & 0x10000) == 0)
+	{
+		rgb_t cbcr = ((texbase[0] & 0xff) << 8) | ((texbase[1] & 0xff) << 16);
+		pix00 = (texbase[0] >> 8) | cbcr;
+		pix01 = (texbase[u1] >> 8) | cbcr;
+		cbcr = ((texbase[v1 + 0] & 0xff) << 8) | ((texbase[v1 + 1] & 0xff) << 16);
+		pix10 = (texbase[v1 + 0] >> 8) | cbcr;
+		pix11 = (texbase[v1 + u1] >> 8) | cbcr;
+	}
+	else
+	{
+		rgb_t cbcr = ((texbase[0] & 0xff) << 8) | ((texbase[1] & 0xff) << 16);
+		pix00 = (texbase[1] >> 8) | cbcr;
+		if (u1 != 0)
+		{
+			cbcr = ((texbase[2] & 0xff) << 8) | ((texbase[3] & 0xff) << 16);
+			pix01 = (texbase[2] >> 8) | cbcr;
+		}
+		else
+			pix01 = pix00;
+		cbcr = ((texbase[v1 + 0] & 0xff) << 8) | ((texbase[v1 + 1] & 0xff) << 16);
+		pix10 = (texbase[v1 + 1] >> 8) | cbcr;
+		if (u1 != 0)
+		{
+			cbcr = ((texbase[v1 + 2] & 0xff) << 8) | ((texbase[v1 + 3] & 0xff) << 16);
+			pix11 = (texbase[v1 + 2] >> 8) | cbcr;
+		}
+		else
+			pix11 = pix10;
+	}
+	return rgb_bilinear_filter(pix00, pix01, pix10, pix11, curu >> 8, curv >> 8);
+}
+
+
+/*-------------------------------------------------
+    get_texel_rgb32_nearest - return the
+    nearest neighbor texel from a 32bpp RGB source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_rgb32_nearest(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT32 *texbase = (const UINT32 *)texture->base + (curv >> 16) * texture->rowpixels + (curu >> 16);
+	return texbase[0];
+}
+
+
+/*-------------------------------------------------
+    get_texel_rgb32_bilinear - return the
+    bilinear filtered texel from a 32bpp RGB
+    source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_rgb32_bilinear(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT32 *texbase = texture->base;
+	rgb_t pix00, pix01, pix10, pix11;
+	INT32 u0, u1, v0, v1;
+
+	u0 = curu >> 16;
+	u1 = 1;
+	if (u0 < 0) u0 = u1 = 0;
+	else if (u0 + 1 >= texture->width) u0 = texture->width - 1, u1 = 0;
+	v0 = curv >> 16;
+	v1 = texture->rowpixels;
+	if (v0 < 0) v0 = v1 = 0;
+	else if (v0 + 1 >= texture->height) v0 = texture->height - 1, v1 = 0;
+
+	texbase += v0 * texture->rowpixels + u0;
+
+	pix00 = texbase[0];
+	pix01 = texbase[u1];
+	pix10 = texbase[v1];
+	pix11 = texbase[u1 + v1];
+	return rgb_bilinear_filter(pix00, pix01, pix10, pix11, curu >> 8, curv >> 8);
+}
+
+
+/*-------------------------------------------------
+    get_texel_argb32_nearest - return the
+    nearest neighbor texel from a 32bpp ARGB
+    source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_argb32_nearest(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT32 *texbase = (const UINT32 *)texture->base + (curv >> 16) * texture->rowpixels + (curu >> 16);
+	return texbase[0];
+}
+
+
+/*-------------------------------------------------
+    get_texel_argb32_bilinear - return the
+    bilinear filtered texel from a 32bpp ARGB
+    source
+-------------------------------------------------*/
+
+INLINE UINT32 get_texel_argb32_bilinear(const render_texinfo *texture, INT32 curu, INT32 curv)
+{
+	const UINT32 *texbase = texture->base;
+	rgb_t pix00, pix01, pix10, pix11;
+	INT32 u0, u1, v0, v1;
+
+	u0 = curu >> 16;
+	u1 = 1;
+	if (u0 < 0) u0 = u1 = 0;
+	else if (u0 + 1 >= texture->width) u0 = texture->width - 1, u1 = 0;
+	v0 = curv >> 16;
+	v1 = texture->rowpixels;
+	if (v0 < 0) v0 = v1 = 0;
+	else if (v0 + 1 >= texture->height) v0 = texture->height - 1, v1 = 0;
+
+	texbase += v0 * texture->rowpixels + u0;
+
+	pix00 = texbase[0];
+	pix01 = texbase[u1];
+	pix10 = texbase[v1];
+	pix11 = texbase[u1 + v1];
+	return rgba_bilinear_filter(pix00, pix01, pix10, pix11, curu >> 8, curv >> 8);
+}
+
 
 #endif
 
@@ -192,6 +460,14 @@ INLINE UINT32 ycc_to_rgb(UINT8 y, UINT8 cb, UINT8 cr)
 #undef SOURCE32_TO_DEST
 #define SOURCE32_TO_DEST(pix)	(pix)
 #endif
+#endif
+
+/* texel functions */
+#undef GET_TEXEL
+#if BILINEAR_FILTER
+#define GET_TEXEL(type)				get_texel_##type##_##bilinear
+#else
+#define GET_TEXEL(type)				get_texel_##type##_##nearest
 #endif
 
 
@@ -504,16 +780,13 @@ static void FUNC_PREFIX(draw_rect)(const render_primitive *prim, void *dstdata, 
 
 static void FUNC_PREFIX(draw_quad_palette16_none)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT16 *texbase = prim->texture.base;
-	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
 	INT32 x, y;
 
 	/* ensure all parameters are valid */
-	assert(palbase != NULL);
+	assert(prim->texture.palette != NULL);
 
 	/* fast case: no coloring, no alpha */
 	if (prim->color.r >= 1.0f && prim->color.g >= 1.0f && prim->color.b >= 1.0f && IS_OPAQUE(prim->color.a))
@@ -528,7 +801,7 @@ static void FUNC_PREFIX(draw_quad_palette16_none)(const render_primitive *prim, 
 			/* loop over cols */
 			for (x = setup->startx; x < endx; x++)
 			{
-				UINT32 pix = palbase[texbase[(curv >> 16) * texrp + (curu >> 16)]];
+				UINT32 pix = GET_TEXEL(palette16)(&prim->texture, curu, curv);
 				*dest++ = SOURCE32_TO_DEST(pix);
 				curu += dudx;
 				curv += dvdx;
@@ -558,7 +831,7 @@ static void FUNC_PREFIX(draw_quad_palette16_none)(const render_primitive *prim, 
 			/* loop over cols */
 			for (x = setup->startx; x < endx; x++)
 			{
-				UINT32 pix = palbase[texbase[(curv >> 16) * texrp + (curu >> 16)]];
+				UINT32 pix = GET_TEXEL(palette16)(&prim->texture, curu, curv);
 				UINT32 r = (SOURCE32_R(pix) * sr) >> 8;
 				UINT32 g = (SOURCE32_G(pix) * sg) >> 8;
 				UINT32 b = (SOURCE32_B(pix) * sb) >> 8;
@@ -594,7 +867,7 @@ static void FUNC_PREFIX(draw_quad_palette16_none)(const render_primitive *prim, 
 			/* loop over cols */
 			for (x = setup->startx; x < endx; x++)
 			{
-				UINT32 pix = palbase[texbase[(curv >> 16) * texrp + (curu >> 16)]];
+				UINT32 pix = GET_TEXEL(palette16)(&prim->texture, curu, curv);
 				UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 				UINT32 r = (SOURCE32_R(pix) * sr + DEST_R(dpix) * invsa) >> 8;
 				UINT32 g = (SOURCE32_G(pix) * sg + DEST_G(dpix) * invsa) >> 8;
@@ -616,16 +889,13 @@ static void FUNC_PREFIX(draw_quad_palette16_none)(const render_primitive *prim, 
 
 static void FUNC_PREFIX(draw_quad_palette16_add)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT16 *texbase = prim->texture.base;
-	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
 	INT32 x, y;
 
 	/* ensure all parameters are valid */
-	assert(palbase != NULL);
+	assert(prim->texture.palette != NULL);
 
 	/* fast case: no coloring, no alpha */
 	if (prim->color.r >= 1.0f && prim->color.g >= 1.0f && prim->color.b >= 1.0f && IS_OPAQUE(prim->color.a))
@@ -640,7 +910,7 @@ static void FUNC_PREFIX(draw_quad_palette16_add)(const render_primitive *prim, v
 			/* loop over cols */
 			for (x = setup->startx; x < endx; x++)
 			{
-				UINT32 pix = palbase[texbase[(curv >> 16) * texrp + (curu >> 16)]];
+				UINT32 pix = GET_TEXEL(palette16)(&prim->texture, curu, curv);
 				if ((pix & 0xffffff) != 0)
 				{
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
@@ -681,7 +951,7 @@ static void FUNC_PREFIX(draw_quad_palette16_add)(const render_primitive *prim, v
 			/* loop over cols */
 			for (x = setup->startx; x < endx; x++)
 			{
-				UINT32 pix = palbase[texbase[(curv >> 16) * texrp + (curu >> 16)]];
+				UINT32 pix = GET_TEXEL(palette16)(&prim->texture, curu, curv);
 				if ((pix & 0xffffff) != 0)
 				{
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
@@ -713,16 +983,13 @@ static void FUNC_PREFIX(draw_quad_palette16_add)(const render_primitive *prim, v
 
 static void FUNC_PREFIX(draw_quad_palettea16_alpha)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT16 *texbase = prim->texture.base;
-	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
 	INT32 x, y;
 
 	/* ensure all parameters are valid */
-	assert(palbase != NULL);
+	assert(prim->texture.palette != NULL);
 
 	/* fast case: no coloring, no alpha */
 	if (prim->color.r >= 1.0f && prim->color.g >= 1.0f && prim->color.b >= 1.0f && IS_OPAQUE(prim->color.a))
@@ -737,7 +1004,7 @@ static void FUNC_PREFIX(draw_quad_palettea16_alpha)(const render_primitive *prim
 			/* loop over cols */
 			for (x = setup->startx; x < endx; x++)
 			{
-				UINT32 pix = palbase[texbase[(curv >> 16) * texrp + (curu >> 16)]];
+				UINT32 pix = GET_TEXEL(palette16)(&prim->texture, curu, curv);
 				UINT32 ta = pix >> 24;
 				if (ta != 0)
 				{
@@ -780,7 +1047,7 @@ static void FUNC_PREFIX(draw_quad_palettea16_alpha)(const render_primitive *prim
 			/* loop over cols */
 			for (x = setup->startx; x < endx; x++)
 			{
-				UINT32 pix = palbase[texbase[(curv >> 16) * texrp + (curu >> 16)]];
+				UINT32 pix = GET_TEXEL(palette16)(&prim->texture, curu, curv);
 				UINT32 ta = (pix >> 24) * sa;
 				if (ta != 0)
 				{
@@ -813,9 +1080,7 @@ static void FUNC_PREFIX(draw_quad_palettea16_alpha)(const render_primitive *prim
 
 static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT16 *texbase = prim->texture.base;
 	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
@@ -837,8 +1102,7 @@ static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					const UINT16 *spix = &texbase[(curv >> 16) * texrp + (curu >> 17) * 2];
-					UINT32 pix = ycc_to_rgb(spix[(curu >> 16) & 1] >> 8, spix[0], spix[1]);
+					UINT32 pix = ycc_to_rgb(GET_TEXEL(yuy16)(&prim->texture, curu, curv));
 					*dest++ = SOURCE32_TO_DEST(pix);
 					curu += dudx;
 					curv += dvdx;
@@ -851,8 +1115,7 @@ static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					const UINT16 *spix = &texbase[(curv >> 16) * texrp + (curu >> 17) * 2];
-					UINT32 pix = ycc_to_rgb(palbase[spix[(curu >> 16) & 1] >> 8], spix[0], spix[1]);
+					UINT32 pix = ycc_to_rgb(GET_TEXEL(yuy16)(&prim->texture, curu, curv));
 					*dest++ = SOURCE32_TO_DEST(pix);
 					curu += dudx;
 					curv += dvdx;
@@ -886,8 +1149,7 @@ static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					const UINT16 *spix = &texbase[(curv >> 16) * texrp + (curu >> 17) * 2];
-					UINT32 pix = ycc_to_rgb(spix[(curu >> 16) & 1] >> 8, spix[0], spix[1]);
+					UINT32 pix = ycc_to_rgb(GET_TEXEL(yuy16)(&prim->texture, curu, curv));
 					UINT32 r = (SOURCE32_R(pix) * sr) >> 8;
 					UINT32 g = (SOURCE32_G(pix) * sg) >> 8;
 					UINT32 b = (SOURCE32_B(pix) * sb) >> 8;
@@ -904,8 +1166,7 @@ static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					const UINT16 *spix = &texbase[(curv >> 16) * texrp + (curu >> 17) * 2];
-					UINT32 pix = ycc_to_rgb(palbase[spix[(curu >> 16) & 1] >> 8], spix[0], spix[1]);
+					UINT32 pix = ycc_to_rgb(GET_TEXEL(yuy16)(&prim->texture, curu, curv));
 					UINT32 r = (SOURCE32_R(pix) * sr) >> 8;
 					UINT32 g = (SOURCE32_G(pix) * sg) >> 8;
 					UINT32 b = (SOURCE32_B(pix) * sb) >> 8;
@@ -945,8 +1206,7 @@ static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					const UINT16 *spix = &texbase[(curv >> 16) * texrp + (curu >> 17) * 2];
-					UINT32 pix = ycc_to_rgb(spix[(curu >> 16) & 1] >> 8, spix[0], spix[1]);
+					UINT32 pix = ycc_to_rgb(GET_TEXEL(yuy16)(&prim->texture, curu, curv));
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (SOURCE32_R(pix) * sr + DEST_R(dpix) * invsa) >> 8;
 					UINT32 g = (SOURCE32_G(pix) * sg + DEST_G(dpix) * invsa) >> 8;
@@ -964,8 +1224,7 @@ static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					const UINT16 *spix = &texbase[(curv >> 16) * texrp + (curu >> 17) * 2];
-					UINT32 pix = ycc_to_rgb(palbase[spix[(curu >> 16) & 1] >> 8], spix[0], spix[1]);
+					UINT32 pix = ycc_to_rgb(GET_TEXEL(yuy16)(&prim->texture, curu, curv));
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (SOURCE32_R(pix) * sr + DEST_R(dpix) * invsa) >> 8;
 					UINT32 g = (SOURCE32_G(pix) * sg + DEST_G(dpix) * invsa) >> 8;
@@ -992,9 +1251,7 @@ static void FUNC_PREFIX(draw_quad_yuy16_none)(const render_primitive *prim, void
 
 static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT16 *texbase = prim->texture.base;
 	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
@@ -1016,7 +1273,7 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb15)(&prim->texture, curu, curv);
 					*dest++ = SOURCE15_TO_DEST(pix);
 					curu += dudx;
 					curv += dvdx;
@@ -1029,7 +1286,7 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb15)(&prim->texture, curu, curv);
 					UINT32 r = palbase[(pix >> 10) & 0x1f] >> SRCSHIFT_R;
 					UINT32 g = palbase[(pix >> 5) & 0x1f] >> SRCSHIFT_G;
 					UINT32 b = palbase[(pix >> 0) & 0x1f] >> SRCSHIFT_B;
@@ -1067,7 +1324,7 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb15)(&prim->texture, curu, curv);
 					UINT32 r = (SOURCE15_R(pix) * sr) >> 8;
 					UINT32 g = (SOURCE15_G(pix) * sg) >> 8;
 					UINT32 b = (SOURCE15_B(pix) * sb) >> 8;
@@ -1084,7 +1341,7 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb15)(&prim->texture, curu, curv);
 					UINT32 r = (palbase[(pix >> 10) & 0x1f] * sr) >> (8 + SRCSHIFT_R);
 					UINT32 g = (palbase[(pix >> 5) & 0x1f] * sg) >> (8 + SRCSHIFT_G);
 					UINT32 b = (palbase[(pix >> 0) & 0x1f] * sb) >> (8 + SRCSHIFT_B);
@@ -1124,7 +1381,7 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb15)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (SOURCE15_R(pix) * sr + DEST_R(dpix) * invsa) >> 8;
 					UINT32 g = (SOURCE15_G(pix) * sg + DEST_G(dpix) * invsa) >> 8;
@@ -1142,7 +1399,7 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb15)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = ((palbase[(pix >> 10) & 0x1f] >> SRCSHIFT_R) * sr + DEST_R(dpix) * invsa) >> 8;
 					UINT32 g = ((palbase[(pix >> 5) & 0x1f] >> SRCSHIFT_G) * sg + DEST_G(dpix) * invsa) >> 8;
@@ -1170,9 +1427,7 @@ static void FUNC_PREFIX(draw_quad_rgb15)(const render_primitive *prim, void *dst
 
 static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT32 *texbase = prim->texture.base;
 	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
@@ -1194,7 +1449,7 @@ static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb32)(&prim->texture, curu, curv);
 					*dest++ = SOURCE32_TO_DEST(pix);
 					curu += dudx;
 					curv += dvdx;
@@ -1207,7 +1462,7 @@ static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb32)(&prim->texture, curu, curv);
 					UINT32 r = palbase[(pix >> 16) & 0xff] >> SRCSHIFT_R;
 					UINT32 g = palbase[(pix >> 8) & 0xff] >> SRCSHIFT_G;
 					UINT32 b = palbase[(pix >> 0) & 0xff] >> SRCSHIFT_B;
@@ -1245,7 +1500,7 @@ static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb32)(&prim->texture, curu, curv);
 					UINT32 r = (SOURCE32_R(pix) * sr) >> 8;
 					UINT32 g = (SOURCE32_G(pix) * sg) >> 8;
 					UINT32 b = (SOURCE32_B(pix) * sb) >> 8;
@@ -1262,7 +1517,7 @@ static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb32)(&prim->texture, curu, curv);
 					UINT32 r = (palbase[(pix >> 16) & 0xff] * sr) >> (8 + SRCSHIFT_R);
 					UINT32 g = (palbase[(pix >> 8) & 0xff] * sg) >> (8 + SRCSHIFT_G);
 					UINT32 b = (palbase[(pix >> 0) & 0xff] * sb) >> (8 + SRCSHIFT_B);
@@ -1302,7 +1557,7 @@ static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb32)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (SOURCE32_R(pix) * sr + DEST_R(dpix) * invsa) >> 8;
 					UINT32 g = (SOURCE32_G(pix) * sg + DEST_G(dpix) * invsa) >> 8;
@@ -1320,7 +1575,7 @@ static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dst
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(rgb32)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = ((palbase[(pix >> 16) & 0xff] >> SRCSHIFT_R) * sr + DEST_R(dpix) * invsa) >> 8;
 					UINT32 g = ((palbase[(pix >> 8) & 0xff] >> SRCSHIFT_G) * sg + DEST_G(dpix) * invsa) >> 8;
@@ -1348,9 +1603,7 @@ static void FUNC_PREFIX(draw_quad_rgb32)(const render_primitive *prim, void *dst
 
 static void FUNC_PREFIX(draw_quad_argb32_alpha)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT32 *texbase = prim->texture.base;
 	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
@@ -1372,7 +1625,7 @@ static void FUNC_PREFIX(draw_quad_argb32_alpha)(const render_primitive *prim, vo
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = pix >> 24;
 					if (ta != 0)
 					{
@@ -1396,7 +1649,7 @@ static void FUNC_PREFIX(draw_quad_argb32_alpha)(const render_primitive *prim, vo
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = pix >> 24;
 					if (ta != 0)
 					{
@@ -1443,7 +1696,7 @@ static void FUNC_PREFIX(draw_quad_argb32_alpha)(const render_primitive *prim, vo
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = (pix >> 24) * sa;
 					if (ta != 0)
 					{
@@ -1468,7 +1721,7 @@ static void FUNC_PREFIX(draw_quad_argb32_alpha)(const render_primitive *prim, vo
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = (pix >> 24) * sa;
 					if (ta != 0)
 					{
@@ -1497,9 +1750,7 @@ static void FUNC_PREFIX(draw_quad_argb32_alpha)(const render_primitive *prim, vo
 
 static void FUNC_PREFIX(draw_quad_argb32_multiply)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT32 *texbase = prim->texture.base;
 	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
@@ -1525,7 +1776,7 @@ static void FUNC_PREFIX(draw_quad_argb32_multiply)(const render_primitive *prim,
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (SOURCE32_R(pix) * DEST_R(dpix)) >> (8 - SRCSHIFT_R);
 					UINT32 g = (SOURCE32_G(pix) * DEST_G(dpix)) >> (8 - SRCSHIFT_G);
@@ -1541,7 +1792,7 @@ static void FUNC_PREFIX(draw_quad_argb32_multiply)(const render_primitive *prim,
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (palbase[(pix >> 16) & 0xff] * DEST_R(dpix)) >> 8;
 					UINT32 g = (palbase[(pix >> 8) & 0xff] * DEST_G(dpix)) >> 8;
@@ -1580,7 +1831,7 @@ static void FUNC_PREFIX(draw_quad_argb32_multiply)(const render_primitive *prim,
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (SOURCE32_R(pix) * sr * DEST_R(dpix)) >> (16 - SRCSHIFT_R);
 					UINT32 g = (SOURCE32_G(pix) * sg * DEST_G(dpix)) >> (16 - SRCSHIFT_G);
@@ -1596,7 +1847,7 @@ static void FUNC_PREFIX(draw_quad_argb32_multiply)(const render_primitive *prim,
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 dpix = NO_DEST_READ ? 0 : *dest;
 					UINT32 r = (palbase[(pix >> 16) & 0xff] * sr * DEST_R(dpix)) >> 16;
 					UINT32 g = (palbase[(pix >> 8) & 0xff] * sg * DEST_G(dpix)) >> 16;
@@ -1619,9 +1870,7 @@ static void FUNC_PREFIX(draw_quad_argb32_multiply)(const render_primitive *prim,
 
 static void FUNC_PREFIX(draw_quad_argb32_add)(const render_primitive *prim, void *dstdata, UINT32 pitch, quad_setup_data *setup)
 {
-	UINT32 *texbase = prim->texture.base;
 	const rgb_t *palbase = prim->texture.palette;
-	UINT32 texrp = prim->texture.rowpixels;
 	INT32 dudx = setup->dudx;
 	INT32 dvdx = setup->dvdx;
 	INT32 endx = setup->endx;
@@ -1647,7 +1896,7 @@ static void FUNC_PREFIX(draw_quad_argb32_add)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = pix >> 24;
 					if (ta != 0)
 					{
@@ -1672,7 +1921,7 @@ static void FUNC_PREFIX(draw_quad_argb32_add)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = pix >> 24;
 					if (ta != 0)
 					{
@@ -1720,7 +1969,7 @@ static void FUNC_PREFIX(draw_quad_argb32_add)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = (pix >> 24) * sa;
 					if (ta != 0)
 					{
@@ -1745,7 +1994,7 @@ static void FUNC_PREFIX(draw_quad_argb32_add)(const render_primitive *prim, void
 				/* loop over cols */
 				for (x = setup->startx; x < endx; x++)
 				{
-					UINT32 pix = texbase[(curv >> 16) * texrp + (curu >> 16)];
+					UINT32 pix = GET_TEXEL(argb32)(&prim->texture, curu, curv);
 					UINT32 ta = (pix >> 24) * sa;
 					if (ta != 0)
 					{
@@ -1817,9 +2066,16 @@ static void FUNC_PREFIX(setup_and_draw_textured_quad)(const render_primitive *pr
 	setup.startu = round_nearest(65536.0f * (float)prim->texture.width * prim->texcoords.tl.u);
 	setup.startv = round_nearest(65536.0f * (float)prim->texture.height * prim->texcoords.tl.v);
 
-	/* advance U/V to the middle of the first pixel */
+	/* advance U/V to the middle of the first texel */
 	setup.startu += (setup.dudx + setup.dudy) / 2;
 	setup.startv += (setup.dvdx + setup.dvdy) / 2;
+
+	/* if we're bilinear filtering, we need to offset u/v by half a texel */
+	if (BILINEAR_FILTER)
+	{
+		setup.startu -= 0x8000;
+		setup.startv -= 0x8000;
+	}
 
 	/* render based on the texture coordinates */
 	switch (prim->flags & (PRIMFLAG_TEXFORMAT_MASK | PRIMFLAG_BLENDMODE_MASK))

@@ -20,8 +20,8 @@ Notes:
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/z80ctc.h"
+#include "nb1413m3.h"		// needed for mahjong input controller
 #include "sound/3812intf.h"
 #include "sound/dac.h"
 #include "cpu/z80/z80daisy.h"
@@ -79,9 +79,9 @@ static NVRAM_HANDLER( nbmj9195 )
 	}
 }
 
-static void nbmj9195_soundbank_w(int data)
+static void nbmj9195_soundbank_w(running_machine *machine, int data)
 {
-	UINT8 *SNDROM = memory_region(REGION_CPU2);
+	UINT8 *SNDROM = memory_region(machine, REGION_CPU2);
 
 	memory_set_bankptr(1, &SNDROM[0x08000 + (0x8000 * (data & 0x03))]);
 }
@@ -119,7 +119,7 @@ static WRITE8_HANDLER( nbmj9195_inputportsel_w )
 
 static int nbmj9195_dipsw_r(running_machine *machine)
 {
-	return ((((input_port_read_indexed(machine, 0) & 0xff) | ((input_port_read_indexed(machine, 1) & 0xff) << 8)) >> nbmj9195_dipswbitsel) & 0x01);
+	return ((((input_port_read(machine, "DSWA") & 0xff) | ((input_port_read(machine, "DSWB") & 0xff) << 8)) >> nbmj9195_dipswbitsel) & 0x01);
 }
 
 static void nbmj9195_dipswbitsel_w(int data)
@@ -149,19 +149,19 @@ static void mscoutm_inputportsel_w(int data)
 static READ8_HANDLER( mscoutm_dipsw_0_r )
 {
 	// DIPSW A
-	return (((input_port_read_indexed(machine, 0) & 0x01) << 7) | ((input_port_read_indexed(machine, 0) & 0x02) << 5) |
-	        ((input_port_read_indexed(machine, 0) & 0x04) << 3) | ((input_port_read_indexed(machine, 0) & 0x08) << 1) |
-	        ((input_port_read_indexed(machine, 0) & 0x10) >> 1) | ((input_port_read_indexed(machine, 0) & 0x20) >> 3) |
-	        ((input_port_read_indexed(machine, 0) & 0x40) >> 5) | ((input_port_read_indexed(machine, 0) & 0x80) >> 7));
+	return (((input_port_read(machine, "DSWA") & 0x01) << 7) | ((input_port_read(machine, "DSWA") & 0x02) << 5) |
+	        ((input_port_read(machine, "DSWA") & 0x04) << 3) | ((input_port_read(machine, "DSWA") & 0x08) << 1) |
+	        ((input_port_read(machine, "DSWA") & 0x10) >> 1) | ((input_port_read(machine, "DSWA") & 0x20) >> 3) |
+	        ((input_port_read(machine, "DSWA") & 0x40) >> 5) | ((input_port_read(machine, "DSWA") & 0x80) >> 7));
 }
 
 static READ8_HANDLER( mscoutm_dipsw_1_r )
 {
 	// DIPSW B
-	return (((input_port_read_indexed(machine, 1) & 0x01) << 7) | ((input_port_read_indexed(machine, 1) & 0x02) << 5) |
-	        ((input_port_read_indexed(machine, 1) & 0x04) << 3) | ((input_port_read_indexed(machine, 1) & 0x08) << 1) |
-	        ((input_port_read_indexed(machine, 1) & 0x10) >> 1) | ((input_port_read_indexed(machine, 1) & 0x20) >> 3) |
-	        ((input_port_read_indexed(machine, 1) & 0x40) >> 5) | ((input_port_read_indexed(machine, 1) & 0x80) >> 7));
+	return (((input_port_read(machine, "DSWB") & 0x01) << 7) | ((input_port_read(machine, "DSWB") & 0x02) << 5) |
+	        ((input_port_read(machine, "DSWB") & 0x04) << 3) | ((input_port_read(machine, "DSWB") & 0x08) << 1) |
+	        ((input_port_read(machine, "DSWB") & 0x10) >> 1) | ((input_port_read(machine, "DSWB") & 0x20) >> 3) |
+	        ((input_port_read(machine, "DSWB") & 0x40) >> 5) | ((input_port_read(machine, "DSWB") & 0x80) >> 7));
 }
 
 
@@ -182,29 +182,30 @@ static int tmpz84c011_pio_r(running_machine *machine, int offset)
 		{
 			case 0:			/* PA_0 */
 				// COIN IN, ETC...
-				portdata = input_port_read_indexed(machine, 2);
+				portdata = input_port_read(machine, "SYSTEM");
 				break;
 			case 1:			/* PB_0 */
 				// PLAYER1 KEY, DIPSW A/B
 				switch (mscoutm_inputport)
 				{
 					case 0x01:
-						portdata = input_port_read_indexed(machine, 3);
+						portdata = input_port_read(machine, "KEY0");
 						break;
 					case 0x02:
-						portdata = input_port_read_indexed(machine, 4);
+						portdata = input_port_read(machine, "KEY1");
 						break;
 					case 0x04:
-						portdata = input_port_read_indexed(machine, 5);
+						portdata = input_port_read(machine, "KEY2");
 						break;
 					case 0x08:
-						portdata = input_port_read_indexed(machine, 6);
+						portdata = input_port_read(machine, "KEY3");
 						break;
 					case 0x10:
-						portdata = input_port_read_indexed(machine, 7);
+						portdata = input_port_read(machine, "KEY4");
 						break;
 					default:
-						portdata = (input_port_read_indexed(machine, 3) & input_port_read_indexed(machine, 4) & input_port_read_indexed(machine, 5) & input_port_read_indexed(machine, 6) & input_port_read_indexed(machine, 7));
+						portdata = (input_port_read(machine, "KEY0") & input_port_read(machine, "KEY1") & input_port_read(machine, "KEY2")
+									& input_port_read(machine, "KEY3") & input_port_read(machine, "KEY4"));
 						break;
 				}
 				break;
@@ -213,22 +214,23 @@ static int tmpz84c011_pio_r(running_machine *machine, int offset)
 				switch (mscoutm_inputport)
 				{
 					case 0x01:
-						portdata = input_port_read_indexed(machine, 8);
+						portdata = input_port_read(machine, "KEY5");
 						break;
 					case 0x02:
-						portdata = input_port_read_indexed(machine, 9);
+						portdata = input_port_read(machine, "KEY6");
 						break;
 					case 0x04:
-						portdata = input_port_read_indexed(machine, 10);
+						portdata = input_port_read(machine, "KEY7");
 						break;
 					case 0x08:
-						portdata = input_port_read_indexed(machine, 11);
+						portdata = input_port_read(machine, "KEY8");
 						break;
 					case 0x10:
-						portdata = input_port_read_indexed(machine, 12);
+						portdata = input_port_read(machine, "KEY9");
 						break;
 					default:
-						portdata = (input_port_read_indexed(machine, 8) & input_port_read_indexed(machine, 9) & input_port_read_indexed(machine, 10) & input_port_read_indexed(machine, 11) & input_port_read_indexed(machine, 12));
+						portdata = (input_port_read(machine, "KEY5") & input_port_read(machine, "KEY6") & input_port_read(machine, "KEY7")
+									& input_port_read(machine, "KEY8") & input_port_read(machine, "KEY9"));
 						break;
 				}
 				break;
@@ -267,29 +269,29 @@ static int tmpz84c011_pio_r(running_machine *machine, int offset)
 		{
 			case 0:			/* PA_0 */
 				// COIN IN, ETC...
-				portdata = ((input_port_read_indexed(machine, 2) & 0xfe) | nbmj9195_outcoin_flag);
+				portdata = ((input_port_read(machine, "SYSTEM") & 0xfe) | nbmj9195_outcoin_flag);
 				break;
 			case 1:			/* PB_0 */
 				// PLAYER1 KEY, DIPSW A/B
 				switch (nbmj9195_inputport)
 				{
 					case 0x01:
-						portdata = input_port_read_indexed(machine, 3);
+						portdata = input_port_read(machine, "KEY0");
 						break;
 					case 0x02:
-						portdata = input_port_read_indexed(machine, 4);
+						portdata = input_port_read(machine, "KEY1");
 						break;
 					case 0x04:
-						portdata = input_port_read_indexed(machine, 5);
+						portdata = input_port_read(machine, "KEY2");
 						break;
 					case 0x08:
-						portdata = input_port_read_indexed(machine, 6);
+						portdata = input_port_read(machine, "KEY3");
 						break;
 					case 0x10:
-						portdata = ((input_port_read_indexed(machine, 7) & 0x7f) | (nbmj9195_dipsw_r(machine) << 7));
+						portdata = ((input_port_read(machine, "KEY4") & 0x7f) | (nbmj9195_dipsw_r(machine) << 7));
 						break;
 					default:
-						portdata = (input_port_read_indexed(machine, 3) & input_port_read_indexed(machine, 4) & input_port_read_indexed(machine, 5) & input_port_read_indexed(machine, 6) & (input_port_read_indexed(machine, 12) & 0x7f));
+						portdata = (input_port_read(machine, "KEY0") & input_port_read(machine, "KEY1") & input_port_read(machine, "KEY2") & input_port_read(machine, "KEY3") & (input_port_read(machine, "KEY4") & 0x7f));
 						break;
 				}
 				break;
@@ -298,22 +300,22 @@ static int tmpz84c011_pio_r(running_machine *machine, int offset)
 				switch (nbmj9195_inputport)
 				{
 					case 0x01:
-						portdata = input_port_read_indexed(machine, 8);
+						portdata = input_port_read(machine, "KEY5");
 						break;
 					case 0x02:
-						portdata = input_port_read_indexed(machine, 9);
+						portdata = input_port_read(machine, "KEY6");
 						break;
 					case 0x04:
-						portdata = input_port_read_indexed(machine, 10);
+						portdata = input_port_read(machine, "KEY7");
 						break;
 					case 0x08:
-						portdata = input_port_read_indexed(machine, 11);
+						portdata = input_port_read(machine, "KEY8");
 						break;
 					case 0x10:
-						portdata = input_port_read_indexed(machine, 12) & 0x7f;
+						portdata = input_port_read(machine, "KEY9") & 0x7f;
 						break;
 					default:
-						portdata = (input_port_read_indexed(machine, 8) & input_port_read_indexed(machine, 9) & input_port_read_indexed(machine, 10) & input_port_read_indexed(machine, 11) & (input_port_read_indexed(machine, 12) & 0x7f));
+						portdata = (input_port_read(machine, "KEY5") & input_port_read(machine, "KEY6") & input_port_read(machine, "KEY7") & input_port_read(machine, "KEY8") & (input_port_read(machine, "KEY9") & 0x7f));
 						break;
 				}
 				break;
@@ -374,7 +376,7 @@ static void tmpz84c011_pio_w(running_machine *machine, int offset, int data)
 				break;
 
 			case 5:			/* PA_1 */
-				nbmj9195_soundbank_w(data);
+				nbmj9195_soundbank_w(machine, data);
 				break;
 			case 6:			/* PB_1 */
 				DAC_1_WRITE(machine, 0, data);
@@ -412,7 +414,7 @@ static void tmpz84c011_pio_w(running_machine *machine, int offset, int data)
 				break;
 
 			case 5:			/* PA_1 */
-				nbmj9195_soundbank_w(data);
+				nbmj9195_soundbank_w(machine, data);
 				break;
 			case 6:			/* PB_1 */
 				DAC_1_WRITE(machine, 0, data);
@@ -487,14 +489,14 @@ static WRITE8_HANDLER( tmpz84c011_1_dir_pd_w )	{ pio_dir[8] = data; }
 static WRITE8_HANDLER( tmpz84c011_1_dir_pe_w )	{ pio_dir[9] = data; }
 
 
-static void ctc0_interrupt(int state)
+static void ctc0_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, 0, state);
+	cpunum_set_input_line(machine, 0, 0, state);
 }
 
-static void ctc1_interrupt(int state)
+static void ctc1_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 1, 0, state);
+	cpunum_set_input_line(machine, 1, 0, state);
 }
 
 /* CTC of main cpu, ch0 trigger is vblank */
@@ -547,7 +549,7 @@ static MACHINE_RESET( sailorws )
 
 static DRIVER_INIT( nbmj9195 )
 {
-	UINT8 *ROM = memory_region(REGION_CPU2);
+	UINT8 *ROM = memory_region(machine, REGION_CPU2);
 
 	// sound program patch
 	ROM[0x0213] = 0x00;			// DI -> NOP
@@ -556,7 +558,7 @@ static DRIVER_INIT( nbmj9195 )
 	tmpz84c011_init(machine);
 
 	// initialize sound rom bank
-	nbmj9195_soundbank_w(0);
+	nbmj9195_soundbank_w(machine, 0);
 }
 
 
@@ -1752,231 +1754,29 @@ static ADDRESS_MAP_START( sound_writeport, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 
-#define MJCTRL_NBMJ9195_TYPE1_PORT1 \
-	PORT_START	/* (3) PORT 1-0 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_M )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_I )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_E )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_A )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+/********************************************************************************
+These Nichibutsu Mahjong games use two different but very similar control ports:
+    - the 1st type is the common control panel used by many other nbmj* drivers
+    - the 2nd type also include coins and service bits
+********************************************************************************/
 
-#define MJCTRL_NBMJ9195_TYPE1_PORT2 \
-	PORT_START	/* (4) PORT 1-1 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_BET )\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_N )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_J )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_F )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_B )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
+static INPUT_PORTS_START( nbmjtype2 )
+	PORT_INCLUDE( nbmjcontrols )
 
-#define MJCTRL_NBMJ9195_TYPE1_PORT3 \
-	PORT_START	/* (5) PORT 1-2 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_RON )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_K )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_G )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_C )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE1_PORT4 \
-	PORT_START	/* (6) PORT 1-3 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_PON )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_L )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_H )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_D )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE1_PORT5 \
-	PORT_START	/* (7) PORT 1-4 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_SMALL )\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_BIG )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_DOUBLE_UP )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_SCORE )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_LAST_CHANCE )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE1_PORT6 \
-	PORT_START	/* (8) PORT 2-0 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2 ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_KAN ) PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_M ) PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_I ) PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_E )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_A )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE1_PORT7 \
-	PORT_START	/* (9) PORT 2-1 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_BET )PORT_PLAYER(2)\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_N )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_J )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_F )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_B )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE1_PORT8 \
-	PORT_START	/* (10) PORT 2-2 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_RON )PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_K )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_G )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_C )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE1_PORT9 \
-	PORT_START	/* (11) PORT 2-3 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_PON )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_L )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_H )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_D )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE1_PORT10 \
-	PORT_START	/* (12) PORT 2-4 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_SMALL )PORT_PLAYER(2)\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_BIG )PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_DOUBLE_UP )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_SCORE )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_LAST_CHANCE )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT1 \
-	PORT_START	/* (3) PORT 1-0 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START1 ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_KAN )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_M )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_I )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_E )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_A )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT2 \
-	PORT_START	/* (4) PORT 1-1 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_BET )\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_N )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_J )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_F )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_B )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT3 \
-	PORT_START	/* (5) PORT 1-2 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_RON )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_K )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_G )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_C )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT4 \
-	PORT_START	/* (6) PORT 1-3 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_PON )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_L )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_H )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_D )\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT5 \
-	PORT_START	/* (7) PORT 1-4 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_SMALL )\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_BIG )\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP )\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_DOUBLE_UP )\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_SCORE )\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_LAST_CHANCE )\
-	PORT_SERVICE( 0x40, IP_ACTIVE_LOW ) \
+	PORT_MODIFY("KEY4")
+	PORT_SERVICE( 0x40, IP_ACTIVE_LOW )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN1 )
 
-#define MJCTRL_NBMJ9195_TYPE2_PORT6 \
-	PORT_START	/* (8) PORT 2-0 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_START2 ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_KAN ) PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_M ) PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_I ) PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_E )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_A )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT7 \
-	PORT_START	/* (9) PORT 2-1 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_BET )PORT_PLAYER(2)\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_REACH )PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_N )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_J )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_F )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_B )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT8 \
-	PORT_START	/* (10) PORT 2-2 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_RON )PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_CHI )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_K )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_G )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_C )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT9 \
-	PORT_START	/* (11) PORT 2-3 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_PON )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_L )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_H )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_D )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
-	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
-
-#define MJCTRL_NBMJ9195_TYPE2_PORT10 \
-	PORT_START	/* (12) PORT 2-4 */ \
-	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_MAHJONG_SMALL )PORT_PLAYER(2)\
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_MAHJONG_BIG )PORT_PLAYER(2)\
-	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_MAHJONG_FLIP_FLOP )PORT_PLAYER(2)\
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_MAHJONG_DOUBLE_UP )PORT_PLAYER(2)\
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_MAHJONG_SCORE )PORT_PLAYER(2)\
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_MAHJONG_LAST_CHANCE )PORT_PLAYER(2)\
-	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN ) \
+	PORT_MODIFY("KEY9")
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_COIN2 )
+INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( mjuraden )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2002,7 +1802,7 @@ static INPUT_PORTS_START( mjuraden )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2028,7 +1828,7 @@ static INPUT_PORTS_START( mjuraden )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2038,24 +1838,14 @@ static INPUT_PORTS_START( mjuraden )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( koinomp )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2081,7 +1871,7 @@ static INPUT_PORTS_START( koinomp )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2107,7 +1897,7 @@ static INPUT_PORTS_START( koinomp )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2117,24 +1907,14 @@ static INPUT_PORTS_START( koinomp )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( patimono )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2160,7 +1940,7 @@ static INPUT_PORTS_START( patimono )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2186,7 +1966,7 @@ static INPUT_PORTS_START( patimono )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2196,24 +1976,14 @@ static INPUT_PORTS_START( patimono )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( janbari )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2239,7 +2009,7 @@ static INPUT_PORTS_START( janbari )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -2265,7 +2035,7 @@ static INPUT_PORTS_START( janbari )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2275,24 +2045,14 @@ static INPUT_PORTS_START( janbari )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjanbari )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2318,7 +2078,7 @@ static INPUT_PORTS_START( mjanbari )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -2344,7 +2104,7 @@ static INPUT_PORTS_START( mjanbari )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2354,24 +2114,14 @@ static INPUT_PORTS_START( mjanbari )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mmehyou )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2397,7 +2147,7 @@ static INPUT_PORTS_START( mmehyou )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -2423,7 +2173,7 @@ static INPUT_PORTS_START( mmehyou )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2433,24 +2183,14 @@ static INPUT_PORTS_START( mmehyou )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( ultramhm )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2476,7 +2216,7 @@ static INPUT_PORTS_START( ultramhm )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2502,7 +2242,7 @@ static INPUT_PORTS_START( ultramhm )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2512,24 +2252,14 @@ static INPUT_PORTS_START( ultramhm )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( gal10ren )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2555,7 +2285,7 @@ static INPUT_PORTS_START( gal10ren )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2581,7 +2311,7 @@ static INPUT_PORTS_START( gal10ren )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2591,24 +2321,14 @@ static INPUT_PORTS_START( gal10ren )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( renaiclb )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2634,7 +2354,7 @@ static INPUT_PORTS_START( renaiclb )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2660,7 +2380,7 @@ static INPUT_PORTS_START( renaiclb )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2670,21 +2390,11 @@ static INPUT_PORTS_START( renaiclb )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjlaman )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -2709,7 +2419,7 @@ static INPUT_PORTS_START( mjlaman )
 	PORT_DIPSETTING(    0x20, "7" )
 	PORT_DIPSETTING(    0x00, "8 (Hard)" )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2735,7 +2445,7 @@ static INPUT_PORTS_START( mjlaman )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2745,21 +2455,11 @@ static INPUT_PORTS_START( mjlaman )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mkeibaou )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -2784,7 +2484,7 @@ static INPUT_PORTS_START( mkeibaou )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2810,7 +2510,7 @@ static INPUT_PORTS_START( mkeibaou )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2820,21 +2520,11 @@ static INPUT_PORTS_START( mkeibaou )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pachiten )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, "Game Out" )
 	PORT_DIPSETTING(    0x07, "90% (Easy)" )
 	PORT_DIPSETTING(    0x06, "85%" )
@@ -2860,7 +2550,7 @@ static INPUT_PORTS_START( pachiten )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -2884,7 +2574,7 @@ static INPUT_PORTS_START( pachiten )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2894,21 +2584,11 @@ static INPUT_PORTS_START( pachiten )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sailorws )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -2933,7 +2613,7 @@ static INPUT_PORTS_START( sailorws )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -2959,7 +2639,7 @@ static INPUT_PORTS_START( sailorws )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -2969,21 +2649,11 @@ static INPUT_PORTS_START( sailorws )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( sailorwr )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, "Game Out" )
 	PORT_DIPSETTING(    0x07, "90% (Easy)" )
 	PORT_DIPSETTING(    0x06, "85%" )
@@ -3009,7 +2679,7 @@ static INPUT_PORTS_START( sailorwr )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x00, DEF_STR( Flip_Screen ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x01, DEF_STR( On ) )
@@ -3033,7 +2703,7 @@ static INPUT_PORTS_START( sailorwr )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3043,21 +2713,11 @@ static INPUT_PORTS_START( sailorwr )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( psailor1 )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -3082,7 +2742,7 @@ static INPUT_PORTS_START( psailor1 )
 	PORT_DIPSETTING(    0x20, "7" )
 	PORT_DIPSETTING(    0x00, "8 (Hard)" )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x03, 0x03, "Start Score" )
 	PORT_DIPSETTING(    0x00, "5000" )
 	PORT_DIPSETTING(    0x01, "3000" )
@@ -3107,7 +2767,7 @@ static INPUT_PORTS_START( psailor1 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3117,21 +2777,11 @@ static INPUT_PORTS_START( psailor1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( psailor2 )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Coinage ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( 2C_1C ) )
 	PORT_DIPSETTING(    0x03, DEF_STR( 1C_1C ) )
@@ -3156,7 +2806,7 @@ static INPUT_PORTS_START( psailor2 )
 	PORT_DIPSETTING(    0x20, "7" )
 	PORT_DIPSETTING(    0x00, "8 (Hard)" )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x03, 0x03, "Start Score" )
 	PORT_DIPSETTING(    0x00, "5000" )
 	PORT_DIPSETTING(    0x01, "3000" )
@@ -3181,7 +2831,7 @@ static INPUT_PORTS_START( psailor2 )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3191,24 +2841,14 @@ static INPUT_PORTS_START( psailor2 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( otatidai )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3233,7 +2873,7 @@ static INPUT_PORTS_START( otatidai )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x03, 0x03, "Start Score" )
 	PORT_DIPSETTING(    0x00, "5000" )
 	PORT_DIPSETTING(    0x01, "3000" )
@@ -3258,7 +2898,7 @@ static INPUT_PORTS_START( otatidai )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3268,24 +2908,14 @@ static INPUT_PORTS_START( otatidai )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( wcatcher )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3310,7 +2940,7 @@ static INPUT_PORTS_START( wcatcher )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3336,7 +2966,7 @@ static INPUT_PORTS_START( wcatcher )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3346,24 +2976,14 @@ static INPUT_PORTS_START( wcatcher )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( yosimoto )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3388,7 +3008,7 @@ static INPUT_PORTS_START( yosimoto )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x03, 0x03, "Start Score" )
 	PORT_DIPSETTING(    0x00, "5000" )
 	PORT_DIPSETTING(    0x01, "3000" )
@@ -3413,7 +3033,7 @@ static INPUT_PORTS_START( yosimoto )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3423,24 +3043,14 @@ static INPUT_PORTS_START( yosimoto )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( jituroku )
 
 	// I don't have manual for this game.
 
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 1-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3466,7 +3076,7 @@ static INPUT_PORTS_START( jituroku )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3492,7 +3102,7 @@ static INPUT_PORTS_START( jituroku )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3502,21 +3112,11 @@ static INPUT_PORTS_START( jituroku )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( ngpgal )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3542,7 +3142,7 @@ static INPUT_PORTS_START( ngpgal )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3568,7 +3168,7 @@ static INPUT_PORTS_START( ngpgal )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3578,21 +3178,11 @@ static INPUT_PORTS_START( ngpgal )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjgottsu )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -3617,7 +3207,7 @@ static INPUT_PORTS_START( mjgottsu )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3643,7 +3233,7 @@ static INPUT_PORTS_START( mjgottsu )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3653,21 +3243,11 @@ static INPUT_PORTS_START( mjgottsu )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( bakuhatu )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x03, 0x03, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x03, "1" )
 	PORT_DIPSETTING(    0x02, "2" )
@@ -3692,7 +3272,7 @@ static INPUT_PORTS_START( bakuhatu )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3718,7 +3298,7 @@ static INPUT_PORTS_START( bakuhatu )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3728,21 +3308,11 @@ static INPUT_PORTS_START( bakuhatu )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( cmehyou )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3768,7 +3338,7 @@ static INPUT_PORTS_START( cmehyou )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3794,7 +3364,7 @@ static INPUT_PORTS_START( cmehyou )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3804,21 +3374,11 @@ static INPUT_PORTS_START( cmehyou )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjkoiura )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3844,7 +3404,7 @@ static INPUT_PORTS_START( mjkoiura )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3870,7 +3430,7 @@ static INPUT_PORTS_START( mjkoiura )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )			// COIN OUT
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
@@ -3880,21 +3440,11 @@ static INPUT_PORTS_START( mjkoiura )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_COIN2 )			// COIN2
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE1 )		// SERVICE
 
-	MJCTRL_NBMJ9195_TYPE1_PORT1
-	MJCTRL_NBMJ9195_TYPE1_PORT2
-	MJCTRL_NBMJ9195_TYPE1_PORT3
-	MJCTRL_NBMJ9195_TYPE1_PORT4
-	MJCTRL_NBMJ9195_TYPE1_PORT5
-
-	MJCTRL_NBMJ9195_TYPE1_PORT6
-	MJCTRL_NBMJ9195_TYPE1_PORT7
-	MJCTRL_NBMJ9195_TYPE1_PORT8
-	MJCTRL_NBMJ9195_TYPE1_PORT9
-	MJCTRL_NBMJ9195_TYPE1_PORT10
+	PORT_INCLUDE( nbmjcontrols )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mscoutm )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3919,7 +3469,7 @@ static INPUT_PORTS_START( mscoutm )
 	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x80, DEF_STR( On ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -3945,7 +3495,7 @@ static INPUT_PORTS_START( mscoutm )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -3955,21 +3505,11 @@ static INPUT_PORTS_START( mscoutm )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
 
-	MJCTRL_NBMJ9195_TYPE2_PORT1
-	MJCTRL_NBMJ9195_TYPE2_PORT2
-	MJCTRL_NBMJ9195_TYPE2_PORT3
-	MJCTRL_NBMJ9195_TYPE2_PORT4
-	MJCTRL_NBMJ9195_TYPE2_PORT5
-
-	MJCTRL_NBMJ9195_TYPE2_PORT6
-	MJCTRL_NBMJ9195_TYPE2_PORT7
-	MJCTRL_NBMJ9195_TYPE2_PORT8
-	MJCTRL_NBMJ9195_TYPE2_PORT9
-	MJCTRL_NBMJ9195_TYPE2_PORT10
+	PORT_INCLUDE( nbmjtype2 )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( imekura )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -3994,7 +3534,7 @@ static INPUT_PORTS_START( imekura )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -4020,7 +3560,7 @@ static INPUT_PORTS_START( imekura )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -4030,21 +3570,11 @@ static INPUT_PORTS_START( imekura )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
 
-	MJCTRL_NBMJ9195_TYPE2_PORT1
-	MJCTRL_NBMJ9195_TYPE2_PORT2
-	MJCTRL_NBMJ9195_TYPE2_PORT3
-	MJCTRL_NBMJ9195_TYPE2_PORT4
-	MJCTRL_NBMJ9195_TYPE2_PORT5
-
-	MJCTRL_NBMJ9195_TYPE2_PORT6
-	MJCTRL_NBMJ9195_TYPE2_PORT7
-	MJCTRL_NBMJ9195_TYPE2_PORT8
-	MJCTRL_NBMJ9195_TYPE2_PORT9
-	MJCTRL_NBMJ9195_TYPE2_PORT10
+	PORT_INCLUDE( nbmjtype2 )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( mjegolf )
-	PORT_START	/* (0) DIPSW-A */
+	PORT_START_TAG("DSWA")	/* (0) DIPSW-A */
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) )
 	PORT_DIPSETTING(    0x07, "1 (Easy)" )
 	PORT_DIPSETTING(    0x06, "2" )
@@ -4069,7 +3599,7 @@ static INPUT_PORTS_START( mjegolf )
 	PORT_DIPSETTING(    0x80, DEF_STR( 1C_2C ) )
 	PORT_DIPSETTING(    0x40, DEF_STR( 1C_3C ) )
 
-	PORT_START	/* (1) DIPSW-B */
+	PORT_START_TAG("DSWB")	/* (1) DIPSW-B */
 	PORT_DIPNAME( 0x01, 0x01, "DIPSW 2-1" )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -4095,7 +3625,7 @@ static INPUT_PORTS_START( mjegolf )
 	PORT_DIPSETTING(    0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START	/* (2) PORT 0 */
+	PORT_START_TAG("SYSTEM")	/* (2) PORT 0 */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -4105,17 +3635,7 @@ static INPUT_PORTS_START( mjegolf )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_SERVICE3 )		// MEMORY RESET
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_SERVICE2 )		// ANALYZER
 
-	MJCTRL_NBMJ9195_TYPE2_PORT1
-	MJCTRL_NBMJ9195_TYPE2_PORT2
-	MJCTRL_NBMJ9195_TYPE2_PORT3
-	MJCTRL_NBMJ9195_TYPE2_PORT4
-	MJCTRL_NBMJ9195_TYPE2_PORT5
-
-	MJCTRL_NBMJ9195_TYPE2_PORT6
-	MJCTRL_NBMJ9195_TYPE2_PORT7
-	MJCTRL_NBMJ9195_TYPE2_PORT8
-	MJCTRL_NBMJ9195_TYPE2_PORT9
-	MJCTRL_NBMJ9195_TYPE2_PORT10
+	PORT_INCLUDE( nbmjtype2 )
 INPUT_PORTS_END
 
 

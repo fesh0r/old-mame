@@ -1,10 +1,7 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6522via.h"
-
-WRITE8_HANDLER( beezer_map_w );
-READ8_HANDLER( beezer_line_r );
+#include "includes/beezer.h"
 
 static int pbus;
 
@@ -13,13 +10,13 @@ static WRITE8_HANDLER( b_via_0_pa_w );
 static WRITE8_HANDLER( b_via_0_pb_w );
 static READ8_HANDLER( b_via_0_ca2_r );
 static WRITE8_HANDLER( b_via_0_ca2_w );
-static void b_via_0_irq (int level);
+static void b_via_0_irq (running_machine *machine, int level);
 
 static READ8_HANDLER( b_via_1_pa_r );
 static READ8_HANDLER( b_via_1_pb_r );
 static WRITE8_HANDLER( b_via_1_pa_w );
 static WRITE8_HANDLER( b_via_1_pb_w );
-static void b_via_1_irq (int level);
+static void b_via_1_irq (running_machine *machine, int level);
 
 static const struct via6522_interface b_via_0_interface =
 {
@@ -48,9 +45,9 @@ static WRITE8_HANDLER( b_via_0_ca2_w )
 {
 }
 
-static void b_via_0_irq (int level)
+static void b_via_0_irq (running_machine *machine, int level)
 {
-	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, level);
+	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, level);
 }
 
 static READ8_HANDLER( b_via_0_pb_r )
@@ -70,13 +67,13 @@ static WRITE8_HANDLER( b_via_0_pa_w )
 		switch (data & 0x03)
 		{
 		case 0:
-			pbus = input_port_read_indexed(machine, 0);
+			pbus = input_port_read(machine, "IN0");
 			break;
 		case 1:
-			pbus = input_port_read_indexed(machine, 1) | (input_port_read_indexed(machine, 2) << 4);
+			pbus = input_port_read(machine, "IN1") | (input_port_read(machine, "IN2") << 4);
 			break;
 		case 2:
-			pbus = input_port_read_indexed(machine, 3);
+			pbus = input_port_read(machine, "DSWB");
 			break;
 		case 3:
 			pbus = 0xff;
@@ -90,9 +87,9 @@ static WRITE8_HANDLER( b_via_0_pb_w )
 	pbus = data;
 }
 
-static void b_via_1_irq (int level)
+static void b_via_1_irq (running_machine *machine, int level)
 {
-	cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, level);
+	cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, level);
 }
 
 static READ8_HANDLER( b_via_1_pa_r )
@@ -133,7 +130,7 @@ WRITE8_HANDLER( beezer_bankswitch_w )
 	}
 	else
 	{
-		UINT8 *rom = memory_region(REGION_CPU1) + 0x10000;
+		UINT8 *rom = memory_region(machine, REGION_CPU1) + 0x10000;
 		memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xcfff, 0, 0, SMH_BANK1, SMH_BANK1);
 		memory_set_bankptr(1, rom + (data & 0x07) * 0x2000 + ((data & 0x08) ? 0x1000: 0));
 	}

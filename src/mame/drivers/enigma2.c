@@ -170,8 +170,9 @@ static VIDEO_UPDATE( enigma2 )
 	pen_t pens[NUM_PENS];
 
 	const rectangle *visarea = video_screen_get_visible_area(screen);
-	UINT8 *color_map_base = engima2_flip_screen ? &memory_region(REGION_PROMS)[0x0400] : memory_region(REGION_PROMS);
-	UINT8 *star_map_base = (blink_count & 0x08) ? &memory_region(REGION_PROMS)[0x0c00] : &memory_region(REGION_PROMS)[0x0800];
+	UINT8 *prom = memory_region(screen->machine, REGION_PROMS);
+	UINT8 *color_map_base = engima2_flip_screen ? &prom[0x0400] : &prom[0x0000];
+	UINT8 *star_map_base = (blink_count & 0x08) ? &prom[0x0c00] : &prom[0x0800];
 
 	UINT8 x = 0;
 	UINT16 bitmap_y = visarea->min_y;
@@ -323,7 +324,7 @@ if (LOG_PROT) logerror("DIP SW Read: %x at %x (prot data %x)\n", offset, activec
 		if (protection_data != 0xff)
 			ret = protection_data ^ 0x88;
 		else
-			ret = input_port_read_indexed(machine, 2);
+			ret = input_port_read(machine, "DSW");
 		break;
 
 	case 0x02:
@@ -369,22 +370,22 @@ if (LOG_PROT) logerror("Protection Data Write: %x at %x\n", data, safe_activecpu
 
 static WRITE8_HANDLER( enigma2_flip_screen_w )
 {
-	engima2_flip_screen = ((data >> 5) & 0x01) && ((input_port_read_indexed(machine, 2) & 0x20) == 0x20);
+	engima2_flip_screen = ((data >> 5) & 0x01) && ((input_port_read(machine, "DSW") & 0x20) == 0x20);
 }
 
 
 static CUSTOM_INPUT( p1_controls_r )
 {
-	return input_port_read(machine, "P1CONTROLS");
+	return input_port_read(field->port->machine, "P1CONTROLS");
 }
 
 
 static CUSTOM_INPUT( p2_controls_r )
 {
 	if (engima2_flip_screen)
-		return input_port_read(machine, "P2CONTROLS");
+		return input_port_read(field->port->machine, "P2CONTROLS");
 	else
-		return input_port_read(machine, "P1CONTROLS");
+		return input_port_read(field->port->machine, "P1CONTROLS");
 }
 
 
@@ -452,21 +453,21 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( enigma2 )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x78, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(p1_controls_r, 0)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x78, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(p2_controls_r, 0)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
@@ -506,7 +507,7 @@ INPUT_PORTS_END
 
 
 static INPUT_PORTS_START( enigma2a )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_START2 )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_START1 )
@@ -514,7 +515,7 @@ static INPUT_PORTS_START( enigma2a )
 	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(p1_controls_r, 0)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNUSED )
 	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )
@@ -522,7 +523,7 @@ static INPUT_PORTS_START( enigma2a )
 	PORT_BIT( 0x70, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(p2_controls_r, 0)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNUSED )
 
-	PORT_START
+	PORT_START_TAG("DSW")
 	PORT_DIPNAME( 0x03, 0x00, DEF_STR( Lives ) )
 	PORT_DIPSETTING(    0x00, "3" )
 	PORT_DIPSETTING(    0x01, "4" )
@@ -655,10 +656,11 @@ ROM_END
 static DRIVER_INIT(enigma2)
 {
 	offs_t i;
+	UINT8 *rom = memory_region(machine, REGION_CPU2);
 
 	for(i = 0; i < 0x2000; i++)
 	{
-		memory_region(REGION_CPU2)[i] = BITSWAP8(memory_region(REGION_CPU2)[i],4,5,6,0,7,1,3,2);
+		rom[i] = BITSWAP8(rom[i],4,5,6,0,7,1,3,2);
 	}
 }
 

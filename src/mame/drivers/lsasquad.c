@@ -147,48 +147,14 @@ Notes:
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6805/m6805.h"
 #include "sound/ay8910.h"
 #include "sound/2203intf.h"
-
-/* in video/lsasquad.c */
-extern UINT8 *lsasquad_scrollram;
-VIDEO_UPDATE( lsasquad );
-VIDEO_UPDATE( daikaiju );
-
-/* in machine/lsasquad.c */
-extern int lsasquad_invertcoin;
-WRITE8_HANDLER( lsasquad_sh_nmi_disable_w );
-WRITE8_HANDLER( lsasquad_sh_nmi_enable_w );
-WRITE8_HANDLER( lsasquad_sound_command_w );
-READ8_HANDLER( lsasquad_sh_sound_command_r );
-WRITE8_HANDLER( lsasquad_sh_result_w );
-READ8_HANDLER( lsasquad_sound_result_r );
-READ8_HANDLER( lsasquad_sound_status_r );
-
-READ8_HANDLER( lsasquad_68705_portA_r );
-WRITE8_HANDLER( lsasquad_68705_portA_w );
-WRITE8_HANDLER( lsasquad_68705_ddrA_w );
-READ8_HANDLER( lsasquad_68705_portB_r );
-WRITE8_HANDLER( lsasquad_68705_portB_w );
-WRITE8_HANDLER( lsasquad_68705_ddrB_w );
-WRITE8_HANDLER( lsasquad_mcu_w );
-READ8_HANDLER( lsasquad_mcu_r );
-READ8_HANDLER( lsasquad_mcu_status_r );
-
-READ8_HANDLER( daikaiju_mcu_r);
-WRITE8_HANDLER( daikaiju_mcu_w);
-READ8_HANDLER( daikaiju_mcu_status_r);
-
-READ8_HANDLER( daikaiju_sound_status_r );
-READ8_HANDLER( daikaiju_sh_sound_command_r );
-
-MACHINE_RESET(daikaiju);
+#include "includes/lsasquad.h"
 
 static WRITE8_HANDLER( lsasquad_bankswitch_w )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	/* bits 0-2 select ROM bank */
 	memory_set_bankptr(1,&ROM[0x10000 + 0x2000 * (data & 7)]);
@@ -205,14 +171,14 @@ static ADDRESS_MAP_START( readmem, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0x0000, 0x7fff) AM_READ(SMH_ROM)
 	AM_RANGE(0x8000, 0x9fff) AM_READ(SMH_BANK1)
 	AM_RANGE(0xa000, 0xe5ff) AM_READ(SMH_RAM)
-	AM_RANGE(0xe800, 0xe800) AM_READ(input_port_0_r)	/* DSWA */
-	AM_RANGE(0xe801, 0xe801) AM_READ(input_port_1_r)	/* DSWB */
-	AM_RANGE(0xe802, 0xe802) AM_READ(input_port_2_r)	/* DSWC */
+	AM_RANGE(0xe800, 0xe800) AM_READ_PORT("DSWA")	/* DSWA */
+	AM_RANGE(0xe801, 0xe801) AM_READ_PORT("DSWB")	/* DSWB */
+	AM_RANGE(0xe802, 0xe802) AM_READ_PORT("DSWC")	/* DSWC */
 	AM_RANGE(0xe803, 0xe803) AM_READ(lsasquad_mcu_status_r)	/* COIN + 68705 status */
-	AM_RANGE(0xe804, 0xe804) AM_READ(input_port_4_r)	/* IN0 */
-	AM_RANGE(0xe805, 0xe805) AM_READ(input_port_5_r)	/* IN1 */
-	AM_RANGE(0xe806, 0xe806) AM_READ(input_port_6_r)	/* START */
-	AM_RANGE(0xe807, 0xe807) AM_READ(input_port_7_r)	/* SERVICE/TILT */
+	AM_RANGE(0xe804, 0xe804) AM_READ_PORT("IN0")	/* IN0 */
+	AM_RANGE(0xe805, 0xe805) AM_READ_PORT("IN1")	/* IN1 */
+	AM_RANGE(0xe806, 0xe806) AM_READ_PORT("IN2")	/* START */
+	AM_RANGE(0xe807, 0xe807) AM_READ_PORT("IN3")	/* SERVICE/TILT */
 	AM_RANGE(0xec00, 0xec00) AM_READ(lsasquad_sound_result_r)
 	AM_RANGE(0xec01, 0xec01) AM_READ(lsasquad_sound_status_r)
 	AM_RANGE(0xee00, 0xee00) AM_READ(lsasquad_mcu_r)
@@ -565,9 +531,9 @@ GFXDECODE_END
 
 
 
-static void irqhandler(int irq)
+static void irqhandler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static WRITE8_HANDLER( unk )
@@ -791,9 +757,9 @@ ROM_START( daikaiju )
 	ROM_LOAD( "a74_06.ic9",     0x0600, 0x0400, CRC(cad554e7) SHA1(7890d948bfef198309df810f8401d224224a73a1) )	/* priority */
 ROM_END
 
-static void init_common(void)
+static void init_common(running_machine *machine)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	/* an instruction at $7FFF straddles the bank switch boundary at
        $8000 into rom bank #0 and then continues into the bank so
@@ -802,9 +768,9 @@ static void init_common(void)
 }
 
 /* coin inputs are inverted in storming */
-static DRIVER_INIT( lsasquad ) { lsasquad_invertcoin = 0x00; init_common(); }
-static DRIVER_INIT( storming ) { lsasquad_invertcoin = 0x0c; init_common(); }
-static DRIVER_INIT( daikaiju ) { init_common(); }
+static DRIVER_INIT( lsasquad ) { lsasquad_invertcoin = 0x00; init_common(machine); }
+static DRIVER_INIT( storming ) { lsasquad_invertcoin = 0x0c; init_common(machine); }
+static DRIVER_INIT( daikaiju ) { init_common(machine); }
 
 
 GAME( 1986, lsasquad, 0,        lsasquad, lsasquad, lsasquad, ROT270, "Taito", "Land Sea Air Squad / Riku Kai Kuu Saizensen", GAME_IMPERFECT_GRAPHICS )

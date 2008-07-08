@@ -312,12 +312,12 @@ static READ16_HANDLER(sharedram_r)
 				if(read_latch)
 				{
 					read_latch=0;
-					return mame_rand(Machine);
+					return mame_rand(machine);
 				}
 			break;
 
 			case 0x46/2:
-				return (input_port_read_indexed(machine,0)&0xffff)^0xffff;
+				return (input_port_read(machine, "IN0") & 0xffff)^0xffff;
 
 
 		}
@@ -494,8 +494,6 @@ static INPUT_PORTS_START( bigfghtr )
 	PORT_DIPSETTING(    0x02, "4" )
 	PORT_DIPSETTING(    0x01, "5" )
 	PORT_DIPSETTING(    0x00, "6" )
-
-
 	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Bonus_Life ) )
 	PORT_DIPSETTING(    0x0c, "20k then every 60k" )
 	PORT_DIPSETTING(    0x04, "20k then every 80k" )
@@ -541,7 +539,7 @@ INPUT_PORTS_END
 static DRIVER_INIT( skyrobo )
 {
 	//RAM TESTS
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	RAM[0x2e822/2] = 0x4ef9;
 	RAM[0x2e824/2] = 0x0002;
 	RAM[0x2e826/2] = 0xe9ae;
@@ -552,7 +550,7 @@ static DRIVER_INIT( skyrobo )
 static DRIVER_INIT( bigfghtr )
 {
 	//RAM TESTS
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 	RAM[0x2e8cc/2] = 0x4ef9;
 	RAM[0x2e8ce/2] = 0x0002;
 	RAM[0x2e8d0/2] = 0xea58;

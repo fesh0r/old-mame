@@ -170,37 +170,7 @@ Games marked * need dumping / redumping
 #include "driver.h"
 #include "deprecat.h"
 #include "sound/ymf271.h"
-
-extern UINT32 *ms32_fce00000;
-extern UINT32 *ms32_roz_ctrl;
-extern UINT32 *ms32_tx_scroll;
-extern UINT32 *ms32_bg_scroll;
-extern UINT32 *ms32_priram;
-extern UINT32 *ms32_palram;
-extern UINT32 *ms32_bgram;
-extern UINT32 *ms32_rozram;
-extern UINT32 *ms32_lineram;
-extern UINT32 *ms32_spram;
-extern UINT32 *ms32_txram;
-extern UINT32 *ms32_mainram;
-
-WRITE32_HANDLER( ms32_brightness_w );
-WRITE32_HANDLER( ms32_palram_w );
-READ32_HANDLER( ms32_txram_r );
-WRITE32_HANDLER( ms32_txram_w );
-READ32_HANDLER( ms32_rozram_r );
-WRITE32_HANDLER( ms32_rozram_w );
-READ32_HANDLER( ms32_lineram_r );
-WRITE32_HANDLER( ms32_lineram_w );
-READ32_HANDLER( ms32_bgram_r );
-WRITE32_HANDLER( ms32_bgram_w );
-READ32_HANDLER( ms32_spram_r );
-WRITE32_HANDLER( ms32_spram_w );
-READ32_HANDLER( ms32_priram_r );
-WRITE32_HANDLER( ms32_priram_w );
-WRITE32_HANDLER( ms32_gfxctrl_w );
-VIDEO_START( ms32 );
-VIDEO_UPDATE( ms32 );
+#include "includes/ms32.h"
 
 static UINT32 *ms32_fc000000;
 
@@ -213,10 +183,10 @@ static UINT32 to_main;
 static READ32_HANDLER ( ms32_read_inputs1 )
 {
 	int a,b,c,d;
-	a = input_port_read_indexed(machine, 0);	// unknown
-	b = input_port_read_indexed(machine, 1);	// System inputs
-	c = input_port_read_indexed(machine, 2);	// Player 1 inputs
-	d = input_port_read_indexed(machine, 3);	// Player 2 inputs
+	a = input_port_read(machine, "IN0");	// unknown
+	b = input_port_read(machine, "IN1");	// System inputs
+	c = input_port_read(machine, "IN2");	// Player 1 inputs
+	d = input_port_read(machine, "IN3");	// Player 2 inputs
 	return a << 24 | b << 16 | c << 0 | d << 8;
 }
 
@@ -224,31 +194,31 @@ static READ32_HANDLER ( ms32_read_inputs1 )
 static READ32_HANDLER ( ms32_mahjong_read_inputs1 )
 {
 	int a,b,c,d;
-	a = input_port_read_indexed(machine, 0);	// unknown
-	b = input_port_read_indexed(machine, 1);	// System inputs
+	a = input_port_read(machine, "IN0");	// unknown
+	b = input_port_read(machine, "IN1");	// System inputs
 
 	switch (ms32_mahjong_input_select[0])
 	{
 		case 0x01:
-			c = input_port_read_indexed(machine, 8);	// Player 1 inputs
+			c = input_port_read(machine, "MJ0");	// Player 1 inputs
 			break;
 		case 0x02:
-			c = input_port_read_indexed(machine, 9);	// Player 1 inputs
+			c = input_port_read(machine, "MJ1");	// Player 1 inputs
 			break;
 		case 0x04:
-			c = input_port_read_indexed(machine, 10);	// Player 1 inputs
+			c = input_port_read(machine, "MJ2");	// Player 1 inputs
 			break;
 		case 0x08:
-			c = input_port_read_indexed(machine, 11);	// Player 1 inputs
+			c = input_port_read(machine, "MJ3");	// Player 1 inputs
 			break;
 		case 0x10:
-			c = input_port_read_indexed(machine, 12);	// Player 1 inputs
+			c = input_port_read(machine, "MJ4");	// Player 1 inputs
 			break;
 		default:
 			c = 0;
 
 	}
-	d = input_port_read_indexed(machine, 3);	// Player 2 inputs
+	d = input_port_read(machine, "IN3");	// Player 2 inputs
 	return a << 24 | b << 16 | c << 0 | d << 8;
 }
 
@@ -256,20 +226,20 @@ static READ32_HANDLER ( ms32_mahjong_read_inputs1 )
 static READ32_HANDLER ( ms32_read_inputs2 )
 {
 	int a,b,c,d;
-	a = input_port_read_indexed(machine, 4);	// Dip 1
-	b = input_port_read_indexed(machine, 5);	// Dip 2
-	c = input_port_read_indexed(machine, 6);	// Dip 3
-	d = input_port_read_indexed(machine, 7);	// unused ?
+	a = input_port_read(machine, "DSW1");	// Dip 1
+	b = input_port_read(machine, "DSW2");	// Dip 2
+	c = input_port_read(machine, "DSW3");	// Dip 3
+	d = input_port_read(machine, "UNUSED");	// unused ?
 	return a << 8 | b << 0 | c << 16 | d << 24;
 }
 
 static READ32_HANDLER ( ms32_read_inputs3 )
 {
 	int a,b,c,d;
-	a = input_port_read_indexed(machine, 10); // unused?
-	b = input_port_read_indexed(machine, 10); // unused?
-	c = input_port_read_indexed(machine, 9);
-	d = (input_port_read_indexed(machine, 8) - 0xb0) & 0xff;
+	a = input_port_read(machine, "AN2?"); // unused?
+	b = input_port_read(machine, "AN2?"); // unused?
+	c = input_port_read(machine, "AN1");
+	d = (input_port_read(machine, "AN0") - 0xb0) & 0xff;
 	return a << 24 | b << 16 | c << 8 | d << 0;
 }
 
@@ -1107,6 +1077,71 @@ static INPUT_PORTS_START( 47pie2 )	// player 1 inputs done? others?
 
 INPUT_PORTS_END
 
+
+static INPUT_PORTS_START( wpksocv2 )
+	PORT_INCLUDE( ms32 )
+
+	PORT_MODIFY("IN1")
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("IN2")
+	/* Still missing the correct input for begin the left right movement */
+	PORT_BIT( 0x0f, 0x00, IPT_PEDAL ) PORT_SENSITIVITY(50) PORT_KEYDELTA(7) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("IN3")
+	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_PLAYER(1)
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_PLAYER(1)
+	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_PLAYER(1)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_PLAYER(1)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
+
+	PORT_MODIFY("DSW1")
+	PORT_DIPNAME( 0xe0, 0xe0, DEF_STR( Coinage ) ) PORT_DIPLOCATION("SW1:3,2,1")
+	PORT_DIPSETTING(    0x80, DEF_STR( 4C_1C ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( 3C_1C ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( 2C_1C ) )
+	PORT_DIPSETTING(    0xe0, DEF_STR( 1C_1C ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( 2C_3C ) )
+	PORT_DIPSETTING(    0x60, DEF_STR( 1C_2C ) )
+	PORT_DIPSETTING(    0xa0, DEF_STR( 1C_3C ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( 1C_4C ) )
+	PORT_DIPNAME( 0x10, 0x10, DEF_STR( Demo_Sounds) ) PORT_DIPLOCATION("SW1:4")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x10, DEF_STR( On ) )
+	PORT_DIPNAME( 0x08, 0x08, DEF_STR( Unused ) ) PORT_DIPLOCATION("SW1:5")
+	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x04, 0x04, DEF_STR( Unused ) ) PORT_DIPLOCATION("SW1:6")
+	PORT_DIPSETTING(    0x04, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x02, 0x02, DEF_STR( Unused ) ) PORT_DIPLOCATION("SW1:7")
+	PORT_DIPSETTING(    0x02, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+	PORT_DIPNAME( 0x01, 0x01, DEF_STR( Unused ) ) PORT_DIPLOCATION("SW1:8")
+	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
+
+	PORT_MODIFY("DSW3")
+	PORT_DIPNAME( 0xc0, 0x00, DEF_STR( Region ) ) PORT_DIPLOCATION("SW3:2,1")
+	PORT_DIPSETTING(    0x40, DEF_STR( USA ) )
+	PORT_DIPSETTING(    0x00, DEF_STR( World ) )
+//  PORT_DIPSETTING(    0x80, "?" )
+	PORT_DIPSETTING(    0xc0, DEF_STR( Japan ) )
+	PORT_DIPNAME( 0x20, 0x00, "Tickets" ) PORT_DIPLOCATION("SW3:3")
+	PORT_DIPSETTING(    0x00, DEF_STR( Off ) )
+	PORT_DIPSETTING(    0x20, DEF_STR( On ) )
+
+INPUT_PORTS_END
+
+
 static INPUT_PORTS_START( f1superb )	// Mostly wrong !
 	PORT_INCLUDE( ms32 )
 
@@ -1253,23 +1288,23 @@ static IRQ_CALLBACK(irq_callback)
 	return i;
 }
 
-static void irq_init(void)
+static void irq_init(running_machine *machine)
 {
 	irqreq = 0;
-	cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	cpunum_set_irq_callback(0, irq_callback);
 }
 
-static void irq_raise(int level)
+static void irq_raise(running_machine *machine, int level)
 {
 	irqreq |= (1<<level);
-	cpunum_set_input_line(Machine, 0, 0, ASSERT_LINE);
+	cpunum_set_input_line(machine, 0, 0, ASSERT_LINE);
 }
 
 static INTERRUPT_GEN(ms32_interrupt)
 {
-	if( cpu_getiloops() == 0 ) irq_raise(10);
-	if( cpu_getiloops() == 1 ) irq_raise(9);
+	if( cpu_getiloops() == 0 ) irq_raise(machine, 10);
+	if( cpu_getiloops() == 1 ) irq_raise(machine, 9);
 	/* hayaosi2 needs at least 12 IRQ 0 per frame to work (see code at FFE02289)
        kirarast needs it too, at least 8 per frame, but waits for a variable amount
        47pi2 needs ?? per frame (otherwise it hangs when you lose)
@@ -1278,7 +1313,7 @@ static INTERRUPT_GEN(ms32_interrupt)
        desertwr
        p47aces
        */
-	if( cpu_getiloops() >= 3 && cpu_getiloops() <= 32 ) irq_raise(0);
+	if( cpu_getiloops() >= 3 && cpu_getiloops() <= 32 ) irq_raise(machine, 0);
 }
 
 /********** SOUND **********/
@@ -1319,7 +1354,7 @@ static WRITE8_HANDLER( ms32_snd_bank_w )
 static WRITE8_HANDLER( to_main_w )
 {
 		to_main=data;
-		irq_raise(1);
+		irq_raise(machine, 1);
 }
 
 static ADDRESS_MAP_START( ms32_snd_readmem, ADDRESS_SPACE_PROGRAM, 8 )
@@ -1353,10 +1388,10 @@ static const struct YMF271interface ymf271_interface =
 
 static MACHINE_RESET( ms32 )
 {
-	memory_set_bankptr(1, memory_region(REGION_CPU1));
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1));
 	memory_set_bank(4, 0);
 	memory_set_bank(5, 1);
-	irq_init();
+	irq_init(machine);
 }
 
 /********** MACHINE DRIVER **********/
@@ -2123,7 +2158,7 @@ ROM_END
 
 /* SS92048-01: p47aces, 47pie2, 47pie2o */
 
-void ms32_rearrange_sprites(int region)
+void ms32_rearrange_sprites(running_machine *machine, int region)
 {
 	/* sprites are not encrypted, but we need to move the data around to handle them as 256x256 tiles */
 	int i;
@@ -2132,8 +2167,8 @@ void ms32_rearrange_sprites(int region)
 
 	UINT8 *result_data;
 
-	source_data = memory_region       ( region );
-	source_size = memory_region_length( region );
+	source_data = memory_region       ( machine, region );
+	source_size = memory_region_length( machine, region );
 
 	result_data = malloc_or_die(source_size);
 
@@ -2149,7 +2184,7 @@ void ms32_rearrange_sprites(int region)
 }
 
 
-void decrypt_ms32_tx(int addr_xor,int data_xor, int region)
+void decrypt_ms32_tx(running_machine *machine, int addr_xor,int data_xor, int region)
 {
 	int i;
 	UINT8 *source_data;
@@ -2157,8 +2192,8 @@ void decrypt_ms32_tx(int addr_xor,int data_xor, int region)
 
 	UINT8 *result_data;
 
-	source_data = memory_region       ( region );
-	source_size = memory_region_length( region );
+	source_data = memory_region       ( machine, region );
+	source_size = memory_region_length( machine, region );
 
 	result_data = malloc_or_die(source_size);
 
@@ -2203,7 +2238,7 @@ void decrypt_ms32_tx(int addr_xor,int data_xor, int region)
 	free (result_data);
 }
 
-void decrypt_ms32_bg(int addr_xor,int data_xor, int region)
+void decrypt_ms32_bg(running_machine *machine, int addr_xor,int data_xor, int region)
 {
 	int i;
 	UINT8 *source_data;
@@ -2211,8 +2246,8 @@ void decrypt_ms32_bg(int addr_xor,int data_xor, int region)
 
 	UINT8 *result_data;
 
-	source_data = memory_region       ( region );
-	source_size = memory_region_length( region );
+	source_data = memory_region       ( machine, region );
+	source_size = memory_region_length( machine, region );
 
 	result_data = malloc_or_die(source_size);
 
@@ -2260,47 +2295,47 @@ void decrypt_ms32_bg(int addr_xor,int data_xor, int region)
 
 
 
-static void configure_banks(void)
+static void configure_banks(running_machine *machine)
 {
 	state_save_register_global(to_main);
-	memory_configure_bank(4, 0, 16, memory_region(REGION_CPU2) + 0x14000, 0x4000);
-	memory_configure_bank(5, 0, 16, memory_region(REGION_CPU2) + 0x14000, 0x4000);
+	memory_configure_bank(4, 0, 16, memory_region(machine, REGION_CPU2) + 0x14000, 0x4000);
+	memory_configure_bank(5, 0, 16, memory_region(machine, REGION_CPU2) + 0x14000, 0x4000);
 }
 
 /* SS91022-10: desertwr, gratiaa, tp2m32, gametngk */
 static DRIVER_INIT (ss91022_10)
 {
-	configure_banks();
-	ms32_rearrange_sprites(REGION_GFX1);
-	decrypt_ms32_tx(0x00000,0x35, REGION_GFX4);
-	decrypt_ms32_bg(0x00000,0xa3, REGION_GFX3);
+	configure_banks(machine);
+	ms32_rearrange_sprites(machine, REGION_GFX1);
+	decrypt_ms32_tx(machine, 0x00000,0x35, REGION_GFX4);
+	decrypt_ms32_bg(machine, 0x00000,0xa3, REGION_GFX3);
 }
 
 /* SS92046_01: bbbxing, f1superb, tetrisp, hayaosi2 */
 static DRIVER_INIT (ss92046_01)
 {
-	configure_banks();
-	ms32_rearrange_sprites(REGION_GFX1);
-	decrypt_ms32_tx(0x00020,0x7e, REGION_GFX4);
-	decrypt_ms32_bg(0x00001,0x9b, REGION_GFX3);
+	configure_banks(machine);
+	ms32_rearrange_sprites(machine, REGION_GFX1);
+	decrypt_ms32_tx(machine, 0x00020,0x7e, REGION_GFX4);
+	decrypt_ms32_bg(machine, 0x00001,0x9b, REGION_GFX3);
 }
 
 /* SS92047-01: gratia, kirarast */
 static DRIVER_INIT (ss92047_01)
 {
-	configure_banks();
-	ms32_rearrange_sprites(REGION_GFX1);
-	decrypt_ms32_tx(0x24000,0x18, REGION_GFX4);
-	decrypt_ms32_bg(0x24000,0x55, REGION_GFX3);
+	configure_banks(machine);
+	ms32_rearrange_sprites(machine, REGION_GFX1);
+	decrypt_ms32_tx(machine, 0x24000,0x18, REGION_GFX4);
+	decrypt_ms32_bg(machine, 0x24000,0x55, REGION_GFX3);
 }
 
 /* SS92048-01: p47aces, 47pie2, 47pie2o */
 static DRIVER_INIT (ss92048_01)
 {
-	configure_banks();
-	ms32_rearrange_sprites(REGION_GFX1);
-	decrypt_ms32_tx(0x20400,0xd6, REGION_GFX4);
-	decrypt_ms32_bg(0x20400,0xd4, REGION_GFX3);
+	configure_banks(machine);
+	ms32_rearrange_sprites(machine, REGION_GFX1);
+	decrypt_ms32_tx(machine, 0x20400,0xd6, REGION_GFX4);
+	decrypt_ms32_bg(machine, 0x20400,0xd4, REGION_GFX3);
 }
 
 static DRIVER_INIT (kirarast)
@@ -2322,7 +2357,7 @@ static DRIVER_INIT (47pie2)
 static DRIVER_INIT (f1superb)
 {
 #if 0 // we shouldn't need this hack, something else is wrong, and the x offsets are never copied either, v70 problems??
-	UINT32 *pROM = (UINT32 *)memory_region(REGION_CPU1);
+	UINT32 *pROM = (UINT32 *)memory_region(machine, REGION_CPU1);
 	pROM[0x19d04/4]=0x167a021a; // bne->br  : sprite Y offset table is always copied to RAM
 #endif
 	DRIVER_INIT_CALL(ss92046_01);
@@ -2355,7 +2390,7 @@ GAME( 1996, gratiaa,  gratia,   ms32, gratia,   ss91022_10, ROT0,   "Jaleco", "G
 GAME( 1996, kirarast, 0,        ms32, kirarast, kirarast,   ROT0,   "Jaleco", "Ryuusei Janshi Kirara Star", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1997, tp2m32,   tetrisp2, ms32, tp2m32,   ss91022_10, ROT0,   "Jaleco", "Tetris Plus 2 (MegaSystem 32 Version)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 GAME( 1997, bnstars,  bnstars1, ms32, 47pie2,   bnstars,    ROT0,   "Jaleco", "Vs. Janshi Brandnew Stars (MegaSystem32 Version)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
-GAME( 1996, wpksocv2, 0,        ms32, ms32,     ss92046_01, ROT0,   "Jaleco", "World PK Soccer V2 (ver 1.1)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE | GAME_NOT_WORKING ) // custom IO board not emulated
+GAME( 1996, wpksocv2, 0,        ms32, wpksocv2, ss92046_01, ROT0,   "Jaleco", "World PK Soccer V2 (ver 1.1)", GAME_IMPERFECT_GRAPHICS | GAME_IMPERFECT_SOUND | GAME_SUPPORTS_SAVE )
 
 
 /* these boot and show something */

@@ -211,7 +211,7 @@ static pen_t *pen_table;
 
 /* from jagobj.c */
 static void jagobj_init(void);
-static void process_object_list(int vc, UINT16 *_scanline);
+static void process_object_list(running_machine *machine, int vc, UINT16 *_scanline);
 
 /* from jagblit.c */
 static void generic_blitter(UINT32 command, UINT32 a1flags, UINT32 a2flags);
@@ -241,8 +241,9 @@ INLINE void get_crosshair_xy(running_machine *machine, int player, int *x, int *
 
 	int width = visarea->max_x + 1 - visarea->min_x;
 	int height = visarea->max_y + 1 - visarea->min_y;
-	*x = visarea->min_x + (((input_port_read_indexed(machine, 3 + player * 2) & 0xff) * width) >> 8);
-	*y = visarea->min_y + (((input_port_read_indexed(machine, 4 + player * 2) & 0xff) * height) >> 8);
+	/* only 2 lightguns are connected */
+	*x = visarea->min_x + (((input_port_read(machine, player ? "FAKE2_X" : "FAKE1_X") & 0xff) * width) >> 8);
+	*y = visarea->min_y + (((input_port_read(machine, player ? "FAKE2_Y" : "FAKE1_Y") & 0xff) * height) >> 8);
 }
 
 
@@ -325,26 +326,26 @@ void jaguar_gpu_resume(void)
  *
  *************************************/
 
-static void update_cpu_irq(void)
+static void update_cpu_irq(running_machine *machine)
 {
 	if (cpu_irq_state & gpu_regs[INT1] & 0x1f)
-		cpunum_set_input_line(Machine, 0, cojag_is_r3000 ? R3000_IRQ4 : MC68000_IRQ_6, ASSERT_LINE);
+		cpunum_set_input_line(machine, 0, cojag_is_r3000 ? R3000_IRQ4 : MC68000_IRQ_6, ASSERT_LINE);
 	else
-		cpunum_set_input_line(Machine, 0, cojag_is_r3000 ? R3000_IRQ4 : MC68000_IRQ_6, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, cojag_is_r3000 ? R3000_IRQ4 : MC68000_IRQ_6, CLEAR_LINE);
 }
 
 
 void jaguar_gpu_cpu_int(void)
 {
 	cpu_irq_state |= 2;
-	update_cpu_irq();
+	update_cpu_irq(Machine);
 }
 
 
 void jaguar_dsp_cpu_int(void)
 {
 	cpu_irq_state |= 16;
-	update_cpu_irq();
+	update_cpu_irq(Machine);
 }
 
 
@@ -654,7 +655,7 @@ WRITE16_HANDLER( jaguar_tom_regs_w )
 		{
 			case INT1:
 				cpu_irq_state &= ~(gpu_regs[INT1] >> 8);
-				update_cpu_irq();
+				update_cpu_irq(machine);
 				break;
 
 			case VMODE:
@@ -741,7 +742,7 @@ READ32_HANDLER( cojag_gun_input_r )
 			return (beamy << 16) | (beamx ^ 0x1ff);
 
 		case 2:
-			return input_port_read_indexed(machine, 7) << 16;
+			return input_port_read(machine, "IN3") << 16;
 	}
 	return 0;
 }
@@ -778,7 +779,7 @@ static TIMER_CALLBACK( cojag_scanline_update )
 		}
 
 		/* process the object list for this counter value */
-		process_object_list(vc, scanline);
+		process_object_list(machine, vc, scanline);
 
 		/* copy the data to the target, clipping */
 		for (x = 0; x < 360 && hdb <= maxx && hdb < hde; x++, hdb++)
@@ -792,7 +793,7 @@ static TIMER_CALLBACK( cojag_scanline_update )
 		if (vc == gpu_regs[VI])
 		{
 			cpu_irq_state |= 1;
-			update_cpu_irq();
+			update_cpu_irq(machine);
 		}
 
 		/* point to the next counter value */
@@ -804,7 +805,7 @@ static TIMER_CALLBACK( cojag_scanline_update )
 
 static STATE_POSTLOAD( cojag_postload )
 {
-	update_cpu_irq();
+	update_cpu_irq(machine);
 }
 
 VIDEO_START( cojag )

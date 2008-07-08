@@ -146,6 +146,7 @@ Tetris         -         -         -         -         EPR12169  EPR12170  -    
 #include "driver.h"
 #include "system16.h"
 #include "machine/8255ppi.h"
+#include "machine/fd1089.h"
 #include "cpu/i8039/i8039.h"
 #include "sound/dac.h"
 #include "sound/2151intf.h"
@@ -177,9 +178,6 @@ static UINT32 n7751_rom_address;
  *  Prototypes
  *
  *************************************/
-
-extern void fd1094_machine_init(void);
-extern void fd1094_driver_init(void (*set_decrypted)(UINT8 *));
 
 static READ16_HANDLER( misc_io_r );
 static WRITE16_HANDLER( misc_io_w );
@@ -219,7 +217,7 @@ static void system16a_generic_init(running_machine *machine)
 	MACHINE_RESET_CALL(sys16_onetime);
 
 	/* init the FD1094 */
-	fd1094_driver_init(NULL);
+	fd1094_driver_init(machine, NULL);
 
 	/* reset the custom handlers and other pointers */
 	custom_io_r = NULL;
@@ -344,7 +342,7 @@ static WRITE8_HANDLER( video_control_w )
 	video_control = data;
 	segaic16_tilemap_set_flip(0, data & 0x80);
 	segaic16_sprites_set_flip(0, data & 0x80);
-	segaic16_set_display_enable(data & 0x10);
+	segaic16_set_display_enable(machine, data & 0x10);
 	set_led_status(1, data & 0x08);
 	set_led_status(0, data & 0x04);
 	coin_counter_w(1, data & 0x02);
@@ -408,7 +406,7 @@ static WRITE8_HANDLER( n7751_command_w )
         D1    = /CS for ROM 0
         D0    = A14 line to ROMs
     */
-	int numroms = memory_region_length(REGION_SOUND1) / 0x8000;
+	int numroms = memory_region_length(machine, REGION_SOUND1) / 0x8000;
 	n7751_rom_address &= 0x3fff;
 	n7751_rom_address |= (data & 0x01) << 14;
 	if (!(data & 0x02) && numroms >= 1) n7751_rom_address |= 0x00000;
@@ -448,7 +446,7 @@ static WRITE8_HANDLER( n7751_rom_offset_w )
 static READ8_HANDLER( n7751_rom_r )
 {
 	/* read from BUS */
-	return memory_region(REGION_SOUND1)[n7751_rom_address];
+	return memory_region(machine, REGION_SOUND1)[n7751_rom_address];
 }
 
 
@@ -1972,7 +1970,7 @@ ROM_END
 
 /**************************************************************************************************************************
     Alex Kidd, Sega System 16A
-    CPU: FD1094? 317-????
+    CPU: FD1089A 317-0021
  */
 ROM_START( alexkid1 )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
@@ -3010,10 +3008,10 @@ ROM_END
  */
 ROM_START( wb31 )
 	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
-	ROM_LOAD16_BYTE( "epr12082.bin", 0x000001, 0x10000, CRC(38dc5b15) SHA1(b25bf60d269a87f9d8dbc1a3787c8ff9a6e7482c) )
 	ROM_LOAD16_BYTE( "epr12084.bin", 0x000000, 0x10000, CRC(b6deb654) SHA1(37066cc63902233bb8b56d3171c42bf8a8f82e58) )
-	ROM_LOAD16_BYTE( "epr12083.bin", 0x020001, 0x10000, CRC(3d631a8e) SHA1(4940ff6cf380fb914876ade39ea37f42b79bf11d) )
+	ROM_LOAD16_BYTE( "epr12082.bin", 0x000001, 0x10000, CRC(38dc5b15) SHA1(b25bf60d269a87f9d8dbc1a3787c8ff9a6e7482c) )
 	ROM_LOAD16_BYTE( "epr12085.bin", 0x020000, 0x10000, CRC(0962098b) SHA1(150fc439dd5e773bef706f058abdb4d2ec44e355) )
+	ROM_LOAD16_BYTE( "epr12083.bin", 0x020001, 0x10000, CRC(3d631a8e) SHA1(4940ff6cf380fb914876ade39ea37f42b79bf11d) )
 
 	ROM_REGION( 0x2000, REGION_USER1, 0 )	/* decryption key */
 	ROM_LOAD( "317-0084.key", 0x0000, 0x2000, CRC(2c58dafa) SHA1(24d06970eda896fdd5e3486132bd19834f7d3659) )
@@ -3045,7 +3043,45 @@ ROM_START( wb31 )
 	ROM_LOAD( "epr12089.bin", 0x0000, 0x8000, CRC(8321eb0b) SHA1(61cf95833c0aa38e35fc18db39d4ec74e4aaf01e) )
 ROM_END
 
+/**************************************************************************************************************************
+ **************************************************************************************************************************
+ **************************************************************************************************************************
+    Wonder Boy III, Sega System 16A
+    CPU: FD1089A (317-unknown)
+ */
+ROM_START( wb35 )
+	ROM_REGION( 0x40000, REGION_CPU1, 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "epr12120.43", 0x000000, 0x10000, CRC(cf41adf1) SHA1(aab2146d990d6698d73edf8d8699e98a1f01d534) )
+	ROM_LOAD16_BYTE( "epr12118.26", 0x000001, 0x10000, CRC(050ad6d0) SHA1(4d5e5b9a6b9b33ec767a18c30a8252063341eefb) )
+	ROM_LOAD16_BYTE( "epr12121.42", 0x020000, 0x10000, CRC(5e44c0a9) SHA1(4d4c9575a6cd571a7cf635164e92afd92d4b63fe) )
+	ROM_LOAD16_BYTE( "epr12119.25", 0x020001, 0x10000, CRC(b67b97a3) SHA1(0a5ab21c7b4ca6d6a31852dd8dfb94bb55c0f15d) )
 
+	ROM_REGION( 0x30000, REGION_GFX1, ROMREGION_DISPOSE ) /* tiles */
+	ROM_LOAD( "epr12086.95", 0x00000, 0x10000, CRC(45b949df) SHA1(84390d16da00b775988e5f6c20950cb2304b1a74) )
+	ROM_LOAD( "epr12087.94", 0x10000, 0x10000, CRC(5fb761aa) SHA1(dcf88e68732a8ec122d0603d87f6ea1f1614adef) )
+	ROM_LOAD( "epr12088.83", 0x20000, 0x10000, CRC(00579c39) SHA1(12acdea75e3d040d60a9f32d05fd9e0191d38f21) )
+
+	ROM_REGION16_BE( 0x80000, REGION_GFX2, 0 ) /* sprites */
+	ROM_LOAD16_BYTE( "epr12090.10", 0x00001, 0x008000, CRC(c85904c1) SHA1(e5af26ce870813bd5a88b430fc3881c7fcb63aef) )
+	ROM_CONTINUE(                   0x40001, 0x008000 )
+	ROM_LOAD16_BYTE( "epr12094.11", 0x00000, 0x008000, CRC(615e4927) SHA1(d23f164973afa770714e284a77ddf10f18cc596b) )
+	ROM_CONTINUE(                   0x40000, 0x008000 )
+	ROM_LOAD16_BYTE( "epr12091.17", 0x10001, 0x008000, CRC(8409a243) SHA1(bcbb9510a6499d8147543d6befa5a49f4ac055d9) )
+	ROM_CONTINUE(                   0x50001, 0x008000 )
+	ROM_LOAD16_BYTE( "epr12095.18", 0x10000, 0x008000, CRC(e774ec2c) SHA1(a4aa15ec7be5539a740ad02ff720458018dbc536) )
+	ROM_CONTINUE(                   0x50000, 0x008000 )
+	ROM_LOAD16_BYTE( "epr12092.23", 0x20001, 0x008000, CRC(5c2f0d90) SHA1(e0fbc0f841e4607ad232931368b16e81440a75c4) )
+	ROM_CONTINUE(                   0x60001, 0x008000 )
+	ROM_LOAD16_BYTE( "epr12096.24", 0x20000, 0x008000, CRC(d55ca9c9) SHA1(cff95bd799cf9625f95261620d2df7f0891e34da) )
+	ROM_CONTINUE(                   0x60000, 0x008000 )
+	ROM_LOAD16_BYTE( "epr12093.29", 0x30001, 0x008000, CRC(9e6d9086) SHA1(1cfe7175f538db9a47ef576b33be49057db0927d) )
+	ROM_CONTINUE(                   0x70001, 0x008000 )
+	ROM_LOAD16_BYTE( "epr12097.30", 0x30000, 0x008000, CRC(e645902c) SHA1(497cfcf6c25cc2e042e16dbcb1963d2223def15a) )
+	ROM_CONTINUE(                   0x70000, 0x008000 )
+
+	ROM_REGION( 0x10000, REGION_CPU2, 0 ) /* sound CPU */
+	ROM_LOAD( "epr12089.12", 0x0000, 0x8000, CRC(8321eb0b) SHA1(61cf95833c0aa38e35fc18db39d4ec74e4aaf01e) )
+ROM_END
 
 /*************************************
  *
@@ -3068,32 +3104,28 @@ static DRIVER_INIT( aceattaa )
 
 static DRIVER_INIT( afighter )
 {
-	void fd1089_decrypt_0018(void);
 	system16a_generic_init(machine);
-	fd1089_decrypt_0018();
+	fd1089_decrypt_0018(machine);
 }
 
 
 static DRIVER_INIT( alexkid1 )
 {
-	void fd1089_decrypt_alexkidd(void);
 	system16a_generic_init(machine);
-	fd1089_decrypt_alexkidd();
+	fd1089_decrypt_0021(machine);
 }
 
 
 static DRIVER_INIT( aliensy1 )
 {
-	void fd1089_decrypt_0033(void);
 	system16a_generic_init(machine);
-	fd1089_decrypt_0033();
+	fd1089_decrypt_0033(machine);
 }
 
 static DRIVER_INIT( aliensy5 )
 {
-	void fd1089_decrypt_0037(void);
 	system16a_generic_init(machine);
-	fd1089_decrypt_0037();
+	fd1089_decrypt_0037(machine);
 }
 
 static DRIVER_INIT( bodyslam )
@@ -3124,18 +3156,16 @@ static DRIVER_INIT( quartet )
 
 static DRIVER_INIT( sdi )
 {
-	void fd1089_decrypt_0027(void);
 	system16a_generic_init(machine);
-	fd1089_decrypt_0027();
+	fd1089_decrypt_0027(machine);
 	custom_io_r = sdi_custom_io_r;
 }
 
 
 static DRIVER_INIT( sjryukoa )
 {
-	void fd1089_decrypt_5021(void);
 	system16a_generic_init(machine);
-	fd1089_decrypt_5021();
+	fd1089_decrypt_5021(machine);
 	custom_io_r = sjryuko_custom_io_r;
 	lamp_changed_w = sjryuko_lamp_changed_w;
 }
@@ -3143,12 +3173,15 @@ static DRIVER_INIT( sjryukoa )
 
 static DRIVER_INIT( timesca1 )
 {
-	void fd1089_decrypt_0024(void);
 	system16a_generic_init(machine);
-	fd1089_decrypt_0024();
+	fd1089_decrypt_0024(machine);
 }
 
-
+static DRIVER_INIT( wb35 )
+{
+	system16a_generic_init(machine);
+	fd1089_decrypt_wb35(machine);
+}
 
 /*************************************
  *
@@ -3170,9 +3203,9 @@ GAME( 1987, aliensy5, aliensyn, system16a,        aliensyn, aliensy5,    ROT0,  
 GAME( 1987, aliensy2, aliensyn, system16a,        aliensyn, aliensy1,    ROT0,   "Sega",           "Alien Syndrome (set 2, System 16A, FD1089A 317-0033)", 0 )
 GAME( 1987, aliensy1, aliensyn, system16a,        aliensy1, aliensy1,    ROT0,   "Sega",           "Alien Syndrome (set 1, System 16A, FD1089A 317-0033)", 0 )
 GAME( 1988, aceattaa, aceattac, system16a       , aceattaa, aceattaa,    ROT270, "Sega",           "Ace Attacker (Japan, System 16A, FD1094 317-0060)", 0 )
-GAME( 1986, afighter, 0,        system16a_no7751, afighter, afighter,    ROT270, "Sega",           "Action Fighter, FD1089A 317-0018", 0 )
+GAME( 1986, afighter, 0,        system16a_no7751, afighter, afighter,    ROT270, "Sega",           "Action Fighter (FD1089A 317-0018)", 0 )
 GAME( 1986, alexkidd, 0,        system16a,        alexkidd, generic_16a, ROT0,   "Sega",           "Alex Kidd: The Lost Stars (set 2, unprotected)", 0 )
-GAME( 1986, alexkid1, alexkidd, system16a,        alexkidd, alexkid1,    ROT0,   "Sega",           "Alex Kidd: The Lost Stars (set 1, FD1089A 317-unknown)", 0 )
+GAME( 1986, alexkid1, alexkidd, system16a,        alexkidd, alexkid1,    ROT0,   "Sega",           "Alex Kidd: The Lost Stars (set 1, FD1089A 317-0021)", 0 )
 GAME( 1986, fantzone, 0,        system16a_no7751, fantzone, generic_16a, ROT0,   "Sega",           "Fantasy Zone (set 2, unprotected)", 0 )
 GAME( 1986, fantzon1, fantzone, system16a_no7751, fantzone, generic_16a, ROT0,   "Sega",           "Fantasy Zone (set 1, unprotected)", 0 )
 GAME( 1988, pshot16a, passsht,  system16a,        pshot16a, pshot16a,    ROT270, "Sega",           "Passing Shot (Japan, 4 Players, System 16A, FD1094 317-0071)", 0 )
@@ -3185,3 +3218,4 @@ GAME( 1988, tetris,   0,        system16a_no7751, tetris,   generic_16a, ROT0,  
 GAME( 1988, tetris3,  tetris,   system16a_no7751, tetris,   generic_16a, ROT0,   "Sega",           "Tetris (set 3, Japan, System 16A, FD1094 317-0093a)", 0 )
 GAME( 1987, timesca1, timescan, system16a,        timescan, timesca1,    ROT270, "Sega",           "Time Scanner (set 1, System 16A, FD1089B 317-0024)", 0 )
 GAME( 1988, wb31,     wb3,      system16a_no7751, wb3,      generic_16a, ROT0,   "Sega / Westone", "Wonder Boy III - Monster Lair (set 1, System 16A, FD1094 317-0084)", 0 )
+GAME( 1988, wb35,     wb3,      system16a_no7751, wb3,      wb35,        ROT0,   "Sega / Westone", "Wonder Boy III - Monster Lair (set 5, System 16A, FD1089A 317-xxxx)", GAME_NOT_WORKING )

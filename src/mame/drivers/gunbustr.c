@@ -91,13 +91,12 @@ static READ32_HANDLER( gunbustr_input_r )
 	{
 		case 0x00:
 		{
-			return (input_port_read_indexed(machine,0) << 16) | input_port_read_indexed(machine,1) |
-				  (EEPROM_read_bit() << 7);
+			return (input_port_read(machine, "IN0") << 16) | input_port_read(machine, "IN1") | (eeprom_read_bit() << 7);
 		}
 
 		case 0x01:
 		{
-			return input_port_read_indexed(machine,2) | (coin_word << 16);
+			return input_port_read(machine, "IN2") | (coin_word << 16);
 		}
  	}
 logerror("CPU #0 PC %06x: read input %06x\n",activecpu_get_pc(),offset);
@@ -130,9 +129,9 @@ popmessage(t);
 
 			if (ACCESSING_BITS_0_7)
 			{
-				EEPROM_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
-				EEPROM_write_bit(data & 0x40);
-				EEPROM_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+				eeprom_set_clock_line((data & 0x20) ? ASSERT_LINE : CLEAR_LINE);
+				eeprom_write_bit(data & 0x40);
+				eeprom_set_cs_line((data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 				return;
 			}
 			return;
@@ -174,8 +173,8 @@ static WRITE32_HANDLER( motor_control_w )
 
 static READ32_HANDLER( gunbustr_gun_r )
 {
-	return ( input_port_read_indexed(machine,3) << 24) | (input_port_read_indexed(machine,4) << 16) |
-		 ( input_port_read_indexed(machine,5) << 8)  |  input_port_read_indexed(machine,6);
+	return ( input_port_read(machine, "LIGHT0_X") << 24) | (input_port_read(machine, "LIGHT0_Y") << 16) |
+		 ( input_port_read(machine, "LIGHT1_X") << 8)  |  input_port_read(machine, "LIGHT1_Y");
 }
 
 static WRITE32_HANDLER( gunbustr_gun_w )
@@ -221,7 +220,7 @@ ADDRESS_MAP_END
 ***********************************************************/
 
 static INPUT_PORTS_START( gunbustr )
-	PORT_START      /* IN0 */
+	PORT_START_TAG("IN0")		/* IN0 */
 	PORT_BIT( 0x0001, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -239,7 +238,7 @@ static INPUT_PORTS_START( gunbustr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 
-	PORT_START      /* IN1 */
+	PORT_START_TAG("IN1")		/* IN1 */
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_PLAYER(1)	/* Freeze input */
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNKNOWN )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_UNKNOWN )
@@ -257,7 +256,7 @@ static INPUT_PORTS_START( gunbustr )
 	PORT_BIT( 0x4000, IP_ACTIVE_LOW,  IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x8000, IP_ACTIVE_LOW,  IPT_BUTTON2 ) PORT_PLAYER(2)
 
-	PORT_START      /* IN2 */
+	PORT_START_TAG("IN2")		/* IN2 */
 	PORT_SERVICE_NO_TOGGLE( 0x0001, IP_ACTIVE_LOW )
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_SERVICE1 )
 	PORT_BIT( 0x0004, IP_ACTIVE_LOW,  IPT_COIN1 )
@@ -277,16 +276,16 @@ static INPUT_PORTS_START( gunbustr )
 
 	/* Light gun inputs */
 
-	PORT_START	/* IN 3, P1X */
+	PORT_START_TAG("LIGHT0_X")		/* IN 3, P1X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_PLAYER(1)
 
-	PORT_START	/* IN 4, P1Y */
+	PORT_START_TAG("LIGHT0_Y")		/* IN 4, P1Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_REVERSE PORT_PLAYER(1)
 
-	PORT_START	/* IN 5, P2X */
+	PORT_START_TAG("LIGHT1_X")		/* IN 5, P2X */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_PLAYER(2)
 
-	PORT_START	/* IN 6, P2Y */
+	PORT_START_TAG("LIGHT1_Y")		/* IN 6, P2Y */
 	PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_SENSITIVITY(30) PORT_KEYDELTA(20) PORT_REVERSE PORT_PLAYER(2)
 INPUT_PORTS_END
 
@@ -330,7 +329,7 @@ GFXDECODE_END
 
 static MACHINE_RESET( gunbustr )
 {
-	taito_f3_soundsystem_reset();
+	taito_f3_soundsystem_reset(machine);
 
 	f3_68681_reset();
 }
@@ -347,7 +346,7 @@ static const UINT8 default_eeprom[128]={
 	0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff
 };
 
-static const struct EEPROM_interface gunbustr_eeprom_interface =
+static const eeprom_interface gunbustr_eeprom_interface =
 {
 	6,				/* address bits */
 	16,				/* data bits */
@@ -361,13 +360,13 @@ static const struct EEPROM_interface gunbustr_eeprom_interface =
 static NVRAM_HANDLER( gunbustr )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else {
-		EEPROM_init(&gunbustr_eeprom_interface);
+		eeprom_init(&gunbustr_eeprom_interface);
 		if (file)
-			EEPROM_load(file);
+			eeprom_load(file);
 		else
-			EEPROM_set_data(default_eeprom,128);  /* Default the gun setup values */
+			eeprom_set_data(default_eeprom,128);  /* Default the gun setup values */
 	}
 }
 

@@ -107,14 +107,14 @@ static NVRAM_HANDLER( konamigq_93C46 )
 {
 	if( read_or_write )
 	{
-		EEPROM_save( file );
+		eeprom_save( file );
 	}
 	else
 	{
-		EEPROM_init( &eeprom_interface_93C46 );
+		eeprom_init( &eeprom_interface_93C46 );
 		if( file )
 		{
-			EEPROM_load( file );
+			eeprom_load( file );
 		}
 		else
 		{
@@ -130,22 +130,17 @@ static NVRAM_HANDLER( konamigq_93C46 )
 				0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
 			};
 
-			EEPROM_set_data( def_eeprom, 128 );
+			eeprom_set_data( def_eeprom, 128 );
 		}
 	}
 }
 
 static WRITE32_HANDLER( eeprom_w )
 {
-	EEPROM_write_bit( ( data & 0x01 ) ? 1 : 0 );
-	EEPROM_set_clock_line( ( data & 0x04 ) ? ASSERT_LINE : CLEAR_LINE );
-	EEPROM_set_cs_line( ( data & 0x02 ) ? CLEAR_LINE : ASSERT_LINE );
+	eeprom_write_bit( ( data & 0x01 ) ? 1 : 0 );
+	eeprom_set_clock_line( ( data & 0x04 ) ? ASSERT_LINE : CLEAR_LINE );
+	eeprom_set_cs_line( ( data & 0x02 ) ? CLEAR_LINE : ASSERT_LINE );
 	cpunum_set_input_line(machine, 1, INPUT_LINE_RESET, ( data & 0x40 ) ? CLEAR_LINE : ASSERT_LINE );
-}
-
-static CUSTOM_INPUT( eeprom_bit_r )
-{
-	return EEPROM_read_bit();
 }
 
 /* PCM RAM */
@@ -320,9 +315,9 @@ static void scsi_dma_write( UINT32 n_address, INT32 n_size )
 {
 }
 
-static void scsi_irq(void)
+static void scsi_irq(running_machine *machine)
 {
-	psx_irq_set(0x400);
+	psx_irq_set(machine, 0x400);
 }
 
 static const SCSIConfigTable dev_table =
@@ -343,7 +338,7 @@ static DRIVER_INIT( konamigq )
 {
 	psx_driver_init(machine);
 
-	m_p_n_pcmram = memory_region( REGION_SOUND1 ) + 0x80000;
+	m_p_n_pcmram = memory_region( machine, REGION_SOUND1 ) + 0x80000;
 }
 
 static void konamigq_exit(running_machine *machine)
@@ -367,7 +362,7 @@ static MACHINE_START( konamigq )
 
 static MACHINE_RESET( konamigq )
 {
-	psx_machine_init();
+	psx_machine_init(machine);
 	tms57002_init();
 }
 

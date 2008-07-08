@@ -38,7 +38,6 @@
 *******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2203intf.h"
 #include "sound/3812intf.h"
 
@@ -61,7 +60,7 @@ static int microcontroller_id,coin_mask;
 /******************************************************************************/
 
 /* Emulation of the protected microcontroller - for coins & general protection */
-static void karnov_i8751_w(int data)
+static void karnov_i8751_w(running_machine *machine, int data)
 {
 	/* Pending coin operations may cause protection commands to be queued */
 	if (i8751_needs_ack) {
@@ -87,11 +86,11 @@ static void karnov_i8751_w(int data)
 
 //  if (!i8751_return && data!=0x300) logerror("CPU %04x - Unknown Write %02x intel\n",activecpu_get_pc(),data);
 
-	cpunum_set_input_line(Machine, 0,6,HOLD_LINE); /* Signal main cpu task is complete */
+	cpunum_set_input_line(machine, 0,6,HOLD_LINE); /* Signal main cpu task is complete */
 	i8751_needs_ack=1;
 }
 
-static void wndrplnt_i8751_w(int data)
+static void wndrplnt_i8751_w(running_machine *machine, int data)
 {
 	/* The last command hasn't been ACK'd (probably a conflict with coin command) */
 	if (i8751_needs_ack) {
@@ -141,11 +140,11 @@ static void wndrplnt_i8751_w(int data)
 	if (data==0x501) i8751_return=0x6bf8;
 	if (data==0x500) i8751_return=0x4e75;
 
-	cpunum_set_input_line(Machine, 0,6,HOLD_LINE); /* Signal main cpu task is complete */
+	cpunum_set_input_line(machine, 0,6,HOLD_LINE); /* Signal main cpu task is complete */
 	i8751_needs_ack=1;
 }
 
-static void chelnov_i8751_w(int data)
+static void chelnov_i8751_w(running_machine *machine, int data)
 {
 	static int level;
 
@@ -251,7 +250,7 @@ static void chelnov_i8751_w(int data)
 
 //  logerror("CPU %04x - Unknown Write %02x intel\n",activecpu_get_pc(),data);
 
-	cpunum_set_input_line(Machine, 0,6,HOLD_LINE); /* Signal main cpu task is complete */
+	cpunum_set_input_line(machine, 0,6,HOLD_LINE); /* Signal main cpu task is complete */
 	i8751_needs_ack=1;
 }
 
@@ -292,9 +291,9 @@ static WRITE16_HANDLER( karnov_control_w )
 			break;
 
 		case 6: /* SECREQ (Interrupt & Data to i8751) */
-			if (microcontroller_id==KARNOV || microcontroller_id==KARNOVJ) karnov_i8751_w(data);
-			if (microcontroller_id==CHELNOV || microcontroller_id==CHELNOVJ || microcontroller_id==CHELNOVW) chelnov_i8751_w(data);
-			if (microcontroller_id==WNDRPLNT) wndrplnt_i8751_w(data);
+			if (microcontroller_id==KARNOV || microcontroller_id==KARNOVJ) karnov_i8751_w(machine, data);
+			if (microcontroller_id==CHELNOV || microcontroller_id==CHELNOVJ || microcontroller_id==CHELNOVW) chelnov_i8751_w(machine, data);
+			if (microcontroller_id==WNDRPLNT) wndrplnt_i8751_w(machine, data);
 			break;
 
 		case 8: /* HSHIFT (9 bits) - Top bit indicates video flip */
@@ -508,10 +507,10 @@ INPUTS
 	PORT_DIPNAME( 0x20, 0x20, DEF_STR( Unknown ) )
 	PORT_DIPSETTING(    0x20, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
-	PORT_DIPNAME( 0x0c, 0x0c, DEF_STR( Difficulty ) )
-	PORT_DIPSETTING(    0x08, DEF_STR( Easy ) )
-	PORT_DIPSETTING(    0x0c, DEF_STR( Normal ) )
-	PORT_DIPSETTING(    0x04, DEF_STR( Hard ) )
+	PORT_DIPNAME( 0xc0, 0xc0, DEF_STR( Difficulty ) )
+	PORT_DIPSETTING(    0x80, DEF_STR( Easy ) )
+	PORT_DIPSETTING(    0xc0, DEF_STR( Normal ) )
+	PORT_DIPSETTING(    0x40, DEF_STR( Hard ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( Hardest ) )
 INPUT_PORTS_END
 
@@ -652,13 +651,13 @@ static INTERRUPT_GEN( karnov_interrupt )
 	static int latch;
 
 	/* Coin input to the i8751 generates an interrupt to the main cpu */
-	if (input_port_read_indexed(machine, 3) == coin_mask) latch=1;
-	if (input_port_read_indexed(machine, 3) != coin_mask && latch) {
+	if (input_port_read(machine, "FAKE") == coin_mask) latch=1;
+	if (input_port_read(machine, "FAKE") != coin_mask && latch) {
 		if (i8751_needs_ack) {
 			/* i8751 is busy - queue the command */
-			i8751_coin_pending=input_port_read_indexed(machine, 3) | 0x8000;
+			i8751_coin_pending=input_port_read(machine, "FAKE") | 0x8000;
 		} else {
-			i8751_return=input_port_read_indexed(machine, 3) | 0x8000;
+			i8751_return=input_port_read(machine, "FAKE") | 0x8000;
 			cpunum_set_input_line(machine, 0,6,HOLD_LINE);
 			i8751_needs_ack=1;
 		}
@@ -668,9 +667,9 @@ static INTERRUPT_GEN( karnov_interrupt )
 	cpunum_set_input_line(machine, 0,7,HOLD_LINE);	/* VBL */
 }
 
-static void sound_irq(int linestate)
+static void sound_irq(running_machine *machine, int linestate)
 {
-	cpunum_set_input_line(Machine, 1,0,linestate); /* IRQ */
+	cpunum_set_input_line(machine, 1,0,linestate); /* IRQ */
 }
 
 static const struct YM3526interface ym3526_interface =
@@ -999,7 +998,7 @@ static DRIVER_INIT( wndrplnt )
 
 static DRIVER_INIT( chelnov )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 
 	microcontroller_id=CHELNOV;
 	coin_mask=0xe0;
@@ -1009,7 +1008,7 @@ static DRIVER_INIT( chelnov )
 
 static DRIVER_INIT( chelnovw )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 
 	microcontroller_id=CHELNOVW;
 	coin_mask=0xe0;
@@ -1019,7 +1018,7 @@ static DRIVER_INIT( chelnovw )
 
 static DRIVER_INIT( chelnovj )
 {
-	UINT16 *RAM = (UINT16 *)memory_region(REGION_CPU1);
+	UINT16 *RAM = (UINT16 *)memory_region(machine, REGION_CPU1);
 
 	microcontroller_id=CHELNOVJ;
 	coin_mask=0xe0;

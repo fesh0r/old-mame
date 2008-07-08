@@ -61,6 +61,7 @@ void i8051_get_info(UINT32 state, cpuinfo *info);
 void i8052_get_info(UINT32 state, cpuinfo *info);
 void i8751_get_info(UINT32 state, cpuinfo *info);
 void i8752_get_info(UINT32 state, cpuinfo *info);
+void ds5002fp_get_info(UINT32 state, cpuinfo *info);
 void m6800_get_info(UINT32 state, cpuinfo *info);
 void m6801_get_info(UINT32 state, cpuinfo *info);
 void m6802_get_info(UINT32 state, cpuinfo *info);
@@ -171,10 +172,13 @@ void h8_3044_get_info(UINT32 state, cpuinfo *info);
 void v810_get_info(UINT32 state, cpuinfo *info);
 void m37702_get_info(UINT32 state, cpuinfo *info);
 void m37710_get_info(UINT32 state, cpuinfo *info);
-void ppc403_get_info(UINT32 state, cpuinfo *info);
+void ppc403ga_get_info(UINT32 state, cpuinfo *info);
+void ppc403gcx_get_info(UINT32 state, cpuinfo *info);
 void ppc601_get_info(UINT32 state, cpuinfo *info);
 void ppc602_get_info(UINT32 state, cpuinfo *info);
 void ppc603_get_info(UINT32 state, cpuinfo *info);
+void ppc603e_get_info(UINT32 state, cpuinfo *info);
+void ppc603r_get_info(UINT32 state, cpuinfo *info);
 void ppc604_get_info(UINT32 state, cpuinfo *info);
 void mpc8240_get_info(UINT32 state, cpuinfo *info);
 void SE3208_get_info(UINT32 state, cpuinfo *info);
@@ -186,6 +190,7 @@ void alpha8201_get_info(UINT32 state, cpuinfo *info);
 void alpha8301_get_info(UINT32 state, cpuinfo *info);
 void cdp1802_get_info(UINT32 state, cpuinfo *info);
 void cop420_get_info(UINT32 state, cpuinfo *info);
+void cop421_get_info(UINT32 state, cpuinfo *info);
 void cop410_get_info(UINT32 state, cpuinfo *info);
 void cop411_get_info(UINT32 state, cpuinfo *info);
 void tmp90840_get_info(UINT32 state, cpuinfo *info);
@@ -201,7 +206,7 @@ void saturn_get_info(UINT32 state, cpuinfo *info);
 void sc61860_get_info(UINT32 state, cpuinfo *info);
 void tx0_64kw_get_info(UINT32 state, cpuinfo *info);
 void tx0_8kw_get_info(UINT32 state, cpuinfo *info);
-void z80gb_get_info(UINT32 state, cpuinfo *info);
+void lr35902_get_info(UINT32 state, cpuinfo *info);
 void tms7000_get_info(UINT32 state, cpuinfo *info);
 void tms7000_exl_get_info(UINT32 state, cpuinfo *info);
 void sm8500_get_info(UINT32 state, cpuinfo *info);
@@ -400,6 +405,9 @@ static const struct
 #endif
 #if (HAS_I8752)
 	{ CPU_I8752, i8752_get_info },
+#endif
+#if (HAS_DS5002FP)
+	{ CPU_DS5002FP, ds5002fp_get_info },
 #endif
 #if (HAS_M6800)
 	{ CPU_M6800, m6800_get_info },
@@ -705,8 +713,11 @@ static const struct
 #if (HAS_M37710)
 	{ CPU_M37710, m37710_get_info },
 #endif
-#if (HAS_PPC403)
-	{ CPU_PPC403, ppc403_get_info },
+#if (HAS_PPC403GA)
+	{ CPU_PPC403GA, ppc403ga_get_info },
+#endif
+#if (HAS_PPC403GCX)
+	{ CPU_PPC403GCX, ppc403gcx_get_info },
 #endif
 #if (HAS_PPC601)
 	{ CPU_PPC601, ppc601_get_info },
@@ -716,6 +727,12 @@ static const struct
 #endif
 #if (HAS_PPC603)
 	{ CPU_PPC603, ppc603_get_info },
+#endif
+#if (HAS_PPC603E)
+	{ CPU_PPC603E, ppc603e_get_info },
+#endif
+#if (HAS_PPC603R)
+	{ CPU_PPC603R, ppc603r_get_info },
 #endif
 #if (HAS_PPC604)
 	{ CPU_PPC604, ppc604_get_info },
@@ -749,6 +766,9 @@ static const struct
 #endif
 #if (HAS_COP420)
 	{ CPU_COP420, cop420_get_info },
+#endif
+#if (HAS_COP421)
+	{ CPU_COP421, cop421_get_info },
 #endif
 #if (HAS_COP410)
 	{ CPU_COP410, cop410_get_info },
@@ -789,8 +809,8 @@ static const struct
 #if (HAS_TX0_8KW)
 	{ CPU_TX0_8KW, tx0_8kw_get_info },
 #endif
-#if (HAS_Z80GB)
-	{ CPU_Z80GB, z80gb_get_info },
+#if (HAS_LR35902)
+	{ CPU_LR35902, lr35902_get_info },
 #endif
 #if (HAS_TMS7000)
 	{ CPU_TMS7000, tms7000_get_info },
@@ -1265,7 +1285,7 @@ offs_t activecpu_get_physical_pc_byte(void)
 	else
 		pc >>= shift;
 	if (cpu[activecpu].intf.translate)
-		(*cpu[activecpu].intf.translate)(ADDRESS_SPACE_PROGRAM, &pc);
+		(*cpu[activecpu].intf.translate)(ADDRESS_SPACE_PROGRAM, TRANSLATE_FETCH, &pc);
 	return pc;
 }
 
@@ -1522,7 +1542,7 @@ offs_t cpunum_get_physical_pc_byte(int cpunum)
 	else
 		pc >>= shift;
 	if (cpu[activecpu].intf.translate)
-		(*cpu[activecpu].intf.translate)(ADDRESS_SPACE_PROGRAM, &pc);
+		(*cpu[activecpu].intf.translate)(ADDRESS_SPACE_PROGRAM, TRANSLATE_FETCH, &pc);
 	cpuintrf_pop_context();
 	return pc;
 }

@@ -7,7 +7,6 @@ Namco System 21 Video Hardware
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "namcos2.h"
 #include "namcoic.h"
 #include "namcos21.h"
@@ -140,7 +139,7 @@ VIDEO_START( namcos21 )
 } /* VIDEO_START( namcos21 ) */
 
 static void
-update_palette( void )
+update_palette( running_machine *machine )
 {
 	int i;
 	INT16 data1,data2;
@@ -172,7 +171,7 @@ update_palette( void )
 		g = data1&0xff;
 		b = data2&0xff;
 
-		palette_set_color( Machine,i, MAKE_RGB(r,g,b) );
+		palette_set_color( machine,i, MAKE_RGB(r,g,b) );
 	}
 } /* update_palette */
 
@@ -181,7 +180,7 @@ VIDEO_UPDATE( namcos21 )
 {
 	int pivot = 3;
 	int pri;
-	update_palette();
+	update_palette(screen->machine);
 	fillbitmap( bitmap, 0xff, cliprect );
 
 	if( namcos2_gametype != NAMCOS21_WINRUN91 )
@@ -298,6 +297,11 @@ renderscanline_flat( const edge *e1, const edge *e2, int sy, unsigned color, int
 						{
 							depth = (zz>>10)*0x100;
 							pen += depth;
+						}
+						else if( namcos2_gametype == NAMCOS21_DRIVERS_EYES )
+						{
+							depth = (zz>>10)*0x100;
+							pen -= depth;
 						}
 						else
 						{
@@ -444,10 +448,13 @@ namcos21_DrawQuad( int sx[4], int sy[4], int zcode[4], int color )
         0x4000..0x5fff  polygon palette bank1 (0x10 sets of 0x200 colors or 0x20 sets of 0x100 colors)
         0x6000..0x7fff  polygon palette bank2 (0x10 sets of 0x200 colors or 0x20 sets of 0x100 colors)
     */
-	if( namcos2_gametype == NAMCOS21_WINRUN91 ||
-		 namcos2_gametype == NAMCOS21_DRIVERS_EYES )
+	if( namcos2_gametype == NAMCOS21_WINRUN91 )
 	{
 		color = 0x4000|(color&0xff);
+	}
+	else if ( namcos2_gametype == NAMCOS21_DRIVERS_EYES )
+	{
+		color = 0x3f00|(color&0xff);
 	}
 	else
 	{ /* map color code to hardware pen */

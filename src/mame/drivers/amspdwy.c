@@ -14,7 +14,6 @@ Sound:  YM2151
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "sound/2151intf.h"
 
 /* Variables & functions defined in video: */
@@ -47,7 +46,9 @@ VIDEO_UPDATE( amspdwy );
 static READ8_HANDLER( amspdwy_wheel_##_n_##_r ) \
 { \
 	static UINT8 wheel_old, ret; \
-	UINT8 wheel = input_port_read_indexed(machine, 5 + _n_); \
+	static const char *portnames[] = { "WHEEL1", "WHEEL2", "AN1", "AN2" };\
+	UINT8 wheel; \
+	wheel = input_port_read(machine, portnames[2 + _n_]); \
 	if (wheel != wheel_old) \
 	{ \
 		wheel = (wheel & 0x7fff) - (wheel & 0x8000); \
@@ -55,7 +56,7 @@ static READ8_HANDLER( amspdwy_wheel_##_n_##_r ) \
 		else					ret = ((-wheel) & 0xf) | 0x10; \
 		wheel_old = wheel; \
 	} \
-	return ret | input_port_read_indexed(machine, 2 + _n_); \
+	return ret | input_port_read(machine, portnames[_n_]); \
 }
 AMSPDWY_WHEEL_R( 0 )
 AMSPDWY_WHEEL_R( 1 )
@@ -63,7 +64,7 @@ AMSPDWY_WHEEL_R( 1 )
 
 static READ8_HANDLER( amspdwy_sound_r )
 {
-	return (YM2151_status_port_0_r(machine,0) & ~ 0x30) | input_port_read_indexed(machine, 4);
+	return (YM2151_status_port_0_r(machine,0) & ~ 0x30) | input_port_read(machine, "IN0");
 }
 
 static WRITE8_HANDLER( amspdwy_sound_w )
@@ -92,7 +93,7 @@ ADDRESS_MAP_END
 
 static READ8_HANDLER( amspdwy_port_r )
 {
-	UINT8 *Tracks = memory_region(REGION_CPU1)+0x10000;
+	UINT8 *Tracks = memory_region(machine, REGION_CPU1)+0x10000;
 	return Tracks[offset];
 }
 
@@ -170,24 +171,24 @@ static INPUT_PORTS_START( amspdwy )
 	PORT_DIPUNUSED_DIPLOC( 0x40, 0x00, "SW2:2" )		/* Listed as "Unused" */
 	PORT_DIPUNUSED_DIPLOC( 0x80, 0x00, "SW2:1" )		/* Listed as "Unused" */
 
-	PORT_START_TAG("IN2")	// Player 1 Wheel + Coins
+	PORT_START_TAG("WHEEL1")	// Player 1 Wheel + Coins
 	PORT_BIT( 0x1f, IP_ACTIVE_HIGH, IPT_SPECIAL )	// wheel
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_IMPULSE(2)	// 2-3f
 
-	PORT_START_TAG("IN3")	// Player 2 Wheel + Coins
+	PORT_START_TAG("WHEEL2")	// Player 2 Wheel + Coins
 	PORT_BIT( 0x1f, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_IMPULSE(2)
 
-	PORT_START_TAG("IN4")	// Player 1&2 Pedals + YM2151 Sound Status
+	PORT_START_TAG("IN0")	// Player 1&2 Pedals + YM2151 Sound Status
 	PORT_BIT( 0x0f, IP_ACTIVE_HIGH, IPT_SPECIAL )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(2)
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_PLAYER(1)
 	PORT_BIT( 0xc0, IP_ACTIVE_HIGH, IPT_SPECIAL )
 
-	PORT_START_TAG("IN5")	// Player 1 Analog Fake Port
+	PORT_START_TAG("AN1")	// Player 1 Analog Fake Port
 	PORT_BIT( 0xffff, 0x0000, IPT_DIAL ) PORT_SENSITIVITY(15) PORT_KEYDELTA(20) PORT_CODE_DEC(KEYCODE_LEFT) PORT_CODE_INC(KEYCODE_RIGHT) PORT_PLAYER(1)
 
-	PORT_START_TAG("IN6")	// Player 2 Analog Fake Port
+	PORT_START_TAG("AN2")	// Player 2 Analog Fake Port
 	PORT_BIT( 0xffff, 0x0000, IPT_DIAL ) PORT_SENSITIVITY(15) PORT_KEYDELTA(20) PORT_CODE_DEC(KEYCODE_D) PORT_CODE_INC(KEYCODE_G) PORT_PLAYER(2)
 
 INPUT_PORTS_END
@@ -240,9 +241,9 @@ GFXDECODE_END
 ***************************************************************************/
 
 
-static void irq_handler(int irq)
+static void irq_handler(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1,0,irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct YM2151interface amspdwy_ym2151_interface =

@@ -3,10 +3,7 @@
 #include "cpu/konami/konami.h"
 #include "machine/eeprom.h"
 #include "sound/k053260.h"
-
-/* from video */
-extern void simpsons_video_banking( running_machine *machine, int select );
-extern UINT8 *simpsons_xtraram;
+#include "includes/simpsons.h"
 
 int simpsons_firq_enabled;
 
@@ -19,7 +16,7 @@ int simpsons_firq_enabled;
 static int init_eeprom_count;
 
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	7,				/* address bits */
 	8,				/* data bits */
@@ -33,15 +30,15 @@ static const struct EEPROM_interface eeprom_interface =
 NVRAM_HANDLER( simpsons )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
 		{
 			init_eeprom_count = 0;
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 			init_eeprom_count = 10;
@@ -52,7 +49,7 @@ READ8_HANDLER( simpsons_eeprom_r )
 {
 	int res;
 
-	res = (EEPROM_read_bit() << 4);
+	res = (eeprom_read_bit() << 4);
 
 	res |= 0x20;//konami_eeprom_ack() << 5; /* add the ack */
 
@@ -71,9 +68,9 @@ WRITE8_HANDLER( simpsons_eeprom_w )
 	if ( data == 0xff )
 		return;
 
-	EEPROM_write_bit(data & 0x80);
-	EEPROM_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
-	EEPROM_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
+	eeprom_write_bit(data & 0x80);
+	eeprom_set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
 
 	simpsons_video_banking( machine, data & 3 );
 
@@ -124,7 +121,7 @@ static void simpsons_banking( int lines )
 
 MACHINE_RESET( simpsons )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	cpunum_set_info_fct(0, CPUINFO_PTR_KONAMI_SETLINES_CALLBACK, (genf *)simpsons_banking);
 
@@ -135,11 +132,11 @@ MACHINE_RESET( simpsons )
 	simpsons_firq_enabled = 0;
 
 	/* init the default banks */
-	memory_configure_bank(1, 0, 64, memory_region(REGION_CPU1) + 0x10000, 0x2000);
+	memory_configure_bank(1, 0, 64, memory_region(machine, REGION_CPU1) + 0x10000, 0x2000);
 	memory_set_bank(1, 0);
 
-	memory_configure_bank(2, 0, 2, memory_region(REGION_CPU2) + 0x10000, 0);
-	memory_configure_bank(2, 2, 6, memory_region(REGION_CPU2) + 0x10000, 0x4000);
+	memory_configure_bank(2, 0, 2, memory_region(machine, REGION_CPU2) + 0x10000, 0);
+	memory_configure_bank(2, 2, 6, memory_region(machine, REGION_CPU2) + 0x10000, 0x4000);
 	memory_set_bank(2, 0);
 
 	simpsons_video_banking( machine, 0 );

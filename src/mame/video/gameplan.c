@@ -7,7 +7,6 @@ driver by Chris Moore
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/6522via.h"
 #include "gameplan.h"
 
@@ -214,7 +213,7 @@ static TIMER_CALLBACK( via_irq_delayed )
 }
 
 
-static void via_irq(int state)
+static void via_irq(running_machine *machine, int state)
 {
 	/* Kaos sits in a tight loop polling the VIA irq flags register, but that register is
        cleared by the irq handler. Therefore, I wait a bit before triggering the irq to
@@ -280,9 +279,9 @@ static void create_via_0_timer(gameplan_state *state)
 }
 
 
-static void start_via_0_timer(gameplan_state *state)
+static void start_via_0_timer(running_machine *machine, gameplan_state *state)
 {
-	timer_adjust_oneshot(state->via_0_ca1_timer, video_screen_get_time_until_pos(Machine->primary_screen, VBSTART, 0), 0);
+	timer_adjust_oneshot(state->via_0_ca1_timer, video_screen_get_time_until_pos(machine->primary_screen, VBSTART, 0), 0);
 }
 
 
@@ -345,7 +344,7 @@ static VIDEO_START( trvquest )
 static VIDEO_RESET( gameplan )
 {
 	via_reset();
-	start_via_0_timer(machine->driver_data);
+	start_via_0_timer(machine, machine->driver_data);
 }
 
 

@@ -13,13 +13,10 @@ TODO:
 ***************************************************************************/
 
 #include "driver.h"
+#include "includes/cps1.h"
 #include "machine/eeprom.h"
 #include "sound/okim6295.h"
 #include "sound/2413intf.h"
-
-
-/* in machine/kabuki.c */
-void pang_decode(void);
 
 
 VIDEO_START( cbasebal );
@@ -93,7 +90,7 @@ static WRITE8_HANDLER( cbasebal_coinctrl_w )
 
 ***************************************************************************/
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	6,		/* address bits */
 	16,		/* data bits */
@@ -106,38 +103,29 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( cbasebal )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
-			EEPROM_load(file);
+			eeprom_load(file);
 	}
-}
-
-static READ8_HANDLER( eeprom_r )
-{
-	int bit;
-
-	bit = EEPROM_read_bit() << 7;
-
-	return (input_port_read_indexed(machine, 2) & 0x7f) | bit;
 }
 
 static WRITE8_HANDLER( eeprom_cs_w )
 {
-	EEPROM_set_cs_line(data ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_cs_line(data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( eeprom_clock_w )
 {
-	EEPROM_set_clock_line(data ? CLEAR_LINE : ASSERT_LINE);
+	eeprom_set_clock_line(data ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static WRITE8_HANDLER( eeprom_serial_w )
 {
-	EEPROM_write_bit(data);
+	eeprom_write_bit(data);
 }
 
 
@@ -163,7 +151,7 @@ static ADDRESS_MAP_START( cbasebal_portmap, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x0a, 0x0b) AM_WRITE(cbasebal_scrolly_w)
 	AM_RANGE(0x10, 0x10) AM_READ(input_port_0_r)
 	AM_RANGE(0x11, 0x11) AM_READ(input_port_1_r)
-	AM_RANGE(0x12, 0x12) AM_READ(eeprom_r)
+	AM_RANGE(0x12, 0x12) AM_READ(input_port_2_r)
 	AM_RANGE(0x13, 0x13) AM_WRITE(cbasebal_gfxctrl_w)
 	AM_RANGE(0x14, 0x14) AM_WRITE(cbasebal_coinctrl_w)
 ADDRESS_MAP_END
@@ -198,7 +186,7 @@ static INPUT_PORTS_START( cbasebal )
 	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_START2 )
 	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_VBLANK )		/* ? */
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )	/* EEPROM data */
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_SPECIAL ) PORT_CUSTOM(eeprom_bit_r, NULL)
 INPUT_PORTS_END
 
 
@@ -318,8 +306,8 @@ ROM_END
 
 static DRIVER_INIT( cbasebal )
 {
-	memory_configure_bank(1, 0, 32, memory_region(REGION_CPU1) + 0x10000, 0x4000);
-	pang_decode();
+	memory_configure_bank(1, 0, 32, memory_region(machine, REGION_CPU1) + 0x10000, 0x4000);
+	pang_decode(machine);
 }
 
 

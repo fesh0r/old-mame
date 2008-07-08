@@ -70,7 +70,7 @@ static UINT16 *dsp56k_bank01_ram ;
 static UINT16 *dsp56k_bank02_ram ;
 static UINT16 *dsp56k_bank04_ram ;
 
-static const struct EEPROM_interface eeprom_interface =
+static const eeprom_interface eeprom_intf =
 {
 	7,			/* address bits */
 	8,			/* data bits */
@@ -84,15 +84,15 @@ static const struct EEPROM_interface eeprom_interface =
 static NVRAM_HANDLER( polygonet )
 {
 	if (read_or_write)
-		EEPROM_save(file);
+		eeprom_save(file);
 	else
 	{
-		EEPROM_init(&eeprom_interface);
+		eeprom_init(&eeprom_intf);
 
 		if (file)
 		{
 			init_eeprom_count = 0;
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 			init_eeprom_count = 10;
@@ -103,11 +103,11 @@ static READ32_HANDLER( polygonet_eeprom_r )
 {
 	if (ACCESSING_BITS_0_15)
 	{
-		return 0x0200 | (EEPROM_read_bit()<<8);
+		return 0x0200 | (eeprom_read_bit()<<8);
 	}
 	else
 	{
-		return (input_port_read_indexed(machine, 0)<<24);
+		return (input_port_read(machine, "IN0")<<24);
 	}
 
 	/* FIXME: code will never execute */
@@ -122,9 +122,9 @@ static WRITE32_HANDLER( polygonet_eeprom_w )
 {
 	if (ACCESSING_BITS_24_31)
 	{
-		EEPROM_write_bit((data & 0x01000000) ? ASSERT_LINE : CLEAR_LINE);
-		EEPROM_set_cs_line((data & 0x02000000) ? CLEAR_LINE : ASSERT_LINE);
-		EEPROM_set_clock_line((data & 0x04000000) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_write_bit((data & 0x01000000) ? ASSERT_LINE : CLEAR_LINE);
+		eeprom_set_cs_line((data & 0x02000000) ? CLEAR_LINE : ASSERT_LINE);
+		eeprom_set_clock_line((data & 0x04000000) ? ASSERT_LINE : CLEAR_LINE);
 		return;
 	}
 
@@ -135,7 +135,7 @@ static WRITE32_HANDLER( polygonet_eeprom_w )
 static READ32_HANDLER( ttl_rom_r )
 {
 	UINT32 *ROM;
-	ROM = (UINT32 *)memory_region(REGION_GFX1);
+	ROM = (UINT32 *)memory_region(machine, REGION_GFX1);
 
 	return ROM[offset];
 }
@@ -144,7 +144,7 @@ static READ32_HANDLER( ttl_rom_r )
 static READ32_HANDLER( psac_rom_r )
 {
 	UINT32 *ROM;
-	ROM = (UINT32 *)memory_region(REGION_GFX2);
+	ROM = (UINT32 *)memory_region(machine, REGION_GFX2);
 
 	return ROM[offset];
 }
@@ -628,16 +628,16 @@ ADDRESS_MAP_END
 
 static int cur_sound_region;
 
-static void reset_sound_region(void)
+static void reset_sound_region(running_machine *machine)
 {
-	memory_set_bankptr(2, memory_region(REGION_CPU3) + 0x10000 + cur_sound_region*0x4000);
+	memory_set_bankptr(2, memory_region(machine, REGION_CPU3) + 0x10000 + cur_sound_region*0x4000);
 }
 
 static WRITE8_HANDLER( sound_bankswitch_w )
 {
 	cur_sound_region = (data & 0x1f);
 
-	reset_sound_region();
+	reset_sound_region(machine);
 }
 
 static INTERRUPT_GEN(audio_interrupt)
@@ -729,8 +729,7 @@ static MACHINE_DRIVER_START( plygonet )
 MACHINE_DRIVER_END
 
 static INPUT_PORTS_START( polygonet )
-	PORT_START
-
+	PORT_START_TAG("IN0")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1)
 	PORT_SERVICE_NO_TOGGLE( 0x02, IP_ACTIVE_LOW )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_COIN2)
@@ -740,6 +739,7 @@ static INPUT_PORTS_START( polygonet )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_START3)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START4)
 
+	PORT_START_TAG("IN1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_COIN1 )
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_COIN2 )
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -749,7 +749,7 @@ static INPUT_PORTS_START( polygonet )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("IN2")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_SPECIAL )	/* EEPROM data */
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL )	/* EEPROM ready (always 1) */
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_UNKNOWN )
@@ -761,7 +761,7 @@ static INPUT_PORTS_START( polygonet )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_UNKNOWN )
 
-	PORT_START
+	PORT_START_TAG("P1")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(1)
@@ -771,7 +771,7 @@ static INPUT_PORTS_START( polygonet )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON3 ) PORT_PLAYER(1)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1 )
 
-	PORT_START
+	PORT_START_TAG("P2")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY PORT_PLAYER(2)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY PORT_PLAYER(2)
@@ -786,7 +786,7 @@ static DRIVER_INIT(polygonet)
 {
 	/* set default bankswitch */
 	cur_sound_region = 2;
-	reset_sound_region();
+	reset_sound_region(machine);
 
 	/* allocate space for all the fun dsp56k banking */
 	dsp56k_bank00_ram    = auto_malloc( (     0x1000  + (0x8*0x1000)) * 2) ;
