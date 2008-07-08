@@ -2,12 +2,11 @@
 
   adam.c
 
-  Machine file to handle emulation of the ColecoAdam.
+  machine file to handle emulation of the ColecoAdam.
 
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/tms9928a.h"
 #include "includes/adam.h"
 #include "devices/cartslot.h"
@@ -64,7 +63,7 @@ DEVICE_IMAGE_UNLOAD( adam_floppy )
 
 
 
-void clear_keyboard_buffer(void)
+void adam_clear_keyboard_buffer(void)
 {
     int i;
 
@@ -108,7 +107,7 @@ static void addToKeyboardBuffer(unsigned char kbcode)
     }
 }
 
-void exploreKeyboard(void)
+void adam_explore_keyboard(running_machine *machine)
 {
     int controlKey, shiftKey;
     int i, keyboard[10];
@@ -116,16 +115,16 @@ void exploreKeyboard(void)
 //logerror("Exploring Keyboard.............\n");
     for(i=0;i<=255;i++) {if (KbRepeatTable[i]>0) KbRepeatTable[i]++;} /* Update repeat table */
 
-    keyboard[0] = input_port_read(Machine, "keyboard_1");
-    keyboard[1] = input_port_read(Machine, "keyboard_2");
-    keyboard[2] = input_port_read(Machine, "keyboard_3");
-    keyboard[3] = input_port_read(Machine, "keyboard_4");
-    keyboard[4] = input_port_read(Machine, "keyboard_5");
-    keyboard[5] = input_port_read(Machine, "keyboard_6");
-    keyboard[6] = input_port_read(Machine, "keyboard_7");
-    keyboard[7] = input_port_read(Machine, "keyboard_8");
-    keyboard[8] = input_port_read(Machine, "keyboard_9");
-    keyboard[9] = input_port_read(Machine, "keyboard_10");
+    keyboard[0] = input_port_read(machine, "keyboard_1");
+    keyboard[1] = input_port_read(machine, "keyboard_2");
+    keyboard[2] = input_port_read(machine, "keyboard_3");
+    keyboard[3] = input_port_read(machine, "keyboard_4");
+    keyboard[4] = input_port_read(machine, "keyboard_5");
+    keyboard[5] = input_port_read(machine, "keyboard_6");
+    keyboard[6] = input_port_read(machine, "keyboard_7");
+    keyboard[7] = input_port_read(machine, "keyboard_8");
+    keyboard[8] = input_port_read(machine, "keyboard_9");
+    keyboard[9] = input_port_read(machine, "keyboard_10");
 
 /* Reference: Appendix of COLECO ADAM TECHNICAL MANUAL at http://drushel.cwru.edu/atm/atm.html */
 
@@ -514,7 +513,7 @@ void exploreKeyboard(void)
     /* 0xF0-0xFF - Reserved for internal use by keyboard software */
 }
 
-static void master6801_behaviour(int offset, int data)
+static void master6801_behaviour(running_machine *machine, int offset, int data)
 {
 /*
 The Master MC6801 controls all AdamNet operations, keyboard, tapes, disks...
@@ -526,93 +525,95 @@ If you have the source listing or the Rom dump, please send us.
 	UINT8 kbcode;
 	static const UINT8 interleave[8] = {0,5,2,7,4,1,6,3};
 	const device_config *image;
+	UINT8 *ram;
 
+	ram = memory_region(machine, REGION_CPU1);
 	if (offset == adam_pcb)
 	{
 		switch (data)
 		{
 			case 1: /* Request to synchronize the Z80 clock */
-				memory_region(REGION_CPU1)[offset] = 0x81;
+				ram[offset] = 0x81;
 				//logerror("Synchronizing the Z80 clock\n");
 				break;
 			case 2: /* Request to synchronize the Master 6801 clock */
-				memory_region(REGION_CPU1)[offset] = 0x82;
+				ram[offset] = 0x82;
 				//logerror("Synchronizing the Master 6801 clock\n");
 				break;
 			case 3: /* Request to relocate adam_pcb */
-				memory_region(REGION_CPU1)[offset] = 0x83; /* Must return 0x83 if success */
-				//memory_region(REGION_CPU1)[offset] = 0x9B; /* Time Out */
-				logerror("Request to relocate adam_pcb from %04Xh to %04Xh... not implemented... but returns OK\n", adam_pcb, (memory_region(REGION_CPU1)[adam_pcb+1]&memory_region(REGION_CPU1)[adam_pcb+2]<<8));
+				ram[offset] = 0x83; /* Must return 0x83 if success */
+				//ram[offset] = 0x9B; /* Time Out */
+				logerror("Request to relocate adam_pcb from %04Xh to %04Xh... not implemented... but returns OK\n", adam_pcb, (ram[adam_pcb+1]|ram[adam_pcb+2]<<8));
 				break;
 		}
 	}
 
-	for(DCB_Num=1;DCB_Num<=memory_region(REGION_CPU1)[adam_pcb+3];DCB_Num++) /* Test status of each DCB in adam_pcb table */
+	for(DCB_Num=1;DCB_Num<=ram[adam_pcb+3];DCB_Num++) /* Test status of each DCB in adam_pcb table */
 	{
 		statusDCB = (adam_pcb+4)+(DCB_Num-1)*21;
 		if (offset==statusDCB)
 		{
 			//logerror("Accesing DCB %02Xh\n", DCB_Num);
-			deviceNum = (memory_region(REGION_CPU1)[statusDCB+0x10]&0x0F)+(memory_region(REGION_CPU1)[statusDCB+0x09]<<4);
-			buffer=(memory_region(REGION_CPU1)[statusDCB+0x01])+(memory_region(REGION_CPU1)[statusDCB+0x02]<<8);
-			byteCount=(memory_region(REGION_CPU1)[statusDCB+0x03])+(memory_region(REGION_CPU1)[statusDCB+0x04]<<8);
+			deviceNum = (ram[statusDCB+0x10]&0x0F)+(ram[statusDCB+0x09]<<4);
+			buffer=(ram[statusDCB+0x01])+(ram[statusDCB+0x02]<<8);
+			byteCount=(ram[statusDCB+0x03])+(ram[statusDCB+0x04]<<8);
 
 			if (deviceNum>=4 && deviceNum<=7)
 			{
 				image = image_from_devtype_and_index(IO_FLOPPY, deviceNum - 4);
 				if (image_exists(image))
-					memory_region(REGION_CPU1)[statusDCB+20] = (memory_region(REGION_CPU1)[statusDCB+20]&0xF0); /* Inserted Media */
+					ram[statusDCB+20] = (ram[statusDCB+20]&0xF0); /* Inserted Media */
 				else
-					memory_region(REGION_CPU1)[statusDCB+20] = (memory_region(REGION_CPU1)[statusDCB+20]&0xF0)|0x03; /* No Media on Drive*/
+					ram[statusDCB+20] = (ram[statusDCB+20]&0xF0)|0x03; /* No Media on Drive*/
 			}
 			switch (data)
 			{
 				case 0: /* Initialize Drive */
 					if (deviceNum>=4 && deviceNum<=7)
 					{
-						memory_region(REGION_CPU1)[statusDCB] = 0x80;
+						ram[statusDCB] = 0x80;
 					}
 					break;
 				case 1: /* Return current status */
 					if (deviceNum==1||deviceNum==2)
 					{
-						memory_region(REGION_CPU1)[statusDCB] = 0x80; /* Device Found (1=Keyboard, 2=Printer) */
-						memory_region(REGION_CPU1)[statusDCB+0x13] = 0x01; /* Character device */
+						ram[statusDCB] = 0x80; /* Device Found (1=Keyboard, 2=Printer) */
+						ram[statusDCB+0x13] = 0x01; /* Character device */
 					}
 					else if (deviceNum>=4 && deviceNum<=7)
 					{
 						image = image_from_devtype_and_index(IO_FLOPPY, deviceNum - 4);
 						if (image_exists(image))
 						{
-							memory_region(REGION_CPU1)[statusDCB] = 0x80;
-							memory_region(REGION_CPU1)[statusDCB+17] = 1024&255;
-							memory_region(REGION_CPU1)[statusDCB+18] = 1024>>8;
+							ram[statusDCB] = 0x80;
+							ram[statusDCB+17] = 1024&255;
+							ram[statusDCB+18] = 1024>>8;
 						}
 						else
 						{
-							memory_region(REGION_CPU1)[statusDCB] = 0x83; /* Device Found but No Disk in Drive*/
+							ram[statusDCB] = 0x83; /* Device Found but No Disk in Drive*/
 						}
 					}
 					else
 					{
-						memory_region(REGION_CPU1)[statusDCB] = 0x9B; /* Time Out - No Device Found*/
+						ram[statusDCB] = 0x9B; /* Time Out - No Device Found*/
 					}
-					//logerror("   Requesting Status Device %02d=%02Xh\n", deviceNum, memory_region(REGION_CPU1)[statusDCB]);
+					//logerror("   Requesting Status Device %02d=%02Xh\n", deviceNum, ram[statusDCB]);
 					break;
 				case 2: /* Soft reset */
-					memory_region(REGION_CPU1)[statusDCB] = 0x80;
+					ram[statusDCB] = 0x80;
 					//logerror("   Reseting Device %02d\n", deviceNum);
 					break;
 				case 3: /* Write Data */
 					//logerror("   Requesting Write to Device %02d\n", deviceNum);
 					if (deviceNum==2)
 					{
-						memory_region(REGION_CPU1)[statusDCB] = 0x80; /* Ok, char sent to printer... no really */
+						ram[statusDCB] = 0x80; /* Ok, char sent to printer... no really */
 						//logerror("   Requesting Write %2d bytes on buffer [%04xh] to Device %02d\n", byteCount, buffer,deviceNum);
 					}
 					else
 					{
-						memory_region(REGION_CPU1)[statusDCB] = 0x85; /* Write Protected Media */
+						ram[statusDCB] = 0x85; /* Write Protected Media */
 					}
 					break;
 				case 4: /* Read Data */
@@ -632,12 +633,12 @@ If you have the source listing or the Rom dump, please send us.
 						kbcode=getKeyFromBuffer();
 						if (kbcode>0)
 						{
-							memory_region(REGION_CPU1)[buffer] = kbcode; /* Key pressed  */
-							memory_region(REGION_CPU1)[statusDCB] = 0x80;
+							ram[buffer] = kbcode; /* Key pressed  */
+							ram[statusDCB] = 0x80;
 						}
 						else
 						{
-							memory_region(REGION_CPU1)[statusDCB] = 0x8C; /* No key pressed */
+							ram[statusDCB] = 0x8C; /* No key pressed */
 						}
 					}
 					else if (deviceNum>=4 && deviceNum<=7)
@@ -645,7 +646,7 @@ If you have the source listing or the Rom dump, please send us.
 						image = image_from_devtype_and_index(IO_FLOPPY, deviceNum - 4);
 						if (image_exists(image))
 						{
-							sectorNmbr = ((memory_region(REGION_CPU1)[statusDCB+5])+(memory_region(REGION_CPU1)[statusDCB+6]<<8)+(memory_region(REGION_CPU1)[statusDCB+7]<<16)+(memory_region(REGION_CPU1)[statusDCB+8]<<24))<<1;
+							sectorNmbr = ((ram[statusDCB+5])+(ram[statusDCB+6]<<8)+(ram[statusDCB+7]<<16)+(ram[statusDCB+8]<<24))<<1;
 							sectorCount = (byteCount/512)+(byteCount%512==0)? 0:1;
 							for(i=0;i<=1;i++)
 							{
@@ -660,21 +661,21 @@ If you have the source listing or the Rom dump, please send us.
 									floppy_drive_seek(image, 1);
 									currentSector++;
 								}
-								floppy_drive_read_sector_data(image, 0, interleave[(sectorNmbr+i)&0x07], &memory_region(REGION_CPU1)[buffer+(512*i)],512);
+								floppy_drive_read_sector_data(image, 0, interleave[(sectorNmbr+i)&0x07], &ram[buffer+(512*i)],512);
 							}
-							memory_region(REGION_CPU1)[statusDCB+20] |= 6;
-							memory_region(REGION_CPU1)[statusDCB] = 0x80;
+							ram[statusDCB+20] |= 6;
+							ram[statusDCB] = 0x80;
 						}
 
 					}
 					else
 					{
-						memory_region(REGION_CPU1)[statusDCB] = 0x9B;
+						ram[statusDCB] = 0x9B;
 					}
 					//logerror("   Requesting Read %2d bytes on buffer [%04xh] from Device %02d\n", byteCount, buffer,deviceNum);
 					break;
 				default:
-					memory_region(REGION_CPU1)[statusDCB] = 0x9B; /* Other */
+					ram[statusDCB] = 0x9B; /* Other */
 					break;
 			}
 		}
@@ -686,13 +687,13 @@ WRITE8_HANDLER( common_writes_w )
     switch (adam_upper_memory)
     {
         case 0: /* Internal RAM */
-            memory_region(REGION_CPU1)[0x08000+offset] = data;
-            if (offset>=(adam_pcb-0x08000)) master6801_behaviour(offset+0x08000, data);
+            memory_region(machine, REGION_CPU1)[0x08000+offset] = data;
+            if (offset>=(adam_pcb-0x08000)) master6801_behaviour(machine, offset+0x08000, data);
             break;
         case 1: /* ROM Expansion */
             break;
         case 2: /* RAM Expansion */
-            memory_region(REGION_CPU1)[0x18000+offset] = data;
+            memory_region(machine, REGION_CPU1)[0x18000+offset] = data;
         	break;
     	case 3: /* Cartridge ROM */
         	break;
@@ -712,9 +713,10 @@ WRITE8_HANDLER( adamnet_w )
 	if data bit1 is 1 -> Lower 32k = EOS otherwise Lower 32k = SmartWriter
 	*/
 	UINT8 *BankBase;
-	BankBase = &memory_region(REGION_CPU1)[0x00000];
+	BankBase = &memory_region(machine, REGION_CPU1)[0x00000];
 
-	if (data==0x0F) resetPCB();
+	if (data==0x0F)
+		adam_reset_pcb(machine);
 	if ( (adam_lower_memory==0) && ((data&0x02)!=(adam_net_data&0x02)) )
 	{
 		if (data&0x02)
@@ -773,7 +775,7 @@ WRITE8_HANDLER( adam_memory_map_controller_w )
 
     adam_lower_memory = (data & 0x03);
     adam_upper_memory = (data & 0x0C)>>2;
-    set_memory_banks();
+    adam_set_memory_banks(machine);
     //logerror("Configurando la memoria, L:%02xh, U:%02xh\n", adam_lower_memory, adam_upper_memory);
 }
 
@@ -789,13 +791,13 @@ WRITE8_HANDLER(adam_video_w)
 
  READ8_HANDLER( master6801_ram_r )
 {
-    /*logerror("Offset %04Xh = %02Xh\n",offset ,memory_region(REGION_CPU1)[offset]);*/
-    return memory_region(REGION_CPU1)[offset+0x4000];
+    /*logerror("Offset %04Xh = %02Xh\n",offset ,memory_region(machine, REGION_CPU1)[offset]);*/
+    return memory_region(machine, REGION_CPU1)[offset+0x4000];
 }
 
 WRITE8_HANDLER( master6801_ram_w )
 {
-    memory_region(REGION_CPU1)[offset+0x4000] = data;
+    memory_region(machine, REGION_CPU1)[offset+0x4000] = data;
 }
 
  READ8_HANDLER ( adam_paddle_r )

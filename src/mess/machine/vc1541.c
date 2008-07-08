@@ -399,15 +399,15 @@ static TIMER_CALLBACK(vc1541_timer)
  * also ca1 (books says cb2)
  * irq to m6502 irq connected (or with second via irq)
  */
-static void vc1541_via0_irq (int level)
+static void vc1541_via0_irq (running_machine *machine, int level)
 {
 	vc1541->via0irq = level;
 	DBG_LOG(2, "vc1541 via0 irq",("level %d %d\n",vc1541->via0irq,vc1541->via1irq));
-	cpunum_set_input_line (Machine, vc1541->cpunumber,
+	cpunum_set_input_line (machine, vc1541->cpunumber,
 					  M6502_IRQ_LINE, vc1541->via1irq || vc1541->via0irq);
 }
 
-static  READ8_HANDLER( vc1541_via0_read_portb )
+static READ8_HANDLER( vc1541_via0_read_portb )
 {
 	static int old=-1;
 	int value = 0x7a;
@@ -468,7 +468,7 @@ static WRITE8_HANDLER( vc1541_via0_write_portb )
 	{
 		vc1541_serial_clock_write (1, vc1541->drive.serial.serial_clock = !(data & 8));
 	}
-	vc1541_serial_atn_write (1, vc1541->drive.serial.serial_atn = 1);
+	vc1541_serial_atn_write (machine, 1, vc1541->drive.serial.serial_atn = 1);
 }
 
 /*
@@ -498,15 +498,15 @@ static WRITE8_HANDLER( vc1541_via0_write_portb )
  *
  * irq to m6502 irq connected
  */
-static void vc1541_via1_irq (int level)
+static void vc1541_via1_irq (running_machine *machine, int level)
 {
 	vc1541->via1irq = level;
 	DBG_LOG(2, "vc1541 via1 irq",("level %d %d\n",vc1541->via0irq,vc1541->via1irq));
-	cpunum_set_input_line (Machine, vc1541->cpunumber,
+	cpunum_set_input_line (machine, vc1541->cpunumber,
 					  M6502_IRQ_LINE, vc1541->via1irq || vc1541->via0irq);
 }
 
-static  READ8_HANDLER( vc1541_via1_read_porta )
+static READ8_HANDLER( vc1541_via1_read_porta )
 {
 	int data=vc1541->head.data[vc1541->d64.pos];
 	DBG_LOG(2, "vc1541 drive",("port a read %.2x\n", data));
@@ -664,7 +664,7 @@ void vc1541_reset (void)
 }
 
 /* delivers status for displaying */
-extern void vc1541_drive_status (char *text, int size)
+void vc1541_drive_status (char *text, int size)
 {
 #if 1||VERBOSE_DBG
 	if (vc1541->type==TypeVC1541) {
@@ -701,7 +701,7 @@ int vc1541_serial_atn_read (int which)
 	return serial.atn[0];
 }
 
-void vc1541_serial_atn_write (int which, int level)
+void vc1541_serial_atn_write (running_machine *machine, int which, int level)
 {
 #if 0
 	int value;
@@ -721,7 +721,7 @@ void vc1541_serial_atn_write (int which, int level)
 									 cpu_getactivecpu (),
 									 activecpu_get_pc(),
 									 serial.atn[0]?"ATN":"atn"));
-				via_set_input_ca1 (2, !level);
+				via_set_input_ca1 (machine, 2, !level);
 #if 0
 				value=vc1541->drive.serial.data;
 				if (vc1541->drive.serial.acka!=!level) value=0;

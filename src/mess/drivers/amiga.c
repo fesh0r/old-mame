@@ -303,7 +303,7 @@ static void amiga_cia_0_portA_w( UINT8 data )
 		/* overlay disabled, map RAM on 0x000000 */
 		memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, amiga_chip_ram_size - 1, 0, mirror_mask, SMH_BANK1);
 
-		amiga_cart_check_overlay();
+		amiga_cart_check_overlay(Machine);
 	}
 	else
 		/* overlay enabled, map Amiga system ROM on 0x000000 */
@@ -350,7 +350,7 @@ static void amiga_write_dsklen(UINT16 data)
 {
 	if ( data & 0x8000 ) {
 		if ( CUSTOM_REG(REG_DSKLEN) & 0x8000 )
-			amiga_fdc_setup_dma();
+			amiga_fdc_setup_dma(Machine);
 	}
 }
 
@@ -388,14 +388,14 @@ static DRIVER_INIT( amiga )
 		0                                        /* flags */
 	};
 
-	amiga_machine_config(&amiga_intf);
+	amiga_machine_config(machine, &amiga_intf);
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
 
 	/* initialize cartridge (if present) */
-	amiga_cart_init();
+	amiga_cart_init(machine);
 
 	/* initialize keyboard */
 	amigakbd_init();
@@ -421,14 +421,14 @@ static DRIVER_INIT( amiga_ecs )
 		0                                        /* flags */
 	};
 
-	amiga_machine_config(&amiga_intf);
+	amiga_machine_config(machine, &amiga_intf);
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
 
 	/* initialize Action Replay (if present) */
-	amiga_cart_init();
+	amiga_cart_init(machine);
 
 	/* initialize keyboard */
 	amigakbd_init();
@@ -454,11 +454,11 @@ static DRIVER_INIT( cdtv )
 		0                                        /* flags */
 	};
 
-	amiga_machine_config(&amiga_intf);
+	amiga_machine_config(machine, &amiga_intf);
 
 	/* set up memory */
 	memory_configure_bank(1, 0, 1, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
 
 	/* initialize the cdrom controller */
 	amigacd_init();
@@ -516,12 +516,12 @@ ROM_END
   System config
 ***************************************************************************/
 
-SYSTEM_CONFIG_START(amiga)
+static SYSTEM_CONFIG_START(amiga)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 	CONFIG_DEVICE(amiga_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START(a1000)
+static SYSTEM_CONFIG_START(a1000)
 	CONFIG_DEVICE(amiga_floppy_getinfo)
 SYSTEM_CONFIG_END
 
@@ -537,7 +537,7 @@ static void cdtv_cd_getinfo(const mess_device_class *devclass, UINT32 state, uni
 	}
 }
 
-SYSTEM_CONFIG_START(cdtv)
+static SYSTEM_CONFIG_START(cdtv)
 	CONFIG_DEVICE(cdtv_cd_getinfo)
 SYSTEM_CONFIG_END
 

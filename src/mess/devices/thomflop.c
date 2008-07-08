@@ -337,7 +337,7 @@ static void to7_5p14_reset( running_machine *machine )
 	int i;
 	LOG(( "to7_5p14_reset: CD 90-640 controller\n" ));
 	thom_floppy_set_density( DEN_MFM_LO );
-	wd17xx_reset();
+	wd17xx_reset(machine);
 	for ( i = 0; i < device_count( machine, IO_FLOPPY ); i++ )
 	{
 		const device_config * img = image_from_devtype_and_index( IO_FLOPPY, i );
@@ -438,7 +438,7 @@ static void to7_5p14sd_reset( running_machine *machine )
 	int i;
 	LOG(( "to7_5p14sd_reset: CD 90-015 controller\n" ));
 	thom_floppy_set_density( DEN_FM_LO );
-	mc6843_reset();
+	mc6843_reset(machine);
 	for ( i = 0; i < device_count( machine, IO_FLOPPY ); i++ )
 	{
 		const device_config * img = image_from_devtype_and_index( IO_FLOPPY, i );
@@ -454,10 +454,10 @@ static mc6843_interface to7_6843_itf = { NULL };
 
 
 
-static void to7_5p14sd_init( void )
+static void to7_5p14sd_init( running_machine *machine )
 {
 	LOG(( "to7_5p14sd_init: CD 90-015 controller\n" ));
-	mc6843_config( &to7_6843_itf );
+	mc6843_config( machine, &to7_6843_itf );
 	state_save_register_global( to7_5p14sd_select );
 }
 
@@ -1716,7 +1716,7 @@ static READ8_HANDLER ( to7_network_r )
 	if ( offset == 8 )
 	{
 		/* network ID of the computer */
-		UINT8 id = input_port_read_indexed(machine,  THOM_INPUT_FCONFIG ) >> 3;
+		UINT8 id = input_port_read(machine, "fconfig") >> 3;
 		VLOG(( "%f $%04x to7_network_r: read id $%02X\n", attotime_to_double(timer_get_time()), activecpu_get_previouspc(), id ));
 		return id;
 	}
@@ -1763,7 +1763,7 @@ void to7_floppy_init ( running_machine *machine, void* base )
 	memory_configure_bank( THOM_FLOP_BANK, 0, TO7_NB_FLOP_BANK, base, 0x800 );
 	state_save_register_global( to7_controller_type );
 	state_save_register_global( to7_floppy_bank );
-	to7_5p14sd_init();
+	to7_5p14sd_init(machine);
 	to7_5p14_init(machine);
 	to7_qdd_init();
 	thmfc_floppy_init();
@@ -1774,7 +1774,7 @@ void to7_floppy_init ( running_machine *machine, void* base )
 
 void to7_floppy_reset ( running_machine *machine )
 {
-	to7_controller_type = (input_port_read_indexed(machine,  THOM_INPUT_FCONFIG ) ) & 7;
+	to7_controller_type = (input_port_read(machine, "fconfig") ) & 7;
 
 	switch ( to7_controller_type )
 	{

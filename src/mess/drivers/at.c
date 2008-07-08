@@ -16,6 +16,7 @@
 #include "video/pc_vga.h"
 #include "video/pc_cga.h"
 #include "video/pc_mda.h"
+#include "video/pc_ega.h"
 #include "video/pc_video.h"
 #include "includes/pc.h"
 
@@ -69,17 +70,15 @@
 */
 #define GAMEBLASTER
 
-static ADDRESS_MAP_START( at_map, ADDRESS_SPACE_PROGRAM, 8 )
+static ADDRESS_MAP_START( at16_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0x000000, 0x09ffff) AM_MIRROR(0xff000000) AM_RAMBANK(10)
-	AM_RANGE(0x0a0000, 0x0affff) AM_NOP
-	AM_RANGE(0x0b0000, 0x0b7fff) AM_NOP
-	AM_RANGE(0x0b8000, 0x0bffff) AM_READWRITE(SMH_RAM, pc_video_videoram_w) AM_BASE(&videoram) AM_SIZE(&videoram_size)
+//	AM_RANGE(0x0a0000, 0x0bffff) AM_READWRITE(SMH_RAM, pc_video_videoram16le_w) AM_BASE((UINT16 **)&videoram) AM_SIZE(&videoram_size)
 	AM_RANGE(0x0c0000, 0x0c7fff) AM_ROM
-	AM_RANGE(0x0c8000, 0x0c9fff) AM_ROM
-	AM_RANGE(0x0ca000, 0x0cffff) AM_RAM
+	AM_RANGE(0x0c8000, 0x0cffff) AM_ROM
 	AM_RANGE(0x0d0000, 0x0effff) AM_RAM
 	AM_RANGE(0x0f0000, 0x0fffff) AM_ROM
 ADDRESS_MAP_END
+
 
 static ADDRESS_MAP_START( at386_map, ADDRESS_SPACE_PROGRAM, 32 )
 	ADDRESS_MAP_GLOBAL_MASK(0x00ffffff)
@@ -113,32 +112,49 @@ static WRITE8_DEVICE_HANDLER(at_dma8237_1_w)
 }
 
 
-static ADDRESS_MAP_START(at_io, ADDRESS_SPACE_IO, 8)
-	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE(DMA8237, "dma8237_1", dma8237_r, dma8237_w)
-	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE(PIC8259, "pic8259_master", pic8259_r, pic8259_w)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE(PIT8254, AT_PIT8254, pit8253_r, pit8253_w)
-	AM_RANGE(0x0060, 0x006f) AM_READWRITE(kbdc8042_8_r,				kbdc8042_8_w)
-	AM_RANGE(0x0070, 0x007f) AM_READWRITE(mc146818_port_r,			mc146818_port_w)
-	AM_RANGE(0x0080, 0x009f) AM_READWRITE(at_page8_r,				at_page8_w)
-	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE(PIC8259, "pic8259_slave", pic8259_r, pic8259_w)
-	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE(DMA8237, "dma8237_2", at_dma8237_1_r, at_dma8237_1_w)
-	AM_RANGE(0x01f0, 0x01f7) AM_READWRITE(at_mfm_0_r,				at_mfm_0_w)
-	AM_RANGE(0x0200, 0x0207) AM_READWRITE(pc_JOY_r,					pc_JOY_w)
-	AM_RANGE(0x0220, 0x022f) AM_READWRITE(soundblaster_r,			soundblaster_w)
-	AM_RANGE(0x0278, 0x027f) AM_READWRITE(pc_parallelport2_r,		pc_parallelport2_w)
-	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE(NS16450, "ns16450_3", ins8250_r, ins8250_w)
-	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE(NS16450, "ns16450_1", ins8250_r, ins8250_w)
-	AM_RANGE(0x0320, 0x0323) AM_READWRITE(pc_HDC1_r,				pc_HDC1_w)
-	AM_RANGE(0x0324, 0x0327) AM_READWRITE(pc_HDC2_r,				pc_HDC2_w)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc_parallelport1_r,		pc_parallelport1_w)
 #ifdef ADLIB
-	AM_RANGE(0x0388, 0x0388) AM_READWRITE(YM3812_status_port_0_r,	YM3812_control_port_0_w)
-	AM_RANGE(0x0389, 0x0389) AM_WRITE(								YM3812_write_port_0_w)
+static READ8_HANDLER(at_adlib_r)
+{
+	if ( offset )
+		return 0xFF;
+	else
+		return YM3812_status_port_0_r( machine, 0 );
+}
+
+static WRITE8_HANDLER(at_adlib_w)
+{
+	if ( offset )
+		YM3812_write_port_0_w( machine, 0, data );
+	else
+		YM3812_control_port_0_w( machine, 0, data );
+}
 #endif
-	AM_RANGE(0x03bc, 0x03be) AM_READWRITE(pc_parallelport0_r,		pc_parallelport0_w)
-	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE(NS16450, "ns16450_2", ins8250_r, ins8250_w)
-	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE(pc_fdc_r,					pc_fdc_w)
-	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE(NS16450, "ns16450_0", ins8250_r, ins8250_w)
+
+static ADDRESS_MAP_START(at16_io, ADDRESS_SPACE_IO, 16)
+	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8(DMA8237, "dma8237_1", dma8237_r, dma8237_w, 0xffff)
+	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8(PIT8254, AT_PIT8254, pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x0060, 0x006f) AM_READWRITE8(kbdc8042_8_r,             kbdc8042_8_w, 0xffff)
+	AM_RANGE(0x0070, 0x007f) AM_READWRITE8(mc146818_port_r,          mc146818_port_w, 0xffff)
+	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r,               at_page8_w, 0xffff)
+	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8(PIC8259, "pic8259_slave", pic8259_r, pic8259_w, 0xffff)
+	AM_RANGE(0x00c0, 0x00df) AM_DEVREADWRITE8(DMA8237, "dma8237_2", at_dma8237_1_r, at_dma8237_1_w, 0xffff)
+	AM_RANGE(0x01f0, 0x01f7) AM_READWRITE8(at_mfm_0_r,               at_mfm_0_w, 0xffff)
+	AM_RANGE(0x0200, 0x0207) AM_READWRITE8(pc_JOY_r,                 pc_JOY_w, 0xffff)
+	AM_RANGE(0x0220, 0x022f) AM_READWRITE8(soundblaster_r,           soundblaster_w, 0xffff)
+	AM_RANGE(0x0278, 0x027f) AM_READWRITE8(pc_parallelport2_r,       pc_parallelport2_w, 0xffff)
+	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE8(NS16450, "ns16450_3", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8(NS16450, "ns16450_1", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x0320, 0x0323) AM_READWRITE8(pc_HDC1_r,                pc_HDC1_w, 0xffff)
+	AM_RANGE(0x0324, 0x0327) AM_READWRITE8(pc_HDC2_r,                pc_HDC2_w, 0xffff)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE8(pc_parallelport1_r,       pc_parallelport1_w, 0xffff)
+#ifdef ADLIB
+	AM_RANGE(0x0388, 0x0389) AM_READWRITE8(at_adlib_r,               at_adlib_w, 0xffff)
+#endif
+	AM_RANGE(0x03bc, 0x03bf) AM_READWRITE8(pc_parallelport0_r,       pc_parallelport0_w, 0xffff)
+	AM_RANGE(0x03e8, 0x03ef) AM_DEVREADWRITE8(NS16450, "ns16450_2", ins8250_r, ins8250_w, 0xffff)
+	AM_RANGE(0x03f0, 0x03f7) AM_READWRITE8(pc_fdc_r,                 pc_fdc_w, 0xffff)
+	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8(NS16450, "ns16450_0", ins8250_r, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
@@ -218,12 +234,12 @@ ADDRESS_MAP_END
 #endif
 
 static INPUT_PORTS_START( atcga )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -246,7 +262,7 @@ static INPUT_PORTS_START( atcga )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
 
-	PORT_START /* IN2 */
+	PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -272,7 +288,7 @@ static INPUT_PORTS_START( atcga )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -295,7 +311,7 @@ static INPUT_PORTS_START( atcga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( atvga )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_DIPNAME( 0x08, 0x08, "VGA 1")
 	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -309,7 +325,7 @@ static INPUT_PORTS_START( atvga )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -332,7 +348,7 @@ static INPUT_PORTS_START( atvga )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
 
-	PORT_START /* IN2 */
+	PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -358,7 +374,7 @@ static INPUT_PORTS_START( atvga )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -384,7 +400,7 @@ static const unsigned i286_address_mask = 0x00ffffff;
 
 #if defined(ADLIB)
 /* irq line not connected to pc on adlib cards (and compatibles) */
-static void irqhandler(int linestate) {}
+static void irqhandler(running_machine *machine, int linestate) {}
 
 static const struct YM3812interface ym3812_interface =
 {
@@ -399,9 +415,9 @@ static const struct YM3812interface ym3812_interface =
 	MDRV_CPU_IO_MAP(port##_io, 0)					\
 	MDRV_CPU_CONFIG(i286_address_mask)
 
-static MACHINE_DRIVER_START( atcga )
+static MACHINE_DRIVER_START( ibm5170 )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at, at, I80286, 12000000)
+	MDRV_CPU_ATPC(at16, at16, I80286, 12000000 /*6000000*/)
 
 	MDRV_DEVICE_ADD( AT_PIT8254, PIT8254 )
 	MDRV_DEVICE_CONFIG( at_pit8254_config )
@@ -419,21 +435,21 @@ static MACHINE_DRIVER_START( atcga )
 	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
 
 	MDRV_DEVICE_ADD( "ns16450_0", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[0] )
 
 	MDRV_DEVICE_ADD( "ns16450_1", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[1] )
 
 	MDRV_DEVICE_ADD( "ns16450_2", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[2] )
 
 	MDRV_DEVICE_ADD( "ns16450_3", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[3] )
 
 	MDRV_MACHINE_START( at )
 	MDRV_MACHINE_RESET( at )
 
-	MDRV_IMPORT_FROM( pcvideo_cga )
+	MDRV_IMPORT_FROM( pcvideo_ega )
 
 	/* sound hardware */
 	MDRV_SPEAKER_STANDARD_MONO("mono")
@@ -461,9 +477,14 @@ static MACHINE_DRIVER_START( atcga )
 MACHINE_DRIVER_END
 
 
+static MACHINE_DRIVER_START( ibm5170a )
+	MDRV_IMPORT_FROM( ibm5170 )
+	MDRV_CPU_REPLACE("main", I80286, 8000000)
+MACHINE_DRIVER_END
+
 static MACHINE_DRIVER_START( ps2m30286 )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at, at, I80286, 12000000)
+	MDRV_CPU_ATPC(at16, at16, I80286, 12000000)
 
 	MDRV_DEVICE_ADD( AT_PIT8254, PIT8254 )
 	MDRV_DEVICE_CONFIG( at_pit8254_config )
@@ -481,16 +502,16 @@ static MACHINE_DRIVER_START( ps2m30286 )
 	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
 
 	MDRV_DEVICE_ADD( "ns16450_0", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[0] )
 
 	MDRV_DEVICE_ADD( "ns16450_1", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[1] )
 
 	MDRV_DEVICE_ADD( "ns16450_2", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[2] )
 
 	MDRV_DEVICE_ADD( "ns16450_3", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[3] )
 
 	MDRV_MACHINE_START( at )
 	MDRV_MACHINE_RESET( at )
@@ -529,7 +550,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( atvga )
 	/* basic machine hardware */
-	MDRV_CPU_ATPC(at, at, I80286, 12000000)
+	MDRV_CPU_ATPC(at16, at16, I80286, 12000000)
 
 	MDRV_DEVICE_ADD( AT_PIT8254, PIT8254 )
 	MDRV_DEVICE_CONFIG( at_pit8254_config )
@@ -547,16 +568,16 @@ static MACHINE_DRIVER_START( atvga )
 	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
 
 	MDRV_DEVICE_ADD( "ns16450_0", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[0] )
 
 	MDRV_DEVICE_ADD( "ns16450_1", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[1] )
 
 	MDRV_DEVICE_ADD( "ns16450_2", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[2] )
 
 	MDRV_DEVICE_ADD( "ns16450_3", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[3] )
 
 	MDRV_IMPORT_FROM( pcvideo_vga )
 
@@ -619,16 +640,16 @@ static MACHINE_DRIVER_START( at386 )
 	MDRV_DEVICE_CONFIG( at_pic8259_slave_config )
 
 	MDRV_DEVICE_ADD( "ns16450_0", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[0] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[0] )
 
 	MDRV_DEVICE_ADD( "ns16450_1", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[1] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[1] )
 
 	MDRV_DEVICE_ADD( "ns16450_2", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[2] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[2] )
 
 	MDRV_DEVICE_ADD( "ns16450_3", NS16450 )			/* TODO: verify model */
-	MDRV_DEVICE_CONFIG( ibmpc_com_interface[3] )
+	MDRV_DEVICE_CONFIG( ibm5170_com_interface[3] )
 
 	MDRV_IMPORT_FROM( pcvideo_cga )
 
@@ -705,16 +726,47 @@ MACHINE_DRIVER_END
     ROM_LOAD("", 0x??000, 0x2000, CRC())
 #endif
 
-ROM_START( ibmat )
-    ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-    ROM_LOAD16_BYTE("at111585.0", 0xf0000, 0x8000, CRC(4995be7a) SHA1(8e8e5c863ae3b8c55fd394e345d8cca48b6e575c))
+ROM_START( ibm5170 )
+	ROM_REGION(0x1000000,REGION_CPU1, 0)
+
+	ROM_SYSTEM_BIOS( 0, "rev1", "IBM PC/AT 5170 01/10/84")
+	ROMX_LOAD("t6181028.u27", 0xf0000, 0x8000, CRC(f6573f2a) SHA1(3e52cfa6a6a62b4e8576f4fe076c858c220e6c1a), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD("t6181028.u27", 0xff0000, 0x8000, CRC(f6573f2a) SHA1(3e52cfa6a6a62b4e8576f4fe076c858c220e6c1a), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD("t6181029.u47", 0xf0001, 0x8000, CRC(7075fbb2) SHA1(a7b885cfd38710c9bc509da1e3ba9b543a2760be), ROM_SKIP(1) | ROM_BIOS(1))
+	ROMX_LOAD("t6181029.u47", 0xff0001, 0x8000, CRC(7075fbb2) SHA1(a7b885cfd38710c9bc509da1e3ba9b543a2760be), ROM_SKIP(1) | ROM_BIOS(1))
+
+	ROM_SYSTEM_BIOS( 1, "rev2", "IBM PC/AT 5170 06/10/85")	/* Another verifaction of these crcs would be nice */
+	ROMX_LOAD("6480090.u27", 0xf0000, 0x8000, CRC(99703aa9) SHA1(18022e93a0412c8477e58f8c61a87718a0b9ab0e), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD("6480090.u27", 0xff0000, 0x8000, CRC(99703aa9) SHA1(18022e93a0412c8477e58f8c61a87718a0b9ab0e), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD("6480091.u47", 0xf0001, 0x8000, CRC(013ef44b) SHA1(bfa15d2180a1902cb6d38c6eed3740f5617afd16), ROM_SKIP(1) | ROM_BIOS(2))
+	ROMX_LOAD("6480091.u47", 0xff0001, 0x8000, CRC(013ef44b) SHA1(bfa15d2180a1902cb6d38c6eed3740f5617afd16), ROM_SKIP(1) | ROM_BIOS(2))
+
+	ROM_REGION(0x08100, REGION_GFX1, 0)
+	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	ROM_REGION(0x50000, REGION_GFX2, ROMREGION_ERASE00)
+
+	/* This region holds the original EGA Video bios */
+	ROM_REGION(0x4000, REGION_USER1, 0)
+	ROM_LOAD("6277356.u44", 0x0000, 0x4000, CRC(dc146448) SHA1(dc0794499b3e499c5777b3aa39554bbf0f2cc19b))
+ROM_END
+
+
+ROM_START( ibm5170a )
+	ROM_REGION(0x1000000,REGION_CPU1, 0)
+//    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD16_BYTE("at111585.0", 0xf0000, 0x8000, CRC(4995be7a) SHA1(8e8e5c863ae3b8c55fd394e345d8cca48b6e575c))
 	ROM_RELOAD(0xff0000,0x8000)
-    ROM_LOAD16_BYTE("at111585.1", 0xf0001, 0x8000, CRC(c32713e4) SHA1(22ed4e2be9f948682891e2fd056a97dbea01203c))
+	ROM_LOAD16_BYTE("at111585.1", 0xf0001, 0x8000, CRC(c32713e4) SHA1(22ed4e2be9f948682891e2fd056a97dbea01203c))
 	ROM_RELOAD(0xff0001,0x8000)
 	ROM_REGION(0x08100, REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+	ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+
+	/* This region holds the original EGA Video bios */
+	ROM_REGION(0x4000, REGION_USER1, 0)
+	ROM_LOAD("6277356.u44", 0x0000, 0x4000, CRC(dc146448) SHA1(dc0794499b3e499c5777b3aa39554bbf0f2cc19b))
 ROM_END
+
 
 ROM_START( i8530286 )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
@@ -725,6 +777,7 @@ ROM_START( i8530286 )
     ROM_LOAD16_BYTE("ps2m30.1", 0xe0001, 0x10000, CRC(1448d3cb) SHA1(13fa26d895ce084278cd5ab1208fc16c80115ebe))
 	ROM_RELOAD(0xfe0001,0x10000)
 ROM_END
+
 
 ROM_START( at )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
@@ -737,6 +790,7 @@ ROM_START( at )
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
+
 ROM_START( atvga )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
     ROM_LOAD("et4000.bin", 0xc0000, 0x8000, CRC(f01e4be0) SHA1(95d75ff41bcb765e50bd87a8da01835fd0aa01d5))
@@ -746,6 +800,7 @@ ROM_START( atvga )
     ROM_LOAD16_BYTE("at110387.0", 0xf0000, 0x8000, CRC(65ae1f97) SHA1(91a29c7deecf7a9afbba330e64e0eee9aafee4d1))
 	ROM_RELOAD(0xff0000,0x8000)
 ROM_END
+
 
 ROM_START( neat )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
@@ -758,6 +813,7 @@ ROM_START( neat )
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
+
 ROM_START( at386 )
     ROM_REGION(0x1000000,REGION_CPU1, 0)
     ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
@@ -767,14 +823,23 @@ ROM_START( at386 )
     ROM_LOAD("cga.chr",     0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
 
+
 ROM_START( at486 )
-    ROM_REGION(0x1000000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
-    ROM_LOAD("at486.bin", 0xf0000, 0x10000, CRC(31214616) SHA1(51b41fa44d92151025fc9ad06e518e906935e689))
-	ROM_RELOAD(0xff0000,0x10000)
+	ROM_REGION(0x1000000, REGION_CPU1, 0)
+	ROM_LOAD("wdbios.rom", 0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+
+	ROM_SYSTEM_BIOS(0, "at486", "PC/AT 486")	\
+	ROMX_LOAD("at486.bin",   0x0f0000, 0x10000, CRC(31214616) SHA1(51b41fa44d92151025fc9ad06e518e906935e689), ROM_BIOS(1))
+	ROM_SYSTEM_BIOS(1, "mg48602", "UMC MG-48602")	\
+	ROMX_LOAD("mg48602.bin", 0x0f0000, 0x10000, CRC(45797823) SHA1(a5fab258aecabde615e1e97af5911d6cf9938c11), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "ft01232", "Free Tech 01-232")	\
+	ROMX_LOAD("ft01232.bin", 0x0f0000, 0x10000, CRC(30efaf92) SHA1(665c8ef05ca052dcc06bb473c9539546bfef1e86), ROM_BIOS(3))
+	ROM_COPY(REGION_CPU1, 0, 0xff0000, 0x10000)
+
 	ROM_REGION(0x08100, REGION_GFX1, 0)
-    ROM_LOAD("cga.chr",     0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
+	ROM_LOAD("cga.chr", 0x01000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
+
 
 ROM_START( at586 )
 	ROM_REGION32_LE(0x40000, REGION_USER1, 0)
@@ -784,6 +849,7 @@ ROM_START( at586 )
 	ROM_REGION(0x08100, REGION_GFX1, 0)
     ROM_LOAD("cga.chr",     0x00000, 0x01000, CRC(42009069) SHA1(ed08559ce2d7f97f68b9f540bddad5b6295294dd))
 ROM_END
+
 
 static void ibmat_floppy_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -812,7 +878,7 @@ static void ibmat_harddisk_getinfo(const mess_device_class *devclass, UINT32 sta
 	}
 }
 
-SYSTEM_CONFIG_START(ibmat)
+static SYSTEM_CONFIG_START(ibmat)
 	CONFIG_RAM_DEFAULT( (640+1024) * 1024 )
 	CONFIG_DEVICE(ibmat_floppy_getinfo)
 	CONFIG_DEVICE(ibmat_harddisk_getinfo)
@@ -824,12 +890,13 @@ SYSTEM_CONFIG_END
 
 ***************************************************************************/
 
-/*     YEAR     NAME        PARENT  COMPAT  MACHINE     INPUT       INIT        CONFIG   COMPANY     FULLNAME */
-COMP ( 1985,	ibmat,		0,		ibm5150,	atcga,		atcga,		atcga,	    ibmat,   "International Business Machines",  "IBM PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1988,	i8530286,	ibmat,	0,		ps2m30286,	atvga,		ps2m30286,	ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
-COMP ( 1987,	at,			ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1989,	neat,		ibmat,	0,		atcga,      atcga,		atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1988,	at386,		ibmat,	0,		at386,      atcga,		at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990,	at486,		ibmat,	0,		at486,      atcga,		at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990,	at586,		ibmat,	0,		at586,      atcga,		at586,	    ibmat,   "",  "PC/AT 586(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1987,	atvga,		0,		0,		atvga,      atvga,		at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" , 0)
+/*     YEAR  NAME      PARENT   COMPAT   MACHINE    INPUT       INIT        CONFIG   COMPANY     FULLNAME */
+COMP ( 1984, ibm5170,  0,       ibm5160, ibm5170,   atcga,		atega,	    ibmat,   "International Business Machines",  "IBM PC/AT 5170", GAME_NOT_WORKING )
+COMP ( 1985, ibm5170a, ibm5170, 0,       ibm5170a,  atcga,      atega,      ibmat,   "International Business Machines",  "IBM PC/AT 5170 8MHz", GAME_NOT_WORKING )
+COMP ( 1988, i8530286, ibm5170, 0,       ps2m30286, atvga,		ps2m30286,	ibmat,   "International Business Machines",  "IBM PS2 Model 30 286", GAME_NOT_WORKING )
+COMP ( 1987, at,       ibm5170, 0,       ibm5170a,  atcga,		atcga,	    ibmat,   "",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1989, neat,     ibm5170, 0,       ibm5170a,  atcga,		atcga,	    ibmat,   "",  "NEAT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1988, at386,    ibm5170, 0,       at386,     atcga,		at386,	    ibmat,   "MITAC INC",  "PC/AT 386(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at486,	   ibm5170, 0,       at486,     atcga,		at386,	    ibmat,   "",  "PC/AT 486(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1990, at586,    ibm5170, 0,       at586,     atcga,		at586,	    ibmat,   "",  "PC/AT 586(CGA, MF2 Keyboard)", GAME_NOT_WORKING )
+COMP ( 1987, atvga,		0,      0,       atvga,     atvga,		at_vga,     ibmat,   "",  "PC/AT (VGA, MF2 Keyboard)" , 0)

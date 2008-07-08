@@ -15,7 +15,6 @@
 ****************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/z80ctc.h"
 #include "machine/z80pio.h"
 #include "machine/z80sio.h"
@@ -30,7 +29,7 @@ static UINT8 fdc_drv = 0;
 static UINT8 fdc_head = 0;
 static UINT8 fdc_den = 0;
 static UINT8 fdc_status = 0;
-static void pio_interrupt(int state);
+static void pio_interrupt(running_machine *machine, int state);
 static void mbee_fdc_callback(running_machine *machine, wd17xx_state_t event, void *param);
 
 UINT8 *mbee_workram;
@@ -46,9 +45,9 @@ static const z80pio_interface pio_intf =
 	0				/* portB ready active callback (do not support yet)*/
 };
 
-static void pio_interrupt(int state)
+static void pio_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, 0, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
@@ -186,7 +185,7 @@ DEVICE_IMAGE_LOAD( mbee_cart )
 	{
 		if( image_fread(image, mem, size) == size )
 		{
-			memcpy(memory_region(REGION_CPU1)+0x8000, mem, size);
+			memcpy(memory_region(image->machine, REGION_CPU1)+0x8000, mem, size);
 		}
 		free(mem);
 	}

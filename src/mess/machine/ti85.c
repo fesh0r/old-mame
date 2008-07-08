@@ -110,7 +110,7 @@ static void ti85_receive_screen (running_machine *machine);
 
 static TIMER_CALLBACK(ti85_timer_callback)
 {
-	if (input_port_read_indexed(machine, 8)&0x01)
+	if (input_port_read(machine, "ON") & 0x01)
 	{
 		if (ti85_ON_interrupt_mask && !ti85_ON_pressed)
 		{
@@ -132,7 +132,7 @@ static TIMER_CALLBACK(ti85_timer_callback)
 
 static void update_ti85_memory (running_machine *machine)
 {
-	memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x010000 + 0x004000*ti85_memory_page_0x4000);
+	memory_set_bankptr(2,memory_region(machine, REGION_CPU1) + 0x010000 + 0x004000*ti85_memory_page_0x4000);
 }
 
 static void update_ti86_memory (running_machine *machine)
@@ -147,7 +147,7 @@ static void update_ti86_memory (running_machine *machine)
 	}
 	else
 	{
-		memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x010000 + 0x004000*(ti85_memory_page_0x4000&0x0f));
+		memory_set_bankptr(2,memory_region(machine, REGION_CPU1) + 0x010000 + 0x004000*(ti85_memory_page_0x4000&0x0f));
 		wh = SMH_UNMAP;
 	}
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, wh);
@@ -160,7 +160,7 @@ static void update_ti86_memory (running_machine *machine)
 	}
 	else
 	{
-		memory_set_bankptr(3,memory_region(REGION_CPU1) + 0x010000 + 0x004000*(ti86_memory_page_0x8000&0x0f));
+		memory_set_bankptr(3,memory_region(machine, REGION_CPU1) + 0x010000 + 0x004000*(ti86_memory_page_0x8000&0x0f));
 		wh = SMH_UNMAP;
 	}
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, wh);
@@ -172,6 +172,8 @@ static void update_ti86_memory (running_machine *machine)
 
 MACHINE_START( ti81 )
 {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
+
 	ti85_timer_interrupt_mask = 0;
 	ti85_timer_interrupt_status = 0;
 	ti85_ON_interrupt_mask = 0;
@@ -189,7 +191,7 @@ MACHINE_START( ti81 )
 	ti81_port_7_data = 0;
 
 	if (ti_calculator_model == TI_81)
-		memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+		memset(mem+0x8000, 0, sizeof(unsigned char)*0x8000);
 
 	ti_calculator_model = TI_81;
 
@@ -197,12 +199,14 @@ MACHINE_START( ti81 )
 
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_UNMAP);
-	memory_set_bankptr(1,memory_region(REGION_CPU1) + 0x010000);
-	memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x014000);
+	memory_set_bankptr(1,mem + 0x010000);
+	memory_set_bankptr(2,mem + 0x014000);
 }
 
 MACHINE_START( ti85 )
 {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
+
 	ti85_timer_interrupt_mask = 0;
 	ti85_timer_interrupt_status = 0;
 	ti85_ON_interrupt_mask = 0;
@@ -219,7 +223,7 @@ MACHINE_START( ti85 )
 	ti85_port4_bit0 = 0;
 
 	if (ti_calculator_model == TI_85)
-		memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+		memset(mem+0x8000, 0, sizeof(unsigned char)*0x8000);
 
 	ti_calculator_model = TI_85;
 
@@ -227,8 +231,8 @@ MACHINE_START( ti85 )
 
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x7fff, 0, 0, SMH_UNMAP);
-	memory_set_bankptr(1,memory_region(REGION_CPU1) + 0x010000);
-	memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x014000);
+	memory_set_bankptr(1,mem + 0x010000);
+	memory_set_bankptr(2,mem + 0x014000);
 
 	add_reset_callback(machine, ti85_reset_serial);
 	add_exit_callback(machine, ti85_free_serial_data_memory);
@@ -236,6 +240,8 @@ MACHINE_START( ti85 )
 
 MACHINE_START( ti86 )
 {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
+
 	ti85_timer_interrupt_mask = 0;
 	ti85_timer_interrupt_status = 0;
 	ti85_ON_interrupt_mask = 0;
@@ -256,8 +262,8 @@ MACHINE_START( ti86 )
 	{
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 
-		memory_set_bankptr(1,memory_region(REGION_CPU1) + 0x010000);
-		memory_set_bankptr(2,memory_region(REGION_CPU1) + 0x014000);
+		memory_set_bankptr(1,mem + 0x010000);
+		memory_set_bankptr(2,mem + 0x014000);
 
 		memory_set_bankptr(4, ti86_ram);
 		memory_set_bankptr(8, ti86_ram);
@@ -286,13 +292,17 @@ READ8_HANDLER ( ti85_port_0000_r )
 	int data = 0xff;
 	int port;
 	int bit;
+	char tag[6];
 
 	if (ti85_keypad_mask == 0x7f) return data;
 
 	for (bit = 0; bit < 7; bit++)
 		if (~ti85_keypad_mask&(0x01<<bit))
 			for (port = 0; port < 8; port++)
-				data ^= input_port_read_indexed(machine, port)&(0x01<<bit) ? 0x01<<port : 0x00;
+				{
+				sprintf(tag, "BIT%d", port);
+				data ^= input_port_read(machine, tag) & (0x01<<bit) ? 0x01<<port : 0x00;
+				}
 	return data;
 }
 
@@ -425,33 +435,37 @@ WRITE8_HANDLER ( ti86_port_0006_w )
 /* NVRAM functions */
 NVRAM_HANDLER( ti81 )
 {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
+
 	if (read_or_write)
-		mame_fwrite(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+		mame_fwrite(file, mem+0x8000, sizeof(unsigned char)*0x8000);
 	else
 	{
 		if (file)
 		{
-			mame_fread(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+			mame_fread(file, mem+0x8000, sizeof(unsigned char)*0x8000);
 			cpunum_set_reg(0, Z80_PC,0x0239);
 		}
 		else
-			memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+			memset(mem+0x8000, 0, sizeof(unsigned char)*0x8000);
 	}
 }
 
 NVRAM_HANDLER( ti85 )
 {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
+
 	if (read_or_write)
-		mame_fwrite(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+		mame_fwrite(file, mem+0x8000, sizeof(unsigned char)*0x8000);
 	else
 	{
 		if (file)
 		{
-			mame_fread(file, memory_region(REGION_CPU1)+0x8000, sizeof(unsigned char)*0x8000);
+			mame_fread(file, mem+0x8000, sizeof(unsigned char)*0x8000);
 			cpunum_set_reg(0, Z80_PC,0x0b5f);
 		}
 		else
-			memset(memory_region(REGION_CPU1)+0x8000, 0, sizeof(unsigned char)*0x8000);
+			memset(mem+0x8000, 0, sizeof(unsigned char)*0x8000);
 	}
 }
 
@@ -794,7 +808,7 @@ void ti85_update_serial (running_machine *machine)
 {
 	if (ti85_serial_status == TI85_SEND_STOP)
 	{
-		if (input_port_read_indexed(machine, 9)&0x01)
+		if (input_port_read(machine, "SERIAL") & 0x01)
 		{
 			if(!ti85_alloc_serial_data_memory(15)) return;
 			if(!ti85_receive_serial (ti85_receive_buffer, 7*8))
@@ -813,7 +827,7 @@ void ti85_update_serial (running_machine *machine)
 		{
 			ti85_receive_serial(NULL, 0);
 			ti85_free_serial_data_memory(machine);
-			if (input_port_read_indexed(machine, 10)&0x01)
+			if (input_port_read(machine, "DUMP") & 0x01)
 			{
 				ti85_serial_status = TI85_PREPARE_SCREEN_REQUEST;
 				ti85_serial_transfer_type = TI85_RECEIVE_SCREEN;

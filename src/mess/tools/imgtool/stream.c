@@ -231,16 +231,24 @@ imgtool_stream *stream_open_mem(void *buf, size_t sz)
 
 void stream_close(imgtool_stream *s)
 {
-	assert(s);
+	assert(s != NULL);
 
 	switch(s->imgtype)
 	{
 		case IMG_FILE:
-			core_fclose(s->u.file);
+			if (s->u.file != NULL)
+			{
+				core_fclose(s->u.file);
+				s->u.file = NULL;
+			}
 			break;
 
 		case IMG_MEM:
-			free(s->u.buffer);
+			if (s->u.buffer != NULL)
+			{
+				free(s->u.buffer);
+				s->u.buffer = NULL;
+			}
 			break;
 
 		default:
@@ -313,7 +321,7 @@ UINT32 stream_write(imgtool_stream *s, const void *buf, UINT32 sz)
 				}
 
 				/* do we have to limit sz? */
-				if (sz < (s->filesize - s->position))
+				if (sz > (s->filesize - s->position))
 					sz = (UINT32) (s->filesize - s->position);
 
 				memcpy(s->u.buffer + s->position, buf, sz);

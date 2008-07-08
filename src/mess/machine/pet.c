@@ -5,7 +5,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "cpu/m6809/m6809.h"
 
@@ -14,9 +13,10 @@
 #include "includes/vc20tape.h"
 #include "machine/6821pia.h"
 #include "machine/6522via.h"
-#include "includes/pet.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
+
+#include "includes/pet.h"
 
 /* keyboard lines */
 static int pet_basic1=0; /* basic version 1 for quickloader */
@@ -78,10 +78,15 @@ static WRITE8_HANDLER ( pet_pia0_port_a_write )
 static  READ8_HANDLER ( pet_pia0_port_b_read )
 {
 	UINT8 data = 0xff;
-	if ( pet_keyline_select < 10 ) {
-		data = input_port_read_indexed(machine,  pet_keyline_select );
+	char port[6];
+	
+	if ( pet_keyline_select < 10 ) 
+	{
+		sprintf(port, "ROW%d", pet_keyline_select);
+		data = input_port_read(machine, port);
 		/* Check for left-shift lock */
-		if ( pet_keyline_select == 8 && ( input_port_read_indexed(machine, 10) & 0x80 ) ) {
+		if ( pet_keyline_select == 8 && ( input_port_read(machine, "SPECIAL") & 0x80 ) ) 
+		{
 			data &= 0xFE;
 		}
 	}
@@ -92,11 +97,28 @@ static  READ8_HANDLER ( pet_pia0_port_b_read )
 static READ8_HANDLER( petb_pia0_port_b_read )
 {
 	UINT8 data = 0xff;
-	if ( pet_keyline_select < 10 ) {
-		data = input_port_read_indexed(machine,  pet_keyline_select );
+	char port[6];
+	
+	if ( pet_keyline_select < 10 ) 
+	{
+		sprintf(port, "ROW%d", pet_keyline_select);
+		data = input_port_read(machine, port);
 		/* Check for left-shift lock */
-		if ( pet_keyline_select == 6 && ( input_port_read_indexed(machine, 10) & 0x80 ) ) {
-			data &= 0xFE;
+		/* 2008-05 FP: For some reason, superpet read it in the opposite way!! */
+		/* While waiting for confirmation from docs, we add a workaround here. */
+		if (superpet)
+		{
+			if (pet_keyline_select == 6 && !(input_port_read(machine, "SPECIAL") & 0x80)) 
+			{
+				data &= 0xFE;
+			}
+		}		
+		else
+		{
+			if (pet_keyline_select == 6 && (input_port_read(machine, "SPECIAL") & 0x80)) 
+			{
+				data &= 0xFE;
+			}
 		}
 	}
 	return data;
@@ -107,7 +129,7 @@ static WRITE8_HANDLER( pet_pia0_ca2_out )
 	cbm_ieee_eoi_w(0, data);
 }
 
-static void pet_irq (int level)
+static void pet_irq (running_machine *machine, int level)
 {
 	static int old_level = 0;
 
@@ -115,8 +137,8 @@ static void pet_irq (int level)
 	{
 		DBG_LOG (3, "mos6502", ("irq %s\n", level ? "start" : "end"));
 		if (superpet)
-			cpunum_set_input_line(Machine, 1, M6809_IRQ_LINE, level);
-		cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
+			cpunum_set_input_line(machine, 1, M6809_IRQ_LINE, level);
+		cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, level);
 		old_level = level;
 	}
 }
@@ -492,14 +514,14 @@ DRIVER_INIT( pet )
 {
 	pet_common_driver_init(machine);
 	pia_config(0, &pet_pia0);
-	pet_vh_init();
+	pet_vh_init(machine);
 }
 
 DRIVER_INIT( petb )
 {
 	pet_common_driver_init(machine);
 	pia_config(0, &petb_pia0);
-	pet_vh_init();
+	pet_vh_init(machine);
 }
 
 DRIVER_INIT( pet1 )
@@ -507,26 +529,26 @@ DRIVER_INIT( pet1 )
 	pet_basic1 = 1;
 	pet_common_driver_init(machine);
 	pia_config(0, &pet_pia0);
-	pet_vh_init();
+	pet_vh_init(machine);
 }
 
 DRIVER_INIT( pet40 )
 {
 	pet_common_driver_init(machine);
 	pia_config(0, &pet_pia0);
-	pet_vh_init();
+	pet_vh_init(machine);
 }
 
 DRIVER_INIT( cbm80 )
 {
 	cbm8096 = 1;
-	pet_memory = memory_region(REGION_CPU1);
+	pet_memory = memory_region(machine, REGION_CPU1);
 
 	pet_common_driver_init(machine);
 	pia_config(0, &petb_pia0);
 	videoram = &pet_memory[0x8000];
 	videoram_size = 0x800;
-	pet80_vh_init();
+	pet80_vh_init(machine);
 }
 
 DRIVER_INIT( superpet )
@@ -540,7 +562,7 @@ DRIVER_INIT( superpet )
 	memory_configure_bank(1, 0, 16, superpet_memory, 0x1000);
 	memory_set_bank(1, 0);
 
-	superpet_vh_init();
+	superpet_vh_init(machine);
 }
 
 MACHINE_RESET( pet )
@@ -551,7 +573,7 @@ MACHINE_RESET( pet )
 	if (superpet)
 	{
 		spet.rom = 0;
-		if (M6809_SELECT)
+		if (input_port_read(machine, "CFG") & 4)
 		{
 			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 1);
 			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
@@ -567,7 +589,7 @@ MACHINE_RESET( pet )
 
 	if (cbm8096)
 	{
-		if (CBM8096_MEMORY)
+		if (input_port_read(machine, "CFG") & 8)
 		{
 			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfff0, 0xfff0, 0, 0, cbm8096_w);
 		}
@@ -578,8 +600,8 @@ MACHINE_RESET( pet )
 		cbm8096_w(machine, 0, 0);
 	}
 
-	cbm_drive_0_config (IEEE8ON ? IEEE : 0, 8);
-	cbm_drive_1_config (IEEE9ON ? IEEE : 0, 9);
+	cbm_drive_0_config (input_port_read(machine, "CFG") & 2 ? IEEE : 0, 8);
+	cbm_drive_1_config (input_port_read(machine, "CFG") & 1 ? IEEE : 0, 9);
 
 	pet_rom_load();
 }
@@ -600,16 +622,19 @@ INTERRUPT_GEN( pet_frame_interrupt )
 {
 	if (superpet)
 	{
-		if (M6809_SELECT) {
-			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT,1);
-			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
-			pet_font|=2;
-		} else {
-			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT,0);
+		if (input_port_read(machine, "CFG") & 4) 
+		{
 			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 1);
-			pet_font&=~2;
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
+			pet_font |= 2;
+		} 
+		else 
+		{
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 0);
+			cpunum_set_input_line(machine, 0, INPUT_LINE_HALT, 1);
+			pet_font &= ~2;
 		}
 	}
 
-	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , input_port_read_indexed(machine, 10) & 0x80 ? 1 : 0);
+	set_led_status (1, input_port_read(machine, "SPECIAL") & 0x80 ? 1 : 0);	/*KB_CAPSLOCK_FLAG */
 }

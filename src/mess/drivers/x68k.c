@@ -86,7 +86,7 @@
 
     HDC/HDD : SASI and SCSI are not implemented, not a requirement at this point.
 
-    RTC : Seems to work. (Tested using SX-Windows' Timer application)
+    RTC : Seems to work. (Tested using SX-Window's Timer application)
 
     DMA : FDD reading mostly works, other channels should work for effective memory copying (channel 2, often
           used to copy data to video RAM or the palette in the background).
@@ -96,17 +96,16 @@
     SCC : Works enough to get the mouse running
 
     Video : Text mode works, but is rather slow, especially scrolling up (uses multple "raster copy" commands).
-            16 and 256 graphic layers work, but colours on a 65,536 colour layer are wrong.
+            Graphic layers work.
             BG tiles and sprites work, but many games have the sprites offset by a small amount (some by a lot :))
 
     Other issues:
       Bus error exceptions are a bit late at times.  Currently using a fake bus error for MIDI expansion checks.  These
       are used determine if a piece of expansion hardware is present.
-      Partial updates don't work at all well, and can be excruciatingly slow.
-      Keyboard doesn't work well for games.
+      Keyboard doesn't work (MFP USART).
       Supervisor area set isn't implemented.
 
-    Some minor game-specific issues (at 19/06/07):
+    Some minor game-specific issues (at 14/05/08):
       Pacmania:      Black squares on the maze (transparency?).
       Nemesis '94:   Menu system doesn't work except for start buttons.
       Flying Shark:  Appears to lock up at main menu.
@@ -115,9 +114,8 @@
       Dragon Buster: Text is black and unreadable (text palette should be loaded from disk, but it reads all zeroes).
       Baraduke:      Corrupt background, locks up on demo mode.
       Viewpoint:     Corrupt graphics on title screen, phantom movements on title screen, corrupt sprites, locks up.
-      Mr. Do:        Locks up or resets after some time.  Happens on Mr Do vs. Unicorns, as well.
       Tetris:        Black dots over screen (text layer).
-      Parodius Da!:  Water isn't animated (beginning of stage 1), black squares (raster effects?)
+      Parodius Da!:  Black squares in areas.
 
 
     More detailed documentation at http://x68kdev.emuvibes.com/iomap.html - if you can stand broken english :)
@@ -137,35 +135,19 @@
 #include "machine/hd63450.h"
 #include "machine/rp5c15.h"
 #include "devices/basicdsk.h"
+#include "devices/harddriv.h"
+#include "machine/x68k_hdc.h"
 #include "includes/x68k.h"
 
 struct x68k_system sys;
 
-extern UINT16* gvram;  // Graphic VRAM
-extern UINT16* tvram;  // Text VRAM
 static UINT16* sram;   // SRAM
-extern UINT16* x68k_spriteram;  // sprite/background RAM
-extern UINT16* x68k_spritereg;  // sprite/background registers
 static UINT8 ppi_port[3];
 static int current_vector[8];
 static UINT8 current_irq_line;
 static unsigned int x68k_scanline;
 
 static UINT8 mfp_key;
-
-extern bitmap_t* x68k_text_bitmap;  // 1024x1024 4x1bpp planes text
-extern bitmap_t* x68k_gfx_0_bitmap_16;  // 16 colour, 512x512, 4 pages
-extern bitmap_t* x68k_gfx_1_bitmap_16;
-extern bitmap_t* x68k_gfx_2_bitmap_16;
-extern bitmap_t* x68k_gfx_3_bitmap_16;
-extern bitmap_t* x68k_gfx_0_bitmap_256;  // 256 colour, 512x512, 2 pages
-extern bitmap_t* x68k_gfx_1_bitmap_256;
-extern bitmap_t* x68k_gfx_0_bitmap_65536;  // 65536 colour, 512x512, 1 page
-
-extern tilemap* x68k_bg0_8;  // two 64x64 tilemaps, 8x8 characters
-extern tilemap* x68k_bg1_8;
-extern tilemap* x68k_bg0_16;  // two 64x64 tilemaps, 16x16 characters
-extern tilemap* x68k_bg1_16;
 
 static emu_timer* kb_timer;
 //emu_timer* mfp_timer[4];
@@ -177,7 +159,8 @@ static emu_timer* mouse_timer;  // to set off the mouse interrupts via the SCC
 
 // MFP is clocked at 4MHz, so at /4 prescaler the timer is triggered after 1us (4 cycles)
 // No longer necessary with the new MFP core
-/*static attotime prescale(int val)
+#ifdef UNUSED_FUNCTION
+static attotime prescale(int val)
 {
     switch(val)
     {
@@ -192,7 +175,8 @@ static emu_timer* mouse_timer;  // to set off the mouse interrupts via the SCC
         default:
             fatalerror("out of range");
     }
-}*/
+}
+#endif
 
 static void mfp_init(void);
 //static TIMER_CALLBACK(mfp_update_irq);
@@ -212,7 +196,8 @@ static void mfp_init()
     timer_adjust_periodic(mfp_irq, attotime_zero, 0, ATTOTIME_IN_USEC(32));
 */
 }
-/*
+
+#ifdef UNUSED_FUNCTION
 TIMER_CALLBACK(mfp_update_irq)
 {
     int x;
@@ -339,7 +324,7 @@ void mfp_set_timer(int timer, unsigned char data)
     logerror("MFP: Timer #%i set to %2.1fus\n",timer, attotime_to_double(prescale(data & 0x07)) * 1000000);
 
 }
-*/
+#endif
 
 // 4 channel DMA controller (Hitachi HD63450)
 static WRITE16_HANDLER( x68k_dmac_w )
@@ -546,11 +531,12 @@ static int x68k_read_mouse(running_machine *machine)
 	sys.mouse.inputtype++;
 	if(sys.mouse.inputtype > 2)
 	{
-		int val = scc_get_reg_b(0);
+		const device_config *scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+		int val = scc_get_reg_b(scc, 0);
 		sys.mouse.inputtype = 0;
 		sys.mouse.bufferempty = 1;
 		val &= ~0x01;
-		scc_set_reg_b(0,val);
+		scc_set_reg_b(scc, 0, val);
 		logerror("SCC: mouse buffer empty\n");
 	}
 
@@ -565,17 +551,18 @@ static int x68k_read_mouse(running_machine *machine)
 */
 static READ16_HANDLER( x68k_scc_r )
 {
+	const device_config *scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
 	offset %= 4;
 	switch(offset)
 	{
 	case 0:
-		return scc_r(machine, 0);
+		return scc_r(scc, 0);
 	case 1:
 		return x68k_read_mouse(machine);
 	case 2:
-		return scc_r(machine, 1);
+		return scc_r(scc, 1);
 	case 3:
-		return scc_r(machine, 3);
+		return scc_r(scc, 3);
 	default:
 		return 0xff;
 	}
@@ -583,39 +570,41 @@ static READ16_HANDLER( x68k_scc_r )
 
 static WRITE16_HANDLER( x68k_scc_w )
 {
+	const device_config *scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
 	static unsigned char prev;
 	offset %= 4;
 
 	switch(offset)
 	{
 	case 0:
-		scc_w(machine, 0,(UINT8)data);
-		if((scc_get_reg_b(5) & 0x02) != prev)
+		scc_w(scc, 0,(UINT8)data);
+		if((scc_get_reg_b(scc, 5) & 0x02) != prev)
 		{
-			if(scc_get_reg_b(5) & 0x02)  // Request to Send
+			if(scc_get_reg_b(scc, 5) & 0x02)  // Request to Send
 			{
-				int val = scc_get_reg_b(0);
+				int val = scc_get_reg_b(scc, 0);
 				sys.mouse.bufferempty = 0;
 				val |= 0x01;
-				scc_set_reg_b(0,val);
+				scc_set_reg_b(scc, 0,val);
 			}
 		}
 		break;
 	case 1:
-		scc_w(machine, 2,(UINT8)data);
+		scc_w(scc, 2,(UINT8)data);
 		break;
 	case 2:
-		scc_w(machine, 1,(UINT8)data);
+		scc_w(scc, 1,(UINT8)data);
 		break;
 	case 3:
-		scc_w(machine, 3,(UINT8)data);
+		scc_w(scc, 3,(UINT8)data);
 		break;
 	}
-	prev = scc_get_reg_b(5) & 0x02;
+	prev = scc_get_reg_b(scc, 5) & 0x02;
 }
 
 static TIMER_CALLBACK(x68k_scc_ack)
 {
+	const device_config *scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
 	if(sys.mouse.bufferempty != 0)  // nothing to do if the mouse data buffer is empty
 		return;
 
@@ -623,11 +612,11 @@ static TIMER_CALLBACK(x68k_scc_ack)
 		return;
 
 	// hard-code the IRQ vector for now, until the SCC code is more complete
-	if((scc_get_reg_a(9) & 0x08) || (scc_get_reg_b(9) & 0x08))  // SCC reg WR9 is the same for both channels
+	if((scc_get_reg_a(scc, 9) & 0x08) || (scc_get_reg_b(scc, 9) & 0x08))  // SCC reg WR9 is the same for both channels
 	{
-		if((scc_get_reg_b(1) & 0x18) != 0)  // if bits 3 and 4 of WR1 are 0, then Rx IRQs are disabled on this channel
+		if((scc_get_reg_b(scc, 1) & 0x18) != 0)  // if bits 3 and 4 of WR1 are 0, then Rx IRQs are disabled on this channel
 		{
-			if(scc_get_reg_b(5) & 0x02)  // RTS signal
+			if(scc_get_reg_b(scc, 5) & 0x02)  // RTS signal
 			{
 				sys.mouse.irqactive = 1;
 				current_vector[5] = 0x54;
@@ -674,6 +663,14 @@ WRITE8_HANDLER( ppi_port_b_w )
 }
 #endif
 
+/* PPI port C (Joystick control, R/W)
+   bit 7    - IOC7 - Function B operation of joystick 1 (?)
+   bit 6    - IOC6 - Function A operation of joystick 1 (?)
+   bit 5    - IOC5 - Enable Joystick 2
+   bit 4    - IOC4 - Enable Joystick 1
+   bits 3,2 - ADPCM Sample rate
+   bits 1,0 - ADPCM Pan
+*/
 static WRITE8_HANDLER( ppi_port_c_w )
 {
 	// ADPCM / Joystick control
@@ -800,24 +797,6 @@ static void fdc_drq(int state, int read_write)
 	sys.fdc.drq_state = state;
 }
 
-static WRITE16_HANDLER( x68k_hdc_w )
-{
-	// SASI HDC - HDDs are not a required system component, so this is something to be done later
-	logerror("SASI: write to HDC, offset %04x, data %04x\n",offset,data);
-}
-
-static READ16_HANDLER( x68k_hdc_r )
-{
-	logerror("SASI: [%08x] read from HDC, offset %04x\n",activecpu_get_pc(),offset);
-	switch(offset)
-	{
-	case 0x01:
-		return 0x00;
-	default:
-		return 0xff;
-	}
-}
-
 static WRITE16_HANDLER( x68k_fm_w )
 {
 	switch(offset)
@@ -849,7 +828,22 @@ static WRITE8_HANDLER( x68k_ct_w )
 	nec765_set_ready_state(data & 0x01);
 }
 
-
+/*
+ Custom I/O controller at 0xe9c000
+ 0xe9c001 (R) - Interrupt status
+ 0xe9c001 (W) - Interrupt mask (low nibble only)
+                - bit 7 = FDC interrupt
+                - bit 6 = FDD interrupt
+                - bit 5 = Printer Busy signal
+                - bit 4 = HDD interrupt
+                - bit 3 = HDD interrupts enabled
+                - bit 2 = FDC interrupts enabled
+                - bit 1 = FDD interrupts enabled
+                - bit 0 = Printer interrupts enabled
+ 0xe9c003 (W) - Interrupt vector
+                - bits 7-2 = vector
+                - bits 1,0 = device (00 = FDC, 01 = FDD, 10 = HDD, 11 = Printer)
+*/
 static WRITE16_HANDLER( x68k_ioc_w )
 {
 	switch(offset)
@@ -894,6 +888,26 @@ static READ16_HANDLER( x68k_ioc_r )
 	}
 }
 
+/*
+ System ports at 0xe8e000
+ Port 1 (0xe8e001) - Monitor contrast (bits 3-0)
+ Port 2 (0xe8e003) - Display / 3D scope control
+                     - bit 3 - Display control signal (0 = on)
+                     - bit 1 - 3D scope left shutter (0 = closed)
+                     - bit 0 - 3D scope right shutter
+ Port 3 (0xe8e005) - Colour image unit control (bits 3-0)
+ Port 4 (0xe8e007) - Keyboard/NMI/Dot clock
+                     - bit 3 - (R) 1 = Keyboard connected, (W) 1 = Key data can be transmitted
+                     - bit 1 - NMI Reset
+                     - bit 0 - HRL - high resolution dot clock - 1 = 1/2, 1/4, 1/8, 0 = 1/2, 1/3, 1/6 (normal)
+ Port 5 (0xe8e009) - ROM (bits 7-4)/DRAM (bits 3-0) wait, X68030 only
+ Port 6 (0xe8e00b) - CPU type and clock speed (XVI or later only, X68000 returns 0xFF)
+                     - bits 7-4 - CPU Type (1100 = 68040, 1101 = 68030, 1110 = 68020, 1111 = 68000)
+                     - bits 3-0 - clock speed (1001 = 50MHz, 40, 33, 25, 20, 16, 1111 = 10MHz)
+ Port 7 (0xe8e00d) - SRAM write enable - if 0x31 is written to this port, writing to SRAM is allowed.
+                                         Any other value, then SRAM is read only.
+ Port 8 (0xe8e00f) - Power off control - write 0x00, 0x0f, 0x0f sequentially to switch power off.
+*/
 static WRITE16_HANDLER( x68k_sysport_w )
 {
 	render_container* container;
@@ -946,7 +960,7 @@ static READ16_HANDLER( x68k_mfp_r )
 	return mc68901_register_r(x68k_mfp, offset);
 }
 
-/*
+#ifdef UNUSED_FUNCTION
 READ16_HANDLER( x68k_mfp_r )
 {
     int ret;
@@ -1008,7 +1022,7 @@ READ16_HANDLER( x68k_mfp_r )
         return 0xff;
     }
 }
-*/
+#endif
 
 static WRITE16_HANDLER( x68k_mfp_w )
 {
@@ -1188,8 +1202,8 @@ static WRITE16_HANDLER( x68k_sram_w )
 static READ16_HANDLER( x68k_sram_r )
 {
 	// HACKS!
-	if(offset == 0x5a/2)  // 0x5a should be 0 if no SASI HDs are present.
-		return 0x0000;
+//	if(offset == 0x5a/2)  // 0x5a should be 0 if no SASI HDs are present.
+//		return 0x0000;
 	if(offset == 0x08/2)
 		return mess_ram_size >> 16;  // RAM size
 	/*if(offset == 0x46/2)
@@ -1411,7 +1425,7 @@ static void x68k_dma_error(int channel, int irq)
 	}
 }
 
-static void x68k_fm_irq(int irq)
+static void x68k_fm_irq(running_machine *machine, int irq)
 {
 	if(irq == CLEAR_LINE)
 	{
@@ -1527,7 +1541,7 @@ static ADDRESS_MAP_START(x68k_map, ADDRESS_SPACE_PROGRAM, 16)
 	AM_RANGE(0xe90000, 0xe91fff) AM_READWRITE(x68k_fm_r, x68k_fm_w)
 	AM_RANGE(0xe92000, 0xe93fff) AM_READWRITE(x68k_adpcm_r, x68k_adpcm_w)
 	AM_RANGE(0xe94000, 0xe95fff) AM_READWRITE(x68k_fdc_r, x68k_fdc_w)
-	AM_RANGE(0xe96000, 0xe97fff) AM_READWRITE(x68k_hdc_r, x68k_hdc_w)
+	AM_RANGE(0xe96000, 0xe97fff) AM_DEVREADWRITE(X68KHDC,"x68k_hdc",x68k_hdc_r, x68k_hdc_w)
 	AM_RANGE(0xe98000, 0xe99fff) AM_READWRITE(x68k_scc_r, x68k_scc_w)
 	AM_RANGE(0xe9a000, 0xe9bfff) AM_DEVREADWRITE(PPI8255, "ppi8255", x68k_ppi_r, x68k_ppi_w)
 	AM_RANGE(0xe9c000, 0xe9dfff) AM_READWRITE(x68k_ioc_r, x68k_ioc_w)
@@ -1569,8 +1583,8 @@ static const ppi8255_interface ppi_interface =
 static const hd63450_intf dmac_interface =
 {
 	0,  // CPU - 68000
-	{STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_USEC(4),STATIC_ATTOTIME_IN_USEC(32)},  // Cycle steal mode timing (guesstimate)
-	{STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_NSEC(50),STATIC_ATTOTIME_IN_NSEC(50),STATIC_ATTOTIME_IN_NSEC(50)}, // Burst mode timing (guesstimate)
+	{STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_NSEC(450),STATIC_ATTOTIME_IN_USEC(4),STATIC_ATTOTIME_IN_USEC(32)},  // Cycle steal mode timing (guesstimate)
+	{STATIC_ATTOTIME_IN_USEC(32),STATIC_ATTOTIME_IN_NSEC(450),STATIC_ATTOTIME_IN_NSEC(50),STATIC_ATTOTIME_IN_NSEC(50)}, // Burst mode timing (guesstimate)
 	x68k_dma_end,
 	x68k_dma_error,
 	{ x68k_fdc_read_byte, 0, 0, 0 },
@@ -1589,11 +1603,6 @@ static const struct YM2151interface ym2151_interface =
 {
 	x68k_fm_irq,
 	x68k_ct_w  // CT1, CT2 from YM2151 port 0x1b
-};
-
-static const struct scc8530_interface scc_interface =
-{
-	NULL//x68k_scc_ack
 };
 
 static const struct rp5c15_interface rtc_intf =
@@ -1888,7 +1897,7 @@ static MACHINE_RESET( x68000 )
        more or less do the same job */
 
 	int drive;
-	UINT8* romdata = memory_region(REGION_USER2);
+	UINT8* romdata = memory_region(machine, REGION_USER2);
 	attotime irq_time;
 
 	memset(mess_ram,0,mess_ram_size);
@@ -1918,7 +1927,7 @@ static MACHINE_RESET( x68000 )
 	sys.crtc.reg[7] = 552;  // Vertical end
 	sys.crtc.reg[8] = 27;   // Horizontal adjust
 
-	nec765_reset(0);
+	nec765_reset(machine, 0);
 	mfp_init();
 
 	x68k_scanline = video_screen_get_vpos(machine->primary_screen);// = sys.crtc.reg[6];  // Vertical start
@@ -1937,7 +1946,7 @@ static MACHINE_RESET( x68000 )
 static MACHINE_START( x68000 )
 {
 	/*  Install RAM handlers  */
-	x68k_spriteram = (UINT16*)memory_region(REGION_USER1);
+	x68k_spriteram = (UINT16*)memory_region(machine, REGION_USER1);
 	memory_install_read16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(read16_machine_func)1);
 	memory_install_write16_handler(machine, 0,ADDRESS_SPACE_PROGRAM,0x000000,mess_ram_size-1,mess_ram_size-1,0,(write16_machine_func)1);
 	memory_set_bankptr(1,mess_ram);
@@ -1958,14 +1967,14 @@ static MACHINE_START( x68000 )
 	timer_adjust_periodic(mouse_timer, attotime_zero, 0, ATTOTIME_IN_MSEC(1));  // a guess for now
 	sys.mouse.inputtype = 0;
 
-	nec765_init(&fdc_interface,NEC72065,NEC765_RDY_PIN_CONNECTED);
-	nec765_reset(0);
+	nec765_init(machine, &fdc_interface,NEC72065,NEC765_RDY_PIN_CONNECTED);
+	nec765_reset(machine, 0);
 }
 
 static DRIVER_INIT( x68000 )
 {
-	unsigned char* rom = memory_region(REGION_CPU1);
-	unsigned char* user2 = memory_region(REGION_USER2);
+	unsigned char* rom = memory_region(machine, REGION_CPU1);
+	unsigned char* user2 = memory_region(machine, REGION_USER2);
 	gvram = auto_malloc(0x200000);
 	memset(gvram,0,0x200000);
 	tvram = auto_malloc(0x080000);
@@ -1978,7 +1987,7 @@ static DRIVER_INIT( x68000 )
 
 #ifdef USE_PREDEFINED_SRAM
 	{
-		unsigned char* ramptr = memory_region(REGION_USER3);
+		unsigned char* ramptr = memory_region(machine, REGION_USER3);
 		memcpy(sram,ramptr,0x4000);
 	}
 #endif
@@ -1989,7 +1998,6 @@ static DRIVER_INIT( x68000 )
 	memset(&sys,0,sizeof(sys));
 
 	mfp_init();
-	scc_init(&scc_interface);
 	rp5c15_init(machine, &rtc_intf);
 
 	cpunum_set_irq_callback(0, x68k_int_ack);
@@ -2025,6 +2033,10 @@ static MACHINE_DRIVER_START( x68000 )
 	MDRV_DEVICE_ADD( "hd63450", HD63450 )
 	MDRV_DEVICE_CONFIG( dmac_interface )
 
+	MDRV_DEVICE_ADD( "x68k_hdc", X68KHDC )
+
+	MDRV_DEVICE_ADD( "scc", SCC8530 )
+
     /* video hardware */
 	MDRV_SCREEN_ADD("main", RASTER)
 	MDRV_SCREEN_REFRESH_RATE(55.45)
@@ -2052,7 +2064,7 @@ static MACHINE_DRIVER_START( x68000 )
 MACHINE_DRIVER_END
 
 
-SYSTEM_CONFIG_START(x68000)
+static SYSTEM_CONFIG_START(x68000)
 	CONFIG_DEVICE(x68k_floppy_getinfo)
 	CONFIG_RAM(0x100000)
 	CONFIG_RAM(0x200000)

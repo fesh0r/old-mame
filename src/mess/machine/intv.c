@@ -17,7 +17,7 @@ WRITE16_HANDLER ( intvkbd_dualport16_w )
 	COMBINE_DATA(&intvkbd_dualport_ram[offset]);
 
 	/* copy the LSB over to the 6502 OP RAM, in case they are opcodes */
-	RAM	 = memory_region(REGION_CPU2);
+	RAM	 = memory_region(machine, REGION_CPU2);
 	RAM[offset] = (UINT8) (data >> 0);
 }
 
@@ -34,7 +34,7 @@ WRITE8_HANDLER ( intvkbd_dualport8_lsb_w )
 	intvkbd_dualport_ram[offset] |= ((UINT16) data) << 0;
 
 	/* copy over to the 6502 OP RAM, in case they are opcodes */
-	RAM	 = memory_region(REGION_CPU2);
+	RAM	 = memory_region(machine, REGION_CPU2);
 	RAM[offset] = data;
 }
 
@@ -53,27 +53,27 @@ READ8_HANDLER ( intvkbd_dualport8_msb_r )
 		switch (offset)
 		{
 			case 0x000:
-				rv = input_port_read_indexed(machine, 10) & 0x80;
+				rv = input_port_read(machine, "TEST") & 0x80;
 				logerror("TAPE: Read %02x from 0x40%02x - XOR Data?\n",rv,offset);
 				break;
 			case 0x001:
-				rv = (input_port_read_indexed(machine, 10) & 0x40) << 1;
+				rv = (input_port_read(machine, "TEST") & 0x40) << 1;
 				logerror("TAPE: Read %02x from 0x40%02x - Sense 1?\n",rv,offset);
 				break;
 			case 0x002:
-				rv = (input_port_read_indexed(machine, 10) & 0x20) << 2;
+				rv = (input_port_read(machine, "TEST") & 0x20) << 2;
 				logerror("TAPE: Read %02x from 0x40%02x - Sense 2?\n",rv,offset);
 				break;
 			case 0x003:
-				rv = (input_port_read_indexed(machine, 10) & 0x10) << 3;
+				rv = (input_port_read(machine, "TEST") & 0x10) << 3;
 				logerror("TAPE: Read %02x from 0x40%02x - Tape Present\n",rv,offset);
 				break;
 			case 0x004:
-				rv = (input_port_read_indexed(machine, 10) & 0x08) << 4;
+				rv = (input_port_read(machine, "TEST") & 0x08) << 4;
 				logerror("TAPE: Read %02x from 0x40%02x - Comp (339/1)\n",rv,offset);
 				break;
 			case 0x005:
-				rv = (input_port_read_indexed(machine, 10) & 0x04) << 5;
+				rv = (input_port_read(machine, "TEST") & 0x04) << 5;
 				logerror("TAPE: Read %02x from 0x40%02x - Clocked Comp (339/13)\n",rv,offset);
 				break;
 			case 0x006:
@@ -93,25 +93,25 @@ READ8_HANDLER ( intvkbd_dualport8_msb_r )
 			case 0x060:	/* Keyboard Read */
 				rv = 0xff;
 				if (intvkbd_keyboard_col == 0)
-					rv = input_port_read_indexed(machine, 0);
+					rv = input_port_read(machine, "ROW0");
 				if (intvkbd_keyboard_col == 1)
-					rv = input_port_read_indexed(machine, 1);
+					rv = input_port_read(machine, "ROW1");
 				if (intvkbd_keyboard_col == 2)
-					rv = input_port_read_indexed(machine, 2);
+					rv = input_port_read(machine, "ROW2");
 				if (intvkbd_keyboard_col == 3)
-					rv = input_port_read_indexed(machine, 3);
+					rv = input_port_read(machine, "ROW3");
 				if (intvkbd_keyboard_col == 4)
-					rv = input_port_read_indexed(machine, 4);
+					rv = input_port_read(machine, "ROW4");
 				if (intvkbd_keyboard_col == 5)
-					rv = input_port_read_indexed(machine, 5);
+					rv = input_port_read(machine, "ROW5");
 				if (intvkbd_keyboard_col == 6)
-					rv = input_port_read_indexed(machine, 6);
+					rv = input_port_read(machine, "ROW6");
 				if (intvkbd_keyboard_col == 7)
-					rv = input_port_read_indexed(machine, 7);
+					rv = input_port_read(machine, "ROW7");
 				if (intvkbd_keyboard_col == 8)
-					rv = input_port_read_indexed(machine, 8);
+					rv = input_port_read(machine, "ROW8");
 				if (intvkbd_keyboard_col == 9)
-					rv = input_port_read_indexed(machine, 9);
+					rv = input_port_read(machine, "ROW9");
 				break;
 			case 0x80:
 				rv = 0x00;
@@ -331,7 +331,7 @@ static int intv_load_rom_file(const device_config *image, int required)
 	UINT8 high_byte;
 	UINT8 low_byte;
 
-	UINT8 *memory = memory_region(REGION_CPU1);
+	UINT8 *memory = memory_region(image->machine, REGION_CPU1);
 
 	image_fread(image, &temp,1);			/* header */
 	if (temp != 0xa8)
@@ -379,7 +379,7 @@ DEVICE_START( intv_cart )
 {
 	/* First, initialize these as empty so that the intellivision
 	 * will think that the playcable and keyboard are not attached */
-	UINT8 *memory = memory_region(REGION_CPU1);
+	UINT8 *memory = memory_region(device->machine, REGION_CPU1);
 
 	/* assume playcable is absent */
 	memory[0x4800<<1] = 0xff;
@@ -394,7 +394,7 @@ DEVICE_IMAGE_LOAD( intv_cart )
 {
 	/* First, initialize these as empty so that the intellivision
 	 * will think that the playcable and keyboard are not attached */
-	UINT8 *memory = memory_region(REGION_CPU1);
+	UINT8 *memory = memory_region(image->machine, REGION_CPU1);
 
 	/* assume playcable is absent */
 	memory[0x4800<<1] = 0xff;
@@ -458,13 +458,13 @@ static const UINT8 controller_table[] =
 		switch(byte)
 		{
 			case 0:
-				value = input_port_read_indexed(machine, 0);
+				value = input_port_read(machine, "IN0");
 				break;
 			case 1:
-				value = input_port_read_indexed(machine, 1);
+				value = input_port_read(machine, "IN1");
 				break;
 			case 2:
-				value = input_port_read_indexed(machine, 2);
+				value = input_port_read(machine, "IN2");
 				break;
 		}
 		for(bit=7; bit>=0; bit--)
@@ -492,7 +492,7 @@ DEVICE_IMAGE_LOAD( intvkbd_cart )
 	{
 		/* First, initialize these as empty so that the intellivision
 		 * will think that the playcable is not attached */
-		UINT8 *memory = memory_region(REGION_CPU1);
+		UINT8 *memory = memory_region(image->machine, REGION_CPU1);
 
 		/* assume playcable is absent */
 		memory[0x4800<<1] = 0xff;
@@ -503,7 +503,7 @@ DEVICE_IMAGE_LOAD( intvkbd_cart )
 
 	if (id == 1) /* Keyboard component cartridge slot */
 	{
-		UINT8 *memory = memory_region(REGION_CPU2);
+		UINT8 *memory = memory_region(image->machine, REGION_CPU2);
 
 		/* Assume an 8K cart, like BASIC */
 		image_fread(image,&memory[0xe000],0x2000);

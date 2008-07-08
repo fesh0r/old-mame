@@ -11,7 +11,6 @@ TODO:
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "911_vdt.h"
 #include "911_chr.h"
 #include "911_key.h"
@@ -65,14 +64,14 @@ GFXDECODE_START( vdt911 )
 	GFXDECODE_ENTRY( vdt911_chr_region, vdt911_frenchWP_chr_offset, fontlayout_7bit, 0, 4 )
 GFXDECODE_END
 
-const unsigned char vdt911_colors[] =
+static const unsigned char vdt911_colors[] =
 {
 	0x00,0x00,0x00,	/* black */
 	0xC0,0xC0,0xC0,	/* low intensity */
 	0xFF,0xFF,0xFF	/* high intensity */
 };
 
-const unsigned short vdt911_palette[] =
+static const unsigned short vdt911_palette[] =
 {
 	0, 2,	/* high intensity */
 	0, 1,	/* low intensity */
@@ -174,54 +173,57 @@ static void apply_char_overrides(int nb_char_overrides, const char_override_t ch
 /*
 	Initialize the 911 vdt core
 */
-void vdt911_init(void)
+void vdt911_init(running_machine *machine)
 {
 	UINT8 *base;
+	UINT8 *chr = memory_region(machine, vdt911_chr_region);
 
 	memset(vdt, 0, sizeof(vdt));
 
 	/* set up US character definitions */
-	base = memory_region(vdt911_chr_region)+vdt911_US_chr_offset;
+	base = chr+vdt911_US_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 
 	/* set up UK character definitions */
-	base = memory_region(vdt911_chr_region)+vdt911_UK_chr_offset;
+	base = chr+vdt911_UK_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 	apply_char_overrides(sizeof(UK_overrides)/sizeof(char_override_t), UK_overrides, base);
 
 	/* French character set is identical to US character set */
 
 	/* set up German character definitions */
-	base = memory_region(vdt911_chr_region)+vdt911_german_chr_offset;
+	base = chr+vdt911_german_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 	apply_char_overrides(sizeof(german_overrides)/sizeof(char_override_t), german_overrides, base);
 
 	/* set up Swedish/Finnish character definitions */
-	base = memory_region(vdt911_chr_region)+vdt911_swedish_chr_offset;
+	base = chr+vdt911_swedish_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 	apply_char_overrides(sizeof(swedish_overrides)/sizeof(char_override_t), swedish_overrides, base);
 
 	/* set up Norwegian/Danish character definitions */
-	base = memory_region(vdt911_chr_region)+vdt911_norwegian_chr_offset;
+	base = chr+vdt911_norwegian_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 	apply_char_overrides(sizeof(norwegian_overrides)/sizeof(char_override_t), norwegian_overrides, base);
 
 	/* set up Katakana Japanese character definitions */
-	base = memory_region(vdt911_chr_region)+vdt911_japanese_chr_offset;
+	base = chr+vdt911_japanese_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 	apply_char_overrides(sizeof(japanese_overrides)/sizeof(char_override_t), japanese_overrides, base);
-	base = memory_region(vdt911_chr_region)+vdt911_japanese_chr_offset+128*vdt911_single_char_len;
+	base = chr+vdt911_japanese_chr_offset+128*vdt911_single_char_len;
 	copy_character_matrix_array(char_defs+char_defs_katakana_base, base);
 
+#if 0
 	/* set up Arabic character definitions */
-	/*base = memory_region(vdt911_chr_region)+vdt911_arabic_chr_offset;
+	base = chr+vdt911_arabic_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 	apply_char_overrides(sizeof(arabic_overrides)/sizeof(char_override_t), arabic_overrides, base);
-	base = memory_region(vdt911_chr_region)+vdt911_arabic_chr_offset+128*vdt911_single_char_len;
-	copy_character_matrix_array(char_defs+char_defs_arabic_base, base);*/
+	base = chr+vdt911_arabic_chr_offset+128*vdt911_single_char_len;
+	copy_character_matrix_array(char_defs+char_defs_arabic_base, base);
+#endif
 
 	/* set up French word processing character definitions */
-	base = memory_region(vdt911_chr_region)+vdt911_frenchWP_chr_offset;
+	base = chr+vdt911_frenchWP_chr_offset;
 	copy_character_matrix_array(char_defs+char_defs_US_base, base);
 	apply_char_overrides(sizeof(frenchWP_overrides)/sizeof(char_override_t), frenchWP_overrides, base);
 }
@@ -551,7 +553,7 @@ static const unsigned char (*const key_translate[])[91] =
 	keyboard handler: should be called regularly by machine code, for instance
 	every Video Blank Interrupt.
 */
-void vdt911_keyboard(int unit)
+void vdt911_keyboard(running_machine *machine, int unit)
 {
 	typedef enum
 	{
@@ -573,12 +575,14 @@ void vdt911_keyboard(int unit)
 	int i, j;
 	modifier_state_t modifier_state;
 	int repeat_mode;
-
+	char port[6];
 
 	/* read current key state */
 	for (i=0; i<6; i++)
-		key_buf[i] = input_port_read_indexed(Machine, i);
-
+	{
+		sprintf(port, "KEY%d", i);
+		key_buf[i] = input_port_read(machine, port);
+	}
 
 	/* parse modifier keys */
 	if ((USES_8BIT_CHARCODES(unit))

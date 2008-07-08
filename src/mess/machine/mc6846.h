@@ -27,7 +27,7 @@ struct _mc6846_interface
   write8_machine_func out_cto_func; /* 1-bit output */
 
   /* timer interrupt */
-  void ( * irq_func ) ( int state );
+  void ( * irq_func ) ( running_machine *machine, int state );
 
   /* CPU identifier (defines the clock rate) */
   int cpunum;
@@ -46,8 +46,8 @@ extern READ8_HANDLER  ( mc6846_r );
 extern WRITE8_HANDLER ( mc6846_w );
 
 /* asynchronous write from outside world into interrupt-generating pins */
-extern void mc6846_set_input_cp1 ( int data );
-extern void mc6846_set_input_cp2 ( int data );
+extern void mc6846_set_input_cp1 ( running_machine *machine, int data );
+extern void mc6846_set_input_cp2 ( running_machine *machine, int data );
 
 /* polling from outside world */
 extern UINT8  mc6846_get_output_port ( running_machine *machine );

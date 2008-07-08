@@ -21,7 +21,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "733_asr.h"
 
 #define MAX_ASR 1
@@ -107,7 +106,7 @@ PALETTE_INIT( asr733 )
 /*
 	Initialize the asr core
 */
-void asr733_init(void)
+void asr733_init(running_machine *machine)
 {
 	UINT8 *dst;
 
@@ -163,7 +162,7 @@ void asr733_init(void)
 		0x00,0x68,0xb0,0x00,0x00,0x00,0x00,0x00,0x20,0x50,0x20,0x50,0xa8,0x50,0x00,0x00
 	};
 
-	dst = memory_region(asr733_chr_region);
+	dst = memory_region(machine, asr733_chr_region);
 
 	memcpy(dst, fontdata6x8, asrfontdata_size);
 }
@@ -606,7 +605,7 @@ static const unsigned char key_translate[3][51] =
 	keyboard handler: should be called regularly by machine code, for instance
 	every Video Blank Interrupt.
 */
-void asr733_keyboard(int unit)
+void asr733_keyboard(running_machine *machine, int unit)
 {
 	typedef enum
 	{
@@ -625,11 +624,16 @@ void asr733_keyboard(int unit)
 	int i, j;
 	modifier_state_t modifier_state;
 	int repeat_mode;
-
+	char port[6];
 
 	/* read current key state */
-	for (i=0; i<6; i++)
-		key_buf[i] = input_port_read_indexed(Machine, i);
+	/* 2008-05 FP: in 733_asr.h there are only 4 input ports defined... */
+	/* for (i=0; i<6; i++) */
+	for (i=0; i<4; i++)
+	{
+		sprintf(port, "KEY%d", i);
+		key_buf[i] = input_port_read(machine, port);
+	}
 
 	/* process key modifiers */
 	if (key_buf[1] & 0x0200)

@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "video/vector.h"
 #include "machine/6522via.h"
 #include "cpu/m6809/m6809.h"
@@ -75,10 +74,11 @@ static int vectrex_verify_cart (char *data)
 
 DEVICE_IMAGE_LOAD( vectrex_cart )
 {
-	image_fread(image, memory_region(REGION_CPU1), 0x8000);
+	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
+	image_fread(image, mem, 0x8000);
 
 	/* check image! */
-	if (vectrex_verify_cart((char*)memory_region(REGION_CPU1)) == IMAGE_VERIFY_FAIL)
+	if (vectrex_verify_cart((char*)mem) == IMAGE_VERIFY_FAIL)
 	{
 		logerror("Invalid image!\n");
 		return INIT_FAIL;
@@ -94,17 +94,17 @@ DEVICE_IMAGE_LOAD( vectrex_cart )
 	/* slightly prettier than having to hardcode CRCs */
 
 	/* handle 3D Narrow Escape but skip the 2-d hack of it from Fred Taft */
-	if (!memcmp(memory_region(REGION_CPU1)+0x11,"NARROW",6) && (((char*)memory_region(REGION_CPU1))[0x39] == 0x0c))
+	if (!memcmp(mem+0x11,"NARROW",6) && (((char*)mem)[0x39] == 0x0c))
 	{
 		vectrex_imager_angles = narrow_escape_angles;
 	}
 
-	if (!memcmp(memory_region(REGION_CPU1)+0x11,"CRAZY COASTER",13))
+	if (!memcmp(mem+0x11,"CRAZY COASTER",13))
 	{
 		vectrex_imager_angles = crazy_coaster_angles;
 	}
 
-	if (!memcmp(memory_region(REGION_CPU1)+0x11,"3D MINE STORM",13))
+	if (!memcmp(mem+0x11,"3D MINE STORM",13))
 	{
 		vectrex_imager_angles = minestorm_3d_angles;
 
@@ -211,16 +211,34 @@ void vectrex_configuration(running_machine *machine)
 
 *********************************************************************/
 
-void v_via_irq (int level)
+void v_via_irq (running_machine *machine, int level)
 {
-	cpunum_set_input_line(Machine, 0, M6809_IRQ_LINE, level);
+	cpunum_set_input_line(machine, 0, M6809_IRQ_LINE, level);
 }
 
 READ8_HANDLER( v_via_pb_r )
 {
 	int pot;
-	pot = input_port_read_indexed(machine, ((vectrex_via_out[PORTB] & 0x6) >> 1)) - 0x80;
+	char port[8];
 
+	switch (((vectrex_via_out[PORTB] & 0x6) >> 1))
+	{
+		case 0:
+			sprintf(port, "CONTR1X");
+			break;
+		case 1:
+			sprintf(port, "CONTR1Y");
+			break;
+		case 2:
+			sprintf(port, "CONTR2X");
+			break;
+		case 3:
+			sprintf(port, "CONTR2Y");
+			break;
+	}
+	
+	pot = input_port_read(machine, port) - 0x80; 
+	
 	if (pot > (signed char)vectrex_via_out[PORTA])
 		vectrex_via_out[PORTB] |= 0x20;
 	else
@@ -281,8 +299,8 @@ TIMER_CALLBACK(vectrex_imager_eye)
 			timer_set (double_to_attotime(rtime * 0.50), NULL, 1, vectrex_imager_eye);
 
 			/* Index hole sensor is connected to IO7 which triggers also CA1 of VIA */
-			via_set_input_ca1(0, 1);
-			via_set_input_ca1(0, 0);
+			via_set_input_ca1(machine, 0, 1);
+			via_set_input_ca1(machine, 0, 0);
 			vectrex_imager_pinlevel |= 0x80;
 			timer_set (double_to_attotime(rtime / 360.0), &vectrex_imager_pinlevel, 0, update_level);
 		}

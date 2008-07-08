@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "video/ppu2c0x.h"
 #include "includes/nes.h"
@@ -73,10 +72,10 @@ static const device_config *cartslot_image(void)
 static void init_nes_core (running_machine *machine)
 {
 	/* We set these here in case they weren't set in the cart loader */
-	nes.rom = memory_region(REGION_CPU1);
-	nes.vrom = memory_region(REGION_GFX1);
-	nes.vram = memory_region(REGION_GFX2);
-	nes.wram = memory_region(REGION_USER1);
+	nes.rom = memory_region(machine, REGION_CPU1);
+	nes.vrom = memory_region(machine, REGION_GFX1);
+	nes.vram = memory_region(machine, REGION_GFX2);
+	nes.wram = memory_region(machine, REGION_USER1);
 
 	/* Brutal hack put in as a consequence of the new memory system; we really
 	 * need to fix the NES code */
@@ -203,7 +202,6 @@ static int zapper_hit_pixel(running_machine *machine, const nes_input *input)
 	UINT16 pix = 0;
 	rgb_t col;
 	UINT8 r, g, b;
-	extern bitmap_t *nes_zapper_hack;
 
 	if (nes_zapper_hack)
 		pix = *BITMAP_ADDR16(nes_zapper_hack, input->i2, input->i1);
@@ -299,7 +297,7 @@ static int zapper_hit_pixel(running_machine *machine, const nes_input *input)
 
 
 
-static void nes_read_input_device(int cfg, nes_input *vals, int pad_port,
+static void nes_read_input_device(running_machine *machine, int cfg, nes_input *vals, int pad_port,
 	int supports_zapper, int paddle_port)
 {
 	char port[5];
@@ -314,31 +312,31 @@ static void nes_read_input_device(int cfg, nes_input *vals, int pad_port,
 			if (pad_port >= 0)
 			{
 				sprintf(port, "PAD%d", pad_port+1);
-				vals->i0 = input_port_read(Machine, port);
+				vals->i0 = input_port_read(machine, port);
 			}
 			break;
 
 		case 0x02:	/* zapper 1 */
 			if (supports_zapper)
 			{
-				vals->i0 = input_port_read(Machine, "ZAPPER1_T");
-				vals->i1 = input_port_read(Machine, "ZAPPER1_X");
-				vals->i2 = input_port_read(Machine, "ZAPPER1_Y");
+				vals->i0 = input_port_read(machine, "ZAPPER1_T");
+				vals->i1 = input_port_read(machine, "ZAPPER1_X");
+				vals->i2 = input_port_read(machine, "ZAPPER1_Y");
 			}
 			break;
 
 		case 0x03:	/* zapper 2 */
 			if (supports_zapper)
 			{
-				vals->i0 = input_port_read(Machine, "ZAPPER2_T");
-				vals->i1 = input_port_read(Machine, "ZAPPER2_X");
-				vals->i2 = input_port_read(Machine, "ZAPPER2_Y");
+				vals->i0 = input_port_read(machine, "ZAPPER2_T");
+				vals->i1 = input_port_read(machine, "ZAPPER2_X");
+				vals->i2 = input_port_read(machine, "ZAPPER2_Y");
 			}
 			break;
 
 		case 0x04:	/* arkanoid paddle */
 			if (paddle_port >= 0)
-				vals->i0 = (UINT8) ((UINT8) input_port_read(Machine, "PADDLE") + (UINT8)0x52) ^ 0xff;
+				vals->i0 = (UINT8) ((UINT8) input_port_read(machine, "PADDLE") + (UINT8)0x52) ^ 0xff;
 			break;
 	}
 }
@@ -364,10 +362,10 @@ WRITE8_HANDLER ( nes_IN0_w )
 	cfg = input_port_read(machine, "CONTROLLERS");
 
 	/* Read the input devices */
-	nes_read_input_device(cfg >>  0, &in_0, 0,  TRUE, -1);
-	nes_read_input_device(cfg >>  4, &in_1, 1,  TRUE,  1);
-	nes_read_input_device(cfg >>  8, &in_2, 2, FALSE, -1);
-	nes_read_input_device(cfg >> 12, &in_3, 3, FALSE, -1);
+	nes_read_input_device(machine, cfg >>  0, &in_0, 0,  TRUE, -1);
+	nes_read_input_device(machine, cfg >>  4, &in_1, 1,  TRUE,  1);
+	nes_read_input_device(machine, cfg >>  8, &in_2, 2, FALSE, -1);
+	nes_read_input_device(machine, cfg >> 12, &in_3, 3, FALSE, -1);
 
 	if (cfg & 0x0f00)
 		in_0.i0 |= (in_2.i0 << 8) | (0x08 << 16);
@@ -477,10 +475,10 @@ DEVICE_IMAGE_LOAD(nes_cart)
 	if (nes.chr_chunks)
 		new_memory_region(image->machine, REGION_GFX1, nes.chr_chunks * 0x2000,0);
 
-	nes.rom = memory_region(REGION_CPU1);
-	nes.vrom = memory_region(REGION_GFX1);
-	nes.vram = memory_region(REGION_GFX2);
-	nes.wram = memory_region(REGION_USER1);
+	nes.rom = memory_region(image->machine, REGION_CPU1);
+	nes.vrom = memory_region(image->machine, REGION_GFX1);
+	nes.vram = memory_region(image->machine, REGION_GFX2);
+	nes.wram = memory_region(image->machine, REGION_USER1);
 
 	/* Position past the header */
 	image_fseek (image, 16, SEEK_SET);

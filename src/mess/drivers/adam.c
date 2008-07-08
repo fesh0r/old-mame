@@ -192,7 +192,6 @@ TO DO:
 #include "devices/cartslot.h"
 #include "devices/mflopimg.h"
 #include "formats/adam_dsk.h"
-#include "deprecat.h"
 
 static ADDRESS_MAP_START( adam_mem, ADDRESS_SPACE_PROGRAM, 8)
 	AM_RANGE(0x00000, 0x01fff) AM_READWRITE( SMH_BANK1, SMH_BANK6 )
@@ -423,18 +422,18 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( adam_interrupt )
 {
-    TMS9928A_interrupt();
-    exploreKeyboard();
+    TMS9928A_interrupt(machine);
+    adam_explore_keyboard(machine);
 }
 
-static void adam_vdp_interrupt (int state)
+static void adam_vdp_interrupt (running_machine *machine, int state)
 {
 	static int last_state = 0;
 
     /* only if it goes up */
 	if (state && !last_state)
     {
-        cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, PULSE_LINE);
+        cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
     }
 	last_state = state;
 }
@@ -462,7 +461,7 @@ static TIMER_CALLBACK(adam_paddle_callback)
 		cpunum_set_input_line (machine, 0, 0, HOLD_LINE);
 }
 
-void set_memory_banks(void)
+void adam_set_memory_banks(running_machine *machine)
 {
 /*
 Lineal virtual memory map:
@@ -478,7 +477,7 @@ Lineal virtual memory map:
 0x3A000, 0x41fff -> Used to Write Protect ROMs
 */
 	UINT8 *BankBase;
-	BankBase = &memory_region(REGION_CPU1)[0x00000];
+	BankBase = &memory_region(machine, REGION_CPU1)[0x00000];
 
 	switch (adam_lower_memory)
 	{
@@ -574,13 +573,13 @@ Lineal virtual memory map:
 	}
 }
 
-void resetPCB(void)
+void adam_reset_pcb(running_machine *machine)
 {
     int i;
-    memory_region(REGION_CPU1)[adam_pcb] = 0x01;
+    memory_region(machine, REGION_CPU1)[adam_pcb] = 0x01;
 
 	for (i = 0; i < 15; i++)
-		memory_region(REGION_CPU1)[(adam_pcb+4+i*21)&0xFFFF]=i+1;
+		memory_region(machine, REGION_CPU1)[(adam_pcb+4+i*21)&0xFFFF]=i+1;
 }
 
 static const TMS9928a_interface tms9928a_interface =
@@ -612,11 +611,11 @@ static MACHINE_RESET( adam )
 	}
 
 	adam_net_data = 0;
-	set_memory_banks();
+	adam_set_memory_banks(machine);
 	adam_pcb=0xFEC0;
-	clear_keyboard_buffer();
+	adam_clear_keyboard_buffer();
 
-	memset(&memory_region(REGION_CPU1)[0x0000], 0xFF, 0x20000); /* Initializing RAM */
+	memset(&memory_region(machine, REGION_CPU1)[0x0000], 0xFF, 0x20000); /* Initializing RAM */
 	timer_pulse(ATTOTIME_IN_MSEC(20), NULL, 0, adam_paddle_callback);
 }
 
@@ -713,7 +712,7 @@ static void adam_floppy_getinfo(const mess_device_class *devclass, UINT32 state,
 	}
 }
 
-SYSTEM_CONFIG_START(adam)
+static SYSTEM_CONFIG_START(adam)
 	CONFIG_DEVICE(adam_cartslot_getinfo)
 	CONFIG_DEVICE(adam_floppy_getinfo)
 SYSTEM_CONFIG_END

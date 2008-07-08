@@ -1,3 +1,183 @@
+0.126
+
+New System Drivers Supported (in no particular order):
+------------------------------------------------------
+- Apogee BK-01 [Miodrag Milanovic]
+- Chuang Zao Zhe 50 / Dina / Personal Arcade [Curt Coder]
+- Galaksija Plus [Miodrag Milanovic]
+- Grundy NewBrain A/AD/MD (not working) [Curt Coder]
+- Mikrosha [Miodrag Milanovic]
+- OSCOM Nano  [Curt Coder, HobbyLabs]
+- Partner-01.01 [Miodrag Milanovic]
+- Radio-86RK [Miodrag Milanovic]
+- Sega SC-3000H [Curt Coder]
+
+
+
+System Driver Changes:
+----------------------
+- [ABC80] Fixed graphics mode and lower case natural input. [Curt Coder]
+
+- [ABC80X] Fixed lower case natural input. [Curt Coder]
+
+- [AMIGA] Fixed Keyboard. (bug #1590) [Roberto Zandona']
+
+- [AMIGACD / AMIGAFDC] Fixed a couple of regressions introduced in 0.125.
+  Still CDTV regression is not fixed. [Fabio Priuli]
+
+- [AQUARIUS] Added support for cartridges and .wav tape images (bug #158).
+  Fixed tilemap and added AY-3-8910 sound. [Curt Coder]
+
+- [B2M] Added SHA-1's.  [Fabio Priuli]
+
+- [BK] Added SHA-1's.  [Fabio Priuli]
+
+- [BW2] System is now working. [Curt Coder]
+
+- [C128] fix for c128 keyboard (bug #1240) [Roberto Zandona']
+
+- [C64] Joystick fix. (bug #1150) [Roberto Zandona']
+
+- [COCO] Changed MUX delay from 16us to 8us to fix a joystick input bug under
+  [Nitr]OS-9.  Since this delay was introduced to fix Photon (as per bug #655)
+  and we've been unable to test Photon, it is unclear whether this reintroduces
+  bug #655.  (bug #1608) [Nate Woods]
+
+- [COMMODORE] Large clean-up of input ports across Commodore machines (Amiga 
+  excluded) [Fabio Priuli]: 
+  * created machine/cbmipt.c to reduce duplicate code across drivers
+    and hidden dependencies; 
+  * converted to tagged inputs; 
+  * added partial natural keyboard support (keys are almost all there, 
+    but there are still a few issues); 
+  * replaced a lot of constants with direct reads to tagged inputs, 
+    cleaning up most of the Commodore files in includes/ ;
+  * simplified interrupt handling for c64 and c16;
+  * fixed pet.c machines which were starting Caps Lock'ed;
+  * propagated ':/;' fixes (from rev. 2542) to all the drivers with the 
+    same error;
+  * removed some dead code for cart handling (never fully implemented 
+    and obsolete after rev. 2421);
+  * removed hacked SID from c16;
+  * fixed key mappings to follow the real keyboard (also added plus4 
+    input ports for this same reason);
+  * documented keyboard layouts.
+
+- [COMX35] System is now working.  [Curt Coder, Marcel van Tongeren]
+
+- [DRAGON] Fixed timing regression introduced in 0.122u7.  (bug #1631)
+
+- [GALAXY] Added real video emulation [Miodrag Milanovic]
+
+- [GALAXY] GTP file support [Miodrag Milanovic]
+
+- [GAMEBOY] Added .bin extension.  [Fabio Priuli]
+
+- [GENESIS / MD] Fixed cheat issue [ShimaPong, Fabio Priuli]
+
+- [I8275] Implementation of Intel 8275 CRT [Miodrag Milanovic]
+
+- [MSX2] Fixed bug in floppy emulation.  [Yano Hirokuni]
+
+- [ORION] Added SHA-1's.  [Fabio Priuli]
+
+- [ORION] ROMDISK's are carts now [Miodrag Milanovic]
+
+- [ORION] Added support for "Lucksian Key" format disks [Miodrag Milanovic]
+
+- [PCE] Added .bin extension.  [Fabio Priuli]
+
+- [PCE] Remap inputs to match the usual MESS layout in e.g. NES and label
+  buttons I and II.  [Justin Kerk]
+
+- [PENTAGON] Added SHA-1's.  [Fabio Priuli]
+
+- [POKEMINI] Added .bin extension.  [Fabio Priuli]
+
+- [PRAV8DD] Merged prav8dda.  [Fabio Priuli]
+
+- [QL] Fixed lower case natural input. [Curt Coder]
+
+- [TI99] Fixed disk controller.  [Michael Zapf]
+
+- [SATURN] Fixed mem_mask regressions.  [R. Belmont]
+
+- [SATURN] Added ROM cartridge support. [R. Belmont]
+
+- [SC3000] Added tape support. [Curt Coder]
+
+- [SCORPION] Added SHA-1's.  [Fabio Priuli]
+
+- [SG1000] Added .bin extension.  [Fabio Priuli]
+
+- [SG1000] Added pause/reset buttons. [Curt Coder]
+
+- [SF7000] Fixed lower case natural input. [Curt Coder]
+
+- [SMS] Added .bin extension.  [Fabio Priuli]
+
+- [SPECIAL] Added SHA-1's.  [Fabio Priuli]
+
+- [UT88] Added SHA-1's.  [Fabio Priuli]
+
+- [TI99] Implemented loading and saving of the battery-backed RAM of the
+  MiniMemory cartridge.  [Michael Zapf]
+
+- [TMC600] Added tape support. [Curt Coder]
+
+- [X68000] Added basic SASI hard disk support [Barry Rodewald]:
+  Currently supported SASI commands:
+  * Rezero Unit
+  * Specify
+  * Request Sense
+  * Read
+  * Write
+  * Seek
+
+- [ZX81] Consolidated variants to use alternative BIOSes.  [Fabio Priuli]
+
+
+
+User Interface Changes:
+-----------------------
+- File manager rewrite.  (bug #1277) [Nate Woods]
+
+- Tape Control cleanups.  [Nate Woods]
+
+- Fixed default key naming of keyboard inputs for non-ASCII characters.  [Nate
+  Woods]
+
+- [Windows GUI] Fixed crash in Device View panel when browsing to images on
+  certain devices.  (bug #1632) [Nate Woods]
+
+
+
+Imgtool Changes:
+----------------
+- Now supporting encoding of tokenized BASIC files.  (bug #1609) [Nate Woods]
+
+- [COCO BASIC] Fixed tokenization for DSKO$ command and above.  (bug #1609)
+  [Nate Woods]
+
+
+
+Source Changes:
+----------------
+- The core is based on MAME 0.126.  This incorporates all features of the
+  update to this core.  [MAME team]
+
+- Fixed performance problems with -triplebuffer.  (bug #1539) [Justin Kerk]
+
+- Code cleanups.  [Atari Ace]
+
+- Cut down on the amount of time memory_region() is invoked in a loop.  [Atari
+  Ace]
+
+- Changed the 8530 SCC chip implementation to use MAME's device system.  [Nate
+  Woods]
+
+
+
 0.125
 
 New System Drivers Supported (in no particular order):
@@ -10,6 +190,8 @@ New System Drivers Supported (in no particular order):
 - KOEI PasoGo (not working) [Peter Trauner]
 - Orion 128/Z80 Card II/Pro	[Miodrag Milanovic]
 - Pentagon (not fully operational)[Miodrag Milanovic]
+
+
 
 System Driver Changes:
 ----------------------

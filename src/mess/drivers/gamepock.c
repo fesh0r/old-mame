@@ -20,14 +20,14 @@ static ADDRESS_MAP_START(gamepock_io, ADDRESS_SPACE_IO, 8 )
 ADDRESS_MAP_END
 
 static INPUT_PORTS_START( gamepock )
-	PORT_START
+	PORT_START_TAG("IN0")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP ) PORT_8WAY
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT ) PORT_8WAY
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_SELECT )
 	PORT_BIT ( 0x08, IP_ACTIVE_LOW, IPT_BUTTON1 )
 	PORT_BIT ( 0x10, IP_ACTIVE_LOW, IPT_BUTTON3 )
 
-	PORT_START
+	PORT_START_TAG("IN1")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN ) PORT_8WAY
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT ) PORT_8WAY
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_START )
@@ -63,11 +63,11 @@ static MACHINE_DRIVER_START( gamepock )
 MACHINE_DRIVER_END
 
 static DEVICE_START(gamepock_cart) {
-	memory_set_bankptr( 1, memory_region( REGION_USER1 ) );
+	memory_set_bankptr( 1, memory_region(device->machine,  REGION_USER1 ) );
 }
 
 static DEVICE_IMAGE_LOAD(gamepock_cart) {
-	UINT8 *cart = memory_region( REGION_USER1 );
+	UINT8 *cart = memory_region(image->machine,  REGION_USER1 );
 	int size = image_length( image );
 
 	if ( image_fread( image, cart, size ) != size ) {
@@ -75,7 +75,7 @@ static DEVICE_IMAGE_LOAD(gamepock_cart) {
 		return INIT_FAIL;
 	}
 
-	memory_set_bankptr( 1, memory_region( REGION_USER1 ) );
+	memory_set_bankptr( 1, memory_region(image->machine,  REGION_USER1 ) );
 
 	return INIT_PASS;
 }
@@ -91,7 +91,7 @@ static void gamepock_cartslot_getinfo(const mess_device_class *devclass, UINT32 
 	}
 }
 
-SYSTEM_CONFIG_START(gamepock)
+static SYSTEM_CONFIG_START(gamepock)
 	CONFIG_DEVICE(gamepock_cartslot_getinfo)
 SYSTEM_CONFIG_END
 

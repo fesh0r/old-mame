@@ -137,7 +137,7 @@ ADDRESS_MAP_END
 
 static INPUT_PORTS_START( sms )
 
-	PORT_START	/* IN0 */
+	PORT_START_TAG("JOY0")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CATEGORY(10) PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CATEGORY(10) PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(10) PORT_PLAYER(1) PORT_8WAY
@@ -147,7 +147,7 @@ static INPUT_PORTS_START( sms )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_JOYSTICK_UP) PORT_CATEGORY(20) PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN) PORT_CATEGORY(20) PORT_PLAYER(2) PORT_8WAY
 
-	PORT_START	/* IN1 */
+	PORT_START_TAG("JOY1")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT) PORT_CATEGORY(20) PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_CATEGORY(20) PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_CATEGORY(20) PORT_PLAYER(2)
@@ -157,7 +157,7 @@ static INPUT_PORTS_START( sms )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_UNUSED )
 
-	PORT_START	/* IN2 */
+	PORT_START_TAG("JOY2")
 	PORT_BIT ( 0x01, IP_ACTIVE_LOW, IPT_UNUSED)
 	PORT_BIT ( 0x02, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x04, IP_ACTIVE_LOW, IPT_UNUSED )
@@ -167,19 +167,19 @@ static INPUT_PORTS_START( sms )
 	PORT_BIT ( 0x40, IP_ACTIVE_LOW, IPT_UNUSED )
 	PORT_BIT ( 0x80, IP_ACTIVE_LOW, IPT_START ) /* Game Gear START */
 
-	PORT_START	/* IN3 - Light phaser X - player 1 */
+	PORT_START_TAG("LPHASER0")	/* Light phaser X - player 1 */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_CATEGORY(11) PORT_PLAYER(1)
 
-	PORT_START	/* IN4 - Light phaser Y - player 1 */
+	PORT_START_TAG("LPHASER1")	/* Light phaser Y - player 1 */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(15) PORT_CATEGORY(11) PORT_PLAYER(1)
 
-	PORT_START	/* IN5 - Light phaser X - player 2 */
+	PORT_START_TAG("LPHASER2")	/* Light phaser X - player 2 */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_X ) PORT_CROSSHAIR( X, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEUDELTA(15) PORT_CATEGORY(21) PORT_PLAYER(2)
 
-	PORT_START	/* IN6 - Light phaser Y - player 2 */
+	PORT_START_TAG("LPHASER3")	/* Light phaser Y - player 2 */
 //  PORT_BIT( 0xff, 0x80, IPT_LIGHTGUN_Y ) PORT_CROSSHAIR( Y, 1.0, 0.0, 0 ) PORT_SENSITIVITY(25) PORT_KEYDELTA(25) PORT_CATEGORY(21) PORT_PLAYER(2)
 
-	PORT_START	/* IN7 - Rapid Fire Unit */
+	PORT_START_TAG("RFU")	/* Rapid Fire Unit */
 	PORT_DIPNAME( 0x03, 0x00, "Rapid Fire Unit - Player 1" )
 	PORT_DIPSETTING( 0x00, DEF_STR( Off ) )
 	PORT_DIPSETTING( 0x01, "Button A" )
@@ -191,13 +191,13 @@ static INPUT_PORTS_START( sms )
 	PORT_DIPSETTING( 0x08, "Button B" )
 	PORT_DIPSETTING( 0x0C, "Button A+B" )
 
-	PORT_START	/* IN8 - Paddle player 1 */
+	PORT_START_TAG("PADDLE0")	/* Paddle player 1 */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(20) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(12) PORT_PLAYER(1)
 
-	PORT_START	/* IN9 - Paddle player 2 */
+	PORT_START_TAG("PADDLE1")	/* Paddle player 2 */
 	PORT_BIT( 0xff, 0x80, IPT_PADDLE) PORT_SENSITIVITY(40) PORT_KEYDELTA(20) PORT_CENTERDELTA(0) PORT_MINMAX(0,255) PORT_CATEGORY(22) PORT_PLAYER(2)
 
-	PORT_START	/* IN10 - Light Phaser and Paddle Control buttons */
+	PORT_START_TAG("IN0")	/* Light Phaser and Paddle Control buttons */
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CATEGORY(11) PORT_PLAYER(1)
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CATEGORY(12) PORT_PLAYER(1)
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CATEGORY(13) PORT_PLAYER(1)
@@ -207,7 +207,7 @@ static INPUT_PORTS_START( sms )
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_BUTTON1 ) PORT_CATEGORY(23) PORT_PLAYER(2)
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_BUTTON2 ) PORT_CATEGORY(23) PORT_PLAYER(2)
 
-	PORT_START	/* IN11 - Controller selection */
+	PORT_START_TAG("CTRLSEL")	/* Controller selection */
 	PORT_CATEGORY_CLASS( 0x0F, 0x00, "Player 1 Controller" )
 	PORT_CATEGORY_ITEM( 0x00, DEF_STR( Joystick ), 10 )
 //  PORT_CATEGORY_ITEM( 0x01, "Light Phaser", 11 )
@@ -219,16 +219,16 @@ static INPUT_PORTS_START( sms )
 	PORT_CATEGORY_ITEM( 0x20, "Sega Paddle Control", 22 )
 	PORT_CATEGORY_ITEM( 0x30, "Sega Sports Pad", 23 )
 
-	PORT_START	/* IN12 - Player 1 Sports Pad X axis */
+	PORT_START_TAG("SPORT0")	/* Player 1 Sports Pad X axis */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(40) PORT_RESET PORT_REVERSE PORT_CATEGORY(13) PORT_PLAYER(1)
 
-	PORT_START	/* IN13 - Player 1 Sports Pad Y axis */
+	PORT_START_TAG("SPORT1")	/* Player 1 Sports Pad Y axis */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(50) PORT_KEYDELTA(40) PORT_RESET PORT_REVERSE PORT_CATEGORY(13) PORT_PLAYER(1)
 
-	PORT_START	/* IN14 - Player 2 Sports Pad X axis */
+	PORT_START_TAG("SPORT2")	/* Player 2 Sports Pad X axis */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X ) PORT_SENSITIVITY(50) PORT_KEYDELTA(40) PORT_RESET PORT_REVERSE PORT_CATEGORY(23) PORT_PLAYER(2)
 
-	PORT_START	/* IN15 - Player 2 Sports Pad Y axis */
+	PORT_START_TAG("SPORT3")	/* Player 2 Sports Pad Y axis */
 	PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y ) PORT_SENSITIVITY(50) PORT_KEYDELTA(40) PORT_RESET PORT_REVERSE PORT_CATEGORY(23) PORT_PLAYER(2)
 
 INPUT_PORTS_END
@@ -513,13 +513,13 @@ static void sms_cartslot_getinfo(const mess_device_class *devclass, UINT32 state
 		case MESS_DEVINFO_PTR_LOAD:				info->load = DEVICE_IMAGE_LOAD_NAME(sms_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "sms"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "sms,bin"); break;
 
 		default:					cartslot_device_getinfo(devclass, state, info); break;
 	}
 }
 
-SYSTEM_CONFIG_START(sms)
+static SYSTEM_CONFIG_START(sms)
 	CONFIG_DEVICE(sms_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
@@ -532,7 +532,7 @@ static void sg1000m3_cartslot_getinfo(const mess_device_class *devclass, UINT32 
 	}
 }
 
-SYSTEM_CONFIG_START(sg1000m3)
+static SYSTEM_CONFIG_START(sg1000m3)
 	CONFIG_DEVICE(sg1000m3_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
@@ -544,7 +544,7 @@ static void smssdisp_cartslot_getinfo(const mess_device_class *devclass, UINT32 
 	}
 }
 
-SYSTEM_CONFIG_START(smssdisp)
+static SYSTEM_CONFIG_START(smssdisp)
 	CONFIG_DEVICE(smssdisp_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
@@ -555,13 +555,13 @@ static void gamegear_cartslot_getinfo(const mess_device_class *devclass, UINT32 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
 		case MESS_DEVINFO_INT_COUNT:				info->i = 1; break;
 		case MESS_DEVINFO_INT_MUST_BE_LOADED:		info->i = 1; break;
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "gg"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:		strcpy(info->s = device_temp_str(), "gg,bin"); break;
 
 		default:					sms_cartslot_getinfo(devclass, state, info); break;
 	}
 }
 
-SYSTEM_CONFIG_START(gamegear)
+static SYSTEM_CONFIG_START(gamegear)
 	CONFIG_DEVICE(gamegear_cartslot_getinfo)
 SYSTEM_CONFIG_END
 

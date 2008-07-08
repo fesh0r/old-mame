@@ -57,8 +57,7 @@
 static struct {
 	const device_config	*pic8259_master;
 	const device_config	*pic8259_slave;
-	const device_config	*dma8237_1;
-	const device_config	*dma8237_2;
+	const device_config	*dma8237;
 } pc_devices;
 
 /*************************************************************************
@@ -120,7 +119,7 @@ static DMA8237_MEM_WRITE( pc_dma_write_byte )
 
 static DMA8237_CHANNEL_READ( pc_dma8237_fdc_dack_r )
 {
-	return pc_fdc_dack_r();
+	return pc_fdc_dack_r(device->machine);
 }
 
 
@@ -132,7 +131,7 @@ static DMA8237_CHANNEL_READ( pc_dma8237_hdc_dack_r )
 
 static DMA8237_CHANNEL_WRITE( pc_dma8237_fdc_dack_w )
 {
-	pc_fdc_dack_w( data );
+	pc_fdc_dack_w( device->machine, data );
 }
 
 
@@ -144,7 +143,7 @@ static DMA8237_CHANNEL_WRITE( pc_dma8237_hdc_dack_w )
 
 static DMA8237_OUT_EOP( pc_dma8237_out_eop )
 {
-	pc_fdc_set_tc_state( state );
+	pc_fdc_set_tc_state( device->machine, state );
 }
 
 
@@ -314,7 +313,7 @@ are connected */
 static void pc_com_refresh_connected_common(const device_config *device, int n, int data)
 {
 	/* mouse connected to this port? */
-	if (input_port_read_indexed(device->machine, 3) & (0x80>>n))
+	if (input_port_read(device->machine, "DSW2") & (0x80>>n))
 		pc_mouse_handshake_in(device,data);
 }
 
@@ -551,13 +550,14 @@ static struct {
 	int portc_switch_high;
 	int speaker;
 	int keyboard_disabled;
+	UINT8	keyb_clock;
 	UINT8	portb;
 } pc_ppi={ 0 };
 
 
 static READ8_HANDLER (pc_ppi_porta_r)
 {
-	int data;
+	int data = 0xFF;
 
 	/* KB port A */
 	if (pc_ppi.keyboard_disabled)
@@ -571,11 +571,14 @@ static READ8_HANDLER (pc_ppi_porta_r)
 		 *      01 - color 40x25
 		 * 6-7  The number of floppy disk drives
 		 */
-		data = input_port_read_indexed(machine, 1);
+		data = input_port_read(machine, "DSW0");
 	}
 	else
 	{
-		data = pc_keyb_read();
+		if ( pc_ppi.keyb_clock )
+		{
+			data = pc_keyb_read();
+		}
 	}
     PIO_LOG(1,"PIO_A_r",("$%02x\n", data));
     return data;
@@ -604,13 +607,13 @@ static READ8_HANDLER ( pc_ppi_portc_r )
 	if (pc_ppi.portc_switch_high)
 	{
 		/* read hi nibble of S2 */
-		data = (data&0xf0)|((input_port_read_indexed(machine, 1) >> 4) & 0x0f);
+		data = (data & 0xf0) | ((input_port_read(machine, "DSW0") >> 4) & 0x0f);
 		PIO_LOG(1,"PIO_C_r (hi)",("$%02x\n", data));
 	}
 	else
 	{
 		/* read lo nibble of S2 */
-		data = (data&0xf0)|(input_port_read_indexed(machine, 1) & 0x0f);
+		data = (data & 0xf0) | (input_port_read(machine, "DSW0") & 0x0f);
 		PIO_LOG(1,"PIO_C_r (lo)",("$%02x\n", data));
 	}
 
@@ -653,9 +656,10 @@ static WRITE8_HANDLER ( pc_ppi_portb_w )
 	pc_ppi.portb = data;
 	pc_ppi.portc_switch_high = data & 0x08;
 	pc_ppi.keyboard_disabled = data & 0x80;
+	pc_ppi.keyb_clock = data & 0x40;
 	pit8253_gate_w( device_list_find_by_tag( machine->config->devicelist, PIT8253, "pit8253" ), 2, data & 1);
 	pc_sh_speaker(machine, data & 0x03);
-	pc_keyb_set_clock(data & 0x40);
+	pc_keyb_set_clock( pc_ppi.keyb_clock );
 
 	cassette_change_state( image_from_devtype_and_index( IO_CASSETTE, 0 ), ( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
 
@@ -783,7 +787,7 @@ static void pc_fdc_interrupt(int state)
 
 static void pc_fdc_dma_drq(int state, int read_)
 {
-	dma8237_drq_write( (device_config*)device_list_find_by_tag( Machine->config->devicelist, DMA8237, "dma8237" ), FDC_DMA, state);
+	dma8237_drq_write( pc_devices.dma8237, FDC_DMA, state);
 }
 
 
@@ -803,8 +807,9 @@ static void pc_set_keyb_int(int state) {
 	pc_set_irq_line( 1, state );
 }
 
-void mess_init_pc_common(UINT32 flags, void (*set_keyb_int_func)(int), void (*set_hdc_int_func)(int,int)) {
-	init_pc_common(flags, set_keyb_int_func);
+void mess_init_pc_common(running_machine *machine, UINT32 flags, void (*set_keyb_int_func)(int), void (*set_hdc_int_func)(int,int)) 
+{
+	init_pc_common(machine, flags, set_keyb_int_func);
 
 	/* MESS managed RAM */
 	if ( mess_ram )
@@ -829,27 +834,25 @@ void mess_init_pc_common(UINT32 flags, void (*set_keyb_int_func)(int), void (*se
 
 DRIVER_INIT( pccga )
 {
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 	pc_rtc_init();
-	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
 }
 
 DRIVER_INIT( bondwell )
 {
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	pc_turbo_setup(0, 2, 0x02, 4.77/12, 1);
 }
 
 DRIVER_INIT( pcmda )
 {
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 }
 
 DRIVER_INIT( europc )
 {
-	UINT8 *gfx = &memory_region(REGION_GFX1)[0x8000];
-	UINT8 *rom = &memory_region(REGION_CPU1)[0];
+	UINT8 *gfx = &memory_region(machine, REGION_GFX1)[0x8000];
+	UINT8 *rom = &memory_region(machine, REGION_CPU1)[0];
 	int i;
 
     /* just a plain bit pattern for graphics data generation */
@@ -867,7 +870,7 @@ DRIVER_INIT( europc )
 		rom[0xfffff]=256-a;
 	}
 
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 
 	europc_rtc_init();
 //	europc_rtc_set_time(machine);
@@ -875,13 +878,13 @@ DRIVER_INIT( europc )
 
 DRIVER_INIT( t1000hx )
 {
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	pc_turbo_setup(0, 2, 0x02, 4.77/12, 1);
 }
 
 DRIVER_INIT( pc200 )
 {
-	UINT8 *gfx = &memory_region(REGION_GFX1)[0x8000];
+	UINT8 *gfx = &memory_region(machine, REGION_GFX1)[0x8000];
 	int i;
 
     /* just a plain bit pattern for graphics data generation */
@@ -891,15 +894,15 @@ DRIVER_INIT( pc200 )
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_r );
 	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xb0000, 0xbffff, 0, 0, pc200_videoram16le_w );
 	videoram_size=0x10000;
-	videoram=memory_region(REGION_CPU1)+0xb0000;
+	videoram=memory_region(machine, REGION_CPU1)+0xb0000;
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_IO, 0x278, 0x27b, 0, 0, pc200_16le_port378_r );
 
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 }
 
 DRIVER_INIT( pc1512 )
 {
-	UINT8 *gfx = &memory_region(REGION_GFX1)[0x8000];
+	UINT8 *gfx = &memory_region(machine, REGION_GFX1)[0x8000];
 	int i;
 
     /* just a plain bit pattern for graphics data generation */
@@ -915,14 +918,14 @@ DRIVER_INIT( pc1512 )
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_IO, 0x278, 0x27b, 0, 0, pc16le_parallelport2_r );
 
 
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-	mc146818_init(MC146818_IGNORE_CENTURY);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }
 
 
 DRIVER_INIT( pcjr )
 {
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pcjr_set_keyb_int, pc_set_irq_line);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pcjr_set_keyb_int, pc_set_irq_line);
 }
 
 
@@ -984,14 +987,14 @@ DRIVER_INIT( pc1640 )
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_IO, 0x278, 0x27b, 0, 0, pc1640_16le_port278_r );
 	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_IO, 0x4278, 0x427b, 0, 0, pc1640_16le_port4278_r );
 
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 
-	mc146818_init(MC146818_IGNORE_CENTURY);
+	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }
 
 DRIVER_INIT( pc_vga )
 {
-	mess_init_pc_common(PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
 
 	pc_vga_init(machine, &vga_interface, NULL);
 }
@@ -1004,7 +1007,7 @@ static IRQ_CALLBACK(pc_irq_callback)
 
 MACHINE_START( pc )
 {
-	pc_fdc_init( &fdc_interface_nc );
+	pc_fdc_init( machine, &fdc_interface_nc );
 }
 
 
@@ -1014,9 +1017,9 @@ MACHINE_RESET( pc )
 
 	pc_devices.pic8259_master = device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_master" );
 	pc_devices.pic8259_slave = device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_slave" );
-	pc_devices.dma8237_1 = device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_1" );
-	pc_devices.dma8237_2 = device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_2" );
+	pc_devices.dma8237 = device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237" );
 	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, INS8250, "ins8250_0" ) );
+	pc_hdc_set_dma8237_device( pc_devices.dma8237 );
 }
 
 
@@ -1063,7 +1066,7 @@ DEVICE_IMAGE_LOAD( pcjr_cartridge )
 	}
 
 	/* Read the cartridge contents */
-	if ( ( size - 0x200 ) != image_fread( image, memory_region(REGION_CPU1) + address, size - 0x200 ) )
+	if ( ( size - 0x200 ) != image_fread( image, memory_region(image->machine, REGION_CPU1) + address, size - 0x200 ) )
 	{
 		image_seterror( image, IMAGE_ERROR_UNSUPPORTED, "Unable to read cartridge contents" );
 		return 1;
@@ -1082,6 +1085,14 @@ DEVICE_IMAGE_LOAD( pcjr_cartridge )
 INTERRUPT_GEN( pc_frame_interrupt )
 {
 	pc_keyboard();
+
+	/* Extermely crappy hack to have let the ibm5150 support 640kb. For testing purposes only. */
+//	if ( mess_ram[0x413] == 0x00 && mess_ram[0x414] == 0x01 )
+//	{
+//		mess_ram[0x413] = 640 & 0xff;
+//		mess_ram[0x414] = 640 >> 8;
+//	}
+
 }
 
 INTERRUPT_GEN( pc_vga_frame_interrupt )

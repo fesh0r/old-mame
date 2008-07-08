@@ -10,16 +10,9 @@
 #define _THOMSON_H_
 
 
-/*************************** common ********************************/
+/*----------- defined in machine/thomson.c -----------*/
 
-/* input ports (first port number of each class) */
-#define THOM_INPUT_LIGHTPEN  0 /* 3 ports: analog X, analog Y, and button */
-#define THOM_INPUT_GAME      3 /* 2-5 ports: joystick, mouse */
-#define THOM_INPUT_KEYBOARD  8 /* 8-10 lines */
-#define THOM_INPUT_CONFIG   18 /* machine-specific options */
-#define THOM_INPUT_FCONFIG  19 /* floppy / network options */
-#define THOM_INPUT_VCONFIG  20 /* video options */
-#define THOM_INPUT_MCONFIG  21 /* modem / speech options */
+/*************************** common ********************************/
 
 /* 6821 PIAs */
 #define THOM_PIA_SYS    0  /* system PIA */
@@ -191,6 +184,8 @@ extern MACHINE_START ( mo5nr );
 extern MACHINE_RESET ( mo5nr );
 
 
+/*----------- defined in video/thomson.c -----------*/
+
 /*
    TO7 video:
    one line (64 us) =
@@ -252,10 +247,10 @@ extern struct thom_vsignal thom_get_vsignal ( void );
 /************************* lightpen ********************************/
 
 /* specific TO7 / T9000 lightpen code (no video gate-array) */
-extern unsigned to7_lightpen_gpl ( int decx, int decy );
+extern unsigned to7_lightpen_gpl ( running_machine *machine, int decx, int decy );
 
 /* video position corresponding to lightpen (with some offset) */
-extern struct thom_vsignal thom_get_lightpen_vsignal ( int xdec, int ydec,
+extern struct thom_vsignal thom_get_lightpen_vsignal ( running_machine *machine, int xdec, int ydec,
 						       int xdec2 );
 
 /* specify a lightpencall-back function, called nb times per frame */

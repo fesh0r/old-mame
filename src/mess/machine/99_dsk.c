@@ -438,9 +438,9 @@ static const ti99_peb_card_handlers_t fdc_handlers =
 /*
 	Reset fdc card, set up handlers
 */
-void ti99_fdc_reset(void)
+void ti99_fdc_reset(running_machine *machine)
 {
-	ti99_disk_DSR = memory_region(region_dsr) + offset_fdc_dsr;
+	ti99_disk_DSR = memory_region(machine, region_dsr) + offset_fdc_dsr;
 	DSEL = 0;
 	DSKnum = -1;
 	DSKside = 0;
@@ -451,7 +451,7 @@ void ti99_fdc_reset(void)
 	use_80_track_drives = FALSE;
 
 	ti99_peb_set_card_handlers(0x1100, & fdc_handlers);
-	wd17xx_reset();		/* resets the fdc */
+	wd17xx_reset(machine);		/* resets the fdc */
 	wd17xx_set_density(DEN_FM_LO);
 }
 
@@ -644,9 +644,10 @@ static const ti99_peb_card_handlers_t ccfdc_handlers =
 	ccfdc_mem_w
 };
 
-void ti99_ccfdc_reset(void)
+#if HAS_99CCFDC
+void ti99_ccfdc_reset(running_machine *machine)
 {
-	ti99_disk_DSR = memory_region(region_dsr) + offset_ccfdc_dsr;
+	ti99_disk_DSR = memory_region(machine, region_dsr) + offset_ccfdc_dsr;
 	DSEL = 0;
 	DSKnum = -1;
 	DSKside = 0;
@@ -658,10 +659,10 @@ void ti99_ccfdc_reset(void)
 
 	ti99_peb_set_card_handlers(0x1100, & ccfdc_handlers);
 
-	wd17xx_reset();		/* initialize the floppy disk controller */
+	wd17xx_reset(machine);		/* initialize the floppy disk controller */
 	wd17xx_set_density(DEN_MFM_LO);
 }
-
+#endif
 
 
 /*
@@ -855,10 +856,10 @@ static UINT8 *bwg_ram;
 /*
 	Reset fdc card, set up handlers
 */
-void ti99_bwg_reset(void)
+void ti99_bwg_reset(running_machine *machine)
 {
-	ti99_disk_DSR = memory_region(region_dsr) + offset_bwg_dsr;
-        bwg_ram = memory_region(region_dsr) + offset_bwg_ram;
+	ti99_disk_DSR = memory_region(machine, region_dsr) + offset_bwg_dsr;
+        bwg_ram = memory_region(machine, region_dsr) + offset_bwg_ram;
 	bwg_ram_offset = 0;
 	bwg_rom_offset = 0;
 	bwg_rtc_enable = 0;
@@ -874,7 +875,7 @@ void ti99_bwg_reset(void)
         
 	ti99_peb_set_card_handlers(0x1100, & bwg_handlers);
 
-	wd17xx_reset();		/* initialize the floppy disk controller */
+	wd17xx_reset(machine);		/* initialize the floppy disk controller */
 	wd17xx_set_density(DEN_MFM_LO);
 }
 
@@ -1227,10 +1228,10 @@ static void hfdc_int_callback(int which, int state)
 /*
 	Reset fdc card, set up handlers
 */
-void ti99_hfdc_reset(void)
+void ti99_hfdc_reset(running_machine *machine)
 {
-	ti99_disk_DSR = memory_region(region_dsr) + offset_hfdc_dsr;
-	hfdc_ram = memory_region(region_dsr) + offset_hfdc_ram;
+	ti99_disk_DSR = memory_region(machine, region_dsr) + offset_hfdc_dsr;
+	hfdc_ram = memory_region(machine, region_dsr) + offset_hfdc_ram;
 	hfdc_ram_offset[0] = hfdc_ram_offset[1] = hfdc_ram_offset[2] = 0;
 	hfdc_rom_offset = 0;
 	hfdc_rtc_enable = 0;

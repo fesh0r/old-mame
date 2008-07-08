@@ -23,7 +23,6 @@
 #include "cpu/arm7/arm7core.h"
 #include "sound/aica.h"
 #include "dc.h"
-#include "deprecat.h"
 
 #define CPU_CLOCK (200000000)
 
@@ -112,18 +111,15 @@ static ADDRESS_MAP_START( dc_audio_map, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x00800000, 0x00807fff) AM_READWRITE(dc_arm_aica_r, dc_arm_aica_w)
 ADDRESS_MAP_END
 
-static INPUT_PORTS_START( dc )
-INPUT_PORTS_END
-
 static MACHINE_RESET( dc_console )
 {
 	MACHINE_RESET_CALL(dc);
 	AICA_set_ram_base(0, dc_sound_ram, 2*1024*1024);
 }
 
-static void aica_irq(int irq)
+static void aica_irq(running_machine *machine, int irq)
 {
-	cpunum_set_input_line(Machine, 1, ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 1, ARM7_FIRQ_LINE, irq ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const struct AICAinterface aica_interface =
@@ -135,7 +131,7 @@ static const struct AICAinterface aica_interface =
 
 static INTERRUPT_GEN( dc_dispatch_vblank )
 {
-	dc_vblank();
+	dc_vblank(machine);
 }
 
 static const struct sh4_config sh4cpu_config = {  1,  0,  1,  0,  0,  0,  1,  1,  0, CPU_CLOCK };
@@ -192,12 +188,12 @@ ROM_START( dcdev )
         ROM_LOAD( "hkt-0120-flash.bin", 0x200000, 0x020000, CRC(7784C304) SHA1(31EF57F550D8CD13E40263CBC657253089E53034) )	// Flash
 ROM_END
 
-SYSTEM_CONFIG_START(dc)
+static SYSTEM_CONFIG_START(dc)
 SYSTEM_CONFIG_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    CONFIG  COMPANY FULLNAME */
-CONS( 1999, dc, 	dcjp, 	0, 	dc, 	dc, 	0, 	dc, 	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
-CONS( 1998, dcjp, 	0, 	0, 	dc, 	dc, 	0, 	dc, 	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
-CONS( 1999, dceu, 	dcjp, 	0, 	dc, 	dc, 	0, 	dc, 	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
-CONS( 1998, dcdev, 	dcjp, 	0, 	dc, 	dc, 	0, 	dc, 	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
+CONS( 1999, dc, 	dcjp, 	0, 		dc, 	0, 		0, 	dc, 	"Sega", "Dreamcast (US NTSC)", GAME_NOT_WORKING )
+CONS( 1998, dcjp, 	0, 		0, 		dc, 	0, 		0, 	dc, 	"Sega", "Dreamcast (Japan NTSC)", GAME_NOT_WORKING )
+CONS( 1999, dceu, 	dcjp, 	0, 		dc, 	0, 		0, 	dc, 	"Sega", "Dreamcast (European PAL)", GAME_NOT_WORKING )
+CONS( 1998, dcdev, 	dcjp, 	0, 		dc, 	0, 		0, 	dc, 	"Sega", "HKT-0120 Sega Dreamcast Development Box", GAME_NOT_WORKING )
 

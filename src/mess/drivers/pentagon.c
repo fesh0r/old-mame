@@ -11,7 +11,7 @@
 #include "machine/wd17xx.h"
 #include "machine/beta.h"
 
-MACHINE_START( pentagon )
+static MACHINE_START( pentagon )
 {
 	wd17xx_init(machine, WD_TYPE_179X, betadisk_wd179x_callback, NULL);
 }
@@ -24,13 +24,13 @@ static OPBASE_HANDLER( pentagon_opbase )
 		if (activecpu_get_pc() >= 0x4000) {
 			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ? 1 : 0;
 			betadisk_disable();
-			memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000 + 0x4000*ROMSelection); // Set BASIC ROM
+			memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x010000 + 0x4000*ROMSelection); // Set BASIC ROM
 		} 	
 	} else if (((activecpu_get_pc() & 0xff00) == 0x3d00) && (ROMSelection==1))
 	{
 		ROMSelection = 3;
 		betadisk_enable();
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x01c000); // Set TRDOS ROM			
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x01c000); // Set TRDOS ROM			
 	} 
 	return address;
 }
@@ -51,7 +51,7 @@ static void pentagon_update_memory(running_machine *machine)
 		ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ;
 	}
 	/* rom 0 is 128K rom, rom 1 is 48 BASIC */
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000 + (ROMSelection<<14));
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x010000 + (ROMSelection<<14));
 }
 
 static WRITE8_HANDLER(pentagon_port_7ffd_w)
@@ -102,7 +102,7 @@ static MACHINE_RESET( pentagon )
 
 	pentagon_update_memory(machine);	
 		
-	wd17xx_reset();	
+	wd17xx_reset(machine);	
 }
 
 static MACHINE_DRIVER_START( pentagon )
@@ -123,16 +123,16 @@ MACHINE_DRIVER_END
 
 ROM_START(pentagon)
 	ROM_REGION(0x020000, REGION_CPU1, 0)
-	ROM_LOAD("128p-0.rom",0x010000, 0x4000, CRC(124AD9E0))
-	ROM_LOAD("128p-1.rom",0x014000, 0x4000, CRC(B96A36BE))
-	ROM_LOAD("gluck.rom",0x018000, 0x4000, CRC(CA321D79))
-	ROM_LOAD("trdos.rom",0x01c000, 0x4000, CRC(10751ABA))	
+	ROM_LOAD("128p-0.rom", 0x010000, 0x4000, CRC(124ad9e0) SHA1(d07fcdeca892ee80494d286ea9ea5bf3928a1aca) )
+	ROM_LOAD("128p-1.rom", 0x014000, 0x4000, CRC(b96a36be) SHA1(80080644289ed93d71a1103992a154cc9802b2fa) )
+	ROM_LOAD("gluck.rom",  0x018000, 0x4000, CRC(ca321d79) SHA1(015eb96dafb273d4f4512c467e9b43c305fd1bc4) )
+	ROM_LOAD("trdos.rom",  0x01c000, 0x4000, CRC(10751aba) SHA1(21695e3f2a8f796386ce66eea8a246b0ac44810c) )	
 	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 SYSTEM_CONFIG_EXTERN(spectrum)
 
-SYSTEM_CONFIG_START(pentagon)
+static SYSTEM_CONFIG_START(pentagon)
 	CONFIG_IMPORT_FROM(spectrum)
 	CONFIG_RAM_DEFAULT(128 * 1024)
 	CONFIG_DEVICE(beta_floppy_getinfo)

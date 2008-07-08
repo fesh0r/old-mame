@@ -100,6 +100,20 @@ easier to manage.
 #include "devices/cococart.h"
 
 
+/***************************************************************************
+    PARAMETERS
+***************************************************************************/
+
+/* this MUX delay was introduced to fix bug #655, but the delay was originally
+ * 16us.  This was reduced to 8us to fix bug #1608 */
+#define JOYSTICK_MUX_DELAY				ATTOTIME_IN_USEC(8)
+
+
+
+/***************************************************************************
+    LOCAL VARIABLES / PROTOTYPES
+***************************************************************************/
+
 /*common vars/calls */
 static UINT8 *coco_rom;
 static int dclg_state, dclg_output_h, dclg_output_v, dclg_timer;
@@ -118,10 +132,10 @@ static WRITE8_HANDLER ( d_pia1_cb2_w);
 static WRITE8_HANDLER ( d_pia0_cb2_w);
 static WRITE8_HANDLER ( d_pia1_ca2_w);
 static WRITE8_HANDLER ( d_pia0_ca2_w);
-static void d_pia0_irq_a(int state);
-static void d_pia0_irq_b(int state);
-static void d_pia1_firq_a(int state);
-static void d_pia1_firq_b(int state);
+static void d_pia0_irq_a(running_machine *machine, int state);
+static void d_pia0_irq_b(running_machine *machine, int state);
+static void d_pia1_firq_a(running_machine *machine, int state);
+static void d_pia1_firq_b(running_machine *machine, int state);
 static void d_sam_set_pageonemode(int val);
 static void d_sam_set_mpurate(int val);
 static void d_sam_set_memorysize(int val);
@@ -142,10 +156,10 @@ static UINT8 coco3_mmu[16];
 static UINT8 coco3_interupt_line;
 static UINT8 gime_firq, gime_irq;
 
-static void coco3_pia0_irq_a(int state);
-static void coco3_pia0_irq_b(int state);
-static void coco3_pia1_firq_a(int state);
-static void coco3_pia1_firq_b(int state);
+static void coco3_pia0_irq_a(running_machine *machine, int state);
+static void coco3_pia0_irq_b(running_machine *machine, int state);
+static void coco3_pia1_firq_a(running_machine *machine, int state);
+static void coco3_pia1_firq_b(running_machine *machine, int state);
 static void coco3_sam_set_maptype(int val);
 static const UINT8 *coco3_sam_get_rambase(void);
 
@@ -156,12 +170,12 @@ static READ8_HANDLER ( d_pia1_pb_r_dragon32 );
 static WRITE8_HANDLER ( dragon64_pia1_pb_w );
 
 /* Dragon 64 / Alpha shared */
-static void dragon_page_rom(int	romswitch);
+static void dragon_page_rom(running_machine *machine, int romswitch);
 
 /* Dragon Alpha specific */
 static WRITE8_HANDLER ( dgnalpha_pia2_pa_w );
-static void d_pia2_firq_a(int state);
-static void d_pia2_firq_b(int state);
+static void d_pia2_firq_a(running_machine *machine, int state);
+static void d_pia2_firq_b(running_machine *machine, int state);
 static int dgnalpha_just_reset;		/* Reset flag used to ignore first NMI after reset */
 
 /* Dragon Plus specific */
@@ -387,6 +401,10 @@ static emu_timer *halt_timer;
 
 
 /***************************************************************************
+    IMPLEMENTATION
+***************************************************************************/
+
+/***************************************************************************
   PAK files
 
   PAK files were originally for storing Program PAKs, but the file format has
@@ -496,7 +514,7 @@ static int generic_pak_load(const device_config *image, int rambase_index, int r
 	pak_decodedtrailer trailer;
 	int trailer_load = 0;
 
-	ROM = memory_region(REGION_CPU1);
+	ROM = memory_region(image->machine, REGION_CPU1);
 	rambase = &mess_ram[rambase_index];
 	rombase = &ROM[rombase_index];
 	pakbase = &ROM[pakbase_index];
@@ -687,25 +705,25 @@ static int generic_rom_load(const device_config *image, UINT8 *dest, UINT16 dest
 
 DEVICE_IMAGE_LOAD(coco_rom)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
 	return generic_rom_load(image, &ROM[0x4000], 0x4000);
 }
 
 DEVICE_IMAGE_UNLOAD(coco_rom)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
 	memset(&ROM[0x4000], 0, 0x4000);
 }
 
 DEVICE_IMAGE_LOAD(coco3_rom)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
 	return generic_rom_load(image, &ROM[0x8000], 0x8000);
 }
 
 DEVICE_IMAGE_UNLOAD(coco3_rom)
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(image->machine, REGION_CPU1);
 	memset(&ROM[0x8000], 0, 0x8000);
 }
 
@@ -797,55 +815,55 @@ static void coco3_recalc_firq(running_machine *machine)
 		d_recalc_firq(machine);
 }
 
-static void d_pia0_irq_a(int state)
+static void d_pia0_irq_a(running_machine *machine, int state)
 {
-	d_recalc_irq(Machine);
+	d_recalc_irq(machine);
 }
 
-static void d_pia0_irq_b(int state)
+static void d_pia0_irq_b(running_machine *machine, int state)
 {
-	d_recalc_irq(Machine);
+	d_recalc_irq(machine);
 }
 
-static void d_pia1_firq_a(int state)
+static void d_pia1_firq_a(running_machine *machine, int state)
 {
-	d_recalc_firq(Machine);
+	d_recalc_firq(machine);
 }
 
-static void d_pia1_firq_b(int state)
+static void d_pia1_firq_b(running_machine *machine, int state)
 {
-	d_recalc_firq(Machine);
+	d_recalc_firq(machine);
 }
 
 /* Dragon Alpha second PIA IRQ lines also cause FIRQ */
-static void d_pia2_firq_a(int state)
+static void d_pia2_firq_a(running_machine *machine, int state)
 {
-	d_recalc_firq(Machine);
+	d_recalc_firq(machine);
 }
 
-static void d_pia2_firq_b(int state)
+static void d_pia2_firq_b(running_machine *machine, int state)
 {
-	d_recalc_firq(Machine);
+	d_recalc_firq(machine);
 }
 
-static void coco3_pia0_irq_a(int state)
+static void coco3_pia0_irq_a(running_machine *machine, int state)
 {
-	coco3_recalc_irq(Machine);
+	coco3_recalc_irq(machine);
 }
 
-static void coco3_pia0_irq_b(int state)
+static void coco3_pia0_irq_b(running_machine *machine, int state)
 {
-	coco3_recalc_irq(Machine);
+	coco3_recalc_irq(machine);
 }
 
-static void coco3_pia1_firq_a(int state)
+static void coco3_pia1_firq_a(running_machine *machine, int state)
 {
-	coco3_recalc_firq(Machine);
+	coco3_recalc_firq(machine);
 }
 
-static void coco3_pia1_firq_b(int state)
+static void coco3_pia1_firq_b(running_machine *machine, int state)
 {
-	coco3_recalc_firq(Machine);
+	coco3_recalc_firq(machine);
 }
 
 static void coco3_raise_interrupt(running_machine *machine, UINT8 mask, int state)
@@ -961,11 +979,11 @@ typedef enum _coco_input_device coco_input_device;
 	which input device, if any, it is hooked up to
 -------------------------------------------------*/
 
-static coco_input_device get_input_device(coco_input_port port)
+static coco_input_device get_input_device(running_machine *machine, coco_input_port port)
 {
 	coco_input_device result = INPUTDEVICE_NA;
 
-	switch(input_port_read_safe(Machine, "joystick_mode", 0x00))
+	switch(input_port_read_safe(machine, "joystick_mode", 0x00))
 	{
 		case 0x00:
 			/* "Normal" */
@@ -1037,13 +1055,13 @@ static int coco_hiresjoy_ca = 1;
 static attotime coco_hiresjoy_xtransitiontime;
 static attotime coco_hiresjoy_ytransitiontime;
 
-static attotime coco_hiresjoy_computetransitiontime(const char *inputport)
+static attotime coco_hiresjoy_computetransitiontime(running_machine *machine, const char *inputport)
 {
 	double val;
 
-	val = input_port_read_safe(Machine, inputport, 0) / 255.0;
+	val = input_port_read_safe(machine, inputport, 0) / 255.0;
 
-	if (get_input_device(INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_CC3MAX_INTERFACE)
+	if (get_input_device(machine, INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_CC3MAX_INTERFACE)
 	{
 		/* CoCo MAX 3 Interface */
 		val = val * 2500.0 + 400.0;
@@ -1062,8 +1080,8 @@ static void coco_hiresjoy_w(running_machine *machine, int data)
 	if (!data && coco_hiresjoy_ca)
 	{
 		/* Hi to lo */
-		coco_hiresjoy_xtransitiontime = coco_hiresjoy_computetransitiontime("joystick_right_x");
-		coco_hiresjoy_ytransitiontime = coco_hiresjoy_computetransitiontime("joystick_right_y");
+		coco_hiresjoy_xtransitiontime = coco_hiresjoy_computetransitiontime(machine, "joystick_right_x");
+		coco_hiresjoy_ytransitiontime = coco_hiresjoy_computetransitiontime(machine, "joystick_right_y");
 	}
 	else if (data && !coco_hiresjoy_ca)
 	{
@@ -1120,9 +1138,9 @@ static const device_config *cassette_device_image(void)
 	return image_from_devtype_and_index(IO_CASSETTE, 0);
 }
 
-static const device_config *bitbanger_image(void)
+static const device_config *bitbanger_image(running_machine *machine)
 {
-	return device_list_find_by_tag(Machine->config->devicelist, BITBANGER, "bitbanger");
+	return device_list_find_by_tag(machine->config->devicelist, BITBANGER, "bitbanger");
 }
 
 static const device_config *printer_image(void)
@@ -1240,19 +1258,19 @@ WRITE8_HANDLER ( dgnalpha_psg_porta_write )
 
 static WRITE8_HANDLER ( d_pia0_ca2_w )
 {
-	timer_adjust_oneshot(mux_sel1_timer, ATTOTIME_IN_USEC(16), data);
+	timer_adjust_oneshot(mux_sel1_timer, JOYSTICK_MUX_DELAY, data);
 }
 
 static TIMER_CALLBACK(coco_update_sel1_timerproc)
 {
-	mux_sel1 = param;;
+	mux_sel1 = param;
 	(*update_keyboard)(machine);
 	soundmux_update();
 }
 
 static WRITE8_HANDLER ( d_pia0_cb2_w )
 {
-	timer_adjust_oneshot(mux_sel2_timer, ATTOTIME_IN_USEC(16), data);
+	timer_adjust_oneshot(mux_sel2_timer, JOYSTICK_MUX_DELAY, data);
 }
 
 static TIMER_CALLBACK(coco_update_sel2_timerproc)
@@ -1291,24 +1309,24 @@ static UINT8 coco_update_keyboard(running_machine *machine)
 	joystick_axis = mux_sel1;
 	joystick = mux_sel2;
 
-	/* poll keyoard keys */
-	if ((input_port_read_indexed(machine, 0) | pia0_pb) != 0xff) porta &= ~0x01;
-	if ((input_port_read_indexed(machine, 1) | pia0_pb) != 0xff) porta &= ~0x02;
-	if ((input_port_read_indexed(machine, 2) | pia0_pb) != 0xff) porta &= ~0x04;
-	if ((input_port_read_indexed(machine, 3) | pia0_pb) != 0xff) porta &= ~0x08;
-	if ((input_port_read_indexed(machine, 4) | pia0_pb) != 0xff) porta &= ~0x10;
-	if ((input_port_read_indexed(machine, 5) | pia0_pb) != 0xff) porta &= ~0x20;
-	if ((input_port_read_indexed(machine, 6) | pia0_pb) != 0xff) porta &= ~0x40;
+	/* poll keyboard keys */
+	if ((input_port_read(machine, "row0") | pia0_pb) != 0xff) porta &= ~0x01;
+	if ((input_port_read(machine, "row1") | pia0_pb) != 0xff) porta &= ~0x02;
+	if ((input_port_read(machine, "row2") | pia0_pb) != 0xff) porta &= ~0x04;
+	if ((input_port_read(machine, "row3") | pia0_pb) != 0xff) porta &= ~0x08;
+	if ((input_port_read(machine, "row4") | pia0_pb) != 0xff) porta &= ~0x10;
+	if ((input_port_read(machine, "row5") | pia0_pb) != 0xff) porta &= ~0x20;
+	if ((input_port_read(machine, "row6") | pia0_pb) != 0xff) porta &= ~0x40;
 
-	if ((input_port_read_indexed(machine, 0) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x01;
-	if ((input_port_read_indexed(machine, 1) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x02;
-	if ((input_port_read_indexed(machine, 2) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x04;
-	if ((input_port_read_indexed(machine, 3) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x08;
-	if ((input_port_read_indexed(machine, 4) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x10;
-	if ((input_port_read_indexed(machine, 5) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x20;
-	if ((input_port_read_indexed(machine, 6) | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x40;
+	if ((input_port_read(machine, "row0") | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x01;
+	if ((input_port_read(machine, "row1") | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x02;
+	if ((input_port_read(machine, "row2") | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x04;
+	if ((input_port_read(machine, "row3") | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x08;
+	if ((input_port_read(machine, "row4") | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x10;
+	if ((input_port_read(machine, "row5") | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x20;
+	if ((input_port_read(machine, "row6") | pia_get_port_b_z_mask(0)) != 0xff) port_za &= ~0x40;
 
-	switch(get_input_device(joystick ? INPUTPORT_LEFT_JOYSTICK : INPUTPORT_RIGHT_JOYSTICK))
+	switch(get_input_device(machine, joystick ? INPUTPORT_LEFT_JOYSTICK : INPUTPORT_RIGHT_JOYSTICK))
 	{
 		case INPUTDEVICE_RIGHT_JOYSTICK:
 			joyval = input_port_read_safe(machine, joystick_axis ? "joystick_right_y" : "joystick_right_x", 0x00);
@@ -1396,12 +1414,12 @@ static UINT8 coco3_update_keyboard(running_machine *machine)
 
 /* three functions that update the keyboard in varying ways */
 static WRITE8_HANDLER ( d_pia0_pb_w )					{ (*update_keyboard)(machine); }
-INPUT_CHANGED(coco_keyboard_changed)					{ (*update_keyboard)(machine); }
+INPUT_CHANGED(coco_keyboard_changed)					{ (*update_keyboard)(field->port->machine); }
 static TIMER_CALLBACK(coco_update_keyboard_timerproc)	{ (*update_keyboard)(machine); }
 
 static WRITE8_HANDLER ( d_pia0_pa_w )
 {
-	if (get_input_device(INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_CC3MAX_INTERFACE)
+	if (get_input_device(machine, INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_CC3MAX_INTERFACE)
 		coco_hiresjoy_w(machine, data & 0x04);
 }
 
@@ -1438,7 +1456,7 @@ static void (*printer_out)(int data);
 /* Printer output for the CoCo, output to bitbanger port */
 static void printer_out_coco(int data)
 {
-	bitbanger_output(bitbanger_image(), (data & 2) >> 1);
+	bitbanger_output(bitbanger_image(Machine), (data & 2) >> 1);
 }
 
 /* Printer output for the Dragon, output to Paralel port */
@@ -1465,7 +1483,7 @@ static WRITE8_HANDLER ( d_pia1_pa_w )
 
 	coco_sound_update();
 
-	if (get_input_device(INPUTPORT_SERIAL) == INPUTDEVICE_DIECOM_LIGHTGUN)
+	if (get_input_device(machine, INPUTPORT_SERIAL) == INPUTDEVICE_DIECOM_LIGHTGUN)
 	{
 		int dclg_this_bit = ((data & 2) >> 1);
 
@@ -1513,7 +1531,7 @@ static WRITE8_HANDLER ( d_pia1_pa_w )
 
 	(*update_keyboard)(machine);
 
-	if (get_input_device(INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_INTERFACE)
+	if (get_input_device(machine, INPUTPORT_RIGHT_JOYSTICK) == INPUTDEVICE_HIRES_INTERFACE)
 		coco_hiresjoy_w(machine, dac >= 0x80);
 
 	/* Handle printer output, serial for CoCos, Paralell for Dragons */
@@ -1556,7 +1574,7 @@ static WRITE8_HANDLER( dragon64_pia1_pb_w )
 	/* always be high (enabling 32k basic rom) */
 	if (ddr & 0x04)
 	{
-		dragon_page_rom(data & 0x04);
+		dragon_page_rom(machine, data & 0x04);
 	}
 }
 
@@ -1581,7 +1599,7 @@ static WRITE8_HANDLER( dgnalpha_pia2_pa_w )
 	/* always be high (enabling boot rom) */
 	/* PIA FIXME if (pia_get_ddr_a(2) & 0x04) */
 	{
-		dragon_page_rom(data & 0x04);	/* bit 2 controls boot or basic rom */
+		dragon_page_rom(machine, data & 0x04);	/* bit 2 controls boot or basic rom */
 	}
 
 	/* Bits 0 and 1 for pia2 port a control the BCDIR and BC1 lines of the */
@@ -1607,7 +1625,7 @@ static WRITE8_HANDLER( dgnalpha_pia2_pa_w )
 /* Controls rom paging in Dragon 64, and Dragon Alpha */
 /* On 64, switches between the two versions of the basic rom mapped in at 0x8000 */
 /* on the alpha switches between the Boot/Diagnostic rom and the basic rom */
-static void dragon_page_rom(int	romswitch)
+static void dragon_page_rom(running_machine *machine, int romswitch)
 {
 	UINT8 *bank;
 
@@ -1619,7 +1637,7 @@ static void dragon_page_rom(int	romswitch)
 	bas_rom_bank = bank;			/* Record which rom we are using so that the irq routine */
 						/* uses the vectors from the correct rom ! (alpha) */
 
-	setup_memory_map(Machine);			/* Setup memory map as needed */
+	setup_memory_map(machine);			/* Setup memory map as needed */
 }
 
 /********************************************************************************************/
@@ -1822,7 +1840,7 @@ WRITE8_HANDLER ( plus_reg_w )
 		default	: bottom_32k=&mess_ram[0x00000]; break; // Just to shut the compiler up !
 	}
 
-	setup_memory_map(Machine);
+	setup_memory_map(machine);
 }
 
 
@@ -2233,7 +2251,7 @@ offs_t coco3_mmu_translate(int bank, int offset)
 
 
 
-static void coco3_mmu_update(int lowblock, int hiblock)
+static void coco3_mmu_update(running_machine *machine, int lowblock, int hiblock)
 {
 	static const struct
 	{
@@ -2274,7 +2292,7 @@ static void coco3_mmu_update(int lowblock, int hiblock)
 
 		/* set up the banks */
 		memory_set_bankptr(i + 1, readbank);
-		memory_install_write_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, bank_info[i].start, bank_info[i].end, 0, 0, writebank);
+		memory_install_write_handler(machine, 0, ADDRESS_SPACE_PROGRAM, bank_info[i].start, bank_info[i].end, 0, 0, writebank);
 
 		if (LOG_MMU)
 		{
@@ -2305,7 +2323,7 @@ WRITE8_HANDLER(coco3_mmu_w)
 	if ((offset >> 3) == (coco3_gimereg[1] & 1))
 	{
 		offset &= 7;
-		coco3_mmu_update(offset, (offset == 7) ? 8 : offset);
+		coco3_mmu_update(machine, offset, (offset == 7) ? 8 : offset);
 	}
 }
 
@@ -2375,7 +2393,7 @@ WRITE8_HANDLER(coco3_gime_w)
 			*		  Bit 1 MC1 ROM map control
 			*		  Bit 0 MC0 ROM map control
 			*/
-			coco3_mmu_update(0, 8);
+			coco3_mmu_update(machine, 0, 8);
 			break;
 
 		case 1:
@@ -2389,7 +2407,7 @@ WRITE8_HANDLER(coco3_gime_w)
 			*		  Bit 1 Unused
 			*		  Bit 0 TR Task register select
 			*/
-			coco3_mmu_update(0, 8);
+			coco3_mmu_update(machine, 0, 8);
 			coco3_timer_reset();
 			break;
 
@@ -2544,7 +2562,7 @@ static const UINT8 *coco3_sam_get_rambase(void)
 static void coco3_sam_set_maptype(int val)
 {
 	coco3_enable_64k = val;
-	coco3_mmu_update(4, 8);
+	coco3_mmu_update(Machine, 4, 8);
 }
 
 
@@ -2823,7 +2841,7 @@ static void generic_init_machine(running_machine *machine, const machine_init_in
 	mux_sel2_timer = timer_alloc(coco_update_sel2_timerproc, NULL);
 
 	/* setup ROM */
-	coco_rom = memory_region(REGION_CPU1);
+	coco_rom = memory_region(machine, REGION_CPU1);
 
 	/* setup default rom bank */
 	bas_rom_bank = coco_rom;
@@ -3049,12 +3067,12 @@ MACHINE_RESET( coco3 )
 		coco3_mmu[i] = coco3_mmu[i + 8] = 56 + i;
 		coco3_gimereg[i] = 0;
 	}
-	coco3_mmu_update(0, 8);
+	coco3_mmu_update(machine, 0, 8);
 }
 
 static STATE_POSTLOAD( coco3_state_postload )
 {
-	coco3_mmu_update(0, 8);
+	coco3_mmu_update(machine, 0, 8);
 }
 
 static void update_lightgun(running_machine *machine)
@@ -3065,7 +3083,7 @@ static void update_lightgun(running_machine *machine)
 
 INPUT_CHANGED( coco_joystick_mode_changed )
 {
-	update_lightgun(machine);
+	update_lightgun(field->port->machine);
 }
 
 static TIMER_CALLBACK( update_lightgun_timer_callback )

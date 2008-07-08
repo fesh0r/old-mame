@@ -87,7 +87,7 @@ static MACHINE_RESET( ti990_10 )
 
 static INTERRUPT_GEN( ti990_10_line_interrupt )
 {
-	vdt911_keyboard(0);
+	vdt911_keyboard(machine, 0);
 
 	ti990_line_interrupt();
 }
@@ -276,9 +276,9 @@ static DRIVER_INIT( ti990_10 )
 	/* load specific ti990/12 rom page */
 	const int page = 3;
 
-	memmove(memory_region(REGION_CPU1)+0x1FFC00, memory_region(REGION_CPU1)+0x1FFC00+(page*0x400), 0x400);
+	memmove(memory_region(machine, REGION_CPU1)+0x1FFC00, memory_region(machine, REGION_CPU1)+0x1FFC00+(page*0x400), 0x400);
 #endif
-	vdt911_init();
+	vdt911_init(machine);
 }
 
 static INPUT_PORTS_START(ti990_10)
@@ -329,7 +329,7 @@ static void ti990_10_cassette_getinfo(const mess_device_class *devclass, UINT32 
 	}
 }
 
-SYSTEM_CONFIG_START(ti990_10)
+static SYSTEM_CONFIG_START(ti990_10)
 	CONFIG_DEVICE(ti990_10_harddisk_getinfo)
 	CONFIG_DEVICE(ti990_10_cassette_getinfo)
 SYSTEM_CONFIG_END

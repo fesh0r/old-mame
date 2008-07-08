@@ -76,10 +76,11 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
+//#include "deprecat.h"
 #include "video/pc_cga.h"
 #include "video/mc6845.h"
 #include "video/pc_video.h"
+#include "video/cgapal.h"
 #include "memconv.h"
 
 #define VERBOSE_CGA 0		/* CGA (Color Graphics Adapter) */
@@ -96,10 +97,6 @@
 
 static VIDEO_START( pc_cga );
 static PALETTE_INIT( pc_cga );
-
-
-/* In cgapal.c; it's quite big */
-extern const unsigned char cga_palette[16 * CGA_PALETTE_SETS][3];
 
 
 INPUT_PORTS_START( pcvideo_cga )
@@ -154,10 +151,10 @@ INPUT_PORTS_START( pcvideo_pc1512 )
 INPUT_PORTS_END
 
 /* Dipswitch for font selection */
-#define CGA_FONT        (input_port_read_indexed(machine, cga.config_input_port)&3)
+#define CGA_FONT        (input_port_read_direct(cga.config_input_port)&3)
 
 /* Dipswitch for monitor selection */
-#define CGA_MONITOR     (input_port_read_indexed(machine, cga.config_input_port)&0x1C)
+#define CGA_MONITOR     (input_port_read_direct(cga.config_input_port)&0x1C)
 #define CGA_MONITOR_RGB         0x00    /* Colour RGB */
 #define CGA_MONITOR_MONO        0x04    /* Greyscale RGB */
 #define CGA_MONITOR_COMPOSITE   0x08    /* Colour composite */
@@ -166,7 +163,7 @@ INPUT_PORTS_END
 
 
 /* Dipswitch for chipset selection */
-#define CGA_CHIPSET     (input_port_read_indexed(machine, cga.config_input_port)&0xE0)
+#define CGA_CHIPSET     (input_port_read_direct(cga.config_input_port)&0xE0)
 #define CGA_CHIPSET_IBM         0x00    /* Original IBM CGA */
 #define CGA_CHIPSET_PC1512      0x20    /* PC1512 CGA subset */
 #define CGA_CHIPSET_PC200       0x40    /* PC200 in CGA mode */
@@ -242,7 +239,7 @@ static struct
 
 	UINT8	*chr_gen;
 
-	int		config_input_port;
+	const input_port_config *config_input_port;
 
 	mc6845_update_row_func	update_row;
 	UINT8	palette_lut_2bpp[4];
@@ -260,7 +257,7 @@ static struct
  *
  ***************************************************************************/
 
-struct ntsc_decoder
+static struct ntsc_decoder
 {
 	int period;
 
@@ -442,19 +439,19 @@ static PALETTE_INIT( pc_cga )
 }
 
 
-static int internal_pc_cga_video_start(int personality)
+static int internal_pc_cga_video_start(running_machine *machine, int personality)
 {
 	memset(&cga, 0, sizeof(cga));
 	cga.update_row = NULL;
 
-	cga.chr_gen = memory_region( REGION_GFX1 ) + 0x1000;
+	cga.chr_gen = memory_region( machine, REGION_GFX1 ) + 0x1000;
 
 	state_save_register_item("pccga", 0, cga.mode_control);
 	state_save_register_item("pccga", 0, cga.color_select);
 	state_save_register_item("pccga", 0, cga.status);
 	state_save_register_item("pccga", 0, cga.plantronics);
 
-	cga.config_input_port = port_tag_to_index( "pcvideo_cga_config" );
+	cga.config_input_port = input_port_by_tag(machine->portconfig, "pcvideo_cga_config" );
 
 	return 0;
 }
@@ -504,7 +501,7 @@ static VIDEO_START( pc_cga )
 
 	memory_set_bankptr(11, videoram);
 
-	internal_pc_cga_video_start(M6845_PERSONALITY_GENUINE);
+	internal_pc_cga_video_start(machine, M6845_PERSONALITY_GENUINE);
 
 	ntsc_decoder_init( &ntsc, 8, 256 );
 }
@@ -513,7 +510,7 @@ static VIDEO_START( pc_cga )
 
 static VIDEO_UPDATE( mc6845_cga )
 {
-	running_machine *machine = screen->machine;
+	UINT8 *gfx = memory_region(screen->machine, REGION_GFX1);
 	device_config	*devconf = (device_config *) device_list_find_by_tag(screen->machine->config->devicelist, MC6845, CGA_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 
@@ -521,10 +518,10 @@ static VIDEO_UPDATE( mc6845_cga )
 	switch ( CGA_FONT & 0x01 )
 	{
 	case 0:
-		cga.chr_gen = memory_region(REGION_GFX1) + 0x1800;
+		cga.chr_gen = gfx + 0x1800;
 		break;
 	case 1:
-		cga.chr_gen = memory_region(REGION_GFX1) + 0x1000;
+		cga.chr_gen = gfx + 0x1000;
 		break;
 	}
 	return 0;
@@ -1165,8 +1162,6 @@ static void pc_cga_color_select_w(int data)
  */
 static void pc_cga_plantronics_w(int data)
 {
-	running_machine *machine = Machine;
-
 	CGA_LOG(1,"CGA_plantronics_w",("$%02x\n", data));
 
 	if (CGA_CHIPSET != CGA_CHIPSET_ATI) return;
@@ -1634,13 +1629,13 @@ static VIDEO_START( pc1512 )
 	pc1512.read = 0;
 
 	/* PC1512 cut-down 6845 */
-	internal_pc_cga_video_start(M6845_PERSONALITY_PC1512);
+	internal_pc_cga_video_start(machine, M6845_PERSONALITY_PC1512);
 }
 
 
 static VIDEO_UPDATE( mc6845_pc1512 )
 {
-	running_machine *machine = screen->machine;
+	UINT8 *gfx = memory_region(screen->machine, REGION_GFX1);
 	device_config	*devconf = (device_config *) device_list_find_by_tag(screen->machine->config->devicelist, MC6845, CGA_MC6845_NAME);
 	mc6845_update( devconf, bitmap, cliprect);
 
@@ -1648,16 +1643,16 @@ static VIDEO_UPDATE( mc6845_pc1512 )
 	switch ( CGA_FONT & 0x03 )
 	{
 	case 0:
-		cga.chr_gen = memory_region(REGION_GFX1) + 0x0000;
+		cga.chr_gen = gfx + 0x0000;
 		break;
 	case 1:
-		cga.chr_gen = memory_region(REGION_GFX1) + 0x0800;
+		cga.chr_gen = gfx + 0x0800;
 		break;
 	case 2:
-		cga.chr_gen = memory_region(REGION_GFX1) + 0x1000;
+		cga.chr_gen = gfx + 0x1000;
 		break;
 	case 3:
-		cga.chr_gen = memory_region(REGION_GFX1) + 0x1800;
+		cga.chr_gen = gfx + 0x1800;
 		break;
 	}
 

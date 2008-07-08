@@ -46,6 +46,7 @@ typedef struct {
 
 /*----------- defined in machine/msx.c -----------*/
 
+extern MSX msx1;
 extern const ppi8255_interface msx_ppi8255_interface;
 
 /* start/stop functions */
@@ -62,7 +63,7 @@ extern NVRAM_HANDLER( msx2 );
 DEVICE_IMAGE_LOAD( msx_cart );
 DEVICE_IMAGE_UNLOAD( msx_cart );
 
-void msx_vdp_interrupt (int);
+void msx_vdp_interrupt(running_machine *machine, int i);
 
 /* I/O functions */
 WRITE8_HANDLER ( msx_printer_w );
@@ -95,11 +96,11 @@ WRITE8_HANDLER (msx_ram_mapper_w);
  READ8_HANDLER (msx_kanji_r);
 WRITE8_HANDLER (msx_kanji_w);
 
-void msx_memory_map_all (void);
-void msx_memory_map_page (int page);
+void msx_memory_map_all (running_machine *machine);
+void msx_memory_map_page (running_machine *machine, int page);
 void msx_memory_init (running_machine *machine);
 void msx_memory_set_carts (void);
-void msx_memory_reset (void);
+void msx_memory_reset (running_machine *machine);
 
 
 #endif /* MSX_H_ */

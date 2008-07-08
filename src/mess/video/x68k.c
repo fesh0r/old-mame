@@ -29,12 +29,6 @@
 #include "includes/x68k.h"
 #include "machine/68901mfp.h"
 
-extern struct x68k_system sys;
-
-extern emu_timer* scanline_timer;
-extern emu_timer* raster_irq;
-extern emu_timer* vblank_irq;
-
 UINT16* gvram;  // Graphic VRAM
 UINT16* tvram;  // Text VRAM
 UINT16* x68k_spriteram;  // sprite/background RAM
@@ -54,7 +48,6 @@ static tilemap* x68k_bg1_8;
 static tilemap* x68k_bg0_16;  // two 64x64 tilemaps, 16x16 characters
 static tilemap* x68k_bg1_16;
 
-extern unsigned int x68k_scanline;
 static int sprite_shift;
 
 static void x68k_render_video_word(int offset);
@@ -897,13 +890,13 @@ VIDEO_START( x68000 )
 
 	/* create the char set (gfx will then be updated dynamically from RAM) */
 	machine->gfx[gfx_index] = allocgfx(&x68k_pcg_8);
-	decodegfx(machine->gfx[gfx_index] , memory_region(REGION_USER1), 0, 256);
+	decodegfx(machine->gfx[gfx_index] , memory_region(machine, REGION_USER1), 0, 256);
 	machine->gfx[gfx_index]->total_colors = 32;
 
 	gfx_index++;
 
 	machine->gfx[gfx_index] = allocgfx(&x68k_pcg_16);
-	decodegfx(machine->gfx[gfx_index] , memory_region(REGION_USER1), 0, 256);
+	decodegfx(machine->gfx[gfx_index] , memory_region(machine, REGION_USER1), 0, 256);
 	machine->gfx[gfx_index]->total_colors = 32;
 
 	/* Tilemaps */
@@ -928,6 +921,7 @@ VIDEO_UPDATE( x68000 )
 	int x;
 	tilemap* x68k_bg0;
 	tilemap* x68k_bg1;
+	UINT8 *rom;
 
 	if((x68k_spritereg[0x408] & 0x03) == 0x00)  // Sprite/BG H-Res 0=8x8, 1=16x16, 2 or 3 = undefined.
 	{
@@ -956,16 +950,17 @@ VIDEO_UPDATE( x68000 )
 		rect.max_y = cliprect->max_y;
 
 	// update tiles
+	rom = memory_region(screen->machine, REGION_USER1);
 	for(x=0;x<256;x++)
 	{
 		if(sys.video.tile16_dirty[x] != 0)
 		{
-			decodechar(screen->machine->gfx[1], x,memory_region(REGION_USER1));
+			decodechar(screen->machine->gfx[1], x, rom);
 			sys.video.tile16_dirty[x] = 0;
 		}
 		if(sys.video.tile8_dirty[x] != 0)
 		{
-			decodechar(screen->machine->gfx[0], x,memory_region(REGION_USER1));
+			decodechar(screen->machine->gfx[0], x, rom);
 			sys.video.tile8_dirty[x] = 0;
 		}
 	}

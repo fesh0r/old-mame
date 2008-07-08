@@ -16,8 +16,9 @@
 #include "machine/8255ppi.h"
 #include "machine/pit8253.h"
 #include "machine/wd17xx.h"
+#include "includes/special.h"
 
-UINT8 specimx_color;
+static UINT8 specimx_color;
 UINT8 *specimx_colorram;
 
 static int specialist_8255_porta;
@@ -28,46 +29,46 @@ static int specialist_8255_portc;
 DRIVER_INIT(special)
 {
 	/* set initialy ROM to be visible on first bank */
-	UINT8 *RAM = memory_region(REGION_CPU1);	
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);	
 	memset(RAM,0x0000,0x3000); // make frist page empty by default
 	memory_configure_bank(1, 1, 2, RAM, 0x0000);
 	memory_configure_bank(1, 0, 2, RAM, 0xc000);	
 }
 
-READ8_HANDLER (specialist_8255_porta_r )
+static READ8_HANDLER (specialist_8255_porta_r )
 {
-	if (input_port_read_indexed(machine, 0)!=0xff) return 0xfe;
-	if (input_port_read_indexed(machine, 1)!=0xff) return 0xfd;
-	if (input_port_read_indexed(machine, 2)!=0xff) return 0xfb;
-	if (input_port_read_indexed(machine, 3)!=0xff) return 0xf7;
-	if (input_port_read_indexed(machine, 4)!=0xff) return 0xef;
-	if (input_port_read_indexed(machine, 5)!=0xff) return 0xdf;
-	if (input_port_read_indexed(machine, 6)!=0xff) return 0xbf;
-	if (input_port_read_indexed(machine, 7)!=0xff) return 0x7f;	
+	if (input_port_read(machine, "LINE0")!=0xff) return 0xfe;
+	if (input_port_read(machine, "LINE1")!=0xff) return 0xfd;
+	if (input_port_read(machine, "LINE2")!=0xff) return 0xfb;
+	if (input_port_read(machine, "LINE3")!=0xff) return 0xf7;
+	if (input_port_read(machine, "LINE4")!=0xff) return 0xef;
+	if (input_port_read(machine, "LINE5")!=0xff) return 0xdf;
+	if (input_port_read(machine, "LINE6")!=0xff) return 0xbf;
+	if (input_port_read(machine, "LINE7")!=0xff) return 0x7f;	
 	return 0xff;
 }
 
-READ8_HANDLER (specialist_8255_portb_r )
+static READ8_HANDLER (specialist_8255_portb_r )
 {
 	
 	int dat = 0;
 	double level;	
 	
-  if ((specialist_8255_porta & 0x01)==0) dat ^= (input_port_read_indexed(machine, 0) ^ 0xff);
-  if ((specialist_8255_porta & 0x02)==0) dat ^= (input_port_read_indexed(machine, 1) ^ 0xff);
-  if ((specialist_8255_porta & 0x04)==0) dat ^= (input_port_read_indexed(machine, 2) ^ 0xff);
-  if ((specialist_8255_porta & 0x08)==0) dat ^= (input_port_read_indexed(machine, 3) ^ 0xff);
-  if ((specialist_8255_porta & 0x10)==0) dat ^= (input_port_read_indexed(machine, 4) ^ 0xff);
-  if ((specialist_8255_porta & 0x20)==0) dat ^= (input_port_read_indexed(machine, 5) ^ 0xff);
-  if ((specialist_8255_porta & 0x40)==0) dat ^= (input_port_read_indexed(machine, 6) ^ 0xff);
-  if ((specialist_8255_porta & 0x80)==0) dat ^= (input_port_read_indexed(machine, 7) ^ 0xff);
-  if ((specialist_8255_portc & 0x01)==0) dat ^= (input_port_read_indexed(machine, 8) ^ 0xff);
-  if ((specialist_8255_portc & 0x02)==0) dat ^= (input_port_read_indexed(machine, 9) ^ 0xff);
-  if ((specialist_8255_portc & 0x04)==0) dat ^= (input_port_read_indexed(machine, 10) ^ 0xff);
-  if ((specialist_8255_portc & 0x08)==0) dat ^= (input_port_read_indexed(machine, 11) ^ 0xff);
+  if ((specialist_8255_porta & 0x01)==0) dat ^= (input_port_read(machine, "LINE0") ^ 0xff);
+  if ((specialist_8255_porta & 0x02)==0) dat ^= (input_port_read(machine, "LINE1") ^ 0xff);
+  if ((specialist_8255_porta & 0x04)==0) dat ^= (input_port_read(machine, "LINE2") ^ 0xff);
+  if ((specialist_8255_porta & 0x08)==0) dat ^= (input_port_read(machine, "LINE3") ^ 0xff);
+  if ((specialist_8255_porta & 0x10)==0) dat ^= (input_port_read(machine, "LINE4") ^ 0xff);
+  if ((specialist_8255_porta & 0x20)==0) dat ^= (input_port_read(machine, "LINE5") ^ 0xff);
+  if ((specialist_8255_porta & 0x40)==0) dat ^= (input_port_read(machine, "LINE6") ^ 0xff);
+  if ((specialist_8255_porta & 0x80)==0) dat ^= (input_port_read(machine, "LINE7") ^ 0xff);
+  if ((specialist_8255_portc & 0x01)==0) dat ^= (input_port_read(machine, "LINE8") ^ 0xff);
+  if ((specialist_8255_portc & 0x02)==0) dat ^= (input_port_read(machine, "LINE9") ^ 0xff);
+  if ((specialist_8255_portc & 0x04)==0) dat ^= (input_port_read(machine, "LINE10") ^ 0xff);
+  if ((specialist_8255_portc & 0x08)==0) dat ^= (input_port_read(machine, "LINE11") ^ 0xff);
   	
 	dat = (dat  << 2) ^0xff;	
-	if (input_port_read_indexed(machine, 12)!=0xff) dat ^= 0x02;
+	if (input_port_read(machine, "LINE12")!=0xff) dat ^= 0x02;
 		
 	level = cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0));	 									 					
 	if (level >=  0) { 
@@ -76,25 +77,25 @@ READ8_HANDLER (specialist_8255_portb_r )
 	return dat & 0xff;
 }
 
-READ8_HANDLER (specialist_8255_portc_r )
+static READ8_HANDLER (specialist_8255_portc_r )
 {
-	if (input_port_read_indexed(machine, 8)!=0xff) return 0x0e;
-	if (input_port_read_indexed(machine, 9)!=0xff) return 0x0d;
-	if (input_port_read_indexed(machine, 10)!=0xff) return 0x0b;
-	if (input_port_read_indexed(machine, 11)!=0xff) return 0x07;
+	if (input_port_read(machine, "LINE8")!=0xff) return 0x0e;
+	if (input_port_read(machine, "LINE9")!=0xff) return 0x0d;
+	if (input_port_read(machine, "LINE10")!=0xff) return 0x0b;
+	if (input_port_read(machine, "LINE11")!=0xff) return 0x07;
 	return 0x0f;
 }
 
-WRITE8_HANDLER (specialist_8255_porta_w )
+static WRITE8_HANDLER (specialist_8255_porta_w )
 {	
 	specialist_8255_porta = data;
 }
 
-WRITE8_HANDLER (specialist_8255_portb_w )
+static WRITE8_HANDLER (specialist_8255_portb_w )
 {	
 	specialist_8255_portb = data;
 }
-WRITE8_HANDLER (specialist_8255_portc_w )
+static WRITE8_HANDLER (specialist_8255_portc_w )
 {		
 	specialist_8255_portc = data;
 	
@@ -141,7 +142,7 @@ WRITE8_HANDLER( specialist_keyboard_w )
 	 Specialist MX
 */
 
-WRITE8_HANDLER( video_memory_w )
+static WRITE8_HANDLER( video_memory_w )
 {
 	mess_ram[0x9000 + offset] = data;
 	specimx_colorram[offset]  = specimx_color;
@@ -183,8 +184,8 @@ static void specimx_set_bank(running_machine *machine, int i,int data)
 				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x8fff, 0, 0, SMH_UNMAP);
 				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0xbfff, 0, 0, SMH_UNMAP);
 			
-				memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x10000);
-				memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x19000);
+				memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x10000);
+				memory_set_bankptr(2, memory_region(machine, REGION_CPU1) + 0x19000);
 			  if (data & 0x80) {
 					memory_set_bankptr(3, mess_ram + 0x1c000);					
 				} else {
@@ -242,7 +243,7 @@ MACHINE_RESET( specimx )
 {
 	specimx_set_bank(machine, 2,0x00); // Initiali load ROM disk
 	specimx_color = 0x70;	
-	wd17xx_reset();
+	wd17xx_reset(machine);
 	wd17xx_set_side(0);
 	timer_set( attotime_zero, NULL, 0, setup_pit8253_gates );
 }
@@ -313,7 +314,8 @@ static void erik_set_bank(running_machine *machine) {
 	UINT8 bank2 = ((RR_register >> 2) & 3);
 	UINT8 bank3 = ((RR_register >> 4) & 3);
 	UINT8 bank4 = ((RR_register >> 6) & 3);
-	
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
+
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_BANK1);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x8fff, 0, 0, SMH_BANK2);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0xbfff, 0, 0, SMH_BANK3);
@@ -329,7 +331,7 @@ static void erik_set_bank(running_machine *machine) {
 						break;		
 		case 	0: 
 						memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-						memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x10000);	
+						memory_set_bankptr(1, mem + 0x10000);	
 						break;
 	}
 	switch(bank2) {
@@ -340,7 +342,7 @@ static void erik_set_bank(running_machine *machine) {
 						break;		
 		case 	0: 
 						memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x8fff, 0, 0, SMH_UNMAP);
-						memory_set_bankptr(2, memory_region(REGION_CPU1) + 0x14000);	
+						memory_set_bankptr(2, mem + 0x14000);	
 						break;
 	}
 	switch(bank3) {
@@ -351,7 +353,7 @@ static void erik_set_bank(running_machine *machine) {
 						break;		
 		case 	0: 
 						memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9000, 0xbfff, 0, 0, SMH_UNMAP);
-						memory_set_bankptr(3, memory_region(REGION_CPU1) + 0x19000);	
+						memory_set_bankptr(3, mem + 0x19000);	
 						break;
 	}
 	switch(bank4) {
@@ -364,7 +366,7 @@ static void erik_set_bank(running_machine *machine) {
 						break;		
 		case 	0: 
 						memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xc000, 0xefff, 0, 0, SMH_UNMAP);
-						memory_set_bankptr(4, memory_region(REGION_CPU1) + 0x1c000);	
+						memory_set_bankptr(4, mem + 0x1c000);	
 						memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xf7ff, 0, 0, SMH_UNMAP);
 						memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf000, 0xf7ff, 0, 0, SMH_NOP);
 						memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf800, 0xffff, 0, 0, specialist_keyboard_w);
@@ -372,10 +374,6 @@ static void erik_set_bank(running_machine *machine) {
 						break;
 	}
 }
-
-extern UINT8 erik_color_1;
-extern UINT8 erik_color_2;
-extern UINT8 erik_background;
 
 DRIVER_INIT(erik)
 {	
@@ -392,7 +390,7 @@ MACHINE_START( erik )
 
 MACHINE_RESET( erik )
 {
-	wd17xx_reset();		
+	wd17xx_reset(machine);		
 	
 	RR_register = 0x00;	
 	RC_register = 0x00;

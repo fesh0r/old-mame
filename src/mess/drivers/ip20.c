@@ -52,7 +52,7 @@ static VIDEO_UPDATE( ip204415 )
 	return 0;
 }
 
-static const struct EEPROM_interface eeprom_interface_93C56 =
+static const eeprom_interface eeprom_interface_93C56 =
 {
 	7,					// address bits 7
 	16,					// data bits    16
@@ -67,21 +67,21 @@ static NVRAM_HANDLER(93C56)
 {
 	if (read_or_write)
 	{
-		EEPROM_save(file);
+		eeprom_save(file);
 	}
 	else
 	{
-		EEPROM_init(&eeprom_interface_93C56);
+		eeprom_init(&eeprom_interface_93C56);
 		if (file)
 		{
-			EEPROM_load(file);
+			eeprom_load(file);
 		}
 		else
 		{
 			int length;
 			UINT8 *dat;
 
-			dat = EEPROM_get_data_pointer(&length);
+			dat = eeprom_get_data_pointer(&length);
 			memset(dat, 0, length);
 		}
 	}
@@ -110,6 +110,8 @@ static UINT32 nHPC_SCSI0Descriptor, nHPC_SCSI0DMACtrl;
 
 static READ32_HANDLER( hpc_r )
 {
+	const device_config *scc;
+
 	offset <<= 2;
 	if( offset >= 0x0e00 && offset <= 0x0e7c )
 	{
@@ -156,7 +158,7 @@ static READ32_HANDLER( hpc_r )
 		break;
 	case 0x01bc:
 //      verboselog( 2, "HPC CPU Serial EEPROM Read\n" );
-		return ( ( EEPROM_read_bit() << 4 ) );
+		return ( ( eeprom_read_bit() << 4 ) );
 		break;
 	case 0x01c4:
 		verboselog( 2, "HPC Local IO Register 0 Mask Read: %08x (%08x)\n", nHPC_LocalIOReg0Mask, mem_mask );
@@ -182,7 +184,8 @@ static READ32_HANDLER( hpc_r )
 	case 0x0d04:
 		verboselog( 2, "HPC DUART0 Channel B Data Read\n" );
 //      return 0;
-		return scc_r(machine, 2);
+		scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+		return scc_r(scc, 2);
 		break;
 	case 0x0d08:
 		verboselog( 2, "HPC DUART0 Channel A Control Read (%08x)\n", mem_mask	 );
@@ -192,7 +195,8 @@ static READ32_HANDLER( hpc_r )
 	case 0x0d0c:
 		verboselog( 2, "HPC DUART0 Channel A Data Read\n" );
 //      return 0;
-		return scc_r(machine, 3);
+		scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+		return scc_r(scc, 3);
 		break;
 	case 0x0d10:
 //      verboselog( 2, "HPC DUART1 Channel B Control Read\n" );
@@ -249,6 +253,8 @@ static READ32_HANDLER( hpc_r )
 
 static WRITE32_HANDLER( hpc_w )
 {
+	const device_config *scc;
+
 	offset <<= 2;
 	if( offset >= 0x0e00 && offset <= 0x0e7c )
 	{
@@ -361,9 +367,9 @@ static WRITE32_HANDLER( hpc_w )
 		{
 			verboselog( 2, "    CPU board LED on\n" );
 		}
-		EEPROM_write_bit( (data & 0x00000008) ? 1 : 0 );
-		EEPROM_set_cs_line( (data & 0x00000002) ? ASSERT_LINE : CLEAR_LINE );
-		EEPROM_set_clock_line( (data & 0x00000004) ? CLEAR_LINE : ASSERT_LINE );
+		eeprom_write_bit( (data & 0x00000008) ? 1 : 0 );
+		eeprom_set_cs_line( (data & 0x00000002) ? ASSERT_LINE : CLEAR_LINE );
+		eeprom_set_clock_line( (data & 0x00000004) ? CLEAR_LINE : ASSERT_LINE );
 		break;
 	case 0x01c4:
 		verboselog( 2, "HPC Local IO Register 0 Mask Write: %08x (%08x)\n", data, mem_mask );
@@ -383,19 +389,23 @@ static WRITE32_HANDLER( hpc_w )
 		break;
 	case 0x0d00:
 		verboselog( 2, "HPC DUART0 Channel B Control Write: %08x (%08x)\n", data, mem_mask );
-		scc_w(machine, 0, data);
+		scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+		scc_w(scc, 0, data);
 		break;
 	case 0x0d04:
 		verboselog( 2, "HPC DUART0 Channel B Data Write: %08x (%08x)\n", data, mem_mask );
-		scc_w(machine, 2, data);
+		scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+		scc_w(scc, 2, data);
 		break;
 	case 0x0d08:
 		verboselog( 2, "HPC DUART0 Channel A Control Write: %08x (%08x)\n", data, mem_mask );
-		scc_w(machine, 1, data);
+		scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+		scc_w(scc, 1, data);
 		break;
 	case 0x0d0c:
 		verboselog( 2, "HPC DUART0 Channel A Data Write: %08x (%08x)\n", data, mem_mask );
-		scc_w(machine, 3, data);
+		scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+		scc_w(scc, 3, data);
 		break;
 	case 0x0d10:
 		if( ( data & 0x000000ff ) >= 0x00000020 )
@@ -559,7 +569,7 @@ static MACHINE_RESET( ip204415 )
 	nRTC_Temp = 0;
 }
 
-static void scsi_irq(int state)
+static void scsi_irq(running_machine *machine, int state)
 {
 }
 
@@ -582,7 +592,6 @@ static void ip204415_exit(running_machine *machine)
 
 static DRIVER_INIT( ip204415 )
 {
-	scc_init(NULL);
 	wd33c93_init(&scsi_intf);
 	add_exit_callback(machine, ip204415_exit);
 }
@@ -604,7 +613,7 @@ static void ip20_chdcd_getinfo(const mess_device_class *devclass, UINT32 state, 
 	}
 }
 
-static const struct mips3_config config =
+static const mips3_config config =
 {
 	32768,	/* code cache size */
 	32768	/* data cache size */
@@ -635,6 +644,8 @@ static MACHINE_DRIVER_START( ip204415 )
 
 	MDRV_SOUND_ADD( CDDA, 0 )
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
+
+	MDRV_DEVICE_ADD("scc", SCC8530)
 MACHINE_DRIVER_END
 
 ROM_START( ip204415 )
@@ -642,7 +653,7 @@ ROM_START( ip204415 )
 	ROM_LOAD( "ip204415.bin", 0x000000, 0x080000, CRC(940d960e) SHA1(596aba530b53a147985ff3f6f853471ce48c866c) )
 ROM_END
 
-SYSTEM_CONFIG_START( ip204415 )
+static SYSTEM_CONFIG_START( ip204415 )
 	CONFIG_DEVICE(ip20_chdcd_getinfo)
 SYSTEM_CONFIG_END
 

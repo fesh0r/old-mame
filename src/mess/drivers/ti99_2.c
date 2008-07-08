@@ -95,13 +95,13 @@ static DRIVER_INIT( ti99_2_32 )
 	ROM_paged = 1;
 }
 
-#define TI99_2_32_ROMPAGE0 (memory_region(REGION_CPU1)+0x4000)
-#define TI99_2_32_ROMPAGE1 (memory_region(REGION_CPU1)+0x10000)
+#define TI99_2_32_ROMPAGE0 (memory_region(machine, REGION_CPU1)+0x4000)
+#define TI99_2_32_ROMPAGE1 (memory_region(machine, REGION_CPU1)+0x10000)
 
 static MACHINE_RESET( ti99_2 )
 {
 	if (! ROM_paged)
-		memory_set_bankptr(1, memory_region(REGION_CPU1)+0x4000);
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU1)+0x4000);
 	else
 		memory_set_bankptr(1, TI99_2_32_ROMPAGE0);
 }
@@ -400,7 +400,7 @@ ROM_START(ti99_232)
 	ROM_CONTINUE(0x10000,0x2000)
 ROM_END
 
-SYSTEM_CONFIG_START(ti99_2)
+static SYSTEM_CONFIG_START(ti99_2)
 	/* one expansion/cartridge port on the back */
 	/* one cassette unit port */
 	/* Hex-bus disk controller: supports up to 4 floppy disk drives */

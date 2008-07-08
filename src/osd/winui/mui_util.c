@@ -61,6 +61,7 @@ static struct DriversInfo
 	BOOL usesSamples;
 	BOOL usesTrackball;
 	BOOL usesLightGun;
+	BOOL usesMouse;
 	BOOL supportsSaveState;
 	BOOL isVertical;
 } *drivers_info = NULL;
@@ -356,7 +357,7 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			struct DriversInfo *gameinfo = &drivers_info[ndriver];
 			const rom_entry *region, *rom;
 			machine_config *config;
-			const input_port_entry *input_ports;
+			const input_port_config *input_ports;
 			int num_speakers;
 
 			/* Allocate machine config */
@@ -431,23 +432,29 @@ static struct DriversInfo* GetDriversInfo(int driver_index)
 			gameinfo->usesLightGun = FALSE;
 			if (gamedrv->ipt != NULL)
 			{
-				begin_resource_tracking();
-				input_ports = input_port_allocate(gamedrv->ipt, NULL);
-				while (1)
+				const input_port_config *port;
+				input_ports = input_port_config_alloc(gamedrv->ipt,NULL,0);
+				
+				for (port = input_ports; port != NULL; port = port->next)
 				{
-					UINT32 type;
-					type = input_ports->type;
-					if (type == IPT_END)
-						break;
-					if (type == IPT_DIAL || type == IPT_PADDLE || 
-						type == IPT_TRACKBALL_X || type == IPT_TRACKBALL_Y ||
-						type == IPT_AD_STICK_X || type == IPT_AD_STICK_Y)
-						gameinfo->usesTrackball = TRUE;
-					if (type == IPT_LIGHTGUN_X || type == IPT_LIGHTGUN_Y)
-						gameinfo->usesLightGun = TRUE;
-					input_ports++;
+					const input_field_config *field;
+					for (field = port->fieldlist; field != NULL; field = field->next)
+ 					{
+						UINT32 type;
+						type = field->type;
+						if (type == IPT_END)
+							break;
+						if (type == IPT_DIAL || type == IPT_PADDLE || 
+							type == IPT_TRACKBALL_X || type == IPT_TRACKBALL_Y ||
+							type == IPT_AD_STICK_X || type == IPT_AD_STICK_Y)
+							gameinfo->usesTrackball = TRUE;
+						if (type == IPT_LIGHTGUN_X || type == IPT_LIGHTGUN_Y)
+							gameinfo->usesLightGun = TRUE;
+						if (type == IPT_MOUSE_X || type == IPT_MOUSE_Y)
+							gameinfo->usesMouse = TRUE;
+					}
 				}
-				end_resource_tracking();
+				input_port_config_free(input_ports);
 			}
 		}
 	}
@@ -515,6 +522,11 @@ BOOL DriverUsesTrackball(int driver_index)
 BOOL DriverUsesLightGun(int driver_index)
 {
 	return GetDriversInfo(driver_index)->usesLightGun;
+}
+
+BOOL DriverUsesMouse(int driver_index)
+{
+	return GetDriversInfo(driver_index)->usesMouse;
 }
 
 BOOL DriverSupportsSaveState(int driver_index)

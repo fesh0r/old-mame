@@ -106,7 +106,6 @@
 
 #include <assert.h>
 #include "driver.h"
-#include "deprecat.h"
 
 #include "includes/apple2gs.h"
 #include "includes/apple2.h"
@@ -336,15 +335,15 @@ static void apple2gs_remove_irq(running_machine *machine, UINT8 irq_mask)
 	}
 }
 
-void apple2gs_doc_irq(int state)
+void apple2gs_doc_irq(running_machine *machine, int state)
 {
 	if (state)
 	{
-		apple2gs_add_irq(Machine, IRQ_DOC);
+		apple2gs_add_irq(machine, IRQ_DOC);
 	}
 	else
 	{
-		apple2gs_remove_irq(Machine, IRQ_DOC);
+		apple2gs_remove_irq(machine, IRQ_DOC);
 	}
 }
 
@@ -573,7 +572,7 @@ static UINT8 adb_read_datareg(void)
 
 
 
-static void adb_write_datareg(UINT8 data)
+static void adb_write_datareg(running_machine *machine, UINT8 data)
 {
 	if (LOG_ADB)
 		logerror("adb_write_datareg(): data=0x%02x\n", data);
@@ -606,7 +605,7 @@ static void adb_write_datareg(UINT8 data)
 					break;
 
 				case 0x07:	/* synchronize */
-					if (memory_region_length(REGION_CPU1) == 0x40000)	/* HACK */
+					if (memory_region_length(machine, REGION_CPU1) == 0x40000)	/* HACK */
 						adb_command_length = 8;
 					else
 						adb_command_length = 4;
@@ -959,6 +958,7 @@ static int apple2gs_get_vpos(running_machine *machine)
 static READ8_HANDLER( apple2gs_c0xx_r )
 {
 	UINT8 result;
+	const device_config *scc;
 
 	offset &= 0xFF;
 
@@ -1046,7 +1046,8 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			result = scc_r(machine, offset & 0x03);
+			scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+			result = scc_r(scc, offset & 0x03);
 			break;
 
 		case 0x3C:	/* C03C - SOUNDCTL */
@@ -1078,8 +1079,8 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 		case 0x74: case 0x75: case 0x76: case 0x77:
 		case 0x78: case 0x79: case 0x7a: case 0x7b:
 		case 0x7c: case 0x7d: case 0x7e: case 0x7f:
-			offset |= (memory_region_length(REGION_CPU1) - 1) & ~0x3FFF;
-			result = memory_region(REGION_CPU1)[offset];
+			offset |= (memory_region_length(machine, REGION_CPU1) - 1) & ~0x3FFF;
+			result = memory_region(machine, REGION_CPU1)[offset];
 			break;
 
 		case 0x21:	/* C021 - MONOCOLOR */
@@ -1100,6 +1101,8 @@ static READ8_HANDLER( apple2gs_c0xx_r )
 
 static WRITE8_HANDLER( apple2gs_c0xx_w )
 {
+	const device_config *scc;
+
 	offset &= 0xFF;
 
 	if (LOG_C0XX)
@@ -1127,7 +1130,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 			break;
 
 		case 0x26:	/* C026 - DATAREG */
-			adb_write_datareg(data);
+			adb_write_datareg(machine, data);
 			break;
 
 		case 0x27:	/* C027 - KMSTATUS */
@@ -1144,11 +1147,11 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 
 		case 0x2D:	/* C02D - SLTROMSEL */
 			apple2gs_sltromsel = data;
-			apple2_update_memory();
+			apple2_update_memory(machine);
 			break;
 
 		case 0x31:	/* C031 - DISKREG */
-			apple2_iwm_setdiskreg(data);
+			apple2_iwm_setdiskreg(machine, data);
 			break;
 
 		case 0x32:	/* C032 - SCANINT */
@@ -1170,7 +1173,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 			if (apple2gs_shadow != data)
 			{
 				apple2gs_shadow = data;
-				apple2_update_memory();
+				apple2_update_memory(machine);
 			}
 			break;
 
@@ -1183,7 +1186,8 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 		case 0x39:	/* C039 - SCCAREG */
 		case 0x3A:	/* C03A - SCCBDATA */
 		case 0x3B:	/* C03B - SCCADATA */
-			scc_w(machine, offset & 0x03, data);
+			scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+			scc_w(scc, offset & 0x03, data);
 			break;
 
 		case 0x3C:	/* C03C - SOUNDCTL */
@@ -1208,7 +1212,7 @@ static WRITE8_HANDLER( apple2gs_c0xx_w )
 			break;
 
 		case 0x68:	/* C068 - STATEREG */
-			apple2_setvar(
+			apple2_setvar(machine,
 				((data & 0x80) ? VAR_ALTZP : 0) |
 				((data & 0x40) ? VAR_PAGE2 : 0) |
 				((data & 0x20) ? VAR_RAMRD : 0) |
@@ -1511,7 +1515,7 @@ static const apple2_memmap_entry apple2gs_memmap_entries[] =
 
 
 
-static UINT8 *apple2gs_getslotmem(offs_t address)
+static UINT8 *apple2gs_getslotmem(running_machine *machine, offs_t address)
 {
 	UINT8 *rom;
 
@@ -1519,8 +1523,8 @@ static UINT8 *apple2gs_getslotmem(offs_t address)
 	assert(address >= 0xC000);
 	assert(address <= 0xCFFF);
 
-	rom = memory_region(REGION_CPU1);
-	rom += 0x030000 % memory_region_length(REGION_CPU1);
+	rom = memory_region(machine, REGION_CPU1);
+	rom += 0x030000 % memory_region_length(machine, REGION_CPU1);
 	return &rom[address];
 }
 
@@ -1544,7 +1548,7 @@ static UINT8 apple2gs_xxCxxx_r(running_machine *machine, offs_t address)
 		slot = (address & 0x000F00) / 0x100;
 
 		if ((slot > 7) || ((apple2gs_sltromsel & (1 << slot)) == 0))
-			result = *apple2gs_getslotmem(address);
+			result = *apple2gs_getslotmem(machine, address);
 		else
 			result = apple2_getfloatingbusvalue();
 	}
@@ -1570,7 +1574,7 @@ static void apple2gs_xxCxxx_w(running_machine *machine, offs_t address, UINT8 da
 		slot = (address & 0x000F00) / 0x100;
 
 		if ((slot > 7) || ((apple2gs_sltromsel & (1 << slot)) == 0))
-			*apple2gs_getslotmem(address) = data;
+			*apple2gs_getslotmem(machine, address) = data;
 	}
 }
 
@@ -1590,22 +1594,22 @@ static OPBASE_HANDLER( apple2gs_opbase )
 		else if ((address & 0x000F00) == 0x000000)
 		{
 			if (((address & 0xFF) >= 0x71) && ((address & 0xFF) <= 0x7F))
-				opptr = apple2gs_getslotmem(address);
+				opptr = apple2gs_getslotmem(machine, address);
 		}
 		else
 		{
 			slot = (address & 0x000F00) / 0x100;
 
 			if ((slot > 7) || ((apple2gs_sltromsel & (1 << slot)) == 0))
-				opptr = apple2gs_getslotmem(address);
+				opptr = apple2gs_getslotmem(machine, address);
 		}
 
-		if (opptr)
+		if (opptr != NULL)
 		{
-			opcode_mask = ~0;
-			opcode_base = opcode_arg_base = opptr - address;
-			opcode_memory_min = address;
-			opcode_memory_max = address;
+			opbase->mask = ~0;
+			opbase->rom = opbase->ram = opptr - address;
+			opbase->mem_min = address;
+			opbase->mem_max = address;
 			address = ~0;
 		}
 	}
@@ -1676,10 +1680,10 @@ static void apple2gs_setup_memory(running_machine *machine)
 	memory_set_bankptr(2, apple2gs_slowmem);
 
 	/* install alternate ROM bank */
-	begin = 0x1000000 - memory_region_length(REGION_CPU1);
+	begin = 0x1000000 - memory_region_length(machine, REGION_CPU1);
 	end = 0xffffff;
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, begin, end, 0, 0, SMH_BANK3);
-	memory_set_bankptr(3, memory_region(REGION_CPU1));
+	memory_set_bankptr(3, memory_region(machine, REGION_CPU1));
 
 	/* install new xxC000-xxCFFF handlers */
 	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x00c000, 0x00cfff, 0, 0, apple2gs_00Cxxx_r);
@@ -1703,7 +1707,7 @@ static void apple2gs_setup_memory(running_machine *machine)
 	cfg.memmap = apple2gs_memmap_entries;
 	cfg.auxmem = apple2gs_slowmem;
 	cfg.auxmem_length = 0x20000;
-	apple2_setup_memory(&cfg);
+	apple2_setup_memory(machine, &cfg);
 }
 
 
@@ -1783,7 +1787,6 @@ MACHINE_START( apple2gs )
 	sndglu_dummy_read = 0;
 
 	/* init the various subsystems */
-	scc_init(NULL);
 	apple2gs_setup_memory(machine);
 
 	/* save state stuff.  note that the driver takes care of docram. */

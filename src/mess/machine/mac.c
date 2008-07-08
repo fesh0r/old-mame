@@ -39,7 +39,6 @@
 #include <time.h>
 
 #include "driver.h"
-#include "deprecat.h"
 #include "machine/6522via.h"
 #include "machine/8530scc.h"
 #include "cpu/m68000/m68000.h"
@@ -75,7 +74,7 @@ static READ8_HANDLER(mac_via_in_b);
 static WRITE8_HANDLER(mac_via_out_a);
 static WRITE8_HANDLER(mac_via_out_b);
 static WRITE8_HANDLER(mac_via_out_cb2);
-static void mac_via_irq(int state);
+static void mac_via_irq(running_machine *machine, int state);
 static offs_t mac_dasm_override(char *buffer, offs_t pc, const UINT8 *oprom, const UINT8 *opram);
 
 static const struct via6522_interface mac_via6522_intf =
@@ -104,7 +103,7 @@ static mac_model_t mac_model;
 
 
 
-static void mac_install_memory(offs_t memory_begin, offs_t memory_end,
+static void mac_install_memory(running_machine *machine, offs_t memory_begin, offs_t memory_end,
 	offs_t memory_size, void *memory_data, int is_rom, int bank)
 {
 	offs_t memory_mask;
@@ -117,9 +116,9 @@ static void mac_install_memory(offs_t memory_begin, offs_t memory_end,
 	rh = (read16_machine_func) (FPTR)bank;
 	wh = is_rom ? SMH_UNMAP : (write16_machine_func) (FPTR)bank;
 
-	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, memory_begin,
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, memory_begin,
 		memory_end, memory_mask, 0, rh);
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, memory_begin,
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, memory_begin,
 		memory_end, memory_mask, 0, wh);
 
 	memory_set_bankptr(bank, memory_data);
@@ -196,7 +195,7 @@ static void set_scc_waitrequest(int waitrequest)
 
 
 
-static void set_memory_overlay(int overlay)
+static void set_memory_overlay(running_machine *machine, int overlay)
 {
 	offs_t memory_size;
 	UINT8 *memory_data;
@@ -211,8 +210,8 @@ static void set_memory_overlay(int overlay)
 		if (overlay)
 		{
 			/* ROM mirror */
-			memory_size = memory_region_length(REGION_USER1);
-			memory_data = memory_region(REGION_USER1);
+			memory_size = memory_region_length(machine, REGION_USER1);
+			memory_data = memory_region(machine, REGION_USER1);
 			is_rom = TRUE;
 
 			/* HACK! - copy in the initial reset/stack */
@@ -227,7 +226,7 @@ static void set_memory_overlay(int overlay)
 		}
 
 		/* install the memory */
-		mac_install_memory(0x000000, 0x3fffff, memory_size, memory_data, is_rom, 1);
+		mac_install_memory(machine, 0x000000, 0x3fffff, memory_size, memory_data, is_rom, 1);
 
 		mac_overlay = overlay;
 
@@ -291,6 +290,7 @@ static int scan_keyboard(running_machine *machine)
 	int i, j;
 	int keybuf;
 	int keycode;
+	char port[6];
 
 	if (keycode_buf_index)
 	{
@@ -299,7 +299,8 @@ static int scan_keyboard(running_machine *machine)
 
 	for (i=0; i<7; i++)
 	{
-		keybuf = input_port_read_indexed(machine, i+3);
+		sprintf(port, "KEY%d", i);
+		keybuf = input_port_read(machine, port);
 
 		if (keybuf != key_matrix[i])
 		{
@@ -422,10 +423,10 @@ static TIMER_CALLBACK(kbd_clock)
 		{
 			/* Put data on CB2 if we are sending*/
 			if (kbd_receive == FALSE)
-				via_set_input_cb2(0, kbd_shift_reg&0x80?1:0);
+				via_set_input_cb2(machine, 0, kbd_shift_reg&0x80?1:0);
 			kbd_shift_reg <<= 1;
-			via_set_input_cb1(0, 0);
-			via_set_input_cb1(0, 1);
+			via_set_input_cb1(machine, 0, 0);
+			via_set_input_cb1(machine, 0, 1);
 		}
 		if (kbd_receive == TRUE)
 		{
@@ -566,8 +567,8 @@ static void mouse_callback(running_machine *machine)
 	int			new_mx, new_my;
 	int			x_needs_update = 0, y_needs_update = 0;
 
-	new_mx = input_port_read_indexed(machine, 1);
-	new_my = input_port_read_indexed(machine, 2);
+	new_mx = input_port_read(machine, "MOUSE1");
+	new_my = input_port_read(machine, "MOUSE2");
 
 	/* see if it moved in the x coord */
 	if (new_mx != last_mx)
@@ -715,32 +716,33 @@ WRITE16_HANDLER ( macplus_scsi_w )
  * Serial Control Chip
  * *************************************************************************/
 
-static void mac_scc_ack(void)
+static void mac_scc_ack(const device_config *device)
 {
-	set_scc_interrupt(Machine, 0);
+	set_scc_interrupt(device->machine, 0);
 }
 
 
 
 void mac_scc_mouse_irq(running_machine *machine, int x, int y)
 {
+	const device_config *scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
 	static int last_was_x = 0;
 
 	if (x && y)
 	{
 		if (last_was_x)
-			scc_set_status(0x0a);
+			scc_set_status(scc, 0x0a);
 		else
-			scc_set_status(0x02);
+			scc_set_status(scc, 0x02);
 
 		last_was_x ^= 1;
 	}
 	else
 	{
 		if (x)
-			scc_set_status(0x0a);
+			scc_set_status(scc, 0x0a);
 		else
-			scc_set_status(0x02);
+			scc_set_status(scc, 0x02);
 	}
 
 	//cpunum_set_input_line(machine, 0, 2, ASSERT_LINE);
@@ -751,8 +753,10 @@ void mac_scc_mouse_irq(running_machine *machine, int x, int y)
 
 READ16_HANDLER ( mac_scc_r )
 {
+	const device_config *scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
 	UINT16 result;
-	result = scc_r(machine, offset);
+
+	result = scc_r(scc, offset);
 	return (result << 8) | result;
 }
 
@@ -760,12 +764,13 @@ READ16_HANDLER ( mac_scc_r )
 
 WRITE16_HANDLER ( mac_scc_w )
 {
-	scc_w(machine, offset, (UINT8) data);
+	const device_config *scc = device_list_find_by_tag(machine->config->devicelist, SCC8530, "scc");
+	scc_w(scc, offset, (UINT8) data);
 }
 
 
 
-static const struct scc8530_interface mac_scc8530_interface =
+const scc8530_interface mac_scc8530_interface =
 {
 	mac_scc_ack
 };
@@ -1214,7 +1219,7 @@ static READ8_HANDLER(mac_via_in_b)
 			val |= 0x20;
 		if (mouse_bit_x)	/* Mouse X2 */
 			val |= 0x10;
-		if ((input_port_read_indexed(machine, 0) & 0x01) == 0)
+		if ((input_port_read(machine, "MOUSE0") & 0x01) == 0)
 			val |= 0x08;
 	}
 	if (rtc_data_out)
@@ -1235,7 +1240,7 @@ static WRITE8_HANDLER(mac_via_out_a)
 	 * possibly later models), overlay was set on reset, but cleared on the
 	 * first access to the ROM. */
 	if (mac_model < MODEL_MAC_SE)
-		set_memory_overlay((data & 0x10) >> 4);
+		set_memory_overlay(machine, (data & 0x10) >> 4);
 }
 
 static WRITE8_HANDLER(mac_via_out_b)
@@ -1253,11 +1258,11 @@ static WRITE8_HANDLER(mac_via_out_b)
 		mac_adb_newaction((data & 0x30) >> 4);
 }
 
-static void mac_via_irq(int state)
+static void mac_via_irq(running_machine *machine, int state)
 {
 	/* interrupt the 68k (level 1) */
 	//cpunum_set_input_line(machine, 0, 1, state);
-	set_via_interrupt(Machine, state);
+	set_via_interrupt(machine, state);
 }
 
 READ16_HANDLER ( mac_via_r )
@@ -1294,7 +1299,7 @@ WRITE16_HANDLER ( mac_via_w )
 
 static TIMER_CALLBACK(set_memory_overlay_callback)
 {
-	set_memory_overlay(param);
+	set_memory_overlay(machine, param);
 }
 
 MACHINE_RESET(mac)
@@ -1302,11 +1307,8 @@ MACHINE_RESET(mac)
 	/* initialize real-time clock */
 	rtc_init();
 
-	/* initialize serial */
-	scc_init(&mac_scc8530_interface);
-
 	/* setup the memory overlay */
-	set_memory_overlay(1);
+	set_memory_overlay(machine, 1);
 
 	/* reset the via */
 	via_reset();
@@ -1330,24 +1332,24 @@ static STATE_POSTLOAD( mac_state_load )
 {
 	int overlay = mac_overlay;
 	mac_overlay = -1;
-	set_memory_overlay(overlay);
+	set_memory_overlay(machine, overlay);
 }
 
 
 
-static void mac_driver_init(mac_model_t model)
+static void mac_driver_init(running_machine *machine, mac_model_t model)
 {
 	mac_overlay = -1;
 	mac_model = model;
 
 	/* set up RAM mirror at 0x600000-0x6fffff (0x7fffff ???) */
-	mac_install_memory(0x600000, 0x6fffff, mess_ram_size, mess_ram, FALSE, 2);
+	mac_install_memory(machine, 0x600000, 0x6fffff, mess_ram_size, mess_ram, FALSE, 2);
 
 	/* set up ROM at 0x400000-0x43ffff (-0x5fffff for mac 128k/512k/512ke) */
-	mac_install_memory(0x400000, (model >= MODEL_MAC_PLUS) ? 0x43ffff : 0x5fffff,
-		memory_region_length(REGION_USER1), memory_region(REGION_USER1), TRUE, 3);
+	mac_install_memory(machine, 0x400000, (model >= MODEL_MAC_PLUS) ? 0x43ffff : 0x5fffff,
+		memory_region_length(machine, REGION_USER1), memory_region(machine, REGION_USER1), TRUE, 3);
 
-	set_memory_overlay(1);
+	set_memory_overlay(machine, 1);
 
 	/* configure via */
 	via_config(0, &mac_via6522_intf);
@@ -1362,19 +1364,19 @@ static void mac_driver_init(mac_model_t model)
 
 	/* save state stuff */
 	state_save_register_global(mac_overlay);
-	state_save_register_postload(Machine, mac_state_load, NULL);
+	state_save_register_postload(machine, mac_state_load, NULL);
 }
 
 
 
 DRIVER_INIT(mac128k512k)
 {
-	mac_driver_init(MODEL_MAC_128K512K);
+	mac_driver_init(machine, MODEL_MAC_128K512K);
 }
 
 DRIVER_INIT(mac512ke)
 {
-	mac_driver_init(MODEL_MAC_512KE);
+	mac_driver_init(machine, MODEL_MAC_512KE);
 }
 
 static const SCSIConfigTable dev_table =
@@ -1399,17 +1401,17 @@ MACHINE_START( macscsi )
 
 DRIVER_INIT(macplus)
 {
-	mac_driver_init(MODEL_MAC_PLUS);
+	mac_driver_init(machine, MODEL_MAC_PLUS);
 }
 
 DRIVER_INIT(macse)
 {
-	mac_driver_init(MODEL_MAC_SE);
+	mac_driver_init(machine, MODEL_MAC_SE);
 }
 
 DRIVER_INIT(macclassic)
 {
-	mac_driver_init(MODEL_MAC_CLASSIC);
+	mac_driver_init(machine, MODEL_MAC_CLASSIC);
 }
 
 static void mac_vblank_irq(running_machine *machine)
@@ -1434,7 +1436,7 @@ static void mac_vblank_irq(running_machine *machine)
 
 	/* signal VBlank on CA1 input on the VIA */
 	ca1_data ^= 1;
-	via_set_input_ca1(0, ca1_data);
+	via_set_input_ca1(machine, 0, ca1_data);
 
 	if (++irq_count == 60)
 	{
@@ -1442,7 +1444,7 @@ static void mac_vblank_irq(running_machine *machine)
 
 		ca2_data ^= 1;
 		/* signal 1 Hz irq on CA2 input on the VIA */
-		via_set_input_ca2(0, ca2_data);
+		via_set_input_ca2(machine, 0, ca2_data);
 
 		rtc_incticks();
 	}

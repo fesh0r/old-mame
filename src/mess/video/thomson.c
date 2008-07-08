@@ -8,7 +8,6 @@
 
 #include <math.h>
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/thomson.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
@@ -59,7 +58,7 @@ static int thom_update_screen_size( running_machine *machine )
 {
 	const device_config *screen = video_screen_first(machine->config);
 	const rectangle *visarea = video_screen_get_visible_area(screen);
-	UINT8 p = input_port_read_indexed(machine,  THOM_INPUT_VCONFIG );
+	UINT8 p = input_port_read(machine, "vconfig");
 	int new_w, new_h, changed = 0;
 
 	switch ( p & 3 )
@@ -138,10 +137,10 @@ struct thom_vsignal thom_get_vsignal ( void )
 
 
 
-static void thom_get_lightpen_pos( int*x, int* y )
+static void thom_get_lightpen_pos( running_machine *machine, int*x, int* y )
 {
-	*x = input_port_read_indexed(Machine,  THOM_INPUT_LIGHTPEN     );
-	*y = input_port_read_indexed(Machine,  THOM_INPUT_LIGHTPEN + 1 );
+	*x = input_port_read(machine, "lightpen_x");
+	*y = input_port_read(machine, "lightpen_y");
 
 	if ( *x < 0 )
 		*x = 0;
@@ -158,13 +157,13 @@ static void thom_get_lightpen_pos( int*x, int* y )
 
 
 
-struct thom_vsignal thom_get_lightpen_vsignal ( int xdec, int ydec, int xdec2 )
+struct thom_vsignal thom_get_lightpen_vsignal ( running_machine *machine, int xdec, int ydec, int xdec2 )
 {
 	struct thom_vsignal v;
 	int x, y;
 	int gpl;
 
-	thom_get_lightpen_pos( &x, &y );
+	thom_get_lightpen_pos( machine, &x, &y );
 	x += xdec - thom_bwidth;
 	y += ydec - thom_bheight;
 
@@ -1038,7 +1037,7 @@ VIDEO_EOF ( thom )
 	int fnew, fold = FLOP_STATE;
 	int i;
 	UINT16 b = 0;
-	struct thom_vsignal l = thom_get_lightpen_vsignal( 0, -1, 0 );
+	struct thom_vsignal l = thom_get_lightpen_vsignal( machine, 0, -1, 0 );
 
 	LOG (( "%f thom: video eof called\n", attotime_to_double(timer_get_time()) ));
 
@@ -1164,8 +1163,6 @@ VIDEO_START ( thom )
 	thom_init_cb = NULL;
 	thom_init_timer = timer_alloc( thom_set_init , NULL);
 
-	VIDEO_EOF_CALL(thom);
-
 	state_save_register_global( thom_bwidth );
 	state_save_register_global( thom_bheight );
 	state_save_register_global( thom_hires );
@@ -1216,10 +1213,10 @@ WRITE8_HANDLER ( to7_vram_w )
 /* bits 0-13 : latched gpl of lightpen position */
 /* bit    14:  latched INIT */
 /* bit    15:  latched INIL */
-unsigned to7_lightpen_gpl ( int decx, int decy )
+unsigned to7_lightpen_gpl ( running_machine *machine, int decx, int decy )
 {
 	int x,y;
-	thom_get_lightpen_pos( &x, &y );
+	thom_get_lightpen_pos( machine, &x, &y );
 	x -= thom_bwidth;
 	y -= thom_bheight;
 	if ( x < 0 || y < 0 || x >= 320 || y >= 200 )

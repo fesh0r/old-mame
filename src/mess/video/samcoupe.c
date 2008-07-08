@@ -10,7 +10,7 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "includes/coupe.h"
+#include "includes/samcoupe.h"
 
 
 static void drawMode4_line(bitmap_t *bitmap,int y)
@@ -45,11 +45,11 @@ static void drawMode4_line(bitmap_t *bitmap,int y)
 		}
 		x++;
 #else
-		*BITMAP_ADDR16(bitmap, y, x*2+0) = coupe_regs.clut[tmp>>4];
-		*BITMAP_ADDR16(bitmap, y, x*2+1) = coupe_regs.clut[tmp>>4];
+		*BITMAP_ADDR16(bitmap, y, x*2+0) = samcoupe_regs.clut[tmp>>4];
+		*BITMAP_ADDR16(bitmap, y, x*2+1) = samcoupe_regs.clut[tmp>>4];
 		x++;
-		*BITMAP_ADDR16(bitmap, y, x*2+0) = coupe_regs.clut[tmp&0x0F];
-		*BITMAP_ADDR16(bitmap, y, x*2+1) = coupe_regs.clut[tmp&0x0F];
+		*BITMAP_ADDR16(bitmap, y, x*2+0) = samcoupe_regs.clut[tmp&0x0F];
+		*BITMAP_ADDR16(bitmap, y, x*2+1) = samcoupe_regs.clut[tmp&0x0F];
 		x++;
 #endif
 	}
@@ -85,13 +85,13 @@ static void drawMode3_line(bitmap_t *bitmap,int y)
 			plot_pixel(bitmap,x,y,0);
 		x++;
 #else
-		*BITMAP_ADDR16(bitmap, y, x) = coupe_regs.clut[tmp>>6];
+		*BITMAP_ADDR16(bitmap, y, x) = samcoupe_regs.clut[tmp>>6];
 		x++;
-		*BITMAP_ADDR16(bitmap, y, x) = coupe_regs.clut[(tmp>>4)&0x03];
+		*BITMAP_ADDR16(bitmap, y, x) = samcoupe_regs.clut[(tmp>>4)&0x03];
 		x++;
-		*BITMAP_ADDR16(bitmap, y, x) = coupe_regs.clut[(tmp>>2)&0x03];
+		*BITMAP_ADDR16(bitmap, y, x) = samcoupe_regs.clut[(tmp>>2)&0x03];
 		x++;
-		*BITMAP_ADDR16(bitmap, y, x) = coupe_regs.clut[tmp&0x03];
+		*BITMAP_ADDR16(bitmap, y, x) = samcoupe_regs.clut[tmp&0x03];
 		x++;
 #endif
 	}
@@ -111,11 +111,11 @@ static void drawMode2_line(bitmap_t *bitmap,int y)
 	{
 		tmp=*(videoram + x + (y*32));
 #ifdef MONO
-		ink=127;
-		pap=0;
+		ink = 127;
+		pap = 0;
 #else
-		ink=coupe_regs.clut[(*attr) & 0x07];
-		pap=coupe_regs.clut[((*attr)>>3) & 0x07];
+		ink = samcoupe_regs.clut[(*attr) & 0x07];
+		pap = samcoupe_regs.clut[((*attr)>>3) & 0x07];
 #endif
 		attr++;
 
@@ -142,11 +142,11 @@ static void drawMode1_line(bitmap_t *bitmap,int y)
 	{
 		tmp=*(videoram + x + (y*32));
 #ifdef MONO
-		ink=127;
-		pap=0;
+		ink = 127;
+		pap = 0;
 #else
-		ink=coupe_regs.clut[(*attr) & 0x07];
-		pap=coupe_regs.clut[((*attr)>>3) & 0x07];
+		ink = samcoupe_regs.clut[(*attr) & 0x07];
+		pap = samcoupe_regs.clut[((*attr)>>3) & 0x07];
 #endif
 		attr++;
 		for (b=0x80;b!=0;b>>=1)
@@ -157,21 +157,21 @@ static void drawMode1_line(bitmap_t *bitmap,int y)
 	}
 }
 
-VIDEO_UPDATE( coupe )
+VIDEO_UPDATE( samcoupe )
 {
 	int scanline = video_screen_get_vpos(screen);
 
 	/* line interrupt? */
-	if (coupe_regs.line_int == scanline) coupe_irq(screen->machine, 0x01);
+	if (samcoupe_regs.line_int == scanline) samcoupe_irq(screen->machine, 0x01);
 
 	/* display disabled? (only in mode 3 or 4) */
-	if ((coupe_regs.vmpr & 0x40) && (coupe_regs.border & 0x80))
+	if ((samcoupe_regs.vmpr & 0x40) && (samcoupe_regs.border & 0x80))
 	{
 		fillbitmap(bitmap, 0, cliprect);
 	}
 	else
 	{
-		switch ((coupe_regs.vmpr & 0x60) >> 5)
+		switch ((samcoupe_regs.vmpr & 0x60) >> 5)
 		{
 		case 0: /* mode 1 */
 			drawMode1_line(bitmap, scanline);

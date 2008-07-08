@@ -71,6 +71,7 @@ static int genesis_sram_active;
 static int genesis_sram_readonly;
 
 
+//#ifdef UNUSED_FUNCTION
 static READ16_HANDLER( genesis_sram_read )
 {
 	UINT16 retval = 0;
@@ -107,6 +108,7 @@ static WRITE16_HANDLER( genesis_sram_toggle )
         genesis_sram_active = (data & 1) ? 1 : 0;
         genesis_sram_readonly = (data & 2) ? 1 : 0;
 }
+//#endif
 
 /* code taken directly from GoodGEN by Cowering */
 static int genesis_isfunkySMD(unsigned char *buf,unsigned int len)
@@ -192,10 +194,10 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 	genesis_sram = NULL;
 	genesis_sram_start = genesis_sram_len = genesis_sram_active = genesis_sram_readonly = 0;
 
-	rawROM = memory_region(REGION_CPU1);
-    ROM = rawROM /*+ 512 */;
+	rawROM = memory_region(image->machine, REGION_CPU1);
+	ROM = rawROM /*+ 512 */;
 
-    length = image_fread(image, rawROM + 0x2000, 0x600000);
+	length = image_fread(image, rawROM + 0x2000, 0x600000);
 	logerror("image length = 0x%x\n", length);
 
 	if (genesis_isSMD(&rawROM[0x2200],(unsigned)length))	/* is this a SMD file..? */
@@ -249,7 +251,7 @@ static DEVICE_IMAGE_LOAD( genesis_cart )
 		genesis_last_loaded_image_length = length; // this will be -1 for MD and SMD so can't map those roms to custom mappers (yet)
 
 
-		ROM = memory_region(REGION_CPU1);	/* 68000 ROM region */
+		ROM = memory_region(image->machine, REGION_CPU1);	/* 68000 ROM region */
 
  		for (ptr = 0; ptr < 0x502000; ptr += 2)		/* mangle bytes for littleendian machines */
 		{
@@ -312,7 +314,6 @@ static void genesis_cartslot_getinfo(const mess_device_class *devclass, UINT32 s
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
 		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(genesis_cart); break;
-		case MESS_DEVINFO_PTR_PARTIAL_HASH:					info->partialhash = NULL;
 		case MESS_DEVINFO_PTR_UNLOAD:						info->unload = DEVICE_IMAGE_UNLOAD_NAME(genesis_cart); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
@@ -322,14 +323,15 @@ static void genesis_cartslot_getinfo(const mess_device_class *devclass, UINT32 s
 	}
 }
 
-SYSTEM_CONFIG_START(genesis)
+static SYSTEM_CONFIG_START(genesis)
 	CONFIG_DEVICE(genesis_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
+//#ifdef UNUSED_FUNCTION
 static WRITE16_HANDLER( genesis_ssf2_bank_w )
 {
 	static int lastoffset = -1,lastdata = -1;
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	if ((lastoffset != offset) || (lastdata != data)) {
 		lastoffset = offset; lastdata = data;
@@ -375,7 +377,7 @@ static WRITE16_HANDLER( realtec_400000_w )
 {
 	int bankdata = (data >> 9) & 0x7;
 
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	realtek_old_bank_addr = realtek_bank_addr;
 	realtek_bank_addr = (realtek_bank_addr & 0x7) | bankdata<<3;
@@ -387,7 +389,7 @@ static WRITE16_HANDLER( realtec_400000_w )
 static WRITE16_HANDLER( realtec_404000_w )
 {
 	int bankdata = (data >> 8) & 0x3;
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	realtek_old_bank_addr = realtek_bank_addr;
 	realtek_bank_addr = (realtek_bank_addr & 0xf8)|bankdata;
@@ -401,7 +403,7 @@ static WRITE16_HANDLER( realtec_404000_w )
 
 static WRITE16_HANDLER( g_chifi3_bank_w )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	if (data==0xf100) // *hit player
 	{
@@ -502,14 +504,14 @@ static READ16_HANDLER( g_chifi3_prot_r )
 
 static WRITE16_HANDLER( s19in1_bank )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	memcpy(ROM + 0x000000, ROM + 0x400000+((offset << 1)*0x10000), 0x80000);
 }
 
 // Kaiju? (Pokemon Stadium) handler from HazeMD
 static WRITE16_HANDLER( g_kaiju_bank_w )
 {
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	memcpy(ROM + 0x000000, ROM + 0x400000+(data&0x7f)*0x8000, 0x8000);
 }
 
@@ -596,7 +598,7 @@ static READ16_HANDLER( kof99_0xA13000_r )
 static READ16_HANDLER( radica_bank_select )
 {
 	int bank = offset&0x3f;
-	UINT8 *ROM = memory_region(REGION_CPU1);
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 	memcpy(ROM, ROM +  (bank*0x10000)+0x400000, 0x400000);
 	return 0;
 }
@@ -704,6 +706,7 @@ static WRITE16_HANDLER( genesis_TMSS_bank_w )
 {
 	/* this probably should do more, like make Genesis V2 'die' if the SEGA string is not written promptly */
 }
+//#endif
 
 static void genesis_machine_stop(running_machine *machine)
 {
@@ -737,6 +740,7 @@ static DRIVER_INIT( genjpn )
 	DRIVER_INIT_CALL(megadrij);
 }
 
+//#ifdef UNUSED_FUNCTION
 // only looks for == in the compare for LSB systems
 static int allendianmemcmp(const void *s1, const void *s2, size_t n)
 {
@@ -745,15 +749,15 @@ static int allendianmemcmp(const void *s1, const void *s2, size_t n)
 #ifdef LSB_FIRST
 	unsigned char flippedbuf[64];
 	unsigned int i;
-	
+
 	if ((n & 1) || (n > 63)) return -1 ; // don't want odd sized buffers or too large a compare
 	for (i = 0; i < n; i++) flippedbuf[i] = *((char *)s2 + (i ^ 1));
 	realbuf = flippedbuf;
 
 #else
-	
+
 	realbuf = s2;
-	
+
 #endif
 	return memcmp(s1,realbuf,n);
 }
@@ -764,7 +768,7 @@ void setup_megadriv_custom_mappers(running_machine *machine)
 	unsigned char *ROM;
 	UINT32 mirroraddr;
 
-	ROM = memory_region(REGION_CPU1);
+	ROM = memory_region(machine, REGION_CPU1);
 
 	if (genesis_last_loaded_image_length == 0x500000 && !allendianmemcmp((char *)&ROM[0x0120+relocate], "SUPER STREET FIGHTER2 ", 22))
 	{
@@ -1044,6 +1048,29 @@ void setup_megadriv_custom_mappers(running_machine *machine)
 	/* install NOP handler for TMSS */
 	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xA14000, 0xA14003, 0, 0, genesis_TMSS_bank_w);
 }
+//#endif
+
+
+static MACHINE_RESET( ms_megadriv )
+{
+	MACHINE_RESET_CALL( megadriv );
+
+	setup_megadriv_custom_mappers(machine);
+}
+
+
+static MACHINE_DRIVER_START( ms_megadriv )
+	MDRV_IMPORT_FROM(megadriv)
+
+	MDRV_MACHINE_RESET( ms_megadriv )
+MACHINE_DRIVER_END
+
+
+static MACHINE_DRIVER_START( ms_megdsvp )
+	MDRV_IMPORT_FROM(megdsvp)
+
+	MDRV_MACHINE_RESET( ms_megadriv )
+MACHINE_DRIVER_END
 
 
 /***************************************************************************
@@ -1053,7 +1080,7 @@ void setup_megadriv_custom_mappers(running_machine *machine)
 ***************************************************************************/
 
 /*    YEAR  NAME      PARENT    COMPAT  MACHINE    INPUT     INIT  		CONFIG   COMPANY   FULLNAME */
-CONS( 1989, genesis,  0,		0,      megadriv,  megadri6, genusa,	genesis, "Sega",   "Genesis (USA, NTSC)", 0)
-CONS( 1993, gensvp,   genesis,	0,      megdsvp,   megdsvp,  megadsvp,	genesis, "Sega",   "Genesis (USA, NTSC, w/SVP)", 0)
-CONS( 1990, megadriv, genesis,	0,      megadriv,  megadri6, geneur,	genesis, "Sega",   "Mega Drive (Europe, PAL)", 0)
-CONS( 1988, megadrij, genesis,	0,      megadriv,  megadri6, genjpn,	genesis, "Sega",   "Mega Drive (Japan, NTSC)", 0)
+CONS( 1989, genesis,  0,		0,      ms_megadriv,  megadri6, genusa,		genesis, "Sega",   "Genesis (USA, NTSC)", 0)
+CONS( 1993, gensvp,   genesis,	0,      ms_megdsvp,   megdsvp,  megadsvp,	genesis, "Sega",   "Genesis (USA, NTSC, w/SVP)", 0)
+CONS( 1990, megadriv, genesis,	0,      ms_megadriv,  megadri6, geneur,		genesis, "Sega",   "Mega Drive (Europe, PAL)", 0)
+CONS( 1988, megadrij, genesis,	0,      ms_megadriv,  megadri6, genjpn,		genesis, "Sega",   "Mega Drive (Japan, NTSC)", 0)

@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "video/atarist.h"
 #include "cpu/m68000/m68k.h"
 #include "cpu/m68000/m68000.h"
@@ -63,7 +62,7 @@ static struct FDC
 
 static void atarist_fdc_dma_transfer(running_machine *machine)
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	if ((fdc.mode & ATARIST_FLOPPY_MODE_DMA_DISABLE) == 0)
 	{
@@ -484,10 +483,11 @@ static TIMER_CALLBACK( atariste_dmasound_tick )
 	if (dmasound.samples == 0)
 	{
 		int i;
+		UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 		for (i = 0; i < 8; i++)
 		{
-			dmasound.fifo[i] = memory_region(REGION_CPU1)[dmasound.cntr];
+			dmasound.fifo[i] = RAM[dmasound.cntr];
 			dmasound.cntr++;
 			dmasound.samples++;
 
@@ -965,7 +965,7 @@ static ADDRESS_MAP_START( megaste_map, ADDRESS_SPACE_PROGRAM, 16 )
 	AM_RANGE(0xff8e20, 0xff8e21) AM_READWRITE(megaste_cache_r, megaste_cache_w)
 	AM_RANGE(0xfffa00, 0xfffa3f) AM_DEVREADWRITE8(MC68901, MC68901_TAG, mc68901_register_r, mc68901_register_w, 0xff)
 //  AM_RANGE(0xfffa40, 0xfffa5f) AM_READWRITE(megast_fpu_r, megast_fpu_w)
-	AM_RANGE(0xff8c80, 0xff8c87) AM_READWRITE8(scc_r, scc_w, 0xff00)
+	AM_RANGE(0xff8c80, 0xff8c87) AM_DEVREADWRITE8(SCC8530, "scc", scc_r, scc_w, 0xff00)
 	AM_RANGE(0xfffc00, 0xfffc01) AM_READWRITE8(acia6850_0_stat_r, acia6850_0_ctrl_w, 0xff00)
 	AM_RANGE(0xfffc02, 0xfffc03) AM_READWRITE8(acia6850_0_data_r, acia6850_0_data_w, 0xff00)
 	AM_RANGE(0xfffc04, 0xfffc05) AM_READWRITE8(acia6850_1_stat_r, acia6850_1_ctrl_w, 0xff00)
@@ -1408,6 +1408,8 @@ static const CENTRONICS_CONFIG atarist_centronics_config[1] =
 
 static void atarist_configure_memory(running_machine *machine)
 {
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+
 	switch (mess_ram_size)
 	{
 	case 256 * 1024:
@@ -1432,15 +1434,15 @@ static void atarist_configure_memory(running_machine *machine)
 		break;
 	}
 
-	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x000008, 0);
+	memory_configure_bank(1, 0, 1, RAM + 0x000008, 0);
 	memory_set_bank(1, 0);
 
-	memory_configure_bank(2, 0, 1, memory_region(REGION_CPU1) + 0x200000, 0);
+	memory_configure_bank(2, 0, 1, RAM + 0x200000, 0);
 	memory_set_bank(2, 0);
 
 	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 
-	memory_configure_bank(3, 0, 1, memory_region(REGION_CPU1) + 0xfa0000, 0);
+	memory_configure_bank(3, 0, 1, RAM + 0xfa0000, 0);
 	memory_set_bank(3, 0);
 }
 
@@ -1586,6 +1588,8 @@ static MACHINE_START( megaste )
 
 static void stbook_configure_memory(running_machine *machine)
 {
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
+
 	switch (mess_ram_size)
 	{
 	case 1024 * 1024:
@@ -1598,15 +1602,15 @@ static void stbook_configure_memory(running_machine *machine)
 		break;
 	}
 
-	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x000008, 0);
+	memory_configure_bank(1, 0, 1, RAM + 0x000008, 0);
 	memory_set_bank(1, 0);
 
-	memory_configure_bank(2, 0, 1, memory_region(REGION_CPU1) + 0x200000, 0);
+	memory_configure_bank(2, 0, 1, RAM + 0x200000, 0);
 	memory_set_bank(2, 0);
 
 	memory_install_readwrite16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfa0000, 0xfbffff, 0, 0, SMH_UNMAP, SMH_UNMAP);
 
-	memory_configure_bank(3, 0, 1, memory_region(REGION_CPU1) + 0xfa0000, 0);
+	memory_configure_bank(3, 0, 1, RAM + 0xfa0000, 0);
 	memory_set_bank(3, 0);
 }
 
@@ -1727,9 +1731,9 @@ static MACHINE_DRIVER_START( atarist )
 	MDRV_MACHINE_START(atarist)
 
 	// device hardware
-
 	MDRV_DEVICE_ADD(MC68901_TAG, MC68901)
 	MDRV_DEVICE_CONFIG(mfp_intf)
+	MDRV_DEVICE_ADD("scc", SCC8530)
 
 	// video hardware
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1773,9 +1777,9 @@ static MACHINE_DRIVER_START( atariste )
 	MDRV_MACHINE_START(atariste)
 
 	// device hardware
-
 	MDRV_DEVICE_ADD(MC68901_TAG, MC68901)
 	MDRV_DEVICE_CONFIG(atariste_mfp_intf)
+	MDRV_DEVICE_ADD("scc", SCC8530)
 
 	// video hardware
 	MDRV_SCREEN_ADD("main", RASTER)
@@ -1826,9 +1830,9 @@ static MACHINE_DRIVER_START( stbook )
 	MDRV_MACHINE_START(stbook)
 
 	// device hardware
-
 	MDRV_DEVICE_ADD(MC68901_TAG, MC68901)
 	MDRV_DEVICE_CONFIG(stbook_mfp_intf)
+	MDRV_DEVICE_ADD("scc", SCC8530)
 
 	// video hardware
 	MDRV_SCREEN_ADD("main", LCD)
@@ -2094,7 +2098,8 @@ static void megaste_serial_getinfo(const mess_device_class *devclass, UINT32 sta
 
 static DEVICE_IMAGE_LOAD( atarist_cart )
 {
-	UINT8 *ptr = ((UINT8 *)memory_region(REGION_CPU1)) + 0xfa0000;
+	UINT8 *RAM = memory_region(image->machine, REGION_CPU1);
+	UINT8 *ptr = RAM + 0xfa0000;
 	int	filesize = image_length(image);
 
 	if (filesize <= 128 * 1024)
@@ -2129,7 +2134,7 @@ static void atarist_cartslot_getinfo( const mess_device_class *devclass, UINT32 
 	}
 }
 
-SYSTEM_CONFIG_START( atarist )
+static SYSTEM_CONFIG_START( atarist )
 	CONFIG_RAM_DEFAULT(1024 * 1024) // 1040ST
 	CONFIG_RAM		  ( 512 * 1024) //  520ST
 	CONFIG_RAM		  ( 256 * 1024) //  260ST
@@ -2139,7 +2144,7 @@ SYSTEM_CONFIG_START( atarist )
 	// MIDI
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START( megast )
+static SYSTEM_CONFIG_START( megast )
 	CONFIG_RAM_DEFAULT(4096 * 1024) // Mega ST 4
 	CONFIG_RAM		  (2048 * 1024) // Mega ST 2
 	CONFIG_RAM		  (1024 * 1024) // Mega ST 1
@@ -2149,7 +2154,7 @@ SYSTEM_CONFIG_START( megast )
 	// MIDI
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START( atariste )
+static SYSTEM_CONFIG_START( atariste )
 	CONFIG_RAM_DEFAULT(1024 * 1024) // 1040STe
 	CONFIG_RAM		  ( 512 * 1024) //  520STe
 	CONFIG_DEVICE(atarist_floppy_getinfo)
@@ -2158,7 +2163,7 @@ SYSTEM_CONFIG_START( atariste )
 	// MIDI
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START( megaste )
+static SYSTEM_CONFIG_START( megaste )
 	CONFIG_RAM_DEFAULT(4096 * 1024) // Mega STe 4
 	CONFIG_RAM		  (2048 * 1024) // Mega STe 2
 	CONFIG_RAM		  (1024 * 1024) // Mega STe 1
@@ -2169,7 +2174,7 @@ SYSTEM_CONFIG_START( megaste )
 	// LAN
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START( stbook )
+static SYSTEM_CONFIG_START( stbook )
 	CONFIG_RAM_DEFAULT(4096 * 1024)
 	CONFIG_RAM		  (1024 * 1024)
 	CONFIG_DEVICE(atarist_floppy_getinfo)

@@ -10,7 +10,6 @@ to make the standard pc driver one level more complex, so own driver
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 //#include "vidhrdw/generic.h"
 #include "devices/cartslot.h"
 #include "machine/pic8259.h"
@@ -64,7 +63,7 @@ static TIMER_CALLBACK( vg230_timer )
   }
 }
 
-void vg230_reset(running_machine *machine)
+static void vg230_reset(running_machine *machine)
 {
   mame_system_time systime;
 
@@ -83,7 +82,7 @@ void vg230_reset(running_machine *machine)
   vg230.bios_timer.data=0x7200; // HACK
 }
 
-void vg230_init(running_machine *machine)
+static void vg230_init(running_machine *machine)
 {
   vg230_reset(machine);
 }
@@ -132,7 +131,7 @@ static READ8_HANDLER( vg230_io_r )
       }
       if (log)
 	logerror("%.5x vg230 %02x read %.2x\n",(int)activecpu_get_pc(),vg230.index,data);
-      //	data=memory_region(REGION_CPU1)[0x4000+offset];
+      //	data=memory_region(machine, REGION_CPU1)[0x4000+offset];
     } else {      
       data=vg230.index;
     }
@@ -143,7 +142,7 @@ static WRITE8_HANDLER( vg230_io_w )
 {
   int log=TRUE;
     if (offset&1) {
-      //	memory_region(REGION_CPU1)[0x4000+offset]=data;
+      //	memory_region(machine, REGION_CPU1)[0x4000+offset]=data;
       vg230.data[vg230.index]=data;
       switch (vg230.index) {
       case 0x09: break;
@@ -172,7 +171,7 @@ static WRITE8_HANDLER( vg230_io_w )
     }
 }
 
-struct {
+static struct {
   UINT8 data;
   int index;
   struct {
@@ -240,7 +239,7 @@ static WRITE8_HANDLER( ems_w )
     switch (ems.mapper[ems.index].type) {
     case 0: /*external*/ 
     case 1: /*ram*/
-      memory_set_bankptr( ems.index+1, memory_region(REGION_CPU1) + (ems.mapper[ems.index].address&0xfffff) );
+      memory_set_bankptr( ems.index+1, memory_region(machine, REGION_CPU1) + (ems.mapper[ems.index].address&0xfffff) );
       break;
     case 3: /* rom 1 */
     case 4: /* pc card a */
@@ -248,7 +247,7 @@ static WRITE8_HANDLER( ems_w )
     default:
       break;
     case 2:
-      memory_set_bankptr( ems.index+1, memory_region(REGION_USER1) + (ems.mapper[ems.index].address&0xfffff) );
+      memory_set_bankptr( ems.index+1, memory_region(machine, REGION_USER1) + (ems.mapper[ems.index].address&0xfffff) );
       break;
     }
     break;
@@ -335,7 +334,7 @@ static PALETTE_INIT( pasogo )
 static VIDEO_UPDATE( pasogo )
 {
   static int width=-1, height=-1;
-  UINT8 *rom = memory_region(REGION_CPU1)+0xb8000;
+  UINT8 *rom = memory_region(screen->machine, REGION_CPU1)+0xb8000;
   UINT16 c[]={ 3, 0 };
     int x,y;
 //    plot_box(bitmap, 0, 0, 64/*bitmap->width*/, bitmap->height, 0);
@@ -471,25 +470,25 @@ MACHINE_DRIVER_END
 
 
 ROM_START(pasogo)
-     ROM_REGION(0x100000,REGION_CPU1, 0) // 1 megabyte dram?
+     ROM_REGION(0x100000,REGION_CPU1, ROMREGION_ERASEFF) // 1 megabyte dram?
 //     ROM_LOAD("gmaster.bin", 0x0000, 0x1000, CRC(05cc45e5) SHA1(05d73638dea9657ccc2791c0202d9074a4782c1e) )
 //     ROM_CART_LOAD(0, "bin", 0x8000, 0x8000, 0)
-	ROM_REGION(0x100000,REGION_USER1, 0)
+	ROM_REGION(0x100000,REGION_USER1, ROMREGION_ERASEFF)
 ROM_END
 
 
 static DRIVER_INIT( pasogo )
 {
-  vg230_init(machine);
-  memset(&ems, 0, sizeof(ems));
-  memory_set_bankptr( 27, memory_region(REGION_USER1) + 0x00000 );
-  memory_set_bankptr( 28, memory_region(REGION_CPU1) + 0xb8000/*?*/ );
+	vg230_init(machine);
+	memset(&ems, 0, sizeof(ems));
+	memory_set_bankptr( 27, memory_region(machine, REGION_USER1) + 0x00000 );
+	memory_set_bankptr( 28, memory_region(machine, REGION_CPU1) + 0xb8000/*?*/ );
 }
 
 
 static DEVICE_IMAGE_LOAD( pasogo_cart )
 {
-	UINT8 *user = memory_region(REGION_USER1);
+	UINT8 *user = memory_region(image->machine, REGION_USER1);
 	int size;
 	size = image_length(image);
 
@@ -520,7 +519,7 @@ static void pasogo_cartslot_getinfo(const mess_device_class *devclass, UINT32 st
 	}
 }
 
-SYSTEM_CONFIG_START(pasogo)
+static SYSTEM_CONFIG_START(pasogo)
      CONFIG_DEVICE(pasogo_cartslot_getinfo)
 SYSTEM_CONFIG_END
 

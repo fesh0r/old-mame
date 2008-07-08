@@ -59,7 +59,6 @@
 #include <assert.h>
 
 #include "driver.h"
-#include "deprecat.h"
 #include "debug/debugcon.h"
 #include "cpu/m6809/m6809.h"
 #include "machine/6821pia.h"
@@ -105,20 +104,20 @@ static WRITE8_HANDLER(d_pia0_pa_w);
 static READ8_HANDLER(d_pia0_pb_r);
 static WRITE8_HANDLER(d_pia0_pb_w);
 static WRITE8_HANDLER(d_pia0_cb2_w);
-static void d_pia0_irq_a(int state);
-static void d_pia0_irq_b(int state);
+static void d_pia0_irq_a(running_machine *machine, int state);
+static void d_pia0_irq_b(running_machine *machine, int state);
 static READ8_HANDLER(d_pia1_pa_r);
 static WRITE8_HANDLER(d_pia1_pa_w);
 static READ8_HANDLER(d_pia1_pb_r);
 static WRITE8_HANDLER(d_pia1_pb_w);
-static void d_pia1_irq_a(int state);
-static void d_pia1_irq_b(int state);
+static void d_pia1_irq_a(running_machine *machine, int state);
+static void d_pia1_irq_b(running_machine *machine, int state);
 static READ8_HANDLER(d_pia2_pa_r);
 static WRITE8_HANDLER(d_pia2_pa_w);
 static READ8_HANDLER(d_pia2_pb_r);
 static WRITE8_HANDLER(d_pia2_pb_w);
-static void d_pia2_irq_a(int state);
-static void d_pia2_irq_b(int state);
+static void d_pia2_irq_a(running_machine *machine, int state);
+static void d_pia2_irq_b(running_machine *machine, int state);
 
 static void cpu0_recalc_irq(running_machine *machine, int state);
 static void cpu0_recalc_firq(running_machine *machine, int state);
@@ -235,7 +234,7 @@ static int IsIOPage(int	Page)
 // this should probably be considdered a hack !
 //
 
-static void UpdateBanks(int first, int last)
+static void UpdateBanks(running_machine *machine, int first, int last)
 {
 	int		Page;
 	UINT8 		*readbank;
@@ -292,8 +291,8 @@ static void UpdateBanks(int first, int last)
 
 		PageRegs[TaskReg][Page].memory=readbank;
 		memory_set_bankptr(Page+1,readbank);
-		memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
-		memory_install_write8_handler(Machine, 1, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
+		memory_install_write8_handler(machine, 1, ADDRESS_SPACE_PROGRAM, bank_start, bank_end,0,0,writebank);
 
 		LOG_BANK_UPDATE(("UpdateBanks:MapPage=$%02X readbank=$%X\n",MapPage,(int)(FPTR)readbank));
 		LOG_BANK_UPDATE(("PageRegsSet Task=%X Page=%x\n",TaskReg,Page));
@@ -304,7 +303,7 @@ static void UpdateBanks(int first, int last)
 }
 
 //
-static void SetDefaultTask(void)
+static void SetDefaultTask(running_machine *machine)
 {
 	int		Idx;
 
@@ -334,7 +333,7 @@ static void SetDefaultTask(void)
 	PageRegs[TaskReg][IOPage].value=IOPageValue;
 	PageRegs[TaskReg][IOPage+1].value=IOPageValue;
 
-	UpdateBanks(0,IOPage+1);
+	UpdateBanks(machine, 0,IOPage+1);
 
 	/* Map video ram to base of area it can use, that way we can take the literal RA */
 	/* from the 6845 without having to mask it ! */
@@ -359,9 +358,9 @@ WRITE8_HANDLER( dgn_beta_page_w )
 
 	if (EnableMapRegs)
 	{
-		UpdateBanks(offset,offset);
+		UpdateBanks(machine, offset,offset);
 		if (offset==15)
-			UpdateBanks(offset+1,offset+1);
+			UpdateBanks(machine, offset+1,offset+1);
 	}
 }
 
@@ -547,7 +546,8 @@ static READ8_HANDLER(d_pia0_pb_r)
 	int RetVal;
 	int Idx;
 	int Selected;
-
+	char port[6];
+	
 	LOG_KEYBOARD(("PB Read\n"));
 
 	KAny_next=0;
@@ -558,21 +558,10 @@ static READ8_HANDLER(d_pia0_pb_r)
 	/* This actually scans in the keyboard */
 	if(RowShifter==0x00)
 	{
-		for(Idx=0;Idx<NoKeyrows;Idx++)
+		for(Idx=0; Idx<NoKeyrows; Idx++)
 		{
-			switch (Idx)
-			{
-				case 0 : Keyboard[Idx]=input_port_read_indexed(machine, 0); break;
-				case 1 : Keyboard[Idx]=input_port_read_indexed(machine, 1); break;
-				case 2 : Keyboard[Idx]=input_port_read_indexed(machine, 2); break;
-				case 3 : Keyboard[Idx]=input_port_read_indexed(machine, 3); break;
-				case 4 : Keyboard[Idx]=input_port_read_indexed(machine, 4); break;
-				case 5 : Keyboard[Idx]=input_port_read_indexed(machine, 5); break;
-				case 6 : Keyboard[Idx]=input_port_read_indexed(machine, 6); break;
-				case 7 : Keyboard[Idx]=input_port_read_indexed(machine, 7); break;
-				case 8 : Keyboard[Idx]=input_port_read_indexed(machine, 8); break;
-				case 9 : Keyboard[Idx]=input_port_read_indexed(machine, 9); break;
-			}
+			sprintf(port, "KEY%d", Idx);
+			Keyboard[Idx] = input_port_read(machine, port);
 
 			if(Keyboard[Idx]!=0x7F)
 			{
@@ -647,14 +636,14 @@ static WRITE8_HANDLER(d_pia0_cb2_w)
 }
 
 
-static void d_pia0_irq_a(int state)
+static void d_pia0_irq_a(running_machine *machine, int state)
 {
-	cpu0_recalc_irq(Machine, state);
+	cpu0_recalc_irq(machine, state);
 }
 
-static void d_pia0_irq_b(int state)
+static void d_pia0_irq_b(running_machine *machine, int state)
 {
-	cpu0_recalc_firq(Machine, state);
+	cpu0_recalc_firq(machine, state);
 }
 
 /* PIA #1 at $FC24-$FC27 I63
@@ -739,14 +728,14 @@ static WRITE8_HANDLER(d_pia1_pb_w)
 	}
 }
 
-static void d_pia1_irq_a(int state)
+static void d_pia1_irq_a(running_machine *machine, int state)
 {
-	cpu0_recalc_irq(Machine, state);
+	cpu0_recalc_irq(machine, state);
 }
 
-static void d_pia1_irq_b(int state)
+static void d_pia1_irq_b(running_machine *machine, int state)
 {
-	cpu0_recalc_irq(Machine, state);
+	cpu0_recalc_irq(machine, state);
 }
 
 /* PIA #2 at FCC0-FCC3 I28
@@ -817,7 +806,7 @@ static WRITE8_HANDLER(d_pia2_pa_w)
 		{
 			TaskReg=NoPagingTask;
 		}
-		UpdateBanks(0,IOPage+1);
+		UpdateBanks(machine, 0,IOPage+1);
 	}
 	else
 	{
@@ -825,7 +814,7 @@ static WRITE8_HANDLER(d_pia2_pa_w)
 		if ((PIATaskReg!=OldTask) && (EnableMapRegs))
 		{
 			TaskReg=PIATaskReg;
-			UpdateBanks(0,IOPage+1);
+			UpdateBanks(machine, 0,IOPage+1);
 		}
 	}
 	LOG_TASK(("TaskReg=$%02X PIATaskReg=$%02X\n",TaskReg,PIATaskReg));
@@ -842,16 +831,16 @@ static WRITE8_HANDLER(d_pia2_pb_w)
 	vid_set_gctrl(data);
 }
 
-static void d_pia2_irq_a(int state)
+static void d_pia2_irq_a(running_machine *machine, int state)
 {
 	logerror("PIA2 IRQ1 state=%02X\n",state);
-	cpu0_recalc_irq(Machine, state);
+	cpu0_recalc_irq(machine, state);
 }
 
-static void d_pia2_irq_b(int state)
+static void d_pia2_irq_b(running_machine *machine, int state)
 {
 	logerror("PIA2 IRQ2 state=%02X\n",state);
-	cpu0_recalc_irq(Machine, state);
+	cpu0_recalc_irq(machine, state);
 }
 
 /************************************ Recalculate CPU inturrupts ****************************/
@@ -984,27 +973,23 @@ static void ScanInKeyboard(void)
 #if 0
 	int	Idx;
 	int	Row;
-
+	char port[6];
+	
 	LOG_KEYBOARD(("Scanning Host keyboard\n"));
 
-	for(Idx=0;Idx<NoKeyrows;Idx++)
+	for(Idx=0; Idx<NoKeyrows; Idx++)
 	{
-		switch (Idx)
+		if (Idx < 10)
 		{
-			case 0 : Row=input_port_read_indexed(machine, 0) /*| 0x33*/; break;
-			case 1 : Row=input_port_read_indexed(machine, 1); break;
-			case 2 : Row=input_port_read_indexed(machine, 2); break;
-			case 3 : Row=input_port_read_indexed(machine, 3); break;
-			case 4 : Row=input_port_read_indexed(machine, 4); break;
-			case 5 : Row=input_port_read_indexed(machine, 5); break;
-			case 6 : Row=input_port_read_indexed(machine, 6); break;
-			case 7 : Row=input_port_read_indexed(machine, 7); break;
-			case 8 : Row=input_port_read_indexed(machine, 8); break;
-			case 9 : Row=input_port_read_indexed(machine, 9); break;
-			default : Row=0x7F; break;
+			sprintf(port, "KEY%d", Idx);
+			Row = input_port_read(machine, port);
 		}
+		else
+			Row = 0x7f;
+
 		Keyboard[Idx]=Row;
 		LOG_KEYBOARD(("Keyboard[%d]=$%02X\n",Idx,Row));
+
 		if (Row!=0x7F)
 		{
 			LOG_KEYBOARD(("Found Pressed Key\n"));
@@ -1047,7 +1032,7 @@ void dgn_beta_line_interrupt (int data)
 
 static void dgnbeta_reset(running_machine *machine)
 {
-	system_rom = memory_region(REGION_CPU1);
+	system_rom = memory_region(machine, REGION_CPU1);
 
 	/* Make sure CPU 1 is started out halted ! */
 	cpunum_set_input_line(machine, 1, INPUT_LINE_HALT, ASSERT_LINE);
@@ -1059,7 +1044,7 @@ static void dgnbeta_reset(running_machine *machine)
 	PIATaskReg=0;
 	EnableMapRegs=0;
 	memset(PageRegs,0,sizeof(PageRegs));	/* Reset page registers to 0 */
-	SetDefaultTask();
+	SetDefaultTask(machine);
 
 	pia_reset();
 
@@ -1081,7 +1066,7 @@ static void dgnbeta_reset(running_machine *machine)
 	DMA_NMI_LAST=0x80;			/* start with DMA NMI inactive, as pulled up */
 //	DMA_NMI=CLEAR_LINE;			/* start with DMA NMI inactive */
 
-	wd17xx_reset();
+	wd17xx_reset(machine);
 	wd17xx_set_density(DEN_MFM_LO);
 	wd17xx_set_drive(0);
 

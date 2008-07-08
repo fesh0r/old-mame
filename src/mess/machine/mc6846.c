@@ -94,7 +94,7 @@ INLINE UINT16 mc6846_counter ( void )
 
 
 
-INLINE void mc6846_update_irq( void )
+INLINE void mc6846_update_irq( running_machine *machine )
 {
 	static int old_cif;
 	int cif = 0;
@@ -114,13 +114,13 @@ INLINE void mc6846_update_irq( void )
 	{
 		mc6846.csr |= 0x80;
 		if ( mc6846.iface->irq_func )
-			mc6846.iface->irq_func( 1 );
+			mc6846.iface->irq_func( machine, 1 );
 	}
 	else
 	{
 		mc6846.csr &= ~0x80;
 		if ( mc6846.iface->irq_func )
-			mc6846.iface->irq_func( 0 );
+			mc6846.iface->irq_func( machine, 0 );
 	}
 }
 
@@ -179,7 +179,7 @@ INLINE void mc6846_timer_launch ( running_machine *machine )
 
 	mc6846.csr &= ~1;
 	mc6846_update_cto(machine);
-	mc6846_update_irq();
+	mc6846_update_irq(machine);
 }
 
 
@@ -224,7 +224,7 @@ static TIMER_CALLBACK(mc6846_timer_expire)
 
 	mc6846.csr |= 1;
 	mc6846_update_cto(machine);
-	mc6846_update_irq();
+	mc6846_update_irq(machine);
 }
 
 
@@ -275,7 +275,7 @@ READ8_HANDLER ( mc6846_r )
 				mc6846.csr &= ~2;
 			if ( mc6846.csr2_to_be_cleared )
 				mc6846.csr &= ~4;
-			mc6846_update_irq();
+			mc6846_update_irq(machine);
 			mc6846.csr1_to_be_cleared = 0;
 			mc6846.csr2_to_be_cleared = 0;
 		}
@@ -290,7 +290,7 @@ READ8_HANDLER ( mc6846_r )
 		if ( mc6846.csr0_to_be_cleared )
 		{
 			mc6846.csr &= ~1;
-			mc6846_update_irq();
+			mc6846_update_irq(machine);
 		}
 		mc6846.csr0_to_be_cleared = 0;
 		return mc6846_counter() >> 8;
@@ -300,7 +300,7 @@ READ8_HANDLER ( mc6846_r )
 		if ( mc6846.csr0_to_be_cleared )
 		{
 			mc6846.csr &= ~1;
-			mc6846_update_irq();
+			mc6846_update_irq(machine);
 		}
 		mc6846.csr0_to_be_cleared = 0;
 		return mc6846_counter() & 0xff;
@@ -345,7 +345,7 @@ WRITE8_HANDLER ( mc6846_w )
 		mc6846.pdr = 0;
 		mc6846.ddr = 0;
 		mc6846.csr &= ~6;
-		mc6846_update_irq();
+		mc6846_update_irq(machine);
 	}
 	if ( data & 4 )
 		logerror( "$%04x mc6846 CP1 latching not implemented\n", activecpu_get_previouspc() );
@@ -391,7 +391,7 @@ WRITE8_HANDLER ( mc6846_w )
 			}
 			mc6846.csr1_to_be_cleared = 0;
 			mc6846.csr2_to_be_cleared = 0;
-			mc6846_update_irq();
+			mc6846_update_irq(machine);
 		}
 		break;
 
@@ -427,7 +427,7 @@ WRITE8_HANDLER ( mc6846_w )
 			if ( ! mc6846.timer_started )
 				mc6846_timer_launch(machine);
 		}
-		mc6846_update_irq();
+		mc6846_update_irq(machine);
 	}
 	break;
 
@@ -443,7 +443,7 @@ WRITE8_HANDLER ( mc6846_w )
 			/* timer initialization */
 			mc6846.preset = mc6846.latch;
 			mc6846.csr &= ~1;
-			mc6846_update_irq();
+			mc6846_update_irq(machine);
 			mc6846.cto = 0;
 			mc6846_update_cto(machine);
 			/* launch only if started */
@@ -463,7 +463,7 @@ WRITE8_HANDLER ( mc6846_w )
 
 
 
-void mc6846_set_input_cp1 ( int data )
+void mc6846_set_input_cp1 ( running_machine *machine, int data )
 {
 	data = (data != 0 );
 	if ( data == mc6846.cp1 )
@@ -473,11 +473,11 @@ void mc6846_set_input_cp1 ( int data )
 	if (( data &&  (mc6846.pcr & 2)) || (!data && !(mc6846.pcr & 2)))
 	{
 		mc6846.csr |= 2;
-		mc6846_update_irq();
+		mc6846_update_irq(machine);
 	}
 }
 
-void mc6846_set_input_cp2 ( int data )
+void mc6846_set_input_cp2 ( running_machine *machine, int data )
 {
 	data = (data != 0 );
 	if ( data == mc6846.cp2 )
@@ -489,7 +489,7 @@ void mc6846_set_input_cp2 ( int data )
 		if (( data &&  (mc6846.pcr & 0x10)) || (!data && !(mc6846.pcr & 0x10)))
 		{
 			mc6846.csr |= 4;
-			mc6846_update_irq();
+			mc6846_update_irq(machine);
 		}
 	}
 }

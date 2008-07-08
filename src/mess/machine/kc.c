@@ -1,6 +1,5 @@
 /* Core includes */
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/kc.h"
 
 /* Components */
@@ -204,7 +203,7 @@ WRITE8_HANDLER(kc85_disc_interface_latch_w)
 WRITE8_HANDLER(kc85_disc_hw_terminal_count_w)
 {
 	logerror("kc85 disc hw tc w: %02x\n",data);
-	nec765_set_tc_state(data & 0x01);
+	nec765_set_tc_state(machine, data & 0x01);
 }
 
 
@@ -240,7 +239,7 @@ static void kc_disc_interface_init(running_machine *machine)
 {
 	timer_set(attotime_zero, NULL, 0, kc85_disk_reset_timer_callback);
 
-	nec765_init(&kc_fdc_interface,NEC765A,NEC765_RDY_PIN_CONNECTED);
+	nec765_init(machine, &kc_fdc_interface,NEC765A,NEC765_RDY_PIN_CONNECTED);
 
 	/* reset ctc */
 	z80ctc_reset(1);
@@ -846,7 +845,7 @@ static unsigned char kc_brdy;
 */
 
 static kc_keyboard keyboard_data;
-static void kc_keyboard_attempt_transmit(void);
+static void kc_keyboard_attempt_transmit(running_machine *machine);
 static TIMER_CALLBACK(kc_keyboard_update);
 
 /* this is called at a regular interval */
@@ -899,9 +898,10 @@ static void kc_keyboard_add_pulse_to_transmit_buffer(int pulse_state)
 
 
 /* initialise keyboard queue */
-static void kc_keyboard_init(void)
+static void kc_keyboard_init(running_machine *machine)
 {
 	int i;
+	char port[6];
 
 	/* head and tail of list is at beginning */
 	keyboard_data.head = (keyboard_data.tail = 0);
@@ -925,8 +925,9 @@ static void kc_keyboard_init(void)
 
 	for (i=0; i<KC_KEYBOARD_NUM_LINES-1; i++)
 	{
+		sprintf(port, "KEY%d", i);
 		/* read input port */
-		kc_previous_keyboard[i] = input_port_read_indexed(Machine, i);
+		kc_previous_keyboard[i] = input_port_read(machine, port);
 	}
 }
 
@@ -967,7 +968,7 @@ static void kc_keyboard_add_bit(int bit)
 }
 
 
-static void kc_keyboard_begin_transmit(int scan_code)
+static void kc_keyboard_begin_transmit(running_machine *machine, int scan_code)
 {
 	int i;
 	int scan;
@@ -981,7 +982,7 @@ static void kc_keyboard_begin_transmit(int scan_code)
 	scan = scan_code;
 
 	/* state of shift key */
-	kc_keyboard_add_bit(((input_port_read_indexed(Machine, 8) & 0x01)^0x01));
+	kc_keyboard_add_bit(((input_port_read(machine, "SHIFT") & 0x01)^0x01));
 
 	for (i=0; i<6; i++)
 	{
@@ -1014,7 +1015,7 @@ static void kc_keyboard_begin_transmit(int scan_code)
 }
 
 /* attempt to transmit a new keycode to the base unit */
-static void kc_keyboard_attempt_transmit(void)
+static void kc_keyboard_attempt_transmit(running_machine *machine)
 {
 	/* is the keyboard transmit is idle */
 	if (keyboard_data.transmit_state == KC_KEYBOARD_TRANSMIT_IDLE)
@@ -1032,7 +1033,7 @@ static void kc_keyboard_attempt_transmit(void)
 			keyboard_data.head = (keyboard_data.head + 1) % KC_KEYCODE_QUEUE_LENGTH;
 
 			/* setup transmit buffer with scan-code */
-			kc_keyboard_begin_transmit(code);
+			kc_keyboard_begin_transmit(machine, code);
 		}
 	}
 }
@@ -1050,9 +1051,11 @@ static TIMER_CALLBACK(kc_keyboard_update)
 		int keyboard_line_data;
 		int changed_keys;
 		int mask = 0x001;
+		char port[6];
 
+		sprintf(port, "KEY%d", i);
 		/* read input port */
-		keyboard_line_data = input_port_read_indexed(machine, i);
+		keyboard_line_data = input_port_read(machine, port);
 		/* identify keys that have changed */
 		changed_keys = keyboard_line_data ^ kc_previous_keyboard[i];
 		/* store input port for next time */
@@ -1083,7 +1086,7 @@ static TIMER_CALLBACK(kc_keyboard_update)
 		}
 	}
 
-	kc_keyboard_attempt_transmit();
+	kc_keyboard_attempt_transmit(machine);
 }
 
 /*********************************************************************/
@@ -1231,7 +1234,7 @@ static void kc85_4_update_0x00000(running_machine *machine)
 	{
 		LOG(("no memory at ram0!\n"));
 
-//		memory_set_bankptr(1,memory_region(REGION_CPU1) + 0x013000);
+//		memory_set_bankptr(1,memory_region(machine, REGION_CPU1) + 0x013000);
 		/* ram is disabled */
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_NOP);
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_NOP);
@@ -1298,7 +1301,7 @@ static void kc85_4_update_0x0c000(running_machine *machine)
 		/* CAOS rom takes priority */
 		LOG(("CAOS rom 0x0c000\n"));
 
-		memory_set_bankptr(5,memory_region(REGION_CPU1) + 0x012000);
+		memory_set_bankptr(5,memory_region(machine, REGION_CPU1) + 0x012000);
 		rh = SMH_BANK5;
 	}
 	else if (kc85_pio_data[0] & (1<<7))
@@ -1306,7 +1309,7 @@ static void kc85_4_update_0x0c000(running_machine *machine)
 		/* BASIC takes next priority */
         	LOG(("BASIC rom 0x0c000\n"));
 
-        memory_set_bankptr(5, memory_region(REGION_CPU1) + 0x010000);
+        memory_set_bankptr(5, memory_region(machine, REGION_CPU1) + 0x010000);
 		rh = SMH_BANK5;
 	}
 	else
@@ -1339,7 +1342,7 @@ static void kc85_4_update_0x0e000(running_machine *machine)
 		/* enable CAOS rom in memory range 0x0e000-0x0ffff */
 		LOG(("CAOS rom 0x0e000\n"));
 		/* read will access the rom */
-		memory_set_bankptr(6,memory_region(REGION_CPU1) + 0x013000);
+		memory_set_bankptr(6,memory_region(machine, REGION_CPU1) + 0x013000);
 		rh = SMH_BANK6;
 	}
 	else
@@ -1453,7 +1456,7 @@ static void kc85_3_update_0x0c000(running_machine *machine)
 		/* BASIC takes next priority */
 		LOG(("BASIC rom 0x0c000\n"));
 
-		memory_set_bankptr(4, memory_region(REGION_CPU1) + 0x010000);
+		memory_set_bankptr(4, memory_region(machine, REGION_CPU1) + 0x010000);
 		rh = SMH_BANK4;
 	}
 	else
@@ -1475,7 +1478,7 @@ static void kc85_3_update_0x0e000(running_machine *machine)
 		/* enable CAOS rom in memory range 0x0e000-0x0ffff */
 		LOG(("CAOS rom 0x0e000\n"));
 
-		memory_set_bankptr(5,memory_region(REGION_CPU1) + 0x012000);
+		memory_set_bankptr(5,memory_region(machine, REGION_CPU1) + 0x012000);
         rh = SMH_BANK5;
 	}
 	else
@@ -1725,14 +1728,14 @@ WRITE8_HANDLER ( kc85_ctc_w )
 }
 
 
-static void kc85_pio_interrupt(int state)
+static void kc85_pio_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, 0, state);
+	cpunum_set_input_line(machine, 0, 0, state);
 }
 
-static void kc85_ctc_interrupt(int state)
+static void kc85_ctc_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, 1, state);
+	cpunum_set_input_line(machine, 0, 1, state);
 }
 
 /* callback for ardy output from PIO */
@@ -1830,7 +1833,7 @@ static z80ctc_interface	kc85_ctc_intf =
     kc85_zc2_callback
 };
 
-static void	kc85_common_init(void)
+static void	kc85_common_init(running_machine *machine)
 {
 	z80pio_init(0, &kc85_pio_intf);
 	z80ctc_init(0, &kc85_ctc_intf);
@@ -1839,7 +1842,7 @@ static void	kc85_common_init(void)
 	z80pio_reset(0);
 
 	kc_cassette_init();
-	kc_keyboard_init();
+	kc_keyboard_init(machine);
 
 	/* kc85 has a 50hz input to the ctc channel 2 and 3 */
 	/* channel 2 this controls the video colour flash */
@@ -1869,7 +1872,7 @@ MACHINE_RESET( kc85_4 )
 	kc85_4_update_0x0c000(machine);
 	kc85_4_update_0x0e000(machine);
 
-	kc85_common_init();
+	kc85_common_init(machine);
 
 	kc85_4_update_0x00000(machine);
 
@@ -1902,7 +1905,7 @@ MACHINE_RESET( kc85_3 )
 	kc85_3_update_0x0c000(machine);
 	kc85_3_update_0x0e000(machine);
 
-	kc85_common_init();
+	kc85_common_init(machine);
 
 	kc85_3_update_0x00000(machine);
 

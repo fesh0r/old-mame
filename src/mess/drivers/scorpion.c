@@ -157,7 +157,7 @@ http://www.z88forever.org.uk/zxplus3e/
 #include "machine/wd17xx.h"
 #include "machine/beta.h"
 
-MACHINE_START( scorpion )
+static MACHINE_START( scorpion )
 {
 	wd17xx_init(machine, WD_TYPE_179X, betadisk_wd179x_callback, NULL);
 }
@@ -215,7 +215,7 @@ static void scorpion_update_memory(running_machine *machine)
 			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ? 1 : 0;
 		}			
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000 + (ROMSelection<<14));		
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x010000 + (ROMSelection<<14));		
 	}
 	
 	
@@ -227,13 +227,15 @@ static OPBASE_HANDLER( scorpion_opbase )
 		if (activecpu_get_pc() >= 0x4000) {
 			ROMSelection = ((spectrum_128_port_7ffd_data>>4) & 0x01) ? 1 : 0;
 			betadisk_disable();
-			memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x010000 + 0x4000*ROMSelection); // Set BASIC ROM
+			memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x010000 + 0x4000*ROMSelection); // Set BASIC ROM
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 		} 	
 	} else if (((activecpu_get_pc() & 0xff00) == 0x3d00) && (ROMSelection==1))
 	{
 		ROMSelection = 3;
 		betadisk_enable();
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x01c000); // Set TRDOS ROM			
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x01c000); // Set TRDOS ROM			
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0000, 0x3fff, 0, 0, SMH_UNMAP);
 	} 
 	return address;
 }
@@ -262,17 +264,14 @@ static WRITE8_HANDLER(scorpion_port_7ffd_w)
 
 static WRITE8_HANDLER(scorpion_port_1ffd_w)
 {
-	scorpion_256_port_1ffd_data = data;
-
-	/* disable paging */
+	/* if paging not disabled */
 	if ((spectrum_128_port_7ffd_data & 0x20)==0)
 	{
+		scorpion_256_port_1ffd_data = data;
 		scorpion_update_memory(machine);
 	}
 }
   
-/* ports are not decoded full.
-The function decodes the ports appropriately */
 static ADDRESS_MAP_START (scorpion_io, ADDRESS_SPACE_IO, 8)	
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x001f, 0x001f) AM_READWRITE(betadisk_status_r,betadisk_command_w) AM_MIRROR(0xff00)
@@ -310,7 +309,7 @@ static MACHINE_RESET( scorpion )
 
 	scorpion_update_memory(machine);	
 		
-	wd17xx_reset();	
+	wd17xx_reset(machine);	
 	
 	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, nmi_check_callback);
 }
@@ -333,16 +332,16 @@ MACHINE_DRIVER_END
 
 ROM_START(scorpion)
 	ROM_REGION(0x020000, REGION_CPU1, 0)
-	ROM_LOAD("scorp0.rom",0x010000, 0x4000, CRC(0eb40a09))
-	ROM_LOAD("scorp1.rom",0x014000, 0x4000, CRC(9d513013))
-	ROM_LOAD("scorp2.rom",0x018000, 0x4000, CRC(fd0d3ce1))
-	ROM_LOAD("scorp3.rom",0x01c000, 0x4000, CRC(1fe1d003))
+	ROM_LOAD("scorp0.rom", 0x010000, 0x4000, CRC(0eb40a09) SHA1(477114ff0fe1388e0979df1423602b21248164e5) )
+	ROM_LOAD("scorp1.rom", 0x014000, 0x4000, CRC(9d513013) SHA1(367b5a102fb663beee8e7930b8c4acc219c1f7b3) )
+	ROM_LOAD("scorp2.rom", 0x018000, 0x4000, CRC(fd0d3ce1) SHA1(07783ee295274d8ff15d935bfd787c8ac1d54900) )
+	ROM_LOAD("scorp3.rom", 0x01c000, 0x4000, CRC(1fe1d003) SHA1(33703e97cc93b7edfcc0334b64233cf81b7930db) )
 	ROM_CART_LOAD(0, "rom", 0x0000, 0x4000, ROM_NOCLEAR | ROM_NOMIRROR | ROM_OPTIONAL)
 ROM_END
 
 SYSTEM_CONFIG_EXTERN(spectrum)
 
-SYSTEM_CONFIG_START(scorpion)
+static SYSTEM_CONFIG_START(scorpion)
 	CONFIG_IMPORT_FROM(spectrum)
 	CONFIG_RAM_DEFAULT(256 * 1024)
 	CONFIG_DEVICE(beta_floppy_getinfo)

@@ -1,64 +1,55 @@
 /*
 
-    tmc1800.c
+Telmac 2000
 
+PCB Layout
+----------
 
-    MESS Driver by Curt Coder
+|-----------------------------------------------------------|
+|															|
+|	 |					4051	4042		2114	2114	|
+|	CN1														|
+|	 |					4051	4042		2114	2114	|
+|															|
+|	4011				4013	|--------|	2114	2114	|
+|								|  4515  |					|
+|						4013	|--------|	2114	2114	|
+|								4042						|						
+|						4011				2114	2114	|
+|								4011						|
+|						4011				2114	2114	|
+|SW1														|
+|						4011	|--------|	2114	2114	|
+|								|  PROM  |					|
+|						40107	|--------|	2114	2114	|
+|	4050	1.75Mhz											|
+|						|-------------|		2114	2114	|
+|						|   CDP1802   |						|
+|						|-------------|		2114	2114	|
+|			4049											|
+|						|-------------|		2114	2114	|
+|		4.43MHz			|   CDP1864   |						|
+|						|-------------|		2114	2114	|
+|															|
+|				741				4502		2114	2114	|
+|  -														|
+|  |							2114		2114	2114	|
+| CN2														|
+|  |			4001			4051		2114	2114	|
+|  -														|
+|											2114	2114	|
+|-----------------------------------------------------------|
 
-
-    Telmac 1800
-    -----------
-    (c) 10/1977 Telercas Oy, Finland
-
-    CPU:        CDP1802     1.76 MHz
-    RAM:        2 KB (4 KB)
-    ROM:        512 B
-
-	Video:		CDP1861
-
-    Designer:   Osmo Kainulainen
-    Keyboard:   OS-70 A (QWERTY, hexadecimal keypad)
-
-
-    OSCOM 1000B
-    -----------
-    (c) 197? OSCOM Oy, Finland
-
-    CPU:        CDP1802A    ? MHz
-
-    Video:      OSM-200 (1 KB videoram, 10.2 MHz xtal)
-
-    Enhanced Telmac 1800 with built-in CRT board (OSM-200).
-
-
-    Telmac 2000
-    -----------
-    (c) 1980 Telercas Oy, Finland
-
-    CPU:        CDP1802A    1.75 MHz
-    RAM:        16 KB
-    ROM:        512 B / 2 KB (TOOL-2000)
-
-    Video:      CDP1864     1.75 MHz
-    Color RAM:  512 B
-
-    Colors:     8 fg, 4 bg
-    Resolution: 64x192
-    Sound:      frequency control, volume on/off
-    Keyboard:   ASCII, KB-16, KB-64
-
-
-    OSCOM Nano
-    ----------
-    (c) 1981 OSCOM Oy, Finland
-
-    CPU:        CDP1802A    1.75 MHz
-    ROM:        512 B / 1 KB
-	RAM:		4 KB
-
-	Video:		CDP1864		1.75 MHz
-
-    Small form factor version of Telmac 1800. Combined text and graphics output.
+Notes:
+    All IC's shown.
+	
+    PROM	- MMI6341
+	2114	- 2114 4096 Bit (1024x4) NMOS Static RAM
+	CDP1802	- RCA CDP1802 CMOS 8-Bit Microprocessor @ 1.75 MHz
+	CDP1864	- RCA CDP1864CE COS/MOS PAL Compatible Color TV Interface @ 1.75 MHz
+	CN1		- keyboard connector
+	CN2		- ASTEC RF modulator connector
+	SW1		- Run/Reset switch
 
 */
 
@@ -66,7 +57,7 @@
 
 	TODO:
 
-	- tmc2000: fix display
+	- tape input/output
 	- tmc2000: add missing keys
 	- tmc2000: TOOL-2000 rom banking
 
@@ -78,7 +69,15 @@
 #include "video/cdp1861.h"
 #include "video/cdp1864.h"
 #include "devices/cassette.h"
+#include "devices/snapquik.h"
 #include "sound/beep.h"
+
+static QUICKLOAD_LOAD( tmc1800 );
+static QUICKLOAD_LOAD( tmc2000 );
+
+static MACHINE_RESET( tmc1800 );
+static MACHINE_RESET( tmc2000 );
+static MACHINE_RESET( oscnano );
 
 static const device_config *cassette_device_image(void)
 {
@@ -87,11 +86,11 @@ static const device_config *cassette_device_image(void)
 
 /* Read/Write Handlers */
 
-static int keylatch;
-
 static WRITE8_HANDLER( tmc1800_keylatch_w )
 {
-	keylatch = data;
+	tmc1800_state *state = machine->driver_data;
+
+	state->keylatch = data;
 }
 
 static WRITE8_HANDLER( tmc2000_keylatch_w )
@@ -111,7 +110,31 @@ static WRITE8_HANDLER( tmc2000_keylatch_w )
 
 	*/
 
-	keylatch = data & 0x3f;
+	tmc2000_state *state = machine->driver_data;
+
+	state->keylatch = data & 0x3f;
+}
+
+static WRITE8_HANDLER( oscnano_keylatch_w )
+{
+	/*
+
+		bit		description
+		
+		0		X0
+		1		X1
+		2		X2
+		3		Y0
+		4		not connected
+		5		not connected
+		6		not connected
+		7		not connected
+
+	*/
+
+	tmc2000_state *state = machine->driver_data;
+
+	state->keylatch = data & 0x0f;
 }
 
 static WRITE8_DEVICE_HANDLER( tmc2000_bankswitch_w )
@@ -121,21 +144,20 @@ static WRITE8_DEVICE_HANDLER( tmc2000_bankswitch_w )
 	// enable RAM
 
 	memory_set_bank(1, 1);
+	memory_set_bank(2, bank);
 
 	if (bank)
 	{
 		// enable Color RAM
 
-		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x0e00, SMH_UNMAP, SMH_BANK2);
+		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_UNMAP, SMH_BANK2);
 	}
 	else
 	{
 		// enable ROM
 
-		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x0e00, SMH_BANK2, SMH_UNMAP);
+		memory_install_readwrite8_handler(device->machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
 	}
-
-	memory_set_bank(2, bank);
 
 	cdp1864_tone_latch_w(device, 0, data);
 }
@@ -196,7 +218,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( oscnano_io_map, ADDRESS_SPACE_IO, 8 )
 	AM_RANGE(0x01, 0x01) AM_DEVREADWRITE(CDP1864, CDP1864_TAG, cdp1864_dispon_r, cdp1864_step_bgcolor_w)
-	AM_RANGE(0x02, 0x02) AM_WRITE(tmc1800_keylatch_w)
+	AM_RANGE(0x02, 0x02) AM_WRITE(oscnano_keylatch_w)
 	AM_RANGE(0x04, 0x04) AM_DEVREADWRITE(CDP1864, CDP1864_TAG, cdp1864_dispoff_r, oscnano_bankswitch_w)
 ADDRESS_MAP_END
 
@@ -295,7 +317,7 @@ static INPUT_PORTS_START( oscnano )
 	PORT_INCLUDE(tmc1800)
 
 	PORT_MODIFY("RUN")
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Monitor") PORT_CODE(KEYCODE_M) PORT_TOGGLE
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYBOARD ) PORT_NAME("Monitor") PORT_CODE(KEYCODE_M)
 INPUT_PORTS_END
 
 /* CDP1802 Interfaces */
@@ -304,12 +326,23 @@ INPUT_PORTS_END
 
 static CDP1802_MODE_READ( tmc1800_mode_r )
 {
+	tmc1800_state *state = machine->driver_data;
+
 	if (input_port_read(machine, "RUN") & 0x01)
 	{
+		if (state->reset)
+		{
+			MACHINE_RESET_CALL(tmc2000);
+
+			state->reset = 0;
+		}
+
 		return CDP1802_MODE_RUN;
 	}
 	else
 	{
+		state->reset = 1;
+
 		return CDP1802_MODE_RESET;
 	}
 }
@@ -338,8 +371,8 @@ static CDP1802_EF_READ( tmc1800_ef_r )
 
 	// keyboard
 
-	sprintf(port, "IN%d", keylatch / 8);
-	if (~input_port_read(machine, port) & (1 << (keylatch % 8))) flags -= EF3;
+	sprintf(port, "IN%d", state->keylatch / 8);
+	if (~input_port_read(machine, port) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	return flags;
 }
@@ -380,15 +413,22 @@ static const cdp1802_interface osc1000b_config =
 
 static CDP1802_MODE_READ( tmc2000_mode_r )
 {
+	tmc2000_state *state = machine->driver_data;
+
 	if (input_port_read(machine, "RUN") & 0x01)
 	{
+		if (state->reset)
+		{
+			MACHINE_RESET_CALL(tmc2000);
+
+			state->reset = 0;
+		}
+
 		return CDP1802_MODE_RUN;
 	}
 	else
 	{
-		// enable ROM at 0x0000
-
-		memory_set_bank(1, 0);
+		state->reset = 1;
 
 		return CDP1802_MODE_RESET;
 	}
@@ -418,8 +458,8 @@ static CDP1802_EF_READ( tmc2000_ef_r )
 
 	// keyboard
 
-	sprintf(port, "IN%d", keylatch / 8);
-	if (~input_port_read(machine, port) & (1 << (keylatch % 8))) flags -= EF3;
+	sprintf(port, "IN%d", state->keylatch / 8);
+	if (~input_port_read(machine, port) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	return flags;
 }
@@ -444,8 +484,9 @@ static CDP1802_Q_WRITE( tmc2000_q_w )
 static CDP1802_DMA_WRITE( tmc2000_dma_w )
 {
 	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
+	tmc2000_state *state = machine->driver_data;
 
-	UINT8 color = (~colorram[ma & 0x1ff]) & 0x07;
+	UINT8 color = ~(state->colorram[ma & 0x1ff]) & 0x07;
 	
 	int rdata = BIT(color, 2);
 	int gdata = BIT(color, 0);
@@ -468,15 +509,22 @@ static const cdp1802_interface tmc2000_config =
 
 static CDP1802_MODE_READ( oscnano_mode_r )
 {
+	tmc2000_state *state = machine->driver_data;
+
 	if (input_port_read(machine, "RUN") & 0x01)
 	{
+		if (state->reset)
+		{
+			MACHINE_RESET_CALL(oscnano);
+
+			state->reset = 0;
+		}
+
 		return CDP1802_MODE_RUN;
 	}
 	else
 	{
-		// enable ROM at 0x0000
-
-		memory_set_bank(1, 0);
+		state->reset = 1;
 
 		return CDP1802_MODE_RESET;
 	}
@@ -506,8 +554,8 @@ static CDP1802_EF_READ( oscnano_ef_r )
 
 	// keyboard
 
-	sprintf(port, "IN%d", keylatch / 8);
-	if (~input_port_read(machine, port) & (1 << (keylatch % 8))) flags -= EF3;
+	sprintf(port, "IN%d", state->keylatch / 8);
+	if (~input_port_read(machine, port) & (1 << (state->keylatch % 8))) flags -= EF3;
 
 	// monitor
 
@@ -537,13 +585,7 @@ static CDP1802_DMA_WRITE( oscnano_dma_w )
 {
 	const device_config *cdp1864 = device_list_find_by_tag(machine->config->devicelist, CDP1864, CDP1864_TAG);
 
-	UINT8 color = (colorram[ma & 0x1ff]) & 0x07;
-	
-	int rdata = BIT(color, 0);
-	int gdata = BIT(color, 1);
-	int bdata = BIT(color, 2);
-
-	cdp1864_dma_w(cdp1864, data, rdata, gdata, bdata);
+	cdp1864_dma_w(cdp1864, data, 1, 1, 1);
 }
 
 static CDP1802_INTERFACE( oscnano_config )
@@ -562,7 +604,9 @@ static CDP1802_INTERFACE( oscnano_config )
 
 static MACHINE_START( tmc1800 )
 {
-	state_save_register_global(keylatch);
+	tmc1800_state *state = machine->driver_data;
+
+	state_save_register_global(state->keylatch);
 }
 
 static MACHINE_RESET( tmc1800 )
@@ -584,11 +628,14 @@ static MACHINE_RESET( osc1000b )
 
 static MACHINE_START( tmc2000 )
 {
-	state_save_register_global(keylatch);
+	tmc2000_state *state = machine->driver_data;
+	UINT16 addr;
+
+	state_save_register_global(state->keylatch);
 
 	// RAM banking
 
-	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
+	memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU1) + 0x8000, 0);
 	memory_configure_bank(1, 1, 1, &mess_ram, 0);
 
 	switch (mess_ram_size)
@@ -608,14 +655,24 @@ static MACHINE_START( tmc2000 )
 		break;
 	}
 
-	// ROM/ColorRAM banking
+	for (addr = 0; addr < mess_ram_size; addr++)
+	{
+		mess_ram[addr] = mame_rand(machine) & 0xff;
+	}
 
-	colorram = auto_malloc(0x200);
+	// ROM/colorram banking
 
-	memory_configure_bank(2, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
-	memory_configure_bank(2, 1, 1, &colorram, 0);
+	state->colorram = auto_malloc(0x200);
 
-	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x0e00, SMH_BANK2, SMH_UNMAP);
+	memory_configure_bank(2, 0, 1, memory_region(machine, REGION_CPU1) + 0x8000, 0);
+	memory_configure_bank(2, 1, 1, state->colorram, 0);
+
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
+
+	for (addr = 0; addr < 0x200; addr++)
+	{
+		state->colorram[addr] = mame_rand(machine) & 0xff;
+	}
 }
 
 static MACHINE_RESET( tmc2000 )
@@ -625,19 +682,25 @@ static MACHINE_RESET( tmc2000 )
 
 	cpunum_set_input_line(machine, 0, INPUT_LINE_RESET, PULSE_LINE);
 
+	// enable ROM
+
 	memory_set_bank(1, 0);
 	memory_set_bank(2, 0);
+
+	memory_install_readwrite8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x81ff, 0, 0x7e00, SMH_BANK2, SMH_UNMAP);
 }
 
 // OSCOM Nano
 
 static MACHINE_START( oscnano )
 {
-	state_save_register_global(keylatch);
+	tmc2000_state *state = machine->driver_data;
+
+	state_save_register_global(state->keylatch);
 
 	// RAM banking
 
-	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
+	memory_configure_bank(1, 0, 1, memory_region(machine, REGION_CPU1) + 0x8000, 0);
 	memory_configure_bank(1, 1, 1, &mess_ram, 0);
 }
 
@@ -669,6 +732,10 @@ static MACHINE_DRIVER_START( tmc1800 )
 	// video hardware
 
 	MDRV_IMPORT_FROM(tmc1800_video)
+
+	// quickload
+
+	MDRV_QUICKLOAD_ADD(tmc1800, "bin", 0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( osc1000b )
@@ -687,6 +754,10 @@ static MACHINE_DRIVER_START( osc1000b )
 	// video hardware
 
 	MDRV_IMPORT_FROM(osc1000b_video)
+
+	// quickload
+
+	MDRV_QUICKLOAD_ADD(tmc2000, "bin", 0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( tmc2000 )
@@ -712,6 +783,10 @@ static MACHINE_DRIVER_START( tmc2000 )
 
 	MDRV_SOUND_ADD(BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
+	// quickload
+
+	MDRV_QUICKLOAD_ADD(tmc2000, "bin", 0)
 MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( oscnano )
@@ -737,6 +812,10 @@ static MACHINE_DRIVER_START( oscnano )
 
 	MDRV_SOUND_ADD(BEEP, 0)
 	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
+
+	// quickload
+
+	MDRV_QUICKLOAD_ADD(tmc1800, "bin", 0)
 MACHINE_DRIVER_END
 
 /* ROMs */
@@ -758,7 +837,7 @@ ROM_END
 ROM_START( tmc2000 )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
 	ROM_SYSTEM_BIOS( 0, "default",  "PROM N:o 200" )
-	ROMX_LOAD( "200.m5",    0x8000, 0x0200, BAD_DUMP CRC(6af8e362) SHA1(ebc11e110ec355defb0a4fcbd0063eb3ad4ba23b), ROM_BIOS(1) ) // typed in from the manual
+	ROMX_LOAD( "200.m5",    0x8000, 0x0200, BAD_DUMP CRC(79da3221) SHA1(008da3ef4f69ab1a493362dfca856375b19c94bd), ROM_BIOS(1) ) // typed in from the manual
 	ROM_SYSTEM_BIOS( 1, "prom202",  "PROM N:o 202" )
 	ROMX_LOAD( "202.m5",    0x8000, 0x0200, NO_DUMP, ROM_BIOS(2) )
 	ROM_SYSTEM_BIOS( 2, "tool2000", "TOOL-2000" )
@@ -767,10 +846,44 @@ ROM_END
 
 ROM_START( oscnano )
 	ROM_REGION( 0x10000, REGION_CPU1, 0 )
-	ROM_LOAD( "mmi6349.ic", 0x8000, 0x0200, NO_DUMP ) // equivalent to 82S141
+	ROM_LOAD( "mmi6349.ic", 0x8000, 0x0200, BAD_DUMP CRC(1ec1b432) SHA1(ac41f5e38bcd4b80bd7a5b277a2c600899fd5fb8) ) // equivalent to 82S141
 ROM_END
 
 /* System Configuration */
+
+static QUICKLOAD_LOAD( tmc1800 )
+{
+	running_machine *machine = image->machine;
+	int size = image_length(image);
+
+	if (size > mess_ram_size)
+	{
+		return INIT_FAIL;
+	}
+
+	image_fread(image, &mess_ram, size);
+
+	MACHINE_RESET_CALL(tmc1800);
+
+	return INIT_PASS;
+}
+
+static QUICKLOAD_LOAD( tmc2000 )
+{
+	running_machine *machine = image->machine;
+	int size = image_length(image);
+
+	if (size > mess_ram_size)
+	{
+		return INIT_FAIL;
+	}
+
+	image_fread(image, &mess_ram, size);
+
+	MACHINE_RESET_CALL(tmc2000);
+
+	return INIT_PASS;
+}
 
 static void tmc1800_cassette_getinfo(const mess_device_class *devclass, UINT32 state, union devinfo *info)
 {
@@ -785,26 +898,28 @@ static void tmc1800_cassette_getinfo(const mess_device_class *devclass, UINT32 s
 	}
 }
 
-SYSTEM_CONFIG_START( tmc1800 )
+static SYSTEM_CONFIG_START( tmc1800 )
 	CONFIG_RAM_DEFAULT	( 2 * 1024)
 	CONFIG_RAM			( 4 * 1024)
 	CONFIG_DEVICE(tmc1800_cassette_getinfo)
 SYSTEM_CONFIG_END
 
+#ifdef UNUSED_FUNCTION
 SYSTEM_CONFIG_START( osc1000b )
 	CONFIG_RAM_DEFAULT	( 2 * 1024)
 	CONFIG_RAM			( 4 * 1024)
 	CONFIG_DEVICE(tmc1800_cassette_getinfo)
 SYSTEM_CONFIG_END
+#endif
 
-SYSTEM_CONFIG_START( tmc2000 )
+static SYSTEM_CONFIG_START( tmc2000 )
 	CONFIG_RAM_DEFAULT	( 4 * 1024)
 	CONFIG_RAM			(16 * 1024)
 	CONFIG_RAM			(32 * 1024)
 	CONFIG_DEVICE(tmc1800_cassette_getinfo)
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START( oscnano )
+static SYSTEM_CONFIG_START( oscnano )
 	CONFIG_RAM_DEFAULT	(4 * 1024)
 	CONFIG_DEVICE(tmc1800_cassette_getinfo)
 SYSTEM_CONFIG_END
@@ -828,4 +943,4 @@ static DRIVER_INIT( tmc1800 )
 COMP( 1977, tmc1800,    0,      0,      tmc1800,    tmc1800,    tmc1800,    tmc1800,    "Telercas Oy",  "Telmac 1800",  GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
 COMP( 1977, osc1000b,   tmc1800,0,      osc1000b,   tmc1800,    tmc1800,    tmc1800,    "OSCOM Oy",		"OSCOM 1000B",  GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
 COMP( 1980, tmc2000,    0,      0,      tmc2000,    tmc2000,    tmc1800,    tmc2000,    "Telercas Oy",  "Telmac 2000",  GAME_SUPPORTS_SAVE )
-COMP( 1980, oscnano,	tmc2000,0,		oscnano,	oscnano,	tmc1800,	oscnano,	"OSCOM Oy",		"OSCOM Nano",	GAME_NOT_WORKING | GAME_SUPPORTS_SAVE )
+COMP( 1980, oscnano,	tmc2000,0,		oscnano,	oscnano,	tmc1800,	oscnano,	"OSCOM Oy",		"OSCOM Nano",	GAME_SUPPORTS_SAVE )

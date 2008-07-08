@@ -22,9 +22,9 @@ VIDEO_UPDATE( cbmb_crtc )
 	return 0;
 }
 
-void cbm600_vh_init(void)
+void cbm600_vh_init(running_machine *machine)
 {
-	UINT8 *gfx = memory_region(REGION_GFX1);
+	UINT8 *gfx = memory_region(machine, REGION_GFX1);
 	int i;
 
 	/* inversion logic on board */
@@ -35,9 +35,9 @@ void cbm600_vh_init(void)
 	}
 }
 
-void cbm700_vh_init(void)
+void cbm700_vh_init(running_machine *machine)
 {
-	UINT8 *gfx = memory_region(REGION_GFX1);
+	UINT8 *gfx = memory_region(machine, REGION_GFX1);
 	int i;
 	for (i=0; i<0x800; i++) {
 		gfx[0x1000+i]=gfx[0x800+i];

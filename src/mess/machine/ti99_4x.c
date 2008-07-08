@@ -37,6 +37,7 @@ Emulated:
 	  SNUG's BwG and HFDC fdcs).
 	* Hard disk (HFDC and IDE).
 	* Mechatronics mouse.
+	* save minimemory contents 
 
 	Compatibility looks quite good.
 
@@ -47,7 +48,6 @@ TODO:
 	* support for other peripherals and DSRs as documentation permits
 	* implement the EVPC palette chip
 	* finish 99/4p support: ROM6, HSGPL (implemented, but not fully debugged)
-	* save minimemory contents
 */
 
 #include <math.h>
@@ -76,7 +76,7 @@ TODO:
 static READ16_HANDLER ( ti99_rspeech_r );
 static WRITE16_HANDLER ( ti99_wspeech_w );
 
-static void tms9901_set_int1(int state);
+static void tms9901_set_int1(running_machine *machine, int state);
 static void tms9901_interrupt_callback(int intreq, int ic);
 static int ti99_R9901_0(int offset);
 static int ti99_R9901_1(int offset);
@@ -84,8 +84,8 @@ static int ti99_R9901_2(int offset);
 static int ti99_R9901_3(int offset);
 
 static void ti99_handset_set_ack(int offset, int data);
-static void ti99_handset_task(void);
-static void mecmouse_poll(void);
+static void ti99_handset_task(running_machine *machine);
+static void mecmouse_poll(running_machine *machine);
 static void ti99_KeyC(int offset, int data);
 static void ti99_AlphaW(int offset, int data);
 
@@ -99,14 +99,14 @@ static void ti99_CS_motor(int offset, int data);
 static void ti99_audio_gate(int offset, int data);
 static void ti99_CS_output(int offset, int data);
 
-static void ti99_8_internal_dsr_reset(void);
+static void ti99_8_internal_dsr_reset(running_machine *machine);
 
-static void ti99_4p_internal_dsr_reset(void);
+static void ti99_4p_internal_dsr_reset(running_machine *machine);
 static void ti99_TIxram_init(running_machine *machine);
 static void ti99_sAMSxram_init(running_machine *machine);
 static void ti99_4p_mapper_init(running_machine *machine);
 static void ti99_myarcxram_init(running_machine *machine);
-static void ti99_evpc_reset(void);
+static void ti99_evpc_reset(running_machine *machine);
 
 /*
 	pointer to extended RAM area
@@ -404,8 +404,8 @@ DRIVER_INIT( ti99_4 )
 	has_evpc = FALSE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
-	console_GROMs.data_ptr = memory_region(region_grom);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, REGION_CPU1) + offset_xram);
+	console_GROMs.data_ptr = memory_region(machine, region_grom);
 
 	/* Generate missing chunk of each console GROMs */
 	for (i=0; i<2; i++)
@@ -422,38 +422,40 @@ DRIVER_INIT( ti99_4a )
 	has_evpc = FALSE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
-	console_GROMs.data_ptr = memory_region(region_grom);
+	xRAM_ptr = (UINT16 *) (memory_region(machine, REGION_CPU1) + offset_xram);
+	console_GROMs.data_ptr = memory_region(machine, region_grom);
 }
 
 DRIVER_INIT( ti99_4ev )
 {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
 	ti99_model = model_99_4a;
 	has_evpc = TRUE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram);
-	cartridge_pages[0] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart);
-	cartridge_pages[1] = (UINT16 *) (memory_region(REGION_CPU1)+offset_cart + 0x2000);
-	console_GROMs.data_ptr = memory_region(region_grom);
+	xRAM_ptr = (UINT16 *) (mem + offset_xram);
+	cartridge_pages[0] = (UINT16 *) (mem+offset_cart);
+	cartridge_pages[1] = (UINT16 *) (mem+offset_cart + 0x2000);
+	console_GROMs.data_ptr = memory_region(machine, region_grom);
 }
 
 DRIVER_INIT( ti99_8 )
 {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
 	ti99_model = model_99_8;
 	has_evpc = FALSE;
 
 	/* set up memory pointers */
-	xRAM_ptr_8 = memory_region(REGION_CPU1) + offset_xram_8;
-	ROM0_ptr_8 = memory_region(REGION_CPU1) + offset_rom0_8;
+	xRAM_ptr_8 = mem + offset_xram_8;
+	ROM0_ptr_8 = mem + offset_rom0_8;
 	ROM1_ptr_8 = ROM0_ptr_8 + 0x2000;
 	ROM2_ptr_8 = ROM1_ptr_8 + 0x2000;
 	ROM3_ptr_8 = ROM2_ptr_8 + 0x2000;
-	sRAM_ptr_8 = memory_region(REGION_CPU1) + offset_sram_8;
+	sRAM_ptr_8 = mem + offset_sram_8;
 
-	cartridge_pages_8[0] = memory_region(REGION_CPU1)+offset_cart_8;
-	cartridge_pages_8[1] = memory_region(REGION_CPU1)+offset_cart_8 + 0x2000;
-	console_GROMs.data_ptr = memory_region(region_grom);
+	cartridge_pages_8[0] = mem+offset_cart_8;
+	cartridge_pages_8[1] = mem+offset_cart_8 + 0x2000;
+	console_GROMs.data_ptr = memory_region(machine, region_grom);
 }
 
 DRIVER_INIT( ti99_4p )
@@ -462,14 +464,14 @@ DRIVER_INIT( ti99_4p )
 	has_evpc = TRUE;
 
 	/* set up memory pointers */
-	xRAM_ptr = (UINT16 *) (memory_region(REGION_CPU1) + offset_xram_4p);
-	/*console_GROMs.data_ptr = memory_region(region_grom);*/
+	xRAM_ptr = (UINT16 *) (memory_region(machine, REGION_CPU1) + offset_xram_4p);
+	/*console_GROMs.data_ptr = memory_region(machine, region_grom);*/
 }
 
 DEVICE_START( ti99_cart )
 {
 	int id = image_index_in_device(device);
-	cartridge_pages[id] = (UINT16 *) (memory_region(REGION_CPU1) + offset_cart + (id * 0x2000));
+	cartridge_pages[id] = (UINT16 *) (memory_region(device->machine, REGION_CPU1) + offset_cart + (id * 0x2000));
 }
 
 /*
@@ -543,26 +545,47 @@ DEVICE_IMAGE_LOAD( ti99_cart )
 		break;
 
 	case SLOT_GROM:
-		image_fread(image, memory_region(region_grom) + 0x6000, 0xA000);
+		image_fread(image, memory_region(image->machine, region_grom) + 0x6000, 0xA000);
 		break;
 
 	case SLOT_MINIMEM:
 		cartridge_minimemory = TRUE;
+		/* Load the NVRAM. Need to BIG_ENDIANIZE it.
+		   MiniMemory has only one cartridge page. */
+		image_battery_load(image, cartridge_pages[0]+0x800,0x1000);
+		for (i = 0x800; i < 0x1000; i++)
+			cartridge_pages[0][i] = BIG_ENDIANIZE_INT16(cartridge_pages[0][i]);
+		break;
 	case SLOT_MBX:
-		if (type == SLOT_MBX)
-			cartridge_mbx = TRUE;
+		cartridge_mbx = TRUE;
+		break;
 	case SLOT_CROM:
 		if (ti99_model == model_99_8)
 		{
-			image_fread(image, cartridge_pages_8[0], 0x2000);
+			if (cartridge_minimemory) 
+				/* Only load 4K so we don't overwrite the NVRAM. */
+				image_fread(image, cartridge_pages_8[0], 0x1000);
+			else 
+				image_fread(image, cartridge_pages_8[0], 0x2000);
 			current_page_ptr_8 = cartridge_pages_8[0];
 		}
 		else
 		{
+		    if (cartridge_minimemory) 
+		    {
+			/* Only load 4K so we don't overwrite the NVRAM that
+			   has been loaded already. */
+			image_fread(image, cartridge_pages[0], 0x1000);
+			for (i = 0; i < 0x0800; i++)
+				cartridge_pages[0][i] = BIG_ENDIANIZE_INT16(cartridge_pages[0][i]);
+		    }
+		    else 
+		    {
 			image_fread(image, cartridge_pages[0], 0x2000);
 			for (i = 0; i < 0x1000; i++)
 				cartridge_pages[0][i] = BIG_ENDIANIZE_INT16(cartridge_pages[0][i]);
-			current_page_ptr = cartridge_pages[0];
+		    }
+		    current_page_ptr = cartridge_pages[0];
 		}
 		break;
 
@@ -588,6 +611,7 @@ DEVICE_IMAGE_LOAD( ti99_cart )
 
 DEVICE_IMAGE_UNLOAD( ti99_cart )
 {
+	int i;
 	int id = image_index_in_device(image);
 
 	/* There is a circuitry in TI99/4(a) that resets the console when a
@@ -606,24 +630,46 @@ DEVICE_IMAGE_UNLOAD( ti99_cart )
 		break;
 
 	case SLOT_GROM:
-		memset(memory_region(region_grom) + 0x6000, 0, 0xA000);
+		memset(memory_region(image->machine, region_grom) + 0x6000, 0, 0xA000);
 		break;
 
 	case SLOT_MINIMEM:
 		cartridge_minimemory = FALSE;
-		/* we should insert some code to save the minimem contents... */
+		if (ti99_model == model_99_8) 
+		{
+			image_battery_save(image, cartridge_pages_8[0] + 0x1000, 0x1000);
+			memset(cartridge_pages_8[0] + 0x1000, 0, 0x1000);
+		}
+		else 
+		{
+			/* We BIG_ENDIANIZE before saving. This is consistent
+			   with the cartridge save format. */
+			for (i = 0x800; i < 0x1000; i++)
+				cartridge_pages[0][i] = BIG_ENDIANIZE_INT16(cartridge_pages[0][i]);
+			image_battery_save(image, cartridge_pages[0] + 0x800, 0x1000);
+			memset(cartridge_pages[0] + 0x800, 0, 0x1000);
+		}
+		break;
 	case SLOT_MBX:
 		if (slot_type[id] == SLOT_MBX)
 			cartridge_mbx = FALSE;
 			/* maybe we should insert some code to save the memory contents... */
+                break;
 	case SLOT_CROM:
 		if (ti99_model == model_99_8)
 		{
-			memset(cartridge_pages_8[0], 0, 0x2000);
+			if (cartridge_minimemory) 
+				/* Don't wipe the RAM before it is saved. */
+				memset(cartridge_pages_8[0], 0, 0x1000);
+			else
+				memset(cartridge_pages_8[0], 0, 0x2000);
 		}
 		else
 		{
-			memset(cartridge_pages[0], 0, 0x2000);
+			if (cartridge_minimemory) 
+				memset(cartridge_pages[0], 0, 0x1000);
+			else
+				memset(cartridge_pages[0], 0, 0x2000);
 		}
 		break;
 
@@ -728,10 +774,10 @@ void ti99_common_init(running_machine *machine, const TMS9928a_interface *gfxpar
            determine which one to use. */
 	ti99_peb_init();
 	ti99_floppy_controllers_init_all(machine);
-	ti99_ide_init();
-	ti99_rs232_init();
-	ti99_hsgpl_init();
-	ti99_usbsm_init();
+	ti99_ide_init(machine);
+	ti99_rs232_init(machine);
+	ti99_hsgpl_init(machine);
+	ti99_usbsm_init(machine);
 }
 
 
@@ -740,7 +786,7 @@ void ti99_common_init(running_machine *machine, const TMS9928a_interface *gfxpar
 */
 MACHINE_RESET( ti99 )
 {
-	/*console_GROMs.data_ptr = memory_region(region_grom);*/
+	/*console_GROMs.data_ptr = memory_region(machine, region_grom);*/
 	console_GROMs.addr = 0;
 
 	if (ti99_model == model_99_8)
@@ -750,15 +796,17 @@ MACHINE_RESET( ti99 )
 	}
 	else if (ti99_model == model_99_4p)
 	{
+		UINT8* mem = memory_region(machine, REGION_CPU1);
+
 		/* set up system ROM and scratch pad pointers */
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + offset_rom0_4p);	/* system ROM */
-		memory_set_bankptr(2, memory_region(REGION_CPU1) + offset_sram_4p);	/* scratch pad */
-		memory_set_bankptr(11, memory_region(REGION_CPU1) + offset_dram_4p);	/* extra RAM for debugger */
+		memory_set_bankptr(1, mem + offset_rom0_4p);	/* system ROM */
+		memory_set_bankptr(2, mem + offset_sram_4p);	/* scratch pad */
+		memory_set_bankptr(11, mem + offset_dram_4p);	/* extra RAM for debugger */
 	}
 	else
 	{
 		/* set up scratch pad pointer */
-		memory_set_bankptr(1, memory_region(REGION_CPU1) + offset_sram);
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + offset_sram);
 	}
 
 	if (ti99_model != model_99_4p)
@@ -792,32 +840,32 @@ MACHINE_RESET( ti99 )
 	else if (ti99_model == model_99_4p)
 		xRAM_kind = xRAM_kind_99_4p_1Mb;	/* hack */
 	else
-		xRAM_kind = (input_port_read_indexed(machine, input_port_config) >> config_xRAM_bit) & config_xRAM_mask;
+		xRAM_kind = (input_port_read(machine, "CFG") >> config_xRAM_bit) & config_xRAM_mask;
 	if (ti99_model == model_99_8)
 		has_speech = TRUE;
 	else
-		has_speech = (input_port_read_indexed(machine, input_port_config) >> config_speech_bit) & config_speech_mask;
-	fdc_kind = (input_port_read_indexed(machine, input_port_config) >> config_fdc_bit) & config_fdc_mask;
-	has_ide = (input_port_read_indexed(machine, input_port_config) >> config_ide_bit) & config_ide_mask;
-	has_rs232 = (input_port_read_indexed(machine, input_port_config) >> config_rs232_bit) & config_rs232_mask;
-	has_handset = (ti99_model == model_99_4) && ((input_port_read_indexed(machine, input_port_config) >> config_handsets_bit) & config_handsets_mask);
-	has_hsgpl = (ti99_model == model_99_4p) || ((input_port_read_indexed(machine, input_port_config) >> config_hsgpl_bit) & config_hsgpl_mask);
-	has_usb_sm = (input_port_read_indexed(machine, input_port_config) >> config_usbsm_bit) & config_usbsm_mask;
+		has_speech = (input_port_read(machine, "CFG") >> config_speech_bit) & config_speech_mask;
+	fdc_kind = (input_port_read(machine, "CFG") >> config_fdc_bit) & config_fdc_mask;
+	has_ide = (input_port_read(machine, "CFG") >> config_ide_bit) & config_ide_mask;
+	has_rs232 = (input_port_read(machine, "CFG") >> config_rs232_bit) & config_rs232_mask;
+	has_handset = (ti99_model == model_99_4) && ((input_port_read(machine, "CFG") >> config_handsets_bit) & config_handsets_mask);
+	has_hsgpl = ((ti99_model == model_99_4p) || (input_port_read(machine, "CFG") >> config_hsgpl_bit) & config_hsgpl_mask);
+	has_usb_sm = (input_port_read(machine, "CFG") >> config_usbsm_bit) & config_usbsm_mask;
 
 	/* set up optional expansion hardware */
 	ti99_peb_reset(ti99_model == model_99_4p, tms9901_set_int1, NULL);
 
 	if (ti99_model == model_99_8)
-		ti99_8_internal_dsr_reset();
+		ti99_8_internal_dsr_reset(machine);
 
 	if (ti99_model == model_99_4p)
-		ti99_4p_internal_dsr_reset();
+		ti99_4p_internal_dsr_reset(machine);
 
         if (has_speech)
 	{
 		static const spchroms_interface speech_intf = { region_speech_rom };
 
-		spchroms_config(& speech_intf);
+		spchroms_config(machine, &speech_intf);
 
 		if (ti99_model != model_99_8)
 		{
@@ -867,34 +915,34 @@ MACHINE_RESET( ti99 )
 	switch (fdc_kind)
 	{
 	case fdc_kind_TI:
-		ti99_fdc_reset();
+		ti99_fdc_reset(machine);
 		break;
 #if HAS_99CCFDC
 	case fdc_kind_CC:
-		ti99_ccfdc_reset();
+		ti99_ccfdc_reset(machine);
 		break;
 #endif
 	case fdc_kind_BwG:
-		ti99_bwg_reset();
+		ti99_bwg_reset(machine);
 		break;
 	case fdc_kind_hfdc:
-		ti99_hfdc_reset();
+		ti99_hfdc_reset(machine);
 		break;
 	case fdc_kind_none:
 		break;
 	}
 
 	if (has_ide) {
-		ti99_ide_reset(ti99_model == model_99_8);
-		ti99_ide_load_memcard();
+		ti99_ide_reset(machine, ti99_model == model_99_8);
+		ti99_ide_load_memcard(machine);
 	}
 
 	if (has_rs232)
-		ti99_rs232_reset();
+		ti99_rs232_reset(machine);
 
 	if (has_hsgpl)	{
-            ti99_hsgpl_reset();
-            ti99_hsgpl_load_memcard();
+		ti99_hsgpl_reset(machine);
+		ti99_hsgpl_load_memcard(machine);
 	}
 	else
 		hsgpl_crdena = 0;
@@ -903,7 +951,7 @@ MACHINE_RESET( ti99 )
 		ti99_usbsm_reset(machine, ti99_model == model_99_8);
 
 	if (has_evpc)
-		ti99_evpc_reset();
+		ti99_evpc_reset(machine);
 
 	/* initialize mechatronics mouse */
 	mecmouse_sel = 0;
@@ -944,12 +992,12 @@ VIDEO_START( ti99_4ev )
 */
 INTERRUPT_GEN( ti99_vblank_interrupt )
 {
-	TMS9928A_interrupt();
+	TMS9928A_interrupt(machine);
 	if (has_handset)
-		ti99_handset_task();
-	has_mecmouse = (input_port_read_indexed(machine, input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
+		ti99_handset_task(machine);
+	has_mecmouse = (input_port_read(machine, "CFG") >> config_mecmouse_bit) & config_mecmouse_mask;
 	if (has_mecmouse)
-		mecmouse_poll();
+		mecmouse_poll(machine);
 }
 
 INTERRUPT_GEN( ti99_4ev_hblank_interrupt )
@@ -959,9 +1007,9 @@ INTERRUPT_GEN( ti99_4ev_hblank_interrupt )
 	if (++line_count == 262)
 	{
 		line_count = 0;
-		has_mecmouse = (input_port_read_indexed(machine, input_port_config) >> config_mecmouse_bit) & config_mecmouse_mask;
+		has_mecmouse = (input_port_read(machine, "CFG") >> config_mecmouse_bit) & config_mecmouse_mask;
 		if (has_mecmouse)
-			mecmouse_poll();
+			mecmouse_poll(machine);
 	}
 }
 
@@ -983,7 +1031,6 @@ void set_hsgpl_crdena(int data)
 	Memory handlers.
 
 	TODO:
-	* save minimem RAM when quitting
 	* actually implement GRAM support and GPL port support
 */
 
@@ -1075,7 +1122,7 @@ WRITE16_HANDLER ( ti99_4p_cart_w )
 {
 	if (ti99_4p_internal_rom6_enable)
 	{
-		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(REGION_CPU1) + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
+		ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(machine, REGION_CPU1) + (FPTR)((offset & 1) ? offset_rom6b_4p : offset_rom6_4p));
 		return;
 	}
 
@@ -1767,7 +1814,7 @@ static TIMER_CALLBACK(ti99_handset_ack_callback)
 
 	if (handset_buflen == 0)
 		/* See if we need to post a new event */
-		ti99_handset_task();
+		ti99_handset_task(machine);
 }
 
 /*
@@ -1813,19 +1860,20 @@ static void ti99_handset_post_message(int message)
 
 	Returns TRUE if the handset state has changed and a message was posted.
 */
-static int ti99_handset_poll_keyboard(int num)
+static int ti99_handset_poll_keyboard(running_machine *machine, int num)
 {
-	running_machine *machine = Machine;
 	static UINT8 previous_key[max_handsets];
 
 	UINT32 key_buf;
 	UINT8 current_key;
 	int i;
+	char port1[5], port2[5];
 
 
 	/* read current key state */
-	key_buf = ( input_port_read_indexed(machine, input_port_IR_keypads+num)
-					| (input_port_read_indexed(machine, input_port_IR_keypads+num+1) << 16) ) >> (4*num);
+	sprintf(port1, "KP%d", num);
+	sprintf(port2, "KP%d", num+1);
+	key_buf = ( input_port_read(machine, port1) | (input_port_read(machine, port2) << 16) ) >> (4*num);
 
 	/* If a key was previously pressed, this key was not shift, and this key is
 	still down, then don't change the current key press. */
@@ -1895,17 +1943,19 @@ static int ti99_handset_poll_keyboard(int num)
 
 	Returns TRUE if the handset state has changed and a message was posted.
 */
-static int ti99_handset_poll_joystick(int num)
+static int ti99_handset_poll_joystick(running_machine *machine, int num)
 {
 	static UINT8 previous_joy[max_handsets];
-	running_machine *machine = Machine;
 	UINT8 current_joy;
 	int current_joy_x, current_joy_y;
 	int message;
+	char port1[6], port2[6];
 
 	/* read joystick position */
-	current_joy_x = input_port_read_indexed(machine, input_port_IR_joysticks+2*num);
-	current_joy_y = input_port_read_indexed(machine, input_port_IR_joysticks+2*num+1);
+	sprintf(port1, "JOY%d", 2*num);
+	sprintf(port2, "JOY%d", 2*num+1);
+	current_joy_x = input_port_read(machine, port1);
+	current_joy_y = input_port_read(machine, port2);
 	/* compare with last saved position */
 	current_joy = current_joy_x | (current_joy_y << 4);
 	if (current_joy != previous_joy[num])
@@ -1964,28 +2014,28 @@ static int ti99_handset_poll_joystick(int num)
 
 	Manage handsets, posting an event if the state of any handset has changed.
 */
-static void ti99_handset_task(void)
+static void ti99_handset_task(running_machine *machine)
 {
 	int i;
 
 	if (handset_buflen == 0)
 	{	/* poll every handset */
 		for (i=0; i<max_handsets; i++)
-			if (ti99_handset_poll_joystick(i))
+			if (ti99_handset_poll_joystick(machine, i))
 				return;
 		for (i=0; i<max_handsets; i++)
-			if (ti99_handset_poll_keyboard(i))
+			if (ti99_handset_poll_keyboard(machine, i))
 				return;
 	}
 	else if (handset_buflen == 3)
 	{	/* update messages after they have been posted */
 		if (handset_buf & 1)
 		{	/* keyboard */
-			ti99_handset_poll_keyboard((~ (handset_buf >> 1)) & 0x3);
+			ti99_handset_poll_keyboard(machine, (~ (handset_buf >> 1)) & 0x3);
 		}
 		else
 		{	/* joystick */
-			ti99_handset_poll_joystick((~ (handset_buf >> 1)) & 0x3);
+			ti99_handset_poll_joystick(machine, (~ (handset_buf >> 1)) & 0x3);
 		}
 	}
 }
@@ -2084,15 +2134,14 @@ static void mecmouse_select(int selnow, int stick1, int stick2)
 	}
 }
 
-static void mecmouse_poll(void)
+static void mecmouse_poll(running_machine *machine)
 {
 	static int last_mx = 0, last_my = 0;
-	running_machine *machine = Machine;
 	int new_mx, new_my;
 	int delta_x, delta_y;
 
-	new_mx = input_port_read_indexed(machine, input_port_mousex);
-	new_my = input_port_read_indexed(machine, input_port_mousey);
+	new_mx = input_port_read(machine, "MOUSEX");
+	new_my = input_port_read(machine, "MOUSEY");
 
 	/* compute x delta */
 	delta_x = new_mx - last_mx;
@@ -2181,7 +2230,7 @@ nota:
 /*
 	set the state of int1 (called by the peb core)
 */
-static void tms9901_set_int1(int state)
+static void tms9901_set_int1(running_machine *machine, int state)
 {
 	tms9901_set_single_int(0, 1, state);
 }
@@ -2189,7 +2238,7 @@ static void tms9901_set_int1(int state)
 /*
 	set the state of int2 (called by the tms9928 core)
 */
-void tms9901_set_int2(int state)
+void tms9901_set_int2(running_machine *machine, int state)
 {
 	tms9901_set_single_int(0, 2, state);
 }
@@ -2223,12 +2272,13 @@ static int ti99_R9901_0(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
+	char port[7];
 
 	if ((ti99_model == model_99_4) && (KeyCol == 7))
 		answer = (ti99_handset_poll_bus() << 3) | 0x80;
 	else if (has_mecmouse && (KeyCol == ((ti99_model == model_99_4) ? 6 : 7)))
 	{
-		int buttons = input_port_read_indexed(machine, input_port_mouse_buttons) & 3;
+		int buttons = input_port_read(machine, "MOUSE0") & 3;
 
 		answer = (mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 4;
 
@@ -2240,12 +2290,15 @@ static int ti99_R9901_0(int offset)
 			answer |= 0x80;
 	}
 	else
-		answer = ((input_port_read_indexed(machine, input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
-
+	{
+		sprintf(port, "KEY%d", (KeyCol >> 1));
+		answer = ((input_port_read(machine, port) >> ((KeyCol & 1) * 8)) << 3) & 0xF8;
+	}
+	
 	if ((ti99_model == model_99_4a) || (ti99_model == model_99_4p))
 	{
 		if (! AlphaLockLine)
-			answer &= ~ (input_port_read_indexed(machine, input_port_caps_lock) << 3);
+			answer &= ~ (input_port_read(machine, "ALPHA") << 3);
 	}
 
 	return answer;
@@ -2264,12 +2317,16 @@ static int ti99_R9901_1(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
+	char port[7];
 
 	if (/*(ti99_model == model_99_4) &&*/ (KeyCol == 7))
 		answer = 0x07;
 	else
-		answer = ((input_port_read_indexed(machine, input_port_keyboard + (KeyCol >> 1)) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
-
+	{
+		sprintf(port, "KEY%d", (KeyCol >> 1));
+		answer = ((input_port_read(machine, port) >> ((KeyCol & 1) * 8)) >> 5) & 0x07;
+	}
+	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	/*if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)
 		answer |= 8;*/
@@ -2348,10 +2405,11 @@ static int ti99_8_R9901_0(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
+	char port[7];
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = input_port_read_indexed(machine, input_port_mouse_buttons) & 3;
+		int buttons = input_port_read(machine, "MOUSE0") & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 7) & 0x80;
 
@@ -2360,8 +2418,11 @@ static int ti99_8_R9901_0(int offset)
 			answer |= 0x40;
 	}
 	else
-		answer = (input_port_read_indexed(machine, input_port_keyboard + KeyCol) << 6) & 0xC0;
-
+	{
+		sprintf(port, "KEY%d", KeyCol);
+		answer = (input_port_read(machine, port) << 6) & 0xC0;
+	}
+	
 	return answer;
 }
 
@@ -2378,10 +2439,11 @@ static int ti99_8_R9901_1(int offset)
 {
 	running_machine *machine = Machine;
 	int answer;
+	char port[7];
 
 	if (has_mecmouse && (KeyCol == 15))
 	{
-		int buttons = input_port_read_indexed(machine, input_port_mouse_buttons) & 3;
+		int buttons = input_port_read(machine, "MOUSE0") & 3;
 
 		answer = ((mecmouse_read_y ? mecmouse_y_buf : mecmouse_x_buf) << 1) & 0x03;
 
@@ -2390,8 +2452,11 @@ static int ti99_8_R9901_1(int offset)
 			answer |= 0x04;
 	}
 	else
-		answer = (input_port_read_indexed(machine, input_port_keyboard + KeyCol) >> 2) & 0x07;
-
+	{
+		sprintf(port, "KEY%d", KeyCol);
+		answer = (input_port_read(machine, port) >> 2) & 0x07;
+	}
+	
 	/* we don't take CS2 into account, as CS2 is a write-only unit */
 	/*if (cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0)) > 0)
 		answer |= 8;*/
@@ -2487,9 +2552,9 @@ static UINT8 *ti99_8_internal_DSR;
 
 
 /* set up handlers, and set initial state */
-static void ti99_8_internal_dsr_reset(void)
+static void ti99_8_internal_dsr_reset(running_machine *machine)
 {
-	ti99_8_internal_DSR = memory_region(REGION_CPU1) + offset_rom0_8 + 0x4000;
+	ti99_8_internal_DSR = memory_region(machine, REGION_CPU1) + offset_rom0_8 + 0x4000;
 
 	ti99_peb_set_card_handlers(0x2700, & ti99_8_internal_dsr_handlers);
 }
@@ -2544,10 +2609,12 @@ static UINT16 *ti99_4p_internal_DSR;
 
 
 /* set up handlers, and set initial state */
-static void ti99_4p_internal_dsr_reset(void)
+static void ti99_4p_internal_dsr_reset(running_machine *machine)
 {
-	ti99_4p_internal_DSR = (UINT16 *) (memory_region(REGION_CPU1) + offset_rom4_4p);
-	ti99_4p_internal_ROM6 = (UINT16 *) (memory_region(REGION_CPU1) + offset_rom6_4p);
+	UINT8* mem = memory_region(machine, REGION_CPU1);
+
+	ti99_4p_internal_DSR = (UINT16 *) (mem + offset_rom4_4p);
+	ti99_4p_internal_ROM6 = (UINT16 *) (mem + offset_rom6_4p);
 
 	ti99_peb_set_16bit_card_handlers(0x0f00, & ti99_4p_internal_dsr_handlers);
 
@@ -3081,9 +3148,9 @@ static const ti99_peb_card_handlers_t evpc_handlers =
 /*
 	Reset evpc card, set up handlers
 */
-static void ti99_evpc_reset(void)
+static void ti99_evpc_reset(running_machine *machine)
 {
-	ti99_evpc_DSR = memory_region(region_dsr) + offset_evpc_dsr;
+	ti99_evpc_DSR = memory_region(machine, region_dsr) + offset_evpc_dsr;
 
 	RAMEN = 0;
 	evpc_dsr_page = 0;

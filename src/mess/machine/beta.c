@@ -10,6 +10,7 @@
 #include "driver.h"
 #include "devices/basicdsk.h"
 #include "machine/wd17xx.h"
+#include "machine/beta.h"
 
 static int betadisk_status;
 static int betadisk_active;
@@ -117,7 +118,7 @@ WRITE8_HANDLER(betadisk_param_w)
   		wd17xx_set_density(data & 0x20 ? DEN_MFM_HI : DEN_FM_LO );
   		if ((data & 0x04) == 0) // reset
   		{
-  			wd17xx_reset();	
+  			wd17xx_reset(machine);	
   		}    		
   		betadisk_status = (data & 0x3f) | betadisk_status;
   	}
@@ -151,12 +152,29 @@ WRITE8_HANDLER(betadisk_data_w)
 	}	
 }
 
-DEVICE_IMAGE_LOAD( beta_floppy )
+static DEVICE_IMAGE_LOAD( beta_floppy )
 {
+	UINT8 data[1];
+	int heads;
+	int cylinders;
+	
 	if (device_load_basicdsk_floppy (image) != INIT_PASS)
 		return INIT_FAIL;
 
-	basicdsk_set_geometry (image, 80, 2, 16, 256, 1, 0, FALSE);
+	image_fseek( image, 0x8e3 , SEEK_SET );
+	/* Read and verify the header */
+	if ( 1 != image_fread( image, data, 1 ) )
+	{
+		image_seterror( image, IMAGE_ERROR_UNSUPPORTED, "Unable to read header" );
+		return 1;
+	} 
+	
+	image_fseek( image, 0 , SEEK_SET );
+  	/* guess geometry of disk */
+  	heads =  data[0] & 0x08 ? 1 : 2;
+  	cylinders = data[0] & 0x01 ? 40 : 80;
+  
+	basicdsk_set_geometry (image, cylinders, heads, 16, 256, 1, 0, FALSE);
 	return INIT_PASS;
 }
 

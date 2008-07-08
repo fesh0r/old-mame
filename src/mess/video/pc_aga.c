@@ -13,9 +13,10 @@
 #include "includes/amstr_pc.h"
 #include "video/mc6845.h"
 #include "video/pc_video.h"
+#include "video/cgapal.h"
 
 
-#define CGA_MONITOR		(input_port_read_indexed(machine, 20)&0x1C)
+#define CGA_MONITOR		(input_port_read(machine, "VIDEO") & 0x1C)
 #define CGA_MONITOR_RGB			0x00	/* Colour RGB */
 #define CGA_MONITOR_MONO		0x04	/* Greyscale RGB */
 #define CGA_MONITOR_COMPOSITE	0x08	/* Colour composite */
@@ -489,7 +490,7 @@ static READ8_HANDLER ( pc_aga_mda_r )
 			data = mc6845_register_r( devconf, offset );
 			break;
 		case 10:
-			data = (input_port_read_indexed(machine, 0) & 0x80 ) | 0x08 | aga.mda_status;
+			data = (input_port_read(machine, "IN0") & 0x80 ) | 0x08 | aga.mda_status;
 			aga.mda_status ^= 0x01;
 			break;
 		/* 12, 13, 14  are the LPT1 ports */
@@ -706,8 +707,8 @@ VIDEO_START( pc_aga )
 	memset( &aga, 0, sizeof( aga ) );
 
 	aga.mode = AGA_COLOR;
-	aga.mda_chr_gen = memory_region(REGION_GFX1) + 0x1000;
-	aga.cga_chr_gen = memory_region(REGION_GFX1);
+	aga.mda_chr_gen = memory_region(machine, REGION_GFX1) + 0x1000;
+	aga.cga_chr_gen = memory_region(machine, REGION_GFX1);
 }
 
 
@@ -867,7 +868,7 @@ READ8_HANDLER ( pc200_cga_r )
 	case 0xe:
 		// 0x20 low cga
 		// 0x10 low special
-		result = input_port_read_indexed(machine, 1)&0x38;
+		result = input_port_read(machine, "DSW0") & 0x38;
 		break;
 
 	default:

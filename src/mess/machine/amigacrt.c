@@ -36,7 +36,7 @@ static int amiga_cart_type;
 
 static int check_kickstart_12_13( const char *cart_name )
 {
-	UINT16 * ksmem = (UINT16 *)memory_region( REGION_USER1 );
+	UINT16 * ksmem = (UINT16 *)memory_region( Machine, REGION_USER1 );
 
 	if ( ksmem[2] == 0x00FC )
 		return 1;
@@ -127,12 +127,12 @@ static WRITE16_HANDLER( amiga_ar1_chipmem_w )
 	amiga_chip_ram_w( offset * 2, data );
 }
 
-static void amiga_ar1_check_overlay( void )
+static void amiga_ar1_check_overlay( running_machine *machine )
 {
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x00007f, 0, 0, amiga_ar1_chipmem_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x00007f, 0, 0, amiga_ar1_chipmem_w);
 }
 
-static void amiga_ar1_init( void )
+static void amiga_ar1_init( running_machine *machine )
 {
 	void *ar_ram;
 
@@ -148,15 +148,15 @@ static void amiga_ar1_init( void )
 	memset(ar_ram, 0, 0x4000);
 
 	/* Install ROM */
-	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, SMH_BANK2);
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, SMH_ROM);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, SMH_BANK2);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xf00000, 0xf7ffff, 0, 0, SMH_ROM);
 
 	/* Install RAM */
-	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, SMH_BANK3);
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, SMH_BANK3);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, SMH_BANK3);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x9fc000, 0x9fffff, 0, 0, SMH_BANK3);
 
 	/* Configure Banks */
-	memory_set_bankptr(2, memory_region(REGION_USER2));
+	memory_set_bankptr(2, memory_region(Machine, REGION_USER2));
 	memory_set_bankptr(3, ar_ram);
 
 	amiga_ar1_spurious = 0;
@@ -219,7 +219,7 @@ static WRITE16_HANDLER( amiga_ar23_mode_w )
 
 static READ16_HANDLER( amiga_ar23_mode_r )
 {
-	UINT16 *mem = (UINT16 *)memory_region( REGION_USER2 );
+	UINT16 *mem = (UINT16 *)memory_region( machine, REGION_USER2 );
 
 	if ( ACCESSING_BITS_0_7 )
 	{
@@ -333,13 +333,13 @@ static READ16_HANDLER( amiga_ar23_custom_r )
 }
 #endif
 
-static void amiga_ar23_check_overlay( void )
+static void amiga_ar23_check_overlay( running_machine *machine )
 {
 	amiga_ar23_mode = 3;
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x00000f, 0, 0, amiga_ar23_chipmem_w);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x000000, 0x00000f, 0, 0, amiga_ar23_chipmem_w);
 }
 
-static void amiga_ar23_init( int ar3 )
+static void amiga_ar23_init( running_machine *machine, int ar3 )
 {
 	UINT32 mirror = 0x20000, size = 0x1ffff;
 	void *ar_ram;
@@ -363,28 +363,28 @@ static void amiga_ar23_init( int ar3 )
 	}
 
 	/* Install ROM */
-	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, SMH_BANK2);
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, SMH_ROM);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, SMH_BANK2);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400000+size, 0, mirror, SMH_ROM);
 
 	/* Install RAM */
-	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, SMH_BANK3);
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, SMH_BANK3);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, SMH_BANK3);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x440000, 0x44ffff, 0, 0, SMH_BANK3);
 
 	/* Install Custom chip monitor */
-//	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xdff000, 0xdff1ff, 0, 0, amiga_ar23_custom_r);
-//	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0xdff000, 0xdff1ff, 0, 0, amiga_ar23_custom_w);
+//	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xdff000, 0xdff1ff, 0, 0, amiga_ar23_custom_r);
+//	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xdff000, 0xdff1ff, 0, 0, amiga_ar23_custom_w);
 
 	/* Install status/mode handlers */
-	memory_install_read16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400007, 0, mirror, amiga_ar23_mode_r);
-	memory_install_write16_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400003, 0, mirror, amiga_ar23_mode_w);
+	memory_install_read16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400007, 0, mirror, amiga_ar23_mode_r);
+	memory_install_write16_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x400000, 0x400003, 0, mirror, amiga_ar23_mode_w);
 
 	/* Configure Banks */
-	memory_set_bankptr(2, memory_region(REGION_USER2));
+	memory_set_bankptr(2, memory_region(Machine, REGION_USER2));
 	memory_set_bankptr(3, ar_ram);
 
 	memory_configure_bank(1, 0, 2, amiga_chip_ram, 0);
-	memory_configure_bank(1, 1, 2, memory_region(REGION_USER1), 0);
-	memory_configure_bank(1, 2, 2, memory_region(REGION_USER2), 0);
+	memory_configure_bank(1, 1, 2, memory_region(Machine, REGION_USER1), 0);
+	memory_configure_bank(1, 2, 2, memory_region(Machine, REGION_USER2), 0);
 
 	amiga_ar23_mode = 3;
 }
@@ -395,10 +395,10 @@ static void amiga_ar23_init( int ar3 )
 
 ***************************************************************************/
 
-void amiga_cart_init( void )
+void amiga_cart_init( running_machine *machine )
 {
 	/* see what is there */
-	UINT16 *mem = (UINT16 *)memory_region( REGION_USER2 );
+	UINT16 *mem = (UINT16 *)memory_region( Machine, REGION_USER2 );
 
 	amiga_cart_type = -1;
 
@@ -407,22 +407,22 @@ void amiga_cart_init( void )
 		if ( mem[0x00] == 0x1111 )
 		{
 			amiga_cart_type = ACTION_REPLAY;
-			amiga_ar1_init();
+			amiga_ar1_init(machine);
 		}
 		else if ( mem[0x0C] == 0x4D6B )
 		{
 			amiga_cart_type = ACTION_REPLAY_MKII;
-			amiga_ar23_init(0);
+			amiga_ar23_init(machine, 0);
 		}
 		else if ( mem[0x0C] == 0x4D4B )
 		{
 			amiga_cart_type = ACTION_REPLAY_MKIII;
-			amiga_ar23_init(1);
+			amiga_ar23_init(machine, 1);
 		}
 	}
 }
 
-void amiga_cart_check_overlay( void )
+void amiga_cart_check_overlay( running_machine *machine )
 {
 	if ( amiga_cart_type < 0 )
 		return;
@@ -430,12 +430,12 @@ void amiga_cart_check_overlay( void )
 	switch( amiga_cart_type )
 	{
 		case ACTION_REPLAY:
-			amiga_ar1_check_overlay();
+			amiga_ar1_check_overlay(machine);
 		break;
 
 		case ACTION_REPLAY_MKII:
 		case ACTION_REPLAY_MKIII:
-			amiga_ar23_check_overlay();
+			amiga_ar23_check_overlay(machine);
 		break;
 	}
 }

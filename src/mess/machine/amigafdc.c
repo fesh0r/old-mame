@@ -15,7 +15,6 @@
 #include "amiga.h"
 #include "amigafdc.h"
 #include "machine/6526cia.h"
-#include "deprecat.h"
 
 
 #define MAX_TRACK_BYTES			12500
@@ -266,7 +265,7 @@ static TIMER_CALLBACK(fdc_sync_proc)
 	if ( fdc_status[drive].mfm[cur_pos-2] == ( ( sync >> 8 ) & 0xff ) &&
 		 fdc_status[drive].mfm[cur_pos-1] == ( sync & 0xff ) )
 	{
-		amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKSYN, 0);
+		amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKSYN, 0xffff);
 	}
 
 	if ( sector < 10 )
@@ -308,7 +307,7 @@ static TIMER_CALLBACK(fdc_dma_proc)
 		{
 			logerror("Write to disk unsupported yet\n" );
 
-			amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0);
+			amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
 		}
 	}
 	else
@@ -341,7 +340,7 @@ static TIMER_CALLBACK(fdc_dma_proc)
 
 		if ( fdc_status[drive].len <= 0 )
 		{
-			amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0);
+			amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
 		}
 		else
 		{
@@ -361,7 +360,7 @@ bail:
 	timer_reset( fdc_status[drive].dma_timer, attotime_never );
 }
 
-void amiga_fdc_setup_dma( void ) {
+void amiga_fdc_setup_dma( running_machine *machine ) {
 	int i, cur_pos, drive = -1, len_words = 0;
 	int time = 0;
 
@@ -372,7 +371,7 @@ void amiga_fdc_setup_dma( void ) {
 
 	if ( drive == -1 ) {
 		logerror("Disk DMA started with no drive selected!\n" );
-		amiga_custom_w(Machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0);
+		amiga_custom_w(machine, REG_INTREQ, 0x8000 | INTENA_DSKBLK, 0xffff);
 		return;
 	}
 
@@ -597,7 +596,7 @@ static TIMER_CALLBACK(fdc_rev_proc)
 	int time;
 
 	/* Issue a index pulse when a disk revolution completes */
-	cia_issue_index(1);
+	cia_issue_index(machine, 1);
 
 	timer_adjust_oneshot(fdc_status[drive].rev_timer, ATTOTIME_IN_MSEC( ONE_REV_TIME ), drive);
 	fdc_status[drive].rev_timer_started = 1;

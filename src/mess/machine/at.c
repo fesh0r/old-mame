@@ -29,14 +29,15 @@
 
 #include "machine/pc_fdc.h"
 #include "machine/pc_hdc.h"
+#include "includes/pc_mouse.h"
 
-#define LOG_PORT80 0
+#define LOG_PORT80 1
 
 static struct {
-	device_config	*pic8259_master;
-	device_config	*pic8259_slave;
-	device_config	*dma8237_1;
-	device_config	*dma8237_2;
+	const device_config	*pic8259_master;
+	const device_config	*pic8259_slave;
+	const device_config	*dma8237_1;
+	const device_config	*dma8237_2;
 } at_devices;
 
 static const SOUNDBLASTER_CONFIG soundblaster = { 1,5, {1,0} };
@@ -120,18 +121,18 @@ static void at_set_keyb_int(int state) {
 }
 
 
-static void init_at_common(const struct kbdc8042_interface *at8042)
+static void init_at_common(running_machine *machine, const struct kbdc8042_interface *at8042)
 {
-	mess_init_pc_common(PCCOMMON_KEYBOARD_AT, at_set_keyb_int, at_set_irq_line);
-	mc146818_init(MC146818_STANDARD);
+	mess_init_pc_common(machine, PCCOMMON_KEYBOARD_AT, at_set_keyb_int, at_set_irq_line);
+	mc146818_init(machine, MC146818_STANDARD);
 	soundblaster_config(&soundblaster);
 	kbdc8042_init(at8042);
 
 	if (mess_ram_size > 0x0a0000)
 	{
 		offs_t ram_limit = 0x100000 + mess_ram_size - 0x0a0000;
-		memory_install_read_handler(Machine, 0,  ADDRESS_SPACE_PROGRAM, 0x100000,  ram_limit - 1, 0, 0, 1);
-		memory_install_write_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000,  ram_limit - 1, 0, 0, 1);
+		memory_install_read_handler(machine, 0,  ADDRESS_SPACE_PROGRAM, 0x100000,  ram_limit - 1, 0, 0, 1);
+		memory_install_write_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x100000,  ram_limit - 1, 0, 0, 1);
 		memory_set_bankptr(1, mess_ram + 0xa0000);
 	}
 }
@@ -227,7 +228,7 @@ static DMA8237_MEM_WRITE( pc_dma_write_byte )
 
 
 static DMA8237_CHANNEL_READ( at_dma8237_fdc_dack_r ) {
-	return pc_fdc_dack_r();
+	return pc_fdc_dack_r(device->machine);
 }
 
 
@@ -237,7 +238,7 @@ static DMA8237_CHANNEL_READ( at_dma8237_hdc_dack_r ) {
 
 
 static DMA8237_CHANNEL_WRITE( at_dma8237_fdc_dack_w ) {
-	pc_fdc_dack_w( data );
+	pc_fdc_dack_w( device->machine, data );
 }
 
 
@@ -247,7 +248,7 @@ static DMA8237_CHANNEL_WRITE( at_dma8237_hdc_dack_w ) {
 
 
 static DMA8237_OUT_EOP( at_dma8237_out_eop ) {
-	pc_fdc_set_tc_state( state );
+	pc_fdc_set_tc_state( device->machine, state );
 }
 
 
@@ -277,6 +278,72 @@ const struct dma8237_interface at_dma8237_2_config =
 	{ NULL, NULL, NULL, NULL },
 	{ NULL, NULL, NULL, NULL },
 	NULL
+};
+
+
+/**********************************************************
+ *
+ * COM hardware
+ *
+ **********************************************************/
+
+/* called when a interrupt is set/cleared from com hardware */
+static INS8250_INTERRUPT( at_com_interrupt_1 )
+{
+	pic8259_set_irq_line(at_devices.pic8259_master, 4, state);
+}
+
+static INS8250_INTERRUPT( at_com_interrupt_2 )
+{
+	pic8259_set_irq_line(at_devices.pic8259_master, 3, state);
+}
+
+/* called when com registers read/written - used to update peripherals that
+are connected */
+static void at_com_refresh_connected_common(const device_config *device, int n, int data)
+{
+	/* mouse connected to this port? */
+	if (input_port_read(device->machine, "DSW2") & (0x80>>n))
+		pc_mouse_handshake_in(device,data);
+}
+
+static INS8250_HANDSHAKE_OUT( at_com_handshake_out_0 ) { at_com_refresh_connected_common( device, 0, data ); }
+static INS8250_HANDSHAKE_OUT( at_com_handshake_out_1 ) { at_com_refresh_connected_common( device, 1, data ); }
+static INS8250_HANDSHAKE_OUT( at_com_handshake_out_2 ) { at_com_refresh_connected_common( device, 2, data ); }
+static INS8250_HANDSHAKE_OUT( at_com_handshake_out_3 ) { at_com_refresh_connected_common( device, 3, data ); }
+
+/* PC interface to PC-com hardware. Done this way because PCW16 also
+uses PC-com hardware and doesn't have the same setup! */
+const ins8250_interface ibm5170_com_interface[4]=
+{
+	{
+		1843200,
+		at_com_interrupt_1,
+		NULL,
+		at_com_handshake_out_0,
+		NULL
+	},
+	{
+		1843200,
+		at_com_interrupt_2,
+		NULL,
+		at_com_handshake_out_1,
+		NULL
+	},
+	{
+		1843200,
+		at_com_interrupt_1,
+		NULL,
+		at_com_handshake_out_2,
+		NULL
+	},
+	{
+		1843200,
+		at_com_interrupt_2,
+		NULL,
+		at_com_handshake_out_3,
+		NULL
+	}
 };
 
 
@@ -319,7 +386,27 @@ DRIVER_INIT( atcga )
 	{
 		KBDC8042_STANDARD, at_set_gate_a20, at_keyboard_interrupt, at_get_out2
 	};
-	init_at_common(&at8042);
+	init_at_common(machine, &at8042);
+}
+
+
+DRIVER_INIT( atega )
+{
+	static const struct kbdc8042_interface at8042 =
+	{
+		KBDC8042_STANDARD, at_set_gate_a20, at_keyboard_interrupt, at_get_out2
+	};
+	UINT8	*dst = memory_region( machine, REGION_CPU1 ) + 0xc0000;
+	UINT8	*src = memory_region( machine, REGION_USER1 ) + 0x3fff;
+	int		i;
+
+	init_at_common(machine, &at8042);
+
+	/* Perform the EGA bios address line swaps */
+	for( i = 0; i < 0x4000; i++ )
+	{
+		*dst++ = *src--;
+	}
 }
 
 
@@ -330,7 +417,7 @@ DRIVER_INIT( at386 )
 	{
 		KBDC8042_AT386, at_set_gate_a20, at_keyboard_interrupt, at_get_out2
 	};
-	init_at_common(&at8042);
+	init_at_common(machine, &at8042);
 }
 
 
@@ -338,7 +425,7 @@ DRIVER_INIT( at386 )
 DRIVER_INIT( at586 )
 {
 	DRIVER_INIT_CALL(at386);
-	intel82439tx_init();
+	intel82439tx_init(machine);
 }
 
 
@@ -381,8 +468,8 @@ DRIVER_INIT( at_vga )
 		KBDC8042_STANDARD, at_set_gate_a20, at_keyboard_interrupt, at_get_out2
 	};
 
-	init_at_common(&at8042);
-	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
+	init_at_common(machine, &at8042);
+	pc_turbo_setup(0, 2, 0x02, 4.77/12, 1);
 	pc_vga_init(machine, &vga_interface, NULL);
 }
 
@@ -394,8 +481,8 @@ DRIVER_INIT( ps2m30286 )
 	{
 		KBDC8042_PS2, at_set_gate_a20, at_keyboard_interrupt, at_get_out2
 	};
-	init_at_common(&at8042);
-	pc_turbo_setup(0, 3, 0x02, 4.77/12, 1);
+	init_at_common(machine, &at8042);
+	pc_turbo_setup(0, 2, 0x02, 4.77/12, 1);
 	pc_vga_init(machine, &vga_interface, NULL);
 }
 
@@ -411,7 +498,7 @@ static IRQ_CALLBACK(at_irq_callback)
 MACHINE_START( at )
 {
 	cpunum_set_irq_callback(0, at_irq_callback);
-	pc_fdc_init( &fdc_interface );
+	pc_fdc_init( machine, &fdc_interface );
 }
 
 
@@ -422,5 +509,6 @@ MACHINE_RESET( at )
 	at_devices.pic8259_slave = (device_config*)device_list_find_by_tag( machine->config->devicelist, PIC8259, "pic8259_slave" );
 	at_devices.dma8237_1 = (device_config*)device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_1" );
 	at_devices.dma8237_2 = (device_config*)device_list_find_by_tag( machine->config->devicelist, DMA8237, "dma8237_2" );
+	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, NS16450, "ns16450_0" ) );
 }
 

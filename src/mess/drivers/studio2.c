@@ -100,7 +100,6 @@ Notes:
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/cdp1802/cdp1802.h"
 #include "video/cdp1861.h"
 #include "video/cdp1864.h"
@@ -232,6 +231,7 @@ static CDP1864_INTERFACE( mpt02_cdp1864_intf )
 {
 	SCREEN_TAG,
 	CDP1864_CLK_FREQ,
+	CDP1864_INTERLACED,
 	mpt02_int_w,
 	mpt02_dmao_w,
 	mpt02_efx_w,
@@ -408,7 +408,7 @@ static MACHINE_DRIVER_START( mpt02 )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_RAW_PARAMS(CDP1864_CLK_FREQ, CDP1864_SCREEN_WIDTH, CDP1864_HBLANK_END, CDP1864_HBLANK_START, CDP1864_TOTAL_SCANLINES, CDP1864_SCANLINE_VBLANK_END, CDP1864_SCANLINE_VBLANK_START)
 
-	MDRV_PALETTE_LENGTH(8)
+	MDRV_PALETTE_LENGTH(8+8)
 	MDRV_VIDEO_UPDATE(mpt02)
 
 	MDRV_DEVICE_ADD(CDP1864_TAG, CDP1864)
@@ -462,7 +462,7 @@ static DEVICE_IMAGE_LOAD( studio2_cart )
 	}
 	filesize -= ST2_HEADER_SIZE;
 	/* Read ST2 cartridge contents */
-	ptr = ((UINT8 *)memory_region( REGION_CPU1 ) ) + 0x0400;
+	ptr = ((UINT8 *)memory_region(image->machine,  REGION_CPU1 ) ) + 0x0400;
 	if ( image_fread(image, ptr, filesize ) != filesize ) {
 		logerror( "Error loading cartridge: Unable to read contents from file: %s.\n", image_filename( image ) );
 		return INIT_FAIL;
@@ -490,7 +490,7 @@ static void studio2_cartslot_getinfo( const mess_device_class *devclass, UINT32 
 	}
 }
 
-SYSTEM_CONFIG_START( studio2 )
+static SYSTEM_CONFIG_START( studio2 )
 	CONFIG_DEVICE( studio2_cartslot_getinfo )
 SYSTEM_CONFIG_END
 

@@ -45,7 +45,7 @@ typedef struct vdt911_init_params_t
 
 PALETTE_INIT( vdt911 );
 
-void vdt911_init(void);
+void vdt911_init(running_machine *machine);
 void vdt911_init_term(int unit, const vdt911_init_params_t *params);
 
 void vdt911_reset(void);
@@ -58,10 +58,10 @@ WRITE8_HANDLER(vdt911_0_cru_w);
 
 void vdt911_refresh(running_machine *machine, bitmap_t *bitmap, int unit, int x, int y);
 
-void vdt911_keyboard(int unit);
+void vdt911_keyboard(running_machine *machine, int unit);
 
 #define VDT911_KEY_PORTS																		\
-	PORT_START	/* keys 1-16 */																	\
+	PORT_START_TAG("KEY0")	/* keys 1-16 */																	\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F1") PORT_CODE(KEYCODE_F1)		\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F2") PORT_CODE(KEYCODE_F2)		\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("F3") PORT_CODE(KEYCODE_F3)		\
@@ -79,7 +79,7 @@ void vdt911_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1)		\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2 @") PORT_CODE(KEYCODE_2)		\
 																								\
-	PORT_START	/* keys 17-32 */																\
+	PORT_START_TAG("KEY1")	/* keys 17-32 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3)		\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4 $") PORT_CODE(KEYCODE_4)		\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("5 %") PORT_CODE(KEYCODE_5)		\
@@ -97,7 +97,7 @@ void vdt911_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("9 (numpad)") PORT_CODE(KEYCODE_9_PAD)	\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("PRINT") PORT_CODE(KEYCODE_PRTSCR)	\
 																								\
-	PORT_START	/* keys 33-48 */																\
+	PORT_START_TAG("KEY2")	/* keys 33-48 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(up)") PORT_CODE(KEYCODE_UP)		\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("REPEAT") PORT_CODE(KEYCODE_LALT)	\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("ENTER") PORT_CODE(KEYCODE_ENTER_PAD)	\
@@ -115,7 +115,7 @@ void vdt911_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("FIELD (left/right)") PORT_CODE(KEYCODE_CLOSEBRACE)	\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RETURN") PORT_CODE(KEYCODE_ENTER)	\
 																								\
-	PORT_START	/* keys 49-64 */																\
+	PORT_START_TAG("KEY3")	/* keys 49-64 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4 (numpad)") PORT_CODE(KEYCODE_4_PAD)	\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("5 (numpad)") PORT_CODE(KEYCODE_5_PAD)	\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("6 (numpad)") PORT_CODE(KEYCODE_6_PAD)	\
@@ -133,7 +133,7 @@ void vdt911_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("K") PORT_CODE(KEYCODE_K)		\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("L") PORT_CODE(KEYCODE_L)		\
 																								\
-	PORT_START	/* keys 65-80 */																\
+	PORT_START_TAG("KEY4")	/* keys 65-80 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("; :") PORT_CODE(KEYCODE_COLON)	\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("' \"") PORT_CODE(KEYCODE_QUOTE)	\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(not on US keyboard)") PORT_CODE(KEYCODE_BACKSLASH)	\
@@ -151,7 +151,7 @@ void vdt911_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("V") PORT_CODE(KEYCODE_V)		\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("B") PORT_CODE(KEYCODE_B)		\
 																								\
-	PORT_START	/* keys 81-91 */																\
+	PORT_START_TAG("KEY5")	/* keys 81-91 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("N") PORT_CODE(KEYCODE_N)		\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("M") PORT_CODE(KEYCODE_M)		\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(", <") PORT_CODE(KEYCODE_COMMA)	\

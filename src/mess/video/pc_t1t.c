@@ -25,7 +25,7 @@ static VIDEO_START( pc_t1t );
 static VIDEO_START( pc_pcjr );
 static VIDEO_UPDATE( mc6845_t1000 );
 static MC6845_UPDATE_ROW( t1000_update_row );
-static MC6845_ON_HSYNC_CHANGED( t1000_hsync_changed );
+static MC6845_ON_DE_CHANGED( t1000_de_changed );
 static MC6845_ON_VSYNC_CHANGED( t1000_vsync_changed );
 static MC6845_ON_VSYNC_CHANGED( pcjr_vsync_changed );
 
@@ -37,8 +37,8 @@ static const mc6845_interface mc6845_t1000_intf = {
 	NULL,					/* begin_update */
 	t1000_update_row,		/* update_row */
 	NULL,					/* end_update */
-	NULL,					/* on_de_chaged */
-	t1000_hsync_changed,	/* on_hsync_changed */
+	t1000_de_changed,		/* on_de_chaged */
+	NULL,					/* on_hsync_changed */
 	t1000_vsync_changed		/* on_vsync_changed */
 };
 
@@ -65,8 +65,8 @@ static const mc6845_interface mc6845_pcjr_intf = {
 	NULL,					/* begin_update */
 	t1000_update_row,		/* update_row */
 	NULL,					/* end_update */
-	NULL,					/* on_de_chaged */
-	t1000_hsync_changed,	/* on_hsync_changed */
+	t1000_de_changed,		/* on_de_chaged */
+	NULL,					/* on_hsync_changed */
 	pcjr_vsync_changed		/* on_vsync_changed */
 };
 
@@ -140,14 +140,14 @@ static struct
 	UINT8	address_data_ff;
 
 	mc6845_update_row_func	update_row;
-	UINT8	hsync;
+	UINT8	display_enable;
 	UINT8	vsync;
 } pcjr = { 0 };
 
 
 static VIDEO_START( pc_t1t )
 {
-	pcjr.chr_gen = memory_region(REGION_GFX1);
+	pcjr.chr_gen = memory_region(machine, REGION_GFX1);
 	pcjr.update_row = NULL;
 	pcjr.bank = 0;
 	pcjr.chr_size = 16;
@@ -158,7 +158,7 @@ static VIDEO_START( pc_t1t )
 
 static VIDEO_START( pc_pcjr )
 {
-	pcjr.chr_gen = memory_region(REGION_GFX1);
+	pcjr.chr_gen = memory_region(machine, REGION_GFX1);
 	pcjr.update_row = NULL;
 	pcjr.bank = 0;
 	pcjr.mode_control = 0x08;
@@ -533,16 +533,16 @@ static int pc_t1t_color_select_r(void)
  *      (MCGA,color ET4000) reserved (0)
  *  1   (CGA,color EGA) positive edge from light pen has set trigger
  *      (MCGA,color ET4000) reserved (0)
- *  0   horizontal retrace in progress
+ *  0   display enabled
  *      =0  do not use memory
  *      =1  memory access without interfering with display
  *      (Genoa SuperEGA) horizontal or vertical retrace
  */
 static int pc_t1t_status_r(void)
 {
-    int data = pcjr.vsync | pcjr.status | pcjr.hsync;
+    int data = pcjr.vsync | pcjr.status | pcjr.display_enable;
 	/* HACK HACK HACK */
-	data |= ( pcjr.hsync ? 0x10 : 0x00 );
+	data |= ( pcjr.display_enable ? 0x10 : 0x00 );
 	/* end HACK */
     return data;
 }
@@ -665,10 +665,11 @@ static int pc_t1t_vga_data_r(void)
  *	   6-7	Display mode. 0: Text, 1: 16K graphics mode (4,5,6,8)
  *			2: 32K graphics mode (9,Ah)
  */
-static void pc_t1t_bank_w(int data)
+static void pc_t1t_bank_w(running_machine *machine, int data)
 {
 	if (pcjr.bank != data)
 	{
+		UINT8 *ram = memory_region(machine, REGION_CPU1);
 		int dram, vram;
 		pcjr.bank = data;
 	/* it seems the video ram is mapped to the last 128K of main memory */
@@ -687,14 +688,14 @@ static void pc_t1t_bank_w(int data)
 		dram = (data & 0x07) << 14;
 		vram = (data & 0x38) << (14-3);
 #endif
-        videoram = &memory_region(REGION_CPU1)[vram];
-		pcjr.displayram = &memory_region(REGION_CPU1)[dram];
+		videoram = &ram[vram];
+		pcjr.displayram = &ram[dram];
 	}
 	pc_t1t_mode_switch();
 }
 
 
-static void pc_pcjr_bank_w(int data)
+static void pc_pcjr_bank_w(running_machine *machine, int data)
 {
 	if (pcjr.bank != data)
 	{
@@ -716,8 +717,8 @@ static void pc_pcjr_bank_w(int data)
 		dram = (data & 0x07) << 14;
 		vram = (data & 0x38) << (14-3);
 #endif
-		videoram = &memory_region(REGION_CPU1)[vram];
-		pcjr.displayram = &memory_region(REGION_CPU1)[dram];
+		videoram = &memory_region(machine, REGION_CPU1)[vram];
+		pcjr.displayram = &memory_region(machine, REGION_CPU1)[dram];
 	}
 	pc_pcjr_mode_switch();
 }
@@ -757,19 +758,19 @@ WRITE8_HANDLER ( pc_T1T_w )
 			break;
 		case 10:
 			pc_t1t_vga_index_w(data);
-            break;
-        case 11:
+			break;
+		case 11:
 			pc_t1t_lightpen_strobe_w(data);
 			break;
 		case 12:
-            break;
+			break;
 		case 13:
-            break;
-        case 14:
+			break;
+		case 14:
 			pc_t1t_vga_data_w(data);
-            break;
-        case 15:
-			pc_t1t_bank_w(data);
+			break;
+		case 15:
+			pc_t1t_bank_w(machine, data);
 			break;
     }
 }
@@ -806,7 +807,7 @@ WRITE8_HANDLER( pc_pcjr_w )
 		case 12:
 			break;
 		case 15:
-			pc_pcjr_bank_w(data);
+			pc_pcjr_bank_w(machine, data);
 			break;
 
 		default:
@@ -864,9 +865,9 @@ WRITE8_HANDLER( pc_pcjr_w )
 }
 
 
-static MC6845_ON_HSYNC_CHANGED( t1000_hsync_changed )
+static MC6845_ON_DE_CHANGED( t1000_de_changed )
 {
-	pcjr.hsync = hsync ? 0 : 1;
+	pcjr.display_enable = display_enabled ? 1 : 0;
 }
 
 
@@ -878,6 +879,7 @@ static MC6845_ON_VSYNC_CHANGED( t1000_vsync_changed )
 		pcjr.pc_framecnt++;
 	}
 }
+
 
 static MC6845_ON_VSYNC_CHANGED( pcjr_vsync_changed )
 {

@@ -17,21 +17,22 @@ static UINT8 *ram;
 static UINT8 p1, p2;
 static size_t	cart_size;
 
-static void odyssey2_switch_banks(void) {
+static void odyssey2_switch_banks(running_machine *machine)
+{
 	switch ( cart_size ) {
 	case 12288:
 		/* 12KB cart support (for instance, KTAA as released) */
-		memory_set_bankptr( 1, memory_region(REGION_USER1) + (p1 & 0x03) * 0xC00 );
-		memory_set_bankptr( 2, memory_region(REGION_USER1) + (p1 & 0x03) * 0xC00 + 0x800 );
+		memory_set_bankptr( 1, memory_region(machine, REGION_USER1) + (p1 & 0x03) * 0xC00 );
+		memory_set_bankptr( 2, memory_region(machine, REGION_USER1) + (p1 & 0x03) * 0xC00 + 0x800 );
 		break;
 	case 16384:
 		/* 16KB cart support (for instance, full sized version KTAA) */
-		memory_set_bankptr( 1, memory_region(REGION_USER1) + (p1 & 0x03) * 0x1000 + 0x400 );
-		memory_set_bankptr( 2, memory_region(REGION_USER1) + (p1 & 0x03) * 0x1000 + 0xC00 );
+		memory_set_bankptr( 1, memory_region(machine, REGION_USER1) + (p1 & 0x03) * 0x1000 + 0x400 );
+		memory_set_bankptr( 2, memory_region(machine, REGION_USER1) + (p1 & 0x03) * 0x1000 + 0xC00 );
 		break;
 	default:
-		memory_set_bankptr(1, memory_region(REGION_USER1) + (p1 & 0x03) * 0x800);
-		memory_set_bankptr(2, memory_region(REGION_USER1) + (p1 & 0x03) * 0x800 );
+		memory_set_bankptr(1, memory_region(machine, REGION_USER1) + (p1 & 0x03) * 0x800);
+		memory_set_bankptr(2, memory_region(machine, REGION_USER1) + (p1 & 0x03) * 0x800 );
 		break;
 	}
 }
@@ -47,7 +48,7 @@ READ8_HANDLER( odyssey2_t0_r ) {
 DRIVER_INIT( odyssey2 )
 {
 	int i;
-	UINT8 *gfx = memory_region(REGION_GFX1);
+	UINT8 *gfx = memory_region(machine, REGION_GFX1);
 	ram        = auto_malloc(256);
 
 	for (i = 0; i < 256; i++)
@@ -59,11 +60,10 @@ DRIVER_INIT( odyssey2 )
 
 MACHINE_RESET( odyssey2 )
 {
-    /* jump to "last" bank, will work for all sizes due to being mirrored */
-    p1 = 0xFF;
-    p2 = 0xFF;
-	odyssey2_switch_banks();
-    return;
+	/* jump to "last" bank, will work for all sizes due to being mirrored */
+	p1 = 0xFF;
+	p2 = 0xFF;
+	odyssey2_switch_banks(machine);
 }
 
 /****** External RAM ******************************/
@@ -127,32 +127,36 @@ WRITE8_HANDLER( g7400_bus_w )
 
 READ8_HANDLER( odyssey2_getp1 )
 {
-    UINT8 data = p1;
+	UINT8 data = p1;
 
-    logerror("%.9f p1 read %.2x\n", attotime_to_double(timer_get_time()), data);
-    return data;
+	logerror("%.9f p1 read %.2x\n", attotime_to_double(timer_get_time()), data);
+	return data;
 }
 
 WRITE8_HANDLER( odyssey2_putp1 )
 {
-    p1 = data;
+	p1 = data;
 
-	odyssey2_switch_banks();
+	odyssey2_switch_banks(machine);
 
 	odyssey2_lum_w ( machine, 0, p1 >> 7 );
 
-    logerror("%.6f p1 written %.2x\n", attotime_to_double(timer_get_time()), data);
+	logerror("%.6f p1 written %.2x\n", attotime_to_double(timer_get_time()), data);
 }
 
 READ8_HANDLER( odyssey2_getp2 )
 {
     UINT8 h = 0xFF;
     int i, j;
+	char port[6];
 
     if (!(p1 & P1_KEYBOARD_SCAN_ENABLE))
 	{
 		if ((p2 & P2_KEYBOARD_SELECT_MASK) <= 5)  /* read keyboard */
-			h &= input_port_read_indexed(machine, p2 & P2_KEYBOARD_SELECT_MASK);
+		{
+			sprintf(port, "KEY%d", (p2 & P2_KEYBOARD_SELECT_MASK));
+			h &= input_port_read(machine, port);
+		}
 
 		for (i= 0x80, j = 0; i > 0; i >>= 1, j++)
 		{
@@ -188,10 +192,10 @@ READ8_HANDLER( odyssey2_getbus )
     UINT8 data = 0xff;
 
     if ((p2 & P2_KEYBOARD_SELECT_MASK) == 1)
-		data &= input_port_read_indexed(machine, 6);       /* read joystick 1 */
+		data &= input_port_read(machine, "JOY0");       /* read joystick 1 */
 
     if ((p2 & P2_KEYBOARD_SELECT_MASK) == 0)
-		data &= input_port_read_indexed(machine, 7);       /* read joystick 2 */
+		data &= input_port_read(machine, "JOY1");       /* read joystick 2 */
 
     logerror("%.6f bus read %.2x\n", attotime_to_double(timer_get_time()), data);
     return data;

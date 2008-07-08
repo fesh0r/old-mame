@@ -94,7 +94,7 @@ static NVRAM_HANDLER( avigo )
 	}
 }
 
-static void avigo_setbank(int bank, void *address, read8_machine_func rh, write8_machine_func wh)
+static void avigo_setbank(running_machine *machine, int bank, void *address, read8_machine_func rh, write8_machine_func wh)
 {
 	if (address)
 	{
@@ -104,12 +104,12 @@ static void avigo_setbank(int bank, void *address, read8_machine_func rh, write8
 	}
 	if (rh)
 	{
-		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, (bank * 0x4000),
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, (bank * 0x4000),
 			(bank * 0x4000) + 0x3FFF, 0, 0, rh);
 	}
 	if (wh)
 	{
-		memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, (bank * 0x4000),
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, (bank * 0x4000),
 			(bank * 0x4000) + 0x3FFF, 0, 0, wh);
 	}
 }
@@ -292,7 +292,7 @@ static const struct tc8521_interface avigo_tc8521_interface =
 	avigo_tc8521_alarm_int
 };
 
-static void avigo_refresh_memory(void)
+static void avigo_refresh_memory(running_machine *machine)
 {
 	unsigned char *addr;
 
@@ -319,21 +319,21 @@ static void avigo_refresh_memory(void)
 
 	addr = (unsigned char *)intelflash_getmemptr(avigo_flash_at_0x4000);
 	addr = addr + (avigo_rom_bank_l<<14);
-	avigo_setbank(1, addr, avigo_flash_0x4000_read_handler, avigo_flash_0x4000_write_handler);
+	avigo_setbank(machine, 1, addr, avigo_flash_0x4000_read_handler, avigo_flash_0x4000_write_handler);
 
 	switch (avigo_ram_bank_h)
 	{
 		/* %101 */
 		/* screen */
 		case 0x06:
-			avigo_setbank(2, NULL, avigo_vid_memory_r, avigo_vid_memory_w);
+			avigo_setbank(machine, 2, NULL, avigo_vid_memory_r, avigo_vid_memory_w);
 			break;
 
 		/* %001 */
 		/* ram */
 		case 0x01:
 			addr = mess_ram + ((avigo_ram_bank_l & 0x07)<<14);
-			avigo_setbank(2, addr, SMH_BANK3, SMH_BANK7);
+			avigo_setbank(machine, 2, addr, SMH_BANK3, SMH_BANK7);
 			break;
 
 		/* %111 */
@@ -343,7 +343,7 @@ static void avigo_refresh_memory(void)
 
 			addr = (unsigned char *)intelflash_getmemptr(avigo_flash_at_0x8000);
 			addr = addr + (avigo_ram_bank_l<<14);
-			avigo_setbank(2, addr, avigo_flash_0x8000_read_handler,
+			avigo_setbank(machine, 2, addr, avigo_flash_0x8000_read_handler,
 				SMH_NOP /* avigo_flash_0x8000_write_handler */);
 			break;
 
@@ -352,7 +352,7 @@ static void avigo_refresh_memory(void)
 
 			addr = (unsigned char *)intelflash_getmemptr(avigo_flash_at_0x8000);
 			addr = addr + (avigo_ram_bank_l<<14);
-			avigo_setbank(2, addr, avigo_flash_0x8000_read_handler,
+			avigo_setbank(machine, 2, addr, avigo_flash_0x8000_read_handler,
 				SMH_NOP /* avigo_flash_0x8000_write_handler */);
 			break;
 	}
@@ -371,7 +371,7 @@ static INS8250_INTERRUPT( avigo_com_interrupt )
 		avigo_irq |= (1<<3);
 	}
 
-	avigo_refresh_ints(Machine);
+	avigo_refresh_ints(device->machine);
 }
 
 
@@ -388,12 +388,12 @@ static const ins8250_interface avigo_com_interface =
 /* this is needed because this driver uses handlers in memory that gets executed */
 static OPBASE_HANDLER( avigo_opbase_handler )
 {
-	void *opbase;
+	void *opbase_ptr;
 
-	opbase = avigo_banked_opbase[address / 0x4000];
-	if (opbase)
+	opbase_ptr = avigo_banked_opbase[address / 0x4000];
+	if (opbase_ptr != NULL)
 	{
-		opcode_base = opcode_arg_base = opbase;
+		opbase->rom = opbase->ram = opbase_ptr;
 		address = ~0;
 	}
 	return address;
@@ -408,8 +408,8 @@ static MACHINE_RESET( avigo )
 	memset(avigo_banked_opbase, 0, sizeof(avigo_banked_opbase));
 
 	/* initialise flash memory */
-	intelflash_init(0, FLASH_INTEL_E28F008SA, memory_region(REGION_CPU1)+0x10000);
-	intelflash_init(1, FLASH_INTEL_E28F008SA, memory_region(REGION_CPU1)+0x110000);
+	intelflash_init(0, FLASH_INTEL_E28F008SA, memory_region(machine, REGION_CPU1)+0x10000);
+	intelflash_init(1, FLASH_INTEL_E28F008SA, memory_region(machine, REGION_CPU1)+0x110000);
 	intelflash_init(2, FLASH_INTEL_E28F008SA, NULL);
 
 	stylus_marker_x = AVIGO_SCREEN_WIDTH>>1;
@@ -442,12 +442,12 @@ static MACHINE_RESET( avigo )
 	memory_set_opbase_handler(0, avigo_opbase_handler);
 
 	addr = (unsigned char *)intelflash_getmemptr(0);
-	avigo_setbank(0, addr, avigo_flash_0x0000_read_handler, avigo_flash_0x0000_write_handler);
+	avigo_setbank(machine, 0, addr, avigo_flash_0x0000_read_handler, avigo_flash_0x0000_write_handler);
 
-	avigo_setbank(3, mess_ram, NULL, NULL);
+	avigo_setbank(machine, 3, mess_ram, NULL, NULL);
 
 	/* 0x08000 is specially banked! */
-	avigo_refresh_memory();
+	avigo_refresh_memory(machine);
 }
 
 static MACHINE_START( avigo )
@@ -544,7 +544,7 @@ static WRITE8_HANDLER(avigo_rom_bank_l_w)
 
         avigo_rom_bank_l = data & 0x03f;
 
-        avigo_refresh_memory();
+        avigo_refresh_memory(machine);
 }
 
 static WRITE8_HANDLER(avigo_rom_bank_h_w)
@@ -564,7 +564,7 @@ static WRITE8_HANDLER(avigo_rom_bank_h_w)
 	avigo_rom_bank_h = data;
 
 
-        avigo_refresh_memory();
+        avigo_refresh_memory(machine);
 }
 
 static WRITE8_HANDLER(avigo_ram_bank_l_w)
@@ -573,7 +573,7 @@ static WRITE8_HANDLER(avigo_ram_bank_l_w)
 
         avigo_ram_bank_l = data & 0x03f;
 
-        avigo_refresh_memory();
+        avigo_refresh_memory(machine);
 }
 
 static WRITE8_HANDLER(avigo_ram_bank_h_w)
@@ -582,7 +582,7 @@ static WRITE8_HANDLER(avigo_ram_bank_h_w)
 
 	avigo_ram_bank_h = data;
 
-        avigo_refresh_memory();
+        avigo_refresh_memory(machine);
 }
 
 static  READ8_HANDLER(avigo_ad_control_status_r)
@@ -831,13 +831,13 @@ static INPUT_PORTS_START(avigo)
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("PAGE UP") PORT_CODE(KEYCODE_PGUP)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("PAGE DOWN") PORT_CODE(KEYCODE_PGDN)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("LIGHT") PORT_CODE(KEYCODE_L)
-	PORT_BIT(0x0f7, 0xf7, IPT_UNUSED)
+	PORT_BIT(0xf8, 0xf8, IPT_UNUSED)
 
 	PORT_START_TAG("LINE1")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("TO DO") PORT_CODE(KEYCODE_T)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("ADDRESS") PORT_CODE(KEYCODE_A)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SCHEDULE") PORT_CODE(KEYCODE_S)
-	PORT_BIT(0x0f7, 0xf7, IPT_UNUSED)
+	PORT_BIT(0xf8, 0xf8, IPT_UNUSED)
 
 	PORT_START_TAG("LINE2")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("MEMO") PORT_CODE(KEYCODE_M)
@@ -905,7 +905,7 @@ ROM_START(avigo)
 	ROM_LOAD("avigo.rom", 0x010000, 0x0150000, CRC(160ee4a6) SHA1(4d09201a3876de16808bd92989f3d8d7182d72b3))
 ROM_END
 
-SYSTEM_CONFIG_START( avigo )
+static SYSTEM_CONFIG_START( avigo )
 	CONFIG_RAM_DEFAULT		(128*1024)
 SYSTEM_CONFIG_END
 

@@ -149,9 +149,14 @@ DEVICE_IMAGE_LOAD( nascom2_floppy )
 
 READ8_HANDLER ( nascom1_port_00_r )
 {
-	if (nascom1_portstat.stat_count < 9)
-		return (input_port_read_indexed(machine, nascom1_portstat.stat_count) | ~0x7f);
+	char port[6];
 
+	if (nascom1_portstat.stat_count < 9)
+	{
+		sprintf(port, "KEY%d", nascom1_portstat.stat_count);
+		return (input_port_read(machine, port) | ~0x7f);
+	}
+	
 	return (0xff);
 }
 
@@ -185,7 +190,7 @@ WRITE8_HANDLER( nascom1_port_01_w )
  *
  *************************************/
 
-int	nascom1_read_cassette(void)
+static int	nascom1_read_cassette(void)
 {
 	if (nascom1_tape_image && (nascom1_tape_index < nascom1_tape_size))
 		return (nascom1_tape_image[nascom1_tape_index++]);

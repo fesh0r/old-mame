@@ -63,9 +63,9 @@ static MACHINE_RESET(ti990_4)
 static INTERRUPT_GEN( ti990_4_line_interrupt )
 {
 #if VIDEO_911
-	vdt911_keyboard(0);
+	vdt911_keyboard(machine, 0);
 #else
-	asr733_keyboard(0);
+	asr733_keyboard(machine, 0);
 #endif
 
 	ti990_line_interrupt();
@@ -307,9 +307,9 @@ ROM_END
 static DRIVER_INIT( ti990_4 )
 {
 #if VIDEO_911
-	vdt911_init();
+	vdt911_init(machine);
 #else
-	asr733_init();
+	asr733_init(machine);
 #endif
 }
 
@@ -336,7 +336,7 @@ static void ti990_4_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 	}
 }
 
-SYSTEM_CONFIG_START(ti990_4)
+static SYSTEM_CONFIG_START(ti990_4)
 	CONFIG_DEVICE(ti990_4_floppy_getinfo)
 SYSTEM_CONFIG_END
 

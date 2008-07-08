@@ -137,9 +137,11 @@ static  READ8_HANDLER ( pio_port_a_r )
 static  READ8_HANDLER ( pio_port_b_r )
 {
 	UINT8 demux_LS145, data = 0xff;
+	char port[6];
 
     demux_LS145 = pio_port_a_output & 15;
-    data = input_port_read_indexed(machine, 1 + demux_LS145);
+	sprintf(port, "ROW%d", demux_LS145);
+    data = input_port_read(machine, port);
 	LOG(2,"mz700_pio_port_b_r",("%02X\n", data));
 
     return data;
@@ -164,7 +166,7 @@ static READ8_HANDLER (pio_port_c_r )
 	if (ne556_out[0])
         data |= 0x40;           /* set the 556OUT status */
 
-    data |= input_port_read_indexed(machine, 0);   /* get VBLANK in bit 7 */
+    data |= input_port_read(machine, "STATUS");   /* get VBLANK in bit 7 */
 
 	LOG(2,"mz700_pio_port_c_r",("%02X\n", data));
 
@@ -235,7 +237,7 @@ READ8_HANDLER ( mz700_mmio_r )
 
 	case 8:
 		data = ne556_out[1] ? 0x01 : 0x00;
-		data |= input_port_read_indexed(machine, 12);	/* get joystick ports */
+		data |= input_port_read(machine, "JOY");	/* get joystick ports */
 		if (video_screen_get_hpos(machine->primary_screen) >= visarea->max_x - 32)
 			data |= 0x80;
 		LOG(1,"mz700_e008_r",("%02X\n", data));
@@ -415,7 +417,7 @@ WRITE8_HANDLER ( mz700_bank_w )
     static int mz700_locked = 0;
 	static int vio_mode = 0;
 	static int vio_lock = 0;
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
 
     switch (offset)
 	{
@@ -516,7 +518,7 @@ static UINT8 mz800_palette_bank;
         break;
 
 	default:
-		data = memory_region(REGION_CPU1)[0x16000 + offset];
+		data = memory_region(machine, REGION_CPU1)[0x16000 + offset];
         break;
     }
     return data;
@@ -525,7 +527,7 @@ static UINT8 mz800_palette_bank;
 /* port E0 - E9 */
 READ8_HANDLER( mz800_bank_r )
 {
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
     UINT8 data = 0xff;
 
     switch (offset)
@@ -587,7 +589,7 @@ READ8_HANDLER( mz800_bank_r )
 /* port EA */
  READ8_HANDLER( mz800_ramdisk_r )
 {
-	UINT8 *mem = memory_region(REGION_USER1);
+	UINT8 *mem = memory_region(machine, REGION_USER1);
 	UINT8 data = mem[mz800_ramaddr];
 	LOG(2,"mz800_ramdisk_r",("[%04X] -> %02X\n", mz800_ramaddr, data));
 	if (mz800_ramaddr++ == 0)
@@ -615,7 +617,7 @@ WRITE8_HANDLER( mz800_read_format_w )
  */
 WRITE8_HANDLER( mz800_display_mode_w )
 {
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
 	LOG(1,"mz800_display_mode_w",("%02X\n", data));
     mz800_display_mode = data;
 	if ((mz800_display_mode & 0x08) == 0)
@@ -643,7 +645,7 @@ WRITE8_HANDLER ( mz800_bank_w )
     static int mz800_locked = 0;
     static int vio_mode = 0;
     static int vio_lock = 0;
-    UINT8 *mem = memory_region(REGION_CPU1);
+    UINT8 *mem = memory_region(machine, REGION_CPU1);
 
     switch (offset)
     {
@@ -726,7 +728,7 @@ WRITE8_HANDLER ( mz800_bank_w )
 /* port EA */
 WRITE8_HANDLER( mz800_ramdisk_w )
 {
-	UINT8 *mem = memory_region(REGION_USER1);
+	UINT8 *mem = memory_region(machine, REGION_USER1);
 	LOG(2,"mz800_ramdisk_w",("[%04X] <- %02X\n", mz800_ramaddr, data));
 	mem[mz800_ramaddr] = data;
 	if (mz800_ramaddr++ == 0)
@@ -760,7 +762,7 @@ WRITE8_HANDLER( mz800_palette_w )
 
 DRIVER_INIT( mz800 )
 {
-	UINT8 *mem = memory_region(REGION_CPU1);
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
 
 	videoram_size = 0x5000;
 	videoram = auto_malloc(videoram_size);
@@ -770,7 +772,7 @@ DRIVER_INIT( mz800 )
 	mem[0x10002] = 0x00;
     memcpy(&mem[0x00000], &mem[0x10000], 0x02000);
 
-    mem = memory_region(REGION_USER1);
+    mem = memory_region(machine, REGION_USER1);
 	memset(&mem[0x00000], 0xff, 0x10000);
 
     mz800_display_mode_w(machine, 0, 0x08);   /* set MZ700 mode */

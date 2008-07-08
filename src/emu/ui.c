@@ -316,6 +316,12 @@ int ui_display_startup_screens(running_machine *machine, int first_time, int sho
 	int show_warnings = TRUE;
 	int state;
 
+#ifdef MESS
+	show_warnings = !options_get_bool(mame_options(), OPTION_SKIP_WARNINGS);
+	if (!show_warnings)
+		show_disclaimer = FALSE;
+#endif /* MESS */
+
 	/* disable everything if we are using -str for 300 or fewer seconds, or if we're the empty driver,
        or if we are debugging */
 	if (!first_time || (str > 0 && str < 60*5) || machine->gamedrv == &driver_empty || (machine->debug_flags & DEBUG_FLAG_ENABLED) != 0)

@@ -16,7 +16,7 @@ GFXDECODE_EXTERN( asr733 );
 
 extern PALETTE_INIT ( asr733 ) ;
 
-void asr733_init(void);
+void asr733_init(running_machine *machine);
 int asr733_init_term(running_machine *machine, int unit, void (*int_callback)(int state));
 
 void asr733_reset(int unit);
@@ -24,15 +24,15 @@ void asr733_reset(int unit);
 int asr733_cru_r(int offset, int unit);
 void asr733_cru_w(running_machine *machine, int offset, int data, int unit);
 
- READ8_HANDLER(asr733_0_cru_r);
+READ8_HANDLER(asr733_0_cru_r);
 WRITE8_HANDLER(asr733_0_cru_w);
 
 void asr733_refresh(running_machine *machine, bitmap_t *bitmap, int unit, int x, int y);
 
-void asr733_keyboard(int unit);
+void asr733_keyboard(running_machine *machine, int unit);
 
 #define ASR733_KEY_PORTS																		\
-	PORT_START	/* keys 1-16 */																	\
+	PORT_START_TAG("KEY0")	/* keys 1-16 */																	\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1") PORT_CODE(KEYCODE_1)		\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2") PORT_CODE(KEYCODE_2)		\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3") PORT_CODE(KEYCODE_3)		\
@@ -50,7 +50,7 @@ void asr733_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("W") PORT_CODE(KEYCODE_W)		\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("E") PORT_CODE(KEYCODE_E)		\
 																								\
-	PORT_START	/* keys 17-32 */																\
+	PORT_START_TAG("KEY1")	/* keys 17-32 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("R") PORT_CODE(KEYCODE_R)		\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("T") PORT_CODE(KEYCODE_T)		\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Y") PORT_CODE(KEYCODE_Y)		\
@@ -68,7 +68,7 @@ void asr733_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("G") PORT_CODE(KEYCODE_G)		\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("H") PORT_CODE(KEYCODE_H)		\
 																								\
-	PORT_START	/* keys 33-48 */																\
+	PORT_START_TAG("KEY2")	/* keys 33-48 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("J") PORT_CODE(KEYCODE_J)		\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("K") PORT_CODE(KEYCODE_K)		\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("L") PORT_CODE(KEYCODE_L)		\
@@ -76,7 +76,7 @@ void asr733_keyboard(int unit);
 		PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("RUB OUT") PORT_CODE(KEYCODE_BACKSPACE)	\
 		PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("REPEAT") PORT_CODE(KEYCODE_RALT)	\
 		/* hack for my mac that does not disciminate the right ALT key */						\
-		PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("REPEAT") PORT_CODE(KEYCODE_LALT)	\
+		/* PORT_BIT(0x0020, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("REPEAT") PORT_CODE(KEYCODE_LALT) */	\
 		PORT_BIT(0x0040, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT)	\
 		PORT_BIT(0x0080, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Z") PORT_CODE(KEYCODE_Z)		\
 		PORT_BIT(0x0100, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("X") PORT_CODE(KEYCODE_X)		\
@@ -88,7 +88,7 @@ void asr733_keyboard(int unit);
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(",") PORT_CODE(KEYCODE_COMMA)	\
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME(".") PORT_CODE(KEYCODE_STOP)	\
 																								\
-	PORT_START	/* keys 49-51 */																\
+	PORT_START_TAG("KEY3")	/* keys 49-51 */																\
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("/") PORT_CODE(KEYCODE_SLASH)	\
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_RSHIFT)	\
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("(SPACE)") PORT_CODE(KEYCODE_SPACE)

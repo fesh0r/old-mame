@@ -75,7 +75,7 @@ static void oric_refresh_ints(running_machine *machine)
 		/* oric 1 or oric atmos */
 
 		/* if floppy disc hardware is disabled, do not allow interrupts from it */
-		if ((input_port_read_indexed(machine, 9) & 0x07)==ORIC_FLOPPY_INTERFACE_NONE)
+		if ((input_port_read(machine, "FLOPPY") & 0x07) == ORIC_FLOPPY_INTERFACE_NONE)
 		{
 			oric_irqs &=~(1<<1);
 		}
@@ -108,7 +108,7 @@ static unsigned char oric_via_port_a_data;
 
 
 /* refresh keyboard sense */
-static void oric_keyboard_sense_refresh(void)
+static void oric_keyboard_sense_refresh(running_machine *machine)
 {
 	/* The following assumes that if a 0 is written, it can be used to detect if any key
 	has been pressed.. */
@@ -117,11 +117,12 @@ static void oric_keyboard_sense_refresh(void)
 	int i;
 	unsigned char key_bit = 0;
 
-
 	/* what if data is 0, can it sense if any of the keys on a line are pressed? */
 	int input_port_data;
+	char port[6];
 
- 	input_port_data = input_port_read_indexed(Machine, 1+oric_keyboard_line);
+	sprintf(port, "ROW%d", oric_keyboard_line);
+ 	input_port_data = input_port_read(machine, port);
 
 	/* go through all bits in line */
 	for (i=0; i<8; i++)
@@ -183,11 +184,11 @@ static  READ8_HANDLER ( oric_via_in_a_func )
 	return oric_via_port_a_data;
 }
 
-static  READ8_HANDLER ( oric_via_in_b_func )
+static READ8_HANDLER ( oric_via_in_b_func )
 {
 	int data;
 
-	oric_keyboard_sense_refresh();
+	oric_keyboard_sense_refresh(machine);
 
 	data = oric_key_sense_bit;
 	data |= oric_keyboard_line & 0x07;
@@ -291,7 +292,7 @@ static TIMER_CALLBACK(oric_refresh_tape)
 	to the via cb1 input. Interrupts can be generated from the vertical
 	sync, and flicker free games can be produced */
 
-	input_port_9 = input_port_read_indexed(machine, 9);
+	input_port_9 = input_port_read(machine, "FLOPPY");
 	/* cable is enabled? */
 	if ((input_port_9 & 0x08)!=0)
 	{
@@ -299,7 +300,7 @@ static TIMER_CALLBACK(oric_refresh_tape)
 		data = input_port_9>>4;
 	}
 
-	via_set_input_cb1(0, data);
+	via_set_input_cb1(machine, 0, data);
 }
 
 static unsigned char previous_portb_data = 0;
@@ -359,7 +360,7 @@ static void oric_printer_handshake_in(int number, int data, int mask)
 		}
 	}
 
-    via_set_input_ca1(0, acknowledge);
+    via_set_input_ca1(Machine, 0, acknowledge);
 }
 
 static const CENTRONICS_CONFIG oric_cent_config[1]={
@@ -405,7 +406,7 @@ static WRITE8_HANDLER ( oric_via_out_cb2_func )
 }
 
 
-static void	oric_via_irq_func(int state)
+static void	oric_via_irq_func(running_machine *machine, int state)
 {
 	oric_irqs &= ~(1<<0);
 
@@ -419,7 +420,7 @@ static void	oric_via_irq_func(int state)
 		oric_irqs |=(1<<0);
 	}
 
-	oric_refresh_ints(Machine);
+	oric_refresh_ints(machine);
 }
 
 
@@ -505,7 +506,7 @@ static void oric_install_apple2_interface(running_machine *machine)
 
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0300, 0x030f, 0, 0, oric_IO_w);
 	memory_install_write8_device_handler(fdc, 0, ADDRESS_SPACE_PROGRAM, 0x0310, 0x031f, 0, 0, applefdc_w);
-	memory_set_bankptr(4, 	memory_region(REGION_CPU1) + 0x014000 + 0x020);
+	memory_set_bankptr(4, 	memory_region(machine, REGION_CPU1) + 0x014000 + 0x020);
 }
 
 
@@ -551,7 +552,7 @@ static WRITE8_HANDLER(apple2_v2_interface_w)
 /*	logerror("apple 2 interface v2 rom page: %01x\n",(offset & 0x02)>>1); */
 
 	/* bit 0 is 0 for page 0, 1 for page 1 */
-	memory_set_bankptr(4, memory_region(REGION_CPU1) + 0x014000 + 0x0100 + (((offset & 0x02)>>1)<<8));
+	memory_set_bankptr(4, memory_region(machine, REGION_CPU1) + 0x014000 + 0x0100 + (((offset & 0x02)>>1)<<8));
 
 	oric_enable_memory(machine, 1, 3, TRUE, TRUE);
 
@@ -563,7 +564,7 @@ static WRITE8_HANDLER(apple2_v2_interface_w)
 		/* logerror("apple 2 interface v2: rom enabled\n"); */
 
 		/* enable rom */
-		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+		rom_ptr = memory_region(machine, REGION_CPU1) + 0x010000;
 		memory_set_bankptr(1, rom_ptr);
 		memory_set_bankptr(2, rom_ptr+0x02000);
 		memory_set_bankptr(3, rom_ptr+0x03800);
@@ -641,7 +642,7 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 
 			oric_enable_memory(machine, 1, 3, TRUE, FALSE);
 
-			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+			rom_ptr = memory_region(machine, REGION_CPU1) + 0x010000;
 			memory_set_bankptr(1, rom_ptr);
 			memory_set_bankptr(2, rom_ptr+0x02000);
 			memory_set_bankptr(3, rom_ptr+0x03800);
@@ -689,7 +690,7 @@ static void oric_jasmin_set_mem_0x0c000(running_machine *machine)
 			/*logerror("&f800-&ffff is jasmin rom\n"); */
 			/* jasmin rom enabled */
 			oric_enable_memory(machine, 3, 3, TRUE, TRUE);
-			rom_ptr = memory_region(REGION_CPU1) + 0x010000+0x04000+0x02000;
+			rom_ptr = memory_region(machine, REGION_CPU1) + 0x010000+0x04000+0x02000;
 			memory_set_bankptr(3, rom_ptr);
 			memory_set_bankptr(7, rom_ptr);
 		}
@@ -774,7 +775,7 @@ static WRITE8_HANDLER(oric_jasmin_w)
 			break;
 		/* any write will cause wd179x to reset */
 		case 0x09:
-			wd17xx_reset();
+			wd17xx_reset(machine);
 			break;
 		case 0x0a:
 			logerror("jasmin overlay ram w: %02x PC: %04x\n",data,activecpu_get_pc());
@@ -906,7 +907,7 @@ static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 		/*logerror("&c000-&dfff is os rom\n"); */
 		/* basic rom */
 		oric_enable_memory(machine, 1, 1, TRUE, FALSE);
-		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+		rom_ptr = memory_region(machine, REGION_CPU1) + 0x010000;
 		memory_set_bankptr(1, rom_ptr);
 		memory_set_bankptr(5, rom_ptr);
 	}
@@ -919,7 +920,7 @@ static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 		/*logerror("&e000-&ffff is os rom\n"); */
 		/* basic rom */
 		oric_enable_memory(machine, 2, 3, TRUE, FALSE);
-		rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+		rom_ptr = memory_region(machine, REGION_CPU1) + 0x010000;
 		memory_set_bankptr(2, rom_ptr+0x02000);
 		memory_set_bankptr(3, rom_ptr+0x03800);
 		memory_set_bankptr(6, rom_ptr+0x02000);
@@ -935,7 +936,7 @@ static void	oric_microdisc_set_mem_0x0c000(running_machine *machine)
 			/*logerror("&e000-&ffff is disk rom\n"); */
 			oric_enable_memory(machine, 2, 3, TRUE, FALSE);
 			/* enable rom of microdisc interface */
-			rom_ptr = memory_region(REGION_CPU1) + 0x014000;
+			rom_ptr = memory_region(machine, REGION_CPU1) + 0x014000;
 			memory_set_bankptr(2, rom_ptr);
 			memory_set_bankptr(3, rom_ptr+0x01800);
 		}
@@ -1068,7 +1069,7 @@ static void oric_install_microdisc_interface(running_machine *machine)
 
 static void oric_wd179x_callback(running_machine *machine, wd17xx_state_t State, void *param)
 {
-	switch (input_port_read_indexed(machine, 9) &  0x07)
+	switch (input_port_read(machine, "FLOPPY") &  0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
@@ -1111,7 +1112,7 @@ DEVICE_IMAGE_LOAD( oric_floppy )
 	return INIT_FAIL;
 }
 
-static void oric_common_init_machine(void)
+static void oric_common_init_machine(running_machine *machine)
 {
     /* clear all irqs */
 	oric_irqs = 0;
@@ -1126,12 +1127,12 @@ static void oric_common_init_machine(void)
 	centronics_config(0, oric_cent_config);
 	/* assumption: select is tied low */
 	centronics_write_handshake(0, CENTRONICS_SELECT | CENTRONICS_NO_RESET, CENTRONICS_SELECT| CENTRONICS_NO_RESET);
-    via_set_input_ca1(0, 1);
+    via_set_input_ca1(machine, 0, 1);
 }
 
 MACHINE_START( oric )
 {
-	oric_common_init_machine();
+	oric_common_init_machine(machine);
 
 	oric_is_telestrat = 0;
 
@@ -1143,7 +1144,7 @@ MACHINE_START( oric )
 
 MACHINE_RESET( oric )
 {
-	int disc_interface_id = input_port_read(machine, "oric_floppy_interface") & 0x07;
+	int disc_interface_id = input_port_read(machine, "FLOPPY") & 0x07;
 
 	switch (disc_interface_id)
 	{
@@ -1157,7 +1158,7 @@ MACHINE_RESET( oric )
 
 			/* os rom */
 			oric_enable_memory(machine, 1, 3, TRUE, FALSE);
-			rom_ptr = memory_region(REGION_CPU1) + 0x010000;
+			rom_ptr = memory_region(machine, REGION_CPU1) + 0x010000;
 			memory_set_bankptr(1, rom_ptr);
 			memory_set_bankptr(2, rom_ptr+0x02000);
 			memory_set_bankptr(3, rom_ptr+0x03800);
@@ -1203,7 +1204,7 @@ MACHINE_RESET( oric )
 READ8_HANDLER ( oric_IO_r )
 {
 #if 0
-	switch (input_port_read_indexed(machine, 9) & 0x07)
+	switch (input_port_read(machine, "FLOPPY") & 0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
@@ -1242,7 +1243,7 @@ READ8_HANDLER ( oric_IO_r )
 WRITE8_HANDLER ( oric_IO_w )
 {
 #if 0
-	switch (input_port_read_indexed(machine, 9) & 0x07)
+	switch (input_port_read(machine, "FLOPPY") & 0x07)
 	{
 		default:
 		case ORIC_FLOPPY_INTERFACE_NONE:
@@ -1416,13 +1417,13 @@ static  READ8_HANDLER(telestrat_via2_in_b_func)
 	/* left joystick selected? */
 	if (telestrat_via2_port_b_data & (1<<6))
 	{
-		data &= input_port_read_indexed(machine, 10);
+		data &= input_port_read(machine, "JOY0");
 	}
 
 	/* right joystick selected? */
 	if (telestrat_via2_port_b_data & (1<<7))
 	{
-		data &= input_port_read_indexed(machine, 11);
+		data &= input_port_read(machine, "JOY1");
 	}
 
 	data |= telestrat_via2_port_b_data & ((1<<7) | (1<<6) | (1<<5));
@@ -1436,7 +1437,7 @@ static WRITE8_HANDLER(telestrat_via2_out_b_func)
 }
 
 
-static void	telestrat_via2_irq_func(int state)
+static void	telestrat_via2_irq_func(running_machine *machine, int state)
 {
     oric_irqs &=~(1<<2);
 
@@ -1447,7 +1448,7 @@ static void	telestrat_via2_irq_func(int state)
         oric_irqs |=(1<<2);
 	}
 
-    oric_refresh_ints(Machine);
+    oric_refresh_ints(machine);
 }
 static const struct via6522_interface telestrat_via2_interface=
 {
@@ -1483,7 +1484,7 @@ static void telestrat_acia_callback(int irq_state)
 
 MACHINE_START( telestrat )
 {
-	oric_common_init_machine();
+	oric_common_init_machine(machine);
 
 	oric_is_telestrat = 1;
 
@@ -1498,22 +1499,22 @@ MACHINE_START( telestrat )
 
 	/* initialise default cartridge */
 	telestrat_blocks[3].MemType = TELESTRAT_MEM_BLOCK_ROM;
-	telestrat_blocks[3].ptr = memory_region(REGION_CPU1)+0x010000;
+	telestrat_blocks[3].ptr = memory_region(machine, REGION_CPU1)+0x010000;
 
 	telestrat_blocks[4].MemType = TELESTRAT_MEM_BLOCK_RAM;
 	telestrat_blocks[4].ptr = (unsigned char *) auto_malloc(16384);
 
 	/* initialise default cartridge */
 	telestrat_blocks[5].MemType = TELESTRAT_MEM_BLOCK_ROM;
-	telestrat_blocks[5].ptr = memory_region(REGION_CPU1)+0x014000;
+	telestrat_blocks[5].ptr = memory_region(machine, REGION_CPU1)+0x014000;
 
 	/* initialise default cartridge */
 	telestrat_blocks[6].MemType = TELESTRAT_MEM_BLOCK_ROM;
-	telestrat_blocks[6].ptr = memory_region(REGION_CPU1)+0x018000;
+	telestrat_blocks[6].ptr = memory_region(machine, REGION_CPU1)+0x018000;
 
 	/* initialise default cartridge */
 	telestrat_blocks[7].MemType = TELESTRAT_MEM_BLOCK_ROM;
-	telestrat_blocks[7].ptr = memory_region(REGION_CPU1)+0x01c000;
+	telestrat_blocks[7].ptr = memory_region(machine, REGION_CPU1)+0x01c000;
 
 	telestrat_bank_selection = 7;
 	telestrat_refresh_mem(machine);

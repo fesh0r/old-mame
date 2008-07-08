@@ -24,12 +24,12 @@
 
 
 /* prototypes */
-static void inta_callback(int state);
-static void intb_callback(int state);
+static void inta_callback(running_machine *machine, int state);
+static void intb_callback(running_machine *machine, int state);
 
 static void read_key_if_possible(void);
-static void poll_keyboard(void);
-static void poll_mouse(void);
+static void poll_keyboard(running_machine *machine);
+static void poll_mouse(running_machine *machine);
 
 static void tms9901_interrupt_callback(int intreq, int ic);
 static int R9901_0(int offset);
@@ -210,9 +210,9 @@ MACHINE_START( geneve )
            determine which one to use. */
 	ti99_peb_init();
         ti99_floppy_controllers_init_all(machine);
-        ti99_ide_init();
-        ti99_rs232_init();
-	ti99_usbsm_init();
+        ti99_ide_init(machine);
+        ti99_rs232_init(machine);
+	ti99_usbsm_init(machine);
 	mm58274c_init(machine, 0, 1);
 	add_exit_callback(machine, machine_stop_geneve);
 }
@@ -224,9 +224,9 @@ MACHINE_RESET( geneve )
 	memset(page_lookup, 0, sizeof(page_lookup));
 
 	/* set up RAM pointers */
-	ROM_ptr = memory_region(REGION_CPU1) + offset_rom_geneve;
-	SRAM_ptr = memory_region(REGION_CPU1) + offset_sram_geneve;
-	DRAM_ptr = memory_region(REGION_CPU1) + offset_dram_geneve;
+	ROM_ptr = memory_region(machine, REGION_CPU1) + offset_rom_geneve;
+	SRAM_ptr = memory_region(machine, REGION_CPU1) + offset_sram_geneve;
+	DRAM_ptr = memory_region(machine, REGION_CPU1) + offset_dram_geneve;
 
 	/* Initialize GROMs */
 	memset(& GPL_port, 0, sizeof(GPL_port));
@@ -254,11 +254,11 @@ MACHINE_RESET( geneve )
 	KeyReset = 1;
 
 	/* read config */
-	has_speech = (input_port_read_indexed(machine, input_port_config) >> config_speech_bit) & config_speech_mask;
-	fdc_kind = (input_port_read_indexed(machine, input_port_config) >> config_fdc_bit) & config_fdc_mask;
-	has_ide = (input_port_read_indexed(machine, input_port_config) >> config_ide_bit) & config_ide_mask;
-	has_rs232 = (input_port_read_indexed(machine, input_port_config) >> config_rs232_bit) & config_rs232_mask;
-	has_usb_sm = (input_port_read_indexed(machine, input_port_config) >> config_usbsm_bit) & config_usbsm_mask;
+	has_speech = (input_port_read(machine, "CFG") >> config_speech_bit) & config_speech_mask;
+	fdc_kind = (input_port_read(machine, "CFG") >> config_fdc_bit) & config_fdc_mask;
+	has_ide = (input_port_read(machine, "CFG") >> config_ide_bit) & config_ide_mask;
+	has_rs232 = (input_port_read(machine, "CFG") >> config_rs232_bit) & config_rs232_mask;
+	has_usb_sm = (input_port_read(machine, "CFG") >> config_usbsm_bit) & config_usbsm_mask;
 
 	/* set up optional expansion hardware */
 	ti99_peb_reset(0, inta_callback, intb_callback);
@@ -267,24 +267,24 @@ MACHINE_RESET( geneve )
 	{
 		static const spchroms_interface speech_intf = { region_speech_rom };
 
-		spchroms_config(& speech_intf);
+		spchroms_config(machine, &speech_intf);
 	}
 
 	switch (fdc_kind)
 	{
 	case fdc_kind_TI:
-		ti99_fdc_reset();
+		ti99_fdc_reset(machine);
 		break;
 #if HAS_99CCFDC
 	case fdc_kind_CC:
-		ti99_ccfdc_reset();
+		ti99_ccfdc_reset(machine);
 		break;
 #endif
 	case fdc_kind_BwG:
-		ti99_bwg_reset();
+		ti99_bwg_reset(machine);
 		break;
 	case fdc_kind_hfdc:
-		ti99_hfdc_reset();
+		ti99_hfdc_reset(machine);
 		break;
 	case fdc_kind_none:
 		break;
@@ -292,12 +292,12 @@ MACHINE_RESET( geneve )
 
 	if (has_ide)
 	{
-		ti99_ide_reset(TRUE);
-		ti99_ide_load_memcard();
+		ti99_ide_reset(machine, TRUE);
+		ti99_ide_load_memcard(machine);
 	}
 
 	if (has_rs232)
-		ti99_rs232_reset();
+		ti99_rs232_reset(machine);
 
 	if (has_usb_sm)
 		ti99_usbsm_reset(machine, TRUE);
@@ -307,9 +307,6 @@ static void machine_stop_geneve(running_machine *machine)
 {
 	if (has_ide)
 		ti99_ide_save_memcard();
-
-	if (has_rs232)
-		ti99_rs232_cleanup();
 
 	tms9901_cleanup(0);
 }
@@ -334,24 +331,24 @@ INTERRUPT_GEN( geneve_hblank_interrupt )
 	if (++line_count == 262)
 	{
 		line_count = 0;
-		poll_keyboard();
-		poll_mouse();
+		poll_keyboard(machine);
+		poll_mouse(machine);
 	}
 }
 
 /*
 	inta is connected to both tms9901 IRQ1 line and to tms9995 INT4/EC line.
 */
-static void inta_callback(int state)
+static void inta_callback(running_machine *machine, int state)
 {
 	tms9901_set_single_int(0, 1, state);
-	cpunum_set_input_line(Machine, 0, 1, state ? ASSERT_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, 1, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /*
 	intb is connected to tms9901 IRQ12 line.
 */
-static void intb_callback(int state)
+static void intb_callback(running_machine *machine, int state)
 {
 	tms9901_set_single_int(0, 12, state);
 }
@@ -1033,14 +1030,14 @@ INLINE void post_in_KeyQueue(int keycode)
 	KeyQueueLen++;
 }
 
-static void poll_keyboard(void)
+static void poll_keyboard(running_machine *machine)
 {
-	running_machine *machine = Machine;
 	UINT32 keystate;
 	UINT32 key_transitions;
 	int i, j;
 	int keycode;
 	int pressed;
+	char port1[6], port2[6];
 
 	static const UINT8 keyboard_mf1_code[0xe] =
 	{
@@ -1077,8 +1074,10 @@ static void poll_keyboard(void)
 	/* Poll keyboard */
 	for (i=0; (i<4) && (KeyQueueLen <= (KeyQueueSize-MaxKeyMessageLen)); i++)
 	{
-		keystate = input_port_read_indexed(machine, input_port_keyboard_geneve + i*2)
-					| (input_port_read_indexed(machine, input_port_keyboard_geneve + i*2 + 1) << 16);
+		sprintf(port1, "KEY%d", 2*i);
+		sprintf(port2, "KEY%d", 2*i+1);
+
+		keystate = input_port_read(machine, port1) | (input_port_read(machine, port2) << 16);
 		key_transitions = keystate ^ KeyStateSave[i];
 		if (key_transitions)
 		{
@@ -1270,15 +1269,15 @@ static void poll_keyboard(void)
 	}
 }
 
-static void poll_mouse(void)
+static void poll_mouse(running_machine *machine)
 {
 	static int last_mx = 0, last_my = 0;
 	int new_mx, new_my;
 	int delta_x, delta_y, buttons;
 
-	buttons = input_port_read_indexed(Machine, input_port_mouse_buttons_geneve);
-	new_mx = input_port_read_indexed(Machine, input_port_mouse_deltax_geneve);
-	new_my = input_port_read_indexed(Machine, input_port_mouse_deltay_geneve);
+	buttons = input_port_read(machine, "MOUSE0");
+	new_mx = input_port_read(machine, "MOUSEX");
+	new_my = input_port_read(machine, "MOUSEY");
 
 	/* compute x delta */
 	delta_x = new_mx - last_mx;
@@ -1359,7 +1358,7 @@ static int R9901_0(int offset)
 {
 	int answer;
 
-	answer = input_port_read_indexed(Machine, input_port_joysticks_geneve) >> (JoySel * 8);
+	answer = input_port_read(Machine, "JOY") >> (JoySel * 8);
 
 	return (answer);
 }
@@ -1380,7 +1379,7 @@ static int R9901_1(int offset)
 {
 	int answer;
 
-	answer = (input_port_read_indexed(Machine, input_port_mouse_buttons_geneve) & 4) ^ 4;
+	answer = (input_port_read(Machine, "MOUSE0") & 4) ^ 4;
 
 	return answer;
 }
@@ -1401,7 +1400,7 @@ static int R9901_3(int offset)
 {
 	int answer = 0;
 
-	if (! (input_port_read_indexed(Machine, input_port_mouse_buttons_geneve) & 4))
+	if (! (input_port_read(Machine, "MOUSE0") & 4))
 		answer |= 0x10;
 
 	return answer;
@@ -1447,7 +1446,7 @@ static void W9901_KeyboardReset(int offset, int data)
 		KeyAutoRepeatKey = 0;
 	}
 	/*else
-		poll_keyboard();*/
+		poll_keyboard(Machine);*/
 }
 
 /*

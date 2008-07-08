@@ -244,6 +244,7 @@ struct _play_options
 	const char *state;			// OPTION_STATE
 	const char *wavwrite;		// OPTION_WAVWRITE
 	const char *mngwrite;		// OPTION_MNGWRITE
+	const char *aviwrite;		// OPTION_AVIWRITE
 };
 
 /***************************************************************************
@@ -302,6 +303,7 @@ static void             MamePlayRecordGame(void);
 static void             MamePlayBackGame(void);
 static void             MamePlayRecordWave(void);
 static void             MamePlayRecordMNG(void);
+static void             MamePlayRecordAVI(void);
 static void				MameLoadState(void);
 static void             MamePlayGameWithOptions(int nGame, const play_options *playopts);
 static BOOL             GameCheck(void);
@@ -938,6 +940,8 @@ static DWORD RunMAME(int nGameIndex, const play_options *playopts)
 			options_set_string(mame_opts, OPTION_WAVWRITE, playopts->wavwrite, OPTION_PRIORITY_CMDLINE);
 		if (playopts->mngwrite != NULL)
 			options_set_string(mame_opts, OPTION_MNGWRITE, playopts->mngwrite, OPTION_PRIORITY_CMDLINE);
+		if (playopts->aviwrite != NULL)
+			options_set_string(mame_opts, OPTION_AVIWRITE, playopts->aviwrite, OPTION_PRIORITY_CMDLINE);
 	}
 
 	// Mame will parse all the needed .ini files.
@@ -4023,6 +4027,10 @@ static BOOL MameCommand(HWND hwnd,int id, HWND hwndCtl, UINT codeNotify)
 		MamePlayRecordMNG();
 		return TRUE;
 
+	case ID_FILE_PLAY_RECORD_AVI:
+		MamePlayRecordAVI();
+		return TRUE;
+
 	case ID_FILE_LOADSTATE :
 		MameLoadState();
 		return TRUE;
@@ -5303,6 +5311,7 @@ BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int filetype)
 	TCHAR* t_filename;
 	TCHAR* t_statedir = 0;
 	TCHAR* t_artdir = 0;
+	TCHAR* t_snapdir = 0;
 	TCHAR t_filename_buffer[MAX_PATH]  = {0, };
 	char *utf8_filename;
 
@@ -5331,6 +5340,9 @@ BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int filetype)
 	case FILETYPE_MNG_FILES :
 		of.lpstrFilter   = TEXT("videos (*.mng)\0*.mng;\0All files (*.*)\0*.*\0");
 		break;
+	case FILETYPE_AVI_FILES :
+		of.lpstrFilter   = TEXT("videos (*.avi)\0*.avi;\0All files (*.*)\0*.*\0");
+		break;
 	case FILETYPE_EFFECT_FILES :
 		of.lpstrFilter   = TEXT("effects (*.png)\0*.png;\0All files (*.*)\0*.*\0");
 		break;
@@ -5350,18 +5362,24 @@ BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int filetype)
 
 		of.lpstrInitialDir = t_statedir;
 	}
-	else
+	else if (filetype == FILETYPE_EFFECT_FILES)
 	{
-		if (filetype == FILETYPE_EFFECT_FILES)
-		{
-			t_artdir = tstring_from_utf8(GetArtDir());
-			if( !t_artdir )
-				return FALSE;
+		t_artdir = tstring_from_utf8(GetArtDir());
+		if( !t_artdir )
+			return FALSE;
 
-			of.lpstrInitialDir = t_artdir;
-		}
-		else
-			of.lpstrInitialDir = last_directory;
+		of.lpstrInitialDir = t_artdir;
+	}
+	else if (filetype == FILETYPE_MNG_FILES || filetype == FILETYPE_AVI_FILES)
+	{
+		t_snapdir = tstring_from_utf8(GetImgDir());
+		if( !t_snapdir )
+			return FALSE;
+
+		of.lpstrInitialDir = t_snapdir;
+	}
+	else {
+		of.lpstrInitialDir = last_directory;
 	}
 	of.lpstrTitle        = NULL;
 	of.Flags             = OFN_EXPLORER | OFN_NOCHANGEDIR | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
@@ -5380,6 +5398,9 @@ BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int filetype)
 		break;
 	case FILETYPE_MNG_FILES :
 		of.lpstrDefExt       = TEXT("mng");
+		break;
+	case FILETYPE_AVI_FILES :
+		of.lpstrDefExt       = TEXT("avi");
 		break;
 	case FILETYPE_EFFECT_FILES :
 		of.lpstrDefExt       = TEXT("png");
@@ -5400,6 +5421,8 @@ BOOL CommonFileDialog(common_file_dialog_proc cfd, char *filename, int filetype)
 		free(t_artdir);
 	if( t_statedir )
 		free(t_statedir);
+	if( t_snapdir )
+		free(t_snapdir);
 
 	utf8_filename = utf8_from_tstring(t_filename_buffer);
 	if (utf8_filename != NULL)
@@ -5778,18 +5801,62 @@ static void MamePlayRecordMNG()
 {
 	int  nGame;
 	char filename[MAX_PATH] = { 0, };
-	play_options playopts;
 
 	nGame = Picker_GetSelectedItem(hwndList);
 	strcpy(filename, drivers[nGame]->name);
 
 	if (CommonFileDialog(GetSaveFileName, filename, FILETYPE_MNG_FILES))
 	{
+		char drive[_MAX_DRIVE];
+		char dir[_MAX_DIR];
+		char fname[_MAX_FNAME];
+		char ext[_MAX_EXT];
+		char path[MAX_PATH];
+		play_options playopts;
+
+		_splitpath(filename, drive, dir, fname, ext);
+
+		sprintf(path,"%s%s",drive,dir);
+		if (path[strlen(path)-1] == '\\')
+			path[strlen(path)-1] = 0; // take off trailing back slash
+
 		memset(&playopts, 0, sizeof(playopts));
-		playopts.mngwrite = filename;
+		strcat(fname, ".mng");
+		playopts.mngwrite = fname;
 		MamePlayGameWithOptions(nGame, &playopts);
 	}	
 }
+
+static void MamePlayRecordAVI()
+{
+	int  nGame;
+	char filename[MAX_PATH] = { 0, };
+
+	nGame = Picker_GetSelectedItem(hwndList);
+	strcpy(filename, drivers[nGame]->name);
+
+	if (CommonFileDialog(GetSaveFileName, filename, FILETYPE_AVI_FILES))
+	{
+		char drive[_MAX_DRIVE];
+		char dir[_MAX_DIR];
+		char fname[_MAX_FNAME];
+		char ext[_MAX_EXT];
+		char path[MAX_PATH];
+		play_options playopts;
+
+		_splitpath(filename, drive, dir, fname, ext);
+
+		sprintf(path,"%s%s",drive,dir);
+		if (path[strlen(path)-1] == '\\')
+			path[strlen(path)-1] = 0; // take off trailing back slash
+
+		memset(&playopts, 0, sizeof(playopts));
+		strcat(fname, ".avi");
+		playopts.aviwrite = fname;
+		MamePlayGameWithOptions(nGame, &playopts);
+	}	
+}
+
 
 static void MamePlayGameWithOptions(int nGame, const play_options *playopts)
 {

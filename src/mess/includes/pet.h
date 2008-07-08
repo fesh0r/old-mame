@@ -12,23 +12,18 @@
 /*----------- defined in video/pet.c -----------*/
 
 /* call to init videodriver */
-void pet_vh_init (void);
-void pet80_vh_init (void);
-void superpet_vh_init (void);
+void pet_vh_init (running_machine *machine);
+void pet80_vh_init (running_machine *machine);
+void superpet_vh_init (running_machine *machine);
 VIDEO_UPDATE( pet );
 MC6845_UPDATE_ROW( pet40_update_row );
 MC6845_UPDATE_ROW( pet80_update_row );
 MC6845_ON_DE_CHANGED( pet_display_enable_changed );
 
-extern int pet_font;
-
 
 /*----------- defined in machine/pet.c -----------*/
 
-#define CBM8096_MEMORY (input_port_read_indexed(machine, 11)&8)
-#define M6809_SELECT (input_port_read_indexed(machine, 11)&4)
-#define IEEE8ON (input_port_read_indexed(machine, 11)&2)
-#define IEEE9ON (input_port_read_indexed(machine, 11)&1)
+extern int pet_font;
 
 extern UINT8 *pet_memory;
 extern UINT8 *pet_videoram;

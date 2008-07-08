@@ -99,7 +99,6 @@ Some bugs left :
 #include "devices/printer.h"
 #include "devices/cassette.h"
 #include "formats/tzx_cas.h"
-#include "deprecat.h"
 
 
 #ifdef AMSTRAD_VIDEO_EVENT_LIST
@@ -144,9 +143,6 @@ int amstrad_plus_dma_1_addr;
 int amstrad_plus_dma_2_addr;
 int amstrad_plus_dma_prescaler[3];  // DMA channel prescaler
 static int amstrad_plus_dma_clear;  // set if DMA interrupts are to be cleared automatically
-
-extern int amstrad_scanline;
-extern int prev_reg;
 
 static void amstrad_plus_seqcheck(int data);
 static WRITE8_HANDLER( amstrad_plus_asic_4000_w );
@@ -202,16 +198,15 @@ static int amstrad_GateArray_PenSelected = 0;
 static int amstrad_GateArray_ModeAndRomConfiguration = 0;
 /* Ram configuration */
 static int amstrad_GateArray_RamConfiguration = 0;
-/* The gate array counts CRTC HSYNC pulses. (It has a internal 6-bit counter). */
-extern int amstrad_CRTC_HS_Counter;
+
 /*-------------
   - MULTIFACE -
   -------------*/
-static void multiface_rethink_memory(void);
+static void multiface_rethink_memory(running_machine *machine);
 static WRITE8_HANDLER(multiface_io_write);
 static void multiface_init(void);
 static void multiface_stop(running_machine *machine);
-static int multiface_hardware_enabled(void);
+static int multiface_hardware_enabled(running_machine *machine);
 static void multiface_reset(void);
 
 static const device_config *printer_device(running_machine *machine)
@@ -467,7 +462,7 @@ unsigned char *amstrad_plus_asic_ram;
 /*-----------------
   - Set Lower Rom -
   -----------------*/
-void amstrad_setLowerRom(void)
+void amstrad_setLowerRom(running_machine *machine)
 {
 	unsigned char *BankBase;
 	int banknum;
@@ -475,7 +470,7 @@ void amstrad_setLowerRom(void)
 	if(amstrad_system_type == SYSTEM_CPC)
 	{
 		if ((amstrad_GateArray_ModeAndRomConfiguration & (1<<2)) == 0) {
-			BankBase = &memory_region(REGION_CPU1)[0x010000];
+			BankBase = &memory_region(machine, REGION_CPU1)[0x010000];
 		} else 
 		{
 			if(aleste_mode & 0x04)
@@ -511,7 +506,7 @@ void amstrad_setLowerRom(void)
 		if(amstrad_plus_lower_enabled == 1)
 		{  // ASIC secondary lower ROM selection (bit 5: 1 = enabled)
 //          logerror("L-ROM: Lower ROM enabled, cart bank %i\n",amstrad_plus_lower);
-			BankBase = &memory_region(REGION_CPU1)[0x4000 * amstrad_plus_lower];
+			BankBase = &memory_region(machine, REGION_CPU1)[0x4000 * amstrad_plus_lower];
 			if(BankBase != NULL)
 			{
 				switch(amstrad_plus_lower_addr)
@@ -544,7 +539,7 @@ void amstrad_setLowerRom(void)
 /*-----------------
   - Set Upper Rom -
   -----------------*/
-void amstrad_setUpperRom(void)
+void amstrad_setUpperRom(running_machine *machine)
 {
 	unsigned char *BankBase;
 /* b3 : "1" Upper rom area disable or "0" Upper rom area enable */
@@ -567,7 +562,7 @@ void amstrad_setUpperRom(void)
 	}
 }
 
-static void AmstradCPC_SetLowerRom(int Data)
+static void AmstradCPC_SetLowerRom(running_machine *machine, int Data)
 {
 	if(amstrad_plus_asic_enabled != 0)
 	{
@@ -575,18 +570,18 @@ static void AmstradCPC_SetLowerRom(int Data)
 		amstrad_plus_lower_addr = (Data & 0x18) >> 3;  // address of lower ROM area
 		if(amstrad_plus_lower_addr == 3)
 		{
-			memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, amstrad_plus_asic_4000_r);
-			memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, amstrad_plus_asic_6000_r);
-			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, amstrad_plus_asic_4000_w);
-			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, amstrad_plus_asic_6000_w);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, amstrad_plus_asic_4000_r);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, amstrad_plus_asic_6000_r);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, amstrad_plus_asic_4000_w);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, amstrad_plus_asic_6000_w);
 			amstrad_plus_asic_regpage = 1;  // enable ASIC registers
 		}
 		else
 		{
-			memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK3);
-			memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK4);
-			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK11);
-			memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK12);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK3);
+			memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK4);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0, SMH_BANK11);
+			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x6000, 0x7fff, 0, 0, SMH_BANK12);
 			amstrad_plus_asic_regpage = 0;  // disable ASIC registers
 		}
 //      logerror("SYS: Secondary ROM select (lower ROM) - data = %02x - cart bank %i, addr %i\n",Data,amstrad_plus_lower,amstrad_plus_lower_addr);
@@ -596,14 +591,14 @@ static void AmstradCPC_SetLowerRom(int Data)
 		amstrad_plus_lower = 0;
 		amstrad_plus_lower_addr = 0;
 	}
-//  amstrad_setLowerRom();
+//  amstrad_setLowerRom(machine);
 }
 
-void AmstradCPC_SetUpperRom(int Data)
+void AmstradCPC_SetUpperRom(running_machine *machine, int Data)
 {
 	Amstrad_UpperRom = Amstrad_ROM_Table[Data & 0xFF];
 //  logerror("H-ROM: set to ROM bank %i\n",Data);
-	amstrad_setUpperRom();
+	amstrad_setUpperRom(machine);
 }
 
 /* ASIC RAM */
@@ -869,12 +864,12 @@ static READ8_HANDLER( amstrad_plus_asic_6000_r )
 /*------------------
   - Rethink Memory -
   ------------------*/
-void amstrad_rethinkMemory(void)
+void amstrad_rethinkMemory(running_machine *machine)
 {
 	/* the following is used for banked memory read/writes and for setting up
      * opcode and opcode argument reads */
 /* bank 0 - 0x0000..0x03fff */
-    amstrad_setLowerRom();
+	amstrad_setLowerRom(machine);
 /* bank 1 - 0x04000..0x07fff */
 	if(amstrad_system_type == SYSTEM_CPC || amstrad_plus_asic_enabled == 0)
 	{
@@ -896,9 +891,9 @@ void amstrad_rethinkMemory(void)
 		}
 	}
 	else
-		amstrad_setLowerRom();
+		amstrad_setLowerRom(machine);
 /* bank 3 - 0x0c000..0x0ffff */
-    amstrad_setUpperRom();
+	amstrad_setUpperRom(machine);
 /* other banks */
 		if(aleste_mode & 0x04)
 		{
@@ -924,8 +919,8 @@ void amstrad_rethinkMemory(void)
 		}
 
 /* multiface hardware enabled? */
-		if (multiface_hardware_enabled()) {
-			multiface_rethink_memory();
+		if (multiface_hardware_enabled(machine)) {
+			multiface_rethink_memory(machine);
 		}
 }
 /* simplified ram configuration - e.g. only correct for 128k machines
@@ -944,7 +939,7 @@ Dk'tronics 256K Silicon Disk 1 1 1 b1 b0 b2 -  -
 The CPC6128 has a 64k ram expansion built-in, giving 128K of RAM in this system.
 In the CPC464,CPC664 and KC compact if a ram expansion is not present, then writing to this port has no effect and the ram will be in the same arrangement as if configuration 0 had been selected.
 */
-static void AmstradCPC_GA_SetRamConfiguration(void)
+static void AmstradCPC_GA_SetRamConfiguration(running_machine *machine)
 {
 	int ConfigurationIndex = amstrad_GateArray_RamConfiguration & 0x07;
 	int BankIndex,i;
@@ -959,7 +954,7 @@ static void AmstradCPC_GA_SetRamConfiguration(void)
     }
   } else {/* Need to add the ram expansion configuration here ! */
   }
-  amstrad_rethinkMemory();
+	amstrad_rethinkMemory(machine);
 }
 /* -------------------
    -  the Gate Array -
@@ -1057,7 +1052,7 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
 		{
 			if((dataToGateArray & 0x20) != 0)
 			{
-				AmstradCPC_SetLowerRom(dataToGateArray);
+				AmstradCPC_SetLowerRom(machine, dataToGateArray);
 				break;
 			}
 			else
@@ -1081,8 +1076,8 @@ Bit 4 controls the interrupt generation. It can be used to delay interrupts.*/
   			}
 /* b3b2 != 0 then change the state of upper or lower rom area and rethink memory */
         if (((amstrad_GateArray_ModeAndRomConfiguration & 0x0C)^(Previous_GateArray_ModeAndRomConfiguration & 0x0C)) != 0) {
-          amstrad_setLowerRom();
-          amstrad_setUpperRom();
+          amstrad_setLowerRom(machine);
+          amstrad_setUpperRom(machine);
         }
 /* b1b0 mode change? */
   			if (((amstrad_GateArray_ModeAndRomConfiguration & 0x03)^(Previous_GateArray_ModeAndRomConfiguration & 0x03)) != 0) {
@@ -1173,11 +1168,11 @@ static void aleste_msx_mapper(running_machine *machine, int offset, int data)
 }
 
 /* used for loading snapshot only ! */
-void AmstradCPC_PALWrite(int data)
+void AmstradCPC_PALWrite(running_machine *machine, int data)
 {
 	if ((data & 0x0c0)==0x0c0)	{
 		amstrad_GateArray_RamConfiguration = data;
-		AmstradCPC_GA_SetRamConfiguration();
+		AmstradCPC_GA_SetRamConfiguration(machine);
 	}
 }
 
@@ -1355,7 +1350,7 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 		if ((offset & (1<<14)) != 0) 
 	   			amstrad_GateArray_write(machine, data);
 		/* if b15 = 0 : RAM Configuration Write Selected*/
-		  AmstradCPC_GA_SetRamConfiguration();
+			AmstradCPC_GA_SetRamConfiguration(machine);
 		}
 }
 /*The Gate-Array and CRTC can't be selected simultaneously, which would otherwise cause potential display corruption.*/
@@ -1388,7 +1383,7 @@ static WRITE8_HANDLER ( AmstradCPC_WritePortHandler )
 	{
 		if (previous_amstrad_UpperRom_data != (data & 0xff))
 		{
-			AmstradCPC_SetUpperRom(data);
+			AmstradCPC_SetUpperRom(machine, data);
 		}
 		previous_amstrad_UpperRom_data = (data & 0xff);
 	}
@@ -1606,11 +1601,11 @@ void multiface_reset(void)
 		multiface_flags |= MULTIFACE_VISIBLE;
 }
 
-int multiface_hardware_enabled(void)
+int multiface_hardware_enabled(running_machine *machine)
 {
 		if (multiface_ram!=NULL)
 		{
-				if ((input_port_read(Machine, "multiface") & 0x01)!=0)
+				if ((input_port_read(machine, "multiface") & 0x01)!=0)
 				{
 						return 1;
 				}
@@ -1623,7 +1618,7 @@ int multiface_hardware_enabled(void)
 void multiface_stop(running_machine *machine)
 {
 	/* multiface hardware enabled? */
-		if (!multiface_hardware_enabled())
+	if (!multiface_hardware_enabled(machine))
 		return;
 
 	/* if stop button not already pressed, do press action */
@@ -1641,7 +1636,7 @@ void multiface_stop(running_machine *machine)
 		amstrad_GateArray_ModeAndRomConfiguration &=~0x04;
 
 		/* page rom into memory */
-		multiface_rethink_memory();
+		multiface_rethink_memory(machine);
 
 		/* pulse the nmi line */
 		cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, PULSE_LINE);
@@ -1652,15 +1647,15 @@ void multiface_stop(running_machine *machine)
 
 }
 
-static void multiface_rethink_memory(void)
+static void multiface_rethink_memory(running_machine *machine)
 {
-		unsigned char *multiface_rom;
+	unsigned char *multiface_rom;
 
 	/* multiface hardware enabled? */
-		if (!multiface_hardware_enabled())
+	if (!multiface_hardware_enabled(machine))
 		return;
 
-		multiface_rom = &memory_region(REGION_CPU1)[0x01C000];
+	multiface_rom = &memory_region(machine, REGION_CPU1)[0x01C000];
 
 	if (
 		((multiface_flags & MULTIFACE_RAM_ROM_ENABLED)!=0) &&
@@ -1680,7 +1675,7 @@ static void multiface_rethink_memory(void)
 static WRITE8_HANDLER(multiface_io_write)
 {
 	/* multiface hardware enabled? */
-		if (!multiface_hardware_enabled())
+		if (!multiface_hardware_enabled(machine))
 		return;
 
 		/* visible? */
@@ -1689,13 +1684,13 @@ static WRITE8_HANDLER(multiface_io_write)
 		if (offset==0x0fee8)
 		{
 			multiface_flags |= MULTIFACE_RAM_ROM_ENABLED;
-			amstrad_rethinkMemory();
+			amstrad_rethinkMemory(machine);
 		}
 
 		if (offset==0x0feea)
 		{
 			multiface_flags &= ~MULTIFACE_RAM_ROM_ENABLED;
-			amstrad_rethinkMemory();
+			amstrad_rethinkMemory(machine);
 		}
 	}
 
@@ -2044,7 +2039,7 @@ static void amstrad_common_init(running_machine *machine)
 
 	if(amstrad_system_type != SYSTEM_GX4000)
 	{
-		nec765_init(&amstrad_nec765_interface,NEC765A/*?*/,NEC765_RDY_PIN_CONNECTED);
+		nec765_init(machine, &amstrad_nec765_interface,NEC765A/*?*/,NEC765_RDY_PIN_CONNECTED);
 		floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_SS_40);
 		floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1),  FLOPPY_DRIVE_SS_40);
 	}
@@ -2080,18 +2075,20 @@ The Gate-Array fetches two bytes for each address*/
 static MACHINE_RESET( amstrad )
 {
 	int i;
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	amstrad_system_type = SYSTEM_CPC;
 
 	for (i=0; i<256; i++)
 	{
-		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[0x014000];
+		Amstrad_ROM_Table[i] = &rom[0x014000];
 	}
 
-	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0x018000];
+	Amstrad_ROM_Table[7] = &rom[0x018000];
 	amstrad_common_init(machine);
 	amstrad_reset_machine(machine);
-
+	amstrad_init_palette(machine);
+	
 	multiface_init();
 
 }
@@ -2099,18 +2096,19 @@ static MACHINE_RESET( amstrad )
 static MACHINE_RESET( plus )
 {
 	int i;
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	amstrad_system_type = SYSTEM_PLUS;
 
 	for (i=0; i<128; i++)  // fill ROM table
 	{
-		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[0x4000];  // BASIC in system cart
+		Amstrad_ROM_Table[i] = &rom[0x4000];  // BASIC in system cart
 	}
 	for(i=128;i<160;i++)
 	{
-		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[(i-128)*0x4000];
+		Amstrad_ROM_Table[i] = &rom[(i-128)*0x4000];
 	}
-	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0xc000];  // AMSDOS in system cart
+	Amstrad_ROM_Table[7] = &rom[0xc000];  // AMSDOS in system cart
 
 	amstrad_plus_lower = 0;  // cart bank 0
 	amstrad_plus_lower_addr = 0;  // at 0x0000, reg page disabled by default
@@ -2135,31 +2133,32 @@ static MACHINE_RESET( plus )
 	amstrad_common_init(machine);
 	amstrad_reset_machine(machine);
 	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
-	AmstradCPC_GA_SetRamConfiguration();
+	AmstradCPC_GA_SetRamConfiguration(machine);
 	amstrad_plus_setsplitline(0,0);
 	//  multiface_init();
 }
 
 static MACHINE_START( plus )
 {
-	amstrad_plus_asic_ram = memory_region(REGION_USER1);  // 16kB RAM for ASIC, memory-mapped registers.
+	amstrad_plus_asic_ram = memory_region(machine, REGION_USER1);  // 16kB RAM for ASIC, memory-mapped registers.
 }
 
 static MACHINE_RESET( gx4000 )
 {
 	int i;
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	amstrad_system_type = SYSTEM_GX4000;
 
 	for (i=0; i<128; i++)  // fill ROM table
 	{
-		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[0x4000];
+		Amstrad_ROM_Table[i] = &rom[0x4000];
 	}
 	for(i=128;i<160;i++)
 	{
-		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[(i-128)*0x4000];
+		Amstrad_ROM_Table[i] = &rom[(i-128)*0x4000];
 	}
-	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0xc000];
+	Amstrad_ROM_Table[7] = &rom[0xc000];
 
 	amstrad_plus_lower = 0;  // cart bank 0
 	amstrad_plus_lower_addr = 0;  // at 0x0000, reg page disabled by default
@@ -2184,7 +2183,7 @@ static MACHINE_RESET( gx4000 )
 	amstrad_common_init(machine);
 	amstrad_reset_machine(machine);
 	amstrad_plus_asic_ram[0x2805] = 0x01;  // interrupt vector is undefined at startup, except that bit 0 is always 1.
-	AmstradCPC_GA_SetRamConfiguration();
+	AmstradCPC_GA_SetRamConfiguration(machine);
 	amstrad_plus_setsplitline(0,0);
 	//  multiface_init();
 }
@@ -2192,12 +2191,13 @@ static MACHINE_RESET( gx4000 )
 static MACHINE_RESET( kccomp )
 {
 	int i;
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	amstrad_system_type = SYSTEM_CPC;
 
 	for (i=0; i<256; i++)
 	{
-		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[0x014000];
+		Amstrad_ROM_Table[i] = &rom[0x014000];
 	}
 
 	amstrad_common_init(machine);
@@ -2214,26 +2214,27 @@ static MACHINE_RESET( kccomp )
 
 static DRIVER_INIT( aleste )
 {
-	mc146818_init(MC146818_IGNORE_CENTURY);
+	mc146818_init(machine, MC146818_IGNORE_CENTURY);
 }
 
 static MACHINE_RESET( aleste )
 {
 	int i;
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 
 	amstrad_system_type = SYSTEM_CPC;
 
 	for (i=0; i<256; i++)
 	{
-		Amstrad_ROM_Table[i] = &memory_region(REGION_CPU1)[0x014000];
+		Amstrad_ROM_Table[i] = &rom[0x014000];
 	}
 
-	Amstrad_ROM_Table[3] = &memory_region(REGION_CPU1)[0x01c000];  // MSX-DOS / BIOS
-	Amstrad_ROM_Table[7] = &memory_region(REGION_CPU1)[0x018000];  // AMSDOS
+	Amstrad_ROM_Table[3] = &rom[0x01c000];  // MSX-DOS / BIOS
+	Amstrad_ROM_Table[7] = &rom[0x018000];  // AMSDOS
 	amstrad_common_init(machine);
 	amstrad_reset_machine(machine);
 
-	nec765_init(&aleste_8272_interface,NEC765A,NEC765_RDY_PIN_CONNECTED);
+	nec765_init(machine, &aleste_8272_interface,NEC765A,NEC765_RDY_PIN_CONNECTED);
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 0),  FLOPPY_DRIVE_DS_80);
 	floppy_drive_set_geometry(image_from_devtype_and_index(IO_FLOPPY, 1),  FLOPPY_DRIVE_DS_80);
 }
@@ -2330,8 +2331,7 @@ static INPUT_PORTS_START( amstrad_keyboard )
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Enter")                 PORT_CODE(KEYCODE_ENTER)      PORT_CHAR(13)
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("]")                     PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHAR(']') PORT_CHAR('}')
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Keypad 4")              PORT_CODE(KEYCODE_4_PAD)      PORT_CHAR(UCHAR_MAMEKEY(4_PAD))
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Left Shift")            PORT_CODE(KEYCODE_LSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
-	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Right Shift")           PORT_CODE(KEYCODE_RSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Shift")                 PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("\\")                    PORT_CODE(KEYCODE_RCONTROL)   PORT_CHAR('\\') PORT_CHAR('`')
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Ctrl")                  PORT_CODE(KEYCODE_RALT)       PORT_CHAR(UCHAR_SHIFT_2)
 
@@ -2927,7 +2927,7 @@ static MACHINE_DRIVER_START( amstrad )
 	/* Amstrad Monitor Visible AREA : 768x272 */
 	MDRV_SCREEN_VISIBLE_AREA(0, ((AMSTRAD_SCREEN_WIDTH-32) - 1), 0, ((AMSTRAD_SCREEN_HEIGHT-40) - 1))
 	MDRV_PALETTE_LENGTH(32)
-	MDRV_PALETTE_INIT(amstrad_cpc)
+//	MDRV_PALETTE_INIT(amstrad_cpc)
 
 	MDRV_VIDEO_START(amstrad)
 	MDRV_VIDEO_UPDATE(amstrad)
@@ -3178,26 +3178,26 @@ static void aleste_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 }
 
 
-SYSTEM_CONFIG_START( cpc6128 )
+static SYSTEM_CONFIG_START( cpc6128 )
 	CONFIG_RAM_DEFAULT(128 * 1024)
 	CONFIG_DEVICE(cpc6128_floppy_getinfo)
 	CONFIG_DEVICE(cpc6128_cassette_getinfo)
 SYSTEM_CONFIG_END
 
 
-SYSTEM_CONFIG_START( cpcplus )
+static SYSTEM_CONFIG_START( cpcplus )
 	CONFIG_IMPORT_FROM(cpc6128)
 	CONFIG_DEVICE(cpcplus_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
 
-SYSTEM_CONFIG_START( gx4000 )
+static SYSTEM_CONFIG_START( gx4000 )
 	CONFIG_RAM_DEFAULT(64 * 1024)  // has 64k RAM
 	CONFIG_DEVICE(cpcplus_cartslot_getinfo)
 SYSTEM_CONFIG_END
 
 
-SYSTEM_CONFIG_START( aleste )
+static SYSTEM_CONFIG_START( aleste )
 	CONFIG_DEVICE(aleste_floppy_getinfo)
 	CONFIG_DEVICE(cpc6128_cassette_getinfo)
 	CONFIG_RAM_DEFAULT(2048 * 1024)  // has 2048k RAM

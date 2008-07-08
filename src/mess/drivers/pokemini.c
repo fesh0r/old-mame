@@ -8,9 +8,13 @@ The LCD is likely to be a SSD1828 LCD.
 ********************************************************************/
 
 #include "driver.h"
+#include "sound/speaker.h"
+#include "machine/i2cmem.h"
 #include "includes/pokemini.h"
 #include "cpu/minx/minx.h"
 #include "devices/cartslot.h"
+#include "pokemini.lh"
+
 
 static ADDRESS_MAP_START( pokemini_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x000000, 0x000FFF )  AM_ROM							/* bios */
@@ -19,8 +23,9 @@ static ADDRESS_MAP_START( pokemini_mem_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE( 0x002100, 0x1FFFFF )  AM_ROM							/* cartridge area */
 ADDRESS_MAP_END
 
+
 static INPUT_PORTS_START( pokemini )
-	PORT_START
+	PORT_START_TAG("INPUTS")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_BUTTON1) PORT_NAME("Button A")
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_BUTTON2) PORT_NAME("Button B")
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_BUTTON3) PORT_NAME("Button C")
@@ -31,18 +36,30 @@ static INPUT_PORTS_START( pokemini )
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_START1) PORT_NAME("Power")
 INPUT_PORTS_END
 
-static PALETTE_INIT( pokemini ) {
-	static const unsigned char pokemini_pal[4][3] = {
+
+static PALETTE_INIT( pokemini )
+{
+	static const unsigned char pokemini_pal[4][3] =
+	{
 		{ 0xFF, 0xFB, 0x87 },
 		{ 0xB1, 0xAE, 0x4E },
 		{ 0x84, 0x80, 0x4E },
 		{ 0x4E, 0x4E, 0x4E }
 	};
 	int i;
-	for( i = 0; i < 4; i++ ) {
+	for( i = 0; i < 4; i++ )
+	{
 		palette_set_color_rgb( machine, i, pokemini_pal[i][0], pokemini_pal[i][1], pokemini_pal[i][2] );
 	}
 }
+
+
+static const struct Speaker_interface speaker_interface =
+{
+	3,				/* optional: number of different levels */
+	NULL			/* optional: level lookup table */
+};
+
 
 static MACHINE_DRIVER_START( pokemini )
 	/* basic machine hardware */
@@ -53,6 +70,8 @@ static MACHINE_DRIVER_START( pokemini )
 
 	MDRV_MACHINE_RESET( pokemini )
 
+	MDRV_NVRAM_HANDLER( i2cmem_0 )
+
 	/* video hardware */
 	MDRV_VIDEO_START( generic_bitmapped )
 	MDRV_VIDEO_UPDATE( generic_bitmapped )
@@ -62,39 +81,49 @@ static MACHINE_DRIVER_START( pokemini )
 	MDRV_SCREEN_FORMAT(BITMAP_FORMAT_INDEXED16)
 	MDRV_SCREEN_SIZE( 96, 64 )
 	MDRV_SCREEN_VISIBLE_AREA( 0, 95, 0, 63 )
+	MDRV_DEFAULT_LAYOUT(layout_pokemini)
 	MDRV_PALETTE_LENGTH( 4 )
 	MDRV_PALETTE_INIT( pokemini )
-	MDRV_SCREEN_REFRESH_RATE( 30 )
-	MDRV_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
-	MDRV_CPU_VBLANK_INT("main", pokemini_int)
+	MDRV_SCREEN_REFRESH_RATE( 72 )
 
 	/* sound hardware */
-#if 0	
-	MDRV_SPEAKER_STANDARD_STEREO( "left", "right" )
-	MDRV_SOUND_ROUTE( 0, "left", 0.50 )
-	MDRV_SOUND_ROUTE( 0, "right", 0.50 )
-#endif
+	MDRV_SPEAKER_STANDARD_MONO("mono")
+	MDRV_SOUND_ADD(SPEAKER, 0)
+	MDRV_SOUND_CONFIG(speaker_interface)
+	MDRV_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 MACHINE_DRIVER_END
 
-static void pokemini_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info ) {
-	switch( state ) {
+
+static DRIVER_INIT( pokemini )
+{
+	i2cmem_init( 0, I2CMEM_SLAVE_ADDRESS, 0, 0x2000, NULL);
+}
+
+
+static void pokemini_cartslot_getinfo( const mess_device_class *devclass, UINT32 state, union devinfo *info )
+{
+	switch( state )
+	{
 	case MESS_DEVINFO_INT_COUNT:			info->i = 1; break;
 	case MESS_DEVINFO_INT_MUST_BE_LOADED:	info->i = 0; break;
 	case MESS_DEVINFO_PTR_START:			info->start = DEVICE_START_NAME(pokemini_cart); break;
 	case MESS_DEVINFO_PTR_LOAD:			info->load = DEVICE_IMAGE_LOAD_NAME(pokemini_cart); break;
-	case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy( info->s = device_temp_str(), "min"); break;
+	case MESS_DEVINFO_STR_FILE_EXTENSIONS:	strcpy( info->s = device_temp_str(), "min,bin"); break;
 	default:				cartslot_device_getinfo( devclass, state, info ); break;
 	}
 }
 
-SYSTEM_CONFIG_START( pokemini )
+
+static SYSTEM_CONFIG_START( pokemini )
 	CONFIG_DEVICE( pokemini_cartslot_getinfo )
 SYSTEM_CONFIG_END
+
 
 ROM_START( pokemini )
 	ROM_REGION( 0x200000, REGION_CPU1, 0 )
 	ROM_LOAD( "bios.min", 0x0000, 0x1000, CRC(aed3c14d) SHA1(daad4113713ed776fbd47727762bca81ba74915f) )
 ROM_END
 
-CONS( 1999, pokemini, 0, 0, pokemini, pokemini, 0, pokemini, "Nintendo", "Pokemon Mini", GAME_NOT_WORKING )
+
+CONS( 1999, pokemini, 0, 0, pokemini, pokemini, pokemini, pokemini, "Nintendo", "Pokemon Mini", GAME_NOT_WORKING )
 

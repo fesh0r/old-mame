@@ -168,12 +168,9 @@ cpu #0 (PC=0601023A): unmapped program memory dword write to 02000000 = 00000000
 #include "machine/scudsp.h"
 #include "sound/scsp.h"
 #include "devices/chd_cd.h"
+#include "devices/cartslot.h"
+#include "includes/stv.h"
 
-
-extern UINT32* stv_vdp2_regs;
-extern UINT32* stv_vdp2_vram;
-extern UINT32* stv_vdp2_cram;
-extern UINT32* stv_vdp1_vram;
 
 #define USE_SLAVE 1
 
@@ -198,17 +195,16 @@ extern UINT32* stv_vdp1_vram;
 static UINT8 *smpc_ram;
 //static void stv_dump_ram(void);
 
-static UINT32* stv_workram_l;
-static UINT32* stv_workram_h;
+UINT32* stv_workram_l;
+UINT32* stv_workram_h;
 //UINT32* stv_backupram;
-extern UINT32* stv_scu;
 static UINT16* scsp_regs;
 static UINT16* sound_ram;
 
 static int saturn_region;
 
 int stv_vblank,stv_hblank;
-static int stv_enable_slave_sh2;
+int stv_enable_slave_sh2;
 /*SMPC stuff*/
 static UINT8 NMI_reset;
 static void system_reset(void);
@@ -241,8 +237,8 @@ static void dma_indirect_lv1(running_machine *machine); /*DMA level 1 indirect t
 static void dma_indirect_lv2(running_machine *machine); /*DMA level 2 indirect transfer function*/
 
 
-static int minit_boost,sinit_boost;
-static double minit_boost_timeslice, sinit_boost_timeslice;
+int minit_boost,sinit_boost;
+attotime minit_boost_timeslice, sinit_boost_timeslice;
 
 static int scanline;
 
@@ -463,7 +459,7 @@ static void system_reset()
 	/*Order is surely wrong but whatever...*/
 }
 
-static void smpc_intbackhelper(void)
+static void smpc_intbackhelper(running_machine *machine)
 {
 	int pad;
 	char port[5];
@@ -475,7 +471,7 @@ static void smpc_intbackhelper(void)
 	}
 
 	sprintf(port, "JOY%d", intback_stage-1);	// intback_stage will be 2 or 3, 2 = player 1, 3 = player 2
-	pad = input_port_read(Machine, port);
+	pad = input_port_read(machine, port);
 
 //  if (LOG_SMPC) logerror("SMPC: providing PAD data for intback, pad %d\n", intback_stage-2);
 	smpc_ram[33] = 0xf1;	// no tap, direct connect
@@ -539,7 +535,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 		{
 			intback_stage = 2;
 		}
-		smpc_intbackhelper();
+		smpc_intbackhelper(machine);
 		cpunum_set_input_line_and_vector(machine, 0, 8, HOLD_LINE , 0x47);
 	}
 
@@ -697,7 +693,7 @@ static void stv_SMPC_w8 (running_machine *machine, int offset, UINT8 data)
 			//  if(!(stv_scu[40] & 0x0080)) /*System Manager(SMPC) irq*/ /* we can't check this .. breaks controls .. probably issues elsewhere? */
 				{
 //                  if(LOG_SMPC) logerror ("Interrupt: System Manager (SMPC) at scanline %04x, Vector 0x47 Level 0x08\n",scanline);
-					smpc_intbackhelper();
+					smpc_intbackhelper(machine);
 					cpunum_set_input_line_and_vector(machine, 0, 8, HOLD_LINE , 0x47);
 				}
 			break;
@@ -760,10 +756,10 @@ static READ32_HANDLER ( stv_SMPC_r32 )
 	/* registers are all byte accesses, convert here */
 	offset = offset << 2; // multiply offset by 4
 
-	if (!(mem_mask & 0xff000000))	{ byte = 0; readdata = stv_SMPC_r8(offset+byte) << 24; }
-	if (!(mem_mask & 0x00ff0000))	{ byte = 1; readdata = stv_SMPC_r8(offset+byte) << 16; }
-	if (!(mem_mask & 0x0000ff00))	{ byte = 2; readdata = stv_SMPC_r8(offset+byte) << 8;  }
-	if (!(mem_mask & 0x000000ff))	{ byte = 3; readdata = stv_SMPC_r8(offset+byte) << 0;  }
+	if (!(~mem_mask & 0xff000000))	{ byte = 0; readdata = stv_SMPC_r8(offset+byte) << 24; }
+	if (!(~mem_mask & 0x00ff0000))	{ byte = 1; readdata = stv_SMPC_r8(offset+byte) << 16; }
+	if (!(~mem_mask & 0x0000ff00))	{ byte = 2; readdata = stv_SMPC_r8(offset+byte) << 8;  }
+	if (!(~mem_mask & 0x000000ff))	{ byte = 3; readdata = stv_SMPC_r8(offset+byte) << 0;  }
 
 	return readdata;
 }
@@ -776,10 +772,10 @@ static WRITE32_HANDLER ( stv_SMPC_w32 )
 	/* registers are all byte accesses, convert here so we can use the data more easily later */
 	offset = offset << 2; // multiply offset by 4
 
-	if (!(mem_mask & 0xff000000))	{ byte = 0; writedata = data >> 24; }
-	if (!(mem_mask & 0x00ff0000))	{ byte = 1; writedata = data >> 16; }
-	if (!(mem_mask & 0x0000ff00))	{ byte = 2; writedata = data >> 8;  }
-	if (!(mem_mask & 0x000000ff))	{ byte = 3; writedata = data >> 0;  }
+	if (!(~mem_mask & 0xff000000))	{ byte = 0; writedata = data >> 24; }
+	if (!(~mem_mask & 0x00ff0000))	{ byte = 1; writedata = data >> 16; }
+	if (!(~mem_mask & 0x0000ff00))	{ byte = 2; writedata = data >> 8;  }
+	if (!(~mem_mask & 0x000000ff))	{ byte = 3; writedata = data >> 0;  }
 
 	writedata &= 0xff;
 
@@ -892,8 +888,8 @@ static INTERRUPT_GEN( stv_interrupt )
 
 static UINT8 port_sel,mux_data;
 
-#define HI_WORD_ACCESS (mem_mask & 0x00ff0000) == 0
-#define LO_WORD_ACCESS (mem_mask & 0x000000ff) == 0
+#define HI_WORD_ACCESS (~mem_mask & 0x00ff0000) == 0
+#define LO_WORD_ACCESS (~mem_mask & 0x000000ff) == 0
 
 /*
 
@@ -1242,7 +1238,7 @@ static WRITE32_HANDLER( stv_scu_w32 )
 		/*DSP section*/
 		/*Use functions so it is easier to work out*/
 		case 32:
-		dsp_prg_ctrl(data);
+		dsp_prg_ctrl(machine, data);
 		if(LOG_SCU) logerror("SCU DSP: Program Control Port Access %08x\n",data);
 		break;
 		case 33:
@@ -1865,7 +1861,7 @@ static WRITE32_HANDLER( stv_scsp_regs_w32 )
 static WRITE32_HANDLER( minit_w )
 {
 	logerror("cpu #%d (PC=%08X) MINIT write = %08x\n",cpu_getactivecpu(), activecpu_get_pc(),data);
-	cpu_boost_interleave(double_to_attotime(minit_boost_timeslice), ATTOTIME_IN_USEC(minit_boost));
+	cpu_boost_interleave(minit_boost_timeslice, ATTOTIME_IN_USEC(minit_boost));
 	cpu_trigger(machine, 1000);
 	cpunum_set_info_int(1, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
@@ -1873,32 +1869,9 @@ static WRITE32_HANDLER( minit_w )
 static WRITE32_HANDLER( sinit_w )
 {
 	logerror("cpu #%d (PC=%08X) SINIT write = %08x\n",cpu_getactivecpu(), activecpu_get_pc(),data);
-	cpu_boost_interleave(double_to_attotime(sinit_boost_timeslice), ATTOTIME_IN_USEC(sinit_boost));
+	cpu_boost_interleave(sinit_boost_timeslice, ATTOTIME_IN_USEC(sinit_boost));
 	cpunum_set_info_int(0, CPUINFO_INT_SH2_FRT_INPUT, PULSE_LINE);
 }
-
-extern WRITE32_HANDLER ( stv_vdp2_vram_w );
-extern READ32_HANDLER ( stv_vdp2_vram_r );
-
-extern WRITE32_HANDLER ( stv_vdp2_cram_w );
-extern READ32_HANDLER ( stv_vdp2_cram_r );
-
-extern WRITE32_HANDLER ( stv_vdp2_regs_w );
-extern READ32_HANDLER ( stv_vdp2_regs_r );
-
-extern VIDEO_START ( stv_vdp2 );
-extern VIDEO_UPDATE( stv_vdp2 );
-
-extern READ32_HANDLER( stv_vdp1_regs_r );
-extern WRITE32_HANDLER( stv_vdp1_regs_w );
-extern READ32_HANDLER ( stv_vdp1_vram_r );
-extern WRITE32_HANDLER ( stv_vdp1_vram_w );
-
-extern WRITE32_HANDLER ( stv_vdp1_framebuffer0_w );
-extern READ32_HANDLER ( stv_vdp1_framebuffer0_r );
-
-extern WRITE32_HANDLER ( stv_vdp1_framebuffer1_w );
-extern READ32_HANDLER ( stv_vdp1_framebuffer1_r );
 
 static UINT32 backup[64*1024/4];
 
@@ -1950,7 +1923,7 @@ static ADDRESS_MAP_START( saturn_mem, ADDRESS_SPACE_PROGRAM, 32 )
 	AM_RANGE(0x01000000, 0x01000003) AM_WRITE(minit_w)
 	AM_RANGE(0x01406f40, 0x01406f43) AM_WRITE(minit_w) // prikura seems to write here ..
 	AM_RANGE(0x01800000, 0x01800003) AM_WRITE(sinit_w)
-	AM_RANGE(0x02000000, 0x04ffffff) AM_READNOP AM_WRITENOP	// cartridge space
+	AM_RANGE(0x02000000, 0x023fffff) AM_ROM AM_REGION(REGION_CPU1, 0x80000)	// cartridge space
 	AM_RANGE(0x05800000, 0x0589ffff) AM_READWRITE(stvcd_r, stvcd_w)
 	/* Sound */
 	AM_RANGE(0x05a00000, 0x05a7ffff) AM_READWRITE(stv_sh2_soundram_r, stv_sh2_soundram_w)
@@ -2071,8 +2044,8 @@ static void saturn_init_driver(running_machine *machine, int rgn)
 	/* amount of time to boost interleave for on MINIT / SINIT, needed for communication to work */
 	minit_boost = 400;
 	sinit_boost = 400;
-	minit_boost_timeslice = 0;
-	sinit_boost_timeslice = 0;
+	minit_boost_timeslice = attotime_zero;
+	sinit_boost_timeslice = attotime_zero;
 
 	smpc_ram = auto_malloc (0x80);
 	stv_scu = auto_malloc (0x100);
@@ -2249,7 +2222,7 @@ GFXDECODE_END
 static const struct sh2_config sh2_conf_master = { 0 };
 static const struct sh2_config sh2_conf_slave  = { 1 };
 
-static void scsp_irq(int irq)
+static void scsp_irq(running_machine *machine, int irq)
 {
 	// don't bother the 68k if it's off
 	if (!en_68k)
@@ -2260,15 +2233,15 @@ static void scsp_irq(int irq)
 	if (irq > 0)
 	{
 		scsp_last_line = irq;
-		cpunum_set_input_line(Machine, 2, irq, ASSERT_LINE);
+		cpunum_set_input_line(machine, 2, irq, ASSERT_LINE);
 	}
 	else if (irq < 0)
 	{
-		cpunum_set_input_line(Machine, 2, -irq, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, -irq, CLEAR_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(Machine, 2, scsp_last_line, CLEAR_LINE);
+		cpunum_set_input_line(machine, 2, scsp_last_line, CLEAR_LINE);
 	}
 }
 
@@ -2324,11 +2297,14 @@ MACHINE_DRIVER_END
 
 /* Japanese Saturn */
 ROM_START(saturnjp)
-	ROM_REGION( 0x080000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
 	ROM_SYSTEM_BIOS(0, "101", "Japan v1.01 (941228)")
 	ROMX_LOAD("sega_101.bin", 0x00000000, 0x00080000, CRC(224b752c) SHA1(df94c5b4d47eb3cc404d88b33a8fda237eaf4720), ROM_BIOS(1))
-	ROM_SYSTEM_BIOS(1, "100", "Japan v1.00 (940921)")
-	ROMX_LOAD("sega_100.bin", 0x00000000, 0x00080000, CRC(2aba43c2) SHA1(2b8cb4f87580683eb4d760e4ed210813d667f0a2), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(1, "1003", "Japan v1.003 (941012)")
+	ROMX_LOAD("sega1003.bin", 0x00000000, 0x00080000, CRC(b3c63c25) SHA1(7b23b53d62de0f29a23e423d0fe751dfb469c2fa), ROM_BIOS(2))
+	ROM_SYSTEM_BIOS(2, "100", "Japan v1.00 (940921)")
+	ROMX_LOAD("sega_100.bin", 0x00000000, 0x00080000, CRC(2aba43c2) SHA1(2b8cb4f87580683eb4d760e4ed210813d667f0a2), ROM_BIOS(3))
+	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
 	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
@@ -2338,11 +2314,12 @@ ROM_END
 
 /* Overseas Saturn */
 ROM_START(saturn)
-	ROM_REGION( 0x080000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
 	ROM_SYSTEM_BIOS(0, "101a", "Overseas v1.01a (941115)")
 	ROMX_LOAD("sega_101a.bin", 0x00000000, 0x00080000, CRC(4afcf0fa) SHA1(faa8ea183a6d7bbe5d4e03bb1332519800d3fbc3), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "100a", "Overseas v1.00a (941115)")
 	ROMX_LOAD("sega_100a.bin", 0x00000000, 0x00080000, CRC(f90f0089) SHA1(3bb41feb82838ab9a35601ac666de5aacfd17a58), ROM_BIOS(2))
+	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
 	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
@@ -2351,11 +2328,12 @@ ROM_START(saturn)
 ROM_END
 
 ROM_START(saturneu)
-	ROM_REGION( 0x080000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
 	ROM_SYSTEM_BIOS(0, "101a", "Overseas v1.01a (941115)")
 	ROMX_LOAD("sega_101a.bin", 0x00000000, 0x00080000, CRC(4afcf0fa) SHA1(faa8ea183a6d7bbe5d4e03bb1332519800d3fbc3), ROM_BIOS(1))
 	ROM_SYSTEM_BIOS(1, "100a", "Overseas v1.00a (941115)")
 	ROMX_LOAD("sega_100a.bin", 0x00000000, 0x00080000, CRC(f90f0089) SHA1(3bb41feb82838ab9a35601ac666de5aacfd17a58), ROM_BIOS(2))
+	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
 	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
@@ -2364,8 +2342,9 @@ ROM_START(saturneu)
 ROM_END
 
 ROM_START(vsaturn)
-	ROM_REGION( 0x080000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
 	ROM_LOAD("vsaturn.bin", 0x00000000, 0x00080000, CRC(e4d61811) SHA1(4154e11959f3d5639b11d7902b3a393a99fb5776))
+	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
 	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
@@ -2374,8 +2353,9 @@ ROM_START(vsaturn)
 ROM_END
 
 ROM_START(hisaturn)
-	ROM_REGION( 0x080000, REGION_CPU1, 0 ) /* SH2 code */
+	ROM_REGION( 0x480000, REGION_CPU1, 0 ) /* SH2 code */
 	ROM_LOAD("hisaturn.bin", 0x00000000, 0x00080000, CRC(721e1b60) SHA1(49d8493008fa715ca0c94d99817a5439d6f2c796))
+	ROM_CART_LOAD(0, "bin", 0x080000, 0x400000, ROM_NOMIRROR | ROM_FILL_FF | ROM_OPTIONAL)
 	ROM_REGION( 0x080000, REGION_CPU2, 0 ) /* SH2 code */
 	ROM_COPY( REGION_CPU1,0,0,0x080000)
 	ROM_REGION( 0x100000, REGION_CPU3, ROMREGION_ERASE00 ) /* 68000 code */
@@ -2396,8 +2376,9 @@ static void saturn_chdcd_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-SYSTEM_CONFIG_START( saturn )
+static SYSTEM_CONFIG_START( saturn )
 	CONFIG_DEVICE(saturn_chdcd_getinfo)
+	CONFIG_DEVICE(cartslot_device_getinfo)
 SYSTEM_CONFIG_END
 
 /***************************************************************************

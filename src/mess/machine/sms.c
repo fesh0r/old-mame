@@ -1,5 +1,4 @@
 #include "driver.h"
-#include "deprecat.h"
 #include "image.h"
 #include "includes/sms.h"
 #include "video/smsvdp.h"
@@ -77,7 +76,7 @@ static TIMER_CALLBACK( rapid_fire_callback ) {
 static WRITE8_HANDLER( sms_input_write ) {
 	switch( offset ) {
 	case 0:
-		switch( input_port_read_indexed(machine, 11) & 0x0F ) {
+		switch( input_port_read(machine, "CTRLSEL") & 0x0F ) {
 		case 0x03:	/* Sports Pad */
 			if ( data != sports_pad_last_data_1 ) {
 				UINT32 cpu_cycles = activecpu_gettotalcycles();
@@ -85,8 +84,8 @@ static WRITE8_HANDLER( sms_input_write ) {
 				sports_pad_last_data_1 = data;
 				if ( cpu_cycles - last_sports_pad_time_1 > 512 ) {
 					sports_pad_state_1 = 3;
-					sports_pad_1_x = input_port_read_indexed(machine, 12);
-					sports_pad_1_y = input_port_read_indexed(machine, 13);
+					sports_pad_1_x = input_port_read(machine, "SPORT0");
+					sports_pad_1_y = input_port_read(machine, "SPORT1");
 				}
 				last_sports_pad_time_1 = cpu_cycles;
 				sports_pad_state_1 = ( sports_pad_state_1 + 1 ) & 3;
@@ -95,7 +94,7 @@ static WRITE8_HANDLER( sms_input_write ) {
 		}
 		break;
 	case 1:
-		switch( input_port_read_indexed(machine, 11) >> 4 ) {
+		switch( input_port_read(machine, "CTRLSEL") >> 4 ) {
 		case 0x03:	/* Sports Pad */
 			if ( data != sports_pad_last_data_2 ) {
 				UINT32 cpu_cycles = activecpu_gettotalcycles();
@@ -103,8 +102,8 @@ static WRITE8_HANDLER( sms_input_write ) {
 				sports_pad_last_data_2 = data;
 				if ( cpu_cycles - last_sports_pad_time_2 > 2048 ) {
 					sports_pad_state_2 = 3;
-					sports_pad_2_x = input_port_read_indexed(machine, 14);
-					sports_pad_2_y = input_port_read_indexed(machine, 15);
+					sports_pad_2_x = input_port_read(machine, "SPORT2");
+					sports_pad_2_y = input_port_read(machine, "SPORT3");
 				}
 				last_sports_pad_time_2 = cpu_cycles;
 				sports_pad_state_2 = ( sports_pad_state_2 + 1 ) & 3;
@@ -115,7 +114,7 @@ static WRITE8_HANDLER( sms_input_write ) {
 	}
 }
 
-static void sms_get_inputs(void) {
+static void sms_get_inputs(running_machine *machine) {
 	UINT8 data = 0x00;
 	UINT32 cpu_cycles = activecpu_gettotalcycles();
 
@@ -128,15 +127,15 @@ static void sms_get_inputs(void) {
 	}
 
 	/* Player 1 */
-	switch( input_port_read_indexed(Machine, 11) & 0x0F ) {
+	switch( input_port_read(machine, "CTRLSEL") & 0x0F ) {
 	case 0x00:  /* Joystick */
-		data = input_port_read_indexed(Machine, 0);
+		data = input_port_read(machine, "JOY0");
 		/* Rapid Fire setting for Button A */
-		if ( input_port_read_indexed(Machine, 7) & 0x01 ) {
+		if ( input_port_read(machine, "RFU") & 0x01 ) {
 			data = ( data & 0xEF ) | ( rapid_fire_state_1 & 0x10 );
 		}
 		/* Check Rapid Fire setting for Button B */
-		if ( input_port_read_indexed(Machine, 7) & 0x02 ) {
+		if ( input_port_read(machine, "RFU") & 0x02 ) {
 			data = ( data & 0xDF ) | ( rapid_fire_state_1 & 0x20 );
 		}
 		sms_input_port0 = ( sms_input_port0 & 0xC0 ) | ( data & 0x3F );
@@ -145,12 +144,12 @@ static void sms_get_inputs(void) {
 		break;
 	case 0x02:  /* Paddle Control */
 		/* Get button A state */
-		data = input_port_read_indexed(Machine, 8);
+		data = input_port_read(machine, "PADDLE0");
 		if ( paddle_read_state ) {
 			data = data >> 4;
 		}
 		sms_input_port0 = ( sms_input_port0 & 0xC0 ) | ( data & 0x0F ) | ( paddle_read_state & 0x20 )
-		                | ( ( input_port_read_indexed(Machine, 10) & 0x02 ) << 3 );
+		                | ( ( input_port_read(machine, "IN0") & 0x02 ) << 3 );
 		break;
 	case 0x03:	/* Sega Sports Pad */
 		switch( sports_pad_state_1 ) {
@@ -167,20 +166,20 @@ static void sms_get_inputs(void) {
 			data = sports_pad_1_y & 0x0F;
 			break;
 		}
-		sms_input_port0 = ( sms_input_port0 & 0xC0 ) | data | ( ( input_port_read_indexed(Machine, 10) & 0x0C ) << 2 );
+		sms_input_port0 = ( sms_input_port0 & 0xC0 ) | data | ( ( input_port_read(machine, "IN0") & 0x0C ) << 2 );
 		break;
 	}
 
 	/* Player 2 */
-	switch( input_port_read_indexed(Machine, 11) >> 4 ) {
+	switch( input_port_read(machine, "CTRLSEL") >> 4 ) {
 	case 0x00:	/* Joystick */
-		data = input_port_read_indexed(Machine, 0);
+		data = input_port_read(machine, "JOY0");
 		sms_input_port0 = ( sms_input_port0 & 0x3F ) | ( data & 0xC0 );
-		data = input_port_read_indexed(Machine, 1);
-		if ( input_port_read_indexed(Machine, 7) & 0x04 ) {
+		data = input_port_read(machine, "JOY1");
+		if ( input_port_read(machine, "RFU") & 0x04 ) {
 			data = ( data & 0xFB ) | ( rapid_fire_state_2 & 0x04 );
 		}
-		if ( input_port_read_indexed(Machine, 7) & 0x08 ) {
+		if ( input_port_read(machine, "RFU") & 0x08 ) {
 			data = ( data & 0xF7 ) | ( rapid_fire_state_2 & 0x08 );
 		}
 		sms_input_port1 = ( sms_input_port1 & 0xF0 ) | ( data & 0x0F );
@@ -189,13 +188,13 @@ static void sms_get_inputs(void) {
 		break;
 	case 0x02:	/* Paddle Control */
 		/* Get button A state */
-		data = input_port_read_indexed(Machine, 9);
+		data = input_port_read(machine, "PADDLE1");
 		if ( paddle_read_state ) {
 			data = data >> 4;
 		}
 		sms_input_port0 = ( sms_input_port0 & 0x3F ) | ( ( data & 0x03 ) << 6 );
 		sms_input_port1 = ( sms_input_port1 & 0xF0 ) | ( ( data & 0x0C ) >> 2 ) | ( paddle_read_state & 0x08 )
-		                | ( ( input_port_read_indexed(Machine, 10) & 0x20 ) >> 3 );
+		                | ( ( input_port_read(machine, "IN0") & 0x20 ) >> 3 );
 		break;
 	case 0x03:	/* Sega Sports Pad */
 		switch( sports_pad_state_2 ) {
@@ -212,7 +211,7 @@ static void sms_get_inputs(void) {
 			break;
 		}
 		sms_input_port0 = ( sms_input_port0 & 0x3F ) | ( ( data & 0x03 ) << 6 );
-		sms_input_port1 = ( sms_input_port1 & 0xF0 ) | ( data >> 2 ) | ( ( input_port_read_indexed(Machine, 10) & 0xC0 ) >> 4 );
+		sms_input_port1 = ( sms_input_port1 & 0xF0 ) | ( data >> 2 ) | ( ( input_port_read(machine, "IN0") & 0xC0 ) >> 4 );
 		break;
 	}
 }
@@ -230,7 +229,7 @@ READ8_HANDLER(sms_fm_detect_r) {
 		if ( biosPort & IO_CHIP ) {
 			return 0xFF;
 		} else {
-			sms_get_inputs();
+			sms_get_inputs(machine);
 			return sms_input_port0;
 		}
 	}
@@ -248,7 +247,7 @@ WRITE8_HANDLER(sms_version_w) {
 	}
 }
 
- READ8_HANDLER(sms_version_r) {
+READ8_HANDLER(sms_version_r) {
 	UINT8 temp;
 
 	if (biosPort & IO_CHIP) {
@@ -264,7 +263,7 @@ WRITE8_HANDLER(sms_version_w) {
 	}
 
 	/* Merge version data with input port #2 data */
-	sms_get_inputs();
+	sms_get_inputs(machine);
 	temp = (temp & 0xC0) | (sms_input_port1 & 0x3F);
 
 	return (temp);
@@ -281,7 +280,7 @@ READ8_HANDLER(sms_count_r) {
 
 void sms_check_pause_button( running_machine *machine ) {
 	if ( ! IS_GAMEGEAR ) {
-		if ( ! (input_port_read_indexed(machine, 2) & 0x80) ) {
+		if ( ! (input_port_read(machine, "JOY2") & 0x80) ) {
 			if ( ! smsPaused ) {
 				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, ASSERT_LINE );
 				cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, CLEAR_LINE );
@@ -293,11 +292,11 @@ void sms_check_pause_button( running_machine *machine ) {
 	}
 }
 
- READ8_HANDLER(sms_input_port_0_r) {
+READ8_HANDLER(sms_input_port_0_r) {
 	if (biosPort & IO_CHIP) {
 		return (0xFF);
 	} else {
-		sms_get_inputs();
+		sms_get_inputs(machine);
 		return sms_input_port0;
 	}
 }
@@ -316,8 +315,8 @@ WRITE8_HANDLER(sms_YM2413_data_port_0_w) {
 }
 
  READ8_HANDLER(gg_input_port_2_r) {
-	//logerror("joy 2 read, val: %02x, pc: %04x\n", (( IS_REGION_JAPAN ? 0x00 : 0x40) | (input_port_read_indexed(machine, 2) & 0x80)), activecpu_get_pc());
-	return (( IS_REGION_JAPAN ? 0x00 : 0x40 ) | (input_port_read_indexed(machine, 2) & 0x80));
+	//logerror("joy 2 read, val: %02x, pc: %04x\n", (( IS_REGION_JAPAN ? 0x00 : 0x40) | (input_port_read(machine, "JOY2") & 0x80)), activecpu_get_pc());
+	return (( IS_REGION_JAPAN ? 0x00 : 0x40 ) | (input_port_read(machine, "JOY2") & 0x80));
 }
 
  READ8_HANDLER(sms_mapper_r)
@@ -883,15 +882,16 @@ static void setup_cart_banks( void ) {
 	}
 }
 
-static void setup_banks( void ) {
-	sms_banking_bios[1] = sms_banking_cart[1] = sms_banking_none[1] = memory_region(REGION_CPU1);
-	sms_banking_bios[2] = sms_banking_cart[2] = sms_banking_none[2] = memory_region(REGION_CPU1);
-	sms_banking_bios[3] = sms_banking_cart[3] = sms_banking_none[3] = memory_region(REGION_CPU1);
-	sms_banking_bios[4] = sms_banking_cart[4] = sms_banking_none[4] = memory_region(REGION_CPU1);
+static void setup_banks( running_machine *machine ) {
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
+	sms_banking_bios[1] = sms_banking_cart[1] = sms_banking_none[1] = mem;
+	sms_banking_bios[2] = sms_banking_cart[2] = sms_banking_none[2] = mem;
+	sms_banking_bios[3] = sms_banking_cart[3] = sms_banking_none[3] = mem;
+	sms_banking_bios[4] = sms_banking_cart[4] = sms_banking_none[4] = mem;
 
-	BIOS = memory_region(REGION_USER1);
+	BIOS = memory_region(machine, REGION_USER1);
 
-	smsBiosPageCount = ( BIOS ? memory_region_length(REGION_USER1) / 0x4000 : 0 );
+	smsBiosPageCount = ( BIOS ? memory_region_length(machine, REGION_USER1) / 0x4000 : 0 );
 
 	setup_cart_banks();
 
@@ -936,7 +936,7 @@ MACHINE_RESET(sms)
 
 	sms_store_control = 0;
 
-	setup_banks();
+	setup_banks(machine);
 
 	setup_rom(machine);
 

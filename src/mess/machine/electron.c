@@ -94,13 +94,19 @@ static TIMER_CALLBACK(electron_tape_timer_handler)
 	}
 }
 
-static READ8_HANDLER( electron_read_keyboard ) {
+static READ8_HANDLER( electron_read_keyboard ) 
+{
 	UINT8 data = 0;
 	int i;
+	char port[7];
+	
 	//logerror( "PC=%04x: keyboard read from paged rom area, address: %04x", activecpu_get_pc(), offset );
-	for( i = 0; i < 14; i++ ) {
-		if ( ! ( offset & 1 ) ) {
-			data |= input_port_read_indexed(machine, i) & 0x0f;
+	for( i = 0; i < 14; i++ ) 
+	{
+		if ( ! ( offset & 1 ) ) 
+		{
+			sprintf(port, "LINE%d", i);
+			data |= input_port_read(machine, port) & 0x0f;
 		}
 		offset = offset >> 1;
 	}
@@ -123,7 +129,7 @@ WRITE8_HANDLER( electron_1mhz_w ) {
 }
 
 READ8_HANDLER( electron_ula_r ) {
-	UINT8 data = ((UINT8 *)memory_region(REGION_USER1))[0x43E00 + offset];
+	UINT8 data = ((UINT8 *)memory_region(machine, REGION_USER1))[0x43E00 + offset];
 	switch ( offset & 0x0f ) {
 	case 0x00:	/* Interrupt status */
 		data = ula.interrupt_status;
@@ -286,7 +292,7 @@ static void electron_reset(running_machine *machine)
 
 MACHINE_START( electron )
 {
-	memory_configure_bank(2, 0, 16, memory_region(REGION_USER1), 0x4000);
+	memory_configure_bank(2, 0, 16, memory_region(machine, REGION_USER1), 0x4000);
 
 	ula.interrupt_status = 0x82;
 	ula.interrupt_control = 0x00;

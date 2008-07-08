@@ -10,6 +10,7 @@
 
 #include "driver.h"
 #include "sound/dac.h"
+#include "includes/galeb.h"
   
   
 /* Driver initialization */
@@ -23,7 +24,9 @@ MACHINE_RESET( galeb )
 
 READ8_HANDLER( galeb_keyboard_r )
 {
-	 return input_port_read_indexed(machine, offset);
+	char port[6];
+	sprintf(port,"LINE%d",offset);
+	return input_port_read(machine, port);
 }
 
 WRITE8_HANDLER( galeb_speaker_w )

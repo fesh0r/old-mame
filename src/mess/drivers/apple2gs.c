@@ -53,6 +53,7 @@
 #include "machine/ap2_lang.h"
 #include "machine/applefdc.h"
 #include "machine/mockngbd.h"
+#include "machine/8530scc.h"
 #include "sound/ay8910.h"
 
 static const gfx_layout apple2gs_text_layout =
@@ -180,6 +181,9 @@ static MACHINE_DRIVER_START( apple2gs )
 	MDRV_DEVICE_REMOVE("fdc", APPLEFDC)
 	MDRV_DEVICE_ADD("fdc", IWM)
 	MDRV_DEVICE_CONFIG(apple2_fdc_interface)
+
+	/* SCC */
+	MDRV_DEVICE_ADD("scc", SCC8530)
 MACHINE_DRIVER_END
 
 
@@ -273,7 +277,7 @@ static DRIVER_INIT(apple2gs)
 
 /* ----------------------------------------------------------------------- */
 
-SYSTEM_CONFIG_START(apple2gs)
+static SYSTEM_CONFIG_START(apple2gs)
 	CONFIG_DEVICE(apple2gs_floppy35_getinfo)
 	CONFIG_DEVICE(apple2gs_floppy525_getinfo)
 

@@ -6,7 +6,6 @@
 
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/aim65.h"
 
 /* Peripheral chips */
@@ -37,9 +36,9 @@ static UINT8 riot_port_a;
 ******************************************************************************/
 
 
-static void aim65_via_irq_func(int state)
+static void aim65_via_irq_func(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 /* STEP/RUN
@@ -155,9 +154,9 @@ static WRITE8_HANDLER(aim65_riot_a_w)
 }
 
 
-static void aim65_riot_irq(int state)
+static void aim65_riot_irq(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
+	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 
@@ -237,9 +236,9 @@ DRIVER_INIT( aim65 )
 
 	pia_config(0, &pia);
 
-	r6532_config(0, &r6532_interface);
+	r6532_config(machine, 0, &r6532_interface);
 	r6532_set_clock(0, AIM65_CLOCK);
-	r6532_reset(0);
+	r6532_reset(machine, 0);
 
 	via_config(0, &via0);
 	via_0_cb1_w(machine, 1, 1);

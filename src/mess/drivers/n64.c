@@ -62,7 +62,7 @@ static INPUT_PORTS_START( n64 )
 INPUT_PORTS_END
 
 /* ?? */
-static const struct mips3_config config =
+static const mips3_config config =
 {
 	16384,				/* code cache size */
 	8192,				/* data cache size */
@@ -71,12 +71,12 @@ static const struct mips3_config config =
 
 static INTERRUPT_GEN( n64_vblank )
 {
-	signal_rcp_interrupt(VI_INTERRUPT);
+	signal_rcp_interrupt(machine, VI_INTERRUPT);
 }
 
 static MACHINE_RESET( n64 )
 {
-	n64_machine_reset();
+	n64_machine_reset(machine);
 }
 
 static MACHINE_DRIVER_START( n64 )
@@ -129,7 +129,7 @@ ROM_END
 static DEVICE_IMAGE_LOAD(n64_cart)
 {
 	int i, length;
-	UINT8 *cart = memory_region(REGION_USER2);
+	UINT8 *cart = memory_region(image->machine, REGION_USER2);
 
 	length = image_fread(image, cart, 0x4000000);
 
@@ -185,7 +185,7 @@ static void n64_cartslot_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-SYSTEM_CONFIG_START(n64)
+static SYSTEM_CONFIG_START(n64)
 	CONFIG_DEVICE(n64_cartslot_getinfo)
 SYSTEM_CONFIG_END
 

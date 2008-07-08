@@ -16,10 +16,7 @@ Similar to TI99/4a, except for the following:
 Historical notes: TI made several last minute design changes.
     * TI99/4 prototypes had an extra port for an I/R joystick and keypad interface.
     * early TI99/4 prototypes were designed for a tms9985, not a tms9900.
-
-Note: Changes in MAME 0.124u4 caused the execution of code via the read handlers to no longer work.
-	Therefore, the PEB at 4000-5FFF is commented out until a solution is found.
-	Also, the ti99_4ev title screen isn't working. Press 1 to enter Basic. */
+*/
 
 #include "driver.h"
 #include "deprecat.h"
@@ -35,7 +32,6 @@ Note: Changes in MAME 0.124u4 caused the execution of code via the read handlers
 #include "devices/mflopimg.h"
 #include "devices/harddriv.h"
 #include "devices/cassette.h"
-#include "devices/harddriv.h"
 #include "machine/smartmed.h"
 #include "sound/5220intf.h"
 #include "machine/idectrl.h"
@@ -48,7 +44,7 @@ static ADDRESS_MAP_START(memmap, ADDRESS_SPACE_PROGRAM, 16)
 	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
-//	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
+	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
 	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
@@ -66,7 +62,7 @@ static ADDRESS_MAP_START(memmap_4ev, ADDRESS_SPACE_PROGRAM, 16)
 	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM										/*system ROM*/
 	AM_RANGE(0x2000, 0x3fff) AM_READWRITE(ti99_nop_8_r, ti99_nop_8_w)	/*lower 8kb of RAM extension - installed dynamically*/
-//	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
+	AM_RANGE(0x4000, 0x5fff) AM_READWRITE(ti99_4x_peb_r, ti99_4x_peb_w)	/*DSR ROM space*/
 	AM_RANGE(0x6000, 0x7fff) AM_READWRITE(ti99_cart_r, ti99_cart_w)		/*cartridge memory*/
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAMBANK(1)			/*RAM PAD, mirrored 4 times*/
 	AM_RANGE(0x8400, 0x87ff) AM_READWRITE(ti99_nop_8_r, ti99_wsnd_w)	/*soundchip write*/
@@ -107,8 +103,8 @@ ADDRESS_MAP_END
 static INPUT_PORTS_START(ti99_4a)
 
 	/* 1 port for config */
-	PORT_START	/* config */
-		PORT_BIT( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, IPT_DIPSWITCH_NAME) PORT_NAME("RAM extension")
+	PORT_START_TAG("CFG")	/* config */
+		PORT_DIPNAME( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, "RAM extension")
 			PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				DEF_STR( None ) )
 			PORT_DIPSETTING( xRAM_kind_TI << config_xRAM_bit,				"Texas Instruments 32kb")
 			PORT_DIPSETTING( xRAM_kind_super_AMS << config_xRAM_bit,		"Super AMS 1Mb")
@@ -116,10 +112,10 @@ static INPUT_PORTS_START(ti99_4a)
 			PORT_DIPSETTING( xRAM_kind_foundation_512k << config_xRAM_bit,	"Foundation 512kb")
 			PORT_DIPSETTING( xRAM_kind_myarc_128k << config_xRAM_bit,		"Myarc look-alike 128kb")
 			PORT_DIPSETTING( xRAM_kind_myarc_512k << config_xRAM_bit,		"Myarc look-alike 512kb")
-		PORT_BIT( config_speech_mask << config_speech_bit, 1 << config_speech_bit, IPT_DIPSWITCH_NAME) PORT_NAME("Speech synthesis")
+		PORT_DIPNAME( config_speech_mask << config_speech_bit, 1 << config_speech_bit, "Speech synthesis")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
-		PORT_BIT( config_fdc_mask << config_fdc_bit, fdc_kind_hfdc << config_fdc_bit, IPT_DIPSWITCH_NAME) PORT_NAME("Floppy disk controller")
+		PORT_DIPNAME( config_fdc_mask << config_fdc_bit, fdc_kind_hfdc << config_fdc_bit, "Floppy disk controller")
 			PORT_DIPSETTING( fdc_kind_none << config_fdc_bit, DEF_STR( None ) )
 			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments SD" )
 #if HAS_99CCFDC
@@ -127,37 +123,37 @@ static INPUT_PORTS_START(ti99_4a)
 #endif
 			PORT_DIPSETTING( fdc_kind_BwG << config_fdc_bit, "SNUG's BwG" )
 			PORT_DIPSETTING( fdc_kind_hfdc << config_fdc_bit, "Myarc's HFDC" )
-		PORT_BIT( config_ide_mask << config_ide_bit, 1 << config_ide_bit, IPT_DIPSWITCH_NAME) PORT_NAME("Nouspickel's IDE card")
+		PORT_DIPNAME( config_ide_mask << config_ide_bit, 1 << config_ide_bit, "Nouspickel's IDE card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_ide_bit, DEF_STR( On ) )
-		PORT_BIT( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, IPT_DIPSWITCH_NAME) PORT_NAME("TI RS232 card")
+		PORT_DIPNAME( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, "TI RS232 card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_rs232_bit, DEF_STR( On ) )
-		PORT_BIT( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, IPT_DIPSWITCH_NAME) PORT_NAME("SNUG HSGPL card")
+		PORT_DIPNAME( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, "SNUG HSGPL card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_hsgpl_bit, DEF_STR( On ) )
-		PORT_BIT( config_mecmouse_mask << config_mecmouse_bit, 0, IPT_DIPSWITCH_NAME) PORT_NAME("Mechatronics Mouse")
+		PORT_DIPNAME( config_mecmouse_mask << config_mecmouse_bit, 0, "Mechatronics Mouse")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_mecmouse_bit, DEF_STR( On ) )
-		PORT_BIT( config_usbsm_mask << config_usbsm_bit, 1 << config_usbsm_bit, IPT_DIPSWITCH_NAME) PORT_NAME("Nouspickel's USB-SM card")
+		PORT_DIPNAME( config_usbsm_mask << config_usbsm_bit, 1 << config_usbsm_bit, "Nouspickel's USB-SM card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_usbsm_bit, DEF_STR( On ) )
 
 
 	/* 3 ports for mouse */
-	PORT_START /* Mouse - X AXIS */
+	PORT_START_TAG("MOUSEX") /* Mouse - X AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START /* Mouse - Y AXIS */
+	PORT_START_TAG("MOUSEY") /* Mouse - Y AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START /* Mouse - buttons */
+	PORT_START_TAG("MOUSE0") /* Mouse - buttons */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(1)
 
 
 	/* 4 ports for keyboard and joystick */
-	PORT_START	/* col 0 */
+	PORT_START_TAG("KEY0")	/* col 0 */
 		PORT_BIT(0x0088, IP_ACTIVE_LOW, IPT_UNUSED)
 		/* The original control key is located on the left, but we accept the
         right control key as well */
@@ -180,7 +176,7 @@ static INPUT_PORTS_START(ti99_4a)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_L)     PORT_CHAR('l') PORT_CHAR('L')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_STOP)  PORT_CHAR('.') PORT_CHAR('>')
 
-	PORT_START	/* col 2 */
+	PORT_START_TAG("KEY1")	/* col 2 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_C)     PORT_CHAR('c') PORT_CHAR('C') PORT_CHAR('`')
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_E)     PORT_CHAR('e') PORT_CHAR('E') PORT_CHAR(UCHAR_MAMEKEY(UP))
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_D)     PORT_CHAR('d') PORT_CHAR('D') PORT_CHAR(UCHAR_MAMEKEY(RIGHT))
@@ -199,7 +195,7 @@ static INPUT_PORTS_START(ti99_4a)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_J)     PORT_CHAR('j') PORT_CHAR('J')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_M)     PORT_CHAR('m') PORT_CHAR('M')
 
-	PORT_START	/* col 4 */
+	PORT_START_TAG("KEY2")	/* col 4 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_B)     PORT_CHAR('b') PORT_CHAR('B')
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_T)     PORT_CHAR('t') PORT_CHAR('T') PORT_CHAR(']')
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_G)     PORT_CHAR('g') PORT_CHAR('G') PORT_CHAR('}')
@@ -218,7 +214,7 @@ static INPUT_PORTS_START(ti99_4a)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_COLON) PORT_CHAR(';') PORT_CHAR(':')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_CODE(KEYCODE_SLASH) PORT_CHAR('/') PORT_CHAR('-')
 
-	PORT_START	/* col 6: "wired handset 1" (= joystick 1) */
+	PORT_START_TAG("KEY3")	/* col 6: "wired handset 1" (= joystick 1) */
 		PORT_BIT(0x00E0, IP_ACTIVE_LOW, IPT_UNUSED)
 		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_UP/*, "(1UP)", CODE_NONE, OSD_JOY_UP*/) PORT_PLAYER(1)
 		PORT_BIT(0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN/*, "(1DOWN)", CODE_NONE, OSD_JOY_DOWN, 0*/) PORT_PLAYER(1)
@@ -234,7 +230,7 @@ static INPUT_PORTS_START(ti99_4a)
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_BUTTON1/*, "(2FIRE)", CODE_NONE, OSD_JOY2_FIRE, 0*/) PORT_PLAYER(2)
 
 
-	PORT_START	/* one more port for Alpha line */
+	PORT_START_TAG("ALPHA")	/* one more port for Alpha line */
 		PORT_BIT(0x0010, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("Alpha Lock") PORT_CODE(KEYCODE_CAPSLOCK) PORT_TOGGLE
 
 INPUT_PORTS_END
@@ -247,8 +243,8 @@ INPUT_PORTS_END
 static INPUT_PORTS_START(ti99_4)
 
 	/* 1 port for config */
-	PORT_START	/* config */
-		PORT_BIT( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, IPT_DIPSWITCH_NAME) PORT_NAME("RAM extension")
+	PORT_START_TAG("CFG")	/* config */
+		PORT_DIPNAME( config_xRAM_mask << config_xRAM_bit, xRAM_kind_TI << config_xRAM_bit, "RAM extension")
 			PORT_DIPSETTING( xRAM_kind_none << config_xRAM_bit,				DEF_STR( None ) )
 			PORT_DIPSETTING( xRAM_kind_TI << config_xRAM_bit,				"Texas Instruments 32kb")
 			PORT_DIPSETTING( xRAM_kind_super_AMS << config_xRAM_bit,		"Super AMS 1Mb")
@@ -256,10 +252,10 @@ static INPUT_PORTS_START(ti99_4)
 			PORT_DIPSETTING( xRAM_kind_foundation_512k << config_xRAM_bit,	"Foundation 512kb")
 			PORT_DIPSETTING( xRAM_kind_myarc_128k << config_xRAM_bit,		"Myarc look-alike 128kb")
 			PORT_DIPSETTING( xRAM_kind_myarc_512k << config_xRAM_bit,		"Myarc look-alike 512kb")
-		PORT_BIT( config_speech_mask << config_speech_bit, 1 << config_speech_bit, IPT_DIPSWITCH_NAME) PORT_NAME("Speech synthesis")
+		PORT_DIPNAME( config_speech_mask << config_speech_bit, 1 << config_speech_bit, "Speech synthesis")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_speech_bit, DEF_STR( On ) )
-		PORT_BIT( config_fdc_mask << config_fdc_bit, fdc_kind_hfdc << config_fdc_bit, IPT_DIPSWITCH_NAME) PORT_NAME("Floppy disk controller")
+		PORT_DIPNAME( config_fdc_mask << config_fdc_bit, fdc_kind_hfdc << config_fdc_bit, "Floppy disk controller")
 			PORT_DIPSETTING( fdc_kind_none << config_fdc_bit, DEF_STR( None ) )
 			PORT_DIPSETTING( fdc_kind_TI << config_fdc_bit, "Texas Instruments SD" )
 #if HAS_99CCFDC
@@ -267,45 +263,44 @@ static INPUT_PORTS_START(ti99_4)
 #endif
 			PORT_DIPSETTING( fdc_kind_BwG << config_fdc_bit, "SNUG's BwG" )
 			PORT_DIPSETTING( fdc_kind_hfdc << config_fdc_bit, "Myarc's HFDC" )
-		PORT_BIT( config_ide_mask << config_ide_bit, /*1 << config_ide_bit*/0, IPT_DIPSWITCH_NAME) PORT_NAME("Nouspickel's IDE card")
+		PORT_DIPNAME( config_ide_mask << config_ide_bit, /*1 << config_ide_bit*/0, "Nouspickel's IDE card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_ide_bit, DEF_STR( On ) )
-		PORT_BIT( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, IPT_DIPSWITCH_NAME) PORT_NAME("TI RS232 card")
+		PORT_DIPNAME( config_rs232_mask << config_rs232_bit, 1 << config_rs232_bit, "TI RS232 card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_rs232_bit, DEF_STR( On ) )
-		PORT_BIT( config_handsets_mask << config_handsets_bit, /*1 << config_handsets_bit*/0, IPT_DIPSWITCH_NAME) PORT_NAME("I/R remote handset")
+		PORT_DIPNAME( config_handsets_mask << config_handsets_bit, /*1 << config_handsets_bit*/0, "I/R remote handset")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_handsets_bit, DEF_STR( On ) )
-		PORT_BIT( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, IPT_DIPSWITCH_NAME) PORT_NAME("SNUG HSGPL card")
+		PORT_DIPNAME( config_hsgpl_mask << config_hsgpl_bit, 0/*1 << config_hsgpl_bit*/, "SNUG HSGPL card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_hsgpl_bit, DEF_STR( On ) )
-		PORT_BIT( config_mecmouse_mask << config_mecmouse_bit, 0, IPT_DIPSWITCH_NAME) PORT_NAME("Mechatronics Mouse")
+		PORT_DIPNAME( config_mecmouse_mask << config_mecmouse_bit, 0, "Mechatronics Mouse")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_mecmouse_bit, DEF_STR( On ) )
-		PORT_BIT( config_usbsm_mask << config_usbsm_bit, 1 << config_usbsm_bit, IPT_DIPSWITCH_NAME) PORT_NAME("Nouspickel's USB-SM card")
+		PORT_DIPNAME( config_usbsm_mask << config_usbsm_bit, 1 << config_usbsm_bit, "Nouspickel's USB-SM card")
 			PORT_DIPSETTING( 0x0000, DEF_STR( Off ) )
 			PORT_DIPSETTING( 1 << config_usbsm_bit, DEF_STR( On ) )
 
 
 	/* 3 ports for mouse */
-	PORT_START /* Mouse - X AXIS */
+	PORT_START_TAG("MOUSE0") /* Mouse - X AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_X) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START /* Mouse - Y AXIS */
+	PORT_START_TAG("MOUSE1") /* Mouse - Y AXIS */
 		PORT_BIT( 0xff, 0x00, IPT_TRACKBALL_Y) PORT_SENSITIVITY(100) PORT_KEYDELTA(0) PORT_PLAYER(1)
 
-	PORT_START /* Mouse - buttons */
+	PORT_START_TAG("MOUSE2") /* Mouse - buttons */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_BUTTON1) PORT_PLAYER(1)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_BUTTON2) PORT_PLAYER(1)
 
 
 	/* 4 ports for keyboard and joystick */
-	PORT_START	/* col 0 */
+	PORT_START_TAG("KEY0")	/* col 0 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("1 !") PORT_CODE(KEYCODE_1) PORT_CHAR('1') PORT_CHAR('!')
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Q QUIT") PORT_CODE(KEYCODE_Q) PORT_CHAR('Q') PORT_CHAR(UCHAR_MAMEKEY(ESC))
-		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("(SPACE)") PORT_CODE(KEYCODE_SPACE) PORT_CHAR(' ')
 		/* TI99/4 has a second space key which maps the same */
-		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SPACE") PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(' ')
+		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SPACE") PORT_CODE(KEYCODE_SPACE) PORT_CODE(KEYCODE_CAPSLOCK) PORT_CHAR(' ')
 		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CHAR(UCHAR_SHIFT_1)
 		PORT_BIT(0x0008, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("0 )") PORT_CODE(KEYCODE_0) PORT_CHAR('0') PORT_CHAR(')')
 		PORT_BIT(0x0004, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("P \"") PORT_CODE(KEYCODE_P) PORT_CHAR('P') PORT_CHAR('"')
@@ -321,7 +316,7 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("K /") PORT_CODE(KEYCODE_K) PORT_CHAR('K') PORT_CHAR('/')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME(", .") PORT_CODE(KEYCODE_STOP) PORT_CHAR(',') PORT_CHAR('.')
 
-	PORT_START	/* col 2 */
+	PORT_START_TAG("KEY1")	/* col 2 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("3 #") PORT_CODE(KEYCODE_3) PORT_CHAR('3') PORT_CHAR('#')
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("E UP") PORT_CODE(KEYCODE_E) PORT_CHAR('E') PORT_CHAR(UCHAR_MAMEKEY(UP))
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("S LEFT") PORT_CODE(KEYCODE_S) PORT_CHAR('S') PORT_CHAR(UCHAR_MAMEKEY(LEFT))
@@ -340,7 +335,7 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("H <") PORT_CODE(KEYCODE_H) PORT_CHAR('H') PORT_CHAR('<')
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("N :") PORT_CODE(KEYCODE_N) PORT_CHAR('N') PORT_CHAR(':')
 
-	PORT_START	/* col 4 */
+	PORT_START_TAG("KEY2")	/* col 4 */
 		PORT_BIT(0x0080, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("5 %") PORT_CODE(KEYCODE_5) PORT_CHAR('5') PORT_CHAR('%')
 		PORT_BIT(0x0040, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("T ERASE") PORT_CODE(KEYCODE_T) PORT_CHAR('T') PORT_CHAR(UCHAR_MAMEKEY(F3))
 		PORT_BIT(0x0020, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("F DEL") PORT_CODE(KEYCODE_F) PORT_CHAR('F') PORT_CHAR(UCHAR_MAMEKEY(DEL))
@@ -357,7 +352,7 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x0200, IP_ACTIVE_LOW, IPT_JOYSTICK_LEFT/*, "(1LEFT)", CODE_NONE, OSD_JOY_LEFT, 0*/) PORT_PLAYER(1)
 		PORT_BIT(0x0100, IP_ACTIVE_LOW, IPT_BUTTON1/*, "(1FIRE)", CODE_NONE, OSD_JOY_FIRE, 0*/) PORT_PLAYER(1)
 
-	PORT_START	/* col 6: "wired handset 2" (= joystick 2) */
+	PORT_START_TAG("KEY3")	/* col 6: "wired handset 2" (= joystick 2) */
 		PORT_BIT(0x00E0, IP_ACTIVE_LOW, IPT_UNUSED)
 		PORT_BIT(0x0010, IP_ACTIVE_LOW, IPT_JOYSTICK_UP/*, "(2UP)", CODE_NONE, OSD_JOY2_UP, 0*/) PORT_PLAYER(2)
 		PORT_BIT(0x0008, IP_ACTIVE_LOW, IPT_JOYSTICK_DOWN/*, "(2DOWN)", CODE_NONE, OSD_JOY2_DOWN, 0*/) PORT_PLAYER(2)
@@ -371,32 +366,32 @@ static INPUT_PORTS_START(ti99_4)
 	/* 13 pseudo-ports for IR remote handsets */
 
 	/* 8 pseudo-ports for the 4 IR joysticks */
-	PORT_START	/* joystick 1, X axis */
+	PORT_START_TAG("JOY0")	/* joystick 1, X axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_X) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(1)
 
-	PORT_START	/* joystick 1, Y axis */
+	PORT_START_TAG("JOY1")	/* joystick 1, Y axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_Y) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(1) PORT_REVERSE
 
-	PORT_START	/* joystick 2, X axis */
+	PORT_START_TAG("JOY2")	/* joystick 2, X axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_X) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(2)
 
-	PORT_START	/* joystick 2, Y axis */
+	PORT_START_TAG("JOY3")	/* joystick 2, Y axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_Y) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(2) PORT_REVERSE
 
-	PORT_START	/* joystick 3, X axis */
+	PORT_START_TAG("JOY4")	/* joystick 3, X axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_X) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(3)
 
-	PORT_START	/* joystick 3, Y axis */
+	PORT_START_TAG("JOY5")	/* joystick 3, Y axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_Y) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(3) PORT_REVERSE
 
-	PORT_START	/* joystick 4, X axis */
+	PORT_START_TAG("JOY6")	/* joystick 4, X axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_X) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(4)
 
-	PORT_START	/* joystick 4, Y axis */
+	PORT_START_TAG("JOY7")	/* joystick 4, Y axis */
 		PORT_BIT( 0xf, 0x7,  IPT_AD_STICK_Y) PORT_SENSITIVITY(JOYSTICK_SENSITIVITY) PORT_KEYDELTA(JOYSTICK_DELTA) PORT_MINMAX(0,0xe) PORT_PLAYER(4) PORT_REVERSE
 
 	/* 5 pseudo-ports for the 4 IR remote keypads */
-	PORT_START	/* keypad 1, keys 1 to 16 */
+	PORT_START_TAG("KP0")	/* keypad 1, keys 1 to 16 */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: CLR") PORT_CODE(KEYCODE_1) PORT_PLAYER(1)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: GO") PORT_CODE(KEYCODE_Q) PORT_PLAYER(1)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: SET") PORT_CODE(KEYCODE_SPACE) PORT_PLAYER(1)
@@ -414,7 +409,7 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: 3") PORT_CODE(KEYCODE_D) PORT_PLAYER(1)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: E =") PORT_CODE(KEYCODE_C) PORT_PLAYER(1)
 
-	PORT_START	/* keypad 1, keys 17 to 20 */
+	PORT_START_TAG("KP1")	/* keypad 1, keys 17 to 20 */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: (div)") PORT_CODE(KEYCODE_5) PORT_PLAYER(1)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: (mul)") PORT_CODE(KEYCODE_T) PORT_PLAYER(1)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("1: NO -") PORT_CODE(KEYCODE_F) PORT_PLAYER(1)
@@ -433,7 +428,7 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2: 2") PORT_CODE(KEYCODE_J) PORT_PLAYER(2)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2: 0") PORT_CODE(KEYCODE_M) PORT_PLAYER(2)
 
-	PORT_START	/* keypad 2, keys 13 to 20 */
+	PORT_START_TAG("KP2")	/* keypad 2, keys 13 to 20 */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2: 9") PORT_CODE(KEYCODE_9) PORT_PLAYER(2)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2: 6") PORT_CODE(KEYCODE_O) PORT_PLAYER(2)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("2: 3") PORT_CODE(KEYCODE_K) PORT_PLAYER(2)
@@ -452,7 +447,7 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3: 1") PORT_CODE(KEYCODE_A) PORT_PLAYER(3)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3: STOP") PORT_CODE(KEYCODE_Z) PORT_PLAYER(3)
 
-	PORT_START	/* keypad 3, keys 9 to 20 */
+	PORT_START_TAG("KP3")	/* keypad 3, keys 9 to 20 */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3: 8") PORT_CODE(KEYCODE_3) PORT_PLAYER(3)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3: 5") PORT_CODE(KEYCODE_E) PORT_PLAYER(3)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("3: 2") PORT_CODE(KEYCODE_S) PORT_PLAYER(3)
@@ -471,7 +466,7 @@ static INPUT_PORTS_START(ti99_4)
 		PORT_BIT(0x4000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4: SET") PORT_CODE(KEYCODE_G) PORT_PLAYER(4)
 		PORT_BIT(0x8000, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4: NEXT") PORT_CODE(KEYCODE_B) PORT_PLAYER(4)
 
-	PORT_START	/* keypad 4, keys 5 to 20 */
+	PORT_START_TAG("KP4")	/* keypad 4, keys 5 to 20 */
 		PORT_BIT(0x0001, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4: 7") PORT_CODE(KEYCODE_7) PORT_PLAYER(4)
 		PORT_BIT(0x0002, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4: 4") PORT_CODE(KEYCODE_U) PORT_PLAYER(4)
 		PORT_BIT(0x0004, IP_ACTIVE_HIGH, IPT_KEYBOARD) PORT_NAME("4: 1") PORT_CODE(KEYCODE_H) PORT_PLAYER(4)
@@ -933,7 +928,7 @@ static void ti99_4_memcard_getinfo(const mess_device_class *devclass, UINT32 sta
 	}
 }
 
-SYSTEM_CONFIG_START(ti99_4)
+static SYSTEM_CONFIG_START(ti99_4)
 	CONFIG_DEVICE(ti99_4_cassette_getinfo)
 	CONFIG_DEVICE(ti99_4_cartslot_getinfo)
 	CONFIG_DEVICE(ti99_4_floppy_getinfo)

@@ -14,7 +14,6 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/apple3.h"
 #include "includes/apple2.h"
 #include "cpu/m6502/m6502.h"
@@ -266,9 +265,9 @@ static WRITE8_HANDLER( apple3_c0xx_w )
 
 INTERRUPT_GEN( apple3_interrupt )
 {
-	via_set_input_ca2(1, (AY3600_keydata_strobe_r() & 0x80) ? 1 : 0);
-	via_set_input_cb1(1, video_screen_get_vblank(machine->primary_screen));
-	via_set_input_cb2(1, video_screen_get_vblank(machine->primary_screen));
+	via_set_input_ca2(machine, 1, (AY3600_keydata_strobe_r() & 0x80) ? 1 : 0);
+	via_set_input_cb1(machine, 1, video_screen_get_vblank(machine->primary_screen));
+	via_set_input_cb2(machine, 1, video_screen_get_vblank(machine->primary_screen));
 }
 
 
@@ -453,7 +452,7 @@ static void apple3_update_memory(running_machine *machine)
 	else
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xF000, 0xFFFF, 0, 0, SMH_BANK7);
 	if (via_0_a & 0x01)
-		memory_set_bankptr(7, memory_region(REGION_CPU1));
+		memory_set_bankptr(7, memory_region(machine, REGION_CPU1));
 	else
 		apple3_setbank(7, ~0, 0x7000);
 
@@ -485,10 +484,10 @@ static WRITE8_HANDLER(apple3_via_0_out_b) { apple3_via_out(machine, &via_0_b, da
 static WRITE8_HANDLER(apple3_via_1_out_a) { apple3_via_out(machine, &via_1_a, data); }
 static WRITE8_HANDLER(apple3_via_1_out_b) { apple3_via_out(machine, &via_1_b, data); }
 
-static void apple2_via_1_irq_func(int state)
+static void apple2_via_1_irq_func(running_machine *machine, int state)
 {
 	if (!via_1_irq && state)
-		cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, PULSE_LINE);
+		cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, PULSE_LINE);
 	via_1_irq = state;
 }
 
@@ -622,7 +621,7 @@ static READ8_HANDLER( apple3_indexed_read )
 	else if (addr != (UINT8 *) ~0)
 		result = *addr;
 	else
-		result = memory_region(REGION_CPU1)[offset % memory_region_length(REGION_CPU1)];
+		result = memory_region(machine, REGION_CPU1)[offset % memory_region_length(machine, REGION_CPU1)];
 	return result;
 }
 
@@ -648,10 +647,10 @@ static OPBASE_HANDLER( apple3_opbase )
 	if ((address & 0xFF00) == 0x0000)
 	{
 		opptr = apple3_get_zpa_addr(address);
-		opcode_mask = ~0;
-		opcode_base = opcode_arg_base = opptr - address;
-		opcode_memory_min = address;
-		opcode_memory_max = address;
+		opbase->mask = ~0;
+		opbase->rom = opbase->ram = opptr - address;
+		opbase->mem_min = address;
+		opbase->mem_max = address;
 		address = ~0;
 	}
 	return address;
@@ -708,7 +707,7 @@ const applefdc_interface apple3_fdc_interface =
 DRIVER_INIT( apple3 )
 {
 	/* hack to get around VIA problem */
-	memory_region(REGION_CPU1)[0x0685] = 0x00;
+	memory_region(machine, REGION_CPU1)[0x0685] = 0x00;
 
 	apple3_enable_mask = 0;
 	apple3_update_drives();

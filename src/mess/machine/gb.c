@@ -38,7 +38,7 @@
 #include "driver.h"
 #include "deprecat.h"
 #include "includes/gb.h"
-#include "cpu/z80gb/z80gb.h"
+#include "cpu/lr35902/lr35902.h"
 #include "image.h"
 
 /* Memory bank controller types */
@@ -287,7 +287,7 @@ MACHINE_RESET( gb )
 	gb_video_init( machine, GB_VIDEO_DMG );
 
 	/* Enable BIOS rom */
-	memory_set_bankptr(5, memory_region(REGION_CPU1) );
+	memory_set_bankptr(5, memory_region(machine, REGION_CPU1) );
 	memory_set_bankptr(10, ROMMap[ROMBank00] + 0x0100 );
 
 	gb_timer.divcount = 0x0004;
@@ -757,9 +757,9 @@ WRITE8_HANDLER ( gb_io_w )
 	case 0x00:						/* JOYP - Joypad */
 		JOYPAD = 0xCF | data;
 		if (!(data & 0x20))
-			JOYPAD &= (input_port_read_indexed(machine, 0) >> 4) | 0xF0;
+			JOYPAD &= (input_port_read(machine, "INPUTS") >> 4) | 0xF0;
 		if (!(data & 0x10))
-			JOYPAD &= input_port_read_indexed(machine, 0) | 0xF0;
+			JOYPAD &= input_port_read(machine, "INPUTS") | 0xF0;
 		return;
 	case 0x01:						/* SB - Serial transfer data */
 		break;
@@ -810,7 +810,7 @@ WRITE8_HANDLER ( gb_io_w )
 		break;
 	case 0x0F:						/* IF - Interrupt flag */
 		data &= 0x1F;
-		cpunum_set_reg( 0, Z80GB_IF, data );
+		cpunum_set_reg( 0, LR35902_IF, data );
 		break;
 	}
 
@@ -878,7 +878,7 @@ WRITE8_HANDLER ( sgb_io_w )
 				sgb_bitcount = 0;
 				sgb_start = 1;
 				sgb_rest = 0;
-				JOYPAD = 0x0F & ((input_port_read_indexed(machine, 0) >> 4) | input_port_read_indexed(machine, 0) | 0xF0);
+				JOYPAD = 0x0F & ((input_port_read(machine, "INPUTS") >> 4) | input_port_read(machine, "INPUTS") | 0xF0);
 				break;
 			case 0x10:				   /* data true */
 				if (sgb_rest)
@@ -900,7 +900,7 @@ WRITE8_HANDLER ( sgb_io_w )
 					}
 					sgb_rest = 0;
 				}
-				JOYPAD = 0x1F & ((input_port_read_indexed(machine, 0) >> 4) | 0xF0);
+				JOYPAD = 0x1F & ((input_port_read(machine, "INPUTS") >> 4) | 0xF0);
 				break;
 			case 0x20:				/* data false */
 				if (sgb_rest)
@@ -1321,7 +1321,7 @@ WRITE8_HANDLER ( sgb_io_w )
 					}
 					sgb_rest = 0;
 				}
-				JOYPAD = 0x2F & (input_port_read_indexed(machine, 0) | 0xF0);
+				JOYPAD = 0x2F & (input_port_read(machine, "INPUTS") | 0xF0);
 				break;
 			case 0x30:				   /* rest condition */
 				if (sgb_start)
@@ -1350,12 +1350,12 @@ WRITE8_HANDLER ( sgb_io_w )
 /* Interrupt Enable register */
 READ8_HANDLER( gb_ie_r )
 {
-	return cpunum_get_reg( 0, Z80GB_IE );
+	return cpunum_get_reg( 0, LR35902_IE );
 }
 
 WRITE8_HANDLER ( gb_ie_w )
 {
-	cpunum_set_reg( 0, Z80GB_IE, data & 0x1F );
+	cpunum_set_reg( 0, LR35902_IE, data & 0x1F );
 }
 
 /* IO read */
@@ -1375,7 +1375,7 @@ READ8_HANDLER ( gb_io_r )
 			return gb_io[offset];
 		case 0x0F:
 			/* Make sure the internal states are up to date */
-			return 0xE0 | cpunum_get_reg( 0, Z80GB_IF );
+			return 0xE0 | cpunum_get_reg( 0, LR35902_IF );
 		default:
 			/* It seems unsupported registers return 0xFF */
 			return 0xFF;
@@ -1869,7 +1869,7 @@ WRITE8_HANDLER ( gbc_io2_w )
 {
 	switch( offset ) {
 		case 0x0D:	/* KEY1 - Prepare speed switch */
-			cpunum_set_reg( 0, Z80GB_SPEED, data );
+			cpunum_set_reg( 0, LR35902_SPEED, data );
 			return;
 		case 0x16:	/* RP - Infrared port */
 			break;
@@ -1886,7 +1886,7 @@ WRITE8_HANDLER ( gbc_io2_w )
 READ8_HANDLER( gbc_io2_r ) {
 	switch( offset ) {
 	case 0x0D:	/* KEY1 */
-		return cpunum_get_reg( 0, Z80GB_SPEED );
+		return cpunum_get_reg( 0, LR35902_SPEED );
 	case 0x16:	/* RP - Infrared port */
 		break;
 	default:

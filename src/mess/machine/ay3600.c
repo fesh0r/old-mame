@@ -19,6 +19,11 @@
 #include "machine/ay3600.h"
 #include "includes/apple2.h"
 
+
+/***************************************************************************
+    PARAMETERS
+***************************************************************************/
+
 #ifdef MAME_DEBUG
 #define VERBOSE 1
 #else
@@ -27,12 +32,16 @@
 
 #define LOG(x) do { if (VERBOSE) logerror x; } while (0)
 
+
+
+/**************************************************************************/
+
 static TIMER_CALLBACK(AY3600_poll);
 
 static int AY3600_keyboard_queue_chars(const unicode_char *text, size_t text_len);
 static int AY3600_keyboard_accept_char(unicode_char ch);
 
-static const unsigned char ay3600_key_remap_2[7*8][4] =
+static const unsigned char ay3600_key_remap_2[9*8][4] =
 {
 /*		  norm ctrl shft both */
 		{ 0x7f,0x7f,0x7f,0x7f },	/* UNUSED		*/
@@ -262,7 +271,6 @@ static UINT8 keymodreg;
 #define MAGIC_KEY_REPEAT_NUMBER		80
 
 #define AY3600_KEYS_LENGTH			128
-#define AY3600_KEYS_BASEPORT		0
 
 // IIgs keymod flags
 #define A2_KEYMOD_SHIFT		1
@@ -274,36 +282,37 @@ static UINT8 keymodreg;
 #define A2_KEYMOD_COMMAND	0x40
 #define A2_KEYMOD_OPTION	0x80
 
+
+
 /***************************************************************************
-  Helper Functions
+    HELPER FUNCTIONS
 ***************************************************************************/
 
-INLINE int a2_has_keypad(void)
+INLINE int a2_has_keypad(running_machine *machine)
 {
-	return port_tag_to_index("keypad_1") != -1;
+	return input_port_by_tag(machine->portconfig, "keypad_1") != NULL;
 }
 
-INLINE int a2_has_reset_dip(void)
+INLINE int a2_has_reset_dip(running_machine *machine)
 {
-	return port_tag_to_index("reset_dip") != -1;
+	return input_port_by_tag(machine->portconfig, "reset_dip") != NULL;
 }
 
-INLINE int a2_has_repeat(void)
+INLINE int a2_has_repeat(running_machine *machine)
 {
-	return port_tag_to_index("keyb_repeat") != -1;
+	return input_port_by_tag(machine->portconfig, "keyb_repeat") != NULL;
 }
 
-INLINE int a2_has_capslock(void)
+INLINE int a2_has_capslock(running_machine *machine)
 {
-	return !a2_has_repeat(); /* BUG: Doesn't work with Ace */
+	return !a2_has_repeat(machine); /* BUG: Doesn't work with Ace */
 }
 
 INLINE int a2_no_ctrl_reset(running_machine *machine)
 {
-	return ((a2_has_repeat() && !a2_has_reset_dip()) ||
-			(a2_has_reset_dip() && !input_port_read(machine, "reset_dip")));
+	return ((a2_has_repeat(machine) && !a2_has_reset_dip(machine)) ||
+			(a2_has_reset_dip(machine) && !input_port_read(machine, "reset_dip")));
 }
-
 
 
 /***************************************************************************
@@ -351,6 +360,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	int caps_lock = 0;
 	int curkey;
 	int curkey_unmodified;
+	char ipt[11];
 
 	static int reset_flag = 0;
 	static int last_key = 0xff; 	/* necessary for special repeat key behaviour */
@@ -361,11 +371,11 @@ static TIMER_CALLBACK(AY3600_poll)
 	/* check for these special cases because they affect the emulated key codes */
 
 	/* only repeat keys on a 2/2+ if special REPT key is pressed */
-	if (a2_has_repeat())
+	if (a2_has_repeat(machine))
 		time_until_repeat = input_port_read(machine, "keyb_repeat") & 0x01 ? 0 : ~0;
 
 	/* check caps lock and set LED here */
-	if (pressed_specialkey(SPECIALKEY_CAPSLOCK))
+	if (apple2_pressed_specialkey(machine, SPECIALKEY_CAPSLOCK))
 	{
 		caps_lock = 1;
 		set_led_status(1,1);
@@ -381,7 +391,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	switchkey = A2_KEY_NORMAL;
 
 	/* shift key check */
-	if (pressed_specialkey(SPECIALKEY_SHIFT))
+	if (apple2_pressed_specialkey(machine, SPECIALKEY_SHIFT))
 	{
 		switchkey |= A2_KEY_SHIFT;
 		keymodreg |= A2_KEYMOD_SHIFT;
@@ -392,7 +402,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	}
 
 	/* control key check - only one control key on the left side on the Apple */
-	if (pressed_specialkey(SPECIALKEY_CONTROL))
+	if (apple2_pressed_specialkey(machine, SPECIALKEY_CONTROL))
 	{
 		switchkey |= A2_KEY_CONTROL;
 		keymodreg |= A2_KEYMOD_CONTROL;
@@ -403,7 +413,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	}
 
 	/* apple key check */
-	if (pressed_specialkey(SPECIALKEY_BUTTON0))
+	if (apple2_pressed_specialkey(machine, SPECIALKEY_BUTTON0))
 	{
 		keymodreg |= A2_KEYMOD_COMMAND;
 	}
@@ -413,7 +423,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	}
 
 	/* option key check */
-	if (pressed_specialkey(SPECIALKEY_BUTTON1))
+	if (apple2_pressed_specialkey(machine, SPECIALKEY_BUTTON1))
 	{
 		keymodreg |= A2_KEYMOD_OPTION;
 	}
@@ -423,7 +433,7 @@ static TIMER_CALLBACK(AY3600_poll)
 	}
 
 	/* reset key check */
-	if (pressed_specialkey(SPECIALKEY_RESET) &&
+	if (apple2_pressed_specialkey(machine, SPECIALKEY_RESET) &&
 		(a2_no_ctrl_reset(machine) || switchkey & A2_KEY_CONTROL)) {
 			if (!reset_flag) {
 				reset_flag = 1;
@@ -440,19 +450,24 @@ static TIMER_CALLBACK(AY3600_poll)
 	}
 
 	/* run through real keys and see what's being pressed */
-	num_ports = a2_has_keypad() ? 9 : 7;
+	num_ports = a2_has_keypad(machine) ? 9 : 7;
 
 	keymodreg &= ~A2_KEYMOD_KEYPAD;
 
 	for (port = 0; port < num_ports; port++)
 	{
-		data = input_port_read_indexed(machine, AY3600_KEYS_BASEPORT + port);
+		sprintf(ipt, "%s%d", (port < 7) ? "keyb_" : "keypad_" , (port < 7) ? port : port - 6);
+		data = input_port_read(machine, ipt);
+
 		for (bit = 0; bit < 8; bit++)
 		{
-			if (a2_has_capslock()) {
+			if (a2_has_capslock(machine)) 
+			{
 				curkey = ay3600_key_remap_2e[caps_lock][port*8+bit][switchkey];
 				curkey_unmodified = ay3600_key_remap_2e[caps_lock][port*8+bit][0];
-			} else {
+			} 
+			else 
+			{
 				curkey = ay3600_key_remap_2[port*8+bit][switchkey];
 				curkey_unmodified = ay3600_key_remap_2[port*8+bit][0];
 			}

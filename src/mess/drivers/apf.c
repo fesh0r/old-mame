@@ -16,7 +16,6 @@ todo for apf m1000:
 #include "driver.h"
 #include "video/m6847.h"
 #include "includes/apf.h"
-#include "deprecat.h"
 
 #include "machine/6821pia.h"
 #include "machine/wd17xx.h"
@@ -148,7 +147,7 @@ void apf_update_ints(running_machine *machine)
 	cpunum_set_input_line(machine, 0, 0, apf_ints ? HOLD_LINE : CLEAR_LINE);
 }
 
-static void	apf_m1000_irq_a_func(int state)
+static void	apf_m1000_irq_a_func(running_machine *machine, int state)
 {
 	if (state)
 	{
@@ -159,11 +158,11 @@ static void	apf_m1000_irq_a_func(int state)
 		apf_ints&=~1;
 	}
 
-	apf_update_ints(Machine);
+	apf_update_ints(machine);
 }
 
 
-static void	apf_m1000_irq_b_func(int state)
+static void	apf_m1000_irq_b_func(running_machine *machine, int state)
 {
 	//logerror("pia 0 irq b %d\n",state);
 
@@ -176,7 +175,7 @@ static void	apf_m1000_irq_b_func(int state)
 		apf_ints&=~2;
 	}
 
-	apf_update_ints(Machine);
+	apf_update_ints(machine);
 
 }
 
@@ -274,7 +273,7 @@ static WRITE8_HANDLER(apf_imagination_pia_out_cb2_func)
 {
 }
 
-static void	apf_imagination_irq_a_func(int state)
+static void	apf_imagination_irq_a_func(running_machine *machine, int state)
 {
 	if (state)
 	{
@@ -285,11 +284,11 @@ static void	apf_imagination_irq_a_func(int state)
 		apf_ints&=~4;
 	}
 
-	apf_update_ints(Machine);
+	apf_update_ints(machine);
 
 }
 
-static void	apf_imagination_irq_b_func(int state)
+static void	apf_imagination_irq_b_func(running_machine *machine, int state)
 {
 	if (state)
 	{
@@ -300,7 +299,7 @@ static void	apf_imagination_irq_b_func(int state)
 		apf_ints&=~8;
 	}
 
-	apf_update_ints(Machine);
+	apf_update_ints(machine);
 
 }
 
@@ -320,8 +319,6 @@ static const pia6821_interface apf_imagination_pia_interface=
 	apf_imagination_irq_b_func
 };
 
-
-extern unsigned char *apf_video_ram;
 
 static void apf_common_init(void)
 {
@@ -488,8 +485,8 @@ static INPUT_PORTS_START( apf_m1000 )
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 1") PORT_CODE(KEYCODE_1) PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 0") PORT_CODE(KEYCODE_0) PORT_PLAYER(1)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 4") PORT_CODE(KEYCODE_4) PORT_PLAYER(1)
-        PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 7") PORT_CODE(KEYCODE_7) PORT_PLAYER(1)
-        PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 1") PORT_CODE(KEYCODE_1_PAD) PORT_PLAYER(2)
+	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 7") PORT_CODE(KEYCODE_7) PORT_PLAYER(1)
+	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 1") PORT_CODE(KEYCODE_1_PAD) PORT_PLAYER(2)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 0") PORT_CODE(KEYCODE_0_PAD) PORT_PLAYER(2)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 4") PORT_CODE(KEYCODE_4_PAD) PORT_PLAYER(2)
 	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 7") PORT_CODE(KEYCODE_7_PAD) PORT_PLAYER(2)
@@ -512,13 +509,13 @@ static INPUT_PORTS_START( apf_m1000 )
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 6") PORT_CODE(KEYCODE_6) PORT_PLAYER(1)
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 9") PORT_CODE(KEYCODE_9) PORT_PLAYER(1)
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 3") PORT_CODE(KEYCODE_3_PAD) PORT_PLAYER(2)
-        PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT clear") PORT_CODE(KEYCODE_DEL_PAD) PORT_PLAYER(2)
+	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT clear") PORT_CODE(KEYCODE_DEL_PAD) PORT_PLAYER(2)
 	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 6") PORT_CODE(KEYCODE_6_PAD) PORT_PLAYER(2)
-        PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 9") PORT_CODE(KEYCODE_9_PAD) PORT_PLAYER(2)
+	PORT_BIT(0x80, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 2/LEFT 9") PORT_CODE(KEYCODE_9_PAD) PORT_PLAYER(2)
 
 	/* line 3 */
 	PORT_START_TAG("joy3")
-        PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 2") PORT_CODE(KEYCODE_2) PORT_PLAYER(1)
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 2") PORT_CODE(KEYCODE_2) PORT_PLAYER(1)
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT enter/fire") PORT_CODE(KEYCODE_ENTER) PORT_PLAYER(1)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 5") PORT_CODE(KEYCODE_5) PORT_PLAYER(1)
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_OTHER) PORT_NAME("PAD 1/RIGHT 8") PORT_CODE(KEYCODE_8) PORT_PLAYER(1)
@@ -609,8 +606,7 @@ static INPUT_PORTS_START( apf_imagination )
 
 	/* line 6 */
 	PORT_START_TAG("key6")
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Right Shift")     PORT_CODE(KEYCODE_RSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
-	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Left Shift")      PORT_CODE(KEYCODE_LSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
+	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Shift")     PORT_CODE(KEYCODE_RSHIFT) PORT_CODE(KEYCODE_LSHIFT)     PORT_CHAR(UCHAR_SHIFT_1)
 /* This key displays the glyph "[", but a quick test reveals that its ASCII code is 27. */
 	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Esc")             PORT_CODE(KEYCODE_TAB)        PORT_CHAR(27)
 	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("Ctrl")            PORT_CODE(KEYCODE_LCONTROL)   PORT_CHAR(UCHAR_SHIFT_2)
@@ -719,12 +715,12 @@ static void apfimag_floppy_getinfo(const mess_device_class *devclass, UINT32 sta
 }
 
 
-SYSTEM_CONFIG_START( apfimag )
+static SYSTEM_CONFIG_START( apfimag )
 	CONFIG_DEVICE(apfimag_cassette_getinfo)
 	CONFIG_DEVICE(apfimag_floppy_getinfo)
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START(apfm1000)
+static SYSTEM_CONFIG_START(apfm1000)
 	CONFIG_DEVICE(cartslot_device_getinfo)
 SYSTEM_CONFIG_END
 

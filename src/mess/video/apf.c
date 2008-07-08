@@ -33,7 +33,6 @@ static UINT8 apf_get_character(int character, int line)
 
 static void apf_vsync_int(int line)
 {
-	extern unsigned int apf_ints;
 	if (line)
 		apf_ints |= 0x10;
 	else
@@ -76,7 +75,9 @@ VIDEO_START(apf)
 	m6847_init(machine, &cfg);
 }
 
+#ifdef UNUSED_FUNCTION
 VIDEO_UPDATE(apf)
 {
     return VIDEO_UPDATE_CALL(m6847);
 }
+#endif

@@ -69,7 +69,7 @@ static int put_cycles = 0;		/* cycle count at last output port change */
 static int get_cycles = 0;		/* cycle count at last input port read */
 
 static void tape_put_byte(UINT8 value);
-static void tape_get_open(void);
+static void tape_get_open(running_machine *machine);
 static void tape_put_close(running_machine *machine);
 
 #define FW TRS80_FONT_W
@@ -148,7 +148,7 @@ DEVICE_IMAGE_UNLOAD( trs80_cas )
 	cas_size = 0;
 }
 
-extern QUICKLOAD_LOAD( trs80_cmd )
+QUICKLOAD_LOAD( trs80_cmd )
 {
 	UINT16 entry = 0, block_ofs = 0, block_len = 0;
 	unsigned offs = 0;
@@ -293,7 +293,7 @@ MACHINE_RESET( trs80 )
 
 DRIVER_INIT( trs80 )
 {
-	UINT8 *FNT = memory_region(REGION_GFX1);
+	UINT8 *FNT = memory_region(machine, REGION_GFX1);
 	int i, y;
 
 	for( i = 0x000; i < 0x080; i++ )
@@ -324,7 +324,7 @@ DRIVER_INIT( trs80 )
 
 DRIVER_INIT( lnw80 )
 {
-	UINT8 y, *FNT = memory_region(REGION_GFX1);
+	UINT8 y, *FNT = memory_region(machine, REGION_GFX1);
 	UINT16 i, rows[] = { 0, 0x200, 0x100, 0x300, 1, 0x201, 0x101, 0x301 };
 
 	for( i = 0; i < 0x80; i++ )
@@ -431,7 +431,7 @@ static void tape_put_close(running_machine *machine)
 	tape_put_file = 0;
 }
 
-static void tape_get_byte(void)
+static void tape_get_byte(running_machine *machine)
 {
 	int 	count;
 	UINT8	value;
@@ -458,10 +458,10 @@ static void tape_get_byte(void)
 	}
 }
 
-static void tape_get_open(void)
+static void tape_get_open(running_machine *machine)
 {
 	/* TODO: remove this */
-	unsigned char *RAM = memory_region(REGION_CPU1);
+	unsigned char *RAM = memory_region(machine, REGION_CPU1);
 
 	if (!tape_get_file)
 	{
@@ -609,8 +609,8 @@ WRITE8_HANDLER( trs80_port_ff_w )
 				/* need to read get new data ? */
 				if (--get_bit_count <= 0)
 				{
-					tape_get_open();
-					tape_get_byte();
+					tape_get_open(machine);
+					tape_get_byte(machine);
 				}
 				/* shift next sync or data bit to bit 16 */
 				tape_bits <<= 1;

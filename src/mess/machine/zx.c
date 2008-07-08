@@ -22,24 +22,57 @@
 
 static UINT8 zx_tape_bit = 0x80;
 
+static WRITE8_HANDLER( zx_ram_w )
+{
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
+
+	rom[offset | 0x4000] = data;
+
+	if ((offset > 0x29) && (offset < 0x300))
+	{
+		if (data & 0x40)
+			program_write_byte (offset | 0xc000, data);
+		else
+			program_write_byte (offset | 0xc000, 0);
+	}
+}
+
 DRIVER_INIT ( zx )
 {
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0x8000, SMH_BANK1);
-	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0x8000, SMH_BANK1);
-	memory_set_bankptr(1, memory_region(REGION_CPU1) + 0x4000);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, SMH_BANK1);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4000 + mess_ram_size - 1, 0, 0, zx_ram_w);
+	memory_set_bankptr(1, memory_region(machine, REGION_CPU1) + 0x4000);
 }
+
+#if 0
+static OPBASE_HANDLER ( zx_setopbase )
+{
+	if ((address > 0xc029) && (address < 0xc300))
+	{
+		int byte = program_read_byte( address & 0x7fff );
+
+		if (byte & 0x40)
+			program_write_byte( address, byte );
+		else
+			program_write_byte( address, 0 );
+
+		zx_ula_r(machine, address, REGION_CPU1);
+	}
+	return address;
+}
+#endif
 
 static OPBASE_HANDLER ( zx_setopbase )
 {
 	if (address & 0x8000)
-		return zx_ula_r(machine, address, REGION_CPU1);
+		zx_ula_r(machine, address, REGION_CPU1);
 	return address;
 }
 
 static OPBASE_HANDLER ( pc8300_setopbase )
 {
 	if (address & 0x8000)
-		return zx_ula_r(machine, address, REGION_GFX1);
+		zx_ula_r(machine, address, REGION_GFX1);
 	return address;
 }
 
@@ -110,31 +143,31 @@ READ8_HANDLER ( zx_io_r )
 
 	if ((offset & 1) == 0)
 	{
-		int extra1 = input_port_read_indexed(machine, 9);
-		int extra2 = input_port_read_indexed(machine, 10);
+		int extra1 = input_port_read(machine, "SPC0");
+		int extra2 = input_port_read(machine, "SPC1");
 
-		ula_scancode_count = 0;
+//		ula_scancode_count = 0;
 		if ((offset & 0x0100) == 0)
 		{
-			data &= input_port_read_indexed(machine, 1);
+			data &= input_port_read(machine, "ROW0");
 			/* SHIFT for extra keys */
 			if (extra1 != 0xff || extra2 != 0xff)
 				data &= ~0x01;
 		}
 		if ((offset & 0x0200) == 0)
-			data &= input_port_read_indexed(machine, 2);
+			data &= input_port_read(machine, "ROW1");
 		if ((offset & 0x0400) == 0)
-			data &= input_port_read_indexed(machine, 3);
+			data &= input_port_read(machine, "ROW2");
 		if ((offset & 0x0800) == 0)
-			data &= input_port_read_indexed(machine, 4) & extra1;
+			data &= input_port_read(machine, "ROW3") & extra1;
 		if ((offset & 0x1000) == 0)
-			data &= input_port_read_indexed(machine, 5) & extra2;
+			data &= input_port_read(machine, "ROW4") & extra2;
 		if ((offset & 0x2000) == 0)
-			data &= input_port_read_indexed(machine, 6);
+			data &= input_port_read(machine, "ROW5");
 		if ((offset & 0x4000) == 0)
-			data &= input_port_read_indexed(machine, 7);
+			data &= input_port_read(machine, "ROW6");
 		if ((offset & 0x8000) == 0)
-			data &= input_port_read_indexed(machine, 8);
+			data &= input_port_read(machine, "ROW7");
 		if (video_screen_get_refresh(screen) > 55)
 			data &= ~0x40;
 
@@ -176,31 +209,31 @@ READ8_HANDLER ( pow3000_io_r )
 
 	if ((offset & 1) == 0)
 	{
-		int extra1 = input_port_read_indexed(machine, 9);
-		int extra2 = input_port_read_indexed(machine, 10);
+		int extra1 = input_port_read(machine, "SPC0");
+		int extra2 = input_port_read(machine, "SPC1");
 
-		ula_scancode_count = 0;
+//		ula_scancode_count = 0;
 		if ((offset & 0x0100) == 0)
 		{
-			data &= input_port_read_indexed(machine, 1) & extra1;
+			data &= input_port_read(machine, "ROW0") & extra1;
 			/* SHIFT for extra keys */
 			if (extra1 != 0xff || extra2 != 0xff)
 				data &= ~0x01;
 		}
 		if ((offset & 0x0200) == 0)
-			data &= input_port_read_indexed(machine, 2) & extra2;
+			data &= input_port_read(machine, "ROW1") & extra2;
 		if ((offset & 0x0400) == 0)
-			data &= input_port_read_indexed(machine, 3);
+			data &= input_port_read(machine, "ROW2");
 		if ((offset & 0x0800) == 0)
-			data &= input_port_read_indexed(machine, 4);
+			data &= input_port_read(machine, "ROW3");
 		if ((offset & 0x1000) == 0)
-			data &= input_port_read_indexed(machine, 5);
+			data &= input_port_read(machine, "ROW4");
 		if ((offset & 0x2000) == 0)
-			data &= input_port_read_indexed(machine, 6);
+			data &= input_port_read(machine, "ROW5");
 		if ((offset & 0x4000) == 0)
-			data &= input_port_read_indexed(machine, 7);
+			data &= input_port_read(machine, "ROW6");
 		if ((offset & 0x8000) == 0)
-			data &= input_port_read_indexed(machine, 8);
+			data &= input_port_read(machine, "ROW7");
 		if (video_screen_get_refresh(screen) > 55)
 			data &= ~0x40;
 

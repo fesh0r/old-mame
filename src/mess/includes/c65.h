@@ -8,9 +8,6 @@
 #define C65_H_
 
 
-#define C65_KEY_DIN ( input_port_read (machine, "Special") & 0x20 )
-
-
 /*----------- defined in machine/c65.c -----------*/
 
 /*extern UINT8 *c65_memory; */
@@ -22,7 +19,7 @@ extern UINT8 *c65_chargen;
 extern UINT8 *c65_interface;
 /*extern UINT8 *c65_graphics; */
 
-void c65_bankswitch (void);
+void c65_bankswitch (running_machine *machine);
 void c65_colorram_write (int offset, int value);
 
 DRIVER_INIT( c65 );

@@ -180,7 +180,7 @@ static TIMER_CALLBACK(psx_pad_ack)
 	int n_port = param;
 	if( m_pad[ n_port ].n_state != PAD_STATE_IDLE )
 	{
-		psx_sio_input( 0, PSX_SIO_IN_DSR, m_pad[ n_port ].b_ack * PSX_SIO_IN_DSR );
+		psx_sio_input( machine, 0, PSX_SIO_IN_DSR, m_pad[ n_port ].b_ack * PSX_SIO_IN_DSR );
 		if( !m_pad[ n_port ].b_ack )
 		{
 			m_pad[ n_port ].b_ack = 1;
@@ -189,9 +189,8 @@ static TIMER_CALLBACK(psx_pad_ack)
 	}
 }
 
-static void psx_pad( int n_port, int n_data )
+static void psx_pad( running_machine *machine, int n_port, int n_data )
 {
-	running_machine *machine = Machine;
 	int b_sel;
 	int b_clock;
 	int b_data;
@@ -217,7 +216,7 @@ static void psx_pad( int n_port, int n_data )
 	case PAD_STATE_READ:
 		if( m_pad[ n_port ].b_lastclock && !b_clock )
 		{
-			psx_sio_input( 0, PSX_SIO_IN_DATA, ( m_pad[ n_port ].n_shiftout & 1 ) * PSX_SIO_IN_DATA );
+			psx_sio_input( machine, 0, PSX_SIO_IN_DATA, ( m_pad[ n_port ].n_shiftout & 1 ) * PSX_SIO_IN_DATA );
 			m_pad[ n_port ].n_shiftout >>= 1;
 		}
 		if( !m_pad[ n_port ].b_lastclock && b_clock )
@@ -312,9 +311,9 @@ static void psx_mcd( int n_port, int n_data )
 static void psx_sio0( int n_data )
 {
 	/* todo: raise data & ack when nothing is driving it low */
-	psx_pad( 0, n_data );
+	psx_pad( Machine, 0, n_data );
 	psx_mcd( 0, n_data );
-	psx_pad( 1, n_data ^ PSX_SIO_OUT_DTR );
+	psx_pad( Machine, 1, n_data ^ PSX_SIO_OUT_DTR );
 	psx_mcd( 1, n_data ^ PSX_SIO_OUT_DTR );
 }
 
@@ -634,7 +633,7 @@ static WRITE32_HANDLER( psx_cd_w )
 		if (psx_cdcmd)
 			psx_cdcmd();
 
-		psx_irq_set(0x0004);
+		psx_irq_set(machine, 0x0004);
 	}
 	else if( mem_mask == 0xff00ffff )
 	{
@@ -716,7 +715,7 @@ ADDRESS_MAP_END
 
 static MACHINE_RESET( psx )
 {
-	psx_machine_init();
+	psx_machine_init(machine);
 	psx_sio_install_handler( 0, psx_sio0 );
 }
 

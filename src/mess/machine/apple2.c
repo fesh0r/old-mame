@@ -90,16 +90,16 @@ static READ8_HANDLER(read_floatingbus)
 
 
 
-void apple2_setup_memory(const apple2_memmap_config *config)
+void apple2_setup_memory(running_machine *machine, const apple2_memmap_config *config)
 {
 	apple2_mem_config = *config;
 	apple2_current_meminfo = NULL;
-	apple2_update_memory();
+	apple2_update_memory(machine);
 }
 
 
 
-void apple2_update_memory(void)
+void apple2_update_memory(running_machine *machine)
 {
 	int i, bank, rbank, wbank;
 	int full_update = 0;
@@ -121,9 +121,9 @@ void apple2_update_memory(void)
 	}
 
 	/* get critical info */
-	rom = memory_region(REGION_CPU1);
-	rom_length = memory_region_length(REGION_CPU1) & ~0xFFF;
-	slot_length = memory_region_length(REGION_CPU1) - rom_length;
+	rom = memory_region(machine, REGION_CPU1);
+	rom_length = memory_region_length(machine, REGION_CPU1) & ~0xFFF;
+	slot_length = memory_region_length(machine, REGION_CPU1) - rom_length;
 	slot_ram = (slot_length > 0) ? &rom[rom_length] : NULL;
 
 	/* loop through the entire memory map */
@@ -194,11 +194,11 @@ void apple2_update_memory(void)
 
 			/* install the actual handlers */
 			if (begin <= end_r)
-				memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, begin, end_r, 0, 0, rh);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, begin, end_r, 0, 0, rh);
 
 			/* did we 'go past the end?' */
 			if (end_r < apple2_mem_config.memmap[i].end)
-				memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, end_r + 1, apple2_mem_config.memmap[i].end, 0, 0, SMH_NOP);
+				memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, end_r + 1, apple2_mem_config.memmap[i].end, 0, 0, SMH_NOP);
 
 			/* set the memory bank */
 			if (rbase)
@@ -269,11 +269,11 @@ void apple2_update_memory(void)
 
 			/* install the actual handlers */
 			if (begin <= end_w)
-				memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, begin, end_w, 0, 0, wh);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, begin, end_w, 0, 0, wh);
 
 			/* did we 'go past the end?' */
 			if (end_w < apple2_mem_config.memmap[i].end)
-				memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, end_w + 1, apple2_mem_config.memmap[i].end, 0, 0, SMH_NOP);
+				memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, end_w + 1, apple2_mem_config.memmap[i].end, 0, 0, SMH_NOP);
 
 			/* set the memory bank */
 			if (wbase)
@@ -293,7 +293,7 @@ void apple2_update_memory(void)
 
 static STATE_POSTLOAD( apple2_update_memory_postload )
 {
-	apple2_update_memory();
+	apple2_update_memory(machine);
 }
 
 
@@ -567,7 +567,7 @@ static const apple2_memmap_entry apple2_memmap_entries[] =
 
 
 
-void apple2_setvar(UINT32 val, UINT32 mask)
+void apple2_setvar(running_machine *machine, UINT32 val, UINT32 mask)
 {
 	LOG(("apple2_setvar(): val=0x%06x mask=0x%06x pc=0x%04x\n", val, mask, (unsigned int) cpunum_get_reg(0, REG_PC)));
 
@@ -581,7 +581,7 @@ void apple2_setvar(UINT32 val, UINT32 mask)
 	a2 &= ~mask;
 	a2 |= val;
 
-	apple2_update_memory();
+	apple2_update_memory(machine);
 }
 
 
@@ -748,12 +748,12 @@ static void apple2_reset(running_machine *machine)
 		|| !strcmp(machine->gamedrv->name, "apple2c3")
 		|| !strcmp(machine->gamedrv->name, "apple2cp")
 		|| !strncmp(machine->gamedrv->name, "apple2g", 7);
-	apple2_setvar(need_intcxrom ? VAR_INTCXROM : 0, ~0);
+	apple2_setvar(machine, need_intcxrom ? VAR_INTCXROM : 0, ~0);
 
 	// ROM 0 cannot boot unless language card bank 2 is write-enabled (but read ROM) on startup
 	if (!strncmp(machine->gamedrv->name, "apple2g", 7))
 	{
-		apple2_setvar(VAR_LCWRITE|VAR_LCRAM2, VAR_LCWRITE | VAR_LCRAM | VAR_LCRAM2);
+		apple2_setvar(machine, VAR_LCWRITE|VAR_LCRAM2, VAR_LCWRITE | VAR_LCRAM | VAR_LCRAM2);
 	}
 
 	a2_speaker_state = 0;
@@ -870,7 +870,7 @@ WRITE8_HANDLER ( apple2_c00x_w )
 {
 	UINT32 mask;
 	mask = 1 << (offset / 2);
-	apple2_setvar((offset & 1) ? mask : 0, mask);
+	apple2_setvar(machine, (offset & 1) ? mask : 0, mask);
 }
 
 
@@ -947,7 +947,7 @@ WRITE8_HANDLER( apple2_c02x_w )
 	switch(offset)
 	{
 		case 0x08:
-			apple2_setvar((a2 & VAR_ROMSWITCH) ^ VAR_ROMSWITCH, VAR_ROMSWITCH);
+			apple2_setvar(machine, (a2 & VAR_ROMSWITCH) ^ VAR_ROMSWITCH, VAR_ROMSWITCH);
 			break;
 	}
 }
@@ -997,7 +997,7 @@ READ8_HANDLER ( apple2_c05x_r )
 		offset ^= 1;
 
 	mask = 0x100 << (offset / 2);
-	apple2_setvar((offset & 1) ? mask : 0, mask);
+	apple2_setvar(machine, (offset & 1) ? mask : 0, mask);
 	return apple2_getfloatingbusvalue();
 }
 
@@ -1025,15 +1025,15 @@ READ8_HANDLER ( apple2_c06x_r )
 	{
 		case 0x01:
 			/* Open-Apple/Joystick button 0 */
-			result = pressed_specialkey(SPECIALKEY_BUTTON0);
+			result = apple2_pressed_specialkey(machine, SPECIALKEY_BUTTON0);
 			break;
 		case 0x02:
 			/* Closed-Apple/Joystick button 1 */
-			result = pressed_specialkey(SPECIALKEY_BUTTON1);
+			result = apple2_pressed_specialkey(machine, SPECIALKEY_BUTTON1);
 			break;
 		case 0x03:
 			/* Joystick button 2. Later revision motherboards connected this to SHIFT also */
-			result = pressed_specialkey(SPECIALKEY_BUTTON2);
+			result = apple2_pressed_specialkey(machine, SPECIALKEY_BUTTON2);
 			break;
 		case 0x04:
 			/* X Joystick 1 axis */
@@ -1101,21 +1101,21 @@ WRITE8_HANDLER ( apple2_c07x_w )
 
 static int apple2_fdc_diskreg;
 
-static int apple2_fdc_has_35(void)
+static int apple2_fdc_has_35(running_machine *machine)
 {
-	return device_count_tag_from_machine(Machine, "sonydriv") > 0;
+	return device_count_tag_from_machine(machine, "sonydriv") > 0;
 }
 
-static int apple2_fdc_has_525(void)
+static int apple2_fdc_has_525(running_machine *machine)
 {
-	return device_count_tag_from_machine(Machine, "apple525driv") > 0;
+	return device_count_tag_from_machine(machine, "apple525driv") > 0;
 }
 
 static void apple2_fdc_set_lines(UINT8 lines)
 {
 	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_fdc_has_35())
+		if (apple2_fdc_has_35(Machine))
 		{
 			/* slot 5: 3.5" disks */
 			sony_set_lines(lines);
@@ -1123,7 +1123,7 @@ static void apple2_fdc_set_lines(UINT8 lines)
 	}
 	else
 	{
-		if (apple2_fdc_has_525())
+		if (apple2_fdc_has_525(Machine))
 		{
 			/* slot 6: 5.25" disks */
 			apple525_set_lines(lines);
@@ -1143,13 +1143,13 @@ static void apple2_fdc_set_enable_lines(int enable_mask)
 	else
 		slot6_enable_mask = enable_mask;
 
-	if (apple2_fdc_has_35())
+	if (apple2_fdc_has_35(Machine))
 	{
 		/* set the 3.5" enable lines */
 		sony_set_enable_lines(slot5_enable_mask);
 	}
 
-	if (apple2_fdc_has_525())
+	if (apple2_fdc_has_525(Machine))
 	{
 		/* set the 5.25" enable lines */
 		apple525_set_enable_lines(slot6_enable_mask);
@@ -1164,7 +1164,7 @@ static UINT8 apple2_fdc_read_data(void)
 
 	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_fdc_has_35())
+		if (apple2_fdc_has_35(Machine))
 		{
 			/* slot 5: 3.5" disks */
 			result = sony_read_data();
@@ -1172,7 +1172,7 @@ static UINT8 apple2_fdc_read_data(void)
 	}
 	else
 	{
-		if (apple2_fdc_has_525())
+		if (apple2_fdc_has_525(Machine))
 		{
 			/* slot 6: 5.25" disks */
 			result = apple525_read_data();
@@ -1187,7 +1187,7 @@ static void apple2_fdc_write_data(UINT8 data)
 {
 	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_fdc_has_35())
+		if (apple2_fdc_has_35(Machine))
 		{
 			/* slot 5: 3.5" disks */
 			sony_write_data(data);
@@ -1195,7 +1195,7 @@ static void apple2_fdc_write_data(UINT8 data)
 	}
 	else
 	{
-		if (apple2_fdc_has_525())
+		if (apple2_fdc_has_525(Machine))
 		{
 			/* slot 6: 5.25" disks */
 			apple525_write_data(data);
@@ -1211,7 +1211,7 @@ static int apple2_fdc_read_status(void)
 
 	if (apple2_fdc_diskreg & 0x40)
 	{
-		if (apple2_fdc_has_35())
+		if (apple2_fdc_has_35(Machine))
 		{
 			/* slot 5: 3.5" disks */
 			result = sony_read_status();
@@ -1219,7 +1219,7 @@ static int apple2_fdc_read_status(void)
 	}
 	else
 	{
-		if (apple2_fdc_has_525())
+		if (apple2_fdc_has_525(Machine))
 		{
 			/* slot 6: 5.25" disks */
 			result = apple525_read_status();
@@ -1230,10 +1230,10 @@ static int apple2_fdc_read_status(void)
 
 
 
-void apple2_iwm_setdiskreg(UINT8 data)
+void apple2_iwm_setdiskreg(running_machine *machine, UINT8 data)
 {
 	apple2_fdc_diskreg = data & 0xC0;
-	if (apple2_fdc_has_35())
+	if (apple2_fdc_has_35(machine))
 		sony_set_sel_line(apple2_fdc_diskreg & 0x80);
 }
 
@@ -1285,7 +1285,7 @@ void apple2_init_common(running_machine *machine)
 	a2_set = 0;
 
 	/* disable VAR_ROMSWITCH if the ROM is only 16k */
-	if (memory_region_length(REGION_CPU1) < 0x8000)
+	if (memory_region_length(machine, REGION_CPU1) < 0x8000)
 		a2_mask &= ~VAR_ROMSWITCH;
 
 	if (mess_ram_size <= 64*1024)
@@ -1312,8 +1312,16 @@ MACHINE_START( apple2 )
 	mem_cfg.first_bank = 1;
 	mem_cfg.memmap = apple2_memmap_entries;
 	mem_cfg.auxmem = apple2cp_ce00_ram;
-	apple2_setup_memory(&mem_cfg);
+	apple2_setup_memory(machine, &mem_cfg);
 
 	/* perform initial reset */
 	apple2_reset(machine);
+}
+
+
+
+int apple2_pressed_specialkey(running_machine *machine, UINT8 key)
+{
+	return (input_port_read(machine, "keyb_special") & key)
+		|| (input_port_read_safe(machine, "joystick_buttons", 0x00) & key);
 }

@@ -190,7 +190,7 @@ static CDP1802_INTERFACE( vip_config )
 
 static MACHINE_START( vip )
 {
-	UINT8 *ram = memory_region(REGION_CPU1);
+	UINT8 *ram = memory_region(machine, REGION_CPU1);
 	UINT16 addr;
 
 	state_save_register_global(keylatch);
@@ -211,7 +211,7 @@ static MACHINE_START( vip )
 		ram[addr] = mame_rand(machine) & 0xff;
 	}
 
-	memory_configure_bank(1, 0, 2, memory_region(REGION_CPU1), 0x8000);
+	memory_configure_bank(1, 0, 2, memory_region(machine, REGION_CPU1), 0x8000);
 }
 
 static MACHINE_RESET( vip )
@@ -269,7 +269,7 @@ static QUICKLOAD_LOAD( vip )
 
 	if (size < 0x8000)
 	{
-		if (image_fread(image, memory_region(REGION_CPU1), size) != size)
+		if (image_fread(image, memory_region(image->machine, REGION_CPU1), size) != size)
 		{
 			return INIT_FAIL;
 		}
@@ -290,7 +290,7 @@ static void vip_cassette_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-SYSTEM_CONFIG_START( vip )
+static SYSTEM_CONFIG_START( vip )
 	CONFIG_RAM_DEFAULT	( 2 * 1024)
 	CONFIG_RAM			( 4 * 1024)
 	CONFIG_RAM			(32 * 1024)

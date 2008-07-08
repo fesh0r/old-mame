@@ -122,7 +122,7 @@ static void determine_sprite_collisions(void)
     }
 }
 
-static void render_sprites(void)
+static void render_sprites(running_machine *machine)
 {
     INT32 cardMemoryLocation, pixelSize;
     INT32 spritePixelHeight;
@@ -133,7 +133,7 @@ static void render_sprites(void)
     INT32 xInc;
     INT32 i, j;
 
-    UINT8* memory = memory_region(REGION_CPU1);
+    UINT8* memory = memory_region(machine, REGION_CPU1);
 
     for (i = 0; i < 8; i++) {
 		struct intv_sprite_type* s = &intv_sprite[i];
@@ -268,6 +268,8 @@ static void render_color_stack_mode(running_machine *machine, bitmap_t *bitmap)
 {
     UINT8 h, csPtr = 0, nexty = 0;
     UINT16 nextCard, nextx = 0;
+    UINT8 *ram = memory_region(machine, REGION_CPU1);
+
     for (h = 0; h < 240; h++) {
         nextCard = intv_ram16[h];
 
@@ -302,7 +304,7 @@ static void render_color_stack_mode(running_machine *machine, bitmap_t *bitmap)
             isGrom = !(nextCard & 0x0800);
             if (isGrom) {
                 memoryLocation = 0x3000 + (nextCard & 0x07F8);
-                memory = memory_region(REGION_CPU1);
+                memory = ram;
                 for (j = 0; j < 16; j+=2)
                     render_line(machine, bitmap, memory[(memoryLocation<<1)+j],
                             nextx, nexty+j, fgcolor, bgcolor);
@@ -328,6 +330,7 @@ static void render_fg_bg_mode(running_machine *machine, bitmap_t *bitmap)
     UINT8 i, j, isGrom, fgcolor, bgcolor, nexty = 0;
     UINT16 nextCard, memoryLocation, nextx = 0;
     UINT8* memory;
+    UINT8* ram = memory_region(machine, REGION_CPU1);
 
     for (i = 0; i < 240; i++) {
         nextCard = intv_ram16[i];
@@ -338,7 +341,7 @@ static void render_fg_bg_mode(running_machine *machine, bitmap_t *bitmap)
         isGrom = !(nextCard & 0x0800);
         if (isGrom) {
             memoryLocation = 0x3000 + (nextCard & 0x01F8);
-            memory = memory_region(REGION_CPU1);
+            memory = ram;
             for (j = 0; j < 16; j+=2)
                 render_line(machine, bitmap, memory[(memoryLocation<<1)+j],
                         nextx, nexty+j, fgcolor, bgcolor);
@@ -710,7 +713,7 @@ void stic_screenrefresh(running_machine *machine)
 		// Render the background
 		render_background(machine, tmpbitmap);
 		// Render the sprites into their buffers
-		render_sprites();
+		render_sprites(machine);
 		for (i = 0; i < 8; i++) intv_sprite[i].collision = 0;
 		// Copy the sprites to the background
 		copy_sprites_to_background(machine, tmpbitmap);

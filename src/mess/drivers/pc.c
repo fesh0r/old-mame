@@ -141,6 +141,7 @@ static WRITE16_HANDLER( pc16le_SN76496_0_w ) { write16le_with_write8_handler(SN7
 //#define EXP_ON
 
 static ADDRESS_MAP_START( pc8_map, ADDRESS_SPACE_PROGRAM, 8 )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
@@ -152,6 +153,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START( pc16_map, ADDRESS_SPACE_PROGRAM, 16 )
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK(10)
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
@@ -162,6 +164,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(pc8_io, ADDRESS_SPACE_IO, 8)
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE(DMA8237, "dma8237", dma8237_r, dma8237_w)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE(PIC8259, "pic8259_master", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE(PIT8253, "pit8253", pit8253_r, pit8253_w)
@@ -191,6 +194,7 @@ ADDRESS_MAP_END
 
 
 static ADDRESS_MAP_START(pc16_io, ADDRESS_SPACE_IO, 16)
+	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8(DMA8237, "dma8237", dma8237_r, dma8237_w, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8(PIC8259, "pic8259_master", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8(PIT8253, "pit8253", pit8253_r, pit8253_w, 0xffff)
@@ -384,11 +388,11 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( pcmda )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0x80, 0x80,	 IPT_VBLANK )
 	PORT_BIT ( 0x7f, 0x7f,	 IPT_UNUSED )
 
-	PORT_START /* IN1 */
+	PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -411,7 +415,7 @@ static INPUT_PORTS_START( pcmda )
 	PORT_DIPSETTING(	0x00, DEF_STR(No) )
 	PORT_DIPSETTING(	0x01, DEF_STR(Yes) )
 
-    PORT_START /* IN2 */
+    PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR(No) )
 	PORT_DIPSETTING(	0x80, DEF_STR(Yes) )
@@ -437,7 +441,7 @@ static INPUT_PORTS_START( pcmda )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
 
-	PORT_START /* IN3 */
+	PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -459,12 +463,12 @@ static INPUT_PORTS_START( pcmda )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pccga )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -486,7 +490,8 @@ static INPUT_PORTS_START( pccga )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
-	PORT_START /* IN2 */
+
+	PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -512,7 +517,7 @@ static INPUT_PORTS_START( pccga )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -535,14 +540,14 @@ static INPUT_PORTS_START( pccga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( europc )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 
-	PORT_START /* IN2 */
+	PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -568,7 +573,7 @@ static INPUT_PORTS_START( europc )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -591,12 +596,12 @@ static INPUT_PORTS_START( europc )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( bondwell )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -618,7 +623,8 @@ static INPUT_PORTS_START( bondwell )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
-	PORT_START /* IN2 */
+
+	PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -644,7 +650,7 @@ static INPUT_PORTS_START( bondwell )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -668,12 +674,12 @@ static INPUT_PORTS_START( bondwell )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( xtcga )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -695,7 +701,8 @@ static INPUT_PORTS_START( xtcga )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
-	PORT_START /* IN2 */
+
+	PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -721,7 +728,7 @@ static INPUT_PORTS_START( xtcga )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -734,9 +741,9 @@ static INPUT_PORTS_START( xtcga )
 	PORT_DIPNAME( 0x04, 0x04, "HDC2 (CA00:0 port 324-327)")
     PORT_DIPSETTING(    0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x04, DEF_STR( Yes ) )
-	PORT_DIPNAME( 0x02, 0x02, "Turbo Switch" )
-	PORT_DIPSETTING(	0x00, "Off (4.77 MHz)" )
-	PORT_DIPSETTING(	0x02, "On (12 MHz)" )
+//	PORT_DIPNAME( 0x02, 0x02, "Turbo Switch" )
+//	PORT_DIPSETTING(	0x00, "Off (4.77 MHz)" )
+//	PORT_DIPSETTING(	0x02, "On (12 MHz)" )
 	PORT_BIT( 0x01, 0x01,	IPT_UNUSED )
 
 	PORT_INCLUDE( pc_keyboard )		/* IN4 - IN11 */
@@ -746,15 +753,15 @@ static INPUT_PORTS_START( xtcga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( tandy1t )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_BIT ( 0xff, 0xff,	 IPT_UNUSED )
 
-    PORT_START /* IN2 */
+    PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -770,7 +777,7 @@ static INPUT_PORTS_START( tandy1t )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -792,12 +799,12 @@ static INPUT_PORTS_START( tandy1t )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pc200 )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0x07, 0x07, "Name/Language")
 	PORT_DIPSETTING(	0x00, "English/less checks" )
 	PORT_DIPSETTING(	0x01, DEF_STR( Italian ) ) //prego attendere
@@ -810,9 +817,11 @@ static INPUT_PORTS_START( pc200 )
 	PORT_DIPNAME( 0x08, 0x00, "37a 0x40")
 	PORT_DIPSETTING(	0x00, "0x00" )
 	PORT_DIPSETTING(	0x08, "0x08" )
-	PORT_DIPNAME( 0x10, 0x00, "37a 0x80")
+/* 2008-05 FP: This Dip Switch overlaps the next one. 
+Since pc200 is anyway NOT_WORKING, I comment out this one */
+/*	PORT_DIPNAME( 0x10, 0x00, "37a 0x80")
 	PORT_DIPSETTING(	0x00, "0x00" )
-	PORT_DIPSETTING(	0x10, "0x10" )
+	PORT_DIPSETTING(	0x10, "0x10" ) */
 	PORT_DIPNAME( 0x30, 0x00, "Integrated Graphics Adapter")
 	PORT_DIPSETTING(	0x00, "CGA 1" )
 	PORT_DIPSETTING(	0x10, "CGA 2" )
@@ -823,7 +832,8 @@ static INPUT_PORTS_START( pc200 )
 	PORT_DIPSETTING(	0x40, "Color 40 Columns" )
 	PORT_DIPSETTING(	0x80, "Color 80 Columns" )
 	PORT_DIPSETTING(	0xc0, DEF_STR( Mono ) )
-	PORT_START /* IN2 */
+
+	PORT_START_TAG("DSW1") /* IN2 */
 PORT_BIT ( 0x80, 0x80,	 IPT_UNUSED ) // com 1 on motherboard
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
@@ -845,7 +855,7 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x00, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -865,7 +875,7 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 	PORT_INCLUDE( pc_joystick )			/* IN15 - IN19 */
 
-    PORT_START /* IN20 */
+    PORT_START_TAG("VIDEO") /* IN20 */
 	PORT_CONFNAME( 0x03, 0x03, "IDA character set")
 	PORT_CONFSETTING(0x00, "Greek")
 	PORT_CONFSETTING(0x01, "Norwegian (Codepage 860)")
@@ -880,12 +890,12 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pc1512 )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_BIT ( 0xf0, 0xf0,	 IPT_UNUSED )
 	PORT_BIT ( 0x08, 0x08,	 IPT_VBLANK )
 	PORT_BIT ( 0x07, 0x07,	 IPT_UNUSED )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0x07, 0x07, "Name/Language")
 	PORT_DIPSETTING(	0x00, "English/less checks" )
 	PORT_DIPSETTING(	0x01, DEF_STR( Italian ) ) //prego attendere
@@ -899,7 +909,8 @@ static INPUT_PORTS_START( pc1512 )
 	PORT_BIT( 0xc0, 0x00,	IPT_UNUSED ) // not used in pc1512
 	PORT_BIT( 0xe00, 0x00,	IPT_UNUSED ) // not used in pc1512
 	PORT_BIT( 0xe000, 0x00,	IPT_UNUSED ) // not used in pc1512
-	PORT_START /* IN2 */
+
+	PORT_START_TAG("DSW1") /* IN2 */
 PORT_BIT ( 0x80, 0x80,	 IPT_UNUSED ) // com 1 on motherboard
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
@@ -921,7 +932,7 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x00, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -945,7 +956,7 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( pc1640 )
-	PORT_START	/* IN0 */
+	PORT_START_TAG("IN0")	/* IN0 */
 	PORT_DIPNAME( 0x08, 0x08, "VGA 1")
 	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -971,8 +982,7 @@ static INPUT_PORTS_START( pc1640 )
 	PORT_DIPSETTING(	0x80, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-    PORT_START /* IN1 */
-	PORT_DIPNAME( 0x07, 0x07, "Name/Language")
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0x07, 0x07, "Name/Language")
 //  PORT_DIPSETTING(    0x00, "PC 512k" ) // machine crashes with ega bios at 0xc0000
 	PORT_DIPSETTING(	0x01, DEF_STR( Italian ) ) //prego attendere
@@ -1022,7 +1032,8 @@ static INPUT_PORTS_START( pc1640 )
 	PORT_DIPSETTING(	0xa000, "CGA 80 Columns" )
 	PORT_DIPSETTING(	0xe000, "MDA/Hercules/Multiple Graphic Adapters" )
 #endif
-	PORT_START /* IN2 */
+
+	PORT_START_TAG("DSW1") /* IN2 */
 PORT_BIT ( 0x80, 0x80,	 IPT_UNUSED ) // com 1 on motherboard
 	PORT_DIPNAME( 0x40, 0x40, "COM2: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
@@ -1044,7 +1055,7 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x00, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -1067,7 +1078,7 @@ PORT_BIT ( 0x04, 0x04,	 IPT_UNUSED ) // lpt 1 on motherboard
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( xtvga )
-	PORT_START /* IN0 */
+	PORT_START_TAG("IN0") /* IN0 */
 	PORT_DIPNAME( 0x08, 0x08, "VGA 1")
 	PORT_DIPSETTING(	0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
@@ -1081,7 +1092,7 @@ static INPUT_PORTS_START( xtvga )
 	PORT_DIPSETTING(	0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(	0x00, DEF_STR( On ) )
 
-    PORT_START /* IN1 */
+    PORT_START_TAG("DSW0") /* IN1 */
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(	0x00, "1" )
 	PORT_DIPSETTING(	0x40, "2" )
@@ -1103,7 +1114,8 @@ static INPUT_PORTS_START( xtvga )
 	PORT_DIPNAME( 0x01, 0x01, "Floppy installed")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x01, DEF_STR( Yes ) )
-	PORT_START /* IN2 */
+
+	PORT_START_TAG("DSW1") /* IN2 */
 	PORT_DIPNAME( 0x80, 0x80, "COM1: enable")
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
 	PORT_DIPSETTING(	0x80, DEF_STR( Yes ) )
@@ -1129,7 +1141,7 @@ static INPUT_PORTS_START( xtvga )
 	PORT_DIPSETTING(	0x00, DEF_STR( No ) )
     PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
 
-    PORT_START /* IN3 */
+    PORT_START_TAG("DSW2") /* IN3 */
 	PORT_DIPNAME( 0xf0, 0x80, "Serial mouse")
 	PORT_DIPSETTING(	0x80, "COM1" )
 	PORT_DIPSETTING(	0x40, "COM2" )
@@ -1156,7 +1168,7 @@ static const unsigned i86_address_mask = 0x000fffff;
 
 #if defined(ADLIB)
 /* irq line not connected to pc on adlib cards (and compatibles) */
-static void pc_irqhandler(int linestate) {}
+static void pc_irqhandler(running_machine *machine, int linestate) {}
 
 static const struct YM3812interface ym3812_interface =
 {
@@ -1420,7 +1432,7 @@ MACHINE_DRIVER_END
 
 static MACHINE_DRIVER_START( ibm5160 )
 	/* basic machine hardware */
-	MDRV_CPU_PC(pc16, pc16, I8086, 12000000, pc_frame_interrupt)
+	MDRV_CPU_PC(pc16, pc16, I8086, 4772720, pc_frame_interrupt)
 
 	MDRV_MACHINE_START(pc)
 	MDRV_MACHINE_RESET(pc)
@@ -1851,9 +1863,11 @@ MACHINE_DRIVER_END
 
 ROM_START( ibm5150 )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))		/* WDC Expansion ROM C8000-C9FFF */
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a)) /* WDC Expansion ROM C8000-C9FFF */
+//	ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))	/* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin */
+//	ROM_LOAD("62x0822.12d", 0xc8000, 0x02000, CRC(4cdd2193) SHA1(fe8f88333b5e13e170bf637a9a0090383dee454d))	/* Xebec Fixed Disk Adapter 62X0822__(M)_AMI_8621MAB__S68B364-P__(C)IBM_CORP_1982,1985__PHILIPPINES.12D.2364.bin */
 
-	/* IBM PC 5150 (rev 2: 1501-476 10/27/82) 5-screw case w/1501981 CGA Card, ROM Basic 1.1 */
+	/* IBM PC 5150 (rev 3: 1501-476 10/27/82) 5-screw case w/1501981 CGA Card, ROM Basic 1.1 */
 	ROM_SYSTEM_BIOS( 0, "default", "IBM PC 5150 1501471 10/27/82" )
 	ROMX_LOAD("5000019.u29", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(1))		/* ROM Basic 1.1 F6000-F7FFF */
 	ROMX_LOAD("5000021.u30", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(1))		/* ROM Basic 1.1 F8000-F9FFF */
@@ -1861,22 +1875,26 @@ ROM_START( ibm5150 )
 	ROMX_LOAD("5000023.u32", 0xfc000, 0x2000, CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(1))		/* ROM Basic 1.1 FC000-FDFFF */
 	ROMX_LOAD("1501476.u33", 0xfe000, 0x2000, CRC(e88792b3) SHA1(40fce6a94dda4328a8b608c7ae2f39d1dc688af4), ROM_BIOS(1))
 
-	/* IBM PC 5150 (rev 0: 04/24/81) 2-screw case w/MDA Card, ROM Basic 1.0 */
+	/* IBM PC 5150 (rev 1: 04/24/81) 2-screw case w/MDA Card, ROM Basic 1.0 */
 	/* ROM Basic 1.0 had a bug: Doing ".1 / 10" would result in the wrong answer. May have been fixed in 1.1 */
 	ROM_SYSTEM_BIOS( 1, "rev1", "IBM PC 5150 ??????? 02/24/81" )
-	ROMX_LOAD("basicc10.f6", 0xf6000, 0x2000, NO_DUMP, ROM_BIOS(2))
-	ROMX_LOAD("basicc10.f8", 0xf8000, 0x2000, NO_DUMP, ROM_BIOS(2))
-	ROMX_LOAD("basicc10.fa", 0xfa000, 0x2000, NO_DUMP, ROM_BIOS(2))
-	ROMX_LOAD("basicc10.fc", 0xfc000, 0x2000, NO_DUMP, ROM_BIOS(2))
+	ROMX_LOAD("basic10.u29", 0xf6000, 0x2000, CRC(b59e8f6c) SHA1(7a5db95370194c73b7921f2d69267268c69d2511), ROM_BIOS(2))		/* ROM Basic 1.0 F6000-F7FFF */
+	ROMX_LOAD("basic10.u30", 0xf8000, 0x2000, CRC(bfff99b8) SHA1(ca2f126ba69c1613b7b5a4137d8d8cf1db36a8e6), ROM_BIOS(2))		/* ROM Basic 1.0 F8000-F9FFF */
+	ROMX_LOAD("basic10.u31", 0xfa000, 0x2000, CRC(9fe4ec11) SHA1(89af8138185938c3da3386f97d3b0549a51de5ef), ROM_BIOS(2))		/* ROM Basic 1.0 FA000-FBFFF */
+	ROMX_LOAD("basic10.u32", 0xfc000, 0x2000, CRC(ea2794e6) SHA1(22fe58bc853ffd393d5e2f98defda7456924b04f), ROM_BIOS(2))		/* ROM Basic 1.0 FC000-FDFFF */
 	ROMX_LOAD("pc022481.bin", 0xfe000, 0x2000, NO_DUMP, ROM_BIOS(2))
 
-	/* IBM PC 5150 (rev 1: 10/19/81) 2-screw case w/MDA Card, ROM Basic 1.1 (this could be wrong, it may use 1.0)*/
+	/* IBM PC 5150 (rev 2: 10/19/81) 2-screw case w/MDA Card, ROM Basic 1.0 (this could be wrong, it may use 1.0)*/
 	ROM_SYSTEM_BIOS( 2, "rev2", "IBM PC 5150 5700671 10/19/81" )
-	ROMX_LOAD("5000019.u29", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(3))		/* ROM Basic 1.1 F6000-F7FFF */
-	ROMX_LOAD("5000021.u30", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(3))		/* ROM Basic 1.1 F8000-F9FFF */
-	ROMX_LOAD("5000022.u31", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(3))		/* ROM Basic 1.1 FA000-FBFFF */
-	ROMX_LOAD("5000023.u32", 0xfc000, 0x2000, CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(3))		/* ROM Basic 1.1 FC000-FDFFF */
-	ROMX_LOAD("5700671.u33", 0xfe000, 0x2000, BAD_DUMP CRC(f46d95f9) SHA1(89a4e107e970d221a1e2f92e785c4ec96e449e67), ROM_BIOS(3))	/* Waiting verification */
+	ROMX_LOAD("basic10.u29", 0xf6000, 0x2000, CRC(b59e8f6c) SHA1(7a5db95370194c73b7921f2d69267268c69d2511), ROM_BIOS(3))		/* ROM Basic 1.0 F6000-F7FFF */
+	ROMX_LOAD("basic10.u30", 0xf8000, 0x2000, CRC(bfff99b8) SHA1(ca2f126ba69c1613b7b5a4137d8d8cf1db36a8e6), ROM_BIOS(3))		/* ROM Basic 1.0 F8000-F9FFF */
+	ROMX_LOAD("basic10.u31", 0xfa000, 0x2000, CRC(9fe4ec11) SHA1(89af8138185938c3da3386f97d3b0549a51de5ef), ROM_BIOS(3))		/* ROM Basic 1.0 FA000-FBFFF */
+	ROMX_LOAD("basic10.u32", 0xfc000, 0x2000, CRC(ea2794e6) SHA1(22fe58bc853ffd393d5e2f98defda7456924b04f), ROM_BIOS(3))		/* ROM Basic 1.0 FC000-FDFFF */
+	ROMX_LOAD("5700671.u33", 0xfe000, 0x2000, CRC(b7d4ec46) SHA1(bdb06f846c4768f39eeff7e16b6dbff8cd2117d2), ROM_BIOS(3))
+
+	/* Z80 on the Xebec Hard Disk Controller */
+//	ROM_REGION(0x10000, REGION_CPU2, 0)
+//	ROM_LOAD("104839re.12a", 0x0000, 0x1000, CRC(3ad32fcc) SHA1(0127fa520aaee91285cb46a640ed835b4554e4b3))	/* Xebec Hard Disk Controller 104839RE__COPYRIGHT__XEBEC_1986.12A.2732.bin */
 
 	/* Character rom */
 	ROM_REGION(0x2000,REGION_GFX1, 0)
@@ -1885,7 +1903,7 @@ ROM_END
 
 ROM_START( ibmpca )
 	ROM_REGION(0x100000,REGION_CPU1,0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
     ROM_LOAD("basicc11.f6", 0xf6000, 0x2000, CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9))
     ROM_LOAD("basicc11.f8", 0xf8000, 0x2000, CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731))
     ROM_LOAD("basicc11.fa", 0xfa000, 0x2000, CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74))
@@ -1909,7 +1927,7 @@ ROM_END
 
 ROM_START( pcmda )
     ROM_REGION(0x100000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
     ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 	ROM_REGION(0x08100,REGION_GFX1, 0)
     ROM_LOAD("mda.rom",     0x00000, 0x02000, CRC(0bf56d70) SHA1(c2a8b10808bf51a3c123ba3eb1e9dd608231916f)) // taken from original IBM MDA
@@ -1917,7 +1935,7 @@ ROM_END
 
 ROM_START( pcherc )
 	ROM_REGION(0x100000,REGION_CPU1, 0)
-	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
 	ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 	ROM_REGION(0x1000,REGION_GFX1, 0)
 	ROM_LOAD("um2301.bin",  0x00000, 0x1000, CRC(0827bdac) SHA1(15f1aceeee8b31f0d860ff420643e3c7f29b5ffc))
@@ -1926,7 +1944,7 @@ ROM_END
 
 ROM_START( pc )
     ROM_REGION(0x100000,REGION_CPU1, 0)
-    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+    ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))	/* WDC Expansion ROM C8000-C9FFF */
 //    ROM_LOAD("xthdd.rom",  0xc8000, 0x02000, CRC(a96317da))
     ROM_LOAD("pcxt.rom",    0xfe000, 0x02000, CRC(031aafad) SHA1(a641b505bbac97b8775f91fe9b83d9afdf4d038f))
 
@@ -2056,13 +2074,14 @@ ROM_END
 ROM_START( ibm5160 )
 	ROM_REGION16_LE(0x100000,REGION_CPU1, 0)
 	ROM_LOAD("wdbios.rom",  0xc8000, 0x02000, CRC(8e9e2bd4) SHA1(601d7ceab282394ebab50763c267e915a6a2166a))
+//	ROM_LOAD("600963.u12", 0xc8000, 0x02000, CRC(f3daf85f) SHA1(3bd29538832d3084cbddeec92593988772755283))  /* Tandon/Western Digital Fixed Disk Adapter 600963-001__TYPE_5.U12.2764.bin */
 
 	ROM_SYSTEM_BIOS( 0, "rev1", "IBM XT 5160 08/16/82" )	/* ROMs marked as BAD_DUMP for now. We expect the data to be in a different ROM chip layout */
-	ROMX_LOAD("basicc11.f6", 0xf6000, 0x2000, BAD_DUMP CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(1) )
-	ROMX_LOAD("basicc11.f8", 0xf8000, 0x2000, BAD_DUMP CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(1) )
-	ROMX_LOAD("basicc11.fa", 0xfa000, 0x2000, BAD_DUMP CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(1) )
-	ROMX_LOAD("basicc11.fc", 0xfc000, 0x2000, BAD_DUMP CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(1) )
-	ROMX_LOAD("pc081682.bin", 0xfe000, 0x2000, BAD_DUMP CRC(5c3f0256) SHA1(b42c78abd0a9c630a2f972ad2bae46d83c3a2a09), ROM_BIOS(1) )
+	ROMX_LOAD("5000019.u29", 0xf6000, 0x2000, BAD_DUMP CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(1) )
+	ROMX_LOAD("5000021.u30", 0xf8000, 0x2000, BAD_DUMP CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(1) )
+	ROMX_LOAD("5000022.u31", 0xfa000, 0x2000, BAD_DUMP CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(1) )
+	ROMX_LOAD("5000023.u32", 0xfc000, 0x2000, BAD_DUMP CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(1) )
+	ROMX_LOAD("pc081682.u33", 0xfe000, 0x2000, BAD_DUMP CRC(5c3f0256) SHA1(b42c78abd0a9c630a2f972ad2bae46d83c3a2a09), ROM_BIOS(1) )
 
 	ROM_SYSTEM_BIOS( 1, "rev2", "IBM XT 5160 11/08/82" )	/* Same as PC 5155 BIOS */
 	ROMX_LOAD("5000027.u19", 0xf0000, 0x8000, CRC(fc982309) SHA1(2aa781a698a21c332398d9bc8503d4f580df0a05), ROM_BIOS(2) ) /* MK37050N-4 */
@@ -2073,8 +2092,15 @@ ROM_START( ibm5160 )
 	ROMX_LOAD("62x0851.u18", 0xf8000, 0x8000, CRC(1054f7bd) SHA1(e7d0155813e4c650085144327581f05486ed1484), ROM_BIOS(3) )
 
 	ROM_SYSTEM_BIOS( 3, "rev4", "IBM XT 5160 05/09/86" )
-	ROMX_LOAD("xt050986.0", 0xf0000, 0x8000, CRC(83727c42) SHA1(1b218f96aa9570beef5c1f2d7b07433b21dc4599), ROM_SKIP(1) | ROM_BIOS(4))
-	ROMX_LOAD("xt050986.1", 0xf0001, 0x8000, CRC(2a629953) SHA1(048bb1a0b437ae7b93a4d71648cee12e5e37892c), ROM_SKIP(1) | ROM_BIOS(4))
+	ROMX_LOAD("68x4370.u19", 0xf0000, 0x8000, CRC(758ff036) SHA1(045e27a70407d89b7956ecae4d275bd2f6b0f8e2), ROM_BIOS(4))
+	ROMX_LOAD("62x0890.u18", 0xf8000, 0x8000, CRC(4f417635) SHA1(daa61762d3afdd7262e34edf1a3d2df9a05bcebb), ROM_BIOS(4))
+
+//	ROM_SYSTEM_BIOS( 4, "xtdiag", "IBM XT 5160 w/Supersoft Diagnostics" )    /* ROMs marked as BAD_DUMP for now. We expect the data to be in a different ROM chip layout */
+//	ROMX_LOAD("basicc11.f6", 0xf6000, 0x2000, BAD_DUMP CRC(80d3cf5d) SHA1(64769b7a8b60ffeefa04e4afbec778069a2840c9), ROM_BIOS(5) )
+//	ROMX_LOAD("basicc11.f8", 0xf8000, 0x2000, BAD_DUMP CRC(673a4acc) SHA1(082ae803994048e225150f771794ca305f73d731), ROM_BIOS(5) )
+//	ROMX_LOAD("basicc11.fa", 0xfa000, 0x2000, BAD_DUMP CRC(aac3fc37) SHA1(c9e0529470edf04da093bb8c8ae2536c688c1a74), ROM_BIOS(5) )
+//	ROMX_LOAD("basicc11.fc", 0xfc000, 0x2000, BAD_DUMP CRC(3062b3fc) SHA1(5134dd64721cbf093d059ee5d3fd09c7f86604c7), ROM_BIOS(5) )
+//	ROMX_LOAD("xtdiag.bin", 0xfe000, 0x2000, CRC(4e89a4d8) SHA1(39a28fb2fe9f1aeea24ed2c0255cebca76e37ed7), ROM_BIOS(5) )
 
 	/* Character rom */
 	ROM_REGION(0x2000,REGION_GFX1, 0)
@@ -2236,14 +2262,14 @@ static void pcjr_cartslot_getinfo(const mess_device_class *devclass, UINT32 stat
 	}
 }
 
-SYSTEM_CONFIG_START(ibmpc)
+static SYSTEM_CONFIG_START(ibmpc)
 	CONFIG_RAM_DEFAULT( 640 * 1024 )
 	CONFIG_DEVICE(ibmpc_cassette_getinfo)
 	CONFIG_DEVICE(ibmpc_floppy_getinfo)
 	CONFIG_DEVICE(ibmpc_harddisk_getinfo)
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START(pcjr)
+static SYSTEM_CONFIG_START(pcjr)
 	CONFIG_RAM_DEFAULT( 640 * 1024 )
 	CONFIG_DEVICE(ibmpc_cassette_getinfo)
 	CONFIG_DEVICE(ibmpc_floppy_getinfo)
@@ -2261,7 +2287,7 @@ COMP(  1981,	ibm5150,	0,			0,		pccga,      pccga,	    pccga,	    ibmpc,   "Inter
 COMP(  1984,	dgone,		ibm5150,	0,		pccga,      pccga,	    pccga,	    ibmpc,   "Data General",  "Data General/One" , GAME_NOT_WORKING)	/* CGA, 2x 3.5" disk drives */
 COMP(  1987,	pc,			ibm5150,	0,		pccga,      pccga,		pccga,	    ibmpc,   "",  "PC (CGA)" , 0)
 COMP(  1985,	bondwell,	ibm5150,	0,		pccga,		bondwell,   bondwell,	ibmpc,   "Bondwell Holding",  "BW230 (PRO28 Series)", GAME_NOT_WORKING )
-COMP(  1988,	europc,		ibm5150,	0,		europc,     europc,		europc,     ibmpc,   "Schneider Rdf. AG",  "EURO PC", 0)
+COMP(  1988,	europc,		ibm5150,	0,		europc,     europc,		europc,     ibmpc,   "Schneider Rdf. AG",  "EURO PC", GAME_NOT_WORKING)
 
 // pcjr (better graphics, better sound)
 COMP(  1983,	ibmpcjr,	ibm5150,	0,		ibmpcjr,    tandy1t,	pcjr,       pcjr,    "International Business Machines",  "IBM PC Jr", GAME_NOT_WORKING|GAME_IMPERFECT_COLORS )
@@ -2270,15 +2296,15 @@ COMP(  1987,	t1000sx,	ibm5150,	0,		t1000hx,    tandy1t,	t1000hx,	ibmpc,   "Tandy
 
 // xt class (pc but 8086)
 COMP(  1982,	ibm5160,	ibm5150,	0,		ibm5160,    xtcga,		pccga,		ibmpc,   "International Business Machines",  "IBM XT 5160" , 0)
-COMP(  1988,	pc200,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Sinclair Research",  "PC200 Professional Series", 0)
-COMP(  1988,	pc20,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PC20" , 0)
+COMP(  1988,	pc200,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Sinclair Research",  "PC200 Professional Series", GAME_NOT_WORKING)
+COMP(  1988,	pc20,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PC20" , GAME_NOT_WORKING)
 COMP(  1987,	ppc512,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PPC512", 0)
 COMP(  1987,	ppc640,		ibm5150,	0,		pc200,		pc200,		pc200,		ibmpc,   "Amstrad plc",  "Amstrad PPC640", 0)
-COMP(  1986,	pc1512,		ibm5150,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 1)", 0)
-COMP(  198?,	pc1512v2,	ibm5150,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 2)", 0)
+COMP(  1986,	pc1512,		ibm5150,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 1)", GAME_NOT_WORKING)
+COMP(  198?,	pc1512v2,	ibm5150,	0,		pc1512,     pc1512,		pc1512,		ibmpc,   "Amstrad plc",  "Amstrad PC1512 (version 2)", GAME_NOT_WORKING)
 COMP(  1987,	pc1640,		ibm5150,	0,		pc1640,     pc1640,		pc1640,		ibmpc,   "Amstrad plc",  "Amstrad PC1640 / PC6400 (US)", GAME_NOT_WORKING )
 // pc2086 pc1512 with vga??
 COMP ( 1987,	pcmda,		ibm5150,	0,		pcmda,      pcmda,		pcmda,	    ibmpc,   "",  "PC (MDA)" , 0)
 COMP ( 1987,    pcherc,     ibm5150,	0,      pcherc,     pcmda,      pcmda,      ibmpc,   "MESS",  "PC (Hercules)" , 0)
-COMP ( 1987,	xtvga,		ibm5150,	0,		xtvga,      xtvga,		pc_vga,     ibmpc,   "",  "PC/XT (VGA, MF2 Keyboard)" , 0)
+COMP ( 1987,	xtvga,		ibm5150,	0,		xtvga,      xtvga,		pc_vga,     ibmpc,   "",  "PC/XT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING)
 

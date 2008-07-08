@@ -10,13 +10,32 @@
 #include "../imgtool/imgtool.h"
 #include "../imgtool/modules.h"
 
+
+
+/***************************************************************************
+    PARAMETERS
+***************************************************************************/
+
 #define VERBOSE_FILECHAIN	0
 
-struct expected_dirent
+
+
+/***************************************************************************
+    TYPE DEFINITIONS
+***************************************************************************/
+
+typedef struct _expected_dirent expected_dirent;
+struct _expected_dirent
 {
 	const char *filename;
 	int size;
 };
+
+
+
+/***************************************************************************
+    IMPLEMENTATION
+***************************************************************************/
 
 static const char *tempfile_name(void)
 {
@@ -162,29 +181,29 @@ static void node_putfile(struct imgtooltest_state *state, xml_data_node *node)
 	const char *filename;
 	const char *fork;
 	filter_getinfoproc filter;
-	imgtool_stream *stream;
+	imgtool_stream *stream = NULL;
 	mess_pile pile;
 
-	if (!state->partition)
+	if (state->partition == NULL)
 	{
 		state->failed = 1;
 		report_message(MSG_FAILURE, "Partition not loaded");
-		return;
+		goto done;
 	}
 
 	get_file_params(node, &filename, &fork, &filter);
-	if (!filename)
-		return;
+	if (filename == NULL)
+		goto done;
 
 	pile_init(&pile);
 	messtest_get_data(node, &pile);
 
 	stream = stream_open_mem(NULL, 0);
-	if (!stream)
+	if (stream == NULL)
 	{
 		state->failed = 1;
 		error_outofmemory();
-		return;
+		goto done;
 	}
 
 	stream_write(stream, pile_getptr(&pile), pile_size(&pile));
@@ -196,16 +215,20 @@ static void node_putfile(struct imgtooltest_state *state, xml_data_node *node)
 	{
 		state->failed = 1;
 		report_imgtoolerr(err);
-		return;
+		goto done;
 	}
 
 	if (VERBOSE_FILECHAIN)
 	{
 		char buf[1024];
-		err = imgtool_partition_get_chain_string(state->partition, filename, buf, sizeof(buf) / sizeof(buf[0]));
+		err = imgtool_partition_get_chain_string(state->partition, filename, buf, ARRAY_LENGTH(buf));
 		if (err == IMGTOOLERR_SUCCESS)
 			report_message(MSG_INFO, "Filechain '%s': %s", filename, buf);
 	}
+
+done:
+	if (stream != NULL)
+		stream_close(stream);
 }
 
 
@@ -216,7 +239,7 @@ static void node_checkfile(struct imgtooltest_state *state, xml_data_node *node)
 	const char *filename;
 	const char *fork;
 	filter_getinfoproc filter;
-	imgtool_stream *stream;
+	imgtool_stream *stream = NULL;
 	UINT64 stream_sz;
 	const void *stream_ptr;
 	mess_pile pile;
@@ -225,19 +248,19 @@ static void node_checkfile(struct imgtooltest_state *state, xml_data_node *node)
 	{
 		state->failed = 1;
 		report_message(MSG_FAILURE, "Partition not loaded");
-		return;
+		goto done;
 	}
 
 	get_file_params(node, &filename, &fork, &filter);
 	if (!filename)
-		return;
+		goto done;
 
 	stream = stream_open_mem(NULL, 0);
 	if (!stream)
 	{
 		state->failed = 1;
 		error_outofmemory();
-		return;
+		goto done;
 	}
 
 	err = imgtool_partition_read_file(state->partition, filename, fork, stream, filter);
@@ -245,7 +268,7 @@ static void node_checkfile(struct imgtooltest_state *state, xml_data_node *node)
 	{
 		state->failed = 1;
 		report_imgtoolerr(err);
-		return;
+		goto done;
 	}
 
 	pile_init(&pile);
@@ -257,10 +280,14 @@ static void node_checkfile(struct imgtooltest_state *state, xml_data_node *node)
 	if ((pile_size(&pile) != stream_sz) || (memcmp(stream_ptr, pile_getptr(&pile), pile_size(&pile))))
 	{
 		report_message(MSG_FAILURE, "Failed file verification");
-		return;
+		goto done;
 	}
 
 	pile_delete(&pile);
+
+done:
+	if (stream != NULL)
+		stream_close(stream);
 }
 
 
@@ -286,8 +313,8 @@ static void node_checkdirectory(struct imgtooltest_state *state, xml_data_node *
 	xml_attribute_node *attr_node;
 	xml_data_node *child_node;
 	const char *filename;
-	struct expected_dirent *entry;
-	struct expected_dirent entries[256];
+	expected_dirent *entry;
+	expected_dirent entries[256];
 	int entry_count;
 
 	if (!state->partition)

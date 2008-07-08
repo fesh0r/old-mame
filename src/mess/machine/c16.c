@@ -9,17 +9,16 @@
 ***************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "image.h"
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
 
 #define VERBOSE_DBG 1
 #include "includes/cbm.h"
-#include "machine/tpi6525.h"
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "includes/vc20tape.h"
+#include "machine/tpi6525.h"
 #include "video/ted7360.h"
 
 #include "includes/c16.h"
@@ -56,6 +55,40 @@ static UINT8 *c16_memory_28000;
 static UINT8 *c16_memory_2c000;
 
 static int c16_rom_load(const device_config *img);
+
+static UINT8 read_cfg0(running_machine *machine)
+{
+	UINT8 result;
+	switch(mame_get_phase(machine))
+	{
+		case MAME_PHASE_RESET:
+		case MAME_PHASE_RUNNING:
+			result = input_port_read(machine, "CFG0");
+			break;
+
+		default:
+			result = 0x00;
+			break;
+	}
+	return result;
+}
+
+static UINT8 read_cfg1(running_machine *machine)
+{
+	UINT8 result;
+	switch(mame_get_phase(machine))
+	{
+		case MAME_PHASE_RESET:
+		case MAME_PHASE_RUNNING:
+			result = input_port_read(machine, "CFG1");
+			break;
+
+		default:
+			result = 0x00;
+			break;
+	}
+	return result;
+}
 
 /**
   ddr bit 1 port line is output
@@ -110,51 +143,52 @@ UINT8 c16_m7501_port_read(void)
 	return data;
 }
 
-static void c16_bankswitch (void)
+static void c16_bankswitch (running_machine *machine)
 {
+	UINT8 *rom = memory_region(machine, REGION_CPU1);
 	memory_set_bankptr(9, mess_ram);
 
 	switch (lowrom)
 	{
 	case 0:
-		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x10000);
+		memory_set_bankptr (2, rom + 0x10000);
 		break;
 	case 1:
-		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x18000);
+		memory_set_bankptr (2, rom + 0x18000);
 		break;
 	case 2:
-		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x20000);
+		memory_set_bankptr (2, rom + 0x20000);
 		break;
 	case 3:
-		memory_set_bankptr (2, memory_region(REGION_CPU1) + 0x28000);
+		memory_set_bankptr (2, rom + 0x28000);
 		break;
 	}
 	switch (highrom)
 	{
 	case 0:
-		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x14000);
-		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x17f20);
+		memory_set_bankptr (3, rom + 0x14000);
+		memory_set_bankptr (8, rom + 0x17f20);
 		break;
 	case 1:
-		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x1c000);
-		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x1ff20);
+		memory_set_bankptr (3, rom + 0x1c000);
+		memory_set_bankptr (8, rom + 0x1ff20);
 		break;
 	case 2:
-		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x24000);
-		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x27f20);
+		memory_set_bankptr (3, rom + 0x24000);
+		memory_set_bankptr (8, rom + 0x27f20);
 		break;
 	case 3:
-		memory_set_bankptr (3, memory_region(REGION_CPU1) + 0x2c000);
-		memory_set_bankptr (8, memory_region(REGION_CPU1) + 0x2ff20);
+		memory_set_bankptr (3, rom + 0x2c000);
+		memory_set_bankptr (8, rom + 0x2ff20);
 		break;
 	}
-	memory_set_bankptr (4, memory_region(REGION_CPU1) + 0x17c00);
+	memory_set_bankptr (4, rom + 0x17c00);
 }
 
 WRITE8_HANDLER(c16_switch_to_rom)
 {
 	ted7360_rom = 1;
-	c16_bankswitch ();
+	c16_bankswitch(machine);
 }
 
 /* write access to fddX load data flipflop
@@ -175,7 +209,7 @@ WRITE8_HANDLER(c16_select_roms)
 	lowrom = offset & 3;
 	highrom = (offset & 0xc) >> 2;
 	if (ted7360_rom)
-		c16_bankswitch ();
+		c16_bankswitch(machine);
 }
 
 WRITE8_HANDLER(c16_switch_to_ram)
@@ -386,6 +420,7 @@ static void c16_common_driver_init (running_machine *machine)
 	VC1541_CONFIG vc1541= { 1, 8 };
 #endif
 	C1551_CONFIG config= { 1 };
+	UINT8 *rom;
 
 	/* configure the M7501 port */
 	cpunum_set_info_fct(0, CPUINFO_PTR_M6510_PORTREAD, (genf *) c16_m7501_port_read);
@@ -394,13 +429,16 @@ static void c16_common_driver_init (running_machine *machine)
 	c16_select_roms (machine, 0, 0);
 	c16_switch_to_rom (machine, 0, 0);
 
-	if (REAL_C1551) {
+	if ((read_cfg0(machine) & 0xc0 ) == 0x40)		/* C1551 */
+	 {
 		tpi6525[2].a.read=c1551x_0_read_data;
 		tpi6525[2].a.output=c1551x_0_write_data;
 		tpi6525[2].b.read=c1551x_0_read_status;
 		tpi6525[2].c.read=c1551x_0_read_handshake;
 		tpi6525[2].c.output=c1551x_0_write_handshake;
-	} else {
+	} 
+	else 
+	{
 		tpi6525[2].a.read=c1551_0_read_data;
 		tpi6525[2].a.output=c1551_0_write_data;
 		tpi6525[2].b.read=c1551_0_read_status;
@@ -414,14 +452,15 @@ static void c16_common_driver_init (running_machine *machine)
 	tpi6525[3].c.read=c1551_1_read_handshake;
 	tpi6525[3].c.output=c1551_1_write_handshake;
 
-	c16_memory_10000 = memory_region(REGION_CPU1) + 0x10000;
-	c16_memory_14000 = memory_region(REGION_CPU1) + 0x14000;
-	c16_memory_18000 = memory_region(REGION_CPU1) + 0x18000;
-	c16_memory_1c000 = memory_region(REGION_CPU1) + 0x1c000;
-	c16_memory_20000 = memory_region(REGION_CPU1) + 0x20000;
-	c16_memory_24000 = memory_region(REGION_CPU1) + 0x24000;
-	c16_memory_28000 = memory_region(REGION_CPU1) + 0x28000;
-	c16_memory_2c000 = memory_region(REGION_CPU1) + 0x2c000;
+	rom = memory_region(machine, REGION_CPU1);
+	c16_memory_10000 = rom + 0x10000;
+	c16_memory_14000 = rom + 0x14000;
+	c16_memory_18000 = rom + 0x18000;
+	c16_memory_1c000 = rom + 0x1c000;
+	c16_memory_20000 = rom + 0x20000;
+	c16_memory_24000 = rom + 0x24000;
+	c16_memory_28000 = rom + 0x28000;
+	c16_memory_2c000 = rom + 0x2c000;
 
 	/* need to recognice non available tia6523's (iec8/9) */
 	memset(mess_ram + (0xfdc0 % mess_ram_size), 0xff, 0x40);
@@ -431,11 +470,11 @@ static void c16_common_driver_init (running_machine *machine)
 
 	c16_tape_open ();
 
-	if (REAL_C1551)
+	if ((read_cfg0(machine) & 0xc0 ) == 0x40)		/* C1551 */
 		c1551_config (0, 0, &config);
 
 #ifdef VC1541
-	if (REAL_VC1541)
+	if ((read_cfg0(machine) & 0xc0 ) == 0x80)		/* VC1541 */
 		vc1541_config (0, 0, &vc1541);
 #endif
 }
@@ -443,23 +482,8 @@ static void c16_common_driver_init (running_machine *machine)
 void c16_driver_init(running_machine *machine)
 {
 	c16_common_driver_init (machine);
-	ted7360_init (C16_PAL);
+	ted7360_init ((read_cfg1(machine) & 0x10 ) == 0x00);		/* is it PAL? */
 	ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
-}
-
-static WRITE8_HANDLER(c16_sidcart_16k)
-{
-	mess_ram[(0x1400 + offset) % mess_ram_size] = data;
-	mess_ram[(0x5400 + offset) % mess_ram_size] = data;
-	mess_ram[(0x9400 + offset) % mess_ram_size] = data;
-	mess_ram[(0xd400 + offset) % mess_ram_size] = data;
-	sid6581_0_port_w(machine, offset,data);
-}
-
-static WRITE8_HANDLER(c16_sidcart_64k)
-{
-	mess_ram[(0xd400 + offset) % mess_ram_size] = data;
-	sid6581_0_port_w(machine, offset,data);
 }
 
 MACHINE_RESET( c16 )
@@ -472,7 +496,7 @@ MACHINE_RESET( c16 )
 
 	sndti_reset(SOUND_SID8580, 0);
 
-	if (SIDCARD)
+	if (read_cfg1(machine) & 0x80)  /* SID card present */
 	{
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfd40, 0xfd5f, 0, 0, sid6581_0_port_r);
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfd40, 0xfd5f, 0, 0, sid6581_0_port_w);
@@ -491,7 +515,7 @@ MACHINE_RESET( c16 )
 	c16_switch_to_rom (0, 0);
 	c16_select_roms (0, 0);
 #endif
-	if (TYPE_C16)
+	if ((read_cfg1(machine) & 0x0c ) == 0x00)		/* is it C16? */
 	{
 		memory_set_bankptr(1, mess_ram + (0x4000 % mess_ram_size));
 
@@ -504,9 +528,6 @@ MACHINE_RESET( c16 )
 		memory_set_bankptr(10, mess_ram + (0xff20 % mess_ram_size));
 		memory_set_bankptr(11, mess_ram + (0xff40 % mess_ram_size));
 
-		if (SIDCARD_HACK)
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_16k);
-
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 	}
 	else
@@ -514,13 +535,10 @@ MACHINE_RESET( c16 )
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0xfcff, 0, 0, SMH_BANK10);
 		memory_set_bankptr(10, mess_ram + (0x4000 % mess_ram_size));
 
-		if (SIDCARD_HACK)
-			memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xd400, 0xd41f, 0, 0, c16_sidcart_64k);
-
 		ted7360_set_dma (ted7360_dma_read, ted7360_dma_read_rom);
 	}
 
-	if (IEC8ON || REAL_C1551)
+	if ((read_cfg0(machine) & 0x38 ) == 0x08 || (read_cfg0(machine) & 0xc0 ) == 0x40)  /* IEC8 on || C1551 */
 	{
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, tpi6525_2_port_w);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, tpi6525_2_port_r);
@@ -530,7 +548,7 @@ MACHINE_RESET( c16 )
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfee0, 0xfeff, 0, 0, SMH_NOP);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfee0, 0xfeff, 0, 0, SMH_NOP);
 	}
-	if (IEC9ON)
+	if ((read_cfg0(machine) & 0x07 ) == 0x01)		/* IEC9 on */
 	{
 		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,  0xfec0, 0xfedf, 0, 0, tpi6525_3_port_w);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xfec0, 0xfedf, 0, 0, tpi6525_3_port_r);
@@ -544,11 +562,11 @@ MACHINE_RESET( c16 )
 	cbm_drive_0_config (SERIAL, 8);
 	cbm_drive_1_config (SERIAL, 9);
 
-	if (REAL_C1551)
+	if ((read_cfg0(machine) & 0xc0 ) == 0x40)		/* c1551 */
 		c1551_reset ();
 
 #ifdef VC1541
-	if (REAL_VC1541)
+	if ((read_cfg0(machine) & 0xc0 ) == 0x80)		/* VC1541 */
 		vc1541_reset ();
 #endif
 
@@ -603,7 +621,7 @@ DEVICE_IMAGE_LOAD(c16_rom)
 
 static int c16_rom_load(const device_config *image)
 {
-	UINT8 *mem = memory_region (REGION_CPU1);
+	UINT8 *mem = memory_region(image->machine, REGION_CPU1);
 	int size, read_;
 	const char *filetype;
 	static unsigned int addr = 0;
@@ -638,90 +656,51 @@ static int c16_rom_load(const device_config *image)
 
 INTERRUPT_GEN( c16_frame_interrupt )
 {
-	int value;
+	int value, i;
+	char port[6];
 
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW0" );
-	keyline[0] = value;
-
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW1" );
-	keyline[1] = value;
-
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW2" );
-	keyline[2] = value;
-
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW3" );
-	keyline[3] = value;
-
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW4" );
-	keyline[4] = value;
-
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW5" );
-	keyline[5] = value;
-
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW6" );
-	keyline[6] = value;
-
-	value = 0xff;
-
-	value &= ~input_port_read(machine,  "ROW7" );
-	keyline[7] = value;
-
-
-	if (JOYSTICK1_PORT) {
+	/* Lines 0-7 : common keyboard */
+	for (i=0; i<8; i++)
+	{
 		value = 0xff;
-		if (JOYSTICK_1_BUTTON)
+		sprintf(port, "ROW%d", i);
+		value &= ~input_port_read(machine, port);
+		keyline[i] = value;
+	}
+
+	if (input_port_read(machine, "DSW0") & 0x80) 
+	{
+		value = 0xff;
+		if (input_port_read(machine, "JOY0") & 0x10)			/* Joypad1_Button */
 			{
-				if (JOYSTICK_SWAP)
+				if (input_port_read(machine, "SPECIAL") & 0x40)
 					value &= ~0x80;
 				else
 					value &= ~0x40;
 			}
-		if (JOYSTICK_1_RIGHT)
-			value &= ~8;
-		if (JOYSTICK_1_LEFT)
-			value &= ~4;
-		if (JOYSTICK_1_DOWN)
-			value &= ~2;
-		if (JOYSTICK_1_UP)
-			value &= ~1;
-		if (JOYSTICK_SWAP)
+
+		value &= ~(input_port_read(machine, "JOY0") & 0x0f);	/* Other Inputs Joypad1 */
+
+		if (input_port_read(machine, "SPECIAL") & 0x40)
 			keyline[9] = value;
 		else
 			keyline[8] = value;
 	}
 
-	if (JOYSTICK2_PORT) {
+	if (input_port_read(machine, "DSW0") & 0x40) 
+	{
 		value = 0xff;
-		if (JOYSTICK_2_BUTTON)
+		if (input_port_read(machine, "JOY1") & 0x10)			/* Joypad2_Button */
 			{
-				if (JOYSTICK_SWAP)
+				if (input_port_read(machine, "SPECIAL") & 0x40)
 					value &= ~0x40;
 				else
 					value &= ~0x80;
 			}
-		if (JOYSTICK_2_RIGHT)
-			value &= ~8;
-		if (JOYSTICK_2_LEFT)
-			value &= ~4;
-		if (JOYSTICK_2_DOWN)
-			value &= ~2;
-		if (JOYSTICK_2_UP)
-			value &= ~1;
-		if (JOYSTICK_SWAP)
+
+		value &= ~(input_port_read(machine, "JOY1") & 0x0f);	/* Other Inputs Joypad2 */
+		
+		if (input_port_read(machine, "SPECIAL") & 0x40)
 			keyline[8] = value;
 		else
 			keyline[9] = value;
@@ -729,8 +708,9 @@ INTERRUPT_GEN( c16_frame_interrupt )
 
 	ted7360_frame_interrupt (machine, cpunum);
 
-	vc20_tape_config (DATASSETTE, DATASSETTE_TONE);
-	vc20_tape_buttons (DATASSETTE_PLAY, DATASSETTE_RECORD, DATASSETTE_STOP);
-	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , input_port_read(machine, "Special") & 0x80 ? 1 : 0);
-	set_led_status (0 /*KB_NUMLOCK_FLAG */ , JOYSTICK_SWAP ? 1 : 0);
+	vc20_tape_config (input_port_read(machine, "DSW0") & 0x20, input_port_read(machine, "DSW0") & 0x10);	/* DATASSETTE, DATASSETTE_TONE */
+	vc20_tape_buttons (input_port_read(machine, "DSW0") & 0x04, input_port_read(machine, "DSW0") & 0x02, input_port_read(machine, "DSW0") & 0x01);	/* DATASETTE_PLAY, DATASETTE_RECORD, DATASETTE_STOP */
+
+	set_led_status (1, input_port_read(machine, "SPECIAL") & 0x80 ? 1 : 0);		/*KB_CAPSLOCK_FLAG */
+	set_led_status (0, input_port_read(machine, "SPECIAL") & 0x40 ? 1 : 0);		/*KB_NUMLOCK_FLAG */
 }

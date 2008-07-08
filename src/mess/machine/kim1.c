@@ -8,7 +8,6 @@
 ******************************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/m6502/m6502.h"
 #include "includes/kim1.h"
 #include "sound/dac.h"
@@ -522,7 +521,7 @@ DRIVER_INIT( kim1 )
 		".bbbbbbbbbbbbbbbbbbbbbb." \
 		"........................"};
 
-	dst = memory_region(REGION_GFX1);
+	dst = memory_region(machine, REGION_GFX1);
 	memset(dst, 0, 128 * 24 * 24 / 8);
 	for (i = 0; i < 128; i++)
 	{
@@ -568,8 +567,8 @@ DRIVER_INIT( kim1 )
 		}
 	}
 
-	dst = memory_region(REGION_GFX2);
-	memset(dst, 0, memory_region_length(REGION_GFX2));
+	dst = memory_region(machine, REGION_GFX2);
+	memset(dst, 0, memory_region_length(machine, REGION_GFX2));
 	for (i = 0; i < 24; i++)
 	{
 		for (y = 0; y < 18; y++)
@@ -603,7 +602,7 @@ static void set_chip_clock(int chip, int data)
 
 MACHINE_RESET( kim1 )
 {
-	UINT8 *RAM = memory_region(REGION_CPU1);
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
 	/* setup RAM IRQ vector */
 	if (RAM[0x17fa] == 0x00 && RAM[0x17fb] == 0x00)
@@ -639,7 +638,7 @@ static DEVICE_IMAGE_LOAD( kim1_cassette )
 	const char magic[] = "KIM1";
 	char buff[4];
 	UINT16 addr, size;
-	UINT8 ident, *RAM = memory_region(REGION_CPU1);
+	UINT8 ident, *RAM = memory_region(image->machine, REGION_CPU1);
 
 	image_fread(image, buff, sizeof (buff));
 	if (memcmp(buff, magic, sizeof (buff)))
@@ -679,10 +678,9 @@ INTERRUPT_GEN( kim1_interrupt )
 	}
 }
 
-INLINE int m6530_r(int chip, int offset)
+INLINE int m6530_r(running_machine *machine, int chip, int offset)
 {
 	int data = 0xff;
-	running_machine *machine = Machine;
 
 	switch (offset)
 	{
@@ -785,13 +783,13 @@ INLINE int m6530_r(int chip, int offset)
 	return data;
 }
 
- READ8_HANDLER ( m6530_003_r )
+READ8_HANDLER ( m6530_003_r )
 {
-	return m6530_r(0, offset);
+	return m6530_r(machine, 0, offset);
 }
- READ8_HANDLER ( m6530_002_r )
+READ8_HANDLER ( m6530_002_r )
 {
-	return m6530_r(1, offset);
+	return m6530_r(machine, 1, offset);
 }
 
 static void m6530_w(int chip, int offset, int data)

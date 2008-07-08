@@ -24,14 +24,33 @@ enum {
 
 /*----------- defined in drivers/amstrad.c -----------*/
 
-void amstrad_reset_machine(running_machine *);
-void amstrad_GateArray_write(running_machine *,int);
-void amstrad_rethinkMemory(void);
-void amstrad_setLowerRom(void);
-void amstrad_setUpperRom(void);
+extern int amstrad_plus_asic_enabled;
+extern int amstrad_plus_pri;
+extern int amstrad_system_type;
+extern int amstrad_plus_irq_cause;
+extern int amstrad_plus_scroll_x;
+extern int amstrad_plus_scroll_y;
+extern int amstrad_plus_scroll_border;
 
-void AmstradCPC_SetUpperRom(int);
-void AmstradCPC_PALWrite(int);
+extern int amstrad_plus_dma_status;
+extern int amstrad_plus_dma_0_addr;   // DMA channel address
+extern int amstrad_plus_dma_1_addr;
+extern int amstrad_plus_dma_2_addr;
+extern int amstrad_plus_dma_prescaler[3];  // DMA channel prescaler
+
+extern unsigned char *amstrad_plus_asic_ram;
+
+extern int aleste_mode;
+
+void amstrad_reset_machine(running_machine *machine);
+void amstrad_GateArray_write(running_machine *machine,int);
+void amstrad_rethinkMemory(running_machine *machine);
+void amstrad_setLowerRom(running_machine *machine);
+void amstrad_setUpperRom(running_machine *machine);
+
+void AmstradCPC_SetUpperRom(running_machine *machine, int);
+void AmstradCPC_PALWrite(running_machine *machine, int);
+void amstrad_init_palette(running_machine* machine);
 
 
 /*----------- defined in machine/amstrad.c -----------*/
@@ -78,7 +97,6 @@ This gives a total of 19968 NOPs per frame. */
 #define AMSTRAD_FPS               50.080128205128205
 
 extern VIDEO_START( amstrad );
-extern VIDEO_START( aleste );
 extern VIDEO_UPDATE( amstrad );
 void amstrad_vh_execute_crtc_cycles(int);
 void amstrad_vh_update_colour(int, int);
@@ -106,5 +124,10 @@ extern PALETTE_INIT( amstrad_plus );
 /**** ALESTE SPECIFIC ***/
 extern PALETTE_INIT( aleste );
 void aleste_vh_update_colour(int, int);
+
+extern int prev_reg;
+
+/* The gate array counts CRTC HSYNC pulses. (It has a internal 6-bit counter). */
+extern int amstrad_CRTC_HS_Counter;
 
 #endif /* AMSTRAD_H_ */

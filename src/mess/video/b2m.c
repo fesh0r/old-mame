@@ -8,9 +8,8 @@
 
 
 #include "driver.h"
+#include "includes/b2m.h"
   
-extern UINT8 b2m_video_page;  
-extern UINT16 b2m_video_scroll;
 VIDEO_START( b2m )
 {
 }
@@ -44,7 +43,7 @@ VIDEO_UPDATE( b2m )
 	return 0;
 }
 
-const rgb_t b2m_palette[4] = {
+static const rgb_t b2m_palette[4] = {
 	MAKE_RGB(0x00, 0x00, 0x00), // 0
 	MAKE_RGB(0x00, 0x00, 0x00), // 1
 	MAKE_RGB(0x00, 0x00, 0x00), // 2 

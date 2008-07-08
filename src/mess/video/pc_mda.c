@@ -16,7 +16,7 @@
 #define MDA_LOG(N,M,A) \
 	if(VERBOSE_MDA>=N){ if( M )logerror("%11.6f: %-24s",attotime_to_double(timer_get_time()),(char*)M ); logerror A; }
 
-const unsigned char mda_palette[4][3] =
+static const unsigned char mda_palette[4][3] =
 {
 	{ 0x00,0x00,0x00 },
 	{ 0x00,0x55,0x00 },
@@ -41,7 +41,7 @@ static struct
 } mda;
 
 /* Initialise the mda palette */
-PALETTE_INIT( pc_mda )
+static PALETTE_INIT( pc_mda )
 {
 	int i;
 	for(i = 0; i < (sizeof(mda_palette) / 3); i++)
@@ -112,7 +112,7 @@ VIDEO_START( pc_mda )
 
 	memset( &mda, 0, sizeof(mda));
 	mda.update_row = NULL;
-	mda.chr_gen = memory_region( REGION_GFX1 );
+	mda.chr_gen = memory_region( machine, REGION_GFX1 );
 
 	videoram_size = 0x1000;	/* This is actually 0x1000 in reality */
 	videoram = auto_malloc(videoram_size);
@@ -461,7 +461,7 @@ static VIDEO_START( pc_hercules )
 
 	memset( &mda, 0, sizeof(mda));
 	mda.update_row = NULL;
-	mda.chr_gen = memory_region( REGION_GFX1 );
+	mda.chr_gen = memory_region( machine, REGION_GFX1 );
 
 	videoram_size = 0x10000;
 	videoram = auto_malloc(videoram_size);

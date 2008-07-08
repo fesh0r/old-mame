@@ -10,13 +10,7 @@
 #include "driver.h"
 #include "cpu/z80/z80.h"
 #include "includes/galaxy.h"
-
-#define DEBUG_GALAXY_LATCH	0
-
-#define LOG_GALAXY_LATCH_R(_port, _data) do { if (DEBUG_GALAXY_LATCH) logerror ("Galaxy latch read : %04x, Data: %02x\n", _port, _data); } while (0)
-#define LOG_GALAXY_LATCH_W(_port, _data) do { if (DEBUG_GALAXY_LATCH) logerror ("Galaxy latch write: %04x, Data: %02x\n", _port, _data); } while (0)
-
-int galaxy_interrupts_enabled = TRUE;
+#include "devices/cassette.h"
 
 /***************************************************************************
   I/O devices
@@ -24,34 +18,43 @@ int galaxy_interrupts_enabled = TRUE;
 
 READ8_HANDLER( galaxy_keyboard_r )
 {
-	return input_port_read_indexed(machine, (offset>>3)&0x07) & (0x01<<(offset&0x07)) ? 0xfe : 0xff;
+	if (offset == 0) {
+		double level = cassette_input(image_from_devtype_and_index(IO_CASSETTE, 0));
+		return (level >  0) ? 0xfe : 0xff;
+	} else {
+		char port[6];
+		sprintf(port,"LINE%d",(offset>>3)&0x07);
+		return input_port_read(machine, port) & (0x01<<(offset&0x07)) ? 0xfe : 0xff;
+	}
 }
 
-READ8_HANDLER( galaxy_latch_r )
-{
-	UINT8 data = 0xff;
-	LOG_GALAXY_LATCH_R(offset, data);
-	return data;
-}
+UINT8 gal_latch_value = 0;
 
 WRITE8_HANDLER( galaxy_latch_w )
-{
-	LOG_GALAXY_LATCH_W(offset, data);
+{	
+	double val = (((data >>6) & 1 ) + ((data >> 2) & 1) - 1) * 32000;			
+	gal_latch_value = data;
+	cassette_output(image_from_devtype_and_index(IO_CASSETTE, 0), val);
 }
+
+
 
 /***************************************************************************
   Interrupts
 ***************************************************************************/
+int galaxy_interrupts_enabled = TRUE;
 
 INTERRUPT_GEN( galaxy_interrupt )
 {
 	cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 }
 
-static IRQ_CALLBACK(galaxy_irq_callback)
+static IRQ_CALLBACK ( galaxy_irq_callback )
 {
+	gal_cnt = 0;
 	galaxy_interrupts_enabled = TRUE;
-	return 1;
+	timer_adjust_periodic(gal_video_timer, attotime_zero, 0, ATTOTIME_IN_HZ(6144000 / 8));
+	return 0xff;
 }
 
 /***************************************************************************
@@ -167,12 +170,39 @@ DRIVER_INIT( galaxy )
 MACHINE_RESET( galaxy )
 {
 	/* ROM 2 enable/disable */
-	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, input_port_read_indexed(machine, 7) ? SMH_BANK10 : SMH_NOP);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, input_port_read(machine, "ROM2") ? SMH_BANK10 : SMH_NOP);
 	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x1000, 0x1fff, 0, 0, SMH_NOP);
-	if (input_port_read_indexed(machine, 7))
-		memory_set_bankptr(10, memory_region(REGION_CPU1) + 0x1000);
+	memory_set_bankptr(10, memory_region(machine, REGION_CPU1) + 0x1000);
+
+	cpunum_set_irq_callback(0, galaxy_irq_callback);
+	galaxy_interrupts_enabled = TRUE;
+
+	gal_video_timer = timer_alloc(gal_video, NULL);
+	timer_adjust_periodic(gal_video_timer, attotime_zero, 0,attotime_never);
+}
+
+DRIVER_INIT( galaxyp )
+{
+	DRIVER_INIT_CALL(galaxy);
+}
+
+MACHINE_RESET( galaxyp )
+{
+	UINT8 *ROM = memory_region(machine, REGION_CPU1);
 
 	cpunum_set_irq_callback(0, galaxy_irq_callback);
 
+	ROM[0x0037] = 0x29;
+	ROM[0x03f9] = 0xcd;
+	ROM[0x03fa] = 0x00;
+	ROM[0x03fb] = 0xe0;
+
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_BANK11);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0xe000, 0xefff, 0, 0, SMH_NOP);
+	memory_set_bankptr(11, memory_region(machine, REGION_CPU1) + 0xe000);
 	galaxy_interrupts_enabled = TRUE;
+
+	gal_video_timer = timer_alloc(gal_video, NULL);
+	timer_adjust_periodic(gal_video_timer, attotime_zero, 0, attotime_never);
+
 }

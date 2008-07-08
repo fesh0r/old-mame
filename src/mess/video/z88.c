@@ -42,8 +42,6 @@ PALETTE_INIT( z88 )
 	palette_set_colors(machine, 0, z88_palette, ARRAY_LENGTH(z88_palette));
 }
 
-extern struct blink_hw blink;
-
 /* temp - change to gfxelement structure */
 
 static void z88_vh_render_8x8(bitmap_t *bitmap, int x, int y, int pen0, int pen1, unsigned char *pData)
@@ -120,7 +118,7 @@ static void z88_vh_render_line(bitmap_t *bitmap, int x, int y,int pen)
 }
 
 /* convert absolute offset into correct address to get data from */
-static unsigned  char *z88_convert_address(unsigned long offset)
+static unsigned char *z88_convert_address(running_machine *machine, unsigned long offset)
 {
 //        return mess_ram;
 	if (offset>(32*16384))
@@ -133,7 +131,7 @@ static unsigned  char *z88_convert_address(unsigned long offset)
 	else
 	{
 		offset = offset & 0x01FFFF;
-		return memory_region(REGION_CPU1) + 0x010000 + offset;
+		return memory_region(machine, REGION_CPU1) + 0x010000 + offset;
 	}
 }
 
@@ -157,10 +155,10 @@ VIDEO_EOF( z88 )
 ***************************************************************************/
 VIDEO_UPDATE( z88 )
 {
-    int x,y;
-    unsigned char *ptr = z88_convert_address(blink.sbf);
+	int x,y;
+	unsigned char *ptr = z88_convert_address(screen->machine, blink.sbf);
 	unsigned char *stored_ptr = ptr;
-    int pen0, pen1;
+	int pen0, pen1;
 
 	for (y=0; y<(Z88_SCREEN_HEIGHT>>3); y++)
 	{
@@ -223,12 +221,12 @@ VIDEO_UPDATE( z88 )
 					if (ch & 0x0100)
 					{
 						ch_index =ch & 0x0ff;	//(~0x0100);
-						pCharGfx = z88_convert_address(blink.hires1);
+						pCharGfx = z88_convert_address(screen->machine, blink.hires1);
 					}
 					else
 					{
 						ch_index = ch & 0x0ff;
-						pCharGfx = z88_convert_address(blink.hires0);
+						pCharGfx = z88_convert_address(screen->machine, blink.hires0);
 					}
 
 					pCharGfx += (ch_index<<3);
@@ -246,13 +244,13 @@ VIDEO_UPDATE( z88 )
 				{
 				   ch_index = ch & (~0x01c0);
 
-				   pCharGfx = z88_convert_address(blink.lores0);
+				   pCharGfx = z88_convert_address(screen->machine, blink.lores0);
 				}
 				else
 				{
 				   ch_index = ch;
 
-				   pCharGfx = z88_convert_address(blink.lores1);
+				   pCharGfx = z88_convert_address(screen->machine, blink.lores1);
 				}
 
 				pCharGfx += (ch_index<<3);

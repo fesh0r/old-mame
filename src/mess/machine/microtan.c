@@ -14,7 +14,6 @@
 
 /* Core includes */
 #include "driver.h"
-#include "deprecat.h"
 #include "includes/microtan.h"
 
 /* Components */
@@ -135,6 +134,23 @@ static const char keyboard[8][9][8] = {
     },
 };
 
+static UINT8 read_dsw(running_machine *machine)
+{
+	UINT8 result;
+	switch(mame_get_phase(machine))
+	{
+		case MAME_PHASE_RESET:
+		case MAME_PHASE_RUNNING:
+			result = input_port_read(machine, "DSW");
+			break;
+
+		default:
+			result = 0x00;
+			break;
+	}
+	return result;
+}
+
 static void microtan_set_irq_line(running_machine *machine)
 {
     /* The 6502 IRQ line is active low and probably driven
@@ -153,7 +169,7 @@ static const device_config *cassette_device_image(void)
  **************************************************************/
 static  READ8_HANDLER (via_0_in_a )
 {
-    int data = input_port_read_indexed(machine, 10);
+    int data = input_port_read(machine, "JOY");
     LOG(("microtan_via_0_in_a %02X\n", data));
     return data;
 }
@@ -215,11 +231,11 @@ static WRITE8_HANDLER (via_0_out_cb2 )
     LOG(("microtan_via_0_out_cb2 %d\n", data));
 }
 
-static void via_0_irq(int state)
+static void via_0_irq(running_machine *machine, int state)
 {
     LOG(("microtan_via_0_irq %d\n", state));
     via_0_irq_line = state;
-    microtan_set_irq_line(Machine);
+    microtan_set_irq_line(machine);
 }
 
 /**************************************************************
@@ -287,11 +303,11 @@ static WRITE8_HANDLER ( via_1_out_cb2 )
     LOG(("microtan_via_1_out_cb2 %d\n", data));
 }
 
-static void via_1_irq(int state)
+static void via_1_irq(running_machine *machine, int state)
 {
     LOG(("microtan_via_1_irq %d\n", state));
     via_1_irq_line = state;
-    microtan_set_irq_line(Machine);
+    microtan_set_irq_line(machine);
 }
 
 /**************************************************************
@@ -325,9 +341,9 @@ static TIMER_CALLBACK(microtan_read_cassette)
 
 	LOG(("microtan_read_cassette: %g\n", level));
 	if (level < -0.07)
-		via_set_input_cb2(0,0);
+		via_set_input_cb2(machine, 0,0);
 	else if (level > +0.07)
-		via_set_input_cb2(0,1);
+		via_set_input_cb2(machine, 0,1);
 }
 
 READ8_HANDLER( microtan_sound_r )
@@ -592,6 +608,7 @@ INTERRUPT_GEN( microtan_interrupt )
 {
     int mod, row, col, chg, new;
     static int lastrow = 0, mask = 0x00, key = 0x00, repeat = 0, repeater = 0;
+	char port[6];
 
     if( repeat )
     {
@@ -603,18 +620,19 @@ INTERRUPT_GEN( microtan_interrupt )
         repeat = repeater;
     }
 
+
     row = 9;
-    new = input_port_read_indexed(machine, row);
+    new = input_port_read(machine, "ROW8");
     chg = keyrows[--row] ^ new;
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) { new = input_port_read_indexed(machine, row); chg = keyrows[--row] ^ new; }
-    if (!chg) --row;
+
+	while ( !chg && row > 0)
+	{
+		sprintf(port, "ROW%d", row - 1);
+		new = input_port_read(machine, port); 
+		chg = keyrows[--row] ^ new; 
+	}
+    if (!chg) 
+		--row;
 
     if (row >= 0)
     {
@@ -623,9 +641,9 @@ INTERRUPT_GEN( microtan_interrupt )
         key = 0x00;
         lastrow = row;
         /* CapsLock LED */
-        if( row == 3 && chg == 0x80 )
-            set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
-
+		if( row == 3 && chg == 0x80 )
+			set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
+		
         if (new & chg)  /* key(s) pressed ? */
         {
             mod = 0;
@@ -692,7 +710,7 @@ static void microtan_set_cpu_regs(const UINT8 *snapshot_buff, int base)
 
 static void microtan_snapshot_copy(running_machine *machine, UINT8 *snapshot_buff, int snapshot_size)
 {
-    UINT8 *RAM = memory_region(REGION_CPU1);
+    UINT8 *RAM = memory_region(machine, REGION_CPU1);
 
     /* check for .DMP file format */
     if (snapshot_size == 8263)
@@ -842,7 +860,7 @@ QUICKLOAD_LOAD( microtan_hexfile )
 
 DRIVER_INIT( microtan )
 {
-    UINT8 *dst = memory_region(REGION_GFX2);
+    UINT8 *dst = memory_region(machine, REGION_GFX2);
     int i;
 
     for (i = 0; i < 256; i++)
@@ -881,7 +899,7 @@ DRIVER_INIT( microtan )
         dst += 4;
     }
 
-    switch (input_port_read_indexed(machine, 0) & 3)
+    switch (read_dsw(machine) & 3)
     {
         case 0:  // 1K only :)
             memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0400, 0xbbff, 0, 0, SMH_NOP);
@@ -904,9 +922,13 @@ DRIVER_INIT( microtan )
 MACHINE_RESET( microtan )
 {
     int i;
-
+	char port[6];
+	
     for (i = 1; i < 10;  i++)
-        keyrows[i] = input_port_read_indexed(machine, 1+i);
+	{
+		sprintf(port, "ROW%d", i-1);
+        keyrows[i] = input_port_read(machine, port);
+	}
     set_led_status(1, (keyrows[3] & 0x80) ? 0 : 1);
 
     via_config(0, &via6522[0]);

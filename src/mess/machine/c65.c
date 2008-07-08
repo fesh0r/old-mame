@@ -7,8 +7,6 @@
 
 #include "driver.h"
 #include "deprecat.h"
-#include "includes/c65.h"
-#include "includes/c64.h"
 
 #include "cpu/m6502/m6502.h"
 #include "sound/sid6581.h"
@@ -19,6 +17,9 @@
 #include "includes/cbmserb.h"
 #include "includes/vc1541.h"
 #include "video/vic4567.h"
+
+#include "includes/c65.h"
+#include "includes/c64.h"
 
 
 static int c65_charset_select=0;
@@ -180,7 +181,8 @@ static int c65_dma_port_r(running_machine *machine, int offset)
 
 static void c65_6511_port_w(running_machine *machine, int offset, int value)
 {
-	if (offset==7) {
+	if (offset==7) 
+	{
 		c65_6511_port=value;
 	}
 	DBG_LOG (2, "r6511 write", ("%.2x %.2x\n", offset, value));
@@ -189,8 +191,11 @@ static void c65_6511_port_w(running_machine *machine, int offset, int value)
 static int c65_6511_port_r(running_machine *machine, int offset)
 {
 	int data=0xff;
-	if (offset==7) {
-		if (C65_KEY_DIN) data &= ~1;
+
+	if (offset==7) 
+	{
+		if (input_port_read(machine, "SPECIAL") & 0x20) 
+			data &= ~1;
 	}
 	DBG_LOG (2, "r6511 read", ("%.2x\n", offset));
 
@@ -617,7 +622,7 @@ static void c65_bankswitch_interface(int value)
 	old=value;
 }
 
-void c65_bankswitch (void)
+void c65_bankswitch (running_machine *machine)
 {
 	static int old = -1;
 	int data, loram, hiram, charen;
@@ -678,8 +683,8 @@ void c65_bankswitch (void)
 			memory_set_bankptr (8, c64_colorram+0x400);
 			memory_set_bankptr (9, c64_colorram+0x400);
 		}
-		memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0dc00, 0x0dfff, 0, 0, rh8);
-		memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0dc00, 0x0dfff, 0, 0, wh9);
+		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0dc00, 0x0dfff, 0, 0, rh8);
+		memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0dc00, 0x0dfff, 0, 0, wh9);
 	}
 	else
 	{
@@ -702,8 +707,8 @@ void c65_bankswitch (void)
 			memory_set_bankptr (8, c64_memory + 0xdc00);
 		}
 	}
-	memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0d000, 0x0d7ff, 0, 0, rh4);
-	memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM, 0x0d000, 0x0d7ff, 0, 0, wh5);
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0d000, 0x0d7ff, 0, 0, rh4);
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x0d000, 0x0d7ff, 0, 0, wh5);
 
 	if (!c64_game && c64_exrom)
 	{
@@ -762,7 +767,7 @@ static int c65_dma_read_color (int offset)
 	return c64_colorram[offset & 0x7ff];
 }
 
-static void c65_common_driver_init (void)
+static void c65_common_driver_init (running_machine *machine)
 {
 	c64_memory = auto_malloc(0x10000);
 	memset(c64_memory, 0, 0x10000);
@@ -782,8 +787,8 @@ static void c65_common_driver_init (void)
 		cia_intf[0].tod_clock = c64_pal ? 50 : 60;
 		cia_intf[1].tod_clock = c64_pal ? 50 : 60;
 
-		cia_config(0, &cia_intf[0]);
-		cia_config(1, &cia_intf[1]);
+		cia_config(machine, 0, &cia_intf[0]);
+		cia_config(machine, 1, &cia_intf[1]);
 	}
 
 	vic4567_init (c64_pal, c65_dma_read, c65_dma_read_color,
@@ -793,7 +798,7 @@ static void c65_common_driver_init (void)
 DRIVER_INIT( c65 )
 {
 	dma.version=2;
-	c65_common_driver_init ();
+	c65_common_driver_init (machine);
 
 }
 
@@ -801,7 +806,7 @@ DRIVER_INIT( c65pal )
 {
 	dma.version=1;
 	c64_pal = 1;
-	c65_common_driver_init ();
+	c65_common_driver_init (machine);
 }
 
 MACHINE_START( c65 )
@@ -818,8 +823,8 @@ MACHINE_START( c65 )
 	c64mode = 0;
 
 	c64_rom_recognition ();
-	c64_rom_load();
+	c64_rom_load(machine);
 
 	c65_bankswitch_interface(0xff);
-	c65_bankswitch ();
+	c65_bankswitch (machine);
 }

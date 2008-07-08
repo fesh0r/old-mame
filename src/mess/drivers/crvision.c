@@ -12,7 +12,6 @@
 #include "machine/6821pia.h"
 #include "sound/sn76496.h"
 #include "video/tms9928a.h"
-#include "deprecat.h"
 
 /* Memory Map */
 
@@ -197,12 +196,12 @@ INPUT_PORTS_END
 
 static INTERRUPT_GEN( crvision_int )
 {
-    TMS9928A_interrupt();
+    TMS9928A_interrupt(machine);
 }
 
-static void crvision_vdp_interrupt(int state)
+static void crvision_vdp_interrupt(running_machine *machine, int state)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_IRQ0, state);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_IRQ0, state);
 }
 
 static const TMS9928a_interface tms9918_intf =
@@ -241,7 +240,7 @@ static WRITE8_HANDLER( pia_porta_w )
 	keylatch = ~data & 0x0f;
 }
 
-static UINT8 read_keyboard(int pa)
+static UINT8 read_keyboard(running_machine *machine, int pa)
 {
 	int i;
 	UINT8 value;
@@ -250,7 +249,7 @@ static UINT8 read_keyboard(int pa)
 	for (i = 0; i < 8; i++)
 	{
 		sprintf(portname, "PA%u-%u", pa, i);
-		value = input_port_read(Machine, portname);
+		value = input_port_read(machine, portname);
 
 		if (value != 0xff)
 		{
@@ -297,19 +296,19 @@ static READ8_HANDLER( pia_portb_r )
 
 	if (keylatch & 0x01)
 	{
-		return read_keyboard(0);
+		return read_keyboard(machine, 0);
 	}
 	else if (keylatch & 0x02)
 	{
-		return read_keyboard(1);
+		return read_keyboard(machine, 1);
 	}
 	else if (keylatch & 0x04)
 	{
-		return read_keyboard(2);
+		return read_keyboard(machine, 2);
 	}
 	else if (keylatch & 0x08)
 	{
-		return read_keyboard(3);
+		return read_keyboard(machine, 3);
 	}
 
 	return 0xff;
@@ -452,49 +451,50 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 {
 	int size = image_length(image);
 	running_machine *machine = image->machine;
+	UINT8 *mem = memory_region(machine, REGION_CPU1);
 
 	switch (size)
 	{
 	case 0x1000: // 4K
-		image_fread(image, memory_region(REGION_CPU1) + 0x9000, 0x1000);
+		image_fread(image, mem + 0x9000, 0x1000);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		break;
 
 	case 0x1800: // 6K
-		image_fread(image, memory_region(REGION_CPU1) + 0x9000, 0x1000);
-		image_fread(image, memory_region(REGION_CPU1) + 0x8800, 0x0800);
+		image_fread(image, mem + 0x9000, 0x1000);
+		image_fread(image, mem + 0x8800, 0x0800);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		break;
 
 	case 0x2000: // 8K
-		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
+		image_fread(image, mem + 0x8000, 0x2000);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		break;
 
 	case 0x2800: // 10K
-		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
-		image_fread(image, memory_region(REGION_CPU1) + 0x5800, 0x0800);
+		image_fread(image, mem + 0x8000, 0x2000);
+		image_fread(image, mem + 0x5800, 0x0800);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
 		break;
 
 	case 0x3000: // 12K
-		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
-		image_fread(image, memory_region(REGION_CPU1) + 0x5000, 0x1000);
+		image_fread(image, mem + 0x8000, 0x2000);
+		image_fread(image, mem + 0x5000, 0x1000);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x9fff, 0, 0x2000, SMH_BANK1);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x5fff, 0, 0x2000, SMH_BANK2);
 		break;
 
 	case 0x4000: // 16K
-		image_fread(image, memory_region(REGION_CPU1) + 0xa000, 0x2000);
-		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
+		image_fread(image, mem + 0xa000, 0x2000);
+		image_fread(image, mem + 0x8000, 0x2000);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0xbfff, 0, 0, SMH_BANK1);
 		break;
 
 	case 0x4800: // 18K
-		image_fread(image, memory_region(REGION_CPU1) + 0xa000, 0x2000);
-		image_fread(image, memory_region(REGION_CPU1) + 0x8000, 0x2000);
-		image_fread(image, memory_region(REGION_CPU1) + 0x4800, 0x0800);
+		image_fread(image, mem + 0xa000, 0x2000);
+		image_fread(image, mem + 0x8000, 0x2000);
+		image_fread(image, mem + 0x4800, 0x0800);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x8000, 0x8fff, 0, 0, SMH_BANK1);
 		memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM, 0x4000, 0x4fff, 0, 0x3000, SMH_BANK2);
 		break;
@@ -503,10 +503,10 @@ static DEVICE_IMAGE_LOAD( crvision_cart )
 		return INIT_FAIL;
 	}
 
-	memory_configure_bank(1, 0, 1, memory_region(REGION_CPU1) + 0x8000, 0);
+	memory_configure_bank(1, 0, 1, mem + 0x8000, 0);
 	memory_set_bank(1, 0);
 
-	memory_configure_bank(2, 0, 1, memory_region(REGION_CPU1) + 0x4000, 0);
+	memory_configure_bank(2, 0, 1, mem + 0x4000, 0);
 	memory_set_bank(2, 0);
 
 	return INIT_PASS;
@@ -543,12 +543,12 @@ static void crvision_cassette_getinfo(const mess_device_class *devclass, UINT32 
 	}
 }
 
-SYSTEM_CONFIG_START( crvision )
+static SYSTEM_CONFIG_START( crvision )
 	CONFIG_DEVICE(crvision_cartslot_getinfo)
 	CONFIG_DEVICE(crvision_cassette_getinfo)
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START( fnvision )
+static SYSTEM_CONFIG_START( fnvision )
 	CONFIG_DEVICE(crvision_cartslot_getinfo)
 SYSTEM_CONFIG_END
 

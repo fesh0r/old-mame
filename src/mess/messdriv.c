@@ -82,10 +82,10 @@ const game_driver *const test_drivers[] =
 	DRIVER( nespal )	/* Nintendo Entertainment System					*/
 	DRIVER( famicom )
 	DRIVER( famitwin )	/* Sharp Famicom Twin System						*/
-	DRIVER( gameboy )	/* Nintendo GameBoy Handheld						*/
-	DRIVER( supergb )	/* Nintendo Super GameBoy SNES Cartridge			*/
-	DRIVER( gbpocket )	/* Nintendo GameBoy Pocket Handheld					*/
-	DRIVER( gbcolor )	/* Nintendo GameBoy Color Handheld					*/
+	DRIVER( gameboy )	/* Nintendo Game Boy Handheld						*/
+	DRIVER( supergb )	/* Nintendo Super Game Boy SNES Cartridge			*/
+	DRIVER( gbpocket )	/* Nintendo Game Boy Pocket Handheld				*/
+	DRIVER( gbcolor )	/* Nintendo Game Boy Color Handheld					*/
 	DRIVER( snes )		/* Nintendo Super Nintendo NTSC						*/
 	DRIVER( snespal )	/* Nintendo Super Nintendo PAL						*/
 	DRIVER( n64 )		/* Nintendo N64										*/
@@ -97,6 +97,7 @@ const game_driver *const test_drivers[] =
 	DRIVER( sg1000 )	/* Sega SG-1000 (Japan)								*/
 	DRIVER( sg1000m2 )	/* Sega SG-1000 Mark II (Japan)						*/
 	DRIVER( sc3000 )	/* Sega SC-3000 (Japan)								*/
+	DRIVER( sc3000h )	/* Sega SC-3000H (Japan)							*/
 	DRIVER( sf7000 )	/* Sega SC-3000 w/ SF-7000 (Japan)					*/
 
 	DRIVER( gamegear )	/* Sega GameGear									*/
@@ -148,6 +149,7 @@ TESTDRIVER( m9016tc )	/* 1978 Mustang 9016 Telespiel Computer				*/
 	DRIVER( pce )		/* PC/Engine NEC 1987-1993							*/
 	DRIVER( tg16 )		/* Turbo Grafix-16  NEC 1989-1993					*/
 	DRIVER( sgx )		/* SuperGrafX NEC 1989								*/
+	DRIVER( pcfx)		/* PC-FX NEC 1994									*/
 
 	DRIVER( arcadia )	/* Emerson Arcadia 2001								*/
 TESTDRIVER( vcg )		/* Palladium Video-Computer-Game					*/
@@ -397,7 +399,8 @@ TESTDRIVER( ppc640 )	/* 1987 Amstrad PPC640								*/
 	DRIVER( xtvga )		/* 198? PC-XT (VGA, MF2 Keyboard)					*/
 
 	/* at */
-	DRIVER( ibmat )		/* 1985	IBM AT										*/
+	DRIVER( ibm5170 )	/* 1984 IBM PC/AT 5170, original 6 Mhz model		*/
+	DRIVER( ibm5170a )	/* 1985	IBM PC/AT 5170, enhanced 8 Mhz model		*/
 TESTDRIVER( i8530286 )	/* 1988 IBM PS2 Model 30 286 (VGA)					*/
 	DRIVER( at )		/* 1987 AMI Bios and Diagnostics					*/
 	DRIVER( atvga )		/* 19?? AT VGA										*/
@@ -413,12 +416,9 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( zx80 )		/* 1980 Sinclair ZX-80								*/
 	DRIVER( zx81 )		/* 1981 Sinclair ZX-81								*/
 	DRIVER( ts1000 )	/* 1982 Timex Sinclair 1000							*/
-	DRIVER( aszmic )	/* ASZMIC ZX-81 ROM swap							*/
 	DRIVER( pc8300 )	/* Your Computer - PC8300							*/
 	DRIVER( pow3000 )	/* Creon Enterprises - Power 3000					*/
 	DRIVER( lambda )	/* Lambda 8300										*/
-	DRIVER( h4th )		/* Sinclair ZX-81 Forth by David Husband			*/
-	DRIVER( tree4th )	/* Sinclair ZX-81 Tree-Forth by Tree Systems		*/
 
 	DRIVER( spectrum )	/* 1982 ZX Spectrum									*/
 	DRIVER( inves )		/* 1986 Inves Spectrum 48K+							*/
@@ -429,15 +429,10 @@ TESTDRIVER( neat )		/* 1989	New Enhanced AT chipset, AMI BIOS			*/
 	DRIVER( uk2086 )	/* 1986 UK2086										*/
 
 	DRIVER( spec128 )	/* 1986 ZX Spectrum 128								*/
-	DRIVER( spec128s )	/* 1985 ZX Spectrum 128 (Spain)						*/
 	DRIVER( specpls2 )	/* 1986 ZX Spectrum +2								*/
 	DRIVER( specpl2a )	/* 1987 ZX Spectrum +2a								*/
 	DRIVER( specpls3 )	/* 1987 ZX Spectrum +3								*/
-	DRIVER( specp2fr )	/* 1986 ZX Spectrum +2 (France)						*/
-	DRIVER( specp2sp )	/* 1986 ZX Spectrum +2 (Spain)						*/
-	DRIVER( specp3sp )	/* 1987 ZX Spectrum +3 (Spain)						*/
 	DRIVER( specpl3e )	/* 2000 ZX Spectrum +3e								*/
-	DRIVER( specp3es )	/* 2000 ZX Spectrum +3e (Spain)						*/
 	DRIVER( scorpion )
 	DRIVER( pentagon )
 
@@ -542,9 +537,8 @@ TESTDRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
 	DRIVER( mbee56 )	/* Microbee 56K (CP/M)								*/
 
 	/* TANDY RADIO SHACK */
-	DRIVER( trs80 )		/* TRS-80 Model I	- Radio Shack Level I BASIC		*/
-	DRIVER( trs80l2 )	/* TRS-80 Model I	- Radio Shack Level II BASIC	*/
-	DRIVER( trs80l2a )	/* TRS-80 Model I	- R/S L2 BASIC					*/
+	DRIVER( trs80 )		/* TRS-80 Model I - Level I BASIC					*/
+	DRIVER( trs80l2 )	/* TRS-80 Model I - Level II BASIC					*/
 	DRIVER( sys80 )		/* EACA System 80									*/
 	DRIVER( lnw80 )		/* LNW Research LNW-80								*/
 	DRIVER( trs80m3 )	/* TRS-80 Model III - Radio Shack/Tandy				*/
@@ -596,7 +590,6 @@ TESTDRIVER( kc85_4d )	/* VEB KC 85/4 with disk interface					*/
 	DRIVER( orica )		/* 1984 Oric Atmos									*/
 	DRIVER( prav8d )	/* 1985 Pravetz 8D									*/
 	DRIVER( prav8dd )	/* 1989 Pravetz 8D (Disk ROM)						*/
-	DRIVER( prav8dda )	/* 1989 Pravetz 8D (Disk ROM, alternate)			*/
 	DRIVER( telstrat )	/* ??? Oric Telestrat/Stratos						*/
 
 	/* PHILIPS */
@@ -689,7 +682,7 @@ TESTDRIVER( g7400 )		/* 1983 Videopac Plus G7400							*/
 
 
 	/* MILES GORDON TECHNOLOGY */
-	DRIVER( coupe )		/* 1989 Sam Coupe									*/
+	DRIVER( samcoupe )		/* 1989 Sam Coupe									*/
 
 	/* MOTOROLA */
 TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
@@ -713,6 +706,7 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 
 	/* GALAKSIJA */
 	DRIVER( galaxy )
+	DRIVER( galaxyp )
 
 	/* Lviv/L'vov */
 	DRIVER( lviv )		/* Lviv/L'vov										*/
@@ -728,8 +722,7 @@ TESTDRIVER( mekd2 )		/* 1977 Motorola Evaluation Kit						*/
 	DRIVER( alfa )		/* Alfa (PMD-85.1 clone)							*/
 
 	/* Statny */
-	DRIVER( mato )		/* Mato (Basic ROM) (PMD-85.2 clone)				*/
-	DRIVER( matoh )		/* Mato (Games ROM) (PMD-85.2 clone)				*/
+	DRIVER( mato )		/* Mato (PMD-85.2 clone)							*/
 
 	/* Microkey */
 	DRIVER( primoa32 )	/* Primo A-32										*/
@@ -744,8 +737,10 @@ TESTDRIVER( primob48 )	/* Primo B-48										*/
 TESTDRIVER( comquest )	/* Comquest Plus German								*/
 
 	/* Hewlett Packard */
-TESTDRIVER( hp48s )		/* HP48 S/SX										*/
-TESTDRIVER( hp48g )		/* HP48 G/GX										*/
+	DRIVER( hp48s )		/* HP48 S */
+	DRIVER( hp48sx )	/* HP48 SX */
+	DRIVER( hp48g )		/* HP48 G */
+	DRIVER( hp48gx )	/* HP48 GX */
 
 	/* SpectraVideo */
 	DRIVER( svi318 )	/* SVI-318 (PAL)									*/
@@ -778,11 +773,15 @@ TESTDRIVER( hp48g )		/* HP48 G/GX										*/
 	DRIVER(mpf1b)		/* 1979 Multitech Micro Professor 1B				*/
 
 	/* Telercas Oy */
-TESTDRIVER(tmc1800)		/* 1977 Telmac 1800									*/
-	DRIVER(tmc2000)		/* 1980 Telmac 2000									*/
-TESTDRIVER(tmc2000e)	/* 1980 Telmac 2000E								*/
-TESTDRIVER(tmc600s1)	/* 1982 Telmac TMC-600 (Series I)					*/
-	DRIVER(tmc600s2)	/* 1982 Telmac TMC-600 (Series II)					*/
+TESTDRIVER(tmc1800)
+	DRIVER(tmc2000)
+TESTDRIVER(tmc2000e)
+TESTDRIVER(tmc600s1)
+	DRIVER(tmc600s2)
+
+	/* OSCOM Oy */
+TESTDRIVER(osc1000b)
+	DRIVER(oscnano)
 
 	/* MIT */
 	DRIVER( tx0_64kw )	/* April 1956 MIT TX-0 (64kw RAM)					*/
@@ -842,7 +841,8 @@ TESTDRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 	DRIVER( ut88mini )			
 
 	/* Mikro-80 */
-	DRIVER( mikro80 )	
+	DRIVER( mikro80 )
+	DRIVER( radio99 )
 
 	/* Specialist */	
 	DRIVER( special )	
@@ -852,12 +852,12 @@ TESTDRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 	DRIVER( specimx )	
 
 	/* Orion */
-	DRIVER( orion128 )		
-	DRIVER( orionms )		
-	DRIVER( orionz80 )	
-	DRIVER( orionzms )	
+	DRIVER( orion128 )
+	DRIVER( orionms )
+	DRIVER( orionz80 )
+	DRIVER( orionzms )
 	DRIVER( orionpro )
-	
+		
 	/* BK */
 	DRIVER( bk0010 )	
 	DRIVER( bk001001 )		
@@ -866,6 +866,19 @@ TESTDRIVER( cybikoxt )	/* Cybiko Wireless Intertainment System - Xtreme     */
 	/* Bashkiria-2M */
 	DRIVER( b2m )	
 	DRIVER( b2mrom )		
+
+	/* Radio-86RK */
+	DRIVER( radio86 )
+	DRIVER( radio16 )
+	DRIVER( radio4k )
+	DRIVER( rk7007 )
+	DRIVER( rk700716 )
+	DRIVER( radiorom )
+	DRIVER( radioram )
+	DRIVER( spektr01 )
+	DRIVER( apogee )
+	DRIVER( mikrosha )
+	DRIVER( partner )
 
 	/* Bondwell */
 	DRIVER( bw2 )
@@ -876,6 +889,12 @@ TESTDRIVER( exeltel )
 	/* Comx World Operations Ltd */
 	DRIVER( comx35p )
 	DRIVER( comx35n )
+TESTDRIVER( comxpl80 )
+
+	/* Grundy Business Systems Ltd */
+	DRIVER( newbrain )
+	DRIVER( newbraid )
+	DRIVER( newbramd )
 
 /****************Games*******************************************************/
 	/* Computer Electronic */

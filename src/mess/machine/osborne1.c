@@ -88,21 +88,21 @@ READ8_HANDLER( osborne1_2000_r ) {
 			break;
 		case 0x200:	/* Keyboard */
 			/* Row 0 */
-			if ( offset & 0x01 )	data &= input_port_read_indexed(machine, 0);
+			if ( offset & 0x01 )	data &= input_port_read(machine, "ROW0");
 			/* Row 1 */
-			if ( offset & 0x02 )	data &= input_port_read_indexed(machine, 1);
+			if ( offset & 0x02 )	data &= input_port_read(machine, "ROW1");
 			/* Row 2 */
-			if ( offset & 0x04 )	data &= input_port_read_indexed(machine, 3);
+			if ( offset & 0x04 )	data &= input_port_read(machine, "ROW3");
 			/* Row 3 */
-			if ( offset & 0x08 )	data &= input_port_read_indexed(machine, 4);
+			if ( offset & 0x08 )	data &= input_port_read(machine, "ROW4");
 			/* Row 4 */
-			if ( offset & 0x10 )	data &= input_port_read_indexed(machine, 5);
+			if ( offset & 0x10 )	data &= input_port_read(machine, "ROW5");
 			/* Row 5 */
-			if ( offset & 0x20 )	data &= input_port_read_indexed(machine, 2);
+			if ( offset & 0x20 )	data &= input_port_read(machine, "ROW2");
 			/* Row 6 */
-			if ( offset & 0x40 )	data &= input_port_read_indexed(machine, 6);
+			if ( offset & 0x40 )	data &= input_port_read(machine, "ROW6");
 			/* Row 7 */
-			if ( offset & 0x80 )	data &= input_port_read_indexed(machine, 7);
+			if ( offset & 0x80 )	data &= input_port_read(machine, "ROW7");
 			break;
 		case 0x900:	/* IEEE488 PIA */
 			data = pia_0_r( machine, offset & 0x03 );
@@ -177,7 +177,7 @@ WRITE8_HANDLER( osborne1_bankswitch_w ) {
 		break;
 	}
 	if ( osborne1.bank2_enabled ) {
-		memory_set_bankptr( 1, memory_region(REGION_CPU1) );
+		memory_set_bankptr( 1, memory_region(machine, REGION_CPU1) );
 		memory_set_bankptr( 2, osborne1.empty_4K );
 		memory_set_bankptr( 3, osborne1.empty_4K );
 	} else {
@@ -194,11 +194,11 @@ WRITE8_HANDLER( osborne1_bankswitch_w ) {
 static OPBASE_HANDLER( osborne1_opbase ) {
 	if ( ( address & 0xF000 ) == 0x2000 ) {
 		if ( ! osborne1.bank2_enabled ) {
-			opcode_mask = 0x0fff;
-			opcode_arg_base = mess_ram + 0x2000;
-			opcode_base = mess_ram + 0x2000;
-			opcode_memory_min = 0x2000;
-			opcode_memory_max = 0x2fff;
+			opbase->mask = 0x0fff;
+			opbase->ram = mess_ram + 0x2000;
+			opbase->rom = mess_ram + 0x2000;
+			opbase->mem_min = 0x2000;
+			opbase->mem_max = 0x2fff;
 			return ~0;
 		}
 	}
@@ -236,9 +236,9 @@ static void osborne1_update_irq_state(running_machine *machine) {
 	}
 }
 
-static void ieee_pia_irq_a_func(int state) {
+static void ieee_pia_irq_a_func(running_machine *machine, int state) {
 	osborne1.pia_0_irq_state = state;
-	osborne1_update_irq_state(Machine);
+	osborne1_update_irq_state(machine);
 }
 
 static const pia6821_interface osborne1_ieee_pia_config = {
@@ -277,9 +277,9 @@ static WRITE8_HANDLER( video_pia_port_b_w ) {
 	//logerror("Video pia port b write: %02X\n", data );
 }
 
-static void video_pia_irq_a_func(int state) {
+static void video_pia_irq_a_func(running_machine *machine, int state) {
 	osborne1.pia_1_irq_state = state;
-	osborne1_update_irq_state(Machine);
+	osborne1_update_irq_state(machine);
 }
 
 static const pia6821_interface osborne1_video_pia_config = {
@@ -435,7 +435,7 @@ MACHINE_RESET( osborne1 ) {
 	osborne1.pia_0_irq_state = FALSE;
 	osborne1.pia_1_irq_state = FALSE;
 
-	osborne1.charrom = memory_region( REGION_GFX1 );
+	osborne1.charrom = memory_region( machine, REGION_GFX1 );
 
 	memset( mess_ram + 0x10000, 0xFF, 0x1000 );
 

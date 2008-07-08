@@ -118,16 +118,13 @@ static ADDRESS_MAP_START( 3do_mem, ADDRESS_SPACE_PROGRAM, 32)
 	AM_RANGE(0x03400000, 0x034FFFFF) AM_READWRITE(clio_r, clio_w)					/* io controller */
 ADDRESS_MAP_END
 
-static INPUT_PORTS_START( 3do )
-INPUT_PORTS_END
-
 static MACHINE_RESET( 3do )
 {
-	memory_set_bankptr(2,memory_region(REGION_USER1));
+	memory_set_bankptr(2,memory_region(machine, REGION_USER1));
 
 	/* configure overlay */
 	memory_configure_bank(1, 0, 1, dram, 0);
-	memory_configure_bank(1, 1, 1, memory_region(REGION_USER1), 0);
+	memory_configure_bank(1, 1, 1, memory_region(machine, REGION_USER1), 0);
 
 	/* start with overlay enabled */
 	memory_set_bank(1, 1);
@@ -202,7 +199,7 @@ static void chdcd_3do_getinfo( const mess_device_class *devclass, UINT32 state, 
 	}
 }
 
-SYSTEM_CONFIG_START( 3do )
+static SYSTEM_CONFIG_START( 3do )
 	CONFIG_DEVICE( chdcd_3do_getinfo )
 SYSTEM_CONFIG_END
 
@@ -213,5 +210,5 @@ SYSTEM_CONFIG_END
 ***************************************************************************/
 
 /*    YEAR  NAME        PARENT  COMPAT  MACHINE     INPUT   INIT    CONFIG  COMPANY FULLNAME        FLAGS */
-CONS( 1991, 3do,        0,      0,      3do,        3do,    0,      3do,    "3DO",  "3DO",          GAME_NOT_WORKING )
-CONS( 1991, 3do_pal,    3do,    0,      3do_pal,    3do,    0,      3do,    "3DO",  "3DO (PAL)",    GAME_NOT_WORKING )
+CONS( 1991, 3do,        0,      0,      3do,        0,    	0,      3do,    "3DO",  "3DO",          GAME_NOT_WORKING )
+CONS( 1991, 3do_pal,    3do,    0,      3do_pal,    0,    	0,      3do,    "3DO",  "3DO (PAL)",    GAME_NOT_WORKING )

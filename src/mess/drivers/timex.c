@@ -216,7 +216,7 @@ void ts2068_update_memory(running_machine *machine)
 
 	DOCK = timex_cart_data;
 
-	ExROM = memory_region(REGION_CPU1) + 0x014000;
+	ExROM = memory_region(machine, REGION_CPU1) + 0x014000;
 
 	if (ts2068_port_f4_data & 0x01)
 	{
@@ -248,7 +248,7 @@ void ts2068_update_memory(running_machine *machine)
 	}
 	else
 	{
-		ChosenROM = memory_region(REGION_CPU1) + 0x010000;
+		ChosenROM = memory_region(machine, REGION_CPU1) + 0x010000;
 		memory_set_bankptr(1, ChosenROM);
 		rh = SMH_BANK1;
 		wh = SMH_UNMAP;
@@ -287,7 +287,7 @@ void ts2068_update_memory(running_machine *machine)
 	}
 	else
 	{
-		ChosenROM = memory_region(REGION_CPU1) + 0x012000;
+		ChosenROM = memory_region(machine, REGION_CPU1) + 0x012000;
 		memory_set_bankptr(2, ChosenROM);
 		rh = SMH_BANK2;
 		wh = SMH_UNMAP;
@@ -691,13 +691,13 @@ static void ts2068_cartslot_getinfo(const mess_device_class *devclass, UINT32 st
 	}
 }
 
-SYSTEM_CONFIG_START(ts2068)
+static SYSTEM_CONFIG_START(ts2068)
 	CONFIG_IMPORT_FROM(spectrum_common)
 	CONFIG_DEVICE(ts2068_cartslot_getinfo)
 	CONFIG_RAM_DEFAULT(48 * 1024)
 SYSTEM_CONFIG_END
 
-SYSTEM_CONFIG_START(tc2048)
+static SYSTEM_CONFIG_START(tc2048)
 	CONFIG_IMPORT_FROM(spectrum)
 	CONFIG_RAM_DEFAULT(48 * 1024)
 SYSTEM_CONFIG_END

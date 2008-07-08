@@ -34,14 +34,13 @@ backup of playfield rom and picture/description of its board
 */
 
 #include "driver.h"
-#include "deprecat.h"
 
 #include "includes/ssystem3.h"
 #include "machine/6522via.h"
 #include "cpu/m6502/m6502.h"
 //#include "attotime.h"
 
-struct {
+static struct {
   UINT8 porta;
 } ssystem3;
 
@@ -128,21 +127,20 @@ static void ssystem3_playfield_write(int reset, int signal)
   playfield.signal=signal;
 }
 
-static void ssystem3_playfield_read(int *on, int *ready)
+static void ssystem3_playfield_read(running_machine *machine, int *on, int *ready)
 {
-	running_machine *machine = Machine;
 	*on=!(input_port_read(machine, "Configuration")&1);
 	//  *on=!playfield.on;
 	*ready=FALSE;
 }
 
-void ssystem3_via_write_a(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT8 data)
+static void ssystem3_via_write_a(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT8 data)
 {
   ssystem3.porta=data;
   //  logerror("%.4x via port a write %02x\n",(int)activecpu_get_pc(), data);
 }
 
-UINT8 ssystem3_via_read_a(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t offset)
+static UINT8 ssystem3_via_read_a(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t offset)
 {
   UINT8 data=0xff;
 #if 1 // time switch
@@ -206,17 +204,17 @@ UINT8 ssystem3_via_read_a(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs
    bit 5: input low x/$37 4 (else 1)
 
  */
-UINT8 ssystem3_via_read_b(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t offset)
+static UINT8 ssystem3_via_read_b(running_machine *machine, ATTR_UNUSED offs_t offset)
 {
   UINT8 data=0xff;
   int on, ready;
-  ssystem3_playfield_read(&on, &ready);
+  ssystem3_playfield_read(machine, &on, &ready);
   if (!on) data&=~0x20;
   if (!ready) data&=~0x10;
   return data;
 }
 
-void ssystem3_via_write_b(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT8 data)
+static void ssystem3_via_write_b(ATTR_UNUSED running_machine *machine, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT8 data)
 {
   UINT8 d;
   ssystem3_playfield_write(data&1, data&8);

@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <ctype.h>
 #include <tchar.h>
+#include <shlwapi.h>
 
 #include "osdmess.h"
 #include "utils.h"
@@ -108,10 +109,20 @@ osd_directory_entry *osd_stat(const char *path)
 	if (t_path == NULL)
 		goto done;
 
-	// attempt to find the first file
-	find = FindFirstFile(t_path, &find_data);
-	if (find == INVALID_HANDLE_VALUE)
-		goto done;
+	// is this path a root directory (e.g. - C:)?
+	if (isalpha(path[0]) && (path[1] == ':') && (path[2] == '\0'))
+	{
+		// need to do special logic for root directories
+		memset(&find_data, 0, sizeof(find_data));
+		find_data.dwFileAttributes = GetFileAttributes(t_path);
+	}
+	else
+	{
+		// attempt to find the first file
+		find = FindFirstFile(t_path, &find_data);
+		if (find == INVALID_HANDLE_VALUE)
+			goto done;
+	}
 
 	// create an osd_directory_entry; be sure to make sure that the caller can
 	// free all resources by just freeing the resulting osd_directory_entry
@@ -124,7 +135,7 @@ osd_directory_entry *osd_stat(const char *path)
 	result->size = find_data.nFileSizeLow | ((UINT64) find_data.nFileSizeHigh << 32);
 
 done:
-	if (t_path)
+	if (t_path != NULL)
 		free(t_path);
 	return result;
 }
@@ -197,6 +208,48 @@ char *osd_basename(char *filename)
 
 	// otherwise, return the whole thing
 	return filename;
+}
+
+
+//============================================================
+//	osd_get_full_path
+//============================================================
+
+file_error osd_get_full_path(char **dst, const char *path)
+{
+	file_error err;
+	TCHAR *t_path;
+	TCHAR buffer[MAX_PATH];
+
+	// convert the path to TCHARs
+	t_path = tstring_from_utf8(path);
+	if (t_path == NULL)
+	{
+		err = FILERR_OUT_OF_MEMORY;
+		goto done;
+	}
+
+	// cannonicalize the path
+	if (!GetFullPathName(t_path, ARRAY_LENGTH(buffer), buffer, NULL))
+	{
+		err = win_error_to_mame_file_error(GetLastError());
+		goto done;
+	}
+
+	// convert the result back to UTF-8
+	*dst = utf8_from_tstring(buffer);
+	if (!*dst)
+	{
+		err = FILERR_OUT_OF_MEMORY;
+		goto done;
+	}
+
+	err = FILERR_NONE;
+
+done:
+	if (t_path != NULL)
+		free(t_path);
+	return err;
 }
 
 

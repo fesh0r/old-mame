@@ -110,8 +110,6 @@ TODO:
 
 // interrupt counter
 static unsigned long pcw16_interrupt_counter;
-// video control
-extern int pcw16_video_control;
 /* controls which bank of 2mb address space is paged into memory */
 static int pcw16_banks[4];
 
@@ -167,8 +165,6 @@ static ADDRESS_MAP_START(pcw16_map, ADDRESS_SPACE_PROGRAM, 8 )
 	AM_RANGE(0xc000, 0xffff) AM_READWRITE(SMH_BANK4, SMH_BANK8)
 ADDRESS_MAP_END
 
-
-extern int pcw16_colour_palette[16];
 
 static WRITE8_HANDLER(pcw16_palette_w)
 {
@@ -374,7 +370,7 @@ static  READ8_HANDLER(pcw16_no_mem_r)
 	return 0x0ff;
 }
 
-static void pcw16_set_bank_handlers(int bank, PCW16_RAM_TYPE type)
+static void pcw16_set_bank_handlers(running_machine *machine, int bank, PCW16_RAM_TYPE type)
 {
 	read8_machine_func read_handler;
 	write8_machine_func write_handler;
@@ -410,13 +406,13 @@ static void pcw16_set_bank_handlers(int bank, PCW16_RAM_TYPE type)
 		break;
 	}
 
-	memory_install_read8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_read8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, read_handler);
-	memory_install_write8_handler(Machine, 0, ADDRESS_SPACE_PROGRAM,
+	memory_install_write8_handler(machine, 0, ADDRESS_SPACE_PROGRAM,
 		(bank * 0x4000), (bank * 0x4000) + 0x3fff, 0, 0, write_handler);
 }
 
-static void pcw16_update_bank(int bank)
+static void pcw16_update_bank(running_machine *machine, int bank)
 {
 	unsigned char *mem_ptr = mess_ram;
 	int bank_id = 0;
@@ -435,7 +431,7 @@ static void pcw16_update_bank(int bank)
 		{
 			/* lower 4 banks are write protected. Use the rom
             loaded */
-			mem_ptr = &memory_region(REGION_CPU1)[0x010000];
+			mem_ptr = &memory_region(machine, REGION_CPU1)[0x010000];
 		}
 		else
 		{
@@ -469,7 +465,7 @@ static void pcw16_update_bank(int bank)
 		if (bank_id<4)
 		{
 			/* rom */
-			pcw16_set_bank_handlers(bank, PCW16_MEM_ROM);
+			pcw16_set_bank_handlers(machine, bank, PCW16_MEM_ROM);
 		}
 		else
 		{
@@ -477,28 +473,28 @@ static void pcw16_update_bank(int bank)
             64-128 are for flash-rom 1 */
 			if ((bank_id & 0x040)==0)
 			{
-				pcw16_set_bank_handlers(bank, PCW16_MEM_FLASH_1);
+				pcw16_set_bank_handlers(machine, bank, PCW16_MEM_FLASH_1);
 			}
 			else
 			{
-				pcw16_set_bank_handlers(bank, PCW16_MEM_FLASH_2);
+				pcw16_set_bank_handlers(machine, bank, PCW16_MEM_FLASH_2);
 			}
 		}
 	}
 	else
 	{
-		pcw16_set_bank_handlers(bank, PCW16_MEM_DRAM);
+		pcw16_set_bank_handlers(machine, bank, PCW16_MEM_DRAM);
 	}
 }
 
 
 /* update memory h/w */
-static void pcw16_update_memory(void)
+static void pcw16_update_memory(running_machine *machine)
 {
-	pcw16_update_bank(0);
-	pcw16_update_bank(1);
-	pcw16_update_bank(2);
-	pcw16_update_bank(3);
+	pcw16_update_bank(machine, 0);
+	pcw16_update_bank(machine, 1);
+	pcw16_update_bank(machine, 2);
+	pcw16_update_bank(machine, 3);
 
 }
 
@@ -515,7 +511,7 @@ static WRITE8_HANDLER(pcw16_bankhw_w)
 
 	pcw16_banks[offset] = data;
 
-	pcw16_update_memory();
+	pcw16_update_memory(machine);
 }
 
 static WRITE8_HANDLER(pcw16_video_control_w)
@@ -1102,14 +1098,14 @@ static WRITE8_HANDLER(pcw16_system_control_w)
 		/* set terminal count */
 		case 0x05:
 		{
-			pc_fdc_set_tc_state(1);
+			pc_fdc_set_tc_state(machine, 1);
 		}
 		break;
 
 		/* clear terminal count */
 		case 0x06:
 		{
-			pc_fdc_set_tc_state(0);
+			pc_fdc_set_tc_state(machine, 0);
 		}
 		break;
 
@@ -1252,7 +1248,7 @@ static INS8250_REFRESH_CONNECT( pcw16_com_refresh_connected_2 )
 	new_inputs = 0;
 
 	/* Power switch is connected to Ring indicator */
-	if (input_port_read(Machine, "EXTRA") & 0x040)
+	if (input_port_read(device->machine, "EXTRA") & 0x040)
 	{
 		new_inputs = UART8250_INPUTS_RING_INDICATOR;
 	}
@@ -1311,10 +1307,10 @@ static void pcw16_reset(running_machine *machine)
 	/* initialise defaults */
 	pcw16_fdc_int_code = 2;
 	/* clear terminal count */
-	pc_fdc_set_tc_state(0);
+	pc_fdc_set_tc_state(machine, 0);
 	/* select first rom page */
 	pcw16_banks[0] = 0;
-	pcw16_update_memory();
+	pcw16_update_memory(machine);
 
 	/* temp rtc setup */
 	rtc_seconds = 0;
@@ -1357,7 +1353,7 @@ static MACHINE_RESET( pcw16 )
 	timer_pulse(ATTOTIME_IN_HZ(50), NULL, 0, pcw16_keyboard_timer_callback);
 
 
-	pc_fdc_init(&pcw16_fdc_interface);
+	pc_fdc_init(machine, &pcw16_fdc_interface);
 
 	pc_lpt_config(0, &lpt_config);
 	centronics_config(0, &cent_config);
@@ -1368,7 +1364,7 @@ static MACHINE_RESET( pcw16 )
 	pc_mouse_set_serial_port( device_list_find_by_tag( machine->config->devicelist, NS16550, "ns16550_0" ) );
 
 	/* initialise keyboard */
-	at_keyboard_init(AT_KEYBOARD_TYPE_AT);
+	at_keyboard_init(machine, AT_KEYBOARD_TYPE_AT);
 	at_keyboard_set_scan_code_set(3);
 
 	pcw16_reset(machine);
@@ -1467,7 +1463,7 @@ static void pcw16_floppy_getinfo(const mess_device_class *devclass, UINT32 state
 	}
 }
 
-SYSTEM_CONFIG_START(pcw16)
+static SYSTEM_CONFIG_START(pcw16)
 	CONFIG_RAM_DEFAULT(2048 * 1024)
 	CONFIG_DEVICE(pcw16_floppy_getinfo)
 SYSTEM_CONFIG_END

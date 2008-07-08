@@ -367,7 +367,7 @@ INPUT_PORTS_END
 
 /* Z80 PIO Interface */
 
-static void mpf1_pio_interrupt( int state )
+static void mpf1_pio_interrupt( running_machine *machine, int state )
 {
 	logerror("pio irq state: %02x\n",state);
 }
@@ -586,7 +586,7 @@ ROM_END
 
 /* System Configuration */
 
-SYSTEM_CONFIG_START(mpf1)
+static SYSTEM_CONFIG_START(mpf1)
 	CONFIG_RAM_DEFAULT(4 * 1024)
 SYSTEM_CONFIG_END
 

@@ -72,7 +72,6 @@ Notes:
     TODO:
 
     - proper emulation of the VISMAC interface (cursor blinking, color RAM), schematics are needed
-    - tape interface
     - disk interface
     - CPU frequency needs to be derived from the schematics
     - serial interface expansion card
@@ -92,6 +91,11 @@ Notes:
 #define CDP1869_TAG	"cdp1869"
 
 static QUICKLOAD_LOAD( tmc600 );
+
+static const device_config *cassette_device_image(void)
+{
+	return image_from_devtype_and_index(IO_CASSETTE, 0);
+}
 
 /* Read/Write Handlers */
 
@@ -186,9 +190,9 @@ static INPUT_PORTS_START( tmc600 )
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_X) PORT_CHAR('X')
 	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Y) PORT_CHAR('Y')
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_Z) PORT_CHAR('Z')
-	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR(0x00C5)
-	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(0x00C4)
-	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_COLON) PORT_CHAR(0x00D6)
+	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x85") PORT_CODE(KEYCODE_OPENBRACE) PORT_CHAR(0x00C5)
+	PORT_BIT( 0x10, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x84") PORT_CODE(KEYCODE_QUOTE) PORT_CHAR(0x00C4)
+	PORT_BIT( 0x20, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("\xC3\x96") PORT_CODE(KEYCODE_COLON) PORT_CHAR(0x00D6)
 	PORT_BIT( 0x40, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_CODE(KEYCODE_EQUALS) PORT_CHAR('^') PORT_CHAR('~')
 	PORT_BIT( 0x80, IP_ACTIVE_LOW, IPT_KEYBOARD ) PORT_NAME("BREAK") PORT_CODE(KEYCODE_END) PORT_CHAR(UCHAR_MAMEKEY(END))
 
@@ -214,7 +218,7 @@ static INPUT_PORTS_START( tmc600 )
 
 	PORT_START_TAG("EF")
 	PORT_BIT( 0x01, IP_ACTIVE_LOW, IPT_SPECIAL ) //
-	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL ) //
+	PORT_BIT( 0x02, IP_ACTIVE_LOW, IPT_SPECIAL ) // tape in
 	PORT_BIT( 0x04, IP_ACTIVE_LOW, IPT_SPECIAL ) // keyboard
 	PORT_BIT( 0x08, IP_ACTIVE_LOW, IPT_SPECIAL ) //
 
@@ -243,10 +247,14 @@ static CDP1802_EF_READ( tmc600_ef_r )
 
 	/*
         EF1     ?
-        EF2     ?
+        EF2     tape in
         EF3     keyboard
         EF4     ?
     */
+
+	// tape in
+
+	if (cassette_input(cassette_device_image()) < +0.0) flags -= EF2;
 
 	// keyboard
 	sprintf(port, "IN%d", keylatch / 8);
@@ -255,12 +263,17 @@ static CDP1802_EF_READ( tmc600_ef_r )
 	return flags;
 }
 
+static CDP1802_Q_WRITE( tmc600_q_w )
+{
+	cassette_output(cassette_device_image(), level ? +1.0 : -1.0);
+}
+
 static CDP1802_INTERFACE( tmc600_cdp1802_config )
 {
 	tmc600_mode_r,
 	tmc600_ef_r,
 	NULL,
-	NULL,
+	tmc600_q_w,
 	NULL,
 	NULL
 };
@@ -358,7 +371,7 @@ ROM_END
 
 static QUICKLOAD_LOAD( tmc600 )
 {
-	image_fread(image, memory_region(REGION_CPU1) + 0x6300, 0x9500);
+	image_fread(image, memory_region(image->machine, REGION_CPU1) + 0x6300, 0x9500);
 
 	return INIT_PASS;
 }
@@ -369,7 +382,8 @@ static void tmc600_cassette_getinfo(const mess_device_class *devclass, UINT32 st
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 1; break;
+		case MESS_DEVINFO_INT_COUNT:					info->i = 1; break;
+		case MESS_DEVINFO_INT_CASSETTE_DEFAULT_STATE:	info->i = CASSETTE_STOPPED | CASSETTE_MOTOR_ENABLED | CASSETTE_SPEAKER_MUTED; break;
 
 		default:										cassette_device_getinfo(devclass, state, info); break;
 	}
@@ -381,19 +395,19 @@ static void tmc600_floppy_getinfo(const mess_device_class *devclass, UINT32 stat
 	switch(state)
 	{
 		/* --- the following bits of info are returned as 64-bit signed integers --- */
-		case MESS_DEVINFO_INT_COUNT:							info->i = 4; break;
+		case MESS_DEVINFO_INT_COUNT:					info->i = 4; break;
 
 		/* --- the following bits of info are returned as pointers to data or functions --- */
-		case MESS_DEVINFO_PTR_LOAD:							info->load = DEVICE_IMAGE_LOAD_NAME(basicdsk_floppy); break;
+		case MESS_DEVINFO_PTR_LOAD:						info->load = DEVICE_IMAGE_LOAD_NAME(basicdsk_floppy); break;
 
 		/* --- the following bits of info are returned as NULL-terminated strings --- */
-		case MESS_DEVINFO_STR_FILE_EXTENSIONS:				strcpy(info->s = device_temp_str(), "dsk"); break;
+		case MESS_DEVINFO_STR_FILE_EXTENSIONS:			strcpy(info->s = device_temp_str(), "dsk"); break;
 
 		default:										legacybasicdsk_device_getinfo(devclass, state, info); break;
 	}
 }
 
-SYSTEM_CONFIG_START( tmc600 )
+static SYSTEM_CONFIG_START( tmc600 )
 	CONFIG_RAM_DEFAULT	( 8 * 1024)
 	CONFIG_RAM			(16 * 1024)
 	CONFIG_RAM			(24 * 1024)

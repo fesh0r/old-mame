@@ -229,7 +229,7 @@ static int Einstein_scr_y = 0;
 static MC6845_UPDATE_ROW( einstein_6845_update_row )
 {
 	/* TODO: Verify implementation */
-	unsigned char *data = memory_region(REGION_CPU1) + 0x012000;
+	unsigned char *data = memory_region(device->machine, REGION_CPU1) + 0x012000;
 	unsigned char data_byte;
 	int char_code;
 	int i, x;
@@ -333,7 +333,7 @@ static TIMER_CALLBACK(einstein_ctc_trigger_callback)
 }
 
 /* refresh keyboard data. It is refreshed when the keyboard line is written */
-static void einstein_scan_keyboard(void)
+static void einstein_scan_keyboard(running_machine *machine)
 {
 	unsigned char data = 0x0ff;
 	int i;
@@ -344,7 +344,7 @@ static void einstein_scan_keyboard(void)
 		if ((einstein_keyboard_line & (1<<i))==0)
 		{
 			sprintf(port, "LINE%d", i);
-			data &= input_port_read(Machine, port);
+			data &= input_port_read(machine, port);
 		}
 	}
 
@@ -374,7 +374,7 @@ static void einstein_update_interrupts(running_machine *machine)
 
 static TIMER_CALLBACK(einstein_keyboard_timer_callback)
 {
-	einstein_scan_keyboard();
+	einstein_scan_keyboard(machine);
 
 	/* if /fire1 or /fire2 is 0, then trigger a fire interrupt if the interrupt is enabled */
 	if ((input_port_read(machine, "BUTTONS") & 0x03)!=0)
@@ -402,16 +402,16 @@ static TIMER_CALLBACK(einstein_keyboard_timer_callback)
 
 
 /* interrupt state callback for ctc */
-static void einstein_ctc_interrupt(int state)
+static void einstein_ctc_interrupt(running_machine *machine, int state)
 {
 	logerror("ctc irq state: %02x\n",state);
-	cpunum_set_input_line(Machine, 0, 1, state);
+	cpunum_set_input_line(machine, 0, 1, state);
 }
 
-static void einstein_pio_interrupt(int state)
+static void einstein_pio_interrupt(running_machine *machine, int state)
 {
 	logerror("pio irq state: %02x\n",state);
-	cpunum_set_input_line(Machine, 0, 3, state);
+	cpunum_set_input_line(machine, 0, 3, state);
 }
 
 static WRITE8_HANDLER(einstein_serial_transmit_clock)
@@ -797,11 +797,11 @@ ADDRESS_MAP_END
 
 
 
-static void einstein_page_rom(void)
+static void einstein_page_rom(running_machine *machine)
 {
 	if (einstein_rom_enabled)
 	{
-		memory_set_bankptr(1, memory_region(REGION_CPU1)+0x010000);
+		memory_set_bankptr(1, memory_region(machine, REGION_CPU1)+0x010000);
 	}
 	else
 	{
@@ -848,7 +848,7 @@ static WRITE8_HANDLER(einstein_drive_w)
 static WRITE8_HANDLER(einstein_rom_w)
 {
 	einstein_rom_enabled^=1;
-	einstein_page_rom();
+	einstein_page_rom(machine);
 }
 
 static READ8_HANDLER(einstein_key_int_r)
@@ -1444,7 +1444,7 @@ static MACHINE_RESET( einstein )
 	TMS9928A_reset ();
 
 	einstein_rom_enabled = 1;
-	einstein_page_rom();
+	einstein_page_rom(machine);
 
 	einstein_ctc_trigger = 0;
 
@@ -1561,10 +1561,8 @@ static INPUT_PORTS_START(einstein)
 	/* extra */
 	PORT_START_TAG("EXTRA")
 	PORT_BIT(0x01, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("GRPH") PORT_CODE(KEYCODE_F1)
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CONTROL") PORT_CODE(KEYCODE_LCONTROL)
-	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CONTROL") PORT_CODE(KEYCODE_RCONTROL)
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT)
-	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_RSHIFT)
+	PORT_BIT(0x02, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("CONTROL") PORT_CODE(KEYCODE_LCONTROL) PORT_CODE(KEYCODE_RCONTROL)
+	PORT_BIT(0x04, IP_ACTIVE_LOW, IPT_KEYBOARD) PORT_NAME("SHIFT") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT)
 
 	/* fire buttons for analogue joysticks */
 	PORT_START_TAG("BUTTONS")
@@ -1596,12 +1594,12 @@ static WRITE8_HANDLER(einstein_port_a_write)
 //  logerror("line: %02x\n",einstein_keyboard_line);
 
 	/* re-scan the keyboard */
-	einstein_scan_keyboard();
+	einstein_scan_keyboard(machine);
 }
 
-static  READ8_HANDLER(einstein_port_b_read)
+static READ8_HANDLER(einstein_port_b_read)
 {
-	einstein_scan_keyboard();
+	einstein_scan_keyboard(machine);
 
 //  logerror("key: %02x\n",einstein_keyboard_data);
 
@@ -1642,7 +1640,7 @@ static const struct AY8910interface einstein_ay_interface =
 //  if (Einstein_DE)
 //  {
 //
-//      unsigned char *data = memory_region(REGION_CPU1)+0x012000;
+//      unsigned char *data = memory_region(machine, REGION_CPU1)+0x012000;
 //      unsigned char data_byte;
 //      int char_code;
 //
@@ -1795,7 +1793,7 @@ static void einstein_floppy_getinfo(const mess_device_class *devclass, UINT32 st
 	}
 }
 
-SYSTEM_CONFIG_START(einstein)
+static SYSTEM_CONFIG_START(einstein)
 	CONFIG_RAM_DEFAULT(65536)
 	CONFIG_DEVICE(einstein_floppy_getinfo)
 SYSTEM_CONFIG_END

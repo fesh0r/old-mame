@@ -12,9 +12,9 @@
 #include "machine/applefdc.h"
 
 
-/* -----------------------------------------------------------------------
- * Softswitch values
- * ----------------------------------------------------------------------- */
+/***************************************************************************
+    SOFTSWITCH VALUES
+***************************************************************************/
 
 #define VAR_80STORE		0x000001
 #define VAR_RAMRD		0x000002
@@ -39,13 +39,31 @@
 
 #define VAR_DHIRES		VAR_AN3
 
+
+/***************************************************************************
+    SPECIAL KEYS
+***************************************************************************/
+
+#define SPECIALKEY_CAPSLOCK		0x01
+#define SPECIALKEY_SHIFT		0x06
+#define SPECIALKEY_CONTROL		0x08
+#define SPECIALKEY_BUTTON0		0x10	/* open apple */
+#define SPECIALKEY_BUTTON1		0x20	/* closed apple */
+#define SPECIALKEY_BUTTON2		0x40
+#define SPECIALKEY_RESET		0x80
+
+
+/***************************************************************************
+    OTHER
+***************************************************************************/
+
 /*----------- defined in machine/apple2.c -----------*/
 
 extern UINT32 a2;
 
 extern const applefdc_interface apple2_fdc_interface;
 
-void apple2_iwm_setdiskreg(UINT8 data);
+void apple2_iwm_setdiskreg(running_machine *machine, UINT8 data);
 UINT8 apple2_iwm_getdiskreg(void);
 
 void apple2_init_common(running_machine *machine);
@@ -56,7 +74,9 @@ WRITE8_HANDLER( apple2_c0xx_w );
 
 INTERRUPT_GEN( apple2_interrupt );
 
-void apple2_setvar(UINT32 val, UINT32 mask);
+void apple2_setvar(running_machine *machine, UINT32 val, UINT32 mask);
+
+int apple2_pressed_specialkey(running_machine *machine, UINT8 key);
 
 
 /*----------- defined in video/apple2.c -----------*/
@@ -70,16 +90,6 @@ void apple2_set_fgcolor(int color);
 void apple2_set_bgcolor(int color);
 int apple2_get_fgcolor(void);
 int apple2_get_bgcolor(void);
-
-/* keyboard wrappers */
-#define pressed_specialkey(key)	(input_port_read(machine, "keyb_special") & (key))
-#define SPECIALKEY_CAPSLOCK		0x01
-#define SPECIALKEY_SHIFT		0x06
-#define SPECIALKEY_CONTROL		0x08
-#define SPECIALKEY_BUTTON0		0x10	/* open apple */
-#define SPECIALKEY_BUTTON1		0x20	/* closed apple */
-#define SPECIALKEY_BUTTON2		0x40
-#define SPECIALKEY_RESET		0x80
 
 /* -----------------------------------------------------------------------
  * New Apple II memory manager
@@ -128,8 +138,8 @@ struct _apple2_memmap_config
 
 /*----------- defined in machine/apple2.c -----------*/
 
-void apple2_setup_memory(const apple2_memmap_config *config);
-void apple2_update_memory(void);
+void apple2_setup_memory(running_machine *machine, const apple2_memmap_config *config);
+void apple2_update_memory(running_machine *machine);
 
 
 #endif /* APPLE2_H_ */

@@ -7,9 +7,6 @@
 *         Fix SCSI DMA to handle chains properly
 *         Probably many more things
 *
-*  NOTE: this driver does not work with the MIPS DRC!
-*  You must use the interpreter and take the speed hit :(
-*
 *  Memory map:
 *
 *  18000000 - 1effffff      RESERVED - Unused
@@ -42,7 +39,6 @@
 \*********************************************************************/
 
 #include "driver.h"
-#include "deprecat.h"
 #include "cpu/mips/mips3.h"
 #include "machine/sgi.h"
 #include "machine/pckeybrd.h"
@@ -452,7 +448,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 	case 0x0000/4:
 	case 0x4000/4:
 //      verboselog( 2, "HPC3 HD0 Status Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[0x17] );
-		if (!(mem_mask & 0x000000ff))
+		if (!(mem_mask & 0xffffff00))
 		{
 			return wd33c93_r( machine, 0 );
 		}
@@ -464,7 +460,7 @@ static READ32_HANDLER( hpc3_hd0_r )
 	case 0x0004/4:
 	case 0x4004/4:
 //      verboselog( 2, "HPC3 HD0 Register Read: %08x (%08x): %08x\n", 0x1fb90000 + ( offset << 2), mem_mask, nHPC3_hd0_regs[nHPC3_hd0_register] );
-		if (!(mem_mask & 0x000000ff))
+		if (!(mem_mask & 0xffffff00))
 		{
 			return wd33c93_r( machine, 1 );
 		}
@@ -488,7 +484,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 	case 0x0000/4:
 	case 0x4000/4:
 //      verboselog( 2, "HPC3 HD0 Register Select Write: %08x\n", data );
-		if (!(mem_mask & 0x000000ff))
+		if (!(mem_mask & 0xffffff00))
 		{
 			wd33c93_w( machine, 0, data & 0x000000ff );
 		}
@@ -496,7 +492,7 @@ static WRITE32_HANDLER( hpc3_hd0_w )
 	case 0x0004/4:
 	case 0x4004/4:
 //      verboselog( 2, "HPC3 HD0 Register %d Write: %08x\n", nHPC3_hd0_register, data );
-		if (!(mem_mask & 0x000000ff))
+		if (!(mem_mask & 0xffffff00))
 		{
 			wd33c93_w( machine, 1,  data & 0x000000ff );
 		}
@@ -1274,10 +1270,8 @@ static void dump_chain(UINT32 ch_base)
 
 static UINT8 dma_buffer[4096];
 
-static void scsi_irq(int state)
+static void scsi_irq(running_machine *machine, int state)
 {
-	running_machine *machine = Machine;
-
 	if (state)
 	{
 		if (wd33c93_get_dma_count())
@@ -1428,8 +1422,8 @@ static void scsi_irq(int state)
 static const SCSIConfigTable dev_table =
 {
         1,                                      /* 1 SCSI device */
-        { { SCSI_ID_4, 0, SCSI_DEVICE_CDROM },  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
-	  { SCSI_ID_2, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
+        { { SCSI_ID_4, 0, SCSI_DEVICE_CDROM } }  /* SCSI ID 4, using CD 0, and it's a CD-ROM */
+//	  { SCSI_ID_2, 0, SCSI_DEVICE_CDROM } } /* SCSI ID 2, using HD 0, and it's a CD-ROM */
 };
 
 static const struct WD33C93interface scsi_intf =
@@ -1447,6 +1441,13 @@ static int ip22_get_out2(running_machine *machine) {
 	return pit8253_get_output((device_config*)device_list_find_by_tag( machine->config->devicelist, PIT8254, "pit8254" ), 2 );
 }
 
+static MACHINE_START( ip22 )
+{
+	// SCSI init
+	wd33c93_init(&scsi_intf);
+	add_exit_callback(machine, ip225015_exit);
+}
+
 static DRIVER_INIT( ip225015 )
 {
 	static const struct kbdc8042_interface at8042 =
@@ -1456,21 +1457,17 @@ static DRIVER_INIT( ip225015 )
 
 	// IP22 uses 2 pieces of PC-compatible hardware: the 8042 PS/2 keyboard/mouse
 	// interface and the 8254 PIT.  Both are licensed cores embedded in the IOC custom chip.
-	init_pc_common(PCCOMMON_KEYBOARD_AT, NULL);
+	init_pc_common(machine, PCCOMMON_KEYBOARD_AT, NULL);
 	kbdc8042_init(&at8042);
-
-	// SCSI init
-	wd33c93_init(&scsi_intf);
-	add_exit_callback(machine, ip225015_exit);
 
 	nIOC_ParReadCnt = 0;
 }
 
 static INPUT_PORTS_START( ip225015 )
-	PORT_START	// unused IN0
-	PORT_START	// unused IN1
-	PORT_START	// unused IN2
-	PORT_START	// unused IN3
+	PORT_START_TAG("IN0")	// unused IN0
+	PORT_START_TAG("DSW0")	// unused IN1
+	PORT_START_TAG("DSW1")	// unused IN2
+	PORT_START_TAG("DSW2")	// unused IN3
 	PORT_INCLUDE( at_keyboard )		/* IN4 - IN11 */
 	PORT_INCLUDE( pc_mouse_microsoft )	/* IN12 - IN14 */
 INPUT_PORTS_END
@@ -1549,7 +1546,7 @@ static INTERRUPT_GEN( ip22_vbl )
 	}
 }
 
-static const struct mips3_config config =
+static const mips3_config config =
 {
 	32768,	/* code cache size */
 	32768	/* data cache size */
@@ -1602,6 +1599,8 @@ static MACHINE_DRIVER_START( ip225015 )
 	MDRV_SCREEN_VISIBLE_AREA(0, 1279, 0, 1023)
 	MDRV_PALETTE_LENGTH(65536)
 
+	MDRV_MACHINE_START( ip22 )
+
 	MDRV_VIDEO_START( newport )
 	MDRV_VIDEO_UPDATE( newport )
 
@@ -1638,7 +1637,7 @@ ROM_START( ip244415 )
 	ROM_LOAD( "ip244415.bin", 0x000000, 0x080000, CRC(2f37825a) SHA1(0d48c573b53a307478820b85aacb57b868297ca3) )
 ROM_END
 
-SYSTEM_CONFIG_START( ip225015 )
+static SYSTEM_CONFIG_START( ip225015 )
 	CONFIG_DEVICE(ip22_chdcd_getinfo)
 //  CONFIG_DEVICE(ip22_harddisk_getinfo)
 SYSTEM_CONFIG_END

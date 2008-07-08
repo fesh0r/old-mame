@@ -211,10 +211,10 @@ WRITE64_HANDLER( bebox_crossproc_interrupts_w )
 		int inputline;
 	} crossproc_map[] =
 	{
-		{ 0x40000000, 0, 1, PPC_INPUT_LINE_SMI },
-		{ 0x20000000, 1, 1, PPC_INPUT_LINE_SMI },
-		{ 0x08000000, 0, 0, PPC_INPUT_LINE_TLBISYNC },
-		{ 0x04000000, 1, 0, PPC_INPUT_LINE_TLBISYNC }
+		{ 0x40000000, 0, 1, 0/*PPC_INPUT_LINE_SMI*/ },
+		{ 0x20000000, 1, 1, 0/*PPC_INPUT_LINE_SMI*/ },
+		{ 0x08000000, 0, 0, 0/*PPC_INPUT_LINE_TLBISYNC*/ },
+		{ 0x04000000, 1, 0, 0/*PPC_INPUT_LINE_TLBISYNC*/ }
 	};
 	int i, line;
 	UINT32 old_crossproc_interrupts = bebox_crossproc_interrupts;
@@ -232,9 +232,11 @@ WRITE64_HANDLER( bebox_crossproc_interrupts_w )
 
 			if (LOG_INTERRUPTS)
 			{
+/*
 				logerror("bebox_crossproc_interrupts_w(): CPU #%d %s %s\n",
 					crossproc_map[i].cpunum, line ? "Asserting" : "Clearing",
 					(crossproc_map[i].inputline == PPC_INPUT_LINE_SMI) ? "SMI" : "TLBISYNC");
+					*/
 			}
 
 			cpunum_set_input_line(machine, crossproc_map[i].cpunum, crossproc_map[i].inputline, line);
@@ -726,17 +728,17 @@ static DMA8237_MEM_WRITE( bebox_dma_write_byte )
 
 
 static DMA8237_CHANNEL_READ( bebox_dma8237_fdc_dack_r ) {
-	return pc_fdc_dack_r();
+	return pc_fdc_dack_r(device->machine);
 }
 
 
 static DMA8237_CHANNEL_WRITE( bebox_dma8237_fdc_dack_w ) {
-	pc_fdc_dack_w( data );
+	pc_fdc_dack_w( device->machine, data );
 }
 
 
 static DMA8237_OUT_EOP( bebox_dma8237_out_eop ) {
-	pc_fdc_set_tc_state( state );
+	pc_fdc_set_tc_state( device->machine, state );
 }
 
 
@@ -876,28 +878,28 @@ static READ64_HANDLER( scsi53c810_r )
 	int reg = offset*8;
 	UINT64 r = 0;
 	if (!(mem_mask & U64(0xff00000000000000))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+0) << 56;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+0) << 56;
 	}
 	if (!(mem_mask & U64(0x00ff000000000000))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+1) << 48;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+1) << 48;
 	}
 	if (!(mem_mask & U64(0x0000ff0000000000))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+2) << 40;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+2) << 40;
 	}
 	if (!(mem_mask & U64(0x000000ff00000000))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+3) << 32;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+3) << 32;
 	}
 	if (!(mem_mask & U64(0x00000000ff000000))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+4) << 24;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+4) << 24;
 	}
 	if (!(mem_mask & U64(0x0000000000ff0000))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+5) << 16;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+5) << 16;
 	}
 	if (!(mem_mask & U64(0x000000000000ff00))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+6) << 8;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+6) << 8;
 	}
 	if (!(mem_mask & U64(0x00000000000000ff))) {
-		r |= (UINT64)lsi53c810_reg_r(reg+7) << 0;
+		r |= (UINT64)lsi53c810_reg_r(machine, reg+7) << 0;
 	}
 
 	return r;
@@ -908,28 +910,28 @@ static WRITE64_HANDLER( scsi53c810_w )
 {
 	int reg = offset*8;
 	if (!(mem_mask & U64(0xff00000000000000))) {
-		lsi53c810_reg_w(reg+0, data >> 56);
+		lsi53c810_reg_w(machine, reg+0, data >> 56);
 	}
 	if (!(mem_mask & U64(0x00ff000000000000))) {
-		lsi53c810_reg_w(reg+1, data >> 48);
+		lsi53c810_reg_w(machine, reg+1, data >> 48);
 	}
 	if (!(mem_mask & U64(0x0000ff0000000000))) {
-		lsi53c810_reg_w(reg+2, data >> 40);
+		lsi53c810_reg_w(machine, reg+2, data >> 40);
 	}
 	if (!(mem_mask & U64(0x000000ff00000000))) {
-		lsi53c810_reg_w(reg+3, data >> 32);
+		lsi53c810_reg_w(machine, reg+3, data >> 32);
 	}
 	if (!(mem_mask & U64(0x00000000ff000000))) {
-		lsi53c810_reg_w(reg+4, data >> 24);
+		lsi53c810_reg_w(machine, reg+4, data >> 24);
 	}
 	if (!(mem_mask & U64(0x0000000000ff0000))) {
-		lsi53c810_reg_w(reg+5, data >> 16);
+		lsi53c810_reg_w(machine, reg+5, data >> 16);
 	}
 	if (!(mem_mask & U64(0x000000000000ff00))) {
-		lsi53c810_reg_w(reg+6, data >> 8);
+		lsi53c810_reg_w(machine, reg+6, data >> 8);
 	}
 	if (!(mem_mask & U64(0x00000000000000ff))) {
-		lsi53c810_reg_w(reg+7, data >> 0);
+		lsi53c810_reg_w(machine, reg+7, data >> 0);
 	}
 }
 
@@ -947,10 +949,9 @@ static UINT32 scsi53c810_fetch(UINT32 dsp)
 }
 
 
-static void scsi53c810_irq_callback(void)
+static void scsi53c810_irq_callback(running_machine *machine, int value)
 {
-	bebox_set_irq_bit(Machine, 21, 1);
-	bebox_set_irq_bit(Machine, 21, 0);
+	bebox_set_irq_bit(machine, 21, value);
 }
 
 
@@ -1031,7 +1032,7 @@ static const SCSIConfigTable dev_table =
 	2, /* 2 SCSI devices */
 	{
 		{ SCSI_ID_0, 0, SCSI_DEVICE_HARDDISK },	/* SCSI ID 0, using HD 0, HD */
-		{ SCSI_ID_3, 0, SCSI_DEVICE_CDROM }	/* SCSI ID 3, using CHD 0, CD-ROM */
+		{ SCSI_ID_3, 3, SCSI_DEVICE_CDROM }	/* SCSI ID 3, using CHD 0, CD-ROM */
 	}
 };
 
@@ -1083,7 +1084,10 @@ static void bebox_exit(running_machine *machine)
 
 MACHINE_START( bebox )
 {
-	pc_fdc_init(&bebox_fdc_interface);
+	pc_fdc_init(machine, &bebox_fdc_interface);
+	/* SCSI */
+	lsi53c810_init(&scsi53c810_intf);
+	add_exit_callback(machine, bebox_exit);
 }
 
 DRIVER_INIT( bebox )
@@ -1098,8 +1102,8 @@ DRIVER_INIT( bebox )
 		pci_add_device(0, 12, &scsi53c810_callbacks);
 
 	/* set up boot and flash ROM */
-	memory_set_bankptr(2, memory_region(REGION_USER2));
-	intelflash_init(0, FLASH_FUJITSU_29F016A, memory_region(REGION_USER1));
+	memory_set_bankptr(2, memory_region(machine, REGION_USER2));
+	intelflash_init(0, FLASH_FUJITSU_29F016A, memory_region(machine, REGION_USER1));
 
 	/* install MESS managed RAM */
 	for (cpu = 0; cpu < 2; cpu++)
@@ -1109,8 +1113,7 @@ DRIVER_INIT( bebox )
 	}
 	memory_set_bankptr(3, mess_ram);
 
-//	pc_fdc_init(&bebox_fdc_interface);
-	mc146818_init(MC146818_STANDARD);
+	mc146818_init(machine, MC146818_STANDARD);
 	pc_vga_init(machine, &bebox_vga_interface, &cirrus_svga_interface);
 	kbdc8042_init(&bebox_8042_interface);
 
@@ -1122,10 +1125,6 @@ DRIVER_INIT( bebox )
 		memory_install_read64_handler(machine, cpu, ADDRESS_SPACE_PROGRAM, vram_begin, vram_end, 0, 0, bebox_video_r);
 		memory_install_write64_handler(machine, cpu, ADDRESS_SPACE_PROGRAM, vram_begin, vram_end, 0, 0, bebox_video_w);
 	}
-
-	/* SCSI */
-	lsi53c810_init(&scsi53c810_intf);
-	add_exit_callback(machine, bebox_exit);
 
 	/* The following is a verrrry ugly hack put in to support NetBSD for
 	 * NetBSD.  When NetBSD/bebox it does most of its work on CPU #0 and then

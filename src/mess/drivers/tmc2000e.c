@@ -153,6 +153,7 @@ static CDP1864_INTERFACE( tmc2000e_cdp1864_intf )
 {
 	SCREEN_TAG,
 	CDP1864_CLK_FREQ,
+	CDP1864_INTERLACED,
 	tmc2000e_int_w,
 	tmc2000e_dmao_w,
 	tmc2000e_efx_w,
@@ -350,7 +351,7 @@ static void tmc2000e_floppy_getinfo(const mess_device_class *devclass, UINT32 st
 	}
 }
 
-SYSTEM_CONFIG_START( tmc2000e )
+static SYSTEM_CONFIG_START( tmc2000e )
 	CONFIG_RAM_DEFAULT	( 8 * 1024)
 	CONFIG_RAM			(40 * 1024)
 	CONFIG_DEVICE(tmc2000e_cassette_getinfo)

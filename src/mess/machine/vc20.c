@@ -14,20 +14,19 @@
 #include <stdio.h>
 
 #include "driver.h"
-#include "deprecat.h"
 #include "image.h"
 #include "cpu/m6502/m6502.h"
 
 #define VERBOSE_DBG 0
 #include "includes/cbm.h"
-
-#include "includes/vc20.h"
-#include "includes/vc1541.h"
 #include "machine/6522via.h"
+#include "includes/vc1541.h"
 #include "includes/vc20tape.h"
 #include "includes/cbmserb.h"
 #include "includes/cbmieeeb.h"
 #include "video/vic6560.h"
+
+#include "includes/vc20.h"
 
 static UINT8 keyboard[8] =
 {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
@@ -57,17 +56,17 @@ UINT8 *vc20_memory_9400;
  pa2 till pa6, port b, cb1, cb2 userport
  irq connected to m6502 nmi
 */
-static void vc20_via0_irq (int level)
+static void vc20_via0_irq (running_machine *machine, int level)
 {
-	cpunum_set_input_line(Machine, 0, INPUT_LINE_NMI, level);
+	cpunum_set_input_line(machine, 0, INPUT_LINE_NMI, level);
 }
 
-static  READ8_HANDLER( vc20_via0_read_ca1 )
+static READ8_HANDLER( vc20_via0_read_ca1 )
 {
-	return ! ( input_port_read(machine,  TAG_KEYBOARD_EXTRA ) & 0x02 );
+	return ! ( input_port_read(machine, "SPECIAL") & 0x02 );
 }
 
-static  READ8_HANDLER( vc20_via0_read_ca2 )
+static READ8_HANDLER( vc20_via0_read_ca2 )
 {
 	DBG_LOG (1, "tape", ("motor read %d\n", via0_ca2));
 	return via0_ca2;
@@ -83,18 +82,26 @@ static  READ8_HANDLER( vc20_via0_read_porta )
 {
 	UINT8 value = 0xff;
 
-	if (JOYSTICK) {
-		if (JOYSTICK_BUTTON) value&=~0x20;
-		if (JOYSTICK_LEFT) value&=~0x10;
-		if (JOYSTICK_DOWN) value&=~0x8;
-		if (JOYSTICK_UP) value&=~0x4;
+	if (input_port_read(machine, "CFG") & 0x80)		/* JOYSTICK */
+	{
+		if (input_port_read(machine, "JOY") & 0x10) /* JOY_BUTTON */
+			value&=~0x20;
+		if (input_port_read(machine, "JOY") & 4)	/* JOY_LEFT */
+			value&=~0x10;
+		if (input_port_read(machine, "JOY") & 2)	/* JOY_DOWN */
+			value&=~0x8;
+		if (input_port_read(machine, "JOY") & 1)	/* JOY_UP */
+			value&=~0x4;
 	}
-	if (PADDLES) {
-		if (PADDLE1_BUTTON) value&=~0x10;
+	if (input_port_read(machine, "CFG") & 0x40)		 /* PADDLE */
+	{
+		if (input_port_read(machine, "JOY") & 0x20)  /* PUDDLE1_BUTTON */
+			value&=~0x10;
 	}
 	/* to short to be recognized normally */
 	/* should be reduced to about 1 or 2 microseconds */
-	/*  if(LIGHTPEN_BUTTON) value&=~0x20; */
+	/*  if ((input_port_read(machine, "CFG") & 0x20 ) && (input_port_read(machine, "JOY") & 0x80) )  // i.e. LIGHTPEN_BUTTON
+		value&=~0x20; */
 	if (!serial_clock || !cbm_serial_clock_read ())
 		value &= ~1;
 	if (!serial_data || !cbm_serial_data_read ())
@@ -121,12 +128,12 @@ static WRITE8_HANDLER( vc20_via0_write_porta )
  * cb2 inverted serial data out
  * irq connected to m6502 irq
  */
-static void vc20_via1_irq (int level)
+static void vc20_via1_irq (running_machine *machine, int level)
 {
-	cpunum_set_input_line(Machine, 0, M6502_IRQ_LINE, level);
+	cpunum_set_input_line(machine, 0, M6502_IRQ_LINE, level);
 }
 
-static  READ8_HANDLER( vc20_via1_read_porta )
+static READ8_HANDLER( vc20_via1_read_porta )
 {
 	int value = 0xff;
 
@@ -268,11 +275,16 @@ static  READ8_HANDLER( vc20_via1_read_portb )
 	value &=t;
     }
 
-	if (JOYSTICK) {
-		if (JOYSTICK_RIGHT) value&=~0x80;
+	if (input_port_read(machine, "CFG") & 0x80)		/* JOYSTICK */
+	{
+		if (input_port_read(machine, "JOY") & 8) 	/* JOY_RIGHT */
+			value &= ~0x80;
 	}
-	if (PADDLES) {
-		if (PADDLE2_BUTTON) value&=~0x80;
+	
+	if (input_port_read(machine, "CFG") & 0x40) 	/* PADDLE */
+	{
+		if (input_port_read(machine, "JOY") & 0x40)  /* PUDDLE2_BUTTON */
+			value &= ~0x80;
 	}
 
 	return value;
@@ -468,10 +480,10 @@ WRITE8_HANDLER( vc20_6000_w ) {
 	}
 }
 
-static void vc20_memory_init(void)
+static void vc20_memory_init(running_machine *machine)
 {
 	static int inited=0;
-	UINT8 *memory = memory_region (REGION_CPU1);
+	UINT8 *memory = memory_region (machine, REGION_CPU1);
 
 	if (inited) return;
 	/* power up values are random (more likely bit set)
@@ -504,12 +516,12 @@ static void vc20_memory_init(void)
 	inited=1;
 }
 
-static void vc20_common_driver_init (void)
+static void vc20_common_driver_init (running_machine *machine)
 {
 #ifdef VC1541
 	VC1541_CONFIG vc1541= { 1, 8 };
 #endif
-	vc20_memory_init();
+	vc20_memory_init(machine);
 
 	vc20_tape_open (via_1_ca1_w);
 
@@ -520,11 +532,11 @@ static void vc20_common_driver_init (void)
 	via_config (1, &via1);
 
 	/* Set up memory banks */
-	memory_set_bankptr( 1, ( ( mess_ram_size >=  8 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x0400 );
-	memory_set_bankptr( 2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( mess_ram_size >= 16 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x2000 ) );
-	memory_set_bankptr( 3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( mess_ram_size >= 24 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x4000 ) );
-	memory_set_bankptr( 4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( mess_ram_size >= 32 * 1024 ) ? mess_ram : memory_region(REGION_CPU1) ) + 0x6000 ) );
-	memory_set_bankptr( 5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(REGION_CPU1) + 0xa000 ) );
+	memory_set_bankptr( 1, ( ( mess_ram_size >=  8 * 1024 ) ? mess_ram : memory_region(machine, REGION_CPU1) ) + 0x0400 );
+	memory_set_bankptr( 2, vc20_rom_2000 ? vc20_rom_2000 : ( ( ( mess_ram_size >= 16 * 1024 ) ? mess_ram : memory_region(machine, REGION_CPU1) ) + 0x2000 ) );
+	memory_set_bankptr( 3, vc20_rom_4000 ? vc20_rom_4000 : ( ( ( mess_ram_size >= 24 * 1024 ) ? mess_ram : memory_region(machine, REGION_CPU1) ) + 0x4000 ) );
+	memory_set_bankptr( 4, vc20_rom_6000 ? vc20_rom_6000 : ( ( ( mess_ram_size >= 32 * 1024 ) ? mess_ram : memory_region(machine, REGION_CPU1) ) + 0x6000 ) );
+	memory_set_bankptr( 5, vc20_rom_a000 ? vc20_rom_a000 : ( memory_region(machine, REGION_CPU1) + 0xa000 ) );
 }
 
 /* currently not used, but when time comes */
@@ -535,13 +547,13 @@ void vc20_driver_shutdown (void)
 
 DRIVER_INIT( vc20 )
 {
-	vc20_common_driver_init ();
+	vc20_common_driver_init (machine);
 	vic6561_init (vic6560_dma_read, vic6560_dma_read_color);
 }
 
 DRIVER_INIT( vic20 )
 {
-	vc20_common_driver_init ();
+	vc20_common_driver_init (machine);
 	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
 }
 
@@ -553,7 +565,7 @@ DRIVER_INIT( vic1001 )
 DRIVER_INIT( vic20i )
 {
 	ieee=1;
-	vc20_common_driver_init ();
+	vc20_common_driver_init (machine);
 	vic6560_init (vic6560_dma_read, vic6560_dma_read_color);
 	via_config (4, &via4);
 	via_config (5, &via5);
@@ -618,7 +630,7 @@ static int vc20_rom_id(const device_config *image)
 
 DEVICE_START(vc20_rom)
 {
-	vc20_memory_init();
+	vc20_memory_init(device->machine);
 	vc20_rom_2000 = NULL;
 	vc20_rom_4000 = NULL;
 	vc20_rom_6000 = NULL;
@@ -692,19 +704,19 @@ DEVICE_IMAGE_LOAD(vc20_rom)
 	/* Perform banking for the cartridge */
 	switch( addr ) {
 	case 0x2000:
-		vc20_rom_2000 = memory_region( REGION_USER1 );
+		vc20_rom_2000 = memory_region(image->machine,  REGION_USER1 );
 		break;
 	case 0x4000:
-		vc20_rom_4000 = memory_region( REGION_USER1 );
+		vc20_rom_4000 = memory_region(image->machine,  REGION_USER1 );
 		if ( size > 0x2000 ) {
-			vc20_rom_6000 = memory_region( REGION_USER1 ) + 0x2000;
+			vc20_rom_6000 = memory_region(image->machine,  REGION_USER1 ) + 0x2000;
 		}
 		break;
 	case 0x6000:
-		vc20_rom_6000 = memory_region( REGION_USER1 );
+		vc20_rom_6000 = memory_region(image->machine,  REGION_USER1 );
 		break;
 	case 0xa000:
-		vc20_rom_a000 = memory_region( REGION_USER1 );
+		vc20_rom_a000 = memory_region(image->machine,  REGION_USER1 );
 		break;
 	}
 	return 0;
@@ -713,16 +725,17 @@ DEVICE_IMAGE_LOAD(vc20_rom)
 INTERRUPT_GEN( vc20_frame_interrupt )
 {
 	via_0_ca1_w(machine, 0, vc20_via0_read_ca1 (machine, 0));
-	keyboard[0] = input_port_read(machine,  TAG_KEYBOARD_ROW0 );
-	keyboard[1] = input_port_read(machine,  TAG_KEYBOARD_ROW1 );
-	keyboard[2] = input_port_read(machine,  TAG_KEYBOARD_ROW2 );
-	keyboard[3] = input_port_read(machine,  TAG_KEYBOARD_ROW3 );
-	keyboard[4] = input_port_read(machine,  TAG_KEYBOARD_ROW4 );
-	keyboard[5] = input_port_read(machine,  TAG_KEYBOARD_ROW5 );
-	keyboard[6] = input_port_read(machine,  TAG_KEYBOARD_ROW6 );
-	keyboard[7] = input_port_read(machine,  TAG_KEYBOARD_ROW7 );
+	keyboard[0] = input_port_read(machine, "ROW0");
+	keyboard[1] = input_port_read(machine, "ROW1");
+	keyboard[2] = input_port_read(machine, "ROW2");
+	keyboard[3] = input_port_read(machine, "ROW3");
+	keyboard[4] = input_port_read(machine, "ROW4");
+	keyboard[5] = input_port_read(machine, "ROW5");
+	keyboard[6] = input_port_read(machine, "ROW6");
+	keyboard[7] = input_port_read(machine, "ROW7");
 
-	vc20_tape_config (DATASSETTE, DATASSETTE_TONE);
-	vc20_tape_buttons (DATASSETTE_PLAY, DATASSETTE_RECORD, DATASSETTE_STOP);
-	set_led_status (1 /*KB_CAPSLOCK_FLAG */ , ( input_port_read(machine,  TAG_KEYBOARD_EXTRA ) & 0x01 ) ? 1 : 0);
+	vc20_tape_config (input_port_read(machine, "CFG") & 0x08, input_port_read(machine, "CFG") & 0x04);	/* DATASSETTE, DATASSETTE_TONE */
+	vc20_tape_buttons (input_port_read(machine, "DEVS") & 4, input_port_read(machine, "DEVS") & 2, input_port_read(machine, "DEVS") & 1);	/* DATASSETTE_PLAY, DATASSETTE_RECORD, DATASSETTE_STOP */
+	
+	set_led_status (1, input_port_read(machine, "SPECIAL") & 0x01 ? 1 : 0);		/*KB_CAPSLOCK_FLAG */
 }

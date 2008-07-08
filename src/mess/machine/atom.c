@@ -40,15 +40,15 @@ static char atom_printer_data = 0x07f;
 /* I am not sure if this is correct, the atom appears to have a 2.4Khz timer used for reading tapes?? */
 static int	timer_state = 0;
 
-static void atom_via_irq_func(int state)
+static void atom_via_irq_func(running_machine *machine, int state)
 {
 	if (state)
 	{
-		cpunum_set_input_line(Machine, 0, 0, HOLD_LINE);
+		cpunum_set_input_line(machine, 0, 0, HOLD_LINE);
 	}
 	else
 	{
-		cpunum_set_input_line(Machine, 0, 0, CLEAR_LINE);
+		cpunum_set_input_line(machine, 0, 0, CLEAR_LINE);
 	}
 }
 
@@ -230,10 +230,10 @@ static OPBASE_HANDLER(atom_opbase_handler)
 	generator. I don't know if this is hardware, or random data because the
 	ram chips are not cleared at start-up. So at this time, these numbers
 	are poked into the memory to simulate it. When I have more details I will fix it */
-	memory_region(REGION_CPU1)[0x08] = mame_rand(machine) & 0x0ff;
-	memory_region(REGION_CPU1)[0x09] = mame_rand(machine) & 0x0ff;
-	memory_region(REGION_CPU1)[0x0a] = mame_rand(machine) & 0x0ff;
-	memory_region(REGION_CPU1)[0x0b] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, REGION_CPU1)[0x08] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, REGION_CPU1)[0x09] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, REGION_CPU1)[0x0a] = mame_rand(machine) & 0x0ff;
+	memory_region(machine, REGION_CPU1)[0x0b] = mame_rand(machine) & 0x0ff;
 
 	return activecpu_get_pc() & 0x0ffff;
 }
@@ -355,12 +355,14 @@ DEVICE_IMAGE_LOAD( atom_floppy )
 
  READ8_HANDLER ( atom_8255_portb_r )
 {
-	/* ilogerror("8255: Read port b: %02X %02X\n",
-			input_port_read_indexed(machine, (atom_8255.atom_8255_porta & 0x0f) + 1),
-			input_port_read_indexed(machine, 11) & 0xc0); */
-// TODO: convert to input_port_read
-	return ((input_port_read_indexed(machine, (atom_8255_porta & 0x0f) + 1) & 0x3f) |
-											(input_port_read_indexed (machine, 11) & 0xc0));
+	int row;
+	char port[6];
+	
+	row = atom_8255_porta & 0x0f;
+	sprintf(port, "KEY%d", row);
+	/* logerror("8255: Read port b: %02X %02X\n", input_port_read(machine, port), 
+									input_port_read(machine, "KEY10") & 0xc0); */
+	return ((input_port_read(machine, port) & 0x3f) | (input_port_read(machine, "KEY10") & 0xc0));
 }
 
 READ8_HANDLER ( atom_8255_portc_r )
@@ -380,7 +382,7 @@ READ8_HANDLER ( atom_8255_portc_r )
 	}
 
 	atom_8255_portc |= (m6847_get_field_sync() ? 0x00 : 0x80);
-	atom_8255_portc |= (input_port_read(machine, "keyboard_12") & 0x40);
+	atom_8255_portc |= (input_port_read(machine, "KEY11") & 0x40);
 	/* logerror("8255: Read port c (%02X)\n",atom_8255.atom_8255_portc); */
 	return (atom_8255_portc);
 }
@@ -460,23 +462,23 @@ WRITE8_HANDLER(atom_8271_w)
 /* emulates a 16-slot eprom box for the Atom */
 static unsigned char selected_eprom = 0;
 
-static void atom_eprom_box_refresh(void)
+static void atom_eprom_box_refresh(running_machine *machine)
 {
     unsigned char *eprom_data;
 
 	/* get address of eprom data */
-	eprom_data = memory_region(REGION_CPU1) + 0x010000 + (selected_eprom<<12);
+	eprom_data = memory_region(machine, REGION_CPU1) + 0x010000 + (selected_eprom<<12);
 	/* set bank address */
 	memory_set_bankptr(1, eprom_data);
 }
 
-void atom_eprom_box_init(void)
+void atom_eprom_box_init(running_machine *machine)
 {
 	/* set initial eprom */
 	selected_eprom = 0;
 	/* set memory handler */
 	/* init */
-	atom_eprom_box_refresh();
+	atom_eprom_box_refresh(machine);
 }
 
 /* write to eprom box, changes eprom selected */
@@ -484,7 +486,7 @@ WRITE8_HANDLER(atom_eprom_box_w)
 {
 	selected_eprom = data & 0x0f;
 
-	atom_eprom_box_refresh();
+	atom_eprom_box_refresh(machine);
 }
 
 /* read from eprom box register, can this be done in the real hardware */
@@ -496,6 +498,6 @@ READ8_HANDLER(atom_eprom_box_r)
 MACHINE_RESET( atomeb )
 {
 	MACHINE_RESET_CALL(atom);
-	atom_eprom_box_init();
+	atom_eprom_box_init(machine);
 }
 

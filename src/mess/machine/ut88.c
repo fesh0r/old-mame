@@ -12,42 +12,42 @@
 #include "sound/dac.h"
 #include "devices/cassette.h"
 #include "machine/8255ppi.h"
+#include "includes/ut88.h"
 
-static int ut88_8255_porta;
+static int ut88_keyboard_mask;
 
 /* Driver initialization */
 DRIVER_INIT(ut88)
 {
 	/* set initialy ROM to be visible on first bank */
-	UINT8 *RAM = memory_region(REGION_CPU1);	
+	UINT8 *RAM = memory_region(machine, REGION_CPU1);	
 	memset(RAM,0x0000,0x0800); // make frist page empty by default
-  memory_configure_bank(1, 1, 2, RAM, 0x0000);
+  	memory_configure_bank(1, 1, 2, RAM, 0x0000);
 	memory_configure_bank(1, 0, 2, RAM, 0xf800);
 }
 
-READ8_HANDLER (ut88_8255_portb_r )
+static READ8_HANDLER (ut88_8255_portb_r )
 {
-	switch (ut88_8255_porta ^ 0xff) {
-	  	case 0x01 : return input_port_read_indexed(machine, 0);break;
-	  	case 0x02 : return input_port_read_indexed(machine, 1);break;
-	  	case 0x04 : return input_port_read_indexed(machine, 2);break;
-	  	case 0x08 : return input_port_read_indexed(machine, 3);break;
-	  	case 0x10 : return input_port_read_indexed(machine, 4);break;
-	  	case 0x20 : return input_port_read_indexed(machine, 5);break;
-	  	case 0x40 : return input_port_read_indexed(machine, 6);break;
-	  	case 0x80 : return input_port_read_indexed(machine, 7);break;
-	}	
-	return 0xff;
+	UINT8 key = 0xff;
+	if ((ut88_keyboard_mask & 0x01)!=0) { key &= input_port_read(machine,"LINE0"); }
+	if ((ut88_keyboard_mask & 0x02)!=0) { key &= input_port_read(machine,"LINE1"); }
+	if ((ut88_keyboard_mask & 0x04)!=0) { key &= input_port_read(machine,"LINE2"); }
+	if ((ut88_keyboard_mask & 0x08)!=0) { key &= input_port_read(machine,"LINE3"); }
+	if ((ut88_keyboard_mask & 0x10)!=0) { key &= input_port_read(machine,"LINE4"); }
+	if ((ut88_keyboard_mask & 0x20)!=0) { key &= input_port_read(machine,"LINE5"); }
+	if ((ut88_keyboard_mask & 0x40)!=0) { key &= input_port_read(machine,"LINE6"); }
+	if ((ut88_keyboard_mask & 0x80)!=0) { key &= input_port_read(machine,"LINE7"); }
+	return key;
 }
 
-READ8_HANDLER (ut88_8255_portc_r )
+static READ8_HANDLER (ut88_8255_portc_r )
 {
-	return input_port_read_indexed(machine, 8);	
+	return input_port_read(machine, "LINE8");	
 }
 
-WRITE8_HANDLER (ut88_8255_porta_w )
+static WRITE8_HANDLER (ut88_8255_porta_w )
 {
-	ut88_8255_porta = data;	
+	ut88_keyboard_mask = data ^ 0xff;	
 }
 
 const ppi8255_interface ut88_ppi8255_interface =
@@ -69,7 +69,7 @@ MACHINE_RESET( ut88 )
 {
 	timer_set(ATTOTIME_IN_USEC(10), NULL, 0, ut88_reset);
 	memory_set_bank(1, 1);	
-	ut88_8255_porta = 0;
+	ut88_keyboard_mask = 0;
 }
 
 
@@ -102,7 +102,22 @@ READ8_HANDLER( ut88_tape_r )
 
 READ8_HANDLER( ut88mini_keyboard_r )
 {
-	return input_port_read_indexed(machine, 0);	
+	// This is real keyboard implementation
+	UINT8 *keyrom1 = memory_region(machine, REGION_CPU1)+ 0x10000;
+	UINT8 *keyrom2 = memory_region(machine, REGION_CPU1)+ 0x10100;
+	
+	UINT8 key = keyrom2[input_port_read(machine, "LINE1")];
+	// if keyboard 2nd part returned 0 on 4th bit output from 
+	// first part is used
+	if ((key & 0x08) ==0x00) {		
+		key = keyrom1[input_port_read(machine, "LINE0")];	
+	}	
+	// for delete key there is special key producing code 0x80
+	key = (input_port_read(machine, "LINE2") & 0x80)==0x80 ? key : 0x80; 	
+	// If key 0 is pressed it value is 0x10 this is done by additional 
+	// discrete logic
+	key = (input_port_read(machine, "LINE0") & 0x01)==0x01 ? key : 0x10;
+	return key;
 }
 
 static int lcd_digit[6];

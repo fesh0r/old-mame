@@ -9,7 +9,6 @@
 */
 
 #include "driver.h"
-#include "deprecat.h"
 #include "video/mc6845.h"
 #include "includes/svi318.h"
 #include "cpu/z80/z80.h"
@@ -61,7 +60,7 @@ static SVI_318 svi;
 static UINT8 *pcart;
 static UINT32 pcart_rom_size;
 
-static void svi318_set_banks (void);
+static void svi318_set_banks(running_machine *machine);
 
 
 /* Serial ports */
@@ -172,7 +171,7 @@ static READ8_HANDLER ( svi318_ppi_port_a_r )
 		data |= 0x80;
 	if (!svi318_cassette_present(0))
 		data |= 0x40;
-	data |= input_port_read_indexed(machine, 12) & 0x30;
+	data |= input_port_read(machine, "BUTTONS") & 0x30;
 
 	return data;
 }
@@ -193,14 +192,13 @@ static READ8_HANDLER ( svi318_ppi_port_a_r )
 static  READ8_HANDLER ( svi318_ppi_port_b_r )
 {
 	int row;
+	char port[7];
 
 	row = svi.keyboard_row;
 	if (row <= 10)
 	{
-		if (row == 6)
-			return input_port_read_indexed(machine, row) & input_port_read_indexed(machine, 14);
-		else
-			return input_port_read_indexed(machine, row);
+		sprintf(port, "LINE%d", row);
+		return input_port_read(machine, port);
 	}
 	return 0xff;
 }
@@ -304,7 +302,7 @@ static READ8_HANDLER( svi318_printer_r )
 
 READ8_HANDLER( svi318_psg_port_a_r )
 {
-	return input_port_read_indexed(machine, 11);
+	return input_port_read(machine, "JOYSTICKS");
 }
 
 /*
@@ -329,7 +327,7 @@ WRITE8_HANDLER( svi318_psg_port_b_w )
 		set_led_status (0, !(data & 0x20) );
 
 	svi.bank_switch = data;
-	svi318_set_banks ();
+	svi318_set_banks(machine);
 }
 
 /* Disk drives  */
@@ -515,7 +513,7 @@ static void svi318_80col_init(running_machine *machine)
 	svi.svi806_ram = new_memory_region( machine, REGION_GFX2, 0x1000, 0 );
 	memset( svi.svi806_ram, 0x00, 0x800 );
 	memset( svi.svi806_ram + 0x800, 0xFF, 0x800 );
-	svi.svi806_gfx = memory_region(REGION_GFX1);
+	svi.svi806_gfx = memory_region(machine, REGION_GFX1);
 
 	timer_set( attotime_zero, NULL, 0, svi318_80col_init_registers );
 }
@@ -523,7 +521,7 @@ static void svi318_80col_init(running_machine *machine)
 static WRITE8_HANDLER( svi806_ram_enable_w )
 {
 	svi.svi806_ram_enabled = ( data & 0x01 );
-	svi318_set_banks();
+	svi318_set_banks(machine);
 }
 
 VIDEO_START( svi328_806 )
@@ -555,7 +553,7 @@ MACHINE_RESET( svi328_806 )
 
 	svi318_80col_init(machine);
 	svi.svi806_present = 1;
-	svi318_set_banks();
+	svi318_set_banks(machine);
 
 	/* Set SVI-806 80 column card palette */
 	palette_set_color_rgb( machine, TMS9928A_PALETTE_SIZE, 0, 0, 0 );		/* Monochrome black */
@@ -564,9 +562,9 @@ MACHINE_RESET( svi328_806 )
 
 /* Init functions */
 
-void svi318_vdp_interrupt(int i)
+void svi318_vdp_interrupt(running_machine *machine, int i)
 {
-	cpunum_set_input_line(Machine, 0, 0, (i ? HOLD_LINE : CLEAR_LINE));
+	cpunum_set_input_line(machine, 0, 0, (i ? HOLD_LINE : CLEAR_LINE));
 }
 
 DRIVER_INIT( svi318 )
@@ -659,18 +657,18 @@ MACHINE_RESET( svi318 )
 	TMS9928A_reset();
 
 	svi.bank_switch = 0xff;
-	svi318_set_banks();
+	svi318_set_banks(machine);
 
-	wd17xx_reset();
+	wd17xx_reset(machine);
 }
 
 INTERRUPT_GEN( svi318_interrupt )
 {
 	int set;
 
-	set = input_port_read_indexed(machine, 13);
+	set = input_port_read(machine, "CONFIG");
 	TMS9928A_set_spriteslimit (set & 0x20);
-	TMS9928A_interrupt();
+	TMS9928A_interrupt(machine);
 }
 
 /* Memory */
@@ -713,7 +711,7 @@ WRITE8_HANDLER( svi318_writemem4 )
 	}
 }
 
-static void svi318_set_banks ()
+static void svi318_set_banks(running_machine *machine)
 {
 	const UINT8 v = svi.bank_switch;
 
@@ -725,7 +723,7 @@ static void svi318_set_banks ()
 
 	switch( svi.bankLow ) {
 	case SVI_INTERNAL:
-		svi.bankLow_ptr = memory_region(REGION_CPU1);
+		svi.bankLow_ptr = memory_region(machine, REGION_CPU1);
 		break;
 	case SVI_CART:
 		if ( pcart ) {

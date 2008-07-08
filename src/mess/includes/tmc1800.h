@@ -11,6 +11,10 @@ struct _tmc1800_state
 {
 	/* video state */
 	int cdp1861_efx;		/* EFx */
+
+	/* keyboard state */
+	int keylatch;			/* key latch */
+	int reset;				/* reset activated */
 };
 
 typedef struct _tmc2000_state tmc2000_state;
@@ -18,6 +22,12 @@ struct _tmc2000_state
 {
 	/* video state */
 	int cdp1864_efx;		/* EFx */
+
+	UINT8 *colorram;		/* color memory */
+
+	/* keyboard state */
+	int keylatch;			/* key latch */
+	int reset;				/* reset activated */
 };
 
 /* ---------- defined in video/tmc1800.c ---------- */
