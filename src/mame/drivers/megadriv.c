@@ -888,7 +888,7 @@ static void megadriv_vdp_ctrl_port_w(running_machine *machine, int data)
 	}
 }
 
-static WRITE16_HANDLER( megadriv_vdp_w )
+WRITE16_HANDLER( megadriv_vdp_w )
 {
 	switch (offset<<1)
 	{
@@ -1281,7 +1281,7 @@ static UINT16 megadriv_read_hv_counters(void)
 
 }
 
-static READ16_HANDLER( megadriv_vdp_r )
+READ16_HANDLER( megadriv_vdp_r )
 {
 	UINT16 retvalue = 0;
 
@@ -1408,7 +1408,7 @@ static int io_stage[3];
 
 static TIMER_CALLBACK( io_timeout_timer_callback )
 {
-	io_stage[(int)ptr] = -1;
+	io_stage[(int)(FPTR)ptr] = -1;
 }
 
 static void init_megadri6_io(void)
@@ -1417,7 +1417,7 @@ static void init_megadri6_io(void)
 
 	for (i=0; i<3; i++)
 	{
-		io_timeout[i] = timer_alloc(io_timeout_timer_callback, (void*)i);
+		io_timeout[i] = timer_alloc(io_timeout_timer_callback, (void*)(FPTR)i);
 		io_stage[i] = -1;
 	}
 }
